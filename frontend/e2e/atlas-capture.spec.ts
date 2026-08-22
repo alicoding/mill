@@ -6,7 +6,7 @@ import { deleteViaPageMenu } from './fixtures/atlasPage'
 
 // Atlas capture doors (goal 0081 slice A3, LOCKED design §2b/§3b):
 // paste (text/HTML into the placement popover) and the Scratchpad
-// seed rework, driven end to end against the seeded "My space" space
+// seed rework, driven end to end against the seeded "The engagement" space
 // (internal/domain/atlas/builtin.go) via the standard per-worker
 // server fixture (testing.md's own default, unlike atlas-authoring.
 // spec.ts's dedicated-server exact-count needs).
@@ -131,7 +131,7 @@ test('Scratchpad seed is a container card with the inbox guidance note', async (
 
   const scratchpad = page.locator('[data-testid="atlas-note-card"][aria-label="Open Scratchpad"]')
   await expect(scratchpad).toBeVisible()
-  await expect(scratchpad).toContainText('Quick captures land here. Drag notes out to file them, or promote them into cards.')
+  await expect(scratchpad).toContainText('Meeting notes and quick captures land here. Drag them out to file, or promote into cards.')
   // Still an ordinary Topic card structurally (containment is a role
   // every card carries, ADR-0038 Decision 3) -- no children seeded.
   await expect(scratchpad.getByTestId('atlas-note-leaf-chip')).toBeVisible()

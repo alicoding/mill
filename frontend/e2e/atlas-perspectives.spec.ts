@@ -26,12 +26,12 @@ import { ATLAS_KIND_TOPIC } from './fixtures/kindPicker'
 // (fixtures/server.ts's ATLAS_PERSPECTIVES_* ports), never the shared
 // worker pool (testing.md's shared-vs-dedicated rule).
 //
-// Runs against the seeded "My space" tree (internal/domain/atlas/
-// builtin.go): My space (root) holds Getting started, Scratchpad,
-// Example area (which holds Ada Lovelace and Project charter), and
+// Runs against the seeded "The engagement" tree (internal/domain/atlas/
+// builtin.go): The engagement (root) holds Discovery workstream, Scratchpad,
+// Client records (which holds Jordan Reyes and Statement of work), and
 // perspectives are user-authored (none ship seeded); each test
 // builds what it asserts.
-// link connects Getting started -> Ada Lovelace.
+// link connects Discovery workstream -> Jordan Reyes.
 
 async function withServer(testInfo: { parallelIndex: number }, run: (page: Awaited<ReturnType<import('@playwright/test').Browser['newPage']>>) => Promise<void>): Promise<void> {
   const idx = testInfo.parallelIndex
@@ -108,9 +108,9 @@ test('a perspective filters the board to its members closed under ancestry, and 
     await createPerspective(page, 'Filtered')
 
     // Nothing is a member yet -- the board renders empty.
-    await expect(noteCard(page, 'Getting started')).not.toBeVisible()
+    await expect(noteCard(page, 'Discovery workstream')).not.toBeVisible()
     await expect(noteCard(page, 'Scratchpad')).not.toBeVisible()
-    await expect(groupCard(page, 'Example area')).not.toBeVisible()
+    await expect(groupCard(page, 'Client records')).not.toBeVisible()
 
     // Arrange-disabled-while-active (ADR-0041): aria-disabled + the
     // exact tooltip copy, re-enabled once back on All cards.
@@ -118,23 +118,23 @@ test('a perspective filters the board to its members closed under ancestry, and 
     await expect(arrange).toHaveAttribute('aria-disabled', 'true')
     await expect(arrange).toHaveAttribute('title', 'Arranging works on all cards. Switch to All cards first.')
 
-    // Switch to All cards to reach "Getting started" and add it via
+    // Switch to All cards to reach "Discovery workstream" and add it via
     // the board's own right-click "Add to perspective".
     await switcherButton(page).click()
     await switcherPopover(page).getByText('All cards', { exact: true }).click()
     await expect(arrange).not.toHaveAttribute('aria-disabled', 'true')
 
-    await noteCard(page, 'Getting started').click({ button: 'right' })
+    await noteCard(page, 'Discovery workstream').click({ button: 'right' })
     await expect(contextMenu(page)).toBeVisible()
     await contextMenu(page).getByText('Add to perspective', { exact: false }).click()
     await expect(contextMenu(page)).toBeVisible()
     await contextMenu(page).getByText('Filtered', { exact: true }).click()
     await expect(page.getByTestId('atlas-quiet-toast')).toContainText('Added to Filtered')
 
-    // Reach "Ada Lovelace" (nested inside Example area) and add her via
+    // Reach "Jordan Reyes" (nested inside Client records) and add her via
     // her own card page's membership chip -- still on All cards.
-    await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
-    await openCard(page, noteCard(page, 'Ada Lovelace'))
+    await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
+    await openCard(page, noteCard(page, 'Jordan Reyes'))
     const overlay = page.locator('[data-component="atlas-card-overlay"]')
     await expect(overlay).toBeVisible()
     // The add menu's own ActionMenu.Overlay portals outside the
@@ -146,26 +146,26 @@ test('a perspective filters the board to its members closed under ancestry, and 
     await expect(overlay.getByTestId('atlas-page-perspective-membership')).toContainText('Filtered')
     await page.keyboard.press('Escape')
     await expect(overlay).not.toBeVisible()
-    await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
+    await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('The engagement', { exact: true }), 'The engagement')
 
-    // Switch to Filtered: Getting started (direct add) AND Example area
-    // (ancestry closure from Ada's own add) both render; Project
-    // charter (Ada's sibling, never added) and the seeded Getting
-    // started -> Ada Lovelace link (never made a perspective member
+    // Switch to Filtered: Discovery workstream (direct add) AND Client records
+    // (ancestry closure from Jordan's own add) both render; Statement of
+    // work (Jordan's sibling, never added) and the seeded Discovery
+    // workstream -> Jordan Reyes link (never made a perspective member
     // itself) both stay hidden -- the endpoint-visibility half of the
-    // link rule already covers this: Ada's own top-level ancestor
-    // (Example area) IS visible here, but the raw link record was
+    // link rule already covers this: Jordan's own top-level ancestor
+    // (Client records) IS visible here, but the raw link record was
     // never added to Filtered's own MemberLinkIDs.
     await switcherButton(page).click()
     await switcherPopover(page).getByText('Filtered', { exact: true }).click()
-    await expect(noteCard(page, 'Getting started')).toBeVisible()
-    await expect(groupCard(page, 'Example area')).toBeVisible()
+    await expect(noteCard(page, 'Discovery workstream')).toBeVisible()
+    await expect(groupCard(page, 'Client records')).toBeVisible()
     await expect(noteCard(page, 'Scratchpad')).not.toBeVisible()
     await expect(page.locator('.react-flow__edge')).toHaveCount(0)
 
-    await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
-    await expect(noteCard(page, 'Ada Lovelace')).toBeVisible()
-    await expect(noteCard(page, 'Project charter')).not.toBeVisible()
+    await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
+    await expect(noteCard(page, 'Jordan Reyes')).toBeVisible()
+    await expect(noteCard(page, 'Statement of work')).not.toBeVisible()
   })
 })
 

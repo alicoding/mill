@@ -13,9 +13,9 @@ test('deleting a linked card names the blast radius in the undo toast, and undo 
   await expect(page.getByTestId('atlas-board')).toBeVisible()
   await expect(page.locator('.react-flow__edge')).not.toHaveCount(0)
 
-  // "Getting started" carries exactly one seeded link (to "Ada
-  // Lovelace") and no children -- the leaf-with-links case.
-  const gettingStarted = noteCard(page, 'Getting started')
+  // "Discovery workstream" carries exactly one seeded link (to "Jordan
+  // Reyes") and no children -- the leaf-with-links case.
+  const gettingStarted = noteCard(page, 'Discovery workstream')
   await openCard(page, gettingStarted)
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await deleteViaPageMenu(page, overlay)

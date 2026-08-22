@@ -23,7 +23,7 @@ test('plain click selects (replacing any prior selection); a second click on the
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  const getting = noteCard(page, 'Getting started')
+  const getting = noteCard(page, 'Discovery workstream')
   const scratchpad = noteCard(page, 'Scratchpad')
 
   await getting.click()
@@ -57,7 +57,7 @@ test('a plain click leaves the selection ring visibly showing on the clicked car
   // gesture), which made a single-card selection invisible. The ring
   // must show on the wrapper, immune to that reset, while the card is
   // still focused -- not just once focus moves elsewhere.
-  const getting = noteCard(page, 'Getting started')
+  const getting = noteCard(page, 'Discovery workstream')
   await getting.click()
   expect(await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))).toBe('atlas-note-card')
   const cardWrapper = selectedWrapper(page, getting)
@@ -94,11 +94,11 @@ test('a real double-click reproduces the same select-then-commit outcome as two 
   // individual note cards carry their own entrance transition
   // independent of the viewport's own pan/zoom transform -- a
   // dblclick fired before BOTH settle can land on a still-moving
-  // neighbor instead of the intended card (regression: "Ada
-  // Lovelace"'s node intercepted a dblclick meant for "Getting
-  // started" while its own entrance animation was still running).
+  // neighbor instead of the intended card (regression: "Jordan
+  // Reyes"'s node intercepted a dblclick meant for "Discovery
+  // workstream" while its own entrance animation was still running).
   await waitForViewportStable(board)
-  const getting = noteCard(page, 'Getting started')
+  const getting = noteCard(page, 'Discovery workstream')
   let previousBox: string | null = null
   await expect
     .poll(async () => {
@@ -113,7 +113,7 @@ test('a real double-click reproduces the same select-then-commit outcome as two 
   await getting.dblclick()
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
-  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Getting started')
+  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Discovery workstream')
   await page.keyboard.press('Escape')
   await expect(overlay).not.toBeVisible()
 
@@ -123,16 +123,16 @@ test('a real double-click reproduces the same select-then-commit outcome as two 
   // idiom atlas-page.spec.ts's identical gutter click already uses)
   // stays inside the gutter regardless of the board's own zoom scale,
   // which shifts with the seeded card count (goal 0095 slice 3).
-  const exampleArea = groupCard(page, 'Example area')
+  const exampleArea = groupCard(page, 'Client records')
   await clickFrameGutter(exampleArea, { clickCount: 2 })
-  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
   // ⌘↑ = one step up the depth ladder (atlas.up, Finder's enclosing-
   // folder convention); at the auto-entered single root it's a no-op.
   await page.keyboard.press('Meta+ArrowUp')
-  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Example area')
+  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Client records')
   await page.keyboard.press('Meta+ArrowUp')
-  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('My space')
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('The engagement')
 })
 
 test('⌘-click commits instantly with no prior selection needed; a plain click on empty canvas deselects', async ({ page }) => {
@@ -140,7 +140,7 @@ test('⌘-click commits instantly with no prior selection needed; a plain click 
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  const getting = noteCard(page, 'Getting started')
+  const getting = noteCard(page, 'Discovery workstream')
   await expect(selectedWrapper(page, getting)).toHaveCount(0)
 
   // ⌘-click = the pointer twin of ⌘↵: opens the card's page directly,
@@ -148,7 +148,7 @@ test('⌘-click commits instantly with no prior selection needed; a plain click 
   await getting.click({ modifiers: ['Meta'] })
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
-  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Getting started')
+  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Discovery workstream')
   await page.keyboard.press('Escape')
   await expect(overlay).not.toBeVisible()
 
@@ -167,10 +167,10 @@ test('the Escape ladder: clears a live selection first, then -- with nothing sel
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
-  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+  await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
-  const charter = noteCard(page, 'Project charter')
+  const charter = noteCard(page, 'Statement of work')
   await charter.click()
   await expect(selectedWrapper(page, charter)).toHaveCount(1)
 
@@ -178,13 +178,13 @@ test('the Escape ladder: clears a live selection first, then -- with nothing sel
   // at this level.
   await page.keyboard.press('Escape')
   await expect(selectedWrapper(page, charter)).toHaveCount(0)
-  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
   // Second rung: nothing selected, so the SAME key now climbs the
   // depth ladder one step -- the same signal ⌘↑ bumps.
   await page.keyboard.press('Escape')
-  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Example area')
-  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('My space')
+  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Client records')
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('The engagement')
 })
 
 test('atlas.up is surface-scoped: listed under "On this page" in the palette on Atlas, absent and inert elsewhere', async ({ page }) => {
@@ -220,8 +220,8 @@ test('Tab cycles focus and selection across top-level cards in reading order', a
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  const exampleArea = groupCard(page, 'Example area')
-  const getting = noteCard(page, 'Getting started')
+  const exampleArea = groupCard(page, 'Client records')
+  const getting = noteCard(page, 'Discovery workstream')
 
   // Focus lands inside the board wrapper (a click), then Escape's
   // first rung clears the live selection while DOM focus stays on the
@@ -233,8 +233,8 @@ test('Tab cycles focus and selection across top-level cards in reading order', a
   await expect(selectedWrapper(page, getting)).toHaveCount(0)
 
   // Reading order is left-to-right (atlasKeyboardNavGeometry.ts): the
-  // seed's own X positions put Example area (80) before Getting
-  // started (532), both on the same row (internal/domain/atlas/
+  // seed's own X positions put Client records (80) before Discovery
+  // workstream (532), both on the same row (internal/domain/atlas/
   // builtin.go).
   await page.keyboard.press('Tab')
   await expect(selectedWrapper(page, exampleArea)).toHaveCount(1)
@@ -253,7 +253,7 @@ test('arrow-nudge persists the selected card\'s position', async ({ page }) => {
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  const getting = noteCard(page, 'Getting started')
+  const getting = noteCard(page, 'Discovery workstream')
   const gettingNode = page.locator('.react-flow__node').filter({ has: getting })
   await getting.click()
   await expect(selectedWrapper(page, getting)).toHaveCount(1)
@@ -303,7 +303,7 @@ test('arrows with no selection pan the camera instead of nudging', async ({ page
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
 
-  const getting = noteCard(page, 'Getting started')
+  const getting = noteCard(page, 'Discovery workstream')
   await getting.click()
   await page.keyboard.press('Escape')
   await expect(selectedWrapper(page, getting)).toHaveCount(0)

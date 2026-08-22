@@ -37,29 +37,29 @@ test('session restore: the viewed level and open card survive a reload (goal 009
     await page.getByRole('link', { name: 'Atlas' }).click()
     await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-    await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
-    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
-    await openCard(page, noteCard(page, 'Ada Lovelace'))
+    await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
+    await openCard(page, noteCard(page, 'Jordan Reyes'))
     const overlay = page.locator('[data-component="atlas-card-overlay"]')
     await expect(overlay).toBeVisible()
 
     await page.reload()
     await expect(page.getByTestId('atlas-board')).toBeVisible()
-    // Landed back inside Example area with Ada's page re-opened.
-    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+    // Landed back inside Client records with Jordan's page re-opened.
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
     await expect(overlay).toBeVisible()
-    await expect(overlay).toContainText('Ada Lovelace')
+    await expect(overlay).toContainText('Jordan Reyes')
 
     // Close the page and step up a level, reload again: the cleared
     // overlay must STAY cleared and the new level must stick -- a
     // restore that only ever re-adds state would ghost the page back.
     await page.keyboard.press('Escape')
     await expect(overlay).not.toBeVisible()
-    await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space'), 'My space')
-    await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Example area')
+    await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('The engagement'), 'The engagement')
+    await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Client records')
     await page.reload()
     await expect(page.getByTestId('atlas-board')).toBeVisible()
-    await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Example area')
+    await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Client records')
     await expect(overlay).not.toBeVisible()
   } finally {
     await server?.stop()

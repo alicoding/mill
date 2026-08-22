@@ -105,9 +105,10 @@ func (h *atlasMCPHarness) linkKindIDByLabel(t *testing.T, label string) string {
 	return ""
 }
 
-// --- read tools, against the seeded example space (builtin.go: "My
-// space" > "Example area" > "Ada Lovelace"/"Project charter", "Getting
-// started" -> Ada "relates to", Ada -> "Project charter" "relates to") ---
+// --- read tools, against the seeded example space (builtin.go: "The
+// engagement" > "Client records" > "Jordan Reyes"/"Statement of work",
+// "Discovery workstream" -> Jordan "relates to", Jordan -> "Statement
+// of work" "relates to") ---
 
 func TestAtlasMCP_ListKinds_IncludesSeededTopicWithDeclaredFields(t *testing.T) {
 	h := newAtlasMCPHarness(t, "127.0.0.1:18095")
@@ -158,7 +159,7 @@ func TestAtlasMCP_AtlasCardsResource_ListsSeededCards(t *testing.T) {
 	for _, e := range entries {
 		titles[e.Title] = true
 	}
-	for _, want := range []string{"My space", "Example area", "Ada Lovelace", "Project charter"} {
+	for _, want := range []string{"The engagement", "Client records", "Jordan Reyes", "Statement of work"} {
 		if !titles[want] {
 			t.Errorf("mill://atlas/cards missing seeded card %q: %+v", want, entries)
 		}
@@ -167,26 +168,26 @@ func TestAtlasMCP_AtlasCardsResource_ListsSeededCards(t *testing.T) {
 
 func TestAtlasMCP_SearchCards_MatchesTitleAndReportsParent(t *testing.T) {
 	h := newAtlasMCPHarness(t, "127.0.0.1:18097")
-	exampleArea := h.cardByTitle(t, "Example area")
+	exampleArea := h.cardByTitle(t, "Client records")
 
-	// "Ada" matches BOTH the Contact card's own title (Ada Lovelace) and
-	// the Document card's "owner" field value ("Ada Lovelace") -- proves
-	// the title match specifically, not just that field-value matching
-	// works (TestAtlasMCP_SearchCards_MatchesFieldValueNotJustTitleOrNote
+	// "Jordan" matches BOTH the Contact card's own title (Jordan Reyes)
+	// and the Document card's "owner" field value ("Jordan Reyes") --
+	// proves the title match specifically, not just that field-value
+	// matching works (TestAtlasMCP_SearchCards_MatchesFieldValueNotJustTitleOrNote
 	// covers that half).
-	text := h.call(t, "atlas_search_cards", map[string]any{"query": "Ada"})
+	text := h.call(t, "atlas_search_cards", map[string]any{"query": "Jordan"})
 	var out atlasSearchCardsResult
 	if err := json.Unmarshal([]byte(text), &out); err != nil {
 		t.Fatalf("atlas_search_cards result is not the typed JSON: %v", err)
 	}
 	var titleMatch *atlasSearchMatch
 	for i := range out.Matches {
-		if out.Matches[i].Title == "Ada Lovelace" {
+		if out.Matches[i].Title == "Jordan Reyes" {
 			titleMatch = &out.Matches[i]
 		}
 	}
 	if titleMatch == nil {
-		t.Fatalf("atlas_search_cards(Ada) = %+v, want a match on Ada Lovelace's own title", out.Matches)
+		t.Fatalf("atlas_search_cards(Jordan) = %+v, want a match on Jordan Reyes's own title", out.Matches)
 		return // staticcheck SA5011: t.Fatalf's noreturn fact is lost under CI's build config
 	}
 	if titleMatch.ParentID != exampleArea.ID {
@@ -196,26 +197,26 @@ func TestAtlasMCP_SearchCards_MatchesTitleAndReportsParent(t *testing.T) {
 
 func TestAtlasMCP_SearchCards_MatchesFieldValueNotJustTitleOrNote(t *testing.T) {
 	h := newAtlasMCPHarness(t, "127.0.0.1:18098")
-	// "ada@example.com" only appears in the seeded Contact card's own
+	// "jordan@example.com" only appears in the seeded Contact card's own
 	// "email" field, never in its title or note -- proves the matcher
 	// covers field values too (goal 0083's "title+note+summary+fields"
 	// contract), not just the two columns the frontend's own jump filter
 	// (atlasJumpFilter.ts) checks.
-	text := h.call(t, "atlas_search_cards", map[string]any{"query": "ada@example.com"})
+	text := h.call(t, "atlas_search_cards", map[string]any{"query": "jordan@example.com"})
 	var out atlasSearchCardsResult
 	if err := json.Unmarshal([]byte(text), &out); err != nil {
 		t.Fatalf("atlas_search_cards result is not the typed JSON: %v", err)
 	}
-	if len(out.Matches) != 1 || out.Matches[0].Title != "Ada Lovelace" {
-		t.Fatalf("field-value search = %+v, want exactly one match (Ada Lovelace)", out.Matches)
+	if len(out.Matches) != 1 || out.Matches[0].Title != "Jordan Reyes" {
+		t.Fatalf("field-value search = %+v, want exactly one match (Jordan Reyes)", out.Matches)
 	}
 }
 
 func TestAtlasMCP_ReadCard_ParentChainChildrenAndLinksRoundTrip(t *testing.T) {
 	h := newAtlasMCPHarness(t, "127.0.0.1:18099")
-	mySpace := h.cardByTitle(t, "My space")
-	exampleArea := h.cardByTitle(t, "Example area")
-	ada := h.cardByTitle(t, "Ada Lovelace")
+	mySpace := h.cardByTitle(t, "The engagement")
+	exampleArea := h.cardByTitle(t, "Client records")
+	ada := h.cardByTitle(t, "Jordan Reyes")
 
 	text := h.call(t, "atlas_read_card", map[string]any{"cardId": ada.ID})
 	var out atlasCardOut
@@ -223,31 +224,31 @@ func TestAtlasMCP_ReadCard_ParentChainChildrenAndLinksRoundTrip(t *testing.T) {
 		t.Fatalf("atlas_read_card result is not the typed JSON: %v", err)
 	}
 
-	if out.Title != "Ada Lovelace" || out.Fields["email"] != "ada@example.com" || out.Fields["role"] != "Point of contact" {
-		t.Errorf("card content = %+v, want the seeded Ada Lovelace fields", out)
+	if out.Title != "Jordan Reyes" || out.Fields["email"] != "jordan@example.com" || out.Fields["role"] != "Client sponsor" {
+		t.Errorf("card content = %+v, want the seeded Jordan Reyes fields", out)
 	}
 
-	// Root-ward: root ("My space") first, immediate parent ("Example
+	// Root-ward: root ("The engagement") first, immediate parent ("Example
 	// area") last.
 	if len(out.ParentChain) != 2 || out.ParentChain[0].ID != mySpace.ID || out.ParentChain[1].ID != exampleArea.ID {
-		t.Errorf("ParentChain = %+v, want [My space, Example area] root-ward", out.ParentChain)
+		t.Errorf("ParentChain = %+v, want [The engagement, Client records] root-ward", out.ParentChain)
 	}
 
 	if len(out.Children) != 0 {
-		t.Errorf("Ada Lovelace's Children = %+v, want none", out.Children)
+		t.Errorf("Jordan Reyes's Children = %+v, want none", out.Children)
 	}
 
 	var sawIncomingFromGetting, sawOutgoingToDocument bool
 	for _, l := range out.Links {
 		switch {
-		case l.Direction == "incoming" && l.OtherTitle == "Getting started":
+		case l.Direction == "incoming" && l.OtherTitle == "Discovery workstream":
 			sawIncomingFromGetting = true
-		case l.Direction == "outgoing" && l.OtherTitle == "Project charter":
+		case l.Direction == "outgoing" && l.OtherTitle == "Statement of work":
 			sawOutgoingToDocument = true
 		}
 	}
 	if !sawIncomingFromGetting || !sawOutgoingToDocument {
-		t.Errorf("Links = %+v, want an incoming link from 'Getting started' and an outgoing link to 'Project charter'", out.Links)
+		t.Errorf("Links = %+v, want an incoming link from 'Discovery workstream' and an outgoing link to 'Statement of work'", out.Links)
 	}
 }
 
@@ -292,8 +293,8 @@ func TestAtlasMCP_ProposeCardWrite_ApproveCreatesCardWithFieldsAndLinks(t *testi
 
 	topicKindID := h.kindIDByLabel(t, "Topic")
 	relatesToID := h.linkKindIDByLabel(t, "relates to")
-	exampleArea := h.cardByTitle(t, "Example area")
-	ada := h.cardByTitle(t, "Ada Lovelace")
+	exampleArea := h.cardByTitle(t, "Client records")
+	ada := h.cardByTitle(t, "Jordan Reyes")
 	before := len(h.atlas.Cards())
 
 	done := make(chan struct {
@@ -348,7 +349,7 @@ func TestAtlasMCP_ProposeCardWrite_ApproveCreatesCardWithFieldsAndLinks(t *testi
 		}
 	}
 	if !sawLink {
-		t.Errorf("no link from %q to Ada Lovelace was created", created.ID)
+		t.Errorf("no link from %q to Jordan Reyes was created", created.ID)
 	}
 
 	// atlas_get_write_status is this family's own typed poll tool --
@@ -414,7 +415,7 @@ func TestAtlasMCP_ProposeCardWrite_DenyWritesNothing(t *testing.T) {
 func TestAtlasMCP_ProposeCardWrite_UpdateMergesOntoExistingCard(t *testing.T) {
 	h := newAtlasMCPHarness(t, "127.0.0.1:18103")
 	h.enableWrites(t)
-	getting := h.cardByTitle(t, "Getting started")
+	getting := h.cardByTitle(t, "Discovery workstream")
 
 	done := make(chan struct {
 		res *mcp.CallToolResult
@@ -435,7 +436,7 @@ func TestAtlasMCP_ProposeCardWrite_UpdateMergesOntoExistingCard(t *testing.T) {
 	}()
 
 	pending := h.awaitPending(t)
-	if pending.Description != `An MCP client wants to UPDATE card "Getting started": status` {
+	if pending.Description != `An MCP client wants to UPDATE card "Discovery workstream": status` {
 		t.Errorf("pending description = %q, want the natural update phrasing", pending.Description)
 	}
 	if err := h.svc.ResolveMCPWrite(pending.ID, true); err != nil {
@@ -446,14 +447,14 @@ func TestAtlasMCP_ProposeCardWrite_UpdateMergesOntoExistingCard(t *testing.T) {
 		t.Fatalf("approved update failed: err=%v res=%+v", out.err, out.res)
 	}
 
-	updated := h.cardByTitle(t, "Getting started")
+	updated := h.cardByTitle(t, "Discovery workstream")
 	if updated.Fields["status"] != "Done" {
 		t.Errorf("updated status field = %q, want Done", updated.Fields["status"])
 	}
-	if updated.Title != "Getting started" || updated.Note != "Declare a Kind, drop a card, link it to something." {
+	if updated.Title != "Discovery workstream" || updated.Note != "First working session with the client. Scope and next steps confirmed." {
 		t.Errorf("update must leave title/note unchanged when not named: %+v", updated)
 	}
-	if updated.Fields["summary"] != "How this space is organized." {
+	if updated.Fields["summary"] != "Confirm scope, stakeholders, and what a finished engagement looks like." {
 		t.Errorf("update must MERGE fields, not replace: %+v", updated.Fields)
 	}
 }

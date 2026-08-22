@@ -19,8 +19,8 @@ test('a note filed in an area shows in the area preview at the parent level', as
     return JSON.parse(text)
   }
   const cards = (await call('Cards', [])) as { ID: string; Title: string; KindID: string }[]
-  const spaceID = cards.find((c) => c.Title === 'My space')!.ID
-  const topicKindID = cards.find((c) => c.Title === 'Getting started')!.KindID
+  const spaceID = cards.find((c) => c.Title === 'The engagement')!.ID
+  const topicKindID = cards.find((c) => c.Title === 'Discovery workstream')!.KindID
   const frame = await call('CreateCard', [topicKindID, 'ZzNotePreviewArea', '', {}, spaceID, { X: -300, Y: 300 }, '', '', '', '']) as { ID: string }
   await call('CreateCard', [topicKindID, 'ZzNotePreviewKid', '', {}, frame.ID, { X: 10, Y: 10 }, '', '', '', ''])
   const filed = await call('CreateNote', ['ZzFiledNoteText', { X: 40, Y: 40 }, frame.ID]) as { ID: string }

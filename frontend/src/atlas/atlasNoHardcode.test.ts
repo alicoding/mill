@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest'
 // concept" analyzer, and a match inside an unrelated string (a comment
 // that happens to say "the document says...") would be a false
 // positive worth reading before assuming a real violation.
-const SEEDED_CONCEPT_NAMES = ['Topic', 'Contact', 'Document', 'relates to', 'My space']
+const SEEDED_CONCEPT_NAMES = ['Topic', 'Contact', 'Document', 'relates to', 'The engagement']
 
 const ATLAS_DIR = join(__dirname)
 

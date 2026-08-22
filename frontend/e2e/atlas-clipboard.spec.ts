@@ -95,8 +95,8 @@ test('copy/paste clones a card at the cursor; a frame paste offers its items', a
       return JSON.parse(text)
     }
     const cards = (await callBound('Cards', [])) as { ID: string; Title: string; KindID: string }[]
-    const spaceID = cards.find((c) => c.Title === 'My space')!.ID
-    const topicKindID = cards.find((c) => c.Title === 'Getting started')!.KindID
+    const spaceID = cards.find((c) => c.Title === 'The engagement')!.ID
+    const topicKindID = cards.find((c) => c.Title === 'Discovery workstream')!.KindID
     const frameCard = await callBound('CreateCard', [topicKindID, 'ZzClipFrame', '', {}, spaceID, { X: -280, Y: 380 }, '', '', '', '']) as { ID: string }
     await callBound('CreateCard', [topicKindID, 'ZzClipKidA', '', {}, frameCard.ID, { X: 10, Y: 10 }, '', '', '', ''])
     await callBound('CreateCard', [topicKindID, 'ZzClipKidB', '', {}, frameCard.ID, { X: 210, Y: 10 }, '', '', '', ''])

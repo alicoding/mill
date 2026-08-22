@@ -11,7 +11,7 @@ import { clickBreadcrumbSegment, openCard } from './fixtures/atlasBoard'
 // PickFolder -> ScanFolder -> preview -> ImportFolderSuggestions path
 // the real desktop app's native dialog would, proving pick, bounded
 // scan, partial accept, and mirror rendering end to end. Seeded names
-// ("My space") are used to navigate to a real space, same posture
+// ("The engagement") are used to navigate to a real space, same posture
 // atlas.spec.ts's own header documents. The one-map board (goal 0072
 // slice A): a scanned folder becomes a card that, once it holds its
 // own imported child, renders as a region frame (drilled via its own
@@ -31,7 +31,7 @@ function groupCard(page: import('@playwright/test').Page, title: string) {
 test('add from folder: scan, partial accept, containment, and mirror rendering all work end to end', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  // The single seeded root auto-enters "My space" directly.
+  // The single seeded root auto-enters "The engagement" directly.
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
   await page.getByTestId('atlas-add-from-folder').click()
@@ -64,7 +64,7 @@ test('add from folder: scan, partial accept, containment, and mirror rendering a
   await expect(dialog).not.toBeVisible()
 
   // The rejected entry never becomes a card; every accepted root-level
-  // entry does, under "My space" -- containment for the nested entry
+  // entry does, under "The engagement" -- containment for the nested entry
   // is checked separately below. "Reports" now holds its own imported
   // child, so it renders as a region frame, not a plain leaf note.
   await expect(page.getByTestId('atlas-note-card').filter({ hasText: 'Project Plan' })).toHaveCount(0)
@@ -76,7 +76,7 @@ test('add from folder: scan, partial accept, containment, and mirror rendering a
   await expect(reportsFrame).toBeVisible()
 
   // Containment: the nested entry landed INSIDE its own scanned
-  // folder's card, not flattened to "My space" -- and its own
+  // folder's card, not flattened to "The engagement" -- and its own
   // MirrorPath drives the goal-0064 mirror renderer showing real
   // content, not just a stored path.
   await reportsFrame.getByTestId('atlas-group-header').click()
@@ -105,7 +105,7 @@ test('add from folder: scan, partial accept, containment, and mirror rendering a
   await deleteViaPageMenu(page, overlay)
   await expect(summaryCard).not.toBeVisible()
 
-  await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
+  await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('The engagement', { exact: true }), 'The engagement')
   for (const card of [noteCard(page, 'Reports'), notesCard, logoCard]) {
     await openCard(page, card)
     await expect(overlay).toBeVisible()
@@ -138,15 +138,15 @@ test('add from folder: an already-imported file stays flagged and default-unchec
   await expect(dialog).not.toBeVisible()
   await expect(noteCard(page, 'Meeting Notes')).toBeVisible()
 
-  // Drill into "Example area" (shelves mode, auto-arranged -- no fixed
-  // grid slot to collide with "My space"'s own first import) before the
+  // Drill into "Client records" (shelves mode, auto-arranged -- no fixed
+  // grid slot to collide with "The engagement"'s own first import) before the
   // second pass, so cross-space duplicate matching is what's proven,
   // and the two same-titled cards never land on top of each other.
-  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
-  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+  await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
   // Second pass, same folder, different target space: Meeting Notes.md's
-  // own content still matches the card created under "My space" -- its
+  // own content still matches the card created under "The engagement" -- its
   // row must be flagged and default-unchecked, while an unrelated row
   // stays checked.
   await page.getByTestId('atlas-add-from-folder').click()
@@ -170,14 +170,14 @@ test('add from folder: an already-imported file stays flagged and default-unchec
 
   // Cleanup (testing.md's within-file discipline): delete both cards
   // this scenario created -- the one just made here, then the first
-  // one back under "My space".
+  // one back under "The engagement".
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await openCard(page, secondNotesCard)
   await expect(overlay).toBeVisible()
   await deleteViaPageMenu(page, overlay)
   await expect(overlay).not.toBeVisible()
 
-  await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
+  await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('The engagement', { exact: true }), 'The engagement')
   const firstNotesCard = noteCard(page, 'Meeting Notes')
   await openCard(page, firstNotesCard)
   await expect(overlay).toBeVisible()
@@ -188,7 +188,7 @@ test('add from folder: an already-imported file stays flagged and default-unchec
 test('add from folder: canceling the picker leaves the space untouched', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  // The single seeded root auto-enters "My space" directly.
+  // The single seeded root auto-enters "The engagement" directly.
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
   // The fixture picker path always "succeeds" (it's the env bypass,

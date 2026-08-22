@@ -62,8 +62,8 @@ test('typing text that matches an existing card renders the Save-as-note row las
   const search = page.getByRole('combobox', { name: 'Quick Panel search' })
   await expect(search).toBeFocused()
 
-  await search.fill('Getting started')
-  await expect(page.getByRole('option', { name: 'Getting started' })).toBeVisible()
+  await search.fill('Discovery workstream')
+  await expect(page.getByRole('option', { name: 'Discovery workstream' })).toBeVisible()
 
   const options = page.getByRole('option')
   const count = await options.count()

@@ -2,9 +2,9 @@ import { test, expect } from './fixtures/server'
 
 // Exercises the ⌘K jump dialog (goal 0072 slice B, AtlasJumpDialog.tsx)
 // over real Go bindings (Wails3 server mode), against the same seeded
-// space atlas.spec.ts's own family already proves ("My space" auto-
-// entered root -> "Example area" region frame -> "Ada Lovelace"/
-// "Project charter"; "Getting started"/"Scratchpad" top-level). Read-
+// space atlas.spec.ts's own family already proves ("The engagement" auto-
+// entered root -> "Client records" region frame -> "Jordan Reyes"/
+// "Statement of work"; "Discovery workstream"/"Scratchpad" top-level). Read-
 // only against those seeds -- nothing here creates or deletes a card,
 // so there's nothing to clean up (.claude/rules/testing.md).
 //
@@ -61,14 +61,14 @@ test('typing filters the result list to the matching seeded card', async ({ page
   await expect(jumpDialog(page)).toBeVisible()
 
   await expect(jumpDialog(page).getByTestId('atlas-jump-result')).toHaveCount(0)
-  await page.getByTestId('atlas-jump-input').fill('Ada')
+  await page.getByTestId('atlas-jump-input').fill('Jordan')
 
   const results = jumpDialog(page).getByTestId('atlas-jump-result')
   await expect(results).toHaveCount(1)
-  await expect(results.first()).toContainText('Ada Lovelace')
-  // Ada is a child of "Example area", one level under the auto-entered
-  // root -- the row's own ancestor path names it.
-  await expect(results.first()).toContainText('Example area')
+  await expect(results.first()).toContainText('Jordan Reyes')
+  // Jordan Reyes is a child of "Client records", one level under the
+  // auto-entered root -- the row's own ancestor path names it.
+  await expect(results.first()).toContainText('Client records')
 
   await page.keyboard.press('Escape')
 })
@@ -79,19 +79,19 @@ test('Enter closes the dialog, flies to the card, pulses it and shows the open h
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
   await page.keyboard.press('Meta+k')
-  await page.getByTestId('atlas-jump-input').fill('Getting started')
+  await page.getByTestId('atlas-jump-input').fill('Discovery workstream')
   await expect(jumpDialog(page).getByTestId('atlas-jump-result')).toHaveCount(1)
   await page.keyboard.press('Enter')
   await expect(jumpDialog(page)).toHaveCount(0)
 
-  const target = noteCard(page, 'Getting started')
+  const target = noteCard(page, 'Discovery workstream')
   await expect(target).toHaveAttribute('data-pulse', 'true')
   await expect(target.getByTestId('atlas-jump-hint')).toBeVisible()
 
   await page.keyboard.press('Enter')
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
-  await expect(overlay).toContainText('Getting started')
+  await expect(overlay).toContainText('Discovery workstream')
   await page.keyboard.press('Escape')
 })
 
@@ -119,22 +119,22 @@ test('Meta+Enter jumps straight to the overlay, with no pulse/hint step', async 
 test('jumping to a card outside the currently viewed space re-roots to its parent before the pulse', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
-  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+  await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
-  // "Getting started" is a sibling of "Example area" (both children of
-  // "My space"), not rendered on Example area's own board -- reaching
-  // it must re-root to "My space" first.
+  // "Discovery workstream" is a sibling of "Client records" (both children of
+  // "The engagement"), not rendered on Client records's own board -- reaching
+  // it must re-root to "The engagement" first.
   await page.keyboard.press('Meta+k')
-  await page.getByTestId('atlas-jump-input').fill('Getting started')
+  await page.getByTestId('atlas-jump-input').fill('Discovery workstream')
   await expect(jumpDialog(page).getByTestId('atlas-jump-result')).toHaveCount(1)
   await page.keyboard.press('Enter')
   await expect(jumpDialog(page)).toHaveCount(0)
 
-  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('My space')
-  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Example area')
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('The engagement')
+  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Client records')
 
-  const target = noteCard(page, 'Getting started')
+  const target = noteCard(page, 'Discovery workstream')
   await expect(target).toBeVisible()
   await expect(target).toHaveAttribute('data-pulse', 'true')
 })
@@ -153,10 +153,10 @@ test('no matches shows the empty-result row instead of an empty list', async ({ 
 })
 
 // Faceted search (goal 0086, shared/facetQuery.ts): vocabulary is every
-// Kind's own Label + "area". "My space"/"Example area"/"Getting
-// started"/"Scratchpad" are all Topic-kind (builtin.go's own seed
-// comment: containment is a role, not a Kind); "Ada Lovelace" is
-// Contact and "Project charter" is Document -- scoping to "Topic:"
+// Kind's own Label + "area". "The engagement"/"Client records"/
+// "Discovery workstream"/"Scratchpad" are all Topic-kind (builtin.go's own seed
+// comment: containment is a role, not a Kind); "Jordan Reyes" is
+// Contact and "Statement of work" is Document -- scoping to "Topic:"
 // with empty text must list exactly the four, excluding both others.
 test('"Topic: " lists every Topic-kind card, excluding other kinds', async ({ page }) => {
   await page.goto('/')
@@ -170,9 +170,9 @@ test('"Topic: " lists every Topic-kind card, excluding other kinds', async ({ pa
   const results = jumpDialog(page).getByTestId('atlas-jump-result')
   await expect(results).toHaveCount(4)
   // Title-ascending, same order filterJumpCards' stableSortResults produces.
-  await expect(results).toContainText(['Example area', 'Getting started', 'My space', 'Scratchpad'])
-  await expect(jumpDialog(page)).not.toContainText('Ada Lovelace')
-  await expect(jumpDialog(page)).not.toContainText('Project charter')
+  await expect(results).toContainText(['Client records', 'Discovery workstream', 'Scratchpad', 'The engagement'])
+  await expect(jumpDialog(page)).not.toContainText('Jordan Reyes')
+  await expect(jumpDialog(page)).not.toContainText('Statement of work')
 
   await page.keyboard.press('Escape')
 })

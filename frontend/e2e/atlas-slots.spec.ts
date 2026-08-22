@@ -80,8 +80,8 @@ test('atlas typed link slots: page slot rows, hover-handle slot-drag linking, ch
     const menu = contextMenu(page)
 
     // The seeded space already carries its own root-level artery
-    // ("Getting started" -> "Ada Lovelace" resolves to "Getting
-    // started" <-> "Example area" at this depth, atlasLinkResolution.
+    // ("Discovery workstream" -> "Jordan Reyes" resolves to "Discovery
+    // workstream" <-> "Client records" at this depth, atlasLinkResolution.
     // ts's own cross-area aggregation) -- every edge-count assertion
     // below is relative to this baseline, never an absolute number,
     // so this spec never has to assume or fight the seed's own shape.

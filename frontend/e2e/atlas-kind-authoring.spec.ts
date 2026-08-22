@@ -130,12 +130,12 @@ test('create, edit, and delete a link kind; deleting an in-use card kind is refu
 // surface on its cards' faces. Two proofs on one dedicated server:
 // the editor's Show-on-card toggle round-trips, and the SEEDED Topic
 // kind (status ShowOnCard, seed rev 3) renders its pill on the
-// "Getting started" card's face.
+// "Discovery workstream" card's face.
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
 test('show-on-card round-trips in the editor, and the seeded Topic status renders as a face pill', async ({}, testInfo) => {
   await withServer(testInfo, async (page) => {
-    // Seeded proof first: Getting started (Topic, status "Open").
-    const getting = page.locator('[data-testid="atlas-note-card"]', { hasText: 'Getting started' })
+    // Seeded proof first: Discovery workstream (Topic, status "Open").
+    const getting = page.locator('[data-testid="atlas-note-card"]', { hasText: 'Discovery workstream' })
     await expect(getting).toBeVisible()
     await expect(getting.getByTestId('atlas-face-field')).toHaveText('Open')
 
@@ -204,7 +204,7 @@ test('a card-reference field filters to its target kind, derives a board edge, a
     // File the card into the root space -- the board renders one
     // level, and a parentless card sits above it.
     const allCards = (await callBound('github.com/alicoding/mill/internal/services/atlassvc.AtlasService.Cards', [])) as { ID: string; Title: string }[]
-    const spaceID = allCards.find((c) => c.Title === 'My space')!.ID
+    const spaceID = allCards.find((c) => c.Title === 'The engagement')!.ID
     const created = await callBound('github.com/alicoding/mill/internal/services/atlassvc.AtlasService.CreateCard',
       [ticketKindID, 'ZzE2eTicketCard', '', {}, spaceID, { X: 120, Y: 480 }, '', '', '', '']) as { ID: string }
     if (!created.ID) throw new Error('CreateCard returned no ID')
@@ -224,15 +224,15 @@ test('a card-reference field filters to its target kind, derives a board edge, a
     // expand it before the picker exists.
     await overlay.locator('[data-testid="atlas-page-add-field"]', { hasText: 'Owner' }).click()
     const ownerSelect = overlay.locator('[data-testid="atlas-field"][data-field-key="owner"]')
-    await expect(ownerSelect.locator('option', { hasText: 'Getting started' })).toHaveCount(1)
-    await expect(ownerSelect.locator('option', { hasText: 'Ada Lovelace' })).toHaveCount(0)
-    await ownerSelect.selectOption({ label: 'Getting started' })
+    await expect(ownerSelect.locator('option', { hasText: 'Discovery workstream' })).toHaveCount(1)
+    await expect(ownerSelect.locator('option', { hasText: 'Jordan Reyes' })).toHaveCount(0)
+    await ownerSelect.selectOption({ label: 'Discovery workstream' })
     await page.keyboard.press('Escape')
     await expect(overlay).not.toBeVisible()
 
     // The reference derives a labeled dashed edge and a face value.
     await expect(page.locator('.react-flow__edge', { hasText: 'Owner' })).toHaveCount(1)
-    await expect(ticketCard.getByTestId('atlas-face-field')).toHaveText('Getting started')
+    await expect(ticketCard.getByTestId('atlas-face-field')).toHaveText('Discovery workstream')
 
     // Clean up: card then kind.
     const menu = contextMenu(page)

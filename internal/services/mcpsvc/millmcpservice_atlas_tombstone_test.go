@@ -16,12 +16,12 @@ import (
 // reusing that file's own atlasMCPHarness.
 func TestAtlasMCP_DeletedCard_ExcludedFromEveryReadSurface(t *testing.T) {
 	h := newAtlasMCPHarness(t, "127.0.0.1:18106")
-	target := h.cardByTitle(t, "Ada Lovelace")
+	target := h.cardByTitle(t, "Jordan Reyes")
 	if _, err := h.atlas.DeleteCard(target.ID); err != nil {
 		t.Fatalf("DeleteCard: %v", err)
 	}
 
-	searchText := h.call(t, "atlas_search_cards", map[string]any{"query": "Ada Lovelace"})
+	searchText := h.call(t, "atlas_search_cards", map[string]any{"query": "Jordan Reyes"})
 	var searchOut atlasSearchCardsResult
 	if err := json.Unmarshal([]byte(searchText), &searchOut); err != nil {
 		t.Fatalf("atlas_search_cards result is not the typed JSON: %v", err)

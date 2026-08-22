@@ -73,7 +73,7 @@ func DenseFixture(parentID string, now time.Time) ([]Card, []Link) {
 		}
 	}
 	// One deep card links OUT of the dense space entirely, to the
-	// seeded "Getting started" card -- the reattachment case: from the
+	// seeded "Discovery workstream" card -- the reattachment case: from the
 	// parent board this line must draw frame-to-card, not vanish.
 	link("out", "atlas-dense-card-0-0", cardGettingID)
 
@@ -81,6 +81,6 @@ func DenseFixture(parentID string, now time.Time) ([]Card, []Link) {
 }
 
 // DenseFixtureParentID is where the service roots the fixture: the
-// seeded "My space" card, so the dense space appears on the
+// seeded "The engagement" card, so the dense space appears on the
 // auto-entered landing board.
 func DenseFixtureParentID() string { return cardMySpaceID }

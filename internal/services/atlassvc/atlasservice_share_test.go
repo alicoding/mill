@@ -43,13 +43,13 @@ func TestCardContextBlock_Fixtures(t *testing.T) {
 				if err != nil {
 					t.Fatalf("CreateLinkKind: %v", err)
 				}
-				doc, err := a.CreateCard(docKind.ID, "Project charter", "Signed off in Q1.",
-					map[string]string{"owner": "Ada Lovelace", "pages": "12"}, "", nil, "",
+				doc, err := a.CreateCard(docKind.ID, "Statement of work", "Signed off in Q1.",
+					map[string]string{"owner": "Jordan Reyes", "pages": "12"}, "", nil, "",
 					"https://example.com/charter", "/tmp/mill-atlas-mirrors/doc.pdf", "")
 				if err != nil {
 					t.Fatalf("CreateCard(doc): %v", err)
 				}
-				contact, err := a.CreateCard(contactKind.ID, "Ada Lovelace", "", nil, "", nil, "", "", "", "")
+				contact, err := a.CreateCard(contactKind.ID, "Jordan Reyes", "", nil, "", nil, "", "", "", "")
 				if err != nil {
 					t.Fatalf("CreateCard(contact): %v", err)
 				}
@@ -82,13 +82,13 @@ func TestCardContextBlock_Fixtures(t *testing.T) {
 				if err != nil {
 					t.Fatalf("CreateLinkKind: %v", err)
 				}
-				doc, err := a.CreateCard(docKind.ID, "Project charter", "Signed off in Q1.",
-					map[string]string{"owner": "Ada Lovelace", "pages": "12"}, "", nil, "",
+				doc, err := a.CreateCard(docKind.ID, "Statement of work", "Signed off in Q1.",
+					map[string]string{"owner": "Jordan Reyes", "pages": "12"}, "", nil, "",
 					"https://example.com/charter", "/tmp/mill-atlas-mirrors/doc.pdf", "")
 				if err != nil {
 					t.Fatalf("CreateCard(doc): %v", err)
 				}
-				contact, err := a.CreateCard(contactKind.ID, "Ada Lovelace", "", nil, "", nil, "", "", "", "")
+				contact, err := a.CreateCard(contactKind.ID, "Jordan Reyes", "", nil, "", nil, "", "", "", "")
 				if err != nil {
 					t.Fatalf("CreateCard(contact): %v", err)
 				}
@@ -107,7 +107,7 @@ func TestCardContextBlock_Fixtures(t *testing.T) {
 				if err != nil {
 					t.Fatalf("CreateKind(Space): %v", err)
 				}
-				card, err := a.CreateCard(spaceKind.ID, "My space", "", nil, "", nil, "", "", "", "")
+				card, err := a.CreateCard(spaceKind.ID, "The engagement", "", nil, "", nil, "", "", "", "")
 				if err != nil {
 					t.Fatalf("CreateCard: %v", err)
 				}

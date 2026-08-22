@@ -8,10 +8,10 @@ import { openCard, createCardViaTray } from './fixtures/atlasBoard'
 // against the real seed, split out of atlas.spec.ts (architecture.md's
 // 500-line convention). That file's own header covers the shared
 // egocentric-root auto-entry behavior every test below relies on (the
-// board is already "My space"'s content on landing, no "My space"
+// board is already "The engagement"'s content on landing, no "The engagement"
 // click needed). One-map board (goal 0072 slice A): a card overlay
 // opens via the click model's select-then-commit (goal 0102); a card
-// holding cards ("Example area") drills via its own region-frame
+// holding cards ("Client records") drills via its own region-frame
 // header, not a card-body click.
 
 // Precise per-card matching: aria-label carries the exact title.
@@ -66,20 +66,20 @@ test('a card with a Mirror path pointing at a markdown file renders its content 
 test('the traceability matrix pivots a space\'s cards by kind against link kinds, with an absent cell shown explicitly', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
-  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+  await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
   await page.getByTestId('atlas-open-matrix').click()
   const dialog = page.locator('[data-component="atlas-matrix-dialog"]')
   await expect(dialog).toBeVisible()
 
-  // Row kind "Contact" -- the seeded "Ada Lovelace" card has an
-  // outgoing "relates to" link to "Project charter", so its cell names
+  // Row kind "Contact" -- the seeded "Jordan Reyes" card has an
+  // outgoing "relates to" link to "Statement of work", so its cell names
   // that target.
   await dialog.getByTestId('atlas-matrix-row-kind').selectOption({ label: '👤 Contact' })
-  await expect(dialog.getByTestId('atlas-matrix-target').filter({ hasText: 'Project charter' })).toBeVisible()
+  await expect(dialog.getByTestId('atlas-matrix-target').filter({ hasText: 'Statement of work' })).toBeVisible()
 
-  // Row kind "Document" -- the seeded "Project charter" card has no
+  // Row kind "Document" -- the seeded "Statement of work" card has no
   // OUTGOING links of its own (only an incoming one), so its cell is
   // explicitly absent, never an ambiguous blank.
   await dialog.getByTestId('atlas-matrix-row-kind').selectOption({ label: '📄 Document' })
@@ -95,11 +95,11 @@ test('coverage counts a space\'s cards missing a link and missing a mirror, with
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  // "My space" has three seeded children: "Getting started" (an
-  // outgoing "relates to" link to "Ada Lovelace"), "Example area",
+  // "The engagement" has three seeded children: "Discovery workstream" (an
+  // outgoing "relates to" link to "Jordan Reyes"), "Client records",
   // and "Scratchpad" -- a hand-countable 1/3 linked. None carries a
   // mirror directly at THIS level (the seeded mirror lives one level
-  // deeper, on "Project charter") -- a hand-countable 0/3 mirrored.
+  // deeper, on "Statement of work") -- a hand-countable 0/3 mirrored.
   await page.getByTestId('atlas-open-coverage').click()
   const dialog = page.locator('[data-component="atlas-coverage-dialog"]')
   await expect(dialog).toBeVisible()
@@ -108,17 +108,17 @@ test('coverage counts a space\'s cards missing a link and missing a mirror, with
   await expect(dialog.getByTestId('atlas-coverage-mirror-value')).toHaveText('0/3 mirrored')
 
   await dialog.getByTestId('atlas-coverage-link-toggle').click()
-  await expect(dialog.getByTestId('atlas-coverage-missing-item').filter({ hasText: 'Example area' })).toBeVisible()
+  await expect(dialog.getByTestId('atlas-coverage-missing-item').filter({ hasText: 'Client records' })).toBeVisible()
   await expect(dialog.getByTestId('atlas-coverage-missing-item').filter({ hasText: 'Scratchpad' })).toBeVisible()
 
   await dialog.getByTestId('atlas-coverage-mirror-toggle').click()
-  const missingItem = dialog.getByTestId('atlas-coverage-missing-item').filter({ hasText: 'Getting started' })
+  const missingItem = dialog.getByTestId('atlas-coverage-missing-item').filter({ hasText: 'Discovery workstream' })
   await expect(missingItem).toBeVisible()
   await missingItem.click()
 
   await expect(dialog).not.toBeVisible()
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
-  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Getting started')
+  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Discovery workstream')
   await page.keyboard.press('Escape')
 })

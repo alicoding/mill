@@ -68,7 +68,7 @@ const (
 	cardScratchpadID  = "atlas-card-scratchpad"
 	// The seeded perspectives example (goal 0095 slice 3, ADR-0041): a
 	// tiny reference-architecture landscape nested under its own
-	// container (never a direct child of "My space" -- every existing
+	// container (never a direct child of "The engagement" -- every existing
 	// top-level census, e.g. atlas-projections.spec.ts's coverage
 	// stat and atlas-scale.spec.ts's dense-fixture edge count, is
 	// pinned to the pre-existing shape one level up).
@@ -143,14 +143,16 @@ func BuiltInKinds() []Kind {
 		},
 		{
 			ID: kindIntakeID, Label: "Intake", Icon: "📥",
-			Description: "Something arriving to be triaged -- the seeded card-intake workflow " +
-				"example (docs/adr/0038, goal 0066) watches this kind and stamps its own status.",
+			Description: "Something that just arrived, waiting to be triaged.",
 			Fields: []typedfield.Field{
 				{Key: "status", Label: "Status", Type: typedfield.TypeOptions,
 					Options: []string{"New", "Processed"}, Default: "New"},
 			},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(2), // FieldTombstones added, structural only
+			// rev 3: description rewritten to plain user-facing copy --
+			// it used to cite an ADR/goal id, which .claude/rules/
+			// ux-writing.md forbids in any string a user reads.
+			BuiltIn: true, Seed: seedorigin.Stamp(3),
 		},
 		{
 			ID: kindReferenceID, Label: "Reference", Icon: "🔗",
@@ -212,45 +214,55 @@ func BuiltInLinkKinds() []LinkKind {
 	}
 }
 
-// BuiltInCards returns the seeded example space: a root card ("My
-// space", canvas mode) holding a Topic card, a Scratchpad, and one
-// nested Topic-kind card ("Example area", shelves mode) which in turn
-// holds a Contact and a mirrored Document -- the proof that
+// BuiltInCards returns the seeded example space: a root card ("The
+// engagement", canvas mode) holding a Topic card, a Scratchpad, and
+// one nested Topic-kind card ("Client records", shelves mode) which in
+// turn holds a Contact and a mirrored Document -- the proof that
 // containment, per-container view mode, and the mirror attributes
 // (Source set, MirrorPath empty until a refresh runs) all work end to
-// end. "My space" and "Example area" render as region frames purely
-// because they hold children (ADR-0038 Decision 3's containment role),
-// not because of any Kind of their own -- both are ordinary Topic
-// cards, proving that decoupling by construction.
+// end. Every title/note/field value below tells one story (goal 0118
+// slice 1, ratified world "the engagement": one consultant running a
+// client engagement end to end) -- the structural shape (which card
+// contains which, which kind, which link) is unchanged from what
+// shipped before. "The engagement" and "Client records" render as
+// region frames purely because they hold children (ADR-0038 Decision
+// 3's containment role), not because of any Kind of their own -- both
+// are ordinary Topic cards, proving that decoupling by construction.
 func BuiltInCards() []Card {
 	now := time.Now()
 	return []Card{
 		{
-			ID: cardMySpaceID, KindID: kindTopicID, Title: "My space",
+			ID: cardMySpaceID, KindID: kindTopicID, Title: "The engagement",
 			ParentID: "", ViewMode: ViewModeCanvas,
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(5), // Card gained MirrorChecksum (goal 0088) then DeletedAt (goal 0093) -- shape shifts
+			// rev 6: re-skinned into the engagement story (goal 0118 slice 1).
+			BuiltIn: true, Seed: seedorigin.Stamp(6),
 		},
 		{
-			ID: cardExampleAreaID, KindID: kindTopicID, Title: "Example area",
+			ID: cardExampleAreaID, KindID: kindTopicID, Title: "Client records",
 			ParentID: cardMySpaceID, ViewMode: ViewModeShelves,
 			Position:  &Position{X: 80, Y: 80},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(5), // Card gained MirrorChecksum (goal 0088) then DeletedAt (goal 0093) -- shape shifts
+			// rev 6: re-skinned into the engagement story (goal 0118 slice 1).
+			BuiltIn: true, Seed: seedorigin.Stamp(6),
 		},
 		{
-			// Position clears "Example area"'s own region-frame footprint
+			// Position clears "Client records"'s own region-frame footprint
 			// (goal 0072 slice A: a card holding cards now renders as a
 			// frame sized to fit its children inline, wider than a bare
 			// note card) -- 532 keeps this card from landing underneath
 			// that frame in Free/canvas mode.
-			ID: cardGettingID, KindID: kindTopicID, Title: "Getting started",
-			Note:      "Declare a Kind, drop a card, link it to something.",
+			ID: cardGettingID, KindID: kindTopicID, Title: "Discovery workstream",
+			Note:      "First working session with the client. Scope and next steps confirmed.",
 			ParentID:  cardMySpaceID,
 			Position:  &Position{X: 532, Y: 80},
-			Fields:    map[string]string{"summary": "How this space is organized.", "status": "Open"},
+			Fields: map[string]string{
+				"summary": "Confirm scope, stakeholders, and what a finished engagement looks like.",
+				"status":  "Open",
+			},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(5), // Card gained MirrorChecksum (goal 0088) then DeletedAt (goal 0093) -- shape shifts
+			// rev 6: re-skinned into the engagement story (goal 0118 slice 1).
+			BuiltIn: true, Seed: seedorigin.Stamp(6),
 		},
 		{
 			// The Scratchpad seed (goal 0081 slice A3): a CONTAINER card,
@@ -261,18 +273,22 @@ func BuiltInCards() []Card {
 			// Topic (containment is a role every card already carries,
 			// ADR-0038 Decision 3 -- there is no dedicated container Kind).
 			ID: cardScratchpadID, KindID: kindTopicID, Title: "Scratchpad",
-			Note:      "Quick captures land here. Drag notes out to file them, or promote them into cards.",
+			Note:      "Meeting notes and quick captures land here. Drag them out to file, or promote into cards.",
 			ParentID:  cardMySpaceID,
 			Position:  &Position{X: 746, Y: 80},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(5), // Card gained MirrorChecksum (goal 0088) then DeletedAt (goal 0093) -- shape shifts
+			// rev 6: note re-skinned into the engagement story (goal 0118
+			// slice 1) -- the card's ROLE and ID are unchanged, referenced
+			// by the clipboard bridge via BuiltInScratchpadCardID.
+			BuiltIn: true, Seed: seedorigin.Stamp(6),
 		},
 		{
-			ID: cardContactID, KindID: kindContactID, Title: "Ada Lovelace",
+			ID: cardContactID, KindID: kindContactID, Title: "Jordan Reyes",
 			ParentID:  cardExampleAreaID,
-			Fields:    map[string]string{"email": "ada@example.com", "role": "Point of contact"},
+			Fields:    map[string]string{"email": "jordan@example.com", "role": "Client sponsor"},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(4), // Card gained MirrorChecksum (goal 0088) then DeletedAt (goal 0093) -- shape shifts
+			// rev 5: re-skinned into the engagement story (goal 0118 slice 1).
+			BuiltIn: true, Seed: seedorigin.Stamp(5),
 		},
 		{
 			// The seeded action (goal 0061 slice C, generalized by 0084) proves "Update now"
@@ -280,15 +296,14 @@ func BuiltInCards() []Card {
 			// is deterministic (no clipboard, no network) and already
 			// PUBLISHED, the same requirement RunKindTriggered holds
 			// every refresh workflow to.
-			ID: cardDocumentID, KindID: kindDocumentID, Title: "Project charter",
+			ID: cardDocumentID, KindID: kindDocumentID, Title: "Statement of work",
 			ParentID:          cardExampleAreaID,
-			Source:            "https://example.com/project-charter",
-			Fields:            map[string]string{"owner": "Ada Lovelace", "person": cardContactID},
+			Source:            "https://example.com/statement-of-work",
+			Fields:            map[string]string{"owner": "Jordan Reyes", "person": cardContactID},
 			ActionWorkflowIDs: []string{composition.ExampleChildWorkflowID},
 			CreatedAt:         now, UpdatedAt: now,
-			// rev 6: person cardref set to the seeded Contact (goal 0152)
-			// -- the dashed derived edge ships in the example area.
-			BuiltIn: true, Seed: seedorigin.Stamp(6),
+			// rev 7: re-skinned into the engagement story (goal 0118 slice 1).
+			BuiltIn: true, Seed: seedorigin.Stamp(7),
 		},
 	}
 }

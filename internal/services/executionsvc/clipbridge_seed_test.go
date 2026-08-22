@@ -97,9 +97,9 @@ func TestSeededClipbridgeNoteRoute_LandsInScratchpad(t *testing.T) {
 func TestClipbridgePreviewToRouteLoop(t *testing.T) {
 	exec, atlasSvc := newClipbridgeSeedFixture(t)
 
-	// "Getting started" exists in the seed -- a reply proposing it
+	// "Discovery workstream" exists in the seed -- a reply proposing it
 	// again must flag the collision.
-	reply := `{"mill":1,"kind":"reply","action":"create-cards","items":[{"title":"Getting started"},{"title":"Fresh card"}]}`
+	reply := `{"mill":1,"kind":"reply","action":"create-cards","items":[{"title":"Discovery workstream"},{"title":"Fresh card"}]}`
 	preview, err := atlasSvc.PreviewClipbridgeReply(reply)
 	if err != nil {
 		t.Fatalf("PreviewClipbridgeReply: %v", err)
@@ -132,7 +132,7 @@ func TestClipbridgePreviewToRouteLoop(t *testing.T) {
 		if c.Title == "Fresh card" {
 			count++
 		}
-		if c.Title == "Getting started" {
+		if c.Title == "Discovery workstream" {
 			count += 0
 		}
 	}

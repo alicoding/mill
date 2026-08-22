@@ -12,7 +12,7 @@ import (
 // outside a seed file -- the concrete acceptance-checkable list
 // docs/goals/0061 names ("none of those names exist anywhere in Go/TS
 // source as constants... seeded examples only in seed files").
-var seededConceptNames = []string{"Topic", "Contact", "Document", "relates to", "My space"}
+var seededConceptNames = []string{"Topic", "Contact", "Document", "relates to", "The engagement"}
 
 // nonSeedGoFiles walks dir's *.go files (excluding _test.go, which may
 // legitimately reference a seeded name to test the seed itself) and

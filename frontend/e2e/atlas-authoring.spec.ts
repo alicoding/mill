@@ -15,12 +15,12 @@ import { clickCorner, groupCard, noteCard, zoomAllTheWayOut } from './fixtures/a
 
 // Atlas creation core (goal 0081 slice A1): the tray, its placement
 // popover, right-click create, sticky notes, and the note promotion
-// ritual -- driven end to end against the seeded "My space" ("Getting
-// started", "Example area", "Scratchpad") and "Example area" ("Ada
-// Lovelace", a mirrored Document) space (internal/domain/atlas/
+// ritual -- driven end to end against the seeded "The engagement"
+// ("Discovery workstream", "Client records", "Scratchpad") and "Client
+// records" ("Jordan Reyes", a mirrored Document) space (internal/domain/atlas/
 // builtin.go). Runs on its own dedicated server (fixtures/server.ts's
 // ATLAS_AUTHORING_* ports), not the standard per-worker pool: this
-// spec asserts EXACT coverage counts at "My space", which must never
+// spec asserts EXACT coverage counts at "The engagement", which must never
 // be contaminated by another spec file sharing a worker's server.
 
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
@@ -72,7 +72,7 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await expect(sticky.locator('[data-testid="atlas-note-file-tag"]')).toHaveCount(0)
     await expect(page.locator('[data-testid="atlas-note-card"]').filter({ hasText: 'ZzE2eStickyNoteText' })).toHaveCount(0)
 
-    // --- Exclusions, checked NOW while "My space" still holds only its
+    // --- Exclusions, checked NOW while "The engagement" still holds only its
     // three seeded children (a note never joins that count) ---
     await page.keyboard.press('Meta+k')
     await expect(page.getByTestId('atlas-jump-results')).toBeVisible()
@@ -81,7 +81,7 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await expect(page.getByTestId('atlas-jump-no-matches')).toBeVisible()
     await page.keyboard.press('Escape')
 
-    // "My space" seeds three children (Getting started / Example area /
+    // "The engagement" seeds three children (Discovery workstream / Client records /
     // Scratchpad; the reference-architecture landscape was de-seeded,
     // ADR-0041's Update) -- a hand-countable 1/3 linked, 0/3 mirrored
     // (same census atlas-projections.spec.ts's own coverage test pins).
@@ -159,17 +159,17 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await expect(noteCard(page, 'ZzE2eRootCard')).toHaveCount(1)
 
     // --- After zooming into an area, repeat -> the new card's parent
-    // IS that area, not root: "Example area" seeds exactly 2 children
-    // (Ada Lovelace, the mirrored Document), so its own header count
+    // IS that area, not root: "Client records" seeds exactly 2 children
+    // (Jordan Reyes, the mirrored Document), so its own header count
     // goes 2 -> 3. (A one-level-deep preview of the SAME card also
     // renders inside the frame back at root -- that's the board's own
     // documented nesting behavior, not evidence either way, so the
     // header's own count is the real proof here, not the card's mere
     // presence/absence at root.)
-    const exampleArea = groupCard(page, 'Example area')
+    const exampleArea = groupCard(page, 'Client records')
     await expect(exampleArea.getByTestId('atlas-group-header')).toContainText('2 cards')
     await exampleArea.getByTestId('atlas-group-header').click()
-    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
     await zoomAllTheWayOut(page)
     await page.evaluate((kindID) => localStorage.setItem('atlas.lastKindId', kindID), ATLAS_KIND_CONTACT)
     await page.keyboard.press('c')
@@ -182,7 +182,7 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await expect(noteCard(page, 'ZzE2eAreaCard')).toBeVisible()
 
     await page.keyboard.press('Meta+ArrowUp')
-    await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Example area')
+    await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Client records')
     await expect(exampleArea.getByTestId('atlas-group-header')).toContainText('3 cards')
 
     // --- Within-file cleanup: delete every card created above (goal
@@ -193,7 +193,7 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
       await menu.getByText('Delete', { exact: true }).click()
       await expect(noteCard(page, title)).toHaveCount(0)
     }
-    await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
+    await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
     await noteCard(page, 'ZzE2eAreaCard').click({ button: 'right' })
     await expect(menu).toBeVisible()
     await menu.getByText('Delete', { exact: true }).click()

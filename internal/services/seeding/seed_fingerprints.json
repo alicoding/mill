@@ -4,28 +4,28 @@
     "fingerprint": "75218e8e0727e6cbf04afd8ff25f8a461ccfea9c77fdccfb06ac824333fe4100"
   },
   "atlascard:atlas-card-example-area": {
-    "seedRevision": 5,
-    "fingerprint": "a6eb22e7ae842f08fcd0b6004d10a7dd33cd298f63790dd35cfd2b7608ced2e4"
+    "seedRevision": 6,
+    "fingerprint": "9a90ff066941c7227673ed297d946967223f646a563864478e6438a8f63b9ace"
   },
   "atlascard:atlas-card-example-contact": {
-    "seedRevision": 4,
-    "fingerprint": "315a9a9df7d4670eaab81dffb8273ab6e31842d81963fc5cb9a67786f76a598f"
+    "seedRevision": 5,
+    "fingerprint": "f6ae7508c8b27607f85eb47cab51677c1032754d5603de9c6404dc2201d02c5c"
   },
   "atlascard:atlas-card-example-document": {
-    "seedRevision": 6,
-    "fingerprint": "5bd21050efef550787837a22d9b815dc4bba26d0efce049f8d85505b40c16009"
+    "seedRevision": 7,
+    "fingerprint": "6a2f994a2ede1a2279cd40f52303ffff50b58cdcc8f900263424c5981cf4bb70"
   },
   "atlascard:atlas-card-getting-started": {
-    "seedRevision": 5,
-    "fingerprint": "013b4878544094f8f8630cb1ff84a52acc2833a42a9b5bf14e0a142bb478c5cd"
+    "seedRevision": 6,
+    "fingerprint": "effb71d0787a09bad0e365466db71755a6175b2a8eef259feaf7b9c9545c5717"
   },
   "atlascard:atlas-card-my-space": {
-    "seedRevision": 5,
-    "fingerprint": "b29d4770ec62fe881f0205380f5e684c181bdffd4b93dd220850184ed94117e7"
+    "seedRevision": 6,
+    "fingerprint": "c23be24287b0d6141a57803b043b56b298b39bd17719979d8978ba912b60745d"
   },
   "atlascard:atlas-card-scratchpad": {
-    "seedRevision": 5,
-    "fingerprint": "b0330a8234b5f5ccd7768520bfbe70e72e0561795dc024ea29a89feea1e093a1"
+    "seedRevision": 6,
+    "fingerprint": "ef3ab889a8314790ea3b15f3dffb18be651942c7b92bd2dca1b393eeffac6811"
   },
   "atlaskind:atlas-kind-component": {
     "seedRevision": 1,
@@ -44,8 +44,8 @@
     "fingerprint": "29d6947904af5d388cd5b1c290c4a6a07beadd168b54381b6e7a7fba743c7d74"
   },
   "atlaskind:atlas-kind-intake": {
-    "seedRevision": 2,
-    "fingerprint": "ec06f5c0e094665ffd4c3160a23288c8c2ff0a455f736c8c4f774b7e2cf524e5"
+    "seedRevision": 3,
+    "fingerprint": "c95a39098540c14a7ce958ce3d49e33b2a24e4f7302c49d0cd5d048fd941e43f"
   },
   "atlaskind:atlas-kind-reference": {
     "seedRevision": 1,

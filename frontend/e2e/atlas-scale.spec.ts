@@ -77,14 +77,14 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     // Semantic zoom for lines: endpoints lift to TOP-LEVEL cards, so
     // arteries attach at frame boundaries and intra-area links draw
     // nothing at this level. Exact census on this board: the seeded
-    // Getting started <-> Ada link lifts to Example area <-> Getting
-    // started (1), the fixture's deep outbound link lifts to
-    // Velocity <-> Getting started (1); Ada <-> Project charter and
+    // Discovery workstream <-> Jordan link lifts to Client records <->
+    // Discovery workstream (1), the fixture's deep outbound link lifts to
+    // Velocity <-> Discovery workstream (1); Jordan <-> Statement of work and
     // all 24 cross-area links are internal to one area each = 2.
     await expect(page.locator('.react-flow__edge')).toHaveCount(2)
 
     // Overlap resolution (goal 0073, growth class): the seeded
-    // "Example area" frame GREW past its hand-placed footprint (a
+    // "Client records" frame GREW past its hand-placed footprint (a
     // third child migrated in) and the fixture's Velocity frame
     // arrived programmatically -- no top-level card/frame on this
     // board may overlap any other. Leaf-leaf overlaps would be user
@@ -92,8 +92,8 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     // disjoint.
     const topLevel = [
       velocity,
-      page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator('[aria-label="Zoom into Example area"]') }),
-      page.locator('[aria-label="Open Getting started"]'),
+      page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator('[aria-label="Zoom into Client records"]') }),
+      page.locator('[aria-label="Open Discovery workstream"]'),
       page.locator('[aria-label="Open Scratchpad"]'),
     ]
     const rects = []
@@ -118,7 +118,7 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     await velocity.getByTestId('atlas-group-header').click()
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Velocity')
     await expect(page.locator('.react-flow__edge')).toHaveCount(4)
-    await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
+    await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('The engagement', { exact: true }), 'The engagement')
     await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Velocity')
 
     // The click model (goal 0102): a chip answers a single click like
@@ -138,14 +138,14 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
 
     // Link-adjacent Auto-arrange (goal 0073, the relationship-blind
     // layout complaint): the one-shot Auto-arrange action must seat
-    // "Getting started" in the SAME ROW as "Example area" (they share
+    // "Discovery workstream" in the SAME ROW as "Client records" (they share
     // an artery) instead of exiling it to a leaves-band below --
     // adjacency is what keeps arteries out of frame bodies.
-    await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
+    await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('The engagement', { exact: true }), 'The engagement')
     await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Platform')
     await page.getByTestId('atlas-auto-arrange').click()
-    const ea = page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator('[aria-label="Zoom into Example area"]') })
-    const gs = page.locator('[aria-label="Open Getting started"]')
+    const ea = page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator('[aria-label="Zoom into Client records"]') })
+    const gs = page.locator('[aria-label="Open Discovery workstream"]')
     await expect(ea).toBeVisible()
     // Poll: the toggle's re-layout lands a paint or two after the
     // click -- a one-shot sample raced it on CI and measured the
@@ -174,7 +174,7 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     // and frame preview already summarize but never list in full.
     // Velocity holds exactly 12 direct children and 0 own links: the
     // page's own entry cap (12) passes every entry through untouched
-    // at the exact limit -- no expander. Already viewing "My space"
+    // at the exact limit -- no expander. Already viewing "The engagement"
     // (the auto-arrange assertions above never navigated away). A
     // FIXED pixel offset isn't zoom-invariant -- at this dense board's
     // own more-zoomed-out fitView, the same screen-pixel y lands past
@@ -203,7 +203,7 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     await importDialog.getByRole('checkbox', { name: 'Q1 Summary' }).uncheck()
     await importDialog.getByRole('button', { name: 'Add 4 cards' }).click()
     await expect(importDialog).not.toBeVisible()
-    await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
+    await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('The engagement', { exact: true }), 'The engagement')
     await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Velocity')
 
     // Past the cap: 11 visible (limit-1) plus an honest "Show 5 more"

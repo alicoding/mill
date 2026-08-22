@@ -23,7 +23,7 @@ func TestPreviewClipbridgeReply(t *testing.T) {
 	})
 
 	t.Run("valid create-cards reply routes and flags collisions", func(t *testing.T) {
-		reply := `{"mill":1,"kind":"reply","action":"create-cards","items":[{"title":"Getting started"},{"title":"Brand new"}]}`
+		reply := `{"mill":1,"kind":"reply","action":"create-cards","items":[{"title":"Discovery workstream"},{"title":"Brand new"}]}`
 		p, err := a.PreviewClipbridgeReply(reply)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -74,7 +74,7 @@ func TestCardContextEnvelope(t *testing.T) {
 	a := NewAtlasService(servicetest.NewFakeStore())
 	var seedCard atlas.Card
 	for _, c := range a.Cards() {
-		if c.Title == "Getting started" {
+		if c.Title == "Discovery workstream" {
 			seedCard = c
 		}
 	}
@@ -98,7 +98,7 @@ func TestCardContextEnvelope(t *testing.T) {
 		t.Fatalf("items = %v", env["items"])
 	}
 	first, _ := items[0].(map[string]any)
-	if first["title"] != "Getting started" {
+	if first["title"] != "Discovery workstream" {
 		t.Fatalf("item = %v", first)
 	}
 	if _, ok := env["schema"].(map[string]any); !ok {
@@ -269,11 +269,11 @@ func TestMaterializeReplyItems(t *testing.T) {
 
 func TestCorrectionEnvelope(t *testing.T) {
 	a := NewAtlasService(servicetest.NewFakeStore())
-	raw, err := a.CorrectionEnvelope([]string{"item 1: a card needs a non-empty \"title\""}, []string{"Getting started"})
+	raw, err := a.CorrectionEnvelope([]string{"item 1: a card needs a non-empty \"title\""}, []string{"Discovery workstream"})
 	if err != nil {
 		t.Fatalf("CorrectionEnvelope: %v", err)
 	}
-	if !strings.Contains(raw, "did not validate") || !strings.Contains(raw, "Getting started") {
+	if !strings.Contains(raw, "did not validate") || !strings.Contains(raw, "Discovery workstream") {
 		t.Fatalf("instructions incomplete: %s", raw[:200])
 	}
 	var env map[string]any
