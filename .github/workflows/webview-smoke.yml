@@ -1,0 +1,46 @@
+# Real-webview parity smoke (docs/goals/0097, re-scoped).
+#
+# scripts/webview-bridge-smoke.sh + internal/webviewbridgesmoke drive a
+# genuine `-tags mcp` desktop build over Wails3's own MCP bridge. That is
+# the only mechanism exercising macOS's real WKWebView engine: Playwright's
+# "webkit" build never attaches to an app's embedded webview, and no macOS
+# WebDriver exists for a third-party WKWebView (.claude/rules/testing.md
+# carries the researched-and-rejected trail).
+#
+# It runs here, on a schedule and on manual dispatch, rather than on every
+# PR: it could not hold green on hosted runners, and a permanently-red
+# check in the PR baseline trains red-blindness and hides the next real
+# failure. The path back into the PR baseline is the objective gate
+# docs/goals/0134-pipeline-reliability.md names -- five consecutive green
+# scheduled runs, then it returns as non-required, then required.
+name: webview-smoke
+
+on:
+  schedule:
+    # Daily, off-peak UTC. A parity check catches engine-behaviour drift
+    # between macOS releases and Wails/WebKit bumps; that drift arrives on
+    # the calendar, not per-commit, so daily matches what it can detect.
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  webview-bridge-smoke:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.25'
+          cache: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: ./scripts/webview-bridge-smoke.sh
