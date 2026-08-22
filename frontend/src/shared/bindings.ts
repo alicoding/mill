@@ -75,6 +75,11 @@ export type {
   MCPCallRecord,
 } from '../../bindings/github.com/alicoding/mill/internal/services/mcpauditsvc'
 export type { MCPWriteActivity, MCPWriteRequest, MCPWriteResolved } from '../../bindings/github.com/alicoding/mill/internal/services/mcpsvc'
+export { RemoteAuthService } from '../../bindings/github.com/alicoding/mill/internal/services/remoteauthsvc'
+export type {
+  DeviceInfo,
+  PairingCodeInfo,
+} from '../../bindings/github.com/alicoding/mill/internal/services/remoteauthsvc'
 export { SettingsService } from '../../bindings/github.com/alicoding/mill/internal/services/settingssvc'
 export type {
   BuildInfo,

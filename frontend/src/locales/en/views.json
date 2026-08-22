@@ -10,6 +10,7 @@
       "keyboardShortcuts": "Keyboard Shortcuts",
       "globalHotkey": "Global hotkey",
       "mcpAccess": "MCP access",
+      "remoteAccess": "Remote access",
       "contract": "Contract",
       "notifications": "Notifications",
       "updates": "Updates",
@@ -50,6 +51,18 @@
       "allowImportCaption": "When on, MCP clients connected to Mill can create workflows, integrations, lists, and MCP-server entries via the import tools. Reading and exporting are always allowed and never include secrets. Off by default; changes apply immediately, no restart needed.",
       "askBeforeImportLabel": "Ask me before each MCP import",
       "askBeforeImportCaption": "Each import parks until you approve it in Mill, or times out after 2 minutes and is denied. Turning this off lets an enabled MCP client import without a per-write approval. On by default."
+    },
+    "remoteAccess": {
+      "description": "Mill is reachable from any device on your network. Pairing is what keeps it yours.",
+      "macAlwaysAllowed": "This Mac always has access. Other devices pair once, then stay connected until you revoke them.",
+      "pairADevice": "Pair a device",
+      "codeExpiry": "Enter this code on the other device within 5 minutes.",
+      "deviceMeta": "Paired {{created}} · last seen {{lastSeen}}",
+      "emptyHeading": "No devices paired yet",
+      "emptyDescription": "Pair a device to reach Mill from your phone or another computer.",
+      "revoke": "Revoke",
+      "revokeConfirmTitle": "Revoke {{label}}?",
+      "revokeConfirmBody": "{{label}} won't be able to reach Mill until it's paired again."
     },
     "contract": {
       "description": "The full step catalog, every data schema, and this app's version in one file — hand it to an agent that can't reach Mill directly.",

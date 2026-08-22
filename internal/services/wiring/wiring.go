@@ -13,6 +13,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/mcpclient"
 	"github.com/alicoding/mill/internal/adapters/notify"
+	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/atlassvc"
@@ -20,6 +21,7 @@ import (
 	"github.com/alicoding/mill/internal/services/configuresvc"
 	"github.com/alicoding/mill/internal/services/executionsvc"
 	"github.com/alicoding/mill/internal/services/mcpauditsvc"
+	"github.com/alicoding/mill/internal/services/remoteauthsvc"
 	"github.com/alicoding/mill/internal/services/settingssvc"
 	"github.com/alicoding/mill/internal/services/triggersvc"
 )
@@ -129,4 +131,14 @@ func WireMCPAudit(dbPath string, logger *slog.Logger) *mcpauditsvc.MCPAuditServi
 	}
 	mcpclient.SetSendingMiddleware(svc.ClientMiddleware())
 	return svc
+}
+
+// WireRemoteAuth constructs docs/goals/0132-remote-access.md SLICE 1's
+// auth gate. Its result feeds two places in main.go: the Services
+// list (so Settings > Remote access can call it) and
+// application.Options.Assets.Middleware (so it gates every request the
+// AssetServer serves) -- pulled out here for the same 500-line reason
+// WireMCPAudit above is.
+func WireRemoteAuth(store settings.Store, logger *slog.Logger) *remoteauthsvc.RemoteAuthService {
+	return remoteauthsvc.New(store, logger)
 }

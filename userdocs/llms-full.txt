@@ -901,6 +901,23 @@ includes secrets. Set the address here to accept connections from
 other devices, not just this Mac — changes take effect after you
 restart Mill. See "Automate with agents" for the full picture.
 
+## Remote access
+
+Mill is reachable from any device on your network. Pairing is what
+keeps it yours. This Mac always has access — other devices pair once,
+then stay connected until you revoke them.
+
+To reach Mill from your phone or another computer, open Settings on
+this Mac and select "Pair a device." Enter the 8-character code it
+shows on the other device within 5 minutes. Paired devices appear
+below with when they were paired and last seen, and a Revoke button
+that disconnects them immediately.
+
+If you already have a background Mill instance reachable from another
+device — for example, one kept running over Tailscale — it now asks
+for pairing the first time you reach it after upgrading. Pair it the
+same way, from that instance's own Settings.
+
 ## Backups
 
 Mill snapshots your workflow history and settings automatically —
