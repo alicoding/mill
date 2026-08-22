@@ -299,14 +299,24 @@ func checkNoteCardCommit(c mcpCaller) (string, error) {
 	if lastErr != nil {
 		return "", fmt.Errorf("after 3 attempts: %w", lastErr)
 	}
-	for i := 0; i < 2; i++ {
-		if _, err := c.call("keyboard_press", withWindow(map[string]any{"key": "Escape"})); err != nil {
-			return "", fmt.Errorf("escape %d: %w", i+1, err)
-		}
+	// Each Escape settles before the next fires: Primer's Dialog closes
+	// via a React state update, not synchronously with the keypress, so
+	// firing the second Escape before the first one's unmount has
+	// committed lets the still-mounted Dialog swallow it too -- the
+	// board's own Escape-ladder listener (useAtlasSelectionTray, gated
+	// on no Dialog holding focus) is then never reached and the
+	// selection never clears.
+	if _, err := c.call("keyboard_press", withWindow(map[string]any{"key": "Escape"})); err != nil {
+		return "", fmt.Errorf("escape 1: %w", err)
 	}
-	if err := pollJSEval(c, `return !document.querySelector('[data-testid="atlas-page-header"]')
-		&& !document.querySelector('.react-flow__node.selected');`, 5*time.Second); err != nil {
-		return "", fmt.Errorf("escape ladder never returned to an unselected board: %w", err)
+	if err := pollJSEval(c, `return !document.querySelector('[data-testid="atlas-page-header"]');`, 5*time.Second); err != nil {
+		return "", fmt.Errorf("first escape never closed the page: %w", err)
+	}
+	if _, err := c.call("keyboard_press", withWindow(map[string]any{"key": "Escape"})); err != nil {
+		return "", fmt.Errorf("escape 2: %w", err)
+	}
+	if err := pollJSEval(c, `return !document.querySelector('.react-flow__node.selected');`, 5*time.Second); err != nil {
+		return "", fmt.Errorf("second escape never cleared the selection: %w", err)
 	}
 	return "click-select then click-commit opened the page; Escape ladder restored the board", nil
 }
