@@ -24,7 +24,7 @@ func builtInClipbridgeWorkflows() []Workflow {
 	cardsNodes, err := ResolveNodeDefaults([]Node{
 		{ID: cardsTriggerID, NodeTypeID: "trigger-manual", Position: Position{X: 0, Y: 0}},
 		{ID: cardsApplyID, NodeTypeID: "apply-atlas-from-reply", Position: Position{X: 0, Y: 100},
-			Config: map[string]string{"itemsAttribute": "items", "outputAttribute": "created"}},
+			Config: map[string]string{"itemsAttribute": "items", "parentAttribute": "parentId", "outputAttribute": "created"}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
@@ -42,18 +42,20 @@ func builtInClipbridgeWorkflows() []Workflow {
 		{
 			ID:    ReplyCardsWorkflowID,
 			Label: "Clipboard reply: create cards",
-			Description: "Creates the Atlas cards a reviewed clipboard reply proposes. Runs from the Quick " +
-				"Panel after you accept the preview -- the accepted items arrive in the \"items\" input. " +
-				"Edit this workflow to change where accepted cards go or what happens after they land.",
+			Description: "Creates the Atlas cards a reviewed clipboard reply proposes, landing them in the " +
+				"space you were viewing when you accepted. Runs from the Quick Panel or the AI companion " +
+				"after you accept the preview -- the accepted items arrive in the \"items\" input. Edit " +
+				"this workflow to change where accepted cards go or what happens after they land.",
 			Nodes: cardsNodes,
 			Attributes: []AttributeDef{
 				{Key: "items", Label: "Accepted items (JSON)", Type: FieldText},
+				{Key: "parentId", Label: "Landing space (card id, optional)", Type: FieldText},
 			},
 			Edges: []Edge{
 				{ID: "clipbridge-reply-cards-e0", Source: cardsTriggerID, Target: cardsApplyID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(1),
+			Seed:    seedorigin.Stamp(2),
 		},
 		{
 			ID:    ReplyNoteWorkflowID,
@@ -69,7 +71,12 @@ func builtInClipbridgeWorkflows() []Workflow {
 				{ID: "clipbridge-reply-note-e0", Source: noteTriggerID, Target: noteApplyID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(1),
+			// Stamp(2): the shared apply-atlas-from-reply NodeType's new
+			// parentAttribute ConfigField auto-fills onto this workflow's
+			// node too (ResolveNodeDefaults), even though this route
+			// never sets it -- a genuinely changed resolved shape, not
+			// just the sibling cards route.
+			Seed: seedorigin.Stamp(2),
 		},
 	}
 }

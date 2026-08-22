@@ -2,6 +2,7 @@ package aiclient
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -126,17 +127,19 @@ type openAICompatChunk struct {
 // chatOpenAICompat's scanSSE closure purely to keep that function's
 // own cognitive complexity under the repo's gate. done reports the
 // [DONE] sentinel; err reports a decode failure or an in-band error
-// chunk.
+// chunk. Returned unprefixed -- chatOpenAICompat wraps it with the
+// provider/endpoint that failed at its own return site, the one place
+// that prefix gets added.
 func parseOpenAICompatChunk(data string) (delta string, done bool, err error) {
 	if strings.TrimSpace(data) == "[DONE]" {
 		return "", true, nil
 	}
 	var chunk openAICompatChunk
 	if err := json.Unmarshal([]byte(data), &chunk); err != nil {
-		return "", false, fmt.Errorf("openai-compatible: parse stream chunk: %w", err)
+		return "", false, fmt.Errorf("parse stream chunk: %w", err)
 	}
 	if chunk.Error != nil {
-		return "", false, fmt.Errorf("openai-compatible: %s", chunk.Error.Message)
+		return "", false, errors.New(chunk.Error.Message)
 	}
 	for _, c := range chunk.Choices {
 		if c.Delta.Content != "" {
@@ -158,17 +161,21 @@ func chatOpenAICompat(req ChatRequest, onDelta func(string)) (string, error) {
 		headers["Authorization"] = "Bearer " + req.APIKey
 	}
 
+	// endpoint names which provider/endpoint failed in every error this
+	// call returns (docs/goals/0101 slice 2 item 2) -- a companion error
+	// must say WHERE the call went, not just what went wrong.
+	endpoint := strings.TrimRight(req.BaseURL, "/") + "/v1/chat/completions"
 	resp, err := httpconnector.ExecuteStream(httpconnector.Request{
-		Method: "POST", URL: strings.TrimRight(req.BaseURL, "/") + "/v1/chat/completions",
+		Method: "POST", URL: endpoint,
 		Headers: headers, Body: string(data),
 	})
 	if err != nil {
-		return "", fmt.Errorf("openai-compatible: %w", err)
+		return "", fmt.Errorf("openai-compatible: request to %s failed: %w", endpoint, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		errBody, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("openai-compatible: unexpected status %d: %s", resp.StatusCode, truncate(string(errBody)))
+		return "", fmt.Errorf("openai-compatible: %s returned status %d: %s", endpoint, resp.StatusCode, truncate(string(errBody)))
 	}
 
 	var full strings.Builder
@@ -186,10 +193,10 @@ func chatOpenAICompat(req ChatRequest, onDelta func(string)) (string, error) {
 		return !done
 	})
 	if scanErr != nil {
-		return full.String(), fmt.Errorf("openai-compatible: read stream: %w", scanErr)
+		return full.String(), fmt.Errorf("openai-compatible: %s: read stream: %w", endpoint, scanErr)
 	}
 	if streamErr != nil {
-		return full.String(), streamErr
+		return full.String(), fmt.Errorf("openai-compatible: %s: %w", endpoint, streamErr)
 	}
 	return full.String(), nil
 }
@@ -202,11 +209,15 @@ func schemaName(name string) string {
 }
 
 // truncate keeps an error message readable when a non-2xx response body
-// is large (an HTML error page, a verbose stack trace) -- same
-// reasoning as httpconnector callers elsewhere in this codebase never
-// echoing an unbounded body straight into an error string.
+// is large (an HTML error page, a verbose stack trace) -- capped in the
+// low single-digit KBs so a real provider error body (Ollama/OpenAI-
+// shaped JSON, typically well under 1KB) always reaches the caller
+// whole, while an unbounded body still can't grow an error string
+// without limit -- same reasoning as httpconnector callers elsewhere in
+// this codebase never echoing an unbounded body straight into an error
+// string.
 func truncate(s string) string {
-	const max = 500
+	const max = 4096
 	if len(s) <= max {
 		return s
 	}

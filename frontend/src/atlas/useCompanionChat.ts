@@ -123,7 +123,12 @@ export function useCompanionChat(viewedID: string) {
     setBusy(true)
     setError(null)
     try {
-      const summary = await ExecutionService.RunWorkflow(preview.RouteWorkflowID, RunKind.RunKindTest, { items: JSON.stringify(items) })
+      // parentId threads the space the user was actually viewing when
+      // the context envelope was built -- the create-cards route reads
+      // it (an unused extra value for the note route, which always
+      // lands in the Scratchpad) so a card lands where the user is
+      // looking, not always at the board root.
+      const summary = await ExecutionService.RunWorkflow(preview.RouteWorkflowID, RunKind.RunKindTest, { items: JSON.stringify(items), parentId: viewedID })
       if (summary.status !== 'SUCCESS') {
         setError(`The workflow run ended with status ${summary.status}.`)
         return
@@ -134,7 +139,7 @@ export function useCompanionChat(viewedID: string) {
     } finally {
       setBusy(false)
     }
-  }, [entries, busy])
+  }, [entries, busy, viewedID])
 
   return { providers, providerID, setProviderID, entries, streamingText, busy, error, sendMessage, retry, acceptProposal }
 }

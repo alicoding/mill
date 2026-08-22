@@ -5,6 +5,7 @@ import { Blankslate } from '@primer/react/experimental'
 import { SparkleFillIcon, XIcon } from '@primer/octicons-react'
 import { useAppStore } from '../shared/store'
 import { useUISignalStore } from '../shared/uiSignalStore'
+import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import { useCompanionChat } from './useCompanionChat'
 import { CompanionProposal } from './CompanionProposal'
 import styles from './CompanionPanel.module.css'
@@ -47,6 +48,7 @@ export function CompanionPanel({ viewedID }: { viewedID: string }) {
   }
 
   const providers = chat.providers ?? []
+  const selectedProvider = providers.find((p) => p.ID === chat.providerID)
 
   return (
     <div className={styles.panel} data-testid="companion-panel">
@@ -82,13 +84,16 @@ export function CompanionPanel({ viewedID }: { viewedID: string }) {
         {chat.entries.map((entry) => (
           <div key={entry.id} className={entry.role === 'user' ? styles.userBubble : styles.assistantBubble} data-testid={`companion-entry-${entry.role}`}>
             <Text>{entry.content}</Text>
-            {entry.role === 'assistant' && entry.preview?.Recognized && entry.preview.Valid && (
+            {entry.role === 'assistant' && entry.preview?.Recognized && entry.preview.Valid && !entry.preview.Empty && (
               <CompanionProposal
                 preview={entry.preview}
                 accepted={!!entry.accepted}
                 busy={chat.busy}
                 onAccept={(accepted) => void chat.acceptProposal(entry.id, accepted)}
               />
+            )}
+            {entry.role === 'assistant' && entry.preview?.Recognized && entry.preview.Valid && entry.preview.Empty && (
+              <Text size="small" className={styles.notActionsNote} data-testid="companion-nothing-to-add">{t('companionPanel.nothingToAdd')}</Text>
             )}
             {entry.role === 'assistant' && entry.preview?.Recognized && !entry.preview.Valid && (
               <Text size="small" className={styles.notActionsNote} data-testid="companion-not-actions">{t('companionPanel.notActions')}</Text>
@@ -104,7 +109,21 @@ export function CompanionPanel({ viewedID }: { viewedID: string }) {
           <Banner
             variant="critical"
             title={t('companionPanel.errorTitle')}
-            description={chat.error}
+            description={
+              <Stack direction="horizontal" gap="condensed" align="start" justify="space-between">
+                <div className={styles.errorText} data-testid="companion-error-text">{chat.error}</div>
+                <CopyDiagnosisButton
+                  error={chat.error}
+                  context={{
+                    Provider: selectedProvider?.Label,
+                    'Provider kind': selectedProvider?.Kind,
+                    'Base URL': selectedProvider?.BaseURL,
+                    Model: selectedProvider?.Model,
+                  }}
+                  testId="companion-copy-diagnosis"
+                />
+              </Stack>
+            }
             primaryAction={<Button size="small" onClick={chat.retry}>{t('companionPanel.retry')}</Button>}
           />
         )}

@@ -190,6 +190,7 @@
     "title": "Review this reply before anything is created",
     "invalidTitle": "This reply doesn't match what Mill asked for",
     "invalidFallback": "The reply could not be validated.",
+    "emptyTitle": "Didn't find anything to add.",
     "copyCorrection": "Copy corrected context",
     "correctionCopied": "Copied — paste it back to the AI",
     "collision": "Already exists as {{kind}} — unchecked so nothing is overwritten",

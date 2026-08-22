@@ -2877,6 +2877,20 @@
           "SystemManaged": false
         },
         {
+          "Key": "parentAttribute",
+          "Label": "Landing space attribute (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Attributes field carries the target space's card id. New cards land there instead of the board root.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
           "Key": "outputAttribute",
           "Label": "Output attribute (optional)",
           "Type": "text",
@@ -4937,6 +4951,20 @@
           "Required": false,
           "Default": "",
           "Description": "Which Attributes field carries the accepted reply items (a JSON array).",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "parentAttribute",
+          "Label": "Landing space attribute (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Attributes field carries the target space's card id. New cards land there instead of the board root.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,

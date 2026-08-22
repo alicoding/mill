@@ -25,13 +25,20 @@ type CardDraft struct {
 // user-visible failure modes -- the malformed cases render inline (the
 // PreviewClipboardApply precedent), so every refusal names itself.
 type ReplyPreview struct {
-	Recognized bool        `json:"Recognized"` // a {"mill": ...} object at all
-	Valid      bool        `json:"Valid"`
-	Action     string      `json:"Action"`
-	Class      ActionClass `json:"Class"`
-	Errors     []string    `json:"Errors"`
-	Cards      []CardDraft `json:"Cards"`
-	NoteTexts  []string    `json:"NoteTexts"`
+	Recognized bool `json:"Recognized"` // a {"mill": ...} object at all
+	Valid      bool `json:"Valid"`
+	// Empty marks a schema-valid reply whose action carried zero items --
+	// a deliberate no-op (the model found nothing to propose), distinct
+	// from both a validation failure (Valid stays true, Errors stays
+	// empty here) and an ordinary proposal (Cards/NoteTexts non-empty).
+	// A consumer renders this as its own "nothing to add" state rather
+	// than folding it into the generic invalid-reply note.
+	Empty     bool        `json:"Empty"`
+	Action    string      `json:"Action"`
+	Class     ActionClass `json:"Class"`
+	Errors    []string    `json:"Errors"`
+	Cards     []CardDraft `json:"Cards"`
+	NoteTexts []string    `json:"NoteTexts"`
 }
 
 type replyWire struct {
@@ -103,9 +110,7 @@ func ParseReply(raw string, kindLabels []string, actions []string) ReplyPreview 
 			}
 			p.Cards = append(p.Cards, d)
 		}
-		if len(wire.Items) == 0 {
-			p.Errors = append(p.Errors, "the reply carries no items to create")
-		}
+		p.Empty = len(wire.Items) == 0
 	case ActionNoteToScratchpad:
 		for i, item := range wire.Items {
 			var d struct {
@@ -121,9 +126,7 @@ func ParseReply(raw string, kindLabels []string, actions []string) ReplyPreview 
 			}
 			p.NoteTexts = append(p.NoteTexts, d.Text)
 		}
-		if len(wire.Items) == 0 {
-			p.Errors = append(p.Errors, "the reply carries no items to save")
-		}
+		p.Empty = len(wire.Items) == 0
 	default:
 		// The schema's action enum already refused unknown actions; this
 		// branch only exists for defense in depth.

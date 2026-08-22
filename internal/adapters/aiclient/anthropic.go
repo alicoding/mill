@@ -2,6 +2,7 @@ package aiclient
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -143,6 +144,9 @@ func anthropicChatMessages(turns []ChatMessage) []map[string]string {
 // purely to keep that function's own cognitive complexity under the
 // repo's gate. stop reports message_stop (or any decode/error-event
 // failure, carried in err); every other event contributes no delta.
+// Returned unprefixed -- chatAnthropic wraps it with the provider/
+// endpoint that failed at its own return site, the one place that
+// prefix gets added.
 func parseAnthropicEvent(event, data string) (delta string, stop bool, err error) {
 	switch event {
 	case "content_block_delta":
@@ -153,7 +157,7 @@ func parseAnthropicEvent(event, data string) (delta string, stop bool, err error
 			} `json:"delta"`
 		}
 		if err := json.Unmarshal([]byte(data), &d); err != nil {
-			return "", true, fmt.Errorf("anthropic: parse stream event: %w", err)
+			return "", true, fmt.Errorf("parse stream event: %w", err)
 		}
 		if d.Delta.Type == "text_delta" {
 			return d.Delta.Text, false, nil
@@ -166,7 +170,7 @@ func parseAnthropicEvent(event, data string) (delta string, stop bool, err error
 			} `json:"error"`
 		}
 		_ = json.Unmarshal([]byte(data), &e)
-		return "", true, fmt.Errorf("anthropic: %s", e.Error.Message)
+		return "", true, errors.New(e.Error.Message)
 	case "message_stop":
 		return "", true, nil
 	default:
@@ -196,17 +200,21 @@ func chatAnthropic(req ChatRequest, onDelta func(string)) (string, error) {
 		headers["x-api-key"] = req.APIKey
 	}
 
+	// endpoint names which provider/endpoint failed in every error this
+	// call returns (docs/goals/0101 slice 2 item 2) -- a companion error
+	// must say WHERE the call went, not just what went wrong.
+	endpoint := strings.TrimRight(baseURL, "/") + "/v1/messages"
 	resp, err := httpconnector.ExecuteStream(httpconnector.Request{
-		Method: "POST", URL: strings.TrimRight(baseURL, "/") + "/v1/messages",
+		Method: "POST", URL: endpoint,
 		Headers: headers, Body: string(data),
 	})
 	if err != nil {
-		return "", fmt.Errorf("anthropic: %w", err)
+		return "", fmt.Errorf("anthropic: request to %s failed: %w", endpoint, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		errBody, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("anthropic: unexpected status %d: %s", resp.StatusCode, truncate(string(errBody)))
+		return "", fmt.Errorf("anthropic: %s returned status %d: %s", endpoint, resp.StatusCode, truncate(string(errBody)))
 	}
 
 	var full strings.Builder
@@ -224,10 +232,10 @@ func chatAnthropic(req ChatRequest, onDelta func(string)) (string, error) {
 		return !stop
 	})
 	if scanErr != nil {
-		return full.String(), fmt.Errorf("anthropic: read stream: %w", scanErr)
+		return full.String(), fmt.Errorf("anthropic: %s: read stream: %w", endpoint, scanErr)
 	}
 	if streamErr != nil {
-		return full.String(), streamErr
+		return full.String(), fmt.Errorf("anthropic: %s: %w", endpoint, streamErr)
 	}
 	return full.String(), nil
 }

@@ -66,6 +66,18 @@ export function QuickPanelReplyReview({ preview, onCancel, onApplied }: Props) {
     )
   }
 
+  // A schema-valid reply whose action carried zero items (goal 0101
+  // slice 2 item 4) is a deliberate no-op, not the invalid case above --
+  // nothing to check off, so the review list itself never renders.
+  if (preview.Empty) {
+    return (
+      <Stack className={styles.panel} gap="condensed" data-testid="quick-panel-reply-empty">
+        <Banner variant="info" title={t('quickPanelReplyReview.emptyTitle')} />
+        <Button leadingVisual={ArrowLeftIcon} onClick={onCancel} block>{t('quickPanelClipboardApply.back')}</Button>
+      </Stack>
+    )
+  }
+
   const isNoteRoute = notes.length > 0
   const acceptedCount = isNoteRoute ? notes.length : accepted.size
 

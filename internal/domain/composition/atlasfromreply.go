@@ -13,16 +13,18 @@ import (
 // Atlas records -- injected so this domain package never depends on
 // atlassvc's storage (.claude/rules/backend.md), which owns kind-label
 // resolution, field mapping, and the Scratchpad landing for notes.
-// Returns a short JSON summary ({"cards":N,"notes":N,"ids":[...]}).
-// Defaults to erroring so a node run before SetAtlasReplyMaterializer
-// is wired fails loudly.
-var atlasReplyMaterializerFn = func(itemsJSON string, sourceRunID string) (string, error) {
+// parentID names the card new CARD items land inside ("" for the board
+// root); a note item always lands in the fixed Scratchpad regardless of
+// parentID, unaffected by this parameter. Returns a short JSON summary
+// ({"cards":N,"notes":N,"ids":[...]}). Defaults to erroring so a node
+// run before SetAtlasReplyMaterializer is wired fails loudly.
+var atlasReplyMaterializerFn = func(itemsJSON, parentID, sourceRunID string) (string, error) {
 	return "", fmt.Errorf("no atlas reply materializer registered (yet)")
 }
 
 // SetAtlasReplyMaterializer wires the function apply-atlas-from-reply
 // nodes use. Called once from main.go once AtlasService exists.
-func SetAtlasReplyMaterializer(fn func(itemsJSON string, sourceRunID string) (string, error)) {
+func SetAtlasReplyMaterializer(fn func(itemsJSON, parentID, sourceRunID string) (string, error)) {
 	atlasReplyMaterializerFn = fn
 }
 
@@ -50,6 +52,10 @@ func init() {
 				Description: "Which Attributes field carries the accepted reply items (a JSON array).",
 			},
 			{
+				Key: "parentAttribute", Label: "Landing space attribute (optional)", Type: FieldText,
+				Description: "Which Attributes field carries the target space's card id. New cards land there instead of the board root.",
+			},
+			{
 				Key: "outputAttribute", Label: "Output attribute (optional)", Type: FieldText,
 				Description: "Which Attributes field receives a summary of what was created.",
 			},
@@ -74,7 +80,12 @@ func execAtlasFromReply(node Node, ctx ExecContext) (ExecContext, error) {
 		return ctx, fmt.Errorf("apply-atlas-from-reply: attribute %q carries an empty item list", attr)
 	}
 
-	summary, err := atlasReplyMaterializerFn(raw, currentRunID(ctx.RunContext))
+	var parentID string
+	if parentAttr := node.Config["parentAttribute"]; parentAttr != "" {
+		parentID, _ = ctx.Attributes[parentAttr].(string)
+	}
+
+	summary, err := atlasReplyMaterializerFn(raw, parentID, currentRunID(ctx.RunContext))
 	if err != nil {
 		return ctx, fmt.Errorf("apply-atlas-from-reply: %w", err)
 	}
