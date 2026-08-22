@@ -416,10 +416,26 @@ goal file), never aspiration-first:
   merge-base). Legacy refuses to rot further without failing today's
   build; touching a legacy offender means paying its complexity down
   or consciously splitting the change.
-- **Deferred to the npm-deps landing** (lockfile-conflict avoidance,
-  recorded in the goal file): eslint-plugin-sonarjs (TS cognitive
-  complexity + duplicate-branch rules) and the diff-cover
-  changed-lines coverage gate.
+- **eslint-plugin-sonarjs has since landed** (goal 0109 phase 2b,
+  `frontend/eslint.config.js`): `sonarjs/cognitive-complexity` @ 15,
+  `no-duplicated-branches`, and `no-identical-functions` run in the
+  same `eslint` job lefthook and CI already run, closing the "TS
+  cognitive complexity + duplicate-branch rules" half of the line this
+  bullet used to defer. Still deferred: the diff-cover changed-lines
+  coverage gate.
+- **A repo-wide cross-file clone detector (jscpd or equivalent) was
+  evaluated and rejected for goal 0167's Configure-chrome dedup**: a
+  one-off measurement run (`npx jscpd src`) found total duplication
+  already low and diffuse (~1.5% of tokens at an 8-line/40-token
+  threshold, spread across atlas/composition/app) rather than
+  concentrated in the pattern that goal targeted -- which
+  `ConfigureEntityPage`/`useSeedLifecycle`/`useEntityImportExport`
+  fix at the architecture level, the same way NodeType registrations
+  stay thin without a policing gate. Revisit if a future page is
+  found hand-rolling Configure chrome again despite the shared
+  component existing -- that would mean the architecture stopped
+  being the easier path, and a targeted (not repo-wide) gate becomes
+  worth its keep.
 
 ## Shared-pool vs dedicated e2e servers — declare it up front
 

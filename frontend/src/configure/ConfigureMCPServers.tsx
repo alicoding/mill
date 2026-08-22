@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Heading, IconButton, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
-import { DownloadIcon, PencilIcon, PlusIcon, ServerIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
+import { Button, IconButton, Stack, Text, TextInput } from '@primer/react'
+import { DownloadIcon, PencilIcon, PlusIcon, ServerIcon, TrashIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
@@ -10,21 +10,19 @@ import { ConfigureService } from '../shared/bindings'
 import type { MCPServer } from '../../bindings/github.com/alicoding/mill/internal/domain/mcpserver/models'
 import type { Tool } from '../../bindings/github.com/alicoding/mill/internal/adapters/mcpclient/models'
 import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
-import { downloadJSON } from '../shared/downloadJSON'
 import { refreshMCPServers, useConfigureEntityStore } from '../shared/configureEntityStore'
-import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
-import { useImportConfirm } from '../shared/useImportConfirm'
 import { describeSeedReset } from '../shared/seedLifecycle'
-import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { EntityConfigFields } from './EntityConfigFields'
+import { ConfigureEntityPage } from './ConfigureEntityPage'
+import { useSeedLifecycle } from './useSeedLifecycle'
+import { useEntityImportExport } from './useEntityImportExport'
 import styles from '../shared/ListCard.module.css'
-import PageContainer from '../shared/PageContainer'
 
 function argsToRows(args: string[] | null | undefined): string[] {
   return args && args.length > 0 ? args : ['']
@@ -42,7 +40,11 @@ function argsToRows(args: string[] | null | undefined): string[] {
 // List tools/Export/Delete move into the trailing ⋯ menu -- "List
 // tools" keeps its exact prior behavior (fetch, render inline below
 // the list, one panel per server that's been queried), just triggered
-// from the menu instead of a dedicated button.
+// from the menu instead of a dedicated button. Page chrome (header
+// row, import/export, seed lifecycle, view-mode switch, confirm
+// dialogs) comes from the shared ConfigureEntityPage (docs/goals/
+// 0167); only the field set, list columns, and the tools panel below
+// are this entity's own.
 export function ConfigureMCPServers() {
   const { t } = useTranslation('configure')
   // Store-shared (refreshMCPServers, shared/configureEntityStore.ts) --
@@ -55,54 +57,27 @@ export function ConfigureMCPServers() {
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
   const [toolsByServer, setToolsByServer] = useState<Record<string, Tool[] | string>>({})
-  const [importError, setImportError] = useState<string | null>(null)
-  const importInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useViewMode('mill-mcpservers-view-mode')
-  // Seed lifecycle (docs/goals/0037) -- see CompositionView.tsx's
-  // identical state for the full reasoning.
-  const [seedRevisions, setSeedRevisions] = useState<Record<string, number | undefined>>({})
-  const [restorable, setRestorable] = useState<MCPServer[]>([])
 
-  const refreshSeedLifecycle = () => {
-    ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})).catch(console.error)
-    ConfigureService.RestorableMCPServers().then((r) => setRestorable(r ?? [])).catch(console.error)
-  }
+  const seedLifecycle = useSeedLifecycle<MCPServer>(() => ConfigureService.RestorableMCPServers())
 
   const refetch = () => {
     void refreshMCPServers()
   }
 
-  const exportServer = (id: string, label: string) => {
-    ConfigureService.ExportMCPServer(id)
-      .then((json) => downloadJSON(`${label.trim() || 'mcp-server'}.json`, json))
-      .catch((err) => setImportError(String(err)))
-  }
-
-  const openImportPicker = () => {
-    setImportError(null)
-    importInputRef.current?.click()
-  }
-
-  // A payload whose id matches a server already here updates it in
-  // place instead of creating a new one -- confirmed first via
-  // importConfirm below, naming the server it will replace.
-  const runImport = (text: string) => {
-    ConfigureService.ImportMCPServer(text)
-      .then(() => { setImportError(null); refetch() })
-      .catch((err) => setImportError(String(err)))
-  }
-  const importConfirm = useImportConfirm({ existing: servers ?? [], onImport: runImport })
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    file.text().then(importConfirm.requestImport).catch((err) => setImportError(String(err)))
-  }
+  const importExport = useEntityImportExport<MCPServer>({
+    existing: servers ?? [],
+    exportEntity: (id) => ConfigureService.ExportMCPServer(id),
+    importEntity: (text) => ConfigureService.ImportMCPServer(text),
+    onImported: refetch,
+    filenameFallback: 'mcp-server',
+  })
 
   useEffect(() => {
     refetch()
-    refreshSeedLifecycle()
+    seedLifecycle.refresh()
     ConfigureService.MCPServerFields().then((f) => setFields(f ?? [])).catch(console.error)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only fetch, same reasoning every sibling Configure page's identical effect documents
   }, [])
 
   const startCreate = () => {
@@ -154,8 +129,8 @@ export function ConfigureMCPServers() {
   const remove = (id: string) => {
     ConfigureService.DeleteMCPServer(id).then(() => {
       refetch()
-      refreshSeedLifecycle()
-    }).catch((err) => setImportError(String(err)))
+      seedLifecycle.refresh()
+    }).catch((err) => importExport.setImportError(String(err)))
   }
 
   // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037
@@ -163,14 +138,8 @@ export function ConfigureMCPServers() {
   const resetToSeed = (id: string) => {
     ConfigureService.ResetMCPServerToSeed(id).then(() => {
       refetch()
-      refreshSeedLifecycle()
-    }).catch((err) => setImportError(String(err)))
-  }
-  const restoreExample = (id: string) => {
-    ConfigureService.RestoreMCPServer(id).then(() => {
-      refetch()
-      refreshSeedLifecycle()
-    }).catch((err) => setImportError(String(err)))
+      seedLifecycle.refresh()
+    }).catch((err) => importExport.setImportError(String(err)))
   }
 
   // Table-view direct-wiring half of the Button-semantics convention
@@ -197,7 +166,7 @@ export function ConfigureMCPServers() {
   const sortedServers = useMemo(() => sortByUpdatedDesc(servers ?? [], (s) => s.UpdatedAt), [servers])
 
   const serverItems: InventoryItem[] = sortedServers.map((s) => {
-    const seedReset = describeSeedReset(s.Seed, seedRevisions[s.ID] ?? s.Seed.SeedRevision)
+    const seedReset = describeSeedReset(s.Seed, seedLifecycle.seedRevisions[s.ID] ?? s.Seed.SeedRevision)
     return {
       id: s.ID,
       entity: 'mcpserver',
@@ -212,7 +181,7 @@ export function ConfigureMCPServers() {
       onOpen: () => startEdit(s),
       menuActions: [
         { label: t('configureMCPServers.listTools'), onClick: () => listTools(s.ID) },
-        { label: t('export'), onClick: () => exportServer(s.ID, s.Label) },
+        { label: t('export'), onClick: () => importExport.exportItem(s.ID, s.Label) },
         // Reset-to-shipped-example (docs/goals/0037 item 4) -- hidden
         // (not shown-disabled) when already current, same reasoning
         // CompositionView.tsx's identical wiring documents.
@@ -227,88 +196,109 @@ export function ConfigureMCPServers() {
     }
   })
 
-  return (
-    <PageContainer data-testid="configure-mcpservers">
-      <Stack direction="horizontal" justify="end" align="center" className={styles.sectionHeading}>
-        {/* Design-wave-1 fix #6: the Configure tab already names this
-            section -- visually hidden (not removed) so the aria-labelledby
-            wiring below and the a11y heading structure both stay intact. */}
-        <VisuallyHidden>
-          <Heading as="h2" variant="small" id="mcpservers-heading">{t('configureMCPServers.heading')}</Heading>
-        </VisuallyHidden>
-        <Stack direction="horizontal" gap="condensed">
-          <ViewModeToggle mode={viewMode} onChange={setViewMode} />
-          <input
-            ref={importInputRef}
-            type="file"
-            accept="application/json,.json"
-            data-testid="import-mcpserver-input"
-            style={{ display: 'none' }}
-            onChange={handleImportFile}
-          />
-          <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-mcpserver">
-            {t('import')}
-          </Button>
-          <RestoreExamplesButton items={restorable} onRestore={restoreExample} />
-          <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={startCreate} data-testid="new-mcpserver">
-            {t('configureMCPServers.newMcpServer')}
-          </Button>
-        </Stack>
-      </Stack>
-      {importError && (
-        <Stack direction="horizontal" gap="condensed" align="center">
-          <Text as="p" size="small" className={styles.error} data-testid="import-mcpserver-error">{importError}</Text>
-          <CopyDiagnosisButton error={importError} testId="import-mcpserver-copy-diagnosis" />
-        </Stack>
-      )}
-
-      {formOpen && (
-        <PageContainer variant="narrow">
-        <div className={styles.card}>
-          <Stack direction="vertical" gap="condensed">
-            <EntityConfigFields
-              fields={fields}
-              values={values}
-              onChange={setValue}
-              placeholders={{ command: t('configureMCPServers.commandPlaceholder') }}
+  // "List tools" (row menu action) renders its result here, below the
+  // list -- one panel per server that's been queried, same shape the
+  // old card view showed inline per-row, just no longer nested inside
+  // the row itself now that Delete/Edit/List tools all moved into one
+  // trailing ⋯ menu.
+  const toolsPanels = Object.entries(toolsByServer).map(([id, result]) => {
+    const server = servers?.find((s) => s.ID === id)
+    return (
+      <div key={id} className={styles.card} data-testid="mcpserver-tools">
+        <Text weight="semibold" size="small">{t('configureMCPServers.serverTools', { label: server?.Label ?? id })}</Text>
+        {typeof result === 'string' ? (
+          <Stack direction="horizontal" gap="condensed" align="center">
+            <Text as="p" size="small" className={styles.error}>{result}</Text>
+            <CopyDiagnosisButton
+              error={result}
+              context={{ 'Server label': server?.Label, Command: server?.Command }}
+              testId="mcpserver-tools-copy-diagnosis"
             />
-            <Text size="small" weight="semibold">{t('configureMCPServers.arguments')}</Text>
-            {argRows.map((arg, i) => (
-              <Stack key={i} direction="horizontal" gap="condensed" align="center">
-                <TextInput placeholder={t('configureMCPServers.argPlaceholder')} value={arg} onChange={(e) => updateArgRow(i, e.target.value)} />
-                <IconButton
-                  icon={TrashIcon}
-                  aria-label={t('configureMCPServers.removeArgumentAriaLabel')}
-                  size="small"
-                  variant="invisible"
-                  onClick={() => setArgRows((prev) => prev.filter((_, idx) => idx !== i))}
-                />
-              </Stack>
-            ))}
-            <Button size="small" variant="invisible" onClick={() => setArgRows((prev) => [...prev, ''])}>
-              {t('configureMCPServers.addArgument')}
-            </Button>
-            {error && (
-              <Stack direction="horizontal" gap="condensed" align="center">
-                <Text as="p" size="small" className={styles.error}>{error}</Text>
-                <CopyDiagnosisButton
-                  error={error}
-                  context={{ 'Server label': values.label, Command: values.command }}
-                  testId="mcpserver-save-copy-diagnosis"
-                />
-              </Stack>
-            )}
-            <Stack direction="horizontal" gap="condensed">
-              <Button variant="primary" size="small" onClick={save}>{t('configureMCPServers.saveMcpServer')}</Button>
-              <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>{t('entityRefField.cancel')}</Button>
-            </Stack>
           </Stack>
-        </div>
-        </PageContainer>
-      )}
+        ) : result.length === 0 ? (
+          <Text as="p" size="small" className={styles.muted}>{t('configureMCPServers.noToolsExposed')}</Text>
+        ) : (
+          <Stack direction="vertical" gap="condensed">
+            {(result as Tool[]).map((tool) => (
+              <div key={tool.Name}>
+                <Text weight="semibold" size="small">{tool.Name}</Text>
+                <Text as="p" size="small" className={styles.muted}>{tool.Description}</Text>
+                <pre className={styles.result}>{JSON.stringify(tool.InputSchema, null, 2)}</pre>
+              </div>
+            ))}
+          </Stack>
+        )}
+      </div>
+    )
+  })
 
-      {servers === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
-      {servers !== null && viewMode === 'table' && servers.length > 0 && (
+  return (
+    <ConfigureEntityPage
+      pageTestId="configure-mcpservers"
+      headingId="mcpservers-heading"
+      headingText={t('configureMCPServers.heading')}
+      viewMode={viewMode}
+      onViewModeChange={setViewMode}
+      importInputRef={importExport.importInputRef}
+      importInputTestId="import-mcpserver-input"
+      importTestId="import-mcpserver"
+      onImportFile={importExport.handleImportFile}
+      onImportClick={importExport.openImportPicker}
+      importErrorNode={importExport.importError && (
+        <Stack direction="horizontal" gap="condensed" align="center">
+          <Text as="p" size="small" className={styles.error} data-testid="import-mcpserver-error">{importExport.importError}</Text>
+          <CopyDiagnosisButton error={importExport.importError} testId="import-mcpserver-copy-diagnosis" />
+        </Stack>
+      )}
+      restorable={seedLifecycle.restorable}
+      onRestore={(id) => ConfigureService.RestoreMCPServer(id).then(() => { refetch(); seedLifecycle.refresh() }).catch((err) => importExport.setImportError(String(err)))}
+      primaryLabel={t('configureMCPServers.newMcpServer')}
+      primaryTestId="new-mcpserver"
+      onPrimary={startCreate}
+      formOpen={formOpen}
+      formContent={(
+        <Stack direction="vertical" gap="condensed">
+          <EntityConfigFields
+            fields={fields}
+            values={values}
+            onChange={setValue}
+            placeholders={{ command: t('configureMCPServers.commandPlaceholder') }}
+          />
+          <Text size="small" weight="semibold">{t('configureMCPServers.arguments')}</Text>
+          {argRows.map((arg, i) => (
+            <Stack key={i} direction="horizontal" gap="condensed" align="center">
+              <TextInput placeholder={t('configureMCPServers.argPlaceholder')} value={arg} onChange={(e) => updateArgRow(i, e.target.value)} />
+              <IconButton
+                icon={TrashIcon}
+                aria-label={t('configureMCPServers.removeArgumentAriaLabel')}
+                size="small"
+                variant="invisible"
+                onClick={() => setArgRows((prev) => prev.filter((_, idx) => idx !== i))}
+              />
+            </Stack>
+          ))}
+          <Button size="small" variant="invisible" onClick={() => setArgRows((prev) => [...prev, ''])}>
+            {t('configureMCPServers.addArgument')}
+          </Button>
+          {error && (
+            <Stack direction="horizontal" gap="condensed" align="center">
+              <Text as="p" size="small" className={styles.error}>{error}</Text>
+              <CopyDiagnosisButton
+                error={error}
+                context={{ 'Server label': values.label, Command: values.command }}
+                testId="mcpserver-save-copy-diagnosis"
+              />
+            </Stack>
+          )}
+          <Stack direction="horizontal" gap="condensed">
+            <Button variant="primary" size="small" onClick={save}>{t('configureMCPServers.saveMcpServer')}</Button>
+            <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>{t('entityRefField.cancel')}</Button>
+          </Stack>
+        </Stack>
+      )}
+      loading={servers === null}
+      showTable={servers !== null && viewMode === 'table' && servers.length > 0}
+      tableContent={(
         <ResizableTableContainer storageKey="mill-cols-mcpservers">
           <DataTable
             aria-labelledby="mcpservers-heading"
@@ -323,7 +313,7 @@ export function ConfigureMCPServers() {
                   <Stack direction="horizontal" gap="condensed">
                     <Button size="small" variant="invisible" onClick={() => listTools(s.ID)}>{t('configureMCPServers.listTools')}</Button>
                     <IconButton icon={PencilIcon} aria-label={t('configureMCPServers.editAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => startEdit(s)} />
-                    <IconButton icon={DownloadIcon} aria-label={t('configureMCPServers.exportAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => exportServer(s.ID, s.Label)} />
+                    <IconButton icon={DownloadIcon} aria-label={t('configureMCPServers.exportAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => importExport.exportItem(s.ID, s.Label)} />
                     <IconButton icon={TrashIcon} aria-label={t('configureMCPServers.deleteAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => requestDelete(s)} />
                   </Stack>
                 ),
@@ -332,7 +322,8 @@ export function ConfigureMCPServers() {
           />
         </ResizableTableContainer>
       )}
-      {servers !== null && viewMode === 'rows' && !(formOpen && servers.length === 0) && (
+      showRows={servers !== null && viewMode === 'rows' && !(formOpen && servers.length === 0)}
+      rowsContent={(
         <InventoryList
           items={serverItems}
           searchPlaceholder={t('configureMCPServers.searchPlaceholder')}
@@ -344,44 +335,9 @@ export function ConfigureMCPServers() {
           }}
         />
       )}
-      {confirmDialog}
-      {importConfirm.dialog}
-
-      {/* "List tools" (row menu action) renders its result here, below
-          the list -- one panel per server that's been queried, same
-          shape the old card view showed inline per-row, just no longer
-          nested inside the row itself now that Delete/Edit/List tools
-          all moved into one trailing ⋯ menu. */}
-      {Object.entries(toolsByServer).map(([id, result]) => {
-        const server = servers?.find((s) => s.ID === id)
-        return (
-          <div key={id} className={styles.card} data-testid="mcpserver-tools">
-            <Text weight="semibold" size="small">{t('configureMCPServers.serverTools', { label: server?.Label ?? id })}</Text>
-            {typeof result === 'string' ? (
-              <Stack direction="horizontal" gap="condensed" align="center">
-                <Text as="p" size="small" className={styles.error}>{result}</Text>
-                <CopyDiagnosisButton
-                  error={result}
-                  context={{ 'Server label': server?.Label, Command: server?.Command }}
-                  testId="mcpserver-tools-copy-diagnosis"
-                />
-              </Stack>
-            ) : result.length === 0 ? (
-              <Text as="p" size="small" className={styles.muted}>{t('configureMCPServers.noToolsExposed')}</Text>
-            ) : (
-              <Stack direction="vertical" gap="condensed">
-                {(result as Tool[]).map((tool) => (
-                  <div key={tool.Name}>
-                    <Text weight="semibold" size="small">{tool.Name}</Text>
-                    <Text as="p" size="small" className={styles.muted}>{tool.Description}</Text>
-                    <pre className={styles.result}>{JSON.stringify(tool.InputSchema, null, 2)}</pre>
-                  </div>
-                ))}
-              </Stack>
-            )}
-          </div>
-        )
-      })}
-    </PageContainer>
+      confirmDialog={confirmDialog}
+      importConfirmDialog={importExport.importConfirm.dialog}
+      trailingContent={toolsPanels}
+    />
   )
 }

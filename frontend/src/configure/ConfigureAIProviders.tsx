@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
-import { DownloadIcon, PencilIcon, PlusIcon, SparkleFillIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
+import { Button, FormControl, IconButton, Stack, Text, TextInput } from '@primer/react'
+import { DownloadIcon, PencilIcon, PlusIcon, SparkleFillIcon, TrashIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
@@ -9,21 +9,19 @@ import { ConfigureService } from '../shared/bindings'
 import type { AIProvider } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 import { Kind as AIProviderKind } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
-import { downloadJSON } from '../shared/downloadJSON'
 import { refreshAIProviders, useConfigureEntityStore } from '../shared/configureEntityStore'
-import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
-import { useImportConfirm } from '../shared/useImportConfirm'
 import { describeSeedReset } from '../shared/seedLifecycle'
-import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { EntityConfigFields } from './EntityConfigFields'
+import { ConfigureEntityPage } from './ConfigureEntityPage'
+import { useSeedLifecycle } from './useSeedLifecycle'
+import { useEntityImportExport } from './useEntityImportExport'
 import styles from '../shared/ListCard.module.css'
-import PageContainer from '../shared/PageContainer'
 
 function kindLabelFor(t: (key: string) => string): Record<string, string> {
   return {
@@ -46,7 +44,10 @@ const emptyValues = { label: '', kind: AIProviderKind.KindOpenAICompat as string
 // from RequestForm.tsx): typing a value and saving calls
 // SetAIProviderSecret as a second, best-effort step after the entity
 // itself saves; the field never pre-fills on edit and always clears
-// after a successful save.
+// after a successful save. Page chrome (header row, import/export,
+// seed lifecycle, view-mode switch, confirm dialogs) comes from the
+// shared ConfigureEntityPage (docs/goals/0167); only the field set and
+// list columns are this entity's own.
 export function ConfigureAIProviders() {
   const { t } = useTranslation('configure')
   const KIND_LABEL = kindLabelFor(t)
@@ -57,54 +58,27 @@ export function ConfigureAIProviders() {
   const [secret, setSecret] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
-  const [importError, setImportError] = useState<string | null>(null)
-  const importInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useViewMode('mill-aiproviders-view-mode')
-  // Seed lifecycle (docs/goals/0037) -- see ConfigureMCPServers.tsx's
-  // identical state for the full reasoning.
-  const [seedRevisions, setSeedRevisions] = useState<Record<string, number | undefined>>({})
-  const [restorable, setRestorable] = useState<AIProvider[]>([])
 
-  const refreshSeedLifecycle = () => {
-    ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})).catch(console.error)
-    ConfigureService.RestorableAIProviders().then((r) => setRestorable(r ?? [])).catch(console.error)
-  }
+  const seedLifecycle = useSeedLifecycle<AIProvider>(() => ConfigureService.RestorableAIProviders())
 
   const refetch = () => {
     void refreshAIProviders()
   }
 
-  const exportProvider = (id: string, label: string) => {
-    ConfigureService.ExportAIProvider(id)
-      .then((json) => downloadJSON(`${label.trim() || 'ai-provider'}.json`, json))
-      .catch((err) => setImportError(String(err)))
-  }
-
-  const openImportPicker = () => {
-    setImportError(null)
-    importInputRef.current?.click()
-  }
-
-  // A payload whose id matches a provider already here updates it in
-  // place instead of creating a new one -- confirmed first via
-  // importConfirm below, naming the provider it will replace.
-  const runImport = (text: string) => {
-    ConfigureService.ImportAIProvider(text)
-      .then(() => { setImportError(null); refetch() })
-      .catch((err) => setImportError(String(err)))
-  }
-  const importConfirm = useImportConfirm({ existing: providers ?? [], onImport: runImport })
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    file.text().then(importConfirm.requestImport).catch((err) => setImportError(String(err)))
-  }
+  const importExport = useEntityImportExport<AIProvider>({
+    existing: providers ?? [],
+    exportEntity: (id) => ConfigureService.ExportAIProvider(id),
+    importEntity: (text) => ConfigureService.ImportAIProvider(text),
+    onImported: refetch,
+    filenameFallback: 'ai-provider',
+  })
 
   useEffect(() => {
     refetch()
-    refreshSeedLifecycle()
+    seedLifecycle.refresh()
     ConfigureService.AIProviderFields().then((f) => setFields(f ?? [])).catch(console.error)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only fetch, same reasoning every sibling Configure page's identical effect documents
   }, [])
 
   const startCreate = () => {
@@ -165,21 +139,15 @@ export function ConfigureAIProviders() {
   const remove = (id: string) => {
     ConfigureService.DeleteAIProvider(id).then(() => {
       refetch()
-      refreshSeedLifecycle()
-    }).catch((err) => setImportError(String(err)))
+      seedLifecycle.refresh()
+    }).catch((err) => importExport.setImportError(String(err)))
   }
 
   const resetToSeed = (id: string) => {
     ConfigureService.ResetAIProviderToSeed(id).then(() => {
       refetch()
-      refreshSeedLifecycle()
-    }).catch((err) => setImportError(String(err)))
-  }
-  const restoreExample = (id: string) => {
-    ConfigureService.RestoreAIProvider(id).then(() => {
-      refetch()
-      refreshSeedLifecycle()
-    }).catch((err) => setImportError(String(err)))
+      seedLifecycle.refresh()
+    }).catch((err) => importExport.setImportError(String(err)))
   }
 
   const { requestDelete, dialog: confirmDialog } = useConfirmDelete<AIProvider>({
@@ -191,7 +159,7 @@ export function ConfigureAIProviders() {
   const sortedProviders = useMemo(() => sortByUpdatedDesc(providers ?? [], (p) => p.UpdatedAt), [providers])
 
   const providerItems: InventoryItem[] = sortedProviders.map((p) => {
-    const seedReset = describeSeedReset(p.Seed, seedRevisions[p.ID] ?? p.Seed.SeedRevision)
+    const seedReset = describeSeedReset(p.Seed, seedLifecycle.seedRevisions[p.ID] ?? p.Seed.SeedRevision)
     return {
       id: p.ID,
       entity: 'aiprovider',
@@ -202,7 +170,7 @@ export function ConfigureAIProviders() {
       description: `${KIND_LABEL[p.Kind] ?? p.Kind} – ${p.Model}${p.BaseURL ? ` – ${p.BaseURL}` : ''}`,
       onOpen: () => startEdit(p),
       menuActions: [
-        { label: t('export'), onClick: () => exportProvider(p.ID, p.Label) },
+        { label: t('export'), onClick: () => importExport.exportItem(p.ID, p.Label) },
         ...(p.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(p.ID) }] : []),
         {
           label: t('delete'),
@@ -215,71 +183,56 @@ export function ConfigureAIProviders() {
   })
 
   return (
-    <PageContainer data-testid="configure-aiproviders">
-      <Stack direction="horizontal" justify="end" align="center" className={styles.sectionHeading}>
-        {/* Design-wave-1 fix #6: the Configure tab already names this
-            section -- visually hidden (not removed) so the aria-labelledby
-            wiring below and the a11y heading structure both stay intact. */}
-        <VisuallyHidden>
-          <Heading as="h2" variant="small" id="aiproviders-heading">{t('configureAIProviders.heading')}</Heading>
-        </VisuallyHidden>
-        <Stack direction="horizontal" gap="condensed">
-          <ViewModeToggle mode={viewMode} onChange={setViewMode} />
-          <input
-            ref={importInputRef}
-            type="file"
-            accept="application/json,.json"
-            data-testid="import-aiprovider-input"
-            style={{ display: 'none' }}
-            onChange={handleImportFile}
+    <ConfigureEntityPage
+      pageTestId="configure-aiproviders"
+      headingId="aiproviders-heading"
+      headingText={t('configureAIProviders.heading')}
+      viewMode={viewMode}
+      onViewModeChange={setViewMode}
+      importInputRef={importExport.importInputRef}
+      importInputTestId="import-aiprovider-input"
+      importTestId="import-aiprovider"
+      onImportFile={importExport.handleImportFile}
+      onImportClick={importExport.openImportPicker}
+      importErrorNode={importExport.importError && (
+        <Text as="p" size="small" className={styles.error} data-testid="import-aiprovider-error">{importExport.importError}</Text>
+      )}
+      restorable={seedLifecycle.restorable}
+      onRestore={(id) => ConfigureService.RestoreAIProvider(id).then(() => { refetch(); seedLifecycle.refresh() }).catch((err) => importExport.setImportError(String(err)))}
+      primaryLabel={t('configureAIProviders.newAiProvider')}
+      primaryTestId="new-aiprovider"
+      onPrimary={startCreate}
+      formOpen={formOpen}
+      formContent={(
+        <Stack direction="vertical" gap="condensed">
+          <EntityConfigFields
+            fields={fields}
+            values={values}
+            onChange={setValue}
+            placeholders={{ baseURL: t('configureAIProviders.baseUrlPlaceholder'), model: t('configureAIProviders.modelPlaceholder') }}
+            captionOverrides={{
+              baseURL: values.kind === AIProviderKind.KindAnthropic
+                ? t('configureAIProviders.baseUrlCaptionAnthropic')
+                : t('configureAIProviders.baseUrlCaptionOther'),
+            }}
+            optionLabels={{ kind: KIND_LABEL }}
+            testIds={{ kind: 'aiprovider-kind' }}
           />
-          <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-aiprovider">
-            {t('import')}
-          </Button>
-          <RestoreExamplesButton items={restorable} onRestore={restoreExample} />
-          <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={startCreate} data-testid="new-aiprovider">
-            {t('configureAIProviders.newAiProvider')}
-          </Button>
-        </Stack>
-      </Stack>
-      {importError && (
-        <Text as="p" size="small" className={styles.error} data-testid="import-aiprovider-error">{importError}</Text>
-      )}
-
-      {formOpen && (
-        <PageContainer variant="narrow">
-        <div className={styles.card}>
-          <Stack direction="vertical" gap="condensed">
-            <EntityConfigFields
-              fields={fields}
-              values={values}
-              onChange={setValue}
-              placeholders={{ baseURL: t('configureAIProviders.baseUrlPlaceholder'), model: t('configureAIProviders.modelPlaceholder') }}
-              captionOverrides={{
-                baseURL: values.kind === AIProviderKind.KindAnthropic
-                  ? t('configureAIProviders.baseUrlCaptionAnthropic')
-                  : t('configureAIProviders.baseUrlCaptionOther'),
-              }}
-              optionLabels={{ kind: KIND_LABEL }}
-              testIds={{ kind: 'aiprovider-kind' }}
-            />
-            <FormControl>
-              <FormControl.Label>{t('configureAIProviders.secretApiKey')}</FormControl.Label>
-              <FormControl.Caption>{t('configureAIProviders.secretCaption')}</FormControl.Caption>
-              <TextInput type="password" value={secret} onChange={(e) => setSecret(e.target.value)} block />
-            </FormControl>
-            {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
-            <Stack direction="horizontal" gap="condensed">
-              <Button variant="primary" size="small" onClick={save}>{t('configureAIProviders.saveAiProvider')}</Button>
-              <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>{t('entityRefField.cancel')}</Button>
-            </Stack>
+          <FormControl>
+            <FormControl.Label>{t('configureAIProviders.secretApiKey')}</FormControl.Label>
+            <FormControl.Caption>{t('configureAIProviders.secretCaption')}</FormControl.Caption>
+            <TextInput type="password" value={secret} onChange={(e) => setSecret(e.target.value)} block />
+          </FormControl>
+          {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
+          <Stack direction="horizontal" gap="condensed">
+            <Button variant="primary" size="small" onClick={save}>{t('configureAIProviders.saveAiProvider')}</Button>
+            <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>{t('entityRefField.cancel')}</Button>
           </Stack>
-        </div>
-        </PageContainer>
+        </Stack>
       )}
-
-      {providers === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
-      {providers !== null && viewMode === 'table' && providers.length > 0 && (
+      loading={providers === null}
+      showTable={providers !== null && viewMode === 'table' && providers.length > 0}
+      tableContent={(
         <ResizableTableContainer storageKey="mill-cols-aiproviders">
           <DataTable
             aria-labelledby="aiproviders-heading"
@@ -294,7 +247,7 @@ export function ConfigureAIProviders() {
                 renderCell: (p) => (
                   <Stack direction="horizontal" gap="condensed">
                     <IconButton icon={PencilIcon} aria-label={t('configureAIProviders.editAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => startEdit(p)} />
-                    <IconButton icon={DownloadIcon} aria-label={t('configureAIProviders.exportAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => exportProvider(p.ID, p.Label)} />
+                    <IconButton icon={DownloadIcon} aria-label={t('configureAIProviders.exportAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => importExport.exportItem(p.ID, p.Label)} />
                     <IconButton icon={TrashIcon} aria-label={t('configureAIProviders.deleteAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => requestDelete(p)} />
                   </Stack>
                 ),
@@ -303,7 +256,8 @@ export function ConfigureAIProviders() {
           />
         </ResizableTableContainer>
       )}
-      {providers !== null && viewMode === 'rows' && !(formOpen && providers.length === 0) && (
+      showRows={providers !== null && viewMode === 'rows' && !(formOpen && providers.length === 0)}
+      rowsContent={(
         <InventoryList
           items={providerItems}
           searchPlaceholder={t('configureAIProviders.searchPlaceholder')}
@@ -315,8 +269,8 @@ export function ConfigureAIProviders() {
           }}
         />
       )}
-      {confirmDialog}
-      {importConfirm.dialog}
-    </PageContainer>
+      confirmDialog={confirmDialog}
+      importConfirmDialog={importExport.importConfirm.dialog}
+    />
   )
 }
