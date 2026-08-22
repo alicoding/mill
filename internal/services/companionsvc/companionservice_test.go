@@ -16,12 +16,12 @@ import (
 func stubChat(t *testing.T, reply string, err error) *[]string {
 	t.Helper()
 	var deltas []string
-	SetChatFn(func(req aiclient.ChatRequest, onDelta func(string)) (string, error) {
+	SetChatFn(func(req aiclient.ChatRequest, onDelta func(string)) (aiclient.ChatResult, error) {
 		if err != nil {
-			return "", err
+			return aiclient.ChatResult{}, err
 		}
 		onDelta(reply)
-		return reply, nil
+		return aiclient.ChatResult{Text: reply}, nil
 	})
 	SetDeltaTestHook(func(text string) { deltas = append(deltas, text) })
 	t.Cleanup(func() {

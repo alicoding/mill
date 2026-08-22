@@ -125,44 +125,115 @@ func completeAnthropic(req Request) (Result, error) {
 // "stream": true -- confirmed against Anthropic's own published
 // streaming docs before building (docs/goals/0101 item 1): a
 // content_block_delta event's delta.text is the next text fragment
-// (only delta.type == "text_delta" carries prose; a tool-use delta
-// shape doesn't apply here, this call never requests structured
-// output), an error event carries a terminal failure, and message_stop
-// ends the stream.
+// (delta.type == "text_delta"); a tool call streams as a
+// content_block_start event (type "tool_use", carrying the call's id
+// and name) followed by zero or more content_block_delta events (type
+// "input_json_delta", carrying the arguments object's JSON one
+// fragment at a time). An error event carries a terminal failure, and
+// message_stop ends the stream.
 // anthropicChatMessages converts a chat conversation's turns into the
-// Messages API's own role/content shape.
-func anthropicChatMessages(turns []ChatMessage) []map[string]string {
-	messages := make([]map[string]string, 0, len(turns))
+// Messages API's own role/content shape -- widened to []map[string]any
+// (from plain string content) so a tool-use or tool-result turn's
+// content-block-array shape fits alongside plain text turns.
+func anthropicChatMessages(turns []ChatMessage) []map[string]any {
+	messages := make([]map[string]any, 0, len(turns))
 	for _, m := range turns {
-		messages = append(messages, map[string]string{"role": m.Role, "content": m.Content})
+		messages = append(messages, anthropicOneMessage(m))
 	}
 	return messages
 }
 
+// anthropicOneMessage renders a single ChatMessage in the Messages
+// API's own shape -- split out of anthropicChatMessages purely to keep
+// that function's own cognitive complexity under the repo's gate. An
+// assistant turn carrying ToolCalls sends each as a tool_use content
+// block (Arguments parsed back into an object -- Anthropic's "input" is
+// a JSON object, never a string, unlike OpenAI's own wire shape); a
+// "tool" turn has no such role on this API, so it's sent as Anthropic's
+// own documented shape instead: a "user" message whose content is a
+// single tool_result block naming ToolCallID.
+func anthropicOneMessage(m ChatMessage) map[string]any {
+	switch {
+	case m.Role == "assistant" && len(m.ToolCalls) > 0:
+		content := []map[string]any{}
+		if m.Content != "" {
+			content = append(content, map[string]any{"type": "text", "text": m.Content})
+		}
+		for _, tc := range m.ToolCalls {
+			var input any = map[string]any{}
+			if len(tc.Arguments) > 0 {
+				_ = json.Unmarshal(tc.Arguments, &input)
+			}
+			content = append(content, map[string]any{"type": "tool_use", "id": tc.ID, "name": tc.Name, "input": input})
+		}
+		return map[string]any{"role": "assistant", "content": content}
+	case m.Role == "tool":
+		return map[string]any{
+			"role":    "user",
+			"content": []map[string]any{{"type": "tool_result", "tool_use_id": m.ToolCallID, "content": m.Content}},
+		}
+	default:
+		return map[string]any{"role": m.Role, "content": m.Content}
+	}
+}
+
+// anthropicToolDefs renders ChatRequest.Tools as Anthropic's own tools
+// array shape -- nil (the "tools" key omitted entirely) when the
+// caller passed none. Unlike completeAnthropic's structured-output
+// forced-tool-choice use of this same API, a chat turn never sets
+// tool_choice -- the model decides for itself whether to call a tool,
+// same as OpenAI's default "auto".
+func anthropicToolDefs(tools []ToolDef) []map[string]any {
+	if len(tools) == 0 {
+		return nil
+	}
+	out := make([]map[string]any, 0, len(tools))
+	for _, t := range tools {
+		out = append(out, map[string]any{
+			"name": t.Name, "description": t.Description, "input_schema": json.RawMessage(t.InputSchema),
+		})
+	}
+	return out
+}
+
+// anthropicToolBlockStart is a content_block_start event's contribution
+// -- only populated when that block is a tool_use block (a plain text
+// block start carries no id/name, and isn't tracked here since text
+// deltas need no per-index accumulation).
+type anthropicToolBlockStart struct {
+	Index    int
+	ID, Name string
+}
+
+// anthropicToolJSONDelta is one content_block_delta event's
+// input_json_delta fragment for the tool_use block at Index.
+type anthropicToolJSONDelta struct {
+	Index    int
+	Fragment string
+}
+
+// anthropicStreamDelta is one decoded event's contribution to the turn
+// in progress.
+type anthropicStreamDelta struct {
+	Text           string
+	ToolBlockStart *anthropicToolBlockStart
+	ToolJSONDelta  *anthropicToolJSONDelta
+}
+
 // parseAnthropicEvent decodes one Anthropic SSE (event, data) pair
-// into its text delta -- split out of chatAnthropic's scanSSE closure
-// purely to keep that function's own cognitive complexity under the
-// repo's gate. stop reports message_stop (or any decode/error-event
-// failure, carried in err); every other event contributes no delta.
-// Returned unprefixed -- chatAnthropic wraps it with the provider/
-// endpoint that failed at its own return site, the one place that
-// prefix gets added.
-func parseAnthropicEvent(event, data string) (delta string, stop bool, err error) {
+// into its contribution to the turn -- split out of chatAnthropic's
+// scanSSE closure purely to keep that function's own cognitive
+// complexity under the repo's gate. stop reports message_stop (or any
+// decode/error-event failure, carried in err); every other event
+// contributes no delta. Returned unprefixed -- chatAnthropic wraps it
+// with the provider/endpoint that failed at its own return site, the
+// one place that prefix gets added.
+func parseAnthropicEvent(event, data string) (out anthropicStreamDelta, stop bool, err error) {
 	switch event {
+	case "content_block_start":
+		return parseAnthropicBlockStart(data)
 	case "content_block_delta":
-		var d struct {
-			Delta struct {
-				Type string `json:"type"`
-				Text string `json:"text"`
-			} `json:"delta"`
-		}
-		if err := json.Unmarshal([]byte(data), &d); err != nil {
-			return "", true, fmt.Errorf("parse stream event: %w", err)
-		}
-		if d.Delta.Type == "text_delta" {
-			return d.Delta.Text, false, nil
-		}
-		return "", false, nil
+		return parseAnthropicBlockDelta(data)
 	case "error":
 		var e struct {
 			Error struct {
@@ -170,25 +241,105 @@ func parseAnthropicEvent(event, data string) (delta string, stop bool, err error
 			} `json:"error"`
 		}
 		_ = json.Unmarshal([]byte(data), &e)
-		return "", true, errors.New(e.Error.Message)
+		return anthropicStreamDelta{}, true, errors.New(e.Error.Message)
 	case "message_stop":
-		return "", true, nil
+		return anthropicStreamDelta{}, true, nil
 	default:
-		return "", false, nil
+		return anthropicStreamDelta{}, false, nil
 	}
 }
 
-func chatAnthropic(req ChatRequest, onDelta func(string)) (string, error) {
-	baseURL := effectiveAnthropicBaseURL(req.BaseURL)
+// parseAnthropicBlockStart decodes one content_block_start event --
+// split out of parseAnthropicEvent purely to keep that function's own
+// cognitive complexity under the repo's gate.
+func parseAnthropicBlockStart(data string) (anthropicStreamDelta, bool, error) {
+	var d struct {
+		Index        int `json:"index"`
+		ContentBlock struct {
+			Type string `json:"type"`
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"content_block"`
+	}
+	if err := json.Unmarshal([]byte(data), &d); err != nil {
+		return anthropicStreamDelta{}, true, fmt.Errorf("parse stream event: %w", err)
+	}
+	if d.ContentBlock.Type != "tool_use" {
+		return anthropicStreamDelta{}, false, nil
+	}
+	return anthropicStreamDelta{ToolBlockStart: &anthropicToolBlockStart{
+		Index: d.Index, ID: d.ContentBlock.ID, Name: d.ContentBlock.Name,
+	}}, false, nil
+}
+
+// parseAnthropicBlockDelta decodes one content_block_delta event --
+// split out of parseAnthropicEvent purely to keep that function's own
+// cognitive complexity under the repo's gate.
+func parseAnthropicBlockDelta(data string) (anthropicStreamDelta, bool, error) {
+	var d struct {
+		Index int `json:"index"`
+		Delta struct {
+			Type        string `json:"type"`
+			Text        string `json:"text"`
+			PartialJSON string `json:"partial_json"`
+		} `json:"delta"`
+	}
+	if err := json.Unmarshal([]byte(data), &d); err != nil {
+		return anthropicStreamDelta{}, true, fmt.Errorf("parse stream event: %w", err)
+	}
+	switch d.Delta.Type {
+	case "text_delta":
+		return anthropicStreamDelta{Text: d.Delta.Text}, false, nil
+	case "input_json_delta":
+		return anthropicStreamDelta{ToolJSONDelta: &anthropicToolJSONDelta{Index: d.Index, Fragment: d.Delta.PartialJSON}}, false, nil
+	default:
+		return anthropicStreamDelta{}, false, nil
+	}
+}
+
+// anthropicChatBody builds chatAnthropic's own request body -- split
+// out purely to keep chatAnthropic's own cognitive complexity under
+// the repo's gate.
+func anthropicChatBody(req ChatRequest) map[string]any {
 	body := map[string]any{
 		"model": req.Model, "max_tokens": 4096, "messages": anthropicChatMessages(req.Messages), "stream": true,
 	}
 	if req.System != "" {
 		body["system"] = req.System
 	}
-	data, err := json.Marshal(body)
+	if defs := anthropicToolDefs(req.Tools); defs != nil {
+		body["tools"] = defs
+	}
+	return body
+}
+
+// mergeAnthropicStreamDelta folds one decoded event's contribution into
+// the turn in progress (streamed text, and any tool-call
+// start/argument fragment) -- split out of chatAnthropic's scanSSE
+// closure purely to keep that function's own cognitive complexity under
+// the repo's gate.
+func mergeAnthropicStreamDelta(full *strings.Builder, onDelta func(string), calls map[int]*buildingToolCall, order *[]int, d anthropicStreamDelta) {
+	if d.Text != "" {
+		full.WriteString(d.Text)
+		onDelta(d.Text)
+	}
+	if d.ToolBlockStart != nil {
+		bc := &buildingToolCall{id: d.ToolBlockStart.ID, name: d.ToolBlockStart.Name}
+		calls[d.ToolBlockStart.Index] = bc
+		*order = append(*order, d.ToolBlockStart.Index)
+	}
+	if d.ToolJSONDelta != nil {
+		if bc, ok := calls[d.ToolJSONDelta.Index]; ok {
+			bc.args.WriteString(d.ToolJSONDelta.Fragment)
+		}
+	}
+}
+
+func chatAnthropic(req ChatRequest, onDelta func(string)) (ChatResult, error) {
+	baseURL := effectiveAnthropicBaseURL(req.BaseURL)
+	data, err := json.Marshal(anthropicChatBody(req))
 	if err != nil {
-		return "", fmt.Errorf("anthropic: encode request: %w", err)
+		return ChatResult{}, fmt.Errorf("anthropic: encode request: %w", err)
 	}
 
 	headers := map[string]string{
@@ -209,33 +360,33 @@ func chatAnthropic(req ChatRequest, onDelta func(string)) (string, error) {
 		Headers: headers, Body: string(data),
 	})
 	if err != nil {
-		return "", fmt.Errorf("anthropic: request to %s failed: %w", endpoint, err)
+		return ChatResult{}, fmt.Errorf("anthropic: request to %s failed: %w", endpoint, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		errBody, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("anthropic: %s returned status %d: %s", endpoint, resp.StatusCode, truncate(string(errBody)))
+		return ChatResult{}, fmt.Errorf("anthropic: %s returned status %d: %s", endpoint, resp.StatusCode, truncate(string(errBody)))
 	}
 
 	var full strings.Builder
+	calls := map[int]*buildingToolCall{}
+	var order []int
 	var streamErr error
 	scanErr := scanSSE(resp.Body, func(event, data string) bool {
-		delta, stop, err := parseAnthropicEvent(event, data)
+		d, stop, err := parseAnthropicEvent(event, data)
 		if err != nil {
 			streamErr = err
 			return false
 		}
-		if delta != "" {
-			full.WriteString(delta)
-			onDelta(delta)
-		}
+		mergeAnthropicStreamDelta(&full, onDelta, calls, &order, d)
 		return !stop
 	})
+	result := ChatResult{Text: full.String(), ToolCalls: finishToolCalls(calls, order)}
 	if scanErr != nil {
-		return full.String(), fmt.Errorf("anthropic: %s: read stream: %w", endpoint, scanErr)
+		return result, fmt.Errorf("anthropic: %s: read stream: %w", endpoint, scanErr)
 	}
 	if streamErr != nil {
-		return full.String(), fmt.Errorf("anthropic: %s: %w", endpoint, streamErr)
+		return result, fmt.Errorf("anthropic: %s: %w", endpoint, streamErr)
 	}
-	return full.String(), nil
+	return result, nil
 }

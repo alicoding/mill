@@ -75,7 +75,7 @@ var chatFn = aiclient.Chat
 
 // SetChatFn overrides how SendMessage actually streams a completion --
 // test-only; production always uses the default (aiclient.Chat).
-func SetChatFn(fn func(aiclient.ChatRequest, func(string)) (string, error)) {
+func SetChatFn(fn func(aiclient.ChatRequest, func(string)) (aiclient.ChatResult, error)) {
 	chatFn = fn
 }
 
@@ -122,17 +122,17 @@ func (c *CompanionService) SendMessage(aiProviderID, system string, messages []C
 	for i, m := range messages {
 		chatMessages[i] = aiclient.ChatMessage{Role: m.Role, Content: m.Content}
 	}
-	text, err := chatFn(aiclient.ChatRequest{
+	res, err := chatFn(aiclient.ChatRequest{
 		Kind: aiclient.Kind(rp.Kind), BaseURL: rp.BaseURL, Model: rp.Model, APIKey: rp.APIKey,
 		System: system, Messages: chatMessages,
 	}, emitDelta)
 	if err != nil {
-		return CompanionReply{Text: text}, fmt.Errorf("companion: %w", err)
+		return CompanionReply{Text: res.Text}, fmt.Errorf("companion: %w", err)
 	}
 
-	preview, err := c.atlas.PreviewClipbridgeReply(text)
+	preview, err := c.atlas.PreviewClipbridgeReply(res.Text)
 	if err != nil {
-		return CompanionReply{Text: text}, fmt.Errorf("companion: %w", err)
+		return CompanionReply{Text: res.Text}, fmt.Errorf("companion: %w", err)
 	}
-	return CompanionReply{Text: text, Preview: preview}, nil
+	return CompanionReply{Text: res.Text, Preview: preview}, nil
 }

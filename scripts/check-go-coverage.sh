@@ -7,11 +7,13 @@
 # test run isn't paid twice).
 set -euo pipefail
 PROFILE="${1:?usage: check-go-coverage.sh <coverprofile>}"
-# 69.5: the floor is the MINIMUM across enforcing environments -- the
-# macOS CI runner measures 69.8 where a local desktop run measures
-# 70.4 (build-tag paths differ slightly), and the floor must hold in
-# the strictest one. Raise it here when the CI number climbs.
-FLOOR="71.0"
+# The floor is the MINIMUM across enforcing environments -- raised here
+# (goal 0101 slice 1, the aiclient tool-use + agentloopsvc addition) from
+# 71.0, measured at 72.3% on a local desktop run and 71.9% on CI's own
+# runner (the two differ enough that only the CI number is safe to hold
+# a floor against). Held a few tenths below 71.9 for margin. Raise it
+# again here when the CI number climbs.
+FLOOR="71.5"
 TOTAL=$(go tool cover -func="$PROFILE" | awk '/^total:/ {gsub(/%/,"",$3); print $3}')
 if [ -z "$TOTAL" ]; then
   echo "check-go-coverage: no total in $PROFILE" >&2
