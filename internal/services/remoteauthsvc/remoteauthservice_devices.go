@@ -29,12 +29,19 @@ const (
 
 // DeviceInfo is Settings > Remote access's read model for one paired
 // device -- deliberately excludes Salt/Hash, which never leave the
-// server.
+// server. Unlike the device token (shown once, at pairing), the phone
+// channel's SubscribeURL is meant to be re-copied any time, so it is
+// exposed in full here.
 type DeviceInfo struct {
 	ID         string    `json:"id"`
 	Label      string    `json:"label"`
 	CreatedAt  time.Time `json:"createdAt"`
 	LastSeenAt time.Time `json:"lastSeenAt"`
+	// SubscribeURL is this device's ntfy phone-channel address (docs/
+	// goals/0132 SLICE B), built from Topic plus the address this
+	// device last reached Mill on. Empty until Mill has seen a request
+	// from this device with a resolvable host.
+	SubscribeURL string `json:"subscribeUrl,omitempty"`
 }
 
 // ListDevices returns every currently paired device, oldest first, so
@@ -46,28 +53,45 @@ func (s *RemoteAuthService) ListDevices() []DeviceInfo {
 	infos := make([]DeviceInfo, 0, len(s.devices))
 	for _, d := range s.devices {
 		infos = append(infos, DeviceInfo{
-			ID:         d.ID,
-			Label:      d.Label,
-			CreatedAt:  d.CreatedAt,
-			LastSeenAt: d.LastSeenAt,
+			ID:           d.ID,
+			Label:        d.Label,
+			CreatedAt:    d.CreatedAt,
+			LastSeenAt:   d.LastSeenAt,
+			SubscribeURL: subscribeURL(d),
 		})
 	}
 	sort.Slice(infos, func(i, j int) bool { return infos[i].CreatedAt.Before(infos[j].CreatedAt) })
 	return infos
 }
 
+// subscribeURL builds d's copyable ntfy address, or "" until both
+// halves (a topic, and a proven-reachable base address) are known.
+func subscribeURL(d device) string {
+	if d.BaseURL == "" || d.Topic == "" {
+		return ""
+	}
+	return d.BaseURL + "/" + d.Topic + "/json"
+}
+
 // RevokeDevice deletes id's paired-device record. Any request still
 // carrying that device's cookie is rejected on its very next request
 // -- validateToken (below) only ever matches against the live list.
+// The device's phone-channel topic dies with it: a new subscribe
+// attempt gets the same 404 as any never-paired topic (recordTopicSeen
+// only matches the live list too), and forceCloseTopic drops any
+// subscribe connection already open right now, rather than waiting for
+// it to eventually reconnect into a 404.
 func (s *RemoteAuthService) RevokeDevice(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	kept := s.devices[:0]
 	found := false
+	var revokedTopic string
 	for _, d := range s.devices {
 		if d.ID == id {
 			found = true
+			revokedTopic = d.Topic
 			continue
 		}
 		kept = append(kept, d)
@@ -76,7 +100,11 @@ func (s *RemoteAuthService) RevokeDevice(id string) error {
 		return fmt.Errorf("remoteauthsvc: no paired device %q", id)
 	}
 	s.devices = kept
-	return s.saveDevices()
+	err := s.saveDevices()
+	if revokedTopic != "" {
+		s.forceCloseTopic(revokedTopic)
+	}
+	return err
 }
 
 // RenameDevice updates a paired device's label -- a device is
@@ -114,26 +142,34 @@ const testAllowDeviceSeedEnv = "MILL_TEST_ALLOW_DEVICE_SEED"
 // SeedTestDevice mints a paired device directly, bypassing the HTTP
 // pairing flow entirely -- e2e-only (see testAllowDeviceSeedEnv
 // above), never reachable in a real deployment.
-func (s *RemoteAuthService) SeedTestDevice(label string) (DeviceInfo, error) {
+// baseURL is accepted (rather than always "") so e2e coverage can seed
+// a device whose SubscribeURL is already populated -- a real pairing
+// round trip sets it from the pairing request itself, which this seam
+// exists specifically to bypass.
+func (s *RemoteAuthService) SeedTestDevice(label, baseURL string) (DeviceInfo, error) {
 	if os.Getenv(testAllowDeviceSeedEnv) == "" {
 		return DeviceInfo{}, fmt.Errorf("remoteauthsvc: SeedTestDevice is unavailable outside test mode")
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, err := s.mintDevice(label); err != nil {
+	if _, err := s.mintDevice(label, baseURL); err != nil {
 		return DeviceInfo{}, err
 	}
 	d := s.devices[len(s.devices)-1]
-	return DeviceInfo{ID: d.ID, Label: d.Label, CreatedAt: d.CreatedAt, LastSeenAt: d.LastSeenAt}, nil
+	return DeviceInfo{ID: d.ID, Label: d.Label, CreatedAt: d.CreatedAt, LastSeenAt: d.LastSeenAt, SubscribeURL: subscribeURL(d)}, nil
 }
 
 // mintDevice pairs a new device: generates its token, stores only a
 // salted hash of it (SLICE 1 DESIGN CONTRACT, pairing step 3), and
 // returns the raw token so the caller can set it as the device
 // cookie. The raw token is never retained after this call returns.
-// Held under mu by callers.
-func (s *RemoteAuthService) mintDevice(label string) (token string, err error) {
+// It also generates the phone channel's topic (SLICE B item 1) --
+// long, crypto/rand, never user-chosen -- and records baseURL (the
+// scheme+host this pairing request itself arrived on, "" when
+// unknown) as the device's first known reachable address. Held under
+// mu by callers.
+func (s *RemoteAuthService) mintDevice(label, baseURL string) (token string, err error) {
 	tokenBytes, err := randomBytes(deviceTokenBytes)
 	if err != nil {
 		return "", err
@@ -146,6 +182,10 @@ func (s *RemoteAuthService) mintDevice(label string) (token string, err error) {
 	if err != nil {
 		return "", err
 	}
+	topicBytes, err := randomBytes(deviceTopicBytes)
+	if err != nil {
+		return "", err
+	}
 
 	token = hex.EncodeToString(tokenBytes)
 	now := time.Now()
@@ -154,6 +194,8 @@ func (s *RemoteAuthService) mintDevice(label string) (token string, err error) {
 		Label:      label,
 		SaltB64:    hex.EncodeToString(saltBytes),
 		HashB64:    hashToken(saltBytes, tokenBytes),
+		Topic:      hex.EncodeToString(topicBytes),
+		BaseURL:    baseURL,
 		CreatedAt:  now,
 		LastSeenAt: now,
 	})
@@ -163,14 +205,36 @@ func (s *RemoteAuthService) mintDevice(label string) (token string, err error) {
 	return token, nil
 }
 
+// backfillTopics assigns a phone-channel topic to any device paired
+// before that channel existed, so an already-paired device gets the
+// capability with no re-pair required. Reports whether anything
+// changed, so the caller only persists when needed. Held under mu by
+// callers (loadDevices, at construction, before the service is shared).
+func (s *RemoteAuthService) backfillTopics() bool {
+	changed := false
+	for i, d := range s.devices {
+		if d.Topic != "" {
+			continue
+		}
+		topicBytes, err := randomBytes(deviceTopicBytes)
+		if err != nil {
+			s.logger.Error("remote access: backfilling phone topic", "device", d.ID, "error", err)
+			continue
+		}
+		s.devices[i].Topic = hex.EncodeToString(topicBytes)
+		changed = true
+	}
+	return changed
+}
+
 // validateToken reports whether token matches a live paired device,
-// updating that device's LastSeenAt on success. It always walks the
-// full device list rather than short-circuiting on the first
-// comparison, and every comparison is crypto/subtle -- no early exit
-// gives an attacker a per-device timing signal, and an absent/
-// malformed token still costs the same compare loop as a wrong one.
-// Held under mu by callers.
-func (s *RemoteAuthService) validateToken(token string, now time.Time) bool {
+// updating that device's LastSeenAt (and BaseURL, when baseURL is
+// non-empty) on success. It always walks the full device list rather
+// than short-circuiting on the first comparison, and every comparison
+// is crypto/subtle -- no early exit gives an attacker a per-device
+// timing signal, and an absent/malformed token still costs the same
+// compare loop as a wrong one. Held under mu by callers.
+func (s *RemoteAuthService) validateToken(token, baseURL string, now time.Time) bool {
 	tokenBytes, err := hex.DecodeString(token)
 	if err != nil {
 		return false
@@ -190,6 +254,9 @@ func (s *RemoteAuthService) validateToken(token string, now time.Time) bool {
 		return false
 	}
 	s.devices[matchedIndex].LastSeenAt = now
+	if baseURL != "" {
+		s.devices[matchedIndex].BaseURL = baseURL
+	}
 	if err := s.saveDevices(); err != nil {
 		s.logger.Error("remote access: recording device last-seen", "error", err)
 	}

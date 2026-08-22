@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionList, Button, IconButton, Stack, Text, TextInput } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import { CheckIcon, DeviceMobileIcon, PencilIcon, PlusIcon, XIcon } from '@primer/octicons-react'
+import { CheckIcon, CopyIcon, DeviceMobileIcon, PencilIcon, PlusIcon, XIcon } from '@primer/octicons-react'
 import { RemoteAuthService, SettingsService } from '../shared/bindings'
 import type { DeviceInfo, PairingCodeInfo } from '../shared/bindings'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { formatUpdated } from '../shared/inventorySort'
 import { getNotificationPermission, requestNotificationPermission } from '../shared/browserNotify'
 import type { BrowserNotifyPermission } from '../shared/browserNotify'
+import { writeClipboardText } from '../shared/clipboardWrite'
 import listStyles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
 
@@ -27,6 +28,10 @@ function RemoteAccessSection() {
   const [revoking, setRevoking] = useState<DeviceInfo | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
+  // docs/goals/0132 SLICE B: which device's subscribe address was just
+  // copied, so its button can briefly show a checkmark -- same
+  // copied-then-timeout shape as shared/CopyDiagnosisButton.tsx.
+  const [copiedDeviceId, setCopiedDeviceId] = useState<string | null>(null)
   // docs/goals/0132 SLICE A: this control has no reason to render on a
   // desktop build -- the desktop path already gets a native banner with
   // no opt-in, and browserNotifyPredicate.shouldNotifyBrowserTab never
@@ -81,6 +86,15 @@ function RemoteAccessSection() {
         setRenamingId(null)
         setRenameDraft('')
         refresh()
+      })
+      .catch((err) => setError(String(err)))
+  }
+
+  const copySubscribeUrl = (id: string, url: string) => {
+    writeClipboardText(url)
+      .then(() => {
+        setCopiedDeviceId(id)
+        setTimeout(() => setCopiedDeviceId(null), 1500)
       })
       .catch((err) => setError(String(err)))
   }
@@ -220,6 +234,37 @@ function RemoteAccessSection() {
                   lastSeen: formatUpdated(d.lastSeenAt),
                 })}
               </ActionList.Description>
+              {d.subscribeUrl && (
+                <div
+                  style={{ pointerEvents: 'auto', marginTop: 'var(--base-size-4)' }}
+                  onClick={(e) => e.stopPropagation()}
+                  data-testid="device-subscribe-row"
+                >
+                  <Stack direction="horizontal" gap="condensed" align="center">
+                    <Text size="small" className={monoStyles.mono} data-testid="device-subscribe-url">
+                      {d.subscribeUrl}
+                    </Text>
+                    <IconButton
+                      icon={copiedDeviceId === d.id ? CheckIcon : CopyIcon}
+                      size="small"
+                      variant="invisible"
+                      aria-label={
+                        copiedDeviceId === d.id
+                          ? t('settings.remoteAccess.phone.copiedAriaLabel')
+                          : t('settings.remoteAccess.phone.copyAriaLabel')
+                      }
+                      onClick={() => copySubscribeUrl(d.id, d.subscribeUrl!)}
+                      data-testid="device-subscribe-copy"
+                    />
+                  </Stack>
+                  <Text as="p" size="small" className={listStyles.muted}>
+                    {t('settings.remoteAccess.phone.caption')}
+                  </Text>
+                  <Text as="p" size="small" className={listStyles.muted}>
+                    {t('settings.remoteAccess.phone.secretNote')}
+                  </Text>
+                </div>
+              )}
               <ActionList.TrailingVisual>
                 <div style={{ pointerEvents: 'auto' }} onClick={(e) => e.stopPropagation()}>
                   <Button size="small" variant="danger" onClick={() => setRevoking(d)} data-testid="revoke-device">

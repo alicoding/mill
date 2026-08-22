@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures/server'
+import { withClipboardLock } from './fixtures/clipboardLock'
 
 // seedTestDevice populates a paired device directly through
 // RemoteAuthService.SeedTestDevice (methodID 341728691 in
@@ -7,18 +8,21 @@ import { test, expect } from './fixtures/server'
 // gated by MILL_TEST_ALLOW_DEVICE_SEED (set for every worker server in
 // fixtures/server.ts). A real pairing round trip only completes over a
 // non-loopback connection, which this isolated per-worker server never
-// has, so rename/last-seen coverage needs a paired row some other way
-// -- posted straight to the Wails RPC endpoint (same wire shape
-// @wailsio/runtime's Call.ByID uses) rather than through page JS, so
-// this helper works whether or not the bindings module happens to be
-// its own reachable chunk in a given build.
-async function seedTestDevice(page: Page, label: string): Promise<{ id: string; label: string }> {
+// has, so rename/last-seen/subscribe-URL coverage needs a paired row
+// some other way -- posted straight to the Wails RPC endpoint (same
+// wire shape @wailsio/runtime's Call.ByID uses) rather than through
+// page JS, so this helper works whether or not the bindings module
+// happens to be its own reachable chunk in a given build. baseURL
+// defaults to "" (no phone-channel subscribe URL, matching a real
+// pairing over loopback) -- docs/goals/0132 SLICE B's own coverage
+// passes a real one to get a populated row.
+async function seedTestDevice(page: Page, label: string, baseURL = ''): Promise<{ id: string; label: string; subscribeUrl?: string }> {
   const response = await page.request.post('/wails/runtime', {
     headers: { 'x-wails-client-id': 'e2e-seed', 'Content-Type': 'application/json' },
     data: {
       object: 0, // @wailsio/runtime objectNames.Call
       method: 0, // the Call object's CallBinding method
-      args: { 'call-id': `e2e-seed-${label}`, methodID: 341728691, args: [label] },
+      args: { 'call-id': `e2e-seed-${label}`, methodID: 341728691, args: [label, baseURL] },
     },
   })
   if (!response.ok()) {
@@ -187,4 +191,62 @@ test('a paired device row shows when it was paired and when it was last seen', a
   await row.getByTestId('revoke-device').click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Revoke' }).click()
   await expect(page.getByText('Freshly Paired Device')).toHaveCount(0)
+})
+
+// docs/goals/0132-remote-access.md SLICE B item 6: the copyable
+// subscribe URL on a paired device's row.
+test('a device with a known base address shows its copyable phone-channel subscribe URL', async ({ page }) => {
+  const device = await seedTestDevice(page, 'Subscribe URL Device', 'http://phone-test.local:9000')
+  expect(device.subscribeUrl).toMatch(/^http:\/\/phone-test\.local:9000\/[0-9a-f]{32}\/json$/)
+
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Settings' }).click()
+  const row = page.locator(`[data-testid="paired-device-row"][data-device-id="${device.id}"]`)
+  await row.scrollIntoViewIfNeeded()
+
+  const subscribeRow = row.getByTestId('device-subscribe-row')
+  await expect(subscribeRow.getByTestId('device-subscribe-url')).toHaveText(device.subscribeUrl!)
+  await expect(subscribeRow).toContainText('Install the ntfy Android app')
+  await expect(subscribeRow).toContainText('Keep this address private')
+
+  // A real clipboard write, same real-OS-pasteboard contention risk
+  // copy-diagnosis.spec.ts's own header comment documents -- takes the
+  // same lock.
+  await withClipboardLock(async () => {
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+    await subscribeRow.getByTestId('device-subscribe-copy').click()
+    await expect(subscribeRow.getByTestId('device-subscribe-copy')).toHaveAccessibleName('Copied')
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(device.subscribeUrl)
+  })
+
+  await row.getByTestId('revoke-device').click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Revoke' }).click()
+})
+
+// A device with no known base address yet (never pairs/subscribes over
+// a resolvable host in this isolated worker) must not show a dangling
+// subscribe row at all.
+test('a device with no known base address shows no subscribe row', async ({ page }) => {
+  const device = await seedTestDevice(page, 'No Base URL Device')
+  expect(device.subscribeUrl ?? '').toBe('')
+
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Settings' }).click()
+  const row = page.locator(`[data-testid="paired-device-row"][data-device-id="${device.id}"]`)
+  await row.scrollIntoViewIfNeeded()
+  await expect(row.getByTestId('device-subscribe-row')).toHaveCount(0)
+
+  await row.getByTestId('revoke-device').click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Revoke' }).click()
+})
+
+// docs/goals/0132-remote-access.md SLICE B item 4: the phone channel's
+// ntfy click URL lands on the Review view, never the home screen --
+// proven here as the deep link itself (#/review on load), since the
+// real click always originates from a fresh page load with no live
+// Wails runtime already connected (useMillNavigate's event listener
+// only reaches an already-open window).
+test('opening #/review lands on the Review view, not the home screen', async ({ page }) => {
+  await page.goto('/#/review')
+  await expect(page.getByTestId('review-view')).toBeVisible()
 })
