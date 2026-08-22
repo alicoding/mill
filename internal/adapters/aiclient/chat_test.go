@@ -39,15 +39,15 @@ func TestChatOpenAICompat_StreamsDeltasAndReturnsFullText(t *testing.T) {
 		`{"choices":[{"delta":{"content":"lo"}}]}`,
 	}, true)
 	var deltas []string
-	text, err := Chat(ChatRequest{
+	res, err := Chat(ChatRequest{
 		Kind: KindOpenAICompat, BaseURL: srv.URL, Model: "llama3.2",
 		System: "be terse", Messages: []ChatMessage{{Role: "user", Content: "say hi"}},
 	}, func(d string) { deltas = append(deltas, d) })
 	if err != nil {
 		t.Fatalf("Chat: %v", err)
 	}
-	if text != "hello" {
-		t.Errorf("text = %q, want %q", text, "hello")
+	if res.Text != "hello" {
+		t.Errorf("text = %q, want %q", res.Text, "hello")
 	}
 	if len(deltas) != 2 || deltas[0] != "hel" || deltas[1] != "lo" {
 		t.Errorf("deltas = %v, want [hel lo]", deltas)
@@ -59,15 +59,15 @@ func TestChatOpenAICompat_MidStreamErrorReturnsPartialTextAndError(t *testing.T)
 		`{"choices":[{"delta":{"content":"partial"}}]}`,
 		`{"error":{"message":"model overloaded"}}`,
 	}, false)
-	text, err := Chat(ChatRequest{
+	res, err := Chat(ChatRequest{
 		Kind: KindOpenAICompat, BaseURL: srv.URL, Model: "llama3.2",
 		Messages: []ChatMessage{{Role: "user", Content: "hi"}},
 	}, func(string) {})
 	if err == nil || !strings.Contains(err.Error(), "model overloaded") {
 		t.Fatalf("expected an error mentioning the mid-stream failure, got: %v", err)
 	}
-	if text != "partial" {
-		t.Errorf("text = %q, want the text streamed before the failure %q", text, "partial")
+	if res.Text != "partial" {
+		t.Errorf("text = %q, want the text streamed before the failure %q", res.Text, "partial")
 	}
 }
 
@@ -136,15 +136,15 @@ func TestChatAnthropic_StreamsTextDeltasAndReturnsFullText(t *testing.T) {
 		{"message_stop", `{"type":"message_stop"}`},
 	})
 	var deltas []string
-	text, err := Chat(ChatRequest{
+	res, err := Chat(ChatRequest{
 		Kind: KindAnthropic, BaseURL: srv.URL, Model: "claude-sonnet-4-5",
 		Messages: []ChatMessage{{Role: "user", Content: "hi"}},
 	}, func(d string) { deltas = append(deltas, d) })
 	if err != nil {
 		t.Fatalf("Chat: %v", err)
 	}
-	if text != "hello" {
-		t.Errorf("text = %q, want %q", text, "hello")
+	if res.Text != "hello" {
+		t.Errorf("text = %q, want %q", res.Text, "hello")
 	}
 	if len(deltas) != 2 {
 		t.Errorf("deltas = %v, want 2 entries", deltas)
@@ -156,16 +156,50 @@ func TestChatAnthropic_ErrorEventReturnsPartialTextAndError(t *testing.T) {
 		{"content_block_delta", `{"delta":{"type":"text_delta","text":"partial"}}`},
 		{"error", `{"type":"error","error":{"type":"overloaded_error","message":"overloaded"}}`},
 	})
-	text, err := Chat(ChatRequest{
+	res, err := Chat(ChatRequest{
 		Kind: KindAnthropic, BaseURL: srv.URL, Model: "claude-sonnet-4-5",
 		Messages: []ChatMessage{{Role: "user", Content: "hi"}},
 	}, func(string) {})
 	if err == nil || !strings.Contains(err.Error(), "overloaded") {
 		t.Fatalf("expected an error mentioning the failure, got: %v", err)
 	}
-	if text != "partial" {
-		t.Errorf("text = %q, want %q", text, "partial")
+	if res.Text != "partial" {
+		t.Errorf("text = %q, want %q", res.Text, "partial")
 	}
+}
+
+// fixtureOpenAICompatCapture serves one minimal successful streaming
+// reply while capturing the raw request body into *gotBody -- shared by
+// chat_tools_test.go's request-shape assertions (tool defs reaching the
+// wire, a tool-result turn's own shape) that only care what was SENT,
+// not what streams back.
+func fixtureOpenAICompatCapture(t *testing.T, gotBody *string) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		buf := make([]byte, 8192)
+		n, _ := r.Body.Read(buf)
+		*gotBody = string(buf[:n])
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte(`data: {"choices":[{"delta":{"content":"ok"}}]}` + "\n\n" + "data: [DONE]\n\n"))
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// fixtureAnthropicCapture mirrors fixtureOpenAICompatCapture for the
+// Anthropic wire shape.
+func fixtureAnthropicCapture(t *testing.T, gotBody *string) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		buf := make([]byte, 8192)
+		n, _ := r.Body.Read(buf)
+		*gotBody = string(buf[:n])
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte("event: content_block_delta\ndata: {\"delta\":{\"type\":\"text_delta\",\"text\":\"ok\"}}\n\n" +
+			"event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"))
+	}))
+	t.Cleanup(srv.Close)
+	return srv
 }
 
 func TestChat_UnknownKindErrors(t *testing.T) {

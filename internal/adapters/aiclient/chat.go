@@ -8,11 +8,18 @@ import (
 )
 
 // ChatMessage is one turn of a multi-turn conversation -- Role is
-// "user" or "assistant", mirroring every wire shape's own vocabulary
-// exactly (see chatOpenAICompat/chatAnthropic).
+// "user", "assistant", or "tool", mirroring every wire shape's own
+// vocabulary exactly (see chatOpenAICompat/chatAnthropic). An assistant
+// turn that requested tool calls carries them in ToolCalls (Content may
+// still hold leading reasoning text some providers stream alongside a
+// call); a "tool" turn is that call's result, correlated back via
+// ToolCallID -- the same ToolCall.ID the assistant turn's entry
+// carried, required whenever Role is "tool".
 type ChatMessage struct {
-	Role    string
-	Content string
+	Role       string
+	Content    string
+	ToolCalls  []ToolCall
+	ToolCallID string
 }
 
 // ChatRequest is one streaming, multi-turn completion call -- the
@@ -21,7 +28,9 @@ type ChatMessage struct {
 // a conversation has no Schema concept: the reply contract that makes
 // a turn machine-parseable travels inside System instead (the same
 // envelope BuildContextEnvelope already produces), never as a second,
-// competing structured-output mechanism.
+// competing structured-output mechanism. Tools is empty for an
+// ordinary companion turn; the agent loop (docs/goals/0101 slice 1)
+// populates it from Mill's own MCP tool listing every turn.
 type ChatRequest struct {
 	Kind     Kind
 	BaseURL  string
@@ -29,24 +38,31 @@ type ChatRequest struct {
 	APIKey   string
 	System   string
 	Messages []ChatMessage
+	Tools    []ToolDef
 }
 
 // Chat dispatches req to the streaming adapter matching req.Kind,
 // invoking onDelta with each incremental text chunk as the provider
 // streams its reply -- never buffered, since the companion panel
 // renders tokens into the transcript as they arrive. Returns the
-// complete, concatenated reply text once the stream ends. A mid-stream
-// failure still returns whatever text streamed before it broke,
-// alongside the error, so a caller can decide whether a partial reply
-// is worth keeping.
-func Chat(req ChatRequest, onDelta func(string)) (string, error) {
+// complete, concatenated reply text plus any tool calls the model
+// requested this turn once the stream ends -- a turn that requests a
+// tool call still streams whatever reasoning text preceded it through
+// onDelta exactly like a text-only turn, then ends its stream the
+// moment the call is complete (a completed tool call always ends the
+// turn, never straddles a "continue streaming text after" case, per
+// every wire shape's own documented behavior). A mid-stream failure
+// still returns whatever text streamed before it broke, alongside the
+// error, so a caller can decide whether a partial reply is worth
+// keeping.
+func Chat(req ChatRequest, onDelta func(string)) (ChatResult, error) {
 	switch req.Kind {
 	case KindOpenAICompat:
 		return chatOpenAICompat(req, onDelta)
 	case KindAnthropic:
 		return chatAnthropic(req, onDelta)
 	default:
-		return "", fmt.Errorf("aiclient: unknown provider kind %q", req.Kind)
+		return ChatResult{}, fmt.Errorf("aiclient: unknown provider kind %q", req.Kind)
 	}
 }
 

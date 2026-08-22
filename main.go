@@ -18,6 +18,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/notify"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/services/agentloopsvc"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/backupsvc"
 	"github.com/alicoding/mill/internal/services/capabilitysvc"
@@ -73,9 +74,7 @@ var userdocsFS embed.FS
 var trayIconPNG []byte
 
 func init() {
-	// Register a custom event whose associated data type is string.
-	// This is not required, but the binding generator will pick up registered events
-	// and provide a strongly typed JS/TS API for them.
+	// Each RegisterEvent[T] gives the binding generator a typed JS/TS API.
 	application.RegisterEvent[string]("time")
 	application.RegisterEvent[triggersvc.HotkeyActivity]("hotkey-activity")
 	application.RegisterEvent[mcpsvc.MCPWriteRequest]("mcp-write-approval")
@@ -83,10 +82,10 @@ func init() {
 	application.RegisterEvent[dataevent.Changed](dataevent.EventName)
 	application.RegisterEvent[executionsvc.GuardrailPendingChanged]("guardrail-pending-changed")
 	application.RegisterEvent[companionsvc.CompanionDelta](companionsvc.DeltaEventName)
-	// docs/adr/0033: the Quick Panel's "Open Mill"/"Open Settings" rows
-	// (OpenMainWindow) emit this so App.tsx can switch the store's view
-	// once the main window is back in front -- broadcast to every open
-	// window, same as every other event registered here.
+	application.RegisterEvent[agentloopsvc.AgentLoopEvent](agentloopsvc.StateEventName)
+	application.RegisterEvent[agentloopsvc.AgentLoopDelta](agentloopsvc.DeltaEventName)
+	// docs/adr/0033: OpenMainWindow emits this so App.tsx can switch views
+	// once the main window is back in front -- broadcast to every window.
 	application.RegisterEvent[string]("mill-navigate")
 }
 
@@ -295,6 +294,8 @@ func main() {
 		logger.Info("mill MCP server listening", "addr", millMCPAddr)
 	}
 
+	agentLoopService := agentloopsvc.NewAgentLoopService(millMCPService) // an MCP client of it, ADR-0035
+
 	// Declared before application.New so the SingleInstance callback's
 	// closure (below) can capture it; assigned with `=` once the window
 	// is actually created further down. The callback only fires on a real
@@ -312,6 +313,7 @@ func main() {
 			application.NewService(configureService),
 			application.NewService(atlasService),
 			application.NewService(companionService),
+			application.NewService(agentLoopService),
 			application.NewService(guardrailService),
 			application.NewService(executionService),
 			application.NewService(settingsService),

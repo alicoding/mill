@@ -187,6 +187,30 @@ func (m *MillMCPService) Shutdown(ctx context.Context) error {
 	return m.http.Shutdown(ctx)
 }
 
+// ConnectInMemoryClient connects a brand-new MCP client session to THIS
+// server via mcp.NewInMemoryTransports() -- no network hop, no second
+// process. This is how the agent loop (internal/services/agentloopsvc,
+// docs/goals/0101 slice 1) reaches Mill's own governed tool plane: as a
+// real MCP client session (list tools, call tools) exactly like an
+// external agent host connecting over HTTP would, never via a direct
+// Go call into this service's own methods (ADR-0035 -- the loop is
+// architecturally a client of this server, not a second entry point
+// into it). Each call opens a fresh session; the caller closes it when
+// done. clientName identifies the session in any future multi-session
+// introspection -- purely descriptive, carries no behavior.
+func (m *MillMCPService) ConnectInMemoryClient(ctx context.Context, clientName string) (*mcp.ClientSession, error) {
+	clientTransport, serverTransport := mcp.NewInMemoryTransports()
+	if _, err := m.server.Connect(ctx, serverTransport, nil); err != nil {
+		return nil, fmt.Errorf("mcp: connect server transport: %w", err)
+	}
+	client := mcp.NewClient(&mcp.Implementation{Name: clientName, Version: m.version}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		return nil, fmt.Errorf("mcp: connect client transport: %w", err)
+	}
+	return session, nil
+}
+
 func jsonContents(uri string, v any) (*mcp.ReadResourceResult, error) {
 	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
