@@ -33,12 +33,23 @@ const DeviceTokenCookieName = "mill_device_token" //nolint:gosec // cookie name,
 // stored hex-encoded because settings.Store persists through
 // encoding/json, which cannot round-trip raw []byte as anything but a
 // string anyway -- named fields keep that encoding explicit rather
-// than incidental.
+// than incidental. Topic and BaseURL back the phone channel (docs/
+// goals/0132-remote-access.md SLICE B): Topic is the ntfy-protocol
+// secret, generated once at pairing and never user-chosen; BaseURL is
+// the scheme+host this device last reached Mill on, refreshed on
+// every authenticated request (validateToken) and every phone-channel
+// connection (recordTopicSeen) so the copyable subscribe URL and a
+// delivered notification's click target both stay pointed at an
+// address the device has actually proven reachable. Deleting the
+// device (RevokeDevice) deletes its topic with it -- there is no
+// separate topic store to leak one from.
 type device struct {
 	ID         string    `json:"id"`
 	Label      string    `json:"label"`
 	SaltB64    string    `json:"salt"`
 	HashB64    string    `json:"hash"`
+	Topic      string    `json:"topic,omitempty"`
+	BaseURL    string    `json:"baseUrl,omitempty"`
 	CreatedAt  time.Time `json:"createdAt"`
 	LastSeenAt time.Time `json:"lastSeenAt"`
 }
@@ -70,6 +81,14 @@ type RemoteAuthService struct {
 	devices []device
 	code    *pairingCode
 	limiter map[string]*rateLimitEntry
+
+	// streamMu/streams back the phone channel's live subscribe
+	// connections (remoteauthservice_ntfy.go) -- a deliberately
+	// separate lock from mu: a connection's entry can live for the
+	// lifetime of an open HTTP request, and must never be reached
+	// while mu is held (every pairing/device operation needs mu).
+	streamMu sync.Mutex
+	streams  map[string][]ntfySubscriber
 }
 
 // New constructs a RemoteAuthService backed by store for persistence, loading
@@ -83,6 +102,7 @@ func New(store settings.Store, logger *slog.Logger) *RemoteAuthService {
 		store:   store,
 		logger:  logger,
 		limiter: make(map[string]*rateLimitEntry),
+		streams: make(map[string][]ntfySubscriber),
 	}
 	s.loadDevices()
 	return s
@@ -103,6 +123,13 @@ func (s *RemoteAuthService) loadDevices() {
 		return
 	}
 	s.devices = devices
+	// A device paired before the phone channel existed has no Topic --
+	// backfill one so it gets the capability with no re-pair required.
+	if s.backfillTopics() {
+		if err := s.saveDevices(); err != nil {
+			s.logger.Error("remote access: persisting backfilled phone topics", "error", err)
+		}
+	}
 }
 
 // saveDevices persists the current device list. Called with mu held.

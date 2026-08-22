@@ -164,6 +164,15 @@ func WireNotificationChannels(settingsService *settingssvc.SettingsService, noti
 	settingsService.SetNotificationService(notif)
 }
 
+// WirePhoneChannel registers remoteAuth's phone channel (docs/goals/
+// 0132-remote-access.md SLICE B) into notif -- the ntfy protocol's
+// Deliver reaches every currently-paired device's topic in one call,
+// so this is a single RegisterChannel, the same shape as
+// WireNotificationChannels above.
+func WirePhoneChannel(remoteAuth *remoteauthsvc.RemoteAuthService, notif *notificationsvc.NotificationService) {
+	notif.RegisterChannel(remoteAuth.NotificationChannel())
+}
+
 // WireSystemEventNotifications adds the notification spine (docs/goals/
 // 0171) as a SECOND consumer of the existing system-event sink,
 // alongside triggers.DispatchSystemEvent -- ExecutionService's producer

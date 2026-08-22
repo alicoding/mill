@@ -21,7 +21,7 @@ func TestSeedTestDevice_RefusesOutsideTestMode(t *testing.T) {
 	}
 	s := New(store, slog.New(slog.DiscardHandler))
 
-	if _, err := s.SeedTestDevice("Phone"); err == nil {
+	if _, err := s.SeedTestDevice("Phone", ""); err == nil {
 		t.Fatalf("SeedTestDevice() outside test mode = nil error, want an error")
 	}
 	if len(s.ListDevices()) != 0 {
@@ -37,7 +37,7 @@ func TestSeedTestDevice_MintsWhenEnabled(t *testing.T) {
 	}
 	s := New(store, slog.New(slog.DiscardHandler))
 
-	info, err := s.SeedTestDevice("Phone")
+	info, err := s.SeedTestDevice("Phone", "")
 	if err != nil {
 		t.Fatalf("SeedTestDevice() = %v, want nil error", err)
 	}
@@ -49,6 +49,27 @@ func TestSeedTestDevice_MintsWhenEnabled(t *testing.T) {
 	}
 }
 
+// TestSeedTestDevice_BaseURLPopulatesSubscribeURL pins the e2e seam
+// SLICE B's Settings-row coverage relies on: passing a baseURL through
+// SeedTestDevice must produce the same SubscribeURL shape a real
+// pairing round trip would.
+func TestSeedTestDevice_BaseURLPopulatesSubscribeURL(t *testing.T) {
+	t.Setenv(testAllowDeviceSeedEnv, "1")
+	store, err := settings.New(filepath.Join(t.TempDir(), "settings.json"))
+	if err != nil {
+		t.Fatalf("settings.New() = %v, want nil error", err)
+	}
+	s := New(store, slog.New(slog.DiscardHandler))
+
+	info, err := s.SeedTestDevice("Phone", "http://phone-test.local:9000")
+	if err != nil {
+		t.Fatalf("SeedTestDevice() = %v, want nil error", err)
+	}
+	if info.SubscribeURL == "" || !strings.HasPrefix(info.SubscribeURL, "http://phone-test.local:9000/") || !strings.HasSuffix(info.SubscribeURL, "/json") {
+		t.Fatalf("SubscribeURL = %q, want it built from the given base address", info.SubscribeURL)
+	}
+}
+
 func TestMintDevice_PersistsOnlyHashNeverRawToken(t *testing.T) {
 	store, err := settings.New(filepath.Join(t.TempDir(), "settings.json"))
 	if err != nil {
@@ -56,7 +77,7 @@ func TestMintDevice_PersistsOnlyHashNeverRawToken(t *testing.T) {
 	}
 	s := New(store, slog.New(slog.DiscardHandler))
 
-	token, err := s.mintDevice("Test Device")
+	token, err := s.mintDevice("Test Device", "")
 	if err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
@@ -87,19 +108,19 @@ func TestValidateToken_AcceptsMintedTokenOnly(t *testing.T) {
 	}
 	s := New(store, slog.New(slog.DiscardHandler))
 
-	token, err := s.mintDevice("Test Device")
+	token, err := s.mintDevice("Test Device", "")
 	if err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
 
 	now := time.Now()
-	if !s.validateToken(token, now) {
+	if !s.validateToken(token, "", now) {
 		t.Errorf("validateToken(minted token) = false, want true")
 	}
-	if s.validateToken("not-the-token", now) {
+	if s.validateToken("not-the-token", "", now) {
 		t.Errorf("validateToken(wrong token) = true, want false")
 	}
-	if s.validateToken("", now) {
+	if s.validateToken("", "", now) {
 		t.Errorf("validateToken(empty) = true, want false")
 	}
 }
@@ -110,7 +131,7 @@ func TestListDevices_ExcludesSecrets(t *testing.T) {
 		t.Fatalf("settings.New() = %v, want nil error", err)
 	}
 	s := New(store, slog.New(slog.DiscardHandler))
-	if _, err := s.mintDevice("Phone"); err != nil {
+	if _, err := s.mintDevice("Phone", ""); err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
 
@@ -138,7 +159,7 @@ func TestRenameDevice_RejectsEmptyAndWhitespace(t *testing.T) {
 		t.Fatalf("settings.New() = %v, want nil error", err)
 	}
 	s := New(store, slog.New(slog.DiscardHandler))
-	if _, err := s.mintDevice("Phone"); err != nil {
+	if _, err := s.mintDevice("Phone", ""); err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
 	id := s.ListDevices()[0].ID
@@ -162,7 +183,7 @@ func TestRenameDevice_PersistsTheNewLabel(t *testing.T) {
 		t.Fatalf("settings.New() = %v, want nil error", err)
 	}
 	s1 := New(store1, slog.New(slog.DiscardHandler))
-	if _, err := s1.mintDevice("Phone"); err != nil {
+	if _, err := s1.mintDevice("Phone", ""); err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
 	id := s1.ListDevices()[0].ID
@@ -207,7 +228,7 @@ func TestDevices_SurviveAcrossServiceInstances(t *testing.T) {
 		t.Fatalf("settings.New() = %v, want nil error", err)
 	}
 	s1 := New(store1, slog.New(slog.DiscardHandler))
-	token, err := s1.mintDevice("Laptop")
+	token, err := s1.mintDevice("Laptop", "")
 	if err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
@@ -217,7 +238,7 @@ func TestDevices_SurviveAcrossServiceInstances(t *testing.T) {
 		t.Fatalf("second settings.New() = %v, want nil error", err)
 	}
 	s2 := New(store2, slog.New(slog.DiscardHandler))
-	if !s2.validateToken(token, time.Now()) {
+	if !s2.validateToken(token, "", time.Now()) {
 		t.Fatalf("a device paired before restart must still validate after restart")
 	}
 }

@@ -36,7 +36,11 @@ const cookieLifetime = 365 * 24 * time.Hour
 // connection ORIGIN, never by build mode (SLICE 1 DESIGN CONTRACT):
 // loopback connections -- the desktop webview -- pass through
 // untouched, and every other connection must carry a valid
-// device-token cookie or complete pairing first.
+// device-token cookie or complete pairing first. The phone channel's
+// ntfy subscribe path (remoteauthservice_ntfy.go) is checked BEFORE
+// any of that, deliberately: the ntfy client sends no device cookie,
+// so that one path answers by topic instead of by origin or token
+// (docs/goals/0132 SLICE B item 2).
 //
 // Exported for main.go's own construction flow, not a frontend RPC --
 // a func(http.Handler) http.Handler return type can't cross the
@@ -46,6 +50,11 @@ const cookieLifetime = 365 * 24 * time.Hour
 func (s *RemoteAuthService) Middleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if topic, ok := ntfyTopicFromPath(r); ok {
+				s.handleNtfySubscribe(w, r, topic)
+				return
+			}
+
 			if isLoopback(r) {
 				next.ServeHTTP(w, r)
 				return
@@ -121,7 +130,7 @@ func (s *RemoteAuthService) tokenIsValid(r *http.Request) bool {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.validateToken(cookie.Value, time.Now())
+	return s.validateToken(cookie.Value, baseURLFor(r), time.Now())
 }
 
 // handlePairSubmit processes a pairing-code form submission: rate
@@ -152,7 +161,7 @@ func (s *RemoteAuthService) handlePairSubmit(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	s.recordPairingSuccess(source)
-	token, err := s.mintDevice(deviceLabelFor(r))
+	token, err := s.mintDevice(deviceLabelFor(r), baseURLFor(r))
 	s.mu.Unlock()
 	if err != nil {
 		s.logger.Error("remote access: minting device token", "error", err)
@@ -211,6 +220,18 @@ func setDeviceCookie(w http.ResponseWriter, r *http.Request, token string) {
 		SameSite: http.SameSiteStrictMode,
 		Expires:  time.Now().Add(cookieLifetime),
 	})
+}
+
+// baseURLFor derives the scheme+host a request actually arrived on --
+// the exact address that request's device already proved reachable,
+// reused for both the phone channel's copyable subscribe URL and a
+// delivered notification's click target (remoteauthservice_ntfy.go).
+func baseURLFor(r *http.Request) string {
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	return scheme + "://" + r.Host
 }
 
 // deviceLabelFor derives a human-readable label from the pairing

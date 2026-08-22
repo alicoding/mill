@@ -28,6 +28,7 @@ import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
 import { applyDensity } from "../shared/density";
 import { pageIconFor, pageLabelFor } from './pageMeta'
 import { useMillNavigate } from './useMillNavigate'
+import { useReviewDeepLink } from './useReviewDeepLink'
 import { useKeymapDispatch } from './useKeymapDispatch'
 import { useBrowserNotify } from './useBrowserNotify'
 import styles from "./App.module.css";
@@ -265,6 +266,7 @@ function App() {
   }, [])
 
   useMillNavigate(setView);
+  useReviewDeepLink(setView);
 
   const notifyBrowserTab = useBrowserNotify();
 

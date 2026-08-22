@@ -238,6 +238,7 @@ func main() {
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	wiring.WireNotificationChannels(settingsService, notificationService) // docs/goals/0171-notification-spine.md
+	wiring.WirePhoneChannel(remoteAuthService, notificationService)      // docs/goals/0132-remote-access.md SLICE B
 	wiring.WireUpdateEvents(settingsService, triggerService)
 	settingsService.SetAppVersion(millUpdateVersion)
 	// The user's persisted channel opt-in wins over the build stamp --

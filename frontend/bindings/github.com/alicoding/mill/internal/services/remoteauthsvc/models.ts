@@ -4,13 +4,23 @@
 /**
  * DeviceInfo is Settings > Remote access's read model for one paired
  * device -- deliberately excludes Salt/Hash, which never leave the
- * server.
+ * server. Unlike the device token (shown once, at pairing), the phone
+ * channel's SubscribeURL is meant to be re-copied any time, so it is
+ * exposed in full here.
  */
 export interface DeviceInfo {
     "id": string;
     "label": string;
     "createdAt": string;
     "lastSeenAt": string;
+
+    /**
+     * SubscribeURL is this device's ntfy phone-channel address (docs/
+     * goals/0132 SLICE B), built from Topic plus the address this
+     * device last reached Mill on. Empty until Mill has seen a request
+     * from this device with a resolvable host.
+     */
+    "subscribeUrl"?: string;
 }
 
 /**

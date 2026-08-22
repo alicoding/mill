@@ -61,6 +61,11 @@ export function RenameDevice(id: string, label: string): $CancellablePromise<voi
  * RevokeDevice deletes id's paired-device record. Any request still
  * carrying that device's cookie is rejected on its very next request
  * -- validateToken (below) only ever matches against the live list.
+ * The device's phone-channel topic dies with it: a new subscribe
+ * attempt gets the same 404 as any never-paired topic (recordTopicSeen
+ * only matches the live list too), and forceCloseTopic drops any
+ * subscribe connection already open right now, rather than waiting for
+ * it to eventually reconnect into a 404.
  */
 export function RevokeDevice(id: string): $CancellablePromise<void> {
     return $Call.ByID(1929952408, id);
@@ -70,7 +75,11 @@ export function RevokeDevice(id: string): $CancellablePromise<void> {
  * SeedTestDevice mints a paired device directly, bypassing the HTTP
  * pairing flow entirely -- e2e-only (see testAllowDeviceSeedEnv
  * above), never reachable in a real deployment.
+ * baseURL is accepted (rather than always "") so e2e coverage can seed
+ * a device whose SubscribeURL is already populated -- a real pairing
+ * round trip sets it from the pairing request itself, which this seam
+ * exists specifically to bypass.
  */
-export function SeedTestDevice(label: string): $CancellablePromise<$models.DeviceInfo> {
-    return $Call.ByID(341728691, label);
+export function SeedTestDevice(label: string, baseURL: string): $CancellablePromise<$models.DeviceInfo> {
+    return $Call.ByID(341728691, label, baseURL);
 }

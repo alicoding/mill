@@ -73,6 +73,12 @@
         "granted": "Notifications are on for this device.",
         "denied": "Notifications are blocked for this device. Turn them on again in your browser's site settings.",
         "unsupported": "Notifications aren't available over this connection. It needs to be secure (https)."
+      },
+      "phone": {
+        "caption": "Install the ntfy Android app, then add this address as a subscription to get notified there, even when Mill isn't open.",
+        "secretNote": "Keep this address private — anyone who has it can read your notifications.",
+        "copyAriaLabel": "Copy subscribe address",
+        "copiedAriaLabel": "Copied"
       }
     },
     "contract": {
