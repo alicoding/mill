@@ -29,6 +29,33 @@ context holds. If a task can't be specified tightly enough for Sonnet
 to execute against objective checks, that's a sign it's still
 design work — do it in the main session, don't delegate it.
 
+**Every dispatched BUILD agent works in its own git worktree; the
+main checkout belongs to the orchestrator.** State it in the brief —
+agents do not reliably choose isolation on their own, and the default
+matters because the orchestrator needs that checkout continuously for
+deploys, diff review, and docs commits while builds run. Recorded
+after three self-caught instances of the same collision (editing a
+file an agent held uncommitted; `git add -A` sweeping an agent's
+in-flight work into an unrelated commit; and a deploy that built from
+an agent's branch because a refused `git checkout` did not stop the
+chained build/reload steps behind it). Two corollaries, both learned
+the hard way: before ANY git write or build in the main checkout,
+check `git branch --show-current` and `git status` — if it is not
+main or the tree is dirty, an agent owns it; and when one does occupy
+it, deploy by building from a throwaway worktree at origin/main
+rather than contending for the checkout.
+
+**In the nested docs repo, stage only the files you changed — never
+`git add -A` there.** Worktrees isolate the mill checkout but NOT the
+nested `docs/` repo: it lives at one physical path that every
+concurrently-running agent shares. A blanket stage therefore sweeps
+other agents' in-flight docs edits into your commit — observed
+2026-08-22, where one goal's SPEC.md edits landed inside an unrelated
+goal's commit. Attribution is the mild symptom; the real risk is
+committing someone else's half-written state. Stage explicit paths,
+and commit docs promptly after writing them rather than leaving them
+uncommitted across a long build.
+
 **Design/UX/spec contracts are the orchestrator's own work-product —
 never delegated (owner-directed 2026-08-15, after a day of live UX
 churn proved the failure mode).** A brief that names capabilities and
@@ -44,6 +71,33 @@ changes visibly on each state transition. The agent's discretion is
 implementation (code structure, test mechanics) — never what the
 user sees. If a design question surfaces mid-build, the agent reports
 it back rather than deciding it.
+
+## Upgrade the ground before building on it (owner-directed 2026-08-22)
+
+**Before a feature goal enters a session, ask what its subsystem
+costs to EXTEND today — and if the answer is "a lot", the upgrade
+goal goes in front of it in the queue.** Not as a separate
+initiative competing with features: as the first slice of the
+feature's own arc. The measurement is concrete and has a repeatable
+shape (goal 0163 for entities, goal 0169 for canvas tools both ran
+it): take the newest real addition of that kind, count the files and
+lines it actually cost, and — the number that matters most — count
+how many separate hand-maintained places had to learn the new thing
+exists. One registry entry is cheap; four parallel lists is a tax
+that multiplies with every future addition.
+
+The test for whether an upgrade is warranted: **would the next three
+additions each pay this cost again?** If yes, upgrade first; the
+upgrade proves itself by migrating the EXISTING items onto it before
+any new one is added, which is also what keeps the refactor honest
+(the old tests must pass unmodified). If no — the subsystem is
+already registry-shaped or the addition is genuinely one-off — build
+the feature directly and record why the upgrade was not needed.
+
+This is Research → Adopt → Compose applied to sequencing rather than
+to dependencies, and it is the reason several goals in the queue are
+explicitly gated behind an architecture predecessor rather than
+scheduled beside one.
 
 ## Goal backlog: `docs/goals/BACKLOG.md` is the delivery queue
 

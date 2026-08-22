@@ -11,7 +11,7 @@ import {
 } from './fixtures/server'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { armAndPlaceTopicCard, deleteCardViaMenu, groupCard, noteCard } from './fixtures/atlasBoard'
+import { armAndPlaceTopicCard, deleteCardViaMenu, groupCard, hittablePointOn, noteCard } from './fixtures/atlasBoard'
 import { waitForViewportStable } from './fixtures/animation'
 
 // A LIGHTER zoom-out than fixtures/atlasBoard.ts's own zoomAllTheWayOut
@@ -67,6 +67,24 @@ async function dragBetween(page: Page, from: { x: number; y: number }, to: { x: 
   for (let i = 1; i <= steps; i++) {
     await page.mouse.move(from.x + ((to.x - from.x) * i) / steps, from.y + ((to.y - from.y) * i) / steps)
   }
+  await page.mouse.up()
+}
+
+// Same raw pointer sequence as dragBetween, but pauses over the
+// destination (mouse still down) so a caller can assert mid-drag state
+// -- goal 0161 slice 1's own regression coverage: the release-target
+// highlight reaches the frame through a context channel now, decoupled
+// from the board's node-array rebuild, and this proves that channel
+// still delivers the same highlight at the same moment.
+async function dragBetweenAssertingMidway(page: Page, from: { x: number; y: number }, to: { x: number; y: number }, onArrived: () => Promise<void>): Promise<void> {
+  const steps = 12
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  await page.waitForTimeout(50)
+  for (let i = 1; i <= steps; i++) {
+    await page.mouse.move(from.x + ((to.x - from.x) * i) / steps, from.y + ((to.y - from.y) * i) / steps)
+  }
+  await onArrived()
   await page.mouse.up()
 }
 
@@ -183,20 +201,25 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await waitForViewportStable(board)
     await expect(groupArea.getByTestId('atlas-group-header')).toContainText('3 cards')
 
-    // --- Drag filing IN: a loner card dragged onto the frame files
-    // into it (header count 3 -> 4). ---
+    // --- Drag filing IN: a loner card dragged onto the frame highlights
+    // it live (goal 0161 slice 1: the highlight now reaches the frame
+    // through AtlasDragHighlightContext, not a board-wide node rebuild)
+    // and files into it on drop (header count 3 -> 4). ---
     await armAndPlaceTopicCard(page, board, popover, 0.90, 0.05, 'ZzC2eLoner')
-    const lonerBox = await noteCard(page, 'ZzC2eLoner').boundingBox()
     const groupBox2 = await groupArea.boundingBox()
-    if (!lonerBox || !groupBox2) throw new Error('missing bounding box before drag-in')
-    await dragBetween(
+    if (!groupBox2) throw new Error('missing bounding box before drag-in')
+    await dragBetweenAssertingMidway(
       page,
-      { x: lonerBox.x + lonerBox.width / 2, y: lonerBox.y + lonerBox.height / 2 },
+      await hittablePointOn(page, noteCard(page, 'ZzC2eLoner')),
       { x: groupBox2.x + groupBox2.width / 2, y: groupBox2.y + groupBox2.height / 2 },
+      async () => {
+        await expect(groupArea).toHaveAttribute('data-drag-highlight', 'true')
+      },
     )
     // Same nested-preview caveat as the marker-box members above --
     // the header count is the real proof of filing.
     await expect(groupArea.getByTestId('atlas-group-header')).toContainText('4 cards')
+    await expect(groupArea).toHaveAttribute('data-drag-highlight', 'false')
 
     // --- Drag OUT from the preview (goal 0141): WITHOUT drilling in,
     // grab the child's preview tile inside the frame and drop it on
@@ -204,11 +227,9 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     // dropped spot on this level. ---
     const previewLoner = noteCard(page, 'ZzC2eLoner')
     await expect(previewLoner).toBeVisible()
-    const previewBox = await previewLoner.boundingBox()
-    if (!previewBox) throw new Error('missing preview box before drag-out')
     await dragBetween(
       page,
-      { x: previewBox.x + previewBox.width / 2, y: previewBox.y + previewBox.height / 2 },
+      await hittablePointOn(page, previewLoner),
       await boardPoint(board, 0.88, 0.72),
     )
     await expect(groupArea.getByTestId('atlas-group-header')).toContainText('3 cards')
@@ -216,12 +237,11 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
 
     // Re-file it for the drilled drag-out below (3 -> 4), keeping the
     // rest of this flow's counts untouched.
-    const lonerBox2 = await noteCard(page, 'ZzC2eLoner').boundingBox()
     const groupBox3 = await groupArea.boundingBox()
-    if (!lonerBox2 || !groupBox3) throw new Error('missing bounding box before re-file')
+    if (!groupBox3) throw new Error('missing bounding box before re-file')
     await dragBetween(
       page,
-      { x: lonerBox2.x + lonerBox2.width / 2, y: lonerBox2.y + lonerBox2.height / 2 },
+      await hittablePointOn(page, noteCard(page, 'ZzC2eLoner')),
       { x: groupBox3.x + groupBox3.width / 2, y: groupBox3.y + groupBox3.height / 2 },
     )
     await expect(groupArea.getByTestId('atlas-group-header')).toContainText('4 cards')
@@ -236,12 +256,11 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await groupArea.getByTestId('atlas-group-header').click()
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('ZzC2eGroupArea')
     await waitForViewportStable(board)
-    const insideLonerBox = await noteCard(page, 'ZzC2eLoner').boundingBox()
     const boardBoxNow = await board.boundingBox()
-    if (!insideLonerBox || !boardBoxNow) throw new Error('missing bounding box before drag-out')
+    if (!boardBoxNow) throw new Error('missing board bounding box before drag-out')
     await dragBetween(
       page,
-      { x: insideLonerBox.x + insideLonerBox.width / 2, y: insideLonerBox.y + insideLonerBox.height / 2 },
+      await hittablePointOn(page, noteCard(page, 'ZzC2eLoner')),
       { x: Math.max(boardBoxNow.x - 40, 5), y: boardBoxNow.y + boardBoxNow.height / 2 },
     )
     await expect(noteCard(page, 'ZzC2eLoner')).toHaveCount(0)

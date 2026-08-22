@@ -18,6 +18,7 @@ import ContractSection from './ContractSection'
 import DataStewardshipSection from './DataStewardshipSection'
 import UpdatesSection from './UpdatesSection'
 import McpAddressField from './McpAddressField'
+import RemoteAccessSection from './RemoteAccessSection'
 import SettingsToc from './SettingsToc'
 import { useSettingsSectionSync } from './useSettingsSectionSync'
 import styles from '../shared/ListCard.module.css'
@@ -372,6 +373,7 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
         )}
       </>
     ),
+    'remote-access': <RemoteAccessSection />,
     contract: <ContractSection />,
     notifications: (
       <>

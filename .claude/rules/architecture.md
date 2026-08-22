@@ -148,3 +148,25 @@ same change, with a comment saying why. Known accepted limitation
 (probed against ls-lint v2.3.1, documented in `.ls-lint.yml`'s header):
 extensionless files are invisible to ls-lint, so `LICENSE` needs no
 rule and a bare extensionless rogue won't be caught.
+
+**Adopting a library means adopting its CONTRACT, not just its API —
+and the load-bearing parts of that contract are invisible in the type
+signature.** Thread affinity ("which thread may call this?"),
+reentrancy, blocking behavior, and error semantics don't appear in a
+function's shape; they live in the library's source and docs. Before
+calling an adopted library from a callback, goroutine, or event
+handler that the library did not itself create, VERIFY the affinity
+contract against that library's own source, and state it at Mill's
+boundary — a named seam, a comment carrying the constraint, or both.
+Never infer one call's contract from a sibling's: a real instance
+cost a P0 crash class here, where the adopted UI toolkit marshals its
+WINDOW-level calls onto the platform main thread internally but its
+APP-level Show/Hide call straight into the platform with no dispatch,
+so glue that was safe for one was fatal for the other when invoked
+from an adopted hotkey library's own callback goroutine. This is the
+seam-risk that replaces implementation risk once commodity is
+adopted; it is not an argument for hand-rolling, it is the discipline
+that makes adoption safe. Where the platform's own rules are
+non-negotiable (AppKit main-thread affinity, single-threaded
+webviews), the seam belongs in Mill's code as an explicit, testable
+indirection rather than a convention someone must remember.

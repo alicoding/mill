@@ -3,22 +3,22 @@ import { useRenderStormGuard } from '../shared/renderStormGuard'
 import { useTranslation } from 'react-i18next'
 import { ReactFlow, ReactFlowProvider, useNodesState, useReactFlow } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import type { Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { useIsNarrowViewport } from '../shared/useNarrowViewport'
 import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'
 import { computeGroupFrameLayout, isGroupCard } from './atlasBoardLayout'
 import { computeNoteBoxes, computeTopLevelBoxes } from './atlasBoardBoxes'
 import { rfEdgeTypes, rfNodeTypes } from './atlasBoardNodeTypes'
-import { type BoardFilter } from './cardFilter'
 import { AtlasBoardChrome } from './AtlasBoardChrome'
 import { resolveBoardEdges } from './atlasLinkResolution'
 import { useAtlasArrange } from './useAtlasArrange'
 import { useAtlasEdgeInteraction } from './useAtlasEdgeInteraction'
-import { useBoardFocus, type AtlasFocusRequest } from './useBoardFocus'
-import { useAtlasCreation, type AtlasGroupRequest, type AtlasPlacementRequest, type AtlasPromoteRequest } from './useAtlasCreation'
+import { useBoardFocus } from './useBoardFocus'
+import { useAtlasCreation } from './useAtlasCreation'
 import { useAtlasAreaDraw } from './useAtlasAreaDraw'
 import { useAtlasDragFiling, type FrameBox } from './useAtlasDragFiling'
+import { AtlasDragHighlightContext } from './atlasDragHighlightContext'
+import type { AtlasBoardInnerProps } from './atlasBoardInnerProps'
 import { useAtlasSelection } from './useAtlasSelection'
 import { useAtlasSelectAll } from './useAtlasSelectAll'
 import { useAtlasSelectionTray } from './useAtlasSelectionTray'
@@ -59,80 +59,7 @@ import styles from './AtlasBoard.module.css'
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, allNotes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, onCreateTableSized, onOpenTableFromList, onQuietToast, onOpenNote, placementRequest, promoteRequest, groupRequest }: {
-  // The board filter (goal 0129 slice 1) -- applied as dim-in-place
-  // by the node builder; state lives in AtlasView; rendered as a
-  // floating top-right Panel (the toolbar row is full by its own
-  // recorded constraint, and a canvas filter belongs on the canvas).
-  boardFilter: BoardFilter
-  onBoardFilterChange: (next: BoardFilter) => void
-  filterMatchCount: number
-  filterTotalCount: number
-  // Offerable kind facets = kinds of the RENDERED leaves (frame
-  // children included) -- computed by AtlasView beside the counts.
-  filterPresentKindIDs: Set<string>
-  cards: Card[]
-  allCards: Card[]
-  kinds: Kind[]
-  links: Link[]
-  linkKinds: LinkKind[]
-  // Notes (goal 0081 slice A1) -- this board's own container's notes
-  // only, same "already scoped by the caller" contract `cards` uses.
-  // parentID is the board's CURRENT container (AtlasView's viewedID).
-  notes: Note[]
-  parentID: string
-  // Arrange-is-an-action (goal 0089): a one-shot token; each bump
-  // runs the packer over this level and PERSISTS the result.
-  arrangeRequest?: number
-  viewedID: string
-  focusRequest: AtlasFocusRequest | null
-  onDrill: (id: string) => void
-  onOpenOverlay: (id: string) => void
-  onFocusHandled: () => void
-  // Right-click on a card (goal 0075): the board only reports WHERE
-  // and ON WHAT -- AtlasView owns the menu items (it holds the
-  // card/share/delete context this component deliberately doesn't).
-  onCardContextMenu: (cardID: string, pos: { x: number; y: number }) => void
-  // Right-click on empty board (goal 0075's audit G3): same
-  // where-only contract as the card opener above.
-  onPaneContextMenu: (pos: { x: number; y: number }) => void
-  // Right-click on an artery (goal 0075 G4, goal 0081 A4's edge menu):
-  // endpoints + its representative link id/count -- count gates the kind/label/remove items to 1.
-  onArteryContextMenu: (sourceID: string, targetID: string, linkID: string, count: number, pos: { x: number; y: number }) => void
-  // The edge hover chip's own two actions -- the SAME handlers the right-click artery menu's own items call.
-  onEdgeDeleteLink: (linkID: string) => void
-  onEdgeChangeKind: (linkID: string, pos: { x: number; y: number }) => void
-  // Right-click on a note (goal 0081 slice A1): same where/what-only
-  // contract as onCardContextMenu -- AtlasView owns Promote/Delete.
-  onNoteContextMenu: (noteID: string, pos: { x: number; y: number }) => void
-  // Right-click on a frame's own header/border (goal 0081 slice A2,
-  // LOCKED design §6d): reports the frame's own card id -- AtlasView
-  // builds Add-inside/Zoom/Dissolve/Delete.
-  onFrameContextMenu: (frameID: string, pos: { x: number; y: number }) => void
-  // Right-click on a frame's interior empty space: reports the
-  // frame's card id -- AtlasView builds the frame-scoped Add pair.
-  onFrameInteriorContextMenu: (frameID: string, pos: { x: number; y: number }) => void
-  // Right-click on a 2+ multi-selection member: reports the split
-  // card/note ids -- AtlasView builds Group into new area / Delete.
-  onMultiSelectContextMenu: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
-  // Keyboard Delete/Backspace over the live selection (goal 0089
-  // rider): routed through the same confirm dialog as the menu item;
-  // React Flow's own deleteKeyCode stays disabled -- a local node
-  // removal would just resurrect on the next data refresh.
-  onDeleteSelection: (cardIDs: string[], noteIDs: string[]) => void
-  onPasteConverted: (res: import('../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models').PasteResult) => void
-  onQuietToast: (text: string, action?: { label: string; run: () => void }) => void
-  onOpenNote: (id: string) => void
-  allNotes: import('../../bindings/github.com/alicoding/mill/internal/domain/atlas/models').Note[]
-  onCreateTableSized: (cols: number, rows: number, at?: { X: number; Y: number }, parentID?: string) => void; onOpenTableFromList: () => void
-  // The selection tray's own "Group into new area" -- the multi-select context menu's own dispatcher, reused.
-  onGroupSelection: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
-  // AtlasView's downward creation requests (pane-menu adds, promote,
-  // frame placements, group) -- useAtlasCreation.ts has the shape.
-  placementRequest?: AtlasPlacementRequest | null
-  promoteRequest?: AtlasPromoteRequest | null
-  groupRequest?: AtlasGroupRequest | null
-}) {
+function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, allNotes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, onCreateTableSized, onOpenTableFromList, onQuietToast, onOpenNote, placementRequest, promoteRequest, groupRequest }: AtlasBoardInnerProps) {
   const { t } = useTranslation('atlas')
   const readOnly = useIsNarrowViewport()
   const reduceMotion = usePrefersReducedMotion()
@@ -259,13 +186,18 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   // Handle honesty: no kind restricts linking, so zero legal targets means a board with nothing else on it.
   const hasLegalTargets = renderedIDs.size > 1
 
+  // Deliberately excludes dragFiling.hoveredFrameID (goal 0161 slice
+  // 1): a frame boundary crossing must never invalidate this memo --
+  // that highlight reaches AtlasGroupNode through
+  // AtlasDragHighlightContext instead, below, so only frame nodes
+  // re-render on a crossing rather than the whole board.
   const builtNodes = useMemo(() => buildBoardCardNodes({
     cards, allCards, allNotes, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
-    pulsedID, hintedID, hoveredFrameID: dragFiling.hoveredFrameID,
+    pulsedID, hintedID,
     isSoleSelected: selection.isSoleSelected, onOpenOverlay, handleDrill,
     slotDragSourceID: slotDrag.dragSourceID, onSlotAnchorPointerDown: slotDrag.startDrag, hasLegalTargets, boardFilter, titleEditCardID: creation.editingTitleCardID, onTitleCommit: creation.commitCardTitle, onTitleCancel: creation.cancelCardTitle,
     noteHandlers: { editingNoteID: creation.editingNoteID, onEnterEdit: creation.enterNoteEdit, onCancelEdit: creation.cancelNoteEdit, onCommitEdit: creation.commitNoteEdit, onOpenNote },
-  }), [cards, allCards, allNotes, kinds, links, linkKinds, isFree, readOnly, pulsedID, hintedID, onOpenOverlay, handleDrill, freeMoves, arteries, boardWidth, dragFiling.hoveredFrameID, selection.isSoleSelected, slotDrag.dragSourceID, slotDrag.startDrag, hasLegalTargets, boardFilter, creation.editingTitleCardID, creation.commitCardTitle, creation.cancelCardTitle, creation.editingNoteID, creation.enterNoteEdit, creation.cancelNoteEdit, creation.commitNoteEdit, onOpenNote])
+  }), [cards, allCards, allNotes, kinds, links, linkKinds, isFree, readOnly, pulsedID, hintedID, onOpenOverlay, handleDrill, freeMoves, arteries, boardWidth, selection.isSoleSelected, slotDrag.dragSourceID, slotDrag.startDrag, hasLegalTargets, boardFilter, creation.editingTitleCardID, creation.commitCardTitle, creation.cancelCardTitle, creation.editingNoteID, creation.enterNoteEdit, creation.cancelNoteEdit, creation.commitNoteEdit, onOpenNote])
 
   const { edges, setHoveredEdgeID, onSelectionChange } = useAtlasEdgeInteraction({
     arteries, linkKinds, cards, kinds, t, onEdgeDeleteLink, onEdgeChangeKind, onNodeSelectionChange: selection.onSelectionChange,
@@ -368,6 +300,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       onPointerMoveCapture={areaArmed ? areaDraw.onPointerMove : undefined}
       onPointerUpCapture={areaArmed ? areaDraw.onPointerUp : undefined}
     >
+      <AtlasDragHighlightContext.Provider value={dragFiling.hoveredFrameID}>
       <ReactFlow
         nodes={nodes}
         onNodesChange={onNodesChange}
@@ -467,6 +400,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
           refusalHint={slotDrag.refusalHint}
         />
       </ReactFlow>
+      </AtlasDragHighlightContext.Provider>
       {marqueeStyle && <div className={styles.marquee} data-testid="atlas-area-marquee" style={marqueeStyle} />}
       {slotDrag.dragLine && <AtlasSlotDragLine line={slotDrag.dragLine} />}
       {fileDrop.dropError && <div className={`${styles.dropError} ${runbookStyles.error}`} data-testid="atlas-file-drop-error">{fileDrop.dropError}</div>}
