@@ -6,7 +6,6 @@ import (
 
 	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/composition"
-	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/seedorigin"
@@ -145,57 +144,17 @@ func upgradeRequestToGolden(existing, golden httprequest.HTTPRequest, now time.T
 }
 
 // reconcileBuiltInDecisions mirrors reconcileBuiltInRequests for the
-// seeded example Decisions (docs/adr/0027). Decisions carry no secret,
-// so this is simpler than the HTTPRequest version -- no credential
+// seeded example Decisions (docs/adr/0027) via decisionDescriptor
+// (configuredecision.go, goal 0165). Decisions carry no secret, so
+// this is simpler than the HTTPRequest version -- no credential
 // seeding step at all.
 func (c *ConfigureService) reconcileBuiltInDecisions() {
 	tombstones := seeding.LoadTombstones(c.store)
-	now := time.Now()
-	c.mu.Lock()
-	byID := make(map[string]int, len(c.decisions))
-	for i, d := range c.decisions {
-		byID[d.ID] = i
-	}
-	changed := false
-	for _, golden := range decision.BuiltIn() {
-		idx, present := byID[golden.ID]
-		if !present {
-			if tombstones[golden.ID] {
-				continue
-			}
-			golden.CreatedAt, golden.UpdatedAt = now, now
-			c.decisions = append(c.decisions, golden)
-			changed = true
-			continue
-		}
-		existing := c.decisions[idx]
-		if existing.Seed.SeedRevision == 0 {
-			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
-			c.decisions[idx] = existing
-			changed = true
-			continue
-		}
-		if existing.Seed.Modified {
-			continue
-		}
-		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
-			c.decisions[idx] = upgradeDecisionToGolden(existing, golden, now)
-			changed = true
-		}
-	}
-	c.mu.Unlock()
-	if changed {
+	if _, changed := entitystore.Reconcile(&c.mu, &c.decisions, tombstones, decisionDescriptor); changed {
 		if err := c.persistDecisions(); err != nil {
 			slog.Error("failed to reconcile built-in Decisions", "error", err)
 		}
 	}
-}
-
-func upgradeDecisionToGolden(existing, golden decision.Decision, now time.Time) decision.Decision {
-	golden.CreatedAt = existing.CreatedAt
-	golden.UpdatedAt = now
-	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
-	return golden
 }
 
 // reconcileBuiltInLists mirrors reconcileBuiltInDecisions for the
