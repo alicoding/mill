@@ -11,9 +11,9 @@ func TestExecAtlasFromReply(t *testing.T) {
 	t.Run("materializes via the injected function and stores the summary", func(t *testing.T) {
 		restore := atlasReplyMaterializerFn
 		defer func() { atlasReplyMaterializerFn = restore }()
-		var got string
-		atlasReplyMaterializerFn = func(itemsJSON, sourceRunID string) (string, error) {
-			got = itemsJSON
+		var got, gotParent string
+		atlasReplyMaterializerFn = func(itemsJSON, parentID, sourceRunID string) (string, error) {
+			got, gotParent = itemsJSON, parentID
 			return `{"cards":1}`, nil
 		}
 		ctx := ExecContext{Attributes: map[string]any{"items": `[{"title":"CRM"}]`}}
@@ -24,8 +24,31 @@ func TestExecAtlasFromReply(t *testing.T) {
 		if got != `[{"title":"CRM"}]` {
 			t.Errorf("materializer received %q", got)
 		}
+		// No parentAttribute configured on this node -- parentID stays
+		// "" (board root), the pre-existing default.
+		if gotParent != "" {
+			t.Errorf("parentID = %q, want empty with no parentAttribute configured", gotParent)
+		}
 		if out.Attributes["created"] != `{"cards":1}` {
 			t.Errorf("summary not stored: %+v", out.Attributes)
+		}
+	})
+
+	t.Run("a configured parentAttribute threads the landing space through", func(t *testing.T) {
+		restore := atlasReplyMaterializerFn
+		defer func() { atlasReplyMaterializerFn = restore }()
+		var gotParent string
+		atlasReplyMaterializerFn = func(_, parentID, _ string) (string, error) {
+			gotParent = parentID
+			return `{"cards":1}`, nil
+		}
+		parentNode := Node{Config: map[string]string{"itemsAttribute": "items", "parentAttribute": "parentId"}}
+		ctx := ExecContext{Attributes: map[string]any{"items": `[{"title":"CRM"}]`, "parentId": "space-42"}}
+		if _, err := execAtlasFromReply(parentNode, ctx); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if gotParent != "space-42" {
+			t.Errorf("parentID = %q, want the configured attribute's value", gotParent)
 		}
 	})
 

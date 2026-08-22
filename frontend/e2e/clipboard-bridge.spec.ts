@@ -44,7 +44,10 @@ test('Copy for AI puts the reply-contract envelope on the clipboard', async ({ p
     expect(envelope.schema.type).toBe('object')
     expect(envelope.allowedActions).toContain('create-cards')
     expect(envelope.items[0].title).toBe('Getting started')
-    expect(envelope.instructions).toContain('JSON code block')
+    // Hardened wording (goal 0101 slice 2 item 4): "raw JSON object",
+    // never "code block", which invites a fenced answer.
+    expect(envelope.instructions).toContain('raw JSON object')
+    expect(envelope.instructions).not.toContain('code block')
     await page.keyboard.press('Escape')
   })
 })

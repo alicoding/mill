@@ -52,8 +52,11 @@ type ContextLink struct {
 }
 
 // replyInstructions is the one line of prose the contract allows; the
-// schema is the rest of the instruction.
-const replyInstructions = "Reply with a single JSON code block that conforms to the schema in this envelope's \"schema\" field."
+// schema is the rest of the instruction. Spelled out as "raw JSON, no
+// fences" rather than "a JSON code block" -- the earlier wording
+// invited a Markdown-fenced answer, which ParseReply's stripCodeFence
+// tolerates but is never the contract's ask.
+const replyInstructions = "Reply with exactly one raw JSON object that matches the schema in this envelope's \"schema\" field -- no prose, no Markdown, no code fences around it."
 
 // BuildContextEnvelope assembles the OUT envelope for a set of cards.
 // kindLabels and actions become enum values inside the reply schema --

@@ -374,6 +374,7 @@
     "send": "Send",
     "emptyTranscript": "Ask a question, or describe what you want organized.",
     "notActions": "Mill couldn't read this as actions.",
+    "nothingToAdd": "Didn't find anything to add.",
     "collision": "Already exists as {{kind}} — unchecked so nothing is overwritten",
     "collisionGenericKind": "a card",
     "confirmCards": "Create {{count}} cards",

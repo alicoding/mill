@@ -50,6 +50,24 @@ function startFakeProvider(replyJSON: string): Promise<{ url: string; close: () 
   })
 }
 
+// A fixture that answers with a non-2xx status and a JSON error body --
+// no SSE stream at all, matching a real provider's own non-streaming
+// error response (aiclient.Chat checks the status BEFORE it ever
+// starts reading an event stream).
+function startFailingProvider(status: number, body: string): Promise<{ url: string; close: () => Promise<void> }> {
+  return new Promise((resolve) => {
+    const server = http.createServer((req, res) => {
+      res.writeHead(status, { 'Content-Type': 'application/json' })
+      res.end(body)
+    })
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address()
+      const port = typeof address === 'object' && address ? address.port : 0
+      resolve({ url: `http://127.0.0.1:${port}`, close: () => new Promise((r) => server.close(() => r())) })
+    })
+  })
+}
+
 async function openAtlas(page: import('@playwright/test').Page, baseURL: string) {
   await page.goto(`${baseURL}/`)
   await page.getByRole('link', { name: 'Atlas' }).click()
@@ -178,14 +196,108 @@ test('sending a message streams a reply, the provider picker lists it, and Accep
     await page.getByTestId('companion-proposal-accept').click()
     await expect(page.getByTestId('companion-proposal-accepted')).toBeVisible()
 
+    // goal 0101 slice 2 item 5: the accepted card lands in the space the
+    // user was actually viewing (the default landing view auto-drills
+    // into "My space", the seeded single root card, which is NOT the
+    // board root) -- visible right here with no navigation, closing the
+    // companion panel only to bring the board's full width back into
+    // view.
     await page.getByTestId('atlas-open-companion').click()
-    // materializeReplyItems always creates at TRUE root (parentID ""),
-    // never the currently-viewed space -- the default landing view
-    // auto-drills into "My space" (the seeded single root card), so
-    // the new card needs the "All spaces" breadcrumb to come into view
-    // (it now renders since there are 2 root cards, no longer 1).
-    await page.getByTestId('atlas-breadcrumb').getByText('All spaces').click()
     await expect(noteCard(page, 'ZzCompanionCard')).toBeVisible()
+  } finally {
+    await server?.stop()
+    await fakeProvider?.close()
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
+  }
+})
+
+// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
+test('a provider error renders in full, wrapped and scrollable, with a Copy details button', async ({}, testInfo) => {
+  const idx = testInfo.parallelIndex
+  const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-companion-error-${idx}-`))
+  let server: SpawnedServer | undefined
+  let failingProvider: { url: string; close: () => Promise<void> } | undefined
+  const browser = await chromium.launch()
+  try {
+    // A real OpenAI-compatible 404 shape (model not installed) -- the
+    // owner's own live repro, goal 0101 slice 2 item 2.
+    const errorBody = JSON.stringify({
+      error: {
+        message: 'The model "gpt-4-turbo-preview-not-installed" does not exist or you do not have access to it. Check the model field and try again.',
+        type: 'invalid_request_error', param: null, code: 'model_not_found',
+      },
+    })
+    failingProvider = await startFailingProvider(404, errorBody)
+
+    server = await spawnMillServer({
+      port: SERVER_BASE_PORT + 30 + idx, mcpPort: MCP_BASE_PORT + 30 + idx,
+      settingsPath: path.join(dir, 'settings.json'), executionDbPath: path.join(dir, 'execution.db'), backupDir: path.join(dir, 'backups'),
+    })
+    const page = await browser.newPage()
+    await createProvider(page, server.baseURL, 'ZzFailingProvider', failingProvider.url)
+    await openAtlas(page, server.baseURL)
+
+    await page.getByTestId('atlas-open-companion').click()
+    const providerSelect = page.getByTestId('companion-provider-select')
+    await providerSelect.selectOption({ label: 'ZzFailingProvider' })
+
+    await page.getByTestId('companion-composer').fill('organize this')
+    await page.getByTestId('companion-send').click()
+
+    const errorText = page.getByTestId('companion-error-text')
+    await expect(errorText).toBeVisible({ timeout: 15_000 })
+    // The full body reaches the DOM -- including the tail end of the
+    // message, which a fixed single-line truncation would have cut off.
+    await expect(errorText).toContainText('model_not_found')
+    await expect(errorText).toContainText('Check the model field and try again')
+    await expect(errorText).toContainText('404')
+
+    // Wrapped and scrollable, never single-line-truncated: the computed
+    // style backing that behavior, not just the text's presence.
+    const computed = await errorText.evaluate((el) => {
+      const cs = getComputedStyle(el)
+      return { whiteSpace: cs.whiteSpace, overflowY: cs.overflowY }
+    })
+    expect(computed.whiteSpace).toBe('pre-wrap')
+    expect(computed.overflowY).toBe('auto')
+
+    await expect(page.getByTestId('companion-copy-diagnosis')).toBeVisible()
+  } finally {
+    await server?.stop()
+    await failingProvider?.close()
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
+  }
+})
+
+// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
+test('an empty-items reply renders as a no-op, not the generic invalid note', async ({}, testInfo) => {
+  const idx = testInfo.parallelIndex
+  const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-companion-empty-items-${idx}-`))
+  let server: SpawnedServer | undefined
+  let fakeProvider: { url: string; close: () => Promise<void> } | undefined
+  const browser = await chromium.launch()
+  try {
+    const reply = JSON.stringify({ mill: 1, kind: 'reply', action: 'create-cards', items: [] })
+    fakeProvider = await startFakeProvider(reply)
+
+    server = await spawnMillServer({
+      port: SERVER_BASE_PORT + 40 + idx, mcpPort: MCP_BASE_PORT + 40 + idx,
+      settingsPath: path.join(dir, 'settings.json'), executionDbPath: path.join(dir, 'execution.db'), backupDir: path.join(dir, 'backups'),
+    })
+    const page = await browser.newPage()
+    await createProvider(page, server.baseURL, 'ZzEmptyProvider', fakeProvider.url)
+    await openAtlas(page, server.baseURL)
+
+    await page.getByTestId('atlas-open-companion').click()
+    const providerSelect = page.getByTestId('companion-provider-select')
+    await providerSelect.selectOption({ label: 'ZzEmptyProvider' })
+
+    await page.getByTestId('companion-composer').fill('nothing to file here')
+    await page.getByTestId('companion-send').click()
+
+    await expect(page.getByTestId('companion-nothing-to-add')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByTestId('companion-not-actions')).toHaveCount(0)
+    await expect(page.getByTestId('companion-proposal')).toHaveCount(0)
   } finally {
     await server?.stop()
     await fakeProvider?.close()

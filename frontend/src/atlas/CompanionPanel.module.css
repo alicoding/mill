@@ -55,6 +55,18 @@
 .notActionsNote {
     color: var(--fgColor-muted);
 }
+/* A provider error body (a raw JSON error payload) has no natural
+   break points a browser's default word-break honors, so it needs its
+   own wrap rule -- without it the text overflows the panel's fixed
+   width instead of wrapping, reading as truncated even though the DOM
+   holds it whole. Capped and scrollable so a long body never pushes
+   the rest of the panel out of view. */
+.errorText {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 160px;
+    overflow-y: auto;
+}
 .composer {
     flex: 0 0 auto;
     padding: var(--base-size-8);

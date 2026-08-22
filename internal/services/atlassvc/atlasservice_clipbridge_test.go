@@ -57,6 +57,17 @@ func TestPreviewClipbridgeReply(t *testing.T) {
 			t.Fatalf("preview = %+v", p)
 		}
 	})
+
+	t.Run("empty items is a valid no-op, not an invalid reply", func(t *testing.T) {
+		reply := `{"mill":1,"kind":"reply","action":"create-cards","items":[]}`
+		p, err := a.PreviewClipbridgeReply(reply)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !p.Valid || !p.Empty || len(p.Errors) != 0 || len(p.Cards) != 0 {
+			t.Fatalf("preview = %+v", p)
+		}
+	})
 }
 
 func TestCardContextEnvelope(t *testing.T) {
@@ -175,7 +186,7 @@ func TestMaterializeReplyItems(t *testing.T) {
 	a := NewAtlasService(servicetest.NewFakeStore())
 
 	t.Run("cards and notes in one batch", func(t *testing.T) {
-		summary, err := a.materializeReplyItems(`[{"title":"Batch card","note":"n"},{"text":"batch note"}]`, "")
+		summary, err := a.materializeReplyItems(`[{"title":"Batch card","note":"n"},{"text":"batch note"}]`, "", "")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -193,7 +204,7 @@ func TestMaterializeReplyItems(t *testing.T) {
 	})
 
 	t.Run("summary maps to a declared field or appends to the note", func(t *testing.T) {
-		summary, err := a.materializeReplyItems(`[{"title":"With summary","summary":"the gist"}]`, "")
+		summary, err := a.materializeReplyItems(`[{"title":"With summary","summary":"the gist"}]`, "", "")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -213,16 +224,45 @@ func TestMaterializeReplyItems(t *testing.T) {
 	})
 
 	t.Run("unknown kind label errors with its name", func(t *testing.T) {
-		_, err := a.materializeReplyItems(`[{"title":"x","kind":"Nonesuch"}]`, "")
+		_, err := a.materializeReplyItems(`[{"title":"x","kind":"Nonesuch"}]`, "", "")
 		if err == nil || !strings.Contains(err.Error(), "Nonesuch") {
 			t.Fatalf("expected a named kind error, got %v", err)
 		}
 	})
 
 	t.Run("item with neither title nor text errors", func(t *testing.T) {
-		_, err := a.materializeReplyItems(`[{"note":"only a note"}]`, "")
+		_, err := a.materializeReplyItems(`[{"note":"only a note"}]`, "", "")
 		if err == nil {
 			t.Fatal("expected an error")
+		}
+	})
+
+	t.Run("a non-empty parentID lands the card inside that space", func(t *testing.T) {
+		kind, err := a.CreateKind("Topic", "", "", nil)
+		if err != nil {
+			t.Fatalf("CreateKind: %v", err)
+		}
+		space, err := a.CreateCard(kind.ID, "Landing space", "", nil, "", nil, "", "", "", "")
+		if err != nil {
+			t.Fatalf("CreateCard(space): %v", err)
+		}
+		if _, err := a.materializeReplyItems(`[{"title":"Filed here","kind":"Topic"}]`, space.ID, ""); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		var made atlas.Card
+		for _, c := range a.Cards() {
+			if c.Title == "Filed here" {
+				made = c
+			}
+		}
+		if made.ID == "" {
+			t.Fatal("card missing")
+		}
+		if made.ParentID != space.ID {
+			t.Fatalf("ParentID = %q, want %q", made.ParentID, space.ID)
+		}
+		if made.Position == nil {
+			t.Fatal("a card landing inside a space needs a placed Position, not nil")
 		}
 	})
 }

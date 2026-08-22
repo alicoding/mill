@@ -81,6 +81,13 @@ export interface ClipbridgeCardOffer {
 export interface ClipbridgeReplyPreview {
     "Recognized": boolean;
     "Valid": boolean;
+
+    /**
+     * Empty marks a schema-valid reply whose action carried zero items
+     * -- a deliberate no-op, distinct from both a validation failure
+     * and an ordinary proposal (see clipbridge.ReplyPreview.Empty).
+     */
+    "Empty": boolean;
     "Action": string;
     "Errors": string[] | null;
     "Cards": ClipbridgeCardOffer[] | null;

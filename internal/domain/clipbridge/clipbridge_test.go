@@ -141,12 +141,53 @@ func TestParseReply_RefusalsNameThemselves(t *testing.T) {
 			t.Fatalf("unknown kind must not validate: %+v", p)
 		}
 	})
-	t.Run("empty items", func(t *testing.T) {
+}
+
+// Empty items is a deliberate no-op, not a validation failure (goal
+// 0101 slice 2 item 4): the model found nothing to propose, which is
+// still a schema-valid reply.
+func TestParseReply_EmptyItemsIsAValidNoOp(t *testing.T) {
+	t.Run("create-cards", func(t *testing.T) {
 		p := ParseReply(validReply(t, ActionCreateCards, `[]`), testKinds, V1Actions())
-		if p.Valid || len(p.Errors) == 0 {
-			t.Fatalf("empty items must be refused with a named error, got %+v", p)
+		if !p.Valid || !p.Empty || len(p.Errors) != 0 || len(p.Cards) != 0 {
+			t.Fatalf("empty create-cards items must be a valid no-op, got %+v", p)
 		}
 	})
+	t.Run("note-to-scratchpad", func(t *testing.T) {
+		p := ParseReply(validReply(t, ActionNoteToScratchpad, `[]`), testKinds, V1Actions())
+		if !p.Valid || !p.Empty || len(p.Errors) != 0 || len(p.NoteTexts) != 0 {
+			t.Fatalf("empty note-to-scratchpad items must be a valid no-op, got %+v", p)
+		}
+	})
+	t.Run("a non-empty reply stays Empty=false", func(t *testing.T) {
+		p := ParseReply(validReply(t, ActionCreateCards, `[{"title":"CRM"}]`), testKinds, V1Actions())
+		if p.Empty {
+			t.Fatalf("a reply carrying items must not be marked Empty: %+v", p)
+		}
+	})
+}
+
+// A code fence preceded by real prose is never extracted -- 0099's
+// strictness stands: ParseReply only tolerates a reply that IS a fenced
+// block, never a JSON block buried inside conversational text.
+func TestParseReply_ProseWithEmbeddedJSONIsNotExtracted(t *testing.T) {
+	withPreamble := "Sure, here's the plan:\n\n```json\n" + validReply(t, ActionCreateCards, `[{"title":"x"}]`) + "\n```"
+	p := ParseReply(withPreamble, testKinds, V1Actions())
+	if p.Recognized {
+		t.Fatalf("a fence preceded by prose must not be recognized: %+v", p)
+	}
+}
+
+// A truncated (cut-off mid-object) reply fails JSON parsing outright --
+// distinct from a schema-valid-but-empty reply (Empty above) and from
+// ordinary prose (Recognized stays false either way, but for a
+// different reason: this one looked like an attempt).
+func TestParseReply_TruncatedJSONIsRejected(t *testing.T) {
+	truncated := `{"mill":1,"kind":"reply","action":"create-cards","items":[{"title":"x"`
+	p := ParseReply(truncated, testKinds, V1Actions())
+	if p.Recognized {
+		t.Fatalf("truncated JSON must not be recognized as a reply: %+v", p)
+	}
 }
 
 func TestParseReply_NoteToScratchpad(t *testing.T) {

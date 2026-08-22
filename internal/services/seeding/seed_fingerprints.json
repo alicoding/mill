@@ -136,12 +136,12 @@
     "fingerprint": "9de7e8459d7a325d2d78ba99704020dc0424cc0902060ea01d1dd9aedf48d234"
   },
   "workflow:clipbridge-reply-cards-workflow": {
-    "seedRevision": 1,
-    "fingerprint": "290efbf6399960481af8b587544808ac9ba4d032f00889ccdeec886cd5f082c5"
+    "seedRevision": 2,
+    "fingerprint": "29ed0b53d2c4ba67f0f42e02868fdf269690b66f57bdefb77717e7a4f1486950"
   },
   "workflow:clipbridge-reply-note-workflow": {
-    "seedRevision": 1,
-    "fingerprint": "0db57006c8193c338bcccfb23befd063b487367cc859a44069118d43e590433d"
+    "seedRevision": 2,
+    "fingerprint": "cbd789a974956ceea36271f5240de1d118b6966e4a7c9637fb00467f07f03d00"
   },
   "workflow:example-ai-classify-branch-workflow": {
     "seedRevision": 2,

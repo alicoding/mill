@@ -9,6 +9,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/atlas"
 	"github.com/alicoding/mill/internal/domain/clipbridge"
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/services/seeding"
 )
 
 // The clipboard bridge (goal 0099) lives beside AtlasService because
@@ -31,8 +32,12 @@ type ClipbridgeCardOffer struct {
 // Atlas-side collision annotations and the route workflow to run on
 // accept.
 type ClipbridgeReplyPreview struct {
-	Recognized      bool                  `json:"Recognized"`
-	Valid           bool                  `json:"Valid"`
+	Recognized bool `json:"Recognized"`
+	Valid      bool `json:"Valid"`
+	// Empty marks a schema-valid reply whose action carried zero items
+	// -- a deliberate no-op, distinct from both a validation failure
+	// and an ordinary proposal (see clipbridge.ReplyPreview.Empty).
+	Empty           bool                  `json:"Empty"`
 	Action          string                `json:"Action"`
 	Errors          []string              `json:"Errors"`
 	Cards           []ClipbridgeCardOffer `json:"Cards"`
@@ -57,6 +62,7 @@ func (a *AtlasService) PreviewClipbridgeReply(raw string) (ClipbridgeReplyPrevie
 	out := ClipbridgeReplyPreview{
 		Recognized: p.Recognized,
 		Valid:      p.Valid,
+		Empty:      p.Empty,
 		Action:     p.Action,
 		Errors:     p.Errors,
 		NoteTexts:  p.NoteTexts,
@@ -185,20 +191,65 @@ func (a *AtlasService) SpaceContextEnvelope(spaceID string) (string, error) {
 	return marshalEnvelope(clipbridge.BuildContextEnvelope(cards, labels, clipbridge.V1Actions()))
 }
 
+// replyItemDraft is one accepted reply item's wire shape -- a
+// non-empty Title names a card draft, a non-empty Text names a note
+// draft; clipbridge.ParseReply's own per-action schema upstream is
+// what keeps the two from arriving mixed on one item.
+type replyItemDraft struct {
+	Title   string `json:"title"`
+	Kind    string `json:"kind"`
+	Note    string `json:"note"`
+	Summary string `json:"summary"`
+	Text    string `json:"text"`
+}
+
+// createReplyCard resolves item's kind/summary placement and creates
+// the card -- split out of materializeReplyItems purely to keep that
+// function's own cognitive complexity under the repo's gate. cardIndex
+// is this batch's own running count, fed to importGridPosition when
+// parentID is set so a multi-card batch lands without overlapping
+// itself.
+func (a *AtlasService) createReplyCard(item replyItemDraft, kindByLabel map[string]atlas.Kind, defaultKind atlas.Kind, parentID string, cardIndex int, sourceRunID string) (atlas.Card, error) {
+	kind := defaultKind
+	if item.Kind != "" {
+		k, ok := kindByLabel[strings.ToLower(item.Kind)]
+		if !ok {
+			return atlas.Card{}, fmt.Errorf("no kind labeled %q", item.Kind)
+		}
+		kind = k
+	}
+	note := item.Note
+	fields := map[string]string{}
+	switch {
+	case item.Summary == "":
+	case kindDeclaresField(kind, "summary"):
+		fields["summary"] = item.Summary
+	case note == "":
+		note = item.Summary
+	default:
+		note = note + "\n\n" + item.Summary
+	}
+	if parentID == "" {
+		return a.CreateCardForWorkflow(kind.ID, item.Title, note, fields, sourceRunID)
+	}
+	return a.createCardWithID(seeding.NewSlugID(item.Title, "card"), kind.ID, item.Title, note, fields,
+		parentID, importGridPosition(cardIndex), "", "", "", "", "", sourceRunID)
+}
+
 // materializeReplyItems is the apply-atlas-from-reply seam: accepted
 // reply items become real records. An item with a title becomes a card
 // (kind label resolved against the CURRENT kinds; summary lands in the
 // kind's own "summary" field when it declares one, otherwise appended
 // to the note so nothing is silently dropped); an item with text
-// becomes a Scratchpad note.
-func (a *AtlasService) materializeReplyItems(itemsJSON string, sourceRunID string) (string, error) {
-	var items []struct {
-		Title   string `json:"title"`
-		Kind    string `json:"kind"`
-		Note    string `json:"note"`
-		Summary string `json:"summary"`
-		Text    string `json:"text"`
-	}
+// becomes a Scratchpad note, unaffected by parentID. parentID names the
+// space a card item lands inside ("" for the board root, the pre-goal-
+// 0101-slice-2 default): a companion Accept threads the space the user
+// was actually viewing, placed via the same grid layout bulk import
+// already uses (importGridPosition) since a batch of new cards landing
+// together is the identical "not collision-checked against pre-
+// existing siblings, expected to be dragged into place" shape.
+func (a *AtlasService) materializeReplyItems(itemsJSON, parentID, sourceRunID string) (string, error) {
+	var items []replyItemDraft
 	if err := json.Unmarshal([]byte(itemsJSON), &items); err != nil {
 		return "", fmt.Errorf("reply items are not a JSON array: %w", err)
 	}
@@ -221,26 +272,7 @@ func (a *AtlasService) materializeReplyItems(itemsJSON string, sourceRunID strin
 	for i, item := range items {
 		switch {
 		case strings.TrimSpace(item.Title) != "":
-			kind := defaultKind
-			if item.Kind != "" {
-				k, ok := kindByLabel[strings.ToLower(item.Kind)]
-				if !ok {
-					return "", fmt.Errorf("item %d: no kind labeled %q", i+1, item.Kind)
-				}
-				kind = k
-			}
-			note := item.Note
-			fields := map[string]string{}
-			switch {
-			case item.Summary == "":
-			case kindDeclaresField(kind, "summary"):
-				fields["summary"] = item.Summary
-			case note == "":
-				note = item.Summary
-			default:
-				note = note + "\n\n" + item.Summary
-			}
-			card, err := a.CreateCardForWorkflow(kind.ID, item.Title, note, fields, sourceRunID)
+			card, err := a.createReplyCard(item, kindByLabel, defaultKind, parentID, cards, sourceRunID)
 			if err != nil {
 				return "", fmt.Errorf("item %d (%q): %w", i+1, item.Title, err)
 			}

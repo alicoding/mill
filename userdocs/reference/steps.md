@@ -306,6 +306,7 @@ Creates Atlas records from an accepted clipboard reply's items: an item with a "
 - Effect: changes something on this machine
 - Settings:
   - **Items attribute** — Which Attributes field carries the accepted reply items (a JSON array).
+  - **Landing space attribute (optional)** — Which Attributes field carries the target space's card id. New cards land there instead of the board root.
   - **Output attribute (optional)** — Which Attributes field receives a summary of what was created.
 
 ### Link Atlas cards
