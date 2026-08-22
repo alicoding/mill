@@ -308,6 +308,18 @@ layer per capability," never "a seed per thing":
   into Settings > MCP access, confirming Save shows the restart note,
   then entering something malformed and confirming the validation
   message appears instead.
+- **Stable signing identity survives an update** (goal 0158,
+  `internal/adapters/codesigning` + `resignStagedBundle`) — identity
+  creation/idempotency is a real headless adapter test against a temp
+  keychain, and the ordering contract (never reached before the
+  updater's own digest verify + stage, a signer error is non-fatal)
+  is unit-tested with a fake signer. What stays manual: whether an
+  actually-granted Accessibility permission really survives across
+  real updates depends on macOS's own trust-settings state on this
+  specific machine, which no CI runner can reproduce — verify by
+  granting Accessibility once, taking two consecutive beta updates,
+  and confirming the summon hotkey still registers with no new
+  permission prompt.
 
 From the UX point of view the seed layer stays privileged — it's the
 one a human can SEE working — but correctness under change belongs to

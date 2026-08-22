@@ -71,6 +71,7 @@
       "updateAvailable": "Update available: v{{version}}",
       "upToDate": "You're on the latest version.",
       "currentVersion": "You have Mill v{{version}}",
+      "resignNotice": "Mill re-signs itself after updating, so permission grants like Accessibility keep working.",
       "channelRelease": "installed from a release",
       "channelBeta": "installed from the beta channel",
       "channelSource": "built from source",

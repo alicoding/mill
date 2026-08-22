@@ -109,8 +109,14 @@ type SettingsService struct {
 	// next check/install after a restart.
 	availableUpdate string
 	updateReady     bool
-	isolatedData    bool
-	mcpService      *mcpsvc.MillMCPService
+	// resignWarning carries a non-fatal re-sign failure (goal 0158)
+	// forward into the notice pill: the update itself still succeeded,
+	// so this rides UpdateNotice rather than failing
+	// DownloadAndInstallUpdate. Cleared at the start of the next
+	// install attempt.
+	resignWarning string
+	isolatedData  bool
+	mcpService    *mcpsvc.MillMCPService
 
 	// keymap holds command-keybinding OVERRIDES only (goal 0016 --
 	// docs/goals/0016-keymap-system.md), keyed by command id
