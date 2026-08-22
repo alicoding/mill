@@ -16,6 +16,14 @@
     margin-top: var(--base-size-16);
     margin-bottom: var(--base-size-8);
 }
+/* WCAG 1.4.1 (Use of Color): an inline link must be distinguishable
+   from surrounding body text by more than color alone -- axe-core's
+   link-in-text-block rule flags this markdown body's links otherwise,
+   since the accent color's contrast against body text falls under
+   the 3:1 minimum for a color-only distinction. */
+.markdownBody :global(a) {
+    text-decoration: underline;
+}
 .markdownBody :global(code) {
     background-color: var(--bgColor-muted);
     border-radius: var(--borderRadius-small);

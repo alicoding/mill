@@ -198,10 +198,15 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
           className={`${styles.linkHandle} nodrag nopan`}
           data-testid="atlas-note-link-handle"
           data-disabled={!hasLegalTargets}
-          role="button"
-          tabIndex={-1}
-          aria-label={t('board.slotDragToAdd')}
-          aria-disabled={!hasLegalTargets}
+          // Pointer-drag-only affordance -- no keyboard handler exists
+          // (only onPointerDown below), so it was never really
+          // keyboard-operable despite the role/tabIndex it used to
+          // carry. aria-hidden is the honest a11y state: nested inside
+          // the card's own role="button", a second interactive role
+          // here would violate WCAG's no-nested-interactive-controls
+          // requirement (axe-core's nested-interactive rule) while
+          // promising keyboard operability this handle doesn't have.
+          aria-hidden="true"
           title={hasLegalTargets ? undefined : t('board.slotDragDisabledTitle')}
           onPointerDown={(e) => {
             e.stopPropagation()

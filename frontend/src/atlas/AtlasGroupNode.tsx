@@ -77,17 +77,15 @@ export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<A
       data-pulse={pulsed}
       data-drag-highlight={dragHighlighted}
       data-slot-target={slotDragHighlight}
-      role="button"
-      tabIndex={0}
-      aria-label={t('board.zoomIntoAriaLabel', { title: card.Title })}
+      // Not a widget role itself (WCAG's no-nested-interactive-controls
+      // requirement, axe-core's nested-interactive rule): the header
+      // below is the frame's one real keyboard-focusable control and
+      // already fires the identical zoom action, so the frame body
+      // stays a plain click target (bodyClick still fires on a mouse
+      // click regardless of role/tabIndex) rather than a second,
+      // redundant tab stop announcing the same label twice.
       style={{ borderColor: `var(${tokens.fg})`, background: `var(${tokens.muted})` }}
       onClick={bodyClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onDrill(card.ID)
-        }
-      }}
     >
       {/* Invisible connection points, same reasoning as AtlasNoteCardNode's
           own Handle pair -- a link naming this region frame's own card
