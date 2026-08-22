@@ -320,7 +320,7 @@ func (s *SettingsService) CheckForUpdates() (UpdateCheckResult, error) {
 	}
 	rel, err := u.Check(context.Background())
 	if err != nil {
-		return UpdateCheckResult{}, err
+		return UpdateCheckResult{}, sanitizeUpdaterError(err)
 	}
 	if rel == nil {
 		return UpdateCheckResult{UpdateAvailable: false, CurrentVersion: s.AppVersion()}, nil
@@ -380,7 +380,7 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 		return fmt.Errorf("updater not configured")
 	}
 	if err := u.DownloadAndInstall(context.Background()); err != nil {
-		return err
+		return sanitizeUpdaterError(err)
 	}
 	s.markUpdateReady()
 	return nil
