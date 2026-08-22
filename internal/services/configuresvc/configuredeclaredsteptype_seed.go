@@ -9,57 +9,29 @@ import (
 	"github.com/alicoding/mill/internal/contract"
 	"github.com/alicoding/mill/internal/domain/declaredsteptype"
 	"github.com/alicoding/mill/internal/domain/seedorigin"
+	"github.com/alicoding/mill/internal/services/entitystore"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
 
 // reconcileBuiltInDeclaredStepTypes mirrors reconcileBuiltInExecEnvs
 // (configureservice_builtin.go) for the seeded example DeclaredStepType
-// (docs/goals/0054 slice A). A DeclaredStepType carries no secret, same
-// "simpler than the HTTPRequest version" reasoning every sibling
-// reconcile already gives.
+// (docs/goals/0054 slice A) via declaredStepTypeDescriptor
+// (configuredeclaredsteptype.go, goal 0165). A DeclaredStepType
+// carries no secret, same "simpler than the HTTPRequest version"
+// reasoning every sibling reconcile already gives.
 func (c *ConfigureService) reconcileBuiltInDeclaredStepTypes() {
 	tombstones := seeding.LoadTombstones(c.store)
-	now := time.Now()
-	c.mu.Lock()
-	byID := make(map[string]int, len(c.declaredStepTypes))
-	for i, d := range c.declaredStepTypes {
-		byID[d.ID] = i
-	}
-	changed := false
-	for _, golden := range declaredsteptype.BuiltIn() {
-		idx, present := byID[golden.ID]
-		if !present {
-			if tombstones[golden.ID] {
-				continue
-			}
-			golden.CreatedAt, golden.UpdatedAt = now, now
-			c.declaredStepTypes = append(c.declaredStepTypes, golden)
-			changed = true
-			continue
-		}
-		existing := c.declaredStepTypes[idx]
-		if existing.Seed.SeedRevision == 0 {
-			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
-			c.declaredStepTypes[idx] = existing
-			changed = true
-			continue
-		}
-		if existing.Seed.Modified {
-			continue
-		}
-		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
-			c.declaredStepTypes[idx] = upgradeDeclaredStepTypeToGolden(existing, golden, now)
-			changed = true
-		}
-	}
-	c.mu.Unlock()
-	if changed {
+	if _, changed := entitystore.Reconcile(&c.mu, &c.declaredStepTypes, tombstones, declaredStepTypeDescriptor); changed {
 		if err := c.persistDeclaredStepTypes(); err != nil {
 			slog.Error("failed to reconcile built-in declared step types", "error", err)
 		}
 	}
 }
 
+// upgradeDeclaredStepTypeToGolden replaces existing's content with
+// golden's, preserving existing's identity (ID/CreatedAt) -- shared
+// by reconcileBuiltInDeclaredStepTypes' upgrade branch via
+// declaredStepTypeDescriptor.Upgrade.
 func upgradeDeclaredStepTypeToGolden(existing, golden declaredsteptype.DeclaredStepType, now time.Time) declaredsteptype.DeclaredStepType {
 	golden.CreatedAt = existing.CreatedAt
 	golden.UpdatedAt = now
@@ -147,14 +119,20 @@ func (c *ConfigureService) ImportDeclaredStepType(jsonData string) (declaredstep
 		return declaredsteptype.DeclaredStepType{}, fmt.Errorf("import declared step type: %w", err)
 	}
 
-	if in.ID != "" {
+	exists := func(id string) bool {
 		c.mu.Lock()
-		found := c.declaredStepTypeExistsLocked(in.ID)
-		c.mu.Unlock()
-		if found {
-			return c.UpdateDeclaredStepType(in.ID, in.Label, in.Description, in.PaletteGroup, in.Engine, in.RequestID, in.MCPServerID, in.ToolName, in.WorkflowID, in.PinnedConfig, in.HiddenFields)
-		}
-		return c.createDeclaredStepTypeWithID(in.ID, in.Label, in.Description, in.PaletteGroup, in.Engine, in.RequestID, in.MCPServerID, in.ToolName, in.WorkflowID, in.PinnedConfig, in.HiddenFields)
+		defer c.mu.Unlock()
+		return c.declaredStepTypeExistsLocked(id)
 	}
-	return c.CreateDeclaredStepType(in.Label, in.Description, in.PaletteGroup, in.Engine, in.RequestID, in.MCPServerID, in.ToolName, in.WorkflowID, in.PinnedConfig, in.HiddenFields)
+	return entitystore.DispatchImport(exists, in.ID,
+		func() (declaredsteptype.DeclaredStepType, error) {
+			return c.UpdateDeclaredStepType(in.ID, in.Label, in.Description, in.PaletteGroup, in.Engine, in.RequestID, in.MCPServerID, in.ToolName, in.WorkflowID, in.PinnedConfig, in.HiddenFields)
+		},
+		func() (declaredsteptype.DeclaredStepType, error) {
+			return c.createDeclaredStepTypeWithID(in.ID, in.Label, in.Description, in.PaletteGroup, in.Engine, in.RequestID, in.MCPServerID, in.ToolName, in.WorkflowID, in.PinnedConfig, in.HiddenFields)
+		},
+		func() (declaredsteptype.DeclaredStepType, error) {
+			return c.CreateDeclaredStepType(in.Label, in.Description, in.PaletteGroup, in.Engine, in.RequestID, in.MCPServerID, in.ToolName, in.WorkflowID, in.PinnedConfig, in.HiddenFields)
+		},
+	)
 }

@@ -1,17 +1,47 @@
 package configuresvc
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/domain/seedorigin"
 	"github.com/alicoding/mill/internal/services/dataevent"
+	"github.com/alicoding/mill/internal/services/entitystore"
 	"github.com/alicoding/mill/internal/services/seeding"
 	"github.com/zalando/go-keyring"
 )
+
+// aiProviderDescriptor is AIProvider's entitystore.Descriptor (goal
+// 0165): the small per-kind shape Create/Update/Delete/reconcile/
+// Reset/Restorable/Restore all key off, replacing what used to be
+// ~10 hand-copied methods.
+var aiProviderDescriptor = entitystore.Descriptor[aiprovider.AIProvider]{
+	Label:     "AI provider",
+	GetID:     func(p aiprovider.AIProvider) string { return p.ID },
+	IsBuiltIn: func(p aiprovider.AIProvider) bool { return p.BuiltIn },
+	GetSeed:   func(p aiprovider.AIProvider) seedorigin.Origin { return p.Seed },
+	SetSeed:   func(p aiprovider.AIProvider, o seedorigin.Origin) aiprovider.AIProvider { p.Seed = o; return p },
+	StampNew: func(p aiprovider.AIProvider, now time.Time) aiprovider.AIProvider {
+		p.CreatedAt, p.UpdatedAt = now, now
+		return p
+	},
+	Upgrade: upgradeAIProviderToGolden,
+	BuiltIn: aiprovider.BuiltIn,
+}
+
+// upgradeAIProviderToGolden replaces existing's content with golden's,
+// preserving existing's identity (ID/CreatedAt) -- shared by
+// reconcileBuiltInAIProviders' upgrade branch and ResetAIProviderToSeed
+// via aiProviderDescriptor.Upgrade.
+func upgradeAIProviderToGolden(existing, golden aiprovider.AIProvider, now time.Time) aiprovider.AIProvider {
+	golden.CreatedAt = existing.CreatedAt
+	golden.UpdatedAt = now
+	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
+	return golden
+}
 
 // aiProvidersKey mirrors mcpServersKey's shape (configuremcpserver.go):
 // one atomic JSON blob, the same settings.json file. In its own file
@@ -109,20 +139,8 @@ func (c *ConfigureService) createAIProviderWithID(id, label string, kind aiprovi
 		return aiprovider.AIProvider{}, err
 	}
 
-	c.mu.Lock()
-	c.aiProviders = append(c.aiProviders, p)
-	c.mu.Unlock()
-
-	if err := c.persistAIProviders(); err != nil {
-		c.mu.Lock()
-		for i, existing := range c.aiProviders {
-			if existing.ID == p.ID {
-				c.aiProviders = append(c.aiProviders[:i], c.aiProviders[i+1:]...)
-				break
-			}
-		}
-		c.mu.Unlock()
-		return aiprovider.AIProvider{}, fmt.Errorf("save AI provider: %w", err)
+	if err := entitystore.Insert(&c.mu, &c.aiProviders, c.persistAIProviders, aiProviderDescriptor, p); err != nil {
+		return aiprovider.AIProvider{}, err
 	}
 	dataevent.Emit("aiprovider", p.ID) // goal 0017: live-sync every open surface
 	return p, nil
@@ -134,39 +152,18 @@ func (c *ConfigureService) UpdateAIProvider(id, label string, kind aiprovider.Ki
 		return aiprovider.AIProvider{}, err
 	}
 
-	c.mu.Lock()
-	idx := -1
-	for i, existing := range c.aiProviders {
-		if existing.ID == id {
-			idx = i
-			break
-		}
+	updated, err := entitystore.Update(&c.mu, &c.aiProviders, c.persistAIProviders, aiProviderDescriptor, id, func(existing aiprovider.AIProvider) (aiprovider.AIProvider, error) {
+		p.BuiltIn = existing.BuiltIn
+		p.CreatedAt = existing.CreatedAt
+		p.UpdatedAt = time.Now()
+		p.Seed = existing.Seed.Touch() // docs/goals/0037 item 2
+		return p, nil
+	})
+	if err != nil {
+		return aiprovider.AIProvider{}, err
 	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return aiprovider.AIProvider{}, fmt.Errorf("no AI provider with id %q", id)
-	}
-	p.BuiltIn = c.aiProviders[idx].BuiltIn
-	p.CreatedAt = c.aiProviders[idx].CreatedAt
-	p.UpdatedAt = time.Now()
-	p.Seed = c.aiProviders[idx].Seed.Touch() // docs/goals/0037 item 2
-	previous := c.aiProviders[idx]
-	c.aiProviders[idx] = p
-	c.mu.Unlock()
-
-	if err := c.persistAIProviders(); err != nil {
-		c.mu.Lock()
-		for i, existing := range c.aiProviders {
-			if existing.ID == id {
-				c.aiProviders[i] = previous
-				break
-			}
-		}
-		c.mu.Unlock()
-		return aiprovider.AIProvider{}, fmt.Errorf("save AI provider: %w", err)
-	}
-	dataevent.Emit("aiprovider", p.ID) // goal 0017: live-sync every open surface
-	return p, nil
+	dataevent.Emit("aiprovider", updated.ID) // goal 0017: live-sync every open surface
+	return updated, nil
 }
 
 // DeleteAIProvider also removes any keychain secret for id -- best-
@@ -177,54 +174,13 @@ func (c *ConfigureService) DeleteAIProvider(id string) error {
 	if err := c.refIntegrityError("aiprovider", "AI provider", id); err != nil {
 		return err
 	}
-
-	c.mu.Lock()
-	idx := -1
-	for i, p := range c.aiProviders {
-		if p.ID == id {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return fmt.Errorf("no AI provider with id %q", id)
-	}
-	removed := c.aiProviders[idx]
-	wasBuiltIn := removed.BuiltIn
-	c.aiProviders = append(c.aiProviders[:idx], c.aiProviders[idx+1:]...)
-	c.mu.Unlock()
-
-	if wasBuiltIn {
-		if err := seeding.RecordTombstone(c.store, id); err != nil {
-			c.mu.Lock()
-			c.aiProviders = insertAIProviderAt(c.aiProviders, idx, removed)
-			c.mu.Unlock()
-			return fmt.Errorf("tombstone deleted AI provider %q: %w", id, err)
-		}
-	}
-	if err := c.persistAIProviders(); err != nil {
-		c.mu.Lock()
-		c.aiProviders = insertAIProviderAt(c.aiProviders, idx, removed)
-		c.mu.Unlock()
-		return fmt.Errorf("save AI provider deletion: %w", err)
+	recordTombstone := func(id string) error { return seeding.RecordTombstone(c.store, id) }
+	if err := entitystore.DeleteWithTombstone(&c.mu, &c.aiProviders, c.persistAIProviders, recordTombstone, aiProviderDescriptor, id); err != nil {
+		return err
 	}
 	_ = c.credentials.Delete(id)
 	dataevent.Emit("aiprovider", id) // goal 0017: live-sync every open surface
 	return nil
-}
-
-// insertAIProviderAt reinserts p at idx (clamped to the current length)
-// -- used to undo DeleteAIProvider's removal when the tombstone or
-// persist step that must accompany it fails.
-func insertAIProviderAt(providers []aiprovider.AIProvider, idx int, p aiprovider.AIProvider) []aiprovider.AIProvider {
-	if idx < 0 || idx > len(providers) {
-		idx = len(providers)
-	}
-	providers = append(providers, aiprovider.AIProvider{})
-	copy(providers[idx+1:], providers[idx:])
-	providers[idx] = p
-	return providers
 }
 
 // SetAIProviderSecret writes id's secret (an API key, or Anthropic's
@@ -257,31 +213,9 @@ func (c *ConfigureService) DeleteAIProviderSecret(id string) error {
 // --- persistence ---
 
 func (c *ConfigureService) persistAIProviders() error {
-	c.mu.Lock()
-	providers := make([]aiprovider.AIProvider, len(c.aiProviders))
-	copy(providers, c.aiProviders)
-	c.mu.Unlock()
-
-	data, err := json.Marshal(providers)
-	if err != nil {
-		return fmt.Errorf("marshal AI providers: %w", err)
-	}
-	if err := c.store.Set(aiProvidersKey, string(data)); err != nil {
-		return fmt.Errorf("persist AI providers: %w", err)
-	}
-	return nil
+	return entitystore.Persist(&c.mu, &c.aiProviders, c.store, aiProvidersKey, aiProviderDescriptor)
 }
 
 func (c *ConfigureService) restoreAIProviders() {
-	raw, ok := c.store.Get(aiProvidersKey).(string)
-	if !ok || raw == "" {
-		return
-	}
-	var providers []aiprovider.AIProvider
-	if err := json.Unmarshal([]byte(raw), &providers); err != nil {
-		return
-	}
-	c.mu.Lock()
-	c.aiProviders = providers
-	c.mu.Unlock()
+	entitystore.Load(&c.mu, &c.aiProviders, c.store, aiProvidersKey)
 }

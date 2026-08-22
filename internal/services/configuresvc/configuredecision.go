@@ -1,16 +1,57 @@
 package configuresvc
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/decision"
+	"github.com/alicoding/mill/internal/domain/seedorigin"
 	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/dataevent"
+	"github.com/alicoding/mill/internal/services/entitystore"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
+
+// decisionDescriptor is Decision's entitystore.Descriptor (goal
+// 0165): the small per-kind shape Create/Update/Delete/reconcile/
+// Reset/Restorable/Restore all key off, replacing what used to be
+// ~10 hand-copied methods.
+var decisionDescriptor = entitystore.Descriptor[decision.Decision]{
+	Label:     "decision",
+	GetID:     func(d decision.Decision) string { return d.ID },
+	IsBuiltIn: func(d decision.Decision) bool { return d.BuiltIn },
+	GetSeed:   func(d decision.Decision) seedorigin.Origin { return d.Seed },
+	SetSeed:   func(d decision.Decision, o seedorigin.Origin) decision.Decision { d.Seed = o; return d },
+	StampNew: func(d decision.Decision, now time.Time) decision.Decision {
+		d.CreatedAt, d.UpdatedAt = now, now
+		return d
+	},
+	Upgrade: upgradeDecisionToGolden,
+	BuiltIn: decision.BuiltIn,
+}
+
+// findGoldenDecision returns a copy of the golden Decision with id, if
+// one exists among decision.BuiltIn().
+func findGoldenDecision(id string) (decision.Decision, bool) {
+	for _, g := range decision.BuiltIn() {
+		if g.ID == id {
+			return g, true
+		}
+	}
+	return decision.Decision{}, false
+}
+
+// upgradeDecisionToGolden replaces existing's content with golden's,
+// preserving existing's identity (ID/CreatedAt) -- shared by
+// reconcileBuiltInDecisions' upgrade branch and ResetDecisionToSeed
+// via decisionDescriptor.Upgrade.
+func upgradeDecisionToGolden(existing, golden decision.Decision, now time.Time) decision.Decision {
+	golden.CreatedAt = existing.CreatedAt
+	golden.UpdatedAt = now
+	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
+	return golden
+}
 
 // decisionsKey mirrors requestsKey/listsKey/mcpServersKey's shape
 // (configureservice.go/configuremcpserver.go): one atomic JSON blob,
@@ -89,20 +130,8 @@ func (c *ConfigureService) createDecisionWithID(id, label string, category decis
 		return decision.Decision{}, err
 	}
 
-	c.mu.Lock()
-	c.decisions = append(c.decisions, d)
-	c.mu.Unlock()
-
-	if err := c.persistDecisions(); err != nil {
-		c.mu.Lock()
-		for i, existing := range c.decisions {
-			if existing.ID == d.ID {
-				c.decisions = append(c.decisions[:i], c.decisions[i+1:]...)
-				break
-			}
-		}
-		c.mu.Unlock()
-		return decision.Decision{}, fmt.Errorf("save decision: %w", err)
+	if err := entitystore.Insert(&c.mu, &c.decisions, c.persistDecisions, decisionDescriptor, d); err != nil {
+		return decision.Decision{}, err
 	}
 	dataevent.Emit("decision", d.ID) // goal 0017: live-sync every open surface
 	return d, nil
@@ -122,139 +151,61 @@ func (c *ConfigureService) createDecisionWithID(id, label string, category decis
 // docs/adr/0040 decision 3's evolution check (typedfield.
 // ValidateFieldEvolution's own doc comment has the full rule).
 func (c *ConfigureService) UpdateDecision(id, label string, category decision.Category, outputs []decision.OutputField, newFieldTombstones []typedfield.FieldTombstone, webhookRequestID string) (decision.Decision, error) {
-	c.mu.Lock()
-	idx := -1
-	for i, existing := range c.decisions {
-		if existing.ID == id {
-			idx = i
-			break
+	updated, err := entitystore.Update(&c.mu, &c.decisions, c.persistDecisions, decisionDescriptor, id, func(existing decision.Decision) (decision.Decision, error) {
+		if existing.Category != category {
+			return decision.Decision{}, fmt.Errorf(
+				"a decision's category cannot be changed after creation (it is %q) -- duplicate this decision to create one with a different category",
+				existing.Category)
 		}
-	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return decision.Decision{}, fmt.Errorf("no decision with id %q", id)
-	}
-	existing := c.decisions[idx]
-	c.mu.Unlock()
 
-	if existing.Category != category {
-		return decision.Decision{}, fmt.Errorf(
-			"a decision's category cannot be changed after creation (it is %q) -- duplicate this decision to create one with a different category",
-			existing.Category)
-	}
+		tombstones := typedfield.MergeTombstones(existing.FieldTombstones, newFieldTombstones)
+		if err := typedfield.ValidateFieldEvolution(existing.Outputs, outputs, tombstones); err != nil {
+			return decision.Decision{}, err
+		}
 
-	tombstones := typedfield.MergeTombstones(existing.FieldTombstones, newFieldTombstones)
-	if err := typedfield.ValidateFieldEvolution(existing.Outputs, outputs, tombstones); err != nil {
+		d := decision.Decision{
+			ID: id, Label: label, Category: category, Outputs: outputs, WebhookRequestID: webhookRequestID, BuiltIn: existing.BuiltIn,
+			// CreatedAt is preserved from the stored entity, never trusted
+			// from the wire; UpdatedAt always advances on a real update.
+			CreatedAt:       existing.CreatedAt,
+			UpdatedAt:       time.Now(),
+			FieldTombstones: tombstones,
+			// Versions/PublishedVersion are preserved untouched (docs/adr/0040
+			// decision 4): editing the draft never mutates or drops publish
+			// history -- only PublishDecision (configuredecision_versioning.go)
+			// is allowed to change either of these.
+			Versions:         existing.Versions,
+			PublishedVersion: existing.PublishedVersion,
+			// Modified latch (docs/goals/0037 item 2), same reasoning as
+			// httprequest's UpdateHTTPRequest.
+			Seed: existing.Seed.Touch(),
+		}
+		if err := decision.Validate(d); err != nil {
+			return decision.Decision{}, err
+		}
+		return d, nil
+	})
+	if err != nil {
 		return decision.Decision{}, err
 	}
-
-	d := decision.Decision{
-		ID: id, Label: label, Category: category, Outputs: outputs, WebhookRequestID: webhookRequestID, BuiltIn: existing.BuiltIn,
-		// CreatedAt is preserved from the stored entity, never trusted
-		// from the wire; UpdatedAt always advances on a real update.
-		CreatedAt:       existing.CreatedAt,
-		UpdatedAt:       time.Now(),
-		FieldTombstones: tombstones,
-		// Versions/PublishedVersion are preserved untouched (docs/adr/0040
-		// decision 4): editing the draft never mutates or drops publish
-		// history -- only PublishDecision (configuredecision_versioning.go)
-		// is allowed to change either of these.
-		Versions:         existing.Versions,
-		PublishedVersion: existing.PublishedVersion,
-		// Modified latch (docs/goals/0037 item 2), same reasoning as
-		// httprequest's UpdateHTTPRequest.
-		Seed: existing.Seed.Touch(),
-	}
-	if err := decision.Validate(d); err != nil {
-		return decision.Decision{}, err
-	}
-
-	c.mu.Lock()
-	idx = -1
-	for i, e := range c.decisions {
-		if e.ID == id {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return decision.Decision{}, fmt.Errorf("no decision with id %q", id)
-	}
-	previous := c.decisions[idx]
-	c.decisions[idx] = d
-	c.mu.Unlock()
-
-	if err := c.persistDecisions(); err != nil {
-		c.mu.Lock()
-		for i, existing := range c.decisions {
-			if existing.ID == id {
-				c.decisions[i] = previous
-				break
-			}
-		}
-		c.mu.Unlock()
-		return decision.Decision{}, fmt.Errorf("save decision: %w", err)
-	}
-	dataevent.Emit("decision", d.ID) // goal 0017: live-sync every open surface
-	return d, nil
+	dataevent.Emit("decision", updated.ID) // goal 0017: live-sync every open surface
+	return updated, nil
 }
 
 func (c *ConfigureService) DeleteDecision(id string) error {
 	if err := c.refIntegrityError("decision", "decision", id); err != nil {
 		return err
 	}
-
-	c.mu.Lock()
-	idx := -1
-	for i, d := range c.decisions {
-		if d.ID == id {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return fmt.Errorf("no decision with id %q", id)
-	}
-	removed := c.decisions[idx]
-	wasBuiltIn := removed.BuiltIn
-	c.decisions = append(c.decisions[:idx], c.decisions[idx+1:]...)
-	c.mu.Unlock()
-
 	// A deleted built-in gets a tombstone so top-up seeding never
-	// resurrects it (topUpBuiltInDecisions, configureservice_builtin.go)
-	// -- same discipline DeleteHTTPRequest already applies. Removal and
-	// tombstone must succeed together (docs/goals/0025 item 2).
-	if wasBuiltIn {
-		if err := seeding.RecordTombstone(c.store, id); err != nil {
-			c.mu.Lock()
-			c.decisions = insertDecisionAt(c.decisions, idx, removed)
-			c.mu.Unlock()
-			return fmt.Errorf("tombstone deleted decision %q: %w", id, err)
-		}
-	}
-	if err := c.persistDecisions(); err != nil {
-		c.mu.Lock()
-		c.decisions = insertDecisionAt(c.decisions, idx, removed)
-		c.mu.Unlock()
-		return fmt.Errorf("save decision deletion: %w", err)
+	// resurrects it -- same discipline DeleteHTTPRequest already
+	// applies. Removal and tombstone must succeed together
+	// (docs/goals/0025 item 2).
+	recordTombstone := func(id string) error { return seeding.RecordTombstone(c.store, id) }
+	if err := entitystore.DeleteWithTombstone(&c.mu, &c.decisions, c.persistDecisions, recordTombstone, decisionDescriptor, id); err != nil {
+		return err
 	}
 	dataevent.Emit("decision", id) // goal 0017: live-sync every open surface
 	return nil
-}
-
-// insertDecisionAt reinserts d at idx (clamped to the current length)
-// -- used to undo DeleteDecision's removal when the tombstone or
-// persist step that must accompany it fails.
-func insertDecisionAt(decisions []decision.Decision, idx int, d decision.Decision) []decision.Decision {
-	if idx < 0 || idx > len(decisions) {
-		idx = len(decisions)
-	}
-	decisions = append(decisions, decision.Decision{})
-	copy(decisions[idx+1:], decisions[idx:])
-	decisions[idx] = d
-	return decisions
 }
 
 // No DuplicateDecision RPC: checked against the precedent first
@@ -271,31 +222,9 @@ func insertDecisionAt(decisions []decision.Decision, idx int, d decision.Decisio
 // --- persistence ---
 
 func (c *ConfigureService) persistDecisions() error {
-	c.mu.Lock()
-	decisions := make([]decision.Decision, len(c.decisions))
-	copy(decisions, c.decisions)
-	c.mu.Unlock()
-
-	data, err := json.Marshal(decisions)
-	if err != nil {
-		return fmt.Errorf("marshal decisions: %w", err)
-	}
-	if err := c.store.Set(decisionsKey, string(data)); err != nil {
-		return fmt.Errorf("persist decisions: %w", err)
-	}
-	return nil
+	return entitystore.Persist(&c.mu, &c.decisions, c.store, decisionsKey, decisionDescriptor)
 }
 
 func (c *ConfigureService) restoreDecisions() {
-	raw, ok := c.store.Get(decisionsKey).(string)
-	if !ok || raw == "" {
-		return
-	}
-	var decisions []decision.Decision
-	if err := json.Unmarshal([]byte(raw), &decisions); err != nil {
-		return
-	}
-	c.mu.Lock()
-	c.decisions = decisions
-	c.mu.Unlock()
+	entitystore.Load(&c.mu, &c.decisions, c.store, decisionsKey)
 }

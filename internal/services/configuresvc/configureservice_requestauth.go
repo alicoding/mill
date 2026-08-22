@@ -1,7 +1,6 @@
 package configuresvc
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -13,6 +12,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/services/dataevent"
+	"github.com/alicoding/mill/internal/services/entitystore"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
 
@@ -436,19 +436,7 @@ func (c *ConfigureService) DeleteHTTPRequestJOSEPrivateKey(id string) error {
 }
 
 func (c *ConfigureService) persistHTTPRequests() error {
-	c.mu.Lock()
-	requests := make([]httprequest.HTTPRequest, len(c.requests))
-	copy(requests, c.requests)
-	c.mu.Unlock()
-
-	data, err := json.Marshal(requests)
-	if err != nil {
-		return fmt.Errorf("marshal requests: %w", err)
-	}
-	if err := c.store.Set(requestsKey, string(data)); err != nil {
-		return fmt.Errorf("persist requests: %w", err)
-	}
-	return nil
+	return entitystore.Persist(&c.mu, &c.requests, c.store, requestsKey, httpRequestDescriptor)
 }
 
 // IntegrationHost is one configured HTTPRequest's host identity -- the

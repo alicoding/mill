@@ -1,9 +1,6 @@
 package configuresvc
 
 import (
-	"fmt"
-	"time"
-
 	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/execenv"
@@ -11,6 +8,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
 	"github.com/alicoding/mill/internal/services/dataevent"
+	"github.com/alicoding/mill/internal/services/entitystore"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
 
@@ -68,33 +66,11 @@ func findGoldenRequest(id string) (httprequest.HTTPRequest, bool) {
 // golden's and clears the Modified latch (docs/goals/0037 item 4) --
 // an explicit, on-demand act available regardless of current
 // Modified/revision state, unlike reconcile's own conditional upgrade.
+// Via httpRequestDescriptor (configureservice_builtin.go, goal 0165).
 func (c *ConfigureService) ResetHTTPRequestToSeed(id string) (httprequest.HTTPRequest, error) {
-	golden, ok := findGoldenRequest(id)
-	if !ok {
-		return httprequest.HTTPRequest{}, fmt.Errorf("no built-in request with id %q", id)
-	}
-	c.mu.Lock()
-	idx := -1
-	for i, r := range c.requests {
-		if r.ID == id {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return httprequest.HTTPRequest{}, fmt.Errorf("no request with id %q", id)
-	}
-	previous := c.requests[idx]
-	updated := upgradeRequestToGolden(previous, golden, time.Now())
-	c.requests[idx] = updated
-	c.mu.Unlock()
-
-	if err := c.persistHTTPRequests(); err != nil {
-		c.mu.Lock()
-		c.requests[idx] = previous
-		c.mu.Unlock()
-		return httprequest.HTTPRequest{}, fmt.Errorf("save reset request: %w", err)
+	updated, err := entitystore.ResetToSeed(&c.mu, &c.requests, c.persistHTTPRequests, httpRequestDescriptor, id)
+	if err != nil {
+		return httprequest.HTTPRequest{}, err
 	}
 	dataevent.Emit("request", id) // goal 0017: live-sync every open surface
 	return updated, nil
@@ -104,23 +80,7 @@ func (c *ConfigureService) ResetHTTPRequestToSeed(id string) (httprequest.HTTPRe
 // deliberately deleted (tombstoned) and not since restored -- the read
 // model for a "Restore example…" affordance, shown only when non-empty.
 func (c *ConfigureService) RestorableHTTPRequests() []httprequest.HTTPRequest {
-	tombstones := seeding.LoadTombstones(c.store)
-	if len(tombstones) == 0 {
-		return nil
-	}
-	c.mu.Lock()
-	have := make(map[string]bool, len(c.requests))
-	for _, r := range c.requests {
-		have[r.ID] = true
-	}
-	c.mu.Unlock()
-	var out []httprequest.HTTPRequest
-	for _, golden := range httprequest.BuiltIn() {
-		if tombstones[golden.ID] && !have[golden.ID] {
-			out = append(out, golden)
-		}
-	}
-	return out
+	return entitystore.Restorable(&c.mu, &c.requests, seeding.LoadTombstones(c.store), httpRequestDescriptor)
 }
 
 // RestoreHTTPRequest un-tombstones id and re-seeds it (docs/goals/0037
@@ -128,86 +88,23 @@ func (c *ConfigureService) RestorableHTTPRequests() []httprequest.HTTPRequest {
 // re-seeds the demo secret, same as a fresh install's own
 // seedBuiltInSecrets.
 func (c *ConfigureService) RestoreHTTPRequest(id string) (httprequest.HTTPRequest, error) {
-	golden, ok := findGoldenRequest(id)
-	if !ok {
-		return httprequest.HTTPRequest{}, fmt.Errorf("no built-in request with id %q", id)
+	restored, err := entitystore.Restore(&c.mu, &c.requests, c.persistHTTPRequests, c.store, httpRequestDescriptor, id)
+	if err != nil {
+		return httprequest.HTTPRequest{}, err
 	}
-	c.mu.Lock()
-	for _, existing := range c.requests {
-		if existing.ID == id {
-			c.mu.Unlock()
-			return httprequest.HTTPRequest{}, fmt.Errorf("request %q is already present, nothing to restore", id)
-		}
-	}
-	c.mu.Unlock()
-
-	if err := seeding.ClearTombstone(c.store, id); err != nil {
-		return httprequest.HTTPRequest{}, fmt.Errorf("clear tombstone for %q: %w", id, err)
-	}
-	now := time.Now()
-	golden.CreatedAt, golden.UpdatedAt = now, now
-
-	c.mu.Lock()
-	c.requests = append(c.requests, golden)
-	c.mu.Unlock()
-
-	if err := c.persistHTTPRequests(); err != nil {
-		c.mu.Lock()
-		for i, r := range c.requests {
-			if r.ID == id {
-				c.requests = append(c.requests[:i], c.requests[i+1:]...)
-				break
-			}
-		}
-		c.mu.Unlock()
-		return httprequest.HTTPRequest{}, fmt.Errorf("save restored request: %w", err)
-	}
-	if secret, ok := builtInSecrets[golden.ID]; ok {
-		_ = c.credentials.Set(golden.ID, secret)
+	if secret, ok := builtInSecrets[restored.ID]; ok {
+		_ = c.credentials.Set(restored.ID, secret)
 	}
 	dataevent.Emit("request", id) // goal 0017: live-sync every open surface
-	return golden, nil
+	return restored, nil
 }
 
-// findGoldenDecision returns a copy of the golden Decision with id, if
-// one exists among decision.BuiltIn().
-func findGoldenDecision(id string) (decision.Decision, bool) {
-	for _, g := range decision.BuiltIn() {
-		if g.ID == id {
-			return g, true
-		}
-	}
-	return decision.Decision{}, false
-}
-
-// ResetDecisionToSeed mirrors ResetHTTPRequestToSeed for Decisions.
+// ResetDecisionToSeed mirrors ResetHTTPRequestToSeed for Decisions,
+// via decisionDescriptor (configuredecision.go, goal 0165).
 func (c *ConfigureService) ResetDecisionToSeed(id string) (decision.Decision, error) {
-	golden, ok := findGoldenDecision(id)
-	if !ok {
-		return decision.Decision{}, fmt.Errorf("no built-in decision with id %q", id)
-	}
-	c.mu.Lock()
-	idx := -1
-	for i, d := range c.decisions {
-		if d.ID == id {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return decision.Decision{}, fmt.Errorf("no decision with id %q", id)
-	}
-	previous := c.decisions[idx]
-	updated := upgradeDecisionToGolden(previous, golden, time.Now())
-	c.decisions[idx] = updated
-	c.mu.Unlock()
-
-	if err := c.persistDecisions(); err != nil {
-		c.mu.Lock()
-		c.decisions[idx] = previous
-		c.mu.Unlock()
-		return decision.Decision{}, fmt.Errorf("save reset decision: %w", err)
+	updated, err := entitystore.ResetToSeed(&c.mu, &c.decisions, c.persistDecisions, decisionDescriptor, id)
+	if err != nil {
+		return decision.Decision{}, err
 	}
 	dataevent.Emit("decision", id) // goal 0017: live-sync every open surface
 	return updated, nil
@@ -215,61 +112,15 @@ func (c *ConfigureService) ResetDecisionToSeed(id string) (decision.Decision, er
 
 // RestorableDecisions mirrors RestorableHTTPRequests for Decisions.
 func (c *ConfigureService) RestorableDecisions() []decision.Decision {
-	tombstones := seeding.LoadTombstones(c.store)
-	if len(tombstones) == 0 {
-		return nil
-	}
-	c.mu.Lock()
-	have := make(map[string]bool, len(c.decisions))
-	for _, d := range c.decisions {
-		have[d.ID] = true
-	}
-	c.mu.Unlock()
-	var out []decision.Decision
-	for _, golden := range decision.BuiltIn() {
-		if tombstones[golden.ID] && !have[golden.ID] {
-			out = append(out, golden)
-		}
-	}
-	return out
+	return entitystore.Restorable(&c.mu, &c.decisions, seeding.LoadTombstones(c.store), decisionDescriptor)
 }
 
 // RestoreDecision mirrors RestoreHTTPRequest for Decisions.
 func (c *ConfigureService) RestoreDecision(id string) (decision.Decision, error) {
-	golden, ok := findGoldenDecision(id)
-	if !ok {
-		return decision.Decision{}, fmt.Errorf("no built-in decision with id %q", id)
-	}
-	c.mu.Lock()
-	for _, existing := range c.decisions {
-		if existing.ID == id {
-			c.mu.Unlock()
-			return decision.Decision{}, fmt.Errorf("decision %q is already present, nothing to restore", id)
-		}
-	}
-	c.mu.Unlock()
-
-	if err := seeding.ClearTombstone(c.store, id); err != nil {
-		return decision.Decision{}, fmt.Errorf("clear tombstone for %q: %w", id, err)
-	}
-	now := time.Now()
-	golden.CreatedAt, golden.UpdatedAt = now, now
-
-	c.mu.Lock()
-	c.decisions = append(c.decisions, golden)
-	c.mu.Unlock()
-
-	if err := c.persistDecisions(); err != nil {
-		c.mu.Lock()
-		for i, d := range c.decisions {
-			if d.ID == id {
-				c.decisions = append(c.decisions[:i], c.decisions[i+1:]...)
-				break
-			}
-		}
-		c.mu.Unlock()
-		return decision.Decision{}, fmt.Errorf("save restored decision: %w", err)
+	restored, err := entitystore.Restore(&c.mu, &c.decisions, c.persistDecisions, c.store, decisionDescriptor, id)
+	if err != nil {
+		return decision.Decision{}, err
 	}
 	dataevent.Emit("decision", id) // goal 0017: live-sync every open surface
-	return golden, nil
+	return restored, nil
 }

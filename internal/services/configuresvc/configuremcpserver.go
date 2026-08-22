@@ -1,16 +1,46 @@
 package configuresvc
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/mcpclient"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
+	"github.com/alicoding/mill/internal/domain/seedorigin"
 	"github.com/alicoding/mill/internal/services/dataevent"
+	"github.com/alicoding/mill/internal/services/entitystore"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
+
+// mcpServerDescriptor is MCPServer's entitystore.Descriptor (goal
+// 0165): the small per-kind shape Create/Update/Delete/reconcile/
+// Reset/Restorable/Restore all key off, replacing what used to be
+// ~10 hand-copied methods.
+var mcpServerDescriptor = entitystore.Descriptor[mcpserver.MCPServer]{
+	Label:     "MCP server",
+	GetID:     func(s mcpserver.MCPServer) string { return s.ID },
+	IsBuiltIn: func(s mcpserver.MCPServer) bool { return s.BuiltIn },
+	GetSeed:   func(s mcpserver.MCPServer) seedorigin.Origin { return s.Seed },
+	SetSeed:   func(s mcpserver.MCPServer, o seedorigin.Origin) mcpserver.MCPServer { s.Seed = o; return s },
+	StampNew: func(s mcpserver.MCPServer, now time.Time) mcpserver.MCPServer {
+		s.CreatedAt, s.UpdatedAt = now, now
+		return s
+	},
+	Upgrade: upgradeMCPServerToGolden,
+	BuiltIn: mcpserver.BuiltIn,
+}
+
+// upgradeMCPServerToGolden replaces existing's content with golden's,
+// preserving existing's identity (ID/CreatedAt) -- shared by
+// reconcileBuiltInMCPServers' upgrade branch and ResetMCPServerToSeed
+// via mcpServerDescriptor.Upgrade.
+func upgradeMCPServerToGolden(existing, golden mcpserver.MCPServer, now time.Time) mcpserver.MCPServer {
+	golden.CreatedAt = existing.CreatedAt
+	golden.UpdatedAt = now
+	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
+	return golden
+}
 
 // mcpServersKey mirrors requestsKey/listsKey's shape (configureservice.go):
 // one atomic JSON blob, same settings.json file. In its own file (not
@@ -69,20 +99,8 @@ func (c *ConfigureService) createMCPServerWithID(id, label, command string, args
 		return mcpserver.MCPServer{}, err
 	}
 
-	c.mu.Lock()
-	c.mcpServers = append(c.mcpServers, s)
-	c.mu.Unlock()
-
-	if err := c.persistMCPServers(); err != nil {
-		c.mu.Lock()
-		for i, existing := range c.mcpServers {
-			if existing.ID == s.ID {
-				c.mcpServers = append(c.mcpServers[:i], c.mcpServers[i+1:]...)
-				break
-			}
-		}
-		c.mu.Unlock()
-		return mcpserver.MCPServer{}, fmt.Errorf("save MCP server: %w", err)
+	if err := entitystore.Insert(&c.mu, &c.mcpServers, c.persistMCPServers, mcpServerDescriptor, s); err != nil {
+		return mcpserver.MCPServer{}, err
 	}
 	dataevent.Emit("mcpserver", s.ID) // goal 0017: live-sync every open surface
 	return s, nil
@@ -94,98 +112,35 @@ func (c *ConfigureService) UpdateMCPServer(id, label, command string, args []str
 		return mcpserver.MCPServer{}, err
 	}
 
-	c.mu.Lock()
-	idx := -1
-	for i, existing := range c.mcpServers {
-		if existing.ID == id {
-			idx = i
-			break
-		}
+	updated, err := entitystore.Update(&c.mu, &c.mcpServers, c.persistMCPServers, mcpServerDescriptor, id, func(existing mcpserver.MCPServer) (mcpserver.MCPServer, error) {
+		// CreatedAt is preserved from the stored entity, never trusted
+		// from the wire; UpdatedAt always advances on a real update.
+		s.CreatedAt = existing.CreatedAt
+		s.UpdatedAt = time.Now()
+		s.Seed = existing.Seed.Touch() // docs/goals/0037 item 2
+		return s, nil
+	})
+	if err != nil {
+		return mcpserver.MCPServer{}, err
 	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return mcpserver.MCPServer{}, fmt.Errorf("no MCP server with id %q", id)
-	}
-	// CreatedAt is preserved from the stored entity, never trusted from
-	// the wire; UpdatedAt always advances on a real update.
-	s.CreatedAt = c.mcpServers[idx].CreatedAt
-	s.UpdatedAt = time.Now()
-	s.Seed = c.mcpServers[idx].Seed.Touch() // docs/goals/0037 item 2
-	previous := c.mcpServers[idx]
-	c.mcpServers[idx] = s
-	c.mu.Unlock()
-
-	if err := c.persistMCPServers(); err != nil {
-		c.mu.Lock()
-		for i, existing := range c.mcpServers {
-			if existing.ID == id {
-				c.mcpServers[i] = previous
-				break
-			}
-		}
-		c.mu.Unlock()
-		return mcpserver.MCPServer{}, fmt.Errorf("save MCP server: %w", err)
-	}
-	dataevent.Emit("mcpserver", s.ID) // goal 0017: live-sync every open surface
-	return s, nil
+	dataevent.Emit("mcpserver", updated.ID) // goal 0017: live-sync every open surface
+	return updated, nil
 }
 
 func (c *ConfigureService) DeleteMCPServer(id string) error {
 	if err := c.refIntegrityError("mcpserver", "MCP server", id); err != nil {
 		return err
 	}
-
-	c.mu.Lock()
-	idx := -1
-	for i, s := range c.mcpServers {
-		if s.ID == id {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return fmt.Errorf("no MCP server with id %q", id)
-	}
-	removed := c.mcpServers[idx]
-	wasBuiltIn := removed.BuiltIn
-	c.mcpServers = append(c.mcpServers[:idx], c.mcpServers[idx+1:]...)
-	c.mu.Unlock()
-
 	// A deleted built-in gets a tombstone so top-up seeding never
-	// resurrects it (topUpBuiltInMCPServers, configureservice_builtin.go)
-	// -- same discipline DeleteHTTPRequest/DeleteDecision/DeleteList
-	// already apply. Removal and tombstone must succeed together
-	// (docs/goals/0025 item 2).
-	if wasBuiltIn {
-		if err := seeding.RecordTombstone(c.store, id); err != nil {
-			c.mu.Lock()
-			c.mcpServers = insertMCPServerAt(c.mcpServers, idx, removed)
-			c.mu.Unlock()
-			return fmt.Errorf("tombstone deleted MCP server %q: %w", id, err)
-		}
-	}
-	if err := c.persistMCPServers(); err != nil {
-		c.mu.Lock()
-		c.mcpServers = insertMCPServerAt(c.mcpServers, idx, removed)
-		c.mu.Unlock()
-		return fmt.Errorf("save MCP server deletion: %w", err)
+	// resurrects it -- same discipline DeleteHTTPRequest/DeleteDecision/
+	// DeleteList already apply. Removal and tombstone must succeed
+	// together (docs/goals/0025 item 2).
+	recordTombstone := func(id string) error { return seeding.RecordTombstone(c.store, id) }
+	if err := entitystore.DeleteWithTombstone(&c.mu, &c.mcpServers, c.persistMCPServers, recordTombstone, mcpServerDescriptor, id); err != nil {
+		return err
 	}
 	dataevent.Emit("mcpserver", id) // goal 0017: live-sync every open surface
 	return nil
-}
-
-// insertMCPServerAt reinserts s at idx (clamped to the current length)
-// -- used to undo DeleteMCPServer's removal when the tombstone or
-// persist step that must accompany it fails.
-func insertMCPServerAt(servers []mcpserver.MCPServer, idx int, s mcpserver.MCPServer) []mcpserver.MCPServer {
-	if idx < 0 || idx > len(servers) {
-		idx = len(servers)
-	}
-	servers = append(servers, mcpserver.MCPServer{})
-	copy(servers[idx+1:], servers[idx:])
-	servers[idx] = s
-	return servers
 }
 
 // ListMCPServerTools is a live, on-demand reference lookup (connects to
@@ -209,31 +164,9 @@ func (c *ConfigureService) ListMCPServerTools(id string) ([]mcpclient.Tool, erro
 // --- persistence ---
 
 func (c *ConfigureService) persistMCPServers() error {
-	c.mu.Lock()
-	mcpServers := make([]mcpserver.MCPServer, len(c.mcpServers))
-	copy(mcpServers, c.mcpServers)
-	c.mu.Unlock()
-
-	data, err := json.Marshal(mcpServers)
-	if err != nil {
-		return fmt.Errorf("marshal MCP servers: %w", err)
-	}
-	if err := c.store.Set(mcpServersKey, string(data)); err != nil {
-		return fmt.Errorf("persist MCP servers: %w", err)
-	}
-	return nil
+	return entitystore.Persist(&c.mu, &c.mcpServers, c.store, mcpServersKey, mcpServerDescriptor)
 }
 
 func (c *ConfigureService) restoreMCPServers() {
-	raw, ok := c.store.Get(mcpServersKey).(string)
-	if !ok || raw == "" {
-		return
-	}
-	var mcpServers []mcpserver.MCPServer
-	if err := json.Unmarshal([]byte(raw), &mcpServers); err != nil {
-		return
-	}
-	c.mu.Lock()
-	c.mcpServers = mcpServers
-	c.mu.Unlock()
+	entitystore.Load(&c.mu, &c.mcpServers, c.store, mcpServersKey)
 }

@@ -4,16 +4,32 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/composition"
-	"github.com/alicoding/mill/internal/domain/decision"
-	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/httprequest"
-	"github.com/alicoding/mill/internal/domain/list"
-	"github.com/alicoding/mill/internal/domain/mcpserver"
 	"github.com/alicoding/mill/internal/domain/seedorigin"
+	"github.com/alicoding/mill/internal/services/entitystore"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
+
+// httpRequestDescriptor is HTTPRequest's entitystore.Descriptor (goal
+// 0165) -- only reconcileBuiltInRequests and the Reset/Restorable/
+// Restore RPCs (configureservice_seedlifecycle.go) key off it.
+// Create/Update/Delete stay hand-written in
+// configureservice_requestauth.go: they interleave credential/JOSE
+// handling the generic shape doesn't cover.
+var httpRequestDescriptor = entitystore.Descriptor[httprequest.HTTPRequest]{
+	Label:     "request",
+	GetID:     func(r httprequest.HTTPRequest) string { return r.ID },
+	IsBuiltIn: func(r httprequest.HTTPRequest) bool { return r.BuiltIn },
+	GetSeed:   func(r httprequest.HTTPRequest) seedorigin.Origin { return r.Seed },
+	SetSeed:   func(r httprequest.HTTPRequest, o seedorigin.Origin) httprequest.HTTPRequest { r.Seed = o; return r },
+	StampNew: func(r httprequest.HTTPRequest, now time.Time) httprequest.HTTPRequest {
+		r.CreatedAt, r.UpdatedAt = now, now
+		return r
+	},
+	Upgrade: upgradeRequestToGolden,
+	BuiltIn: httprequest.BuiltIn,
+}
 
 // builtInSecrets holds the demo secret VALUES for httprequest.BuiltIn()'s
 // seeded examples -- kept here, in the configure service package, not in
@@ -76,42 +92,7 @@ func (c *ConfigureService) seedBuiltInSecrets() {
 // upgraded.
 func (c *ConfigureService) reconcileBuiltInRequests() {
 	tombstones := seeding.LoadTombstones(c.store)
-	now := time.Now()
-	c.mu.Lock()
-	byID := make(map[string]int, len(c.requests))
-	for i, r := range c.requests {
-		byID[r.ID] = i
-	}
-	changed := false
-	var seededSecretsFor []httprequest.HTTPRequest
-	for _, golden := range httprequest.BuiltIn() {
-		idx, present := byID[golden.ID]
-		if !present {
-			if tombstones[golden.ID] {
-				continue
-			}
-			golden.CreatedAt, golden.UpdatedAt = now, now
-			c.requests = append(c.requests, golden)
-			seededSecretsFor = append(seededSecretsFor, golden)
-			changed = true
-			continue
-		}
-		existing := c.requests[idx]
-		if existing.Seed.SeedRevision == 0 {
-			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
-			c.requests[idx] = existing
-			changed = true
-			continue
-		}
-		if existing.Seed.Modified {
-			continue
-		}
-		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
-			c.requests[idx] = upgradeRequestToGolden(existing, golden, now)
-			changed = true
-		}
-	}
-	c.mu.Unlock()
+	seededSecretsFor, changed := entitystore.Reconcile(&c.mu, &c.requests, tombstones, httpRequestDescriptor)
 	if !changed {
 		return
 	}
@@ -146,271 +127,67 @@ func upgradeRequestToGolden(existing, golden httprequest.HTTPRequest, now time.T
 }
 
 // reconcileBuiltInDecisions mirrors reconcileBuiltInRequests for the
-// seeded example Decisions (docs/adr/0027). Decisions carry no secret,
-// so this is simpler than the HTTPRequest version -- no credential
+// seeded example Decisions (docs/adr/0027) via decisionDescriptor
+// (configuredecision.go, goal 0165). Decisions carry no secret, so
+// this is simpler than the HTTPRequest version -- no credential
 // seeding step at all.
 func (c *ConfigureService) reconcileBuiltInDecisions() {
 	tombstones := seeding.LoadTombstones(c.store)
-	now := time.Now()
-	c.mu.Lock()
-	byID := make(map[string]int, len(c.decisions))
-	for i, d := range c.decisions {
-		byID[d.ID] = i
-	}
-	changed := false
-	for _, golden := range decision.BuiltIn() {
-		idx, present := byID[golden.ID]
-		if !present {
-			if tombstones[golden.ID] {
-				continue
-			}
-			golden.CreatedAt, golden.UpdatedAt = now, now
-			c.decisions = append(c.decisions, golden)
-			changed = true
-			continue
-		}
-		existing := c.decisions[idx]
-		if existing.Seed.SeedRevision == 0 {
-			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
-			c.decisions[idx] = existing
-			changed = true
-			continue
-		}
-		if existing.Seed.Modified {
-			continue
-		}
-		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
-			c.decisions[idx] = upgradeDecisionToGolden(existing, golden, now)
-			changed = true
-		}
-	}
-	c.mu.Unlock()
-	if changed {
+	if _, changed := entitystore.Reconcile(&c.mu, &c.decisions, tombstones, decisionDescriptor); changed {
 		if err := c.persistDecisions(); err != nil {
 			slog.Error("failed to reconcile built-in Decisions", "error", err)
 		}
 	}
 }
 
-func upgradeDecisionToGolden(existing, golden decision.Decision, now time.Time) decision.Decision {
-	golden.CreatedAt = existing.CreatedAt
-	golden.UpdatedAt = now
-	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
-	return golden
-}
-
 // reconcileBuiltInLists mirrors reconcileBuiltInDecisions for the
-// seeded example Lists (docs/goals/0010 item 4). A List carries no
-// secret, same "simpler than the HTTPRequest version" reasoning
+// seeded example Lists (docs/goals/0010 item 4) via listDescriptor
+// (configurelist.go, goal 0165). A List carries no secret, same
+// "simpler than the HTTPRequest version" reasoning
 // reconcileBuiltInDecisions already gives.
 func (c *ConfigureService) reconcileBuiltInLists() {
 	tombstones := seeding.LoadTombstones(c.store)
-	now := time.Now()
-	c.mu.Lock()
-	byID := make(map[string]int, len(c.lists))
-	for i, l := range c.lists {
-		byID[l.ID] = i
-	}
-	changed := false
-	for _, golden := range list.BuiltIn() {
-		idx, present := byID[golden.ID]
-		if !present {
-			if tombstones[golden.ID] {
-				continue
-			}
-			golden.CreatedAt, golden.UpdatedAt = now, now
-			c.lists = append(c.lists, golden)
-			changed = true
-			continue
-		}
-		existing := c.lists[idx]
-		if existing.Seed.SeedRevision == 0 {
-			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
-			c.lists[idx] = existing
-			changed = true
-			continue
-		}
-		if existing.Seed.Modified {
-			continue
-		}
-		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
-			c.lists[idx] = upgradeListToGolden(existing, golden, now)
-			changed = true
-		}
-	}
-	c.mu.Unlock()
-	if changed {
+	if _, changed := entitystore.Reconcile(&c.mu, &c.lists, tombstones, listDescriptor); changed {
 		if err := c.persistLists(); err != nil {
 			slog.Error("failed to reconcile built-in Lists", "error", err)
 		}
 	}
 }
 
-// upgradeListToGolden replaces existing's content -- including Rows --
-// with golden's. golden's Row IDs are stable literals (list.BuiltIn's
-// own activeRow/expiredRow helpers), so this is safe to replace
-// wholesale rather than row-by-row diffing.
-func upgradeListToGolden(existing, golden list.List, now time.Time) list.List {
-	golden.CreatedAt = existing.CreatedAt
-	golden.UpdatedAt = now
-	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
-	return golden
-}
-
 // reconcileBuiltInMCPServers mirrors reconcileBuiltInLists for the
-// seeded example MCP Servers (docs/goals/0010 item 5).
+// seeded example MCP Servers (docs/goals/0010 item 5) via
+// mcpServerDescriptor (configuremcpserver.go, goal 0165).
 func (c *ConfigureService) reconcileBuiltInMCPServers() {
 	tombstones := seeding.LoadTombstones(c.store)
-	now := time.Now()
-	c.mu.Lock()
-	byID := make(map[string]int, len(c.mcpServers))
-	for i, s := range c.mcpServers {
-		byID[s.ID] = i
-	}
-	changed := false
-	for _, golden := range mcpserver.BuiltIn() {
-		idx, present := byID[golden.ID]
-		if !present {
-			if tombstones[golden.ID] {
-				continue
-			}
-			golden.CreatedAt, golden.UpdatedAt = now, now
-			c.mcpServers = append(c.mcpServers, golden)
-			changed = true
-			continue
-		}
-		existing := c.mcpServers[idx]
-		if existing.Seed.SeedRevision == 0 {
-			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
-			c.mcpServers[idx] = existing
-			changed = true
-			continue
-		}
-		if existing.Seed.Modified {
-			continue
-		}
-		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
-			c.mcpServers[idx] = upgradeMCPServerToGolden(existing, golden, now)
-			changed = true
-		}
-	}
-	c.mu.Unlock()
-	if changed {
+	if _, changed := entitystore.Reconcile(&c.mu, &c.mcpServers, tombstones, mcpServerDescriptor); changed {
 		if err := c.persistMCPServers(); err != nil {
 			slog.Error("failed to reconcile built-in MCP Servers", "error", err)
 		}
 	}
 }
 
-func upgradeMCPServerToGolden(existing, golden mcpserver.MCPServer, now time.Time) mcpserver.MCPServer {
-	golden.CreatedAt = existing.CreatedAt
-	golden.UpdatedAt = now
-	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
-	return golden
-}
-
 // reconcileBuiltInExecEnvs mirrors reconcileBuiltInMCPServers for the
-// seeded example ExecEnv (docs/adr/0026, goal 0004b).
+// seeded example ExecEnv (docs/adr/0026, goal 0004b) via
+// execEnvDescriptor (configureexecenv.go, goal 0165).
 func (c *ConfigureService) reconcileBuiltInExecEnvs() {
 	tombstones := seeding.LoadTombstones(c.store)
-	now := time.Now()
-	c.mu.Lock()
-	byID := make(map[string]int, len(c.execEnvs))
-	for i, e := range c.execEnvs {
-		byID[e.ID] = i
-	}
-	changed := false
-	for _, golden := range execenv.BuiltIn() {
-		idx, present := byID[golden.ID]
-		if !present {
-			if tombstones[golden.ID] {
-				continue
-			}
-			golden.CreatedAt, golden.UpdatedAt = now, now
-			c.execEnvs = append(c.execEnvs, golden)
-			changed = true
-			continue
-		}
-		existing := c.execEnvs[idx]
-		if existing.Seed.SeedRevision == 0 {
-			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
-			c.execEnvs[idx] = existing
-			changed = true
-			continue
-		}
-		if existing.Seed.Modified {
-			continue
-		}
-		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
-			c.execEnvs[idx] = upgradeExecEnvToGolden(existing, golden, now)
-			changed = true
-		}
-	}
-	c.mu.Unlock()
-	if changed {
+	if _, changed := entitystore.Reconcile(&c.mu, &c.execEnvs, tombstones, execEnvDescriptor); changed {
 		if err := c.persistExecEnvs(); err != nil {
 			slog.Error("failed to reconcile built-in ExecEnvs", "error", err)
 		}
 	}
 }
 
-func upgradeExecEnvToGolden(existing, golden execenv.ExecEnv, now time.Time) execenv.ExecEnv {
-	golden.CreatedAt = existing.CreatedAt
-	golden.UpdatedAt = now
-	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
-	return golden
-}
-
-// reconcileBuiltInAIProviders mirrors reconcileBuiltInMCPServers for the
-// seeded example AI provider (docs/goals/0031-ai-node-family.md). No
+// reconcileBuiltInAIProviders mirrors reconcileBuiltInMCPServers for
+// the seeded example AI provider (docs/goals/0031-ai-node-family.md)
+// via aiProviderDescriptor (configureaiprovider.go, goal 0165). No
 // credential seeding step: the seeded "Local Ollama" example needs no
 // secret at all.
 func (c *ConfigureService) reconcileBuiltInAIProviders() {
 	tombstones := seeding.LoadTombstones(c.store)
-	now := time.Now()
-	c.mu.Lock()
-	byID := make(map[string]int, len(c.aiProviders))
-	for i, p := range c.aiProviders {
-		byID[p.ID] = i
-	}
-	changed := false
-	for _, golden := range aiprovider.BuiltIn() {
-		idx, present := byID[golden.ID]
-		if !present {
-			if tombstones[golden.ID] {
-				continue
-			}
-			golden.CreatedAt, golden.UpdatedAt = now, now
-			c.aiProviders = append(c.aiProviders, golden)
-			changed = true
-			continue
-		}
-		existing := c.aiProviders[idx]
-		if existing.Seed.SeedRevision == 0 {
-			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
-			c.aiProviders[idx] = existing
-			changed = true
-			continue
-		}
-		if existing.Seed.Modified {
-			continue
-		}
-		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
-			c.aiProviders[idx] = upgradeAIProviderToGolden(existing, golden, now)
-			changed = true
-		}
-	}
-	c.mu.Unlock()
-	if changed {
+	if _, changed := entitystore.Reconcile(&c.mu, &c.aiProviders, tombstones, aiProviderDescriptor); changed {
 		if err := c.persistAIProviders(); err != nil {
 			slog.Error("failed to reconcile built-in AI providers", "error", err)
 		}
 	}
-}
-
-func upgradeAIProviderToGolden(existing, golden aiprovider.AIProvider, now time.Time) aiprovider.AIProvider {
-	golden.CreatedAt = existing.CreatedAt
-	golden.UpdatedAt = now
-	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
-	return golden
 }
