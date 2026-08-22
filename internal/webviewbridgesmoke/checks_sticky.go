@@ -49,17 +49,45 @@ func checkStickyBorderColorFlip(c mcpCaller) (string, error) {
 	if err := pollJSEval(c, fmt.Sprintf(`return !!document.querySelector('%s');`, selector), 10*time.Second); err != nil {
 		return "", fmt.Errorf("sticky note never rendered after AtlasService.CreateNote: %w", err)
 	}
+	if err := waitForNodeStable(c, selector); err != nil {
+		return "", fmt.Errorf("board never settled before the border-flip click: %w", err)
+	}
 
 	before, err := readStickyStyle(c, selector)
 	if err != nil {
 		return "", err
 	}
-	if _, err := c.call("mouse_click", withWindow(map[string]any{
-		"selector":  selector,
-		"modifiers": []string{"shift"},
-	})); err != nil {
-		return "", err
+	if before.Selected {
+		return "", fmt.Errorf("sticky already selected before the check ran -- board state isn't clean")
 	}
+
+	// Full-gesture retry (checkNoteCardCommit's own converged pattern):
+	// a slow-runner fitView hitch through the stability sampler can
+	// still land the shift-click before React Flow's own selection
+	// handling is ready for it.
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		if _, err := c.call("mouse_click", withWindow(map[string]any{
+			"selector":  selector,
+			"modifiers": []string{"shift"},
+		})); err != nil {
+			return "", err
+		}
+		if err := pollJSEval(c, fmt.Sprintf(`const el = document.querySelector('%s');
+			return !!el && !!el.closest('.react-flow__node.selected');`, selector), 3*time.Second); err != nil {
+			lastErr = fmt.Errorf("shift-click never selected the sticky: %w", err)
+			if werr := waitForNodeStable(c, selector); werr != nil {
+				lastErr = werr
+			}
+			continue
+		}
+		lastErr = nil
+		break
+	}
+	if lastErr != nil {
+		return "", fmt.Errorf("after 3 attempts: %w", lastErr)
+	}
+
 	after, err := readStickyStyle(c, selector)
 	if err != nil {
 		return "", err
@@ -76,11 +104,12 @@ func checkStickyBorderColorFlip(c mcpCaller) (string, error) {
 type stickySnapshot struct {
 	BorderColor string `json:"borderColor"`
 	BoxShadow   string `json:"boxShadow"`
+	Selected    bool   `json:"selected"`
 }
 
 // Border-color reads from the inner sticky element (the accent flip
-// stayed there); box-shadow reads from the wrapper, same reasoning as
-// readRing above.
+// stayed there); box-shadow and the selected flag read from the
+// wrapper, same reasoning as readRing above.
 func readStickyStyle(c mcpCaller, selector string) (stickySnapshot, error) {
 	var snap stickySnapshot
 	err := c.callJSON("js_eval", withWindow(map[string]any{
@@ -88,7 +117,7 @@ func readStickyStyle(c mcpCaller, selector string) (stickySnapshot, error) {
 			if (!el) throw new Error('element not found: %s');
 			const wrapper = el.closest('.react-flow__node');
 			if (!wrapper) throw new Error('no react-flow node wrapper above: %s');
-			return { borderColor: getComputedStyle(el).borderColor, boxShadow: getComputedStyle(wrapper).boxShadow };`, selector, selector, selector),
+			return { borderColor: getComputedStyle(el).borderColor, boxShadow: getComputedStyle(wrapper).boxShadow, selected: wrapper.classList.contains('selected') };`, selector, selector, selector),
 	}), &snap)
 	return snap, err
 }
@@ -118,30 +147,65 @@ func checkStickyClickToEdit(c mcpCaller) (string, error) {
 				return %q + ': ' + Math.round(r.x) + ',' + Math.round(r.y) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height);`, selector, tag, tag),
 		}))
 	}
-	if err := waitForNodeStable(c, selector); err != nil {
-		return "", err
+	// Full-gesture retry (checkNoteCardCommit's own converged pattern):
+	// a slow-runner fitView hitch through the stability sampler can
+	// leave the click computed against pre-settle coordinates, missing
+	// the note entirely on the first try.
+	var r0, r1, scroll string
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		if err := waitForNodeStable(c, selector); err != nil {
+			lastErr = fmt.Errorf("board never settled before the select click: %w", err)
+			continue
+		}
+		r0, _ = rect("r0")
+		if _, err := c.call("mouse_click", withWindow(map[string]any{"selector": selector})); err != nil {
+			return "", err
+		}
+		r1, _ = rect("after-click1")
+		scroll, _ = c.call("js_eval", withWindow(map[string]any{"js": `const panes = [...document.querySelectorAll('*')].filter((el) => el.scrollLeft > 0 || el.scrollTop > 0);
+			return panes.slice(0, 4).map((el) => (el.className?.baseVal ?? String(el.className)).slice(0, 40) + '=' + el.scrollLeft + ',' + el.scrollTop).join(' | ') || 'no-scrolled-elements';`}))
+		if err := pollJSEval(c, `const el = document.querySelector('[data-testid="atlas-sticky-note"]');
+			return !!el && !!el.closest('.react-flow__node.selected');`, 3*time.Second); err != nil {
+			lastErr = fmt.Errorf("first click never selected (%s | %s): %w", r0, r1, err)
+			continue
+		}
+		lastErr = nil
+		break
 	}
-	r0, _ := rect("r0")
-	if _, err := c.call("mouse_click", withWindow(map[string]any{"selector": selector})); err != nil {
-		return "", err
-	}
-	r1, _ := rect("after-click1")
-	scroll, _ := c.call("js_eval", withWindow(map[string]any{"js": `const panes = [...document.querySelectorAll('*')].filter((el) => el.scrollLeft > 0 || el.scrollTop > 0);
-		return panes.slice(0, 4).map((el) => (el.className?.baseVal ?? String(el.className)).slice(0, 40) + '=' + el.scrollLeft + ',' + el.scrollTop).join(' | ') || 'no-scrolled-elements';`}))
-	_ = scroll
-	if err := pollJSEval(c, `const el = document.querySelector('[data-testid="atlas-sticky-note"]');
-		return !!el && !!el.closest('.react-flow__node.selected');`, 5*time.Second); err != nil {
-		return "", fmt.Errorf("first click never selected (%s | %s): %w", r0, r1, err)
+	if lastErr != nil {
+		return "", fmt.Errorf("after 3 attempts: %w", lastErr)
 	}
 	if scroll != "no-scrolled-elements" {
 		return "", fmt.Errorf("click scrolled an ancestor (the WebKit reveal-on-mousedown jump): %s (%s -> %s)", scroll, r0, r1)
 	}
-	if _, err := c.call("mouse_click", withWindow(map[string]any{"selector": selector})); err != nil {
-		return "", err
+	// The commit click gets the same self-healing retry: a miss lands
+	// on the pane and deselects, the next attempt's click re-selects,
+	// and the one after opens the editor.
+	var r2 string
+	lastErr = nil
+	for attempt := 0; attempt < 3; attempt++ {
+		if _, err := c.call("mouse_click", withWindow(map[string]any{"selector": selector})); err != nil {
+			return "", err
+		}
+		r2, _ = rect("after-click2")
+		if err := pollJSEval(c, `return !!document.querySelector('[data-testid="atlas-sticky-editor"]');`, 3*time.Second); err != nil {
+			lastErr = fmt.Errorf("second click never opened the editor (%s | %s | %s | state=%s)", r0, r1, r2, stickyDiagnosticState(c))
+			continue
+		}
+		lastErr = nil
+		break
 	}
-	r2, _ := rect("after-click2")
-	if err := pollJSEval(c, `return !!document.querySelector('[data-testid="atlas-sticky-editor"]');`, 5*time.Second); err != nil {
-		return "", fmt.Errorf("second click never opened the editor (%s | %s | %s | state=%s)", r0, r1, r2, stickyDiagnosticState(c))
+	if lastErr != nil {
+		return "", fmt.Errorf("after 3 attempts: %w", lastErr)
+	}
+	// CodeEditor's own focus-retry interval (AtlasStickyNode.tsx's
+	// editing-entry effect, up to ~480ms) can still be in flight right
+	// after the editor mounts -- wait for real focus to land inside it
+	// before typing, or the keys have nowhere to go.
+	if err := pollJSEval(c, `const ed = document.querySelector('[data-testid="atlas-sticky-editor"]');
+		return !!ed && ed.contains(document.activeElement);`, 2*time.Second); err != nil {
+		return "", fmt.Errorf("editor opened but never took focus: %w", err)
 	}
 	// Type into it and confirm the text lands -- both halves of the
 	// click-to-edit gesture must work, not just the open.

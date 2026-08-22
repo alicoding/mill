@@ -181,6 +181,26 @@ layer per capability," never "a seed per thing":
   desktop-app work must reuse the same repair. CI job: stays wired,
   non-required, promote after a green track record on the
   calibrated registry.
+  **Stabilized: four consecutive PR-run failures traced to gesture-
+  timing races, not registry flakiness** — every failing check
+  (`sticky-border-color-flip`, `note-card-commit-interaction` +
+  its `note-card-selection-ring` cascade, `sticky-click-to-edit`)
+  read post-click state either before a stability wait or before
+  confirming the previous keypress actually landed. Two distinct
+  fixes: (1) `checkNoteCardCommit`'s Escape ladder used to fire both
+  presses back-to-back with one combined poll after — Primer
+  Dialog's close is a React state update, not synchronous with the
+  keypress, so a still-mounted Dialog could swallow the second
+  Escape too and the selection never cleared; each Escape now polls
+  for its own effect (page closed, then selection cleared) before
+  the next fires. (2) `checkStickyBorderColorFlip` was missing the
+  `waitForNodeStable` wait the other checks already had, and neither
+  it nor `checkStickyClickToEdit`'s select click retried on a miss
+  the way `checkNoteCardCommit`'s already did — both now follow the
+  same settle-then-click-with-retry pattern. All fixes are
+  deterministic (poll-then-act, retry-on-miss), nothing demoted to
+  the manual-only registry below. Re-verified: three consecutive
+  green local runs post-fix.
 - **Manual-only registry** — OS-bound checks (hotkey delivery, real
   clipboard, tray) listed explicitly with reasons, never silently
   absent (see goal 0010's enforcement). Non-seed instance: the

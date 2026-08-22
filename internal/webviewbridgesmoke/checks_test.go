@@ -246,7 +246,8 @@ func TestCheckNoteCardCommit(t *testing.T) {
 		f.onJSON("js_eval", true) // poll: node position stable
 		f.onJSON("js_eval", true) // poll: wrapper selected
 		f.onJSON("js_eval", true) // poll: page header visible
-		f.onJSON("js_eval", true) // poll: board unselected again
+		f.onJSON("js_eval", true) // poll: page header gone (after escape 1)
+		f.onJSON("js_eval", true) // poll: board unselected (after escape 2)
 		f.on("mouse_click", func(map[string]any) (string, error) { return "ok", nil })
 		f.on("mouse_click", func(map[string]any) (string, error) { return "ok", nil })
 		f.on("keyboard_press", func(map[string]any) (string, error) { return "ok", nil })
@@ -269,13 +270,62 @@ func TestCheckNoteCardCommit(t *testing.T) {
 		}
 	})
 
+	// Regression: this test previously stubbed only one js_eval response
+	// before the commit-click error, which the SELECT loop's own
+	// waitForNodeStable consumed -- its follow-up "is it selected" poll
+	// then found the queue empty and burned its full timeout budget
+	// (~23s) before the commit click was ever reached, passing for the
+	// wrong reason. Every step through the select click is now stubbed
+	// explicitly so the commit click's error is what actually fails it.
 	t.Run("commit click failing propagates", func(t *testing.T) {
 		f := newFakeCaller()
-		f.on("mouse_click", func(map[string]any) (string, error) { return "ok", nil })
-		f.onJSON("js_eval", true) // poll: wrapper selected
-		f.onError("mouse_click", errors.New("gone"))
+		f.onJSON("js_eval", true)                                                      // poll: node position stable
+		f.on("mouse_click", func(map[string]any) (string, error) { return "ok", nil }) // select click
+		f.onJSON("js_eval", true)                                                      // poll: wrapper selected
+		f.onError("mouse_click", errors.New("gone"))                                   // commit click
 		if _, err := checkNoteCardCommit(f); err == nil {
 			t.Fatal("expected the commit click's error to propagate")
+		}
+	})
+
+	// Regression: the two Escape presses used to fire back-to-back with
+	// only one combined poll after both, which raced Primer Dialog's
+	// async close (a React state update, not synchronous with the
+	// keypress) -- a still-mounted Dialog could swallow the second
+	// Escape too, leaving the selection never cleared. Pins that a poll
+	// for the page closing now sits BETWEEN the two keyboard_press
+	// calls, so the second Escape is never sent until the first one's
+	// close is confirmed.
+	t.Run("second escape only fires after the first escape's close is confirmed", func(t *testing.T) {
+		f := newFakeCaller()
+		f.onJSON("js_eval", true) // poll: node position stable
+		f.onJSON("js_eval", true) // poll: wrapper selected
+		f.onJSON("js_eval", true) // poll: page header visible
+		f.onJSON("js_eval", true) // poll: page header gone (after escape 1)
+		f.onJSON("js_eval", true) // poll: board unselected (after escape 2)
+		f.on("mouse_click", func(map[string]any) (string, error) { return "ok", nil })
+		f.on("mouse_click", func(map[string]any) (string, error) { return "ok", nil })
+		f.on("keyboard_press", func(map[string]any) (string, error) { return "ok", nil })
+		f.on("keyboard_press", func(map[string]any) (string, error) { return "ok", nil })
+		if _, err := checkNoteCardCommit(f); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		var escapeIdx, pollBetween []int
+		for i, call := range f.calls {
+			if call.tool == "keyboard_press" {
+				escapeIdx = append(escapeIdx, i)
+			}
+		}
+		if len(escapeIdx) != 2 {
+			t.Fatalf("expected exactly 2 keyboard_press calls, got %d", len(escapeIdx))
+		}
+		for i := escapeIdx[0] + 1; i < escapeIdx[1]; i++ {
+			if f.calls[i].tool == "js_eval" {
+				pollBetween = append(pollBetween, i)
+			}
+		}
+		if len(pollBetween) == 0 {
+			t.Fatal("expected at least one js_eval poll between the two Escape presses -- they must not fire back-to-back")
 		}
 	})
 }
@@ -328,81 +378,5 @@ func TestCheckNoteCardSelectionRing(t *testing.T) {
 	})
 }
 
-func TestCheckStickyBorderColorFlip(t *testing.T) {
-	seedCards := []atlasCard{{ID: "card-1", Title: "Getting started", ParentID: "space-1"}}
-
-	t.Run("border-color and ring both flip on selection", func(t *testing.T) {
-		f := newFakeCaller()
-		f.onJSON("call_bound_method", seedCards)
-		f.on("js_eval", func(map[string]any) (string, error) { return "chained", nil }) // repairAppDispatch after Cards
-		f.onJSON("call_bound_method", map[string]any{"ID": "note-1"})
-		f.on("js_eval", func(map[string]any) (string, error) { return "intact", nil }) // repairAppDispatch after CreateNote
-		f.onJSON("js_eval", true) // pollJSEval: sticky rendered
-		f.onJSON("js_eval", stickySnapshot{BorderColor: "rgb(1,1,1)", BoxShadow: "none"})
-		f.on("mouse_click", func(map[string]any) (string, error) { return "ok", nil })
-		f.onJSON("js_eval", stickySnapshot{BorderColor: "rgb(9,9,9)", BoxShadow: "0 0 0 3px accent"})
-
-		detail, err := checkStickyBorderColorFlip(f)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if !strings.Contains(detail, "rgb(1,1,1) -> rgb(9,9,9)") {
-			t.Errorf("got %q", detail)
-		}
-
-		// The note must nest under "Getting started"'s own ParentID
-		// (the auto-entered board level), not under Getting started's
-		// own ID or the meta root -- regression for the level-mismatch
-		// this check's design had to reason through explicitly.
-		var createCall *calledTool
-		for i := range f.calls {
-			if f.calls[i].tool == "call_bound_method" && strings.Contains(f.calls[i].args["name"].(string), "CreateNote") {
-				createCall = &f.calls[i]
-			}
-		}
-		if createCall == nil {
-			t.Fatal("CreateNote was never called")
-			return // staticcheck SA5011: t.Fatal's noreturn fact is lost under CI's build config
-		}
-		args, _ := createCall.args["args"].([]any)
-		if len(args) != 3 || args[2] != "space-1" {
-			t.Errorf("expected CreateNote's parentID to be space-1 (Getting started's own ParentID), got args=%v", args)
-		}
-	})
-
-	t.Run("seeded card not found is an error, no note created", func(t *testing.T) {
-		f := newFakeCaller()
-		f.onJSON("call_bound_method", []atlasCard{{ID: "x", Title: "Some other card", ParentID: "y"}})
-		if _, err := checkStickyBorderColorFlip(f); err == nil {
-			t.Fatal("expected an error when \"Getting started\" isn't in the seed")
-		}
-		for _, c := range f.calls {
-			if c.tool == "call_bound_method" && strings.Contains(c.args["name"].(string), "CreateNote") {
-				t.Fatal("CreateNote must not be called once the parent card lookup fails")
-			}
-		}
-	})
-
-	t.Run("border-color unchanged after selection is an error", func(t *testing.T) {
-		f := newFakeCaller()
-		f.onJSON("call_bound_method", seedCards)
-		f.onJSON("call_bound_method", map[string]any{"ID": "note-1"})
-		f.onJSON("js_eval", true)
-		f.onJSON("js_eval", stickySnapshot{BorderColor: "rgb(1,1,1)", BoxShadow: "none"})
-		f.on("mouse_click", func(map[string]any) (string, error) { return "ok", nil })
-		f.onJSON("js_eval", stickySnapshot{BorderColor: "rgb(1,1,1)", BoxShadow: "0 0 0 3px accent"})
-		if _, err := checkStickyBorderColorFlip(f); err == nil {
-			t.Fatal("expected an error when border-color doesn't change")
-		}
-	})
-
-	t.Run("a genuine bridge gap (unknown tool) propagates, never substituted", func(t *testing.T) {
-		f := newFakeCaller()
-		f.onError("call_bound_method", &bridgeGapError{tool: "call_bound_method", message: "unknown tool: call_bound_method"})
-		_, err := checkStickyBorderColorFlip(f)
-		var gap *bridgeGapError
-		if !asBridgeGapError(err, &gap) {
-			t.Fatalf("expected a *bridgeGapError, got %T: %v", err, err)
-		}
-	})
-}
+// TestCheckStickyBorderColorFlip and TestCheckStickyClickToEdit live in
+// checks_sticky_test.go (file-loc-limit split, mirroring checks_sticky.go).
