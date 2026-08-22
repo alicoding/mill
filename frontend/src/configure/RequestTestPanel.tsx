@@ -5,6 +5,7 @@ import { StatusStamp } from '../shared/StatusStamp'
 import { CopyIcon, PlayIcon, SyncIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../shared/bindings'
 import { writeClipboardText } from '../shared/clipboardWrite'
+import { composeDiagnosis } from '../shared/diagnosis'
 import type { AuthConfig, AuthType, JOSEConfig } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import type { TestHTTPRequestResult } from '../shared/bindings'
 import type { ManualOperation } from './openapiSynth'
@@ -250,7 +251,16 @@ export function RequestTestPanel({
                   aria-label={t('requestTestPanel.copyAriaLabel')}
                   size="small"
                   variant="invisible"
-                  onClick={() => { void writeClipboardText(entry.Error || entry.Body) }}
+                  onClick={() => {
+                    if (entry.Error) {
+                      void composeDiagnosis({
+                        error: entry.Error,
+                        context: { Method: entry.method, Path: entry.path, Status: entry.StatusCode, 'Duration (ms)': entry.DurationMs },
+                      }).then(writeClipboardText)
+                    } else {
+                      void writeClipboardText(entry.Body)
+                    }
+                  }}
                   data-testid="copy-log-entry"
                 />
               </Stack>

@@ -5,8 +5,10 @@ import { Button, IconButton, Stack, Text } from '@primer/react'
 import { StatusStamp, type StatusStampVariant } from '../shared/StatusStamp'
 import { BugIcon, PlayIcon, ShieldIcon, SkipIcon, XIcon } from '@primer/octicons-react'
 import type { AttributeDef, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import type { RunDetail } from '../shared/bindings'
 import { generateSamplePayload } from '../shared/configSchema'
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
+import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import TestRunDialog from './TestRunDialog'
 import { workflowPayloadHint } from './triggerPayload'
 import { type BarState, truncate } from './liveRunState'
@@ -33,12 +35,16 @@ const FINISHED_VARIANT: Record<string, StatusStampVariant> = {
 // queue use), or the finished outcome, dismissible. Renders nothing
 // when no run is displayed.
 export function CurrentStepBar({
-  barState, attrs, onResolve, onDismiss,
+  barState, attrs, runDetail, onResolve, onDismiss,
 }: {
   barState: BarState | null
   // The owning workflow's declared Attributes -- what a debug park's
   // edit-and-resume form (docs/adr/0031 item 4) offers to override.
   attrs: AttributeDef[]
+  // The displayed run's full detail, for the finished bar's copyable
+  // diagnosis context -- null for a pre-flight REFUSED start (no run
+  // was ever created) and for every other bar mode.
+  runDetail: RunDetail | null
   onResolve: (nodeID: string, approve: boolean, continueRun?: boolean, values?: Record<string, string>) => void
   onDismiss: () => void
 }) {
@@ -145,7 +151,20 @@ export function CurrentStepBar({
           <Stack direction="horizontal" gap="condensed" align="center">
             <StatusStamp variant={FINISHED_VARIANT[barState.status] ?? 'neutral'}>{barState.status}</StatusStamp>
             {barState.error && (
-              <Text size="small" className={runbookStyles.error}>{truncate(barState.error, 120)}</Text>
+              <>
+                <Text size="small" className={runbookStyles.error}>{truncate(barState.error, 120)}</Text>
+                <CopyDiagnosisButton
+                  error={barState.error}
+                  context={{
+                    Workflow: runDetail?.workflowLabel,
+                    'Workflow ID': runDetail?.workflowID,
+                    'Run ID': runDetail?.runID,
+                    Started: runDetail?.startedAt,
+                    Finished: runDetail?.completedAt,
+                  }}
+                  testId="canvas-run-copy-diagnosis"
+                />
+              </>
             )}
             <IconButton
               icon={XIcon}

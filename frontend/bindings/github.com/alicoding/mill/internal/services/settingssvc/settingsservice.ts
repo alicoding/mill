@@ -31,6 +31,17 @@ import * as triggersvc$0 from "../triggersvc/models.js";
 import * as $models from "./models.js";
 
 /**
+ * AppDiagnostics is the copyable root-cause context appended to every
+ * copyable failure surface across the app (goal 0127: a paste replaces
+ * a photo) -- version, channel, proxy mode, OS/arch. Proxy reports MODE
+ * and host only -- a proxy URL may carry credentials, which must
+ * never enter a paste buffer.
+ */
+export function AppDiagnostics(): $CancellablePromise<string> {
+    return $Call.ByID(1452413937);
+}
+
+/**
  * AppVersion returns Mill's own release version (empty until wired).
  */
 export function AppVersion(): $CancellablePromise<string> {
@@ -632,16 +643,6 @@ export function UpdateChannel(): $CancellablePromise<string> {
  */
 export function UpdateChannelPreference(): $CancellablePromise<string> {
     return $Call.ByID(2624864437);
-}
-
-/**
- * UpdateDiagnostics is the copyable root-cause context for update
- * failures (goal 0127: a paste replaces a photo). Proxy reports MODE
- * and host only -- a proxy URL may carry credentials, which must
- * never enter a paste buffer.
- */
-export function UpdateDiagnostics(): $CancellablePromise<string> {
-    return $Call.ByID(795731779);
 }
 
 /**

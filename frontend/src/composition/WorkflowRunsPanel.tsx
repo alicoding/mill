@@ -4,11 +4,13 @@ import { Events } from '@wailsio/runtime'
 import { Button, IconButton, Select, Stack, Text } from '@primer/react'
 import { DataTable, type Column } from '@primer/react/experimental'
 import { Blankslate } from '@primer/react/experimental'
-import { BugIcon, CheckCircleIcon, XCircleIcon, ClockIcon, XIcon, ShieldIcon, ShieldXIcon, StopIcon, HistoryIcon } from '@primer/octicons-react'
+import { BugIcon, XIcon, ShieldIcon, StopIcon, HistoryIcon } from '@primer/octicons-react'
 import { ExecutionService } from '../shared/bindings'
 import { RunKind, type RunDetail, type RunSummary } from '../shared/bindings'
 import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
+import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
+import { RunStepRow } from './RunStepRow'
 import { formatRunStartedAt, runStatusVariant } from '../shared/runTime'
 import { StalenessBadge } from '../shared/StalenessBadge'
 import { StatusStamp, type StatusStampVariant } from '../shared/StatusStamp'
@@ -38,17 +40,6 @@ const KIND_VARIANT: Record<RunKind, StatusStampVariant> = {
   [RunKind.RunKindTest]: 'neutral',
   [RunKind.RunKindTriggered]: 'neutral',
   [RunKind.RunKindMCP]: 'neutral',
-}
-
-const STEP_ICON: Record<string, React.ReactNode> = {
-  succeeded: <CheckCircleIcon size={16} fill="var(--fgColor-success)" />,
-  failed: <XCircleIcon size={16} fill="var(--fgColor-danger)" />,
-  pending: <ClockIcon size={16} fill="var(--fgColor-muted)" />,
-  'awaiting-approval': <ShieldIcon size={16} fill="var(--fgColor-attention)" />,
-  denied: <ShieldXIcon size={16} fill="var(--fgColor-danger)" />,
-  // docs/adr/0026: a cancelled code-execution step is recorded
-  // distinctly from an ordinary failure ("cancelled != failed").
-  cancelled: <StopIcon size={16} fill="var(--fgColor-muted)" />,
 }
 
 interface WorkflowRunsPanelProps {
@@ -364,7 +355,23 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
               <IconButton icon={XIcon} aria-label={t('workflowRunsPanel.closeAriaLabel')} size="small" variant="invisible" onClick={() => setSelectedRunID(null)} />
             </Stack>
           </Stack>
-          {detail.error && <Text as="p" className={styles.error}>{detail.error}</Text>}
+          {detail.error && (
+            <Stack direction="horizontal" gap="condensed" align="center">
+              <Text as="p" className={styles.error}>{detail.error}</Text>
+              <CopyDiagnosisButton
+                error={detail.error}
+                context={{
+                  Workflow: detail.workflowLabel,
+                  'Workflow ID': detail.workflowID,
+                  'Run ID': detail.runID,
+                  Status: detail.status,
+                  Started: detail.startedAt,
+                  Finished: detail.completedAt,
+                }}
+                testId="run-detail-copy-diagnosis"
+              />
+            </Stack>
+          )}
 
           {/* eslint-disable-next-line sonarjs/cognitive-complexity -- legacy complexity grandfathered at gate adoption; pay down when touched (goal 0109 burn-down) */}
           {detail.pending && (() => {
@@ -429,44 +436,7 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
 
           <Stack direction="vertical" gap="condensed" style={{ marginTop: 'var(--base-size-12)' }}>
             {(detail.steps ?? []).map((step) => (
-              <Stack key={step.nodeID} direction="horizontal" justify="space-between" align="start" gap="condensed"
-                data-testid="run-step" data-node-type-id={step.nodeTypeID}>
-                <Stack direction="horizontal" gap="condensed" align="start">
-                  <span className={styles.icon}>{STEP_ICON[step.status]}</span>
-                  <div>
-                    <Stack direction="horizontal" gap="condensed" align="center">
-                      <Text size="small" weight="semibold">{step.nodeTypeLabel || step.nodeTypeID}</Text>
-                      {/* A breakpoint/step-mode debug park reads distinctly
-                          here too (docs/adr/0031 item 2) -- BugIcon, never
-                          the guardrail shield/wording. */}
-                      {step.guardrailSource === 'debug' && (
-                        <StatusStamp variant="identity" data-testid="step-debug-badge">
-                          <BugIcon size={12} /> {t('workflowRunsPanel.breakpointBadge')}
-                        </StatusStamp>
-                      )}
-                    </Stack>
-                    {step.guardrailEffect && (
-                      <Text as="p" size="small" className={styles.muted} data-testid="step-guardrail">
-                        {t('workflowRunsPanel.guardrailLabel', { effect: step.guardrailEffect, ruleSuffix: step.guardrailRule ? t('workflowRunsPanel.ruleSuffix', { rule: step.guardrailRule }) : '' })}
-                      </Text>
-                    )}
-                    {step.output && <pre className={styles.result}>{step.output}</pre>}
-                    {step.error && <Text as="p" size="small" className={styles.error}>{step.error}</Text>}
-                  </div>
-                </Stack>
-                {/* "Retry", not "redrive": redrive is AWS-specific jargon
-                    (SQS DLQ / Step Functions); the no-code space this
-                    product competes in says Retry (n8n) / Replay (Zapier) /
-                    Resubmit (Power Automate). Code-level RedriveRun/DBOS
-                    fork naming is untouched -- ADR-0016's code-vs-UI
-                    naming split, applied again (same class as the
-                    "idempotency key" -> "Skip duplicate runs" rewrite). */}
-                {step.status === 'failed' && (
-                  <Button size="small" disabled={busy} onClick={() => redrive(step.nodeID)}>
-                    {t('workflowRunsPanel.retryFromThisStep')}
-                  </Button>
-                )}
-              </Stack>
+              <RunStepRow key={step.nodeID} step={step} detail={detail} busy={busy} onRetry={redrive} />
             ))}
           </Stack>
         </div>

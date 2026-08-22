@@ -442,7 +442,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
               workflowId={workflow?.ID ?? ''}
               onSelectIssue={selectIssue}
             />
-            <CurrentStepBar barState={barState} attrs={workflow?.Attributes ?? []} onResolve={resolveApprovalStep} onDismiss={dismissRunState} />
+            <CurrentStepBar barState={barState} attrs={workflow?.Attributes ?? []} runDetail={liveRunDetail} onResolve={resolveApprovalStep} onDismiss={dismissRunState} />
           </ReactFlow>
         </div>
 

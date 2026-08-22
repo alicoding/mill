@@ -5,6 +5,10 @@
     "approve": "Approve",
     "deny": "Deny"
   },
+  "copyDiagnosisButton": {
+    "copyAriaLabel": "Copy details",
+    "copiedAriaLabel": "Copied"
+  },
   "inventoryList": {
     "defaultSearchPlaceholder": "Search…",
     "searchAriaLabel": "Search",

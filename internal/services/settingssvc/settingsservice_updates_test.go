@@ -363,14 +363,14 @@ func TestTrimReleaseNotesForApp(t *testing.T) {
 	}
 }
 
-func TestUpdateDiagnostics_NamesProxyModeNeverCredentials(t *testing.T) {
+func TestAppDiagnostics_NamesProxyModeNeverCredentials(t *testing.T) {
 	set := newTestSettingsService(t)
 	set.SetAppVersion("0.4.0-beta.9")
 	set.SetUpdateChannel("beta")
 	if err := set.SetOutboundProxyURL("http://user:secret@proxy.corp:8080"); err != nil {
 		t.Fatalf("SetOutboundProxyURL: %v", err)
 	}
-	d := set.UpdateDiagnostics()
+	d := set.AppDiagnostics()
 	if !strings.Contains(d, "proxy manual: proxy.corp:8080") {
 		t.Errorf("diagnostics missing proxy host: %q", d)
 	}
@@ -399,7 +399,7 @@ func TestSetOutboundProxyURL_AcceptsOffSentinel(t *testing.T) {
 	if got := set.OutboundProxyURL(); got != "off" {
 		t.Errorf("stored %q", got)
 	}
-	if d := set.UpdateDiagnostics(); !strings.Contains(d, "off (direct)") {
+	if d := set.AppDiagnostics(); !strings.Contains(d, "off (direct)") {
 		t.Errorf("diagnostics %q", d)
 	}
 }

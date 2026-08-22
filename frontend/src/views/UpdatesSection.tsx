@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { Events } from '@wailsio/runtime'
 import { useTranslation } from 'react-i18next'
 import { Browser } from '@wailsio/runtime'
-import { writeClipboardText } from '../shared/clipboardWrite'
 import { Button, Checkbox, FormControl, Select, Stack, Text, TextInput } from '@primer/react'
 import { SettingsService } from '../shared/bindings'
+import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 
 // The browser-download escape hatch for when the in-app download is
 // blocked (managed networks answer the asset fetch with 403 while the
@@ -283,19 +283,12 @@ function UpdatesSection() {
                 )}
                 {installState === 'failed' && (
                   <>
-                    <Text size="small" className={styles.error}>
-                      {t('settings.updates.installFailed', { error: installError })}
-                    </Text>
-                    <Button
-                      size="small"
-                      onClick={() => {
-                        const err = installError
-                        void SettingsService.UpdateDiagnostics().then((diag) => writeClipboardText(`${err}\n${diag}`))
-                      }}
-                      data-testid="update-error-copy"
-                    >
-                      {t('settings.updates.copyErrorDetails')}
-                    </Button>
+                    <Stack direction="horizontal" gap="condensed" align="center">
+                      <Text size="small" className={styles.error}>
+                        {t('settings.updates.installFailed', { error: installError })}
+                      </Text>
+                      <CopyDiagnosisButton error={installError} testId="update-error-copy" />
+                    </Stack>
                     <Stack direction="horizontal" gap="condensed" align="center">
                       <Text size="small" className={styles.muted}>
                         {t('settings.updates.installFallbackHint')}
