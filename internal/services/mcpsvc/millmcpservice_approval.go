@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/mcpaudit"
+	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // Per-write MCP approval lifecycle: park-and-poll (docs/adr/0032,
@@ -220,9 +220,7 @@ func (m *MillMCPService) gateWrite(toolName, description, argsJSON string) (*mcp
 	// Surface it to the desktop window; the frontend also polls
 	// PendingMCPWrites on mount, so a request raised while the window
 	// was closed still shows up.
-	if app := application.Get(); app != nil {
-		app.Event.Emit("mcp-write-approval", MCPWriteRequest{ID: rec.ID, Description: rec.Description, CreatedAt: rec.CreatedAt})
-	}
+	windowing.Emit("mcp-write-approval", MCPWriteRequest{ID: rec.ID, Description: rec.Description, CreatedAt: rec.CreatedAt})
 
 	select {
 	case <-rec.decision:

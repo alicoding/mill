@@ -16,9 +16,9 @@ import (
 	"fmt"
 
 	"github.com/alicoding/mill/internal/adapters/aiclient"
+	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/services/atlassvc"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // DeltaEventName is registered by main.go (application.RegisterEvent)
@@ -92,9 +92,7 @@ func SetDeltaTestHook(fn func(text string)) {
 }
 
 func emitDelta(text string) {
-	if app := application.Get(); app != nil {
-		app.Event.Emit(DeltaEventName, CompanionDelta{Text: text})
-	}
+	windowing.Emit(DeltaEventName, CompanionDelta{Text: text})
 	if deltaTestHook != nil {
 		deltaTestHook(text)
 	}

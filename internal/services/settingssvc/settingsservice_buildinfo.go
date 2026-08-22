@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/alicoding/mill/internal/adapters/buildinfo"
-	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/alicoding/mill/internal/adapters/windowing"
 )
 
 // BuildInfo is what's actually running, not what the source tree looks
@@ -102,7 +102,5 @@ func (s *SettingsService) ExportSkillDoc() (string, error) {
 // native webview -- a browser tab on the shared server-mode instance
 // must never be able to kill the server out from under other clients.
 func (s *SettingsService) QuitApp() {
-	if app := application.Get(); app != nil {
-		app.Quit()
-	}
+	windowing.Quit()
 }

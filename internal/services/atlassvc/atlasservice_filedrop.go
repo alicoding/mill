@@ -8,11 +8,10 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/markdown"
+	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/domain/atlas"
 	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/seeding"
-	"github.com/wailsapp/wails/v3/pkg/application"
-	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 // This file is the capture-doors slice (goal 0081 slice A3, LOCKED
@@ -287,26 +286,16 @@ func (a *AtlasService) ConvertHTMLToMarkdown(html string) (string, error) {
 // WireFileDropWindow relays window's own native OS file-drop events
 // (main.go's EnableFileDrop) to the frontend as FileDropEventName --
 // main.go's only call into this file, right after the window itself is
-// constructed. Not a frontend RPC: this takes a *application.WebviewWindow,
+// constructed. Not a frontend RPC: this takes a *windowing.Window,
 // which Wails' binding generator can't marshal.
 //
 //wails:ignore
-func (a *AtlasService) WireFileDropWindow(window *application.WebviewWindow) {
-	window.OnWindowEvent(events.Common.WindowFilesDropped, func(e *application.WindowEvent) {
-		ctx := e.Context()
-		filenames := ctx.DroppedFiles()
-		if len(filenames) == 0 {
-			return
+func (a *AtlasService) WireFileDropWindow(window *windowing.Window) {
+	window.OnFilesDropped(func(e windowing.FileDropEvent) {
+		payload := FileDropPayload{Filenames: e.Filenames, X: e.X, Y: e.Y}
+		if e.Attributes != nil {
+			payload.Context = e.Attributes["data-file-drop-context"]
 		}
-		payload := FileDropPayload{Filenames: filenames}
-		if details := ctx.DropTargetDetails(); details != nil {
-			payload.X, payload.Y = details.X, details.Y
-			if details.Attributes != nil {
-				payload.Context = details.Attributes["data-file-drop-context"]
-			}
-		}
-		if app := application.Get(); app != nil {
-			app.Event.Emit(FileDropEventName, payload)
-		}
+		windowing.Emit(FileDropEventName, payload)
 	})
 }

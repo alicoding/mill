@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/alicoding/mill/internal/adapters/fileread"
+	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/domain/atlas"
 	"github.com/alicoding/mill/internal/services/seeding"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // This file is synced-folder onboarding (docs/goals/0067): an explicit
@@ -92,22 +92,7 @@ func (a *AtlasService) PickFolder(startDir string) (string, error) {
 	if testPath := os.Getenv(testFolderPickPathEnv); testPath != "" {
 		return testPath, nil
 	}
-	app := application.Get()
-	if app == nil {
-		return "", fmt.Errorf("folder picker unavailable outside the desktop app")
-	}
-	dialog := app.Dialog.OpenFile().
-		CanChooseFiles(false).
-		CanChooseDirectories(true).
-		SetTitle("Add cards from a folder")
-	if startDir != "" {
-		dialog.SetDirectory(startDir)
-	}
-	path, err := dialog.PromptForSingleSelection()
-	if err != nil {
-		return "", fmt.Errorf("pick folder: %w", err)
-	}
-	return path, nil
+	return windowing.PickFolder("Add cards from a folder", startDir)
 }
 
 // SetGuardedDataPaths records Mill's own settings-file/execution-db/

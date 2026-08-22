@@ -66,6 +66,31 @@ linters:
     # lefthook and CI, which reads this threshold.
     gocognit:
       min-complexity: 15
+    # depguard is deliberately NOT in `enable:` above either -- 22
+    # legacy direct imports of wails/v3/pkg/application exist outside
+    # internal/adapters/windowing (docs/goals/0168's own measurement),
+    # burning down as they migrate onto that adapter. Same
+    # clean-as-you-code posture as gocognit just above: a dedicated
+    # `--enable-only depguard --new-from-merge-base` invocation in
+    # lefthook and CI refuses any NEW direct import, while the legacy
+    # ones stay untouched until migrated.
+    depguard:
+      rules:
+        no-direct-wails-application:
+          files:
+            - $all
+            - "!**/internal/adapters/**"
+            - "!**/main.go"
+            - "!**/auxwindows.go"
+            - "!**/singleinstance_dev.go"
+            - "!**/singleinstance_production.go"
+          deny:
+            - pkg: github.com/wailsapp/wails/v3/pkg/application
+              desc: >-
+                platform/main-thread affinity lives in
+                internal/adapters/windowing (docs/goals/0168) -- every
+                other package calls the toolkit through that port
+                instead of importing it directly.
     revive:
       rules:
         # This repo has never doc-commented every exported symbol --

@@ -75,22 +75,23 @@ func (s *SettingsService) bindSummon(mods []string, key string) error {
 	// showing the main window directly -- ShowWindow stays reachable
 	// via the tray icon's own click handler and the panel's own
 	// "Open Mill" row (OpenMainWindow), just no longer via this hotkey.
-	go summonKeydownLoop(b.Keydown(), s.runOnMainThread, s.TogglePanel)
+	go summonKeydownLoop(b.Keydown(), s.TogglePanel)
 	return nil
 }
 
 // summonKeydownLoop drains events (b.Keydown()'s producer, never the OS
-// main thread) and routes each fire through run -- the mainThreadRun
-// seam -- before calling toggle, since toggle (TogglePanel) reaches
-// application.App-level Show/Hide, and AppKit aborts the process if
-// that's touched off the main thread (settingsservice_panel.go's doc
-// comment has the full reasoning). Extracted from bindSummon as its own
-// function so the routing can be proven with a fake events channel and
-// a recording run -- hotkey.Bind's real registration needs the
-// Accessibility permission a headless test process never has.
-func summonKeydownLoop(events <-chan struct{}, run func(func()), toggle func()) {
+// main thread) and calls toggle on each fire. toggle (TogglePanel)
+// reaches App-level Show/Hide, and AppKit aborts the process if that's
+// touched off the main thread -- but every such call inside TogglePanel
+// now marshals itself individually (internal/adapters/windowing's
+// runMainThreadAction), so this loop no longer needs its own outer
+// main-thread seam the way the P0 fix originally added one here.
+// Extracted from bindSummon as its own function so the routing can be
+// proven with a fake events channel -- hotkey.Bind's real registration
+// needs the Accessibility permission a headless test process never has.
+func summonKeydownLoop(events <-chan struct{}, toggle func()) {
 	for range events {
-		run(toggle)
+		toggle()
 	}
 }
 

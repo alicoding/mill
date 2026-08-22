@@ -9,7 +9,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/dockbadge"
 	"github.com/alicoding/mill/internal/adapters/idletime"
 	"github.com/alicoding/mill/internal/adapters/notify"
-	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/alicoding/mill/internal/adapters/windowing"
 )
 
 // The away-user attention layer (docs/adr/0032 §3, sharpened by
@@ -109,7 +109,7 @@ func (s *SettingsService) SetPendingBadge(count int) {
 // taskbar flash on Windows. A package var so the away-branch wiring is
 // unit-testable; the real dock behavior is OS-bound and stays a
 // manual-only check (.claude/rules/testing.md).
-var dockBounceFn = func(w *application.WebviewWindow) {
+var dockBounceFn = func(w *windowing.Window) {
 	if w != nil {
 		w.Flash(true)
 	}

@@ -1,9 +1,6 @@
 package settingssvc
 
-import (
-	"github.com/wailsapp/wails/v3/pkg/application"
-	"github.com/wailsapp/wails/v3/pkg/events"
-)
+import "github.com/alicoding/mill/internal/adapters/windowing"
 
 // The floating approval prompt (docs/goals/0023-attention-escalation.md
 // item 1, ADR-0033's second-window mechanism reused rather than
@@ -27,12 +24,12 @@ import (
 // path this window has.
 //
 //wails:ignore
-func (s *SettingsService) SetApprovalPromptWindow(w *application.WebviewWindow) {
+func (s *SettingsService) SetApprovalPromptWindow(w *windowing.Window) {
 	s.mu.Lock()
 	s.approvalPrompt = w
 	s.mu.Unlock()
 
-	w.OnWindowEvent(events.Common.WindowLostFocus, func(*application.WindowEvent) {
+	w.OnLostFocus(func() {
 		s.yieldFocusIfMainHidden()
 	})
 }

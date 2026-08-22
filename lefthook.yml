@@ -79,6 +79,16 @@ pre-commit:
       # the goal file's own recorded verdict (seeded-example tests
       # dominate the noise; production code is the gate's subject).
       run: golangci-lint run . ./internal/... --build-tags=server --enable-only gocognit --new-from-merge-base=origin/main --tests=false --allow-parallel-runners
+    - name: depguard-new
+      glob: "*.go"
+      # Boundary-enforcement gate on NEW/CHANGED code only (goal 0168):
+      # 22 legacy direct imports of wails/v3/pkg/application sit outside
+      # internal/adapters/windowing, burning down as they migrate, so
+      # this scopes to the merge-base diff instead of failing every
+      # build. Threshold/rule lives in .golangci.yml's depguard
+      # settings; same --tests=false / --allow-parallel-runners
+      # reasoning as gocognit-new just above.
+      run: golangci-lint run . ./internal/... --build-tags=server --enable-only depguard --new-from-merge-base=origin/main --tests=false --allow-parallel-runners
     - name: go-test
       glob: "*.go"
       # Root package (`.`) included alongside ./internal/... -- the
