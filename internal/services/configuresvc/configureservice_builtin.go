@@ -11,6 +11,26 @@ import (
 	"github.com/alicoding/mill/internal/services/seeding"
 )
 
+// httpRequestDescriptor is HTTPRequest's entitystore.Descriptor (goal
+// 0165) -- only reconcileBuiltInRequests and the Reset/Restorable/
+// Restore RPCs (configureservice_seedlifecycle.go) key off it.
+// Create/Update/Delete stay hand-written in
+// configureservice_requestauth.go: they interleave credential/JOSE
+// handling the generic shape doesn't cover.
+var httpRequestDescriptor = entitystore.Descriptor[httprequest.HTTPRequest]{
+	Label:     "request",
+	GetID:     func(r httprequest.HTTPRequest) string { return r.ID },
+	IsBuiltIn: func(r httprequest.HTTPRequest) bool { return r.BuiltIn },
+	GetSeed:   func(r httprequest.HTTPRequest) seedorigin.Origin { return r.Seed },
+	SetSeed:   func(r httprequest.HTTPRequest, o seedorigin.Origin) httprequest.HTTPRequest { r.Seed = o; return r },
+	StampNew: func(r httprequest.HTTPRequest, now time.Time) httprequest.HTTPRequest {
+		r.CreatedAt, r.UpdatedAt = now, now
+		return r
+	},
+	Upgrade: upgradeRequestToGolden,
+	BuiltIn: httprequest.BuiltIn,
+}
+
 // builtInSecrets holds the demo secret VALUES for httprequest.BuiltIn()'s
 // seeded examples -- kept here, in the configure service package, not in
 // internal/domain/httprequest, since HTTPRequest itself never carries a
@@ -72,42 +92,7 @@ func (c *ConfigureService) seedBuiltInSecrets() {
 // upgraded.
 func (c *ConfigureService) reconcileBuiltInRequests() {
 	tombstones := seeding.LoadTombstones(c.store)
-	now := time.Now()
-	c.mu.Lock()
-	byID := make(map[string]int, len(c.requests))
-	for i, r := range c.requests {
-		byID[r.ID] = i
-	}
-	changed := false
-	var seededSecretsFor []httprequest.HTTPRequest
-	for _, golden := range httprequest.BuiltIn() {
-		idx, present := byID[golden.ID]
-		if !present {
-			if tombstones[golden.ID] {
-				continue
-			}
-			golden.CreatedAt, golden.UpdatedAt = now, now
-			c.requests = append(c.requests, golden)
-			seededSecretsFor = append(seededSecretsFor, golden)
-			changed = true
-			continue
-		}
-		existing := c.requests[idx]
-		if existing.Seed.SeedRevision == 0 {
-			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
-			c.requests[idx] = existing
-			changed = true
-			continue
-		}
-		if existing.Seed.Modified {
-			continue
-		}
-		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
-			c.requests[idx] = upgradeRequestToGolden(existing, golden, now)
-			changed = true
-		}
-	}
-	c.mu.Unlock()
+	seededSecretsFor, changed := entitystore.Reconcile(&c.mu, &c.requests, tombstones, httpRequestDescriptor)
 	if !changed {
 		return
 	}
