@@ -43,6 +43,28 @@ test('Mobile nav drawer: hidden by default, opens full-screen, closes on navigat
   await expect(page.getByTestId('mobile-nav-toggle')).toBeVisible()
 })
 
+// Regression: Settings lives in a bottom-anchored footer slot below the
+// capability NavList (AppSidebar.tsx), on the same element Primer's
+// PageLayout.Sidebar sizes to a plain `height: 100vh` at this breakpoint
+// (confirmed against its compiled CSS) -- real mobile Safari's 100vh
+// exceeds the visually available viewport whenever its own chrome is
+// showing, pushing a bottom-anchored row like this one off-screen with
+// no scroll affordance to reach it. App.module.css's dvh fallback pins
+// the fix; this pins that Settings stays reachable through the drawer.
+test('Mobile nav drawer: Settings is reachable, labelled, and navigates', async ({ page }) => {
+  await page.goto('/')
+  await page.getByTestId('mobile-nav-toggle').click()
+
+  const settingsLink = page.getByRole('link', { name: 'Settings' })
+  await expect(settingsLink).toBeVisible()
+  const box = await settingsLink.boundingBox()
+  expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
+
+  await settingsLink.click()
+  await expect(page.getByTestId('settings-view')).toBeVisible()
+  await expect(page.getByTestId('mobile-nav-toggle')).toBeVisible()
+})
+
 test('Mobile job 1/2/5 -- run a workflow, capture its note, approve the parked run from a phone', async ({ page }) => {
   await page.goto('/')
   await openDrawerAndNavigate(page, 'Workflows')
