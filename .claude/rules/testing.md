@@ -350,6 +350,25 @@ layer per capability," never "a seed per thing":
   system notification titled "Approval needed" appears; click it and
   confirm the tab both regains focus and lands on the Review queue
   showing that item.
+- **The real Android ntfy delivery** (goal 0132 slice B,
+  `internal/services/remoteauthsvc/remoteauthservice_ntfy.go`'s
+  `phoneChannel` + subscribe handler) — topic generation/uniqueness,
+  the 404 on an unknown/revoked topic, an open stream closing
+  immediately on revoke, and the stream emitting a real Deliver call's
+  title/body/click line are all Go-tested against a real
+  `httptest.Server` round trip
+  (`remoteauthservice_ntfy_test.go`), and the Settings row's copyable
+  subscribe URL + install/secrecy copy are e2e-proven
+  (`remote-access.spec.ts`). What stays manual: the ntfy wire protocol
+  reaching a REAL Android device and surfacing an actual system
+  notification is OS/vendor-app-bound and CI-invisible — same class as
+  the dock bounce and the browser-tab banner above. Verify by
+  installing the ntfy Android app, pasting a paired device's subscribe
+  URL from Settings > Remote access as a new subscription, parking a
+  guardrail approval, confirming the phone receives "Approval needed"
+  with the workflow/step body (never the payload) while backgrounded,
+  and tapping it lands on Mill's Review queue rather than its home
+  screen.
 
 From the UX point of view the seed layer stays privileged — it's the
 one a human can SEE working — but correctness under change belongs to
