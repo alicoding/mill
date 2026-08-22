@@ -29,6 +29,22 @@ context holds. If a task can't be specified tightly enough for Sonnet
 to execute against objective checks, that's a sign it's still
 design work — do it in the main session, don't delegate it.
 
+**Every dispatched BUILD agent works in its own git worktree; the
+main checkout belongs to the orchestrator.** State it in the brief —
+agents do not reliably choose isolation on their own, and the default
+matters because the orchestrator needs that checkout continuously for
+deploys, diff review, and docs commits while builds run. Recorded
+after three self-caught instances of the same collision (editing a
+file an agent held uncommitted; `git add -A` sweeping an agent's
+in-flight work into an unrelated commit; and a deploy that built from
+an agent's branch because a refused `git checkout` did not stop the
+chained build/reload steps behind it). Two corollaries, both learned
+the hard way: before ANY git write or build in the main checkout,
+check `git branch --show-current` and `git status` — if it is not
+main or the tree is dirty, an agent owns it; and when one does occupy
+it, deploy by building from a throwaway worktree at origin/main
+rather than contending for the checkout.
+
 **Design/UX/spec contracts are the orchestrator's own work-product —
 never delegated (owner-directed 2026-08-15, after a day of live UX
 churn proved the failure mode).** A brief that names capabilities and
