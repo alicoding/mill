@@ -334,6 +334,22 @@ layer per capability," never "a seed per thing":
   granting Accessibility once, taking two consecutive beta updates,
   and confirming the summon hotkey still registers with no new
   permission prompt.
+- **The real browser-tab approval notification** (goal 0132 slice A,
+  `shared/browserNotify.ts` + `app/useBrowserNotify.ts`) — the
+  should-notify decision (`shouldNotifyBrowserTab`) is unit-tested
+  across its full input range, and the Settings opt-in control's
+  presence and its default/granted/denied states are e2e-proven
+  (`remote-access.spec.ts`). What stays manual: an actual OS
+  notification banner appearing, and clicking it landing on the Review
+  decision, both require a real granted browser permission and a real
+  OS compositor — same OS-bound class as the dock bounce and
+  apply-notify's banner above. Verify by running a server-mode
+  instance reached from a real browser tab, enabling notifications in
+  Settings > Remote access, parking a guardrail approval from another
+  tab/device, switching away from the paired tab, and confirming a
+  system notification titled "Approval needed" appears; click it and
+  confirm the tab both regains focus and lands on the Review queue
+  showing that item.
 
 From the UX point of view the seed layer stays privileged — it's the
 one a human can SEE working — but correctness under change belongs to
