@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/alicoding/mill/internal/services/executionsvc"
+	"io/fs"
 	"net/http"
 	"strings"
 	"sync"
@@ -24,6 +25,11 @@ import (
 	"github.com/alicoding/mill/internal/services/configuresvc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
+
+// serverInstructions is the MCP spec's own ServerOptions.Instructions
+// breadcrumb (goal 0160): kept short per the MCP blog's own guidance --
+// a pointer at mill://skill, never a restatement of it.
+const serverInstructions = "Mill's tools are guardrailed: reads answer immediately, writes park for human approval. Read mill://skill first -- it covers which tool fits which job, the approval/parking etiquette, and composition norms."
 
 // MillMCPService exposes Mill's own workflows/Configure data (not an
 // external capability wrapped as a node -- the inverse direction of
@@ -74,6 +80,12 @@ type MillMCPService struct {
 	// millmcpservice_atlas_write.go, goal 0083); late-bound from main.go
 	// via SetAtlasService, same construction-order reason as exec above.
 	atlas *atlassvc.AtlasService
+	// userdocs is the embedded userdocs tree (main.go's userdocsFS,
+	// go:embed all:userdocs) -- backs mill://skill (millmcpservice_skill.go,
+	// goal 0160), the same construction-injection shape docssvc.New
+	// already uses for the in-app Docs surface, so the MCP resource and
+	// the human-facing page can never carry two independent copies.
+	userdocs fs.FS
 }
 
 // NewMillMCPService builds the MCP server and registers every
@@ -84,12 +96,13 @@ type MillMCPService struct {
 // write-tools gate (millmcpservice_tools.go, ADR-0017's Update) --
 // read fresh on every import call, so flipping the Settings toggle
 // applies immediately, no restart.
-func NewMillMCPService(version string, comp *compositionsvc.CompositionService, cfg *configuresvc.ConfigureService, store settings.Store) *MillMCPService {
-	m := &MillMCPService{comp: comp, cfg: cfg, version: version, store: store, executors: map[string]mcpWriteExecutor{}}
-	m.server = mcpserving.New("mill", version)
+func NewMillMCPService(version string, comp *compositionsvc.CompositionService, cfg *configuresvc.ConfigureService, store settings.Store, userdocs fs.FS) *MillMCPService {
+	m := &MillMCPService{comp: comp, cfg: cfg, version: version, store: store, executors: map[string]mcpWriteExecutor{}, userdocs: userdocs}
+	m.server = mcpserving.New("mill", version, serverInstructions)
 	m.registerTools()
 	m.registerContractResources()
 	m.registerAtlasResources()
+	m.registerSkillResource()
 	// Restart-survival (docs/adr/0032 §1): reload any pending/recently-
 	// resolved write record left over from a previous process. Must run
 	// after registerTools (so a loaded record's ToolName resolves

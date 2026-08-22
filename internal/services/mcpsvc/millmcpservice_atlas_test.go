@@ -37,7 +37,7 @@ func newAtlasMCPHarness(t *testing.T, addr string) *atlasMCPHarness {
 	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
 	atlasSvc := atlassvc.NewAtlasService(store)
 
-	svc := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	svc := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 	svc.SetAtlasService(atlasSvc)
 	if err := svc.Start(addr); err != nil {
 		t.Fatalf("Start: %v", err)

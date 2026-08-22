@@ -117,7 +117,7 @@ func TestMCPTools_RunWorkflow_EmitsRunDataEvent(t *testing.T) {
 		t.Fatalf("CreateWorkflow: %v", err)
 	}
 
-	m := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	m := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 	m.SetExecutionService(exec)
 	const addr = "127.0.0.1:18095"
 	if err := m.Start(addr); err != nil {
@@ -182,7 +182,7 @@ func TestMCPDebugTools_EmitRunDataEvent(t *testing.T) {
 		t.Fatal("seeded workflow \"Example: Branch to a decision\" not found")
 	}
 
-	m := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	m := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 	m.SetExecutionService(exec)
 	const addr = "127.0.0.1:18096"
 	if err := m.Start(addr); err != nil {
@@ -294,7 +294,7 @@ func TestMCPTools_ImportList_EmitsListDataEvent(t *testing.T) {
 		t.Fatalf("ExportList: %v", err)
 	}
 
-	m := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	m := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 	const addr = "127.0.0.1:18097"
 	if err := m.Start(addr); err != nil {
 		t.Fatalf("Start: %v", err)

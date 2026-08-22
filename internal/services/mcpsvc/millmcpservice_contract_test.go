@@ -33,7 +33,7 @@ func newContractTestService(t *testing.T, addr, version string) *mcp.ClientSessi
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
 
-	svc := NewMillMCPService(version, comp, cfg, store)
+	svc := NewMillMCPService(version, comp, cfg, store, nil)
 	if err := svc.Start(addr); err != nil {
 		t.Fatalf("Start: %v", err)
 	}

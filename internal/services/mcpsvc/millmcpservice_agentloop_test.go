@@ -51,7 +51,7 @@ func newAgentloopHarness(t *testing.T) *agentloopHarness {
 	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
 	atlasSvc := atlassvc.NewAtlasService(store)
 
-	svc := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	svc := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 	svc.SetAtlasService(atlasSvc)
 
 	return &agentloopHarness{store: store, atlas: atlasSvc, svc: svc, loop: agentloopsvc.NewAgentLoopService(svc)}

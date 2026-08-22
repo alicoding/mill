@@ -38,7 +38,7 @@ func TestMCPDebugTools_SteppedSessionFullLoop(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = exec.Shutdown(2 * time.Second) })
 
-	m := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	m := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 	m.SetExecutionService(exec)
 	const addr = "127.0.0.1:18094"
 	if err := m.Start(addr); err != nil {

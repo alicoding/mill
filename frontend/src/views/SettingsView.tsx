@@ -14,6 +14,7 @@ import { SETTINGS_SECTIONS, sectionMatchesQuery } from '../shared/settingsSectio
 import { applyDensity } from '../shared/density'
 import type { DisplayDensity } from '../shared/density'
 import KeyboardShortcutsSection from './KeyboardShortcutsSection'
+import ContractSection from './ContractSection'
 import DataStewardshipSection from './DataStewardshipSection'
 import UpdatesSection from './UpdatesSection'
 import McpAddressField from './McpAddressField'
@@ -95,8 +96,6 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
   const [summonBinding, setSummonBinding] = useState<string | null>(null)
   const [summonRecording, setSummonRecording] = useState(false)
   const [summonError, setSummonError] = useState('')
-
-  const [contractExportError, setContractExportError] = useState('')
 
   const [mcpWriteEnabled, setMCPWriteEnabledState] = useState<boolean | null>(null)
 
@@ -247,24 +246,6 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
       .catch(console.error)
   }
 
-  // Same fetch-JSON-then-download-a-blob shape as CompositionView's own
-  // exportWorkflow -- one file, no server round trip beyond the RPC
-  // itself.
-  const exportContract = () => {
-    setContractExportError('')
-    SettingsService.ExportContract()
-      .then((json) => {
-        const blob = new Blob([json], { type: 'application/json' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = 'mill-contract.json'
-        a.click()
-        URL.revokeObjectURL(url)
-      })
-      .catch(() => setContractExportError(t('settings.contract.exportError')))
-  }
-
   const SECTION_CONTENT: Record<string, ReactNode> = {
     appearance: (
       <>
@@ -391,21 +372,7 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
         )}
       </>
     ),
-    contract: (
-      <>
-        <Text as="p" size="small" className={styles.muted}>
-          {t('settings.contract.description')}
-        </Text>
-        <Stack direction="horizontal" gap="condensed" align="center" style={{ marginTop: 'var(--base-size-8)' }}>
-          <Button size="small" onClick={exportContract} data-testid="export-contract">
-            {t('settings.contract.exportButton')}
-          </Button>
-        </Stack>
-        {contractExportError && (
-          <Text as="p" size="small" className={styles.error}>{contractExportError}</Text>
-        )}
-      </>
-    ),
+    contract: <ContractSection />,
     notifications: (
       <>
         <Text as="p" size="small" className={styles.muted}>

@@ -48,7 +48,7 @@ func newMCPApprovalHarness(t *testing.T, addr, workflowLabel string) *mcpApprova
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
 
-	m := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	m := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 	if err := m.Start(addr); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
@@ -350,7 +350,7 @@ func TestMCPWriteTools_RestartSurvival_PendingRecordSurvivesNewServiceInstance(t
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
 
-	m1 := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	m1 := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 	if err := store.Set(MCPWriteEnabledKey, "true"); err != nil {
 		t.Fatalf("set write key: %v", err)
 	}
@@ -396,7 +396,7 @@ func TestMCPWriteTools_RestartSurvival_PendingRecordSurvivesNewServiceInstance(t
 	// A fresh service instance against the SAME store, standing in for
 	// main.go reconstructing everything from the same settings.json
 	// after a restart.
-	m2 := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	m2 := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 	pending := m2.PendingMCPWrites()
 	if len(pending) != 1 || pending[0].ID != id {
 		t.Fatalf("pending write did not survive across service instances: %+v", pending)
@@ -429,7 +429,7 @@ func TestGateWrite_PersistFailureAtParkTime_ReturnsErrorAndLeavesNoRecord(t *tes
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
-	m := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	m := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 
 	// approvalRequired() defaults to true with nothing set -- gateWrite
 	// takes the park path, which is where the persist call under test
@@ -458,7 +458,7 @@ func TestResolveMCPWrite_PersistFailure_StillDeniesButReturnsError(t *testing.T)
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
-	m := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	m := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 
 	mcpWriteCourtesyWindow = 10 * time.Millisecond
 	t.Cleanup(func() { mcpWriteCourtesyWindow = 10 * time.Second })

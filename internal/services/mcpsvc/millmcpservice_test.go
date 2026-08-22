@@ -27,7 +27,7 @@ func TestMillMCPService_RealClientRoundTrip(t *testing.T) {
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
 
-	svc := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	svc := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 	const addr = "127.0.0.1:18090"
 	if err := svc.Start(addr); err != nil {
 		t.Fatalf("Start: %v", err)
@@ -131,7 +131,7 @@ func TestMillMCPService_RequestResource_NeverLeaksSecretOverTheWire(t *testing.T
 		t.Fatalf("SetHTTPRequestSecret: %v", err)
 	}
 
-	svc := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	svc := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 	const addr = "127.0.0.1:18091"
 	if err := svc.Start(addr); err != nil {
 		t.Fatalf("Start: %v", err)

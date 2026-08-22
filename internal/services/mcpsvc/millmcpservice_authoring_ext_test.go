@@ -21,7 +21,7 @@ func newAuthoringExtHarness(t *testing.T) (*MillMCPService, *atlassvc.AtlasServi
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
 	atlasSvc := atlassvc.NewAtlasService(store)
-	svc := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	svc := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 	svc.SetAtlasService(atlasSvc)
 	return svc, atlasSvc, cfg
 }

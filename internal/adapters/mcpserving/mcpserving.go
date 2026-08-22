@@ -25,12 +25,15 @@ import (
 // (Slowloris-style) connection-exhaustion attack from one such process.
 const readHeaderTimeout = 5 * time.Second
 
-// New constructs an MCP server with the given name/version identity.
-// Thin on purpose -- there's little to wrap here (the SDK's
+// New constructs an MCP server with the given name/version identity
+// and an onboarding instructions string (goal 0160: the MCP spec's own
+// ServerOptions.Instructions field, a pointer to the fuller
+// mill://skill resource rather than a manual repeated here). Thin on
+// purpose otherwise -- there's little to wrap here (the SDK's
 // *mcp.Server already has the right shape), this exists for the import
 // boundary the ports/adapters rule wants, not to hide meaningful logic.
-func New(name, version string) *mcp.Server {
-	return mcp.NewServer(&mcp.Implementation{Name: name, Version: version}, nil)
+func New(name, version, instructions string) *mcp.Server {
+	return mcp.NewServer(&mcp.Implementation{Name: name, Version: version}, &mcp.ServerOptions{Instructions: instructions})
 }
 
 // Serve starts server listening on addr via the SDK's own streamable-

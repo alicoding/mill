@@ -54,7 +54,10 @@
     "contract": {
       "description": "The full step catalog, every data schema, and this app's version in one file — hand it to an agent that can't reach Mill directly.",
       "exportButton": "Export contract",
-      "exportError": "Couldn't export the contract — try again."
+      "exportError": "Couldn't export the contract — try again.",
+      "exportSkillDescription": "How to work with Mill — which tool fits which job, how approvals behave — for an agent that can't read mill://skill directly.",
+      "exportSkillButton": "Export skill doc",
+      "exportSkillError": "Couldn't export the skill doc — try again."
     },
     "notifications": {
       "description": "A parked guardrail ask or MCP write notifies you with a floating approval prompt once you're away — idle past the threshold below, or your window loses focus entirely. An actively-used Mill window is never notified twice.",

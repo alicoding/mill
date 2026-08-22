@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
@@ -62,7 +63,7 @@ func TestExportContract_DelegatesToMCPService(t *testing.T) {
 	set := NewSettingsService(store, trig, false)
 
 	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
-	millMCP := mcpsvc.NewMillMCPService("1.2.3-export-test", comp, cfg, store)
+	millMCP := mcpsvc.NewMillMCPService("1.2.3-export-test", comp, cfg, store, nil)
 	set.SetMCPService(millMCP)
 
 	got, err := set.ExportContract()
@@ -87,5 +88,52 @@ func TestExportContract_DelegatesToMCPService(t *testing.T) {
 	}
 	if len(parsed.NodeTypes) == 0 {
 		t.Error("ExportContract() has no nodeTypes")
+	}
+}
+
+// TestExportSkillDoc_NilMCPServiceErrors mirrors
+// TestExportContract_NilMCPServiceErrors: the mill://skill export door
+// (goal 0160) must fail closed, not panic, before SetMCPService runs.
+func TestExportSkillDoc_NilMCPServiceErrors(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	trig := triggersvc.NewTriggerService(comp, slog.Default(), store)
+	set := NewSettingsService(store, trig, false)
+
+	if _, err := set.ExportSkillDoc(); err == nil {
+		t.Error("ExportSkillDoc() with no MCP service wired: want an error, got nil")
+	}
+}
+
+// TestExportSkillDoc_DelegatesToMCPService mirrors
+// TestExportContract_DelegatesToMCPService: the Settings page's export
+// action returns the exact same document mill://skill serves -- one
+// function underneath both (MillMCPService.SkillDocument).
+func TestExportSkillDoc_DelegatesToMCPService(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	trig := triggersvc.NewTriggerService(comp, slog.Default(), store)
+	set := NewSettingsService(store, trig, false)
+
+	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
+	userdocs := fstest.MapFS{
+		"userdocs/agents/skill.md": {Data: []byte("---\nname: working-with-mill\n---\n\n# Working with Mill\n")},
+	}
+	millMCP := mcpsvc.NewMillMCPService("1.2.3-export-test", comp, cfg, store, userdocs)
+	set.SetMCPService(millMCP)
+
+	got, err := set.ExportSkillDoc()
+	if err != nil {
+		t.Fatalf("ExportSkillDoc: %v", err)
+	}
+	want, err := millMCP.SkillDocument()
+	if err != nil {
+		t.Fatalf("SkillDocument: %v", err)
+	}
+	if got != want {
+		t.Error("ExportSkillDoc() diverges from MillMCPService.SkillDocument()")
+	}
+	if !strings.Contains(got, "Working with Mill") {
+		t.Errorf("ExportSkillDoc() missing expected content:\n%.200s", got)
 	}
 }
