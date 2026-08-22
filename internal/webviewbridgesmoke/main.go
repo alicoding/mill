@@ -74,8 +74,15 @@ func run() error {
 	// Before ANY check may run call_bound_method: stash the app's event
 	// dispatcher so callBoundJSON can chain it back after the bridge's
 	// runtime import steals the slot (see checks.go's repair comment).
+	//
+	// Carries the app's stderr tail on failure, exactly as the
+	// waitForBridge path above does. Reaching here means the bridge
+	// already ACCEPTED a connection, so a timeout at this step is the
+	// webview failing to become live rather than the app failing to
+	// launch -- two very different causes that are indistinguishable
+	// without the app's own output.
 	if err := captureAppDispatch(client); err != nil {
-		return fmt.Errorf("capture app event dispatcher: %w", err)
+		return fmt.Errorf("capture app event dispatcher: %w\napp stderr tail:\n%s", err, stderrTail())
 	}
 
 	return runRegistry(client, registry)
