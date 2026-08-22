@@ -175,6 +175,9 @@ function UpdatesSection() {
       <Text size="small" className={styles.muted} data-testid="resign-notice">
         {t('settings.updates.resignNotice')}
       </Text>
+      <Text size="small" className={styles.muted} data-testid="resign-setup-notice">
+        {t('settings.updates.resignSetupNotice')}
+      </Text>
 
       <FormControl>
         <FormControl.Label>{t('settings.updates.channelPickerLabel')}</FormControl.Label>
