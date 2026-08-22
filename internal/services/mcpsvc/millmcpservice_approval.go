@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/alicoding/mill/internal/adapters/mcpaudit"
 	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -237,9 +238,7 @@ func (m *MillMCPService) gateWrite(toolName, description, argsJSON string) (*mcp
 		}
 		return textResult(resultText), nil
 	case <-time.After(mcpWriteCourtesyWindow):
-		return textResult(fmt.Sprintf(
-			"parked pending human approval; id=%s; call check_write_status with this id", rec.ID,
-		)), nil
+		return textResult(mcpaudit.ParkedPendingText(rec.ID)), nil
 	}
 }
 
@@ -314,7 +313,7 @@ func (m *MillMCPService) ResolveMCPWrite(id string, approve bool) error {
 	var activityOutcome string
 	var finalizeErr error
 	if !approve {
-		finalizeErr = m.finalizeLocked(rec, MCPWriteStatusDenied, "", "denied by the user in Mill's window")
+		finalizeErr = m.finalizeLocked(rec, MCPWriteStatusDenied, "", mcpaudit.DeniedInWindowText)
 		activityOutcome = string(MCPWriteStatusDenied)
 	} else {
 		resultText, err := m.execute(rec.ToolName, rec.ArgsJSON)
@@ -337,6 +336,17 @@ func (m *MillMCPService) ResolveMCPWrite(id string, approve bool) error {
 	// Description alone; extended here to the new fields.
 	description, toolName, argsJSON, resultText, errText := rec.Description, rec.ToolName, rec.ArgsJSON, rec.ResultText, rec.Error
 	m.writesMu.Unlock()
+
+	// Mutates this write's own OutcomeParked audit row (goal 0159 slice
+	// 1) to its terminal value -- a no-op when SetAuditResolver was
+	// never wired (tests that don't care about the audit trail).
+	if m.auditResolver != nil {
+		if activityOutcome == string(MCPWriteStatusDenied) {
+			m.auditResolver(id, mcpaudit.OutcomeParkedDenied, errText)
+		} else {
+			m.auditResolver(id, mcpaudit.OutcomeParkedApproved, errText)
+		}
+	}
 
 	m.emitExpired(expiredDuringSweep)
 	result := resultText
@@ -413,6 +423,14 @@ func (m *MillMCPService) CancelMCPWrite(id string) error {
 	m.signalLocked(rec)
 	description, toolName, argsJSON := rec.Description, rec.ToolName, rec.ArgsJSON
 	m.writesMu.Unlock()
+
+	// See ResolveMCPWrite's own doc comment -- same goal 0159 slice 1
+	// audit-row mutation, OutcomeParkedCancelled being the fourth Parked*
+	// value this repo's own write lifecycle needs beyond the three the
+	// design contract named.
+	if m.auditResolver != nil {
+		m.auditResolver(id, mcpaudit.OutcomeParkedCancelled, "cancelled by the requester")
+	}
 
 	m.emitExpired(expiredDuringSweep)
 	emitMCPWriteActivity(description, string(MCPWriteStatusCancelled), toolName, argsJSON, description)

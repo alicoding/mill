@@ -7,6 +7,9 @@ import type { Events } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import type * as agentloopsvc$0 from "../../../../alicoding/mill/internal/services/agentloopsvc/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import type * as companionsvc$0 from "../../../../alicoding/mill/internal/services/companionsvc/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -24,6 +27,8 @@ import type * as triggersvc$0 from "../../../../alicoding/mill/internal/services
 declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
+            "agent-loop-delta": agentloopsvc$0.AgentLoopDelta;
+            "agent-loop-state": agentloopsvc$0.AgentLoopEvent;
             "companion-delta": companionsvc$0.CompanionDelta;
             "guardrail-pending-changed": executionsvc$0.GuardrailPendingChanged;
             "hotkey-activity": triggersvc$0.HotkeyActivity;

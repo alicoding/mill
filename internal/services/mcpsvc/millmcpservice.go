@@ -18,6 +18,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alicoding/mill/internal/adapters/mcpaudit"
+	"github.com/alicoding/mill/internal/adapters/mcpclient"
 	"github.com/alicoding/mill/internal/adapters/mcpserving"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/services/atlassvc"
@@ -86,6 +88,23 @@ type MillMCPService struct {
 	// already uses for the in-app Docs surface, so the MCP resource and
 	// the human-facing page can never carry two independent copies.
 	userdocs fs.FS
+	// auditResolver mutates a parked write's audit row once it resolves
+	// (goal 0159 slice 1) -- late-bound via SetAuditResolver (main.go),
+	// the same injected-seam shape as SetExecutionService/SetAtlasService
+	// below, so this package never imports mcpauditsvc directly. nil
+	// until wired (every test that doesn't call SetAuditResolver), in
+	// which case resolution calls are simply skipped.
+	auditResolver func(writeID string, outcome mcpaudit.Outcome, errText string)
+}
+
+// SetAuditResolver wires the audit trail's parked-write resolution
+// hook (main.go, after mcpauditsvc.New succeeds) -- see the field's own
+// doc comment above for why this is late-bound rather than a
+// constructor parameter (mcpauditsvc needs a real MCP server instance
+// to build its ServerMiddleware from, so it's necessarily constructed
+// AFTER this service).
+func (m *MillMCPService) SetAuditResolver(fn func(writeID string, outcome mcpaudit.Outcome, errText string)) {
+	m.auditResolver = fn
 }
 
 // NewMillMCPService builds the MCP server and registers every
@@ -95,10 +114,13 @@ type MillMCPService struct {
 // snapshot taken at construction time). store carries the default-off
 // write-tools gate (millmcpservice_tools.go, ADR-0017's Update) --
 // read fresh on every import call, so flipping the Settings toggle
-// applies immediately, no restart.
-func NewMillMCPService(version string, comp *compositionsvc.CompositionService, cfg *configuresvc.ConfigureService, store settings.Store, userdocs fs.FS) *MillMCPService {
+// applies immediately, no restart. middleware is applied to the
+// server's own receiving chain (goal 0159 slice 1's audit trail,
+// mcpauditsvc.ServerMiddleware) -- optional, so a test server with
+// nothing to observe passes none.
+func NewMillMCPService(version string, comp *compositionsvc.CompositionService, cfg *configuresvc.ConfigureService, store settings.Store, userdocs fs.FS, middleware ...mcp.Middleware) *MillMCPService {
 	m := &MillMCPService{comp: comp, cfg: cfg, version: version, store: store, executors: map[string]mcpWriteExecutor{}, userdocs: userdocs}
-	m.server = mcpserving.New("mill", version, serverInstructions)
+	m.server = mcpserving.New("mill", version, serverInstructions, middleware...)
 	m.registerTools()
 	m.registerContractResources()
 	m.registerAtlasResources()
@@ -216,7 +238,12 @@ func (m *MillMCPService) ConnectInMemoryClient(ctx context.Context, clientName s
 	if _, err := m.server.Connect(ctx, serverTransport, nil); err != nil {
 		return nil, fmt.Errorf("mcp: connect server transport: %w", err)
 	}
-	client := mcp.NewClient(&mcp.Implementation{Name: clientName, Version: m.version}, nil)
+	// Built via mcpclient.NewClient, not mcp.NewClient directly -- the
+	// ONE choke point every *mcp.Client in Mill goes through (goal 0159
+	// slice 1), so this in-memory session automatically carries the same
+	// AddSendingMiddleware every other client connection gets, no
+	// special path for the agent loop.
+	client := mcpclient.NewClient(&mcp.Implementation{Name: clientName, Version: m.version})
 	session, err := client.Connect(ctx, clientTransport, nil)
 	if err != nil {
 		return nil, fmt.Errorf("mcp: connect client transport: %w", err)

@@ -6,7 +6,6 @@ package main
 import (
 	"context"
 	"embed"
-	"errors"
 
 	"log"
 	"log/slog"
@@ -15,9 +14,7 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
-	"github.com/alicoding/mill/internal/adapters/notify"
 	"github.com/alicoding/mill/internal/adapters/settings"
-	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/services/agentloopsvc"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/backupsvc"
@@ -176,6 +173,8 @@ func main() {
 	}
 	backupsvc.GuardVersionChange(logger, settingsStore, backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, backupDir, millVersion)
 
+	mcpAuditService := wiring.WireMCPAudit(backupsvc.SQLiteDBPath(executionDatabaseURL), logger)
+
 	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
 	executionService, err := executionsvc.NewExecutionService(executionDatabaseURL, compositionService, guardrailService)
 	if err != nil {
@@ -228,18 +227,7 @@ func main() {
 	wiring.WireAtlasProjections(atlasService, configureService, compositionService)
 	wiring.WireValidationSeams(configureService)
 	wiring.WirePasteConversion(atlasService, configureService)
-	// apply-notify's door to the OS notification adapter (goal 0114).
-	// Server mode's adapter refuses by design (ErrUnsupportedInServerMode)
-	// -- that maps to success here: the notification is best-effort
-	// delivery, and "unsupported on this build" must not fail a workflow
-	// whose real work already succeeded. Every other error propagates.
-	composition.SetNotifier(func(title, body string) error {
-		err := notify.SendPlain("mill-workflow-notify", title, body)
-		if errors.Is(err, notify.ErrUnsupportedInServerMode) {
-			return nil
-		}
-		return err
-	})
+	wiring.WireNotify()
 
 	backupService := backupsvc.Wire(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, backupDir, millVersion, compositionService, configureService, atlasService)
 
@@ -284,10 +272,11 @@ func main() {
 	// is logged, not fatal -- this is additive local tooling, not
 	// something the rest of the app depends on to function.
 	millMCPAddr, _ := settingssvc.ResolveMCPAddr(os.Getenv("MILL_MCP_ADDR"), settingsService.MCPAccessAddress())
-	millMCPService := mcpsvc.NewMillMCPService(millVersion, compositionService, configureService, settingsStore, userdocsFS)
+	millMCPService := mcpsvc.NewMillMCPService(millVersion, compositionService, configureService, settingsStore, userdocsFS, mcpAuditService.ServerMiddleware())
 	settingsService.SetMCPService(millMCPService)
 	millMCPService.SetExecutionService(executionService)
 	millMCPService.SetAtlasService(atlasService)
+	millMCPService.SetAuditResolver(mcpAuditService.ResolveParkedWrite)
 	if err := millMCPService.Start(millMCPAddr); err != nil {
 		logger.Error("mill MCP server", "error", err)
 	} else {
@@ -319,6 +308,7 @@ func main() {
 			application.NewService(settingsService),
 			application.NewService(backupService),
 			application.NewService(docssvc.New(userdocsFS)),
+			application.NewService(mcpAuditService),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -491,6 +481,9 @@ func main() {
 		logger.Error("mill MCP server shutdown", "error", shutdownErr)
 	}
 	cancel()
+	if shutdownErr := mcpAuditService.Close(); shutdownErr != nil {
+		logger.Error("mcp audit service shutdown", "error", shutdownErr)
+	}
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {

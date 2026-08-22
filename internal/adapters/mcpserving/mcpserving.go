@@ -32,8 +32,16 @@ const readHeaderTimeout = 5 * time.Second
 // purpose otherwise -- there's little to wrap here (the SDK's
 // *mcp.Server already has the right shape), this exists for the import
 // boundary the ports/adapters rule wants, not to hide meaningful logic.
-func New(name, version, instructions string) *mcp.Server {
-	return mcp.NewServer(&mcp.Implementation{Name: name, Version: version}, &mcp.ServerOptions{Instructions: instructions})
+//
+// middleware is applied via AddReceivingMiddleware (goal 0159 slice 1:
+// the MCP call audit trail's server-side recording point) -- optional,
+// so a caller with nothing to observe yet (a test server) passes none.
+func New(name, version, instructions string, middleware ...mcp.Middleware) *mcp.Server {
+	server := mcp.NewServer(&mcp.Implementation{Name: name, Version: version}, &mcp.ServerOptions{Instructions: instructions})
+	if len(middleware) > 0 {
+		server.AddReceivingMiddleware(middleware...)
+	}
+	return server
 }
 
 // Serve starts server listening on addr via the SDK's own streamable-

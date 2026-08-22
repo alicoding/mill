@@ -409,7 +409,8 @@ badge, and a floating approval prompt.
   conversion without running anything.
 - **Activity** shows trigger fires and run outcomes across all
   workflows, so a scheduled or watching workflow is never invisibly
-  running.
+  running. Its MCP calls section logs every call to or from Mill's
+  agent connection — who called what, when, and what happened.
 
 ---
 
@@ -929,6 +930,13 @@ Your instance's exact address is the one Settings shows.
   writes park in Review for your approval. Deny-by-default until you
   grant; nothing an agent does bypasses the gate a human action
   would hit.
+
+## See every call
+
+Activity's MCP calls section logs every call — an agent calling Mill,
+or a workflow calling a connected server — with who called what, when,
+and whether it succeeded. Filter by direction or tool name to find one
+fast; a failed call's error is copyable in one click.
 
 ## Teach your agent
 

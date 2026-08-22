@@ -47,18 +47,11 @@ func TestEmitDelta_PinsExactRegisteredType(t *testing.T) {
 	}
 }
 
-func TestParseParkedWriteID_MatchesGateWriteText(t *testing.T) {
-	id, ok := parseParkedWriteID("parked pending human approval; id=abc-123; call check_write_status with this id")
-	if !ok || id != "abc-123" {
-		t.Errorf("parseParkedWriteID = (%q, %v), want (abc-123, true)", id, ok)
-	}
-}
-
-func TestParseParkedWriteID_OrdinaryResultNeverMatches(t *testing.T) {
-	if _, ok := parseParkedWriteID(`{"kinds":[{"id":"Topic"}]}`); ok {
-		t.Error("an ordinary tool result must never be mistaken for a parked write")
-	}
-}
+// ParseParkedWriteID itself moved to internal/adapters/mcpaudit (goal
+// 0159 slice 1, shared with mcpsvc and the audit middleware) -- its own
+// round-trip/rejection coverage lives there now
+// (mcpaudit_test.go's TestParkedPendingText_RoundTripsThroughParse /
+// TestParseParkedWriteID_RejectsUnrelatedText).
 
 func TestTranscriptBytes_SumsContentAndToolCallArguments(t *testing.T) {
 	messages := []aiclient.ChatMessage{
