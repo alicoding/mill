@@ -7,7 +7,6 @@ import (
 	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/httprequest"
-	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/seedorigin"
 	"github.com/alicoding/mill/internal/services/entitystore"
 	"github.com/alicoding/mill/internal/services/seeding"
@@ -158,61 +157,17 @@ func (c *ConfigureService) reconcileBuiltInDecisions() {
 }
 
 // reconcileBuiltInLists mirrors reconcileBuiltInDecisions for the
-// seeded example Lists (docs/goals/0010 item 4). A List carries no
-// secret, same "simpler than the HTTPRequest version" reasoning
+// seeded example Lists (docs/goals/0010 item 4) via listDescriptor
+// (configurelist.go, goal 0165). A List carries no secret, same
+// "simpler than the HTTPRequest version" reasoning
 // reconcileBuiltInDecisions already gives.
 func (c *ConfigureService) reconcileBuiltInLists() {
 	tombstones := seeding.LoadTombstones(c.store)
-	now := time.Now()
-	c.mu.Lock()
-	byID := make(map[string]int, len(c.lists))
-	for i, l := range c.lists {
-		byID[l.ID] = i
-	}
-	changed := false
-	for _, golden := range list.BuiltIn() {
-		idx, present := byID[golden.ID]
-		if !present {
-			if tombstones[golden.ID] {
-				continue
-			}
-			golden.CreatedAt, golden.UpdatedAt = now, now
-			c.lists = append(c.lists, golden)
-			changed = true
-			continue
-		}
-		existing := c.lists[idx]
-		if existing.Seed.SeedRevision == 0 {
-			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
-			c.lists[idx] = existing
-			changed = true
-			continue
-		}
-		if existing.Seed.Modified {
-			continue
-		}
-		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
-			c.lists[idx] = upgradeListToGolden(existing, golden, now)
-			changed = true
-		}
-	}
-	c.mu.Unlock()
-	if changed {
+	if _, changed := entitystore.Reconcile(&c.mu, &c.lists, tombstones, listDescriptor); changed {
 		if err := c.persistLists(); err != nil {
 			slog.Error("failed to reconcile built-in Lists", "error", err)
 		}
 	}
-}
-
-// upgradeListToGolden replaces existing's content -- including Rows --
-// with golden's. golden's Row IDs are stable literals (list.BuiltIn's
-// own activeRow/expiredRow helpers), so this is safe to replace
-// wholesale rather than row-by-row diffing.
-func upgradeListToGolden(existing, golden list.List, now time.Time) list.List {
-	golden.CreatedAt = existing.CreatedAt
-	golden.UpdatedAt = now
-	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
-	return golden
 }
 
 // reconcileBuiltInMCPServers mirrors reconcileBuiltInLists for the

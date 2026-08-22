@@ -1,17 +1,52 @@
 package configuresvc
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/list"
+	"github.com/alicoding/mill/internal/domain/seedorigin"
 	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/dataevent"
+	"github.com/alicoding/mill/internal/services/entitystore"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
+
+// listDescriptor is List's entitystore.Descriptor (goal 0165): the
+// small per-kind shape Create/Delete/reconcile/Reset/Restorable/
+// Restore all key off, replacing what used to be ~10 hand-copied
+// methods. UpdateList and the row-level RPCs below keep their own
+// findListLocked-based bodies -- List's field-evolution-with-rows
+// check and row mutations aren't part of the shape every other entity
+// kind shares.
+var listDescriptor = entitystore.Descriptor[list.List]{
+	Label:     "list",
+	GetID:     func(l list.List) string { return l.ID },
+	IsBuiltIn: func(l list.List) bool { return l.BuiltIn },
+	GetSeed:   func(l list.List) seedorigin.Origin { return l.Seed },
+	SetSeed:   func(l list.List, o seedorigin.Origin) list.List { l.Seed = o; return l },
+	StampNew: func(l list.List, now time.Time) list.List {
+		l.CreatedAt, l.UpdatedAt = now, now
+		return l
+	},
+	Upgrade: upgradeListToGolden,
+	BuiltIn: list.BuiltIn,
+}
+
+// upgradeListToGolden replaces existing's content -- including Rows --
+// with golden's. golden's Row IDs are stable literals (list.BuiltIn's
+// own activeRow/expiredRow helpers), so this is safe to replace
+// wholesale rather than row-by-row diffing. Shared by
+// reconcileBuiltInLists' upgrade branch and ResetListToSeed via
+// listDescriptor.Upgrade.
+func upgradeListToGolden(existing, golden list.List, now time.Time) list.List {
+	golden.CreatedAt = existing.CreatedAt
+	golden.UpdatedAt = now
+	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
+	return golden
+}
 
 // List CRUD/persistence -- split out of configureservice.go (goal
 // 0017) once adding the live-sync dataevent.Emit calls below would
@@ -72,14 +107,6 @@ func (c *ConfigureService) findListLocked(id string) int {
 	return -1
 }
 
-// removeListByIDLocked removes the list with id from c.lists, if
-// present -- caller must hold c.mu.
-func (c *ConfigureService) removeListByIDLocked(id string) {
-	if idx := c.findListLocked(id); idx != -1 {
-		c.lists = append(c.lists[:idx], c.lists[idx+1:]...)
-	}
-}
-
 // revertListLocked restores previous (keyed by its own ID) into
 // c.lists -- caller must hold c.mu. Shared undo path for every List/
 // row mutation below's persist-failure revert (docs/goals/0025 item
@@ -113,17 +140,8 @@ func (c *ConfigureService) createListWithID(id, label, description string, colum
 		return list.List{}, err
 	}
 
-	c.mu.Lock()
-	c.lists = append(c.lists, l)
-	c.mu.Unlock()
-
-	if err := c.persistLists(); err != nil {
-		// Don't leave a phantom-saved list in memory that a restart
-		// would drop (docs/goals/0025 item 2's memory-vs-store rule).
-		c.mu.Lock()
-		c.removeListByIDLocked(l.ID)
-		c.mu.Unlock()
-		return list.List{}, fmt.Errorf("save list: %w", err)
+	if err := entitystore.Insert(&c.mu, &c.lists, c.persistLists, listDescriptor, l); err != nil {
+		return list.List{}, err
 	}
 	dataevent.Emit("list", l.ID) // goal 0017: live-sync every open surface
 	return l, nil
@@ -134,39 +152,27 @@ func (c *ConfigureService) createListWithID(id, label, description string, colum
 // decision 3's evolution check (typedfield.ValidateFieldEvolution's
 // own doc comment has the full rule).
 func (c *ConfigureService) UpdateList(id, label, description string, columns []typedfield.Field, newFieldTombstones []typedfield.FieldTombstone) (list.List, error) {
-	c.mu.Lock()
-	idx := c.findListLocked(id)
-	if idx == -1 {
-		c.mu.Unlock()
-		return list.List{}, fmt.Errorf("no list with id %q", id)
-	}
-	previous := c.lists[idx]
-	l := previous
-	tombstones := typedfield.MergeTombstones(previous.FieldTombstones, newFieldTombstones)
-	if err := list.ValidateFieldEvolutionWithRows(previous.Columns, columns, tombstones, previous.Rows); err != nil {
-		c.mu.Unlock()
+	updated, err := entitystore.Update(&c.mu, &c.lists, c.persistLists, listDescriptor, id, func(previous list.List) (list.List, error) {
+		l := previous
+		tombstones := typedfield.MergeTombstones(previous.FieldTombstones, newFieldTombstones)
+		if err := list.ValidateFieldEvolutionWithRows(previous.Columns, columns, tombstones, previous.Rows); err != nil {
+			return list.List{}, err
+		}
+		// CreatedAt is preserved from the stored entity, never trusted
+		// from the wire; UpdatedAt always advances on a real update.
+		l.Label, l.Description, l.Columns, l.FieldTombstones = label, description, columns, tombstones
+		l.UpdatedAt = time.Now()
+		l.Seed = l.Seed.Touch() // docs/goals/0037 item 2
+		if err := list.Validate(l); err != nil {
+			return list.List{}, err
+		}
+		return l, nil
+	})
+	if err != nil {
 		return list.List{}, err
 	}
-	// CreatedAt is preserved from the stored entity, never trusted from
-	// the wire; UpdatedAt always advances on a real update.
-	l.Label, l.Description, l.Columns, l.FieldTombstones = label, description, columns, tombstones
-	l.UpdatedAt = time.Now()
-	l.Seed = l.Seed.Touch() // docs/goals/0037 item 2
-	if err := list.Validate(l); err != nil {
-		c.mu.Unlock()
-		return list.List{}, err
-	}
-	c.lists[idx] = l
-	c.mu.Unlock()
-
-	if err := c.persistLists(); err != nil {
-		c.mu.Lock()
-		c.revertListLocked(previous)
-		c.mu.Unlock()
-		return list.List{}, fmt.Errorf("save list: %w", err)
-	}
-	dataevent.Emit("list", l.ID) // goal 0017: live-sync every open surface
-	return l, nil
+	dataevent.Emit("list", updated.ID) // goal 0017: live-sync every open surface
+	return updated, nil
 }
 
 // AddListRow appends a new, Active row to a List, minting its ID here
@@ -312,77 +318,23 @@ func (c *ConfigureService) DeleteList(id string) error {
 	if err := c.refIntegrityError("list", "list", id); err != nil {
 		return err
 	}
-
-	c.mu.Lock()
-	idx := -1
-	for i, l := range c.lists {
-		if l.ID == id {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return fmt.Errorf("no list with id %q", id)
-	}
-	removed := c.lists[idx]
-	wasBuiltIn := removed.BuiltIn
-	c.lists = append(c.lists[:idx], c.lists[idx+1:]...)
-	c.mu.Unlock()
-
 	// A deleted built-in gets a tombstone so top-up seeding never
-	// resurrects it (topUpBuiltInLists, configureservice_builtin.go) --
-	// same discipline DeleteHTTPRequest/DeleteDecision already apply.
-	// Removal and tombstone must succeed together (docs/goals/0025 item
-	// 2): an untombstoned removal would silently come back on the next
-	// restart's top-up seeding.
-	if wasBuiltIn {
-		if err := seeding.RecordTombstone(c.store, id); err != nil {
-			c.mu.Lock()
-			c.lists = insertListAt(c.lists, idx, removed)
-			c.mu.Unlock()
-			return fmt.Errorf("tombstone deleted list %q: %w", id, err)
-		}
-	}
-	if err := c.persistLists(); err != nil {
-		c.mu.Lock()
-		c.lists = insertListAt(c.lists, idx, removed)
-		c.mu.Unlock()
-		return fmt.Errorf("save list deletion: %w", err)
+	// resurrects it -- same discipline DeleteHTTPRequest/DeleteDecision
+	// already apply. Removal and tombstone must succeed together
+	// (docs/goals/0025 item 2): an untombstoned removal would silently
+	// come back on the next restart's top-up seeding.
+	recordTombstone := func(id string) error { return seeding.RecordTombstone(c.store, id) }
+	if err := entitystore.DeleteWithTombstone(&c.mu, &c.lists, c.persistLists, recordTombstone, listDescriptor, id); err != nil {
+		return err
 	}
 	dataevent.Emit("list", id) // goal 0017: live-sync every open surface
 	return nil
 }
 
-// insertListAt reinserts l at idx (clamped to the current length) --
-// used to undo DeleteList's removal when the tombstone or persist step
-// that must accompany it fails.
-func insertListAt(lists []list.List, idx int, l list.List) []list.List {
-	if idx < 0 || idx > len(lists) {
-		idx = len(lists)
-	}
-	lists = append(lists, list.List{})
-	copy(lists[idx+1:], lists[idx:])
-	lists[idx] = l
-	return lists
-}
-
 // --- persistence ---
 
 func (c *ConfigureService) persistLists() error {
-	c.mu.Lock()
-	lists := make([]list.List, len(c.lists))
-	copy(lists, c.lists)
-	c.mu.Unlock()
-
-	data, err := json.Marshal(lists)
-	if err != nil {
-		return fmt.Errorf("marshal lists: %w", err)
-	}
-	if err := c.store.Set(listsKey, string(data)); err != nil {
-		return fmt.Errorf("persist lists: %w", err)
-	}
-	return nil
+	return entitystore.Persist(&c.mu, &c.lists, c.store, listsKey, listDescriptor)
 }
 
 // migrateLegacyLists converts any pre-0011 flat key/value List

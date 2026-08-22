@@ -18,6 +18,8 @@ import (
 // half of configureservice_seedlifecycle.go, split purely to stay
 // under the 500-line convention.
 
+// findGoldenList returns a copy of the golden List with id, if one
+// exists among list.BuiltIn().
 func findGoldenList(id string) (list.List, bool) {
 	for _, g := range list.BuiltIn() {
 		if g.ID == id {
@@ -28,28 +30,12 @@ func findGoldenList(id string) (list.List, bool) {
 }
 
 // ResetListToSeed mirrors ResetHTTPRequestToSeed for Lists -- also
-// replaces Rows wholesale (upgradeListToGolden's own doc comment).
+// replaces Rows wholesale (upgradeListToGolden's own doc comment), via
+// listDescriptor (configurelist.go, goal 0165).
 func (c *ConfigureService) ResetListToSeed(id string) (list.List, error) {
-	golden, ok := findGoldenList(id)
-	if !ok {
-		return list.List{}, fmt.Errorf("no built-in list with id %q", id)
-	}
-	c.mu.Lock()
-	idx := c.findListLocked(id)
-	if idx == -1 {
-		c.mu.Unlock()
-		return list.List{}, fmt.Errorf("no list with id %q", id)
-	}
-	previous := c.lists[idx]
-	updated := upgradeListToGolden(previous, golden, time.Now())
-	c.lists[idx] = updated
-	c.mu.Unlock()
-
-	if err := c.persistLists(); err != nil {
-		c.mu.Lock()
-		c.revertListLocked(previous)
-		c.mu.Unlock()
-		return list.List{}, fmt.Errorf("save reset list: %w", err)
+	updated, err := entitystore.ResetToSeed(&c.mu, &c.lists, c.persistLists, listDescriptor, id)
+	if err != nil {
+		return list.List{}, err
 	}
 	dataevent.Emit("list", id) // goal 0017: live-sync every open surface
 	return updated, nil
@@ -57,56 +43,17 @@ func (c *ConfigureService) ResetListToSeed(id string) (list.List, error) {
 
 // RestorableLists mirrors RestorableHTTPRequests for Lists.
 func (c *ConfigureService) RestorableLists() []list.List {
-	tombstones := seeding.LoadTombstones(c.store)
-	if len(tombstones) == 0 {
-		return nil
-	}
-	c.mu.Lock()
-	have := make(map[string]bool, len(c.lists))
-	for _, l := range c.lists {
-		have[l.ID] = true
-	}
-	c.mu.Unlock()
-	var out []list.List
-	for _, golden := range list.BuiltIn() {
-		if tombstones[golden.ID] && !have[golden.ID] {
-			out = append(out, golden)
-		}
-	}
-	return out
+	return entitystore.Restorable(&c.mu, &c.lists, seeding.LoadTombstones(c.store), listDescriptor)
 }
 
 // RestoreList mirrors RestoreHTTPRequest for Lists.
 func (c *ConfigureService) RestoreList(id string) (list.List, error) {
-	golden, ok := findGoldenList(id)
-	if !ok {
-		return list.List{}, fmt.Errorf("no built-in list with id %q", id)
-	}
-	c.mu.Lock()
-	if c.findListLocked(id) != -1 {
-		c.mu.Unlock()
-		return list.List{}, fmt.Errorf("list %q is already present, nothing to restore", id)
-	}
-	c.mu.Unlock()
-
-	if err := seeding.ClearTombstone(c.store, id); err != nil {
-		return list.List{}, fmt.Errorf("clear tombstone for %q: %w", id, err)
-	}
-	now := time.Now()
-	golden.CreatedAt, golden.UpdatedAt = now, now
-
-	c.mu.Lock()
-	c.lists = append(c.lists, golden)
-	c.mu.Unlock()
-
-	if err := c.persistLists(); err != nil {
-		c.mu.Lock()
-		c.removeListByIDLocked(id)
-		c.mu.Unlock()
-		return list.List{}, fmt.Errorf("save restored list: %w", err)
+	restored, err := entitystore.Restore(&c.mu, &c.lists, c.persistLists, c.store, listDescriptor, id)
+	if err != nil {
+		return list.List{}, err
 	}
 	dataevent.Emit("list", id) // goal 0017: live-sync every open surface
-	return golden, nil
+	return restored, nil
 }
 
 // ResetMCPServerToSeed mirrors ResetHTTPRequestToSeed for MCP Servers,
