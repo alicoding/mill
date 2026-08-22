@@ -95,11 +95,9 @@ func main() {
 	// 'Assets' configures the asset server with the 'FS' variable pointing to the frontend files.
 	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
 	// 'Mac' options tailor the application when running an macOS.
-	// Reuses Wails3's own default logger (colorized to stderr in dev mode
-	// via isatty detection, silently discarded in production builds — see
-	// application.DefaultLogger's per-build-tag implementations) instead of
-	// wiring up a second, parallel slog handler. Passed to both Mill's own
-	// services and application.Options.Logger so app-level events (a
+	// Reuses Wails3's own default logger (colorized to stderr in dev mode via isatty detection, silently discarded in
+	// production builds — see application.DefaultLogger's per-build-tag implementations) instead of wiring up a second,
+	// parallel slog handler. Passed to both Mill's own services and application.Options.Logger so app-level events (a
 	// hotkey firing) and Wails3's own system messages share one stream.
 	logger := application.DefaultLogger(slog.LevelInfo)
 
@@ -221,9 +219,7 @@ func main() {
 	})
 	executionService.SetRunCompletionSink(atlasService.NotifyRunCompleted)
 	atlasService.WireCompositionSeams(triggerService.DispatchAtlasCardChange) // goal 0066
-	// Cross-service seam adapters (recognition, List projection) live
-	// in the wiring package -- composition-root code split out of this
-	// file at the 500-line limit.
+	// Cross-service seam adapters (recognition, List projection) live in the wiring package -- composition-root code split out of this file at the 500-line limit.
 	wiring.WireAtlasProjections(atlasService, configureService, compositionService)
 	wiring.WireValidationSeams(configureService)
 	wiring.WirePasteConversion(atlasService, configureService)
@@ -234,6 +230,8 @@ func main() {
 	// docs/adr/0038, goal 0063/0067: the share model's mirror root, and the folder-picker's own guard against Mill's own live data.
 	atlasService.SetMirrorsDir(atlassvc.DefaultMirrorsDir(os.Getenv("MILL_ATLAS_MIRRORS_DIR")))
 	atlasService.SetGuardedDataPaths(settingsPath, backupsvc.SQLiteDBPath(executionDatabaseURL), backupDir)
+
+	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger) // docs/goals/0132-remote-access.md SLICE 1
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	wiring.WireUpdateEvents(settingsService, triggerService)
@@ -309,9 +307,11 @@ func main() {
 			application.NewService(backupService),
 			application.NewService(docssvc.New(userdocsFS)),
 			application.NewService(mcpAuditService),
+			application.NewService(remoteAuthService),
 		},
 		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
+			Handler:    application.AssetFileServerFS(assets),
+			Middleware: remoteAuthService.Middleware(), // gates every request, see remoteauthsvc.Service.Middleware
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
