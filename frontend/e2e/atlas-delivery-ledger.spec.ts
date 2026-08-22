@@ -134,7 +134,14 @@ spec_refs: ["1.1"]
     // (goal 0091) re-opens whatever overlay was last recorded open on
     // the very next mount, and a still-open dialog's backdrop portal
     // then intercepts every subsequent click, hanging the test.
-    await page.keyboard.press('Escape')
+    //
+    // Close via the BUTTON, not Escape: clicking it blurs the
+    // auto-focused Title input, which commits a whole-card save. That
+    // save carries the client's own Fields map, which never contained
+    // the server-stamped verifiedAt -- so a save path that ignores the
+    // response silently erases the stamp on the way out. Escape does
+    // not blur the title and therefore cannot catch that class at all.
+    await page.getByTestId('atlas-page-close').click()
     await expect(overlay).not.toBeVisible()
 
     // The server stamped a real verified date -- reload to read the
