@@ -15,6 +15,13 @@ owner-mandated: "DoR should be industry standard").
   example).
 - A goal file exists: Goal/Plan/**Acceptance stated as a checkable
   predicate**, not a vibe.
+- Goal files carry the 0164 frontmatter header (`id`, `status`
+  `shipped`/`superseded`, `date`, `prs [..]`, `proof [..]`,
+  `spec_refs [..]`) over the narrative body — populated as the goal
+  actually ships, never guessed at open. It's the delivery-evidence
+  ledger's own source data (`docs/goals/0164-delivery-evidence-
+  ledger.md`); leaving it off means the goal is invisible to the
+  ledger on archive, not a paperwork skip.
 - No SPEC.md `OPEN` dependency is silently resolved by starting —
   surface the choice, or name it an explicit blocker and don't start.
 - No estimate/story-point step — deliberately excluded: estimation

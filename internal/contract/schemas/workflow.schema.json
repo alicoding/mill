@@ -81,6 +81,9 @@
         },
         "deprecated": {
           "type": "boolean"
+        },
+        "StampOnChange": {
+          "type": "string"
         }
       },
       "additionalProperties": false,

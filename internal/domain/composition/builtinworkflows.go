@@ -445,7 +445,10 @@ func BuiltInWorkflows() []Workflow {
 	workflows = append(workflows, builtInDocsSyncWorkflows()...)
 	// goal 0111: the Atlassian PAT family's own seeded proof, same
 	// split-file reasoning.
-	return append(workflows, builtInAtlassianWorkflows()...)
+	workflows = append(workflows, builtInAtlassianWorkflows()...)
+	// goal 0164 L1: the delivery-evidence ledger's own seeded proof,
+	// same split-file reasoning.
+	return append(workflows, builtInLedgerSyncWorkflows()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any

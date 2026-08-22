@@ -53,6 +53,15 @@ into.
 - **Sync a docs folder**: the seeded "Mirror a docs folder into
   Atlas" workflow regenerates a space from a folder of markdown,
   idempotently — a maintained docs set becomes a maintained map.
+- **Track delivered work with evidence.** Point the seeded "Example:
+  Delivery ledger" workflow's folder path at a folder of goal files
+  with a frontmatter header (`id`, `status`, `date`, `prs`, `proof`,
+  `spec_refs`) and run it — each file becomes a Delivered feature
+  card carrying its goal, shipped date, PRs, and proof. Set Sign-off
+  to Verified or Verified with notes once you've checked the
+  evidence; Mill stamps the verified date for you. Re-running the
+  workflow after a file changes updates only the goal/date/PRs/proof
+  — your sign-off, verified date, and notes always stay put.
 - **Cards can act.** A card can carry attached action workflows —
   run them from the card. Workflows can also read and write cards as
   steps (create, update, find, link), and a trigger can fire on card

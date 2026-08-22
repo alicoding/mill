@@ -149,10 +149,15 @@ func (a *AtlasService) UpdateCard(id, title, note string, fields map[string]stri
 	}
 	previous := a.cards[idx]
 	c := previous
-	c.Title, c.Note, c.Fields = title, note, fields
+	newFields := make(map[string]string, len(fields))
+	for k, v := range fields {
+		newFields[k] = v
+	}
+	c.Title, c.Note, c.Fields = title, note, newFields
 	c.Source, c.MirrorPath, c.RefreshWorkflowID = source, mirrorPath, refreshWorkflowID
 	c.UpdatedAt = time.Now()
 	c.Seed = c.Seed.Touch()
+	applyStampOnChangeLocked(kind, previous.Fields, c.Fields)
 	if err := a.validateCardRefsLocked(kind, c.Fields); err != nil {
 		a.mu.Unlock()
 		return atlas.Card{}, err
@@ -208,6 +213,7 @@ func (a *AtlasService) MergeCardFields(id string, fields map[string]string, sour
 	c.Fields = merged
 	c.UpdatedAt = time.Now()
 	c.Seed = c.Seed.Touch()
+	applyStampOnChangeLocked(kind, previous.Fields, c.Fields)
 	if err := a.validateCardRefsLocked(kind, c.Fields); err != nil {
 		a.mu.Unlock()
 		return atlas.Card{}, err
@@ -228,6 +234,29 @@ func (a *AtlasService) MergeCardFields(id string, fields map[string]string, sour
 	dataevent.Emit("atlas", c.ID)
 	a.notifyCardChange(c, "update", sourceRunID)
 	return c, nil
+}
+
+// applyStampOnChangeLocked stamps every field.StampOnChange target
+// with today's date when that field's own new value differs from both
+// its previous stored value and its Default (typedfield.Field.
+// StampOnChange, docs/goals/0164) -- schema-driven, not tied to any
+// specific Kind: any Options field can declare a companion date field
+// this way. Mutates fields in place, overwriting whatever the caller
+// supplied for the stamped key -- the transition is recorded
+// server-side, never trusting a client-submitted date. Caller must
+// hold a.mu and pass a fields map safe to mutate (a fresh copy/merge
+// result, never the caller-supplied map verbatim).
+func applyStampOnChangeLocked(kind atlas.Kind, previous, fields map[string]string) {
+	for _, f := range kind.Fields {
+		if f.StampOnChange == "" {
+			continue
+		}
+		newVal := fields[f.Key]
+		if newVal == previous[f.Key] || newVal == f.Default {
+			continue
+		}
+		fields[f.StampOnChange] = time.Now().Format("2006-01-02")
+	}
 }
 
 // CardsByKind returns every card of kindID -- the apply-atlas-card-find

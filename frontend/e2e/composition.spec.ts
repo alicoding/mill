@@ -93,8 +93,9 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   // (goal 0065's data-stewardship backup step) + apply-list-row (the
   // Lists write path, goal 0070) + apply-file-move (file verbs, goal
   // 0087) + apply-atlas-from-reply (the clipboard bridge's accepted-
-  // reply materializer, goal 0099).
-  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(43)
+  // reply materializer, goal 0099) + apply-atlas-ledger-sync (the
+  // delivery-evidence ledger's own mirror node, goal 0164).
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(44)
 })
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {
