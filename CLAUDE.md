@@ -72,6 +72,33 @@ implementation (code structure, test mechanics) — never what the
 user sees. If a design question surfaces mid-build, the agent reports
 it back rather than deciding it.
 
+## Upgrade the ground before building on it (owner-directed 2026-08-22)
+
+**Before a feature goal enters a session, ask what its subsystem
+costs to EXTEND today — and if the answer is "a lot", the upgrade
+goal goes in front of it in the queue.** Not as a separate
+initiative competing with features: as the first slice of the
+feature's own arc. The measurement is concrete and has a repeatable
+shape (goal 0163 for entities, goal 0169 for canvas tools both ran
+it): take the newest real addition of that kind, count the files and
+lines it actually cost, and — the number that matters most — count
+how many separate hand-maintained places had to learn the new thing
+exists. One registry entry is cheap; four parallel lists is a tax
+that multiplies with every future addition.
+
+The test for whether an upgrade is warranted: **would the next three
+additions each pay this cost again?** If yes, upgrade first; the
+upgrade proves itself by migrating the EXISTING items onto it before
+any new one is added, which is also what keeps the refactor honest
+(the old tests must pass unmodified). If no — the subsystem is
+already registry-shaped or the addition is genuinely one-off — build
+the feature directly and record why the upgrade was not needed.
+
+This is Research → Adopt → Compose applied to sequencing rather than
+to dependencies, and it is the reason several goals in the queue are
+explicitly gated behind an architecture predecessor rather than
+scheduled beside one.
+
 ## Goal backlog: `docs/goals/BACKLOG.md` is the delivery queue
 
 Requirements live in `docs/SPEC.md`; the committed, hand-reorderable
