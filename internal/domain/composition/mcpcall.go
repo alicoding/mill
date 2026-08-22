@@ -51,7 +51,7 @@ var callToolFn = mcpclient.CallTool
 // SetMCPCallTool overrides how mcp-tool-call nodes actually perform a
 // tool call -- test-only; production always uses the default
 // (mcpclient.CallTool).
-func SetMCPCallTool(fn func(command string, args []string, toolName string, arguments map[string]any) (string, error)) {
+func SetMCPCallTool(fn func(command string, args []string, toolName string, arguments map[string]any, callerIdentity string) (string, error)) {
 	callToolFn = fn
 }
 
@@ -97,7 +97,7 @@ func init() {
 		}
 		arguments = resolveMCPArguments(arguments, ctx.Attributes)
 
-		result, err := callToolFn(rs.Command, rs.Args, node.Config["toolName"], arguments)
+		result, err := callToolFn(rs.Command, rs.Args, node.Config["toolName"], arguments, node.ID)
 		if err != nil {
 			return ctx, fmt.Errorf("mcp-tool-call: %w", err)
 		}

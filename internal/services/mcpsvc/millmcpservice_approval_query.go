@@ -7,6 +7,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/alicoding/mill/internal/adapters/mcpaudit"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -127,6 +128,7 @@ func emitMCPWriteApprovalChanged() {
 // CancelMCPWrite's own local variables), since the record itself may be
 // deleted by a later sweep before the caller gets around to emitting.
 type expiredWrite struct {
+	ID          string
 	Description string
 	ToolName    string
 	ArgsJSON    string
@@ -148,7 +150,7 @@ func (m *MillMCPService) sweepLocked(now time.Time) []expiredWrite {
 			rec.Error = "no human decision within 24h"
 			rec.ResolvedAt = &now
 			expired = append(expired, expiredWrite{
-				Description: rec.Description, ToolName: rec.ToolName, ArgsJSON: rec.ArgsJSON, Error: rec.Error,
+				ID: id, Description: rec.Description, ToolName: rec.ToolName, ArgsJSON: rec.ArgsJSON, Error: rec.Error,
 			})
 			changed = true
 			continue
@@ -179,6 +181,12 @@ func (m *MillMCPService) sweepLocked(now time.Time) []expiredWrite {
 func (m *MillMCPService) emitExpired(expired []expiredWrite) {
 	for _, e := range expired {
 		emitMCPWriteActivity(e.Description, string(MCPWriteStatusExpired), e.ToolName, e.ArgsJSON, e.Error)
+		// Goal 0159 slice 1: the third async Parked* transition (the
+		// other two are ResolveMCPWrite/CancelMCPWrite) -- a write nobody
+		// ever decided on, aged out by the clock rather than a human.
+		if m.auditResolver != nil {
+			m.auditResolver(e.ID, mcpaudit.OutcomeParkedExpired, e.Error)
+		}
 	}
 	if len(expired) > 0 {
 		emitMCPWriteApprovalChanged()

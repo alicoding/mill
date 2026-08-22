@@ -200,7 +200,10 @@ func (c *ConfigureService) ListMCPServerTools(id string) ([]mcpclient.Tool, erro
 	if err != nil {
 		return nil, err
 	}
-	return mcpclient.ListTools(rs.Command, rs.Args)
+	// A manual Configure-page reference lookup, not a workflow step --
+	// "configure-mcpserver-preview" is a static caller identity (goal
+	// 0159 slice 1's audit trail), not a per-run workflow/step id.
+	return mcpclient.ListTools(rs.Command, rs.Args, "configure-mcpserver-preview")
 }
 
 // --- persistence ---

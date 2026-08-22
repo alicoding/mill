@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/aiclient"
+	"github.com/alicoding/mill/internal/adapters/mcpaudit"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -93,23 +93,6 @@ func maxTurnsError() string {
 	return fmt.Sprintf("reached the %d-turn limit before the goal completed", maxTurns)
 }
 
-// parkedWriteIDPattern matches gateWrite's own park response text
-// (mcpsvc's millmcpservice_approval.go: "parked pending human
-// approval; id=%s; call check_write_status with this id") -- this loop
-// parses the SAME textual contract every real external MCP client
-// already follows per that tool's own description, never a private
-// hook into mcpsvc's internals (this package never imports mcpsvc at
-// all, per its own doc comment).
-var parkedWriteIDPattern = regexp.MustCompile(`parked pending human approval; id=([^;]+);`)
-
-func parseParkedWriteID(text string) (string, bool) {
-	m := parkedWriteIDPattern.FindStringSubmatch(text)
-	if m == nil {
-		return "", false
-	}
-	return m[1], true
-}
-
 // buildToolDefs converts one ListTools result into aiclient's own
 // wire-agnostic ToolDef list -- Annotations (readOnlyHint/
 // destructiveHint) are deliberately never read here: they're
@@ -127,20 +110,6 @@ func buildToolDefs(tools []*mcp.Tool) ([]aiclient.ToolDef, error) {
 		defs = append(defs, aiclient.ToolDef{Name: t.Name, Description: t.Description, InputSchema: schema})
 	}
 	return defs, nil
-}
-
-// resultText concatenates every text content block in res -- CallTool
-// results are conventionally one TextContent block (every helper
-// elsewhere in this codebase assumes exactly that), but this loop
-// stays defensive against a tool that returns more than one.
-func resultText(res *mcp.CallToolResult) string {
-	var out string
-	for _, c := range res.Content {
-		if tc, ok := c.(*mcp.TextContent); ok {
-			out += tc.Text
-		}
-	}
-	return out
 }
 
 // transcriptBytes sums the transcript's own byte footprint -- every
@@ -165,6 +134,13 @@ func transcriptBytes(messages []aiclient.ChatMessage) int {
 // session.
 func (s *AgentLoopService) run(ctx context.Context, sessionID, aiProviderID, model, goal string) {
 	defer s.endSession(sessionID)
+
+	// Every MCP call this goroutine makes from here on carries this
+	// session's own caller identity (goal 0159 slice 1's audit trail) --
+	// set once, threaded through setupRun/runOneTurn/runToolCalls/
+	// callOneTool/pollWriteStatus via the same ctx value each already
+	// passes along, never re-derived per call.
+	ctx = mcpaudit.WithCallerIdentity(ctx, "agentloop-"+sessionID)
 
 	rp, session, toolDefs, ok := s.setupRun(ctx, sessionID, aiProviderID)
 	if !ok {
@@ -304,12 +280,16 @@ func (s *AgentLoopService) callOneTool(ctx context.Context, sessionID string, se
 	if err != nil {
 		return "", err
 	}
-	text := resultText(res)
+	text := mcpaudit.ContentText(res.Content)
 	if res.IsError {
 		return text, nil
 	}
 
-	writeID, parked := parseParkedWriteID(text)
+	// Parses gateWrite's own canonical park-response text (mcpsvc's
+	// millmcpservice_approval.go, docs/adr/0032) via the one shared
+	// helper every reader of that wire contract uses -- this loop never
+	// imports mcpsvc directly, per its own doc comment above.
+	writeID, parked := mcpaudit.ParseParkedWriteID(text)
 	if !parked {
 		return text, nil
 	}
@@ -348,7 +328,7 @@ func (s *AgentLoopService) pollWriteStatus(ctx context.Context, session *mcp.Cli
 			return "", err
 		}
 		var out checkWriteStatusResult
-		if err := json.Unmarshal([]byte(resultText(res)), &out); err != nil {
+		if err := json.Unmarshal([]byte(mcpaudit.ContentText(res.Content)), &out); err != nil {
 			return "", fmt.Errorf("agentloop: parse check_write_status result: %w", err)
 		}
 		switch out.Status {

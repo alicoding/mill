@@ -7,12 +7,19 @@
 package wiring
 
 import (
+	"errors"
+	"log"
+	"log/slog"
+
+	"github.com/alicoding/mill/internal/adapters/mcpclient"
+	"github.com/alicoding/mill/internal/adapters/notify"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
 	"github.com/alicoding/mill/internal/services/executionsvc"
+	"github.com/alicoding/mill/internal/services/mcpauditsvc"
 	"github.com/alicoding/mill/internal/services/settingssvc"
 	"github.com/alicoding/mill/internal/services/triggersvc"
 )
@@ -88,4 +95,38 @@ func WireUpdateEvents(settings *settingssvc.SettingsService, triggers *triggersv
 			Channel: channel,
 		})
 	})
+}
+
+// WireNotify connects composition's apply-notify seam to the OS
+// notification adapter (goal 0114). Server mode's adapter refuses by
+// design (ErrUnsupportedInServerMode) -- that maps to success here: the
+// notification is best-effort delivery, and "unsupported on this
+// build" must not fail a workflow whose real work already succeeded.
+// Every other error propagates.
+func WireNotify() {
+	composition.SetNotifier(func(title, body string) error {
+		err := notify.SendPlain("mill-workflow-notify", title, body)
+		if errors.Is(err, notify.ErrUnsupportedInServerMode) {
+			return nil
+		}
+		return err
+	})
+}
+
+// WireMCPAudit constructs the MCP call audit trail (goal 0159 slice 1)
+// against dbPath and wires mcpclient's package-level sending middleware
+// -- pulled out of main.go's own construction flow to keep that file
+// under the 500-line limit, the same reason this package exists.
+// Exits the process on failure: dbPath's file is already proven
+// writable by DBOS's own successful open before main.go ever calls
+// this, so a failure here means a real environment problem, matching
+// executionsvc.NewExecutionService's own fatal-on-construction-failure
+// posture.
+func WireMCPAudit(dbPath string, logger *slog.Logger) *mcpauditsvc.MCPAuditService {
+	svc, err := mcpauditsvc.New(dbPath, logger)
+	if err != nil {
+		log.Fatal(err)
+	}
+	mcpclient.SetSendingMiddleware(svc.ClientMiddleware())
+	return svc
 }
