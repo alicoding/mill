@@ -186,3 +186,34 @@ test('Mobile job 4 -- Atlas board is pan/zoom only, no card drag', async ({ page
   const after = await node.evaluate((el) => el.style.transform)
   expect(after).toBe(before)
 })
+
+// Reads the board's current zoom out of React Flow's own viewport
+// transform ("translate(..) scale(S)"), the only place the live scale
+// is observable from the DOM.
+async function boardScale(page: import('@playwright/test').Page): Promise<number> {
+  return page.locator('.react-flow__viewport').evaluate((el) => {
+    const m = /scale\(([\d.]+)\)/.exec((el as HTMLElement).style.transform)
+    return m ? Number(m[1]) : 1
+  })
+}
+
+test('Mobile job 4 -- the board lands tappable but zooms out past 100% on request', async ({ page }) => {
+  await page.goto('/')
+  await openDrawerAndNavigate(page, 'Atlas')
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  // Two halves of one contract. First: the AUTOMATIC fit never lands a
+  // narrow viewport below 100%, so every card keeps its real CSS pixel
+  // size (a >=44px touch target) without the user asking for it.
+  await expect.poll(() => boardScale(page)).toBeGreaterThanOrEqual(1)
+
+  // Second: zoom-out is navigation, not editing -- a read-only board
+  // must still be zoomable past 100% when the user deliberately asks.
+  // Regression: the pane's own minZoom was derived from readOnly and
+  // pinned narrow viewports at 1, making the whole-board overview
+  // unreachable on a phone.
+  const zoomOut = page.locator('.react-flow__controls-zoomout')
+  await expect(zoomOut).toBeVisible()
+  for (let i = 0; i < 4; i++) await zoomOut.click()
+  await expect.poll(() => boardScale(page)).toBeLessThan(1)
+})

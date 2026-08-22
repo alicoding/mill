@@ -255,7 +255,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       hasMountedRef.current = true
       return
     }
-    void fitView({ maxZoom: 1, padding: 0.25, duration: reduceMotion ? 0 : 250 })
+    void fitView({ minZoom: readOnly ? 1 : undefined, maxZoom: 1, padding: 0.25, duration: reduceMotion ? 0 : 250 })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately keyed on viewedID (a new space to fit), not on every node/fitView identity change
   }, [viewedID])
 
@@ -375,18 +375,23 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
         // guard, which also no-ops for the Area tool: its own
         // placement is the drag-drawn rect above, not a click).
         onPaneClick={wrapperClicks.onPaneClick}
-        // Narrow viewports never zoom out past 100% -- a board wider
-        // than the screen pans instead of auto-shrinking every card
-        // below its own real CSS pixel size (a touch target,
-        // kind-glyph text) into an untappable miniature. Wide
-        // viewports keep deep zoom-out (0.1): seeing the whole board
-        // at once is the surface's core navigation model, and a
-        // higher floor caps fitView on large boards.
-        minZoom={readOnly ? 1 : 0.1}
+        // Deliberate zoom-out floor everywhere, including narrow
+        // viewports: seeing the whole board at once is the surface's
+        // core navigation model, and a small screen needs that overview
+        // more than a large one, not less. The floor is NOT derived
+        // from readOnly -- zoom is navigation, never editing, so being
+        // unable to edit a board must not mean being unable to look at
+        // it. What narrow viewports DO keep is a floor on the
+        // AUTOMATIC fit (fitViewOptions below): a board should never
+        // LAND shrunk past every card's real CSS pixel size, since a
+        // sub-44px card is an untappable target the user never asked
+        // for. Zooming out past that stays a deliberate gesture the
+        // user can always reverse.
+        minZoom={0.1}
         onNodeDrag={isFree && !readOnly ? dragFiling.onNodeDrag : undefined}
         onNodeDragStop={isFree && !readOnly ? dragFiling.onNodeDragStop : undefined}
         fitView
-        fitViewOptions={{ maxZoom: 1, padding: 0.25, duration: reduceMotion ? 0 : 250 }}
+        fitViewOptions={{ minZoom: readOnly ? 1 : undefined, maxZoom: 1, padding: 0.25, duration: reduceMotion ? 0 : 250 }}
       >
         <AtlasBoardChrome
           kinds={kinds}
