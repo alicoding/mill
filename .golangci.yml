@@ -28,10 +28,11 @@ linters:
     - sqlclosecheck
     # Third pass (goal 0109, the SonarQube-class duplication gate):
     # threshold and exclusions tuned from a full measurement run over
-    # the tree (28 pairs found, every one either the deliberate
-    # per-entity seed-reconcile shape or a test twin -- hit lists in
-    # the goal file), so the gate lands green and catches NEW
-    # duplication anywhere outside the named, deliberate families.
+    # the tree, so the gate lands green and catches NEW duplication
+    # anywhere outside the named, deliberate families. configuresvc's
+    # own per-entity seed/CRUD exclusion (the largest cluster) was
+    # removed once goal 0165's generic entity store collapsed the
+    # duplication it covered, rather than raised or left in place.
     - dupl
   exclusions:
     paths:
@@ -45,13 +46,10 @@ linters:
       # documented-noise class Sonar's own defaults also exempt.
       - path: _test\.go
         linters: [dupl]
-      # The per-entity-kind seed/CRUD shape: each Configure entity
-      # repeats the same reconcile/upgrade body deliberately (goal
-      # 0109's measurement found every cluster here); collapsing them
-      # behind generics was considered and rejected -- the repetition
-      # is per-entity clarity, not an accident.
-      - path: internal/services/configuresvc/
-        linters: [dupl]
+      # configuresvc's per-entity seed/CRUD shape now runs through
+      # internal/services/entitystore's generic store (goal 0165) --
+      # the exclusion this comment used to justify is gone along with
+      # the duplication it covered.
       - path: internal/services/atlassvc/atlasservice_builtin\.go
         linters: [dupl]
 
