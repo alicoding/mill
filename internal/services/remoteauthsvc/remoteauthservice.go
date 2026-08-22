@@ -50,12 +50,12 @@ type pairingCode struct {
 	expiresAt time.Time
 }
 
-// Service is the Wails-bound owner of Mill's remote-access auth gate:
+// RemoteAuthService is the Wails-bound owner of Mill's remote-access auth gate:
 // the AssetServer middleware (remoteauthservice_middleware.go), the
 // pairing-code lifecycle (remoteauthservice_pairing.go), the paired-
 // device store (remoteauthservice_devices.go), and the per-source
 // rate limiter (remoteauthservice_ratelimit.go).
-type Service struct {
+type RemoteAuthService struct {
 	mu     sync.Mutex
 	store  settings.Store
 	logger *slog.Logger
@@ -65,14 +65,14 @@ type Service struct {
 	limiter map[string]*rateLimitEntry
 }
 
-// New constructs a Service backed by store for persistence, loading
+// New constructs a RemoteAuthService backed by store for persistence, loading
 // any previously paired devices immediately so a restart never
 // silently unpairs a device.
-func New(store settings.Store, logger *slog.Logger) *Service {
+func New(store settings.Store, logger *slog.Logger) *RemoteAuthService {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	s := &Service{
+	s := &RemoteAuthService{
 		store:   store,
 		logger:  logger,
 		limiter: make(map[string]*rateLimitEntry),
@@ -85,7 +85,7 @@ func New(store settings.Store, logger *slog.Logger) *Service {
 // entry is treated as "no devices paired" rather than a fatal error --
 // the surface simply challenges every non-loopback request again,
 // which is the fail-closed direction.
-func (s *Service) loadDevices() {
+func (s *RemoteAuthService) loadDevices() {
 	raw, ok := s.store.Get(devicesSettingsKey).(string)
 	if !ok || raw == "" {
 		return
@@ -99,7 +99,7 @@ func (s *Service) loadDevices() {
 }
 
 // saveDevices persists the current device list. Called with mu held.
-func (s *Service) saveDevices() error {
+func (s *RemoteAuthService) saveDevices() error {
 	raw, err := json.Marshal(s.devices)
 	if err != nil {
 		return err

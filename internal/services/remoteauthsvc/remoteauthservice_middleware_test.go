@@ -20,7 +20,7 @@ import (
 // served instead.
 const appContentMarker = "mill-app-shell-content"
 
-func newTestService(t *testing.T) *Service {
+func newTestService(t *testing.T) *RemoteAuthService {
 	t.Helper()
 	store, err := settings.New(filepath.Join(t.TempDir(), "settings.json"))
 	if err != nil {

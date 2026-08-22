@@ -23,7 +23,7 @@ type rateLimitEntry struct {
 // checkRateLimit reports whether source may attempt a pairing code
 // right now, and how long it must still wait when it may not. Held
 // under mu by callers.
-func (s *Service) checkRateLimit(source string, now time.Time) (allowed bool, retryAfter time.Duration) {
+func (s *RemoteAuthService) checkRateLimit(source string, now time.Time) (allowed bool, retryAfter time.Duration) {
 	entry, ok := s.limiter[source]
 	if !ok {
 		return true, 0
@@ -37,7 +37,7 @@ func (s *Service) checkRateLimit(source string, now time.Time) (allowed bool, re
 // recordPairingFailure registers one failed pairing-code attempt from
 // source, locking it out once it crosses maxFailuresBeforeLockout.
 // Held under mu by callers.
-func (s *Service) recordPairingFailure(source string, now time.Time) {
+func (s *RemoteAuthService) recordPairingFailure(source string, now time.Time) {
 	entry, ok := s.limiter[source]
 	if !ok {
 		entry = &rateLimitEntry{}
@@ -54,6 +54,6 @@ func (s *Service) recordPairingFailure(source string, now time.Time) {
 
 // recordPairingSuccess clears source's failure history -- a correct
 // code should not leave a stale near-lockout behind it.
-func (s *Service) recordPairingSuccess(source string) {
+func (s *RemoteAuthService) recordPairingSuccess(source string) {
 	delete(s.limiter, source)
 }

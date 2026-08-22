@@ -9,7 +9,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/settings"
 )
 
-func newRateLimitTestService(t *testing.T) *Service {
+func newRateLimitTestService(t *testing.T) *RemoteAuthService {
 	t.Helper()
 	store, err := settings.New(filepath.Join(t.TempDir(), "settings.json"))
 	if err != nil {

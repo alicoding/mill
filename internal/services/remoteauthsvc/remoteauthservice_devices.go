@@ -32,7 +32,7 @@ type DeviceInfo struct {
 
 // ListDevices returns every currently paired device, oldest first, so
 // Settings renders a stable order across renders.
-func (s *Service) ListDevices() []DeviceInfo {
+func (s *RemoteAuthService) ListDevices() []DeviceInfo {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -52,7 +52,7 @@ func (s *Service) ListDevices() []DeviceInfo {
 // RevokeDevice deletes id's paired-device record. Any request still
 // carrying that device's cookie is rejected on its very next request
 // -- validateToken (below) only ever matches against the live list.
-func (s *Service) RevokeDevice(id string) error {
+func (s *RemoteAuthService) RevokeDevice(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -77,7 +77,7 @@ func (s *Service) RevokeDevice(id string) error {
 // returns the raw token so the caller can set it as the device
 // cookie. The raw token is never retained after this call returns.
 // Held under mu by callers.
-func (s *Service) mintDevice(label string) (token string, err error) {
+func (s *RemoteAuthService) mintDevice(label string) (token string, err error) {
 	tokenBytes, err := randomBytes(deviceTokenBytes)
 	if err != nil {
 		return "", err
@@ -114,7 +114,7 @@ func (s *Service) mintDevice(label string) (token string, err error) {
 // gives an attacker a per-device timing signal, and an absent/
 // malformed token still costs the same compare loop as a wrong one.
 // Held under mu by callers.
-func (s *Service) validateToken(token string, now time.Time) bool {
+func (s *RemoteAuthService) validateToken(token string, now time.Time) bool {
 	tokenBytes, err := hex.DecodeString(token)
 	if err != nil {
 		return false

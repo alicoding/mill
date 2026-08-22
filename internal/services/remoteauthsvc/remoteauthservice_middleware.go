@@ -37,7 +37,7 @@ const cookieLifetime = 365 * 24 * time.Hour
 // Wails bridge anyway.
 //
 //wails:ignore
-func (s *Service) Middleware() func(http.Handler) http.Handler {
+func (s *RemoteAuthService) Middleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if isLoopback(r) {
@@ -93,7 +93,7 @@ func remoteIP(r *http.Request) net.IP {
 
 // tokenIsValid reads the device-token cookie, if any, and checks it
 // against the paired-device store.
-func (s *Service) tokenIsValid(r *http.Request) bool {
+func (s *RemoteAuthService) tokenIsValid(r *http.Request) bool {
 	cookie, err := r.Cookie(DeviceTokenCookieName)
 	if err != nil || cookie.Value == "" {
 		return false
@@ -107,7 +107,7 @@ func (s *Service) tokenIsValid(r *http.Request) bool {
 // limit, then validate, then mint a device and set its cookie on
 // success. Every branch renders the same pairing page shape, never
 // app content.
-func (s *Service) handlePairSubmit(w http.ResponseWriter, r *http.Request) {
+func (s *RemoteAuthService) handlePairSubmit(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusBadRequest)

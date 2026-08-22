@@ -35,7 +35,7 @@ type PairingCodeInfo struct {
 // one deliberate log line lets a headless/server-mode run (no
 // Settings UI to show the code in) still complete pairing from a
 // terminal.
-func (s *Service) GeneratePairingCode() (PairingCodeInfo, error) {
+func (s *RemoteAuthService) GeneratePairingCode() (PairingCodeInfo, error) {
 	code, err := generateCode()
 	if err != nil {
 		return PairingCodeInfo{}, fmt.Errorf("remoteauthsvc: generating pairing code: %w", err)
@@ -72,7 +72,7 @@ func generateCode() (string, error) {
 // on success -- a code is single-use whether it succeeds or its TTL
 // simply expires first (SLICE 1 DESIGN CONTRACT: "codes expire on
 // first success or TTL"). Held under mu by callers.
-func (s *Service) validatePairingCode(candidate string, now time.Time) bool {
+func (s *RemoteAuthService) validatePairingCode(candidate string, now time.Time) bool {
 	if s.code == nil {
 		return false
 	}

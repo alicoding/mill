@@ -139,6 +139,6 @@ func WireMCPAudit(dbPath string, logger *slog.Logger) *mcpauditsvc.MCPAuditServi
 // application.Options.Assets.Middleware (so it gates every request the
 // AssetServer serves) -- pulled out here for the same 500-line reason
 // WireMCPAudit above is.
-func WireRemoteAuth(store settings.Store, logger *slog.Logger) *remoteauthsvc.Service {
+func WireRemoteAuth(store settings.Store, logger *slog.Logger) *remoteauthsvc.RemoteAuthService {
 	return remoteauthsvc.New(store, logger)
 }
