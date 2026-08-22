@@ -11,6 +11,7 @@ package httpconnector
 
 import (
 	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -122,4 +123,27 @@ func Execute(req Request) (Response, error) {
 	}
 
 	return Response{StatusCode: resp.StatusCode, Body: string(data), Headers: headers}, nil
+}
+
+// ExecuteStream issues req exactly like Execute (same client, same retry
+// policy) but returns the LIVE response instead of buffering its body --
+// aiclient's streaming Chat call reads Server-Sent Events off resp.Body
+// as they arrive rather than waiting for the connection to close, which
+// Execute's io.ReadAll would force. The caller owns resp.Body and must
+// close it.
+func ExecuteStream(req Request) (*http.Response, error) {
+	var bodyReader io.Reader
+	if req.Body != "" {
+		bodyReader = strings.NewReader(req.Body)
+	}
+
+	httpReq, err := retryablehttp.NewRequest(req.Method, req.URL, bodyReader)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range req.Headers {
+		httpReq.Header.Set(k, v)
+	}
+
+	return client.Do(httpReq)
 }

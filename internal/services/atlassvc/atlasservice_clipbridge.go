@@ -95,6 +95,40 @@ func (a *AtlasService) PreviewClipbridgeReply(raw string) (ClipbridgeReplyPrevie
 	return out, nil
 }
 
+// contextCardFrom converts one card's already-resolved
+// cardContextInput into the OUT envelope's ContextCard shape -- shared
+// by CardContextEnvelope (one card) and SpaceContextEnvelope (every
+// child of a space) so the two envelope builders can't drift apart.
+func contextCardFrom(in cardContextInput) clipbridge.ContextCard {
+	ctxCard := clipbridge.ContextCard{Title: in.title, Kind: in.kindLabel, Note: in.note}
+	if len(in.fields) > 0 {
+		ctxCard.Fields = make(map[string]string, len(in.fields))
+		for _, f := range in.fields {
+			ctxCard.Fields[f.label] = f.value
+		}
+	}
+	for _, l := range in.outgoing {
+		ctxCard.Links = append(ctxCard.Links, clipbridge.ContextLink{Kind: l.linkKindLabel, Direction: "out", Title: l.otherTitle})
+	}
+	for _, l := range in.incoming {
+		ctxCard.Links = append(ctxCard.Links, clipbridge.ContextLink{Kind: l.linkKindLabel, Direction: "in", Title: l.otherTitle})
+	}
+	return ctxCard
+}
+
+// marshalEnvelope is BuildContextEnvelope's own indented-JSON encoding,
+// shared by every envelope-returning bound method below.
+func marshalEnvelope(env clipbridge.Envelope, err error) (string, error) {
+	if err != nil {
+		return "", err
+	}
+	raw, err := json.MarshalIndent(env, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(raw), nil
+}
+
 // CardContextEnvelope renders a card as the OUT envelope (goal 0099):
 // its data as items, the reply contract inline. The plain-text
 // CardContextBlock stays for human destinations; this is the
@@ -113,29 +147,42 @@ func (a *AtlasService) CardContextEnvelope(cardID string) (string, error) {
 	a.mu.RUnlock()
 	sort.Strings(labels)
 
-	ctxCard := clipbridge.ContextCard{Title: in.title, Kind: in.kindLabel, Note: in.note}
-	if len(in.fields) > 0 {
-		ctxCard.Fields = make(map[string]string, len(in.fields))
-		for _, f := range in.fields {
-			ctxCard.Fields[f.label] = f.value
-		}
-	}
-	for _, l := range in.outgoing {
-		ctxCard.Links = append(ctxCard.Links, clipbridge.ContextLink{Kind: l.linkKindLabel, Direction: "out", Title: l.otherTitle})
-	}
-	for _, l := range in.incoming {
-		ctxCard.Links = append(ctxCard.Links, clipbridge.ContextLink{Kind: l.linkKindLabel, Direction: "in", Title: l.otherTitle})
-	}
+	return marshalEnvelope(clipbridge.BuildContextEnvelope([]clipbridge.ContextCard{contextCardFrom(in)}, labels, clipbridge.V1Actions()))
+}
 
-	env, err := clipbridge.BuildContextEnvelope([]clipbridge.ContextCard{ctxCard}, labels, clipbridge.V1Actions())
-	if err != nil {
-		return "", err
+// SpaceContextEnvelope renders spaceID's own children as one OUT
+// envelope (goal 0101): the companion panel's system context on every
+// turn, scoped to whatever the user is currently looking at rather
+// than the whole map. Same child-listing loop as SpaceBundleContext's
+// plain-text sibling (spaceID == "" names the true root), each child
+// converted through the identical per-card path CardContextEnvelope
+// uses for a single card.
+func (a *AtlasService) SpaceContextEnvelope(spaceID string) (string, error) {
+	a.mu.RLock()
+	if spaceID != "" && a.findCardLocked(spaceID) == -1 {
+		a.mu.RUnlock()
+		return "", fmt.Errorf("no card with id %q", spaceID)
 	}
-	raw, err := json.MarshalIndent(env, "", "  ")
-	if err != nil {
-		return "", err
+	labels := make([]string, 0, len(a.kinds))
+	for _, k := range a.kinds {
+		labels = append(labels, k.Label)
 	}
-	return string(raw), nil
+	var cards []clipbridge.ContextCard
+	for _, c := range a.liveCardsLocked() {
+		if c.ParentID != spaceID {
+			continue
+		}
+		in, err := a.cardContextInputLocked(c.ID)
+		if err != nil {
+			a.mu.RUnlock()
+			return "", err
+		}
+		cards = append(cards, contextCardFrom(in))
+	}
+	a.mu.RUnlock()
+	sort.Strings(labels)
+
+	return marshalEnvelope(clipbridge.BuildContextEnvelope(cards, labels, clipbridge.V1Actions()))
 }
 
 // materializeReplyItems is the apply-atlas-from-reply seam: accepted

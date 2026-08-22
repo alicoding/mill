@@ -42,6 +42,14 @@ func SetAIProviderLookup(fn func(id string) (ResolvedAIProvider, error)) {
 	lookupAIProviderFn = fn
 }
 
+// ResolveAIProvider exposes the currently-wired lookup to a caller
+// outside the node-execution path -- companionsvc's chat calls resolve
+// a provider through this SAME seam an ai-* node uses, never a second
+// resolution path (docs/goals/0101 slice 1).
+func ResolveAIProvider(id string) (ResolvedAIProvider, error) {
+	return lookupAIProviderFn(id)
+}
+
 // composeAIUserContent implements every ai-* node's shared
 // prompt+payload composition rule (docs/goals/0031-ai-node-family.md:
 // "user content = prompt + payload"), documented once here rather than

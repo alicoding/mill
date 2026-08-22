@@ -3,6 +3,7 @@ package aiclient
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/alicoding/mill/internal/adapters/httpconnector"
@@ -117,4 +118,116 @@ func completeAnthropic(req Request) (Result, error) {
 		}
 	}
 	return Result{Text: text.String()}, nil
+}
+
+// chatAnthropic speaks Anthropic's native Messages API with
+// "stream": true -- confirmed against Anthropic's own published
+// streaming docs before building (docs/goals/0101 item 1): a
+// content_block_delta event's delta.text is the next text fragment
+// (only delta.type == "text_delta" carries prose; a tool-use delta
+// shape doesn't apply here, this call never requests structured
+// output), an error event carries a terminal failure, and message_stop
+// ends the stream.
+// anthropicChatMessages converts a chat conversation's turns into the
+// Messages API's own role/content shape.
+func anthropicChatMessages(turns []ChatMessage) []map[string]string {
+	messages := make([]map[string]string, 0, len(turns))
+	for _, m := range turns {
+		messages = append(messages, map[string]string{"role": m.Role, "content": m.Content})
+	}
+	return messages
+}
+
+// parseAnthropicEvent decodes one Anthropic SSE (event, data) pair
+// into its text delta -- split out of chatAnthropic's scanSSE closure
+// purely to keep that function's own cognitive complexity under the
+// repo's gate. stop reports message_stop (or any decode/error-event
+// failure, carried in err); every other event contributes no delta.
+func parseAnthropicEvent(event, data string) (delta string, stop bool, err error) {
+	switch event {
+	case "content_block_delta":
+		var d struct {
+			Delta struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"delta"`
+		}
+		if err := json.Unmarshal([]byte(data), &d); err != nil {
+			return "", true, fmt.Errorf("anthropic: parse stream event: %w", err)
+		}
+		if d.Delta.Type == "text_delta" {
+			return d.Delta.Text, false, nil
+		}
+		return "", false, nil
+	case "error":
+		var e struct {
+			Error struct {
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		_ = json.Unmarshal([]byte(data), &e)
+		return "", true, fmt.Errorf("anthropic: %s", e.Error.Message)
+	case "message_stop":
+		return "", true, nil
+	default:
+		return "", false, nil
+	}
+}
+
+func chatAnthropic(req ChatRequest, onDelta func(string)) (string, error) {
+	baseURL := effectiveAnthropicBaseURL(req.BaseURL)
+	body := map[string]any{
+		"model": req.Model, "max_tokens": 4096, "messages": anthropicChatMessages(req.Messages), "stream": true,
+	}
+	if req.System != "" {
+		body["system"] = req.System
+	}
+	data, err := json.Marshal(body)
+	if err != nil {
+		return "", fmt.Errorf("anthropic: encode request: %w", err)
+	}
+
+	headers := map[string]string{
+		"Content-Type":      "application/json",
+		"anthropic-version": anthropicVersion,
+		"Accept":            "text/event-stream",
+	}
+	if req.APIKey != "" {
+		headers["x-api-key"] = req.APIKey
+	}
+
+	resp, err := httpconnector.ExecuteStream(httpconnector.Request{
+		Method: "POST", URL: strings.TrimRight(baseURL, "/") + "/v1/messages",
+		Headers: headers, Body: string(data),
+	})
+	if err != nil {
+		return "", fmt.Errorf("anthropic: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		errBody, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("anthropic: unexpected status %d: %s", resp.StatusCode, truncate(string(errBody)))
+	}
+
+	var full strings.Builder
+	var streamErr error
+	scanErr := scanSSE(resp.Body, func(event, data string) bool {
+		delta, stop, err := parseAnthropicEvent(event, data)
+		if err != nil {
+			streamErr = err
+			return false
+		}
+		if delta != "" {
+			full.WriteString(delta)
+			onDelta(delta)
+		}
+		return !stop
+	})
+	if scanErr != nil {
+		return full.String(), fmt.Errorf("anthropic: read stream: %w", scanErr)
+	}
+	if streamErr != nil {
+		return full.String(), streamErr
+	}
+	return full.String(), nil
 }

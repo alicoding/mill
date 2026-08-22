@@ -3,6 +3,7 @@ package aiclient
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/alicoding/mill/internal/adapters/httpconnector"
@@ -85,6 +86,112 @@ func completeOpenAICompat(req Request) (Result, error) {
 		result.JSON = []byte(text)
 	}
 	return result, nil
+}
+
+// chatOpenAICompat speaks the same /v1/chat/completions shape as
+// completeOpenAICompat above, with "stream": true -- the documented
+// OpenAI-compatible SSE streaming shape (Ollama's /v1 shim included,
+// docs/goals/0101 item 1): each event's data is one chunk object whose
+// choices[].delta.content is the next text fragment, terminated by a
+// literal "data: [DONE]" line rather than a typed final event.
+// openAICompatChatMessages builds the messages array chatOpenAICompat
+// sends: an optional leading system message, then every conversation
+// turn in order -- split out purely to keep chatOpenAICompat's own
+// cognitive complexity under the repo's gate.
+func openAICompatChatMessages(req ChatRequest) []map[string]string {
+	messages := []map[string]string{}
+	if req.System != "" {
+		messages = append(messages, map[string]string{"role": "system", "content": req.System})
+	}
+	for _, m := range req.Messages {
+		messages = append(messages, map[string]string{"role": m.Role, "content": m.Content})
+	}
+	return messages
+}
+
+// openAICompatChunk is one decoded streaming chunk's shape.
+type openAICompatChunk struct {
+	Choices []struct {
+		Delta struct {
+			Content string `json:"content"`
+		} `json:"delta"`
+	} `json:"choices"`
+	Error *struct {
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+// parseOpenAICompatChunk decodes one SSE data payload into its text
+// delta (empty when the chunk carries none) -- split out of
+// chatOpenAICompat's scanSSE closure purely to keep that function's
+// own cognitive complexity under the repo's gate. done reports the
+// [DONE] sentinel; err reports a decode failure or an in-band error
+// chunk.
+func parseOpenAICompatChunk(data string) (delta string, done bool, err error) {
+	if strings.TrimSpace(data) == "[DONE]" {
+		return "", true, nil
+	}
+	var chunk openAICompatChunk
+	if err := json.Unmarshal([]byte(data), &chunk); err != nil {
+		return "", false, fmt.Errorf("openai-compatible: parse stream chunk: %w", err)
+	}
+	if chunk.Error != nil {
+		return "", false, fmt.Errorf("openai-compatible: %s", chunk.Error.Message)
+	}
+	for _, c := range chunk.Choices {
+		if c.Delta.Content != "" {
+			delta += c.Delta.Content
+		}
+	}
+	return delta, false, nil
+}
+
+func chatOpenAICompat(req ChatRequest, onDelta func(string)) (string, error) {
+	body := map[string]any{"model": req.Model, "messages": openAICompatChatMessages(req), "stream": true}
+	data, err := json.Marshal(body)
+	if err != nil {
+		return "", fmt.Errorf("openai-compatible: encode request: %w", err)
+	}
+
+	headers := map[string]string{"Content-Type": "application/json", "Accept": "text/event-stream"}
+	if req.APIKey != "" {
+		headers["Authorization"] = "Bearer " + req.APIKey
+	}
+
+	resp, err := httpconnector.ExecuteStream(httpconnector.Request{
+		Method: "POST", URL: strings.TrimRight(req.BaseURL, "/") + "/v1/chat/completions",
+		Headers: headers, Body: string(data),
+	})
+	if err != nil {
+		return "", fmt.Errorf("openai-compatible: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		errBody, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("openai-compatible: unexpected status %d: %s", resp.StatusCode, truncate(string(errBody)))
+	}
+
+	var full strings.Builder
+	var streamErr error
+	scanErr := scanSSE(resp.Body, func(_, data string) bool {
+		delta, done, err := parseOpenAICompatChunk(data)
+		if err != nil {
+			streamErr = err
+			return false
+		}
+		if delta != "" {
+			full.WriteString(delta)
+			onDelta(delta)
+		}
+		return !done
+	})
+	if scanErr != nil {
+		return full.String(), fmt.Errorf("openai-compatible: read stream: %w", scanErr)
+	}
+	if streamErr != nil {
+		return full.String(), streamErr
+	}
+	return full.String(), nil
 }
 
 func schemaName(name string) string {

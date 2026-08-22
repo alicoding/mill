@@ -710,6 +710,19 @@ export function SpaceBundleContext(spaceID: string, withAttachments: boolean): $
 }
 
 /**
+ * SpaceContextEnvelope renders spaceID's own children as one OUT
+ * envelope (goal 0101): the companion panel's system context on every
+ * turn, scoped to whatever the user is currently looking at rather
+ * than the whole map. Same child-listing loop as SpaceBundleContext's
+ * plain-text sibling (spaceID == "" names the true root), each child
+ * converted through the identical per-card path CardContextEnvelope
+ * uses for a single card.
+ */
+export function SpaceContextEnvelope(spaceID: string): $CancellablePromise<string> {
+    return $Call.ByID(1944161179, spaceID);
+}
+
+/**
  * SpaceLinksList lists every Source URL set on spaceID's own children,
  * one per line, in a.cards' own stored order -- the space toolbar's
  * "Copy links" action.

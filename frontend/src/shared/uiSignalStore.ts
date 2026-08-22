@@ -112,6 +112,13 @@ interface UISignalState {
   // flips directly.
   atlasMinimapToggleRequest: number
   requestAtlasMinimapToggle: () => void
+  // The AI companion panel (goal 0101 slice 1): a plain boolean, not a
+  // counter -- AtlasToolbar's button and CompanionPanel's own Escape/
+  // close controls all just set it, unlike the fire-once request
+  // signals above which need a monotonic tick to notice a repeat.
+  companionOpen: boolean
+  toggleCompanion: () => void
+  closeCompanion: () => void
 }
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
@@ -155,4 +162,7 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasSelectAll: () => set((s) => ({ atlasSelectAllRequest: s.atlasSelectAllRequest + 1 })),
   atlasMinimapToggleRequest: 0,
   requestAtlasMinimapToggle: () => set((s) => ({ atlasMinimapToggleRequest: s.atlasMinimapToggleRequest + 1 })),
+  companionOpen: false,
+  toggleCompanion: () => set((s) => ({ companionOpen: !s.companionOpen })),
+  closeCompanion: () => set({ companionOpen: false }),
 }))

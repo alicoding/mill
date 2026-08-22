@@ -99,6 +99,78 @@ func TestCardContextEnvelope(t *testing.T) {
 	}
 }
 
+func TestSpaceContextEnvelope(t *testing.T) {
+	a := newBlankAtlasService(t)
+	kind, err := a.CreateKind("Topic", "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateKind: %v", err)
+	}
+	space, err := a.CreateCard(kind.ID, "Space", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard(space): %v", err)
+	}
+	if _, err := a.CreateCard(kind.ID, "First", "note text", nil, space.ID, nil, "", "", "", ""); err != nil {
+		t.Fatalf("CreateCard(first): %v", err)
+	}
+	if _, err := a.CreateCard(kind.ID, "Second", "", nil, space.ID, nil, "", "", "", ""); err != nil {
+		t.Fatalf("CreateCard(second): %v", err)
+	}
+	// A card OUTSIDE the space must not leak into its envelope.
+	if _, err := a.CreateCard(kind.ID, "Elsewhere", "", nil, "", nil, "", "", "", ""); err != nil {
+		t.Fatalf("CreateCard(elsewhere): %v", err)
+	}
+
+	raw, err := a.SpaceContextEnvelope(space.ID)
+	if err != nil {
+		t.Fatalf("SpaceContextEnvelope: %v", err)
+	}
+	var env map[string]any
+	if err := json.Unmarshal([]byte(raw), &env); err != nil {
+		t.Fatalf("envelope is not JSON: %v", err)
+	}
+	items, _ := env["items"].([]any)
+	if len(items) != 2 {
+		t.Fatalf("items = %v, want exactly the space's 2 children", env["items"])
+	}
+	first, _ := items[0].(map[string]any)
+	if first["title"] != "First" || first["note"] != "note text" {
+		t.Fatalf("item[0] = %v", first)
+	}
+	if _, ok := env["schema"].(map[string]any); !ok {
+		t.Fatal("inline schema missing")
+	}
+}
+
+func TestSpaceContextEnvelope_EmptySpace_HasNoItems(t *testing.T) {
+	a := newBlankAtlasService(t)
+	kind, err := a.CreateKind("Topic", "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateKind: %v", err)
+	}
+	space, err := a.CreateCard(kind.ID, "Empty space", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard: %v", err)
+	}
+	raw, err := a.SpaceContextEnvelope(space.ID)
+	if err != nil {
+		t.Fatalf("SpaceContextEnvelope: %v", err)
+	}
+	var env map[string]any
+	if err := json.Unmarshal([]byte(raw), &env); err != nil {
+		t.Fatalf("envelope is not JSON: %v", err)
+	}
+	if items, ok := env["items"].([]any); ok && len(items) != 0 {
+		t.Fatalf("items = %v, want none", items)
+	}
+}
+
+func TestSpaceContextEnvelope_UnknownSpace_Errors(t *testing.T) {
+	a := newBlankAtlasService(t)
+	if _, err := a.SpaceContextEnvelope("does-not-exist"); err == nil {
+		t.Fatal("unknown space must error")
+	}
+}
+
 func TestMaterializeReplyItems(t *testing.T) {
 	a := NewAtlasService(servicetest.NewFakeStore())
 
