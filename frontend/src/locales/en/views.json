@@ -80,6 +80,7 @@
       "restartButton": "Restart Mill",
       "installedRestart": "Update installed. Restart to finish.",
       "installFailed": "Couldn't install the update: {{error}}",
+      "checkFailed": "Couldn't check for updates: {{error}}",
       "sourceUpdateHint": "This copy was built from source. Pull the latest code and rebuild to update.",
       "sourceUpdateCommand": "git pull, then task install:app",
       "channelPickerLabel": "Update channel",

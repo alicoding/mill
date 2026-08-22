@@ -15,6 +15,14 @@ const RELEASES_URL = 'https://github.com/alicoding/mill/releases'
 import styles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
 
+// Keeps a rendered error to one humane line (goal 0127's rider: GitHub's
+// own HTML error page, base64 image included, once rendered whole here)
+// while CopyDiagnosisButton still gets the untruncated text -- the same
+// visible/copyable split LiveRunControls' finished bar already uses.
+function truncate(s: string, max: number): string {
+  return s.length > max ? `${s.slice(0, max)}…` : s
+}
+
 // Extracted from SettingsView.tsx (same reason DataStewardshipSection
 // already is: keeps that file's own line count from crowding the
 // 500-line convention). Two install behaviors sharing one surface:
@@ -36,6 +44,11 @@ function UpdatesSection() {
   const [channel, setChannel] = useState<Channel>('')
   const [checking, setChecking] = useState(false)
   const [status, setStatus] = useState('')
+  // A real check failure, kept separate from `status` (the neutral
+  // "checking…" / "up to date" text) so it always renders with its own
+  // Copy details action -- `status` alone had no such affordance, which
+  // is exactly where the raw-HTML-body bug this section fixes appeared.
+  const [checkError, setCheckError] = useState('')
   const [updateResult, setUpdateResult] = useState<UpdateResult | null>(null)
   const [installState, setInstallState] = useState<InstallState>('idle')
   const [proxyUrl, setProxyUrl] = useState('')
@@ -97,6 +110,7 @@ function UpdatesSection() {
   const checkForUpdates = () => {
     setChecking(true)
     setStatus('')
+    setCheckError('')
     setUpdateResult(null)
     // A running or staged install is server truth -- a fresh check
     // must not un-show it (the double-click trap this section had).
@@ -110,7 +124,7 @@ function UpdatesSection() {
           setStatus(t('settings.updates.upToDate'))
         }
       })
-      .catch((err) => setStatus(String(err)))
+      .catch((err) => setCheckError(String(err)))
       .finally(() => setChecking(false))
   }
 
@@ -238,6 +252,15 @@ function UpdatesSection() {
         {statusText && <Text size="small" className={styles.muted}>{statusText}</Text>}
       </Stack>
 
+      {checkError && (
+        <Stack direction="horizontal" gap="condensed" align="center">
+          <Text size="small" className={styles.error} data-testid="update-check-error">
+            {t('settings.updates.checkFailed', { error: truncate(checkError, 200) })}
+          </Text>
+          <CopyDiagnosisButton error={checkError} testId="update-check-error-copy" />
+        </Stack>
+      )}
+
       {updateResult && (
         <div
           data-testid="update-available-card"
@@ -285,7 +308,7 @@ function UpdatesSection() {
                   <>
                     <Stack direction="horizontal" gap="condensed" align="center">
                       <Text size="small" className={styles.error}>
-                        {t('settings.updates.installFailed', { error: installError })}
+                        {t('settings.updates.installFailed', { error: truncate(installError, 200) })}
                       </Text>
                       <CopyDiagnosisButton error={installError} testId="update-error-copy" />
                     </Stack>
