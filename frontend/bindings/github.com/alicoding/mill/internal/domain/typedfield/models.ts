@@ -116,6 +116,22 @@ export interface Field {
      * byte-identical to before this facet existed.
      */
     "StampOnChange"?: string;
+
+    /**
+     * FrontmatterAliases lists alternate raw frontmatter keys this
+     * field's value may be read from, checked in order, when a parsed
+     * header's own key doesn't literally match this field's Key
+     * (docs/goals/0172's frontmatter mirror). Read by the Atlas
+     * frontmatter coercion path only; every other schema-carrying
+     * surface ignores it, the same per-surface-facet convention
+     * ShowOnCard/Multiline already follow. The ordinary case for a NEW
+     * field is nil -- its own Key doubles as the frontmatter key it
+     * reads, which is what lets an arbitrary folder's keys need no
+     * code at all; this facet exists only for a field whose Key
+     * predates the header it now mirrors. JSON-tagged with omitempty,
+     * matching StampOnChange's own reasoning.
+     */
+    "FrontmatterAliases"?: string[] | null;
 }
 
 /**

@@ -95,6 +95,12 @@
             },
             "StampOnChange": {
               "type": "string"
+            },
+            "FrontmatterAliases": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
             }
           },
           "additionalProperties": false,
@@ -404,6 +410,12 @@
             },
             "StampOnChange": {
               "type": "string"
+            },
+            "FrontmatterAliases": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
             }
           },
           "additionalProperties": false,
@@ -577,6 +589,12 @@
             },
             "StampOnChange": {
               "type": "string"
+            },
+            "FrontmatterAliases": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
             }
           },
           "additionalProperties": false,
@@ -1128,6 +1146,12 @@
             },
             "StampOnChange": {
               "type": "string"
+            },
+            "FrontmatterAliases": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
             }
           },
           "additionalProperties": false,
