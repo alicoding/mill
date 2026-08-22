@@ -12,7 +12,7 @@ whether the server is enabled. Point any MCP-capable client at it —
 for example, a Claude Code MCP entry:
 
 ```
-{ "mcpServers": { "mill": { "url": "http://127.0.0.1:8091/mcp" } } }
+{ "mcpServers": { "mill": { "url": "http://127.0.0.1:8090/mcp" } } }
 ```
 
 Your instance's exact address is the one Settings shows.

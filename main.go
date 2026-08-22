@@ -274,18 +274,17 @@ func main() {
 	executionService.SetMinutesSavedLookup(settingsService.GetWorkflowMinutesSaved)
 
 	// docs/SPEC.md §11 (task #12): Mill as MCP server, exposing its own
-	// workflows/Configure data as read-only Resources. MILL_MCP_ADDR
-	// overrides the bind address, same MILL_* override convention as
-	// settingsPath/executionDatabaseURL above -- default is loopback-only
-	// (127.0.0.1), never 0.0.0.0, since this is a new, unauthenticated
+	// workflows/Configure data as read-only Resources. Bind-address
+	// precedence (settingssvc.ResolveMCPAddr): the MILL_MCP_ADDR env
+	// ALWAYS wins (a deploy/env-level override, same MILL_* convention
+	// as settingsPath/executionDatabaseURL above), then the Settings >
+	// MCP access address, then the loopback default -- never 0.0.0.0
+	// unless explicitly chosen, since this is a new, unauthenticated
 	// local listener and staying loopback-bound is the conservative
 	// default until a real access-control need is named. A bind failure
 	// is logged, not fatal -- this is additive local tooling, not
 	// something the rest of the app depends on to function.
-	millMCPAddr := os.Getenv("MILL_MCP_ADDR")
-	if millMCPAddr == "" {
-		millMCPAddr = "127.0.0.1:8090"
-	}
+	millMCPAddr, _ := settingssvc.ResolveMCPAddr(os.Getenv("MILL_MCP_ADDR"), settingsService.MCPAccessAddress())
 	millMCPService := mcpsvc.NewMillMCPService(millVersion, compositionService, configureService, settingsStore)
 	settingsService.SetMCPService(millMCPService)
 	millMCPService.SetExecutionService(executionService)

@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures/server'
+import { test, expect, MCP_BASE_PORT } from './fixtures/server'
 import { existsSync, readdirSync } from 'node:fs'
 
 // Exercises docs/SPEC.md §3.7's two new global settings (launch at
@@ -79,6 +79,25 @@ test('Check for updates produces a visible status, found or error', async ({ pag
   await button.click()
   await expect(button).toBeEnabled({ timeout: 15_000 })
   await expect(button).toHaveText('Check for updates')
+})
+
+// Every worker's own spawned server sets MILL_MCP_ADDR for port
+// isolation (fixtures/server.ts) -- an env override is therefore
+// always active in this shared pool, which proves exactly the
+// read-only display state settingsservice_mcpaddr.go's ResolveMCPAddr
+// produces when the env wins. The editable/save/validate path is
+// unreachable here for the same reason and is named in
+// .claude/rules/testing.md's manual-only registry instead.
+test('MCP access address field shows the active environment override read-only', async ({ page }, testInfo) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Settings' }).click()
+
+  const input = page.getByTestId('mcp-access-address-input')
+  await expect(input).toBeVisible()
+  await expect(input).toBeDisabled()
+  await expect(input).toHaveValue(`127.0.0.1:${MCP_BASE_PORT + testInfo.parallelIndex}`)
+  await expect(page.getByText(/MILL_MCP_ADDR environment variable/)).toBeVisible()
+  await expect(page.getByTestId('mcp-access-address-save')).toHaveCount(0)
 })
 
 test('MCP write gate toggles from Settings and persists across a reload', async ({ page }) => {

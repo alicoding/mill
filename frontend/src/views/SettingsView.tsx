@@ -16,6 +16,7 @@ import type { DisplayDensity } from '../shared/density'
 import KeyboardShortcutsSection from './KeyboardShortcutsSection'
 import DataStewardshipSection from './DataStewardshipSection'
 import UpdatesSection from './UpdatesSection'
+import McpAddressField from './McpAddressField'
 import SettingsToc from './SettingsToc'
 import { useSettingsSectionSync } from './useSettingsSectionSync'
 import styles from '../shared/ListCard.module.css'
@@ -355,6 +356,7 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
     ),
     'mcp-access': (
       <>
+        <McpAddressField />
         <FormControl>
           <Checkbox
             checked={mcpWriteEnabled ?? false}

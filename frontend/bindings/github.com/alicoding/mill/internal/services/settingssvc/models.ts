@@ -58,6 +58,15 @@ export interface BuildInfo {
 }
 
 /**
+ * MCPAddrInfo is the Settings UI's read model: the address this run
+ * resolved to, and whether an env override is the reason.
+ */
+export interface MCPAddrInfo {
+    "address": string;
+    "envOverride": boolean;
+}
+
+/**
  * UpdateCheckResult is CheckForUpdates' Wails-bound result shape.
  */
 export interface UpdateCheckResult {

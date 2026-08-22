@@ -41,6 +41,11 @@
       "openAccessibilitySettings": "Open Accessibility Settings"
     },
     "mcp": {
+      "addressLabel": "Address",
+      "addressCaption": "Where MCP clients connect to Mill. Loopback (127.0.0.1) reaches this Mac only; a non-loopback address also accepts other devices on your network. Saved changes apply after you restart Mill.",
+      "addressSave": "Save",
+      "addressSaved": "Saved. Restart Mill to use the new address.",
+      "addressEnvOverrideCaption": "The MILL_MCP_ADDR environment variable sets this address, overriding anything saved here.",
       "allowImportLabel": "Allow MCP clients to import data",
       "allowImportCaption": "When on, MCP clients connected to Mill can create workflows, integrations, lists, and MCP-server entries via the import tools. Reading and exporting are always allowed and never include secrets. Off by default; changes apply immediately, no restart needed.",
       "askBeforeImportLabel": "Ask me before each MCP import",
