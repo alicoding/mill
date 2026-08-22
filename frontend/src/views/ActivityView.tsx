@@ -7,6 +7,7 @@ import { useAppStore, type ActivityEntry, type ActivitySource } from '../shared/
 import { WorkflowHoverPreview } from '../composition/WorkflowHoverPreview'
 import { ActivityRunsExplorer } from './ActivityRunsExplorer'
 import { ActivityStepFailures } from './ActivityStepFailures'
+import { ActivityMCPCalls } from './ActivityMCPCalls'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -272,6 +273,12 @@ function ActivityView() {
           and stays scoped to "all workflows" rather than one selected
           workflow's own explorer. */}
       {!selectedWorkflow && <ActivityStepFailures />}
+
+      {/* MCP calls (goal 0159 slice 1) -- workflow-agnostic (calls to
+          Mill's own MCP server, or from any workflow's mcp-tool-call
+          node), so unlike the two sections above it renders regardless
+          of the selected-workflow filter. */}
+      <ActivityMCPCalls />
     </PageContainer>
   )
 }

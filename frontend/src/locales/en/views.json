@@ -251,6 +251,25 @@
         "stepType": "Step type",
         "failureCount": "Failures"
       }
+    },
+    "mcpCalls": {
+      "heading": "MCP calls",
+      "description": "Every call Mill's MCP server received, and every call Mill made to a configured MCP server.",
+      "refreshAriaLabel": "Refresh MCP calls",
+      "filterByDirectionAriaLabel": "Filter by direction",
+      "allDirections": "All directions",
+      "received": "Received",
+      "sent": "Sent",
+      "filterByToolPlaceholder": "Filter by tool name",
+      "filterByToolAriaLabel": "Filter by tool name",
+      "receivedAriaLabel": "Mill received this call",
+      "sentAriaLabel": "Mill sent this call",
+      "noCallsHeading": "No MCP calls recorded",
+      "noCallsDescription": "Calls will show up here once an agent calls Mill, or a workflow calls a configured MCP server.",
+      "durationMs": "{{ms}}ms",
+      "showingRange": "Showing {{start}}-{{end}} of {{total}}.",
+      "previousPageAriaLabel": "Previous page",
+      "nextPageAriaLabel": "Next page"
     }
   },
   "reviewView": {

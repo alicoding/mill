@@ -31,4 +31,5 @@ badge, and a floating approval prompt.
   conversion without running anything.
 - **Activity** shows trigger fires and run outcomes across all
   workflows, so a scheduled or watching workflow is never invisibly
-  running.
+  running. Its MCP calls section logs every call to or from Mill's
+  agent connection — who called what, when, and what happened.

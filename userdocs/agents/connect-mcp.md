@@ -29,6 +29,13 @@ Your instance's exact address is the one Settings shows.
   grant; nothing an agent does bypasses the gate a human action
   would hit.
 
+## See every call
+
+Activity's MCP calls section logs every call — an agent calling Mill,
+or a workflow calling a connected server — with who called what, when,
+and whether it succeeded. Filter by direction or tool name to find one
+fast; a failed call's error is copyable in one click.
+
 ## Teach your agent
 
 `skills/mill-use` in the repository is a ready-made agent skill:
