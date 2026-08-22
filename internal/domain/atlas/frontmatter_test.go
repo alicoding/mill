@@ -5,10 +5,16 @@ import (
 	"testing"
 )
 
-const archiveDir = "../../../docs/goals/archive"
+// testdata holds SELF-CONTAINED fixtures reproducing the goal-archive
+// frontmatter shapes this parser must handle -- never point a test in
+// this repo at docs/goals/archive directly. docs/ is a separate nested
+// repo, gitignored from mill (.gitignore's "/docs/"), so it does not
+// exist in a CI checkout: a test that reads it passes locally and
+// fails structurally in CI every time.
+const testdataDir = "testdata"
 
 func TestParseFrontmatter_NormalFile(t *testing.T) {
-	content, err := os.ReadFile(archiveDir + "/0108-atlas-self-portrait.md")
+	content, err := os.ReadFile(testdataDir + "/normal-goal.md")
 	if err != nil {
 		t.Fatalf("read fixture: %v", err)
 	}
@@ -31,24 +37,24 @@ func TestParseFrontmatter_NormalFile(t *testing.T) {
 }
 
 // TestParseFrontmatter_HorizontalRuleEdgeFiles is the regression pin
-// for the parser hazard these two files exercise: a standalone "---"
-// markdown horizontal rule sits between the frontmatter's closing
-// delimiter and the "# Title" heading. A parser that treats every
-// standalone "---" line as a frontmatter boundary would misparse the
-// heading's own text as YAML, or open a phantom second frontmatter
-// block -- both files must still parse to exactly their real header
-// fields.
+// for a real parser hazard docs/goals/archive/0036 and /0037 both
+// exercise (reproduced structurally in testdata/horizontal-rule-goal.md,
+// since a test in this repo may never read the nested docs repo): a
+// standalone "---" markdown horizontal rule sits between the
+// frontmatter's closing delimiter and the "# Title" heading. A parser
+// that treats every standalone "---" line as a frontmatter boundary
+// would misparse the heading's own text as YAML, or open a phantom
+// second frontmatter block.
 func TestParseFrontmatter_HorizontalRuleEdgeFiles(t *testing.T) {
 	cases := []struct {
 		file    string
 		wantID  string
 		wantPRs int
 	}{
-		{"0036-view-mode-ux-hardening.md", "0036", 0},
-		{"0037-seed-lifecycle.md", "0037", 0},
+		{"horizontal-rule-goal.md", "0036", 0},
 	}
 	for _, tc := range cases {
-		content, err := os.ReadFile(archiveDir + "/" + tc.file)
+		content, err := os.ReadFile(testdataDir + "/" + tc.file)
 		if err != nil {
 			t.Fatalf("read fixture %s: %v", tc.file, err)
 		}
