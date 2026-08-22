@@ -178,9 +178,23 @@ layer per capability," never "a seed per thing":
   `repairAppDispatch`, checks.go). This defect is bridge-client
   triggered only — a desktop build nobody drives over MCP never
   imports the second instance — but any future agent-drives-the-
-  desktop-app work must reuse the same repair. CI job: stays wired,
-  non-required, promote after a green track record on the
-  calibrated registry.
+  desktop-app work must reuse the same repair.
+  **CI status, settled: this check CANNOT run on a hosted runner and
+  is not trying to.** It lives in its own scheduled/manual workflow
+  (`.github/workflows/webview-smoke.yml`), permanently outside the
+  PR/main baseline, because a permanently-red check trains
+  red-blindness. Three hypotheses were falsified with evidence, not
+  argument: the harness never reaching the app (the bridge does
+  answer), a missing `.app` bundle (bundling resolves bundle identity
+  and changes nothing), and LaunchServices/coalition registration
+  (the coalition appears, verified via `lsappinfo`, and changes
+  nothing). The failure reproduces locally by launching the binary
+  backgrounded and disowned — `app_info` answers, `js_eval` hangs —
+  so treat this as a real local gate, not a CI one. Path back in:
+  identify the actual primitive gating WKWebView liveness (a specific
+  Aqua session attribute, not coalition membership) and prove it
+  satisfiable outside a login session. `docs/goals/0134` carries the
+  full trail.
   **Stabilized: four consecutive PR-run failures traced to gesture-
   timing races, not registry flakiness** — every failing check
   (`sticky-border-color-flip`, `note-card-commit-interaction` +
