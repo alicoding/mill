@@ -5,6 +5,7 @@ import { Button, Stack, Text, TextInput } from '@primer/react'
 import { DataTable, type Column, Blankslate } from '@primer/react/experimental'
 import { StopIcon, HistoryIcon } from '@primer/octicons-react'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
+import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import { ExecutionService } from '../shared/bindings'
 import type { RunSummary } from '../shared/bindings'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -160,8 +161,20 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow | null }
     {
       id: 'output', header: t('activityRunsExplorer.columns.output'), width: 'growCollapse', minWidth: '160px',
       // A failed run's most useful output is its error -- an ERROR row
-      // must never render an empty cell.
-      renderCell: (run) => <TruncatedCell text={run.error || (run.output ?? '')} />,
+      // must never render an empty cell. The cell itself still
+      // truncates; the copy button's payload carries the FULL error.
+      renderCell: (run) => (
+        <Stack direction="horizontal" gap="condensed" align="center">
+          <TruncatedCell text={run.error || (run.output ?? '')} />
+          {run.error && (
+            <CopyDiagnosisButton
+              error={run.error}
+              context={{ Workflow: run.workflowLabel, 'Run ID': run.runID, Started: run.startedAt }}
+              testId="activity-run-copy-diagnosis"
+            />
+          )}
+        </Stack>
+      ),
     },
   ]
 

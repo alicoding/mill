@@ -5,6 +5,7 @@ import { DownloadIcon, PencilIcon, PlusIcon, ServerIcon, TrashIcon, UploadIcon }
 import { DataTable } from '@primer/react/experimental'
 import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
+import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import { ConfigureService } from '../shared/bindings'
 import type { MCPServer } from '../../bindings/github.com/alicoding/mill/internal/domain/mcpserver/models'
 import type { Tool } from '../../bindings/github.com/alicoding/mill/internal/adapters/mcpclient/models'
@@ -252,7 +253,10 @@ export function ConfigureMCPServers() {
         </Stack>
       </Stack>
       {importError && (
-        <Text as="p" size="small" className={styles.error} data-testid="import-mcpserver-error">{importError}</Text>
+        <Stack direction="horizontal" gap="condensed" align="center">
+          <Text as="p" size="small" className={styles.error} data-testid="import-mcpserver-error">{importError}</Text>
+          <CopyDiagnosisButton error={importError} testId="import-mcpserver-copy-diagnosis" />
+        </Stack>
       )}
 
       {formOpen && (
@@ -284,7 +288,16 @@ export function ConfigureMCPServers() {
             <Button size="small" variant="invisible" onClick={() => setArgRows((prev) => [...prev, ''])}>
               {t('configureMCPServers.addArgument')}
             </Button>
-            {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
+            {error && (
+              <Stack direction="horizontal" gap="condensed" align="center">
+                <Text as="p" size="small" className={styles.error}>{error}</Text>
+                <CopyDiagnosisButton
+                  error={error}
+                  context={{ 'Server label': label, Command: command }}
+                  testId="mcpserver-save-copy-diagnosis"
+                />
+              </Stack>
+            )}
             <Stack direction="horizontal" gap="condensed">
               <Button variant="primary" size="small" onClick={save}>{t('configureMCPServers.saveMcpServer')}</Button>
               <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>{t('entityRefField.cancel')}</Button>
@@ -345,7 +358,14 @@ export function ConfigureMCPServers() {
           <div key={id} className={styles.card} data-testid="mcpserver-tools">
             <Text weight="semibold" size="small">{t('configureMCPServers.serverTools', { label: server?.Label ?? id })}</Text>
             {typeof result === 'string' ? (
-              <Text as="p" size="small" className={styles.error}>{result}</Text>
+              <Stack direction="horizontal" gap="condensed" align="center">
+                <Text as="p" size="small" className={styles.error}>{result}</Text>
+                <CopyDiagnosisButton
+                  error={result}
+                  context={{ 'Server label': server?.Label, Command: server?.Command }}
+                  testId="mcpserver-tools-copy-diagnosis"
+                />
+              </Stack>
             ) : result.length === 0 ? (
               <Text as="p" size="small" className={styles.muted}>{t('configureMCPServers.noToolsExposed')}</Text>
             ) : (

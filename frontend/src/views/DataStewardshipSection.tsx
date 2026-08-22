@@ -6,6 +6,7 @@ import { DownloadIcon, FileDirectoryIcon, UploadIcon } from '@primer/octicons-re
 import { BackupService } from '../shared/bindings'
 import type { BackupStatus, ImportEverythingSummary } from '../shared/bindings'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
+import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import styles from '../shared/ListCard.module.css'
 
 // Extracted from SettingsView.tsx (same reason KeyboardShortcutsSection
@@ -41,13 +42,23 @@ function DataStewardshipSection() {
   const [status, setStatus] = useState<BackupStatus | null>(null)
   const [backingUp, setBackingUp] = useState(false)
   const [error, setError] = useState('')
+  // Which action produced `error` -- the copyable diagnosis's own
+  // context (goal 0127 slice 4): this section shares one error slot
+  // across several distinct operations, so the operation itself has to
+  // travel alongside the message.
+  const [errorOp, setErrorOp] = useState('')
   const [exporting, setExporting] = useState(false)
   const [pendingArchive, setPendingArchive] = useState<{ data: string; summary: ImportEverythingSummary } | null>(null)
   const [importResult, setImportResult] = useState<ImportEverythingSummary | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
 
+  const fail = (op: string, err: unknown) => {
+    setError(String(err))
+    setErrorOp(op)
+  }
+
   const refresh = () => {
-    BackupService.GetBackupStatus().then(setStatus).catch((err) => setError(String(err)))
+    BackupService.GetBackupStatus().then(setStatus).catch((err) => fail('Refresh status', err))
   }
 
   useEffect(() => {
@@ -56,6 +67,7 @@ function DataStewardshipSection() {
       const entity = (evt.data as { entity?: string })?.entity
       if (entity === 'backup') refresh()
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only subscription, same pattern WorkflowRunsPanel.tsx's identical effect documents
   }, [])
 
   const backupNow = () => {
@@ -63,12 +75,12 @@ function DataStewardshipSection() {
     setBackingUp(true)
     BackupService.BackupNow(0)
       .then(setStatus)
-      .catch((err) => setError(String(err)))
+      .catch((err) => fail('Back up now', err))
       .finally(() => setBackingUp(false))
   }
 
   const revealFolder = () => {
-    BackupService.RevealBackupFolder().catch((err) => setError(String(err)))
+    BackupService.RevealBackupFolder().catch((err) => fail('Reveal backup folder', err))
   }
 
   const exportEverything = () => {
@@ -84,7 +96,7 @@ function DataStewardshipSection() {
         a.click()
         URL.revokeObjectURL(url)
       })
-      .catch((err) => setError(String(err)))
+      .catch((err) => fail('Export everything', err))
       .finally(() => setExporting(false))
   }
 
@@ -99,7 +111,7 @@ function DataStewardshipSection() {
     if (!file) return
     fileToBase64(file)
       .then((data) => BackupService.PreviewImportEverything(data).then((summary) => setPendingArchive({ data, summary })))
-      .catch((err) => setError(String(err)))
+      .catch((err) => fail('Import everything', err))
   }
 
   const confirmImport = () => {
@@ -108,7 +120,7 @@ function DataStewardshipSection() {
     setPendingArchive(null)
     BackupService.ImportEverything(data)
       .then(setImportResult)
-      .catch((err) => setError(String(err)))
+      .catch((err) => fail('Import everything', err))
   }
 
   return (
@@ -165,7 +177,16 @@ function DataStewardshipSection() {
         {t('settings.dataStewardship.mirrorFilesNote')}
       </Text>
 
-      {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
+      {error && (
+        <Stack direction="horizontal" gap="condensed" align="center">
+          <Text as="p" size="small" className={styles.error}>{error}</Text>
+          <CopyDiagnosisButton
+            error={error}
+            context={{ Operation: errorOp, 'Last backup': status?.hasBackup ? status.lastBackupAt : undefined }}
+            testId="data-stewardship-copy-diagnosis"
+          />
+        </Stack>
+      )}
       {importResult && (
         <Text as="p" size="small" className={styles.result} data-testid="import-everything-result">
           {summaryLine(t, importResult)}

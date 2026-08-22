@@ -30,7 +30,9 @@ checked against its published digest and refused on mismatch, and a
 backup snapshot is taken before any install. A copy built from
 source never self-updates.
 
-**When something breaks, you get the truth.** A crash shows the
-error with a Copy details button instead of a blank window; update
-failures carry a copyable diagnosis; every run records what actually
+**When something breaks, you get the truth.** Every failure you can
+see — a crash, a failed run, a bad connector save, an update that
+didn't install — shows a Copy details button that copies the exact
+error plus enough context to root-cause it, instead of leaving you to
+retype it from a screenshot. Every run also records what actually
 happened.

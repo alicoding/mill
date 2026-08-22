@@ -417,11 +417,12 @@ func trimReleaseNotesForApp(body string) string {
 	return strings.TrimSpace(body)
 }
 
-// UpdateDiagnostics is the copyable root-cause context for update
-// failures (goal 0127: a paste replaces a photo). Proxy reports MODE
+// AppDiagnostics is the copyable root-cause context appended to every
+// copyable failure surface across the app (goal 0127: a paste replaces
+// a photo) -- version, channel, proxy mode, OS/arch. Proxy reports MODE
 // and host only -- a proxy URL may carry credentials, which must
 // never enter a paste buffer.
-func (s *SettingsService) UpdateDiagnostics() string {
+func (s *SettingsService) AppDiagnostics() string {
 	proxy := "auto (system)"
 	switch raw := s.OutboundProxyURL(); {
 	case raw == proxyModeOff:

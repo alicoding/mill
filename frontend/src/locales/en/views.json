@@ -86,7 +86,6 @@
       "proxyCaption": "Update checks and downloads use this connection.",
       "proxySave": "Save",
       "proxySaved": "Saved. Restart Mill to start using this proxy.",
-      "copyErrorDetails": "Copy details",
       "proxyModeAuto": "Auto — use this Mac's proxy settings",
       "proxyModeManual": "Manual proxy URL",
       "proxyModeOff": "Off — always connect directly",

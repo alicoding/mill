@@ -1,6 +1,7 @@
 import React from 'react'
 import i18next from 'i18next'
 import { writeClipboardText } from '../shared/clipboardWrite'
+import { composeDiagnosis } from '../shared/diagnosis'
 import styles from './AppErrorBoundary.module.css'
 
 // The last line of defense for the whole render tree: without this, a
@@ -13,7 +14,10 @@ import styles from './AppErrorBoundary.module.css'
 // async errors don't reach a boundary by React's own contract.
 // Copy goes through i18next.t directly (module-level i18n init from
 // main.tsx survives any React crash) -- the useTranslation hook can't
-// run inside a class fallback anyway.
+// run inside a class fallback anyway. The copy payload is composed via
+// diagnosis.ts's composeDiagnosis (a plain function, no Primer/React
+// dependency), never shared/CopyDiagnosisButton -- that component
+// renders Primer, which this boundary must not depend on either.
 interface State {
   error: Error | null
   componentStack: string
@@ -48,7 +52,12 @@ export class AppErrorBoundary extends React.Component<React.PropsWithChildren, S
             type="button"
             className={styles.button}
             data-testid="error-copy-details"
-            onClick={() => void writeClipboardText(this.details())}
+            // Falls back to the bare crash details (composeDiagnosis's
+            // pre-goal-0127 behavior) if the AppDiagnostics round trip
+            // itself fails -- this button must still copy SOMETHING
+            // even when whatever crashed the render tree also broke
+            // the Wails bridge.
+            onClick={() => void composeDiagnosis({ error: this.details() }).catch(() => this.details()).then(writeClipboardText)}
           >
             {i18next.t('app:errorBoundary.copyDetails')}
           </button>
