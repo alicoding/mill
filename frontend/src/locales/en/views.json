@@ -72,6 +72,7 @@
       "upToDate": "You're on the latest version.",
       "currentVersion": "You have Mill v{{version}}",
       "resignNotice": "Mill re-signs itself after updating, so permission grants like Accessibility keep working.",
+      "resignSetupNotice": "Set this up once: in Keychain Access, find \"Mill Local Signing\" and set it to Always Trust for code signing.",
       "channelRelease": "installed from a release",
       "channelBeta": "installed from the beta channel",
       "channelSource": "built from source",
