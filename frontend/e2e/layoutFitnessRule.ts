@@ -76,9 +76,9 @@ function buildConfigureScript(): string {
 // ~90 bundled a11y rules stay registered (they ship inside the
 // injected axeCoreSource) but never run: withRules() sets
 // runOnly:{type:'rule', values:[...]}, so nothing outside
-// mill-layout-scroll's own single rule is ever evaluated. Enabling
-// axe's own a11y ruleset is a deliberately separate, dormant future
-// goal (see the goal file's Deferred section), not this scope.
+// mill-layout-scroll's own single rule is ever evaluated. Axe's own
+// bundled WCAG rule set runs as a separate, independent pass
+// (wcagAuditRule.ts, goal 0157) rather than being folded in here.
 export function layoutFitnessBuilder(page: Page): AxeBuilder {
   const axeSource = `${axeCore.source}\n${buildConfigureScript()}`
   return new AxeBuilder({ page, axeSource }).withRules([LAYOUT_FITNESS_RULE_ID])
