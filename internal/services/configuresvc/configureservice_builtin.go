@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/seedorigin"
@@ -194,56 +193,16 @@ func (c *ConfigureService) reconcileBuiltInExecEnvs() {
 	}
 }
 
-// reconcileBuiltInAIProviders mirrors reconcileBuiltInMCPServers for the
-// seeded example AI provider (docs/goals/0031-ai-node-family.md). No
+// reconcileBuiltInAIProviders mirrors reconcileBuiltInMCPServers for
+// the seeded example AI provider (docs/goals/0031-ai-node-family.md)
+// via aiProviderDescriptor (configureaiprovider.go, goal 0165). No
 // credential seeding step: the seeded "Local Ollama" example needs no
 // secret at all.
 func (c *ConfigureService) reconcileBuiltInAIProviders() {
 	tombstones := seeding.LoadTombstones(c.store)
-	now := time.Now()
-	c.mu.Lock()
-	byID := make(map[string]int, len(c.aiProviders))
-	for i, p := range c.aiProviders {
-		byID[p.ID] = i
-	}
-	changed := false
-	for _, golden := range aiprovider.BuiltIn() {
-		idx, present := byID[golden.ID]
-		if !present {
-			if tombstones[golden.ID] {
-				continue
-			}
-			golden.CreatedAt, golden.UpdatedAt = now, now
-			c.aiProviders = append(c.aiProviders, golden)
-			changed = true
-			continue
-		}
-		existing := c.aiProviders[idx]
-		if existing.Seed.SeedRevision == 0 {
-			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
-			c.aiProviders[idx] = existing
-			changed = true
-			continue
-		}
-		if existing.Seed.Modified {
-			continue
-		}
-		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
-			c.aiProviders[idx] = upgradeAIProviderToGolden(existing, golden, now)
-			changed = true
-		}
-	}
-	c.mu.Unlock()
-	if changed {
+	if _, changed := entitystore.Reconcile(&c.mu, &c.aiProviders, tombstones, aiProviderDescriptor); changed {
 		if err := c.persistAIProviders(); err != nil {
 			slog.Error("failed to reconcile built-in AI providers", "error", err)
 		}
 	}
-}
-
-func upgradeAIProviderToGolden(existing, golden aiprovider.AIProvider, now time.Time) aiprovider.AIProvider {
-	golden.CreatedAt = existing.CreatedAt
-	golden.UpdatedAt = now
-	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
-	return golden
 }

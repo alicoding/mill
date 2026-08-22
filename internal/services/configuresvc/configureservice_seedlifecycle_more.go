@@ -1,9 +1,6 @@
 package configuresvc
 
 import (
-	"fmt"
-	"time"
-
 	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/list"
@@ -108,43 +105,12 @@ func (c *ConfigureService) RestoreExecEnv(id string) (execenv.ExecEnv, error) {
 	return restored, nil
 }
 
-func findGoldenAIProvider(id string) (aiprovider.AIProvider, bool) {
-	for _, g := range aiprovider.BuiltIn() {
-		if g.ID == id {
-			return g, true
-		}
-	}
-	return aiprovider.AIProvider{}, false
-}
-
-// ResetAIProviderToSeed mirrors ResetMCPServerToSeed for AI providers.
+// ResetAIProviderToSeed mirrors ResetMCPServerToSeed for AI providers,
+// via aiProviderDescriptor (configureaiprovider.go, goal 0165).
 func (c *ConfigureService) ResetAIProviderToSeed(id string) (aiprovider.AIProvider, error) {
-	golden, ok := findGoldenAIProvider(id)
-	if !ok {
-		return aiprovider.AIProvider{}, fmt.Errorf("no built-in AI provider with id %q", id)
-	}
-	c.mu.Lock()
-	idx := -1
-	for i, p := range c.aiProviders {
-		if p.ID == id {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return aiprovider.AIProvider{}, fmt.Errorf("no AI provider with id %q", id)
-	}
-	previous := c.aiProviders[idx]
-	updated := upgradeAIProviderToGolden(previous, golden, time.Now())
-	c.aiProviders[idx] = updated
-	c.mu.Unlock()
-
-	if err := c.persistAIProviders(); err != nil {
-		c.mu.Lock()
-		c.aiProviders[idx] = previous
-		c.mu.Unlock()
-		return aiprovider.AIProvider{}, fmt.Errorf("save reset AI provider: %w", err)
+	updated, err := entitystore.ResetToSeed(&c.mu, &c.aiProviders, c.persistAIProviders, aiProviderDescriptor, id)
+	if err != nil {
+		return aiprovider.AIProvider{}, err
 	}
 	dataevent.Emit("aiprovider", id) // goal 0017: live-sync every open surface
 	return updated, nil
@@ -152,61 +118,15 @@ func (c *ConfigureService) ResetAIProviderToSeed(id string) (aiprovider.AIProvid
 
 // RestorableAIProviders mirrors RestorableMCPServers for AI providers.
 func (c *ConfigureService) RestorableAIProviders() []aiprovider.AIProvider {
-	tombstones := seeding.LoadTombstones(c.store)
-	if len(tombstones) == 0 {
-		return nil
-	}
-	c.mu.Lock()
-	have := make(map[string]bool, len(c.aiProviders))
-	for _, p := range c.aiProviders {
-		have[p.ID] = true
-	}
-	c.mu.Unlock()
-	var out []aiprovider.AIProvider
-	for _, golden := range aiprovider.BuiltIn() {
-		if tombstones[golden.ID] && !have[golden.ID] {
-			out = append(out, golden)
-		}
-	}
-	return out
+	return entitystore.Restorable(&c.mu, &c.aiProviders, seeding.LoadTombstones(c.store), aiProviderDescriptor)
 }
 
 // RestoreAIProvider mirrors RestoreMCPServer for AI providers.
 func (c *ConfigureService) RestoreAIProvider(id string) (aiprovider.AIProvider, error) {
-	golden, ok := findGoldenAIProvider(id)
-	if !ok {
-		return aiprovider.AIProvider{}, fmt.Errorf("no built-in AI provider with id %q", id)
-	}
-	c.mu.Lock()
-	for _, existing := range c.aiProviders {
-		if existing.ID == id {
-			c.mu.Unlock()
-			return aiprovider.AIProvider{}, fmt.Errorf("AI provider %q is already present, nothing to restore", id)
-		}
-	}
-	c.mu.Unlock()
-
-	if err := seeding.ClearTombstone(c.store, id); err != nil {
-		return aiprovider.AIProvider{}, fmt.Errorf("clear tombstone for %q: %w", id, err)
-	}
-	now := time.Now()
-	golden.CreatedAt, golden.UpdatedAt = now, now
-
-	c.mu.Lock()
-	c.aiProviders = append(c.aiProviders, golden)
-	c.mu.Unlock()
-
-	if err := c.persistAIProviders(); err != nil {
-		c.mu.Lock()
-		for i, p := range c.aiProviders {
-			if p.ID == id {
-				c.aiProviders = append(c.aiProviders[:i], c.aiProviders[i+1:]...)
-				break
-			}
-		}
-		c.mu.Unlock()
-		return aiprovider.AIProvider{}, fmt.Errorf("save restored AI provider: %w", err)
+	restored, err := entitystore.Restore(&c.mu, &c.aiProviders, c.persistAIProviders, c.store, aiProviderDescriptor, id)
+	if err != nil {
+		return aiprovider.AIProvider{}, err
 	}
 	dataevent.Emit("aiprovider", id) // goal 0017: live-sync every open surface
-	return golden, nil
+	return restored, nil
 }
