@@ -175,12 +175,16 @@ func BuiltInKinds() []Kind {
 			ID: kindDeliveredFeatureID, Label: "Delivered feature", Icon: "📦",
 			Description: "A shipped goal, with its evidence and your sign-off.",
 			Fields: []typedfield.Field{
-				// Mirror-owned: internal/services/atlassvc's ledger sync
-				// writes these via MergeCardFields, which touches only
-				// the keys it's given -- signoff/verifiedAt/notes below
-				// are never in that map.
-				{Key: "goalId", Label: "Goal", Type: typedfield.TypeText},
-				{Key: "shippedDate", Label: "Shipped", Type: typedfield.TypeDate, ShowOnCard: true},
+				// Mirror-owned: the ledger sync's generic frontmatter
+				// coercion (internal/domain/atlas.CoerceFrontmatterFields)
+				// writes these via MergeCardFields, which touches only the
+				// keys it's given -- signoff/verifiedAt/notes below are
+				// never in that map.
+				{Key: "goalId", Label: "Goal", Type: typedfield.TypeText, FrontmatterAliases: []string{"id"}},
+				{
+					Key: "shippedDate", Label: "Shipped", Type: typedfield.TypeDate, ShowOnCard: true,
+					FrontmatterAliases: []string{"date"},
+				},
 				{Key: "prs", Label: "PRs", Type: typedfield.TypeText, Multiline: true},
 				{Key: "proof", Label: "Proof", Type: typedfield.TypeText, Multiline: true},
 				// Owner-owned: durable verification state a re-sync must
@@ -196,7 +200,12 @@ func BuiltInKinds() []Kind {
 				{Key: "notes", Label: "Notes", Type: typedfield.TypeText, Multiline: true},
 			},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
+			// rev 2: goalId/shippedDate gained FrontmatterAliases
+			// (additive, same Key/Type -- ValidateFieldEvolution's
+			// identity freeze is untouched) so the generic frontmatter
+			// mirror (docs/goals/0172) still reaches them under the
+			// archive's existing "id"/"date" keys.
+			BuiltIn: true, Seed: seedorigin.Stamp(2),
 		},
 	}
 }

@@ -22,26 +22,22 @@ import (
 // deterministically, no popover asks.
 const ledgerDeliveredFeatureKindID = "atlas-kind-delivered-feature"
 
-// The Delivered-feature Kind's four mirror-owned field keys (docs/
-// goals/0164's DESIGN CONTRACT item 2) -- the only keys this file's
-// MergeCardFields calls ever write. signoff/verifiedAt/notes are
-// owner-owned and never appear in ledgerMirrorFields' output.
-const (
-	ledgerFieldGoalID      = "goalId"
-	ledgerFieldShippedDate = "shippedDate"
-	ledgerFieldPRs         = "prs"
-	ledgerFieldProof       = "proof"
-	ledgerFieldSignoff     = "signoff"
-)
+// ledgerFieldSignoff is the one field this file still names directly:
+// a brand-new card is seeded pending-verify even though no frontmatter
+// file ever carries a "signoff" key of its own (goal 0172's Kind-is-
+// the-contract mirror never writes a key absent from the file).
+const ledgerFieldSignoff = "signoff"
 
 // SyncLedgerFolder regenerates one parent card's mirror children from a
-// folder of frontmattered goal files (goal 0164 L1): a file already
-// mirrored by a live card keeps that card, and a content change
-// refreshes its checksum plus re-merges ONLY its mirror-owned fields
-// (goal, shipped date, PRs, proof) -- sign-off, verified date, and
-// notes are owner state a re-sync must never clobber, the ledger's own
-// durability requirement. A new file becomes a new card, pending-
-// verify by default. A file with no frontmatter, or frontmatter that
+// folder of frontmattered markdown files (goal 0164 L1, generalized by
+// goal 0172): a file already mirrored by a live card keeps that card,
+// and a content change refreshes its checksum plus re-merges ONLY the
+// Kind fields the file's own frontmatter actually names (goal 0172's
+// CoerceFrontmatterFields) -- any Kind field the file doesn't carry
+// (sign-off, verified date, notes on the seeded Delivered-feature Kind,
+// or an equivalent owner-owned field on any other Kind) is simply
+// absent from that map, so a re-sync can never clobber it. A new file
+// becomes a new card. A file with no frontmatter, or frontmatter that
 // fails to parse, is skipped -- the next run picks it up once fixed,
 // the same leniency SyncDocsFolder applies to an unreadable file. Not
 // a frontend RPC: composition calls this through
@@ -60,20 +56,20 @@ func (a *AtlasService) SyncLedgerFolder(folderPath, parentTitle, sourceRunID str
 		return "", fmt.Errorf("sync ledger folder: %w", err)
 	}
 
-	kindID, parentID, byMirror, err := a.ledgerSyncTargetsLocked(parentTitle)
+	kind, parentID, byMirror, err := a.ledgerSyncTargetsLocked(parentTitle)
 	if err != nil {
 		return "", err
 	}
 
 	if parentID == "" && parentTitle != "" {
-		parent, err := a.createCardWithID(seeding.NewSlugID(parentTitle, "card"), kindID, parentTitle, "", nil, "", nil, "", "", "", "", "", sourceRunID)
+		parent, err := a.createCardWithID(seeding.NewSlugID(parentTitle, "card"), kind.ID, parentTitle, "", nil, "", nil, "", "", "", "", "", sourceRunID)
 		if err != nil {
 			return "", fmt.Errorf("sync ledger folder: create parent %q: %w", parentTitle, err)
 		}
 		parentID = parent.ID
 	}
 
-	created, refreshed, ids, err := a.syncScannedLedgerDocs(scanned.Entries, folderPath, kindID, parentID, sourceRunID, byMirror)
+	created, refreshed, ids, err := a.syncScannedLedgerDocs(scanned.Entries, folderPath, kind, parentID, sourceRunID, byMirror)
 	if err != nil {
 		return "", err
 	}
@@ -93,15 +89,19 @@ func (a *AtlasService) SyncLedgerFolder(folderPath, parentTitle, sourceRunID str
 // atlasservice_filedrop.go), never a caller-chosen label: a ledger
 // card's mirror-owned/owner-owned split only makes sense for that one
 // Kind's schema.
-func (a *AtlasService) ledgerSyncTargetsLocked(parentTitle string) (kindID, parentID string, byMirror map[string]atlas.Card, err error) {
+func (a *AtlasService) ledgerSyncTargetsLocked(parentTitle string) (kind atlas.Kind, parentID string, byMirror map[string]atlas.Card, err error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if len(a.kinds) == 0 {
-		return "", "", nil, fmt.Errorf("sync ledger folder: no card kinds exist to create into")
+		return atlas.Kind{}, "", nil, fmt.Errorf("sync ledger folder: no card kinds exist to create into")
 	}
-	kindID = ledgerDeliveredFeatureKindID
+	kindID := ledgerDeliveredFeatureKindID
 	if a.findKindLocked(kindID) == -1 {
 		kindID = a.kinds[0].ID
+	}
+	kind, err = a.resolveKindLocked(kindID)
+	if err != nil {
+		return atlas.Kind{}, "", nil, err
 	}
 	byMirror = map[string]atlas.Card{}
 	for _, c := range a.liveCardsLocked() {
@@ -112,17 +112,17 @@ func (a *AtlasService) ledgerSyncTargetsLocked(parentTitle string) (kindID, pare
 			parentID = c.ID
 		}
 	}
-	return kindID, parentID, byMirror, nil
+	return kind, parentID, byMirror, nil
 }
 
 // syncScannedLedgerDocs walks the scan's markdown entries through
 // syncOneLedgerDoc, aggregating the summary counts.
-func (a *AtlasService) syncScannedLedgerDocs(entries []fileread.Entry, folderPath, kindID, parentID, sourceRunID string, byMirror map[string]atlas.Card) (created, refreshed int, ids []string, err error) {
+func (a *AtlasService) syncScannedLedgerDocs(entries []fileread.Entry, folderPath string, kind atlas.Kind, parentID, sourceRunID string, byMirror map[string]atlas.Card) (created, refreshed int, ids []string, err error) {
 	for _, e := range entries {
 		if e.IsDir || !strings.EqualFold(e.Ext, ".md") {
 			continue
 		}
-		id, madeNew, wasRefreshed, err := a.syncOneLedgerDoc(folderPath, e.RelPath, e.Name, kindID, parentID, sourceRunID, byMirror)
+		id, madeNew, wasRefreshed, err := a.syncOneLedgerDoc(folderPath, e.RelPath, e.Name, kind, parentID, sourceRunID, byMirror)
 		if err != nil {
 			return 0, 0, nil, err
 		}
@@ -143,14 +143,15 @@ func (a *AtlasService) syncScannedLedgerDocs(entries []fileread.Entry, folderPat
 // syncOneLedgerDoc mirrors one markdown file. An existing mirror card
 // with an unchanged checksum is a pure no-op. A content change
 // refreshes the checksum and, when the new content still parses as
-// frontmatter, re-merges ONLY the four mirror-owned fields via
-// MergeCardFields -- signoff/verifiedAt/notes are never in that map,
-// so an owner's sign-off survives every re-sync by construction. A new
-// file becomes a new card, seeded with signoff already at its Default.
-// A file with no parseable frontmatter (new or changed) skips the
-// field write -- an unreadable/unparseable file is never fatal to the
-// rest of the folder's sync.
-func (a *AtlasService) syncOneLedgerDoc(folderPath, relPath, name, kindID, parentID, sourceRunID string, byMirror map[string]atlas.Card) (id string, created, refreshed bool, err error) {
+// frontmatter, re-merges only the Kind fields the header actually
+// names (atlas.CoerceFrontmatterFields) via MergeCardFields -- a Kind
+// field absent from that map is never touched, so an owner-owned value
+// survives every re-sync by construction. A new file becomes a new
+// card, seeded with signoff already at its Default. A file with no
+// parseable frontmatter (new or changed) skips the field write -- an
+// unreadable/unparseable file is never fatal to the rest of the
+// folder's sync.
+func (a *AtlasService) syncOneLedgerDoc(folderPath, relPath, name string, kind atlas.Kind, parentID, sourceRunID string, byMirror map[string]atlas.Card) (id string, created, refreshed bool, err error) {
 	abs := filepath.Join(folderPath, filepath.FromSlash(relPath))
 	sum, csErr := fileChecksum(abs)
 	if csErr != nil {
@@ -165,14 +166,15 @@ func (a *AtlasService) syncOneLedgerDoc(folderPath, relPath, name, kindID, paren
 	if rdErr != nil {
 		return "", false, false, nil
 	}
-	fm, hasFrontmatter := parseLedgerFrontmatter(content)
+	raw, hasFrontmatter := parseLedgerFrontmatter(content)
 
 	if hasExisting {
 		if err := a.setMirrorChecksum(existing.ID, sum); err != nil {
 			return "", false, false, fmt.Errorf("sync ledger folder: refresh %q: %w", existing.Title, err)
 		}
 		if hasFrontmatter {
-			if _, err := a.MergeCardFields(existing.ID, ledgerMirrorFields(fm), sourceRunID); err != nil {
+			fields := atlas.CoerceFrontmatterFields(raw, kind.Fields)
+			if _, err := a.MergeCardFields(existing.ID, fields, sourceRunID); err != nil {
 				return "", false, false, fmt.Errorf("sync ledger folder: merge fields for %q: %w", existing.Title, err)
 			}
 		}
@@ -182,9 +184,9 @@ func (a *AtlasService) syncOneLedgerDoc(folderPath, relPath, name, kindID, paren
 	if !hasFrontmatter {
 		return "", false, false, nil
 	}
-	fields := ledgerMirrorFields(fm)
+	fields := atlas.CoerceFrontmatterFields(raw, kind.Fields)
 	fields[ledgerFieldSignoff] = "pending-verify"
-	card, err := a.createCardWithID(seeding.NewSlugID(atlas.HumanizeFilename(name), "card"), kindID, atlas.HumanizeFilename(name), "", fields, parentID, nil, "", "", abs, sum, "", sourceRunID)
+	card, err := a.createCardWithID(seeding.NewSlugID(atlas.HumanizeFilename(name), "card"), kind.ID, atlas.HumanizeFilename(name), "", fields, parentID, nil, "", "", abs, sum, "", sourceRunID)
 	if err != nil {
 		return "", false, false, fmt.Errorf("sync ledger folder: create for %q: %w", name, err)
 	}
@@ -194,23 +196,10 @@ func (a *AtlasService) syncOneLedgerDoc(folderPath, relPath, name, kindID, paren
 // parseLedgerFrontmatter wraps atlas.ParseFrontmatter, treating a parse
 // ERROR the same as no-frontmatter-present -- a malformed header must
 // never abort the whole folder's sync, only that one file's mirror.
-func parseLedgerFrontmatter(content []byte) (atlas.GoalFrontmatter, bool) {
-	fm, ok, err := atlas.ParseFrontmatter(content)
+func parseLedgerFrontmatter(content []byte) (map[string]any, bool) {
+	raw, ok, err := atlas.ParseFrontmatter(content)
 	if err != nil || !ok {
-		return atlas.GoalFrontmatter{}, false
+		return nil, false
 	}
-	return fm, true
-}
-
-// ledgerMirrorFields maps a parsed frontmatter header onto the
-// Delivered-feature Kind's four mirror-owned field keys -- the exact
-// set docs/goals/0164's DESIGN CONTRACT item 2 names, never signoff/
-// verifiedAt/notes.
-func ledgerMirrorFields(fm atlas.GoalFrontmatter) map[string]string {
-	return map[string]string{
-		ledgerFieldGoalID:      fm.ID,
-		ledgerFieldShippedDate: fm.Date,
-		ledgerFieldPRs:         strings.Join(fm.PRs, ", "),
-		ledgerFieldProof:       strings.Join(fm.Proof, ", "),
-	}
+	return raw, true
 }
