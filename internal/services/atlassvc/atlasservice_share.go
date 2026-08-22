@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/alicoding/mill/internal/adapters/osopen"
-	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/alicoding/mill/internal/adapters/windowing"
 )
 
 // This file is Atlas's share model (docs/adr/0038, goal 0063): turning
@@ -261,7 +261,7 @@ func DefaultMirrorsDir(override string) string {
 	if override != "" {
 		return override
 	}
-	return filepath.Join(application.Path(application.PathConfigHome), "mill", "atlas-mirrors")
+	return filepath.Join(windowing.ConfigHome(), "mill", "atlas-mirrors")
 }
 
 // revealPath opens path in the OS file manager -- same
@@ -270,11 +270,7 @@ func DefaultMirrorsDir(override string) string {
 // equivalent): a nil application (go test, no live Wails app running)
 // is a no-op.
 func revealPath(path string) error {
-	app := application.Get()
-	if app == nil {
-		return nil
-	}
-	return app.Browser.OpenURL("file://" + path)
+	return windowing.OpenURL("file://" + path)
 }
 
 // RevealSpaceFolder lazily creates (if needed) and opens spaceID's own
@@ -350,14 +346,14 @@ func (a *AtlasService) OpenCardMirror(cardID string) error {
 // establishes -- a headless `go test` run (or server mode without a
 // window) must never actually shell out to the real OS file manager.
 func revealMirrorFile(path string) error {
-	if application.Get() == nil {
+	if !windowing.Available() {
 		return nil
 	}
 	return osopen.Reveal(path)
 }
 
 func openMirrorFile(path string) error {
-	if application.Get() == nil {
+	if !windowing.Available() {
 		return nil
 	}
 	return osopen.Open(path)

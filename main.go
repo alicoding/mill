@@ -15,6 +15,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/settings"
+	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/services/agentloopsvc"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/backupsvc"
@@ -325,13 +326,6 @@ func main() {
 		SingleInstance: singleInstanceOptions(func() *application.WebviewWindow { return mainWindow }),
 	})
 
-	// A live application.App now exists, so SettingsService's app-level
-	// Show/Hide calls (the summon hotkey's TogglePanel, ShowPanel,
-	// DismissPanel -- see settingsservice_panel.go's doc comment) can
-	// switch from their headless-test default (a direct call) to the
-	// real main-thread marshal.
-	settingsService.SetMainThreadRunner(application.InvokeSync)
-
 	// Wails3's own first-party self-updater (v3/pkg/updater) -- app.Updater
 	// is constructed by application.New() itself; the provider/Init
 	// wiring is extracted to settingssvc.InitUpdater (keeps this file
@@ -435,13 +429,13 @@ func main() {
 		windowOptions.InitialPosition = application.WindowXY
 	}
 	mainWindow = app.Window.NewWithOptions(windowOptions)
-	settingsService.SetWindow(mainWindow)
+	settingsService.SetWindow(windowing.WrapWindow(mainWindow))
 	settingsService.WatchWindowGeometry()
-	atlasService.WireFileDropWindow(mainWindow)
+	atlasService.WireFileDropWindow(windowing.WrapWindow(mainWindow))
 
 	// ADR-0033 second-window family, built in auxwindows.go.
-	settingsService.SetPanelWindow(newQuickPanelWindow(app))
-	settingsService.SetApprovalPromptWindow(newApprovalPromptWindow(app))
+	settingsService.SetPanelWindow(windowing.WrapWindow(newQuickPanelWindow(app)))
+	settingsService.SetApprovalPromptWindow(windowing.WrapWindow(newApprovalPromptWindow(app)))
 
 	// docs/SPEC.md §3.7 (task #8): a persistent tray icon as Mill's own
 	// running-indicator, coexisting with the dock icon (Application

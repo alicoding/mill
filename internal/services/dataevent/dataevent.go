@@ -14,7 +14,7 @@
 // helper convention, same shape as internal/services/seeding).
 package dataevent
 
-import "github.com/wailsapp/wails/v3/pkg/application"
+import "github.com/alicoding/mill/internal/adapters/windowing"
 
 // Changed is the live-sync event payload: which kind of entity changed
 // (e.g. "workflow", "request", "list", "mcpserver", "decision",
@@ -46,9 +46,7 @@ const EventName = "mill-data-changed"
 // alongside it, so a mutating method's test can prove "this emits"
 // without spinning up a real Wails application.
 func Emit(entity, id string) {
-	if app := application.Get(); app != nil {
-		app.Event.Emit(EventName, Changed{Entity: entity, ID: id})
-	}
+	windowing.Emit(EventName, Changed{Entity: entity, ID: id})
 	if TestHook != nil {
 		TestHook(entity, id)
 	}

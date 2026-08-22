@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/mcpaudit"
-	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/alicoding/mill/internal/adapters/windowing"
 )
 
 // The read/query half of the park-and-poll lifecycle
@@ -79,11 +79,7 @@ func targetWorkflowID(toolName, argsJSON string) string {
 // established this discipline first), so this only ever sees an
 // already-safe snapshot.
 func emitMCPWriteActivity(description, outcome, toolName, argsJSON, result string) {
-	app := application.Get()
-	if app == nil {
-		return
-	}
-	app.Event.Emit("mcp-write-activity", MCPWriteActivity{
+	windowing.Emit("mcp-write-activity", MCPWriteActivity{
 		Description: description,
 		Outcome:     outcome,
 		ToolName:    toolName,
@@ -115,11 +111,7 @@ func emitMCPWriteActivity(description, outcome, toolName, argsJSON, result strin
 // ignores evt.data and just refetches; this only has to satisfy the
 // registered type, not carry real content.
 func emitMCPWriteApprovalChanged() {
-	app := application.Get()
-	if app == nil {
-		return
-	}
-	app.Event.Emit("mcp-write-approval", MCPWriteRequest{})
+	windowing.Emit("mcp-write-approval", MCPWriteRequest{})
 }
 
 // expiredWrite snapshots the fields emitMCPWriteActivity needs for one

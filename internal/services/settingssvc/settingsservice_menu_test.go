@@ -7,7 +7,6 @@ import (
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/servicetest"
 	"github.com/alicoding/mill/internal/services/triggersvc"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // go test never runs against a live application.New() (no native
@@ -86,10 +85,6 @@ func TestRestoreMenuAccelerators_NeverGoesNegative(t *testing.T) {
 		t.Fatalf("menuSuspendCount = %d, want 1", set.menuSuspendCount)
 	}
 	set.RestoreMenuAccelerators()
-}
-
-func TestStripMenuAccelerators_NilMenu_DoesNotPanic(t *testing.T) {
-	stripMenuAccelerators(nil, map[*application.MenuItem]string{})
 }
 
 // TestReleaseMenuAccelerators_NoLiveApp_DoesNotPanic covers the same

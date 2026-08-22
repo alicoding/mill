@@ -16,10 +16,9 @@ import (
 	"github.com/alicoding/mill/internal/adapters/hotkey"
 	"github.com/alicoding/mill/internal/adapters/launchatlogin"
 	"github.com/alicoding/mill/internal/adapters/settings"
+	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/services/mcpsvc"
 	"github.com/alicoding/mill/internal/services/triggersvc"
-	"github.com/wailsapp/wails/v3/pkg/application"
-	"github.com/wailsapp/wails/v3/pkg/events"
 	"github.com/wailsapp/wails/v3/pkg/updater"
 )
 
@@ -62,17 +61,17 @@ const windowGeometryDebounce = 500 * time.Millisecond
 type SettingsService struct {
 	mu     sync.Mutex
 	store  settings.Store
-	window *application.WebviewWindow
+	window *windowing.Window
 	// panel is the Quick Panel window (docs/adr/0033) -- a second,
 	// always-alive floating window the summon hotkey toggles, distinct
 	// from window (the main window) above. See settingsservice_panel.go.
-	panel *application.WebviewWindow
+	panel *windowing.Window
 	// approvalPrompt is the floating approval-prompt window
 	// (docs/goals/0023-attention-escalation.md item 1) -- ADR-0033's
 	// second-window mechanism reused, but shown by the backend itself
 	// (NotifyPendingApproval's away verdict) rather than toggled by a
 	// hotkey. See settingsservice_approvalprompt.go.
-	approvalPrompt *application.WebviewWindow
+	approvalPrompt *windowing.Window
 	trig           *triggersvc.TriggerService
 	summon         *hotkey.Binding
 	summonHK       triggersvc.PersistedHotkey // zero value (nil Mods) means unassigned
@@ -92,13 +91,6 @@ type SettingsService struct {
 	// summonGraceUntil suppresses the focus-yield cascade while a
 	// summon is in flight (goal 0151).
 	summonGraceUntil time.Time
-	// mainThreadRun marshals a func onto the OS main thread before it
-	// touches an application.App-level (not window-level) method --
-	// Show/Hide included. Defaults to a direct call so headless tests
-	// (no live application.New()) never block; SetMainThreadRunner
-	// overrides it with application.InvokeSync once a real app exists.
-	// See settingsservice_panel.go's doc comment for why this exists.
-	mainThreadRun func(func())
 	// updateEventSink fires the update-available system event (goal
 	// 0146); nil until wired.
 	updateEventSink func(version, channel string)
@@ -125,16 +117,16 @@ type SettingsService struct {
 	// on its frontend-declared default). See settingsservice_keymap.go.
 	keymap map[string]triggersvc.PersistedHotkey
 
-	// menuMu guards the native application menu's key-equivalents while a
-	// hotkey recorder is armed -- see SuspendMenuAccelerators's doc
-	// comment (settingsservice_menu.go) for the bug this exists to fix.
-	// Deliberately a separate mutex from mu above: this state is
-	// orthogonal to every other field here, and none of the menu methods
-	// call back into anything that locks mu, so sharing it would only add
-	// needless contention.
-	menuMu            sync.Mutex
-	menuSuspendCount  int
-	savedAccelerators map[*application.MenuItem]string
+	// menuMu guards menuSuspendCount while a hotkey recorder is armed --
+	// see SuspendMenuAccelerators's doc comment (settingsservice_menu.go)
+	// for the bug this exists to fix. Deliberately a separate mutex from
+	// mu above: this state is orthogonal to every other field here, and
+	// none of the menu methods call back into anything that locks mu, so
+	// sharing it would only add needless contention. The stripped
+	// accelerators themselves are stashed inside internal/adapters/
+	// windowing, not here -- this only counts concurrent recorders.
+	menuMu           sync.Mutex
+	menuSuspendCount int
 }
 
 // isolatedData is true whenever MILL_SETTINGS_PATH was set explicitly
@@ -150,10 +142,9 @@ type SettingsService struct {
 // app) risks concurrent writes and a scheduled trigger double-firing.
 func NewSettingsService(store settings.Store, trig *triggersvc.TriggerService, isolatedData bool) *SettingsService {
 	s := &SettingsService{
-		store:         store,
-		trig:          trig,
-		isolatedData:  isolatedData,
-		mainThreadRun: func(fn func()) { fn() },
+		store:        store,
+		trig:         trig,
+		isolatedData: isolatedData,
 	}
 	s.loadPersistedSummonHotkey()
 	s.loadPersistedKeymap()
@@ -196,7 +187,7 @@ func (s *SettingsService) GetBuildInfo() BuildInfo {
 // CompositionService.SetSyncer.
 //
 //wails:ignore
-func (s *SettingsService) SetWindow(w *application.WebviewWindow) {
+func (s *SettingsService) SetWindow(w *windowing.Window) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.window = w
@@ -265,11 +256,11 @@ func (s *SettingsService) persistWindowGeometry(g windowGeometry) {
 	}
 }
 
-// WatchWindowGeometry wires OnWindowEvent listeners (events.Common.
-// WindowDidMove/WindowDidResize/WindowMaximise/WindowUnMaximise/
-// WindowRestore -- confirmed real against the actual Wails3 SDK source,
-// not assumed) that debounce-persist the window's position/size/
-// maximized state on every real change. Called once from main.go,
+// WatchWindowGeometry wires w.OnGeometryChange (internal/adapters/
+// windowing -- covers WindowDidMove/WindowDidResize/WindowMaximise/
+// WindowUnMaximise/WindowRestore) to debounce-persist the window's
+// position/size/maximized state on every real change. Called once from
+// main.go,
 // right after SetWindow. Fullscreen is deliberately not tracked:
 // reapplying a persisted X/Y/Width/Height to a window that was last in
 // fullscreen would be meaningless (macOS fullscreen occupies its own
@@ -292,24 +283,14 @@ func (s *SettingsService) WatchWindowGeometry() {
 		width, height := w.Size()
 		s.persistWindowGeometry(windowGeometry{X: x, Y: y, Width: width, Height: height, Maximized: w.IsMaximised()})
 	}
-	debounced := func(*application.WindowEvent) {
+	w.OnGeometryChange(func() {
 		timerMu.Lock()
 		defer timerMu.Unlock()
 		if timer != nil {
 			timer.Stop()
 		}
 		timer = time.AfterFunc(windowGeometryDebounce, persist)
-	}
-
-	for _, evt := range []events.WindowEventType{
-		events.Common.WindowDidMove,
-		events.Common.WindowDidResize,
-		events.Common.WindowMaximise,
-		events.Common.WindowUnMaximise,
-		events.Common.WindowRestore,
-	} {
-		w.OnWindowEvent(evt, debounced)
-	}
+	})
 }
 
 // ShowWindow brings the main window to the front -- shared by the

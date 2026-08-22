@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/execution"
+	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/guardrail"
 	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // The guardrail execution gate (docs/adr/0022): evaluation runs as a
@@ -89,16 +89,10 @@ type GuardrailPendingChanged struct {
 }
 
 // emitGuardrailPendingChanged pushes GuardrailPendingChanged to the
-// frontend. application.Get() is nil in a headless Go test process (no
-// real Wails app was ever application.New()'d, same guard
-// triggerservice.go's emitHotkeyActivity already uses) -- a no-op
-// there, since there's no window to notify anyway.
+// frontend -- a no-op in a headless Go test process (windowing.Emit's
+// own no-live-app guard), since there's no window to notify anyway.
 func emitGuardrailPendingChanged(runID, nodeID string, resolved bool) {
-	app := application.Get()
-	if app == nil {
-		return
-	}
-	app.Event.Emit("guardrail-pending-changed", GuardrailPendingChanged{
+	windowing.Emit("guardrail-pending-changed", GuardrailPendingChanged{
 		RunID:    runID,
 		NodeID:   nodeID,
 		Resolved: resolved,

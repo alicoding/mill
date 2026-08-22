@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/alicoding/mill/internal/adapters/windowing"
 )
 
 // SaveTextFile prompts with the OS-native save dialog (suggestedName
@@ -22,13 +22,9 @@ import (
 // degrades through Wails3's own server-mode dialog stub, which
 // already returns an equivalent "not available" error.
 func (s *SettingsService) SaveTextFile(suggestedName, content string) (string, error) {
-	app := application.Get()
-	if app == nil {
-		return "", fmt.Errorf("native file save is not available in this mode")
-	}
-	path, err := app.Dialog.SaveFile().SetFilename(suggestedName).PromptForSingleSelection()
+	path, err := windowing.SaveFileDialog(suggestedName)
 	if err != nil {
-		return "", fmt.Errorf("native file save is not available in this mode: %w", err)
+		return "", err
 	}
 	if path == "" {
 		return "", nil

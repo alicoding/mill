@@ -229,6 +229,10 @@ jobs:
       # already installed onto PATH. Requires the full-history checkout
       # this job's own fetch-depth: 0 provides (merge-base needs it).
       - run: golangci-lint run . ./internal/... --build-tags=server --enable-only gocognit --new-from-merge-base=origin/main --tests=false
+      # Boundary-enforcement gate on NEW/CHANGED code only (goal 0168) --
+      # mirrors the gocognit-new invocation immediately above exactly,
+      # see lefthook.yml's depguard-new job for the full reasoning.
+      - run: golangci-lint run . ./internal/... --build-tags=server --enable-only depguard --new-from-merge-base=origin/main --tests=false
 
   build-go:
     needs: [changes, frontend]

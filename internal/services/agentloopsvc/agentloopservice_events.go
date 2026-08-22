@@ -1,6 +1,6 @@
 package agentloopsvc
 
-import "github.com/wailsapp/wails/v3/pkg/application"
+import "github.com/alicoding/mill/internal/adapters/windowing"
 
 // stateTestHook/deltaTestHook let a test observe emitted events without
 // a live Wails application (application.Get() returns nil under `go
@@ -29,9 +29,7 @@ func SetDeltaTestHook(fn func(AgentLoopDelta)) { deltaTestHook = fn }
 // can't drift the two apart unnoticed.
 func emitState(sessionID string, state LoopState, toolName, writeID, text string) {
 	evt := AgentLoopEvent{SessionID: sessionID, State: state, ToolName: toolName, WriteID: writeID, Text: text}
-	if app := application.Get(); app != nil {
-		app.Event.Emit(StateEventName, evt)
-	}
+	windowing.Emit(StateEventName, evt)
 	if stateTestHook != nil {
 		stateTestHook(evt)
 	}
@@ -41,9 +39,7 @@ func emitState(sessionID string, state LoopState, toolName, writeID, text string
 // for the exact-type contract this mirrors.
 func emitDelta(sessionID, text string) {
 	d := AgentLoopDelta{SessionID: sessionID, Text: text}
-	if app := application.Get(); app != nil {
-		app.Event.Emit(DeltaEventName, d)
-	}
+	windowing.Emit(DeltaEventName, d)
 	if deltaTestHook != nil {
 		deltaTestHook(d)
 	}
