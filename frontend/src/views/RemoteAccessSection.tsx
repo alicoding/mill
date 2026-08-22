@@ -49,7 +49,17 @@ function RemoteAccessSection() {
       .catch((err) => setError(String(err)))
   }
 
-  if (devices === null) return null
+  // Never gate the whole section behind the ListDevices() fetch --
+  // returning null while loading collapses this section to zero
+  // height on first paint, then pops in once the fetch resolves,
+  // shifting every section below it (regression pinned by
+  // e2e/settings.spec.ts's deep-link scroll test: a section further
+  // down the page landed mid-viewport because its scroll target moved
+  // out from under it after the deep-link's one-shot scroll already
+  // ran). The device list itself renders once loaded; everything else
+  // is static and mounts immediately, same as every other section on
+  // this page.
+  const list = devices ?? []
 
   return (
     <>
@@ -81,7 +91,7 @@ function RemoteAccessSection() {
         </Stack>
       )}
 
-      {devices.length === 0 ? (
+      {list.length === 0 ? (
         <Blankslate data-testid="remote-access-empty">
           <Blankslate.Visual><DeviceMobileIcon size={32} /></Blankslate.Visual>
           <Blankslate.Heading>{t('settings.remoteAccess.emptyHeading')}</Blankslate.Heading>
@@ -89,7 +99,7 @@ function RemoteAccessSection() {
         </Blankslate>
       ) : (
         <ActionList data-testid="paired-devices-list" style={{ marginTop: 'var(--base-size-8)' }}>
-          {devices.map((d) => (
+          {list.map((d) => (
             <ActionList.Item key={d.id} data-testid="paired-device-row" data-device-id={d.id}>
               <Text weight="semibold">{d.label}</Text>
               <ActionList.Description variant="block">
