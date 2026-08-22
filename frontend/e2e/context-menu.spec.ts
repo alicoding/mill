@@ -17,7 +17,7 @@ test('right-click on an Atlas card offers Open, the share trio, and Delete; a fr
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await noteCard(page, 'Getting started').click({ button: 'right' })
+  await noteCard(page, 'Discovery workstream').click({ button: 'right' })
   const menu = contextMenu(page)
   await expect(menu).toBeVisible()
   await expect(menu.getByText('Open', { exact: true })).toBeVisible()
@@ -32,17 +32,17 @@ test('right-click on an Atlas card offers Open, the share trio, and Delete; a fr
   // frame's own header/border (goal 0081 slice A2's context-aware
   // menus) is what surfaces the full frame menu -- its interior empty
   // space carries a different, add-only menu instead.
-  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click({ button: 'right' })
+  await groupCard(page, 'Client records').getByTestId('atlas-group-header').click({ button: 'right' })
   await expect(menu).toBeVisible()
   await expect(menu.getByText('Zoom in')).toBeVisible()
   await page.keyboard.press('Escape')
 
   // Open goes straight to the card's page.
-  await noteCard(page, 'Getting started').click({ button: 'right' })
+  await noteCard(page, 'Discovery workstream').click({ button: 'right' })
   await menu.getByText('Open', { exact: true }).click()
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
-  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Getting started')
+  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Discovery workstream')
   await page.keyboard.press('Escape')
   await expect(overlay).not.toBeVisible()
 })
@@ -196,13 +196,13 @@ test('right-click on a seeded Atlas artery offers Open for each connected card',
   await page.locator('.react-flow__edge').first().click({ button: 'right' })
   const menu = contextMenu(page)
   await expect(menu).toBeVisible()
-  await expect(menu.getByText('Open Getting started', { exact: true })).toBeVisible()
-  await expect(menu.getByText('Open Example area', { exact: true })).toBeVisible()
+  await expect(menu.getByText('Open Discovery workstream', { exact: true })).toBeVisible()
+  await expect(menu.getByText('Open Client records', { exact: true })).toBeVisible()
 
-  await menu.getByText('Open Getting started', { exact: true }).click()
+  await menu.getByText('Open Discovery workstream', { exact: true }).click()
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
-  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Getting started')
+  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Discovery workstream')
   await page.keyboard.press('Escape')
   await expect(overlay).not.toBeVisible()
 })

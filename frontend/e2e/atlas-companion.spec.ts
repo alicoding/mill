@@ -198,7 +198,7 @@ test('sending a message streams a reply, the provider picker lists it, and Accep
 
     // goal 0101 slice 2 item 5: the accepted card lands in the space the
     // user was actually viewing (the default landing view auto-drills
-    // into "My space", the seeded single root card, which is NOT the
+    // into "The engagement", the seeded single root card, which is NOT the
     // board root) -- visible right here with no navigation, closing the
     // companion panel only to bring the board's full width back into
     // view.

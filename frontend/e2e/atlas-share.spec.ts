@@ -3,10 +3,10 @@ import { withClipboardLock } from './fixtures/clipboardLock'
 import { openCard } from './fixtures/atlasBoard'
 
 // goal 0063's share model -- card overlay + space toolbar share
-// actions, proven against the seeded "Project charter" card (has a
+// actions, proven against the seeded "Statement of work" card (has a
 // Source URL, a Contact field, and an incoming "relates to" link from
-// "Ada Lovelace" -- builtin.go's own worked example) and its parent
-// "Example area" space. Split out of atlas.spec.ts (architecture.md's
+// "Jordan Reyes" -- builtin.go's own worked example) and its parent
+// "Client records" space. Split out of atlas.spec.ts (architecture.md's
 // 500-line convention) -- that file's own header covers the shared
 // egocentric-root auto-entry behavior every test below relies on. The
 // one-map board (goal 0072 slice A) retired the card chip's own quick-
@@ -51,23 +51,23 @@ test('the card overlay Share section copies context and the cloud link to the cl
     await page.goto('/')
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
     await page.getByRole('link', { name: 'Atlas' }).click()
-    await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
-    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+    await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
-    const charterCard = noteCard(page, 'Project charter')
+    const charterCard = noteCard(page, 'Statement of work')
     await openCard(page, charterCard)
     const overlay = page.locator('[data-component="atlas-card-overlay"]')
     await expect(overlay).toBeVisible()
 
     await overlay.getByTestId('atlas-overlay-copy-context').click()
-    await expectClipboardToContain(page, 'Project charter')
+    await expectClipboardToContain(page, 'Statement of work')
     const contextText = await readClipboardText(page)
     expect(contextText).toContain('Kind: Document')
-    expect(contextText).toContain('Owner: Ada Lovelace')
-    expect(contextText).toContain('Source: https://example.com/project-charter')
+    expect(contextText).toContain('Owner: Jordan Reyes')
+    expect(contextText).toContain('Source: https://example.com/statement-of-work')
 
     await overlay.getByTestId('atlas-overlay-copy-link').click()
-    await expect.poll(() => readClipboardText(page)).toBe('https://example.com/project-charter')
+    await expect.poll(() => readClipboardText(page)).toBe('https://example.com/statement-of-work')
 
     await page.keyboard.press('Escape')
     await expect(overlay).not.toBeVisible()
@@ -79,19 +79,19 @@ test('the space toolbar Share menu bundles the space as context and copies its l
     await page.goto('/')
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
     await page.getByRole('link', { name: 'Atlas' }).click()
-    await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
-    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+    await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
     await page.getByTestId('atlas-space-share').click()
     await expect(page.getByTestId('atlas-share-reveal-folder')).toBeVisible()
     await page.getByTestId('atlas-share-bundle-context').click()
-    await expectClipboardToContain(page, 'Project charter')
+    await expectClipboardToContain(page, 'Statement of work')
     const bundleText = await readClipboardText(page)
-    expect(bundleText).toContain('Ada Lovelace')
+    expect(bundleText).toContain('Jordan Reyes')
     expect(bundleText).toContain('---')
 
     await page.getByTestId('atlas-space-share').click()
     await page.getByTestId('atlas-share-copy-links').click()
-    await expect.poll(() => readClipboardText(page)).toBe('https://example.com/project-charter')
+    await expect.poll(() => readClipboardText(page)).toBe('https://example.com/statement-of-work')
   })
 })

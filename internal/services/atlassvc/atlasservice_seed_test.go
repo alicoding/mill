@@ -8,7 +8,7 @@ import (
 )
 
 // TestReconcileBuiltIns_SeedsFreshInstall proves the seeded example
-// space (ADR-0038's "My space" root + example Kinds/LinkKinds/Cards/
+// space (ADR-0038's "The engagement" root + example Kinds/LinkKinds/Cards/
 // Links) lands on a fresh, empty store -- the seed IS the proof
 // (.claude/rules/testing.md) that Atlas's own domain shapes actually
 // compose end to end, not just in isolated unit tests.
@@ -189,12 +189,12 @@ func TestReconcileBuiltIns_ScratchpadNoteUpgradesInPlace(t *testing.T) {
 	if !found {
 		t.Fatal("Scratchpad card disappeared after reconcile")
 	}
-	want := "Quick captures land here. Drag notes out to file them, or promote them into cards."
+	want := "Meeting notes and quick captures land here. Drag them out to file, or promote into cards."
 	if got.Note != want {
 		t.Errorf("Scratchpad Note = %q, want %q", got.Note, want)
 	}
-	if got.Seed.SeedRevision != 5 {
-		t.Errorf("Scratchpad SeedRevision = %d, want 5", got.Seed.SeedRevision)
+	if got.Seed.SeedRevision != 6 {
+		t.Errorf("Scratchpad SeedRevision = %d, want 6", got.Seed.SeedRevision)
 	}
 }
 

@@ -470,8 +470,8 @@ test('atlas select-all (Cmd+A): guarded inside an editable field, selects every 
     await page.keyboard.press('Escape')
 
     // Real dispatch: Cmd+A on the board selects EVERY top-level card at
-    // this level -- the seeded root ("My space") carries 3
-    // (Example area, Getting started, Scratchpad), plus the 2 just
+    // this level -- the seeded root ("The engagement") carries 3
+    // (Client records, Discovery workstream, Scratchpad), plus the 2 just
     // placed.
     await page.keyboard.press('Meta+a')
     await expect(selected).toHaveCount(5)

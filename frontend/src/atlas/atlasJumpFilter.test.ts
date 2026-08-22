@@ -18,17 +18,17 @@ describe('filterJumpCards', () => {
   })
 
   it('matches case-insensitively against the title', () => {
-    const cards = [card('a', 'Ada Lovelace', ''), card('b', 'Bob', '')]
-    const results = filterJumpCards(cards, [], 'ada')
+    const cards = [card('a', 'Jordan Reyes', ''), card('b', 'Bob', '')]
+    const results = filterJumpCards(cards, [], 'jordan')
     expect(results.map((r) => r.card.ID)).toEqual(['a'])
   })
 
   it('ranks a title match above a note-only match, regardless of card order', () => {
     const cards = [
-      card('note-only', 'Something else', '', 'mentions ada in passing'),
-      card('title-match', 'Ada Lovelace', ''),
+      card('note-only', 'Something else', '', 'mentions jordan in passing'),
+      card('title-match', 'Jordan Reyes', ''),
     ]
-    const results = filterJumpCards(cards, [], 'ada')
+    const results = filterJumpCards(cards, [], 'jordan')
     expect(results.map((r) => r.card.ID)).toEqual(['title-match', 'note-only'])
   })
 
@@ -75,11 +75,11 @@ describe('filterJumpCards', () => {
   })
 
   it('scopes to areas (group cards) via AREA_FACET_KEY, excluding leaf cards', () => {
-    // "Root" itself has a child (Example area), so it's a group card
+    // "Root" itself has a child (Client records), so it's a group card
     // too -- isGroupCard is purely structural (does a card have
     // children), independent of any parent/child depth.
     const root = card('root', 'Root', '')
-    const area = card('area', 'Example area', 'root')
+    const area = card('area', 'Client records', 'root')
     const leaf = card('leaf', 'A leaf', 'area')
     const cards = [root, area, leaf]
     const results = filterJumpCards(cards, [], '', AREA_FACET_KEY)
@@ -88,11 +88,11 @@ describe('filterJumpCards', () => {
 
   it('scoped area + text still substring-matches within the area candidates', () => {
     const root = card('root', 'Root', '')
-    const area1 = card('area1', 'Example area', 'root')
+    const area1 = card('area1', 'Client records', 'root')
     const area2 = card('area2', 'Another zone', 'root')
-    const leaf = card('leaf', 'Example leaf', 'area1')
+    const leaf = card('leaf', 'Client leaf', 'area1')
     const cards = [root, area1, area2, leaf]
-    const results = filterJumpCards(cards, [], 'example', AREA_FACET_KEY)
+    const results = filterJumpCards(cards, [], 'client', AREA_FACET_KEY)
     expect(results.map((r) => r.card.ID)).toEqual(['area1'])
   })
 
@@ -104,30 +104,30 @@ describe('filterJumpCards', () => {
 
 describe('ancestorPathLabel', () => {
   it('is empty for a card directly under the single auto-entered root', () => {
-    const root = card('root', 'My space', '')
-    const target = card('child', 'Getting started', 'root')
+    const root = card('root', 'The engagement', '')
+    const target = card('child', 'Discovery workstream', 'root')
     expect(ancestorPathLabel([root, target], target)).toBe('')
   })
 
   it('names an intermediate ancestor, omitting the auto-entered root', () => {
-    const root = card('root', 'My space', '')
-    const area = card('area', 'Example area', 'root')
-    const target = card('leaf', 'Ada Lovelace', 'area')
-    expect(ancestorPathLabel([root, area, target], target)).toBe('Example area')
+    const root = card('root', 'The engagement', '')
+    const area = card('area', 'Client records', 'root')
+    const target = card('leaf', 'Jordan Reyes', 'area')
+    expect(ancestorPathLabel([root, area, target], target)).toBe('Client records')
   })
 
   it('joins multiple ancestors with the separator, still omitting the root', () => {
-    const root = card('root', 'My space', '')
-    const area = card('area', 'Example area', 'root')
+    const root = card('root', 'The engagement', '')
+    const area = card('area', 'Client records', 'root')
     const sub = card('sub', 'Sub area', 'area')
     const target = card('leaf', 'Deep card', 'sub')
-    expect(ancestorPathLabel([root, area, sub, target], target)).toBe('Example area ▸ Sub area')
+    expect(ancestorPathLabel([root, area, sub, target], target)).toBe('Client records ▸ Sub area')
   })
 
   it('names every ancestor when no single root exists (2+ root cards)', () => {
-    const rootA = card('rootA', 'My space', '')
+    const rootA = card('rootA', 'The engagement', '')
     const rootB = card('rootB', 'Second root', '')
     const target = card('leaf', 'Card', 'rootA')
-    expect(ancestorPathLabel([rootA, rootB, target], target)).toBe('My space')
+    expect(ancestorPathLabel([rootA, rootB, target], target)).toBe('The engagement')
   })
 })

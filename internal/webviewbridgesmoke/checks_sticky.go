@@ -8,7 +8,7 @@ import (
 // atlasCard mirrors internal/domain/atlas.Card's JSON shape closely
 // enough to read Title/ID/ParentID off AtlasService.Cards() -- the
 // note-nesting parent this check needs is whatever card the seeded
-// "Getting started" card itself lives under, not a hardcoded ID.
+// "Discovery workstream" card itself lives under, not a hardcoded ID.
 type atlasCard struct {
 	ID       string `json:"ID"`
 	Title    string `json:"Title"`
@@ -16,19 +16,19 @@ type atlasCard struct {
 }
 
 // gettingStartedParentID resolves the board level both sticky checks
-// place their probe note at: whatever card the seeded "Getting
-// started" card itself lives under, never a hardcoded ID.
+// place their probe note at: whatever card the seeded "Discovery
+// workstream" card itself lives under, never a hardcoded ID.
 func gettingStartedParentID(c mcpCaller) (string, error) {
 	var cards []atlasCard
 	if err := callBoundJSON(c, "github.com/alicoding/mill/internal/services/atlassvc.AtlasService.Cards", []any{}, &cards); err != nil {
 		return "", err
 	}
 	for _, card := range cards {
-		if card.Title == "Getting started" {
+		if card.Title == "Discovery workstream" {
 			return card.ParentID, nil
 		}
 	}
-	return "", fmt.Errorf("seeded card \"Getting started\" not found -- can't place the check's sticky note at the right board level")
+	return "", fmt.Errorf("seeded card \"Discovery workstream\" not found -- can't place the check's sticky note at the right board level")
 }
 
 func checkStickyBorderColorFlip(c mcpCaller) (string, error) {

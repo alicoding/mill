@@ -70,7 +70,7 @@ describe('computeFreshnessRollup', () => {
 
 describe('hostnameOf', () => {
   it('extracts the host from a full URL', () => {
-    expect(hostnameOf('https://example.com/project-charter')).toBe('example.com')
+    expect(hostnameOf('https://example.com/statement-of-work')).toBe('example.com')
   })
   it('falls back to the raw value when it does not parse as a URL', () => {
     expect(hostnameOf('not a url')).toBe('not a url')

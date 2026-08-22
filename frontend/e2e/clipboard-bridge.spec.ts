@@ -30,7 +30,7 @@ test('Copy for AI puts the reply-contract envelope on the clipboard', async ({ p
     await expect(page.getByTestId('atlas-board')).toBeVisible()
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
 
-    const card = noteCard(page, 'Getting started')
+    const card = noteCard(page, 'Discovery workstream')
     await openCard(page, card)
     await page.getByTestId('atlas-overlay-copy-for-ai').click()
 
@@ -43,7 +43,7 @@ test('Copy for AI puts the reply-contract envelope on the clipboard', async ({ p
     expect(envelope.kind).toBe('context')
     expect(envelope.schema.type).toBe('object')
     expect(envelope.allowedActions).toContain('create-cards')
-    expect(envelope.items[0].title).toBe('Getting started')
+    expect(envelope.items[0].title).toBe('Discovery workstream')
     // Hardened wording (goal 0101 slice 2 item 4): "raw JSON object",
     // never "code block", which invites a fenced answer.
     expect(envelope.instructions).toContain('raw JSON object')
@@ -57,7 +57,7 @@ test('a valid reply reviews with collisions unchecked, and accepting creates onl
   await withClipboardLock(async () => {
     const reply = JSON.stringify({
       mill: 1, kind: 'reply', action: 'create-cards',
-      items: [{ title: 'Getting started' }, { title: freshTitle, note: 'from the reply' }],
+      items: [{ title: 'Discovery workstream' }, { title: freshTitle, note: 'from the reply' }],
     })
     await openPanelWithClipboard(page, reply)
 
@@ -81,7 +81,7 @@ test('a valid reply reviews with collisions unchecked, and accepting creates onl
   await expect(page.getByTestId('atlas-board')).toBeVisible()
   const created = noteCard(page, freshTitle)
   await expect(created).toBeVisible()
-  await expect(noteCard(page, 'Getting started')).toHaveCount(1)
+  await expect(noteCard(page, 'Discovery workstream')).toHaveCount(1)
 
   // Cleanup (within-file discipline).
   await openCard(page, created)

@@ -89,4 +89,12 @@ export interface UpdateNotice {
      * here, not in any component, so every surface shows the truth.
      */
     "downloading": boolean;
+
+    /**
+     * ResignWarning carries a non-fatal re-sign failure forward (goal
+     * 0158): the update installed fine, but re-signing the swapped
+     * bundle with Mill's local identity failed, so Accessibility may
+     * need to be re-granted after restart. Empty on every other path.
+     */
+    "resignWarning": string;
 }

@@ -406,9 +406,9 @@ test('an armed table size escapes cleanly and files into frames', async ({ page 
   await page.mouse.click(400, 500)
   await expect.poll(tableCount).toBe(before)
 
-  // Armed again, clicking inside "Example area" files the table there
+  // Armed again, clicking inside "Client records" files the table there
   // (the frame's header count grows by one).
-  const frame = page.locator('[data-testid="atlas-group-card"]').filter({ hasText: 'Example area' }).first()
+  const frame = page.locator('[data-testid="atlas-group-card"]').filter({ hasText: 'Client records' }).first()
   const frameHeader = frame.getByTestId('atlas-group-header')
   await expect(frameHeader).toContainText('2 cards')
   const box = await frame.boundingBox()

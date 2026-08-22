@@ -100,8 +100,8 @@ spec_refs: ["1.1"]
 
     // The mirrored card renders in Atlas, filed under "Delivered features"
     // -- a ROOT-level space (parentID "", same as docssync's own "Synced
-    // docs" parent), a sibling of "My space" rather than a child of it,
-    // so it only shows at "All spaces", not the default "My space" view.
+    // docs" parent), a sibling of "The engagement" rather than a child of it,
+    // so it only shows at "All spaces", not the default "The engagement" view.
     await page.getByRole('link', { name: 'Atlas' }).click()
     await page.getByRole('link', { name: 'All spaces' }).click()
     // A card holding children renders as its own region-frame node

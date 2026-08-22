@@ -24,8 +24,8 @@ test('text and kind filters dim non-matches in place with an honest count', asyn
   await expect(page.getByTestId('atlas-filter-count')).toContainText('1 of')
 
   // A dimmed card stays clickable-visible (recognition, not removal):
-  // Ada Lovelace is still on the board, just receded.
-  await expect(page.locator('[data-testid="atlas-note-card"]').filter({ hasText: 'Ada Lovelace' }).first()).toHaveAttribute('data-dimmed', 'true')
+  // Jordan Reyes is still on the board, just receded.
+  await expect(page.locator('[data-testid="atlas-note-card"]').filter({ hasText: 'Jordan Reyes' }).first()).toHaveAttribute('data-dimmed', 'true')
 
   // Kind facet ANDs with text: Scratchpad is a Topic; filtering to
   // Contact dims it too (0 matches, board still visible).
@@ -46,7 +46,7 @@ test('text and kind filters dim non-matches in place with an honest count', asyn
 // Attribute facets (goal 0129 slice 3): the Fields menu offers the
 // options-typed fields of the kinds on the board; picking a value
 // dims every card not carrying it. Seed truth this rides on: exactly
-// one seeded card ("Getting started", a Topic) has status "Open".
+// one seeded card ("Discovery workstream", a Topic) has status "Open".
 test('a field-value facet dims cards without that value and chips as Field: Value', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
@@ -58,7 +58,7 @@ test('a field-value facet dims cards without that value and chips as Field: Valu
   await page.keyboard.press('Escape')
 
   await expect(page.getByTestId('atlas-filter-count')).toContainText('1 of')
-  await expect(page.locator('[data-testid="atlas-note-card"]').filter({ hasText: 'Getting started' }).first()).toHaveAttribute('data-dimmed', 'false')
+  await expect(page.locator('[data-testid="atlas-note-card"]').filter({ hasText: 'Discovery workstream' }).first()).toHaveAttribute('data-dimmed', 'false')
   // Scratchpad carries no field values at all -- it never satisfies a
   // field criterion, so it dims.
   await expect(page.locator('[data-testid="atlas-note-card"]').filter({ hasText: 'Scratchpad' }).first()).toHaveAttribute('data-dimmed', 'true')

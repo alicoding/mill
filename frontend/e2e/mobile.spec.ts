@@ -92,28 +92,28 @@ test('Mobile job 4 -- Atlas board glance, drill via a region frame header, and c
   await page.goto('/')
   await openDrawerAndNavigate(page, 'Atlas')
   await expect(page.getByTestId('atlas-view')).toBeVisible()
-  // The single seeded root auto-enters "My space" (Free mode); the
-  // group-frame glance lives one drill down, in "Example area".
+  // The single seeded root auto-enters "The engagement" (Free mode); the
+  // group-frame glance lives one drill down, in "Client records".
   await expect(page.getByTestId('atlas-board')).toBeVisible()
   // At this viewport the seeded board is wider than min-zoom can fit,
-  // so "Example area" can sit off-screen and Playwright's
+  // so "Client records" can sit off-screen and Playwright's
   // scroll-into-view fights React Flow's transform (element never
   // stable). The jump dialog is the app's own door for exactly this --
   // Enter flies the camera to the match -- so land attention first,
   // then drill.
   await page.keyboard.press('Meta+k')
-  await page.getByTestId('atlas-jump-input').fill('Example area')
+  await page.getByTestId('atlas-jump-input').fill('Client records')
   await expect(page.locator('[data-component="atlas-jump-dialog"]').getByTestId('atlas-jump-result').first()).toBeVisible()
   await page.keyboard.press('Enter')
   await expect(page.locator('[data-component="atlas-jump-dialog"]')).toHaveCount(0)
-  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
+  await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
   // No manual pan: the level's packer seats are deterministic and the
   // drill's own fitView already frames them -- the old center-drag
   // "pan to reach the far card" could land on whichever CARD sat
   // under the pane's center and drag it (not the pane) out of view.
-  const card = noteCard(page, 'Ada Lovelace')
+  const card = noteCard(page, 'Jordan Reyes')
   const cardBox = await card.boundingBox()
   // The 44px CSS floor measured through the board's zoom transform can
   // round a hair under (43.9999...) -- a half-pixel epsilon accepts
@@ -138,11 +138,11 @@ test('Mobile job 4 -- Atlas board glance, drill via a region frame header, and c
 test('Mobile job 4 -- Atlas board is pan/zoom only, no card drag', async ({ page }) => {
   await page.goto('/')
   await openDrawerAndNavigate(page, 'Atlas')
-  // The single seeded root auto-enters "My space" (seeded
+  // The single seeded root auto-enters "The engagement" (seeded
   // ViewModeCanvas) -- the React Flow board IS the landing.
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  const exampleAreaCard = groupCard(page, 'Example area')
+  const exampleAreaCard = groupCard(page, 'Client records')
   await expect(exampleAreaCard).toBeVisible()
   const node = page.locator('.react-flow__node').filter({ has: exampleAreaCard })
   const before = await node.evaluate((el) => el.style.transform)

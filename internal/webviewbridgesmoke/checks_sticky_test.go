@@ -7,7 +7,7 @@ import (
 )
 
 func TestCheckStickyBorderColorFlip(t *testing.T) {
-	seedCards := []atlasCard{{ID: "card-1", Title: "Getting started", ParentID: "space-1"}}
+	seedCards := []atlasCard{{ID: "card-1", Title: "Discovery workstream", ParentID: "space-1"}}
 
 	t.Run("border-color and ring both flip on selection", func(t *testing.T) {
 		f := newFakeCaller()
@@ -30,8 +30,8 @@ func TestCheckStickyBorderColorFlip(t *testing.T) {
 			t.Errorf("got %q", detail)
 		}
 
-		// The note must nest under "Getting started"'s own ParentID
-		// (the auto-entered board level), not under Getting started's
+		// The note must nest under "Discovery workstream"'s own ParentID
+		// (the auto-entered board level), not under Discovery workstream's
 		// own ID or the meta root -- regression for the level-mismatch
 		// this check's design had to reason through explicitly.
 		var createCall *calledTool
@@ -46,7 +46,7 @@ func TestCheckStickyBorderColorFlip(t *testing.T) {
 		}
 		args, _ := createCall.args["args"].([]any)
 		if len(args) != 3 || args[2] != "space-1" {
-			t.Errorf("expected CreateNote's parentID to be space-1 (Getting started's own ParentID), got args=%v", args)
+			t.Errorf("expected CreateNote's parentID to be space-1 (Discovery workstream's own ParentID), got args=%v", args)
 		}
 	})
 
@@ -54,7 +54,7 @@ func TestCheckStickyBorderColorFlip(t *testing.T) {
 		f := newFakeCaller()
 		f.onJSON("call_bound_method", []atlasCard{{ID: "x", Title: "Some other card", ParentID: "y"}})
 		if _, err := checkStickyBorderColorFlip(f); err == nil {
-			t.Fatal("expected an error when \"Getting started\" isn't in the seed")
+			t.Fatal("expected an error when \"Discovery workstream\" isn't in the seed")
 		}
 		for _, c := range f.calls {
 			if c.tool == "call_bound_method" && strings.Contains(c.args["name"].(string), "CreateNote") {
@@ -111,7 +111,7 @@ func TestCheckStickyBorderColorFlip(t *testing.T) {
 }
 
 func TestCheckStickyClickToEdit(t *testing.T) {
-	seedCards := []atlasCard{{ID: "card-1", Title: "Getting started", ParentID: "space-1"}}
+	seedCards := []atlasCard{{ID: "card-1", Title: "Discovery workstream", ParentID: "space-1"}}
 
 	t.Run("click-select, click-edit, type, cleanup", func(t *testing.T) {
 		f := newFakeCaller()
@@ -164,7 +164,7 @@ func TestCheckStickyClickToEdit(t *testing.T) {
 		f := newFakeCaller()
 		f.onJSON("call_bound_method", []atlasCard{{ID: "x", Title: "Some other card", ParentID: "y"}})
 		if _, err := checkStickyClickToEdit(f); err == nil {
-			t.Fatal("expected an error when \"Getting started\" isn't in the seed")
+			t.Fatal("expected an error when \"Discovery workstream\" isn't in the seed")
 		}
 		for _, c := range f.calls {
 			if c.tool == "call_bound_method" && strings.Contains(c.args["name"].(string), "CreateNote") {
