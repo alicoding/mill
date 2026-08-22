@@ -266,7 +266,7 @@ function App() {
 
   useMillNavigate(setView);
 
-  const notifyBrowserTab = useBrowserNotify(buildInfo?.Server === true);
+  const notifyBrowserTab = useBrowserNotify();
 
   useEffect(() => {
     return Events.On('hotkey-activity', (evt) => {

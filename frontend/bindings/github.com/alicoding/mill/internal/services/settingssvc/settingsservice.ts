@@ -270,6 +270,25 @@ export function GetWorkflowMinutesSaved(workflowID: string): $CancellablePromise
 }
 
 /**
+ * IsAway is the ONE presence-gate decision point in the tree (docs/
+ * goals/0171): present = focused AND recently-active (idle below the
+ * configured threshold); away = anything else. Exported so every
+ * notification channel (settingsservice_notifychannels.go) and the
+ * browser tab (via this same method, bound as an RPC) share this one
+ * definition instead of each re-deriving their own -- the frontend's
+ * own focus-only predicate (goal 0132 slice A's shouldNotifyBrowserTab)
+ * existed only because there was no shared gate to call into; it is
+ * gone now that there is one. An idletime read error (server mode, or
+ * a real desktop failing to read the counter) FAILS TOWARD AWAY -- §8's
+ * fail-safe posture: a truly-away user missing a decision is the
+ * failure that matters, not a present user seeing one extra
+ * notification.
+ */
+export function IsAway(focused: boolean): $CancellablePromise<boolean> {
+    return $Call.ByID(3618695826, focused);
+}
+
+/**
  * IsIsolatedData reports whether this instance is running against a
  * non-default settings path (MILL_SETTINGS_PATH was set) -- see
  * NewSettingsService's own doc comment for the full reasoning.
@@ -319,20 +338,25 @@ export function MCPAccessAddressInfo(): $CancellablePromise<$models.MCPAddrInfo>
 }
 
 /**
- * NotifyPendingApproval sends an actionable OS notification AND shows
- * the floating approval prompt (docs/goals/0023 item 1) for a new
- * pending item (docs/adr/0032 §3), but ONLY when isAway(focused) says
- * the user is away -- the single decision point both surfaces share, so
- * "notify" and "show the floating prompt" can never disagree about
- * presence. focused is the caller's own document.hasFocus() reading
- * (App.tsx) -- only the browser context knows that; everything else
- * about presence (idle time, the threshold) is resolved in isAway.
+ * NotifyPendingApproval publishes a durable notification for a new
+ * pending item (docs/goals/0171) and shows the floating approval
+ * prompt, but ONLY when IsAway(focused) says the user is away -- the
+ * single decision point every surface shares, so "notify" and "show
+ * the floating prompt" can never disagree about presence. focused is
+ * the caller's own document.hasFocus() reading (App.tsx) -- only the
+ * browser context knows that; everything else about presence (idle
+ * time, the threshold) is resolved in IsAway.
  * 
- * kind "mcp-write" gets Approve/Deny action buttons resolving directly
- * via ResolveMCPWrite; any other kind (a guardrail/human-review park)
- * gets a plain notification whose default click shows+focuses the main
- * window instead -- typed input may be required to resolve those, so
- * blind approval from a notification isn't offered.
+ * The desktop banner and dock bounce below now run through Publish's
+ * channel registry (settingsservice_notifychannels.go) rather than
+ * calling notify.Send* /dockBounceFn directly -- same observable calls,
+ * same away verdict, just expressed as registered channels so a future
+ * channel is one new struct, not a new branch here. kind "mcp-write"
+ * still gets Approve/Deny action buttons resolving via ResolveMCPWrite
+ * (desktopBannerChannel.Deliver's own branch); any other kind gets a
+ * plain notification whose default click shows+focuses the main window
+ * -- typed input may be required to resolve those, so blind approval
+ * from a notification isn't offered.
  */
 export function NotifyPendingApproval(id: string, description: string, kind: string, focused: boolean): $CancellablePromise<void> {
     return $Call.ByID(99139683, id, description, kind, focused);
@@ -639,17 +663,10 @@ export function ShowPanel(): $CancellablePromise<void> {
  * (AssignHotkey/CheckConflict) stay scoped to per-workflow bindings and
  * have no reason to know the native application menu exists.
  * 
- * Server-mode-safe by construction, not just by nil-guard: every
- * menu_*.go in Wails3's own pkg/application (the package that defines
- * DefaultApplicationMenu, Menu.Update's native half, etc.) is
- * //go:build !server -- calling those symbols unconditionally from this
- * package would fail to *compile* under `-tags server`, not just
- * misbehave at runtime. applicationMenu (settingsservice_menu_desktop.go
- * / settingsservice_menu_server.go) is the same !server/server split
- * internal/adapters/hotkey and internal/adapters/launchatlogin already
- * use for the identical reason (no native run loop / no native menu
- * bar in server mode) -- the server build's applicationMenu always
- * returns nil, so both methods below degrade to a safe no-op there.
+ * The actual native suspend/restore/release calls -- and the
+ * server-mode no-op degrade -- live in internal/adapters/windowing;
+ * this only counts concurrent recorders and calls the adapter exactly
+ * once at the 0->1 and 1->0 transitions.
  */
 export function SuspendMenuAccelerators(): $CancellablePromise<void> {
     return $Call.ByID(2098787179);
