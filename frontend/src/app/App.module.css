@@ -361,6 +361,21 @@
         min-width: 44px;
         min-height: 44px;
     }
+    /* Primer's own compiled CSS sizes the fullscreen drawer wrapper
+       (the element our `.sidebar` className lands on -- confirmed
+       against PageLayout.js's compiled source: Sidebar() does
+       clsx(SidebarWrapper, className)) to a plain `height: 100vh` at
+       this breakpoint. Real mobile Safari's `100vh` is taller than the
+       visually available viewport whenever its own chrome (URL bar) is
+       showing, so a `position: fixed` box sized to it extends past the
+       visible screen with no scroll affordance to reach the rest --
+       the bottom-anchored .sidebarFooter row lands off-screen. Same
+       fallback pattern index.css's .app-shell already uses for this
+       exact class of engine divergence. */
+    .sidebar {
+        height: 100vh;
+        height: 100dvh;
+    }
     /* Touch-target floor for the capability/settings nav rows inside
        the drawer -- Primer's own ActionList/NavList row height
        (--control-medium-size, 32px) is below the 44px guideline every
