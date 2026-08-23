@@ -186,6 +186,20 @@ anything secret-shaped, and never force-push, amend a previous commit, or
 rewrite history without being explicitly asked — this rule covers regular
 commits, not destructive git operations.
 
+**A user-facing P0 is not "fixed" until the fix is MERGED — a
+locally-installed build is a stopgap, never the delivery.** Installing
+a patched build straight to /Applications unblocks the owner in the
+moment, but it exists only on that machine: the next in-app update
+silently replaces it with a published build that still carries the
+bug, and the owner lands back in the same broken state with no idea
+why. So for a P0: push and open the PR FIRST, install locally as the
+stopgap SECOND, and say explicitly that an update will undo it until
+the PR lands. Never recommend taking an update while an unmerged fix
+is installed locally — check for one before suggesting an update at
+all. Recorded after doing exactly this: a desktop-lockout fix was
+installed locally, declared done, and an update the same session
+restored the lockout.
+
 **Deliver through short-lived branches + a PR per goal; push at least
 once per session — never let unpushed work accumulate**
 ([ADR-0034](docs/adr/0034-git-ci-operating-model.md), owner-ratified
