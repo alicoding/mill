@@ -139,6 +139,11 @@
 .propertyDot-stale {
     background: var(--fgColor-attention);
 }
+/* A vanished mirror source (goal 0178 S2) -- same small-type row, danger-
+   colored so it reads distinctly from the neutral kind/status text. */
+.propertyMissing {
+    color: var(--fgColor-danger);
+}
 
 /* Borderless type-to-write note (goal 0106 slice B contract item 3):
    no box at rest -- a placeholder line is the only invitation to

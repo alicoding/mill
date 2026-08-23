@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { clickBreadcrumbSegment, openCard } from './fixtures/atlasBoard'
+import { contextMenu } from './fixtures/contextMenu'
 
 // Synced-folder onboarding (docs/goals/0067) over real Go bindings
 // (Wails3 server mode): AtlasService.PickFolder's own MILL_TEST_
@@ -180,6 +181,77 @@ test('add from folder: an already-imported file stays flagged and default-unchec
   await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('The engagement', { exact: true }), 'The engagement')
   const firstNotesCard = noteCard(page, 'Meeting Notes')
   await openCard(page, firstNotesCard)
+  await expect(overlay).toBeVisible()
+  await deleteViaPageMenu(page, overlay)
+  await expect(overlay).not.toBeVisible()
+})
+
+// Accepts only "Reports" (container) and its own nested "Q1 Summary.md"
+// from the shared fixture folder -- the third scenario this file's
+// fixture supports, isolating goal 0178 S2's container-mirror behaviour
+// from the other two scenarios' own cleanup.
+async function importReportsOnly(page: import('@playwright/test').Page, dialog: import('@playwright/test').Locator) {
+  await page.getByTestId('atlas-add-from-folder').click()
+  await expect(dialog).toBeVisible()
+  const kindSelects = dialog.getByTestId('atlas-folder-import-kind')
+  await kindSelects.nth(0).selectOption({ label: '🧭 Topic' })
+  await kindSelects.nth(1).selectOption({ label: '📄 Document' })
+  await kindSelects.nth(2).selectOption({ label: '📄 Document' })
+  await dialog.getByRole('checkbox', { name: 'Meeting Notes' }).uncheck()
+  await dialog.getByRole('checkbox', { name: 'Project Plan' }).uncheck()
+  await dialog.getByRole('checkbox', { name: 'Logo' }).uncheck()
+  // A reimport's own nested file is flagged as an already-mirrored
+  // duplicate and defaults unchecked (goal 0088); re-checking it is
+  // what proves this second pass actually re-syncs it rather than
+  // silently skipping, same as the cross-space duplicate scenario above.
+  const summaryCheckbox = dialog.getByRole('checkbox', { name: 'Q1 Summary' })
+  if (!(await summaryCheckbox.isChecked())) await summaryCheckbox.check()
+  await dialog.getByRole('button', { name: 'Add 2 cards' }).click()
+  await expect(dialog).not.toBeVisible()
+}
+
+test('add from folder: a nested reimport is idempotent, and a mirrored container shows freshness + Refresh from folder (goal 0178 S2)', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  const dialog = page.locator('[data-component="atlas-folder-import-dialog"]')
+  const menu = contextMenu(page)
+  const reportsFrame = groupCard(page, 'Reports')
+  const summaryCard = noteCard(page, 'Q1 Summary')
+
+  await importReportsOnly(page, dialog)
+  await expect(reportsFrame).toBeVisible()
+  await expect(reportsFrame.getByTestId('atlas-group-freshness-dot')).toHaveCount(1)
+  await expect(reportsFrame.getByTestId('atlas-group-mirror-missing')).toHaveCount(0)
+
+  // "Refresh from folder" re-syncs without ever showing the picker
+  // again -- the honest gesture over re-running the whole import flow.
+  await reportsFrame.getByTestId('atlas-group-header').click({ button: 'right' })
+  await expect(menu).toBeVisible()
+  await expect(menu.getByText('Reveal in file manager', { exact: true })).toBeVisible()
+  await menu.getByText('Refresh from folder', { exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(reportsFrame).toBeVisible()
+  await expect(reportsFrame.getByTestId('atlas-group-freshness-dot')).toHaveCount(1)
+
+  // A second full reimport of the SAME nested folder into the SAME
+  // target merges in place at every level (goal 0178 S1 only reached
+  // the root; S2's container MirrorPath is what makes the nested Q1
+  // Summary card resolve to the same "Reports" parent both times).
+  await importReportsOnly(page, dialog)
+  await expect(groupCard(page, 'Reports')).toHaveCount(1)
+  await expect(summaryCard).toHaveCount(1)
+
+  // Cleanup (testing.md's within-file discipline): the child card
+  // before its own container, same pattern as the first scenario above.
+  const overlay = page.locator('[data-component="atlas-card-overlay"]')
+  await openCard(page, summaryCard)
+  await expect(overlay).toBeVisible()
+  await deleteViaPageMenu(page, overlay)
+  await expect(overlay).not.toBeVisible()
+  const reportsNote = noteCard(page, 'Reports')
+  await openCard(page, reportsNote)
   await expect(overlay).toBeVisible()
   await deleteViaPageMenu(page, overlay)
   await expect(overlay).not.toBeVisible()

@@ -179,6 +179,9 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
       )}
       <div className={styles.presenceRow}>
         {dot && <span className={`${styles.dot} ${styles[`dot-${dot}`]}`} data-testid="atlas-note-freshness-dot" />}
+        {card.MirrorMissing && (
+          <span className={styles.chipMissing} data-testid="atlas-note-mirror-missing">{t('board.mirrorMissingChip')}</span>
+        )}
         {cardLinks.length > 0 && (
           <span className={styles.chip} data-testid="atlas-note-links-chip">{t('board.linksChip', { count: cardLinks.length })}</span>
         )}

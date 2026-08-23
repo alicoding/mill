@@ -384,18 +384,20 @@ export function ImportAtlas(jsonData: string): $CancellablePromise<$models.Atlas
  * user import matching content into a DIFFERENT space on purpose (the
  * duplicate flag is advisory, never blocking), and that must keep
  * creating its own independent card there, not silently merge into a
- * card living somewhere else entirely. This is also why a re-import of
- * a NESTED folder into the exact same target isn't fully idempotent in
- * this slice: a DIRECTORY entry deliberately never gets a MirrorPath of
- * its own (that would also turn on its mirror-file UI -- the overlay's
- * freshness dot, file tag, and reveal-in-Finder affordance all key off
- * MirrorPath being non-empty, a UI decision outside this slice), so a
- * container is always recreated fresh, which means anything nested
- * below it resolves to a NEW parent every run and therefore never
- * matches its own prior card either. Only root-level (flat) reimport
- * is idempotent in S1; making a nested reimport idempotent needs a real
- * container-identity mechanism, tracked as a known gap for goal 0178
- * S2 rather than silently papered over.
+ * card living somewhere else entirely.
+ * 
+ * A DIRECTORY entry (goal 0178 S2) now carries a MirrorPath too -- its
+ * own source folder -- so a container is resolved through the exact
+ * same scopedMirrorLookup identity as a file: re-importing a NESTED
+ * folder into the same target reuses the existing container's id
+ * instead of recreating it, which is what makes everything below it
+ * resolve to the SAME parent on every run and therefore idempotent all
+ * the way down, not just at the root level. Giving a container a
+ * MirrorPath also turns on the mirror-file UI (freshness dot, reveal-
+ * in-Finder) for it -- the deliberate S2 design decision, since a
+ * container mirroring a folder is just as real a stale-able snapshot
+ * as a file mirroring one, more so: a folder can gain and lose members
+ * while every file inside it stays byte-identical.
  */
 export function ImportFolderSuggestions(req: $models.ImportFolderSuggestionsRequest): $CancellablePromise<$models.FolderImportSummary> {
     return $Call.ByID(2984363720, req);
@@ -529,6 +531,18 @@ export function PreviewClipbridgeReply(raw: string): $CancellablePromise<$models
  */
 export function PromoteNote(noteID: string, kindID: string, title: string): $CancellablePromise<atlas$0.Card> {
     return $Call.ByID(881716522, noteID, kindID, title);
+}
+
+/**
+ * RefreshMirrorContainer re-syncs cardID -- which must already carry a
+ * MirrorPath from a prior import -- against its own source folder on
+ * disk. The folder itself having vanished is reported as an error and
+ * marks the container MirrorMissing; anything ELSE gone missing
+ * underneath it (a file, a nested folder) is marked the same way but
+ * never blocks the rest of the refresh from running.
+ */
+export function RefreshMirrorContainer(cardID: string): $CancellablePromise<$models.FolderImportSummary> {
+    return $Call.ByID(1348921533, cardID);
 }
 
 /**
