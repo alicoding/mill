@@ -2,10 +2,22 @@
   width: 100%;
 }
 
-/* The rendered note keeps the field's own footprint and invites the
-   click back into editing. */
+/* The rendered note reads as prose you can click into, not a
+   read-only document window (goal 0162): no outer border and no
+   heading underlines -- see MarkdownProse.module.css's own header for
+   why those live only on the mirror preview. A text cursor and a
+   hover background shift are the click-here-to-write invitation; the
+   negative margin keeps the hover box from shifting the text inset. */
 .rendered {
+  composes: prose from './MarkdownProse.module.css';
   cursor: text;
   min-height: 28px;
-  padding: 2px 0;
+  padding: var(--base-size-4) var(--base-size-8);
+  margin: 0 calc(-1 * var(--base-size-8));
+  border-radius: var(--borderRadius-medium);
+  transition: background-color 80ms ease-in-out;
+}
+.rendered:hover,
+.rendered:focus-visible {
+  background-color: var(--bgColor-neutral-muted);
 }

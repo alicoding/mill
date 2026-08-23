@@ -51,6 +51,20 @@ test('sticky notes render markdown; editor live-previews it', async ({ page }) =
   const overlay = page.locator('[data-component="atlas-note-overlay"]')
   await expect(overlay).toBeVisible()
   await expect(overlay.locator('li')).toHaveCount(2)
+
+  // Regression (goal 0162): the rendered note reads as prose you can
+  // click into, not a bordered read-only document -- no border, a
+  // text cursor, and a hover background shift, and a real click opens
+  // the editor.
+  const overlayRendered = page.getByTestId('atlas-note-overlay-editor-rendered')
+  await expect(overlayRendered).toHaveCSS('border-top-width', '0px')
+  await expect(overlayRendered).toHaveCSS('cursor', 'text')
+  const restBackground = await overlayRendered.evaluate((el) => getComputedStyle(el).backgroundColor)
+  await overlayRendered.hover()
+  await expect.poll(() => overlayRendered.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(restBackground)
+  await overlayRendered.click()
+  await expect(page.getByTestId('atlas-note-overlay-editor')).toBeVisible()
+
   await fillMarkdownNote(page, 'atlas-note-overlay-editor', '# Plan v2\n\n- first\n- **second**\n- third')
   await page.keyboard.press('Escape')
   await expect(overlay).not.toBeVisible()

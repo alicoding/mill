@@ -85,6 +85,13 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     // real <strong>, and clicking the rendered note reopens the source.
     const rendered = overlay.getByTestId('atlas-page-note-rendered')
     await expect(rendered.locator('strong')).toHaveText('by')
+    // Regression (goal 0162): same edit affordance as the note overlay
+    // -- no border, a text cursor, a hover background shift.
+    await expect(rendered).toHaveCSS('border-top-width', '0px')
+    await expect(rendered).toHaveCSS('cursor', 'text')
+    const restBackground = await rendered.evaluate((el) => getComputedStyle(el).backgroundColor)
+    await rendered.hover()
+    await expect.poll(() => rendered.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(restBackground)
     await rendered.click()
     await expect(overlay.getByTestId('atlas-page-note')).toBeVisible()
 

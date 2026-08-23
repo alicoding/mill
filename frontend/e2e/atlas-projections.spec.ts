@@ -57,6 +57,13 @@ test('a card with a Mirror path pointing at a markdown file renders its content 
   await expect(overlay.getByTestId('atlas-mirror-markdown')).toBeVisible()
   await expect(overlay.getByTestId('atlas-mirror-markdown')).toContainText('Field notes')
   await expect(overlay.getByTestId('atlas-mirror-markdown').locator('strong')).toContainText('captured')
+  // Regression (goal 0162): the mirror preview keeps its read-only
+  // document chrome -- an outer border and a heading underline --
+  // after the note field's own rendering split off this shared class.
+  const mirror = overlay.getByTestId('atlas-mirror-markdown')
+  await expect(mirror).toHaveCSS('border-top-width', '1px')
+  const heading = mirror.locator('h1')
+  await expect(heading).toHaveCSS('border-bottom-width', '1px')
 
   // Cleanup (testing.md's within-file cleanup discipline).
   await deleteViaPageMenu(page, overlay)

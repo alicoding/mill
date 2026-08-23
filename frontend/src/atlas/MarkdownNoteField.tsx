@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AtlasService } from '../shared/bindings'
 import { CodeEditor } from '../shared/CodeEditor'
-import mirrorStyles from './AtlasCardMirrorPreview.module.css'
 import styles from './MarkdownNoteField.module.css'
 
 // The note as a record (goal 0145): the stored string IS markdown.
@@ -102,7 +101,7 @@ export function MarkdownNoteField({ value, onChange, onCommit, placeholder, aria
   }
   return (
     <div
-      className={`${mirrorStyles.markdownBody} ${styles.rendered}`}
+      className={styles.rendered}
       data-testid={`${testId}-rendered`}
       role="button"
       tabIndex={0}
