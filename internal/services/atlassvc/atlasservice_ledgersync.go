@@ -166,7 +166,7 @@ func (a *AtlasService) syncOneLedgerDoc(folderPath, relPath, name string, kind a
 	if rdErr != nil {
 		return "", false, false, nil
 	}
-	raw, hasFrontmatter := parseLedgerFrontmatter(content)
+	raw, hasFrontmatter := parseFrontmatterOrNone(content)
 
 	if hasExisting {
 		if err := a.setMirrorChecksum(existing.ID, sum); err != nil {
@@ -193,10 +193,12 @@ func (a *AtlasService) syncOneLedgerDoc(folderPath, relPath, name string, kind a
 	return card.ID, true, false, nil
 }
 
-// parseLedgerFrontmatter wraps atlas.ParseFrontmatter, treating a parse
+// parseFrontmatterOrNone wraps atlas.ParseFrontmatter, treating a parse
 // ERROR the same as no-frontmatter-present -- a malformed header must
 // never abort the whole folder's sync, only that one file's mirror.
-func parseLedgerFrontmatter(content []byte) (map[string]any, bool) {
+// Shared with ScanFolder's own frontmatter-proposal inference (goal
+// 0172 S2), not ledger-specific despite this file's own name.
+func parseFrontmatterOrNone(content []byte) (map[string]any, bool) {
 	raw, ok, err := atlas.ParseFrontmatter(content)
 	if err != nil || !ok {
 		return nil, false

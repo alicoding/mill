@@ -367,3 +367,12 @@ export const ATLAS_LINKING_MCP_BASE_PORT = 10460
 // own-ports reasoning as atlas-linking above.
 export const ATLAS_LEDGER_SYNC_SERVER_BASE_PORT = 10480
 export const ATLAS_LEDGER_SYNC_MCP_BASE_PORT = 10500
+
+// atlas-folder-import-kind-proposal.spec.ts's own dedicated pair (goal
+// 0172 S2): its own MILL_TEST_FOLDER_PICK_PATH override points at a
+// frontmatter-carrying fixture folder distinct from the shared pool's
+// synced-folder/ (which the standard worker fixture already commits
+// every OTHER folder-import spec to) -- same own-server-own-ports
+// reasoning as atlas-delivery-ledger above.
+export const KIND_PROPOSAL_SERVER_BASE_PORT = 10520
+export const KIND_PROPOSAL_MCP_BASE_PORT = 10540

@@ -7,6 +7,9 @@ import * as atlas$0 from "../../domain/atlas/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as clipbridge$0 from "../../domain/clipbridge/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as typedfield$0 from "../../domain/typedfield/models.js";
 
 /**
  * AtlasImportSummary counts what ImportAtlas did, per family -- the
@@ -141,6 +144,21 @@ export interface FolderImportSummary {
 }
 
 /**
+ * FolderScanCategoryFields is one ScanCategory's own observed-
+ * frontmatter proposal (goal 0172 S2's "create a new type from these
+ * files"): the union of frontmatter keys found across every scanned
+ * entry in that category, each with an inferred typedfield.Type
+ * (atlas.InferFrontmatterFields). Computed over every entry ScanFolder
+ * found in the category, not narrowed to whatever the preview's own
+ * accept checkboxes later keep or drop -- the accept/reject choice
+ * only exists in the frontend, after this same scan already returned.
+ */
+export interface FolderScanCategoryFields {
+    "Category": atlas$0.ScanCategory;
+    "Fields": typedfield$0.Field[] | null;
+}
+
+/**
  * FolderScanEntry is one suggested Atlas card ScanFolder found --
  * nothing this entry describes has been written yet.
  */
@@ -185,6 +203,15 @@ export interface FolderScanResult {
     "Truncated": boolean;
     "MaxDepth": number;
     "MaxEntries": number;
+
+    /**
+     * CategoryFields carries one entry per ScanCategory that had at
+     * least one file with readable frontmatter -- a category with none
+     * (including ScanCategoryContainer, which only ever holds
+     * directories) is simply absent, matching this scan's own
+     * "propose nothing" empty case.
+     */
+    "CategoryFields": FolderScanCategoryFields[] | null;
 }
 
 /**

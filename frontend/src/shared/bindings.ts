@@ -12,6 +12,7 @@ export type {
 } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc'
 export type {
   FolderImportSummary,
+  FolderScanCategoryFields,
   FolderScanEntry,
   FolderScanResult,
   ImportFolderSuggestionsRequest,

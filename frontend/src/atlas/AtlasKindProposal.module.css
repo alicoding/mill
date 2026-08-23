@@ -1,0 +1,69 @@
+.panel {
+    padding: var(--base-size-8) var(--base-size-12);
+    margin-left: var(--base-size-16);
+    border-left: 2px solid var(--borderColor-accent-emphasis);
+}
+
+.columnLabels {
+    display: grid;
+    /* The first column is wide enough for the "Include" HEADER label
+       itself, not just its checkbox -- a narrower fixed width let that
+       label's text visually overflow into the next column (grid items
+       don't clip or wrap a single unbreakable word by default). */
+    grid-template-columns: 56px 1fr 1fr 120px 60px;
+    gap: var(--base-size-8);
+    font-size: 11px;
+    color: var(--fgColor-muted);
+    padding-inline: 2px;
+}
+
+.fieldRow {
+    display: grid;
+    /* Must match .columnLabels' own grid-template-columns exactly --
+       the header row above and every field row below are separate
+       elements that only line up because both declare the same
+       column widths. */
+    grid-template-columns: 56px 1fr 1fr 120px 60px;
+    gap: var(--base-size-8);
+    align-items: center;
+}
+
+/* An excluded row stays visible (so re-including it is one click) but
+   visually recedes, per the design contract's "row visually
+   de-emphasised" state transition. */
+.fieldRow[data-included='false'] {
+    opacity: 0.5;
+}
+
+.fieldKey {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--fgColor-muted);
+}
+
+.statusSection {
+    padding-top: var(--base-size-8);
+    border-top: 1px solid var(--borderColor-muted);
+}
+
+/* Mobile posture (delivery-discipline.md's integration-surfaces
+   triage, item 9): a field row's five controls stack instead of
+   squeezing into one grid line, and every interactive control keeps a
+   44px tap target. */
+@media (max-width: 767px) {
+    .columnLabels {
+        display: none;
+    }
+    .fieldRow {
+        grid-template-columns: 1fr;
+        row-gap: var(--base-size-4);
+        padding-block: var(--base-size-8);
+        border-bottom: 1px solid var(--borderColor-muted);
+    }
+    .fieldRow :global(input[type='checkbox']),
+    .fieldRow :global(button),
+    .fieldRow :global(select) {
+        min-height: 44px;
+    }
+}

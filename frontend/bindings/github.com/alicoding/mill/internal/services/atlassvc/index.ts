@@ -15,6 +15,7 @@ export type {
     FileDropCreateResult,
     FileDropRoute,
     FolderImportSummary,
+    FolderScanCategoryFields,
     FolderScanEntry,
     FolderScanResult,
     ImportFolderSuggestionsRequest,

@@ -370,7 +370,17 @@ export function ImportAtlas(jsonData: string): $CancellablePromise<$models.Atlas
  * whose own parent directory was NOT accepted attaches directly under
  * TargetParentID instead of being dropped. Every card is created
  * through the normal CreateCard path (validation, dataevent, seed
- * bookkeeping) -- no separate write primitive.
+ * bookkeeping) -- no separate write primitive. A file entry's own
+ * frontmatter is coerced against its chosen category's Kind
+ * (atlas.CoerceFrontmatterFields) and set as the card's initial
+ * Fields -- the same Kind-is-the-contract mechanism the ledger-sync
+ * path already applies on every re-sync, applied here once at
+ * creation. This flow has no re-sync of its own: re-running an import
+ * over files it already created makes independent new cards (the
+ * preview's own duplicate flag is advisory only), so a Kind field
+ * with no matching frontmatter key -- an owner-owned field like a
+ * proposed status -- is simply never written, exactly like any other
+ * unmatched key.
  */
 export function ImportFolderSuggestions(req: $models.ImportFolderSuggestionsRequest): $CancellablePromise<$models.FolderImportSummary> {
     return $Call.ByID(2984363720, req);
