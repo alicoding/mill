@@ -43,15 +43,14 @@ async function openNewWorkflow(page: import('@playwright/test').Page) {
 
 // ⌘Z/⇧⌘Z drive the exact same zundo call the toolbar's own Undo/Redo
 // buttons already drive (canvasActions.useCanvasStore.temporal, wired
-// through useCanvasCommandDispatch) -- proven here as PARITY between
-// the two trigger paths, deliberately not as an absolute "reverts to
-// exactly N nodes" count. A canvas add is already known to interact
-// with this workflow's live guardrail/validation re-checks in a way
-// that can re-apply a node change immediately after either path
-// reverts it (reproduced identically off the pre-existing toolbar
-// button alone, with keyboard entirely out of the loop) -- a real,
-// separate defect this goal's scope is "reach the existing action",
-// not "fix what the existing action does". Tracked: BACKLOG.md.
+// through useCanvasCommandDispatch) -- asserted here as a REAL revert
+// (the node count actually goes back to 1, then back to 2), not just
+// parity between the two trigger paths. A live guardrail/validation
+// re-check landing in the same tick as undo/redo used to re-push the
+// just-undone state back onto history and silently cancel the undo
+// (docs/goals/0174, fixed via canvasStore.ts's withHistoryPaused) --
+// this test would have caught that directly; the weaker
+// toolbar-vs-keyboard-parity assertion it replaces would not have.
 test('⌘Z drives the same undo the toolbar button drives; ⇧⌘Z drives the same redo', async ({ page }) => {
   async function editUndoRedo(trigger: 'toolbar' | 'keyboard') {
     await openNewWorkflow(page)
@@ -65,6 +64,10 @@ test('⌘Z drives the same undo the toolbar button drives; ⇧⌘Z drives the sa
     } else {
       await page.keyboard.press(`${mod}+z`)
     }
+    await expect(panel.locator('.react-flow__node')).toHaveCount(1)
+    // The reactive guardrail/validation writers this goal fixed re-check
+    // on a debounce; hold here so a still-in-flight one has its chance
+    // to land before asserting the revert stuck.
     await page.waitForTimeout(500)
     const afterUndo = await panel.locator('.react-flow__node').count()
 
@@ -73,14 +76,16 @@ test('⌘Z drives the same undo the toolbar button drives; ⇧⌘Z drives the sa
     } else {
       await page.keyboard.press(`${mod}+Shift+z`)
     }
+    await expect(panel.locator('.react-flow__node')).toHaveCount(2)
     await page.waitForTimeout(500)
     const afterRedo = await panel.locator('.react-flow__node').count()
     return { afterUndo, afterRedo }
   }
 
   const viaToolbar = await editUndoRedo('toolbar')
+  expect(viaToolbar).toEqual({ afterUndo: 1, afterRedo: 2 })
   const viaKeyboard = await editUndoRedo('keyboard')
-  expect(viaKeyboard).toEqual(viaToolbar)
+  expect(viaKeyboard).toEqual({ afterUndo: 1, afterRedo: 2 })
 })
 
 // Backspace already deleted the selected node via React Flow's own

@@ -115,6 +115,10 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
   const removeSelected = useCanvasStore((s) => s.removeSelected)
   const removeNode = useCanvasStore((s) => s.removeNode)
   const removeEdge = useCanvasStore((s) => s.removeEdge)
+  // Both are reactive re-derivations, not user edits -- canvasStore.ts's
+  // own factory already wraps these two (and onNodesChange/
+  // onEdgesChange/onNotesChange's bookkeeping-change subset) in
+  // withHistoryPaused, so a plain selector here is enough (docs/goals/0174).
   const setGuardrailVerdicts = useCanvasStore((s) => s.setGuardrailVerdicts)
   const setValidationIssues = useCanvasStore((s) => s.setValidationIssues)
 

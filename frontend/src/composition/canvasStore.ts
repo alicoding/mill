@@ -147,7 +147,7 @@ export interface CanvasState {
 // `.temporal.getState().clear()` needed afterward, unlike the old
 // `load()`-based mount effect this replaced.
 export function createCanvasStore(initialNodes: CanvasNode[] = [], initialEdges: RFEdge[] = [], initialNotes: CanvasNoteNode[] = []) {
-  return create<CanvasState>()(
+  const store = create<CanvasState>()(
     temporal(
       (set, get) => ({
         nodes: initialNodes,
@@ -301,6 +301,87 @@ export function createCanvasStore(initialNodes: CanvasNode[] = [], initialEdges:
       },
     ),
   )
+
+  // Every reactive (non-user-gesture) write into this store is wrapped
+  // here, once, so the invariant lives with the store instead of being
+  // remembered at each call site -- see withHistoryPaused's own header
+  // comment for why a bare write would risk silently cancelling an
+  // undo (docs/goals/0174). Two distinct sources need it:
+  // setGuardrailVerdicts/setValidationIssues (an external re-derivation
+  // landing through CompositionCanvas.tsx's own effects), and React
+  // Flow's OWN internal bookkeeping changes -- a 'dimensions' change
+  // from its resize/measure observer, a 'select' change from a plain
+  // click -- which arrive through the exact same onNodesChange/
+  // onEdgesChange/onNotesChange callbacks a real drag or delete uses.
+  // Splitting each incoming change batch by NodeChange/EdgeChange
+  // `type` is the only way to tell that framework bookkeeping from a
+  // real edit; wrapping the whole callback would also swallow real
+  // position/remove/add/replace changes riding the same batch.
+  // withHistoryPaused itself is a tracked write (it calls
+  // store.setState), so this whole override runs inside its own guard
+  // too -- otherwise installing it would push one phantom entry before
+  // the canvas has done anything.
+  const raw = store.getState()
+  withHistoryPaused(store, () => {
+    store.setState({
+      setGuardrailVerdicts: (verdicts) => withHistoryPaused(store, () => raw.setGuardrailVerdicts(verdicts)),
+      setValidationIssues: (issues) => withHistoryPaused(store, () => raw.setValidationIssues(issues)),
+      onNodesChange: (changes) => applySplitByIntent(store, changes, raw.onNodesChange),
+      onEdgesChange: (changes) => applySplitByIntent(store, changes, raw.onEdgesChange),
+      onNotesChange: (changes) => applySplitByIntent(store, changes, raw.onNotesChange),
+    })
+  })
+
+  return store
+}
+
+// True for a NodeChange/EdgeChange React Flow generates on its own --
+// 'dimensions' from its resize/measure observer (fires once a node's
+// real DOM size is known, and again on every NodeResizer drag frame),
+// 'select' from a plain click -- never from a user's own content edit
+// (drag-to-move, delete, add, a config change). Both carry the exact
+// same shape a real edit's change does, so only the discriminant `type`
+// can tell them apart.
+function isBookkeepingChange(change: { type: string }): boolean {
+  return change.type === 'dimensions' || change.type === 'select'
+}
+
+// Splits one incoming change batch into bookkeeping vs. real-edit
+// subsets and applies each through `apply` (the store's own, still-
+// tracked onNodesChange/onEdgesChange/onNotesChange) separately -- the
+// bookkeeping subset wrapped in withHistoryPaused, the real-edit subset
+// left tracked exactly as before. A batch mixing both types (e.g. a
+// click that both deselects the previous node and selects a new one
+// alongside an unrelated remove) still ends up applied in full; only
+// which subset enters undo history differs.
+function applySplitByIntent<C extends { type: string }>(store: CanvasStore, changes: C[], apply: (changes: C[]) => void): void {
+  const bookkeeping = changes.filter(isBookkeepingChange)
+  const content = changes.filter((c) => !isBookkeepingChange(c))
+  if (bookkeeping.length) withHistoryPaused(store, () => apply(bookkeeping))
+  if (content.length) apply(content)
 }
 
 export type CanvasStore = ReturnType<typeof createCanvasStore>
+
+// A reactive re-derivation (a guardrail-verdict refresh, an authoring-
+// validation recheck) is never a user-authored edit and must not enter
+// the undo/redo stack -- zundo tracks every set() call by default, even
+// a no-op one (its own docs: a snapshot is stored "even if no value...
+// has changed"), and both the state creator's `set` and the store's own
+// `setState` go through the identical tracked path (verified against
+// zundo's source: `store.setState` is itself reassigned to the tracked
+// wrapper), so there is no way to reach an untracked write except this
+// one. Left unguarded, a reactive write landing in the same tick as
+// undo()/redo() re-pushes the just-undone state and silently cancels
+// the undo (docs/goals/0174). pause()/resume() is zundo's own
+// documented mechanism for excluding a specific write from tracking --
+// every reactive (non-user-gesture) write into this store must go
+// through this wrapper, never a bare setter call.
+export function withHistoryPaused<T>(store: CanvasStore, fn: () => T): T {
+  store.temporal.getState().pause()
+  try {
+    return fn()
+  } finally {
+    store.temporal.getState().resume()
+  }
+}
