@@ -1,0 +1,12 @@
+/* The drawio viewer's own host element (goal 0133 slice 3): the
+   vendored GraphViewer manages this node's children imperatively (an
+   inline SVG graph), so this only supplies the bounded-window sizing
+   every mirror-style unit page uses (AtlasUnitMermaid.module.css's own
+   precedent) -- no `prose` composition, this isn't text content. */
+.diagramHost {
+    min-height: 240px;
+    max-height: 640px;
+    overflow: auto;
+    border: 1px solid var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+}

@@ -14,7 +14,7 @@ import type { Card } from '../../bindings/github.com/alicoding/mill/internal/dom
 // resolveUnit + the resolved unit's own tag() below, so there is
 // exactly one place that decides "what type is this card."
 
-export type FileTagLabel = 'MD' | 'IMG' | 'PDF' | 'URL' | 'MMD'
+export type FileTagLabel = 'MD' | 'IMG' | 'PDF' | 'URL' | 'MMD' | 'DRAWIO'
 export type FileTagColor = 'success' | 'attention' | 'danger'
 
 export interface FileTag {

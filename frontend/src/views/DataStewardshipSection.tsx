@@ -7,6 +7,7 @@ import { BackupService } from '../shared/bindings'
 import type { BackupStatus, ImportEverythingSummary } from '../shared/bindings'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
+import { base64ToBlob } from '../shared/base64Blob'
 import styles from '../shared/ListCard.module.css'
 
 // Extracted from SettingsView.tsx (same reason KeyboardShortcutsSection
@@ -14,13 +15,6 @@ import styles from '../shared/ListCard.module.css'
 // 500-line convention). docs/goals/0065's own Settings surface: backup
 // location + last-backup time (live-synced), "Back up now", export/
 // import everything, reveal-folder, and the synced-folder warning.
-
-function base64ToBlob(base64: string, type: string) {
-  const binary = atob(base64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  return new Blob([bytes], { type })
-}
 
 function fileToBase64(file: File): Promise<string> {
   return file.arrayBuffer().then((buf) => {

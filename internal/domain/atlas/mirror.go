@@ -50,6 +50,14 @@ var textExtensions = map[string]bool{
 	// text"); the frontend's mermaid unit turns the returned text into
 	// a diagram.
 	".mmd": true, ".mermaid": true,
+	// .drawio is always XML at the outer-file level -- an <mxfile> with
+	// one or more <diagram> children, whose own payload may itself be
+	// base64+deflate-compressed or plain nested XML. That decoding is
+	// the vendored drawio viewer's own job (goal 0133 slice 3); this
+	// layer only needs to know the outer bytes are safe to return as
+	// text. .drawio.svg is deliberately NOT listed here -- its
+	// extension is .svg, already covered by imageMimeTypes above.
+	".drawio": true,
 }
 
 // ClassifyMirrorKind decides how path's content should render, from
