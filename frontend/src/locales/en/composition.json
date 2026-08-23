@@ -169,6 +169,21 @@
     "expressionCaptionPrefix": "An expr-lang boolean expression (e.g.",
     "expressionCaptionSuffix": ")."
   },
+  "decisionRulesPanel": {
+    "heading": "Rules",
+    "helper": "Checked in order — the first match wins.",
+    "addRule": "Add rule",
+    "otherwiseLabel": "Otherwise",
+    "otherwiseHelper": "Runs when no rule above matches.",
+    "emptyState": "No rules yet. Add one to route this step.",
+    "ruleN": "Rule {{n}}",
+    "labelFieldLabel": "Edge label",
+    "deleteRuleAriaLabel": "Delete rule {{n}}",
+    "dragHandleAriaLabel": "Reorder rule {{n}}",
+    "notConnectedHint": "Draw a connection from this step to finish adding it.",
+    "pendingFlashHint": "Draw a connection from this step to add the rule.",
+    "cancelPendingAriaLabel": "Cancel unwired rule"
+  },
   "triggerRowLabel": {
     "manual": "Manual",
     "runByAnotherWorkflow": "Run by another workflow",

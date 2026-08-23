@@ -1,0 +1,26 @@
+/* DecisionRulesPanel.tsx / DecisionRuleRow.tsx (docs/goals/0173) --
+   the reorderable rule-list chrome Primer's own components don't cover
+   (a drag handle cursor, a drop-target indicator), built from Primer's
+   design tokens per .claude/rules/frontend.md. */
+.grabber {
+    display: inline-flex;
+    cursor: grab;
+    color: var(--fgColor-muted);
+}
+.grabber:active { cursor: grabbing; }
+.row {
+    border-top: 2px solid transparent;
+}
+.rowDragOver {
+    border-top-color: var(--borderColor-accent-emphasis);
+}
+.rowDragging {
+    opacity: 0.5;
+}
+.otherwiseRow {
+    background: var(--bgColor-muted);
+}
+.pendingHint {
+    color: var(--fgColor-muted);
+    font-style: italic;
+}

@@ -21,6 +21,7 @@ import { ExternalChangeBanner } from './ExternalChangeBanner'
 import { CanvasMetaHeader } from './CanvasMetaHeader'
 import { ThemedMiniMap } from '../shared/ThemedMiniMap'
 import { useDraftValidation, groupIssuesByNode } from './useDraftValidation'
+import { useBranchRuleActions } from './useBranchRuleActions'
 import { useGuardrailBadges } from './useGuardrailBadges'
 import { NodePalette } from './NodePalette'
 import { CanvasToolbar } from './CanvasToolbar'
@@ -279,6 +280,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
   // Draw-time refusal + its explanation (ADR-0042 slice 2) -- see useConnectionRefusalHint.ts.
   const { isValidConnection, refusalHint, flash, onConnectStart, onConnectEnd, onConnect: handleConnect, onNodeDragStart: handleNodeDragStart } = useConnectionRefusalHint(nodes, edges, nodeTypes, onConnect, () => useCanvasStore.temporal.getState().pause())
   useCanvasClipboard({ store: useCanvasStore, readOnly, screenToFlowPosition, flash })
+  const branchRules = useBranchRuleActions(useCanvasStore, validationIssues, flash)
 
   const onCanvasDrop = useCallback(
     (event: DragEvent<HTMLDivElement>) => {
@@ -460,6 +462,8 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
           onChangeType={handleChangeNodeType}
           onConfigChange={handleNodeConfigChange}
           onEdgeConditionChange={(edgeId, condition) => updateEdgeCondition(edgeId, condition)}
+          edges={edges}
+          {...branchRules}
         />
       </div>
       </NoteActionsContext.Provider>
