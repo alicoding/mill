@@ -1,0 +1,13 @@
+/* The standalone mermaid unit's card-page chrome (goal 0133 slice 2):
+   same bounded-document-window treatment as AtlasCardMirrorPreview's
+   markdownBody, composing the same shared typography (including the
+   .atlas-mermaid-diagram rules useMermaidRendering's swapped-in SVG
+   wrapper relies on) so the two consumers can never drift apart. */
+.diagramHost {
+    composes: prose from './MarkdownProse.module.css';
+    max-height: 480px;
+    overflow: auto;
+    padding: var(--base-size-8) var(--base-size-12);
+    border: 1px solid var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+}
