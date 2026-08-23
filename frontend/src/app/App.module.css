@@ -384,6 +384,22 @@
     .sidebarFooter :global(a) {
         min-height: 44px;
     }
+    /* The drawer is the full-width nav, so the desktop rail's collapsed
+       width must not reach it: --mill-sidebar-width is set globally on
+       .app-shell by data-sidebar-open and carries 52px into this
+       breakpoint, where the wrapper Primer sizes to the viewport would
+       otherwise hold a 52px icon column beside ~360px of nothing. The
+       rail's whole reason to exist -- reclaiming width beside content --
+       has no meaning in an overlay with no content beside it. */
+    .sidebar > :first-child {
+        width: 100%;
+    }
+    /* The rail's identity/collapse row is desktop-only: .mobileDrawerHeader
+       above already supplies the wordmark, and a collapse control inside a
+       fullscreen drawer would shrink it to a 52px sliver with no way back. */
+    .sidebarTopRow {
+        display: none;
+    }
 }
 
 /* Dev-mode ribbon: only rendered when import.meta.env.DEV is true (App.tsx),
