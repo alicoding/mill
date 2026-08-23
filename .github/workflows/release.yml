@@ -146,8 +146,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         # --notes-file text is prepended to the generated notes; the app
-        # is ad-hoc signed (no Apple Developer ID), so first launch
-        # needs the standard right-click -> Open confirmation. Notes are
+        # is ad-hoc signed (no Apple Developer ID), so a browser-
+        # downloaded copy is quarantined and Gatekeeper refuses it
+        # outright. The xattr fallback must be recursive and must name
+        # /usr/bin: the attribute is set on the inner binary as well as
+        # the bundle, and a Python `xattr` earlier on PATH implements no
+        # -r flag at all. Notes are
         # built line-by-line into a file: every line of a run:| block
         # must stay indented (an unindented continuation terminates the
         # literal scalar -- the v0.2.0 first-run failure), and backticks
@@ -156,7 +160,7 @@ jobs:
           {
             echo "## Install"
             echo ""
-            echo "Download the \`.zip\`, unzip, and drag \`mill.app\` to Applications — no build needed. The app is not Apple-notarized, so the first launch is blocked with **\"Apple could not verify…\" — click Done (not Move to Trash), then System Settings → Privacy & Security → scroll to the mill message → Open Anyway** (one time only; on pre-Sequoia macOS, right-click → Open works instead). Terminal alternative: \`xattr -d com.apple.quarantine /Applications/mill.app\`. Verify the download came from this repo's CI: \`gh attestation verify <the .zip> -R ${GITHUB_REPOSITORY}\`. Prefer building from source? \`git clone\` + the README's few commands work on any Mac."
+            echo "Download the \`.zip\`, unzip, and drag \`mill.app\` to Applications — no build needed. The app is not Apple-notarized, so the first launch is blocked with **\"Apple could not verify…\" — click Done (not Move to Trash), then System Settings → Privacy & Security → scroll to the mill message → Open Anyway** (one time only; on pre-Sequoia macOS, right-click → Open works instead). Terminal alternative: \`/usr/bin/xattr -dr com.apple.quarantine /Applications/mill.app\`. Verify the download came from this repo's CI: \`gh attestation verify <the .zip> -R ${GITHUB_REPOSITORY}\`. Prefer building from source? \`git clone\` + the README's few commands work on any Mac."
           } > /tmp/release-notes.md
           gh release create "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" \

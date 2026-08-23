@@ -25,8 +25,12 @@ it:
    open even after Open Anyway, clear the quarantine in Terminal:
 
    ```
-   find /Applications/mill.app -exec xattr -d com.apple.quarantine {} +
+   /usr/bin/xattr -dr com.apple.quarantine /Applications/mill.app
    ```
+
+   Write out `/usr/bin/xattr` in full. If Python's `xattr` is
+   installed, it shadows the macOS one on your PATH and has no `-r`
+   flag at all.
 
    In-app updates never need this — only browser downloads do.
 
