@@ -24,5 +24,6 @@ export type {
     PasteResult,
     ProjectionColumn,
     ProjectionRow,
+    TableProjectionExportResult,
     TombstoneResult
 } from "./models.js";
