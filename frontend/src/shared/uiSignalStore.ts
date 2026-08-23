@@ -67,6 +67,12 @@ interface UISignalState {
   // The tray's table tool (goal 0139) -- opens the size picker.
   atlasTablePickerRequest: number
   requestAtlasTablePicker: () => void
+  // The tray's image tool (goal 0169 slice 2, the paste-or-drop
+  // interaction) -- opens its own path/paste popover. A counter, not a
+  // per-tool payload, since only one popover-style tool exists so far;
+  // a second one reuses this same signal rather than minting its own.
+  atlasImagePopoverRequest: number
+  requestAtlasImagePopover: () => void
   // atlas.undoDelete (⌘Z while the quick-delete undo toast lives, goal
   // 0093): the real keydown handling is a dedicated
   // app/useKeymapDispatch.ts listener (⌘Z is the native text-undo
@@ -140,6 +146,8 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasArmTool: (tool) => set((s) => ({ atlasArmToolRequest: { tool, token: (s.atlasArmToolRequest?.token ?? 0) + 1 } })),
   atlasTablePickerRequest: 0,
   requestAtlasTablePicker: () => set((s) => ({ atlasTablePickerRequest: s.atlasTablePickerRequest + 1 })),
+  atlasImagePopoverRequest: 0,
+  requestAtlasImagePopover: () => set((s) => ({ atlasImagePopoverRequest: s.atlasImagePopoverRequest + 1 })),
   atlasUndoDeletePending: false,
   setAtlasUndoDeletePending: (pending) => set({ atlasUndoDeletePending: pending }),
   atlasUndoDeleteRequest: 0,

@@ -230,8 +230,8 @@ func main() {
 
 	backupService := backupsvc.Wire(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, backupDir, millVersion, compositionService, configureService, atlasService)
 
-	// docs/adr/0038, goal 0063/0067: the share model's mirror root, and the folder-picker's own guard against Mill's own live data.
-	atlasService.SetMirrorsDir(atlassvc.DefaultMirrorsDir(os.Getenv("MILL_ATLAS_MIRRORS_DIR")))
+	// docs/adr/0038, goal 0063/0067: the share model's mirror root, plus the image tool's captures folder (goal 0169 slice 2).
+	wiring.WireAtlasStorageDirs(atlasService)
 	atlasService.SetGuardedDataPaths(settingsPath, backupsvc.SQLiteDBPath(executionDatabaseURL), backupDir)
 
 	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger) // docs/goals/0132-remote-access.md SLICE 1

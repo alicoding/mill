@@ -10,6 +10,7 @@ import (
 	"errors"
 	"log"
 	"log/slog"
+	"os"
 
 	"github.com/alicoding/mill/internal/adapters/buildinfo"
 	"github.com/alicoding/mill/internal/adapters/mcpclient"
@@ -86,6 +87,16 @@ func WirePasteConversion(atlas *atlassvc.AtlasService, cfg *configuresvc.Configu
 			return err
 		},
 	)
+}
+
+// WireAtlasStorageDirs resolves and wires every Mill-owned directory
+// AtlasService writes into on its own -- the share model's mirror root
+// (goal 0063/0067) and the image tool's captures folder (goal 0169
+// slice 2) -- split out of main.go at the 500-line limit, same shape
+// every other Wire* function here already takes.
+func WireAtlasStorageDirs(atlas *atlassvc.AtlasService) {
+	atlas.SetMirrorsDir(atlassvc.DefaultMirrorsDir(os.Getenv("MILL_ATLAS_MIRRORS_DIR")))
+	atlas.SetCapturesDir(atlassvc.DefaultCapturesDir(os.Getenv("MILL_ATLAS_CAPTURES_DIR")))
 }
 
 // WireUpdateEvents connects the updater's once-per-version discovery

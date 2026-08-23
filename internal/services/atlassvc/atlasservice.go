@@ -81,6 +81,13 @@ type AtlasService struct {
 	// error rather than writing beside the process) for any test that
 	// never calls it.
 	mirrorsDir string
+	// capturesDir is the Mill-owned root directory a pasted image's
+	// bytes land in (goal 0169 slice 2, atlasservice_imagecapture.go) --
+	// set once from main.go via SetCapturesDir, empty ("" -- the paste
+	// door reports a configuration error rather than writing beside the
+	// process) for any test that never calls it, same posture
+	// mirrorsDir takes above.
+	capturesDir string
 	// Recognition seams (goal 0126, atlasrecognition.go) -- injected
 	// via WireSourceRecognition; nil (recognition simply off) for any
 	// test that never wires them.

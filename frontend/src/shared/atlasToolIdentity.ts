@@ -8,9 +8,9 @@
 // atlasTools.ts imports this array to source its own id/shortcutKey/
 // label rather than restating them -- one owner for the identity list
 // regardless of which layer is asking.
-export type AtlasToolRequestKind = 'arm' | 'picker'
+export type AtlasToolRequestKind = 'arm' | 'picker' | 'popover'
 
-// Four distinct members, not one member with a unioned id -- so that
+// Five distinct members, not one member with a unioned id -- so that
 // Extract<AtlasToolIdentity, { id: 'card' }> (atlasTools.ts's own
 // lookup) can actually narrow to a single one.
 export type AtlasToolIdentity =
@@ -18,10 +18,12 @@ export type AtlasToolIdentity =
   | { id: 'note'; shortcutKey: string; commandLabel: string; requestKind: 'arm' }
   | { id: 'area'; shortcutKey: string; commandLabel: string; requestKind: 'arm' }
   | { id: 'table'; shortcutKey: string; commandLabel: string; requestKind: 'picker' }
+  | { id: 'image'; shortcutKey: string; commandLabel: string; requestKind: 'popover' }
 
 export const ATLAS_TOOL_IDENTITIES: AtlasToolIdentity[] = [
   { id: 'card', shortcutKey: 'C', commandLabel: 'Add a card', requestKind: 'arm' },
   { id: 'note', shortcutKey: 'N', commandLabel: 'Add a note', requestKind: 'arm' },
   { id: 'area', shortcutKey: 'A', commandLabel: 'Draw an area', requestKind: 'arm' },
   { id: 'table', shortcutKey: 'T', commandLabel: 'New table', requestKind: 'picker' },
+  { id: 'image', shortcutKey: 'I', commandLabel: 'Add an image', requestKind: 'popover' },
 ]

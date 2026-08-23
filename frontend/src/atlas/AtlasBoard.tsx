@@ -31,6 +31,8 @@ import { buildStickyNodes } from './atlasStickyNodes'
 import { AtlasCreationTray, ATLAS_TOOL_DRAG_MIME } from './AtlasCreationTray'
 import type { AtlasCreationTool } from './atlasTools'
 import { useTablePickerSignal } from './useTablePickerSignal'
+import { useAtlasImagePopoverSignal } from './useAtlasImagePopoverSignal'
+import { useAtlasImageCreate } from './useAtlasImageCreate'
 import { useAtlasPaneClick } from './useAtlasPaneClick'
 import { AtlasSelectionTray } from './AtlasSelectionTray'
 import { AtlasPlacementPopover } from './AtlasPlacementPopover'
@@ -111,6 +113,8 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   const noteBoxes = useMemo(() => (isFree ? computeNoteBoxes(notes) : []), [notes, isFree])
 
   const tablePicker = useTablePickerSignal()
+  const imagePopover = useAtlasImagePopoverSignal()
+  const imageCreate = useAtlasImageCreate({ allCards, viewedID })
   const creation = useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes: topLevelBoxes, noteBoxes })
   const selection = useAtlasSelection({ cards, notes, onMultiSelectContextMenu })
   const wrapperClicks = useAtlasPaneClick({ tablePicker, topLevelBoxes, screenToFlowPosition, onCreateTableSized, placeAt: creation.placeAt })
@@ -413,7 +417,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       {fileDrop.dropDuplicateNotice && <div className={styles.dropNotice} data-testid="atlas-file-drop-duplicate-notice">{fileDrop.dropDuplicateNotice}</div>}
       {!readOnly && (haveSelection
         ? <AtlasSelectionTray ref={trayRef} selectedCardCount={selection.selectedCards.length} selectedNoteCount={selection.selectedNotes.length} onGroup={onTrayGroup} onDelete={onTrayDelete} />
-        : <AtlasCreationTray armedTool={creation.armedTool} onToggle={creation.toggleArm} tablePickerOpen={tablePicker.open || tablePicker.pendingSize !== null} onTableToggle={tablePicker.setOpen} onPickTableSize={(cols, rows) => tablePicker.setPendingSize({ cols, rows })} onTableFromList={onOpenTableFromList} />)}
+        : <AtlasCreationTray armedTool={creation.armedTool} onToggle={creation.toggleArm} tablePickerOpen={tablePicker.open || tablePicker.pendingSize !== null} onTableToggle={tablePicker.setOpen} onPickTableSize={(cols, rows) => tablePicker.setPendingSize({ cols, rows })} onTableFromList={onOpenTableFromList} imagePopoverOpen={imagePopover.open} onImageToggle={imagePopover.setOpen} onImageSubmitPath={imageCreate.createFromPath} onImageSubmitFile={imageCreate.createFromFile} />)}
       {creation.popover && (
         <AtlasPlacementPopover
           mode={creation.popover.mode}

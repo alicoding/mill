@@ -2,11 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const createListMock = vi.hoisted(() => vi.fn())
 const addListRowMock = vi.hoisted(() => vi.fn())
+const saveImageBytesMock = vi.hoisted(() => vi.fn())
 vi.mock('../shared/bindings', () => ({
   ConfigureService: { CreateList: createListMock, AddListRow: addListRowMock },
+  AtlasService: { SaveImageBytes: saveImageBytesMock },
 }))
 
-import { ATLAS_TOOLS, cardTool, noteTool, areaTool, tableTool } from './atlasTools'
+import { ATLAS_TOOLS, cardTool, noteTool, areaTool, tableTool, imageTool } from './atlasTools'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 
 function kind(id: string): Kind {
@@ -15,16 +17,17 @@ function kind(id: string): Kind {
 
 describe('ATLAS_TOOLS', () => {
   it('carries every registered tool in tray render order', () => {
-    expect(ATLAS_TOOLS.map((t) => t.id)).toEqual(['card', 'note', 'area', 'table'])
+    expect(ATLAS_TOOLS.map((t) => t.id)).toEqual(['card', 'note', 'area', 'table', 'image'])
   })
 
-  it('scopes card/note/area to arm-then-click and table to pick-then-place', () => {
+  it('scopes card/note/area to arm-then-click, table to pick-then-place, image to paste-or-drop', () => {
     const byID = Object.fromEntries(ATLAS_TOOLS.map((t) => [t.id, t.interaction]))
     expect(byID).toEqual({
       card: 'arm-then-click',
       note: 'arm-then-click',
       area: 'arm-then-click',
       table: 'pick-then-place',
+      image: 'paste-or-drop',
     })
   })
 
@@ -86,5 +89,31 @@ describe('tableTool.commit', () => {
     const artifact = await tableTool.commit({ cols: 0, rowCount: 0, existingTitles: new Set() })
     expect(artifact.title).toBe('Table')
     expect(addListRowMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('imageTool.commit', () => {
+  afterEach(() => {
+    saveImageBytesMock.mockReset()
+  })
+
+  it('normalizes a typed path into the mirror artifact without touching the backend', async () => {
+    const artifact = await imageTool.commit({ path: 'file:///Users/me/My%20Photo.png' })
+    expect(artifact).toEqual({ kind: 'image', title: 'My Photo', mirrorPath: '/Users/me/My Photo.png' })
+    expect(saveImageBytesMock).not.toHaveBeenCalled()
+  })
+
+  it('writes a pasted file through SaveImageBytes and uses the returned path as the mirror', async () => {
+    saveImageBytesMock.mockResolvedValue('/config/mill/atlas-captures/pasted-image-abc123.png')
+    const file = new File(['bytes'], 'clipboard.png', { type: 'image/png' })
+    const artifact = await imageTool.commit({ file, title: 'Pasted image' })
+    expect(artifact).toEqual({ kind: 'image', title: 'Pasted image', mirrorPath: '/config/mill/atlas-captures/pasted-image-abc123.png' })
+    expect(saveImageBytesMock).toHaveBeenCalledWith(expect.any(String), '.png', 'Pasted image')
+  })
+
+  it('rejects a pasted file whose mime type is not a recognized image extension', async () => {
+    const file = new File(['bytes'], 'clipboard.tiff', { type: 'image/tiff' })
+    await expect(imageTool.commit({ file, title: 'Pasted image' })).rejects.toThrow(/unsupported/)
+    expect(saveImageBytesMock).not.toHaveBeenCalled()
   })
 })

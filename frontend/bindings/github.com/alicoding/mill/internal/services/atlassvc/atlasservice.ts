@@ -633,6 +633,21 @@ export function RunCardAction(cardID: string, workflowID: string): $CancellableP
 }
 
 /**
+ * SaveImageBytes decodes base64Data (standard encoding) and writes it to
+ * a fresh file under the captures directory, returning the file's own
+ * path. ext must be one of atlas.IsImageExtension's recognized image
+ * extensions (including its leading "."), checked here so a bad paste
+ * never reaches the filesystem. Card creation is a deliberately separate
+ * step -- the caller passes the returned path straight to
+ * CreateCardFromFileDrop, so a pasted image and a natively dropped one
+ * resolve their Kind, duplicate check, and card fields through the
+ * exact same logic.
+ */
+export function SaveImageBytes(base64Data: string, ext: string, title: string): $CancellablePromise<string> {
+    return $Call.ByID(74333231, base64Data, ext, title);
+}
+
+/**
  * ScanFolder performs the bounded, heuristic scan goal 0067 describes:
  * depth/count-capped, hidden entries and symlinks skipped
  * (fileread.Scan), each entry classified into a suggestion category by

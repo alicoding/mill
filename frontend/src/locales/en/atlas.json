@@ -86,7 +86,18 @@
     "areaTooltip": "Draw an area (A)",
     "tableLabel": "Table",
     "tableTooltip": "New table — sweep the grid to size it",
-    "tableFromList": "From a List…"
+    "tableFromList": "From a List…",
+    "imageLabel": "Image",
+    "imageTooltip": "Add an image — paste one, or enter a path"
+  },
+  "imageInput": {
+    "pathLabel": "Path",
+    "pathPlaceholder": "/path/to/image.png",
+    "pasteHint": "Or paste an image (⌘V)",
+    "add": "Add",
+    "empty": "Enter a path, or paste an image.",
+    "invalidExtension": "Enter a path to an image file.",
+    "addFailed": "Couldn't add that image."
   },
   "placement": {
     "title": "Add card",

@@ -38,3 +38,22 @@ func TestMirrorImageMimeType(t *testing.T) {
 		t.Errorf("MirrorImageMimeType(notes.md) = %q, want empty (not an image)", got)
 	}
 }
+
+func TestIsImageExtension(t *testing.T) {
+	cases := []struct {
+		ext  string
+		want bool
+	}{
+		{".png", true},
+		{".JPG", true},
+		{".svg", true},
+		{".md", false},
+		{".zip", false},
+		{"", false},
+	}
+	for _, c := range cases {
+		if got := IsImageExtension(c.ext); got != c.want {
+			t.Errorf("IsImageExtension(%q) = %v, want %v", c.ext, got, c.want)
+		}
+	}
+}
