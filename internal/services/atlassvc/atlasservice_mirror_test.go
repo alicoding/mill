@@ -176,3 +176,92 @@ func TestMirrorContent_UnknownCard_Errors(t *testing.T) {
 		t.Error("MirrorContent() for an unknown card = nil error, want an error")
 	}
 }
+
+func TestMirrorRawBytes_OtherKind_ReturnsBytesMirrorContentWithholds(t *testing.T) {
+	a := newTestAtlasService(t)
+	raw := "not really a zip, just bytes"
+	c := newMirroredCard(t, a, "archive.zip", raw)
+
+	got, err := a.MirrorRawBytes(c.ID)
+	if err != nil {
+		t.Fatalf("MirrorRawBytes: %v", err)
+	}
+	decoded, err := base64.StdEncoding.DecodeString(got)
+	if err != nil {
+		t.Fatalf("result is not valid base64: %v", err)
+	}
+	if string(decoded) != raw {
+		t.Errorf("decoded = %q, want %q", decoded, raw)
+	}
+}
+
+func TestMirrorRawBytes_TextKind_RoundTrips(t *testing.T) {
+	a := newTestAtlasService(t)
+	raw := "line one\nline two"
+	c := newMirroredCard(t, a, "log.txt", raw)
+
+	got, err := a.MirrorRawBytes(c.ID)
+	if err != nil {
+		t.Fatalf("MirrorRawBytes: %v", err)
+	}
+	decoded, err := base64.StdEncoding.DecodeString(got)
+	if err != nil {
+		t.Fatalf("result is not valid base64: %v", err)
+	}
+	if string(decoded) != raw {
+		t.Errorf("decoded = %q, want %q", decoded, raw)
+	}
+}
+
+func TestMirrorRawBytes_OverSizeCap_Errors(t *testing.T) {
+	a := newTestAtlasService(t)
+	k, err := a.CreateKind("Doc", "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateKind: %v", err)
+	}
+	c, err := a.CreateCard(k.ID, "Mirrored", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard: %v", err)
+	}
+	path := filepath.Join(t.TempDir(), "huge.bin")
+	f, err := os.Create(path) //nolint:gosec // t.TempDir()-scoped test fixture path, not user input
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Truncate(mirrorPreviewMaxBytes + 1); err != nil {
+		_ = f.Close()
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.UpdateCard(c.ID, c.Title, c.Note, c.Fields, c.Source, path, c.RefreshWorkflowID); err != nil {
+		t.Fatalf("UpdateCard: %v", err)
+	}
+
+	if _, err := a.MirrorRawBytes(c.ID); err == nil {
+		t.Error("MirrorRawBytes() for a file over mirrorPreviewMaxBytes = nil error, want an error")
+	}
+}
+
+func TestMirrorRawBytes_NoMirrorPath_Errors(t *testing.T) {
+	a := newTestAtlasService(t)
+	k, err := a.CreateKind("Doc", "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateKind: %v", err)
+	}
+	c, err := a.CreateCard(k.ID, "No mirror", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard: %v", err)
+	}
+	if _, err := a.MirrorRawBytes(c.ID); err == nil {
+		t.Error("MirrorRawBytes() for a card with no MirrorPath = nil error, want an error")
+	}
+}
+
+func TestMirrorRawBytes_UnknownCard_Errors(t *testing.T) {
+	a := newTestAtlasService(t)
+	if _, err := a.MirrorRawBytes("does-not-exist"); err == nil {
+		t.Error("MirrorRawBytes() for an unknown card = nil error, want an error")
+	}
+}

@@ -302,6 +302,12 @@
     "bundleContextWithAttachments": "Copy as context, with files",
     "copyLinks": "Copy links"
   },
+  "export": {
+    "originalFile": "Original file",
+    "singleLabel": "Export as {{label}}",
+    "menuLabel": "Export as…",
+    "error": "Couldn't export this file. Try again."
+  },
   "contextMenu": {
     "open": "Open",
     "zoomIn": "Zoom in",

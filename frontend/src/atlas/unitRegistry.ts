@@ -1,4 +1,6 @@
 import type { ComponentType } from 'react'
+import { AtlasService } from '../shared/bindings'
+import { base64ToBlob } from '../shared/base64Blob'
 import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 
 // The board-unit renderer registry (ADR-0043, goal 0133 slice 1): a
@@ -117,4 +119,37 @@ export function resolveUnit(units: UnitRenderer[], card: DetectableCard): UnitRe
     if (unit.detect(card)) return unit
   }
   return null
+}
+
+// The card a "Original file" export needs -- just enough to build the
+// exporter (MirrorPath for the filename, ID to fetch bytes) without
+// requiring a caller to hand over a full Card.
+export type ExportableCard = DetectableCard & Pick<Card, 'ID'>
+
+function baseNameOf(path: string): string {
+  const slash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'))
+  return slash === -1 ? path : path.slice(slash + 1)
+}
+
+// exportersFor derives a card's full Export-as list: the registry-
+// level "Original file" default (ADR-0043 §3 Decision 1, goal 0133
+// slice E1) prepended to whatever the resolved unit itself declares.
+// Any card carrying a MirrorPath can always export its own source
+// bytes -- that fallback lives here, once, rather than being repeated
+// by every unit (which is what makes icon-fallback export despite its
+// own `exporters: []`: the default isn't its responsibility). label is
+// caller-supplied (a component's own t()) so this module stays free of
+// an i18n import, matching every other pure function here.
+export function exportersFor(units: UnitRenderer[], card: ExportableCard, originalFileLabel: string): UnitExporter[] {
+  const declared = resolveUnit(units, card)?.exporters ?? []
+  if (!card.MirrorPath) return declared
+  const originalFile: UnitExporter = {
+    format: 'original',
+    label: originalFileLabel,
+    serialize: async (fullCard) => {
+      const content = await AtlasService.MirrorRawBytes(fullCard.ID)
+      return { bytes: base64ToBlob(content, 'application/octet-stream'), filename: baseNameOf(fullCard.MirrorPath) }
+    },
+  }
+  return [originalFile, ...declared]
 }

@@ -8,6 +8,7 @@ import type { BackupStatus, ImportEverythingSummary } from '../shared/bindings'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import { base64ToBlob } from '../shared/base64Blob'
+import { downloadBlob } from '../shared/downloadBlob'
 import styles from '../shared/ListCard.module.css'
 
 // Extracted from SettingsView.tsx (same reason KeyboardShortcutsSection
@@ -81,15 +82,7 @@ function DataStewardshipSection() {
     setError('')
     setExporting(true)
     BackupService.ExportEverything()
-      .then((data) => {
-        const blob = base64ToBlob(data, 'application/zip')
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `mill-backup-${new Date().toISOString().slice(0, 10)}.zip`
-        a.click()
-        URL.revokeObjectURL(url)
-      })
+      .then((data) => downloadBlob(`mill-backup-${new Date().toISOString().slice(0, 10)}.zip`, base64ToBlob(data, 'application/zip')))
       .catch((err) => fail('Export everything', err))
       .finally(() => setExporting(false))
   }

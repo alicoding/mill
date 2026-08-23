@@ -126,6 +126,12 @@ interface UISignalState {
   companionOpen: boolean
   toggleCompanion: () => void
   closeCompanion: () => void
+  // atlas.card.exportAs (goal 0133 slice E1): same monotonic-counter
+  // shape as the rest of this file -- AtlasCardOverlay watches it
+  // (mounted only while a card page is actually open) and fires the
+  // identical Export-as choice its own kebab menu item would.
+  atlasCardExportAsRequest: number
+  requestAtlasCardExportAs: () => void
 }
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
@@ -174,4 +180,6 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   companionOpen: false,
   toggleCompanion: () => set((s) => ({ companionOpen: !s.companionOpen })),
   closeCompanion: () => set({ companionOpen: false }),
+  atlasCardExportAsRequest: 0,
+  requestAtlasCardExportAs: () => set((s) => ({ atlasCardExportAsRequest: s.atlasCardExportAsRequest + 1 })),
 }))

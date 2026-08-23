@@ -6,6 +6,8 @@ import { kindColorTokens } from './atlasKindColor'
 import { deriveFileTag } from './atlasCardPresentation'
 import { isPersonKind } from './atlasCardPageContent'
 import { truncateBackTitle } from './atlasCardPageNav'
+import { buildExportMenuChoice } from './atlasCardExportMenu'
+import type { UnitExporter } from './unitRegistry'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasCardPage.module.css'
 
@@ -25,6 +27,7 @@ export function AtlasCardPageHeader({
   backTitle, onBack,
   savedTick,
   showMirrorMenuItems, onOpenFile, onRevealFile,
+  onExportDownload, onExportOpenFormats,
   onDelete,
 }: {
   card: Card
@@ -41,12 +44,23 @@ export function AtlasCardPageHeader({
   showMirrorMenuItems: boolean
   onOpenFile: () => void
   onRevealFile: () => void
+  onExportDownload: (exporter: UnitExporter) => void
+  onExportOpenFormats: (exporters: UnitExporter[], pos: { x: number; y: number }) => void
   onDelete: () => void
 }) {
   const { t } = useTranslation('atlas')
   const tokens = kindColorTokens(card.KindID)
   const fileTag = deriveFileTag(card)
   const contact = isPersonKind(card.KindID)
+  // Export-as (ADR-0043 §3, goal 0133 slice E1): buildExportMenuChoice
+  // is the same shared decision the card's right-click context menu
+  // renders off (useAtlasLinkMenus.tsx) -- absent when nothing
+  // exports, a single direct-download item, or an item that opens the
+  // format submenu anchored at wherever this menu item itself sits.
+  // Called again (cheap, pure) inside onSelect below so the submenu's
+  // anchor position can come from that click's own event, rather than
+  // threading a ref's value through a render-time closure.
+  const exportChoice = buildExportMenuChoice({ card, t, onDownload: () => {}, onOpenFormats: () => {} })
 
   return (
     <div className={styles.header} data-testid="atlas-page-header">
@@ -118,9 +132,27 @@ export function AtlasCardPageHeader({
               <>
                 <ActionList.Item onSelect={onOpenFile} data-testid="atlas-page-menu-open-file">{t('contextMenu.openFile')}</ActionList.Item>
                 <ActionList.Item onSelect={onRevealFile} data-testid="atlas-page-menu-reveal">{t('contextMenu.revealInFileManager')}</ActionList.Item>
-                <ActionList.Divider />
               </>
             )}
+            {exportChoice && (
+              <>
+                <ActionList.Item
+                  data-testid="atlas-page-menu-export-as"
+                  onSelect={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    buildExportMenuChoice({
+                      card,
+                      t,
+                      onDownload: onExportDownload,
+                      onOpenFormats: (exporters) => onExportOpenFormats(exporters, { x: rect.right, y: rect.bottom }),
+                    })?.run()
+                  }}
+                >
+                  {exportChoice.label}
+                </ActionList.Item>
+              </>
+            )}
+            {(showMirrorMenuItems || exportChoice) && <ActionList.Divider />}
             <ActionList.Item variant="danger" onSelect={onDelete} data-testid="atlas-page-menu-delete">{t('overlay.delete')}</ActionList.Item>
           </ActionList>
         </ActionMenu.Overlay>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { UNIT_REGISTRY, resolveUnit } from './atlasUnits'
+import { UNIT_REGISTRY, exportersForCard, resolveUnit } from './atlasUnits'
 
 describe('resolveUnit (ADR-0043 board-unit registry, goal 0133 slice 1)', () => {
   it('resolves table-projection ahead of any MirrorPath extension (a projection ref beats an extension)', () => {
@@ -70,5 +70,37 @@ describe('resolveUnit (ADR-0043 board-unit registry, goal 0133 slice 1)', () => 
     for (const unit of UNIT_REGISTRY) {
       expect(unit.render.Page, `${unit.id} should declare a Page renderer`).toBeDefined()
     }
+  })
+})
+
+describe('exportersForCard (ADR-0043 §3 Decision 1, goal 0133 slice E1)', () => {
+  const ORIGINAL = 'Original file'
+
+  it('offers nothing for a plain card with no MirrorPath and no declared exporters', () => {
+    expect(exportersForCard({ ID: 'c1', Source: '', MirrorPath: '' }, ORIGINAL)).toEqual([])
+  })
+
+  it('offers nothing for a Source-only card (no MirrorPath to export)', () => {
+    expect(exportersForCard({ ID: 'c1', Source: 'https://example.com', MirrorPath: '' }, ORIGINAL)).toEqual([])
+  })
+
+  it('offers "Original file" for an icon-fallback card even though the unit declares exporters: [] -- the registry-level default, not a per-unit duty', () => {
+    const items = exportersForCard({ ID: 'c1', Source: '', MirrorPath: '/reports/summary.docx' }, ORIGINAL)
+    expect(items.map((e) => e.format)).toEqual(['original'])
+    expect(items[0].label).toBe(ORIGINAL)
+  })
+
+  it('offers "Original file" plus the unit\'s own declared formats for a drawio card, original first', () => {
+    const items = exportersForCard({ ID: 'c1', Source: '', MirrorPath: '/diagrams/flow.drawio' }, ORIGINAL)
+    expect(items.map((e) => e.format)).toEqual(['original', 'drawio'])
+  })
+
+  it('offers "Original file" plus .mmd for a mermaid card', () => {
+    const items = exportersForCard({ ID: 'c1', Source: '', MirrorPath: '/diagrams/flow.mmd' }, ORIGINAL)
+    expect(items.map((e) => e.format)).toEqual(['original', 'mmd'])
+  })
+
+  it('offers nothing for a table-projection card (mirror-less, no exporters declared yet)', () => {
+    expect(exportersForCard({ ID: 'c1', Source: '', MirrorPath: '', ProjectionListID: 'list-1' }, ORIGINAL)).toEqual([])
   })
 })
