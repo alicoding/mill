@@ -9,6 +9,8 @@ import { atlasCardShareActions } from './atlasCardShare'
 import type { ContextMenuItem, ContextMenuState } from '../shared/ContextMenu'
 import { AtlasEdgeLabelPopover } from './AtlasEdgeLabelPopover'
 import { perspectiveMembershipMenuItems } from './atlasPerspectiveMenuItems'
+import { buildExportMenuChoice, runCardExport } from './atlasCardExportMenu'
+import type { UnitExporter } from './unitRegistry'
 
 const ARTERY_MENU_TITLE_MAX = 28
 
@@ -75,11 +77,28 @@ export function useAtlasLinkMenus({
           { id: 'd0', divider: true },
         ]
       : []
+    // Export-as (ADR-0043 §3, goal 0133 slice E1): buildExportMenuChoice
+    // is the single source deciding whether this shows at all and
+    // whether it's a direct download or a format submenu -- the card
+    // page's kebab menu (AtlasCardOverlay) resolves the identical
+    // choice off the same card, so the two surfaces can never drift.
+    const exportChoice = buildExportMenuChoice({
+      card,
+      t,
+      onDownload: (exporter) => void runCardExport(card, exporter, onError),
+      onOpenFormats: (exporters: UnitExporter[]) => setMenu({
+        x: pos.x,
+        y: pos.y,
+        items: exporters.map((exp): ContextMenuItem => ({ id: `export-${exp.format}`, label: exp.label, run: () => void runCardExport(card, exp, onError) })),
+      }),
+    })
+    const exportItems: ContextMenuItem[] = exportChoice ? [{ id: exportChoice.id, label: exportChoice.label, run: exportChoice.run }, { id: 'd0c', divider: true }] : []
     setMenu({
       x: pos.x,
       y: pos.y,
       items: [
         ...mirrorItems,
+        ...exportItems,
         { id: 'add-linked-card', label: t('contextMenu.addLinkedCard'), run: () => requestLinkedCard(card.ID, pos) },
         { id: 'd0b', divider: true },
         ...(place ? [{ id: 'zoom', label: t('contextMenu.zoomIn'), run: () => drill(card.ID) }] : []),

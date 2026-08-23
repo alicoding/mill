@@ -440,6 +440,21 @@ export function MirrorContent(cardID: string): $CancellablePromise<atlas$0.Mirro
 }
 
 /**
+ * MirrorRawBytes returns cardID's mirrored file as base64-encoded raw
+ * bytes, regardless of MirrorKind (the Export-as "Original file"
+ * default every mirror-bearing card gets, ADR-0043 §3/goal 0133).
+ * MirrorContent above deliberately withholds content for
+ * MirrorKindOther -- a PREVIEW safety gate answering "is this safe to
+ * interpret as text/HTML" -- but handing raw bytes back for direct
+ * download, never parsed or rendered by Mill itself, carries none of
+ * that risk, so this method applies the same size cap without the kind
+ * gate.
+ */
+export function MirrorRawBytes(cardID: string): $CancellablePromise<string> {
+    return $Call.ByID(2790462688, cardID);
+}
+
+/**
  * MoveCard reparents a card (sibling-vs-child move, ADR-0038's
  * create-time framing extended to a later move) -- rejects a
  * newParentID that would make the card its own ancestor

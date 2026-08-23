@@ -101,6 +101,12 @@
     padding: 16px 20px 20px;
 }
 
+.shareErrorRow {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 /* The calm page's own property strip (goal 0106 slice B contract item
    3): one small-type row directly under the title, no boxes. */
 .propertyStrip {

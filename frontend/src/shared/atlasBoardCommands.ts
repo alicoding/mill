@@ -107,6 +107,19 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasMinimapToggle(),
   },
+  {
+    // Export-as (ADR-0043 §3, goal 0133 slice E1): the ONE command id
+    // the card page's kebab menu and its right-click context menu also
+    // key off (AtlasCardPageHeader.tsx / useAtlasLinkMenus.tsx), per the
+    // integration-surfaces triage's "sharing commandIds" requirement.
+    // Consumed by whichever card page is currently open
+    // (AtlasCardOverlay.tsx); a harmless no-op with no card page open.
+    id: 'atlas.card.exportAs',
+    label: 'Export card as…',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasCardExportAs(),
+  },
   // The six entries below (goal 0106 slice B) advertise useAtlasKeyboardNav.ts's
   // own key table (goal 0104) in the Shortcuts Help overlay -- every
   // one is unreachable by construction, same shape as

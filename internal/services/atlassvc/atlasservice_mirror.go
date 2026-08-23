@@ -75,3 +75,40 @@ func (a *AtlasService) MirrorContent(cardID string) (atlas.MirrorContent, error)
 	}
 	return out, nil
 }
+
+// MirrorRawBytes returns cardID's mirrored file as base64-encoded raw
+// bytes, regardless of MirrorKind (the Export-as "Original file"
+// default every mirror-bearing card gets, ADR-0043 §3/goal 0133).
+// MirrorContent above deliberately withholds content for
+// MirrorKindOther -- a PREVIEW safety gate answering "is this safe to
+// interpret as text/HTML" -- but handing raw bytes back for direct
+// download, never parsed or rendered by Mill itself, carries none of
+// that risk, so this method applies the same size cap without the kind
+// gate.
+func (a *AtlasService) MirrorRawBytes(cardID string) (string, error) {
+	a.mu.RLock()
+	idx := a.findCardLocked(cardID)
+	if idx == -1 {
+		a.mu.RUnlock()
+		return "", fmt.Errorf("no card with id %q", cardID)
+	}
+	path := a.cards[idx].MirrorPath
+	a.mu.RUnlock()
+	if path == "" {
+		return "", fmt.Errorf("card %q has no mirrored file", cardID)
+	}
+
+	size, err := fileread.Stat(path)
+	if err != nil {
+		return "", fmt.Errorf("mirror raw bytes: %w", err)
+	}
+	if size > mirrorPreviewMaxBytes {
+		return "", fmt.Errorf("mirror raw bytes: %q is %d bytes, over the %d byte export limit", path, size, mirrorPreviewMaxBytes)
+	}
+
+	raw, err := fileread.Read(path)
+	if err != nil {
+		return "", fmt.Errorf("mirror raw bytes: %w", err)
+	}
+	return base64.StdEncoding.EncodeToString([]byte(raw)), nil
+}

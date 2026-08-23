@@ -6,6 +6,10 @@ import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alico
 import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { AtlasService, ExecutionService } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
+import { useUISignalStore } from '../shared/uiSignalStore'
+import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
+import { ContextMenu } from '../shared/ContextMenu'
+import type { ContextMenuState } from '../shared/ContextMenu'
 import { atlasCardShareActions } from './atlasCardShare'
 import { useCardPageNav } from './atlasCardPageNav'
 import { AtlasCardPageHeader } from './AtlasCardPageHeader'
@@ -16,6 +20,8 @@ import { AtlasCardPageMetaRail } from './AtlasCardPageMetaRail'
 import { AtlasSlotRows } from './AtlasSlotRows'
 import { useAtlasCardPageFileDrop } from './useAtlasCardPageFileDrop'
 import { FILE_DROP_CONTEXT_CARD_PAGE } from './atlasFileDropShared'
+import { buildExportMenuChoice, runCardExport } from './atlasCardExportMenu'
+import type { UnitExporter } from './unitRegistry'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasCardPage.module.css'
 
@@ -95,6 +101,39 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
   // becomes a linked sibling of whichever card is CURRENTLY shown,
   // never mutating it -- see the hook's own header comment.
   useAtlasCardPageFileDrop({ card: displayedCard, allCards, onSaved, onError: setShareError })
+
+  // Export-as (ADR-0043 §3, goal 0133 slice E1): the format submenu
+  // opens through the SAME shared/ContextMenu.tsx component the card's
+  // own right-click menu uses (useAtlasLinkMenus.tsx) rather than a
+  // second flyout mechanism -- reuses this page's existing error slot
+  // (shareError) so a failed export reports through the identical
+  // copyable-diagnosis surface every other page action already does.
+  const [exportMenu, setExportMenu] = useState<ContextMenuState | null>(null)
+  const onExportDownload = (exporter: UnitExporter) => void runCardExport(displayedCard, exporter, setShareError)
+  const onExportOpenFormats = (exporters: UnitExporter[], pos: { x: number; y: number }) => setExportMenu({
+    x: pos.x,
+    y: pos.y,
+    items: exporters.map((exp) => ({ id: `export-${exp.format}`, label: exp.label, run: () => void runCardExport(displayedCard, exp, setShareError) })),
+  })
+
+  // atlas.card.exportAs (command palette, DoR item 6): the same choice
+  // the header's kebab menu computes, fired for whichever card this
+  // instance currently displays -- a harmless no-op if nothing is
+  // exportable. No live click position exists from the palette, so a
+  // multi-format result opens near the header's own kebab menu.
+  const atlasCardExportAsRequest = useUISignalStore((s) => s.atlasCardExportAsRequest)
+  const lastExportAsRequest = useRef(atlasCardExportAsRequest)
+  useEffect(() => {
+    if (atlasCardExportAsRequest === lastExportAsRequest.current) return
+    lastExportAsRequest.current = atlasCardExportAsRequest
+    buildExportMenuChoice({
+      card: displayedCard,
+      t,
+      onDownload: onExportDownload,
+      onOpenFormats: (exporters) => onExportOpenFormats(exporters, { x: window.innerWidth - 280, y: 96 }),
+    })?.run()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the signal tick alone; displayedCard/t are read at fire time
+  }, [atlasCardExportAsRequest])
 
   // Reset the draft bundle whenever navigation lands on a DIFFERENT
   // card: each card's page shows ITS OWN values, never a value carried
@@ -247,7 +286,11 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
     // destructures every other prop by name with no rest-spread, so a
     // plain data-testid is silently dropped (StepDetailOverlay.tsx's
     // own data-component usage is this same constraint, not a
-    // stylistic choice).
+    // stylistic choice). The export-format ContextMenu is a sibling,
+    // not nested inside Dialog's own tree -- shared/ContextMenu.tsx
+    // renders through AnchoredOverlay's own portal regardless of where
+    // it's mounted.
+    <>
     <Dialog
       title={t('overlay.title', { title: displayedCard.Title })}
       onClose={onClose}
@@ -270,6 +313,8 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
           showMirrorMenuItems={Boolean(displayedCard.MirrorPath)}
           onOpenFile={() => void AtlasService.OpenCardMirror(displayedCard.ID).catch((err) => setShareError(String(err)))}
           onRevealFile={() => void shareActions.revealFile()}
+          onExportDownload={onExportDownload}
+          onExportOpenFormats={onExportOpenFormats}
           onDelete={deleteCard}
         />
       )}
@@ -306,7 +351,12 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
               onAddLink={(linkKindID, toCardID) => void addLink(linkKindID, toCardID)}
             />
             <AtlasCardPageContents card={displayedCard} allCards={allCards} kinds={kinds} onOpenGroupEntry={onOpenGroupEntry} onChildClick={nav.navigate} />
-            {shareError && <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-page-share-error">{shareError}</Text>}
+            {shareError && (
+              <span className={styles.shareErrorRow}>
+                <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-page-share-error">{shareError}</Text>
+                <CopyDiagnosisButton error={shareError} context={{ Card: displayedCard.Title }} testId="atlas-page-share-error-copy-diagnosis" />
+              </span>
+            )}
           </div>
           <AtlasCardPageMetaRail
             card={displayedCard}
@@ -325,5 +375,7 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
         </div>
       )}
     />
+    <ContextMenu state={exportMenu} onClose={() => setExportMenu(null)} />
+    </>
   )
 }

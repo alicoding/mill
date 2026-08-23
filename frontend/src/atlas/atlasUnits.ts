@@ -3,8 +3,8 @@ import { MIRROR_UNITS } from './atlasUnitMirror'
 import { MERMAID_UNITS } from './atlasUnitMermaid'
 import { DRAWIO_UNITS } from './atlasUnitDrawio'
 import { ICON_FALLBACK_UNITS } from './atlasUnitIconFallback'
-import { resolveUnit as resolveUnitFrom } from './unitRegistry'
-import type { DetectableCard, UnitRenderer } from './unitRegistry'
+import { exportersFor, resolveUnit as resolveUnitFrom } from './unitRegistry'
+import type { DetectableCard, ExportableCard, UnitExporter, UnitRenderer } from './unitRegistry'
 
 // The board-unit registry's assembly point (ADR-0043, goal 0133) --
 // mirrors shared/commands.ts's own shape: each unit family declares
@@ -30,4 +30,11 @@ export const UNIT_REGISTRY: UnitRenderer[] = [
 
 export function resolveUnit(card: DetectableCard): UnitRenderer | null {
   return resolveUnitFrom(UNIT_REGISTRY, card)
+}
+
+// The Export-as menu's own entry point (ADR-0043 §3, goal 0133 slice
+// E1): the registry-level "Original file" default plus the resolved
+// unit's own declared exporters, over THIS assembly's priority order.
+export function exportersForCard(card: ExportableCard, originalFileLabel: string): UnitExporter[] {
+  return exportersFor(UNIT_REGISTRY, card, originalFileLabel)
 }
