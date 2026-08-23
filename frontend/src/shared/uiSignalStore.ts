@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { AtlasArmRequestTool } from './atlasToolIdentity'
 
 // Cross-bounded-context UI signals (goal 0071, contextual shortcut
 // discoverability): shared/commands.ts's command `run` callbacks can't
@@ -62,8 +63,8 @@ interface UISignalState {
   // signal. Token-carrying (not a bare counter) since AtlasBoard's own
   // watcher needs to know WHICH tool to arm, not just that a change
   // happened.
-  atlasArmToolRequest: { tool: 'card' | 'note' | 'area'; token: number } | null
-  requestAtlasArmTool: (tool: 'card' | 'note' | 'area') => void
+  atlasArmToolRequest: { tool: AtlasArmRequestTool; token: number } | null
+  requestAtlasArmTool: (tool: AtlasArmRequestTool) => void
   // The tray's table tool (goal 0139) -- opens the size picker.
   atlasTablePickerRequest: number
   requestAtlasTablePicker: () => void

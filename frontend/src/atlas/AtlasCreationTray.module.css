@@ -16,6 +16,14 @@
     border: 1px solid var(--borderColor-default);
     border-radius: var(--borderRadius-large);
     box-shadow: var(--shadow-floating-large, 0 4px 16px rgba(0, 0, 0, 0.12));
+    /* The tray's own flex box (gaps + padding) never shrinks to its
+       visible content -- a click landing in a gap between buttons (or
+       the padding around them) still hit-tests to THIS div, not
+       whatever's on the canvas underneath, and the tray only grows as
+       more tools register. Disabled here and re-enabled per-button
+       below so a near-but-not-on-a-button click passes through to the
+       board, the same way empty canvas space anywhere else behaves. */
+    pointer-events: none;
 }
 
 .tool {
@@ -29,6 +37,7 @@
     color: var(--fgColor-default);
     font-size: 13px;
     cursor: pointer;
+    pointer-events: auto;
 }
 .tool:hover {
     background: var(--bgColor-neutral-muted);

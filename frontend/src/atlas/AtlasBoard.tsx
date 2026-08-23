@@ -16,6 +16,10 @@ import { useAtlasEdgeInteraction } from './useAtlasEdgeInteraction'
 import { useBoardFocus } from './useBoardFocus'
 import { useAtlasCreation } from './useAtlasCreation'
 import { useAtlasAreaDraw } from './useAtlasAreaDraw'
+import { useAtlasPencilDraw } from './useAtlasPencilDraw'
+import { useAtlasPencilCreate } from './useAtlasPencilCreate'
+import { useAtlasPencilStyle } from './atlasPencilStyleStore'
+import { AtlasPencilLivePreview } from './AtlasPencilLivePreview'
 import { useAtlasDragFiling, type FrameBox } from './useAtlasDragFiling'
 import { AtlasDragHighlightContext } from './atlasDragHighlightContext'
 import type { AtlasBoardInnerProps } from './atlasBoardInnerProps'
@@ -183,6 +187,21 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     wrapperRef,
   })
 
+  // Pencil (goal 0169 slice 3): armed the same click-to-arm way Area
+  // is, but its own gesture hook never disarms on completion (sticky
+  // tool -- see useAtlasPencilDraw.ts). pencilStyle is the ephemeral
+  // "current defaults" cache (atlasPencilStyleStore.ts, never
+  // persisted); landStroke bakes ITS current value into the committed
+  // stroke's own SVG bytes, which IS persisted document data.
+  const pencilArmed = isFree && !readOnly && creation.armedTool === 'pencil'
+  const pencilStyle = useAtlasPencilStyle()
+  const pencilCreate = useAtlasPencilCreate({ parentID, topLevelBoxes, screenToFlowPosition })
+  const pencilDraw = useAtlasPencilDraw({
+    armed: pencilArmed,
+    wrapperRef,
+    onComplete: (points) => void pencilCreate.landStroke(points, pencilStyle.color, pencilStyle.size).catch(console.error),
+  })
+
   // The capture doors (goal 0081 slice A3): own hook files, 500-line cap.
   const fileDrop = useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPosition, setPulsedID, reduceMotion })
   useAtlasPaste({ topLevelBoxes, screenToFlowPosition, onPasteText: creation.openPasteText, viewedID, onPasteConverted })
@@ -285,6 +304,13 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
 
   const r = areaDraw.dragLocalRect, marqueeStyle = r ? { left: r.x, top: r.y, width: r.width, height: r.height } : null
 
+  // The two hand-rolled canvas drags (Area's marquee, Pencil's stroke)
+  // are mutually exclusive by construction (armedTool holds at most
+  // one value) -- resolved to a single handler set here so the three
+  // capture-phase props below read it once each instead of repeating
+  // the same areaArmed/pencilArmed branch three times.
+  const activeDrag = areaArmed ? areaDraw : pencilArmed ? pencilDraw : null
+
   return (
     <div
       ref={wrapperRef}
@@ -300,10 +326,10 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       onDrop={onCanvasDrop}
       onPointerDownCapture={(e) => {
         selection.snapshotSelection()
-        if (areaArmed) areaDraw.onPointerDown(e)
+        activeDrag?.onPointerDown(e)
       }}
-      onPointerMoveCapture={areaArmed ? areaDraw.onPointerMove : undefined}
-      onPointerUpCapture={areaArmed ? areaDraw.onPointerUp : undefined}
+      onPointerMoveCapture={activeDrag?.onPointerMove}
+      onPointerUpCapture={activeDrag?.onPointerUp}
     >
       <AtlasDragHighlightContext.Provider value={dragFiling.hoveredFrameID}>
       <ReactFlow
@@ -334,7 +360,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
         multiSelectionKeyCode="Shift"
         nodesDraggable={isFree && !readOnly}
         zoomOnDoubleClick={false}
-        panOnDrag={!areaArmed}
+        panOnDrag={!areaArmed && !pencilArmed}
         // Un-filing (goal 0081 slice A2) means dragging a card TOWARD
         // and past the board's own visible edge, on purpose -- React
         // Flow's own default auto-pan-while-dragging would fight that
@@ -412,6 +438,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       </ReactFlow>
       </AtlasDragHighlightContext.Provider>
       {marqueeStyle && <div className={styles.marquee} data-testid="atlas-area-marquee" style={marqueeStyle} />}
+      {pencilDraw.localPoints && <AtlasPencilLivePreview points={pencilDraw.localPoints} color={pencilStyle.color} size={pencilStyle.size} />}
       {slotDrag.dragLine && <AtlasSlotDragLine line={slotDrag.dragLine} />}
       {fileDrop.dropError && <div className={`${styles.dropError} ${runbookStyles.error}`} data-testid="atlas-file-drop-error">{fileDrop.dropError}</div>}
       {fileDrop.dropDuplicateNotice && <div className={styles.dropNotice} data-testid="atlas-file-drop-duplicate-notice">{fileDrop.dropDuplicateNotice}</div>}

@@ -88,7 +88,14 @@
     "tableTooltip": "New table — sweep the grid to size it",
     "tableFromList": "From a List…",
     "imageLabel": "Image",
-    "imageTooltip": "Add an image — paste one, or enter a path"
+    "imageTooltip": "Add an image — paste one, or enter a path",
+    "pencilLabel": "Pencil",
+    "pencilTooltip": "Draw on the board (P)"
+  },
+  "pencilStyle": {
+    "colorLabel": "Stroke colour",
+    "sizeLabel": "Stroke size",
+    "sizeOption": "{{size}}px"
   },
   "imageInput": {
     "pathLabel": "Path",

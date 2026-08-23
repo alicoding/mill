@@ -7,7 +7,7 @@ import { refreshAtlas } from './atlasStore'
 import { titleFromNoteText } from './atlasCreateHelpers'
 import { freeChildPosition } from './atlasContainmentPlacement'
 import { computeEnclosedBoundingBoxOrigin } from './atlasBoardBoxes'
-import { cardTool, noteTool, areaTool, type AtlasCreationTool } from './atlasTools'
+import { cardTool, noteTool, areaTool, type AtlasArmableTool, type AtlasCreationTool } from './atlasTools'
 
 export interface AtlasPlacementPopoverState {
   mode: 'create' | 'promote' | 'area'
@@ -88,7 +88,7 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, s
   cardBoxes?: { id: string; x: number; y: number }[]
   noteBoxes?: { id: string; x: number; y: number }[]
 }) {
-  const [armedTool, setArmedTool] = useState<AtlasCreationTool | null>(null)
+  const [armedTool, setArmedTool] = useState<AtlasArmableTool | null>(null)
   const [popover, setPopover] = useState<AtlasPlacementPopoverState | null>(null)
   const [draftNoteFlowPos, setDraftNoteFlowPos] = useState<{ x: number; y: number } | null>(null)
   const [draftNoteParentOverride, setDraftNoteParentOverride] = useState<string | null>(null)
@@ -121,11 +121,11 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, s
   // render loop (confirmed live: React error #185, "Maximum update
   // depth exceeded"). useCallback keeps each reference stable across a
   // render that didn't actually change its own closed-over values.
-  const toggleArm = useCallback((tool: AtlasCreationTool) => {
+  const toggleArm = useCallback((tool: AtlasArmableTool) => {
     if (readOnly) return
     setArmedTool((cur) => (cur === tool ? null : tool))
   }, [readOnly])
-  const armTool = useCallback((tool: AtlasCreationTool) => {
+  const armTool = useCallback((tool: AtlasArmableTool) => {
     if (!readOnly) setArmedTool(tool)
   }, [readOnly])
   const disarm = useCallback(() => setArmedTool(null), [])
@@ -134,12 +134,16 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, s
   // (one placement per arming, the LOCKED design's own rule) --
   // explicitTool lets the right-click "Add card"/"Add note" pane menu
   // items place directly without going through the armed state at all.
-  // Area has no click-based placement (its own drag-drawn rect is
-  // handled entirely by useAtlasAreaDraw, which calls openAreaPopover
-  // + disarm directly instead of going through here).
+  // Neither Area nor Pencil has click-based placement: Area's own
+  // drag-drawn rect is handled entirely by useAtlasAreaDraw (which
+  // calls openAreaPopover + disarm directly instead of going through
+  // here), and Pencil's own drag-drawn stroke is handled entirely by
+  // useAtlasPencilDraw (which stays armed and never routes through
+  // here at all -- excluded regardless, so a stray click while pencil
+  // is armed never falls through to the note-draft branch below).
   const placeAt = useCallback((screenPos: { x: number; y: number }, explicitTool?: AtlasCreationTool, parentIDOverride?: string, linkFromCardID?: string) => {
     const tool = explicitTool ?? armedTool
-    if (!tool || tool === 'area' || readOnly) return
+    if (!tool || tool === 'area' || tool === 'pencil' || readOnly) return
     setArmedTool(null)
     // "Add linked card…" (goal 0081 slice A4) lands beside the linking
     // card, at a free spot in ITS parent -- never at the menu's own

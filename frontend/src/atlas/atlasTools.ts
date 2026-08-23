@@ -1,4 +1,4 @@
-import { FileIcon, ImageIcon, NoteIcon, SquareIcon, TableIcon } from '@primer/octicons-react'
+import { FileIcon, ImageIcon, NoteIcon, PencilIcon, SquareIcon, TableIcon } from '@primer/octicons-react'
 import type { Icon } from '@primer/octicons-react'
 import { Type as FieldType, type Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
@@ -6,6 +6,7 @@ import { AtlasService, ConfigureService } from '../shared/bindings'
 import { ATLAS_TOOL_IDENTITIES, type AtlasToolIdentity } from '../shared/atlasToolIdentity'
 import { fileToBase64 } from '../shared/base64Blob'
 import { lastUsedKindID, normalizeLocalPathInput, titleFromFilename } from './atlasCreateHelpers'
+import { buildPencilStrokeSvg, svgToBase64, type PencilPoint } from './atlasPencilSvg'
 
 // The canvas tool registry (goal 0169 slice 1): every creatable
 // thing's own descriptor, in tray render order -- AtlasCreationTray,
@@ -16,9 +17,9 @@ import { lastUsedKindID, normalizeLocalPathInput, titleFromFilename } from './at
 // can never import this atlas/ module).
 
 // The full interaction vocabulary the canvas tool set spans (goal
-// 0169); slice 2 adds the third (paste-or-drop). A tool needing a
-// SEVENTH shape is a signal this discriminant is wrong, not a reason
-// to add a bypass.
+// 0169); slice 2 added the third (paste-or-drop), slice 3 puts the
+// fourth (drag-to-draw) into real use. A tool needing a SEVENTH shape
+// is a signal this discriminant is wrong, not a reason to add a bypass.
 export type AtlasToolInteraction =
   | 'arm-then-click'
   | 'pick-then-place'
@@ -58,12 +59,19 @@ export interface AtlasNoteArtifact { kind: 'note'; text: string }
 export interface AtlasAreaArtifact { kind: 'area'; kindID: string; title: string; enclosedCardIDs: string[]; enclosedNoteIDs: string[] }
 export interface AtlasTableArtifact { kind: 'table'; title: string; listID: string }
 export interface AtlasImageArtifact { kind: 'image'; title: string; mirrorPath: string }
+// The stroke's own bounding-box origin (atlasPencilSvg.ts's own
+// PencilStrokeSvg.originX/Y) rides along on the artifact so the
+// placement door (useAtlasPencilCreate.ts) can convert exactly that
+// point through screenToFlowPosition -- the card lands where the
+// stroke was drawn, not at an arbitrary free slot.
+export interface AtlasPencilArtifact { kind: 'pencil'; title: string; mirrorPath: string; originX: number; originY: number }
 
 const cardIdentity = identityOf('card')
 const noteIdentity = identityOf('note')
 const areaIdentity = identityOf('area')
 const tableIdentity = identityOf('table')
 const imageIdentity = identityOf('image')
+const pencilIdentity = identityOf('pencil')
 
 // Card's instant-placement default (goal 0144: the click IS the
 // creation, no form) resolves the last-used kind itself; a form-driven
@@ -175,9 +183,34 @@ const imageTool = {
   },
 } as const satisfies AtlasToolShape
 
-export { cardTool, noteTool, areaTool, tableTool, imageTool }
+// Pencil (goal 0169 slice 3): the drag-to-draw interaction's own
+// proof, and the styleDefaults dual model's real test. size/color are
+// SESSION defaults (atlasPencilStyleStore.ts, never persisted) that
+// seed a stroke's own commit -- once drawn, colour/size are baked into
+// the stroke's SVG bytes below, which IS persisted document data
+// (the created card's own MirrorPath file), never re-read from the
+// ephemeral cache again.
+const PENCIL_DEFAULT_STYLE: AtlasToolStyleDefaults = { color: '#1f6feb', size: 4 }
 
-export const ATLAS_TOOLS = [cardTool, noteTool, areaTool, tableTool, imageTool] as const
+const pencilTool = {
+  id: pencilIdentity.id,
+  icon: PencilIcon,
+  label: pencilIdentity.commandLabel,
+  shortcutKey: pencilIdentity.shortcutKey,
+  tray: 'quick',
+  interaction: 'drag-to-draw',
+  styleDefaults: PENCIL_DEFAULT_STYLE,
+  commit: async (input: { points: PencilPoint[]; color: string; size: number }): Promise<AtlasPencilArtifact | null> => {
+    const doc = buildPencilStrokeSvg(input.points, input.color, input.size)
+    if (!doc) return null
+    const mirrorPath = await AtlasService.SaveImageBytes(svgToBase64(doc.svg), '.svg', 'Sketch')
+    return { kind: 'pencil', title: 'Sketch', mirrorPath, originX: doc.originX, originY: doc.originY }
+  },
+} as const satisfies AtlasToolShape
+
+export { cardTool, noteTool, areaTool, tableTool, imageTool, pencilTool }
+
+export const ATLAS_TOOLS = [cardTool, noteTool, areaTool, tableTool, imageTool, pencilTool] as const
 
 export type AtlasToolID = (typeof ATLAS_TOOLS)[number]['id']
 
@@ -186,3 +219,13 @@ export type AtlasToolID = (typeof ATLAS_TOOLS)[number]['id']
 // through the same armedTool state, so it's excluded here exactly as
 // it always has been.
 export type AtlasCreationTool = Extract<(typeof ATLAS_TOOLS)[number], { interaction: 'arm-then-click' }>['id']
+
+// The wider id set for every tool whose tray gesture ARMS a placement
+// state at all -- arm-then-click's single-click tools plus
+// drag-to-draw's own click-to-arm-then-drag tools (pencil today;
+// shapes/eraser/laser are the same shape in slices 4-5). AtlasBoard.tsx's
+// creation.armedTool is typed this wide so a drag-to-draw tool can be
+// the live armedTool value without widening AtlasCreationTool itself
+// and disturbing every arm-then-click-only caller (placeAt's own
+// single-click placement, which drag-to-draw tools never go through).
+export type AtlasArmableTool = Extract<(typeof ATLAS_TOOLS)[number], { interaction: 'arm-then-click' | 'drag-to-draw' }>['id']
