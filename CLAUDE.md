@@ -4,7 +4,12 @@ Wails3 desktop app: Go backend + React/TypeScript/Vite frontend, compiled to a
 single binary. Will become a guardrailed agentic-workflow/automation tool.
 Full context, positioning, and open architecture questions live in
 `docs/SPEC.md` — read the relevant sections before any design decision, and
-update it as decisions land. Do not treat this CLAUDE.md as a substitute for
+update it as decisions land. **Retrieve, never preload**: `grep -n "^#"
+docs/SPEC.md` gives the section map in one call, then Read that line
+range with offset/limit — the whole file is ~74k tokens and almost never
+needed. Same for prior decisions: before assuming something needs
+deciding again, grep `docs/adr/*` and `docs/goals/archive/*` by keyword;
+goal frontmatter (`id`, `spec_refs`) is the join key back to SPEC. Do not treat this CLAUDE.md as a substitute for
 it. (Deliberately a backticked pointer, not an `@`-import: the unbackticked
 form eagerly loaded the entire ~74k-token SPEC.md into every session's
 context — the exact always-loaded anti-pattern SPEC §9.1 documents; found
