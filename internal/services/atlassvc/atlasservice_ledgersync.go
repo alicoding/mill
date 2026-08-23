@@ -141,16 +141,16 @@ func (a *AtlasService) syncScannedLedgerDocs(entries []fileread.Entry, folderPat
 }
 
 // syncOneLedgerDoc mirrors one markdown file. An existing mirror card
-// with an unchanged checksum is a pure no-op. A content change
-// refreshes the checksum and, when the new content still parses as
-// frontmatter, re-merges only the Kind fields the header actually
-// names (atlas.CoerceFrontmatterFields) via MergeCardFields -- a Kind
-// field absent from that map is never touched, so an owner-owned value
-// survives every re-sync by construction. A new file becomes a new
-// card, seeded with signoff already at its Default. A file with no
-// parseable frontmatter (new or changed) skips the field write -- an
-// unreadable/unparseable file is never fatal to the rest of the
-// folder's sync.
+// with an unchanged checksum is a pure no-op (checked here, before any
+// file read, so an unchanged folder never pays a content-read+parse
+// cost on every re-run). A content change, and any brand-new file that
+// does parse as frontmatter, is handed to the shared syncMirrorCard
+// primitive (goal 0178 S1) -- a Kind field absent from the coerced
+// frontmatter map is never touched by that primitive's merge, so an
+// owner-owned value survives every re-sync by construction. A file
+// with no parseable frontmatter (new or changed) is never turned into
+// a card at all -- an unreadable/unparseable file is skipped, never
+// fatal to the rest of the folder's sync.
 func (a *AtlasService) syncOneLedgerDoc(folderPath, relPath, name string, kind atlas.Kind, parentID, sourceRunID string, byMirror map[string]atlas.Card) (id string, created, refreshed bool, err error) {
 	abs := filepath.Join(folderPath, filepath.FromSlash(relPath))
 	sum, csErr := fileChecksum(abs)
@@ -167,30 +167,27 @@ func (a *AtlasService) syncOneLedgerDoc(folderPath, relPath, name string, kind a
 		return "", false, false, nil
 	}
 	raw, hasFrontmatter := parseFrontmatterOrNone(content)
-
-	if hasExisting {
-		if err := a.setMirrorChecksum(existing.ID, sum); err != nil {
-			return "", false, false, fmt.Errorf("sync ledger folder: refresh %q: %w", existing.Title, err)
-		}
-		if hasFrontmatter {
-			fields := atlas.CoerceFrontmatterFields(raw, kind.Fields)
-			if _, err := a.MergeCardFields(existing.ID, fields, sourceRunID); err != nil {
-				return "", false, false, fmt.Errorf("sync ledger folder: merge fields for %q: %w", existing.Title, err)
-			}
-		}
-		return existing.ID, false, true, nil
-	}
-
-	if !hasFrontmatter {
+	if !hasExisting && !hasFrontmatter {
 		return "", false, false, nil
 	}
-	fields := atlas.CoerceFrontmatterFields(raw, kind.Fields)
-	fields[ledgerFieldSignoff] = "pending-verify"
-	card, err := a.createCardWithID(seeding.NewSlugID(atlas.HumanizeFilename(name), "card"), kind.ID, atlas.HumanizeFilename(name), "", fields, parentID, nil, "", "", abs, sum, "", sourceRunID)
-	if err != nil {
-		return "", false, false, fmt.Errorf("sync ledger folder: create for %q: %w", name, err)
+
+	var fields map[string]string
+	if hasFrontmatter {
+		fields = atlas.CoerceFrontmatterFields(raw, kind.Fields)
 	}
-	return card.ID, true, false, nil
+	entry := mirrorSyncEntry{
+		MirrorPath: abs, Checksum: sum,
+		NewCardID: seeding.NewSlugID(atlas.HumanizeFilename(name), "card"),
+		KindID:    kind.ID, Title: atlas.HumanizeFilename(name), ParentID: parentID,
+		Fields:            fields,
+		ExtraCreateFields: map[string]string{ledgerFieldSignoff: "pending-verify"},
+		SourceRunID:       sourceRunID,
+	}
+	id, created, refreshed, err = a.syncMirrorCard(entry, byMirror)
+	if err != nil {
+		return "", false, false, fmt.Errorf("sync ledger folder: %w", err)
+	}
+	return id, created, refreshed, nil
 }
 
 // parseFrontmatterOrNone wraps atlas.ParseFrontmatter, treating a parse

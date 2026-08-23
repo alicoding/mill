@@ -4,22 +4,21 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/alicoding/mill/internal/adapters/fileread"
 	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/domain/atlas"
-	"github.com/alicoding/mill/internal/services/seeding"
 )
 
-// This file is synced-folder onboarding (docs/goals/0067): an explicit
-// user pick of a folder (PickFolder, the whole feature's consent gate --
-// nothing below it runs without a path the user chose), a bounded
-// heuristic scan (ScanFolder) whose result is a PREVIEW only, and
-// ImportFolderSuggestions, which is the only place any card actually
-// gets written -- mirroring ImportAtlas's own preview/nothing-written-
-// until-confirm shape (atlasservice_export.go).
+// This file is synced-folder onboarding's read-only half (docs/goals/
+// 0067): an explicit user pick of a folder (PickFolder, the whole
+// feature's consent gate -- nothing below it runs without a path the
+// user chose) and a bounded heuristic scan (ScanFolder) whose result is
+// a PREVIEW only. The write half -- ImportFolderSuggestions, the only
+// place any card actually gets written -- lives in
+// atlasservice_folderimport.go (split out along this same preview/write
+// seam so neither file crowds the 500-line cap).
 
 // DefaultScanMaxDepth/DefaultScanMaxEntries are ScanFolder's own bounded-
 // scan caps -- not user-configurable in v1 (fileread.MaxBytes's own
@@ -262,198 +261,4 @@ func (a *AtlasService) ScanFolder(root string) (FolderScanResult, error) {
 		MaxDepth: DefaultScanMaxDepth, MaxEntries: DefaultScanMaxEntries,
 		CategoryFields: buildCategoryFields(frontmatterByCategory),
 	}, nil
-}
-
-// ImportFolderSuggestionsRequest is ImportFolderSuggestions' own input:
-// which of a fresh ScanFolder(root)'s entries to accept, and which
-// existing Kind each ScanCategory's accepted entries become -- a Kind
-// choice the user makes in the preview (ADR-0038 Decision 2: nothing
-// here may assume a specific Kind exists).
-type ImportFolderSuggestionsRequest struct {
-	Root string
-	// TargetParentID is the containing card every root-level accepted
-	// entry (and any accepted entry whose own parent directory wasn't
-	// itself accepted) lands under -- "" for the true root. The
-	// caller's own current space, per goal 0067's "default: current
-	// space".
-	TargetParentID string
-	// AcceptedRelPaths names every FolderScanEntry.RelPath the user
-	// kept -- everything else from the fresh re-scan is simply never
-	// created.
-	AcceptedRelPaths []string
-	// CategoryKindIDs maps an atlas.ScanCategory value ("file"/
-	// "image"/"container") to the Kind ID its accepted entries are
-	// created as -- required for every category actually present among
-	// AcceptedRelPaths.
-	CategoryKindIDs map[string]string
-}
-
-// FolderImportSummary counts what ImportFolderSuggestions actually
-// created.
-type FolderImportSummary struct {
-	CardsCreated      int
-	ContainersCreated int
-}
-
-// ImportFolderSuggestions is the only place a folder-scan suggestion
-// becomes a real card -- goal 0067's preview/confirm boundary. It
-// RE-SCANS root itself (bounded, same caps ScanFolder uses) rather
-// than trusting the frontend's own copy of the tree back: a stale
-// preview (the folder changed between scan and confirm) then fails
-// closed on whatever no longer matches AcceptedRelPaths, instead of
-// importing something the user never actually saw. Containers are
-// created before their own children (ordered by path depth) so
-// containment always resolves to a real card id; an accepted entry
-// whose own parent directory was NOT accepted attaches directly under
-// TargetParentID instead of being dropped. Every card is created
-// through the normal CreateCard path (validation, dataevent, seed
-// bookkeeping) -- no separate write primitive. A file entry's own
-// frontmatter is coerced against its chosen category's Kind
-// (atlas.CoerceFrontmatterFields) and set as the card's initial
-// Fields -- the same Kind-is-the-contract mechanism the ledger-sync
-// path already applies on every re-sync, applied here once at
-// creation. This flow has no re-sync of its own: re-running an import
-// over files it already created makes independent new cards (the
-// preview's own duplicate flag is advisory only), so a Kind field
-// with no matching frontmatter key -- an owner-owned field like a
-// proposed status -- is simply never written, exactly like any other
-// unmatched key.
-func (a *AtlasService) ImportFolderSuggestions(req ImportFolderSuggestionsRequest) (FolderImportSummary, error) {
-	a.mu.RLock()
-	guardErr := a.guardSyncedFolderLocked(req.Root)
-	a.mu.RUnlock()
-	if guardErr != nil {
-		return FolderImportSummary{}, guardErr
-	}
-
-	scanned, err := a.ScanFolder(req.Root)
-	if err != nil {
-		return FolderImportSummary{}, err
-	}
-
-	accepted := make(map[string]bool, len(req.AcceptedRelPaths))
-	for _, rp := range req.AcceptedRelPaths {
-		accepted[rp] = true
-	}
-
-	ordered := make([]FolderScanEntry, 0, len(scanned.Entries))
-	for _, e := range scanned.Entries {
-		if accepted[e.RelPath] {
-			ordered = append(ordered, e)
-		}
-	}
-	sort.SliceStable(ordered, func(i, j int) bool {
-		return strings.Count(ordered[i].RelPath, "/") < strings.Count(ordered[j].RelPath, "/")
-	})
-
-	// A card created with a nil Position renders at its parent canvas's
-	// origin (AtlasCanvasSpace.tsx's own documented default) -- fine
-	// for the ONE card that convention already assumes, but this batch
-	// can land many entries directly under TargetParentID at once, so
-	// every root-level entry here (never a nested one, which always
-	// lands in a freshly-created shelves-mode container instead) gets
-	// its own grid slot when TargetParentID itself renders as canvas.
-	targetIsCanvas := false
-	for _, c := range a.Cards() {
-		if c.ID == req.TargetParentID {
-			targetIsCanvas = c.EffectiveViewMode() == atlas.ViewModeCanvas
-			break
-		}
-	}
-
-	// kindsByID resolves each accepted category's own chosen Kind once,
-	// so every card built from it can coerce its own file's frontmatter
-	// against that Kind's real field set (goal 0172's "the Kind is the
-	// contract", extended from the ledger-sync path to this generic
-	// import path -- a freshly proposed Kind's fields populate from the
-	// very files that produced the proposal, not just on some later
-	// sync this flow has no mechanism for).
-	kindsByID := make(map[string]atlas.Kind, len(req.CategoryKindIDs))
-	for _, k := range a.Kinds() {
-		kindsByID[k.ID] = k
-	}
-
-	var summary FolderImportSummary
-	cardIDByRelPath := make(map[string]string, len(ordered))
-	rootLevelIndex := 0
-	for _, e := range ordered {
-		parentCardID := req.TargetParentID
-		if e.ParentRelPath != "" {
-			if id, ok := cardIDByRelPath[e.ParentRelPath]; ok {
-				parentCardID = id
-			}
-			// else: the entry's own scanned parent was never accepted --
-			// it attaches (and, below, grids) directly at TargetParentID.
-		}
-		atTarget := parentCardID == req.TargetParentID
-		kindID := req.CategoryKindIDs[string(e.Category)]
-		if kindID == "" {
-			return summary, fmt.Errorf("no target kind chosen for %q entries", e.Category)
-		}
-		viewMode := atlas.ViewMode("")
-		mirrorPath := ""
-		if e.IsDir {
-			viewMode = atlas.ViewModeShelves
-		} else {
-			mirrorPath = filepath.Join(req.Root, filepath.FromSlash(e.RelPath))
-		}
-		var position *atlas.Position
-		if atTarget && targetIsCanvas {
-			position = importGridPosition(rootLevelIndex)
-			rootLevelIndex++
-		}
-		// Checksum is computed here (goal 0088), not looked up from the
-		// preceding preview scan -- this re-scans root itself (see this
-		// function's own doc comment), so a mirrorPath resolved just
-		// above is guaranteed readable at the same moment it's hashed.
-		checksum := ""
-		var fields map[string]string
-		if !e.IsDir {
-			if sum, csErr := fileChecksum(mirrorPath); csErr == nil {
-				checksum = sum
-			}
-			if raw, ok := readFileFrontmatter(mirrorPath); ok {
-				fields = atlas.CoerceFrontmatterFields(raw, kindsByID[kindID].Fields)
-			}
-		}
-		card, err := a.createCardWithID(seeding.NewSlugID(e.SuggestedTitle, "card"), kindID, e.SuggestedTitle, "", fields, parentCardID, position, viewMode, "", mirrorPath, checksum, "", "")
-		if err != nil {
-			return summary, fmt.Errorf("create card for %q: %w", e.RelPath, err)
-		}
-		cardIDByRelPath[e.RelPath] = card.ID
-		if e.IsDir {
-			summary.ContainersCreated++
-		} else {
-			summary.CardsCreated++
-		}
-	}
-	return summary, nil
-}
-
-// importGridPosition places the nth root-level imported card in a
-// simple left-to-right, wrapping grid -- spacing matches the
-// frontend board's own note-card footprint (atlasBoardLayout.ts's
-// NOTE_WIDTH/NOTE_HEIGHT/BOARD_GAP) so a freshly imported batch never
-// overlaps itself. Not collision-checked against pre-existing
-// siblings (createCard's own findFreeDropPosition is the single-card,
-// frontend-side version of that) -- a bulk import landing near other
-// cards is expected to be dragged into place afterward, same as any
-// other multi-card layout. startY clears the seeded root space's own
-// typical content (a region frame at the canvas origin) rather than
-// starting the grid directly on top of it.
-func importGridPosition(index int) *atlas.Position {
-	const (
-		cardWidth  = 190
-		cardHeight = 128
-		gap        = 24
-		columns    = 4
-		startX     = 80
-		startY     = 260
-	)
-	col := index % columns
-	row := index / columns
-	return &atlas.Position{
-		X: float64(startX + col*(cardWidth+gap)),
-		Y: float64(startY + row*(cardHeight+gap)),
-	}
 }
