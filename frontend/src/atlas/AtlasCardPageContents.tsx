@@ -1,15 +1,14 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Link as PrimerLink, Stack, Text } from '@primer/react'
+import { Button } from '@primer/react'
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import { useAppStore } from '../shared/store'
 import { childrenOf } from './atlasGrouping'
 import { isGroupCard } from './atlasBoardLayout'
 import { capPageEntries, eagerPreviewIDs, orderContentChildren } from './atlasCardPageContent'
 import { AtlasCardMirrorPreview } from './AtlasCardMirrorPreview'
-import { AtlasCardProjectionTable } from './AtlasCardProjectionTable'
+import { UnitRenderSlot } from './UnitRenderSlot'
+import { resolveUnit } from './atlasUnits'
 import styles from './AtlasCardPage.module.css'
-import runbookStyles from '../shared/ListCard.module.css'
 
 // The page's own Contents column (goal 0072 slice C, narrowed by goal
 // 0081 slice A5's "read is edit"): a summary of what this card
@@ -36,11 +35,15 @@ export function AtlasCardPageContents({ card, allCards, kinds, onOpenGroupEntry,
   onChildClick: (cardID: string) => void
 }) {
   const { t } = useTranslation('atlas')
-  const setView = useAppStore((s) => s.setView)
   const kindByID = new Map(kinds.map((k) => [k.ID, k]))
 
   const childEntries = orderContentChildren(allCards, card.ID)
   const isEmpty = !card.MirrorPath && childEntries.length === 0 && !card.ProjectionListID
+  // The board-unit registry (ADR-0043, goal 0133 slice 1) resolves
+  // this card's own content unit -- the same table-projection/mirror
+  // priority chain deriveFileTag's tag now reads too, so this column's
+  // renderer and the header's file-tag chip can never disagree.
+  const unit = resolveUnit(card)
 
   // Not persisted -- unmounted with the overlay on close, so a
   // reopened page always starts collapsed again rather than carrying
@@ -71,25 +74,7 @@ export function AtlasCardPageContents({ card, allCards, kinds, onOpenGroupEntry,
 
   return (
     <div className={styles.contentsCol} data-testid="atlas-page-contents">
-      {card.ProjectionListID && (
-        <Stack direction="vertical" gap="condensed" data-testid="atlas-page-projection">
-          <Text weight="semibold">{t('projection.pageHeading')}</Text>
-          <AtlasCardProjectionTable cardID={card.ID} density={card.ProjectionDensity} />
-          <Text size="small" className={runbookStyles.muted}>
-            {t('projection.pageCaption')}{' '}
-            <PrimerLink as="button" type="button" data-testid="atlas-projection-open-configure" onClick={() => setView({ kind: 'configure', tab: 'lists' })}>
-              {t('projection.openInConfigure')}
-            </PrimerLink>
-          </Text>
-        </Stack>
-      )}
-
-      {card.MirrorPath && (
-        <Stack direction="vertical" gap="condensed" data-testid="atlas-card-mirror-content">
-          <Text weight="semibold">{t('overlay.mirrorContentHeading')}</Text>
-          <AtlasCardMirrorPreview cardID={card.ID} mirrorPath={card.MirrorPath} />
-        </Stack>
-      )}
+      {unit?.render.Page && <UnitRenderSlot loader={unit.render.Page} card={card} />}
 
       {rendered.map((child) => {
         const kind = kindByID.get(child.KindID)

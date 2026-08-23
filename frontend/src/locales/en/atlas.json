@@ -212,6 +212,14 @@
     "heading": "From this card's source — {{label}}",
     "hint": "Running one attaches it to this card."
   },
+  "unitFallback": {
+    "heading": "{{type}} file",
+    "genericHeading": "File",
+    "linkHeading": "Link",
+    "caption": "Preview isn't available for this file type yet.",
+    "openExternally": "Open externally",
+    "openLink": "Open link"
+  },
   "projection": {
     "tableTag": "table",
     "noRows": "No rows yet.",
