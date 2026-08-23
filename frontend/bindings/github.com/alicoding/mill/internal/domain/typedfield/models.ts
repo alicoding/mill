@@ -132,6 +132,25 @@ export interface Field {
      * matching StampOnChange's own reasoning.
      */
     "FrontmatterAliases"?: string[] | null;
+
+    /**
+     * RollupDoneValues marks a TypeOptions field as its Kind's container
+     * rollup (docs/goals/0164 L3): a card whose CHILDREN carry a Kind
+     * with such a field shows "<done> of <total>" on its own containing
+     * card face, alongside the existing child count -- "<total>" is
+     * every direct child of that Kind, "<done>" is however many carry
+     * one of these values. A Kind with no field declaring this stays
+     * unchanged (no rollup badge at all), the same opt-in shape
+     * ShowOnCard already follows. Only meaningful for TypeOptions
+     * (Validate rejects a non-empty RollupDoneValues on any other Type,
+     * and any value not present in the field's own Options); a Kind
+     * with more than one field declaring it is not a supported shape --
+     * callers use the first in declaration order. JSON-tagged with
+     * omitempty, matching StampOnChange's own reasoning: a field
+     * declaring no rollup marshals byte-identical to before this facet
+     * existed.
+     */
+    "RollupDoneValues"?: string[] | null;
 }
 
 /**

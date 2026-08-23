@@ -368,19 +368,34 @@ export function ImportAtlas(jsonData: string): $CancellablePromise<$models.Atlas
  * created before their own children (ordered by path depth) so
  * containment always resolves to a real card id; an accepted entry
  * whose own parent directory was NOT accepted attaches directly under
- * TargetParentID instead of being dropped. Every card is created
- * through the normal CreateCard path (validation, dataevent, seed
- * bookkeeping) -- no separate write primitive. A file entry's own
- * frontmatter is coerced against its chosen category's Kind
- * (atlas.CoerceFrontmatterFields) and set as the card's initial
- * Fields -- the same Kind-is-the-contract mechanism the ledger-sync
- * path already applies on every re-sync, applied here once at
- * creation. This flow has no re-sync of its own: re-running an import
- * over files it already created makes independent new cards (the
- * preview's own duplicate flag is advisory only), so a Kind field
- * with no matching frontmatter key -- an owner-owned field like a
- * proposed status -- is simply never written, exactly like any other
- * unmatched key.
+ * TargetParentID instead of being dropped.
+ * 
+ * A FILE entry is synced through the same syncMirrorCard primitive
+ * SyncLedgerFolder uses (goal 0178 S1): keyed by its own absolute
+ * MirrorPath, an existing card there is refreshed in place (checksum
+ * updated, and its Kind's coerced frontmatter fields re-merged --
+ * atlas.CoerceFrontmatterFields, MergeCardFields -- so a Kind field the
+ * file doesn't carry, an owner-owned value like a proposed status,
+ * stays untouched by construction, goal 0172 S1), and re-importing an
+ * unchanged file is a pure no-op.
+ * 
+ * The match is scoped to the entry's own freshly-resolved PARENT
+ * (scopedMirrorLookup), never the whole atlas: goal 0088 already lets a
+ * user import matching content into a DIFFERENT space on purpose (the
+ * duplicate flag is advisory, never blocking), and that must keep
+ * creating its own independent card there, not silently merge into a
+ * card living somewhere else entirely. This is also why a re-import of
+ * a NESTED folder into the exact same target isn't fully idempotent in
+ * this slice: a DIRECTORY entry deliberately never gets a MirrorPath of
+ * its own (that would also turn on its mirror-file UI -- the overlay's
+ * freshness dot, file tag, and reveal-in-Finder affordance all key off
+ * MirrorPath being non-empty, a UI decision outside this slice), so a
+ * container is always recreated fresh, which means anything nested
+ * below it resolves to a NEW parent every run and therefore never
+ * matches its own prior card either. Only root-level (flat) reimport
+ * is idempotent in S1; making a nested reimport idempotent needs a real
+ * container-identity mechanism, tracked as a known gap for goal 0178
+ * S2 rather than silently papered over.
  */
 export function ImportFolderSuggestions(req: $models.ImportFolderSuggestionsRequest): $CancellablePromise<$models.FolderImportSummary> {
     return $Call.ByID(2984363720, req);

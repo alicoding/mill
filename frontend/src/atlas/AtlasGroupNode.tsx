@@ -5,7 +5,7 @@ import type { NodeProps, Node as RFNode } from '@xyflow/react'
 import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { kindColorTokens } from './atlasKindColor'
 import { NOTE_HEIGHT, NOTE_WIDTH } from './atlasBoardLayout'
-import type { FreshnessRollup } from './atlasCardPresentation'
+import type { FreshnessRollup, RollupSummary } from './atlasCardPresentation'
 import { useAtlasDragHighlight } from './atlasDragHighlightContext'
 import styles from './AtlasGroupNode.module.css'
 import slotStyles from './AtlasSlotRows.module.css'
@@ -14,6 +14,11 @@ export interface AtlasGroupData extends Record<string, unknown> {
   card: Card
   childCount: number
   freshness: FreshnessRollup
+  // The field-aware "<done> of <total>" rollup (docs/goals/0164 L3):
+  // null when no direct child's Kind declares a container rollup
+  // field, in which case this frame's header renders exactly as it
+  // did before this facet existed.
+  rollup: RollupSummary | null
   // A ⌘K jump landing on this frame (goal 0072 slice B) -- same
   // meaning as AtlasNoteCardData's own pulsed/hinted.
   pulsed: boolean
@@ -48,7 +53,7 @@ export type AtlasGroupRFNode = RFNode<AtlasGroupData>
 // frame's body commits too (the same zoom the header always offers).
 export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<AtlasGroupRFNode>) {
   const { t } = useTranslation('atlas')
-  const { card, childCount, freshness, pulsed, hinted, isSoleSelected, overflow, slotDragHighlight, onDrill, onOpenOverlay } = data
+  const { card, childCount, freshness, rollup, pulsed, hinted, isSoleSelected, overflow, slotDragHighlight, onDrill, onOpenOverlay } = data
   const tokens = kindColorTokens(card.KindID)
   // Drag filing's own live release-target affordance (goal 0081 slice
   // A2): read from the narrowly-scoped context (goal 0161 slice 1)
@@ -112,6 +117,11 @@ export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<A
       >
         <span className={styles.name}>{card.Title}</span>
         <span className={styles.cardCount}>{t('board.cardsCount', { count: childCount })}</span>
+        {rollup && (
+          <span className={`${styles.pill} ${styles.pillRollup}`} data-testid="atlas-group-rollup-pill">
+            {t('board.rollupChip', { done: rollup.done, total: rollup.total })}
+          </span>
+        )}
         {freshness.fresh > 0 && (
           <span className={`${styles.pill} ${styles.pillFresh}`} data-testid="atlas-group-fresh-pill">
             {t('board.freshChip', { count: freshness.fresh })}

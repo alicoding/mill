@@ -66,6 +66,12 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "RollupDoneValues": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "additionalProperties": false,

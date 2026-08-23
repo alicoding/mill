@@ -174,6 +174,22 @@ type Field struct {
 	// predates the header it now mirrors. JSON-tagged with omitempty,
 	// matching StampOnChange's own reasoning.
 	FrontmatterAliases []string `json:"FrontmatterAliases,omitempty"`
+	// RollupDoneValues marks a TypeOptions field as its Kind's container
+	// rollup (docs/goals/0164 L3): a card whose CHILDREN carry a Kind
+	// with such a field shows "<done> of <total>" on its own containing
+	// card face, alongside the existing child count -- "<total>" is
+	// every direct child of that Kind, "<done>" is however many carry
+	// one of these values. A Kind with no field declaring this stays
+	// unchanged (no rollup badge at all), the same opt-in shape
+	// ShowOnCard already follows. Only meaningful for TypeOptions
+	// (Validate rejects a non-empty RollupDoneValues on any other Type,
+	// and any value not present in the field's own Options); a Kind
+	// with more than one field declaring it is not a supported shape --
+	// callers use the first in declaration order. JSON-tagged with
+	// omitempty, matching StampOnChange's own reasoning: a field
+	// declaring no rollup marshals byte-identical to before this facet
+	// existed.
+	RollupDoneValues []string `json:"RollupDoneValues,omitempty"`
 }
 
 // Validate checks a Field is well-formed -- same "never store an
@@ -186,6 +202,16 @@ func Validate(f Field) error {
 	}
 	if !validType(f.Type) {
 		return fmt.Errorf("field %q has an invalid type %q", f.Key, f.Type)
+	}
+	if len(f.RollupDoneValues) > 0 {
+		if f.Type != TypeOptions {
+			return fmt.Errorf("field %q declares RollupDoneValues but is not a TypeOptions field", f.Key)
+		}
+		for _, v := range f.RollupDoneValues {
+			if !slices.Contains(f.Options, v) {
+				return fmt.Errorf("field %q's RollupDoneValues contains %q, which is not one of its own Options %v", f.Key, v, f.Options)
+			}
+		}
 	}
 	return nil
 }

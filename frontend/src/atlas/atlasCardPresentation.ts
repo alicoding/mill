@@ -1,4 +1,6 @@
-import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { Type as FieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
+import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 
 // Pure derivations behind the note card's front/back faces (goal 0072
 // slice A) -- kept dependency-free like atlasGrouping.ts/atlasBoardLayout.ts
@@ -75,6 +77,46 @@ export function computeFreshnessRollup(children: Card[], now: number = Date.now(
     else if (color === 'stale') stale++
   }
   return { fresh, stale }
+}
+
+export interface RollupSummary {
+  done: number
+  total: number
+}
+
+// rollupFieldOf finds the field a Kind declares as its container rollup
+// (typedfield.Field.RollupDoneValues, docs/goals/0164 L3) -- the first
+// TypeOptions field in declaration order carrying a non-empty
+// RollupDoneValues, or undefined when the Kind declares none. A Kind
+// with no such field is the ordinary, pre-existing case: nothing here
+// changes what a container showing its children renders.
+function rollupFieldOf(kind: Kind | undefined): Field | undefined {
+  return kind?.Fields?.find((f) => f.Type === FieldType.TypeOptions && (f.RollupDoneValues?.length ?? 0) > 0)
+}
+
+// computeRollupSummary tallies a region frame's own direct children
+// (never grandchildren, same scope as computeFreshnessRollup) whose Kind
+// declares a container rollup field: "total" is every such child,
+// "done" is however many carry one of that field's own RollupDoneValues.
+// A child whose Kind declares no rollup field is excluded from both
+// counts -- it neither participates nor blocks the others. Returns null
+// when NO child participates, so the caller renders no badge at all
+// rather than a vacuous "0 of 0" -- a container whose children declare
+// no rollup field must render exactly as it did before this facet
+// existed. Kind-agnostic by construction: it reads whichever field and
+// values the KIND itself names, nothing here is tied to any one Kind,
+// field key, or option value.
+export function computeRollupSummary(children: Card[], kindByID: Map<string, Kind>): RollupSummary | null {
+  let done = 0
+  let total = 0
+  for (const c of children) {
+    const field = rollupFieldOf(kindByID.get(c.KindID))
+    if (!field) continue
+    total++
+    const value = c.Fields?.[field.Key] ?? ''
+    if (field.RollupDoneValues?.includes(value)) done++
+  }
+  return total > 0 ? { done, total } : null
 }
 
 // hostnameOf renders a Source URL's own host for the back face's

@@ -69,6 +69,10 @@
     color: var(--fgColor-attention);
     border-color: var(--borderColor-attention-muted);
 }
+.pillRollup {
+    color: var(--fgColor-accent);
+    border-color: var(--borderColor-accent-muted);
+}
 .zoomChip {
     margin-left: auto;
     font-family: var(--mill-mono);

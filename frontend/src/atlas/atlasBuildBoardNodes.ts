@@ -2,7 +2,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { childrenOf } from './atlasGrouping'
 import { computeAutoArrangeLayout, computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH, TABLE_HEIGHT, TABLE_WIDTH } from './atlasBoardLayout'
-import { computeFreshnessRollup } from './atlasCardPresentation'
+import { computeFreshnessRollup, computeRollupSummary } from './atlasCardPresentation'
 import { type BoardFilter, filterIsActive, matchesBoardFilter } from './cardFilter'
 import type { AtlasNoteCardRFNode } from './AtlasNoteCardNode'
 import type { AtlasGroupRFNode } from './AtlasGroupNode'
@@ -135,6 +135,10 @@ export function buildBoardCardNodes({
           // Roll-up covers EVERY direct child, drawn or capped -- the
           // pills stay the deep truth regardless of the preview.
           freshness: computeFreshnessRollup(childrenOf(allCards, card.ID)),
+          // The field-aware "<done> of <total>" rollup (docs/goals/0164
+          // L3), same EVERY-direct-child scope as freshness above --
+          // null when no child's Kind declares a rollup field.
+          rollup: computeRollupSummary(childrenOf(allCards, card.ID), kindByID),
           overflow: frame.overflow,
           pulsed: pulsedID === card.ID,
           hinted: hintedID === card.ID,
@@ -188,6 +192,7 @@ export function buildBoardCardNodes({
               card: child.card,
               kind: kindByID.get(child.card.KindID),
               childCount: childrenOf(allCards, child.card.ID).length,
+              rollup: computeRollupSummary(childrenOf(allCards, child.card.ID), kindByID),
               pulsed: pulsedID === child.card.ID,
               isSoleSelected,
               onOpenOverlay,
