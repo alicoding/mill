@@ -1,9 +1,14 @@
 import { useEffect } from 'react'
-import { dispatchCommandForEvent, findCommand } from '../shared/commands'
-import { isEditableTarget } from '../shared/keybinding'
+import { dispatchCommandForEvent, findCommand, isWorkflowEditorTabActive } from '../shared/commands'
+import { comboFromEvent, comboKey, isEditableTarget } from '../shared/keybinding'
 import { useAppStore } from '../shared/store'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { ATLAS_TOOL_IDENTITIES } from '../shared/atlasToolIdentity'
+
+// canvas.undo/redo/zoomIn/zoomOut's own dispatch (Listener 6, below):
+// every id this listener may match, in match-priority order (only ever
+// one, since each carries a distinct combo).
+const CANVAS_COMMAND_IDS = ['canvas.undo', 'canvas.redo', 'canvas.zoomIn', 'canvas.zoomOut'] as const
 
 // App.tsx's window-level keydown handling, split out (CLAUDE.md's
 // 500-line convention) as its own hook rather than inline effects --
@@ -129,6 +134,40 @@ export function useKeymapDispatch(): void {
       if (document.querySelector('[role="dialog"]')) return
       e.preventDefault()
       findCommand('atlas.selectAll')?.run()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  // Listener 6, canvas.undo/redo/zoomIn/zoomOut (shared/canvasCommands.ts,
+  // docs/goals/0162 item 2): ⌘Z/⌘⇧Z collide with native text-undo the
+  // same way atlas.undoDelete's own ⌘Z does (Listener 4) -- a dedicated,
+  // editable-target-guarded listener rather than a normal
+  // dispatchCommandForEvent match. ⌘+/⌘- carry no native in-field
+  // meaning but ride the same listener anyway: none of these four
+  // should ever move the canvas out from under someone mid-edit, so all
+  // four share one gate. Scoped to an actually-open workflow editor tab
+  // (not just the composition view.kind), which is also what keeps this
+  // from ever contesting view.home's own global ⌘0 -- fit-view (the
+  // fifth canvas command) carries no default binding at all precisely
+  // to avoid that clash, see canvasCommands.ts's own comment.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isEditableTarget(e.target)) return
+      if (document.querySelector('[role="dialog"]')) return
+      if (!isWorkflowEditorTabActive()) return
+      const pressed = comboFromEvent(e)
+      if (!pressed) return
+      const want = comboKey(pressed.mods, pressed.key)
+      for (const id of CANVAS_COMMAND_IDS) {
+        const command = findCommand(id)
+        const binding = command?.defaultBinding
+        if (binding && comboKey(binding.mods, binding.key) === want) {
+          e.preventDefault()
+          command.run()
+          return
+        }
+      }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)

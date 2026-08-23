@@ -181,7 +181,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
     setValidationIssues(groupIssuesByNode(validationIssues))
   }, [validationIssues, setValidationIssues])
 
-  const { screenToFlowPosition } = useReactFlow()
+  const { screenToFlowPosition, zoomIn, zoomOut, fitView } = useReactFlow()
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
@@ -319,7 +319,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
 
   const { save, saving, saveError } = useCanvasSave(workflow, tabKey, readOnly, draftLabel, draftDescription, nodes, edges, notes, onSaved)
 
-  useCanvasCommandDispatch(tabKey, save, runButtonRef)
+  useCanvasCommandDispatch(tabKey, save, runButtonRef, { useCanvasStore, removeSelected, zoomIn, zoomOut, fitView })
 
   const { onNodeContextMenu, onEdgeContextMenu, onPaneContextMenu } = useCanvasContextMenuHandlers({
     t, readOnly, removeNode, removeEdge, screenToFlowPosition, addNoteNear, setPaletteOpen,
@@ -409,10 +409,14 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
             // Backspace/Delete handling fires straight off node
             // selection state, independent of nodesDraggable/
             // nodesConnectable, so leaving it at its default would let
-            // a selected node still be deleted by keyboard.
+            // a selected node still be deleted by keyboard. The array
+            // (not the library's own single-key 'Backspace' default)
+            // is deliberate -- canvas.delete's hint advertises both
+            // keys (shared/canvasCommands.ts), through this one
+            // already-editable-target-guarded binding, never a second.
             nodesDraggable={!readOnly}
             nodesConnectable={!readOnly}
-            deleteKeyCode={readOnly ? null : undefined}
+            deleteKeyCode={readOnly ? null : ['Backspace', 'Delete']}
             fitView
             // Cap fit-zoom at 100%: fitView's default happily zooms a
             // single starter node to fill the whole canvas, which read

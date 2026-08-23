@@ -207,9 +207,11 @@ interface AppState {
   // composition/CompositionCanvas.tsx directly (dependency-cruiser
   // boundary, .claude/rules/frontend.md) -- this is the signal the
   // ACTIVE canvas tab watches and consumes, same store-field-beats-a-
-  // callback-chain shape as openWorkflowRequest above.
-  canvasCommandRequest: 'save' | 'run' | null
-  requestCanvasCommand: (command: 'save' | 'run') => void
+  // callback-chain shape as openWorkflowRequest above. Extended by
+  // shared/canvasCommands.ts (docs/goals/0162 item 2) for undo/redo/
+  // delete/zoom, same signal, same consumer.
+  canvasCommandRequest: 'save' | 'run' | 'undo' | 'redo' | 'delete' | 'zoomIn' | 'zoomOut' | 'fitView' | null
+  requestCanvasCommand: (command: 'save' | 'run' | 'undo' | 'redo' | 'delete' | 'zoomIn' | 'zoomOut' | 'fitView') => void
   // atlas.up (shared/commands.ts) can't reach AtlasView's own
   // viewedID -- a monotonic counter signal the mounted AtlasView
   // consumes, same store-field-beats-a-callback-chain shape as

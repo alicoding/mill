@@ -6,6 +6,7 @@ import { useUISignalStore } from './uiSignalStore'
 import { CONFIGURE_CREATE_COMMANDS } from './configureCreateCommands'
 import { ATLAS_BOARD_COMMANDS } from './atlasBoardCommands'
 import { SETTINGS_COMMANDS } from './settingsCommands'
+import { CANVAS_COMMANDS } from './canvasCommands'
 import { ATLAS_TOOL_IDENTITIES } from './atlasToolIdentity'
 
 // The command registry (docs/goals/0016-keymap-system.md): named
@@ -73,7 +74,11 @@ function setView(view: View) {
   useAppStore.getState().setView(view)
 }
 
-function isWorkflowEditorTabActive(): boolean {
+// Exported for app/useKeymapDispatch.ts's own dedicated canvas-command
+// listener (undo/redo/zoom), which needs the identical "is there
+// actually an open workflow editor tab" gate this file's own
+// workflow.save/workflow.run commands already use.
+export function isWorkflowEditorTabActive(): boolean {
   const { activeWorkTabKey, workTabs } = useAppStore.getState()
   const active = workTabs.find((t) => t.key === activeWorkTabKey)
   return active?.kind === 'workflow-edit' || active?.kind === 'workflow-new'
@@ -398,6 +403,10 @@ export const COMMANDS: Command[] = [
   // section deep links -- split out to shared/settingsCommands.ts
   // (CLAUDE.md's 500-line convention).
   ...SETTINGS_COMMANDS,
+  // Canvas undo/redo/delete/zoom -- split out to shared/canvasCommands.ts
+  // (CLAUDE.md's 500-line convention); see that file's own header for
+  // why every entry is hintOnly.
+  ...CANVAS_COMMANDS,
 ]
 
 export function findCommand(id: string): Command | undefined {

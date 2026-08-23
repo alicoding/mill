@@ -33,6 +33,12 @@ export function keyFromEventCode(code: string): string | null {
   // Arrow keys exist for atlas.up's ⌘↑ default (goal 0071 slice --
   // Finder's own "Enclosing folder" convention for going up a level).
   if (code === 'ArrowUp' || code === 'ArrowDown' || code === 'ArrowLeft' || code === 'ArrowRight') return code
+  // canvas.zoomIn/zoomOut (shared/canvasCommands.ts) -- '+' rather than
+  // the unshifted '=' glyph, matching how the shortcut is conventionally
+  // written (⌘+), same shift-independent physical-key reasoning as
+  // every other entry here.
+  if (code === 'Equal') return '+'
+  if (code === 'Minus') return '-'
   return null
 }
 
