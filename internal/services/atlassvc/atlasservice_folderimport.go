@@ -67,16 +67,25 @@ type FolderImportSummary struct {
 // atlas.CoerceFrontmatterFields, MergeCardFields -- so a Kind field the
 // file doesn't carry, an owner-owned value like a proposed status,
 // stays untouched by construction, goal 0172 S1), and re-importing an
-// unchanged file is a pure no-op. This is what makes re-running an
-// import over files it already created idempotent instead of
-// duplicating every one of them. A DIRECTORY entry deliberately does
-// NOT get this treatment: giving a container card a MirrorPath would
-// also turn on its mirror-file UI (the overlay's freshness dot, file
-// tag, and reveal-in-Finder affordance all key off MirrorPath being
-// non-empty), which is a UI decision outside this slice -- a
-// re-imported folder's own CONTAINER cards therefore still duplicate,
-// tracked as a known gap for goal 0178 S2 rather than silently
-// papered over.
+// unchanged file is a pure no-op.
+//
+// The match is scoped to the entry's own freshly-resolved PARENT
+// (scopedMirrorLookup), never the whole atlas: goal 0088 already lets a
+// user import matching content into a DIFFERENT space on purpose (the
+// duplicate flag is advisory, never blocking), and that must keep
+// creating its own independent card there, not silently merge into a
+// card living somewhere else entirely. This is also why a re-import of
+// a NESTED folder into the exact same target isn't fully idempotent in
+// this slice: a DIRECTORY entry deliberately never gets a MirrorPath of
+// its own (that would also turn on its mirror-file UI -- the overlay's
+// freshness dot, file tag, and reveal-in-Finder affordance all key off
+// MirrorPath being non-empty, a UI decision outside this slice), so a
+// container is always recreated fresh, which means anything nested
+// below it resolves to a NEW parent every run and therefore never
+// matches its own prior card either. Only root-level (flat) reimport
+// is idempotent in S1; making a nested reimport idempotent needs a real
+// container-identity mechanism, tracked as a known gap for goal 0178
+// S2 rather than silently papered over.
 func (a *AtlasService) ImportFolderSuggestions(req ImportFolderSuggestionsRequest) (FolderImportSummary, error) {
 	a.mu.RLock()
 	guardErr := a.guardSyncedFolderLocked(req.Root)
@@ -118,7 +127,8 @@ func (a *AtlasService) ImportFolderSuggestions(req ImportFolderSuggestionsReques
 			rootLevelIndex++
 		}
 		entry := buildImportMirrorEntry(req.Root, e, kindID, parentCardID, position, kindsByID)
-		cardID, created, _, err := a.syncMirrorCard(entry, byMirror)
+		lookup := scopedMirrorLookup(byMirror, entry.MirrorPath, parentCardID)
+		cardID, created, _, err := a.syncMirrorCard(entry, lookup)
 		if err != nil {
 			return summary, fmt.Errorf("sync card for %q: %w", e.RelPath, err)
 		}
@@ -191,6 +201,26 @@ func resolveImportParent(e FolderScanEntry, targetParentID string, cardIDByRelPa
 		}
 	}
 	return parentCardID, parentCardID == targetParentID
+}
+
+// scopedMirrorLookup restricts byMirror to the one existing candidate
+// (if any) at mirrorPath whose OWN ParentID already equals
+// parentCardID -- goal 0088's cross-space duplicate-import behavior
+// (matching content imported into a DIFFERENT space still creates its
+// own independent card there) must survive goal 0178 S1's own
+// reimport-merges-in-place behavior; the two are reconciled by scoping
+// "is this the same card" to "already lives in the same container",
+// never the whole atlas. An empty mirrorPath (a directory entry) never
+// matches anything, same as byMirror itself.
+func scopedMirrorLookup(byMirror map[string]atlas.Card, mirrorPath, parentCardID string) map[string]atlas.Card {
+	if mirrorPath == "" {
+		return nil
+	}
+	existing, ok := byMirror[mirrorPath]
+	if !ok || existing.ParentID != parentCardID {
+		return nil
+	}
+	return map[string]atlas.Card{mirrorPath: existing}
 }
 
 // buildImportMirrorEntry packages one accepted scan entry as a
