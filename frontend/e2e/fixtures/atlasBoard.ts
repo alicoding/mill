@@ -240,7 +240,15 @@ export async function openPlacementPopover(page: Page, at?: { x: number; y: numb
   await page.getByTestId('atlas-tray-card').click()
   // Candidate points are tried until one is genuinely empty pane --
   // an earlier create in the same test may already occupy a spot.
-  const candidates = at ? [at] : [{ x: 400, y: 500 }, { x: 300, y: 620 }, { x: 1000, y: 640 }, { x: 250, y: 250 }]
+  // The 2nd/3rd points were originally {300,620}/{1000,640} -- close
+  // enough to the board's own bottom edge (a shorter viewport, or a
+  // taller app chrome above it, clips content past a certain y) that a
+  // card placed there renders with its CENTER outside the board's own
+  // visible/hit-testable area, even though its top sliver still reads
+  // as "pane" for this very isPane probe. Raised to keep every
+  // candidate's full card comfortably inside the board on the
+  // suite's default viewport, clear of the tray and the minimap.
+  const candidates = at ? [at] : [{ x: 400, y: 500 }, { x: 300, y: 480 }, { x: 700, y: 300 }, { x: 250, y: 250 }]
   let point = candidates[0]
   for (const c of candidates) {
     const isPane = await page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.classList?.contains('react-flow__pane') ?? false, [c.x, c.y])
@@ -260,7 +268,9 @@ export async function createCardViaTray(page: Page, title: string, opts?: { kind
   // the title edits inline on the new node.
   if (opts?.kindID) await page.evaluate((kindID) => localStorage.setItem('atlas.lastKindId', kindID), opts.kindID)
   await page.getByTestId('atlas-tray-card').click()
-  const candidates = opts?.at ? [opts.at] : [{ x: 400, y: 500 }, { x: 300, y: 620 }, { x: 1000, y: 640 }, { x: 250, y: 250 }]
+  // See openPlacementPopover's own comment above on why the 2nd/3rd
+  // points were raised from their original {300,620}/{1000,640}.
+  const candidates = opts?.at ? [opts.at] : [{ x: 400, y: 500 }, { x: 300, y: 480 }, { x: 700, y: 300 }, { x: 250, y: 250 }]
   let point = candidates[0]
   for (const c of candidates) {
     const isPane = await page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.classList?.contains('react-flow__pane') ?? false, [c.x, c.y])

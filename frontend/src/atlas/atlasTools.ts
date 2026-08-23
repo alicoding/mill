@@ -1,4 +1,4 @@
-import { FileIcon, ImageIcon, NoteIcon, PencilIcon, SquareIcon, TableIcon } from '@primer/octicons-react'
+import { FileIcon, ImageIcon, NoteIcon, PencilIcon, SquareIcon, TableIcon, TrashIcon, ZapIcon } from '@primer/octicons-react'
 import type { Icon } from '@primer/octicons-react'
 import { Type as FieldType, type Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
@@ -17,9 +17,12 @@ import { buildPencilStrokeSvg, svgToBase64, type PencilPoint } from './atlasPenc
 // can never import this atlas/ module).
 
 // The full interaction vocabulary the canvas tool set spans (goal
-// 0169); slice 2 added the third (paste-or-drop), slice 3 puts the
-// fourth (drag-to-draw) into real use. A tool needing a SEVENTH shape
-// is a signal this discriminant is wrong, not a reason to add a bypass.
+// 0169); slice 2 added the third (paste-or-drop), slice 3 put the
+// fourth (drag-to-draw) into real use, slice 4 puts the fifth and
+// sixth (drag-to-erase, ephemeral-drag) into use -- every shape this
+// discriminant was originally sized to now has a real tool. A tool
+// needing a SEVENTH shape is a signal this discriminant is wrong, not
+// a reason to add a bypass.
 export type AtlasToolInteraction =
   | 'arm-then-click'
   | 'pick-then-place'
@@ -72,6 +75,8 @@ const areaIdentity = identityOf('area')
 const tableIdentity = identityOf('table')
 const imageIdentity = identityOf('image')
 const pencilIdentity = identityOf('pencil')
+const eraserIdentity = identityOf('eraser')
+const laserIdentity = identityOf('laser')
 
 // Card's instant-placement default (goal 0144: the click IS the
 // creation, no form) resolves the last-used kind itself; a form-driven
@@ -208,9 +213,60 @@ const pencilTool = {
   },
 } as const satisfies AtlasToolShape
 
-export { cardTool, noteTool, areaTool, tableTool, imageTool, pencilTool }
+// Eraser (goal 0169 slice 4): drag-to-erase's own proof. Whole-element
+// only -- never a partial/pixel erase (the converged default this
+// goal's own research recorded: pixel-erase is contested even
+// upstream). Deletion is NOT unrecoverable: it never calls
+// AtlasService directly at all -- useAtlasEraserDraw.ts hands its
+// accumulated hit set straight to the SAME onDeleteSelection door the
+// selection tray's own Delete key already uses (AtlasBoard.tsx), which
+// routes through goal 0093's quick-delete-WITH-UNDO guard (a 10s toast
+// + Cmd-Z, AtlasUndoToast.tsx) -- the exact mechanism every other
+// Atlas delete already relies on, never a bespoke one. Scoped to
+// TOP-LEVEL boxes only, same as every other spatial gesture on this
+// board (area-draw, drag-filing, slot-drag) -- a card nested inside a
+// frame's own preview isn't independently erasable by a drag over that
+// preview. Containers (isFrame boxes) are excluded from the hit test
+// entirely: a frame's own rendered bounds cover its whole child area,
+// so treating it as touchable would make erasing something INSIDE a
+// frame risk sweeping the frame itself away too -- the highest-blast-
+// radius accident this tool could cause. Deleting a container stays a
+// deliberate act (the frame's own Delete/Dissolve menu item).
+// commit() below is never called -- this tool bypasses the "commit
+// produces an artifact for placement" model entirely, since erasing
+// destroys board state rather than creating any; it exists only to
+// satisfy AtlasToolShape's own required shape.
+const eraserTool = {
+  id: eraserIdentity.id,
+  icon: TrashIcon,
+  label: eraserIdentity.commandLabel,
+  shortcutKey: eraserIdentity.shortcutKey,
+  tray: 'quick',
+  interaction: 'drag-to-erase',
+  commit: (): null => null,
+} as const satisfies AtlasToolShape
 
-export const ATLAS_TOOLS = [cardTool, noteTool, areaTool, tableTool, imageTool, pencilTool] as const
+// Laser (goal 0169 slice 4): ephemeral-drag's own proof -- a pointer
+// trail for pointing at things while talking. Renders from LOCAL
+// component state only (useAtlasLaserDraw.ts), the same ephemeral-
+// overlay pattern AtlasPencilLivePreview.tsx already established, and
+// makes NO AtlasService call at any point in its lifecycle: nothing is
+// ever created, so there is nothing to place and nothing for a reload
+// to read back. commit() below is never called, for the same reason
+// eraserTool's isn't -- kept only to satisfy AtlasToolShape's shape.
+const laserTool = {
+  id: laserIdentity.id,
+  icon: ZapIcon,
+  label: laserIdentity.commandLabel,
+  shortcutKey: laserIdentity.shortcutKey,
+  tray: 'quick',
+  interaction: 'ephemeral-drag',
+  commit: (): null => null,
+} as const satisfies AtlasToolShape
+
+export { cardTool, noteTool, areaTool, tableTool, imageTool, pencilTool, eraserTool, laserTool }
+
+export const ATLAS_TOOLS = [cardTool, noteTool, areaTool, tableTool, imageTool, pencilTool, eraserTool, laserTool] as const
 
 export type AtlasToolID = (typeof ATLAS_TOOLS)[number]['id']
 
@@ -221,11 +277,10 @@ export type AtlasToolID = (typeof ATLAS_TOOLS)[number]['id']
 export type AtlasCreationTool = Extract<(typeof ATLAS_TOOLS)[number], { interaction: 'arm-then-click' }>['id']
 
 // The wider id set for every tool whose tray gesture ARMS a placement
-// state at all -- arm-then-click's single-click tools plus
-// drag-to-draw's own click-to-arm-then-drag tools (pencil today;
-// shapes/eraser/laser are the same shape in slices 4-5). AtlasBoard.tsx's
-// creation.armedTool is typed this wide so a drag-to-draw tool can be
-// the live armedTool value without widening AtlasCreationTool itself
-// and disturbing every arm-then-click-only caller (placeAt's own
-// single-click placement, which drag-to-draw tools never go through).
-export type AtlasArmableTool = Extract<(typeof ATLAS_TOOLS)[number], { interaction: 'arm-then-click' | 'drag-to-draw' }>['id']
+// state at all -- arm-then-click's single-click tools plus every other
+// click-to-arm-then-drag tool (pencil, eraser, laser). AtlasBoard.tsx's
+// creation.armedTool is typed this wide so any of them can be the live
+// armedTool value without widening AtlasCreationTool itself and
+// disturbing every arm-then-click-only caller (placeAt's own
+// single-click placement, which none of these three ever go through).
+export type AtlasArmableTool = Extract<(typeof ATLAS_TOOLS)[number], { interaction: 'arm-then-click' | 'drag-to-draw' | 'drag-to-erase' | 'ephemeral-drag' }>['id']

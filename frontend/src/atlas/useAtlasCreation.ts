@@ -134,16 +134,17 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, s
   // (one placement per arming, the LOCKED design's own rule) --
   // explicitTool lets the right-click "Add card"/"Add note" pane menu
   // items place directly without going through the armed state at all.
-  // Neither Area nor Pencil has click-based placement: Area's own
-  // drag-drawn rect is handled entirely by useAtlasAreaDraw (which
-  // calls openAreaPopover + disarm directly instead of going through
-  // here), and Pencil's own drag-drawn stroke is handled entirely by
-  // useAtlasPencilDraw (which stays armed and never routes through
-  // here at all -- excluded regardless, so a stray click while pencil
-  // is armed never falls through to the note-draft branch below).
+  // None of Area/Pencil/Eraser/Laser has click-based placement: each
+  // one's own drag gesture is handled entirely by its own hook
+  // (useAtlasAreaDraw, useAtlasPencilDraw, useAtlasEraserDraw,
+  // useAtlasLaserDraw -- all wired in AtlasBoard.tsx), which either
+  // disarms itself (Area) or stays armed and never routes through here
+  // at all (the other three) -- excluded regardless, so a stray click
+  // while one of them is armed never falls through to the note-draft
+  // branch below.
   const placeAt = useCallback((screenPos: { x: number; y: number }, explicitTool?: AtlasCreationTool, parentIDOverride?: string, linkFromCardID?: string) => {
     const tool = explicitTool ?? armedTool
-    if (!tool || tool === 'area' || tool === 'pencil' || readOnly) return
+    if (!tool || tool === 'area' || tool === 'pencil' || tool === 'eraser' || tool === 'laser' || readOnly) return
     setArmedTool(null)
     // "Add linked card…" (goal 0081 slice A4) lands beside the linking
     // card, at a free spot in ITS parent -- never at the menu's own

@@ -90,7 +90,11 @@
     "imageLabel": "Image",
     "imageTooltip": "Add an image — paste one, or enter a path",
     "pencilLabel": "Pencil",
-    "pencilTooltip": "Draw on the board (P)"
+    "pencilTooltip": "Draw on the board (P)",
+    "eraserLabel": "Eraser",
+    "eraserTooltip": "Drag to erase cards and notes (E)",
+    "laserLabel": "Laser",
+    "laserTooltip": "Point at things on the board (L)"
   },
   "pencilStyle": {
     "colorLabel": "Stroke colour",

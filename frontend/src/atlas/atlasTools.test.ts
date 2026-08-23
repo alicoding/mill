@@ -8,7 +8,7 @@ vi.mock('../shared/bindings', () => ({
   AtlasService: { SaveImageBytes: saveImageBytesMock },
 }))
 
-import { ATLAS_TOOLS, cardTool, noteTool, areaTool, tableTool, imageTool, pencilTool } from './atlasTools'
+import { ATLAS_TOOLS, cardTool, noteTool, areaTool, tableTool, imageTool, pencilTool, eraserTool, laserTool } from './atlasTools'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 
 function kind(id: string): Kind {
@@ -17,10 +17,10 @@ function kind(id: string): Kind {
 
 describe('ATLAS_TOOLS', () => {
   it('carries every registered tool in tray render order', () => {
-    expect(ATLAS_TOOLS.map((t) => t.id)).toEqual(['card', 'note', 'area', 'table', 'image', 'pencil'])
+    expect(ATLAS_TOOLS.map((t) => t.id)).toEqual(['card', 'note', 'area', 'table', 'image', 'pencil', 'eraser', 'laser'])
   })
 
-  it('scopes card/note/area to arm-then-click, table to pick-then-place, image to paste-or-drop, pencil to drag-to-draw', () => {
+  it('scopes card/note/area to arm-then-click, table to pick-then-place, image to paste-or-drop, pencil to drag-to-draw, eraser to drag-to-erase, laser to ephemeral-drag', () => {
     const byID = Object.fromEntries(ATLAS_TOOLS.map((t) => [t.id, t.interaction]))
     expect(byID).toEqual({
       card: 'arm-then-click',
@@ -29,6 +29,8 @@ describe('ATLAS_TOOLS', () => {
       table: 'pick-then-place',
       image: 'paste-or-drop',
       pencil: 'drag-to-draw',
+      eraser: 'drag-to-erase',
+      laser: 'ephemeral-drag',
     })
   })
 
@@ -148,5 +150,19 @@ describe('pencilTool.commit', () => {
     const artifact = await pencilTool.commit({ points: [{ x: 1, y: 1 }], color: '#1f6feb', size: 4 })
     expect(artifact).toBeNull()
     expect(saveImageBytesMock).not.toHaveBeenCalled()
+  })
+})
+
+// Eraser and laser never produce a placeable artifact -- they destroy
+// board state or render an ephemeral overlay respectively, never
+// create anything -- so their own commit is a stub the real
+// interaction hooks (useAtlasEraserDraw.ts, useAtlasLaserDraw.ts) never
+// call. These tests only pin that the stub stays inert.
+describe('eraserTool.commit and laserTool.commit', () => {
+  it('are no-op stubs that touch no backend service', () => {
+    expect(eraserTool.commit()).toBeNull()
+    expect(laserTool.commit()).toBeNull()
+    expect(saveImageBytesMock).not.toHaveBeenCalled()
+    expect(createListMock).not.toHaveBeenCalled()
   })
 })
