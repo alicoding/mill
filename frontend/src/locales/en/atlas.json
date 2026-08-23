@@ -225,6 +225,10 @@
   "mermaid": {
     "pageHeading": "Diagram"
   },
+  "drawio": {
+    "pageHeading": "Diagram",
+    "renderError": "Couldn't render this diagram."
+  },
   "projection": {
     "tableTag": "table",
     "noRows": "No rows yet.",
