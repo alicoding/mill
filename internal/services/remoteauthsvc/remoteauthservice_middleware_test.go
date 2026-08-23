@@ -375,3 +375,4 @@ func TestMiddleware_RevokedTokenRejectedImmediately(t *testing.T) {
 		t.Errorf("revoked cookie reached app content: %q", rec.Body.String())
 	}
 }
+
