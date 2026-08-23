@@ -13,6 +13,10 @@ const targetNode = (id: string): CanvasNode => ({
 const ruleEdge = (id: string, source: string, target: string, condition = ''): RFEdge => ({
   id, source, target, data: { condition }, label: condition,
 })
+const makeNode = (id: string): CanvasNode => ({
+  id, type: 'process', position: { x: 0, y: 0 },
+  data: { nodeTypeID: 'process-inject-text', kind: 'process', label: id, config: {} },
+})
 
 // docs/goals/0173's own most-important-property, pinned at the store
 // layer that authors the array order execute.go's nextNode reads:
@@ -90,5 +94,132 @@ describe('disarmPendingBranchRule', () => {
     const store = createCanvasStore([decisionNode('d')])
     store.getState().disarmPendingBranchRule('d')
     expect(store.getState().pendingRuleClaims['d']).toBe(0)
+  })
+})
+
+// docs/goals/0174: the canvas's zundo undo history could silently
+// self-cancel. Two distinct sources land through this file's own
+// onNodesChange/onEdgesChange/onNotesChange/setGuardrailVerdicts/
+// setValidationIssues -- a reactive re-derivation (guardrail/
+// validation) and React Flow's OWN internal bookkeeping NodeChange/
+// EdgeChange events ('dimensions' from its resize/measure observer,
+// 'select' from a plain click), both of which flow through the exact
+// same callbacks a real drag/delete uses. Reproduced directly against
+// real zundo: an unwrapped write landing right after undo() re-pushed
+// the just-undone state and wiped the redo stack; the live e2e repro
+// (a note add, then undo) traced the actual bounce to React Flow's own
+// 'dimensions' change firing on the note's next render, not to
+// guardrail/validation at all -- these tests pin both mechanisms.
+describe('canvas undo/redo history', () => {
+  it('undo actually reverts a real edit, not just parity between two entry points', () => {
+    const store = createCanvasStore([makeNode('a')], [])
+    store.getState().addNode(makeNode('b'))
+    expect(store.getState().nodes.map((n) => n.id)).toEqual(['a', 'b'])
+
+    store.temporal.getState().undo()
+    expect(store.getState().nodes.map((n) => n.id)).toEqual(['a'])
+
+    store.temporal.getState().redo()
+    expect(store.getState().nodes.map((n) => n.id)).toEqual(['a', 'b'])
+  })
+
+  it('a guardrail re-check landing in the same tick as undo does not re-push undone state', () => {
+    const store = createCanvasStore([makeNode('a')], [])
+    store.getState().addNode(makeNode('b'))
+    store.temporal.getState().undo()
+    expect(store.getState().nodes).toHaveLength(1)
+
+    store.getState().setGuardrailVerdicts({ a: { effect: 'ask', ruleLabel: 'r' } })
+
+    expect(store.getState().nodes).toHaveLength(1)
+    expect(store.temporal.getState().pastStates).toHaveLength(0)
+    expect(store.temporal.getState().futureStates).toHaveLength(1)
+    // Redo still reaches the pre-undo state -- the reactive write never
+    // touched history, so the stack is exactly as if it never ran.
+    store.temporal.getState().redo()
+    expect(store.getState().nodes).toHaveLength(2)
+  })
+
+  it('a validation re-check landing in the same tick as undo does not re-push undone state', () => {
+    const store = createCanvasStore([makeNode('a')], [])
+    store.getState().addNode(makeNode('b'))
+    store.temporal.getState().undo()
+
+    store.getState().setValidationIssues({ a: [{ severity: 'error', message: 'bad config' }] })
+
+    expect(store.getState().nodes).toHaveLength(1)
+    expect(store.temporal.getState().pastStates).toHaveLength(0)
+    expect(store.temporal.getState().futureStates).toHaveLength(1)
+  })
+
+  // The mechanism the live e2e repro actually traced to: React Flow
+  // fires a 'dimensions' NodeChange (its own resize/measure observer)
+  // whenever a node/note is newly rendered -- including right after
+  // undo() re-renders the reverted canvas. Landing through the same
+  // onNodesChange/onNotesChange callback a real drag uses, an unguarded
+  // 'dimensions' write re-pushes the just-undone state exactly like the
+  // guardrail/validation case above.
+  it('a dimensions-only NodeChange lands but is never tracked as undo history', () => {
+    const store = createCanvasStore([makeNode('a'), makeNode('b')], [])
+    // Real content edit: b moves.
+    store.getState().onNodesChange([{ id: 'b', type: 'position', position: { x: 50, y: 50 } }])
+    expect(store.temporal.getState().pastStates).toHaveLength(1)
+
+    store.temporal.getState().undo()
+    expect(store.getState().nodes.find((n) => n.id === 'b')?.position).toEqual({ x: 0, y: 0 })
+    expect(store.temporal.getState().pastStates).toHaveLength(0)
+    expect(store.temporal.getState().futureStates).toHaveLength(1)
+
+    // React Flow's own post-render measurement, not a user edit --
+    // applyNodeChanges writes a plain 'dimensions' change onto
+    // `.measured`, not `.width`/`.height` (those only change when the
+    // change itself sets `setAttributes`, a real NodeResizer drag).
+    store.getState().onNodesChange([{ id: 'a', type: 'dimensions', dimensions: { width: 200, height: 80 } }])
+
+    // The dimensions change still applies to live state...
+    expect(store.getState().nodes.find((n) => n.id === 'a')?.measured?.width).toBe(200)
+    // ...but never entered undo history: the revert above is intact,
+    // and redo still reaches the pre-undo position.
+    expect(store.temporal.getState().pastStates).toHaveLength(0)
+    expect(store.temporal.getState().futureStates).toHaveLength(1)
+    store.temporal.getState().redo()
+    expect(store.getState().nodes.find((n) => n.id === 'b')?.position).toEqual({ x: 50, y: 50 })
+  })
+
+  it('a select-only NodeChange/EdgeChange is never tracked as undo history', () => {
+    const store = createCanvasStore(
+      [decisionNode('d'), targetNode('a')],
+      [ruleEdge('e1', 'd', 'a', 'otherwise')],
+    )
+    store.getState().onNodesChange([{ id: 'd', type: 'position', position: { x: 10, y: 10 } }])
+    expect(store.temporal.getState().pastStates).toHaveLength(1)
+    store.temporal.getState().undo()
+    expect(store.temporal.getState().pastStates).toHaveLength(0)
+
+    store.getState().onNodesChange([{ id: 'd', type: 'select', selected: true }])
+    store.getState().onEdgesChange([{ id: 'e1', type: 'select', selected: true }])
+
+    expect(store.getState().nodes.find((n) => n.id === 'd')?.selected).toBe(true)
+    expect(store.getState().edges.find((e) => e.id === 'e1')?.selected).toBe(true)
+    expect(store.temporal.getState().pastStates).toHaveLength(0)
+    expect(store.temporal.getState().futureStates).toHaveLength(1)
+  })
+
+  it('a mixed batch tracks only its real-edit changes, applying the bookkeeping ones untracked', () => {
+    const store = createCanvasStore([makeNode('a'), makeNode('b')], [])
+    store.getState().onNodesChange([
+      { id: 'a', type: 'dimensions', dimensions: { width: 150, height: 60 } },
+      { id: 'b', type: 'position', position: { x: 20, y: 20 } },
+    ])
+    expect(store.getState().nodes.find((n) => n.id === 'a')?.measured?.width).toBe(150)
+    expect(store.getState().nodes.find((n) => n.id === 'b')?.position).toEqual({ x: 20, y: 20 })
+    // Only the position change is undo-worthy.
+    expect(store.temporal.getState().pastStates).toHaveLength(1)
+
+    store.temporal.getState().undo()
+    expect(store.getState().nodes.find((n) => n.id === 'b')?.position).toEqual({ x: 0, y: 0 })
+    // The dimensions change from the same batch survives the undo --
+    // it was never part of the tracked snapshot in the first place.
+    expect(store.getState().nodes.find((n) => n.id === 'a')?.measured?.width).toBe(150)
   })
 })
