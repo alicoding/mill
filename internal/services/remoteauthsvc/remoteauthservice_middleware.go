@@ -99,6 +99,15 @@ func (s *RemoteAuthService) writePairingResponse(w http.ResponseWriter, status i
 // be loopback. A RemoteAddr this can't parse is treated as
 // non-loopback (fail closed), never assumed safe.
 func isLoopback(r *http.Request) bool {
+	// An EMPTY RemoteAddr means the request never crossed a socket: the
+	// desktop build serves its assets in-process to its own webview.
+	// net/http always sets RemoteAddr for a real connection, so this
+	// cannot admit a network caller -- and without it the gate
+	// challenges the desktop app against itself, a state nothing can
+	// pair out of (BootstrapPairingCode only mints in server mode).
+	if strings.TrimSpace(r.RemoteAddr) == "" {
+		return true
+	}
 	ip := remoteIP(r)
 	return ip != nil && ip.IsLoopback()
 }
