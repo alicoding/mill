@@ -108,6 +108,17 @@ type SettingsService struct {
 	// DownloadAndInstallUpdate. Cleared at the start of the next
 	// install attempt.
 	resignWarning string
+	// stagedUpdateVersion is the version DownloadAndInstallUpdate most
+	// recently staged (goal 0175): a published release artifact never
+	// changes, so a background tick that finds this same version again
+	// skips re-downloading it.
+	stagedUpdateVersion string
+	// autoDownloadCandidate/Since track the beta-channel dwell window
+	// (goal 0175) -- the version currently waiting to prove it has
+	// stayed newest for autoDownloadDwellBeta before auto-download
+	// proceeds. Reset whenever a DIFFERENT version is found.
+	autoDownloadCandidate      string
+	autoDownloadCandidateSince time.Time
 	isolatedData  bool
 	mcpService    *mcpsvc.MillMCPService
 	// notificationSvc is the notification spine's Publish entry point

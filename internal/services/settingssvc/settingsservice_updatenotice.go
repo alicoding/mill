@@ -1,9 +1,9 @@
 package settingssvc
 
 // The footer notice pill's server-side state (goal 0122): available/
-// ready facts, per-version dismissal, the opt-in daily background
-// check -- split from settingsservice_updates.go at the 500-line
-// convention along the pill-vs-updater seam.
+// ready facts, per-version dismissal, the opt-in background
+// check-and-download loop -- split from settingsservice_updates.go at
+// the 500-line convention along the pill-vs-updater seam.
 
 import (
 	"os"
@@ -17,10 +17,13 @@ import (
 // per version, so the NEXT version notifies again.
 const dismissedUpdateVersionKey = "dismissedUpdateVersion"
 
-// autoUpdateCheckKey persists the opt-in daily background check.
-// DEFAULT OFF: the no-phone-home constraint reads "user-configured"
-// strictly, so ambient checking is an explicit choice even on the
-// beta channel. Applies at boot (StartAutoUpdateChecks).
+// autoUpdateCheckKey persists the opt-in background check-and-download
+// loop (goal 0175: one toggle covers both, since opting into background
+// checking is the same consent as opting into a background download of
+// what that check found). DEFAULT OFF: the no-phone-home constraint
+// reads "user-configured" strictly, so ambient checking is an explicit
+// choice even on the beta channel. Applies at boot
+// (StartAutoUpdateChecks).
 const autoUpdateCheckKey = "autoUpdateCheck"
 
 // testUpdateReadyEnv forces the ready state so e2e can render the
@@ -131,12 +134,17 @@ func (s *SettingsService) markUpdateReady() {
 	dataevent.Emit("update-notice", "ready")
 }
 
-// StartAutoUpdateChecks begins the opt-in daily background check --
-// called once from main.go after InitUpdater; a no-op when the
+// StartAutoUpdateChecks begins the opt-in background check-and-download
+// loop -- called once from main.go after InitUpdater; a no-op when the
 // preference is off. First check runs shortly after launch (the
 // gentle-timing convention: near a natural moment, never mid-task),
-// then daily. Errors are ignored: a failed background check must
-// never surface as noise; the manual button reports errors.
+// then on the channel-matched cadence below. A found version downloads
+// automatically through maybeAutoDownload's dwell/supersede/skip policy
+// (goal 0175), reusing the exact DownloadAndInstallUpdate chain the
+// manual button uses -- never a parallel path. Check errors are
+// ignored: a failed background check must never surface as noise; the
+// manual button reports errors. Download errors are logged, not
+// surfaced, for the same reason.
 //
 //wails:ignore
 func (s *SettingsService) StartAutoUpdateChecks() {
@@ -146,8 +154,9 @@ func (s *SettingsService) StartAutoUpdateChecks() {
 	// Channel-matched cadence (goal 0146): the beta channel releases
 	// per merged change, so "as soon as available" honestly means
 	// hourly polling there; release stays daily.
+	channel := s.UpdateChannel()
 	interval := 24 * time.Hour
-	if s.UpdateChannel() == "beta" {
+	if channel == "beta" {
 		interval = time.Hour
 	}
 	go func() {
@@ -155,6 +164,7 @@ func (s *SettingsService) StartAutoUpdateChecks() {
 		for {
 			if result, err := s.CheckForUpdates(); err == nil && result.UpdateAvailable {
 				s.recordAvailableUpdate(result.Version)
+				s.maybeAutoDownload(channel, result.Version, time.Now(), s.DownloadAndInstallUpdate)
 			}
 			time.Sleep(interval)
 		}
