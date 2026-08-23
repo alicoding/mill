@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } fro
 import { ReactFlow, ReactFlowProvider, Background, Controls, useReactFlow } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useStore } from 'zustand'
-import type { NodeType, Workflow, Issue } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import type { NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { createCanvasStore, type CanvasNode } from './canvasStore'
 import { rfNodeTypes } from './rfNodeTypes'
 import { findFreeDropPosition } from '../shared/canvasLayout'
@@ -28,8 +28,9 @@ import { CanvasToolbar } from './CanvasToolbar'
 import { CanvasInspectorPanel } from './CanvasInspectorPanel'
 import { useTranslation } from 'react-i18next'
 import { StepDetailOverlay } from './StepDetailOverlay'
-import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
+import { ContextMenu } from '../shared/ContextMenu'
 import { useCanvasContextMenuHandlers } from './useCanvasContextMenuHandlers'
+import { useCanvasSelection } from './useCanvasSelection'
 import { useHotkeyCapture } from './hotkeyCapture'
 import { RunStateContext, useLiveRun } from './liveRunState'
 import { BreakpointContext, useBreakpoints } from './breakpoints'
@@ -183,29 +184,14 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
 
   const { screenToFlowPosition, zoomIn, zoomOut, fitView } = useReactFlow()
 
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
-  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
-  // The step-detail overlay (docs/goals/0058) is a boolean over the
-  // CURRENT selection, not a separate node id -- it only ever opens for
-  // whatever's already selected (a canvas double-click selects-then-
-  // opens; the sidebar's expand button only exists once a node is
-  // already selected), so there's no case where it should show a
-  // different node than the sidebar itself.
-  const [detailOpen, setDetailOpen] = useState(false)
-  // The canvas's right-click menu (goal 0075) -- one state shared by
-  // step/edge/pane openers, see useCanvasContextMenuHandlers.ts.
-  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
-  // A validation-panel row selects its offending node/edge, same target
-  // onNodeClick/onEdgeClick below already write to.
-  const selectIssue = (issue: Issue) => {
-    if (issue.NodeID) {
-      setSelectedNodeId(issue.NodeID)
-      setSelectedEdgeId(null)
-    } else if (issue.EdgeID) {
-      setSelectedEdgeId(issue.EdgeID)
-      setSelectedNodeId(null)
-    }
-  }
+  // Selection/detail-overlay/context-menu cluster + the selected node's
+  // derived Inspector data -- see useCanvasSelection.ts's own header.
+  const {
+    setSelectedNodeId, setSelectedEdgeId,
+    detailOpen, setDetailOpen, contextMenu, setContextMenu, selectIssue,
+    selectedNode, selectedNodeType, sameKindNodeTypes, selectedEdge, selectedEdgeFromDecision,
+    handleChangeNodeType, handleNodeConfigChange,
+  } = useCanvasSelection(nodes, edges, nodeTypes, changeNodeType, updateNodeConfig)
   const [draftLabel, setDraftLabel] = useState(initial.label)
   const [draftDescription, setDraftDescription] = useState(initial.description)
   // Collapsed by default unless a description already exists -- the
@@ -249,33 +235,6 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
     setDraftLabel,
     setDraftDescription,
   })
-
-  const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null
-  const selectedNodeType = selectedNode ? nodeTypes.find((nt) => nt.ID === selectedNode.data.nodeTypeID) : undefined
-  // Every NodeType sharing the selected node's Kind -- what the
-  // "Node type" Inspector control below offers as a swap target. Kind
-  // never changes on swap, so isValidConnection's per-kind edge rules
-  // and any edges already drawn to/from this node stay valid untouched.
-  const sameKindNodeTypes = selectedNode ? nodeTypes.filter((nt) => nt.Kind === selectedNode.data.kind) : []
-  const selectedEdge = edges.find((e) => e.id === selectedEdgeId) ?? null
-  // Only a Decision node's outgoing edges carry a real condition to
-  // configure (SPEC.md §3.5) -- an edge selected off any other node kind
-  // has nothing for this Inspector branch to show.
-  const selectedEdgeFromDecision = selectedEdge && nodes.find((n) => n.id === selectedEdge.source)?.data.kind === 'decision'
-
-  // Bound to the selected node once here rather than in each renderer --
-  // both the sidebar inspector and the step-detail overlay (docs/goals/0058)
-  // need the identical pair for the identical selection.
-  const handleChangeNodeType = (newType: NodeType) => {
-    if (!selectedNode) return
-    const config: Record<string, string> = {}
-    for (const field of newType.ConfigFields ?? []) config[field.Key] = field.Default
-    changeNodeType(selectedNode.id, newType.ID, newType.Label, config, newType.Output ?? '', contractLine(newType))
-  }
-  const handleNodeConfigChange = (key: string, value: string) => {
-    if (!selectedNode) return
-    updateNodeConfig(selectedNode.id, key, value)
-  }
 
   // Draw-time refusal + its explanation (ADR-0042 slice 2) -- see useConnectionRefusalHint.ts.
   const { isValidConnection, refusalHint, flash, onConnectStart, onConnectEnd, onConnect: handleConnect, onNodeDragStart: handleNodeDragStart } = useConnectionRefusalHint(nodes, edges, nodeTypes, onConnect, () => useCanvasStore.temporal.getState().pause())
