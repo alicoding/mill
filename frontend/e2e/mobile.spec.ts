@@ -217,3 +217,36 @@ test('Mobile job 4 -- the board lands tappable but zooms out past 100% on reques
   for (let i = 0; i < 4; i++) await zoomOut.click()
   await expect.poll(() => boardScale(page)).toBeLessThan(1)
 })
+
+// Regression: the desktop rail's collapsed state must not reach the
+// mobile drawer. `--mill-sidebar-width` is set globally on .app-shell
+// from the persisted collapse flag, so a user who collapsed the rail on
+// desktop got a 52px icon column inside the full-width drawer, labels
+// absent, the remaining width blank. The drawer is the nav at this
+// breakpoint -- collapse has no meaning in an overlay with no content
+// beside it.
+test('Mobile nav drawer: a collapsed desktop rail does not shrink the drawer', async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem('mill-sidebar-open', 'false'))
+  await page.goto('/')
+  await page.getByTestId('mobile-nav-toggle').click()
+
+  // Assert VISIBLE TEXT, not the accessible name: the collapsed rail
+  // sets aria-label to the same label it stops rendering, so a
+  // name-based query matches in the broken state too and proves nothing.
+  const drawerRow = (label: string) =>
+    page.locator('[data-testid="sidebar-nav"] a', { hasText: label })
+  for (const label of ['Home', 'Workflows', 'Atlas']) {
+    await expect(drawerRow(label)).toBeVisible()
+  }
+
+  // The drawer's rows span the viewport rather than a collapsed rail's
+  // width -- the visible symptom was ~52px of nav beside empty space.
+  const box = await drawerRow('Atlas').boundingBox()
+  expect(box?.width ?? 0).toBeGreaterThan(300)
+
+  // The rail's own identity/collapse row is desktop-only: the drawer
+  // header supplies the wordmark, and a collapse control here would
+  // shrink the drawer with no way back.
+  await expect(page.getByTestId('mobile-nav-drawer-header')).toBeVisible()
+  await expect(page.getByRole('button', { name: /collapse navigation/i })).toBeHidden()
+})

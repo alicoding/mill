@@ -8,6 +8,7 @@ import type { Capability } from '../../bindings/github.com/alicoding/mill/intern
 import { CAPABILITY_ICON } from './navIcon'
 import millIcon from './millicon.png'
 import styles from './App.module.css'
+import { useIsNarrowViewport } from '../shared/useNarrowViewport'
 
 // The app sidebar: identity anchor top row (logo never moves between
 // states -- owner design, matched against the reference platform's own
@@ -18,9 +19,10 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, mobileNavOpen, setMobi
   sidebarOpen: boolean
   setSidebarOpen: (open: boolean) => void
   // The narrow-viewport drawer's own open/closed flag (goal 0068) --
-  // orthogonal to sidebarOpen (the desktop rail-collapse width), only
   // consulted by responsiveVariant="fullscreen"'s hidden={{narrow}}
-  // below, a Primer no-op at regular/wide widths.
+  // below, a Primer no-op at regular/wide widths. It governs whether
+  // the drawer is SHOWN; sidebarOpen governs the desktop rail's width
+  // and must not reach the drawer's contents at all (see railExpanded).
   mobileNavOpen: boolean
   setMobileNavOpen: (open: boolean) => void
   view: View
@@ -32,6 +34,16 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, mobileNavOpen, setMobi
   // Closes the mobile drawer on any nav action -- a no-op at regular/
   // wide widths where the sidebar is never hidden by mobileNavOpen.
   const navigateAndClose = (target: View) => { setView(target); setMobileNavOpen(false) }
+  // Below the drawer breakpoint the sidebar renders as a FULLSCREEN
+  // drawer, where sidebarOpen's icon-rail collapse has no meaning: a
+  // rail exists to reclaim horizontal space beside content, and the
+  // drawer has no content beside it. Collapsed state must therefore
+  // never reach the drawer's own contents -- it stays a desktop-only
+  // concern. Regression: a collapsed rail left the drawer rendering a
+  // 52px icon column inside a full-width overlay, with labels absent
+  // and the rest blank.
+  const isNarrow = useIsNarrowViewport()
+  const railExpanded = sidebarOpen || isNarrow
   return (
         <PageLayout.Sidebar
           className={styles.sidebar}
@@ -114,13 +126,13 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, mobileNavOpen, setMobi
                     key={c.ID}
                     href="#"
                     aria-current={viewsEqual(view, target) ? 'page' : undefined}
-                    aria-label={sidebarOpen ? undefined : label}
-                    title={sidebarOpen ? undefined : label}
+                    aria-label={railExpanded ? undefined : label}
+                    title={railExpanded ? undefined : label}
                     onClick={(e) => { e.preventDefault(); navigateAndClose(target) }}
                   >
                     {NavIcon && <NavList.LeadingVisual><NavIcon/></NavList.LeadingVisual>}
-                    {sidebarOpen && label}
-                    {sidebarOpen && (
+                    {railExpanded && label}
+                    {railExpanded && (
                       <NavList.TrailingVisual>
                         {c.ID === 'capability-review' && reviewPendingCount > 0 && (
                           <CounterLabel
@@ -161,12 +173,12 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, mobileNavOpen, setMobi
               <NavList.Item
                 href="#"
                 aria-current={view.kind === 'settings' ? 'page' : undefined}
-                aria-label={sidebarOpen ? undefined : t('appSidebar.settingsAriaLabel')}
-                title={sidebarOpen ? undefined : t('appSidebar.settingsAriaLabel')}
+                aria-label={railExpanded ? undefined : t('appSidebar.settingsAriaLabel')}
+                title={railExpanded ? undefined : t('appSidebar.settingsAriaLabel')}
                 onClick={(e) => { e.preventDefault(); navigateAndClose({ kind: 'settings' }) }}
               >
                 <NavList.LeadingVisual><GearIcon /></NavList.LeadingVisual>
-                {sidebarOpen && t('appSidebar.settingsLabel')}
+                {railExpanded && t('appSidebar.settingsLabel')}
               </NavList.Item>
             </NavList>
           </div>
