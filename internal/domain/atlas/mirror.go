@@ -45,6 +45,11 @@ var textExtensions = map[string]bool{
 	".txt": true, ".log": true, ".json": true, ".yaml": true, ".yml": true,
 	".csv": true, ".tsv": true, ".xml": true, ".ini": true, ".conf": true,
 	".toml": true, ".sh": true, ".env": true,
+	// .mmd/.mermaid are mermaid diagram source -- text at this layer
+	// (ClassifyMirrorKind only decides "is it safe to return as raw
+	// text"); the frontend's mermaid unit turns the returned text into
+	// a diagram.
+	".mmd": true, ".mermaid": true,
 }
 
 // ClassifyMirrorKind decides how path's content should render, from

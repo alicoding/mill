@@ -23,6 +23,12 @@ describe('resolveUnit (ADR-0043 board-unit registry, goal 0133 slice 1)', () => 
     expect(unit?.render.Page).toBeDefined()
   })
 
+  it('resolves the mermaid unit for a .mmd MirrorPath, not the text unit or the icon fallback', () => {
+    const unit = resolveUnit({ Source: '', MirrorPath: '/diagrams/flow.mmd' })
+    expect(unit?.id).toBe('mermaid')
+    expect(unit?.render.Page).toBeDefined()
+  })
+
   it('resolves the icon-card fallback for a genuinely unsupported MirrorPath extension', () => {
     const unit = resolveUnit({ Source: '', MirrorPath: '/reports/summary.docx' })
     expect(unit?.id).toBe('icon-fallback')
