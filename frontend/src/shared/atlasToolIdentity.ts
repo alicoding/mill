@@ -10,7 +10,7 @@
 // regardless of which layer is asking.
 export type AtlasToolRequestKind = 'arm' | 'picker' | 'popover'
 
-// Five distinct members, not one member with a unioned id -- so that
+// Six distinct members, not one member with a unioned id -- so that
 // Extract<AtlasToolIdentity, { id: 'card' }> (atlasTools.ts's own
 // lookup) can actually narrow to a single one.
 export type AtlasToolIdentity =
@@ -19,6 +19,7 @@ export type AtlasToolIdentity =
   | { id: 'area'; shortcutKey: string; commandLabel: string; requestKind: 'arm' }
   | { id: 'table'; shortcutKey: string; commandLabel: string; requestKind: 'picker' }
   | { id: 'image'; shortcutKey: string; commandLabel: string; requestKind: 'popover' }
+  | { id: 'pencil'; shortcutKey: string; commandLabel: string; requestKind: 'arm' }
 
 export const ATLAS_TOOL_IDENTITIES: AtlasToolIdentity[] = [
   { id: 'card', shortcutKey: 'C', commandLabel: 'Add a card', requestKind: 'arm' },
@@ -26,4 +27,12 @@ export const ATLAS_TOOL_IDENTITIES: AtlasToolIdentity[] = [
   { id: 'area', shortcutKey: 'A', commandLabel: 'Draw an area', requestKind: 'arm' },
   { id: 'table', shortcutKey: 'T', commandLabel: 'New table', requestKind: 'picker' },
   { id: 'image', shortcutKey: 'I', commandLabel: 'Add an image', requestKind: 'popover' },
+  { id: 'pencil', shortcutKey: 'P', commandLabel: 'Draw with the pencil', requestKind: 'arm' },
 ]
+
+// Every identity whose bare key ARMS a placement (as opposed to
+// opening a picker/popover) -- shared/uiSignalStore.ts's own
+// atlasArmToolRequest field derives its tool union from this rather
+// than restating the id list, so a new 'arm'-kind tool never needs a
+// second edit there.
+export type AtlasArmRequestTool = Extract<AtlasToolIdentity, { requestKind: 'arm' }>['id']

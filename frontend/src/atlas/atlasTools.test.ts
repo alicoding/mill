@@ -8,7 +8,7 @@ vi.mock('../shared/bindings', () => ({
   AtlasService: { SaveImageBytes: saveImageBytesMock },
 }))
 
-import { ATLAS_TOOLS, cardTool, noteTool, areaTool, tableTool, imageTool } from './atlasTools'
+import { ATLAS_TOOLS, cardTool, noteTool, areaTool, tableTool, imageTool, pencilTool } from './atlasTools'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 
 function kind(id: string): Kind {
@@ -17,10 +17,10 @@ function kind(id: string): Kind {
 
 describe('ATLAS_TOOLS', () => {
   it('carries every registered tool in tray render order', () => {
-    expect(ATLAS_TOOLS.map((t) => t.id)).toEqual(['card', 'note', 'area', 'table', 'image'])
+    expect(ATLAS_TOOLS.map((t) => t.id)).toEqual(['card', 'note', 'area', 'table', 'image', 'pencil'])
   })
 
-  it('scopes card/note/area to arm-then-click, table to pick-then-place, image to paste-or-drop', () => {
+  it('scopes card/note/area to arm-then-click, table to pick-then-place, image to paste-or-drop, pencil to drag-to-draw', () => {
     const byID = Object.fromEntries(ATLAS_TOOLS.map((t) => [t.id, t.interaction]))
     expect(byID).toEqual({
       card: 'arm-then-click',
@@ -28,11 +28,17 @@ describe('ATLAS_TOOLS', () => {
       area: 'arm-then-click',
       table: 'pick-then-place',
       image: 'paste-or-drop',
+      pencil: 'drag-to-draw',
     })
   })
 
   it('seats every tool in the quick tray', () => {
     expect(ATLAS_TOOLS.every((t) => t.tray === 'quick')).toBe(true)
+  })
+
+  it('carries styleDefaults only on the pencil tool', () => {
+    const withDefaults = ATLAS_TOOLS.filter((t) => 'styleDefaults' in t && t.styleDefaults !== undefined)
+    expect(withDefaults.map((t) => t.id)).toEqual(['pencil'])
   })
 })
 
@@ -114,6 +120,33 @@ describe('imageTool.commit', () => {
   it('rejects a pasted file whose mime type is not a recognized image extension', async () => {
     const file = new File(['bytes'], 'clipboard.tiff', { type: 'image/tiff' })
     await expect(imageTool.commit({ file, title: 'Pasted image' })).rejects.toThrow(/unsupported/)
+    expect(saveImageBytesMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('pencilTool.commit', () => {
+  afterEach(() => {
+    saveImageBytesMock.mockReset()
+  })
+
+  const stroke = Array.from({ length: 8 }, (_, i) => ({ x: i * 4, y: i * 4 }))
+
+  it('writes the drawn stroke as an SVG mirror file, baking colour/size into the bytes', async () => {
+    saveImageBytesMock.mockResolvedValue('/config/mill/atlas-captures/sketch-abc123.svg')
+    const artifact = await pencilTool.commit({ points: stroke, color: '#da3633', size: 6 })
+    expect(artifact).toMatchObject({ kind: 'pencil', title: 'Sketch', mirrorPath: '/config/mill/atlas-captures/sketch-abc123.svg' })
+    expect(saveImageBytesMock).toHaveBeenCalledWith(expect.any(String), '.svg', 'Sketch')
+    // The commit never re-reads atlasPencilStyleStore's ephemeral cache
+    // -- colour/size travel through the call's own input, proving the
+    // dual model's "baked on the object" half is independent of
+    // whatever the session cache holds by the time this resolves.
+    const svgBytes = atob(saveImageBytesMock.mock.calls[0][0])
+    expect(svgBytes).toContain('fill="#da3633"')
+  })
+
+  it('returns null for a stray click, never touching SaveImageBytes', async () => {
+    const artifact = await pencilTool.commit({ points: [{ x: 1, y: 1 }], color: '#1f6feb', size: 4 })
+    expect(artifact).toBeNull()
     expect(saveImageBytesMock).not.toHaveBeenCalled()
   })
 })
