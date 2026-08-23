@@ -4,12 +4,18 @@ import { Handle, Position } from '@xyflow/react'
 import type { Node, NodeProps } from '@xyflow/react'
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { kindColorTokens } from './atlasKindColor'
+import type { RollupSummary } from './atlasCardPresentation'
 import styles from './AtlasRegionChipNode.module.css'
 
 export type AtlasRegionChipRFNode = Node<{
   card: Card
   kind: Kind | undefined
   childCount: number
+  // The field-aware "<done> of <total>" rollup (docs/goals/0164 L3):
+  // null when no direct child's Kind declares a container rollup
+  // field, in which case this chip renders exactly as it did before
+  // this facet existed.
+  rollup: RollupSummary | null
   // A jump/entry landing on this chip (same meaning as the note
   // card's own pulsed) -- attention needs a visible answer even when
   // the target renders as a place.
@@ -64,6 +70,11 @@ function AtlasRegionChipNodeInner({ data }: NodeProps<AtlasRegionChipRFNode>) {
       <Handle type="target" position={Position.Top} className={styles.hiddenHandle} />
       <span className={styles.title}>{data.card.Title}</span>
       <span className={styles.count}>{'▸'} {data.childCount}</span>
+      {data.rollup && (
+        <span className={styles.rollup} data-testid="atlas-region-chip-rollup">
+          {t('board.rollupChip', { done: data.rollup.done, total: data.rollup.total })}
+        </span>
+      )}
     </div>
   )
 }

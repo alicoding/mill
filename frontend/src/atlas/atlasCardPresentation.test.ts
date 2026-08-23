@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   basenameOf,
   computeFreshnessRollup,
+  computeRollupSummary,
   daysSinceSync,
   deriveFileTag,
   freshnessDotColor,
@@ -65,6 +66,85 @@ describe('computeFreshnessRollup', () => {
   })
   it('is all zero when no child has a mirror', () => {
     expect(computeFreshnessRollup([{ MirrorPath: '' }] as never)).toEqual({ fresh: 0, stale: 0 })
+  })
+})
+
+describe('computeRollupSummary', () => {
+  // A Kind carrying a plain status field with no RollupDoneValues --
+  // the pre-existing shape every already-seeded Kind has today.
+  const plainKind = {
+    ID: 'topic',
+    Fields: [{ Key: 'status', Type: 'options', Options: ['Open', 'Done'] }],
+  } as never
+
+  // A ledger-shaped Kind, standing in for "Delivered feature" without
+  // being it -- proves the derivation isn't hardcoded to that Kind, its
+  // field name, or its option values.
+  const ledgerKind = {
+    ID: 'delivered-feature',
+    Fields: [{
+      Key: 'signoff', Type: 'options',
+      Options: ['pending-verify', 'verified', 'verified-with-notes'],
+      RollupDoneValues: ['verified', 'verified-with-notes'],
+    }],
+  } as never
+
+  // A second, deliberately different Kind: different field key,
+  // different option vocabulary, different "done" set -- the test the
+  // brief requires proving nothing is tied to the ledger's own words.
+  const reviewKind = {
+    ID: 'review-item',
+    Fields: [{
+      Key: 'stage', Type: 'options',
+      Options: ['todo', 'in-review', 'accepted', 'rejected'],
+      RollupDoneValues: ['accepted', 'rejected'],
+    }],
+  } as never
+
+  function kindMap(...kinds: unknown[]): Map<string, unknown> {
+    return new Map((kinds as { ID: string }[]).map((k) => [k.ID, k]))
+  }
+
+  it('is null when no child carries a Kind declaring a rollup field', () => {
+    const children = [
+      { KindID: 'topic', Fields: { status: 'Open' } },
+      { KindID: 'topic', Fields: { status: 'Done' } },
+    ] as never
+    expect(computeRollupSummary(children, kindMap(plainKind) as never)).toBeNull()
+  })
+
+  it('counts every child done when all carry a done value', () => {
+    const children = [
+      { KindID: 'delivered-feature', Fields: { signoff: 'verified' } },
+      { KindID: 'delivered-feature', Fields: { signoff: 'verified-with-notes' } },
+    ] as never
+    expect(computeRollupSummary(children, kindMap(ledgerKind) as never)).toEqual({ done: 2, total: 2 })
+  })
+
+  it('counts zero done when none carry a done value', () => {
+    const children = [
+      { KindID: 'delivered-feature', Fields: { signoff: 'pending-verify' } },
+      { KindID: 'delivered-feature', Fields: {} },
+    ] as never
+    expect(computeRollupSummary(children, kindMap(ledgerKind) as never)).toEqual({ done: 0, total: 2 })
+  })
+
+  it('tallies a mixed done/not-done set, and excludes non-participating Kinds', () => {
+    const children = [
+      { KindID: 'delivered-feature', Fields: { signoff: 'verified' } },
+      { KindID: 'delivered-feature', Fields: { signoff: 'pending-verify' } },
+      { KindID: 'topic', Fields: { status: 'Done' } },
+    ] as never
+    expect(computeRollupSummary(children, kindMap(ledgerKind, plainKind) as never)).toEqual({ done: 1, total: 2 })
+  })
+
+  it('works for a different Kind with a different field name and option vocabulary', () => {
+    const children = [
+      { KindID: 'review-item', Fields: { stage: 'accepted' } },
+      { KindID: 'review-item', Fields: { stage: 'rejected' } },
+      { KindID: 'review-item', Fields: { stage: 'in-review' } },
+    ] as never
+    expect(computeRollupSummary(children, kindMap(reviewKind) as never)).toEqual({ done: 2, total: 3 })
   })
 })
 

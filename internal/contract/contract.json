@@ -101,6 +101,12 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "RollupDoneValues": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
             }
           },
           "additionalProperties": false,
@@ -416,6 +422,12 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "RollupDoneValues": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
             }
           },
           "additionalProperties": false,
@@ -591,6 +603,12 @@
               "type": "string"
             },
             "FrontmatterAliases": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "RollupDoneValues": {
               "items": {
                 "type": "string"
               },
@@ -1148,6 +1166,12 @@
               "type": "string"
             },
             "FrontmatterAliases": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "RollupDoneValues": {
               "items": {
                 "type": "string"
               },

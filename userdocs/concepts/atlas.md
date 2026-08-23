@@ -61,7 +61,9 @@ into.
   to Verified or Verified with notes once you've checked the
   evidence; Mill stamps the verified date for you. Re-running the
   workflow after a file changes updates only the goal/date/PRs/proof
-  — your sign-off, verified date, and notes always stay put.
+  — your sign-off, verified date, and notes always stay put. The area
+  you file them under shows how many are signed off, right on its own
+  face — "12 of 40 done," alongside the card count.
 - **Cards can act.** A card can carry attached action workflows —
   run them from the card. Workflows can also read and write cards as
   steps (create, update, find, link), and a trigger can fire on card

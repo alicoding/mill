@@ -41,6 +41,11 @@
     font-size: 10px;
     color: var(--fgColor-muted);
 }
+.rollup {
+    font-family: var(--mill-mono);
+    font-size: 9px;
+    color: var(--fgColor-accent);
+}
 .hiddenHandle {
     opacity: 0;
     pointer-events: none;

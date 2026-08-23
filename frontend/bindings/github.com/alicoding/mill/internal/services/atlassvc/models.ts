@@ -136,7 +136,7 @@ export interface FileDropRoute {
 
 /**
  * FolderImportSummary counts what ImportFolderSuggestions actually
- * created.
+ * created (never what it merely reused/refreshed on a re-import).
  */
 export interface FolderImportSummary {
     "CardsCreated": number;

@@ -36,21 +36,46 @@ func TestValidate_AcceptsEveryDeclaredType(t *testing.T) {
 
 func TestValidate_AcceptsFullyPopulatedField(t *testing.T) {
 	f := Field{
-		Key:           "amount",
-		Label:         "Amount",
-		Type:          TypeOptions,
-		Required:      true,
-		Default:       "10",
-		Description:   "an amount",
-		Options:       []string{"10", "20"},
-		Suggestions:   []string{"10"},
-		Secret:        true,
-		RefKind:       "list",
-		Multiline:     true,
-		SystemManaged: true,
+		Key:              "amount",
+		Label:            "Amount",
+		Type:             TypeOptions,
+		Required:         true,
+		Default:          "10",
+		Description:      "an amount",
+		Options:          []string{"10", "20"},
+		Suggestions:      []string{"10"},
+		Secret:           true,
+		RefKind:          "list",
+		Multiline:        true,
+		SystemManaged:    true,
+		RollupDoneValues: []string{"20"},
 	}
 	if err := Validate(f); err != nil {
 		t.Fatalf("Validate rejected a fully-populated, valid field: %v", err)
+	}
+}
+
+// A field declaring no RollupDoneValues is the ordinary, pre-existing
+// case (goal 0164 L3's additivity requirement): every field shape that
+// validated before this facet existed must keep validating unchanged.
+func TestValidate_AcceptsFieldWithNoRollupDoneValues(t *testing.T) {
+	f := Field{Key: "status", Type: TypeOptions, Options: []string{"Open", "Done"}}
+	if err := Validate(f); err != nil {
+		t.Fatalf("Validate rejected a field with no RollupDoneValues: %v", err)
+	}
+}
+
+func TestValidate_RejectsRollupDoneValuesOnNonOptionsField(t *testing.T) {
+	f := Field{Key: "note", Type: TypeText, RollupDoneValues: []string{"done"}}
+	if err := Validate(f); err == nil {
+		t.Fatal("expected an error for RollupDoneValues on a non-TypeOptions field, got nil")
+	}
+}
+
+func TestValidate_RejectsRollupDoneValueNotInOptions(t *testing.T) {
+	f := Field{Key: "status", Type: TypeOptions, Options: []string{"Open", "Closed"}, RollupDoneValues: []string{"Done"}}
+	if err := Validate(f); err == nil {
+		t.Fatal("expected an error for a RollupDoneValues entry absent from Options, got nil")
 	}
 }
 

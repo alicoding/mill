@@ -19,6 +19,7 @@
     "leafChip": "leaf",
     "freshChip": "{{count}} fresh",
     "staleChip": "{{count}} stale",
+    "rollupChip": "{{done}} of {{total}} done",
     "zoomChip": "Zoom ⤢",
     "jumpHint": "↵ open",
     "linksChip_one": "{{count}} link",

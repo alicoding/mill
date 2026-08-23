@@ -195,17 +195,22 @@ func BuiltInKinds() []Kind {
 					Key: "signoff", Label: "Sign-off", Type: typedfield.TypeOptions,
 					Options: []string{"pending-verify", "verified", "verified-with-notes"},
 					Default: "pending-verify", ShowOnCard: true, StampOnChange: "verifiedAt",
+					// The ledger is L3's first consumer of the container
+					// rollup facet (docs/goals/0164 L3), not a hardcoded
+					// case -- both terminal sign-off states count as
+					// "done" for the "<done> of <total>" badge on the
+					// Delivered features container.
+					RollupDoneValues: []string{"verified", "verified-with-notes"},
 				},
 				{Key: "verifiedAt", Label: "Verified", Type: typedfield.TypeDate, SystemManaged: true},
 				{Key: "notes", Label: "Notes", Type: typedfield.TypeText, Multiline: true},
 			},
 			CreatedAt: now, UpdatedAt: now,
-			// rev 2: goalId/shippedDate gained FrontmatterAliases
-			// (additive, same Key/Type -- ValidateFieldEvolution's
-			// identity freeze is untouched) so the generic frontmatter
-			// mirror (docs/goals/0172) still reaches them under the
-			// archive's existing "id"/"date" keys.
-			BuiltIn: true, Seed: seedorigin.Stamp(2),
+			// rev 3: signoff gained RollupDoneValues (additive, same
+			// Key/Type/Options -- ValidateFieldEvolution's identity
+			// freeze is untouched) so the container the ledger's cards
+			// are filed under shows a "<done> of <total>" rollup.
+			BuiltIn: true, Seed: seedorigin.Stamp(3),
 		},
 	}
 }
