@@ -801,6 +801,17 @@ export function SpaceLinksList(spaceID: string): $CancellablePromise<string> {
 }
 
 /**
+ * TableProjectionExport serializes cardID's projected List into format
+ * ("csv", "tsv", "markdown", or "xlsx") and returns it ready to
+ * download. An unresolvable card/list, an unrecognized format, or a
+ * serialization error all fail closed with an actionable message --
+ * never a silent empty download.
+ */
+export function TableProjectionExport(cardID: string, format: string): $CancellablePromise<$models.TableProjectionExportResult> {
+    return $Call.ByID(161507377, cardID, format);
+}
+
+/**
  * UndoDelete reverses one or more DeleteCard/DeleteNote calls: clears
  * DeletedAt on exactly the ids named (a no-op for any id that's no
  * longer tombstoned, e.g. already purged) and clears a built-in

@@ -100,7 +100,8 @@ describe('exportersForCard (ADR-0043 §3 Decision 1, goal 0133 slice E1)', () =>
     expect(items.map((e) => e.format)).toEqual(['original', 'mmd'])
   })
 
-  it('offers nothing for a table-projection card (mirror-less, no exporters declared yet)', () => {
-    expect(exportersForCard({ ID: 'c1', Source: '', MirrorPath: '', ProjectionListID: 'list-1' }, ORIGINAL)).toEqual([])
+  it('offers its four declared table formats for a table-projection card (mirror-less, so no Original file) -- goal 0133 slice E2', () => {
+    const items = exportersForCard({ ID: 'c1', Source: '', MirrorPath: '', ProjectionListID: 'list-1' }, ORIGINAL)
+    expect(items.map((e) => e.format)).toEqual(['csv', 'tsv', 'markdown', 'xlsx'])
   })
 })

@@ -322,6 +322,21 @@ export interface ProjectionRow {
 }
 
 /**
+ * TableProjectionExportResult is TableProjectionExport's wire shape --
+ * bytes travel as base64 (the MirrorContent/ParsedXlsxFile precedent),
+ * filename alongside since a projection card has no MirrorPath for the
+ * frontend to derive one from itself.
+ */
+export interface TableProjectionExportResult {
+    "Filename": string;
+
+    /**
+     * base64-encoded
+     */
+    "Data": string;
+}
+
+/**
  * TombstoneResult names exactly which ids one DeleteCard/DeleteNote
  * call soft-deleted -- DeleteCard populates only CardIDs, DeleteNote
  * only NoteIDs, so the frontend's undo toast can pass this straight
