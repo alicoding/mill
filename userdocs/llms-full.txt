@@ -960,6 +960,14 @@ Pick a release channel and check for updates; Mill can also notify
 you when an update is available (that notification is itself a
 workflow you can edit or turn off).
 
+Turning on "Check for and download updates automatically" makes Mill
+download a newer version in the background and show a Restart button
+once it's ready — Mill never restarts on its own, so nothing happens
+until you click it. On the beta channel, a newly-seen version has to
+stay the newest release for a short while before Mill downloads it, so
+a run of back-to-back beta releases doesn't trigger a download for
+every one of them.
+
 Mill re-signs itself after each update with a signing identity unique
 to your Mac, so permissions like Accessibility and Input Monitoring
 stay granted across updates instead of asking again every time. **This

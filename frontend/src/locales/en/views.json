@@ -130,8 +130,8 @@
       "proxyModeAuto": "Auto — use this Mac's proxy settings",
       "proxyModeManual": "Manual proxy URL",
       "proxyModeOff": "Off — always connect directly",
-      "autoCheckLabel": "Check for updates automatically",
-      "autoCheckCaption": "Once a day while Mill is running. Applies after you restart Mill."
+      "autoCheckLabel": "Check for and download updates automatically",
+      "autoCheckCaption": "Downloads a new version in the background and shows Restart when it's ready; applies after you restart Mill."
     },
     "dataStewardship": {
       "description": "Mill snapshots your workflow history and settings automatically, and can bundle everything into one file to move to another machine.",

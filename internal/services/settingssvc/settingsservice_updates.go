@@ -350,6 +350,11 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 	}
 	s.updateDownloading = true
 	s.resignWarning = ""
+	// Captured now, before any later CheckForUpdates tick can overwrite
+	// availableUpdate mid-flight -- this is the version this specific
+	// call is staging, recorded on success so a repeat sighting of the
+	// same version (goal 0175's auto-download policy) can skip it.
+	version := s.availableUpdate
 	s.mu.Unlock()
 	dataevent.Emit("update-notice", "downloading")
 	defer func() {
@@ -389,6 +394,9 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 	// in place of the digest check (goal 0158's binding order:
 	// verify, then re-sign, then the swap RestartApp triggers).
 	s.resignStagedBundle(u.DownloadedPath())
+	s.mu.Lock()
+	s.stagedUpdateVersion = version
+	s.mu.Unlock()
 	s.markUpdateReady()
 	return nil
 }
