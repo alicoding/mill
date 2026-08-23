@@ -1,7 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
-import { SKIP_TARGET, autoMatchColumns, buildMappedRows, parseImportFile } from './listRowImportParse'
+
+const parseXlsxFileMock = vi.hoisted(() => vi.fn())
+vi.mock('../shared/bindings', () => ({
+  ConfigureService: { ParseXlsxFile: parseXlsxFileMock },
+}))
+
+import { SKIP_TARGET, autoMatchColumns, buildMappedRows, parseImportFile, parseUploadedFile } from './listRowImportParse'
 
 function field(overrides: Partial<Field>): Field {
   return {
@@ -90,5 +96,54 @@ describe('buildMappedRows', () => {
     const mapping = { Task: 'task' }
     const { skipped } = buildMappedRows(rows, mapping, columns)
     expect(skipped).toEqual([{ row: 2, reason: 'missing a value for required column "Task"' }])
+  })
+})
+
+// parseUploadedFile's own extension-dispatch: .xlsx routes through the
+// Go-side excelize parser (mocked here; ParseXlsxFile's real parsing is
+// Go-tested in configurelist_xlsximport_test.go), everything else stays
+// on parseImportFile's existing text path.
+describe('parseUploadedFile', () => {
+  afterEach(() => {
+    parseXlsxFileMock.mockReset()
+  })
+
+  it('sends an .xlsx file to ConfigureService.ParseXlsxFile and normalizes its nullable shape', async () => {
+    parseXlsxFileMock.mockResolvedValueOnce({
+      FileColumns: ['task', 'status'],
+      Rows: [{ task: 'Ship it', status: 'Done' }, null],
+    })
+    const file = new File(['irrelevant -- bytes never inspected by the mock'], 'rows.xlsx')
+
+    const result = await parseUploadedFile(file)
+
+    expect(parseXlsxFileMock).toHaveBeenCalledTimes(1)
+    expect(result.fileColumns).toEqual(['task', 'status'])
+    expect(result.rows).toEqual([{ task: 'Ship it', status: 'Done' }, {}])
+  })
+
+  it('normalizes an entirely-null xlsx result to empty columns/rows rather than throwing', async () => {
+    parseXlsxFileMock.mockResolvedValueOnce({ FileColumns: null, Rows: null })
+    const file = new File(['x'], 'empty.xlsx')
+
+    const result = await parseUploadedFile(file)
+
+    expect(result).toEqual({ fileColumns: [], rows: [] })
+  })
+
+  it('routes a non-xlsx file through the existing text-based parseImportFile path, never calling ParseXlsxFile', async () => {
+    const file = new File(['task,status\nShip it,Done\n'], 'rows.csv')
+
+    const result = await parseUploadedFile(file)
+
+    expect(parseXlsxFileMock).not.toHaveBeenCalled()
+    expect(result).toEqual(parseImportFile('rows.csv', 'task,status\nShip it,Done\n'))
+  })
+
+  it('propagates a ParseXlsxFile rejection as the returned promise rejection', async () => {
+    parseXlsxFileMock.mockRejectedValueOnce(new Error('parse xlsx: open: not a valid workbook'))
+    const file = new File(['not really xlsx bytes'], 'broken.xlsx')
+
+    await expect(parseUploadedFile(file)).rejects.toThrow(/not a valid workbook/)
   })
 })

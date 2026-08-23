@@ -42,6 +42,7 @@ export type {
 } from '../../bindings/github.com/alicoding/mill/internal/services/compositionsvc'
 export { ConfigureService } from '../../bindings/github.com/alicoding/mill/internal/services/configuresvc'
 export type {
+  ParsedXlsxFile,
   TestHTTPRequestInput,
   TestHTTPRequestResult,
 } from '../../bindings/github.com/alicoding/mill/internal/services/configuresvc'

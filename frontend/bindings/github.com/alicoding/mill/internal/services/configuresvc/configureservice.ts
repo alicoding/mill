@@ -406,6 +406,29 @@ export function MCPServers(): $CancellablePromise<mcpserver$0.MCPServer[] | null
 }
 
 /**
+ * ParseXlsxFile decodes base64Data (standard encoding) as an .xlsx
+ * workbook and returns its rows in the same header-row, string-cell
+ * shape parseImportFile's CSV branch produces (Papa Parse's
+ * `header: true`), so xlsx and CSV imports behave identically once
+ * parsed.
+ * 
+ * First sheet only (GetSheetList()[0], the workbook's own declared
+ * order): the smallest honest v1 rather than a sheet picker -- a real
+ * future addition, not built here.
+ * 
+ * The first row is the header. A ragged data row -- GetRows trims
+ * each row to its own last non-empty cell -- reads its missing
+ * trailing cells as "", the same as a short CSV row against a longer
+ * header; a row with MORE cells than the header has its extra
+ * trailing cells dropped, since there is no column name to hold them.
+ * A fully blank row (no cells at all) is skipped, matching Papa
+ * Parse's skipEmptyLines the CSV branch already sets.
+ */
+export function ParseXlsxFile(base64Data: string): $CancellablePromise<$models.ParsedXlsxFile> {
+    return $Call.ByID(552870390, base64Data);
+}
+
+/**
  * PublishDecision snapshots id's current draft (Label/Category/
  * Outputs/WebhookRequestID) as the next immutable DecisionVersion and
  * advances PublishedVersion to it -- the audit-stamp reference point a

@@ -1,6 +1,8 @@
 import Papa from 'papaparse'
 import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
+import { ConfigureService, type ParsedXlsxFile } from '../shared/bindings'
+import { fileToBase64 } from '../shared/base64Blob'
 
 // docs/goals/0070's CSV/JSON row import: parsing lives here, pure and
 // framework-free, so the mapping/validation logic is unit-testable
@@ -65,6 +67,41 @@ export function parseImportFile(fileName: string, text: string): ParsedFile {
     rows.push(row)
   }
   return { fileColumns, rows }
+}
+
+// normalizeParsedXlsxFile converts the Go binding's own shape (whose
+// slices/maps are typed nullable since Go's zero value for a slice is
+// nil) into the same never-null ParsedFile CSV/JSON already produce --
+// downstream code never has to know xlsx came through a different
+// binding.
+function normalizeParsedXlsxFile(raw: ParsedXlsxFile): ParsedFile {
+  return {
+    fileColumns: raw.FileColumns ?? [],
+    // The binding's per-cell type is optional (Go's map[string]string
+    // has no TS equivalent for "always present"), but ParseXlsxFile's
+    // own Go implementation writes every header key into every row --
+    // safe to assert back to the always-present shape parseImportFile's
+    // CSV/JSON branches already return.
+    rows: (raw.Rows ?? []).map((row) => (row ?? {})) as Record<string, string>[],
+  }
+}
+
+// parseUploadedFile is parseImportFile's own dispatch, extended one
+// branch further: .xlsx is binary, so it can never go through
+// file.text() the way CSV/JSON do (parseImportFile's own signature is
+// text-only for exactly that reason) -- its bytes go to the Go-side
+// excelize parser (docs/goals/0133 slice 4) instead, then converge on
+// the identical ParsedFile shape via normalizeParsedXlsxFile above. The
+// mapping/inference pipeline downstream (autoMatchColumns, mapRowValues,
+// inferListSchema) never learns xlsx exists.
+export async function parseUploadedFile(file: File): Promise<ParsedFile> {
+  if (file.name.toLowerCase().endsWith('.xlsx')) {
+    const base64 = await fileToBase64(file)
+    const raw = await ConfigureService.ParseXlsxFile(base64)
+    return normalizeParsedXlsxFile(raw)
+  }
+  const text = await file.text()
+  return parseImportFile(file.name, text)
 }
 
 // autoMatchColumns pre-fills the mapping Select for each file column
