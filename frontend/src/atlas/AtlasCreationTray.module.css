@@ -48,10 +48,6 @@
     color: var(--fgColor-accent);
 }
 
-.label {
-    font-weight: 500;
-}
-
 .kbd {
     font-family: var(--mill-mono);
     font-size: 10px;

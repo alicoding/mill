@@ -47,3 +47,15 @@ export function enclosedIDs(rect: Rect, boxes: EnclosureBox[]): string[] {
     })
     .map((b) => b.id)
 }
+
+// The eraser tool's own hit test (goal 0169 slice 4): a box counts as
+// TOUCHED when the point itself -- not its center, unlike enclosedIDs
+// above -- lands anywhere inside the box's bounds. A real eraser
+// removes what it visibly passes over, not just what's mostly covered;
+// enclosedIDs' center rule is a marquee-SELECT convention (Excalidraw/
+// tldraw/FigJam all use it for that), not an erase one.
+export function pointHitIDs(point: { x: number; y: number }, boxes: EnclosureBox[]): string[] {
+  return boxes
+    .filter((b) => point.x >= b.x && point.x <= b.x + b.width && point.y >= b.y && point.y <= b.y + b.height)
+    .map((b) => b.id)
+}

@@ -20,7 +20,7 @@ export const ATLAS_TOOL_DRAG_MIME = 'application/x-mill-atlas-tool'
 // 0139 made it THE creation surface -- every creatable thing is a
 // visible tool here, nothing behind a dropdown). Every tool in the
 // registry's own 'quick' tray renders through this one loop (goal
-// 0169 slices 1-3) -- Card/Note/Area arm a placement on click
+// 0169 slices 1-4) -- Card/Note/Area arm a placement on click
 // ('arm-then-click'); Table opens its size picker anchored to its own
 // button instead ('pick-then-place'), with "From a List…" in the
 // picker's footer as the projection door; Image opens its own path/
@@ -28,9 +28,25 @@ export const ATLAS_TOOL_DRAG_MIME = 'application/x-mill-atlas-tool'
 // on click too, but STAYS armed across strokes (AtlasBoard.tsx's own
 // drag hook owns completion, never disarming itself), with its own
 // colour/size options bar shown anchored for as long as it's the
-// armed tool ('drag-to-draw'). Hidden entirely below the companion
-// breakpoint -- the caller (AtlasBoard) only renders this when
-// !readOnly.
+// armed tool ('drag-to-draw'). Eraser and Laser ('drag-to-erase',
+// 'ephemeral-drag') fall through to the same plain arm-on-click button
+// the default branch below already renders for Card/Note/Area --
+// neither needs an options popover, so no new branch was needed here
+// at all; only their own drag gesture (AtlasBoard.tsx) differs. Hidden
+// entirely below the companion breakpoint -- the caller (AtlasBoard)
+// only renders this when !readOnly.
+//
+// Icon + shortcut-chip only, no visible text label (goal 0169 slice 4
+// finding): a text label per button made the tray's own WIDTH grow
+// unboundedly with every tool this registry gains -- confirmed live
+// when the 8th button (Laser) widened the tray enough to push its
+// LEFT edge over a fixed test coordinate an unrelated spec clicked
+// near the board's bottom-left. Matches the converged pattern this
+// goal's own research already cited (Excalidraw/tldraw toolbars are
+// icon-only for exactly this reason) rather than trimming padding by a
+// few px, which would only defer the same class of collision to slice
+// 5's shapes tool. The full name is still discoverable via `title`
+// (hover) and `aria-label` (screen readers) on every button.
 export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTableToggle, onPickTableSize, onTableFromList, imagePopoverOpen, onImageToggle, onImageSubmitPath, onImageSubmitFile }: {
   armedTool: AtlasArmableTool | null
   onToggle: (tool: AtlasArmableTool) => void
@@ -64,10 +80,10 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
                 data-armed={tablePickerOpen}
                 aria-pressed={tablePickerOpen}
                 title={t(`creationTray.${tool.id}Tooltip`)}
+                aria-label={t(`creationTray.${tool.id}Label`)}
                 onClick={() => onTableToggle(!tablePickerOpen)}
               >
                 <Icon size={14} />
-                <span className={styles.label}>{t(`creationTray.${tool.id}Label`)}</span>
                 <span className={styles.kbd}>{tool.shortcutKey}</span>
               </button>
               <AnchoredOverlay
@@ -99,10 +115,10 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
                 data-armed={pencilArmed}
                 aria-pressed={pencilArmed}
                 title={t(`creationTray.${tool.id}Tooltip`)}
+                aria-label={t(`creationTray.${tool.id}Label`)}
                 onClick={() => onToggle(tool.id)}
               >
                 <Icon size={14} />
-                <span className={styles.label}>{t(`creationTray.${tool.id}Label`)}</span>
                 <span className={styles.kbd}>{tool.shortcutKey}</span>
               </button>
               <AnchoredOverlay
@@ -137,10 +153,10 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
                 data-armed={imagePopoverOpen}
                 aria-pressed={imagePopoverOpen}
                 title={t(`creationTray.${tool.id}Tooltip`)}
+                aria-label={t(`creationTray.${tool.id}Label`)}
                 onClick={() => onImageToggle(!imagePopoverOpen)}
               >
                 <Icon size={14} />
-                <span className={styles.label}>{t(`creationTray.${tool.id}Label`)}</span>
                 <span className={styles.kbd}>{tool.shortcutKey}</span>
               </button>
               <AnchoredOverlay
@@ -157,11 +173,10 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
         }
         const armed = armedTool === tool.id
         // A drag-from-tray placement lands via a single drop point
-        // (creation.placeAt's own guard skips 'area' outright, since
-        // its placement is a drawn rectangle, not a click point) -- so
-        // Area alone carries no drag source, exactly as before this
-        // registry existed.
-        const draggable = tool.id !== 'area'
+        // (creation.placeAt's own guard skips these three ids
+        // outright, since their placement is a drawn gesture, never a
+        // click point) -- Area, Eraser, and Laser carry no drag source.
+        const draggable = tool.id !== 'area' && tool.id !== 'eraser' && tool.id !== 'laser'
         return (
           <button
             key={tool.id}
@@ -171,6 +186,7 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
             data-armed={armed}
             aria-pressed={armed}
             title={t(`creationTray.${tool.id}Tooltip`)}
+            aria-label={t(`creationTray.${tool.id}Label`)}
             draggable={draggable}
             onDragStart={
               draggable
@@ -183,7 +199,6 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
             onClick={() => onToggle(tool.id)}
           >
             <Icon size={14} />
-            <span className={styles.label}>{t(`creationTray.${tool.id}Label`)}</span>
             <span className={styles.kbd}>{tool.shortcutKey}</span>
           </button>
         )

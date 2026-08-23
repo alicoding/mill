@@ -20,6 +20,9 @@ import { useAtlasPencilDraw } from './useAtlasPencilDraw'
 import { useAtlasPencilCreate } from './useAtlasPencilCreate'
 import { useAtlasPencilStyle } from './atlasPencilStyleStore'
 import { AtlasPencilLivePreview } from './AtlasPencilLivePreview'
+import { AtlasEraserLiveTrail } from './AtlasEraserLiveTrail'
+import { AtlasLaserTrail } from './AtlasLaserTrail'
+import { useAtlasDragTools } from './useAtlasDragTools'
 import { useAtlasDragFiling, type FrameBox } from './useAtlasDragFiling'
 import { AtlasDragHighlightContext } from './atlasDragHighlightContext'
 import type { AtlasBoardInnerProps } from './atlasBoardInnerProps'
@@ -304,12 +307,13 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
 
   const r = areaDraw.dragLocalRect, marqueeStyle = r ? { left: r.x, top: r.y, width: r.width, height: r.height } : null
 
-  // The two hand-rolled canvas drags (Area's marquee, Pencil's stroke)
-  // are mutually exclusive by construction (armedTool holds at most
-  // one value) -- resolved to a single handler set here so the three
-  // capture-phase props below read it once each instead of repeating
-  // the same areaArmed/pencilArmed branch three times.
-  const activeDrag = areaArmed ? areaDraw : pencilArmed ? pencilDraw : null
+  // Eraser + Laser's own arming and gesture hooks, plus the four-way
+  // activeDrag resolution across all of Area/Pencil/Eraser/Laser (goal
+  // 0169 slice 4) -- split into its own file at the 500-line seam.
+  const { eraserDraw, laserDraw, activeDrag, anyDragToolArmed } = useAtlasDragTools({
+    isFree, readOnly, armedTool: creation.armedTool, screenToFlowPosition, topLevelBoxes, noteBoxes, wrapperRef,
+    onDeleteSelection, areaArmed, areaDraw, pencilArmed, pencilDraw,
+  })
 
   return (
     <div
@@ -360,7 +364,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
         multiSelectionKeyCode="Shift"
         nodesDraggable={isFree && !readOnly}
         zoomOnDoubleClick={false}
-        panOnDrag={!areaArmed && !pencilArmed}
+        panOnDrag={!anyDragToolArmed}
         // Un-filing (goal 0081 slice A2) means dragging a card TOWARD
         // and past the board's own visible edge, on purpose -- React
         // Flow's own default auto-pan-while-dragging would fight that
@@ -439,6 +443,8 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       </AtlasDragHighlightContext.Provider>
       {marqueeStyle && <div className={styles.marquee} data-testid="atlas-area-marquee" style={marqueeStyle} />}
       {pencilDraw.localPoints && <AtlasPencilLivePreview points={pencilDraw.localPoints} color={pencilStyle.color} size={pencilStyle.size} />}
+      {eraserDraw.localPoints && <AtlasEraserLiveTrail points={eraserDraw.localPoints} />}
+      {laserDraw.points.length > 0 && <AtlasLaserTrail points={laserDraw.points} now={laserDraw.now} />}
       {slotDrag.dragLine && <AtlasSlotDragLine line={slotDrag.dragLine} />}
       {fileDrop.dropError && <div className={`${styles.dropError} ${runbookStyles.error}`} data-testid="atlas-file-drop-error">{fileDrop.dropError}</div>}
       {fileDrop.dropDuplicateNotice && <div className={styles.dropNotice} data-testid="atlas-file-drop-duplicate-notice">{fileDrop.dropDuplicateNotice}</div>}
