@@ -93,13 +93,22 @@ resurfaces this just-in-time.)
 **With a ratified queue, sessions self-drive.** Finish a goal (or hit a
 real block), pull the next queue item, delegate per the model-economics
 rules, continue — never idle awaiting a go-ahead the queue already gave.
-Stop for the owner ONLY when: a decision has no defensible industry
-precedent to research against (pure taste/product calls), it's a SPEC
-`OPEN` item, or it's destructive/outward-facing beyond the already-granted
-defaults (commits/pushes per ADR-0034 are granted; force-push/history
-rewrites are not). Owner check-ins are progress reports, not permission
-gates. A delivered goal's file moves to `docs/goals/archive/` in the same
-commit that completes it.
+Stop for the owner ONLY when: it costs money, it is irreversible, it is
+a SPEC `OPEN` item, or it is a pure taste/product call with no
+defensible industry precedent to research against. Everything else
+proceeds — including publishing, which is no longer a gate
+(owner-granted 2026-08-23: "ask only when it costs money"). Still never
+granted: force-push and history rewrites. Owner check-ins are progress
+reports, not permission gates. A delivered goal's file moves to
+`docs/goals/archive/` in the same commit that completes it.
+
+**Releases are held until v1** (owner-decided 2026-08-23). Beta builds
+publish on every merge and in-app updates work from them, so nothing in
+development needs a tagged release; the stable channel only matters once
+someone other than the owner downloads Mill. Leave release-please's PR
+open and unmerged — it keeps updating itself into a live changelog
+draft, which is useful, and closing it only invites recreation. Revisit
+when the owner calls v1.
 
 ## Working method: Research → Plan → Implement
 
