@@ -10,6 +10,14 @@ import { refreshAtlas } from './atlasStore'
 import { folderScanEntryDepth, groupFolderScanEntries, type FolderScanGroup } from './atlasFolderScanGrouping'
 import { useAtlasFolderImportRequestStore } from './atlasFolderImportRequest'
 import { useUISignalStore } from '../shared/uiSignalStore'
+import {
+  AtlasKindProposal,
+  CREATE_KIND_OPTION,
+  buildProposalFields,
+  initialProposalState,
+  proposalNameTaken,
+  type KindProposalState,
+} from './AtlasKindProposal'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasFolderImport.module.css'
 
@@ -31,6 +39,10 @@ export function AtlasFolderImport({ viewedID, kinds }: { viewedID: string; kinds
   const [scan, setScan] = useState<FolderScanResult | null>(null)
   const [accepted, setAccepted] = useState<Set<string>>(new Set())
   const [categoryKindIDs, setCategoryKindIDs] = useState<Record<string, string>>({})
+  // One in-progress "create a new type" proposal per category (goal
+  // 0172 S2) -- absent for a category still pointed at an existing
+  // Kind, keyed the same as categoryKindIDs.
+  const [proposals, setProposals] = useState<Record<string, KindProposalState>>({})
   const [targetParentID, setTargetParentID] = useState(viewedID)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -41,8 +53,35 @@ export function AtlasFolderImport({ viewedID, kinds }: { viewedID: string; kinds
     setScan(null)
     setAccepted(new Set())
     setCategoryKindIDs({})
+    setProposals({})
     setError('')
   }
+
+  // pickKind handles the Kind Select's own onChange for one category:
+  // switching TO the create option (re-)derives a fresh proposal from
+  // that category's own inferred fields; switching to any real Kind
+  // discards whatever proposal existed -- the design contract's own
+  // "no confirmation, nothing has been created yet" rule.
+  const pickKind = (category: string, kindID: string) => {
+    setCategoryKindIDs((prev) => ({ ...prev, [category]: kindID }))
+    if (kindID === CREATE_KIND_OPTION) {
+      const inferred = scan?.CategoryFields?.find((cf) => cf.Category === category)?.Fields ?? []
+      setProposals((prev) => ({ ...prev, [category]: initialProposalState(scan?.Root ?? '', inferred) }))
+    } else {
+      setProposals((prev) => {
+        if (!(category in prev)) return prev
+        const next = { ...prev }
+        delete next[category]
+        return next
+      })
+    }
+  }
+
+  const activeProposals = Object.entries(categoryKindIDs)
+    .filter(([, kindID]) => kindID === CREATE_KIND_OPTION)
+    .map(([category]) => proposals[category])
+    .filter((p): p is KindProposalState => p !== undefined)
+  const anyProposalNameTaken = activeProposals.some((p) => proposalNameTaken(p.name, kinds))
 
   const scanRoot = async (root: string, parentID: string) => {
     setTargetParentID(parentID)
@@ -127,16 +166,30 @@ export function AtlasFolderImport({ viewedID, kinds }: { viewedID: string; kinds
     })
   }
 
+  // confirm creates every pending proposal's own Kind FIRST, then runs
+  // ImportFolderSuggestions with each such category repointed at the
+  // Kind it just made -- a creation failure throws before the import
+  // call is ever reached, so the dialog stays open showing the error
+  // and no cards exist yet (this function's own single try/catch, no
+  // partial commit possible).
   const confirm = async () => {
     if (!scan) return
     setBusy(true)
     setError('')
     try {
+      const resolvedKindIDs = { ...categoryKindIDs }
+      for (const [category, kindID] of Object.entries(categoryKindIDs)) {
+        if (kindID !== CREATE_KIND_OPTION) continue
+        const proposal = proposals[category]
+        if (!proposal) continue
+        const created = await AtlasService.CreateKind(proposal.name, '', '', buildProposalFields(proposal))
+        resolvedKindIDs[category] = created.ID
+      }
       await AtlasService.ImportFolderSuggestions({
         Root: scan.Root,
         TargetParentID: targetParentID,
         AcceptedRelPaths: [...accepted],
-        CategoryKindIDs: categoryKindIDs,
+        CategoryKindIDs: resolvedKindIDs,
       })
       closePreview()
       await refreshAtlas()
@@ -179,7 +232,7 @@ export function AtlasFolderImport({ viewedID, kinds }: { viewedID: string; kinds
               content: t('folderImport.confirmButton', { count: accepted.size }),
               buttonType: 'primary',
               onClick: () => void confirm(),
-              disabled: busy || accepted.size === 0,
+              disabled: busy || accepted.size === 0 || anyProposalNameTaken,
             },
           ]}
         >
@@ -207,8 +260,9 @@ export function AtlasFolderImport({ viewedID, kinds }: { viewedID: string; kinds
                         size="small"
                         value={categoryKindIDs[group.category] ?? ''}
                         data-testid="atlas-folder-import-kind"
-                        onChange={(e) => setCategoryKindIDs((prev) => ({ ...prev, [group.category]: e.target.value }))}
+                        onChange={(e) => pickKind(group.category, e.target.value)}
                       >
+                        <Select.Option value={CREATE_KIND_OPTION}>{t('folderImport.proposal.createOption')}</Select.Option>
                         {kinds.map((k) => (
                           <Select.Option key={k.ID} value={k.ID}>{k.Icon ? `${k.Icon} ${k.Label}` : k.Label}</Select.Option>
                         ))}
@@ -217,6 +271,13 @@ export function AtlasFolderImport({ viewedID, kinds }: { viewedID: string; kinds
                     <Button size="small" variant="invisible" onClick={() => setGroupAccepted(group, true)}>{t('folderImport.selectAll')}</Button>
                     <Button size="small" variant="invisible" onClick={() => setGroupAccepted(group, false)}>{t('folderImport.selectNone')}</Button>
                   </div>
+                  {categoryKindIDs[group.category] === CREATE_KIND_OPTION && proposals[group.category] && (
+                    <AtlasKindProposal
+                      value={proposals[group.category]}
+                      onChange={(next) => setProposals((prev) => ({ ...prev, [group.category]: next }))}
+                      nameTaken={proposalNameTaken(proposals[group.category].name, kinds)}
+                    />
+                  )}
                   {group.entries.map((entry: FolderScanEntry) => (
                     <FormControl key={entry.RelPath} style={{ paddingLeft: folderScanEntryDepth(entry.RelPath) * 16 }}>
                       <Checkbox

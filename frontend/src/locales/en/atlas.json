@@ -135,7 +135,23 @@
     "selectNone": "Select none",
     "confirmButton": "Add {{count}} cards",
     "empty": "This folder has nothing to add.",
-    "duplicateOf": "Already on the map as “{{title}}”"
+    "duplicateOf": "Already on the map as “{{title}}”",
+    "proposal": {
+      "createOption": "Create a new type from these files",
+      "heading": "New type from these files",
+      "caption": "These fields come from the headers in your files.",
+      "nameLabel": "Type name",
+      "nameTaken": "A type with this name already exists. Choose another name, or pick it from the list above.",
+      "columnInclude": "Include",
+      "columnKey": "Key in your files",
+      "columnShowsAs": "Shows as",
+      "columnType": "Type",
+      "columnOnCard": "On card",
+      "noFieldsFound": "These files have no headers Mill can read. Pick an existing type, or import them as plain cards.",
+      "statusToggle": "Add a status field Mill tracks for you",
+      "statusCaption": "Your files don't carry it. Re-importing never overwrites what you set.",
+      "statusValuesLabel": "Status values"
+    }
   },
   "matrix": {
     "title": "Traceability matrix",

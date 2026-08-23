@@ -186,6 +186,12 @@ type FolderScanResult struct {
 	Truncated  bool
 	MaxDepth   int
 	MaxEntries int
+	// CategoryFields carries one entry per ScanCategory that had at
+	// least one file with readable frontmatter -- a category with none
+	// (including ScanCategoryContainer, which only ever holds
+	// directories) is simply absent, matching this scan's own
+	// "propose nothing" empty case.
+	CategoryFields []FolderScanCategoryFields
 }
 
 // ScanFolder performs the bounded, heuristic scan goal 0067 describes:
@@ -222,6 +228,7 @@ func (a *AtlasService) ScanFolder(root string) (FolderScanResult, error) {
 	a.mu.RUnlock()
 
 	entries := make([]FolderScanEntry, len(scanned.Entries))
+	frontmatterByCategory := map[atlas.ScanCategory][]map[string]any{}
 	for i, e := range scanned.Entries {
 		category := atlas.ScanCategoryContainer
 		if !e.IsDir {
@@ -232,10 +239,19 @@ func (a *AtlasService) ScanFolder(root string) (FolderScanResult, error) {
 			Category: category, SuggestedTitle: atlas.HumanizeFilename(e.Name),
 		}
 		if !e.IsDir {
-			if sum, csErr := fileChecksum(filepath.Join(root, filepath.FromSlash(e.RelPath))); csErr == nil {
+			abs := filepath.Join(root, filepath.FromSlash(e.RelPath))
+			if sum, csErr := fileChecksum(abs); csErr == nil {
 				if dupID, ok := checksumIndex[sum]; ok {
 					entry.DuplicateOfCardID = dupID
 					entry.DuplicateOfTitle = titles[dupID]
+				}
+			}
+			// Only ScanCategoryFile entries are ever attempted -- an
+			// image has no text header to parse, and a directory
+			// (ScanCategoryContainer) has no file content at all.
+			if category == atlas.ScanCategoryFile {
+				if raw, ok := readFileFrontmatter(abs); ok {
+					frontmatterByCategory[category] = append(frontmatterByCategory[category], raw)
 				}
 			}
 		}
@@ -244,6 +260,7 @@ func (a *AtlasService) ScanFolder(root string) (FolderScanResult, error) {
 	return FolderScanResult{
 		Root: root, Entries: entries, Truncated: scanned.Truncated,
 		MaxDepth: DefaultScanMaxDepth, MaxEntries: DefaultScanMaxEntries,
+		CategoryFields: buildCategoryFields(frontmatterByCategory),
 	}, nil
 }
 
@@ -290,7 +307,17 @@ type FolderImportSummary struct {
 // whose own parent directory was NOT accepted attaches directly under
 // TargetParentID instead of being dropped. Every card is created
 // through the normal CreateCard path (validation, dataevent, seed
-// bookkeeping) -- no separate write primitive.
+// bookkeeping) -- no separate write primitive. A file entry's own
+// frontmatter is coerced against its chosen category's Kind
+// (atlas.CoerceFrontmatterFields) and set as the card's initial
+// Fields -- the same Kind-is-the-contract mechanism the ledger-sync
+// path already applies on every re-sync, applied here once at
+// creation. This flow has no re-sync of its own: re-running an import
+// over files it already created makes independent new cards (the
+// preview's own duplicate flag is advisory only), so a Kind field
+// with no matching frontmatter key -- an owner-owned field like a
+// proposed status -- is simply never written, exactly like any other
+// unmatched key.
 func (a *AtlasService) ImportFolderSuggestions(req ImportFolderSuggestionsRequest) (FolderImportSummary, error) {
 	a.mu.RLock()
 	guardErr := a.guardSyncedFolderLocked(req.Root)
@@ -334,6 +361,18 @@ func (a *AtlasService) ImportFolderSuggestions(req ImportFolderSuggestionsReques
 		}
 	}
 
+	// kindsByID resolves each accepted category's own chosen Kind once,
+	// so every card built from it can coerce its own file's frontmatter
+	// against that Kind's real field set (goal 0172's "the Kind is the
+	// contract", extended from the ledger-sync path to this generic
+	// import path -- a freshly proposed Kind's fields populate from the
+	// very files that produced the proposal, not just on some later
+	// sync this flow has no mechanism for).
+	kindsByID := make(map[string]atlas.Kind, len(req.CategoryKindIDs))
+	for _, k := range a.Kinds() {
+		kindsByID[k.ID] = k
+	}
+
 	var summary FolderImportSummary
 	cardIDByRelPath := make(map[string]string, len(ordered))
 	rootLevelIndex := 0
@@ -368,12 +407,16 @@ func (a *AtlasService) ImportFolderSuggestions(req ImportFolderSuggestionsReques
 		// function's own doc comment), so a mirrorPath resolved just
 		// above is guaranteed readable at the same moment it's hashed.
 		checksum := ""
+		var fields map[string]string
 		if !e.IsDir {
 			if sum, csErr := fileChecksum(mirrorPath); csErr == nil {
 				checksum = sum
 			}
+			if raw, ok := readFileFrontmatter(mirrorPath); ok {
+				fields = atlas.CoerceFrontmatterFields(raw, kindsByID[kindID].Fields)
+			}
 		}
-		card, err := a.createCardWithID(seeding.NewSlugID(e.SuggestedTitle, "card"), kindID, e.SuggestedTitle, "", nil, parentCardID, position, viewMode, "", mirrorPath, checksum, "", "")
+		card, err := a.createCardWithID(seeding.NewSlugID(e.SuggestedTitle, "card"), kindID, e.SuggestedTitle, "", fields, parentCardID, position, viewMode, "", mirrorPath, checksum, "", "")
 		if err != nil {
 			return summary, fmt.Errorf("create card for %q: %w", e.RelPath, err)
 		}

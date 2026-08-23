@@ -9,10 +9,12 @@ import { AtlasService } from '../shared/bindings'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import runbookStyles from '../shared/ListCard.module.css'
 
-// The four field types the card surface actually renders
+// The five field types the card surface actually renders
 // (AtlasFieldsForm) -- offering more here would author fields the
-// page can only show as plain text.
-const FIELD_TYPES: { value: FieldType; labelKey: string }[] = [
+// page can only show as plain text. Exported so AtlasKindProposal.tsx
+// (goal 0172 S2) offers this exact same set for a proposed field's own
+// Type select, rather than a second hand-maintained list.
+export const FIELD_TYPES: { value: FieldType; labelKey: string }[] = [
   { value: FieldType.TypeText, labelKey: 'kinds.fieldTypeText' },
   { value: FieldType.TypeNumber, labelKey: 'kinds.fieldTypeNumber' },
   { value: FieldType.TypeBoolean, labelKey: 'kinds.fieldTypeBoolean' },
