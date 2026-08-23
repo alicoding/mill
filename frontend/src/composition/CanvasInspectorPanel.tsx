@@ -6,6 +6,7 @@ import type { RunStep } from '../shared/bindings'
 import type { CanvasNode } from './canvasStore'
 import { DecisionEdgeInspector } from './DecisionEdgeInspector'
 import { NodeInspector } from './NodeInspector'
+import type { BranchRulesActions } from './DecisionRulesPanel'
 import { useHotkeyCapture } from './hotkeyCapture'
 import styles from './CompositionCanvas.module.css'
 
@@ -27,6 +28,12 @@ interface CanvasInspectorPanelProps {
   onChangeType: (newType: NodeType) => void
   onConfigChange: (key: string, value: string) => void
   onEdgeConditionChange: (edgeId: string, condition: string) => void
+  // Branch node's Rules panel (docs/goals/0173) -- forwarded straight
+  // through to NodeInspector, see its own doc comment.
+  edges: RFEdge[]
+  pendingRuleClaims: Record<string, number>
+  issuesByEdgeId: Record<string, string>
+  branchRuleActions: BranchRulesActions
 }
 
 // The canvas's right-side inspector column -- extracted out of
@@ -36,7 +43,7 @@ interface CanvasInspectorPanelProps {
 // inline form: an edge-selected branch (DecisionEdgeInspector), a
 // node-selected branch (NodeInspector), or the empty prompt when
 // neither is selected.
-export function CanvasInspectorPanel({ workflow, selectedNode, selectedEdge, selectedEdgeFromDecision, selectedNodeType, sameKindNodeTypes, hotkeyCapture, readOnly, runStep, onOpenDetail, onChangeType, onConfigChange, onEdgeConditionChange }: CanvasInspectorPanelProps) {
+export function CanvasInspectorPanel({ workflow, selectedNode, selectedEdge, selectedEdgeFromDecision, selectedNodeType, sameKindNodeTypes, hotkeyCapture, readOnly, runStep, onOpenDetail, onChangeType, onConfigChange, onEdgeConditionChange, edges, pendingRuleClaims, issuesByEdgeId, branchRuleActions }: CanvasInspectorPanelProps) {
   const { t } = useTranslation('composition')
   return (
     <div
@@ -71,6 +78,10 @@ export function CanvasInspectorPanel({ workflow, selectedNode, selectedEdge, sel
           onOpenDetail={onOpenDetail}
           onChangeType={onChangeType}
           onConfigChange={onConfigChange}
+          edges={edges}
+          pendingRuleCount={pendingRuleClaims[selectedNode.id] ?? 0}
+          issuesByEdgeId={issuesByEdgeId}
+          branchRuleActions={branchRuleActions}
         />
       )}
     </div>

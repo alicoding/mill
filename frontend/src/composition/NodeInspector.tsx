@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { IconButton, Stack, Text } from '@primer/react'
 import { ScreenFullIcon } from '@primer/octicons-react'
 import type { TFunction } from 'i18next'
+import type { Edge as RFEdge } from '@xyflow/react'
 import type { AttributeDef, NodeType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import type { RunStep } from '../shared/bindings'
 import type { CanvasNode } from './canvasStore'
@@ -9,6 +10,7 @@ import { useHotkeyCapture } from './hotkeyCapture'
 import { NodeExecutionSection } from './NodeExecutionSection'
 import { NodeConfigFields } from './NodeConfigFields'
 import { TryConversionSection } from './TryConversionSection'
+import { DecisionRulesPanel, type BranchRulesActions } from './DecisionRulesPanel'
 import { describeConsumes, describeKind } from './payloadKinds'
 
 // The "Takes: ... -- Produces: ..." sentence's two halves (ADR-0042
@@ -45,6 +47,15 @@ interface NodeInspectorProps {
   onOpenDetail: () => void
   onChangeType: (newType: NodeType) => void
   onConfigChange: (key: string, value: string) => void
+  // Branch-node-only (docs/goals/0173): every canvas edge (the Rules
+  // panel filters to this node's own outgoing edges), the pending
+  // "Add rule" claim count for this node, per-edge inline validation
+  // messages, and the panel's grouped mutation callbacks. Unused for
+  // every other node kind.
+  edges: RFEdge[]
+  pendingRuleCount: number
+  issuesByEdgeId: Record<string, string>
+  branchRuleActions: BranchRulesActions
 }
 
 // The sidebar half of step inspection: a quick glance at a selected
@@ -55,7 +66,7 @@ interface NodeInspectorProps {
 // NodeConfigFields at a workable size instead of forking a second
 // config form; this component's own job is just the sidebar's
 // glance-sized layout plus the affordance to open that overlay.
-export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeTypes, hasWorkflow, hotkeyCapture, runStep, readOnly, onOpenDetail, onChangeType, onConfigChange }: NodeInspectorProps) {
+export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeTypes, hasWorkflow, hotkeyCapture, runStep, readOnly, onOpenDetail, onChangeType, onConfigChange, edges, pendingRuleCount, issuesByEdgeId, branchRuleActions }: NodeInspectorProps) {
   const { t } = useTranslation('composition')
   return (
     <Stack direction="vertical" gap="condensed">
@@ -86,6 +97,17 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
         onChangeType={onChangeType}
         onConfigChange={onConfigChange}
       />
+      {node.data.kind === 'decision' && (
+        <DecisionRulesPanel
+          nodeId={node.id}
+          edges={edges}
+          attrs={attrs}
+          readOnly={readOnly}
+          pendingCount={pendingRuleCount}
+          issuesByEdgeId={issuesByEdgeId}
+          {...branchRuleActions}
+        />
+      )}
       <TryConversionSection nodeType={nodeType} />
       <NodeExecutionSection step={runStep} />
     </Stack>

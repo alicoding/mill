@@ -62,3 +62,17 @@ export function groupIssuesByNode(issues: Issue[]): Record<string, { severity: s
   }
   return byNode
 }
+
+// The Rules panel's own per-row inline validation (docs/goals/0173):
+// error-severity issues keyed by EdgeID, the same message ValidateGraph
+// already produces (graph.go's "decision step %s, edge %s: %v") -- one
+// message per edge, since ValidateDraft never reports more than one
+// compile issue for the same edge in a single pass.
+export function groupIssuesByEdge(issues: Issue[]): Record<string, string> {
+  const byEdge: Record<string, string> = {}
+  for (const issue of issues) {
+    if (!issue.EdgeID || issue.Severity !== 'error') continue
+    byEdge[issue.EdgeID] = issue.Message
+  }
+  return byEdge
+}

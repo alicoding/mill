@@ -24,6 +24,14 @@ import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mil
 // the builder from an empty query and shows the current saved expression
 // as read-only text alongside it, rather than pretending to round-trip.
 
+// Mirrors composition.go's own otherwiseHandle sentinel -- a Decision
+// edge's SourceHandle equal to this literal string IS the mandatory
+// fallback (ValidateGraph's otherwiseCount check, nextNode's routing).
+// Shared here (rather than redeclared per file) so DecisionEdgeInspector,
+// canvasStore's auto-fallback assignment, and the Rules panel (goal 0173)
+// can't drift on the literal.
+export const OTHERWISE_HANDLE = 'otherwise'
+
 const OPERATOR_TEMPLATES: Record<string, (field: string, value: string) => string> = {
   '=': (f, v) => `${f} == ${v}`,
   '!=': (f, v) => `${f} != ${v}`,

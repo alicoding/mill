@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { temporal } from 'zundo'
 import { applyNodeChanges, applyEdgeChanges, addEdge as rfAddEdge } from '@xyflow/react'
 import type { Node as RFNode, Edge as RFEdge, NodeChange, EdgeChange, Connection } from '@xyflow/react'
+import { OTHERWISE_HANDLE } from './ruleTranslate'
 
 // The canvas's own working state -- deliberately a separate zustand store
 // from src/store.ts (which holds cross-view app state: actions, activity).
@@ -66,6 +67,13 @@ export interface CanvasState {
   nodes: CanvasNode[]
   edges: RFEdge[]
   notes: CanvasNoteNode[]
+  // Branch rows added via the Rules panel's "Add rule" control before
+  // their edge is drawn (docs/goals/0173): a count per Decision node id
+  // of how many of its NEXT directly-drawn outgoing edges should land
+  // as plain rules rather than claim the auto-fallback below. Excluded
+  // from zundo's partialize (undo/redo tracks graph content, not this
+  // in-progress authoring intent).
+  pendingRuleClaims: Record<string, number>
   onNodesChange: (changes: NodeChange<CanvasNode>[]) => void
   onEdgesChange: (changes: EdgeChange[]) => void
   onNotesChange: (changes: NodeChange<CanvasNoteNode>[]) => void
@@ -80,6 +88,25 @@ export interface CanvasState {
   changeNodeType: (id: string, nodeTypeID: string, label: string, config: Record<string, string>, output?: string, contractLine?: string) => void
   updateNodeConfig: (id: string, key: string, value: string) => void
   updateEdgeCondition: (id: string, condition: string) => void
+  // A Decision edge's label alone (docs/goals/0173's Rules panel row) --
+  // independent of its condition, unlike updateEdgeCondition which also
+  // mirrors the condition onto the label as its default display text.
+  updateEdgeLabel: (id: string, label: string) => void
+  // Rewrites evaluation order for one Decision node's outgoing edges
+  // (docs/goals/0173): orderedEdgeIds is that node's edges in the new
+  // desired order. Reassigns the edge OBJECTS occupying that node's
+  // existing array slots, so every other node's edges (and their own
+  // relative order) are untouched -- nextNode (graph.go) reads first-
+  // match-wins purely off array order, so this IS what changes which
+  // rule a run checks first.
+  reorderDecisionEdges: (nodeId: string, orderedEdgeIds: string[]) => void
+  // Claims one of this Decision node's next directly-drawn edges as a
+  // plain rule (Rules panel's "Add rule" control, docs/goals/0173) --
+  // see pendingRuleClaims above.
+  armPendingBranchRule: (nodeId: string) => void
+  // Cancels one unwired pending claim (the Rules panel's own cancel
+  // affordance on a not-yet-wired rule) -- floored at zero.
+  disarmPendingBranchRule: (nodeId: string) => void
   removeSelected: () => void
   // One node by id (goal 0075's context-menu Delete) -- same edge/
   // cleanup contract as removeSelected, without touching selection.
@@ -126,10 +153,40 @@ export function createCanvasStore(initialNodes: CanvasNode[] = [], initialEdges:
         nodes: initialNodes,
         edges: initialEdges,
         notes: initialNotes,
+        pendingRuleClaims: {},
         onNodesChange: (changes) => set({ nodes: applyNodeChanges(changes, get().nodes) }),
         onEdgesChange: (changes) => set({ edges: applyEdgeChanges(changes, get().edges) }),
         onNotesChange: (changes) => set({ notes: applyNodeChanges(changes, get().notes) }),
-        onConnect: (connection) => set({ edges: rfAddEdge(connection, get().edges) }),
+        onConnect: (connection) =>
+          set((s) => {
+            const edges = rfAddEdge(connection, s.edges)
+            const newEdge = edges[edges.length - 1]
+            const claims = s.pendingRuleClaims[newEdge.source] ?? 0
+            if (claims > 0) {
+              return { edges, pendingRuleClaims: { ...s.pendingRuleClaims, [newEdge.source]: claims - 1 } }
+            }
+            // A Branch node's mandatory fallback (composition.go's
+            // otherwiseHandle/ValidateGraph's otherwiseCount check): the
+            // first outgoing edge drawn directly on canvas, with no
+            // pending rule claim, becomes this node's otherwise edge
+            // when it doesn't have one yet -- a fresh Branch reaches a
+            // valid, save-ready state as soon as any route exists,
+            // without the user needing to know to mark one explicitly.
+            // Never touches a node that already has an otherwise edge
+            // (existing seeded/authored graphs are unaffected).
+            const sourceNode = s.nodes.find((n) => n.id === newEdge.source)
+            const hasOtherwise = s.edges.some(
+              (e) => e.source === newEdge.source && (e.data as { condition?: string } | undefined)?.condition === OTHERWISE_HANDLE,
+            )
+            if (sourceNode?.data.kind === 'decision' && !hasOtherwise) {
+              return {
+                edges: edges.map((e) =>
+                  e.id === newEdge.id ? { ...e, data: { ...e.data, condition: OTHERWISE_HANDLE }, label: OTHERWISE_HANDLE } : e,
+                ),
+              }
+            }
+            return { edges }
+          }),
         addNode: (node) => set({ nodes: [...get().nodes, node] }),
         addNote: (note) => set({ notes: [...get().notes, note] }),
         addClones: ({ nodes, edges, notes }) =>
@@ -174,6 +231,25 @@ export function createCanvasStore(initialNodes: CanvasNode[] = [], initialEdges:
               e.id === id ? { ...e, data: { ...e.data, condition }, label: condition } : e,
             ),
           }),
+        updateEdgeLabel: (id, label) =>
+          set({ edges: get().edges.map((e) => (e.id === id ? { ...e, label } : e)) }),
+        reorderDecisionEdges: (nodeId, orderedEdgeIds) =>
+          set((s) => {
+            const byId = new Map(s.edges.map((e) => [e.id, e]))
+            let cursor = 0
+            return {
+              edges: s.edges.map((e) => {
+                if (e.source !== nodeId || !orderedEdgeIds.includes(e.id)) return e
+                const next = byId.get(orderedEdgeIds[cursor])
+                cursor += 1
+                return next ?? e
+              }),
+            }
+          }),
+        armPendingBranchRule: (nodeId) =>
+          set((s) => ({ pendingRuleClaims: { ...s.pendingRuleClaims, [nodeId]: (s.pendingRuleClaims[nodeId] ?? 0) + 1 } })),
+        disarmPendingBranchRule: (nodeId) =>
+          set((s) => ({ pendingRuleClaims: { ...s.pendingRuleClaims, [nodeId]: Math.max(0, (s.pendingRuleClaims[nodeId] ?? 0) - 1) } })),
         removeSelected: () =>
           set((s) => {
             const removedIds = new Set(s.nodes.filter((n) => n.selected).map((n) => n.id))
