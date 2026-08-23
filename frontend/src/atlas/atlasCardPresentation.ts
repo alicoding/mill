@@ -1,43 +1,24 @@
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { Type as FieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
+import { resolveUnit } from './atlasUnits'
+import type { DetectableCard, FileTag } from './unitRegistry'
 
 // Pure derivations behind the note card's front/back faces (goal 0072
 // slice A) -- kept dependency-free like atlasGrouping.ts/atlasBoardLayout.ts
 // so every value a card renders is independently unit-testable, not
 // re-derived ad hoc inside the React node components that display it.
 
-export type FileTagLabel = 'MD' | 'IMG' | 'PDF' | 'URL'
-export type FileTagColor = 'success' | 'attention' | 'danger'
+export type { FileTag, FileTagColor, FileTagLabel } from './unitRegistry'
 
-export interface FileTag {
-  label: FileTagLabel
-  color: FileTagColor
-}
-
-const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp'])
-
-function extensionOf(path: string): string {
-  const slash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'))
-  const dot = path.lastIndexOf('.')
-  if (dot <= slash) return ''
-  return path.slice(dot).toLowerCase()
-}
-
-// deriveFileTag follows the ordered chain the ratified design spells
-// out: a recognized MirrorPath extension wins first, then a bare
-// Source URL, then no tag at all -- an unrecognized MirrorPath
-// extension with no Source set falls through to no tag rather than a
-// generic fallback label.
-export function deriveFileTag(card: Pick<Card, 'Source' | 'MirrorPath'>): FileTag | null {
-  if (card.MirrorPath) {
-    const ext = extensionOf(card.MirrorPath)
-    if (ext === '.md' || ext === '.markdown') return { label: 'MD', color: 'success' }
-    if (IMAGE_EXTENSIONS.has(ext)) return { label: 'IMG', color: 'attention' }
-    if (ext === '.pdf') return { label: 'PDF', color: 'danger' }
-  }
-  if (card.Source) return { label: 'URL', color: 'attention' }
-  return null
+// deriveFileTag now delegates to the board-unit registry (ADR-0043,
+// goal 0133 slice 1) instead of hand-walking its own copy of the
+// extension chain: it IS the resolved unit's own tag(), so a card's
+// face/header chip and its content renderer can never disagree about
+// what type the card is.
+export function deriveFileTag(card: DetectableCard): FileTag | null {
+  const unit = resolveUnit(card)
+  return unit ? unit.tag(card) : null
 }
 
 const FRESHNESS_WINDOW_MS = 7 * 24 * 60 * 60 * 1000

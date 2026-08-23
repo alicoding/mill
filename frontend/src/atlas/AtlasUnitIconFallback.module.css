@@ -1,0 +1,30 @@
+/* The icon-card fallback's floor presentation (ADR-0043 §2): a
+   desktop-file idiom -- a typed glyph, never a dead drop. */
+.wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--base-size-8);
+    padding: var(--base-size-24) var(--base-size-16);
+    border: 1px solid var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+    background-color: var(--bgColor-muted);
+    text-align: center;
+}
+.glyph {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--borderRadius-medium);
+    background-color: var(--bgColor-neutral-muted);
+    color: var(--fgColor-muted);
+}
+.extension {
+    font-family: var(--mill-mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--fgColor-muted);
+    text-transform: uppercase;
+}
