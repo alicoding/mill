@@ -1,0 +1,53 @@
+/* Shared safe-GFM typography (goal 0162): the element styling every
+   renderer of Mill's markdown-to-HTML output shares -- links, code,
+   tables, mermaid diagrams. Chrome that signals "read-only external
+   document" (outer border, heading underlines) is NOT here -- it
+   belongs to the read-only mirror preview alone, composed in
+   AtlasCardMirrorPreview.module.css, so an editable surface (
+   MarkdownNoteField.module.css) can compose this typography without
+   inheriting a look that contradicts its own affordance. */
+.prose {
+    color: var(--fgColor-default);
+    font-size: 14px;
+    line-height: 1.5;
+}
+/* WCAG 1.4.1 (Use of Color): an inline link must be distinguishable
+   from surrounding body text by more than color alone -- axe-core's
+   link-in-text-block rule flags this otherwise, since the accent
+   color's contrast against body text falls under the 3:1 minimum for
+   a color-only distinction. */
+.prose :global(a) {
+    text-decoration: underline;
+}
+.prose :global(code) {
+    background-color: var(--bgColor-muted);
+    border-radius: var(--borderRadius-small);
+    padding: 0 var(--base-size-4);
+}
+.prose :global(pre) {
+    background-color: var(--bgColor-muted);
+    border-radius: var(--borderRadius-medium);
+    padding: var(--base-size-8);
+    overflow-x: auto;
+}
+.prose :global(table) {
+    border-collapse: collapse;
+}
+.prose :global(th),
+.prose :global(td) {
+    border: 1px solid var(--borderColor-default);
+    padding: var(--base-size-4) var(--base-size-8);
+}
+/* Rendered mermaid fences (useMermaidRendering): the SVG scales to the
+   content width; the class is global-scoped because the wrapper is
+   created imperatively outside JSX. */
+.prose :global(.atlas-mermaid-diagram) {
+    display: flex;
+    justify-content: center;
+    margin: var(--stack-gap-normal, 16px) 0;
+    overflow-x: auto;
+}
+.prose :global(.atlas-mermaid-diagram svg) {
+    max-width: 100%;
+    height: auto;
+}

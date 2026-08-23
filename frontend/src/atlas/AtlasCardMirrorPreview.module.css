@@ -1,12 +1,17 @@
+/* Read-only chrome for an EXTERNAL mirrored file (goal 0162): the
+   outer border and heading underlines signal "a bounded document
+   window," correct here but not for an editable surface -- see
+   MarkdownProse.module.css's own header for the split's reasoning.
+   Typography (color/size/line-height, links/code/tables/mermaid) is
+   composed from the shared prose class so it can't drift between the
+   two consumers. */
 .markdownBody {
+    composes: prose from './MarkdownProse.module.css';
     max-height: 480px;
     overflow-y: auto;
     padding: var(--base-size-8) var(--base-size-12);
     border: 1px solid var(--borderColor-default);
     border-radius: var(--borderRadius-medium);
-    color: var(--fgColor-default);
-    font-size: 14px;
-    line-height: 1.5;
 }
 .markdownBody :global(h1),
 .markdownBody :global(h2),
@@ -15,33 +20,6 @@
     padding-bottom: var(--base-size-4);
     margin-top: var(--base-size-16);
     margin-bottom: var(--base-size-8);
-}
-/* WCAG 1.4.1 (Use of Color): an inline link must be distinguishable
-   from surrounding body text by more than color alone -- axe-core's
-   link-in-text-block rule flags this markdown body's links otherwise,
-   since the accent color's contrast against body text falls under
-   the 3:1 minimum for a color-only distinction. */
-.markdownBody :global(a) {
-    text-decoration: underline;
-}
-.markdownBody :global(code) {
-    background-color: var(--bgColor-muted);
-    border-radius: var(--borderRadius-small);
-    padding: 0 var(--base-size-4);
-}
-.markdownBody :global(pre) {
-    background-color: var(--bgColor-muted);
-    border-radius: var(--borderRadius-medium);
-    padding: var(--base-size-8);
-    overflow-x: auto;
-}
-.markdownBody :global(table) {
-    border-collapse: collapse;
-}
-.markdownBody :global(th),
-.markdownBody :global(td) {
-    border: 1px solid var(--borderColor-default);
-    padding: var(--base-size-4) var(--base-size-8);
 }
 .textBody {
     max-height: 480px;
@@ -59,18 +37,4 @@
     max-height: 480px;
     border-radius: var(--borderRadius-medium);
     border: 1px solid var(--borderColor-default);
-}
-
-/* Rendered mermaid fences (useMermaidRendering): the SVG scales to the
-   preview width; the class is global-scoped because the wrapper is
-   created imperatively outside JSX. */
-.markdownBody :global(.atlas-mermaid-diagram) {
-  display: flex;
-  justify-content: center;
-  margin: var(--stack-gap-normal, 16px) 0;
-  overflow-x: auto;
-}
-.markdownBody :global(.atlas-mermaid-diagram svg) {
-  max-width: 100%;
-  height: auto;
 }
