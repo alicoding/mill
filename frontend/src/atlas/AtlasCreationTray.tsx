@@ -35,6 +35,18 @@ export const ATLAS_TOOL_DRAG_MIME = 'application/x-mill-atlas-tool'
 // at all; only their own drag gesture (AtlasBoard.tsx) differs. Hidden
 // entirely below the companion breakpoint -- the caller (AtlasBoard)
 // only renders this when !readOnly.
+//
+// Icon + shortcut-chip only, no visible text label (goal 0169 slice 4
+// finding): a text label per button made the tray's own WIDTH grow
+// unboundedly with every tool this registry gains -- confirmed live
+// when the 8th button (Laser) widened the tray enough to push its
+// LEFT edge over a fixed test coordinate an unrelated spec clicked
+// near the board's bottom-left. Matches the converged pattern this
+// goal's own research already cited (Excalidraw/tldraw toolbars are
+// icon-only for exactly this reason) rather than trimming padding by a
+// few px, which would only defer the same class of collision to slice
+// 5's shapes tool. The full name is still discoverable via `title`
+// (hover) and `aria-label` (screen readers) on every button.
 export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTableToggle, onPickTableSize, onTableFromList, imagePopoverOpen, onImageToggle, onImageSubmitPath, onImageSubmitFile }: {
   armedTool: AtlasArmableTool | null
   onToggle: (tool: AtlasArmableTool) => void
@@ -68,10 +80,10 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
                 data-armed={tablePickerOpen}
                 aria-pressed={tablePickerOpen}
                 title={t(`creationTray.${tool.id}Tooltip`)}
+                aria-label={t(`creationTray.${tool.id}Label`)}
                 onClick={() => onTableToggle(!tablePickerOpen)}
               >
                 <Icon size={14} />
-                <span className={styles.label}>{t(`creationTray.${tool.id}Label`)}</span>
                 <span className={styles.kbd}>{tool.shortcutKey}</span>
               </button>
               <AnchoredOverlay
@@ -103,10 +115,10 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
                 data-armed={pencilArmed}
                 aria-pressed={pencilArmed}
                 title={t(`creationTray.${tool.id}Tooltip`)}
+                aria-label={t(`creationTray.${tool.id}Label`)}
                 onClick={() => onToggle(tool.id)}
               >
                 <Icon size={14} />
-                <span className={styles.label}>{t(`creationTray.${tool.id}Label`)}</span>
                 <span className={styles.kbd}>{tool.shortcutKey}</span>
               </button>
               <AnchoredOverlay
@@ -141,10 +153,10 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
                 data-armed={imagePopoverOpen}
                 aria-pressed={imagePopoverOpen}
                 title={t(`creationTray.${tool.id}Tooltip`)}
+                aria-label={t(`creationTray.${tool.id}Label`)}
                 onClick={() => onImageToggle(!imagePopoverOpen)}
               >
                 <Icon size={14} />
-                <span className={styles.label}>{t(`creationTray.${tool.id}Label`)}</span>
                 <span className={styles.kbd}>{tool.shortcutKey}</span>
               </button>
               <AnchoredOverlay
@@ -174,6 +186,7 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
             data-armed={armed}
             aria-pressed={armed}
             title={t(`creationTray.${tool.id}Tooltip`)}
+            aria-label={t(`creationTray.${tool.id}Label`)}
             draggable={draggable}
             onDragStart={
               draggable
@@ -186,7 +199,6 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
             onClick={() => onToggle(tool.id)}
           >
             <Icon size={14} />
-            <span className={styles.label}>{t(`creationTray.${tool.id}Label`)}</span>
             <span className={styles.kbd}>{tool.shortcutKey}</span>
           </button>
         )
