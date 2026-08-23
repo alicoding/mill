@@ -689,7 +689,7 @@ jobs:
             echo "## Manual install"
             echo ""
             echo "Automated build from commit ${GITHUB_SHA} -- not a tagged release."
-            echo "Download the \`.zip\`, unzip, and drag \`mill.app\` to Applications. The app is not Apple-notarized: first launch is blocked with \"Apple could not verify…\" -- click Done (not Move to Trash), then System Settings → Privacy & Security → scroll to the mill message → Open Anyway (one time only). Terminal alternative: \`xattr -dr com.apple.quarantine /Applications/mill.app\`."
+            echo "Download the \`.zip\`, unzip, and drag \`mill.app\` to Applications. The app is not Apple-notarized: first launch is blocked with \"Apple could not verify…\" -- click Done (not Move to Trash), then System Settings → Privacy & Security → scroll to the mill message → Open Anyway (one time only). Terminal alternative: \`/usr/bin/xattr -dr com.apple.quarantine /Applications/mill.app\`."
             echo "Every later merge to main updates in-app via Settings → Updates → Update now -- no rebuild, no repeat of this step."
           } > /tmp/beta-notes.md
           gh release create "v${BETA_VERSION}" \
