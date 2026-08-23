@@ -376,29 +376,3 @@ func TestMiddleware_RevokedTokenRejectedImmediately(t *testing.T) {
 	}
 }
 
-// TestMiddleware_InProcessRequestPassesThrough pins the desktop
-// lockout: the desktop build serves assets in-process to its own
-// webview, so the request carries no RemoteAddr at all. Treating that
-// as non-loopback challenged the app against itself, and nothing could
-// pair out of it because BootstrapPairingCode only mints in server
-// mode.
-func TestMiddleware_InProcessRequestPassesThrough(t *testing.T) {
-	s := newTestService(t)
-	served := false
-	h := s.Middleware()(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		served = true
-		w.WriteHeader(http.StatusOK)
-	}))
-
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
-	req.RemoteAddr = ""
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-
-	if !served {
-		t.Fatal("an in-process request (empty RemoteAddr) must reach the app, not the pairing page")
-	}
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
-	}
-}

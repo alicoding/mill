@@ -316,8 +316,9 @@ func main() {
 			application.NewService(notificationService),
 		},
 		Assets: application.AssetOptions{
-			Handler:    application.AssetFileServerFS(assets),
-			Middleware: remoteAuthService.Middleware(), // gates every request, see remoteauthsvc.Service.Middleware
+			Handler: application.AssetFileServerFS(assets),
+			// Armed only for a server build (wiring.AssetMiddleware).
+			Middleware: wiring.AssetMiddleware(remoteAuthService),
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
@@ -496,3 +497,4 @@ func main() {
 		log.Fatal(err)
 	}
 }
+
