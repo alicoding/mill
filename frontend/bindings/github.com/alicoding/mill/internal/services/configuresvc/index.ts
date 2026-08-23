@@ -7,6 +7,7 @@ export {
 };
 
 export type {
+    ParsedXlsxFile,
     TestHTTPRequestInput,
     TestHTTPRequestResult
 } from "./models.js";

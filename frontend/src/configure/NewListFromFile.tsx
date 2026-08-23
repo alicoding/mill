@@ -7,7 +7,7 @@ import { Type as FieldType } from '../../bindings/github.com/alicoding/mill/inte
 import type { List } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
 import { ConfigureService } from '../shared/bindings'
 import { nextColumnKey } from '../shared/projectionColumns'
-import { inferListSchema, parseImportFile, type InferredField, type ParsedFile } from './listRowImportParse'
+import { inferListSchema, parseUploadedFile, type InferredField, type ParsedFile } from './listRowImportParse'
 import styles from '../shared/ListCard.module.css'
 
 // Configure > Lists' "New from file…" (docs/goals/0131, the schema
@@ -30,17 +30,12 @@ export function NewListFromFile({ onCreated }: { onCreated: (l: List) => void })
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    file.text().then((text) => {
-      try {
-        const p = parseImportFile(file.name, text)
-        setParsed(p)
-        setFields(inferListSchema(p, nextColumnKey))
-        setLabel(file.name.replace(/\.[^.]+$/, ''))
-        setError('')
-        setDialogError('')
-      } catch (err) {
-        setError(String(err))
-      }
+    parseUploadedFile(file).then((p) => {
+      setParsed(p)
+      setFields(inferListSchema(p, nextColumnKey))
+      setLabel(file.name.replace(/\.[^.]+$/, ''))
+      setError('')
+      setDialogError('')
     }).catch((err) => setError(String(err)))
   }
 
@@ -94,7 +89,7 @@ export function NewListFromFile({ onCreated }: { onCreated: (l: List) => void })
       <input
         ref={inputRef}
         type="file"
-        accept=".csv,.json,text/csv,application/json"
+        accept=".csv,.json,.xlsx,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         data-testid="new-list-from-file-input"
         style={{ display: 'none' }}
         onChange={handleFile}

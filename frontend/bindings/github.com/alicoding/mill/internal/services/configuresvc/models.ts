@@ -6,6 +6,19 @@
 import * as httprequest$0 from "../../domain/httprequest/models.js";
 
 /**
+ * ParsedXlsxFile mirrors listRowImportParse.ts's own ParsedFile shape
+ * (frontend/src/configure/listRowImportParse.ts) field-for-field, so
+ * xlsx rows feed the identical mapping/inference pipeline the CSV/JSON
+ * import path already owns -- this struct is the ONLY new surface;
+ * autoMatchColumns, mapRowValues, and inferListSchema never learn xlsx
+ * exists (docs/goals/0133 slice 4).
+ */
+export interface ParsedXlsxFile {
+    "FileColumns": string[] | null;
+    "Rows": ({ [_ in string]?: string } | null)[] | null;
+}
+
+/**
  * TestHTTPRequestInput carries a request draft (possibly unsaved --
  * docs/adr/0013) plus the one operation to call and example field
  * values. Config comes as plain values (BaseURL/AuthType/Headers/

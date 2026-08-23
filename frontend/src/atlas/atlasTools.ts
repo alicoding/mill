@@ -4,6 +4,7 @@ import { Type as FieldType, type Field } from '../../bindings/github.com/alicodi
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService, ConfigureService } from '../shared/bindings'
 import { ATLAS_TOOL_IDENTITIES, type AtlasToolIdentity } from '../shared/atlasToolIdentity'
+import { fileToBase64 } from '../shared/base64Blob'
 import { lastUsedKindID, normalizeLocalPathInput, titleFromFilename } from './atlasCreateHelpers'
 
 // The canvas tool registry (goal 0169 slice 1): every creatable
@@ -142,21 +143,6 @@ const tableTool = {
 const IMAGE_MIME_EXTENSIONS: Record<string, string> = {
   'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif',
   'image/webp': '.webp', 'image/svg+xml': '.svg', 'image/bmp': '.bmp',
-}
-
-// fileToBase64 reads file's raw bytes as a standard-encoding base64
-// string for SaveImageBytes's own wire shape (every value a plain
-// string on the wire, typedfield.Field's own repo-wide convention) --
-// chunked so a large screenshot's byte array never blows the call stack
-// String.fromCharCode(...bytes) would hit unchunked.
-async function fileToBase64(file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer())
-  const chunkSize = 0x8000
-  let binary = ''
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
-  }
-  return btoa(binary)
 }
 
 // Image (goal 0169 slice 2): the paste-or-drop interaction's own proof.

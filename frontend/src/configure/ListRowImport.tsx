@@ -5,7 +5,7 @@ import { DataTable } from '@primer/react/experimental'
 import { UploadIcon } from '@primer/octicons-react'
 import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { ConfigureService } from '../shared/bindings'
-import { SKIP_TARGET, autoMatchColumns, buildMappedRows, mapRowValues, parseImportFile, type ParsedFile } from './listRowImportParse'
+import { SKIP_TARGET, autoMatchColumns, buildMappedRows, mapRowValues, parseUploadedFile, type ParsedFile } from './listRowImportParse'
 import styles from '../shared/ListCard.module.css'
 
 const PREVIEW_ROWS = 5
@@ -44,15 +44,10 @@ export function ListRowImport({ listId, columns, onImported }: {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    file.text().then((text) => {
-      try {
-        const p = parseImportFile(file.name, text)
-        setParsed(p)
-        setMapping(autoMatchColumns(p.fileColumns, columns))
-        setError('')
-      } catch (err) {
-        setError(String(err))
-      }
+    parseUploadedFile(file).then((p) => {
+      setParsed(p)
+      setMapping(autoMatchColumns(p.fileColumns, columns))
+      setError('')
     }).catch((err) => setError(String(err)))
   }
 
@@ -93,7 +88,7 @@ export function ListRowImport({ listId, columns, onImported }: {
       <input
         ref={inputRef}
         type="file"
-        accept=".csv,.json,text/csv,application/json"
+        accept=".csv,.json,.xlsx,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         data-testid="import-list-rows-input"
         style={{ display: 'none' }}
         onChange={handleFile}
