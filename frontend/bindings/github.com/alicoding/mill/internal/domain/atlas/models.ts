@@ -95,6 +95,16 @@ export interface Card {
     "MirrorChecksum": string;
 
     /**
+     * MirrorMissing marks a card whose MirrorPath could not be found on
+     * disk as of the last sync -- the card itself is never deleted for
+     * this (goal 0178 S2): a vanished source is surfaced, not silently
+     * dropped, and clears the moment the path is found again.
+     * omitempty keeps a card that has never gone missing byte-identical
+     * to pre-field data (persisted stores and seed fingerprints).
+     */
+    "MirrorMissing"?: boolean;
+
+    /**
      * RefreshWorkflowID optionally names the workflow that refreshes
      * this card's mirror -- "Update now" runs it through the normal
      * guardrail gate (ADR-0038 Decision 4); resolution/existence of the

@@ -16,12 +16,13 @@ import (
 // new card on every call -- which is what made a re-import duplicate
 // every file it had already imported.
 
-// mirrorSyncEntry is one candidate file to mirror as a card, keyed by
-// its own MirrorPath. An empty MirrorPath (a directory entry -- goal
-// 0178 S1 deliberately does not extend this identity to containers,
-// see ImportFolderSuggestions' own doc comment) never matches anything
-// in byMirror, so syncMirrorCard always takes the "create new" branch
-// for it, reproducing the pre-existing container behaviour unchanged.
+// mirrorSyncEntry is one candidate file OR container to mirror as a
+// card, keyed by its own MirrorPath (goal 0178 S2 gives a container
+// entry a real MirrorPath too, its own source folder -- see
+// ImportFolderSuggestions' own doc comment for why this is what makes
+// nested reimport idempotent). A container entry's Checksum stays ""
+// (a directory has no content hash) and Fields stays nil, so
+// createMirrorCard/refreshMirrorCard below never touch either for it.
 type mirrorSyncEntry struct {
 	MirrorPath string
 	// Checksum is the file's current content hash. Empty means either
@@ -79,7 +80,12 @@ func (a *AtlasService) syncMirrorCard(e mirrorSyncEntry, byMirror map[string]atl
 // refreshMirrorCard applies one mirrorSyncEntry's checksum/Fields onto
 // an already-existing card -- the "content changed" half of
 // syncMirrorCard's merge-or-create decision. Fields nil skips the
-// merge entirely, matching an unparseable/no-frontmatter file.
+// merge entirely, matching an unparseable/no-frontmatter file. A
+// directory entry (empty Checksum, nil Fields -- goal 0178 S2) still
+// reaches the stampSynced call below on every pass, since it never
+// takes syncMirrorCard's own checksum-match shortcut: this is what
+// keeps a mirrored container's own freshness honest across repeated
+// syncs even though it has no content checksum of its own.
 func (a *AtlasService) refreshMirrorCard(e mirrorSyncEntry, existing atlas.Card) error {
 	if e.Checksum != "" {
 		if err := a.setMirrorChecksum(existing.ID, e.Checksum); err != nil {
@@ -90,6 +96,9 @@ func (a *AtlasService) refreshMirrorCard(e mirrorSyncEntry, existing atlas.Card)
 		if _, err := a.MergeCardFields(existing.ID, e.Fields, e.SourceRunID); err != nil {
 			return fmt.Errorf("sync mirror card: merge fields for %q: %w", existing.Title, err)
 		}
+	}
+	if _, err := a.stampSynced(existing.ID); err != nil {
+		return fmt.Errorf("sync mirror card: stamp synced for %q: %w", existing.Title, err)
 	}
 	return nil
 }
@@ -115,7 +124,11 @@ func (a *AtlasService) createMirrorCard(e mirrorSyncEntry) (atlas.Card, error) {
 	if err != nil {
 		return atlas.Card{}, fmt.Errorf("sync mirror card: create for %q: %w", e.Title, err)
 	}
-	return card, nil
+	synced, err := a.stampSynced(card.ID)
+	if err != nil {
+		return atlas.Card{}, fmt.Errorf("sync mirror card: stamp synced for %q: %w", e.Title, err)
+	}
+	return synced, nil
 }
 
 // mirrorIndexLocked returns every live card that carries a MirrorPath,

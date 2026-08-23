@@ -160,6 +160,14 @@
     border-radius: 4px;
     padding: 0 4px;
 }
+/* A vanished mirror source (goal 0178 S2) -- the .chip shape, danger-
+   colored so it reads distinctly from the neutral leaf/child chips. */
+.chipMissing {
+    border: 1px solid var(--borderColor-danger-muted);
+    border-radius: 4px;
+    padding: 0 4px;
+    color: var(--fgColor-danger);
+}
 
 /* The typed-link hover handle (goal 0106 contract item 1, relocating
    the retired flip's own slot-drag anchor): a small tab on the card's

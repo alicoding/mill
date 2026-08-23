@@ -139,6 +139,10 @@ func (a *AtlasService) stampReceipt(id, runID string) (atlas.Card, error) {
 	return c, nil
 }
 
+// stampSynced stamps LastSyncedAt and clears MirrorMissing (goal 0178
+// S2): whatever just confirmed this sync -- a workflow run, a direct
+// mirror sync -- proves the card's source was reachable, so any
+// earlier "vanished" mark no longer holds.
 func (a *AtlasService) stampSynced(id string) (atlas.Card, error) {
 	a.mu.Lock()
 	idx := a.findCardLocked(id)
@@ -149,6 +153,7 @@ func (a *AtlasService) stampSynced(id string) (atlas.Card, error) {
 	previous := a.cards[idx]
 	c := previous
 	c.LastSyncedAt = time.Now()
+	c.MirrorMissing = false
 	a.cards[idx] = c
 	perr := a.persistLocked()
 	if perr != nil {

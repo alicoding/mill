@@ -73,6 +73,26 @@
     color: var(--fgColor-accent);
     border-color: var(--borderColor-accent-muted);
 }
+.pillMissing {
+    color: var(--fgColor-danger);
+    border-color: var(--borderColor-danger-muted);
+}
+/* The frame's own mirror-freshness dot (goal 0178 S2) -- same visual
+   language as AtlasNoteCardNode.module.css's own dot, styling a
+   different card type's face so it lives here rather than being
+   imported cross-component. */
+.dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+.dot-fresh {
+    background: var(--fgColor-success);
+}
+.dot-stale {
+    background: var(--fgColor-attention);
+}
 .zoomChip {
     margin-left: auto;
     font-family: var(--mill-mono);

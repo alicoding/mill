@@ -5,6 +5,7 @@ import type { NodeProps, Node as RFNode } from '@xyflow/react'
 import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { kindColorTokens } from './atlasKindColor'
 import { NOTE_HEIGHT, NOTE_WIDTH } from './atlasBoardLayout'
+import { freshnessDotColor } from './atlasCardPresentation'
 import type { FreshnessRollup, RollupSummary } from './atlasCardPresentation'
 import { useAtlasDragHighlight } from './atlasDragHighlightContext'
 import styles from './AtlasGroupNode.module.css'
@@ -55,6 +56,12 @@ export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<A
   const { t } = useTranslation('atlas')
   const { card, childCount, freshness, rollup, pulsed, hinted, isSoleSelected, overflow, slotDragHighlight, onDrill, onOpenOverlay } = data
   const tokens = kindColorTokens(card.KindID)
+  // The frame's OWN mirror state (goal 0178 S2) -- an imported
+  // container's own freshness/missing marking, distinct from
+  // freshness.fresh/stale above (which tally its CHILDREN). null/false
+  // for any container that isn't itself a folder import, so this is
+  // invisible by construction on every ordinary area.
+  const ownDot = freshnessDotColor(card)
   // Drag filing's own live release-target affordance (goal 0081 slice
   // A2): read from the narrowly-scoped context (goal 0161 slice 1)
   // rather than a node data field, so only frame nodes re-render on a
@@ -116,6 +123,12 @@ export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<A
         }}
       >
         <span className={styles.name}>{card.Title}</span>
+        {ownDot && <span className={`${styles.dot} ${styles[`dot-${ownDot}`]}`} data-testid="atlas-group-freshness-dot" />}
+        {card.MirrorMissing && (
+          <span className={`${styles.pill} ${styles.pillMissing}`} data-testid="atlas-group-mirror-missing">
+            {t('board.mirrorMissingChip')}
+          </span>
+        )}
         <span className={styles.cardCount}>{t('board.cardsCount', { count: childCount })}</span>
         {rollup && (
           <span className={`${styles.pill} ${styles.pillRollup}`} data-testid="atlas-group-rollup-pill">

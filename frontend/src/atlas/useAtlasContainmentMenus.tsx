@@ -109,14 +109,23 @@ export function useAtlasContainmentMenus({
   }
 
   // A frame's own header/border (LOCKED design §6d): the full frame
-  // menu -- add-inside, zoom, dissolve, delete, in that order.
+  // menu -- mirror actions (a folder import only, goal 0178 S2),
+  // add-inside, zoom, dissolve, delete, in that order.
   const openFrameMenu = (frameID: string, pos: { x: number; y: number }) => {
     const frame = allCards.find((c) => c.ID === frameID)
     if (!frame) return
+    const mirrorItems: ContextMenuItem[] = frame.MirrorPath
+      ? [
+          { id: 'reveal-in-file-manager', label: t('contextMenu.revealInFileManager'), run: () => void AtlasService.RevealCardMirror(frame.ID).catch((err) => onError(String(err))) },
+          { id: 'refresh-from-folder', label: t('contextMenu.refreshFromFolder'), run: () => void AtlasService.RefreshMirrorContainer(frame.ID).then(() => refreshAtlas()).catch((err) => onError(String(err))) },
+          { id: 'd0', divider: true },
+        ]
+      : []
     setMenu({
       x: pos.x,
       y: pos.y,
       items: [
+        ...mirrorItems,
         { id: 'add-card-inside', label: t('contextMenu.addCardTo', { title: frame.Title }), run: () => requestPlacementInside('card', pos, frameID) },
         { id: 'zoom', label: t('contextMenu.zoomIn'), run: () => drill(frameID) },
         { id: 'd1', divider: true },

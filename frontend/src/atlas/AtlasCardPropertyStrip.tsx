@@ -90,6 +90,11 @@ export function AtlasCardPropertyStrip({ card, kind, fields, onFieldsChange, onF
           aria-label={freshnessLabel}
         />
       )}
+      {card.MirrorMissing && (
+        <span className={styles.propertyMissing} data-testid="atlas-page-mirror-missing">
+          {t('overlay.mirrorMissing')}
+        </span>
+      )}
 
       <AtlasPerspectiveMembership cardID={card.ID} />
     </div>
