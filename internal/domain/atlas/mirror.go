@@ -82,6 +82,17 @@ func MirrorImageMimeType(path string) string {
 	return imageMimeTypes[strings.ToLower(filepath.Ext(path))]
 }
 
+// IsImageExtension reports whether ext (including its leading ".",
+// case-insensitive) is one of the recognized image extensions --
+// exported so a caller validating a NEW file before it exists on disk
+// (the image tool's paste door, goal 0169 slice 2, which must reject a
+// non-image extension before ever writing bytes) reuses the exact same
+// allow-list ClassifyMirrorKind/MirrorImageMimeType already own,
+// rather than a second copy that could drift from it.
+func IsImageExtension(ext string) bool {
+	return imageMimeTypes[strings.ToLower(ext)] != ""
+}
+
 // MirrorContent is a card's MirrorPath resolved into a read-only
 // overlay preview (docs/goals/0064), returned by atlassvc.AtlasService.
 // MirrorContent. Size is always populated (even when TooLarge or

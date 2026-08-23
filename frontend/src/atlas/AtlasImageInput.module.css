@@ -1,0 +1,15 @@
+.input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-8);
+  padding: var(--base-size-12);
+  width: 220px;
+}
+
+.hint {
+  color: var(--fgColor-muted);
+}
+
+.error {
+  color: var(--fgColor-danger);
+}

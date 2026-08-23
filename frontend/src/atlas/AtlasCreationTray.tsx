@@ -2,6 +2,7 @@ import { Fragment, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnchoredOverlay, Button } from '@primer/react'
 import { AtlasTableSizePicker } from './AtlasTableSizePicker'
+import { AtlasImageInput } from './AtlasImageInput'
 import { ATLAS_TOOLS, type AtlasCreationTool } from './atlasTools'
 import styles from './AtlasCreationTray.module.css'
 
@@ -18,23 +19,29 @@ export const ATLAS_TOOL_DRAG_MIME = 'application/x-mill-atlas-tool'
 // 0139 made it THE creation surface -- every creatable thing is a
 // visible tool here, nothing behind a dropdown). Every tool in the
 // registry's own 'quick' tray renders through this one loop (goal
-// 0169 slice 1) -- Card/Note/Area arm a placement on click
+// 0169 slices 1-2) -- Card/Note/Area arm a placement on click
 // ('arm-then-click'); Table opens its size picker anchored to its own
 // button instead ('pick-then-place'), with "From a List…" in the
-// picker's footer as the projection door. Hidden entirely below the
-// companion breakpoint -- the caller (AtlasBoard) only renders this
-// when !readOnly.
-export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTableToggle, onPickTableSize, onTableFromList }: {
+// picker's footer as the projection door; Image opens its own path/
+// paste popover the same anchored way ('paste-or-drop'). Hidden
+// entirely below the companion breakpoint -- the caller (AtlasBoard)
+// only renders this when !readOnly.
+export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTableToggle, onPickTableSize, onTableFromList, imagePopoverOpen, onImageToggle, onImageSubmitPath, onImageSubmitFile }: {
   armedTool: AtlasCreationTool | null
   onToggle: (tool: AtlasCreationTool) => void
   tablePickerOpen: boolean
   onTableToggle: (open: boolean) => void
   onPickTableSize: (cols: number, rows: number) => void
   onTableFromList: () => void
+  imagePopoverOpen: boolean
+  onImageToggle: (open: boolean) => void
+  onImageSubmitPath: (path: string) => Promise<void>
+  onImageSubmitFile: (file: File) => Promise<void>
 }) {
   const { t } = useTranslation('atlas')
   const tools = ATLAS_TOOLS.filter((tool) => tool.tray === 'quick')
   const tableButtonRef = useRef<HTMLButtonElement>(null)
+  const imageButtonRef = useRef<HTMLButtonElement>(null)
 
   return (
     <div className={styles.tray} data-testid="atlas-creation-tray" role="toolbar" aria-label={t('creationTray.ariaLabel')}>
@@ -70,6 +77,35 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
                     {t('creationTray.tableFromList')}
                   </Button>
                 </div>
+              </AnchoredOverlay>
+            </Fragment>
+          )
+        }
+        if (tool.interaction === 'paste-or-drop') {
+          return (
+            <Fragment key={tool.id}>
+              <button
+                ref={imageButtonRef}
+                type="button"
+                className={styles.tool}
+                data-testid={`atlas-tray-${tool.id}`}
+                data-armed={imagePopoverOpen}
+                aria-pressed={imagePopoverOpen}
+                title={t(`creationTray.${tool.id}Tooltip`)}
+                onClick={() => onImageToggle(!imagePopoverOpen)}
+              >
+                <Icon size={14} />
+                <span className={styles.label}>{t(`creationTray.${tool.id}Label`)}</span>
+                <span className={styles.kbd}>{tool.shortcutKey}</span>
+              </button>
+              <AnchoredOverlay
+                open={imagePopoverOpen}
+                onClose={() => onImageToggle(false)}
+                anchorRef={imageButtonRef}
+                renderAnchor={null}
+                side="outside-top"
+              >
+                <AtlasImageInput onSubmitPath={onImageSubmitPath} onSubmitFile={onImageSubmitFile} onDone={() => onImageToggle(false)} />
               </AnchoredOverlay>
             </Fragment>
           )

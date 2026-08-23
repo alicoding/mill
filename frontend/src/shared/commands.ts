@@ -291,29 +291,32 @@ export const COMMANDS: Command[] = [
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasJump(),
   },
-  // atlas.create.card/note/area/table (bare C/N/A/T, goal 0081 slices
-  // A1/A2, goal 0139): comboFromEvent requires Cmd/Ctrl by design
-  // (every other keymap default needs one of the two -- see its own
-  // doc comment, shared/keybinding.ts), so a bare letter can never be
-  // one of these commands' REAL dispatched binding -- defaultBinding
-  // stays null, same shape help.shortcuts above already takes for its
-  // own bare `?`. The actual keypress is a dedicated listener
-  // (app/useKeymapDispatch.ts) that calls run() directly; the tray
-  // itself (AtlasCreationTray.tsx) renders its own kbd hint from the
-  // SAME registry (atlas/atlasTools.ts), not derived from this
-  // binding. Generated from shared/atlasToolIdentity.ts's identity
-  // list (the cross-layer seed atlas/atlasTools.ts's own descriptors
-  // also read) rather than four separate hand-written commands --
-  // 'arm' tools request a placement arm, 'picker' requests the size
-  // picker (Table's own click-IS-the-creation flow).
+  // atlas.create.card/note/area/table/image (bare C/N/A/T/I, goal 0081
+  // slices A1/A2, goal 0139, goal 0169 slice 2): comboFromEvent requires
+  // Cmd/Ctrl by design (every other keymap default needs one of the two
+  // -- see its own doc comment, shared/keybinding.ts), so a bare letter
+  // can never be one of these commands' REAL dispatched binding --
+  // defaultBinding stays null, same shape help.shortcuts above already
+  // takes for its own bare `?`. The actual keypress is a dedicated
+  // listener (app/useKeymapDispatch.ts) that calls run() directly; the
+  // tray itself (AtlasCreationTray.tsx) renders its own kbd hint from
+  // the SAME registry (atlas/atlasTools.ts), not derived from this
+  // binding. Generated from shared/atlasToolIdentity.ts's identity list
+  // (the cross-layer seed atlas/atlasTools.ts's own descriptors also
+  // read) rather than five separate hand-written commands -- 'arm'
+  // tools request a placement arm, 'picker' requests the size picker
+  // (Table's own click-IS-the-creation flow), 'popover' requests the
+  // image tool's own path/paste popover.
   ...ATLAS_TOOL_IDENTITIES.map((tool): Command => ({
     id: `atlas.create.${tool.id}`,
     label: tool.commandLabel,
     defaultBinding: null,
     surface: ['atlas'],
-    run: () => (tool.requestKind === 'picker'
-      ? useUISignalStore.getState().requestAtlasTablePicker()
-      : useUISignalStore.getState().requestAtlasArmTool(tool.id)),
+    run: () => {
+      if (tool.requestKind === 'picker') return useUISignalStore.getState().requestAtlasTablePicker()
+      if (tool.requestKind === 'popover') return useUISignalStore.getState().requestAtlasImagePopover()
+      return useUISignalStore.getState().requestAtlasArmTool(tool.id)
+    },
   })),
   {
     // The quick-delete undo toast's own ⌘Z (goal 0093): defaultBinding

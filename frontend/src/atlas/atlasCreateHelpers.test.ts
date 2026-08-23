@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveDefaultKindID, titleFromFilename, titleFromNoteText } from './atlasCreateHelpers'
+import { normalizeLocalPathInput, resolveDefaultKindID, titleFromFilename, titleFromNoteText } from './atlasCreateHelpers'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 
 function kind(id: string): Kind {
@@ -76,5 +76,23 @@ describe('titleFromFilename', () => {
 
   it('never treats a leading dot as an extension separator', () => {
     expect(titleFromFilename('.gitignore')).toBe('.gitignore')
+  })
+})
+
+describe('normalizeLocalPathInput', () => {
+  it('passes a plain path through trimmed', () => {
+    expect(normalizeLocalPathInput('  /Users/me/photo.png  ')).toBe('/Users/me/photo.png')
+  })
+
+  it('strips a file:// scheme', () => {
+    expect(normalizeLocalPathInput('file:///Users/me/photo.png')).toBe('/Users/me/photo.png')
+  })
+
+  it('decodes percent-encoding in a dragged-in file:// URL', () => {
+    expect(normalizeLocalPathInput('file:///Users/me/My%20Photo.png')).toBe('/Users/me/My Photo.png')
+  })
+
+  it('falls back to the undecoded remainder on malformed percent-encoding', () => {
+    expect(normalizeLocalPathInput('file:///Users/me/broken%.png')).toBe('/Users/me/broken%.png')
   })
 })

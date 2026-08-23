@@ -1,10 +1,10 @@
-import { FileIcon, NoteIcon, SquareIcon, TableIcon } from '@primer/octicons-react'
+import { FileIcon, ImageIcon, NoteIcon, SquareIcon, TableIcon } from '@primer/octicons-react'
 import type { Icon } from '@primer/octicons-react'
 import { Type as FieldType, type Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import { ConfigureService } from '../shared/bindings'
+import { AtlasService, ConfigureService } from '../shared/bindings'
 import { ATLAS_TOOL_IDENTITIES, type AtlasToolIdentity } from '../shared/atlasToolIdentity'
-import { lastUsedKindID } from './atlasCreateHelpers'
+import { lastUsedKindID, normalizeLocalPathInput, titleFromFilename } from './atlasCreateHelpers'
 
 // The canvas tool registry (goal 0169 slice 1): every creatable
 // thing's own descriptor, in tray render order -- AtlasCreationTray,
@@ -15,7 +15,7 @@ import { lastUsedKindID } from './atlasCreateHelpers'
 // can never import this atlas/ module).
 
 // The full interaction vocabulary the canvas tool set spans (goal
-// 0169); this slice implements only the first two. A tool needing a
+// 0169); slice 2 adds the third (paste-or-drop). A tool needing a
 // SEVENTH shape is a signal this discriminant is wrong, not a reason
 // to add a bypass.
 export type AtlasToolInteraction =
@@ -56,11 +56,13 @@ export interface AtlasCardArtifact { kind: 'card'; kindID: string; title: string
 export interface AtlasNoteArtifact { kind: 'note'; text: string }
 export interface AtlasAreaArtifact { kind: 'area'; kindID: string; title: string; enclosedCardIDs: string[]; enclosedNoteIDs: string[] }
 export interface AtlasTableArtifact { kind: 'table'; title: string; listID: string }
+export interface AtlasImageArtifact { kind: 'image'; title: string; mirrorPath: string }
 
 const cardIdentity = identityOf('card')
 const noteIdentity = identityOf('note')
 const areaIdentity = identityOf('area')
 const tableIdentity = identityOf('table')
+const imageIdentity = identityOf('image')
 
 // Card's instant-placement default (goal 0144: the click IS the
 // creation, no form) resolves the last-used kind itself; a form-driven
@@ -132,9 +134,64 @@ const tableTool = {
   },
 } as const satisfies AtlasToolShape
 
-export { cardTool, noteTool, areaTool, tableTool }
+// Kept identical to atlas/mirror.go's imageMimeTypes allow-list, in the
+// reverse direction -- a pasted File's own `.type` names the ONE mime
+// value browsers give it, so this only needs the extensions Mill's
+// image renderer actually recognizes, same "kept identical" discipline
+// atlasUnitMirror.ts's own IMAGE_EXTENSIONS comment already documents.
+const IMAGE_MIME_EXTENSIONS: Record<string, string> = {
+  'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif',
+  'image/webp': '.webp', 'image/svg+xml': '.svg', 'image/bmp': '.bmp',
+}
 
-export const ATLAS_TOOLS = [cardTool, noteTool, areaTool, tableTool] as const
+// fileToBase64 reads file's raw bytes as a standard-encoding base64
+// string for SaveImageBytes's own wire shape (every value a plain
+// string on the wire, typedfield.Field's own repo-wide convention) --
+// chunked so a large screenshot's byte array never blows the call stack
+// String.fromCharCode(...bytes) would hit unchunked.
+async function fileToBase64(file: File): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  const chunkSize = 0x8000
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+  }
+  return btoa(binary)
+}
+
+// Image (goal 0169 slice 2): the paste-or-drop interaction's own proof.
+// Two input shapes resolve to the same artifact -- a typed/pasted local
+// path is mirror-only (no bytes ever move, matching
+// CreateCardFromFileDrop's own native-drop semantics); a pasted
+// clipboard File has no path at all, so its bytes are written to a
+// fresh Mill-owned file first (SaveImageBytes) and ITS path becomes the
+// mirror. Either way, placement (useAtlasImageCreate.ts) lands the
+// resulting mirrorPath through the exact same CreateCardFromFileDrop a
+// native OS file drop already uses -- kind resolution and duplicate
+// detection are never re-implemented here.
+const imageTool = {
+  id: imageIdentity.id,
+  icon: ImageIcon,
+  label: imageIdentity.commandLabel,
+  shortcutKey: imageIdentity.shortcutKey,
+  tray: 'quick',
+  interaction: 'paste-or-drop',
+  commit: async (input: { path: string } | { file: File; title: string }): Promise<AtlasImageArtifact> => {
+    if ('file' in input) {
+      const ext = IMAGE_MIME_EXTENSIONS[input.file.type]
+      if (!ext) throw new Error(`unsupported pasted image type: ${input.file.type}`)
+      const base64 = await fileToBase64(input.file)
+      const mirrorPath = await AtlasService.SaveImageBytes(base64, ext, input.title)
+      return { kind: 'image', title: input.title, mirrorPath }
+    }
+    const mirrorPath = normalizeLocalPathInput(input.path)
+    return { kind: 'image', title: titleFromFilename(mirrorPath), mirrorPath }
+  },
+} as const satisfies AtlasToolShape
+
+export { cardTool, noteTool, areaTool, tableTool, imageTool }
+
+export const ATLAS_TOOLS = [cardTool, noteTool, areaTool, tableTool, imageTool] as const
 
 export type AtlasToolID = (typeof ATLAS_TOOLS)[number]['id']
 
