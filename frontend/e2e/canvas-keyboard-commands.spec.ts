@@ -8,7 +8,21 @@ import { clickCanvasNode } from './fixtures/canvasNode'
 // file opens is a fresh, never-saved draft (openWorkTab's own starter
 // graph) -- no server-side row is ever created, so there's nothing to
 // delete at the end (unlike a spec that Saves).
-const mod = process.platform === 'darwin' ? 'Meta' : 'Control'
+//
+// Always 'Meta', never a process.platform-conditional mod (unlike
+// canvas-clipboard.spec.ts's own ⌘C/⌘V, which reach the browser's
+// native copy/paste events and so need an OS-appropriate modifier):
+// every shortcut this file presses -- undo/redo/zoom/palette-open --
+// dispatches through shared/commands.ts's keymap system, whose
+// defaultBinding is `mods: ['cmd']` throughout, by this whole
+// registry's own established convention (every other keymap-dispatched
+// spec -- keymap.spec.ts, atlas-jump.spec.ts, command-palette.spec.ts,
+// help-overlay.spec.ts -- hardcodes 'Meta' the same way). Playwright's
+// 'Meta' key name sets the browser event's metaKey flag regardless of
+// the host OS the test runner itself is on, so branching on
+// process.platform here only breaks CI's own Linux runner: 'Control'
+// sets ctrlKey, which the mods:['cmd']-only dispatcher never matches.
+const mod = 'Meta'
 
 // Reads React Flow's own viewport transform ("translate(..) scale(S)"),
 // the only place the live zoom is observable from the DOM -- same
