@@ -113,11 +113,19 @@ at:
     banner is OS-bound (signed-bundle handshake); verify by running the
     seeded Clipboard→Markdown workflow via its hotkey while another app is
     focused and confirming the banner.
-  - **Summon from a background app** (goal 0151) — the real kill chain
-    (hotkey → activation → HideOnFocusLost) needs a real macOS activation
-    dance; verify on an installed build with Accessibility granted:
-    hotkey from another app, panel appears, process survives (no
-    SIGTRAP), press again dismisses, focus returns.
+  - **Summon from a background app** (goals 0151, 0182) — the real kill
+    chain (hotkey → activation → HideOnFocusLost → the main-window
+    restore) needs a real macOS activation dance; verify on an installed
+    build with Accessibility granted, main window already open in the
+    background (a different app frontmost): hotkey from the other app —
+    confirm the panel appears, Mill's main window does NOT flash into
+    view alongside it (goal 0035), and the process survives (no
+    SIGTRAP); dismiss via Escape, then again via click-away, then again
+    via pressing the hotkey a second time — for each path, confirm
+    neither Mill nor the previously-open main window vanishes from the
+    app switcher/dock, and focus returns to the app you summoned from;
+    finally reactivate Mill (dock click or Cmd+Tab) and confirm the main
+    window is back, right where it was before the summon.
   - **Native file-drop delivery** (goal 0081 A3) — verify by dragging a
     `.md` file from Finder onto the running app and confirming the card
     lands with the real path.

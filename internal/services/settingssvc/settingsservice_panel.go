@@ -73,28 +73,67 @@ func (s *SettingsService) SetPanelWindow(w *windowing.Window) {
 	})
 }
 
-// yieldFocusIfMainHidden hides the whole app (windowing.HideApp)
-// when the panel loses focus/is dismissed while Mill's main window
-// isn't currently visible either -- i.e. there's nothing left of Mill's
-// on screen to justify staying the frontmost app. If the main window IS
-// visible (the user navigated into Mill itself via a panel row, or had
-// it open already), this is a no-op: Mill legitimately keeps focus.
+// panelDismissAction is what yieldFocusIfMainHidden decides once a panel
+// dismiss reaches it, given the three pieces of state that determine it.
+type panelDismissAction struct {
+	hideApp     bool
+	restoreMain bool
+}
+
+// decidePanelDismissAction composes the two independently-correct rules
+// whose composition, left implicit, hid Mill entirely after a
+// background summon (goal 0182): "hide the app once nothing of Mill is
+// left on screen" (hideApp) and "an already-open main window that
+// TogglePanel/ShowPanel hid purely to keep it from riding the panel's
+// own activation wave into view (goal 0035) must come back" (restoreMain).
+// mainVisible short-circuits both -- a main window still on screen means
+// the user is legitimately looking at Mill, so neither hiding the app
+// nor restoring anything applies. graceActive mirrors the pre-existing
+// summon-grace guard (goal 0151): a summon in flight must never be
+// cancelled by its own focus churn.
+func decidePanelDismissAction(mainVisible, hidMain, graceActive bool) panelDismissAction {
+	if graceActive || mainVisible {
+		return panelDismissAction{}
+	}
+	return panelDismissAction{hideApp: true, restoreMain: hidMain}
+}
+
+// yieldFocusIfMainHidden hides the whole app (windowing.HideApp) when
+// the panel loses focus/is dismissed while Mill's main window isn't
+// currently visible either -- i.e. there's nothing left of Mill's on
+// screen to justify staying the frontmost app -- and, if that main
+// window was only invisible because the summon itself hid it, restores
+// it once the app is hidden so it doesn't stay hidden forever.
+// windowing.HideApp() always runs before main.Show(): main.Show() calls
+// through to WebviewWindow.Show(), which is `makeKeyAndOrderFront` on
+// the real window (confirmed against the pinned Wails3 darwin source,
+// webview_window_darwin.go) -- ordering it in while Mill is STILL the
+// active app would flash main visibly on screen a moment before HideApp
+// hides it. Ordering restoreMain after HideApp keeps the restore purely
+// state-side: the window becomes key/ordered-in again within Mill's own
+// (now inactive) window list, without ever being drawn on screen, exactly
+// mirroring the goal-0035 constraint this composition must not regress.
 func (s *SettingsService) yieldFocusIfMainHidden() {
 	s.mu.Lock()
 	main := s.window
 	grace := s.summonGraceUntil
+	hidMain := s.summonHidMain
 	s.mu.Unlock()
-	// A summon in flight must never be cancelled by its own focus
-	// churn (goal 0151): summoning from a BACKGROUND app hides main,
-	// then the panel can momentarily lose the focus race -- without
-	// this grace, that cascade called app.Hide() and Mill vanished.
-	if time.Now().Before(grace) {
-		return
-	}
-	if main != nil && main.IsVisible() {
+
+	mainVisible := main != nil && main.IsVisible()
+	action := decidePanelDismissAction(mainVisible, hidMain, time.Now().Before(grace))
+	if !action.hideApp {
 		return
 	}
 	windowing.HideApp()
+	if action.restoreMain {
+		s.mu.Lock()
+		s.summonHidMain = false
+		s.mu.Unlock()
+		if main != nil {
+			main.Show()
+		}
+	}
 }
 
 // summonShouldHideMain reports whether TogglePanel's summon-side guard
@@ -158,9 +197,7 @@ func (s *SettingsService) TogglePanel() {
 		s.DismissPanel()
 		return
 	}
-	if main != nil && summonShouldHideMain(main.IsVisible(), main.IsFocused()) {
-		main.Hide()
-	}
+	s.hideMainForSummon(main)
 	s.beginSummonGrace()
 	// Activate the app before showing the panel: macOS refuses key
 	// status to a non-active app's window, and an unfocused floating
@@ -169,6 +206,21 @@ func (s *SettingsService) TogglePanel() {
 	windowing.ShowApp()
 	p.Show()
 	p.Focus()
+}
+
+// hideMainForSummon runs summonShouldHideMain's guard and records the
+// outcome in s.summonHidMain -- unconditionally, so a stale true left
+// over from an earlier summon cycle can never survive into one that
+// doesn't hide main this time. yieldFocusIfMainHidden reads the flag to
+// decide whether to restore main once the panel dismisses (goal 0182).
+func (s *SettingsService) hideMainForSummon(main *windowing.Window) {
+	hide := main != nil && summonShouldHideMain(main.IsVisible(), main.IsFocused())
+	s.mu.Lock()
+	s.summonHidMain = hide
+	s.mu.Unlock()
+	if hide {
+		main.Hide()
+	}
 }
 
 // beginSummonGrace opens the window during which yieldFocusIfMainHidden
@@ -203,9 +255,7 @@ func (s *SettingsService) ShowPanel() {
 		p.Focus()
 		return
 	}
-	if main != nil && summonShouldHideMain(main.IsVisible(), main.IsFocused()) {
-		main.Hide()
-	}
+	s.hideMainForSummon(main)
 	s.beginSummonGrace()
 	// Activate the app before showing the panel: macOS refuses key
 	// status to a non-active app's window, and an unfocused floating

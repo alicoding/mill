@@ -92,6 +92,10 @@ type SettingsService struct {
 	// summonGraceUntil suppresses the focus-yield cascade while a
 	// summon is in flight (goal 0151).
 	summonGraceUntil time.Time
+	// summonHidMain: TogglePanel/ShowPanel hid an already-open main
+	// window for THIS summon; yieldFocusIfMainHidden reads+clears it to
+	// decide whether to restore main once the panel dismisses (0182).
+	summonHidMain bool
 	// updateEventSink fires the update-available system event (goal
 	// 0146); nil until wired.
 	updateEventSink func(version, channel string)
