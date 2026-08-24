@@ -143,10 +143,7 @@
     "shapeAriaLabel": "Shape",
     "tableAriaLabel": "Table",
     "diagramAriaLabel": "Diagram",
-    "loadFailed": "Couldn't load this file.",
-    "kindPluralImage": "images",
-    "kindPluralInk": "ink strokes",
-    "kindPluralShape": "shapes"
+    "loadFailed": "Couldn't load this file."
   },
   "capture": {
     "dropError": "Couldn't read the dropped file."
@@ -360,9 +357,7 @@
     "renameSpace": "Rename space…",
     "deleteSpace": "Delete space",
     "openNote": "Open note",
-    "fitToContent": "Fit to content",
-    "selectAllCardsOfKind": "Select all {{kind}} cards",
-    "selectAllObjectsOfKind": "Select all {{kind}}"
+    "fitToContent": "Fit to content"
   },
   "confirm": {
     "dissolveTitle": "Dissolve {{title}}?",

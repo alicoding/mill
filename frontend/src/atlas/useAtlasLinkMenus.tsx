@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { TFunction } from 'i18next'
-import type { Card, Kind, Link, LinkKind, Note, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Link, LinkKind, Note, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
@@ -11,7 +11,6 @@ import { AtlasEdgeLabelPopover } from './AtlasEdgeLabelPopover'
 import { perspectiveMembershipMenuItems } from './atlasPerspectiveMenuItems'
 import { buildExportMenuChoice, runCardExport } from './atlasCardExportMenu'
 import type { UnitExporter } from './unitRegistry'
-import { useUISignalStore } from '../shared/uiSignalStore'
 
 const ARTERY_MENU_TITLE_MAX = 28
 
@@ -31,16 +30,12 @@ function truncateTitle(title: string): string {
 // (count === 1), since acting on one specific link within a count>1
 // aggregated artery has no per-link picker in this slice.
 export function useAtlasLinkMenus({
-  t, allCards, allLinks, allNotes, allKinds, linkKinds, perspectives, setMenu, drill, onOpenCard, onError, onDeleted, onPerspectiveToast, requestLinkedCard, guardDelete,
+  t, allCards, allLinks, allNotes, linkKinds, perspectives, setMenu, drill, onOpenCard, onError, onDeleted, onPerspectiveToast, requestLinkedCard, guardDelete,
 }: {
   t: TFunction<'atlas'>
   allCards: Card[]
   allLinks: Link[]
   allNotes: Note[]
-  // The card's own Kind label for the "Select all <kind> cards" menu
-  // item (goal 0193) -- Card.KindID names a Kind, never carries its
-  // own display label.
-  allKinds: Kind[]
   linkKinds: LinkKind[]
   perspectives: Perspective[]
   setMenu: (state: ContextMenuState | null) => void
@@ -54,7 +49,6 @@ export function useAtlasLinkMenus({
   guardDelete: (cardIDs: string[], noteIDs: string[], exec: () => void) => void
 }) {
   const [labelTarget, setLabelTarget] = useState<{ linkID: string; pos: { x: number; y: number }; initialLabel: string } | null>(null)
-  const requestSelectKind = useUISignalStore((s) => s.requestAtlasSelectKind)
 
   // Instant, no confirm (goal 0093's quick-delete-with-undo guard) --
   // onDeleted reports the TombstoneResult to AtlasView's shared undo
@@ -99,13 +93,6 @@ export function useAtlasLinkMenus({
       }),
     })
     const exportItems: ContextMenuItem[] = exportChoice ? [{ id: exportChoice.id, label: exportChoice.label, run: exportChoice.run }, { id: 'd0c', divider: true }] : []
-    // Select all <kind> cards (goal 0193, draw.io's "select all
-    // vertices" convention) -- every Card, any structural state
-    // (leaf/frame/table), so no isGroupCard/ProjectionListID gate.
-    const kindLabel = allKinds.find((k) => k.ID === card.KindID)?.Label
-    const selectKindItems: ContextMenuItem[] = kindLabel
-      ? [{ id: 'select-all-kind', label: t('contextMenu.selectAllCardsOfKind', { kind: kindLabel }), run: () => requestSelectKind('card', card.KindID) }]
-      : []
     // Fit to content (goal 0193's "expand to the point you can see the
     // remaining content", expressed as one action rather than a mode):
     // only the plain note face has content that clips by a fixed line
@@ -143,7 +130,6 @@ export function useAtlasLinkMenus({
         ...(place ? [{ id: 'zoom', label: t('contextMenu.zoomIn'), run: () => drill(card.ID) }] : []),
         { id: 'open', label: t('contextMenu.open'), run: () => onOpenCard(card.ID) },
         ...fitToContentItem,
-        ...selectKindItems,
         { id: 'd1', divider: true },
         { id: 'copy-context', label: t('share.copyContext'), run: () => void share.copyAsContext(false) },
         { id: 'copy-link', label: t('share.copyCloudLink'), run: () => void share.copyCloudLink() },

@@ -273,7 +273,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const deleteConfirm = useAtlasDeleteConfirm({ t, allCards, notes: allNotes })
 
   const linkMenus = useAtlasLinkMenus({
-    t, allCards, allLinks, allNotes, allKinds, linkKinds: allLinkKinds, perspectives: allPerspectives, setMenu, drill,
+    t, allCards, allLinks, allNotes, linkKinds: allLinkKinds, perspectives: allPerspectives, setMenu, drill,
     onOpenCard: (id) => setOverlayCardID(id),
     onError: setShareError,
     onDeleted: undoToast.registerDelete,
