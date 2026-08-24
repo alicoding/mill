@@ -6,6 +6,29 @@
     position: relative;
 }
 
+/* The selection ring, for every noun, in ONE place (goal 0197). React
+   Flow's own stylesheet resets `.react-flow__node.selectable:focus` to
+   `outline: none` at higher class-selector specificity than any
+   single-type `.selected` rule -- an outline-based ring silently loses
+   the instant the wrapper holds real DOM focus (which a plain select
+   click always gives it). box-shadow never collides with that reset
+   (a different property), matching React Flow's OWN default node
+   types, which key their selected box-shadow off `.selected` AND
+   `:focus`/`:focus-visible` together via a CSS custom property
+   (`--xy-node-boxshadow-selected`) -- this rule follows that same
+   documented shape. Selection lives on the WRAPPER, never an inner
+   element (Primer's `[role="button"]` focus reset would otherwise zero
+   a box-shadow scoped to an inner element right after a mouse click).
+   Each noun renderer overrides only the two custom properties below,
+   on its own type-scoped selector, to vary ring weight/radius -- never
+   the box-shadow declaration itself. */
+:global(.react-flow__node.selected) {
+    border-radius: var(--mill-ring-radius, var(--borderRadius-medium));
+    box-shadow:
+        0 0 0 var(--mill-ring-inner, 2px) var(--borderColor-accent-emphasis),
+        0 0 0 var(--mill-ring-outer, 5px) var(--bgColor-accent-muted);
+}
+
 /* An armed creation tool (goal 0081 slice A1) swaps the canvas cursor
    to crosshair -- React Flow's own pane sets its cursor via a class,
    not an inline style, so overriding it needs :global. */

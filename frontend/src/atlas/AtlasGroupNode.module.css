@@ -14,17 +14,11 @@
     cursor: pointer;
 }
 
-/* Selection ring: on the React Flow node WRAPPER (the type-scoped
-   class React Flow stamps per nodeTypes key), never an inner element
-   -- see AtlasNoteCardNode.module.css's own header comment for why
-   (Primer's [role="button"] focus reset would otherwise zero it right
-   after every mouse click). Never the frame's own border-width
-   either, so a selected frame's size never shifts. */
+/* Ring weight matches the shared default (AtlasBoard.module.css, goal
+   0197); only the frame's own radius differs. Never the frame's own
+   border-width, so a selected frame's size never shifts. */
 :global(.react-flow__node-atlas-group.selected) {
-    border-radius: 14px;
-    box-shadow:
-        0 0 0 2px var(--borderColor-accent-emphasis),
-        0 0 0 5px var(--bgColor-accent-muted);
+    --mill-ring-radius: 14px;
 }
 
 .header {

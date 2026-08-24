@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { NodeResizer } from '@xyflow/react'
 import type { NodeProps, Node as RFNode } from '@xyflow/react'
 import type { Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
@@ -39,7 +40,7 @@ export type AtlasStickyRFNode = RFNode<AtlasStickyData>
 // editing) and an existing note's own render/re-edit -- one component,
 // since the two states differ only in whether a commit creates or
 // updates.
-export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps<AtlasStickyRFNode>) {
+export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }: NodeProps<AtlasStickyRFNode>) {
   const { t } = useTranslation('atlas')
   const { note, editing, onCommit, onCancelEdit, onEnterEdit, onOpenBig, isSoleSelected } = data
   const [draftText, setDraftText] = useState(note?.Text ?? '')
@@ -141,10 +142,16 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
   })
 
   if (editing) {
+    // A draft (note === null) has no prior size to preserve, so it
+    // still grows to fit the first typed content; an existing note's
+    // own re-edit stays pinned to its current box (goal 0193: editing
+    // never resizes anything automatically -- if you can't see enough,
+    // you resize it yourself, and it stays where you put it).
+    const sizeClass = note ? '' : ` ${styles.editingUnsized}`
     return (
       <div
         ref={wrapRef}
-        className={`${styles.sticky} ${styles.editing} nodrag nopan nowheel`}
+        className={`${styles.sticky} ${styles.editing}${sizeClass} nodrag nopan nowheel`}
         data-testid="atlas-sticky-note"
         data-editing="true"
         onKeyDown={(e) => {
@@ -158,6 +165,19 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
           }
         }}
       >
+        {/* Resize persists as Note.Size (goal 0193) -- available while
+            editing too, since resizing IS the answer to "I can't see
+            enough while editing". */}
+        {note && (
+          <NodeResizer
+            isVisible={selected ?? false}
+            minWidth={100}
+            minHeight={70}
+            onResizeEnd={(_e, params) => {
+              void AtlasService.SetNoteSize(note.ID, { W: params.width, H: params.height })
+            }}
+          />
+        )}
         <CodeEditor
           value={draftText}
           onChange={(v) => {
@@ -212,6 +232,19 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
         }
       }}
     >
+      {/* Resize persists as Note.Size (goal 0193's own resize door for
+          notes) -- the canvas library's own resizer, shown only while
+          selected so the face stays quiet at rest. */}
+      {note && (
+        <NodeResizer
+          isVisible={selected ?? false}
+          minWidth={100}
+          minHeight={70}
+          onResizeEnd={(_e, params) => {
+            void AtlasService.SetNoteSize(note.ID, { W: params.width, H: params.height })
+          }}
+        />
+      )}
       {text.trim() === '' ? (
         <div className={`${styles.text} ${styles.emptyText}`}>{t('sticky.empty')}</div>
       ) : (

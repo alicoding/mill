@@ -22,12 +22,14 @@ export function useAtlasSelectAll<TNode extends Node>({ cards, notes, objects, s
   useEffect(() => {
     latest.current = { cards, notes, objects, setNodes }
   })
+  const applySelection = (ids: Set<string>) => {
+    latest.current.setNodes((nds) => nds.map((node) => ({ ...node, selected: ids.has(node.id) })))
+  }
   const last = useRef(request)
   useEffect(() => {
     if (request === last.current) return
     last.current = request
-    const { cards: c, notes: n, objects: o, setNodes: set } = latest.current
-    const ids = new Set<string>([...c.map((card) => card.ID), ...n.map((note) => note.ID), ...o.map((object) => object.ID)])
-    set((nds) => nds.map((node) => ({ ...node, selected: ids.has(node.id) })))
+    const { cards: c, notes: n, objects: o } = latest.current
+    applySelection(new Set<string>([...c.map((card) => card.ID), ...n.map((note) => note.ID), ...o.map((object) => object.ID)]))
   }, [request])
 }

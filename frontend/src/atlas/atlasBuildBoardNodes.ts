@@ -233,8 +233,10 @@ export function buildBoardCardNodes({
         id: card.ID,
         type: 'atlas-note',
         position,
-        width: NOTE_WIDTH,
-        height: NOTE_HEIGHT,
+        // A persisted resize (Card.Size) wins over the default face
+        // (goal 0193) -- same contract as the table branch above.
+        width: card.Size?.W ?? NOTE_WIDTH,
+        height: card.Size?.H ?? NOTE_HEIGHT,
         draggable: isFree && !readOnly,
         data: noteData(card),
       })

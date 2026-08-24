@@ -9,7 +9,9 @@ import "time"
 // traceability matrix, coverage, or jump results, so nothing jotted
 // here can accidentally become data. PromoteNote (atlassvc) is the
 // only path from a Note to a Card -- one-way, never a soft/reversible
-// conversion.
+// conversion. Size (goal 0193) is the one exception to the exclusion
+// above: it is presentation, not semantics, and carries no kind, field,
+// or link with it.
 type Note struct {
 	ID       string
 	Text     string
@@ -18,7 +20,13 @@ type Note struct {
 	// (spatial filing only -- a note in an area carries no semantic
 	// weight from that placement, per the LOCKED design's "containment
 	// is location, not meaning").
-	ParentID  string
+	ParentID string
+	// Size is the note's user-chosen board footprint, nil until first
+	// resized -- same contract as Card.Size (presentation only). This
+	// is the one field this goal adds to Note: it carries no kind, no
+	// fields, no links, so the LOCKED exclusion above still holds --
+	// size is how much of the note's own text shows, never data about it.
+	Size      *Dimensions `json:"Size,omitempty"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	// DeletedAt marks this note soft-deleted (goal 0093), same

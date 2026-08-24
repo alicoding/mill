@@ -1,8 +1,9 @@
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Handle, Position as RFPosition } from '@xyflow/react'
+import { Handle, NodeResizer, Position as RFPosition } from '@xyflow/react'
 import type { NodeProps, Node as RFNode } from '@xyflow/react'
 import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { AtlasService } from '../shared/bindings'
 import { kindColorTokens } from './atlasKindColor'
 import { deriveFileTag, freshnessDotColor } from './atlasCardPresentation'
 import { childrenOf } from './atlasGrouping'
@@ -64,7 +65,7 @@ export type AtlasNoteCardRFNode = RFNode<AtlasNoteCardData>
 // 0106's flip retirement): a single face, no back, no in-place rotate.
 // Used both as a top-level leaf node and as a region frame's own
 // one-level-deep children preview -- the same content either way.
-export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeProps<AtlasNoteCardRFNode>) {
+export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data, selected }: NodeProps<AtlasNoteCardRFNode>) {
   const { t } = useTranslation('atlas')
   const { card, kind, allCards, links, linkKinds, pulsed, hinted, isSoleSelected, onCommit, slotDragHighlight, onSlotAnchorPointerDown, hasLegalTargets } = data
   const tokens = kindColorTokens(card.KindID)
@@ -93,11 +94,11 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
     <div
       className={`${styles.card}${slotDragHighlight ? ` ${slotStyles.slotTargetHighlight}` : ''}`}
       data-testid="atlas-note-card"
-      // Deliberate clamp (goal 0156's layout-fitness audit): the
-      // uniform 190x128 face is a fixed footprint by design
-      // (AtlasNoteCardNode.module.css's own header comment) --
-      // overflowing field/note text is meant to clip, never scroll.
-      data-clip-intent="fixed 190x128 note-card face; overflowing content clips by design"
+      // Deliberate clamp (goal 0156's layout-fitness audit, re-cut by
+      // goal 0193): the face's box follows Card.Size (default 190x128)
+      // -- overflowing field/note text clips to whatever that box is,
+      // never scrolls; resizing the box is the only way to reveal more.
+      data-clip-intent="note-card face sized by Card.Size (default 190x128); overflowing content clips to the current box"
       data-pulse={pulsed}
       data-dimmed={data.dimmed}
       data-slot-target={slotDragHighlight}
@@ -136,6 +137,19 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
           endpoint silently fails to render. nodesConnectable={false}
           on the board already stops these from starting a NEW drag
           connection. */}
+      {/* Resize persists as Card.Size (goal 0193) -- the canvas
+          library's own resizer (frontend.md's overlay/interaction
+          rule), shown only while selected so the face stays quiet at
+          rest. Never fires on entering/leaving edit: this is the ONLY
+          door that changes the box. */}
+      <NodeResizer
+        isVisible={selected ?? false}
+        minWidth={140}
+        minHeight={90}
+        onResizeEnd={(_e, params) => {
+          void AtlasService.SetCardSize(card.ID, params.width, params.height)
+        }}
+      />
       <Handle type="target" position={RFPosition.Top} className={styles.handle} />
       <Handle type="source" position={RFPosition.Bottom} className={styles.handle} />
       <div className={styles.frontHeader}>

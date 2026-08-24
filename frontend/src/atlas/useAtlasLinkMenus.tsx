@@ -93,6 +93,32 @@ export function useAtlasLinkMenus({
       }),
     })
     const exportItems: ContextMenuItem[] = exportChoice ? [{ id: exportChoice.id, label: exportChoice.label, run: exportChoice.run }, { id: 'd0c', divider: true }] : []
+    // Fit to content (goal 0193's "expand to the point you can see the
+    // remaining content", expressed as one action rather than a mode):
+    // only the plain note face has content that clips by a fixed line
+    // count -- a frame's box is computed from its children and a
+    // table's from its rows, neither of which this measures.
+    const fitToContentItem: ContextMenuItem[] = !isGroupCard(allCards, card) && !card.ProjectionListID
+      ? [{
+          id: 'fit-to-content',
+          label: t('contextMenu.fitToContent'),
+          run: () => {
+            const el = document.querySelector<HTMLElement>(`.react-flow__node[data-id="${card.ID}"] [data-testid="atlas-note-card"]`)
+            if (!el) return
+            // scrollHeight under a temporary height:auto is this card's
+            // true natural content height (flex children with
+            // min-height:0 collapse to nothing left to grow into once
+            // the parent itself has no fixed height) -- overflow:clip
+            // still reports it correctly, it just never PAINTS past the
+            // box while clamped.
+            const previousHeight = el.style.height
+            el.style.height = 'auto'
+            const naturalHeight = el.scrollHeight
+            el.style.height = previousHeight
+            void AtlasService.SetCardSize(card.ID, el.offsetWidth, naturalHeight)
+          },
+        }]
+      : []
     setMenu({
       x: pos.x,
       y: pos.y,
@@ -103,6 +129,7 @@ export function useAtlasLinkMenus({
         { id: 'd0b', divider: true },
         ...(place ? [{ id: 'zoom', label: t('contextMenu.zoomIn'), run: () => drill(card.ID) }] : []),
         { id: 'open', label: t('contextMenu.open'), run: () => onOpenCard(card.ID) },
+        ...fitToContentItem,
         { id: 'd1', divider: true },
         { id: 'copy-context', label: t('share.copyContext'), run: () => void share.copyAsContext(false) },
         { id: 'copy-link', label: t('share.copyCloudLink'), run: () => void share.copyCloudLink() },

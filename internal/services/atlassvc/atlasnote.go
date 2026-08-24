@@ -102,6 +102,37 @@ func (a *AtlasService) SetNotePosition(id string, pos atlas.Position) (atlas.Not
 	return n, nil
 }
 
+// SetNoteSize persists a note's user-chosen board footprint -- the
+// resize handle's commit, same shape as SetCardSize. Bounds guard
+// against a degenerate drag: a note's own default face (STICKY_WIDTH/
+// STICKY_HEIGHT) is smaller than a card's, so the floor is lower too.
+func (a *AtlasService) SetNoteSize(id string, size atlas.Dimensions) (atlas.Note, error) {
+	if size.W < 100 || size.H < 70 {
+		return atlas.Note{}, fmt.Errorf("note size %.0fx%.0f is too small", size.W, size.H)
+	}
+	a.mu.Lock()
+	idx := a.findNoteLocked(id)
+	if idx == -1 {
+		a.mu.Unlock()
+		return atlas.Note{}, fmt.Errorf("no note with id %q", id)
+	}
+	previous := a.notes[idx]
+	n := previous
+	n.Size = &size
+	n.UpdatedAt = time.Now()
+	a.notes[idx] = n
+	perr := a.persistLocked()
+	if perr != nil {
+		a.notes[idx] = previous
+	}
+	a.mu.Unlock()
+	if perr != nil {
+		return atlas.Note{}, fmt.Errorf("save note size: %w", perr)
+	}
+	dataevent.Emit("atlas", n.ID)
+	return n, nil
+}
+
 // MoveNote reparents a note (drag filing into/out of an area frame,
 // goal 0081 A2) -- same containment-existence check CreateNote runs.
 // A note can never contain anything, so no cycle check is needed the

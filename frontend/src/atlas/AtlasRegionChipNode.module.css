@@ -15,16 +15,10 @@
     outline-offset: 1px;
 }
 
-/* Selection ring: on the React Flow node WRAPPER (the type-scoped
-   class React Flow stamps per nodeTypes key), never an inner element
-   -- see AtlasNoteCardNode.module.css's own header comment for why
-   (Primer's [role="button"] focus reset would otherwise zero it right
-   after every mouse click). */
+/* Ring weight matches the shared default (AtlasBoard.module.css, goal
+   0197); only the chip's own radius differs. */
 :global(.react-flow__node-atlas-region-chip.selected) {
-    border-radius: 10px;
-    box-shadow:
-        0 0 0 2px var(--borderColor-accent-emphasis),
-        0 0 0 5px var(--bgColor-accent-muted);
+    --mill-ring-radius: 10px;
 }
 .title {
     font-size: 12px;

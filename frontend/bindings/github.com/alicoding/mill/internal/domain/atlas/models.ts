@@ -376,7 +376,9 @@ export enum MirrorKind {
  * traceability matrix, coverage, or jump results, so nothing jotted
  * here can accidentally become data. PromoteNote (atlassvc) is the
  * only path from a Note to a Card -- one-way, never a soft/reversible
- * conversion.
+ * conversion. Size (goal 0193) is the one exception to the exclusion
+ * above: it is presentation, not semantics, and carries no kind, field,
+ * or link with it.
  */
 export interface Note {
     "ID": string;
@@ -390,6 +392,15 @@ export interface Note {
      * is location, not meaning").
      */
     "ParentID": string;
+
+    /**
+     * Size is the note's user-chosen board footprint, nil until first
+     * resized -- same contract as Card.Size (presentation only). This
+     * is the one field this goal adds to Note: it carries no kind, no
+     * fields, no links, so the LOCKED exclusion above still holds --
+     * size is how much of the note's own text shows, never data about it.
+     */
+    "Size"?: Dimensions | null;
     "CreatedAt": string;
     "UpdatedAt": string;
 

@@ -79,6 +79,37 @@ func TestSetNotePosition_RoundTrips(t *testing.T) {
 	}
 }
 
+func TestSetNoteSize_RoundTrips(t *testing.T) {
+	a := newTestAtlasService(t)
+	n, err := a.CreateNote("x", atlas.Position{}, "")
+	if err != nil {
+		t.Fatalf("CreateNote: %v", err)
+	}
+	if n.Size != nil {
+		t.Errorf("a fresh note's Size = %+v, want nil", n.Size)
+	}
+	resized, err := a.SetNoteSize(n.ID, atlas.Dimensions{W: 240, H: 180})
+	if err != nil {
+		t.Fatalf("SetNoteSize: %v", err)
+	}
+	if resized.Size == nil || resized.Size.W != 240 || resized.Size.H != 180 {
+		t.Errorf("SetNoteSize's Size = %+v, want {240 180}", resized.Size)
+	}
+}
+
+// Regression pin: a degenerate resize (below the note's own usable
+// floor) is rejected rather than silently persisted.
+func TestSetNoteSize_TooSmall_Errors(t *testing.T) {
+	a := newTestAtlasService(t)
+	n, err := a.CreateNote("x", atlas.Position{}, "")
+	if err != nil {
+		t.Fatalf("CreateNote: %v", err)
+	}
+	if _, err := a.SetNoteSize(n.ID, atlas.Dimensions{W: 50, H: 40}); err == nil {
+		t.Error("SetNoteSize() with a degenerate size = nil error, want an error")
+	}
+}
+
 func TestDeleteNote_RemovesIt(t *testing.T) {
 	a := newTestAtlasService(t)
 	n, err := a.CreateNote("gone soon", atlas.Position{}, "")

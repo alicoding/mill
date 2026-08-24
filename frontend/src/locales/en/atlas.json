@@ -356,7 +356,8 @@
     "newSpace": "New space…",
     "renameSpace": "Rename space…",
     "deleteSpace": "Delete space",
-    "openNote": "Open note"
+    "openNote": "Open note",
+    "fitToContent": "Fit to content"
   },
   "confirm": {
     "dissolveTitle": "Dissolve {{title}}?",
