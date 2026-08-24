@@ -30,8 +30,15 @@ type ResolvedHTTPRequest struct {
 	// the workflow node.
 	Body     string
 	AuthType httprequest.AuthType
-	Headers  map[string]string
-	Secret   string
+	// Headers is already fully resolved (any "vault:<id>" reference
+	// substituted for its real value) by whatever set
+	// lookupHTTPRequestFn -- this package never sees or interprets a
+	// vault reference itself, same "composition never resolves a
+	// secret out of Node.Config" boundary ResolvedMCPServer.Env's own
+	// doc comment states (.claude/rules/node-standard.md's credential
+	// rule).
+	Headers map[string]string
+	Secret  string
 	// OpenAPISpec is the request's raw spec document, if any (ADR-0007
 	// Phase 1). Empty for an HTTPRequest with none -- integration-http falls
 	// back to its original literal path/method/bodyTemplate behavior in

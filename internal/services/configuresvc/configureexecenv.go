@@ -64,18 +64,32 @@ const execEnvsKey = "configure-execenvs"
 // resolveExecEnv implements composition.go's lookupExecEnvFn seam
 // (codeexec.go). Unexported, so Wails never binds it as a callable
 // frontend method -- Go-internal wiring only, same as
-// resolveHTTPRequest/resolveList/resolveMCPServer.
+// resolveHTTPRequest/resolveList/resolveMCPServer. Env is resolved
+// through the same vault-reference path resolveMCPServerEnv established
+// (vaultref.go's resolveVaultRefEnv, goal 0203 S1) -- a code-execution
+// node is a non-MCP consumer of a stored credential, closing the gap
+// where "vault:" only worked inside an MCP server's own Env.
 func (c *ConfigureService) resolveExecEnv(id string) (composition.ResolvedExecEnv, error) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	for _, e := range c.execEnvs {
-		if e.ID == id {
-			return composition.ResolvedExecEnv{
-				Shell: string(e.Shell), ProfileMode: string(e.ProfileMode), Dir: e.Dir, Env: e.Env,
-			}, nil
+	var found *execenv.ExecEnv
+	for i := range c.execEnvs {
+		if c.execEnvs[i].ID == id {
+			found = &c.execEnvs[i]
+			break
 		}
 	}
-	return composition.ResolvedExecEnv{}, fmt.Errorf("no execution environment with id %q", id)
+	c.mu.Unlock()
+	if found == nil {
+		return composition.ResolvedExecEnv{}, fmt.Errorf("no execution environment with id %q", id)
+	}
+
+	env, err := c.resolveVaultRefEnv("execution environment", found.Label, found.Env)
+	if err != nil {
+		return composition.ResolvedExecEnv{}, err
+	}
+	return composition.ResolvedExecEnv{
+		Shell: string(found.Shell), ProfileMode: string(found.ProfileMode), Dir: found.Dir, Env: env,
+	}, nil
 }
 
 // --- Execution Environments ---

@@ -9,10 +9,11 @@
 // argument for a step's config). Per CLAUDE.md's core-domain rule, the
 // shape and its validation stay hand-written -- no library has an
 // opinion on Mill's own environment model. Mirrors
-// internal/domain/mcpserver's shape (a reusable, Configure-authored,
-// no-secret entity) more closely than internal/domain/httprequest's
-// (no auth/credential concept here at all -- an ExecEnv's Dir/Env are
-// plain, non-secret local-process config).
+// internal/domain/mcpserver's shape (a reusable, Configure-authored
+// entity whose Env may carry a "vault:<id>" reference, resolved at
+// spawn time -- goal 0203 S1) more closely than internal/domain/
+// httprequest's own AuthType/keychain-backed credential concept, which
+// Dir/Env have neither of.
 package execenv
 
 import (
@@ -89,7 +90,11 @@ type ExecEnv struct {
 	// which is exactly the inheritance ADR-0026's... principle exists
 	// to avoid"). Empty is legal (codeexec.go substitutes a minimal
 	// default PATH so the shell can still resolve external commands),
-	// distinct from nil only at the Go-type level, not semantically.
+	// distinct from nil only at the Go-type level, not semantically. A
+	// value of the form "vault:<entry-id>" (vaultref.Parse, goal 0203
+	// S1) is resolved to that vault entry's password at run time, never
+	// written to disk in resolved form -- mirrors mcpserver.MCPServer.
+	// Env's identical convention.
 	Env []string
 	// BuiltIn marks a seeded example ExecEnv (BuiltIn() below) --
 	// purely informational, same as httprequest.HTTPRequest.BuiltIn/

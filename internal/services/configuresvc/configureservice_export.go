@@ -240,13 +240,18 @@ func (c *ConfigureService) ImportList(jsonData string) (list.List, error) {
 // --- MCPServer ---
 
 // Env is safe to export/import verbatim exactly when every entry is a
-// "vault:" reference (mcpserver.EnvVaultRef) -- a pointer, never the
-// secret value itself, same as every other exported shape in this file
-// (this package's own doc comment: "no exported shape carries a secret
+// "vault:" reference (vaultref.Parse) -- a pointer, never the secret
+// value itself, same as every other exported shape in this file (this
+// package's own doc comment: "no exported shape carries a secret
 // because no in-memory shape does"). A literal (non-"vault:") Env
 // value is NOT specially guarded here -- same known gap
 // execenv.ExecEnv.Env's own doc comment names for plain, non-referenced
-// environment values.
+// environment values. Applies identically to exportedExecEnv's own Env
+// field and exportedHTTPRequest's own Headers field below (goal 0203
+// S1 made both fields vault-referenceable): export/import always
+// carries whatever's actually stored, never a resolved secret, because
+// resolution only ever happens at run time (resolveMCPServerEnv/
+// resolveExecEnv/resolveHTTPRequest), never on this path.
 type exportedMCPServer struct {
 	Schema  string   `json:"schema"`
 	ID      string   `json:"id,omitempty"`

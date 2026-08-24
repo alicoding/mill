@@ -93,7 +93,7 @@ export default function SecretsView() {
 
   if (!status.Exists) {
     return (
-      <PageContainer variant="narrow" className={styles.centerPane} data-testid="secrets-view">
+      <PageContainer variant="wide" data-testid="secrets-view">
         <Blankslate>
           <Blankslate.Visual><KeyIcon size={32} /></Blankslate.Visual>
           <Blankslate.Heading>{t('setup.heading')}</Blankslate.Heading>
@@ -109,7 +109,7 @@ export default function SecretsView() {
 
   if (!status.Unlocked) {
     return (
-      <PageContainer variant="narrow" className={styles.centerPane} data-testid="secrets-view">
+      <PageContainer variant="wide" data-testid="secrets-view">
         <Blankslate>
           <Blankslate.Visual><LockIcon size={32} /></Blankslate.Visual>
           <Blankslate.Heading>{t('locked.heading')}</Blankslate.Heading>

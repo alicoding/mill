@@ -2,7 +2,6 @@ package configuresvc
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/mcpclient"
@@ -75,31 +74,15 @@ func (c *ConfigureService) resolveMCPServer(id string) (composition.ResolvedMCPS
 	return composition.ResolvedMCPServer{Command: found.Command, Args: found.Args, Env: env}, nil
 }
 
-// resolveMCPServerEnv substitutes every "vault:<id>" value (mcpserver.
-// EnvVaultRef) with that vault entry's real password via
-// c.secretResolver -- a locked vault surfaces here as this call's own
-// error (secretsvc.ErrLocked wrapped), the explicit "vault is locked"
-// failure the goal file requires, never a silent empty/wrong secret. A
-// plain (non-"vault:") value passes through unresolved, unchanged.
+// resolveMCPServerEnv substitutes every "vault:<id>" value with that
+// vault entry's real password -- vaultref.go's resolveVaultRefEnv, the
+// shared resolution path every Configure entity's own KEY=VALUE Env
+// field goes through (goal 0203 S1 lifted this out of an MCP-only
+// helper). A locked vault surfaces here as this call's own error
+// (secretsvc.ErrLocked wrapped), the explicit "vault is locked" failure
+// the goal file requires, never a silent empty/wrong secret.
 func (c *ConfigureService) resolveMCPServerEnv(label string, env []string) ([]string, error) {
-	if len(env) == 0 {
-		return nil, nil
-	}
-	out := make([]string, len(env))
-	for i, kv := range env {
-		key, value, hasEq := strings.Cut(kv, "=")
-		id, isRef := mcpserver.EnvVaultRef(value)
-		if !hasEq || !isRef {
-			out[i] = kv
-			continue
-		}
-		secret, err := c.secretResolver(id)
-		if err != nil {
-			return nil, fmt.Errorf("MCP server %q: resolving vault secret for %s: %w", label, key, err)
-		}
-		out[i] = key + "=" + secret
-	}
-	return out, nil
+	return c.resolveVaultRefEnv("MCP server", label, env)
 }
 
 // --- MCP Servers ---

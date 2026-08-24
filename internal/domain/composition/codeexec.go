@@ -272,7 +272,15 @@ func init() {
 		defer unregister()
 
 		result := handle.Wait()
-		ctx.Payload = out.String()
+		// A process started with a vault-resolved Env value (goal 0203
+		// S1) could echo it back in its own stdout/stderr (a debug
+		// trace, a crashing command dumping its environment) -- the
+		// captured output is redacted against every currently-known
+		// vault secret before it becomes ctx.Payload or reaches an
+		// error message, mirroring mcp-tool-call's own redaction of its
+		// subprocess-echoed error text (goal 0185 S4).
+		outStr := redactSecretsFn(out.String())
+		ctx.Payload = outStr
 
 		switch result.Outcome {
 		case procexec.OutcomeCancelled:
@@ -286,7 +294,7 @@ func init() {
 			return ctx, fmt.Errorf("code-execution: %w", result.Err)
 		}
 		if result.ExitCode != 0 {
-			return ctx, fmt.Errorf("code-execution: exit code %d: %s", result.ExitCode, out.String())
+			return ctx, fmt.Errorf("code-execution: exit code %d: %s", result.ExitCode, outStr)
 		}
 		return ctx, nil
 	})

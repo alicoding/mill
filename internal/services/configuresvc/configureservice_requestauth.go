@@ -39,10 +39,13 @@ func joseKeychainID(id string) string {
 
 // resolveHTTPRequest implements composition.go's lookupHTTPRequestFn
 // seam: find the HTTPRequest, fetch its secret from the OS keychain
-// (skipped entirely for AuthNone -- there's nothing to fetch), return
-// both as a composition.ResolvedHTTPRequest. Unexported, so Wails never
-// binds it as a callable frontend method -- it's Go-internal wiring
-// only, same as CompositionService's SetSyncer.
+// (skipped entirely for AuthNone -- there's nothing to fetch), resolve
+// any "vault:<id>" reference among its own custom Headers (vaultref.go's
+// resolveVaultRefValue, goal 0203 S1 -- an HTTP connector step is a
+// non-MCP consumer of a stored credential, the goal file's own named
+// gap), and return the lot as a composition.ResolvedHTTPRequest.
+// Unexported, so Wails never binds it as a callable frontend method --
+// it's Go-internal wiring only, same as CompositionService's SetSyncer.
 func (c *ConfigureService) resolveHTTPRequest(id string) (composition.ResolvedHTTPRequest, error) {
 	c.mu.Lock()
 	var req httprequest.HTTPRequest
@@ -89,12 +92,17 @@ func (c *ConfigureService) resolveHTTPRequest(id string) (composition.ResolvedHT
 		josePrivateKey = s
 	}
 
+	headers, err := c.resolveVaultRefHeaders(req.Label, req.Headers)
+	if err != nil {
+		return composition.ResolvedHTTPRequest{}, err
+	}
+
 	return composition.ResolvedHTTPRequest{
 		BaseURL:           req.BaseURL,
 		Method:            req.Method,
 		Body:              req.Body,
 		AuthType:          req.AuthType,
-		Headers:           req.Headers,
+		Headers:           headers,
 		Secret:            secret,
 		OpenAPISpec:       req.OpenAPISpec,
 		Auth:              req.Auth,
