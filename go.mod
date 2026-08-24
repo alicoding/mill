@@ -20,6 +20,7 @@ require (
 	github.com/netresearch/go-cron v0.15.1
 	github.com/rapid7/go-get-proxied v1.4.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
+	github.com/tobischo/gokeepasslib/v3 v3.7.0
 	github.com/wailsapp/wails/v3 v3.0.0-beta.8
 	github.com/xuri/excelize/v2 v2.11.0
 	github.com/yuin/goldmark v1.8.5
@@ -68,7 +69,6 @@ require (
 	github.com/segmentio/encoding v0.5.4 // indirect
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
 	github.com/tobischo/argon2 v0.1.0 // indirect
-	github.com/tobischo/gokeepasslib/v3 v3.7.0 // indirect
 	github.com/xuri/efp v0.0.1 // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
