@@ -75,8 +75,20 @@ func sendHTTPRequest(rc ResolvedHTTPRequest, method, urlPath, body string, heade
 	if err != nil {
 		return "", err
 	}
+	// A header carrying a vault-resolved value (goal 0203 S1) could be
+	// echoed back by the server -- both the response body and the
+	// non-2xx error text below are redacted against every currently-
+	// known vault secret before either reaches ctx.Payload or an error
+	// message, the same safety net codeexec.go's own captured output
+	// applies (goal 0185 S4). Redacted after JOSE decryption, never
+	// before: redacting ciphertext bytes could corrupt a coincidental
+	// byte match and break decryption.
 	if resp.StatusCode >= 400 {
-		return "", fmt.Errorf("request failed with status %d: %s", resp.StatusCode, resp.Body)
+		return "", fmt.Errorf("request failed with status %d: %s", resp.StatusCode, redactSecretsFn(resp.Body))
 	}
-	return DecryptJOSEResponse(rc.JOSE, rc.JOSEPrivateKeyPEM, resp.Body)
+	decrypted, err := DecryptJOSEResponse(rc.JOSE, rc.JOSEPrivateKeyPEM, resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return redactSecretsFn(decrypted), nil
 }

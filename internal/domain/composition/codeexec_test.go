@@ -148,6 +148,35 @@ func TestCodeExecution_EmptyCommand_Fails(t *testing.T) {
 	}
 }
 
+// TestCodeExecution_PayloadRedacted proves a code-execution node's
+// captured stdout+stderr is run through redactSecretsFn before it
+// becomes ctx.Payload (goal 0203 S1's own redaction requirement, the
+// same safety net mcp-tool-call's error text already has): a process
+// started with a vault-resolved Env value could echo it straight back
+// via a plain `echo`, and that must never reach the workflow's payload
+// unredacted.
+func TestCodeExecution_PayloadRedacted(t *testing.T) {
+	origRedact := redactSecretsFn
+	t.Cleanup(func() { redactSecretsFn = origRedact })
+	swapExecEnvLookupForTest(t, func(string) (ResolvedExecEnv, error) {
+		return ResolvedExecEnv{Shell: "sh", ProfileMode: "clean", Dir: t.TempDir(), Env: []string{"PATH=/bin:/usr/bin", "API_KEY=super-secret-fake"}}, nil
+	})
+	SetSecretRedactor(func(s string) string { return strings.ReplaceAll(s, "super-secret-fake", "[redacted]") })
+
+	out, err := runCodeExecution(t, Node{ID: "n1", Config: map[string]string{
+		"envId": "e1", "source": "literal", "script": `echo "$API_KEY"`, "timeoutSeconds": "10",
+	}}, "")
+	if err != nil {
+		t.Fatalf("exec: %v", err)
+	}
+	if strings.Contains(out.Payload, "super-secret-fake") {
+		t.Fatalf("Payload leaked the resolved secret: %q", out.Payload)
+	}
+	if !strings.Contains(out.Payload, "[redacted]") {
+		t.Fatalf("Payload = %q, want the redaction placeholder", out.Payload)
+	}
+}
+
 func TestShellArgv_CleanAndLoginModesPerShell(t *testing.T) {
 	cases := []struct {
 		shell, profile string
