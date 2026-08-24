@@ -1,6 +1,9 @@
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react'
 import { useAtlasEraserDraw } from './useAtlasEraserDraw'
 import { useAtlasLaserDraw } from './useAtlasLaserDraw'
+import { useAtlasShapeDraw } from './useAtlasShapeDraw'
+import { useAtlasShapeCreate } from './useAtlasShapeCreate'
+import { useAtlasShapeStyle } from './atlasShapeStyleStore'
 import type { FrameBox } from './useAtlasDragFiling'
 import type { AtlasArmableTool } from './atlasTools'
 
@@ -25,10 +28,11 @@ function firstArmedDrag(entries: [boolean, DragGestureHandlers][]): DragGestureH
 // Pencil stay wired directly in AtlasBoard.tsx (they predate this
 // split and nothing about slice 4 required moving them), this hook
 // only takes their ALREADY-INSTANTIATED armed flag + drag handlers as
-// input so `activeDrag`'s four-way resolution has one home regardless
-// of where each tool's own hook call happens to live.
+// input so `activeDrag`'s five-way resolution (goal 0169 slice 5 adds
+// Shape) has one home regardless of where each tool's own hook call
+// happens to live.
 export function useAtlasDragTools({
-  isFree, readOnly, armedTool, screenToFlowPosition, topLevelBoxes, noteBoxes, wrapperRef, onDeleteSelection,
+  isFree, readOnly, armedTool, screenToFlowPosition, topLevelBoxes, noteBoxes, wrapperRef, parentID, onDeleteSelection,
   areaArmed, areaDraw, pencilArmed, pencilDraw,
 }: {
   isFree: boolean
@@ -38,6 +42,7 @@ export function useAtlasDragTools({
   topLevelBoxes: FrameBox[]
   noteBoxes: { id: string; x: number; y: number; width: number; height: number }[]
   wrapperRef: RefObject<HTMLDivElement | null>
+  parentID: string
   onDeleteSelection: (cardIDs: string[], noteIDs: string[]) => void
   areaArmed: boolean
   areaDraw: DragGestureHandlers
@@ -64,8 +69,25 @@ export function useAtlasDragTools({
   const laserArmed = isFree && !readOnly && armedTool === 'laser'
   const laserDraw = useAtlasLaserDraw({ armed: laserArmed, wrapperRef })
 
-  const activeDrag = firstArmedDrag([[areaArmed, areaDraw], [pencilArmed, pencilDraw], [eraserArmed, eraserDraw], [laserArmed, laserDraw]])
+  // Shape (goal 0169 slice 5): armed/wired the same sticky way Pencil is
+  // (its own drag hook never disarms on completion), but fully
+  // instantiated HERE rather than passed in -- Shape is introduced at
+  // this split, unlike Area/Pencil which predate it, so it follows
+  // Eraser/Laser's own precedent instead. shapeStyle is the ephemeral
+  // "current defaults" cache (atlasShapeStyleStore.ts); landShape bakes
+  // its current value into the created BoardObject's own Payload, which
+  // IS persisted document data.
+  const shapeArmed = isFree && !readOnly && armedTool === 'shape'
+  const shapeStyle = useAtlasShapeStyle()
+  const shapeCreate = useAtlasShapeCreate({ parentID, topLevelBoxes, screenToFlowPosition })
+  const shapeDraw = useAtlasShapeDraw({
+    armed: shapeArmed,
+    wrapperRef,
+    onComplete: (start, end) => void shapeCreate.landShape(start, end, shapeStyle).catch(console.error),
+  })
+
+  const activeDrag = firstArmedDrag([[areaArmed, areaDraw], [pencilArmed, pencilDraw], [eraserArmed, eraserDraw], [laserArmed, laserDraw], [shapeArmed, shapeDraw]])
   const anyDragToolArmed = activeDrag !== null
 
-  return { eraserArmed, eraserDraw, laserArmed, laserDraw, activeDrag, anyDragToolArmed }
+  return { eraserArmed, eraserDraw, laserArmed, laserDraw, shapeArmed, shapeStyle, shapeDraw, activeDrag, anyDragToolArmed }
 }

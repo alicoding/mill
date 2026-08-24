@@ -14,12 +14,13 @@ import type { AtlasBoardObjectRFNode } from './AtlasBoardObjectNode'
 // intrinsic size (clamped by AtlasBoardObjectNode.module.css) rather
 // than a fixed card-shaped box.
 //
-// zIndex fixes ink ABOVE image regardless of creation/array order (the
-// acceptance contract's own "drawing over a screenshot works"): every
-// other kind added later keeps this same z-order convention (ink is
-// always the annotation layer) by simply not opting into the image
-// tier here.
-const OBJECT_Z_INDEX: Record<string, number> = { image: 0, ink: 1 }
+// zIndex fixes ink ABOVE image/shape regardless of creation/array order
+// (the acceptance contract's own "drawing over a screenshot works",
+// goal 0169 slice 5 extending it to "ink can be drawn on top of
+// shapes"): shape joins image's own tier -- both are peer surfaces ink
+// annotates -- so a third kind stays on this same tier by default
+// unless it too needs to be an annotation layer.
+const OBJECT_Z_INDEX: Record<string, number> = { image: 0, shape: 0, ink: 1 }
 
 export function buildBoardObjectNodes({ objects, readOnly, isFree }: {
   objects: BoardObject[]

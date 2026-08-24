@@ -8,7 +8,7 @@ vi.mock('../shared/bindings', () => ({
   AtlasService: { SaveImageBytes: saveImageBytesMock },
 }))
 
-import { ATLAS_TOOLS, cardTool, noteTool, areaTool, tableTool, imageTool, pencilTool, eraserTool, laserTool } from './atlasTools'
+import { ATLAS_TOOLS, cardTool, noteTool, areaTool, tableTool, imageTool, pencilTool, eraserTool, laserTool, shapeTool } from './atlasTools'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 
 function kind(id: string): Kind {
@@ -17,10 +17,10 @@ function kind(id: string): Kind {
 
 describe('ATLAS_TOOLS', () => {
   it('carries every registered tool in tray render order', () => {
-    expect(ATLAS_TOOLS.map((t) => t.id)).toEqual(['card', 'note', 'area', 'table', 'image', 'pencil', 'eraser', 'laser'])
+    expect(ATLAS_TOOLS.map((t) => t.id)).toEqual(['card', 'note', 'area', 'table', 'image', 'pencil', 'eraser', 'laser', 'shape'])
   })
 
-  it('scopes card/note/area to arm-then-click, table to pick-then-place, image to paste-or-drop, pencil to drag-to-draw, eraser to drag-to-erase, laser to ephemeral-drag', () => {
+  it('scopes card/note/area to arm-then-click, table to pick-then-place, image to paste-or-drop, pencil+shape to drag-to-draw, eraser to drag-to-erase, laser to ephemeral-drag', () => {
     const byID = Object.fromEntries(ATLAS_TOOLS.map((t) => [t.id, t.interaction]))
     expect(byID).toEqual({
       card: 'arm-then-click',
@@ -31,6 +31,7 @@ describe('ATLAS_TOOLS', () => {
       pencil: 'drag-to-draw',
       eraser: 'drag-to-erase',
       laser: 'ephemeral-drag',
+      shape: 'drag-to-draw',
     })
   })
 
@@ -38,9 +39,14 @@ describe('ATLAS_TOOLS', () => {
     expect(ATLAS_TOOLS.every((t) => t.tray === 'quick')).toBe(true)
   })
 
-  it('carries styleDefaults only on the pencil tool', () => {
+  it('carries styleDefaults only on the pencil tool (shape has no analogous field -- its style lives directly on AtlasShapeStylePicker\'s own store, never a registry-carried default object)', () => {
     const withDefaults = ATLAS_TOOLS.filter((t) => 'styleDefaults' in t && t.styleDefaults !== undefined)
     expect(withDefaults.map((t) => t.id)).toEqual(['pencil'])
+  })
+
+  it('carries a StylePicker on both drag-to-draw tools, and no other', () => {
+    const withPicker = ATLAS_TOOLS.filter((t) => 'StylePicker' in t && t.StylePicker !== undefined)
+    expect(withPicker.map((t) => t.id)).toEqual(['pencil', 'shape'])
   })
 })
 
@@ -150,6 +156,40 @@ describe('pencilTool.commit', () => {
     const artifact = await pencilTool.commit({ points: [{ x: 1, y: 1 }], color: '#1f6feb', size: 4 })
     expect(artifact).toBeNull()
     expect(saveImageBytesMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('shapeTool.commit', () => {
+  const style = { fill: 'transparent', stroke: '#1f6feb', strokeWidth: 2 }
+
+  it('shapes a rectangle into a Size-bearing artifact, origin at the normalized top-left', () => {
+    const artifact = shapeTool.commit({ shapeType: 'rectangle', style, startFlow: { x: 50, y: 80 }, endFlow: { x: 10, y: 20 } })
+    expect(artifact).toEqual({
+      kind: 'shape', shapeType: 'rectangle', originFlow: { x: 10, y: 20 },
+      payload: { shapeType: 'rectangle', fill: 'transparent', stroke: '#1f6feb', strokeWidth: '2', title: 'Rectangle' },
+      size: { W: 40, H: 60 },
+    })
+  })
+
+  it('shapes an ellipse the same way, title Ellipse', () => {
+    const artifact = shapeTool.commit({ shapeType: 'ellipse', style, startFlow: { x: 0, y: 0 }, endFlow: { x: 30, y: 30 } })
+    expect(artifact.shapeType).toBe('ellipse')
+    expect(artifact.payload.title).toBe('Ellipse')
+    expect(artifact.size).toEqual({ W: 30, H: 30 })
+  })
+
+  it('shapes an arrow into a dx/dy payload with no Size at all, origin at the drag START point (direction-preserving, never normalized)', () => {
+    const artifact = shapeTool.commit({ shapeType: 'arrow', style, startFlow: { x: 100, y: 100 }, endFlow: { x: 40, y: 160 } })
+    expect(artifact).toEqual({
+      kind: 'shape', shapeType: 'arrow', originFlow: { x: 100, y: 100 },
+      payload: { shapeType: 'arrow', fill: 'transparent', stroke: '#1f6feb', strokeWidth: '2', title: 'Arrow', dx: '-60', dy: '60' },
+      size: null,
+    })
+  })
+
+  it('floors a near-zero-extent rectangle drag at an 8-unit box rather than a degenerate sliver', () => {
+    const artifact = shapeTool.commit({ shapeType: 'rectangle', style, startFlow: { x: 0, y: 0 }, endFlow: { x: 1, y: 1 } })
+    expect(artifact.size).toEqual({ W: 8, H: 8 })
   })
 })
 

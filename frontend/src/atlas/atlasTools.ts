@@ -1,4 +1,5 @@
-import { FileIcon, ImageIcon, NoteIcon, PencilIcon, SquareIcon, TableIcon, TrashIcon, ZapIcon } from '@primer/octicons-react'
+import type { ComponentType } from 'react'
+import { DiamondIcon, FileIcon, ImageIcon, NoteIcon, PencilIcon, SquareIcon, TableIcon, TrashIcon, ZapIcon } from '@primer/octicons-react'
 import type { Icon } from '@primer/octicons-react'
 import { Type as FieldType, type Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
@@ -7,6 +8,10 @@ import { ATLAS_TOOL_IDENTITIES, type AtlasToolIdentity } from '../shared/atlasTo
 import { fileToBase64 } from '../shared/base64Blob'
 import { lastUsedKindID, normalizeLocalPathInput, titleFromFilename } from './atlasCreateHelpers'
 import { buildPencilStrokeSvg, svgToBase64, type PencilPoint } from './atlasPencilSvg'
+import { AtlasPencilStylePicker } from './AtlasPencilStylePicker'
+import { AtlasShapeStylePicker } from './AtlasShapeStylePicker'
+import type { AtlasShapeType } from './atlasShapeStyleStore'
+import { boxDimensions, shapePayload, shapeTitle, type ShapeStyle } from './atlasShapeSvg'
 
 // The canvas tool registry (goal 0169 slice 1): every creatable
 // thing's own descriptor, in tray render order -- AtlasCreationTray,
@@ -44,6 +49,12 @@ interface AtlasToolShape {
   tray: 'quick' | 'palette'
   interaction: AtlasToolInteraction
   styleDefaults?: AtlasToolStyleDefaults
+  // The tray's own options-bar component, shown anchored to this tool's
+  // button for as long as it's armed (AtlasCreationTray.tsx's own
+  // 'drag-to-draw' branch renders whichever tool carries one) --
+  // registry-driven so a second drag-to-draw tool (this slice's shape,
+  // joining pencil) never needs a hardcoded branch naming it by id.
+  StylePicker?: ComponentType
   // Each concrete tool's own commit signature differs (a card commits
   // kind+title, a table mints a backing List); this base only has to
   // accept every one of them for the array's own element type to work,
@@ -68,6 +79,14 @@ export interface AtlasImageArtifact { kind: 'image'; title: string; mirrorPath: 
 // point through screenToFlowPosition -- the card lands where the
 // stroke was drawn, not at an arbitrary free slot.
 export interface AtlasPencilArtifact { kind: 'pencil'; title: string; mirrorPath: string; originX: number; originY: number }
+// Unlike image/pencil, a shape never bakes to a mirror file -- fill/
+// stroke/strokeWidth stay live Payload data (this slice's own "style
+// lives in Payload" contract, so a future style editor -- goal 0193 --
+// can change them without re-drawing). originFlow is the BoardObject's
+// own Position; size is set via a follow-up SetBoardObjectSize call for
+// rectangle/ellipse (an arrow's own geometry is entirely payload.dx/dy,
+// so it carries no Size at all).
+export interface AtlasShapeArtifact { kind: 'shape'; shapeType: AtlasShapeType; originFlow: { x: number; y: number }; payload: Record<string, string>; size: { W: number; H: number } | null }
 
 const cardIdentity = identityOf('card')
 const noteIdentity = identityOf('note')
@@ -77,6 +96,7 @@ const imageIdentity = identityOf('image')
 const pencilIdentity = identityOf('pencil')
 const eraserIdentity = identityOf('eraser')
 const laserIdentity = identityOf('laser')
+const shapeIdentity = identityOf('shape')
 
 // Card's instant-placement default (goal 0144: the click IS the
 // creation, no form) resolves the last-used kind itself; a form-driven
@@ -205,6 +225,7 @@ const pencilTool = {
   tray: 'quick',
   interaction: 'drag-to-draw',
   styleDefaults: PENCIL_DEFAULT_STYLE,
+  StylePicker: AtlasPencilStylePicker,
   commit: async (input: { points: PencilPoint[]; color: string; size: number }): Promise<AtlasPencilArtifact | null> => {
     const doc = buildPencilStrokeSvg(input.points, input.color, input.size)
     if (!doc) return null
@@ -264,9 +285,44 @@ const laserTool = {
   commit: (): null => null,
 } as const satisfies AtlasToolShape
 
-export { cardTool, noteTool, areaTool, tableTool, imageTool, pencilTool, eraserTool, laserTool }
+// Shape (goal 0169 slice 5): drag-to-draw's second proof, reusing the
+// interaction shape unchanged rather than inventing a seventh. ONE
+// tray tool covers all three geometric shapes -- rectangle, ellipse,
+// arrow -- picked via AtlasShapeStylePicker while armed, the same
+// "options bar anchored to the armed tool" surface pencil already
+// established; this goal's own contract is "not a shape library, one
+// tool", so the type lives in the style picker rather than three
+// separate tray buttons. startFlow/endFlow are already flow-space
+// (the caller, useAtlasShapeCreate.ts, runs screenToFlowPosition
+// itself) so this stays a pure, synchronous function -- unlike every
+// other drag-to-draw/paste-or-drop tool, a shape writes no bytes and
+// touches no AtlasService call of its own; CreateBoardObject/
+// SetBoardObjectSize (already generic since goal 0179 S1) are the
+// placement door's job, not this commit's.
+const shapeTool = {
+  id: shapeIdentity.id,
+  icon: DiamondIcon,
+  label: shapeIdentity.commandLabel,
+  shortcutKey: shapeIdentity.shortcutKey,
+  tray: 'quick',
+  interaction: 'drag-to-draw',
+  StylePicker: AtlasShapeStylePicker,
+  commit: (input: { shapeType: AtlasShapeType; style: ShapeStyle; startFlow: { x: number; y: number }; endFlow: { x: number; y: number } }): AtlasShapeArtifact => {
+    const dx = input.endFlow.x - input.startFlow.x
+    const dy = input.endFlow.y - input.startFlow.y
+    const title = shapeTitle(input.shapeType)
+    if (input.shapeType === 'arrow') {
+      return { kind: 'shape', shapeType: 'arrow', originFlow: input.startFlow, payload: shapePayload('arrow', input.style, title, { dx, dy }), size: null }
+    }
+    const { w, h } = boxDimensions(dx, dy)
+    const originFlow = { x: Math.min(input.startFlow.x, input.endFlow.x), y: Math.min(input.startFlow.y, input.endFlow.y) }
+    return { kind: 'shape', shapeType: input.shapeType, originFlow, payload: shapePayload(input.shapeType, input.style, title), size: { W: w, H: h } }
+  },
+} as const satisfies AtlasToolShape
 
-export const ATLAS_TOOLS = [cardTool, noteTool, areaTool, tableTool, imageTool, pencilTool, eraserTool, laserTool] as const
+export { cardTool, noteTool, areaTool, tableTool, imageTool, pencilTool, eraserTool, laserTool, shapeTool }
+
+export const ATLAS_TOOLS = [cardTool, noteTool, areaTool, tableTool, imageTool, pencilTool, eraserTool, laserTool, shapeTool] as const
 
 export type AtlasToolID = (typeof ATLAS_TOOLS)[number]['id']
 
