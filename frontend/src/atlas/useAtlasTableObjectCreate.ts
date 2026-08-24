@@ -3,7 +3,7 @@ import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
 import { freeChildPosition } from './atlasContainmentPlacement'
 import { TABLE_HEIGHT, TABLE_WIDTH } from './atlasBoardLayout'
-import { tableTool } from './atlasTools'
+import { tableTool } from './tools/tableTool'
 
 // The table tool's own placement door (goal 0179 S2, re-pointed the
 // same way useAtlasImageCreate.ts/useAtlasShapeCreate.ts already were

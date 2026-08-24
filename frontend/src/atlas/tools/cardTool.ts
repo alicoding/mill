@@ -1,0 +1,30 @@
+import { FileIcon } from '@primer/octicons-react'
+import type { Kind } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { identityOf, registerNoun, type AtlasToolShape } from '../atlasNounRegistry'
+import { lastUsedKindID } from '../atlasCreateHelpers'
+
+const cardIdentity = identityOf('card')
+
+export interface AtlasCardArtifact { kind: 'card'; kindID: string; title: string; note: string }
+
+// Card's instant-placement default (goal 0144: the click IS the
+// creation, no form) resolves the last-used kind itself; a form-driven
+// create (right-click "Add card", paste, slot-link) instead supplies
+// kindID/title explicitly and this just shapes them into the same
+// artifact -- one function backs both placement doors.
+export const cardTool = {
+  id: cardIdentity.id,
+  icon: FileIcon,
+  label: cardIdentity.commandLabel,
+  shortcutKey: cardIdentity.shortcutKey,
+  tray: 'quick',
+  interaction: cardIdentity.interaction,
+  commit: (input: { kinds: Kind[]; kindID?: string; title?: string; note?: string }): AtlasCardArtifact => ({
+    kind: 'card',
+    kindID: input.kindID ?? lastUsedKindID(input.kinds),
+    title: input.title ?? 'Untitled',
+    note: input.note ?? '',
+  }),
+} as const satisfies AtlasToolShape
+
+registerNoun(cardTool)

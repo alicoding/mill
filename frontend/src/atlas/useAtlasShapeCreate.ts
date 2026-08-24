@@ -1,6 +1,6 @@
 import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
-import { shapeTool } from './atlasTools'
+import { shapeTool } from './tools/shapeTool'
 import { frameContainingPoint } from './atlasFramePoint'
 import { SHAPE_DEFAULT_FILL, type AtlasShapeType } from './atlasShapeStyleStore'
 import type { ShapePoint } from './useAtlasShapeDraw'

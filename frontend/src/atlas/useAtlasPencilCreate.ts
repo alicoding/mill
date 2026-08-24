@@ -1,6 +1,6 @@
 import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
-import { pencilTool } from './atlasTools'
+import { pencilTool } from './tools/pencilTool'
 import { frameContainingPoint } from './atlasFramePoint'
 import type { PencilPoint } from './atlasPencilSvg'
 import type { FrameBox } from './useAtlasDragFiling'

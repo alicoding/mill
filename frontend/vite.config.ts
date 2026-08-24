@@ -102,7 +102,10 @@ export default defineConfig({
       // exempt for the same we-don't-own-their-shape reason
       // scripts/check-loc.sh exempts them.
       include: ["src/**"],
-      exclude: ["src/**/*.test.*", "src/locales/**"],
+      // *.typecheck.ts (goal 0180 S1's literal-union proof): compile-time
+      // -only assertions nothing imports at runtime -- would otherwise
+      // report as permanently 0% covered and drag the aggregate down.
+      exclude: ["src/**/*.test.*", "src/**/*.typecheck.ts", "src/locales/**"],
       // Floors are the MEASURED baseline at adoption (goal 0080),
       // rounded DOWN to integers and raised manually (same shape as
       // scripts/check-go-coverage.sh): a 2-decimal auto-ratchet made

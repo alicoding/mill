@@ -2,7 +2,7 @@ import type { Card } from '../../bindings/github.com/alicoding/mill/internal/dom
 import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
 import { freeChildPosition } from './atlasContainmentPlacement'
-import { imageTool } from './atlasTools'
+import { imageTool } from './tools/imageTool'
 
 // The image tool's own placement door (goal 0169 slice 2, re-pointed by
 // goal 0179 S1's own correction): both paste-or-drop sub-gestures
