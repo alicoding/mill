@@ -92,6 +92,7 @@ export { SettingsService } from '../../bindings/github.com/alicoding/mill/intern
 export type {
   BuildInfo,
   UpdateCheckResult,
+  UpdateNotice,
 } from '../../bindings/github.com/alicoding/mill/internal/services/settingssvc'
 // GetWorkflowMinutesSaved/ListWorkflowMinutesSaved/SetWorkflowMinutesSaved
 // (docs/goals/0014-home-dashboard.md) are plain SettingsService methods,

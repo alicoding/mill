@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { Events } from '@wailsio/runtime'
 import { useTranslation } from 'react-i18next'
 import { Browser } from '@wailsio/runtime'
 import { Button, Checkbox, FormControl, Select, Stack, Text, TextInput } from '@primer/react'
-import { SettingsService } from '../shared/bindings'
+import { SettingsService, type UpdateNotice } from '../shared/bindings'
 import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
+import { formatUpdated } from '../shared/inventorySort'
 
 // The browser-download escape hatch for when the in-app download is
 // blocked (managed networks answer the asset fetch with 403 while the
@@ -23,6 +24,46 @@ function truncate(s: string, max: number): string {
   return s.length > max ? `${s.slice(0, max)}…` : s
 }
 
+// lastCheckText maps CheckForUpdates' persisted outcome to its display
+// copy -- pulled out of the component so the outcome ternary chain
+// doesn't count against UpdatesSection's own cognitive-complexity budget
+// (sonarjs/cognitive-complexity, .claude/rules/testing.md).
+function lastCheckText(
+  outcome: LastCheckOutcome,
+  relative: string,
+  error: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (outcome === 'failed') return t('settings.updates.lastCheckFailed', { time: relative, error: truncate(error, 200) })
+  if (outcome === 'found') return t('settings.updates.lastCheckFound', { time: relative })
+  if (outcome === 'upToDate') return t('settings.updates.lastCheckUpToDate', { time: relative })
+  return t('settings.updates.lastCheckNever')
+}
+
+// LastCheckStatus renders the persistent last-check record next to the
+// Check-for-updates button -- a failing check must read as a real,
+// visible state, never look identical to "no update available". A
+// separate component, not an inline ternary in UpdatesSection's return,
+// keeps this branch out of that function's own cognitive-complexity
+// budget (sonarjs/cognitive-complexity, .claude/rules/testing.md).
+function LastCheckStatus({ outcome, text, error }: { outcome: LastCheckOutcome; text: string; error: string }) {
+  if (outcome === 'failed') {
+    return (
+      <Stack direction="horizontal" gap="condensed" align="center">
+        <Text size="small" className={styles.error} data-testid="last-check-failed">
+          {text}
+        </Text>
+        <CopyDiagnosisButton error={error} testId="last-check-failed-copy" />
+      </Stack>
+    )
+  }
+  return (
+    <Text size="small" className={styles.muted} data-testid="last-check-status">
+      {text}
+    </Text>
+  )
+}
+
 // Extracted from SettingsView.tsx (same reason DataStewardshipSection
 // already is: keeps that file's own line count from crowding the
 // 500-line convention). Two install behaviors sharing one surface:
@@ -32,10 +73,38 @@ function truncate(s: string, max: number): string {
 type Channel = '' | 'source' | 'release' | 'beta'
 const installableChannels: Channel[] = ['release', 'beta']
 type InstallState = 'idle' | 'installing' | 'installed' | 'failed'
+// Mirrors the Go UpdateCheckOutcome values (settingsservice_updatenotice.go)
+// -- '' means CheckForUpdates has never run.
+type LastCheckOutcome = '' | 'found' | 'upToDate' | 'failed'
 
 interface UpdateResult {
   version: string
   notes: string
+}
+
+// applyUpdateNotice folds one UpdateNoticeState poll into every piece of
+// state it drives -- pulled out of the mount effect so its branching
+// doesn't count against UpdatesSection's own cognitive-complexity budget
+// (sonarjs/cognitive-complexity, .claude/rules/testing.md).
+function applyUpdateNotice(
+  n: UpdateNotice,
+  setInstallState: Dispatch<SetStateAction<InstallState>>,
+  setUpdateResult: Dispatch<SetStateAction<UpdateResult | null>>,
+  setLastCheckAt: Dispatch<SetStateAction<string>>,
+  setLastCheckOutcome: Dispatch<SetStateAction<LastCheckOutcome>>,
+  setLastCheckError: Dispatch<SetStateAction<string>>,
+) {
+  setInstallState((prev) => {
+    if (n.downloading) return 'installing'
+    if (n.ready) return 'installed'
+    return prev === 'installing' ? 'idle' : prev
+  })
+  if ((n.downloading || n.ready) && n.availableVersion) {
+    setUpdateResult((prev) => prev ?? { version: n.availableVersion, notes: '' })
+  }
+  setLastCheckAt(n.lastCheckAt)
+  setLastCheckOutcome(n.lastCheckOutcome as LastCheckOutcome)
+  setLastCheckError(n.lastCheckError)
 }
 
 function UpdatesSection() {
@@ -61,22 +130,22 @@ function UpdatesSection() {
   const [channelPref, setChannelPref] = useState('')
   const [channelSaved, setChannelSaved] = useState(false)
   const [autoCheck, setAutoCheck] = useState(false)
+  // The persistent record of CheckForUpdates' most recent run (manual
+  // button or the background loop), independent of `status`/`checkError`
+  // above -- those clear on unmount/re-check, this is the answer to
+  // "is checking actually still happening".
+  const [lastCheckAt, setLastCheckAt] = useState('')
+  const [lastCheckOutcome, setLastCheckOutcome] = useState<LastCheckOutcome>('')
+  const [lastCheckError, setLastCheckError] = useState('')
 
   // The download phase is SERVER truth (goal 0142): synced on mount
   // and on every update-notice event, so navigating away and back
   // never forgets a running download, and a finished one shows the
   // Restart button here as well as in the footer pill.
   useEffect(() => {
-    const sync = () => void SettingsService.UpdateNoticeState().then((n) => {
-      setInstallState((prev) => {
-        if (n.downloading) return 'installing'
-        if (n.ready) return 'installed'
-        return prev === 'installing' ? 'idle' : prev
-      })
-      if ((n.downloading || n.ready) && n.availableVersion) {
-        setUpdateResult((prev) => prev ?? { version: n.availableVersion, notes: '' })
-      }
-    }).catch(console.error)
+    const sync = () => void SettingsService.UpdateNoticeState()
+      .then((n) => applyUpdateNotice(n, setInstallState, setUpdateResult, setLastCheckAt, setLastCheckOutcome, setLastCheckError))
+      .catch(console.error)
     sync()
     return Events.On('mill-data-changed', (evt) => {
       if ((evt.data as { entity?: string })?.entity === 'update-notice') sync()
@@ -166,6 +235,12 @@ function UpdatesSection() {
         : t('settings.updates.channelSource')
   const canInstall = installableChannels.includes(channel)
   const statusText = checking ? t('settings.updates.checking') : status
+
+  // Reuses the same relative-time phrase every "last updated"/"N ago"
+  // caption in the app already renders (shared/inventorySort.ts) rather
+  // than a second formatter.
+  const lastCheckRelative = lastCheckAt ? formatUpdated(lastCheckAt) : ''
+  const lastCheckDisplay = lastCheckText(lastCheckOutcome, lastCheckRelative, lastCheckError, t)
 
   return (
     <Stack gap="condensed">
@@ -257,6 +332,8 @@ function UpdatesSection() {
         </Button>
         {statusText && <Text size="small" className={styles.muted}>{statusText}</Text>}
       </Stack>
+
+      <LastCheckStatus outcome={lastCheckOutcome} text={lastCheckDisplay} error={lastCheckError} />
 
       {checkError && (
         <Stack direction="horizontal" gap="condensed" align="center">

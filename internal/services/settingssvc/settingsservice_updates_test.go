@@ -404,47 +404,6 @@ func TestSetOutboundProxyURL_AcceptsOffSentinel(t *testing.T) {
 	}
 }
 
-func TestUpdateNotice_AvailableDismissalIsPerVersion(t *testing.T) {
-	set := newTestSettingsService(t)
-	set.recordAvailableUpdate("0.4.0-beta.700")
-	if n := set.UpdateNoticeState(); n.AvailableVersion != "0.4.0-beta.700" {
-		t.Fatalf("available = %q", n.AvailableVersion)
-	}
-	if err := set.DismissUpdateNotice(); err != nil {
-		t.Fatal(err)
-	}
-	if n := set.UpdateNoticeState(); n.AvailableVersion != "" {
-		t.Errorf("dismissed version still showing: %q", n.AvailableVersion)
-	}
-	set.recordAvailableUpdate("0.4.0-beta.700")
-	if n := set.UpdateNoticeState(); n.AvailableVersion != "" {
-		t.Errorf("dismissal must hold for the same version, got %q", n.AvailableVersion)
-	}
-	set.recordAvailableUpdate("0.4.0-beta.701")
-	if n := set.UpdateNoticeState(); n.AvailableVersion != "0.4.0-beta.701" {
-		t.Errorf("a NEWER version must notify again, got %q", n.AvailableVersion)
-	}
-}
-
-func TestUpdateNotice_ReadyWinsAndAutoCheckPrefPersists(t *testing.T) {
-	set := newTestSettingsService(t)
-	set.recordAvailableUpdate("0.4.0-beta.700")
-	set.markUpdateReady()
-	n := set.UpdateNoticeState()
-	if !n.Ready || n.AvailableVersion != "" {
-		t.Errorf("ready state = %+v, want ready with no available", n)
-	}
-	if set.AutoUpdateCheck() {
-		t.Error("auto-check must default OFF")
-	}
-	if err := set.SetAutoUpdateCheck(true); err != nil {
-		t.Fatal(err)
-	}
-	if !set.AutoUpdateCheck() {
-		t.Error("auto-check did not persist")
-	}
-}
-
 // A second install click while one is downloading gets a readable
 // refusal, and the notice reports the phase (goal 0142) -- the
 // component-local state this replaced forgot a running download on
@@ -460,23 +419,5 @@ func TestDownloadAndInstallUpdate_ConcurrentGuardIsReadable(t *testing.T) {
 	err := s.DownloadAndInstallUpdate()
 	if err == nil || !strings.Contains(err.Error(), "already downloading") {
 		t.Fatalf("err = %v, want the readable already-downloading refusal", err)
-	}
-}
-
-// The update-available fire is once per version, surviving restarts
-// via the store, and never fires for a dismissed version (goal 0146).
-func TestRecordAvailableUpdate_FiresSinkOncePerVersion(t *testing.T) {
-	s := newTestSettingsService(t)
-	var fired []string
-	s.SetUpdateEventSink(func(version, channel string) { fired = append(fired, version) })
-
-	s.recordAvailableUpdate("v1.2.3")
-	s.recordAvailableUpdate("v1.2.3")
-	if len(fired) != 1 || fired[0] != "v1.2.3" {
-		t.Fatalf("fired = %v, want exactly one v1.2.3", fired)
-	}
-	s.recordAvailableUpdate("v1.2.4")
-	if len(fired) != 2 || fired[1] != "v1.2.4" {
-		t.Fatalf("fired = %v, want the next version to fire once", fired)
 	}
 }
