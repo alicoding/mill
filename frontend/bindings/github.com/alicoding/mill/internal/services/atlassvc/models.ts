@@ -275,13 +275,17 @@ export interface OfferedAction {
 
 /**
  * PasteResult reports what a paste became; Recognized=false means the
- * text wasn't diagram-shaped and nothing was created.
+ * text wasn't diagram-shaped and nothing was created. SkippedPages
+ * names any multi-page source page that failed to decode -- non-empty
+ * only when Recognized is also true, since a page can only be skipped
+ * out of a file that WAS recognized as one.
  */
 export interface PasteResult {
     "Recognized": boolean;
     "Cards": number;
     "Links": number;
     "Tables": number;
+    "SkippedPages": string[] | null;
 }
 
 /**
