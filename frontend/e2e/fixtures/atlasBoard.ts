@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
-import { ATLAS_KIND_TOPIC } from './kindPicker'
+import { ATLAS_KIND_TOPIC, selectKind } from './kindPicker'
+import { contextMenu } from './contextMenu'
 
 // Promoted out of atlas-authoring.spec.ts (goal 0081 slice A2,
 // testing.md's "a helper used by 2+ spec files MUST be promoted" rule)
@@ -59,6 +60,28 @@ export async function hittablePointOn(page: Page, locator: Locator): Promise<{ x
     await handle.dispose()
   }
   throw new Error('no point on the element is actually hittable -- it is fully occluded by fixed chrome')
+}
+
+// Right-clicks a board object (goal 0179 S2's own "table"/"diagram"
+// board objects join image/shape's own Promote to card path,
+// atlas-shape-tool.spec.ts's inline version promoted here once
+// atlas-table-object.spec.ts needed the identical sequence): "Promote
+// to card…", fill the title, pick a kind, submit. Returns nothing --
+// what the promoted card renders AS (a plain note-card face, or the
+// table-projection unit's own atlas-table-card) depends on the
+// object's own Kind, so callers locate their own resulting node with
+// whichever testid actually fits it.
+export async function promoteBoardObject(page: Page, object: Locator, title: string, kindID = ATLAS_KIND_TOPIC): Promise<void> {
+  await object.click({ button: 'right' })
+  const menu = contextMenu(page)
+  await expect(menu).toBeVisible()
+  await menu.getByText('Promote to card…', { exact: true }).click()
+  const popover = page.getByTestId('atlas-placement-popover')
+  await expect(popover).toBeVisible()
+  await popover.getByTestId('atlas-placement-title').fill(title)
+  await selectKind(popover, kindID)
+  await popover.getByTestId('atlas-placement-submit').click()
+  await expect(popover).not.toBeVisible()
 }
 
 export function groupCard(page: Page, title: string): Locator {

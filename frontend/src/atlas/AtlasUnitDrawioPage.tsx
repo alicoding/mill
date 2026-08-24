@@ -16,8 +16,10 @@ function formatMirrorSize(bytes: number): string {
 }
 
 // Isolated so the render-error state only remounts this element, not
-// the page heading above it.
-function DrawioDiagramHost({ source }: { source: string }) {
+// the page heading above it. Exported: AtlasDiagramObjectContent.tsx
+// (goal 0179 S2) reuses this exact host for a "diagram" board object's
+// own board face, rather than a second drawio-viewer wiring.
+export function DrawioDiagramHost({ source }: { source: string }) {
   const { t } = useTranslation('atlas')
   const hostRef = useRef<HTMLDivElement | null>(null)
   const renderError = useDrawioRendering(hostRef, source)

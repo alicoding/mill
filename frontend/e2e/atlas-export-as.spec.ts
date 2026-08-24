@@ -1,8 +1,8 @@
 import type { Download, Locator } from '@playwright/test'
 import { test, expect } from './fixtures/server'
-import { createCardViaTray, noteCard, openCard } from './fixtures/atlasBoard'
+import { createCardViaTray, noteCard, openCard, promoteBoardObject } from './fixtures/atlasBoard'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
-import { ATLAS_KIND_DOCUMENT, selectKind } from './fixtures/kindPicker'
+import { ATLAS_KIND_DOCUMENT } from './fixtures/kindPicker'
 
 // Export-as (ADR-0043 §3, goal 0133 slice E1): the registry's second
 // half. buildExportMenuChoice (atlasCardExportMenu.ts) is the single
@@ -206,6 +206,10 @@ test('a mermaid card offers Original file + .mmd via the page kebab menu\'s subm
 // the file-backed units. Reads the seeded "Example: Country codes"
 // List (never written), same shared-pool posture
 // atlas-table-projection.spec.ts's own read-only tests already use.
+// Export-as is a card-only affordance (goal 0179 S2): the table lands
+// as a board-local object first, then Promote to card -- the same
+// explicit door every other export-bearing capability on a board
+// object goes through.
 test('a table-projection card offers all four declared formats (no Original file -- it has no mirror) and downloads real bytes', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
@@ -214,9 +218,11 @@ test('a table-projection card offers all four declared formats (no Original file
   await page.getByTestId('atlas-tray-table').click()
   await page.getByTestId('atlas-table-from-list').click()
   await page.getByTestId('entity-ref-field').selectOption({ label: 'Example: Country codes' })
-  await selectKind(page, ATLAS_KIND_DOCUMENT, 'atlas-create-kind')
-  await page.getByTestId('atlas-create-title').fill('ZzE2eExportAsTable')
   await page.getByRole('button', { name: 'Create' }).click()
+
+  const tableObject = page.locator('[data-testid="atlas-board-object"][data-object-kind="table"]').filter({ hasText: 'US' })
+  await expect(tableObject).toBeVisible()
+  await promoteBoardObject(page, tableObject, 'ZzE2eExportAsTable', ATLAS_KIND_DOCUMENT)
 
   const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'ZzE2eExportAsTable' })
   await expect(tableCard).toBeVisible()

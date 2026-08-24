@@ -11,13 +11,14 @@ import (
 )
 
 // This file turns a decoded mxGraphModel (atlaspaste.go's ladder) into
-// Mill's own primitives -- table shapes into a List + projection card,
-// vertices into cards (nested via Atlas ParentID when the source drew
-// a container), edges into labelled links. Deliberately NOT a fidelity
-// mirror: style/colour are read only where a table shape must be
-// detected (styleHasShape), never carried onto the created entity --
-// docs/goals/0194's "database pretending to be a diagram" framing:
-// import turns presentation into queryable data, on purpose.
+// Mill's own primitives -- table shapes into a List + a "table" board
+// object (goal 0179 S2), vertices into cards (nested via Atlas
+// ParentID when the source drew a container), edges into labelled
+// links. Deliberately NOT a fidelity mirror: style/colour are read
+// only where a table shape must be detected (styleHasShape), never
+// carried onto the created entity -- docs/goals/0194's "database
+// pretending to be a diagram" framing: import turns presentation into
+// queryable data, on purpose.
 
 // pastedTable is one table shape lifted out of the model: ordered
 // rows of ordered cell values.
@@ -224,6 +225,12 @@ func (a *AtlasService) PasteToBoard(text, parentID string, x, y float64) (PasteR
 	return res, nil
 }
 
+// pasteOneTable mints the List a table-shaped paste describes, then
+// lands it as a "table" BoardObject -- a peer to Card, never a card
+// itself (goal 0179's own correction: dropping/pasting something onto
+// the board creates THAT THING). Unlike the pre-S2 behavior, no Kind is
+// resolved and no card exists to promote automatically; Promote to
+// card stays the explicit, reversible escape hatch (useAtlasObjectMenu.ts).
 func (a *AtlasService) pasteOneTable(t pastedTable, parentID string, pos *atlas.Position) error {
 	if a.pasteListFactory == nil || a.pasteRowAppender == nil {
 		return fmt.Errorf("table paste is not available in this build")
@@ -251,7 +258,7 @@ func (a *AtlasService) pasteOneTable(t pastedTable, parentID string, pos *atlas.
 			return err
 		}
 	}
-	_, err = a.CreateListProjectionCard("", title, parentID, pos, listID)
+	_, err = a.CreateBoardObject("table", map[string]string{"listID": listID, "title": title}, *pos, parentID)
 	return err
 }
 

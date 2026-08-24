@@ -141,6 +141,8 @@
     "imageAriaLabel": "Image",
     "inkAriaLabel": "Ink drawing",
     "shapeAriaLabel": "Shape",
+    "tableAriaLabel": "Table",
+    "diagramAriaLabel": "Diagram",
     "loadFailed": "Couldn't load this file."
   },
   "capture": {

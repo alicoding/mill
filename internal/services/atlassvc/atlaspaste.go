@@ -11,9 +11,9 @@ import (
 	"strings"
 )
 
-// Paste understanding (docs/goals/0138, 0194): clipboard text that
-// carries a diagramming tool's cell model becomes Mill's OWN
-// primitives -- table shapes become a List + its projection card,
+// Paste understanding (docs/goals/0138, 0194, 0179 S2): clipboard text
+// that carries a diagramming tool's cell model becomes Mill's OWN
+// primitives -- table shapes become a List + a "table" board object,
 // plain vertices become cards, edges become links. Detection is a
 // deterministic decode ladder, never a heuristic: parse as XML; else
 // URI-decode; else base64+inflate+URI-decode (the tool's own three

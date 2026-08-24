@@ -5,6 +5,8 @@ import { ImageIcon, PencilIcon } from '@primer/octicons-react'
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { AtlasShapeContent } from './AtlasShapeContent'
+import { AtlasTableObjectContent } from './AtlasTableObjectContent'
+import { AtlasDiagramObjectContent } from './AtlasDiagramObjectContent'
 import styles from './AtlasBoardObjectNode.module.css'
 
 export interface AtlasBoardObjectData extends Record<string, unknown> {
@@ -35,9 +37,18 @@ function AtlasBoardObjectNodeInner({ data }: NodeProps<AtlasBoardObjectRFNode>) 
   const [src, setSrc] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
   const isShape = object.Kind === 'shape'
+  // "table" and "diagram" (goal 0179 S2) are structurally NOT
+  // mirror-IMAGE-backed the way image/ink are: a table reads a List
+  // projection, a diagram reads its own mirrored TEXT source through a
+  // dedicated viewer host -- both take an early branch here, same
+  // shape shape's own does, rather than folding into the image-mirror
+  // fetch effect below (which stays scoped to the two Kinds that
+  // actually resolve to base64 image bytes).
+  const isTable = object.Kind === 'table'
+  const isDiagram = object.Kind === 'diagram'
 
   useEffect(() => {
-    if (isShape) return
+    if (isShape || isTable || isDiagram) return
     let stale = false
     setSrc(null)
     setFailed(false)
@@ -56,12 +67,32 @@ function AtlasBoardObjectNodeInner({ data }: NodeProps<AtlasBoardObjectRFNode>) 
     return () => {
       stale = true
     }
-  }, [object.ID, object.Payload, isShape])
+  }, [object.ID, object.Payload, isShape, isTable, isDiagram])
 
   if (isShape) {
     return (
       <div className={styles.object} data-testid="atlas-board-object" data-object-kind="shape" data-shape-type={object.Payload?.shapeType} role="img" aria-label={t('boardObject.shapeAriaLabel')}>
         <AtlasShapeContent object={object} />
+      </div>
+    )
+  }
+
+  if (isTable) {
+    // No role="img" here (unlike every sibling branch): a table's own
+    // grid carries REAL interactive descendants (editable cells,
+    // boundary-insert buttons) -- img's own ARIA semantics forbid
+    // meaningful children, so this stays a plain labelled region.
+    return (
+      <div className={styles.object} data-testid="atlas-board-object" data-object-kind="table" aria-label={t('boardObject.tableAriaLabel')}>
+        <AtlasTableObjectContent object={object} />
+      </div>
+    )
+  }
+
+  if (isDiagram) {
+    return (
+      <div className={styles.object} data-testid="atlas-board-object" data-object-kind="diagram" role="img" aria-label={t('boardObject.diagramAriaLabel')}>
+        <AtlasDiagramObjectContent object={object} />
       </div>
     )
   }

@@ -110,10 +110,12 @@ func TestPasteToBoard_DiagramBecomesCardsAndLinks(t *testing.T) {
 }
 
 // A table-shaped paste mints a List through the wired seams (headers
-// from the first row, keys slugged) and lands its projection card.
-func TestPasteToBoard_TableBecomesListProjection(t *testing.T) {
+// from the first row, keys slugged) and lands a "table" board object
+// -- never a card (goal 0179 S2's own correction).
+func TestPasteToBoard_TableBecomesBoardObject(t *testing.T) {
 	a := newTestAtlasService(t)
 	wireFakeProjection(a)
+	cardsBefore := len(a.Cards())
 	var gotLabel string
 	var gotFields []typedfield.Field
 	var gotRows []map[string]string
@@ -143,14 +145,17 @@ func TestPasteToBoard_TableBecomesListProjection(t *testing.T) {
 	if len(gotRows) != 1 || gotRows[0]["name"] != "Acme" || gotRows[0]["status"] != "Healthy" {
 		t.Errorf("rows = %+v, want the one data row", gotRows)
 	}
+	if len(a.Cards()) != cardsBefore {
+		t.Errorf("expected no card to be created, got %d (was %d)", len(a.Cards()), cardsBefore)
+	}
 	var projected bool
-	for _, c := range a.Cards() {
-		if c.ProjectionListID == "list-vendors" && c.Title == "Vendors" {
+	for _, o := range a.Objects() {
+		if o.Kind == "table" && o.Payload["listID"] == "list-vendors" && o.Payload["title"] == "Vendors" {
 			projected = true
 		}
 	}
 	if !projected {
-		t.Error("expected the projection card for the minted list")
+		t.Error("expected a table board object for the minted list")
 	}
 }
 

@@ -7,6 +7,7 @@ import { refreshAtlas } from './atlasStore'
 import { useAtlasFolderImportRequestStore } from './atlasFolderImportRequest'
 import { FILE_DROP_EVENT_NAME, FILE_DROP_CONTEXT_BOARD } from './atlasFileDropShared'
 import { frameContainingPoint } from './atlasFramePoint'
+import { isDiagramPath, useAtlasDiagramObjectCreate } from './useAtlasDiagramObjectCreate'
 import type { FrameBox } from './useAtlasDragFiling'
 
 const DROP_ERROR_MS = 4000
@@ -33,20 +34,21 @@ export function useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPo
   const [dropError, setDropError] = useState<string | null>(null)
   const [dropDuplicateNotice, setDropDuplicateNotice] = useState<string | null>(null)
   const requestFolderImport = useAtlasFolderImportRequestStore((s) => s.requestFolderImport)
+  const diagramObjectCreate = useAtlasDiagramObjectCreate()
 
   // Latest-refs (useBoardFocus.ts's own convention): the Events.On
   // subscription below is set up once and must never re-fire on every
   // unrelated re-render, but always needs this render's current values.
-  const stateRef = useRef({ parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion })
+  const stateRef = useRef({ parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion, diagramObjectCreate })
   useEffect(() => {
-    stateRef.current = { parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion }
-  }, [parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion])
+    stateRef.current = { parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion, diagramObjectCreate }
+  }, [parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion, diagramObjectCreate])
 
   useEffect(() => {
     return Events.On(FILE_DROP_EVENT_NAME, (evt) => {
       const payload = evt.data as { filenames?: string[]; x?: number; y?: number; context?: string } | undefined
       if (!payload || payload.context !== FILE_DROP_CONTEXT_BOARD || !payload.filenames?.length) return
-      const { topLevelBoxes: boxes, screenToFlowPosition: toFlow, parentID: currentParentID, requestFolderImport: request, setPulsedID: pulse, reduceMotion: reduced } = stateRef.current
+      const { topLevelBoxes: boxes, screenToFlowPosition: toFlow, parentID: currentParentID, requestFolderImport: request, setPulsedID: pulse, reduceMotion: reduced, diagramObjectCreate: diagramCreate } = stateRef.current
       const point = toFlow({ x: payload.x ?? 0, y: payload.y ?? 0 })
       const targetParentID = frameContainingPoint(boxes, point) ?? currentParentID
 
@@ -57,6 +59,13 @@ export function useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPo
             return
           }
           const path = route.Path
+          // A dropped .drawio/.mmd/.mermaid file lands as a "diagram"
+          // board object, never a card (goal 0179 S2) -- no pulse/
+          // duplicate-notice machinery applies, since a board object
+          // carries neither.
+          if (isDiagramPath(path)) {
+            return diagramCreate.land(path, targetParentID, { X: point.x, Y: point.y })
+          }
           return AtlasService.CreateCardFromFileDrop(path, titleFromFilename(path), targetParentID, { X: point.x, Y: point.y })
             .then((result) => refreshAtlas().then(() => {
               pulse(result.Card.ID)

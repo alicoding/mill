@@ -47,6 +47,21 @@ describe('buildBoardObjectNodes', () => {
     expect(ink.zIndex).toBeGreaterThan(image.zIndex!)
   })
 
+  // table/diagram (goal 0179 S2) join image/shape's own annotatable
+  // tier -- ink drawn on top of a projected table or a diagram must
+  // render above it, same as ink over an image.
+  it('gives ink a higher zIndex than table and diagram too', () => {
+    const nodes = buildBoardObjectNodes({
+      objects: [makeObject({ ID: 'table-1', Kind: 'table' }), makeObject({ ID: 'diagram-1', Kind: 'diagram' }), makeObject({ ID: 'ink-1', Kind: 'ink' })],
+      readOnly: false, isFree: true,
+    })
+    const table = nodes.find((n) => n.id === 'table-1')!
+    const diagram = nodes.find((n) => n.id === 'diagram-1')!
+    const ink = nodes.find((n) => n.id === 'ink-1')!
+    expect(ink.zIndex).toBeGreaterThan(table.zIndex!)
+    expect(ink.zIndex).toBeGreaterThan(diagram.zIndex!)
+  })
+
   it('is draggable only in Free mode and never in read-only', () => {
     const objects = [makeObject()]
     expect(buildBoardObjectNodes({ objects, readOnly: false, isFree: true })[0].draggable).toBe(true)
