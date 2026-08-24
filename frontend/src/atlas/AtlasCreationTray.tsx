@@ -1,9 +1,9 @@
-import { Fragment, useRef } from 'react'
+import { createRef, Fragment, useMemo } from 'react'
+import type { RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnchoredOverlay, Button } from '@primer/react'
 import { AtlasTableSizePicker } from './AtlasTableSizePicker'
 import { AtlasImageInput } from './AtlasImageInput'
-import { AtlasPencilStylePicker } from './AtlasPencilStylePicker'
 import { ATLAS_TOOLS, type AtlasArmableTool } from './atlasTools'
 import styles from './AtlasCreationTray.module.css'
 
@@ -28,7 +28,10 @@ export const ATLAS_TOOL_DRAG_MIME = 'application/x-mill-atlas-tool'
 // on click too, but STAYS armed across strokes (AtlasBoard.tsx's own
 // drag hook owns completion, never disarming itself), with its own
 // colour/size options bar shown anchored for as long as it's the
-// armed tool ('drag-to-draw'). Eraser and Laser ('drag-to-erase',
+// armed tool ('drag-to-draw'); Shape (goal 0169 slice 5) shares that
+// same interaction and branch, its own options bar swapped in via the
+// tool's own StylePicker field rather than a second branch. Eraser and
+// Laser ('drag-to-erase',
 // 'ephemeral-drag') fall through to the same plain arm-on-click button
 // the default branch below already renders for Card/Note/Area --
 // neither needs an options popover, so no new branch was needed here
@@ -61,9 +64,18 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
 }) {
   const { t } = useTranslation('atlas')
   const tools = ATLAS_TOOLS.filter((tool) => tool.tray === 'quick')
-  const tableButtonRef = useRef<HTMLButtonElement>(null)
-  const imageButtonRef = useRef<HTMLButtonElement>(null)
-  const pencilButtonRef = useRef<HTMLButtonElement>(null)
+  // One anchor ref PER TOOL ID (not one shared ref reused across every
+  // mapped button) -- created once, since ATLAS_TOOLS is a module-level
+  // constant whose ids never change across renders. A single shared ref
+  // was the pre-slice-5 shape here: it silently worked only because
+  // pencil was the sole 'drag-to-draw' tool ever mounted at once: a
+  // second one (shape) reusing the SAME ref object would make both
+  // AnchoredOverlays anchor to whichever DOM node happened to render
+  // last.
+  const anchorRefs = useMemo(
+    () => Object.fromEntries(tools.map((tool) => [tool.id, createRef<HTMLButtonElement>()])) as Record<string, RefObject<HTMLButtonElement | null>>,
+    [tools],
+  )
 
   return (
     <div className={styles.tray} data-testid="atlas-creation-tray" role="toolbar" aria-label={t('creationTray.ariaLabel')}>
@@ -73,7 +85,7 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
           return (
             <Fragment key={tool.id}>
               <button
-                ref={tableButtonRef}
+                ref={anchorRefs[tool.id]}
                 type="button"
                 className={styles.tool}
                 data-testid={`atlas-tray-${tool.id}`}
@@ -89,7 +101,7 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
               <AnchoredOverlay
                 open={tablePickerOpen}
                 onClose={() => onTableToggle(false)}
-                anchorRef={tableButtonRef}
+                anchorRef={anchorRefs[tool.id]}
                 renderAnchor={null}
                 side="outside-top"
               >
@@ -104,16 +116,22 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
           )
         }
         if (tool.interaction === 'drag-to-draw') {
-          const pencilArmed = armedTool === tool.id
+          const dragArmed = armedTool === tool.id
+          // Which options-bar component floats above the button (goal
+          // 0169 slice 5): registry-driven off the tool's OWN
+          // StylePicker field (atlasTools.ts) rather than a branch
+          // naming pencil/shape here -- a THIRD drag-to-draw tool costs
+          // this branch nothing.
+          const StylePicker = tool.StylePicker
           return (
             <Fragment key={tool.id}>
               <button
-                ref={pencilButtonRef}
+                ref={anchorRefs[tool.id]}
                 type="button"
                 className={styles.tool}
                 data-testid={`atlas-tray-${tool.id}`}
-                data-armed={pencilArmed}
-                aria-pressed={pencilArmed}
+                data-armed={dragArmed}
+                aria-pressed={dragArmed}
                 title={t(`creationTray.${tool.id}Tooltip`)}
                 aria-label={t(`creationTray.${tool.id}Label`)}
                 onClick={() => onToggle(tool.id)}
@@ -121,24 +139,26 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
                 <Icon size={14} />
                 <span className={styles.kbd}>{tool.shortcutKey}</span>
               </button>
-              <AnchoredOverlay
-                open={pencilArmed}
-                // Deliberately NOT wired to disarm: AnchoredOverlay is
-                // fully controlled by `open` (verified against its own
-                // source -- onClickOutside/onEscape only ever CALL
-                // onClose, they never close anything themselves), so
-                // leaving this a no-op means clicking the canvas to
-                // start a stroke -- itself an "outside click" against
-                // this popover -- never disarms the tool mid-gesture.
-                // Only the tray button, Escape, or picking another
-                // tool changes armedTool, all already wired elsewhere.
-                onClose={() => {}}
-                anchorRef={pencilButtonRef}
-                renderAnchor={null}
-                side="outside-top"
-              >
-                <AtlasPencilStylePicker />
-              </AnchoredOverlay>
+              {StylePicker && (
+                <AnchoredOverlay
+                  open={dragArmed}
+                  // Deliberately NOT wired to disarm: AnchoredOverlay is
+                  // fully controlled by `open` (verified against its own
+                  // source -- onClickOutside/onEscape only ever CALL
+                  // onClose, they never close anything themselves), so
+                  // leaving this a no-op means clicking the canvas to
+                  // start a drag -- itself an "outside click" against
+                  // this popover -- never disarms the tool mid-gesture.
+                  // Only the tray button, Escape, or picking another
+                  // tool changes armedTool, all already wired elsewhere.
+                  onClose={() => {}}
+                  anchorRef={anchorRefs[tool.id]}
+                  renderAnchor={null}
+                  side="outside-top"
+                >
+                  <StylePicker />
+                </AnchoredOverlay>
+              )}
             </Fragment>
           )
         }
@@ -146,7 +166,7 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
           return (
             <Fragment key={tool.id}>
               <button
-                ref={imageButtonRef}
+                ref={anchorRefs[tool.id]}
                 type="button"
                 className={styles.tool}
                 data-testid={`atlas-tray-${tool.id}`}
@@ -162,7 +182,7 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
               <AnchoredOverlay
                 open={imagePopoverOpen}
                 onClose={() => onImageToggle(false)}
-                anchorRef={imageButtonRef}
+                anchorRef={anchorRefs[tool.id]}
                 renderAnchor={null}
                 side="outside-top"
               >

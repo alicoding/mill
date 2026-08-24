@@ -10,7 +10,7 @@
 // regardless of which layer is asking.
 export type AtlasToolRequestKind = 'arm' | 'picker' | 'popover'
 
-// Eight distinct members, not one member with a unioned id -- so that
+// Nine distinct members, not one member with a unioned id -- so that
 // Extract<AtlasToolIdentity, { id: 'card' }> (atlasTools.ts's own
 // lookup) can actually narrow to a single one.
 export type AtlasToolIdentity =
@@ -22,6 +22,7 @@ export type AtlasToolIdentity =
   | { id: 'pencil'; shortcutKey: string; commandLabel: string; requestKind: 'arm' }
   | { id: 'eraser'; shortcutKey: string; commandLabel: string; requestKind: 'arm' }
   | { id: 'laser'; shortcutKey: string; commandLabel: string; requestKind: 'arm' }
+  | { id: 'shape'; shortcutKey: string; commandLabel: string; requestKind: 'arm' }
 
 export const ATLAS_TOOL_IDENTITIES: AtlasToolIdentity[] = [
   { id: 'card', shortcutKey: 'C', commandLabel: 'Add a card', requestKind: 'arm' },
@@ -32,6 +33,7 @@ export const ATLAS_TOOL_IDENTITIES: AtlasToolIdentity[] = [
   { id: 'pencil', shortcutKey: 'P', commandLabel: 'Draw with the pencil', requestKind: 'arm' },
   { id: 'eraser', shortcutKey: 'E', commandLabel: 'Erase things on the board', requestKind: 'arm' },
   { id: 'laser', shortcutKey: 'L', commandLabel: 'Point with the laser', requestKind: 'arm' },
+  { id: 'shape', shortcutKey: 'S', commandLabel: 'Draw a shape', requestKind: 'arm' },
 ]
 
 // Every identity whose bare key ARMS a placement (as opposed to
