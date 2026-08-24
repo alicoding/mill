@@ -268,7 +268,7 @@ func TestUpdateWorkflowAttributes_UnknownWorkflow_Rejected(t *testing.T) {
 
 func TestCreateMCPServer_ValidatesAndPersists(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	s, err := cfg.CreateMCPServer("My MCP Server", "my-mcp-server", []string{"--flag"})
+	s, err := cfg.CreateMCPServer("My MCP Server", "my-mcp-server", []string{"--flag"}, nil)
 	if err != nil {
 		t.Fatalf("CreateMCPServer returned error: %v", err)
 	}
@@ -283,21 +283,21 @@ func TestCreateMCPServer_ValidatesAndPersists(t *testing.T) {
 
 func TestCreateMCPServer_InvalidRejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if _, err := cfg.CreateMCPServer("", "my-mcp-server", nil); err == nil {
+	if _, err := cfg.CreateMCPServer("", "my-mcp-server", nil, nil); err == nil {
 		t.Fatal("CreateMCPServer with an empty label returned nil error, want an error")
 	}
 }
 
 func TestUpdateMCPServer_UnknownID_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if _, err := cfg.UpdateMCPServer("does-not-exist", "New label", "cmd", nil); err == nil {
+	if _, err := cfg.UpdateMCPServer("does-not-exist", "New label", "cmd", nil, nil); err == nil {
 		t.Fatal("UpdateMCPServer with an unknown id returned nil error, want an error")
 	}
 }
 
 func TestDeleteMCPServer_RemovesIt(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	s, err := cfg.CreateMCPServer("My MCP Server", "my-mcp-server", nil)
+	s, err := cfg.CreateMCPServer("My MCP Server", "my-mcp-server", nil, nil)
 	if err != nil {
 		t.Fatalf("CreateMCPServer returned error: %v", err)
 	}
@@ -311,7 +311,7 @@ func TestDeleteMCPServer_RemovesIt(t *testing.T) {
 
 func TestResolveMCPServer_ReturnsCommandAndArgs(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	s, err := cfg.CreateMCPServer("My MCP Server", "my-mcp-server", []string{"--flag", "value"})
+	s, err := cfg.CreateMCPServer("My MCP Server", "my-mcp-server", []string{"--flag", "value"}, nil)
 	if err != nil {
 		t.Fatalf("CreateMCPServer returned error: %v", err)
 	}

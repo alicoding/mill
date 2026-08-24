@@ -515,6 +515,18 @@ export function Notes(): $CancellablePromise<atlas$0.Note[] | null> {
 }
 
 /**
+ * ObjectListProjection is CardListProjection's own counterpart for a
+ * board object (goal 0179 S2): resolves objectID's own
+ * Payload["listID"] through the identical read logic, so a "table"
+ * board object renders its projected List through the exact same door
+ * a table CARD's own face/page already uses -- no second projection
+ * reader.
+ */
+export function ObjectListProjection(objectID: string): $CancellablePromise<$models.ListProjection> {
+    return $Call.ByID(2057801304, objectID);
+}
+
+/**
  * ObjectMirrorContent is MirrorContent's own counterpart for a board
  * object (goal 0179/0180): resolves objectID's Payload["mirrorPath"]
  * through the exact same read/classify logic, so an image and an ink
@@ -591,16 +603,19 @@ export function PreviewClipbridgeReply(raw: string): $CancellablePromise<$models
  * PromoteBoardObject is the object's one-way lifecycle event (the same
  * promotion ritual PromoteNote runs): it becomes a typed Card in
  * place -- same position, same parent, title and kind supplied by the
- * caller. mirrorPath, when the object's Payload carries one (every
- * kind does today -- see boardobject.go's own header), rides onto the
- * new card's own MirrorPath, so the promoted card renders through the
- * exact same mirror-unit path a native file drop or the image tool's
- * old card-door already used. checksum is computed BEFORE the lock is
- * taken (fileChecksum does its own I/O) and never blocks promotion on
- * failure, same fail-open posture CreateCardFromFileDrop takes.
- * Atomic under a.mu: the kind is resolved and the card validated
- * BEFORE the object is touched, so a bad kindID leaves the object
- * completely untouched -- no half-promoted state ever exists.
+ * caller. Whichever Payload key the object's own Kind carries rides
+ * onto the matching Card field: mirrorPath -> MirrorPath (image, ink,
+ * shape's own file-backed siblings, and diagram) so the promoted card
+ * renders through the exact same mirror-unit path a native file drop
+ * already used; listID -> ProjectionListID (table) so it keeps
+ * projecting the same List. A Kind that carries neither (shape) simply
+ * promotes to a plain card -- both assignments below are no-ops for it.
+ * checksum is computed BEFORE the lock is taken (fileChecksum does its
+ * own I/O) and never blocks promotion on failure, same fail-open
+ * posture CreateCardFromFileDrop takes. Atomic under a.mu: the kind is
+ * resolved and the card validated BEFORE the object is touched, so a
+ * bad kindID leaves the object completely untouched -- no half-
+ * promoted state ever exists.
  */
 export function PromoteBoardObject(objectID: string, kindID: string, title: string): $CancellablePromise<atlas$0.Card> {
     return $Call.ByID(1142980517, objectID, kindID, title);

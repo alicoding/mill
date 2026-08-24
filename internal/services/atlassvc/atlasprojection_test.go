@@ -1,6 +1,10 @@
 package atlassvc
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/alicoding/mill/internal/domain/atlas"
+)
 
 func wireFakeProjection(a *AtlasService) {
 	a.WireListProjection(func(listID string) (ListProjection, bool) {
@@ -79,6 +83,39 @@ func TestCardListProjection_MissingListAndPlainCards(t *testing.T) {
 	}
 	if proj.ListID != "" || proj.Missing {
 		t.Errorf("plain card projection = %+v, want zero value", proj)
+	}
+}
+
+// ObjectListProjection is CardListProjection's own counterpart for a
+// board object (goal 0179 S2): live reads, an honest Missing state for
+// a deleted List, and an unknown objectID refused outright.
+func TestObjectListProjection_LiveMissingAndUnknownObject(t *testing.T) {
+	a := newTestAtlasService(t)
+	wireFakeProjection(a)
+	o, err := a.CreateBoardObject("table", map[string]string{"listID": "list-vendors"}, atlas.Position{}, "")
+	if err != nil {
+		t.Fatalf("CreateBoardObject: %v", err)
+	}
+
+	proj, err := a.ObjectListProjection(o.ID)
+	if err != nil {
+		t.Fatalf("ObjectListProjection: %v", err)
+	}
+	if proj.Label != "Vendor tracker" || len(proj.Columns) != 2 || len(proj.Rows) != 1 {
+		t.Errorf("projection = %+v, want the wired List view", proj)
+	}
+
+	a.WireListProjection(func(string) (ListProjection, bool) { return ListProjection{}, false })
+	proj, err = a.ObjectListProjection(o.ID)
+	if err != nil {
+		t.Fatalf("ObjectListProjection: %v", err)
+	}
+	if !proj.Missing || proj.ListID != "list-vendors" {
+		t.Errorf("projection = %+v, want Missing with the stored id", proj)
+	}
+
+	if _, err := a.ObjectListProjection("no-such-object"); err == nil {
+		t.Fatal("ObjectListProjection() with an unknown objectID = nil error, want an error")
 	}
 }
 

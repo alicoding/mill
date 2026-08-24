@@ -50,7 +50,7 @@ func TestSeededMCPExample_EchoToolCall_RunsEndToEnd(t *testing.T) {
 
 	var gotCommand string
 	var gotArgs []string
-	SetMCPCallTool(func(command string, args []string, toolName string, arguments map[string]any, callerIdentity string) (string, error) {
+	SetMCPCallTool(func(command string, args []string, env []string, toolName string, arguments map[string]any, callerIdentity string) (string, error) {
 		gotCommand, gotArgs = command, args
 		client := mcp.NewClient(&mcp.Implementation{Name: "mill-test", Version: "v1"}, nil)
 		session, err := client.Connect(ctx, clientTransport, nil)

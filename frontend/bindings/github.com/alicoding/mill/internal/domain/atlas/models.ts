@@ -35,9 +35,11 @@ export interface BoardObject {
 
     /**
      * Payload holds Kind's own data, keyed by a convention only that
-     * kind's producer/renderer agree on ("mirrorPath" for image/ink
-     * today) -- every value stays a plain string on the wire, the same
-     * convention Card.Fields already carries against typedfield.Field.
+     * kind's producer/renderer agree on: "mirrorPath" for a file-backed
+     * kind (image, ink, diagram), "listID" for a List-backed kind
+     * (table, goal 0179 S2) -- every value stays a plain string on the
+     * wire, the same convention Card.Fields already carries against
+     * typedfield.Field.
      */
     "Payload": { [_ in string]?: string } | null;
 

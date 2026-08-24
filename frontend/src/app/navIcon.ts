@@ -1,6 +1,7 @@
 import {
   BookIcon,
   HomeIcon,
+  KeyIcon,
   PlugIcon,
   ProjectIcon,
   PulseIcon,
@@ -24,4 +25,5 @@ export const CAPABILITY_ICON: Record<string, Icon> = {
   'capability-atlas': ProjectIcon,
   'capability-review': ShieldCheckIcon,
   'capability-docs': BookIcon,
+  'capability-secrets': KeyIcon,
 }

@@ -71,7 +71,7 @@ export const AtlasTableCardNode = memo(function AtlasTableCardNode({ data, selec
           {card.ProjectionDensity === 'pills' ? t('projection.pillsTag') : t('projection.tableTag')}
         </button>
       </div>
-      <AtlasCardProjectionTable cardID={card.ID} density={card.ProjectionDensity} />
+      <AtlasCardProjectionTable scopeID={card.ID} density={card.ProjectionDensity} fetchProjection={AtlasService.CardListProjection} />
     </div>
   )
 })

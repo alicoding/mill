@@ -19,6 +19,12 @@
         "type": "string"
       },
       "type": "array"
+    },
+    "env": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
     }
   },
   "additionalProperties": false,

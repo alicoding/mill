@@ -66,5 +66,6 @@ export enum ViewKind {
     ViewConfigure = "configure",
     ViewAtlas = "atlas",
     ViewDocs = "docs",
+    ViewSecrets = "secrets",
     ViewPlaceholder = "placeholder",
 };

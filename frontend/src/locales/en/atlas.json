@@ -141,6 +141,8 @@
     "imageAriaLabel": "Image",
     "inkAriaLabel": "Ink drawing",
     "shapeAriaLabel": "Shape",
+    "tableAriaLabel": "Table",
+    "diagramAriaLabel": "Diagram",
     "loadFailed": "Couldn't load this file.",
     "kindPluralImage": "images",
     "kindPluralInk": "ink strokes",
@@ -434,7 +436,9 @@
     "cards_one": "{{count}} card",
     "cards_other": "{{count}} cards",
     "links_one": "{{count}} link",
-    "links_other": "{{count}} links"
+    "links_other": "{{count}} links",
+    "pagesSkipped_one": "{{count}} page couldn't be read: {{pages}}",
+    "pagesSkipped_other": "{{count}} pages couldn't be read: {{pages}}"
   },
   "newSpace": {
     "title": "New space"

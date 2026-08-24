@@ -10,11 +10,24 @@
 package mcpserver
 
 import (
+	"strings"
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/seedorigin"
 	"github.com/alicoding/mill/internal/domain/typedfield"
 )
+
+// VaultRefPrefix marks an Env value as a vault entry reference rather
+// than a literal -- "KEY=vault:<entry-id>". Exported so the resolving
+// service (configuresvc) and any future consumer share one spelling.
+const VaultRefPrefix = "vault:"
+
+// EnvVaultRef reports whether value (an Env entry's own value half,
+// after the "KEY=" split) names a vault entry, returning its id.
+func EnvVaultRef(value string) (id string, ok bool) {
+	rest, found := strings.CutPrefix(value, VaultRefPrefix)
+	return rest, found
+}
 
 // MCPServer is one reusable, named MCP server connection -- Command is
 // run with Args over stdio (mcp.CommandTransport, wrapped by
@@ -24,6 +37,16 @@ type MCPServer struct {
 	Label   string
 	Command string
 	Args    []string
+	// Env is the child process's own environment additions, KEY=VALUE
+	// per entry (execenv.ExecEnv.Env's own shape) -- merged onto Mill's
+	// ambient environment at spawn (unlike ExecEnv's fully-explicit
+	// posture: an MCP server subprocess still needs PATH etc. to run at
+	// all). A value of the form "vault:<entry-id>" (goal 0185 S3) is
+	// resolved to that vault entry's password at spawn time, never
+	// written to disk in resolved form -- the MCP spec's own delivery
+	// contract ("retrieve credentials from the environment"), Mill's
+	// storage answer for the client side it leaves unspecified.
+	Env []string
 	// BuiltIn marks a seeded example MCP Server (BuiltIn() below) --
 	// purely informational, same as httprequest.HTTPRequest.BuiltIn/
 	// decision.Decision.BuiltIn/list.List.BuiltIn: drives a "built-in"

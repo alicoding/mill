@@ -226,3 +226,29 @@ func TestPromoteBoardObject_FieldMappingAndAtomicity(t *testing.T) {
 		t.Error("PromoteBoardObject's card is not present in Cards()")
 	}
 }
+
+// A "table" object's own Payload key (listID, not mirrorPath) rides
+// onto the promoted card's ProjectionListID -- the promoted card keeps
+// projecting the SAME List (goal 0179 S2).
+func TestPromoteBoardObject_TableCarriesProjectionListID(t *testing.T) {
+	a := newTestAtlasService(t)
+	kind, err := a.CreateKind("Reference", "", "", []typedfield.Field{})
+	if err != nil {
+		t.Fatalf("CreateKind: %v", err)
+	}
+	o, err := a.CreateBoardObject("table", map[string]string{"listID": "list-vendors"}, atlas.Position{X: 1, Y: 2}, "")
+	if err != nil {
+		t.Fatalf("CreateBoardObject: %v", err)
+	}
+
+	card, err := a.PromoteBoardObject(o.ID, kind.ID, "Vendors")
+	if err != nil {
+		t.Fatalf("PromoteBoardObject: %v", err)
+	}
+	if card.ProjectionListID != "list-vendors" {
+		t.Errorf("PromoteBoardObject's card ProjectionListID = %q, want the object's own listID %q", card.ProjectionListID, "list-vendors")
+	}
+	if card.MirrorPath != "" {
+		t.Errorf("PromoteBoardObject's card MirrorPath = %q, want empty for a table object", card.MirrorPath)
+	}
+}

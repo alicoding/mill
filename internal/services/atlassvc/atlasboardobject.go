@@ -133,16 +133,19 @@ func (a *AtlasService) MoveBoardObject(id, newParentID string) (atlas.BoardObjec
 // PromoteBoardObject is the object's one-way lifecycle event (the same
 // promotion ritual PromoteNote runs): it becomes a typed Card in
 // place -- same position, same parent, title and kind supplied by the
-// caller. mirrorPath, when the object's Payload carries one (every
-// kind does today -- see boardobject.go's own header), rides onto the
-// new card's own MirrorPath, so the promoted card renders through the
-// exact same mirror-unit path a native file drop or the image tool's
-// old card-door already used. checksum is computed BEFORE the lock is
-// taken (fileChecksum does its own I/O) and never blocks promotion on
-// failure, same fail-open posture CreateCardFromFileDrop takes.
-// Atomic under a.mu: the kind is resolved and the card validated
-// BEFORE the object is touched, so a bad kindID leaves the object
-// completely untouched -- no half-promoted state ever exists.
+// caller. Whichever Payload key the object's own Kind carries rides
+// onto the matching Card field: mirrorPath -> MirrorPath (image, ink,
+// shape's own file-backed siblings, and diagram) so the promoted card
+// renders through the exact same mirror-unit path a native file drop
+// already used; listID -> ProjectionListID (table) so it keeps
+// projecting the same List. A Kind that carries neither (shape) simply
+// promotes to a plain card -- both assignments below are no-ops for it.
+// checksum is computed BEFORE the lock is taken (fileChecksum does its
+// own I/O) and never blocks promotion on failure, same fail-open
+// posture CreateCardFromFileDrop takes. Atomic under a.mu: the kind is
+// resolved and the card validated BEFORE the object is touched, so a
+// bad kindID leaves the object completely untouched -- no half-
+// promoted state ever exists.
 func (a *AtlasService) PromoteBoardObject(objectID, kindID, title string) (atlas.Card, error) {
 	a.mu.RLock()
 	objIdx := a.findObjectLocked(objectID)
@@ -173,7 +176,12 @@ func (a *AtlasService) PromoteBoardObject(objectID, kindID, title string) (atlas
 	c := atlas.Card{
 		ID: seeding.NewSlugID(title, "card"), KindID: kindID, Title: title,
 		ParentID: obj.ParentID, Position: &pos, MirrorPath: obj.Payload["mirrorPath"], MirrorChecksum: checksum,
-		CreatedAt: now, UpdatedAt: now,
+		// ProjectionListID rides along for a "table" object exactly the
+		// way MirrorPath does for a file-backed one -- a promoted table
+		// keeps projecting the SAME List, through CardListProjection
+		// rather than a second reader (goal 0179 S2).
+		ProjectionListID: obj.Payload["listID"],
+		CreatedAt:        now, UpdatedAt: now,
 	}
 	if err := atlas.ValidateCard(c, kind); err != nil {
 		a.mu.Unlock()

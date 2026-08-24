@@ -239,12 +239,21 @@ func (c *ConfigureService) ImportList(jsonData string) (list.List, error) {
 
 // --- MCPServer ---
 
+// Env is safe to export/import verbatim exactly when every entry is a
+// "vault:" reference (mcpserver.EnvVaultRef) -- a pointer, never the
+// secret value itself, same as every other exported shape in this file
+// (this package's own doc comment: "no exported shape carries a secret
+// because no in-memory shape does"). A literal (non-"vault:") Env
+// value is NOT specially guarded here -- same known gap
+// execenv.ExecEnv.Env's own doc comment names for plain, non-referenced
+// environment values.
 type exportedMCPServer struct {
 	Schema  string   `json:"schema"`
 	ID      string   `json:"id,omitempty"`
 	Label   string   `json:"label"`
 	Command string   `json:"command"`
 	Args    []string `json:"args"`
+	Env     []string `json:"env,omitempty"`
 }
 
 func (c *ConfigureService) ExportMCPServer(id string) (string, error) {
@@ -263,35 +272,16 @@ func (c *ConfigureService) ExportMCPServer(id string) (string, error) {
 		return "", fmt.Errorf("no MCP server with id %q", id)
 	}
 
-	data, err := json.MarshalIndent(exportedMCPServer{Schema: contract.SchemaID("mcpserver"), ID: s.ID, Label: s.Label, Command: s.Command, Args: s.Args}, "", "  ")
+	data, err := json.MarshalIndent(exportedMCPServer{Schema: contract.SchemaID("mcpserver"), ID: s.ID, Label: s.Label, Command: s.Command, Args: s.Args, Env: s.Env}, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("export MCP server: %w", err)
 	}
 	return string(data), nil
 }
 
-// ImportMCPServer applies ADR-0036 decision 3's uniform import rule
-// (this file's own header comment).
-func (c *ConfigureService) ImportMCPServer(jsonData string) (mcpserver.MCPServer, error) {
-	var in exportedMCPServer
-	if err := json.Unmarshal([]byte(jsonData), &in); err != nil {
-		return mcpserver.MCPServer{}, fmt.Errorf("import MCP server: invalid JSON: %w", err)
-	}
-	if err := contract.ValidateImportSchema("mcpserver", in.Schema); err != nil {
-		return mcpserver.MCPServer{}, fmt.Errorf("import MCP server: %w", err)
-	}
-
-	if in.ID != "" {
-		c.mu.Lock()
-		found := c.mcpServerExistsLocked(in.ID)
-		c.mu.Unlock()
-		if found {
-			return c.UpdateMCPServer(in.ID, in.Label, in.Command, in.Args)
-		}
-		return c.createMCPServerWithID(in.ID, in.Label, in.Command, in.Args)
-	}
-	return c.CreateMCPServer(in.Label, in.Command, in.Args)
-}
+// ImportMCPServer/ImportAIProvider/the generic importUniform dispatch
+// they share live in configureservice_import_generic.go (dupl-gate
+// exclusion: see that file's own header comment).
 
 // --- Decision ---
 
@@ -406,28 +396,9 @@ func (c *ConfigureService) ExportAIProvider(id string) (string, error) {
 	return string(data), nil
 }
 
-// ImportAIProvider applies ADR-0036 decision 3's uniform import rule
-// (this file's own header comment). No secret ever round-trips --
-// exportedAIProvider never carries one, same as ImportMCPServer's own
-// no-credential-to-import shape; an updated provider keeps its existing
-// local secret untouched (UpdateAIProvider never touches it either).
-func (c *ConfigureService) ImportAIProvider(jsonData string) (aiprovider.AIProvider, error) {
-	var in exportedAIProvider
-	if err := json.Unmarshal([]byte(jsonData), &in); err != nil {
-		return aiprovider.AIProvider{}, fmt.Errorf("import AI provider: invalid JSON: %w", err)
-	}
-	if err := contract.ValidateImportSchema("aiprovider", in.Schema); err != nil {
-		return aiprovider.AIProvider{}, fmt.Errorf("import AI provider: %w", err)
-	}
-
-	if in.ID != "" {
-		c.mu.Lock()
-		found := c.aiProviderExistsLocked(in.ID)
-		c.mu.Unlock()
-		if found {
-			return c.UpdateAIProvider(in.ID, in.Label, in.Kind, in.BaseURL, in.Model)
-		}
-		return c.createAIProviderWithID(in.ID, in.Label, in.Kind, in.BaseURL, in.Model)
-	}
-	return c.CreateAIProvider(in.Label, in.Kind, in.BaseURL, in.Model)
-}
+// ImportAIProvider lives in configureservice_import_generic.go, along
+// with ImportMCPServer (dupl-gate exclusion: see that file's own header
+// comment). No secret ever round-trips through it -- exportedAIProvider
+// never carries one, same as ImportMCPServer's own no-credential-to-
+// import shape; an updated provider keeps its existing local secret
+// untouched (UpdateAIProvider never touches it either).

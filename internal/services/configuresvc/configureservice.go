@@ -84,6 +84,23 @@ type ConfigureService struct {
 	aiProviders       []aiprovider.AIProvider
 	declaredStepTypes []declaredsteptype.DeclaredStepType
 	composition       *compositionsvc.CompositionService
+	// secretResolver resolves a vault entry id to its password (goal
+	// 0185 S3) -- wired late via SetSecretResolver once secretsvc's
+	// SecretService exists (main.go/wiring.go construct it after this
+	// service). Defaults to an error so an Env "vault:" reference
+	// resolved before wiring fails loudly rather than silently
+	// returning an empty secret.
+	secretResolver func(id string) (string, error)
+}
+
+// SetSecretResolver wires ConfigureService's own vault-reference
+// resolution (mcpserver.EnvVaultRef) to secretsvc.SecretService's
+// ResolveSecretValue -- called once from main.go after that service
+// exists. Exported for wiring only, never a frontend RPC.
+//
+//wails:ignore
+func (c *ConfigureService) SetSecretResolver(fn func(id string) (string, error)) {
+	c.secretResolver = fn
 }
 
 func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionService, credentials credential.Store) *ConfigureService {
@@ -92,6 +109,9 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	// asks about presence often, and only this choke point keeps the
 	// cache truthful.
 	c := &ConfigureService{store: store, composition: comp, credentials: newPresenceCachingCredentials(credentials)}
+	c.secretResolver = func(id string) (string, error) {
+		return "", fmt.Errorf("no vault secret resolver registered (yet) for id %q", id)
+	}
 	c.restore()
 	c.restoreMCPServers()
 	c.restoreDecisions()

@@ -230,7 +230,7 @@ func TestExportList_IsDeterministic(t *testing.T) {
 // decision 3's update path for MCPServer.
 func TestExportImportMCPServer_KnownID_UpdatesInPlace(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	created, err := cfg.CreateMCPServer("My server", "npx", []string{"-y", "some-package"})
+	created, err := cfg.CreateMCPServer("My server", "npx", []string{"-y", "some-package"}, nil)
 	if err != nil {
 		t.Fatalf("CreateMCPServer: %v", err)
 	}
@@ -259,7 +259,7 @@ func TestExportImportMCPServer_KnownID_UpdatesInPlace(t *testing.T) {
 // fresh-create path for MCPServer.
 func TestExportImportMCPServer_NoID_CreatesFresh(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	created, err := cfg.CreateMCPServer("My server", "npx", []string{"-y", "some-package"})
+	created, err := cfg.CreateMCPServer("My server", "npx", []string{"-y", "some-package"}, nil)
 	if err != nil {
 		t.Fatalf("CreateMCPServer: %v", err)
 	}

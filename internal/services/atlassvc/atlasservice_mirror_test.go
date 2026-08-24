@@ -130,6 +130,34 @@ func TestObjectMirrorContent_Image_ReturnsBase64WithMimeType(t *testing.T) {
 	}
 }
 
+// A "diagram" board object (goal 0179 S2) is text-kind, not image-kind
+// -- the native file-drop door lands its mirrorPath exactly as image's
+// own drop does, but a .drawio/.mmd source classifies and reads back
+// as plain text through the SAME mirrorContentForPath shared logic.
+func TestObjectMirrorContent_DrawioSource_ReturnsPlainText(t *testing.T) {
+	a := newTestAtlasService(t)
+	xml := `<mxfile><diagram name="Page-1"><mxGraphModel/></diagram></mxfile>`
+	path := filepath.Join(t.TempDir(), "flow.drawio")
+	if err := os.WriteFile(path, []byte(xml), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	o, err := a.CreateBoardObject("diagram", map[string]string{"mirrorPath": path}, atlas.Position{}, "")
+	if err != nil {
+		t.Fatalf("CreateBoardObject: %v", err)
+	}
+
+	got, err := a.ObjectMirrorContent(o.ID)
+	if err != nil {
+		t.Fatalf("ObjectMirrorContent: %v", err)
+	}
+	if got.Kind != atlas.MirrorKindText {
+		t.Errorf("Kind = %q, want text", got.Kind)
+	}
+	if got.Content != xml {
+		t.Errorf("Content = %q, want the raw .drawio source unchanged", got.Content)
+	}
+}
+
 func TestObjectMirrorContent_NoMirrorPath_Errors(t *testing.T) {
 	a := newTestAtlasService(t)
 	o, err := a.CreateBoardObject("ink", nil, atlas.Position{}, "")

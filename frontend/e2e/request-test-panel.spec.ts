@@ -79,7 +79,7 @@ test('Duplicating a request pre-fills a new form without carrying over the secre
   await page.getByLabel('Label').fill('Original Request')
   await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
   await page.getByLabel('Auth type').selectOption('bearer')
-  await page.getByLabel('Secret').fill('shh-original-secret')
+  await page.getByLabel('Secret', { exact: true }).fill('shh-original-secret')
   await page.getByRole('button', { name: 'Save request' }).click()
   await expect(requestRow(page, 'Original Request')).toBeVisible()
 
@@ -94,8 +94,8 @@ test('Duplicating a request pre-fills a new form without carrying over the secre
   await expect(page.getByLabel('Auth type')).toHaveValue('bearer')
   // Secret must come across empty -- it was never readable back through
   // Mill in the first place (write-only design, docs/SPEC.md §3.5).
-  await expect(page.getByLabel('Secret')).toHaveValue('')
-  await page.getByLabel('Secret').fill('shh-copy-secret')
+  await expect(page.getByLabel('Secret', { exact: true })).toHaveValue('')
+  await page.getByLabel('Secret', { exact: true }).fill('shh-copy-secret')
 
   await page.getByRole('button', { name: 'Save request' }).click()
   await expect(requestRow(page, 'Original Request copy')).toBeVisible()

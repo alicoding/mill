@@ -211,7 +211,7 @@ function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; 
           break
         }
         case 'mcpserver': {
-          const s = await ConfigureService.CreateMCPServer(label, secondary, null)
+          const s = await ConfigureService.CreateMCPServer(label, secondary, null, null)
           id = s.ID
           break
         }

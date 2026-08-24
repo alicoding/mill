@@ -52,6 +52,14 @@ linters:
       # the duplication it covered.
       - path: internal/services/atlassvc/atlasservice_builtin\.go
         linters: [dupl]
+      # ImportMCPServer/ImportAIProvider's generic-dispatch bodies
+      # (goal 0185 S3): two calls into the same generic importUniform
+      # helper, differing only in type arguments -- dupl's tokenized,
+      # type-blind matcher cannot tell that apart no matter how far the
+      # shared logic is compressed (see that file's own header comment
+      # for the full reasoning).
+      - path: internal/services/configuresvc/configureservice_import_generic\.go
+        linters: [dupl]
 
   settings:
     dupl:

@@ -156,7 +156,8 @@
     "review": "Review",
     "settings": "Settings",
     "overview": "Overview",
-    "docs": "Docs"
+    "docs": "Docs",
+    "secrets": "Secrets"
   },
   "workTabLabel": {
     "workflow": "Workflow",

@@ -2,6 +2,7 @@ package configuresvc
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/mcpclient"
@@ -55,13 +56,50 @@ const mcpServersKey = "configure-mcpservers"
 // Go-internal wiring only, same as resolveHTTPRequest/resolveList.
 func (c *ConfigureService) resolveMCPServer(id string) (composition.ResolvedMCPServer, error) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	for _, s := range c.mcpServers {
-		if s.ID == id {
-			return composition.ResolvedMCPServer{Command: s.Command, Args: s.Args}, nil
+	var found *mcpserver.MCPServer
+	for i := range c.mcpServers {
+		if c.mcpServers[i].ID == id {
+			found = &c.mcpServers[i]
+			break
 		}
 	}
-	return composition.ResolvedMCPServer{}, fmt.Errorf("no MCP server with id %q", id)
+	c.mu.Unlock()
+	if found == nil {
+		return composition.ResolvedMCPServer{}, fmt.Errorf("no MCP server with id %q", id)
+	}
+
+	env, err := c.resolveMCPServerEnv(found.Label, found.Env)
+	if err != nil {
+		return composition.ResolvedMCPServer{}, err
+	}
+	return composition.ResolvedMCPServer{Command: found.Command, Args: found.Args, Env: env}, nil
+}
+
+// resolveMCPServerEnv substitutes every "vault:<id>" value (mcpserver.
+// EnvVaultRef) with that vault entry's real password via
+// c.secretResolver -- a locked vault surfaces here as this call's own
+// error (secretsvc.ErrLocked wrapped), the explicit "vault is locked"
+// failure the goal file requires, never a silent empty/wrong secret. A
+// plain (non-"vault:") value passes through unresolved, unchanged.
+func (c *ConfigureService) resolveMCPServerEnv(label string, env []string) ([]string, error) {
+	if len(env) == 0 {
+		return nil, nil
+	}
+	out := make([]string, len(env))
+	for i, kv := range env {
+		key, value, hasEq := strings.Cut(kv, "=")
+		id, isRef := mcpserver.EnvVaultRef(value)
+		if !hasEq || !isRef {
+			out[i] = kv
+			continue
+		}
+		secret, err := c.secretResolver(id)
+		if err != nil {
+			return nil, fmt.Errorf("MCP server %q: resolving vault secret for %s: %w", label, key, err)
+		}
+		out[i] = key + "=" + secret
+	}
+	return out, nil
 }
 
 // --- MCP Servers ---
@@ -94,16 +132,16 @@ func (c *ConfigureService) mcpServerExistsLocked(id string) bool {
 	return false
 }
 
-func (c *ConfigureService) CreateMCPServer(label, command string, args []string) (mcpserver.MCPServer, error) {
-	return c.createMCPServerWithID(seeding.NewSlugID(label, "mcp-server"), label, command, args)
+func (c *ConfigureService) CreateMCPServer(label, command string, args []string, env []string) (mcpserver.MCPServer, error) {
+	return c.createMCPServerWithID(seeding.NewSlugID(label, "mcp-server"), label, command, args, env)
 }
 
 // createMCPServerWithID is CreateMCPServer's own logic, parameterized
 // on the new server's id -- the seam ImportMCPServer uses to preserve a
 // caller-supplied id (ADR-0036 decision 3).
-func (c *ConfigureService) createMCPServerWithID(id, label, command string, args []string) (mcpserver.MCPServer, error) {
+func (c *ConfigureService) createMCPServerWithID(id, label, command string, args []string, env []string) (mcpserver.MCPServer, error) {
 	now := time.Now()
-	s := mcpserver.MCPServer{ID: id, Label: label, Command: command, Args: args, CreatedAt: now, UpdatedAt: now}
+	s := mcpserver.MCPServer{ID: id, Label: label, Command: command, Args: args, Env: env, CreatedAt: now, UpdatedAt: now}
 	if err := mcpserver.Validate(s); err != nil {
 		return mcpserver.MCPServer{}, err
 	}
@@ -115,8 +153,8 @@ func (c *ConfigureService) createMCPServerWithID(id, label, command string, args
 	return s, nil
 }
 
-func (c *ConfigureService) UpdateMCPServer(id, label, command string, args []string) (mcpserver.MCPServer, error) {
-	s := mcpserver.MCPServer{ID: id, Label: label, Command: command, Args: args}
+func (c *ConfigureService) UpdateMCPServer(id, label, command string, args []string, env []string) (mcpserver.MCPServer, error) {
+	s := mcpserver.MCPServer{ID: id, Label: label, Command: command, Args: args, Env: env}
 	if err := mcpserver.Validate(s); err != nil {
 		return mcpserver.MCPServer{}, err
 	}
@@ -167,7 +205,7 @@ func (c *ConfigureService) ListMCPServerTools(id string) ([]mcpclient.Tool, erro
 	// A manual Configure-page reference lookup, not a workflow step --
 	// "configure-mcpserver-preview" is a static caller identity (goal
 	// 0159 slice 1's audit trail), not a per-run workflow/step id.
-	return mcpclient.ListTools(rs.Command, rs.Args, "configure-mcpserver-preview")
+	return mcpclient.ListTools(rs.Command, rs.Args, rs.Env, "configure-mcpserver-preview")
 }
 
 // --- persistence ---
