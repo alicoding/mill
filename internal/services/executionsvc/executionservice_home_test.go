@@ -132,6 +132,11 @@ func TestRunDuration_ExcludesInFlightAndNonPositiveSpans(t *testing.T) {
 		{"completed", RunSummary{StartedAt: start, CompletedAt: start.Add(30 * time.Second)}, 30 * time.Second, true},
 		{"still in flight (zero CompletedAt)", RunSummary{StartedAt: start}, 0, false},
 		{"completed in the same instant (real, valid zero duration)", RunSummary{StartedAt: start, CompletedAt: start}, 0, true},
+		// Regression: DBOS stores created_at rounded to the nearest ms but
+		// completed_at truncated, so a sub-millisecond run can read as
+		// completing 1ms before it started -- valid, clamped to zero.
+		{"completed 1ms before started (DBOS ms quantization)", RunSummary{StartedAt: start, CompletedAt: start.Add(-time.Millisecond)}, 0, true},
+		{"completed 2ms before started (beyond quantization: clock skew)", RunSummary{StartedAt: start, CompletedAt: start.Add(-2 * time.Millisecond)}, 0, false},
 		{"completed before started (clock skew)", RunSummary{StartedAt: start, CompletedAt: start.Add(-time.Second)}, 0, false},
 	}
 	for _, c := range cases {

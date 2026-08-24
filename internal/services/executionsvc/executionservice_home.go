@@ -305,13 +305,22 @@ func (e *ExecutionService) timeSavedFor(runs []RunSummary) TimeSavedMetric {
 // zero. CompletedAt exactly equal to StartedAt is a real, valid
 // zero-duration result -- confirmed against real DBOS timing (a purely
 // local, no-I/O step can genuinely complete within the same recorded
-// millisecond) -- only CompletedAt strictly BEFORE StartedAt (clock
+// millisecond). CompletedAt up to 1ms BEFORE StartedAt is also valid,
+// clamped to zero: DBOS's sysdb stores created_at rounded to the
+// nearest millisecond (Round(time.Millisecond).UnixMilli()) but
+// completed_at truncated (UnixMilli()), so a run finishing within the
+// same half-millisecond it was created can read as completing 1ms
+// before it started. Only a gap beyond that quantization window (clock
 // skew, a checkpoint race) is treated as invalid.
 func runDuration(r RunSummary) (time.Duration, bool) {
-	if r.CompletedAt.IsZero() || r.CompletedAt.Before(r.StartedAt) {
+	if r.CompletedAt.IsZero() || r.CompletedAt.Before(r.StartedAt.Add(-time.Millisecond)) {
 		return 0, false
 	}
-	return r.CompletedAt.Sub(r.StartedAt), true
+	d := r.CompletedAt.Sub(r.StartedAt)
+	if d < 0 {
+		d = 0
+	}
+	return d, true
 }
 
 func avgDurationFor(runs []RunSummary) AvgDurationMetric {

@@ -18,6 +18,13 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    ignore:
+      # go-get-proxied v1.4.1+ raises its go directive to 1.26, which
+      # drags this module's go directive past CI's pinned go-version
+      # '1.25' (GOTOOLCHAIN=local) and fails every Go job at package
+      # load. Lift when CI's Go moves to 1.26.
+      - dependency-name: github.com/rapid7/go-get-proxied
+        versions: [">= 1.4.1"]
     groups:
       go-dependencies:
         update-types:
