@@ -1,16 +1,16 @@
 module github.com/alicoding/mill
 
-go 1.25.7
+go 1.26.5
 
 require (
 	github.com/JohannesKaufmann/dom v0.3.1
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2
 	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/andybalholm/cascadia v1.3.4
-	github.com/dbos-inc/dbos-transact-golang v1.1.0
+	github.com/dbos-inc/dbos-transact-golang v1.2.0
 	github.com/expr-lang/expr v1.17.8
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/getkin/kin-openapi v0.146.0
+	github.com/getkin/kin-openapi v0.147.0
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
@@ -18,7 +18,7 @@ require (
 	github.com/invopop/jsonschema v0.14.0
 	github.com/modelcontextprotocol/go-sdk v1.7.0
 	github.com/netresearch/go-cron v0.15.1
-	github.com/rapid7/go-get-proxied v1.4.0
+	github.com/rapid7/go-get-proxied v1.4.1
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/tobischo/gokeepasslib/v3 v3.7.0
 	github.com/wailsapp/wails/v3 v3.0.0-beta.8
@@ -30,7 +30,7 @@ require (
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/text v0.41.0
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/sqlite v1.56.0
+	modernc.org/sqlite v1.57.0
 )
 
 require (
