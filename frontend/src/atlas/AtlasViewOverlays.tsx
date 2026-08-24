@@ -47,7 +47,7 @@ export function AtlasViewOverlays({
   onCloseTableFromList: () => void
   newSpaceOpen: boolean
   onCloseNewSpace: () => void
-  onCreateTable: (kindID: string, title: string, listID: string) => Promise<void>
+  onCreateTable: (listID: string) => Promise<void>
   onCreateSpace: (kindID: string, title: string) => Promise<void>
   menu: ContextMenuState | null
   onCloseMenu: () => void

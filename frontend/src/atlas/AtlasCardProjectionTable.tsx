@@ -2,18 +2,27 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
-import { AtlasService } from '../shared/bindings'
 import type { ListProjection } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { ListGrid } from '../shared/ListGrid'
 import styles from './AtlasCardProjectionTable.module.css'
 
-// The projected List on a card (goal 0105): the board's table node
-// AND the card page mount the ONE shared grid (shared/ListGrid, goal
-// 0136 -- Configure's List page is its other consumer, so tables read
-// identically everywhere). This wrapper owns only what's card-shaped:
-// the projection fetch (live -- re-fetched on every persisted List
-// change), the honest missing-List state, and the canvas armor.
-export function AtlasCardProjectionTable({ cardID, density }: { cardID: string; density?: string }) {
+// The projected List on a card OR a board object (goal 0105, widened by
+// goal 0179 S2): the board's table node, a table board object's own
+// board face, AND the card page all mount the ONE shared grid
+// (shared/ListGrid, goal 0136 -- Configure's List page is its other
+// consumer, so tables read identically everywhere). This wrapper owns
+// only what's projection-shaped: the fetch (live -- re-fetched on
+// every persisted List change), the honest missing-List state, and the
+// canvas armor. fetchProjection is the caller's own resolver
+// (AtlasService.CardListProjection for a card, .ObjectListProjection
+// for a board object) -- the ONE piece that differs between the two
+// entities a projection can ride on; scopeID is whichever id that
+// resolver takes, used only as this effect's own dependency/cache key.
+export function AtlasCardProjectionTable({ scopeID, density, fetchProjection }: {
+  scopeID: string
+  density?: string
+  fetchProjection: (id: string) => Promise<ListProjection>
+}) {
   const { t } = useTranslation('atlas')
   const [proj, setProj] = useState<ListProjection | null>(null)
 
@@ -25,7 +34,7 @@ export function AtlasCardProjectionTable({ cardID, density }: { cardID: string; 
   const projListIDRef = useRef('')
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null
-    const refetch = () => void AtlasService.CardListProjection(cardID).then((p) => {
+    const refetch = () => void fetchProjection(scopeID).then((p) => {
       projListIDRef.current = p.ListID
       setProj(p)
     }).catch(() => setProj(null))
@@ -46,7 +55,8 @@ export function AtlasCardProjectionTable({ cardID, density }: { cardID: string; 
       off()
       if (timer !== null) clearTimeout(timer)
     }
-  }, [cardID])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchProjection is one of the two stable AtlasService bound methods, never a fresh closure per render
+  }, [scopeID])
 
   if (!proj || proj.ListID === '') return null
   if (proj.Missing) {

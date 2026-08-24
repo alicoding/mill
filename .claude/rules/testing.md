@@ -156,9 +156,22 @@ at:
     decision while away and Mill app-hidden — confirm the floating
     approval prompt appears rather than staying invisible behind a
     still-hidden app.
-  - **Native file-drop delivery** (goal 0081 A3) — verify by dragging a
-    `.md` file from Finder onto the running app and confirming the card
-    lands with the real path.
+  - **Native file-drop delivery** (goal 0081 A3, extended by goal 0179
+    S2) — verify by dragging a `.md` file from Finder onto the running
+    app and confirming the card lands with the real path; separately,
+    drag a `.drawio` and a `.mmd` file and confirm each lands as a
+    "diagram" board object (not a card). The DROP GESTURE itself is a
+    structural gap in this harness (Wails3's `WindowFilesDropped` needs
+    a real `*WebviewWindow`, which server-mode Playwright's connection
+    is not) — the routing decision is Vitest-tested instead
+    (`useAtlasDiagramObjectCreate.test.ts`'s `isDiagramPath`). The
+    RESULT of a drop (the object's own board-face rendering, and
+    Promote to card) IS e2e-proven despite the gesture gap:
+    `atlas-diagram-object.spec.ts` lands the object via
+    `fixtures/atlasNativeDropEscapeHatch.ts` — a direct call to the
+    exact same `CreateBoardObject` RPC every tray click already goes
+    through, by its stable Go method name — then drives every assertion
+    through the real rendered DOM.
   - **Companion panel against a real local model** (goal 0101) — verify
     desktop-mode with Ollama running: judge token-by-token
     responsiveness and whether replies parse into intended proposals

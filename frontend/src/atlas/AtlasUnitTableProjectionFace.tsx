@@ -1,4 +1,5 @@
 import { AtlasCardProjectionTable } from './AtlasCardProjectionTable'
+import { AtlasService } from '../shared/bindings'
 import type { UnitRenderProps } from './unitRegistry'
 
 // The table-projection unit's compact face -- the board node's own
@@ -8,5 +9,5 @@ import type { UnitRenderProps } from './unitRegistry'
 // unit's board-face half of the pair loads the same way its page half
 // does).
 export function AtlasUnitTableProjectionFace({ card }: UnitRenderProps) {
-  return <AtlasCardProjectionTable cardID={card.ID} density={card.ProjectionDensity} />
+  return <AtlasCardProjectionTable scopeID={card.ID} density={card.ProjectionDensity} fetchProjection={AtlasService.CardListProjection} />
 }

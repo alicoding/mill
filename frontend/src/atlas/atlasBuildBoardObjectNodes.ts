@@ -19,8 +19,11 @@ import type { AtlasBoardObjectRFNode } from './AtlasBoardObjectNode'
 // goal 0169 slice 5 extending it to "ink can be drawn on top of
 // shapes"): shape joins image's own tier -- both are peer surfaces ink
 // annotates -- so a third kind stays on this same tier by default
-// unless it too needs to be an annotation layer.
-const OBJECT_Z_INDEX: Record<string, number> = { image: 0, shape: 0, ink: 1 }
+// unless it too needs to be an annotation layer. table/diagram (goal
+// 0179 S2) join the same annotatable tier: the nouns table's own "Ink
+// on it: yes" applies to every board-local surface, not only the
+// image/shape pair it first shipped for.
+const OBJECT_Z_INDEX: Record<string, number> = { image: 0, shape: 0, table: 0, diagram: 0, ink: 1 }
 
 export function buildBoardObjectNodes({ objects, readOnly, isFree }: {
   objects: BoardObject[]

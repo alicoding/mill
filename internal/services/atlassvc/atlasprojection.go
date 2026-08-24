@@ -183,6 +183,35 @@ func (a *AtlasService) CardListProjection(cardID string) (ListProjection, error)
 	}
 	listID := a.cards[idx].ProjectionListID
 	a.mu.RUnlock()
+	return a.resolveListProjection(listID)
+}
+
+// ObjectListProjection is CardListProjection's own counterpart for a
+// board object (goal 0179 S2): resolves objectID's own
+// Payload["listID"] through the identical read logic, so a "table"
+// board object renders its projected List through the exact same door
+// a table CARD's own face/page already uses -- no second projection
+// reader.
+func (a *AtlasService) ObjectListProjection(objectID string) (ListProjection, error) {
+	a.mu.RLock()
+	idx := a.findObjectLocked(objectID)
+	if idx == -1 {
+		a.mu.RUnlock()
+		return ListProjection{}, fmt.Errorf("no board object with id %q", objectID)
+	}
+	listID := a.objects[idx].Payload["listID"]
+	a.mu.RUnlock()
+	return a.resolveListProjection(listID)
+}
+
+// resolveListProjection is CardListProjection/ObjectListProjection's
+// shared listID -> ListProjection read: an empty listID or no wired
+// projection reader both mean "not a projection" (the zero value,
+// never an error), and a listID that no longer resolves reports
+// Missing rather than failing the caller's own render. Caller must NOT
+// hold a.mu -- this takes no lock of its own, since listID was already
+// read out from under one.
+func (a *AtlasService) resolveListProjection(listID string) (ListProjection, error) {
 	if listID == "" || a.listProjection == nil {
 		return ListProjection{}, nil
 	}

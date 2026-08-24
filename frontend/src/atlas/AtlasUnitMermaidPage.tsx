@@ -34,7 +34,10 @@ function escapeForCodeBlock(text: string): string {
 // that commit entirely whenever `source` hasn't actually changed, the
 // same isolation boundary any DOM-library-owns-this-subtree integration
 // (a chart, an editor) needs against its host framework.
-const MermaidDiagramHost = memo(function MermaidDiagramHost({ source }: { source: string }) {
+// Exported: AtlasDiagramObjectContent.tsx (goal 0179 S2) reuses this
+// exact host for a "diagram" board object's own board face, rather
+// than a second mermaid-rendering wiring.
+export const MermaidDiagramHost = memo(function MermaidDiagramHost({ source }: { source: string }) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   useMermaidRendering(hostRef, source)
   return (

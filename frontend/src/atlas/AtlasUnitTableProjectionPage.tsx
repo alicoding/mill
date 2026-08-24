@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Link as PrimerLink, Stack, Text } from '@primer/react'
 import { useAppStore } from '../shared/store'
+import { AtlasService } from '../shared/bindings'
 import { AtlasCardProjectionTable } from './AtlasCardProjectionTable'
 import type { UnitRenderProps } from './unitRegistry'
 import runbookStyles from '../shared/ListCard.module.css'
@@ -17,7 +18,7 @@ export function AtlasUnitTableProjectionPage({ card }: UnitRenderProps) {
   return (
     <Stack direction="vertical" gap="condensed" data-testid="atlas-page-projection">
       <Text weight="semibold">{t('projection.pageHeading')}</Text>
-      <AtlasCardProjectionTable cardID={card.ID} density={card.ProjectionDensity} />
+      <AtlasCardProjectionTable scopeID={card.ID} density={card.ProjectionDensity} fetchProjection={AtlasService.CardListProjection} />
       <Text size="small" className={runbookStyles.muted}>
         {t('projection.pageCaption')}{' '}
         <PrimerLink as="button" type="button" data-testid="atlas-projection-open-configure" onClick={() => setView({ kind: 'configure', tab: 'lists' })}>

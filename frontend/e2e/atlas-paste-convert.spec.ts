@@ -2,11 +2,26 @@ import { test, expect } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { openCard } from './fixtures/atlasBoard'
 import { clickRowAction } from './inventoryRow'
+import { contextMenu } from './fixtures/contextMenu'
 
 // Paste understanding (goal 0138): a diagram tool's clipboard payload
 // (URI-encoded mxGraphModel XML -- what its copy actually puts on the
-// system clipboard) becomes Mill entities on paste. Shared pool:
-// every entity created here is deleted here.
+// system clipboard) becomes Mill entities on paste. A table-shaped
+// paste lands as a board-local "table" object (goal 0179 S2), never a
+// card -- deleted here straight off the board, no page to open. Shared
+// pool: every entity created here is deleted here.
+
+function tableObjects(page: import('@playwright/test').Page) {
+  return page.locator('[data-testid="atlas-board-object"][data-object-kind="table"]')
+}
+
+async function deleteObjectViaMenu(object: import('@playwright/test').Locator) {
+  const page = object.page()
+  await object.click({ button: 'right' })
+  const menu = contextMenu(page)
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+}
 
 const DIAGRAM_XML = '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>'
   + '<mxCell id="2" value="Vendor API" vertex="1" parent="1"><mxGeometry x="40" y="40" width="120" height="60"/></mxCell>'
@@ -57,22 +72,23 @@ test('a pasted diagram selection becomes titled cards with their link', async ({
   }
 })
 
-test('a pasted table selection becomes a Mill table with its List minted', async ({ page }) => {
+test('a pasted table selection becomes a board-local table object with its List minted', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
   await pasteText(page, TABLE_XML)
 
-  const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'Pasted vendors' })
-  await expect(tableCard).toBeVisible()
-  await expect(tableCard.getByTestId('atlas-projection-table')).toContainText('Name')
-  await expect(tableCard.getByTestId('atlas-projection-table')).toContainText('Acme')
+  const tableObject = tableObjects(page).filter({ hasText: 'Acme' })
+  await expect(tableObject).toBeVisible()
+  await expect(tableObject.getByTestId('atlas-projection-table')).toContainText('Name')
+  // The rule, absolute: pasting never creates a card the user didn't
+  // explicitly ask for.
+  await expect(page.getByTestId('atlas-table-card')).toHaveCount(0)
 
-  // Cleanup: card, then the minted List.
-  await openCard(page, tableCard.locator('[class*="title"]').first())
-  await deleteViaPageMenu(page, page.locator('[data-component="atlas-card-overlay"]'))
-  await expect(tableCard).not.toBeVisible()
+  // Cleanup: the object, then the minted List.
+  await deleteObjectViaMenu(tableObject)
+  await expect(tableObject).toHaveCount(0)
   await page.getByRole('link', { name: 'Configure' }).click()
   await page.getByRole('tab', { name: 'Lists' }).click()
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Pasted vendors', { exact: true }) })
@@ -82,7 +98,7 @@ test('a pasted table selection becomes a Mill table with its List minted', async
 
 // Slice 2 (goal 0138): a copied spreadsheet range (TSV text) becomes
 // a Mill table through the same paste surface.
-test('a pasted spreadsheet range becomes a Mill table', async ({ page }) => {
+test('a pasted spreadsheet range becomes a board-local table object', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
@@ -94,14 +110,13 @@ test('a pasted spreadsheet range becomes a Mill table', async ({ page }) => {
     window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
   })
 
-  const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'Imported table' })
-  await expect(tableCard).toBeVisible()
-  await expect(tableCard.getByTestId('atlas-projection-table')).toContainText('Acme')
+  const tableObject = tableObjects(page).filter({ hasText: 'Acme' })
+  await expect(tableObject).toBeVisible()
+  await expect(tableObject.getByTestId('atlas-projection-table')).toContainText('Acme')
 
-  // Cleanup: card, then the minted List.
-  await openCard(page, tableCard.locator('[class*="title"]').first())
-  await deleteViaPageMenu(page, page.locator('[data-component="atlas-card-overlay"]'))
-  await expect(tableCard).not.toBeVisible()
+  // Cleanup: the object, then the minted List.
+  await deleteObjectViaMenu(tableObject)
+  await expect(tableObject).toHaveCount(0)
   await page.getByRole('link', { name: 'Configure' }).click()
   await page.getByRole('tab', { name: 'Lists' }).click()
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Imported table', { exact: true }) })

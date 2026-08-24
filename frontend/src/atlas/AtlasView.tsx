@@ -22,6 +22,7 @@ import { CompanionPanel } from './CompanionPanel'
 import { isGroupCard } from './atlasBoardLayout'
 import { useAtlasBoardFilter } from './useAtlasBoardFilter'
 import { useAtlasCardCreate } from './useAtlasCardCreate'
+import { useAtlasTableObjectCreate } from './useAtlasTableObjectCreate'
 import { useAtlasContainmentMenus } from './useAtlasContainmentMenus'
 import { useAtlasDeleteConfirm } from './useAtlasDeleteConfirm'
 import { useAtlasCommandSignals } from './useAtlasCommandSignals'
@@ -375,7 +376,8 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
 
   const { exportAtlas, importFile, importConfirmDialog } = useAtlasShareIO({ allKinds, allLinkKinds, allCards, allLinks, onError: setImportError })
 
-  const { createCard, createTableCard, createTableFromScratch } = useAtlasCardCreate({ allCards, viewedID, viewedCard })
+  const { createCard } = useAtlasCardCreate({ allCards, viewedID, viewedCard })
+  const { createTableFromList, createTableFromScratch } = useAtlasTableObjectCreate({ allCards, viewedID })
   // Goal 0139's two surviving dialogs: the from-a-List projection
   // (reached from the tray picker's footer) and New space (the one
   // create with no canvas to point at).
@@ -488,7 +490,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         jumpOpen={jumpOpen} onCloseJump={() => setJumpOpen(false)} allCards={allCards} allKinds={allKinds} allLinks={allLinks} allLinkKinds={allLinkKinds} jumpToCard={jumpToCard}
         overlayCard={overlayCard} onCloseOverlay={() => setOverlayCardID(null)} undoToast={undoToast} openGroupEntry={openGroupEntry} guardDelete={deleteConfirm.guardDelete}
         importConfirmDialog={importConfirmDialog}
-        tableFromListOpen={tableFromListOpen} onCloseTableFromList={() => setTableFromListOpen(false)} newSpaceOpen={newSpaceOpen} onCloseNewSpace={() => setNewSpaceOpen(false)} onCreateTable={createTableCard} onCreateSpace={(kindID, title) => createCard('sibling', kindID, title)}
+        tableFromListOpen={tableFromListOpen} onCloseTableFromList={() => setTableFromListOpen(false)} newSpaceOpen={newSpaceOpen} onCloseNewSpace={() => setNewSpaceOpen(false)} onCreateTable={createTableFromList} onCreateSpace={(kindID, title) => createCard('sibling', kindID, title)}
         menu={menu} onCloseMenu={() => setMenu(null)} linkMenus={linkMenus} containmentMenus={containmentMenus} deleteConfirm={deleteConfirm}
         openNote={openNoteID ? allNotes.find((n) => n.ID === openNoteID) ?? null : null} onCloseNote={() => setOpenNoteID(null)}
         matrixOpen={matrixOpen} onCloseMatrix={() => setMatrixOpen(false)} coverageOpen={coverageOpen} onCloseCoverage={() => setCoverageOpen(false)} childrenAll={childrenAll} kindsOpen={kindsOpen} onCloseKinds={() => setKindsOpen(false)} onOpenCardFromProjection={openCardFromProjection}
