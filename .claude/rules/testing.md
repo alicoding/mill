@@ -26,8 +26,14 @@ covers it.
 **E2e isolation is per-worker and per-run** (goal 0009): each Playwright
 worker spawns its own `bin/mill-server` on its own port against fresh
 `mkdtemp` settings/execution-db files, torn down at worker end
-(`e2e/fixtures/server.ts` — every spec imports `test`/`expect` from there,
-never from `@playwright/test` directly).
+(`e2e/fixtures/server.ts`). Specs on the SHARED worker pool import
+`test`/`expect` from that fixture, never from `@playwright/test`
+directly. **Specs that spawn their own dedicated server are the
+exception** and import `chromium`/`expect`/`test` from
+`@playwright/test`, calling `spawnMillServer` themselves — see
+`atlas-authoring.spec.ts` and `atlas-session-restore.spec.ts`. Stating
+the rule without its exception has already sent one brief the wrong
+way.
 - Within-file cleanup discipline still applies — tests in one spec file
   share a worker/server, so delete what you create.
 - Real-pasteboard tests take the clipboard lock
