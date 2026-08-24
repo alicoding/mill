@@ -1,0 +1,11 @@
+{
+  "shapeStyle": {
+    "typeLabel": "Shape type",
+    "type_rectangle": "Rectangle",
+    "type_ellipse": "Ellipse",
+    "type_arrow": "Arrow",
+    "strokeLabel": "Stroke colour",
+    "widthLabel": "Stroke width",
+    "widthOption": "{{width}}px"
+  }
+}

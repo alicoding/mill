@@ -1,0 +1,9 @@
+{
+  "mermaid": {
+    "pageHeading": "Diagram"
+  },
+  "drawio": {
+    "pageHeading": "Diagram",
+    "renderError": "Couldn't render this diagram."
+  }
+}
