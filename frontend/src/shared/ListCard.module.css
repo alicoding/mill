@@ -38,6 +38,7 @@
     color: var(--fgColor-muted);
 }
 .recording { color: var(--fgColor-attention); white-space: nowrap; }
+.attention { color: var(--fgColor-attention); margin: var(--base-size-8) 0 0; }
 .error { color: var(--fgColor-danger); margin: var(--base-size-8) 0 0; }
 .result {
     user-select: text;

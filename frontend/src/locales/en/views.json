@@ -28,6 +28,8 @@
     "general": {
       "launchAtLoginLabel": "Launch Mill at login",
       "launchAtLoginCaption": "Starts Mill automatically when you log in.",
+      "launchAtLoginRequiresApproval": "Confirm in System Settings to finish turning this on.",
+      "openLoginItemsSettings": "Open Login Items Settings",
       "errorDevBinary": "Not available in this dev build -- only a built .app bundle can be a login item.",
       "errorServerMode": "Not available in server mode -- there is no login-item concept without a desktop app to register."
     },

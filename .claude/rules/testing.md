@@ -185,6 +185,23 @@ at:
     settings state is machine-specific; verify by granting Accessibility
     once, taking two consecutive beta updates, and confirming the summon
     hotkey still registers with no new permission prompt.
+  - **SMAppService launch-at-login: the requires-approval state and the
+    legacy System-Events migration** (goal 0198,
+    `internal/adapters/launchatlogin`) — real SMAppService registration
+    state (enabled / requires-approval) and a real pre-existing System
+    Events login item both need an actual login cycle on an installed,
+    signed bundle; neither exists in the e2e harness (server mode has no
+    login-item concept at all). Verify on a build from BEFORE this goal,
+    installed and with "Launch Mill at login" turned on (a real System
+    Events login item now exists), then upgrade to a build from this
+    goal or later: open Settings > General, turn "Launch Mill at login"
+    off then on again, and confirm System Settings > Login Items shows
+    exactly ONE Mill entry, never two. Separately, on a machine where
+    Mill has never been granted a login item before, turn it on and
+    confirm the checkbox shows checked with the amber "Confirm in System
+    Settings to finish turning this on." notice and its button, then
+    approve it in System Settings and confirm the notice clears on the
+    next Settings visit.
   - **The real browser-tab approval notification** (goal 0132 slice A) —
     requires a real granted browser permission and a real OS compositor;
     verify via a server-mode instance reached from a real browser tab:
