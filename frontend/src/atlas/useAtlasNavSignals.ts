@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useAppStore } from '../shared/store'
 import { useUISignalStore } from '../shared/uiSignalStore'
-import { singleRootCard } from './atlasGrouping'
 
 // AtlasView's own one-shot navigation/dialog-opening signals (goal
 // 0071 G17, goal 0072 slice B) -- split out of AtlasView.tsx
@@ -18,10 +17,12 @@ export function useAtlasNavSignals({ viewedID, allCards, setViewedID, setMatrixO
   setMatrixOpen: (open: boolean) => void
   setCoverageOpen: (open: boolean) => void
 }) {
-  // atlas.up (⌘↑): one step up the depth ladder. At the auto-entered
-  // single root there is no "up" (the All spaces meta level only
-  // exists with 2+ roots) -- the press is a no-op, never a broken
-  // empty board.
+  // atlas.up (⌘↑): one step up the depth ladder. Reaching the meta
+  // "All spaces" level (parent === '') is always permitted, even with
+  // a single root card -- that level is how a lone space becomes
+  // actionable as an object again (docs/goals/0183): refusing this
+  // made the sole space unreachable except by first creating a
+  // throwaway sibling.
   const atlasUpRequest = useAppStore((s) => s.atlasUpRequest)
   const lastUpRequest = useRef(atlasUpRequest)
   useEffect(() => {
@@ -29,7 +30,6 @@ export function useAtlasNavSignals({ viewedID, allCards, setViewedID, setMatrixO
     lastUpRequest.current = atlasUpRequest
     if (!viewedID) return
     const parent = allCards.find((c) => c.ID === viewedID)?.ParentID ?? ''
-    if (parent === '' && singleRootCard(allCards)) return
     setViewedID(parent)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the signal tick alone; viewedID/allCards are read at fire time
   }, [atlasUpRequest])

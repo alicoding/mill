@@ -340,6 +340,8 @@
     "addToPerspective": "Add to perspective ▸",
     "removeFromPerspective": "Remove from perspective ▸",
     "newSpace": "New space…",
+    "renameSpace": "Rename space…",
+    "deleteSpace": "Delete space",
     "openNote": "Open note"
   },
   "confirm": {

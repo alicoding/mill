@@ -28,6 +28,7 @@ import { useAtlasCommandSignals } from './useAtlasCommandSignals'
 import { useAtlasLinkMenus } from './useAtlasLinkMenus'
 import { useAtlasNoteMenu } from './useAtlasNoteMenu'
 import { useAtlasObjectMenu } from './useAtlasObjectMenu'
+import { useAtlasSpaceActions } from './useAtlasSpaceActions'
 import { useAtlasUndoToast } from './useAtlasUndoToast'
 import { AtlasUndoToast } from './AtlasUndoToast'
 import { useAtlasQuietToast } from './useAtlasQuietToast'
@@ -135,15 +136,13 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     setOverlayCardID(target.ID)
   }, [initialCardID, cards])
 
-  // The egocentric-root auto-entry (ADR-0038): with
-  // exactly one root card (ParentID==="") the meta "All spaces" level
-  // never exists (AtlasBreadcrumb's own singleRootCard check hides its
-  // crumb) -- so viewedID=="" is never a real resting state in that
-  // world, only a transient one (before the first fetch resolves, or
-  // right after a second root card is deleted back down to one).
-  // Always resolving it rather than a one-shot effect keeps both cases
-  // correct without special-casing which one is happening. Skipped
-  // entirely once a deep link has claimed the initial navigation --
+  // The egocentric-root auto-entry (ADR-0038): with exactly one root
+  // card (ParentID==="") viewedID=="" resolves straight into it --
+  // UNLESS suppressAutoEntry says the user just chose to be there
+  // (docs/goals/0183: resolving unconditionally used to silently undo
+  // a deliberate atlas.up/breadcrumb navigation on landing, re-trapping
+  // a lone space with no way out). Skipped entirely once a deep link
+  // has claimed the initial navigation --
   // that flow's own viewedID=="" (a root-level target's own space) is
   // a deliberate destination, not a state to redirect away from.
   // Session restore (goal 0091): land where you stood -- one-shot on
@@ -178,11 +177,18 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     void AtlasService.SetAtlasSession({ viewedID, openCardID: overlayCardID ?? '', activePerspectiveID }).catch(() => {})
   }, [sessionRestored, viewedID, overlayCardID, activePerspectiveID])
 
+  // STATE, not a ref: landingPending below reads it during render,
+  // off limits for a ref (React Compiler's react-hooks/refs rule). Set
+  // by navigate/drill below (docs/goals/0183) exactly when a real card
+  // is deliberately left FOR the meta level -- never by a delete/
+  // promote landing there as its aftermath, which stays eligible to
+  // auto-resolve like any other viewedID==="" arrival.
+  const [suppressAutoEntry, setSuppressAutoEntry] = useState(false)
   useEffect(() => {
-    if (initialCardID || !cards || viewedID !== '' || !sessionRestored) return
+    if (initialCardID || !cards || viewedID !== '' || !sessionRestored || suppressAutoEntry) return
     const root = singleRootCard(cards)
     if (root) setViewedID(root.ID)
-  }, [cards, initialCardID, viewedID, sessionRestored])
+  }, [cards, initialCardID, viewedID, sessionRestored, suppressAutoEntry])
 
   useEffect(() => {
     AtlasService.Lens(viewedID)
@@ -201,10 +207,13 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // consumed, or the single-root auto-entry not yet applied): the
   // transient root board LOOKS real, and anything the user -- or a
   // test -- does to it (an Auto-arrange click, a card flip) is
-  // consumed by a board that's about to be replaced.
+  // consumed by a board that's about to be replaced. While
+  // suppressAutoEntry holds, viewedID==="" is a real "All spaces"
+  // landing (docs/goals/0183), not a pending one, even with a single
+  // root card still in play.
   const landingPending =
     !sessionRestored || !cards ||
-    (viewedID === '' && (initialCardID ? !deepLinkConsumed : !!singleRootCard(allCards)))
+    (viewedID === '' && (initialCardID ? !deepLinkConsumed : !suppressAutoEntry && !!singleRootCard(allCards)))
 
   const viewedCard = allCards.find((c) => c.ID === viewedID) ?? null
   const childrenAll = childrenOf(boardAllCards, viewedID)
@@ -228,10 +237,18 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const visibleObjects = allObjects.filter((o) => o.ParentID === viewedID)
   const overlayCard = overlayCardID ? allCards.find((c) => c.ID === overlayCardID) ?? null : null
 
-  const { jumpOpen, setJumpOpen } = useAtlasNavSignals({ viewedID, allCards, setViewedID, setMatrixOpen, setCoverageOpen })
+  // navigate/drill mark suppressAutoEntry (docs/goals/0183) exactly
+  // when leaving a GENUINELY single-root space for the meta level --
+  // the case auto-entry would otherwise reverse. Browsing "All spaces"
+  // with 2+ roots (singleRootCard already null there) leaves it false,
+  // so a later delete back to one root still auto-resolves into it.
+  const navigate = (id: string) => {
+    setSuppressAutoEntry(id === '' && viewedID !== '' && singleRootCard(allCards) !== null)
+    setViewedID(id)
+  }
+  const drill = navigate
+  const { jumpOpen, setJumpOpen } = useAtlasNavSignals({ viewedID, allCards, setViewedID: navigate, setMatrixOpen, setCoverageOpen })
 
-  const navigate = (id: string) => setViewedID(id)
-  const drill = (id: string) => setViewedID(id)
   const openOverlay = (id: string) => setOverlayCardID(id)
 
   // The card's right-click menu (goal 0075, kind-aware-extended by
@@ -263,22 +280,33 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     requestLinkedCard: creationRequests.requestLinkedCard, guardDelete: deleteConfirm.guardDelete,
   })
 
+  // onNavigate stays the RAW setViewedID, deliberately not navigate:
+  // deleting the space being viewed is a consequence landing at the
+  // meta level, not a user choosing to browse it -- it stays eligible
+  // to auto-resolve straight back into whatever's left, same as any
+  // other viewedID==="" arrival (docs/goals/0183).
+  const spaceActions = useAtlasSpaceActions({
+    t, viewedCard, guardDelete: deleteConfirm.guardDelete, onDeleted: undoToast.registerDelete, onError: setShareError,
+    onOpenOverlay: openOverlay, onNavigate: setViewedID, onNewSpace: () => setNewSpaceOpen(true),
+  })
+
   // The empty-board right-click (goal 0081 A2 rider b):
   // direct-placement doors only -- the
   // dialog-based "Add card…" item is gone (the toolbar's own "+ Add"
   // button still reaches that dialog through its own menu, unrelated
   // to this one). Nothing else fired the old openChildRequest counter
-  // this menu item used to bump, so it's gone with it.
+  // this menu item used to bump, so it's gone with it. Space-management
+  // items (New space/Rename space/Delete space, docs/goals/0183) come
+  // from spaceActions above -- empty unless viewedCard is itself a
+  // root-level space.
   const openPaneMenu = (pos: { x: number; y: number }) => {
     setMenu({
       x: pos.x,
       y: pos.y,
       items: [
         { id: 'add-card-here', label: t('contextMenu.addCardHere'), commandId: 'atlas.create.card', run: () => creationRequests.requestPlacement('card', pos) },
-        // A second ROOT (goal 0139): only offered while viewing a
-        // root-level board -- the one create placement can't express.
-        ...(viewedCard && viewedCard.ParentID === '' ? [{ id: 'new-space', label: t('contextMenu.newSpace'), run: () => setNewSpaceOpen(true) }] : []),
         { id: 'add-note-here', label: t('contextMenu.addNoteHere'), commandId: 'atlas.create.note', run: () => creationRequests.requestPlacement('note', pos) },
+        ...spaceActions.spaceMenuItems(),
       ],
     })
   }
