@@ -98,12 +98,13 @@ func decidePanelDismissAction(mainVisible, hidMain, graceActive bool) panelDismi
 	return panelDismissAction{hideApp: true, restoreMain: hidMain}
 }
 
-// yieldFocusIfMainHidden hides the whole app (windowing.HideApp) when
-// the panel loses focus/is dismissed while Mill's main window isn't
-// currently visible either -- i.e. there's nothing left of Mill's on
-// screen to justify staying the frontmost app -- and, if that main
-// window was only invisible because the summon itself hid it, restores
-// it once the app is hidden so it doesn't stay hidden forever.
+// yieldFocusIfMainHidden is presence policy's hide-side counterpart to
+// bringMainToFront/bringFloatingToFront (settingsservice_presence.go):
+// the ONE place that decides whether nothing of Mill is left on screen
+// once the panel loses focus/is dismissed, and if so hides the whole
+// app (windowing.HideApp) -- and, if the main window was only invisible
+// because the summon itself hid it, restores it once the app is hidden
+// so it doesn't stay hidden forever.
 // windowing.HideApp() always runs before main.Show(): main.Show() calls
 // through to WebviewWindow.Show(), which is `makeKeyAndOrderFront` on
 // the real window (confirmed against the pinned Wails3 darwin source,
@@ -199,13 +200,12 @@ func (s *SettingsService) TogglePanel() {
 	}
 	s.hideMainForSummon(main)
 	s.beginSummonGrace()
-	// Activate the app before showing the panel: macOS refuses key
-	// status to a non-active app's window, and an unfocused floating
-	// panel dies instantly to its own HideOnFocusLost (goal 0151).
-	// App-level Show doesn't reverse the window-level Hide above.
-	windowing.ShowApp()
-	p.Show()
-	p.Focus()
+	// bringFloatingToFront (settingsservice_presence.go) activates the
+	// app before showing the panel: macOS refuses key status to a
+	// non-active app's window, and an unfocused floating panel dies
+	// instantly to its own HideOnFocusLost (goal 0151). App-level Show
+	// doesn't reverse the window-level Hide above.
+	bringFloatingToFront(p)
 }
 
 // hideMainForSummon runs summonShouldHideMain's guard and records the
@@ -257,13 +257,10 @@ func (s *SettingsService) ShowPanel() {
 	}
 	s.hideMainForSummon(main)
 	s.beginSummonGrace()
-	// Activate the app before showing the panel: macOS refuses key
-	// status to a non-active app's window, and an unfocused floating
-	// panel dies instantly to its own HideOnFocusLost (goal 0151).
-	// App-level Show doesn't reverse the window-level Hide above.
-	windowing.ShowApp()
-	p.Show()
-	p.Focus()
+	// See TogglePanel's identical show branch above for why
+	// bringFloatingToFront (settingsservice_presence.go) un-hides the
+	// app first.
+	bringFloatingToFront(p)
 }
 
 // DismissPanel hides the Quick Panel and applies the focus-yield

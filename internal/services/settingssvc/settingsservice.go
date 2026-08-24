@@ -316,24 +316,21 @@ func (s *SettingsService) WatchWindowGeometry() {
 	})
 }
 
-// ShowWindow brings the main window to the front -- shared by the
-// summon-hotkey fire path above and the tray icon's click handler
-// (task #8, docs/SPEC.md §3.7), same show/restore/focus sequence
-// either way rather than two copies of it. A no-op if the window
-// hasn't been wired yet (SetWindow not yet called), matching the
-// hotkey path's own existing nil guard.
+// ShowWindow brings the main window to the front -- the tray icon's
+// click handler and its menu's "Show Mill" item (main.go, task #8,
+// docs/SPEC.md §3.7) and OpenMainWindow (settingsservice_panel.go, the
+// Quick Panel's "Open Mill"/"Open Settings" rows) all reach it.
+// bringMainToFront (settingsservice_presence.go) does the actual work,
+// including un-hiding the app first -- goal 0186's fix: this used to
+// order the window in without that step, so it silently did nothing
+// whenever Mill had been app-hidden.
 //
 //wails:ignore
 func (s *SettingsService) ShowWindow() {
 	s.mu.Lock()
 	w := s.window
 	s.mu.Unlock()
-	if w == nil {
-		return
-	}
-	w.Show()
-	w.Restore()
-	w.Focus()
+	bringMainToFront(w)
 }
 
 // GetLaunchAtLogin queries the real OS state (System Events' login
