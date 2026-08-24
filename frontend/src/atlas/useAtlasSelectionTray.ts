@@ -85,6 +85,18 @@ export function useAtlasSelectionTray<TNode extends Node>({
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        // Primer's own Escape composition contract (useOnEscapePress):
+        // a Dialog/Overlay that already closed itself off this SAME
+        // keypress calls preventDefault(), and every other registered
+        // handler must honor that instead of re-deciding from
+        // isFocusInsideBoard alone -- a Dialog/AnchoredOverlay closing
+        // synchronously resets document.activeElement to <body> before
+        // this handler runs, which isFocusInsideBoard's own "nothing
+        // has focus" fallback misreads as "belongs to the board"
+        // (docs/goals/0183: this window listener never checked
+        // defaultPrevented at all, silently climbing a level behind
+        // Escape closing an unrelated card page or context menu).
+        if (e.defaultPrevented) return
         if (isEditableTarget(e.target) || !isFocusInsideBoard(wrapperRef)) return
         // Read the DOM directly, not the selectedCards/selectedNotes
         // state mirror -- see readSelectedNodeIDs' own header comment
