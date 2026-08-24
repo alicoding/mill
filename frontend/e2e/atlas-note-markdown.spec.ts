@@ -106,12 +106,17 @@ test("the note overlay's editor box stays bounded as content grows, never the pa
   await overlayRendered.click()
   const editor = page.getByTestId('atlas-note-overlay-editor')
   await expect(editor).toBeVisible()
+  // The BOUNDED box, not CodeEditor's own inner wrapper -- that inner
+  // element keeps its full unclipped intrinsic height by design
+  // (MarkdownNoteField.tsx's own comment on -wrap explains why); the
+  // outer .editorWrap is what actually stops growing.
+  const wrap = page.getByTestId('atlas-note-overlay-editor-wrap')
 
-  const shortBox = await editor.boundingBox()
+  const shortBox = await wrap.boundingBox()
   if (!shortBox) throw new Error('no editor box')
 
   await fillCodeEditor(page, 'atlas-note-overlay-editor', Array.from({ length: 40 }, (_, i) => `Line number ${i}`).join('\n'))
-  const longBox = await editor.boundingBox()
+  const longBox = await wrap.boundingBox()
   if (!longBox) throw new Error('no editor box after typing')
 
   // The box grows WITH short content (no dead space, matching

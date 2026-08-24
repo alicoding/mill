@@ -9,34 +9,22 @@
    takes over instead of the surrounding page/dialog growing. Same
    flex + cm-editor/cm-scroller height:100% shape AtlasStickyNode's
    own .editingUnsized already uses successfully. */
+/* A percentage-height cascade down through shared/CodeEditor.tsx's own
+   wrapper/mount divs into .cm-editor/.cm-scroller (the shape
+   AtlasStickyNode.module.css's own .editingUnsized uses) was tried
+   here first and measured NOT to work: a flex item's height:100%
+   against this container's own auto-but-max-height-clamped cross size
+   resolved to the CHILD's unclamped content height instead (738px for
+   40 lines, verified live), not the 320px ceiling -- Chromium doesn't
+   treat that clamp as a definite size for descendant percentage
+   resolution. overflow-y here is what actually clips/scrolls
+   regardless of how any descendant resolves its own height, so it
+   doesn't depend on that chain at all. */
 .editorWrap {
   width: 100%;
-  display: flex;
   min-height: 28px;
   max-height: 320px;
-}
-/* shared/CodeEditor.tsx's own wrapper/mount divs are CSS-Modules-scoped
-   in a DIFFERENT stylesheet (CodeEditor.module.css) -- unreachable by
-   class name from here, and not worth widening a component several
-   OTHER, non-note callers share just to expose one. Reached
-   structurally instead (wrapper is this element's only child, mount
-   is wrapper's only child in the CodeMirror-loaded case), propagating
-   a real, definite height down to .cm-editor without touching that
-   file at all. */
-.editorWrap > div {
-  height: 100%;
-  min-height: 0;
-}
-.editorWrap > div > div {
-  height: 100%;
-  min-height: 0;
-}
-.editorWrap :global(.cm-editor) {
-  height: 100%;
-}
-.editorWrap :global(.cm-scroller) {
   overflow-y: auto;
-  height: 100%;
 }
 
 /* The rendered note reads as prose you can click into, not a

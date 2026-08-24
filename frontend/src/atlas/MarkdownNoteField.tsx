@@ -81,6 +81,12 @@ export function MarkdownNoteField({ value, onChange, onCommit, placeholder, aria
       <div
         ref={editorWrapRef}
         className={styles.editorWrap}
+        // The bounded box itself (goal 0199's own no-auto-resize
+        // regression test measures THIS, not testId's own inner
+        // CodeEditor wrapper -- that inner element keeps its full
+        // unclipped intrinsic height; .editorWrap's own overflow is
+        // what actually bounds what's visible/measurable).
+        data-testid={`${testId}-wrap`}
         // Interacting with the empty-state editor IS editing -- without
         // this, the first typed character flips the field to rendered
         // mid-keystroke (value no longer empty, editing still false).
