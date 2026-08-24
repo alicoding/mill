@@ -17,11 +17,17 @@ export interface CssLeafRule {
 }
 
 export function parseLeafCssRules(cssText: string): CssLeafRule[] {
+  // Comments stripped first: every file here carries a header comment
+  // immediately above a rule, and the header comment doesn't get
+  // swallowed into a selector for the match right after it.
+  const withoutComments = cssText.replace(/\/\*[\s\S]*?\*\//g, '')
   const rules: CssLeafRule[] = []
   const pattern = /([^{}]+)\{([^{}]*)\}/g
   let match: RegExpExecArray | null
-  while ((match = pattern.exec(cssText)) !== null) {
-    rules.push({ selector: match[1].trim(), body: match[2] })
+  while ((match = pattern.exec(withoutComments)) !== null) {
+    const selector = match[1].trim()
+    if (selector === '') continue
+    rules.push({ selector, body: match[2] })
   }
   return rules
 }
