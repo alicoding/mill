@@ -138,6 +138,7 @@ func main() {
 	configureService := configuresvc.NewConfigureService(settingsStore, compositionService, credentialStore)
 	// MILL_SECRETS_PATH overrides for e2e isolation, same convention as MILL_SETTINGS_PATH above.
 	secretService := wiring.WireSecrets(windowing.ConfigDirOrEnv("MILL_SECRETS_PATH", "secrets.kdbx"), credentialStore)
+	configureService.SetSecretResolver(secretService.ResolveSecretValue) // goal 0185 S3: MCPServer.Env "vault:" refs
 	// docs/adr/0038: Atlas's storage/CRUD layer (cross-surface wiring
 	// arrives below via injected seams, never direct imports).
 	atlasService := atlassvc.NewAtlasService(settingsStore)

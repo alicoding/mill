@@ -14,6 +14,21 @@ func (s *SecretService) ListSecrets() ([]secret.Summary, error) {
 	return s.vault.List()
 }
 
+// ResolveSecretValue returns id's password only -- the seam
+// configuresvc.SetSecretResolver wires (goal 0185 S3) so a workflow
+// consumer (MCPServer.Env's own "vault:" references) can resolve a
+// vault entry without reaching for the human-facing RevealSecret RPC.
+// Exported for wiring only, never a frontend RPC.
+//
+//wails:ignore
+func (s *SecretService) ResolveSecretValue(id string) (string, error) {
+	e, err := s.vault.Get(id)
+	if err != nil {
+		return "", err
+	}
+	return e.Password, nil
+}
+
 // RevealSecret returns one entry in full, password included -- a
 // distinct, explicit call from ListSecrets (never incidental to
 // browsing), matching SetHTTPRequestSecret's own write-only-elsewhere

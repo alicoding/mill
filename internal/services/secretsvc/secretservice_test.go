@@ -158,6 +158,39 @@ func TestCreateSecret_RequiresTitle(t *testing.T) {
 	}
 }
 
+func TestResolveSecretValue(t *testing.T) {
+	s := newTestService(t)
+	if err := s.SetupVault(); err != nil {
+		t.Fatalf("SetupVault: %v", err)
+	}
+	created, err := s.CreateSecret("API", "", "resolve-pw-fake", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateSecret: %v", err)
+	}
+	got, err := s.ResolveSecretValue(created.ID)
+	if err != nil {
+		t.Fatalf("ResolveSecretValue: %v", err)
+	}
+	if got != "resolve-pw-fake" {
+		t.Fatalf("ResolveSecretValue = %q, want resolve-pw-fake", got)
+	}
+}
+
+func TestResolveSecretValue_Locked(t *testing.T) {
+	s := newTestService(t)
+	if err := s.SetupVault(); err != nil {
+		t.Fatalf("SetupVault: %v", err)
+	}
+	created, err := s.CreateSecret("API", "", "resolve-pw-fake", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateSecret: %v", err)
+	}
+	s.LockVault()
+	if _, err := s.ResolveSecretValue(created.ID); err == nil {
+		t.Fatal("ResolveSecretValue on a locked vault returned nil error, want an error")
+	}
+}
+
 func TestGeneratePassword(t *testing.T) {
 	s := newTestService(t)
 	got, err := s.GeneratePassword(16, true, true, true, false)

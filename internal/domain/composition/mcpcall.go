@@ -19,6 +19,12 @@ import (
 type ResolvedMCPServer struct {
 	Command string
 	Args    []string
+	// Env is already fully resolved (any vault: reference substituted
+	// for its real value) by whatever set lookupMCPServerFn -- this
+	// package never sees or interprets a vault reference itself (the
+	// node-standard credential rule: composition never reads a secret
+	// out of Node.Config or resolves one itself).
+	Env []string
 }
 
 // lookupMCPServerFn defaults to erroring so an mcp-tool-call node run
@@ -51,7 +57,7 @@ var callToolFn = mcpclient.CallTool
 // SetMCPCallTool overrides how mcp-tool-call nodes actually perform a
 // tool call -- test-only; production always uses the default
 // (mcpclient.CallTool).
-func SetMCPCallTool(fn func(command string, args []string, toolName string, arguments map[string]any, callerIdentity string) (string, error)) {
+func SetMCPCallTool(fn func(command string, args []string, env []string, toolName string, arguments map[string]any, callerIdentity string) (string, error)) {
 	callToolFn = fn
 }
 
@@ -97,7 +103,7 @@ func init() {
 		}
 		arguments = resolveMCPArguments(arguments, ctx.Attributes)
 
-		result, err := callToolFn(rs.Command, rs.Args, node.Config["toolName"], arguments, node.ID)
+		result, err := callToolFn(rs.Command, rs.Args, rs.Env, node.Config["toolName"], arguments, node.ID)
 		if err != nil {
 			return ctx, fmt.Errorf("mcp-tool-call: %w", err)
 		}
