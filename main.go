@@ -238,7 +238,7 @@ func main() {
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	wiring.WireNotificationChannels(settingsService, notificationService) // docs/goals/0171-notification-spine.md
-	wiring.WirePhoneChannel(remoteAuthService, notificationService)      // docs/goals/0132-remote-access.md SLICE B
+	wiring.WirePhoneChannel(remoteAuthService, notificationService)       // docs/goals/0132-remote-access.md SLICE B
 	wiring.WireUpdateEvents(settingsService, triggerService)
 	settingsService.SetAppVersion(millUpdateVersion)
 	// The user's persisted channel opt-in wins over the build stamp --
@@ -320,9 +320,10 @@ func main() {
 			// Armed only for a server build (wiring.AssetMiddleware).
 			Middleware: wiring.AssetMiddleware(remoteAuthService),
 		},
-		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: true,
-		},
+		// Mill's macOS archetype and its termination contract live in the
+		// windowing adapter, where they are documented and pinned by a test
+		// (goal 0188) rather than sitting as bare option values here.
+		Mac: windowing.MacAppOptions(),
 		// Production-only single-instance guard (docs/SPEC.md §3.7's
 		// data-corruption hazard). nil in dev/server builds -- see
 		// singleinstance_{production,dev}.go for why the guard must NOT
@@ -497,4 +498,3 @@ func main() {
 		log.Fatal(err)
 	}
 }
-

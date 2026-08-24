@@ -113,7 +113,18 @@ at:
     banner is OS-bound (signed-bundle handshake); verify by running the
     seeded Clipboard→Markdown workflow via its hotkey while another app is
     focused and confirming the banner.
-  - **Summon from a background app** (goals 0151, 0182) — the real kill
+  - **App archetype: closing the last window must NOT quit Mill**
+    (goal 0188) — `Mac.ActivationPolicy` is Regular and
+    `ApplicationShouldTerminateAfterLastWindowClosed` is false, which no
+    headless check can observe (server mode has no AppKit delegate at
+    all). Verify on an installed build: close the main window with ⌘W
+    and confirm Mill is still running and reachable from the tray;
+    reopen it from the tray; then quit deliberately from the tray's Quit
+    item and confirm the process actually exits. The flag composes
+    lethally with any path that empties the screen — it terminated the
+    app on a background summon, and once before via a window-closing
+    accelerator during hotkey recording.
+  - **Summon from a background app** (goals 0151, 0182, 0188) — the real kill
     chain (hotkey → activation → HideOnFocusLost → the main-window
     restore) needs a real macOS activation dance; verify on an installed
     build with Accessibility granted, main window already open in the
