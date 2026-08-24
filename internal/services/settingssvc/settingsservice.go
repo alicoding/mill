@@ -42,11 +42,11 @@ const legacyForwardApprovalsEnabledKey = "settings-forward-approvals-enabled"
 // independent of any specific workflow, distinct from both Configure
 // (§3.5, node-*kind* authoring) and a Trigger's own per-workflow config
 // (§3.4). Two capabilities researched and locked in §3.7's Update:
-// launch at login (internal/adapters/launchatlogin, no official Wails3
-// mechanism, ported from Wails v2's own osascript-based one) and a
-// global "summon the app" hotkey (golang.design/x/hotkey, already
-// adopted for per-workflow triggers -- same registration mechanism,
-// different callback).
+// launch at login (internal/adapters/launchatlogin, Wails v3's own
+// AutostartManager, SMAppService-backed on darwin) and a global
+// "summon the app" hotkey (golang.design/x/hotkey, already adopted for
+// per-workflow triggers -- same registration mechanism, different
+// callback).
 type SettingsService struct {
 	mu     sync.Mutex
 	store  settings.Store
@@ -231,16 +231,20 @@ func (s *SettingsService) ShowWindow() {
 	bringMainToFront(w)
 }
 
-// GetLaunchAtLogin queries the real OS state (System Events' login
-// items list) rather than a persisted preference -- authoritative even
-// if the user removed Mill from Login Items via System Settings
-// directly, which a cached flag would silently miss.
-func (s *SettingsService) GetLaunchAtLogin() (bool, error) {
+// GetLaunchAtLogin queries the real OS registration state via
+// SMAppService (internal/adapters/launchatlogin) rather than a
+// persisted preference -- authoritative even if the user changed it
+// directly in System Settings, which a cached flag would silently
+// miss. Returns one of launchatlogin's three LoginItemStatus values:
+// "disabled", "enabled", or "requires-approval" (registered, but
+// macOS is holding it for the user's explicit confirmation).
+func (s *SettingsService) GetLaunchAtLogin() (string, error) {
 	exe, err := os.Executable()
 	if err != nil {
-		return false, err
+		return "", err
 	}
-	return launchatlogin.IsEnabled(exe)
+	status, err := launchatlogin.Status(exe)
+	return string(status), err
 }
 
 // SetLaunchAtLogin enables or disables starting Mill automatically at

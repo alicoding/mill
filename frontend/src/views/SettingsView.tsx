@@ -27,6 +27,14 @@ import PageContainer from '../shared/PageContainer'
 
 const COLOR_MODES = ['light', 'dark', 'auto'] as const
 const DENSITIES = ['comfortable', 'compact'] as const
+
+// Deep-links straight to the Login Items pane -- same undocumented-but-
+// stable x-apple.systempreferences scheme ACCESSIBILITY_SETTINGS_URL
+// already relies on, confirmed against multiple independent write-ups
+// (Apple Stack Exchange's accepted answer for opening this exact pane,
+// and Der Flounder's own command-line survey) since Apple doesn't
+// publish a URL-scheme reference for System Settings panes.
+const LOGIN_ITEMS_SETTINGS_URL = 'x-apple.systempreferences:com.apple.LoginItems-Settings.extension'
 const SECTION_IDS = SETTINGS_SECTIONS.map((s) => s.id)
 
 // One page, a synced TOC, search-first (goal 0077): every section
@@ -91,7 +99,9 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
   const isNarrowViewport = useIsNarrowViewport()
   const reducedMotion = usePrefersReducedMotion()
 
-  const [launchAtLogin, setLaunchAtLoginState] = useState<boolean | null>(null)
+  // 'disabled' | 'enabled' | 'requires-approval' (launchatlogin.LoginItemStatus)
+  // -- null only for the one render before the mount fetch below resolves.
+  const [launchAtLoginStatus, setLaunchAtLoginStatus] = useState<string | null>(null)
   const [launchAtLoginError, setLaunchAtLoginError] = useState('')
 
   const [summonBinding, setSummonBinding] = useState<string | null>(null)
@@ -139,7 +149,7 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
 
   useEffect(() => {
     SettingsService.GetLaunchAtLogin()
-      .then(setLaunchAtLoginState)
+      .then(setLaunchAtLoginStatus)
       .catch((err) => setLaunchAtLoginError(String(err)))
     SettingsService.GetSummonHotkey()
       .then((label) => setSummonBinding(label || null))
@@ -211,18 +221,23 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
     }
   }, [summonRecording])
 
+  // Re-queries the real status after a successful write rather than
+  // assuming `enabled` -- a first-time Enable can land directly on
+  // 'requires-approval', which an optimistic true would misreport as
+  // fully on.
   const toggleLaunchAtLogin = (enabled: boolean) => {
     setLaunchAtLoginError('')
     SettingsService.SetLaunchAtLogin(enabled)
-      .then(() => setLaunchAtLoginState(enabled))
+      .then(() => SettingsService.GetLaunchAtLogin())
+      .then(setLaunchAtLoginStatus)
       .catch((err) => setLaunchAtLoginError(String(err)))
   }
 
   // Applies to the DOM immediately (ahead of the persist RPC resolving,
   // docs/goals/0096's "applies live, no reload" acceptance bar) --
-  // never reverted on a failed SetDisplayDensity, matching this file's
-  // other optimistic toggles (toggleLaunchAtLogin is the one exception,
-  // reverting on error since a failed launch-at-login write has a real
+  // never reverted on a failed SetDisplayDensity, unlike
+  // toggleLaunchAtLogin above, which never sets optimistic state at all
+  // (a failed or pending-approval launch-at-login write has a real
   // OS-level consequence a silently-wrong checkbox would hide).
   const setDensity = (value: DisplayDensity) => {
     applyDensity(value)
@@ -276,14 +291,24 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
       <>
         <FormControl>
           <Checkbox
-            checked={launchAtLogin ?? false}
-            disabled={launchAtLogin === null}
+            checked={launchAtLoginStatus === 'enabled' || launchAtLoginStatus === 'requires-approval'}
+            disabled={launchAtLoginStatus === null}
             onChange={(e) => toggleLaunchAtLogin(e.target.checked)}
             data-testid="launch-at-login-checkbox"
           />
           <FormControl.Label>{t('settings.general.launchAtLoginLabel')}</FormControl.Label>
           <FormControl.Caption>{t('settings.general.launchAtLoginCaption')}</FormControl.Caption>
         </FormControl>
+        {launchAtLoginStatus === 'requires-approval' && (
+          <Stack direction="horizontal" gap="condensed" align="center" data-testid="launch-at-login-requires-approval">
+            <Text as="p" size="small" className={styles.attention}>
+              {t('settings.general.launchAtLoginRequiresApproval')}
+            </Text>
+            <Button size="small" onClick={() => Browser.OpenURL(LOGIN_ITEMS_SETTINGS_URL)}>
+              {t('settings.general.openLoginItemsSettings')}
+            </Button>
+          </Stack>
+        )}
         {launchAtLoginError && (
           <Text as="p" size="small" className={styles.error}>
             {launchAtLoginError.includes('dev binary')

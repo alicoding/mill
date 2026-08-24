@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
+	"github.com/alicoding/mill/internal/adapters/launchatlogin"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/services/agentloopsvc"
@@ -437,6 +438,7 @@ func main() {
 	settingsService.SetWindow(windowing.WrapWindow(mainWindow))
 	settingsService.WatchWindowGeometry()
 	atlasService.WireFileDropWindow(windowing.WrapWindow(mainWindow))
+	launchatlogin.SetAutostartManager(app.Autostart)
 
 	// ADR-0033 second-window family, built in auxwindows.go.
 	settingsService.SetPanelWindow(windowing.WrapWindow(newQuickPanelWindow(app)))
