@@ -87,3 +87,35 @@ func TestContentText_IgnoresNonTextContent(t *testing.T) {
 		t.Errorf("contentText = %q, want it to contain the text part", got)
 	}
 }
+
+// TestBuildCommand_NoEnv_InheritsAmbient pins buildCommand's documented
+// contract: an empty env leaves cmd.Env nil, so exec.Cmd's own default
+// (inherit the calling process's environment) is unchanged for every
+// MCP server that never configured one -- a real regression class if
+// buildCommand set cmd.Env = os.Environ() (a NON-nil, merely-copied
+// slice) unconditionally, which would look identical in a manual
+// smoke test but silently changes exec.Cmd's own documented semantics.
+func TestBuildCommand_NoEnv_InheritsAmbient(t *testing.T) {
+	cmd := buildCommand(context.Background(), "true", nil, nil)
+	if cmd.Env != nil {
+		t.Fatalf("cmd.Env = %v, want nil (inherit ambient)", cmd.Env)
+	}
+}
+
+func TestBuildCommand_WithEnv_MergesOntoAmbient(t *testing.T) {
+	cmd := buildCommand(context.Background(), "true", nil, []string{"MILL_TEST_VAR=hello"})
+	found := false
+	for _, kv := range cmd.Env {
+		if kv == "MILL_TEST_VAR=hello" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("cmd.Env = %v, want it to contain MILL_TEST_VAR=hello", cmd.Env)
+	}
+	// The ambient environment (e.g. PATH) is still present -- a real MCP
+	// server subprocess needs it to resolve its own binary/dependencies.
+	if len(cmd.Env) < 2 {
+		t.Fatalf("cmd.Env = %v, want the ambient environment merged in too, not just the configured entry", cmd.Env)
+	}
+}

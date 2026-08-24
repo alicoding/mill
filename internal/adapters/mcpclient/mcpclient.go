@@ -12,6 +12,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -77,18 +78,11 @@ func NewClient(impl *mcp.Implementation) *mcp.Client {
 // tools" preview) -- carried via context so the audit middleware
 // (internal/services/mcpauditsvc) can read it back without this
 // function knowing anything about auditing itself.
-func ListTools(command string, args []string, callerIdentity string) ([]Tool, error) {
+func ListTools(command string, args []string, env []string, callerIdentity string) ([]Tool, error) {
 	ctx, cancel := context.WithTimeout(mcpaudit.WithCallerIdentity(context.Background(), callerIdentity), timeout)
 	defer cancel()
 
-	// command/args are the user's own MCP-server-connector configuration
-	// (Configure), the deliberate feature -- launching a user-chosen
-	// executable, the same class as shellenv's own login-shell launch.
-	// exec.Command never invokes a shell (argv is passed directly to
-	// execve), so there's no shell-metacharacter injection surface
-	// either; the risk here is "runs what the user configured," which is
-	// the intended behavior, not a vulnerability to close.
-	transport := &mcp.CommandTransport{Command: exec.CommandContext(ctx, command, args...)} //nolint:gosec // user-configured connector command, by design (see comment above)
+	transport := &mcp.CommandTransport{Command: buildCommand(ctx, command, args, env)}
 	return listTools(ctx, transport)
 }
 
@@ -99,19 +93,34 @@ func ListTools(command string, args []string, callerIdentity string) ([]Tool, er
 // of a real need" reasoning as httpconnector's own response shape).
 // callerIdentity is the owning workflow step id (see ListTools' own doc
 // comment for the full reasoning).
-func CallTool(command string, args []string, toolName string, arguments map[string]any, callerIdentity string) (string, error) {
+func CallTool(command string, args []string, env []string, toolName string, arguments map[string]any, callerIdentity string) (string, error) {
 	ctx, cancel := context.WithTimeout(mcpaudit.WithCallerIdentity(context.Background(), callerIdentity), timeout)
 	defer cancel()
 
-	// command/args are the user's own MCP-server-connector configuration
-	// (Configure), the deliberate feature -- launching a user-chosen
-	// executable, the same class as shellenv's own login-shell launch.
-	// exec.Command never invokes a shell (argv is passed directly to
-	// execve), so there's no shell-metacharacter injection surface
-	// either; the risk here is "runs what the user configured," which is
-	// the intended behavior, not a vulnerability to close.
-	transport := &mcp.CommandTransport{Command: exec.CommandContext(ctx, command, args...)} //nolint:gosec // user-configured connector command, by design (see comment above)
+	transport := &mcp.CommandTransport{Command: buildCommand(ctx, command, args, env)}
 	return callTool(ctx, transport, toolName, arguments)
+}
+
+// buildCommand is ListTools/CallTool's shared *exec.Cmd construction.
+// command/args are the user's own MCP-server-connector configuration
+// (Configure), the deliberate feature -- launching a user-chosen
+// executable, the same class as shellenv's own login-shell launch.
+// exec.Command never invokes a shell (argv is passed directly to
+// execve), so there's no shell-metacharacter injection surface either;
+// the risk here is "runs what the user configured," which is the
+// intended behavior, not a vulnerability to close. env holds the
+// server's own already-resolved additions (goal 0185 S3 -- any vault
+// reference is substituted before this function ever sees it); a nil/
+// empty env leaves cmd.Env nil, so exec.Cmd's own documented default
+// (inherit the calling process's environment) is unchanged from before
+// this parameter existed -- only a configured MCP server with real Env
+// entries opts into anything different.
+func buildCommand(ctx context.Context, command string, args []string, env []string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, command, args...) //nolint:gosec // user-configured connector command, by design (see doc comment above)
+	if len(env) > 0 {
+		cmd.Env = append(os.Environ(), env...)
+	}
+	return cmd
 }
 
 // listTools/callTool are the unexported core the exported functions

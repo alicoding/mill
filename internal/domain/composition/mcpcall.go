@@ -19,6 +19,12 @@ import (
 type ResolvedMCPServer struct {
 	Command string
 	Args    []string
+	// Env is already fully resolved (any vault: reference substituted
+	// for its real value) by whatever set lookupMCPServerFn -- this
+	// package never sees or interprets a vault reference itself (the
+	// node-standard credential rule: composition never reads a secret
+	// out of Node.Config or resolves one itself).
+	Env []string
 }
 
 // lookupMCPServerFn defaults to erroring so an mcp-tool-call node run
@@ -51,8 +57,25 @@ var callToolFn = mcpclient.CallTool
 // SetMCPCallTool overrides how mcp-tool-call nodes actually perform a
 // tool call -- test-only; production always uses the default
 // (mcpclient.CallTool).
-func SetMCPCallTool(fn func(command string, args []string, toolName string, arguments map[string]any, callerIdentity string) (string, error)) {
+func SetMCPCallTool(fn func(command string, args []string, env []string, toolName string, arguments map[string]any, callerIdentity string) (string, error)) {
 	callToolFn = fn
+}
+
+// redactSecretsFn defaults to identity (no-op) so a run before
+// SetSecretRedactor is wired (or a headless `go test` that never wires
+// it) still works, just without redaction -- same fail-open-to-
+// unwired-behavior shape lookupMCPServerFn's own error default takes
+// the opposite way (fails loud) because THAT gap means "nothing would
+// work at all," while this one means "one extra safety net is
+// missing," not a correctness break.
+var redactSecretsFn = func(s string) string { return s }
+
+// SetSecretRedactor wires the function that scrubs known vault secret
+// values out of an mcp-tool-call node's own error text (goal 0185 S4)
+// -- called once from main.go once secretsvc.SecretService exists
+// (secretsvc.SecretService.RedactKnownSecrets).
+func SetSecretRedactor(fn func(string) string) {
+	redactSecretsFn = fn
 }
 
 func init() {
@@ -97,9 +120,14 @@ func init() {
 		}
 		arguments = resolveMCPArguments(arguments, ctx.Attributes)
 
-		result, err := callToolFn(rs.Command, rs.Args, node.Config["toolName"], arguments, node.ID)
+		result, err := callToolFn(rs.Command, rs.Args, rs.Env, node.Config["toolName"], arguments, node.ID)
 		if err != nil {
-			return ctx, fmt.Errorf("mcp-tool-call: %w", err)
+			// A server launched with an injected vault secret (rs.Env)
+			// could echo it back in its own failure text (an auth error
+			// naming the bad token, say) -- redactSecretsFn scrubs every
+			// currently-known vault value before the error leaves this
+			// node (goal 0185 S4).
+			return ctx, fmt.Errorf("mcp-tool-call: %s", redactSecretsFn(err.Error()))
 		}
 		ctx.Payload = result
 		return ctx, nil

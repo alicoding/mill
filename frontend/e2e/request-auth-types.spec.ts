@@ -68,7 +68,7 @@ test('An HMAC request persists a custom signature header name', async ({ page })
   await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
   await page.getByLabel('Auth type').selectOption('hmac')
   await page.getByLabel('Signature header name').fill('X-Vendor-Signature')
-  await page.getByLabel('Secret').fill('signing-key')
+  await page.getByLabel('Secret', { exact: true }).fill('signing-key')
   await page.getByRole('button', { name: 'Save request' }).click()
 
   await expect(requestRow(page, 'HMAC Request')).toBeVisible()

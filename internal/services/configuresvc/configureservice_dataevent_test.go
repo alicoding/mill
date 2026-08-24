@@ -119,14 +119,14 @@ func TestDataEvent_MCPServerMutations(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 
 	got := captureEmits(t)
-	s, err := cfg.CreateMCPServer("Emit test server", "echo", nil)
+	s, err := cfg.CreateMCPServer("Emit test server", "echo", nil, nil)
 	if err != nil {
 		t.Fatalf("CreateMCPServer: %v", err)
 	}
 	assertEmitted(t, *got, "mcpserver", s.ID)
 
 	got = captureEmits(t)
-	s, err = cfg.UpdateMCPServer(s.ID, "Emit test server (edited)", "echo", nil)
+	s, err = cfg.UpdateMCPServer(s.ID, "Emit test server (edited)", "echo", nil, nil)
 	if err != nil {
 		t.Fatalf("UpdateMCPServer: %v", err)
 	}

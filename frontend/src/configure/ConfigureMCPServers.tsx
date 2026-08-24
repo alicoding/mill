@@ -54,6 +54,11 @@ export function ConfigureMCPServers() {
   const [editingID, setEditingID] = useState<string | null>(null)
   const [values, setValues] = useState<Record<string, string>>({ label: '', command: '' })
   const [argRows, setArgRows] = useState<string[]>([])
+  // Env has no editor on this form yet (goal 0185 S3 shipped only the
+  // Import/spawn-time path) -- carried through unedited so opening and
+  // saving an existing server's form never drops a vault-ref entry it
+  // already holds.
+  const [env, setEnv] = useState<string[] | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
   const [toolsByServer, setToolsByServer] = useState<Record<string, Tool[] | string>>({})
@@ -84,6 +89,7 @@ export function ConfigureMCPServers() {
     setEditingID(null)
     setValues({ label: '', command: '' })
     setArgRows([''])
+    setEnv(null)
     setFormOpen(true)
     setError('')
   }
@@ -104,6 +110,7 @@ export function ConfigureMCPServers() {
     setEditingID(s.ID)
     setValues({ label: s.Label, command: s.Command })
     setArgRows(argsToRows(s.Args))
+    setEnv(s.Env)
     setFormOpen(true)
     setError('')
   }
@@ -115,9 +122,9 @@ export function ConfigureMCPServers() {
     try {
       const args = argRows.map((a) => a.trim()).filter(Boolean)
       if (editingID) {
-        await ConfigureService.UpdateMCPServer(editingID, values.label, values.command, args)
+        await ConfigureService.UpdateMCPServer(editingID, values.label, values.command, args, env)
       } else {
-        await ConfigureService.CreateMCPServer(values.label, values.command, args)
+        await ConfigureService.CreateMCPServer(values.label, values.command, args, env)
       }
       setFormOpen(false)
       refetch()

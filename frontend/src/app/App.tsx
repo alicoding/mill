@@ -10,6 +10,7 @@ import CompositionView from "../composition/CompositionView";
 import ConfigureView from "../configure/ConfigureView";
 import { AtlasView } from "../atlas/AtlasView";
 import SettingsView from "../views/SettingsView";
+import SecretsView from "../views/SecretsView";
 import PlaceholderView from "../views/PlaceholderView";
 import { CapabilitiesService, ExecutionService, SettingsService } from '../shared/bindings'
 import type { BuildInfo } from '../shared/bindings'
@@ -442,7 +443,6 @@ function App() {
           <MCPWriteApprovals />
           <WorkTabShell pageLabel={pageLabelFor(view, capabilities, t)} pageIcon={pageIconFor(view)} titlebarSlot={titlebarSlot}>
             {view.kind === 'home' && <HomeView/>}
-
             {view.kind === 'activity' && <ActivityView/>}
             {view.kind === 'review' && <ReviewView/>}
 
@@ -454,6 +454,7 @@ function App() {
             {view.kind === 'docs' && <DocsView initialPage={view.page}/>}
 
             {view.kind === 'settings' && <SettingsView initialSection={view.section}/>}
+            {view.kind === 'secrets' && <SecretsView/>}
 
             {view.kind === 'placeholder' && <PlaceholderView capabilityId={view.capabilityId}/>}
           </WorkTabShell>
