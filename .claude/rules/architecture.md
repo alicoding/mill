@@ -46,6 +46,29 @@ check before reaching for a `.map()` + custom markup or a hand-rolled
 parser (see `.claude/rules/frontend.md` for the concrete UI-collection
 instance of this).
 
+**Adopting a dependency means reading its API, not just the part you
+needed on day one.** Research → Adopt → Compose above governs whether to
+take a dependency. This governs what happens next, and it is a distinct
+failure: we adopt something, use the four calls the first feature
+needed, and then months later hand-build a capability the same
+dependency already ships. Before building ANY capability inside a domain
+an adopted dependency already owns — windows, tray/menu bar, menus,
+dialogs, notifications, storage, the update channel — **enumerate that
+dependency's API for the domain first, from its own vendored source, and
+state what you found in the goal or brief, including "it offers nothing
+here."** The check is one grep of `~/go/pkg/mod` or `node_modules` and
+costs minutes; skipping it has cost real defects. Three confirmed
+instances, all in the platform-configuration seam (goal 0190 has the
+audit): `SystemTray` was used as a launcher while its own API offers an
+attachable window, a menu-bar label and a full click vocabulary;
+`Mac.ActivationPolicy` was never declared at all, so Mill inherited the
+document-app archetype while behaving like a menu-bar app and AppKit
+terminated it on a background summon (goal 0188); and `SetIcon` was
+chosen where `SetTemplateIcon` is the API that adapts to a light or dark
+menu bar. The counter-example proving the rule is satisfiable:
+`internal/adapters/dockbadge` correctly wraps Wails' own
+`dock.DockService` rather than reimplementing it.
+
 **The core/composition boundary — before building ANY new capability,
 ask: is this a node, a trigger, a connector, or a true kernel change?**
 ([ADR-0035](../../docs/adr/0035-core-vs-composition-boundary.md),
