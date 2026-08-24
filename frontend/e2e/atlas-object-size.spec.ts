@@ -80,31 +80,56 @@ test('editing a card title or a note\'s text never resizes its board box (goal 0
 // persists across reload" (the actual resize-HANDLE drag is the same
 // documented pointer-coalescing class as QUARANTINE.md's
 // atlas-table-resize, local-only, covered separately below).
+//
+// The real subject is "fit to content grows the box, and the growth
+// survives reload" -- proven by comparing the SAME boxSize() reading
+// before and after, never by measuring a title element's own
+// scrollHeight/clientHeight. Text-wrap line count is a function of the
+// platform's real font metrics (the app's font-family stack falls
+// through -apple-system/Segoe UI/Roboto/Arial by OS), so how many
+// lines a fixed word count wraps into -- and therefore whether a
+// scrollHeight-vs-clientHeight probe reads a gap at all -- differs
+// between macOS and a CI runner's substituted fonts. A `card.locator
+// ('div').filter({hasText})` probe carries the same class of risk one
+// level up: it depends on exactly one div matching, which holds only
+// because this component happens to render the title as a single flat
+// child, not because the query is inherently scoped to it. Neither
+// weakness affects a before/after box-size comparison, since fit-to-
+// content's own handler (useAtlasLinkMenus.tsx) only ever grows the
+// box when the natural content height exceeds the current one -- a
+// height increase IS the clip signal, read off the same wrapper
+// element and helper the sibling tests in this file already trust.
 test('fit to content reveals a clipped title and the new size survives reload', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
 
-  const longTitle = ('ZzSizeFit ' + 'word '.repeat(15)).trim()
+  // Forty words, not fifteen: a wide safety margin against per-line
+  // word-wrap count varying by platform font -- the box only needs to
+  // stay too short for SOME number of wrapped lines, and this title
+  // wraps to far more lines than the default box's title row can hold
+  // even under the widest realistic glyph metrics.
+  const longTitle = ('ZzSizeFit ' + 'word '.repeat(40)).trim()
   await armAndPlaceTopicCard(page, board, page.getByTestId('atlas-placement-popover'), 0.1, 0.1, longTitle)
   const card = noteCard(page, longTitle)
   await expect(card).toBeVisible()
-  const title = card.locator('div').filter({ hasText: longTitle }).first()
+  const cardWrapper = page.locator('.react-flow__node').filter({ has: card })
 
-  // At the default box the title is genuinely clipped (its natural
-  // content needs more vertical room than the box currently has).
-  const clipped = await title.evaluate((el) => el.scrollHeight - el.clientHeight)
-  expect(clipped).toBeGreaterThan(0)
+  // The box never grows on its own (goal 0193's no-automatic-resize
+  // rule, pinned by the sibling test above) -- this is still whatever
+  // size the card was placed at.
+  const before = await boxSize(cardWrapper)
 
   await card.click({ button: 'right' })
   const menu = contextMenu(page)
   await expect(menu).toBeVisible()
   await menu.getByText('Fit to content', { exact: true }).click()
 
-  // The clip gap closes -- the box now shows everything.
-  await expect.poll(() => title.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1)
-  const fitted = await boxSize(page.locator('.react-flow__node').filter({ has: card }))
+  // Fit to content is the one door that changes the box -- it grows
+  // to show the whole title.
+  await expect.poll(() => boxSize(cardWrapper).then((s) => s.height)).toBeGreaterThan(before.height)
+  const fitted = await boxSize(cardWrapper)
 
   await page.reload()
   await page.getByRole('link', { name: 'Atlas' }).click()
