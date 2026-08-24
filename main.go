@@ -443,10 +443,10 @@ func main() {
 	settingsService.SetApprovalPromptWindow(windowing.WrapWindow(newApprovalPromptWindow(app)))
 
 	// docs/SPEC.md §3.7 (task #8): a persistent tray icon as Mill's own
-	// running-indicator, coexisting with the dock icon (Application
-	// ShouldTerminateAfterLastWindowClosed stays true). Clicking it
-	// reuses ShowWindow (SettingsService), the same show/restore/focus
-	// sequence the summon hotkey already uses.
+	// running-indicator (windowing.MacAppOptions keeps Mill alive after
+	// the last window closes, goal 0188). Clicking it and "Show Mill"
+	// both reach ShowWindow (settingsservice_presence.go); Quit calls
+	// windowing.Quit(), the one termination call Mill's own code makes.
 	trayIcon := app.SystemTray.New()
 	trayIcon.SetIcon(trayIconPNG)
 	trayIcon.SetTooltip("Mill")
@@ -454,7 +454,7 @@ func main() {
 	trayMenu := app.NewMenu()
 	trayMenu.Add("Show Mill").OnClick(func(*application.Context) { settingsService.ShowWindow() })
 	trayMenu.AddSeparator()
-	trayMenu.Add("Quit").OnClick(func(*application.Context) { app.Quit() })
+	trayMenu.Add("Quit").OnClick(func(*application.Context) { windowing.Quit() })
 	trayIcon.SetMenu(trayMenu)
 
 	// Create a goroutine that emits an event containing the current time every second.

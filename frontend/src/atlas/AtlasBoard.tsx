@@ -22,6 +22,7 @@ import { useAtlasPencilStyle } from './atlasPencilStyleStore'
 import { AtlasPencilLivePreview } from './AtlasPencilLivePreview'
 import { AtlasEraserLiveTrail } from './AtlasEraserLiveTrail'
 import { AtlasLaserTrail } from './AtlasLaserTrail'
+import { AtlasShapeLivePreview } from './AtlasShapeLivePreview'
 import { useAtlasDragTools } from './useAtlasDragTools'
 import { useAtlasDragFiling, type FrameBox } from './useAtlasDragFiling'
 import { AtlasDragHighlightContext } from './atlasDragHighlightContext'
@@ -314,11 +315,14 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
 
   const r = areaDraw.dragLocalRect, marqueeStyle = r ? { left: r.x, top: r.y, width: r.width, height: r.height } : null
 
-  // Eraser + Laser's own arming and gesture hooks, plus the four-way
-  // activeDrag resolution across all of Area/Pencil/Eraser/Laser (goal
-  // 0169 slice 4) -- split into its own file at the 500-line seam.
-  const { eraserDraw, laserDraw, activeDrag, anyDragToolArmed } = useAtlasDragTools({
-    isFree, readOnly, armedTool: creation.armedTool, screenToFlowPosition, topLevelBoxes, noteBoxes, wrapperRef,
+  // Eraser + Laser's own arming and gesture hooks, plus Shape's full
+  // wiring (armed flag, style store, placement door, drag hook -- goal
+  // 0169 slice 5, instantiated INSIDE this hook the same way Eraser/
+  // Laser already are, unlike Area/Pencil which predate this split),
+  // plus the five-way activeDrag resolution across all of them -- split
+  // into its own file at the 500-line seam.
+  const { eraserDraw, laserDraw, shapeStyle, shapeDraw, activeDrag, anyDragToolArmed } = useAtlasDragTools({
+    isFree, readOnly, armedTool: creation.armedTool, screenToFlowPosition, topLevelBoxes, noteBoxes, wrapperRef, parentID,
     onDeleteSelection, areaArmed, areaDraw, pencilArmed, pencilDraw,
   })
 
@@ -454,6 +458,9 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       </AtlasDragHighlightContext.Provider>
       {marqueeStyle && <div className={styles.marquee} data-testid="atlas-area-marquee" style={marqueeStyle} />}
       {pencilDraw.localPoints && <AtlasPencilLivePreview points={pencilDraw.localPoints} color={pencilStyle.color} size={pencilStyle.size} />}
+      {shapeDraw.localStart && shapeDraw.localCurrent && (
+        <AtlasShapeLivePreview shapeType={shapeStyle.shapeType} stroke={shapeStyle.stroke} strokeWidth={shapeStyle.strokeWidth} start={shapeDraw.localStart} current={shapeDraw.localCurrent} />
+      )}
       {eraserDraw.localPoints && <AtlasEraserLiveTrail points={eraserDraw.localPoints} />}
       {laserDraw.points.length > 0 && <AtlasLaserTrail points={laserDraw.points} now={laserDraw.now} />}
       {slotDrag.dragLine && <AtlasSlotDragLine line={slotDrag.dragLine} />}

@@ -385,6 +385,15 @@ export const ATLAS_LEDGER_SYNC_MCP_BASE_PORT = 10500
 export const KIND_PROPOSAL_SERVER_BASE_PORT = 10520
 export const KIND_PROPOSAL_MCP_BASE_PORT = 10540
 
+// atlas-single-space-trap.spec.ts's own dedicated pair (goal 0183):
+// deletes the seeded root card down to ZERO spaces and back up, a
+// global root-card-count state every other Atlas spec in the shared
+// pool assumes never happens (they all rely on auto-entering the one
+// seeded root, "The engagement", on every fresh load) -- same
+// own-server-own-ports reasoning as atlas-session-restore above.
+export const ATLAS_SINGLE_SPACE_SERVER_BASE_PORT = 10560
+export const ATLAS_SINGLE_SPACE_MCP_BASE_PORT = 10580
+
 // secrets.spec.ts's own dedicated pair (goal 0185 S2): vault existence/
 // lock state is GLOBAL app state (testing.md's shared-vs-dedicated
 // rule) -- a shared-pool server could be mid-setup or mid-unlock from

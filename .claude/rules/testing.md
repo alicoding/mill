@@ -26,8 +26,14 @@ covers it.
 **E2e isolation is per-worker and per-run** (goal 0009): each Playwright
 worker spawns its own `bin/mill-server` on its own port against fresh
 `mkdtemp` settings/execution-db files, torn down at worker end
-(`e2e/fixtures/server.ts` — every spec imports `test`/`expect` from there,
-never from `@playwright/test` directly).
+(`e2e/fixtures/server.ts`). Specs on the SHARED worker pool import
+`test`/`expect` from that fixture, never from `@playwright/test`
+directly. **Specs that spawn their own dedicated server are the
+exception** and import `chromium`/`expect`/`test` from
+`@playwright/test`, calling `spawnMillServer` themselves — see
+`atlas-authoring.spec.ts` and `atlas-session-restore.spec.ts`. Stating
+the rule without its exception has already sent one brief the wrong
+way.
 - Within-file cleanup discipline still applies — tests in one spec file
   share a worker/server, so delete what you create.
 - Real-pasteboard tests take the clipboard lock
@@ -137,6 +143,19 @@ at:
     app switcher/dock, and focus returns to the app you summoned from;
     finally reactivate Mill (dock click or Cmd+Tab) and confirm the main
     window is back, right where it was before the summon.
+  - **Bringing a hidden app back on screen** (goal 0186, goal 0188 slice
+    2 — `bringMainToFront`/`bringFloatingToFront`,
+    `settingssvc/settingsservice_presence.go`) — every path that shows a
+    window now un-hides the app first, which only a real app-level hide
+    can exercise. Verify on an installed build: repeat the background-
+    summon dismiss above until Mill is app-hidden (no window, not in the
+    app switcher), then summon again and click the panel's "Open Mill"
+    row — confirm the main window actually appears, where it previously
+    did nothing silently. Separately, repeat with the tray's "Show Mill"
+    item instead of the panel. Separately, park a guardrail/MCP-write
+    decision while away and Mill app-hidden — confirm the floating
+    approval prompt appears rather than staying invisible behind a
+    still-hidden app.
   - **Native file-drop delivery** (goal 0081 A3) — verify by dragging a
     `.md` file from Finder onto the running app and confirming the card
     lands with the real path.

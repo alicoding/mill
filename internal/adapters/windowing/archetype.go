@@ -30,6 +30,11 @@ import "github.com/wailsapp/wails/v3/pkg/application"
 // the application menu -- never as a side effect of a window becoming
 // invisible. Background work (the scheduler, triggers, clipboard and
 // filesystem watches) depends on the process outliving its windows.
+//
+// This is the "never quit unexpectedly" half of presence policy (goal
+// 0188 slice 2). The "how a window becomes visible again" half --
+// which always un-hides the app first -- lives in
+// internal/services/settingssvc/settingsservice_presence.go.
 func MacAppOptions() application.MacOptions {
 	return application.MacOptions{
 		ActivationPolicy: application.ActivationPolicyRegular,

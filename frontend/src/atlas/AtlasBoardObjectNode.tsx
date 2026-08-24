@@ -4,6 +4,7 @@ import type { NodeProps, Node as RFNode } from '@xyflow/react'
 import { ImageIcon, PencilIcon } from '@primer/octicons-react'
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
+import { AtlasShapeContent } from './AtlasShapeContent'
 import styles from './AtlasBoardObjectNode.module.css'
 
 export interface AtlasBoardObjectData extends Record<string, unknown> {
@@ -23,13 +24,20 @@ export type AtlasBoardObjectRFNode = RFNode<AtlasBoardObjectData>
 // at its own natural/intrinsic size (clamped by this module's own CSS
 // max-width/height so a full-resolution screenshot never dwarfs the
 // board) until a future resize persists BoardObject.Size.
-export const AtlasBoardObjectNode = memo(function AtlasBoardObjectNode({ data }: NodeProps<AtlasBoardObjectRFNode>) {
+// A shape (goal 0169 slice 5) is structurally NOT mirror-file-backed --
+// it renders straight from its own Payload/Size, so it takes an early,
+// separate branch here rather than folding into the mirror-fetch effect
+// below (which stays scoped to the two Kinds that actually have a
+// mirror file, image and ink).
+function AtlasBoardObjectNodeInner({ data }: NodeProps<AtlasBoardObjectRFNode>) {
   const { t } = useTranslation('atlas')
   const { object } = data
   const [src, setSrc] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
+  const isShape = object.Kind === 'shape'
 
   useEffect(() => {
+    if (isShape) return
     let stale = false
     setSrc(null)
     setFailed(false)
@@ -48,7 +56,15 @@ export const AtlasBoardObjectNode = memo(function AtlasBoardObjectNode({ data }:
     return () => {
       stale = true
     }
-  }, [object.ID, object.Payload])
+  }, [object.ID, object.Payload, isShape])
+
+  if (isShape) {
+    return (
+      <div className={styles.object} data-testid="atlas-board-object" data-object-kind="shape" data-shape-type={object.Payload?.shapeType} role="img" aria-label={t('boardObject.shapeAriaLabel')}>
+        <AtlasShapeContent object={object} />
+      </div>
+    )
+  }
 
   const Glyph = object.Kind === 'ink' ? PencilIcon : ImageIcon
 
@@ -70,4 +86,16 @@ export const AtlasBoardObjectNode = memo(function AtlasBoardObjectNode({ data }:
       )}
     </div>
   )
-})
+}
+
+// A board-local canvas object (goal 0179/0180's own correction: a
+// canvas object is a thing in space, never a document) -- image, ink,
+// and shape share this one component, discriminated by object.Kind
+// purely for which content to render; none get a title, a flip, or
+// connection handles -- structurally excluded from every card
+// mechanism, the same way AtlasStickyNode's note is. Lands at its own
+// natural/intrinsic size (clamped by this module's own CSS max-width/
+// height for image/ink so a full-resolution screenshot never dwarfs the
+// board; a shape's own size is already user-drawn, so it carries no
+// such clamp) until a future resize persists BoardObject.Size.
+export const AtlasBoardObjectNode = memo(AtlasBoardObjectNodeInner)

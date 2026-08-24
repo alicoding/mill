@@ -128,11 +128,15 @@ test('a real double-click reproduces the same select-then-commit outcome as two 
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
   // ⌘↑ = one step up the depth ladder (atlas.up, Finder's enclosing-
-  // folder convention); at the auto-entered single root it's a no-op.
+  // folder convention); reaching the meta "All spaces" level from the
+  // auto-entered single root is always permitted (docs/goals/0183),
+  // never a no-op.
   await page.keyboard.press('Meta+ArrowUp')
   await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Client records')
-  await page.keyboard.press('Meta+ArrowUp')
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('The engagement')
+  await page.keyboard.press('Meta+ArrowUp')
+  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('The engagement')
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
 })
 
 test('⌘-click commits instantly with no prior selection needed; a plain click on empty canvas deselects', async ({ page }) => {

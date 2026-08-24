@@ -7,6 +7,13 @@ import "github.com/wailsapp/wails/v3/pkg/application"
 // (never destroyed/recreated). Split from main.go along that family
 // seam (the 500-line convention); main.go keeps the main window, tray,
 // and service wiring.
+//
+// Hidden/HideOnFocusLost/HideOnEscape below are declarative AppKit
+// options that fire with no Go code running (goal 0188 slice 2) -- the
+// Go-side half of presence policy these windows share with the main
+// window lives in internal/services/settingssvc/
+// settingsservice_presence.go (showing) and settingsservice_panel.go's
+// yieldFocusIfMainHidden (hiding).
 
 // newQuickPanelWindow builds the Quick Panel (docs/adr/0033): a
 // floating window the summon hotkey toggles. URL is a hash route, not

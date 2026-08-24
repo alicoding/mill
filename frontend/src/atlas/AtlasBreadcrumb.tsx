@@ -9,9 +9,13 @@ import { buildBreadcrumbPath, childrenOf, singleRootCard } from './atlasGrouping
 // hand-rolled "a / b / c" strip). The virtual meta level (Card.ParentID
 // == "" -- ADR-0038 Decision 3, there is no real root card) only earns
 // its own "All spaces" crumb when 2+ root cards actually exist to
-// choose between (egocentric-root auto-entry, goal 0069) -- with
-// exactly one root card, that card IS the top and the path already
-// starts there. The meta crumb stays a plain navigate-on-click link
+// choose between (egocentric-root auto-entry, goal 0069), OR the user
+// is currently standing at that level (viewedID === '') -- with
+// exactly one root card and the user still inside it, that card IS the
+// top and the path already starts there, so the crumb stays hidden
+// until they deliberately navigate up to it (docs/goals/0183: a
+// permanently-hidden crumb made the sole space unreachable as an
+// object). The meta crumb stays a plain navigate-on-click link
 // (goal 0106 slice B): it names no single real place with siblings of
 // its own, unlike every other segment below.
 export function AtlasBreadcrumb({ cards, viewedID, onNavigate }: {
@@ -21,7 +25,7 @@ export function AtlasBreadcrumb({ cards, viewedID, onNavigate }: {
 }) {
   const { t } = useTranslation('atlas')
   const path = buildBreadcrumbPath(cards, viewedID)
-  const showMetaCrumb = singleRootCard(cards) === null
+  const showMetaCrumb = singleRootCard(cards) === null || viewedID === ''
   return (
     // The data-testid lives on this wrapper div, not <Breadcrumbs>
     // itself: Breadcrumbs destructures only className/children/style/

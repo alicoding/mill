@@ -94,12 +94,23 @@
     "eraserLabel": "Eraser",
     "eraserTooltip": "Drag to erase cards and notes (E)",
     "laserLabel": "Laser",
-    "laserTooltip": "Point at things on the board (L)"
+    "laserTooltip": "Point at things on the board (L)",
+    "shapeLabel": "Shape",
+    "shapeTooltip": "Draw a shape (S)"
   },
   "pencilStyle": {
     "colorLabel": "Stroke colour",
     "sizeLabel": "Stroke size",
     "sizeOption": "{{size}}px"
+  },
+  "shapeStyle": {
+    "typeLabel": "Shape type",
+    "type_rectangle": "Rectangle",
+    "type_ellipse": "Ellipse",
+    "type_arrow": "Arrow",
+    "strokeLabel": "Stroke colour",
+    "widthLabel": "Stroke width",
+    "widthOption": "{{width}}px"
   },
   "imageInput": {
     "pathLabel": "Path",
@@ -129,6 +140,7 @@
   "boardObject": {
     "imageAriaLabel": "Image",
     "inkAriaLabel": "Ink drawing",
+    "shapeAriaLabel": "Shape",
     "loadFailed": "Couldn't load this file."
   },
   "capture": {
@@ -340,6 +352,8 @@
     "addToPerspective": "Add to perspective ▸",
     "removeFromPerspective": "Remove from perspective ▸",
     "newSpace": "New space…",
+    "renameSpace": "Rename space…",
+    "deleteSpace": "Delete space",
     "openNote": "Open note"
   },
   "confirm": {
