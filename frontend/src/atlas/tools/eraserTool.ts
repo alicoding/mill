@@ -33,6 +33,12 @@ export const eraserTool = {
   shortcutKey: eraserIdentity.shortcutKey,
   tray: 'quick',
   interaction: eraserIdentity.interaction,
+  // Continuous tool, plain toggle-to-disarm -- never reads a lock flag.
+  lockable: false,
+  // Never persists an instance of its own (it destroys others'), so
+  // there is nothing to resize and no node type renders it.
+  resizable: false,
+  boardNodeType: null,
   commit: (): null => null,
 } as const satisfies AtlasToolShape
 

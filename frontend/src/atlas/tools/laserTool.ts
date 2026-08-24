@@ -18,6 +18,11 @@ export const laserTool = {
   shortcutKey: laserIdentity.shortcutKey,
   tray: 'quick',
   interaction: laserIdentity.interaction,
+  // Continuous tool, plain toggle-to-disarm -- never reads a lock flag.
+  lockable: false,
+  // Local-component-state-only trail, never persisted, no node type.
+  resizable: false,
+  boardNodeType: null,
   commit: (): null => null,
 } as const satisfies AtlasToolShape
 

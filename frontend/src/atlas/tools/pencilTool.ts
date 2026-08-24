@@ -29,6 +29,14 @@ export const pencilTool = {
   shortcutKey: pencilIdentity.shortcutKey,
   tray: 'quick',
   interaction: pencilIdentity.interaction,
+  // Continuous tool: toggleArm's own re-click always disarms (never
+  // reads a lock flag) -- multiple strokes come from staying armed
+  // across drags, not from locking a discrete placement.
+  lockable: false,
+  // A stroke lands as an 'ink' BoardObject, through the shared
+  // 'atlas-object' renderer -- same resize/drag-band coverage as image.
+  resizable: true,
+  boardNodeType: 'atlas-object',
   styleDefaults: PENCIL_DEFAULT_STYLE,
   StylePicker: AtlasPencilStylePicker,
   commit: async (input: { points: PencilPoint[]; color: string; size: number }): Promise<AtlasPencilArtifact | null> => {

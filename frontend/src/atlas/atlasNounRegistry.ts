@@ -15,6 +15,17 @@ export type { AtlasToolInteraction }
 // (colour/size, ...) -- never persisted document data.
 export type AtlasToolStyleDefaults = Record<string, unknown>
 
+// The React Flow node TYPE (atlasBoardNodeTypes.ts's own rfNodeTypes
+// keys, restated as a literal union here rather than imported -- that
+// file eagerly imports every node RENDERER component, and this
+// registry must stay a light, dependency-free descriptor layer) that
+// renders this noun's own placed instance -- null for a tool whose
+// gesture never persists anything a node could render at all (eraser
+// destroys state, laser is a local-only overlay). goal 0181 S3's own
+// join key: the surface-conformance tests below use it to find which
+// renderer source a `resizable: true` answer must hold true against.
+export type AtlasBoardNodeType = 'atlas-note' | 'atlas-sticky' | 'atlas-group' | 'atlas-object' | null
+
 interface AtlasToolShapeBase {
   icon: Icon
   label: string
@@ -27,6 +38,30 @@ interface AtlasToolShapeBase {
   // registry-driven so a second drag-to-draw tool never needs a
   // hardcoded branch naming it by id.
   StylePicker?: ComponentType
+  // goal 0181 S3's own three declarations, one per surface that shipped
+  // half-wired without one -- REQUIRED (never optional) so a noun that
+  // omits one fails to compile rather than half-existing. `false`/`null`
+  // are legitimate, honest answers, never omissions.
+  //
+  // lockable: does re-clicking this tool's OWN already-armed tray
+  // button lock it for deliberate repeated placement (the Excalidraw
+  // convention, goal 0199) instead of disarming on the second click?
+  // Only meaningful for an armable tool (AtlasArmableTool, atlasTools.ts);
+  // a non-armable tool (table, image) still declares it -- always false,
+  // since neither one's own arming state ever reads a lock flag at all
+  // (they arm through a picker/popover, never the toggleArm state
+  // machine `isLockableArmTool` below reads).
+  lockable: boolean
+  // resizable: can the user drag this noun's own placed instance to a
+  // new size via the shared NodeResizer (goal 0193 -- no board object
+  // was resizable until this existed anywhere)? A container that
+  // auto-fits its own children (area) and a tool that never persists an
+  // instance (eraser, laser) both legitimately declare false.
+  resizable: boolean
+  // boardNodeType: which shared React Flow node type renders this
+  // noun's placed instance -- see AtlasBoardNodeType above for why this
+  // exists.
+  boardNodeType: AtlasBoardNodeType
   // Each concrete tool's own commit signature differs (a card commits
   // kind+title, a table mints a backing List); this base only has to
   // accept every one of them for the registry's own element type to

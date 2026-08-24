@@ -36,6 +36,20 @@ export const shapeTool = {
   shortcutKey: shapeIdentity.shortcutKey,
   tray: 'quick',
   interaction: shapeIdentity.interaction,
+  // The one discrete drag tool that locks for deliberate repetition
+  // (goal 0199 part D) -- re-clicking the armed Shape button locks it
+  // rather than disarming, so drawing several shapes in a row doesn't
+  // mean re-arming after every one. This is the exact per-noun answer
+  // that used to live in atlasTools.ts's own hand-maintained
+  // LOCKABLE_ARM_TOOLS set (goal 0181 S3 replaces it with this
+  // declaration, read by isLockableArmTool below).
+  lockable: true,
+  // A drawn shape lands as a 'shape' BoardObject through the shared
+  // 'atlas-object' renderer -- same resize/drag-band coverage as image
+  // and ink (an arrow's own SIZE-less carve-out is payload-level, not a
+  // per-noun fact, so it isn't modelled here).
+  resizable: true,
+  boardNodeType: 'atlas-object',
   StylePicker: AtlasShapeStylePicker,
   commit: (input: { shapeType: AtlasShapeType; style: ShapeStyle; startFlow: { x: number; y: number }; endFlow: { x: number; y: number } }): AtlasShapeArtifact => {
     const dx = input.endFlow.x - input.startFlow.x
