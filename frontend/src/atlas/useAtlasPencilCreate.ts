@@ -5,17 +5,18 @@ import { frameContainingPoint } from './atlasFramePoint'
 import type { PencilPoint } from './atlasPencilSvg'
 import type { FrameBox } from './useAtlasDragFiling'
 
-// The pencil tool's own placement door (goal 0169 slice 3): commits
-// the drawn stroke (atlasTools.ts's pencilTool.commit writes the SVG
-// mirror file) and lands it through CreateCardFromFileDrop -- the same
-// door the image tool (slice 2) and native file drop already use, so
-// kind resolution and duplicate detection are never re-implemented
-// here. Unlike the image tool's own free-slot placement (paste/typed-
-// path have no natural "where"), a stroke IS a spatial gesture: it
-// lands at the FLOW position it was actually drawn at, and files into
-// whichever frame it was drawn over -- the same frameContainingPoint
-// resolution useAtlasNativeFileDrop.ts already applies to a native
-// drop's own drop point.
+// The pencil tool's own placement door (goal 0169 slice 3, re-pointed
+// by goal 0179 S1's own correction): commits the drawn stroke
+// (atlasTools.ts's pencilTool.commit writes the baked SVG mirror file)
+// and lands it as a board-local "ink" BoardObject -- never a card, and
+// never a commit ceremony that interrupts drawing (each stroke is its
+// own object; consecutive strokes simply add more ink, nothing
+// defocuses into anything). Unlike the image tool's own free-slot
+// placement (paste/typed-path have no natural "where"), a stroke IS a
+// spatial gesture: it lands at the FLOW position it was actually drawn
+// at, and files into whichever frame it was drawn over -- the same
+// frameContainingPoint resolution useAtlasNativeFileDrop.ts already
+// applies to a native drop's own drop point.
 export function useAtlasPencilCreate({ parentID, topLevelBoxes, screenToFlowPosition }: {
   parentID: string
   topLevelBoxes: FrameBox[]
@@ -26,7 +27,10 @@ export function useAtlasPencilCreate({ parentID, topLevelBoxes, screenToFlowPosi
     if (!artifact) return
     const flowOrigin = screenToFlowPosition({ x: artifact.originX, y: artifact.originY })
     const targetParentID = frameContainingPoint(topLevelBoxes, flowOrigin) ?? parentID
-    await AtlasService.CreateCardFromFileDrop(artifact.mirrorPath, artifact.title, targetParentID, { X: flowOrigin.x, Y: flowOrigin.y })
+    // title rides along in Payload purely for a later Promote to
+    // card's own popover default -- see useAtlasImageCreate.ts's own
+    // comment on why (a board-local object has no title of its own).
+    await AtlasService.CreateBoardObject('ink', { mirrorPath: artifact.mirrorPath, title: artifact.title }, { X: flowOrigin.x, Y: flowOrigin.y }, targetParentID)
     await refreshAtlas()
   }
 

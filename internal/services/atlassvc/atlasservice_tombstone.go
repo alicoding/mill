@@ -17,19 +17,21 @@ import (
 // indefinitely from entities nobody undid.
 const tombstoneGraceWindow = 48 * time.Hour
 
-// TombstoneResult names exactly which ids one DeleteCard/DeleteNote
-// call soft-deleted -- DeleteCard populates only CardIDs, DeleteNote
-// only NoteIDs, so the frontend's undo toast can pass this straight
-// back to UndoDelete without re-deriving what it touched. LinksRemoved
-// and ChildrenPromoted are the delete's blast radius, counted against
-// the state immediately BEFORE this call's own tombstone lands: links
-// that were visible and now touch a tombstoned endpoint, and direct
-// live children (cards + notes) whose effective parent is about to
-// shift past this card. Both stay zero for DeleteNote -- a note can
-// carry neither a link endpoint nor a child.
+// TombstoneResult names exactly which ids one DeleteCard/DeleteNote/
+// DeleteBoardObject call soft-deleted -- DeleteCard populates only
+// CardIDs, DeleteNote only NoteIDs, DeleteBoardObject only ObjectIDs,
+// so the frontend's undo toast can pass this straight back to
+// UndoDelete without re-deriving what it touched. LinksRemoved and
+// ChildrenPromoted are the delete's blast radius, counted against the
+// state immediately BEFORE this call's own tombstone lands: links that
+// were visible and now touch a tombstoned endpoint, and direct live
+// children (cards + notes) whose effective parent is about to shift
+// past this card. Both stay zero for DeleteNote/DeleteBoardObject -- a
+// note or board object can carry neither a link endpoint nor a child.
 type TombstoneResult struct {
 	CardIDs          []string
 	NoteIDs          []string
+	ObjectIDs        []string
 	LinksRemoved     int
 	ChildrenPromoted int
 }
@@ -56,10 +58,10 @@ func (a *AtlasService) liveLinkTouchCountLocked(cardID string) int {
 	return n
 }
 
-// directLiveChildCountLocked counts live cards and notes whose stored
-// ParentID is exactly cardID -- the direct children about to be
-// virtually promoted to cardID's own effective parent. Caller must
-// hold a.mu.
+// directLiveChildCountLocked counts live cards, notes, and board
+// objects whose stored ParentID is exactly cardID -- the direct
+// children about to be virtually promoted to cardID's own effective
+// parent. Caller must hold a.mu.
 func (a *AtlasService) directLiveChildCountLocked(cardID string) int {
 	n := 0
 	for _, c := range a.cards {
@@ -69,6 +71,11 @@ func (a *AtlasService) directLiveChildCountLocked(cardID string) int {
 	}
 	for _, nt := range a.notes {
 		if nt.ParentID == cardID && nt.DeletedAt.IsZero() {
+			n++
+		}
+	}
+	for _, o := range a.objects {
+		if o.ParentID == cardID && o.DeletedAt.IsZero() {
 			n++
 		}
 	}
@@ -105,6 +112,22 @@ func (a *AtlasService) liveNotesLocked() []atlas.Note {
 		}
 		n.ParentID = atlas.EffectiveParentID(byID, n.ParentID)
 		out = append(out, n)
+	}
+	return out
+}
+
+// liveObjectsLocked is liveCardsLocked's own counterpart for board
+// objects (goal 0179/0180) -- same tombstone-exclusion + effective-
+// parent resolution. Caller must hold a.mu.
+func (a *AtlasService) liveObjectsLocked() []atlas.BoardObject {
+	byID := a.cardsByIDLocked()
+	out := make([]atlas.BoardObject, 0, len(a.objects))
+	for _, o := range a.objects {
+		if !o.DeletedAt.IsZero() {
+			continue
+		}
+		o.ParentID = atlas.EffectiveParentID(byID, o.ParentID)
+		out = append(out, o)
 	}
 	return out
 }
@@ -198,46 +221,82 @@ func (a *AtlasService) DeleteCard(id string) (TombstoneResult, error) {
 // seed provenance).
 func (a *AtlasService) DeleteNote(id string) (TombstoneResult, error) {
 	a.mu.Lock()
-	idx := a.findNoteLocked(id)
-	if idx == -1 {
-		a.mu.Unlock()
-		return TombstoneResult{}, fmt.Errorf("no note with id %q", id)
-	}
-	if !a.notes[idx].DeletedAt.IsZero() {
-		a.mu.Unlock()
-		return TombstoneResult{}, fmt.Errorf("note %q is already deleted", id)
-	}
-	previous := a.notes[idx]
-	now := time.Now()
-	a.notes[idx].DeletedAt = now
-	a.notes[idx].UpdatedAt = now
-	perr := a.persistLocked()
-	if perr != nil {
-		a.notes[idx] = previous
-	}
+	err := softDeleteEntityLocked(a, a.notes, id, "note", func() int { return a.findNoteLocked(id) },
+		func(n atlas.Note) time.Time { return n.DeletedAt },
+		func(n *atlas.Note, t time.Time) { n.DeletedAt = t; n.UpdatedAt = t })
 	a.mu.Unlock()
-	if perr != nil {
-		return TombstoneResult{}, fmt.Errorf("save note deletion: %w", perr)
+	if err != nil {
+		return TombstoneResult{}, err
 	}
 	dataevent.Emit("atlas", id)
 	return TombstoneResult{NoteIDs: []string{id}}, nil
 }
 
-// UndoDelete reverses one or more DeleteCard/DeleteNote calls: clears
-// DeletedAt on exactly the ids named (a no-op for any id that's no
-// longer tombstoned, e.g. already purged) and clears a built-in
-// card's seed tombstone too, so top-up seeding can reach it again.
-// cardIDs/noteIDs are the exact TombstoneResult(s) the original
-// delete call(s) returned.
-func (a *AtlasService) UndoDelete(cardIDs []string, noteIDs []string) error {
+// DeleteBoardObject soft-deletes a board object (goal 0179/0180) --
+// same tombstone contract as DeleteNote: no seed-tombstone bookkeeping
+// (a board object carries no seed provenance), no link/child blast
+// radius (a board object can be neither a link endpoint nor a
+// container).
+func (a *AtlasService) DeleteBoardObject(id string) (TombstoneResult, error) {
 	a.mu.Lock()
-	previousCards := make([]atlas.Card, len(a.cards))
-	copy(previousCards, a.cards)
-	previousNotes := make([]atlas.Note, len(a.notes))
-	copy(previousNotes, a.notes)
+	err := softDeleteEntityLocked(a, a.objects, id, "board object", func() int { return a.findObjectLocked(id) },
+		func(o atlas.BoardObject) time.Time { return o.DeletedAt },
+		func(o *atlas.BoardObject, t time.Time) { o.DeletedAt = t; o.UpdatedAt = t })
+	a.mu.Unlock()
+	if err != nil {
+		return TombstoneResult{}, err
+	}
+	dataevent.Emit("atlas", id)
+	return TombstoneResult{ObjectIDs: []string{id}}, nil
+}
 
-	now := time.Now()
+// UndoDelete reverses one or more DeleteCard/DeleteNote/
+// DeleteBoardObject calls: clears DeletedAt on exactly the ids named (a
+// no-op for any id that's no longer tombstoned, e.g. already purged)
+// and clears a built-in card's seed tombstone too, so top-up seeding
+// can reach it again. cardIDs/noteIDs/objectIDs are the exact
+// TombstoneResult(s) the original delete call(s) returned.
+func (a *AtlasService) UndoDelete(cardIDs []string, noteIDs []string, objectIDs []string) error {
+	a.mu.Lock()
+	previousCards := append([]atlas.Card(nil), a.cards...)
+	previousNotes := append([]atlas.Note(nil), a.notes...)
+	previousObjects := append([]atlas.BoardObject(nil), a.objects...)
+
+	clearedBuiltInIDs := a.restoreCardTombstonesLocked(cardIDs)
+	restoreTombstonesLocked(a.notes, noteIDs, a.findNoteLocked,
+		func(n atlas.Note) time.Time { return n.DeletedAt },
+		func(n *atlas.Note, t time.Time) { n.DeletedAt = time.Time{}; n.UpdatedAt = t })
+	restoreTombstonesLocked(a.objects, objectIDs, a.findObjectLocked,
+		func(o atlas.BoardObject) time.Time { return o.DeletedAt },
+		func(o *atlas.BoardObject, t time.Time) { o.DeletedAt = time.Time{}; o.UpdatedAt = t })
+
+	perr := a.persistLocked()
+	if perr != nil {
+		a.cards = previousCards
+		a.notes = previousNotes
+		a.objects = previousObjects
+	}
+	a.mu.Unlock()
+	if perr != nil {
+		return fmt.Errorf("save undo delete: %w", perr)
+	}
+	for _, id := range clearedBuiltInIDs {
+		if err := seeding.ClearTombstone(a.store, id); err != nil {
+			slog.Error("failed to clear seed tombstone on undo delete", "id", id, "error", err)
+		}
+	}
+	emitUndoDeleteEvents(cardIDs, noteIDs, objectIDs)
+	return nil
+}
+
+// restoreCardTombstonesLocked is UndoDelete's own card half: same
+// shape as restoreTombstonesLocked, plus the built-in-seed bookkeeping
+// only a card carries -- returns the ids that need their seed
+// tombstone cleared too (so top-up seeding can reach them again).
+// Caller must already hold a.mu.
+func (a *AtlasService) restoreCardTombstonesLocked(cardIDs []string) []string {
 	var clearedBuiltInIDs []string
+	now := time.Now()
 	for _, id := range cardIDs {
 		idx := a.findCardLocked(id)
 		if idx == -1 || a.cards[idx].DeletedAt.IsZero() {
@@ -249,36 +308,21 @@ func (a *AtlasService) UndoDelete(cardIDs []string, noteIDs []string) error {
 			clearedBuiltInIDs = append(clearedBuiltInIDs, id)
 		}
 	}
-	for _, id := range noteIDs {
-		idx := a.findNoteLocked(id)
-		if idx == -1 || a.notes[idx].DeletedAt.IsZero() {
-			continue
-		}
-		a.notes[idx].DeletedAt = time.Time{}
-		a.notes[idx].UpdatedAt = now
-	}
+	return clearedBuiltInIDs
+}
 
-	perr := a.persistLocked()
-	if perr != nil {
-		a.cards = previousCards
-		a.notes = previousNotes
-	}
-	a.mu.Unlock()
-	if perr != nil {
-		return fmt.Errorf("save undo delete: %w", perr)
-	}
-	for _, id := range clearedBuiltInIDs {
-		if err := seeding.ClearTombstone(a.store, id); err != nil {
-			slog.Error("failed to clear seed tombstone on undo delete", "id", id, "error", err)
-		}
-	}
+// emitUndoDeleteEvents fires the live-sync event for every restored id
+// across all three entity families, in one place.
+func emitUndoDeleteEvents(cardIDs, noteIDs, objectIDs []string) {
 	for _, id := range cardIDs {
 		dataevent.Emit("atlas", id)
 	}
 	for _, id := range noteIDs {
 		dataevent.Emit("atlas", id)
 	}
-	return nil
+	for _, id := range objectIDs {
+		dataevent.Emit("atlas", id)
+	}
 }
 
 // purgeTombstonesLocked hard-removes every card/note tombstoned more
@@ -307,7 +351,13 @@ func (a *AtlasService) purgeTombstonesLocked(now time.Time) bool {
 			purgeNotes[n.ID] = true
 		}
 	}
-	if len(purgeCards) == 0 && len(purgeNotes) == 0 {
+	purgeObjects := make(map[string]bool)
+	for _, o := range a.objects {
+		if !o.DeletedAt.IsZero() && o.DeletedAt.Before(cutoff) {
+			purgeObjects[o.ID] = true
+		}
+	}
+	if len(purgeCards) == 0 && len(purgeNotes) == 0 && len(purgeObjects) == 0 {
 		return false
 	}
 
@@ -329,6 +379,15 @@ func (a *AtlasService) purgeTombstonesLocked(now time.Time) bool {
 			a.notes[i].UpdatedAt = now
 		}
 	}
+	for i := range a.objects {
+		if purgeObjects[a.objects[i].ID] {
+			continue
+		}
+		if a.objects[i].ParentID != "" && purgeCards[a.objects[i].ParentID] {
+			a.objects[i].ParentID = atlas.EffectiveParentID(byID, a.objects[i].ParentID)
+			a.objects[i].UpdatedAt = now
+		}
+	}
 
 	keptCards := a.cards[:0]
 	for _, c := range a.cards {
@@ -345,6 +404,14 @@ func (a *AtlasService) purgeTombstonesLocked(now time.Time) bool {
 		}
 	}
 	a.notes = keptNotes
+
+	keptObjects := a.objects[:0]
+	for _, o := range a.objects {
+		if !purgeObjects[o.ID] {
+			keptObjects = append(keptObjects, o)
+		}
+	}
+	a.objects = keptObjects
 
 	if len(purgeCards) > 0 {
 		purgedLinkIDs := make(map[string]bool)

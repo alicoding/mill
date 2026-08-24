@@ -8,6 +8,17 @@ import { freeChildPosition } from './atlasContainmentPlacement'
 export interface FrameBox { id: string; x: number; y: number; width: number; height: number; isFrame: boolean }
 interface DraggedNode { id: string; type?: string; parentId?: string; position: { x: number; y: number }; width?: number | null; height?: number | null }
 
+// entityKindOf resolves a dragged node's own family purely off its RF
+// node type -- 'atlas-sticky' is a note, 'atlas-object' is a board-
+// local object (goal 0179/0180), everything else is a card. One
+// dispatch point so MoveX/SetXPosition selection never needs a second
+// isNote-shaped boolean added per new family.
+function entityKindOf(node: DraggedNode): 'note' | 'object' | 'card' {
+  if (node.type === 'atlas-sticky') return 'note'
+  if (node.type === 'atlas-object') return 'object'
+  return 'card'
+}
+
 // Drag filing into/out of area frames (goal 0081 slice A2, LOCKED
 // design section 4): React Flow gives the parent/child DATA model but
 // no drag-to-file INTERACTION -- the drop-target intersection test is
@@ -79,6 +90,17 @@ export function useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperR
       .catch(console.error)
   }, [])
 
+  // Board objects (goal 0179/0180) share the exact same drag-filing
+  // shape as notes -- their own reparent + set-position pair, wired the
+  // same way in the entityKindOf dispatch below.
+  const reparentObject = useCallback((id: string, newParentID: string) => {
+    const position = freeChildPosition(allCardsRef.current, newParentID)
+    void AtlasService.MoveBoardObject(id, newParentID)
+      .then(() => AtlasService.SetBoardObjectPosition(id, position))
+      .then(() => refreshAtlas())
+      .catch(console.error)
+  }, [])
+
   // React Flow's own onNodeDragStop hands back the raw browser event
   // (MouseEvent OR TouchEvent) -- a touch event carries its point in
   // .touches[0] rather than top-level clientX/clientY.
@@ -88,7 +110,7 @@ export function useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperR
     return touch ? { x: touch.clientX, y: touch.clientY } : null
   }
 
-  const dragChildOut = useCallback((node: DraggedNode, isNote: boolean, reparent: (id: string, parentID: string) => void) => {
+  const dragChildOut = useCallback((node: DraggedNode, entityKind: 'note' | 'object' | 'card', reparent: (id: string, parentID: string) => void) => {
     const abs = absNode(node)
     const target = frameUnder(abs)
     if (target && target.id !== node.parentId) {
@@ -103,23 +125,25 @@ export function useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperR
     if (!outside) return
     const level = parentIDRef.current
     const pos = { X: abs.position.x, Y: abs.position.y }
-    const chain = isNote
+    const chain = entityKind === 'note'
       ? AtlasService.MoveNote(node.id, level).then(() => AtlasService.SetNotePosition(node.id, pos)).then(() => undefined)
-      : AtlasService.MoveCard(node.id, level).then(() => AtlasService.SetPosition(node.id, pos)).then(() => undefined)
+      : entityKind === 'object'
+        ? AtlasService.MoveBoardObject(node.id, level).then(() => AtlasService.SetBoardObjectPosition(node.id, pos)).then(() => undefined)
+        : AtlasService.MoveCard(node.id, level).then(() => AtlasService.SetPosition(node.id, pos)).then(() => undefined)
     void chain.then(() => refreshAtlas()).catch(console.error)
   }, [absNode, frameUnder])
 
   const onNodeDragStop = useCallback((e: MouseEvent | TouchEvent, node: DraggedNode) => {
     setHoveredFrameID(null)
-    const isNote = node.type === 'atlas-sticky'
-    const reparent = isNote ? reparentNote : reparentCard
+    const entityKind = entityKindOf(node)
+    const reparent = entityKind === 'note' ? reparentNote : entityKind === 'object' ? reparentObject : reparentCard
 
     // A frame child dropped past its parent's edge leaves the frame
     // (goal 0141, the drag-out symmetric of filing in): into another
     // frame when one is under the drop, else onto the board's level
     // at the dropped spot.
     if (node.parentId) {
-      dragChildOut(node, isNote, reparent)
+      dragChildOut(node, entityKind, reparent)
       return
     }
 
@@ -139,9 +163,11 @@ export function useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperR
       return
     }
 
-    if (isNote) void AtlasService.SetNotePosition(node.id, { X: node.position.x, Y: node.position.y }).catch(console.error)
-    else void AtlasService.SetPosition(node.id, { X: node.position.x, Y: node.position.y }).catch(console.error)
-  }, [frameUnder, reparentNote, reparentCard, wrapperRef, dragChildOut])
+    const pos = { X: node.position.x, Y: node.position.y }
+    if (entityKind === 'note') void AtlasService.SetNotePosition(node.id, pos).catch(console.error)
+    else if (entityKind === 'object') void AtlasService.SetBoardObjectPosition(node.id, pos).catch(console.error)
+    else void AtlasService.SetPosition(node.id, pos).catch(console.error)
+  }, [frameUnder, reparentNote, reparentCard, reparentObject, wrapperRef, dragChildOut])
 
   return { hoveredFrameID, onNodeDrag, onNodeDragStop }
 }

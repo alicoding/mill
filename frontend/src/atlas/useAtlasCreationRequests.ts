@@ -33,6 +33,13 @@ export function useAtlasCreationRequests() {
     counter.current += 1
     setPromoteRequest({ noteID, pos, token: counter.current })
   }
+  // The board object's own promote request (goal 0179/0180) -- same
+  // token-carrying shape, the other mutually-exclusive source
+  // AtlasPromoteRequest accepts.
+  const requestPromoteObject = (objectID: string, pos: { x: number; y: number }) => {
+    counter.current += 1
+    setPromoteRequest({ objectID, pos, token: counter.current })
+  }
   // Select-then-group (LOCKED design §2's "select, then group" door):
   // the SAME area-mode popover the marker-box draws uses, requested
   // from AtlasView's multi-select context menu instead of a drag.
@@ -41,5 +48,5 @@ export function useAtlasCreationRequests() {
     setGroupRequest({ cardIDs, noteIDs, pos, token: counter.current })
   }
 
-  return { placementRequest, requestPlacement, requestLinkedCard, promoteRequest, requestPromote, groupRequest, requestGroup }
+  return { placementRequest, requestPlacement, requestLinkedCard, promoteRequest, requestPromote, requestPromoteObject, groupRequest, requestGroup }
 }

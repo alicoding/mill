@@ -46,8 +46,10 @@ export function useAtlasContainmentMenus({
   requestGroup: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
   // The container-delete gate (goal 0149 gap 3) -- confirms when the
   // delete promotes children, runs exec directly otherwise. Dissolve
-  // bypasses it: its own dialog already names the promotion.
-  guardDelete: (cardIDs: string[], noteIDs: string[], exec: () => void) => void
+  // bypasses it: its own dialog already names the promotion. objectIDs
+  // is count-only (goal 0179/0180) -- a board object never promotes
+  // anything itself.
+  guardDelete: (cardIDs: string[], noteIDs: string[], exec: () => void, objectIDs?: string[]) => void
 }) {
   const [dissolveTarget, setDissolveTarget] = useState<Card | null>(null)
 
@@ -75,22 +77,24 @@ export function useAtlasContainmentMenus({
     />
   )
 
-  const deleteSelection = (cardIDs: string[], noteIDs: string[]) => guardDelete(cardIDs, noteIDs, () => {
+  const deleteSelection = (cardIDs: string[], noteIDs: string[], objectIDs: string[] = []) => guardDelete(cardIDs, noteIDs, () => {
     Promise.all([
       ...cardIDs.map((id) => AtlasService.DeleteCard(id)),
       ...noteIDs.map((id) => AtlasService.DeleteNote(id)),
+      ...objectIDs.map((id) => AtlasService.DeleteBoardObject(id)),
     ])
       .then((results) => {
         onDeleted({
           CardIDs: results.flatMap((r) => r.CardIDs ?? []),
           NoteIDs: results.flatMap((r) => r.NoteIDs ?? []),
+          ObjectIDs: results.flatMap((r) => r.ObjectIDs ?? []),
           LinksRemoved: results.reduce((sum, r) => sum + (r.LinksRemoved ?? 0), 0),
           ChildrenPromoted: results.reduce((sum, r) => sum + (r.ChildrenPromoted ?? 0), 0),
         })
         void refreshAtlas()
       })
       .catch((err) => onError(String(err)))
-  })
+  }, objectIDs)
 
   // Frame interior empty space (LOCKED design §6d): the click point's
   // own frame is the parent, always named in the item -- never a bare
@@ -138,8 +142,11 @@ export function useAtlasContainmentMenus({
   // A multi-selection (LOCKED design §6d): "Group into new area" only
   // once 2+ CARDS are selected (a notes-only selection gets no group
   // item -- notes simply ride along when cards ARE present); Delete
-  // covers every selected card + note together, instantly.
-  const openMultiSelectMenu = (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => {
+  // covers every selected card + note + board object together,
+  // instantly. A board object never joins a group (goal 0179/0180: it
+  // is board-local, not a document a region frame files) -- objectIDs
+  // rides only into the Delete action below.
+  const openMultiSelectMenu = (cardIDs: string[], noteIDs: string[], objectIDs: string[], pos: { x: number; y: number }) => {
     const items: ContextMenuItem[] = []
     if (cardIDs.length >= 2) {
       items.push({ id: 'group', label: t('contextMenu.groupIntoArea'), commandId: 'atlas.group.selection', run: () => requestGroup(cardIDs, noteIDs, pos) })
@@ -152,7 +159,7 @@ export function useAtlasContainmentMenus({
       items.push(...perspectiveItems)
       items.push({ id: 'd2', divider: true })
     }
-    items.push({ id: 'delete-selection', label: t('contextMenu.delete'), commandId: 'atlas.delete.selection', danger: true, run: () => deleteSelection(cardIDs, noteIDs) })
+    items.push({ id: 'delete-selection', label: t('contextMenu.delete'), commandId: 'atlas.delete.selection', danger: true, run: () => deleteSelection(cardIDs, noteIDs, objectIDs) })
     setMenu({ x: pos.x, y: pos.y, items })
   }
 

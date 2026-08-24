@@ -126,6 +126,11 @@
     "ariaLabel": "Note",
     "empty": "Empty note"
   },
+  "boardObject": {
+    "imageAriaLabel": "Image",
+    "inkAriaLabel": "Ink drawing",
+    "loadFailed": "Couldn't load this file."
+  },
   "capture": {
     "dropError": "Couldn't read the dropped file."
   },

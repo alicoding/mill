@@ -18,7 +18,10 @@ export function useAtlasDeleteConfirm({ t, allCards, notes }: {
 }) {
   const [pending, setPending] = useState<{ count: number; promoted: number; exec: () => void } | null>(null)
 
-  const guardDelete = (cardIDs: string[], noteIDs: string[], exec: () => void) => {
+  // objectIDs (goal 0179/0180) counts toward the confirm dialog's own
+  // "Delete N items?" total only -- a board object can never CONTAIN
+  // anything, so it never contributes to the promoted count itself.
+  const guardDelete = (cardIDs: string[], noteIDs: string[], exec: () => void, objectIDs: string[] = []) => {
     const selectedCards = new Set(cardIDs)
     const selectedNotes = new Set(noteIDs)
     let promoted = 0
@@ -30,7 +33,7 @@ export function useAtlasDeleteConfirm({ t, allCards, notes }: {
       exec()
       return
     }
-    setPending({ count: cardIDs.length + noteIDs.length, promoted, exec })
+    setPending({ count: cardIDs.length + noteIDs.length + objectIDs.length, promoted, exec })
   }
 
   const deleteConfirmDialog = pending && (

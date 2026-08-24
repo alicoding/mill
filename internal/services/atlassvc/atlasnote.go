@@ -113,22 +113,13 @@ func (a *AtlasService) MoveNote(id, newParentID string) (atlas.Note, error) {
 		a.mu.Unlock()
 		return atlas.Note{}, fmt.Errorf("no note with id %q", id)
 	}
-	if newParentID != "" && a.findCardLocked(newParentID) == -1 {
-		a.mu.Unlock()
-		return atlas.Note{}, fmt.Errorf("no card with id %q to contain this note", newParentID)
-	}
-	previous := a.notes[idx]
-	n := previous
-	n.ParentID = newParentID
-	n.UpdatedAt = time.Now()
-	a.notes[idx] = n
-	perr := a.persistLocked()
-	if perr != nil {
-		a.notes[idx] = previous
-	}
+	n, err := reparentEntityLocked(a, a.notes, idx, newParentID, "note", func(x *atlas.Note, p string, t time.Time) {
+		x.ParentID = p
+		x.UpdatedAt = t
+	})
 	a.mu.Unlock()
-	if perr != nil {
-		return atlas.Note{}, fmt.Errorf("save note move: %w", perr)
+	if err != nil {
+		return atlas.Note{}, err
 	}
 	dataevent.Emit("atlas", n.ID)
 	return n, nil

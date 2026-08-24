@@ -27,13 +27,17 @@ import { isFocusInsideBoard, readSelectedNodeIDs } from './atlasFocusContainment
 // keypress landed between an unsubscribe and the next resubscribe and
 // was silently dropped.
 export function useAtlasSelectionTray<TNode extends Node>({
-  selectedCards, selectedNotes, clearSelection, setNodes, onDeleteSelection, onGroupSelection, wrapperRef,
+  selectedCards, selectedNotes, selectedObjects, clearSelection, setNodes, onDeleteSelection, onGroupSelection, wrapperRef,
 }: {
   selectedCards: string[]
   selectedNotes: string[]
+  // Board objects (goal 0179/0180): included in the tray's own
+  // visibility threshold and its Delete action, excluded from Group
+  // (an object is board-local, never a document a region frame files).
+  selectedObjects: string[]
   clearSelection: () => void
   setNodes: (updater: (nodes: TNode[]) => TNode[]) => void
-  onDeleteSelection: (cardIDs: string[], noteIDs: string[]) => void
+  onDeleteSelection: (cardIDs: string[], noteIDs: string[], objectIDs?: string[]) => void
   onGroupSelection: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
   // Escape's own ladder must never fire on top of some OTHER surface
   // (a Dialog, a popover) that's legitimately consuming the same
@@ -49,11 +53,11 @@ export function useAtlasSelectionTray<TNode extends Node>({
   // Escape's own clear-selection rung below reads the DOM directly
   // instead (readSelectedNodeIDs) -- it clears ANY live selection, not
   // only a 2+ one, and can't wait on this state mirror's own timing.
-  const hasSelection = selectedCards.length + selectedNotes.length >= 2
+  const hasSelection = selectedCards.length + selectedNotes.length + selectedObjects.length >= 2
 
-  const latest = useRef({ selectedCards, selectedNotes, hasSelection, clearSelection, setNodes, onDeleteSelection, onGroupSelection })
+  const latest = useRef({ selectedCards, selectedNotes, selectedObjects, hasSelection, clearSelection, setNodes, onDeleteSelection, onGroupSelection })
   useEffect(() => {
-    latest.current = { selectedCards, selectedNotes, hasSelection, clearSelection, setNodes, onDeleteSelection, onGroupSelection }
+    latest.current = { selectedCards, selectedNotes, selectedObjects, hasSelection, clearSelection, setNodes, onDeleteSelection, onGroupSelection }
   })
 
   // Clears BOTH halves: React Flow's own node.selected flags (so the
@@ -99,5 +103,5 @@ export function useAtlasSelectionTray<TNode extends Node>({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [clearAll, groupFromKeyboard, wrapperRef])
 
-  return { trayRef, hasSelection, onGroup: triggerGroup, onDelete: () => onDeleteSelection(selectedCards, selectedNotes) }
+  return { trayRef, hasSelection, onGroup: triggerGroup, onDelete: () => onDeleteSelection(selectedCards, selectedNotes, selectedObjects) }
 }

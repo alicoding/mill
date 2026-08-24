@@ -4,7 +4,7 @@ import type { Card, Note } from '../../bindings/github.com/alicoding/mill/intern
 import { AtlasService } from '../shared/bindings'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { refreshAtlas } from './atlasStore'
-import { titleFromNoteText } from './atlasCreateHelpers'
+import { titleFromFilename, titleFromNoteText } from './atlasCreateHelpers'
 import { freeChildPosition } from './atlasContainmentPlacement'
 import { computeEnclosedBoundingBoxOrigin } from './atlasBoardBoxes'
 import { cardTool, noteTool, areaTool, type AtlasArmableTool, type AtlasCreationTool } from './atlasTools'
@@ -14,6 +14,10 @@ export interface AtlasPlacementPopoverState {
   anchorPos: { x: number; y: number }
   flowPos?: { x: number; y: number }
   noteID?: string
+  // objectID (goal 0179/0180): the OTHER promote-mode source, mutually
+  // exclusive with noteID -- submitPopover's 'promote' branch checks
+  // whichever one is set.
+  objectID?: string
   initialTitle?: string
   // The paste door's own note carry-through (goal 0081 slice A3,
   // LOCKED design §2b): clipboard text/HTML becomes the new card's own
@@ -56,7 +60,10 @@ export interface AtlasPlacementPopoverState {
 // right there in AtlasView already). parentIDOverride (slice A2)
 // carries a frame-menu's own "Add card to X"/"Add note here" target.
 export interface AtlasPlacementRequest { tool: AtlasCreationTool; pos: { x: number; y: number }; parentIDOverride?: string; linkFromCardID?: string; token: number }
-export interface AtlasPromoteRequest { noteID: string; pos: { x: number; y: number }; token: number }
+// noteID XOR objectID (goal 0179/0180's own Promote-to-card, mirroring
+// PromoteNote's shape): the same popover, kind+title only, either
+// source resolves to the identical submitPopover 'promote' branch.
+export interface AtlasPromoteRequest { noteID?: string; objectID?: string; pos: { x: number; y: number }; token: number }
 // Select-then-group (goal 0081 slice A2, LOCKED design §2): a
 // multi-selection's own "Group into new area" menu item, requesting
 // the SAME area-mode popover the marker-box drag opens.
@@ -71,11 +78,15 @@ export interface AtlasGroupRequest { cardIDs: string[]; noteIDs: string[]; pos: 
 // parentID is the board's OWN current container (AtlasView's viewedID,
 // threaded down unchanged) -- the LOCKED design's "parent = where you
 // are" rule for every canvas-foremost creation door.
-export function useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes, noteBoxes }: {
+export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes, noteBoxes }: {
   parentID: string
   allCards: Card[]
   kinds: import('../../bindings/github.com/alicoding/mill/internal/domain/atlas/models').Kind[]
   notes: Note[]
+  // Board objects (goal 0179/0180): read only for their own Promote
+  // popover's initialTitle default -- everything else about them is
+  // handled by useAtlasObjectMenu.ts/AtlasBoard.tsx directly.
+  objects: import('../../bindings/github.com/alicoding/mill/internal/domain/atlas/models').BoardObject[]
   readOnly: boolean
   screenToFlowPosition: (p: { x: number; y: number }) => { x: number; y: number }
   placementRequest?: AtlasPlacementRequest | null
@@ -189,6 +200,23 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, s
     setPopover({ mode: 'promote', anchorPos: screenPos, noteID, initialTitle: titleFromNoteText(note.Text) })
   }, [notes])
 
+  // The board object's own promote door (goal 0179/0180's explicit,
+  // one-way escape hatch out of board-local): same popover, title
+  // defaults from the mirrored file's own name since an object carries
+  // no text of its own to derive one from.
+  const openPromoteObject = useCallback((objectID: string, screenPos: { x: number; y: number }) => {
+    const object = objects.find((o) => o.ID === objectID)
+    if (!object) return
+    // Payload.title (useAtlasImageCreate.ts/useAtlasPencilCreate.ts's
+    // own artifact.title, carried along purely for this moment) beats
+    // re-deriving one from the mirror file's own randomized-suffix
+    // filename; 'Untitled' matches cardTool's own instant-placement
+    // default (atlasTools.ts) for the residual case of neither existing.
+    const mirrorPath = object.Payload?.mirrorPath ?? ''
+    const fallbackTitle = mirrorPath ? titleFromFilename(mirrorPath) : 'Untitled'
+    setPopover({ mode: 'promote', anchorPos: screenPos, objectID, initialTitle: object.Payload?.title || fallbackTitle })
+  }, [objects])
+
   // Paste text/HTML (goal 0081 slice A3, LOCKED design §2b): opens the
   // SAME 'create' popover, title = first line of the pasted text, note
   // = the full text (or converted Markdown, for the HTML branch --
@@ -250,6 +278,10 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, s
           .catch(console.error)
       } else if (pending.mode === 'promote' && pending.noteID) {
         void AtlasService.PromoteNote(pending.noteID, kindID, title)
+          .then(() => refreshAtlas())
+          .catch(console.error)
+      } else if (pending.mode === 'promote' && pending.objectID) {
+        void AtlasService.PromoteBoardObject(pending.objectID, kindID, title)
           .then(() => refreshAtlas())
           .catch(console.error)
       } else if (pending.mode === 'area') {
@@ -370,7 +402,8 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, s
   useEffect(() => {
     if (!promoteRequest || promoteRequest.token === lastPromoteToken.current) return
     lastPromoteToken.current = promoteRequest.token
-    openPromote(promoteRequest.noteID, promoteRequest.pos)
+    if (promoteRequest.objectID) openPromoteObject(promoteRequest.objectID, promoteRequest.pos)
+    else if (promoteRequest.noteID) openPromote(promoteRequest.noteID, promoteRequest.pos)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the request's own token
   }, [promoteRequest])
 
@@ -393,7 +426,7 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, s
 
   return {
     armedTool, toggleArm, armTool, disarm, placeAt,
-    popover, cancelPopover, submitPopover, openPromote, openPasteText, openAreaPopover, openSlotLinkedCreate,
+    popover, cancelPopover, submitPopover, openPromote, openPromoteObject, openPasteText, openAreaPopover, openSlotLinkedCreate,
     draftNoteFlowPos, commitDraftNote, cancelDraftNote,
     editingNoteID, enterNoteEdit, cancelNoteEdit, commitNoteEdit,
     editingTitleCardID, commitCardTitle, cancelCardTitle,
