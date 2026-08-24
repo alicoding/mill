@@ -10,6 +10,14 @@
 // refuses that outcome instead: every top-level key across the merged
 // files must be unique, checked before any value is copied, so two
 // files can never silently overwrite each other's subtree.
+//
+// This throws at MODULE-EVAL time (i18n.ts calls it eagerly on
+// import), not at bundle time -- `vite build` itself succeeds even
+// with a collision present, since a runtime throw isn't something a
+// bundler's static pass can observe. The collision surfaces instead
+// the moment anything imports i18n.ts: the test suite, `vite dev`, or
+// the live app's own first render, the same way atlasNounRegistry.ts's
+// assertRegistryAgreesWithIdentity() surfaces its own agreement check.
 export function mergeAtlasLocaleModules(modules: Record<string, Record<string, unknown>>): Record<string, unknown> {
   const merged: Record<string, unknown> = {}
   const ownerOf = new Map<string, string>()

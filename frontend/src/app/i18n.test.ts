@@ -26,4 +26,20 @@ describe('i18n init', () => {
   it('falls back to the key itself for an unknown key, never throwing', () => {
     expect(() => i18n.t('settings.doesNotExist', { ns: 'views' })).not.toThrow()
   })
+
+  // goal 0180 slice 2: atlas.json split into locales/en/atlas/*.json,
+  // merged into the one 'atlas' namespace -- these keys now come from
+  // different files (shared.json vs pencil.json) and must still
+  // resolve as if the namespace were still one file.
+  it('resolves a shared key from atlas/shared.json', () => {
+    expect(i18n.t('loading', { ns: 'atlas' })).toBe('Loading…')
+  })
+
+  it('resolves a noun-scoped key from atlas/pencil.json', () => {
+    expect(i18n.t('pencilStyle.colorLabel', { ns: 'atlas' })).toBe('Stroke colour')
+  })
+
+  it('resolves a noun-scoped key from atlas/table.json', () => {
+    expect(i18n.t('tableSize.hint', { ns: 'atlas' })).toBe('Sweep to size, click to create')
+  })
 })
