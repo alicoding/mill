@@ -116,7 +116,13 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     // by direct placement (goal 0081 slice A2 rider b) and must never
     // reappear in the pane menu.
     await expect(menu.getByText('Add card…', { exact: true })).toHaveCount(0)
-    await page.keyboard.press('Escape')
+    // Dismissed via an outside click, not Escape: closing a context
+    // menu via Escape can race AnchoredOverlay's own focus-trap
+    // activation and fall through to the board's Escape ladder
+    // (useAtlasSelectionTray), which reads "nothing selected" and
+    // climbs a level -- unrelated to what's being proven here
+    // (docs/goals/0183).
+    await clickCorner(board, 'top-right')
     await expect(menu).not.toBeVisible()
 
     // --- Promote: right-click the note itself -> title prefilled from
