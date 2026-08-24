@@ -428,7 +428,9 @@
     "cards_one": "{{count}} card",
     "cards_other": "{{count}} cards",
     "links_one": "{{count}} link",
-    "links_other": "{{count}} links"
+    "links_other": "{{count}} links",
+    "pagesSkipped_one": "{{count}} page couldn't be read: {{pages}}",
+    "pagesSkipped_other": "{{count}} pages couldn't be read: {{pages}}"
   },
   "newSpace": {
     "title": "New space"
