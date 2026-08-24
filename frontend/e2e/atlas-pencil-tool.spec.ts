@@ -1,17 +1,15 @@
 import { test, expect } from './fixtures/server'
-import { dragBetween, openCard } from './fixtures/atlasBoard'
-import { deleteViaPageMenu } from './fixtures/atlasPage'
+import { dragBetween } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
+import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 
-// The pencil tool (goal 0169 slice 3): drag-to-draw's own proof, and
-// the styleDefaults dual model's real test -- a drawn stroke's own
-// colour/size bake into its SVG mirror file (document data), while a
-// SEPARATE ephemeral cache (atlasPencilStyleStore.ts) seeds the next
-// stroke and is proven to survive a disarm/re-arm cycle within the
-// SAME page session (a plain per-mount useState inside the style
-// picker would fail the second test below, since AnchoredOverlay
-// actually unmounts its children on close -- verified against its own
-// source). Shared pool: every entity created here is deleted here.
+// The pencil tool (goal 0169 slice 3, re-pointed by goal 0179 S1's own
+// correction): drag-to-draw lands ink as a board-local BoardObject --
+// NEVER a card, and NEVER a commit ceremony that interrupts drawing.
+// Consecutive strokes each add another ink object without disarming
+// the tool; a stroke never opens a page, never gets a title, and
+// "Promote to card…" is the one explicit, one-way escape hatch out of
+// board-local. Shared pool: every entity created here is deleted here.
 //
 // Real pointer-capture drag, not React Flow's own internal drag
 // machinery (the class QUARANTINE.md's box-select/NodeResizer entries
@@ -27,7 +25,11 @@ async function boardPoint(board: import('@playwright/test').Locator, fx: number,
   return { x: box.x + box.width * fx, y: box.y + box.height * fy }
 }
 
-test('dragging the pencil across the board lands a stroke the mirror-image unit renders, and the tool stays armed', async ({ page }) => {
+function inkObjects(page: import('@playwright/test').Page) {
+  return page.locator('[data-testid="atlas-board-object"][data-object-kind="ink"]')
+}
+
+test('dragging the pencil across the board lands ink, never a card, and the tool stays armed for the next stroke', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   const board = page.getByTestId('atlas-board')
@@ -40,28 +42,56 @@ test('dragging the pencil across the board lands a stroke the mirror-image unit 
 
   await dragBetween(page, await boardPoint(board, 0.05, 0.1), await boardPoint(board, 0.15, 0.2))
 
-  // Drag-to-draw is a sticky tool (unlike Area's own one-placement-
-  // per-arming rule): completing a stroke never disarms it, so the
-  // next drag can draw immediately.
-  await expect(pencilTool).toHaveAttribute('data-armed', 'true')
+  const ink = inkObjects(page)
+  await expect(ink).toHaveCount(1)
+  // The rule, absolute: drawing never creates a card the user didn't
+  // explicitly ask for -- checked against the title a stroke would
+  // have produced had it (wrongly) landed as a card, not a blanket
+  // zero (the seeded example space already carries its own cards).
+  await expect(page.getByTestId('atlas-note-card').filter({ hasText: 'Sketch' })).toHaveCount(0)
 
+  // Drag-to-draw is a sticky tool (unlike Area's own one-placement-
+  // per-arming rule): completing a stroke never disarms it, so a
+  // second stroke draws immediately and lands as its OWN object --
+  // consecutive strokes never merge or interrupt each other.
+  await expect(pencilTool).toHaveAttribute('data-armed', 'true')
+  await dragBetween(page, await boardPoint(board, 0.3, 0.1), await boardPoint(board, 0.4, 0.2))
+  await expect(ink).toHaveCount(2)
+
+  // Promote to card (explicit, one-way): the baked SVG stroke becomes
+  // a real mirror-image card.
+  await ink.first().click({ button: 'right' })
+  const menu = contextMenu(page)
+  await expect(menu).toBeVisible()
+  await menu.getByText('Promote to card…', { exact: true }).click()
+  const popover = page.getByTestId('atlas-placement-popover')
+  await expect(popover).toBeVisible()
+  await expect(popover.getByTestId('atlas-placement-title')).toHaveValue('Sketch')
+  await selectKind(popover, ATLAS_KIND_TOPIC)
+  await popover.getByTestId('atlas-placement-submit').click()
+  await expect(popover).not.toBeVisible()
+  await expect(ink).toHaveCount(1)
   const card = page.getByTestId('atlas-note-card').filter({ hasText: 'Sketch' })
   await expect(card).toBeVisible()
   await expect(card.getByText('IMG')).toBeVisible()
 
-  await openCard(page, card)
-  const overlay = page.locator('[data-component="atlas-card-overlay"]')
-  await expect(overlay.getByTestId('atlas-mirror-image')).toBeVisible()
-  await deleteViaPageMenu(page, overlay)
-  await expect(card).not.toBeVisible()
+  // Clean up: the promoted card, then the remaining ink object.
+  await card.click({ button: 'right' })
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+  await expect(card).toHaveCount(0)
+
+  await ink.click({ button: 'right' })
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+  await expect(ink).toHaveCount(0)
 })
 
-test('the pencil\'s colour choice survives a disarm/re-arm cycle and seeds the next stroke, without becoming a second stroke\'s title or a document field', async ({ page }) => {
+test('the pencil\'s colour choice survives a disarm/re-arm cycle and seeds the next stroke', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
-  const menu = contextMenu(page)
 
   const pencilTool = page.getByTestId('atlas-tray-pencil')
   await pencilTool.click()
@@ -75,8 +105,9 @@ test('the pencil\'s colour choice survives a disarm/re-arm cycle and seeds the n
   await chosenSwatch.click()
   await expect(chosenSwatch).toHaveAttribute('data-selected', 'true')
 
+  const ink = inkObjects(page)
   await dragBetween(page, await boardPoint(board, 0.05, 0.1), await boardPoint(board, 0.15, 0.2))
-  await expect(page.getByTestId('atlas-note-card').filter({ hasText: 'Sketch' })).toHaveCount(1)
+  await expect(ink).toHaveCount(1)
 
   // Disarm, then re-arm: the style picker REMOUNTS (AnchoredOverlay
   // unmounts its children while closed) -- the swatch selection
@@ -89,18 +120,13 @@ test('the pencil\'s colour choice survives a disarm/re-arm cycle and seeds the n
   await expect(picker.getByTestId('atlas-pencil-color-da3633')).toHaveAttribute('data-selected', 'true')
 
   await dragBetween(page, await boardPoint(board, 0.3, 0.1), await boardPoint(board, 0.4, 0.2))
-  const sketchCards = page.getByTestId('atlas-note-card').filter({ hasText: 'Sketch' })
-  await expect(sketchCards).toHaveCount(2)
-  // The chosen colour never leaked into a title or any other document
-  // field it could show up as -- both cards carry the tool's own
-  // generic default title, proving the style choice stayed confined to
-  // the ephemeral cache and the drawn SVG bytes, never the card record.
-  await expect(sketchCards.filter({ hasText: '#da3633' })).toHaveCount(0)
+  await expect(ink).toHaveCount(2)
 
   for (let i = 0; i < 2; i++) {
-    await sketchCards.first().click({ button: 'right' })
+    await ink.first().click({ button: 'right' })
+    const menu = contextMenu(page)
     await expect(menu).toBeVisible()
     await menu.getByText('Delete', { exact: true }).click()
   }
-  await expect(sketchCards).toHaveCount(0)
+  await expect(ink).toHaveCount(0)
 })

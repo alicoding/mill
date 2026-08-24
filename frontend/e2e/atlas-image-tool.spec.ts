@@ -1,16 +1,19 @@
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { test, expect } from './fixtures/server'
-import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { openCard } from './fixtures/atlasBoard'
+import { deleteViaPageMenu } from './fixtures/atlasPage'
+import { contextMenu } from './fixtures/contextMenu'
+import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 
-// The image tool (goal 0169 slice 2): the paste-or-drop interaction's
-// own proof. A typed local path and a pasted clipboard image both land
-// a card the EXISTING mirror-image unit renders (ADR-0043) -- this
-// spec proves the creation gesture, not the renderer, which
-// atlas-paste-convert.spec.ts and the unit registry's own tests
-// already cover. Shared pool: every entity created here is deleted
-// here.
+// The image tool (goal 0169 slice 2, re-pointed by goal 0179 S1's own
+// correction): a typed local path or a pasted clipboard image lands as
+// a board-local BoardObject -- NEVER a card. The rule, absolute:
+// dropping/drawing something on the canvas creates THAT THING, never a
+// card. Becoming a card is the explicit, one-way "Promote to card…"
+// action proven at the end of the first test; atlas-paste-convert.spec.ts
+// and the unit registry's own tests cover the renderer, not this file.
+// Shared pool: every entity created here is deleted here.
 
 const REPO_ROOT = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '..')
 const IMAGE_FIXTURE = path.join(REPO_ROOT, 'e2e', 'fixtures', 'synced-folder', 'logo.png')
@@ -25,7 +28,11 @@ async function openImagePopover(page: import('@playwright/test').Page) {
   await expect(page.getByTestId('atlas-image-input')).toBeVisible()
 }
 
-test('typing a local image path lands a card the mirror-image unit renders', async ({ page }) => {
+function imageObjects(page: import('@playwright/test').Page) {
+  return page.locator('[data-testid="atlas-board-object"][data-object-kind="image"]')
+}
+
+test('typing a local image path lands a board object, never a card -- Promote to card is the explicit escape hatch', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
@@ -34,6 +41,24 @@ test('typing a local image path lands a card the mirror-image unit renders', asy
   await page.getByTestId('atlas-image-path').fill(IMAGE_FIXTURE)
   await page.getByTestId('atlas-image-add').click()
 
+  const object = imageObjects(page)
+  await expect(object).toHaveCount(1)
+  // The rule, absolute: nothing turned into a card the user didn't ask for.
+  await expect(page.getByTestId('atlas-note-card').filter({ hasText: 'logo' })).toHaveCount(0)
+
+  // Promote to card (explicit, reversible-only-by-undo): the SAME
+  // mirrored file becomes a real mirror-image card.
+  await object.click({ button: 'right' })
+  const menu = contextMenu(page)
+  await expect(menu).toBeVisible()
+  await menu.getByText('Promote to card…', { exact: true }).click()
+  const popover = page.getByTestId('atlas-placement-popover')
+  await expect(popover).toBeVisible()
+  await selectKind(popover, ATLAS_KIND_TOPIC)
+  await popover.getByTestId('atlas-placement-submit').click()
+  await expect(popover).not.toBeVisible()
+
+  await expect(object).toHaveCount(0)
   const card = page.getByTestId('atlas-note-card').filter({ hasText: 'logo' })
   await expect(card).toBeVisible()
   await expect(card.getByText('IMG')).toBeVisible()
@@ -45,7 +70,7 @@ test('typing a local image path lands a card the mirror-image unit renders', asy
   await expect(card).not.toBeVisible()
 })
 
-test('pasting a clipboard image lands a card without any typed path', async ({ page }) => {
+test('pasting a clipboard image lands a board object -- selectable, draggable, deletable with undo', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
@@ -61,17 +86,31 @@ test('pasting a clipboard image lands a card without any typed path', async ({ p
     el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
   }, ONE_PIXEL_PNG_BASE64)
 
-  const card = page.getByTestId('atlas-note-card').filter({ hasText: 'Pasted image' })
-  await expect(card).toBeVisible()
-  await expect(card.getByText('IMG')).toBeVisible()
+  const object = imageObjects(page)
+  await expect(object).toHaveCount(1)
+  // The rule, absolute: nothing turned into a card the user didn't ask
+  // for -- checked against a title this paste would have produced had
+  // it (wrongly) landed as a card, not a blanket zero (the seeded
+  // example space already carries its own cards).
+  await expect(page.getByTestId('atlas-note-card').filter({ hasText: 'Pasted image' })).toHaveCount(0)
   // The popover closes itself once the paste resolves -- no Add click needed.
   await expect(page.getByTestId('atlas-image-input')).not.toBeVisible()
 
-  await openCard(page, card)
-  const overlay = page.locator('[data-component="atlas-card-overlay"]')
-  await expect(overlay.getByTestId('atlas-mirror-image')).toBeVisible()
-  await deleteViaPageMenu(page, overlay)
-  await expect(card).not.toBeVisible()
+  // Selectable + deletable, inheriting the shared quick-delete-with-undo
+  // guard (goal 0093) every other Atlas delete already rides.
+  await object.click()
+  await page.keyboard.press('Delete')
+  await expect(object).toHaveCount(0)
+  const undoToast = page.getByTestId('atlas-undo-toast')
+  await expect(undoToast).toBeVisible()
+  await expect(undoToast).toContainText('Deleted 1')
+  await undoToast.getByTestId('atlas-undo-toast-button').click()
+  await expect(undoToast).toHaveCount(0)
+  await expect(object).toHaveCount(1)
+
+  await object.click()
+  await page.keyboard.press('Delete')
+  await expect(object).toHaveCount(0)
 })
 
 test('a non-image path shows an inline error and creates nothing', async ({ page }) => {
@@ -84,9 +123,5 @@ test('a non-image path shows an inline error and creates nothing', async ({ page
   await page.getByTestId('atlas-image-add').click()
 
   await expect(page.getByTestId('atlas-image-error')).toBeVisible()
-  // hasText substring-matches the WHOLE card subtree -- the seeded
-  // Scratchpad card's own body text ("Meeting notes...") would false-
-  // positive a bare hasText: 'notes' filter, so this checks for an
-  // exact-text title match instead.
-  await expect(page.getByTestId('atlas-note-card').filter({ has: page.getByText('notes', { exact: true }) })).toHaveCount(0)
+  await expect(imageObjects(page)).toHaveCount(0)
 })

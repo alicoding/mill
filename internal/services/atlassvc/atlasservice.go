@@ -44,6 +44,11 @@ type persistedState struct {
 	// (Note carries no BuiltIn/Seed provenance, deliberately: a scratch
 	// annotation has none to protect).
 	Notes []atlas.Note
+	// Objects holds every board-local canvas object (goal 0179/0180:
+	// image, ink, and any future kind declared the same way) -- its own
+	// family, same never-seeded/reconciled posture Notes carries above
+	// and for the same reason (no BuiltIn/Seed provenance to protect).
+	Objects []atlas.BoardObject
 	// Lenses maps a container card's ID to its per-space density filter
 	// (which Kind IDs stay hidden, and the depth/peek toggle) --
 	// persisted server-side so it round-trips across sessions like
@@ -73,6 +78,9 @@ type AtlasService struct {
 	cards     []atlas.Card
 	links     []atlas.Link
 	notes     []atlas.Note
+	// objects holds every board-local canvas object (goal 0179/0180) --
+	// same own-family posture as notes above.
+	objects   []atlas.BoardObject
 	lenses    map[string]atlas.LensSetting
 	// mirrorsDir is the Mill-owned root directory a space's lazily-
 	// created mirror folder lives under (goal 0063's share model,
@@ -139,6 +147,7 @@ func (a *AtlasService) restore() {
 	// -- persisted lazily by whichever mutation runs next.
 	a.links = dedupeLinks(state.Links)
 	a.notes = state.Notes
+	a.objects = state.Objects
 	// One-time in-place migration (the MigrateLegacyEntries posture):
 	// the single RefreshWorkflowID becomes the first attached action
 	// (goal 0084) -- persisted lazily by whichever mutation runs next.
@@ -173,7 +182,7 @@ func (a *AtlasService) restore() {
 func (a *AtlasService) persistLocked() error {
 	state := persistedState{
 		Kinds: a.kinds, LinkKinds: a.linkKinds,
-		Cards: a.cards, Links: a.links, Notes: a.notes, Lenses: a.lenses,
+		Cards: a.cards, Links: a.links, Notes: a.notes, Objects: a.objects, Lenses: a.lenses,
 		Session: a.session, Perspectives: a.perspectives,
 	}
 	data, err := json.Marshal(state)
@@ -230,6 +239,16 @@ func (a *AtlasService) Notes() []atlas.Note {
 	return a.liveNotesLocked()
 }
 
+// Objects returns every LIVE board-local canvas object (goal
+// 0179/0180) -- its own family, deliberately never mixed into Cards()
+// or Notes(); goal 0093's tombstone exclusion applies the same way
+// liveCardsLocked/liveNotesLocked do.
+func (a *AtlasService) Objects() []atlas.BoardObject {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.liveObjectsLocked()
+}
+
 // findKindLocked/findLinkKindLocked/findCardLocked/findLinkLocked
 // return the index of the entity with id, or -1 -- callers must hold
 // a.mu.
@@ -273,6 +292,15 @@ func (a *AtlasService) findLinkLocked(id string) int {
 func (a *AtlasService) findNoteLocked(id string) int {
 	for i, n := range a.notes {
 		if n.ID == id {
+			return i
+		}
+	}
+	return -1
+}
+
+func (a *AtlasService) findObjectLocked(id string) int {
+	for i, o := range a.objects {
+		if o.ID == id {
 			return i
 		}
 	}

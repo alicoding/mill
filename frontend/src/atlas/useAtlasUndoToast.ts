@@ -9,6 +9,9 @@ const TOAST_DURATION_MS = 10_000
 export interface PendingUndo {
   cardIDs: string[]
   noteIDs: string[]
+  // Board objects (goal 0179/0180) inherit the same undo door every
+  // other Atlas delete already rides -- see AtlasService.DeleteBoardObject.
+  objectIDs: string[]
   count: number
   linksRemoved: number
   childrenPromoted: number
@@ -39,10 +42,12 @@ export function useAtlasUndoToast() {
     clearTimer()
     const cardIDs = result.CardIDs ?? []
     const noteIDs = result.NoteIDs ?? []
+    const objectIDs = result.ObjectIDs ?? []
     setPending({
       cardIDs,
       noteIDs,
-      count: cardIDs.length + noteIDs.length,
+      objectIDs,
+      count: cardIDs.length + noteIDs.length + objectIDs.length,
       linksRemoved: result.LinksRemoved ?? 0,
       childrenPromoted: result.ChildrenPromoted ?? 0,
     })
@@ -52,9 +57,9 @@ export function useAtlasUndoToast() {
   const undo = () => {
     if (!pending) return
     clearTimer()
-    const { cardIDs, noteIDs } = pending
+    const { cardIDs, noteIDs, objectIDs } = pending
     setPending(null)
-    void AtlasService.UndoDelete(cardIDs, noteIDs).then(() => refreshAtlas())
+    void AtlasService.UndoDelete(cardIDs, noteIDs, objectIDs).then(() => refreshAtlas())
   }
 
   useEffect(() => clearTimer, [])

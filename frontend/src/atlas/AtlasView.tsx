@@ -14,15 +14,9 @@ import { useAtlasShareIO } from './useAtlasShareIO'
 import { AtlasToolbar } from './AtlasToolbar'
 import { AtlasBoard } from './AtlasBoard'
 import { pasteSummaryText } from './pasteSummary'
-import { AtlasStructureDialogs } from './AtlasStructureDialogs'
 import { type AtlasFocusRequest } from './useBoardFocus'
-import { AtlasJumpDialog } from './AtlasJumpDialog'
-import { AtlasCardOverlay } from './AtlasCardOverlay'
-import { AtlasNoteOverlay } from './AtlasNoteOverlay'
-import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
-import { AtlasMatrixView } from './AtlasMatrixView'
-import { AtlasCoverageView } from './AtlasCoverageView'
-import { AtlasKindManager } from './AtlasKindManager'
+import { type ContextMenuState } from '../shared/ContextMenu'
+import { AtlasViewOverlays } from './AtlasViewOverlays'
 import { AtlasBoardEmptyState } from './AtlasBoardEmptyState'
 import { CompanionPanel } from './CompanionPanel'
 import { isGroupCard } from './atlasBoardLayout'
@@ -33,6 +27,7 @@ import { useAtlasDeleteConfirm } from './useAtlasDeleteConfirm'
 import { useAtlasCommandSignals } from './useAtlasCommandSignals'
 import { useAtlasLinkMenus } from './useAtlasLinkMenus'
 import { useAtlasNoteMenu } from './useAtlasNoteMenu'
+import { useAtlasObjectMenu } from './useAtlasObjectMenu'
 import { useAtlasUndoToast } from './useAtlasUndoToast'
 import { AtlasUndoToast } from './AtlasUndoToast'
 import { useAtlasQuietToast } from './useAtlasQuietToast'
@@ -54,6 +49,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const linkKinds = useAtlasStore((s) => s.linkKinds)
   const links = useAtlasStore((s) => s.links)
   const notes = useAtlasStore((s) => s.notes)
+  const objects = useAtlasStore((s) => s.objects)
   const perspectives = useAtlasStore((s) => s.perspectives)
   const creationRequests = useAtlasCreationRequests()
 
@@ -65,6 +61,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const allLinkKinds = linkKinds ?? []
   const allLinks = links ?? []
   const allNotes = notes ?? []
+  const allObjects = objects ?? []
   const allPerspectives = perspectives ?? []
   // Perspective state + membership filtering (ADR-0041): declared
   // early -- the session-restore effects below need
@@ -225,6 +222,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // (which filters by Kind -- a note has none): every note whose
   // ParentID names the viewed space renders here, unfiltered.
   const visibleNotes = allNotes.filter((n) => n.ParentID === viewedID)
+  // A board object's own containment is spatial-only too (goal
+  // 0179/0180, the same "containment is location, not meaning" rule
+  // notes carry) -- unfiltered by the lens, same reasoning as above.
+  const visibleObjects = allObjects.filter((o) => o.ParentID === viewedID)
   const overlayCard = overlayCardID ? allCards.find((c) => c.ID === overlayCardID) ?? null : null
 
   const { jumpOpen, setJumpOpen } = useAtlasNavSignals({ viewedID, allCards, setViewedID, setMatrixOpen, setCoverageOpen })
@@ -285,6 +286,11 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const noteMenu = useAtlasNoteMenu({
     t, allNotes, setMenu, onDeleted: undoToast.registerDelete, onError: setShareError,
     requestPromote: creationRequests.requestPromote, onOpenNote: setOpenNoteID,
+  })
+
+  const objectMenu = useAtlasObjectMenu({
+    t, allObjects, setMenu, onDeleted: undoToast.registerDelete, onError: setShareError,
+    requestPromoteObject: creationRequests.requestPromoteObject,
   })
 
   // Frame/multi-select context menus + their dissolve/delete-with-
@@ -389,7 +395,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           0081 slice A2 rider a) -- the empty-state text overlays it,
           non-interactive, so the tray and pane menu stay reachable. */}
       <div className={styles.boardWrapper}>
-        {childrenAll.length === 0 && visibleNotes.length === 0 && (
+        {childrenAll.length === 0 && visibleNotes.length === 0 && visibleObjects.length === 0 && (
           <AtlasBoardEmptyState
             filteredByPerspective={activePerspectiveID !== '' && childrenOf(allCards, viewedID).length > 0}
             perspectiveName={allPerspectives.find((pp) => pp.ID === activePerspectiveID)?.Name ?? ''}
@@ -412,6 +418,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           linkKinds={allLinkKinds}
           notes={visibleNotes}
           allNotes={allNotes}
+          objects={visibleObjects}
           parentID={viewedID}
           arrangeRequest={arrangeRequest}
           viewedID={viewedID}
@@ -424,6 +431,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onEdgeDeleteLink={linkMenus.removeLink}
           onEdgeChangeKind={linkMenus.openChangeKindMenu}
           onNoteContextMenu={noteMenu.openNoteMenu}
+          onObjectContextMenu={objectMenu.openObjectMenu}
           onFrameContextMenu={containmentMenus.openFrameMenu}
           onFrameInteriorContextMenu={containmentMenus.openFrameInteriorMenu}
           onMultiSelectContextMenu={containmentMenus.openMultiSelectMenu}
@@ -448,50 +456,15 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         <CompanionPanel viewedID={viewedID} />
       </div>
 
-      <AtlasJumpDialog open={jumpOpen} onClose={() => setJumpOpen(false)} cards={allCards} kinds={allKinds} onJump={jumpToCard} />
-
-      {overlayCard && (
-        <AtlasCardOverlay
-          card={overlayCard}
-          kinds={allKinds}
-          allCards={allCards}
-          links={allLinks}
-          linkKinds={allLinkKinds}
-          onClose={() => setOverlayCardID(null)}
-          onSaved={() => void refreshAtlas()}
-          onDeleted={undoToast.registerDelete}
-          onOpenGroupEntry={openGroupEntry}
-          guardDelete={deleteConfirm.guardDelete}
-        />
-      )}
-      {importConfirmDialog}
-      <AtlasStructureDialogs kinds={allKinds} tableFromListOpen={tableFromListOpen} onCloseTableFromList={() => setTableFromListOpen(false)} newSpaceOpen={newSpaceOpen} onCloseNewSpace={() => setNewSpaceOpen(false)} onCreateTable={createTableCard} onCreateSpace={(k, title) => createCard('sibling', k, title)} />
-      <ContextMenu state={menu} onClose={() => setMenu(null)} />
-      {linkMenus.labelPopover}
-      {containmentMenus.dissolveDialog}{deleteConfirm.deleteConfirmDialog}
-      {(() => {
-        const openNote = openNoteID ? allNotes.find((n) => n.ID === openNoteID) : null
-        return openNote ? <AtlasNoteOverlay key={openNote.ID} note={openNote} onClose={() => setOpenNoteID(null)} /> : null
-      })()}
-
-      <AtlasMatrixView
-        open={matrixOpen}
-        onClose={() => setMatrixOpen(false)}
-        cards={childrenAll}
-        kinds={allKinds}
-        links={allLinks}
-        linkKinds={allLinkKinds}
-        onOpenCard={openCardFromProjection}
+      <AtlasViewOverlays
+        jumpOpen={jumpOpen} onCloseJump={() => setJumpOpen(false)} allCards={allCards} allKinds={allKinds} allLinks={allLinks} allLinkKinds={allLinkKinds} jumpToCard={jumpToCard}
+        overlayCard={overlayCard} onCloseOverlay={() => setOverlayCardID(null)} undoToast={undoToast} openGroupEntry={openGroupEntry} guardDelete={deleteConfirm.guardDelete}
+        importConfirmDialog={importConfirmDialog}
+        tableFromListOpen={tableFromListOpen} onCloseTableFromList={() => setTableFromListOpen(false)} newSpaceOpen={newSpaceOpen} onCloseNewSpace={() => setNewSpaceOpen(false)} onCreateTable={createTableCard} onCreateSpace={(kindID, title) => createCard('sibling', kindID, title)}
+        menu={menu} onCloseMenu={() => setMenu(null)} linkMenus={linkMenus} containmentMenus={containmentMenus} deleteConfirm={deleteConfirm}
+        openNote={openNoteID ? allNotes.find((n) => n.ID === openNoteID) ?? null : null} onCloseNote={() => setOpenNoteID(null)}
+        matrixOpen={matrixOpen} onCloseMatrix={() => setMatrixOpen(false)} coverageOpen={coverageOpen} onCloseCoverage={() => setCoverageOpen(false)} childrenAll={childrenAll} kindsOpen={kindsOpen} onCloseKinds={() => setKindsOpen(false)} onOpenCardFromProjection={openCardFromProjection}
       />
-      <AtlasCoverageView
-        open={coverageOpen}
-        onClose={() => setCoverageOpen(false)}
-        cards={childrenAll}
-        links={allLinks}
-        linkKinds={allLinkKinds}
-        onOpenCard={openCardFromProjection}
-      />
-      <AtlasKindManager open={kindsOpen} onClose={() => setKindsOpen(false)} kinds={allKinds} linkKinds={allLinkKinds} />
     </div>
   )
 }

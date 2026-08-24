@@ -1,0 +1,46 @@
+import type { TFunction } from 'i18next'
+import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
+import { AtlasService } from '../shared/bindings'
+import { refreshAtlas } from './atlasStore'
+import type { ContextMenuState } from '../shared/ContextMenu'
+
+// A board object's own right-click menu (goal 0179/0180): Promote to
+// card is the one explicit, one-way, reversible-only-by-undo action
+// out of board-local (mirrors useAtlasNoteMenu.ts's own Promote for
+// Note -- the same escape hatch, a different source entity); Delete is
+// instant (goal 0093's quick-delete-with-undo guard), feeding the
+// shared undo toast. Split out of AtlasView.tsx (architecture.md's
+// 500-line convention), same shape useAtlasNoteMenu/useAtlasLinkMenus
+// already established for their own entity's menu.
+export function useAtlasObjectMenu({
+  t, allObjects, setMenu, onDeleted, onError, requestPromoteObject,
+}: {
+  t: TFunction<'atlas'>
+  allObjects: BoardObject[]
+  setMenu: (state: ContextMenuState | null) => void
+  onDeleted: (result: TombstoneResult) => void
+  onError: (message: string) => void
+  requestPromoteObject: (objectID: string, pos: { x: number; y: number }) => void
+}) {
+  const deleteObject = (objectID: string) => {
+    AtlasService.DeleteBoardObject(objectID)
+      .then((result) => { onDeleted(result); void refreshAtlas() })
+      .catch((err) => onError(String(err)))
+  }
+
+  const openObjectMenu = (objectID: string, pos: { x: number; y: number }) => {
+    const object = allObjects.find((o) => o.ID === objectID)
+    if (!object) return
+    setMenu({
+      x: pos.x,
+      y: pos.y,
+      items: [
+        { id: 'promote', label: t('contextMenu.promoteToCard'), run: () => requestPromoteObject(object.ID, pos) },
+        { id: 'delete-object', label: t('contextMenu.delete'), danger: true, run: () => deleteObject(object.ID) },
+      ],
+    })
+  }
+
+  return { openObjectMenu }
+}

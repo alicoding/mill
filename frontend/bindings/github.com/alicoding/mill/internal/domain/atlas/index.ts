@@ -8,6 +8,7 @@ export {
 } from "./models.js";
 
 export type {
+    BoardObject,
     Card,
     Dimensions,
     Kind,

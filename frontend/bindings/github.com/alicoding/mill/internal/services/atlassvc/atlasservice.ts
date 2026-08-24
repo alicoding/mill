@@ -138,6 +138,16 @@ export function CorrectionEnvelope(problems: string[] | null, declinedTitles: st
 }
 
 /**
+ * CreateBoardObject makes a new BoardObject of kind, optionally inside
+ * parentID ("" for root-level) -- same containment-existence check
+ * CreateNote runs. payload is copied so the caller's own map can't
+ * mutate stored state after the call returns.
+ */
+export function CreateBoardObject(kind: string, payload: { [_ in string]?: string } | null, pos: atlas$0.Position, parentID: string): $CancellablePromise<atlas$0.BoardObject> {
+    return $Call.ByID(1667723317, kind, payload, pos, parentID);
+}
+
+/**
  * CreateCard makes a new Card of kindID, optionally inside parentID
  * ("" for root-level). A non-empty parentID must name an existing
  * card; a fresh card can never itself be a cycle (it has no children
@@ -235,6 +245,17 @@ export function CreateNote(text: string, pos: atlas$0.Position, parentID: string
  */
 export function CreatePerspective(spaceID: string, name: string, description: string): $CancellablePromise<atlas$0.Perspective> {
     return $Call.ByID(3910340284, spaceID, name, description);
+}
+
+/**
+ * DeleteBoardObject soft-deletes a board object (goal 0179/0180) --
+ * same tombstone contract as DeleteNote: no seed-tombstone bookkeeping
+ * (a board object carries no seed provenance), no link/child blast
+ * radius (a board object can be neither a link endpoint nor a
+ * container).
+ */
+export function DeleteBoardObject(id: string): $CancellablePromise<$models.TombstoneResult> {
+    return $Call.ByID(309976208, id);
 }
 
 /**
@@ -455,6 +476,16 @@ export function MirrorRawBytes(cardID: string): $CancellablePromise<string> {
 }
 
 /**
+ * MoveBoardObject reparents a board object (drag filing into/out of an
+ * area frame) -- same containment-existence check CreateBoardObject
+ * runs. A board object can never contain anything, so no cycle check
+ * is needed the way MoveCard's atlas.WouldCycle is.
+ */
+export function MoveBoardObject(id: string, newParentID: string): $CancellablePromise<atlas$0.BoardObject> {
+    return $Call.ByID(37708762, id, newParentID);
+}
+
+/**
  * MoveCard reparents a card (sibling-vs-child move, ADR-0038's
  * create-time framing extended to a later move) -- rejects a
  * newParentID that would make the card its own ancestor
@@ -481,6 +512,28 @@ export function MoveNote(id: string, newParentID: string): $CancellablePromise<a
  */
 export function Notes(): $CancellablePromise<atlas$0.Note[] | null> {
     return $Call.ByID(1683919391);
+}
+
+/**
+ * ObjectMirrorContent is MirrorContent's own counterpart for a board
+ * object (goal 0179/0180): resolves objectID's Payload["mirrorPath"]
+ * through the exact same read/classify logic, so an image and an ink
+ * stroke -- both file-backed board objects -- render on the canvas
+ * through the identical door a promoted card's own overlay preview
+ * already uses.
+ */
+export function ObjectMirrorContent(objectID: string): $CancellablePromise<atlas$0.MirrorContent> {
+    return $Call.ByID(3879091471, objectID);
+}
+
+/**
+ * Objects returns every LIVE board-local canvas object (goal
+ * 0179/0180) -- its own family, deliberately never mixed into Cards()
+ * or Notes(); goal 0093's tombstone exclusion applies the same way
+ * liveCardsLocked/liveNotesLocked do.
+ */
+export function Objects(): $CancellablePromise<atlas$0.BoardObject[] | null> {
+    return $Call.ByID(3025538390);
 }
 
 /**
@@ -532,6 +585,25 @@ export function PickFolder(startDir: string): $CancellablePromise<string> {
  */
 export function PreviewClipbridgeReply(raw: string): $CancellablePromise<$models.ClipbridgeReplyPreview> {
     return $Call.ByID(3851574839, raw);
+}
+
+/**
+ * PromoteBoardObject is the object's one-way lifecycle event (the same
+ * promotion ritual PromoteNote runs): it becomes a typed Card in
+ * place -- same position, same parent, title and kind supplied by the
+ * caller. mirrorPath, when the object's Payload carries one (every
+ * kind does today -- see boardobject.go's own header), rides onto the
+ * new card's own MirrorPath, so the promoted card renders through the
+ * exact same mirror-unit path a native file drop or the image tool's
+ * old card-door already used. checksum is computed BEFORE the lock is
+ * taken (fileChecksum does its own I/O) and never blocks promotion on
+ * failure, same fail-open posture CreateCardFromFileDrop takes.
+ * Atomic under a.mu: the kind is resolved and the card validated
+ * BEFORE the object is touched, so a bad kindID leaves the object
+ * completely untouched -- no half-promoted state ever exists.
+ */
+export function PromoteBoardObject(objectID: string, kindID: string, title: string): $CancellablePromise<atlas$0.Card> {
+    return $Call.ByID(1142980517, objectID, kindID, title);
 }
 
 /**
@@ -689,6 +761,25 @@ export function SetAtlasSession(state: $models.AtlasSessionState): $CancellableP
 }
 
 /**
+ * SetBoardObjectPosition updates a board object's placement within its
+ * parent's canvas -- the same drag-persistence call cards/notes go
+ * through via SetPosition/SetNotePosition.
+ */
+export function SetBoardObjectPosition(id: string, pos: atlas$0.Position): $CancellablePromise<atlas$0.BoardObject> {
+    return $Call.ByID(705679206, id, pos);
+}
+
+/**
+ * SetBoardObjectSize persists a user-driven resize -- nil until the
+ * object's own natural/intrinsic render size is first overridden (S2+;
+ * S1 never calls this, but the door exists so a future resize handle
+ * costs a frontend call, not a schema change).
+ */
+export function SetBoardObjectSize(id: string, size: atlas$0.Dimensions): $CancellablePromise<atlas$0.BoardObject> {
+    return $Call.ByID(1403039216, id, size);
+}
+
+/**
  * SetCardActions replaces a card's attached actions (goal 0084) --
  * deduplicated, empties dropped; order is the page's display order.
  */
@@ -812,15 +903,15 @@ export function TableProjectionExport(cardID: string, format: string): $Cancella
 }
 
 /**
- * UndoDelete reverses one or more DeleteCard/DeleteNote calls: clears
- * DeletedAt on exactly the ids named (a no-op for any id that's no
- * longer tombstoned, e.g. already purged) and clears a built-in
- * card's seed tombstone too, so top-up seeding can reach it again.
- * cardIDs/noteIDs are the exact TombstoneResult(s) the original
- * delete call(s) returned.
+ * UndoDelete reverses one or more DeleteCard/DeleteNote/
+ * DeleteBoardObject calls: clears DeletedAt on exactly the ids named (a
+ * no-op for any id that's no longer tombstoned, e.g. already purged)
+ * and clears a built-in card's seed tombstone too, so top-up seeding
+ * can reach it again. cardIDs/noteIDs/objectIDs are the exact
+ * TombstoneResult(s) the original delete call(s) returned.
  */
-export function UndoDelete(cardIDs: string[] | null, noteIDs: string[] | null): $CancellablePromise<void> {
-    return $Call.ByID(4101274755, cardIDs, noteIDs);
+export function UndoDelete(cardIDs: string[] | null, noteIDs: string[] | null, objectIDs: string[] | null): $CancellablePromise<void> {
+    return $Call.ByID(4101274755, cardIDs, noteIDs, objectIDs);
 }
 
 export function UpdateCard(id: string, title: string, note: string, fields: { [_ in string]?: string } | null, source: string, mirrorPath: string, refreshWorkflowID: string): $CancellablePromise<atlas$0.Card> {

@@ -1,0 +1,54 @@
+/* A board-local object is a thing in space, not a document -- no
+   card chrome (no title bar, no kind chip, no border by default): the
+   image/ink content itself IS the whole visible surface. Clamped so a
+   full-resolution screenshot lands at its natural size up to a sane
+   on-canvas footprint, never dwarfing the board. */
+.object {
+    display: flex;
+    cursor: pointer;
+}
+
+.image {
+    display: block;
+    max-width: 480px;
+    max-height: 480px;
+    /* A floor, not just a ceiling: a genuinely tiny source image (an
+       icon, a 1x1 test fixture) still needs a real on-canvas footprint
+       to stay selectable/draggable -- "natural size" means "the
+       file's own size, clamped to a usable range", not literally
+       unbounded in either direction. */
+    min-width: 40px;
+    min-height: 40px;
+    width: auto;
+    height: auto;
+    border-radius: var(--borderRadius-medium);
+}
+
+.placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 160px;
+    height: 120px;
+    border: 1px dashed var(--borderColor-muted);
+    border-radius: var(--borderRadius-medium);
+    color: var(--fgColor-muted);
+    background: var(--bgColor-muted);
+}
+
+.error {
+    font-size: 11px;
+    color: var(--fgColor-danger);
+}
+
+/* Selection ring lives on the React Flow node WRAPPER itself, not an
+   inner element (AtlasStickyNode.module.css's own header comment: a
+   Primer [role="button"] focus reset would otherwise zero a box-shadow
+   set on an inner element right after a mouse click). */
+:global(.react-flow__node-atlas-object.selected) {
+    outline: 3px solid var(--borderColor-accent-emphasis);
+    outline-offset: 3px;
+    border-radius: var(--borderRadius-medium);
+}

@@ -33,6 +33,14 @@ into.
   edit it — and any note opens big: ⌘-click it (or right-click →
   Open note) for a full-size editor, like opening a note in its own
   window.
+- **Images and ink live on the board, not inside a card.** Pick Image
+  in the toolbar and paste a screenshot or type a local path — it
+  lands at its own size, right where you put it. Pick Pencil and drag
+  to draw; lift and draw again for the next stroke, no interruption.
+  Either one is a thing in space you can move, select, and delete, and
+  ink stays visually on top of an image so you can mark one up. Nothing
+  becomes a card until you ask: right-click either one and choose
+  "Promote to card…" to give it a title and a kind.
 - **Copy and paste to duplicate.** Select cards or notes and press
   ⌘C, then ⌘V — copies appear where your cursor is, filed into
   whatever area it's over. A copy is just the card itself; when the

@@ -37,7 +37,35 @@ func (a *AtlasService) MirrorContent(cardID string) (atlas.MirrorContent, error)
 	if path == "" {
 		return atlas.MirrorContent{}, fmt.Errorf("card %q has no mirrored file", cardID)
 	}
+	return mirrorContentForPath(path)
+}
 
+// ObjectMirrorContent is MirrorContent's own counterpart for a board
+// object (goal 0179/0180): resolves objectID's Payload["mirrorPath"]
+// through the exact same read/classify logic, so an image and an ink
+// stroke -- both file-backed board objects -- render on the canvas
+// through the identical door a promoted card's own overlay preview
+// already uses.
+func (a *AtlasService) ObjectMirrorContent(objectID string) (atlas.MirrorContent, error) {
+	a.mu.RLock()
+	idx := a.findObjectLocked(objectID)
+	if idx == -1 {
+		a.mu.RUnlock()
+		return atlas.MirrorContent{}, fmt.Errorf("no board object with id %q", objectID)
+	}
+	path := a.objects[idx].Payload["mirrorPath"]
+	a.mu.RUnlock()
+	if path == "" {
+		return atlas.MirrorContent{}, fmt.Errorf("board object %q has no mirrored file", objectID)
+	}
+	return mirrorContentForPath(path)
+}
+
+// mirrorContentForPath is MirrorContent/ObjectMirrorContent's shared
+// read/classify/size-cap logic, extracted so the two callers -- a
+// card's MirrorPath field and a board object's Payload["mirrorPath"]
+// entry -- never re-derive it.
+func mirrorContentForPath(path string) (atlas.MirrorContent, error) {
 	size, err := fileread.Stat(path)
 	if err != nil {
 		return atlas.MirrorContent{}, fmt.Errorf("mirror content: %w", err)

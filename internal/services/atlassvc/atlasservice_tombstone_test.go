@@ -54,7 +54,7 @@ func TestDeleteCard_SoftDeleteRoundTripsWithUndo(t *testing.T) {
 		}
 	}
 
-	if err := a.UndoDelete(result.CardIDs, nil); err != nil {
+	if err := a.UndoDelete(result.CardIDs, nil, nil); err != nil {
 		t.Fatalf("UndoDelete: %v", err)
 	}
 	found := false
@@ -237,7 +237,7 @@ func TestDeleteNote_SoftDeleteRoundTripsWithUndo(t *testing.T) {
 			t.Error("deleted note still present in Notes()")
 		}
 	}
-	if err := a.UndoDelete(nil, result.NoteIDs); err != nil {
+	if err := a.UndoDelete(nil, result.NoteIDs, nil); err != nil {
 		t.Fatalf("UndoDelete: %v", err)
 	}
 	found := false
@@ -310,7 +310,7 @@ func TestDeleteCard_ContainerTombstone_ChildrenResolveToEffectiveParent(t *testi
 		t.Errorf("child's STORED ParentID = %q, want unchanged %q (virtual promotion only)", rawParentID, parent.ID)
 	}
 
-	if err := a.UndoDelete(result.CardIDs, nil); err != nil {
+	if err := a.UndoDelete(result.CardIDs, nil, nil); err != nil {
 		t.Fatalf("UndoDelete: %v", err)
 	}
 	gotChild, ok = findCardTestByID(a.Cards(), child.ID)

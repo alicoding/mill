@@ -95,6 +95,59 @@ func TestMirrorContent_Image_ReturnsBase64WithMimeType(t *testing.T) {
 	}
 }
 
+// --- ObjectMirrorContent (goal 0179/0180): the same read/classify
+// door, keyed off a board object's Payload["mirrorPath"] instead of a
+// card's MirrorPath field. ---
+
+func TestObjectMirrorContent_Image_ReturnsBase64WithMimeType(t *testing.T) {
+	a := newTestAtlasService(t)
+	raw := []byte{0x89, 0x50, 0x4e, 0x47} // not a valid PNG, but classification is extension-only
+	path := filepath.Join(t.TempDir(), "shot.png")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	o, err := a.CreateBoardObject("image", map[string]string{"mirrorPath": path}, atlas.Position{}, "")
+	if err != nil {
+		t.Fatalf("CreateBoardObject: %v", err)
+	}
+
+	got, err := a.ObjectMirrorContent(o.ID)
+	if err != nil {
+		t.Fatalf("ObjectMirrorContent: %v", err)
+	}
+	if got.Kind != atlas.MirrorKindImage {
+		t.Errorf("Kind = %q, want image", got.Kind)
+	}
+	if got.MimeType != "image/png" {
+		t.Errorf("MimeType = %q, want image/png", got.MimeType)
+	}
+	decoded, err := base64.StdEncoding.DecodeString(got.Content)
+	if err != nil {
+		t.Fatalf("Content is not valid base64: %v", err)
+	}
+	if string(decoded) != string(raw) {
+		t.Errorf("decoded Content = %q, want %q", decoded, raw)
+	}
+}
+
+func TestObjectMirrorContent_NoMirrorPath_Errors(t *testing.T) {
+	a := newTestAtlasService(t)
+	o, err := a.CreateBoardObject("ink", nil, atlas.Position{}, "")
+	if err != nil {
+		t.Fatalf("CreateBoardObject: %v", err)
+	}
+	if _, err := a.ObjectMirrorContent(o.ID); err == nil {
+		t.Error("ObjectMirrorContent() with no mirrorPath = nil error, want an error")
+	}
+}
+
+func TestObjectMirrorContent_UnknownObject_Errors(t *testing.T) {
+	a := newTestAtlasService(t)
+	if _, err := a.ObjectMirrorContent("does-not-exist"); err == nil {
+		t.Error("ObjectMirrorContent() on an unknown id = nil error, want an error")
+	}
+}
+
 func TestMirrorContent_OtherKind_ReportsSizeWithoutContent(t *testing.T) {
 	a := newTestAtlasService(t)
 	c := newMirroredCard(t, a, "archive.zip", "not really a zip, just bytes")

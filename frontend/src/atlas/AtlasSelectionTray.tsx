@@ -18,11 +18,14 @@ const CLEAR_KBD = 'esc'
 export const AtlasSelectionTray = forwardRef<HTMLDivElement, {
   selectedCardCount: number
   selectedNoteCount: number
+  // Board objects (goal 0179/0180) count toward the tray's own total
+  // and its Delete action, same as notes -- never toward Group.
+  selectedObjectCount: number
   onGroup: (pos: { x: number; y: number }) => void
   onDelete: () => void
-}>(function AtlasSelectionTray({ selectedCardCount, selectedNoteCount, onGroup, onDelete }, ref) {
+}>(function AtlasSelectionTray({ selectedCardCount, selectedNoteCount, selectedObjectCount, onGroup, onDelete }, ref) {
   const { t } = useTranslation('atlas')
-  const count = selectedCardCount + selectedNoteCount
+  const count = selectedCardCount + selectedNoteCount + selectedObjectCount
 
   return (
     <div ref={ref} className={styles.tray} data-testid="atlas-selection-tray" role="toolbar" aria-label={t('board.selectionTrayAriaLabel')}>

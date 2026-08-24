@@ -35,6 +35,7 @@ import { useAtlasSlotDrag } from './useAtlasSlotDrag'
 import { AtlasSlotDragLine } from './AtlasSlotDragLine'
 import { buildBoardCardNodes } from './atlasBuildBoardNodes'
 import { buildStickyNodes } from './atlasStickyNodes'
+import { buildBoardObjectNodes } from './atlasBuildBoardObjectNodes'
 import { AtlasCreationTray, ATLAS_TOOL_DRAG_MIME } from './AtlasCreationTray'
 import type { AtlasCreationTool } from './atlasTools'
 import { useTablePickerSignal } from './useTablePickerSignal'
@@ -69,7 +70,7 @@ import styles from './AtlasBoard.module.css'
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, allNotes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, onCreateTableSized, onOpenTableFromList, onQuietToast, onOpenNote, placementRequest, promoteRequest, groupRequest }: AtlasBoardInnerProps) {
+function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, allNotes, objects, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onObjectContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, onCreateTableSized, onOpenTableFromList, onQuietToast, onOpenNote, placementRequest, promoteRequest, groupRequest }: AtlasBoardInnerProps) {
   const { t } = useTranslation('atlas')
   const readOnly = useIsNarrowViewport()
   const reduceMotion = usePrefersReducedMotion()
@@ -122,8 +123,8 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   const tablePicker = useTablePickerSignal()
   const imagePopover = useAtlasImagePopoverSignal()
   const imageCreate = useAtlasImageCreate({ allCards, viewedID })
-  const creation = useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes: topLevelBoxes, noteBoxes })
-  const selection = useAtlasSelection({ cards, notes, onMultiSelectContextMenu })
+  const creation = useAtlasCreation({ parentID, allCards, kinds, notes, objects, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes: topLevelBoxes, noteBoxes })
+  const selection = useAtlasSelection({ cards, notes, objects, onMultiSelectContextMenu })
   const wrapperClicks = useAtlasPaneClick({ tablePicker, topLevelBoxes, screenToFlowPosition, onCreateTableSized, placeAt: creation.placeAt })
 
   // Delete/Backspace over a live selection -> the shared confirm
@@ -138,11 +139,12 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       e.preventDefault()
       const cardIDs = sel.filter((id) => cards.some((c) => c.ID === id))
       const noteIDs = sel.filter((id) => notes.some((n) => n.ID === id))
-      if (cardIDs.length + noteIDs.length > 0) onDeleteSelection(cardIDs, noteIDs)
+      const objectIDs = sel.filter((id) => objects.some((o) => o.ID === id))
+      if (cardIDs.length + noteIDs.length + objectIDs.length > 0) onDeleteSelection(cardIDs, noteIDs, objectIDs)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [cards, notes, onDeleteSelection, selection.selectedIDsRef])
+  }, [cards, notes, objects, onDeleteSelection, selection.selectedIDsRef])
 
   // Zoom chip / group-header click / Enter on a region frame (routed
   // here through AtlasGroupNode's own data.onDrill) all fly the camera
@@ -241,7 +243,12 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     onEnterEdit: creation.enterNoteEdit, onCancelEdit: creation.cancelNoteEdit, onCommitEdit: creation.commitNoteEdit, onOpenNote,
   }), [notes, creation.draftNoteFlowPos, creation.editingNoteID, readOnly, isFree, selection.isSoleSelected, creation.commitDraftNote, creation.cancelDraftNote, creation.enterNoteEdit, creation.cancelNoteEdit, creation.commitNoteEdit, onOpenNote])
 
-  const allNodes = useMemo(() => [...builtNodes, ...stickyNodes], [builtNodes, stickyNodes])
+  // Board objects (goal 0179/0180): built separately, same reasoning
+  // sticky notes' own comment gives -- a board object is never a card
+  // and never enters the group-frame preview layout either.
+  const objectNodes = useMemo(() => buildBoardObjectNodes({ objects, readOnly, isFree }), [objects, readOnly, isFree])
+
+  const allNodes = useMemo(() => [...builtNodes, ...stickyNodes, ...objectNodes], [builtNodes, stickyNodes, objectNodes])
   const [nodes, setNodes, onNodesChange] = useNodesState(allNodes)
   useEffect(() => {
     // Rebuilt node objects don't carry selected:true, so an unadorned
@@ -252,9 +259,9 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     setNodes(sel.length > 0 ? allNodes.map((n) => (sel.includes(n.id) ? { ...n, selected: true } : n)) : allNodes)
   }, [allNodes, setNodes, selection.selectedIDsRef])
 
-  useAtlasSelectAll({ cards, notes, setNodes })
+  useAtlasSelectAll({ cards, notes, objects, setNodes })
 
-  const { trayRef, hasSelection: haveSelection, onGroup: onTrayGroup, onDelete: onTrayDelete } = useAtlasSelectionTray({ selectedCards: selection.selectedCards, selectedNotes: selection.selectedNotes, clearSelection: selection.clearSelection, setNodes, onDeleteSelection, onGroupSelection, wrapperRef })
+  const { trayRef, hasSelection: haveSelection, onGroup: onTrayGroup, onDelete: onTrayDelete } = useAtlasSelectionTray({ selectedCards: selection.selectedCards, selectedNotes: selection.selectedNotes, selectedObjects: selection.selectedObjects, clearSelection: selection.clearSelection, setNodes, onDeleteSelection, onGroupSelection, wrapperRef })
 
   const minimap = useAtlasMinimapToggle()
 
@@ -383,6 +390,10 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
             onNoteContextMenu(node.id, { x: e.clientX, y: e.clientY })
             return
           }
+          if (node.type === 'atlas-object') {
+            onObjectContextMenu(node.id, { x: e.clientX, y: e.clientY })
+            return
+          }
           if (node.type === 'atlas-group') {
             // The header is the ONLY part of a frame's chrome that
             // isn't "interior empty space" -- everywhere else on the
@@ -449,7 +460,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       {fileDrop.dropError && <div className={`${styles.dropError} ${runbookStyles.error}`} data-testid="atlas-file-drop-error">{fileDrop.dropError}</div>}
       {fileDrop.dropDuplicateNotice && <div className={styles.dropNotice} data-testid="atlas-file-drop-duplicate-notice">{fileDrop.dropDuplicateNotice}</div>}
       {!readOnly && (haveSelection
-        ? <AtlasSelectionTray ref={trayRef} selectedCardCount={selection.selectedCards.length} selectedNoteCount={selection.selectedNotes.length} onGroup={onTrayGroup} onDelete={onTrayDelete} />
+        ? <AtlasSelectionTray ref={trayRef} selectedCardCount={selection.selectedCards.length} selectedNoteCount={selection.selectedNotes.length} selectedObjectCount={selection.selectedObjects.length} onGroup={onTrayGroup} onDelete={onTrayDelete} />
         : <AtlasCreationTray armedTool={creation.armedTool} onToggle={creation.toggleArm} tablePickerOpen={tablePicker.open || tablePicker.pendingSize !== null} onTableToggle={tablePicker.setOpen} onPickTableSize={(cols, rows) => tablePicker.setPendingSize({ cols, rows })} onTableFromList={onOpenTableFromList} imagePopoverOpen={imagePopover.open} onImageToggle={imagePopover.setOpen} onImageSubmitPath={imageCreate.createFromPath} onImageSubmitFile={imageCreate.createFromFile} />)}
       {creation.popover && (
         <AtlasPlacementPopover

@@ -1,4 +1,4 @@
-import type { Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { BoardObject, Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { BoardFilter } from './cardFilter'
 import type { AtlasFocusRequest } from './useBoardFocus'
 import type { AtlasGroupRequest, AtlasPlacementRequest, AtlasPromoteRequest } from './useAtlasCreation'
@@ -28,6 +28,11 @@ export interface AtlasBoardInnerProps {
   // only, same "already scoped by the caller" contract `cards` uses.
   // parentID is the board's CURRENT container (AtlasView's viewedID).
   notes: Note[]
+  // Board objects (goal 0179/0180): board-local canvas nouns (image,
+  // ink, ...), scoped to this container the same way notes are; objects
+  // has no allObjects counterpart since an object never renders inside
+  // a region frame's own preview (S1 -- see AtlasBoardObjectNode.tsx).
+  objects: BoardObject[]
   parentID: string
   // Arrange-is-an-action (goal 0089): a one-shot token; each bump
   // runs the packer over this level and PERSISTS the result.
@@ -53,6 +58,9 @@ export interface AtlasBoardInnerProps {
   // Right-click on a note (goal 0081 slice A1): same where/what-only
   // contract as onCardContextMenu -- AtlasView owns Promote/Delete.
   onNoteContextMenu: (noteID: string, pos: { x: number; y: number }) => void
+  // Right-click on a board object (goal 0179/0180): same where/what-
+  // only contract -- AtlasView owns Promote to card/Delete.
+  onObjectContextMenu: (objectID: string, pos: { x: number; y: number }) => void
   // Right-click on a frame's own header/border (goal 0081 slice A2,
   // LOCKED design §6d): reports the frame's own card id -- AtlasView
   // builds Add-inside/Zoom/Dissolve/Delete.
@@ -61,13 +69,15 @@ export interface AtlasBoardInnerProps {
   // frame's card id -- AtlasView builds the frame-scoped Add pair.
   onFrameInteriorContextMenu: (frameID: string, pos: { x: number; y: number }) => void
   // Right-click on a 2+ multi-selection member: reports the split
-  // card/note ids -- AtlasView builds Group into new area / Delete.
-  onMultiSelectContextMenu: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
+  // card/note/object ids -- AtlasView builds Group into new area / Delete.
+  onMultiSelectContextMenu: (cardIDs: string[], noteIDs: string[], objectIDs: string[], pos: { x: number; y: number }) => void
   // Keyboard Delete/Backspace over the live selection (goal 0089
   // rider): routed through the same confirm dialog as the menu item;
   // React Flow's own deleteKeyCode stays disabled -- a local node
-  // removal would just resurrect on the next data refresh.
-  onDeleteSelection: (cardIDs: string[], noteIDs: string[]) => void
+  // removal would just resurrect on the next data refresh. objectIDs is
+  // optional so the eraser's own onComplete (useAtlasDragTools.ts,
+  // cards/notes only in S1) keeps calling this with two arguments.
+  onDeleteSelection: (cardIDs: string[], noteIDs: string[], objectIDs?: string[]) => void
   onPasteConverted: (res: import('../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models').PasteResult) => void
   onQuietToast: (text: string, action?: { label: string; run: () => void }) => void
   onOpenNote: (id: string) => void
