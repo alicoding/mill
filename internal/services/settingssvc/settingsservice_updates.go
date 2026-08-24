@@ -303,6 +303,7 @@ func ResolveUpdateCurrentVersion(effectiveChannel, updateVersion string) string 
 func (s *SettingsService) CheckForUpdates() (UpdateCheckResult, error) {
 	if fake := os.Getenv(testUpdateFakeVersionEnv); fake != "" {
 		s.recordAvailableUpdate(fake)
+		s.recordCheckOutcome(UpdateCheckOutcomeFound, "")
 		return UpdateCheckResult{
 			UpdateAvailable: true,
 			Version:         fake,
@@ -316,16 +317,22 @@ func (s *SettingsService) CheckForUpdates() (UpdateCheckResult, error) {
 	u := s.updater
 	s.mu.Unlock()
 	if u == nil {
-		return UpdateCheckResult{}, fmt.Errorf("updater not configured")
+		err := fmt.Errorf("updater not configured")
+		s.recordCheckOutcome(UpdateCheckOutcomeFailed, err.Error())
+		return UpdateCheckResult{}, err
 	}
 	rel, err := u.Check(context.Background())
 	if err != nil {
-		return UpdateCheckResult{}, sanitizeUpdaterError(err)
+		sanitized := sanitizeUpdaterError(err)
+		s.recordCheckOutcome(UpdateCheckOutcomeFailed, sanitized.Error())
+		return UpdateCheckResult{}, sanitized
 	}
 	if rel == nil {
+		s.recordCheckOutcome(UpdateCheckOutcomeUpToDate, "")
 		return UpdateCheckResult{UpdateAvailable: false, CurrentVersion: s.AppVersion()}, nil
 	}
 	s.recordAvailableUpdate(rel.Version)
+	s.recordCheckOutcome(UpdateCheckOutcomeFound, "")
 	return UpdateCheckResult{UpdateAvailable: true, Version: rel.Version, CurrentVersion: s.AppVersion(), Notes: trimReleaseNotesForApp(rel.Notes)}, nil
 }
 

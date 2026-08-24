@@ -97,4 +97,17 @@ export interface UpdateNotice {
      * need to be re-granted after restart. Empty on every other path.
      */
     "resignWarning": string;
+
+    /**
+     * LastCheckAt/LastCheckOutcome/LastCheckError report CheckForUpdates'
+     * most recent result, whether it ran from the manual button or the
+     * background loop -- Settings' own visibility into whether checking
+     * is actually happening. LastCheckAt is RFC3339, "" when no check
+     * has ever run. LastCheckOutcome is one of UpdateCheckOutcome's
+     * values, "" meaning "never checked". LastCheckError carries the
+     * failure reason and is only ever set alongside the failed outcome.
+     */
+    "lastCheckAt": string;
+    "lastCheckOutcome": string;
+    "lastCheckError": string;
 }

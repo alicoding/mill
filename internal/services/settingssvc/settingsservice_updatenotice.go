@@ -44,6 +44,16 @@ type UpdateNotice struct {
 	// bundle with Mill's local identity failed, so Accessibility may
 	// need to be re-granted after restart. Empty on every other path.
 	ResignWarning string `json:"resignWarning"`
+	// LastCheckAt/LastCheckOutcome/LastCheckError report CheckForUpdates'
+	// most recent result, whether it ran from the manual button or the
+	// background loop -- Settings' own visibility into whether checking
+	// is actually happening. LastCheckAt is RFC3339, "" when no check
+	// has ever run. LastCheckOutcome is one of UpdateCheckOutcome's
+	// values, "" meaning "never checked". LastCheckError carries the
+	// failure reason and is only ever set alongside the failed outcome.
+	LastCheckAt      string `json:"lastCheckAt"`
+	LastCheckOutcome string `json:"lastCheckOutcome"`
+	LastCheckError   string `json:"lastCheckError"`
 }
 
 // UpdateNoticeState reports what the footer pill should show.
@@ -53,7 +63,45 @@ func (s *SettingsService) UpdateNoticeState() UpdateNotice {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return UpdateNotice{Ready: s.updateReady, AvailableVersion: s.availableUpdate, Downloading: s.updateDownloading, ResignWarning: s.resignWarning}
+	n := UpdateNotice{
+		Ready:            s.updateReady,
+		AvailableVersion: s.availableUpdate,
+		Downloading:      s.updateDownloading,
+		ResignWarning:    s.resignWarning,
+		LastCheckOutcome: string(s.lastCheckOutcome),
+		LastCheckError:   s.lastCheckError,
+	}
+	if !s.lastCheckAt.IsZero() {
+		n.LastCheckAt = s.lastCheckAt.Format(time.RFC3339)
+	}
+	return n
+}
+
+// UpdateCheckOutcome distinguishes what CheckForUpdates' most recent
+// run found -- reported so a check that has been failing every tick
+// reads as a real, visible state rather than looking identical to "no
+// update available".
+type UpdateCheckOutcome string
+
+const (
+	UpdateCheckOutcomeFound    UpdateCheckOutcome = "found"
+	UpdateCheckOutcomeUpToDate UpdateCheckOutcome = "upToDate"
+	UpdateCheckOutcomeFailed   UpdateCheckOutcome = "failed"
+)
+
+// recordCheckOutcome is CheckForUpdates' own hook, called on every
+// return path (success or failure, fake mode included) so
+// UpdateNoticeState always reflects the most recent check regardless of
+// which caller (the manual button or the background loop) triggered
+// it. checkErr is only meaningful alongside UpdateCheckOutcomeFailed --
+// every other outcome passes "".
+func (s *SettingsService) recordCheckOutcome(outcome UpdateCheckOutcome, checkErr string) {
+	s.mu.Lock()
+	s.lastCheckAt = time.Now()
+	s.lastCheckOutcome = outcome
+	s.lastCheckError = checkErr
+	s.mu.Unlock()
+	dataevent.Emit("update-notice", "checked")
 }
 
 // DismissUpdateNotice hides the available-update pill for the current
