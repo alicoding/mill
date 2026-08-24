@@ -7,6 +7,19 @@ import (
 	"github.com/alicoding/mill/internal/domain/secret"
 )
 
+// fixtureValueA-E are stand-ins for a stored Password value --
+// deliberately not password-shaped (no digit/letter mixing resembling
+// a real credential) so a secret-shaped-fixture scanner has nothing to
+// flag; the vault adapter itself treats a Password as an opaque
+// string, so these values exercise exactly what a real password would.
+const (
+	fixtureValueA = "TESTFIXTUREVALUEALPHA"
+	fixtureValueB = "TESTFIXTUREVALUEBETA"
+	fixtureValueC = "TESTFIXTUREVALUEGAMMA"
+	fixtureValueD = "TESTFIXTUREVALUEDELTA"
+	fixtureValueE = "TESTFIXTUREVALUEEPSILON"
+)
+
 func testKey(t *testing.T) []byte {
 	t.Helper()
 	key, err := NewMasterKey()
@@ -34,7 +47,7 @@ func TestCreate_ThenReadBack_InMemory(t *testing.T) {
 		t.Fatal("Unlocked false right after Create")
 	}
 
-	created, err := v.Upsert(secret.Entry{Title: "GitHub", Username: "alice", Password: "hunter2-fakepw", URL: "https://github.com"})
+	created, err := v.Upsert(secret.Entry{Title: "Example entry", Username: "example-user", Password: fixtureValueA, URL: "https://example.test"})
 	if err != nil {
 		t.Fatalf("Upsert: %v", err)
 	}
@@ -45,8 +58,8 @@ func TestCreate_ThenReadBack_InMemory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
-	if got.Password != "hunter2-fakepw" {
-		t.Fatalf("Get password = %q, want hunter2-fakepw", got.Password)
+	if got.Password != fixtureValueA {
+		t.Fatalf("Get password = %q, want %q", got.Password, fixtureValueA)
 	}
 }
 
@@ -65,14 +78,14 @@ func TestPersistThenReopen(t *testing.T) {
 	if err := v.Create(key); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	first, err := v.Upsert(secret.Entry{Title: "First", Password: "first-pw-fake"}) //nolint:gosec // fixture value, not a real credential (G101 false positive)
+	first, err := v.Upsert(secret.Entry{Title: "First", Password: fixtureValueA}) //nolint:gosec // fixture value, not a real credential (G101 false positive)
 	if err != nil {
 		t.Fatalf("Upsert first: %v", err)
 	}
 	// A second write exercises persistLocked twice in the same process --
 	// the case that would surface a stream-cipher-position bug the first
 	// write alone can't catch.
-	second, err := v.Upsert(secret.Entry{Title: "Second", Password: "second-pw-fake"}) //nolint:gosec // fixture value, not a real credential (G101 false positive)
+	second, err := v.Upsert(secret.Entry{Title: "Second", Password: fixtureValueB}) //nolint:gosec // fixture value, not a real credential (G101 false positive)
 	if err != nil {
 		t.Fatalf("Upsert second: %v", err)
 	}
@@ -87,15 +100,15 @@ func TestPersistThenReopen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get first after reopen: %v", err)
 	}
-	if gotFirst.Password != "first-pw-fake" || gotFirst.Title != "First" {
-		t.Fatalf("first entry after reopen = %+v, want Title=First Password=first-pw-fake", gotFirst)
+	if gotFirst.Password != fixtureValueA || gotFirst.Title != "First" {
+		t.Fatalf("first entry after reopen = %+v, want Title=First Password=%s", gotFirst, fixtureValueA)
 	}
 	gotSecond, err := reopened.Get(second.ID)
 	if err != nil {
 		t.Fatalf("Get second after reopen: %v", err)
 	}
-	if gotSecond.Password != "second-pw-fake" || gotSecond.Title != "Second" {
-		t.Fatalf("second entry after reopen = %+v, want Title=Second Password=second-pw-fake", gotSecond)
+	if gotSecond.Password != fixtureValueB || gotSecond.Title != "Second" {
+		t.Fatalf("second entry after reopen = %+v, want Title=Second Password=%s", gotSecond, fixtureValueB)
 	}
 }
 
@@ -146,17 +159,17 @@ func TestUpsert_UpdatePushesHistory(t *testing.T) {
 	if err := v.Create(testKey(t)); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	created, err := v.Upsert(secret.Entry{Title: "Site", Password: "old-pw-fake"}) //nolint:gosec // fixture value, not a real credential (G101 false positive)
+	created, err := v.Upsert(secret.Entry{Title: "Site", Password: fixtureValueC}) //nolint:gosec // fixture value, not a real credential (G101 false positive)
 	if err != nil {
 		t.Fatalf("Upsert create: %v", err)
 	}
-	created.Password = "new-pw-fake"
+	created.Password = fixtureValueD
 	updated, err := v.Upsert(created)
 	if err != nil {
 		t.Fatalf("Upsert update: %v", err)
 	}
-	if updated.Password != "new-pw-fake" {
-		t.Fatalf("updated password = %q, want new-pw-fake", updated.Password)
+	if updated.Password != fixtureValueD {
+		t.Fatalf("updated password = %q, want %q", updated.Password, fixtureValueD)
 	}
 	hist, err := v.History(created.ID)
 	if err != nil {
@@ -165,12 +178,12 @@ func TestUpsert_UpdatePushesHistory(t *testing.T) {
 	if len(hist) != 1 {
 		t.Fatalf("History length = %d, want 1", len(hist))
 	}
-	if hist[0].Password != "old-pw-fake" {
-		t.Fatalf("history[0].Password = %q, want old-pw-fake", hist[0].Password)
+	if hist[0].Password != fixtureValueC {
+		t.Fatalf("history[0].Password = %q, want %q", hist[0].Password, fixtureValueC)
 	}
 
 	// A second update pushes a second history entry, most-recent first.
-	updated.Password = "newer-pw-fake"
+	updated.Password = fixtureValueE
 	if _, err := v.Upsert(updated); err != nil {
 		t.Fatalf("Upsert second update: %v", err)
 	}
@@ -181,7 +194,7 @@ func TestUpsert_UpdatePushesHistory(t *testing.T) {
 	if len(hist) != 2 {
 		t.Fatalf("History length = %d, want 2", len(hist))
 	}
-	if hist[0].Password != "new-pw-fake" || hist[1].Password != "old-pw-fake" {
+	if hist[0].Password != fixtureValueD || hist[1].Password != fixtureValueC {
 		t.Fatalf("history order wrong: %+v", hist)
 	}
 }
