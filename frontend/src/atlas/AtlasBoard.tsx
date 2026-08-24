@@ -317,14 +317,13 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
 
   const r = areaDraw.dragLocalRect, marqueeStyle = r ? { left: r.x, top: r.y, width: r.width, height: r.height } : null
 
-  // Eraser + Laser's own arming/gesture hooks, plus Shape's full wiring
-  // (armed flag, style store, placement door, drag hook), plus the
-  // five-way activeDrag resolution across all of them -- split into
-  // its own file at the 500-line seam. onShapeCreated: a drawn shape
-  // is left selected and (unless locked) disarms the tool (goal 0199).
+  // Eraser/Laser/Shape's own arming+gesture hooks and the five-way
+  // activeDrag resolution live in their own file (500-line seam).
+  // onShapeCreated: a draw leaves the shape selected, disarming unless locked (goal 0199).
   const onShapeCreated = useCallback((objectID: string) => {
     selection.selectObject(objectID)
     creation.disarmUnlessLocked()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selection/creation are fresh object literals every render; the two stable functions actually used are the real deps
   }, [selection.selectObject, creation.disarmUnlessLocked])
 
   const { eraserDraw, laserDraw, shapeStyle, shapeDraw, activeDrag, anyDragToolArmed } = useAtlasDragTools({
