@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_DOCUMENT } from './fixtures/kindPicker'
-import { clickFrameGutter, dragBetween, openCard, promoteBoardObject } from './fixtures/atlasBoard'
+import { clickFrameGutter, openCard, promoteBoardObject } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
 import type { Locator, Page } from '@playwright/test'
@@ -264,32 +264,9 @@ test('New table creates a sized grid instantly from the size picker, landing a t
   await expect(listRow).toHaveCount(0)
 })
 
-// Regression (goal 0199, the #404 correction): a table board object's
-// own grid is wrapped nodrag (the spreadsheet-node convention), which
-// left the object with NO surface a plain node-drag could reach once
-// the table relocated off the card onto a bare board object. The
-// object's own chrome band is that surface.
-test('a table object can be dragged by its own frame', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Atlas' }).click()
-  await createTableFromList(page, 'Example: Country codes')
-  const tableObject = tableObjects(page).filter({ hasText: 'US' })
-  await expect(tableObject).toBeVisible()
-
-  const before = await tableObject.boundingBox()
-  if (!before) throw new Error('no table object box')
-
-  const frame = tableObject.getByTestId('atlas-board-object-frame')
-  const frameBox = await frame.boundingBox()
-  if (!frameBox) throw new Error('no frame box')
-  const start = { x: frameBox.x + frameBox.width / 2, y: frameBox.y + frameBox.height / 2 }
-  await dragBetween(page, start, { x: start.x + 140, y: start.y + 100 })
-
-  await expect.poll(async () => (await tableObject.boundingBox())?.x ?? 0).toBeGreaterThan(before.x + 100)
-
-  await deleteObjectViaMenu(tableObject)
-  await expect(tableObject).toHaveCount(0)
-})
+// A table object's own drag surface, resize handles, and content-
+// following initial footprint (goal 0199 parts A-C) are covered in
+// atlas-table-object.spec.ts, split out at the 500-line convention.
 
 // Regression (goal 0137): the hovered header lifts above its sticky
 // neighbors, so the boundary ⊕ paints over the next column instead of
@@ -311,8 +288,9 @@ test('a hovered header stacks above the neighboring sticky header', async ({ pag
 })
 
 // Card resize (goal 0135): the table face is user-sizable and the
-// chosen footprint persists as Card.Size -- card-only (a board object
-// has no resize handle wired yet), so this stays a promoted-card test.
+// chosen footprint persists as Card.Size -- this test stays scoped to
+// the promoted-card path; the board object's own resize (Size, goal
+// 0199 part B) has its own test below.
 test('resizing a promoted table card persists its footprint across reload', async ({ page }) => {
   // The resize DRAG synthesis is CI-invisible (pointer-coalescing
   // class, QUARANTINE.md atlas-table-resize) -- the gesture runs

@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { clickCorner } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
-import { fillMarkdownNote, fillSticky, stickyEditor, blurSticky } from './fixtures/codeEditor'
+import { fillCodeEditor, fillMarkdownNote, fillSticky, stickyEditor, blurSticky } from './fixtures/codeEditor'
 
 // Markdown sticky notes (goal 0145): the N tool's note is a real
 // markdown surface -- the prose editor live-previews formatting while
@@ -71,6 +71,60 @@ test('sticky notes render markdown; editor live-previews it', async ({ page }) =
   await expect(sticky.locator('li')).toHaveCount(3)
 
   // Cleanup (testing.md's within-file discipline).
+  const menu = contextMenu(page)
+  await sticky.click({ button: 'right' })
+  await menu.getByText('Delete note', { exact: true }).click()
+  await expect(sticky).toHaveCount(0)
+})
+
+// Regression (goal 0193's no-auto-resize rule, goal 0199's own
+// correction): the note overlay's markdown editor grew its own box
+// with every typed line -- CodeEditor falls back to grow-to-fit
+// unless its host constrains it, and MarkdownNoteField.module.css
+// carried no such constraint. Fixed at the shared field
+// (MarkdownNoteField), so AtlasCardPageFields.tsx's own mount inherits
+// the same bound with no separate rule. Measures the rendered box
+// itself, never anything wrap-dependent (CI's font stack differs from
+// local -- #402's own lesson).
+test("the note overlay's editor box stays bounded as content grows, never the page", async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+  await page.keyboard.press('n')
+  await clickCorner(board, 'top-left')
+  await expect(stickyEditor(page)).toBeVisible()
+  await fillSticky(page, 'One line')
+  await blurSticky(page)
+
+  const sticky = page.getByTestId('atlas-sticky-note')
+  await sticky.click({ modifiers: ['Meta'] })
+  const overlay = page.locator('[data-component="atlas-note-overlay"]')
+  await expect(overlay).toBeVisible()
+
+  const overlayRendered = page.getByTestId('atlas-note-overlay-editor-rendered')
+  await overlayRendered.click()
+  const editor = page.getByTestId('atlas-note-overlay-editor')
+  await expect(editor).toBeVisible()
+
+  const shortBox = await editor.boundingBox()
+  if (!shortBox) throw new Error('no editor box')
+
+  await fillCodeEditor(page, 'atlas-note-overlay-editor', Array.from({ length: 40 }, (_, i) => `Line number ${i}`).join('\n'))
+  const longBox = await editor.boundingBox()
+  if (!longBox) throw new Error('no editor box after typing')
+
+  // The box grows WITH short content (no dead space, matching
+  // .rendered's own min-height) but stops growing once it reaches its
+  // own bounded ceiling -- 40 lines is far more than the ceiling
+  // holds, so an unbounded editor would measure many times taller.
+  expect(shortBox.height).toBeLessThan(60)
+  expect(longBox.height).toBeLessThan(340)
+
+  await page.keyboard.press('Escape')
+  await expect(overlay).not.toBeVisible()
+
+  // Cleanup.
   const menu = contextMenu(page)
   await sticky.click({ button: 'right' })
   await menu.getByText('Delete note', { exact: true }).click()

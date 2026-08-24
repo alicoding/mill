@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { NodeResizer } from '@xyflow/react'
 import type { NodeProps, Node as RFNode } from '@xyflow/react'
 import { ImageIcon, PencilIcon } from '@primer/octicons-react'
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
@@ -32,12 +33,23 @@ export type AtlasBoardObjectRFNode = RFNode<AtlasBoardObjectData>
 // separate branch here rather than folding into the mirror-fetch effect
 // below (which stays scoped to the two Kinds that actually have a
 // mirror file, image and ink).
-function AtlasBoardObjectNodeInner({ data }: NodeProps<AtlasBoardObjectRFNode>) {
+function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjectRFNode>) {
   const { t } = useTranslation('atlas')
   const { object } = data
   const [src, setSrc] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
   const isShape = object.Kind === 'shape'
+  // A persisted Size wins forever (goal 0193's own no-auto-resize
+  // rule) -- once set, the node's own RF width/height already carry
+  // it (atlasBuildBoardObjectNodes.ts), so .object/.content just fill
+  // that box instead of falling back to each Kind's natural sizing.
+  const hasSize = !!object.Size
+  // An arrow's own geometry is entirely payload.dx/dy (atlasTools.ts),
+  // never a rectangular Size -- a generic corner-drag resize has no
+  // sound mapping back onto a direction vector, and no backend call
+  // exists to persist one, so arrows opt out of the shared resizer
+  // rather than offering a handle that silently does nothing.
+  const resizable = !(isShape && object.Payload?.shapeType === 'arrow')
   // "table" and "diagram" (goal 0179 S2) are structurally NOT
   // mirror-IMAGE-backed the way image/ink are: a table reads a List
   // projection, a diagram reads its own mirrored TEXT source through a
@@ -99,7 +111,7 @@ function AtlasBoardObjectNodeInner({ data }: NodeProps<AtlasBoardObjectRFNode>) 
     const Glyph = object.Kind === 'ink' ? PencilIcon : ImageIcon
     ariaLabel = t(object.Kind === 'ink' ? 'boardObject.inkAriaLabel' : 'boardObject.imageAriaLabel')
     content = src ? (
-      <img className={styles.image} src={src} alt="" draggable={false} />
+      <img className={styles.image} data-sized={hasSize} src={src} alt="" draggable={false} />
     ) : (
       <div className={styles.placeholder} data-testid="atlas-board-object-placeholder">
         <Glyph size={24} />
@@ -111,12 +123,31 @@ function AtlasBoardObjectNodeInner({ data }: NodeProps<AtlasBoardObjectRFNode>) 
   return (
     <div
       className={styles.object}
+      style={hasSize ? { width: '100%', height: '100%' } : undefined}
       data-testid="atlas-board-object"
       data-object-kind={object.Kind}
       data-shape-type={shapeType}
       role={role}
       aria-label={ariaLabel}
     >
+      {/* React Flow's own resize handles (goal 0199 part B, adopting
+          the same NodeResizer AtlasTableCardNode already uses -- never
+          hand-rolled), shown on selection only (a board full of ink
+          strokes would fight hover handles). Declared once here for
+          every Kind, same reasoning the frame band below documents;
+          arrow is the one carve-out (see the `resizable` comment
+          above). onResizeEnd is the ONLY write -- nothing here ever
+          resizes on its own (goal 0193). */}
+      {resizable && (
+        <NodeResizer
+          isVisible={selected ?? false}
+          minWidth={40}
+          minHeight={40}
+          onResizeEnd={(_e, params) => {
+            void AtlasService.SetBoardObjectSize(object.ID, { W: params.width, H: params.height })
+          }}
+        />
+      )}
       {/* The drag surface every Kind gets, declared exactly once here
           rather than per content renderer (goal 0199's #404
           correction): AtlasCardProjectionTable.tsx wraps a table's own

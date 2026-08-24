@@ -255,10 +255,13 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     // Rebuilt node objects don't carry selected:true, so an unadorned
     // setNodes silently dissolves a live multi-selection on every data
     // refresh -- re-apply it from the ref so a selection survives
-    // rebuilds (and the context menu that follows one).
+    // rebuilds. applyToken sits alongside allNodes, not instead of it:
+    // selectObject (goal 0199) needs this to re-fire even when a
+    // freshly created object's own arrival didn't itself change
+    // allNodes's identity yet.
     const sel = selection.selectedIDsRef.current
     setNodes(sel.length > 0 ? allNodes.map((n) => (sel.includes(n.id) ? { ...n, selected: true } : n)) : allNodes)
-  }, [allNodes, setNodes, selection.selectedIDsRef])
+  }, [allNodes, setNodes, selection.selectedIDsRef, selection.applyToken])
 
   useAtlasSelectAll({ cards, notes, objects, setNodes })
 
@@ -307,23 +310,26 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     creation.placeAt({ x: e.clientX, y: e.clientY }, tool)
   }
 
-  // Area drawing's own armed state (goal 0081 slice A2) disables the
-  // pane's panning so the mousedown/move/up trio below can own the
-  // drag -- shift-drag box-select is unaffected (RF's own
-  // selectionKeyCode handling is independent of panOnDrag).
+  // Area drawing's own armed state (goal 0081 A2) disables the pane's
+  // panning so the mousedown/move/up trio below can own the drag --
+  // shift-drag box-select is unaffected (selectionKeyCode is independent of panOnDrag).
   const areaArmed = isFree && !readOnly && creation.armedTool === 'area'
 
   const r = areaDraw.dragLocalRect, marqueeStyle = r ? { left: r.x, top: r.y, width: r.width, height: r.height } : null
 
-  // Eraser + Laser's own arming and gesture hooks, plus Shape's full
-  // wiring (armed flag, style store, placement door, drag hook -- goal
-  // 0169 slice 5, instantiated INSIDE this hook the same way Eraser/
-  // Laser already are, unlike Area/Pencil which predate this split),
-  // plus the five-way activeDrag resolution across all of them -- split
-  // into its own file at the 500-line seam.
+  // Eraser + Laser's own arming/gesture hooks, plus Shape's full wiring
+  // (armed flag, style store, placement door, drag hook), plus the
+  // five-way activeDrag resolution across all of them -- split into
+  // its own file at the 500-line seam. onShapeCreated: a drawn shape
+  // is left selected and (unless locked) disarms the tool (goal 0199).
+  const onShapeCreated = useCallback((objectID: string) => {
+    selection.selectObject(objectID)
+    creation.disarmUnlessLocked()
+  }, [selection.selectObject, creation.disarmUnlessLocked])
+
   const { eraserDraw, laserDraw, shapeStyle, shapeDraw, activeDrag, anyDragToolArmed } = useAtlasDragTools({
     isFree, readOnly, armedTool: creation.armedTool, screenToFlowPosition, topLevelBoxes, noteBoxes, wrapperRef, parentID,
-    onDeleteSelection, areaArmed, areaDraw, pencilArmed, pencilDraw,
+    onDeleteSelection, onShapeCreated, areaArmed, areaDraw, pencilArmed, pencilDraw,
   })
 
   return (
@@ -468,7 +474,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       {fileDrop.dropDuplicateNotice && <div className={styles.dropNotice} data-testid="atlas-file-drop-duplicate-notice">{fileDrop.dropDuplicateNotice}</div>}
       {!readOnly && (haveSelection
         ? <AtlasSelectionTray ref={trayRef} selectedCardCount={selection.selectedCards.length} selectedNoteCount={selection.selectedNotes.length} selectedObjectCount={selection.selectedObjects.length} onGroup={onTrayGroup} onDelete={onTrayDelete} />
-        : <AtlasCreationTray armedTool={creation.armedTool} onToggle={creation.toggleArm} tablePickerOpen={tablePicker.open || tablePicker.pendingSize !== null} onTableToggle={tablePicker.setOpen} onPickTableSize={(cols, rows) => tablePicker.setPendingSize({ cols, rows })} onTableFromList={onOpenTableFromList} imagePopoverOpen={imagePopover.open} onImageToggle={imagePopover.setOpen} onImageSubmitPath={imageCreate.createFromPath} onImageSubmitFile={imageCreate.createFromFile} />)}
+        : <AtlasCreationTray armedTool={creation.armedTool} locked={creation.locked} onToggle={creation.toggleArm} tablePickerOpen={tablePicker.open || tablePicker.pendingSize !== null} onTableToggle={tablePicker.setOpen} onPickTableSize={(cols, rows) => tablePicker.setPendingSize({ cols, rows })} onTableFromList={onOpenTableFromList} imagePopoverOpen={imagePopover.open} onImageToggle={imagePopover.setOpen} onImageSubmitPath={imageCreate.createFromPath} onImageSubmitFile={imageCreate.createFromFile} />)}
       {creation.popover && (
         <AtlasPlacementPopover
           mode={creation.popover.mode}

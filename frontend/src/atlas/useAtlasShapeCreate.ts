@@ -23,7 +23,11 @@ export function useAtlasShapeCreate({ parentID, topLevelBoxes, screenToFlowPosit
   topLevelBoxes: FrameBox[]
   screenToFlowPosition: (p: { x: number; y: number }) => { x: number; y: number }
 }) {
-  const landShape = async (start: ShapePoint, end: ShapePoint, style: { shapeType: AtlasShapeType; stroke: string; strokeWidth: number }) => {
+  // Returns the created object's own id (goal 0199 part D): the
+  // caller leaves it selected once the tool disarms, so the resize
+  // handles a drawn shape is now entitled to (part B) land on the
+  // thing just made.
+  const landShape = async (start: ShapePoint, end: ShapePoint, style: { shapeType: AtlasShapeType; stroke: string; strokeWidth: number }): Promise<string> => {
     const startFlow = screenToFlowPosition(start)
     const endFlow = screenToFlowPosition(end)
     const artifact = shapeTool.commit({
@@ -35,6 +39,7 @@ export function useAtlasShapeCreate({ parentID, topLevelBoxes, screenToFlowPosit
     const created = await AtlasService.CreateBoardObject('shape', artifact.payload, { X: artifact.originFlow.x, Y: artifact.originFlow.y }, targetParentID)
     if (artifact.size) await AtlasService.SetBoardObjectSize(created.ID, artifact.size)
     await refreshAtlas()
+    return created.ID
   }
 
   return { landShape }

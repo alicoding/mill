@@ -26,6 +26,13 @@ function formatMirrorSize(bytes: number): string {
 // atlasUnitMermaid.ts's own detect() do for the card-page unit; a
 // mermaid parse failure has no distinct error state (MermaidDiagramHost
 // keeps the original source visible, matching the card-page unit).
+//
+// A resize (goal 0199 part B) persists BoardObject.Size and moves the
+// RF node's own box, but the two vendored hosts' own bounded-window
+// CSS (AtlasUnitDrawio.module.css/AtlasUnitMermaid.module.css, shared
+// with the card-page unit views) keeps its own independent min/max-
+// height -- this wrapper carries the persisted box so a future host
+// change can honor it, but does not itself override that shared CSS.
 export function AtlasDiagramObjectContent({ object }: { object: BoardObject }) {
   const { t } = useTranslation('atlas')
   const [content, setContent] = useState<MirrorContent | null>(null)
@@ -55,8 +62,8 @@ export function AtlasDiagramObjectContent({ object }: { object: BoardObject }) {
   }
 
   const source = content.Kind === MirrorKind.MirrorKindText ? content.Content : ''
-  if (MERMAID_EXTENSIONS.has(extensionOf(mirrorPath))) {
-    return <MermaidDiagramHost source={source} />
-  }
-  return <DrawioDiagramHost source={source} />
+  const host = MERMAID_EXTENSIONS.has(extensionOf(mirrorPath))
+    ? <MermaidDiagramHost source={source} />
+    : <DrawioDiagramHost source={source} />
+  return object.Size ? <div style={{ width: '100%', height: '100%' }}>{host}</div> : host
 }

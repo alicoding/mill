@@ -43,6 +43,18 @@ export function useAtlasSelection({ cards, notes, objects, onMultiSelectContextM
   const [selectedCards, setSelectedCards] = useState<string[]>([])
   const [selectedNotes, setSelectedNotes] = useState<string[]>([])
   const [selectedObjects, setSelectedObjects] = useState<string[]>([])
+  // A one-shot trigger for selectObject below (goal 0199), NOT the
+  // selection arrays themselves -- AtlasBoard.tsx's node-rebuild
+  // effect only re-fires when ITS OWN dependencies change identity,
+  // and selectedIDsRef (a ref) never does that on its own. Wiring
+  // selectedObjects itself into that effect instead would reopen the
+  // exact React #185 loop this file's header comment already
+  // documents: setNodes -> React Flow re-derives its own
+  // selectedNodes -> onSelectionChange refires (even with unchanged
+  // membership, a fresh array reference) -> setSelectedObjects again
+  // -> setNodes again. A plain counter that ONLY selectObject touches
+  // can't join that cycle.
+  const [applyToken, setApplyToken] = useState(0)
 
   const onSelectionChange: OnSelectionChangeFunc = useCallback(({ nodes: selected }) => {
     const ids = selected.map((n) => n.id)
@@ -60,6 +72,21 @@ export function useAtlasSelection({ cards, notes, objects, onMultiSelectContextM
     setSelectedCards([])
     setSelectedNotes([])
     setSelectedObjects([])
+  }, [])
+
+  // A programmatic single-selection (goal 0199): a discrete tool's
+  // freshly placed object is left selected without any pointer event
+  // ever reaching React Flow's own selection machinery. Written
+  // straight into the ref/state pair React Flow's own onSelectionChange
+  // would otherwise populate, then applyToken bumps to force AtlasBoard.tsx's
+  // node-rebuild effect to re-read selectedIDsRef.current even though
+  // allNodes itself may not have changed since the object was created.
+  const selectObject = useCallback((id: string) => {
+    selectedIDsRef.current = [id]
+    setSelectedCards([])
+    setSelectedNotes([])
+    setSelectedObjects([id])
+    setApplyToken((t) => t + 1)
   }, [])
 
   // Snapshot the selection BEFORE React Flow's own handlers re-select
@@ -106,5 +133,5 @@ export function useAtlasSelection({ cards, notes, objects, onMultiSelectContextM
     return sel.length === 1 && sel[0] === id
   }, [])
 
-  return { selectedIDsRef, selectedCards, selectedNotes, selectedObjects, onSelectionChange, snapshotSelection, onSelectionContextMenu, tryNodeMultiMenu, isSoleSelected, clearSelection }
+  return { selectedIDsRef, selectedCards, selectedNotes, selectedObjects, applyToken, onSelectionChange, snapshotSelection, onSelectionContextMenu, tryNodeMultiMenu, isSoleSelected, clearSelection, selectObject }
 }
