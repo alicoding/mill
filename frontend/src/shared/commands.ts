@@ -371,6 +371,12 @@ export const COMMANDS: Command[] = [
     run: () => setView({ kind: 'review' }),
   },
   {
+    id: 'view.secrets',
+    label: 'Go to Secrets',
+    defaultBinding: { mods: ['cmd'], key: '6' },
+    run: () => setView({ kind: 'secrets' }),
+  },
+  {
     // Docs is deliberately absent from the sidebar (a help surface is
     // reachable on demand, never a standing tab) -- the palette and the
     // footer link are its entry points.

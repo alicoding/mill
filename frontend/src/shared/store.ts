@@ -80,6 +80,7 @@ export type View =
   | { kind: 'settings'; section?: string }
   // page: which docs page is open (rel path from the docs index).
   | { kind: 'docs'; page?: string }
+  | { kind: 'secrets' }
   | { kind: 'placeholder'; capabilityId: string }
 
 // Single mapping from a capability's Go-declared View to the frontend's
@@ -101,6 +102,8 @@ export function viewFor(capability: Capability): View {
       return { kind: 'docs' }
     case ViewKind.ViewAtlas:
       return { kind: 'atlas' }
+    case ViewKind.ViewSecrets:
+      return { kind: 'secrets' }
     default:
       return { kind: 'placeholder', capabilityId: capability.ID }
   }

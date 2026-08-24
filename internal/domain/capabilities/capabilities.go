@@ -29,6 +29,7 @@ const (
 	ViewConfigure   ViewKind = "configure"
 	ViewAtlas       ViewKind = "atlas"
 	ViewDocs        ViewKind = "docs"
+	ViewSecrets     ViewKind = "secrets"
 	ViewPlaceholder ViewKind = "placeholder"
 )
 
@@ -109,6 +110,14 @@ func List() []Capability {
 		{
 			ID: "capability-docs", Label: "Docs", SpecSection: "9",
 			Status: StatusOpen, View: ViewDocs, HiddenFromNav: true,
+		},
+		{
+			// The secret manager (docs/goals/0185-secrets-as-references.md):
+			// a human-facing credential store first, workflow resolution a
+			// second consumer -- its own capability, not folded into
+			// Configure (see that goal file's "owner's reframing").
+			ID: "capability-secrets", Label: "Secrets", SpecSection: "3.9",
+			Status: StatusOpen, View: ViewSecrets,
 		},
 	}
 }

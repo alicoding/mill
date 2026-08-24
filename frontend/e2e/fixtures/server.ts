@@ -376,3 +376,10 @@ export const ATLAS_LEDGER_SYNC_MCP_BASE_PORT = 10500
 // reasoning as atlas-delivery-ledger above.
 export const KIND_PROPOSAL_SERVER_BASE_PORT = 10520
 export const KIND_PROPOSAL_MCP_BASE_PORT = 10540
+
+// secrets.spec.ts's own dedicated pair (goal 0185 S2): vault existence/
+// lock state is GLOBAL app state (testing.md's shared-vs-dedicated
+// rule) -- a shared-pool server could be mid-setup or mid-unlock from
+// another spec cohabiting the same worker.
+export const SECRETS_SERVER_BASE_PORT = 10720
+export const SECRETS_MCP_BASE_PORT = 10740
