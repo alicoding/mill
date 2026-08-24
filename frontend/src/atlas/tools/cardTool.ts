@@ -19,6 +19,13 @@ export const cardTool = {
   shortcutKey: cardIdentity.shortcutKey,
   tray: 'quick',
   interaction: cardIdentity.interaction,
+  // Instant placement (goal 0144) always disarms after the one click --
+  // never reads a lock flag at all, so this stays false rather than N/A.
+  lockable: false,
+  // Rendered by AtlasNoteCardNode ('atlas-note'), whose own NodeResizer
+  // is the general card resize (goal 0193).
+  resizable: true,
+  boardNodeType: 'atlas-note',
   commit: (input: { kinds: Kind[]; kindID?: string; title?: string; note?: string }): AtlasCardArtifact => ({
     kind: 'card',
     kindID: input.kindID ?? lastUsedKindID(input.kinds),

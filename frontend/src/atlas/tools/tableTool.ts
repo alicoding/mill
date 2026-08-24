@@ -17,6 +17,15 @@ export const tableTool = {
   shortcutKey: tableIdentity.shortcutKey,
   tray: 'quick',
   interaction: tableIdentity.interaction,
+  // Arms through the size-picker popover, never the toggleArm/lock
+  // state machine -- always false, not N/A (atlasNounRegistry.ts's own
+  // header comment on this field).
+  lockable: false,
+  // Rendered via the shared 'atlas-object' board renderer
+  // (AtlasBoardObjectNode), whose NodeResizer + drag frame band cover
+  // every Kind that routes through it (goal 0199's #404/#405).
+  resizable: true,
+  boardNodeType: 'atlas-object',
   commit: async (input: { cols: number; rowCount: number; existingTitles: Set<string> }): Promise<AtlasTableArtifact> => {
     let title = 'Table'
     for (let n = 2; input.existingTitles.has(title); n++) title = `Table ${n}`

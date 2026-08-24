@@ -12,6 +12,11 @@ export const areaTool = {
   shortcutKey: areaIdentity.shortcutKey,
   tray: 'quick',
   interaction: areaIdentity.interaction,
+  lockable: false,
+  // AtlasGroupNode carries no NodeResizer at all -- a frame auto-fits
+  // its own enclosed children, so a manual resize would fight that.
+  resizable: false,
+  boardNodeType: 'atlas-group',
   commit: (input: { kindID: string; title: string; enclosedCardIDs: string[]; enclosedNoteIDs: string[] }): AtlasAreaArtifact => ({
     kind: 'area',
     kindID: input.kindID,

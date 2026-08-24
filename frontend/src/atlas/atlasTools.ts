@@ -70,12 +70,14 @@ export type AtlasArmableTool = Extract<AtlasToolIdentity, { interaction: 'arm-th
 // Discrete placement tools disarm after ONE commit and leave the new
 // object selected (goal 0199); continuous tools (pencil, eraser,
 // laser) stay armed across strokes, unchanged -- that split is the
-// point of the goal, never unified. Shape is the only discrete drag
-// tool today; whether image/table adopt the same one-shot rule is
-// deferred to goal 0181's surface-conformance pass (they arm through
-// popovers/dialogs, a different shape entirely) -- this stays a
-// narrow, explicit set rather than a registry field with one member.
-const LOCKABLE_ARM_TOOLS = new Set<AtlasArmableTool>(['shape'])
+// point of the goal, never unified. Reads each tool's own declared
+// `lockable` (atlasNounRegistry.ts, goal 0181 S3) rather than a hand-
+// maintained id set here -- a new discrete tool that copies a sibling's
+// arming behaviour without its own answer fails to compile instead of
+// silently inheriting the wrong one. image/table arm through a popover/
+// dialog, never this toggle-to-lock state machine at all, so both
+// declare `lockable: false` for that reason, same as every other
+// non-lockable tool.
 export function isLockableArmTool(tool: AtlasArmableTool): boolean {
-  return LOCKABLE_ARM_TOOLS.has(tool)
+  return ATLAS_TOOLS.find((t) => t.id === tool)?.lockable ?? false
 }

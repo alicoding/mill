@@ -35,6 +35,13 @@ export const imageTool = {
   shortcutKey: imageIdentity.shortcutKey,
   tray: 'quick',
   interaction: imageIdentity.interaction,
+  // Arms through the paste/drop popover, never the toggleArm/lock state
+  // machine -- always false, not N/A.
+  lockable: false,
+  // Shared 'atlas-object' board renderer (AtlasBoardObjectNode) covers
+  // resize + the drag frame band for every Kind it routes.
+  resizable: true,
+  boardNodeType: 'atlas-object',
   commit: async (input: { path: string } | { file: File; title: string }): Promise<AtlasImageArtifact> => {
     if ('file' in input) {
       const ext = IMAGE_MIME_EXTENSIONS[input.file.type]
