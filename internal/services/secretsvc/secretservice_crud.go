@@ -87,6 +87,30 @@ func (s *SecretService) DeleteSecret(id string) error {
 	return nil
 }
 
+// RedactKnownSecrets scrubs every currently-stored password out of
+// text (secret.Redact, goal 0185 S4 -- Finding 4's "no enumerable set
+// of secret values to redact against" gap). Best-effort: an unlocked-
+// vault error is swallowed here rather than propagated, since a caller
+// on the error-formatting path (composition.SetSecretRedactor) has no
+// good way to surface a SECOND error about redaction failing while
+// already reporting a first one -- text passes through unredacted
+// rather than the whole error path failing outright.
+func (s *SecretService) RedactKnownSecrets(text string) string {
+	entries, err := s.vault.List()
+	if err != nil {
+		return text
+	}
+	secrets := make([]string, 0, len(entries))
+	for _, e := range entries {
+		full, err := s.vault.Get(e.ID)
+		if err != nil {
+			continue
+		}
+		secrets = append(secrets, full.Password)
+	}
+	return secret.Redact(secrets, text)
+}
+
 // GeneratePassword returns a fresh CSPRNG password from the given
 // character-class options -- stateless, doesn't touch the vault at all
 // (a user can generate before the vault is even unlocked).

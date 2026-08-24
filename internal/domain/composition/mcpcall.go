@@ -61,6 +61,23 @@ func SetMCPCallTool(fn func(command string, args []string, env []string, toolNam
 	callToolFn = fn
 }
 
+// redactSecretsFn defaults to identity (no-op) so a run before
+// SetSecretRedactor is wired (or a headless `go test` that never wires
+// it) still works, just without redaction -- same fail-open-to-
+// unwired-behavior shape lookupMCPServerFn's own error default takes
+// the opposite way (fails loud) because THAT gap means "nothing would
+// work at all," while this one means "one extra safety net is
+// missing," not a correctness break.
+var redactSecretsFn = func(s string) string { return s }
+
+// SetSecretRedactor wires the function that scrubs known vault secret
+// values out of an mcp-tool-call node's own error text (goal 0185 S4)
+// -- called once from main.go once secretsvc.SecretService exists
+// (secretsvc.SecretService.RedactKnownSecrets).
+func SetSecretRedactor(fn func(string) string) {
+	redactSecretsFn = fn
+}
+
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "mcp-tool-call", Kind: KindProcess,
@@ -105,7 +122,12 @@ func init() {
 
 		result, err := callToolFn(rs.Command, rs.Args, rs.Env, node.Config["toolName"], arguments, node.ID)
 		if err != nil {
-			return ctx, fmt.Errorf("mcp-tool-call: %w", err)
+			// A server launched with an injected vault secret (rs.Env)
+			// could echo it back in its own failure text (an auth error
+			// naming the bad token, say) -- redactSecretsFn scrubs every
+			// currently-known vault value before the error leaves this
+			// node (goal 0185 S4).
+			return ctx, fmt.Errorf("mcp-tool-call: %s", redactSecretsFn(err.Error()))
 		}
 		ctx.Payload = result
 		return ctx, nil

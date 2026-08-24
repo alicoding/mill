@@ -175,6 +175,14 @@ func WireSecrets(vaultPath string, credentials credential.Store) *secretsvc.Secr
 	return secretsvc.NewSecretService(secretvault.New(vaultPath), credentials)
 }
 
+// WireSecretRedaction wires composition's mcp-tool-call node error path
+// to secretService's own known-secret scrubber (goal 0185 S4) -- a
+// server launched with an injected vault secret could echo it back in
+// its own failure text.
+func WireSecretRedaction(secretService *secretsvc.SecretService) {
+	composition.SetSecretRedactor(secretService.RedactKnownSecrets)
+}
+
 // WireNotificationChannels registers settingsService's three delivery
 // channels (desktop banner, dock bounce, browser tab -- docs/goals/
 // 0171-notification-spine.md) into notif, and late-binds notif back

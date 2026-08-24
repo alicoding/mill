@@ -1,7 +1,9 @@
 package composition
 
 import (
+	"errors"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -100,5 +102,45 @@ func TestResolveMCPArguments_NilAttrsHandled(t *testing.T) {
 	}
 	if got["literal"] != "kept" {
 		t.Errorf("got[%q] = %#v, want %q", "literal", got["literal"], "kept")
+	}
+}
+
+// TestMCPToolCall_ErrorTextRedacted proves an mcp-tool-call node's own
+// error text is run through redactSecretsFn before it leaves the node
+// (goal 0185 S4) -- a server started with an injected vault secret
+// could echo it back in its own failure message.
+func TestMCPToolCall_ErrorTextRedacted(t *testing.T) {
+	origLookup, origCall, origRedact := lookupMCPServerFn, callToolFn, redactSecretsFn
+	t.Cleanup(func() { lookupMCPServerFn, callToolFn, redactSecretsFn = origLookup, origCall, origRedact })
+
+	SetMCPServerLookup(func(string) (ResolvedMCPServer, error) {
+		return ResolvedMCPServer{Command: "irrelevant"}, nil
+	})
+	SetMCPCallTool(func(string, []string, []string, string, map[string]any, string) (string, error) {
+		return "", errors.New("auth failed for token super-secret-fake")
+	})
+	SetSecretRedactor(func(s string) string { return strings.ReplaceAll(s, "super-secret-fake", "[redacted]") })
+
+	nodes, edges := chain("trigger-manual", "mcp-tool-call")
+	resolved, err := ResolveNodeDefaults(nodes)
+	if err != nil {
+		t.Fatalf("ResolveNodeDefaults: %v", err)
+	}
+	for i := range resolved {
+		if resolved[i].NodeTypeID == "mcp-tool-call" {
+			resolved[i].Config["mcpServerId"] = "any"
+			resolved[i].Config["toolName"] = "any"
+		}
+	}
+
+	_, err = ExecuteWorkflow(resolved, edges, nil)
+	if err == nil {
+		t.Fatal("ExecuteWorkflow returned nil error, want the mcp-tool-call failure")
+	}
+	if strings.Contains(err.Error(), "super-secret-fake") {
+		t.Fatalf("ExecuteWorkflow error = %q, still contains the unredacted secret", err.Error())
+	}
+	if !strings.Contains(err.Error(), "[redacted]") {
+		t.Fatalf("ExecuteWorkflow error = %q, want it to contain the redaction placeholder", err.Error())
 	}
 }

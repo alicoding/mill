@@ -2,6 +2,7 @@ package configuresvc
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -47,6 +48,35 @@ func TestResolveMCPServer_VaultLocked_FailsExplicitly(t *testing.T) {
 	}
 	if _, err := cfg.resolveMCPServer(s.ID); err == nil {
 		t.Fatal("resolveMCPServer with a locked vault returned nil error, want an error")
+	}
+}
+
+// TestExportMCPServer_NeverCarriesResolvedSecret proves goal 0185's own
+// acceptance bar ("a secret's value is unreachable from export") for
+// MCPServer specifically: a vault-ref Env entry exports as its literal
+// "vault:<id>" reference, never the real resolved secret -- even
+// though resolveMCPServer (the spawn-time path) DOES resolve it, the
+// resolver is deliberately never consulted on the export path at all.
+func TestExportMCPServer_NeverCarriesResolvedSecret(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	cfg.SetSecretResolver(func(string) (string, error) {
+		return "real-secret-fake", nil
+	})
+
+	s, err := cfg.CreateMCPServer("GitHub", "github-mcp-server", nil, []string{"GITHUB_TOKEN=vault:entry-1"})
+	if err != nil {
+		t.Fatalf("CreateMCPServer: %v", err)
+	}
+
+	exported, err := cfg.ExportMCPServer(s.ID)
+	if err != nil {
+		t.Fatalf("ExportMCPServer: %v", err)
+	}
+	if strings.Contains(exported, "real-secret-fake") {
+		t.Fatalf("ExportMCPServer output contains the resolved secret: %s", exported)
+	}
+	if !strings.Contains(exported, "vault:entry-1") {
+		t.Fatalf("ExportMCPServer output = %s, want it to still carry the vault reference", exported)
 	}
 }
 

@@ -2,6 +2,7 @@ package secretsvc
 
 import (
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -188,6 +189,34 @@ func TestResolveSecretValue_Locked(t *testing.T) {
 	s.LockVault()
 	if _, err := s.ResolveSecretValue(created.ID); err == nil {
 		t.Fatal("ResolveSecretValue on a locked vault returned nil error, want an error")
+	}
+}
+
+func TestRedactKnownSecrets(t *testing.T) {
+	s := newTestService(t)
+	if err := s.SetupVault(); err != nil {
+		t.Fatalf("SetupVault: %v", err)
+	}
+	if _, err := s.CreateSecret("API", "", "super-secret-fake", "", "", ""); err != nil {
+		t.Fatalf("CreateSecret: %v", err)
+	}
+
+	got := s.RedactKnownSecrets("auth failed for token super-secret-fake")
+	if strings.Contains(got, "super-secret-fake") {
+		t.Fatalf("RedactKnownSecrets = %q, still contains the secret", got)
+	}
+}
+
+func TestRedactKnownSecrets_Locked_PassesThroughUnchanged(t *testing.T) {
+	s := newTestService(t)
+	if err := s.SetupVault(); err != nil {
+		t.Fatalf("SetupVault: %v", err)
+	}
+	s.LockVault()
+
+	text := "nothing redactable while locked"
+	if got := s.RedactKnownSecrets(text); got != text {
+		t.Fatalf("RedactKnownSecrets while locked = %q, want unchanged %q", got, text)
 	}
 }
 
