@@ -7,7 +7,10 @@ import { refreshAtlas } from './atlasStore'
 import { titleFromFilename, titleFromNoteText } from './atlasCreateHelpers'
 import { freeChildPosition } from './atlasContainmentPlacement'
 import { computeEnclosedBoundingBoxOrigin } from './atlasBoardBoxes'
-import { cardTool, noteTool, areaTool, isLockableArmTool, type AtlasArmableTool, type AtlasCreationTool } from './atlasTools'
+import { isLockableArmTool, type AtlasArmableTool, type AtlasCreationTool } from './atlasTools'
+import { cardTool } from './tools/cardTool'
+import { noteTool } from './tools/noteTool'
+import { areaTool } from './tools/areaTool'
 
 export interface AtlasPlacementPopoverState {
   mode: 'create' | 'promote' | 'area'
