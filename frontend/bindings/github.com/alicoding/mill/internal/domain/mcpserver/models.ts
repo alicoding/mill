@@ -17,6 +17,19 @@ export interface MCPServer {
     "Args": string[] | null;
 
     /**
+     * Env is the child process's own environment additions, KEY=VALUE
+     * per entry (execenv.ExecEnv.Env's own shape) -- merged onto Mill's
+     * ambient environment at spawn (unlike ExecEnv's fully-explicit
+     * posture: an MCP server subprocess still needs PATH etc. to run at
+     * all). A value of the form "vault:<entry-id>" (goal 0185 S3) is
+     * resolved to that vault entry's password at spawn time, never
+     * written to disk in resolved form -- the MCP spec's own delivery
+     * contract ("retrieve credentials from the environment"), Mill's
+     * storage answer for the client side it leaves unspecified.
+     */
+    "Env": string[] | null;
+
+    /**
      * BuiltIn marks a seeded example MCP Server (BuiltIn() below) --
      * purely informational, same as httprequest.HTTPRequest.BuiltIn/
      * decision.Decision.BuiltIn/list.List.BuiltIn: drives a "built-in"

@@ -73,6 +73,20 @@ export function LockVault(): $CancellablePromise<void> {
 }
 
 /**
+ * RedactKnownSecrets scrubs every currently-stored password out of
+ * text (secret.Redact, goal 0185 S4 -- Finding 4's "no enumerable set
+ * of secret values to redact against" gap). Best-effort: an unlocked-
+ * vault error is swallowed here rather than propagated, since a caller
+ * on the error-formatting path (composition.SetSecretRedactor) has no
+ * good way to surface a SECOND error about redaction failing while
+ * already reporting a first one -- text passes through unredacted
+ * rather than the whole error path failing outright.
+ */
+export function RedactKnownSecrets(text: string): $CancellablePromise<string> {
+    return $Call.ByID(2598084233, text);
+}
+
+/**
  * RevealSecret returns one entry in full, password included -- a
  * distinct, explicit call from ListSecrets (never incidental to
  * browsing), matching SetHTTPRequestSecret's own write-only-elsewhere

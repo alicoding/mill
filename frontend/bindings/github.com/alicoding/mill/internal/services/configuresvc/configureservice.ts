@@ -154,8 +154,8 @@ export function CreateList(label: string, description: string, columns: typedfie
     return $Call.ByID(1760985996, label, description, columns);
 }
 
-export function CreateMCPServer(label: string, command: string, args: string[] | null): $CancellablePromise<mcpserver$0.MCPServer> {
-    return $Call.ByID(1284256739, label, command, args);
+export function CreateMCPServer(label: string, command: string, args: string[] | null, env: string[] | null): $CancellablePromise<mcpserver$0.MCPServer> {
+    return $Call.ByID(1284256739, label, command, args, env);
 }
 
 export function Decisions(): $CancellablePromise<decision$0.Decision[] | null> {
@@ -293,11 +293,10 @@ export function HTTPRequests(): $CancellablePromise<httprequest$0.HTTPRequest[] 
 }
 
 /**
- * ImportAIProvider applies ADR-0036 decision 3's uniform import rule
- * (this file's own header comment). No secret ever round-trips --
- * exportedAIProvider never carries one, same as ImportMCPServer's own
- * no-credential-to-import shape; an updated provider keeps its existing
- * local secret untouched (UpdateAIProvider never touches it either).
+ * ImportAIProvider applies the uniform import rule. No secret ever
+ * round-trips -- exportedAIProvider never carries one; an updated
+ * provider keeps its existing local secret untouched (UpdateAIProvider
+ * never touches it either).
  */
 export function ImportAIProvider(jsonData: string): $CancellablePromise<aiprovider$0.AIProvider> {
     return $Call.ByID(2109937718, jsonData);
@@ -353,8 +352,7 @@ export function ImportList(jsonData: string): $CancellablePromise<list$0.List> {
 }
 
 /**
- * ImportMCPServer applies ADR-0036 decision 3's uniform import rule
- * (this file's own header comment).
+ * ImportMCPServer applies the uniform import rule.
  */
 export function ImportMCPServer(jsonData: string): $CancellablePromise<mcpserver$0.MCPServer> {
     return $Call.ByID(337785048, jsonData);
@@ -720,8 +718,8 @@ export function UpdateListRow(listID: string, rowID: string, values: { [_ in str
     return $Call.ByID(783553507, listID, rowID, values, status);
 }
 
-export function UpdateMCPServer(id: string, label: string, command: string, args: string[] | null): $CancellablePromise<mcpserver$0.MCPServer> {
-    return $Call.ByID(2916384132, id, label, command, args);
+export function UpdateMCPServer(id: string, label: string, command: string, args: string[] | null, env: string[] | null): $CancellablePromise<mcpserver$0.MCPServer> {
+    return $Call.ByID(2916384132, id, label, command, args, env);
 }
 
 export function UpdateWorkflowAttributes(workflowID: string, attrs: composition$0.AttributeDef[] | null): $CancellablePromise<composition$0.Workflow> {
