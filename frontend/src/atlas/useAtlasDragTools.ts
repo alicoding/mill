@@ -32,7 +32,7 @@ function firstArmedDrag(entries: [boolean, DragGestureHandlers][]): DragGestureH
 // Shape) has one home regardless of where each tool's own hook call
 // happens to live.
 export function useAtlasDragTools({
-  isFree, readOnly, armedTool, screenToFlowPosition, topLevelBoxes, noteBoxes, wrapperRef, parentID, onDeleteSelection,
+  isFree, readOnly, armedTool, screenToFlowPosition, topLevelBoxes, noteBoxes, wrapperRef, parentID, onDeleteSelection, onShapeCreated,
   areaArmed, areaDraw, pencilArmed, pencilDraw,
 }: {
   isFree: boolean
@@ -44,6 +44,10 @@ export function useAtlasDragTools({
   wrapperRef: RefObject<HTMLDivElement | null>
   parentID: string
   onDeleteSelection: (cardIDs: string[], noteIDs: string[]) => void
+  // The one-shot/leave-selected door (goal 0199 part D): called with
+  // the newly landed shape's own id AFTER refreshAtlas resolves, so
+  // AtlasBoard.tsx can select it and (unless locked) disarm the tool.
+  onShapeCreated: (objectID: string) => void
   areaArmed: boolean
   areaDraw: DragGestureHandlers
   pencilArmed: boolean
@@ -69,21 +73,23 @@ export function useAtlasDragTools({
   const laserArmed = isFree && !readOnly && armedTool === 'laser'
   const laserDraw = useAtlasLaserDraw({ armed: laserArmed, wrapperRef })
 
-  // Shape (goal 0169 slice 5): armed/wired the same sticky way Pencil is
-  // (its own drag hook never disarms on completion), but fully
-  // instantiated HERE rather than passed in -- Shape is introduced at
-  // this split, unlike Area/Pencil which predate it, so it follows
-  // Eraser/Laser's own precedent instead. shapeStyle is the ephemeral
-  // "current defaults" cache (atlasShapeStyleStore.ts); landShape bakes
-  // its current value into the created BoardObject's own Payload, which
-  // IS persisted document data.
+  // Shape (goal 0169 slice 5): armed/wired the same way Pencil is, but
+  // fully instantiated HERE rather than passed in -- Shape is
+  // introduced at this split, unlike Area/Pencil which predate it, so
+  // it follows Eraser/Laser's own precedent instead. shapeStyle is the
+  // ephemeral "current defaults" cache (atlasShapeStyleStore.ts);
+  // landShape bakes its current value into the created BoardObject's
+  // own Payload, which IS persisted document data. Unlike Pencil,
+  // this hook's own drag gesture never re-arms itself either way
+  // (goal 0199 part D) -- onShapeCreated is what decides whether the
+  // tool disarms, since only the caller knows if it's locked.
   const shapeArmed = isFree && !readOnly && armedTool === 'shape'
   const shapeStyle = useAtlasShapeStyle()
   const shapeCreate = useAtlasShapeCreate({ parentID, topLevelBoxes, screenToFlowPosition })
   const shapeDraw = useAtlasShapeDraw({
     armed: shapeArmed,
     wrapperRef,
-    onComplete: (start, end) => void shapeCreate.landShape(start, end, shapeStyle).catch(console.error),
+    onComplete: (start, end) => void shapeCreate.landShape(start, end, shapeStyle).then(onShapeCreated).catch(console.error),
   })
 
   const activeDrag = firstArmedDrag([[areaArmed, areaDraw], [pencilArmed, pencilDraw], [eraserArmed, eraserDraw], [laserArmed, laserDraw], [shapeArmed, shapeDraw]])

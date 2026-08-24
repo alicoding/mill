@@ -2,6 +2,7 @@ import { createRef, Fragment, useMemo } from 'react'
 import type { RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnchoredOverlay, Button } from '@primer/react'
+import { LockIcon } from '@primer/octicons-react'
 import { AtlasTableSizePicker } from './AtlasTableSizePicker'
 import { AtlasImageInput } from './AtlasImageInput'
 import { ATLAS_TOOLS, type AtlasArmableTool } from './atlasTools'
@@ -50,8 +51,12 @@ export const ATLAS_TOOL_DRAG_MIME = 'application/x-mill-atlas-tool'
 // few px, which would only defer the same class of collision to slice
 // 5's shapes tool. The full name is still discoverable via `title`
 // (hover) and `aria-label` (screen readers) on every button.
-export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTableToggle, onPickTableSize, onTableFromList, imagePopoverOpen, onImageToggle, onImageSubmitPath, onImageSubmitFile }: {
+export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen, onTableToggle, onPickTableSize, onTableFromList, imagePopoverOpen, onImageToggle, onImageSubmitPath, onImageSubmitFile }: {
   armedTool: AtlasArmableTool | null
+  // Whether the CURRENTLY armed tool is locked (goal 0199 part D) --
+  // only ever meaningful together with armedTool, so this is a single
+  // flag rather than a second id to keep in sync with the first.
+  locked: boolean
   onToggle: (tool: AtlasArmableTool) => void
   tablePickerOpen: boolean
   onTableToggle: (open: boolean) => void
@@ -117,6 +122,10 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
         }
         if (tool.interaction === 'drag-to-draw') {
           const dragArmed = armedTool === tool.id
+          // Locked reads only off the CURRENTLY armed tool (goal 0199
+          // part D) -- a stale `locked` from a since-disarmed tool
+          // must never paint a different button.
+          const isLocked = dragArmed && locked
           // Which options-bar component floats above the button (goal
           // 0169 slice 5): registry-driven off the tool's OWN
           // StylePicker field (atlasTools.ts) rather than a branch
@@ -131,12 +140,13 @@ export function AtlasCreationTray({ armedTool, onToggle, tablePickerOpen, onTabl
                 className={styles.tool}
                 data-testid={`atlas-tray-${tool.id}`}
                 data-armed={dragArmed}
+                data-locked={isLocked}
                 aria-pressed={dragArmed}
-                title={t(`creationTray.${tool.id}Tooltip`)}
+                title={isLocked ? t('creationTray.lockedTooltip', { tool: t(`creationTray.${tool.id}Label`) }) : t(`creationTray.${tool.id}Tooltip`)}
                 aria-label={t(`creationTray.${tool.id}Label`)}
                 onClick={() => onToggle(tool.id)}
               >
-                <Icon size={14} />
+                {isLocked ? <LockIcon size={14} /> : <Icon size={14} />}
                 <span className={styles.kbd}>{tool.shortcutKey}</span>
               </button>
               {StylePicker && (

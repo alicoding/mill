@@ -91,9 +91,6 @@ export function AtlasCardPageFields({
     setJustExpandedKey(null)
   }, [justExpandedKey])
 
-  // Auto-grow (LOCKED design §5b's "Note (multiline, auto-growing)"):
-  // a textarea's own scrollHeight already accounts for its wrapped
-  // line count, so resetting height then reading it back is enough --
   const expandedKindFields = kindFields.filter((f) => expanded.has(f.Key))
   const collapsedKindFields = kindFields.filter((f) => !expanded.has(f.Key))
 

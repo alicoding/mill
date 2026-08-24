@@ -36,6 +36,16 @@
     cursor: crosshair;
 }
 
+/* A board-edge signal an armed tool carries independent of where the
+   pointer or the tray sits (goal 0199 part D, contract item 5): the
+   tray highlight and the crosshair above both live where the user's
+   eyes are NOT the moment a gesture just finished -- this inset ring
+   wraps the board's own visible edge, so it reads in peripheral vision
+   regardless of where attention actually is. */
+.board[data-armed='true'] {
+    box-shadow: inset 0 0 0 3px var(--borderColor-accent-emphasis);
+}
+
 /* The Area tool's own live drag-drawn rectangle (goal 0081 slice A2,
    LOCKED design section 1): 1.5px dashed border, token-tinted fill at
    low opacity, positioned in wrapper-local pixels (useAtlasAreaDraw.ts

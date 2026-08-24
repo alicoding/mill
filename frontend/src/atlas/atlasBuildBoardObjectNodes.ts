@@ -9,10 +9,14 @@ import type { AtlasBoardObjectRFNode } from './AtlasBoardObjectNode'
 // or a second registry entry here -- only a Payload-key convention and
 // a case inside that one component.
 //
-// No explicit width/height (like a sticky mid-edit): the object's own
-// rendered content dictates its footprint, so it lands at its natural/
-// intrinsic size (clamped by AtlasBoardObjectNode.module.css) rather
-// than a fixed card-shaped box.
+// width/height stay UNSET until a resize persists BoardObject.Size
+// (goal 0199 part B) -- exactly like a sticky mid-edit, the object's
+// own rendered content dictates its footprint until then (clamped by
+// AtlasBoardObjectNode.module.css) rather than a fixed card-shaped
+// box. Once Size exists, it's threaded straight onto the RF node the
+// same way atlasBuildBoardNodes.ts already does for a table CARD --
+// the node's own resize handles (AtlasBoardObjectNode.tsx's shared
+// NodeResizer) and the persisted box need to agree on one number.
 //
 // zIndex fixes ink ABOVE image/shape regardless of creation/array order
 // (the acceptance contract's own "drawing over a screenshot works",
@@ -36,6 +40,7 @@ export function buildBoardObjectNodes({ objects, readOnly, isFree }: {
     position: { x: object.Position.X, y: object.Position.Y },
     draggable: isFree && !readOnly,
     zIndex: OBJECT_Z_INDEX[object.Kind] ?? 0,
+    ...(object.Size ? { width: object.Size.W, height: object.Size.H } : {}),
     data: { object },
   }))
 }

@@ -13,10 +13,10 @@ const MIN_DRAG_PX = 6
 // pointerdown marks the start corner, pointermove tracks the live end
 // point (localStart/localCurrent feed AtlasShapeLivePreview's own
 // rect/ellipse/arrow rendering), pointerup hands the CLIENT-space
-// start/end pair to onComplete. Like Pencil, this hook never disarms on
-// its own -- shape is a sticky tool (drawing several in one session
-// stays uninterrupted, the same "don't force a commit ceremony"
-// correction goal 0179 made for ink).
+// start/end pair to onComplete. This hook itself never disarms --
+// shape is a DISCRETE tool (goal 0199 part D), so whether the tray
+// stays armed after onComplete is the caller's own decision (locked
+// vs one-shot), not something this gesture hook knows or owns.
 //
 // Wired as CAPTURE-phase pointer handlers for the same reason
 // useAtlasAreaDraw.ts's own header comment documents: React Flow's pane

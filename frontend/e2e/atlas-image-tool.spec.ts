@@ -125,3 +125,56 @@ test('a non-image path shows an inline error and creates nothing', async ({ page
   await expect(page.getByTestId('atlas-image-error')).toBeVisible()
   await expect(imageObjects(page)).toHaveCount(0)
 })
+
+// Regression (goal 0199 part B): NodeResizer was rendered by exactly
+// one component (AtlasTableCardNode) -- image/ink board objects had a
+// Size field and a SetBoardObjectSize call with no handle to reach
+// either. Proves the SAME resizer path table's own test proves,
+// against a Kind whose content is a plain <img> rather than a grid.
+test('an image object can be resized by its own handle, and the size persists across reload', async ({ page }) => {
+  // Same CI-invisible drag synthesis this repo's other resize-drag
+  // tests already document (QUARANTINE.md atlas-table-resize).
+  test.skip(!!process.env.CI, 'drag synthesis coalesces on CI -- QUARANTINE.md atlas-table-resize')
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await openImagePopover(page)
+  await page.getByTestId('atlas-image-path').fill(IMAGE_FIXTURE)
+  await page.getByTestId('atlas-image-add').click()
+  const object = imageObjects(page)
+  await expect(object).toHaveCount(1)
+
+  const before = await object.boundingBox()
+  if (!before) throw new Error('no image object box')
+
+  await object.click()
+  const handle = page.locator('.react-flow__resize-control.handle.top.right')
+  await expect(handle).toBeVisible()
+  const hb = await handle.boundingBox()
+  if (!hb) throw new Error('no resize handle box')
+  const startX = hb.x + hb.width / 2
+  const startY = hb.y + hb.height / 2
+  await page.mouse.move(startX, startY)
+  await page.mouse.down()
+  for (let i = 1; i <= 6; i++) {
+    await page.mouse.move(startX + i * 20, startY - i * 10)
+    // Pointer-coalescing class (this repo's other resize-drag tests
+    // have the full reasoning) -- each step must land in its own frame.
+    await page.waitForTimeout(50)
+  }
+  await page.mouse.up()
+
+  await expect.poll(async () => (await object.boundingBox())?.width ?? 0).toBeGreaterThan(before.width + 80)
+  await page.reload()
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const reloaded = imageObjects(page)
+  await expect(reloaded).toBeVisible()
+  await expect.poll(async () => (await reloaded.boundingBox())?.width ?? 0).toBeGreaterThan(before.width + 80)
+
+  await reloaded.click({ button: 'right' })
+  const menu = contextMenu(page)
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+  await expect(reloaded).toHaveCount(0)
+})

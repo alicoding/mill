@@ -30,13 +30,11 @@ test('a selected board object and a selected card each carry a real box-shadow r
 
   const shape = page.locator('[data-testid="atlas-board-object"][data-object-kind="shape"]')
   await expect(shape).toHaveCount(1)
-  // Disarm the (sticky) shape tool: a real select click on an
-  // already-placed shape, not another draw -- the gesture that gives
-  // the wrapper real DOM focus and reproduces the defect.
-  await page.keyboard.press('Escape')
-
+  // The shape tool is discrete (goal 0199): the draw itself disarms
+  // the tool and leaves the new object selected, so the ring this
+  // test is proving is already up -- no extra click needed to
+  // reproduce it.
   const shapeWrapper = page.locator('.react-flow__node').filter({ has: shape })
-  await shape.click()
   await expect(shapeWrapper).toHaveClass(/selected/)
   await expect.poll(() => shapeWrapper.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
 

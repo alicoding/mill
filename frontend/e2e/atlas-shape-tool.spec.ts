@@ -6,9 +6,11 @@ import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 // The shape tool (goal 0169 slice 5): drag-to-draw lands a rectangle/
 // ellipse/arrow as a board-local BoardObject -- NEVER a card, matching
 // image/ink's own goal 0179 correction. One tray tool covers all three
-// types, picked via the style picker while armed; drawing several never
-// interrupts drawing to commit. Shared pool: every entity created here
-// is deleted here.
+// types, picked via the style picker while armed. Shape is DISCRETE
+// (goal 0199 part D): a completed draw disarms the tool and leaves the
+// new object selected, unlike pencil/eraser/laser's own continuous
+// arming -- re-clicking the armed button locks it for deliberate
+// repetition. Shared pool: every entity created here is deleted here.
 //
 // Real pointer-capture drag, not React Flow's own internal drag
 // machinery (the class QUARANTINE.md's box-select/NodeResizer entries
@@ -24,7 +26,14 @@ function shapeObjects(page: import('@playwright/test').Page) {
   return page.locator('[data-testid="atlas-board-object"][data-object-kind="shape"]')
 }
 
-test('dragging the shape tool lands a rectangle, never a card, and the tool stays armed for the next shape', async ({ page }) => {
+async function deleteViaContextMenu(page: import('@playwright/test').Page, target: import('@playwright/test').Locator): Promise<void> {
+  await target.click({ button: 'right' })
+  const menu = contextMenu(page)
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+}
+
+test('dragging the shape tool lands a rectangle, never a card, disarms, and leaves it selected', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   const board = page.getByTestId('atlas-board')
@@ -47,17 +56,74 @@ test('dragging the shape tool lands a rectangle, never a card, and the tool stay
   // explicitly ask for.
   await expect(page.getByTestId('atlas-note-card').filter({ hasText: 'Rectangle' })).toHaveCount(0)
 
-  // Drag-to-draw is a sticky tool: completing a shape never disarms it.
+  // One-shot (goal 0199, contract items 1-2): the draw disarms the
+  // tool (its own options bar closes with it) and leaves the new
+  // object selected -- the load-bearing half that puts the resize
+  // handles on the thing just made instead of on nothing.
+  await expect(shapeTool).toHaveAttribute('data-armed', 'false')
+  await expect(picker).not.toBeVisible()
+  const wrapper = page.locator('.react-flow__node').filter({ has: shapes.first() })
+  await expect(wrapper).toHaveClass(/selected/)
+
+  await deleteViaContextMenu(page, shapes.first())
+  await expect(shapes).toHaveCount(0)
+})
+
+// Pins the exact reported sequence (goal 0199's own acceptance
+// criterion): the natural next gesture after drawing is clicking the
+// thing just made, and it must select rather than draw a second one.
+test('the second click after a draw selects rather than creates a second shape', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  await page.getByTestId('atlas-tray-shape').click()
+  await dragBetween(page, await boardPoint(board, 0.05, 0.1), await boardPoint(board, 0.2, 0.25))
+  const shapes = shapeObjects(page)
+  await expect(shapes).toHaveCount(1)
+
+  await shapes.first().click()
+  await expect(shapes).toHaveCount(1)
+  const wrapper = page.locator('.react-flow__node').filter({ has: shapes.first() })
+  await expect(wrapper).toHaveClass(/selected/)
+
+  await deleteViaContextMenu(page, shapes.first())
+  await expect(shapes).toHaveCount(0)
+})
+
+test('re-clicking the armed shape tool locks it for deliberate repetition, and Escape disarms from locked', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  const shapeTool = page.getByTestId('atlas-tray-shape')
+  await shapeTool.click()
   await expect(shapeTool).toHaveAttribute('data-armed', 'true')
+  await expect(shapeTool).toHaveAttribute('data-locked', 'false')
+
+  // Re-clicking the already-armed button locks it (the Excalidraw
+  // convention) -- visually distinct from plain armed.
+  await shapeTool.click()
+  await expect(shapeTool).toHaveAttribute('data-locked', 'true')
+
+  const shapes = shapeObjects(page)
+  await dragBetween(page, await boardPoint(board, 0.05, 0.1), await boardPoint(board, 0.2, 0.25))
+  await expect(shapes).toHaveCount(1)
+  // Locked survives the commit: the next drag needs no re-arm.
+  await expect(shapeTool).toHaveAttribute('data-armed', 'true')
+  await expect(shapeTool).toHaveAttribute('data-locked', 'true')
+
   await dragBetween(page, await boardPoint(board, 0.3, 0.1), await boardPoint(board, 0.45, 0.25))
   await expect(shapes).toHaveCount(2)
 
-  for (let i = 0; i < 2; i++) {
-    await shapes.first().click({ button: 'right' })
-    const menu = contextMenu(page)
-    await expect(menu).toBeVisible()
-    await menu.getByText('Delete', { exact: true }).click()
-  }
+  // Escape disarms even a locked tool.
+  await page.keyboard.press('Escape')
+  await expect(shapeTool).toHaveAttribute('data-armed', 'false')
+
+  await deleteViaContextMenu(page, shapes.nth(0))
+  await deleteViaContextMenu(page, shapes.nth(0))
   await expect(shapes).toHaveCount(0)
 })
 
@@ -67,7 +133,8 @@ test('picking ellipse then arrow draws each type, and an arrow carries no Size (
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
 
-  await page.getByTestId('atlas-tray-shape').click()
+  const shapeTool = page.getByTestId('atlas-tray-shape')
+  await shapeTool.click()
   const picker = page.getByTestId('atlas-shape-style-picker')
   await expect(picker).toBeVisible()
 
@@ -85,17 +152,21 @@ test('picking ellipse then arrow draws each type, and an arrow carries no Size (
   await expect(shapes).toHaveCount(1)
   await expect(shapes.first()).toHaveAttribute('data-shape-type', 'ellipse')
 
+  // Shape is discrete (goal 0199): the ellipse draw already disarmed
+  // the tool, so the arrow type needs a fresh arm before it can be
+  // picked -- the style store keeps 'ellipse' selected across that
+  // cycle (this file's own third test proves the same store persists
+  // stroke colour), so re-arming here is the realistic gesture, not a
+  // workaround.
+  await shapeTool.click()
+  await expect(picker).toBeVisible()
   await picker.getByTestId('atlas-shape-type-arrow').click()
   await dragBetween(page, await boardPoint(board, 0.3, 0.1), await boardPoint(board, 0.45, 0.25))
   await expect(shapes).toHaveCount(2)
   await expect(page.locator('[data-testid="atlas-board-object"][data-shape-type="arrow"]')).toHaveCount(1)
 
-  for (let i = 0; i < 2; i++) {
-    await shapes.first().click({ button: 'right' })
-    const menu = contextMenu(page)
-    await expect(menu).toBeVisible()
-    await menu.getByText('Delete', { exact: true }).click()
-  }
+  await deleteViaContextMenu(page, shapes.nth(0))
+  await deleteViaContextMenu(page, shapes.nth(0))
   await expect(shapes).toHaveCount(0)
 })
 
@@ -118,8 +189,9 @@ test('the shape style choice survives a disarm/re-arm cycle, and Promote to card
   // Disarm, then re-arm: the style picker REMOUNTS (AnchoredOverlay
   // unmounts its children while closed) -- the swatch selection
   // surviving proves it lives in the ephemeral store, not per-mount
-  // component state.
-  await shapeTool.click()
+  // component state. Escape, not a second click -- re-clicking the
+  // armed button LOCKS it now (goal 0199 part D), it doesn't disarm.
+  await page.keyboard.press('Escape')
   await expect(picker).not.toBeVisible()
   await shapeTool.click()
   await expect(picker).toBeVisible()
@@ -147,4 +219,65 @@ test('the shape style choice survives a disarm/re-arm cycle, and Promote to card
   await expect(menu).toBeVisible()
   await menu.getByText('Delete', { exact: true }).click()
   await expect(card).toHaveCount(0)
+})
+
+// The full acceptance sentence (goal 0199), verified end to end with
+// NO Escape pressed anywhere: draw a shape, it is selected, drag it by
+// its own frame, resize it by a handle, and the size survives reload.
+test('draw, selected, drag by frame, resize by handle, survives reload -- no Escape anywhere', async ({ page }) => {
+  // Same CI-invisible pointer-coalescing class this repo's other
+  // resize-drag tests already document (QUARANTINE.md atlas-table-resize).
+  test.skip(!!process.env.CI, 'drag synthesis coalesces on CI -- QUARANTINE.md atlas-table-resize')
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  await page.getByTestId('atlas-tray-shape').click()
+  await dragBetween(page, await boardPoint(board, 0.05, 0.1), await boardPoint(board, 0.2, 0.25))
+  const shapes = shapeObjects(page)
+  await expect(shapes).toHaveCount(1)
+  const wrapper = page.locator('.react-flow__node').filter({ has: shapes.first() })
+  await expect(wrapper).toHaveClass(/selected/)
+
+  // Drag it by its own frame.
+  const beforeDrag = await shapes.first().boundingBox()
+  if (!beforeDrag) throw new Error('no shape box')
+  const frame = shapes.first().getByTestId('atlas-board-object-frame')
+  const frameBox = await frame.boundingBox()
+  if (!frameBox) throw new Error('no frame box')
+  const dragStart = { x: frameBox.x + frameBox.width / 2, y: frameBox.y + frameBox.height / 2 }
+  await dragBetween(page, dragStart, { x: dragStart.x + 100, y: dragStart.y + 80 })
+  await expect.poll(async () => (await shapes.first().boundingBox())?.x ?? 0).toBeGreaterThan(beforeDrag.x + 60)
+
+  // Resize it by a handle -- still selected from the drag above, no
+  // click needed to reach the handles.
+  const beforeResize = await shapes.first().boundingBox()
+  if (!beforeResize) throw new Error('no shape box before resize')
+  const handle = page.locator('.react-flow__resize-control.handle.top.right')
+  await expect(handle).toBeVisible()
+  const hb = await handle.boundingBox()
+  if (!hb) throw new Error('no resize handle box')
+  const startX = hb.x + hb.width / 2
+  const startY = hb.y + hb.height / 2
+  await page.mouse.move(startX, startY)
+  await page.mouse.down()
+  for (let i = 1; i <= 6; i++) {
+    await page.mouse.move(startX + i * 15, startY - i * 10)
+    // Pointer-coalescing class (this file's own header comment) --
+    // each step must land in its own frame.
+    await page.waitForTimeout(50)
+  }
+  await page.mouse.up()
+  await expect.poll(async () => (await shapes.first().boundingBox())?.width ?? 0).toBeGreaterThan(beforeResize.width + 40)
+
+  // Survives reload.
+  await page.reload()
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const reloaded = shapeObjects(page)
+  await expect(reloaded).toBeVisible()
+  await expect.poll(async () => (await reloaded.boundingBox())?.width ?? 0).toBeGreaterThan(beforeResize.width + 40)
+
+  await deleteViaContextMenu(page, reloaded)
+  await expect(reloaded).toHaveCount(0)
 })

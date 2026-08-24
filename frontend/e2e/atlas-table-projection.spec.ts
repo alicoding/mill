@@ -264,6 +264,10 @@ test('New table creates a sized grid instantly from the size picker, landing a t
   await expect(listRow).toHaveCount(0)
 })
 
+// A table object's own drag surface, resize handles, and content-
+// following initial footprint (goal 0199 parts A-C) are covered in
+// atlas-table-object.spec.ts, split out at the 500-line convention.
+
 // Regression (goal 0137): the hovered header lifts above its sticky
 // neighbors, so the boundary ⊕ paints over the next column instead of
 // under it. A shared/ListGrid CSS regression -- proven directly on the
@@ -284,8 +288,9 @@ test('a hovered header stacks above the neighboring sticky header', async ({ pag
 })
 
 // Card resize (goal 0135): the table face is user-sizable and the
-// chosen footprint persists as Card.Size -- card-only (a board object
-// has no resize handle wired yet), so this stays a promoted-card test.
+// chosen footprint persists as Card.Size -- this test stays scoped to
+// the promoted-card path; the board object's own resize (Size, goal
+// 0199 part B) has its own test below.
 test('resizing a promoted table card persists its footprint across reload', async ({ page }) => {
   // The resize DRAG synthesis is CI-invisible (pointer-coalescing
   // class, QUARANTINE.md atlas-table-resize) -- the gesture runs

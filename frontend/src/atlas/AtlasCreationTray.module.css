@@ -47,6 +47,18 @@
     border-color: var(--borderColor-accent-emphasis);
     color: var(--fgColor-accent);
 }
+/* Locked (goal 0199 part D) is a SOLID fill, armed a muted one --
+   distinct at a glance, not just a smaller visual delta on the same
+   background. */
+.tool[data-locked='true'] {
+    background: var(--bgColor-accent-emphasis);
+    border-color: var(--borderColor-accent-emphasis);
+    color: var(--fgColor-onEmphasis);
+}
+.tool[data-locked='true'] .kbd {
+    color: var(--fgColor-onEmphasis);
+    border-color: var(--fgColor-onEmphasis);
+}
 
 .kbd {
     font-family: var(--mill-mono);

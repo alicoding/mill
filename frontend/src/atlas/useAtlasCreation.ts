@@ -7,7 +7,7 @@ import { refreshAtlas } from './atlasStore'
 import { titleFromFilename, titleFromNoteText } from './atlasCreateHelpers'
 import { freeChildPosition } from './atlasContainmentPlacement'
 import { computeEnclosedBoundingBoxOrigin } from './atlasBoardBoxes'
-import { cardTool, noteTool, areaTool, type AtlasArmableTool, type AtlasCreationTool } from './atlasTools'
+import { cardTool, noteTool, areaTool, isLockableArmTool, type AtlasArmableTool, type AtlasCreationTool } from './atlasTools'
 
 export interface AtlasPlacementPopoverState {
   mode: 'create' | 'promote' | 'area'
@@ -99,7 +99,16 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   cardBoxes?: { id: string; x: number; y: number }[]
   noteBoxes?: { id: string; x: number; y: number }[]
 }) {
-  const [armedTool, setArmedTool] = useState<AtlasArmableTool | null>(null)
+  // armedTool + locked as ONE state (goal 0199 part D), not two --
+  // "locked" only ever means anything relative to whichever tool is
+  // CURRENTLY armed, so keeping them separate opens a window where one
+  // updates without the other. Discrete tools disarm on their own
+  // commit unless locked; continuous tools (pencil/eraser/laser) never
+  // read `locked` at all and keep today's plain toggle-to-disarm
+  // behaviour, unchanged in toggleArm below.
+  const [arm, setArm] = useState<{ tool: AtlasArmableTool; locked: boolean } | null>(null)
+  const armedTool = arm?.tool ?? null
+  const locked = arm?.locked ?? false
   const [popover, setPopover] = useState<AtlasPlacementPopoverState | null>(null)
   const [draftNoteFlowPos, setDraftNoteFlowPos] = useState<{ x: number; y: number } | null>(null)
   const [draftNoteParentOverride, setDraftNoteParentOverride] = useState<string | null>(null)
@@ -132,14 +141,27 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   // render loop (confirmed live: React error #185, "Maximum update
   // depth exceeded"). useCallback keeps each reference stable across a
   // render that didn't actually change its own closed-over values.
+  // Re-clicking the ALREADY-armed tray button: a continuous tool
+  // disarms (unchanged). A lockable discrete tool locks first (the
+  // Excalidraw convention for deliberate repetition) and disarms only
+  // on a THIRD click -- re-arming fresh always clears any prior lock.
   const toggleArm = useCallback((tool: AtlasArmableTool) => {
     if (readOnly) return
-    setArmedTool((cur) => (cur === tool ? null : tool))
+    setArm((cur) => {
+      if (!cur || cur.tool !== tool) return { tool, locked: false }
+      if (isLockableArmTool(tool)) return cur.locked ? null : { tool, locked: true }
+      return null
+    })
   }, [readOnly])
   const armTool = useCallback((tool: AtlasArmableTool) => {
-    if (!readOnly) setArmedTool(tool)
+    if (!readOnly) setArm({ tool, locked: false })
   }, [readOnly])
-  const disarm = useCallback(() => setArmedTool(null), [])
+  const disarm = useCallback(() => setArm(null), [])
+  // A discrete tool's own one-shot commit (goal 0199): disarms unless
+  // the user explicitly locked it for deliberate repetition.
+  const disarmUnlessLocked = useCallback(() => {
+    setArm((cur) => (cur?.locked ? cur : null))
+  }, [])
 
   // A canvas click/drop while armed places at that point and DISARMS
   // (one placement per arming, the LOCKED design's own rule) --
@@ -156,7 +178,7 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   const placeAt = useCallback((screenPos: { x: number; y: number }, explicitTool?: AtlasCreationTool, parentIDOverride?: string, linkFromCardID?: string) => {
     const tool = explicitTool ?? armedTool
     if (!tool || tool === 'area' || tool === 'pencil' || tool === 'eraser' || tool === 'laser' || tool === 'shape' || readOnly) return
-    setArmedTool(null)
+    setArm(null)
     // "Add linked card…" (goal 0081 slice A4) lands beside the linking
     // card, at a free spot in ITS parent -- never at the menu's own
     // click point, which is only where the popover visually anchors.
@@ -360,7 +382,9 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   // setter is a no-op when already null/false, so calling all of them
   // unconditionally is safe.
   const cancelAll = useCallback(() => {
-    setArmedTool(null)
+    // Escape disarms even a LOCKED tool (goal 0199's own contract item
+    // 4) -- unlike disarmUnlessLocked above, this never checks lock.
+    setArm(null)
     setPopover(null)
     setDraftNoteFlowPos(null)
     setDraftNoteParentOverride(null)
@@ -425,7 +449,7 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   }, [groupRequest])
 
   return {
-    armedTool, toggleArm, armTool, disarm, placeAt,
+    armedTool, locked, toggleArm, armTool, disarm, disarmUnlessLocked, placeAt,
     popover, cancelPopover, submitPopover, openPromote, openPromoteObject, openPasteText, openAreaPopover, openSlotLinkedCreate,
     draftNoteFlowPos, commitDraftNote, cancelDraftNote,
     editingNoteID, enterNoteEdit, cancelNoteEdit, commitNoteEdit,

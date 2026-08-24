@@ -96,7 +96,8 @@
     "laserLabel": "Laser",
     "laserTooltip": "Point at things on the board (L)",
     "shapeLabel": "Shape",
-    "shapeTooltip": "Draw a shape (S)"
+    "shapeTooltip": "Draw a shape (S)",
+    "lockedTooltip": "{{tool}} stays on until you click it again or press Escape"
   },
   "pencilStyle": {
     "colorLabel": "Stroke colour",
@@ -143,7 +144,8 @@
     "shapeAriaLabel": "Shape",
     "tableAriaLabel": "Table",
     "diagramAriaLabel": "Diagram",
-    "loadFailed": "Couldn't load this file."
+    "loadFailed": "Couldn't load this file.",
+    "dragHandleTitle": "Drag to move"
   },
   "capture": {
     "dropError": "Couldn't read the dropped file."
