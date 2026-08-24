@@ -13,8 +13,10 @@ import (
 	"os"
 
 	"github.com/alicoding/mill/internal/adapters/buildinfo"
+	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/mcpclient"
 	"github.com/alicoding/mill/internal/adapters/notify"
+	"github.com/alicoding/mill/internal/adapters/secretvault"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/notification"
@@ -26,6 +28,7 @@ import (
 	"github.com/alicoding/mill/internal/services/mcpauditsvc"
 	"github.com/alicoding/mill/internal/services/notificationsvc"
 	"github.com/alicoding/mill/internal/services/remoteauthsvc"
+	"github.com/alicoding/mill/internal/services/secretsvc"
 	"github.com/alicoding/mill/internal/services/settingssvc"
 	"github.com/alicoding/mill/internal/services/triggersvc"
 )
@@ -160,6 +163,16 @@ func WireRemoteAuth(store settings.Store, logger *slog.Logger) *remoteauthsvc.Re
 	svc := remoteauthsvc.New(store, logger)
 	svc.BootstrapPairingCode(buildinfo.Read().Server)
 	return svc
+}
+
+// WireSecrets constructs the vault (goal 0185) at vaultPath, sharing
+// credentials with configuresvc's own HTTPRequest/AIProvider secrets --
+// same OS keychain, its own well-known id. Pulled out of main.go for the
+// same 500-line reason WireRemoteAuth above is; vaultPath's own
+// MILL_SECRETS_PATH-override-or-default resolution stays in main.go
+// (depguard: this package doesn't import wails/v3/pkg/application).
+func WireSecrets(vaultPath string, credentials credential.Store) *secretsvc.SecretService {
+	return secretsvc.NewSecretService(secretvault.New(vaultPath), credentials)
 }
 
 // WireNotificationChannels registers settingsService's three delivery

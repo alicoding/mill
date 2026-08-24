@@ -136,6 +136,8 @@ func main() {
 		credentialStore = credential.NewInMemory()
 	}
 	configureService := configuresvc.NewConfigureService(settingsStore, compositionService, credentialStore)
+	// MILL_SECRETS_PATH overrides for e2e isolation, same convention as MILL_SETTINGS_PATH above.
+	secretService := wiring.WireSecrets(windowing.ConfigDirOrEnv("MILL_SECRETS_PATH", "secrets.kdbx"), credentialStore)
 	// docs/adr/0038: Atlas's storage/CRUD layer (cross-surface wiring
 	// arrives below via injected seams, never direct imports).
 	atlasService := atlassvc.NewAtlasService(settingsStore)
@@ -160,19 +162,12 @@ func main() {
 	// sqlite path are otherwise unchanged.
 	executionDatabaseURL := os.Getenv("MILL_EXECUTION_DATABASE_URL")
 	if executionDatabaseURL == "" {
-		executionDBPath := os.Getenv("MILL_EXECUTION_DB_PATH")
-		if executionDBPath == "" {
-			executionDBPath = filepath.Join(application.Path(application.PathConfigHome), "mill", "execution.db")
-		}
-		executionDatabaseURL = "sqlite:" + executionDBPath
+		executionDatabaseURL = "sqlite:" + windowing.ConfigDirOrEnv("MILL_EXECUTION_DB_PATH", "execution.db")
 	}
 
 	// MILL_BACKUP_DIR follows the same override convention as above;
 	// docs/goals/0065's backupService construction reuses this value.
-	backupDir := os.Getenv("MILL_BACKUP_DIR")
-	if backupDir == "" {
-		backupDir = filepath.Join(application.Path(application.PathConfigHome), "mill", "backups")
-	}
+	backupDir := windowing.ConfigDirOrEnv("MILL_BACKUP_DIR", "backups")
 	backupsvc.GuardVersionChange(logger, settingsStore, backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, backupDir, millVersion)
 
 	mcpAuditService := wiring.WireMCPAudit(backupsvc.SQLiteDBPath(executionDatabaseURL), logger)
@@ -303,6 +298,7 @@ func main() {
 			application.NewService(compositionService),
 			application.NewService(triggerService),
 			application.NewService(configureService),
+			application.NewService(secretService),
 			application.NewService(atlasService),
 			application.NewService(companionService),
 			application.NewService(agentLoopService),
