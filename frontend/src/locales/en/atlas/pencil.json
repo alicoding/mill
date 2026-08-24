@@ -1,0 +1,7 @@
+{
+  "pencilStyle": {
+    "colorLabel": "Stroke colour",
+    "sizeLabel": "Stroke size",
+    "sizeOption": "{{size}}px"
+  }
+}

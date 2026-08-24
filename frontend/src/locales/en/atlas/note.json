@@ -1,0 +1,10 @@
+{
+  "sticky": {
+    "placeholder": "Type a note…",
+    "ariaLabel": "Note",
+    "empty": "Empty note"
+  },
+  "noteOverlay": {
+    "title": "Note"
+  }
+}

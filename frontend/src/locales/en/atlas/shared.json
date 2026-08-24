@@ -99,29 +99,6 @@
     "shapeTooltip": "Draw a shape (S)",
     "lockedTooltip": "{{tool}} stays on until you click it again or press Escape"
   },
-  "pencilStyle": {
-    "colorLabel": "Stroke colour",
-    "sizeLabel": "Stroke size",
-    "sizeOption": "{{size}}px"
-  },
-  "shapeStyle": {
-    "typeLabel": "Shape type",
-    "type_rectangle": "Rectangle",
-    "type_ellipse": "Ellipse",
-    "type_arrow": "Arrow",
-    "strokeLabel": "Stroke colour",
-    "widthLabel": "Stroke width",
-    "widthOption": "{{width}}px"
-  },
-  "imageInput": {
-    "pathLabel": "Path",
-    "pathPlaceholder": "/path/to/image.png",
-    "pasteHint": "Or paste an image (⌘V)",
-    "add": "Add",
-    "empty": "Enter a path, or paste an image.",
-    "invalidExtension": "Enter a path to an image file.",
-    "addFailed": "Couldn't add that image."
-  },
   "placement": {
     "title": "Add card",
     "promoteTitle": "Promote to card",
@@ -132,11 +109,6 @@
     "titleLabel": "Title",
     "add": "Add",
     "promote": "Promote"
-  },
-  "sticky": {
-    "placeholder": "Type a note…",
-    "ariaLabel": "Note",
-    "empty": "Empty note"
   },
   "boardObject": {
     "imageAriaLabel": "Image",
@@ -264,32 +236,6 @@
     "caption": "Preview isn't available for this file type yet.",
     "openExternally": "Open externally",
     "openLink": "Open link"
-  },
-  "mermaid": {
-    "pageHeading": "Diagram"
-  },
-  "drawio": {
-    "pageHeading": "Diagram",
-    "renderError": "Couldn't render this diagram."
-  },
-  "projection": {
-    "tableTag": "table",
-    "noRows": "No rows yet.",
-    "missingList": "The projected List no longer exists — pick another in Configure, or remove this card.",
-    "pageHeading": "Table",
-    "pageCaption": "This table mirrors a List — edits go through workflows or Configure.",
-    "openInConfigure": "Open Lists in Configure",
-    "addRow": "+ Row",
-    "addColumn": "+ Column",
-    "columnLabelPlaceholder": "Column name",
-    "noColumns": "No columns yet — add one to start this table.",
-    "newColumnLabel": "New column",
-    "renameColumnTitle": "Rename column",
-    "renameColumnAriaLabel": "Column name",
-    "insertColumnAriaLabel": "Insert column here",
-    "insertRowAriaLabel": "Insert row here",
-    "pillsTag": "pills",
-    "densityToggleTitle": "Switch between grid and status-pill views"
   },
   "page": {
     "sourceRecognizedTitle": "Matches your integration {{label}}",
@@ -421,11 +367,6 @@
     "clear": "Clear",
     "count": "{{matched}} of {{total}} cards match"
   },
-  "tableSize": {
-    "hint": "Sweep to size, click to create",
-    "dimensions": "{{cols}} × {{rows}}",
-    "cellAriaLabel": "{{cols}} by {{rows}} table"
-  },
   "paste": {
     "converted": "Pasted as {{what}}",
     "tables_one": "{{count}} table",
@@ -450,9 +391,6 @@
     "childrenCopied_one": "Copied {{count}} item inside",
     "childrenCopied_other": "Copied {{count}} items inside",
     "unknownKind": "That copy uses a kind this space doesn't have."
-  },
-  "noteOverlay": {
-    "title": "Note"
   },
   "companionPanel": {
     "toggleButton": "AI",
