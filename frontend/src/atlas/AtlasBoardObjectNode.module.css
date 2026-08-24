@@ -1,11 +1,49 @@
-/* A board-local object is a thing in space, not a document -- no
-   card chrome (no title bar, no kind chip, no border by default): the
-   image/ink content itself IS the whole visible surface. Clamped so a
-   full-resolution screenshot lands at its natural size up to a sane
-   on-canvas footprint, never dwarfing the board. */
+/* A board-local object is a thing in space, not a document -- no card
+   title bar or kind chip. It DOES carry one thin chrome band (.frame,
+   below): the drag surface every Kind needs (goal 0199's #404
+   correction), since a table's own grid and a drawio diagram's own
+   pan/zoom both capture pointer events a plain node-drag can't reach
+   through. Column layout so the band sits above content without
+   affecting its own natural/intrinsic sizing. */
 .object {
     display: flex;
+    flex-direction: column;
     cursor: pointer;
+}
+
+/* The drag surface (goal 0199): a slim, quiet band -- legible as
+   "grab here" via cursor + a faint grip mark, never loud enough to
+   read as a title bar. image/ink/shape need it least (their own
+   content already drags from anywhere) but render it too, so a
+   future Kind inherits the same surface by existing rather than by
+   remembering to opt in. */
+.frame {
+    flex: 0 0 auto;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    background: var(--bgColor-muted);
+    border-top-left-radius: var(--borderRadius-medium);
+    border-top-right-radius: var(--borderRadius-medium);
+}
+
+.frame::before {
+    content: '';
+    width: 24px;
+    height: 2px;
+    border-radius: 1px;
+    background-image: radial-gradient(circle, var(--fgColor-muted) 1px, transparent 1.3px);
+    background-size: 5px 2px;
+    background-repeat: repeat-x;
+    opacity: 0.7;
+}
+
+.content {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
 }
 
 .image {

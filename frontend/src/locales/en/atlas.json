@@ -143,7 +143,8 @@
     "shapeAriaLabel": "Shape",
     "tableAriaLabel": "Table",
     "diagramAriaLabel": "Diagram",
-    "loadFailed": "Couldn't load this file."
+    "loadFailed": "Couldn't load this file.",
+    "dragHandleTitle": "Drag to move"
   },
   "capture": {
     "dropError": "Couldn't read the dropped file."
