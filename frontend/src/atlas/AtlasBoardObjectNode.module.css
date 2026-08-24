@@ -43,12 +43,7 @@
     color: var(--fgColor-danger);
 }
 
-/* Selection ring lives on the React Flow node WRAPPER itself, not an
-   inner element (AtlasStickyNode.module.css's own header comment: a
-   Primer [role="button"] focus reset would otherwise zero a box-shadow
-   set on an inner element right after a mouse click). */
-:global(.react-flow__node-atlas-object.selected) {
-    outline: 3px solid var(--borderColor-accent-emphasis);
-    outline-offset: 3px;
-    border-radius: var(--borderRadius-medium);
-}
+/* The board object's selection ring uses AtlasBoard.module.css's
+   shared defaults unmodified (goal 0197's own header comment there
+   has the outline-vs-box-shadow constraint) -- no override needed
+   here. */

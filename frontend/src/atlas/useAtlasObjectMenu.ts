@@ -3,7 +3,18 @@ import type { BoardObject } from '../../bindings/github.com/alicoding/mill/inter
 import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
+import { useUISignalStore } from '../shared/uiSignalStore'
 import type { ContextMenuState } from '../shared/ContextMenu'
+
+// BoardObject.Kind's translated plural, for the "Select all <kind>"
+// menu item (goal 0193, draw.io's "select all edges/vertices") -- a
+// flat lookup rather than a parameterized key, since the three Kinds
+// are a fixed, small enum, not open-ended like Card.KindID.
+const KIND_PLURAL_KEY: Record<string, string> = {
+  image: 'boardObject.kindPluralImage',
+  ink: 'boardObject.kindPluralInk',
+  shape: 'boardObject.kindPluralShape',
+}
 
 // A board object's own right-click menu (goal 0179/0180): Promote to
 // card is the one explicit, one-way, reversible-only-by-undo action
@@ -23,6 +34,8 @@ export function useAtlasObjectMenu({
   onError: (message: string) => void
   requestPromoteObject: (objectID: string, pos: { x: number; y: number }) => void
 }) {
+  const requestSelectKind = useUISignalStore((s) => s.requestAtlasSelectKind)
+
   const deleteObject = (objectID: string) => {
     AtlasService.DeleteBoardObject(objectID)
       .then((result) => { onDeleted(result); void refreshAtlas() })
@@ -32,10 +45,14 @@ export function useAtlasObjectMenu({
   const openObjectMenu = (objectID: string, pos: { x: number; y: number }) => {
     const object = allObjects.find((o) => o.ID === objectID)
     if (!object) return
+    const kindPluralKey = KIND_PLURAL_KEY[object.Kind]
     setMenu({
       x: pos.x,
       y: pos.y,
       items: [
+        ...(kindPluralKey
+          ? [{ id: 'select-all-kind', label: t('contextMenu.selectAllObjectsOfKind', { kind: t(kindPluralKey) }), run: () => requestSelectKind('object', object.Kind) }]
+          : []),
         { id: 'promote', label: t('contextMenu.promoteToCard'), run: () => requestPromoteObject(object.ID, pos) },
         { id: 'delete-object', label: t('contextMenu.delete'), danger: true, run: () => deleteObject(object.ID) },
       ],

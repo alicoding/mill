@@ -25,14 +25,17 @@ export function buildStickyNodes({
   onCommitEdit: (id: string, text: string) => void
   onOpenNote: (id: string) => void
 }): AtlasStickyRFNode[] {
-  // While editing, the fixed footprint is omitted so the sticky's own
-  // CSS can widen it and grow with the editor's content (goal 0145) --
-  // React Flow sizes an unsized node to its content.
+  // The box never moves on entering/leaving edit (goal 0193: no
+  // automatic resize, ever) -- every existing note always carries its
+  // own persisted-or-default footprint, editing included. Only the
+  // still-unpersisted draft below (no prior size to preserve) grows to
+  // its content.
   const nodes: AtlasStickyRFNode[] = notes.map((note) => ({
     id: note.ID,
     type: 'atlas-sticky',
     position: { x: note.Position.X, y: note.Position.Y },
-    ...(editingNoteID === note.ID ? {} : { width: STICKY_WIDTH, height: STICKY_HEIGHT }),
+    width: note.Size?.W ?? STICKY_WIDTH,
+    height: note.Size?.H ?? STICKY_HEIGHT,
     draggable: !readOnly && editingNoteID !== note.ID,
     data: {
       note,

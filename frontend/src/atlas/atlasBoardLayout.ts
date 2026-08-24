@@ -1,12 +1,12 @@
 import type { Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { childrenOf } from './atlasGrouping'
 
-// The one-map board's shared sizing (goal 0072 slice A): every note
-// card renders at this fixed footprint regardless of view mode, and
-// every layout below (the group frame's own internal preview grid,
-// Auto-arrange's top-level flow) is built from the same two numbers so
-// a card never resizes crossing between a group's preview and its own
-// focused board.
+// The one-map board's shared sizing (goal 0072 slice A): the DEFAULT
+// note-card footprint, before a resize persists Card.Size (goal 0193)
+// -- the group frame's own internal preview grid stays uniform at
+// these two numbers regardless (computeGroupFrameLayout never reads a
+// child's own Size), so a card's own resize never crosses into how it
+// previews from one level up.
 export const NOTE_WIDTH = 190
 export const NOTE_HEIGHT = 128
 export const BOARD_GAP = 24
@@ -236,7 +236,10 @@ export function computeAutoArrangeLayout(
       // note-sized packing would overlap its neighbors (goal 0105).
       place(card.ID, card.Size?.W ?? TABLE_WIDTH, card.Size?.H ?? TABLE_HEIGHT)
     } else {
-      place(card.ID, NOTE_WIDTH, NOTE_HEIGHT)
+      // Same real-footprint packing as the table branch above (goal
+      // 0193): a resized note-card must not overlap its neighbors
+      // either.
+      place(card.ID, card.Size?.W ?? NOTE_WIDTH, card.Size?.H ?? NOTE_HEIGHT)
     }
   }
 

@@ -13,33 +13,41 @@
     cursor: pointer;
     display: flex;
 }
-/* Editing grows the sticky into a real writing surface (goal 0145):
-   wider, auto height with the editor's own content, capped with
-   internal scroll past ~380px. The node's fixed width/height are
-   omitted while editing (buildStickyNodes), so this class owns the
-   editing footprint. */
+/* Editing chrome, shared by both editing states below -- the box
+   itself never changes size on entering/leaving edit (goal 0193: no
+   automatic resize, ever). */
 .sticky.editing {
     cursor: text;
-    width: 300px;
-    height: auto;
-    min-height: 110px;
-    max-height: 380px;
     padding: 6px 8px;
 }
 .sticky.editing > * {
     width: 100%;
 }
+/* The DRAFT sticky only (note === null -- not yet persisted, so there
+   is no prior size to preserve): grows to fit the first typed content,
+   capped with internal scroll past ~380px (buildStickyNodes omits the
+   node's width/height only for this case). An existing note's own
+   re-edit never carries this modifier -- it stays pinned to its
+   current (persisted or default) box the way goal 0193 requires. */
+.sticky.editingUnsized {
+    width: 300px;
+    height: auto;
+    min-height: 110px;
+    max-height: 380px;
+}
 /* Inside the sticky the editor is chromeless -- the tinted sticky IS
    the surface; a second border/background would read as a form field
-   dropped onto a note. */
+   dropped onto a note. Fills whatever box the sticky itself resolves
+   to (its own persisted/default size, or editingUnsized's grow-to-fit
+   cap for a draft), so the editor never needs its own size opinion. */
 .sticky.editing :global(.cm-editor) {
     border: none;
     background: transparent;
-    max-height: 360px;
+    height: 100%;
 }
 .sticky.editing :global(.cm-scroller) {
     overflow-y: auto;
-    max-height: 360px;
+    height: 100%;
 }
 .sticky.editing textarea {
     border: none;
@@ -51,20 +59,14 @@
     font-size: 12px;
 }
 
-/* Selection ring: heavier than the card ring on purpose -- the
-   sticky's attention-tinted ground swallows the 2px accent line cards
-   get away with on white. The ring lives on the React Flow node
-   WRAPPER (the type-scoped class React Flow stamps per nodeTypes
-   key), never an inner element -- see AtlasNoteCardNode.module.css's
-   own header comment for why (Primer's [role="button"] focus reset
-   would otherwise zero it right after every mouse click). The border
-   color flip stays on the inner element: Primer's reset only touches
-   box-shadow, so this half already survives there. */
+/* Heavier than the shared ring default (AtlasBoard.module.css, goal
+   0197) on purpose -- the sticky's attention-tinted ground swallows the
+   default 2px accent line cards get away with on white. Only the two
+   custom properties the shared rule reads are set here; the box-shadow
+   declaration itself lives in ONE place. */
 :global(.react-flow__node-atlas-sticky.selected) {
-    border-radius: var(--borderRadius-medium);
-    box-shadow:
-        0 0 0 3px var(--borderColor-accent-emphasis),
-        0 0 0 7px var(--bgColor-accent-muted);
+    --mill-ring-inner: 3px;
+    --mill-ring-outer: 7px;
 }
 :global(.react-flow__node.selected) .sticky {
     border-color: var(--borderColor-accent-emphasis);

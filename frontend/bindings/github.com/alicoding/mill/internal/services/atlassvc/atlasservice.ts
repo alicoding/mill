@@ -838,6 +838,16 @@ export function SetNotePosition(id: string, pos: atlas$0.Position): $Cancellable
 }
 
 /**
+ * SetNoteSize persists a note's user-chosen board footprint -- the
+ * resize handle's commit, same shape as SetCardSize. Bounds guard
+ * against a degenerate drag: a note's own default face (STICKY_WIDTH/
+ * STICKY_HEIGHT) is smaller than a card's, so the floor is lower too.
+ */
+export function SetNoteSize(id: string, size: atlas$0.Dimensions): $CancellablePromise<atlas$0.Note> {
+    return $Call.ByID(4163810295, id, size);
+}
+
+/**
  * SetPosition updates a card's placement within its parent's canvas.
  * A nil position is accepted (clearing it, e.g. after a move to a
  * shelves-mode parent) -- no validation ties Position to the parent's

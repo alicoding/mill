@@ -1,16 +1,19 @@
-/* The uniform note card (goal 0072 slice A, re-cut by goal 0106's
-   flip retirement): a fixed 190x128 footprint, one face. This root
+/* The note card, one face (goal 0072 slice A, re-cut by goal 0106's
+   flip retirement; sized per goal 0193). Fills whatever box the React
+   Flow wrapper resolves to (Card.Size once resized, default 190x128
+   otherwise) -- resizing the wrapper is the only way this box changes;
+   editing never does (goal 0193's no-automatic-resize rule). This root
    is itself the tabIndex=0 focus target AND (via `overflow`) its own
-   scroll container -- the .linkHandle tab sits at right:-6px,
-   outside the box, so real overflow exists. `clip`, not `hidden`:
-   `hidden` is still programmatically scrollable, so WebKit's
-   reveal-on-focus behavior scrolled this card by a few px on every
-   mousedown of its own tabIndex=-1 link handle; `clip` disables that
-   scrollability while clipping identically. */
+   scroll container -- the .linkHandle tab sits at right:-6px, outside
+   the box, so real overflow exists. `clip`, not `hidden`: `hidden` is
+   still programmatically scrollable, so WebKit's reveal-on-focus
+   behavior scrolled this card by a few px on every mousedown of its
+   own tabIndex=-1 link handle; `clip` disables that scrollability
+   while clipping identically. */
 .card {
     position: relative;
-    width: 190px;
-    height: 128px;
+    width: 100%;
+    height: 100%;
     box-sizing: border-box;
     border: 1px solid var(--borderColor-default);
     border-radius: var(--borderRadius-medium);
@@ -25,21 +28,8 @@
     border-color: var(--borderColor-emphasis);
 }
 
-/* Selection ring: on the React Flow node WRAPPER (the type-scoped
-   class React Flow stamps per nodeTypes key), never an inner element.
-   Primer's own [role="button"]:focus:not(:focus-visible) reset zeroes
-   any box-shadow on an inner role="button" element the instant a
-   plain click leaves it :focus without :focus-visible -- the normal
-   state right after every mouse click, which is exactly when this
-   ring needs to show. The wrapper carries no role, so that reset can
-   never reach it. box-shadow, not border-width, so it never shifts
-   this card's fixed 190x128 footprint or its own hit-testing box. */
-:global(.react-flow__node-atlas-note.selected) {
-    border-radius: var(--borderRadius-medium);
-    box-shadow:
-        0 0 0 2px var(--borderColor-accent-emphasis),
-        0 0 0 5px var(--bgColor-accent-muted);
-}
+/* The note card's selection ring uses AtlasBoard.module.css's shared
+   defaults unmodified (goal 0197) -- no override needed here. */
 
 /* Present only so React Flow can measure a real connection point for
    a link edge -- never visible, never a click/drag target of its own
@@ -98,14 +88,21 @@
     color: var(--fgColor-danger);
     background: var(--bgColor-danger-muted);
 }
+/* Clamped by available space, not a fixed line count (goal 0193):
+   the only flex-growing row in the card, so a taller box (Card.Size)
+   directly reveals more of the title before hitting its own
+   overflow:hidden edge -- no line-clamp, which would cap it at 2 lines
+   regardless of how much room the box actually has. min-height:0 lets
+   a flex child shrink below its own content size, the standard escape
+   from flexbox's default min-height:auto (which would otherwise refuse
+   to clip at all inside a column flex container). */
 .title {
     margin-top: 4px;
     font-size: 13.5px;
     font-weight: 650;
     line-height: 1.25;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow: hidden;
 }
 .noteLine {

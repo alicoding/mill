@@ -1,0 +1,59 @@
+import { test, expect } from './fixtures/server'
+
+// Shared pool (testing.md): every assertion is scoped to a shape this
+// spec creates and deletes itself, or reads a seeded card's own
+// computed style without mutating it.
+//
+// Regression (goal 0197): the selection ring was invisible on every
+// board-local object (image/ink/shape) -- React Flow's own
+// `.react-flow__node.selectable:focus { outline: none }` reset wins,
+// at higher specificity, against a single-type `.selected` rule that
+// styles the ring via `outline`, so the ring vanished the instant a
+// real select click gave the wrapper DOM focus. box-shadow (what
+// AtlasBoard.module.css's shared rule now uses) never collides with
+// that reset -- a different CSS property entirely.
+test('a selected board object and a selected card each carry a real box-shadow ring', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  await page.getByTestId('atlas-tray-shape').click()
+  const box = await board.boundingBox()
+  if (!box) throw new Error('board has no bounding box')
+  const from = { x: box.x + box.width * 0.08, y: box.y + box.height * 0.08 }
+  const to = { x: box.x + box.width * 0.2, y: box.y + box.height * 0.2 }
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  await page.mouse.move(to.x, to.y, { steps: 5 })
+  await page.mouse.up()
+
+  const shape = page.locator('[data-testid="atlas-board-object"][data-object-kind="shape"]')
+  await expect(shape).toHaveCount(1)
+  // Disarm the (sticky) shape tool: a real select click on an
+  // already-placed shape, not another draw -- the gesture that gives
+  // the wrapper real DOM focus and reproduces the defect.
+  await page.keyboard.press('Escape')
+
+  const shapeWrapper = page.locator('.react-flow__node').filter({ has: shape })
+  await shape.click()
+  await expect(shapeWrapper).toHaveClass(/selected/)
+  await expect.poll(() => shapeWrapper.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
+
+  // A seeded card's own ring, read-only (never modified/deleted) --
+  // covers the note/sticky/region-chip/group family, which already
+  // rendered correctly (box-shadow, not outline) and is unaffected by
+  // this fix; asserted here so the acceptance line covering "card" has
+  // a direct, permanent check alongside the object-node regression.
+  const seededCard = page.locator('[data-testid="rf__node-atlas-card-example-contact"]')
+  await seededCard.click()
+  await expect(seededCard).toHaveClass(/selected/)
+  await expect.poll(() => seededCard.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
+
+  // Cleanup (testing.md's within-file discipline) -- deselect the
+  // seeded card, delete the shape this spec created.
+  await page.mouse.click(box.x + 10, box.y + 10)
+  await shape.click({ button: 'right' })
+  await page.getByText('Delete', { exact: true }).click()
+  await expect(shape).toHaveCount(0)
+})

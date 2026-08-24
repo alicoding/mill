@@ -112,6 +112,16 @@ interface UISignalState {
   requestAtlasPerspectiveSwitcherOpen: () => void
   atlasSelectAllRequest: number
   requestAtlasSelectAll: () => void
+  // draw.io's "select all edges / all vertices" (goal 0193): a
+  // context-menu action on one card/object requests every OTHER
+  // top-level card/object sharing its exact same kind. scope
+  // disambiguates Card.KindID from BoardObject.Kind -- two separate
+  // namespaces that could otherwise collide on the same string value.
+  // Token-carrying (not a bare counter), same reasoning as
+  // atlasArmToolRequest above: useAtlasSelectAll's watcher needs to
+  // know WHICH scope+kind to select, not just that a change happened.
+  atlasSelectKindRequest: { scope: 'card' | 'object'; kind: string; token: number } | null
+  requestAtlasSelectKind: (scope: 'card' | 'object', kind: string) => void
   // atlas.minimap.toggle (goal 0106 slice B): same monotonic-counter
   // shape as atlasLensOpenRequest -- the board's own
   // useAtlasMinimapToggle hook watches it via a ref-compared effect and
@@ -175,6 +185,8 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasPerspectiveSwitcherOpen: () => set((s) => ({ atlasPerspectiveSwitcherOpenRequest: s.atlasPerspectiveSwitcherOpenRequest + 1 })),
   atlasSelectAllRequest: 0,
   requestAtlasSelectAll: () => set((s) => ({ atlasSelectAllRequest: s.atlasSelectAllRequest + 1 })),
+  atlasSelectKindRequest: null,
+  requestAtlasSelectKind: (scope, kind) => set((s) => ({ atlasSelectKindRequest: { scope, kind, token: (s.atlasSelectKindRequest?.token ?? 0) + 1 } })),
   atlasMinimapToggleRequest: 0,
   requestAtlasMinimapToggle: () => set((s) => ({ atlasMinimapToggleRequest: s.atlasMinimapToggleRequest + 1 })),
   companionOpen: false,
