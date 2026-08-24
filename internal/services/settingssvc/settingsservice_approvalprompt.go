@@ -38,6 +38,14 @@ func (s *SettingsService) SetApprovalPromptWindow(w *windowing.Window) {
 // never an explicit Focus() call beyond whatever activation Show()
 // itself unavoidably causes (ADR-0033's documented compromise: no
 // non-activating-panel mechanism exists at the pinned Wails3 version).
+// windowing.ShowApp() still runs first, same reasoning as
+// bringFloatingToFront (settingsservice_presence.go): a decision can
+// park while Mill is app-hidden (windowing.HideApp, the focus-yield
+// mitigation), and ordering the window in without un-hiding the app
+// first would leave the prompt invisible -- the same composition gap
+// goal 0186 found in ShowWindow. Kept as its own call rather than
+// reusing bringFloatingToFront: that helper's explicit Focus() would
+// contradict the Show-only rule above.
 // Called exclusively from NotifyPendingApproval, the ONE presence-gate
 // decision point (settingsservice_attention.go) -- never independently,
 // so "notify" and "show the prompt" always agree about whether the
@@ -46,9 +54,11 @@ func (s *SettingsService) showApprovalPrompt() {
 	s.mu.Lock()
 	p := s.approvalPrompt
 	s.mu.Unlock()
-	if p != nil {
-		p.Show()
+	if p == nil {
+		return
 	}
+	windowing.ShowApp()
+	p.Show()
 }
 
 // DismissApprovalPrompt hides the floating approval prompt and applies

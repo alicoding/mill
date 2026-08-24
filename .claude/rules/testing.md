@@ -143,6 +143,19 @@ at:
     app switcher/dock, and focus returns to the app you summoned from;
     finally reactivate Mill (dock click or Cmd+Tab) and confirm the main
     window is back, right where it was before the summon.
+  - **Bringing a hidden app back on screen** (goal 0186, goal 0188 slice
+    2 — `bringMainToFront`/`bringFloatingToFront`,
+    `settingssvc/settingsservice_presence.go`) — every path that shows a
+    window now un-hides the app first, which only a real app-level hide
+    can exercise. Verify on an installed build: repeat the background-
+    summon dismiss above until Mill is app-hidden (no window, not in the
+    app switcher), then summon again and click the panel's "Open Mill"
+    row — confirm the main window actually appears, where it previously
+    did nothing silently. Separately, repeat with the tray's "Show Mill"
+    item instead of the panel. Separately, park a guardrail/MCP-write
+    decision while away and Mill app-hidden — confirm the floating
+    approval prompt appears rather than staying invisible behind a
+    still-hidden app.
   - **Native file-drop delivery** (goal 0081 A3) — verify by dragging a
     `.md` file from Finder onto the running app and confirming the card
     lands with the real path.
