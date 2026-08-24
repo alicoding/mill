@@ -22,17 +22,15 @@ test('secret manager: create vault, store/reveal/copy/edit/history/delete a pass
   const settingsPath = path.join(dir, 'settings.json')
   const executionDbPath = path.join(dir, 'execution.db')
   const backupDir = path.join(dir, 'backups')
-  const secretsPath = path.join(dir, 'secrets.kdbx')
   const port = SECRETS_SERVER_BASE_PORT + idx
   const mcpPort = SECRETS_MCP_BASE_PORT + idx
 
   let server: SpawnedServer | undefined
   const browser = await chromium.launch()
   try {
-    server = await spawnMillServer({
-      port, mcpPort, settingsPath, executionDbPath, backupDir,
-      extraEnv: { MILL_SECRETS_PATH: secretsPath },
-    })
+    // spawnMillServer derives MILL_SECRETS_PATH from settingsPath's own
+    // directory automatically (fixtures/server.ts) -- no override needed.
+    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
     const page = await browser.newPage()
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
     await page.goto(`${server.baseURL}/`)

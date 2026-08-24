@@ -178,6 +178,14 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
       MILL_SETTINGS_PATH: opts.settingsPath,
       MILL_EXECUTION_DB_PATH: opts.executionDbPath,
       MILL_BACKUP_DIR: opts.backupDir,
+      // Derived from settingsPath's own directory (every call site's
+      // own per-worker/per-spec mkdtemp dir) rather than a new
+      // SpawnServerOptions field every one of them would otherwise need
+      // to start passing -- goal 0185: without this, a spec that ever
+      // touches the Secrets page would create/unlock the REAL user's
+      // vault file. secrets.spec.ts's own dir happens to compute the
+      // identical path, so it doesn't need an extraEnv override at all.
+      MILL_SECRETS_PATH: path.join(path.dirname(opts.settingsPath), 'secrets.kdbx'),
       // Every e2e server uses the in-memory keyring: per-worker
       // isolation for secrets (the real keychain is machine-global),
       // and identical absent-means-ErrNotFound semantics on the Linux
