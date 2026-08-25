@@ -42,9 +42,12 @@ func skipUnlessRealDesktopClipboard(t *testing.T) {
 // test-scoped accessor, so this file owns the swap/restore discipline.
 func swapExecEnvLookup(t *testing.T, fn func(id string) (composition.ResolvedExecEnv, error)) func() {
 	t.Helper()
-	composition.SetExecEnvLookup(fn)
+	// Wraps fn to match SetExecEnvLookup's real signature (goal 0203 S3
+	// added a composition.SecretAccessRun param) -- every existing test
+	// call site stays a plain func(id string), unchanged.
+	composition.SetExecEnvLookup(func(id string, _ composition.SecretAccessRun) (composition.ResolvedExecEnv, error) { return fn(id) })
 	return func() {
-		composition.SetExecEnvLookup(func(envID string) (composition.ResolvedExecEnv, error) {
+		composition.SetExecEnvLookup(func(envID string, _ composition.SecretAccessRun) (composition.ResolvedExecEnv, error) {
 			return composition.ResolvedExecEnv{}, fmt.Errorf("no execution environment lookup registered (yet) for id %q", envID)
 		})
 	}

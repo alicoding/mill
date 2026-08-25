@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/adapters/shellenv"
 	"github.com/alicoding/mill/internal/contract"
 	"github.com/alicoding/mill/internal/domain/composition"
@@ -69,7 +70,7 @@ const execEnvsKey = "configure-execenvs"
 // (vaultref.go's resolveVaultRefEnv, goal 0203 S1) -- a code-execution
 // node is a non-MCP consumer of a stored credential, closing the gap
 // where "vault:" only worked inside an MCP server's own Env.
-func (c *ConfigureService) resolveExecEnv(id string) (composition.ResolvedExecEnv, error) {
+func (c *ConfigureService) resolveExecEnv(id string, run composition.SecretAccessRun) (composition.ResolvedExecEnv, error) {
 	c.mu.Lock()
 	var found *execenv.ExecEnv
 	for i := range c.execEnvs {
@@ -83,7 +84,8 @@ func (c *ConfigureService) resolveExecEnv(id string) (composition.ResolvedExecEn
 		return composition.ResolvedExecEnv{}, fmt.Errorf("no execution environment with id %q", id)
 	}
 
-	env, err := c.resolveVaultRefEnv("execution environment", found.Label, found.Env)
+	actx := secretaudit.AccessContext{Context: secretaudit.ContextExecEnv, RunID: run.RunID, WorkflowID: run.WorkflowID}
+	env, err := c.resolveVaultRefEnv("execution environment", found.Label, found.Env, actx)
 	if err != nil {
 		return composition.ResolvedExecEnv{}, err
 	}

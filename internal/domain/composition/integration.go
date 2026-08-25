@@ -103,15 +103,16 @@ func ApplyAuth(rc ResolvedHTTPRequest, method, path string, headers map[string]s
 
 // lookupHTTPRequestFn defaults to erroring so an integration-http node run
 // before ConfigureService exists (or before SetHTTPRequestLookup wires it)
-// fails loudly instead of silently no-op'ing.
-var lookupHTTPRequestFn = func(requestID string) (ResolvedHTTPRequest, error) {
+// fails loudly instead of silently no-op'ing. Takes a SecretAccessRun
+// (goal 0203 S3), see mcpcall.go's lookupMCPServerFn for the reasoning.
+var lookupHTTPRequestFn = func(requestID string, _ SecretAccessRun) (ResolvedHTTPRequest, error) {
 	return ResolvedHTTPRequest{}, fmt.Errorf("no request lookup registered (yet) for id %q", requestID)
 }
 
 // SetHTTPRequestLookup wires the function integration-http nodes use to
 // resolve a requestId into its base URL/auth/secret. Called once from
 // main.go once ConfigureService exists.
-func SetHTTPRequestLookup(fn func(requestID string) (ResolvedHTTPRequest, error)) {
+func SetHTTPRequestLookup(fn func(requestID string, run SecretAccessRun) (ResolvedHTTPRequest, error)) {
 	lookupHTTPRequestFn = fn
 }
 
@@ -168,7 +169,7 @@ func init() {
 			},
 		},
 	}, func(node Node, ctx ExecContext) (ExecContext, error) {
-		rc, err := lookupHTTPRequestFn(node.Config["requestId"])
+		rc, err := lookupHTTPRequestFn(node.Config["requestId"], secretAccessRunFromCtx(ctx))
 		if err != nil {
 			return ctx, fmt.Errorf("integration-http: %w", err)
 		}

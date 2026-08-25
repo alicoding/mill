@@ -164,13 +164,16 @@ func TestSeededGuardedHTTPWorkflow_ApproveFiresRealHTTPCall(t *testing.T) {
 // restore discipline rather than reaching into composition's internals.
 func swapHTTPRequestLookup(t *testing.T, fn func(id string) (composition.ResolvedHTTPRequest, error)) func() {
 	t.Helper()
-	composition.SetHTTPRequestLookup(fn)
+	// Wraps fn to match SetHTTPRequestLookup's real signature (goal 0203
+	// S3 added a composition.SecretAccessRun param) -- every existing
+	// test call site stays a plain func(id string), unchanged.
+	composition.SetHTTPRequestLookup(func(id string, _ composition.SecretAccessRun) (composition.ResolvedHTTPRequest, error) { return fn(id) })
 	return func() {
 		// Restores integration.go's own "nothing registered" default
 		// (fails loudly rather than silently no-op'ing) -- this package
 		// never constructs a ConfigureService (the real production
 		// wirer), so there's no other "original" value to save/restore.
-		composition.SetHTTPRequestLookup(func(requestID string) (composition.ResolvedHTTPRequest, error) {
+		composition.SetHTTPRequestLookup(func(requestID string, _ composition.SecretAccessRun) (composition.ResolvedHTTPRequest, error) {
 			return composition.ResolvedHTTPRequest{}, fmt.Errorf("no request lookup registered (yet) for id %q", requestID)
 		})
 	}

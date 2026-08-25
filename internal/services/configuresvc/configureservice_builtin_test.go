@@ -52,7 +52,7 @@ func TestConfigureService_FreshInstall_SeedsOAuth1DemoSecret(t *testing.T) {
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := NewConfigureService(store, comp, credential.New())
 
-	rc, err := cfg.resolveHTTPRequest(httprequest.ExampleOAuth1ID)
+	rc, err := cfg.resolveHTTPRequest(httprequest.ExampleOAuth1ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveHTTPRequest(%q) returned error: %v", httprequest.ExampleOAuth1ID, err)
 	}
@@ -71,7 +71,7 @@ func TestConfigureService_FreshInstall_SeedsPlaceholderDemoSecrets(t *testing.T)
 	cfg := NewConfigureService(store, comp, credential.New())
 
 	for id, want := range builtInSecrets {
-		rc, err := cfg.resolveHTTPRequest(id)
+		rc, err := cfg.resolveHTTPRequest(id, composition.SecretAccessRun{})
 		if err != nil {
 			t.Errorf("resolveHTTPRequest(%q) returned error: %v", id, err)
 			continue
@@ -94,7 +94,7 @@ func TestConfigureService_FreshInstall_OAuth2Example_HasNoSecretSeeded(t *testin
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := NewConfigureService(store, comp, credential.New())
 
-	if _, err := cfg.resolveHTTPRequest(httprequest.ExampleOAuth2ID); err == nil {
+	if _, err := cfg.resolveHTTPRequest(httprequest.ExampleOAuth2ID, composition.SecretAccessRun{}); err == nil {
 		t.Error("resolveHTTPRequest for the credential-less OAuth2 example returned nil error, want an error (no secret was ever seeded for it, matching a real not-yet-configured request)")
 	}
 }

@@ -1,14 +1,13 @@
 package configuresvc
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"strings"
 	"time"
 
-	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/openapispec"
+	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/services/dataevent"
@@ -38,15 +37,15 @@ func joseKeychainID(id string) string {
 }
 
 // resolveHTTPRequest implements composition.go's lookupHTTPRequestFn
-// seam: find the HTTPRequest, fetch its secret from the OS keychain
-// (skipped entirely for AuthNone -- there's nothing to fetch), resolve
-// any "vault:<id>" reference among its own custom Headers (vaultref.go's
+// seam: find the HTTPRequest, fetch its secret and (when configured)
+// its JOSE private key from the OS keychain, resolve any "vault:<id>"
+// reference among its own custom Headers (vaultref.go's
 // resolveVaultRefValue, goal 0203 S1 -- an HTTP connector step is a
 // non-MCP consumer of a stored credential, the goal file's own named
 // gap), and return the lot as a composition.ResolvedHTTPRequest.
 // Unexported, so Wails never binds it as a callable frontend method --
 // it's Go-internal wiring only, same as CompositionService's SetSyncer.
-func (c *ConfigureService) resolveHTTPRequest(id string) (composition.ResolvedHTTPRequest, error) {
+func (c *ConfigureService) resolveHTTPRequest(id string, run composition.SecretAccessRun) (composition.ResolvedHTTPRequest, error) {
 	c.mu.Lock()
 	var req httprequest.HTTPRequest
 	found := false
@@ -62,37 +61,17 @@ func (c *ConfigureService) resolveHTTPRequest(id string) (composition.ResolvedHT
 		return composition.ResolvedHTTPRequest{}, fmt.Errorf("no request with id %q", id)
 	}
 
-	var secret string
-	if req.AuthType != httprequest.AuthNone {
-		s, err := c.credentials.Get(id)
-		if err != nil {
-			// A missing keychain entry is a fix-it-in-Configure state,
-			// not a system fault -- say so in the user's vocabulary
-			// (secrets never travel with an exported/seeded request, so
-			// this is the expected first-run state on a new device).
-			if errors.Is(err, credential.ErrNotFound) {
-				return composition.ResolvedHTTPRequest{}, fmt.Errorf(
-					"the integration %q has no credential saved on this device -- open it in Configure and enter its token or secret", req.Label)
-			}
-			return composition.ResolvedHTTPRequest{}, fmt.Errorf("request %q: %w", id, err)
-		}
-		secret = s
+	secret, err := c.resolveHTTPRequestSecret(id, req.AuthType, req.Label)
+	if err != nil {
+		return composition.ResolvedHTTPRequest{}, err
+	}
+	josePrivateKey, err := c.resolveHTTPRequestJOSEKey(id, req.JOSE, req.Label)
+	if err != nil {
+		return composition.ResolvedHTTPRequest{}, err
 	}
 
-	var josePrivateKey string
-	if req.JOSE != nil && req.JOSE.DecryptResponse {
-		s, err := c.credentials.Get(joseKeychainID(id))
-		if err != nil {
-			if errors.Is(err, credential.ErrNotFound) {
-				return composition.ResolvedHTTPRequest{}, fmt.Errorf(
-					"the integration %q has no response-decryption key saved on this device -- open it in Configure and enter its private key", req.Label)
-			}
-			return composition.ResolvedHTTPRequest{}, fmt.Errorf("request %q: JOSE private key: %w", id, err)
-		}
-		josePrivateKey = s
-	}
-
-	headers, err := c.resolveVaultRefHeaders(req.Label, req.Headers)
+	actx := secretaudit.AccessContext{Context: secretaudit.ContextHTTPHeader, RunID: run.RunID, WorkflowID: run.WorkflowID}
+	headers, err := c.resolveVaultRefHeaders(req.Label, req.Headers, actx)
 	if err != nil {
 		return composition.ResolvedHTTPRequest{}, err
 	}

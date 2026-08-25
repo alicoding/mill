@@ -26,7 +26,7 @@ func TestSeededMCPExample_EchoToolCall_RunsEndToEnd(t *testing.T) {
 	t.Cleanup(func() { lookupMCPServerFn = origLookup; callToolFn = origCall })
 
 	var gotID string
-	SetMCPServerLookup(func(id string) (ResolvedMCPServer, error) {
+	SetMCPServerLookup(func(id string, _ SecretAccessRun) (ResolvedMCPServer, error) {
 		gotID = id
 		return ResolvedMCPServer{Command: "npx", Args: []string{"-y", "@modelcontextprotocol/server-everything"}}, nil
 	})

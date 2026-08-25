@@ -67,7 +67,7 @@ func TestDeleteHTTPRequest_RemovesItAndItsSecret(t *testing.T) {
 	// was actually cleared -- there is deliberately no GetSecret) should
 	// now fail to find the request at all, confirming both the entry
 	// and its secret are gone.
-	if _, err := cfg.resolveHTTPRequest(req.ID); err == nil {
+	if _, err := cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{}); err == nil {
 		t.Error("resolveHTTPRequest still resolves a deleted request, want an error")
 	}
 }
@@ -178,7 +178,7 @@ func TestResolveHTTPRequest_AuthNone_NoSecretNeeded(t *testing.T) {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
 
-	rc, err := cfg.resolveHTTPRequest(req.ID)
+	rc, err := cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveHTTPRequest returned error for an AuthNone request with no secret set: %v", err)
 	}
@@ -193,7 +193,7 @@ func TestResolveHTTPRequest_AuthBearer_MissingSecret_Rejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
-	if _, err := cfg.resolveHTTPRequest(req.ID); err == nil {
+	if _, err := cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{}); err == nil {
 		t.Fatal("resolveHTTPRequest for an AuthBearer request with no secret set returned nil error, want an error")
 	}
 }
@@ -208,7 +208,7 @@ func TestResolveHTTPRequest_AuthBearer_ResolvesSecret(t *testing.T) {
 		t.Fatalf("SetHTTPRequestSecret returned error: %v", err)
 	}
 
-	rc, err := cfg.resolveHTTPRequest(req.ID)
+	rc, err := cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveHTTPRequest returned error: %v", err)
 	}
@@ -259,7 +259,7 @@ func TestCreateHTTPRequest_AuthConfig_PersistsAndSurvivesRestore(t *testing.T) {
 		t.Errorf("restored Auth.OAuth2 = %+v, want the original TokenURL/Scope", restored.Auth.OAuth2)
 	}
 
-	rc, err := restarted.resolveHTTPRequest(req.ID)
+	rc, err := restarted.resolveHTTPRequest(req.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveHTTPRequest after restore returned error: %v", err)
 	}
@@ -303,7 +303,7 @@ func TestSetHTTPRequestOAuth1Secret_EncodesDualSecret(t *testing.T) {
 		t.Fatalf("SetHTTPRequestOAuth1Secret returned error: %v", err)
 	}
 
-	rc, err := cfg.resolveHTTPRequest(req.ID)
+	rc, err := cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveHTTPRequest returned error: %v", err)
 	}
@@ -354,7 +354,7 @@ func TestCreateHTTPRequest_JOSEConfig_PersistsAndSurvivesRestore(t *testing.T) {
 		t.Errorf("restored JOSE.RecipientPublicKeyPEM = %q, want %q", restored.JOSE.RecipientPublicKeyPEM, jose.RecipientPublicKeyPEM)
 	}
 
-	rc, err := restarted.resolveHTTPRequest(req.ID)
+	rc, err := restarted.resolveHTTPRequest(req.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveHTTPRequest after restore returned error: %v", err)
 	}
@@ -391,7 +391,7 @@ func TestSetHTTPRequestJOSEPrivateKey_ResolvesOnlyWhenDecryptResponseIsSet(t *te
 		t.Fatalf("SetHTTPRequestJOSEPrivateKey returned error: %v", err)
 	}
 
-	rc, err := cfg.resolveHTTPRequest(req.ID)
+	rc, err := cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveHTTPRequest returned error: %v", err)
 	}
@@ -448,7 +448,7 @@ func TestResolveHTTPRequest_MissingCredential_ExplainsWhatToFix(t *testing.T) {
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := NewConfigureService(store, comp, notFoundCredentialStore{})
 
-	_, err := cfg.resolveHTTPRequest(httprequest.ExampleConfluencePageReadID)
+	_, err := cfg.resolveHTTPRequest(httprequest.ExampleConfluencePageReadID, composition.SecretAccessRun{})
 	if err == nil {
 		t.Fatal("expected an error for a request whose credential is missing")
 	}

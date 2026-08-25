@@ -14,7 +14,10 @@ import (
 func swapExecEnvLookupForTest(t *testing.T, fn func(id string) (ResolvedExecEnv, error)) {
 	t.Helper()
 	orig := lookupExecEnvFn
-	lookupExecEnvFn = fn
+	// Wraps fn to match lookupExecEnvFn's real signature (goal 0203 S3
+	// added a SecretAccessRun param) -- every existing test call site
+	// stays a plain func(id string), unchanged.
+	lookupExecEnvFn = func(id string, _ SecretAccessRun) (ResolvedExecEnv, error) { return fn(id) }
 	t.Cleanup(func() { lookupExecEnvFn = orig })
 }
 

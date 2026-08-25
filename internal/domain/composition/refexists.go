@@ -17,7 +17,11 @@ func RefExists(kind, id string) bool {
 	}
 	switch kind {
 	case "request":
-		_, err := lookupHTTPRequestFn(id)
+		// Zero-value SecretAccessRun: an existence check, not a real run
+		// -- goal 0203 S3's audit still records the read (this genuinely
+		// does resolve any "vault:" header value), just with no run/
+		// workflow id to attribute it to.
+		_, err := lookupHTTPRequestFn(id, SecretAccessRun{})
 		return err == nil
 	case "list":
 		// Existence check only -- pinnedVersion=0 (live) regardless of
@@ -26,7 +30,7 @@ func RefExists(kind, id string) bool {
 		_, err := lookupListFn(id, 0)
 		return err == nil
 	case "mcpserver":
-		_, err := lookupMCPServerFn(id)
+		_, err := lookupMCPServerFn(id, SecretAccessRun{})
 		return err == nil
 	case "decision":
 		// Existence check only -- pinnedVersion=0 (live) regardless of
@@ -37,7 +41,7 @@ func RefExists(kind, id string) bool {
 		_, err := lookupDecisionFn(id, 0)
 		return err == nil
 	case "execenv":
-		_, err := lookupExecEnvFn(id)
+		_, err := lookupExecEnvFn(id, SecretAccessRun{})
 		return err == nil
 	default:
 		// "workflow"/"workflow-scope" (childworkflow.go/triggers.go)

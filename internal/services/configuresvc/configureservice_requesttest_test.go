@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 )
 
@@ -160,7 +161,7 @@ func TestTestHTTPRequestOperation_NeverPersistsTheSecret(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("TestHTTPRequestOperation returned error: %v", err)
 	}
-	if _, err := cfg.resolveHTTPRequest(req.ID); err == nil {
+	if _, err := cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{}); err == nil {
 		t.Error("resolveHTTPRequest succeeded after only a test call (no SetHTTPRequestSecret) -- TestHTTPRequestOperation must not persist the secret")
 	}
 }

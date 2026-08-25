@@ -315,7 +315,7 @@ func TestResolveMCPServer_ReturnsCommandAndArgs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateMCPServer returned error: %v", err)
 	}
-	rs, err := cfg.resolveMCPServer(s.ID)
+	rs, err := cfg.resolveMCPServer(s.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveMCPServer returned error: %v", err)
 	}
@@ -326,7 +326,7 @@ func TestResolveMCPServer_ReturnsCommandAndArgs(t *testing.T) {
 
 func TestResolveMCPServer_UnknownID_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if _, err := cfg.resolveMCPServer("does-not-exist"); err == nil {
+	if _, err := cfg.resolveMCPServer("does-not-exist", composition.SecretAccessRun{}); err == nil {
 		t.Fatal("resolveMCPServer with an unknown id returned nil error, want an error")
 	}
 }

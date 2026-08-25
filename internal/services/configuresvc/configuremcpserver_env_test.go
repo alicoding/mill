@@ -4,6 +4,9 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/alicoding/mill/internal/adapters/secretaudit"
+	"github.com/alicoding/mill/internal/domain/composition"
 )
 
 // TestResolveMCPServer_VaultRefResolved proves an MCPServer.Env entry
@@ -11,7 +14,7 @@ import (
 // SetSecretResolver -- goal 0185 S3's own resolution seam.
 func TestResolveMCPServer_VaultRefResolved(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	cfg.SetSecretResolver(func(id string) (string, error) {
+	cfg.SetSecretResolver(func(id string, _ secretaudit.AccessContext) (string, error) {
 		if id == "entry-1" {
 			return "real-secret-fake", nil
 		}
@@ -23,7 +26,7 @@ func TestResolveMCPServer_VaultRefResolved(t *testing.T) {
 		t.Fatalf("CreateMCPServer: %v", err)
 	}
 
-	rs, err := cfg.resolveMCPServer(s.ID)
+	rs, err := cfg.resolveMCPServer(s.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveMCPServer: %v", err)
 	}
@@ -40,13 +43,13 @@ func TestResolveMCPServer_VaultRefResolved(t *testing.T) {
 func TestResolveMCPServer_VaultLocked_FailsExplicitly(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 	lockedErr := errors.New("secretvault: vault is locked")
-	cfg.SetSecretResolver(func(string) (string, error) { return "", lockedErr })
+	cfg.SetSecretResolver(func(string, secretaudit.AccessContext) (string, error) { return "", lockedErr })
 
 	s, err := cfg.CreateMCPServer("GitHub", "github-mcp-server", nil, []string{"GITHUB_TOKEN=vault:entry-1"})
 	if err != nil {
 		t.Fatalf("CreateMCPServer: %v", err)
 	}
-	if _, err := cfg.resolveMCPServer(s.ID); err == nil {
+	if _, err := cfg.resolveMCPServer(s.ID, composition.SecretAccessRun{}); err == nil {
 		t.Fatal("resolveMCPServer with a locked vault returned nil error, want an error")
 	}
 }
@@ -59,7 +62,7 @@ func TestResolveMCPServer_VaultLocked_FailsExplicitly(t *testing.T) {
 // resolver is deliberately never consulted on the export path at all.
 func TestExportMCPServer_NeverCarriesResolvedSecret(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	cfg.SetSecretResolver(func(string) (string, error) {
+	cfg.SetSecretResolver(func(string, secretaudit.AccessContext) (string, error) {
 		return "real-secret-fake", nil
 	})
 
@@ -85,7 +88,7 @@ func TestExportMCPServer_NeverCarriesResolvedSecret(t *testing.T) {
 // this feature existed -- the secret resolver is never even called.
 func TestResolveMCPServer_NoEnv_Unaffected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	cfg.SetSecretResolver(func(string) (string, error) {
+	cfg.SetSecretResolver(func(string, secretaudit.AccessContext) (string, error) {
 		t.Fatal("secret resolver called for an MCPServer with no Env")
 		return "", nil
 	})
@@ -94,7 +97,7 @@ func TestResolveMCPServer_NoEnv_Unaffected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateMCPServer: %v", err)
 	}
-	rs, err := cfg.resolveMCPServer(s.ID)
+	rs, err := cfg.resolveMCPServer(s.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveMCPServer: %v", err)
 	}

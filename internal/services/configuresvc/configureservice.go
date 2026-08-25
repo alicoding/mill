@@ -16,6 +16,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/openapispec"
+	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/composition"
@@ -90,8 +91,11 @@ type ConfigureService struct {
 	// SecretService exists (main.go/wiring.go construct it after this
 	// service). Defaults to an error so an Env "vault:" reference
 	// resolved before wiring fails loudly rather than silently
-	// returning an empty secret.
-	secretResolver func(id string) (string, error)
+	// returning an empty secret. Takes a secretaudit.AccessContext (goal
+	// 0203 S3) -- ResolveSecretValue on the other side of this seam is
+	// where the actual audit line gets written, so every call site here
+	// carries who's asking.
+	secretResolver func(id string, actx secretaudit.AccessContext) (string, error)
 	// secretLabelsLister lists every vault entry's Summary (Title, no
 	// Password) -- DeriveSecretLabels' own read (goal 0203 S2), wired
 	// late via SetSecretLabelsLister the same way secretResolver is.
@@ -109,7 +113,7 @@ type ConfigureService struct {
 // exists. Exported for wiring only, never a frontend RPC.
 //
 //wails:ignore
-func (c *ConfigureService) SetSecretResolver(fn func(id string) (string, error)) {
+func (c *ConfigureService) SetSecretResolver(fn func(id string, actx secretaudit.AccessContext) (string, error)) {
 	c.secretResolver = fn
 }
 
@@ -129,7 +133,7 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	// asks about presence often, and only this choke point keeps the
 	// cache truthful.
 	c := &ConfigureService{store: store, composition: comp, credentials: newPresenceCachingCredentials(credentials)}
-	c.secretResolver = func(id string) (string, error) {
+	c.secretResolver = func(id string, _ secretaudit.AccessContext) (string, error) {
 		return "", fmt.Errorf("no vault secret resolver registered (yet) for id %q", id)
 	}
 	c.secretLabelsLister = func() ([]secret.Summary, error) { return nil, nil }

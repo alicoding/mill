@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alicoding/mill/internal/adapters/secretaudit"
+	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 )
 
@@ -22,7 +24,7 @@ import (
 // cannot use a stored credential at all").
 func TestResolveHTTPRequest_HeaderVaultRefResolved(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	cfg.SetSecretResolver(func(id string) (string, error) {
+	cfg.SetSecretResolver(func(id string, _ secretaudit.AccessContext) (string, error) {
 		if id == "entry-1" {
 			return "real-secret-fake", nil
 		}
@@ -35,7 +37,7 @@ func TestResolveHTTPRequest_HeaderVaultRefResolved(t *testing.T) {
 		t.Fatalf("CreateHTTPRequest: %v", err)
 	}
 
-	rc, err := cfg.resolveHTTPRequest(req.ID)
+	rc, err := cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveHTTPRequest: %v", err)
 	}
@@ -53,14 +55,14 @@ func TestResolveHTTPRequest_HeaderVaultRefResolved(t *testing.T) {
 func TestResolveHTTPRequest_HeaderVaultLocked_FailsExplicitly(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 	lockedErr := errors.New("secretvault: vault is locked")
-	cfg.SetSecretResolver(func(string) (string, error) { return "", lockedErr })
+	cfg.SetSecretResolver(func(string, secretaudit.AccessContext) (string, error) { return "", lockedErr })
 
 	req, err := cfg.CreateHTTPRequest("Secured API", "https://example.com", "", "", httprequest.AuthNone,
 		map[string]string{"X-Api-Key": "vault:entry-1"}, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
 	}
-	if _, err := cfg.resolveHTTPRequest(req.ID); err == nil {
+	if _, err := cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{}); err == nil {
 		t.Fatal("resolveHTTPRequest with a locked vault returned nil error, want an error")
 	}
 }
@@ -71,7 +73,7 @@ func TestResolveHTTPRequest_HeaderVaultLocked_FailsExplicitly(t *testing.T) {
 // resolved secret -- export never consults the secret resolver.
 func TestExportHTTPRequest_NeverCarriesResolvedHeaderSecret(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	cfg.SetSecretResolver(func(string) (string, error) {
+	cfg.SetSecretResolver(func(string, secretaudit.AccessContext) (string, error) {
 		return "real-secret-fake", nil
 	})
 
@@ -99,7 +101,7 @@ func TestExportHTTPRequest_NeverCarriesResolvedHeaderSecret(t *testing.T) {
 // never even called for headers.
 func TestResolveHTTPRequest_NoHeaders_Unaffected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	cfg.SetSecretResolver(func(string) (string, error) {
+	cfg.SetSecretResolver(func(string, secretaudit.AccessContext) (string, error) {
 		t.Fatal("secret resolver called for a request with no Headers")
 		return "", nil
 	})
@@ -108,7 +110,7 @@ func TestResolveHTTPRequest_NoHeaders_Unaffected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
 	}
-	rc, err := cfg.resolveHTTPRequest(req.ID)
+	rc, err := cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveHTTPRequest: %v", err)
 	}
