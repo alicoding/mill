@@ -92,6 +92,7 @@ h2.hl + .card.fade, h2.hl + pre.mermaid.fade{outline-color:transparent}
     <button role="tab" aria-selected="false" data-v="roadmap">Roadmap</button>
     <button role="tab" aria-selected="false" data-v="arch">Architecture</button>
     <button role="tab" aria-selected="false" data-v="cap">Capability Map</button>
+    <button role="tab" aria-selected="false" data-v="replace">Replace</button>
     <button role="tab" aria-selected="false" data-v="health">Health</button>
     <button role="tab" aria-selected="false" data-v="eff">Efficiency</button>
   </nav>
@@ -368,6 +369,38 @@ flowchart LR
     <tr><td colspan="4"><b>Unjustified hand-rolls: 0.</b> Last one found (updater dwell policy) was deleted tonight in favor of the adopted package's own semantics. The one INNER-PLATFORM near-miss on record: templating chat wire-shapes through the HTTP entity — rejected at design time, dedicated adapters built instead (SPEC §3.3).</td></tr>
   </table></div>
   <div class="note">Read this table when asking "do I have to maintain that?" — adopt rows: no. Build rows: yes, deliberately. Shim rows: yes, smallest possible, each with an exit condition.</div>
+</section>
+
+<!-- AUTHORED — hand-maintained until 0217's derivation slice teaches
+     derive.sh the docs/parity/<app>.md frontmatter; truth lives in those
+     ledger files, this tab is the single-pane view of them. -->
+<section id="replace">
+  <h2 id="replace-model">Replacing your apps <small>— job ledgers with a declared posture per job, never another app's feature list (goal 0217)</small></h2>
+  <div class="card"><table>
+    <tr><th>posture</th><th>meaning</th><th>the bar</th></tr>
+    <tr><td><span class="chip plain">replace</span></td><td>Mill does this job completely</td><td>same or better than the app it replaces</td></tr>
+    <tr><td><span class="chip warn">host</span></td><td>view + edit within stated limits, one honest door to the real app</td><td>limits declared in the ledger, never discovered</td></tr>
+    <tr><td><span class="chip good">defer</span></td><td>Mill never owns it ("I will not reinvent Excel")</td><td>named explicitly so absence reads as decided</td></tr>
+  </table></div>
+
+  <h2>draw.io <small>— ledger: docs/parity/drawio.md · exit = a real workweek without opening draw.io outside declared host/defer jobs</small></h2>
+  <div class="card"><table>
+    <tr><th>job</th><th>posture</th><th>state</th></tr>
+    <tr><td>CLI writes to a .drawio file appear live</td><td><span class="chip plain">replace</span></td><td><span class="chip good">at bar</span></td></tr>
+    <tr><td>Open multi-page diagrams with containers</td><td><span class="chip plain">replace</span></td><td><span class="chip good">at bar</span></td></tr>
+    <tr><td>Export a board back out as .drawio</td><td><span class="chip plain">replace</span></td><td><span class="chip good">at bar</span></td></tr>
+    <tr><td>Sketch shapes/arrows · freehand annotate</td><td><span class="chip plain">replace</span></td><td><span class="chip good">at bar</span></td></tr>
+    <tr><td>Rotate a shape</td><td><span class="chip plain">replace</span></td><td><span class="chip warn">0214 queued</span></td></tr>
+    <tr><td>Tools that never fight each other</td><td><span class="chip plain">replace</span></td><td><span class="chip warn">0215 in flight</span></td></tr>
+    <tr><td>Deep node-level editing of imported diagrams · stencil packs</td><td><span class="chip warn">host</span></td><td><span class="chip good">at bar, limits declared</span></td></tr>
+    <tr><td>draw.io's full editor · auto-layout engines</td><td><span class="chip good">defer</span></td><td>decided</td></tr>
+  </table></div>
+  <div class="note">5 of 7 replace jobs at bar; the two in progress ride 0214/0215.</div>
+
+  <h2>Notes (Obsidian + VSCode-as-markdown) <small>— next: the UX-iteration session, owner-present</small></h2>
+  <div class="card"><table>
+    <tr><td>No ledger yet by design: the owner named UX iteration the FIRST feature — what notes should BE in Mill (records-first vs editing files in place) is decided in that session, then each capability gets an adopt-vs-build cost. Current in-app note surface is owner-declared not prod-ready and is treated as placeholder, not foundation.</td></tr>
+  </table></div>
 </section>
 
 <section id="health">
