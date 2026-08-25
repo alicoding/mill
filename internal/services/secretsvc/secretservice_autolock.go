@@ -5,6 +5,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/clipboard"
 	"github.com/alicoding/mill/internal/adapters/idletime"
+	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/services/dataevent"
 )
 
@@ -85,11 +86,16 @@ var (
 // but ONLY if the clipboard still holds exactly that value at that
 // point (the same "don't clobber something the user copied since"
 // check KeePassXC's own auto-clear makes), never unconditionally.
+// Records one ContextUICopy audit line (goal 0203 S3), same not-gated-
+// but-visible posture as RevealSecret.
 func (s *SecretService) CopySecretToClipboard(id string) error {
 	e, err := s.vault.Get(id)
+	actx := secretaudit.AccessContext{Context: secretaudit.ContextUICopy}
 	if err != nil {
+		s.recordAccess(id, "", actx, secretaudit.OutcomeError, err.Error())
 		return err
 	}
+	s.recordAccess(id, e.Title, actx, secretaudit.OutcomeRead, "")
 	if err := clipboardWriteFn(e.Password); err != nil {
 		return err
 	}

@@ -134,6 +134,9 @@ func TestExecuteWorkflow_ClipboardHTMLToMarkdown_NoHTMLOnClipboard(t *testing.T)
 func withHTTPRequestLookup(t *testing.T, fn func(id string) (ResolvedHTTPRequest, error)) {
 	t.Helper()
 	orig := lookupHTTPRequestFn
-	lookupHTTPRequestFn = fn
+	// Wraps fn to match lookupHTTPRequestFn's real signature (goal 0203
+	// S3 added a SecretAccessRun param) -- every existing test call site
+	// stays a plain func(id string), unchanged.
+	lookupHTTPRequestFn = func(id string, _ SecretAccessRun) (ResolvedHTTPRequest, error) { return fn(id) }
 	t.Cleanup(func() { lookupHTTPRequestFn = orig })
 }

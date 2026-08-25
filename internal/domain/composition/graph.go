@@ -371,7 +371,9 @@ func validateOutputBindingSecrets(nodes []Node) []Issue {
 		if n.NodeTypeID != "integration-http" || n.Config["outputBindings"] == "" {
 			continue
 		}
-		rc, err := lookupHTTPRequestFn(n.Config["requestId"])
+		// Zero-value SecretAccessRun: static graph validation, not a run
+		// -- see refexists.go's identical call for the same reasoning.
+		rc, err := lookupHTTPRequestFn(n.Config["requestId"], SecretAccessRun{})
 		if err != nil || rc.OpenAPISpec == "" {
 			continue
 		}

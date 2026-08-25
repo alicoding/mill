@@ -172,7 +172,7 @@ func main() {
 	backupDir := windowing.ConfigDirOrEnv("MILL_BACKUP_DIR", "backups")
 	backupsvc.GuardVersionChange(logger, settingsStore, backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, backupDir, millVersion)
 
-	mcpAuditService := wiring.WireMCPAudit(backupsvc.SQLiteDBPath(executionDatabaseURL), logger)
+	mcpAuditService := wiring.WireAuditTrails(secretService, backupsvc.SQLiteDBPath(executionDatabaseURL), logger)
 
 	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
 	executionService, err := executionsvc.NewExecutionService(executionDatabaseURL, compositionService, guardrailService)
@@ -471,7 +471,7 @@ func main() {
 	// Run the application. This blocks until the application has been exited.
 	err = app.Run()
 
-	wiring.RunShutdown(logger, executionService, backupService, millMCPService, mcpAuditService, atlasService)
+	wiring.RunShutdown(logger, executionService, backupService, millMCPService, mcpAuditService, atlasService, secretService)
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {

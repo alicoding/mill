@@ -401,3 +401,30 @@ type ExecContext struct {
 	// empty workflow id.
 	WorkflowID string
 }
+
+// SecretAccessRun is the run/workflow identity a node's in-run
+// resolution of an MCP server/exec-env/HTTP-request happened under
+// (goal 0203 S3) -- a plain correlation-id pair, opaque to composition
+// itself (it never inspects these ids, only carries them), threaded
+// through lookupMCPServerFn/lookupExecEnvFn/lookupHTTPRequestFn so a
+// resolver on the OTHER side of that seam (configuresvc) can attribute
+// a secret read to the run that triggered it. Same "cross-service
+// bookkeeping without a domain-layer import" reasoning ExecContext's own
+// WorkflowID field already established (docs/goals/0087) -- composition
+// stays free of secretaudit's own adapter-layer vocabulary (Context,
+// Outcome), which belongs one layer up. The zero value (every non-run
+// caller: RefExists, static graph validation) means "no run in
+// progress," never an error.
+type SecretAccessRun struct {
+	RunID      string
+	WorkflowID string
+}
+
+// secretAccessRunFromCtx builds a SecretAccessRun from a node's own
+// ExecContext -- the one helper every real-run lookup call site
+// (mcpcall.go, codeexec.go, integration.go, decisionoutcome.go) uses so
+// the RunID resolution (the opaque RunContext, via currentRunID) isn't
+// hand-copied at each site.
+func secretAccessRunFromCtx(ctx ExecContext) SecretAccessRun {
+	return SecretAccessRun{RunID: currentRunID(ctx.RunContext), WorkflowID: ctx.WorkflowID}
+}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
+	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/adapters/secretvault"
 )
 
@@ -168,7 +169,7 @@ func TestResolveSecretValue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
-	got, err := s.ResolveSecretValue(created.ID)
+	got, err := s.ResolveSecretValue(created.ID, secretaudit.AccessContext{Context: secretaudit.ContextExecEnv})
 	if err != nil {
 		t.Fatalf("ResolveSecretValue: %v", err)
 	}
@@ -187,7 +188,7 @@ func TestResolveSecretValue_Locked(t *testing.T) {
 		t.Fatalf("CreateSecret: %v", err)
 	}
 	s.LockVault()
-	if _, err := s.ResolveSecretValue(created.ID); err == nil {
+	if _, err := s.ResolveSecretValue(created.ID, secretaudit.AccessContext{Context: secretaudit.ContextExecEnv}); err == nil {
 		t.Fatal("ResolveSecretValue on a locked vault returned nil error, want an error")
 	}
 }

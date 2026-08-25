@@ -68,7 +68,12 @@ export function AutoUpdateCheck(): $CancellablePromise<boolean> {
 
 /**
  * CheckForUpdates asks the configured provider (GitHub Releases,
- * alicoding/mill) whether a newer version exists.
+ * alicoding/mill) whether a newer version exists. The Wails-bound RPC
+ * surface (no context parameter is bindable); checkForUpdates below
+ * does the real work against a caller-supplied context, letting the
+ * background loop (settingsservice_updatenotice.go) propagate its own
+ * cancellable context instead of a fresh context.Background() call
+ * happening underneath it.
  */
 export function CheckForUpdates(): $CancellablePromise<$models.UpdateCheckResult> {
     return $Call.ByID(3825907183);
@@ -494,7 +499,11 @@ export function SetAttentionIdleThreshold(seconds: number): $CancellablePromise<
 }
 
 /**
- * SetAutoUpdateCheck persists the opt-in; applies at boot.
+ * SetAutoUpdateCheck persists the opt-in and applies it live (goal
+ * 0207): turning it on starts the background loop immediately if it
+ * isn't already running; turning it off stops it. Both directions are
+ * idempotent -- flipping the same value twice is a no-op the second
+ * time, never a second loop or a panic on double-stop.
  */
 export function SetAutoUpdateCheck(on: boolean): $CancellablePromise<void> {
     return $Call.ByID(3808971894, on);

@@ -69,6 +69,7 @@ export function ReviewAlwaysRuleDialog({ run, effect, onClose, onResolved }: {
       await GuardrailService.CreateRule({
         ID: '', Label: ruleName, Effect: (effect === 'allow' ? GuardrailEffect.EffectAllow : GuardrailEffect.EffectDeny), Condition: '', Source: '',
         NodeTypeID: '', RequestID: '', WorkflowID: '', NodeID: '',
+        BuiltIn: false, Seed: { SeedRevision: 0, Modified: false },
         ...scopeFields,
       })
     } catch (err) {

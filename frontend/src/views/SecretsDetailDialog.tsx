@@ -12,11 +12,12 @@ import styles from './SecretsView.module.css'
 // clipboard through SecretService.CopySecretToClipboard, which
 // auto-clears after 10s server-side (secretservice_autolock.go) -- no
 // clipboard timer logic lives in this component.
-export function SecretsDetailDialog({ id, onClose, onEdit, onHistory, onDelete }: {
+export function SecretsDetailDialog({ id, onClose, onEdit, onHistory, onAccessHistory, onDelete }: {
   id: string
   onClose: () => void
   onEdit: () => void
   onHistory: () => void
+  onAccessHistory: () => void
   onDelete: () => void
 }) {
   const { t } = useTranslation('secrets')
@@ -41,6 +42,7 @@ export function SecretsDetailDialog({ id, onClose, onEdit, onHistory, onDelete }
       title={entry?.Title ?? ''}
       onClose={onClose}
       footerButtons={[
+        { content: t('accessHistory.button'), onClick: onAccessHistory },
         { content: t('historyButton'), onClick: onHistory },
         { content: t('deleteButton'), buttonType: 'danger', onClick: onDelete },
         { content: t('editButton'), buttonType: 'primary', onClick: onEdit },

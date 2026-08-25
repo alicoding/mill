@@ -11,10 +11,12 @@ package secretsvc
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
+	"github.com/alicoding/mill/internal/adapters/secretauditstore"
 	"github.com/alicoding/mill/internal/adapters/secretvault"
 	"github.com/alicoding/mill/internal/domain/secret"
 	"github.com/alicoding/mill/internal/services/dataevent"
@@ -74,6 +76,12 @@ type SecretService struct {
 	vault        secretvault.Vault
 	credentials  credential.Store
 	stopAutoLock func()
+	// auditStore/auditLog back recordAccess (secretservice_audit.go) --
+	// nil until OpenAudit wires them (goal 0203 S3), which every test
+	// that constructs SecretService directly never calls, so recordAccess
+	// degrades to a no-op rather than a nil-pointer panic.
+	auditStore *secretauditstore.Store
+	auditLog   *slog.Logger
 }
 
 // NewSecretService constructs the service and starts the auto-lock poll

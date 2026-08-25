@@ -44,15 +44,16 @@ type ResolvedExecEnv struct {
 // lookupExecEnvFn defaults to erroring so a code-execution node run
 // before ConfigureService exists (or before SetExecEnvLookup wires it)
 // fails loudly instead of silently no-op'ing -- same pattern every
-// other lookup*Fn in this package already uses.
-var lookupExecEnvFn = func(envID string) (ResolvedExecEnv, error) {
+// other lookup*Fn in this package already uses. Takes a SecretAccessRun
+// (goal 0203 S3), see mcpcall.go's lookupMCPServerFn for the reasoning.
+var lookupExecEnvFn = func(envID string, _ SecretAccessRun) (ResolvedExecEnv, error) {
 	return ResolvedExecEnv{}, fmt.Errorf("no execution environment lookup registered (yet) for id %q", envID)
 }
 
 // SetExecEnvLookup wires the function code-execution nodes use to
 // resolve an envId into its shell/profile/dir/env. Called once from
 // main.go once ConfigureService exists.
-func SetExecEnvLookup(fn func(envID string) (ResolvedExecEnv, error)) {
+func SetExecEnvLookup(fn func(envID string, run SecretAccessRun) (ResolvedExecEnv, error)) {
 	lookupExecEnvFn = fn
 }
 
@@ -222,7 +223,7 @@ func init() {
 			},
 		},
 	}, func(node Node, ctx ExecContext) (ExecContext, error) {
-		re, err := lookupExecEnvFn(node.Config["envId"])
+		re, err := lookupExecEnvFn(node.Config["envId"], secretAccessRunFromCtx(ctx))
 		if err != nil {
 			return ctx, fmt.Errorf("code-execution: %w", err)
 		}

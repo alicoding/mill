@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Blankslate } from '@primer/react/experimental'
 import { Button, Checkbox, FormControl, Heading, IconButton, Stack, Text } from '@primer/react'
-import { KeyIcon, LockIcon, PlusIcon } from '@primer/octicons-react'
+import { HistoryIcon, KeyIcon, LockIcon, PlusIcon } from '@primer/octicons-react'
 import { SecretService } from '../shared/bindings'
 import type { SecretSummary, VaultStatus } from '../shared/bindings'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
@@ -14,6 +14,7 @@ import PageContainer from '../shared/PageContainer'
 import { SecretsEntryDialog } from './SecretsEntryDialog'
 import { SecretsDetailDialog } from './SecretsDetailDialog'
 import { SecretsHistoryDialog } from './SecretsHistoryDialog'
+import { SecretsAccessHistoryDialog } from './SecretsAccessHistoryDialog'
 import styles from './SecretsView.module.css'
 
 // The secret manager's human-facing surface (goal 0185 S2): browse,
@@ -33,6 +34,8 @@ export default function SecretsView() {
   const [editingID, setEditingID] = useState<string | null>(null)
   const [detailID, setDetailID] = useState<string | null>(null)
   const [historyID, setHistoryID] = useState<string | null>(null)
+  const [accessHistoryID, setAccessHistoryID] = useState<string | null>(null)
+  const [showAccessHistory, setShowAccessHistory] = useState(false)
 
   const refresh = () => {
     SecretService.VaultStatus().then((s) => {
@@ -163,6 +166,13 @@ export default function SecretsView() {
           <Text as="p" size="small" className={styles.subtitle}>{t('subtitle')}</Text>
         </Stack>
         <Stack direction="horizontal" gap="condensed" align="center">
+          <IconButton
+            icon={HistoryIcon}
+            aria-label={t('accessHistory.button')}
+            variant="invisible"
+            onClick={() => setShowAccessHistory(true)}
+            data-testid="secrets-access-history-open"
+          />
           <IconButton icon={LockIcon} aria-label={t('lockButton')} variant="invisible" onClick={lockVault} data-testid="secrets-lock" />
           <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate} data-testid="secrets-new">
             {t('newSecret')}
@@ -206,10 +216,19 @@ export default function SecretsView() {
           onClose={() => setDetailID(null)}
           onEdit={() => startEdit(detailID)}
           onHistory={() => setHistoryID(detailID)}
+          onAccessHistory={() => setAccessHistoryID(detailID)}
           onDelete={() => requestDelete(sorted.find((s) => s.ID === detailID) ?? { ID: detailID, Title: detailID, Username: '', URL: '', Tags: '', UpdatedAt: '' })}
         />
       )}
       {historyID && <SecretsHistoryDialog id={historyID} onClose={() => setHistoryID(null)} />}
+      {showAccessHistory && <SecretsAccessHistoryDialog onClose={() => setShowAccessHistory(false)} />}
+      {accessHistoryID && (
+        <SecretsAccessHistoryDialog
+          entryId={accessHistoryID}
+          entryLabel={sorted.find((s) => s.ID === accessHistoryID)?.Title ?? accessHistoryID}
+          onClose={() => setAccessHistoryID(null)}
+        />
+      )}
       {confirmDialog}
     </PageContainer>
   )

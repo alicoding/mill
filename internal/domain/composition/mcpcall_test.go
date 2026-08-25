@@ -113,7 +113,7 @@ func TestMCPToolCall_ErrorTextRedacted(t *testing.T) {
 	origLookup, origCall, origRedact := lookupMCPServerFn, callToolFn, redactSecretsFn
 	t.Cleanup(func() { lookupMCPServerFn, callToolFn, redactSecretsFn = origLookup, origCall, origRedact })
 
-	SetMCPServerLookup(func(string) (ResolvedMCPServer, error) {
+	SetMCPServerLookup(func(string, SecretAccessRun) (ResolvedMCPServer, error) {
 		return ResolvedMCPServer{Command: "irrelevant"}, nil
 	})
 	SetMCPCallTool(func(string, []string, []string, string, map[string]any, string) (string, error) {

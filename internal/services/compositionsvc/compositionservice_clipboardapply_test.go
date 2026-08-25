@@ -17,9 +17,12 @@ import (
 // in its tests, so there's no other "original" value to save).
 func swapHTTPRequestLookup(t *testing.T, fn func(id string) (composition.ResolvedHTTPRequest, error)) {
 	t.Helper()
-	composition.SetHTTPRequestLookup(fn)
+	// Wraps fn to match SetHTTPRequestLookup's real signature (goal 0203
+	// S3 added a composition.SecretAccessRun param) -- every existing
+	// test call site stays a plain func(id string), unchanged.
+	composition.SetHTTPRequestLookup(func(id string, _ composition.SecretAccessRun) (composition.ResolvedHTTPRequest, error) { return fn(id) })
 	t.Cleanup(func() {
-		composition.SetHTTPRequestLookup(func(id string) (composition.ResolvedHTTPRequest, error) {
+		composition.SetHTTPRequestLookup(func(id string, _ composition.SecretAccessRun) (composition.ResolvedHTTPRequest, error) {
 			return composition.ResolvedHTTPRequest{}, fmt.Errorf("no request lookup registered (yet) for id %q", id)
 		})
 	})

@@ -262,7 +262,10 @@ func TestExecuteWorkflow_ListLookup_EndToEnd(t *testing.T) {
 func withMCPServerLookup(t *testing.T, fn func(id string) (ResolvedMCPServer, error)) {
 	t.Helper()
 	orig := lookupMCPServerFn
-	lookupMCPServerFn = fn
+	// Wraps fn to match lookupMCPServerFn's real signature (goal 0203 S3
+	// added a SecretAccessRun param) -- every existing test call site
+	// stays a plain func(id string), unchanged.
+	lookupMCPServerFn = func(id string, _ SecretAccessRun) (ResolvedMCPServer, error) { return fn(id) }
 	t.Cleanup(func() { lookupMCPServerFn = orig })
 }
 

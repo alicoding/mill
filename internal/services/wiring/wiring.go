@@ -48,7 +48,7 @@ const shutdownTimeout = 5 * time.Second
 // post-app.Run() sequence needs, in order, logging (never failing
 // loudly) on each step's own error -- a step's failure must never
 // block the rest, since the process is exiting either way.
-func RunShutdown(logger *slog.Logger, executionService *executionsvc.ExecutionService, backupService *backupsvc.BackupService, millMCPService *mcpsvc.MillMCPService, mcpAuditService *mcpauditsvc.MCPAuditService, atlasService *atlassvc.AtlasService) {
+func RunShutdown(logger *slog.Logger, executionService *executionsvc.ExecutionService, backupService *backupsvc.BackupService, millMCPService *mcpsvc.MillMCPService, mcpAuditService *mcpauditsvc.MCPAuditService, atlasService *atlassvc.AtlasService, secretService *secretsvc.SecretService) {
 	// Flush any in-flight step checkpoints before the process actually
 	// exits.
 	if err := executionService.Shutdown(shutdownTimeout); err != nil {
@@ -66,6 +66,12 @@ func RunShutdown(logger *slog.Logger, executionService *executionsvc.ExecutionSe
 	}
 	if err := mcpAuditService.Close(); err != nil {
 		logger.Error("mcp audit service shutdown", "error", err)
+	}
+	// goal 0203 S3: secretService's own audit store, paired with
+	// mcpAuditService's above -- WireAuditTrails opened both against the
+	// same dbPath, so they close together here too.
+	if err := secretService.CloseAudit(); err != nil {
+		logger.Error("secret audit service shutdown", "error", err)
 	}
 	// No watcher goroutine outlives the process (goal 0194's live
 	// round-trip slice).
@@ -171,21 +177,32 @@ func WireNotify() {
 	})
 }
 
-// WireMCPAudit constructs the MCP call audit trail (goal 0159 slice 1)
-// against dbPath and wires mcpclient's package-level sending middleware
-// -- pulled out of main.go's own construction flow to keep that file
-// under the 500-line limit, the same reason this package exists.
-// Exits the process on failure: dbPath's file is already proven
-// writable by DBOS's own successful open before main.go ever calls
-// this, so a failure here means a real environment problem, matching
-// executionsvc.NewExecutionService's own fatal-on-construction-failure
-// posture.
-func WireMCPAudit(dbPath string, logger *slog.Logger) *mcpauditsvc.MCPAuditService {
+// WireAuditTrails constructs the MCP call audit trail (goal 0159 slice
+// 1) against dbPath, wires mcpclient's package-level sending
+// middleware, and opens secretService's own secret-read audit store
+// (goal 0203 S3) against the SAME dbPath -- one call rather than two
+// separate main.go call sites, same 500-line reason this package
+// exists. Both trails share dbPath by construction (the execution
+// SQLite file, each through its own independent connection) but not a
+// table: secretauditstore's own doc comment has the "never mcpaudit's
+// table" reasoning. Called only once dbPath is resolved, which is AFTER
+// WireSecrets already constructed secretService earlier in main.go's
+// own sequence -- secretService's audit store can't open until then.
+// Exits the process on failure for either store: dbPath's file is
+// already proven writable by DBOS's own successful open before main.go
+// ever calls this, so a failure here means a real environment problem,
+// matching executionsvc.NewExecutionService's own
+// fatal-on-construction-failure posture. Both stores close together
+// too, inside RunShutdown below.
+func WireAuditTrails(secretService *secretsvc.SecretService, dbPath string, logger *slog.Logger) *mcpauditsvc.MCPAuditService {
 	svc, err := mcpauditsvc.New(dbPath, logger)
 	if err != nil {
 		log.Fatal(err)
 	}
 	mcpclient.SetSendingMiddleware(svc.ClientMiddleware())
+	if err := secretService.OpenAudit(dbPath, logger); err != nil {
+		log.Fatal(err)
+	}
 	return svc
 }
 
@@ -194,7 +211,7 @@ func WireMCPAudit(dbPath string, logger *slog.Logger) *mcpauditsvc.MCPAuditServi
 // list (so Settings > Remote access can call it) and
 // application.Options.Assets.Middleware (so it gates every request the
 // AssetServer serves) -- pulled out here for the same 500-line reason
-// WireMCPAudit above is. BootstrapPairingCode runs immediately after
+// WireAuditTrails above is. BootstrapPairingCode runs immediately after
 // construction, gated on the build-tag-derived server flag: SLICE 1b's
 // fix for the bootstrap deadlock a non-loopback-bound server instance
 // hits otherwise (see that method's own doc comment).

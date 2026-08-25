@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/mcpclient"
+	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
 	"github.com/alicoding/mill/internal/domain/seedorigin"
@@ -50,10 +51,24 @@ func upgradeMCPServerToGolden(existing, golden mcpserver.MCPServer, now time.Tim
 // added.
 const mcpServersKey = "configure-mcpservers"
 
-// resolveMCPServer implements composition.go's lookupMCPServerFn seam.
-// Unexported, so Wails never binds it as a callable frontend method --
-// Go-internal wiring only, same as resolveHTTPRequest/resolveList.
-func (c *ConfigureService) resolveMCPServer(id string) (composition.ResolvedMCPServer, error) {
+// resolveMCPServer implements composition.go's lookupMCPServerFn seam --
+// a real workflow run's own resolution, always tagged
+// secretaudit.ContextMCPServerSpawn (goal 0203 S3). Unexported, so Wails
+// never binds it as a callable frontend method -- Go-internal wiring
+// only, same as resolveHTTPRequest/resolveList.
+func (c *ConfigureService) resolveMCPServer(id string, run composition.SecretAccessRun) (composition.ResolvedMCPServer, error) {
+	return c.resolveMCPServerWithAccess(id, secretaudit.AccessContext{
+		Context: secretaudit.ContextMCPServerSpawn, RunID: run.RunID, WorkflowID: run.WorkflowID,
+	})
+}
+
+// resolveMCPServerWithAccess is resolveMCPServer's own logic,
+// parameterized on the caller's secretaudit.AccessContext -- the seam
+// ListMCPServerTools uses to resolve the SAME server's env for its own
+// preview purpose, tagged ContextConfigureToolsPreview instead of
+// ContextMCPServerSpawn (goal 0203 S3, closing S2's own found gap: this
+// preview spawns the real server outside any workflow run).
+func (c *ConfigureService) resolveMCPServerWithAccess(id string, actx secretaudit.AccessContext) (composition.ResolvedMCPServer, error) {
 	c.mu.Lock()
 	var found *mcpserver.MCPServer
 	for i := range c.mcpServers {
@@ -67,7 +82,7 @@ func (c *ConfigureService) resolveMCPServer(id string) (composition.ResolvedMCPS
 		return composition.ResolvedMCPServer{}, fmt.Errorf("no MCP server with id %q", id)
 	}
 
-	env, err := c.resolveMCPServerEnv(found.Label, found.Env)
+	env, err := c.resolveMCPServerEnv(found.Label, found.Env, actx)
 	if err != nil {
 		return composition.ResolvedMCPServer{}, err
 	}
@@ -81,8 +96,8 @@ func (c *ConfigureService) resolveMCPServer(id string) (composition.ResolvedMCPS
 // helper). A locked vault surfaces here as this call's own error
 // (secretsvc.ErrLocked wrapped), the explicit "vault is locked" failure
 // the goal file requires, never a silent empty/wrong secret.
-func (c *ConfigureService) resolveMCPServerEnv(label string, env []string) ([]string, error) {
-	return c.resolveVaultRefEnv("MCP server", label, env)
+func (c *ConfigureService) resolveMCPServerEnv(label string, env []string, actx secretaudit.AccessContext) ([]string, error) {
+	return c.resolveVaultRefEnv("MCP server", label, env, actx)
 }
 
 // --- MCP Servers ---
@@ -181,7 +196,10 @@ func (c *ConfigureService) DeleteMCPServer(id string) error {
 // answer: a user finds the exact toolName to paste into an mcp-tool-call
 // node here, not by guessing.
 func (c *ConfigureService) ListMCPServerTools(id string) ([]mcpclient.Tool, error) {
-	rs, err := c.resolveMCPServer(id)
+	// ContextConfigureToolsPreview (goal 0203 S3), never
+	// ContextMCPServerSpawn: this is the Configure page's own reference
+	// lookup, not a workflow run, so it carries no run/workflow id.
+	rs, err := c.resolveMCPServerWithAccess(id, secretaudit.AccessContext{Context: secretaudit.ContextConfigureToolsPreview})
 	if err != nil {
 		return nil, err
 	}

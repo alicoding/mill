@@ -29,15 +29,18 @@ type ResolvedMCPServer struct {
 
 // lookupMCPServerFn defaults to erroring so an mcp-tool-call node run
 // before ConfigureService exists (or before SetMCPServerLookup wires it)
-// fails loudly instead of silently no-op'ing.
-var lookupMCPServerFn = func(mcpServerID string) (ResolvedMCPServer, error) {
+// fails loudly instead of silently no-op'ing. Takes a SecretAccessRun
+// (goal 0203 S3) so the resolver on the other side of this seam can
+// attribute the MCP server's own "vault:" env resolution to the run
+// that triggered it.
+var lookupMCPServerFn = func(mcpServerID string, _ SecretAccessRun) (ResolvedMCPServer, error) {
 	return ResolvedMCPServer{}, fmt.Errorf("no MCP server lookup registered (yet) for id %q", mcpServerID)
 }
 
 // SetMCPServerLookup wires the function mcp-tool-call nodes use to
 // resolve an mcpServerId into its command/args. Called once from
 // main.go once ConfigureService exists.
-func SetMCPServerLookup(fn func(mcpServerID string) (ResolvedMCPServer, error)) {
+func SetMCPServerLookup(fn func(mcpServerID string, run SecretAccessRun) (ResolvedMCPServer, error)) {
 	lookupMCPServerFn = fn
 }
 
@@ -107,7 +110,7 @@ func init() {
 			},
 		},
 	}, func(node Node, ctx ExecContext) (ExecContext, error) {
-		rs, err := lookupMCPServerFn(node.Config["mcpServerId"])
+		rs, err := lookupMCPServerFn(node.Config["mcpServerId"], secretAccessRunFromCtx(ctx))
 		if err != nil {
 			return ctx, fmt.Errorf("mcp-tool-call: %w", err)
 		}

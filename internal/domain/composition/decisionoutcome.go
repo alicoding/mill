@@ -255,7 +255,7 @@ func init() {
 		// (redrivable, same as any other node failure), it never silently
 		// swallows a delivery error.
 		if rd.WebhookRequestID != "" {
-			hreq, err := lookupHTTPRequestFn(rd.WebhookRequestID)
+			hreq, err := lookupHTTPRequestFn(rd.WebhookRequestID, secretAccessRunFromCtx(ctx))
 			if err != nil {
 				return ctx, fmt.Errorf("decision-outcome: webhook: %w", err)
 			}

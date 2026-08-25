@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alicoding/mill/internal/adapters/secretaudit"
+	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/execenv"
 )
 
@@ -15,7 +17,7 @@ import (
 // node is a non-MCP consumer of a stored credential).
 func TestResolveExecEnv_VaultRefResolved(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	cfg.SetSecretResolver(func(id string) (string, error) {
+	cfg.SetSecretResolver(func(id string, _ secretaudit.AccessContext) (string, error) {
 		if id == "entry-1" {
 			return "real-secret-fake", nil
 		}
@@ -27,7 +29,7 @@ func TestResolveExecEnv_VaultRefResolved(t *testing.T) {
 		t.Fatalf("CreateExecEnv: %v", err)
 	}
 
-	rs, err := cfg.resolveExecEnv(e.ID)
+	rs, err := cfg.resolveExecEnv(e.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveExecEnv: %v", err)
 	}
@@ -44,13 +46,13 @@ func TestResolveExecEnv_VaultRefResolved(t *testing.T) {
 func TestResolveExecEnv_VaultLocked_FailsExplicitly(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 	lockedErr := errors.New("secretvault: vault is locked")
-	cfg.SetSecretResolver(func(string) (string, error) { return "", lockedErr })
+	cfg.SetSecretResolver(func(string, secretaudit.AccessContext) (string, error) { return "", lockedErr })
 
 	e, err := cfg.CreateExecEnv("Sandbox", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel, []string{"API_KEY=vault:entry-1"})
 	if err != nil {
 		t.Fatalf("CreateExecEnv: %v", err)
 	}
-	if _, err := cfg.resolveExecEnv(e.ID); err == nil {
+	if _, err := cfg.resolveExecEnv(e.ID, composition.SecretAccessRun{}); err == nil {
 		t.Fatal("resolveExecEnv with a locked vault returned nil error, want an error")
 	}
 }
@@ -61,7 +63,7 @@ func TestResolveExecEnv_VaultLocked_FailsExplicitly(t *testing.T) {
 // resolved secret -- export never consults the secret resolver at all.
 func TestExportExecEnv_NeverCarriesResolvedSecret(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	cfg.SetSecretResolver(func(string) (string, error) {
+	cfg.SetSecretResolver(func(string, secretaudit.AccessContext) (string, error) {
 		return "real-secret-fake", nil
 	})
 
@@ -88,7 +90,7 @@ func TestExportExecEnv_NeverCarriesResolvedSecret(t *testing.T) {
 // resolver is never even called.
 func TestResolveExecEnv_NoEnv_Unaffected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	cfg.SetSecretResolver(func(string) (string, error) {
+	cfg.SetSecretResolver(func(string, secretaudit.AccessContext) (string, error) {
 		t.Fatal("secret resolver called for an ExecEnv with no Env")
 		return "", nil
 	})
@@ -97,7 +99,7 @@ func TestResolveExecEnv_NoEnv_Unaffected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateExecEnv: %v", err)
 	}
-	rs, err := cfg.resolveExecEnv(e.ID)
+	rs, err := cfg.resolveExecEnv(e.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveExecEnv: %v", err)
 	}

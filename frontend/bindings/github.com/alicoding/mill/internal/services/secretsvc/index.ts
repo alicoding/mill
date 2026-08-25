@@ -7,5 +7,8 @@ export {
 };
 
 export type {
+    ListSecretAccessRequest,
+    ListSecretAccessResponse,
+    SecretAccessRecord,
     Status
 } from "./models.js";

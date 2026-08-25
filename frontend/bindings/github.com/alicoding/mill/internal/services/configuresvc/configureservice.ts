@@ -236,6 +236,20 @@ export function DeleteMCPServer(id: string): $CancellablePromise<void> {
     return $Call.ByID(3847603582, id);
 }
 
+/**
+ * DeriveSecretLabels answers, statically from a node's own type and
+ * config -- never by resolving a real secret VALUE -- which vault
+ * entries its execution will resolve, as sorted, deduped LABELS (goal
+ * 0203 S2). This must compute the exact same answer a real run's own
+ * vault-reference resolution (vaultref.go) would reach: WorkflowVerdicts
+ * (the canvas nothing-hidden badge) calls this before anyone runs the
+ * workflow, so a step that will actually touch a secret can never show
+ * a clean badge the live gate then contradicts.
+ */
+export function DeriveSecretLabels(nodeTypeID: string, config: { [_ in string]?: string } | null): $CancellablePromise<string[] | null> {
+    return $Call.ByID(3138098164, nodeTypeID, config);
+}
+
 export function ExecEnvs(): $CancellablePromise<execenv$0.ExecEnv[] | null> {
     return $Call.ByID(1392956673);
 }

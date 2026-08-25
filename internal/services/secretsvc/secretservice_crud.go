@@ -3,6 +3,7 @@ package secretsvc
 import (
 	"fmt"
 
+	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/domain/secret"
 	"github.com/alicoding/mill/internal/services/dataevent"
 )
@@ -18,14 +19,19 @@ func (s *SecretService) ListSecrets() ([]secret.Summary, error) {
 // configuresvc.SetSecretResolver wires (goal 0185 S3) so a workflow
 // consumer (MCPServer.Env's own "vault:" references) can resolve a
 // vault entry without reaching for the human-facing RevealSecret RPC.
-// Exported for wiring only, never a frontend RPC.
+// Every call records one audit line (goal 0203 S3) -- actx.Context
+// names which resolution seam is asking, statically known by that
+// seam's own caller, never guessed here. Exported for wiring only,
+// never a frontend RPC.
 //
 //wails:ignore
-func (s *SecretService) ResolveSecretValue(id string) (string, error) {
+func (s *SecretService) ResolveSecretValue(id string, actx secretaudit.AccessContext) (string, error) {
 	e, err := s.vault.Get(id)
 	if err != nil {
+		s.recordAccess(id, "", actx, secretaudit.OutcomeError, err.Error())
 		return "", err
 	}
+	s.recordAccess(id, e.Title, actx, secretaudit.OutcomeRead, "")
 	return e.Password, nil
 }
 
@@ -34,9 +40,18 @@ func (s *SecretService) ResolveSecretValue(id string) (string, error) {
 // browsing), matching SetHTTPRequestSecret's own write-only-elsewhere
 // posture but inverted: this vault's whole point is a human can read
 // their own password back, unlike the write-only integration-secret
-// slots.
+// slots. Records one ContextUIReveal audit line (goal 0203 S3) -- a
+// human's own click, not gated (S2 contract), but visible in their own
+// Access history.
 func (s *SecretService) RevealSecret(id string) (secret.Entry, error) {
-	return s.vault.Get(id)
+	e, err := s.vault.Get(id)
+	actx := secretaudit.AccessContext{Context: secretaudit.ContextUIReveal}
+	if err != nil {
+		s.recordAccess(id, "", actx, secretaudit.OutcomeError, err.Error())
+		return secret.Entry{}, err
+	}
+	s.recordAccess(id, e.Title, actx, secretaudit.OutcomeRead, "")
+	return e, nil
 }
 
 // SecretHistory returns id's past versions, most-recently-superseded
@@ -95,6 +110,12 @@ func (s *SecretService) DeleteSecret(id string) error {
 // good way to surface a SECOND error about redaction failing while
 // already reporting a first one -- text passes through unredacted
 // rather than the whole error path failing outright.
+//
+// Deliberately unaudited (goal 0203 S3 contract): this reads every
+// vault entry on a failure path purely to SCRUB output, never to expose
+// a value to anyone -- recording it would bury real reads (a workflow
+// that actually used a credential) under one audit line per error
+// message formatted anywhere in the app.
 func (s *SecretService) RedactKnownSecrets(text string) string {
 	entries, err := s.vault.List()
 	if err != nil {

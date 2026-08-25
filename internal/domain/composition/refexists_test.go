@@ -21,7 +21,7 @@ func TestRefExists_Request(t *testing.T) {
 	prev := lookupHTTPRequestFn
 	t.Cleanup(func() { lookupHTTPRequestFn = prev })
 
-	lookupHTTPRequestFn = func(id string) (ResolvedHTTPRequest, error) {
+	lookupHTTPRequestFn = func(id string, _ SecretAccessRun) (ResolvedHTTPRequest, error) {
 		if id == "known" {
 			return ResolvedHTTPRequest{}, nil
 		}
@@ -57,7 +57,7 @@ func TestRefExists_MCPServer(t *testing.T) {
 	prev := lookupMCPServerFn
 	t.Cleanup(func() { lookupMCPServerFn = prev })
 
-	lookupMCPServerFn = func(id string) (ResolvedMCPServer, error) {
+	lookupMCPServerFn = func(id string, _ SecretAccessRun) (ResolvedMCPServer, error) {
 		if id == "known" {
 			return ResolvedMCPServer{}, nil
 		}
@@ -93,7 +93,7 @@ func TestRefExists_ExecEnv(t *testing.T) {
 	prev := lookupExecEnvFn
 	t.Cleanup(func() { lookupExecEnvFn = prev })
 
-	lookupExecEnvFn = func(id string) (ResolvedExecEnv, error) {
+	lookupExecEnvFn = func(id string, _ SecretAccessRun) (ResolvedExecEnv, error) {
 		if id == "known" {
 			return ResolvedExecEnv{}, nil
 		}
