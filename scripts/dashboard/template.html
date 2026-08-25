@@ -109,7 +109,16 @@ h2.hl + .card.fade, h2.hl + pre.mermaid.fade{outline-color:transparent}
 <!-- DERIVED:stat-tiles:END -->
 
 <section id="delivery" class="on">
-  <h2 id="delivery-now">In flight right now <small>— queue rows checked "~"</small></h2>
+  <!-- AUTHORED until 0210 S3 derives this from docs/goals/DISPATCH.md -->
+  <h2 id="delivery-building">Building right now <small>— live builders/PRs from the dispatch ledger; touch-sets show why work serializes</small></h2>
+  <div class="card"><table>
+    <tr><th>goal</th><th>what</th><th>state</th><th>touch-set</th></tr>
+    <tr><td>0220 S1</td><td>update state machine · acting pill · check interval</td><td><span class="chip warn">PR #448 in CI</span></td><td class="mono">settingssvc · UpdatesSection · NoticePill</td></tr>
+    <tr><td>0216</td><td>toolbar overflow (ActionBar)</td><td><span class="chip crit">PR #442 CI-starved, retrigger pending</span></td><td class="mono">AtlasToolbar + 1 spec</td></tr>
+  </table></div>
+  <div class="note">Queued next: 0222 command enablement (waits on #448 — same registry seam) · 0210 S3 (derive this block) · 0223 seeding. An arc marked "in progress" below may have NO live builder — that split is exactly what this block exists to show.</div>
+
+  <h2 id="delivery-now">In flight right now <small>— open ARCS (queue rows checked "~"); a live builder appears above, not here</small></h2>
   <!-- DERIVED:in-flight:START -->
   <div class="card"><table>
     <tr><th>work</th><th>state</th><th>what lands</th></tr>
@@ -146,11 +155,10 @@ h2.hl + .card.fade, h2.hl + pre.mermaid.fade{outline-color:transparent}
     <div class="lg-h"></div><div class="lg-h">Now · in flight</div><div class="lg-h">Next · this week's queue</div><div class="lg-h">Then</div><div class="lg-h">v1 gates</div>
 
     <div class="lg-lane">Canvas<br><small>(your daily loop)</small></div>
-    <div><span class="it hot"><b>0213 draw-tool gesture fix</b><small>strokes dragged mid-draw · PR in flight</small></span>
-         <span class="it"><b>0212 roadmap view</b><small>building now · 1–2 cyc</small></span></div>
-    <div><span class="it"><b>0215 tool↔platform contract</b><small>after 0213 · 2–3 cyc</small></span>
+    <div><span class="it done"><b>Shipped today</b><small>gesture fix · rotation · paste→objects+notes · undo ⌘Z · stencil rendering · navigation · roadmap placer — 7 merges, in the next betas</small></span></div>
+    <div><span class="it wait"><b>0224 element-panel UX session</b><small>your session · postures ratify there</small></span>
          <span class="it wait"><b>0169 tray palette</b><small>awaits your contract review · 2 cyc</small></span></div>
-    <div><span class="it"><b>0214 rotation handle</b><small>after 0215 · 1 cyc</small></span>
+    <div><span class="it"><b>0223 board-object seeding</b><small>1 cyc</small></span>
          <span class="it wait"><b>0201 copy-as-image</b><small>your call first · 1–2 cyc</small></span></div>
     <div></div>
 
@@ -167,9 +175,11 @@ h2.hl + .card.fade, h2.hl + pre.mermaid.fade{outline-color:transparent}
     <div></div>
 
     <div class="lg-lane">Platform / process</div>
-    <div></div>
-    <div><span class="it"><b>0191 remaining hook audit</b><small>WorktreeRemove hook shipped · 1 cyc</small></span></div>
-    <div><span class="it"><b>0192 context completeness</b><small>process design · 1 cyc</small></span></div>
+    <div><span class="it"><b>0220 S1 update experience</b><small>acting pill + interval · PR #448 in CI</small></span></div>
+    <div><span class="it"><b>0222 command surface</b><small>enablement predicate · next build</small></span>
+         <span class="it"><b>0211 surface map</b><small>platform API coverage ledger · 1 cyc</small></span></div>
+    <div><span class="it"><b>0220 S2/S3</b><small>changelog surface · keychain button</small></span>
+         <span class="it"><b>0192 context completeness</b><small>process design · 1 cyc</small></span></div>
     <div></div>
 
     <div class="lg-lane">Release</div>
@@ -177,8 +187,7 @@ h2.hl + .card.fade, h2.hl + pre.mermaid.fade{outline-color:transparent}
     <div></div>
     <div></div>
     <div><span class="it hot"><b>0205 S5 release trigger</b><small>BLOCKER · 1 cyc</small></span>
-         <span class="it"><b>0177 notarization</b><small>trigger: first outside download</small></span></div>
-  </div></div>
+         <span class="it"><b>0177 notarization</b><small>trigger: first outside download</small></span></div></div>
   <div class="note">Shipped work leaves the board — the Delivery tab keeps the ledger. An item moves left only by a real dispatch, never by optimism.</div>
 
   <h2 id="roadmap-cost">When you ask for something — what it costs &amp; who maintains it</h2>
