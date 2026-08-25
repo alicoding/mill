@@ -39,10 +39,18 @@ import type { AtlasBoardObjectRFNode } from './AtlasBoardObjectNode'
 // `style.zIndex: "1000"` against ink's own declared `"1"`).
 const OBJECT_Z_INDEX: Record<string, number> = { image: 0, shape: 0, table: 0, diagram: 0, ink: 1 }
 
-export function buildBoardObjectNodes({ objects, readOnly, isFree }: {
+export function buildBoardObjectNodes({ objects, readOnly, isFree, soleSelectedID = null }: {
   objects: BoardObject[]
   readOnly: boolean
   isFree: boolean
+  // The board's own sole-selected object id, if any (goal 0214) --
+  // threaded through so AtlasBoardObjectNode.tsx can show the shape
+  // rotation handle only on that ONE node, never derived per-node from
+  // React Flow's own per-node `selected` (which can't distinguish
+  // "sole" from "part of a multi-selection"). Optional/defaulted so
+  // every pre-existing call site (including this file's own test)
+  // keeps compiling unmodified.
+  soleSelectedID?: string | null
 }): AtlasBoardObjectRFNode[] {
   return objects.map((object) => ({
     id: object.ID,
@@ -51,6 +59,6 @@ export function buildBoardObjectNodes({ objects, readOnly, isFree }: {
     draggable: isFree && !readOnly,
     zIndex: OBJECT_Z_INDEX[object.Kind] ?? 0,
     ...(object.Size ? { width: object.Size.W, height: object.Size.H } : {}),
-    data: { object },
+    data: { object, soleSelected: object.ID === soleSelectedID },
   }))
 }

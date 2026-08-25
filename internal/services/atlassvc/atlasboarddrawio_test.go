@@ -217,6 +217,37 @@ func TestExportBoardAsDrawio_ShapesStyledArrowSkipped(t *testing.T) {
 	}
 }
 
+// A rotated shape (goal 0214) carries its angle into the exported
+// style string as mxGraph's own rotation=N key; an unrotated shape's
+// export is byte-identical to before the field existed (no
+// rotation=0; ever written).
+func TestExportBoardAsDrawio_ShapeRotationRoundTrips(t *testing.T) {
+	a := newTestAtlasService(t)
+	root, err := a.CreateCard(testKindID(t, a), "Rotation Root", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard: %v", err)
+	}
+	rotated := map[string]string{"shapeType": "rectangle", "fill": "none", "stroke": "#1f6feb", "rotation": "45"}
+	if _, err := a.CreateBoardObject("shape", rotated, atlas.Position{X: 0, Y: 0}, root.ID); err != nil {
+		t.Fatalf("CreateBoardObject rotated: %v", err)
+	}
+	unrotated := map[string]string{"shapeType": "ellipse", "fill": "none", "stroke": "#1f6feb"}
+	if _, err := a.CreateBoardObject("shape", unrotated, atlas.Position{X: 100, Y: 0}, root.ID); err != nil {
+		t.Fatalf("CreateBoardObject unrotated: %v", err)
+	}
+
+	export, err := a.ExportBoardAsDrawio(root.ID)
+	if err != nil {
+		t.Fatalf("ExportBoardAsDrawio: %v", err)
+	}
+	if !strings.Contains(export.XML, "rotation=45;") {
+		t.Errorf("expected the rotated shape's angle in the style string, got:\n%s", export.XML)
+	}
+	if strings.Contains(export.XML, "rotation=0") {
+		t.Errorf("an unrotated shape must never write rotation=0 into its style, got:\n%s", export.XML)
+	}
+}
+
 // An ink or image board object is out of scope for v1 -- named
 // skipped, never rendered as a plain vertex that would look like real
 // content.

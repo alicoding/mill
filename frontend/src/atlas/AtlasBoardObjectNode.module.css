@@ -20,6 +20,11 @@
     display: flex;
     flex-direction: column;
     cursor: pointer;
+    /* Positioning context for the shape rotation handle (goal 0214) --
+       its own absolutely-positioned grip sits above THIS box's top
+       edge, riding the RF node's own transform rather than a
+       hand-positioned floating div (frontend.md's overlay rule). */
+    position: relative;
 }
 
 /* The drag surface (goal 0199, gated per-noun by goal 0206): a slim,

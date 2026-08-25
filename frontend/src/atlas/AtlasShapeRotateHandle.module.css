@@ -1,0 +1,29 @@
+/* The rotation handle (goal 0214) rides inside the RF node's own
+   transformed wrapper -- .object (AtlasBoardObjectNode.module.css)
+   carries position:relative so this positions against the shape's own
+   box, the same canvas-anchored contract NodeResizer's handles follow,
+   never a floating position:fixed guess (frontend.md's overlay rule). */
+.handle {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--bgColor-accent-emphasis);
+    border: 2px solid var(--bgColor-default);
+    box-shadow: 0 0 0 1px var(--borderColor-default);
+    cursor: grab;
+    touch-action: none;
+    /* A rotated shape's own paint can swing a corner up past the
+       handle's fixed resting spot (a wide rectangle rotated ~45deg+
+       visibly overlaps it) -- z-index keeps the handle hit-testable
+       above .content regardless of the current angle, rather than
+       depending on DOM order alone. */
+    z-index: 1;
+}
+
+.handle:active {
+    cursor: grabbing;
+}

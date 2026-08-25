@@ -850,6 +850,22 @@ export function SetBoardObjectPosition(id: string, pos: atlas$0.Position): $Canc
 }
 
 /**
+ * SetBoardObjectRotation persists a shape's rotation angle in degrees
+ * (goal 0214) -- same scoped-setter shape as SetBoardObjectPosition/
+ * SetBoardObjectSize, writing into Payload rather than a dedicated
+ * struct field since rotation lives at the same tier as a shape's
+ * other style keys (fill/stroke/strokeWidth, shapeTool.ts's own "style
+ * lives in Payload" contract). Payload is copied before mutation so a
+ * failed persist can roll back to `previous` without also reverting
+ * the caller's own map (maps are reference types; mutating the shared
+ * map in place would corrupt the rollback). Kind-agnostic like every
+ * other setter here -- the frontend decides which Kinds ever call it.
+ */
+export function SetBoardObjectRotation(id: string, degrees: number): $CancellablePromise<atlas$0.BoardObject> {
+    return $Call.ByID(1961954755, id, degrees);
+}
+
+/**
  * SetBoardObjectSize persists a user-driven resize -- nil until the
  * object's own natural/intrinsic render size is first overridden (S2+;
  * S1 never calls this, but the door exists so a future resize handle

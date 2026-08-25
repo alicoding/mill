@@ -86,6 +86,34 @@ func TestSetBoardObjectSize_RoundTrips(t *testing.T) {
 	}
 }
 
+func TestSetBoardObjectRotation_RoundTrips(t *testing.T) {
+	a := newTestAtlasService(t)
+	o, err := a.CreateBoardObject("shape", map[string]string{"shapeType": "rectangle"}, atlas.Position{}, "")
+	if err != nil {
+		t.Fatalf("CreateBoardObject: %v", err)
+	}
+	rotated, err := a.SetBoardObjectRotation(o.ID, 45)
+	if err != nil {
+		t.Fatalf("SetBoardObjectRotation: %v", err)
+	}
+	if rotated.Payload["rotation"] != "45" {
+		t.Errorf("Payload[rotation] = %q, want %q", rotated.Payload["rotation"], "45")
+	}
+	// The original payload map handed to CreateBoardObject must stay
+	// untouched -- a shared reference would leak this write onto the
+	// caller's own map.
+	if o.Payload["rotation"] != "" {
+		t.Errorf("original object's payload was mutated: %+v", o.Payload)
+	}
+}
+
+func TestSetBoardObjectRotation_UnknownID_Errors(t *testing.T) {
+	a := newTestAtlasService(t)
+	if _, err := a.SetBoardObjectRotation("missing", 90); err == nil {
+		t.Fatal("SetBoardObjectRotation on an unknown id: want an error, got nil")
+	}
+}
+
 func TestMoveBoardObject_Reparents(t *testing.T) {
 	a := newTestAtlasService(t)
 	kind, err := a.CreateKind("Frame", "", "", []typedfield.Field{})

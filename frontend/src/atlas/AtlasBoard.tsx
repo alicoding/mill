@@ -210,10 +210,20 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     onEnterEdit: creation.enterNoteEdit, onCancelEdit: creation.cancelNoteEdit, onCommitEdit: creation.commitNoteEdit, onOpenNote,
   }), [notes, creation.draftNoteFlowPos, creation.editingNoteID, readOnly, isFree, selection.isSoleSelected, creation.commitDraftNote, creation.cancelDraftNote, creation.enterNoteEdit, creation.cancelNoteEdit, creation.commitNoteEdit, onOpenNote])
 
+  // The board's own sole-selected object id (goal 0214) -- "sole"
+  // means nothing ELSE (card, note, or another object) is selected
+  // alongside it, not merely that this one object's own id is present,
+  // so the rotation handle never appears mid-multi-select.
+  const soleSelectedObjectID = useMemo(() => (
+    selection.selectedCards.length === 0 && selection.selectedNotes.length === 0 && selection.selectedObjects.length === 1
+      ? selection.selectedObjects[0]
+      : null
+  ), [selection.selectedCards, selection.selectedNotes, selection.selectedObjects])
+
   // Board objects (goal 0179/0180): built separately, same reasoning
   // sticky notes' own comment gives -- a board object is never a card
   // and never enters the group-frame preview layout either.
-  const objectNodes = useMemo(() => buildBoardObjectNodes({ objects, readOnly, isFree }), [objects, readOnly, isFree])
+  const objectNodes = useMemo(() => buildBoardObjectNodes({ objects, readOnly, isFree, soleSelectedID: soleSelectedObjectID }), [objects, readOnly, isFree, soleSelectedObjectID])
 
   const allNodes = useMemo(() => [...builtNodes, ...stickyNodes, ...objectNodes], [builtNodes, stickyNodes, objectNodes])
   const [nodes, setNodes, onNodesChange] = useNodesState(allNodes)

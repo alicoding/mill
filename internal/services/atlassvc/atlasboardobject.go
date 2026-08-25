@@ -2,6 +2,7 @@ package atlassvc
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/atlas"
@@ -103,6 +104,44 @@ func (a *AtlasService) SetBoardObjectSize(id string, size atlas.Dimensions) (atl
 	a.mu.Unlock()
 	if perr != nil {
 		return atlas.BoardObject{}, fmt.Errorf("save board object size: %w", perr)
+	}
+	dataevent.Emit("atlas", o.ID)
+	return o, nil
+}
+
+// SetBoardObjectRotation persists a shape's rotation angle in degrees
+// (goal 0214) -- same scoped-setter shape as SetBoardObjectPosition/
+// SetBoardObjectSize, writing into Payload rather than a dedicated
+// struct field since rotation lives at the same tier as a shape's
+// other style keys (fill/stroke/strokeWidth, shapeTool.ts's own "style
+// lives in Payload" contract). Payload is copied before mutation so a
+// failed persist can roll back to `previous` without also reverting
+// the caller's own map (maps are reference types; mutating the shared
+// map in place would corrupt the rollback). Kind-agnostic like every
+// other setter here -- the frontend decides which Kinds ever call it.
+func (a *AtlasService) SetBoardObjectRotation(id string, degrees float64) (atlas.BoardObject, error) {
+	a.mu.Lock()
+	idx := a.findObjectLocked(id)
+	if idx == -1 {
+		a.mu.Unlock()
+		return atlas.BoardObject{}, fmt.Errorf("no board object with id %q", id)
+	}
+	previous := a.objects[idx]
+	o := previous
+	o.Payload = copyPayload(previous.Payload)
+	if o.Payload == nil {
+		o.Payload = map[string]string{}
+	}
+	o.Payload["rotation"] = strconv.FormatFloat(degrees, 'f', -1, 64)
+	o.UpdatedAt = time.Now()
+	a.objects[idx] = o
+	perr := a.persistLocked()
+	if perr != nil {
+		a.objects[idx] = previous
+	}
+	a.mu.Unlock()
+	if perr != nil {
+		return atlas.BoardObject{}, fmt.Errorf("save board object rotation: %w", perr)
 	}
 	dataevent.Emit("atlas", o.ID)
 	return o, nil
