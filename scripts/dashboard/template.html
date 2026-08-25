@@ -1,0 +1,452 @@
+<title>Mill Control Room</title>
+<meta charset="utf-8">
+<style>
+:root{
+  --ground:#f7f6f3; --panel:#ffffff; --ink:#252a28; --ink-2:#5c6660;
+  --line:#dfe2dc; --accent:#1f7a63; --accent-soft:#e2efe9;
+  --good:#2da44e; --warn:#9a6700; --crit:#c0392f;
+  --chip-good:#dcf2e3; --chip-warn:#f5ecd0; --chip-crit:#fbe3e0;
+  --mono:ui-monospace,'SF Mono',SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#14181a; --panel:#1c2226; --ink:#dbe3e0; --ink-2:#8b968f;
+    --line:#2c3438; --accent:#4cc3a5; --accent-soft:#1c332c;
+    --good:#4ecb71; --warn:#d9a521; --crit:#e5695f;
+    --chip-good:#1d3325; --chip-warn:#332b14; --chip-crit:#3a201d;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#14181a; --panel:#1c2226; --ink:#dbe3e0; --ink-2:#8b968f;
+  --line:#2c3438; --accent:#4cc3a5; --accent-soft:#1c332c;
+  --good:#4ecb71; --warn:#d9a521; --crit:#e5695f;
+  --chip-good:#1d3325; --chip-warn:#332b14; --chip-crit:#3a201d;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);margin:0;
+  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+main{max-width:1040px;margin:0 auto;padding:0 20px 64px}
+header{position:sticky;top:0;z-index:5;background:var(--ground);
+  border-bottom:1px solid var(--line);padding:14px 20px 0;margin:0 -20px 24px}
+h1{font-size:19px;margin:0;letter-spacing:-.01em}
+.stamp{font-family:var(--mono);font-size:12px;color:var(--ink-2);margin:2px 0 10px}
+nav{display:flex;gap:2px;overflow-x:auto}
+nav button{appearance:none;border:0;background:none;color:var(--ink-2);
+  font:600 13.5px/1 inherit;padding:10px 13px;cursor:pointer;white-space:nowrap;
+  border-bottom:2px solid transparent}
+nav button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 26px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.tile b{display:block;font-size:26px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.tile span{font-size:12px;color:var(--ink-2);text-transform:uppercase;letter-spacing:.05em}
+section{display:none}
+section.on{display:block}
+h2{font-size:15px;margin:28px 0 10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2)}
+h2 small{text-transform:none;letter-spacing:0;font-weight:400}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);
+  text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.chip{display:inline-block;font:600 11.5px/1 inherit;padding:4px 8px;border-radius:20px;white-space:nowrap}
+.chip.good{background:var(--chip-good);color:var(--good)}
+.chip.warn{background:var(--chip-warn);color:var(--warn)}
+.chip.crit{background:var(--chip-crit);color:var(--crit)}
+.chip.plain{background:var(--accent-soft);color:var(--accent)}
+.mono{font-family:var(--mono);font-size:12.5px}
+.note{font-size:13px;color:var(--ink-2);margin:8px 2px 0}
+.now-target td:first-child{color:var(--ink-2)}
+.arrow{color:var(--accent);font-weight:700}
+pre.mermaid{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  padding:12px;overflow-x:auto}
+.lane-grid{display:grid;grid-template-columns:110px repeat(4,1fr);gap:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow-x:auto;min-width:680px}
+.lane-grid>div{padding:10px 10px;border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
+.lane-grid>div:nth-child(5n){border-right:0}
+.lg-h{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);font-weight:700;background:var(--ground)}
+.lg-lane{font-size:12px;font-weight:700;color:var(--ink-2);display:flex;align-items:center}
+.it{display:block;border-radius:6px;padding:6px 9px;font-size:12.5px;line-height:1.35;margin:3px 0;border-left:3px solid var(--accent);background:var(--accent-soft)}
+.it b{display:block;font-size:12.5px}
+.it small{color:var(--ink-2)}
+.it.done{border-left-color:var(--good);background:var(--chip-good);opacity:.75}
+.it.hot{border-left-color:var(--crit);background:var(--chip-crit)}
+.it.wait{border-left-color:var(--warn);background:var(--chip-warn)}
+.bar{display:inline-block;height:9px;border-radius:3px;background:var(--accent);vertical-align:middle;margin-right:8px}
+.bar.crit{background:var(--crit)} .bar.ok{background:var(--good)}
+.scrollwrap{overflow-x:auto}
+h2.hl{color:var(--accent)}
+h2.hl + .card, h2.hl + pre.mermaid{outline:2px solid var(--accent);outline-offset:2px;transition:outline-color 1.5s}
+h2.hl + .card.fade, h2.hl + pre.mermaid.fade{outline-color:transparent}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<header>
+  <h1>Mill Control Room</h1>
+  <!-- DERIVED:stamp:START — repo.main_sha + generated_at, filled by render.sh -->
+  <div class="stamp">checkpoint 2026-08-25 · main <b>2b1d065</b> · derivation script = 0210 S1</div>
+  <!-- DERIVED:stamp:END -->
+  <nav role="tablist">
+    <button role="tab" aria-selected="true" data-v="delivery">Delivery</button>
+    <button role="tab" aria-selected="false" data-v="roadmap">Roadmap</button>
+    <button role="tab" aria-selected="false" data-v="arch">Architecture</button>
+    <button role="tab" aria-selected="false" data-v="cap">Capability Map</button>
+    <button role="tab" aria-selected="false" data-v="health">Health</button>
+    <button role="tab" aria-selected="false" data-v="eff">Efficiency</button>
+  </nav>
+</header>
+<main>
+
+<!-- DERIVED:stat-tiles:START — goals.status==shipped count, queue checked=='~'/' ' counts, repo.open_prs length -->
+<div class="tiles">
+  <div class="tile"><b>13</b><span>goals shipped</span></div>
+  <div class="tile"><b>1</b><span>in progress</span></div>
+  <div class="tile"><b>3</b><span>queued next</span></div>
+  <div class="tile"><b>0</b><span>open PRs</span></div>
+</div>
+<!-- DERIVED:stat-tiles:END -->
+
+<section id="delivery" class="on">
+  <h2 id="delivery-now">In flight right now <small>— queue rows checked "~"</small></h2>
+  <!-- DERIVED:in-flight:START -->
+  <div class="card"><table>
+    <tr><th>work</th><th>state</th><th>what lands</th></tr>
+    <tr><td>0194 live mirror re-render</td><td><span class="chip warn">building</span></td>
+      <td>your external CLI writes the .drawio file → Mill re-renders live; honest missing-file state</td></tr>
+  </table></div>
+  <!-- DERIVED:in-flight:END -->
+
+  <h2>Recently shipped <small>— most recent goals.status==shipped, by date</small></h2>
+  <!-- DERIVED:shipped-ledger:START -->
+  <div class="card"><table>
+    <tr><th>goal</th><th>PR</th><th>title</th></tr>
+    <tr><td>0209</td><td class="num">#428</td><td>Elements get a style surface: fill first, declared per noun, never a bespoke picker per Kind</td></tr>
+  </table></div>
+  <!-- DERIVED:shipped-ledger:END -->
+
+  <!-- AUTHORED — hand-maintained until a later slice: no BACKLOG convention
+       marks an item "blocked on the owner" mechanically yet, so this list
+       stays editorial rather than guessed from prose. -->
+  <h2 id="delivery-blocked">Blocked on you</h2>
+  <div class="card"><table>
+    <tr><td>0201</td><td>copy-selection-as-image: which clipboard on remote? (3 options in goal)</td></tr>
+    <tr><td>0202</td><td>first-run guidance: overlay vs richer empty state</td></tr>
+    <tr><td>manual</td><td>installed-build: Touch ID sheet + Finding C re-probe · sticky click-to-edit</td></tr>
+  </table></div>
+</section>
+
+<!-- AUTHORED — hand-maintained until a later slice: lane×horizon placement
+     and cost/debt judgment calls aren't in dashboard-data.json's schema
+     (goal 0210 S1 derives goals/queue/census/repo only). -->
+<section id="roadmap">
+  <h2 id="roadmap-horizons">Roadmap <small>— workstreams × horizons; a column is a time bucket, left→right is order. Estimates are measured builder cycles, not dates.</small></h2>
+  <div class="scrollwrap"><div class="lane-grid">
+    <div class="lg-h"></div><div class="lg-h">Now · in flight</div><div class="lg-h">Next · this week's queue</div><div class="lg-h">Then</div><div class="lg-h">v1 gates</div>
+
+    <div class="lg-lane">Canvas<br><small>(your daily loop)</small></div>
+    <div><span class="it wait"><b>0194 live re-render</b><small>building overnight</small></span></div>
+    <div><span class="it"><b>0194 export slice</b><small>board → .drawio · 1 cyc</small></span>
+         <span class="it wait"><b>0169 tray palette</b><small>awaits your contract review · 2 cyc</small></span>
+         <span class="it"><b>0212 roadmap view</b><small>design recorded · 1–2 cyc</small></span></div>
+    <div><span class="it wait"><b>0201 copy-as-image</b><small>your call first · 1–2 cyc</small></span></div>
+    <div></div>
+
+    <div class="lg-lane">Secrets</div>
+    <div></div>
+    <div></div>
+    <div><span class="it"><b>0203 S3 read audit</b><small>1–2 cyc</small></span>
+         <span class="it"><b>0203 S4 palette entries</b><small>after S3 · 1 cyc</small></span></div>
+    <div></div>
+
+    <div class="lg-lane">UX / onboarding</div>
+    <div></div>
+    <div></div>
+    <div><span class="it wait"><b>0202 first-run guidance</b><small>your call first · 1–2 cyc</small></span></div>
+    <div></div>
+
+    <div class="lg-lane">Platform / process</div>
+    <div></div>
+    <div><span class="it hot"><b>0191 WorktreeRemove hook</b><small>3 strikes forced it · 1 cyc</small></span></div>
+    <div><span class="it"><b>0211 extension contract page</b><small>after 0209 · 1–2 cyc</small></span>
+         <span class="it"><b>0210 S1 dashboard script</b><small>1 cyc</small></span></div>
+    <div></div>
+
+    <div class="lg-lane">Release</div>
+    <div></div>
+    <div></div>
+    <div></div>
+    <div><span class="it hot"><b>0205 S5 release trigger</b><small>BLOCKER · 1 cyc</small></span>
+         <span class="it"><b>0177 notarization</b><small>trigger: first outside download</small></span></div>
+  </div></div>
+  <div class="note">Shipped work leaves the board — the Delivery tab keeps the ledger. An item moves left only by a real dispatch, never by optimism.</div>
+
+  <h2 id="roadmap-cost">When you ask for something — what it costs &amp; who maintains it</h2>
+  <div class="card"><table>
+    <tr><th>your ask looks like…</th><th>cost</th><th>maintenance answer</th></tr>
+    <tr><td>"X but to a different channel / with a condition / on another event"</td><td class="num">≈ a prompt · 1 cycle</td><td>composition — you configure it, nothing new to maintain</td></tr>
+    <tr><td>rides an existing registry (new noun, node, entity, style prop)</td><td class="num">1 cycle</td><td>one declaration file we maintain; surfaces inherit it</td></tr>
+    <tr><td>needs a new surface/mechanism first</td><td class="num">2–3 cycles</td><td>mechanism built once, then future asks drop to 1 cycle</td></tr>
+    <tr><td>touches the kernel (engine, gate, registries, MCP plane)</td><td class="num">ADR + your call</td><td>deliberately expensive — this is the moat</td></tr>
+    <tr><td>"this is broken"</td><td class="num">trace first</td><td>Health tab says if it's a known class; capability map says if it's ours or upstream's</td></tr>
+  </table></div>
+
+  <h2 id="roadmap-debt">Tech debt — and what it costs to NOT fix</h2>
+  <div class="card"><table>
+    <tr><th>debt</th><th>impact if deferred</th><th>when it bites</th></tr>
+    <tr><td>noun registry keyed by tools (diagram can't declare)</td><td>every drop-only noun adds renderer special cases outside conformance</td><td>next new noun — fix rides it</td></tr>
+    <tr><td>no WorktreeRemove hook (lint cache)</td><td>~1 lost diagnosis cycle per parallel arc — measured 3 tonight</td><td><span class="chip crit">now · 0191 raised</span></td></tr>
+    <tr><td>conformance checks absence, not wrongness</td><td>a wrong VALUE ships green past the declaration checks</td><td>trigger: first wrong-value defect</td></tr>
+    <tr><td>dashboard hand-compiled</td><td>staleness = your trust erodes exactly where it must not</td><td>0210 S1, next process cycle</td></tr>
+    <tr><td>keychain creds (HTTP/AI) outside the vault</td><td>secret-use attribute blind to them; two credential planes</td><td>0185 portability arc</td></tr>
+    <tr><td>MCP write approvals ≠ guardrail plane</td><td>two approval planes drift; governance story splits</td><td>0159 governance scope</td></tr>
+    <tr><td>soft-delete windows need generic store (0165→0149)</td><td>9 hand-copied Delete methods can drift</td><td>when 0149 gap 2 schedules</td></tr>
+  </table></div>
+</section>
+
+<!-- AUTHORED — hand-maintained until a later slice: mermaid diagrams,
+     contract legend, coupling matrix, and current→target deltas are
+     architectural judgment, not something docs/goals frontmatter encodes. -->
+<section id="arch">
+  <h2 id="arch-context">1 · System context <small>— boundary, owned vs delegated</small></h2>
+  <pre class="mermaid">
+flowchart TB
+  YOU(("you — desktop · phone/Tailscale"))
+  AGENTS(("AI agents via MCP"))
+  WORK(("work tools: clipboard · files · draw.io XML"))
+  subgraph MILL["MILL — one binary, solution boundary"]
+    CORE["OWNED (the reason Mill exists):<br/>guardrail gate + rules · graph engine ·<br/>Configure entities · Atlas nouns · session identity"]
+    DELEG["DELEGATED behind ports:<br/>Wails3 = shell/window/tray/updater/autostart<br/>DBOS = durable execution/queues/retry<br/>gokeepasslib = vault · keychain = key custody<br/>React Flow = canvas · Primer = UI kit"]
+  end
+  EXT["external, user-configured only:<br/>HTTP APIs · Ollama/LLM endpoints ·<br/>MCP servers · GitHub Releases (updates)"]
+  YOU --> MILL
+  AGENTS -->|"MCP plane, gated"| MILL
+  WORK -->|"capture: paste/drop/watch"| MILL
+  MILL -->|"apply: clipboard/notify/HTTP/MCP"| EXT
+  </pre>
+  <div class="note">Boundary rule: zero outbound calls that aren't user-configured. No phone-home, no AI calls from Mill itself.</div>
+
+  <h2 id="arch-components">2 · Component interaction <small>— C4 container level: the product's components and every edge's CONTRACT. One process, but each box is a bounded context that could only talk through its stated contract.</small></h2>
+  <pre class="mermaid">
+flowchart TB
+  subgraph SURFACES["ENTRY SURFACES"]
+    UI["Web UI<br/>(webview + server mode)"]
+    QP["Quick Panel<br/>(summon hotkey)"]
+    MCPP["MCP PLANE<br/>curated tools per context;<br/>writes parked for approval;<br/>every call audited"]
+    TRG["TRIGGERS<br/>cron · fs-watch ·<br/>clipboard · webhook"]
+  end
+  subgraph PRODUCT["PRODUCT COMPONENTS (Go bounded contexts, *svc)"]
+    WF["WORKFLOWS<br/>composition + execution<br/>(graph engine, DBOS-durable)"]
+    GR["GUARDRAIL<br/>rules · gate · park/approve<br/>(feeds REVIEW view)"]
+    CFGC["CONFIGURE<br/>entities: connectors, lists,<br/>MCP servers, AI providers, env"]
+    ATL["ATLAS<br/>cards + board objects<br/>(knowledge surface)"]
+    SECC["SECRETS<br/>KDBX vault + key custody"]
+    SET["SETTINGS<br/>kernel prefs only —<br/>never a side effect"]
+  end
+  UI ==>|"C1 generated bindings"| PRODUCT
+  QP ==>|"C1"| SET
+  MCPP -->|"C5 curated tools"| ATL
+  MCPP -->|"C5 (ZERO secret tools<br/>— deliberate)"| WF
+  TRG -->|"C2 Syncer seam"| WF
+  WF -->|"C2 SetGuardrailGate<br/>every step passes it"| GR
+  WF -->|"C3 RefKind ID refs,<br/>resolved via C2 SetConnectorLookup<br/>at execution only"| CFGC
+  WF -->|"C2 SetSecretRedactor<br/>(errors scrubbed)"| SECC
+  GR -->|"C2 SetSecretLabelsLookup<br/>(secrets attribute)"| CFGC
+  CFGC -->|"C2 SetSecretResolver<br/>(vault: refs, at spawn only)"| SECC
+  ATL -->|"C3 List-projection read<br/>(table cards)"| CFGC
+  ATL x--x|"NO edge to WORKFLOWS —<br/>deliberate: knowledge ≠ automation;<br/>agents bridge via MCP plane"| WF
+  </pre>
+
+  <h2 id="arch-contracts">Contract legend <small>— "is there a service that creates the contract?" Yes: main.go is the ONE composition root — every C2 seam is wired there and nowhere else.</small></h2>
+  <div class="card"><table>
+    <tr><th>id</th><th>contract kind</th><th>enforced by</th><th>microservices analogue</th></tr>
+    <tr><td class="num">C1</td><td>generated TS bindings from Go method signatures</td><td>wails3 codegen; a signature change regenerates the client</td><td>OpenAPI-generated client</td></tr>
+    <tr><td class="num">C2</td><td>injected function seam (typed func var), wired ONLY in the composition root</td><td>backend.md rule + depguard; domain packages import no services</td><td>interface + DI at the edge; no service mesh needed in-process</td></tr>
+    <tr><td class="num">C3</td><td>RefKind typed ID reference (ADR-0009) — consumer stores an ID, never the entity</td><td>resolution deferred to execution; dangling refs surface, never crash</td><td>foreign key by contract / service discovery by ID</td></tr>
+    <tr><td class="num">C4</td><td>typed events (dataevent) Go → frontend</td><td>registered payload types; mismatch drops loudly in dev</td><td>event bus with schema</td></tr>
+    <tr><td class="num">C5</td><td>MCP curated tool surface — per-context allowlist, writes parked, all calls audited</td><td>mcpsvc tool registry + park-and-poll + mcpaudit</td><td>API gateway with authz + audit log</td></tr>
+  </table></div>
+
+  <h2 id="arch-matrix">Coupling matrix <small>— row depends on column; blank = no dependency, and blank is enforced, not accidental</small></h2>
+  <div class="card"><table>
+    <tr><th></th><th>Workflows</th><th>Guardrail</th><th>Configure</th><th>Secrets</th><th>Atlas</th></tr>
+    <tr><td><b>Workflows</b></td><td>—</td><td class="num">C2 gate</td><td class="num">C3+C2</td><td class="num">C2 redact</td><td></td></tr>
+    <tr><td><b>Guardrail</b></td><td></td><td>—</td><td class="num">C2 labels</td><td></td><td></td></tr>
+    <tr><td><b>Configure</b></td><td></td><td></td><td>—</td><td class="num">C2 resolve</td><td></td></tr>
+    <tr><td><b>Secrets</b></td><td></td><td></td><td></td><td>—</td><td></td></tr>
+    <tr><td><b>Atlas</b></td><td></td><td></td><td class="num">C3 lists</td><td></td><td>—</td></tr>
+  </table></div>
+  <div class="note">Read the blanks: Secrets depends on NOTHING (leaf — anything may be cut above it without touching the vault). Atlas↔Workflows have no edge by design. Direction is strictly downward-acyclic: Workflows → {Guardrail, Configure, Secrets}, never back. Guardrail knows nothing about execution; the engine calls IT. A new component must publish its row here before it merges — an undeclared edge is the defect.</div>
+
+  <h2 id="arch-sequence">4 · Sequence <small>— the core flow: a guarded step</small></h2>
+  <pre class="mermaid">
+sequenceDiagram
+  participant T as Trigger/Run
+  participant E as Engine (DBOS step)
+  participant G as Guardrail gate
+  participant U as You (Review / floating prompt)
+  participant A as Adapter (HTTP/AI/MCP/clipboard)
+  T->>E: next node
+  E->>G: evaluate(rules, step + Attributes incl. "secrets")
+  alt allow
+    G-->>E: allow
+    E->>A: execute (vault refs resolve NOW, never earlier)
+  else ask
+    G->>U: park durably (survives restart)
+    U-->>G: approve / deny (+ always-allow rule option)
+    G-->>E: resume or stop
+  end
+  E->>E: checkpoint + receipt + audit
+  </pre>
+
+  <h2 id="arch-dataflow">5 · Data flow <small>— capture → process → apply</small></h2>
+  <pre class="mermaid">
+flowchart LR
+  IN["CAPTURE<br/>clipboard · file drop ·<br/>paste · folder watch ·<br/>draw.io/mermaid files"]
+  ATLAS["ATLAS<br/>objects &amp; cards<br/>(bytes MIRRORED into<br/>Mill's storage — external<br/>paths never trusted)"]
+  WF["WORKFLOWS<br/>payload + attributes<br/>through the gate"]
+  OUT["APPLY<br/>clipboard write · notify ·<br/>HTTP · MCP call · files"]
+  V[("vault<br/>refs resolve at spawn only;<br/>errors redacted")]
+  IN --> ATLAS
+  IN --> WF
+  ATLAS <--> WF
+  WF --> OUT
+  V -.-> WF
+  </pre>
+
+  <h2 id="arch-tiers">Extension tiers <small>— "is this a platform yet?" answered honestly (goal 0211)</small></h2>
+  <div class="card"><table>
+    <tr><th>tier</th><th>who</th><th>adds</th><th>code in Mill's repo?</th><th>state</th></tr>
+    <tr><td><b>1 · Compose</b></td><td>any user</td><td>workflows · triggers · connectors · MCP servers · rules</td><td>no — configuration only</td><td><span class="chip good">exists</span></td></tr>
+    <tr><td><b>2 · Declare</b></td><td>platform dev</td><td>noun · node type · style property</td><td>one declaration file; surfaces inherit</td><td><span class="chip good">exists</span></td></tr>
+    <tr><td><b>3 · Plug in</b></td><td>third party</td><td>their own package, zero core edits</td><td>their package + 1 registration line, compiled in (the Backstage model)</td><td><span class="chip warn">designed-toward · build trigger = second adopter or v1</span></td></tr>
+  </table></div>
+  <div class="note">Standing rule (effective now): every NEW registry is designed as-if-third-party-declared — no reach-back into core internals, discovery stays glob/init-shaped, vocabulary documented. MCP servers are already the runtime tier for capabilities.</div>
+
+  <h2 id="arch-target">Current → target (open deltas)</h2>
+  <div class="card"><table class="now-target">
+    <tr><td>noun registry keyed by TOOLS</td><td class="arrow">→</td><td>keyed by NOUNS, tray one facet <span class="mono">(debt)</span></td></tr>
+    <tr><td>2 hand-built style pickers</td><td class="arrow">→</td><td>ONE panel from per-noun declarations <span class="mono">(0209)</span></td></tr>
+    <tr><td>draw.io: import only</td><td class="arrow">→</td><td>round-trip: live re-render + export <span class="mono">(0194 · your daily loop)</span></td></tr>
+    <tr><td>stable release build silent for bot tags</td><td class="arrow">→</td><td>releases_created chaining <span class="mono">(0205 S5 · v1 blocker)</span></td></tr>
+    <tr><td>two approval planes (guardrail + MCP-write)</td><td class="arrow">→</td><td>one governance story <span class="mono">(0159)</span></td></tr>
+    <tr><td>this page hand-compiled</td><td class="arrow">→</td><td>script-derived <span class="mono">(0210 S1)</span></td></tr>
+  </table></div>
+</section>
+
+<!-- AUTHORED — hand-maintained until a later slice: adopted-vs-built
+     verdicts are a research judgment call, not a grep over the repo. -->
+<section id="cap">
+  <h2 id="cap-features">Per-feature: what we use vs what we had to build — and WHY <small>— the standing NIH exposure, feature by feature</small></h2>
+  <div class="card"><table>
+    <tr><th>feature</th><th>we USE (adopted)</th><th>we BUILT</th><th>why built</th></tr>
+    <tr><td><b>Workflow engine</b></td><td>DBOS (durable exec, retry, queues, park events) · expr-lang (conditions) · go-cron</td><td>graph composition model · node registry</td><td>guardrail-gated orchestration IS the product; no workflow lib has an opinion on it</td></tr>
+    <tr><td><b>Guardrails / approvals</b></td><td>DBOS events (durable parking)</td><td>rule model · gate · park/approve · Review</td><td>core domain — the reason Mill exists</td></tr>
+    <tr><td><b>Secrets</b></td><td>gokeepasslib (real KDBX) · OS keychain · SecItem/Touch ID</td><td>session/auto-lock policy · vault: refs · redaction · <span class="mono">presencekey</span> shim</td><td>shim: NO Go lib exposes SecAccessControl (searched, recorded); policy is product behavior</td></tr>
+    <tr><td><b>Atlas canvas</b></td><td>React Flow (nodes/drag/resize/minimap/panels) · vendored draw.io + mermaid viewers</td><td>noun registry + declarations · containment/filing · projections</td><td>the knowledge model is Mill's own; tldraw rejected with recorded revisit trigger</td></tr>
+    <tr><td><b>Updates</b></td><td>Wails updater (check/download/digest-verify/stage/restart)</td><td>channel policy · per-machine re-sign step</td><td>re-sign: keeps Accessibility grants without a paid cert. Dwell policy was built then DELETED — recorded NIH correction</td></tr>
+    <tr><td><b>Import / conversion</b></td><td>html-to-markdown · goquery</td><td>draw.io mxfile parse (mxCell/mxGeometry)</td><td>bidirectional XML mapping the vendored viewer doesn't expose — feeds 0194 export</td></tr>
+    <tr><td><b>AI nodes</b></td><td>two thin wire adapters (openai-compat covers Ollama/LM Studio/vLLM; anthropic native)</td><td>node config model (AIProvider entity)</td><td>routing chat wire-shapes through the HTTP entity was the recorded inner-platform near-miss — rejected at design time</td></tr>
+    <tr><td><b>MCP plane</b></td><td>official modelcontextprotocol go-sdk</td><td>tool curation · park-and-poll writes · audit</td><td>governance is the product; the sdk is just the wire</td></tr>
+    <tr><td><b>Launch-at-login</b></td><td>Wails SMAppService API</td><td>one status-read shim</td><td>RequiresApproval state invisible in the public API (verified in source)</td></tr>
+    <tr><td><b>Notifications</b></td><td>go-toast (OS banners)</td><td>the generic notice channel (0122/0171)</td><td>one reusable surface; consumers plug in, never bespoke widgets</td></tr>
+    <tr><td><b>UI</b></td><td>Primer React + CSS modules (its own current guidance)</td><td>Atlas-specific components ONLY where Primer has no shape (1 recorded: AtlasSlotRows)</td><td>audited clean in 0190 — one justified hand-assembly in the whole tree</td></tr>
+    <tr><td><b>Remote / mobile</b></td><td>your Tailscale · ntfy (Android push)</td><td>pairing + session identity</td><td>session identity across tab/agent/process is named core domain</td></tr>
+  </table></div>
+  <div class="note">Pattern to audit me with: the "built" column should only ever contain product opinion or a justified shim with a recorded search. Anything else appearing there is NIH — call it.</div>
+
+  <h2 id="cap-infra">Infrastructure roll-up <small>— same data, capability-level</small></h2>
+  <div class="card"><table>
+    <tr><th>capability</th><th>verdict</th><th>via</th><th>who maintains</th></tr>
+    <tr><td>durable execution, retry, queues, checkpoints</td><td><span class="chip good">adopt</span></td><td>DBOS (SQLite backend)</td><td>upstream</td></tr>
+    <tr><td>desktop shell: window · tray · dialogs · updater · autostart · dock</td><td><span class="chip good">adopt</span></td><td>Wails3 (its WHOLE api, post-0190)</td><td>upstream</td></tr>
+    <tr><td>UI kit + overlays/menus/dialogs</td><td><span class="chip good">adopt</span></td><td>Primer React</td><td>upstream</td></tr>
+    <tr><td>canvas: nodes, drag, resize, minimap, panels</td><td><span class="chip good">adopt</span></td><td>React Flow (tldraw rejected, trigger recorded)</td><td>upstream</td></tr>
+    <tr><td>vault format</td><td><span class="chip good">adopt</span></td><td>gokeepasslib — real KDBX, portable to any KeePass client</td><td>upstream</td></tr>
+    <tr><td>key custody · MCP protocol · cron · expressions · md-conversion · http</td><td><span class="chip good">adopt</span></td><td>keychain / official go-sdk / go-cron / expr-lang / html-to-markdown / stdlib</td><td>upstream</td></tr>
+    <tr><td>diagram rendering</td><td><span class="chip good">adopt</span></td><td>vendored draw.io + mermaid viewers — Mill never re-implements their styling</td><td>upstream (vendored)</td></tr>
+    <tr><td>guardrail gate + rule model · graph engine · Configure recipe · Atlas noun model · session identity</td><td><span class="chip plain">build — core domain</span></td><td>the reason Mill exists; no library has an opinion here</td><td><b>us</b></td></tr>
+    <tr><td>SMAppService status read · Touch ID ACL item · per-machine signing</td><td><span class="chip warn">justified shim</span></td><td>each has a recorded "no library exposes this" search</td><td>us, by necessity — 3 files total</td></tr>
+    <tr><td colspan="4"><b>Unjustified hand-rolls: 0.</b> Last one found (updater dwell policy) was deleted tonight in favor of the adopted package's own semantics. The one INNER-PLATFORM near-miss on record: templating chat wire-shapes through the HTTP entity — rejected at design time, dedicated adapters built instead (SPEC §3.3).</td></tr>
+  </table></div>
+  <div class="note">Read this table when asking "do I have to maintain that?" — adopt rows: no. Build rows: yes, deliberately. Shim rows: yes, smallest possible, each with an exit condition.</div>
+</section>
+
+<section id="health">
+  <h2 id="health-census">Defect-class census (two strikes ⇒ fix the class)</h2>
+  <!-- DERIVED:census:START — census dict (defect_class → count) from every
+       goal file's frontmatter. The "class-level fix" column is a judgment
+       call the derivation script can't make yet, so it stays blank here. -->
+  <div class="card"><table>
+    <tr><th>class</th><th>strikes</th></tr>
+    <tr><td>composition-state</td><td class="num"><span class="bar" style="width:75px"></span>5</td></tr>
+  </table></div>
+  <div class="note">Class-level fix status isn't derived yet — each class's own goal file has the remediation record.</div>
+  <!-- DERIVED:census:END -->
+
+  <!-- AUTHORED — hand-maintained: which shipped goals turned out wrong
+       live is a judgment call over history, not a field in frontmatter. -->
+  <h2 id="health-honesty">Honesty ledger — shipped green but wrong</h2>
+  <div class="card"><table>
+    <tr><td>0175 auto-download</td><td>stub-tested, couldn't fire → fixed (0207) + lesson institutionalized</td></tr>
+    <tr><td>v0.5.0 release</td><td>phantom — verifier never ran → v1 blocker filed</td></tr>
+    <tr><td>0193 inventory</td><td>recorded a schema as a capability → surfaces-not-fields rule</td></tr>
+  </table></div>
+
+  <h2>Waiting on an installed build (manual registry)</h2>
+  <div class="card"><table>
+    <tr><td>Touch ID sheet + anti-downgrade · Finding C re-probe (must PROMPT now) · SMAppService login cycle · summon suite</td></tr>
+  </table></div>
+</section>
+
+<!-- AUTHORED — hand-maintained until a later slice: blast-radius/cycle-time
+     numbers come from one-off git-diff measurements recorded per goal, not
+     yet a field the derivation script reads mechanically. -->
+<section id="eff">
+  <h2 id="eff-blast">Measured blast radius</h2>
+  <div class="card"><table>
+    <tr><th>change</th><th>files</th><th>go / fe</th><th>read</th></tr>
+    <tr><td>new noun riding registry (shapes)</td><td class="num">20</td><td class="num">0 / 20</td><td>registry works</td></tr>
+    <tr><td>relocate table+diagram to objects</td><td class="num">39</td><td class="num">9 / 30</td><td>List-backing is the cost</td></tr>
+    <tr><td>Settings section</td><td class="num">3-line reg.</td><td class="num">—</td><td>cheap by design</td></tr>
+    <tr><td>secret-use gate attribute</td><td class="num">~18</td><td class="num">all Go</td><td>1 injected func + seeds</td></tr>
+  </table></div>
+
+  <h2>Cycle time (tonight, real)</h2>
+  <div class="card"><table>
+    <tr><td>dispatch → PR open</td><td class="num">25–40 min</td><td>Sonnet builder, gates green locally</td></tr>
+    <tr><td>PR → merged</td><td class="num">~25 min</td><td>CI wall; auto-merge, zero ceremony</td></tr>
+    <tr><td>your report → traced goal</td><td class="num">~10 min</td><td>static traces; live ones add a repro cycle</td></tr>
+  </table></div>
+
+  <h2 id="eff-bottlenecks">Bottlenecks</h2>
+  <div class="card"><table>
+    <tr><td><span class="chip warn">machine</span></td><td>one heavy gate suite at a time (16GB) → caps builders at 2–3</td></tr>
+    <tr><td><span class="chip crit">3 strikes</span></td><td>lint-cache poisoning → 0191 raised</td></tr>
+    <tr><td><span class="chip plain">structural</span></td><td>hub files (generated bindings) — regenerate-on-rebase, mostly defused</td></tr>
+  </table></div>
+</section>
+</main>
+<script>
+const tabs=document.querySelectorAll('nav button');
+function show(view,sec){
+  const b=[...tabs].find(x=>x.dataset.v===view)||tabs[0];
+  tabs.forEach(x=>x.setAttribute('aria-selected',x===b));
+  document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id===b.dataset.v));
+  document.querySelectorAll('h2.hl').forEach(h=>h.classList.remove('hl'));
+  if(sec){const h=document.getElementById(sec);
+    if(h){h.classList.add('hl');h.scrollIntoView({block:'start'});
+      const t=h.nextElementSibling;
+      if(t){setTimeout(()=>t.classList.add('fade'),1600);}
+    }}
+}
+function route(){
+  const[view,sec]=location.hash.replace('#','').split('/');
+  if(view)show(view,sec);
+}
+tabs.forEach(b=>b.addEventListener('click',()=>{
+  history.replaceState(null,'','#'+b.dataset.v);show(b.dataset.v);
+}));
+window.addEventListener('hashchange',route);
+route();
+</script>

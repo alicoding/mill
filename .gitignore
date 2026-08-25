@@ -31,3 +31,9 @@ build/android/gen/
 # Internal working docs live in the private mill-docs repo (nested at docs/,
 # its own git checkout) -- deliberately untracked here.
 /docs/
+
+# scripts/dashboard's regenerated output (goal 0210 S1) -- derived fresh
+# from repo truth on every refresh.sh run, so committing it would just be
+# diff noise that goes stale the moment anything else in the repo changes.
+/scripts/dashboard/dashboard-data.json
+/scripts/dashboard/mill-control-room.html
