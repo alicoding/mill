@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Derives dashboard-data.json from repo truth (goal on-disk state --
 # no invention): docs/goals/*.md + archive/*.md frontmatter, the
-# BACKLOG.md queue, a defect_class census over the same goal files, and
-# a repo snapshot (main sha, open PRs). Plain awk/sed parsing -- no new
-# dependency (goal 0210 S1). A number this script can't derive from the
-# repo is simply absent from its output; render.sh never invents one.
+# BACKLOG.md queue, a defect_class census over the same goal files, the
+# DISPATCH.md live-builder ledger (goal 0210 S3), and a repo snapshot
+# (main sha, open PRs). Plain awk/sed parsing -- no new dependency
+# (goal 0210 S1). A number this script can't derive from the repo is
+# simply absent from its output; render.sh never invents one.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -74,6 +75,17 @@ census_file="$tmp_dir/census.json"
   echo -n "}"
 } >"$census_file"
 
+# --- dispatch: docs/goals/DISPATCH.md's live-builder table + its
+# "Queued next" line (goal 0210 S3). The file may be absent -- older
+# checkouts and a public clone before this goal's filing both lack it
+# -- so absence degrades to an empty dispatch, never an error.
+dispatch_file="$goals_dir/DISPATCH.md"
+if [[ -f "$dispatch_file" ]]; then
+  dispatch_json="$(awk -f "$lib_dir/dispatch-ledger.awk" "$dispatch_file")"
+else
+  dispatch_json='{"rows":[],"queued":""}'
+fi
+
 # --- repo: current main sha + open PRs (gh optional, never fatal) ---
 main_sha="$(git -C "$repo_root" rev-parse origin/main 2>/dev/null || git -C "$repo_root" rev-parse HEAD)"
 prs_json="[]"
@@ -95,6 +107,7 @@ generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   printf '  "goals": %s,\n' "$(cat "$goals_file")"
   printf '  "queue": %s,\n' "$(cat "$queue_file")"
   printf '  "census": %s,\n' "$(cat "$census_file")"
+  printf '  "dispatch": %s,\n' "$dispatch_json"
   printf '  "repo": {"main_sha": "%s", "open_prs": %s, "gh_unavailable": %s}\n' \
     "$main_sha" "$prs_json" "$gh_unavailable"
   printf '}\n'

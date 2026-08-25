@@ -109,14 +109,18 @@ h2.hl + .card.fade, h2.hl + pre.mermaid.fade{outline-color:transparent}
 <!-- DERIVED:stat-tiles:END -->
 
 <section id="delivery" class="on">
-  <!-- AUTHORED until 0210 S3 derives this from docs/goals/DISPATCH.md -->
   <h2 id="delivery-building">Building right now <small>— live builders/PRs from the dispatch ledger; touch-sets show why work serializes</small></h2>
+  <!-- DERIVED:dispatch:START — docs/goals/DISPATCH.md's table + its
+       "Queued next" line (goal 0210 S3); absent file renders empty,
+       never an error -->
   <div class="card"><table>
-    <tr><th>goal</th><th>what</th><th>state</th><th>touch-set</th></tr>
-    <tr><td>0220 S1</td><td>update state machine · acting pill · check interval</td><td><span class="chip warn">PR #448 in CI</span></td><td class="mono">settingssvc · UpdatesSection · NoticePill</td></tr>
-    <tr><td>0216</td><td>toolbar overflow (ActionBar)</td><td><span class="chip crit">PR #442 CI-starved, retrigger pending</span></td><td class="mono">AtlasToolbar + 1 spec</td></tr>
+    <tr><th>goal</th><th>what</th><th>state</th><th>touch-set</th><th>PR</th></tr>
+    <tr><td>0216</td><td>toolbar ActionBar overflow</td><td><span class="chip crit">PR retriggered, run 32905019577</span></td><td class="mono">AtlasToolbar + 2 siblings, 1 spec</td><td class="num">#442</td></tr>
+    <tr><td>0226</td><td>note display renders its markdown + editor clips</td><td><span class="chip warn">PR fix pushed, CI rerunning</span></td><td class="mono">AtlasStickyNode css, noteTool, e2e</td><td class="num">#450</td></tr>
   </table></div>
-  <div class="note">Queued next: 0222 command enablement (waits on #448 — same registry seam) · 0210 S3 (derive this block) · 0223 seeding. An arc marked "in progress" below may have NO live builder — that split is exactly what this block exists to show.</div>
+  <div class="note">Queued next: #442 retrigger (quiet window after #450 merges, held), then 0222 S1 (registry seam now clear — #448 merged), 0210 S3, 0223.</div>
+  <!-- DERIVED:dispatch:END -->
+  <div class="note">An arc marked "in progress" below may have NO live builder — that split is exactly what this block exists to show.</div>
 
   <h2 id="delivery-now">In flight right now <small>— open ARCS (queue rows checked "~"); a live builder appears above, not here</small></h2>
   <!-- DERIVED:in-flight:START -->
