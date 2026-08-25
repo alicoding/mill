@@ -77,20 +77,30 @@ interface UISignalState {
   // a second one reuses this same signal rather than minting its own.
   atlasImagePopoverRequest: number
   requestAtlasImagePopover: () => void
-  // atlas.undoDelete (⌘Z while the quick-delete undo toast lives, goal
-  // 0093): the real keydown handling is a dedicated
-  // app/useKeymapDispatch.ts listener (⌘Z is the native text-undo
-  // combo too, so the generic dispatchCommandForEvent's unconditional
-  // preventDefault-on-match can't gate it) -- that listener checks
-  // atlasUndoDeletePending itself before bumping this counter, which
-  // AtlasView's own toast hook watches the same ref-compared way
-  // atlasJumpRequest is watched above. atlasUndoDeletePending is kept
-  // in sync by that same hook so the listener never has to reach into
-  // atlas/ view state directly.
-  atlasUndoDeletePending: boolean
-  setAtlasUndoDeletePending: (pending: boolean) => void
-  atlasUndoDeleteRequest: number
-  requestAtlasUndoDelete: () => void
+  // atlas.undo/atlas.redo (⌘Z/⇧⌘Z, goal 0219 S2, ADR-0044): generalize
+  // goal 0093's own dedicated listener from "restore the last delete"
+  // to "pop the actor-scoped undo journal" -- app/useKeymapDispatch.ts
+  // still owns the real keydown handling (⌘Z collides with native
+  // text-undo, so a normal dispatchCommandForEvent match can't gate
+  // it), guarded by atlasUndoAvailable/atlasRedoAvailable instead of
+  // the old toast-only atlasUndoDeletePending. atlas/useAtlasUndoJournal
+  // keeps those two flags in sync (polls AtlasService.UndoState() on
+  // every 'atlas' dataevent) and watches the two request counters below
+  // the same ref-compared way atlasJumpRequest is watched.
+  atlasUndoAvailable: boolean
+  atlasRedoAvailable: boolean
+  setAtlasUndoRedoAvailable: (state: { hasUndo: boolean; hasRedo: boolean }) => void
+  atlasUndoRequest: number
+  requestAtlasUndo: () => void
+  atlasRedoRequest: number
+  requestAtlasRedo: () => void
+  // atlasUndoAppliedTick bumps after EVERY successful Undo()/Redo()
+  // apply, regardless of trigger (keyboard, palette, or the 0093 delete
+  // toast's own button) -- the toast watches this to dismiss itself
+  // when ⌘Z resolves the exact delete it's showing, without owning the
+  // apply call itself.
+  atlasUndoAppliedTick: number
+  bumpAtlasUndoApplied: () => void
   // The Atlas toolbar/board actions promoted into the command registry
   // (shared/atlasBoardCommands.ts): same monotonic-counter shape as
   // atlasMatrixRequest above -- each consuming component watches its
@@ -160,10 +170,15 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasTablePicker: () => set((s) => ({ atlasTablePickerRequest: s.atlasTablePickerRequest + 1 })),
   atlasImagePopoverRequest: 0,
   requestAtlasImagePopover: () => set((s) => ({ atlasImagePopoverRequest: s.atlasImagePopoverRequest + 1 })),
-  atlasUndoDeletePending: false,
-  setAtlasUndoDeletePending: (pending) => set({ atlasUndoDeletePending: pending }),
-  atlasUndoDeleteRequest: 0,
-  requestAtlasUndoDelete: () => set((s) => ({ atlasUndoDeleteRequest: s.atlasUndoDeleteRequest + 1 })),
+  atlasUndoAvailable: false,
+  atlasRedoAvailable: false,
+  setAtlasUndoRedoAvailable: ({ hasUndo, hasRedo }) => set({ atlasUndoAvailable: hasUndo, atlasRedoAvailable: hasRedo }),
+  atlasUndoRequest: 0,
+  requestAtlasUndo: () => set((s) => ({ atlasUndoRequest: s.atlasUndoRequest + 1 })),
+  atlasRedoRequest: 0,
+  requestAtlasRedo: () => set((s) => ({ atlasRedoRequest: s.atlasRedoRequest + 1 })),
+  atlasUndoAppliedTick: 0,
+  bumpAtlasUndoApplied: () => set((s) => ({ atlasUndoAppliedTick: s.atlasUndoAppliedTick + 1 })),
   atlasArrangeRequest: 0,
   requestAtlasArrange: () => set((s) => ({ atlasArrangeRequest: s.atlasArrangeRequest + 1 })),
   atlasImportRequest: 0,

@@ -51,12 +51,19 @@ func (a *AtlasService) CreateBoardObject(kind string, payload map[string]string,
 	}
 	dataevent.Emit("atlas", o.ID)
 	a.armMirrorWatch(o.ID, o.Payload["mirrorPath"])
+	created := o.ID
+	a.recordUndo(actorUI, "object", created, kind,
+		func(a *AtlasService) error { _, err := a.DeleteBoardObject(created); return err },
+		func(a *AtlasService) error { return a.UndoDelete(nil, nil, []string{created}) },
+	)
 	return o, nil
 }
 
 // SetBoardObjectPosition updates a board object's placement within its
 // parent's canvas -- the same drag-persistence call cards/notes go
 // through via SetPosition/SetNotePosition.
+//
+//nolint:dupl // same lock/mutate/persist/emit/recordScalar shape as SetNotePosition -- a shared generic setter is a larger refactor than this slice's scope
 func (a *AtlasService) SetBoardObjectPosition(id string, pos atlas.Position) (atlas.BoardObject, error) {
 	a.mu.Lock()
 	idx := a.findObjectLocked(id)
@@ -78,6 +85,10 @@ func (a *AtlasService) SetBoardObjectPosition(id string, pos atlas.Position) (at
 		return atlas.BoardObject{}, fmt.Errorf("save board object position: %w", perr)
 	}
 	dataevent.Emit("atlas", o.ID)
+	recordScalar(a, actorUI, "object", id, o.Kind,
+		func(a *AtlasService, p atlas.Position) error { _, err := a.SetBoardObjectPosition(id, p); return err },
+		previous.Position, pos,
+	)
 	return o, nil
 }
 
@@ -106,6 +117,10 @@ func (a *AtlasService) SetBoardObjectSize(id string, size atlas.Dimensions) (atl
 		return atlas.BoardObject{}, fmt.Errorf("save board object size: %w", perr)
 	}
 	dataevent.Emit("atlas", o.ID)
+	recordScalar(a, actorUI, "object", id, o.Kind,
+		func(a *AtlasService, sz atlas.Dimensions) error { _, err := a.SetBoardObjectSize(id, sz); return err },
+		derefSize(previous.Size), size,
+	)
 	return o, nil
 }
 
@@ -144,6 +159,11 @@ func (a *AtlasService) SetBoardObjectRotation(id string, degrees float64) (atlas
 		return atlas.BoardObject{}, fmt.Errorf("save board object rotation: %w", perr)
 	}
 	dataevent.Emit("atlas", o.ID)
+	prevDegrees, _ := strconv.ParseFloat(previous.Payload["rotation"], 64)
+	recordScalar(a, actorUI, "object", id, o.Kind,
+		func(a *AtlasService, d float64) error { _, err := a.SetBoardObjectRotation(id, d); return err },
+		prevDegrees, degrees,
+	)
 	return o, nil
 }
 
@@ -151,6 +171,8 @@ func (a *AtlasService) SetBoardObjectRotation(id string, degrees float64) (atlas
 // area frame) -- same containment-existence check CreateBoardObject
 // runs. A board object can never contain anything, so no cycle check
 // is needed the way MoveCard's atlas.WouldCycle is.
+//
+//nolint:dupl // same lock/reparent/emit/recordScalar shape as MoveNote -- a shared generic mover is a larger refactor than this slice's scope
 func (a *AtlasService) MoveBoardObject(id, newParentID string) (atlas.BoardObject, error) {
 	a.mu.Lock()
 	idx := a.findObjectLocked(id)
@@ -158,6 +180,7 @@ func (a *AtlasService) MoveBoardObject(id, newParentID string) (atlas.BoardObjec
 		a.mu.Unlock()
 		return atlas.BoardObject{}, fmt.Errorf("no board object with id %q", id)
 	}
+	previous := a.objects[idx]
 	o, err := reparentEntityLocked(a, a.objects, idx, newParentID, "board object", func(x *atlas.BoardObject, p string, t time.Time) {
 		x.ParentID = p
 		x.UpdatedAt = t
@@ -167,6 +190,10 @@ func (a *AtlasService) MoveBoardObject(id, newParentID string) (atlas.BoardObjec
 		return atlas.BoardObject{}, err
 	}
 	dataevent.Emit("atlas", o.ID)
+	recordScalar(a, actorUI, "object", id, o.Kind,
+		func(a *AtlasService, p string) error { _, err := a.MoveBoardObject(id, p); return err },
+		previous.ParentID, newParentID,
+	)
 	return o, nil
 }
 
@@ -247,6 +274,11 @@ func (a *AtlasService) PromoteBoardObject(objectID, kindID, title string) (atlas
 	a.disarmMirrorWatch(objectID)
 	a.armMirrorWatch(c.ID, c.MirrorPath)
 	a.notifyCardChange(c, "create", "")
+	capturedObj, capturedCard := obj, c
+	a.recordUndo(actorUI, "object", objectID, title,
+		func(a *AtlasService) error { return a.demoteCardToObject(capturedCard.ID, capturedObj) },
+		func(a *AtlasService) error { return a.repromoteObjectToCard(capturedObj.ID, capturedCard) },
+	)
 	return c, nil
 }
 

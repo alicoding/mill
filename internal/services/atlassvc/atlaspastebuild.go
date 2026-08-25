@@ -221,6 +221,13 @@ var pasteRecognizers = []pasteRecognizer{
 // a direct edit -- ungated, like every direct create.
 func (a *AtlasService) PasteToBoard(text, html, parentID string, x, y float64) (PasteResult, error) {
 	pos := atlas.Position{X: x, Y: y}
+	// A multi-table/multi-card paste lands as ONE undo step (ADR-0044
+	// decision 2's "multi-paste landing") -- every entity this call
+	// creates already journals through CreateBoardObject/CreateCard/
+	// CreateLink individually; grouping them here is the only change
+	// needed.
+	a.BeginUndoMark()
+	defer a.EndUndoMark()
 	for _, recognize := range pasteRecognizers {
 		if res, ok, err := recognize(a, text, html, parentID, pos); ok {
 			return res, err

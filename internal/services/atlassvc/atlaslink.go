@@ -29,7 +29,31 @@ func (a *AtlasService) checkLinkReferencesLocked(fromCardID, toCardID, linkKindI
 // --- Links ---
 
 func (a *AtlasService) CreateLink(fromCardID, toCardID, linkKindID, label string) (atlas.Link, error) {
-	return a.createLinkWithID(seeding.NewSlugID(label, "link"), fromCardID, toCardID, linkKindID, label)
+	newID := seeding.NewSlugID(label, "link")
+	l, err := a.createLinkWithID(newID, fromCardID, toCardID, linkKindID, label)
+	// createLinkWithID's own dedupe (goal 0124) returns an EXISTING link
+	// unchanged for a repeated (from, to, kind) drag -- l.ID then differs
+	// from newID, and recording an undo entry here would wrongly offer
+	// to delete a link this call never actually created.
+	if err == nil && l.ID == newID {
+		a.recordLinkCreateUndo(actorUI, l)
+	}
+	return l, err
+}
+
+// recordLinkCreateUndo is CreateLink/CreateLinkForMCP's shared journal
+// call -- DeleteLink hard-deletes (no tombstone, unlike cards/notes/
+// objects), so undo/redo both go through createLinkWithID, preserving
+// the ORIGINAL id both directions so the pair can alternate freely.
+func (a *AtlasService) recordLinkCreateUndo(actor undoActor, l atlas.Link) {
+	created := l
+	a.recordUndo(actor, "link", created.ID, created.Label,
+		func(a *AtlasService) error { return a.DeleteLink(created.ID) },
+		func(a *AtlasService) error {
+			_, err := a.createLinkWithID(created.ID, created.FromCardID, created.ToCardID, created.LinkKindID, created.Label)
+			return err
+		},
+	)
 }
 
 // createLinkWithID is CreateLink's own logic, parameterized on the new
@@ -105,6 +129,10 @@ func (a *AtlasService) UpdateLink(id, label string) (atlas.Link, error) {
 		return atlas.Link{}, fmt.Errorf("save link: %w", perr)
 	}
 	dataevent.Emit("atlas", l.ID)
+	recordScalar(a, actorUI, "link", id, l.Label,
+		func(a *AtlasService, v string) error { _, err := a.UpdateLink(id, v); return err },
+		previous.Label, label,
+	)
 	return l, nil
 }
 
@@ -139,6 +167,10 @@ func (a *AtlasService) SetLinkKind(id, linkKindID string) (atlas.Link, error) {
 		return atlas.Link{}, fmt.Errorf("save link: %w", perr)
 	}
 	dataevent.Emit("atlas", l.ID)
+	recordScalar(a, actorUI, "link", id, l.Label,
+		func(a *AtlasService, v string) error { _, err := a.SetLinkKind(id, v); return err },
+		previous.LinkKindID, linkKindID,
+	)
 	return l, nil
 }
 
@@ -168,6 +200,13 @@ func (a *AtlasService) DeleteLink(id string) error {
 		return fmt.Errorf("save link deletion: %w", perr)
 	}
 	dataevent.Emit("atlas", id)
+	a.recordUndo(actorUI, "link", id, removed.Label,
+		func(a *AtlasService) error {
+			_, err := a.createLinkWithID(removed.ID, removed.FromCardID, removed.ToCardID, removed.LinkKindID, removed.Label)
+			return err
+		},
+		func(a *AtlasService) error { return a.DeleteLink(id) },
+	)
 	return nil
 }
 
@@ -212,6 +251,12 @@ func (a *AtlasService) SetLens(containerID string, hiddenKindIDs []string, peek 
 		return fmt.Errorf("save lens: %w", perr)
 	}
 	dataevent.Emit("atlas", containerID)
+	recordScalar(a, actorUI, "lens", containerID, containerID,
+		func(a *AtlasService, s atlas.LensSetting) error {
+			return a.SetLens(containerID, s.HiddenKindIDs, s.Peek)
+		},
+		previous, setting,
+	)
 	return nil
 }
 

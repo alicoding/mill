@@ -31,7 +31,7 @@ func (a *AtlasService) resolveKindLocked(id string) (atlas.Kind, error) {
 // reparenting an EXISTING card (which may have its own descendants)
 // needs one.
 func (a *AtlasService) CreateCard(kindID, title, note string, fields map[string]string, parentID string, position *atlas.Position, viewMode atlas.ViewMode, source, mirrorPath, refreshWorkflowID string) (atlas.Card, error) {
-	return a.createCardWithID(seeding.NewSlugID(title, "card"), kindID, title, note, fields, parentID, position, viewMode, source, mirrorPath, "", refreshWorkflowID, "")
+	return a.createCardWithID(seeding.NewSlugID(title, "card"), kindID, title, note, fields, parentID, position, viewMode, source, mirrorPath, "", refreshWorkflowID, "", actorUI)
 }
 
 // CreateCardForWorkflow is CreateCard's own logic for an
@@ -44,7 +44,7 @@ func (a *AtlasService) CreateCard(kindID, title, note string, fields map[string]
 //
 //wails:ignore
 func (a *AtlasService) CreateCardForWorkflow(kindID, title, note string, fields map[string]string, sourceRunID string) (atlas.Card, error) {
-	return a.createCardWithID(seeding.NewSlugID(title, "card"), kindID, title, note, fields, "", nil, "", "", "", "", "", sourceRunID)
+	return a.createCardWithID(seeding.NewSlugID(title, "card"), kindID, title, note, fields, "", nil, "", "", "", "", "", sourceRunID, actorWorkflow)
 }
 
 // createCardWithID is CreateCard's own logic, parameterized on the new
@@ -52,7 +52,10 @@ func (a *AtlasService) CreateCardForWorkflow(kindID, title, note string, fields 
 // id (ADR-0036 decision 3), same shape as compositionsvc's
 // createWorkflowWithID/configuresvc's createListWithID. sourceRunID
 // (goal 0066) is "" for every caller except CreateCardForWorkflow.
-func (a *AtlasService) createCardWithID(id, kindID, title, note string, fields map[string]string, parentID string, position *atlas.Position, viewMode atlas.ViewMode, source, mirrorPath, mirrorChecksum, refreshWorkflowID, sourceRunID string) (atlas.Card, error) {
+// actor is ADR-0044's own per-call actor tag ("" skips journaling
+// entirely -- background/bulk callers like docs/ledger sync and
+// ImportAtlas that aren't a single user gesture, out of v1 scope).
+func (a *AtlasService) createCardWithID(id, kindID, title, note string, fields map[string]string, parentID string, position *atlas.Position, viewMode atlas.ViewMode, source, mirrorPath, mirrorChecksum, refreshWorkflowID, sourceRunID string, actor undoActor) (atlas.Card, error) {
 	a.mu.Lock()
 	kind, err := a.resolveKindLocked(kindID)
 	if err != nil {
@@ -102,6 +105,13 @@ func (a *AtlasService) createCardWithID(id, kindID, title, note string, fields m
 	dataevent.Emit("atlas", c.ID)
 	a.armMirrorWatch(c.ID, c.MirrorPath)
 	a.notifyCardChange(c, "create", sourceRunID)
+	if actor != "" {
+		created := c.ID
+		a.recordUndo(actor, "card", created, c.Title,
+			func(a *AtlasService) error { _, err := a.DeleteCard(created); return err },
+			func(a *AtlasService) error { return a.UndoDelete([]string{created}, nil, nil) },
+		)
+	}
 	return c, nil
 }
 
@@ -137,18 +147,33 @@ func (a *AtlasService) validateCardRefsLocked(kind atlas.Kind, fields map[string
 }
 
 func (a *AtlasService) UpdateCard(id, title, note string, fields map[string]string, source, mirrorPath, refreshWorkflowID string) (atlas.Card, error) {
+	c, previous, err := a.updateCardCore(id, title, note, fields, source, mirrorPath, refreshWorkflowID)
+	if err != nil {
+		return c, err
+	}
+	recordCardContentUndo(a, actorUI, id, title, previous, c)
+	return c, nil
+}
+
+// updateCardCore is UpdateCard/UpdateCardForMCP's own shared body --
+// validation, mutation, persist, dataevent, and the trigger-cycle
+// notify -- WITHOUT the journal call, so each exported wrapper decides
+// its own actor tag right at the call site rather than duplicating this
+// logic (ADR-0044's actor-scoping needs no shared mutable state this
+// way: which wrapper you called IS the actor).
+func (a *AtlasService) updateCardCore(id, title, note string, fields map[string]string, source, mirrorPath, refreshWorkflowID string) (updated, previous atlas.Card, err error) {
 	a.mu.Lock()
 	idx := a.findCardLocked(id)
 	if idx == -1 {
 		a.mu.Unlock()
-		return atlas.Card{}, fmt.Errorf("no card with id %q", id)
+		return atlas.Card{}, atlas.Card{}, fmt.Errorf("no card with id %q", id)
 	}
 	kind, err := a.resolveKindLocked(a.cards[idx].KindID)
 	if err != nil {
 		a.mu.Unlock()
-		return atlas.Card{}, err
+		return atlas.Card{}, atlas.Card{}, err
 	}
-	previous := a.cards[idx]
+	previous = a.cards[idx]
 	c := previous
 	newFields := make(map[string]string, len(fields))
 	for k, v := range fields {
@@ -161,11 +186,11 @@ func (a *AtlasService) UpdateCard(id, title, note string, fields map[string]stri
 	applyStampOnChangeLocked(kind, previous.Fields, c.Fields)
 	if err := a.validateCardRefsLocked(kind, c.Fields); err != nil {
 		a.mu.Unlock()
-		return atlas.Card{}, err
+		return atlas.Card{}, atlas.Card{}, err
 	}
 	if err := atlas.ValidateCard(c, kind); err != nil {
 		a.mu.Unlock()
-		return atlas.Card{}, err
+		return atlas.Card{}, atlas.Card{}, err
 	}
 	a.cards[idx] = c
 	perr := a.persistLocked()
@@ -174,11 +199,28 @@ func (a *AtlasService) UpdateCard(id, title, note string, fields map[string]stri
 	}
 	a.mu.Unlock()
 	if perr != nil {
-		return atlas.Card{}, fmt.Errorf("save card: %w", perr)
+		return atlas.Card{}, atlas.Card{}, fmt.Errorf("save card: %w", perr)
 	}
 	dataevent.Emit("atlas", c.ID)
 	a.notifyCardChange(c, "update", "")
-	return c, nil
+	return c, previous, nil
+}
+
+// recordCardContentUndo is UpdateCard/UpdateCardForMCP's shared
+// journal call (ADR-0044's content family): undo restores every
+// previously-touched field through the same door; redo re-applies what
+// was just written.
+func recordCardContentUndo(a *AtlasService, actor undoActor, id, label string, previous, next atlas.Card) {
+	a.recordUndo(actor, "card", id, label,
+		func(a *AtlasService) error {
+			_, _, err := a.updateCardCore(id, previous.Title, previous.Note, previous.Fields, previous.Source, previous.MirrorPath, previous.RefreshWorkflowID)
+			return err
+		},
+		func(a *AtlasService) error {
+			_, _, err := a.updateCardCore(id, next.Title, next.Note, next.Fields, next.Source, next.MirrorPath, next.RefreshWorkflowID)
+			return err
+		},
+	)
 }
 
 // MergeCardFields writes fields onto an existing card's own Fields map,
@@ -308,6 +350,10 @@ func (a *AtlasService) MoveCard(id, newParentID string) (atlas.Card, error) {
 		return atlas.Card{}, fmt.Errorf("save card move: %w", perr)
 	}
 	dataevent.Emit("atlas", c.ID)
+	recordScalar(a, actorUI, "card", id, c.Title,
+		func(a *AtlasService, p string) error { _, err := a.MoveCard(id, p); return err },
+		previous.ParentID, newParentID,
+	)
 	return c, nil
 }
 
@@ -340,6 +386,10 @@ func (a *AtlasService) SetPosition(id string, position *atlas.Position) (atlas.C
 		return atlas.Card{}, fmt.Errorf("save card position: %w", perr)
 	}
 	dataevent.Emit("atlas", c.ID)
+	recordScalar(a, actorUI, "card", id, c.Title,
+		func(a *AtlasService, p *atlas.Position) error { _, err := a.SetPosition(id, p); return err },
+		previous.Position, position,
+	)
 	return c, nil
 }
 

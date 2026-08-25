@@ -201,7 +201,7 @@ func (a *AtlasService) CreateCardFromFileDrop(path, title, parentID string, posi
 	if kindID == "" {
 		return FileDropCreateResult{}, fmt.Errorf("no kind declared to land a dropped file as")
 	}
-	card, err := a.createCardWithID(seeding.NewSlugID(title, "card"), kindID, title, "", nil, parentID, position, "", "", path, checksum, "", "")
+	card, err := a.createCardWithID(seeding.NewSlugID(title, "card"), kindID, title, "", nil, parentID, position, "", "", path, checksum, "", "", actorUI)
 	if err != nil {
 		return FileDropCreateResult{}, err
 	}
@@ -271,6 +271,11 @@ func (a *AtlasService) CreateLinkedFileCard(openCardID, path, title string, posi
 	}
 	dataevent.Emit("atlas", card.ID)
 	a.notifyCardChange(card, "create", "")
+	createdCard := card.ID
+	a.recordUndo(actorUI, "card", createdCard, card.Title,
+		func(a *AtlasService) error { _, err := a.DeleteCard(createdCard); return err },
+		func(a *AtlasService) error { return a.UndoDelete([]string{createdCard}, nil, nil) },
+	)
 	return card, nil
 }
 

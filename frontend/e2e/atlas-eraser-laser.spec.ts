@@ -59,6 +59,40 @@ test('dragging the eraser across a card removes it, and the quick-delete undo to
   await deleteCardViaMenu(page, menu, 'Erase Me')
 })
 
+// goal 0219 S2, ADR-0044: the eraser's delete rides the same actor-
+// scoped undo journal every other door does -- ⌘Z restores it exactly
+// like the toast's own Undo button (already proven above), without a
+// toast click.
+test('dragging the eraser across a card removes it, and ⌘Z brings it back', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  await createCardViaTray(page, 'Erase Me Too')
+  const card = noteCard(page, 'Erase Me Too')
+  await expect(card).toBeVisible()
+  const box = await card.boundingBox()
+  if (!box) throw new Error('card has no bounding box')
+
+  const eraserTool = page.getByTestId('atlas-tray-eraser')
+  await eraserTool.click()
+  await expect(eraserTool).toHaveAttribute('data-armed', 'true')
+
+  await dragBetween(
+    page,
+    { x: box.x - 40, y: box.y + box.height / 2 },
+    { x: box.x + box.width + 40, y: box.y + box.height / 2 },
+  )
+  await expect(card).toHaveCount(0)
+
+  await page.keyboard.press('Meta+z')
+  await expect(card).toBeVisible()
+
+  const menu = contextMenu(page)
+  await deleteCardViaMenu(page, menu, 'Erase Me Too')
+})
+
 test('dragging the laser across the board draws a fading trail, creates nothing, and leaves no trace once it fades', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()

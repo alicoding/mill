@@ -318,19 +318,22 @@ export const COMMANDS: Command[] = [
       return useUISignalStore.getState().requestAtlasArmTool(tool.id)
     },
   })),
+  // The board's ⌘Z/⇧⌘Z (goal 0219 S2, ADR-0044): null binding -- ⌘Z is
+  // ALSO native text-undo, dispatched by useKeymapDispatch.ts's own
+  // listener instead; these exist for palette/HotkeyHint discovery only.
   {
-    // The quick-delete undo toast's own ⌘Z (goal 0093): defaultBinding
-    // stays null, same shape atlas.create.card/note/area already use --
-    // ⌘Z is ALSO the native text-undo combo, so the real dispatch is a
-    // dedicated app/useKeymapDispatch.ts listener that only calls
-    // run() (and only preventDefaults) while a toast is actually
-    // pending and the event target isn't editable; this entry exists
-    // for palette/HotkeyHint discoverability, not generic dispatch.
-    id: 'atlas.undoDelete',
-    label: 'Undo delete',
+    id: 'atlas.undo',
+    label: 'Undo',
     defaultBinding: null,
     surface: ['atlas'],
-    run: () => useUISignalStore.getState().requestAtlasUndoDelete(),
+    run: () => useUISignalStore.getState().requestAtlasUndo(),
+  },
+  {
+    id: 'atlas.redo',
+    label: 'Redo',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasRedo(),
   },
   {
     id: 'atlas.matrix',
