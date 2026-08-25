@@ -214,6 +214,10 @@ func (a *AtlasService) DeleteCard(id string) (TombstoneResult, error) {
 	}
 	dataevent.Emit("atlas", id)
 	a.disarmMirrorWatch(id)
+	a.recordUndo(actorUI, "card", id, previous.Title,
+		func(a *AtlasService) error { return a.UndoDelete([]string{id}, nil, nil) },
+		func(a *AtlasService) error { _, err := a.DeleteCard(id); return err },
+	)
 	return TombstoneResult{CardIDs: []string{id}, LinksRemoved: linksRemoved, ChildrenPromoted: childrenPromoted}, nil
 }
 
@@ -222,6 +226,10 @@ func (a *AtlasService) DeleteCard(id string) (TombstoneResult, error) {
 // seed provenance).
 func (a *AtlasService) DeleteNote(id string) (TombstoneResult, error) {
 	a.mu.Lock()
+	var label string
+	if idx := a.findNoteLocked(id); idx != -1 {
+		label = a.notes[idx].Text
+	}
 	err := softDeleteEntityLocked(a, a.notes, id, "note", func() int { return a.findNoteLocked(id) },
 		func(n atlas.Note) time.Time { return n.DeletedAt },
 		func(n *atlas.Note, t time.Time) { n.DeletedAt = t; n.UpdatedAt = t })
@@ -230,6 +238,10 @@ func (a *AtlasService) DeleteNote(id string) (TombstoneResult, error) {
 		return TombstoneResult{}, err
 	}
 	dataevent.Emit("atlas", id)
+	a.recordUndo(actorUI, "note", id, label,
+		func(a *AtlasService) error { return a.UndoDelete(nil, []string{id}, nil) },
+		func(a *AtlasService) error { _, err := a.DeleteNote(id); return err },
+	)
 	return TombstoneResult{NoteIDs: []string{id}}, nil
 }
 
@@ -240,6 +252,10 @@ func (a *AtlasService) DeleteNote(id string) (TombstoneResult, error) {
 // container).
 func (a *AtlasService) DeleteBoardObject(id string) (TombstoneResult, error) {
 	a.mu.Lock()
+	var label string
+	if idx := a.findObjectLocked(id); idx != -1 {
+		label = a.objects[idx].Kind
+	}
 	err := softDeleteEntityLocked(a, a.objects, id, "board object", func() int { return a.findObjectLocked(id) },
 		func(o atlas.BoardObject) time.Time { return o.DeletedAt },
 		func(o *atlas.BoardObject, t time.Time) { o.DeletedAt = t; o.UpdatedAt = t })
@@ -249,6 +265,10 @@ func (a *AtlasService) DeleteBoardObject(id string) (TombstoneResult, error) {
 	}
 	dataevent.Emit("atlas", id)
 	a.disarmMirrorWatch(id)
+	a.recordUndo(actorUI, "object", id, label,
+		func(a *AtlasService) error { return a.UndoDelete(nil, nil, []string{id}) },
+		func(a *AtlasService) error { _, err := a.DeleteBoardObject(id); return err },
+	)
 	return TombstoneResult{ObjectIDs: []string{id}}, nil
 }
 

@@ -32,6 +32,7 @@ import { useAtlasNoteMenu } from './useAtlasNoteMenu'
 import { useAtlasObjectMenu } from './useAtlasObjectMenu'
 import { useAtlasSpaceActions } from './useAtlasSpaceActions'
 import { useAtlasUndoToast } from './useAtlasUndoToast'
+import { useAtlasUndoJournal } from './useAtlasUndoJournal'
 import { AtlasUndoToast } from './AtlasUndoToast'
 import { useAtlasQuietToast } from './useAtlasQuietToast'
 import { AtlasQuietToast } from './AtlasQuietToast'
@@ -271,6 +272,9 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const undoToast = useAtlasUndoToast()
   // A quiet, no-undo toast (membership writes, clipboard feedback).
   const quietToast = useAtlasQuietToast()
+  // The board's own ⌘Z/⇧⌘Z journal (goal 0219 S2, ADR-0044) -- an
+  // apply-time staleness skip rides the same quiet toast above.
+  useAtlasUndoJournal({ onSkip: quietToast.show })
   const [openNoteID, setOpenNoteID] = useState<string | null>(null)
 
   const deleteConfirm = useAtlasDeleteConfirm({ t, allCards, notes: allNotes })

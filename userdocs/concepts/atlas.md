@@ -118,6 +118,12 @@ into.
   run them from the card. Workflows can also read and write cards as
   steps (create, update, find, link), and a trigger can fire on card
   changes — the board and the automation layer are one system.
+- **Undo almost anything.** ⌘Z undoes your last change on the
+  board — drawing a stroke, moving or resizing a card, deleting
+  something, pasting a table — and ⇧⌘Z brings it back. Deleting
+  also shows a brief Undo button; either one restores it. A change
+  someone else makes at the same time is never something your own
+  ⌘Z can undo.
 - **Tables are projections.** Start one from nothing with "New
   table" (the toolbar at the bottom of the board, next to Card,
   Note, and Area): sweep the size grid to the shape

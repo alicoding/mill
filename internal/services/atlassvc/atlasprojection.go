@@ -159,6 +159,7 @@ func (a *AtlasService) SetCardSize(cardID string, w, h float64) (atlas.Card, err
 		a.mu.Unlock()
 		return atlas.Card{}, fmt.Errorf("no card with id %q", cardID)
 	}
+	previous := a.cards[idx]
 	a.cards[idx].Size = &atlas.Dimensions{W: w, H: h}
 	if err := a.persistLocked(); err != nil {
 		a.mu.Unlock()
@@ -167,6 +168,13 @@ func (a *AtlasService) SetCardSize(cardID string, w, h float64) (atlas.Card, err
 	out := a.cards[idx]
 	a.mu.Unlock()
 	dataevent.Emit("atlas", out.ID)
+	recordScalar(a, actorUI, "card", cardID, out.Title,
+		func(a *AtlasService, sz atlas.Dimensions) error {
+			_, err := a.SetCardSize(cardID, sz.W, sz.H)
+			return err
+		},
+		derefSize(previous.Size), atlas.Dimensions{W: w, H: h},
+	)
 	return out, nil
 }
 

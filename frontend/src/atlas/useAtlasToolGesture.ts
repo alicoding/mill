@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ComponentType, PointerEvent as ReactPointerEvent, RefObject } from 'react'
 import { useKeyPress } from '@xyflow/react'
+import { AtlasService } from '../shared/bindings'
 import type { AtlasGestureCtx, AtlasGesturePoint, AtlasToolGesture, AtlasToolShape } from './atlasNounRegistry'
 
 // A drag under this many screen pixels (either axis) is a stray click
@@ -98,6 +99,10 @@ export function useAtlasToolGesture({ tool, readOnly, isFree, ctx, wrapperRef }:
   // Fresh per-gesture scratch (eraser's own live hit accumulation) --
   // allocated at pointerdown, read at onEnd, discarded after.
   const scratchRef = useRef<{ cardIDs: Set<string>; noteIDs: Set<string> } | null>(null)
+  // The undo journal mark this gesture opened (goal 0219 S2) -- the
+  // promise BeginUndoMark returned, awaited before EndUndoMark closes
+  // it in onPointerUpCore.
+  const markOpenRef = useRef<Promise<void> | null>(null)
 
   const ctxRef = useRef(ctx)
   useEffect(() => { ctxRef.current = ctx }, [ctx])
@@ -166,6 +171,11 @@ export function useAtlasToolGesture({ tool, readOnly, isFree, ctx, wrapperRef }:
     e.stopPropagation()
     e.preventDefault()
     const g = gestureRef.current
+    // A gesture (stroke, eraser) undoes as ONE step regardless of how
+    // many entities it touches (ADR-0044 decision 2, goal 0219 S2) --
+    // opened here at the 0215 gesture engine's own start boundary,
+    // closed in onPointerUpCore's end boundary below.
+    markOpenRef.current = AtlasService.BeginUndoMark()
     drawingRef.current = true
     scratchRef.current = { cardIDs: new Set(), noteIDs: new Set() }
     fadeMsRef.current = g?.fadeMs
@@ -200,7 +210,15 @@ export function useAtlasToolGesture({ tool, readOnly, isFree, ctx, wrapperRef }:
     drawingRef.current = false
     const clientPoints = clientPointsRef.current
     const g = gestureRef.current
+    // onEnd stays SYNCHRONOUS (its ctx reads scratchRef/points state
+    // that this function clears right below -- deferring the call
+    // would read already-cleared state). The mark only needs to stay
+    // open until onEnd's own AtlasService calls are ISSUED, which
+    // happens synchronously within this call; EndUndoMark fires right
+    // after, once BeginUndoMark's own open has resolved.
     g?.onEnd(clientPoints, buildCtx())
+    void markOpenRef.current?.then(() => AtlasService.EndUndoMark())
+    markOpenRef.current = null
     clientPointsRef.current = []
     scratchRef.current = null
     if (fadeMsRef.current === undefined) {
@@ -219,6 +237,11 @@ export function useAtlasToolGesture({ tool, readOnly, isFree, ctx, wrapperRef }:
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || !drawingRef.current) return
       drawingRef.current = false
+      // Escape cancels WITHOUT calling onEnd -- no mutation happens, but
+      // a mark opened at pointerdown must still close, or every later,
+      // unrelated action would wrongly land inside it.
+      void markOpenRef.current?.then(() => AtlasService.EndUndoMark())
+      markOpenRef.current = null
       clientPointsRef.current = []
       scratchRef.current = null
       if (fadeMsRef.current === undefined) {

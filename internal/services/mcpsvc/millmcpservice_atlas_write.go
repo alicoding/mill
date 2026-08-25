@@ -244,7 +244,7 @@ func (m *MillMCPService) executeAtlasUpdateCard(in atlasProposeCardWriteArgs) (s
 		fields["status"] = in.Status
 	}
 
-	updated, err := m.atlas.UpdateCard(current.ID, title, note, fields, current.Source, current.MirrorPath, current.RefreshWorkflowID)
+	updated, err := m.atlas.UpdateCardForMCP(current.ID, title, note, fields, current.Source, current.MirrorPath, current.RefreshWorkflowID)
 	if err != nil {
 		return "", err
 	}
@@ -294,12 +294,12 @@ func (m *MillMCPService) executeAtlasCreateCard(in atlasProposeCardWriteArgs) (s
 		fields["status"] = in.Status
 	}
 
-	card, err := m.atlas.CreateCard(in.KindID, in.Title, in.Note, fields, in.ParentID, nil, "", "", "", "")
+	card, err := m.atlas.CreateCardForMCP(in.KindID, in.Title, in.Note, fields, in.ParentID)
 	if err != nil {
 		return "", err
 	}
 	for _, l := range in.Links {
-		if _, err := m.atlas.CreateLink(card.ID, l.ToCardID, l.LinkKindID, ""); err != nil {
+		if _, err := m.atlas.CreateLinkForMCP(card.ID, l.ToCardID, l.LinkKindID, ""); err != nil {
 			return "", fmt.Errorf("card %q was created but linking to %q failed: %w", card.ID, l.ToCardID, err)
 		}
 	}

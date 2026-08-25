@@ -130,6 +130,23 @@ type AtlasService struct {
 	// of writes is being coalesced (atlasservice_mirrorwatch.go's
 	// debounceMirrorEmit).
 	mirrorDebouncers map[string]*time.Timer
+	// Undo journal state (ADR-0044, atlasundo.go) -- in-memory only,
+	// deliberately absent from persistedState/persistLocked: every
+	// surveyed canvas product scopes undo history to session lifetime,
+	// and the 48h tombstone window already covers post-restart delete
+	// recovery on its own. undoStacks/redoStacks are keyed by actor so
+	// an MCP/workflow write's own entry can never be popped by the UI
+	// actor's ⌘Z. openMarkID/openMarkDepth back BeginUndoMark/
+	// EndUndoMark; suppressRecording is true only while Undo()/Redo()
+	// itself is replaying a previously recorded closure through the
+	// ordinary doors, so that replay never mints a second, redundant
+	// entry.
+	undoStacks        map[undoActor][]undoEntry
+	redoStacks        map[undoActor][]undoEntry
+	undoMarkSeq       int
+	openMarkID        int
+	openMarkDepth     int
+	suppressRecording bool
 }
 
 // NewAtlasService restores any persisted state, then reconciles the
