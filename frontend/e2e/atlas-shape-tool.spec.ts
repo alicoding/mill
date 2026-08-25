@@ -221,10 +221,18 @@ test('the shape style choice survives a disarm/re-arm cycle, and Promote to card
   await expect(card).toHaveCount(0)
 })
 
-// The full acceptance sentence (goal 0199), verified end to end with
-// NO Escape pressed anywhere: draw a shape, it is selected, drag it by
-// its own frame, resize it by a handle, and the size survives reload.
-test('draw, selected, drag by frame, resize by handle, survives reload -- no Escape anywhere', async ({ page }) => {
+// The full acceptance sentence (goal 0199, re-proven by goal 0206 with
+// the surface it now drags by): draw a shape, it is selected, drag it
+// by its own BODY (goal 0206 removed the drag-band chrome from shape --
+// its whole body already drags, so the band would only be debris, and
+// the acceptance sentence's own "drag works" capability now goes
+// through that surface instead), resize it by a handle, and the size
+// survives reload -- no Escape pressed anywhere. Also pins goal 0206's
+// own defects 1 and 3: the paint never exceeds the node's own box
+// (defect 1), and it tracks the pointer live during a resize rather
+// than snapping only at release (defect 3) -- both from the SAME fix
+// (AtlasShapeContent.tsx's SVG filling its container at 100%/100%).
+test('draw, selected, drag by body, resize by handle, survives reload -- no Escape anywhere', async ({ page }) => {
   // Same CI-invisible pointer-coalescing class this repo's other
   // resize-drag tests already document (QUARANTINE.md atlas-table-resize).
   test.skip(!!process.env.CI, 'drag synthesis coalesces on CI -- QUARANTINE.md atlas-table-resize')
@@ -240,13 +248,23 @@ test('draw, selected, drag by frame, resize by handle, survives reload -- no Esc
   const wrapper = page.locator('.react-flow__node').filter({ has: shapes.first() })
   await expect(wrapper).toHaveClass(/selected/)
 
-  // Drag it by its own frame.
+  // Defect 1: the paint (the SVG atlasShapeContent renders) never
+  // exceeds the node's own frame -- a 2px slack for stroke/rounding,
+  // never the ~14px band-height overflow the bug produced.
+  const svgAfterDraw = shapes.first().locator('[data-testid="atlas-shape-content"]')
+  const nodeAfterDraw = await wrapper.boundingBox()
+  const svgBoxAfterDraw = await svgAfterDraw.boundingBox()
+  if (!nodeAfterDraw || !svgBoxAfterDraw) throw new Error('no node/svg box after draw')
+  expect(svgBoxAfterDraw.height).toBeLessThanOrEqual(nodeAfterDraw.height + 2)
+  expect(svgBoxAfterDraw.width).toBeLessThanOrEqual(nodeAfterDraw.width + 2)
+
+  // Drag it by its own body (no drag-band chrome for shape, goal 0206 --
+  // its whole body already drags). The node's own box has no NodeResizer
+  // handle at its exact center, so a center point is always body, never
+  // a handle.
   const beforeDrag = await shapes.first().boundingBox()
   if (!beforeDrag) throw new Error('no shape box')
-  const frame = shapes.first().getByTestId('atlas-board-object-frame')
-  const frameBox = await frame.boundingBox()
-  if (!frameBox) throw new Error('no frame box')
-  const dragStart = { x: frameBox.x + frameBox.width / 2, y: frameBox.y + frameBox.height / 2 }
+  const dragStart = { x: beforeDrag.x + beforeDrag.width / 2, y: beforeDrag.y + beforeDrag.height / 2 }
   await dragBetween(page, dragStart, { x: dragStart.x + 100, y: dragStart.y + 80 })
   await expect.poll(async () => (await shapes.first().boundingBox())?.x ?? 0).toBeGreaterThan(beforeDrag.x + 60)
 
@@ -262,12 +280,27 @@ test('draw, selected, drag by frame, resize by handle, survives reload -- no Esc
   const startY = hb.y + hb.height / 2
   await page.mouse.move(startX, startY)
   await page.mouse.down()
+  let midDragChecked = false
   for (let i = 1; i <= 6; i++) {
     await page.mouse.move(startX + i * 15, startY - i * 10)
     // Pointer-coalescing class (this file's own header comment) --
     // each step must land in its own frame.
     await page.waitForTimeout(50)
+    // Defect 3, mid-drag: NodeResizer only ever WRITES Size at
+    // onResizeEnd, but the paint must already track the pointer here,
+    // not just at release -- the node's live box and the SVG's own
+    // rendered box must already agree, mid-gesture.
+    if (i === 3) {
+      const nodeMidDrag = await wrapper.boundingBox()
+      const svgMidDrag = await shapes.first().locator('[data-testid="atlas-shape-content"]').boundingBox()
+      if (nodeMidDrag && svgMidDrag) {
+        expect(svgMidDrag.width).toBeLessThanOrEqual(nodeMidDrag.width + 2)
+        expect(svgMidDrag.height).toBeLessThanOrEqual(nodeMidDrag.height + 2)
+        midDragChecked = true
+      }
+    }
   }
+  expect(midDragChecked, 'mid-drag geometry sample never landed -- the live-tracking assertion needs at least one').toBe(true)
   await page.mouse.up()
   await expect.poll(async () => (await shapes.first().boundingBox())?.width ?? 0).toBeGreaterThan(beforeResize.width + 40)
 

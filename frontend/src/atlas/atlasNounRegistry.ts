@@ -62,6 +62,22 @@ interface AtlasToolShapeBase {
   // noun's placed instance -- see AtlasBoardNodeType above for why this
   // exists.
   boardNodeType: AtlasBoardNodeType
+  // dragBand (goal 0206): does this noun's own placed instance need the
+  // shared 'atlas-object' renderer's chrome band as its drag surface? A
+  // Kind's whole body already drags UNLESS its own content captures
+  // pointer events (a table's grid, a diagram's vendored pan/zoom) --
+  // rendering the band on a Kind that doesn't need it reads as floating
+  // debris, not an affordance (the goal's own defect 2). Only meaningful
+  // for a noun whose boardNodeType is 'atlas-object'; every other noun
+  // still declares it -- always false, since it has no shared band to
+  // opt into at all. diagram carries the same true answer as table but
+  // has no tray descriptor of its own (drop-only, goal 0179 S2) -- it
+  // can't declare this field and is exempted from this registry's own
+  // conformance check the same way it already is for resizable/
+  // boardNodeType above; AtlasBoardObjectNode.tsx's own dragBand
+  // constant states its true answer directly, and atlas-diagram-object.spec.ts
+  // proves it live since the static check can't reach it.
+  dragBand: boolean
   // Each concrete tool's own commit signature differs (a card commits
   // kind+title, a table mints a backing List); this base only has to
   // accept every one of them for the registry's own element type to

@@ -79,3 +79,27 @@ describe('atlas board-object drag-surface conformance (goal 0181 S3, regression 
     }
   })
 })
+
+// Regression coverage for goal 0206's own correction to #404: the band
+// is debris on a Kind whose whole body already drags (image/ink/shape),
+// so it must render CONDITIONALLY, gated on each noun's own `dragBand`
+// declaration -- never unconditionally the way the check above alone
+// would still accept. diagram carries the same true answer as table but
+// has no tray descriptor to declare it on (drop-only noun, atlasNounRegistry.ts's
+// own dragBand comment records the same gap resizable/boardNodeType
+// already carry for it) -- proven instead by atlas-diagram-object.spec.ts's
+// own real e2e assertion, not this static check.
+describe('atlas board-object drag-band conformance (goal 0181 S3, regression for goal 0206)', () => {
+  it('gates the frame band on dragBand rather than rendering it unconditionally', () => {
+    const source = rendererSource('atlas-object')
+    expect(source).toMatch(/dragBand\s*&&[\s\S]{0,300}data-testid="atlas-board-object-frame"/)
+  })
+
+  it('matches the DESIGN DECIDED table exactly: table true, image/pencil/shape false', () => {
+    const objectNouns = ATLAS_TOOLS.filter((t) => t.boardNodeType === 'atlas-object')
+    const withBand = objectNouns.filter((t) => t.dragBand).map((t) => t.id).sort()
+    const withoutBand = objectNouns.filter((t) => !t.dragBand).map((t) => t.id).sort()
+    expect(withBand).toEqual(['table'])
+    expect(withoutBand).toEqual(['image', 'pencil', 'shape'])
+  })
+})

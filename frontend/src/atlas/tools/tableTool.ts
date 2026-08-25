@@ -26,6 +26,9 @@ export const tableTool = {
   // every Kind that routes through it (goal 0199's #404/#405).
   resizable: true,
   boardNodeType: 'atlas-object',
+  // A table's own grid captures pointer events (nodrag) -- the band is
+  // its ONLY drag surface (goal 0206's own DESIGN DECIDED table).
+  dragBand: true,
   commit: async (input: { cols: number; rowCount: number; existingTitles: Set<string> }): Promise<AtlasTableArtifact> => {
     let title = 'Table'
     for (let n = 2; input.existingTitles.has(title); n++) title = `Table ${n}`

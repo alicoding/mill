@@ -34,7 +34,11 @@ export interface ExecEnv {
      * which is exactly the inheritance ADR-0026's... principle exists
      * to avoid"). Empty is legal (codeexec.go substitutes a minimal
      * default PATH so the shell can still resolve external commands),
-     * distinct from nil only at the Go-type level, not semantically.
+     * distinct from nil only at the Go-type level, not semantically. A
+     * value of the form "vault:<entry-id>" (vaultref.Parse, goal 0203
+     * S1) is resolved to that vault entry's password at run time, never
+     * written to disk in resolved form -- mirrors mcpserver.MCPServer.
+     * Env's identical convention.
      */
     "Env": string[] | null;
 

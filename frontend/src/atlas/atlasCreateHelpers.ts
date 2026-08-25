@@ -50,13 +50,12 @@ export function titleFromFilename(path: string): string {
   return dot > 0 ? base.slice(0, dot) : base
 }
 
-// normalizeLocalPathInput turns the image tool's own path/URL field
-// (goal 0169 slice 2) into a plain filesystem path: a dragged-in
-// `file://` URL (macOS commonly inserts one when a file is dropped into
-// a plain text field) has its scheme stripped and its percent-encoding
-// decoded; anything else passes through trimmed, unchanged. Pure --
-// this never touches the filesystem itself, MirrorPath validity is the
-// backend's own job (CreateCardFromFileDrop).
+// normalizeLocalPathInput turns the image tool's own picked-path input
+// (goal 0169 slice 2) into a plain filesystem path: a `file://` URL
+// (some pickers/drop sources hand one back) has its scheme stripped and
+// its percent-encoding decoded; anything else passes through trimmed,
+// unchanged. Pure -- this never touches the filesystem itself, path
+// validity is the backend's own job.
 export function normalizeLocalPathInput(input: string): string {
   const trimmed = input.trim()
   if (!trimmed.startsWith('file://')) return trimmed

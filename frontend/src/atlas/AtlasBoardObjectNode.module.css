@@ -1,22 +1,25 @@
 /* A board-local object is a thing in space, not a document -- no card
-   title bar or kind chip. It DOES carry one thin chrome band (.frame,
-   below): the drag surface every Kind needs (goal 0199's #404
-   correction), since a table's own grid and a drawio diagram's own
-   pan/zoom both capture pointer events a plain node-drag can't reach
-   through. Column layout so the band sits above content without
-   affecting its own natural/intrinsic sizing. */
+   title bar or kind chip. It MAY carry one thin chrome band (.frame,
+   below): the drag surface a Kind whose own content captures pointer
+   events needs (goal 0199's #404 correction, gated per-noun by goal
+   0206 -- see AtlasBoardObjectNode.tsx's own dragBand comment), since a
+   table's own grid and a drawio diagram's own pan/zoom both capture
+   pointer events a plain node-drag can't reach through. Column layout
+   so the band sits above content without affecting its own natural/
+   intrinsic sizing. */
 .object {
     display: flex;
     flex-direction: column;
     cursor: pointer;
 }
 
-/* The drag surface (goal 0199): a slim, quiet band -- legible as
-   "grab here" via cursor + a faint grip mark, never loud enough to
-   read as a title bar. image/ink/shape need it least (their own
-   content already drags from anywhere) but render it too, so a
-   future Kind inherits the same surface by existing rather than by
-   remembering to opt in. */
+/* The drag surface (goal 0199, gated per-noun by goal 0206): a slim,
+   quiet band -- legible as "grab here" via cursor + a faint grip mark,
+   never loud enough to read as a title bar. Rendered only for Kinds
+   whose own content captures pointer events (table, diagram) -- a Kind
+   whose whole body already drags (image/ink/shape) never renders this
+   element at all, so it can't read as a floating strip with nothing
+   behind it. */
 .frame {
     flex: 0 0 auto;
     height: 14px;

@@ -26,6 +26,10 @@ const MILL_SERVER_BIN = path.join(REPO_ROOT, 'frontend', 'e2e', '.build', 'mill-
 // OS dialog. Harmless for every test that never calls PickFolder.
 const FOLDER_PICK_FIXTURE = path.join(REPO_ROOT, 'frontend', 'e2e', 'fixtures', 'synced-folder')
 
+// Same bypass for AtlasService.PickImageFile (goal 0206) --
+// MILL_TEST_IMAGE_PICK_PATH. Harmless for every test that never calls it.
+const IMAGE_PICK_FIXTURE = path.join(REPO_ROOT, 'frontend', 'e2e', 'fixtures', 'synced-folder', 'logo.png')
+
 // Port ranges deliberately clear of both Wails' own server-mode default
 // (8080) and Mill's own default MCP bind address (127.0.0.1:8090) --
 // confirmed live, not assumed: a real LaunchAgent-run mill-server on
@@ -195,6 +199,9 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
       // override (e.g. the mirror-dense spec's own folder-pick
       // fixture) would otherwise always lose to this default.
       MILL_TEST_FOLDER_PICK_PATH: opts.extraEnv?.MILL_TEST_FOLDER_PICK_PATH ?? FOLDER_PICK_FIXTURE,
+      // Same override-wins-by-spreading-first shape, for
+      // AtlasService.PickImageFile's own e2e bypass (goal 0206).
+      MILL_TEST_IMAGE_PICK_PATH: opts.extraEnv?.MILL_TEST_IMAGE_PICK_PATH ?? IMAGE_PICK_FIXTURE,
       // Lets remote-access.spec.ts populate a paired device directly --
       // pairing itself only completes over a non-loopback connection,
       // which this isolated per-worker server never has.

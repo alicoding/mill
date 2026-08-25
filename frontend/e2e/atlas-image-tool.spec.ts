@@ -1,5 +1,3 @@
-import { fileURLToPath } from 'node:url'
-import path from 'node:path'
 import { test, expect } from './fixtures/server'
 import { openCard } from './fixtures/atlasBoard'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
@@ -7,16 +5,17 @@ import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 
 // The image tool (goal 0169 slice 2, re-pointed by goal 0179 S1's own
-// correction): a typed local path or a pasted clipboard image lands as
-// a board-local BoardObject -- NEVER a card. The rule, absolute:
-// dropping/drawing something on the canvas creates THAT THING, never a
-// card. Becoming a card is the explicit, one-way "Promote to card…"
-// action proven at the end of the first test; atlas-paste-convert.spec.ts
-// and the unit registry's own tests cover the renderer, not this file.
-// Shared pool: every entity created here is deleted here.
-
-const REPO_ROOT = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '..')
-const IMAGE_FIXTURE = path.join(REPO_ROOT, 'e2e', 'fixtures', 'synced-folder', 'logo.png')
+// correction, and goal 0206's own affordance fix): a native file picker
+// (fixtures/server.ts's own MILL_TEST_IMAGE_PICK_PATH bypass -- every
+// worker's server returns the "logo.png" fixture below, matching real
+// PickImageFile's return shape without a display) or a pasted clipboard
+// image lands as a board-local BoardObject -- NEVER a card. The rule,
+// absolute: dropping/drawing something on the canvas creates THAT
+// THING, never a card. Becoming a card is the explicit, one-way
+// "Promote to card…" action proven at the end of the first test;
+// atlas-paste-convert.spec.ts and the unit registry's own tests cover
+// the renderer, not this file. Shared pool: every entity created here
+// is deleted here.
 
 // A minimal valid 1x1 PNG, inlined rather than read from disk -- the
 // paste path never touches the filesystem until SaveImageBytes writes
@@ -32,19 +31,21 @@ function imageObjects(page: import('@playwright/test').Page) {
   return page.locator('[data-testid="atlas-board-object"][data-object-kind="image"]')
 }
 
-test('typing a local image path lands a board object, never a card -- Promote to card is the explicit escape hatch', async ({ page }) => {
+test('picking an image via the native file dialog lands a board object, never a card -- Promote to card is the explicit escape hatch', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
   await openImagePopover(page)
-  await page.getByTestId('atlas-image-path').fill(IMAGE_FIXTURE)
-  await page.getByTestId('atlas-image-add').click()
+  await page.getByTestId('atlas-image-pick').click()
 
   const object = imageObjects(page)
   await expect(object).toHaveCount(1)
   // The rule, absolute: nothing turned into a card the user didn't ask for.
   await expect(page.getByTestId('atlas-note-card').filter({ hasText: 'logo' })).toHaveCount(0)
+  // dragBand (goal 0206): an image's whole body already drags, so the
+  // shared 'atlas-object' renderer's chrome band never renders for it.
+  await expect(object.getByTestId('atlas-board-object-frame')).toHaveCount(0)
 
   // Promote to card (explicit, reversible-only-by-undo): the SAME
   // mirrored file becomes a real mirror-image card.
@@ -76,7 +77,7 @@ test('pasting a clipboard image lands a board object -- selectable, draggable, d
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
   await openImagePopover(page)
-  await page.getByTestId('atlas-image-path').evaluate((el, base64) => {
+  await page.getByTestId('atlas-image-paste-zone').evaluate((el, base64) => {
     const bin = atob(base64)
     const bytes = new Uint8Array(bin.length)
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
@@ -93,7 +94,7 @@ test('pasting a clipboard image lands a board object -- selectable, draggable, d
   // it (wrongly) landed as a card, not a blanket zero (the seeded
   // example space already carries its own cards).
   await expect(page.getByTestId('atlas-note-card').filter({ hasText: 'Pasted image' })).toHaveCount(0)
-  // The popover closes itself once the paste resolves -- no Add click needed.
+  // The popover closes itself once the paste resolves -- no further click needed.
   await expect(page.getByTestId('atlas-image-input')).not.toBeVisible()
 
   // Selectable + deletable, inheriting the shared quick-delete-with-undo
@@ -113,18 +114,18 @@ test('pasting a clipboard image lands a board object -- selectable, draggable, d
   await expect(object).toHaveCount(0)
 })
 
-test('a non-image path shows an inline error and creates nothing', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Atlas' }).click()
-  await expect(page.getByTestId('atlas-board')).toBeVisible()
-
-  await openImagePopover(page)
-  await page.getByTestId('atlas-image-path').fill('/tmp/notes.pdf')
-  await page.getByTestId('atlas-image-add').click()
-
-  await expect(page.getByTestId('atlas-image-error')).toBeVisible()
-  await expect(imageObjects(page)).toHaveCount(0)
-})
+// Note (goal 0206): the prior "a non-image path shows an inline error"
+// case tested typing an arbitrary bad path into a free-text field --
+// that field no longer exists (replaced by the native picker, which
+// filters to image extensions itself). The extension re-check
+// AtlasImageInput.tsx still runs after a pick (windowing.PickImageFile's
+// own doc comment: the OS filter is display-only on some platforms) is
+// exercised at the unit layer (IMAGE_EXTENSIONS/extensionOf already have
+// their own vitest coverage) rather than a dedicated e2e server here --
+// reaching a picker-returned bad extension in this harness would need a
+// second per-file MILL_TEST_IMAGE_PICK_PATH value, which the shared
+// worker pool's one-fixture-per-server model can't give a single test
+// without spawning its own dedicated server for one edge case.
 
 // Regression (goal 0199 part B): NodeResizer was rendered by exactly
 // one component (AtlasTableCardNode) -- image/ink board objects had a
@@ -140,8 +141,7 @@ test('an image object can be resized by its own handle, and the size persists ac
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
   await openImagePopover(page)
-  await page.getByTestId('atlas-image-path').fill(IMAGE_FIXTURE)
-  await page.getByTestId('atlas-image-add').click()
+  await page.getByTestId('atlas-image-pick').click()
   const object = imageObjects(page)
   await expect(object).toHaveCount(1)
 

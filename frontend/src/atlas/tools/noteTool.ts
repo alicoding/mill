@@ -18,6 +18,9 @@ export const noteTool = {
   // sticky is persisted (`note &&` guard -- a draft has nothing to size).
   resizable: true,
   boardNodeType: 'atlas-sticky',
+  // Not routed through the shared 'atlas-object' renderer -- always
+  // false, not N/A.
+  dragBand: false,
   commit: (input: { text: string }): AtlasNoteArtifact => ({ kind: 'note', text: input.text.trim() }),
 } as const satisfies AtlasToolShape
 

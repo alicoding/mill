@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/alicoding/mill/internal/adapters/fileread"
 	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/domain/atlas"
 	"github.com/alicoding/mill/internal/services/seeding"
@@ -81,4 +83,43 @@ func (a *AtlasService) SaveImageBytes(base64Data, ext, title string) (string, er
 		return "", fmt.Errorf("atlas image capture: write: %w", err)
 	}
 	return path, nil
+}
+
+// testImagePickPathEnv mirrors testFolderPickPathEnv's own e2e bypass
+// (atlasservice_folderscan.go): server-mode Playwright has no display a
+// real NSOpenPanel could render into, so every spawned e2e server sets
+// this to a fixture image path. Unset in every real deployment, where
+// PickImageFile always opens the actual OS dialog.
+const testImagePickPathEnv = "MILL_TEST_IMAGE_PICK_PATH"
+
+// PickImageFile opens the native image-file picker (goal 0206: a typed
+// path string is developer vocabulary, not a user-facing affordance) --
+// filtered to recognized image extensions. Returns "" (no error) when
+// the user cancels.
+func (a *AtlasService) PickImageFile() (string, error) {
+	if testPath := os.Getenv(testImagePickPathEnv); testPath != "" {
+		return testPath, nil
+	}
+	return windowing.PickImageFile("Choose an image")
+}
+
+// MirrorImageFromPath copies srcPath's own bytes into a fresh file under
+// the captures directory, returning the new file's path -- the
+// data-safety half of a native image drop (goal 0206): the OS may hand
+// a drop event a temp/promise path under /var/folders (a drag from a
+// screenshot thumbnail or another app materializes a file promise
+// there) that it reclaims once the drag completes, so a drop-created
+// object's own MirrorPath must point at a copy Mill owns, never the
+// ephemeral original. Reuses SaveImageBytes's own writer/validation
+// rather than a second copy of either. Bounded by fileread.MaxBytes.
+func (a *AtlasService) MirrorImageFromPath(srcPath, title string) (string, error) {
+	ext := strings.ToLower(filepath.Ext(srcPath))
+	if !atlas.IsImageExtension(ext) {
+		return "", fmt.Errorf("atlas image mirror: %q is not a recognized image extension", srcPath)
+	}
+	raw, err := fileread.Read(srcPath)
+	if err != nil {
+		return "", fmt.Errorf("atlas image mirror: %w", err)
+	}
+	return a.SaveImageBytes(base64.StdEncoding.EncodeToString([]byte(raw)), ext, title)
 }

@@ -52,3 +52,65 @@ func TestSaveImageBytes_NoCapturesDirConfigured_Errors(t *testing.T) {
 		t.Error("SaveImageBytes with no captures dir configured = nil error, want an error")
 	}
 }
+
+func TestPickImageFile_TestEnvBypassesRealDialog(t *testing.T) {
+	a := newBlankAtlasService(t)
+	want := filepath.Join(t.TempDir(), "picked.png")
+	t.Setenv(testImagePickPathEnv, want)
+	got, err := a.PickImageFile()
+	if err != nil {
+		t.Fatalf("PickImageFile: %v", err)
+	}
+	if got != want {
+		t.Errorf("PickImageFile() = %q, want the env-injected %q", got, want)
+	}
+}
+
+func TestMirrorImageFromPath_CopiesBytesIntoCapturesDir(t *testing.T) {
+	a := newBlankAtlasService(t)
+	a.SetCapturesDir(t.TempDir())
+
+	srcDir := t.TempDir()
+	srcPath := filepath.Join(srcDir, "promoted-temp-file.png")
+	raw := []byte("real image bytes, ephemeral source path")
+	if err := os.WriteFile(srcPath, raw, 0o600); err != nil {
+		t.Fatalf("seed source file: %v", err)
+	}
+
+	mirrorPath, err := a.MirrorImageFromPath(srcPath, "Dropped image")
+	if err != nil {
+		t.Fatalf("MirrorImageFromPath: %v", err)
+	}
+	if mirrorPath == srcPath {
+		t.Fatalf("MirrorImageFromPath() returned the SOURCE path %q -- it must copy into a Mill-owned file, not point at an ephemeral original", mirrorPath)
+	}
+	got, err := os.ReadFile(mirrorPath) //nolint:gosec // t.TempDir()-scoped path this test itself just wrote
+	if err != nil {
+		t.Fatalf("reading mirrored file: %v", err)
+	}
+	if string(got) != string(raw) {
+		t.Errorf("mirrored content = %q, want %q", got, raw)
+	}
+
+	// The source file can now be removed (simulating the OS reclaiming a
+	// temp/promise path) without the mirrored copy being affected.
+	if err := os.Remove(srcPath); err != nil {
+		t.Fatalf("remove source file: %v", err)
+	}
+	if _, err := os.Stat(mirrorPath); err != nil {
+		t.Errorf("mirrored file no longer exists after source removal: %v", err)
+	}
+}
+
+func TestMirrorImageFromPath_RejectsNonImageExtension(t *testing.T) {
+	a := newBlankAtlasService(t)
+	a.SetCapturesDir(t.TempDir())
+
+	srcPath := filepath.Join(t.TempDir(), "notes.pdf")
+	if err := os.WriteFile(srcPath, []byte("x"), 0o600); err != nil {
+		t.Fatalf("seed source file: %v", err)
+	}
+	if _, err := a.MirrorImageFromPath(srcPath, "notes"); err == nil {
+		t.Error("MirrorImageFromPath(.pdf) = nil error, want a rejection")
+	}
+}

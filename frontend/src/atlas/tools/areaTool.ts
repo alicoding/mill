@@ -17,6 +17,9 @@ export const areaTool = {
   // its own enclosed children, so a manual resize would fight that.
   resizable: false,
   boardNodeType: 'atlas-group',
+  // Not routed through the shared 'atlas-object' renderer -- always
+  // false, not N/A.
+  dragBand: false,
   commit: (input: { kindID: string; title: string; enclosedCardIDs: string[]; enclosedNoteIDs: string[] }): AtlasAreaArtifact => ({
     kind: 'area',
     kindID: input.kindID,

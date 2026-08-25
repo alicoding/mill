@@ -23,6 +23,8 @@ export const laserTool = {
   // Local-component-state-only trail, never persisted, no node type.
   resizable: false,
   boardNodeType: null,
+  // No node type renders it at all -- always false, not N/A.
+  dragBand: false,
   commit: (): null => null,
 } as const satisfies AtlasToolShape
 

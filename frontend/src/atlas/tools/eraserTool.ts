@@ -39,6 +39,8 @@ export const eraserTool = {
   // there is nothing to resize and no node type renders it.
   resizable: false,
   boardNodeType: null,
+  // No node type renders it at all -- always false, not N/A.
+  dragBand: false,
   commit: (): null => null,
 } as const satisfies AtlasToolShape
 

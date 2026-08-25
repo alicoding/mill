@@ -50,6 +50,11 @@ export const shapeTool = {
   // per-noun fact, so it isn't modelled here).
   resizable: true,
   boardNodeType: 'atlas-object',
+  // A shape's whole body already drags -- the shared band would only be
+  // debris here (goal 0206's own DESIGN DECIDED table). Removing it also
+  // makes .content == the node's own box again, closing the paint-vs-
+  // frame gap AtlasShapeContent.tsx's own header documents.
+  dragBand: false,
   StylePicker: AtlasShapeStylePicker,
   commit: (input: { shapeType: AtlasShapeType; style: ShapeStyle; startFlow: { x: number; y: number }; endFlow: { x: number; y: number } }): AtlasShapeArtifact => {
     const dx = input.endFlow.x - input.startFlow.x

@@ -16,18 +16,17 @@ export interface AtlasImageArtifact { kind: 'image'; title: string; mirrorPath: 
 const IMAGE_MIME_EXTENSIONS: Record<string, string> = {
   'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif',
   'image/webp': '.webp', 'image/svg+xml': '.svg', 'image/bmp': '.bmp',
+  'image/heic': '.heic',
 }
 
 // Image (goal 0169 slice 2): the paste-or-drop interaction's own proof.
-// Two input shapes resolve to the same artifact -- a typed/pasted local
-// path is mirror-only (no bytes ever move, matching
-// CreateCardFromFileDrop's own native-drop semantics); a pasted
-// clipboard File has no path at all, so its bytes are written to a
-// fresh Mill-owned file first (SaveImageBytes) and ITS path becomes the
-// mirror. Either way, placement (useAtlasImageCreate.ts) lands the
-// resulting mirrorPath through the exact same CreateCardFromFileDrop a
-// native OS file drop already uses -- kind resolution and duplicate
-// detection are never re-implemented here.
+// Two input shapes resolve to the same artifact -- a picked local path
+// is mirror-only (no bytes ever move); a pasted clipboard File has no
+// path at all, so its bytes are written to a fresh Mill-owned file
+// first (SaveImageBytes) and ITS path becomes the mirror. Either way,
+// placement (useAtlasImageCreate.ts) lands the resulting mirrorPath as
+// a board-local 'image' BoardObject (CreateBoardObject) -- never a
+// card, per goal 0179's founding rule.
 export const imageTool = {
   id: imageIdentity.id,
   icon: ImageIcon,
@@ -42,6 +41,9 @@ export const imageTool = {
   // resize + the drag frame band for every Kind it routes.
   resizable: true,
   boardNodeType: 'atlas-object',
+  // An image's whole body already drags -- the shared band would only
+  // be debris here (goal 0206's own DESIGN DECIDED table).
+  dragBand: false,
   commit: async (input: { path: string } | { file: File; title: string }): Promise<AtlasImageArtifact> => {
     if ('file' in input) {
       const ext = IMAGE_MIME_EXTENSIONS[input.file.type]
