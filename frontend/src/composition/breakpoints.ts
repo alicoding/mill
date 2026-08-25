@@ -97,6 +97,7 @@ export function useBreakpoints(workflowId: string | undefined, onChanged?: () =>
         GuardrailService.CreateRule({
           ID: '', Label: 'Breakpoint', Effect: GuardrailEffect.EffectAsk, Source: DEBUG_SOURCE,
           WorkflowID: workflowId, NodeID: nodeId, NodeTypeID: '', RequestID: '', Condition: '',
+          BuiltIn: false, Seed: { SeedRevision: 0, Modified: false },
         }).then(done).catch(done)
       }
     },

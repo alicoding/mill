@@ -27,6 +27,8 @@ import * as $models from "./models.js";
  * but ONLY if the clipboard still holds exactly that value at that
  * point (the same "don't clobber something the user copied since"
  * check KeePassXC's own auto-clear makes), never unconditionally.
+ * Records one ContextUICopy audit line (goal 0203 S3), same not-gated-
+ * but-visible posture as RevealSecret.
  */
 export function CopySecretToClipboard(id: string): $CancellablePromise<void> {
     return $Call.ByID(2769882406, id);
@@ -56,6 +58,19 @@ export function GeneratePassword(length: number, upper: boolean, lower: boolean,
 }
 
 /**
+ * ListSecretAccess is the bound read API the Secrets view's Access
+ * history list calls -- newest first, optionally filtered to one entry,
+ * limit/offset paged. Returns an empty page (never an error) when no
+ * audit store is wired yet -- structurally unreachable in the real app
+ * (main.go wires OpenAudit before any window/frontend exists), kept
+ * graceful rather than surfacing a confusing error on a race that can't
+ * actually happen.
+ */
+export function ListSecretAccess(req: $models.ListSecretAccessRequest): $CancellablePromise<$models.ListSecretAccessResponse> {
+    return $Call.ByID(2793339806, req);
+}
+
+/**
  * ListSecrets returns every entry's masked Summary (no password) --
  * the browse surface's own list, sorted by title
  * (secretvault.Vault.List's own contract).
@@ -81,6 +96,12 @@ export function LockVault(): $CancellablePromise<void> {
  * good way to surface a SECOND error about redaction failing while
  * already reporting a first one -- text passes through unredacted
  * rather than the whole error path failing outright.
+ * 
+ * Deliberately unaudited (goal 0203 S3 contract): this reads every
+ * vault entry on a failure path purely to SCRUB output, never to expose
+ * a value to anyone -- recording it would bury real reads (a workflow
+ * that actually used a credential) under one audit line per error
+ * message formatted anywhere in the app.
  */
 export function RedactKnownSecrets(text: string): $CancellablePromise<string> {
     return $Call.ByID(2598084233, text);
@@ -92,7 +113,9 @@ export function RedactKnownSecrets(text: string): $CancellablePromise<string> {
  * browsing), matching SetHTTPRequestSecret's own write-only-elsewhere
  * posture but inverted: this vault's whole point is a human can read
  * their own password back, unlike the write-only integration-secret
- * slots.
+ * slots. Records one ContextUIReveal audit line (goal 0203 S3) -- a
+ * human's own click, not gated (S2 contract), but visible in their own
+ * Access history.
  */
 export function RevealSecret(id: string): $CancellablePromise<secret$0.Entry> {
     return $Call.ByID(1414222929, id);

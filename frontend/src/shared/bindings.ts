@@ -86,7 +86,12 @@ export type {
   PairingCodeInfo,
 } from '../../bindings/github.com/alicoding/mill/internal/services/remoteauthsvc'
 export { SecretService } from '../../bindings/github.com/alicoding/mill/internal/services/secretsvc'
-export type { Status as VaultStatus } from '../../bindings/github.com/alicoding/mill/internal/services/secretsvc/models'
+export type {
+  ListSecretAccessRequest,
+  ListSecretAccessResponse,
+  SecretAccessRecord,
+  Status as VaultStatus,
+} from '../../bindings/github.com/alicoding/mill/internal/services/secretsvc/models'
 export type { Entry as SecretEntry, Summary as SecretSummary } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
 export { SettingsService } from '../../bindings/github.com/alicoding/mill/internal/services/settingssvc'
 export type {

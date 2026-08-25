@@ -53,6 +53,7 @@ export function GuardrailRuleDialog({ rule, onClose, onSaved }: {
         await GuardrailService.CreateRule({
           ID: '', Label: label, Effect: effect as GuardrailEffect, Condition: condition, Source: '',
           NodeTypeID: '', RequestID: '', WorkflowID: '', NodeID: '',
+          BuiltIn: false, Seed: { SeedRevision: 0, Modified: false },
           ...scopeFields,
         })
       }

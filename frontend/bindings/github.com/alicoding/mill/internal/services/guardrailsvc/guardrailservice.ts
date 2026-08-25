@@ -40,7 +40,8 @@ export function CreateRule(rule: guardrail$0.Rule): $CancellablePromise<guardrai
  * DeleteRule removes a rule by ID; deleting an absent rule is a no-op,
  * matching every other Configure entity's delete semantics. Returns the
  * persist error (rather than swallowing it, docs/goals/0025 item 1) and
- * restores the deleted rule if the store write fails.
+ * restores the deleted rule if the store write (or, for a built-in
+ * rule, the tombstone write, goal 0203 S2) fails.
  */
 export function DeleteRule(id: string): $CancellablePromise<void> {
     return $Call.ByID(1475597571, id);

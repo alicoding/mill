@@ -99,6 +99,21 @@ test('secret manager: create vault, store/reveal/copy/edit/history/delete a pass
       await expect(page.getByTestId('secret-detail-copied').or(page.getByTestId('secret-detail-error'))).toBeVisible()
     })
 
+    // --- Access history (goal 0203 S3): the reveal (and, when the real
+    // clipboard write succeeded, the copy) just performed each leave a
+    // visible row, in the user's own vocabulary, from the entry's own
+    // filtered view. Scoped to the currently-open detail dialog: the
+    // Secrets view header's own global Access history button carries
+    // the identical accessible name, still present (unmounted) behind
+    // this modal. ---
+    const bankDetailDialog = page.getByRole('dialog', { name: 'Bank of Testing', exact: true })
+    await bankDetailDialog.getByRole('button', { name: 'Access history' }).click()
+    const entryAccessHistory = page.getByRole('dialog', { name: /Access history for/ })
+    await expect(entryAccessHistory).toBeVisible()
+    await expect(entryAccessHistory.getByText('Shown to you')).toBeVisible()
+    await entryAccessHistory.getByLabel('Close').click()
+    await expect(bankDetailDialog).toBeVisible()
+
     // --- Edit: change the password ---
     await page.getByRole('button', { name: 'Edit' }).click()
     const editPassword = page.getByTestId('secret-password-input')
@@ -112,13 +127,31 @@ test('secret manager: create vault, store/reveal/copy/edit/history/delete a pass
     await expect(page.getByTestId('secret-detail-password')).toHaveValue('second-password-fake')
 
     // --- History: the pre-edit value is preserved ---
-    await page.getByRole('button', { name: 'History' }).click()
+    // exact: true -- "History" is otherwise a substring match against
+    // this same dialog's own "Access history" footer button.
+    await page.getByRole('button', { name: 'History', exact: true }).click()
     const historyRow = page.getByTestId('secret-history-row')
     await expect(historyRow).toHaveCount(1)
     await historyRow.getByLabel('Show password').click()
     await expect(historyRow.locator('input')).toHaveValue('first-password-fake')
     await page.getByRole('dialog', { name: /History for/ }).getByLabel('Close').click()
     await page.getByRole('dialog', { name: 'Bank of Testing', exact: true }).getByLabel('Close').click()
+
+    // --- Global Access history (Secrets view header, goal 0203 S3):
+    // every read/reveal/copy this run performed against "Bank of
+    // Testing" shows up, newest first, each carrying the entry's own
+    // label -- unlike the per-entry filtered view above, which shows
+    // context only, this list needs the label to tell entries apart. ---
+    await page.getByTestId('secrets-access-history-open').click()
+    const globalAccessHistory = page.getByRole('dialog', { name: 'Access history', exact: true })
+    await expect(globalAccessHistory).toBeVisible()
+    await expect(globalAccessHistory.getByText('Bank of Testing').first()).toBeVisible()
+    // Copied to the clipboard vs. Couldn't be read -- environment-
+    // dependent, same reasoning the earlier real-clipboard step's own
+    // comment gives (headless Linux CI has no pbcopy); either one
+    // proves the copy attempt left a row.
+    await expect(globalAccessHistory.getByText('Copied to the clipboard').or(globalAccessHistory.getByText("Couldn't be read"))).toBeVisible()
+    await globalAccessHistory.getByLabel('Close').click()
 
     // --- Delete via the row's kebab menu, confirmed by name ---
     const bankRow = page.getByTestId('inventory-row').filter({ hasText: 'Bank of Testing' })
