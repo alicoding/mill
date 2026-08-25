@@ -145,18 +145,18 @@ h2.hl + .card.fade, h2.hl + pre.mermaid.fade{outline-color:transparent}
     <div class="lg-h"></div><div class="lg-h">Now · in flight</div><div class="lg-h">Next · this week's queue</div><div class="lg-h">Then</div><div class="lg-h">v1 gates</div>
 
     <div class="lg-lane">Canvas<br><small>(your daily loop)</small></div>
-    <div><span class="it wait"><b>0194 live re-render</b><small>building overnight</small></span></div>
-    <div><span class="it"><b>0194 export slice</b><small>board → .drawio · 1 cyc</small></span>
-         <span class="it wait"><b>0169 tray palette</b><small>awaits your contract review · 2 cyc</small></span>
-         <span class="it"><b>0212 roadmap view</b><small>design recorded · 1–2 cyc</small></span></div>
-    <div><span class="it wait"><b>0201 copy-as-image</b><small>your call first · 1–2 cyc</small></span></div>
+    <div><span class="it hot"><b>0213 draw-tool gesture fix</b><small>strokes dragged mid-draw · PR in flight</small></span>
+         <span class="it"><b>0212 roadmap view</b><small>building now · 1–2 cyc</small></span></div>
+    <div><span class="it"><b>0215 tool↔platform contract</b><small>after 0213 · 2–3 cyc</small></span>
+         <span class="it wait"><b>0169 tray palette</b><small>awaits your contract review · 2 cyc</small></span></div>
+    <div><span class="it"><b>0214 rotation handle</b><small>after 0215 · 1 cyc</small></span>
+         <span class="it wait"><b>0201 copy-as-image</b><small>your call first · 1–2 cyc</small></span></div>
     <div></div>
 
     <div class="lg-lane">Secrets</div>
     <div></div>
     <div></div>
-    <div><span class="it"><b>0203 S3 read audit</b><small>1–2 cyc</small></span>
-         <span class="it"><b>0203 S4 palette entries</b><small>after S3 · 1 cyc</small></span></div>
+    <div><span class="it"><b>0203 S4 palette entries</b><small>1 cyc</small></span></div>
     <div></div>
 
     <div class="lg-lane">UX / onboarding</div>
@@ -167,9 +167,8 @@ h2.hl + .card.fade, h2.hl + pre.mermaid.fade{outline-color:transparent}
 
     <div class="lg-lane">Platform / process</div>
     <div></div>
-    <div><span class="it hot"><b>0191 WorktreeRemove hook</b><small>3 strikes forced it · 1 cyc</small></span></div>
-    <div><span class="it"><b>0211 extension contract page</b><small>after 0209 · 1–2 cyc</small></span>
-         <span class="it"><b>0210 S1 dashboard script</b><small>1 cyc</small></span></div>
+    <div><span class="it"><b>0191 remaining hook audit</b><small>WorktreeRemove hook shipped · 1 cyc</small></span></div>
+    <div><span class="it"><b>0192 context completeness</b><small>process design · 1 cyc</small></span></div>
     <div></div>
 
     <div class="lg-lane">Release</div>
@@ -195,9 +194,8 @@ h2.hl + .card.fade, h2.hl + pre.mermaid.fade{outline-color:transparent}
   <div class="card"><table>
     <tr><th>debt</th><th>impact if deferred</th><th>when it bites</th></tr>
     <tr><td>noun registry keyed by tools (diagram can't declare)</td><td>every drop-only noun adds renderer special cases outside conformance</td><td>next new noun — fix rides it</td></tr>
-    <tr><td>no WorktreeRemove hook (lint cache)</td><td>~1 lost diagnosis cycle per parallel arc — measured 3 tonight</td><td><span class="chip crit">now · 0191 raised</span></td></tr>
+    <tr><td>canvas tools hand-wired (17 registration points; gesture seam copied 5×, all 5 shipped the same bug)</td><td>every new tool costs ~20 files/900 lines; contract defects multiply per copy</td><td><span class="chip crit">now · 0215 raised</span></td></tr>
     <tr><td>conformance checks absence, not wrongness</td><td>a wrong VALUE ships green past the declaration checks</td><td>trigger: first wrong-value defect</td></tr>
-    <tr><td>dashboard hand-compiled</td><td>staleness = your trust erodes exactly where it must not</td><td>0210 S1, next process cycle</td></tr>
     <tr><td>keychain creds (HTTP/AI) outside the vault</td><td>secret-use attribute blind to them; two credential planes</td><td>0185 portability arc</td></tr>
     <tr><td>MCP write approvals ≠ guardrail plane</td><td>two approval planes drift; governance story splits</td><td>0159 governance scope</td></tr>
     <tr><td>soft-delete windows need generic store (0165→0149)</td><td>9 hand-copied Delete methods can drift</td><td>when 0149 gap 2 schedules</td></tr>
@@ -327,10 +325,10 @@ flowchart LR
   <div class="card"><table class="now-target">
     <tr><td>noun registry keyed by TOOLS</td><td class="arrow">→</td><td>keyed by NOUNS, tray one facet <span class="mono">(debt)</span></td></tr>
     <tr><td>2 hand-built style pickers</td><td class="arrow">→</td><td>ONE panel from per-noun declarations <span class="mono">(0209)</span></td></tr>
-    <tr><td>draw.io: import only</td><td class="arrow">→</td><td>round-trip: live re-render + export <span class="mono">(0194 · your daily loop)</span></td></tr>
+    <tr><td>canvas tools: 17 hand-wired registration points</td><td class="arrow">→</td><td>one declared contract, platform owns the seams <span class="mono">(0215)</span></td></tr>
     <tr><td>stable release build silent for bot tags</td><td class="arrow">→</td><td>releases_created chaining <span class="mono">(0205 S5 · v1 blocker)</span></td></tr>
     <tr><td>two approval planes (guardrail + MCP-write)</td><td class="arrow">→</td><td>one governance story <span class="mono">(0159)</span></td></tr>
-    <tr><td>this page hand-compiled</td><td class="arrow">→</td><td>script-derived <span class="mono">(0210 S1)</span></td></tr>
+    <tr><td>this page: derived core + authored judgment blocks</td><td class="arrow">→</td><td>more blocks derived as schema grows <span class="mono">(0210 S2)</span></td></tr>
   </table></div>
 </section>
 
