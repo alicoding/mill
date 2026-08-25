@@ -17,7 +17,8 @@ into.
   live diagrams. Drop a `.drawio` or `.mmd` file and it renders the
   same way, updating automatically whenever you edit that file outside
   Mill — a missing file shows a clear notice with a button to choose
-  another one.
+  another one. General and flowchart shapes render with their real
+  outlines; less common shape libraries still show as plain boxes.
 - **Links** connect cards through link kinds you define. Drag from a
   card's link handle and release anywhere on a highlighted card; one
   relationship per pair and kind — repeats never duplicate. Hover a
