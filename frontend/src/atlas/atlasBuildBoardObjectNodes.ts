@@ -27,6 +27,16 @@ import type { AtlasBoardObjectRFNode } from './AtlasBoardObjectNode'
 // 0179 S2) join the same annotatable tier: the nouns table's own "Ink
 // on it: yes" applies to every board-local surface, not only the
 // image/shape pair it first shipped for.
+// This map is the ONE place board-object stacking is decided --
+// AtlasBoard.tsx's own elevateNodesOnSelect={false} exists purely to
+// protect it: React Flow's default bumps whichever node is SELECTED
+// to a z far above any declared value, which silently broke "ink above
+// shape" the moment a just-drawn shape (left selected by goal 0199's
+// own one-shot contract) had ink drawn over it -- the shape jumped to
+// z 1000, ink stayed at 1, so the shape painted on top despite this
+// map ranking it lower (goal 0208 defect 4, reproduced live: a
+// selected object's rendered `.react-flow__node` carried
+// `style.zIndex: "1000"` against ink's own declared `"1"`).
 const OBJECT_Z_INDEX: Record<string, number> = { image: 0, shape: 0, table: 0, diagram: 0, ink: 1 }
 
 export function buildBoardObjectNodes({ objects, readOnly, isFree }: {

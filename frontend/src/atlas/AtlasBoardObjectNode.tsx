@@ -70,6 +70,16 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
   // the same registry gap resizable/boardNodeType already carry for it.
   const dragBand = isTable || isDiagram
 
+  // Depends on Payload.mirrorPath -- the one field that actually names
+  // which file's bytes this node renders -- never the whole Payload
+  // object. atlasStore's refreshAtlas() refetches every board object
+  // on any board mutation (e.g. committing an unrelated stroke
+  // elsewhere), handing every object a brand-new Payload reference
+  // even when its own content is unchanged; depending on that
+  // reference re-fires this fetch (and the synchronous setSrc(null)
+  // above) for every already-rendered image/ink node, flashing each
+  // one to its placeholder glyph and back for no reason (goal 0208).
+  const mirrorPath = object.Payload?.mirrorPath
   useEffect(() => {
     if (isShape || isTable || isDiagram) return
     let stale = false
@@ -90,7 +100,7 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
     return () => {
       stale = true
     }
-  }, [object.ID, object.Payload, isShape, isTable, isDiagram])
+  }, [object.ID, mirrorPath, isShape, isTable, isDiagram])
 
   // Every Kind's own content, picked exactly as the pre-frame branches
   // did -- the ONE difference is that none of them return their own

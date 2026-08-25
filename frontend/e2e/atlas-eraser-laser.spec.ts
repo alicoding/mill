@@ -95,3 +95,29 @@ test('dragging the laser across the board draws a fading trail, creates nothing,
   expect(await page.getByTestId('atlas-note-card').count()).toBe(cardsBefore)
   await expect(laserTool).toHaveAttribute('data-armed', 'true')
 })
+
+// Goal 0208 defect 5: a continuous tool has no one-shot commit to
+// disarm it (unlike Shape's own goal 0199 behaviour), so Escape is the
+// only way out short of clicking the tray again -- pinned for both
+// continuous tools this file already covers, distinct from goal 0199's
+// own "Escape disarms a LOCKED discrete tool" acceptance.
+test('Escape disarms the eraser and the laser back to select', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  const eraserTool = page.getByTestId('atlas-tray-eraser')
+  await eraserTool.click()
+  await expect(eraserTool).toHaveAttribute('data-armed', 'true')
+  await page.keyboard.press('Escape')
+  await expect(eraserTool).toHaveAttribute('data-armed', 'false')
+  await expect(board).toHaveAttribute('data-armed', 'false')
+
+  const laserTool = page.getByTestId('atlas-tray-laser')
+  await laserTool.click()
+  await expect(laserTool).toHaveAttribute('data-armed', 'true')
+  await page.keyboard.press('Escape')
+  await expect(laserTool).toHaveAttribute('data-armed', 'false')
+  await expect(board).toHaveAttribute('data-armed', 'false')
+})
