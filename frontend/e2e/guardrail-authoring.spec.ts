@@ -119,12 +119,18 @@ test('Rule-from-park unsticks the workflow, edit-in-context and the audit view s
       await expect(rulesRow.getByTestId('guardrail-rule-sentence')).toHaveText('Only this step — Run a command in Example: Run copied code')
 
       // Remove it from the audit view -- the policy-removal half of the proof.
+      // Scoped to the group/row THIS TEST created (SEED's own workflow
+      // group, and the rule's own edited label) rather than asserting the
+      // whole audit view is empty -- a seeded guardrail rule scoped to a
+      // DIFFERENT workflow (goal 0203 S2's "Uses a stored secret" example)
+      // legitimately persists across this delete, so a global toHaveCount(0)
+      // would break again the next time any seeded rule is added.
       await rulesRow.getByTestId('guardrail-rule-menu').click()
       // Same portal caveat as the "Always…" menu above.
       await page.getByTestId('guardrail-rule-remove').click()
       await page.getByRole('button', { name: 'Delete' }).click()
-      await expect(page.getByTestId('guardrail-rules-group')).toHaveCount(0)
-      await expect(page.getByTestId('guardrail-rules-empty')).toBeVisible()
+      await expect(page.getByTestId('guardrail-rule-row').filter({ hasText: 'Allow the sandboxed echo step' })).toHaveCount(0)
+      await expect(group).toHaveCount(0)
 
       // --- The rule is really gone: a third run parks again ---
       await page.getByRole('link', { name: 'Workflows' }).click()
