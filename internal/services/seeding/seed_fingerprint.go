@@ -11,6 +11,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/execenv"
+	"github.com/alicoding/mill/internal/domain/guardrail"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
@@ -146,6 +147,12 @@ func AllSeedFingerprints() map[string]SeedFingerprint {
 		rev := p.Seed.SeedRevision
 		p.ID, p.CreatedAt, p.UpdatedAt, p.Seed = "", time.Time{}, time.Time{}, seedorigin.Origin{}
 		out[keyFor("atlasperspective", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(p)}
+	}
+	for _, r := range guardrail.BuiltIn() {
+		id := r.ID
+		rev := r.Seed.SeedRevision
+		r.ID, r.Seed = "", seedorigin.Origin{}
+		out[keyFor("guardrailrule", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(r)}
 	}
 	return out
 }

@@ -48,11 +48,24 @@ func verdictWorkflow(t *testing.T, comp *compositionsvc.CompositionService) comp
 	return wf
 }
 
+// newTestGuardrailService starts from a genuinely empty rule set, not
+// the seeded built-in example (goal 0203 S2's guardrail.BuiltIn) --
+// mirrors configuresvc.newTestConfigureService's identical reasoning
+// (that helper's own doc comment): NewGuardrailService's constructor
+// top-up-seeds guardrail.BuiltIn() on any fresh store, same as every
+// other Configure-entity constructor already does for its own goldens,
+// so every existing count-based assertion in this package (len(g.
+// Rules()) != 1, etc.) would otherwise see one unexpected seeded entry.
+// The seeding behavior itself gets its own dedicated test
+// (guardrailservice_builtin_test.go), which constructs GuardrailService
+// directly rather than through this helper.
 func newTestGuardrailService(t *testing.T) (*GuardrailService, *compositionsvc.CompositionService) {
 	t.Helper()
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	return NewGuardrailService(store, comp), comp
+	g := NewGuardrailService(store, comp)
+	g.rules = nil
+	return g, comp
 }
 
 // --- WorkflowVerdicts ---
@@ -225,6 +238,7 @@ func TestCreateRule_PersistFailure_ReturnsErrorAndDoesNotPhantomSave(t *testing.
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
 	g := NewGuardrailService(store, comp)
+	g.rules = nil // exclude the seeded example (goal 0203 S2) -- newTestGuardrailService's own reasoning
 
 	store.SetErr = errFakeGuardrailPersist
 	if _, err := g.CreateRule(guardrail.Rule{Label: "Should not stick", Effect: guardrail.EffectAllow, NodeTypeID: "integration-http"}); err == nil {
@@ -241,6 +255,7 @@ func TestDeleteRule_PersistFailure_ReturnsErrorAndRestoresIt(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
 	g := NewGuardrailService(store, comp)
+	g.rules = nil // exclude the seeded example (goal 0203 S2) -- newTestGuardrailService's own reasoning
 
 	created, err := g.CreateRule(guardrail.Rule{Label: "Should survive the failed delete", Effect: guardrail.EffectAllow, NodeTypeID: "integration-http"})
 	if err != nil {

@@ -24,6 +24,10 @@ be dry-run against past asks before you rely on them.
 A rule that cannot evaluate counts as failed — ambiguity never
 silently allows.
 
+A condition can single out steps that use a stored secret, so approval
+by hand stays reserved for the sensitive ones instead of every external
+call.
+
 ## Where asks live
 
 Parked runs appear in the workflow's Runs tab and in **Review**, the

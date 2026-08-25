@@ -25,6 +25,7 @@ import (
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
 	"github.com/alicoding/mill/internal/services/executionsvc"
+	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/mcpauditsvc"
 	"github.com/alicoding/mill/internal/services/notificationsvc"
 	"github.com/alicoding/mill/internal/services/remoteauthsvc"
@@ -171,8 +172,23 @@ func WireRemoteAuth(store settings.Store, logger *slog.Logger) *remoteauthsvc.Re
 // same 500-line reason WireRemoteAuth above is; vaultPath's own
 // MILL_SECRETS_PATH-override-or-default resolution stays in main.go
 // (depguard: this package doesn't import wails/v3/pkg/application).
-func WireSecrets(vaultPath string, credentials credential.Store) *secretsvc.SecretService {
-	return secretsvc.NewSecretService(secretvault.New(vaultPath), credentials)
+// WireSecrets also wires configureService's own two vault-reference
+// seams onto the newly-constructed SecretService: SetSecretResolver
+// (goal 0185 S3, "vault:" env/header values) and, goal 0203 S2,
+// SetSecretLabelsLister (DeriveSecretLabels' title lookup) plus the
+// derivation's own path into the guardrail gate
+// (guardrailsvc.SetSecretLabelsLookup, Attributes["secrets"]) --
+// folded in here rather than as separate main.go call-site lines, same
+// 500-line reason every other Wire* function here already gives.
+// Order-independent of GuardrailService's own construction:
+// SetSecretLabelsLookup only sets a package-level var, read lazily by
+// GuardrailStep at evaluation time, never at wiring time.
+func WireSecrets(vaultPath string, credentials credential.Store, configureService *configuresvc.ConfigureService) *secretsvc.SecretService {
+	secretService := secretsvc.NewSecretService(secretvault.New(vaultPath), credentials)
+	configureService.SetSecretResolver(secretService.ResolveSecretValue)
+	configureService.SetSecretLabelsLister(secretService.ListSecrets)
+	guardrailsvc.SetSecretLabelsLookup(configureService.DeriveSecretLabels)
+	return secretService
 }
 
 // WireSecretRedaction wires composition's mcp-tool-call node error path
@@ -239,7 +255,7 @@ func publishSystemEventNotification(notif *notificationsvc.NotificationService, 
 	case executionsvc.SystemEventRunCancelled:
 		title, body = "Workflow cancelled", ev.WorkflowLabel+" was cancelled."
 	case executionsvc.SystemEventUpdateAvailable:
-		title, body = "Update available", "Version " + ev.Version + " is ready to install."
+		title, body = "Update available", "Version "+ev.Version+" is ready to install."
 	default:
 		return
 	}
