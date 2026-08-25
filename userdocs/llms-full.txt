@@ -1069,9 +1069,11 @@ you configured.
 **Your data is local files.** Settings and entities live in a JSON
 store, run history in SQLite, both on your machine. Settings →
 Backups snapshots them on a schedule, exports everything to one
-file, and imports it on another machine. Secrets (API keys, tokens)
-live in your OS keychain and are deliberately excluded from every
-export.
+file, and imports it on another machine. Passwords and keys live in
+their own encrypted vault file on your device, deliberately excluded
+from every export. The vault's key sits in your OS keychain by
+default, or optionally behind Touch ID or your Mac password for an
+extra prompt every time you unlock.
 
 **External effects ask first.** The guardrail model
 ([Guardrails](../concepts/guardrails.md)) parks any step that leaves

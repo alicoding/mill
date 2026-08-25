@@ -13,7 +13,10 @@ import { withClipboardLock } from './fixtures/clipboardLock'
 // elements the diff touched (.claude/rules/testing.md). Dedicated
 // server (own MILL_SECRETS_PATH): vault existence/lock state is GLOBAL
 // app state, same reasoning as every other dedicated-server spec in
-// this suite.
+// this suite. Extended for goal 0204's Touch ID protection status
+// line/toggle -- the real system authentication prompt is manual-only
+// (testing.md's registry), but this server-mode binary's own honest
+// "not available in this mode" failure path IS exercisable here.
 
 // eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
 test('secret manager: create vault, store/reveal/copy/edit/history/delete a password, lock and unlock', async ({}, testInfo) => {
@@ -44,6 +47,26 @@ test('secret manager: create vault, store/reveal/copy/edit/history/delete a pass
     // --- Setup seeds one demo entry (secret.BuiltInDemo -- the seed IS the proof) ---
     const list = page.getByTestId('secrets-view')
     await expect(list.getByText('Example Login', { exact: true })).toBeVisible()
+
+    // --- Touch ID protection status/toggle (goal 0204): this spec runs
+    // against a real server-mode binary (task build:server, -tags
+    // server), which structurally never compiles presencekey's darwin
+    // code -- the exact fail-closed state item 4's build contract
+    // requires, exercised here for real rather than assumed. Default
+    // status is the plain keychain path, and attempting to turn Touch
+    // ID on surfaces the honest "not available in this mode" error
+    // instead of hanging or a raw keychain/cgo error string. ---
+    await expect(page.getByTestId('secrets-protection-status')).toHaveText('Protected by your login keychain')
+    const touchIDToggle = page.getByTestId('secrets-touchid-toggle')
+    await expect(touchIDToggle).not.toBeChecked()
+    await touchIDToggle.click()
+    // Wails wraps a bound method's returned Go error as "RuntimeError: <message>"
+    // on the JS side -- the substring match below asserts the actual
+    // Go sentinel text (secretsvc.ErrPresenceUnsupported) without
+    // depending on that wrapper's exact prefix.
+    await expect(page.getByTestId('secrets-touchid-error')).toContainText("Touch ID protection isn't available in this mode")
+    await expect(touchIDToggle).not.toBeChecked()
+    await expect(page.getByTestId('secrets-protection-status')).toHaveText('Protected by your login keychain')
 
     // --- Create a new secret ---
     await page.getByTestId('secrets-new').click()
@@ -109,6 +132,15 @@ test('secret manager: create vault, store/reveal/copy/edit/history/delete a pass
     await expect(page.getByText('Vault is locked')).toBeVisible()
     await page.getByTestId('secrets-unlock-cta').click()
     await expect(list.getByText('Example Login', { exact: true })).toBeVisible()
+
+    // Regression: a Touch ID toggle error from the unlocked view must
+    // not survive a Lock -- it's a stale message about a DIFFERENT
+    // action, not the locked blankslate's own state.
+    await page.getByTestId('secrets-touchid-toggle').click()
+    await expect(page.getByTestId('secrets-touchid-error')).toBeVisible()
+    await page.getByTestId('secrets-lock').click()
+    await expect(page.getByText('Vault is locked')).toBeVisible()
+    await expect(page.getByText("Touch ID protection isn't available in this mode")).toHaveCount(0)
   } finally {
     await browser.close()
     if (server) await server.stop()

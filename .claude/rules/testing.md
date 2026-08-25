@@ -202,6 +202,30 @@ at:
     Settings to finish turning this on." notice and its button, then
     approve it in System Settings and confirm the notice clears on the
     next Settings visit.
+  - **The real Touch ID authentication sheet** (goal 0204,
+    `internal/adapters/presencekey`) — `SecItemCopyMatching`'s system
+    prompt is out-of-process UI (LocalAuthentication's own XPC UI
+    service) that no headless build can trigger or dismiss; the e2e
+    suite only reaches the server-mode "not available in this mode"
+    fail-closed path (`secrets.spec.ts`), never the real sheet. Verify
+    on an installed build: in Secrets, unlock the vault, turn on
+    "Require Touch ID to unlock", confirm the sheet appears and the
+    status line reads "Protected by Touch ID" once you authenticate;
+    turn it off and confirm the sheet appears again before it turns off
+    (the anti-downgrade property — cancel it once and confirm the
+    toggle stays on); lock the vault and unlock it again, confirming the
+    same sheet gates the unlock itself.
+  - **Finding C's cross-process probe, re-run after Touch ID protection
+    is on** (goal 0204) — 0185's own Finding C probe (write/read a
+    throwaway keychain item exactly the way the vault master key's slot
+    does, from a second process) originally read back silently, no
+    prompt. Verify on an installed build with Touch ID protection
+    enabled: from a second process/terminal, run the same
+    `security find-generic-password` probe against the vault's presence-
+    gated item (`mill-secret-vault-presence` service, goal 0204) and
+    confirm it now REQUIRES the authentication prompt to return data
+    instead of returning it silently — the regression test for the
+    finding this goal exists to close.
   - **The real browser-tab approval notification** (goal 0132 slice A) —
     requires a real granted browser permission and a real OS compositor;
     verify via a server-mode instance reached from a real browser tab:
