@@ -72,10 +72,13 @@ test('Check for updates produces a visible status, found or error', async ({ pag
 
   // A real call to the GitHub Releases provider (alicoding/mill has no
   // releases yet) -- deterministic either way in this environment
-  // (no network in a sandboxed runner, or a real "no releases" 404),
-  // so only the button's own round-trip (re-enables once done) is
-  // asserted, not which specific outcome text appears.
-  const button = page.getByTestId('check-for-updates')
+  // (no network in a sandboxed runner, or a real "no releases" 404):
+  // the check can never resolve to "available" here, so the ONE
+  // primary action (goal 0220 S1) always settles back to its idle
+  // label, never "Download vX and install" -- only the button's own
+  // round-trip (re-enables once done) is asserted, not which specific
+  // outcome text a real network call happens to produce.
+  const button = page.getByTestId('update-primary-action')
   await button.click()
   await expect(button).toBeEnabled({ timeout: 15_000 })
   await expect(button).toHaveText('Check for updates')
