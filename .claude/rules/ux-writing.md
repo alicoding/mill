@@ -28,6 +28,10 @@ writing style, Nielsen Norman Group's microcopy research):
   defense of it.
 - **Present tense, sentence case, second person implied.** "Runs every
   minute", not "This workflow will be run every minute".
+- **An empty state offers the action it names.** A sentence telling the
+  user to do something, with no affordance beside it to do it, is a dead
+  end — ship the button/picker/door in the same view, or change the
+  sentence.
 
 The test, mirroring comments.md's: read the string as a first-time user
 with no repo access — every clause they couldn't act on is spec

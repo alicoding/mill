@@ -451,10 +451,13 @@ Matrix and Coverage views project the same data as grids when a board
 is the wrong shape for the question. Roadmap lays a space's cards out
 as swimlanes — one row per card type, one column per Now/Next/Then
 tag plus an Unscheduled column for anything untagged — so you can see
-at a glance what's planned and what still needs a tag. Tag a card by
-adding a Horizon field to its type in Kinds, then setting Now, Next,
-or Then on the card itself; it's view-only today, so moving a card
-between columns still means editing that field.
+at a glance what's planned and what still needs a tag. An empty
+roadmap still shows the full column layout, and each Now/Next/Then
+column has its own "Place cards" button that opens a picker of the
+space's other cards — pick one and it lands in that column, and if
+its type doesn't have a Horizon field yet, Mill adds one automatically
+and says so with a quiet toast. Drag a card's chip between columns to
+retag it, or onto Unscheduled to clear the tag.
 
 ---
 

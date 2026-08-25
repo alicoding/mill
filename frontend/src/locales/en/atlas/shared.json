@@ -195,7 +195,10 @@
   },
   "roadmap": {
     "title": "Roadmap",
-    "empty": "Tag cards now, next, or then to place them on the roadmap.",
+    "empty": "Place a card in Now, Next, or Then to start your roadmap.",
+    "placeCards": "Place cards",
+    "pickerEmpty": "No other cards to place here.",
+    "addedField": "Added a Horizon field to {{label}}",
     "bucket": {
       "now": "Now",
       "next": "Next",
