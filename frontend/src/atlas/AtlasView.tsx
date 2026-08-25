@@ -374,7 +374,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     void AtlasService.SetLens(viewedID, hidden, peek).catch(console.error)
   }
 
-  const { exportAtlas, importFile, importConfirmDialog } = useAtlasShareIO({ allKinds, allLinkKinds, allCards, allLinks, onError: setImportError })
+  const { exportAtlas, exportBoardDrawio, importFile, importConfirmDialog } = useAtlasShareIO({ allKinds, allLinkKinds, allCards, allLinks, viewedID, t, onError: setImportError, onSummary: quietToast.show })
 
   const { createCard } = useAtlasCardCreate({ allCards, viewedID, viewedCard })
   const { createTableFromList, createTableFromScratch } = useAtlasTableObjectCreate({ allCards, viewedID })
@@ -410,7 +410,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         onPerspectiveToast={quietToast.show}
         links={allLinks}
         linkKinds={allLinkKinds}
-        onExport={exportAtlas}
+        onExport={exportAtlas} onExportDrawio={exportBoardDrawio}
         onImportFile={importFile}
         onShareError={setShareError}
         onOpenMatrix={() => setMatrixOpen(true)}

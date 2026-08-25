@@ -54,6 +54,20 @@ export interface AtlasSessionState {
 }
 
 /**
+ * BoardDrawioExport reports what ExportBoardAsDrawio produced --
+ * mirrors PasteResult's own "counts + skipped, never silent" shape for
+ * the reverse direction.
+ */
+export interface BoardDrawioExport {
+    "XML": string;
+    "Cards": number;
+    "Links": number;
+    "Shapes": number;
+    "Pages": number;
+    "Skipped": string[] | null;
+}
+
+/**
  * CardSourceOffer is what the card page renders: the recognition chip
  * (integration label) plus the offered-action rows.
  */

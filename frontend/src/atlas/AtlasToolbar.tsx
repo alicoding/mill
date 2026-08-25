@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, IconButton } from '@primer/react'
+import { ActionList, ActionMenu, Button, IconButton } from '@primer/react'
 import { ChecklistIcon, DownloadIcon, TableIcon, UploadIcon, TagIcon, SparkleFillIcon } from '@primer/octicons-react'
 import type { Card, Kind, Link, LinkKind, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
@@ -16,17 +16,19 @@ import styles from './AtlasView.module.css'
 // (architecture.md's 500-line convention). Export/Import mirror the
 // idiom every other surface's toolbar uses (CompositionView.tsx,
 // ConfigureLists.tsx): a hidden file input + Upload-icon button for
-// Import, a Download-icon button for Export -- applied here to the
-// WHOLE graph rather than one row, since Atlas has no per-entity export
-// unit the way a saved workflow or List does (ADR-0036, goal 0061
-// slice C).
+// Import, a two-item Export menu (goal 0194's own export slice, same
+// overlay machinery AtlasSpaceShareMenu.tsx already uses): the whole
+// graph as portable JSON (ADR-0036, goal 0061 slice C), or just the
+// viewed board as a .drawio file -- a .drawio file is inherently one
+// board, never a portable multi-space bundle, so the two formats keep
+// their own scope rather than sharing one.
 export function AtlasToolbar({
   cards, viewedID, onNavigate,
   kinds, presentKinds, hiddenKindIDs, onChangeHidden,
   onAutoArrange,
   perspectives, activePerspectiveID, onSwitchPerspective, onCreatePerspective, onRenamePerspective, onDeletePerspective, onPerspectiveToast,
   links, linkKinds,
-  onExport, onImportFile, onShareError,
+  onExport, onExportDrawio, onImportFile, onShareError,
   onOpenMatrix, onOpenCoverage, onOpenKinds,
 }: {
   cards: Card[]
@@ -54,6 +56,7 @@ export function AtlasToolbar({
   links: Link[]
   linkKinds: LinkKind[]
   onExport: () => void
+  onExportDrawio: () => void
   onImportFile: (file: File) => void
   onShareError: (message: string) => void
   // Traceability matrix / coverage (docs/goals/0064): both dialogs
@@ -111,9 +114,21 @@ export function AtlasToolbar({
         <Button leadingVisual={UploadIcon} size="small" variant="invisible" data-testid="atlas-import" onClick={() => importInputRef.current?.click()}>
           {t('toolbar.import')}
         </Button>
-        <Button leadingVisual={DownloadIcon} size="small" variant="invisible" data-testid="atlas-export" onClick={onExport}>
-          {t('toolbar.export')}
-        </Button>
+        <ActionMenu>
+          <ActionMenu.Button leadingVisual={DownloadIcon} variant="invisible" size="small" data-testid="atlas-export">
+            {t('toolbar.export')}
+          </ActionMenu.Button>
+          <ActionMenu.Overlay>
+            <ActionList>
+              <ActionList.Item onSelect={onExport} data-testid="atlas-export-json">
+                {t('toolbar.exportJSON')}
+              </ActionList.Item>
+              <ActionList.Item onSelect={onExportDrawio} data-testid="atlas-export-drawio">
+                {t('toolbar.exportDrawio')}
+              </ActionList.Item>
+            </ActionList>
+          </ActionMenu.Overlay>
+        </ActionMenu>
         <AtlasFolderImport viewedID={viewedID} kinds={kinds} />
         <AtlasSpaceShareMenu spaceID={viewedID} onError={onShareError} />
         <Button leadingVisual={TableIcon} size="small" variant="invisible" data-testid="atlas-open-matrix" onClick={onOpenMatrix}>

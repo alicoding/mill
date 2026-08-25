@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -20,26 +21,40 @@ import (
 // wire forms). This file owns the ladder itself (wire text -> a merged
 // mxGraphModel); atlaspastebuild.go turns that model into cards, links
 // and lists.
+//
+// These same structs also drive the REVERSE direction (goal 0194's
+// export slice): encoding/xml marshals with the identical tags it
+// unmarshals with, so atlasboarddrawio.go builds mxCell/mxGeometry/
+// mxDiagram/mxFile values and calls xml.Marshal -- no separate writer
+// type. The extra fields below (XMLName/Host, mxDiagram.ID, mxGeometry.As)
+// exist only to make marshaled output match a real draw.io file's own
+// shape; they're additive and every `,omitempty` is inert for
+// Unmarshal, so the import ladder above is untouched.
 
 // mxCell is the diagram model's one node type; geometry carries
 // placement for vertices and ordering for table rows/cells.
 type mxCell struct {
 	ID       string      `xml:"id,attr"`
-	Value    string      `xml:"value,attr"`
-	Style    string      `xml:"style,attr"`
-	Vertex   string      `xml:"vertex,attr"`
-	Edge     string      `xml:"edge,attr"`
-	Parent   string      `xml:"parent,attr"`
-	Source   string      `xml:"source,attr"`
-	Target   string      `xml:"target,attr"`
+	Value    string      `xml:"value,attr,omitempty"`
+	Style    string      `xml:"style,attr,omitempty"`
+	Vertex   string      `xml:"vertex,attr,omitempty"`
+	Edge     string      `xml:"edge,attr,omitempty"`
+	Parent   string      `xml:"parent,attr,omitempty"`
+	Source   string      `xml:"source,attr,omitempty"`
+	Target   string      `xml:"target,attr,omitempty"`
 	Geometry *mxGeometry `xml:"mxGeometry"`
 }
 
 type mxGeometry struct {
-	X float64 `xml:"x,attr"`
-	Y float64 `xml:"y,attr"`
+	X float64 `xml:"x,attr,omitempty"`
+	Y float64 `xml:"y,attr,omitempty"`
 	W float64 `xml:"width,attr"`
 	H float64 `xml:"height,attr"`
+	// As mirrors real draw.io output ("as=\"geometry\"", distinguishing
+	// a cell's placement from any other named child element mxGraph's
+	// own format allows) -- optional for Unmarshal (ignored either way
+	// by the paste ladder above), set by every geometry export builds.
+	As string `xml:"as,attr,omitempty"`
 }
 
 type mxGraphModel struct {
@@ -50,15 +65,32 @@ type mxGraphModel struct {
 // (uncompressed save format) or a compressed payload carried as the
 // element's own chardata.
 type mxDiagram struct {
+	ID      string        `xml:"id,attr,omitempty"`
 	Name    string        `xml:"name,attr"`
 	Inline  *mxGraphModel `xml:"mxGraphModel"`
 	Content string        `xml:",chardata"`
 }
 
-// mxFile wraps one or more diagram pages.
+// mxFile wraps one or more diagram pages. XMLName pins the marshaled
+// root tag to the lowercase "mxfile" every real draw.io file (and
+// every fixture in this package) already uses -- Unmarshal already
+// required that match implicitly (parseMxFile only reaches here after
+// its own `strings.HasPrefix(text, "<mxfile")` check), so declaring it
+// explicitly changes nothing for the import ladder.
 type mxFile struct {
+	XMLName  xml.Name    `xml:"mxfile"`
+	Host     string      `xml:"host,attr,omitempty"`
 	Diagrams []mxDiagram `xml:"diagram"`
 }
+
+// xmlDeclPattern matches a leading XML declaration -- present on every
+// .drawio FILE saved to disk (including this package's own
+// ExportBoardAsDrawio output, atlasboarddrawio.go) but absent from
+// draw.io's own clipboard payload (what this ladder was originally
+// built against). Stripped once, deterministically, before the prefix
+// checks below so both wire shapes recognize the same way -- not a
+// heuristic, since a leading "<?xml ... ?>" has exactly one meaning.
+var xmlDeclPattern = regexp.MustCompile(`^<\?xml[^>]*\?>\s*`)
 
 // decodeDiagramText runs the decode ladder and returns the merged
 // model plus the name of any page that failed to decode. ok=false
@@ -66,7 +98,7 @@ type mxFile struct {
 // alone. A non-nil skipped with ok=true means SOME pages came through
 // but others did not; the caller must surface that, never drop it.
 func decodeDiagramText(text string) (mxGraphModel, []string, bool) {
-	text = strings.TrimSpace(text)
+	text = xmlDeclPattern.ReplaceAllString(strings.TrimSpace(text), "")
 	if text == "" {
 		return mxGraphModel{}, nil, false
 	}
