@@ -22,11 +22,6 @@ export interface AtlasPlacementPopoverState {
   // whichever one is set.
   objectID?: string
   initialTitle?: string
-  // The paste door's own note carry-through (goal 0081 slice A3,
-  // LOCKED design §2b): clipboard text/HTML becomes the new card's own
-  // Note field, invisibly -- the popover's fields stay Kind+Title only,
-  // this never renders as a form control.
-  initialNote?: string
   // Frame-scoped placement (goal 0081 slice A2's "Add card to X" doors,
   // both frame-interior and frame-chrome): the target frame's own id,
   // overriding the board's own container as the new card's parent.
@@ -243,16 +238,6 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
     setPopover({ mode: 'promote', anchorPos: screenPos, objectID, initialTitle: object.Payload?.title || fallbackTitle })
   }, [objects])
 
-  // Paste text/HTML (goal 0081 slice A3, LOCKED design §2b): opens the
-  // SAME 'create' popover, title = first line of the pasted text, note
-  // = the full text (or converted Markdown, for the HTML branch --
-  // AtlasBoard's own paste handler runs the conversion before calling
-  // this). parentIDOverride carries the frame-at-point resolution the
-  // paste handler already ran, matching every other canvas-foremost door.
-  const openPasteText = useCallback((screenPos: { x: number; y: number }, text: string, parentIDOverride?: string) => {
-    setPopover({ mode: 'create', anchorPos: screenPos, initialTitle: titleFromNoteText(text), initialNote: text, parentIDOverride })
-  }, [])
-
   // The marker-box/select-group door (goal 0081 slice A2): opens the
   // SAME popover in 'area' mode, anchored at screenPos, with the
   // enclosed membership already resolved by the caller (areaTool.ts's
@@ -294,7 +279,7 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
           .then(() => refreshAtlas())
           .catch(console.error)
       } else if (pending.mode === 'create') {
-        const artifact = cardTool.commit({ kinds: kindsRef.current, kindID, title, note: pending.initialNote })
+        const artifact = cardTool.commit({ kinds: kindsRef.current, kindID, title })
         const targetParentID = pending.parentIDOverride ?? parentID
         const position = pending.parentIDOverride
           ? freeChildPosition(allCardsRef.current, pending.parentIDOverride)
@@ -454,7 +439,7 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
 
   return {
     armedTool, locked, toggleArm, armTool, disarm, disarmUnlessLocked, placeAt,
-    popover, cancelPopover, submitPopover, openPromote, openPromoteObject, openPasteText, openAreaPopover, openSlotLinkedCreate,
+    popover, cancelPopover, submitPopover, openPromote, openPromoteObject, openAreaPopover, openSlotLinkedCreate,
     draftNoteFlowPos, commitDraftNote, cancelDraftNote,
     editingNoteID, enterNoteEdit, cancelNoteEdit, commitNoteEdit,
     editingTitleCardID, commitCardTitle, cancelCardTitle,

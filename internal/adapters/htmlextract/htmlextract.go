@@ -48,3 +48,16 @@ func Extract(html, selector string) (string, error) {
 	}
 	return out, nil
 }
+
+// Parse parses html and returns its root selection -- the underlying
+// parsed document's own embedded Selection, never the document value
+// itself, so a caller that only ever needs Selection-family methods
+// (Find, Children, walking a whole fragment) never has to import
+// goquery's own parse entry point directly.
+func Parse(html string) (*goquery.Selection, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	if err != nil {
+		return nil, fmt.Errorf("htmlextract: parse HTML: %w", err)
+	}
+	return doc.Selection, nil
+}
