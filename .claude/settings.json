@@ -32,6 +32,16 @@
           }
         ]
       }
+    ],
+    "WorktreeRemove": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v golangci-lint >/dev/null 2>&1 && golangci-lint cache clean >/dev/null 2>&1; command -v \"$HOME/go/bin/golangci-lint\" >/dev/null 2>&1 && \"$HOME/go/bin/golangci-lint\" cache clean >/dev/null 2>&1; true"
+          }
+        ]
+      }
     ]
   }
 }
