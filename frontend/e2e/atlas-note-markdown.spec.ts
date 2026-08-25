@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { clickCorner } from './fixtures/atlasBoard'
+import { clickCorner, deleteSticky } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { fillCodeEditor, fillMarkdownNote, fillSticky, stickyEditor, blurSticky } from './fixtures/codeEditor'
 
@@ -32,6 +32,11 @@ test('sticky notes render markdown; editor live-previews it', async ({ page }) =
   const sticky = page.getByTestId('atlas-sticky-note')
   await expect(sticky.locator('li')).toHaveCount(2)
   await expect(sticky.locator('strong')).toHaveText('second')
+  // Regression (goal 0226): a heading is a real <h1>, not text that
+  // merely survives inside a plain line -- the earlier compact scale
+  // (13px next to 12px body text) technically rendered one but read as
+  // indistinguishable from a plain line.
+  await expect(sticky.locator('h1')).toHaveText('Plan')
   // The face shows rendered output only -- no raw marks survive.
   await expect(sticky).not.toContainText('**')
   // Regression: a REAL double-click enters edit -- the second press
@@ -134,4 +139,70 @@ test("the note overlay's editor box stays bounded as content grows, never the pa
   await sticky.click({ button: 'right' })
   await menu.getByText('Delete note', { exact: true }).click()
   await expect(sticky).toHaveCount(0)
+})
+
+// Goal 0226 (interim contract): edit and display must agree -- display
+// renders the same markdown structure the editor holds, and re-
+// entering edit on an already-persisted note (a fixed, small box --
+// unlike the grow-to-fit draft above) must keep the CodeMirror
+// editor's content inside the note's own bounds rather than painting
+// past it (`.sticky` used to inherit `overflow: visible`). Three
+// heading levels plus a list and bold, ending in a blank line to pin
+// the round-trip's no-whitespace-normalization property.
+const MARKDOWN_SOURCE = '# Hello World\n## test\n### hello\n\nSome **bold** and a list:\n- one\n- two\n'
+
+test('a note holding markdown renders real elements, keeps edit decorations inside its own box, and round-trips the source exactly', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+  await page.keyboard.press('n')
+  await clickCorner(board, 'top-right')
+  await expect(stickyEditor(page)).toBeVisible()
+  await fillSticky(page, MARKDOWN_SOURCE)
+  await blurSticky(page)
+
+  const sticky = page.locator('[data-testid="atlas-sticky-note"]').filter({ hasText: 'Hello World' })
+  await expect(sticky).toBeVisible()
+
+  // Display state renders the markdown it stores: real heading
+  // elements at three levels, a real list, real bold -- not text that
+  // merely survives inside plain lines.
+  await expect(sticky.locator('h1')).toHaveText('Hello World')
+  await expect(sticky.locator('h2')).toHaveText('test')
+  await expect(sticky.locator('h3')).toHaveText('hello')
+  await expect(sticky.locator('strong')).toHaveText('bold')
+  await expect(sticky.locator('li')).toHaveCount(2)
+
+  // Edit state: decorations stay inside the node bounds. Probe a point
+  // just below the note's own persisted box -- before the fix, the
+  // unclamped editor painted real content there (the same point the
+  // owner's screenshot showed blue heading lines spilling past the
+  // card); it must resolve to nothing from the editor now.
+  const selectedWrapper = page.locator('.react-flow__node.selected').filter({ has: sticky })
+  if (await selectedWrapper.count() === 0) await sticky.click()
+  await sticky.click()
+  await expect(stickyEditor(page)).toBeVisible()
+
+  const stickyBox = await sticky.boundingBox()
+  if (!stickyBox) throw new Error('sticky has no bounding box')
+  const spillsPastBounds = await page.evaluate(({ x, y }) => {
+    return !!document.elementFromPoint(x, y)?.closest('.cm-editor')
+  }, { x: stickyBox.x + 10, y: stickyBox.y + stickyBox.height + 15 })
+  expect(spillsPastBounds).toBe(false)
+
+  // Source preserved byte-exact -- reconstructed from CodeMirror's own
+  // per-line DOM (goal 0226 regression: a leading/trailing blank line
+  // used to be silently trimmed on commit). Never normalized.
+  const lines = await stickyEditor(page).locator('.cm-line').allTextContents()
+  expect(lines.join('\n')).toBe(MARKDOWN_SOURCE)
+
+  // Commit unchanged -> display identical.
+  await blurSticky(page)
+  await expect(sticky.locator('h1')).toHaveText('Hello World')
+  await expect(sticky.locator('h2')).toHaveText('test')
+  await expect(sticky.locator('h3')).toHaveText('hello')
+  await expect(sticky.locator('li')).toHaveCount(2)
+
+  await deleteSticky(page, sticky)
 })

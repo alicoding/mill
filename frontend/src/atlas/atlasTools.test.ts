@@ -76,8 +76,11 @@ describe('cardTool.commit', () => {
 })
 
 describe('noteTool.commit', () => {
-  it('trims the note text', () => {
-    expect(noteTool.commit({ text: '  hello  ' })).toEqual({ kind: 'note', text: 'hello' })
+  // Regression (goal 0226): the note's text is markdown SOURCE -- a
+  // trim here used to silently drop a leading/trailing blank line the
+  // author typed on purpose, breaking the edit/display round trip.
+  it('preserves the note text exactly, no whitespace normalization', () => {
+    expect(noteTool.commit({ text: '  hello  ' })).toEqual({ kind: 'note', text: '  hello  ' })
   })
 
   it('preserves an already-empty note (placement itself is the capture)', () => {

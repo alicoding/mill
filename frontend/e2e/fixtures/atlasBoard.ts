@@ -442,3 +442,15 @@ export async function createCardViaTray(page: Page, title: string, opts?: { kind
   await inline.press('Enter')
   await expect(inline).toHaveCount(0)
 }
+
+// Promoted from atlas-capture.spec.ts once atlas-note-markdown.spec.ts
+// needed the same cleanup (testing.md's "a helper used by 2+ spec
+// files MUST be promoted" rule): removes a persisted sticky note
+// straight off the board via its own context menu, no page to open.
+export async function deleteSticky(page: Page, sticky: Locator): Promise<void> {
+  await sticky.click({ button: 'right' })
+  const menu = contextMenu(page)
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete note', { exact: true }).click()
+  await expect(sticky).toHaveCount(0)
+}
