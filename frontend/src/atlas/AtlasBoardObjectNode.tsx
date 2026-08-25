@@ -1,14 +1,21 @@
-import { memo, Suspense } from 'react'
+import { memo, Suspense, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NodeResizer } from '@xyflow/react'
 import type { NodeProps, Node as RFNode } from '@xyflow/react'
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { boardObjectContentFor } from './atlasNounRegistry'
+import { AtlasShapeRotateHandle } from './AtlasShapeRotateHandle'
 import styles from './AtlasBoardObjectNode.module.css'
 
 export interface AtlasBoardObjectData extends Record<string, unknown> {
   object: BoardObject
+  // Whether this object is the ONLY thing selected on the board right
+  // now (goal 0214) -- computed once in AtlasBoard.tsx from the same
+  // reactive selection split the tray/outline already re-render on,
+  // never derived locally here (a plain per-node `selected` flag can't
+  // tell "sole" from "part of a multi-selection").
+  soleSelected: boolean
 }
 
 export type AtlasBoardObjectRFNode = RFNode<AtlasBoardObjectData>
@@ -23,7 +30,7 @@ export type AtlasBoardObjectRFNode = RFNode<AtlasBoardObjectData>
 // AtlasStickyNode's note is.
 function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjectRFNode>) {
   const { t } = useTranslation('atlas')
-  const { object } = data
+  const { object, soleSelected } = data
   const isShape = object.Kind === 'shape'
   // A persisted Size wins forever (goal 0193's own no-auto-resize
   // rule) -- once set, the node's own RF width/height already carry
@@ -36,9 +43,13 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
   // exists to persist one, so arrows opt out of the shared resizer
   // rather than offering a handle that silently does nothing. This is
   // the one per-object (not per-Kind) exception, so it stays a payload
-  // check here rather than moving into the registry.
+  // check here rather than moving into the registry. The rotation
+  // handle (goal 0214) shares this exact carve-out for the same
+  // reason -- an arrow's own geometry has no rotation angle to apply.
   const resizable = !(isShape && object.Payload?.shapeType === 'arrow')
   const shapeType = isShape ? object.Payload?.shapeType : undefined
+  const rotatable = isShape && shapeType !== 'arrow'
+  const boxRef = useRef<HTMLDivElement>(null)
   const facts = boardObjectContentFor(object.Kind)
 
   if (!facts) {
@@ -53,6 +64,7 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
 
   return (
     <div
+      ref={boxRef}
       className={styles.object}
       style={hasSize ? { width: '100%', height: '100%' } : undefined}
       data-testid="atlas-board-object"
@@ -61,6 +73,15 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
       role={role}
       aria-label={t(ariaLabelKey)}
     >
+      {/* The rotation handle (goal 0214): visible only when this shape
+          is the board's SOLE selection -- never during a multi-select,
+          never while a draw tool is armed (arming clears selection
+          entirely, so soleSelected structurally can't be true then).
+          Rectangle/ellipse only, matching the resizer's own arrow
+          carve-out above. */}
+      {rotatable && soleSelected && (
+        <AtlasShapeRotateHandle objectID={object.ID} containerRef={boxRef} baseAngle={Number(object.Payload?.rotation) || 0} />
+      )}
       {/* React Flow's own resize handles (goal 0199 part B, adopting
           the same NodeResizer AtlasTableCardNode already uses -- never
           hand-rolled), shown on selection only (a board full of ink

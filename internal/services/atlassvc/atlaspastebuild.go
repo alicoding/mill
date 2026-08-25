@@ -18,7 +18,12 @@ import (
 // only where a table shape must be detected (styleHasShape), never
 // carried onto the created entity -- docs/goals/0194's "database
 // pretending to be a diagram" framing: import turns presentation into
-// queryable data, on purpose.
+// queryable data, on purpose. A pasted vertex always becomes a plain
+// Card here, never a styled "shape" board object, so no style key
+// (fillColor, strokeColor, strokeWidth, rotation) has anywhere to
+// land on this path -- goal 0214's own rotation field joins that same
+// existing asymmetry rather than being a new gap, since fill/stroke
+// never round-tripped through import either.
 
 // pastedTable is one table shape lifted out of the model: ordered
 // rows of ordered cell values.

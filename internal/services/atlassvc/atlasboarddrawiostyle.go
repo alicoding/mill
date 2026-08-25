@@ -17,7 +17,7 @@ import (
 // deliberate, not an oversight -- the constraint governs INTERPRETING
 // someone else's colour, not encoding our own.
 func shapeVertexCell(o atlas.BoardObject, parentCellID string) (mxCell, bool) {
-	style, ok := shapeDrawioStyle(o.Payload["shapeType"], o.Payload["fill"], o.Payload["stroke"], o.Payload["strokeWidth"])
+	style, ok := shapeDrawioStyle(o.Payload["shapeType"], o.Payload["fill"], o.Payload["stroke"], o.Payload["strokeWidth"], o.Payload["rotation"])
 	if !ok {
 		return mxCell{}, false
 	}
@@ -34,8 +34,12 @@ func shapeVertexCell(o atlas.BoardObject, parentCellID string) (mxCell, bool) {
 // shapeDrawioStyle covers rectangle/ellipse -- the two shape types with
 // a real vertex box. Arrow has none (see this package's atlasboarddrawio.go
 // doc comment for why) and reports ok=false so its caller names it
-// skipped instead of guessing at a shape.
-func shapeDrawioStyle(shapeType, fill, stroke, strokeWidth string) (string, bool) {
+// skipped instead of guessing at a shape. rotation rides the same
+// trust-the-payload-string convention strokeWidth already uses (this
+// package is the source of the value, so no parse/round-trip is
+// needed) -- omitted entirely when unset or "0" so an unrotated shape's
+// exported style matches what it was before this field existed.
+func shapeDrawioStyle(shapeType, fill, stroke, strokeWidth, rotation string) (string, bool) {
 	var base string
 	switch shapeType {
 	case "rectangle":
@@ -54,6 +58,9 @@ func shapeDrawioStyle(shapeType, fill, stroke, strokeWidth string) (string, bool
 	style := fmt.Sprintf("%sfillColor=%s;strokeColor=%s;", base, fill, stroke)
 	if strokeWidth != "" {
 		style += "strokeWidth=" + strokeWidth + ";"
+	}
+	if rotation != "" && rotation != "0" {
+		style += "rotation=" + rotation + ";"
 	}
 	return style, true
 }
