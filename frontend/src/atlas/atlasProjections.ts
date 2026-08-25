@@ -84,3 +84,84 @@ export function coverageMissingLink(cards: Card[], links: Link[], linkKindID: st
 export function coverageMissingMirror(cards: Card[]): CoverageResult {
   return { total: cards.length, missing: cards.filter((c) => !c.MirrorPath) }
 }
+
+// --- Roadmap ---
+
+// HORIZON_FIELD_KEY is the Roadmap view's own tag family
+// (docs/goals/0212): an ordinary Kind-declared Options field
+// (Card.Fields[HORIZON_FIELD_KEY]), not a dedicated Card/Kind struct
+// member -- zero schema change to the domain model, and any Kind
+// opts a card into a roadmap lane the same way a user declares any
+// other field. A card whose value matches none of HORIZON_BUCKETS --
+// absent, blank, or an unrecognized string -- is deliberately "no
+// tag", never an error: it lands in the trailing Unscheduled bucket
+// buildRoadmapLanes always appends.
+export const HORIZON_FIELD_KEY = 'horizon'
+
+export interface RoadmapBucket {
+  key: string
+  tagValue: string
+}
+
+export const HORIZON_BUCKETS: RoadmapBucket[] = [
+  { key: 'now', tagValue: 'Now' },
+  { key: 'next', tagValue: 'Next' },
+  { key: 'then', tagValue: 'Then' },
+]
+
+export const UNSCHEDULED_BUCKET_KEY = 'unscheduled'
+
+export interface RoadmapLane {
+  laneKey: string
+  laneLabel: string
+  // One cell per bucket (HORIZON_BUCKETS plus the trailing Unscheduled
+  // catch-all), aligned by index -- an empty array is a genuinely
+  // empty cell, rendered as an honest placeholder, never blank (same
+  // MatrixRow cells contract above).
+  cells: Card[][]
+}
+
+export interface RoadmapBoard {
+  // Bucket keys in column order, HORIZON_BUCKETS' own keys plus
+  // UNSCHEDULED_BUCKET_KEY last.
+  bucketKeys: string[]
+  // Only Kinds with at least one card in view get a lane (design
+  // contract: "rows = Kinds that have any card in view").
+  lanes: RoadmapLane[]
+  // True once at least one card in view carries a recognized horizon
+  // tag -- the view's own all-untagged empty state reads this,
+  // distinct from a single empty CELL within an otherwise-tagged board.
+  anyTagged: boolean
+}
+
+// buildRoadmapLanes pivots `cards` into lanes (grouped by whatever key/
+// label `laneKey` derives per card -- Kind, in the v1 caller) against
+// horizon buckets (docs/goals/0212, rides the Matrix builder's own
+// shape above). Cards sharing a lane keep BuiltInCards' own order.
+export function buildRoadmapLanes(
+  cards: Card[],
+  laneKey: (card: Card) => { key: string; label: string },
+  horizonBuckets: RoadmapBucket[] = HORIZON_BUCKETS,
+): RoadmapBoard {
+  const bucketKeys = [...horizonBuckets.map((b) => b.key), UNSCHEDULED_BUCKET_KEY]
+  const laneOrder: string[] = []
+  const laneLabels = new Map<string, string>()
+  const cellsByLane = new Map<string, Card[][]>()
+  let anyTagged = false
+
+  for (const card of cards) {
+    const { key: lane, label: laneLabel } = laneKey(card)
+    if (!cellsByLane.has(lane)) {
+      cellsByLane.set(lane, bucketKeys.map(() => []))
+      laneLabels.set(lane, laneLabel)
+      laneOrder.push(lane)
+    }
+    const tag = card.Fields?.[HORIZON_FIELD_KEY] ?? ''
+    const idx = horizonBuckets.findIndex((b) => b.tagValue === tag)
+    if (idx !== -1) anyTagged = true
+    cellsByLane.get(lane)![idx === -1 ? bucketKeys.length - 1 : idx].push(card)
+  }
+
+  const lanes = laneOrder.map((key) => ({ laneKey: key, laneLabel: laneLabels.get(key) ?? key, cells: cellsByLane.get(key)! }))
+  return { bucketKeys, lanes, anyTagged }
+}

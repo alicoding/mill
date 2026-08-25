@@ -111,10 +111,16 @@ func BuiltInKinds() []Kind {
 				{Key: "summary", Label: "Summary", Type: typedfield.TypeText, Multiline: true},
 				{Key: "status", Label: "Status", Type: typedfield.TypeOptions,
 					Options: []string{"Open", "In progress", "Done"}, Default: "Open", ShowOnCard: true},
+				// The Roadmap view's own tag family (docs/goals/0212): an
+				// ordinary Options field like any other, not a dedicated
+				// Card/Kind struct member -- zero schema change, any Kind
+				// opts a card into a roadmap lane the same way a user
+				// declares any other field.
+				{Key: "horizon", Label: "Horizon", Type: typedfield.TypeOptions, Options: []string{"Now", "Next", "Then"}},
 			},
 			CreatedAt: now, UpdatedAt: now,
-			// rev 3: status gains ShowOnCard (docs/goals/0152).
-			BuiltIn: true, Seed: seedorigin.Stamp(3),
+			// rev 4: horizon field added (docs/goals/0212).
+			BuiltIn: true, Seed: seedorigin.Stamp(4),
 		},
 		{
 			ID: kindContactID, Label: "Contact", Icon: "👤",
@@ -122,9 +128,11 @@ func BuiltInKinds() []Kind {
 			Fields: []typedfield.Field{
 				{Key: "email", Label: "Email", Type: typedfield.TypeText},
 				{Key: "role", Label: "Role", Type: typedfield.TypeText},
+				{Key: "horizon", Label: "Horizon", Type: typedfield.TypeOptions, Options: []string{"Now", "Next", "Then"}},
 			},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(2), // FieldTombstones added, structural only
+			// rev 3: horizon field added (docs/goals/0212).
+			BuiltIn: true, Seed: seedorigin.Stamp(3),
 		},
 		{
 			ID: kindDocumentID, Label: "Document", Icon: "📄",
@@ -136,10 +144,11 @@ func BuiltInKinds() []Kind {
 				// a saved field's type is exactly what the evolution
 				// guard forbids, seeds included.
 				{Key: "person", Label: "Person", Type: typedfield.TypeCardRef, RefKind: kindContactID},
+				{Key: "horizon", Label: "Horizon", Type: typedfield.TypeOptions, Options: []string{"Now", "Next", "Then"}},
 			},
 			CreatedAt: now, UpdatedAt: now,
-			// rev 3: person cardref added (docs/goals/0152).
-			BuiltIn: true, Seed: seedorigin.Stamp(3),
+			// rev 4: horizon field added (docs/goals/0212).
+			BuiltIn: true, Seed: seedorigin.Stamp(4),
 		},
 		{
 			ID: kindIntakeID, Label: "Intake", Icon: "📥",
@@ -273,10 +282,12 @@ func BuiltInCards() []Card {
 			Fields: map[string]string{
 				"summary": "Confirm scope, stakeholders, and what a finished engagement looks like.",
 				"status":  "Open",
+				"horizon": "Now",
 			},
 			CreatedAt: now, UpdatedAt: now,
-			// rev 6: re-skinned into the engagement story (goal 0118 slice 1).
-			BuiltIn: true, Seed: seedorigin.Stamp(6),
+			// rev 7: horizon tag added, the Roadmap view's own seeded
+			// demonstration (docs/goals/0212).
+			BuiltIn: true, Seed: seedorigin.Stamp(7),
 		},
 		{
 			// The Scratchpad seed (goal 0081 slice A3): a CONTAINER card,
@@ -290,19 +301,22 @@ func BuiltInCards() []Card {
 			Note:      "Meeting notes and quick captures land here. Drag them out to file, or promote into cards.",
 			ParentID:  cardMySpaceID,
 			Position:  &Position{X: 746, Y: 80},
+			Fields:    map[string]string{"horizon": "Next"},
 			CreatedAt: now, UpdatedAt: now,
-			// rev 6: note re-skinned into the engagement story (goal 0118
-			// slice 1) -- the card's ROLE and ID are unchanged, referenced
-			// by the clipboard bridge via BuiltInScratchpadCardID.
-			BuiltIn: true, Seed: seedorigin.Stamp(6),
+			// rev 7: horizon tag added, the Roadmap view's own seeded
+			// demonstration (docs/goals/0212) -- the card's ROLE and ID
+			// are unchanged, referenced by the clipboard bridge via
+			// BuiltInScratchpadCardID.
+			BuiltIn: true, Seed: seedorigin.Stamp(7),
 		},
 		{
 			ID: cardContactID, KindID: kindContactID, Title: "Jordan Reyes",
 			ParentID:  cardExampleAreaID,
-			Fields:    map[string]string{"email": "jordan@example.com", "role": "Client sponsor"},
+			Fields:    map[string]string{"email": "jordan@example.com", "role": "Client sponsor", "horizon": "Now"},
 			CreatedAt: now, UpdatedAt: now,
-			// rev 5: re-skinned into the engagement story (goal 0118 slice 1).
-			BuiltIn: true, Seed: seedorigin.Stamp(5),
+			// rev 6: horizon tag added, the Roadmap view's own seeded
+			// demonstration (docs/goals/0212).
+			BuiltIn: true, Seed: seedorigin.Stamp(6),
 		},
 		{
 			// The seeded action (goal 0061 slice C, generalized by 0084) proves "Update now"

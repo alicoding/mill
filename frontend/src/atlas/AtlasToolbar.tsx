@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionList, ActionMenu, Button, IconButton } from '@primer/react'
-import { ChecklistIcon, DownloadIcon, TableIcon, UploadIcon, TagIcon, SparkleFillIcon } from '@primer/octicons-react'
+import { ChecklistIcon, DownloadIcon, ProjectRoadmapIcon, TableIcon, UploadIcon, TagIcon, SparkleFillIcon } from '@primer/octicons-react'
 import type { Card, Kind, Link, LinkKind, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { AtlasBreadcrumb } from './AtlasBreadcrumb'
@@ -29,7 +29,7 @@ export function AtlasToolbar({
   perspectives, activePerspectiveID, onSwitchPerspective, onCreatePerspective, onRenamePerspective, onDeletePerspective, onPerspectiveToast,
   links, linkKinds,
   onExport, onExportDrawio, onImportFile, onShareError,
-  onOpenMatrix, onOpenCoverage, onOpenKinds,
+  onOpenMatrix, onOpenCoverage, onOpenRoadmap, onOpenKinds,
 }: {
   cards: Card[]
   viewedID: string
@@ -59,11 +59,13 @@ export function AtlasToolbar({
   onExportDrawio: () => void
   onImportFile: (file: File) => void
   onShareError: (message: string) => void
-  // Traceability matrix / coverage (docs/goals/0064): both dialogs
-  // project over the viewed space's own children, so the toolbar just
-  // asks AtlasView to open them rather than owning that state itself.
+  // Traceability matrix / coverage / roadmap (docs/goals/0064, 0212):
+  // all three dialogs project over the viewed space's own children, so
+  // the toolbar just asks AtlasView to open them rather than owning
+  // that state itself.
   onOpenMatrix: () => void
   onOpenCoverage: () => void
+  onOpenRoadmap: () => void
   onOpenKinds: () => void
   // The board pane's right-click "Add card…" (goal 0075's audit G3) --
   // forwarded straight through to AtlasCreateMenu, which owns the form.
@@ -136,6 +138,9 @@ export function AtlasToolbar({
         </Button>
         <Button leadingVisual={ChecklistIcon} size="small" variant="invisible" data-testid="atlas-open-coverage" onClick={onOpenCoverage}>
           {t('toolbar.coverage')}
+        </Button>
+        <Button leadingVisual={ProjectRoadmapIcon} size="small" variant="invisible" data-testid="atlas-open-roadmap" onClick={onOpenRoadmap}>
+          {t('toolbar.roadmap')}
         </Button>
         {/* Icon-only, deliberately: the actions row sits ~30px from
             overflowing its panel at the default window width, and an

@@ -10,6 +10,7 @@ import { scheduleAtlasRefresh, refreshAtlas, useAtlasStore } from './atlasStore'
 import { applyLens, childrenOf, groupByKind, singleRootCard } from './atlasGrouping'
 import { useAtlasPerspectives } from './useAtlasPerspectives'
 import { useAtlasNavSignals } from './useAtlasNavSignals'
+import { useAtlasProjectionViews } from './useAtlasProjectionViews'
 import { useAtlasShareIO } from './useAtlasShareIO'
 import { AtlasToolbar } from './AtlasToolbar'
 import { AtlasBoard } from './AtlasBoard'
@@ -92,11 +93,6 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     if (activePerspectiveID) return
     setArrangeRequest((n) => n + 1)
   }
-  // Traceability matrix / coverage (docs/goals/0064): both are viewed-
-  // space-scoped dialogs, so a single boolean each is enough state --
-  // no card/kind selection needs to survive a close/reopen.
-  const [matrixOpen, setMatrixOpen] = useState(false)
-  const [coverageOpen, setCoverageOpen] = useState(false)
   const [kindsOpen, setKindsOpen] = useState(false)
   const [hiddenKindIDs, setHiddenKindIDs] = useState<string[]>([])
   // The depth/peek toggle (goal 0061 slice C): server-side now, part of
@@ -248,7 +244,14 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     setViewedID(id)
   }
   const drill = navigate
-  const { jumpOpen, setJumpOpen } = useAtlasNavSignals({ viewedID, allCards, setViewedID: navigate, setMatrixOpen, setCoverageOpen })
+  // Traceability matrix / coverage / roadmap (docs/goals/0064, 0212):
+  // all three are viewed-space-scoped dialogs owned by one shared hook
+  // (architecture.md's 500-line convention).
+  const projectionViews = useAtlasProjectionViews({ onOpenOverlay: setOverlayCardID })
+  const { jumpOpen, setJumpOpen } = useAtlasNavSignals({
+    viewedID, allCards, setViewedID: navigate,
+    setMatrixOpen: projectionViews.setMatrixOpen, setCoverageOpen: projectionViews.setCoverageOpen, setRoadmapOpen: projectionViews.setRoadmapOpen,
+  })
 
   const openOverlay = (id: string) => setOverlayCardID(id)
 
@@ -356,15 +359,6 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     jumpToCard(target, false)
   }
 
-  // The matrix/coverage dialogs' own "click a target/missing card"
-  // action -- closes whichever projection dialog is open first, so the
-  // overlay never renders stacked behind it.
-  const openCardFromProjection = (id: string) => {
-    setMatrixOpen(false)
-    setCoverageOpen(false)
-    setOverlayCardID(id)
-  }
-
   const changeHidden = (hidden: string[]) => {
     setHiddenKindIDs(hidden)
     // peek carries forward whatever the space already had -- its own
@@ -413,8 +407,9 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         onExport={exportAtlas} onExportDrawio={exportBoardDrawio}
         onImportFile={importFile}
         onShareError={setShareError}
-        onOpenMatrix={() => setMatrixOpen(true)}
-        onOpenCoverage={() => setCoverageOpen(true)}
+        onOpenMatrix={() => projectionViews.setMatrixOpen(true)}
+        onOpenCoverage={() => projectionViews.setCoverageOpen(true)}
+        onOpenRoadmap={() => projectionViews.setRoadmapOpen(true)}
         onOpenKinds={() => setKindsOpen(true)}
       />
 
@@ -493,7 +488,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         tableFromListOpen={tableFromListOpen} onCloseTableFromList={() => setTableFromListOpen(false)} newSpaceOpen={newSpaceOpen} onCloseNewSpace={() => setNewSpaceOpen(false)} onCreateTable={createTableFromList} onCreateSpace={(kindID, title) => createCard('sibling', kindID, title)}
         menu={menu} onCloseMenu={() => setMenu(null)} linkMenus={linkMenus} containmentMenus={containmentMenus} deleteConfirm={deleteConfirm}
         openNote={openNoteID ? allNotes.find((n) => n.ID === openNoteID) ?? null : null} onCloseNote={() => setOpenNoteID(null)}
-        matrixOpen={matrixOpen} onCloseMatrix={() => setMatrixOpen(false)} coverageOpen={coverageOpen} onCloseCoverage={() => setCoverageOpen(false)} childrenAll={childrenAll} kindsOpen={kindsOpen} onCloseKinds={() => setKindsOpen(false)} onOpenCardFromProjection={openCardFromProjection}
+        matrixOpen={projectionViews.matrixOpen} onCloseMatrix={() => projectionViews.setMatrixOpen(false)} coverageOpen={projectionViews.coverageOpen} onCloseCoverage={() => projectionViews.setCoverageOpen(false)} roadmapOpen={projectionViews.roadmapOpen} onCloseRoadmap={() => projectionViews.setRoadmapOpen(false)} childrenAll={childrenAll} kindsOpen={kindsOpen} onCloseKinds={() => setKindsOpen(false)} onOpenCardFromProjection={projectionViews.openCardFromProjection}
       />
     </div>
   )

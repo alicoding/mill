@@ -97,6 +97,36 @@ test('the traceability matrix pivots a space\'s cards by kind against link kinds
   await expect(dialog).not.toBeVisible()
 })
 
+test('the roadmap swimlanes a space\'s cards by kind against horizon tags, with an untagged card falling to Unscheduled', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
+
+  await page.getByTestId('atlas-open-roadmap').click()
+  const dialog = page.locator('[data-component="atlas-roadmap-dialog"]')
+  await expect(dialog).toBeVisible()
+
+  await expect(dialog.getByTestId('atlas-roadmap-column-header')).toHaveText(['Now', 'Next', 'Then', 'Unscheduled'])
+  await expect(dialog.getByTestId('atlas-roadmap-lane-label').filter({ hasText: 'Contact' })).toBeVisible()
+  await expect(dialog.getByTestId('atlas-roadmap-lane-label').filter({ hasText: 'Document' })).toBeVisible()
+
+  // The seeded "Jordan Reyes" (Contact) card is tagged "Now"; the seeded
+  // "Statement of work" (Document) card carries no horizon tag, so it
+  // falls to the trailing Unscheduled column -- both lanes' other three
+  // cells render an honest placeholder, never blank.
+  await expect(dialog.getByTestId('atlas-roadmap-chip').filter({ hasText: 'Jordan Reyes' })).toBeVisible()
+  await expect(dialog.getByTestId('atlas-roadmap-chip').filter({ hasText: 'Statement of work' })).toBeVisible()
+  await expect(dialog.getByTestId('atlas-roadmap-empty-cell')).toHaveCount(6)
+
+  await dialog.getByTestId('atlas-roadmap-chip').filter({ hasText: 'Jordan Reyes' }).click()
+  await expect(dialog).not.toBeVisible()
+  const overlay = page.locator('[data-component="atlas-card-overlay"]')
+  await expect(overlay).toBeVisible()
+  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Jordan Reyes')
+  await page.keyboard.press('Escape')
+})
+
 test('coverage counts a space\'s cards missing a link and missing a mirror, with the missing list navigating to a card', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()

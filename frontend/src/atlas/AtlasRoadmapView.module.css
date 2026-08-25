@@ -1,0 +1,84 @@
+.grid {
+  display: grid;
+  gap: 1px;
+  background: var(--borderColor-default);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  overflow: auto;
+}
+
+.headerCell,
+.laneLabel {
+  background: var(--bgColor-inset);
+  padding: var(--base-size-8) var(--base-size-12);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+
+.headerCell {
+  font-size: var(--text-body-size-small);
+  color: var(--fgColor-muted);
+}
+
+.laneLabel {
+  position: static;
+  display: flex;
+  align-items: center;
+}
+
+.cell {
+  background: var(--bgColor-default);
+  padding: var(--base-size-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-4);
+  min-height: 44px;
+}
+
+.emptyCell {
+  color: var(--fgColor-muted);
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  width: 100%;
+  text-align: left;
+  padding: var(--base-size-4) var(--base-size-8);
+  border: none;
+  border-radius: var(--borderRadius-small);
+  background: var(--bgColor-muted);
+  color: var(--fgColor-default);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.chip:hover {
+  background: var(--bgColor-neutral-muted);
+  text-decoration: none;
+}
+
+.chipTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chipDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--base-size-32);
+  text-align: center;
+}

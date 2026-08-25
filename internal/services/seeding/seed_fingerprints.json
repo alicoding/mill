@@ -8,40 +8,40 @@
     "fingerprint": "9a90ff066941c7227673ed297d946967223f646a563864478e6438a8f63b9ace"
   },
   "atlascard:atlas-card-example-contact": {
-    "seedRevision": 5,
-    "fingerprint": "f6ae7508c8b27607f85eb47cab51677c1032754d5603de9c6404dc2201d02c5c"
+    "seedRevision": 6,
+    "fingerprint": "af4ce6490d66436b247060dbe63c1de95d89c901f94898afa5f6464caf090dc8"
   },
   "atlascard:atlas-card-example-document": {
     "seedRevision": 7,
     "fingerprint": "6a2f994a2ede1a2279cd40f52303ffff50b58cdcc8f900263424c5981cf4bb70"
   },
   "atlascard:atlas-card-getting-started": {
-    "seedRevision": 6,
-    "fingerprint": "effb71d0787a09bad0e365466db71755a6175b2a8eef259feaf7b9c9545c5717"
+    "seedRevision": 7,
+    "fingerprint": "38840ec73f4cd689b054b5238bd61366fb947b5b6d93bd4f44b25cc639a5f3f5"
   },
   "atlascard:atlas-card-my-space": {
     "seedRevision": 6,
     "fingerprint": "c23be24287b0d6141a57803b043b56b298b39bd17719979d8978ba912b60745d"
   },
   "atlascard:atlas-card-scratchpad": {
-    "seedRevision": 6,
-    "fingerprint": "ef3ab889a8314790ea3b15f3dffb18be651942c7b92bd2dca1b393eeffac6811"
+    "seedRevision": 7,
+    "fingerprint": "ffefdf0ece5a9a4c200df5da430bdfa8954a57b0a8ff7ac768f8346689910840"
   },
   "atlaskind:atlas-kind-component": {
     "seedRevision": 1,
     "fingerprint": "c0717ac09c75dcef29c2a06c08d0d4a6e60832bb9385db4eb327f0fb069205c1"
   },
   "atlaskind:atlas-kind-contact": {
-    "seedRevision": 2,
-    "fingerprint": "b4a22502670484312692a4118167d8a4e7395a0d59b39f590683376288a3e732"
+    "seedRevision": 3,
+    "fingerprint": "85c667b9e0e099574fa9c00c1faff572a99cbecad6a891546d5e0c582f9df14b"
   },
   "atlaskind:atlas-kind-delivered-feature": {
     "seedRevision": 3,
     "fingerprint": "36564cf4c7bd36f48ddb341a3ad550b5fcef5a828e12ce35c8b4277a3b4ea11f"
   },
   "atlaskind:atlas-kind-document": {
-    "seedRevision": 3,
-    "fingerprint": "29d6947904af5d388cd5b1c290c4a6a07beadd168b54381b6e7a7fba743c7d74"
+    "seedRevision": 4,
+    "fingerprint": "d34f383332b61bbc0104ff95f4f4b985bdfc0f06eb84ccbc453e367e9dc871f1"
   },
   "atlaskind:atlas-kind-intake": {
     "seedRevision": 3,
@@ -52,8 +52,8 @@
     "fingerprint": "8ddd7806e05137eda5b4ed3bb52af907a2679e1184e069ad21eeacf52104cc89"
   },
   "atlaskind:atlas-kind-topic": {
-    "seedRevision": 3,
-    "fingerprint": "45850be9ac8a07a03eb4a1db7a6989291c02df10a4155b9dbdd07be18427855c"
+    "seedRevision": 4,
+    "fingerprint": "fae15122f321c814d14ac7f68dda12eef7d1f707cee967f2fac93e956c4ce195"
   },
   "atlaslink:atlas-link-contact-to-document": {
     "seedRevision": 1,
