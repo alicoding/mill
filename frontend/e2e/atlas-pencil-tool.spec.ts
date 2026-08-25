@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/server'
 import { boardPoint, dragBetween } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
+import { waitForViewportStable } from './fixtures/animation'
 
 // The pencil tool (goal 0169 slice 3, re-pointed by goal 0179 S1's own
 // correction): drag-to-draw lands ink as a board-local BoardObject --
@@ -217,6 +218,93 @@ test('holding Space pans the board without drawing while the pencil stays armed'
   // The drag panned, it never drew.
   await expect(ink).toHaveCount(0)
   await expect.poll(() => viewport.evaluate((el) => el.style.transform)).not.toBe(before)
+})
+
+// Goal 0213: starting a new stroke ON TOP OF an existing one used to
+// both select and drag the existing stroke while the new one drew,
+// because stopping propagation on the capture-phase pointerdown
+// silenced React Flow's own preventDefault() without replacing it --
+// the suppressed browser compat mousedown still reached the node
+// underneath and ran its native (d3-drag) drag. Pins the fixed
+// property directly: an armed draw tool's gesture only draws, an
+// existing node under it never moves and never gets selected.
+test('starting a stroke on top of an existing one draws without selecting or dragging it', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+  // The board's own initial fitView animates (goal 0080's interaction-race
+  // class): every raw screen coordinate this test computes below must be
+  // read AFTER that settles, or it's stale by the time it's used.
+  await waitForViewportStable(board)
+
+  await page.getByTestId('atlas-tray-pencil').click()
+  const ink = inkObjects(page)
+
+  // Stroke A: stays in the board's own TOP band, clear of the pencil's
+  // own style picker popover, which occupies the lower-middle of the
+  // viewport for as long as pencil stays armed (atlas-shape-tool.spec.ts's
+  // own comment documents the same hazard for shape's picker).
+  await dragBetween(page, await boardPoint(board, 0.05, 0.1), await boardPoint(board, 0.17, 0.2))
+  await expect(ink).toHaveCount(1)
+  // The node renders a placeholder until its mirror image loads, then
+  // resizes to true dimensions (the same async settle the DOM-mutation
+  // test below this one already waits out) -- any bounding box read
+  // before this is stale by the time it's used.
+  await expect(ink.first().locator('img')).toBeVisible()
+
+  // A fixed ElementHandle, not a re-resolved Locator -- so every later
+  // read below stays pinned to THIS specific DOM node regardless of
+  // where a second ink object lands in document order (the same
+  // pattern the DOM-mutation test below this one already uses).
+  const strokeAWrapper = page.locator('.react-flow__node').filter({ has: ink.first() })
+  const strokeAHandle = await strokeAWrapper.elementHandle()
+  if (!strokeAHandle) throw new Error('stroke A node has no element handle')
+  const strokeABox = await strokeAHandle.boundingBox()
+  if (!strokeABox) throw new Error('stroke A node has no bounding box')
+  const initialTransform = await strokeAHandle.evaluate((el) => (el as HTMLElement).style.transform)
+  expect(await strokeAHandle.evaluate((el) => el.classList.contains('selected'))).toBe(false)
+
+  // Stroke B starts directly ON TOP of stroke A's own box and drags
+  // across it -- exactly the gesture the defect mishandled. Plain
+  // {x,y} points (dragBetween's documented escape hatch): the start
+  // point must land ON stroke A's own element on purpose, which an
+  // owning-locator actionability check would fight.
+  const startX = strokeABox.x + strokeABox.width * 0.5
+  const startY = strokeABox.y + strokeABox.height * 0.5
+  await dragBetween(page, { x: startX, y: startY }, { x: startX + 40, y: startY + 40 })
+  await expect(ink).toHaveCount(2)
+
+  // Stroke A never moved and was never selected.
+  await expect.poll(() => strokeAHandle.evaluate((el) => (el as HTMLElement).style.transform)).toBe(initialTransform)
+  expect(await strokeAHandle.evaluate((el) => el.classList.contains('selected'))).toBe(false)
+
+  // Cleanup: stroke B is identified by exclusion (the ink node whose
+  // own data-id isn't stroke A's, pinned the same fixed-handle way as
+  // stroke A above) rather than by index, since document order isn't
+  // guaranteed. Stroke B was dragged from stroke A's own center toward
+  // increasing x/y, so B's own far (bottom-right) corner sits clear of
+  // A's box and A's own top-left corner sits clear of B's -- each
+  // click's position is read FRESH off its element's CURRENT bounding
+  // box (Locator/ElementHandle.click resolves position at click time,
+  // never off a coordinate captured earlier), so neither one can go
+  // stale the way a raw page-coordinate click already proved flaky here.
+  const strokeAID = await strokeAHandle.evaluate((el) => el.getAttribute('data-id'))
+  const strokeBHandle = await page.locator(`.react-flow__node[data-id]:not([data-id="${strokeAID}"])`).filter({ has: ink }).elementHandle()
+  if (!strokeBHandle) throw new Error('stroke B node has no element handle')
+  const strokeBBox = await strokeBHandle.boundingBox()
+  if (!strokeBBox) throw new Error('stroke B node has no bounding box')
+
+  const menu = contextMenu(page)
+  await strokeBHandle.click({ button: 'right', position: { x: strokeBBox.width - 5, y: strokeBBox.height - 5 } })
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+  await expect(ink).toHaveCount(1)
+
+  await strokeAHandle.click({ button: 'right', position: { x: 5, y: 5 } })
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+  await expect(ink).toHaveCount(0)
 })
 
 // Goal 0208 defect 3, traced live: atlasStore.ts's refreshAtlas()

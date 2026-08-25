@@ -377,7 +377,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
         disableKeyboardA11y
         // Goal 0092: NOT default Meta -- that made ⌘-click also toggle.
         multiSelectionKeyCode="Shift"
-        nodesDraggable={isFree && !readOnly}
+        nodesDraggable={isFree && !readOnly && !anyDragToolArmed} // an armed draw tool owns the canvas -- nodes are not movable while it is on
         zoomOnDoubleClick={false}
         // Selection must never override OBJECT_Z_INDEX's declared tier
         // (atlasBuildBoardObjectNodes.ts's own comment has the defect).
