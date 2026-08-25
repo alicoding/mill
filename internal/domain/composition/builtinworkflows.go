@@ -448,7 +448,10 @@ func BuiltInWorkflows() []Workflow {
 	workflows = append(workflows, builtInAtlassianWorkflows()...)
 	// goal 0164 L1: the delivery-evidence ledger's own seeded proof,
 	// same split-file reasoning.
-	return append(workflows, builtInLedgerSyncWorkflows()...)
+	workflows = append(workflows, builtInLedgerSyncWorkflows()...)
+	// goal 0203 S2: the guardrail-attribute derivation's own seeded
+	// proof, same split-file reasoning.
+	return append(workflows, builtInSecretGuardWorkflows()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any

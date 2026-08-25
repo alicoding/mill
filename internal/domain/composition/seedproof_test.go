@@ -197,6 +197,9 @@ var workflowProofRegistry = map[string]seedProof{
 	"example-jira-search-workflow": proven(
 		"seed: validates + resolves end-to-end; live PAT run is goal 0111's owner acceptance step",
 	),
+	ExampleSecretGuardWorkflowID: proven(
+		"guardrailsvc.TestSeededSecretGuardWorkflow_ParksWithSecretsRuleLabel",
+	),
 }
 
 // httpRequestProofRegistry: every httprequest.BuiltIn() ID.
@@ -277,6 +280,9 @@ var execEnvProofRegistry = map[string]seedProof{
 	execenv.ExampleSafeSandboxID: proven(
 		"executionsvc.TestSeededCodeExecutionExample_Approve_RunsRealCommandAndWritesClipboard",
 		"composition.TestCodeExecution_TempDirSentinel_ResolvesToARealExistingDir",
+	),
+	execenv.ExampleSecretGuardID: proven(
+		"guardrailsvc.TestSeededSecretGuardWorkflow_ParksWithSecretsRuleLabel",
 	),
 }
 

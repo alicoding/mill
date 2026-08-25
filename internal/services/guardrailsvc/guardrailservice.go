@@ -15,8 +15,26 @@ import (
 	"github.com/alicoding/mill/internal/domain/guardrail"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/dataevent"
+	"github.com/alicoding/mill/internal/services/seeding"
 	"github.com/google/uuid"
 )
+
+// secretLabelsFn resolves a node's own vault-reference use into sorted
+// LABELS (goal 0203 S2) -- wired to configuresvc.ConfigureService.
+// DeriveSecretLabels (main.go), never imported directly
+// (.claude/rules/backend.md: guardrailsvc must not import configuresvc).
+// Defaults to reporting no secret use so a Step built before wiring (a
+// unit test constructing one directly) still gets a present, empty
+// Attributes["secrets"] rather than a nil-map read.
+var secretLabelsFn = func(nodeTypeID string, config map[string]string) []string { return nil }
+
+// SetSecretLabelsLookup wires the derivation seam above. Exported for
+// main.go wiring only, never a frontend RPC.
+//
+//wails:ignore
+func SetSecretLabelsLookup(fn func(nodeTypeID string, config map[string]string) []string) {
+	secretLabelsFn = fn
+}
 
 // guardrailRulesKey mirrors workflowsKey/listsKey's shape: one JSON
 // array under one settings key.
@@ -29,7 +47,14 @@ const guardrailRulesKey = "guardrail-rules"
 // Evaluation itself stays in the domain package; the execution gate
 // that acts on a verdict lives in executionservice.go.
 type GuardrailService struct {
-	mu    sync.RWMutex
+	// mu is a plain Mutex, not RWMutex: entitystore's generic Reconcile/
+	// Insert/Update/DeleteWithTombstone family (goal 0203 S2's own
+	// reconcileBuiltInRules, guardrailservice_builtin.go) takes *sync.
+	// Mutex, the same type every other Configure-entity service using it
+	// already declares -- Rules() below gives up RLock's multi-reader
+	// optimization for that reuse, negligible for this small,
+	// infrequently-read rule set.
+	mu    sync.Mutex
 	store settings.Store
 	rules []guardrail.Rule
 	comp  *compositionsvc.CompositionService
@@ -38,6 +63,7 @@ type GuardrailService struct {
 func NewGuardrailService(store settings.Store, comp *compositionsvc.CompositionService) *GuardrailService {
 	g := &GuardrailService{store: store, comp: comp}
 	g.restore()
+	g.reconcileBuiltInRules()
 	return g
 }
 
@@ -63,8 +89,8 @@ func (g *GuardrailService) persist() error {
 
 // Rules returns every stored rule.
 func (g *GuardrailService) Rules() []guardrail.Rule {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	out := make([]guardrail.Rule, len(g.rules))
 	copy(out, g.rules)
 	return out
@@ -119,7 +145,8 @@ func (g *GuardrailService) UpdateRule(rule guardrail.Rule) error {
 // DeleteRule removes a rule by ID; deleting an absent rule is a no-op,
 // matching every other Configure entity's delete semantics. Returns the
 // persist error (rather than swallowing it, docs/goals/0025 item 1) and
-// restores the deleted rule if the store write fails.
+// restores the deleted rule if the store write (or, for a built-in
+// rule, the tombstone write, goal 0203 S2) fails.
 func (g *GuardrailService) DeleteRule(id string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -135,10 +162,23 @@ func (g *GuardrailService) DeleteRule(id string) error {
 	}
 	removed := g.rules[idx]
 	g.rules = append(g.rules[:idx], g.rules[idx+1:]...)
-	if err := g.persist(); err != nil {
+	restore := func() {
 		g.rules = append(g.rules, guardrail.Rule{})
 		copy(g.rules[idx+1:], g.rules[idx:])
 		g.rules[idx] = removed
+	}
+	// A deleted built-in gets a tombstone so top-up reconcile never
+	// resurrects it -- same discipline DeleteExecEnv/DeleteMCPServer
+	// already apply. Removal and tombstone must succeed together
+	// (docs/goals/0025 item 2).
+	if removed.BuiltIn {
+		if err := seeding.RecordTombstone(g.store, id); err != nil {
+			restore()
+			return fmt.Errorf("tombstone deleted guardrail rule %q: %w", id, err)
+		}
+	}
+	if err := g.persist(); err != nil {
+		restore()
 		return fmt.Errorf("save guardrail rule deletion: %w", err)
 	}
 	dataevent.Emit("guardrail-rule", id) // goal 0017: live-sync every open surface
@@ -246,16 +286,37 @@ func (g *GuardrailService) RulesForStep(workflowID, nodeID string) []guardrail.R
 }
 
 // GuardrailStep converts one about-to-execute node into the domain
-// evaluator's Step shape -- shared by the live gate
-// (executionsvc) and the dry-run tester above, so a
-// test verdict can never diverge from the live one by construction.
+// evaluator's Step shape -- shared by the live gate (executionsvc), the
+// dry-run tester (TestRules), and WorkflowVerdicts below, so a test
+// verdict (or the canvas's nothing-hidden badge) can never diverge from
+// the live one by construction.
+//
+// Attributes["secrets"] (goal 0203 S2) is always present, sorted,
+// deduped labels or an empty list, never absent -- secretLabelsFn's own
+// derivation is STATIC (node type + config only, never a run-time
+// resolved value), which is exactly what lets WorkflowVerdicts compute
+// this before anyone runs the workflow and still agree with what the
+// live gate sees. Merged into a COPY of ec.Attributes, never written
+// back into it: ec.Attributes is the caller's own live run state, and a
+// dry-run tester (TestRules/WorkflowVerdicts, which pass ExecContext by
+// value but share the same underlying map) must not leak its synthetic
+// "secrets" key into it.
 func GuardrailStep(workflowID string, node composition.Node, ec composition.ExecContext) guardrail.Step {
+	attrs := make(map[string]any, len(ec.Attributes)+1)
+	for k, v := range ec.Attributes {
+		attrs[k] = v
+	}
+	labels := secretLabelsFn(node.NodeTypeID, node.Config)
+	if labels == nil {
+		labels = []string{}
+	}
+	attrs["secrets"] = labels
 	return guardrail.Step{
 		NodeTypeID: node.NodeTypeID,
 		RequestID:  node.Config["requestId"],
 		WorkflowID: workflowID,
 		NodeID:     node.ID,
-		Env:        guardrail.ConditionEnv(ec.Payload, ec.Attributes, node.Config),
+		Env:        guardrail.ConditionEnv(ec.Payload, attrs, node.Config),
 	}
 }
 

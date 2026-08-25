@@ -57,13 +57,20 @@ func TestValidate_TempDirSentinelIsValid(t *testing.T) {
 
 func TestBuiltIn_ReturnsValidExecEnv(t *testing.T) {
 	envs := BuiltIn()
-	if len(envs) != 1 {
-		t.Fatalf("BuiltIn() returned %d envs, want 1", len(envs))
+	if len(envs) != 2 {
+		t.Fatalf("BuiltIn() returned %d envs, want 2 (Safe sandbox, goal 0203 S2's own secret-guard seed)", len(envs))
 	}
-	if envs[0].ID != ExampleSafeSandboxID {
-		t.Errorf("BuiltIn()[0].ID = %q, want %q", envs[0].ID, ExampleSafeSandboxID)
+	ids := map[string]bool{}
+	for _, e := range envs {
+		ids[e.ID] = true
+		if err := Validate(e); err != nil {
+			t.Errorf("Validate(%q) = %v, want nil", e.ID, err)
+		}
 	}
-	if err := Validate(envs[0]); err != nil {
-		t.Fatalf("Validate(BuiltIn()[0]) = %v, want nil", err)
+	if !ids[ExampleSafeSandboxID] {
+		t.Errorf("BuiltIn() missing %q", ExampleSafeSandboxID)
+	}
+	if !ids[ExampleSecretGuardID] {
+		t.Errorf("BuiltIn() missing %q", ExampleSecretGuardID)
 	}
 }

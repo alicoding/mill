@@ -83,6 +83,14 @@
     "seedRevision": 1,
     "fingerprint": "aa9a964c09faafbd8e7ebbeff3e75aa438878bdb9e1207c4dcd5c0bbba8de0bc"
   },
+  "execenv:example-secret-guard-execenv": {
+    "seedRevision": 1,
+    "fingerprint": "0fde6bdf29e4ebb04f1438adf87b09a8064ec94b1a2fcc7a99e685e2497c22ae"
+  },
+  "guardrailrule:example-secret-guard-rule": {
+    "seedRevision": 1,
+    "fingerprint": "1c08007bbeeea7f8badb47a7d1d2d85fb6669fbbc917f0d81104666e5ae52c41"
+  },
   "list:example-country-codes-list": {
     "seedRevision": 4,
     "fingerprint": "e5f0f240a11b3186184fc845f0a5b43e0a866f354c90c6cb22286a3ca4a4b755"
@@ -258,6 +266,10 @@
   "workflow:example-scratch-capture-workflow": {
     "seedRevision": 2,
     "fingerprint": "58474919963eb4da78947e7f46802b2c75d2c0e51f4e685b5c7e94774d00550c"
+  },
+  "workflow:example-secret-guard-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "e30cb4264a5bc4557450609fe2fa0af0eadd9715cc6de756b84498e4ba195f68"
   },
   "workflow:example-step-failure-workflow": {
     "seedRevision": 1,

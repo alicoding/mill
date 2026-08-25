@@ -25,6 +25,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
+	"github.com/alicoding/mill/internal/domain/secret"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 )
 
@@ -91,6 +92,15 @@ type ConfigureService struct {
 	// resolved before wiring fails loudly rather than silently
 	// returning an empty secret.
 	secretResolver func(id string) (string, error)
+	// secretLabelsLister lists every vault entry's Summary (Title, no
+	// Password) -- DeriveSecretLabels' own read (goal 0203 S2), wired
+	// late via SetSecretLabelsLister the same way secretResolver is.
+	// Defaults to reporting no titles known at all, the same treatment
+	// a currently-locked vault gets: DeriveSecretLabels' own
+	// unknownVaultLabel placeholder covers both, since a derivation
+	// that can't currently see a title must still answer SOMETHING,
+	// never error, for a workflow that isn't even running yet.
+	secretLabelsLister func() ([]secret.Summary, error)
 }
 
 // SetSecretResolver wires ConfigureService's own vault-reference
@@ -103,6 +113,16 @@ func (c *ConfigureService) SetSecretResolver(fn func(id string) (string, error))
 	c.secretResolver = fn
 }
 
+// SetSecretLabelsLister wires DeriveSecretLabels' title lookup to
+// secretsvc.SecretService's ListSecrets -- called once from main.go
+// after that service exists, same pattern as SetSecretResolver.
+// Exported for wiring only, never a frontend RPC.
+//
+//wails:ignore
+func (c *ConfigureService) SetSecretLabelsLister(fn func() ([]secret.Summary, error)) {
+	c.secretLabelsLister = fn
+}
+
 func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionService, credentials credential.Store) *ConfigureService {
 	// Wrapped once here so every credential read/write in this package
 	// flows through the presence cache (credpresence.go) -- validation
@@ -112,6 +132,7 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.secretResolver = func(id string) (string, error) {
 		return "", fmt.Errorf("no vault secret resolver registered (yet) for id %q", id)
 	}
+	c.secretLabelsLister = func() ([]secret.Summary, error) { return nil, nil }
 	c.restore()
 	c.restoreMCPServers()
 	c.restoreDecisions()

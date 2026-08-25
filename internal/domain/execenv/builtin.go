@@ -10,6 +10,12 @@ import "github.com/alicoding/mill/internal/domain/seedorigin"
 // establish.
 const ExampleSafeSandboxID = "example-safe-sandbox-execenv"
 
+// ExampleSecretGuardID is the seeded example ExecEnv's ID for goal
+// 0203 S2's own guardrail-attribute proof (composition.
+// builtinworkflows_secretguard.go's "Example: uses a stored secret"
+// workflow) -- same exported-const convention as ExampleSafeSandboxID.
+const ExampleSecretGuardID = "example-secret-guard-execenv"
+
 // BuiltIn returns the seeded example ExecEnv -- pure config, no
 // persistence (mirrors httprequest.BuiltIn/list.BuiltIn/
 // mcpserver.BuiltIn's shape: this package stays free of the
@@ -43,6 +49,26 @@ func BuiltIn() []ExecEnv {
 			ProfileMode: ProfileClean,
 			Dir:         TempDirSentinel,
 			Env:         []string{"PATH=/usr/bin:/bin:/usr/sbin:/sbin"},
+			BuiltIn:     true,
+			Seed:        seedorigin.Stamp(1),
+		},
+		// A second, dedicated ExecEnv (never shared with the "Safe
+		// sandbox" seed above) so goal 0203 S2's own guardrail-attribute
+		// proof can carry a "vault:<id>" reference (Env's own documented
+		// convention, above) without touching an env already exercised
+		// by an unrelated approve-and-run seed test. The id is
+		// deliberately dangling -- no vault-seeding mechanism exists to
+		// pair it with a real entry -- which is fine for this seed's own
+		// purpose: it demonstrates that ANY "vault:" reference (resolved
+		// or not) is visible to the guardrail gate, never that this
+		// particular one resolves.
+		{
+			ID:          ExampleSecretGuardID,
+			Label:       "Example: uses a stored secret",
+			Shell:       ShellSh,
+			ProfileMode: ProfileClean,
+			Dir:         TempDirSentinel,
+			Env:         []string{"PATH=/usr/bin:/bin:/usr/sbin:/sbin", "API_TOKEN=vault:example-secret-guard-token"},
 			BuiltIn:     true,
 			Seed:        seedorigin.Stamp(1),
 		},

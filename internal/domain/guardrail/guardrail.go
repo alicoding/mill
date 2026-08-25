@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/alicoding/mill/internal/adapters/expression"
+	"github.com/alicoding/mill/internal/domain/seedorigin"
 )
 
 // Effect is a rule's (or the final evaluation's) verdict. Ordered by
@@ -64,6 +65,15 @@ type Rule struct {
 	// all three doors, never a Configure entity (no other data
 	// references a rule by ID).
 	Source string
+	// BuiltIn marks a seeded example rule (BuiltIn() below) -- purely
+	// informational, same as mcpserver.MCPServer.BuiltIn/execenv.
+	// ExecEnv.BuiltIn: drives a "built-in" badge only, never gates
+	// Edit/Delete.
+	BuiltIn bool
+	// Seed is this rule's seed provenance (docs/goals/0037) -- zero
+	// value means "not of seed origin," migration-free. See
+	// composition.Workflow.Seed's doc comment for the full reasoning.
+	Seed seedorigin.Origin
 }
 
 // Validate rejects a rule that could never evaluate meaningfully --
