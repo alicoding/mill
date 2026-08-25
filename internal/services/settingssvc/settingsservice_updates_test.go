@@ -169,6 +169,27 @@ func TestCheckForUpdates_FakeVersionSeamReturnsCannedResult(t *testing.T) {
 	}
 }
 
+// The fail seam overrides the fake-version seam's canned success so
+// e2e can prove a failed check renders honestly, without ever reaching
+// the real network.
+func TestCheckForUpdates_FailSeamReturnsFailedOutcome(t *testing.T) {
+	t.Setenv(testUpdateFakeVersionEnv, "9.9.9")
+	t.Setenv(testUpdateCheckFailEnv, "1")
+	set := newTestSettingsService(t)
+
+	_, err := set.CheckForUpdates()
+	if err == nil {
+		t.Fatal("CheckForUpdates() with the fail seam set: want an error, got nil")
+	}
+	n := set.UpdateNoticeState()
+	if n.LastCheckOutcome != string(UpdateCheckOutcomeFailed) {
+		t.Errorf("LastCheckOutcome = %q, want %q", n.LastCheckOutcome, UpdateCheckOutcomeFailed)
+	}
+	if n.LastCheckError == "" {
+		t.Error("LastCheckError = \"\", want the failure reason")
+	}
+}
+
 // In fake mode, DownloadAndInstallUpdate must never attempt a real
 // network call even on a release channel -- it returns a plain error
 // instead.

@@ -47,11 +47,11 @@ import (
 // touches it. millUpdateVersion is what the updater compares the beta
 // feed's rolling tag against and AppVersion shows in Settings: a SemVer
 // prerelease compares strictly below its release, so a beta tag against
-// the bare "0.4.0" would never register as newer -- a beta build stamps
-// a per-build identifier here instead (`-X main.millUpdateVersion=0.4.0-beta.<run>`).
+// the bare "0.5.0" would never register as newer -- a beta build stamps
+// a per-build identifier here instead (`-X main.millUpdateVersion=0.5.0-beta.<run>`).
 var millChannel = "source"
 
-const millVersion = "0.4.0"
+const millVersion = "0.5.0"
 
 var millUpdateVersion = millVersion
 

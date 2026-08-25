@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -101,6 +102,18 @@ const testUpdateChannelEnv = "MILL_TEST_UPDATE_CHANNEL"
 // release existing. DownloadAndInstallUpdate honors it too, but only
 // to refuse with a plain error -- fake mode never reaches the network.
 const testUpdateFakeVersionEnv = "MILL_TEST_UPDATE_FAKE_VERSION"
+
+// testUpdateCheckDelayEnv holds CheckForUpdates' fake-mode response for
+// a set number of milliseconds before returning, so e2e can observe the
+// "Checking…" state deterministically instead of racing a real
+// same-tick promise resolution. Ignored outside fake mode.
+const testUpdateCheckDelayEnv = "MILL_TEST_UPDATE_CHECK_DELAY_MS"
+
+// testUpdateCheckFailEnv makes fake mode return a failed outcome
+// instead of a canned available update, so e2e can prove a failed
+// check renders honestly (never as "up to date") without a real
+// network call. Ignored outside fake mode.
+const testUpdateCheckFailEnv = "MILL_TEST_UPDATE_CHECK_FAIL"
 
 // SetUpdater wires Wails3's own app.Updater singleton (constructed by
 // application.New() itself, already Init'd by main.go with a GitHub
@@ -302,6 +315,14 @@ func ResolveUpdateCurrentVersion(effectiveChannel, updateVersion string) string 
 // alicoding/mill) whether a newer version exists.
 func (s *SettingsService) CheckForUpdates() (UpdateCheckResult, error) {
 	if fake := os.Getenv(testUpdateFakeVersionEnv); fake != "" {
+		if ms, err := strconv.Atoi(os.Getenv(testUpdateCheckDelayEnv)); err == nil && ms > 0 {
+			time.Sleep(time.Duration(ms) * time.Millisecond)
+		}
+		if os.Getenv(testUpdateCheckFailEnv) != "" {
+			err := fmt.Errorf("simulated check failure")
+			s.recordCheckOutcome(UpdateCheckOutcomeFailed, err.Error())
+			return UpdateCheckResult{}, err
+		}
 		s.recordAvailableUpdate(fake)
 		s.recordCheckOutcome(UpdateCheckOutcomeFound, "")
 		return UpdateCheckResult{

@@ -78,6 +78,12 @@ export const UPDATES_CHANNEL_PREF_MCP_BASE_PORT = 10380
 // for its whole server lifetime -- own pair like every updates case.
 export const UPDATES_READY_SERVER_BASE_PORT = 10680
 export const UPDATES_READY_MCP_BASE_PORT = 10700
+// goal 0205 S4: the auto-check-on-open/checking-state/failed-check
+// cases each fix MILL_TEST_UPDATE_CHECK_DELAY_MS/MILL_TEST_UPDATE_
+// CHECK_FAIL for a whole server lifetime -- own pair like every other
+// updates case.
+export const UPDATES_AUTOCHECK_SERVER_BASE_PORT = 10760
+export const UPDATES_AUTOCHECK_MCP_BASE_PORT = 10780
 // atlas-kind-authoring.spec.ts's own dedicated pair (goal 0079):
 // kinds/link kinds are GLOBAL Atlas vocabulary every board render and
 // picker reads -- the shared worker pool can't isolate that
