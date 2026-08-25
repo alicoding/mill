@@ -9,6 +9,7 @@ export {
 export type {
     AtlasImportSummary,
     AtlasSessionState,
+    BoardDrawioExport,
     CardSourceOffer,
     ClipbridgeCardOffer,
     ClipbridgeReplyPreview,

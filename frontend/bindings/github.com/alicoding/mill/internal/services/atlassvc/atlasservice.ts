@@ -356,6 +356,15 @@ export function ExportAtlas(): $CancellablePromise<string> {
 }
 
 /**
+ * ExportBoardAsDrawio serializes spaceID's own board (its card subtree,
+ * any depth, plus its shape/diagram board objects) into a .drawio file.
+ * spaceID == "" exports the top-level board. Read-only.
+ */
+export function ExportBoardAsDrawio(spaceID: string): $CancellablePromise<$models.BoardDrawioExport> {
+    return $Call.ByID(1721831298, spaceID);
+}
+
+/**
  * ImportAtlas applies ADR-0036 decision 3's uniform import rule to
  * EVERY entity inside jsonData's bundle independently: id absent ->
  * create fresh; id present and known locally -> update in place; id

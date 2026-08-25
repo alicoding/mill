@@ -79,6 +79,15 @@ into.
   cards) — matches stay crisp in place, so you keep the spatial
   context instead of watching cards vanish. Filters are a question,
   not a setting: they clear with one click and are never saved.
+- **Export takes the shape you need.** The toolbar's Export control
+  offers a choice: the whole map as portable JSON, ready to import
+  into another Mill, or just the board you're viewing as a `.drawio`
+  file. Cards become boxes, links become labelled connections, and
+  areas nest exactly the way they do on the board — open the download
+  in draw.io or hand it to a tool that expects that format. A shape's
+  own colour and stroke come along; a freeform arrow, a sketch, or an
+  image doesn't have a faithful box to become yet, so it's named
+  rather than silently left out.
 - **Sync a docs folder**: the seeded "Mirror a docs folder into
   Atlas" workflow regenerates a space from a folder of markdown,
   idempotently — a maintained docs set becomes a maintained map.

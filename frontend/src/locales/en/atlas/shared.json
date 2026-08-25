@@ -132,6 +132,8 @@
   },
   "toolbar": {
     "export": "Export",
+    "exportJSON": "Whole graph (.json)",
+    "exportDrawio": "This board (.drawio)",
     "import": "Import",
     "importConfirmTitle": "This import will update existing items",
     "importConfirmBody": "{{count}} kinds, cards, or links already exist here and will be updated in place.",
@@ -380,6 +382,17 @@
     "links_other": "{{count}} links",
     "pagesSkipped_one": "{{count}} page couldn't be read: {{pages}}",
     "pagesSkipped_other": "{{count}} pages couldn't be read: {{pages}}"
+  },
+  "boardExport": {
+    "converted": "Exported as {{what}}",
+    "cards_one": "{{count}} card",
+    "cards_other": "{{count}} cards",
+    "links_one": "{{count}} link",
+    "links_other": "{{count}} links",
+    "shapes_one": "{{count}} shape",
+    "shapes_other": "{{count}} shapes",
+    "skipped_one": "{{count}} item couldn't be exported: {{items}}",
+    "skipped_other": "{{count}} items couldn't be exported: {{items}}"
   },
   "newSpace": {
     "title": "New space"

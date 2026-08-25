@@ -390,6 +390,7 @@ test('exporting the atlas graph downloads a portable JSON bundle with the seeded
 
   const downloadPromise = page.waitForEvent('download')
   await page.getByTestId('atlas-export').click()
+  await page.getByTestId('atlas-export-json').click()
   const download = await downloadPromise
   const stream = await download.createReadStream()
   const chunks: Buffer[] = []
@@ -399,6 +400,29 @@ test('exporting the atlas graph downloads a portable JSON bundle with the seeded
   expect(parsed.schema).toBe('mill://schema/atlas/v1')
   expect(Array.isArray(parsed.cards)).toBe(true)
   expect(parsed.cards.some((c: { title?: string }) => c.title === 'The engagement')).toBe(true)
+})
+
+test('exporting the viewed board downloads a .drawio file with its own cells', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(atlasView(page)).toBeVisible()
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByTestId('atlas-export').click()
+  await page.getByTestId('atlas-export-drawio').click()
+  const download = await downloadPromise
+  const stream = await download.createReadStream()
+  const chunks: Buffer[] = []
+  for await (const chunk of stream) chunks.push(chunk as Buffer)
+  const xml = Buffer.concat(chunks).toString('utf-8')
+
+  expect(xml).toContain('<mxfile')
+  expect(xml).toContain('<mxGraphModel')
+  // The app auto-navigates into the single seeded root space ("The
+  // engagement") on load -- the exported board is what's actually
+  // RENDERED, its children, not the container card holding them.
+  expect(xml).toContain('Client records')
+  expect(xml).toContain('Discovery workstream')
 })
 
 test('Update now on the seeded mirror card runs its workflow through the normal gate and shows a synced receipt live', async ({ page }) => {
