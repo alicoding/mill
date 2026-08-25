@@ -237,7 +237,10 @@ user primitive can reach the state.
   theorizing.
 - **The flake protocol**: a test observed flaking twice either gets FIXED
   or enters `frontend/e2e/QUARANTINE.md` with class, entered/review dates,
-  and notes. Retry-passing is never a fix.
+  and notes. Retry-passing is never a fix. The same two-strikes shape
+  governs defect classes repo-wide via goal-frontmatter `defect_class`
+  (delivery-discipline.md, goal 0187): second occurrence of a class
+  means the fix targets the class, not the instance.
 - **Interaction helpers live in `e2e/fixtures/`, not per-spec.** A helper
   used by 2+ spec files MUST be promoted. Standing helpers: the
   per-worker server, `withClipboardLock`, `clickCanvasNode`,
