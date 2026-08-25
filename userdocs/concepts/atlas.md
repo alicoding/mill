@@ -47,6 +47,21 @@ into.
   give it a title and a kind. The pointer always shows which tool is
   armed, over anything on the board. Hold Space to pan the board
   without drawing, and press Escape to put a drawing tool away.
+- **Shapes have their own style options.** Pick Shape in the toolbar
+  and drag to draw a rectangle, ellipse, or arrow; while it's armed, a
+  small panel above the button offers the shape type, stroke colour,
+  stroke width, and fill. Fill starts off (an outline only) — pick a
+  colour to fill the interior instead, and a filled shape is still
+  fully clickable anywhere inside it, not just along its outline. Each
+  drawing tool's panel offers only the style controls that make sense
+  for it, drawn from the same small set: a colour, a colour that can
+  also be switched off, a numeric width shown as a line or a dot, or a
+  named shape choice. Pencil's panel, for example, offers only colour
+  and stroke size, since a stroke has no separate fill. This is also
+  why fill was the first new option to land on shapes — it reuses the
+  "colour, switchable off" control every future style option of that
+  same kind gets for free. A diagram's own colours and styling stay
+  whatever its own file sets, not this panel.
 - **Copy and paste to duplicate.** Select cards or notes and press
   ⌘C, then ⌘V — copies appear where your cursor is, filed into
   whatever area it's over. A copy is just the card itself; when the

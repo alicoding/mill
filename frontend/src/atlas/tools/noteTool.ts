@@ -21,6 +21,9 @@ export const noteTool = {
   // Not routed through the shared 'atlas-object' renderer -- always
   // false, not N/A.
   dragBand: false,
+  // No style surface of its own (goal 0209) -- always empty, not
+  // omitted.
+  styleFields: [],
   commit: (input: { text: string }): AtlasNoteArtifact => ({ kind: 'note', text: input.text.trim() }),
 } as const satisfies AtlasToolShape
 

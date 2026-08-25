@@ -1,6 +1,6 @@
-import type { ComponentType } from 'react'
 import type { Icon } from '@primer/octicons-react'
 import { ATLAS_TOOL_IDENTITIES, type AtlasToolIdentity, type AtlasToolInteraction } from '../shared/atlasToolIdentity'
+import type { AtlasStyleField } from './atlasStyleVocabulary'
 
 // The frontend twin of composition/registry.go's RegisterNodeType
 // (ADR-0006, goal 0180 slice 1): each canvas noun's own fat descriptor
@@ -32,12 +32,19 @@ interface AtlasToolShapeBase {
   shortcutKey: string | null
   tray: 'quick' | 'palette'
   styleDefaults?: AtlasToolStyleDefaults
-  // The tray's own options-bar component, shown anchored to this tool's
-  // button for as long as it's armed (AtlasCreationTray.tsx's own
-  // 'drag-to-draw' branch renders whichever tool carries one) --
-  // registry-driven so a second drag-to-draw tool never needs a
-  // hardcoded branch naming it by id.
-  StylePicker?: ComponentType
+  // styleFields (goal 0209): this noun's own declared styleable
+  // properties, drawn from atlasStyleVocabulary.ts's closed
+  // property-type vocabulary -- REQUIRED (never optional), the same
+  // honest-false/empty pattern lockable/resizable/dragBand below
+  // establish. An empty array is the honest answer for a noun with no
+  // style surface at all (every noun but shape/pencil this slice), not
+  // an omission. AtlasCreationTray.tsx's own 'drag-to-draw' branch
+  // renders AtlasStylePanel.tsx anchored to the tool's button whenever
+  // this array is non-empty -- registry-driven, so a THIRD noun
+  // gaining a style surface never needs a hardcoded branch naming it
+  // by id (docs/goals/0211-extension-tiers.md's standing rule: no core
+  // file enumerates which nouns are styleable).
+  styleFields: readonly AtlasStyleField[]
   // goal 0181 S3's own three declarations, one per surface that shipped
   // half-wired without one -- REQUIRED (never optional) so a noun that
   // omits one fails to compile rather than half-existing. `false`/`null`

@@ -2,7 +2,7 @@ import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
 import { shapeTool } from './tools/shapeTool'
 import { frameContainingPoint } from './atlasFramePoint'
-import { SHAPE_DEFAULT_FILL, type AtlasShapeType } from './atlasShapeStyleStore'
+import type { AtlasShapeType } from './atlasShapeStyleStore'
 import type { ShapePoint } from './useAtlasShapeDraw'
 import type { FrameBox } from './useAtlasDragFiling'
 
@@ -27,12 +27,12 @@ export function useAtlasShapeCreate({ parentID, topLevelBoxes, screenToFlowPosit
   // caller leaves it selected once the tool disarms, so the resize
   // handles a drawn shape is now entitled to (part B) land on the
   // thing just made.
-  const landShape = async (start: ShapePoint, end: ShapePoint, style: { shapeType: AtlasShapeType; stroke: string; strokeWidth: number }): Promise<string> => {
+  const landShape = async (start: ShapePoint, end: ShapePoint, style: { shapeType: AtlasShapeType; stroke: string; strokeWidth: number; fill: string }): Promise<string> => {
     const startFlow = screenToFlowPosition(start)
     const endFlow = screenToFlowPosition(end)
     const artifact = shapeTool.commit({
       shapeType: style.shapeType,
-      style: { fill: SHAPE_DEFAULT_FILL, stroke: style.stroke, strokeWidth: style.strokeWidth },
+      style: { fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth },
       startFlow, endFlow,
     })
     const targetParentID = frameContainingPoint(topLevelBoxes, artifact.originFlow) ?? parentID

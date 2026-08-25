@@ -1,0 +1,103 @@
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-8);
+  padding: var(--base-size-12);
+}
+
+.row {
+  display: flex;
+  gap: 6px;
+}
+
+/* shape-kind options (an icon per named value, e.g. rectangle/ellipse/
+   arrow) -- carries `color` unlike .optionButton below, matching the
+   pre-migration AtlasShapeStylePicker.module.css's own .typeButton. */
+.kindButton {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  cursor: pointer;
+}
+
+.kindButton[data-selected='true'] {
+  background: var(--bgColor-accent-muted);
+  border-color: var(--borderColor-accent-emphasis);
+  color: var(--fgColor-accent);
+}
+
+/* color / color-or-none swatches. */
+.swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid var(--borderColor-default);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.swatch[data-selected='true'] {
+  border-color: var(--fgColor-default);
+}
+
+/* color-or-none's own "none" option, rendered first -- same swatch
+   footprint, a slashed-circle glyph instead of a fill colour. */
+.noneSwatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--borderColor-default);
+  border-radius: 50%;
+  background: var(--bgColor-default);
+  color: var(--fgColor-muted);
+  cursor: pointer;
+}
+
+.noneSwatch[data-selected='true'] {
+  border-color: var(--fgColor-default);
+  color: var(--fgColor-default);
+}
+
+/* stroke-width options, either render -- byte-identical to the
+   pre-migration .widthButton/.sizeButton, which were already the same
+   rule set repeated per store. */
+.optionButton {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-default);
+  cursor: pointer;
+}
+
+.optionButton[data-selected='true'] {
+  background: var(--bgColor-accent-muted);
+  border-color: var(--borderColor-accent-emphasis);
+}
+
+/* render: 'line' -- height set inline per option (was .widthLine). */
+.lineIndicator {
+  width: 16px;
+  border-radius: 2px;
+  background: var(--fgColor-default);
+}
+
+/* render: 'dot' -- width/height set inline per option (was .sizeDot). */
+.dotIndicator {
+  border-radius: 50%;
+  background: var(--fgColor-default);
+}

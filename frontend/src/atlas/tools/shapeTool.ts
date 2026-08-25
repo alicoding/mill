@@ -1,10 +1,32 @@
-import { DiamondIcon } from '@primer/octicons-react'
+import { ArrowUpRightIcon, CircleIcon, DiamondIcon, SquareIcon } from '@primer/octicons-react'
 import { identityOf, registerNoun, type AtlasToolShape } from '../atlasNounRegistry'
-import { AtlasShapeStylePicker } from '../AtlasShapeStylePicker'
-import type { AtlasShapeType } from '../atlasShapeStyleStore'
+import type { AtlasStyleField } from '../atlasStyleVocabulary'
+import { PENCIL_COLORS, SHAPE_STROKE_WIDTHS, type AtlasShapeType } from '../atlasStyleValueStore'
 import { boxDimensions, shapePayload, shapeTitle, type ShapeStyle } from '../atlasShapeSvg'
 
 const shapeIdentity = identityOf('shape')
+
+// The shape tool's own declared style surface (goal 0209): rendered by
+// the one generic AtlasStylePanel.tsx from these four fields -- a fifth
+// field of an EXISTING vocabulary type (e.g. opacity, reusing
+// stroke-width's numeric-range shape) costs this array one entry, never
+// a new hand-built picker.
+const SHAPE_STYLE_FIELDS: readonly AtlasStyleField[] = [
+  {
+    key: 'shapeType', type: 'shape-kind', testidPrefix: 'atlas-shape-type', groupLabelKey: 'shapeStyle.typeLabel', default: 'rectangle',
+    options: [
+      { value: 'rectangle', Icon: SquareIcon, labelKey: 'shapeStyle.type_rectangle' },
+      { value: 'ellipse', Icon: CircleIcon, labelKey: 'shapeStyle.type_ellipse' },
+      { value: 'arrow', Icon: ArrowUpRightIcon, labelKey: 'shapeStyle.type_arrow' },
+    ],
+  },
+  { key: 'stroke', type: 'color', testidPrefix: 'atlas-shape-stroke', groupLabelKey: 'shapeStyle.strokeLabel', options: PENCIL_COLORS, default: PENCIL_COLORS[0] },
+  { key: 'strokeWidth', type: 'stroke-width', render: 'line', testidPrefix: 'atlas-shape-width', groupLabelKey: 'shapeStyle.widthLabel', optionLabelKey: 'shapeStyle.widthOption', options: SHAPE_STROKE_WIDTHS, default: SHAPE_STROKE_WIDTHS[1] },
+  // Every new shape starts unfilled -- the converged default across
+  // Excalidraw/tldraw/draw.io's own basic shape (docs/goals/0169's own
+  // research).
+  { key: 'fill', type: 'color-or-none', testidPrefix: 'atlas-shape-fill', groupLabelKey: 'shapeStyle.fillLabel', noneLabelKey: 'shapeStyle.fillNone', options: PENCIL_COLORS, default: 'none' },
+]
 
 // Unlike image/pencil, a shape never bakes to a mirror file -- fill/
 // stroke/strokeWidth stay live Payload data (this tool's own "style
@@ -55,7 +77,7 @@ export const shapeTool = {
   // makes .content == the node's own box again, closing the paint-vs-
   // frame gap AtlasShapeContent.tsx's own header documents.
   dragBand: false,
-  StylePicker: AtlasShapeStylePicker,
+  styleFields: SHAPE_STYLE_FIELDS,
   commit: (input: { shapeType: AtlasShapeType; style: ShapeStyle; startFlow: { x: number; y: number }; endFlow: { x: number; y: number } }): AtlasShapeArtifact => {
     const dx = input.endFlow.x - input.startFlow.x
     const dy = input.endFlow.y - input.startFlow.y
