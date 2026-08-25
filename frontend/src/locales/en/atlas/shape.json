@@ -6,6 +6,8 @@
     "type_arrow": "Arrow",
     "strokeLabel": "Stroke colour",
     "widthLabel": "Stroke width",
-    "widthOption": "{{width}}px"
+    "widthOption": "{{width}}px",
+    "fillLabel": "Fill colour",
+    "fillNone": "No fill"
   }
 }

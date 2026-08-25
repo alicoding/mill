@@ -41,6 +41,9 @@ export const eraserTool = {
   boardNodeType: null,
   // No node type renders it at all -- always false, not N/A.
   dragBand: false,
+  // No style surface of its own (goal 0209) -- always empty, not
+  // omitted.
+  styleFields: [],
   commit: (): null => null,
 } as const satisfies AtlasToolShape
 

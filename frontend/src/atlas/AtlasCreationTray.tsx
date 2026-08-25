@@ -5,6 +5,7 @@ import { AnchoredOverlay, Button } from '@primer/react'
 import { LockIcon } from '@primer/octicons-react'
 import { AtlasTableSizePicker } from './AtlasTableSizePicker'
 import { AtlasImageInput } from './AtlasImageInput'
+import { AtlasStylePanel } from './AtlasStylePanel'
 import { ATLAS_TOOLS, type AtlasArmableTool } from './atlasTools'
 import styles from './AtlasCreationTray.module.css'
 
@@ -30,9 +31,9 @@ export const ATLAS_TOOL_DRAG_MIME = 'application/x-mill-atlas-tool'
 // drag hook owns completion, never disarming itself), with its own
 // colour/size options bar shown anchored for as long as it's the
 // armed tool ('drag-to-draw'); Shape (goal 0169 slice 5) shares that
-// same interaction and branch, its own options bar swapped in via the
-// tool's own StylePicker field rather than a second branch. Eraser and
-// Laser ('drag-to-erase',
+// same interaction and branch, its own options bar rendered from its
+// own styleFields declaration (goal 0209) rather than a second branch.
+// Eraser and Laser ('drag-to-erase',
 // 'ephemeral-drag') fall through to the same plain arm-on-click button
 // the default branch below already renders for Card/Note/Area --
 // neither needs an options popover, so no new branch was needed here
@@ -126,12 +127,12 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
           // part D) -- a stale `locked` from a since-disarmed tool
           // must never paint a different button.
           const isLocked = dragArmed && locked
-          // Which options-bar component floats above the button (goal
-          // 0169 slice 5): registry-driven off the tool's OWN
-          // StylePicker field (atlasTools.ts) rather than a branch
-          // naming pencil/shape here -- a THIRD drag-to-draw tool costs
-          // this branch nothing.
-          const StylePicker = tool.StylePicker
+          // Whether an options-bar panel floats above the button (goal
+          // 0169 slice 5, re-platformed goal 0209): registry-driven off
+          // the tool's OWN styleFields declaration (atlasNounRegistry.ts)
+          // rather than a branch naming pencil/shape here -- a THIRD
+          // drag-to-draw tool costs this branch nothing.
+          const hasStyleFields = tool.styleFields.length > 0
           return (
             <Fragment key={tool.id}>
               <button
@@ -149,7 +150,7 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
                 {isLocked ? <LockIcon size={14} /> : <Icon size={14} />}
                 <span className={styles.kbd}>{tool.shortcutKey}</span>
               </button>
-              {StylePicker && (
+              {hasStyleFields && (
                 <AnchoredOverlay
                   open={dragArmed}
                   // Deliberately NOT wired to disarm: AnchoredOverlay is
@@ -166,7 +167,7 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
                   renderAnchor={null}
                   side="outside-top"
                 >
-                  <StylePicker />
+                  <AtlasStylePanel nounId={tool.id} fields={tool.styleFields} />
                 </AnchoredOverlay>
               )}
             </Fragment>

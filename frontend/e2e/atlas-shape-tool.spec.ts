@@ -395,3 +395,62 @@ test('the armed cursor beats a selected shape\'s own resize-handle cursor, and t
   await deleteViaContextMenu(page, shapes.first())
   await expect(shapes).toHaveCount(0)
 })
+
+// Goal 0209's own hit-testing decision, recorded at
+// AtlasBoardObjectNode.module.css's `.object` rule: the node's outer
+// wrapper carries no `pointer-events` override, so it already captures
+// a click anywhere in its own box regardless of the shape's own SVG
+// fill state -- this pins that FILLED behaviour as a committed
+// regression test, clicking a point well inside the rectangle's own
+// bounding box that is not on the 2px stroke line.
+test('a filled shape selects on a click inside its interior, not just on the stroke', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  const shapeTool = page.getByTestId('atlas-tray-shape')
+  await shapeTool.click()
+  const picker = page.getByTestId('atlas-shape-style-picker')
+  await expect(picker).toBeVisible()
+  await picker.getByTestId('atlas-shape-fill-da3633').click()
+  await expect(picker.getByTestId('atlas-shape-fill-da3633')).toHaveAttribute('data-selected', 'true')
+
+  await dragBetween(page, await boardPoint(board, 0.05, 0.1), await boardPoint(board, 0.25, 0.3))
+  const shapes = shapeObjects(page)
+  await expect(shapes).toHaveCount(1)
+
+  const box = await shapes.first().boundingBox()
+  if (!box) throw new Error('no shape box')
+  await shapes.first().click({ position: { x: box.width / 2, y: box.height / 2 } })
+  const wrapper = page.locator('.react-flow__node').filter({ has: shapes.first() })
+  await expect(wrapper).toHaveClass(/selected/)
+
+  await deleteViaContextMenu(page, shapes.first())
+  await expect(shapes).toHaveCount(0)
+})
+
+// The other half of the same decision: fill=none (the default, drawn
+// unchanged) keeps today's semantics -- the interior stays clickable
+// even though the SVG itself paints nothing there, because it's the
+// outer wrapper div, not the SVG's own paint, that is hit-tested.
+test('an unfilled (fill=none) shape selects on the exact same interior click', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  await page.getByTestId('atlas-tray-shape').click()
+  await dragBetween(page, await boardPoint(board, 0.3, 0.1), await boardPoint(board, 0.5, 0.3))
+  const shapes = shapeObjects(page)
+  await expect(shapes).toHaveCount(1)
+
+  const box = await shapes.first().boundingBox()
+  if (!box) throw new Error('no shape box')
+  await shapes.first().click({ position: { x: box.width / 2, y: box.height / 2 } })
+  const wrapper = page.locator('.react-flow__node').filter({ has: shapes.first() })
+  await expect(wrapper).toHaveClass(/selected/)
+
+  await deleteViaContextMenu(page, shapes.first())
+  await expect(shapes).toHaveCount(0)
+})
