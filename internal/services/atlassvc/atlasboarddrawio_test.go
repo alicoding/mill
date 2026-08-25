@@ -31,7 +31,7 @@ func TestExportBoardAsDrawio_RoundTripsContainmentAndSplitNote(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateCard: %v", err)
 	}
-	if _, err := a.PasteToBoard(pasteContainerXML, root.ID, 0, 0); err != nil {
+	if _, err := a.PasteToBoard(pasteContainerXML, "", root.ID, 0, 0); err != nil {
 		t.Fatalf("PasteToBoard: %v", err)
 	}
 
@@ -47,7 +47,7 @@ func TestExportBoardAsDrawio_RoundTripsContainmentAndSplitNote(t *testing.T) {
 	}
 
 	b := newTestAtlasService(t)
-	res, err := b.PasteToBoard(export.XML, "", 0, 0)
+	res, err := b.PasteToBoard(export.XML, "", "", 0, 0)
 	if err != nil {
 		t.Fatalf("re-import PasteToBoard: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestExportBoardAsDrawio_RoundTripsDeepNesting(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateCard: %v", err)
 	}
-	if _, err := a.PasteToBoard(pasteDeepNestXML, root.ID, 0, 0); err != nil {
+	if _, err := a.PasteToBoard(pasteDeepNestXML, "", root.ID, 0, 0); err != nil {
 		t.Fatalf("PasteToBoard: %v", err)
 	}
 	export, err := a.ExportBoardAsDrawio(root.ID)
@@ -93,7 +93,7 @@ func TestExportBoardAsDrawio_RoundTripsDeepNesting(t *testing.T) {
 	}
 
 	b := newTestAtlasService(t)
-	res, err := b.PasteToBoard(export.XML, "", 0, 0)
+	res, err := b.PasteToBoard(export.XML, "", "", 0, 0)
 	if err != nil {
 		t.Fatalf("re-import PasteToBoard: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestExportBoardAsDrawio_RoundTripsLinks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateCard: %v", err)
 	}
-	if _, err := a.PasteToBoard(pasteDiagramXML, root.ID, 0, 0); err != nil {
+	if _, err := a.PasteToBoard(pasteDiagramXML, "", root.ID, 0, 0); err != nil {
 		t.Fatalf("PasteToBoard: %v", err)
 	}
 	export, err := a.ExportBoardAsDrawio(root.ID)
@@ -134,7 +134,7 @@ func TestExportBoardAsDrawio_RoundTripsLinks(t *testing.T) {
 	}
 
 	b := newTestAtlasService(t)
-	res, err := b.PasteToBoard(export.XML, "", 0, 0)
+	res, err := b.PasteToBoard(export.XML, "", "", 0, 0)
 	if err != nil {
 		t.Fatalf("re-import: %v", err)
 	}

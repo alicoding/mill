@@ -1,15 +1,14 @@
 import { test, expect } from './fixtures/server'
 import { blurSticky, stickyEditor } from './fixtures/codeEditor'
 import type { Page } from '@playwright/test'
-import { clickCorner, openCard, submitCreatePopover, zoomAllTheWayOut } from './fixtures/atlasBoard'
-import { deleteViaPageMenu } from './fixtures/atlasPage'
+import { clickCorner, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { contextMenu } from './fixtures/contextMenu'
 
-// Atlas capture doors (goal 0081 slice A3, LOCKED design §2b/§3b):
-// paste (text/HTML into the placement popover) and the Scratchpad
-// seed rework, driven end to end against the seeded "The engagement" space
-// (internal/domain/atlas/builtin.go) via the standard per-worker
-// server fixture (testing.md's own default, unlike atlas-authoring.
-// spec.ts's dedicated-server exact-count needs).
+// Atlas capture doors (goal 0081 slice A3, fallback redesigned by goal
+// 0218) and the Scratchpad seed rework, driven end to end against the
+// seeded "The engagement" space (internal/domain/atlas/builtin.go) via
+// the standard per-worker server fixture (testing.md's own default,
+// unlike atlas-authoring.spec.ts's dedicated-server exact-count needs).
 //
 // The instant single-file/native-OS-drop door (item 1/2/4 of the
 // slice) is NOT exercised here: window._wails.handlePlatformFileDrop
@@ -44,7 +43,18 @@ async function dispatchPaste(page: Page, data: { text?: string; html?: string })
   }, data)
 }
 
-test('paste text opens the placement popover prefilled with title and note', async ({ page }) => {
+// deleteSticky removes a persisted sticky note straight off the board
+// (its own context-menu Delete, no page to open -- mirrors atlas-
+// paste-convert.spec.ts's table-object cleanup pattern).
+async function deleteSticky(page: Page, sticky: import('@playwright/test').Locator): Promise<void> {
+  await sticky.click({ button: 'right' })
+  const menu = contextMenu(page)
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete note', { exact: true }).click()
+  await expect(sticky).toHaveCount(0)
+}
+
+test('unrecognized text paste lands a selected sticky note at the pointer, no modal', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
@@ -52,53 +62,36 @@ test('paste text opens the placement popover prefilled with title and note', asy
   const pasted = 'Q3 migration checklist\n\nFinish the vendor review before rollout.'
   await dispatchPaste(page, { text: pasted })
 
-  const popover = page.getByTestId('atlas-placement-popover')
-  await expect(popover).toBeVisible()
-  await expect(popover.getByTestId('atlas-placement-title')).toHaveValue('Q3 migration checklist')
+  // No modal at all (goal 0218): the popover never appears for an
+  // unrecognized paste.
+  await expect(page.getByTestId('atlas-placement-popover')).toHaveCount(0)
 
-  await submitCreatePopover(popover)
-  await expect(popover).not.toBeVisible()
+  const sticky = page.locator('[data-testid="atlas-sticky-note"]').filter({ hasText: 'Q3 migration checklist' })
+  await expect(sticky).toBeVisible()
+  await expect(sticky).toContainText('Finish the vendor review before rollout.')
+  // Selected on landing, without ever having been clicked.
+  const wrapper = page.locator('.react-flow__node.selected').filter({ has: sticky })
+  await expect(wrapper).toHaveCount(1)
 
-  const card = page.locator('[data-testid="atlas-note-card"]').filter({ hasText: 'Q3 migration checklist' })
-  await expect(card).toBeVisible()
-  // The full pasted text became the card's own Note field, rendered
-  // directly on its front face -- not just the derived title.
-  await expect(card).toContainText('Finish the vendor review before rollout.')
-
-  // Cleanup (testing.md's within-file/within-worker discipline).
-  await openCard(page, card)
-  const overlay = page.locator('[data-component="atlas-card-overlay"]')
-  await expect(overlay).toBeVisible()
-  await deleteViaPageMenu(page, overlay)
-  await expect(overlay).not.toBeVisible()
+  await deleteSticky(page, sticky)
 })
 
-test('paste HTML converts to Markdown before prefilling the popover', async ({ page }) => {
+test('unrecognized HTML paste converts to Markdown and lands a selected sticky note', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
   await dispatchPaste(page, { html: '<h1>Vendor policy</h1><p>Prod credentials never stay with the requester.</p>' })
 
-  const popover = page.getByTestId('atlas-placement-popover')
-  await expect(popover).toBeVisible()
-  // The title comes from the FIRST LINE of the converted Markdown, not
-  // the raw HTML -- "# Vendor policy", trimmed of the heading marker
-  // by the same first-line rule paste-as-plain-text uses.
-  await expect(popover.getByTestId('atlas-placement-title')).toHaveValue(/Vendor policy/)
+  await expect(page.getByTestId('atlas-placement-popover')).toHaveCount(0)
 
-  await submitCreatePopover(popover)
-  await expect(popover).not.toBeVisible()
+  const sticky = page.locator('[data-testid="atlas-sticky-note"]').filter({ hasText: 'Vendor policy' })
+  await expect(sticky).toBeVisible()
+  await expect(sticky).toContainText('Prod credentials never stay with the requester.')
+  const wrapper = page.locator('.react-flow__node.selected').filter({ has: sticky })
+  await expect(wrapper).toHaveCount(1)
 
-  const card = page.locator('[data-testid="atlas-note-card"]').filter({ hasText: 'Vendor policy' })
-  await expect(card).toBeVisible()
-  await expect(card).toContainText('Prod credentials never stay with the requester.')
-
-  await openCard(page, card)
-  const overlay = page.locator('[data-component="atlas-card-overlay"]')
-  await expect(overlay).toBeVisible()
-  await deleteViaPageMenu(page, overlay)
-  await expect(overlay).not.toBeVisible()
+  await deleteSticky(page, sticky)
 })
 
 test('paste is inert while an editable field has focus', async ({ page }) => {
@@ -108,7 +101,7 @@ test('paste is inert while an editable field has focus', async ({ page }) => {
 
   // Arm the note tool and focus its draft textarea -- a paste landing
   // there must behave like an ordinary browser paste into that field,
-  // never open the placement popover on top of it.
+  // never create a second note on top of it.
   const board = page.getByTestId('atlas-board')
   await zoomAllTheWayOut(page)
   await page.keyboard.press('n')
@@ -118,7 +111,7 @@ test('paste is inert while an editable field has focus', async ({ page }) => {
   await editorContent.focus()
 
   await dispatchPaste(page, { text: 'should stay in the editor' })
-  await expect(page.getByTestId('atlas-placement-popover')).toHaveCount(0)
+  await expect(page.locator('[data-testid="atlas-sticky-note"]').filter({ hasText: 'should stay in the editor' })).toHaveCount(0)
 
   await blurSticky(page)
   await expect(stickyEditor(page)).toHaveCount(0)

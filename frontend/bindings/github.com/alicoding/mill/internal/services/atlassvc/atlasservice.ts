@@ -583,12 +583,12 @@ export function OpenCardMirror(cardID: string): $CancellablePromise<void> {
 }
 
 /**
- * PasteToBoard converts understood clipboard text into entities under
- * parentID, starting placement at (x, y). A user's own paste is a
- * direct edit -- ungated, like every direct create.
+ * PasteToBoard converts understood clipboard content into entities
+ * under parentID, starting placement at (x, y). A user's own paste is
+ * a direct edit -- ungated, like every direct create.
  */
-export function PasteToBoard(text: string, parentID: string, x: number, y: number): $CancellablePromise<$models.PasteResult> {
-    return $Call.ByID(233648772, text, parentID, x, y);
+export function PasteToBoard(text: string, html: string, parentID: string, x: number, y: number): $CancellablePromise<$models.PasteResult> {
+    return $Call.ByID(233648772, text, html, parentID, x, y);
 }
 
 /**

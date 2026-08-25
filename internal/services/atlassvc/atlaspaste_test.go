@@ -85,7 +85,7 @@ func TestDecodeDiagramText_AllWireForms(t *testing.T) {
 // Untitled) and links for edges, positions offset to the paste point.
 func TestPasteToBoard_DiagramBecomesCardsAndLinks(t *testing.T) {
 	a := newTestAtlasService(t)
-	res, err := a.PasteToBoard(pasteDiagramXML, "", 100, 200)
+	res, err := a.PasteToBoard(pasteDiagramXML, "", "", 100, 200)
 	if err != nil {
 		t.Fatalf("PasteToBoard: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestPasteToBoard_TableBecomesBoardObject(t *testing.T) {
 			return nil
 		},
 	)
-	res, err := a.PasteToBoard(pasteTableXML, "", 0, 0)
+	res, err := a.PasteToBoard(pasteTableXML, "", "", 0, 0)
 	if err != nil {
 		t.Fatalf("PasteToBoard: %v", err)
 	}
@@ -163,7 +163,7 @@ func TestPasteToBoard_TableBecomesBoardObject(t *testing.T) {
 func TestPasteToBoard_OrdinaryTextIsLeftAlone(t *testing.T) {
 	a := newTestAtlasService(t)
 	before := len(a.Cards())
-	res, err := a.PasteToBoard("meeting notes: follow up with the vendor", "", 0, 0)
+	res, err := a.PasteToBoard("meeting notes: follow up with the vendor", "", "", 0, 0)
 	if err != nil {
 		t.Fatalf("PasteToBoard: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestPasteToBoard_TSVBecomesTable(t *testing.T) {
 			return nil
 		},
 	)
-	res, err := a.PasteToBoard("Name\tStatus\nAcme\tHealthy\nGlobex\tBlocked", "", 0, 0)
+	res, err := a.PasteToBoard("Name\tStatus\nAcme\tHealthy\nGlobex\tBlocked", "", "", 0, 0)
 	if err != nil {
 		t.Fatalf("PasteToBoard: %v", err)
 	}
@@ -204,7 +204,7 @@ func TestPasteToBoard_TSVBecomesTable(t *testing.T) {
 	}
 
 	for _, notTSV := range []string{"prose with\ta tab", "one\ttab\nbut\tthis\tline differs", "Name\tStatus"} {
-		if r, _ := a.PasteToBoard(notTSV, "", 0, 0); r.Recognized {
+		if r, _ := a.PasteToBoard(notTSV, "", "", 0, 0); r.Recognized {
 			t.Errorf("%q must not convert", notTSV)
 		}
 	}
@@ -216,7 +216,7 @@ func TestPasteToBoard_TSVBecomesTable(t *testing.T) {
 // named, not swallowed.
 func TestPasteToBoard_MultiPageImportsEveryPageAndReportsSkipped(t *testing.T) {
 	a := newTestAtlasService(t)
-	res, err := a.PasteToBoard(pasteMultiPageXML, "", 0, 0)
+	res, err := a.PasteToBoard(pasteMultiPageXML, "", "", 0, 0)
 	if err != nil {
 		t.Fatalf("PasteToBoard: %v", err)
 	}
@@ -244,7 +244,7 @@ func TestPasteToBoard_MultiPageImportsEveryPageAndReportsSkipped(t *testing.T) {
 // one flattened title.
 func TestPasteToBoard_ContainerNestsChildrenAndSplitsMultiLineText(t *testing.T) {
 	a := newTestAtlasService(t)
-	res, err := a.PasteToBoard(pasteContainerXML, "", 0, 0)
+	res, err := a.PasteToBoard(pasteContainerXML, "", "", 0, 0)
 	if err != nil {
 		t.Fatalf("PasteToBoard: %v", err)
 	}
@@ -275,7 +275,7 @@ func TestPasteToBoard_ContainerNestsChildrenAndSplitsMultiLineText(t *testing.T)
 // which lands under its own -- not collapsed to the paste's parentID.
 func TestPasteToBoard_ContainmentNestsArbitraryDepth(t *testing.T) {
 	a := newTestAtlasService(t)
-	res, err := a.PasteToBoard(pasteDeepNestXML, "", 0, 0)
+	res, err := a.PasteToBoard(pasteDeepNestXML, "", "", 0, 0)
 	if err != nil {
 		t.Fatalf("PasteToBoard: %v", err)
 	}

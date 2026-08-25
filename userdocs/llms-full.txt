@@ -360,6 +360,12 @@ into.
   original has items inside, the paste offers to copy those too.
   Links come along only when both ends were copied. The copy is
   ordinary text on your clipboard, so it pastes across spaces.
+- **Paste anything from outside Mill — it lands as the right kind of
+  thing.** A table copied from a spreadsheet or a document app becomes
+  a table on the board, ready to browse and edit like any other list.
+  Everything else lands as a sticky note at your pointer, already
+  selected — nothing else to fill in. Multiple tables in one paste each
+  land as their own table, offset so you can tell them apart.
 - **Create by pointing.** Press C (or pick Card in the toolbar) and
   click — the card appears right there and you name it in place;
   Enter keeps the name, Escape keeps it as Untitled. Web addresses
