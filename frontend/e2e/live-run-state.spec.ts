@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
-import { workflowRow, activePanel, dragPaletteItemToCanvas } from './fixtures/canvas'
+import { workflowRow, activePanel, dragBetweenHandles, dragPaletteItemToCanvas } from './fixtures/canvas'
 import { waitForViewportStable } from './fixtures/animation'
 
 // Live run state on the authoring canvas (docs/SPEC.md §3.8's recorded
@@ -57,10 +57,10 @@ async function connectNodes(page: import('@playwright/test').Page, sourceLabel: 
   await waitForViewportStable(panel)
   const sourceHandle = panel.locator('.react-flow__node').filter({ hasText: sourceLabel }).locator('.react-flow__handle.source')
   const targetHandle = panel.locator('.react-flow__node').filter({ hasText: targetLabel }).locator('.react-flow__handle.target')
-  await sourceHandle.hover()
-  await page.mouse.down()
-  await targetHandle.hover()
-  await page.mouse.up()
+  // steps: 0 -- this copy's own divergence from fixtures/canvas.ts's
+  // connectNodes (see header comment): a direct hover-down-hover-up
+  // jump, no intermediate path.
+  await dragBetweenHandles(page, sourceHandle, targetHandle, 0, true)
 }
 
 test('Happy path: node cards reach done, the bar shows the finished run, and dismiss clears both', async ({ page }) => {

@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { wheelAt } from './fixtures/pointer'
 
 // docs/goals/0015-summon-quick-invoke.md's inline-hotkey-hint remainder:
 // the tab-overflow dropdown (app/WorkTabShell.tsx) now shows each
@@ -140,9 +141,6 @@ test('Settings: a real mouse wheel actually scrolls the page', async ({ page }) 
   await expect(viewPane).toBeVisible()
   // Wheel events target whatever's under the pointer, not the last-
   // focused/clicked element -- move there first.
-  const box = await viewPane.boundingBox()
-  if (!box) throw new Error('view-pane bounding box missing')
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
-  await page.mouse.wheel(0, 600)
+  await wheelAt(page, viewPane, 0, 600)
   await expect.poll(() => viewPane.evaluate((el) => el.scrollTop)).toBeGreaterThan(0)
 })

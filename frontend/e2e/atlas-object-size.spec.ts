@@ -1,6 +1,6 @@
 import type { Locator } from '@playwright/test'
 import { test, expect } from './fixtures/server'
-import { armAndPlaceTopicCard, noteCard } from './fixtures/atlasBoard'
+import { armAndPlaceTopicCard, dragResizeHandle, noteCard } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { blurSticky, fillSticky } from './fixtures/codeEditor'
 
@@ -167,17 +167,7 @@ test('dragging a note\'s resize handle persists Note.Size across reload', async 
   await sticky.click()
   const handle = page.locator('.react-flow__resize-control.handle.top.right')
   await expect(handle).toBeVisible()
-  const hb = await handle.boundingBox()
-  if (!hb) throw new Error('no resize handle box')
-  const startX = hb.x + hb.width / 2
-  const startY = hb.y + hb.height / 2
-  await page.mouse.move(startX, startY)
-  await page.mouse.down()
-  for (let i = 1; i <= 6; i++) {
-    await page.mouse.move(startX + i * 20, startY - i * 10)
-    await page.waitForTimeout(50) // pointer-coalescing class (see header comment) -- one real frame per step
-  }
-  await page.mouse.up()
+  await dragResizeHandle(page, handle, 120, -60)
 
   await expect.poll(async () => (await boxSize(page.locator('.react-flow__node').filter({ has: sticky }))).width).toBeGreaterThan(before.width + 80)
   await page.reload()

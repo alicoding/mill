@@ -2,7 +2,7 @@ import { test, expect } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
 import { clickRowAction } from './inventoryRow'
 import { connectMCPClient, exportWorkflowViaMCP, findWorkflowIdByLabel } from './mcpTestClient'
-import { workflowRow } from './fixtures/canvas'
+import { dragBetweenHandles, workflowRow } from './fixtures/canvas'
 import { waitForViewportStable } from './fixtures/animation'
 
 // docs/goals/0039: "Apply from clipboard..." in the Quick Panel
@@ -69,10 +69,7 @@ async function createSimpleWorkflow(page: import('@playwright/test').Page, label
   await waitForViewportStable(panel)
   const sourceHandle = panel.locator('.react-flow__node').filter({ hasText: 'Manual run' }).locator('.react-flow__handle.source')
   const targetHandle = panel.locator('.react-flow__node').filter({ hasText: 'Add text' }).locator('.react-flow__handle.target')
-  await sourceHandle.hover()
-  await page.mouse.down()
-  await targetHandle.hover()
-  await page.mouse.up()
+  await dragBetweenHandles(page, sourceHandle, targetHandle, 0, true)
   await expect(panel.locator('.react-flow__edge')).toHaveCount(1)
   await panel.getByLabel('Label').fill(label)
   await panel.getByTestId('save-workflow').click()

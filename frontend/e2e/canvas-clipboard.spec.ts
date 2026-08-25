@@ -27,9 +27,18 @@ test('copy/paste clones a step at the cursor; the trigger refuses', async ({ pag
   await expect(page.getByTestId('connection-refusal-hint')).toContainText('Copied 1 item')
 
   // Paste with the cursor parked at a far corner: the clone lands
-  // there (a third node appears, selected, same label).
-  const box = await panel.locator('.react-flow__pane').boundingBox()
+  // there (a third node appears, selected, same label). This is a pure
+  // cursor-position gesture, not an interaction -- the paste-anchor
+  // logic reads the last window-level mousemove coordinate, which
+  // bubbles regardless of what's on top of the pane at that pixel, so
+  // Playwright's hit-target/stability check (what locator.hover()
+  // demands) is the wrong tool here and made this test newly flaky
+  // against the inspector panel legitimately covering part of the
+  // pane -- confirmed live (goal 0184 migration probe).
+  const pane = panel.locator('.react-flow__pane')
+  const box = await pane.boundingBox()
   if (!box) throw new Error('canvas pane has no box')
+  // eslint-disable-next-line no-restricted-syntax -- cursor-position-only gesture, not a checkable interaction (see comment above)
   await page.mouse.move(box.x + box.width * 0.75, box.y + box.height * 0.75)
   await page.keyboard.press(`${mod}+v`)
   await expect(panel.locator('.react-flow__node')).toHaveCount(3)

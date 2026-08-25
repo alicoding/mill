@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { workflowRow, activePanel } from './fixtures/canvas'
+import { workflowRow, activePanel, dragNodeBy } from './fixtures/canvas'
 import { clickCanvasNode } from './fixtures/canvasNode'
 
 // docs/goals/0022-workflow-view-mode.md end to end: a workflow row
@@ -36,13 +36,8 @@ test('Row click opens VIEW mode: no palette toggle, a drag attempt does not move
   // nodes (NodeGuardrailSection.tsx's own exclusion, carried over to
   // the card by breakpoints.ts).
   const node = panel.locator('.react-flow__node').filter({ hasText: 'Write HTML to clipboard' })
-  const box = await node.boundingBox()
-  if (!box) throw new Error('node has no bounding box')
   const transformBefore = await node.getAttribute('style')
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
-  await page.mouse.down()
-  await page.mouse.move(box.x + box.width / 2 + 150, box.y + box.height / 2 + 150, { steps: 10 })
-  await page.mouse.up()
+  await dragNodeBy(page, node, 150, 150)
   const transformAfter = await node.getAttribute('style')
   expect(transformAfter).toBe(transformBefore)
 

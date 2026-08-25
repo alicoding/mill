@@ -24,7 +24,17 @@ test.setTimeout(180_000)
 // panePoint finds a screen point whose top element is the bare canvas
 // pane -- CI viewports differ from local, so fixed fractions can land
 // over a frame and silently FILE the pasted clone into it (the
-// openPlacementPopover fixture's own candidate pattern).
+// openPlacementPopover fixture's own candidate pattern). Positions the
+// real cursor there itself before returning -- the paste that follows
+// reads wherever the cursor last moved. A pure cursor-position gesture,
+// not an interaction: the paste-anchor logic reads the last window-
+// level mousemove coordinate, which bubbles regardless of what's on top
+// of the board at that pixel, so locator.hover()'s hit-target/stability
+// check is the wrong tool here -- it made a sibling test (canvas-
+// clipboard.spec.ts) newly flaky against real, legitimate chrome
+// overlap (confirmed live, goal 0184 migration probe). The elementFromPoint
+// probe above already does the real work this function needs (confirming
+// the point is genuinely empty pane, not just "currently stable").
 async function panePoint(page: import('@playwright/test').Page, board: import('@playwright/test').Locator): Promise<{ x: number; y: number }> {
   const bb = await board.boundingBox()
   if (!bb) throw new Error('board box missing')
@@ -32,7 +42,11 @@ async function panePoint(page: import('@playwright/test').Page, board: import('@
   for (const [fx, fy] of fractions) {
     const c = { x: bb.x + bb.width * fx, y: bb.y + bb.height * fy }
     const isPane = await page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.classList?.contains('react-flow__pane') ?? false, [c.x, c.y])
-    if (isPane) return c
+    if (isPane) {
+      // eslint-disable-next-line no-restricted-syntax -- cursor-position-only gesture, not a checkable interaction (see comment above)
+      await page.mouse.move(c.x, c.y)
+      return c
+    }
   }
   throw new Error('no empty pane point found')
 }
@@ -76,8 +90,7 @@ test('copy/paste clones a card at the cursor; a frame paste offers its items', a
     await cardA.click()
     await page.keyboard.press(`${mod}+c`)
     await expect(toast).toContainText('Copied 1 item')
-    const p1 = await panePoint(page, board)
-    await page.mouse.move(p1.x, p1.y)
+    await panePoint(page, board)
     await page.keyboard.press(`${mod}+v`)
     await expect(toast).toContainText('Pasted 1 item')
     await expect(noteCard(page, 'ZzClipA')).toHaveCount(2)
@@ -108,20 +121,18 @@ test('copy/paste clones a card at the cursor; a frame paste offers its items', a
     const frame = groupCard(page, 'ZzClipFrame')
     await expect(frame).toBeVisible()
     // First plain click = select-and-replace (goal 0102's table; a
-    // SECOND click would drill).
-    // Click by rendered geometry -- zoomed out, the frame's on-screen
-    // box is small, and an element-space offset can fall outside it
-    // (Playwright then waits on actionability forever). The left
-    // bottom padding strip at 92% height sits below the child tiles.
+    // SECOND click would drill). The left bottom padding strip at 92%
+    // height sits below the child tiles -- clicked through the frame's
+    // own locator, position derived from its own box, so the offset
+    // always stays inside it regardless of zoom.
     const fb = await frame.boundingBox()
     if (!fb) throw new Error('frame box missing')
-    await page.mouse.click(fb.x + fb.width * 0.5, fb.y + fb.height * 0.92)
+    await frame.click({ position: { x: fb.width * 0.5, y: fb.height * 0.92 } })
     // The selection must have RENDERED before ⌘C reads it.
     await expect(page.locator('.react-flow__node.selected')).toHaveCount(1)
     await page.keyboard.press(`${mod}+c`)
     await expect(toast).toContainText('Copied 1 item')
-    const p2 = await panePoint(page, board)
-    await page.mouse.move(p2.x, p2.y)
+    await panePoint(page, board)
     await page.keyboard.press(`${mod}+v`)
     // Shallow by default: the offer names the two items inside.
     const offer = page.getByTestId('atlas-quiet-toast-action')

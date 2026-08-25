@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { dragBetween } from './fixtures/atlasBoard'
+import { boardPoint, dragBetween, dragResizeHandle } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 
@@ -15,12 +15,10 @@ import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 // Real pointer-capture drag, not React Flow's own internal drag
 // machinery (the class QUARANTINE.md's box-select/NodeResizer entries
 // document as unreliable to synthesize) -- same wiring
-// atlas-pencil-tool.spec.ts's own header comment documents.
-async function boardPoint(board: import('@playwright/test').Locator, fx: number, fy: number): Promise<{ x: number; y: number }> {
-  const box = await board.boundingBox()
-  if (!box) throw new Error('board has no bounding box')
-  return { x: box.x + box.width * fx, y: box.y + box.height * fy }
-}
+// atlas-pencil-tool.spec.ts's own header comment documents. boardPoint/
+// dragBetween are the shared fixtures/atlasBoard.ts versions (this
+// spec's own former local boardPoint copy was promoted there,
+// testing.md's promotion rule).
 
 function shapeObjects(page: import('@playwright/test').Page) {
   return page.locator('[data-testid="atlas-board-object"][data-object-kind="shape"]')
@@ -264,8 +262,7 @@ test('draw, selected, drag by body, resize by handle, survives reload -- no Esca
   // a handle.
   const beforeDrag = await shapes.first().boundingBox()
   if (!beforeDrag) throw new Error('no shape box')
-  const dragStart = { x: beforeDrag.x + beforeDrag.width / 2, y: beforeDrag.y + beforeDrag.height / 2 }
-  await dragBetween(page, dragStart, { x: dragStart.x + 100, y: dragStart.y + 80 })
+  await dragBetween(page, { locator: shapes.first(), position: { x: beforeDrag.width / 2, y: beforeDrag.height / 2 } }, { x: beforeDrag.x + beforeDrag.width / 2 + 100, y: beforeDrag.y + beforeDrag.height / 2 + 80 })
   await expect.poll(async () => (await shapes.first().boundingBox())?.x ?? 0).toBeGreaterThan(beforeDrag.x + 60)
 
   // Resize it by a handle -- still selected from the drag above, no
@@ -274,34 +271,22 @@ test('draw, selected, drag by body, resize by handle, survives reload -- no Esca
   if (!beforeResize) throw new Error('no shape box before resize')
   const handle = page.locator('.react-flow__resize-control.handle.top.right')
   await expect(handle).toBeVisible()
-  const hb = await handle.boundingBox()
-  if (!hb) throw new Error('no resize handle box')
-  const startX = hb.x + hb.width / 2
-  const startY = hb.y + hb.height / 2
-  await page.mouse.move(startX, startY)
-  await page.mouse.down()
   let midDragChecked = false
-  for (let i = 1; i <= 6; i++) {
-    await page.mouse.move(startX + i * 15, startY - i * 10)
-    // Pointer-coalescing class (this file's own header comment) --
-    // each step must land in its own frame.
-    await page.waitForTimeout(50)
-    // Defect 3, mid-drag: NodeResizer only ever WRITES Size at
-    // onResizeEnd, but the paint must already track the pointer here,
-    // not just at release -- the node's live box and the SVG's own
-    // rendered box must already agree, mid-gesture.
-    if (i === 3) {
-      const nodeMidDrag = await wrapper.boundingBox()
-      const svgMidDrag = await shapes.first().locator('[data-testid="atlas-shape-content"]').boundingBox()
-      if (nodeMidDrag && svgMidDrag) {
-        expect(svgMidDrag.width).toBeLessThanOrEqual(nodeMidDrag.width + 2)
-        expect(svgMidDrag.height).toBeLessThanOrEqual(nodeMidDrag.height + 2)
-        midDragChecked = true
-      }
+  // Defect 3, mid-drag: NodeResizer only ever WRITES Size at
+  // onResizeEnd, but the paint must already track the pointer here,
+  // not just at release -- the node's live box and the SVG's own
+  // rendered box must already agree, mid-gesture.
+  await dragResizeHandle(page, handle, 90, -60, 6, async (i) => {
+    if (i !== 3) return
+    const nodeMidDrag = await wrapper.boundingBox()
+    const svgMidDrag = await shapes.first().locator('[data-testid="atlas-shape-content"]').boundingBox()
+    if (nodeMidDrag && svgMidDrag) {
+      expect(svgMidDrag.width).toBeLessThanOrEqual(nodeMidDrag.width + 2)
+      expect(svgMidDrag.height).toBeLessThanOrEqual(nodeMidDrag.height + 2)
+      midDragChecked = true
     }
-  }
+  })
   expect(midDragChecked, 'mid-drag geometry sample never landed -- the live-tracking assertion needs at least one').toBe(true)
-  await page.mouse.up()
   await expect.poll(async () => (await shapes.first().boundingBox())?.width ?? 0).toBeGreaterThan(beforeResize.width + 40)
 
   // Survives reload.

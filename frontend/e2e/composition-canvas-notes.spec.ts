@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
-import { workflowRow, activePanel } from './fixtures/canvas'
+import { workflowRow, activePanel, dragNodeBy } from './fixtures/canvas'
 
 // Canvas note block (docs/goals/0055): a free-floating authoring-space
 // annotation, deliberately NOT a step -- no ports, excluded from the
@@ -41,10 +41,7 @@ test('canvas note: add, edit, persist across reload, drag, delete -- never a ste
   // elsewhere in this suite uses for React Flow's own pointer handling).
   const before = await noteCard.boundingBox()
   if (!before) throw new Error('note card has no bounding box before drag')
-  await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2)
-  await page.mouse.down()
-  await page.mouse.move(before.x + before.width / 2 + 120, before.y + before.height / 2 + 80, { steps: 10 })
-  await page.mouse.up()
+  await dragNodeBy(page, noteCard, 120, 80)
   const after = await noteCard.boundingBox()
   if (!after) throw new Error('note card has no bounding box after drag')
   expect(Math.abs(after.x - before.x) > 20 || Math.abs(after.y - before.y) > 20).toBe(true)
