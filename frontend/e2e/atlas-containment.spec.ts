@@ -1,5 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
-import type { Locator, Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -56,26 +56,35 @@ async function dragBetweenAssertingMidway(page: Page, from: Parameters<typeof dr
   await dragBetween(page, from, to, onArrived)
 }
 
-// FINDING (goal 0184 migration probe): the Area tool's own marquee draw
-// is a KNOWN fragile pointer-capture interaction (QUARANTINE.md's own
-// "root cause within the Area tool's own pointer-capture handling not
-// yet isolated" entry). An extensive live A/B investigation against an
-// unmodified baseline pointed at a checked start on THIS tool
-// specifically (unlike the structurally-similar pencil/shape/eraser
-// tools, which took the identical checked-start pattern cleanly) --
-// but the investigation ran long enough on a sustained-load machine
-// that the unmodified baseline itself eventually started failing too,
-// so the signal was never fully separable from environment noise.
-// Given that ambiguity and this tool's own pre-existing fragility, its
-// two marquee starts keep the unchecked raw point as the conservative
-// choice; every other gesture in this file (right-click, zoom wheel)
-// took the full migration.
-async function rawBoardPoint(board: Locator, fx: number, fy: number): Promise<{ x: number; y: number }> {
-  const box = await board.boundingBox()
-  if (!box) throw new Error('board has no bounding box')
-  return { x: box.x + box.width * fx, y: box.y + box.height * fy }
-}
-
+// FINDING (goal 0184 migration, CI-confirmed via trace.zip): PR #426's
+// CI failure (3/3 deterministic timeouts, shard 4) traced to TWO
+// distinct, genuinely-deterministic bugs in this migration -- not the
+// Area tool's own pre-existing flakiness an earlier, noisier local
+// investigation had wrongly blamed:
+//
+// 1. wheelAt(groupArea)'s DEFAULT hover point (groupArea's raw
+//    geometric center) can sit under a member's own one-nesting-level
+//    preview tile -- a real SIBLING React Flow node, not a DOM
+//    descendant of groupArea, so it genuinely intercepts depending on
+//    zoom/pan (trace named the exact covering node:
+//    data-testid="rf__node-untitled-cc7e4c", MemberB's preview). Fixed
+//    by anchoring both wheelAt calls on the frame's own header band
+//    instead, which sits above every child/preview row.
+// 2. `locator.hover({position})` requires the RESOLVED point to
+//    actually be the given locator or its own descendant -- a
+//    DragEndpoint whose position sits OUTSIDE that locator's own box
+//    (a marquee corner drawn just past a card's edge, as this file's
+//    "Rider (a)" step does) can never pass: elementFromPoint at that
+//    point resolves to whatever's ACTUALLY there (the sibling
+//    `.react-flow__pane`), not the locator, so the check fails 100% of
+//    the time, not occasionally. Fixed by anchoring every marquee-corner
+//    DragEndpoint on `board` (which genuinely contains the point)
+//    instead of the card the corner is merely drawn relative to.
+//
+// Both fixes are below, at their own call sites. Neither bug is
+// specific to the Area tool -- the earlier local diagnosis that
+// blamed its own pointer-capture handling was most likely observing
+// one of these same two bugs.
 // Gesture-dense flow (10+ distinct interaction phases) already close to
 // the default 60s budget on raw/unchecked input alone (atlas-select-
 // group.spec.ts's own gesture-dense flow needed the same headroom, at
@@ -113,7 +122,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await page.keyboard.press('a')
     const areaTool = page.getByTestId('atlas-tray-area')
     await expect(areaTool).toHaveAttribute('data-armed', 'true')
-    await dragBetween(page, await rawBoardPoint(board, 0.02, 0.02), await rawBoardPoint(board, 0.08, 0.08))
+    await dragBetween(page, await boardPoint(board, 0.02, 0.02), await boardPoint(board, 0.08, 0.08))
     await expect(areaTool).toHaveAttribute('data-armed', 'false')
     await expect(popover).toBeVisible()
     await expect(popover.getByTestId('atlas-placement-context')).toHaveCount(0)
@@ -133,7 +142,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await armAndPlaceTopicCard(page, board, popover, 0.25, 0.05, 'ZzC2eMemberA')
     await armAndPlaceTopicCard(page, board, popover, 0.55, 0.05, 'ZzC2eMemberB')
     await page.keyboard.press('a')
-    await dragBetween(page, await rawBoardPoint(board, 0.18, 0.01), await rawBoardPoint(board, 0.63, 0.16))
+    await dragBetween(page, await boardPoint(board, 0.18, 0.01), await boardPoint(board, 0.63, 0.16))
     await expect(popover).toBeVisible()
     await expect(popover.getByTestId('atlas-placement-context')).toHaveText('2 cards move into this area')
     await selectKind(popover, ATLAS_KIND_TOPIC)
@@ -156,13 +165,21 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     // GROUP_HEADER_INSET/GROUP_PADDING) -- rather than guess a
     // fraction of the frame's own rendered size, click a few real
     // CSS pixels below the header element's OWN measured bottom edge
-    // (mild zoom-in first, centered on the frame via a wheel event so
-    // it stays on screen, since the zoom control buttons re-center on
-    // the viewport's own middle and would carry an off-center frame
-    // out of view).
-    await wheelAt(page, groupArea, 0, -300)
+    // (mild zoom-in first, centered on the frame's own header via a
+    // wheel event so it stays on screen, since the zoom control
+    // buttons re-center on the viewport's own middle and would carry
+    // an off-center frame out of view). Anchored on the HEADER, not
+    // groupArea's own raw center: a member's one-nesting-level preview
+    // tile (goal 0161's own comment above) is a real SIBLING React Flow
+    // node, not a DOM descendant of groupArea, and it can sit exactly
+    // over that raw center depending on the current zoom/pan -- CI
+    // caught this live, a real "intercepts pointer events" hang, not a
+    // flake (goal 0184 migration fix). The header band sits above every
+    // child/preview row, so it stays clear regardless of nesting.
+    const header = groupArea.getByTestId('atlas-group-header')
+    await wheelAt(page, header, 0, -300)
     await waitForViewportStable(board)
-    const headerBox = await groupArea.getByTestId('atlas-group-header').boundingBox()
+    const headerBox = await header.boundingBox()
     const groupBox = await groupArea.boundingBox()
     if (!headerBox || !groupBox) throw new Error('missing bounding box after zooming in')
     await groupArea.click({ position: { x: 5, y: headerBox.y + headerBox.height + 3 - groupBox.y }, button: 'right' })
@@ -176,7 +193,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await interiorInline.fill('ZzC2eInterior')
     await interiorInline.press('Enter')
     await expect(interiorInline).toHaveCount(0)
-    await wheelAt(page, groupArea, 0, 300)
+    await wheelAt(page, header, 0, 300)
     await waitForViewportStable(board)
     await expect(groupArea.getByTestId('atlas-group-header')).toContainText('3 cards')
 
@@ -306,18 +323,27 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     if (!memberABox) throw new Error('ZzC2eMemberA has no bounding box')
     await page.keyboard.press('a')
     // Both corners sit just OUTSIDE the card's own box (the marquee is
-    // drawn around it, not on it) -- the START is a valid DragEndpoint
-    // offset, checked against memberACard's own actionability. The END
-    // stays an unchecked raw point (goal 0184 migration probe): the
-    // active marquee visually alters memberACard itself (a live drag-
-    // over highlight) as it's drawn around it, which never satisfies a
-    // stability check on that same locator's own box -- confirmed live,
-    // the same "the drag's own visual feedback defeats a stability
-    // check on its target" class fixtures/canvas.ts's dragBetweenHandles
-    // doc comment already names for connection-drag targets.
+    // drawn around it, not on it) -- anchored on `board`, not
+    // memberACard: `locator.hover({position})` requires the RESOLVED
+    // point to actually be the given locator or its own descendant, so
+    // a position outside memberACard's own box structurally can never
+    // pass on that locator (elementFromPoint there resolves to the
+    // sibling `.react-flow__pane`, not the card) -- this failed
+    // DETERMINISTICALLY (100% reproduction via a captured trace, not a
+    // flake) until re-anchored on `board`, which genuinely does contain
+    // this point (goal 0184 migration fix, PR #426 CI failure). The END
+    // stays an unchecked raw point: the active marquee visually alters
+    // memberACard itself (a live drag-over highlight) as it's drawn
+    // around it, which never satisfies a stability check on that same
+    // locator's own box -- the same "the drag's own visual feedback
+    // defeats a stability check on its target" class fixtures/canvas.ts's
+    // dragBetweenHandles doc comment already names for connection-drag
+    // targets.
+    const boardBoxForRider = await board.boundingBox()
+    if (!boardBoxForRider) throw new Error('board has no bounding box')
     await dragBetween(
       page,
-      { locator: memberACard, position: { x: -20, y: -20 } },
+      { locator: board, position: { x: memberABox.x - boardBoxForRider.x - 20, y: memberABox.y - boardBoxForRider.y - 20 } },
       { x: memberABox.x + memberABox.width + 20, y: memberABox.y + memberABox.height + 20 },
     )
     await expect(popover).toBeVisible()
