@@ -100,9 +100,14 @@
     "updates": {
       "checkButton": "Check for updates",
       "checking": "Checking…",
+      "primaryDownload": "Download v{{version}} and install",
+      "primaryRestart": "Restart to update",
       "updateAvailable": "Update available: v{{version}}",
       "upToDate": "You're on the latest version.",
       "currentVersion": "You have Mill v{{version}}",
+      "statusCheckedAgo": "checked {{time}}",
+      "statusNeverChecked": "never checked",
+      "trustDisclosureSummary": "How updates stay trusted",
       "resignNotice": "Mill re-signs itself after updating, so permission grants like Accessibility keep working.",
       "resignSetupNotice": "Set this up once: in Keychain Access, find \"Mill Local Signing\" and set it to Always Trust for code signing.",
       "channelRelease": "installed from a release",
@@ -111,7 +116,7 @@
       "whatsNew": "What's new",
       "updateNow": "Update now",
       "downloading": "Downloading update…",
-      "restartButton": "Restart Mill",
+      "restartButton": "Restart to update",
       "installedRestart": "Update installed. Restart to finish.",
       "installFailed": "Couldn't install the update: {{error}}",
       "checkFailed": "Couldn't check for updates: {{error}}",
@@ -137,7 +142,12 @@
       "proxyModeManual": "Manual proxy URL",
       "proxyModeOff": "Off — always connect directly",
       "autoCheckLabel": "Check for and download updates automatically",
-      "autoCheckCaption": "Checks hourly and downloads updates in the background, starting now."
+      "autoCheckCaption": "Downloads updates in the background at the interval below, starting now.",
+      "checkIntervalLabel": "Check every",
+      "checkIntervalHourly": "Hourly",
+      "checkIntervalDaily": "Daily",
+      "checkIntervalWeekly": "Weekly",
+      "checkIntervalManual": "Only when I check"
     },
     "dataStewardship": {
       "description": "Mill snapshots your workflow history and settings automatically, and can bundle everything into one file to move to another machine.",

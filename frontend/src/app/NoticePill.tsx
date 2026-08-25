@@ -1,28 +1,29 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
-import { SettingsService } from '../shared/bindings'
+import { SettingsService, UpdateState } from '../shared/bindings'
+import { findCommand } from '../shared/commands'
 import styles from './NoticePill.module.css'
 
-// The app-notice pill (goal 0122): state-driven, self-clearing, never
-// re-fires -- the VS Code badge / Sparkle gentle-reminder shape, not a
-// toast and not a notification center. Two consumers today: "Update
-// ready — Relaunch" (accent; exists exactly while an installed update
-// waits for a restart) and "Update available" (quiet; opens Settings;
-// dismissable per version). The notice STORE is the multi-purpose
-// seam -- a future notice type is one more emitter, not a new surface.
-interface Notice {
-  ready: boolean
-  availableVersion: string
-}
-
-export function NoticePill({ onOpenUpdates }: { onOpenUpdates: () => void }) {
+// The app-notice pill (goal 0122, state-unified goal 0220 S1): renders
+// the ONE update state machine (SettingsService.UpdateNoticeState),
+// nothing else, and every click RUNS the matching shared/commands.ts
+// command -- the same code path the Settings primary button uses, so
+// pill and page can never disagree and never navigate instead of
+// acting. idle/checking render nothing (Settings is where "check for
+// updates" lives when nothing is already in flight); available runs
+// update.downloadAndInstall; downloading is a static progress badge
+// (no action while a download is in flight); ready runs update.relaunch,
+// unchanged from before this goal. The notice STORE is the multi-
+// purpose seam -- a future notice type is one more emitter, not a new
+// surface.
+export function NoticePill() {
   const { t } = useTranslation('app')
-  const [notice, setNotice] = useState<Notice>({ ready: false, availableVersion: '' })
+  const [state, setState] = useState<UpdateState>(UpdateState.UpdateStateIdle)
 
   const refresh = useCallback(() => {
     SettingsService.UpdateNoticeState()
-      .then((n) => setNotice({ ready: n.ready, availableVersion: n.availableVersion }))
+      .then((n) => setState(n.state))
       .catch(console.error)
   }, [])
 
@@ -34,22 +35,33 @@ export function NoticePill({ onOpenUpdates }: { onOpenUpdates: () => void }) {
     })
   }, [refresh])
 
-  if (notice.ready) {
+  if (state === UpdateState.UpdateStateReady) {
     return (
       <button
         type="button"
         className={`${styles.pill} ${styles.ready}`}
-        onClick={() => void SettingsService.RestartApp()}
+        onClick={() => findCommand('update.relaunch')?.run()}
         data-testid="notice-update-ready"
       >
         {t('noticePill.updateReady')}
       </button>
     )
   }
-  if (notice.availableVersion) {
+  if (state === UpdateState.UpdateStateDownloading) {
+    return (
+      <span className={`${styles.pill} ${styles.downloading}`} data-testid="notice-update-downloading">
+        {t('noticePill.updateDownloading')}
+      </span>
+    )
+  }
+  if (state === UpdateState.UpdateStateAvailable) {
     return (
       <span className={`${styles.pill} ${styles.available}`} data-testid="notice-update-available">
-        <button type="button" className={styles.pillAction} onClick={onOpenUpdates}>
+        <button
+          type="button"
+          className={styles.pillAction}
+          onClick={() => findCommand('update.downloadAndInstall')?.run()}
+        >
           {t('noticePill.updateAvailable')}
         </button>
         <button

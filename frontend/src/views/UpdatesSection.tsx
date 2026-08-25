@@ -3,7 +3,8 @@ import { Events } from '@wailsio/runtime'
 import { useTranslation } from 'react-i18next'
 import { Browser } from '@wailsio/runtime'
 import { Button, Checkbox, FormControl, Select, Stack, Text, TextInput } from '@primer/react'
-import { SettingsService, type UpdateNotice } from '../shared/bindings'
+import { SettingsService, UpdateState, type UpdateNotice } from '../shared/bindings'
+import { findCommand } from '../shared/commands'
 import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import { formatUpdated } from '../shared/inventorySort'
 
@@ -40,12 +41,11 @@ function lastCheckText(
   return t('settings.updates.lastCheckNever')
 }
 
-// LastCheckStatus renders the persistent last-check record next to the
-// Check-for-updates button -- a failing check must read as a real,
-// visible state, never look identical to "no update available". A
-// separate component, not an inline ternary in UpdatesSection's return,
-// keeps this branch out of that function's own cognitive-complexity
-// budget (sonarjs/cognitive-complexity, .claude/rules/testing.md).
+// LastCheckStatus renders the persistent last-check record beneath the
+// primary action -- a failing check must read as a real, visible
+// state, never look identical to "no update available". A separate
+// component keeps this branch out of UpdatesSection's own cognitive-
+// complexity budget (sonarjs/cognitive-complexity, .claude/rules/testing.md).
 function LastCheckStatus({ outcome, text, error }: { outcome: LastCheckOutcome; text: string; error: string }) {
   if (outcome === 'failed') {
     return (
@@ -64,6 +64,52 @@ function LastCheckStatus({ outcome, text, error }: { outcome: LastCheckOutcome; 
   )
 }
 
+type TFunc = (key: string, options?: Record<string, unknown>) => string
+
+interface PrimaryAction {
+  label: string
+  disabled: boolean
+  onClick: () => void
+}
+
+// primaryActionFor is the ONE place the primary button's label+action
+// is decided (goal 0220 S1) -- the pill (app/NoticePill.tsx) mirrors
+// the same server state directly since it has no local check-result
+// payload to reconcile; here, "available" is driven by pendingVersion
+// (the raw CheckForUpdates() result, goal 0205 S4's own auto-check-on-
+// open) rather than the server's dismissal-aware AvailableVersion field
+// -- deliberate: dismissing the footer pill (SettingsService.
+// DismissUpdateNotice) must never also hide the action from Settings,
+// which a fresh explicit check here can always still surface (the
+// existing, tested "dismiss the pill, still install from Settings"
+// path). checking/downloading/ready stay purely server-driven since
+// dismissal never touches those fields.
+function primaryActionFor(
+  state: UpdateState,
+  canInstall: boolean,
+  pendingVersion: string,
+  checkForUpdates: () => void,
+  t: TFunc,
+): PrimaryAction {
+  if (state === UpdateState.UpdateStateChecking) {
+    return { label: t('settings.updates.checking'), disabled: true, onClick: () => {} }
+  }
+  if (state === UpdateState.UpdateStateDownloading) {
+    return { label: t('settings.updates.downloading'), disabled: true, onClick: () => {} }
+  }
+  if (state === UpdateState.UpdateStateReady) {
+    return { label: t('settings.updates.primaryRestart'), disabled: false, onClick: () => findCommand('update.relaunch')?.run() }
+  }
+  if (canInstall && pendingVersion) {
+    return {
+      label: t('settings.updates.primaryDownload', { version: pendingVersion }),
+      disabled: false,
+      onClick: () => findCommand('update.downloadAndInstall')?.run(),
+    }
+  }
+  return { label: t('settings.updates.checkButton'), disabled: false, onClick: checkForUpdates }
+}
+
 // Extracted from SettingsView.tsx (same reason DataStewardshipSection
 // already is: keeps that file's own line count from crowding the
 // 500-line convention). Two install behaviors sharing one surface:
@@ -72,7 +118,6 @@ function LastCheckStatus({ outcome, text, error }: { outcome: LastCheckOutcome; 
 
 type Channel = '' | 'source' | 'release' | 'beta'
 const installableChannels: Channel[] = ['release', 'beta']
-type InstallState = 'idle' | 'installing' | 'installed' | 'failed'
 // Mirrors the Go UpdateCheckOutcome values (settingsservice_updatenotice.go)
 // -- '' means CheckForUpdates has never run.
 type LastCheckOutcome = '' | 'found' | 'upToDate' | 'failed'
@@ -88,19 +133,20 @@ interface UpdateResult {
 // (sonarjs/cognitive-complexity, .claude/rules/testing.md).
 function applyUpdateNotice(
   n: UpdateNotice,
-  setInstallState: Dispatch<SetStateAction<InstallState>>,
+  setState: Dispatch<SetStateAction<UpdateState>>,
+  setStateReason: Dispatch<SetStateAction<string>>,
   setUpdateResult: Dispatch<SetStateAction<UpdateResult | null>>,
   setLastCheckAt: Dispatch<SetStateAction<string>>,
   setLastCheckOutcome: Dispatch<SetStateAction<LastCheckOutcome>>,
   setLastCheckError: Dispatch<SetStateAction<string>>,
 ) {
-  setInstallState((prev) => {
-    if (n.downloading) return 'installing'
-    if (n.ready) return 'installed'
-    return prev === 'installing' ? 'idle' : prev
-  })
-  if ((n.downloading || n.ready) && n.availableVersion) {
-    setUpdateResult((prev) => prev ?? { version: n.availableVersion, notes: '' })
+  setState(n.state)
+  setStateReason(n.stateReason)
+  // Recovers version+notes after a fresh mount that didn't run the
+  // check itself -- e.g. reloading while a background auto-download
+  // (goal 0207) is already downloading or ready.
+  if ((n.state === UpdateState.UpdateStateDownloading || n.state === UpdateState.UpdateStateReady) && n.stateVersion) {
+    setUpdateResult((prev) => prev ?? { version: n.stateVersion, notes: '' })
   }
   setLastCheckAt(n.lastCheckAt)
   setLastCheckOutcome(n.lastCheckOutcome as LastCheckOutcome)
@@ -111,40 +157,34 @@ function UpdatesSection() {
   const { t } = useTranslation('views')
   const [appVersion, setAppVersion] = useState('')
   const [channel, setChannel] = useState<Channel>('')
-  const [checking, setChecking] = useState(false)
-  const [status, setStatus] = useState('')
-  // A real check failure, kept separate from `status` (the neutral
-  // "checking…" / "up to date" text) so it always renders with its own
-  // Copy details action -- `status` alone had no such affordance, which
-  // is exactly where the raw-HTML-body bug this section fixes appeared.
-  const [checkError, setCheckError] = useState('')
   const [updateResult, setUpdateResult] = useState<UpdateResult | null>(null)
-  const [installState, setInstallState] = useState<InstallState>('idle')
+  const [state, setState] = useState<UpdateState>(UpdateState.UpdateStateIdle)
+  const [stateReason, setStateReason] = useState('')
   const [proxyUrl, setProxyUrl] = useState('')
   // '' = Auto (system), 'off' = direct, 'manual' = the URL field.
   const [proxyMode, setProxyMode] = useState<'auto' | 'manual' | 'off'>('auto')
   // 'saved' | an error message | '' -- one slot, the two success/error
   // renders split on the literal.
   const [proxyNote, setProxyNote] = useState('')
-  const [installError, setInstallError] = useState('')
   const [channelPref, setChannelPref] = useState('')
   const [channelSaved, setChannelSaved] = useState(false)
   const [autoCheck, setAutoCheck] = useState(false)
+  const [checkInterval, setCheckInterval] = useState('hourly')
   // The persistent record of CheckForUpdates' most recent run (manual
-  // button or the background loop), independent of `status`/`checkError`
-  // above -- those clear on unmount/re-check, this is the answer to
-  // "is checking actually still happening".
+  // button, an explicit Settings check, or the background loop),
+  // independent of `state` above -- the answer to "is checking
+  // actually still happening", shown alongside the primary action.
   const [lastCheckAt, setLastCheckAt] = useState('')
   const [lastCheckOutcome, setLastCheckOutcome] = useState<LastCheckOutcome>('')
   const [lastCheckError, setLastCheckError] = useState('')
 
-  // The download phase is SERVER truth (goal 0142): synced on mount
-  // and on every update-notice event, so navigating away and back
-  // never forgets a running download, and a finished one shows the
-  // Restart button here as well as in the footer pill.
+  // The state machine is SERVER truth (goal 0220 S1, building on goal
+  // 0142's Downloading field): synced on mount and on every
+  // update-notice event, so navigating away and back, or a background
+  // auto-download finishing while Settings isn't open, is never missed.
   useEffect(() => {
     const sync = () => void SettingsService.UpdateNoticeState()
-      .then((n) => applyUpdateNotice(n, setInstallState, setUpdateResult, setLastCheckAt, setLastCheckOutcome, setLastCheckError))
+      .then((n) => applyUpdateNotice(n, setState, setStateReason, setUpdateResult, setLastCheckAt, setLastCheckOutcome, setLastCheckError))
       .catch(console.error)
     sync()
     return Events.On('mill-data-changed', (evt) => {
@@ -157,6 +197,7 @@ function UpdatesSection() {
     SettingsService.UpdateChannel().then((c) => setChannel(c as Channel)).catch(console.error)
     SettingsService.UpdateChannelPreference().then(setChannelPref).catch(console.error)
     SettingsService.AutoUpdateCheck().then(setAutoCheck).catch(console.error)
+    SettingsService.UpdateCheckInterval().then(setCheckInterval).catch(console.error)
     SettingsService.OutboundProxyURL()
       .then((v) => {
         if (v === 'off') setProxyMode('off')
@@ -170,31 +211,24 @@ function UpdatesSection() {
 
   // useCallback (not a plain closure) so the auto-check-on-open effect
   // below can depend on a stable reference instead of disabling
-  // exhaustive-deps.
+  // exhaustive-deps. Deliberately bypasses the dismissal-aware server
+  // state (see primaryActionFor's own comment) -- CheckForUpdates'
+  // raw return is what populates the version/notes card and the
+  // primary button's "available" branch.
   const checkForUpdates = useCallback(() => {
-    setChecking(true)
-    setStatus('')
-    setCheckError('')
     setUpdateResult(null)
-    // A running or staged install is server truth -- a fresh check
-    // must not un-show it (the double-click trap this section had).
-    setInstallState((prev) => (prev === 'installing' || prev === 'installed' ? prev : 'idle'))
-    setInstallError('')
     SettingsService.CheckForUpdates()
       .then((result) => {
         if (result.updateAvailable) {
           setUpdateResult({ version: result.version, notes: result.notes })
-        } else {
-          setStatus(t('settings.updates.upToDate'))
         }
       })
-      .catch((err) => setCheckError(String(err)))
-      .finally(() => setChecking(false))
-  }, [t])
+      .catch(console.error)
+  }, [])
 
   // Opening the section must never read a stale cached outcome as
   // current (goal 0205 S4) -- a fresh check runs every time this
-  // component mounts, the same one the button triggers, so the
+  // component mounts, the same one the primary button triggers, so the
   // rendered outcome always reflects a check that just ran.
   useEffect(() => {
     checkForUpdates()
@@ -205,7 +239,7 @@ function UpdatesSection() {
     setChannelSaved(false)
     SettingsService.SetUpdateChannelPreference(pref)
       .then(() => setChannelSaved(true))
-      .catch((err) => setStatus(String(err)))
+      .catch(console.error)
   }
 
   const persistProxy = (value: string) => {
@@ -223,19 +257,9 @@ function UpdatesSection() {
     if (mode === 'off') persistProxy('off')
   }
 
-  const installUpdate = () => {
-    setInstallState('installing')
-    setInstallError('')
-    SettingsService.DownloadAndInstallUpdate()
-      .then(() => setInstallState('installed'))
-      .catch((err) => {
-        setInstallState('failed')
-        setInstallError(String(err))
-      })
-  }
-
-  const restartApp = () => {
-    SettingsService.RestartApp().catch((err) => setInstallError(String(err)))
+  const changeCheckInterval = (value: string) => {
+    setCheckInterval(value)
+    SettingsService.SetUpdateCheckInterval(value).catch(console.error)
   }
 
   const channelLabel =
@@ -245,24 +269,25 @@ function UpdatesSection() {
         ? t('settings.updates.channelBeta')
         : t('settings.updates.channelSource')
   const canInstall = installableChannels.includes(channel)
-  const statusText = checking ? t('settings.updates.checking') : status
 
   // Reuses the same relative-time phrase every "last updated"/"N ago"
   // caption in the app already renders (shared/inventorySort.ts) rather
   // than a second formatter.
   const lastCheckRelative = lastCheckAt ? formatUpdated(lastCheckAt) : ''
   const lastCheckDisplay = lastCheckText(lastCheckOutcome, lastCheckRelative, lastCheckError, t)
+  const primary = primaryActionFor(state, canInstall, updateResult?.version ?? '', checkForUpdates, t)
+  // A non-supersede install failure is the only path that sets
+  // stateReason while a version is still known locally (see
+  // failInstall's own comment, settingsservice_updates.go) -- every
+  // other error reading (a plain failed check) leaves updateResult
+  // null, so this can't misfire onto the check-only failure line below.
+  const installFailed = state === UpdateState.UpdateStateError && updateResult !== null && canInstall
 
   return (
     <Stack gap="condensed">
       <Text size="small" className={styles.muted} data-testid="current-app-version">
-        {t('settings.updates.currentVersion', { version: appVersion })} · {channelLabel}
-      </Text>
-      <Text size="small" className={styles.muted} data-testid="resign-notice">
-        {t('settings.updates.resignNotice')}
-      </Text>
-      <Text size="small" className={styles.muted} data-testid="resign-setup-notice">
-        {t('settings.updates.resignSetupNotice')}
+        {t('settings.updates.currentVersion', { version: appVersion })} · {channelLabel} ·{' '}
+        {lastCheckAt ? t('settings.updates.statusCheckedAgo', { time: lastCheckRelative }) : t('settings.updates.statusNeverChecked')}
       </Text>
 
       <FormControl>
@@ -336,22 +361,46 @@ function UpdatesSection() {
         <FormControl.Label>{t('settings.updates.autoCheckLabel')}</FormControl.Label>
         <FormControl.Caption>{t('settings.updates.autoCheckCaption')}</FormControl.Caption>
       </FormControl>
+      {autoCheck && (
+        <FormControl>
+          <FormControl.Label>{t('settings.updates.checkIntervalLabel')}</FormControl.Label>
+          <Select
+            size="small"
+            value={checkInterval}
+            onChange={(e) => changeCheckInterval(e.target.value)}
+            data-testid="update-check-interval-select"
+          >
+            <Select.Option value="hourly">{t('settings.updates.checkIntervalHourly')}</Select.Option>
+            <Select.Option value="daily">{t('settings.updates.checkIntervalDaily')}</Select.Option>
+            <Select.Option value="weekly">{t('settings.updates.checkIntervalWeekly')}</Select.Option>
+            <Select.Option value="manual">{t('settings.updates.checkIntervalManual')}</Select.Option>
+          </Select>
+        </FormControl>
+      )}
 
       <Stack direction="horizontal" gap="condensed" align="center">
-        <Button size="small" onClick={checkForUpdates} disabled={checking} data-testid="check-for-updates">
-          {checking ? t('settings.updates.checking') : t('settings.updates.checkButton')}
+        <Button
+          variant="primary"
+          size="small"
+          onClick={primary.onClick}
+          disabled={primary.disabled}
+          data-testid="update-primary-action"
+        >
+          {primary.label}
         </Button>
-        {statusText && <Text size="small" className={styles.muted}>{statusText}</Text>}
+        {state === UpdateState.UpdateStateReady && (
+          <Text size="small" className={styles.muted}>{t('settings.updates.installedRestart')}</Text>
+        )}
       </Stack>
 
       <LastCheckStatus outcome={lastCheckOutcome} text={lastCheckDisplay} error={lastCheckError} />
 
-      {checkError && (
+      {state === UpdateState.UpdateStateError && updateResult === null && (
         <Stack direction="horizontal" gap="condensed" align="center">
           <Text size="small" className={styles.error} data-testid="update-check-error">
-            {t('settings.updates.checkFailed', { error: truncate(checkError, 200) })}
+            {t('settings.updates.checkFailed', { error: truncate(stateReason, 200) })}
           </Text>
-          <CopyDiagnosisButton error={checkError} testId="update-check-error-copy" />
+          <CopyDiagnosisButton error={stateReason} testId="update-check-error-copy" />
         </Stack>
       )}
 
@@ -378,46 +427,7 @@ function UpdatesSection() {
               </details>
             )}
 
-            {canInstall ? (
-              <>
-                {installState !== 'installed' ? (
-                  <Button
-                    variant="primary"
-                    size="small"
-                    onClick={installUpdate}
-                    disabled={installState === 'installing'}
-                    data-testid="update-now"
-                  >
-                    {installState === 'installing' ? t('settings.updates.downloading') : t('settings.updates.updateNow')}
-                  </Button>
-                ) : (
-                  <>
-                    <Button variant="primary" size="small" onClick={restartApp} data-testid="restart-mill">
-                      {t('settings.updates.restartButton')}
-                    </Button>
-                    <Text size="small" className={styles.muted}>{t('settings.updates.installedRestart')}</Text>
-                  </>
-                )}
-                {installState === 'failed' && (
-                  <>
-                    <Stack direction="horizontal" gap="condensed" align="center">
-                      <Text size="small" className={styles.error}>
-                        {t('settings.updates.installFailed', { error: truncate(installError, 200) })}
-                      </Text>
-                      <CopyDiagnosisButton error={installError} testId="update-error-copy" />
-                    </Stack>
-                    <Stack direction="horizontal" gap="condensed" align="center">
-                      <Text size="small" className={styles.muted}>
-                        {t('settings.updates.installFallbackHint')}
-                      </Text>
-                      <Button size="small" onClick={() => Browser.OpenURL(RELEASES_URL)} data-testid="open-releases-page">
-                        {t('settings.updates.openReleasesButton')}
-                      </Button>
-                    </Stack>
-                  </>
-                )}
-              </>
-            ) : (
+            {!canInstall && (
               <>
                 <Text size="small" className={styles.muted}>{t('settings.updates.sourceUpdateHint')}</Text>
                 <Text size="small" className={`${styles.muted} ${monoStyles.mono}`}>
@@ -425,9 +435,40 @@ function UpdatesSection() {
                 </Text>
               </>
             )}
+
+            {installFailed && (
+              <>
+                <Stack direction="horizontal" gap="condensed" align="center">
+                  <Text size="small" className={styles.error}>
+                    {t('settings.updates.installFailed', { error: truncate(stateReason, 200) })}
+                  </Text>
+                  <CopyDiagnosisButton error={stateReason} testId="update-error-copy" />
+                </Stack>
+                <Stack direction="horizontal" gap="condensed" align="center">
+                  <Text size="small" className={styles.muted}>
+                    {t('settings.updates.installFallbackHint')}
+                  </Text>
+                  <Button size="small" onClick={() => Browser.OpenURL(RELEASES_URL)} data-testid="open-releases-page">
+                    {t('settings.updates.openReleasesButton')}
+                  </Button>
+                </Stack>
+              </>
+            )}
           </Stack>
         </div>
       )}
+
+      <details data-testid="trust-disclosure">
+        <summary>{t('settings.updates.trustDisclosureSummary')}</summary>
+        <Stack gap="condensed">
+          <Text size="small" className={styles.muted} data-testid="resign-notice">
+            {t('settings.updates.resignNotice')}
+          </Text>
+          <Text size="small" className={styles.muted} data-testid="resign-setup-notice">
+            {t('settings.updates.resignSetupNotice')}
+          </Text>
+        </Stack>
+      </details>
     </Stack>
   )
 }
