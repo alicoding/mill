@@ -44,6 +44,9 @@ export const imageTool = {
   // An image's whole body already drags -- the shared band would only
   // be debris here (goal 0206's own DESIGN DECIDED table).
   dragBand: false,
+  // No style surface of its own (goal 0209) -- always empty, not
+  // omitted.
+  styleFields: [],
   commit: async (input: { path: string } | { file: File; title: string }): Promise<AtlasImageArtifact> => {
     if ('file' in input) {
       const ext = IMAGE_MIME_EXTENSIONS[input.file.type]

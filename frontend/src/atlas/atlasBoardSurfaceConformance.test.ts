@@ -103,3 +103,31 @@ describe('atlas board-object drag-band conformance (goal 0181 S3, regression for
     expect(withoutBand).toEqual(['image', 'pencil', 'shape'])
   })
 })
+
+// Regression coverage for goal 0209, the first enforcement of goal
+// 0211's standing rule (docs/goals/0211-extension-tiers.md): "no core
+// file enumerating declarers". AtlasCreationTray.tsx renders a noun's
+// style panel off its OWN styleFields declaration, and AtlasStylePanel.tsx
+// dispatches purely on each field's own `type` -- neither file may ever
+// gain a branch naming a specific noun id, since that is exactly the
+// per-noun hardcoding this mechanism exists to avoid. STATIC
+// SOURCE-AUDIT test (see this file's own header): a literal string
+// match for `tool.id === '<id>'` / `nounId === '<id>'` against every
+// registered noun id, not a semantic parse -- it fails the exact way
+// the historical defect this class guards against would look: a
+// hand-added conditional singling out one noun.
+describe('atlas style-surface noun-agnosticism conformance (goal 0209, goal 0211\'s standing rule)', () => {
+  it('AtlasCreationTray.tsx and AtlasStylePanel.tsx contain no noun-id branch', () => {
+    const trayCreationSource = readFileSync(join(atlasDir, 'AtlasCreationTray.tsx'), 'utf8')
+    const stylePanelSource = readFileSync(join(atlasDir, 'AtlasStylePanel.tsx'), 'utf8')
+    const nounIDs = ATLAS_TOOLS.map((t) => t.id)
+    const offenders: string[] = []
+    for (const [file, source] of [['AtlasCreationTray.tsx', trayCreationSource], ['AtlasStylePanel.tsx', stylePanelSource]] as const) {
+      for (const id of nounIDs) {
+        const pattern = new RegExp(`\\b(tool\\.id|nounId)\\s*===\\s*['"]${id}['"]`)
+        if (pattern.test(source)) offenders.push(`${file} branches on noun id "${id}"`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+})

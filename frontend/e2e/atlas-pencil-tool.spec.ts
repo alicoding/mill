@@ -205,9 +205,12 @@ test('holding Space pans the board without drawing while the pencil stays armed'
   await expect(board).toHaveAttribute('data-panning', 'true')
   await expect(page.locator('.react-flow__pane')).toHaveClass(/draggable/)
 
-  await page.mouse.down()
-  await page.mouse.move(box.x + box.width * 0.65, box.y + box.height * 0.6, { steps: 10 })
-  await page.mouse.up()
+  // Checked-drag helper (goal 0184), not raw page.mouse.* -- the START
+  // point is re-verified reachable immediately before mouse.down() via
+  // Playwright's own actionability pipeline; the free-form pan
+  // destination has no owning element to check against, so it stays a
+  // plain page point per dragBetween's own documented boundary.
+  await dragBetween(page, { locator: board, position: { x: box.width * 0.5, y: box.height * 0.5 } }, { x: box.x + box.width * 0.65, y: box.y + box.height * 0.6 })
   await page.keyboard.up('Space')
   await expect(board).toHaveAttribute('data-panning', 'false')
 

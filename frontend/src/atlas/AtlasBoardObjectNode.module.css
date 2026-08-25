@@ -7,6 +7,15 @@
    pointer events a plain node-drag can't reach through. Column layout
    so the band sits above content without affecting its own natural/
    intrinsic sizing. */
+/* Hit-testing (goal 0209): this wrapper carries no `pointer-events`
+   override, so it captures a click anywhere in its own box regardless
+   of what its content paints underneath -- a shape's own SVG fill
+   value (including fill="none") never affects what area is clickable,
+   because the outer div, not the SVG's own paint, is what the pointer
+   actually hits. Deliberate, not a gap: Mill does no pixel-precise/
+   paint-aware hit-testing anywhere else on this canvas either, so a
+   filled shape stays consistent with every other board object rather
+   than becoming a special case. */
 .object {
     display: flex;
     flex-direction: column;

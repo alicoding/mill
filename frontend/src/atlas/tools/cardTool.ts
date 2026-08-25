@@ -29,6 +29,9 @@ export const cardTool = {
   // Not routed through the shared 'atlas-object' renderer -- always
   // false, not N/A (atlasNounRegistry.ts's own header comment).
   dragBand: false,
+  // No style surface of its own (goal 0209) -- always empty, not
+  // omitted.
+  styleFields: [],
   commit: (input: { kinds: Kind[]; kindID?: string; title?: string; note?: string }): AtlasCardArtifact => ({
     kind: 'card',
     kindID: input.kindID ?? lastUsedKindID(input.kinds),

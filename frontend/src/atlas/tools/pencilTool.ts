@@ -1,10 +1,18 @@
 import { PencilIcon } from '@primer/octicons-react'
 import { AtlasService } from '../../shared/bindings'
 import { identityOf, registerNoun, type AtlasToolShape, type AtlasToolStyleDefaults } from '../atlasNounRegistry'
+import type { AtlasStyleField } from '../atlasStyleVocabulary'
+import { PENCIL_COLORS, PENCIL_SIZES } from '../atlasStyleValueStore'
 import { buildPencilStrokeSvg, svgToBase64, type PencilPoint } from '../atlasPencilSvg'
-import { AtlasPencilStylePicker } from '../AtlasPencilStylePicker'
 
 const pencilIdentity = identityOf('pencil')
+
+// The pencil tool's own declared style surface (goal 0209): rendered by
+// the one generic AtlasStylePanel.tsx from these two fields.
+const PENCIL_STYLE_FIELDS: readonly AtlasStyleField[] = [
+  { key: 'color', type: 'color', testidPrefix: 'atlas-pencil-color', groupLabelKey: 'pencilStyle.colorLabel', options: PENCIL_COLORS, default: PENCIL_COLORS[0] },
+  { key: 'size', type: 'stroke-width', render: 'dot', testidPrefix: 'atlas-pencil-size', groupLabelKey: 'pencilStyle.sizeLabel', optionLabelKey: 'pencilStyle.sizeOption', options: PENCIL_SIZES, default: PENCIL_SIZES[1] },
+]
 
 // The stroke's own bounding-box origin (atlasPencilSvg.ts's own
 // PencilStrokeSvg.originX/Y) rides along on the artifact so the
@@ -41,7 +49,7 @@ export const pencilTool = {
   // only be debris here (goal 0206's own DESIGN DECIDED table).
   dragBand: false,
   styleDefaults: PENCIL_DEFAULT_STYLE,
-  StylePicker: AtlasPencilStylePicker,
+  styleFields: PENCIL_STYLE_FIELDS,
   commit: async (input: { points: PencilPoint[]; color: string; size: number }): Promise<AtlasPencilArtifact | null> => {
     const doc = buildPencilStrokeSvg(input.points, input.color, input.size)
     if (!doc) return null

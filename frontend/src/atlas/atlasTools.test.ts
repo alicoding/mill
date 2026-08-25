@@ -39,14 +39,22 @@ describe('ATLAS_TOOLS', () => {
     expect(ATLAS_TOOLS.every((t) => t.tray === 'quick')).toBe(true)
   })
 
-  it('carries styleDefaults only on the pencil tool (shape has no analogous field -- its style lives directly on AtlasShapeStylePicker\'s own store, never a registry-carried default object)', () => {
+  it('carries styleDefaults only on the pencil tool (shape has no analogous field -- its style lives in the generic style-value store, never a registry-carried default object)', () => {
     const withDefaults = ATLAS_TOOLS.filter((t) => 'styleDefaults' in t && t.styleDefaults !== undefined)
     expect(withDefaults.map((t) => t.id)).toEqual(['pencil'])
   })
 
-  it('carries a StylePicker on both drag-to-draw tools, and no other', () => {
-    const withPicker = ATLAS_TOOLS.filter((t) => 'StylePicker' in t && t.StylePicker !== undefined)
-    expect(withPicker.map((t) => t.id)).toEqual(['pencil', 'shape'])
+  it('declares styleFields as a real array on every noun (goal 0209, never undefined), non-empty on only pencil and shape', () => {
+    expect(ATLAS_TOOLS.every((t) => Array.isArray(t.styleFields))).toBe(true)
+    const withFields = ATLAS_TOOLS.filter((t) => t.styleFields.length > 0)
+    expect(withFields.map((t) => t.id).sort()).toEqual(['pencil', 'shape'])
+  })
+
+  it('never repeats a field key within one noun\'s own styleFields', () => {
+    for (const tool of ATLAS_TOOLS) {
+      const keys = tool.styleFields.map((f) => f.key)
+      expect(keys, `${tool.id}'s styleFields repeats a key`).toEqual([...new Set(keys)])
+    }
   })
 })
 
