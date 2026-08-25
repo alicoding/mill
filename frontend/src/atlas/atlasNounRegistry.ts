@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import type { Icon } from '@primer/octicons-react'
+import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { ATLAS_TOOL_IDENTITIES, type AtlasToolIdentity, type AtlasToolInteraction } from '../shared/atlasToolIdentity'
 import type { AtlasStyleField } from './atlasStyleVocabulary'
 import type { FrameBox } from './useAtlasDragFiling'
@@ -27,6 +28,58 @@ export type AtlasToolStyleDefaults = Record<string, unknown>
 // join key: the surface-conformance tests below use it to find which
 // renderer source a `resizable: true` answer must hold true against.
 export type AtlasBoardNodeType = 'atlas-note' | 'atlas-sticky' | 'atlas-group' | 'atlas-object' | null
+
+// AtlasBoardObjectKind -- the persisted BoardObject.Kind values that
+// route through the shared 'atlas-object' renderer. Deliberately NOT
+// the same set as a tool's own id: pencilTool's own id is 'pencil' but
+// its placed instance is Kind 'ink' (its own commit call names it), so
+// content resolution below keys off THIS set, read from object.Kind,
+// never off a tool id.
+export type AtlasBoardObjectKind = 'shape' | 'image' | 'ink' | 'table' | 'diagram'
+
+// AtlasNounContent -- a Kind's own placed-instance rendering (goal
+// 0215 S3): the content component AtlasBoardObjectNode.tsx mounts, the
+// locale key for its wrapper's aria-label, and whether that wrapper
+// carries img semantics (false only for table -- its own grid holds
+// real interactive descendants, which img's ARIA role forbids).
+export interface AtlasNounContent {
+  Component: ComponentType<{ object: BoardObject }>
+  ariaLabelKey: string
+  role: 'img' | undefined
+}
+
+// AtlasBoardObjectContent -- AtlasNounContent plus the one board-fact
+// (dragBand) AtlasBoardObjectNode.tsx also resolves per Kind; kept as
+// the registry's own stored shape so a lookup returns everything the
+// renderer needs in one call.
+interface AtlasBoardObjectContent extends AtlasNounContent {
+  dragBand: boolean
+}
+
+const boardObjectContentRegistry = new Map<AtlasBoardObjectKind, AtlasBoardObjectContent>()
+
+// registerBoardObjectContent -- the honest home for a noun with no
+// tray tool at all (diagram: file-drop only, goal 0179 S2). Called
+// either directly by a tool-less noun's own registration file, or by
+// registerNoun below on behalf of a tool descriptor that declares
+// `boardObjectKind`/`content`. Throws on a duplicate Kind so two
+// sources can never silently overwrite each other's content.
+export function registerBoardObjectContent(kind: AtlasBoardObjectKind, content: AtlasBoardObjectContent): void {
+  if (boardObjectContentRegistry.has(kind)) {
+    throw new Error(`atlas board-object kind "${kind}" already has a registered content renderer -- check frontend/src/atlas/tools/`)
+  }
+  boardObjectContentRegistry.set(kind, content)
+}
+
+// boardObjectContentFor -- the ONE lookup AtlasBoardObjectNode.tsx uses
+// to resolve a placed object's own content/ariaLabel/role/dragBand,
+// replacing its former per-Kind hand branch. Accepts a plain string
+// (BoardObject.Kind is untyped on the wire) and returns undefined for
+// an unregistered Kind rather than throwing, since a render path must
+// stay recoverable even against bad/legacy data.
+export function boardObjectContentFor(kind: string): AtlasBoardObjectContent | undefined {
+  return boardObjectContentRegistry.get(kind as AtlasBoardObjectKind)
+}
 
 interface AtlasToolShapeBase {
   icon: Icon
@@ -87,6 +140,21 @@ interface AtlasToolShapeBase {
   // constant states its true answer directly, and atlas-diagram-object.spec.ts
   // proves it live since the static check can't reach it.
   dragBand: boolean
+  // boardObjectKind (goal 0215 S3): the persisted BoardObject.Kind this
+  // tool's own placed instance carries, or null for a tool that never
+  // routes through the shared 'atlas-object' renderer (card/note/area
+  // persist as their own Kind-less node types; eraser/laser persist
+  // nothing at all). Exists because a tool's own id is not always its
+  // Kind (pencilTool's own commit above writes Kind 'ink') -- content
+  // below resolves purely off this field, via registerBoardObjectContent,
+  // never off id.
+  boardObjectKind: AtlasBoardObjectKind | null
+  // content (goal 0215 S3): this noun's own placed-instance content
+  // contribution -- registerNoun below feeds it straight into
+  // boardObjectContentFor's registry when boardObjectKind is non-null,
+  // killing AtlasBoardObjectNode.tsx's former per-Kind hand branch.
+  // null exactly when boardObjectKind is null, never omitted.
+  content: AtlasNounContent | null
   // sticky (goal 0215 S2): does this tool stay armed after a completed
   // gesture (pencil/eraser/laser -- repeated strokes/passes are the
   // point), or disarm after one (area, and shape via its OWN lockable
@@ -187,12 +255,22 @@ const registry = new Map<string, AtlasToolShape>()
 
 // registerNoun -- called once, at module-eval time, from each noun's
 // own tools/<id>Tool.ts. Throws on a duplicate id so two files can
-// never silently overwrite each other's registration.
+// never silently overwrite each other's registration. A descriptor
+// that declares boardObjectKind also feeds its content contribution
+// into registerBoardObjectContent here -- a tool-bearing noun's board
+// rendering registers through the SAME door a tool-less noun
+// (diagramNoun.ts) calls directly, never a second mechanism.
 export function registerNoun(descriptor: AtlasToolShape): void {
   if (registry.has(descriptor.id)) {
     throw new Error(`atlas noun "${descriptor.id}" registered twice -- check frontend/src/atlas/tools/`)
   }
   registry.set(descriptor.id, descriptor)
+  if (descriptor.boardObjectKind) {
+    if (!descriptor.content) {
+      throw new Error(`atlas noun "${descriptor.id}" declares boardObjectKind "${descriptor.boardObjectKind}" but content: null`)
+    }
+    registerBoardObjectContent(descriptor.boardObjectKind, { ...descriptor.content, dragBand: descriptor.dragBand })
+  }
 }
 
 // identityOf -- the one lookup every noun's own descriptor file uses to
