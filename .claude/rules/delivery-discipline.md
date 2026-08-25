@@ -19,6 +19,16 @@ four documents.
   never guessed at open. It's the delivery-evidence ledger's own source
   data (`docs/goals/0164-delivery-evidence-ledger.md`); leaving it off
   means the goal is invisible to the ledger on archive.
+- A bug-shaped goal's frontmatter also carries `defect_class:
+  <kebab-slug>` — ONE axis ("what kind of defect"), never a second
+  dimension (goal 0187's survey: misclassification risk rises with
+  every added axis). Before coining a new slug, grep `defect_class`
+  across `goals/` and `goals/archive/` and reuse the existing class
+  that fits. **Two strikes: on the SECOND occurrence of a class, the
+  goal is about the CLASS, not the instance — and its title says so.**
+  Same threshold shape as testing.md's flake protocol. Older archived
+  goals without the field are classified lazily, when a grep for a new
+  bug surfaces them — never by bulk archaeology.
 - No SPEC.md `OPEN` dependency is silently resolved by starting — surface
   the choice, or name it an explicit blocker and don't start.
 - No estimate/story-point step — deliberately excluded: estimation
