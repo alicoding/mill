@@ -6,6 +6,7 @@
 package settingssvc
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -105,12 +106,12 @@ type SettingsService struct {
 	// changes, so a background tick that finds this same version again
 	// skips re-downloading it.
 	stagedUpdateVersion string
-	// autoDownloadCandidate/Since track the beta-channel dwell window
-	// (goal 0175) -- the version currently waiting to prove it has
-	// stayed newest for autoDownloadDwellBeta before auto-download
-	// proceeds. Reset whenever a DIFFERENT version is found.
-	autoDownloadCandidate      string
-	autoDownloadCandidateSince time.Time
+	// autoUpdateLoopCancel is non-nil exactly while the opt-in
+	// background check loop is running (goal 0207) -- startAutoUpdateLoop/
+	// stopAutoUpdateLoop's own idempotency flag, so a live toggle can
+	// start/stop it without ever risking a second loop or a panic on a
+	// redundant stop.
+	autoUpdateLoopCancel context.CancelFunc
 	// lastCheckAt/lastCheckOutcome/lastCheckError record CheckForUpdates'
 	// most recent result (settingsservice_updatenotice.go's
 	// recordCheckOutcome), read by UpdateNoticeState -- a check that

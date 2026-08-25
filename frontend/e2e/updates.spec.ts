@@ -7,6 +7,8 @@ import {
   type SpawnedServer,
   UPDATES_AUTOCHECK_MCP_BASE_PORT,
   UPDATES_AUTOCHECK_SERVER_BASE_PORT,
+  UPDATES_AUTODOWNLOAD_MCP_BASE_PORT,
+  UPDATES_AUTODOWNLOAD_SERVER_BASE_PORT,
   UPDATES_BETA_MCP_BASE_PORT,
   UPDATES_BETA_SERVER_BASE_PORT,
   UPDATES_READY_MCP_BASE_PORT,
@@ -362,6 +364,53 @@ test('A failed automatic check renders honestly, never as up to date', async ({}
     await expect(page.locator('body')).not.toContainText("You're on the latest version")
     await expect(page.getByTestId('update-available-card')).toHaveCount(0)
     await expect(page.getByTestId('last-check-status')).toHaveCount(0)
+
+    await page.close()
+  } finally {
+    await server?.stop()
+    if (dir) rmSync(dir, { recursive: true, force: true })
+    await browser.close()
+  }
+})
+
+// goal 0207: enabling the auto-download opt-in must start downloading a
+// found update immediately, live -- no restart, and no separate click
+// on Update now. MILL_TEST_AUTO_UPDATE_LOOP_DELAY_MS shrinks the
+// background loop's gentle-timing initial wait so the toggle's first
+// check runs within the test's own timeout; MILL_TEST_UPDATE_DOWNLOAD_
+// DELAY_MS holds fake mode's refusal open long enough to observe the
+// Downloading phase the notice machinery already exposes (the update
+// now button's own label/disabled state -- server truth, not a click
+// result), same seam family as the check-delay tests above.
+// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
+test('Enabling auto-download starts a background download live, with no click on Update now', async ({}, testInfo) => {
+  const idx = testInfo.parallelIndex
+  let server: SpawnedServer | undefined
+  let dir: string | undefined
+  const browser = await chromium.launch()
+  try {
+    ;({ server, dir } = await spawnUpdatesServer(idx, UPDATES_AUTODOWNLOAD_SERVER_BASE_PORT, UPDATES_AUTODOWNLOAD_MCP_BASE_PORT, {
+      MILL_TEST_UPDATE_FAKE_VERSION: '9.9.9',
+      MILL_TEST_UPDATE_CHANNEL: 'release',
+      MILL_TEST_AUTO_UPDATE_LOOP_DELAY_MS: '100',
+      MILL_TEST_UPDATE_DOWNLOAD_DELAY_MS: '2000',
+    }))
+    const page = await browser.newPage()
+    await page.goto(`${server.baseURL}/`)
+    await page.getByRole('link', { name: 'Settings' }).click()
+
+    // The mount-time check (goal 0205 S4) already found the update, but
+    // the opt-in is still off -- no download must start from it.
+    await expect(page.getByTestId('update-available-card')).toBeVisible()
+    await expect(page.getByTestId('update-now')).toHaveText('Update now')
+
+    // Enabling the toggle is the ONLY action this test takes from here
+    // -- the live loop's own next check must find the same version and
+    // feed the download chain automatically.
+    await page.getByTestId('auto-update-check').check()
+
+    await expect(page.getByTestId('update-now')).toHaveText('Downloading update…')
+    await expect(page.getByTestId('update-now')).toBeDisabled()
 
     await page.close()
   } finally {

@@ -1,73 +1,52 @@
 package settingssvc
 
-// The beta-cadence auto-download policy (goal 0175): StartAutoUpdateChecks'
-// per-tick decision for whether a found version should download now,
-// wait, or be skipped, layered on top of the unchanged
-// DownloadAndInstallUpdate chain (backup -> verify -> re-sign).
+// The auto-download policy (goal 0175, simplified goal 0207): every
+// successful found-result check -- manual, on-open, or the background
+// loop's own tick -- feeds this one policy, layered on top of the
+// unchanged DownloadAndInstallUpdate chain (backup -> verify -> re-sign).
+// No dwell/candidate state: the adopted updater package's own
+// skip-what's-staged and supersede-never-stack behavior already coalesce
+// a burst of sequential releases to one staged build, so a hand-rolled
+// quiet-period timer added nothing but the state machine that made this
+// policy structurally unable to fire from anywhere but the hourly tick
+// (goal 0207's finding).
 
 import (
 	"log/slog"
-	"time"
 )
 
-// autoDownloadDwellBeta is how long a beta build must be the newest
-// available version before the opt-in background check downloads it.
-// Mill's beta channel ships roughly per merged change, so downloading
-// on first sight would fetch nearly every commit; requiring the SAME
-// version to hold "newest" across this quiet period lets a burst of
-// merges settle before any bytes move.
-const autoDownloadDwellBeta = 10 * time.Minute
-
-// decideAutoDownload applies the dwell/supersede/skip policy to one
-// found version, independent of any timer or network call so the
-// policy itself is directly testable. The release channel takes a
-// newer version immediately (its cadence is rare enough that a dwell
-// buys nothing); the beta channel waits for foundVersion to have been
-// the candidate continuously for autoDownloadDwellBeta, resetting the
-// wait whenever a DIFFERENT version is found -- so a burst of releases
-// keeps deferring until one version stays newest long enough. A
-// version already staged and ready is never re-fetched, since a
-// published release's artifact never changes after publish.
-func decideAutoDownload(channel, foundVersion, stagedVersion string, updateReady bool, candidate string, candidateSince, now time.Time) (download bool, nextCandidate string, nextCandidateSince time.Time) {
+// decideAutoDownload applies the skip-what's-staged rule to one found
+// version: a version identical to what's already staged and marked
+// ready is never re-fetched, since a published release's artifact never
+// changes after publish (version equality stands in for a digest
+// match). Every other found version proceeds to download -- superseding
+// a stale staged-but-unrestarted build happens inside
+// DownloadAndInstallUpdate's own chain (the adopted updater package's
+// discardStaging), never duplicated here.
+func decideAutoDownload(foundVersion, stagedVersion string, updateReady bool) bool {
 	if updateReady && stagedVersion != "" && stagedVersion == foundVersion {
-		return false, candidate, candidateSince
+		return false
 	}
-	if channel != "beta" {
-		return true, "", time.Time{}
-	}
-	if foundVersion != candidate {
-		return false, foundVersion, now
-	}
-	if now.Sub(candidateSince) >= autoDownloadDwellBeta {
-		return true, "", time.Time{}
-	}
-	return false, candidate, candidateSince
+	return true
 }
 
-// maybeAutoDownload is StartAutoUpdateChecks' per-tick hook. download is
-// injected (defaults to s.DownloadAndInstallUpdate from the real caller)
-// so the dwell/supersede/skip policy is testable with a counting stub
+// maybeAutoDownload is the auto-download opt-in's own gate, called from
+// every successful found-result check
+// (settingsservice_updatenotice.go's triggerAutoDownloadPolicy).
+// download is injected (defaults to s.DownloadAndInstallUpdate from the
+// real caller) so the skip policy is testable with a counting stub
 // instead of the real backup/network/re-sign chain, which the
 // DownloadAndInstallUpdate tests already cover directly. Errors are
 // swallowed -- matching StartAutoUpdateChecks' existing "a failed
 // background check must never surface as noise" posture -- but logged
 // so the failure isn't silent to anyone reading logs.
-func (s *SettingsService) maybeAutoDownload(channel, version string, now time.Time, download func() error) {
+func (s *SettingsService) maybeAutoDownload(version string, download func() error) {
 	s.mu.Lock()
 	staged := s.stagedUpdateVersion
 	ready := s.updateReady
-	candidate := s.autoDownloadCandidate
-	candidateSince := s.autoDownloadCandidateSince
 	s.mu.Unlock()
 
-	proceed, nextCandidate, nextCandidateSince := decideAutoDownload(channel, version, staged, ready, candidate, candidateSince, now)
-
-	s.mu.Lock()
-	s.autoDownloadCandidate = nextCandidate
-	s.autoDownloadCandidateSince = nextCandidateSince
-	s.mu.Unlock()
-
-	if !proceed {
+	if !decideAutoDownload(version, staged, ready) {
 		return
 	}
 	if err := download(); err != nil {

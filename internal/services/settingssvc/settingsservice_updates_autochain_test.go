@@ -13,9 +13,27 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/updater"
 )
+
+// waitForCondition polls cond, returning true as soon as it holds or
+// false once a short deadline passes -- triggerAutoDownloadPolicy runs
+// the download decision in its own goroutine (settingsservice_updatenotice.go),
+// so a composition test driving it through CheckForUpdates has no
+// synchronous return to block on.
+func waitForCondition(t *testing.T, cond func() bool) bool {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if cond() {
+			return true
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	return cond()
+}
 
 // fakeUpdaterHost satisfies updater.Host with the minimum needed to
 // drive Check/DownloadAndInstall headlessly -- Emit/OnEvent are no-ops
@@ -225,5 +243,88 @@ func TestDownloadAndInstallUpdate_DigestMismatchFailsClosedThroughAutoPath(t *te
 	}
 	if resigned {
 		t.Error("resign ran after a failed verify, want it never reached")
+	}
+}
+
+// TestAutoDownloadPolicy_ChecksFeedTheDownloadChainAndCoalesceABurst is
+// goal 0207's own composition proof: a CheckForUpdates call -- standing
+// in for the manual button, check-on-open, or the background loop's
+// own tick, since all three now call the exact same method -- feeds
+// the download chain automatically once the opt-in is on, with no
+// separate call to DownloadAndInstallUpdate. The burst-coalescing
+// property is restated per the amendment: a sequence of found versions
+// while a build stays staged-but-unrestarted ends with at most one
+// staged artifact (supersede), and a repeat sighting of the version
+// already staged never re-downloads it -- never "at most one download
+// per dwell window", since dwell no longer exists.
+func TestAutoDownloadPolicy_ChecksFeedTheDownloadChainAndCoalesceABurst(t *testing.T) {
+	host := &fakeUpdaterHost{}
+	body1 := []byte("mill-artifact-v1-payload")
+	provider := &fakeUpdaterProvider{rel: releaseFor("0.4.0-beta.900", body1), body: body1}
+
+	u := updater.New(host)
+	if err := u.Init(updater.Config{
+		CurrentVersion: "0.4.0-beta.800",
+		Providers:      []updater.Provider{provider},
+	}); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	s := newTestSettingsService(t)
+	s.SetUpdater(u)
+	s.SetUpdateChannel("beta")
+	s.SetBackupRunner(func(int) (string, error) { return "/backups/ok", nil })
+	swapResignBundleFn(t, func(string) error { return nil })
+
+	if err := s.SetAutoUpdateCheck(true); err != nil {
+		t.Fatalf("SetAutoUpdateCheck(true): %v", err)
+	}
+	t.Cleanup(func() { _ = s.SetAutoUpdateCheck(false) })
+
+	// A single check (the manual button or check-on-open, not a
+	// separate Update-now click) is enough to reach Ready -- goal
+	// 0207's gap 1: every successful check feeds the same policy.
+	if _, err := s.CheckForUpdates(); err != nil {
+		t.Fatalf("first CheckForUpdates: %v", err)
+	}
+	if !waitForCondition(t, func() bool { return s.UpdateNoticeState().Ready }) {
+		t.Fatal("update never became ready -- CheckForUpdates must feed maybeAutoDownload automatically")
+	}
+	firstPath := u.DownloadedPath()
+	if firstPath == "" {
+		t.Fatal("want a staged path after the first check")
+	}
+
+	// A burst: a newer version appears while the first stays
+	// staged-but-unrestarted -- supersede, never stack.
+	body2 := []byte("mill-artifact-v2-longer-payload")
+	provider.rel = releaseFor("0.4.0-beta.905", body2)
+	provider.body = body2
+	if _, err := s.CheckForUpdates(); err != nil {
+		t.Fatalf("second CheckForUpdates: %v", err)
+	}
+	if !waitForCondition(t, func() bool {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		return s.stagedUpdateVersion == "0.4.0-beta.905"
+	}) {
+		t.Fatal("the newer burst version never superseded the staged build")
+	}
+	secondPath := u.DownloadedPath()
+	if secondPath == "" || secondPath == firstPath {
+		t.Fatalf("second staged path = %q, want a fresh path distinct from %q", secondPath, firstPath)
+	}
+	if _, err := os.Stat(firstPath); !os.IsNotExist(err) {
+		t.Errorf("first staged artifact still on disk after supersede (err=%v), want it discarded -- at most one staged build", err)
+	}
+
+	// A repeat sighting of the version already staged (e.g. the next
+	// hourly tick before a restart) must never re-download it.
+	if _, err := s.CheckForUpdates(); err != nil {
+		t.Fatalf("third CheckForUpdates: %v", err)
+	}
+	time.Sleep(50 * time.Millisecond)
+	if got := u.DownloadedPath(); got != secondPath {
+		t.Errorf("DownloadedPath changed to %q after a repeat sighting of the already-staged version, want unchanged %q", got, secondPath)
 	}
 }
