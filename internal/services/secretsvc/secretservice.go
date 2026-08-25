@@ -55,9 +55,14 @@ var ErrNoVaultKey = errors.New("this vault's key isn't available on this device"
 
 // Status is VaultStatus's return shape -- the one read the frontend
 // needs to decide which of "set up," "unlock," or "browse" to show.
+// PresenceProtected is a plain credential.Store read (never a prompt),
+// safe on every build including server mode -- goal 0204's status line
+// depends on it working even where the presence-gated read itself
+// cannot.
 type Status struct {
-	Exists   bool
-	Unlocked bool
+	Exists            bool
+	Unlocked          bool
+	PresenceProtected bool
 }
 
 // SecretService is the Wails-facing layer over the vault. credentials is
@@ -90,11 +95,16 @@ func (s *SecretService) StopAutoLock() {
 	}
 }
 
-// VaultStatus reports whether a vault exists on this device and whether
-// it's currently unlocked -- the one read the frontend's browse surface
-// polls/subscribes to decide what to render.
+// VaultStatus reports whether a vault exists on this device, whether
+// it's currently unlocked, and which key protection is active -- the
+// one read the frontend's browse surface polls/subscribes to decide
+// what to render.
 func (s *SecretService) VaultStatus() Status {
-	return Status{Exists: s.vault.Exists(), Unlocked: s.vault.Unlocked()}
+	return Status{
+		Exists:            s.vault.Exists(),
+		Unlocked:          s.vault.Unlocked(),
+		PresenceProtected: s.currentlyPresenceProtected(),
+	}
 }
 
 // SetupVault creates a brand-new vault: mints a random master key,
@@ -128,10 +138,12 @@ func (s *SecretService) SetupVault() error {
 	return nil
 }
 
-// UnlockVault fetches the master key from the keychain and unlocks the
-// vault, holding the decrypted database in memory for this app session
-// (goal file: "unlock once per app session, hold the vault key in
-// memory, auto-lock on idle").
+// UnlockVault fetches the master key -- from the keychain directly, or
+// (goal 0204) via the presence-gated read when Touch ID protection is
+// on, which blocks through the system authentication prompt -- and
+// unlocks the vault, holding the decrypted database in memory for this
+// app session (goal file: "unlock once per app session, hold the vault
+// key in memory, auto-lock on idle").
 func (s *SecretService) UnlockVault() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -145,7 +157,7 @@ func (s *SecretService) UnlockVault() error {
 		}
 		return fmt.Errorf("reading vault key: %w", err)
 	}
-	key, err := secretvault.DecodeMasterKey(encoded)
+	key, err := s.resolveMasterKeyLocked(encoded)
 	if err != nil {
 		return err
 	}

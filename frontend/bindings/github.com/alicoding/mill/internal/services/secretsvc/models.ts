@@ -4,8 +4,13 @@
 /**
  * Status is VaultStatus's return shape -- the one read the frontend
  * needs to decide which of "set up," "unlock," or "browse" to show.
+ * PresenceProtected is a plain credential.Store read (never a prompt),
+ * safe on every build including server mode -- goal 0204's status line
+ * depends on it working even where the presence-gated read itself
+ * cannot.
  */
 export interface Status {
     "Exists": boolean;
     "Unlocked": boolean;
+    "PresenceProtected": boolean;
 }

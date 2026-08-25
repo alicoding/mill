@@ -104,9 +104,15 @@ export interface HMACConfig {
  * always-sent headers (e.g. "Accept": "application/json") -- distinct
  * from the AuthType-driven Authorization header, which
  * internal/adapters/httpconnector adds itself from the resolved
- * secret, never stored here. Method/Params/Body land in Phase B
- * (ADR-0016) -- this pass is a pure rename, no shape change beyond
- * dropping the now-redundant Type field below.
+ * secret, never stored here. A Headers value of the form
+ * "vault:<entry-id>" (vaultref.Parse, goal 0203 S1) is resolved to that
+ * vault entry's password at request time, never written to disk in
+ * resolved form -- mirrors mcpserver.MCPServer.Env's identical
+ * convention, for a custom header that needs to carry a credential
+ * (an API key header, say) outside the AuthType-driven scheme above.
+ * Method/Params/Body land in Phase B (ADR-0016) -- this pass is a pure
+ * rename, no shape change beyond dropping the now-redundant Type field
+ * below.
  */
 export interface HTTPRequest {
     "ID": string;

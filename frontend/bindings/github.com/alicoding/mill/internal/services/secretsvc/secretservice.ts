@@ -107,6 +107,17 @@ export function SecretHistory(id: string): $CancellablePromise<secret$0.Entry[] 
 }
 
 /**
+ * SetTouchIDProtection turns Touch ID protection on or off for the
+ * vault's master key (goal 0204's BUILD CONTRACT). The vault must
+ * already be unlocked -- this manages where the KEY is stored, not the
+ * in-memory decrypted vault, but toggling protection for a vault you
+ * can't currently see would be a confusing surface to expose.
+ */
+export function SetTouchIDProtection(enabled: boolean): $CancellablePromise<void> {
+    return $Call.ByID(556293705, enabled);
+}
+
+/**
  * SetupVault creates a brand-new vault: mints a random master key,
  * stores it in the OS keychain under masterKeyID, creates the KDBX file,
  * and seeds one obviously-fake demo entry (secret.BuiltInDemo) so the
@@ -120,10 +131,12 @@ export function SetupVault(): $CancellablePromise<void> {
 }
 
 /**
- * UnlockVault fetches the master key from the keychain and unlocks the
- * vault, holding the decrypted database in memory for this app session
- * (goal file: "unlock once per app session, hold the vault key in
- * memory, auto-lock on idle").
+ * UnlockVault fetches the master key -- from the keychain directly, or
+ * (goal 0204) via the presence-gated read when Touch ID protection is
+ * on, which blocks through the system authentication prompt -- and
+ * unlocks the vault, holding the decrypted database in memory for this
+ * app session (goal file: "unlock once per app session, hold the vault
+ * key in memory, auto-lock on idle").
  */
 export function UnlockVault(): $CancellablePromise<void> {
     return $Call.ByID(1094954264);
@@ -139,9 +152,10 @@ export function UpdateSecret(id: string, title: string, username: string, passwo
 }
 
 /**
- * VaultStatus reports whether a vault exists on this device and whether
- * it's currently unlocked -- the one read the frontend's browse surface
- * polls/subscribes to decide what to render.
+ * VaultStatus reports whether a vault exists on this device, whether
+ * it's currently unlocked, and which key protection is active -- the
+ * one read the frontend's browse surface polls/subscribes to decide
+ * what to render.
  */
 export function VaultStatus(): $CancellablePromise<$models.Status> {
     return $Call.ByID(1119020926);

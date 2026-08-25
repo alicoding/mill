@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Blankslate } from '@primer/react/experimental'
-import { Button, Heading, IconButton, Stack, Text } from '@primer/react'
+import { Button, Checkbox, FormControl, Heading, IconButton, Stack, Text } from '@primer/react'
 import { KeyIcon, LockIcon, PlusIcon } from '@primer/octicons-react'
 import { SecretService } from '../shared/bindings'
 import type { SecretSummary, VaultStatus } from '../shared/bindings'
@@ -27,6 +27,7 @@ export default function SecretsView() {
   const [status, setStatus] = useState<VaultStatus | null>(null)
   const [list, setList] = useState<SecretSummary[] | null>(null)
   const [busy, setBusy] = useState(false)
+  const [presenceBusy, setPresenceBusy] = useState(false)
   const [error, setError] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editingID, setEditingID] = useState<string | null>(null)
@@ -65,7 +66,14 @@ export default function SecretsView() {
   }
 
   const lockVault = () => {
+    setError('')
     SecretService.LockVault().then(refresh).catch((err) => setError(String(err)))
+  }
+
+  const toggleTouchID = (enabled: boolean) => {
+    setPresenceBusy(true)
+    setError('')
+    SecretService.SetTouchIDProtection(enabled).then(refresh).catch((err) => setError(String(err))).finally(() => setPresenceBusy(false))
   }
 
   const startCreate = () => {
@@ -107,6 +115,8 @@ export default function SecretsView() {
     )
   }
 
+  const protectionStatus = status.PresenceProtected ? t('touchId.protectedStatus') : t('touchId.keychainStatus')
+
   if (!status.Unlocked) {
     return (
       <PageContainer variant="wide" data-testid="secrets-view">
@@ -114,6 +124,7 @@ export default function SecretsView() {
           <Blankslate.Visual><LockIcon size={32} /></Blankslate.Visual>
           <Blankslate.Heading>{t('locked.heading')}</Blankslate.Heading>
           <Blankslate.Description>{t('locked.description')}</Blankslate.Description>
+          <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-protection-status">{protectionStatus}</Text>
           <Button variant="primary" onClick={unlockVault} disabled={busy} data-testid="secrets-unlock-cta">
             {t('locked.cta')}
           </Button>
@@ -158,7 +169,20 @@ export default function SecretsView() {
           </Button>
         </Stack>
       </Stack>
-      {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
+      <Stack direction="horizontal" justify="space-between" align="center" className={styles.protectionRow}>
+        <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-protection-status">{protectionStatus}</Text>
+        <FormControl>
+          <Checkbox
+            checked={status.PresenceProtected}
+            disabled={presenceBusy}
+            onChange={(e) => toggleTouchID(e.target.checked)}
+            data-testid="secrets-touchid-toggle"
+          />
+          <FormControl.Label>{t('touchId.toggleLabel')}</FormControl.Label>
+          <FormControl.Caption>{t('touchId.toggleCaption')}</FormControl.Caption>
+        </FormControl>
+      </Stack>
+      {error && <Text as="p" size="small" className={styles.error} data-testid="secrets-touchid-error">{error}</Text>}
       <InventoryList
         items={items}
         searchPlaceholder={t('searchPlaceholder')}
