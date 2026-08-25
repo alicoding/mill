@@ -44,6 +44,13 @@ export function useAtlasPencilDraw({
   const onPointerDown = useCallback((e: ReactPointerEvent) => {
     if (!armed || e.button !== 0) return
     e.stopPropagation()
+    // Stopping propagation alone silences the pane's own pointerdown
+    // handler -- including the preventDefault() THAT handler would have
+    // called to suppress the browser's synthesized compatibility
+    // mousedown. Without calling preventDefault() here too, that compat
+    // mousedown still reaches whatever node sits under the cursor and
+    // starts its native (d3-drag) drag mid-stroke.
+    e.preventDefault()
     drawingRef.current = true
     const point = { x: e.clientX, y: e.clientY }
     clientPointsRef.current = [point]

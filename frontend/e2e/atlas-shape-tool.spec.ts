@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/server'
 import { boardPoint, dragBetween, dragResizeHandle } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
+import { waitForViewportStable } from './fixtures/animation'
 
 // The shape tool (goal 0169 slice 5): drag-to-draw lands a rectangle/
 // ellipse/arrow as a board-local BoardObject -- NEVER a card, matching
@@ -24,8 +25,10 @@ function shapeObjects(page: import('@playwright/test').Page) {
   return page.locator('[data-testid="atlas-board-object"][data-object-kind="shape"]')
 }
 
-async function deleteViaContextMenu(page: import('@playwright/test').Page, target: import('@playwright/test').Locator): Promise<void> {
-  await target.click({ button: 'right' })
+// `position` (optional) targets a specific corner instead of the
+// default center -- needed once two objects overlap (goal 0213).
+async function deleteViaContextMenu(page: import('@playwright/test').Page, target: import('@playwright/test').Locator, position?: { x: number; y: number }): Promise<void> {
+  await target.click({ button: 'right', position })
   const menu = contextMenu(page)
   await expect(menu).toBeVisible()
   await menu.getByText('Delete', { exact: true }).click()
@@ -427,6 +430,47 @@ test('a filled shape selects on a click inside its interior, not just on the str
   await expect(wrapper).toHaveClass(/selected/)
 
   await deleteViaContextMenu(page, shapes.first())
+  await expect(shapes).toHaveCount(0)
+})
+
+// Goal 0213 (same class as atlas-pencil-tool.spec.ts's own overlap
+// test): a second draw's start point landing on shape A's own box must
+// draw shape B without moving or re-selecting A.
+test('starting a second shape draw on top of the first one draws without dragging it', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+  await waitForViewportStable(board)
+  const shapeTool = page.getByTestId('atlas-tray-shape')
+  await shapeTool.click()
+  await dragBetween(page, await boardPoint(board, 0.05, 0.1), await boardPoint(board, 0.2, 0.25))
+  const shapes = shapeObjects(page)
+  await expect(shapes).toHaveCount(1)
+  const shapeAHandle = await page.locator('.react-flow__node').filter({ has: shapes.first() }).elementHandle()
+  if (!shapeAHandle) throw new Error('shape A node has no element handle')
+  const shapeABox = await shapeAHandle.boundingBox()
+  if (!shapeABox) throw new Error('shape A node has no bounding box')
+  const initialTransform = await shapeAHandle.evaluate((el) => (el as HTMLElement).style.transform)
+  await shapeTool.click() // discrete tool (goal 0199): needs a fresh arm
+  const startX = shapeABox.x + shapeABox.width * 0.5
+  const startY = shapeABox.y + shapeABox.height * 0.5
+  await dragBetween(page, { x: startX, y: startY }, { x: startX + 40, y: startY + 40 })
+  await expect(shapes).toHaveCount(2)
+  await expect.poll(() => shapeAHandle.evaluate((el) => (el as HTMLElement).style.transform)).toBe(initialTransform)
+  // Fresh boxes read at click time (a stale coordinate already proved
+  // flaky) -- B's far corner and A's near corner stay clear of each
+  // other by construction of the drag direction.
+  const shapeAID = await shapeAHandle.evaluate((el) => el.getAttribute('data-id'))
+  const shapeB = page.locator(`.react-flow__node[data-id]:not([data-id="${shapeAID}"])`).filter({ has: shapes })
+  const shapeBBox = await shapeB.boundingBox()
+  if (!shapeBBox) throw new Error('shape B has no box')
+  await deleteViaContextMenu(page, shapeB, { x: shapeBBox.width - 5, y: shapeBBox.height - 5 })
+  await expect(shapes).toHaveCount(1)
+  await shapeAHandle.click({ button: 'right', position: { x: 5, y: 5 } })
+  const menu = contextMenu(page)
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
   await expect(shapes).toHaveCount(0)
 })
 
