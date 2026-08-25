@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { dragBetween } from './fixtures/atlasBoard'
+import { boardPoint, dragBetween } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 
@@ -18,12 +18,10 @@ import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 // (onPointerDownCapture/MoveCapture/UpCapture on an ANCESTOR of React
 // Flow's pane), which atlas-containment.spec.ts already proves
 // reliably synthesizable via page.mouse -- dense intermediate moves,
-// not React Flow's own delta-sampled drag tracking.
-async function boardPoint(board: import('@playwright/test').Locator, fx: number, fy: number): Promise<{ x: number; y: number }> {
-  const box = await board.boundingBox()
-  if (!box) throw new Error('board has no bounding box')
-  return { x: box.x + box.width * fx, y: box.y + box.height * fy }
-}
+// not React Flow's own delta-sampled drag tracking. boardPoint/
+// dragBetween are the shared fixtures/atlasBoard.ts versions (this
+// spec's own former local boardPoint copy was promoted there,
+// testing.md's promotion rule).
 
 function inkObjects(page: import('@playwright/test').Page) {
   return page.locator('[data-testid="atlas-board-object"][data-object-kind="ink"]')

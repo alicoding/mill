@@ -43,7 +43,7 @@ async function deleteStarterNode(page: import('@playwright/test').Page) {
       return !!el?.closest('.react-flow__node')
     }, point)
     if (insideNode) {
-      await page.mouse.click(point.x, point.y)
+      await node.click({ position: { x: point.x - box.x, y: point.y - box.y } })
       clicked = true
       break
     }

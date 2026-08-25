@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures/server'
 import { clickCanvasNode } from './fixtures/canvasNode'
-import { activePanel, dragPaletteItemToCanvas } from './fixtures/canvas'
+import { activePanel, dragBetweenHandles, dragPaletteItemToCanvas } from './fixtures/canvas'
 import { waitForViewportStable } from './fixtures/animation'
 import { fillCodeEditor } from './fixtures/codeEditor'
 
@@ -37,13 +37,7 @@ async function connectByIndex(page: Page, sourceIndex: number, targetIndex: numb
   const panel = activePanel(page)
   const sourceHandle = panel.locator('.react-flow__node').nth(sourceIndex).locator('.react-flow__handle.source')
   const targetHandle = panel.locator('.react-flow__node').nth(targetIndex).locator('.react-flow__handle.target')
-  const sourceBox = await sourceHandle.boundingBox()
-  const targetBox = await targetHandle.boundingBox()
-  if (!sourceBox || !targetBox) throw new Error('connectByIndex: handle bounding box not found')
-  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2)
-  await page.mouse.down()
-  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 10 })
-  await page.mouse.up()
+  await dragBetweenHandles(page, sourceHandle, targetHandle)
 }
 
 test('a kind-incompatible connection is refused with an explanation; a compatible one connects', async ({ page }) => {

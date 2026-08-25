@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { openCard } from './fixtures/atlasBoard'
+import { dragResizeHandle, openCard } from './fixtures/atlasBoard'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
@@ -151,19 +151,7 @@ test('an image object can be resized by its own handle, and the size persists ac
   await object.click()
   const handle = page.locator('.react-flow__resize-control.handle.top.right')
   await expect(handle).toBeVisible()
-  const hb = await handle.boundingBox()
-  if (!hb) throw new Error('no resize handle box')
-  const startX = hb.x + hb.width / 2
-  const startY = hb.y + hb.height / 2
-  await page.mouse.move(startX, startY)
-  await page.mouse.down()
-  for (let i = 1; i <= 6; i++) {
-    await page.mouse.move(startX + i * 20, startY - i * 10)
-    // Pointer-coalescing class (this repo's other resize-drag tests
-    // have the full reasoning) -- each step must land in its own frame.
-    await page.waitForTimeout(50)
-  }
-  await page.mouse.up()
+  await dragResizeHandle(page, handle, 120, -60)
 
   await expect.poll(async () => (await object.boundingBox())?.width ?? 0).toBeGreaterThan(before.width + 80)
   await page.reload()

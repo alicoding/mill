@@ -79,4 +79,30 @@ export default tseslint.config(
       'i18next/no-literal-string': ['error', { mode: 'jsx-text-only' }],
     },
   },
+  {
+    // Goal 0184 RESEARCH VERDICT: `page.mouse.*` dispatches raw CDP
+    // input with NONE of Playwright's actionability checks (no
+    // hit-target retargeting, no Visible/Stable/Receives-Events wait) --
+    // a UI element that grows over a spec's click/drag point silently
+    // hits the wrong element instead of failing loudly at the click. No
+    // existing eslint-plugin-playwright rule covers this (checked the
+    // full v2.11.0 rule table; prefer-locator only covers deprecated
+    // selector-taking page methods), so this is a custom core-ESLint
+    // ban. Scoped to spec files only -- e2e/fixtures/** is exempt by
+    // the glob itself, since raw primitives belong ONLY inside the
+    // promoted helpers that carry the checked-start/checked-end
+    // contract (fixtures/atlasBoard.ts's dragBetween/dragResizeHandle,
+    // fixtures/canvas.ts's dragBetweenHandles/dragNodeBy,
+    // fixtures/pointer.ts's wheelAt).
+    files: ['e2e/**/*.spec.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.object.object.name='page'][callee.object.property.name='mouse']",
+          message: 'page.mouse.* has no actionability checking -- use a checked-drag/click fixture helper (e2e/fixtures/atlasBoard.ts, fixtures/canvas.ts, fixtures/pointer.ts) instead, or eslint-disable-next-line with a reason if genuinely uncheckable (goal 0184).',
+        },
+      ],
+    },
+  },
 )

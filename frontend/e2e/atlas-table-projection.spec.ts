@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_DOCUMENT } from './fixtures/kindPicker'
-import { clickFrameGutter, openCard, promoteBoardObject } from './fixtures/atlasBoard'
+import { clickBoardPoint, clickFrameGutter, dragResizeHandle, openCard, promoteBoardObject } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
 import type { Locator, Page } from '@playwright/test'
@@ -238,7 +238,7 @@ test('New table creates a sized grid instantly from the size picker, landing a t
 
   // Picking a size ARMS the tool (goal 0148) -- the click places the
   // table at that canvas point.
-  await page.mouse.click(400, 500)
+  await clickBoardPoint(page, { x: 400, y: 500 })
   const tableObject = tableObjects(page).filter({ hasText: 'Column 1' })
   await expect(tableObject).toBeVisible()
   await expect(tableObject.getByTestId('atlas-projection-table')).toContainText('Column 3')
@@ -314,21 +314,7 @@ test('resizing a promoted table card persists its footprint across reload', asyn
   // (which swallows the pointerdown) -- the top-right handle is clear.
   const handle = page.locator('.react-flow__resize-control.handle.top.right')
   await expect(handle).toBeVisible()
-  const hb = await handle.boundingBox()
-  if (!hb) throw new Error('no resize handle box')
-  const startX = hb.x + hb.width / 2
-  const startY = hb.y + hb.height / 2
-  await page.mouse.move(startX, startY)
-  await page.mouse.down()
-  for (let i = 1; i <= 6; i++) {
-    await page.mouse.move(startX + i * 20, startY - i * 10)
-    // The canvas library samples pointer deltas between frames --
-    // coalesced synthetic moves register as zero motion, so each step
-    // must land in its own frame (the recorded pointer-coalescing
-    // class; no DOM-observable condition exists between raw moves).
-    await page.waitForTimeout(50)
-  }
-  await page.mouse.up()
+  await dragResizeHandle(page, handle, 120, -60)
 
   // The node grew, and the growth survives a reload (persisted Size).
   await expect.poll(async () => (await tableCard.boundingBox())?.width ?? 0).toBeGreaterThan(before.width + 80)
@@ -381,7 +367,7 @@ test('arrow keys with a focused cell never move the table object', async ({ page
   await page.getByRole('link', { name: 'Atlas' }).click()
   await page.getByTestId('atlas-tray-table').click()
   await page.getByTestId('atlas-table-size-2x2').click()
-  await page.mouse.click(400, 500)
+  await clickBoardPoint(page, { x: 400, y: 500 })
   const tableObject = tableObjects(page).filter({ hasText: 'Column 1' })
   await expect(tableObject).toBeVisible()
 
@@ -421,7 +407,7 @@ test('an armed table size escapes cleanly and files into frames', async ({ page 
   await page.getByTestId('atlas-tray-table').click()
   await page.getByTestId('atlas-table-size-2x2').click()
   await page.keyboard.press('Escape')
-  await page.mouse.click(400, 500)
+  await clickBoardPoint(page, { x: 400, y: 500 })
   await expect.poll(objectCount).toBe(before)
 
   // Armed again, clicking inside "Client records" files the table

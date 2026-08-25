@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { activePanel, dragPaletteItemToCanvas, connectNodes } from './fixtures/canvas'
+import { activePanel, connectNodes, dragNodeBy, dragPaletteItemToCanvas } from './fixtures/canvas'
 import { clickCanvasNode } from './fixtures/canvasNode'
 import { waitForViewportStable } from './fixtures/animation'
 
@@ -147,12 +147,7 @@ test('Reordering rows changes evaluation order, deleting a row removes its canva
   await panelAfterDelete.getByRole('button', { name: 'Fit View' }).click()
   await waitForViewportStable(panelAfterDelete)
   const triggerNode = panelAfterDelete.locator('.react-flow__node').filter({ hasText: 'Manual run' })
-  const triggerBox = await triggerNode.boundingBox()
-  if (!triggerBox) throw new Error('expected the Trigger node to be measurable')
-  await page.mouse.move(triggerBox.x + triggerBox.width / 2, triggerBox.y + triggerBox.height / 2)
-  await page.mouse.down()
-  await page.mouse.move(triggerBox.x - 250, triggerBox.y - 250, { steps: 10 })
-  await page.mouse.up()
+  await dragNodeBy(page, triggerNode, -250, -250)
   await panelAfterDelete.locator(`[data-testid="rf__edge-${survivingId}"]`).click()
   await expect(panelAfterDelete.getByText('Decision branch')).toBeVisible()
 })

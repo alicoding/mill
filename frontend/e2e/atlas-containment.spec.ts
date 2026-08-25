@@ -1,5 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -11,8 +11,9 @@ import {
 } from './fixtures/server'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { armAndPlaceTopicCard, deleteCardViaMenu, groupCard, hittablePointOn, noteCard } from './fixtures/atlasBoard'
+import { armAndPlaceTopicCard, boardPoint, deleteCardViaMenu, dragBetween, groupCard, hittablePointOn, noteCard } from './fixtures/atlasBoard'
 import { waitForViewportStable } from './fixtures/animation'
+import { wheelAt } from './fixtures/pointer'
 
 // A LIGHTER zoom-out than fixtures/atlasBoard.ts's own zoomAllTheWayOut
 // (8 clicks): this spec right-clicks a frame's own narrow header/tile-
@@ -41,64 +42,46 @@ async function zoomOutLight(page: import('@playwright/test').Page): Promise<void
 // spec asserts exact frame child counts, same own-server-own-ports
 // reasoning atlas-authoring.spec.ts already documents.
 
-// Raw pointer drag (mousedown -> intermediate moves -> mouseup): used
-// both for the Area tool's own marquee draw and for dragging a card
-// onto/off a frame -- React Flow's node dragging and this repo's own
-// marquee (AtlasBoard.tsx's wrapper mousedown/mousemove/mouseup) are
-// both pointer-event driven, not native HTML5 drag-and-drop, so
-// Playwright's page.mouse sequence is what actually exercises them
-// (locator.dragTo() fires native dragstart/drop events neither
-// listens for).
-async function dragBetween(page: Page, from: { x: number; y: number }, to: { x: number; y: number }): Promise<void> {
-  const steps = 12
-  await page.mouse.move(from.x, from.y)
-  await page.mouse.down()
-  // Lets React commit whatever re-render the mousedown itself
-  // triggered (e.g. an Area-tool arm state settling) before the real
-  // drag begins -- no observable DOM condition exists to poll for a
-  // React commit itself, so this is a short, justified wait rather
-  // than a guessed-duration substitute for one.
-  await page.waitForTimeout(50)
-  // React Flow's own node-drag tracking (@xyflow/system) samples the
-  // delta between consecutive pointermove events -- a single big jump
-  // from `from` to `to` can leave it never registering a real drag.
-  // Dense intermediate steps make this indistinguishable from an
-  // actual mouse drag.
-  for (let i = 1; i <= steps; i++) {
-    await page.mouse.move(from.x + ((to.x - from.x) * i) / steps, from.y + ((to.y - from.y) * i) / steps)
-  }
-  await page.mouse.up()
+// dragBetween/boardPoint/hittablePointOn are the shared fixtures/atlasBoard.ts
+// versions (this spec's own former local copies were promoted there,
+// testing.md's promotion rule, once a third spec file needed the
+// identical body). dragBetweenAssertingMidway below is this spec's own
+// use of dragBetween's optional onArrived callback (goal 0161 slice 1's
+// own regression coverage: the release-target highlight reaches the
+// frame through a context channel now, decoupled from the board's
+// node-array rebuild, and this proves that channel still delivers the
+// same highlight at the same moment, mid-drag with the button still
+// down).
+async function dragBetweenAssertingMidway(page: Page, from: Parameters<typeof dragBetween>[1], to: Parameters<typeof dragBetween>[2], onArrived: () => Promise<void>): Promise<void> {
+  await dragBetween(page, from, to, onArrived)
 }
 
-// Same raw pointer sequence as dragBetween, but pauses over the
-// destination (mouse still down) so a caller can assert mid-drag state
-// -- goal 0161 slice 1's own regression coverage: the release-target
-// highlight reaches the frame through a context channel now, decoupled
-// from the board's node-array rebuild, and this proves that channel
-// still delivers the same highlight at the same moment.
-async function dragBetweenAssertingMidway(page: Page, from: { x: number; y: number }, to: { x: number; y: number }, onArrived: () => Promise<void>): Promise<void> {
-  const steps = 12
-  await page.mouse.move(from.x, from.y)
-  await page.mouse.down()
-  await page.waitForTimeout(50)
-  for (let i = 1; i <= steps; i++) {
-    await page.mouse.move(from.x + ((to.x - from.x) * i) / steps, from.y + ((to.y - from.y) * i) / steps)
-  }
-  await onArrived()
-  await page.mouse.up()
-}
-
-// A fractional point within the board's own bounding box -- every
-// placement/drag point below is expressed this way so the whole test
-// scales with whatever viewport Playwright actually renders, rather
-// than hardcoded pixels.
-async function boardPoint(board: import('@playwright/test').Locator, fx: number, fy: number): Promise<{ x: number; y: number }> {
+// FINDING (goal 0184 migration probe): the Area tool's own marquee draw
+// is a KNOWN fragile pointer-capture interaction (QUARANTINE.md's own
+// "root cause within the Area tool's own pointer-capture handling not
+// yet isolated" entry). An extensive live A/B investigation against an
+// unmodified baseline pointed at a checked start on THIS tool
+// specifically (unlike the structurally-similar pencil/shape/eraser
+// tools, which took the identical checked-start pattern cleanly) --
+// but the investigation ran long enough on a sustained-load machine
+// that the unmodified baseline itself eventually started failing too,
+// so the signal was never fully separable from environment noise.
+// Given that ambiguity and this tool's own pre-existing fragility, its
+// two marquee starts keep the unchecked raw point as the conservative
+// choice; every other gesture in this file (right-click, zoom wheel)
+// took the full migration.
+async function rawBoardPoint(board: Locator, fx: number, fy: number): Promise<{ x: number; y: number }> {
   const box = await board.boundingBox()
   if (!box) throw new Error('board has no bounding box')
   return { x: box.x + box.width * fx, y: box.y + box.height * fy }
 }
 
-
+// Gesture-dense flow (10+ distinct interaction phases) already close to
+// the default 60s budget on raw/unchecked input alone (atlas-select-
+// group.spec.ts's own gesture-dense flow needed the same headroom, at
+// test.setTimeout(180_000)) -- a modest bump keeps margin for the
+// checked steps this file's other gestures now carry.
+test.setTimeout(120_000)
 
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
 test('atlas containment: area drawing, marker-box grouping, drag filing, dissolve, context menus @flaky', async ({}, testInfo) => {
@@ -130,7 +113,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await page.keyboard.press('a')
     const areaTool = page.getByTestId('atlas-tray-area')
     await expect(areaTool).toHaveAttribute('data-armed', 'true')
-    await dragBetween(page, await boardPoint(board, 0.02, 0.02), await boardPoint(board, 0.08, 0.08))
+    await dragBetween(page, await rawBoardPoint(board, 0.02, 0.02), await rawBoardPoint(board, 0.08, 0.08))
     await expect(areaTool).toHaveAttribute('data-armed', 'false')
     await expect(popover).toBeVisible()
     await expect(popover.getByTestId('atlas-placement-context')).toHaveCount(0)
@@ -150,7 +133,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await armAndPlaceTopicCard(page, board, popover, 0.25, 0.05, 'ZzC2eMemberA')
     await armAndPlaceTopicCard(page, board, popover, 0.55, 0.05, 'ZzC2eMemberB')
     await page.keyboard.press('a')
-    await dragBetween(page, await boardPoint(board, 0.18, 0.01), await boardPoint(board, 0.63, 0.16))
+    await dragBetween(page, await rawBoardPoint(board, 0.18, 0.01), await rawBoardPoint(board, 0.63, 0.16))
     await expect(popover).toBeVisible()
     await expect(popover.getByTestId('atlas-placement-context')).toHaveText('2 cards move into this area')
     await selectKind(popover, ATLAS_KIND_TOPIC)
@@ -177,16 +160,12 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     // it stays on screen, since the zoom control buttons re-center on
     // the viewport's own middle and would carry an off-center frame
     // out of view).
-    const groupBoxBefore = await groupArea.boundingBox()
-    if (!groupBoxBefore) throw new Error('group area has no bounding box')
-    const groupCenter = { x: groupBoxBefore.x + groupBoxBefore.width / 2, y: groupBoxBefore.y + groupBoxBefore.height / 2 }
-    await page.mouse.move(groupCenter.x, groupCenter.y)
-    await page.mouse.wheel(0, -300)
+    await wheelAt(page, groupArea, 0, -300)
     await waitForViewportStable(board)
     const headerBox = await groupArea.getByTestId('atlas-group-header').boundingBox()
     const groupBox = await groupArea.boundingBox()
     if (!headerBox || !groupBox) throw new Error('missing bounding box after zooming in')
-    await page.mouse.click(groupBox.x + 5, headerBox.y + headerBox.height + 3, { button: 'right' })
+    await groupArea.click({ position: { x: 5, y: headerBox.y + headerBox.height + 3 - groupBox.y }, button: 'right' })
     await expect(menu).toBeVisible()
     await page.evaluate((kindID) => localStorage.setItem('atlas.lastKindId', kindID), ATLAS_KIND_TOPIC)
     await menu.getByText('Add card to ZzC2eGroupArea', { exact: true }).click()
@@ -197,7 +176,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await interiorInline.fill('ZzC2eInterior')
     await interiorInline.press('Enter')
     await expect(interiorInline).toHaveCount(0)
-    await page.mouse.wheel(0, 300)
+    await wheelAt(page, groupArea, 0, 300)
     await waitForViewportStable(board)
     await expect(groupArea.getByTestId('atlas-group-header')).toContainText('3 cards')
 
@@ -322,12 +301,23 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     // same gesture, exercising the singular "1 card moves into this
     // area" copy along the way. Drill in, delete that one child -- the
     // drilled-in board is left with zero cards and zero notes. ---
-    const memberABox = await noteCard(page, 'ZzC2eMemberA').boundingBox()
+    const memberACard = noteCard(page, 'ZzC2eMemberA')
+    const memberABox = await memberACard.boundingBox()
     if (!memberABox) throw new Error('ZzC2eMemberA has no bounding box')
     await page.keyboard.press('a')
+    // Both corners sit just OUTSIDE the card's own box (the marquee is
+    // drawn around it, not on it) -- the START is a valid DragEndpoint
+    // offset, checked against memberACard's own actionability. The END
+    // stays an unchecked raw point (goal 0184 migration probe): the
+    // active marquee visually alters memberACard itself (a live drag-
+    // over highlight) as it's drawn around it, which never satisfies a
+    // stability check on that same locator's own box -- confirmed live,
+    // the same "the drag's own visual feedback defeats a stability
+    // check on its target" class fixtures/canvas.ts's dragBetweenHandles
+    // doc comment already names for connection-drag targets.
     await dragBetween(
       page,
-      { x: memberABox.x - 20, y: memberABox.y - 20 },
+      { locator: memberACard, position: { x: -20, y: -20 } },
       { x: memberABox.x + memberABox.width + 20, y: memberABox.y + memberABox.height + 20 },
     )
     await expect(popover).toBeVisible()

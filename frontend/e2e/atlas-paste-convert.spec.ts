@@ -41,7 +41,10 @@ const TABLE_XML = '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"
 async function pasteText(page: import('@playwright/test').Page, raw: string) {
   // The paste anchors at the pointer (a paste inside a frame files
   // into it, by design) -- aim at open canvas so the entities land at
-  // top level where the full table face renders.
+  // top level where the full table face renders. A pure cursor-
+  // position gesture, not an interaction (canvas-clipboard.spec.ts's
+  // own comment has the full reasoning, goal 0184 migration probe).
+  // eslint-disable-next-line no-restricted-syntax -- cursor-position-only gesture, not a checkable interaction (see comment above)
   await page.mouse.move(1000, 220)
   await page.evaluate((xml) => {
     const dt = new DataTransfer()
@@ -103,6 +106,7 @@ test('a pasted spreadsheet range becomes a board-local table object', async ({ p
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
+  // eslint-disable-next-line no-restricted-syntax -- cursor-position-only gesture, not a checkable interaction (pasteText's own comment has the full reasoning)
   await page.mouse.move(1000, 220)
   await page.evaluate(() => {
     const dt = new DataTransfer()

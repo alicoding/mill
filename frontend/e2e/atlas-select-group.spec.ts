@@ -11,7 +11,7 @@ import {
 } from './fixtures/server'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { armAndPlaceTopicCard, deleteCardViaMenu, groupCard, noteCard } from './fixtures/atlasBoard'
+import { armAndPlaceTopicCard, clickBoardPoint, deleteCardViaMenu, groupCard, noteCard } from './fixtures/atlasBoard'
 import { waitForViewportStable } from './fixtures/animation'
 
 // Select-then-group in its OWN file deliberately: the flow is
@@ -90,15 +90,25 @@ test.fixme('atlas multi-select: the selection-overlay context menu reaches Group
       if (!boxA || !boxB) throw new Error('missing bounding box before shift-drag select')
       const dragFrom = { x: boxA.x - 15, y: boxA.y - 15 }
       const dragTo = { x: boxB.x + boxB.width + 15, y: boxB.y + boxB.height + 15 }
-      await page.mouse.move(dragFrom.x, dragFrom.y)
+      // Checked start (goal 0184): the corner sits just outside cardA's
+      // own box (the marquee is drawn around it) -- still a valid point
+      // to check cardA's own actionability against.
+      await cardA.hover({ position: { x: -15, y: -15 } })
       await page.keyboard.down('Shift')
+      // Shift must already be held before mousedown (React Flow reads
+      // the modifier at drag-start) -- the shared checked-drag helper
+      // checks-then-presses with no room for an interleaved key hold,
+      // so raw page.mouse stays here, scoped to this one gesture.
+      // eslint-disable-next-line no-restricted-syntax -- interleaved Shift hold, see comment above
       await page.mouse.down()
       await page.waitForTimeout(100) // no DOM condition marks RF's drag-arm; see header comment
       const steps = 15
       for (let i = 1; i <= steps; i++) {
+        // eslint-disable-next-line no-restricted-syntax -- free-form drag path, inherently unchecked (goal 0184 RESEARCH VERDICT)
         await page.mouse.move(dragFrom.x + ((dragTo.x - dragFrom.x) * i) / steps, dragFrom.y + ((dragTo.y - dragFrom.y) * i) / steps)
       }
       await page.waitForTimeout(100) // same: RF samples trailing moves before selection commits
+      // eslint-disable-next-line no-restricted-syntax -- interleaved Shift hold, see comment above
       await page.mouse.up()
       await page.keyboard.up('Shift')
       await expect(page.locator('.react-flow__node.selected')).toHaveCount(2, { timeout: 1_500 })
@@ -122,6 +132,11 @@ test.fixme('atlas multi-select: the selection-overlay context menu reaches Group
     // gesture.
     await expect(async () => {
       if (await popover.isVisible()) return
+      // Deliberately not a locator click: the target IS the overlay
+      // that's on top at this point (the comment above), not cardA
+      // itself -- a cardA-anchored click would report the overlay as
+      // "intercepting" what's actually the intended recipient.
+      // eslint-disable-next-line no-restricted-syntax -- raw coordinate click lands on whatever overlay is on top, by design (see comment above)
       await page.mouse.click(boxAfterSelect.x + boxAfterSelect.width / 2, boxAfterSelect.y + boxAfterSelect.height / 2, { button: 'right' })
       await expect(menu).toBeVisible({ timeout: 2_000 })
       await menu.getByText('Group into new area', { exact: true }).click({ timeout: 2_000 })
@@ -149,7 +164,7 @@ test.fixme('atlas multi-select: the selection-overlay context menu reaches Group
     // would reopen the MULTI menu and the cleanup's single-card
     // deletes would collide with it -- clear it the way a user does,
     // one click on empty pane (React Flow's native deselect path).
-    await page.mouse.click(10, 300)
+    await clickBoardPoint(page, { x: 10, y: 300 })
     await expect(page.locator('.react-flow__node.selected')).toHaveCount(0)
     await deleteCardViaMenu(page, menu, 'ZzC2eSelectA')
     await deleteCardViaMenu(page, menu, 'ZzC2eSelectB')
@@ -211,7 +226,7 @@ test('atlas shift-click select: toggle membership, group via member right-click,
     // Bottom-LEFT, not bottom-right: the board's own minimap (goal
     // 0106 slice B) now occupies the bottom-right corner, offset off
     // the true left edge to clear React Flow's own Controls strip there.
-    await page.mouse.click(noteBB.x + 80, noteBB.y + noteBB.height - 80)
+    await board.click({ position: { x: 80, y: noteBB.height - 80 } })
     await fillSticky(page, 'ZzK2eStickySel')
     await blurSticky(page)
     const stickyNote = page.locator('[data-testid="atlas-sticky-note"]')
@@ -428,72 +443,6 @@ test('atlas shift-click select: toggle membership, group via member right-click,
   }
 })
 
-// atlas.selectAll's own ⌘A (shared/atlasBoardCommands.ts, app/useKeymapDispatch.ts's
-// Listener 5): a dedicated, editable-target-guarded listener, not the
-// generic dispatcher -- proves both halves in one flow, native
-// select-all-text inside the jump dialog's own input stays untouched,
-// and a real board-level press selects every card.
-// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
-test('atlas select-all (Cmd+A): guarded inside an editable field, selects every card on the board otherwise', async ({}, testInfo) => {
-  const idx = testInfo.parallelIndex
-  const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-atlas-select-all-${idx}-`))
-  const settingsPath = path.join(dir, 'settings.json')
-  const executionDbPath = path.join(dir, 'execution.db')
-  const backupDir = path.join(dir, 'backups')
-  const port = ATLAS_SELECT_GROUP_SERVER_BASE_PORT + idx
-  const mcpPort = ATLAS_SELECT_GROUP_MCP_BASE_PORT + idx
-
-  let server: SpawnedServer | undefined
-  const browser = await chromium.launch()
-  try {
-    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
-    const page = await browser.newPage()
-    await page.goto(`${server.baseURL}/`)
-    await page.getByRole('link', { name: 'Atlas' }).click()
-    const board = page.getByTestId('atlas-board')
-    await expect(board).toBeVisible()
-    await zoomOutLight(page)
-
-    const popover = page.getByTestId('atlas-placement-popover')
-    await armAndPlaceTopicCard(page, board, popover, 0.25, 0.05, 'ZzA2eSelAllA')
-    await armAndPlaceTopicCard(page, board, popover, 0.55, 0.05, 'ZzA2eSelAllB')
-
-    const selected = page.locator('.react-flow__node.selected')
-
-    // Editable-target guard: Cmd+A inside the jump dialog's own search
-    // input is native browser select-all-text, never board select-all.
-    await page.keyboard.press('Meta+k')
-    const jumpInput = page.getByTestId('atlas-jump-input')
-    await expect(jumpInput).toBeFocused()
-    await jumpInput.press('Meta+a')
-    await expect(selected).toHaveCount(0)
-    await page.keyboard.press('Escape')
-
-    // Real dispatch: Cmd+A on the board selects EVERY top-level card at
-    // this level -- the seeded root ("The engagement") carries 3
-    // (Client records, Discovery workstream, Scratchpad), plus the 2 just
-    // placed.
-    await page.keyboard.press('Meta+a')
-    await expect(selected).toHaveCount(5)
-    const selectionTray = page.getByTestId('atlas-selection-tray')
-    await expect(selectionTray).toBeVisible()
-    await expect(page.getByTestId('atlas-selection-count')).toHaveText('5 selected')
-
-    // Cleanup: quick delete + clock-controlled toast expiry. Select-all
-    // includes seeded frames whose unselected children would be
-    // promoted, so this passes the container-delete gate (goal 0149).
-    await page.clock.install()
-    await page.keyboard.press('Delete')
-    await expect(page.getByRole('button', { name: 'Delete', exact: true })).toBeVisible()
-    await page.getByRole('button', { name: 'Delete', exact: true }).click()
-    await expect(noteCard(page, 'ZzA2eSelAllA')).toHaveCount(0)
-    await expect(noteCard(page, 'ZzA2eSelAllB')).toHaveCount(0)
-    const undoToast = page.getByTestId('atlas-undo-toast')
-    await expect(undoToast).toBeVisible()
-    await page.clock.fastForward('00:11')
-    await expect(undoToast).toHaveCount(0)
-  } finally {
-    await server?.stop()
-    rmSync(dir, { recursive: true, force: true })
-  }
-})
+// atlas select-all (⌘A) moved to atlas-select-all.spec.ts at the 500-line
+// convention (CLAUDE.md) -- fully self-contained, no shared state with
+// the flows above.

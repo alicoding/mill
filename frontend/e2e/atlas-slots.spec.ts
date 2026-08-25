@@ -165,6 +165,7 @@ test('atlas typed link slots: page slot rows, hover-handle slot-drag linking, ch
     // attempt re-delivers the transition until the handler really
     // fires, asserting the same property without blind retries.
     await expect.poll(async () => {
+      // eslint-disable-next-line no-restricted-syntax -- a single locator.hover() left mouseleave un-fired here (see comment above); the multi-step raw move is the tested fix, not a convenience shortcut
       await page.mouse.move(cornerBox.x + 12, cornerBox.y + 12, { steps: 20 })
       return activeLabel.count()
     }, { timeout: 10_000 }).toBe(0)

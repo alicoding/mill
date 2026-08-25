@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { dragBetween } from './fixtures/atlasBoard'
 
 // Shared pool (testing.md): every assertion is scoped to a shape this
 // spec creates and deletes itself, or reads a seeded card's own
@@ -21,12 +22,11 @@ test('a selected board object and a selected card each carry a real box-shadow r
   await page.getByTestId('atlas-tray-shape').click()
   const box = await board.boundingBox()
   if (!box) throw new Error('board has no bounding box')
-  const from = { x: box.x + box.width * 0.08, y: box.y + box.height * 0.08 }
-  const to = { x: box.x + box.width * 0.2, y: box.y + box.height * 0.2 }
-  await page.mouse.move(from.x, from.y)
-  await page.mouse.down()
-  await page.mouse.move(to.x, to.y, { steps: 5 })
-  await page.mouse.up()
+  await dragBetween(
+    page,
+    { locator: board, position: { x: box.width * 0.08, y: box.height * 0.08 } },
+    { locator: board, position: { x: box.width * 0.2, y: box.height * 0.2 } },
+  )
 
   const shape = page.locator('[data-testid="atlas-board-object"][data-object-kind="shape"]')
   await expect(shape).toHaveCount(1)
@@ -50,7 +50,7 @@ test('a selected board object and a selected card each carry a real box-shadow r
 
   // Cleanup (testing.md's within-file discipline) -- deselect the
   // seeded card, delete the shape this spec created.
-  await page.mouse.click(box.x + 10, box.y + 10)
+  await board.click({ position: { x: 10, y: 10 } })
   await shape.click({ button: 'right' })
   await page.getByText('Delete', { exact: true }).click()
   await expect(shape).toHaveCount(0)

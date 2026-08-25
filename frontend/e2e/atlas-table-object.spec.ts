@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { dragBetween } from './fixtures/atlasBoard'
+import { clickBoardPoint, dragBetween, dragResizeHandle } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
 import type { Locator, Page } from '@playwright/test'
@@ -40,7 +40,7 @@ test('a newly created table object has no dead space below a small grid', async 
 
   await page.getByTestId('atlas-tray-table').click()
   await page.getByTestId('atlas-table-size-2x2').click()
-  await page.mouse.click(400, 500)
+  await clickBoardPoint(page, { x: 400, y: 500 })
   const tableObject = tableObjects(page).filter({ hasText: 'Column 1' })
   await expect(tableObject).toBeVisible()
   await expect(tableObject.getByTestId('atlas-projection-table').locator('tbody tr')).toHaveCount(2)
@@ -82,20 +82,7 @@ test('a table object can be resized by its own handle, and the size persists acr
   await tableObject.getByTestId('atlas-board-object-frame').click()
   const handle = page.locator('.react-flow__resize-control.handle.top.right')
   await expect(handle).toBeVisible()
-  const hb = await handle.boundingBox()
-  if (!hb) throw new Error('no resize handle box')
-  const startX = hb.x + hb.width / 2
-  const startY = hb.y + hb.height / 2
-  await page.mouse.move(startX, startY)
-  await page.mouse.down()
-  for (let i = 1; i <= 6; i++) {
-    await page.mouse.move(startX + i * 20, startY - i * 10)
-    // Pointer-coalescing class (atlas-table-projection.spec.ts's own
-    // card-resize test has the full reasoning) -- each step must land
-    // in its own frame.
-    await page.waitForTimeout(50)
-  }
-  await page.mouse.up()
+  await dragResizeHandle(page, handle, 120, -60)
 
   await expect.poll(async () => (await tableObject.boundingBox())?.width ?? 0).toBeGreaterThan(before.width + 80)
   await page.reload()
@@ -127,7 +114,7 @@ test('a table object can be dragged by its own frame', async ({ page }) => {
   const frameBox = await frame.boundingBox()
   if (!frameBox) throw new Error('no frame box')
   const start = { x: frameBox.x + frameBox.width / 2, y: frameBox.y + frameBox.height / 2 }
-  await dragBetween(page, start, { x: start.x + 140, y: start.y + 100 })
+  await dragBetween(page, { locator: frame, position: { x: frameBox.width / 2, y: frameBox.height / 2 } }, { x: start.x + 140, y: start.y + 100 })
 
   await expect.poll(async () => (await tableObject.boundingBox())?.x ?? 0).toBeGreaterThan(before.x + 100)
 

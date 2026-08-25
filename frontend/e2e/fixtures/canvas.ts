@@ -60,28 +60,84 @@ export async function dragPaletteItemToCanvas(page: Page, nodeTypeID: string): P
   }, nodeTypeID)
 }
 
+// Raw pointer drag between two handle locators (mousedown -> intermediate
+// moves -> mouseup) -- CanvasNodeView.tsx's Handle components
+// (@xyflow/react) drive connection-dragging off native mouse events, not
+// native HTML5 Drag-and-Drop, so this is the real interaction, not a
+// workaround. The START point is actionability-checked via
+// `sourceHandle.hover()` immediately before mouse.down() -- a 12x12
+// handle drifts off an earlier-captured boundingBox() by the time the
+// browser actually processes a raw coordinate, where hover() re-resolves
+// the element's live position right before dispatching (goal 0184
+// RESEARCH VERDICT). The END check is opt-in (`checkEnd`), NOT the
+// default, and only safe with `steps: 0` (a direct jump, no
+// intermediate path): confirmed live -- a real multi-step drag (steps >
+// 0) puts the target handle into React Flow's own live "connecting"
+// visual state (the `connectingto valid connectionindicator` classes),
+// which never satisfies Playwright's stability check (two consecutive
+// unchanged frames) and times out. `checkEnd` exists for the callers
+// that already proved the zero-step shape works (command-palette/
+// live-run-state/quick-panel*.spec.ts's own former local copies); a
+// real dragged path stays release-unchecked, the same documented
+// boundary as dragBetween's free-form middle. Promoted once a fourth
+// near-identical copy (those same files' own connectNodes/
+// connectByIndex) appeared (testing.md's promotion rule) -- callers
+// keep their own Fit-View/Zoom-Out sequencing local (a baked-in Fit
+// View here would undo a caller's own clearance step) and delegate
+// just the raw mechanics to this one primitive.
+export async function dragBetweenHandles(page: Page, sourceHandle: Locator, targetHandle: Locator, steps = 10, checkEnd = false): Promise<void> {
+  await sourceHandle.hover()
+  await page.mouse.down()
+  const sourceBox = await sourceHandle.boundingBox()
+  const targetBox = await targetHandle.boundingBox()
+  if (!sourceBox || !targetBox) throw new Error('dragBetweenHandles: handle bounding box not found')
+  const source = { x: sourceBox.x + sourceBox.width / 2, y: sourceBox.y + sourceBox.height / 2 }
+  const target = { x: targetBox.x + targetBox.width / 2, y: targetBox.y + targetBox.height / 2 }
+  for (let i = 1; i <= steps; i++) {
+    await page.mouse.move(source.x + ((target.x - source.x) * i) / steps, source.y + ((target.y - source.y) * i) / steps)
+  }
+  if (checkEnd) {
+    await targetHandle.hover()
+  } else {
+    await page.mouse.move(target.x, target.y)
+  }
+  await page.mouse.up()
+}
+
 // Draws a real edge between two already-dropped nodes, found by the
-// (distinct) label text on their card -- CanvasNodeView.tsx's Handle
-// components (@xyflow/react) drive connection-dragging off native mouse
-// events, unlike the palette's own HTML5 Drag-and-Drop drop target
-// above, so Playwright's ordinary synthetic mouse sequence (down/move/up)
-// is the real interaction here, not a workaround. Fit View first is
-// load-bearing, not cosmetic: a spiral-placed node's handle can land
-// directly under the MiniMap's fixed bottom-right overlay, and
-// waitForViewportStable lets its pan/zoom transition settle before
-// bounding boxes are read -- the interaction-race class goal 0080's
-// register tracked across this exact preamble in a dozen spec files.
+// (distinct) label text on their card. Fit View first is load-bearing,
+// not cosmetic: a spiral-placed node's handle can land directly under
+// the MiniMap's fixed bottom-right overlay, and waitForViewportStable
+// lets its pan/zoom transition settle before bounding boxes are read --
+// the interaction-race class goal 0080's register tracked across this
+// exact preamble in a dozen spec files.
 export async function connectNodes(page: Page, sourceLabel: string, targetLabel: string): Promise<void> {
   const panel = activePanel(page)
   await panel.getByRole('button', { name: 'Fit View' }).click()
   await waitForViewportStable(panel)
   const sourceHandle = panel.locator('.react-flow__node').filter({ hasText: sourceLabel }).locator('.react-flow__handle.source')
   const targetHandle = panel.locator('.react-flow__node').filter({ hasText: targetLabel }).locator('.react-flow__handle.target')
-  const sourceBox = await sourceHandle.boundingBox()
-  const targetBox = await targetHandle.boundingBox()
-  if (!sourceBox || !targetBox) throw new Error('connectNodes: handle bounding box not found')
-  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2)
+  await dragBetweenHandles(page, sourceHandle, targetHandle)
+}
+
+// Drags `node` by a fixed pixel delta from a given start position within
+// its own box (its center, by default) -- the shape every reposition-
+// via-drag test in this suite shares (a workflow-canvas node, an Atlas
+// frame/note/card). The START point is actionability-checked via
+// `node.hover({position})` immediately before mouse.down(), same
+// contract as dragBetweenHandles/dragBetween above; the release is a free
+// canvas point with no owning element, so it stays an unchecked raw
+// mouse.up() (goal 0184 RESEARCH VERDICT's documented boundary).
+export async function dragNodeBy(page: Page, node: Locator, dx: number, dy: number, opts: { position?: { x: number; y: number }; steps?: number } = {}): Promise<void> {
+  const box = await node.boundingBox()
+  if (!box) throw new Error('dragNodeBy: node has no bounding box')
+  const position = opts.position ?? { x: box.width / 2, y: box.height / 2 }
+  const steps = opts.steps ?? 10
+  await node.hover({ position })
   await page.mouse.down()
-  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 10 })
+  const start = { x: box.x + position.x, y: box.y + position.y }
+  for (let i = 1; i <= steps; i++) {
+    await page.mouse.move(start.x + (dx * i) / steps, start.y + (dy * i) / steps)
+  }
   await page.mouse.up()
 }

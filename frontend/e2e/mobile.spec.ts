@@ -177,10 +177,21 @@ test('Mobile job 4 -- Atlas board is pan/zoom only, no card drag', async ({ page
   // not the surface this gesture means to test.
   const box = await exampleAreaCard.boundingBox()
   if (box) {
-    const startY = box.y + box.height * 0.75
-    await page.mouse.move(box.x + box.width / 2, startY)
+    // FINDING (goal 0184 migration probe): this frame renders partially
+    // off the left edge of the 390px mobile viewport, so the checked
+    // dragNodeBy helper's hover at the box's own fractional center times
+    // out ("<html> intercepts pointer events" -- nothing is actually
+    // painted at that logical-box coordinate). Not fixed here -- this
+    // migrates the input path, not board layout at the mobile
+    // breakpoint; raw mouse stays for this one site pending that
+    // separate investigation.
+    // eslint-disable-next-line no-restricted-syntax -- see FINDING above
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height * 0.75)
+    // eslint-disable-next-line no-restricted-syntax -- see FINDING above
     await page.mouse.down()
-    await page.mouse.move(box.x + box.width / 2 + 120, startY + 120, { steps: 5 })
+    // eslint-disable-next-line no-restricted-syntax -- see FINDING above
+    await page.mouse.move(box.x + box.width / 2 + 120, box.y + box.height * 0.75 + 120, { steps: 5 })
+    // eslint-disable-next-line no-restricted-syntax -- see FINDING above
     await page.mouse.up()
   }
   const after = await node.evaluate((el) => el.style.transform)
