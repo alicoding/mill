@@ -1,0 +1,67 @@
+[
+  {
+    "field": "id",
+    "legalValues": "one of the ids declared in shared/atlasToolIdentity.ts's ATLAS_TOOL_IDENTITIES array",
+    "meaning": "the noun's stable identity. registerNoun() throws at module-eval time on a duplicate; assertRegistryAgreesWithIdentity() fails the build if an identity has no matching descriptor, or a descriptor has no matching identity."
+  },
+  {
+    "field": "icon",
+    "legalValues": "any icon component from @primer/octicons-react, typed as Icon",
+    "meaning": "the glyph rendered on this noun's tray/palette button."
+  },
+  {
+    "field": "label",
+    "legalValues": "a string",
+    "meaning": "the button/command text. By convention every in-tree noun sources this from identityOf(id).commandLabel rather than restating it, but the field itself accepts any string."
+  },
+  {
+    "field": "shortcutKey",
+    "legalValues": "a single-character string, or null",
+    "meaning": "the bare keypress that arms this tool from the board. null for a tool with no bare-key shortcut."
+  },
+  {
+    "field": "tray",
+    "legalValues": "'quick' or 'palette'",
+    "meaning": "which tray surface renders this tool's button."
+  },
+  {
+    "field": "interaction",
+    "legalValues": "'arm-then-click', 'pick-then-place', 'drag-to-draw', 'drag-to-erase', 'ephemeral-drag', or 'paste-or-drop'",
+    "meaning": "the authoring gesture that places this noun. Must equal the same field on this id's own shared/atlasToolIdentity.ts entry -- the registry's own agreement check cross-validates the two so they can never silently drift apart."
+  },
+  {
+    "field": "styleDefaults",
+    "legalValues": "a record of style-field key to value, or omitted entirely",
+    "meaning": "session-only seed values for a freshly placed instance's style state (colour, size, ...). Never persisted document data -- omit this field for a noun with no style surface rather than declaring an empty object."
+  },
+  {
+    "field": "styleFields",
+    "legalValues": "a readonly array of AtlasStyleField entries (atlasStyleVocabulary.ts's closed union: color, color-or-none, stroke-width, or shape-kind) -- REQUIRED, never optional",
+    "meaning": "this noun's own declared styleable properties. An empty array is the honest answer for a noun with no style surface at all. A non-empty array makes AtlasStylePanel.tsx render this tool's style picker automatically -- no other file needs to name this noun's id."
+  },
+  {
+    "field": "lockable",
+    "legalValues": "boolean -- REQUIRED, never optional",
+    "meaning": "does re-clicking this tool's own already-armed tray button lock it for repeated placement, instead of disarming on the second click? Only meaningful for an arm-then-click tool; every other tool still declares it, always false."
+  },
+  {
+    "field": "resizable",
+    "legalValues": "boolean -- REQUIRED, never optional",
+    "meaning": "can a placed instance be dragged to a new size via the shared NodeResizer? A container that auto-fits its own children, or a tool that never persists a placed instance, both legitimately declare false. The conformance suite checks that a true answer is backed by a real `<NodeResizer>` in the renderer boardNodeType names."
+  },
+  {
+    "field": "boardNodeType",
+    "legalValues": "'atlas-note', 'atlas-sticky', 'atlas-group', 'atlas-object', or null",
+    "meaning": "which shared React Flow node component renders this noun's placed instance. null for a tool whose gesture never persists a renderable instance (eraser, laser)."
+  },
+  {
+    "field": "dragBand",
+    "legalValues": "boolean -- REQUIRED, never optional",
+    "meaning": "only load-bearing when boardNodeType is 'atlas-object': does this noun's own content capture pointer events (a grid, a vendored pan/zoom viewer), so the shared renderer needs to add its own chrome band as the drag surface? A noun whose whole body already drags declares false, not omitted."
+  },
+  {
+    "field": "commit",
+    "legalValues": "a function -- see 'How it loads' for why this is the one member that is runtime code, not declaration",
+    "meaning": "shapes this noun's own placement input into the artifact CreateBoardObject/CreateCard persists. Each noun's own signature differs; the registry's element type only has to accept every one of them, never call through it generically."
+  }
+]
