@@ -593,6 +593,17 @@ export function Perspectives(): $CancellablePromise<atlas$0.Perspective[] | null
 }
 
 /**
+ * PickDiagramFile opens the native diagram-file picker -- the honest-
+ * state "Choose file" action's own path resolution step (goal 0194: a
+ * typed path string is developer vocabulary, not a user-facing
+ * affordance, same rule PickImageFile already follows). Returns "" (no
+ * error) when the user cancels.
+ */
+export function PickDiagramFile(): $CancellablePromise<string> {
+    return $Call.ByID(3026340814);
+}
+
+/**
  * PickFolder opens the native folder picker -- goal 0067's consent
  * gate: zero filesystem reads happen before this returns a path the
  * user actually chose. startDir optionally pre-fills the dialog's
@@ -709,6 +720,26 @@ export function RenderNoteMarkdown(source: string): $CancellablePromise<string> 
  */
 export function ReorderPerspective(spaceID: string, orderedIDs: string[] | null): $CancellablePromise<void> {
     return $Call.ByID(538428937, spaceID, orderedIDs);
+}
+
+/**
+ * RepickCardMirror points cardID's own MirrorPath at a newly chosen
+ * file -- the honest-state "Choose file" action's own apply step, used
+ * both after a vanished-file re-pick and to swap a diagram for a
+ * different one outright. Re-arms the live filewatch binding and fires
+ * MirrorChangedEvent immediately, so the page that just showed "file
+ * not found" refetches without waiting on the next external edit.
+ */
+export function RepickCardMirror(cardID: string, path: string): $CancellablePromise<atlas$0.Card> {
+    return $Call.ByID(3901608483, cardID, path);
+}
+
+/**
+ * RepickObjectMirror is RepickCardMirror's own counterpart for a board
+ * object's Payload["mirrorPath"] entry.
+ */
+export function RepickObjectMirror(objectID: string, path: string): $CancellablePromise<atlas$0.BoardObject> {
+    return $Call.ByID(3199155054, objectID, path);
 }
 
 /**

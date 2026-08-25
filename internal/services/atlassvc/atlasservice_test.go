@@ -15,7 +15,15 @@ import (
 // example space present, same as a real fresh install.
 func newTestAtlasService(t *testing.T) *AtlasService {
 	t.Helper()
-	return NewAtlasService(servicetest.NewFakeStore())
+	a := NewAtlasService(servicetest.NewFakeStore())
+	// Any diagram/mermaid mirror created in a test arms a real fsnotify
+	// watch (goal 0194) whose goroutine and pending debounce timer would
+	// otherwise outlive the test -- a later test's own
+	// MirrorWatchTestHook could then observe a stale fire that was
+	// never its own. Closed unconditionally so this costs nothing for
+	// the (common) test that never touches a diagram mirror at all.
+	t.Cleanup(a.CloseAllMirrorWatches)
+	return a
 }
 
 // --- Kinds ---

@@ -213,6 +213,7 @@ func (a *AtlasService) DeleteCard(id string) (TombstoneResult, error) {
 		return TombstoneResult{}, fmt.Errorf("save card deletion: %w", perr)
 	}
 	dataevent.Emit("atlas", id)
+	a.disarmMirrorWatch(id)
 	return TombstoneResult{CardIDs: []string{id}, LinksRemoved: linksRemoved, ChildrenPromoted: childrenPromoted}, nil
 }
 
@@ -247,6 +248,7 @@ func (a *AtlasService) DeleteBoardObject(id string) (TombstoneResult, error) {
 		return TombstoneResult{}, err
 	}
 	dataevent.Emit("atlas", id)
+	a.disarmMirrorWatch(id)
 	return TombstoneResult{ObjectIDs: []string{id}}, nil
 }
 

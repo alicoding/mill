@@ -10,6 +10,9 @@ import type { Events } from "@wailsio/runtime";
 import type * as agentloopsvc$0 from "../../../../alicoding/mill/internal/services/agentloopsvc/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import type * as atlassvc$0 from "../../../../alicoding/mill/internal/services/atlassvc/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import type * as companionsvc$0 from "../../../../alicoding/mill/internal/services/companionsvc/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -29,6 +32,7 @@ declare module "@wailsio/runtime" {
         interface CustomEvents {
             "agent-loop-delta": agentloopsvc$0.AgentLoopDelta;
             "agent-loop-state": agentloopsvc$0.AgentLoopEvent;
+            "atlas-mirror-changed": atlassvc$0.MirrorChanged;
             "companion-delta": companionsvc$0.CompanionDelta;
             "guardrail-pending-changed": executionsvc$0.GuardrailPendingChanged;
             "hotkey-activity": triggersvc$0.HotkeyActivity;

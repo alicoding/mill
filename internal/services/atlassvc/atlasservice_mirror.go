@@ -2,7 +2,9 @@ package atlassvc
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"io/fs"
 
 	"github.com/alicoding/mill/internal/adapters/fileread"
 	"github.com/alicoding/mill/internal/adapters/markdown"
@@ -64,10 +66,16 @@ func (a *AtlasService) ObjectMirrorContent(objectID string) (atlas.MirrorContent
 // mirrorContentForPath is MirrorContent/ObjectMirrorContent's shared
 // read/classify/size-cap logic, extracted so the two callers -- a
 // card's MirrorPath field and a board object's Payload["mirrorPath"]
-// entry -- never re-derive it.
+// entry -- never re-derive it. A missing file reports Missing (goal
+// 0194's honest-state contract) rather than an error, since "the file
+// is gone" is an expected, renderable outcome the frontend distinguishes
+// from a real failure -- not a reason to fail the RPC.
 func mirrorContentForPath(path string) (atlas.MirrorContent, error) {
 	size, err := fileread.Stat(path)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return atlas.MirrorContent{Missing: true}, nil
+		}
 		return atlas.MirrorContent{}, fmt.Errorf("mirror content: %w", err)
 	}
 	kind := atlas.ClassifyMirrorKind(path)

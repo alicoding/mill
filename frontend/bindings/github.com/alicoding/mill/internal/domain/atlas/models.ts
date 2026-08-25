@@ -324,7 +324,11 @@ export interface LinkKind {
  * always has something to show. Content holds rendered HTML for
  * MirrorKindMarkdown, raw text for MirrorKindText, or base64-encoded
  * bytes (paired with MimeType) for MirrorKindImage -- empty for
- * MirrorKindOther or whenever TooLarge is true.
+ * MirrorKindOther or whenever TooLarge is true. Missing is true when
+ * the file at MirrorPath could not be found on disk -- Kind/Size/
+ * Content all stay zero in that case, distinct from TooLarge (found
+ * but skipped) so the frontend renders an honest "file's gone" state
+ * rather than a stale or blank one (goal 0194).
  */
 export interface MirrorContent {
     "Kind": MirrorKind;
@@ -332,6 +336,7 @@ export interface MirrorContent {
     "Size": number;
     "Content": string;
     "TooLarge": boolean;
+    "Missing": boolean;
 }
 
 /**

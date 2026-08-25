@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"embed"
 
 	"log"
@@ -80,6 +79,7 @@ func init() {
 	application.RegisterEvent[mcpsvc.MCPWriteRequest]("mcp-write-approval")
 	application.RegisterEvent[mcpsvc.MCPWriteActivity]("mcp-write-activity")
 	application.RegisterEvent[dataevent.Changed](dataevent.EventName)
+	application.RegisterEvent[atlassvc.MirrorChanged](atlassvc.MirrorChangedEvent)
 	application.RegisterEvent[executionsvc.GuardrailPendingChanged]("guardrail-pending-changed")
 	application.RegisterEvent[companionsvc.CompanionDelta](companionsvc.DeltaEventName)
 	application.RegisterEvent[agentloopsvc.AgentLoopEvent](agentloopsvc.StateEventName)
@@ -471,26 +471,7 @@ func main() {
 	// Run the application. This blocks until the application has been exited.
 	err = app.Run()
 
-	// Flush any in-flight step checkpoints before the process actually
-	// exits -- best-effort (the app is already tearing down), logged
-	// rather than fatal.
-	if shutdownErr := executionService.Shutdown(5 * time.Second); shutdownErr != nil {
-		logger.Error("execution runtime shutdown", "error", shutdownErr)
-	}
-	// docs/goals/0065 item 4: one last snapshot on a clean shutdown,
-	// skipped if a recent one already ran -- best-effort, same posture
-	// as the checkpoint flush above.
-	if shutdownErr := backupService.BackupOnCleanShutdown(); shutdownErr != nil {
-		logger.Error("clean-shutdown backup", "error", shutdownErr)
-	}
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	if shutdownErr := millMCPService.Shutdown(shutdownCtx); shutdownErr != nil {
-		logger.Error("mill MCP server shutdown", "error", shutdownErr)
-	}
-	cancel()
-	if shutdownErr := mcpAuditService.Close(); shutdownErr != nil {
-		logger.Error("mcp audit service shutdown", "error", shutdownErr)
-	}
+	wiring.RunShutdown(logger, executionService, backupService, millMCPService, mcpAuditService, atlasService)
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {

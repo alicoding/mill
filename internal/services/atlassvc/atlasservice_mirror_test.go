@@ -251,6 +251,52 @@ func TestMirrorContent_NoMirrorPath_Errors(t *testing.T) {
 	}
 }
 
+// A file that vanishes between the card carrying its path and this
+// read reports Missing rather than erroring (goal 0194's honest-state
+// contract) -- the frontend renders "file's gone" instead of a raw Go
+// error string.
+func TestMirrorContent_MissingFile_ReportsMissingWithoutError(t *testing.T) {
+	a := newTestAtlasService(t)
+	c := newMirroredCard(t, a, "flow.drawio", "<mxfile></mxfile>")
+	if err := os.Remove(c.MirrorPath); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := a.MirrorContent(c.ID)
+	if err != nil {
+		t.Fatalf("MirrorContent() on a vanished file: unexpected error %v, want Missing=true with nil error", err)
+	}
+	if !got.Missing {
+		t.Error("Missing = false, want true for a file that no longer exists on disk")
+	}
+	if got.Content != "" || got.Size != 0 {
+		t.Errorf("got = %+v, want zero Content/Size when Missing", got)
+	}
+}
+
+func TestObjectMirrorContent_MissingFile_ReportsMissingWithoutError(t *testing.T) {
+	a := newTestAtlasService(t)
+	path := filepath.Join(t.TempDir(), "flow.drawio")
+	if err := os.WriteFile(path, []byte("<mxfile></mxfile>"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	o, err := a.CreateBoardObject("diagram", map[string]string{"mirrorPath": path}, atlas.Position{}, "")
+	if err != nil {
+		t.Fatalf("CreateBoardObject: %v", err)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := a.ObjectMirrorContent(o.ID)
+	if err != nil {
+		t.Fatalf("ObjectMirrorContent() on a vanished file: unexpected error %v, want Missing=true with nil error", err)
+	}
+	if !got.Missing {
+		t.Error("Missing = false, want true for a file that no longer exists on disk")
+	}
+}
+
 func TestMirrorContent_UnknownCard_Errors(t *testing.T) {
 	a := newTestAtlasService(t)
 	if _, err := a.MirrorContent("does-not-exist"); err == nil {

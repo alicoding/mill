@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alicoding/mill/internal/adapters/filewatch"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/atlas"
 	"github.com/alicoding/mill/internal/domain/typedfield"
@@ -75,13 +76,13 @@ type AtlasService struct {
 	// Paste-conversion seams (goal 0138) -- see WirePasteListWrites.
 	pasteListFactory func(label string, columns []typedfield.Field) (string, error)
 	pasteRowAppender func(listID string, values map[string]string) error
-	cards     []atlas.Card
-	links     []atlas.Link
-	notes     []atlas.Note
+	cards            []atlas.Card
+	links            []atlas.Link
+	notes            []atlas.Note
 	// objects holds every board-local canvas object (goal 0179/0180) --
 	// same own-family posture as notes above.
-	objects   []atlas.BoardObject
-	lenses    map[string]atlas.LensSetting
+	objects []atlas.BoardObject
+	lenses  map[string]atlas.LensSetting
 	// mirrorsDir is the Mill-owned root directory a space's lazily-
 	// created mirror folder lives under (goal 0063's share model,
 	// atlasservice_share.go) -- set once from main.go via
@@ -113,6 +114,22 @@ type AtlasService struct {
 	guardedDataPaths []string
 	session          AtlasSessionState
 	perspectives     []atlas.Perspective
+	// watchMu guards mirrorWatches/mirrorDebouncers below -- deliberately
+	// separate from mu (goal 0194's live round-trip slice): a filewatch
+	// callback fires on its own goroutine and must never block behind
+	// whatever a.mu is doing, and arming a watch from inside an
+	// a.mu-held mutation must never risk deadlocking against that same
+	// callback if it fires concurrently.
+	watchMu sync.Mutex
+	// mirrorWatches holds one live filewatch binding per card/object id
+	// whose own mirrored file is a diagram source -- armed on load and
+	// on create, closed on delete and on service shutdown
+	// (atlasservice_mirrorwatch.go).
+	mirrorWatches map[string]*filewatch.Binding
+	// mirrorDebouncers holds id's own pending fire timer while a burst
+	// of writes is being coalesced (atlasservice_mirrorwatch.go's
+	// debounceMirrorEmit).
+	mirrorDebouncers map[string]*time.Timer
 }
 
 // NewAtlasService restores any persisted state, then reconciles the
@@ -122,10 +139,14 @@ type AtlasService struct {
 // added later reaches an existing install too (.claude/rules/
 // testing.md's seed top-up discipline).
 func NewAtlasService(store settings.Store) *AtlasService {
-	a := &AtlasService{store: store, lenses: map[string]atlas.LensSetting{}}
+	a := &AtlasService{
+		store: store, lenses: map[string]atlas.LensSetting{},
+		mirrorWatches: map[string]*filewatch.Binding{}, mirrorDebouncers: map[string]*time.Timer{},
+	}
 	a.restore()
 	a.reconcileBuiltIns()
 	a.populateDenseFixture()
+	a.armExistingMirrorWatches()
 	return a
 }
 

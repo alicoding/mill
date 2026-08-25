@@ -100,6 +100,7 @@ func (a *AtlasService) createCardWithID(id, kindID, title, note string, fields m
 		return atlas.Card{}, fmt.Errorf("save card: %w", perr)
 	}
 	dataevent.Emit("atlas", c.ID)
+	a.armMirrorWatch(c.ID, c.MirrorPath)
 	a.notifyCardChange(c, "create", sourceRunID)
 	return c, nil
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Stack, Text } from '@primer/react'
 import { MirrorKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
@@ -6,6 +6,8 @@ import type { MirrorContent } from '../../bindings/github.com/alicoding/mill/int
 import { AtlasService } from '../shared/bindings'
 import runbookStyles from '../shared/ListCard.module.css'
 import { useDrawioRendering } from './useDrawioRendering'
+import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
+import { AtlasMirrorMissingState } from './AtlasMirrorMissingState'
 import type { UnitRenderProps } from './unitRegistry'
 import styles from './AtlasUnitDrawio.module.css'
 
@@ -37,25 +39,41 @@ export function DrawioDiagramHost({ source }: { source: string }) {
 // The standalone drawio unit's card-page presentation (ADR-0043, goal
 // 0133 slice 3): fetches the card's own MirrorContent exactly as the
 // mermaid unit does, then hands the raw .drawio XML to the vendored
-// viewer instead of rendering it as text.
+// viewer instead of rendering it as text. Refetches live when the
+// mirrored file changes on disk (goal 0194's live round-trip slice) --
+// an external CLI/editor write reaches this page without a reload.
 export function AtlasUnitDrawioPage({ card }: UnitRenderProps) {
   const { t } = useTranslation('atlas')
   const [content, setContent] = useState<MirrorContent | null>(null)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    setContent(null)
-    setError('')
+  const fetchContent = useCallback(() => {
     AtlasService.MirrorContent(card.ID)
       .then(setContent)
       .catch((err) => setError(String(err)))
-  }, [card.ID, card.MirrorPath])
+  }, [card.ID])
+
+  useEffect(() => {
+    setContent(null)
+    setError('')
+    fetchContent()
+  }, [card.ID, card.MirrorPath, fetchContent])
+
+  useAtlasMirrorChanged(card.ID, fetchContent)
 
   if (error) {
     return <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-drawio-error">{error}</Text>
   }
   if (!content) {
     return <Text as="p" size="small" className={runbookStyles.muted} data-testid="atlas-drawio-loading">{t('overlay.mirrorLoading')}</Text>
+  }
+  if (content.Missing) {
+    return (
+      <AtlasMirrorMissingState
+        testIdPrefix="atlas-drawio"
+        onRepick={(path) => AtlasService.RepickCardMirror(card.ID, path)}
+      />
+    )
   }
   if (content.TooLarge) {
     return (
