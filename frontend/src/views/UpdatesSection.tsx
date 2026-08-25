@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { Events } from '@wailsio/runtime'
 import { useTranslation } from 'react-i18next'
 import { Browser } from '@wailsio/runtime'
@@ -168,15 +168,10 @@ function UpdatesSection() {
       .catch(console.error)
   }, [])
 
-  const saveChannelPref = (pref: string) => {
-    setChannelPref(pref)
-    setChannelSaved(false)
-    SettingsService.SetUpdateChannelPreference(pref)
-      .then(() => setChannelSaved(true))
-      .catch((err) => setStatus(String(err)))
-  }
-
-  const checkForUpdates = () => {
+  // useCallback (not a plain closure) so the auto-check-on-open effect
+  // below can depend on a stable reference instead of disabling
+  // exhaustive-deps.
+  const checkForUpdates = useCallback(() => {
     setChecking(true)
     setStatus('')
     setCheckError('')
@@ -195,6 +190,22 @@ function UpdatesSection() {
       })
       .catch((err) => setCheckError(String(err)))
       .finally(() => setChecking(false))
+  }, [t])
+
+  // Opening the section must never read a stale cached outcome as
+  // current (goal 0205 S4) -- a fresh check runs every time this
+  // component mounts, the same one the button triggers, so the
+  // rendered outcome always reflects a check that just ran.
+  useEffect(() => {
+    checkForUpdates()
+  }, [checkForUpdates])
+
+  const saveChannelPref = (pref: string) => {
+    setChannelPref(pref)
+    setChannelSaved(false)
+    SettingsService.SetUpdateChannelPreference(pref)
+      .then(() => setChannelSaved(true))
+      .catch((err) => setStatus(String(err)))
   }
 
   const persistProxy = (value: string) => {

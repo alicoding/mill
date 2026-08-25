@@ -659,19 +659,16 @@ jobs:
       - name: Generate checksums
         working-directory: dist
         run: sha256sum -- * > SHA256SUMS
-      # Rolling channel, not a rolling tag: each beta release gets its
-      # own SemVer tag (required for update detection, see "Compute
-      # beta version" above), so "rolling" means at most one beta
-      # prerelease exists at a time -- delete every older one first.
-      # isPrerelease filters real tagged releases out categorically;
-      # real releases are never touched by this job.
-      - name: Delete previous beta prereleases
-        run: |
-          gh release list --repo "${GITHUB_REPOSITORY}" --json tagName,isPrerelease \
-            -q '.[] | select(.isPrerelease) | .tagName' | while read -r tag; do
-            gh release delete "$tag" --repo "${GITHUB_REPOSITORY}" --yes --cleanup-tag
-          done
-      - name: Create beta prerelease
+      # Draft-then-publish (goal 0205 S2): the beta provider walks
+      # /repos/{r}/releases?per_page=10 and explicitly skips draft
+      # entries by design (confirmed against the vendored source,
+      # pkg/updater/providers/github/github.go's fetchRelease) -- a
+      # release created as a draft is therefore invisible to every
+      # client's Check() until this job flips it published, which now
+      # happens only AFTER every asset is attached. That removes the
+      # window where a client could observe the newest release before
+      # its assets exist.
+      - name: Create beta prerelease (draft)
         # Two audiences, one file (goal 0127): the section ABOVE the
         # in-app-notes-end marker is what the in-app update card shows
         # (trimReleaseNotesForApp, settingsservice_updates.go) -- the
@@ -696,5 +693,26 @@ jobs:
             --repo "${GITHUB_REPOSITORY}" \
             --title "Beta v${BETA_VERSION}" \
             --prerelease \
-            --notes-file /tmp/beta-notes.md \
-            dist/*
+            --draft \
+            --notes-file /tmp/beta-notes.md
+      - name: Upload beta assets
+        run: gh release upload "v${BETA_VERSION}" --repo "${GITHUB_REPOSITORY}" dist/*
+      - name: Publish beta prerelease
+        run: gh release edit "v${BETA_VERSION}" --repo "${GITHUB_REPOSITORY}" --draft=false
+      # Rolling channel, not a rolling tag: each beta release gets its
+      # own SemVer tag (required for update detection, see "Compute
+      # beta version" above), so "rolling" means at most one PUBLISHED
+      # beta prerelease exists at a time -- delete every older one only
+      # AFTER the new one is live (never before: deleting first would
+      # reopen the exact window this job now closes, by leaving no
+      # beta release at all for the length of the create/upload/publish
+      # sequence above). isPrerelease filters real tagged releases out
+      # categorically; real releases are never touched by this job. The
+      # tag just published is excluded by name so this step can never
+      # delete what it just created.
+      - name: Delete previous beta prereleases
+        run: |
+          gh release list --repo "${GITHUB_REPOSITORY}" --json tagName,isPrerelease \
+            -q ".[] | select(.isPrerelease and .tagName != \"v${BETA_VERSION}\") | .tagName" | while read -r tag; do
+            gh release delete "$tag" --repo "${GITHUB_REPOSITORY}" --yes --cleanup-tag
+          done

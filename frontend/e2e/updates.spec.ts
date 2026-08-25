@@ -5,6 +5,8 @@ import path from 'node:path'
 import {
   spawnMillServer,
   type SpawnedServer,
+  UPDATES_AUTOCHECK_MCP_BASE_PORT,
+  UPDATES_AUTOCHECK_SERVER_BASE_PORT,
   UPDATES_BETA_MCP_BASE_PORT,
   UPDATES_BETA_SERVER_BASE_PORT,
   UPDATES_READY_MCP_BASE_PORT,
@@ -256,6 +258,110 @@ test('Update-channel preference saves, explains the restart, and survives a relo
     await expect(page.getByTestId('update-channel-select')).toHaveValue('beta')
     await expect(page.getByTestId('proxy-mode-select')).toHaveValue('manual')
     await expect(page.getByTestId('proxy-url-input')).toHaveValue('http://proxy.example.com:8080')
+
+    await page.close()
+  } finally {
+    await server?.stop()
+    if (dir) rmSync(dir, { recursive: true, force: true })
+    await browser.close()
+  }
+})
+
+// goal 0205 S4: opening Settings must never leave the user reading a
+// stale cached outcome as current -- a fresh check now fires the
+// moment the section mounts, with no click required.
+// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
+test('Opening the Updates section checks automatically, with no click required', async ({}, testInfo) => {
+  const idx = testInfo.parallelIndex
+  let server: SpawnedServer | undefined
+  let dir: string | undefined
+  const browser = await chromium.launch()
+  try {
+    ;({ server, dir } = await spawnUpdatesServer(idx, UPDATES_AUTOCHECK_SERVER_BASE_PORT, UPDATES_AUTOCHECK_MCP_BASE_PORT, {
+      MILL_TEST_UPDATE_FAKE_VERSION: '9.9.9',
+    }))
+    const page = await browser.newPage()
+    await page.goto(`${server.baseURL}/`)
+    await page.getByRole('link', { name: 'Settings' }).click()
+
+    // No click on check-for-updates anywhere in this test -- the card
+    // and the fresh-outcome line must appear from the mount-time check
+    // alone.
+    await expect(page.getByTestId('update-available-card')).toBeVisible()
+    await expect(page.getByTestId('update-available-card')).toContainText('9.9.9')
+    await expect(page.getByTestId('last-check-status')).toContainText('just now')
+
+    await page.close()
+  } finally {
+    await server?.stop()
+    if (dir) rmSync(dir, { recursive: true, force: true })
+    await browser.close()
+  }
+})
+
+// goal 0205 S4: the checking state must be visibly distinct from both
+// a cached outcome and a fresh result -- proven deterministically via
+// the delay seam rather than racing a same-tick promise.
+// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
+test('The Updates section shows a checking state while the automatic check is in flight', async ({}, testInfo) => {
+  const idx = testInfo.parallelIndex
+  let server: SpawnedServer | undefined
+  let dir: string | undefined
+  const browser = await chromium.launch()
+  try {
+    ;({ server, dir } = await spawnUpdatesServer(idx, UPDATES_AUTOCHECK_SERVER_BASE_PORT, UPDATES_AUTOCHECK_MCP_BASE_PORT, {
+      MILL_TEST_UPDATE_FAKE_VERSION: '9.9.9',
+      MILL_TEST_UPDATE_CHECK_DELAY_MS: '1500',
+    }))
+    const page = await browser.newPage()
+    await page.goto(`${server.baseURL}/`)
+    await page.getByRole('link', { name: 'Settings' }).click()
+
+    const checkButton = page.getByTestId('check-for-updates')
+    await expect(checkButton).toHaveText('Checking…')
+    await expect(checkButton).toBeDisabled()
+    await expect(page.getByTestId('update-available-card')).toHaveCount(0)
+
+    // The delayed check lands, and the checking state clears.
+    await expect(page.getByTestId('update-available-card')).toBeVisible()
+    await expect(checkButton).toBeEnabled()
+    await expect(checkButton).not.toHaveText('Checking…')
+
+    await page.close()
+  } finally {
+    await server?.stop()
+    if (dir) rmSync(dir, { recursive: true, force: true })
+    await browser.close()
+  }
+})
+
+// goal 0205 S4: a failed check must never read as "up to date" -- the
+// fail seam short-circuits before any real network call, so this is
+// deterministic and offline.
+// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
+test('A failed automatic check renders honestly, never as up to date', async ({}, testInfo) => {
+  const idx = testInfo.parallelIndex
+  let server: SpawnedServer | undefined
+  let dir: string | undefined
+  const browser = await chromium.launch()
+  try {
+    ;({ server, dir } = await spawnUpdatesServer(idx, UPDATES_AUTOCHECK_SERVER_BASE_PORT, UPDATES_AUTOCHECK_MCP_BASE_PORT, {
+      MILL_TEST_UPDATE_FAKE_VERSION: '9.9.9',
+      MILL_TEST_UPDATE_CHECK_FAIL: '1',
+    }))
+    const page = await browser.newPage()
+    await page.goto(`${server.baseURL}/`)
+    await page.getByRole('link', { name: 'Settings' }).click()
+
+    await expect(page.getByTestId('update-check-error')).toBeVisible()
+    await expect(page.getByTestId('update-check-error-copy')).toBeVisible()
+    await expect(page.getByTestId('last-check-failed')).toBeVisible()
+    await expect(page.getByTestId('last-check-failed-copy')).toBeVisible()
+
+    // Never the up-to-date reading, and never the available-update card.
+    await expect(page.locator('body')).not.toContainText("You're on the latest version")
+    await expect(page.getByTestId('update-available-card')).toHaveCount(0)
+    await expect(page.getByTestId('last-check-status')).toHaveCount(0)
 
     await page.close()
   } finally {
