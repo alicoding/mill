@@ -1,22 +1,22 @@
 import { normalizeRect } from './atlasEnclosure'
-import type { AtlasShapeType } from './atlasShapeStyleStore'
-import type { ShapePoint } from './useAtlasShapeDraw'
+import { useAtlasShapeStyle } from './atlasStyleValueStore'
+import type { AtlasGesturePoint } from './atlasNounRegistry'
 
-// The shape tool's own live preview while a drag is mid-gesture
-// (useAtlasShapeDraw.ts's localStart/localCurrent): a wrapper-spanning
-// SVG overlay, pointer-events disabled, the same pattern
-// AtlasPencilLivePreview.tsx/AtlasEraserLiveTrail.tsx already
-// established. Rectangle/ellipse render from the drag's normalized
-// bounding box; arrow renders the raw (non-normalized) start->current
-// line directly, since normalizing away direction would point every
-// leftward/upward arrow the wrong way.
-export function AtlasShapeLivePreview({ shapeType, stroke, strokeWidth, start, current }: {
-  shapeType: AtlasShapeType
-  stroke: string
-  strokeWidth: number
-  start: ShapePoint
-  current: ShapePoint
-}) {
+// The shape tool's own gesture.preview (goal 0215 S2, absorbing goal
+// 0169 slice 5's original component): a wrapper-spanning SVG overlay,
+// pointer-events disabled, the same pattern AtlasPencilLivePreview.tsx/
+// AtlasEraserLiveTrail.tsx already establish. start/current are the
+// engine's own first/latest accumulated point -- rectangle/ellipse
+// render from their normalized bounding box; arrow renders the raw
+// (non-normalized) start->current line directly, since normalizing
+// away direction would point every leftward/upward arrow the wrong
+// way. Reads shapeType/stroke/strokeWidth straight off the style store
+// (the same session cache the tool's own onEnd commits from) rather
+// than taking them as props.
+export function AtlasShapeLivePreview({ points }: { points: AtlasGesturePoint[]; now: number }) {
+  const { shapeType, stroke, strokeWidth } = useAtlasShapeStyle()
+  if (points.length < 1) return null
+  const start = points[0], current = points[points.length - 1]
   if (shapeType === 'arrow') {
     return (
       <svg data-testid="atlas-shape-preview" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>

@@ -63,5 +63,15 @@
     "field": "commit",
     "legalValues": "a function -- see 'How it loads' for why this is the one member that is runtime code, not declaration",
     "meaning": "shapes this noun's own placement input into the artifact CreateBoardObject/CreateCard persists. Each noun's own signature differs; the registry's element type only has to accept every one of them, never call through it generically."
+  },
+  {
+    "field": "sticky",
+    "legalValues": "boolean -- REQUIRED, never optional",
+    "meaning": "does this tool stay armed after a completed gesture (pencil/eraser/laser -- repeated strokes/passes are the point), or disarm after one? useAtlasToolGesture.ts reads this to decide whether a gesture's own onEnd may call ctx.disarm/disarmUnlessLocked at all -- a sticky tool gets no-ops for both. A non-drag tool still declares it, always false."
+  },
+  {
+    "field": "gesture",
+    "legalValues": "an object with onEnd (a function), plus optional onPoint/preview/fadeMs -- or null",
+    "meaning": "a drag-shaped tool's own pure behavior contribution to the ONE platform gesture engine (useAtlasToolGesture.ts): onEnd commits (or no-ops); onPoint accumulates live per-point state (eraser's own hit-testing); preview is a component rendered generically in one overlay slot; fadeMs makes an ephemeral tool's own points age out on a timer instead of clearing at pointerup. null for every tool whose interaction never drags."
   }
 ]

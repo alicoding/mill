@@ -2,8 +2,12 @@ import { PencilIcon } from '@primer/octicons-react'
 import { AtlasService } from '../../shared/bindings'
 import { identityOf, registerNoun, type AtlasToolShape, type AtlasToolStyleDefaults } from '../atlasNounRegistry'
 import type { AtlasStyleField } from '../atlasStyleVocabulary'
-import { PENCIL_COLORS, PENCIL_SIZES } from '../atlasStyleValueStore'
+import { PENCIL_COLORS, PENCIL_SIZES, useAtlasStyleValues } from '../atlasStyleValueStore'
 import { buildPencilStrokeSvg, svgToBase64, type PencilPoint } from '../atlasPencilSvg'
+import { frameContainingPoint } from '../atlasFramePoint'
+import { refreshAtlas } from '../atlasStore'
+import { meetsDragThreshold } from '../useAtlasToolGesture'
+import { AtlasPencilLivePreview } from '../AtlasPencilLivePreview'
 
 const pencilIdentity = identityOf('pencil')
 
@@ -15,10 +19,10 @@ const PENCIL_STYLE_FIELDS: readonly AtlasStyleField[] = [
 ]
 
 // The stroke's own bounding-box origin (atlasPencilSvg.ts's own
-// PencilStrokeSvg.originX/Y) rides along on the artifact so the
-// placement door (useAtlasPencilCreate.ts) can convert exactly that
-// point through screenToFlowPosition -- the card lands where the
-// stroke was drawn, not at an arbitrary free slot.
+// PencilStrokeSvg.originX/Y) rides along on the artifact so this tool's
+// own gesture.onEnd below can convert exactly that point through
+// screenToFlowPosition -- the card lands where the stroke was drawn,
+// not at an arbitrary free slot.
 export interface AtlasPencilArtifact { kind: 'pencil'; title: string; mirrorPath: string; originX: number; originY: number }
 
 // Pencil (goal 0169 slice 3): the drag-to-draw interaction's own
@@ -50,6 +54,27 @@ export const pencilTool = {
   dragBand: false,
   styleDefaults: PENCIL_DEFAULT_STYLE,
   styleFields: PENCIL_STYLE_FIELDS,
+  // Continuous tool: toggleArm's own re-click always disarms it (never
+  // reads a lock flag) -- multiple strokes come from staying armed
+  // across drags, not from locking a discrete placement. The engine's
+  // own gestureDisarmFns makes ctx.disarm/disarmUnlessLocked no-ops
+  // below as a result, so this onEnd never needs to avoid calling them.
+  sticky: true,
+  gesture: {
+    onEnd: (points, ctx) => {
+      if (!meetsDragThreshold(points) || points.length < 2) return
+      const style = useAtlasStyleValues.getState().values.pencil ?? {}
+      const color = (style.color as string) ?? PENCIL_COLORS[0]
+      const size = (style.size as number) ?? PENCIL_SIZES[1]
+      void pencilTool.commit({ points, color, size }).then((artifact) => {
+        if (!artifact) return null
+        const flowOrigin = ctx.screenToFlowPosition({ x: artifact.originX, y: artifact.originY })
+        const targetParentID = frameContainingPoint(ctx.cardBoxes, flowOrigin) ?? ctx.parentID
+        return AtlasService.CreateBoardObject('ink', { mirrorPath: artifact.mirrorPath, title: artifact.title }, { X: flowOrigin.x, Y: flowOrigin.y }, targetParentID)
+      }).then((created) => { if (created) return refreshAtlas() }).catch(console.error)
+    },
+    preview: AtlasPencilLivePreview,
+  },
   commit: async (input: { points: PencilPoint[]; color: string; size: number }): Promise<AtlasPencilArtifact | null> => {
     const doc = buildPencilStrokeSvg(input.points, input.color, input.size)
     if (!doc) return null

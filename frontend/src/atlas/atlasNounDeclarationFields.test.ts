@@ -34,6 +34,8 @@ const EXHAUSTIVE_FIELD_KEYS = {
   boardNodeType: true,
   dragBand: true,
   commit: true,
+  sticky: true,
+  gesture: true,
 } satisfies Record<keyof AtlasToolShape, true>
 
 describe('atlasNounDeclarationFields.json (goal 0211: the extension contract page)', () => {

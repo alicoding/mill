@@ -81,21 +81,6 @@
     box-shadow: inset 0 0 0 3px var(--borderColor-accent-emphasis);
 }
 
-/* The Area tool's own live drag-drawn rectangle (goal 0081 slice A2,
-   LOCKED design section 1): 1.5px dashed border, token-tinted fill at
-   low opacity, positioned in wrapper-local pixels (useAtlasAreaDraw.ts
-   tracks raw screen coordinates; AtlasBoard.tsx subtracts the
-   wrapper's own bounding rect for this style). */
-.marquee {
-    position: absolute;
-    z-index: 4;
-    pointer-events: none;
-    border: 1.5px dashed var(--fgColor-accent);
-    background: var(--bgColor-accent-muted);
-    opacity: 0.85;
-    border-radius: 4px;
-}
-
 /* The capture doors' own transient error (goal 0081 slice A3): a
    dropped/pasted file that couldn't be read -- floats just above the
    creation tray, same bottom-center anchoring, auto-dismissed by its

@@ -1,8 +1,13 @@
 import { ArrowUpRightIcon, CircleIcon, DiamondIcon, SquareIcon } from '@primer/octicons-react'
+import { AtlasService } from '../../shared/bindings'
 import { identityOf, registerNoun, type AtlasToolShape } from '../atlasNounRegistry'
 import type { AtlasStyleField } from '../atlasStyleVocabulary'
-import { PENCIL_COLORS, SHAPE_STROKE_WIDTHS, type AtlasShapeType } from '../atlasStyleValueStore'
+import { PENCIL_COLORS, SHAPE_STROKE_WIDTHS, useAtlasStyleValues, type AtlasShapeType } from '../atlasStyleValueStore'
 import { boxDimensions, shapePayload, shapeTitle, type ShapeStyle } from '../atlasShapeSvg'
+import { frameContainingPoint } from '../atlasFramePoint'
+import { refreshAtlas } from '../atlasStore'
+import { meetsDragThreshold } from '../useAtlasToolGesture'
+import { AtlasShapeLivePreview } from '../AtlasShapeLivePreview'
 
 const shapeIdentity = identityOf('shape')
 
@@ -45,8 +50,9 @@ export interface AtlasShapeArtifact { kind: 'shape'; shapeType: AtlasShapeType; 
 // established; this tool's own contract is "not a shape library, one
 // tool", so the type lives in the style picker rather than three
 // separate tray buttons. startFlow/endFlow are already flow-space
-// (the caller, useAtlasShapeCreate.ts, runs screenToFlowPosition
-// itself) so this stays a pure, synchronous function -- unlike every
+// (the caller, this tool's own gesture.onEnd below, runs
+// screenToFlowPosition itself) so commit() stays a pure, synchronous
+// function -- unlike every
 // other drag-to-draw/paste-or-drop tool, a shape writes no bytes and
 // touches no AtlasService call of its own; CreateBoardObject/
 // SetBoardObjectSize (already generic since goal 0179 S1) are the
@@ -78,6 +84,39 @@ export const shapeTool = {
   // frame gap AtlasShapeContent.tsx's own header documents.
   dragBand: false,
   styleFields: SHAPE_STYLE_FIELDS,
+  // The one discrete drag tool whose OWN lockable flag governs its
+  // repeat mode (goal 0199 part D) -- never sticky itself, so the
+  // engine's own gestureDisarmFns always hands this onEnd the real
+  // disarm functions, and disarmUnlessLocked is what actually respects
+  // a lock.
+  sticky: false,
+  gesture: {
+    onEnd: (points, ctx) => {
+      if (!meetsDragThreshold(points)) return
+      const startFlow = ctx.screenToFlowPosition(points[0])
+      const endFlow = ctx.screenToFlowPosition(points[points.length - 1])
+      const style = useAtlasStyleValues.getState().values.shape ?? {}
+      const artifact = shapeTool.commit({
+        shapeType: (style.shapeType as AtlasShapeType) ?? 'rectangle',
+        style: {
+          fill: (style.fill as string) ?? 'none',
+          stroke: (style.stroke as string) ?? PENCIL_COLORS[0],
+          strokeWidth: (style.strokeWidth as number) ?? SHAPE_STROKE_WIDTHS[1],
+        },
+        startFlow, endFlow,
+      })
+      const targetParentID = frameContainingPoint(ctx.cardBoxes, artifact.originFlow) ?? ctx.parentID
+      void AtlasService.CreateBoardObject('shape', artifact.payload, { X: artifact.originFlow.x, Y: artifact.originFlow.y }, targetParentID)
+        .then(async (created) => {
+          if (artifact.size) await AtlasService.SetBoardObjectSize(created.ID, artifact.size)
+          await refreshAtlas()
+          ctx.onShapeCreated(created.ID)
+          ctx.disarmUnlessLocked()
+        })
+        .catch(console.error)
+    },
+    preview: AtlasShapeLivePreview,
+  },
   commit: (input: { shapeType: AtlasShapeType; style: ShapeStyle; startFlow: { x: number; y: number }; endFlow: { x: number; y: number } }): AtlasShapeArtifact => {
     const dx = input.endFlow.x - input.startFlow.x
     const dy = input.endFlow.y - input.startFlow.y

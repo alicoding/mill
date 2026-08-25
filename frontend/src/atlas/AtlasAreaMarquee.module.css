@@ -1,0 +1,14 @@
+/* The Area tool's own live drag-drawn rectangle (goal 0081 slice A2,
+   LOCKED design section 1): 1.5px dashed border, token-tinted fill at
+   low opacity, positioned in wrapper-local pixels (the gesture engine,
+   useAtlasToolGesture.ts, subtracts the wrapper's own bounding rect for
+   this style before this component ever sees a point). */
+.marquee {
+    position: absolute;
+    z-index: 4;
+    pointer-events: none;
+    border: 1.5px dashed var(--fgColor-accent);
+    background: var(--bgColor-accent-muted);
+    opacity: 0.85;
+    border-radius: 4px;
+}
