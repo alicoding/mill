@@ -59,6 +59,16 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
   // actually resolve to base64 image bytes).
   const isTable = object.Kind === 'table'
   const isDiagram = object.Kind === 'diagram'
+  // dragBand (goal 0206): table's own grid and a diagram's own vendored
+  // pan/zoom viewer both capture pointer events, leaving nothing for a
+  // plain node-drag to reach without a dedicated surface -- image/ink/
+  // shape's whole body already drags, so the band would only be debris
+  // there. Mirrors each tray tool's own dragBand declaration
+  // (atlasNounRegistry.ts) for the four registered nouns; diagram has no
+  // tray descriptor of its own (drop-only, goal 0179 S2) so it can't
+  // declare the field there, but carries the same true answer here --
+  // the same registry gap resizable/boardNodeType already carry for it.
+  const dragBand = isTable || isDiagram
 
   useEffect(() => {
     if (isShape || isTable || isDiagram) return
@@ -148,17 +158,18 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
           }}
         />
       )}
-      {/* The drag surface every Kind gets, declared exactly once here
-          rather than per content renderer (goal 0199's #404
-          correction): AtlasCardProjectionTable.tsx wraps a table's own
+      {/* The drag surface, declared exactly once here rather than per
+          content renderer (goal 0199's #404 correction), but rendered
+          ONLY for Kinds that need it (goal 0206's own correction to
+          that fix): AtlasCardProjectionTable.tsx wraps a table's own
           grid in nodrag, and the vendored drawio viewer captures its
           own pointer events for pan/zoom -- both leave their Kind with
-          NO surface a plain node-drag can reach. image/ink/shape carry
-          no such capture and keep dragging from anywhere (this band
-          only ADDS a surface for them, never narrows one) -- see
-          AtlasBoardObjectNode.module.css's own header comment for why
-          the content area itself stays undecorated. */}
-      <div className={styles.frame} data-testid="atlas-board-object-frame" title={t('boardObject.dragHandleTitle')} />
+          NO surface a plain node-drag can reach otherwise.
+          image/ink/shape's whole body already drags, so an unconditional
+          band there rendered as a floating strip with nothing behind
+          it -- gating on dragBand removes it from those Kinds entirely
+          rather than leaving inert chrome. */}
+      {dragBand && <div className={styles.frame} data-testid="atlas-board-object-frame" title={t('boardObject.dragHandleTitle')} />}
       <div className={styles.content}>{content}</div>
     </div>
   )

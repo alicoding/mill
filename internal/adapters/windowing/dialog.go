@@ -32,6 +32,30 @@ func PickFolder(title, startDir string) (string, error) {
 	return path, nil
 }
 
+// PickImageFile opens the native file picker filtered to recognized
+// image extensions, returning the chosen path -- "" with a nil error
+// when the user cancels. Returns an error when no live app exists. The
+// filter pattern is display-only on some platforms (AllowsOtherFileTypes
+// defaults false, but a user can still type an arbitrary filename on
+// some OS file dialogs), so a caller must still validate the returned
+// extension rather than trusting the filter alone.
+func PickImageFile(title string) (string, error) {
+	app := application.Get()
+	if app == nil {
+		return "", fmt.Errorf("image picker unavailable outside the desktop app")
+	}
+	dialog := app.Dialog.OpenFile().
+		CanChooseFiles(true).
+		CanChooseDirectories(false).
+		SetTitle(title).
+		AddFilter("Images", "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.heic;*.bmp;*.svg")
+	path, err := dialog.PromptForSingleSelection()
+	if err != nil {
+		return "", fmt.Errorf("pick image file: %w", err)
+	}
+	return path, nil
+}
+
 // SaveFileDialog prompts the OS-native save dialog pre-filled with
 // suggestedName, returning the chosen path -- "" with a nil error when
 // the user cancels. Returns an error when no live app exists.

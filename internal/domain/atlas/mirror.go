@@ -34,7 +34,7 @@ var markdownExtensions = map[string]bool{
 var imageMimeTypes = map[string]string{
 	".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
 	".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml",
-	".bmp": "image/bmp",
+	".bmp": "image/bmp", ".heic": "image/heic",
 }
 
 // textExtensions is a conservative allow-list, not every extension a

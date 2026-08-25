@@ -26,6 +26,9 @@ export const cardTool = {
   // is the general card resize (goal 0193).
   resizable: true,
   boardNodeType: 'atlas-note',
+  // Not routed through the shared 'atlas-object' renderer -- always
+  // false, not N/A (atlasNounRegistry.ts's own header comment).
+  dragBand: false,
   commit: (input: { kinds: Kind[]; kindID?: string; title?: string; note?: string }): AtlasCardArtifact => ({
     kind: 'card',
     kindID: input.kindID ?? lastUsedKindID(input.kinds),

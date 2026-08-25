@@ -6,10 +6,11 @@ const MARKDOWN_EXTENSIONS = new Set(['.md', '.markdown'])
 // Kept identical to atlas/mirror.go's imageMimeTypes allow-list (frontend
 // tag derivation and the backend's own MirrorKind classification must
 // name the same set, or a card's face tag and its actual preview kind
-// could disagree). Exported so the image tool's own path input
-// (AtlasImageInput.tsx, goal 0169 slice 2) validates against this exact
-// set rather than a third copy.
-export const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp'])
+// could disagree). Exported so the image tool's own picked-path input
+// (AtlasImageInput.tsx, goal 0169 slice 2) and the native drop routing
+// predicate (useAtlasImageObjectCreate.ts, goal 0206) both validate
+// against this exact set rather than a third copy.
+export const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.heic'])
 
 // Kept identical to atlas/mirror.go's textExtensions allow-list. Not
 // one of ADR-0043's three named migrated units, but required for

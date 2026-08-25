@@ -1,46 +1,55 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Text, TextInput } from '@primer/react'
+import { Button, Text } from '@primer/react'
+import { AtlasService } from '../shared/bindings'
 import { readClipboardImageFile } from '../shared/clipboardRead'
 import { IMAGE_EXTENSIONS } from './atlasUnitMirror'
 import { extensionOf } from './unitRegistry'
 import styles from './AtlasImageInput.module.css'
 
 // The image tool's own popover content (goal 0169 slice 2's
-// paste-or-drop proof): a path/URL field that works identically over
-// plain http (frontend.md's secure-context rule -- this never touches
-// navigator.clipboard), plus a real paste gesture into the same field
-// that lands a clipboard image directly. Rendering the created card is
-// the existing mirror-image unit's job (ADR-0043); this component only
-// resolves WHICH path or file to hand off.
+// paste-or-drop proof, re-pointed by goal 0206's own affordance fix): a
+// native OS file picker plus a real paste gesture, never a typed path
+// field -- a filesystem path is developer vocabulary, not something a
+// user is asked to type (ux-writing.md). Rendering the created object
+// is the placement door's job (useAtlasImageCreate.ts); this component
+// only resolves WHICH path or file to hand off.
 export function AtlasImageInput({ onSubmitPath, onSubmitFile, onDone }: {
   onSubmitPath: (path: string) => Promise<void>
   onSubmitFile: (file: File) => Promise<void>
   onDone: () => void
 }) {
   const { t } = useTranslation('atlas')
-  const [value, setValue] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const submitPath = () => {
-    const trimmed = value.trim()
-    if (!trimmed) {
-      setError(t('imageInput.empty'))
-      return
-    }
-    if (!IMAGE_EXTENSIONS.has(extensionOf(trimmed))) {
-      setError(t('imageInput.invalidExtension'))
-      return
-    }
+  const submitPath = (path: string) => {
     setBusy(true)
     setError(null)
-    onSubmitPath(trimmed)
+    onSubmitPath(path)
       .then(onDone)
       .catch(() => {
         setBusy(false)
         setError(t('imageInput.addFailed'))
       })
+  }
+
+  const pickFile = () => {
+    setError(null)
+    AtlasService.PickImageFile()
+      .then((path) => {
+        if (!path) return // cancelled -- popover stays open, nothing submitted
+        // The native dialog's own extension filter is display-only on
+        // some platforms, so a picked file is still re-checked here
+        // (windowing.PickImageFile's own doc comment carries the same
+        // constraint).
+        if (!IMAGE_EXTENSIONS.has(extensionOf(path))) {
+          setError(t('imageInput.invalidExtension'))
+          return
+        }
+        submitPath(path)
+      })
+      .catch(() => setError(t('imageInput.addFailed')))
   }
 
   const submitFile = (file: File) => {
@@ -56,30 +65,26 @@ export function AtlasImageInput({ onSubmitPath, onSubmitFile, onDone }: {
 
   return (
     <div className={styles.input} data-testid="atlas-image-input">
-      <TextInput
-        data-testid="atlas-image-path"
-        placeholder={t('imageInput.pathPlaceholder')}
-        aria-label={t('imageInput.pathLabel')}
-        value={value}
-        disabled={busy}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') submitPath()
-        }}
+      <Button size="small" variant="primary" block disabled={busy} onClick={pickFile} data-testid="atlas-image-pick">
+        {t('imageInput.pick')}
+      </Button>
+      <div
+        className={styles.pasteZone}
+        data-testid="atlas-image-paste-zone"
+        tabIndex={0}
+        autoFocus
         onPaste={(e) => {
           const file = readClipboardImageFile(e.clipboardData)
           if (!file) return
           e.preventDefault()
           submitFile(file)
         }}
-      />
-      <Text size="small" className={styles.hint} data-testid="atlas-image-paste-hint">
-        {t('imageInput.pasteHint')}
-      </Text>
+      >
+        <Text size="small" className={styles.hint} data-testid="atlas-image-paste-hint">
+          {t('imageInput.pasteHint')}
+        </Text>
+      </div>
       {error && <Text size="small" className={styles.error} data-testid="atlas-image-error">{error}</Text>}
-      <Button size="small" variant="primary" block disabled={busy} onClick={submitPath} data-testid="atlas-image-add">
-        {t('imageInput.add')}
-      </Button>
     </div>
   )
 }

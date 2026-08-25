@@ -1,11 +1,8 @@
 {
   "imageInput": {
-    "pathLabel": "Path",
-    "pathPlaceholder": "/path/to/image.png",
+    "pick": "Choose an image…",
     "pasteHint": "Or paste an image (⌘V)",
-    "add": "Add",
-    "empty": "Enter a path, or paste an image.",
-    "invalidExtension": "Enter a path to an image file.",
+    "invalidExtension": "Choose an image file.",
     "addFailed": "Couldn't add that image."
   }
 }

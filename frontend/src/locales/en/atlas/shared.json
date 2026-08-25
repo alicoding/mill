@@ -3,7 +3,7 @@
   "cancel": "Cancel",
   "breadcrumbRoot": "All spaces",
   "breadcrumbSiblingsAriaLabel": "Other places at this level",
-  "emptySpace": "Nothing here yet. Add a card to get started.",
+  "emptySpace": "Nothing here yet. Drop a file, pick a tool, or add a card.",
   "viewMode": {
     "ariaLabel": "View mode",
     "shelves": "Auto-arrange",

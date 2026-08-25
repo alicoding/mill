@@ -43,6 +43,14 @@ test('a dropped .drawio file renders as a board object through the vendored view
   await expect(diagramObject).toBeVisible()
   await expect(diagramObject.locator('svg')).toBeVisible()
 
+  // dragBand (goal 0206): diagram carries no tray descriptor of its own
+  // (drop-only), so its dragBand: true fact can't be covered by
+  // atlasBoardSurfaceConformance.test.ts's static registry check the
+  // way table's can -- this is that fact's own real proof. The vendored
+  // drawio viewer captures its own pointer events for pan/zoom, so the
+  // frame band is diagram's ONLY drag surface.
+  await expect(diagramObject.getByTestId('atlas-board-object-frame')).toBeVisible()
+
   // Promote to card: the SAME mirrorPath rides onto the new card, which
   // renders through the identical .drawio unit a native drop's own
   // card-door always used.

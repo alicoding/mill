@@ -461,6 +461,21 @@ export function MirrorContent(cardID: string): $CancellablePromise<atlas$0.Mirro
 }
 
 /**
+ * MirrorImageFromPath copies srcPath's own bytes into a fresh file under
+ * the captures directory, returning the new file's path -- the
+ * data-safety half of a native image drop (goal 0206): the OS may hand
+ * a drop event a temp/promise path under /var/folders (a drag from a
+ * screenshot thumbnail or another app materializes a file promise
+ * there) that it reclaims once the drag completes, so a drop-created
+ * object's own MirrorPath must point at a copy Mill owns, never the
+ * ephemeral original. Reuses SaveImageBytes's own writer/validation
+ * rather than a second copy of either. Bounded by fileread.MaxBytes.
+ */
+export function MirrorImageFromPath(srcPath: string, title: string): $CancellablePromise<string> {
+    return $Call.ByID(3133722493, srcPath, title);
+}
+
+/**
  * MirrorRawBytes returns cardID's mirrored file as base64-encoded raw
  * bytes, regardless of MirrorKind (the Export-as "Original file"
  * default every mirror-bearing card gets, ADR-0043 §3/goal 0133).
@@ -587,6 +602,16 @@ export function Perspectives(): $CancellablePromise<atlas$0.Perspective[] | null
  */
 export function PickFolder(startDir: string): $CancellablePromise<string> {
     return $Call.ByID(3623587391, startDir);
+}
+
+/**
+ * PickImageFile opens the native image-file picker (goal 0206: a typed
+ * path string is developer vocabulary, not a user-facing affordance) --
+ * filtered to recognized image extensions. Returns "" (no error) when
+ * the user cancels.
+ */
+export function PickImageFile(): $CancellablePromise<string> {
+    return $Call.ByID(913238);
 }
 
 /**

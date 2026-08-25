@@ -37,6 +37,9 @@ export const pencilTool = {
   // 'atlas-object' renderer -- same resize/drag-band coverage as image.
   resizable: true,
   boardNodeType: 'atlas-object',
+  // An ink stroke's whole body already drags -- the shared band would
+  // only be debris here (goal 0206's own DESIGN DECIDED table).
+  dragBand: false,
   styleDefaults: PENCIL_DEFAULT_STYLE,
   StylePicker: AtlasPencilStylePicker,
   commit: async (input: { points: PencilPoint[]; color: string; size: number }): Promise<AtlasPencilArtifact | null> => {
