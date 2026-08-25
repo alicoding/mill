@@ -27,6 +27,35 @@ git write or build in the main checkout, check `git branch --show-current`
 and `git status` — if it is not main or the tree is dirty, an agent owns it;
 deploy instead by building from a throwaway worktree at origin/main.
 
+**Concurrent dispatch is the default; serialization must earn its keep
+(goal 0200).** Claude Code's own docs make worktree-isolated parallel
+sessions the standard workflow and file-ownership partitioning the
+conflict strategy; they are silent on machine resources, so that cap is
+Mill's own. Three constraints, three rules — never one blanket
+serialization:
+- **Touch-sets, not turns.** The brief's design contract already
+  predicts each build's touch-set; dispatch concurrently whenever
+  predicted sets are disjoint outside the known hub files (generated
+  `frontend/bindings/**`, shared Atlas chrome). Dependent slices of one
+  arc sequence as dependencies, not policy. Measured on the 7-PR arc
+  #392–#404: 15 of 21 pairs disjoint outside hubs; 5 of the 6 overlaps
+  were same-arc dependent slices.
+- **Hub files get a merge strategy, not a mutex.** Bindings conflicts
+  resolve by regenerating on rebase (`wails3 generate bindings`), never
+  hand-merged; 0180's per-noun registration removed the other fixable
+  hub. Single-file brushes are rebase-trivial — the pr-shepherd handles
+  them.
+- **A verification lock, not a build lock.** Agents author in parallel;
+  heavy gates (Playwright e2e, `go test -race`) run ONE suite at a time
+  on this 16GB machine — the documented freeze was stacked gate suites,
+  never parallel authoring. Cap 2–3 concurrent build agents; pause
+  dispatches under ~2GB free.
+- **The nested docs repo stays effectively single-writer** — the
+  staging rule below governs it.
+Merge ordering stays auto-merge + shepherd rebase. GitHub's merge queue
+is available (public repo) but not adopted — revisit if two
+individually-green PRs ever combine red on main.
+
 **In the nested docs repo, stage only the files you changed — never
 `git add -A` there.** Worktrees isolate the mill checkout but not the nested
 `docs/` repo: it lives at one physical path every concurrently-running agent
