@@ -36,6 +36,41 @@
     cursor: crosshair;
 }
 
+/* The armed cursor must win AT THE POINTER over every per-node cursor
+   a board object/card/note declares for itself (goal 0208 defect 1):
+   `cursor` is only ever overridden by a rule that matches the element
+   ITSELF, never inherited from an ancestor no matter how specific --
+   AtlasBoardObjectNode.module.css's `.object { cursor: pointer }` sat
+   underneath the crosshair rule above for exactly that reason, so a
+   large fill-none shape's own hover area silently read as "select",
+   not "draw". The universal descendant selector reaches every current
+   and future node's own content without a second declaration per Kind
+   (a sixth Kind inherits by existing, same as the drag-band frame).
+   One declaration, one precedent: while armed, the tool cursor wins
+   everywhere, including over a selected node's own resize handles --
+   the explicit `.react-flow__resize-control` rule below outguns React
+   Flow's own same-specificity `.left`/`.right`/`.top.left` cursor
+   rules regardless of stylesheet import order. */
+.board[data-armed='true'] :global(.react-flow__node) * {
+    cursor: crosshair;
+}
+.board[data-armed='true'] :global(.react-flow__node .react-flow__resize-control) {
+    cursor: crosshair;
+}
+
+/* Space-hold panning (goal 0208 defect 2): while the pointer capture
+   handlers below skip the armed tool's own gesture (AtlasBoard.tsx's
+   onPointerDownCapture), React Flow's OWN panActivationKeyCode
+   ('Space', its own default) already re-enables pane panning and adds
+   its `draggable`/`dragging` classes -- this only needs to beat the
+   crosshair rule above, which otherwise wins on source order. */
+.board[data-armed='true'][data-panning='true'] :global(.react-flow__pane) {
+    cursor: grab;
+}
+.board[data-armed='true'][data-panning='true'] :global(.react-flow__pane.dragging) {
+    cursor: grabbing;
+}
+
 /* A board-edge signal an armed tool carries independent of where the
    pointer or the tray sits (goal 0199 part D, contract item 5): the
    tray highlight and the crosshair above both live where the user's

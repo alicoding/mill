@@ -299,3 +299,99 @@ test('draw, selected, drag by body, resize by handle, survives reload -- no Esca
   await deleteViaContextMenu(page, reloaded)
   await expect(reloaded).toHaveCount(0)
 })
+
+// Goal 0208 defect 4, traced live: React Flow's own elevateNodesOnSelect
+// (default true, never overridden until this goal) bumps whichever
+// node is SELECTED to a z far above any declared value -- a just-drawn
+// shape stays selected (goal 0199's own one-shot contract), so ink
+// UNDER it painted BEHIND it despite OBJECT_Z_INDEX ranking ink above
+// shape (confirmed live: the selected shape's rendered node carried
+// style.zIndex "1000" against ink's own declared "1"). Ink is drawn
+// FIRST here, the shape SECOND, on purpose: React Flow fires a real
+// deselecting pane click at the end of any drag that starts on empty
+// canvas (the nearest-common-ancestor rule for a mousedown/mouseup
+// pair with different targets), which a continuous tool like pencil
+// has no mechanism to recover from -- but Shape's own commit
+// (onShapeCreated, goal 0199) RE-SELECTS the object it just made
+// asynchronously, after that click has already resolved, so drawing
+// the shape LAST is what makes "still selected" the real, deterministic
+// end state -- matching the reported sequence of draw a shape, then
+// draw ink (0199 already proved shape's own selection survives past
+// its own commit; this only adds ink underneath it).
+// Pins the fixed property directly against each node's own RENDERED
+// z-index (what actually decides paint order), not just the declared
+// OBJECT_Z_INDEX map, since a passing map with a broken render would
+// otherwise go unnoticed -- deliberately not a document.elementFromPoint
+// probe at one pixel, which flaked against the free-hand stroke's own
+// sub-pixel thickness.
+test('ink under a shape paints above it, even while the shape stays selected', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  await page.getByTestId('atlas-tray-pencil').click()
+  await dragBetween(page, await boardPoint(board, 0.08, 0.18), await boardPoint(board, 0.32, 0.18))
+  const ink = page.locator('[data-testid="atlas-board-object"][data-object-kind="ink"]')
+  await expect(ink).toHaveCount(1)
+  const inkWrapper = page.locator('.react-flow__node').filter({ has: ink })
+  await page.keyboard.press('Escape')
+
+  await page.getByTestId('atlas-tray-shape').click()
+  await dragBetween(page, await boardPoint(board, 0.1, 0.1), await boardPoint(board, 0.3, 0.25))
+  const shapes = shapeObjects(page)
+  await expect(shapes).toHaveCount(1)
+  const shapeWrapper = page.locator('.react-flow__node').filter({ has: shapes.first() })
+  // Left selected by goal 0199's own one-shot contract -- exactly the
+  // state elevateNodesOnSelect used to break ink's own z tier against.
+  await expect(shapeWrapper).toHaveClass(/selected/)
+
+  const inkZ = Number(await inkWrapper.evaluate((el) => (el as HTMLElement).style.zIndex || '0'))
+  const shapeZ = Number(await shapeWrapper.evaluate((el) => (el as HTMLElement).style.zIndex || '0'))
+  expect(inkZ, 'ink must paint above a shape it crosses, even while the shape stays selected').toBeGreaterThan(shapeZ)
+
+  await deleteViaContextMenu(page, ink)
+  await deleteViaContextMenu(page, shapes.first())
+  await expect(shapes).toHaveCount(0)
+})
+
+// Goal 0208 defect 1's own precedence rule ("armed tool wins
+// everywhere"): a selected shape's resize handles carry their own
+// directional resize cursor when nothing is armed, but must read as
+// the armed tool the instant one is -- otherwise a user resizing,
+// then reaching for the pencil without deselecting, would see a
+// misleading resize cursor over what is now a draw surface.
+test('the armed cursor beats a selected shape\'s own resize-handle cursor, and the handle\'s cursor returns once disarmed', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  await page.getByTestId('atlas-tray-shape').click()
+  await dragBetween(page, await boardPoint(board, 0.05, 0.1), await boardPoint(board, 0.2, 0.25))
+  const shapes = shapeObjects(page)
+  await expect(shapes).toHaveCount(1)
+  const wrapper = page.locator('.react-flow__node').filter({ has: shapes.first() })
+  await expect(wrapper).toHaveClass(/selected/)
+
+  const handle = page.locator('.react-flow__resize-control.handle.top.right')
+  await expect(handle).toBeVisible()
+
+  // Shape disarmed itself on commit (goal 0199) -- nothing is armed,
+  // so the handle's own resize cursor applies.
+  await handle.hover()
+  expect(await handle.evaluate((el) => getComputedStyle(el).cursor)).toBe('nesw-resize')
+
+  // Arm pencil while the shape stays selected: the armed tool wins
+  // everywhere, including over the handle it's hovering.
+  await page.getByTestId('atlas-tray-pencil').click()
+  await handle.hover()
+  expect(await handle.evaluate((el) => getComputedStyle(el).cursor)).toBe('crosshair')
+
+  await page.keyboard.press('Escape')
+  await handle.hover()
+  expect(await handle.evaluate((el) => getComputedStyle(el).cursor)).toBe('nesw-resize')
+
+  await deleteViaContextMenu(page, shapes.first())
+  await expect(shapes).toHaveCount(0)
+})

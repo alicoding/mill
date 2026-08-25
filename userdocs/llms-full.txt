@@ -333,7 +333,9 @@ into.
   space you can move, select, and delete, and ink stays visually on
   top of an image so you can mark one up. Nothing becomes a card until
   you ask: right-click either one and choose "Promote to card…" to
-  give it a title and a kind.
+  give it a title and a kind. The pointer always shows which tool is
+  armed, over anything on the board. Hold Space to pan the board
+  without drawing, and press Escape to put a drawing tool away.
 - **Copy and paste to duplicate.** Select cards or notes and press
   ⌘C, then ⌘V — copies appear where your cursor is, filed into
   whatever area it's over. A copy is just the card itself; when the

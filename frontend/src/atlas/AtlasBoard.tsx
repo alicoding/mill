@@ -24,6 +24,7 @@ import { AtlasEraserLiveTrail } from './AtlasEraserLiveTrail'
 import { AtlasLaserTrail } from './AtlasLaserTrail'
 import { AtlasShapeLivePreview } from './AtlasShapeLivePreview'
 import { useAtlasDragTools } from './useAtlasDragTools'
+import { useAtlasPanActivation } from './useAtlasPanActivation'
 import { useAtlasDragFiling, type FrameBox } from './useAtlasDragFiling'
 import { AtlasDragHighlightContext } from './atlasDragHighlightContext'
 import type { AtlasBoardInnerProps } from './atlasBoardInnerProps'
@@ -84,14 +85,12 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   const wrapperRef = useRef<HTMLDivElement>(null)
   const { fitBounds, fitView, getNodesBounds, getViewport, setViewport, screenToFlowPosition } = useReactFlow()
 
-  // Free-mode overlap resolution (goal 0073, the growth class): a
-  // frame's size is DERIVED from its children, so a clear layout can
-  // start overlapping with nobody having moved a card. Resolved with
-  // a deterministic minimal-displacement separation
-  // (atlasOverlapResolution) and PERSISTED below, so the nudge is
-  // stable across reloads. Leaf-on-leaf overlaps stay hand placement.
-  // Auto-arrange rows wrap at the board's real width; the layout
-  // constant is the floor so a narrow pane still wraps.
+  // Free-mode overlap resolution (goal 0073, the growth class): a frame's size is DERIVED
+  // from its children, so a clear layout can start overlapping with nobody having moved a
+  // card. Resolved with a deterministic minimal-displacement separation (atlasOverlapResolution)
+  // and PERSISTED below, so the nudge is stable across reloads. Leaf-on-leaf overlaps stay hand
+  // placement. Auto-arrange rows wrap at the board's real width; the layout constant is the floor
+  // so a narrow pane still wraps.
   const [boardWidth, setBoardWidth] = useState(0)
   useEffect(() => {
     const el = wrapperRef.current
@@ -104,9 +103,8 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     return () => observer.disconnect()
   }, [])
 
-  // The board's arteries, resolved once and shared: the edges memo
-  // below renders them; Auto-arrange consumes them as the adjacency
-  // that seats linked things beside each other.
+  // The board's arteries, resolved once and shared: the edges memo below renders them;
+  // Auto-arrange consumes them as the adjacency that seats linked things beside each other.
   const arteries = useMemo(() => resolveBoardEdges(links, new Set(cards.map((c) => c.ID)), allCards), [links, cards, allCards])
 
   const { freeMoves } = useAtlasArrange({ cards, allCards, arteries, boardWidth, arrangeRequest })
@@ -317,9 +315,8 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
 
   const r = areaDraw.dragLocalRect, marqueeStyle = r ? { left: r.x, top: r.y, width: r.width, height: r.height } : null
 
-  // Eraser/Laser/Shape's own arming+gesture hooks and the five-way
-  // activeDrag resolution live in their own file (500-line seam).
-  // onShapeCreated: a draw leaves the shape selected, disarming unless locked (goal 0199).
+  // Eraser/Laser/Shape's own arming+gesture hooks and the five-way activeDrag resolution
+  // live in their own file (500-line seam); onShapeCreated leaves a draw selected, disarming unless locked (goal 0199).
   const onShapeCreated = useCallback((objectID: string) => {
     selection.selectObject(objectID)
     creation.disarmUnlessLocked()
@@ -330,6 +327,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     isFree, readOnly, armedTool: creation.armedTool, screenToFlowPosition, topLevelBoxes, noteBoxes, wrapperRef, parentID,
     onDeleteSelection, onShapeCreated, areaArmed, areaDraw, pencilArmed, pencilDraw,
   })
+  const pan = useAtlasPanActivation(activeDrag)
 
   return (
     <div
@@ -338,6 +336,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       className={styles.board}
       data-testid="atlas-board"
       data-armed={creation.armedTool !== null}
+      data-panning={pan.panning}
       data-file-drop-target
       data-file-drop-context={FILE_DROP_CONTEXT_BOARD}
       onDragOver={(e) => {
@@ -346,10 +345,10 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       onDrop={onCanvasDrop}
       onPointerDownCapture={(e) => {
         selection.snapshotSelection()
-        activeDrag?.onPointerDown(e)
+        pan.onPointerDown?.(e)
       }}
-      onPointerMoveCapture={activeDrag?.onPointerMove}
-      onPointerUpCapture={activeDrag?.onPointerUp}
+      onPointerMoveCapture={pan.onPointerMove}
+      onPointerUpCapture={pan.onPointerUp}
     >
       <AtlasDragHighlightContext.Provider value={dragFiling.hoveredFrameID}>
       <ReactFlow
@@ -380,12 +379,14 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
         multiSelectionKeyCode="Shift"
         nodesDraggable={isFree && !readOnly}
         zoomOnDoubleClick={false}
+        // Selection must never override OBJECT_Z_INDEX's declared tier
+        // (atlasBuildBoardObjectNodes.ts's own comment has the defect).
+        elevateNodesOnSelect={false}
         panOnDrag={!anyDragToolArmed}
-        // Un-filing (goal 0081 slice A2) means dragging a card TOWARD
-        // and past the board's own visible edge, on purpose -- React
-        // Flow's own default auto-pan-while-dragging would fight that
-        // gesture, sliding the content back under the cursor instead
-        // of ever letting it cross the edge.
+        // Un-filing (goal 0081 slice A2) means dragging a card TOWARD and past the board's
+        // own visible edge, on purpose -- React Flow's own default auto-pan-while-dragging
+        // would fight that gesture, sliding the content back under the cursor instead of
+        // ever letting it cross the edge.
         autoPanOnNodeDrag={false}
         onSelectionChange={onSelectionChange}
         onSelectionContextMenu={selection.onSelectionContextMenu}

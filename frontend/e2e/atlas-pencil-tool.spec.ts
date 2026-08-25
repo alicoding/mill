@@ -128,3 +128,139 @@ test('the pencil\'s colour choice survives a disarm/re-arm cycle and seeds the n
   }
   await expect(ink).toHaveCount(0)
 })
+
+// Goal 0208 defect 1 (traced): the pane's own crosshair cursor never
+// reached a board object, since AtlasBoardObjectNode.module.css's
+// `.object { cursor: pointer }` sits on the element itself, which
+// always wins over an ancestor rule regardless of that rule's
+// specificity. The armed cursor must win at the exact surface the
+// owner is pointing at, then hand it back the instant the tool
+// disarms.
+test('the armed pencil cursor reads crosshair over a card, and the card\'s own pointer cursor returns once disarmed', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  const card = page.getByTestId('atlas-note-card').first()
+  await expect(card).toBeVisible()
+  await card.hover()
+  expect(await card.evaluate((el) => getComputedStyle(el).cursor)).toBe('pointer')
+
+  const pencilTool = page.getByTestId('atlas-tray-pencil')
+  await pencilTool.click()
+  await expect(pencilTool).toHaveAttribute('data-armed', 'true')
+  await card.hover()
+  expect(await card.evaluate((el) => getComputedStyle(el).cursor)).toBe('crosshair')
+
+  await pencilTool.click()
+  await expect(pencilTool).toHaveAttribute('data-armed', 'false')
+  await card.hover()
+  expect(await card.evaluate((el) => getComputedStyle(el).cursor)).toBe('pointer')
+})
+
+// Goal 0208 defect 5: verified live against unmodified code that
+// useAtlasCreation.ts's own Escape listener already disarms ANY tool
+// unconditionally -- this pins that behaviour as a committed test
+// rather than leaving it proven only by hand, and extends 0199's own
+// "no Escape anywhere" proof (atlas-pencil-tool.spec.ts's file-level
+// diff) with the one continuous-tool case it never covered.
+test('Escape disarms the pencil back to select', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  const pencilTool = page.getByTestId('atlas-tray-pencil')
+  await pencilTool.click()
+  await expect(pencilTool).toHaveAttribute('data-armed', 'true')
+
+  await page.keyboard.press('Escape')
+  await expect(pencilTool).toHaveAttribute('data-armed', 'false')
+  await expect(board).toHaveAttribute('data-armed', 'false')
+})
+
+// Goal 0208 defect 2: React Flow's own panActivationKeyCode ('Space',
+// its default, adopted rather than hand-rolled) re-enables pane
+// panning the instant Space is held, once this board's own capture-
+// phase pointer handlers step aside for it (useAtlasPanActivation.ts).
+test('holding Space pans the board without drawing while the pencil stays armed', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  const pencilTool = page.getByTestId('atlas-tray-pencil')
+  await pencilTool.click()
+  await expect(pencilTool).toHaveAttribute('data-armed', 'true')
+
+  const ink = inkObjects(page)
+  const viewport = page.locator('.react-flow__viewport')
+  const before = await viewport.evaluate((el) => el.style.transform)
+
+  const box = await board.boundingBox()
+  if (!box) throw new Error('board has no bounding box')
+  await board.hover({ position: { x: box.width * 0.5, y: box.height * 0.5 } })
+  await page.keyboard.down('Space')
+  await expect(board).toHaveAttribute('data-panning', 'true')
+  await expect(page.locator('.react-flow__pane')).toHaveClass(/draggable/)
+
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width * 0.65, box.y + box.height * 0.6, { steps: 10 })
+  await page.mouse.up()
+  await page.keyboard.up('Space')
+  await expect(board).toHaveAttribute('data-panning', 'false')
+
+  // The drag panned, it never drew.
+  await expect(ink).toHaveCount(0)
+  await expect.poll(() => viewport.evaluate((el) => el.style.transform)).not.toBe(before)
+})
+
+// Goal 0208 defect 3, traced live: atlasStore.ts's refreshAtlas()
+// refetches every board object on any commit, handing each one a
+// fresh Payload reference even when unchanged; AtlasBoardObjectNode.tsx
+// depended on that whole object, re-firing its mirror-content fetch
+// (and the synchronous setSrc(null) ahead of it) for every ALREADY-
+// rendered ink node on every later stroke's commit -- confirmed via a
+// live MutationObserver showing the first stroke's own <img> mutating
+// when a second, unrelated stroke committed. Pins the fixed property
+// directly: zero DOM mutations on an untouched stroke's own object
+// when a later one commits.
+test('committing a second stroke causes no DOM mutation on the first stroke\'s own object', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  await page.getByTestId('atlas-tray-pencil').click()
+  const ink = inkObjects(page)
+
+  await dragBetween(page, await boardPoint(board, 0.05, 0.1), await boardPoint(board, 0.15, 0.2))
+  await expect(ink).toHaveCount(1)
+  await expect(ink.first().locator('img')).toBeVisible()
+
+  await ink.first().evaluate((el) => {
+    const w = window as unknown as { __atlas0208Mutations: MutationRecord[] }
+    w.__atlas0208Mutations = []
+    const observer = new MutationObserver((records) => w.__atlas0208Mutations.push(...records))
+    observer.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] })
+  })
+
+  // Stays in the board's own TOP band, clear of the style picker's own
+  // popover (atlas-shape-tool.spec.ts's own comment documents the same
+  // hazard) -- a drag start point landing on that popover never
+  // reaches the board's pointer-capture handler at all.
+  await dragBetween(page, await boardPoint(board, 0.5, 0.1), await boardPoint(board, 0.6, 0.2))
+  await expect(ink).toHaveCount(2)
+
+  const mutationCount = await page.evaluate(() => (window as unknown as { __atlas0208Mutations: MutationRecord[] }).__atlas0208Mutations.length)
+  expect(mutationCount, 'a later stroke\'s commit must not touch an already-rendered stroke\'s own DOM').toBe(0)
+
+  for (let i = 0; i < 2; i++) {
+    await ink.first().click({ button: 'right' })
+    const menu = contextMenu(page)
+    await expect(menu).toBeVisible()
+    await menu.getByText('Delete', { exact: true }).click()
+  }
+  await expect(ink).toHaveCount(0)
+})
