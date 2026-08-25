@@ -16,16 +16,16 @@
     "fingerprint": "6a2f994a2ede1a2279cd40f52303ffff50b58cdcc8f900263424c5981cf4bb70"
   },
   "atlascard:atlas-card-getting-started": {
-    "seedRevision": 7,
-    "fingerprint": "38840ec73f4cd689b054b5238bd61366fb947b5b6d93bd4f44b25cc639a5f3f5"
+    "seedRevision": 6,
+    "fingerprint": "effb71d0787a09bad0e365466db71755a6175b2a8eef259feaf7b9c9545c5717"
   },
   "atlascard:atlas-card-my-space": {
     "seedRevision": 6,
     "fingerprint": "c23be24287b0d6141a57803b043b56b298b39bd17719979d8978ba912b60745d"
   },
   "atlascard:atlas-card-scratchpad": {
-    "seedRevision": 7,
-    "fingerprint": "ffefdf0ece5a9a4c200df5da430bdfa8954a57b0a8ff7ac768f8346689910840"
+    "seedRevision": 6,
+    "fingerprint": "ef3ab889a8314790ea3b15f3dffb18be651942c7b92bd2dca1b393eeffac6811"
   },
   "atlaskind:atlas-kind-component": {
     "seedRevision": 1,
@@ -52,8 +52,8 @@
     "fingerprint": "8ddd7806e05137eda5b4ed3bb52af907a2679e1184e069ad21eeacf52104cc89"
   },
   "atlaskind:atlas-kind-topic": {
-    "seedRevision": 4,
-    "fingerprint": "fae15122f321c814d14ac7f68dda12eef7d1f707cee967f2fac93e956c4ce195"
+    "seedRevision": 3,
+    "fingerprint": "45850be9ac8a07a03eb4a1db7a6989291c02df10a4155b9dbdd07be18427855c"
   },
   "atlaslink:atlas-link-contact-to-document": {
     "seedRevision": 1,
