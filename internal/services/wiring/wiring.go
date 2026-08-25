@@ -7,10 +7,12 @@
 package wiring
 
 import (
+	"context"
 	"errors"
 	"log"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/alicoding/mill/internal/adapters/buildinfo"
 	"github.com/alicoding/mill/internal/adapters/credential"
@@ -22,17 +24,53 @@ import (
 	"github.com/alicoding/mill/internal/domain/notification"
 	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/atlassvc"
+	"github.com/alicoding/mill/internal/services/backupsvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
 	"github.com/alicoding/mill/internal/services/executionsvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/mcpauditsvc"
+	"github.com/alicoding/mill/internal/services/mcpsvc"
 	"github.com/alicoding/mill/internal/services/notificationsvc"
 	"github.com/alicoding/mill/internal/services/remoteauthsvc"
 	"github.com/alicoding/mill/internal/services/secretsvc"
 	"github.com/alicoding/mill/internal/services/settingssvc"
 	"github.com/alicoding/mill/internal/services/triggersvc"
 )
+
+// shutdownTimeout bounds every step of RunShutdown below that talks to
+// something with its own graceful-stop sequence -- the app is already
+// tearing down by the time any of these run, so no single step may
+// hang the process exit indefinitely.
+const shutdownTimeout = 5 * time.Second
+
+// RunShutdown runs every best-effort teardown step main.go's own
+// post-app.Run() sequence needs, in order, logging (never failing
+// loudly) on each step's own error -- a step's failure must never
+// block the rest, since the process is exiting either way.
+func RunShutdown(logger *slog.Logger, executionService *executionsvc.ExecutionService, backupService *backupsvc.BackupService, millMCPService *mcpsvc.MillMCPService, mcpAuditService *mcpauditsvc.MCPAuditService, atlasService *atlassvc.AtlasService) {
+	// Flush any in-flight step checkpoints before the process actually
+	// exits.
+	if err := executionService.Shutdown(shutdownTimeout); err != nil {
+		logger.Error("execution runtime shutdown", "error", err)
+	}
+	// docs/goals/0065 item 4: one last snapshot on a clean shutdown,
+	// skipped if a recent one already ran.
+	if err := backupService.BackupOnCleanShutdown(); err != nil {
+		logger.Error("clean-shutdown backup", "error", err)
+	}
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+	if err := millMCPService.Shutdown(shutdownCtx); err != nil {
+		logger.Error("mill MCP server shutdown", "error", err)
+	}
+	if err := mcpAuditService.Close(); err != nil {
+		logger.Error("mcp audit service shutdown", "error", err)
+	}
+	// No watcher goroutine outlives the process (goal 0194's live
+	// round-trip slice).
+	atlasService.CloseAllMirrorWatches()
+}
 
 // WireAtlasProjections connects AtlasService's recognition (goal 0126)
 // and List-projection (goal 0105) seams to Configure's and

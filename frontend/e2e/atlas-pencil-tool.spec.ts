@@ -198,16 +198,13 @@ test('holding Space pans the board without drawing while the pencil stays armed'
   const viewport = page.locator('.react-flow__viewport')
   const before = await viewport.evaluate((el) => el.style.transform)
 
-  const box = await board.boundingBox()
-  if (!box) throw new Error('board has no bounding box')
-  await board.hover({ position: { x: box.width * 0.5, y: box.height * 0.5 } })
+  const start = await boardPoint(board, 0.5, 0.5)
+  await start.locator.hover({ position: start.position })
   await page.keyboard.down('Space')
   await expect(board).toHaveAttribute('data-panning', 'true')
   await expect(page.locator('.react-flow__pane')).toHaveClass(/draggable/)
 
-  await page.mouse.down()
-  await page.mouse.move(box.x + box.width * 0.65, box.y + box.height * 0.6, { steps: 10 })
-  await page.mouse.up()
+  await dragBetween(page, start, await boardPoint(board, 0.65, 0.6))
   await page.keyboard.up('Space')
   await expect(board).toHaveAttribute('data-panning', 'false')
 

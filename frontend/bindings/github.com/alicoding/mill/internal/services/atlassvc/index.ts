@@ -20,6 +20,7 @@ export type {
     FolderScanResult,
     ImportFolderSuggestionsRequest,
     ListProjection,
+    MirrorChanged,
     OfferedAction,
     PasteResult,
     ProjectionColumn,

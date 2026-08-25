@@ -14,7 +14,10 @@ into.
   labeled line between the two on the board. Drop a markdown file on
   the board and it lands as a card mirroring the file; mirrored
   markdown renders in the card — including ` ```mermaid ` fences as
-  live diagrams.
+  live diagrams. Drop a `.drawio` or `.mmd` file and it renders the
+  same way, updating automatically whenever you edit that file outside
+  Mill — a missing file shows a clear notice with a button to choose
+  another one.
 - **Links** connect cards through link kinds you define. Drag from a
   card's link handle and release anywhere on a highlighted card; one
   relationship per pair and kind — repeats never duplicate. Hover a

@@ -266,6 +266,17 @@ export interface ListProjection {
 }
 
 /**
+ * MirrorChanged is MirrorChangedEvent's payload: which card or board
+ * object's own mirrored file just changed on disk. ID is deliberately
+ * untyped as to card-vs-object -- a frontend host already knows which
+ * kind of entity it's rendering, so it only needs to compare its own
+ * id.
+ */
+export interface MirrorChanged {
+    "id": string;
+}
+
+/**
  * OfferedAction is one workflow declared for the matched Integration.
  */
 export interface OfferedAction {

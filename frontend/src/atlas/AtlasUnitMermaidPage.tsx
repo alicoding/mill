@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Stack, Text } from '@primer/react'
 import { MirrorKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
@@ -6,6 +6,8 @@ import type { MirrorContent } from '../../bindings/github.com/alicoding/mill/int
 import { AtlasService } from '../shared/bindings'
 import runbookStyles from '../shared/ListCard.module.css'
 import { useMermaidRendering } from './useMermaidRendering'
+import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
+import { AtlasMirrorMissingState } from './AtlasMirrorMissingState'
 import type { UnitRenderProps } from './unitRegistry'
 import styles from './AtlasUnitMermaid.module.css'
 
@@ -57,25 +59,40 @@ export const MermaidDiagramHost = memo(function MermaidDiagramHost({ source }: {
 // by giving it the same <pre><code class="language-mermaid"> shape
 // goldmark's own fence output produces -- the hook itself needed no
 // change to serve a standalone source file instead of a fenced block
-// inside rendered markdown.
+// inside rendered markdown. Refetches live when the mirrored file
+// changes on disk (goal 0194's live round-trip slice).
 export function AtlasUnitMermaidPage({ card }: UnitRenderProps) {
   const { t } = useTranslation('atlas')
   const [content, setContent] = useState<MirrorContent | null>(null)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    setContent(null)
-    setError('')
+  const fetchContent = useCallback(() => {
     AtlasService.MirrorContent(card.ID)
       .then(setContent)
       .catch((err) => setError(String(err)))
-  }, [card.ID, card.MirrorPath])
+  }, [card.ID])
+
+  useEffect(() => {
+    setContent(null)
+    setError('')
+    fetchContent()
+  }, [card.ID, card.MirrorPath, fetchContent])
+
+  useAtlasMirrorChanged(card.ID, fetchContent)
 
   if (error) {
     return <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-mermaid-error">{error}</Text>
   }
   if (!content) {
     return <Text as="p" size="small" className={runbookStyles.muted} data-testid="atlas-mermaid-loading">{t('overlay.mirrorLoading')}</Text>
+  }
+  if (content.Missing) {
+    return (
+      <AtlasMirrorMissingState
+        testIdPrefix="atlas-mermaid"
+        onRepick={(path) => AtlasService.RepickCardMirror(card.ID, path)}
+      />
+    )
   }
   if (content.TooLarge) {
     return (

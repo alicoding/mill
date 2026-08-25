@@ -49,6 +49,7 @@ func (a *AtlasService) CreateBoardObject(kind string, payload map[string]string,
 		return atlas.BoardObject{}, fmt.Errorf("save board object: %w", perr)
 	}
 	dataevent.Emit("atlas", o.ID)
+	a.armMirrorWatch(o.ID, o.Payload["mirrorPath"])
 	return o, nil
 }
 
@@ -204,6 +205,8 @@ func (a *AtlasService) PromoteBoardObject(objectID, kindID, title string) (atlas
 		return atlas.Card{}, fmt.Errorf("save promoted card: %w", perr)
 	}
 	dataevent.Emit("atlas", c.ID)
+	a.disarmMirrorWatch(objectID)
+	a.armMirrorWatch(c.ID, c.MirrorPath)
 	a.notifyCardChange(c, "create", "")
 	return c, nil
 }

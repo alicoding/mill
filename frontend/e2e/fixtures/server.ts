@@ -30,6 +30,11 @@ const FOLDER_PICK_FIXTURE = path.join(REPO_ROOT, 'frontend', 'e2e', 'fixtures', 
 // MILL_TEST_IMAGE_PICK_PATH. Harmless for every test that never calls it.
 const IMAGE_PICK_FIXTURE = path.join(REPO_ROOT, 'frontend', 'e2e', 'fixtures', 'synced-folder', 'logo.png')
 
+// Same bypass for AtlasService.PickDiagramFile (goal 0194's live
+// round-trip slice) -- MILL_TEST_DIAGRAM_PICK_PATH. Harmless for every
+// test that never calls it.
+const DIAGRAM_PICK_FIXTURE = path.join(REPO_ROOT, 'frontend', 'e2e', 'fixtures', 'diagram-pick.drawio')
+
 // Port ranges deliberately clear of both Wails' own server-mode default
 // (8080) and Mill's own default MCP bind address (127.0.0.1:8090) --
 // confirmed live, not assumed: a real LaunchAgent-run mill-server on
@@ -208,6 +213,9 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
       // Same override-wins-by-spreading-first shape, for
       // AtlasService.PickImageFile's own e2e bypass (goal 0206).
       MILL_TEST_IMAGE_PICK_PATH: opts.extraEnv?.MILL_TEST_IMAGE_PICK_PATH ?? IMAGE_PICK_FIXTURE,
+      // Same shape for AtlasService.PickDiagramFile's own e2e bypass
+      // (goal 0194's live round-trip slice).
+      MILL_TEST_DIAGRAM_PICK_PATH: opts.extraEnv?.MILL_TEST_DIAGRAM_PICK_PATH ?? DIAGRAM_PICK_FIXTURE,
       // Lets remote-access.spec.ts populate a paired device directly --
       // pairing itself only completes over a non-loopback connection,
       // which this isolated per-worker server never has.

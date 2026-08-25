@@ -93,6 +93,23 @@ func IsImageExtension(ext string) bool {
 	return imageMimeTypes[strings.ToLower(ext)] != ""
 }
 
+// diagramMirrorExtensions is the live-watch/re-pick eligibility list
+// (goal 0194's live round-trip slice): a mirror whose extension is
+// here is what AtlasService arms an on-disk filewatch binding for, and
+// what the "Choose file" re-pick dialog filters to -- draw.io's own
+// outer-file format plus mermaid source, the two ClassifyMirrorKind
+// already resolves to MirrorKindText.
+var diagramMirrorExtensions = map[string]bool{
+	".drawio": true, ".mmd": true, ".mermaid": true,
+}
+
+// IsDiagramMirrorExtension reports whether ext (including its leading
+// ".", case-insensitive) is a live-rendered diagram source -- the same
+// allow-list-not-heuristic shape IsImageExtension takes above.
+func IsDiagramMirrorExtension(ext string) bool {
+	return diagramMirrorExtensions[strings.ToLower(ext)]
+}
+
 // MirrorContent is a card's MirrorPath resolved into a read-only
 // overlay preview (docs/goals/0064), returned by atlassvc.AtlasService.
 // MirrorContent. Size is always populated (even when TooLarge or
@@ -100,11 +117,16 @@ func IsImageExtension(ext string) bool {
 // always has something to show. Content holds rendered HTML for
 // MirrorKindMarkdown, raw text for MirrorKindText, or base64-encoded
 // bytes (paired with MimeType) for MirrorKindImage -- empty for
-// MirrorKindOther or whenever TooLarge is true.
+// MirrorKindOther or whenever TooLarge is true. Missing is true when
+// the file at MirrorPath could not be found on disk -- Kind/Size/
+// Content all stay zero in that case, distinct from TooLarge (found
+// but skipped) so the frontend renders an honest "file's gone" state
+// rather than a stale or blank one (goal 0194).
 type MirrorContent struct {
 	Kind     MirrorKind
 	MimeType string
 	Size     int64
 	Content  string
 	TooLarge bool
+	Missing  bool
 }

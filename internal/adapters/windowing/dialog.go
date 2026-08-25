@@ -56,6 +56,28 @@ func PickImageFile(title string) (string, error) {
 	return path, nil
 }
 
+// PickDiagramFile opens the native file picker filtered to recognized
+// diagram-source extensions, returning the chosen path -- "" with a
+// nil error when the user cancels. Returns an error when no live app
+// exists. Same display-only-filter caveat PickImageFile carries: a
+// caller must still validate the returned extension.
+func PickDiagramFile(title string) (string, error) {
+	app := application.Get()
+	if app == nil {
+		return "", fmt.Errorf("diagram picker unavailable outside the desktop app")
+	}
+	dialog := app.Dialog.OpenFile().
+		CanChooseFiles(true).
+		CanChooseDirectories(false).
+		SetTitle(title).
+		AddFilter("Diagrams", "*.drawio;*.mmd;*.mermaid")
+	path, err := dialog.PromptForSingleSelection()
+	if err != nil {
+		return "", fmt.Errorf("pick diagram file: %w", err)
+	}
+	return path, nil
+}
+
 // SaveFileDialog prompts the OS-native save dialog pre-filled with
 // suggestedName, returning the chosen path -- "" with a nil error when
 // the user cancels. Returns an error when no live app exists.
