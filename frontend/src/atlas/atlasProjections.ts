@@ -1,4 +1,6 @@
 import type { Card, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { Type as FieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
+import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 
 // Pure derivations over the Atlas card/link graph (docs/goals/0064):
 // the traceability matrix and the two coverage counts, both computed
@@ -134,6 +136,47 @@ export interface RoadmapBoard {
   anyTagged: boolean
 }
 
+// effectiveBucketKeyForCard resolves the one bucket a card currently
+// sits in -- a HORIZON_BUCKETS key, or UNSCHEDULED_BUCKET_KEY for an
+// absent/unrecognized tag. The single source of truth buildRoadmapLanes
+// below, the picker's own candidate filter, and the drag/drop target
+// check (goal 0225) all read, so a card's column placement can never
+// disagree between them.
+export function effectiveBucketKeyForCard(card: Card, horizonBuckets: RoadmapBucket[] = HORIZON_BUCKETS): string {
+  const tag = card.Fields?.[HORIZON_FIELD_KEY] ?? ''
+  const idx = horizonBuckets.findIndex((b) => b.tagValue === tag)
+  return idx === -1 ? UNSCHEDULED_BUCKET_KEY : horizonBuckets[idx].key
+}
+
+// tagValueForBucketKey maps a column back to the Fields[horizon] value
+// placing a card in it writes -- a bucket's own tagValue, or '' for
+// UNSCHEDULED_BUCKET_KEY (and any unrecognized key), which is also the
+// value a drop on Unscheduled clears the field to.
+export function tagValueForBucketKey(bucketKey: string, horizonBuckets: RoadmapBucket[] = HORIZON_BUCKETS): string {
+  return horizonBuckets.find((b) => b.key === bucketKey)?.tagValue ?? ''
+}
+
+// cardsEligibleForBucket is the "+ Place cards" picker's own candidate
+// list: every card NOT already sitting in that column -- selecting a
+// card already there would be a same-column no-op anyway.
+export function cardsEligibleForBucket(cards: Card[], bucketKey: string, horizonBuckets: RoadmapBucket[] = HORIZON_BUCKETS): Card[] {
+  return cards.filter((c) => effectiveBucketKeyForCard(c, horizonBuckets) !== bucketKey)
+}
+
+// buildHorizonKindField is the field a Kind gets auto-declared with the
+// first time one of its cards is placed on the roadmap (goal 0225):
+// IDENTICAL in shape to the seeded example Kinds that already declare
+// this field (internal/domain/atlas/builtin.go), derived from
+// HORIZON_BUCKETS itself so the two can never drift apart.
+export function buildHorizonKindField(): Field {
+  return {
+    Key: HORIZON_FIELD_KEY,
+    Label: 'Horizon',
+    Type: FieldType.TypeOptions,
+    Options: HORIZON_BUCKETS.map((b) => b.tagValue),
+  } as Field
+}
+
 // buildRoadmapLanes pivots `cards` into lanes (grouped by whatever key/
 // label `laneKey` derives per card -- Kind, in the v1 caller) against
 // horizon buckets (docs/goals/0212, rides the Matrix builder's own
@@ -156,10 +199,9 @@ export function buildRoadmapLanes(
       laneLabels.set(lane, laneLabel)
       laneOrder.push(lane)
     }
-    const tag = card.Fields?.[HORIZON_FIELD_KEY] ?? ''
-    const idx = horizonBuckets.findIndex((b) => b.tagValue === tag)
-    if (idx !== -1) anyTagged = true
-    cellsByLane.get(lane)![idx === -1 ? bucketKeys.length - 1 : idx].push(card)
+    const bucketKey = effectiveBucketKeyForCard(card, horizonBuckets)
+    if (bucketKey !== UNSCHEDULED_BUCKET_KEY) anyTagged = true
+    cellsByLane.get(lane)![bucketKeys.indexOf(bucketKey)].push(card)
   }
 
   const lanes = laneOrder.map((key) => ({ laneKey: key, laneLabel: laneLabels.get(key) ?? key, cells: cellsByLane.get(key)! }))

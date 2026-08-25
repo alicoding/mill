@@ -19,6 +19,10 @@
 .headerCell {
   font-size: var(--text-body-size-small);
   color: var(--fgColor-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--base-size-8);
 }
 
 .laneLabel {
@@ -38,6 +42,12 @@
 
 .emptyCell {
   color: var(--fgColor-muted);
+}
+
+.cellDragOver {
+  background: var(--bgColor-accent-muted);
+  outline: 2px dashed var(--borderColor-accent-emphasis);
+  outline-offset: -2px;
 }
 
 .chip {
@@ -81,4 +91,16 @@
   justify-content: center;
   padding: var(--base-size-32);
   text-align: center;
+}
+
+.toastBanner {
+  width: fit-content;
+  margin: var(--base-size-12) auto 0;
+  padding: var(--base-size-4) var(--base-size-12);
+  border: 1px solid var(--borderColor-accent-emphasis);
+  border-radius: var(--borderRadius-large);
+  background: var(--bgColor-default);
+  font-size: 13px;
+  color: var(--fgColor-default);
+  box-shadow: var(--shadow-floating-large, 0 4px 16px rgba(0, 0, 0, 0.12));
 }

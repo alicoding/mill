@@ -428,3 +428,10 @@ export const SECRETS_MCP_BASE_PORT = 10740
 // case above.
 export const UPDATES_AUTODOWNLOAD_SERVER_BASE_PORT = 10800
 export const UPDATES_AUTODOWNLOAD_MCP_BASE_PORT = 10820
+
+// atlas-roadmap-empty-state.spec.ts (goal 0225): the picker's
+// auto-declare path writes a new Field onto a Kind, global vocabulary
+// every board render and picker reads -- same reasoning as
+// ATLAS_KIND_AUTHORING_*'s own dedicated pair above.
+export const ATLAS_ROADMAP_EMPTY_STATE_SERVER_BASE_PORT = 10840
+export const ATLAS_ROADMAP_EMPTY_STATE_MCP_BASE_PORT = 10860

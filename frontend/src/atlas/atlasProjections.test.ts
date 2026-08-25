@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { Card, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import { buildRoadmapLanes, buildTraceabilityMatrix, coverageMissingLink, coverageMissingMirror } from './atlasProjections'
+import {
+  buildHorizonKindField, buildRoadmapLanes, buildTraceabilityMatrix, cardsEligibleForBucket, coverageMissingLink,
+  coverageMissingMirror, effectiveBucketKeyForCard, tagValueForBucketKey,
+} from './atlasProjections'
 
 function card(id: string, mirrorPath = ''): Card {
   return { ID: id, KindID: 'k1', Title: id, ParentID: '', MirrorPath: mirrorPath } as Card
@@ -120,5 +123,48 @@ describe('buildRoadmapLanes', () => {
     expect(cells[2]).toEqual([])
     expect(cells[3].map((c) => c.ID)).toEqual(['b'])
     expect(board.anyTagged).toBe(true)
+  })
+})
+
+// goal 0225: the empty-state door (picker + drag/drop) reads its
+// column-membership and target-value logic off these three pure
+// helpers, kept in lockstep with buildRoadmapLanes' own bucket math.
+describe('effectiveBucketKeyForCard', () => {
+  it('resolves a tagged card to its matching bucket key', () => {
+    expect(effectiveBucketKeyForCard(kindedCard('a', 'k1', 'Next'))).toBe('next')
+  })
+
+  it('falls back to unscheduled for an absent or unrecognized tag', () => {
+    expect(effectiveBucketKeyForCard(kindedCard('a', 'k1'))).toBe('unscheduled')
+    expect(effectiveBucketKeyForCard(kindedCard('a', 'k1', 'someday'))).toBe('unscheduled')
+  })
+})
+
+describe('tagValueForBucketKey', () => {
+  it('maps a horizon bucket key back to its tag value', () => {
+    expect(tagValueForBucketKey('now')).toBe('Now')
+    expect(tagValueForBucketKey('then')).toBe('Then')
+  })
+
+  it('clears to an empty string for unscheduled or an unrecognized key', () => {
+    expect(tagValueForBucketKey('unscheduled')).toBe('')
+    expect(tagValueForBucketKey('bogus')).toBe('')
+  })
+})
+
+describe('cardsEligibleForBucket', () => {
+  it('excludes cards already sitting in the target column', () => {
+    const cards = [kindedCard('a', 'k1', 'Now'), kindedCard('b', 'k1', 'Next'), kindedCard('c', 'k1')]
+    expect(cardsEligibleForBucket(cards, 'now').map((c) => c.ID)).toEqual(['b', 'c'])
+    expect(cardsEligibleForBucket(cards, 'unscheduled').map((c) => c.ID)).toEqual(['a', 'b'])
+  })
+})
+
+describe('buildHorizonKindField', () => {
+  it('matches the seeded Contact/Document Kinds\' own horizon field shape', () => {
+    const field = buildHorizonKindField()
+    expect(field.Key).toBe('horizon')
+    expect(field.Label).toBe('Horizon')
+    expect(field.Options).toEqual(['Now', 'Next', 'Then'])
   })
 })
