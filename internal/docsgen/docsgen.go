@@ -160,6 +160,7 @@ func PageIndex() []DocPage {
 		{"concepts/runs-and-review.md", "Runs, review, and debugging", "durable runs, the review queue, breakpoints"},
 		{"reference/steps.md", "Step reference", "every step's contract, generated from the registry"},
 		{"reference/settings.md", "Settings", "app preferences: appearance, hotkeys, shortcuts, MCP access, remote access, backups, updates"},
+		{"reference/extending-the-canvas.md", "Extending the canvas", "how a canvas noun loads, what its declaration requires, and what platform APIs it may and may not reach"},
 		{"agents/connect-mcp.md", "Automate with agents", "connecting over MCP and what agents can do"},
 		{"trust/data-and-safety.md", "Trust, data, and safety", "no phone-home, local data, honest limits"},
 	}
