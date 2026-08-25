@@ -34,6 +34,7 @@ with open(data_path) as fh:
 goals = data["goals"]
 queue = data["queue"]
 census = data["census"]
+dispatch = data.get("dispatch") or {"rows": [], "queued": ""}
 repo = data["repo"]
 
 
@@ -88,6 +89,44 @@ tiles = """
 </div>
 """ % (shipped_count, in_progress_count, queued_count, open_pr_count)
 substitute("stat-tiles", tiles)
+
+# --- dispatch (docs/goals/DISPATCH.md: live builders/PRs; state chips
+# are simple substring rules -- "starved"/"failed"/"red" outrank "CI"
+# since a CI-starved PR is worse than a merely-in-CI one) ---
+def dispatch_chip_class(state):
+    s = (state or "").lower()
+    if "starved" in s or "failed" in s or "red" in s:
+        return "crit"
+    if "ci" in s:
+        return "warn"
+    return "plain"
+
+
+dispatch_rows = dispatch.get("rows") or []
+if dispatch_rows:
+    rows = []
+    for r in dispatch_rows:
+        chip_cls = dispatch_chip_class(r.get("state"))
+        pr = r.get("pr") or ""
+        pr_cell = esc(pr) if pr else "&mdash;"
+        rows.append(
+            '    <tr><td>%s</td><td>%s</td><td><span class="chip %s">%s</span></td>'
+            '<td class="mono">%s</td><td class="num">%s</td></tr>'
+            % (esc(r.get("goal")), esc(r.get("what")), chip_cls, esc(r.get("state")),
+               esc(r.get("touch_set")), pr_cell)
+        )
+    rows_html = "\n".join(rows)
+else:
+    rows_html = '    <tr><td colspan="5">Nothing currently being built.</td></tr>'
+queued = dispatch.get("queued") or ""
+queued_note = "Queued next: %s" % esc(queued) if queued else "Nothing queued next."
+dispatch_html = (
+    '\n  <div class="card"><table>\n'
+    "    <tr><th>goal</th><th>what</th><th>state</th><th>touch-set</th><th>PR</th></tr>\n"
+    "%s\n  </table></div>\n"
+    '  <div class="note">%s</div>\n  ' % (rows_html, queued_note)
+)
+substitute("dispatch", dispatch_html)
 
 # --- in-flight (queue rows checked "~") ---
 in_flight = [q for q in queue if q["checked"] == "~"]
