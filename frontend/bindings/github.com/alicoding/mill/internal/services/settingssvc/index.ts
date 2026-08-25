@@ -6,6 +6,10 @@ export {
     SettingsService
 };
 
+export {
+    UpdateState
+} from "./models.js";
+
 export type {
     BuildInfo,
     MCPAddrInfo,

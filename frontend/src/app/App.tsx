@@ -487,7 +487,7 @@ function App() {
           <span>{time}</span>
         </span>
         <span className={styles.rightControls}>
-          <NoticePill onOpenUpdates={() => setView({ kind: 'settings', section: 'updates' })} />
+          <NoticePill />
           {/* No external-link arrow: this opens the in-app Docs view,
               and the arrow glyph promised leaving the app. */}
           <a className={styles.docs} href="#" onClick={(e) => { e.preventDefault(); setView({ kind: 'docs' }) }} aria-label={t('shell.docsLinkAriaLabel')} data-testid="footer-docs-link">{t('shell.docsLinkText')}</a>

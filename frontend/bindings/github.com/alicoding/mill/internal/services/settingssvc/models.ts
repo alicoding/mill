@@ -77,8 +77,10 @@ export interface UpdateCheckResult {
 }
 
 /**
- * UpdateNotice is the pill's whole contract: at most one of the two
- * states is meaningful, ready winning.
+ * UpdateNotice is the pill's whole contract. State/StateVersion/
+ * StateReason (goal 0220 S1) are the ONE derived state every surface
+ * renders; the fields below them remain for compatibility (the
+ * existing pill/Settings/e2e reads) and as State's own inputs.
  */
 export interface UpdateNotice {
     "ready": boolean;
@@ -110,4 +112,45 @@ export interface UpdateNotice {
     "lastCheckAt": string;
     "lastCheckOutcome": string;
     "lastCheckError": string;
+
+    /**
+     * State is the single derived state (deriveUpdateState below) --
+     * idle/checking/available/downloading/ready/error. Every surface
+     * (the pill, Settings, the palette commands) renders THIS, never
+     * its own reading of the fields above.
+     */
+    "state": UpdateState;
+
+    /**
+     * StateVersion is the version State refers to: the pending version
+     * while available/downloading, the staged version while ready, ""
+     * for idle/checking/error (an error's version, if any, is still
+     * reachable via AvailableVersion above).
+     */
+    "stateVersion": string;
+
+    /**
+     * StateReason is populated only alongside State == error.
+     */
+    "stateReason": string;
 }
+
+/**
+ * UpdateState is the pill/Settings/palette's single source of truth
+ * for "what should render right now" (goal 0220 S1) -- computed once
+ * by deriveUpdateState from the fields above, so two surfaces reading
+ * the same UpdateNotice can never disagree.
+ */
+export enum UpdateState {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    UpdateStateIdle = "idle",
+    UpdateStateChecking = "checking",
+    UpdateStateAvailable = "available",
+    UpdateStateDownloading = "downloading",
+    UpdateStateReady = "ready",
+    UpdateStateError = "error",
+};

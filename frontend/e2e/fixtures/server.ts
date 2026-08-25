@@ -291,6 +291,31 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
   return { baseURL, settingsPath: opts.settingsPath, executionDbPath: opts.executionDbPath, backupDir: opts.backupDir, stop }
 }
 
+// spawnUpdatesServer is updates.spec.ts's own dedicated-server helper
+// (goal 0082), promoted here once a second updates spec file needed it
+// too (goal 0220 S1, testing.md's "a helper used by 2+ spec files MUST
+// be promoted" rule) -- each updates test needs its own server carrying
+// a fixed MILL_TEST_UPDATE_* env for its whole lifetime, on its own
+// disjoint port pair, so it can never share the standard per-worker
+// fixture.
+export async function spawnUpdatesServer(
+  idx: number,
+  serverBasePort: number,
+  mcpBasePort: number,
+  extraEnv: Record<string, string>,
+): Promise<{ server: SpawnedServer; dir: string }> {
+  const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-updates-${idx}-`))
+  const server = await spawnMillServer({
+    port: serverBasePort + idx,
+    mcpPort: mcpBasePort + idx,
+    settingsPath: path.join(dir, 'settings.json'),
+    executionDbPath: path.join(dir, 'execution.db'),
+    backupDir: path.join(dir, 'backups'),
+    extraEnv,
+  })
+  return { server, dir }
+}
+
 function mkWorkerTempDir(idx: number): string {
   return mkdtempSync(path.join(tmpdir(), `mill-e2e-w${idx}-`))
 }
@@ -435,3 +460,10 @@ export const UPDATES_AUTODOWNLOAD_MCP_BASE_PORT = 10820
 // ATLAS_KIND_AUTHORING_*'s own dedicated pair above.
 export const ATLAS_ROADMAP_EMPTY_STATE_SERVER_BASE_PORT = 10840
 export const ATLAS_ROADMAP_EMPTY_STATE_MCP_BASE_PORT = 10860
+
+// updates.spec.ts's pill-acts case (goal 0220 S1): fixes MILL_TEST_
+// UPDATE_DOWNLOAD_DELAY_MS to observe the pill's own downloading phase
+// deterministically after a real click -- own pair like every other
+// updates case above.
+export const UPDATES_PILL_ACTION_SERVER_BASE_PORT = 10880
+export const UPDATES_PILL_ACTION_MCP_BASE_PORT = 10900

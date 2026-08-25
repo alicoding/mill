@@ -7,6 +7,7 @@ package settingssvc
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -64,8 +65,10 @@ func sleepOrDone(ctx context.Context, d time.Duration) bool {
 // testUpdateFakeVersionEnv.
 const testUpdateReadyEnv = "MILL_TEST_UPDATE_READY"
 
-// UpdateNotice is the pill's whole contract: at most one of the two
-// states is meaningful, ready winning.
+// UpdateNotice is the pill's whole contract. State/StateVersion/
+// StateReason (goal 0220 S1) are the ONE derived state every surface
+// renders; the fields below them remain for compatibility (the
+// existing pill/Settings/e2e reads) and as State's own inputs.
 type UpdateNotice struct {
 	Ready            bool   `json:"ready"`
 	AvailableVersion string `json:"availableVersion"`
@@ -87,15 +90,76 @@ type UpdateNotice struct {
 	LastCheckAt      string `json:"lastCheckAt"`
 	LastCheckOutcome string `json:"lastCheckOutcome"`
 	LastCheckError   string `json:"lastCheckError"`
+	// State is the single derived state (deriveUpdateState below) --
+	// idle/checking/available/downloading/ready/error. Every surface
+	// (the pill, Settings, the palette commands) renders THIS, never
+	// its own reading of the fields above.
+	State UpdateState `json:"state"`
+	// StateVersion is the version State refers to: the pending version
+	// while available/downloading, the staged version while ready, ""
+	// for idle/checking/error (an error's version, if any, is still
+	// reachable via AvailableVersion above).
+	StateVersion string `json:"stateVersion"`
+	// StateReason is populated only alongside State == error.
+	StateReason string `json:"stateReason"`
 }
 
-// UpdateNoticeState reports what the footer pill should show.
+// UpdateState is the pill/Settings/palette's single source of truth
+// for "what should render right now" (goal 0220 S1) -- computed once
+// by deriveUpdateState from the fields above, so two surfaces reading
+// the same UpdateNotice can never disagree.
+type UpdateState string
+
+const (
+	UpdateStateIdle        UpdateState = "idle"
+	UpdateStateChecking    UpdateState = "checking"
+	UpdateStateAvailable   UpdateState = "available"
+	UpdateStateDownloading UpdateState = "downloading"
+	UpdateStateReady       UpdateState = "ready"
+	UpdateStateError       UpdateState = "error"
+)
+
+// deriveUpdateState is the ONE place the state machine is computed
+// (goal 0220 S1) -- a pure function so every input combination is
+// unit-testable without a running service.
+//
+// supersedes handles the "a staged update is never sacred" rule: a
+// pending available version that differs from what's already staged-
+// and-ready means a NEWER build exists than the one ready to restart
+// into, so available/downloading wins over a stale ready -- restarting
+// must always apply the newest known version, never a version behind
+// one already found. A pending version equal to what's staged (a
+// repeat sighting of the same release on a later check tick) is NOT a
+// supersede -- ready keeps winning, matching UpdateNotice's original
+// "ready wins" contract for that case.
+func deriveUpdateState(checking, downloading, ready bool, availableVersion, stagedVersion, installError string, lastCheckOutcome UpdateCheckOutcome, lastCheckError string) (state UpdateState, version, reason string) {
+	supersedes := availableVersion != "" && availableVersion != stagedVersion
+	switch {
+	case downloading:
+		return UpdateStateDownloading, availableVersion, ""
+	case checking:
+		return UpdateStateChecking, "", ""
+	case ready && !supersedes:
+		return UpdateStateReady, stagedVersion, ""
+	case installError != "":
+		return UpdateStateError, "", installError
+	case availableVersion != "":
+		return UpdateStateAvailable, availableVersion, ""
+	case lastCheckOutcome == UpdateCheckOutcomeFailed:
+		return UpdateStateError, "", lastCheckError
+	default:
+		return UpdateStateIdle, "", ""
+	}
+}
+
+// UpdateNoticeState reports what every update surface should show.
 func (s *SettingsService) UpdateNoticeState() UpdateNotice {
 	if os.Getenv(testUpdateReadyEnv) != "" {
-		return UpdateNotice{Ready: true}
+		return UpdateNotice{Ready: true, State: UpdateStateReady}
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	state, version, reason := deriveUpdateState(s.checking, s.updateDownloading, s.updateReady, s.availableUpdate, s.stagedUpdateVersion, s.lastInstallError, s.lastCheckOutcome, s.lastCheckError)
 	n := UpdateNotice{
 		Ready:            s.updateReady,
 		AvailableVersion: s.availableUpdate,
@@ -103,6 +167,9 @@ func (s *SettingsService) UpdateNoticeState() UpdateNotice {
 		ResignWarning:    s.resignWarning,
 		LastCheckOutcome: string(s.lastCheckOutcome),
 		LastCheckError:   s.lastCheckError,
+		State:            state,
+		StateVersion:     version,
+		StateReason:      reason,
 	}
 	if !s.lastCheckAt.IsZero() {
 		n.LastCheckAt = s.lastCheckAt.Format(time.RFC3339)
@@ -256,14 +323,79 @@ func (s *SettingsService) StartAutoUpdateChecks() {
 	}
 }
 
+// updateCheckIntervalKey persists the opt-in background loop's cadence
+// (goal 0220 S1) -- replaces the old per-channel hardcoded interval
+// (beta hourly / release daily) with a user-selectable preference,
+// the draw.io "hourly / daily / weekly / only when I check" pattern.
+const updateCheckIntervalKey = "updateCheckInterval"
+
+const (
+	UpdateCheckIntervalHourly = "hourly"
+	UpdateCheckIntervalDaily  = "daily"
+	UpdateCheckIntervalWeekly = "weekly"
+	// UpdateCheckIntervalManual disables the background loop entirely
+	// -- startAutoUpdateLoop below returns without starting it,
+	// regardless of the AutoUpdateCheck opt-in.
+	UpdateCheckIntervalManual = "manual"
+)
+
+// UpdateCheckInterval reports the persisted cadence, defaulting to
+// hourly for every channel (the old beta-only hourly default is now
+// the default everywhere).
+func (s *SettingsService) UpdateCheckInterval() string {
+	v, _ := s.store.Get(updateCheckIntervalKey).(string)
+	switch v {
+	case UpdateCheckIntervalDaily, UpdateCheckIntervalWeekly, UpdateCheckIntervalManual:
+		return v
+	default:
+		return UpdateCheckIntervalHourly
+	}
+}
+
+// SetUpdateCheckInterval persists the cadence and applies it live --
+// same "apply now, no restart" posture SetAutoUpdateCheck already has.
+func (s *SettingsService) SetUpdateCheckInterval(pref string) error {
+	switch pref {
+	case UpdateCheckIntervalHourly, UpdateCheckIntervalDaily, UpdateCheckIntervalWeekly, UpdateCheckIntervalManual:
+	default:
+		return fmt.Errorf("unknown update check interval %q", pref)
+	}
+	if err := s.store.Set(updateCheckIntervalKey, pref); err != nil {
+		return err
+	}
+	if s.AutoUpdateCheck() {
+		s.stopAutoUpdateLoop()
+		s.startAutoUpdateLoop()
+	}
+	return nil
+}
+
+// updateCheckIntervalDuration maps the persisted preference to the
+// loop's actual sleep duration -- pulled out of startAutoUpdateLoop so
+// it's unit-testable without spinning up a real goroutine.
+func updateCheckIntervalDuration(pref string) time.Duration {
+	switch pref {
+	case UpdateCheckIntervalDaily:
+		return 24 * time.Hour
+	case UpdateCheckIntervalWeekly:
+		return 7 * 24 * time.Hour
+	default:
+		return time.Hour
+	}
+}
+
 // startAutoUpdateLoop starts the background check loop if it isn't
 // already running (idempotent -- a redundant call, e.g. a live toggle
 // re-enabled right after boot's own start, never spawns a second
-// loop). Each found version feeds triggerAutoDownloadPolicy through
-// CheckForUpdates itself, so this loop's only job is the periodic
-// check call. Check errors are ignored: a failed background check must
-// never surface as noise; the manual button reports errors instead.
+// loop) and the persisted interval isn't "only when I check". Each
+// found version feeds triggerAutoDownloadPolicy through CheckForUpdates
+// itself, so this loop's only job is the periodic check call. Check
+// errors are ignored: a failed background check must never surface as
+// noise; the manual button reports errors instead.
 func (s *SettingsService) startAutoUpdateLoop() {
+	if s.UpdateCheckInterval() == UpdateCheckIntervalManual {
+		return
+	}
 	s.mu.Lock()
 	if s.autoUpdateLoopCancel != nil {
 		s.mu.Unlock()
@@ -273,13 +405,7 @@ func (s *SettingsService) startAutoUpdateLoop() {
 	s.autoUpdateLoopCancel = cancel
 	s.mu.Unlock()
 
-	// Channel-matched cadence (goal 0146): the beta channel releases
-	// per merged change, so "as soon as available" honestly means
-	// hourly polling there; release stays daily.
-	interval := 24 * time.Hour
-	if s.UpdateChannel() == "beta" {
-		interval = time.Hour
-	}
+	interval := updateCheckIntervalDuration(s.UpdateCheckInterval())
 	go func() {
 		if !sleepOrDone(ctx, autoUpdateLoopInitialDelay()) {
 			return
