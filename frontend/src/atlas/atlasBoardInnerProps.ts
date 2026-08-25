@@ -75,7 +75,7 @@ export interface AtlasBoardInnerProps {
   // rider): routed through the same confirm dialog as the menu item;
   // React Flow's own deleteKeyCode stays disabled -- a local node
   // removal would just resurrect on the next data refresh. objectIDs is
-  // optional so the eraser's own onComplete (useAtlasDragTools.ts,
+  // optional so the eraser's own gesture.onEnd (tools/eraserTool.ts,
   // cards/notes only in S1) keeps calling this with two arguments.
   onDeleteSelection: (cardIDs: string[], noteIDs: string[], objectIDs?: string[]) => void
   onPasteConverted: (res: import('../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models').PasteResult) => void

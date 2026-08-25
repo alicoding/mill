@@ -7,7 +7,7 @@ import { refreshAtlas } from './atlasStore'
 import { titleFromFilename, titleFromNoteText } from './atlasCreateHelpers'
 import { freeChildPosition } from './atlasContainmentPlacement'
 import { computeEnclosedBoundingBoxOrigin } from './atlasBoardBoxes'
-import { isLockableArmTool, type AtlasArmableTool, type AtlasCreationTool } from './atlasTools'
+import { ATLAS_TOOLS, isLockableArmTool, type AtlasArmableTool, type AtlasCreationTool } from './atlasTools'
 import { cardTool } from './tools/cardTool'
 import { noteTool } from './tools/noteTool'
 import { areaTool } from './tools/areaTool'
@@ -170,17 +170,18 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   // (one placement per arming, the LOCKED design's own rule) --
   // explicitTool lets the right-click "Add card"/"Add note" pane menu
   // items place directly without going through the armed state at all.
-  // None of Area/Pencil/Eraser/Laser/Shape has click-based placement:
-  // each one's own drag gesture is handled entirely by its own hook
-  // (useAtlasAreaDraw, useAtlasPencilDraw, useAtlasEraserDraw,
-  // useAtlasLaserDraw, useAtlasShapeDraw -- all wired in AtlasBoard.tsx),
-  // which either disarms itself (Area) or stays armed and never routes
-  // through here at all (the other four) -- excluded regardless, so a
-  // stray click while one of them is armed never falls through to the
-  // note-draft branch below.
+  // Every drag-shaped tool (Area/Pencil/Eraser/Laser/Shape) is excluded
+  // regardless, so a stray click while one is armed never falls through
+  // to the note-draft branch below -- derived off the registry's own
+  // `gesture` declaration (goal 0215 S2) rather than a hand-maintained
+  // id list: each one's own drag gesture is owned entirely by
+  // useAtlasToolGesture.ts (wired in AtlasBoard.tsx), which either
+  // disarms itself (Area) or stays armed and never routes through here
+  // at all (the other four).
   const placeAt = useCallback((screenPos: { x: number; y: number }, explicitTool?: AtlasCreationTool, parentIDOverride?: string, linkFromCardID?: string) => {
     const tool = explicitTool ?? armedTool
-    if (!tool || tool === 'area' || tool === 'pencil' || tool === 'eraser' || tool === 'laser' || tool === 'shape' || readOnly) return
+    const hasGesture = tool ? (ATLAS_TOOLS.find((t) => t.id === tool)?.gesture ?? null) !== null : false
+    if (!tool || hasGesture || readOnly) return
     setArm(null)
     // "Add linked card…" (goal 0081 slice A4) lands beside the linking
     // card, at a free spot in ITS parent -- never at the menu's own
@@ -232,8 +233,8 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   const openPromoteObject = useCallback((objectID: string, screenPos: { x: number; y: number }) => {
     const object = objects.find((o) => o.ID === objectID)
     if (!object) return
-    // Payload.title (useAtlasImageCreate.ts/useAtlasPencilCreate.ts's
-    // own artifact.title, carried along purely for this moment) beats
+    // Payload.title (useAtlasImageCreate.ts's/pencilTool.ts's gesture
+    // onEnd's own artifact.title, carried along purely for this moment) beats
     // re-deriving one from the mirror file's own randomized-suffix
     // filename; 'Untitled' matches cardTool's own instant-placement
     // default (atlasTools.ts) for the residual case of neither existing.
@@ -254,8 +255,8 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
 
   // The marker-box/select-group door (goal 0081 slice A2): opens the
   // SAME popover in 'area' mode, anchored at screenPos, with the
-  // enclosed membership already resolved by the caller (useAtlasAreaDraw's
-  // own enclosure test, or AtlasView's multi-selection).
+  // enclosed membership already resolved by the caller (areaTool.ts's
+  // own gesture.onEnd enclosure test, or AtlasView's multi-selection).
   const openAreaPopover = useCallback((screenPos: { x: number; y: number }, flowPos: { x: number; y: number }, enclosedCardIDs: string[], enclosedNoteIDs: string[]) => {
     setPopover({ mode: 'area', anchorPos: screenPos, flowPos, enclosedCardIDs, enclosedNoteIDs })
   }, [])

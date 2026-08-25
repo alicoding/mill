@@ -32,6 +32,10 @@ export const tableTool = {
   // No style surface of its own (goal 0209) -- always empty, not
   // omitted.
   styleFields: [],
+  // Arms through the size-picker popover, never the drag gesture
+  // engine -- always false/null, not N/A.
+  sticky: false,
+  gesture: null,
   commit: async (input: { cols: number; rowCount: number; existingTitles: Set<string> }): Promise<AtlasTableArtifact> => {
     let title = 'Table'
     for (let n = 2; input.existingTitles.has(title); n++) title = `Table ${n}`

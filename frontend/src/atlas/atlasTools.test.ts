@@ -20,12 +20,16 @@ describe('ATLAS_TOOLS', () => {
     expect(ATLAS_TOOLS.map((t) => t.id)).toEqual(['card', 'note', 'area', 'table', 'image', 'pencil', 'eraser', 'laser', 'shape'])
   })
 
-  it('scopes card/note/area to arm-then-click, table to pick-then-place, image to paste-or-drop, pencil+shape to drag-to-draw, eraser to drag-to-erase, laser to ephemeral-drag', () => {
+  // area moved from 'arm-then-click' to 'drag-to-draw' (goal 0215 S2):
+  // its own runtime gesture was always a marquee drag, never a single
+  // click -- the classification now matches the code, not the other
+  // way around.
+  it('scopes card/note to arm-then-click, table to pick-then-place, image to paste-or-drop, area+pencil+shape to drag-to-draw, eraser to drag-to-erase, laser to ephemeral-drag', () => {
     const byID = Object.fromEntries(ATLAS_TOOLS.map((t) => [t.id, t.interaction]))
     expect(byID).toEqual({
       card: 'arm-then-click',
       note: 'arm-then-click',
-      area: 'arm-then-click',
+      area: 'drag-to-draw',
       table: 'pick-then-place',
       image: 'paste-or-drop',
       pencil: 'drag-to-draw',
@@ -203,9 +207,9 @@ describe('shapeTool.commit', () => {
 
 // Eraser and laser never produce a placeable artifact -- they destroy
 // board state or render an ephemeral overlay respectively, never
-// create anything -- so their own commit is a stub the real
-// interaction hooks (useAtlasEraserDraw.ts, useAtlasLaserDraw.ts) never
-// call. These tests only pin that the stub stays inert.
+// create anything -- so their own commit is a stub their own
+// gesture.onPoint/onEnd (atlasNounRegistry.ts) never call. These tests
+// only pin that the stub stays inert.
 describe('eraserTool.commit and laserTool.commit', () => {
   it('are no-op stubs that touch no backend service', () => {
     expect(eraserTool.commit()).toBeNull()

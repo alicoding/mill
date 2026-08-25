@@ -22,22 +22,24 @@ export const ATLAS_TOOL_DRAG_MIME = 'application/x-mill-atlas-tool'
 // 0139 made it THE creation surface -- every creatable thing is a
 // visible tool here, nothing behind a dropdown). Every tool in the
 // registry's own 'quick' tray renders through this one loop (goal
-// 0169 slices 1-4) -- Card/Note/Area arm a placement on click
+// 0169 slices 1-4) -- Card/Note arm a placement on click
 // ('arm-then-click'); Table opens its size picker anchored to its own
 // button instead ('pick-then-place'), with "From a List…" in the
 // picker's footer as the projection door; Image opens its own path/
 // paste popover the same anchored way ('paste-or-drop'); Pencil arms
-// on click too, but STAYS armed across strokes (AtlasBoard.tsx's own
-// drag hook owns completion, never disarming itself), with its own
-// colour/size options bar shown anchored for as long as it's the
-// armed tool ('drag-to-draw'); Shape (goal 0169 slice 5) shares that
-// same interaction and branch, its own options bar rendered from its
-// own styleFields declaration (goal 0209) rather than a second branch.
-// Eraser and Laser ('drag-to-erase',
-// 'ephemeral-drag') fall through to the same plain arm-on-click button
-// the default branch below already renders for Card/Note/Area --
-// neither needs an options popover, so no new branch was needed here
-// at all; only their own drag gesture (AtlasBoard.tsx) differs. Hidden
+// on click too, but STAYS armed across strokes (its own gesture engine
+// hook, useAtlasToolGesture.ts, owns completion, never disarming
+// itself), with its own colour/size options bar shown anchored for as
+// long as it's the armed tool ('drag-to-draw'); Shape (goal 0169 slice
+// 5) and Area (reclassified goal 0215 S2 -- its own runtime gesture was
+// always a marquee drag) share that same interaction and branch, each
+// one's own options bar (Area has none: an empty styleFields) rendered
+// from its own styleFields declaration (goal 0209) rather than a second
+// branch. Eraser and Laser ('drag-to-erase', 'ephemeral-drag') fall
+// through to the same plain arm-on-click button the default branch
+// below already renders for Card/Note -- neither needs an options
+// popover, so no new branch was needed here at all; only their own drag
+// gesture (tools/eraserTool.ts, tools/laserTool.ts) differs. Hidden
 // entirely below the companion breakpoint -- the caller (AtlasBoard)
 // only renders this when !readOnly.
 //
@@ -204,10 +206,12 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
         }
         const armed = armedTool === tool.id
         // A drag-from-tray placement lands via a single drop point
-        // (creation.placeAt's own guard skips these three ids
-        // outright, since their placement is a drawn gesture, never a
-        // click point) -- Area, Eraser, and Laser carry no drag source.
-        const draggable = tool.id !== 'area' && tool.id !== 'eraser' && tool.id !== 'laser'
+        // (creation.placeAt's own guard skips a gesture-declaring tool
+        // outright, since its placement is a drawn gesture, never a
+        // click point) -- Eraser and Laser carry no drag source. Area
+        // no longer reaches this branch at all (goal 0215 S2: its own
+        // 'drag-to-draw' interaction routes it into the branch above).
+        const draggable = tool.id !== 'eraser' && tool.id !== 'laser'
         return (
           <button
             key={tool.id}

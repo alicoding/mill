@@ -24,6 +24,10 @@ export const noteTool = {
   // No style surface of its own (goal 0209) -- always empty, not
   // omitted.
   styleFields: [],
+  // Never drags -- placed by a single click, so this is never read at
+  // all; false, not N/A.
+  sticky: false,
+  gesture: null,
   commit: (input: { text: string }): AtlasNoteArtifact => ({ kind: 'note', text: input.text.trim() }),
 } as const satisfies AtlasToolShape
 

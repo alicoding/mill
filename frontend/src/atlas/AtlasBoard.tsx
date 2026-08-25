@@ -15,16 +15,9 @@ import { useAtlasArrange } from './useAtlasArrange'
 import { useAtlasEdgeInteraction } from './useAtlasEdgeInteraction'
 import { useBoardFocus } from './useBoardFocus'
 import { useAtlasCreation } from './useAtlasCreation'
-import { useAtlasAreaDraw } from './useAtlasAreaDraw'
-import { useAtlasPencilDraw } from './useAtlasPencilDraw'
-import { useAtlasPencilCreate } from './useAtlasPencilCreate'
-import { useAtlasPencilStyle } from './atlasPencilStyleStore'
-import { AtlasPencilLivePreview } from './AtlasPencilLivePreview'
-import { AtlasEraserLiveTrail } from './AtlasEraserLiveTrail'
-import { AtlasLaserTrail } from './AtlasLaserTrail'
-import { AtlasShapeLivePreview } from './AtlasShapeLivePreview'
-import { useAtlasDragTools } from './useAtlasDragTools'
-import { useAtlasPanActivation } from './useAtlasPanActivation'
+import { useAtlasToolGesture } from './useAtlasToolGesture'
+import { ATLAS_TOOLS } from './atlasTools'
+import type { AtlasGestureCtx } from './atlasNounRegistry'
 import { useAtlasDragFiling, type FrameBox } from './useAtlasDragFiling'
 import { AtlasDragHighlightContext } from './atlasDragHighlightContext'
 import type { AtlasBoardInnerProps } from './atlasBoardInnerProps'
@@ -181,31 +174,6 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     onGuidedCreate: creation.openSlotLinkedCreate,
   })
 
-  const areaDraw = useAtlasAreaDraw({
-    armed: isFree && !readOnly && creation.armedTool === 'area',
-    screenToFlowPosition,
-    cardBoxes: topLevelBoxes,
-    noteBoxes,
-    disarm: creation.disarm,
-    onComplete: creation.openAreaPopover,
-    wrapperRef,
-  })
-
-  // Pencil (goal 0169 slice 3): armed the same click-to-arm way Area
-  // is, but its own gesture hook never disarms on completion (sticky
-  // tool -- see useAtlasPencilDraw.ts). pencilStyle is the ephemeral
-  // "current defaults" cache (atlasPencilStyleStore.ts, never
-  // persisted); landStroke bakes ITS current value into the committed
-  // stroke's own SVG bytes, which IS persisted document data.
-  const pencilArmed = isFree && !readOnly && creation.armedTool === 'pencil'
-  const pencilStyle = useAtlasPencilStyle()
-  const pencilCreate = useAtlasPencilCreate({ parentID, topLevelBoxes, screenToFlowPosition })
-  const pencilDraw = useAtlasPencilDraw({
-    armed: pencilArmed,
-    wrapperRef,
-    onComplete: (points) => void pencilCreate.landStroke(points, pencilStyle.color, pencilStyle.size).catch(console.error),
-  })
-
   // The capture doors (goal 0081 slice A3): own hook files, 500-line cap.
   const fileDrop = useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPosition, setPulsedID, reduceMotion })
   useAtlasPaste({ topLevelBoxes, screenToFlowPosition, onPasteText: creation.openPasteText, viewedID, onPasteConverted })
@@ -308,26 +276,30 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     creation.placeAt({ x: e.clientX, y: e.clientY }, tool)
   }
 
-  // Area drawing's own armed state (goal 0081 A2) disables the pane's
-  // panning so the mousedown/move/up trio below can own the drag --
-  // shift-drag box-select is unaffected (selectionKeyCode is independent of panOnDrag).
-  const areaArmed = isFree && !readOnly && creation.armedTool === 'area'
+  // The armed tool's own registered descriptor (goal 0215 S2) -- null
+  // for nothing armed, or an armed tool with no drag gesture at all
+  // (card/note/table/image), same as every other lookup off ATLAS_TOOLS.
+  const armedToolDescriptor = creation.armedTool ? (ATLAS_TOOLS.find((t) => t.id === creation.armedTool) ?? null) : null
+  // Whether the pane's own panning must stay disabled so the gesture
+  // engine's capture-phase trio can own the drag instead (goal 0081 A2)
+  // -- shift-drag box-select is unaffected (selectionKeyCode is
+  // independent of panOnDrag).
+  const anyDragToolArmed = isFree && !readOnly && armedToolDescriptor?.gesture != null
 
-  const r = areaDraw.dragLocalRect, marqueeStyle = r ? { left: r.x, top: r.y, width: r.width, height: r.height } : null
+  const gestureCtx: AtlasGestureCtx = useMemo(() => ({
+    screenToFlowPosition,
+    parentID,
+    cardBoxes: topLevelBoxes,
+    noteBoxes,
+    onDeleteSelection,
+    openAreaPopover: creation.openAreaPopover,
+    onShapeCreated: selection.selectObject,
+    disarm: creation.disarm,
+    disarmUnlessLocked: creation.disarmUnlessLocked,
+    hitAccumulator: { cardIDs: new Set(), noteIDs: new Set() },
+  }), [screenToFlowPosition, parentID, topLevelBoxes, noteBoxes, onDeleteSelection, creation.openAreaPopover, creation.disarm, creation.disarmUnlessLocked, selection.selectObject])
 
-  // Eraser/Laser/Shape's own arming+gesture hooks and the five-way activeDrag resolution
-  // live in their own file (500-line seam); onShapeCreated leaves a draw selected, disarming unless locked (goal 0199).
-  const onShapeCreated = useCallback((objectID: string) => {
-    selection.selectObject(objectID)
-    creation.disarmUnlessLocked()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- selection/creation are fresh object literals every render; the two stable functions actually used are the real deps
-  }, [selection.selectObject, creation.disarmUnlessLocked])
-
-  const { eraserDraw, laserDraw, shapeStyle, shapeDraw, activeDrag, anyDragToolArmed } = useAtlasDragTools({
-    isFree, readOnly, armedTool: creation.armedTool, screenToFlowPosition, topLevelBoxes, noteBoxes, wrapperRef, parentID,
-    onDeleteSelection, onShapeCreated, areaArmed, areaDraw, pencilArmed, pencilDraw,
-  })
-  const pan = useAtlasPanActivation(activeDrag)
+  const gesture = useAtlasToolGesture({ tool: armedToolDescriptor, readOnly, isFree, ctx: gestureCtx, wrapperRef })
 
   return (
     <div
@@ -336,7 +308,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       className={styles.board}
       data-testid="atlas-board"
       data-armed={creation.armedTool !== null}
-      data-panning={pan.panning}
+      data-panning={gesture.panning}
       data-file-drop-target
       data-file-drop-context={FILE_DROP_CONTEXT_BOARD}
       onDragOver={(e) => {
@@ -345,10 +317,10 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       onDrop={onCanvasDrop}
       onPointerDownCapture={(e) => {
         selection.snapshotSelection()
-        pan.onPointerDown?.(e)
+        gesture.onPointerDown(e)
       }}
-      onPointerMoveCapture={pan.onPointerMove}
-      onPointerUpCapture={pan.onPointerUp}
+      onPointerMoveCapture={gesture.onPointerMove}
+      onPointerUpCapture={gesture.onPointerUp}
     >
       <AtlasDragHighlightContext.Provider value={dragFiling.hoveredFrameID}>
       <ReactFlow
@@ -462,13 +434,11 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
         />
       </ReactFlow>
       </AtlasDragHighlightContext.Provider>
-      {marqueeStyle && <div className={styles.marquee} data-testid="atlas-area-marquee" style={marqueeStyle} />}
-      {pencilDraw.localPoints && <AtlasPencilLivePreview points={pencilDraw.localPoints} color={pencilStyle.color} size={pencilStyle.size} />}
-      {shapeDraw.localStart && shapeDraw.localCurrent && (
-        <AtlasShapeLivePreview shapeType={shapeStyle.shapeType} stroke={shapeStyle.stroke} strokeWidth={shapeStyle.strokeWidth} start={shapeDraw.localStart} current={shapeDraw.localCurrent} />
-      )}
-      {eraserDraw.localPoints && <AtlasEraserLiveTrail points={eraserDraw.localPoints} />}
-      {laserDraw.points.length > 0 && <AtlasLaserTrail points={laserDraw.points} now={laserDraw.now} />}
+      {/* The armed tool's own gesture.preview (goal 0215 S2), rendered
+          generically in this ONE overlay slot -- every drag tool's live
+          preview/trail/marquee is a contributed component, not a
+          per-tool branch here. */}
+      {gesture.Preview && gesture.points.length > 0 && <gesture.Preview points={gesture.points} now={gesture.now} />}
       {slotDrag.dragLine && <AtlasSlotDragLine line={slotDrag.dragLine} />}
       {fileDrop.dropError && <div className={`${styles.dropError} ${runbookStyles.error}`} data-testid="atlas-file-drop-error">{fileDrop.dropError}</div>}
       {fileDrop.dropDuplicateNotice && <div className={styles.dropNotice} data-testid="atlas-file-drop-duplicate-notice">{fileDrop.dropDuplicateNotice}</div>}

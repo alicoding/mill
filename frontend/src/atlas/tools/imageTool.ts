@@ -47,6 +47,10 @@ export const imageTool = {
   // No style surface of its own (goal 0209) -- always empty, not
   // omitted.
   styleFields: [],
+  // Arms through the paste/drop popover, never the drag gesture engine
+  // -- always false/null, not N/A.
+  sticky: false,
+  gesture: null,
   commit: async (input: { path: string } | { file: File; title: string }): Promise<AtlasImageArtifact> => {
     if ('file' in input) {
       const ext = IMAGE_MIME_EXTENSIONS[input.file.type]

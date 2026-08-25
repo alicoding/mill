@@ -44,7 +44,12 @@ export type AtlasToolInteraction =
 export type AtlasToolIdentity =
   | { id: 'card'; shortcutKey: string; commandLabel: string; requestKind: 'arm'; interaction: 'arm-then-click' }
   | { id: 'note'; shortcutKey: string; commandLabel: string; requestKind: 'arm'; interaction: 'arm-then-click' }
-  | { id: 'area'; shortcutKey: string; commandLabel: string; requestKind: 'arm'; interaction: 'arm-then-click' }
+  // area's own runtime gesture is a marquee drag, not a single click
+  // (goal 0215 S2 corrects the classification lie: its OWN
+  // useAtlasAreaDraw.ts always was a drag hook) -- requestKind stays
+  // 'arm' since a bare keypress still just arms the tool, same as
+  // every other 'arm' entry here.
+  | { id: 'area'; shortcutKey: string; commandLabel: string; requestKind: 'arm'; interaction: 'drag-to-draw' }
   | { id: 'table'; shortcutKey: string; commandLabel: string; requestKind: 'picker'; interaction: 'pick-then-place' }
   | { id: 'image'; shortcutKey: string; commandLabel: string; requestKind: 'popover'; interaction: 'paste-or-drop' }
   | { id: 'pencil'; shortcutKey: string; commandLabel: string; requestKind: 'arm'; interaction: 'drag-to-draw' }
@@ -55,7 +60,7 @@ export type AtlasToolIdentity =
 export const ATLAS_TOOL_IDENTITIES: AtlasToolIdentity[] = [
   { id: 'card', shortcutKey: 'C', commandLabel: 'Add a card', requestKind: 'arm', interaction: 'arm-then-click' },
   { id: 'note', shortcutKey: 'N', commandLabel: 'Add a note', requestKind: 'arm', interaction: 'arm-then-click' },
-  { id: 'area', shortcutKey: 'A', commandLabel: 'Draw an area', requestKind: 'arm', interaction: 'arm-then-click' },
+  { id: 'area', shortcutKey: 'A', commandLabel: 'Draw an area', requestKind: 'arm', interaction: 'drag-to-draw' },
   { id: 'table', shortcutKey: 'T', commandLabel: 'New table', requestKind: 'picker', interaction: 'pick-then-place' },
   { id: 'image', shortcutKey: 'I', commandLabel: 'Add an image', requestKind: 'popover', interaction: 'paste-or-drop' },
   { id: 'pencil', shortcutKey: 'P', commandLabel: 'Draw with the pencil', requestKind: 'arm', interaction: 'drag-to-draw' },

@@ -32,6 +32,10 @@ export const cardTool = {
   // No style surface of its own (goal 0209) -- always empty, not
   // omitted.
   styleFields: [],
+  // Never drags -- placed by a single click (useAtlasCreation.ts's
+  // placeAt), so this is never read at all; false, not N/A.
+  sticky: false,
+  gesture: null,
   commit: (input: { kinds: Kind[]; kindID?: string; title?: string; note?: string }): AtlasCardArtifact => ({
     kind: 'card',
     kindID: input.kindID ?? lastUsedKindID(input.kinds),

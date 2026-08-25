@@ -1,5 +1,7 @@
 import { TrashIcon } from '@primer/octicons-react'
 import { identityOf, registerNoun, type AtlasToolShape } from '../atlasNounRegistry'
+import { pointHitIDs } from '../atlasEnclosure'
+import { AtlasEraserLiveTrail } from '../AtlasEraserLiveTrail'
 
 const eraserIdentity = identityOf('eraser')
 
@@ -7,7 +9,7 @@ const eraserIdentity = identityOf('eraser')
 // only -- never a partial/pixel erase (the converged default this
 // goal's own research recorded: pixel-erase is contested even
 // upstream). Deletion is NOT unrecoverable: it never calls
-// AtlasService directly at all -- useAtlasEraserDraw.ts hands its
+// AtlasService directly at all -- this tool's own gesture.onEnd hands its
 // accumulated hit set straight to the SAME onDeleteSelection door the
 // selection tray's own Delete key already uses (AtlasBoard.tsx), which
 // routes through goal 0093's quick-delete-WITH-UNDO guard (a 10s toast
@@ -44,6 +46,37 @@ export const eraserTool = {
   // No style surface of its own (goal 0209) -- always empty, not
   // omitted.
   styleFields: [],
+  // Continuous tool, plain toggle-to-disarm -- never reads a lock flag;
+  // erasing is naturally a multi-pass action.
+  sticky: true,
+  gesture: {
+    // Live hit-testing (goal 0169 slice 4): every accumulated point
+    // -- including the very first, at pointerdown, so a stationary
+    // click-erase over a single card works with zero drag distance --
+    // hit-tests against TOP-LEVEL LEAF boxes only (containers excluded:
+    // a frame's own bounds cover its whole child area, so treating it
+    // as touchable would risk sweeping the frame itself away). Never
+    // gated by a distance threshold -- an eraser pass's own guard is
+    // "did we touch anything", not how far the pointer travelled.
+    onPoint: (pt, ctx) => {
+      const flow = ctx.screenToFlowPosition(pt)
+      for (const id of pointHitIDs(flow, ctx.cardBoxes.filter((b) => !b.isFrame))) ctx.hitAccumulator.cardIDs.add(id)
+      for (const id of pointHitIDs(flow, ctx.noteBoxes)) ctx.hitAccumulator.noteIDs.add(id)
+    },
+    // Hands the WHOLE accumulated hit set to onDeleteSelection in ONE
+    // call (never incrementally during the drag) -- the same door the
+    // selection tray's own Delete key uses, so erasing rides goal
+    // 0093's quick-delete-WITH-UNDO guard (a 10s toast + Cmd-Z) rather
+    // than a bespoke pipeline, and produces exactly one undo toast per
+    // pass instead of each touched element overwriting the last one's.
+    onEnd: (_points, ctx) => {
+      const cardIDs = [...ctx.hitAccumulator.cardIDs]
+      const noteIDs = [...ctx.hitAccumulator.noteIDs]
+      if (cardIDs.length + noteIDs.length === 0) return
+      ctx.onDeleteSelection(cardIDs, noteIDs)
+    },
+    preview: AtlasEraserLiveTrail,
+  },
   commit: (): null => null,
 } as const satisfies AtlasToolShape
 
