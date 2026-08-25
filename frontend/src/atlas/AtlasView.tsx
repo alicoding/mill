@@ -9,6 +9,7 @@ import { AtlasService } from '../shared/bindings'
 import { scheduleAtlasRefresh, refreshAtlas, useAtlasStore } from './atlasStore'
 import { applyLens, childrenOf, groupByKind, singleRootCard } from './atlasGrouping'
 import { useAtlasPerspectives } from './useAtlasPerspectives'
+import { useAtlasSessionLanding } from './useAtlasSessionLanding'
 import { useAtlasNavSignals } from './useAtlasNavSignals'
 import { useAtlasProjectionViews } from './useAtlasProjectionViews'
 import { useAtlasShareIO } from './useAtlasShareIO'
@@ -133,59 +134,14 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     setOverlayCardID(target.ID)
   }, [initialCardID, cards])
 
-  // The egocentric-root auto-entry (ADR-0038): with exactly one root
-  // card (ParentID==="") viewedID=="" resolves straight into it --
-  // UNLESS suppressAutoEntry says the user just chose to be there
-  // (docs/goals/0183: resolving unconditionally used to silently undo
-  // a deliberate atlas.up/breadcrumb navigation on landing, re-trapping
-  // a lone space with no way out). Skipped entirely once a deep link
-  // has claimed the initial navigation --
-  // that flow's own viewedID=="" (a root-level target's own space) is
-  // a deliberate destination, not a state to redirect away from.
-  // Session restore (goal 0091): land where you stood -- one-shot on
-  // mount, before the single-root redirect can claim the landing. The
-  // service already degrades stale ids (deleted viewed card -> root,
-  // deleted open card -> dropped), so what arrives here is always
-  // renderable. Saves below stay gated until this resolves, so the
-  // mount's own transient '' never clobbers the persisted state.
-  // Resolution must be STATE, not only a ref: the single-root landing
-  // below waits for it, and a ref flip alone would never re-run that
-  // effect -- the view would sit at "All spaces" until some unrelated
-  // cards refresh finally re-fired it (mid-interaction jump).
-  const sessionRestoreClaimed = useRef(false)
-  const [sessionRestored, setSessionRestored] = useState(false)
-  useEffect(() => {
-    if (sessionRestoreClaimed.current) return
-    sessionRestoreClaimed.current = true
-    // A deep link owns the landing -- restore yields entirely (but
-    // saves still arm, so the deep-linked position persists next).
-    if (initialCardID) { setSessionRestored(true); return }
-    AtlasService.AtlasSession()
-      .then((session) => {
-        if (session?.viewedID) setViewedID(session.viewedID)
-        if (session?.openCardID) setOverlayCardID(session.openCardID)
-        if (session?.activePerspectiveID) setActivePerspectiveID(session.activePerspectiveID)
-      })
-      .finally(() => setSessionRestored(true))
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot mount landing, same as the deep-link claim
-  }, [])
-  useEffect(() => {
-    if (!sessionRestored) return
-    void AtlasService.SetAtlasSession({ viewedID, openCardID: overlayCardID ?? '', activePerspectiveID }).catch(() => {})
-  }, [sessionRestored, viewedID, overlayCardID, activePerspectiveID])
-
-  // STATE, not a ref: landingPending below reads it during render,
-  // off limits for a ref (React Compiler's react-hooks/refs rule). Set
-  // by navigate/drill below (docs/goals/0183) exactly when a real card
-  // is deliberately left FOR the meta level -- never by a delete/
-  // promote landing there as its aftermath, which stays eligible to
-  // auto-resolve like any other viewedID==="" arrival.
-  const [suppressAutoEntry, setSuppressAutoEntry] = useState(false)
-  useEffect(() => {
-    if (initialCardID || !cards || viewedID !== '' || !sessionRestored || suppressAutoEntry) return
-    const root = singleRootCard(cards)
-    if (root) setViewedID(root.ID)
-  }, [cards, initialCardID, viewedID, sessionRestored, suppressAutoEntry])
+  // Session restore + the egocentric-root auto-entry, split into their
+  // own hook (architecture.md's 500-line convention) -- see that
+  // hook's own header comment for the full rationale (goals 0091,
+  // 0183, 0221).
+  const { sessionRestored, suppressAutoEntry, setSuppressAutoEntry } = useAtlasSessionLanding({
+    initialCardID, cards, viewedID, setViewedID, overlayCardID, setOverlayCardID,
+    activePerspectiveID, setActivePerspectiveID,
+  })
 
   useEffect(() => {
     AtlasService.Lens(viewedID)

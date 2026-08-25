@@ -19,11 +19,13 @@ import { groupCard, noteCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
 // reasoning as atlas-session-restore.spec.ts.
 //
 // Regression this pins: with exactly one root card, navigating up
-// (⌘↑) used to silently refuse (useAtlasNavSignals.ts), the "All
-// spaces" breadcrumb crumb stayed permanently hidden
-// (AtlasBreadcrumb.tsx), and the sole space had no in-place
-// rename/delete door -- together, the sole space could never become an
-// object you could act on without first creating a throwaway sibling.
+// (⌘↑) used to silently refuse (useAtlasNavSignals.ts), and the sole
+// space had no in-place rename/delete door -- together, the sole space
+// could never become an object you could act on without first creating
+// a throwaway sibling. Goal 0221 removed the ADDITIONAL gap this test
+// used to pin alongside it: the "All spaces" crumb (AtlasBreadcrumb.tsx)
+// now renders unconditionally, even while auto-entered into a lone
+// root card, rather than staying hidden until a deliberate up-nav.
 
 test.setTimeout(180_000)
 
@@ -56,27 +58,32 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     await zoomAllTheWayOut(page)
 
     // Egocentric-root auto-entry still lands directly inside the sole
-    // space on load (ADR-0038's intent, unregressed): no "All spaces"
-    // crumb yet.
+    // space on load (ADR-0038's intent, unregressed) -- but the "All
+    // spaces" crumb is visible right away too (goal 0221): one click
+    // out is always available, never gated on root-card count.
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('The engagement')
-    await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('All spaces')
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
 
     // Part A: navigating up from the single root is now permitted --
     // before the fix this was a silent no-op (useAtlasNavSignals.ts's
-    // own refusal), so the crumb below never appeared.
+    // own refusal). No overlay ever opens as a side effect of this
+    // navigation (goal 0221's "no navigation control ends in an
+    // overlay" contract).
     await page.keyboard.press('Meta+ArrowUp')
     await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('The engagement')
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
+    await expect(page.locator('[data-component="atlas-card-overlay"]')).not.toBeVisible()
     // The sole space is now a real object on the board -- reachable,
     // right-clickable, deletable through its own ordinary card menu
     // (unaffected by this goal, already covered elsewhere).
     const engagement = groupCard(page, 'The engagement')
     await expect(engagement).toBeVisible()
 
-    // Re-enter it: the meta crumb hides again once inside a real card.
+    // Re-enter it: the meta crumb stays visible, now selected on "The
+    // engagement" instead of the meta level.
     await engagement.getByTestId('atlas-group-header').click()
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('The engagement')
-    await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('All spaces')
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
 
     // Part B: the space is actionable from INSIDE it too, without
     // first navigating up -- its own empty-board right-click menu now
@@ -131,7 +138,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     // pins. It is itself now a root-level space, so the SAME
     // rename/delete door applies recursively.
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
-    await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('All spaces')
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
     await zoomAllTheWayOut(page)
     await board.click({ button: 'right', position: { x: 12, y: 12 } })
     await expect(menu).toBeVisible()
