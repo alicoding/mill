@@ -8,6 +8,7 @@ import { frameContainingPoint } from '../atlasFramePoint'
 import { refreshAtlas } from '../atlasStore'
 import { meetsDragThreshold } from '../useAtlasToolGesture'
 import { AtlasPencilLivePreview } from '../AtlasPencilLivePreview'
+import { makeMirrorImageContent } from '../AtlasMirrorImageContent'
 
 const pencilIdentity = identityOf('pencil')
 
@@ -52,6 +53,12 @@ export const pencilTool = {
   // An ink stroke's whole body already drags -- the shared band would
   // only be debris here (goal 0206's own DESIGN DECIDED table).
   dragBand: false,
+  // Placed instance is Kind 'ink', NOT 'pencil' (this tool's own commit
+  // below writes it) -- content registers against that Kind, sharing
+  // image's own mirrored-file renderer (AtlasMirrorImageContent.tsx)
+  // with a different fallback glyph.
+  boardObjectKind: 'ink',
+  content: { Component: makeMirrorImageContent(PencilIcon), ariaLabelKey: 'boardObject.inkAriaLabel', role: 'img' },
   styleDefaults: PENCIL_DEFAULT_STYLE,
   styleFields: PENCIL_STYLE_FIELDS,
   // Continuous tool: toggleArm's own re-click always disarms it (never

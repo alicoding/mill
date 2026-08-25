@@ -8,6 +8,7 @@ import { frameContainingPoint } from '../atlasFramePoint'
 import { refreshAtlas } from '../atlasStore'
 import { meetsDragThreshold } from '../useAtlasToolGesture'
 import { AtlasShapeLivePreview } from '../AtlasShapeLivePreview'
+import { AtlasShapeContent } from '../AtlasShapeContent'
 
 const shapeIdentity = identityOf('shape')
 
@@ -83,6 +84,8 @@ export const shapeTool = {
   // makes .content == the node's own box again, closing the paint-vs-
   // frame gap AtlasShapeContent.tsx's own header documents.
   dragBand: false,
+  boardObjectKind: 'shape',
+  content: { Component: AtlasShapeContent, ariaLabelKey: 'boardObject.shapeAriaLabel', role: 'img' },
   styleFields: SHAPE_STYLE_FIELDS,
   // The one discrete drag tool whose OWN lockable flag governs its
   // repeat mode (goal 0199 part D) -- never sticky itself, so the
