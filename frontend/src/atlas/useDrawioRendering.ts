@@ -41,6 +41,19 @@ const VIEWER_SCRIPT_URL = '/vendor/drawio/viewer.min.js'
 // (falsy-safe) local value is required to actually win that race.
 const LOCAL_ONLY_BASE = '/vendor/drawio/unavailable'
 
+// General/Flowchart-class stencil XML is vendored locally (goal 0224
+// S1, frontend/public/vendor/drawio/stencils/PROVENANCE.md carries the
+// pinned-commit source + the stencil subtree's own license). Every
+// OTHER stencil library (UML/AWS/network/...) still resolves through
+// LOCAL_ONLY_BASE below and degrades to a default box -- the viewer's
+// own mxStencilRegistry.getStencil loop tries a paired SHAPES_PATH
+// *.js painter first and an XML stencil file second per library
+// (viewer.min.js's `libraries.basic`/`libraries.flowchart` entries);
+// the .js entry 404s against LOCAL_ONLY_BASE and is skipped silently
+// (status check, not a thrown error), so the .xml entry alone is
+// enough to render real stencil geometry for a vendored library.
+const STENCIL_PATH = '/vendor/drawio/stencils'
+
 // Every one of these resolves to a live diagrams.net/app.diagrams.net/
 // github.com/gitlab.com endpoint the instant the vendored script's own
 // top-level code runs, unless already set -- pinning them has to
@@ -51,9 +64,10 @@ const LOCAL_ONLY_BASE = '/vendor/drawio/unavailable'
 // unit.spec.ts asserts no request to any of these hosts happens while
 // a .drawio card renders, so an update to the vendored file that adds
 // a new remote-defaulting global is caught by that test, not silently
-// missed here.
+// missed here. STENCIL_PATH is pinned separately above -- SHAPES_PATH
+// (the JS painter bundles) and everything else here stays fail-closed.
 const LOCAL_ONLY_PATHS = [
-  'mxBasePath', 'mxImageBasePath', 'STENCIL_PATH', 'SHAPES_PATH', 'STYLE_PATH', 'PROXY_URL',
+  'mxBasePath', 'mxImageBasePath', 'SHAPES_PATH', 'STYLE_PATH', 'PROXY_URL',
   'DRAWIO_BASE_URL', 'DRAW_MATH_URL', 'DRAWIO_LIGHTBOX_URL', 'GRAPH_IMAGE_PATH', 'EXPORT_URL',
   'NOTIFICATIONS_URL', 'DRAWIO_GITHUB_API_URL', 'DRAWIO_GITHUB_URL', 'DRAWIO_GITLAB_URL',
   'SAVE_URL', 'OPEN_URL', 'CSS_PATH', 'IMAGE_PATH', 'RESOURCES_PATH', 'TEMPLATE_PATH',
@@ -62,6 +76,7 @@ const LOCAL_ONLY_PATHS = [
 
 function pinLocalOnly() {
   const w = window as unknown as Record<string, string>
+  w.STENCIL_PATH ??= STENCIL_PATH
   for (const key of LOCAL_ONLY_PATHS) w[key] ??= LOCAL_ONLY_BASE
 }
 
