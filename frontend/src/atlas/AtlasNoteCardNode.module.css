@@ -40,10 +40,45 @@
     pointer-events: none;
 }
 
+/* Shared with AtlasTableCardNode.tsx's own header row (its table face
+   has no drill door of its own -- goal 0221 scoped the new door to
+   leaf/group cards, not List-projection tables). */
 .frontHeader {
     display: flex;
     align-items: center;
     gap: 6px;
+}
+
+/* The drill door (goal 0221): a transparent sibling overlay strip
+   anchored to React Flow's own positioned node wrapper, painted above
+   .card's own header row via z-index (both are direct children of
+   that wrapper, DOM order door then card -- see the component's own
+   header comment). Captures the click across the whole strip, same as
+   AtlasGroupNode.module.css's own .header, but shows only the "Zoom ⤢"
+   chip -- .frontHeader's glyph/kindLabel/file tag stay visible through
+   the transparent background underneath, unclickable there same as
+   before this goal (frontHeader itself never had its own handler). */
+.drillDoor {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 28px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 9px;
+    cursor: zoom-in;
+}
+.zoomChip {
+    font-family: var(--mill-mono);
+    font-size: 10px;
+    border: 1px solid var(--borderColor-muted);
+    border-radius: 4px;
+    padding: 0 5px;
+    background: var(--bgColor-default);
+    flex: 0 0 auto;
 }
 .glyph {
     width: 20px;

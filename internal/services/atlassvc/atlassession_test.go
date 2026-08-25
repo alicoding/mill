@@ -34,6 +34,28 @@ func TestAtlasSession_RoundTripsAndDegrades(t *testing.T) {
 	}
 }
 
+// AtRootExplicit (goal 0221) round-trips distinctly from the zero
+// value: a fresh service that never received a session write reports
+// it false, while an explicit root-landing write reports it true --
+// the only signal the egocentric-root auto-entry can use to tell those
+// two ViewedID=="" cases apart.
+func TestAtlasSession_AtRootExplicitRoundTrips(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	fresh := NewAtlasService(store)
+	if got := fresh.AtlasSession(); got.AtRootExplicit {
+		t.Fatalf("never-saved session = %+v, want AtRootExplicit false", got)
+	}
+
+	a := NewAtlasService(store)
+	if err := a.SetAtlasSession(AtlasSessionState{ViewedID: "", AtRootExplicit: true}); err != nil {
+		t.Fatal(err)
+	}
+	b := NewAtlasService(store)
+	if got := b.AtlasSession(); got.ViewedID != "" || !got.AtRootExplicit {
+		t.Fatalf("restored session = %+v, want ViewedID empty and AtRootExplicit true", got)
+	}
+}
+
 // The MILL_TEST_ATLAS_SESSION_OFF seam suppresses the read-back only:
 // writes persist, but a shared-server e2e page must always mount from
 // the zero state.

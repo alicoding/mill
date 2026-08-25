@@ -39,6 +39,12 @@ export interface AtlasNoteCardData extends Record<string, unknown> {
   // already-selected card -- a natural double-click is just those two
   // clicks in a row, so no separate dblclick handler exists.
   onCommit: (id: string) => void
+  // Every enterable card shows its door (goal 0221): a leaf card's own
+  // drill affordance, the same "Zoom into" action AtlasGroupNode's
+  // header offers a container -- reached via a SEPARATE, non-nested
+  // sibling control (see the component's own header comment for why it
+  // can't just be a second interactive region inside .card).
+  onDrill: (id: string) => void
   // The typed-link slot-drag's own relocated origin (goal 0106
   // contract item 1): a hover-visible handle on the card's right edge,
   // dragging from it starts a link of the board's default (first-
@@ -67,7 +73,7 @@ export type AtlasNoteCardRFNode = RFNode<AtlasNoteCardData>
 // one-level-deep children preview -- the same content either way.
 export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data, selected }: NodeProps<AtlasNoteCardRFNode>) {
   const { t } = useTranslation('atlas')
-  const { card, kind, allCards, links, linkKinds, pulsed, hinted, isSoleSelected, onCommit, slotDragHighlight, onSlotAnchorPointerDown, hasLegalTargets } = data
+  const { card, kind, allCards, links, linkKinds, pulsed, hinted, isSoleSelected, onCommit, onDrill, slotDragHighlight, onSlotAnchorPointerDown, hasLegalTargets } = data
   const tokens = kindColorTokens(card.KindID)
   const fileTag = deriveFileTag(card)
   const dot = freshnessDotColor(card)
@@ -89,48 +95,83 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data, selecte
     })
   const cardLinks = links.filter((l) => l.FromCardID === card.ID || l.ToCardID === card.ID)
   const defaultLinkKindID = linkKinds[0]?.ID
+  const drill = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation()
+    onDrill(card.ID)
+  }
 
   return (
-    <div
-      className={`${styles.card}${slotDragHighlight ? ` ${slotStyles.slotTargetHighlight}` : ''}`}
-      data-testid="atlas-note-card"
-      // Deliberate clamp (goal 0156's layout-fitness audit, re-cut by
-      // goal 0193): the face's box follows Card.Size (default 190x128)
-      // -- overflowing field/note text clips to whatever that box is,
-      // never scrolls; resizing the box is the only way to reveal more.
-      data-clip-intent="note-card face sized by Card.Size (default 190x128); overflowing content clips to the current box"
-      data-pulse={pulsed}
-      data-dimmed={data.dimmed}
-      data-slot-target={slotDragHighlight}
-      role="button"
-      tabIndex={0}
-      aria-label={t('board.cardAriaLabel', { title: card.Title })}
-      // The click model (goal 0102's gesture table, uniform across
-      // every node type): shift-click is React Flow's own multi-select
-      // toggle (never also a commit); ⌘-click commits instantly (the
-      // pointer twin of ⌘↵); a plain click on the ALREADY-selected
-      // card commits too -- so two ordinary clicks in a row reproduce
-      // a double-click's outcome with no separate handler needed.
-      // Every other plain click just lets React Flow's own
-      // select-and-replace stand.
-      onClick={(e) => {
-        if (e.shiftKey) return
-        if (e.metaKey || e.ctrlKey) { onCommit(card.ID); return }
-        if (isSoleSelected(card.ID)) onCommit(card.ID)
-      }}
-      // Same determinism as the sticky's own handler: a dblclick's
-      // second press can beat the snapshot's re-render.
-      onDoubleClick={(e) => {
-        if (e.shiftKey) return
-        onCommit(card.ID)
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
+    <>
+      {/* Every enterable card shows its door (goal 0221) -- a SIBLING
+          of .card below, not a descendant: .card is itself role="button"
+          for the commit click model, and nesting a second interactive
+          control inside it would trip axe-core's nested-interactive
+          rule (the WCAG-audit precedent this file's own linkHandle
+          comment already names). Both are children of React Flow's own
+          node wrapper (position: absolute), so this positions as an
+          overlay strip without needing an extra wrapper div; DOM order
+          keeps Tab visiting the door first, matching its visual top
+          position, while z-index (module CSS) keeps it paintable above
+          .card's own header row. Deliberately empty of content beyond
+          the "Zoom ⤢" chip -- .card's own frontHeader (glyph/kindLabel/
+          file tag) stays put, since several specs locate
+          atlas-note-file-tag as a DESCENDANT of atlas-note-card. */}
+      <div
+        className={styles.drillDoor}
+        role="button"
+        tabIndex={0}
+        data-testid="atlas-note-drill"
+        aria-label={t('board.zoomIntoAriaLabel', { title: card.Title })}
+        onClick={drill}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            drill(e)
+          }
+        }}
+      >
+        <span className={styles.zoomChip}>{t('board.zoomChip')}</span>
+      </div>
+      <div
+        className={`${styles.card}${slotDragHighlight ? ` ${slotStyles.slotTargetHighlight}` : ''}`}
+        data-testid="atlas-note-card"
+        // Deliberate clamp (goal 0156's layout-fitness audit, re-cut by
+        // goal 0193): the face's box follows Card.Size (default 190x128)
+        // -- overflowing field/note text clips to whatever that box is,
+        // never scrolls; resizing the box is the only way to reveal more.
+        data-clip-intent="note-card face sized by Card.Size (default 190x128); overflowing content clips to the current box"
+        data-pulse={pulsed}
+        data-dimmed={data.dimmed}
+        data-slot-target={slotDragHighlight}
+        role="button"
+        tabIndex={0}
+        aria-label={t('board.cardAriaLabel', { title: card.Title })}
+        // The click model (goal 0102's gesture table, uniform across
+        // every node type): shift-click is React Flow's own multi-select
+        // toggle (never also a commit); ⌘-click commits instantly (the
+        // pointer twin of ⌘↵); a plain click on the ALREADY-selected
+        // card commits too -- so two ordinary clicks in a row reproduce
+        // a double-click's outcome with no separate handler needed.
+        // Every other plain click just lets React Flow's own
+        // select-and-replace stand.
+        onClick={(e) => {
+          if (e.shiftKey) return
+          if (e.metaKey || e.ctrlKey) { onCommit(card.ID); return }
+          if (isSoleSelected(card.ID)) onCommit(card.ID)
+        }}
+        // Same determinism as the sticky's own handler: a dblclick's
+        // second press can beat the snapshot's re-render.
+        onDoubleClick={(e) => {
+          if (e.shiftKey) return
           onCommit(card.ID)
-        }
-      }}
-    >
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onCommit(card.ID)
+          }
+        }}
+      >
       {/* Invisible connection points -- React Flow measures a real
           Handle element's DOM position to compute where a link edge
           attaches; without one, an edge naming this card as an
@@ -235,6 +276,7 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data, selecte
       {hinted && (
         <div className={styles.hintChip} data-testid="atlas-jump-hint" aria-hidden="true">{t('board.jumpHint')}</div>
       )}
-    </div>
+      </div>
+    </>
   )
 })

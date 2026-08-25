@@ -2,20 +2,19 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionList, AnchoredOverlay, Breadcrumbs } from '@primer/react'
 import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import { buildBreadcrumbPath, childrenOf, singleRootCard } from './atlasGrouping'
+import { buildBreadcrumbPath, childrenOf } from './atlasGrouping'
 
 // root -> ... -> current, every ancestor clickable (docs/goals/0061):
 // Primer's own Breadcrumbs (frontend.md: adopt a kit component over a
 // hand-rolled "a / b / c" strip). The virtual meta level (Card.ParentID
-// == "" -- ADR-0038 Decision 3, there is no real root card) only earns
-// its own "All spaces" crumb when 2+ root cards actually exist to
-// choose between (egocentric-root auto-entry, goal 0069), OR the user
-// is currently standing at that level (viewedID === '') -- with
-// exactly one root card and the user still inside it, that card IS the
-// top and the path already starts there, so the crumb stays hidden
-// until they deliberately navigate up to it (docs/goals/0183: a
-// permanently-hidden crumb made the sole space unreachable as an
-// object). The meta crumb stays a plain navigate-on-click link
+// == "" -- ADR-0038 Decision 3, there is no real root card) renders its
+// own "All spaces" crumb UNCONDITIONALLY (goal 0221): a root-level
+// board can hold notes/objects alongside a single root card, so the
+// meta level is a real, distinct place even with exactly one root card
+// -- hiding the crumb there left no visible way out of that card
+// (docs/goals/0183 fixed the same-session trap; this closes the
+// remaining structural gap: the crumb itself never rendered while
+// drilled). The meta crumb stays a plain navigate-on-click link
 // (goal 0106 slice B): it names no single real place with siblings of
 // its own, unlike every other segment below.
 export function AtlasBreadcrumb({ cards, viewedID, onNavigate }: {
@@ -25,7 +24,6 @@ export function AtlasBreadcrumb({ cards, viewedID, onNavigate }: {
 }) {
   const { t } = useTranslation('atlas')
   const path = buildBreadcrumbPath(cards, viewedID)
-  const showMetaCrumb = singleRootCard(cards) === null || viewedID === ''
   return (
     // The data-testid lives on this wrapper div, not <Breadcrumbs>
     // itself: Breadcrumbs destructures only className/children/style/
@@ -35,15 +33,14 @@ export function AtlasBreadcrumb({ cards, viewedID, onNavigate }: {
     // a testid placed directly on an Item would have worked fine.
     <div data-testid="atlas-breadcrumb">
       <Breadcrumbs>
-        {showMetaCrumb && (
-          <Breadcrumbs.Item
-            href="#"
-            selected={viewedID === ''}
-            onClick={(e) => { e.preventDefault(); onNavigate('') }}
-          >
-            {t('breadcrumbRoot')}
-          </Breadcrumbs.Item>
-        )}
+        <Breadcrumbs.Item
+          href="#"
+          selected={viewedID === ''}
+          data-testid="atlas-breadcrumb-root"
+          onClick={(e) => { e.preventDefault(); onNavigate('') }}
+        >
+          {t('breadcrumbRoot')}
+        </Breadcrumbs.Item>
         {path.map((card) => (
           <AtlasBreadcrumbSegment key={card.ID} card={card} cards={cards} selected={card.ID === viewedID} onNavigate={onNavigate} />
         ))}
