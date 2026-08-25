@@ -62,7 +62,7 @@ func (a *AtlasService) SyncLedgerFolder(folderPath, parentTitle, sourceRunID str
 	}
 
 	if parentID == "" && parentTitle != "" {
-		parent, err := a.createCardWithID(seeding.NewSlugID(parentTitle, "card"), kind.ID, parentTitle, "", nil, "", nil, "", "", "", "", "", sourceRunID)
+		parent, err := a.createCardWithID(seeding.NewSlugID(parentTitle, "card"), kind.ID, parentTitle, "", nil, "", nil, "", "", "", "", "", sourceRunID, "")
 		if err != nil {
 			return "", fmt.Errorf("sync ledger folder: create parent %q: %w", parentTitle, err)
 		}

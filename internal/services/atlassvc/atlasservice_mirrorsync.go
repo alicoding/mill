@@ -120,7 +120,7 @@ func (a *AtlasService) createMirrorCard(e mirrorSyncEntry) (atlas.Card, error) {
 		}
 		fields = merged
 	}
-	card, err := a.createCardWithID(e.NewCardID, e.KindID, e.Title, "", fields, e.ParentID, e.Position, e.ViewMode, "", e.MirrorPath, e.Checksum, "", e.SourceRunID)
+	card, err := a.createCardWithID(e.NewCardID, e.KindID, e.Title, "", fields, e.ParentID, e.Position, e.ViewMode, "", e.MirrorPath, e.Checksum, "", e.SourceRunID, "")
 	if err != nil {
 		return atlas.Card{}, fmt.Errorf("sync mirror card: create for %q: %w", e.Title, err)
 	}

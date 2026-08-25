@@ -44,6 +44,11 @@ func (a *AtlasService) CreateNote(text string, pos atlas.Position, parentID stri
 		return atlas.Note{}, fmt.Errorf("save note: %w", perr)
 	}
 	dataevent.Emit("atlas", n.ID)
+	created := n.ID
+	a.recordUndo(actorUI, "note", created, text,
+		func(a *AtlasService) error { _, err := a.DeleteNote(created); return err },
+		func(a *AtlasService) error { return a.UndoDelete(nil, []string{created}, nil) },
+	)
 	return n, nil
 }
 
@@ -73,11 +78,17 @@ func (a *AtlasService) UpdateNoteText(id, text string) (atlas.Note, error) {
 		return atlas.Note{}, fmt.Errorf("save note: %w", perr)
 	}
 	dataevent.Emit("atlas", n.ID)
+	recordScalar(a, actorUI, "note", id, n.Text,
+		func(a *AtlasService, t string) error { _, err := a.UpdateNoteText(id, t); return err },
+		previous.Text, text,
+	)
 	return n, nil
 }
 
 // SetNotePosition updates a note's placement within its parent's canvas
 // -- the same drag-persistence call cards go through via SetPosition.
+//
+//nolint:dupl // same lock/mutate/persist/emit/recordScalar shape as SetBoardObjectPosition -- a shared generic setter is a larger refactor than this slice's scope
 func (a *AtlasService) SetNotePosition(id string, pos atlas.Position) (atlas.Note, error) {
 	a.mu.Lock()
 	idx := a.findNoteLocked(id)
@@ -99,6 +110,10 @@ func (a *AtlasService) SetNotePosition(id string, pos atlas.Position) (atlas.Not
 		return atlas.Note{}, fmt.Errorf("save note position: %w", perr)
 	}
 	dataevent.Emit("atlas", n.ID)
+	recordScalar(a, actorUI, "note", id, n.Text,
+		func(a *AtlasService, p atlas.Position) error { _, err := a.SetNotePosition(id, p); return err },
+		previous.Position, pos,
+	)
 	return n, nil
 }
 
@@ -130,13 +145,30 @@ func (a *AtlasService) SetNoteSize(id string, size atlas.Dimensions) (atlas.Note
 		return atlas.Note{}, fmt.Errorf("save note size: %w", perr)
 	}
 	dataevent.Emit("atlas", n.ID)
+	recordScalar(a, actorUI, "note", id, n.Text,
+		func(a *AtlasService, sz atlas.Dimensions) error { _, err := a.SetNoteSize(id, sz); return err },
+		derefSize(previous.Size), size,
+	)
 	return n, nil
+}
+
+// derefSize returns the zero Dimensions for a nil *Dimensions -- a
+// note's Size is nil until first resized, but an undo entry's captured
+// "previous" value must always be a concrete Dimensions for
+// recordScalar's apply closure to re-call SetNoteSize with.
+func derefSize(d *atlas.Dimensions) atlas.Dimensions {
+	if d == nil {
+		return atlas.Dimensions{}
+	}
+	return *d
 }
 
 // MoveNote reparents a note (drag filing into/out of an area frame,
 // goal 0081 A2) -- same containment-existence check CreateNote runs.
 // A note can never contain anything, so no cycle check is needed the
 // way MoveCard's atlas.WouldCycle is.
+//
+//nolint:dupl // same lock/reparent/emit/recordScalar shape as MoveBoardObject -- a shared generic mover is a larger refactor than this slice's scope
 func (a *AtlasService) MoveNote(id, newParentID string) (atlas.Note, error) {
 	a.mu.Lock()
 	idx := a.findNoteLocked(id)
@@ -144,6 +176,7 @@ func (a *AtlasService) MoveNote(id, newParentID string) (atlas.Note, error) {
 		a.mu.Unlock()
 		return atlas.Note{}, fmt.Errorf("no note with id %q", id)
 	}
+	previous := a.notes[idx]
 	n, err := reparentEntityLocked(a, a.notes, idx, newParentID, "note", func(x *atlas.Note, p string, t time.Time) {
 		x.ParentID = p
 		x.UpdatedAt = t
@@ -153,6 +186,10 @@ func (a *AtlasService) MoveNote(id, newParentID string) (atlas.Note, error) {
 		return atlas.Note{}, err
 	}
 	dataevent.Emit("atlas", n.ID)
+	recordScalar(a, actorUI, "note", id, n.Text,
+		func(a *AtlasService, p string) error { _, err := a.MoveNote(id, p); return err },
+		previous.ParentID, newParentID,
+	)
 	return n, nil
 }
 
@@ -210,6 +247,11 @@ func (a *AtlasService) PromoteNote(noteID, kindID, title string) (atlas.Card, er
 	}
 	dataevent.Emit("atlas", c.ID)
 	a.notifyCardChange(c, "create", "")
+	capturedNote, capturedCard := note, c
+	a.recordUndo(actorUI, "note", noteID, title,
+		func(a *AtlasService) error { return a.demoteCardToNote(capturedCard.ID, capturedNote) },
+		func(a *AtlasService) error { return a.repromoteNoteToCard(capturedNote.ID, capturedCard) },
+	)
 	return c, nil
 }
 

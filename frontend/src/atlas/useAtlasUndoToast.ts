@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { AtlasService } from '../shared/bindings'
 import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
-import { refreshAtlas } from './atlasStore'
 
 const TOAST_DURATION_MS = 10_000
 
@@ -20,13 +18,17 @@ export interface PendingUndo {
 // Owns the quick-delete undo toast's whole lifecycle (goal 0093): one
 // pending delete at a time -- a later delete finalizes whatever was
 // showing (client-side only: the earlier delete's entities stay
-// tombstoned, only the toast itself is replaced), a 10s timer, a
-// click, and ⌘Z (via the atlasUndoDeleteRequest signal a dedicated
-// app/useKeymapDispatch.ts listener bumps) all resolve to the same
-// undo() call. Keeps uiSignalStore's atlasUndoDeletePending flag in
-// sync so that listener can guard without reaching into this
-// component's own state (shared/ can't import atlas/, frontend.md's
-// bounded-context rule).
+// tombstoned, only the toast itself is replaced), a 10s timer. Undoing
+// -- whether by clicking the toast's button or by ⌘Z -- is the SAME
+// journal pop every other mutation door rides (goal 0219 S2,
+// ADR-0044): the button requests it via uiSignalStore's
+// atlasUndoRequest (atlas/useAtlasUndoJournal owns the actual
+// AtlasService.Undo() call + refresh), and this hook watches
+// atlasUndoAppliedTick to dismiss the toast whenever an undo lands --
+// via the button, ⌘Z, or the palette -- without re-deriving whether
+// its own delete was the one that got undone (goal 0093's own
+// contract: a later action always wins, so ANY applied undo/redo
+// dismisses whatever toast is showing).
 export function useAtlasUndoToast() {
   const [pending, setPending] = useState<PendingUndo | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -57,25 +59,20 @@ export function useAtlasUndoToast() {
   const undo = () => {
     if (!pending) return
     clearTimer()
-    const { cardIDs, noteIDs, objectIDs } = pending
     setPending(null)
-    void AtlasService.UndoDelete(cardIDs, noteIDs, objectIDs).then(() => refreshAtlas())
+    useUISignalStore.getState().requestAtlasUndo()
   }
 
   useEffect(() => clearTimer, [])
 
+  const appliedTick = useUISignalStore((s) => s.atlasUndoAppliedTick)
+  const lastAppliedTick = useRef(appliedTick)
   useEffect(() => {
-    useUISignalStore.getState().setAtlasUndoDeletePending(pending !== null)
-  }, [pending])
-
-  const undoDeleteRequest = useUISignalStore((s) => s.atlasUndoDeleteRequest)
-  const lastUndoDeleteRequest = useRef(undoDeleteRequest)
-  useEffect(() => {
-    if (undoDeleteRequest === lastUndoDeleteRequest.current) return
-    lastUndoDeleteRequest.current = undoDeleteRequest
-    undo()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the signal tick alone; pending is read at fire time via the undo closure
-  }, [undoDeleteRequest])
+    if (appliedTick === lastAppliedTick.current) return
+    lastAppliedTick.current = appliedTick
+    clearTimer()
+    setPending(null)
+  }, [appliedTick])
 
   return { pending, registerDelete, undo }
 }

@@ -396,3 +396,37 @@ export interface TombstoneResult {
     "LinksRemoved": number;
     "ChildrenPromoted": number;
 }
+
+/**
+ * UndoResult is Undo/Redo's own RPC return -- the frontend renders
+ * Message directly rather than Mill routing an apply-time skip through
+ * a separate notice surface (goal 0122's notice store is scoped to
+ * update-checking today; a short, synchronous RPC result is simpler
+ * than generalizing it for one more caller in this slice).
+ */
+export interface UndoResult {
+    /**
+     * Applied is true when a mark was popped and at least attempted --
+     * false only when the stack was already empty (nothing to do).
+     */
+    "Applied": boolean;
+
+    /**
+     * Skipped is true when one or more entries in the mark could not be
+     * applied because their target changed since (ADR-0044 decision 5).
+     */
+    "Skipped": boolean;
+    "Message": string;
+}
+
+/**
+ * UndoState reports whether ⌘Z/⇧⌘Z currently have anything to do --
+ * polled by the frontend after every atlas dataevent so the keyboard
+ * listener can decide, without a round trip, whether to preventDefault
+ * (goal 0093's editable-field guard needs this to stay a synchronous
+ * decision).
+ */
+export interface UndoState {
+    "HasUndo": boolean;
+    "HasRedo": boolean;
+}

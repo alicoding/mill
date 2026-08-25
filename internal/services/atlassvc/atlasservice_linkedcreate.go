@@ -117,5 +117,10 @@ func (a *AtlasService) commitLinkedCardLocked(card atlas.Card, link atlas.Link) 
 	dataevent.Emit("atlas", card.ID)
 	dataevent.Emit("atlas", link.ID)
 	a.notifyCardChange(card, "create", "")
+	createdCard := card.ID
+	a.recordUndo(actorUI, "card", createdCard, card.Title,
+		func(a *AtlasService) error { _, err := a.DeleteCard(createdCard); return err },
+		func(a *AtlasService) error { return a.UndoDelete([]string{createdCard}, nil, nil) },
+	)
 	return card, nil
 }

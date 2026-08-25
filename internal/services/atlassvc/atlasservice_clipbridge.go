@@ -233,7 +233,7 @@ func (a *AtlasService) createReplyCard(item replyItemDraft, kindByLabel map[stri
 		return a.CreateCardForWorkflow(kind.ID, item.Title, note, fields, sourceRunID)
 	}
 	return a.createCardWithID(seeding.NewSlugID(item.Title, "card"), kind.ID, item.Title, note, fields,
-		parentID, importGridPosition(cardIndex), "", "", "", "", "", sourceRunID)
+		parentID, importGridPosition(cardIndex), "", "", "", "", "", sourceRunID, actorUI)
 }
 
 // materializeReplyItems is the apply-atlas-from-reply seam: accepted
@@ -269,6 +269,11 @@ func (a *AtlasService) materializeReplyItems(itemsJSON, parentID, sourceRunID st
 
 	var ids []string
 	cards, notes := 0, 0
+	// A reply batch lands as ONE undo step regardless of item count
+	// (ADR-0044 decision 2's multi-entity framing, "multi-paste
+	// landing").
+	a.BeginUndoMark()
+	defer a.EndUndoMark()
 	for i, item := range items {
 		switch {
 		case strings.TrimSpace(item.Title) != "":

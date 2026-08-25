@@ -78,22 +78,29 @@ export function useAtlasContainmentMenus({
   )
 
   const deleteSelection = (cardIDs: string[], noteIDs: string[], objectIDs: string[] = []) => guardDelete(cardIDs, noteIDs, () => {
-    Promise.all([
-      ...cardIDs.map((id) => AtlasService.DeleteCard(id)),
-      ...noteIDs.map((id) => AtlasService.DeleteNote(id)),
-      ...objectIDs.map((id) => AtlasService.DeleteBoardObject(id)),
-    ])
-      .then((results) => {
-        onDeleted({
-          CardIDs: results.flatMap((r) => r.CardIDs ?? []),
-          NoteIDs: results.flatMap((r) => r.NoteIDs ?? []),
-          ObjectIDs: results.flatMap((r) => r.ObjectIDs ?? []),
-          LinksRemoved: results.reduce((sum, r) => sum + (r.LinksRemoved ?? 0), 0),
-          ChildrenPromoted: results.reduce((sum, r) => sum + (r.ChildrenPromoted ?? 0), 0),
+    // A multi-select delete undoes as ONE step (ADR-0044 decision 2) --
+    // BeginUndoMark must resolve before the deletes fire so every
+    // concurrent DeleteCard/DeleteNote/DeleteBoardObject call lands in
+    // the same mark, and EndUndoMark only after they've all settled.
+    void AtlasService.BeginUndoMark().then(() =>
+      Promise.all([
+        ...cardIDs.map((id) => AtlasService.DeleteCard(id)),
+        ...noteIDs.map((id) => AtlasService.DeleteNote(id)),
+        ...objectIDs.map((id) => AtlasService.DeleteBoardObject(id)),
+      ])
+        .then((results) => {
+          onDeleted({
+            CardIDs: results.flatMap((r) => r.CardIDs ?? []),
+            NoteIDs: results.flatMap((r) => r.NoteIDs ?? []),
+            ObjectIDs: results.flatMap((r) => r.ObjectIDs ?? []),
+            LinksRemoved: results.reduce((sum, r) => sum + (r.LinksRemoved ?? 0), 0),
+            ChildrenPromoted: results.reduce((sum, r) => sum + (r.ChildrenPromoted ?? 0), 0),
+          })
+          void refreshAtlas()
         })
-        void refreshAtlas()
-      })
-      .catch((err) => onError(String(err)))
+        .catch((err) => onError(String(err)))
+        .finally(() => void AtlasService.EndUndoMark()),
+    )
   }, objectIDs)
 
   // Frame interior empty space (LOCKED design §6d): the click point's

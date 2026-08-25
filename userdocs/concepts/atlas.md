@@ -119,6 +119,12 @@ into.
   run them from the card. Workflows can also read and write cards as
   steps (create, update, find, link), and a trigger can fire on card
   changes — the board and the automation layer are one system.
+- **Undo almost anything.** ⌘Z undoes your last change on the
+  board — drawing a stroke, moving or resizing a card, deleting
+  something, pasting a table — and ⇧⌘Z brings it back. Deleting
+  also shows a brief Undo button; either one restores it. A change
+  someone else makes at the same time is never something your own
+  ⌘Z can undo.
 - **Tables are projections.** Start one from nothing with "New
   table" (the toolbar at the bottom of the board, next to Card,
   Note, and Area): sweep the size grid to the shape
@@ -153,7 +159,10 @@ Matrix and Coverage views project the same data as grids when a board
 is the wrong shape for the question. Roadmap lays a space's cards out
 as swimlanes — one row per card type, one column per Now/Next/Then
 tag plus an Unscheduled column for anything untagged — so you can see
-at a glance what's planned and what still needs a tag. Tag a card by
-adding a Horizon field to its type in Kinds, then setting Now, Next,
-or Then on the card itself; it's view-only today, so moving a card
-between columns still means editing that field.
+at a glance what's planned and what still needs a tag. An empty
+roadmap still shows the full column layout, and each Now/Next/Then
+column has its own "Place cards" button that opens a picker of the
+space's other cards — pick one and it lands in that column, and if
+its type doesn't have a Horizon field yet, Mill adds one automatically
+and says so with a quiet toast. Drag a card's chip between columns to
+retag it, or onto Unscheduled to clear the tag.

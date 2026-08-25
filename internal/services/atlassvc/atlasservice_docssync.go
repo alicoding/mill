@@ -43,7 +43,7 @@ func (a *AtlasService) SyncDocsFolder(folderPath, parentTitle, kindLabel, source
 	}
 
 	if parentID == "" && parentTitle != "" {
-		parent, err := a.createCardWithID(seeding.NewSlugID(parentTitle, "card"), kindID, parentTitle, "", nil, "", nil, "", "", "", "", "", sourceRunID)
+		parent, err := a.createCardWithID(seeding.NewSlugID(parentTitle, "card"), kindID, parentTitle, "", nil, "", nil, "", "", "", "", "", sourceRunID, "")
 		if err != nil {
 			return "", fmt.Errorf("sync docs folder: create parent %q: %w", parentTitle, err)
 		}
@@ -141,7 +141,7 @@ func (a *AtlasService) syncOneDoc(folderPath, relPath, name, kindID, parentID, s
 		}
 		return existing.ID, false, false, nil
 	}
-	card, err := a.createCardWithID(seeding.NewSlugID(atlas.HumanizeFilename(name), "card"), kindID, atlas.HumanizeFilename(name), "", nil, parentID, nil, "", "", abs, sum, "", sourceRunID)
+	card, err := a.createCardWithID(seeding.NewSlugID(atlas.HumanizeFilename(name), "card"), kindID, atlas.HumanizeFilename(name), "", nil, parentID, nil, "", "", abs, sum, "", sourceRunID, "")
 	if err != nil {
 		return "", false, false, fmt.Errorf("sync docs folder: create for %q: %w", name, err)
 	}

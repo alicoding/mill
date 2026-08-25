@@ -63,6 +63,21 @@ export function AtlasSession(): $CancellablePromise<$models.AtlasSessionState> {
 }
 
 /**
+ * BeginUndoMark/EndUndoMark let the frontend group several door calls
+ * made within one user gesture into ONE undo step (ADR-0044 decision 2
+ * -- "everything inside one mark undoes atomically"): the 0215 gesture
+ * engine's own start/end boundaries, and a multi-select group action
+ * (delete, paste-landing). Nested calls are supported (depth-counted)
+ * so a helper that itself opens/closes a mark can be called from inside
+ * an already-open one without splitting it. A door called with no mark
+ * open gets its own one-entry mark automatically (recordUndo's
+ * markID == 0 branch) -- most doors never need these at all.
+ */
+export function BeginUndoMark(): $CancellablePromise<void> {
+    return $Call.ByID(3659071004);
+}
+
+/**
  * CardContextBlock renders cardID's fields/note/links as one stable,
  * paste-ready text block (goal 0063's copy-as-context) -- the Card
  * overlay/chip's "Copy as context" action copies exactly this string.
@@ -340,6 +355,10 @@ export function DetectSyncRoots(): $CancellablePromise<string[] | null> {
  */
 export function DiffPerspectives(fromID: string, toID: string): $CancellablePromise<atlas$0.PerspectiveDiff> {
     return $Call.ByID(3383492038, fromID, toID);
+}
+
+export function EndUndoMark(): $CancellablePromise<void> {
+    return $Call.ByID(301791156);
 }
 
 /**
@@ -681,6 +700,15 @@ export function PromoteNote(noteID: string, kindID: string, title: string): $Can
 }
 
 /**
+ * Redo re-applies the UI actor's last undone mark, forward, through the
+ * same doors (ADR-0044 decision 3: "redo is the inverse's inverse,
+ * same rule").
+ */
+export function Redo(): $CancellablePromise<$models.UndoResult> {
+    return $Call.ByID(3243984018);
+}
+
+/**
  * RefreshMirrorContainer re-syncs cardID -- which must already carry a
  * MirrorPath from a prior import -- against its own source folder on
  * disk. The folder itself having vanished is reported as an error and
@@ -1009,6 +1037,18 @@ export function TableProjectionExport(cardID: string, format: string): $Cancella
 }
 
 /**
+ * Undo pops the UI actor's last mark and applies every entry's inverse,
+ * through the same mutation doors that made the original changes
+ * (ADR-0044 decision 3) -- never a state rollback. Entries within a
+ * mark apply in REVERSE recording order (last change undone first),
+ * mirroring how a multi-step gesture must unwind. The whole mark then
+ * moves onto the redo stack UNCHANGED, so Redo() can replay it forward.
+ */
+export function Undo(): $CancellablePromise<$models.UndoResult> {
+    return $Call.ByID(1977819576);
+}
+
+/**
  * UndoDelete reverses one or more DeleteCard/DeleteNote/
  * DeleteBoardObject calls: clears DeletedAt on exactly the ids named (a
  * no-op for any id that's no longer tombstoned, e.g. already purged)
@@ -1018,6 +1058,10 @@ export function TableProjectionExport(cardID: string, format: string): $Cancella
  */
 export function UndoDelete(cardIDs: string[] | null, noteIDs: string[] | null, objectIDs: string[] | null): $CancellablePromise<void> {
     return $Call.ByID(4101274755, cardIDs, noteIDs, objectIDs);
+}
+
+export function UndoState(): $CancellablePromise<$models.UndoState> {
+    return $Call.ByID(3693129693);
 }
 
 export function UpdateCard(id: string, title: string, note: string, fields: { [_ in string]?: string } | null, source: string, mirrorPath: string, refreshWorkflowID: string): $CancellablePromise<atlas$0.Card> {

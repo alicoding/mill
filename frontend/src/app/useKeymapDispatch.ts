@@ -95,25 +95,34 @@ export function useKeymapDispatch(): void {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  // Listener 4, the quick-delete undo toast's own ⌘Z (goal 0093):
-  // deliberately its own dedicated listener rather than a normal
-  // dispatchCommandForEvent match -- ⌘Z is ALSO the native text-undo
-  // combo, and dispatchCommandForEvent's tryRun preventDefaults
+  // Listener 4, the Atlas board's own ⌘Z/⇧⌘Z (goal 0219 S2, ADR-0044):
+  // generalizes goal 0093's delete-only listener to the full undo
+  // journal -- deliberately its own dedicated listener rather than a
+  // normal dispatchCommandForEvent match, since ⌘Z is ALSO the native
+  // text-undo combo and dispatchCommandForEvent's tryRun preventDefaults
   // unconditionally on any binding match, which would swallow native
-  // undo inside a title/note/field input the moment atlas.undoDelete
-  // had a real default binding. Only intercepts (and only
-  // preventDefaults) while a toast is actually pending, on the atlas
-  // surface, and the target isn't editable -- every other ⌘Z falls
-  // through untouched, same as if this listener didn't exist.
+  // undo inside a title/note/field input the moment atlas.undo had a
+  // real default binding. Only intercepts (and only preventDefaults)
+  // while the journal actually has something to undo/redo
+  // (atlasUndoAvailable/atlasRedoAvailable, kept in sync by
+  // atlas/useAtlasUndoJournal), on the atlas surface, and the target
+  // isn't editable -- every other ⌘Z/⇧⌘Z falls through untouched, same
+  // as if this listener didn't exist.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+      if (!e.metaKey || e.ctrlKey || e.altKey) return
       if (e.key.toUpperCase() !== 'Z') return
       if (useAppStore.getState().view.kind !== 'atlas') return
-      if (!useUISignalStore.getState().atlasUndoDeletePending) return
       if (isEditableTarget(e.target)) return
+      if (e.shiftKey) {
+        if (!useUISignalStore.getState().atlasRedoAvailable) return
+        e.preventDefault()
+        findCommand('atlas.redo')?.run()
+        return
+      }
+      if (!useUISignalStore.getState().atlasUndoAvailable) return
       e.preventDefault()
-      findCommand('atlas.undoDelete')?.run()
+      findCommand('atlas.undo')?.run()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)

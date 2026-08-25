@@ -27,5 +27,7 @@ export type {
     ProjectionColumn,
     ProjectionRow,
     TableProjectionExportResult,
-    TombstoneResult
+    TombstoneResult,
+    UndoResult,
+    UndoState
 } from "./models.js";
