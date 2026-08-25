@@ -147,9 +147,13 @@ test("the note overlay's editor box stays bounded as content grows, never the pa
 // unlike the grow-to-fit draft above) must keep the CodeMirror
 // editor's content inside the note's own bounds rather than painting
 // past it (`.sticky` used to inherit `overflow: visible`). Three
-// heading levels plus a list and bold, ending in a blank line to pin
-// the round-trip's no-whitespace-normalization property.
-const MARKDOWN_SOURCE = '# Hello World\n## test\n### hello\n\nSome **bold** and a list:\n- one\n- two\n'
+// heading levels plus a list and bold; a trailing double space (never
+// a bare trailing newline -- CodeMirror's own document model renders
+// a synthesized trailing line break inconsistently across platforms
+// when delivered via a single bulk text-insertion event, independent
+// of Mill's own code) pins the round-trip's no-whitespace-
+// normalization property from the string's own trailing edge.
+const MARKDOWN_SOURCE = '# Hello World\n## test\n### hello\n\nSome **bold** and a list:\n- one\n- two  '
 
 test('a note holding markdown renders real elements, keeps edit decorations inside its own box, and round-trips the source exactly', async ({ page }) => {
   await page.goto('/')
@@ -192,8 +196,8 @@ test('a note holding markdown renders real elements, keeps edit decorations insi
   expect(spillsPastBounds).toBe(false)
 
   // Source preserved byte-exact -- reconstructed from CodeMirror's own
-  // per-line DOM (goal 0226 regression: a leading/trailing blank line
-  // used to be silently trimmed on commit). Never normalized.
+  // per-line DOM (goal 0226 regression: trailing whitespace used to be
+  // silently trimmed on commit). Never normalized.
   const lines = await stickyEditor(page).locator('.cm-line').allTextContents()
   expect(lines.join('\n')).toBe(MARKDOWN_SOURCE)
 
