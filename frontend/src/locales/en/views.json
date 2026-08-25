@@ -137,7 +137,7 @@
       "proxyModeManual": "Manual proxy URL",
       "proxyModeOff": "Off — always connect directly",
       "autoCheckLabel": "Check for and download updates automatically",
-      "autoCheckCaption": "Downloads a new version in the background and shows Restart when it's ready; applies after you restart Mill."
+      "autoCheckCaption": "Checks hourly and downloads updates in the background, starting now."
     },
     "dataStewardship": {
       "description": "Mill snapshots your workflow history and settings automatically, and can bundle everything into one file to move to another machine.",

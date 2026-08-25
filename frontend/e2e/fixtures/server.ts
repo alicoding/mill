@@ -413,3 +413,10 @@ export const ATLAS_SINGLE_SPACE_MCP_BASE_PORT = 10580
 // another spec cohabiting the same worker.
 export const SECRETS_SERVER_BASE_PORT = 10720
 export const SECRETS_MCP_BASE_PORT = 10740
+
+// updates.spec.ts's auto-download-live-toggle case (goal 0207): fixes
+// MILL_TEST_AUTO_UPDATE_LOOP_DELAY_MS/MILL_TEST_UPDATE_DOWNLOAD_DELAY_MS
+// for its whole server lifetime -- own pair like every other updates
+// case above.
+export const UPDATES_AUTODOWNLOAD_SERVER_BASE_PORT = 10800
+export const UPDATES_AUTODOWNLOAD_MCP_BASE_PORT = 10820

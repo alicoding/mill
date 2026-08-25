@@ -6,7 +6,9 @@ package settingssvc
 // the 500-line convention along the pill-vs-updater seam.
 
 import (
+	"context"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/alicoding/mill/internal/services/dataevent"
@@ -22,9 +24,40 @@ const dismissedUpdateVersionKey = "dismissedUpdateVersion"
 // checking is the same consent as opting into a background download of
 // what that check found). DEFAULT OFF: the no-phone-home constraint
 // reads "user-configured" strictly, so ambient checking is an explicit
-// choice even on the beta channel. Applies at boot
-// (StartAutoUpdateChecks).
+// choice even on the beta channel. Applies live (goal 0207) --
+// SetAutoUpdateCheck starts/stops the loop itself, no restart needed.
 const autoUpdateCheckKey = "autoUpdateCheck"
+
+// autoUpdateLoopInitialDelayDefault is how long the background loop
+// waits before its very first check, whether started at boot or by a
+// live toggle-on -- the gentle-timing convention (never hit the network
+// the instant the app launches or the instant a preference changes).
+const autoUpdateLoopInitialDelayDefault = time.Minute
+
+// testAutoUpdateLoopDelayEnv overrides autoUpdateLoopInitialDelayDefault
+// so e2e can observe a live toggle-on's first check deterministically
+// instead of waiting a real minute. Ignored when unset or non-numeric.
+const testAutoUpdateLoopDelayEnv = "MILL_TEST_AUTO_UPDATE_LOOP_DELAY_MS"
+
+func autoUpdateLoopInitialDelay() time.Duration {
+	if ms, err := strconv.Atoi(os.Getenv(testAutoUpdateLoopDelayEnv)); err == nil && ms >= 0 {
+		return time.Duration(ms) * time.Millisecond
+	}
+	return autoUpdateLoopInitialDelayDefault
+}
+
+// sleepOrDone waits for d, returning true -- unless ctx is cancelled
+// first, in which case it returns false immediately. The background
+// loop's own interruptible sleep, so stopping it never waits out a
+// pending interval.
+func sleepOrDone(ctx context.Context, d time.Duration) bool {
+	select {
+	case <-ctx.Done():
+		return false
+	case <-time.After(d):
+		return true
+	}
+}
 
 // testUpdateReadyEnv forces the ready state so e2e can render the
 // relaunch pill without a real install -- same seam family as
@@ -127,9 +160,21 @@ func (s *SettingsService) AutoUpdateCheck() bool {
 	return v
 }
 
-// SetAutoUpdateCheck persists the opt-in; applies at boot.
+// SetAutoUpdateCheck persists the opt-in and applies it live (goal
+// 0207): turning it on starts the background loop immediately if it
+// isn't already running; turning it off stops it. Both directions are
+// idempotent -- flipping the same value twice is a no-op the second
+// time, never a second loop or a panic on double-stop.
 func (s *SettingsService) SetAutoUpdateCheck(on bool) error {
-	return s.store.Set(autoUpdateCheckKey, on)
+	if err := s.store.Set(autoUpdateCheckKey, on); err != nil {
+		return err
+	}
+	if on {
+		s.startAutoUpdateLoop()
+	} else {
+		s.stopAutoUpdateLoop()
+	}
+	return nil
 }
 
 // notifiedUpdateVersionKey remembers which version already fired the
@@ -182,39 +227,81 @@ func (s *SettingsService) markUpdateReady() {
 	dataevent.Emit("update-notice", "ready")
 }
 
-// StartAutoUpdateChecks begins the opt-in background check-and-download
-// loop -- called once from main.go after InitUpdater; a no-op when the
-// preference is off. First check runs shortly after launch (the
-// gentle-timing convention: near a natural moment, never mid-task),
-// then on the channel-matched cadence below. A found version downloads
-// automatically through maybeAutoDownload's dwell/supersede/skip policy
-// (goal 0175), reusing the exact DownloadAndInstallUpdate chain the
-// manual button uses -- never a parallel path. Check errors are
-// ignored: a failed background check must never surface as noise; the
-// manual button reports errors. Download errors are logged, not
-// surfaced, for the same reason.
-//
-//wails:ignore
-func (s *SettingsService) StartAutoUpdateChecks() {
+// triggerAutoDownloadPolicy is CheckForUpdates' own hook (goal 0207):
+// every successful found-result -- the manual button, check-on-open, or
+// the background loop's own tick -- feeds the SAME skip/supersede
+// policy here, with the auto-download opt-in gating the DOWNLOAD
+// decision itself rather than gating whether this hook runs at all.
+// Runs in its own goroutine so a caller reading CheckForUpdates' return
+// value (the manual button's RPC in particular) is never held up by an
+// actual download.
+func (s *SettingsService) triggerAutoDownloadPolicy(version string) {
 	if !s.AutoUpdateCheck() {
 		return
 	}
+	go s.maybeAutoDownload(version, s.DownloadAndInstallUpdate)
+}
+
+// StartAutoUpdateChecks begins the opt-in background check loop if the
+// preference is already on -- called once from main.go at boot, after
+// InitUpdater. A no-op when the preference is off (SetAutoUpdateCheck
+// starts it live the moment it's turned on instead). Delegates to
+// startAutoUpdateLoop, the same idempotent entry point the live toggle
+// uses, so boot and a live opt-in behave identically.
+//
+//wails:ignore
+func (s *SettingsService) StartAutoUpdateChecks() {
+	if s.AutoUpdateCheck() {
+		s.startAutoUpdateLoop()
+	}
+}
+
+// startAutoUpdateLoop starts the background check loop if it isn't
+// already running (idempotent -- a redundant call, e.g. a live toggle
+// re-enabled right after boot's own start, never spawns a second
+// loop). Each found version feeds triggerAutoDownloadPolicy through
+// CheckForUpdates itself, so this loop's only job is the periodic
+// check call. Check errors are ignored: a failed background check must
+// never surface as noise; the manual button reports errors instead.
+func (s *SettingsService) startAutoUpdateLoop() {
+	s.mu.Lock()
+	if s.autoUpdateLoopCancel != nil {
+		s.mu.Unlock()
+		return
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	s.autoUpdateLoopCancel = cancel
+	s.mu.Unlock()
+
 	// Channel-matched cadence (goal 0146): the beta channel releases
 	// per merged change, so "as soon as available" honestly means
 	// hourly polling there; release stays daily.
-	channel := s.UpdateChannel()
 	interval := 24 * time.Hour
-	if channel == "beta" {
+	if s.UpdateChannel() == "beta" {
 		interval = time.Hour
 	}
 	go func() {
-		time.Sleep(time.Minute)
+		if !sleepOrDone(ctx, autoUpdateLoopInitialDelay()) {
+			return
+		}
 		for {
-			if result, err := s.CheckForUpdates(); err == nil && result.UpdateAvailable {
-				s.recordAvailableUpdate(result.Version)
-				s.maybeAutoDownload(channel, result.Version, time.Now(), s.DownloadAndInstallUpdate)
+			_, _ = s.checkForUpdates(ctx)
+			if !sleepOrDone(ctx, interval) {
+				return
 			}
-			time.Sleep(interval)
 		}
 	}()
+}
+
+// stopAutoUpdateLoop stops the background check loop if it's running
+// (idempotent -- stopping an already-stopped loop is a no-op, never a
+// panic on a nil cancel func).
+func (s *SettingsService) stopAutoUpdateLoop() {
+	s.mu.Lock()
+	cancel := s.autoUpdateLoopCancel
+	s.autoUpdateLoopCancel = nil
+	s.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
 }

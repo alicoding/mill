@@ -46,8 +46,91 @@ func TestUpdateNotice_ReadyWinsAndAutoCheckPrefPersists(t *testing.T) {
 	if err := set.SetAutoUpdateCheck(true); err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = set.SetAutoUpdateCheck(false) })
 	if !set.AutoUpdateCheck() {
 		t.Error("auto-check did not persist")
+	}
+}
+
+// SetAutoUpdateCheck applies live (goal 0207): turning it on starts the
+// background loop immediately, with no restart -- and turning it off
+// stops it, both idempotently.
+func TestSetAutoUpdateCheck_AppliesLiveNoRestartRequired(t *testing.T) {
+	s := newTestSettingsService(t)
+
+	running := func() bool {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		return s.autoUpdateLoopCancel != nil
+	}
+	if running() {
+		t.Fatal("loop must not be running before opt-in")
+	}
+
+	if err := s.SetAutoUpdateCheck(true); err != nil {
+		t.Fatal(err)
+	}
+	if !running() {
+		t.Fatal("SetAutoUpdateCheck(true) must start the loop live")
+	}
+
+	// Idempotent start: a second "on" must not panic or replace the
+	// running loop with a leaked second one.
+	if err := s.SetAutoUpdateCheck(true); err != nil {
+		t.Fatal(err)
+	}
+	if !running() {
+		t.Fatal("a redundant SetAutoUpdateCheck(true) must leave the loop running")
+	}
+
+	if err := s.SetAutoUpdateCheck(false); err != nil {
+		t.Fatal(err)
+	}
+	if running() {
+		t.Fatal("SetAutoUpdateCheck(false) must stop the loop live")
+	}
+
+	// Idempotent stop: a second "off" must not panic on a nil cancel.
+	if err := s.SetAutoUpdateCheck(false); err != nil {
+		t.Fatal(err)
+	}
+	if running() {
+		t.Fatal("a redundant SetAutoUpdateCheck(false) must leave the loop stopped")
+	}
+}
+
+// StartAutoUpdateChecks (main.go's boot call) starts the loop when the
+// preference is already on, unchanged behavior from before goal 0207 --
+// it now delegates to the same idempotent entry point the live toggle
+// uses.
+func TestStartAutoUpdateChecks_StartsTheLoopWhenAlreadyOptedIn(t *testing.T) {
+	s := newTestSettingsService(t)
+	if err := s.store.Set(autoUpdateCheckKey, true); err != nil {
+		t.Fatalf("seed the persisted opt-in: %v", err)
+	}
+
+	s.StartAutoUpdateChecks()
+	t.Cleanup(s.stopAutoUpdateLoop)
+
+	s.mu.Lock()
+	running := s.autoUpdateLoopCancel != nil
+	s.mu.Unlock()
+	if !running {
+		t.Fatal("StartAutoUpdateChecks must start the loop for an already-on preference")
+	}
+}
+
+// StartAutoUpdateChecks stays a no-op when the preference is off --
+// nothing should run in the background for a user who never opted in.
+func TestStartAutoUpdateChecks_NoopWhenOptedOut(t *testing.T) {
+	s := newTestSettingsService(t)
+	s.StartAutoUpdateChecks()
+
+	s.mu.Lock()
+	running := s.autoUpdateLoopCancel != nil
+	s.mu.Unlock()
+	if running {
+		t.Fatal("StartAutoUpdateChecks must not start the loop when the preference is off")
 	}
 }
 
