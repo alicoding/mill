@@ -51,6 +51,17 @@ export interface AtlasSessionState {
      * resolves back to "".
      */
     "activePerspectiveID": string;
+
+    /**
+     * AtRootExplicit (goal 0221) distinguishes a deliberate "All spaces"
+     * landing from the zero-value default -- both otherwise leave
+     * ViewedID=="", indistinguishable to a restoring client. The
+     * egocentric-root auto-entry (ADR-0038) reads this to tell a user
+     * who explicitly backed out to the meta level apart from a session
+     * that was simply never saved; without it, restoring a persisted
+     * root landing re-entered the lone root card on every relaunch.
+     */
+    "atRootExplicit": boolean;
 }
 
 /**

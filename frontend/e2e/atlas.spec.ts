@@ -66,12 +66,12 @@ test('the seeded single root auto-enters "The engagement"; drilling into a regio
   await expect(atlasView(page)).toBeVisible()
 
   // Auto-entry (ADR-0038's egocentric-root principle): with exactly one
-  // root card, the surface opens already drilled into it -- "The engagement"
-  // IS the top, so the breadcrumb starts there with no synthetic
-  // "All spaces" crumb, and its content is visible immediately, with
-  // no click required.
+  // root card, the surface opens already drilled into it -- "The
+  // engagement" is visible immediately, no click required. The "All
+  // spaces" crumb renders too (goal 0221): one visible click out, even
+  // from this auto-entered state.
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('The engagement')
-  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('All spaces')
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
   // "Client records" holds children -- it renders as a region frame, not
@@ -92,24 +92,27 @@ test('the seeded single root auto-enters "The engagement"; drilling into a regio
   await expect(noteCard(page, 'Jordan Reyes')).toBeVisible()
   await expect(noteCard(page, 'Statement of work')).toBeVisible()
 
-  // Explicit back: the "The engagement" crumb (there is no "All spaces" one
-  // to fall back to further) returns to the auto-entered root.
+  // Explicit back: the "The engagement" crumb returns to the
+  // auto-entered root (the "All spaces" crumb also reaches one level
+  // further, covered by the next test).
   await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('The engagement', { exact: true }), 'The engagement')
   await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Client records')
   await expect(exampleArea).toBeVisible()
 })
 
-test('creating a sibling of the auto-entered root surfaces the "All spaces" meta level, reachable via breadcrumb', async ({ page }) => {
+test('creating a sibling of the auto-entered root populates the "All spaces" meta level with two real root cards', async ({ page }) => {
   const title = 'ZzE2eAtlasSecondRoot'
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(atlasView(page)).toBeVisible()
-  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('All spaces')
+  // The crumb is already visible even with one root card (goal 0221);
+  // this test's own value is the meta level actually HOLDING a second
+  // root once "Add beside" creates one, not the crumb's own visibility.
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
 
   // "Add beside" from the auto-entered root creates a SECOND root card
   // (a sibling of "The engagement", ParentID "") -- the only path a second
-  // root card can be created through, and the one that must surface
-  // the meta level once it exists.
+  // root card can be created through.
   // Element-relative position clear of cards, tray, and minimap.
   await page.getByTestId('atlas-board').click({ button: 'right', position: { x: 180, y: 420 } })
   await page.getByText('New space…', { exact: true }).click()
@@ -124,16 +127,18 @@ test('creating a sibling of the auto-entered root surfaces the "All spaces" meta
   const newRootCard = groupCard(page, title).or(noteCard(page, title))
   await expect(newRootCard).toBeVisible()
 
-  // Cleanup: delete the second root card so it doesn't leak the meta
-  // level into every later test in this file/worker (testing.md's
-  // within-file cleanup discipline) -- back down to one root card, the
-  // meta level (and its crumb) stop existing again. A childless new
-  // root renders as a plain note card.
+  // Cleanup: delete the second root card so it doesn't leak into every
+  // later test in this file/worker (testing.md's within-file cleanup
+  // discipline) -- back down to one root card, egocentric-root
+  // auto-entry resolves straight back into "The engagement"; the crumb
+  // stays visible regardless (goal 0221). A childless new root renders
+  // as a plain note card.
   await openCard(page, noteCard(page, title))
   const rootOverlay = page.locator('[data-component="atlas-card-overlay"]')
   await deleteViaPageMenu(page, rootOverlay)
   await expect(newRootCard).not.toBeVisible()
-  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('All spaces')
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('The engagement')
 })
 
 test('the note card front shows kind/title/note/file-tag/presence chips; the page shows source/link details', async ({ page }) => {

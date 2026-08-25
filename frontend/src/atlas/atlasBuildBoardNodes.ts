@@ -106,6 +106,7 @@ export function buildBoardCardNodes({
     slotDragHighlight: slotDragHighlight(card.ID),
     hasLegalTargets,
     onCommit: onOpenOverlay,
+    onDrill: handleDrill,
     onSlotAnchorPointerDown: (linkKindID: string, e: ReactPointerEvent) => onSlotAnchorPointerDown(card.ID, linkKindID, e),
     titleEditing: card.ID === titleEditCardID,
     onTitleCommit,
