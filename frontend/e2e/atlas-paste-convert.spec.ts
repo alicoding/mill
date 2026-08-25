@@ -38,6 +38,22 @@ const TABLE_XML = '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"
   + '<mxCell id="c22" value="Healthy" vertex="1" parent="r2"><mxGeometry x="100" width="100" height="30"/></mxCell>'
   + '</root></mxGraphModel>'
 
+// pasteHTML injects both flavors real M365 apps carry together (goal
+// 0218's own root-cause trace): the table's own HTML plus a tab-less
+// plain-text sibling that TSV's recognizer would never fire on --
+// proving the HTML recognizer, not a TSV coincidence, is what lands
+// the table.
+async function pasteHTML(page: import('@playwright/test').Page, html: string, plainTextSibling: string) {
+  // eslint-disable-next-line no-restricted-syntax -- cursor-position-only gesture, not a checkable interaction (pasteText's own comment above has the full reasoning)
+  await page.mouse.move(1000, 220)
+  await page.evaluate(({ html: h, text }) => {
+    const dt = new DataTransfer()
+    dt.setData('text/html', h)
+    dt.setData('text/plain', text)
+    window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
+  }, { html, text: plainTextSibling })
+}
+
 async function pasteText(page: import('@playwright/test').Page, raw: string) {
   // The paste anchors at the pointer (a paste inside a frame files
   // into it, by design) -- aim at open canvas so the entities land at
@@ -124,6 +140,49 @@ test('a pasted spreadsheet range becomes a board-local table object', async ({ p
   await page.getByRole('link', { name: 'Configure' }).click()
   await page.getByRole('tab', { name: 'Lists' }).click()
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Imported table', { exact: true }) })
+  await clickRowAction(page, listRow, 'Delete')
+  await expect(listRow).toHaveCount(0)
+})
+
+// Word-shaped clipboard HTML (goal 0218's own M365 root cause): mso-
+// classes, a VML conditional-comment block, and an <o:p> empty-
+// paragraph marker -- the exact noise a real Word copy carries
+// alongside its table. plainTextSibling has no tabs at all (Word's own
+// plain-text fallback for a table is space-padded columns, never TSV),
+// so a table landing here proves the HTML recognizer fired, not TSV.
+const WORD_TABLE_HTML = '<html xmlns:o="urn:schemas-microsoft-com:office:office">'
+  + '<head><style><!-- @font-face {font-family:"Cambria Math";} --></style></head>'
+  + '<body><!--[if gte mso 9]><xml><o:shapedefaults/></xml><![endif]-->'
+  + '<!--StartFragment-->'
+  + '<table class=MsoTableGrid border=1><tr>'
+  + '<td><p class=MsoNormal>Vendor<o:p></o:p></p></td>'
+  + '<td><p class=MsoNormal>Status<o:p></o:p></p></td>'
+  + '</tr><tr>'
+  + '<td><p class=MsoNormal>Acme Corp<o:p></o:p></p></td>'
+  + '<td><p class=MsoNormal>Healthy<o:p></o:p></p></td>'
+  + '</tr></table>'
+  + '<!--EndFragment--></body></html>'
+
+test('a table copied from an M365 app (HTML clipboard flavor) lands a board-local table object, never a card', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await pasteHTML(page, WORD_TABLE_HTML, 'Vendor    Status')
+
+  const tableObject = tableObjects(page).filter({ hasText: 'Acme Corp' })
+  await expect(tableObject).toBeVisible()
+  await expect(tableObject.getByTestId('atlas-projection-table')).toContainText('Vendor')
+  // The rule, absolute: pasting never creates a card the user didn't
+  // explicitly ask for.
+  await expect(page.getByTestId('atlas-table-card')).toHaveCount(0)
+
+  // Cleanup: the object, then the minted List.
+  await deleteObjectViaMenu(tableObject)
+  await expect(tableObject).toHaveCount(0)
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByRole('tab', { name: 'Lists' }).click()
+  const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Pasted table', { exact: true }) })
   await clickRowAction(page, listRow, 'Delete')
   await expect(listRow).toHaveCount(0)
 })

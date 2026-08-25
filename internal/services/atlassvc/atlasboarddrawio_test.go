@@ -31,7 +31,7 @@ func TestExportBoardAsDrawio_RoundTripsContainmentAndSplitNote(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateCard: %v", err)
 	}
-	if _, err := a.PasteToBoard(pasteContainerXML, root.ID, 0, 0); err != nil {
+	if _, err := a.PasteToBoard(pasteContainerXML, "", root.ID, 0, 0); err != nil {
 		t.Fatalf("PasteToBoard: %v", err)
 	}
 
@@ -47,7 +47,7 @@ func TestExportBoardAsDrawio_RoundTripsContainmentAndSplitNote(t *testing.T) {
 	}
 
 	b := newTestAtlasService(t)
-	res, err := b.PasteToBoard(export.XML, "", 0, 0)
+	res, err := b.PasteToBoard(export.XML, "", "", 0, 0)
 	if err != nil {
 		t.Fatalf("re-import PasteToBoard: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestExportBoardAsDrawio_RoundTripsDeepNesting(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateCard: %v", err)
 	}
-	if _, err := a.PasteToBoard(pasteDeepNestXML, root.ID, 0, 0); err != nil {
+	if _, err := a.PasteToBoard(pasteDeepNestXML, "", root.ID, 0, 0); err != nil {
 		t.Fatalf("PasteToBoard: %v", err)
 	}
 	export, err := a.ExportBoardAsDrawio(root.ID)
@@ -93,7 +93,7 @@ func TestExportBoardAsDrawio_RoundTripsDeepNesting(t *testing.T) {
 	}
 
 	b := newTestAtlasService(t)
-	res, err := b.PasteToBoard(export.XML, "", 0, 0)
+	res, err := b.PasteToBoard(export.XML, "", "", 0, 0)
 	if err != nil {
 		t.Fatalf("re-import PasteToBoard: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestExportBoardAsDrawio_RoundTripsLinks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateCard: %v", err)
 	}
-	if _, err := a.PasteToBoard(pasteDiagramXML, root.ID, 0, 0); err != nil {
+	if _, err := a.PasteToBoard(pasteDiagramXML, "", root.ID, 0, 0); err != nil {
 		t.Fatalf("PasteToBoard: %v", err)
 	}
 	export, err := a.ExportBoardAsDrawio(root.ID)
@@ -134,7 +134,7 @@ func TestExportBoardAsDrawio_RoundTripsLinks(t *testing.T) {
 	}
 
 	b := newTestAtlasService(t)
-	res, err := b.PasteToBoard(export.XML, "", 0, 0)
+	res, err := b.PasteToBoard(export.XML, "", "", 0, 0)
 	if err != nil {
 		t.Fatalf("re-import: %v", err)
 	}
@@ -214,6 +214,37 @@ func TestExportBoardAsDrawio_ShapesStyledArrowSkipped(t *testing.T) {
 	}
 	if !strings.Contains(export.XML, "fillColor=#238636") || !strings.Contains(export.XML, "strokeColor=#1f6feb") {
 		t.Errorf("expected the rectangle's own fill/stroke in the style string, got:\n%s", export.XML)
+	}
+}
+
+// A rotated shape (goal 0214) carries its angle into the exported
+// style string as mxGraph's own rotation=N key; an unrotated shape's
+// export is byte-identical to before the field existed (no
+// rotation=0; ever written).
+func TestExportBoardAsDrawio_ShapeRotationRoundTrips(t *testing.T) {
+	a := newTestAtlasService(t)
+	root, err := a.CreateCard(testKindID(t, a), "Rotation Root", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard: %v", err)
+	}
+	rotated := map[string]string{"shapeType": "rectangle", "fill": "none", "stroke": "#1f6feb", "rotation": "45"}
+	if _, err := a.CreateBoardObject("shape", rotated, atlas.Position{X: 0, Y: 0}, root.ID); err != nil {
+		t.Fatalf("CreateBoardObject rotated: %v", err)
+	}
+	unrotated := map[string]string{"shapeType": "ellipse", "fill": "none", "stroke": "#1f6feb"}
+	if _, err := a.CreateBoardObject("shape", unrotated, atlas.Position{X: 100, Y: 0}, root.ID); err != nil {
+		t.Fatalf("CreateBoardObject unrotated: %v", err)
+	}
+
+	export, err := a.ExportBoardAsDrawio(root.ID)
+	if err != nil {
+		t.Fatalf("ExportBoardAsDrawio: %v", err)
+	}
+	if !strings.Contains(export.XML, "rotation=45;") {
+		t.Errorf("expected the rotated shape's angle in the style string, got:\n%s", export.XML)
+	}
+	if strings.Contains(export.XML, "rotation=0") {
+		t.Errorf("an unrotated shape must never write rotation=0 into its style, got:\n%s", export.XML)
 	}
 }
 

@@ -3,6 +3,7 @@ import { AtlasService } from '../../shared/bindings'
 import { fileToBase64 } from '../../shared/base64Blob'
 import { identityOf, registerNoun, type AtlasToolShape } from '../atlasNounRegistry'
 import { normalizeLocalPathInput, titleFromFilename } from '../atlasCreateHelpers'
+import { makeMirrorImageContent } from '../AtlasMirrorImageContent'
 
 const imageIdentity = identityOf('image')
 
@@ -44,6 +45,11 @@ export const imageTool = {
   // An image's whole body already drags -- the shared band would only
   // be debris here (goal 0206's own DESIGN DECIDED table).
   dragBand: false,
+  // Placed instance is Kind 'image' (matches this tool's own id here,
+  // unlike pencil's own Kind 'ink') -- content renders through the
+  // same mirrored-file door ink shares (AtlasMirrorImageContent.tsx).
+  boardObjectKind: 'image',
+  content: { Component: makeMirrorImageContent(ImageIcon), ariaLabelKey: 'boardObject.imageAriaLabel', role: 'img' },
   // No style surface of its own (goal 0209) -- always empty, not
   // omitted.
   styleFields: [],

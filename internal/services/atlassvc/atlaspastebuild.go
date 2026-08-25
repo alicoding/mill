@@ -18,7 +18,12 @@ import (
 // only where a table shape must be detected (styleHasShape), never
 // carried onto the created entity -- docs/goals/0194's "database
 // pretending to be a diagram" framing: import turns presentation into
-// queryable data, on purpose.
+// queryable data, on purpose. A pasted vertex always becomes a plain
+// Card here, never a styled "shape" board object, so no style key
+// (fillColor, strokeColor, strokeWidth, rotation) has anywhere to
+// land on this path -- goal 0214's own rotation field joins that same
+// existing asymmetry rather than being a new gap, since fill/stroke
+// never round-tripped through import either.
 
 // pastedTable is one table shape lifted out of the model: ordered
 // rows of ordered cell values.
@@ -188,41 +193,103 @@ func (a *AtlasService) WirePasteListWrites(factory func(label string, columns []
 	a.pasteRowAppender = appendRow
 }
 
-// PasteToBoard converts understood clipboard text into entities under
-// parentID, starting placement at (x, y). A user's own paste is a
-// direct edit -- ungated, like every direct create.
-func (a *AtlasService) PasteToBoard(text, parentID string, x, y float64) (PasteResult, error) {
-	model, skippedPages, ok := decodeDiagramText(text)
-	if !ok {
-		// Spreadsheet-shaped text (goal 0138 slice 2): a copied Excel/
-		// Sheets range arrives as TSV -- it becomes a Mill table
-		// through the same List path the diagram tables use.
-		if tsv, isTSV := detectTSV(text); isTSV {
-			if err := a.pasteOneTable(tsv, parentID, &atlas.Position{X: x, Y: y}); err != nil {
-				return PasteResult{Recognized: true}, err
-			}
-			return PasteResult{Recognized: true, Tables: 1}, nil
-		}
-		return PasteResult{}, nil
-	}
-	tables, rest := extractTables(model)
-	res := PasteResult{Recognized: true, SkippedPages: skippedPages}
+// pasteRecognizer is one entry in the paste door's own ordered
+// recognizer chain (docs/goals/0218). Each tries to recognize (text,
+// html) and, on a match, performs the create and returns ok=true;
+// ok=false means "not this shape," letting PasteToBoard try the next
+// entry. Uniform signature (both text and html handed to every entry,
+// even the ones that only read one) so the chain below stays a plain
+// slice literal -- adding a clipboard shape is one new function plus
+// one new line in pasteRecognizers, never a re-architecture.
+type pasteRecognizer func(a *AtlasService, text, html, parentID string, pos atlas.Position) (PasteResult, bool, error)
 
-	pos := &atlas.Position{X: x, Y: y}
+// pasteRecognizers is the paste door's one ordered chain: drawio XML
+// (a diagramming tool's own clipboard payload) -> HTML table (an M365
+// app's copied table) -> TSV (a spreadsheet range). PasteToBoard tries
+// each in order and returns the first that recognizes the payload;
+// when NONE do, the frontend's own paste handler lands the pasted
+// content as a note at the pointer instead -- the named last resort,
+// never a card (docs/goals/0179, 0218).
+var pasteRecognizers = []pasteRecognizer{
+	recognizeDrawioPaste,
+	recognizeHTMLTablePaste,
+	recognizeTSVPaste,
+}
+
+// PasteToBoard converts understood clipboard content into entities
+// under parentID, starting placement at (x, y). A user's own paste is
+// a direct edit -- ungated, like every direct create.
+func (a *AtlasService) PasteToBoard(text, html, parentID string, x, y float64) (PasteResult, error) {
+	pos := atlas.Position{X: x, Y: y}
+	for _, recognize := range pasteRecognizers {
+		if res, ok, err := recognize(a, text, html, parentID, pos); ok {
+			return res, err
+		}
+	}
+	return PasteResult{}, nil
+}
+
+// pasteMultiTable lands one board object per table, offset like the
+// multi-page drawio precedent -- shared by every recognizer that can
+// produce more than one table from a single paste (HTML, and drawio's
+// own multi-table selections).
+func (a *AtlasService) pasteMultiTable(tables []pastedTable, parentID string, pos atlas.Position) (PasteResult, error) {
+	res := PasteResult{Recognized: true}
+	p := pos
 	for _, t := range tables {
-		if err := a.pasteOneTable(t, parentID, pos); err != nil {
+		if err := a.pasteOneTable(t, parentID, &p); err != nil {
 			return res, err
 		}
 		res.Tables++
-		pos = &atlas.Position{X: pos.X + 40, Y: pos.Y + 40}
+		p = atlas.Position{X: p.X + 40, Y: p.Y + 40}
 	}
+	return res, nil
+}
 
-	cards, links, err := a.pasteDiagram(rest, parentID, x, y)
+func recognizeDrawioPaste(a *AtlasService, text, _, parentID string, pos atlas.Position) (PasteResult, bool, error) {
+	model, skippedPages, ok := decodeDiagramText(text)
+	if !ok {
+		return PasteResult{}, false, nil
+	}
+	tables, rest := extractTables(model)
+	res, err := a.pasteMultiTable(tables, parentID, pos)
+	res.SkippedPages = skippedPages
 	if err != nil {
-		return res, err
+		return res, true, err
+	}
+	cards, links, err := a.pasteDiagram(rest, parentID, pos.X, pos.Y)
+	if err != nil {
+		return res, true, err
 	}
 	res.Cards, res.Links = cards, links
-	return res, nil
+	return res, true, nil
+}
+
+// recognizeHTMLTablePaste is the chain's HTML-table entry
+// (docs/goals/0218): an M365 app's copied table arrives in the
+// clipboard's text/html flavor, never TSV -- see detectHTMLTables in
+// atlaspastehtml.go for the recognition rule itself.
+func recognizeHTMLTablePaste(a *AtlasService, _, html, parentID string, pos atlas.Position) (PasteResult, bool, error) {
+	tables, ok := detectHTMLTables(html)
+	if !ok {
+		return PasteResult{}, false, nil
+	}
+	res, err := a.pasteMultiTable(tables, parentID, pos)
+	return res, true, err
+}
+
+// recognizeTSVPaste recognizes a copied Excel/Sheets range (goal 0138
+// slice 2): tab-separated plain text becomes a Mill table through the
+// same List path the diagram/HTML tables use.
+func recognizeTSVPaste(a *AtlasService, text, _, parentID string, pos atlas.Position) (PasteResult, bool, error) {
+	tsv, isTSV := detectTSV(text)
+	if !isTSV {
+		return PasteResult{}, false, nil
+	}
+	if err := a.pasteOneTable(tsv, parentID, &pos); err != nil {
+		return PasteResult{Recognized: true}, true, err
+	}
+	return PasteResult{Recognized: true, Tables: 1}, true, nil
 }
 
 // pasteOneTable mints the List a table-shaped paste describes, then

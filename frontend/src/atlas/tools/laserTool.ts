@@ -35,6 +35,9 @@ export const laserTool = {
   boardNodeType: null,
   // No node type renders it at all -- always false, not N/A.
   dragBand: false,
+  // Persists nothing of its own -- always null, not N/A.
+  boardObjectKind: null,
+  content: null,
   // No style surface of its own (goal 0209) -- always empty, not
   // omitted.
   styleFields: [],

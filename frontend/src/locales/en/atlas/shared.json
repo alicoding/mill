@@ -117,7 +117,8 @@
     "tableAriaLabel": "Table",
     "diagramAriaLabel": "Diagram",
     "loadFailed": "Couldn't load this file.",
-    "dragHandleTitle": "Drag to move"
+    "dragHandleTitle": "Drag to move",
+    "rotateHandleTitle": "Drag to rotate"
   },
   "capture": {
     "dropError": "Couldn't read the dropped file."

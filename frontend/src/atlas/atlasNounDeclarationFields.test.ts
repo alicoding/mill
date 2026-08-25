@@ -33,6 +33,8 @@ const EXHAUSTIVE_FIELD_KEYS = {
   resizable: true,
   boardNodeType: true,
   dragBand: true,
+  boardObjectKind: true,
+  content: true,
   commit: true,
   sticky: true,
   gesture: true,

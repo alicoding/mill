@@ -62,12 +62,24 @@ into.
   "colour, switchable off" control every future style option of that
   same kind gets for free. A diagram's own colours and styling stay
   whatever its own file sets, not this panel.
+- **Turn a rectangle or ellipse with the rotate handle.** Select one
+  and a small circular grip appears above it — drag to turn the shape
+  live, holding Shift to snap every 15 degrees. Press Escape mid-drag
+  to cancel back to where it was. The handle only shows on a single
+  selected shape, and an arrow doesn't get one since its own shape
+  already comes from the direction it points.
 - **Copy and paste to duplicate.** Select cards or notes and press
   ⌘C, then ⌘V — copies appear where your cursor is, filed into
   whatever area it's over. A copy is just the card itself; when the
   original has items inside, the paste offers to copy those too.
   Links come along only when both ends were copied. The copy is
   ordinary text on your clipboard, so it pastes across spaces.
+- **Paste anything from outside Mill — it lands as the right kind of
+  thing.** A table copied from a spreadsheet or a document app becomes
+  a table on the board, ready to browse and edit like any other list.
+  Everything else lands as a sticky note at your pointer, already
+  selected — nothing else to fill in. Multiple tables in one paste each
+  land as their own table, offset so you can tell them apart.
 - **Create by pointing.** Press C (or pick Card in the toolbar) and
   click — the card appears right there and you name it in place;
   Enter keeps the name, Escape keeps it as Untitled. Web addresses
@@ -85,9 +97,9 @@ into.
   file. Cards become boxes, links become labelled connections, and
   areas nest exactly the way they do on the board — open the download
   in draw.io or hand it to a tool that expects that format. A shape's
-  own colour and stroke come along; a freeform arrow, a sketch, or an
-  image doesn't have a faithful box to become yet, so it's named
-  rather than silently left out.
+  own colour, stroke, and rotation come along; a freeform arrow, a
+  sketch, or an image doesn't have a faithful box to become yet, so
+  it's named rather than silently left out.
 - **Sync a docs folder**: the seeded "Mirror a docs folder into
   Atlas" workflow regenerates a space from a folder of markdown,
   idempotently — a maintained docs set becomes a maintained map.

@@ -89,6 +89,19 @@ export function useAtlasSelection({ cards, notes, objects, onMultiSelectContextM
     setApplyToken((t) => t + 1)
   }, [])
 
+  // The same programmatic single-selection, for a freshly landed NOTE
+  // (goal 0218's paste-fallback note) -- kept as its own function
+  // rather than a parameterized selectObject so the selection-tray
+  // split (selectedNotes vs selectedObjects) stays correct for the
+  // note's own delete/group affordances.
+  const selectNote = useCallback((id: string) => {
+    selectedIDsRef.current = [id]
+    setSelectedCards([])
+    setSelectedNotes([id])
+    setSelectedObjects([])
+    setApplyToken((t) => t + 1)
+  }, [])
+
   // Snapshot the selection BEFORE React Flow's own handlers re-select
   // the pressed node -- unconditional (not button===2) because a macOS
   // ctrl+click context menu arrives as button 0; a stale snapshot from
@@ -133,5 +146,5 @@ export function useAtlasSelection({ cards, notes, objects, onMultiSelectContextM
     return sel.length === 1 && sel[0] === id
   }, [])
 
-  return { selectedIDsRef, selectedCards, selectedNotes, selectedObjects, applyToken, onSelectionChange, snapshotSelection, onSelectionContextMenu, tryNodeMultiMenu, isSoleSelected, clearSelection, selectObject }
+  return { selectedIDsRef, selectedCards, selectedNotes, selectedObjects, applyToken, onSelectionChange, snapshotSelection, onSelectionContextMenu, tryNodeMultiMenu, isSoleSelected, clearSelection, selectObject, selectNote }
 }

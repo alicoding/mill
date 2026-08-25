@@ -23,6 +23,10 @@ export const areaTool = {
   // Not routed through the shared 'atlas-object' renderer -- always
   // false, not N/A.
   dragBand: false,
+  // Rendered by AtlasGroupNode, not the shared 'atlas-object' content
+  // contract -- always null, not N/A.
+  boardObjectKind: null,
+  content: null,
   // No style surface of its own (goal 0209) -- always empty, not
   // omitted.
   styleFields: [],

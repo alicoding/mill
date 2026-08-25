@@ -1,7 +1,17 @@
+import { lazy } from 'react'
 import { TableIcon } from '@primer/octicons-react'
 import { Type as FieldType, type Field } from '../../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { ConfigureService } from '../../shared/bindings'
 import { identityOf, registerNoun, type AtlasToolShape } from '../atlasNounRegistry'
+
+// Lazy-imported (React.lazy + Suspense, AtlasBoardObjectNode.tsx's own
+// boundary) rather than a static top-level import: AtlasTableObjectContent
+// pulls @primer/react's Text through AtlasCardProjectionTable, and this
+// module is eagerly glob-imported by atlasTools.ts -- a static import
+// here would drag that dependency into every pure-logic import graph
+// that reaches ATLAS_TOOLS (atlasTools.test.ts among them), not only
+// the real board render path that actually needs it.
+const AtlasTableObjectContent = lazy(() => import('../AtlasTableObjectContent').then((m) => ({ default: m.AtlasTableObjectContent })))
 
 const tableIdentity = identityOf('table')
 
@@ -29,6 +39,12 @@ export const tableTool = {
   // A table's own grid captures pointer events (nodrag) -- the band is
   // its ONLY drag surface (goal 0206's own DESIGN DECIDED table).
   dragBand: true,
+  boardObjectKind: 'table',
+  // No role="img" (unlike every other content contribution): a table's
+  // own grid carries REAL interactive descendants (editable cells,
+  // boundary-insert buttons) -- img's own ARIA semantics forbid
+  // meaningful children.
+  content: { Component: AtlasTableObjectContent, ariaLabelKey: 'boardObject.tableAriaLabel', role: undefined },
   // No style surface of its own (goal 0209) -- always empty, not
   // omitted.
   styleFields: [],
