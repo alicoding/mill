@@ -6,16 +6,17 @@ import { useUISignalStore } from '../shared/uiSignalStore'
 // AtlasView's own one-shot navigation/dialog-opening signals (goal
 // 0071 G17, goal 0072 slice B) -- split out of AtlasView.tsx
 // (architecture.md's 500-line convention): atlas.up/atlas.jump/
-// atlas.matrix/atlas.coverage each bump a shared store counter a
-// palette/keyboard invocation fires, consumed here with the same
-// ref-compared-counter shape every other Atlas signal in this
+// atlas.matrix/atlas.coverage/atlas.roadmap each bump a shared store
+// counter a palette/keyboard invocation fires, consumed here with the
+// same ref-compared-counter shape every other Atlas signal in this
 // codebase uses.
-export function useAtlasNavSignals({ viewedID, allCards, setViewedID, setMatrixOpen, setCoverageOpen }: {
+export function useAtlasNavSignals({ viewedID, allCards, setViewedID, setMatrixOpen, setCoverageOpen, setRoadmapOpen }: {
   viewedID: string
   allCards: Card[]
   setViewedID: (id: string) => void
   setMatrixOpen: (open: boolean) => void
   setCoverageOpen: (open: boolean) => void
+  setRoadmapOpen: (open: boolean) => void
 }) {
   // atlas.up (⌘↑): one step up the depth ladder. Reaching the meta
   // "All spaces" level (parent === '') is always permitted, even with
@@ -61,6 +62,14 @@ export function useAtlasNavSignals({ viewedID, allCards, setViewedID, setMatrixO
     lastCoverageRequest.current = atlasCoverageRequest
     setCoverageOpen(true)
   }, [atlasCoverageRequest])
+
+  const atlasRoadmapRequest = useUISignalStore((s) => s.atlasRoadmapRequest)
+  const lastRoadmapRequest = useRef(atlasRoadmapRequest)
+  useEffect(() => {
+    if (atlasRoadmapRequest === lastRoadmapRequest.current) return
+    lastRoadmapRequest.current = atlasRoadmapRequest
+    setRoadmapOpen(true)
+  }, [atlasRoadmapRequest])
 
   return { jumpOpen, setJumpOpen }
 }

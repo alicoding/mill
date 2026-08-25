@@ -19,12 +19,15 @@ interface UISignalState {
   // window capture-phase listener of its own).
   atlasJumpRequest: number
   requestAtlasJump: () => void
-  // atlas.matrix / atlas.coverage: same counter shape, opening
-  // AtlasView's own local matrixOpen/coverageOpen dialog state.
+  // atlas.matrix / atlas.coverage / atlas.roadmap: same counter shape,
+  // opening AtlasView's own local matrixOpen/coverageOpen/roadmapOpen
+  // dialog state (useAtlasProjectionViews).
   atlasMatrixRequest: number
   requestAtlasMatrixOpen: () => void
   atlasCoverageRequest: number
   requestAtlasCoverageOpen: () => void
+  atlasRoadmapRequest: number
+  requestAtlasRoadmapOpen: () => void
   // The bare-?/⌘? shortcuts-help overlay: shared by App.tsx's own `?`
   // window listener, the help.shortcuts command, and the dialog's own
   // "Rebind in Settings" footer link (which closes it on navigation).
@@ -141,6 +144,8 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasMatrixOpen: () => set((s) => ({ atlasMatrixRequest: s.atlasMatrixRequest + 1 })),
   atlasCoverageRequest: 0,
   requestAtlasCoverageOpen: () => set((s) => ({ atlasCoverageRequest: s.atlasCoverageRequest + 1 })),
+  atlasRoadmapRequest: 0,
+  requestAtlasRoadmapOpen: () => set((s) => ({ atlasRoadmapRequest: s.atlasRoadmapRequest + 1 })),
   helpOpen: false,
   openHelp: () => set({ helpOpen: true }),
   closeHelp: () => set({ helpOpen: false }),

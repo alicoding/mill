@@ -137,4 +137,10 @@ into.
   field values, so a "refresh this page" workflow knows its target.
 
 Matrix and Coverage views project the same data as grids when a board
-is the wrong shape for the question.
+is the wrong shape for the question. Roadmap lays a space's cards out
+as swimlanes — one row per card type, one column per Now/Next/Then
+tag plus an Unscheduled column for anything untagged — so you can see
+at a glance what's planned and what still needs a tag. Tag a card by
+adding a Horizon field to its type in Kinds, then setting Now, Next,
+or Then on the card itself; it's view-only today, so moving a card
+between columns still means editing that field.

@@ -346,6 +346,13 @@ export const COMMANDS: Command[] = [
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasCoverageOpen(),
   },
+  {
+    id: 'atlas.roadmap',
+    label: 'Open roadmap',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasRoadmapOpen(),
+  },
   // The rest of the Atlas toolbar/board's own commands -- split out to
   // shared/atlasBoardCommands.ts (CLAUDE.md's 500-line convention).
   ...ATLAS_BOARD_COMMANDS,

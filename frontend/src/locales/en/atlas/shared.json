@@ -140,6 +140,7 @@
     "importConfirmButton": "Import",
     "matrix": "Matrix",
     "coverage": "Coverage",
+    "roadmap": "Roadmap",
     "kinds": "Kinds"
   },
   "folderImport": {
@@ -190,6 +191,16 @@
     "noLinkKinds": "No link kinds are declared yet.",
     "viewMissing": "View missing ({{count}})",
     "hideMissing": "Hide missing"
+  },
+  "roadmap": {
+    "title": "Roadmap",
+    "empty": "Tag cards now, next, or then to place them on the roadmap.",
+    "bucket": {
+      "now": "Now",
+      "next": "Next",
+      "then": "Then",
+      "unscheduled": "Unscheduled"
+    }
   },
   "overlay": {
     "title": "{{title}}",

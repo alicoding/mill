@@ -122,9 +122,11 @@ func BuiltInKinds() []Kind {
 			Fields: []typedfield.Field{
 				{Key: "email", Label: "Email", Type: typedfield.TypeText},
 				{Key: "role", Label: "Role", Type: typedfield.TypeText},
+				{Key: "horizon", Label: "Horizon", Type: typedfield.TypeOptions, Options: []string{"Now", "Next", "Then"}},
 			},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(2), // FieldTombstones added, structural only
+			// rev 3: horizon field added (docs/goals/0212).
+			BuiltIn: true, Seed: seedorigin.Stamp(3),
 		},
 		{
 			ID: kindDocumentID, Label: "Document", Icon: "📄",
@@ -136,10 +138,11 @@ func BuiltInKinds() []Kind {
 				// a saved field's type is exactly what the evolution
 				// guard forbids, seeds included.
 				{Key: "person", Label: "Person", Type: typedfield.TypeCardRef, RefKind: kindContactID},
+				{Key: "horizon", Label: "Horizon", Type: typedfield.TypeOptions, Options: []string{"Now", "Next", "Then"}},
 			},
 			CreatedAt: now, UpdatedAt: now,
-			// rev 3: person cardref added (docs/goals/0152).
-			BuiltIn: true, Seed: seedorigin.Stamp(3),
+			// rev 4: horizon field added (docs/goals/0212).
+			BuiltIn: true, Seed: seedorigin.Stamp(4),
 		},
 		{
 			ID: kindIntakeID, Label: "Intake", Icon: "📥",
@@ -299,10 +302,11 @@ func BuiltInCards() []Card {
 		{
 			ID: cardContactID, KindID: kindContactID, Title: "Jordan Reyes",
 			ParentID:  cardExampleAreaID,
-			Fields:    map[string]string{"email": "jordan@example.com", "role": "Client sponsor"},
+			Fields:    map[string]string{"email": "jordan@example.com", "role": "Client sponsor", "horizon": "Now"},
 			CreatedAt: now, UpdatedAt: now,
-			// rev 5: re-skinned into the engagement story (goal 0118 slice 1).
-			BuiltIn: true, Seed: seedorigin.Stamp(5),
+			// rev 6: horizon tag added, the Roadmap view's own seeded
+			// demonstration (docs/goals/0212).
+			BuiltIn: true, Seed: seedorigin.Stamp(6),
 		},
 		{
 			// The seeded action (goal 0061 slice C, generalized by 0084) proves "Update now"
