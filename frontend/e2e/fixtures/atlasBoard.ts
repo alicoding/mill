@@ -53,11 +53,16 @@ async function resolveDragPoint(v: { x: number; y: number } | DragEndpoint): Pro
 // element exists to check against. `onArrived` (optional) runs after
 // the last move but before the end check/mouse.up(), for a caller that
 // needs to assert mid-drag state while the button is still down.
+// `onStep` (optional) runs after EVERY intermediate move, button still
+// down -- for a caller sampling a per-frame property (a computed style,
+// an element's own DOM identity) across the WHOLE drag rather than
+// once at its end.
 export async function dragBetween(
   page: Page,
   from: { x: number; y: number } | DragEndpoint,
   to: { x: number; y: number } | DragEndpoint,
   onArrived?: () => Promise<void>,
+  onStep?: (step: number) => Promise<void>,
 ): Promise<void> {
   const steps = 12
   // The plain-{x,y} path never awaits resolveDragPoint (no locator to
@@ -86,6 +91,7 @@ export async function dragBetween(
   // actual mouse drag.
   for (let i = 1; i <= steps; i++) {
     await page.mouse.move(fromPoint.x + ((toPoint.x - fromPoint.x) * i) / steps, fromPoint.y + ((toPoint.y - fromPoint.y) * i) / steps)
+    if (onStep) await onStep(i)
   }
   if (onArrived) await onArrived()
   if ('locator' in to) {
