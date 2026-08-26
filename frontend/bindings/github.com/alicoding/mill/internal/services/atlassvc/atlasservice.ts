@@ -479,10 +479,11 @@ export function Links(): $CancellablePromise<atlas$0.Link[] | null> {
 /**
  * MirrorContent resolves cardID's MirrorPath into a read-only overlay
  * preview: markdown renders to HTML, plain text passes through as-is,
- * an image becomes base64-encoded bytes paired with its MIME type, and
- * anything else (or anything over mirrorPreviewMaxBytes) reports only
- * its kind and size -- the overlay's existing reveal-file action is
- * what a user reaches for beyond that.
+ * an image or a binary spreadsheet becomes base64-encoded bytes paired
+ * with its MIME type, and anything else (or anything over
+ * mirrorPreviewMaxBytes) reports only its kind and size -- the
+ * overlay's existing reveal-file action is what a user reaches for
+ * beyond that.
  */
 export function MirrorContent(cardID: string): $CancellablePromise<atlas$0.MirrorContent> {
     return $Call.ByID(3797489642, cardID);

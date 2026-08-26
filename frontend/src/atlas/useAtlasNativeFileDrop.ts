@@ -9,6 +9,7 @@ import { FILE_DROP_EVENT_NAME, FILE_DROP_CONTEXT_BOARD } from './atlasFileDropSh
 import { frameContainingPoint } from './atlasFramePoint'
 import { isDiagramPath, useAtlasDiagramObjectCreate } from './useAtlasDiagramObjectCreate'
 import { isImagePath, useAtlasImageObjectCreate } from './useAtlasImageObjectCreate'
+import { isSheetPath, useAtlasSheetObjectCreate } from './useAtlasSheetObjectCreate'
 import type { FrameBox } from './useAtlasDragFiling'
 
 const DROP_ERROR_MS = 4000
@@ -37,20 +38,21 @@ export function useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPo
   const requestFolderImport = useAtlasFolderImportRequestStore((s) => s.requestFolderImport)
   const diagramObjectCreate = useAtlasDiagramObjectCreate()
   const imageObjectCreate = useAtlasImageObjectCreate()
+  const sheetObjectCreate = useAtlasSheetObjectCreate()
 
   // Latest-refs (useBoardFocus.ts's own convention): the Events.On
   // subscription below is set up once and must never re-fire on every
   // unrelated re-render, but always needs this render's current values.
-  const stateRef = useRef({ parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion, diagramObjectCreate, imageObjectCreate })
+  const stateRef = useRef({ parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion, diagramObjectCreate, imageObjectCreate, sheetObjectCreate })
   useEffect(() => {
-    stateRef.current = { parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion, diagramObjectCreate, imageObjectCreate }
-  }, [parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion, diagramObjectCreate, imageObjectCreate])
+    stateRef.current = { parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion, diagramObjectCreate, imageObjectCreate, sheetObjectCreate }
+  }, [parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion, diagramObjectCreate, imageObjectCreate, sheetObjectCreate])
 
   useEffect(() => {
     return Events.On(FILE_DROP_EVENT_NAME, (evt) => {
       const payload = evt.data as { filenames?: string[]; x?: number; y?: number; context?: string } | undefined
       if (!payload || payload.context !== FILE_DROP_CONTEXT_BOARD || !payload.filenames?.length) return
-      const { topLevelBoxes: boxes, screenToFlowPosition: toFlow, parentID: currentParentID, requestFolderImport: request, setPulsedID: pulse, reduceMotion: reduced, diagramObjectCreate: diagramCreate, imageObjectCreate: imageCreate } = stateRef.current
+      const { topLevelBoxes: boxes, screenToFlowPosition: toFlow, parentID: currentParentID, requestFolderImport: request, setPulsedID: pulse, reduceMotion: reduced, diagramObjectCreate: diagramCreate, imageObjectCreate: imageCreate, sheetObjectCreate: sheetCreate } = stateRef.current
       const point = toFlow({ x: payload.x ?? 0, y: payload.y ?? 0 })
       const targetParentID = frameContainingPoint(boxes, point) ?? currentParentID
 
@@ -74,6 +76,12 @@ export function useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPo
           // drops now.
           if (isImagePath(path)) {
             return imageCreate.land(path, targetParentID, { X: point.x, Y: point.y })
+          }
+          // A dropped .xlsx/.csv file lands as a "sheet" board object
+          // the same way (goal 0232 S2) -- the reference-card fallback
+          // below is scoped to non-image, non-diagram, non-sheet drops.
+          if (isSheetPath(path)) {
+            return sheetCreate.land(path, targetParentID, { X: point.x, Y: point.y })
           }
           return AtlasService.CreateCardFromFileDrop(path, titleFromFilename(path), targetParentID, { X: point.x, Y: point.y })
             .then((result) => refreshAtlas().then(() => {

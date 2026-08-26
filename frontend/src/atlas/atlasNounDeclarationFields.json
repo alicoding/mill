@@ -61,7 +61,7 @@
   },
   {
     "field": "boardObjectKind",
-    "legalValues": "'shape', 'image', 'ink', 'table', 'diagram', or null",
+    "legalValues": "'shape', 'image', 'ink', 'table', 'diagram', 'sheet', or null",
     "meaning": "the persisted BoardObject.Kind this noun's own placed instance carries, or null for a tool that never routes through the shared 'atlas-object' renderer. Not always equal to id -- pencil's own placed instance is Kind 'ink' -- so content resolution below keys off this field, read from object.Kind, never off id."
   },
   {

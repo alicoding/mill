@@ -19,6 +19,9 @@ func TestClassifyMirrorKind(t *testing.T) {
 		{"chart.drawio", MirrorKindText},
 		{"chart.DRAWIO", MirrorKindText},
 		{"chart.drawio.svg", MirrorKindImage},
+		{"data.csv", MirrorKindText},
+		{"book.xlsx", MirrorKindSheet},
+		{"book.XLSX", MirrorKindSheet},
 		{"archive.zip", MirrorKindOther},
 		{"no-extension", MirrorKindOther},
 		{"", MirrorKindOther},
@@ -36,6 +39,34 @@ func TestMirrorImageMimeType(t *testing.T) {
 	}
 	if got := MirrorImageMimeType("notes.md"); got != "" {
 		t.Errorf("MirrorImageMimeType(notes.md) = %q, want empty (not an image)", got)
+	}
+}
+
+func TestMirrorSheetMimeType(t *testing.T) {
+	if got := MirrorSheetMimeType("book.xlsx"); got != "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" {
+		t.Errorf("MirrorSheetMimeType(book.xlsx) = %q, want the xlsx MIME type", got)
+	}
+	if got := MirrorSheetMimeType("notes.md"); got != "" {
+		t.Errorf("MirrorSheetMimeType(notes.md) = %q, want empty (not a spreadsheet)", got)
+	}
+}
+
+func TestIsDiagramMirrorExtension_CoversSpreadsheetExtensions(t *testing.T) {
+	cases := []struct {
+		ext  string
+		want bool
+	}{
+		{".xlsx", true},
+		{".XLSX", true},
+		{".csv", true},
+		{".drawio", true},
+		{".md", false},
+		{".txt", false},
+	}
+	for _, c := range cases {
+		if got := IsDiagramMirrorExtension(c.ext); got != c.want {
+			t.Errorf("IsDiagramMirrorExtension(%q) = %v, want %v", c.ext, got, c.want)
+		}
 	}
 }
 

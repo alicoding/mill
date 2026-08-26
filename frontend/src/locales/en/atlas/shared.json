@@ -116,6 +116,7 @@
     "shapeAriaLabel": "Shape",
     "tableAriaLabel": "Table",
     "diagramAriaLabel": "Diagram",
+    "sheetAriaLabel": "Sheet",
     "loadFailed": "Couldn't load this file.",
     "dragHandleTitle": "Drag to move",
     "rotateHandleTitle": "Drag to rotate"

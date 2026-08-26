@@ -35,7 +35,7 @@ export type AtlasBoardNodeType = 'atlas-note' | 'atlas-sticky' | 'atlas-group' |
 // its placed instance is Kind 'ink' (its own commit call names it), so
 // content resolution below keys off THIS set, read from object.Kind,
 // never off a tool id.
-export type AtlasBoardObjectKind = 'shape' | 'image' | 'ink' | 'table' | 'diagram'
+export type AtlasBoardObjectKind = 'shape' | 'image' | 'ink' | 'table' | 'diagram' | 'sheet'
 
 // AtlasNounContent -- a Kind's own placed-instance rendering (goal
 // 0215 S3): the content component AtlasBoardObjectNode.tsx mounts, the
@@ -157,9 +157,9 @@ interface AtlasToolShapeBase {
   // proves it live since the static check can't reach it.
   dragBand: boolean
   // fileBacked (goal 0232 S1): does this noun's own placed instance
-  // read Payload.mirrorPath as a real external file (image/ink/diagram),
-  // or is its render entirely live Payload/List data with no backing
-  // file at all (shape/table, and every noun with boardObjectKind
+  // read Payload.mirrorPath as a real external file (image/ink/diagram/
+  // sheet), or is its render entirely live Payload/List data with no
+  // backing file at all (shape/table, and every noun with boardObjectKind
   // null)? REQUIRED for every tool, the same "declare honestly even
   // when meaningless" shape dragBand/resizable/lockable/sticky already
   // establish -- registerNoun below folds it into the registry's own
