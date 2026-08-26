@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeLocalPathInput, resolveDefaultKindID, titleFromFilename, titleFromNoteText } from './atlasCreateHelpers'
+import { normalizeLocalPathInput, resolveDefaultKindID, resolveNoteCommitText, titleFromFilename, titleFromNoteText } from './atlasCreateHelpers'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 
 function kind(id: string): Kind {
@@ -94,5 +94,31 @@ describe('normalizeLocalPathInput', () => {
 
   it('falls back to the undecoded remainder on malformed percent-encoding', () => {
     expect(normalizeLocalPathInput('file:///Users/me/broken%.png')).toBe('/Users/me/broken%.png')
+  })
+})
+
+describe('resolveNoteCommitText', () => {
+  // Regression (goal 0226): a re-edited note's commit used to call
+  // .trim() before persisting, silently stripping whitespace the
+  // author typed on purpose -- a note's text is markdown SOURCE, never
+  // normalized. Proven here (pure, no CodeMirror/browser involved)
+  // rather than by reconstructing an editor's DOM in e2e, since the
+  // actual persisted value is a pure function of the input text.
+  it('preserves leading and trailing whitespace exactly', () => {
+    const text = '  # Heading\n\nbody text  \n'
+    expect(resolveNoteCommitText(text)).toBe(text)
+  })
+
+  it('preserves interior blank lines and markdown syntax unchanged', () => {
+    const text = '# Title\n\n- one\n- two'
+    expect(resolveNoteCommitText(text)).toBe(text)
+  })
+
+  it('treats whitespace-only text as blank, skipping the write', () => {
+    expect(resolveNoteCommitText('   \n  ')).toBeNull()
+  })
+
+  it('treats empty text as blank, skipping the write', () => {
+    expect(resolveNoteCommitText('')).toBeNull()
   })
 })
