@@ -264,10 +264,10 @@ export function CreatePerspective(spaceID: string, name: string, description: st
 
 /**
  * DeleteBoardObject soft-deletes a board object (goal 0179/0180) --
- * same tombstone contract as DeleteNote: no seed-tombstone bookkeeping
- * (a board object carries no seed provenance), no link/child blast
- * radius (a board object can be neither a link endpoint nor a
- * container).
+ * same tombstone contract as DeleteCard's own seed-tombstone bookkeeping
+ * (goal 0223 gives BoardObject the same BuiltIn/Seed provenance Card
+ * already carries), minus DeleteCard's link/child blast radius (a
+ * board object can be neither a link endpoint nor a container).
  */
 export function DeleteBoardObject(id: string): $CancellablePromise<$models.TombstoneResult> {
     return $Call.ByID(309976208, id);
@@ -1075,9 +1075,9 @@ export function Undo(): $CancellablePromise<$models.UndoResult> {
  * UndoDelete reverses one or more DeleteCard/DeleteNote/
  * DeleteBoardObject calls: clears DeletedAt on exactly the ids named (a
  * no-op for any id that's no longer tombstoned, e.g. already purged)
- * and clears a built-in card's seed tombstone too, so top-up seeding
- * can reach it again. cardIDs/noteIDs/objectIDs are the exact
- * TombstoneResult(s) the original delete call(s) returned.
+ * and clears a built-in card's or board object's seed tombstone too, so
+ * top-up seeding can reach it again. cardIDs/noteIDs/objectIDs are the
+ * exact TombstoneResult(s) the original delete call(s) returned.
  */
 export function UndoDelete(cardIDs: string[] | null, noteIDs: string[] | null, objectIDs: string[] | null): $CancellablePromise<void> {
     return $Call.ByID(4101274755, cardIDs, noteIDs, objectIDs);

@@ -261,6 +261,7 @@ func BuiltInWorkflows() []Workflow {
 	}
 
 	workflows := clipboardBuiltInWorkflows()
+	workflows = append(workflows, clipboardHistoryBuiltInWorkflow())
 	workflows = append(workflows, []Workflow{
 		{
 			ID:          ExampleChildWorkflowID,

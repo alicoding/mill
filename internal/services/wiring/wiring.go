@@ -18,6 +18,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/mcpclient"
 	"github.com/alicoding/mill/internal/adapters/notify"
+	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/adapters/secretvault"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/composition"
@@ -25,6 +26,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/backupsvc"
+	"github.com/alicoding/mill/internal/services/clipboardhistorysvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
 	"github.com/alicoding/mill/internal/services/executionsvc"
@@ -252,6 +254,19 @@ func WireSecrets(vaultPath string, credentials credential.Store, configureServic
 // its own failure text.
 func WireSecretRedaction(secretService *secretsvc.SecretService) {
 	composition.SetSecretRedactor(secretService.RedactKnownSecrets)
+}
+
+// WireClipboardHistory connects goal 0234's clipboard-history service to
+// its two cross-service seams: composition's apply-clipboard-history-
+// store node persists through clipboardHistoryService.Append, and a
+// copy-back leaves one audit line through secretService's own audit
+// store (ContextClipboardHistoryCopy) -- the SAME store every vault-
+// secret read already writes to, never a second one.
+func WireClipboardHistory(clipboardHistoryService *clipboardhistorysvc.ClipboardHistoryService, secretService *secretsvc.SecretService) {
+	composition.SetClipboardHistoryAppender(clipboardHistoryService.Append)
+	clipboardhistorysvc.SetAuditRecorder(func(entryID, label string) {
+		secretService.RecordAccess(entryID, label, secretaudit.AccessContext{Context: secretaudit.ContextClipboardHistoryCopy}, secretaudit.OutcomeRead, "")
+	})
 }
 
 // WireNotificationChannels registers settingsService's three delivery

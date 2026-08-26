@@ -1,0 +1,59 @@
+/* Clipboard history (goal 0234): Primer design tokens only, per
+   .claude/rules/frontend.md -- no bespoke colors/spacing. Same
+   fixed-max-height + internal scroll convention as
+   CommandPalette.module.css's own .list (see its comment). */
+.list {
+  max-height: 240px;
+}
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-12, 12px);
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-8, 8px);
+  min-height: 220px;
+}
+
+.preview {
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: var(--base-size-8, 8px);
+  white-space: pre-wrap;
+  word-break: break-word;
+  background-color: var(--bgColor-muted);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  font-family: inherit;
+}
+
+/* Compound selector (0,2,0), always beats .preview alone (0,1,0)
+   regardless of which stylesheet loads later in the bundle -- two
+   same-specificity single-class rules across different CSS modules
+   raced on bundle order otherwise (confirmed live: monoText.module.css's
+   own .mono lost to this file's .preview when this module happened to
+   load after it). */
+.preview.previewMono {
+  font-family: var(--mill-mono);
+}
+
+.actions {
+  align-items: center;
+}
+
+.empty {
+  padding: var(--base-size-16, 16px);
+}
+
+.noSelection {
+  color: var(--fgColor-muted);
+}
+
+.copyError {
+  color: var(--fgColor-danger);
+}

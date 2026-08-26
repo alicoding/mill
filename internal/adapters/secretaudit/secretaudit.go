@@ -45,6 +45,14 @@ const (
 	// ContextUICopy is SecretService.CopySecretToClipboard -- a human
 	// clicking "copy."
 	ContextUICopy Context = "ui-copy"
+	// ContextClipboardHistoryCopy is
+	// clipboardhistorysvc.ClipboardHistoryService.CopyClipboardHistoryEntry
+	// (goal 0234) -- a human copying a Clipboard history entry back to
+	// the real clipboard. Not a vault secret read, but the same
+	// audit-plane shape reused deliberately rather than a second store
+	// (goal 0234's own contract): EntryID here is a clipboard-history
+	// entry id, never a vault entry id.
+	ContextClipboardHistoryCopy Context = "clipboard-history-copy"
 )
 
 // Outcome is one read's recorded result -- deliberately just two values

@@ -20,6 +20,7 @@ import (
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/backupsvc"
 	"github.com/alicoding/mill/internal/services/capabilitysvc"
+	"github.com/alicoding/mill/internal/services/clipboardhistorysvc"
 	"github.com/alicoding/mill/internal/services/companionsvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
@@ -174,6 +175,12 @@ func main() {
 
 	mcpAuditService := wiring.WireAuditTrails(secretService, backupsvc.SQLiteDBPath(executionDatabaseURL), logger)
 
+	// goal 0234: composition and secretsvc's own audit store are wired
+	// together in wiring.WireClipboardHistory below, once secretService's
+	// OpenAudit call (mcpAuditService's own construction, above) has run.
+	clipboardHistoryService := clipboardhistorysvc.NewClipboardHistoryService(settingsStore)
+	wiring.WireClipboardHistory(clipboardHistoryService, secretService)
+
 	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
 	executionService, err := executionsvc.NewExecutionService(executionDatabaseURL, compositionService, guardrailService)
 	if err != nil {
@@ -305,6 +312,7 @@ func main() {
 			application.NewService(companionService),
 			application.NewService(agentLoopService),
 			application.NewService(guardrailService),
+			application.NewService(clipboardHistoryService),
 			application.NewService(executionService),
 			application.NewService(settingsService),
 			application.NewService(backupService),

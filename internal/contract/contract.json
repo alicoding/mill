@@ -1400,6 +1400,24 @@
       "Complexity": "basic"
     },
     {
+      "ID": "trigger-clipboard-change",
+      "Kind": "trigger",
+      "Label": "Clipboard captured",
+      "Description": "Fires when you copy something new -- skips content marked confidential by the app you copied it from, and skips text Mill itself just wrote back to the clipboard.",
+      "ConfigFields": null,
+      "Output": "the clipboard text that changed, already screened for confidential content and Mill's own writes",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
+      "Effect": "",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
+    },
+    {
       "ID": "trigger-clipboard-watch",
       "Kind": "trigger",
       "Label": "Clipboard changed",
@@ -3068,6 +3086,24 @@
       "Output": "the payload it received, unchanged",
       "Consumes": [
         "any"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
+    },
+    {
+      "ID": "apply-clipboard-history-store",
+      "Kind": "apply",
+      "Label": "Save to clipboard history",
+      "Description": "Scrubs any known secret value out of the payload, then adds what's left to Clipboard history. Confidential-marked content and Mill's own clipboard writes never reach this step -- the trigger above already filtered them.",
+      "ConfigFields": null,
+      "Output": "the text it stored",
+      "Consumes": [
+        "text"
       ],
       "Produces": {
         "passthrough": true
@@ -3543,6 +3579,24 @@
       "Complexity": "basic"
     },
     {
+      "ID": "trigger-clipboard-change",
+      "Kind": "trigger",
+      "Label": "Clipboard captured",
+      "Description": "Fires when you copy something new -- skips content marked confidential by the app you copied it from, and skips text Mill itself just wrote back to the clipboard.",
+      "ConfigFields": null,
+      "Output": "the clipboard text that changed, already screened for confidential content and Mill's own writes",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
+      "Effect": "",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
+    },
+    {
       "ID": "trigger-clipboard-watch",
       "Kind": "trigger",
       "Label": "Clipboard changed",
@@ -5211,6 +5265,24 @@
       "Output": "the payload it received, unchanged",
       "Consumes": [
         "any"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
+    },
+    {
+      "ID": "apply-clipboard-history-store",
+      "Kind": "apply",
+      "Label": "Save to clipboard history",
+      "Description": "Scrubs any known secret value out of the payload, then adds what's left to Clipboard history. Confidential-marked content and Mill's own clipboard writes never reach this step -- the trigger above already filtered them.",
+      "ConfigFields": null,
+      "Output": "the text it stored",
+      "Consumes": [
+        "text"
       ],
       "Produces": {
         "passthrough": true

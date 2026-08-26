@@ -91,11 +91,12 @@ test('palette search matches the step label, case-insensitively', async ({ page 
   await expect(panel.getByTestId('palette-item')).toHaveCount(0)
   await expect(panel.getByTestId('palette-no-matches')).toBeVisible()
 
-  // Clearing the query restores the full palette (43
-  // RegisterNodeType call sites, latest apply-atlas-ledger-sync
-  // (goal 0164), + the seeded "Check httpbin" declared step type).
+  // Clearing the query restores the full palette (45
+  // RegisterNodeType call sites, latest trigger-clipboard-change/
+  // apply-clipboard-history-store (goal 0234), + the seeded
+  // "Check httpbin" declared step type).
   await search.fill('')
-  await expect(panel.getByTestId('palette-item')).toHaveCount(44)
+  await expect(panel.getByTestId('palette-item')).toHaveCount(46)
 })
 
 // Goal 0113 slice 1: typing an intent-shaped query (not a step name)
@@ -131,13 +132,13 @@ test('the advanced toggle states its count, and the badge count matches while ch
   await panel.getByTestId('palette-show-advanced').uncheck()
   await expect(panel.getByTestId('palette-advanced-badge')).toHaveCount(0)
   const itemCountUnchecked = await panel.getByTestId('palette-item').count()
-  expect(itemCountUnchecked).toBeLessThan(44)
+  expect(itemCountUnchecked).toBeLessThan(46)
 
   // Restore the default -- within-file cleanup discipline (testing.md):
   // this worker's browser context (and its localStorage) is shared with
   // every other test in this file.
   await panel.getByTestId('palette-show-advanced').check()
-  await expect(panel.getByTestId('palette-item')).toHaveCount(44)
+  await expect(panel.getByTestId('palette-item')).toHaveCount(46)
 })
 
 // Progressive-disclosure "Show advanced steps" toggle (goal 0047): the
@@ -148,7 +149,7 @@ test('the palette shows every step by default, "Show advanced steps" checked', a
   await openPaletteOnNewWorkflow(page)
   const panel = activePanel(page)
   await expect(panel.getByTestId('palette-show-advanced')).toBeChecked()
-  await expect(panel.getByTestId('palette-item')).toHaveCount(44)
+  await expect(panel.getByTestId('palette-item')).toHaveCount(46)
 })
 
 test('unchecking "Show advanced steps" hides advanced steps, keeps basic ones, and persists across a reload', async ({ page }) => {

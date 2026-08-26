@@ -28,6 +28,7 @@ var pureNodeTypes = map[string]string{
 	"trigger-hotkey":           "exec=nil entry point, never reaches the guardrail gate",
 	"trigger-schedule":         "exec=nil entry point, never reaches the guardrail gate",
 	"trigger-clipboard-watch":  "exec=nil entry point, never reaches the guardrail gate",
+	"trigger-clipboard-change": "exec=nil entry point, never reaches the guardrail gate",
 	"trigger-filesystem-watch": "exec=nil entry point, never reaches the guardrail gate",
 	"trigger-callable":         "exec=nil entry point, never reaches the guardrail gate",
 	"trigger-system-event":     "exec=nil entry point, never reaches the guardrail gate",

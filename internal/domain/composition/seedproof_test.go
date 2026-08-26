@@ -48,6 +48,13 @@ var workflowProofRegistry = map[string]seedProof{
 	"clipboard-html-to-markdown-workflow": proven(
 		"e2e: composition.spec.ts > Running the clipboard-to-markdown workflow produces a visible response, success or error",
 	),
+	"clipboard-history-workflow": proven(
+		"triggersvc.TestSeededClipboardHistory_TriggeredRunStoresRedactedEntry",
+		"triggersvc.TestShouldCaptureClipboardChange_SkipsSelfEcho",
+		"triggersvc.TestShouldCaptureClipboardChange_SkipsConcealedContent",
+		"triggersvc.TestShouldCaptureClipboardChange_FailSafeOnConcealedCheckError",
+		"e2e: clipboard-history.spec.ts",
+	),
 	ExampleChildWorkflowID: proven(
 		"executionsvc.TestSeededParentChildExample_TypedInputAndOutput_RunsEndToEnd",
 	),

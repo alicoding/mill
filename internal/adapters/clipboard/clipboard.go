@@ -7,9 +7,11 @@ package clipboard
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -57,13 +59,51 @@ func WriteHTML(html string) error {
 	return nil
 }
 
-// WriteText sets the clipboard's plain-text flavor via pbcopy.
+// WriteText sets the clipboard's plain-text flavor via pbcopy, and
+// records text as Mill's own most recent programmatic write (see
+// ConsumeSelfWrite) -- goal 0234's self-echo guard: a clipboard-history
+// trigger polling right after this call must be able to tell "the
+// content changed because Mill just wrote it" from "the user copied
+// something new."
 func WriteText(text string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "pbcopy")
 	cmd.Stdin = strings.NewReader(text)
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	markSelfWrite(text)
+	return nil
+}
+
+// selfWriteMu/selfWriteText track the most recent WriteText call's own
+// content -- a plain package var, not per-caller state, since the
+// clipboard itself is one shared, singular resource on the machine.
+var (
+	selfWriteMu   sync.Mutex
+	selfWriteText string
+)
+
+func markSelfWrite(text string) {
+	selfWriteMu.Lock()
+	selfWriteText = text
+	selfWriteMu.Unlock()
+}
+
+// ConsumeSelfWrite reports whether text matches Mill's own most recent
+// WriteText call, clearing the marker on a match. One-shot by design:
+// only the poll cycle immediately following a self-write is treated as
+// an echo -- a later, separate user copy of identical text is recorded
+// normally rather than permanently blacklisted.
+func ConsumeSelfWrite(text string) bool {
+	selfWriteMu.Lock()
+	defer selfWriteMu.Unlock()
+	if selfWriteText != "" && selfWriteText == text {
+		selfWriteText = ""
+		return true
+	}
+	return false
 }
 
 // ReadText reads the clipboard's plain-text flavor via pbpaste.
@@ -97,15 +137,18 @@ func Info() (string, error) {
 }
 
 // WatchChanges polls the clipboard's plain-text flavor on the given
-// interval and calls fn whenever it differs from the last-seen value.
-// Build, not adopt -- confirmed no clipboard-changed event exists via
-// osascript (docs/SPEC.md §3.4), so this is the same poll-loop shape
-// every clipboard manager uses under the hood. Plain text, not HTML: the
-// HTML flavor is frequently absent (e.g. copying a filename or plain
-// text produces none, and ReadHTML errors in that case), so watching it
+// interval and calls fn with the new text whenever it differs from the
+// last-seen value. Build, not adopt -- confirmed no clipboard-changed
+// event exists via osascript (docs/SPEC.md §3.4), so this is the same
+// poll-loop shape every clipboard manager uses under the hood (goal
+// 0234's own research: changeCount polling is the converged mechanism,
+// and unlike a content read it triggers no macOS pasteboard-privacy
+// prompt on any shipping release). Plain text, not HTML: the HTML
+// flavor is frequently absent (e.g. copying a filename or plain text
+// produces none, and ReadHTML errors in that case), so watching it
 // would miss most real clipboard activity -- text is the one flavor
 // almost everything copyable sets.
-func WatchChanges(interval time.Duration, fn func()) (stop func()) {
+func WatchChanges(interval time.Duration, fn func(text string)) (stop func()) {
 	done := make(chan struct{})
 	go func() {
 		last, _ := ReadText() // baseline; ignore error (nothing on clipboard yet)
@@ -120,7 +163,7 @@ func WatchChanges(interval time.Duration, fn func()) (stop func()) {
 				}
 				if text != last {
 					last = text
-					fn()
+					fn(text)
 				}
 			case <-done:
 				return
@@ -128,4 +171,55 @@ func WatchChanges(interval time.Duration, fn func()) (stop func()) {
 		}
 	}()
 	return func() { close(done) }
+}
+
+// Types returns every registered pasteboard type's UTI string, via a
+// JXA (osascript -l JavaScript) bridge directly into NSPasteboard --
+// AppleScript's own "clipboard info" command (Info, above) only reports
+// coarse four-char AppleScript classes, not arbitrary UTIs like
+// org.nspasteboard.ConcealedType, so checking for those needs Cocoa's
+// own types array instead.
+func Types() ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	const script = `ObjC.import('AppKit'); JSON.stringify(ObjC.deepUnwrap($.NSPasteboard.generalPasteboard.types))`
+	out, err := exec.CommandContext(ctx, "osascript", "-l", "JavaScript", "-e", script).Output()
+	if err != nil {
+		return nil, fmt.Errorf("osascript pasteboard types failed: %w", err)
+	}
+	var types []string
+	if err := json.Unmarshal(out, &types); err != nil {
+		return nil, fmt.Errorf("decode pasteboard types: %w", err)
+	}
+	return types, nil
+}
+
+// concealedTypes are the nspasteboard.org convention's own markers
+// (https://nspasteboard.org) a password manager or transient-content
+// source sets on the pasteboard to declare "don't record this in a
+// clipboard history" -- the same three types Maccy itself checks
+// (goal 0234's own research).
+var concealedTypes = []string{
+	"org.nspasteboard.ConcealedType",
+	"org.nspasteboard.TransientType",
+	"org.nspasteboard.AutoGeneratedType",
+}
+
+// IsConcealed reports whether the clipboard's current content carries
+// one of concealedTypes' UTIs -- checked before any content read
+// reaches a capture, so concealed content never enters clipboard
+// history at all.
+func IsConcealed() (bool, error) {
+	types, err := Types()
+	if err != nil {
+		return false, err
+	}
+	for _, t := range types {
+		for _, c := range concealedTypes {
+			if t == c {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
