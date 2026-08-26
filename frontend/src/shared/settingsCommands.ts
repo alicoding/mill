@@ -10,6 +10,28 @@ import { useUpdateNoticeStore } from './updateNoticeStore'
 // spread into its COMMANDS array.
 export const SETTINGS_COMMANDS: Command[] = [
   {
+    id: 'settings.open',
+    label: 'Open Settings',
+    // Moved from shared/commands.ts (goal 0222 S2) to sit beside its own
+    // Quick Panel row -- quickPanelActionEntries.tsx overrides run() to
+    // open the MAIN window's Settings instead of this setView call,
+    // which only makes sense inside the main window's own React tree.
+    defaultBinding: { mods: ['cmd'], key: ',' },
+    quickPanel: true,
+    run: () => useAppStore.getState().setView({ kind: 'settings' }),
+  },
+  {
+    // Quick-Panel-only (ADR-0033): brings the MAIN window forward.
+    // paletteHidden -- running this from the main palette would just
+    // refocus the window you're already in.
+    id: 'panel.openMill',
+    label: 'Open Mill',
+    defaultBinding: null,
+    paletteHidden: true,
+    quickPanel: true,
+    run: () => { void SettingsService.OpenMainWindow('') },
+  },
+  {
     id: 'panel.applyClipboard',
     label: 'Apply from clipboard',
     // docs/goals/0039: no default binding, same "reserve the id ahead
@@ -21,7 +43,11 @@ export const SETTINGS_COMMANDS: Command[] = [
     // "Apply from clipboard..." row (QuickPanel.tsx) is that UI -- this
     // command exists so the action is discoverable/rebindable/
     // HotkeyHint-shown, not to duplicate the flow in the main window.
+    // quickPanelActionEntries.tsx overrides run() with the panel's own
+    // applyFromClipboard flow when THIS row fires from inside the panel
+    // itself (calling ShowPanel() there would just no-op-reopen it).
     defaultBinding: null,
+    quickPanel: true,
     run: () => { void SettingsService.ShowPanel() },
   },
   {
@@ -69,6 +95,7 @@ export const SETTINGS_COMMANDS: Command[] = [
     id: 'update.check',
     label: 'Check for updates',
     defaultBinding: null,
+    quickPanel: true,
     run: () => { SettingsService.CheckForUpdates().catch(console.error) },
   },
   {
@@ -76,6 +103,7 @@ export const SETTINGS_COMMANDS: Command[] = [
     label: 'Download the update and install',
     defaultBinding: null,
     enabled: () => useUpdateNoticeStore.getState().updateNoticeState === UpdateState.UpdateStateAvailable,
+    quickPanel: true,
     run: () => { SettingsService.DownloadAndInstallUpdate().catch(console.error) },
   },
   {
@@ -83,6 +111,7 @@ export const SETTINGS_COMMANDS: Command[] = [
     label: 'Restart to finish updating',
     defaultBinding: null,
     enabled: () => useUpdateNoticeStore.getState().updateNoticeState === UpdateState.UpdateStateReady,
+    quickPanel: true,
     run: () => { SettingsService.RestartApp().catch(console.error) },
   },
 ]

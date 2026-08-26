@@ -70,6 +70,12 @@ goal NNNN" — never silence:
     justification, since focus semantics are the known engine-divergence
     class (WebKit's focus and reveal-on-mousedown behavior differs from
     Chromium's).
+12. **Command registry** — does it add a user-facing action (a button,
+    a menu item, a click handler)? → a registered `shared/commands.ts`
+    command with an honest `enabled()`, buttons calling
+    `findCommand(id)?.run()` (architecture.md's command-is-the-atom
+    rule, goal 0222) — "register", "deliberately mouse-only, because
+    …", or "follow-up goal NNNN," never silence.
 
 The triage is a DoR gate, not a build mandate: most answers are one
 honest sentence.
