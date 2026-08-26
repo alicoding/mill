@@ -378,15 +378,25 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
 
       {/* A zero-card zero-note space still renders the board (goal
           0081 slice A2 rider a) -- the empty-state text overlays it,
-          non-interactive, so the tray and pane menu stay reachable. */}
+          non-interactive, so the tray and pane menu stay reachable.
+          Perspectives scope Cards only (boardobject.go/note.go's own
+          structural exclusion) -- a perspective narrowing this level's
+          cards to zero must say so (goal 0112) even when a note or
+          board object also renders here, never suppressed just because
+          SOMETHING is on the canvas. The plain (no perspective active)
+          empty-space message stays gated on all three being zero. */}
       <div className={styles.boardWrapper}>
-        {childrenAll.length === 0 && visibleNotes.length === 0 && visibleObjects.length === 0 && (
-          <AtlasBoardEmptyState
-            filteredByPerspective={activePerspectiveID !== '' && childrenOf(allCards, viewedID).length > 0}
-            perspectiveName={allPerspectives.find((pp) => pp.ID === activePerspectiveID)?.Name ?? ''}
-            onShowAll={() => switchPerspective('')}
-          />
-        )}
+        {(() => {
+          const filteredByPerspective = activePerspectiveID !== '' && childrenOf(allCards, viewedID).length > 0
+          const nothingElseHere = visibleNotes.length === 0 && visibleObjects.length === 0
+          return childrenAll.length === 0 && (filteredByPerspective || nothingElseHere) && (
+            <AtlasBoardEmptyState
+              filteredByPerspective={filteredByPerspective}
+              perspectiveName={allPerspectives.find((pp) => pp.ID === activePerspectiveID)?.Name ?? ''}
+              onShowAll={() => switchPerspective('')}
+            />
+          )
+        })()}
         <AtlasBoard
           onPasteConverted={(res) => quietToast.show(pasteSummaryText(t, res))}
           onCreateTableSized={(cols, rows, at, parentID) => void createTableFromScratch(cols, rows, at, parentID)}
