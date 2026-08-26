@@ -69,19 +69,19 @@
   },
   "atlasobject:atlas-object-example-diagram": {
     "seedRevision": 1,
-    "fingerprint": "920753456517ba37a79e5dc20c7029e51f7f9804b9909c9398d47cc373d0107c"
+    "fingerprint": "208dbef1f9cf203f6e4b79b633208f993b38c9753657288856dc88e5a618fc1a"
   },
   "atlasobject:atlas-object-example-image": {
     "seedRevision": 1,
-    "fingerprint": "b657e0a6f9cae4db9254ed00c579b0d28b46bef73997c9f9009623ebb9ebec14"
+    "fingerprint": "9ab25cc416f6ebcfa1b37160d65f34c9065b0598da949f4752c9483934bbcfcb"
   },
   "atlasobject:atlas-object-example-ink": {
     "seedRevision": 1,
-    "fingerprint": "cfc63208b14f67b910e44ed2e5dfd190a54efa67d97cf2fd381daf0cf778c171"
+    "fingerprint": "48979ba5600cbcc9b4df640a28ce5ff9f7e01138d670df4fccfbda9b5deb11b8"
   },
   "atlasobject:atlas-object-example-shape": {
     "seedRevision": 1,
-    "fingerprint": "1e4b65a46e5b3c14b7a8b27f2cf007dddf3507a2a42344627a5213341bbf9847"
+    "fingerprint": "89e7a42b9ee2f841c31934762043db8a96225f7facdcb231318ff5d0069fce04"
   },
   "decision:example-approve-decision": {
     "seedRevision": 3,
