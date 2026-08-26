@@ -1,5 +1,6 @@
 import { chromium, expect, test } from '@playwright/test'
 import { blurSticky, fillSticky, stickyEditor } from './fixtures/codeEditor'
+import { openToolbarAction } from './fixtures/toolbarActions'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -75,7 +76,7 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await expect(page.locator('[data-testid="atlas-note-card"]').filter({ hasText: 'ZzE2eStickyNoteText' })).toHaveCount(0)
 
     // --- Exclusions, checked NOW while "The engagement" still holds only its
-    // three seeded children (a note never joins that count) ---
+    // four seeded children (a note never joins that count) ---
     await page.keyboard.press('Meta+k')
     await expect(page.getByTestId('atlas-jump-results')).toBeVisible()
     await page.getByTestId('atlas-jump-input').fill('ZzE2eStickyNoteText')
@@ -83,13 +84,13 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await expect(page.getByTestId('atlas-jump-no-matches')).toBeVisible()
     await page.keyboard.press('Escape')
 
-    // "The engagement" seeds three children (Discovery workstream / Client records /
-    // Scratchpad; the reference-architecture landscape was de-seeded,
-    // ADR-0041's Update) -- a hand-countable 1/4 linked, 0/4 mirrored
-    // (the fourth child is "Board gallery", goal 0223's seeded
-    // board-object examples; same census atlas-projections.spec.ts's
-    // own coverage test pins).
-    await page.getByTestId('atlas-open-coverage').click()
+    // "The engagement" seeds four children (Discovery workstream / Client
+    // records / Scratchpad / Board gallery -- the reference-architecture
+    // landscape was de-seeded, ADR-0041's Update; Board gallery nests
+    // goal 0223's seeded board-object examples) -- a hand-countable 1/4
+    // linked, 0/4 mirrored (same census atlas-projections.spec.ts's own
+    // coverage test pins).
+    await openToolbarAction(page, 'atlas-open-coverage')
     const coverageDialog = page.locator('[data-component="atlas-coverage-dialog"]')
     await expect(coverageDialog).toBeVisible()
     await expect(coverageDialog.getByTestId('atlas-coverage-link-value')).toHaveText('1/4 linked')
@@ -97,7 +98,7 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await page.keyboard.press('Escape')
     await expect(coverageDialog).not.toBeVisible()
 
-    await page.getByTestId('atlas-open-matrix').click()
+    await openToolbarAction(page, 'atlas-open-matrix')
     const matrixDialog = page.locator('[data-component="atlas-matrix-dialog"]')
     await expect(matrixDialog).toBeVisible()
     await expect(matrixDialog).not.toContainText('ZzE2eStickyNoteText')

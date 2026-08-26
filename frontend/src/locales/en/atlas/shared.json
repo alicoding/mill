@@ -142,7 +142,9 @@
     "matrix": "Matrix",
     "coverage": "Coverage",
     "roadmap": "Roadmap",
-    "kinds": "Kinds"
+    "kinds": "Kinds",
+    "dataActionsLabel": "Arrange, import, export, and folder actions",
+    "shareViewActionsLabel": "Share and view actions"
   },
   "folderImport": {
     "addButton": "Add from folder…",

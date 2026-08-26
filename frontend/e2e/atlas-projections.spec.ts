@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { openToolbarAction } from './fixtures/toolbarActions'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_DOCUMENT } from './fixtures/kindPicker'
 import { openCard, createCardViaTray } from './fixtures/atlasBoard'
@@ -76,7 +77,7 @@ test('the traceability matrix pivots a space\'s cards by kind against link kinds
   await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
-  await page.getByTestId('atlas-open-matrix').click()
+  await openToolbarAction(page, 'atlas-open-matrix')
   const dialog = page.locator('[data-component="atlas-matrix-dialog"]')
   await expect(dialog).toBeVisible()
 
@@ -103,7 +104,7 @@ test('the roadmap swimlanes a space\'s cards by kind against horizon tags, with 
   await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
-  await page.getByTestId('atlas-open-roadmap').click()
+  await openToolbarAction(page, 'atlas-open-roadmap')
   const dialog = page.locator('[data-component="atlas-roadmap-dialog"]')
   await expect(dialog).toBeVisible()
 
@@ -139,7 +140,7 @@ test('coverage counts a space\'s cards missing a link and missing a mirror, with
   // hand-countable 1/4 linked. None carries a mirror directly at THIS
   // level (the seeded mirror lives one level deeper, on "Statement of
   // work") -- a hand-countable 0/4 mirrored.
-  await page.getByTestId('atlas-open-coverage').click()
+  await openToolbarAction(page, 'atlas-open-coverage')
   const dialog = page.locator('[data-component="atlas-coverage-dialog"]')
   await expect(dialog).toBeVisible()
 

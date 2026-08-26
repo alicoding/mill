@@ -1,0 +1,704 @@
+[
+  {
+    "id": "atlas.addFromFolder",
+    "label": "Add cards from a folder",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.arrange",
+    "label": "Auto-arrange",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.card.exportAs",
+    "label": "Export card as…",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.companion.toggle",
+    "label": "Toggle companion panel",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.coverage",
+    "label": "Open coverage",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.create.area",
+    "label": "Draw an area",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.create.card",
+    "label": "Add a card",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.create.eraser",
+    "label": "Erase things on the board",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.create.image",
+    "label": "Add an image",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.create.laser",
+    "label": "Point with the laser",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.create.note",
+    "label": "Add a note",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.create.pencil",
+    "label": "Draw with the pencil",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.create.shape",
+    "label": "Draw a shape",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.create.table",
+    "label": "New table",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.delete.selection",
+    "label": "Delete selection",
+    "binding": "⌫",
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.escapeLadder",
+    "label": "Clear selection or go up a level",
+    "binding": "ESCAPE",
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.export",
+    "label": "Export atlas",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.focusDirection",
+    "label": "Focus the nearest card in a direction",
+    "binding": "⌥→",
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.focusNext",
+    "label": "Focus next card",
+    "binding": "TAB",
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.focusPrevious",
+    "label": "Focus previous card",
+    "binding": "⇧TAB",
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.group.selection",
+    "label": "Group into a new area",
+    "binding": "G",
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.import",
+    "label": "Import atlas",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.jump",
+    "label": "Jump to a card",
+    "binding": "⌘K",
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.matrix",
+    "label": "Open traceability matrix",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.minimap.toggle",
+    "label": "Toggle minimap",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.nudgeSelection",
+    "label": "Move the selected card",
+    "binding": "→",
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.openFocused",
+    "label": "Open or zoom the focused card",
+    "binding": "↩",
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.perspective",
+    "label": "Open perspective switcher",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.redo",
+    "label": "Redo",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.roadmap",
+    "label": "Open roadmap",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.selectAll",
+    "label": "Select all",
+    "binding": "⌘A",
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.share.copyContext",
+    "label": "Copy space as context",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.share.copyLinks",
+    "label": "Copy space links",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.undo",
+    "label": "Undo",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "atlas.up",
+    "label": "Go up one level",
+    "binding": "⌘↑",
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "backup.export",
+    "label": "Export everything",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "backup.now",
+    "label": "Back up now",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "canvas.delete",
+    "label": "Delete selected",
+    "binding": "⌫",
+    "surface": [
+      "composition"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "canvas.fitView",
+    "label": "Fit view",
+    "binding": null,
+    "surface": [
+      "composition"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "canvas.redo",
+    "label": "Redo",
+    "binding": "⌘⇧Z",
+    "surface": [
+      "composition"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "canvas.undo",
+    "label": "Undo",
+    "binding": "⌘Z",
+    "surface": [
+      "composition"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "canvas.zoomIn",
+    "label": "Zoom in",
+    "binding": "⌘+",
+    "surface": [
+      "composition"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "canvas.zoomOut",
+    "label": "Zoom out",
+    "binding": "⌘-",
+    "surface": [
+      "composition"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "configure.new.aiproviders",
+    "label": "New AI provider",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "configure.new.decisions",
+    "label": "New decision",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "configure.new.execenvs",
+    "label": "New environment",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "configure.new.integration",
+    "label": "New integration",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "configure.new.lists",
+    "label": "New list",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "configure.new.mcpservers",
+    "label": "New MCP server",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "configure.new.steptypes",
+    "label": "New step type",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "help.shortcuts",
+    "label": "Keyboard shortcuts help",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "palette.open",
+    "label": "Open command palette",
+    "binding": "⌘K",
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "panel.applyClipboard",
+    "label": "Apply from clipboard",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "panel.openMill",
+    "label": "Open Mill",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "review.rules",
+    "label": "Guardrail rules",
+    "binding": null,
+    "surface": [
+      "review"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "secrets.lockVault",
+    "label": "Lock vault",
+    "binding": null,
+    "surface": null,
+    "enabled": true
+  },
+  {
+    "id": "secrets.unlockVault",
+    "label": "Unlock vault",
+    "binding": null,
+    "surface": null,
+    "enabled": true
+  },
+  {
+    "id": "settings.open",
+    "label": "Open Settings",
+    "binding": "⌘,",
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "settings.open.appearance",
+    "label": "Open Settings → Appearance",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "settings.open.backups",
+    "label": "Open Settings → Backups",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "settings.open.contract",
+    "label": "Open Settings → Contract",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "settings.open.general",
+    "label": "Open Settings → General",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "settings.open.global-hotkey",
+    "label": "Open Settings → Global hotkey",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "settings.open.keyboard-shortcuts",
+    "label": "Open Settings → Keyboard Shortcuts",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "settings.open.mcp-access",
+    "label": "Open Settings → MCP access",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "settings.open.notifications",
+    "label": "Open Settings → Notifications",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "settings.open.remote-access",
+    "label": "Open Settings → Remote access",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "settings.open.updates",
+    "label": "Open Settings → Updates",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "tab.close",
+    "label": "Close tab",
+    "binding": "⌘W",
+    "surface": null,
+    "enabled": true
+  },
+  {
+    "id": "tab.closeAll",
+    "label": "Close all tabs",
+    "binding": "⌘⇧W",
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "tab.closeOthers",
+    "label": "Close other tabs",
+    "binding": "⌘⌥W",
+    "surface": null,
+    "enabled": true
+  },
+  {
+    "id": "tab.next",
+    "label": "Next tab",
+    "binding": "⌃TAB",
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "tab.prev",
+    "label": "Previous tab",
+    "binding": "⌃⇧TAB",
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "update.check",
+    "label": "Check for updates",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "update.downloadAndInstall",
+    "label": "Download the update and install",
+    "binding": null,
+    "surface": null,
+    "enabled": true
+  },
+  {
+    "id": "update.relaunch",
+    "label": "Restart to finish updating",
+    "binding": null,
+    "surface": null,
+    "enabled": true
+  },
+  {
+    "id": "view.activity",
+    "label": "Go to Activity",
+    "binding": "⌘4",
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "view.atlas",
+    "label": "Go to Atlas",
+    "binding": "⌘3",
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "view.composition",
+    "label": "Go to Workflows",
+    "binding": "⌘1",
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "view.configure",
+    "label": "Go to Configure",
+    "binding": "⌘2",
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "view.docs",
+    "label": "Open docs",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "view.home",
+    "label": "Go to Home",
+    "binding": "⌘0",
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "view.review",
+    "label": "Go to Review",
+    "binding": "⌘5",
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "view.secrets",
+    "label": "Go to Secrets",
+    "binding": "⌘6",
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "workflow.new",
+    "label": "New workflow",
+    "binding": "⌘N",
+    "surface": null,
+    "enabled": true
+  },
+  {
+    "id": "workflow.publish",
+    "label": "Publish current draft",
+    "binding": null,
+    "surface": [
+      "composition"
+    ],
+    "enabled": true
+  },
+  {
+    "id": "workflow.run",
+    "label": "Run workflow",
+    "binding": "⌘↩",
+    "surface": null,
+    "enabled": true
+  },
+  {
+    "id": "workflow.save",
+    "label": "Save workflow",
+    "binding": "⌘S",
+    "surface": null,
+    "enabled": true
+  }
+]

@@ -35,6 +35,19 @@ trace (now auto-captured on retry).
 | atlas-delete-relationships.spec.ts:10 | interaction-race | 2026-08-24 | 2026-09-24 | openCard's own click-to-select `toPass` retry loop (fixtures/atlasBoard.ts:141, goal 0134's shard-1 cluster) hits the full 25s CI budget rather than resolving slowly -- both observed CI failures timed out at exactly the ceiling (25.6s, 25.8s), same shard position both times, then passed in ~2.6s on retry. That recovery speed argues for a one-off stuck click, not sustained CPU throttling a bigger timeout would durably fix. Same shared-helper-timeout shape as composition-canvas-interactions.spec.ts:25's clickCanvasNode entry; root cause not yet traced |
 | atlas-table-object.spec.ts:103 | interaction-race (contention-only) | 2026-08-25 | 2026-09-25 | the frame-drag test's own drag hit the full 60s CI ceiling twice, both times in e2e shard 1/4 alongside this same shard's atlas-delete-relationships.spec.ts:10 entry above AND a genuinely failing neighbor test retrying twice in the same run (goal 0226's own round-trip spec, fixed same-day) -- passes clean in 6/6 local `--repeat-each` runs across both CI attempts and shares no fixture/code path with either neighbor, so shard-level resource pressure from the neighbor's retries is the working theory, not a defect in the drag itself; revisit if it recurs without a stressed neighbor in the same shard |
 
+## Go tests (goal 0228)
+
+This register covers Go, not only Playwright — same protocol, same
+two-strikes rule (testing.md's flake protocol). Identity is
+`package/file.go:line` since Go has no spec-file convention; classes
+reuse the taxonomy above where the shape matches (a Go test polling a
+real workflow run's terminal status is the same **live-run** class as
+the Playwright entries).
+
+| Package:line | Class | Entered | Fixed | Notes |
+|---|---|---|---|---|
+| internal/services/triggersvc/filewriteguard_test.go:187 | live-run | 2026-08-25 | 2026-08-26 | `TestFileWatchCycleGuard_DifferentWorkflowWatchingSameFolder_StillFires` asserted on a triggered run's mere row existence, not its terminal status, so under CI load the test (and its `t.Cleanup`, which closes the execution DB) could return while the run was still PENDING -- two sightings the same day, both on PRs that never touched the package, with `GetEvent() timeout` warnings and a `sql: database is closed` error riding along as the DB closed under the still-running workflow. Fixed by polling for the run's own terminal SUCCESS status before returning (`waitForTriggeredRunSuccess`), applied to both cycle-guard tests in the file since they share the identical race shape |
+
 ## Fixed (pattern applied)
 
 Entries below left the active register on this date, fixed by applying

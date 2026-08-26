@@ -264,7 +264,10 @@ user primitive can reach the state.
   and notes. Retry-passing is never a fix. The same two-strikes shape
   governs defect classes repo-wide via goal-frontmatter `defect_class`
   (delivery-discipline.md, goal 0187): second occurrence of a class
-  means the fix targets the class, not the instance.
+  means the fix targets the class, not the instance. The register covers
+  Go tests too, under its own `## Go tests` section in the same file —
+  same two-strikes rule, `package/file.go:line` identity in place of
+  `spec:line` (goal 0228).
 - **Interaction helpers live in `e2e/fixtures/`, not per-spec.** A helper
   used by 2+ spec files MUST be promoted. Standing helpers: the
   per-worker server, `withClipboardLock`, `clickCanvasNode`,

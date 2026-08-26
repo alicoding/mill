@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { openToolbarAction } from './fixtures/toolbarActions'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -65,7 +66,7 @@ test('a card page at scale caps its entries with an honest expander and lazy-loa
     // markdown files (Files group) land as one recursive import --
     // Folders first, then Files, matching the dialog's own group
     // order (containers, then files, then images).
-    await page.getByTestId('atlas-add-from-folder').click()
+    await openToolbarAction(page, 'atlas-add-from-folder')
     const dialog = page.locator('[data-component="atlas-folder-import-dialog"]')
     await expect(dialog).toBeVisible()
     const kindSelects = dialog.getByTestId('atlas-folder-import-kind')
