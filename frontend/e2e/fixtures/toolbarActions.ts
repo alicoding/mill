@@ -21,17 +21,29 @@ const TOOLBAR_ACTION_LABELS: Record<string, string> = {
 
 // Clicks a toolbar action reachable either directly in its ActionBar row
 // or, once the row shrinks past its own natural width, inside that
-// ActionBar's own "More items" overflow menu (goal 0216) -- a plain
-// `getByTestId(id).click()` on an overflowed item waits its full
-// actionability timeout for an element that will never become visible,
-// which is what made dozens of specs slow-fail once CI's viewport
-// started overflowing the row. Tries each visible "More items" button in
-// turn since the target's own ActionBar isn't known to the caller.
+// ActionBar's own "More items" overflow menu (goal 0216). Attempts the
+// row click first with a bounded timeout rather than branching on a
+// prior `isVisible()` snapshot -- Primer's ActionBar decides overflow
+// from a ResizeObserver measurement that can still be in flight at the
+// moment `isVisible()` is read, so a snapshot-then-click split can see
+// "visible" and then click an element that has since flipped to
+// overflow-hidden, hanging for the row's full actionability timeout
+// (main's own CI failure signature: a resolved button carrying
+// `data-overflowing=""`, "element is not visible" retried to timeout).
+// A single bounded click call re-polls visibility itself, so it either
+// succeeds inside the window or fails once, cleanly, into the fallback
+// below. Tries each visible "More items" button in turn since the
+// target's own ActionBar isn't known to the caller.
+const ROW_CLICK_TIMEOUT_MS = process.env.CI ? 5000 : 2000
+
 export async function openToolbarAction(page: Page, testid: string): Promise<void> {
   const locator = page.getByTestId(testid)
-  if (await locator.isVisible()) {
-    await locator.click()
+  try {
+    await locator.click({ timeout: ROW_CLICK_TIMEOUT_MS })
     return
+  } catch {
+    // Overflowing (or not yet settled) -- fall through to the "More
+    // items" menu below.
   }
   const label = TOOLBAR_ACTION_LABELS[testid]
   if (!label) throw new Error(`openToolbarAction: no overflow label registered for "${testid}"`)

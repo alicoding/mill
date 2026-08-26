@@ -129,6 +129,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-ui-copy.sh
 
+  # Mirrors lefthook.yml's own toolbar-action-testids job -- same script
+  # (the Atlas toolbar overflow contract, goal 0216/goal 0233). Grep-only,
+  # so like comment-hygiene it needs no build setup and no changes gate.
+  toolbar-action-testids:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-toolbar-action-testids.sh
+
   # Mirrors lefthook.yml's own rules-frontmatter job -- same script.
   # Catches a real bug class: a .claude/rules/*.md with an invalid
   # frontmatter key (e.g. a `globs:` typo instead of `paths:`) silently
@@ -552,6 +562,7 @@ jobs:
       - workflow-lint
       - comment-hygiene
       - ui-copy
+      - toolbar-action-testids
       - rules-frontmatter
       - root-file-naming
       - frontend
