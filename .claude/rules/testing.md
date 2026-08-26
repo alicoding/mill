@@ -185,6 +185,19 @@ at:
     settings state is machine-specific; verify by granting Accessibility
     once, taking two consecutive beta updates, and confirming the summon
     hotkey still registers with no new permission prompt.
+  - **The real "Trust Mill's signing" authentication dialog** (goal
+    0220 S3, `codesigning.TrustIdentity`) — `security add-trusted-cert`
+    against the live per-user Trust Settings domain needs a real
+    Window Server session to show its SecurityAgent prompt at all
+    (headless/non-TTY calls have been observed to return success
+    without recording anything); e2e only reaches the server-mode
+    `ErrUnsupportedPlatform` fail-closed path
+    (`updates-trust-signing.spec.ts`), never the real dialog. Verify
+    on an installed build: open Settings → Updates → "How updates
+    stay trusted" → "Trust Mill's signing", confirm the authentication
+    dialog appears and the button shows its trusted confirmation once
+    you approve it; run it again and confirm it stays idempotent (no
+    error, no duplicate identity).
   - **SMAppService launch-at-login: the requires-approval state and the
     legacy System-Events migration** (goal 0198,
     `internal/adapters/launchatlogin`) — real SMAppService registration

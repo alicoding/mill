@@ -12,3 +12,8 @@ func EnsureIdentity() (Identity, error) {
 func SignBundle(_ string) error {
 	return ErrUnsupportedPlatform
 }
+
+// TrustIdentity always fails, for the same reason.
+func TrustIdentity() error {
+	return ErrUnsupportedPlatform
+}

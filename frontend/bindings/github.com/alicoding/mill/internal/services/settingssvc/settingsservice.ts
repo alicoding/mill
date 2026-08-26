@@ -693,6 +693,20 @@ export function SuspendMenuAccelerators(): $CancellablePromise<void> {
 }
 
 /**
+ * TrustSigningIdentity grants Mill's own local signing certificate
+ * "Always Trust" for code signing -- the Settings > Updates button
+ * that replaces the former "find it in Keychain Access" instructions
+ * (docs/goals/0220-update-experience-one-pattern.md S3). Idempotent
+ * and safe to call repeatedly: it never depends on whether the
+ * identity is already trusted, since that state cannot be detected
+ * reliably (the spike's own finding, recorded in codesigning's
+ * TrustIdentity doc comment).
+ */
+export function TrustSigningIdentity(): $CancellablePromise<void> {
+    return $Call.ByID(491954847);
+}
+
+/**
  * UnassignSummonHotkey removes the app-level summon hotkey, if any.
  * Returns the persist error (docs/goals/0025 item 1) rather than
  * swallowing it, restoring the in-memory record on failure so it

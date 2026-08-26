@@ -3,6 +3,7 @@
 package codesigning
 
 import (
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -102,5 +103,52 @@ func TestSignBundleWith_MissingBundle_ReturnsWrappedError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "codesign") {
 		t.Errorf("error = %v, want it to name codesign for a copyable diagnostic", err)
+	}
+}
+
+// TestTrustIdentityWith_ExportsAndWritesTrustSettingsFile exercises the
+// real export + add-trusted-cert call end to end, redirected via `-o`
+// to a throwaway settings file instead of this machine's live per-user
+// Trust Settings database -- the live domain requires a real
+// authentication dialog this suite has no Window Server session to
+// answer (goal 0220 S3 spike finding), so the redirected form is the
+// only shape of this call a CI run can safely exercise.
+func TestTrustIdentityWith_ExportsAndWritesTrustSettingsFile(t *testing.T) {
+	dir := t.TempDir()
+	keychainPath := filepath.Join(dir, "test-mill-signing.keychain-db")
+
+	original := captureSearchList(t)
+	t.Cleanup(func() { restoreSearchList(t, original) })
+
+	id, err := ensureIdentityAt(keychainPath)
+	if err != nil {
+		t.Fatalf("ensureIdentityAt: %v", err)
+	}
+
+	settingsOut := filepath.Join(dir, "trust-settings.plist")
+	if err := trustIdentityWith(id.Name, keychainPath, settingsOut); err != nil {
+		t.Fatalf("trustIdentityWith: %v", err)
+	}
+	info, err := os.Stat(settingsOut)
+	if err != nil {
+		t.Fatalf("trust settings output file missing: %v", err)
+	}
+	if info.Size() == 0 {
+		t.Error("trust settings output file is empty")
+	}
+}
+
+// TestTrustIdentityWith_MissingIdentity_ReturnsWrappedError pins the
+// export-step error wrapping (security's stderr must land in the
+// returned error, not be swallowed) using a failure mode independent
+// of live trust state: an identity name that was never created.
+func TestTrustIdentityWith_MissingIdentity_ReturnsWrappedError(t *testing.T) {
+	dir := t.TempDir()
+	err := trustIdentityWith("Mill-Nonexistent-Test-Identity", filepath.Join(dir, "missing.keychain-db"), filepath.Join(dir, "out.plist"))
+	if err == nil {
+		t.Fatal("trustIdentityWith succeeded against a nonexistent identity, want an error")
+	}
+	if !strings.Contains(err.Error(), "export") {
+		t.Errorf("error = %v, want it to name the export step for a copyable diagnostic", err)
 	}
 }
