@@ -39,6 +39,9 @@ export const tableTool = {
   // A table's own grid captures pointer events (nodrag) -- the band is
   // its ONLY drag surface (goal 0206's own DESIGN DECIDED table).
   dragBand: true,
+  // A table projects a Configure List, not a file on disk -- never
+  // fileBacked (goal 0232 S1).
+  fileBacked: false,
   boardObjectKind: 'table',
   // No role="img" (unlike every other content contribution): a table's
   // own grid carries REAL interactive descendants (editable cells,

@@ -101,6 +101,24 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     run: () => {},
   },
   {
+    // "Open in default app" (goal 0232 S1): a file-backed board
+    // object's own registry command -- mouse-only by construction (its
+    // target is whichever object was right-clicked, which the palette/
+    // keyboard dispatch path has no way to supply), so paletteHidden
+    // per that field's own doc comment, same shape atlas.delete.selection
+    // above already takes for the identical constraint. The real,
+    // per-object run() and its honest fileBacked+mirrorPath enablement
+    // live in useAtlasObjectMenu.ts, which shares this commandId so the
+    // menu item's label/HotkeyHint resolve from here.
+    id: 'object.openInDefaultApp',
+    label: 'Open in default app',
+    defaultBinding: null,
+    hintOnly: true,
+    paletteHidden: true,
+    surface: ['atlas'],
+    run: () => {},
+  },
+  {
     // The Sparkle companion-panel toggle (goal 0101 slice 1,
     // AtlasToolbar.tsx) -- the button now calls this command instead of
     // toggleCompanion directly, same "button runs the command" shape

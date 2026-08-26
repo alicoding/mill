@@ -28,7 +28,11 @@ const DEFAULT_H = 100
 // stayed at the stale persisted Size until release. Filling the
 // container means the paint scales with whatever box React Flow is
 // currently rendering, live, with no separate write needed.
-export function AtlasShapeContent({ object }: { object: BoardObject }) {
+// mirrorVersion (goal 0232 S1's file-backed contract) is accepted but
+// unused -- a shape bakes to no mirror file at all (fileBacked: false
+// in tools/shapeTool.ts), so this Kind's own version counter never
+// actually bumps.
+export function AtlasShapeContent({ object }: { object: BoardObject; mirrorVersion: number }) {
   const payload = object.Payload ?? {}
   const shapeType = payload.shapeType
   const stroke = payload.stroke || '#1f6feb'

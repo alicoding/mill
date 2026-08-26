@@ -53,6 +53,9 @@ export const pencilTool = {
   // An ink stroke's whole body already drags -- the shared band would
   // only be debris here (goal 0206's own DESIGN DECIDED table).
   dragBand: false,
+  // Payload.mirrorPath names the stroke's own baked SVG file (goal
+  // 0232 S1) -- same fileBacked contract image declares.
+  fileBacked: true,
   // Placed instance is Kind 'ink', NOT 'pencil' (this tool's own commit
   // below writes it) -- content registers against that Kind, sharing
   // image's own mirrored-file renderer (AtlasMirrorImageContent.tsx)

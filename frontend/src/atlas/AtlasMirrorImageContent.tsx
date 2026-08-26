@@ -16,13 +16,19 @@ import styles from './AtlasBoardObjectNode.module.css'
 // actually names which file's bytes this node renders), never the
 // whole Payload object, since atlasStore's own refreshAtlas() hands
 // every object a fresh Payload reference on any board mutation.
-function AtlasMirrorImageContentInner({ object, Glyph }: { object: BoardObject; Glyph: Icon }) {
+function AtlasMirrorImageContentInner({ object, mirrorVersion, Glyph }: { object: BoardObject; mirrorVersion: number; Glyph: Icon }) {
   const { t } = useTranslation('atlas')
   const [src, setSrc] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
   const hasSize = !!object.Size
   const mirrorPath = object.Payload?.mirrorPath
 
+  // mirrorVersion (goal 0232 S1) rides in the dependency array so this
+  // Kind is READY for the shared live-watch seam the moment a future
+  // change adds image/ink extensions to armMirrorWatch's own gate
+  // (internal/domain/atlas/mirror.go) -- today it never actually bumps
+  // for this Kind (that gate stays diagram-only in this slice), so this
+  // costs nothing yet but needs no further frontend change when it does.
   useEffect(() => {
     let stale = false
     setSrc(null)
@@ -42,7 +48,7 @@ function AtlasMirrorImageContentInner({ object, Glyph }: { object: BoardObject; 
     return () => {
       stale = true
     }
-  }, [object.ID, mirrorPath])
+  }, [object.ID, mirrorPath, mirrorVersion])
 
   return src ? (
     <img className={styles.image} data-sized={hasSize} src={src} alt="" draggable={false} />
@@ -57,8 +63,8 @@ function AtlasMirrorImageContentInner({ object, Glyph }: { object: BoardObject; 
 // makeMirrorImageContent -- each file-backed noun's own tools/<id>Tool.ts
 // calls this once, at module scope, to build the Component its
 // `content` declaration carries. Never called per-render.
-export function makeMirrorImageContent(Glyph: Icon): ComponentType<{ object: BoardObject }> {
-  return function AtlasMirrorImageContent({ object }: { object: BoardObject }) {
-    return <AtlasMirrorImageContentInner object={object} Glyph={Glyph} />
+export function makeMirrorImageContent(Glyph: Icon): ComponentType<{ object: BoardObject; mirrorVersion: number }> {
+  return function AtlasMirrorImageContent({ object, mirrorVersion }: { object: BoardObject; mirrorVersion: number }) {
+    return <AtlasMirrorImageContentInner object={object} mirrorVersion={mirrorVersion} Glyph={Glyph} />
   }
 }

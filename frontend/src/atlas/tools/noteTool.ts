@@ -21,6 +21,9 @@ export const noteTool = {
   // Not routed through the shared 'atlas-object' renderer -- always
   // false, not N/A.
   dragBand: false,
+  // No boardObjectKind means no content registration reads this at
+  // all -- always false, not N/A.
+  fileBacked: false,
   // Rendered by AtlasStickyNode, not the shared 'atlas-object' content
   // contract -- always null, not N/A.
   boardObjectKind: null,
