@@ -145,6 +145,14 @@ interface UISignalState {
   // identical Export-as choice its own kebab menu item would.
   atlasCardExportAsRequest: number
   requestAtlasCardExportAs: () => void
+  // update.whatsNew (goal 0220 S2): same plain-boolean shape as
+  // helpOpen -- app/WhatsNewDialog.tsx renders off it, opened by the
+  // Settings link and the pill's secondary link, both via the command
+  // registry rather than a local dialog-open prop each would otherwise
+  // need threading down.
+  whatsNewOpen: boolean
+  openWhatsNew: () => void
+  closeWhatsNew: () => void
 }
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
@@ -202,4 +210,7 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   closeCompanion: () => set({ companionOpen: false }),
   atlasCardExportAsRequest: 0,
   requestAtlasCardExportAs: () => set((s) => ({ atlasCardExportAsRequest: s.atlasCardExportAsRequest + 1 })),
+  whatsNewOpen: false,
+  openWhatsNew: () => set({ whatsNewOpen: true }),
+  closeWhatsNew: () => set({ whatsNewOpen: false }),
 }))

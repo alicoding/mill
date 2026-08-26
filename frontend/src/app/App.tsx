@@ -23,6 +23,7 @@ import { MobileNavToggle } from "./MobileNavToggle";
 import { MCPWriteApprovals } from "./MCPWriteApprovals";
 import { CommandPalette } from "./CommandPalette";
 import { ShortcutsHelpDialog } from "./ShortcutsHelpDialog";
+import { WhatsNewDialog } from "./WhatsNewDialog";
 import { BuildIdentityBadge } from "./BuildIdentityBadge";
 import { NoticePill } from "./NoticePill";
 import DocsView from "../views/DocsView";
@@ -400,6 +401,10 @@ function App() {
           app-level-chrome-mounted-once shape as CommandPalette above,
           renders off the store's helpOpen flag. */}
       <ShortcutsHelpDialog />
+      {/* The update changelog surface (goal 0220 S2): same app-level-
+          chrome-mounted-once shape, renders off the store's
+          whatsNewOpen flag. */}
+      <WhatsNewDialog />
 
       {/* Every capability gets a nav entry, built or not (docs/SPEC.md
           §2.2) -- driven by CapabilitiesService's own data so the sidebar

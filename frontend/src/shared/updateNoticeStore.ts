@@ -11,11 +11,23 @@ import { SettingsService, UpdateState } from './bindings'
 interface UpdateNoticeState {
   updateNoticeState: UpdateState
   setUpdateNoticeState: (state: UpdateState) => void
+  // notesVersion/notesHTML (goal 0220 S2): the "What's new" surface's
+  // whole data source, lifted here for the identical reason
+  // updateNoticeState itself was -- app/WhatsNewDialog.tsx (opened from
+  // either the pill or Settings) needs the same server-rendered notes
+  // NoticePill's own mount/event refresh already fetches, without a
+  // second CheckForUpdates round trip.
+  notesVersion: string
+  notesHTML: string
+  setNotes: (version: string, html: string) => void
 }
 
 export const useUpdateNoticeStore = create<UpdateNoticeState>()((set) => ({
   updateNoticeState: UpdateState.UpdateStateIdle,
   setUpdateNoticeState: (state) => set({ updateNoticeState: state }),
+  notesVersion: '',
+  notesHTML: '',
+  setNotes: (notesVersion, notesHTML) => set({ notesVersion, notesHTML }),
 }))
 
 // The one refetch path -- NoticePill's own mount/event refresh and
@@ -24,6 +36,9 @@ export const useUpdateNoticeStore = create<UpdateNoticeState>()((set) => ({
 // exact same value.
 export function refreshUpdateNoticeState(): Promise<void> {
   return SettingsService.UpdateNoticeState()
-    .then((n) => useUpdateNoticeStore.getState().setUpdateNoticeState(n.state))
+    .then((n) => {
+      useUpdateNoticeStore.getState().setUpdateNoticeState(n.state)
+      useUpdateNoticeStore.getState().setNotes(n.notesVersion, n.notesHTML)
+    })
     .catch(console.error)
 }
