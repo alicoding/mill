@@ -21,7 +21,11 @@ test('a selected shape shows the rotate handle, dragging it rotates live, Shift 
   await expect(board).toBeVisible()
 
   await page.getByTestId('atlas-tray-shape').click()
-  await dragBetween(page, await boardPoint(board, 0.3, 0.3), await boardPoint(board, 0.45, 0.45))
+  // Same top-left band atlas-shape-tool.spec.ts's own tests use --
+  // clear of the seeded "Board gallery" card (goal 0223), which widens
+  // this board's own fitView content extent enough to shift where a
+  // more central percentage point lands.
+  await dragBetween(page, await boardPoint(board, 0.05, 0.1), await boardPoint(board, 0.2, 0.25))
   const shape = nonSeededBoardObjects(page, 'shape')
   await expect(shape).toHaveCount(1)
   const wrapper = page.locator('.react-flow__node').filter({ has: shape })

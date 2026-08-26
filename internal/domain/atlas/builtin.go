@@ -81,6 +81,21 @@ const (
 	// exported because the clipboard bridge's note route (goal 0099)
 	// lands notes there from the service layer.
 	BuiltInScratchpadCardID = cardScratchpadID
+	// cardSketchesID (goal 0223) is the seeded board-object examples'
+	// own container: a dedicated Canvas-mode card, never a direct child
+	// rendered ON "The engagement"'s own board -- a fresh install and
+	// every e2e worker auto-enters "The engagement" by default, and a
+	// board object sitting directly on it widens that board's own
+	// content extent enough to shift fitView's settled zoom, which
+	// shifted where dozens of OTHER specs' percentage-of-viewport and
+	// auto-placed points land (goal 0223's own migration record).
+	// Dedicated rather than reusing an existing card because each one
+	// already carries its own pinned expectation elsewhere (Discovery
+	// workstream's honest-empty-board fixture, Scratchpad's instant
+	// no-confirm delete, Client records' Shelves layout -- a
+	// BoardObject is Free-mode-only, boardobject.go's own header) that
+	// gaining children would break.
+	cardSketchesID = "atlas-card-session-sketches"
 
 	linkGettingToContactID  = "atlas-link-getting-to-contact"
 	linkContactToDocumentID = "atlas-link-contact-to-document"
@@ -92,15 +107,14 @@ const (
 	perspectiveInterimID = "atlas-perspective-interim"
 	perspectiveTargetID  = "atlas-perspective-target"
 
-	// Board-object seed goldens (goal 0223): the reference-architecture
-	// canvas's own board-local proof, sitting beside "The engagement"'s
-	// seeded cards rather than inside any of them (a BoardObject can
-	// never contain, boardobject.go's own structural exclusion). Kept
-	// findable by DOM prefix ("atlas-object-example-") specifically so
-	// a shared-pool spec's own kind-scoped locator (e.g. every "shape"-
-	// kind board object on the page) can exclude these by name rather
-	// than accidentally counting/selecting them -- see e.g.
-	// atlas-shape-tool.spec.ts's own shapeObjects() helper.
+	// Board-object seed goldens (goal 0223): nested inside cardSketchesID
+	// (ParentID, boardobject_builtin.go) -- see that card's own comment
+	// for why. Kept findable by DOM prefix ("atlas-object-example-")
+	// specifically so a shared-pool spec's own kind-scoped locator
+	// (e.g. every "shape"-kind board object it creates itself) can
+	// exclude these by name rather than accidentally counting/selecting
+	// them -- see e.g. atlas-shape-tool.spec.ts's own shapeObjects()
+	// helper.
 	objectShapeExampleID   = "atlas-object-example-shape"
 	objectInkExampleID     = "atlas-object-example-ink"
 	objectImageExampleID   = "atlas-object-example-image"
@@ -312,6 +326,25 @@ func BuiltInCards() []Card {
 			// slice 1) -- the card's ROLE and ID are unchanged, referenced
 			// by the clipboard bridge via BuiltInScratchpadCardID.
 			BuiltIn: true, Seed: seedorigin.Stamp(6),
+		},
+		{
+			// The board-object examples' own home (goal 0223): Canvas
+			// mode since a BoardObject is Free-mode-only (boardobject.go's
+			// own header) -- see cardSketchesID's own comment for why
+			// this is a dedicated card rather than nesting in an
+			// existing one. Title/Note deliberately avoid the word
+			// "sketch": ink's own default stroke title IS "Sketch"
+			// (shapeTool.ts's own pencil commit), and atlas-pencil-tool.
+			// spec.ts's regression check scans every atlas-note-card for
+			// that exact substring -- this card's own name must never
+			// false-positive-match it.
+			ID: cardSketchesID, KindID: kindTopicID, Title: "Board gallery",
+			Note:      "Freehand drawings, shapes, and captured images from the discovery sessions.",
+			ParentID:  cardMySpaceID,
+			ViewMode:  ViewModeCanvas,
+			Position:  &Position{X: 960, Y: 80},
+			CreatedAt: now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
 		{
 			ID: cardContactID, KindID: kindContactID, Title: "Jordan Reyes",

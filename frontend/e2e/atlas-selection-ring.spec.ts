@@ -22,10 +22,14 @@ test('a selected board object and a selected card each carry a real box-shadow r
   await page.getByTestId('atlas-tray-shape').click()
   const box = await board.boundingBox()
   if (!box) throw new Error('board has no bounding box')
+  // Same top-left band atlas-shape-tool.spec.ts's own tests use --
+  // clear of the seeded "Board gallery" card (goal 0223), which widens
+  // this board's own fitView content extent enough to shift where a
+  // more central/right-leaning percentage point lands.
   await dragBetween(
     page,
-    { locator: board, position: { x: box.width * 0.08, y: box.height * 0.08 } },
-    { locator: board, position: { x: box.width * 0.2, y: box.height * 0.2 } },
+    { locator: board, position: { x: box.width * 0.05, y: box.height * 0.1 } },
+    { locator: board, position: { x: box.width * 0.2, y: box.height * 0.25 } },
   )
 
   const shape = nonSeededBoardObjects(page, 'shape')
