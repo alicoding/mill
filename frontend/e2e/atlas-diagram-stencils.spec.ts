@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { createBoardObjectViaRPC, ATLAS_DEFAULT_SPACE_ID } from './fixtures/atlasNativeDropEscapeHatch'
 import { contextMenu } from './fixtures/contextMenu'
+import { nonSeededBoardObjects } from './fixtures/atlasBoard'
 import type { Locator, Page } from '@playwright/test'
 
 // The vendored-stencil-data lever (goal 0224 S1): the vendored drawio
@@ -25,7 +26,7 @@ import type { Locator, Page } from '@playwright/test'
 // rule).
 
 function diagramObjects(page: Page): Locator {
-  return page.locator('[data-testid="atlas-board-object"][data-object-kind="diagram"]')
+  return nonSeededBoardObjects(page, 'diagram')
 }
 
 async function deleteObjectViaMenu(object: Locator): Promise<void> {

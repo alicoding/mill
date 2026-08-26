@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { dragResizeHandle, openCard } from './fixtures/atlasBoard'
+import { dragResizeHandle, nonSeededBoardObjects, openCard } from './fixtures/atlasBoard'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
@@ -28,7 +28,7 @@ async function openImagePopover(page: import('@playwright/test').Page) {
 }
 
 function imageObjects(page: import('@playwright/test').Page) {
-  return page.locator('[data-testid="atlas-board-object"][data-object-kind="image"]')
+  return nonSeededBoardObjects(page, 'image')
 }
 
 test('picking an image via the native file dialog lands a board object, never a card -- Promote to card is the explicit escape hatch', async ({ page }) => {

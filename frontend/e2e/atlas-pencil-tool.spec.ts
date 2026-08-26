@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { boardPoint, dragBetween } from './fixtures/atlasBoard'
+import { boardPoint, dragBetween, nonSeededBoardObjects } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 import { waitForViewportStable } from './fixtures/animation'
@@ -25,7 +25,7 @@ import { waitForViewportStable } from './fixtures/animation'
 // testing.md's promotion rule).
 
 function inkObjects(page: import('@playwright/test').Page) {
-  return page.locator('[data-testid="atlas-board-object"][data-object-kind="ink"]')
+  return nonSeededBoardObjects(page, 'ink')
 }
 
 test('dragging the pencil across the board lands ink, never a card, and the tool stays armed for the next stroke', async ({ page }) => {

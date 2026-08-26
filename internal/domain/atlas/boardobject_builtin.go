@@ -18,7 +18,15 @@ const BoardObjectSeedAssetKey = "seedAsset"
 // 0223): a BoardObject can never contain (boardobject.go's own
 // structural exclusion), so every golden below sits directly on "The
 // engagement" canvas (ParentID cardMySpaceID) rather than inside one
-// of the seeded cards, below their own Y:80 row so nothing overlaps.
+// of the seeded cards. Y:2400 -- well below the seeded cards' own
+// Y:80 row and any percentage-of-viewport or small-fixed-pixel board
+// point a shared-pool spec computes against its own freshly-created
+// content -- so nothing here ever collides with an e2e spec's own
+// coordinate-based placement/click. Every ID carries the
+// "atlas-object-example-" prefix deliberately -- a shared-pool spec
+// creating its own object of the same Kind must exclude this prefix
+// from its own kind-scoped locator (this package's own const block
+// above has the worked example).
 //
 // 'table' is deliberately NOT seeded here: its own artifact is a
 // Configure List (tableTool.ts's own ConfigureService.CreateList),
@@ -40,7 +48,7 @@ func BuiltInBoardObjects() []BoardObject {
 				"stroke": "#1f6feb", "strokeWidth": "2", "fill": "none",
 				"rotation": "15",
 			},
-			Position:  Position{X: 80, Y: 560},
+			Position:  Position{X: 80, Y: 2400},
 			Size:      &Dimensions{W: 160, H: 96},
 			ParentID:  cardMySpaceID,
 			CreatedAt: now, UpdatedAt: now,
@@ -52,7 +60,7 @@ func BuiltInBoardObjects() []BoardObject {
 			// BuiltInBoardObjectAsset("ink")'s bytes and fills it in.
 			ID: objectInkExampleID, Kind: "ink",
 			Payload:   map[string]string{"title": "Sketch", BoardObjectSeedAssetKey: "ink"},
-			Position:  Position{X: 300, Y: 560},
+			Position:  Position{X: 300, Y: 2400},
 			ParentID:  cardMySpaceID,
 			CreatedAt: now, UpdatedAt: now,
 			BuiltIn: true, Seed: seedorigin.Stamp(1),
@@ -60,7 +68,7 @@ func BuiltInBoardObjects() []BoardObject {
 		{
 			ID: objectImageExampleID, Kind: "image",
 			Payload:   map[string]string{"title": "Reference image", BoardObjectSeedAssetKey: "image"},
-			Position:  Position{X: 520, Y: 560},
+			Position:  Position{X: 520, Y: 2400},
 			ParentID:  cardMySpaceID,
 			CreatedAt: now, UpdatedAt: now,
 			BuiltIn: true, Seed: seedorigin.Stamp(1),
@@ -68,7 +76,7 @@ func BuiltInBoardObjects() []BoardObject {
 		{
 			ID: objectDiagramExampleID, Kind: "diagram",
 			Payload:   map[string]string{"title": "System sketch", BoardObjectSeedAssetKey: "diagram"},
-			Position:  Position{X: 740, Y: 560},
+			Position:  Position{X: 740, Y: 2400},
 			ParentID:  cardMySpaceID,
 			CreatedAt: now, UpdatedAt: now,
 			BuiltIn: true, Seed: seedorigin.Stamp(1),

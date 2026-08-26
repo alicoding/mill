@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { boardPoint, createCardViaTray, deleteCardViaMenu, dragBetween, hittablePointOn, noteCard } from './fixtures/atlasBoard'
+import { boardPoint, createCardViaTray, deleteCardViaMenu, dragBetween, hittablePointOn, noteCard, nonSeededBoardObjects } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 
 // The actor-scoped undo journal's own board-level proof (goal 0219 S2,
@@ -10,7 +10,7 @@ import { contextMenu } from './fixtures/contextMenu'
 // created here is deleted (or already removed by undo) here.
 
 function inkObjects(page: import('@playwright/test').Page) {
-  return page.locator('[data-testid="atlas-board-object"][data-object-kind="ink"]')
+  return nonSeededBoardObjects(page, 'ink')
 }
 
 test('drawing a stroke: ⌘Z removes it, ⇧⌘Z brings it back', async ({ page }) => {

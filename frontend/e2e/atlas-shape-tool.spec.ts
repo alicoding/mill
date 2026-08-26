@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { boardPoint, dragBetween, dragResizeHandle } from './fixtures/atlasBoard'
+import { boardPoint, dragBetween, dragResizeHandle, nonSeededBoardObjects } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 import { waitForViewportStable } from './fixtures/animation'
@@ -22,7 +22,7 @@ import { waitForViewportStable } from './fixtures/animation'
 // testing.md's promotion rule).
 
 function shapeObjects(page: import('@playwright/test').Page) {
-  return page.locator('[data-testid="atlas-board-object"][data-object-kind="shape"]')
+  return nonSeededBoardObjects(page, 'shape')
 }
 
 // `position` (optional) targets a specific corner instead of the
@@ -335,7 +335,7 @@ test('ink under a shape paints above it, even while the shape stays selected', a
 
   await page.getByTestId('atlas-tray-pencil').click()
   await dragBetween(page, await boardPoint(board, 0.08, 0.18), await boardPoint(board, 0.32, 0.18))
-  const ink = page.locator('[data-testid="atlas-board-object"][data-object-kind="ink"]')
+  const ink = nonSeededBoardObjects(page, 'ink')
   await expect(ink).toHaveCount(1)
   const inkWrapper = page.locator('.react-flow__node').filter({ has: ink })
   await page.keyboard.press('Escape')

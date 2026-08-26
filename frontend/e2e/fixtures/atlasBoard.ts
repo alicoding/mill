@@ -12,6 +12,17 @@ export function noteCard(page: Page, title: string): Locator {
   return page.locator(`[data-testid="atlas-note-card"][aria-label="Open ${title}"]`)
 }
 
+// nonSeededBoardObjects -- every kind-scoped board-object locator a
+// shared-pool spec uses to find only the object(s) IT created, never
+// goal 0223's seeded examples (internal/domain/atlas/
+// boardobject_builtin.go) that already exist at the same root level
+// under the ID prefix "atlas-object-example-". Promoted (testing.md's
+// "2+ spec files" rule) once every drag-to-draw/paste-or-drop board-
+// object spec needed the same exclusion.
+export function nonSeededBoardObjects(page: Page, kind: string): Locator {
+  return page.locator(`.react-flow__node:not([data-id^="atlas-object-example-"]) [data-testid="atlas-board-object"][data-object-kind="${kind}"]`)
+}
+
 // A drag endpoint expressed as (locator, offset) rather than an
 // absolute page coordinate -- the only form Playwright's actionability
 // pipeline can check, since a raw {x,y} has no element to retarget its

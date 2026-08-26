@@ -95,7 +95,12 @@ const (
 	// Board-object seed goldens (goal 0223): the reference-architecture
 	// canvas's own board-local proof, sitting beside "The engagement"'s
 	// seeded cards rather than inside any of them (a BoardObject can
-	// never contain, boardobject.go's own structural exclusion).
+	// never contain, boardobject.go's own structural exclusion). Kept
+	// findable by DOM prefix ("atlas-object-example-") specifically so
+	// a shared-pool spec's own kind-scoped locator (e.g. every "shape"-
+	// kind board object on the page) can exclude these by name rather
+	// than accidentally counting/selecting them -- see e.g.
+	// atlas-shape-tool.spec.ts's own shapeObjects() helper.
 	objectShapeExampleID   = "atlas-object-example-shape"
 	objectInkExampleID     = "atlas-object-example-ink"
 	objectImageExampleID   = "atlas-object-example-image"

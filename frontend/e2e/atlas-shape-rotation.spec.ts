@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { boardPoint, dragBetween, dragResizeHandle } from './fixtures/atlasBoard'
+import { boardPoint, dragBetween, dragResizeHandle, nonSeededBoardObjects } from './fixtures/atlasBoard'
 
 // The shape rotation handle (goal 0214), rectangle/ellipse scope only
 // (arrow's own geometry IS its dx/dy payload -- a second angle
@@ -22,7 +22,7 @@ test('a selected shape shows the rotate handle, dragging it rotates live, Shift 
 
   await page.getByTestId('atlas-tray-shape').click()
   await dragBetween(page, await boardPoint(board, 0.3, 0.3), await boardPoint(board, 0.45, 0.45))
-  const shape = page.locator('[data-testid="atlas-board-object"][data-object-kind="shape"]')
+  const shape = nonSeededBoardObjects(page, 'shape')
   await expect(shape).toHaveCount(1)
   const wrapper = page.locator('.react-flow__node').filter({ has: shape })
   await expect(wrapper).toHaveClass(/selected/)
@@ -110,7 +110,7 @@ test('a selected shape shows the rotate handle, dragging it rotates live, Shift 
   // The angle persists across reload.
   await page.reload()
   await page.getByRole('link', { name: 'Atlas' }).click()
-  const reloadedShape = page.locator('[data-testid="atlas-board-object"][data-object-kind="shape"]')
+  const reloadedShape = nonSeededBoardObjects(page, 'shape')
   await expect(reloadedShape).toBeVisible()
   const reloadedContent = reloadedShape.locator('[data-testid="atlas-shape-content"]')
   await expect.poll(async () => parseRotationDeg(await reloadedContent.evaluate((el) => (el as HTMLElement).style.transform))).toBe(snappedDeg)

@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { dragBetween } from './fixtures/atlasBoard'
+import { dragBetween, nonSeededBoardObjects } from './fixtures/atlasBoard'
 
 // Shared pool (testing.md): every assertion is scoped to a shape this
 // spec creates and deletes itself, or reads a seeded card's own
@@ -28,7 +28,7 @@ test('a selected board object and a selected card each carry a real box-shadow r
     { locator: board, position: { x: box.width * 0.2, y: box.height * 0.2 } },
   )
 
-  const shape = page.locator('[data-testid="atlas-board-object"][data-object-kind="shape"]')
+  const shape = nonSeededBoardObjects(page, 'shape')
   await expect(shape).toHaveCount(1)
   // The shape tool is discrete (goal 0199): the draw itself disarms
   // the tool and leaves the new object selected, so the ring this

@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { promoteBoardObject } from './fixtures/atlasBoard'
+import { promoteBoardObject, nonSeededBoardObjects } from './fixtures/atlasBoard'
 import { createBoardObjectViaRPC, ATLAS_DEFAULT_SPACE_ID } from './fixtures/atlasNativeDropEscapeHatch'
 import { ATLAS_KIND_DOCUMENT } from './fixtures/kindPicker'
 
@@ -17,7 +17,7 @@ import { ATLAS_KIND_DOCUMENT } from './fixtures/kindPicker'
 const DRAWIO_XML = `<mxfile host="mill-e2e"><diagram id="page1" name="Page-1"><mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="2" value="Start" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="120" y="120" width="120" height="60" as="geometry"/></mxCell><mxCell id="3" value="End" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="320" y="120" width="120" height="60" as="geometry"/></mxCell><mxCell id="4" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="2" target="3"><mxGeometry relative="1" as="geometry"/></mxCell></root></mxGraphModel></diagram></mxfile>`
 
 function diagramObjects(page: import('@playwright/test').Page) {
-  return page.locator('[data-testid="atlas-board-object"][data-object-kind="diagram"]')
+  return nonSeededBoardObjects(page, 'diagram')
 }
 
 test('a dropped .drawio file renders as a board object through the vendored viewer, and Promote to card keeps it a real diagram card', async ({ page }) => {
