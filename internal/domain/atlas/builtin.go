@@ -91,6 +91,15 @@ const (
 	perspectiveCurrentID = "atlas-perspective-current"
 	perspectiveInterimID = "atlas-perspective-interim"
 	perspectiveTargetID  = "atlas-perspective-target"
+
+	// Board-object seed goldens (goal 0223): the reference-architecture
+	// canvas's own board-local proof, sitting beside "The engagement"'s
+	// seeded cards rather than inside any of them (a BoardObject can
+	// never contain, boardobject.go's own structural exclusion).
+	objectShapeExampleID   = "atlas-object-example-shape"
+	objectInkExampleID     = "atlas-object-example-ink"
+	objectImageExampleID   = "atlas-object-example-image"
+	objectDiagramExampleID = "atlas-object-example-diagram"
 )
 
 // BuiltInKinds returns the seeded example card types -- pure config,
@@ -270,9 +279,9 @@ func BuiltInCards() []Card {
 			// note card) -- 532 keeps this card from landing underneath
 			// that frame in Free/canvas mode.
 			ID: cardGettingID, KindID: kindTopicID, Title: "Discovery workstream",
-			Note:      "First working session with the client. Scope and next steps confirmed.",
-			ParentID:  cardMySpaceID,
-			Position:  &Position{X: 532, Y: 80},
+			Note:     "First working session with the client. Scope and next steps confirmed.",
+			ParentID: cardMySpaceID,
+			Position: &Position{X: 532, Y: 80},
 			Fields: map[string]string{
 				"summary": "Confirm scope, stakeholders, and what a finished engagement looks like.",
 				"status":  "Open",

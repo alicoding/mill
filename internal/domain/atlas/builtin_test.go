@@ -59,6 +59,23 @@ func TestBuiltIns_AreInternallyConsistent(t *testing.T) {
 		}
 	}
 
+	objectIDs := map[string]bool{}
+	for _, o := range BuiltInBoardObjects() {
+		if objectIDs[o.ID] {
+			t.Errorf("seeded board object id %q repeats", o.ID)
+		}
+		objectIDs[o.ID] = true
+		if err := ValidateBoardObject(o); err != nil {
+			t.Errorf("seeded board object %q fails ValidateBoardObject: %v", o.ID, err)
+		}
+		if _, ok := cardByID[o.ParentID]; !ok {
+			t.Errorf("seeded board object %q names unknown parent %q", o.ID, o.ParentID)
+		}
+		if !o.Seed.IsSeeded() || o.Seed.Modified {
+			t.Errorf("seeded board object %q Seed = %+v, want an unmodified seeded origin", o.ID, o.Seed)
+		}
+	}
+
 	// The seeded space's containment/view-mode shape: one root
 	// container in canvas mode, root-level (no parent).
 	root, ok := cardByID[cardMySpaceID]

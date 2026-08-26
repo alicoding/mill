@@ -148,6 +148,12 @@ func AllSeedFingerprints() map[string]SeedFingerprint {
 		p.ID, p.CreatedAt, p.UpdatedAt, p.Seed = "", time.Time{}, time.Time{}, seedorigin.Origin{}
 		out[keyFor("atlasperspective", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(p)}
 	}
+	for _, o := range atlas.BuiltInBoardObjects() {
+		id := o.ID
+		rev := o.Seed.SeedRevision
+		o.ID, o.CreatedAt, o.UpdatedAt, o.Seed = "", time.Time{}, time.Time{}, seedorigin.Origin{}
+		out[keyFor("atlasobject", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(o)}
+	}
 	for _, r := range guardrail.BuiltIn() {
 		id := r.ID
 		rev := r.Seed.SeedRevision

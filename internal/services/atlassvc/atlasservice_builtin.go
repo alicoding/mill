@@ -53,6 +53,7 @@ func (a *AtlasService) reconcileBuiltIns() {
 	changed = a.reconcileCardsLocked(tombstones, now) || changed
 	changed = a.reconcileLinksLocked(tombstones, now) || changed
 	changed = a.reconcilePerspectivesLocked(tombstones, now) || changed
+	changed = a.reconcileObjectsLocked(tombstones, now) || changed
 	// Retirement runs LAST, after cards have already been re-kinded off
 	// a retired Kind by the upgrade path above -- reference integrity
 	// (no Card may still name a Kind being removed) is checked against
@@ -179,6 +180,60 @@ func (a *AtlasService) reconcileCardsLocked(tombstones map[string]bool, now time
 			golden.CreatedAt, golden.UpdatedAt = existing.CreatedAt, now
 			golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
 			a.cards[idx] = golden
+			changed = true
+		}
+	}
+	return changed
+}
+
+// reconcileObjectsLocked runs the same insert/upgrade/leave-alone/
+// skip-tombstoned algorithm as reconcileCardsLocked, for BoardObjects
+// (goal 0223) -- golden content comes from builtInBoardObjectsLocked,
+// not atlas.BuiltInBoardObjects() directly, since a file-backed golden
+// (ink/image/diagram) needs its mirrorPath materialized against the
+// captures directory first; that helper silently omits any golden it
+// can't yet materialize (captures dir still unset) rather than
+// inserting one with an empty mirrorPath, so it simply reappears here
+// on the next reconcile pass once SetCapturesDir has wired one in.
+func (a *AtlasService) reconcileObjectsLocked(tombstones map[string]bool, now time.Time) bool {
+	byID := make(map[string]int, len(a.objects))
+	for i, o := range a.objects {
+		byID[o.ID] = i
+	}
+	changed := false
+	for _, golden := range a.builtInBoardObjectsLocked() {
+		idx, present := byID[golden.ID]
+		if !present {
+			if tombstones[golden.ID] {
+				continue
+			}
+			golden.CreatedAt, golden.UpdatedAt = now, now
+			a.objects = append(a.objects, golden)
+			changed = true
+			continue
+		}
+		existing := a.objects[idx]
+		// A currently-tombstoned object (goal 0093, extended to this
+		// family by goal 0223) is left untouched -- top-up seeding must
+		// never resurrect/upgrade it in place while it's soft-deleted;
+		// UndoDelete or the boot-time purge are the only paths that
+		// change it from here.
+		if !existing.DeletedAt.IsZero() {
+			continue
+		}
+		if existing.Seed.SeedRevision == 0 {
+			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
+			a.objects[idx] = existing
+			changed = true
+			continue
+		}
+		if existing.Seed.Modified {
+			continue
+		}
+		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
+			golden.CreatedAt, golden.UpdatedAt = existing.CreatedAt, now
+			golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
+			a.objects[idx] = golden
 			changed = true
 		}
 	}
