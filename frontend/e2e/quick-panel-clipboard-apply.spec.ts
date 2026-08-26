@@ -1,21 +1,22 @@
 import { test, expect } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
+import { writeHostClipboardText } from './fixtures/hostClipboard'
 import { clickRowAction } from './inventoryRow'
 import { connectMCPClient, exportWorkflowViaMCP, findWorkflowIdByLabel } from './mcpTestClient'
 import { dragBetweenHandles, workflowRow } from './fixtures/canvas'
 import { waitForViewportStable } from './fixtures/animation'
 
 // docs/goals/0039: "Apply from clipboard..." in the Quick Panel
-// (app/QuickPanel.tsx, app/QuickPanelClipboardApply.tsx) -- paste the
+// (app/QuickPanel.tsx, app/useQuickPanelClipboardDoor.ts) -- paste the
 // SAME exported-workflow JSON export_workflow/ExportWorkflow already
 // produce, preview create-vs-update + any dangling references, confirm.
-// Real browser clipboard I/O (Playwright's clipboard-read/clipboard-write
-// permissions + navigator.clipboard in the page) -- per
-// .claude/rules/testing.md's real-pasteboard discipline, every
-// clipboard-touching section below runs inside withClipboardLock even
-// though this is the browser's own clipboard API rather than the Go
-// osascript/pbcopy adapter (goal 0009's cross-worker OS-pasteboard
-// contention risk applies the same way once permissions are granted).
+// Seeds the payload onto the real host pasteboard (fixtures/
+// hostClipboard.ts's pbcopy door), not navigator.clipboard (goal 0229:
+// the panel reads via CompositionService.ReadHostClipboardText, a Go
+// RPC over the same pbpaste adapter -- navigator.clipboard is no longer
+// anywhere in this flow). Every clipboard-touching section below still
+// runs inside withClipboardLock: the real macOS pasteboard is one
+// OS-wide resource shared across parallel workers (goal 0009).
 //
 // Deliberately does NOT enable the MCP-writes-approval toggle anywhere
 // in this file: export_workflow is an ungated read tool, and clipboard
@@ -76,19 +77,17 @@ async function createSimpleWorkflow(page: import('@playwright/test').Page, label
   await expect(workflowRow(page, label)).toBeVisible()
 }
 
-// Navigates to the Quick Panel route, grants clipboard permissions,
-// writes payload into the browser's own clipboard (the same API
-// QuickPanelClipboardApply's navigator.clipboard.readText() call reads
-// back from), then finds and invokes the "Apply from clipboard..." row
-// -- the caller wraps this in withClipboardLock. A cross-document
-// navigation first (not a hash-only change from an already-loaded page)
-// so main.tsx's hash branch actually re-evaluates, same reasoning
-// quick-panel.spec.ts's own tests document.
+// Navigates to the Quick Panel route, seeds payload onto the real host
+// pasteboard (the same resource CompositionService.ReadHostClipboardText
+// reads back from via pbpaste), then finds and invokes the "Apply from
+// clipboard..." row -- the caller wraps this in withClipboardLock. A
+// cross-document navigation first (not a hash-only change from an
+// already-loaded page) so main.tsx's hash branch actually re-evaluates,
+// same reasoning quick-panel.spec.ts's own tests document.
 async function applyFromClipboardWithPayload(page: import('@playwright/test').Page, payload: string) {
   await page.goto('about:blank')
   await page.goto('/#/quickpanel')
-  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
-  await page.evaluate((t) => navigator.clipboard.writeText(t), payload)
+  writeHostClipboardText(payload)
 
   const search = page.getByRole('combobox', { name: 'Quick Panel search' })
   await expect(search).toBeFocused()
