@@ -72,7 +72,34 @@ func writeStep(b *strings.Builder, nt composition.NodeType) {
 	}
 	b.WriteString("- Settings:\n")
 	for _, f := range nt.ConfigFields {
-		fmt.Fprintf(b, "  - **%s** — %s\n", f.Label, f.Description)
+		fmt.Fprintf(b, "  - **%s** — %s%s\n", f.Label, f.Description, describeRefKind(f.RefKind))
+	}
+}
+
+// describeRefKind names which Configure entity family a ConfigField
+// references (docs/adr/0009's RefKind, typedfield.Field's own doc
+// comment lists the closed set) -- the reference table's own answer to
+// goal 0231's "does the docs system cover entity FIELD schemas"
+// question: every step-reference field that points at a Configure
+// entity says so, generated straight off the live registry the same way
+// every other line in this table already is. Empty for an ordinary
+// field with no Configure reference.
+func describeRefKind(refKind string) string {
+	switch refKind {
+	case "request":
+		return " (references an Integration)"
+	case "list":
+		return " (references a List)"
+	case "mcpserver":
+		return " (references an MCP Server)"
+	case "decision":
+		return " (references a Decision)"
+	case "workflow":
+		return " (references a callable Workflow)"
+	case "execenv":
+		return " (references an Execution environment)"
+	default:
+		return ""
 	}
 }
 
@@ -159,8 +186,11 @@ func PageIndex() []DocPage {
 		{"concepts/atlas.md", "Atlas", "the knowledge board: kinds, links, areas, doc mirrors, card actions"},
 		{"concepts/runs-and-review.md", "Runs, review, and debugging", "durable runs, the review queue, breakpoints"},
 		{"reference/steps.md", "Step reference", "every step's contract, generated from the registry"},
+		{"reference/commands.md", "Commands", "every registered command's id, label, default binding, surface, and enablement, generated from the registry"},
 		{"reference/settings.md", "Settings", "app preferences: appearance, hotkeys, shortcuts, MCP access, remote access, backups, updates"},
 		{"reference/extending-the-canvas.md", "Extending the canvas", "how a canvas noun loads, what its declaration requires, and what platform APIs it may and may not reach"},
+		{"reference/register-a-canvas-tool.md", "Register a canvas tool", "walks a new AtlasToolShape declaration end to end, quoting a real registered tool"},
+		{"reference/register-a-command.md", "Register a command", "walks a new Command registry entry end to end, quoting a real registered command"},
 		{"agents/connect-mcp.md", "Automate with agents", "connecting over MCP and what agents can do"},
 		{"trust/data-and-safety.md", "Trust, data, and safety", "no phone-home, local data, honest limits"},
 	}
