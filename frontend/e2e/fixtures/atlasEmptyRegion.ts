@@ -1,4 +1,6 @@
+import { expect } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
+import { waitForViewportStable } from './animation'
 
 // Content-agnostic replacement for a hand-picked viewport fraction
 // (goal 0223's own class: adding one seeded card to the landing board
@@ -20,7 +22,7 @@ function rectsOverlap(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
 }
 
-async function occupiedRects(page: Page, avoid: Locator[]): Promise<Rect[]> {
+async function occupiedRectsOnce(page: Page, avoid: Locator[]): Promise<Rect[]> {
   const rects: Rect[] = []
   const nodes = page.locator('.react-flow__node')
   const count = await nodes.count()
@@ -41,6 +43,32 @@ async function occupiedRects(page: Page, avoid: Locator[]): Promise<Rect[]> {
   return rects
 }
 
+// A group/frame card's own footprint (computeGroupFrameLayout,
+// atlasBoardLayout.ts) is computed by a React effect AFTER its first
+// paint, not in the same pass React Flow's viewport transform settles
+// in -- waitForViewportStable alone can still catch a card's own node
+// at its smaller pre-layout box. Polls occupiedRectsOnce for two
+// consecutive IDENTICAL reads (same class of race, same fix shape as
+// waitForViewportStable, applied to node geometry instead of the
+// viewport transform) before trusting it -- a scan taken mid-layout is
+// exactly how an "empty" pick landed on a card that had since grown
+// underneath it.
+async function occupiedRects(page: Page, avoid: Locator[]): Promise<Rect[]> {
+  let previous: string | null = null
+  let stable: Rect[] = []
+  await expect
+    .poll(async () => {
+      const rects = await occupiedRectsOnce(page, avoid)
+      const serialized = JSON.stringify(rects)
+      const isStable = previous !== null && serialized === previous
+      previous = serialized
+      stable = rects
+      return isStable
+    }, { timeout: 5_000 })
+    .toBe(true)
+  return stable
+}
+
 // findEmptyBoardRect scans a coarse grid of candidate top-left corners
 // inside the board's own visible box for one whose full width x height
 // box clears every currently-rendered node (and any extra chrome in
@@ -50,6 +78,13 @@ async function occupiedRects(page: Page, avoid: Locator[]): Promise<Rect[]> {
 // point: a caller landing on real content is a false pass waiting to
 // happen, not a recoverable state.
 export async function findEmptyBoardRect(page: Page, board: Locator, width: number, height: number, avoid: Locator[] = []): Promise<{ x: number; y: number }> {
+  // React Flow's own fitView/pan animates the viewport's transform via
+  // d3-zoom's JS interpolation, not a CSS transition (fixtures/
+  // animation.ts's own header) -- a node bounding box read while it's
+  // still mid-flight is stale by the time the caller actually clicks,
+  // which is exactly how an "empty" pick landed on a card that had
+  // since settled elsewhere.
+  await waitForViewportStable(board)
   const boardBox = await board.boundingBox()
   if (!boardBox) throw new Error('findEmptyBoardRect: board has no bounding box')
   const occupied = await occupiedRects(page, avoid)

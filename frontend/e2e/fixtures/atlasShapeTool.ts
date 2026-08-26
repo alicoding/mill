@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { expect } from '@playwright/test'
-import { nonSeededBoardObjects } from './atlasBoard'
+import { nonSeededBoardObjects, type DragEndpoint } from './atlasBoard'
 import { contextMenu } from './contextMenu'
 import { findEmptyBoardRect } from './atlasEmptyRegion'
 
@@ -30,11 +30,21 @@ const SHAPE_DRAW_SIZE = 150
 // point, never a fixed viewport fraction (goal 0223's class fix: a raw
 // fraction silently lands on whatever the landing board's seeded
 // content happens to occupy at that fraction, which shifts the moment
-// the seed's own layout changes).
-export async function shapeDrawPoints(page: Page, board: Locator, picker?: Locator): Promise<{ from: { x: number; y: number }; to: { x: number; y: number } }> {
+// the seed's own layout changes). Returned as DragEndpoints (board-
+// relative, re-resolved against a FRESH board.boundingBox() at the
+// moment dragBetween's own hover() actually fires) rather than
+// page-absolute points -- board.click()/hover()'s own actionability
+// pipeline already re-reads the board's box then, the same
+// self-correcting contract boardPoint's callers relied on; an absolute
+// point captured once at scan time goes stale against any layout
+// shift between the scan and the actual pointer-down (goal 0223's own
+// regression: the style picker's own arm animation was enough).
+export async function shapeDrawPoints(page: Page, board: Locator, picker?: Locator): Promise<{ from: DragEndpoint; to: DragEndpoint }> {
   const origin = await findEmptyBoardRect(page, board, SHAPE_DRAW_SIZE, SHAPE_DRAW_SIZE, picker ? [picker] : [])
+  const boardBox = await board.boundingBox()
+  if (!boardBox) throw new Error('shapeDrawPoints: board has no bounding box')
   return {
-    from: { x: origin.x + 15, y: origin.y + 15 },
-    to: { x: origin.x + SHAPE_DRAW_SIZE - 15, y: origin.y + SHAPE_DRAW_SIZE - 15 },
+    from: { locator: board, position: { x: origin.x + 15 - boardBox.x, y: origin.y + 15 - boardBox.y } },
+    to: { locator: board, position: { x: origin.x + SHAPE_DRAW_SIZE - 15 - boardBox.x, y: origin.y + SHAPE_DRAW_SIZE - 15 - boardBox.y } },
   }
 }

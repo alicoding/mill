@@ -128,17 +128,26 @@ test('ink under a shape paints above it, even while the shape stays selected', a
   // points are derived from ONE empty region's own origin rather than
   // independent findEmptyBoardRect calls -- a second call would treat
   // the just-drawn ink as occupied and steer the shape clear of it,
-  // defeating the overlap this test exists to prove.
+  // defeating the overlap this test exists to prove. Points are
+  // board-relative DragEndpoints, not page-absolute -- dragBetween's
+  // own hover() re-reads the board's box at the moment it actually
+  // fires, self-correcting for any layout shift between this scan and
+  // the real pointer-down (goal 0223's own regression: an absolute
+  // point captured once went stale against the tray/picker's own arm
+  // animation).
   const origin = await findEmptyBoardRect(page, board, 260, 200)
+  const boardBox = await board.boundingBox()
+  if (!boardBox) throw new Error('board has no bounding box')
+  const relPoint = (x: number, y: number) => ({ locator: board, position: { x: x - boardBox.x, y: y - boardBox.y } })
   await page.getByTestId('atlas-tray-pencil').click()
-  await dragBetween(page, { x: origin.x + 20, y: origin.y + 90 }, { x: origin.x + 220, y: origin.y + 90 })
+  await dragBetween(page, relPoint(origin.x + 20, origin.y + 90), relPoint(origin.x + 220, origin.y + 90))
   const ink = nonSeededBoardObjects(page, 'ink')
   await expect(ink).toHaveCount(1)
   const inkWrapper = page.locator('.react-flow__node').filter({ has: ink })
   await page.keyboard.press('Escape')
 
   await page.getByTestId('atlas-tray-shape').click()
-  await dragBetween(page, { x: origin.x + 40, y: origin.y + 20 }, { x: origin.x + 200, y: origin.y + 160 })
+  await dragBetween(page, relPoint(origin.x + 40, origin.y + 20), relPoint(origin.x + 200, origin.y + 160))
   const shapes = shapeObjects(page)
   await expect(shapes).toHaveCount(1)
   const shapeWrapper = page.locator('.react-flow__node').filter({ has: shapes.first() })

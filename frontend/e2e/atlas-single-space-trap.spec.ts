@@ -127,16 +127,34 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     await expect(noteCard(page, 'Scratchpad')).toBeVisible()
     await expect(noteCard(page, 'Board gallery')).toBeVisible()
 
-    // Drain three of the four promoted leaves -- ordinary,
-    // already-covered-elsewhere instant leaf deletes. "Board gallery"
-    // nests board objects, never cards, so isGroupCard() still treats
-    // it as a childless leaf here.
-    for (const title of ['Discovery workstream', 'Scratchpad', 'Board gallery']) {
+    // Drain the two truly childless promoted leaves -- ordinary,
+    // already-covered-elsewhere instant leaf deletes.
+    for (const title of ['Discovery workstream', 'Scratchpad']) {
       await noteCard(page, title).click({ button: 'right' })
       await expect(menu).toBeVisible()
       await menu.getByText('Delete', { exact: true }).click()
       await expect(noteCard(page, title)).toHaveCount(0)
     }
+
+    // "Board gallery" nests board objects, never cards, so
+    // isGroupCard() still treats it as a childless leaf for THIS
+    // delete -- but deleting it promotes its own board-object children
+    // to the nearest live ancestor exactly the way a card's own card/
+    // note children promote (EffectiveParentID,
+    // atlasservice_tombstone.go's liveObjectsLocked), landing them
+    // here at "All spaces" too. Drained explicitly right after, or the
+    // suite's own later "coherent empty board" state never arrives.
+    await noteCard(page, 'Board gallery').click({ button: 'right' })
+    await expect(menu).toBeVisible()
+    await menu.getByText('Delete', { exact: true }).click()
+    await expect(noteCard(page, 'Board gallery')).toHaveCount(0)
+    const promotedObjects = page.locator('[data-testid="atlas-board-object"]')
+    while (await promotedObjects.count() > 0) {
+      await promotedObjects.first().click({ button: 'right' })
+      await expect(menu).toBeVisible()
+      await menu.getByText('Delete', { exact: true }).click()
+    }
+    await expect(promotedObjects).toHaveCount(0)
 
     // "Client records" is now the SOLE remaining root: egocentric-root
     // auto-entry (unregressed by this goal, since nothing here marked
