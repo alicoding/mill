@@ -125,4 +125,16 @@ export const SETTINGS_COMMANDS: Command[] = [
     defaultBinding: null,
     run: () => useUISignalStore.getState().openWhatsNew(),
   },
+  {
+    // Trust Mill's signing certificate (goal 0220 S3): replaces the
+    // former "find it in Keychain Access" instructions with one call
+    // at the codesigning adapter's existing seam. Always enabled --
+    // whether the certificate is already trusted can't be detected
+    // reliably (the spike's own finding), so the action stays
+    // idempotent and safe to re-run rather than gated on that state.
+    id: 'update.trustSigning',
+    label: "Trust Mill's signing",
+    defaultBinding: null,
+    run: () => useUpdateNoticeStore.getState().runTrustSigning(),
+  },
 ]

@@ -7,6 +7,7 @@ import { SettingsService, UpdateState, type UpdateNotice } from '../shared/bindi
 import { findCommand } from '../shared/commands'
 import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import { formatUpdated } from '../shared/inventorySort'
+import { TrustDisclosure } from './TrustDisclosure'
 
 // The browser-download escape hatch for when the in-app download is
 // blocked (managed networks answer the asset fetch with 403 while the
@@ -459,17 +460,7 @@ function UpdatesSection() {
         </div>
       )}
 
-      <details data-testid="trust-disclosure">
-        <summary>{t('settings.updates.trustDisclosureSummary')}</summary>
-        <Stack gap="condensed">
-          <Text size="small" className={styles.muted} data-testid="resign-notice">
-            {t('settings.updates.resignNotice')}
-          </Text>
-          <Text size="small" className={styles.muted} data-testid="resign-setup-notice">
-            {t('settings.updates.resignSetupNotice')}
-          </Text>
-        </Stack>
-      </details>
+      <TrustDisclosure />
     </Stack>
   )
 }

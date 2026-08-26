@@ -97,6 +97,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `update.check` | Check for updates | — | Global | Always available |
 | `update.downloadAndInstall` | Download the update and install | — | Global | Conditional — available only in a matching state |
 | `update.relaunch` | Restart to finish updating | — | Global | Conditional — available only in a matching state |
+| `update.trustSigning` | Trust Mill's signing | — | Global | Always available |
 | `update.whatsNew` | What's new | — | Global | Always available |
 | `view.activity` | Go to Activity | `⌘4` | Global | Always available |
 | `view.atlas` | Go to Atlas | `⌘3` | Global | Always available |

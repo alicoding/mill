@@ -625,6 +625,13 @@
     "enabled": true
   },
   {
+    "id": "update.trustSigning",
+    "label": "Trust Mill's signing",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
     "id": "update.whatsNew",
     "label": "What's new",
     "binding": null,
