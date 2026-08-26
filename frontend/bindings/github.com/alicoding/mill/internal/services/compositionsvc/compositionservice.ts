@@ -143,6 +143,17 @@ export function PublishWorkflow(id: string): $CancellablePromise<composition$0.W
 }
 
 /**
+ * ReadHostClipboardText reads the OS pasteboard's plain-text flavor via
+ * the clipboard adapter (goal 0229) -- the door the Quick Panel's "Apply
+ * from clipboard..." row calls instead of navigator.clipboard.readText,
+ * which throws a permission error inside the panel's own auxiliary
+ * WKWebView (no permission model applies to a Go-side pasteboard read).
+ */
+export function ReadHostClipboardText(): $CancellablePromise<string> {
+    return $Call.ByID(1976418567);
+}
+
+/**
  * ResetWorkflowToSeed replaces id's content with the current golden's
  * (docs/goals/0037 item 4) -- a new published version, non-destructive
  * (the prior history stays in Versions, reachable via the existing

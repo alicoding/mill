@@ -17,7 +17,10 @@ restarts.
 - **Launch at login** — start Mill when you sign in.
 - **Summon hotkey** — a global shortcut that opens the Quick Panel
   from any app. Recording a combo captures it even if a menu
-  shortcut already uses it; Escape cancels recording.
+  shortcut already uses it; Escape cancels recording. The panel's own
+  actions — Open Mill, Open Settings, Review, Apply from clipboard,
+  and any update action currently available — match the command
+  palette exactly, since both read from the same list.
 
 ## Keyboard shortcuts
 
@@ -107,9 +110,9 @@ already downloaded and ready, Mill re-targets the newer one
 automatically — restarting always applies the newest version Mill
 knows about, never an older one left over from an earlier check.
 
-Every update action is also available from the command palette (⌘K):
-search "update" to check, download and install, or restart, whichever
-is currently possible.
+Every update action is also available from the command palette (⌘K)
+and the Quick Panel: search "update" to check, download and install,
+or restart, whichever is currently possible.
 
 Mill re-signs itself after each update with a signing identity unique
 to your Mac, so permissions like Accessibility and Input Monitoring
