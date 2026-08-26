@@ -16,9 +16,11 @@ import { clickCorner, groupCard, noteCard, zoomAllTheWayOut } from './fixtures/a
 // Atlas creation core (goal 0081 slice A1): the tray, its placement
 // popover, right-click create, sticky notes, and the note promotion
 // ritual -- driven end to end against the seeded "The engagement"
-// ("Discovery workstream", "Client records", "Scratchpad") and "Client
-// records" ("Jordan Reyes", a mirrored Document) space (internal/domain/atlas/
-// builtin.go). Runs on its own dedicated server (fixtures/server.ts's
+// ("Discovery workstream", "Client records", "Scratchpad", "Board
+// gallery" -- the last nests goal 0223's own seeded board-object
+// examples) and "Client records" ("Jordan Reyes", a mirrored Document)
+// space (internal/domain/atlas/builtin.go). Runs on its own dedicated
+// server (fixtures/server.ts's
 // ATLAS_AUTHORING_* ports), not the standard per-worker pool: this
 // spec asserts EXACT coverage counts at "The engagement", which must never
 // be contaminated by another spec file sharing a worker's server.
@@ -83,13 +85,15 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
 
     // "The engagement" seeds three children (Discovery workstream / Client records /
     // Scratchpad; the reference-architecture landscape was de-seeded,
-    // ADR-0041's Update) -- a hand-countable 1/3 linked, 0/3 mirrored
-    // (same census atlas-projections.spec.ts's own coverage test pins).
+    // ADR-0041's Update) -- a hand-countable 1/4 linked, 0/4 mirrored
+    // (the fourth child is "Board gallery", goal 0223's seeded
+    // board-object examples; same census atlas-projections.spec.ts's
+    // own coverage test pins).
     await page.getByTestId('atlas-open-coverage').click()
     const coverageDialog = page.locator('[data-component="atlas-coverage-dialog"]')
     await expect(coverageDialog).toBeVisible()
-    await expect(coverageDialog.getByTestId('atlas-coverage-link-value')).toHaveText('1/3 linked')
-    await expect(coverageDialog.getByTestId('atlas-coverage-mirror-value')).toHaveText('0/3 mirrored')
+    await expect(coverageDialog.getByTestId('atlas-coverage-link-value')).toHaveText('1/4 linked')
+    await expect(coverageDialog.getByTestId('atlas-coverage-mirror-value')).toHaveText('0/4 mirrored')
     await page.keyboard.press('Escape')
     await expect(coverageDialog).not.toBeVisible()
 

@@ -102,28 +102,31 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     await page.keyboard.press('Escape')
     await expect(overlay).not.toBeVisible()
 
-    // Deleting the space it's viewed from: "The engagement" holds 3
-    // children (Client records/Discovery workstream/Scratchpad), so
-    // the container-delete gate (goal 0149 gap 3) confirms first,
-    // naming the promoted count -- same guarded door as every other
-    // container delete, reached from a NEW trigger point.
+    // Deleting the space it's viewed from: "The engagement" holds 4
+    // children (Client records/Discovery workstream/Scratchpad/Board
+    // gallery), so the container-delete gate (goal 0149 gap 3) confirms
+    // first, naming the promoted count -- same guarded door as every
+    // other container delete, reached from a NEW trigger point.
     await board.click({ button: 'right', position: { x: 12, y: 12 } })
     await expect(menu).toBeVisible()
     await menu.getByText('Delete space', { exact: true }).click()
-    await expect(page.getByText('3 items inside move up a level. You can undo right after.')).toBeVisible()
+    await expect(page.getByText('4 items inside move up a level. You can undo right after.')).toBeVisible()
     await page.getByRole('button', { name: 'Delete', exact: true }).click()
 
     // Lands on "All spaces" -- not a dead end -- showing what remains:
-    // "The engagement"'s 3 direct children, promoted to root cards.
+    // "The engagement"'s 4 direct children, promoted to root cards.
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
     await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('The engagement')
     await expect(groupCard(page, 'Client records')).toBeVisible()
     await expect(noteCard(page, 'Discovery workstream')).toBeVisible()
     await expect(noteCard(page, 'Scratchpad')).toBeVisible()
+    await expect(noteCard(page, 'Board gallery')).toBeVisible()
 
-    // Drain two of the three promoted leaves -- ordinary,
-    // already-covered-elsewhere instant leaf deletes.
-    for (const title of ['Discovery workstream', 'Scratchpad']) {
+    // Drain three of the four promoted leaves -- ordinary,
+    // already-covered-elsewhere instant leaf deletes. "Board gallery"
+    // nests board objects, never cards, so isGroupCard() still treats
+    // it as a childless leaf here.
+    for (const title of ['Discovery workstream', 'Scratchpad', 'Board gallery']) {
       await noteCard(page, title).click({ button: 'right' })
       await expect(menu).toBeVisible()
       await menu.getByText('Delete', { exact: true }).click()

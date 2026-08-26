@@ -75,14 +75,6 @@ func BuiltInBoardObjects() []BoardObject {
 			CreatedAt: now, UpdatedAt: now,
 			BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
-		{
-			ID: objectDiagramExampleID, Kind: "diagram",
-			Payload:   map[string]string{"title": "System overview", BoardObjectSeedAssetKey: "diagram"},
-			Position:  Position{X: 740, Y: 80},
-			ParentID:  cardSketchesID,
-			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
-		},
 	}
 }
 
@@ -97,8 +89,6 @@ func BuiltInBoardObjectAsset(key string) (content, ext string, ok bool) {
 		return seedInkStrokeSVG, ".svg", true
 	case "image":
 		return seedReferenceImageSVG, ".svg", true
-	case "diagram":
-		return seedDiagramMermaid, ".mmd", true
 	}
 	return "", "", false
 }
@@ -113,9 +103,4 @@ const (
 	// 'image' BoardObject renders through the same mirrored-file door a
 	// pasted/dropped image uses.
 	seedReferenceImageSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120"><rect x="4" y="4" width="152" height="112" rx="8" fill="#ffffff" stroke="#1f6feb" stroke-width="4"/><circle cx="48" cy="40" r="14" fill="#9a6700"/><path d="M12 100 L56 60 L84 84 L112 52 L152 96 Z" fill="#238636"/></svg>`
-	// seedDiagramMermaid is a small flowchart naming three of the
-	// seeded cards -- proof that a 'diagram' BoardObject renders
-	// through the same vendored mermaid host a diagram card's own page
-	// unit uses.
-	seedDiagramMermaid = "graph TD\n  Engagement[The engagement] --> Discovery[Discovery workstream]\n  Engagement --> Records[Client records]\n"
 )

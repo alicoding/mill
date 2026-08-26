@@ -25,8 +25,8 @@ func findObjectByKind(t *testing.T, objects []atlas.BoardObject, kind string) at
 // TestReconcileBuiltIns_SeedsShapeOnFreshInstall proves the shape
 // golden (goal 0223, 0214's own retroactive seed proof) lands on a
 // fresh install with no captures directory wired at all -- unlike
-// ink/image/diagram, a shape carries no mirror file, so it needs
-// nothing beyond construction to seed.
+// ink/image, a shape carries no mirror file, so it needs nothing
+// beyond construction to seed.
 func TestReconcileBuiltIns_SeedsShapeOnFreshInstall(t *testing.T) {
 	a := NewAtlasService(servicetest.NewFakeStore())
 	shape := findObjectByKind(t, a.Objects(), "shape")
@@ -36,13 +36,13 @@ func TestReconcileBuiltIns_SeedsShapeOnFreshInstall(t *testing.T) {
 }
 
 // TestReconcileBuiltIns_FileBackedObjectsWaitForCapturesDir proves the
-// ink/image/diagram goldens are NOT inserted before a real captures
-// directory exists (the construction-time reconcile pass runs before
-// main.go's WireAtlasStorageDirs) -- a half-built object with no
-// mirrorPath must never land in stored state.
+// ink/image goldens are NOT inserted before a real captures directory
+// exists (the construction-time reconcile pass runs before main.go's
+// WireAtlasStorageDirs) -- a half-built object with no mirrorPath must
+// never land in stored state.
 func TestReconcileBuiltIns_FileBackedObjectsWaitForCapturesDir(t *testing.T) {
 	a := NewAtlasService(servicetest.NewFakeStore())
-	for _, kind := range []string{"ink", "image", "diagram"} {
+	for _, kind := range []string{"ink", "image"} {
 		for _, o := range a.Objects() {
 			if o.Kind == kind {
 				t.Errorf("kind %q seeded before a captures directory was ever wired: %+v", kind, o)
@@ -53,14 +53,13 @@ func TestReconcileBuiltIns_FileBackedObjectsWaitForCapturesDir(t *testing.T) {
 
 // TestReconcileBuiltIns_SeedsFileBackedObjectsOnceCapturesDirWired
 // proves SetCapturesDir's own re-reconcile (goal 0223) materializes
-// ink/image/diagram onto disk and inserts them, each with a real,
-// non-empty mirror file and no leftover seedAsset marker in the
-// stored Payload.
+// ink/image onto disk and inserts them, each with a real, non-empty
+// mirror file and no leftover seedAsset marker in the stored Payload.
 func TestReconcileBuiltIns_SeedsFileBackedObjectsOnceCapturesDirWired(t *testing.T) {
 	a := newTestAtlasService(t)
 	a.SetCapturesDir(t.TempDir())
 
-	for _, kind := range []string{"ink", "image", "diagram"} {
+	for _, kind := range []string{"ink", "image"} {
 		o := findObjectByKind(t, a.Objects(), kind)
 		path := o.Payload["mirrorPath"]
 		if path == "" {

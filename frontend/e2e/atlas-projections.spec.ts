@@ -132,21 +132,24 @@ test('coverage counts a space\'s cards missing a link and missing a mirror, with
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  // "The engagement" has three seeded children: "Discovery workstream" (an
+  // "The engagement" has four seeded children: "Discovery workstream" (an
   // outgoing "relates to" link to "Jordan Reyes"), "Client records",
-  // and "Scratchpad" -- a hand-countable 1/3 linked. None carries a
-  // mirror directly at THIS level (the seeded mirror lives one level
-  // deeper, on "Statement of work") -- a hand-countable 0/3 mirrored.
+  // "Scratchpad", and "Board gallery" (goal 0223's seeded board-object
+  // examples nest here rather than rendering at root) -- a
+  // hand-countable 1/4 linked. None carries a mirror directly at THIS
+  // level (the seeded mirror lives one level deeper, on "Statement of
+  // work") -- a hand-countable 0/4 mirrored.
   await page.getByTestId('atlas-open-coverage').click()
   const dialog = page.locator('[data-component="atlas-coverage-dialog"]')
   await expect(dialog).toBeVisible()
 
-  await expect(dialog.getByTestId('atlas-coverage-link-value')).toHaveText('1/3 linked')
-  await expect(dialog.getByTestId('atlas-coverage-mirror-value')).toHaveText('0/3 mirrored')
+  await expect(dialog.getByTestId('atlas-coverage-link-value')).toHaveText('1/4 linked')
+  await expect(dialog.getByTestId('atlas-coverage-mirror-value')).toHaveText('0/4 mirrored')
 
   await dialog.getByTestId('atlas-coverage-link-toggle').click()
   await expect(dialog.getByTestId('atlas-coverage-missing-item').filter({ hasText: 'Client records' })).toBeVisible()
   await expect(dialog.getByTestId('atlas-coverage-missing-item').filter({ hasText: 'Scratchpad' })).toBeVisible()
+  await expect(dialog.getByTestId('atlas-coverage-missing-item').filter({ hasText: 'Board gallery' })).toBeVisible()
 
   await dialog.getByTestId('atlas-coverage-mirror-toggle').click()
   const missingItem = dialog.getByTestId('atlas-coverage-missing-item').filter({ hasText: 'Discovery workstream' })

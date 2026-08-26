@@ -29,7 +29,7 @@
   },
   "atlascard:atlas-card-session-sketches": {
     "seedRevision": 1,
-    "fingerprint": "f513e2a70f86050b0f37561e40a32c7a9b02119bd62b3a2c2c7eb436da61d8c6"
+    "fingerprint": "9b07d2763fd80b7d753252b909b1145b6e4343ca1fef825b85403f95afe12d6c"
   },
   "atlaskind:atlas-kind-component": {
     "seedRevision": 1,
@@ -70,10 +70,6 @@
   "atlaslinkkind:atlas-linkkind-relates-to": {
     "seedRevision": 1,
     "fingerprint": "5efd2d4f46ceb01ae229e997102fe11191367b9ee46ac03939ffe278d4dec379"
-  },
-  "atlasobject:atlas-object-example-diagram": {
-    "seedRevision": 1,
-    "fingerprint": "f30527df6adae052900e574574b0ebdab15ad477a6118065b7006d17ef8fd064"
   },
   "atlasobject:atlas-object-example-image": {
     "seedRevision": 1,

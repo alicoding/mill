@@ -89,8 +89,12 @@ const (
 	// content extent enough to shift fitView's settled zoom, which
 	// shifted where dozens of OTHER specs' percentage-of-viewport and
 	// auto-placed points land (goal 0223's own migration record).
-	// Dedicated rather than reusing an existing card because each one
-	// already carries its own pinned expectation elsewhere (Discovery
+	// KindID is Component, not Topic: atlas-jump.spec.ts's own "Topic:"
+	// scope asserts an exact census of the pre-existing Topic cards
+	// (the same reasoning cardSystemLandscapeID's own comment below
+	// already documents). Dedicated rather than reusing an existing
+	// card because each one already carries its own pinned expectation
+	// elsewhere (Discovery
 	// workstream's honest-empty-board fixture, Scratchpad's instant
 	// no-confirm delete, Client records' Shelves layout -- a
 	// BoardObject is Free-mode-only, boardobject.go's own header) that
@@ -114,11 +118,13 @@ const (
 	// (e.g. every "shape"-kind board object it creates itself) can
 	// exclude these by name rather than accidentally counting/selecting
 	// them -- see e.g. atlas-shape-tool.spec.ts's own shapeObjects()
-	// helper.
-	objectShapeExampleID   = "atlas-object-example-shape"
-	objectInkExampleID     = "atlas-object-example-ink"
-	objectImageExampleID   = "atlas-object-example-image"
-	objectDiagramExampleID = "atlas-object-example-diagram"
+	// helper. A 'diagram' golden is deliberately NOT seeded here: it
+	// wedged every e2e worker's server at boot (goal 0223's own
+	// investigation); atlas-seeded-board-objects.spec.ts creates its
+	// diagram example live via CreateBoardObject instead.
+	objectShapeExampleID = "atlas-object-example-shape"
+	objectInkExampleID   = "atlas-object-example-ink"
+	objectImageExampleID = "atlas-object-example-image"
 )
 
 // BuiltInKinds returns the seeded example card types -- pure config,
@@ -338,7 +344,7 @@ func BuiltInCards() []Card {
 			// spec.ts's regression check scans every atlas-note-card for
 			// that exact substring -- this card's own name must never
 			// false-positive-match it.
-			ID: cardSketchesID, KindID: kindTopicID, Title: "Board gallery",
+			ID: cardSketchesID, KindID: kindComponentID, Title: "Board gallery",
 			Note:      "Freehand drawings, shapes, and captured images from the discovery sessions.",
 			ParentID:  cardMySpaceID,
 			ViewMode:  ViewModeCanvas,

@@ -11,7 +11,7 @@ import (
 
 // builtInBoardObjectsLocked resolves atlas.BuiltInBoardObjects()'s
 // declarative goldens into insertable objects for reconcileObjectsLocked
-// (goal 0223): a file-backed Kind (ink/image/diagram) carries no
+// (goal 0223): a file-backed Kind (ink/image) carries no
 // mirrorPath from the pure domain package (backend.md's persistence-
 // free rule) -- this materializes its seed content under the captures
 // directory and fills Payload["mirrorPath"] before reconcile ever sees
