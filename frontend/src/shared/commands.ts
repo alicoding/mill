@@ -74,6 +74,10 @@ export interface Command {
   // entirely (unavailable means absent, not dimmed); dispatchCommandForEvent
   // below skips its binding -- run() stays free of the check.
   enabled?: () => boolean
+  // Quick Panel opt-in (goal 0222 S2): also renders as a row in the
+  // panel's own window (app/quickPanelActionEntries.tsx) -- a run()
+  // assuming the MAIN window (setView) is overridden there instead.
+  quickPanel?: boolean
   run: () => void
 }
 
@@ -372,6 +376,9 @@ export const COMMANDS: Command[] = [
     id: 'view.review',
     label: 'Go to Review',
     defaultBinding: { mods: ['cmd'], key: '5' },
+    // Quick Panel's "Review" row reuses this id (its pending-count badge
+    // is panel-local presentation, quickPanelActionEntries.tsx).
+    quickPanel: true,
     run: () => setView({ kind: 'review' }),
   },
   {
@@ -401,12 +408,8 @@ export const COMMANDS: Command[] = [
     surface: ['review'],
     run: () => useUISignalStore.getState().requestReviewRules(),
   },
-  {
-    id: 'settings.open',
-    label: 'Open Settings',
-    defaultBinding: { mods: ['cmd'], key: ',' },
-    run: () => setView({ kind: 'settings' }),
-  },
+  // settings.open moved to shared/settingsCommands.ts (goal 0222 S2),
+  // alongside its own SettingsService import.
   // Per-Configure-tab create commands (goal 0071 G6) -- split out to
   // shared/configureCreateCommands.ts (CLAUDE.md's 500-line convention);
   // see that file's own header for what each one does and why

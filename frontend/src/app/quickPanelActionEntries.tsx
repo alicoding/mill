@@ -1,6 +1,8 @@
 import type { ElementType, ReactNode } from 'react'
 import { CounterLabel } from '@primer/react'
-import { CopyIcon, GearIcon, HomeIcon } from '@primer/octicons-react'
+import { CommandPaletteIcon, CopyIcon, GearIcon, HomeIcon } from '@primer/octicons-react'
+import { findCommand } from '../shared/commands'
+import { quickPanelRowIds } from '../shared/quickPanelCommands'
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import type { List } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
@@ -167,58 +169,112 @@ export function buildConfigureAndActionEntries(params: {
     })
   }
 
-  entries.push({
-    id: 'open-mill',
-    groupId: 'actions',
-    text: t('quickPanel.entries.openMill'),
-    searchText: 'open mill window',
-    leadingVisual: HomeIcon,
-    run: () => openMain(''),
-  })
-  entries.push({
-    id: 'open-settings',
-    groupId: 'actions',
-    text: t('quickPanel.entries.openSettings'),
-    searchText: 'open settings preferences',
-    leadingVisual: GearIcon,
-    // HotkeyHint (app/HotkeyHint.tsx) reads settings.open's live
-    // effective binding (shared/commands.ts + any Settings override) --
-    // never a hardcoded combo that could silently go stale on a rebind.
-    trailingVisual: <HotkeyHint commandId="settings.open" />,
-    run: () => openMain('settings'),
-  })
-  // "Review" is always present (unblock-yourself-in-place -- a real
-  // jump target even at zero), badged with the live count once non-zero.
-  entries.push({
-    id: 'open-review',
-    groupId: 'actions',
-    text: t('quickPanel.entries.review'),
-    description: reviewPendingCount > 0 ? t('quickPanel.entries.reviewPendingDescription', { count: reviewPendingCount }) : t('quickPanel.entries.reviewNoPending'),
-    searchText: 'review pending approval guardrail mcp write',
-    leadingVisual: CAPABILITY_ICON['capability-review'],
-    trailingVisual: reviewPendingCount > 0 ? (
-      <CounterLabel data-testid="quick-panel-review-count" aria-label={t('reviewPendingAriaLabel', { count: reviewPendingCount })}>
-        {reviewPendingCount}
-      </CounterLabel>
-    ) : undefined,
-    run: () => openMain('review'),
-  })
-  // docs/goals/0039: always present, same unblock-yourself-in-place
-  // reasoning as Review above -- clipboard+hotkey is the fallback path
-  // into Mill when MCP itself is unavailable (a locked-down enterprise
-  // environment). trailingVisual shows panel.applyClipboard's bound key
-  // once the user rebinds it (shared/commands.ts's defaultBinding is
-  // null); HotkeyHint renders nothing until then.
-  entries.push({
-    id: 'apply-clipboard',
-    groupId: 'actions',
-    text: t('quickPanel.entries.applyFromClipboard'),
-    description: t('quickPanel.entries.applyFromClipboardDescription'),
-    searchText: 'apply from clipboard import paste workflow export',
-    leadingVisual: CopyIcon,
-    trailingVisual: <HotkeyHint commandId="panel.applyClipboard" />,
-    run: applyFromClipboard,
-  })
+  entries.push(...buildActionRows({ t, reviewPendingCount, openMain, applyFromClipboard }))
 
   return entries
+}
+
+// The panel's action rows now derive from the command registry (goal
+// 0222 S2: "the Quick Panel derives its action rows from the command
+// registry") instead of a hand-curated list -- a command stops
+// appearing here the SAME way it stops appearing in the palette
+// (app/CommandPalette.tsx's own isCommandAvailable), by failing its own
+// enabled() rather than a second, drifting membership list.
+//
+// The four ids shared/quickPanelCommands.ts's QUICK_PANEL_RICH_ROW_ORDER
+// names get bespoke presentation (richRows below): each either needs a
+// panel-specific run() -- the registry's own run() assumes the MAIN
+// window (settings.open/view.review call setView; panel.applyClipboard's
+// run() just reopens THIS window, not the actual apply flow) -- or
+// bespoke copy/visuals (Review's live pending-count badge) the generic
+// fallback can't supply. Any OTHER `quickPanel: true` command (the
+// update pipeline) renders through that fallback, same shape
+// CommandPalette.tsx's own commandEntry uses for an ordinary command.
+function buildActionRows(params: {
+  t: (key: string, opts?: Record<string, unknown>) => string
+  reviewPendingCount: number
+  openMain: (view: string) => void
+  applyFromClipboard: () => void
+}): PanelEntry[] {
+  const { t, reviewPendingCount, openMain, applyFromClipboard } = params
+
+  const richRows: Record<string, () => PanelEntry> = {
+    'panel.openMill': () => ({
+      id: 'cmd:panel.openMill',
+      groupId: 'actions',
+      text: t('quickPanel.entries.openMill'),
+      searchText: 'open mill window',
+      leadingVisual: HomeIcon,
+      run: () => openMain(''),
+    }),
+    'settings.open': () => ({
+      id: 'cmd:settings.open',
+      groupId: 'actions',
+      text: t('quickPanel.entries.openSettings'),
+      searchText: 'open settings preferences',
+      leadingVisual: GearIcon,
+      // HotkeyHint (app/HotkeyHint.tsx) reads settings.open's live
+      // effective binding (shared/commands.ts + any Settings override) --
+      // never a hardcoded combo that could silently go stale on a rebind.
+      trailingVisual: <HotkeyHint commandId="settings.open" />,
+      run: () => openMain('settings'),
+    }),
+    // Always present (unblock-yourself-in-place -- a real jump target
+    // even at zero), badged with the live count once non-zero.
+    'view.review': () => ({
+      id: 'cmd:view.review',
+      groupId: 'actions',
+      text: t('quickPanel.entries.review'),
+      description: reviewPendingCount > 0 ? t('quickPanel.entries.reviewPendingDescription', { count: reviewPendingCount }) : t('quickPanel.entries.reviewNoPending'),
+      searchText: 'review pending approval guardrail mcp write',
+      leadingVisual: CAPABILITY_ICON['capability-review'],
+      trailingVisual: reviewPendingCount > 0 ? (
+        <CounterLabel data-testid="quick-panel-review-count" aria-label={t('reviewPendingAriaLabel', { count: reviewPendingCount })}>
+          {reviewPendingCount}
+        </CounterLabel>
+      ) : undefined,
+      run: () => openMain('review'),
+    }),
+    // docs/goals/0039: always present, same unblock-yourself-in-place
+    // reasoning as Review above -- clipboard+hotkey is the fallback path
+    // into Mill when MCP itself is unavailable (a locked-down enterprise
+    // environment). trailingVisual shows panel.applyClipboard's bound key
+    // once the user rebinds it (shared/commands.ts's defaultBinding is
+    // null); HotkeyHint renders nothing until then.
+    'panel.applyClipboard': () => ({
+      id: 'cmd:panel.applyClipboard',
+      groupId: 'actions',
+      text: t('quickPanel.entries.applyFromClipboard'),
+      description: t('quickPanel.entries.applyFromClipboardDescription'),
+      searchText: 'apply from clipboard import paste workflow export',
+      leadingVisual: CopyIcon,
+      trailingVisual: <HotkeyHint commandId="panel.applyClipboard" />,
+      run: applyFromClipboard,
+    }),
+  }
+
+  // Membership + order come from the pure, JSX-free
+  // shared/quickPanelCommands.ts (its own file so the filtering logic
+  // stays unit-testable, see that module's header comment) -- this loop
+  // only decides HOW to render each id, rich presentation above or the
+  // generic fallback (any other quickPanel command, e.g. the update
+  // pipeline), same fields CommandPalette.tsx's own commandEntry
+  // renders a plain command with.
+  const rows: PanelEntry[] = []
+  for (const id of quickPanelRowIds()) {
+    const rich = richRows[id]
+    if (rich) { rows.push(rich()); continue }
+    const command = findCommand(id)
+    if (!command) continue
+    rows.push({
+      id: `cmd:${command.id}`,
+      groupId: 'actions',
+      text: command.label,
+      searchText: command.label.toLowerCase(),
+      leadingVisual: CommandPaletteIcon,
+      trailingVisual: <HotkeyHint commandId={command.id} />,
+      run: command.run,
+    })
+  }
+  return rows
 }

@@ -269,3 +269,27 @@ describe('Command.enabled (goal 0222 S1)', () => {
     }
   })
 })
+
+// goal 0222 S2: the Quick Panel's action rows derive from the exact
+// same `quickPanel: true` flag app/quickPanelActionEntries.tsx filters
+// on -- this is the registry-side half of that contract (which ids
+// opted in), not the row-derivation logic itself (that file's own
+// quickPanelActionEntries.test.ts).
+describe('Command.quickPanel opt-in (goal 0222 S2)', () => {
+  it('the four rows the panel already shipped, plus the update pipeline, all opted in', () => {
+    for (const id of [
+      'panel.openMill', 'settings.open', 'view.review', 'panel.applyClipboard',
+      'update.check', 'update.downloadAndInstall', 'update.relaunch',
+    ]) {
+      expect(findCommand(id)?.quickPanel).toBe(true)
+    }
+  })
+
+  it('panel.openMill is Quick-Panel-only -- paletteHidden in the main window, since it would just refocus itself there', () => {
+    expect(findCommand('panel.openMill')?.paletteHidden).toBe(true)
+  })
+
+  it('an ordinary command with no reason to appear in the panel stays opted out', () => {
+    expect(findCommand('tab.close')?.quickPanel).toBeFalsy()
+  })
+})
