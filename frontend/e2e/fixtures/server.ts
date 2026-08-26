@@ -467,3 +467,11 @@ export const ATLAS_ROADMAP_EMPTY_STATE_MCP_BASE_PORT = 10860
 // updates case above.
 export const UPDATES_PILL_ACTION_SERVER_BASE_PORT = 10880
 export const UPDATES_PILL_ACTION_MCP_BASE_PORT = 10900
+
+// quick-panel-update.spec.ts (goal 0222 S2): fixes MILL_TEST_UPDATE_*
+// for its whole server lifetime, same reasoning as every other updates
+// case above -- proves the Quick Panel's own quickPanel-derived
+// download row appears live, not just the pill/Settings surfaces
+// updates-live-actions.spec.ts already covers.
+export const UPDATES_QUICK_PANEL_SERVER_BASE_PORT = 10920
+export const UPDATES_QUICK_PANEL_MCP_BASE_PORT = 10940
