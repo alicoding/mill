@@ -57,7 +57,9 @@ td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:now
 .chip.crit{background:var(--chip-crit);color:var(--crit)}
 .chip.plain{background:var(--accent-soft);color:var(--accent)}
 .mono{font-family:var(--mono);font-size:12.5px}
-.note{font-size:13px;color:var(--ink-2);margin:8px 2px 0}
+.note{font-size:12px;color:var(--ink-2);margin:6px 2px 0}
+td.clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:520px}
+.lookfor{font-size:12.5px;color:var(--ink-2);margin:-4px 0 14px}
 .now-target td:first-child{color:var(--ink-2)}
 .arrow{color:var(--accent);font-weight:700}
 pre.mermaid{background:var(--panel);border:1px solid var(--line);border-radius:8px;
@@ -109,7 +111,7 @@ h2.hl + .card.fade, h2.hl + pre.mermaid.fade{outline-color:transparent}
 <!-- DERIVED:stat-tiles:END -->
 
 <section id="delivery" class="on">
-  <h2 id="delivery-building">Building right now <small>— live builders/PRs from the dispatch ledger; touch-sets show why work serializes</small></h2>
+  <h2 id="delivery-building">Building right now <small>— from the dispatch ledger</small></h2>
   <!-- DERIVED:dispatch:START — docs/goals/DISPATCH.md's table + its
        "Queued next" line (goal 0210 S3); absent file renders empty,
        never an error -->
@@ -120,9 +122,18 @@ h2.hl + .card.fade, h2.hl + pre.mermaid.fade{outline-color:transparent}
   </table></div>
   <div class="note">Queued next: #442 retrigger (quiet window after #450 merges, held), then 0222 S1 (registry seam now clear — #448 merged), 0210 S3, 0223.</div>
   <!-- DERIVED:dispatch:END -->
-  <div class="note">An arc marked "in progress" below may have NO live builder — that split is exactly what this block exists to show.</div>
 
-  <h2 id="delivery-now">In flight right now <small>— open ARCS (queue rows checked "~"); a live builder appears above, not here</small></h2>
+  <!-- AUTHORED: the owner-action list, kept verb-first and short. -->
+  <h2 id="delivery-needs">Needs you</h2>
+  <div class="card"><table>
+    <tr><td><span class="chip warn">test</span></td><td>Use Mill for a draw.io workweek — the exit test (ledger: 7/7)</td></tr>
+    <tr><td><span class="chip warn">session</span></td><td>Notes + element-panel UX sitting (one session covers both)</td></tr>
+    <tr><td><span class="chip warn">review</span></td><td>0169 tray-palette contract</td></tr>
+    <tr><td><span class="chip warn">decide</span></td><td>0201 remote clipboard · 0202 guidance shape · keyboard approve/deny</td></tr>
+    <tr><td><span class="chip warn">verify</span></td><td>Installed build: Touch ID sheet · Finding C re-probe</td></tr>
+  </table></div>
+
+  <h2 id="delivery-now">Open arcs <small>— multi-slice goals in progress; live builders appear above</small></h2>
   <!-- DERIVED:in-flight:START -->
   <div class="card"><table>
     <tr><th>work</th><th>state</th><th>what lands</th></tr>
@@ -139,22 +150,14 @@ h2.hl + .card.fade, h2.hl + pre.mermaid.fade{outline-color:transparent}
   </table></div>
   <!-- DERIVED:shipped-ledger:END -->
 
-  <!-- AUTHORED — hand-maintained until a later slice: no BACKLOG convention
-       marks an item "blocked on the owner" mechanically yet, so this list
-       stays editorial rather than guessed from prose. -->
-  <h2 id="delivery-blocked">Blocked on you</h2>
-  <div class="card"><table>
-    <tr><td>0201</td><td>copy-selection-as-image: which clipboard on remote? (3 options in goal)</td></tr>
-    <tr><td>0202</td><td>first-run guidance: overlay vs richer empty state</td></tr>
-    <tr><td>manual</td><td>installed-build: Touch ID sheet + Finding C re-probe · sticky click-to-edit</td></tr>
-  </table></div>
+
 </section>
 
 <!-- AUTHORED — hand-maintained until a later slice: lane×horizon placement
      and cost/debt judgment calls aren't in dashboard-data.json's schema
      (goal 0210 S1 derives goals/queue/census/repo only). -->
 <section id="roadmap">
-  <h2 id="roadmap-horizons">Roadmap <small>— workstreams × horizons; a column is a time bucket, left→right is order. Estimates are measured builder cycles, not dates.</small></h2>
+  <h2 id="roadmap-horizons">Roadmap <small>— lanes × horizons · estimates are builder cycles</small></h2>
   <div class="scrollwrap"><div class="lane-grid">
     <div class="lg-h"></div><div class="lg-h">Now · in flight</div><div class="lg-h">Next · this week's queue</div><div class="lg-h">Then</div><div class="lg-h">v1 gates</div>
 
@@ -192,7 +195,7 @@ h2.hl + .card.fade, h2.hl + pre.mermaid.fade{outline-color:transparent}
     <div></div>
     <div><span class="it hot"><b>0205 S5 release trigger</b><small>BLOCKER · 1 cyc</small></span>
          <span class="it"><b>0177 notarization</b><small>trigger: first outside download</small></span></div></div>
-  <div class="note">Shipped work leaves the board — the Delivery tab keeps the ledger. An item moves left only by a real dispatch, never by optimism.</div>
+  <div class="note">Shipped work leaves the board · moves left only by real dispatch.</div>
 
   <h2 id="roadmap-cost">When you ask for something — what it costs &amp; who maintains it</h2>
   <div class="card"><table>
@@ -236,7 +239,7 @@ flowchart TB
   WORK -->|"capture: paste/drop/watch"| MILL
   MILL -->|"apply: clipboard/notify/HTTP/MCP"| EXT
   </pre>
-  <div class="note">Boundary rule: zero outbound calls that aren't user-configured. No phone-home, no AI calls from Mill itself.</div>
+  <div class="note">Zero outbound calls unless user-configured.</div>
 
   <h2 id="arch-components">2 · Component interaction <small>— C4 container level: the product's components and every edge's CONTRACT. One process, but each box is a bounded context that could only talk through its stated contract.</small></h2>
   <pre class="mermaid">
@@ -365,7 +368,7 @@ flowchart LR
     <tr><td><b>UI</b></td><td>Primer React + CSS modules (its own current guidance)</td><td>Atlas-specific components ONLY where Primer has no shape (1 recorded: AtlasSlotRows)</td><td>audited clean in 0190 — one justified hand-assembly in the whole tree</td></tr>
     <tr><td><b>Remote / mobile</b></td><td>your Tailscale · ntfy (Android push)</td><td>pairing + session identity</td><td>session identity across tab/agent/process is named core domain</td></tr>
   </table></div>
-  <div class="note">Pattern to audit me with: the "built" column should only ever contain product opinion or a justified shim with a recorded search. Anything else appearing there is NIH — call it.</div>
+  <div class="note">Audit rule: "built" = product opinion or justified shim, else NIH.</div>
 
   <h2 id="cap-infra">Infrastructure roll-up <small>— same data, capability-level</small></h2>
   <div class="card"><table>
@@ -381,7 +384,7 @@ flowchart LR
     <tr><td>SMAppService status read · Touch ID ACL item · per-machine signing</td><td><span class="chip warn">justified shim</span></td><td>each has a recorded "no library exposes this" search</td><td>us, by necessity — 3 files total</td></tr>
     <tr><td colspan="4"><b>Unjustified hand-rolls: 0.</b> Last one found (updater dwell policy) was deleted tonight in favor of the adopted package's own semantics. The one INNER-PLATFORM near-miss on record: templating chat wire-shapes through the HTTP entity — rejected at design time, dedicated adapters built instead (SPEC §3.3).</td></tr>
   </table></div>
-  <div class="note">Read this table when asking "do I have to maintain that?" — adopt rows: no. Build rows: yes, deliberately. Shim rows: yes, smallest possible, each with an exit condition.</div>
+  <div class="note">Maintain? adopt: no · build: yes, deliberately · shim: smallest, with exit.</div>
 </section>
 
 <!-- AUTHORED — hand-maintained until 0217's derivation slice teaches
