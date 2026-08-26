@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/server'
-import { boardPoint, createCardViaTray, deleteCardViaMenu, dragBetween, hittablePointOn, noteCard, nonSeededBoardObjects } from './fixtures/atlasBoard'
+import { boardPoint, createCardViaTray, deleteCardViaMenu, dragBetween, hittablePointOn, noteCard, nonSeededBoardObjects, zoomAllTheWayOut } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
+import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 
 // The actor-scoped undo journal's own board-level proof (goal 0219 S2,
 // ADR-0044): ⌘Z/⇧⌘Z generalize goal 0093's delete-only listener to
@@ -46,17 +47,31 @@ test('dragging a card: ⌘Z returns it to where it started, as ONE step for the 
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
 
-  // Placed in the board's own empty bottom-right quadrant (clear of
-  // the seeded example space and the tray/minimap) so the drag below
-  // has nothing to file into -- a plain reposition, not a reparent.
-  await createCardViaTray(page, 'Drag Me Back', { at: { x: 900, y: 550 } })
+  // Zoomed out (goal 0223's own pattern, atlasBoard.ts's own
+  // zoomAllTheWayOut) so seeded content shrinks toward the center and
+  // leaves real room to search -- a region clear of every currently-
+  // rendered node AND the creation tray (atlasEmptyRegion.ts) rather
+  // than a fixed pixel, since a fixed point that used to clear the
+  // bottom toolbar can end up underneath it the moment the landing
+  // board's own seeded content extent shifts. The card is placed
+  // 140/100 in from the region's own top-left, not at it, so the drag
+  // below (-120,-80) has nothing to file into AND stays clear of the
+  // board's own edge -- placing right at a found region's corner left
+  // no margin for the drag itself, and a release point near the board
+  // edge triggers React Flow's own auto-pan, which the undo's exact-
+  // position assertion below has no way to account for.
+  await zoomAllTheWayOut(page)
+  const creationTray = page.getByTestId('atlas-creation-tray')
+  const region = await findEmptyBoardRect(page, board, 320, 240, [creationTray])
+  const spot = { x: region.x + 140, y: region.y + 100 }
+  await createCardViaTray(page, 'Drag Me Back', { at: spot })
   const card = noteCard(page, 'Drag Me Back')
   await expect(card).toBeVisible()
   const origin = await card.boundingBox()
   if (!origin) throw new Error('card has no bounding box before drag')
 
   // One continuous drag (several intermediate points, like a real
-  // pointer path), staying inside the same empty quadrant -- onNodeDragStop
+  // pointer path), staying inside the same empty region -- onNodeDragStop
   // fires SetPosition exactly ONCE at release, so this is naturally one mark.
   await dragBetween(
     page,
