@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { dragBetween } from './fixtures/atlasBoard'
+import { dragBetween, nonSeededBoardObjectWrapper } from './fixtures/atlasBoard'
 import { deleteViaContextMenu, shapeDrawPoints, shapeObjects } from './fixtures/atlasShapeTool'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
@@ -58,7 +58,7 @@ test('dragging the shape tool lands a rectangle, never a card, disarms, and leav
   // handles on the thing just made instead of on nothing.
   await expect(shapeTool).toHaveAttribute('data-armed', 'false')
   await expect(picker).not.toBeVisible()
-  const wrapper = page.locator('.react-flow__node').filter({ has: shapes.first() })
+  const wrapper = nonSeededBoardObjectWrapper(page, 'shape')
   await expect(wrapper).toHaveClass(/selected/)
 
   await deleteViaContextMenu(page, shapes.first())
@@ -83,7 +83,7 @@ test('the second click after a draw selects rather than creates a second shape',
 
   await shapes.first().click()
   await expect(shapes).toHaveCount(1)
-  const wrapper = page.locator('.react-flow__node').filter({ has: shapes.first() })
+  const wrapper = nonSeededBoardObjectWrapper(page, 'shape')
   await expect(wrapper).toHaveClass(/selected/)
 
   await deleteViaContextMenu(page, shapes.first())
@@ -255,7 +255,7 @@ test('a filled shape selects on a click inside its interior, not just on the str
   const box = await shapes.first().boundingBox()
   if (!box) throw new Error('no shape box')
   await shapes.first().click({ position: { x: box.width / 2, y: box.height / 2 } })
-  const wrapper = page.locator('.react-flow__node').filter({ has: shapes.first() })
+  const wrapper = nonSeededBoardObjectWrapper(page, 'shape')
   await expect(wrapper).toHaveClass(/selected/)
 
   await deleteViaContextMenu(page, shapes.first())
@@ -282,7 +282,7 @@ test('an unfilled (fill=none) shape selects on the exact same interior click', a
   const box = await shapes.first().boundingBox()
   if (!box) throw new Error('no shape box')
   await shapes.first().click({ position: { x: box.width / 2, y: box.height / 2 } })
-  const wrapper = page.locator('.react-flow__node').filter({ has: shapes.first() })
+  const wrapper = nonSeededBoardObjectWrapper(page, 'shape')
   await expect(wrapper).toHaveClass(/selected/)
 
   await deleteViaContextMenu(page, shapes.first())

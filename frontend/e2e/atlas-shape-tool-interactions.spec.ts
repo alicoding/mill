@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { dragBetween, dragResizeHandle, nonSeededBoardObjects } from './fixtures/atlasBoard'
+import { dragBetween, dragResizeHandle, nonSeededBoardObjects, nonSeededBoardObjectWrapper } from './fixtures/atlasBoard'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { deleteViaContextMenu, shapeDrawPoints, shapeObjects } from './fixtures/atlasShapeTool'
 import { contextMenu } from './fixtures/contextMenu'
@@ -37,7 +37,7 @@ test('draw, selected, drag by body, resize by handle, survives reload -- no Esca
   await dragBetween(page, draw.from, draw.to)
   const shapes = shapeObjects(page)
   await expect(shapes).toHaveCount(1)
-  const wrapper = page.locator('.react-flow__node').filter({ has: shapes.first() })
+  const wrapper = nonSeededBoardObjectWrapper(page, 'shape')
   await expect(wrapper).toHaveClass(/selected/)
 
   // Defect 1: the paint (the SVG atlasShapeContent renders) never
@@ -143,14 +143,14 @@ test('ink under a shape paints above it, even while the shape stays selected', a
   await dragBetween(page, relPoint(origin.x + 20, origin.y + 90), relPoint(origin.x + 220, origin.y + 90))
   const ink = nonSeededBoardObjects(page, 'ink')
   await expect(ink).toHaveCount(1)
-  const inkWrapper = page.locator('.react-flow__node').filter({ has: ink })
+  const inkWrapper = nonSeededBoardObjectWrapper(page, 'ink')
   await page.keyboard.press('Escape')
 
   await page.getByTestId('atlas-tray-shape').click()
   await dragBetween(page, relPoint(origin.x + 40, origin.y + 20), relPoint(origin.x + 200, origin.y + 160))
   const shapes = shapeObjects(page)
   await expect(shapes).toHaveCount(1)
-  const shapeWrapper = page.locator('.react-flow__node').filter({ has: shapes.first() })
+  const shapeWrapper = nonSeededBoardObjectWrapper(page, 'shape')
   // Left selected by goal 0199's own one-shot contract -- exactly the
   // state elevateNodesOnSelect used to break ink's own z tier against.
   await expect(shapeWrapper).toHaveClass(/selected/)
@@ -182,7 +182,7 @@ test('the armed cursor beats a selected shape\'s own resize-handle cursor, and t
   await dragBetween(page, draw.from, draw.to)
   const shapes = shapeObjects(page)
   await expect(shapes).toHaveCount(1)
-  const wrapper = page.locator('.react-flow__node').filter({ has: shapes.first() })
+  const wrapper = nonSeededBoardObjectWrapper(page, 'shape')
   await expect(wrapper).toHaveClass(/selected/)
 
   const handle = page.locator('.react-flow__resize-control.handle.top.right')
@@ -223,7 +223,7 @@ test('starting a second shape draw on top of the first one draws without draggin
   await dragBetween(page, draw.from, draw.to)
   const shapes = shapeObjects(page)
   await expect(shapes).toHaveCount(1)
-  const shapeAHandle = await page.locator('.react-flow__node').filter({ has: shapes.first() }).elementHandle()
+  const shapeAHandle = await nonSeededBoardObjectWrapper(page, 'shape').elementHandle()
   if (!shapeAHandle) throw new Error('shape A node has no element handle')
   const shapeABox = await shapeAHandle.boundingBox()
   if (!shapeABox) throw new Error('shape A node has no bounding box')
@@ -238,7 +238,10 @@ test('starting a second shape draw on top of the first one draws without draggin
   // flaky) -- B's far corner and A's near corner stay clear of each
   // other by construction of the drag direction.
   const shapeAID = await shapeAHandle.evaluate((el) => el.getAttribute('data-id'))
-  const shapeB = page.locator(`.react-flow__node[data-id]:not([data-id="${shapeAID}"])`).filter({ has: shapes })
+  // The has: needle stays descendant-only (nonSeededBoardObjectWrapper's
+  // own comment explains why reusing `shapes`' full ancestor-prefixed
+  // selector here would never match).
+  const shapeB = page.locator(`.react-flow__node[data-id]:not([data-id="${shapeAID}"])`).filter({ has: page.locator('[data-testid="atlas-board-object"][data-object-kind="shape"]') })
   const shapeBBox = await shapeB.boundingBox()
   if (!shapeBBox) throw new Error('shape B has no box')
   await deleteViaContextMenu(page, shapeB, { x: shapeBBox.width - 5, y: shapeBBox.height - 5 })
