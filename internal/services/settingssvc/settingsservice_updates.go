@@ -261,13 +261,15 @@ func (s *SettingsService) checkForUpdates(ctx context.Context) (UpdateCheckResul
 		s.recordAvailableUpdate(fake)
 		s.recordCheckOutcome(UpdateCheckOutcomeFound, "")
 		s.triggerAutoDownloadPolicy(fake)
+		// Carries the marker + below-the-fold text so e2e proves the trim
+		// through the real render path.
+		fakeNotes := trimReleaseNotesForApp("## What's new\n\n- Fake note one\n- Fake note two\n\n" + inAppNotesEndMarker + "\n## Manual install\nxattr slop that must never render in-app")
+		s.recordUpdateNotes(fake, fakeNotes)
 		return UpdateCheckResult{
 			UpdateAvailable: true,
 			Version:         fake,
 			CurrentVersion:  s.AppVersion(),
-			// Carries the marker + below-the-fold text so e2e proves the
-			// trim through the real render path.
-			Notes: trimReleaseNotesForApp("## What's new\n\n- Fake note one\n- Fake note two\n\n" + inAppNotesEndMarker + "\n## Manual install\nxattr slop that must never render in-app"),
+			Notes:           fakeNotes,
 		}, nil
 	}
 	s.mu.Lock()
@@ -291,7 +293,9 @@ func (s *SettingsService) checkForUpdates(ctx context.Context) (UpdateCheckResul
 	s.recordAvailableUpdate(rel.Version)
 	s.recordCheckOutcome(UpdateCheckOutcomeFound, "")
 	s.triggerAutoDownloadPolicy(rel.Version)
-	return UpdateCheckResult{UpdateAvailable: true, Version: rel.Version, CurrentVersion: s.AppVersion(), Notes: trimReleaseNotesForApp(rel.Notes)}, nil
+	notes := trimReleaseNotesForApp(rel.Notes)
+	s.recordUpdateNotes(rel.Version, notes)
+	return UpdateCheckResult{UpdateAvailable: true, Version: rel.Version, CurrentVersion: s.AppVersion(), Notes: notes}, nil
 }
 
 // DownloadAndInstallUpdate downloads the newest release asset,

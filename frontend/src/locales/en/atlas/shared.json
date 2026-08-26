@@ -116,6 +116,7 @@
     "shapeAriaLabel": "Shape",
     "tableAriaLabel": "Table",
     "diagramAriaLabel": "Diagram",
+    "sheetAriaLabel": "Sheet",
     "loadFailed": "Couldn't load this file.",
     "dragHandleTitle": "Drag to move",
     "rotateHandleTitle": "Drag to rotate"
@@ -309,6 +310,7 @@
     "addCardTo": "Add card to {{title}}",
     "addNoteInside": "Add note here",
     "promoteToCard": "Promote to card…",
+    "openInDefaultApp": "Open in default app",
     "deleteNote": "Delete note",
     "openCard": "Open {{title}}",
     "groupIntoArea": "Group into new area",

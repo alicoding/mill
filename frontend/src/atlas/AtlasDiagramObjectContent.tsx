@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text } from '@primer/react'
 import { MirrorKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
@@ -7,7 +7,6 @@ import { AtlasService } from '../shared/bindings'
 import { extensionOf } from './unitRegistry'
 import { DrawioDiagramHost } from './AtlasUnitDrawioPage'
 import { MermaidDiagramHost } from './AtlasUnitMermaidPage'
-import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
 import { AtlasMirrorMissingState } from './AtlasMirrorMissingState'
 import runbookStyles from '../shared/ListCard.module.css'
 
@@ -35,9 +34,16 @@ function formatMirrorSize(bytes: number): string {
 // with the card-page unit views) keeps its own independent min/max-
 // height -- this wrapper carries the persisted box so a future host
 // change can honor it, but does not itself override that shared CSS.
+//
 // Refetches live when the mirrored file changes on disk (goal 0194's
-// live round-trip slice).
-export function AtlasDiagramObjectContent({ object }: { object: BoardObject }) {
+// live round-trip slice) via mirrorVersion (goal 0232 S1): the actual
+// fsnotify subscription now lives once in AtlasBoardObjectNode.tsx,
+// shared by every fileBacked Kind, rather than this component
+// subscribing itself -- a version bump refetches WITHOUT resetting
+// content to null first (the identity effect below owns that reset),
+// so an external edit swaps the rendered diagram in place with no
+// loading flash.
+export function AtlasDiagramObjectContent({ object, mirrorVersion }: { object: BoardObject; mirrorVersion: number }) {
   const { t } = useTranslation('atlas')
   const [content, setContent] = useState<MirrorContent | null>(null)
   const [error, setError] = useState('')
@@ -55,7 +61,14 @@ export function AtlasDiagramObjectContent({ object }: { object: BoardObject }) {
     fetchContent()
   }, [object.ID, mirrorPath, fetchContent])
 
-  useAtlasMirrorChanged(object.ID, fetchContent)
+  // mirrorVersion starts at 0 for a freshly mounted node and only
+  // increments on a REAL fsnotify-observed change (AtlasBoardObjectNode.tsx) --
+  // skipping the initial 0 avoids a redundant second fetch alongside
+  // the identity effect above's own mount-time fetch.
+  const mountedVersion = useRef(mirrorVersion)
+  useEffect(() => {
+    if (mirrorVersion !== mountedVersion.current) fetchContent()
+  }, [mirrorVersion, fetchContent])
 
   if (error) {
     return <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-object-diagram-error">{error}</Text>

@@ -213,6 +213,13 @@
     "updateReady": "Update ready — Relaunch",
     "updateAvailable": "Update available — download",
     "updateDownloading": "Downloading update…",
-    "dismissAriaLabel": "Dismiss this update notice"
+    "dismissAriaLabel": "Dismiss this update notice",
+    "whatsNew": "What's new"
+  },
+  "whatsNew": {
+    "title": "What's new",
+    "versionHeading": "Version {{version}}",
+    "empty": "Release notes appear here after an update check finds a new version.",
+    "checkButton": "Check for updates"
   }
 }

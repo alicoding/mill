@@ -46,6 +46,14 @@ const keychainFileName = "Mill-Signing.keychain-db"
 // must never hang Mill's own update flow.
 const codesignTimeout = 30 * time.Second
 
+// trustTimeout bounds the ONE call in this package that can show a
+// real macOS authentication dialog and wait on a human -- SecurityAgent's
+// trust-settings prompt blocks indefinitely until answered
+// (docs/goals/archive/0158-stable-signing-identity.md reproduced this
+// directly), so add-trusted-cert needs materially longer than
+// codesignTimeout's bound on every other, non-interactive call here.
+const trustTimeout = 5 * time.Minute
+
 func defaultKeychainPath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -266,7 +274,15 @@ func ensureInSearchList(path string) error {
 // codesignTimeout -- every call site here operates on this package's
 // own keychain file and constants, never external input.
 func runSecurity(args ...string) error {
-	ctx, cancel := timeoutContext()
+	return runSecurityBounded(codesignTimeout, args...)
+}
+
+// runSecurityBounded is runSecurity's timeout-parameterized core --
+// every call site here is fast and non-interactive except
+// trustIdentityWith's live add-trusted-cert step, which needs
+// trustTimeout's materially longer bound instead of codesignTimeout's.
+func runSecurityBounded(timeout time.Duration, args ...string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	// #nosec G204 -- see the function comment above.
 	cmd := exec.CommandContext(ctx, "security", args...)
@@ -296,6 +312,81 @@ func SignBundle(path string) error {
 		return err
 	}
 	return signBundleWith(path, keychainPath, id.Name)
+}
+
+// TrustIdentity grants Mill's own signing certificate "Always Trust"
+// for code signing, replacing the Keychain Access hunt with one call
+// at this package's existing shell-out seam
+// (docs/goals/0220-update-experience-one-pattern.md S3). Creates the
+// identity first if it doesn't exist yet (EnsureIdentity is
+// idempotent), then registers trust in the CURRENT USER's Trust
+// Settings domain -- no `-d`, since a per-user dev-signing identity
+// has no business requesting admin rights, and codesign itself
+// evaluates trust against this same per-user domain.
+//
+// macOS answers a live per-user-domain write with its own
+// authentication dialog, but ONLY when the calling process is
+// attached to a real Window Server session -- a headless/non-TTY
+// caller has been observed to return success without the trust
+// setting actually being recorded. That's a real macOS limitation,
+// not a bug this package can fix, and it's why the trust write has no
+// CI-run integration test (see codesigning_desktop_test.go) and no
+// derived "is it trusted yet" state anywhere upstream: this call is
+// idempotent and safe to re-run rather than gated on a detection that
+// cannot be made reliable.
+func TrustIdentity() error {
+	id, err := EnsureIdentity()
+	if err != nil {
+		return err
+	}
+	keychainPath, err := defaultKeychainPath()
+	if err != nil {
+		return err
+	}
+	return trustIdentityWith(id.Name, keychainPath, "")
+}
+
+// trustIdentityWith is TrustIdentity's parameterized core.
+// settingsFileOut, when non-empty, redirects `add-trusted-cert`'s
+// write to that file via `-o` instead of the live per-user Trust
+// Settings database -- `security`'s own supported mechanism for
+// producing a trust-settings file without touching (or prompting for)
+// the real one, which is what lets this be exercised by a real,
+// non-destructive test.
+func trustIdentityWith(identityName, keychainPath, settingsFileOut string) error {
+	ctx, cancel := timeoutContext()
+	defer cancel()
+	// #nosec G204 -- identityName/keychainPath come from EnsureIdentity
+	// (this package's own generated identity), never external input.
+	out, err := exec.CommandContext(ctx, "security", "find-certificate", "-c", identityName, "-p", keychainPath).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("export signing certificate for trust: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	dir, err := os.MkdirTemp("", "mill-codesigning-trust-*")
+	if err != nil {
+		return fmt.Errorf("create temp dir for trust export: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(dir) }()
+	certFile := filepath.Join(dir, "cert.pem")
+	if err := os.WriteFile(certFile, out, 0o600); err != nil {
+		return fmt.Errorf("write exported certificate: %w", err)
+	}
+	// -p codeSign scopes the trust grant to code-signing evaluation
+	// only, never blanket SSL/TLS trust; -r trustRoot matches this
+	// self-signed identity's own DR-anchor role (Apple TN2206, see
+	// generateSelfSignedCert's comment above).
+	args := []string{"add-trusted-cert", "-p", "codeSign", "-r", "trustRoot"}
+	if settingsFileOut != "" {
+		args = append(args, "-o", settingsFileOut)
+	}
+	args = append(args, certFile)
+	// trustTimeout, not runSecurity's codesignTimeout: this is the one
+	// call in the package that can legitimately wait on a human
+	// answering a real authentication dialog.
+	if err := runSecurityBounded(trustTimeout, args...); err != nil {
+		return fmt.Errorf("trust signing certificate: %w", err)
+	}
+	return nil
 }
 
 // signBundleWith is SignBundle's keychain/identity-parameterized core,

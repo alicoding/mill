@@ -1,0 +1,44 @@
+package settingssvc
+
+import (
+	"errors"
+	"testing"
+)
+
+// swapTrustIdentityFn substitutes trustIdentityFn for the duration of
+// a test and restores it afterward -- trustIdentityFn defaults to the
+// real codesigning.TrustIdentity, which touches a real macOS keychain
+// and its authentication dialog.
+func swapTrustIdentityFn(t *testing.T, fake func() error) {
+	t.Helper()
+	original := trustIdentityFn
+	trustIdentityFn = fake
+	t.Cleanup(func() { trustIdentityFn = original })
+}
+
+func TestTrustSigningIdentity_CallsTrustIdentityFn(t *testing.T) {
+	set := newTestSettingsService(t)
+	var called bool
+	swapTrustIdentityFn(t, func() error {
+		called = true
+		return nil
+	})
+
+	if err := set.TrustSigningIdentity(); err != nil {
+		t.Fatalf("TrustSigningIdentity: %v", err)
+	}
+	if !called {
+		t.Error("trustIdentityFn was not called")
+	}
+}
+
+func TestTrustSigningIdentity_PropagatesError(t *testing.T) {
+	set := newTestSettingsService(t)
+	wantErr := errors.New("no window server session to answer the prompt")
+	swapTrustIdentityFn(t, func() error { return wantErr })
+
+	err := set.TrustSigningIdentity()
+	if !errors.Is(err, wantErr) {
+		t.Errorf("TrustSigningIdentity error = %v, want %v", err, wantErr)
+	}
+}

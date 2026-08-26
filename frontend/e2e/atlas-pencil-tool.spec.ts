@@ -355,3 +355,76 @@ test('committing a second stroke causes no DOM mutation on the first stroke\'s o
   }
   await expect(ink).toHaveCount(0)
 })
+
+// Goal 0230: reproduced live via per-frame MutationObserver + polled-
+// cursor sampling through a full stroke. Two properties traced clean
+// against the current gesture engine and found already correct --
+// pinned here so a future overlay-slot change can't silently reopen
+// either:
+test('the armed pencil cursor stays crosshair for the whole drag, not just at rest', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+  await waitForViewportStable(board)
+
+  await page.getByTestId('atlas-tray-pencil').click()
+  const ink = page.locator('[data-testid="atlas-board-object"][data-object-kind="ink"]')
+  const pane = page.locator('.react-flow__pane')
+
+  // Sampled after EVERY intermediate move, button still down -- the
+  // whole active-drag window, not just the armed-but-idle state the
+  // crosshair test above already covers.
+  await dragBetween(
+    page,
+    await boardPoint(board, 0.05, 0.1),
+    await boardPoint(board, 0.2, 0.25),
+    undefined,
+    async () => { await expect(pane).toHaveCSS('cursor', 'crosshair') },
+  )
+
+  await expect(ink).toHaveCount(1)
+  await ink.first().click({ button: 'right' })
+  const menu = contextMenu(page)
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+  await expect(ink).toHaveCount(0)
+})
+
+test('the pencil\'s live preview mounts once per stroke, never remounting mid-drag', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+  await waitForViewportStable(board)
+
+  await page.getByTestId('atlas-tray-pencil').click()
+  const ink = page.locator('[data-testid="atlas-board-object"][data-object-kind="ink"]')
+
+  // The preview overlay's own element identity, captured as soon as
+  // the first point lands -- a remount mid-stroke (rather than a prop
+  // update on the same node) would swap this handle out from under a
+  // held reference, which document.contains would then read as false.
+  let previewHandle: import('@playwright/test').ElementHandle | null = null
+  await dragBetween(
+    page,
+    await boardPoint(board, 0.05, 0.1),
+    await boardPoint(board, 0.2, 0.25),
+    undefined,
+    async (step) => {
+      if (step === 1) {
+        previewHandle = await page.locator('[data-testid="atlas-pencil-preview"]').elementHandle()
+        if (!previewHandle) throw new Error('pencil preview did not mount on the first point')
+        return
+      }
+      expect(await previewHandle?.evaluate((el) => document.contains(el)), `preview element still mounted at step ${step}`).toBe(true)
+    },
+  )
+
+  await expect(ink).toHaveCount(1)
+  await ink.first().click({ button: 'right' })
+  const menu = contextMenu(page)
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+  await expect(ink).toHaveCount(0)
+})

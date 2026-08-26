@@ -98,7 +98,7 @@ export function useAtlasToolGesture({ tool, readOnly, isFree, ctx, wrapperRef }:
   const fadeMsRef = useRef<number | undefined>(undefined)
   // Fresh per-gesture scratch (eraser's own live hit accumulation) --
   // allocated at pointerdown, read at onEnd, discarded after.
-  const scratchRef = useRef<{ cardIDs: Set<string>; noteIDs: Set<string> } | null>(null)
+  const scratchRef = useRef<{ cardIDs: Set<string>; noteIDs: Set<string>; objectIDs: Set<string> } | null>(null)
   // The undo journal mark this gesture opened (goal 0219 S2) -- the
   // promise BeginUndoMark returned, awaited before EndUndoMark closes
   // it in onPointerUpCore.
@@ -139,7 +139,7 @@ export function useAtlasToolGesture({ tool, readOnly, isFree, ctx, wrapperRef }:
   const buildCtx = useCallback((): AtlasGestureCtx => {
     const sticky = toolRef.current?.sticky ?? false
     const { disarm, disarmUnlessLocked } = gestureDisarmFns(sticky, ctxRef.current.disarm, ctxRef.current.disarmUnlessLocked)
-    return { ...ctxRef.current, disarm, disarmUnlessLocked, hitAccumulator: scratchRef.current ?? { cardIDs: new Set(), noteIDs: new Set() } }
+    return { ...ctxRef.current, disarm, disarmUnlessLocked, hitAccumulator: scratchRef.current ?? { cardIDs: new Set(), noteIDs: new Set(), objectIDs: new Set() } }
   }, [])
 
   // The ephemeral prune loop (an `ephemeral-drag` tool's own fadeMs,
@@ -177,7 +177,7 @@ export function useAtlasToolGesture({ tool, readOnly, isFree, ctx, wrapperRef }:
     // closed in onPointerUpCore's end boundary below.
     markOpenRef.current = AtlasService.BeginUndoMark()
     drawingRef.current = true
-    scratchRef.current = { cardIDs: new Set(), noteIDs: new Set() }
+    scratchRef.current = { cardIDs: new Set(), noteIDs: new Set(), objectIDs: new Set() }
     fadeMsRef.current = g?.fadeMs
     setPreview(() => g?.preview ?? null)
     const t = performance.now()

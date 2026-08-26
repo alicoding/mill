@@ -140,6 +140,15 @@ type SettingsService struct {
 	// newer update couldn't download" rather than a fresh install
 	// error.
 	lastInstallError string
+	// lastNotesVersion/lastNotesRaw record the release notes CheckForUpdates
+	// most recently found (goal 0220 S2) -- the "What's new" surface's
+	// only data source, read (and rendered) by UpdateNoticeState. Set on
+	// every found result regardless of pill dismissal, since dismissing
+	// the notice pill must never also hide the notes from Settings.
+	// Retained across a later up-to-date/failed check so the last known
+	// notes stay visible instead of vanishing.
+	lastNotesVersion string
+	lastNotesRaw     string
 	isolatedData     bool
 	mcpService       *mcpsvc.MillMCPService
 	// notificationSvc is the notification spine's Publish entry point

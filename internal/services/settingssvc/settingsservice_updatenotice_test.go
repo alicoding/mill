@@ -6,6 +6,7 @@ package settingssvc
 // settingsservice_updates.go production split.
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -206,5 +207,61 @@ func TestCheckForUpdates_SuccessClearsAPriorFailedCheckError(t *testing.T) {
 	}
 	if n.LastCheckError != "" {
 		t.Errorf("LastCheckError = %q, want cleared after a successful check", n.LastCheckError)
+	}
+}
+
+// The "What's new" surface's whole data source (goal 0220 S2): a found
+// check renders its notes through the same markdown adapter docssvc
+// uses, real elements, not literal markdown characters.
+func TestUpdateNoticeState_RendersNotesAsMarkdown(t *testing.T) {
+	t.Setenv(testUpdateFakeVersionEnv, "9.9.9")
+	set := newTestSettingsService(t)
+
+	if _, err := set.CheckForUpdates(); err != nil {
+		t.Fatalf("CheckForUpdates() = %v, want nil", err)
+	}
+
+	n := set.UpdateNoticeState()
+	if n.NotesVersion != "9.9.9" {
+		t.Errorf("NotesVersion = %q, want %q", n.NotesVersion, "9.9.9")
+	}
+	if !strings.Contains(n.NotesHTML, "<li>Fake note one</li>") {
+		t.Errorf("NotesHTML = %q, want a rendered <li>, not literal markdown", n.NotesHTML)
+	}
+	if strings.Contains(n.NotesHTML, "xattr slop") {
+		t.Error("NotesHTML carries the trimmed manual-install tail -- the trim must run before rendering")
+	}
+}
+
+// Dismissing the notice pill (goal 0122) must never also hide the
+// notes from "What's new" -- Settings' own fresh check already lets
+// the user re-see a dismissed version's card, and the notes are the
+// same "still reachable in Settings" fact DismissUpdateNotice's own
+// doc comment promises for AvailableVersion.
+func TestUpdateNoticeState_NotesSurviveDismissal(t *testing.T) {
+	t.Setenv(testUpdateFakeVersionEnv, "9.9.9")
+	set := newTestSettingsService(t)
+	if _, err := set.CheckForUpdates(); err != nil {
+		t.Fatalf("CheckForUpdates() = %v, want nil", err)
+	}
+	if err := set.DismissUpdateNotice(); err != nil {
+		t.Fatal(err)
+	}
+
+	n := set.UpdateNoticeState()
+	if n.NotesVersion != "9.9.9" {
+		t.Errorf("NotesVersion = %q after dismissal, want it retained", n.NotesVersion)
+	}
+	if n.NotesHTML == "" {
+		t.Error("NotesHTML empty after dismissal, want the notes retained")
+	}
+}
+
+// No check has ever run: the empty state's own precondition.
+func TestUpdateNoticeState_NoNotesBeforeAnyCheck(t *testing.T) {
+	set := newTestSettingsService(t)
+	n := set.UpdateNoticeState()
+	if n.NotesVersion != "" || n.NotesHTML != "" {
+		t.Errorf("NotesVersion=%q NotesHTML=%q before any check, want both empty", n.NotesVersion, n.NotesHTML)
 	}
 }

@@ -100,6 +100,12 @@ version, release channel, and when Mill last checked. The same
 way: click it to download directly, or click "Restart to update" once
 it's ready — it never just opens Settings.
 
+Click "What's new", next to the status line or on the notice's own
+secondary link, to read the release notes for the version Mill most
+recently found — grouped by version, with headings and lists rendered
+normally instead of raw markdown. Before any check has found a new
+version, it explains that and offers "Check for updates" right there.
+
 Pick a release channel from the dropdown. Turning on "Check for and
 download updates automatically" downloads a newer version in the
 background as soon as it's found; the interval below it controls how
@@ -118,14 +124,12 @@ Mill re-signs itself after each update with a signing identity unique
 to your Mac, so permissions like Accessibility and Input Monitoring
 stay granted across updates instead of asking again every time. **This
 needs a one-time setup step before it takes effect** — open "How
-updates stay trusted" below the update button for the steps: Keychain
-Access, the "Mill-Signing" keychain in the sidebar, the "Mill Local
-Signing" certificate inside it, File → Get Info, expand Trust, and set
-"Code Signing" to Always Trust. Until you do this, updates still
-install normally, but Mill can't re-sign itself yet — permissions
-behave the same as before (you may need to re-grant them after an
-update, same as always) and Mill tells you so after an update if that
-happened.
+updates stay trusted" below the update button and click "Trust Mill's
+signing," then confirm with your Mac password or Touch ID when
+prompted. Until you do this, updates still install normally, but Mill
+can't re-sign itself yet — permissions behave the same as before (you
+may need to re-grant them after an update, same as always) and Mill
+tells you so after an update if that happened.
 
 The first update after this landed still needs one fresh grant per
 permission either way — macOS treats it as a new app once. If a

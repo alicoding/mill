@@ -35,25 +35,41 @@ export type AtlasBoardNodeType = 'atlas-note' | 'atlas-sticky' | 'atlas-group' |
 // its placed instance is Kind 'ink' (its own commit call names it), so
 // content resolution below keys off THIS set, read from object.Kind,
 // never off a tool id.
-export type AtlasBoardObjectKind = 'shape' | 'image' | 'ink' | 'table' | 'diagram'
+export type AtlasBoardObjectKind = 'shape' | 'image' | 'ink' | 'table' | 'diagram' | 'sheet'
 
 // AtlasNounContent -- a Kind's own placed-instance rendering (goal
 // 0215 S3): the content component AtlasBoardObjectNode.tsx mounts, the
 // locale key for its wrapper's aria-label, and whether that wrapper
 // carries img semantics (false only for table -- its own grid holds
 // real interactive descendants, which img's ARIA role forbids).
+// mirrorVersion (goal 0232 S1's file-backed preview/open/watch
+// contract) bumps once for every live disk-change AtlasBoardObjectNode
+// observes on this object's own mirrored file -- required, not
+// optional, so a fileBacked Component can react to it via a plain
+// useEffect dependency without also having to declare its own
+// useAtlasMirrorChanged subscription (AtlasBoardObjectNode is now the
+// ONE place that subscribes, per Kind's own fileBacked declaration
+// below). A Component whose Kind is fileBacked: false receives it too
+// (it just never changes) rather than a second, optional prop shape.
 export interface AtlasNounContent {
-  Component: ComponentType<{ object: BoardObject }>
+  Component: ComponentType<{ object: BoardObject; mirrorVersion: number }>
   ariaLabelKey: string
   role: 'img' | undefined
 }
 
-// AtlasBoardObjectContent -- AtlasNounContent plus the one board-fact
-// (dragBand) AtlasBoardObjectNode.tsx also resolves per Kind; kept as
-// the registry's own stored shape so a lookup returns everything the
-// renderer needs in one call.
+// AtlasBoardObjectContent -- AtlasNounContent plus the board-facts
+// AtlasBoardObjectNode.tsx also resolves per Kind; kept as the
+// registry's own stored shape so a lookup returns everything the
+// renderer needs in one call. fileBacked (goal 0232 S1): does this
+// Kind's own Payload.mirrorPath name a real external file this content
+// previews -- the ONE flag that drives both the live-watch subscription
+// above and the object.openInDefaultApp command's own honest
+// enablement (useAtlasObjectMenu.ts), so a new file-backed family's
+// entire platform-provided contract is this one boolean plus reading
+// mirrorVersion, never its own watch/open wiring.
 interface AtlasBoardObjectContent extends AtlasNounContent {
   dragBand: boolean
+  fileBacked: boolean
 }
 
 const boardObjectContentRegistry = new Map<AtlasBoardObjectKind, AtlasBoardObjectContent>()
@@ -140,6 +156,15 @@ interface AtlasToolShapeBase {
   // constant states its true answer directly, and atlas-diagram-object.spec.ts
   // proves it live since the static check can't reach it.
   dragBand: boolean
+  // fileBacked (goal 0232 S1): does this noun's own placed instance
+  // read Payload.mirrorPath as a real external file (image/ink/diagram/
+  // sheet), or is its render entirely live Payload/List data with no
+  // backing file at all (shape/table, and every noun with boardObjectKind
+  // null)? REQUIRED for every tool, the same "declare honestly even
+  // when meaningless" shape dragBand/resizable/lockable/sticky already
+  // establish -- registerNoun below folds it into the registry's own
+  // AtlasBoardObjectContent the same way it folds dragBand.
+  fileBacked: boolean
   // boardObjectKind (goal 0215 S3): the persisted BoardObject.Kind this
   // tool's own placed instance carries, or null for a tool that never
   // routes through the shared 'atlas-object' renderer (card/note/area
@@ -197,7 +222,13 @@ export interface AtlasGestureCtx {
   parentID: string
   cardBoxes: FrameBox[]
   noteBoxes: { id: string; x: number; y: number; width: number; height: number }[]
-  onDeleteSelection: (cardIDs: string[], noteIDs: string[]) => void
+  // Every board-local object's (ink/shape/image/table/diagram) own
+  // rendered flow-space box -- read off React Flow's own measured node
+  // state (goal 0230), since a BoardObject's persisted Size stays null
+  // until first resize and its rendered footprint is otherwise CSS-
+  // intrinsic (atlasBuildBoardObjectNodes.ts's own header comment).
+  objectBoxes: { id: string; x: number; y: number; width: number; height: number }[]
+  onDeleteSelection: (cardIDs: string[], noteIDs: string[], objectIDs: string[]) => void
   openAreaPopover: (screenPos: { x: number; y: number }, flowPos: { x: number; y: number }, enclosedCardIDs: string[], enclosedNoteIDs: string[]) => void
   onShapeCreated: (objectID: string) => void
   // Real functions for a one-shot tool; no-ops for a sticky one (the
@@ -207,7 +238,7 @@ export interface AtlasGestureCtx {
   // Fresh per-gesture scratch space the engine allocates at pointerdown
   // and discards after onEnd -- eraser's own onPoint is the sole
   // consumer today; no other tool touches it.
-  hitAccumulator: { cardIDs: Set<string>; noteIDs: Set<string> }
+  hitAccumulator: { cardIDs: Set<string>; noteIDs: Set<string>; objectIDs: Set<string> }
 }
 
 // AtlasToolGesture -- a drag-shaped tool's own pure behavior
@@ -269,7 +300,7 @@ export function registerNoun(descriptor: AtlasToolShape): void {
     if (!descriptor.content) {
       throw new Error(`atlas noun "${descriptor.id}" declares boardObjectKind "${descriptor.boardObjectKind}" but content: null`)
     }
-    registerBoardObjectContent(descriptor.boardObjectKind, { ...descriptor.content, dragBand: descriptor.dragBand })
+    registerBoardObjectContent(descriptor.boardObjectKind, { ...descriptor.content, dragBand: descriptor.dragBand, fileBacked: descriptor.fileBacked })
   }
 }
 

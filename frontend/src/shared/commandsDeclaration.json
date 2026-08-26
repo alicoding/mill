@@ -439,6 +439,15 @@
     "enabled": false
   },
   {
+    "id": "object.openInDefaultApp",
+    "label": "Open in default app",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
     "id": "palette.open",
     "label": "Open command palette",
     "binding": "⌘K",
@@ -614,6 +623,20 @@
     "binding": null,
     "surface": null,
     "enabled": true
+  },
+  {
+    "id": "update.trustSigning",
+    "label": "Trust Mill's signing",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "update.whatsNew",
+    "label": "What's new",
+    "binding": null,
+    "surface": null,
+    "enabled": false
   },
   {
     "id": "view.activity",

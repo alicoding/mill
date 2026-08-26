@@ -296,18 +296,32 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   // independent of panOnDrag).
   const anyDragToolArmed = isFree && !readOnly && armedToolDescriptor?.gesture != null
 
+  // Every board object's own rendered flow-space box (goal 0230): read
+  // off the live `nodes` state's own `measured` field (React Flow's own
+  // ResizeObserver-populated size, the same source AtlasLinkEdge.tsx
+  // already reads for floating-edge geometry) rather than
+  // BoardObject.Size, which stays null until first resize.
+  const objectBoxes = useMemo(() => (
+    isFree
+      ? nodes
+        .filter((n) => n.type === 'atlas-object')
+        .map((n) => ({ id: n.id, x: n.position.x, y: n.position.y, width: n.measured?.width ?? 0, height: n.measured?.height ?? 0 }))
+      : []
+  ), [nodes, isFree])
+
   const gestureCtx: AtlasGestureCtx = useMemo(() => ({
     screenToFlowPosition,
     parentID,
     cardBoxes: topLevelBoxes,
     noteBoxes,
+    objectBoxes,
     onDeleteSelection,
     openAreaPopover: creation.openAreaPopover,
     onShapeCreated: selection.selectObject,
     disarm: creation.disarm,
     disarmUnlessLocked: creation.disarmUnlessLocked,
-    hitAccumulator: { cardIDs: new Set(), noteIDs: new Set() },
-  }), [screenToFlowPosition, parentID, topLevelBoxes, noteBoxes, onDeleteSelection, creation.openAreaPopover, creation.disarm, creation.disarmUnlessLocked, selection.selectObject])
+    hitAccumulator: { cardIDs: new Set(), noteIDs: new Set(), objectIDs: new Set() },
+  }), [screenToFlowPosition, parentID, topLevelBoxes, noteBoxes, objectBoxes, onDeleteSelection, creation.openAreaPopover, creation.disarm, creation.disarmUnlessLocked, selection.selectObject])
 
   const gesture = useAtlasToolGesture({ tool: armedToolDescriptor, readOnly, isFree, ctx: gestureCtx, wrapperRef })
 

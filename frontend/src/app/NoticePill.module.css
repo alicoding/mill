@@ -12,8 +12,7 @@
   border: none;
   background: var(--bgColor-accent-emphasis);
   color: var(--fgColor-onEmphasis);
-  padding: 4px 10px;
-  cursor: pointer;
+  padding: 2px 4px 2px 10px;
 }
 
 .ready:hover {
@@ -39,8 +38,27 @@
   background: none;
   color: inherit;
   font-size: inherit;
+  font-weight: 600;
   padding: 2px 0;
   cursor: pointer;
+}
+
+/* The pill's secondary action (goal 0220 S2): visually lighter than
+   .pillAction so the primary download/relaunch action stays the one
+   thing the pill is fighting for attention with. */
+.whatsNewLink {
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: inherit;
+  opacity: 0.75;
+  text-decoration: underline;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.whatsNewLink:hover {
+  opacity: 1;
 }
 
 .dismiss {

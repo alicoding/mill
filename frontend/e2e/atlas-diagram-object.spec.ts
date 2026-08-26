@@ -67,3 +67,53 @@ test('a dropped .drawio file renders as a board object through the vendored view
   await menu.getByText('Delete', { exact: true }).click()
   await expect(card).not.toBeVisible()
 })
+
+// The file-backed preview/open/watch contract's own command (goal
+// 0232 S1): "Open in default app" appears on a fileBacked Kind's own
+// context menu (diagram) and is absent on a non-file-backed one
+// (shape) -- the honest per-object enablement useAtlasObjectMenu.ts
+// decides by reading the registry's own fileBacked flag, proven live
+// rather than by the registry unit test alone.
+test('a diagram board object offers "Open in default app"; a shape object does not', async ({ page }) => {
+  const fs = await import('node:fs')
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mill-e2e-atlas-diagram-open-'))
+  const drawioFile = path.join(dir, 'ZzE2eDiagramOpen.drawio')
+  fs.writeFileSync(drawioFile, DRAWIO_XML)
+
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await createBoardObjectViaRPC(page, 'diagram', { mirrorPath: drawioFile }, { X: 0, Y: 640 }, ATLAS_DEFAULT_SPACE_ID)
+  await createBoardObjectViaRPC(page, 'shape', { shapeType: 'rectangle' }, { X: 300, Y: 640 }, ATLAS_DEFAULT_SPACE_ID)
+  await page.reload()
+  await page.getByRole('link', { name: 'Atlas' }).click()
+
+  const diagramObject = diagramObjects(page)
+  await expect(diagramObject).toBeVisible()
+  await diagramObject.click({ button: 'right' })
+  const menu = page.getByTestId('context-menu')
+  await expect(menu).toBeVisible()
+  const openInDefaultApp = menu.getByText('Open in default app', { exact: true })
+  await expect(openInDefaultApp).toBeVisible()
+  // Headless/server mode has no live desktop app to launch -- the RPC
+  // still resolves (no error toast), proving the menu item is wired to
+  // the real command rather than a dead click.
+  await openInDefaultApp.click()
+  await expect(menu).not.toBeVisible()
+
+  const shapeObject = page.locator('[data-testid="atlas-board-object"][data-object-kind="shape"]')
+  await expect(shapeObject).toBeVisible()
+  await shapeObject.click({ button: 'right' })
+  await expect(menu).toBeVisible()
+  await expect(menu.getByText('Open in default app', { exact: true })).toHaveCount(0)
+
+  // Cleanup.
+  await menu.getByText('Delete', { exact: true }).click()
+  await diagramObject.click({ button: 'right' })
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+  await expect(diagramObjects(page)).toHaveCount(0)
+})

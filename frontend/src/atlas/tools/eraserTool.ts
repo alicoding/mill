@@ -43,6 +43,9 @@ export const eraserTool = {
   boardNodeType: null,
   // No node type renders it at all -- always false, not N/A.
   dragBand: false,
+  // No boardObjectKind means no content registration reads this at
+  // all -- always false, not N/A.
+  fileBacked: false,
   // Persists nothing of its own -- always null, not N/A.
   boardObjectKind: null,
   content: null,
@@ -65,6 +68,10 @@ export const eraserTool = {
       const flow = ctx.screenToFlowPosition(pt)
       for (const id of pointHitIDs(flow, ctx.cardBoxes.filter((b) => !b.isFrame))) ctx.hitAccumulator.cardIDs.add(id)
       for (const id of pointHitIDs(flow, ctx.noteBoxes)) ctx.hitAccumulator.noteIDs.add(id)
+      // Board objects (ink/shape/image/table/diagram, goal 0230): the
+      // same top-level leaf hit-test cards/notes already get -- an
+      // erasable kind never gets a bespoke pass of its own.
+      for (const id of pointHitIDs(flow, ctx.objectBoxes)) ctx.hitAccumulator.objectIDs.add(id)
     },
     // Hands the WHOLE accumulated hit set to onDeleteSelection in ONE
     // call (never incrementally during the drag) -- the same door the
@@ -75,8 +82,9 @@ export const eraserTool = {
     onEnd: (_points, ctx) => {
       const cardIDs = [...ctx.hitAccumulator.cardIDs]
       const noteIDs = [...ctx.hitAccumulator.noteIDs]
-      if (cardIDs.length + noteIDs.length === 0) return
-      ctx.onDeleteSelection(cardIDs, noteIDs)
+      const objectIDs = [...ctx.hitAccumulator.objectIDs]
+      if (cardIDs.length + noteIDs.length + objectIDs.length === 0) return
+      ctx.onDeleteSelection(cardIDs, noteIDs, objectIDs)
     },
     preview: AtlasEraserLiveTrail,
   },

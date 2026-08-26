@@ -23,10 +23,11 @@ const mirrorPreviewMaxBytes = 5 * 1024 * 1024 // 5MB
 
 // MirrorContent resolves cardID's MirrorPath into a read-only overlay
 // preview: markdown renders to HTML, plain text passes through as-is,
-// an image becomes base64-encoded bytes paired with its MIME type, and
-// anything else (or anything over mirrorPreviewMaxBytes) reports only
-// its kind and size -- the overlay's existing reveal-file action is
-// what a user reaches for beyond that.
+// an image or a binary spreadsheet becomes base64-encoded bytes paired
+// with its MIME type, and anything else (or anything over
+// mirrorPreviewMaxBytes) reports only its kind and size -- the
+// overlay's existing reveal-file action is what a user reaches for
+// beyond that.
 func (a *AtlasService) MirrorContent(cardID string) (atlas.MirrorContent, error) {
 	a.mu.RLock()
 	idx := a.findCardLocked(cardID)
@@ -104,6 +105,9 @@ func mirrorContentForPath(path string) (atlas.MirrorContent, error) {
 		out.Content = raw
 	case atlas.MirrorKindImage:
 		out.MimeType = atlas.MirrorImageMimeType(path)
+		out.Content = base64.StdEncoding.EncodeToString([]byte(raw))
+	case atlas.MirrorKindSheet:
+		out.MimeType = atlas.MirrorSheetMimeType(path)
 		out.Content = base64.StdEncoding.EncodeToString([]byte(raw))
 	case atlas.MirrorKindOther:
 		// Unreachable (handled above) -- listed so this switch stays

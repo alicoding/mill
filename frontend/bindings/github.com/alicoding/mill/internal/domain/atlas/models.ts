@@ -367,6 +367,14 @@ export enum MirrorKind {
     MirrorKindImage = "image",
 
     /**
+     * MirrorKindSheet is a binary spreadsheet container (.xlsx) the
+     * frontend's own parser decodes client-side -- its bytes travel
+     * base64-encoded the same way MirrorKindImage's do, never rendered
+     * or interpreted on the Go side.
+     */
+    MirrorKindSheet = "sheet",
+
+    /**
      * MirrorKindOther never has its content loaded -- the overlay shows
      * only its kind and size, plus the existing reveal-file action.
      */

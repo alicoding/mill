@@ -129,6 +129,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-ui-copy.sh
 
+  # Mirrors lefthook.yml's own toolbar-action-testids job -- same script
+  # (the Atlas toolbar overflow contract, goal 0216/goal 0233). Grep-only,
+  # so like comment-hygiene it needs no build setup and no changes gate.
+  toolbar-action-testids:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-toolbar-action-testids.sh
+
   # Mirrors lefthook.yml's own rules-frontmatter job -- same script.
   # Catches a real bug class: a .claude/rules/*.md with an invalid
   # frontmatter key (e.g. a `globs:` typo instead of `paths:`) silently
@@ -383,10 +393,6 @@ jobs:
     # 25, was 15: the suite grew past the old budget in one day
     # (goal 0227 -- shards 1/4 exceeded 15m and GitHub marks timed-out
     # jobs "cancelled", which read as phantom cancellations for hours).
-    # testing.md's own revisit trigger ("e2e wall time forces shard
-    # growth past CI's 15-minute cap") has FIRED -- resharding and the
-    # component-layer revisit are goal 0227 S2, daylight work, since
-    # shard renames touch the ruleset's required checks.
     timeout-minutes: 25
     strategy:
       # fail-fast: false -- real incident, not a hypothetical (PR 11,
@@ -403,12 +409,13 @@ jobs:
       # states for its own fail-fast: false, applied here too.
       fail-fast: false
       matrix:
-        # 4-way since the guardrail specs moved to per-test dedicated
-        # servers: the added boot time pushed two 3-way shards past
-        # the 15-minute job cap with zero failing tests -- the exact
-        # revisit trigger testing.md records for shard growth.
-        shardIndex: [1, 2, 3, 4]
-        shardTotal: [4]
+        # 6-way (goal 0227 S2): 4-way shards were exceeding even the
+        # raised 25-minute budget under per-test dedicated-server boot
+        # cost. Only "CI gate" is ruleset-required, and ci-gate needs
+        # the e2e JOB id (not per-shard display names), so shard count
+        # changes here never touch branch protection.
+        shardIndex: [1, 2, 3, 4, 5, 6]
+        shardTotal: [6]
     env:
       # Required for the same reason as build-go's ubuntu-latest entry:
       # playwright.config.ts's webServer builds the real server-mode
@@ -552,6 +559,7 @@ jobs:
       - workflow-lint
       - comment-hygiene
       - ui-copy
+      - toolbar-action-testids
       - rules-frontmatter
       - root-file-naming
       - frontend

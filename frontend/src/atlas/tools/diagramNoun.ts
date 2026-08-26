@@ -25,4 +25,9 @@ registerBoardObjectContent('diagram', {
   // A diagram's own vendored pan/zoom viewer captures pointer events --
   // the shared chrome band is its only drag surface, same as table's.
   dragBand: true,
+  // Payload.mirrorPath names the real drawio/mermaid file this content
+  // renders (goal 0232 S1) -- AtlasBoardObjectNode.tsx's own shared
+  // watch subscription and useAtlasObjectMenu.ts's "Open in default
+  // app" enablement both key off this flag.
+  fileBacked: true,
 })

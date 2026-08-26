@@ -311,6 +311,9 @@ into.
   Mill — a missing file shows a clear notice with a button to choose
   another one. General and flowchart shapes render with their real
   outlines; less common shape libraries still show as plain boxes.
+  Drop an `.xlsx` or `.csv` file and it shows a read-only preview of
+  its first sheet, updating automatically whenever the file changes —
+  open it in your spreadsheet app to edit.
 - **Links** connect cards through link kinds you define. Drag from a
   card's link handle and release anywhere on a highlighted card; one
   relationship per pair and kind — repeats never duplicate. Hover a
@@ -1016,6 +1019,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.new.mcpservers` | New MCP server | — | Global | Always available |
 | `configure.new.steptypes` | New step type | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
+| `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `palette.open` | Open command palette | `⌘K` | Global | Always available |
 | `panel.applyClipboard` | Apply from clipboard | — | Global | Always available |
 | `panel.openMill` | Open Mill | — | Global | Always available |
@@ -1041,6 +1045,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `update.check` | Check for updates | — | Global | Always available |
 | `update.downloadAndInstall` | Download the update and install | — | Global | Conditional — available only in a matching state |
 | `update.relaunch` | Restart to finish updating | — | Global | Conditional — available only in a matching state |
+| `update.trustSigning` | Trust Mill's signing | — | Global | Always available |
+| `update.whatsNew` | What's new | — | Global | Always available |
 | `view.activity` | Go to Activity | `⌘4` | Global | Always available |
 | `view.atlas` | Go to Atlas | `⌘3` | Global | Always available |
 | `view.composition` | Go to Workflows | `⌘1` | Global | Always available |
@@ -1163,6 +1169,12 @@ version, release channel, and when Mill last checked. The same
 way: click it to download directly, or click "Restart to update" once
 it's ready — it never just opens Settings.
 
+Click "What's new", next to the status line or on the notice's own
+secondary link, to read the release notes for the version Mill most
+recently found — grouped by version, with headings and lists rendered
+normally instead of raw markdown. Before any check has found a new
+version, it explains that and offers "Check for updates" right there.
+
 Pick a release channel from the dropdown. Turning on "Check for and
 download updates automatically" downloads a newer version in the
 background as soon as it's found; the interval below it controls how
@@ -1181,14 +1193,12 @@ Mill re-signs itself after each update with a signing identity unique
 to your Mac, so permissions like Accessibility and Input Monitoring
 stay granted across updates instead of asking again every time. **This
 needs a one-time setup step before it takes effect** — open "How
-updates stay trusted" below the update button for the steps: Keychain
-Access, the "Mill-Signing" keychain in the sidebar, the "Mill Local
-Signing" certificate inside it, File → Get Info, expand Trust, and set
-"Code Signing" to Always Trust. Until you do this, updates still
-install normally, but Mill can't re-sign itself yet — permissions
-behave the same as before (you may need to re-grant them after an
-update, same as always) and Mill tells you so after an update if that
-happened.
+updates stay trusted" below the update button and click "Trust Mill's
+signing," then confirm with your Mac password or Touch ID when
+prompted. Until you do this, updates still install normally, but Mill
+can't re-sign itself yet — permissions behave the same as before (you
+may need to re-grant them after an update, same as always) and Mill
+tells you so after an update if that happened.
 
 The first update after this landed still needs one fresh grant per
 permission either way — macOS treats it as a new app once. If a
@@ -1288,8 +1298,9 @@ are never omissions.
 | `resizable` | boolean -- REQUIRED, never optional | can a placed instance be dragged to a new size via the shared NodeResizer? A container that auto-fits its own children, or a tool that never persists a placed instance, both legitimately declare false. The conformance suite checks that a true answer is backed by a real `<NodeResizer>` in the renderer boardNodeType names. |
 | `boardNodeType` | 'atlas-note', 'atlas-sticky', 'atlas-group', 'atlas-object', or null | which shared React Flow node component renders this noun's placed instance. null for a tool whose gesture never persists a renderable instance (eraser, laser). |
 | `dragBand` | boolean -- REQUIRED, never optional | only load-bearing when boardNodeType is 'atlas-object': does this noun's own content capture pointer events (a grid, a vendored pan/zoom viewer), so the shared renderer needs to add its own chrome band as the drag surface? A noun whose whole body already drags declares false, not omitted. |
-| `boardObjectKind` | 'shape', 'image', 'ink', 'table', 'diagram', or null | the persisted BoardObject.Kind this noun's own placed instance carries, or null for a tool that never routes through the shared 'atlas-object' renderer. Not always equal to id -- pencil's own placed instance is Kind 'ink' -- so content resolution below keys off this field, read from object.Kind, never off id. |
-| `content` | an object with Component (a React component accepting { object }), ariaLabelKey (a string), and role ('img' or undefined) -- or null | this noun's own placed-instance content contribution. registerNoun() feeds it into the board-object content registry (atlasNounRegistry.ts's registerBoardObjectContent) whenever boardObjectKind is non-null, killing AtlasBoardObjectNode.tsx's former per-Kind hand branch. A tool-less noun (diagram) calls registerBoardObjectContent directly instead of declaring this field at all, since it has no AtlasToolShape to satisfy. |
+| `boardObjectKind` | 'shape', 'image', 'ink', 'table', 'diagram', 'sheet', or null | the persisted BoardObject.Kind this noun's own placed instance carries, or null for a tool that never routes through the shared 'atlas-object' renderer. Not always equal to id -- pencil's own placed instance is Kind 'ink' -- so content resolution below keys off this field, read from object.Kind, never off id. |
+| `content` | an object with Component (a React component accepting { object, mirrorVersion }), ariaLabelKey (a string), and role ('img' or undefined) -- or null | this noun's own placed-instance content contribution. registerNoun() feeds it into the board-object content registry (atlasNounRegistry.ts's registerBoardObjectContent) whenever boardObjectKind is non-null, killing AtlasBoardObjectNode.tsx's former per-Kind hand branch. A tool-less noun (diagram) calls registerBoardObjectContent directly instead of declaring this field at all, since it has no AtlasToolShape to satisfy. mirrorVersion bumps on a live disk change to a fileBacked Kind's own mirrored file (see fileBacked below) -- a non-file-backed Component simply ignores it. |
+| `fileBacked` | boolean -- REQUIRED, never optional | does this noun's own placed instance read Payload.mirrorPath as a real external file (goal 0232's file-backed preview/open/watch contract)? true gets the shared live-watch subscription (its own content Component sees mirrorVersion bump) and the object.openInDefaultApp context-menu command uniformly, with no extra wiring of either. A noun with no boardObjectKind at all still declares it, always false. |
 | `sticky` | boolean -- REQUIRED, never optional | does this tool stay armed after a completed gesture (pencil/eraser/laser -- repeated strokes/passes are the point), or disarm after one? useAtlasToolGesture.ts reads this to decide whether a gesture's own onEnd may call ctx.disarm/disarmUnlessLocked at all -- a sticky tool gets no-ops for both. A non-drag tool still declares it, always false. |
 | `gesture` | an object with onEnd (a function), plus optional onPoint/preview/fadeMs -- or null | a drag-shaped tool's own pure behavior contribution to the ONE platform gesture engine (useAtlasToolGesture.ts): onEnd commits (or no-ops); onPoint accumulates live per-point state (eraser's own hit-testing); preview is a component rendered generically in one overlay slot; fadeMs makes an ephemeral tool's own points age out on a timer instead of clearing at pointerup. null for every tool whose interaction never drags. |
 
@@ -1485,6 +1496,9 @@ export const cardTool = {
   // Not routed through the shared 'atlas-object' renderer -- always
   // false, not N/A (atlasNounRegistry.ts's own header comment).
   dragBand: false,
+  // No boardObjectKind means no content registration reads this at
+  // all -- always false, not N/A.
+  fileBacked: false,
   // Rendered by AtlasNoteCardNode, not the shared 'atlas-object'
   // content contract -- always null, not N/A.
   boardObjectKind: null,

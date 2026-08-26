@@ -18,6 +18,11 @@ const (
 	MirrorKindText MirrorKind = "text"
 	// MirrorKindImage renders inline as an image.
 	MirrorKindImage MirrorKind = "image"
+	// MirrorKindSheet is a binary spreadsheet container (.xlsx) the
+	// frontend's own parser decodes client-side -- its bytes travel
+	// base64-encoded the same way MirrorKindImage's do, never rendered
+	// or interpreted on the Go side.
+	MirrorKindSheet MirrorKind = "sheet"
 	// MirrorKindOther never has its content loaded -- the overlay shows
 	// only its kind and size, plus the existing reveal-file action.
 	MirrorKindOther MirrorKind = "other"
@@ -35,6 +40,14 @@ var imageMimeTypes = map[string]string{
 	".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
 	".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml",
 	".bmp": "image/bmp", ".heic": "image/heic",
+}
+
+// sheetMimeTypes is a binary-spreadsheet allow-list, the MirrorKindSheet
+// counterpart to imageMimeTypes above -- .csv is deliberately absent
+// (it's plain text, already covered by textExtensions below, and the
+// frontend parses it with the same papaparse library either way).
+var sheetMimeTypes = map[string]string{
+	".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
 
 // textExtensions is a conservative allow-list, not every extension a
@@ -69,6 +82,8 @@ func ClassifyMirrorKind(path string) MirrorKind {
 		return MirrorKindMarkdown
 	case imageMimeTypes[ext] != "":
 		return MirrorKindImage
+	case sheetMimeTypes[ext] != "":
+		return MirrorKindSheet
 	case textExtensions[ext]:
 		return MirrorKindText
 	default:
@@ -80,6 +95,13 @@ func ClassifyMirrorKind(path string) MirrorKind {
 // extension isn't a recognized image type.
 func MirrorImageMimeType(path string) string {
 	return imageMimeTypes[strings.ToLower(filepath.Ext(path))]
+}
+
+// MirrorSheetMimeType returns path's spreadsheet MIME type, or "" if
+// its extension isn't a recognized binary spreadsheet type -- the
+// MirrorKindSheet counterpart to MirrorImageMimeType above.
+func MirrorSheetMimeType(path string) string {
+	return sheetMimeTypes[strings.ToLower(filepath.Ext(path))]
 }
 
 // IsImageExtension reports whether ext (including its leading ".",
@@ -94,18 +116,25 @@ func IsImageExtension(ext string) bool {
 }
 
 // diagramMirrorExtensions is the live-watch/re-pick eligibility list
-// (goal 0194's live round-trip slice): a mirror whose extension is
-// here is what AtlasService arms an on-disk filewatch binding for, and
-// what the "Choose file" re-pick dialog filters to -- draw.io's own
-// outer-file format plus mermaid source, the two ClassifyMirrorKind
-// already resolves to MirrorKindText.
+// (goal 0194's live round-trip slice, widened by goal 0232 S2): a
+// mirror whose extension is here is what AtlasService arms an on-disk
+// filewatch binding for, and what the "Choose file" re-pick dialog
+// filters to -- draw.io's own outer-file format plus mermaid source
+// (both ClassifyMirrorKind resolves to MirrorKindText), plus the
+// binary/text spreadsheet extensions ClassifyMirrorKind resolves to
+// MirrorKindSheet/MirrorKindText respectively. The name stays
+// "diagram" for the extensions it originally covered -- see goal
+// 0232's file-backed preview/open/watch contract for why every
+// file-backed family shares this one gate rather than each declaring
+// its own.
 var diagramMirrorExtensions = map[string]bool{
 	".drawio": true, ".mmd": true, ".mermaid": true,
+	".xlsx": true, ".csv": true,
 }
 
 // IsDiagramMirrorExtension reports whether ext (including its leading
-// ".", case-insensitive) is a live-rendered diagram source -- the same
-// allow-list-not-heuristic shape IsImageExtension takes above.
+// ".", case-insensitive) is a live-rendered file-backed source -- the
+// same allow-list-not-heuristic shape IsImageExtension takes above.
 func IsDiagramMirrorExtension(ext string) bool {
 	return diagramMirrorExtensions[strings.ToLower(ext)]
 }
