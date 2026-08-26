@@ -616,6 +616,13 @@
     "enabled": true
   },
   {
+    "id": "update.whatsNew",
+    "label": "What's new",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
     "id": "view.activity",
     "label": "Go to Activity",
     "binding": "⌘4",

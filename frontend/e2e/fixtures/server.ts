@@ -475,3 +475,18 @@ export const UPDATES_PILL_ACTION_MCP_BASE_PORT = 10900
 // updates-live-actions.spec.ts already covers.
 export const UPDATES_QUICK_PANEL_SERVER_BASE_PORT = 10920
 export const UPDATES_QUICK_PANEL_MCP_BASE_PORT = 10940
+
+// updates.spec.ts's "What's new" empty-state case (goal 0220 S2): no
+// MILL_TEST_UPDATE_FAKE_VERSION, so opening Settings would fire a real
+// (offline-failing) network check -- this test only ever opens the
+// dialog via the palette, never visits Settings, own pair regardless.
+export const UPDATES_WHATSNEW_EMPTY_SERVER_BASE_PORT = 10960
+export const UPDATES_WHATSNEW_EMPTY_MCP_BASE_PORT = 10980
+
+// updates.spec.ts's "What's new" notes case (goal 0220 S2): fixes
+// MILL_TEST_UPDATE_FAKE_VERSION for its whole server lifetime, same
+// reasoning as every other updates case above -- proves the pill's
+// secondary link and Settings' own link converge on the identical
+// rendered notes.
+export const UPDATES_WHATSNEW_NOTES_SERVER_BASE_PORT = 11000
+export const UPDATES_WHATSNEW_NOTES_MCP_BASE_PORT = 11020

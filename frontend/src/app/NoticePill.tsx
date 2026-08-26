@@ -12,11 +12,14 @@ import styles from './NoticePill.module.css'
 // command -- the same code path the Settings primary button uses, so
 // pill and page can never disagree and never navigate instead of
 // acting. idle/checking render nothing (Settings is where "check for
-// updates" lives when nothing is already in flight); available runs
-// update.downloadAndInstall; downloading is a static progress badge
-// (no action while a download is in flight); ready runs update.relaunch,
-// unchanged from before this goal. shared/updateNoticeStore.ts (goal
-// 0222 S1) is the multi-purpose seam now -- the same store the
+// updates" lives when nothing is already in flight); available's
+// PRIMARY action runs update.downloadAndInstall; downloading has no
+// primary action while the download is in flight; ready's primary runs
+// update.relaunch -- all three unchanged from goal 0220 S1. Every
+// rendered state also carries WhatsNewLink, a SECONDARY action (goal
+// 0220 S2) that only ever opens app/WhatsNewDialog.tsx, never competing
+// with the state's own primary action. shared/updateNoticeStore.ts
+// (goal 0222 S1) is the multi-purpose seam now -- the same store the
 // update.downloadAndInstall/update.relaunch commands read their own
 // enabled() off, so pill/palette/keyboard can never disagree about
 // which action currently applies.
@@ -36,20 +39,19 @@ export function NoticePill() {
 
   if (state === UpdateState.UpdateStateReady) {
     return (
-      <button
-        type="button"
-        className={`${styles.pill} ${styles.ready}`}
-        onClick={() => findCommand('update.relaunch')?.run()}
-        data-testid="notice-update-ready"
-      >
-        {t('noticePill.updateReady')}
-      </button>
+      <span className={`${styles.pill} ${styles.ready}`} data-testid="notice-update-ready">
+        <button type="button" className={styles.pillAction} onClick={() => findCommand('update.relaunch')?.run()}>
+          {t('noticePill.updateReady')}
+        </button>
+        <WhatsNewLink />
+      </span>
     )
   }
   if (state === UpdateState.UpdateStateDownloading) {
     return (
       <span className={`${styles.pill} ${styles.downloading}`} data-testid="notice-update-downloading">
         {t('noticePill.updateDownloading')}
+        <WhatsNewLink />
       </span>
     )
   }
@@ -63,6 +65,7 @@ export function NoticePill() {
         >
           {t('noticePill.updateAvailable')}
         </button>
+        <WhatsNewLink />
         <button
           type="button"
           className={styles.dismiss}
@@ -76,4 +79,23 @@ export function NoticePill() {
     )
   }
   return null
+}
+
+// The pill's secondary action (goal 0220 S2): every rendered state
+// shares this one link, always running update.whatsNew -- the pill's
+// own primary action (download/relaunch) never changes shape because
+// of it, matching this goal's own "primary action stays exactly as S1
+// shipped it" contract.
+function WhatsNewLink() {
+  const { t } = useTranslation('app')
+  return (
+    <button
+      type="button"
+      className={styles.whatsNewLink}
+      onClick={() => findCommand('update.whatsNew')?.run()}
+      data-testid="notice-whats-new"
+    >
+      {t('noticePill.whatsNew')}
+    </button>
+  )
 }

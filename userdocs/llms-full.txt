@@ -1041,6 +1041,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `update.check` | Check for updates | — | Global | Always available |
 | `update.downloadAndInstall` | Download the update and install | — | Global | Conditional — available only in a matching state |
 | `update.relaunch` | Restart to finish updating | — | Global | Conditional — available only in a matching state |
+| `update.whatsNew` | What's new | — | Global | Always available |
 | `view.activity` | Go to Activity | `⌘4` | Global | Always available |
 | `view.atlas` | Go to Atlas | `⌘3` | Global | Always available |
 | `view.composition` | Go to Workflows | `⌘1` | Global | Always available |
@@ -1162,6 +1163,12 @@ version, release channel, and when Mill last checked. The same
 "Update available" notice in the bottom-right corner acts the same
 way: click it to download directly, or click "Restart to update" once
 it's ready — it never just opens Settings.
+
+Click "What's new", next to the status line or on the notice's own
+secondary link, to read the release notes for the version Mill most
+recently found — grouped by version, with headings and lists rendered
+normally instead of raw markdown. Before any check has found a new
+version, it explains that and offers "Check for updates" right there.
 
 Pick a release channel from the dropdown. Turning on "Check for and
 download updates automatically" downloads a newer version in the

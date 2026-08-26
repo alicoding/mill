@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/alicoding/mill/internal/adapters/markdown"
 	"github.com/alicoding/mill/internal/services/dataevent"
 )
 
@@ -102,6 +103,16 @@ type UpdateNotice struct {
 	StateVersion string `json:"stateVersion"`
 	// StateReason is populated only alongside State == error.
 	StateReason string `json:"stateReason"`
+	// NotesVersion/NotesHTML (goal 0220 S2) carry the release notes from
+	// CheckForUpdates' most recent found result, rendered through the
+	// same markdown adapter docssvc uses -- the "What's new" surface's
+	// entire data source. NotesVersion can differ from StateVersion (a
+	// newer check's notes arrived while an earlier download stays
+	// staged-and-ready after a supersede-download failure); the version
+	// header always names the version the rendered notes actually
+	// belong to. Both empty until a check has ever found an update.
+	NotesVersion string `json:"notesVersion"`
+	NotesHTML    string `json:"notesHTML"`
 }
 
 // UpdateState is the pill/Settings/palette's single source of truth
@@ -170,11 +181,35 @@ func (s *SettingsService) UpdateNoticeState() UpdateNotice {
 		State:            state,
 		StateVersion:     version,
 		StateReason:      reason,
+		NotesVersion:     s.lastNotesVersion,
 	}
 	if !s.lastCheckAt.IsZero() {
 		n.LastCheckAt = s.lastCheckAt.Format(time.RFC3339)
 	}
+	// RenderHTML's only error path is the writer failing -- bytes.Buffer
+	// never does, so this is unreachable in practice; a render failure
+	// still degrades to an empty notes section rather than dropping the
+	// whole state machine response.
+	if s.lastNotesRaw != "" {
+		if html, err := markdown.RenderHTML(s.lastNotesRaw); err == nil {
+			n.NotesHTML = html
+		}
+	}
 	return n
+}
+
+// recordUpdateNotes is checkForUpdates' own hook (goal 0220 S2): stores
+// the release notes a found result carried, unconditionally -- unlike
+// recordAvailableUpdate, dismissal never suppresses this, since
+// dismissing the notice pill must never also hide "What's new" in
+// Settings. The newest found result always overwrites the previous
+// one, matching the state machine's own "newest known version wins"
+// rule (deriveUpdateState's supersede handling).
+func (s *SettingsService) recordUpdateNotes(version, notes string) {
+	s.mu.Lock()
+	s.lastNotesVersion = version
+	s.lastNotesRaw = notes
+	s.mu.Unlock()
 }
 
 // UpdateCheckOutcome distinguishes what CheckForUpdates' most recent

@@ -100,6 +100,12 @@ version, release channel, and when Mill last checked. The same
 way: click it to download directly, or click "Restart to update" once
 it's ready — it never just opens Settings.
 
+Click "What's new", next to the status line or on the notice's own
+secondary link, to read the release notes for the version Mill most
+recently found — grouped by version, with headings and lists rendered
+normally instead of raw markdown. Before any check has found a new
+version, it explains that and offers "Check for updates" right there.
+
 Pick a release channel from the dropdown. Turning on "Check for and
 download updates automatically" downloads a newer version in the
 background as soon as it's found; the interval below it controls how

@@ -133,6 +133,19 @@ export interface UpdateNotice {
      * StateReason is populated only alongside State == error.
      */
     "stateReason": string;
+
+    /**
+     * NotesVersion/NotesHTML (goal 0220 S2) carry the release notes from
+     * CheckForUpdates' most recent found result, rendered through the
+     * same markdown adapter docssvc uses -- the "What's new" surface's
+     * entire data source. NotesVersion can differ from StateVersion (a
+     * newer check's notes arrived while an earlier download stays
+     * staged-and-ready after a supersede-download failure); the version
+     * header always names the version the rendered notes actually
+     * belong to. Both empty until a check has ever found an update.
+     */
+    "notesVersion": string;
+    "notesHTML": string;
 }
 
 /**

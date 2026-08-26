@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } 
 import { Events } from '@wailsio/runtime'
 import { useTranslation } from 'react-i18next'
 import { Browser } from '@wailsio/runtime'
-import { Button, Checkbox, FormControl, Select, Stack, Text, TextInput } from '@primer/react'
+import { Button, Checkbox, FormControl, Link as PrimerLink, Select, Stack, Text, TextInput } from '@primer/react'
 import { SettingsService, UpdateState, type UpdateNotice } from '../shared/bindings'
 import { findCommand } from '../shared/commands'
 import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
@@ -122,9 +122,13 @@ const installableChannels: Channel[] = ['release', 'beta']
 // -- '' means CheckForUpdates has never run.
 type LastCheckOutcome = '' | 'found' | 'upToDate' | 'failed'
 
+// notes used to ride along here for the raw pre-wrap render this
+// component no longer owns -- "What's new" (goal 0220 S2) reads the
+// server-rendered notes off shared/updateNoticeStore.ts instead
+// (app/WhatsNewDialog.tsx), so only the version this card names
+// survives.
 interface UpdateResult {
   version: string
-  notes: string
 }
 
 // applyUpdateNotice folds one UpdateNoticeState poll into every piece of
@@ -142,11 +146,11 @@ function applyUpdateNotice(
 ) {
   setState(n.state)
   setStateReason(n.stateReason)
-  // Recovers version+notes after a fresh mount that didn't run the
-  // check itself -- e.g. reloading while a background auto-download
-  // (goal 0207) is already downloading or ready.
+  // Recovers the version after a fresh mount that didn't run the check
+  // itself -- e.g. reloading while a background auto-download (goal
+  // 0207) is already downloading or ready.
   if ((n.state === UpdateState.UpdateStateDownloading || n.state === UpdateState.UpdateStateReady) && n.stateVersion) {
-    setUpdateResult((prev) => prev ?? { version: n.stateVersion, notes: '' })
+    setUpdateResult((prev) => prev ?? { version: n.stateVersion })
   }
   setLastCheckAt(n.lastCheckAt)
   setLastCheckOutcome(n.lastCheckOutcome as LastCheckOutcome)
@@ -213,14 +217,14 @@ function UpdatesSection() {
   // below can depend on a stable reference instead of disabling
   // exhaustive-deps. Deliberately bypasses the dismissal-aware server
   // state (see primaryActionFor's own comment) -- CheckForUpdates'
-  // raw return is what populates the version/notes card and the
-  // primary button's "available" branch.
+  // raw return is what populates the version card and the primary
+  // button's "available" branch.
   const checkForUpdates = useCallback(() => {
     setUpdateResult(null)
     SettingsService.CheckForUpdates()
       .then((result) => {
         if (result.updateAvailable) {
-          setUpdateResult({ version: result.version, notes: result.notes })
+          setUpdateResult({ version: result.version })
         }
       })
       .catch(console.error)
@@ -285,10 +289,20 @@ function UpdatesSection() {
 
   return (
     <Stack gap="condensed">
-      <Text size="small" className={styles.muted} data-testid="current-app-version">
-        {t('settings.updates.currentVersion', { version: appVersion })} · {channelLabel} ·{' '}
-        {lastCheckAt ? t('settings.updates.statusCheckedAgo', { time: lastCheckRelative }) : t('settings.updates.statusNeverChecked')}
-      </Text>
+      <Stack direction="horizontal" gap="condensed" align="center" justify="space-between">
+        <Text size="small" className={styles.muted} data-testid="current-app-version">
+          {t('settings.updates.currentVersion', { version: appVersion })} · {channelLabel} ·{' '}
+          {lastCheckAt ? t('settings.updates.statusCheckedAgo', { time: lastCheckRelative }) : t('settings.updates.statusNeverChecked')}
+        </Text>
+        <PrimerLink
+          as="button"
+          type="button"
+          onClick={() => findCommand('update.whatsNew')?.run()}
+          data-testid="open-whats-new"
+        >
+          {t('settings.updates.whatsNew')}
+        </PrimerLink>
+      </Stack>
 
       <FormControl>
         <FormControl.Label>{t('settings.updates.channelPickerLabel')}</FormControl.Label>
@@ -413,19 +427,6 @@ function UpdatesSection() {
             <Text weight="semibold" size="small">
               {t('settings.updates.updateAvailable', { version: updateResult.version })}
             </Text>
-
-            {updateResult.notes && (
-              <details>
-                <summary>{t('settings.updates.whatsNew')}</summary>
-                <div
-                  data-testid="update-notes"
-                  className={styles.muted}
-                  style={{ whiteSpace: 'pre-wrap', maxHeight: 200, overflowY: 'auto' }}
-                >
-                  {updateResult.notes}
-                </div>
-              </details>
-            )}
 
             {!canInstall && (
               <>

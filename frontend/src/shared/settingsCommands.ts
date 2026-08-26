@@ -3,6 +3,7 @@ import { useAppStore } from './store'
 import { BackupService, SettingsService, UpdateState } from './bindings'
 import { SETTINGS_SECTIONS, resolveSectionTitle } from './settingsSections'
 import { useUpdateNoticeStore } from './updateNoticeStore'
+import { useUISignalStore } from './uiSignalStore'
 
 // Settings-adjacent commands (panel.applyClipboard, backup.*, and one
 // palette-only deep-link command per registered Settings section) --
@@ -113,5 +114,15 @@ export const SETTINGS_COMMANDS: Command[] = [
     enabled: () => useUpdateNoticeStore.getState().updateNoticeState === UpdateState.UpdateStateReady,
     quickPanel: true,
     run: () => { SettingsService.RestartApp().catch(console.error) },
+  },
+  {
+    // "What's new" (goal 0220 S2): opens app/WhatsNewDialog.tsx, the
+    // Settings status-line link and the pill's secondary link's only
+    // run() -- always enabled, since opening with no notes known yet
+    // is exactly the dialog's own empty state, not an invalid command.
+    id: 'update.whatsNew',
+    label: "What's new",
+    defaultBinding: null,
+    run: () => useUISignalStore.getState().openWhatsNew(),
   },
 ]
