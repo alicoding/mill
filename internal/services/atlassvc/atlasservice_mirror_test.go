@@ -158,6 +158,67 @@ func TestObjectMirrorContent_DrawioSource_ReturnsPlainText(t *testing.T) {
 	}
 }
 
+// A "sheet" board object's own .xlsx mirror is binary-kind, base64
+// encoded the same way an image is (goal 0232 S2) -- unlike a
+// diagram's .drawio source, which classifies and reads back as plain
+// text.
+func TestObjectMirrorContent_XlsxSource_ReturnsBase64WithMimeType(t *testing.T) {
+	a := newTestAtlasService(t)
+	raw := []byte{0x50, 0x4b, 0x03, 0x04} // not a valid xlsx, but classification is extension-only
+	path := filepath.Join(t.TempDir(), "book.xlsx")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	o, err := a.CreateBoardObject("sheet", map[string]string{"mirrorPath": path}, atlas.Position{}, "")
+	if err != nil {
+		t.Fatalf("CreateBoardObject: %v", err)
+	}
+
+	got, err := a.ObjectMirrorContent(o.ID)
+	if err != nil {
+		t.Fatalf("ObjectMirrorContent: %v", err)
+	}
+	if got.Kind != atlas.MirrorKindSheet {
+		t.Errorf("Kind = %q, want sheet", got.Kind)
+	}
+	if got.MimeType != "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" {
+		t.Errorf("MimeType = %q, want the xlsx MIME type", got.MimeType)
+	}
+	decoded, err := base64.StdEncoding.DecodeString(got.Content)
+	if err != nil {
+		t.Fatalf("Content is not valid base64: %v", err)
+	}
+	if string(decoded) != string(raw) {
+		t.Errorf("decoded Content = %q, want %q", decoded, raw)
+	}
+}
+
+// A "sheet" board object's own .csv mirror is text-kind, the same
+// shared mirrorContentForPath path a diagram's .drawio source takes.
+func TestObjectMirrorContent_CsvSource_ReturnsPlainText(t *testing.T) {
+	a := newTestAtlasService(t)
+	csv := "Name,Age\nAda,36"
+	path := filepath.Join(t.TempDir(), "rows.csv")
+	if err := os.WriteFile(path, []byte(csv), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	o, err := a.CreateBoardObject("sheet", map[string]string{"mirrorPath": path}, atlas.Position{}, "")
+	if err != nil {
+		t.Fatalf("CreateBoardObject: %v", err)
+	}
+
+	got, err := a.ObjectMirrorContent(o.ID)
+	if err != nil {
+		t.Fatalf("ObjectMirrorContent: %v", err)
+	}
+	if got.Kind != atlas.MirrorKindText {
+		t.Errorf("Kind = %q, want text", got.Kind)
+	}
+	if got.Content != csv {
+		t.Errorf("Content = %q, want the raw .csv source unchanged", got.Content)
+	}
+}
+
 func TestObjectMirrorContent_NoMirrorPath_Errors(t *testing.T) {
 	a := newTestAtlasService(t)
 	o, err := a.CreateBoardObject("ink", nil, atlas.Position{}, "")

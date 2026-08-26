@@ -1,0 +1,49 @@
+/* Token-only styling, matching shared/ListGrid.module.css's own
+   scroll/table look so a sheet preview reads as the same table family
+   as a projected List -- this grid is read-only (no schema/edit
+   chrome), so it stays a plain <table> rather than reusing ListGrid
+   itself (goal 0232 S2). */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  flex: 1;
+}
+
+.scroll {
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-small);
+  background: var(--bgColor-default);
+}
+
+.table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-right: 1px solid var(--borderColor-default);
+  background: var(--bgColor-muted);
+  color: var(--fgColor-muted);
+  text-align: left;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--borderColor-default);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 3px 8px;
+  border-right: 1px solid var(--borderColor-muted);
+  border-bottom: 1px solid var(--borderColor-muted);
+  white-space: nowrap;
+}

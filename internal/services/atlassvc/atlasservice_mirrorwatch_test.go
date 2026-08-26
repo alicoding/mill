@@ -67,9 +67,12 @@ func TestMirrorWatch_ArmedOnCreate_FiresOnExternalWrite(t *testing.T) {
 	waitForMirrorChange(t, ch, o.ID)
 }
 
-// A non-diagram mirror (e.g. a plain .md card) is never watched --
-// armMirrorWatch's own extension gate, proven by writing to the file
-// and confirming no event ever fires.
+// A non-diagram, non-spreadsheet mirror (e.g. a plain .md card) is
+// never watched -- armMirrorWatch's own extension gate, proven by
+// writing to the file and confirming no event ever fires. A plain .md
+// card's mirror MUST stay unarmed even after the gate widened to cover
+// spreadsheet extensions (goal 0232 S2) -- this is the regression the
+// widening must never break.
 func TestMirrorWatch_NonDiagramExtension_NeverArmed(t *testing.T) {
 	a := newTestAtlasService(t)
 	ch := hookChannel(t)
@@ -79,6 +82,47 @@ func TestMirrorWatch_NonDiagramExtension_NeverArmed(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertNoMirrorChange(t, ch)
+}
+
+// A "sheet" board object's own .xlsx mirror is watched exactly like a
+// diagram's (goal 0232 S2's widened gate) -- proven the same way
+// TestMirrorWatch_ArmedOnCreate_FiresOnExternalWrite proves it for
+// .drawio.
+func TestMirrorWatch_XlsxExtension_Armed(t *testing.T) {
+	a := newTestAtlasService(t)
+	ch := hookChannel(t)
+	path := filepath.Join(t.TempDir(), "book.xlsx")
+	if err := os.WriteFile(path, []byte("not a real xlsx, extension-only classification"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	o, err := a.CreateBoardObject("sheet", map[string]string{"mirrorPath": path}, atlas.Position{}, "")
+	if err != nil {
+		t.Fatalf("CreateBoardObject: %v", err)
+	}
+
+	if err := os.WriteFile(path, []byte("changed bytes"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	waitForMirrorChange(t, ch, o.ID)
+}
+
+// A "sheet" board object's own .csv mirror is watched the same way.
+func TestMirrorWatch_CsvExtension_Armed(t *testing.T) {
+	a := newTestAtlasService(t)
+	ch := hookChannel(t)
+	path := filepath.Join(t.TempDir(), "rows.csv")
+	if err := os.WriteFile(path, []byte("a,b\n1,2"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	o, err := a.CreateBoardObject("sheet", map[string]string{"mirrorPath": path}, atlas.Position{}, "")
+	if err != nil {
+		t.Fatalf("CreateBoardObject: %v", err)
+	}
+
+	if err := os.WriteFile(path, []byte("a,b\n1,2\n3,4"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	waitForMirrorChange(t, ch, o.ID)
 }
 
 func TestMirrorWatch_Debounces_BurstOfWritesFiresOnce(t *testing.T) {

@@ -19,6 +19,9 @@ into.
   Mill — a missing file shows a clear notice with a button to choose
   another one. General and flowchart shapes render with their real
   outlines; less common shape libraries still show as plain boxes.
+  Drop an `.xlsx` or `.csv` file and it shows a read-only preview of
+  its first sheet, updating automatically whenever the file changes —
+  open it in your spreadsheet app to edit.
 - **Links** connect cards through link kinds you define. Drag from a
   card's link handle and release anywhere on a highlighted card; one
   relationship per pair and kind — repeats never duplicate. Hover a
