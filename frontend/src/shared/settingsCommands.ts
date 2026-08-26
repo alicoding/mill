@@ -1,7 +1,8 @@
 import type { Command } from './commands'
 import { useAppStore } from './store'
-import { BackupService, SettingsService } from './bindings'
+import { BackupService, SettingsService, UpdateState } from './bindings'
 import { SETTINGS_SECTIONS, resolveSectionTitle } from './settingsSections'
+import { useUpdateNoticeStore } from './updateNoticeStore'
 
 // Settings-adjacent commands (panel.applyClipboard, backup.*, and one
 // palette-only deep-link command per registered Settings section) --
@@ -55,4 +56,33 @@ export const SETTINGS_COMMANDS: Command[] = [
     defaultBinding: null,
     run: () => useAppStore.getState().setView({ kind: 'settings', section: section.id }),
   })),
+  // The one update state machine's own commands (goal 0220 S1) -- the
+  // pill and the Settings primary button both call these, never their
+  // own parallel SettingsService calls, so every surface performs the
+  // exact same action for a given state. downloadAndInstall/relaunch's
+  // own enabled() (goal 0222 S1) reads shared/updateNoticeStore.ts --
+  // the same store NoticePill itself renders off -- so run() no longer
+  // guards inline; a caller that skips checking enabled() first (there
+  // is none left, but the contract holds regardless) simply fires the
+  // action against whatever state the server is actually in.
+  {
+    id: 'update.check',
+    label: 'Check for updates',
+    defaultBinding: null,
+    run: () => { SettingsService.CheckForUpdates().catch(console.error) },
+  },
+  {
+    id: 'update.downloadAndInstall',
+    label: 'Download the update and install',
+    defaultBinding: null,
+    enabled: () => useUpdateNoticeStore.getState().updateNoticeState === UpdateState.UpdateStateAvailable,
+    run: () => { SettingsService.DownloadAndInstallUpdate().catch(console.error) },
+  },
+  {
+    id: 'update.relaunch',
+    label: 'Restart to finish updating',
+    defaultBinding: null,
+    enabled: () => useUpdateNoticeStore.getState().updateNoticeState === UpdateState.UpdateStateReady,
+    run: () => { SettingsService.RestartApp().catch(console.error) },
+  },
 ]

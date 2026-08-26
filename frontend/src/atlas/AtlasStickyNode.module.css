@@ -15,10 +15,20 @@
 }
 /* Editing chrome, shared by both editing states below -- the box
    itself never changes size on entering/leaving edit (goal 0193: no
-   automatic resize, ever). */
+   automatic resize, ever). overflow-y here is the actual clip/scroll
+   boundary (goal 0226 regression: the .cm-editor/.cm-scroller
+   height:100% pair below declares intent, but CodeMirror's own mount
+   divs -- shared/CodeEditor.tsx's .wrapper/.mount -- carry no height
+   of their own, so that percentage chain doesn't resolve and the
+   editor silently rendered at its full, unclamped content height,
+   painting past this box with `.sticky`'s inherited overflow:visible).
+   Same fix shape as MarkdownNoteField.module.css's own `.editorWrap`:
+   an outer overflow that clips/scrolls regardless of how any
+   descendant resolves its own height. */
 .sticky.editing {
     cursor: text;
     padding: 6px 8px;
+    overflow-y: auto;
 }
 .sticky.editing > * {
     width: 100%;
@@ -106,6 +116,11 @@
 .mdBody ol {
     padding-left: 16px;
 }
+/* A real size step per level (goal 0226 regression: h1 at 13px next
+   to 12px body text read as indistinguishable from plain lines --
+   the same 1.5/1.3/1.15em ratio shared/markdownLivePreview.ts already
+   uses for the editor's own live-preview decorations, scaled down
+   from its 12px prose base to stay compact). */
 .mdBody h1,
 .mdBody h2,
 .mdBody h3,
@@ -113,11 +128,22 @@
 .mdBody h5,
 .mdBody h6 {
     margin: 0 0 4px;
-    font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
 }
 .mdBody h1 {
-    font-size: 13px;
+    font-size: 16px;
+}
+.mdBody h2 {
+    font-size: 14px;
+}
+.mdBody h3 {
+    font-size: 12.5px;
+}
+.mdBody h4,
+.mdBody h5,
+.mdBody h6 {
+    font-size: 12px;
+    font-weight: 600;
 }
 .mdBody code {
     font-family: var(--mill-mono);

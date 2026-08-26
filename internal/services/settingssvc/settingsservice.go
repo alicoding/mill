@@ -122,6 +122,24 @@ type SettingsService struct {
 	lastCheckAt      time.Time
 	lastCheckOutcome UpdateCheckOutcome
 	lastCheckError   string
+	// checking is true for the duration of a checkForUpdates call
+	// (manual, check-on-open, or the background loop's own tick) --
+	// the state machine's own "checking" phase (goal 0220 S1), read by
+	// UpdateNoticeState so every surface sees the same live phase
+	// instead of each deriving its own from a local in-flight promise.
+	checking bool
+	// lastInstallError carries a NON-supersede DownloadAndInstallUpdate
+	// failure into the derived state machine's error phase -- cleared
+	// at the start of the next install attempt, same lifecycle as
+	// resignWarning. A supersede failure (a newer version found while
+	// an earlier one was already ready) never sets this: it routes
+	// through recordCheckOutcome instead, since the adopted updater's
+	// own DownloadAndInstall unconditionally discards whatever was
+	// previously staged before the new attempt even begins (wails/v3
+	// pkg/updater's discardStaging), so that failure reads as "the
+	// newer update couldn't download" rather than a fresh install
+	// error.
+	lastInstallError string
 	isolatedData     bool
 	mcpService       *mcpsvc.MillMCPService
 	// notificationSvc is the notification spine's Publish entry point

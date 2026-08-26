@@ -211,7 +211,8 @@
   },
   "noticePill": {
     "updateReady": "Update ready — Relaunch",
-    "updateAvailable": "Update available",
+    "updateAvailable": "Update available — download",
+    "updateDownloading": "Downloading update…",
     "dismissAriaLabel": "Dismiss this update notice"
   }
 }

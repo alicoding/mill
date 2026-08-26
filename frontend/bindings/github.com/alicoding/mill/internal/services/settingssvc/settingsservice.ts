@@ -604,6 +604,14 @@ export function SetUpdateChannelPreference(pref: string): $CancellablePromise<vo
 }
 
 /**
+ * SetUpdateCheckInterval persists the cadence and applies it live --
+ * same "apply now, no restart" posture SetAutoUpdateCheck already has.
+ */
+export function SetUpdateCheckInterval(pref: string): $CancellablePromise<void> {
+    return $Call.ByID(2606673130, pref);
+}
+
+/**
  * SetWorkflowMinutesSaved overrides workflowID's estimate. minutes must
  * be positive -- Home's own formula (RunCount × MinutesPerRun) always
  * multiplies by this value, and crediting zero or negative time saved
@@ -714,7 +722,16 @@ export function UpdateChannelPreference(): $CancellablePromise<string> {
 }
 
 /**
- * UpdateNoticeState reports what the footer pill should show.
+ * UpdateCheckInterval reports the persisted cadence, defaulting to
+ * hourly for every channel (the old beta-only hourly default is now
+ * the default everywhere).
+ */
+export function UpdateCheckInterval(): $CancellablePromise<string> {
+    return $Call.ByID(2335418426);
+}
+
+/**
+ * UpdateNoticeState reports what every update surface should show.
  */
 export function UpdateNoticeState(): $CancellablePromise<$models.UpdateNotice> {
     return $Call.ByID(437299326);

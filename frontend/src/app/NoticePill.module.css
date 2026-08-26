@@ -27,6 +27,13 @@
   padding: 2px 4px 2px 10px;
 }
 
+.downloading {
+  border: 1px solid var(--borderColor-default);
+  background: var(--bgColor-muted);
+  color: var(--fgColor-muted);
+  padding: 4px 10px;
+}
+
 .pillAction {
   border: none;
   background: none;

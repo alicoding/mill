@@ -4,6 +4,7 @@ import { ActionBar, ActionList, ActionMenu } from '@primer/react'
 import { ChecklistIcon, DownloadIcon, ProjectRoadmapIcon, TableIcon, UploadIcon, TagIcon, SparkleFillIcon, ShareIcon } from '@primer/octicons-react'
 import type { Card, Kind, Link, LinkKind, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
+import { findCommand } from '../shared/commands'
 import { AtlasBreadcrumb } from './AtlasBreadcrumb'
 import { AtlasPerspectiveSwitcher } from './AtlasPerspectiveSwitcher'
 import { AtlasFolderImport } from './AtlasFolderImport'
@@ -90,7 +91,6 @@ export function AtlasToolbar({
 }) {
   const { t } = useTranslation('atlas')
   const importInputRef = useRef<HTMLInputElement>(null)
-  const toggleCompanion = useUISignalStore((s) => s.toggleCompanion)
 
   // Export's trigger renders as an ActionBar.Button (an anchor ref, not
   // an ActionMenu.Anchor child) so it can join ActionBar's own overflow
@@ -191,7 +191,7 @@ export function AtlasToolbar({
             {t('toolbar.roadmap')}
           </ActionBar.Button>
           <ActionBar.IconButton icon={TagIcon} aria-label={t('toolbar.kinds')} data-testid="atlas-open-kinds" onClick={onOpenKinds} />
-          <ActionBar.IconButton icon={SparkleFillIcon} aria-label={t('companionPanel.toggleButton')} data-testid="atlas-open-companion" onClick={toggleCompanion} />
+          <ActionBar.IconButton icon={SparkleFillIcon} aria-label={t('companionPanel.toggleButton')} data-testid="atlas-open-companion" onClick={() => findCommand('atlas.companion.toggle')?.run()} />
         </ActionBar>
         <AtlasSpaceShareMenu spaceID={viewedID} onError={onShareError} anchorRef={shareAnchorRef} open={shareOpen} onOpenChange={setShareOpen} />
         <AtlasPerspectiveSwitcher

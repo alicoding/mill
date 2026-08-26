@@ -4,6 +4,7 @@ import { connectMCPClient, findWorkflowIdByLabel } from './mcpTestClient'
 import { assignDebugWorkflowHotkey } from './hotkeyDebugKnob'
 import { workflowRow, activePanel, dragBetweenHandles, dragPaletteItemToCanvas } from './fixtures/canvas'
 import { waitForViewportStable } from './fixtures/animation'
+import { paletteDialog } from './fixtures/palette'
 
 // Exercises the ⌘K command palette (docs/goals/0015-summon-quick-invoke.md,
 // app/CommandPalette.tsx) over real Go bindings (Wails3 server mode),
@@ -13,10 +14,6 @@ import { waitForViewportStable } from './fixtures/animation'
 // listener (shared/commands.ts's dispatchCommandForEvent, App.tsx's one
 // window listener), same shape Meta+S/Meta+N already get real coverage
 // through in keymap.spec.ts -- so Meta+k here is real, not a stand-in.
-
-function paletteDialog(page: import('@playwright/test').Page) {
-  return page.getByRole('dialog', { name: 'Command palette' })
-}
 
 // See live-run-state.spec.ts's own copy of these two helpers for the
 // full reasoning (Fit View + a Zoom Out first avoids the toolbar/
@@ -326,6 +323,50 @@ test('typing "work" offers a Workflow suggestion chip; clicking it scopes the se
   await page.keyboard.press('Escape')
 
   // Cleanup.
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await clickRowAction(page, workflowRow(page, label), 'Delete')
+  await expect(workflowRow(page, label)).toHaveCount(0)
+})
+
+// Goal 0222 S1: the enablement predicate hides "Publish current draft"
+// from the palette until a saved workflow's editor tab is actually
+// active, and running it from the palette performs the exact same
+// CompositionService.PublishWorkflow call the Versions tab's own button
+// makes (composition/WorkflowVersionsPanel.tsx) -- one code path, two
+// entry points.
+test('"Publish current draft" is absent from the palette on the plain Workflows list, appears once a saved workflow is open, and running it from the palette publishes', async ({ page }) => {
+  const label = 'ZzE2ePalettePublishTarget'
+  await page.goto('/')
+  await createSimpleWorkflow(page, label)
+
+  // On the plain Workflows list (no work tab active), the command has
+  // nothing to publish -- hidden, not just unusable.
+  await page.keyboard.press('Meta+k')
+  await expect(paletteDialog(page)).toBeVisible()
+  await paletteDialog(page).getByRole('combobox').fill('Publish current draft')
+  await expect(paletteDialog(page).getByRole('option', { name: 'Publish current draft' })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+
+  // Row click opens the saved workflow (view mode is enough -- the
+  // command's own enabled() only cares that a 'workflow-edit' work tab
+  // is active, not the canvas's read-only/editable mode).
+  await workflowRow(page, label).click()
+  await page.getByRole('tab', { name: 'Versions' }).click()
+  const badge = page.getByTestId('published-badge')
+  await expect(badge).toContainText('never published')
+
+  await page.keyboard.press('Meta+k')
+  await expect(paletteDialog(page)).toBeVisible()
+  await paletteDialog(page).getByRole('combobox').fill('Publish current draft')
+  const publishOption = paletteDialog(page).getByRole('option', { name: 'Publish current draft' })
+  await expect(publishOption).toBeVisible()
+  await publishOption.click()
+  await expect(paletteDialog(page)).toHaveCount(0)
+
+  await expect(badge).toContainText('v1 live')
+
+  // Cleanup.
+  await page.getByRole('button', { name: 'Close tab' }).click()
   await page.getByRole('link', { name: 'Workflows' }).click()
   await clickRowAction(page, workflowRow(page, label), 'Delete')
   await expect(workflowRow(page, label)).toHaveCount(0)

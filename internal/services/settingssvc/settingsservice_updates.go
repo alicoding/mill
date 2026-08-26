@@ -239,6 +239,16 @@ func (s *SettingsService) CheckForUpdates() (UpdateCheckResult, error) {
 }
 
 func (s *SettingsService) checkForUpdates(ctx context.Context) (UpdateCheckResult, error) {
+	s.mu.Lock()
+	s.checking = true
+	s.mu.Unlock()
+	dataevent.Emit("update-notice", "checking")
+	defer func() {
+		s.mu.Lock()
+		s.checking = false
+		s.mu.Unlock()
+		dataevent.Emit("update-notice", "check-finished")
+	}()
 	if fake := os.Getenv(testUpdateFakeVersionEnv); fake != "" {
 		if ms, err := strconv.Atoi(os.Getenv(testUpdateCheckDelayEnv)); err == nil && ms > 0 {
 			time.Sleep(time.Duration(ms) * time.Millisecond)
@@ -305,11 +315,17 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 	}
 	s.updateDownloading = true
 	s.resignWarning = ""
+	s.lastInstallError = ""
 	// Captured now, before any later CheckForUpdates tick can overwrite
 	// availableUpdate mid-flight -- this is the version this specific
 	// call is staging, recorded on success so a repeat sighting of the
 	// same version (goal 0175's auto-download policy) can skip it.
 	version := s.availableUpdate
+	// wasReady distinguishes a supersede attempt (a newer version
+	// found while an earlier one already sat staged-and-ready) from a
+	// fresh install -- failInstall below needs it to decide whether a
+	// failure destroyed the previously-ready build.
+	wasReady := s.updateReady
 	s.mu.Unlock()
 	dataevent.Emit("update-notice", "downloading")
 	defer func() {
@@ -320,13 +336,13 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 	}()
 	channel := s.UpdateChannel()
 	if channel != "release" && channel != "beta" {
-		return fmt.Errorf("updates only install on the release or beta channel -- this copy was built from source")
+		return s.failInstall(wasReady, false, fmt.Errorf("updates only install on the release or beta channel -- this copy was built from source"))
 	}
 	if fake := os.Getenv(testUpdateFakeVersionEnv); fake != "" {
 		if ms, err := strconv.Atoi(os.Getenv(testUpdateDownloadDelayEnv)); err == nil && ms > 0 {
 			time.Sleep(time.Duration(ms) * time.Millisecond)
 		}
-		return fmt.Errorf("no release asset in test mode")
+		return s.failInstall(wasReady, false, fmt.Errorf("no release asset in test mode"))
 	}
 	s.mu.Lock()
 	backupRunner := s.backupRunner
@@ -334,17 +350,25 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 	s.mu.Unlock()
 
 	if backupRunner == nil {
-		return fmt.Errorf("update aborted: no pre-update backup available")
+		return s.failInstall(wasReady, false, fmt.Errorf("update aborted: no pre-update backup available"))
 	}
 	if _, err := backupRunner(0); err != nil {
-		return fmt.Errorf("update aborted: pre-update backup failed: %w", err)
+		return s.failInstall(wasReady, false, fmt.Errorf("update aborted: pre-update backup failed: %w", err))
 	}
 
 	if u == nil {
-		return fmt.Errorf("updater not configured")
+		return s.failInstall(wasReady, false, fmt.Errorf("updater not configured"))
 	}
 	if err := u.DownloadAndInstall(context.Background()); err != nil {
-		return sanitizeUpdaterError(err)
+		// u.DownloadAndInstall's FIRST action is discardStaging(),
+		// unconditionally removing whatever this *updater.Updater
+		// already had staged, before the new download even begins
+		// (wails/v3 pkg/updater, confirmed against its own source) --
+		// so from here on, a previously-ready build is genuinely gone
+		// on disk regardless of this call's own outcome, and
+		// failInstall(true) below reflects that instead of continuing
+		// to claim it's still ready.
+		return s.failInstall(wasReady, true, sanitizeUpdaterError(err))
 	}
 	// u.DownloadAndInstall already verified the staged download
 	// against the published SHA256 digest before returning -- signing
@@ -357,6 +381,40 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 	s.mu.Unlock()
 	s.markUpdateReady()
 	return nil
+}
+
+// failInstall records a DownloadAndInstallUpdate failure into the
+// state machine and returns err unchanged, so every failure path above
+// can just `return s.failInstall(...)`.
+//
+// destroyedPriorStaging is true only for the one failure path past
+// u.DownloadAndInstall itself -- every earlier failure (channel gate,
+// backup) never touches the adopted updater's own staging, so a
+// previously-ready build stays genuinely ready through those. When it
+// IS true and wasReady was true, the previously-ready build is
+// actually gone (discardStaging already ran) -- Mill's own bookkeeping
+// is cleared to match, so Ready never keeps claiming a build that no
+// longer exists on disk (RestartApp would otherwise fail with no
+// explanation once the user finally clicks it). Either way, a
+// wasReady failure surfaces through the existing check-error line
+// ("a newer update couldn't download") rather than the fresh-install
+// error path, since the story from the user's side is the same
+// regardless of which failure destroyed the in-flight download.
+func (s *SettingsService) failInstall(wasReady, destroyedPriorStaging bool, err error) error {
+	if wasReady {
+		if destroyedPriorStaging {
+			s.mu.Lock()
+			s.updateReady = false
+			s.stagedUpdateVersion = ""
+			s.mu.Unlock()
+		}
+		s.recordCheckOutcome(UpdateCheckOutcomeFailed, "a newer update couldn't download: "+err.Error())
+		return err
+	}
+	s.mu.Lock()
+	s.lastInstallError = err.Error()
+	s.mu.Unlock()
+	return err
 }
 
 // RestartApp relaunches into the update DownloadAndInstallUpdate just

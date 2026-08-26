@@ -99,6 +99,10 @@ export type {
   UpdateCheckResult,
   UpdateNotice,
 } from '../../bindings/github.com/alicoding/mill/internal/services/settingssvc'
+// UpdateState is a real (string) enum, not a type-only shape -- surfaces
+// compare against its members (UpdateState.UpdateStateAvailable), so it
+// needs a value export, not `export type`.
+export { UpdateState } from '../../bindings/github.com/alicoding/mill/internal/services/settingssvc'
 // GetWorkflowMinutesSaved/ListWorkflowMinutesSaved/SetWorkflowMinutesSaved
 // (docs/goals/0014-home-dashboard.md) are plain SettingsService methods,
 // already covered by the `export { SettingsService }` line above -- no

@@ -115,7 +115,11 @@ function CompositionView() {
   // arming (TriggerService.Sync's own gate), so this is the same
   // CompositionService.PublishWorkflow call WorkflowVersionsPanel.tsx's
   // "Publish current draft" button makes, just reachable straight from
-  // the list without opening the workflow's editor first.
+  // the list without opening the workflow's editor first. Stays a
+  // mouse-only handler, not the shared/commands.ts workflow.publish
+  // command (goal 0222 S1's canvas-scoped version): a ROW's own id
+  // isn't addressable from the registry until entity row-selection is a
+  // queryable state door, which goal 0222 named and deferred past S1.
   const publishWorkflow = (id: string) => {
     setPublishingId(id)
     setPublishError(null)
