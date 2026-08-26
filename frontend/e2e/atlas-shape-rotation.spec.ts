@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { boardPoint, dragBetween, dragResizeHandle, nonSeededBoardObjects } from './fixtures/atlasBoard'
+import { boardPoint, dragBetween, dragResizeHandle, nonSeededBoardObjects, nonSeededBoardObjectWrapper } from './fixtures/atlasBoard'
 
 // The shape rotation handle (goal 0214), rectangle/ellipse scope only
 // (arrow's own geometry IS its dx/dy payload -- a second angle
@@ -28,7 +28,7 @@ test('a selected shape shows the rotate handle, dragging it rotates live, Shift 
   await dragBetween(page, await boardPoint(board, 0.05, 0.1), await boardPoint(board, 0.2, 0.25))
   const shape = nonSeededBoardObjects(page, 'shape')
   await expect(shape).toHaveCount(1)
-  const wrapper = page.locator('.react-flow__node').filter({ has: shape })
+  const wrapper = nonSeededBoardObjectWrapper(page, 'shape')
   await expect(wrapper).toHaveClass(/selected/)
 
   const content = shape.locator('[data-testid="atlas-shape-content"]')

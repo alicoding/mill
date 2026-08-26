@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { dragBetween, nonSeededBoardObjects } from './fixtures/atlasBoard'
+import { dragBetween, nonSeededBoardObjects, nonSeededBoardObjectWrapper } from './fixtures/atlasBoard'
 
 // Shared pool (testing.md): every assertion is scoped to a shape this
 // spec creates and deletes itself, or reads a seeded card's own
@@ -38,7 +38,7 @@ test('a selected board object and a selected card each carry a real box-shadow r
   // the tool and leaves the new object selected, so the ring this
   // test is proving is already up -- no extra click needed to
   // reproduce it.
-  const shapeWrapper = page.locator('.react-flow__node').filter({ has: shape })
+  const shapeWrapper = nonSeededBoardObjectWrapper(page, 'shape')
   await expect(shapeWrapper).toHaveClass(/selected/)
   await expect.poll(() => shapeWrapper.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
 

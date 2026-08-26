@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { boardPoint, dragBetween, nonSeededBoardObjects } from './fixtures/atlasBoard'
+import { boardPoint, dragBetween, nonSeededBoardObjects, nonSeededBoardObjectWrapper } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 import { waitForViewportStable } from './fixtures/animation'
@@ -257,7 +257,7 @@ test('starting a stroke on top of an existing one draws without selecting or dra
   // read below stays pinned to THIS specific DOM node regardless of
   // where a second ink object lands in document order (the same
   // pattern the DOM-mutation test below this one already uses).
-  const strokeAWrapper = page.locator('.react-flow__node').filter({ has: ink.first() })
+  const strokeAWrapper = nonSeededBoardObjectWrapper(page, 'ink')
   const strokeAHandle = await strokeAWrapper.elementHandle()
   if (!strokeAHandle) throw new Error('stroke A node has no element handle')
   const strokeABox = await strokeAHandle.boundingBox()
@@ -290,7 +290,10 @@ test('starting a stroke on top of an existing one draws without selecting or dra
   // never off a coordinate captured earlier), so neither one can go
   // stale the way a raw page-coordinate click already proved flaky here.
   const strokeAID = await strokeAHandle.evaluate((el) => el.getAttribute('data-id'))
-  const strokeBHandle = await page.locator(`.react-flow__node[data-id]:not([data-id="${strokeAID}"])`).filter({ has: ink }).elementHandle()
+  // The has: needle stays descendant-only (nonSeededBoardObjectWrapper's
+  // own comment explains why reusing `ink`'s full ancestor-prefixed
+  // selector here would never match).
+  const strokeBHandle = await page.locator(`.react-flow__node[data-id]:not([data-id="${strokeAID}"])`).filter({ has: page.locator('[data-testid="atlas-board-object"][data-object-kind="ink"]') }).elementHandle()
   if (!strokeBHandle) throw new Error('stroke B node has no element handle')
   const strokeBBox = await strokeBHandle.boundingBox()
   if (!strokeBBox) throw new Error('stroke B node has no bounding box')
