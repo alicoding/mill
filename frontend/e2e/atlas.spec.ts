@@ -202,10 +202,12 @@ test('arrange is an action: dragging persists a position, Auto-arrange re-seats 
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
   // No mode toggle anywhere -- the Auto-arrange BUTTON is present at
-  // every level instead (positions are always sovereign).
+  // every level instead (positions are always sovereign). Its row
+  // testid can legitimately sit in Primer's ActionBar overflow menu at
+  // this width, so reachability below (openToolbarAction, which
+  // already asserts a successful click) stands in for a plain
+  // toBeVisible() row-only check.
   await expect(page.getByTestId('atlas-view-mode-toggle')).toHaveCount(0)
-  const arrange = page.getByTestId('atlas-auto-arrange')
-  await expect(arrange).toBeVisible()
 
   // One-shot arrange persists seats: click it, then a reload renders
   // the same FLOW positions (React Flow writes translate(x,y) in flow
