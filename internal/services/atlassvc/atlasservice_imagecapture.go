@@ -38,13 +38,20 @@ func DefaultCapturesDir(override string) string {
 // SetCapturesDir wires the captures directory in from main.go, mirroring
 // SetMirrorsDir's own constructor-parameter avoidance (AtlasService
 // already has many callers, tests included, that have no reason to know
-// about it).
+// about it). Re-runs reconcileBuiltIns after wiring (goal 0223): the
+// construction-time reconcile pass runs before this is ever called, so
+// a file-backed seeded board object (ink/image/diagram,
+// builtInBoardObjectsLocked) has no captures directory to materialize
+// its mirror file into yet -- this is the first point one exists, and
+// reconcile's own top-up semantics make a second, mid-lifetime pass
+// safe (a no-op for every already-seeded family).
 //
 //wails:ignore
 func (a *AtlasService) SetCapturesDir(dir string) {
 	a.mu.Lock()
 	a.capturesDir = dir
 	a.mu.Unlock()
+	a.reconcileBuiltIns()
 }
 
 // SaveImageBytes decodes base64Data (standard encoding) and writes it to

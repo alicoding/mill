@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { boardPoint, dragBetween, dragResizeHandle } from './fixtures/atlasBoard'
+import { boardPoint, dragBetween, dragResizeHandle, nonSeededBoardObjects, nonSeededBoardObjectWrapper } from './fixtures/atlasBoard'
 
 // The shape rotation handle (goal 0214), rectangle/ellipse scope only
 // (arrow's own geometry IS its dx/dy payload -- a second angle
@@ -21,10 +21,14 @@ test('a selected shape shows the rotate handle, dragging it rotates live, Shift 
   await expect(board).toBeVisible()
 
   await page.getByTestId('atlas-tray-shape').click()
-  await dragBetween(page, await boardPoint(board, 0.3, 0.3), await boardPoint(board, 0.45, 0.45))
-  const shape = page.locator('[data-testid="atlas-board-object"][data-object-kind="shape"]')
+  // Same top-left band atlas-shape-tool.spec.ts's own tests use --
+  // clear of the seeded "Board gallery" card (goal 0223), which widens
+  // this board's own fitView content extent enough to shift where a
+  // more central percentage point lands.
+  await dragBetween(page, await boardPoint(board, 0.05, 0.1), await boardPoint(board, 0.2, 0.25))
+  const shape = nonSeededBoardObjects(page, 'shape')
   await expect(shape).toHaveCount(1)
-  const wrapper = page.locator('.react-flow__node').filter({ has: shape })
+  const wrapper = nonSeededBoardObjectWrapper(page, 'shape')
   await expect(wrapper).toHaveClass(/selected/)
 
   const content = shape.locator('[data-testid="atlas-shape-content"]')
@@ -110,7 +114,7 @@ test('a selected shape shows the rotate handle, dragging it rotates live, Shift 
   // The angle persists across reload.
   await page.reload()
   await page.getByRole('link', { name: 'Atlas' }).click()
-  const reloadedShape = page.locator('[data-testid="atlas-board-object"][data-object-kind="shape"]')
+  const reloadedShape = nonSeededBoardObjects(page, 'shape')
   await expect(reloadedShape).toBeVisible()
   const reloadedContent = reloadedShape.locator('[data-testid="atlas-shape-content"]')
   await expect.poll(async () => parseRotationDeg(await reloadedContent.evaluate((el) => (el as HTMLElement).style.transform))).toBe(snappedDeg)

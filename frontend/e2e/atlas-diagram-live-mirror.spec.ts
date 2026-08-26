@@ -3,6 +3,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import { test, expect } from './fixtures/server'
 import { createBoardObjectViaRPC, ATLAS_DEFAULT_SPACE_ID } from './fixtures/atlasNativeDropEscapeHatch'
+import { nonSeededBoardObjects } from './fixtures/atlasBoard'
 
 // Shared worker pool (testing.md): every assertion below is scoped to
 // the one diagram object each test creates and cleans up itself --
@@ -18,7 +19,7 @@ import { createBoardObjectViaRPC, ATLAS_DEFAULT_SPACE_ID } from './fixtures/atla
 // stale or blank view.
 
 function diagramObjects(page: import('@playwright/test').Page) {
-  return page.locator('[data-testid="atlas-board-object"][data-object-kind="diagram"]')
+  return nonSeededBoardObjects(page, 'diagram')
 }
 
 function makeDrawioXML(label: string): string {

@@ -68,15 +68,18 @@ test('atlas select-all (Cmd+A): guarded inside an editable field, selects every 
     await expect(selected).toHaveCount(0)
     await page.keyboard.press('Escape')
 
-    // Real dispatch: Cmd+A on the board selects EVERY top-level card at
-    // this level -- the seeded root ("The engagement") carries 3
-    // (Client records, Discovery workstream, Scratchpad), plus the 2 just
+    // Real dispatch: Cmd+A on the board selects EVERY top-level card AND
+    // board object at this level (useAtlasSelectAll.ts) -- the seeded
+    // root ("The engagement") carries 4 cards (Client records, Discovery
+    // workstream, Scratchpad, Board gallery -- the last nests goal
+    // 0223's own seeded board objects rather than rendering them at
+    // root) and 0 board objects of its own, plus the 2 cards just
     // placed.
     await page.keyboard.press('Meta+a')
-    await expect(selected).toHaveCount(5)
+    await expect(selected).toHaveCount(6)
     const selectionTray = page.getByTestId('atlas-selection-tray')
     await expect(selectionTray).toBeVisible()
-    await expect(page.getByTestId('atlas-selection-count')).toHaveText('5 selected')
+    await expect(page.getByTestId('atlas-selection-count')).toHaveText('6 selected')
 
     // Cleanup: quick delete + clock-controlled toast expiry. Select-all
     // includes seeded frames whose unselected children would be

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/alicoding/mill/internal/domain/seedorigin"
 )
 
 // BoardObject is a canvas-native peer to Card (goal 0179/0180's
@@ -52,6 +54,13 @@ type BoardObject struct {
 	// DeletedAt marks this object soft-deleted (goal 0093's tombstone
 	// contract, extended to this type) -- zero value means live.
 	DeletedAt time.Time
+	// BuiltIn and Seed carry the exact same seed-provenance contract
+	// Card already does (goal 0037/0223): BuiltIn marks a golden
+	// atlassvc's reconcile inserted, Seed tracks which revision and
+	// whether the user has since touched it. A zero Seed means
+	// user-created, same as a Card with no seed origin.
+	BuiltIn bool
+	Seed    seedorigin.Origin
 }
 
 // ValidateBoardObject checks a BoardObject is well-formed. Kind is the

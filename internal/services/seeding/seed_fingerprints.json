@@ -27,6 +27,10 @@
     "seedRevision": 6,
     "fingerprint": "ef3ab889a8314790ea3b15f3dffb18be651942c7b92bd2dca1b393eeffac6811"
   },
+  "atlascard:atlas-card-session-sketches": {
+    "seedRevision": 1,
+    "fingerprint": "9b07d2763fd80b7d753252b909b1145b6e4343ca1fef825b85403f95afe12d6c"
+  },
   "atlaskind:atlas-kind-component": {
     "seedRevision": 1,
     "fingerprint": "c0717ac09c75dcef29c2a06c08d0d4a6e60832bb9385db4eb327f0fb069205c1"
@@ -66,6 +70,18 @@
   "atlaslinkkind:atlas-linkkind-relates-to": {
     "seedRevision": 1,
     "fingerprint": "5efd2d4f46ceb01ae229e997102fe11191367b9ee46ac03939ffe278d4dec379"
+  },
+  "atlasobject:atlas-object-example-image": {
+    "seedRevision": 1,
+    "fingerprint": "f6aa10d47c45ee74a1a84d058ebd306b2bb3adb2cb747056419e17ab9d369775"
+  },
+  "atlasobject:atlas-object-example-ink": {
+    "seedRevision": 1,
+    "fingerprint": "2c19aa57810f5a47d25587fb4931161ca1996bc515ecb6e1eea7332f39432bcb"
+  },
+  "atlasobject:atlas-object-example-shape": {
+    "seedRevision": 1,
+    "fingerprint": "c2221b9e336989c19ff77763679204d1ef6092622cd65e2a5dd7766197a0eb6d"
   },
   "decision:example-approve-decision": {
     "seedRevision": 3,

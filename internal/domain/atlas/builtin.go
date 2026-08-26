@@ -81,6 +81,41 @@ const (
 	// exported because the clipboard bridge's note route (goal 0099)
 	// lands notes there from the service layer.
 	BuiltInScratchpadCardID = cardScratchpadID
+	// cardSketchesID (goal 0223) is the seeded board-object examples'
+	// own container: a dedicated Canvas-mode card, never a direct child
+	// rendered ON "The engagement"'s own board -- a fresh install and
+	// every e2e worker auto-enters "The engagement" by default, and a
+	// board object sitting directly on it widens that board's own
+	// content extent enough to shift fitView's settled zoom, which
+	// shifted where dozens of OTHER specs' percentage-of-viewport and
+	// auto-placed points land (goal 0223's own migration record).
+	// KindID is Component, not Topic: atlas-jump.spec.ts's own "Topic:"
+	// scope asserts an exact census of the pre-existing Topic cards
+	// (the same reasoning cardSystemLandscapeID's own comment below
+	// already documents). Dedicated rather than reusing an existing
+	// card because each one already carries its own pinned expectation
+	// elsewhere (Discovery
+	// workstream's honest-empty-board fixture, Scratchpad's instant
+	// no-confirm delete, Client records' Shelves layout -- a
+	// BoardObject is Free-mode-only, boardobject.go's own header) that
+	// gaining children would break.
+	//
+	// This card is the PERMANENT single home for every seeded
+	// board-object example, present and future: a genuinely separate
+	// root-level space (ParentID=="") was considered and rejected --
+	// singleRootCard (atlasGrouping.ts) gates ADR-0038's egocentric-root
+	// auto-entry on there being EXACTLY one root card, so a second root
+	// card silently stops every fresh install and e2e worker from
+	// auto-entering "The engagement" at all, a far larger break than
+	// the extent problem it would have solved (frontend/src/atlas/
+	// atlasGrouping.ts's own singleRootCard doc has the mechanism). A
+	// future seed that needs a board-object example nests it as a
+	// child of THIS card, never as a new sibling of "The engagement" --
+	// the landing board's own content extent then never moves again,
+	// and every extent-sensitive spec (atlas-shape-tool.spec.ts,
+	// atlas-single-space-trap.spec.ts's fixed-pixel right-click) pays
+	// its one-time update exactly once, here.
+	cardSketchesID = "atlas-card-session-sketches"
 
 	linkGettingToContactID  = "atlas-link-getting-to-contact"
 	linkContactToDocumentID = "atlas-link-contact-to-document"
@@ -91,6 +126,21 @@ const (
 	perspectiveCurrentID = "atlas-perspective-current"
 	perspectiveInterimID = "atlas-perspective-interim"
 	perspectiveTargetID  = "atlas-perspective-target"
+
+	// Board-object seed goldens (goal 0223): nested inside cardSketchesID
+	// (ParentID, boardobject_builtin.go) -- see that card's own comment
+	// for why. Kept findable by DOM prefix ("atlas-object-example-")
+	// specifically so a shared-pool spec's own kind-scoped locator
+	// (e.g. every "shape"-kind board object it creates itself) can
+	// exclude these by name rather than accidentally counting/selecting
+	// them -- see e.g. atlas-shape-tool.spec.ts's own shapeObjects()
+	// helper. A 'diagram' golden is deliberately NOT seeded here: it
+	// wedged every e2e worker's server at boot (goal 0223's own
+	// investigation); atlas-seeded-board-objects.spec.ts creates its
+	// diagram example live via CreateBoardObject instead.
+	objectShapeExampleID = "atlas-object-example-shape"
+	objectInkExampleID   = "atlas-object-example-ink"
+	objectImageExampleID = "atlas-object-example-image"
 )
 
 // BuiltInKinds returns the seeded example card types -- pure config,
@@ -270,9 +320,9 @@ func BuiltInCards() []Card {
 			// note card) -- 532 keeps this card from landing underneath
 			// that frame in Free/canvas mode.
 			ID: cardGettingID, KindID: kindTopicID, Title: "Discovery workstream",
-			Note:      "First working session with the client. Scope and next steps confirmed.",
-			ParentID:  cardMySpaceID,
-			Position:  &Position{X: 532, Y: 80},
+			Note:     "First working session with the client. Scope and next steps confirmed.",
+			ParentID: cardMySpaceID,
+			Position: &Position{X: 532, Y: 80},
 			Fields: map[string]string{
 				"summary": "Confirm scope, stakeholders, and what a finished engagement looks like.",
 				"status":  "Open",
@@ -298,6 +348,25 @@ func BuiltInCards() []Card {
 			// slice 1) -- the card's ROLE and ID are unchanged, referenced
 			// by the clipboard bridge via BuiltInScratchpadCardID.
 			BuiltIn: true, Seed: seedorigin.Stamp(6),
+		},
+		{
+			// The board-object examples' own home (goal 0223): Canvas
+			// mode since a BoardObject is Free-mode-only (boardobject.go's
+			// own header) -- see cardSketchesID's own comment for why
+			// this is a dedicated card rather than nesting in an
+			// existing one. Title/Note deliberately avoid the word
+			// "sketch": ink's own default stroke title IS "Sketch"
+			// (shapeTool.ts's own pencil commit), and atlas-pencil-tool.
+			// spec.ts's regression check scans every atlas-note-card for
+			// that exact substring -- this card's own name must never
+			// false-positive-match it.
+			ID: cardSketchesID, KindID: kindComponentID, Title: "Board gallery",
+			Note:      "Freehand drawings, shapes, and captured images from the discovery sessions.",
+			ParentID:  cardMySpaceID,
+			ViewMode:  ViewModeCanvas,
+			Position:  &Position{X: 960, Y: 80},
+			CreatedAt: now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
 		{
 			ID: cardContactID, KindID: kindContactID, Title: "Jordan Reyes",

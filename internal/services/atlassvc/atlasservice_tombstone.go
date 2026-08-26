@@ -246,26 +246,46 @@ func (a *AtlasService) DeleteNote(id string) (TombstoneResult, error) {
 }
 
 // DeleteBoardObject soft-deletes a board object (goal 0179/0180) --
-// same tombstone contract as DeleteNote: no seed-tombstone bookkeeping
-// (a board object carries no seed provenance), no link/child blast
-// radius (a board object can be neither a link endpoint nor a
-// container).
+// same tombstone contract as DeleteCard's own seed-tombstone bookkeeping
+// (goal 0223 gives BoardObject the same BuiltIn/Seed provenance Card
+// already carries), minus DeleteCard's link/child blast radius (a
+// board object can be neither a link endpoint nor a container).
+//
+//nolint:dupl // same wasBuiltIn-tombstone-then-persist shape as DeleteCard -- a shared generic delete is a larger refactor than this goal's scope
 func (a *AtlasService) DeleteBoardObject(id string) (TombstoneResult, error) {
 	a.mu.Lock()
-	var label string
-	if idx := a.findObjectLocked(id); idx != -1 {
-		label = a.objects[idx].Kind
+	idx := a.findObjectLocked(id)
+	if idx == -1 {
+		a.mu.Unlock()
+		return TombstoneResult{}, fmt.Errorf("no board object with id %q", id)
 	}
-	err := softDeleteEntityLocked(a, a.objects, id, "board object", func() int { return a.findObjectLocked(id) },
-		func(o atlas.BoardObject) time.Time { return o.DeletedAt },
-		func(o *atlas.BoardObject, t time.Time) { o.DeletedAt = t; o.UpdatedAt = t })
+	if !a.objects[idx].DeletedAt.IsZero() {
+		a.mu.Unlock()
+		return TombstoneResult{}, fmt.Errorf("board object %q is already deleted", id)
+	}
+	previous := a.objects[idx]
+	wasBuiltIn := previous.BuiltIn
+	now := time.Now()
+	a.objects[idx].DeletedAt = now
+	a.objects[idx].UpdatedAt = now
+	if wasBuiltIn {
+		if err := seeding.RecordTombstone(a.store, id); err != nil {
+			a.objects[idx] = previous
+			a.mu.Unlock()
+			return TombstoneResult{}, fmt.Errorf("tombstone deleted board object %q: %w", id, err)
+		}
+	}
+	perr := a.persistLocked()
+	if perr != nil {
+		a.objects[idx] = previous
+	}
 	a.mu.Unlock()
-	if err != nil {
-		return TombstoneResult{}, err
+	if perr != nil {
+		return TombstoneResult{}, fmt.Errorf("save board object deletion: %w", perr)
 	}
 	dataevent.Emit("atlas", id)
 	a.disarmMirrorWatch(id)
-	a.recordUndo(actorUI, "object", id, label,
+	a.recordUndo(actorUI, "object", id, previous.Kind,
 		func(a *AtlasService) error { return a.UndoDelete(nil, nil, []string{id}) },
 		func(a *AtlasService) error { _, err := a.DeleteBoardObject(id); return err },
 	)
@@ -275,9 +295,9 @@ func (a *AtlasService) DeleteBoardObject(id string) (TombstoneResult, error) {
 // UndoDelete reverses one or more DeleteCard/DeleteNote/
 // DeleteBoardObject calls: clears DeletedAt on exactly the ids named (a
 // no-op for any id that's no longer tombstoned, e.g. already purged)
-// and clears a built-in card's seed tombstone too, so top-up seeding
-// can reach it again. cardIDs/noteIDs/objectIDs are the exact
-// TombstoneResult(s) the original delete call(s) returned.
+// and clears a built-in card's or board object's seed tombstone too, so
+// top-up seeding can reach it again. cardIDs/noteIDs/objectIDs are the
+// exact TombstoneResult(s) the original delete call(s) returned.
 func (a *AtlasService) UndoDelete(cardIDs []string, noteIDs []string, objectIDs []string) error {
 	a.mu.Lock()
 	previousCards := append([]atlas.Card(nil), a.cards...)
@@ -288,9 +308,7 @@ func (a *AtlasService) UndoDelete(cardIDs []string, noteIDs []string, objectIDs 
 	restoreTombstonesLocked(a.notes, noteIDs, a.findNoteLocked,
 		func(n atlas.Note) time.Time { return n.DeletedAt },
 		func(n *atlas.Note, t time.Time) { n.DeletedAt = time.Time{}; n.UpdatedAt = t })
-	restoreTombstonesLocked(a.objects, objectIDs, a.findObjectLocked,
-		func(o atlas.BoardObject) time.Time { return o.DeletedAt },
-		func(o *atlas.BoardObject, t time.Time) { o.DeletedAt = time.Time{}; o.UpdatedAt = t })
+	clearedBuiltInIDs = append(clearedBuiltInIDs, a.restoreObjectTombstonesLocked(objectIDs)...)
 
 	perr := a.persistLocked()
 	if perr != nil {
@@ -327,6 +345,26 @@ func (a *AtlasService) restoreCardTombstonesLocked(cardIDs []string) []string {
 		a.cards[idx].DeletedAt = time.Time{}
 		a.cards[idx].UpdatedAt = now
 		if a.cards[idx].BuiltIn {
+			clearedBuiltInIDs = append(clearedBuiltInIDs, id)
+		}
+	}
+	return clearedBuiltInIDs
+}
+
+// restoreObjectTombstonesLocked is restoreCardTombstonesLocked's own
+// board-object twin (goal 0223 gives BoardObject the same seed
+// provenance Card already carries). Caller must already hold a.mu.
+func (a *AtlasService) restoreObjectTombstonesLocked(objectIDs []string) []string {
+	var clearedBuiltInIDs []string
+	now := time.Now()
+	for _, id := range objectIDs {
+		idx := a.findObjectLocked(id)
+		if idx == -1 || a.objects[idx].DeletedAt.IsZero() {
+			continue
+		}
+		a.objects[idx].DeletedAt = time.Time{}
+		a.objects[idx].UpdatedAt = now
+		if a.objects[idx].BuiltIn {
 			clearedBuiltInIDs = append(clearedBuiltInIDs, id)
 		}
 	}

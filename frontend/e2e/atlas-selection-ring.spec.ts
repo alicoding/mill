@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { dragBetween } from './fixtures/atlasBoard'
+import { dragBetween, nonSeededBoardObjects, nonSeededBoardObjectWrapper } from './fixtures/atlasBoard'
 
 // Shared pool (testing.md): every assertion is scoped to a shape this
 // spec creates and deletes itself, or reads a seeded card's own
@@ -22,19 +22,23 @@ test('a selected board object and a selected card each carry a real box-shadow r
   await page.getByTestId('atlas-tray-shape').click()
   const box = await board.boundingBox()
   if (!box) throw new Error('board has no bounding box')
+  // Same top-left band atlas-shape-tool.spec.ts's own tests use --
+  // clear of the seeded "Board gallery" card (goal 0223), which widens
+  // this board's own fitView content extent enough to shift where a
+  // more central/right-leaning percentage point lands.
   await dragBetween(
     page,
-    { locator: board, position: { x: box.width * 0.08, y: box.height * 0.08 } },
-    { locator: board, position: { x: box.width * 0.2, y: box.height * 0.2 } },
+    { locator: board, position: { x: box.width * 0.05, y: box.height * 0.1 } },
+    { locator: board, position: { x: box.width * 0.2, y: box.height * 0.25 } },
   )
 
-  const shape = page.locator('[data-testid="atlas-board-object"][data-object-kind="shape"]')
+  const shape = nonSeededBoardObjects(page, 'shape')
   await expect(shape).toHaveCount(1)
   // The shape tool is discrete (goal 0199): the draw itself disarms
   // the tool and leaves the new object selected, so the ring this
   // test is proving is already up -- no extra click needed to
   // reproduce it.
-  const shapeWrapper = page.locator('.react-flow__node').filter({ has: shape })
+  const shapeWrapper = nonSeededBoardObjectWrapper(page, 'shape')
   await expect(shapeWrapper).toHaveClass(/selected/)
   await expect.poll(() => shapeWrapper.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
 

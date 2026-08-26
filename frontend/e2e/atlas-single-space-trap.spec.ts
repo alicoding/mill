@@ -9,7 +9,8 @@ import {
   type SpawnedServer,
 } from './fixtures/server'
 import { contextMenu } from './fixtures/contextMenu'
-import { groupCard, noteCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { clickBoardPoint, groupCard, noteCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { findEmptyBoardPoint } from './fixtures/atlasEmptyRegion'
 
 // Own dedicated server (docs/goals/0183): this spec deletes the seeded
 // root card down to ZERO spaces and back, a global root-card-count
@@ -49,13 +50,17 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     const board = page.getByTestId('atlas-board')
     await expect(board).toBeVisible()
     const menu = contextMenu(page)
-    // Every fixed-pixel pane right-click below targets (12, 12): reliably
-    // empty background only once content is pushed toward the board's
-    // own center, same convention fixtures/atlasBoard.ts's own callers
-    // use everywhere else -- card count keeps shrinking as this test
-    // deletes its way to zero, so this is re-run after every landing in
-    // a differently-populated space, not just once up front.
+    // Every pane right-click below targets a point findEmptyBoardPoint
+    // proves clear of every currently-rendered node (fixtures/
+    // atlasEmptyRegion.ts, goal 0223's class fix) rather than a fixed
+    // pixel -- card count keeps shrinking as this test deletes its way
+    // to zero, and the landing board's own content extent is no longer
+    // a stable enough shape to hand-pick one fixed corner against.
     await zoomAllTheWayOut(page)
+    const emptyPaneClick = async (): Promise<void> => {
+      const point = await findEmptyBoardPoint(page, board)
+      await clickBoardPoint(page, point, { button: 'right' })
+    }
 
     // Egocentric-root auto-entry still lands directly inside the sole
     // space on load (ADR-0038's intent, unregressed) -- but the "All
@@ -90,7 +95,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     // carries Rename/Delete, reusing the card's own existing page
     // overlay (rename) and the same guarded delete door every other
     // Atlas card delete already goes through.
-    await board.click({ button: 'right', position: { x: 12, y: 12 } })
+    await emptyPaneClick()
     await expect(menu).toBeVisible()
     await expect(menu.getByText('Rename space…', { exact: true })).toBeVisible()
     await expect(menu.getByText('Delete space', { exact: true })).toBeVisible()
@@ -102,26 +107,27 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     await page.keyboard.press('Escape')
     await expect(overlay).not.toBeVisible()
 
-    // Deleting the space it's viewed from: "The engagement" holds 3
-    // children (Client records/Discovery workstream/Scratchpad), so
-    // the container-delete gate (goal 0149 gap 3) confirms first,
-    // naming the promoted count -- same guarded door as every other
-    // container delete, reached from a NEW trigger point.
-    await board.click({ button: 'right', position: { x: 12, y: 12 } })
+    // Deleting the space it's viewed from: "The engagement" holds 4
+    // children (Client records/Discovery workstream/Scratchpad/Board
+    // gallery), so the container-delete gate (goal 0149 gap 3) confirms
+    // first, naming the promoted count -- same guarded door as every
+    // other container delete, reached from a NEW trigger point.
+    await emptyPaneClick()
     await expect(menu).toBeVisible()
     await menu.getByText('Delete space', { exact: true }).click()
-    await expect(page.getByText('3 items inside move up a level. You can undo right after.')).toBeVisible()
+    await expect(page.getByText('4 items inside move up a level. You can undo right after.')).toBeVisible()
     await page.getByRole('button', { name: 'Delete', exact: true }).click()
 
     // Lands on "All spaces" -- not a dead end -- showing what remains:
-    // "The engagement"'s 3 direct children, promoted to root cards.
+    // "The engagement"'s 4 direct children, promoted to root cards.
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
     await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('The engagement')
     await expect(groupCard(page, 'Client records')).toBeVisible()
     await expect(noteCard(page, 'Discovery workstream')).toBeVisible()
     await expect(noteCard(page, 'Scratchpad')).toBeVisible()
+    await expect(noteCard(page, 'Board gallery')).toBeVisible()
 
-    // Drain two of the three promoted leaves -- ordinary,
+    // Drain the two truly childless promoted leaves -- ordinary,
     // already-covered-elsewhere instant leaf deletes.
     for (const title of ['Discovery workstream', 'Scratchpad']) {
       await noteCard(page, title).click({ button: 'right' })
@@ -129,6 +135,39 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
       await menu.getByText('Delete', { exact: true }).click()
       await expect(noteCard(page, title)).toHaveCount(0)
     }
+
+    // "Board gallery" nests board objects, never cards, so
+    // isGroupCard() still treats it as a childless leaf for THIS
+    // delete. Its board objects are deleted through the real UI FIRST,
+    // before the card itself, rather than left for the card delete's
+    // own EffectiveParentID promotion to carry them out: a promoted
+    // object keeps its stored position from the board it was promoted
+    // OFF of, which can land on top of an unrelated card at the
+    // destination level (tracked as its own goal) -- draining the
+    // objects first means the card has zero children left when it's
+    // deleted, so that promotion path never runs here.
+    await page.locator('[data-testid="atlas-note-drill"][aria-label="Zoom into Board gallery"]').click()
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Board gallery')
+    const galleryObjects = page.locator('[data-testid="atlas-board-object"]')
+    // A one-shot count() read as the loop guard can outrun the delete's
+    // own async DOM update and re-queue a click against an element
+    // that's already gone -- toHaveCount confirms each deletion lands
+    // before the next iteration reads the count again.
+    for (let remaining = await galleryObjects.count(); remaining > 0; remaining--) {
+      await galleryObjects.first().click({ button: 'right' })
+      await expect(menu).toBeVisible()
+      await menu.getByText('Delete', { exact: true }).click()
+      await expect(galleryObjects).toHaveCount(remaining - 1)
+    }
+    await expect(galleryObjects).toHaveCount(0)
+    await page.keyboard.press('Meta+ArrowUp')
+    await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Board gallery')
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
+
+    await noteCard(page, 'Board gallery').click({ button: 'right' })
+    await expect(menu).toBeVisible()
+    await menu.getByText('Delete', { exact: true }).click()
+    await expect(noteCard(page, 'Board gallery')).toHaveCount(0)
 
     // "Client records" is now the SOLE remaining root: egocentric-root
     // auto-entry (unregressed by this goal, since nothing here marked
@@ -140,7 +179,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
     await zoomAllTheWayOut(page)
-    await board.click({ button: 'right', position: { x: 12, y: 12 } })
+    await emptyPaneClick()
     await expect(menu).toBeVisible()
     await expect(menu.getByText('Delete space', { exact: true })).toBeVisible()
     await menu.getByText('Delete space', { exact: true }).click()
@@ -164,7 +203,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     // instant, no-confirm delete (goal 0093's guard).
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Statement of work')
     await zoomAllTheWayOut(page)
-    await board.click({ button: 'right', position: { x: 12, y: 12 } })
+    await emptyPaneClick()
     await expect(menu).toBeVisible()
     await menu.getByText('Delete space', { exact: true }).click()
 
@@ -173,7 +212,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     // space), never a blank or stuck screen.
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
     await expect(page.getByTestId('atlas-empty-space')).toBeVisible()
-    await board.click({ button: 'right', position: { x: 12, y: 12 } })
+    await emptyPaneClick()
     await expect(menu).toBeVisible()
     await expect(menu.getByText('Add card', { exact: true })).toBeVisible()
   } finally {
