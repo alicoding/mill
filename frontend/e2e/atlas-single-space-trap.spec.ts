@@ -138,23 +138,36 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
 
     // "Board gallery" nests board objects, never cards, so
     // isGroupCard() still treats it as a childless leaf for THIS
-    // delete -- but deleting it promotes its own board-object children
-    // to the nearest live ancestor exactly the way a card's own card/
-    // note children promote (EffectiveParentID,
-    // atlasservice_tombstone.go's liveObjectsLocked), landing them
-    // here at "All spaces" too. Drained explicitly right after, or the
-    // suite's own later "coherent empty board" state never arrives.
+    // delete. Its board objects are deleted through the real UI FIRST,
+    // before the card itself, rather than left for the card delete's
+    // own EffectiveParentID promotion to carry them out: a promoted
+    // object keeps its stored position from the board it was promoted
+    // OFF of, which can land on top of an unrelated card at the
+    // destination level (tracked as its own goal) -- draining the
+    // objects first means the card has zero children left when it's
+    // deleted, so that promotion path never runs here.
+    await page.locator('[data-testid="atlas-note-drill"][aria-label="Zoom into Board gallery"]').click()
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Board gallery')
+    const galleryObjects = page.locator('[data-testid="atlas-board-object"]')
+    // A one-shot count() read as the loop guard can outrun the delete's
+    // own async DOM update and re-queue a click against an element
+    // that's already gone -- toHaveCount confirms each deletion lands
+    // before the next iteration reads the count again.
+    for (let remaining = await galleryObjects.count(); remaining > 0; remaining--) {
+      await galleryObjects.first().click({ button: 'right' })
+      await expect(menu).toBeVisible()
+      await menu.getByText('Delete', { exact: true }).click()
+      await expect(galleryObjects).toHaveCount(remaining - 1)
+    }
+    await expect(galleryObjects).toHaveCount(0)
+    await page.keyboard.press('Meta+ArrowUp')
+    await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Board gallery')
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
+
     await noteCard(page, 'Board gallery').click({ button: 'right' })
     await expect(menu).toBeVisible()
     await menu.getByText('Delete', { exact: true }).click()
     await expect(noteCard(page, 'Board gallery')).toHaveCount(0)
-    const promotedObjects = page.locator('[data-testid="atlas-board-object"]')
-    while (await promotedObjects.count() > 0) {
-      await promotedObjects.first().click({ button: 'right' })
-      await expect(menu).toBeVisible()
-      await menu.getByText('Delete', { exact: true }).click()
-    }
-    await expect(promotedObjects).toHaveCount(0)
 
     // "Client records" is now the SOLE remaining root: egocentric-root
     // auto-entry (unregressed by this goal, since nothing here marked
