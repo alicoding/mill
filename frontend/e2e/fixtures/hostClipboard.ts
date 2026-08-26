@@ -13,6 +13,19 @@ import { execFileSync } from 'node:child_process'
 // flow in withClipboardLock (./clipboardLock.ts) -- this is the same
 // single real OS-wide resource, still contended across parallel
 // workers.
+
+// hostClipboardAvailable mirrors the already-documented CI constraint
+// (docs/SPEC.md §1.3, composition-seeded-runs.spec.ts's own header
+// comment): pbcopy/pbpaste don't exist on CI's ubuntu-latest e2e
+// runner, so neither this write door nor the Go clipboard adapter it
+// mirrors can reach a real pasteboard there. Callers branch their
+// content-specific assertions on this instead of asserting a specific
+// payload round-tripped unconditionally -- the same environment-
+// independent shape composition-seeded-runs.spec.ts already uses for
+// the Go-side clipboard nodes.
+export const hostClipboardAvailable = process.platform === 'darwin'
+
 export function writeHostClipboardText(text: string): void {
+  if (!hostClipboardAvailable) return
   execFileSync('pbcopy', { input: text })
 }

@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
-import { writeHostClipboardText } from './fixtures/hostClipboard'
+import { writeHostClipboardText, hostClipboardAvailable } from './fixtures/hostClipboard'
 import { clickRowAction } from './inventoryRow'
 import { connectMCPClient, exportWorkflowViaMCP, findWorkflowIdByLabel } from './mcpTestClient'
 import { dragBetweenHandles, workflowRow } from './fixtures/canvas'
@@ -17,6 +17,14 @@ import { waitForViewportStable } from './fixtures/animation'
 // anywhere in this flow). Every clipboard-touching section below still
 // runs inside withClipboardLock: the real macOS pasteboard is one
 // OS-wide resource shared across parallel workers (goal 0009).
+//
+// The tests proving a specific CREATE/UPDATE/dangling-ref outcome
+// branch on hostClipboardAvailable: CI's e2e job runs on ubuntu-latest,
+// where pbcopy/pbpaste don't exist at all (docs/SPEC.md §1.3, the same
+// constraint composition-seeded-runs.spec.ts's header comment already
+// documents for the Go-side clipboard nodes) -- there, the RPC read
+// itself fails, and this asserts that same honest, never-silent error
+// path instead of a payload round-trip the runner's OS can't perform.
 //
 // Deliberately does NOT enable the MCP-writes-approval toggle anywhere
 // in this file: export_workflow is an ungated read tool, and clipboard
@@ -130,17 +138,21 @@ test('a valid workflow export creates a new workflow, visible live with no reloa
       await applyFromClipboardWithPayload(page, payload)
     })
 
-    await expect(page.getByTestId('quick-panel-clipboard-apply-summary')).toContainText(`CREATE "${createdLabel}"`)
-    await page.getByTestId('quick-panel-clipboard-apply-confirm').click()
-    await expect(page.getByTestId('quick-panel-status')).toContainText(`Created "${createdLabel}"`)
+    if (hostClipboardAvailable) {
+      await expect(page.getByTestId('quick-panel-clipboard-apply-summary')).toContainText(`CREATE "${createdLabel}"`)
+      await page.getByTestId('quick-panel-clipboard-apply-confirm').click()
+      await expect(page.getByTestId('quick-panel-status')).toContainText(`Created "${createdLabel}"`)
 
-    await expect(workflowRow(mainPage, createdLabel)).toBeVisible({ timeout: 10_000 })
+      await expect(workflowRow(mainPage, createdLabel)).toBeVisible({ timeout: 10_000 })
+    } else {
+      await expect(page.getByTestId('quick-panel-clipboard-apply-error')).toBeVisible()
+    }
   } finally {
     await mainPage.close()
   }
 
   await deleteWorkflowIfPresent(page, sourceLabel)
-  await deleteWorkflowIfPresent(page, createdLabel)
+  if (hostClipboardAvailable) await deleteWorkflowIfPresent(page, createdLabel)
 })
 
 test('an export with a matching id updates the existing workflow instead of creating a new one', async ({ page }, testInfo) => {
@@ -163,18 +175,25 @@ test('an export with a matching id updates the existing workflow instead of crea
     await applyFromClipboardWithPayload(page, payload)
   })
 
-  await expect(page.getByTestId('quick-panel-clipboard-apply-summary')).toContainText(`UPDATE "${updatedLabel}"`)
-  await page.getByTestId('quick-panel-clipboard-apply-confirm').click()
-  await expect(page.getByTestId('quick-panel-status')).toContainText(`Updated "${updatedLabel}"`)
+  if (hostClipboardAvailable) {
+    await expect(page.getByTestId('quick-panel-clipboard-apply-summary')).toContainText(`UPDATE "${updatedLabel}"`)
+    await page.getByTestId('quick-panel-clipboard-apply-confirm').click()
+    await expect(page.getByTestId('quick-panel-status')).toContainText(`Updated "${updatedLabel}"`)
 
-  // The update replaced the SAME workflow -- the old label is gone, the
-  // new one appears exactly once, never a second row alongside it.
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Workflows' }).click()
-  await expect(workflowRow(page, updatedLabel)).toBeVisible({ timeout: 10_000 })
-  await expect(workflowRow(page, targetLabel)).toHaveCount(0)
+    // The update replaced the SAME workflow -- the old label is gone, the
+    // new one appears exactly once, never a second row alongside it.
+    await page.goto('/')
+    await page.getByRole('link', { name: 'Workflows' }).click()
+    await expect(workflowRow(page, updatedLabel)).toBeVisible({ timeout: 10_000 })
+    await expect(workflowRow(page, targetLabel)).toHaveCount(0)
 
-  await deleteWorkflowIfPresent(page, updatedLabel)
+    await deleteWorkflowIfPresent(page, updatedLabel)
+  } else {
+    await expect(page.getByTestId('quick-panel-clipboard-apply-error')).toBeVisible()
+    // The RPC read failed before ever reaching ConfirmClipboardApply --
+    // the fixture workflow is still there under its original label.
+    await deleteWorkflowIfPresent(page, targetLabel)
+  }
 })
 
 test('a malformed clipboard payload shows a readable inline error, never silently failing', async ({ page }) => {
@@ -222,16 +241,20 @@ test('a dangling entity reference is listed in the preview but confirm still suc
     await applyFromClipboardWithPayload(page, payload)
   })
 
-  const warning = page.getByTestId('quick-panel-clipboard-apply-unresolved')
-  await expect(warning).toBeVisible()
-  await expect(warning).toContainText('zz-dangling-http')
-  await expect(warning).toContainText('requestId')
+  if (hostClipboardAvailable) {
+    const warning = page.getByTestId('quick-panel-clipboard-apply-unresolved')
+    await expect(warning).toBeVisible()
+    await expect(warning).toContainText('zz-dangling-http')
+    await expect(warning).toContainText('requestId')
 
-  await page.getByTestId('quick-panel-clipboard-apply-confirm').click()
-  await expect(page.getByTestId('quick-panel-status')).toContainText(`Created "${createdLabel}"`)
+    await page.getByTestId('quick-panel-clipboard-apply-confirm').click()
+    await expect(page.getByTestId('quick-panel-status')).toContainText(`Created "${createdLabel}"`)
+    await deleteWorkflowIfPresent(page, createdLabel)
+  } else {
+    await expect(page.getByTestId('quick-panel-clipboard-apply-error')).toBeVisible()
+  }
 
   await deleteWorkflowIfPresent(page, sourceLabel)
-  await deleteWorkflowIfPresent(page, createdLabel)
 })
 
 // docs/goals/0039 item 4: the MCP-writes-approval setting must NEVER
