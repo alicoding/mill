@@ -4,7 +4,7 @@ import type { Card, Note } from '../../bindings/github.com/alicoding/mill/intern
 import { AtlasService } from '../shared/bindings'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { refreshAtlas } from './atlasStore'
-import { titleFromFilename, titleFromNoteText } from './atlasCreateHelpers'
+import { resolveNoteCommitText, titleFromFilename, titleFromNoteText } from './atlasCreateHelpers'
 import { freeChildPosition } from './atlasContainmentPlacement'
 import { computeEnclosedBoundingBoxOrigin } from './atlasBoardBoxes'
 import { ATLAS_TOOLS, isLockableArmTool, type AtlasArmableTool, type AtlasCreationTool } from './atlasTools'
@@ -356,12 +356,9 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   const cancelNoteEdit = useCallback(() => setEditingNoteID(null), [])
   const commitNoteEdit = useCallback((noteID: string, text: string) => {
     setEditingNoteID(null)
-    const trimmed = text.trim()
-    // An existing note's own text may never be blanked out by a stray
-    // blur -- an empty commit on an ALREADY-persisted note is a no-op,
-    // unlike the draft case above where it means "never created".
-    if (!trimmed) return
-    void AtlasService.UpdateNoteText(noteID, trimmed)
+    const toPersist = resolveNoteCommitText(text)
+    if (toPersist === null) return
+    void AtlasService.UpdateNoteText(noteID, toPersist)
       .then(() => refreshAtlas())
       .catch(console.error)
   }, [])

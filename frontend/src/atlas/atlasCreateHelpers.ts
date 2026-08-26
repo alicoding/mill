@@ -66,3 +66,13 @@ export function normalizeLocalPathInput(input: string): string {
     return withoutScheme
   }
 }
+
+// resolveNoteCommitText decides whether a re-edited note's text should
+// persist, and exactly what to persist (goal 0226's round-trip
+// contract): null skips the write entirely (an existing note's own
+// text may never be blanked out by a stray blur), and the non-null
+// case is the text UNCHANGED -- a note's text is markdown SOURCE, so
+// no whitespace at either edge is ever stripped before it's stored.
+export function resolveNoteCommitText(text: string): string | null {
+  return text.trim() === '' ? null : text
+}

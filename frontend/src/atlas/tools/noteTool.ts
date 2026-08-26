@@ -32,7 +32,11 @@ export const noteTool = {
   // all; false, not N/A.
   sticky: false,
   gesture: null,
-  commit: (input: { text: string }): AtlasNoteArtifact => ({ kind: 'note', text: input.text.trim() }),
+  // The note's own text is markdown SOURCE, byte-exact (goal 0226's
+  // round-trip contract) -- unlike a title, trimming it would
+  // silently drop a leading/trailing blank line the author typed on
+  // purpose.
+  commit: (input: { text: string }): AtlasNoteArtifact => ({ kind: 'note', text: input.text }),
 } as const satisfies AtlasToolShape
 
 registerNoun(noteTool)
