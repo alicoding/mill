@@ -1,6 +1,6 @@
+import type { RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionList, ActionMenu } from '@primer/react'
-import { ShareIcon } from '@primer/octicons-react'
 import { atlasSpaceShareActions } from './atlasSpaceShareActions'
 
 // The space toolbar's own share affordance (goal 0063, ADR-0038): the
@@ -14,18 +14,24 @@ import { atlasSpaceShareActions } from './atlasSpaceShareActions'
 // side effects), the same posture AtlasCardOverlay already takes for
 // its own write actions one level up from the presentational canvas/
 // shelves tree.
-export function AtlasSpaceShareMenu({ spaceID, onError }: {
+//
+// The trigger itself lives in the caller (AtlasToolbar's own ActionBar,
+// goal 0216) rather than here, anchored externally via `anchorRef` --
+// ActionMenu positions its Overlay off that ref alone, no
+// ActionMenu.Anchor child required (AnchoredOverlay's renderAnchor is
+// optional) -- so this component owns only the menu's own items/logic.
+export function AtlasSpaceShareMenu({ spaceID, onError, anchorRef, open, onOpenChange }: {
   spaceID: string
   onError: (message: string) => void
+  anchorRef: RefObject<HTMLElement | null>
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation('atlas')
   const { revealFolder, bundleContext, copyLinks } = atlasSpaceShareActions(spaceID, onError)
 
   return (
-    <ActionMenu>
-      <ActionMenu.Button leadingVisual={ShareIcon} variant="invisible" size="small" data-testid="atlas-space-share">
-        {t('share.spaceMenuButton')}
-      </ActionMenu.Button>
+    <ActionMenu anchorRef={anchorRef} open={open} onOpenChange={onOpenChange}>
       <ActionMenu.Overlay>
         <ActionList>
           <ActionList.Item onSelect={revealFolder} data-testid="atlas-share-reveal-folder">

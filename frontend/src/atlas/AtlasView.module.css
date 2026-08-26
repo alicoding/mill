@@ -19,6 +19,12 @@
     display: flex;
     align-items: center;
     gap: var(--base-size-8);
+    /* Lets ActionBar's own internal shrink-to-fit (goal 0216) actually
+       activate: a flex item's default min-width is its content's own
+       min-content size, which without this override still forces the
+       row as wide as every action's natural width -- exactly the
+       clipping this rule exists to prevent. */
+    min-width: 0;
 }
 /* Auto-arrange while a perspective is active (ADR-0041): kept hoverable
    (not pointer-events: none) so the title tooltip explaining why still

@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { openToolbarAction } from './fixtures/toolbarActions'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -143,7 +144,7 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     // adjacency is what keeps arteries out of frame bodies.
     await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('The engagement', { exact: true }), 'The engagement')
     await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Platform')
-    await page.getByTestId('atlas-auto-arrange').click()
+    await openToolbarAction(page, 'atlas-auto-arrange')
     const ea = page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator('[aria-label="Zoom into Client records"]') })
     const gs = page.locator('[aria-label="Open Discovery workstream"]')
     await expect(ea).toBeVisible()
@@ -197,7 +198,7 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     // direct children total, past the cap.
     await velocity.getByTestId('atlas-group-header').click()
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Velocity')
-    await page.getByTestId('atlas-add-from-folder').click()
+    await openToolbarAction(page, 'atlas-add-from-folder')
     const importDialog = page.locator('[data-component="atlas-folder-import-dialog"]')
     await expect(importDialog).toBeVisible()
     await importDialog.getByRole('checkbox', { name: 'Q1 Summary' }).uncheck()

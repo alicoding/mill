@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { openToolbarAction } from './fixtures/toolbarActions'
 import { withClipboardLock } from './fixtures/clipboardLock'
 import { openCard } from './fixtures/atlasBoard'
 
@@ -82,7 +83,7 @@ test('the space toolbar Share menu bundles the space as context and copies its l
     await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
-    await page.getByTestId('atlas-space-share').click()
+    await openToolbarAction(page, 'atlas-space-share')
     await expect(page.getByTestId('atlas-share-reveal-folder')).toBeVisible()
     await page.getByTestId('atlas-share-bundle-context').click()
     await expectClipboardToContain(page, 'Statement of work')
@@ -90,7 +91,7 @@ test('the space toolbar Share menu bundles the space as context and copies its l
     expect(bundleText).toContain('Jordan Reyes')
     expect(bundleText).toContain('---')
 
-    await page.getByTestId('atlas-space-share').click()
+    await openToolbarAction(page, 'atlas-space-share')
     await page.getByTestId('atlas-share-copy-links').click()
     await expect.poll(() => readClipboardText(page)).toBe('https://example.com/statement-of-work')
   })

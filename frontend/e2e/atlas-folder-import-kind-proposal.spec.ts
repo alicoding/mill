@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { openToolbarAction } from './fixtures/toolbarActions'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -54,7 +55,7 @@ const dialog = (page: import('@playwright/test').Page) => page.locator('[data-co
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
 test('propose a type from non-Mill frontmatter, edit it, add a status field, and see it populate the created cards', async ({}, testInfo) => {
   await withServer(testInfo, async (page) => {
-    await page.getByTestId('atlas-add-from-folder').click()
+    await openToolbarAction(page, 'atlas-add-from-folder')
     await expect(dialog(page)).toBeVisible()
 
     const groups = dialog(page).getByTestId('atlas-folder-import-group')
@@ -136,7 +137,7 @@ test('propose a type from non-Mill frontmatter, edit it, add a status field, and
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
 test('a Kind-creation failure leaves the dialog open with an error and creates no cards', async ({}, testInfo) => {
   await withServer(testInfo, async (page) => {
-    await page.getByTestId('atlas-add-from-folder').click()
+    await openToolbarAction(page, 'atlas-add-from-folder')
     await expect(dialog(page)).toBeVisible()
 
     const filesGroup = dialog(page).getByTestId('atlas-folder-import-group').filter({ has: page.getByText('Files', { exact: true }) })

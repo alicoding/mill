@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { openToolbarAction } from './fixtures/toolbarActions'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -122,7 +123,7 @@ test('the AI toolbar button toggles the companion panel; Escape closes it', asyn
 
     const panel = page.getByTestId('companion-panel')
     await expect(panel).not.toBeVisible()
-    await page.getByTestId('atlas-open-companion').click()
+    await openToolbarAction(page, 'atlas-open-companion')
     await expect(panel).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(panel).not.toBeVisible()
@@ -147,7 +148,7 @@ test('the empty-provider state renders its copy and offers Configure', async ({}
     await deleteSeededProvider(page, server.baseURL)
     await openAtlas(page, server.baseURL)
 
-    await page.getByTestId('atlas-open-companion').click()
+    await openToolbarAction(page, 'atlas-open-companion')
     const empty = page.getByTestId('companion-provider-empty')
     await expect(empty).toBeVisible()
     await expect(empty).toContainText('Add an AI provider in Configure to start')
@@ -178,7 +179,7 @@ test('sending a message streams a reply, the provider picker lists it, and Accep
     await createProvider(page, server.baseURL, 'ZzFakeProvider', fakeProvider.url)
     await openAtlas(page, server.baseURL)
 
-    await page.getByTestId('atlas-open-companion').click()
+    await openToolbarAction(page, 'atlas-open-companion')
     const providerSelect = page.getByTestId('companion-provider-select')
     await expect(providerSelect).toContainText('ZzFakeProvider')
     // The seeded "Local Ollama" example provider is also present and
@@ -202,7 +203,7 @@ test('sending a message streams a reply, the provider picker lists it, and Accep
     // board root) -- visible right here with no navigation, closing the
     // companion panel only to bring the board's full width back into
     // view.
-    await page.getByTestId('atlas-open-companion').click()
+    await openToolbarAction(page, 'atlas-open-companion')
     await expect(noteCard(page, 'ZzCompanionCard')).toBeVisible()
   } finally {
     await server?.stop()
@@ -237,7 +238,7 @@ test('a provider error renders in full, wrapped and scrollable, with a Copy deta
     await createProvider(page, server.baseURL, 'ZzFailingProvider', failingProvider.url)
     await openAtlas(page, server.baseURL)
 
-    await page.getByTestId('atlas-open-companion').click()
+    await openToolbarAction(page, 'atlas-open-companion')
     const providerSelect = page.getByTestId('companion-provider-select')
     await providerSelect.selectOption({ label: 'ZzFailingProvider' })
 
@@ -288,7 +289,7 @@ test('an empty-items reply renders as a no-op, not the generic invalid note', as
     await createProvider(page, server.baseURL, 'ZzEmptyProvider', fakeProvider.url)
     await openAtlas(page, server.baseURL)
 
-    await page.getByTestId('atlas-open-companion').click()
+    await openToolbarAction(page, 'atlas-open-companion')
     const providerSelect = page.getByTestId('companion-provider-select')
     await providerSelect.selectOption({ label: 'ZzEmptyProvider' })
 
