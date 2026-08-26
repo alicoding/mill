@@ -197,7 +197,13 @@ export interface AtlasGestureCtx {
   parentID: string
   cardBoxes: FrameBox[]
   noteBoxes: { id: string; x: number; y: number; width: number; height: number }[]
-  onDeleteSelection: (cardIDs: string[], noteIDs: string[]) => void
+  // Every board-local object's (ink/shape/image/table/diagram) own
+  // rendered flow-space box -- read off React Flow's own measured node
+  // state (goal 0230), since a BoardObject's persisted Size stays null
+  // until first resize and its rendered footprint is otherwise CSS-
+  // intrinsic (atlasBuildBoardObjectNodes.ts's own header comment).
+  objectBoxes: { id: string; x: number; y: number; width: number; height: number }[]
+  onDeleteSelection: (cardIDs: string[], noteIDs: string[], objectIDs: string[]) => void
   openAreaPopover: (screenPos: { x: number; y: number }, flowPos: { x: number; y: number }, enclosedCardIDs: string[], enclosedNoteIDs: string[]) => void
   onShapeCreated: (objectID: string) => void
   // Real functions for a one-shot tool; no-ops for a sticky one (the
@@ -207,7 +213,7 @@ export interface AtlasGestureCtx {
   // Fresh per-gesture scratch space the engine allocates at pointerdown
   // and discards after onEnd -- eraser's own onPoint is the sole
   // consumer today; no other tool touches it.
-  hitAccumulator: { cardIDs: Set<string>; noteIDs: Set<string> }
+  hitAccumulator: { cardIDs: Set<string>; noteIDs: Set<string>; objectIDs: Set<string> }
 }
 
 // AtlasToolGesture -- a drag-shaped tool's own pure behavior
