@@ -286,6 +286,20 @@ user primitive can reach the state.
   per-worker server, `withClipboardLock`, `clickCanvasNode`,
   `atlasCards`/`atlasPage`, `waitForViewportStable` + percentage-position
   clicks.
+- **Seeded-content rules on the landing board (goal 0223's nine
+  findings)**: "Board gallery" is the PERMANENT single home for every
+  seeded example board object — future seeds land as its children,
+  never as new root cards (a second root card kills ADR-0038's
+  exact-one-root auto-entry; a new root-level footprint re-fits the
+  viewport and breaks placement-sensitive specs wholesale). Specs
+  scope board-object locators via `nonSeededBoardObjectWrapper`
+  (fixtures/atlasBoard.ts) — NEVER pass a needle carrying its own
+  `.react-flow__node:not(...)` ancestor clause into `filter({has})`:
+  Playwright re-queries the needle inside each candidate, demanding a
+  nested wrapper that never exists, and the failure is a silent
+  zero-match. No new fixed-pixel placements — derive from
+  `findEmptyBoardRect`/`zoomAllTheWayOut`, and leave margin for the
+  test's own drags (edge placement triggers React Flow auto-pan).
 - **Assertion style**: web-first `expect(...)` retrying assertions over
   one-shot `boundingBox()` sampling after anything animated — poll
   geometry (`expect.poll`) or wait for transform stability first. New
