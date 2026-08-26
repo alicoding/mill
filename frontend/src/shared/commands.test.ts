@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { dispatchCommandForEvent, findCommand, surfacesIntersect } from './commands'
+import { COMMANDS, dispatchCommandForEvent, findCommand, surfacesIntersect } from './commands'
+import type { Command } from './commands'
 import { useAppStore } from './store'
 import { useUISignalStore } from './uiSignalStore'
+import { UpdateState } from './bindings'
+import { useUpdateNoticeStore } from './updateNoticeStore'
+import { useVaultStatusStore } from './vaultStatusStore'
 
 // docs/goals/BACKLOG.md Standing #6 (⌘?/⌘/ palette aliases): a
 // Command's optional extraBindings (shared/commands.ts) must dispatch
@@ -74,9 +78,13 @@ describe('dispatchCommandForEvent with extraBindings', () => {
 
   it('a command with no extraBindings is unaffected (backward-compatible)', () => {
     // tab.close has no extras -- only its own Cmd+W default dispatches
-    // it, same behavior as before this feature existed.
+    // it, same behavior as before this feature existed. Needs an open
+    // work tab now that tab.close carries a real enabled() (goal 0222
+    // S1) -- previously it ran unconditionally regardless of state.
+    useAppStore.getState().openWorkTab({ kind: 'workflow-new' })
     expect(dispatchCommandForEvent(event({ code: 'KeyW', metaKey: true }), {})).toBe(true)
     expect(dispatchCommandForEvent(event({ code: 'Slash', metaKey: true, ctrlKey: true }), {})).toBe(false)
+    useAppStore.getState().closeAllWorkTabs()
   })
 })
 
@@ -161,6 +169,103 @@ describe('hintOnly / paletteHidden commands', () => {
       const command = findCommand(id)
       expect(command?.hintOnly).toBe(true)
       expect(command?.paletteHidden).toBe(true)
+    }
+  })
+})
+
+// The enablement predicate (goal 0222 S1): a command's `enabled` gates
+// both the palette's filtering (app/CommandPalette.tsx's own
+// isCommandAvailable) and dispatchCommandForEvent's keyboard dispatch --
+// tested here against fake commands (the filter shape) and real
+// registry commands (the actual state doors: workflow editor tabs, work
+// tabs, the vault, the update notice).
+describe('Command.enabled (goal 0222 S1)', () => {
+  const event = (init: Partial<KeyboardEvent>) => init as KeyboardEvent
+
+  // Mirrors CommandPalette.tsx's own isCommandAvailable exactly -- a
+  // disabled command is OMITTED, not dimmed (VSCode's own convention).
+  const isPaletteAvailable = (c: Pick<Command, 'paletteHidden' | 'enabled'>) => !c.paletteHidden && (!c.enabled || c.enabled())
+
+  it('a command with no enabled predicate is always available', () => {
+    expect(isPaletteAvailable({})).toBe(true)
+  })
+
+  it('a command whose enabled() returns false is excluded from the palette filter', () => {
+    expect(isPaletteAvailable({ enabled: () => false })).toBe(false)
+  })
+
+  it('a command whose enabled() returns true passes the palette filter', () => {
+    expect(isPaletteAvailable({ enabled: () => true })).toBe(true)
+  })
+
+  it('workflow.save is disabled with no workflow editor tab open, and dispatch no-ops -- the run() body carries no guard of its own anymore', () => {
+    useAppStore.getState().setView({ kind: 'composition' })
+    useAppStore.getState().closeAllWorkTabs()
+    expect(findCommand('workflow.save')?.enabled?.()).toBe(false)
+    expect(dispatchCommandForEvent(event({ code: 'KeyS', metaKey: true }), {})).toBe(false)
+  })
+
+  it('workflow.save/workflow.run become enabled once a workflow editor tab is open, and dispatch runs them', () => {
+    useAppStore.getState().setView({ kind: 'composition' })
+    useAppStore.getState().closeAllWorkTabs()
+    useAppStore.getState().openWorkTab({ kind: 'workflow-new' })
+    expect(findCommand('workflow.save')?.enabled?.()).toBe(true)
+    expect(dispatchCommandForEvent(event({ code: 'KeyS', metaKey: true }), {})).toBe(true)
+    expect(dispatchCommandForEvent(event({ code: 'Enter', metaKey: true }), {})).toBe(true)
+    useAppStore.getState().closeAllWorkTabs()
+  })
+
+  it('tab.close/tab.closeOthers are disabled with no active work tab, matching the SAME truth WorkTabShell already renders off', () => {
+    useAppStore.getState().closeAllWorkTabs()
+    expect(findCommand('tab.close')?.enabled?.()).toBe(false)
+    expect(findCommand('tab.closeOthers')?.enabled?.()).toBe(false)
+    expect(dispatchCommandForEvent(event({ code: 'KeyW', metaKey: true }), {})).toBe(false)
+  })
+
+  it('secrets.lockVault/unlockVault mirror the vault-lock state door (shared/vaultStatusStore.ts) exclusively -- exactly one is ever enabled', () => {
+    useVaultStatusStore.getState().setVaultStatus({ Exists: true, Unlocked: true, PresenceProtected: false })
+    expect(findCommand('secrets.lockVault')?.enabled?.()).toBe(true)
+    expect(findCommand('secrets.unlockVault')?.enabled?.()).toBe(false)
+
+    useVaultStatusStore.getState().setVaultStatus({ Exists: true, Unlocked: false, PresenceProtected: false })
+    expect(findCommand('secrets.lockVault')?.enabled?.()).toBe(false)
+    expect(findCommand('secrets.unlockVault')?.enabled?.()).toBe(true)
+  })
+
+  it('secrets.lockVault/unlockVault are both disabled before a vault exists at all', () => {
+    useVaultStatusStore.getState().setVaultStatus({ Exists: false, Unlocked: false, PresenceProtected: false })
+    expect(findCommand('secrets.lockVault')?.enabled?.()).toBe(false)
+    expect(findCommand('secrets.unlockVault')?.enabled?.()).toBe(false)
+  })
+
+  it('update.downloadAndInstall/update.relaunch mirror the update-notice state door (shared/updateNoticeStore.ts), migrated off their old inline UpdateNoticeState() re-fetch', () => {
+    useUpdateNoticeStore.getState().setUpdateNoticeState(UpdateState.UpdateStateAvailable)
+    expect(findCommand('update.downloadAndInstall')?.enabled?.()).toBe(true)
+    expect(findCommand('update.relaunch')?.enabled?.()).toBe(false)
+
+    useUpdateNoticeStore.getState().setUpdateNoticeState(UpdateState.UpdateStateReady)
+    expect(findCommand('update.downloadAndInstall')?.enabled?.()).toBe(false)
+    expect(findCommand('update.relaunch')?.enabled?.()).toBe(true)
+
+    useUpdateNoticeStore.getState().setUpdateNoticeState(UpdateState.UpdateStateIdle)
+    expect(findCommand('update.downloadAndInstall')?.enabled?.()).toBe(false)
+    expect(findCommand('update.relaunch')?.enabled?.()).toBe(false)
+  })
+
+  it('workflow.publish is enabled only for a SAVED workflow editor tab (kind workflow-edit), never a not-yet-saved workflow-new one', () => {
+    useAppStore.getState().setView({ kind: 'composition' })
+    useAppStore.getState().closeAllWorkTabs()
+    useAppStore.getState().openWorkTab({ kind: 'workflow-new' })
+    expect(findCommand('workflow.publish')?.enabled?.()).toBe(false)
+    useAppStore.getState().closeAllWorkTabs()
+    useAppStore.getState().openWorkTab({ kind: 'workflow-edit', workflowId: 'wf-1', mode: 'edit' })
+    expect(findCommand('workflow.publish')?.enabled?.()).toBe(true)
+    useAppStore.getState().closeAllWorkTabs()
+  })
+
+  it('every registered command with an enabled predicate is a real function (registry sanity)', () => {
+    for (const command of COMMANDS) {
+      if (command.enabled) expect(typeof command.enabled).toBe('function')
     }
   })
 })
