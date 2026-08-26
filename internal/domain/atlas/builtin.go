@@ -99,6 +99,22 @@ const (
 	// no-confirm delete, Client records' Shelves layout -- a
 	// BoardObject is Free-mode-only, boardobject.go's own header) that
 	// gaining children would break.
+	//
+	// This card is the PERMANENT single home for every seeded
+	// board-object example, present and future: a genuinely separate
+	// root-level space (ParentID=="") was considered and rejected --
+	// singleRootCard (atlasGrouping.ts) gates ADR-0038's egocentric-root
+	// auto-entry on there being EXACTLY one root card, so a second root
+	// card silently stops every fresh install and e2e worker from
+	// auto-entering "The engagement" at all, a far larger break than
+	// the extent problem it would have solved (frontend/src/atlas/
+	// atlasGrouping.ts's own singleRootCard doc has the mechanism). A
+	// future seed that needs a board-object example nests it as a
+	// child of THIS card, never as a new sibling of "The engagement" --
+	// the landing board's own content extent then never moves again,
+	// and every extent-sensitive spec (atlas-shape-tool.spec.ts,
+	// atlas-single-space-trap.spec.ts's fixed-pixel right-click) pays
+	// its one-time update exactly once, here.
 	cardSketchesID = "atlas-card-session-sketches"
 
 	linkGettingToContactID  = "atlas-link-getting-to-contact"

@@ -9,7 +9,8 @@ import {
   type SpawnedServer,
 } from './fixtures/server'
 import { contextMenu } from './fixtures/contextMenu'
-import { groupCard, noteCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { clickBoardPoint, groupCard, noteCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { findEmptyBoardPoint } from './fixtures/atlasEmptyRegion'
 
 // Own dedicated server (docs/goals/0183): this spec deletes the seeded
 // root card down to ZERO spaces and back, a global root-card-count
@@ -49,13 +50,17 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     const board = page.getByTestId('atlas-board')
     await expect(board).toBeVisible()
     const menu = contextMenu(page)
-    // Every fixed-pixel pane right-click below targets (12, 12): reliably
-    // empty background only once content is pushed toward the board's
-    // own center, same convention fixtures/atlasBoard.ts's own callers
-    // use everywhere else -- card count keeps shrinking as this test
-    // deletes its way to zero, so this is re-run after every landing in
-    // a differently-populated space, not just once up front.
+    // Every pane right-click below targets a point findEmptyBoardPoint
+    // proves clear of every currently-rendered node (fixtures/
+    // atlasEmptyRegion.ts, goal 0223's class fix) rather than a fixed
+    // pixel -- card count keeps shrinking as this test deletes its way
+    // to zero, and the landing board's own content extent is no longer
+    // a stable enough shape to hand-pick one fixed corner against.
     await zoomAllTheWayOut(page)
+    const emptyPaneClick = async (): Promise<void> => {
+      const point = await findEmptyBoardPoint(page, board)
+      await clickBoardPoint(page, point, { button: 'right' })
+    }
 
     // Egocentric-root auto-entry still lands directly inside the sole
     // space on load (ADR-0038's intent, unregressed) -- but the "All
@@ -90,7 +95,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     // carries Rename/Delete, reusing the card's own existing page
     // overlay (rename) and the same guarded delete door every other
     // Atlas card delete already goes through.
-    await board.click({ button: 'right', position: { x: 12, y: 12 } })
+    await emptyPaneClick()
     await expect(menu).toBeVisible()
     await expect(menu.getByText('Rename space…', { exact: true })).toBeVisible()
     await expect(menu.getByText('Delete space', { exact: true })).toBeVisible()
@@ -107,7 +112,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     // gallery), so the container-delete gate (goal 0149 gap 3) confirms
     // first, naming the promoted count -- same guarded door as every
     // other container delete, reached from a NEW trigger point.
-    await board.click({ button: 'right', position: { x: 12, y: 12 } })
+    await emptyPaneClick()
     await expect(menu).toBeVisible()
     await menu.getByText('Delete space', { exact: true }).click()
     await expect(page.getByText('4 items inside move up a level. You can undo right after.')).toBeVisible()
@@ -143,7 +148,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
     await zoomAllTheWayOut(page)
-    await board.click({ button: 'right', position: { x: 12, y: 12 } })
+    await emptyPaneClick()
     await expect(menu).toBeVisible()
     await expect(menu.getByText('Delete space', { exact: true })).toBeVisible()
     await menu.getByText('Delete space', { exact: true }).click()
@@ -167,7 +172,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     // instant, no-confirm delete (goal 0093's guard).
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Statement of work')
     await zoomAllTheWayOut(page)
-    await board.click({ button: 'right', position: { x: 12, y: 12 } })
+    await emptyPaneClick()
     await expect(menu).toBeVisible()
     await menu.getByText('Delete space', { exact: true }).click()
 
@@ -176,7 +181,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     // space), never a blank or stuck screen.
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
     await expect(page.getByTestId('atlas-empty-space')).toBeVisible()
-    await board.click({ button: 'right', position: { x: 12, y: 12 } })
+    await emptyPaneClick()
     await expect(menu).toBeVisible()
     await expect(menu.getByText('Add card', { exact: true })).toBeVisible()
   } finally {
