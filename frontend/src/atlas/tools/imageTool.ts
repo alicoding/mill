@@ -45,6 +45,12 @@ export const imageTool = {
   // An image's whole body already drags -- the shared band would only
   // be debris here (goal 0206's own DESIGN DECIDED table).
   dragBand: false,
+  // Payload.mirrorPath names a real image file on disk (goal 0232 S1) --
+  // same fileBacked contract diagram declares, so this Kind also gets
+  // the shared watch subscription (currently a no-op: armMirrorWatch's
+  // own extension gate doesn't watch image files yet) and the
+  // "Open in default app" command uniformly.
+  fileBacked: true,
   // Placed instance is Kind 'image' (matches this tool's own id here,
   // unlike pencil's own Kind 'ink') -- content renders through the
   // same mirrored-file door ink shares (AtlasMirrorImageContent.tsx).

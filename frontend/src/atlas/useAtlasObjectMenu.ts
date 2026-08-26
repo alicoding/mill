@@ -3,7 +3,8 @@ import type { BoardObject } from '../../bindings/github.com/alicoding/mill/inter
 import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
-import type { ContextMenuState } from '../shared/ContextMenu'
+import { boardObjectContentFor } from './atlasNounRegistry'
+import type { ContextMenuItem, ContextMenuState } from '../shared/ContextMenu'
 
 // A board object's own right-click menu (goal 0179/0180): Promote to
 // card is the one explicit, one-way, reversible-only-by-undo action
@@ -29,17 +30,29 @@ export function useAtlasObjectMenu({
       .catch((err) => onError(String(err)))
   }
 
+  const openInDefaultApp = (objectID: string) => {
+    AtlasService.OpenObjectMirrorInDefaultApp(objectID).catch((err) => onError(String(err)))
+  }
+
   const openObjectMenu = (objectID: string, pos: { x: number; y: number }) => {
     const object = allObjects.find((o) => o.ID === objectID)
     if (!object) return
-    setMenu({
-      x: pos.x,
-      y: pos.y,
-      items: [
-        { id: 'promote', label: t('contextMenu.promoteToCard'), run: () => requestPromoteObject(object.ID, pos) },
-        { id: 'delete-object', label: t('contextMenu.delete'), danger: true, run: () => deleteObject(object.ID) },
-      ],
-    })
+    const items: ContextMenuItem[] = [
+      { id: 'promote', label: t('contextMenu.promoteToCard'), run: () => requestPromoteObject(object.ID, pos) },
+    ]
+    // Honest enablement (goal 0232 S1): only a fileBacked Kind with an
+    // actual mirrorPath ever gets this item -- never a disabled entry
+    // that does nothing on click.
+    if (boardObjectContentFor(object.Kind)?.fileBacked && object.Payload?.mirrorPath) {
+      items.push({
+        id: 'open-in-default-app',
+        label: t('contextMenu.openInDefaultApp'),
+        commandId: 'object.openInDefaultApp',
+        run: () => openInDefaultApp(object.ID),
+      })
+    }
+    items.push({ id: 'delete-object', label: t('contextMenu.delete'), danger: true, run: () => deleteObject(object.ID) })
+    setMenu({ x: pos.x, y: pos.y, items })
   }
 
   return { openObjectMenu }

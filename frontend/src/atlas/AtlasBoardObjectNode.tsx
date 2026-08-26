@@ -1,4 +1,4 @@
-import { memo, Suspense, useRef } from 'react'
+import { memo, Suspense, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NodeResizer } from '@xyflow/react'
 import type { NodeProps, Node as RFNode } from '@xyflow/react'
@@ -6,6 +6,7 @@ import type { BoardObject } from '../../bindings/github.com/alicoding/mill/inter
 import { AtlasService } from '../shared/bindings'
 import { boardObjectContentFor } from './atlasNounRegistry'
 import { AtlasShapeRotateHandle } from './AtlasShapeRotateHandle'
+import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
 import styles from './AtlasBoardObjectNode.module.css'
 
 export interface AtlasBoardObjectData extends Record<string, unknown> {
@@ -51,6 +52,15 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
   const rotatable = isShape && shapeType !== 'arrow'
   const boxRef = useRef<HTMLDivElement>(null)
   const facts = boardObjectContentFor(object.Kind)
+  // The ONE shared watch subscription every fileBacked Kind inherits
+  // (goal 0232 S1) -- called unconditionally (rules-of-hooks: `facts`
+  // may be undefined below), id blank for a non-file-backed Kind so
+  // useAtlasMirrorChanged's own no-op-while-empty guard skips
+  // subscribing at all. Bumping a version counter (rather than each
+  // Component re-subscribing itself) is what makes "declare fileBacked"
+  // the entire tax a new family pays for live re-render.
+  const [mirrorVersion, setMirrorVersion] = useState(0)
+  useAtlasMirrorChanged(facts?.fileBacked ? object.ID : '', () => setMirrorVersion((v) => v + 1))
 
   if (!facts) {
     // Every persisted Kind self-registers a content contribution
@@ -119,7 +129,7 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
           header explains why that stays lazy). */}
       <div className={styles.content}>
         <Suspense fallback={null}>
-          <Component object={object} />
+          <Component object={object} mirrorVersion={mirrorVersion} />
         </Suspense>
       </div>
     </div>

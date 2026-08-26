@@ -439,6 +439,15 @@
     "enabled": false
   },
   {
+    "id": "object.openInDefaultApp",
+    "label": "Open in default app",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
     "id": "palette.open",
     "label": "Open command palette",
     "binding": "⌘K",

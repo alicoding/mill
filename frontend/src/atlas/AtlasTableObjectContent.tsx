@@ -25,7 +25,11 @@ import { TABLE_WIDTH, TABLE_HEIGHT } from './atlasBoardLayout'
 // fixed box did for a large table. Width stays TABLE_WIDTH either way
 // -- the reported defect was dead space below a short table, not
 // alongside a narrow one.
-export function AtlasTableObjectContent({ object }: { object: BoardObject }) {
+// mirrorVersion (goal 0232 S1's file-backed contract) is accepted but
+// unused -- a table projects a Configure List, never a mirrored file
+// (fileBacked: false in tools/tableTool.ts), so this Kind's own
+// version counter never actually bumps.
+export function AtlasTableObjectContent({ object }: { object: BoardObject; mirrorVersion: number }) {
   const hasSize = !!object.Size
   const style: CSSProperties = hasSize
     ? { width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }

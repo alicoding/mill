@@ -71,6 +71,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.new.mcpservers` | New MCP server | — | Global | Always available |
 | `configure.new.steptypes` | New step type | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
+| `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `palette.open` | Open command palette | `⌘K` | Global | Always available |
 | `panel.applyClipboard` | Apply from clipboard | — | Global | Always available |
 | `panel.openMill` | Open Mill | — | Global | Always available |

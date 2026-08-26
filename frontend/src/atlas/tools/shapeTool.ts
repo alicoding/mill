@@ -84,6 +84,10 @@ export const shapeTool = {
   // makes .content == the node's own box again, closing the paint-vs-
   // frame gap AtlasShapeContent.tsx's own header documents.
   dragBand: false,
+  // A shape bakes to no file at all (its own header comment above) --
+  // never fileBacked, so it never offers "Open in default app" (goal
+  // 0232 S1).
+  fileBacked: false,
   boardObjectKind: 'shape',
   content: { Component: AtlasShapeContent, ariaLabelKey: 'boardObject.shapeAriaLabel', role: 'img' },
   styleFields: SHAPE_STYLE_FIELDS,

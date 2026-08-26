@@ -602,6 +602,28 @@ export function OpenCardMirror(cardID: string): $CancellablePromise<void> {
 }
 
 /**
+ * OpenObjectMirrorInDefaultApp launches a file-backed board object's
+ * own mirrored file with the OS default application for its file type
+ * (goal 0232 S1's "open in owning app" contract, the registry command
+ * object.openInDefaultApp) -- the same OS door OpenCardMirror already
+ * uses (internal/adapters/osopen, goal 0081 slice A4's own research:
+ * Wails3's BrowserManager.OpenFile covers "launch a path", but this
+ * package's Reveal has no Wails equivalent, so both verbs share one
+ * tested adapter rather than splitting across two).
+ * 
+ * Unlike OpenCardMirror, this validates the path still exists on disk
+ * FIRST: a board object's mirror is more likely to go stale (goal
+ * 0194's own live-watch/re-pick machinery exists because these files
+ * move/vanish more often than a card's), and asking the OS to launch a
+ * path that no longer resolves would surface nothing back to Mill's
+ * own error UI at all -- osopen.Open only reports a failure to START
+ * the OS opener, never the opener's own async "no such file" result.
+ */
+export function OpenObjectMirrorInDefaultApp(id: string): $CancellablePromise<void> {
+    return $Call.ByID(442184393, id);
+}
+
+/**
  * PasteToBoard converts understood clipboard content into entities
  * under parentID, starting placement at (x, y). A user's own paste is
  * a direct edit -- ungated, like every direct create.

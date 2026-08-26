@@ -43,6 +43,9 @@ export const eraserTool = {
   boardNodeType: null,
   // No node type renders it at all -- always false, not N/A.
   dragBand: false,
+  // No boardObjectKind means no content registration reads this at
+  // all -- always false, not N/A.
+  fileBacked: false,
   // Persists nothing of its own -- always null, not N/A.
   boardObjectKind: null,
   content: null,

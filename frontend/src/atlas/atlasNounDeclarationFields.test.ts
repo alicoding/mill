@@ -33,6 +33,7 @@ const EXHAUSTIVE_FIELD_KEYS = {
   resizable: true,
   boardNodeType: true,
   dragBand: true,
+  fileBacked: true,
   boardObjectKind: true,
   content: true,
   commit: true,
