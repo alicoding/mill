@@ -7,6 +7,7 @@ import { CONFIGURE_CREATE_COMMANDS } from './configureCreateCommands'
 import { ATLAS_BOARD_COMMANDS } from './atlasBoardCommands'
 import { SETTINGS_COMMANDS } from './settingsCommands'
 import { CANVAS_COMMANDS } from './canvasCommands'
+import { SECRETS_COMMANDS } from './secretsCommands'
 import { ATLAS_TOOL_IDENTITIES } from './atlasToolIdentity'
 
 // The command registry (docs/goals/0016-keymap-system.md): named
@@ -67,6 +68,12 @@ export interface Command {
   // palette has no way to supply. Still reachable via HotkeyHint,
   // ContextMenu items, and the Shortcuts Help overlay.
   paletteHidden?: boolean
+  // State-aware enablement (goal 0222 S1, VSCode's "when" clause): omit
+  // for an always-valid command. Replaces guarding inline inside run()
+  // and returning silently. CommandPalette.tsx omits a disabled command
+  // entirely (unavailable means absent, not dimmed); dispatchCommandForEvent
+  // below skips its binding -- run() stays free of the check.
+  enabled?: () => boolean
   run: () => void
 }
 
@@ -111,14 +118,12 @@ export const COMMANDS: Command[] = [
     id: 'tab.close',
     label: 'Close tab',
     defaultBinding: { mods: ['cmd'], key: 'W' },
+    // No active work tab means we're already on the pinned page --
+    // nothing to close (the window-only-when-none-remain case is
+    // native-menu-only, SettingsService.ReleaseMenuAccelerators).
+    enabled: () => useAppStore.getState().activeWorkTabKey !== null,
     run: () => {
       const { activeWorkTabKey, requestWorkTabClose } = useAppStore.getState()
-      // No active work tab means we're already on the pinned page --
-      // "falling back to the pinned tab" (the goal's own last-tab note)
-      // is a no-op here, not zero. The window-only-when-none-remain
-      // case is native-menu-only (SettingsService.ReleaseMenuAccelerators
-      // just lets THIS keypress reach here instead of Cocoa's own Close
-      // -- it never hands window-closing back to JS).
       if (!activeWorkTabKey) return
       // Routes through the close-guard signal (docs/goals/0048) rather
       // than calling closeWorkTab directly -- app/useWorkTabCloseGuard.ts
@@ -157,11 +162,10 @@ export const COMMANDS: Command[] = [
     // (shared/keybinding.ts, none of which use W) and every other
     // command's default above: no collision.
     defaultBinding: { mods: ['cmd', 'option'], key: 'W' },
+    // Nothing to keep relative to on the pinned page tab.
+    enabled: () => useAppStore.getState().activeWorkTabKey !== null,
     run: () => {
       const { activeWorkTabKey, requestWorkTabClose } = useAppStore.getState()
-      // Mirrors WorkTabShell's own overflow-menu item, which disables
-      // "Close other tabs" while on the pinned page tab (nothing to
-      // keep relative to) -- same no-op here, not an arbitrary target.
       if (!activeWorkTabKey) return
       requestWorkTabClose({ kind: 'others', keepKey: activeWorkTabKey })
     },
@@ -180,36 +184,26 @@ export const COMMANDS: Command[] = [
     id: 'workflow.new',
     label: 'New workflow',
     defaultBinding: { mods: ['cmd'], key: 'N' },
-    run: () => {
-      if (!isWorkflowsArea()) return
-      useAppStore.getState().openWorkTab({ kind: 'workflow-new' })
-    },
+    enabled: isWorkflowsArea,
+    run: () => useAppStore.getState().openWorkTab({ kind: 'workflow-new' }),
   },
   {
     id: 'workflow.save',
     label: 'Save workflow',
     defaultBinding: { mods: ['cmd'], key: 'S' },
-    run: () => {
-      if (!isWorkflowEditorTabActive()) return
-      useAppStore.getState().requestCanvasCommand('save')
-    },
+    enabled: isWorkflowEditorTabActive,
+    run: () => useAppStore.getState().requestCanvasCommand('save'),
   },
   {
     id: 'workflow.run',
     label: 'Run workflow',
-    // ⌘↩ (Cmd+Enter), not ⌘R: ⌘R stays the native
-    // browser/dev View > Reload (⌘⇧R too, the developer's own debug escape
-    // hatch), so SettingsService.ReleaseMenuAccelerators no longer
-    // touches it (settingsservice_menu.go). Cmd+Enter is the editor/
-    // chat "run/submit the current thing" convention (Slack send,
-    // ChatGPT/Claude submit, IDE "run configuration") and has no
-    // RESERVED_COMBOS or native-menu-accelerator collision, checked
-    // directly against Wails' own menuitem_roles.go before picking it.
+    // ⌘↩ (Cmd+Enter), not ⌘R: ⌘R stays the native browser/dev View > Reload (⌘⇧R too, the developer's own debug escape hatch), so
+    // SettingsService.ReleaseMenuAccelerators no longer touches it (settingsservice_menu.go). Cmd+Enter is the editor/chat
+    // "run/submit the current thing" convention (Slack send, ChatGPT/Claude submit, IDE "run configuration") and has no
+    // RESERVED_COMBOS or native-menu-accelerator collision, checked directly against Wails' own menuitem_roles.go before picking it.
     defaultBinding: { mods: ['cmd'], key: 'Enter' },
-    run: () => {
-      if (!isWorkflowEditorTabActive()) return
-      useAppStore.getState().requestCanvasCommand('run')
-    },
+    enabled: isWorkflowEditorTabActive,
+    run: () => useAppStore.getState().requestCanvasCommand('run'),
   },
   {
     id: 'palette.open',
@@ -426,6 +420,8 @@ export const COMMANDS: Command[] = [
   // (CLAUDE.md's 500-line convention); see that file's own header for
   // why every entry is hintOnly.
   ...CANVAS_COMMANDS,
+  // Vault lock/unlock -- split out to shared/secretsCommands.ts.
+  ...SECRETS_COMMANDS,
 ]
 
 export function findCommand(id: string): Command | undefined {
@@ -483,6 +479,7 @@ export function dispatchCommandForEvent(e: KeyboardEvent, overrides: Record<stri
 
   const tryRun = (command: Command): boolean => {
     if (command.hintOnly) return false
+    if (command.enabled && !command.enabled()) return false
     const binding = effectiveBinding(command, overrides)
     const bindings = binding ? [binding, ...(command.extraBindings ?? [])] : (command.extraBindings ?? [])
     if (!bindings.some((b) => comboKey(b.mods, b.key) === want)) return false

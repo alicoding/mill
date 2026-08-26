@@ -86,7 +86,7 @@ export function WorkflowEditorTab({
         />
       </TabPanel>
       <TabPanel value="versions">
-        <WorkflowVersionsPanel workflow={workflow} onChanged={onWorkflowsChanged} />
+        <WorkflowVersionsPanel workflow={workflow} onChanged={onWorkflowsChanged} tabKey={tabKey} />
       </TabPanel>
     </Tabs>
   )

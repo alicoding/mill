@@ -5,7 +5,9 @@ import { Blankslate } from '@primer/react/experimental'
 import { Button, Checkbox, FormControl, Heading, IconButton, Stack, Text } from '@primer/react'
 import { HistoryIcon, KeyIcon, LockIcon, PlusIcon } from '@primer/octicons-react'
 import { SecretService } from '../shared/bindings'
-import type { SecretSummary, VaultStatus } from '../shared/bindings'
+import type { SecretSummary } from '../shared/bindings'
+import { findCommand } from '../shared/commands'
+import { refreshVaultStatus, useVaultStatusStore } from '../shared/vaultStatusStore'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
@@ -25,7 +27,11 @@ import styles from './SecretsView.module.css'
 // doc comment has the full reasoning).
 export default function SecretsView() {
   const { t } = useTranslation('secrets')
-  const [status, setStatus] = useState<VaultStatus | null>(null)
+  // The vault-lock state door (goal 0222 S1, shared/vaultStatusStore.ts)
+  // -- lifted out of local useState so secrets.lockVault/unlockVault's
+  // own enabled() predicates can read the identical truth synchronously
+  // from the palette/keyboard, not just from this view.
+  const status = useVaultStatusStore((s) => s.vaultStatus)
   const [list, setList] = useState<SecretSummary[] | null>(null)
   const [busy, setBusy] = useState(false)
   const [presenceBusy, setPresenceBusy] = useState(false)
@@ -38,14 +44,14 @@ export default function SecretsView() {
   const [showAccessHistory, setShowAccessHistory] = useState(false)
 
   const refresh = () => {
-    SecretService.VaultStatus().then((s) => {
-      setStatus(s)
-      if (s.Unlocked) {
+    refreshVaultStatus().then(() => {
+      const s = useVaultStatusStore.getState().vaultStatus
+      if (s?.Unlocked) {
         SecretService.ListSecrets().then(setList).catch((err) => setError(String(err)))
       } else {
         setList(null)
       }
-    }).catch((err) => setError(String(err)))
+    })
   }
 
   useEffect(() => {
@@ -60,17 +66,6 @@ export default function SecretsView() {
     setBusy(true)
     setError('')
     SecretService.SetupVault().then(refresh).catch((err) => setError(String(err))).finally(() => setBusy(false))
-  }
-
-  const unlockVault = () => {
-    setBusy(true)
-    setError('')
-    SecretService.UnlockVault().then(refresh).catch((err) => setError(String(err))).finally(() => setBusy(false))
-  }
-
-  const lockVault = () => {
-    setError('')
-    SecretService.LockVault().then(refresh).catch((err) => setError(String(err)))
   }
 
   const toggleTouchID = (enabled: boolean) => {
@@ -128,7 +123,12 @@ export default function SecretsView() {
           <Blankslate.Heading>{t('locked.heading')}</Blankslate.Heading>
           <Blankslate.Description>{t('locked.description')}</Blankslate.Description>
           <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-protection-status">{protectionStatus}</Text>
-          <Button variant="primary" onClick={unlockVault} disabled={busy} data-testid="secrets-unlock-cta">
+          <Button
+            variant="primary"
+            onClick={() => { setError(''); findCommand('secrets.unlockVault')?.run() }}
+            disabled={busy}
+            data-testid="secrets-unlock-cta"
+          >
             {t('locked.cta')}
           </Button>
           {error && <Text as="p" size="small" className={styles.error} data-testid="secrets-unlock-error">{error}</Text>}
@@ -173,7 +173,17 @@ export default function SecretsView() {
             onClick={() => setShowAccessHistory(true)}
             data-testid="secrets-access-history-open"
           />
-          <IconButton icon={LockIcon} aria-label={t('lockButton')} variant="invisible" onClick={lockVault} data-testid="secrets-lock" />
+          <IconButton
+            icon={LockIcon}
+            aria-label={t('lockButton')}
+            variant="invisible"
+            // Clears any stale error (e.g. a Touch ID toggle failure)
+            // before locking -- the locked Blankslate below renders this
+            // same `error` state, and a message about a DIFFERENT prior
+            // action must not survive into it.
+            onClick={() => { setError(''); findCommand('secrets.lockVault')?.run() }}
+            data-testid="secrets-lock"
+          />
           <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate} data-testid="secrets-new">
             {t('newSecret')}
           </Button>

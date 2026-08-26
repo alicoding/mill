@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { SECRETS_MCP_BASE_PORT, SECRETS_SERVER_BASE_PORT, spawnMillServer, type SpawnedServer } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
+import { paletteDialog } from './fixtures/palette'
 
 // The secret manager's human-facing surface (goal 0185 S2): create a
 // vault, store a password, reveal/hide it, copy it to the real OS
@@ -161,9 +162,33 @@ test('secret manager: create vault, store/reveal/copy/edit/history/delete a pass
     await expect(list.getByText('Bank of Testing', { exact: true })).toHaveCount(0)
 
     // --- Lock, then unlock: the seeded entry is still there ---
+    // Goal 0222 S1: the vault-lock state door (shared/vaultStatusStore.ts)
+    // makes secrets.lockVault/unlockVault palette-visible state, exactly
+    // one at a time -- unlocked here, so only "Lock vault" shows.
+    // exact: true throughout -- "Unlock vault" contains "lock vault" as
+    // a case-insensitive substring of "Lock vault", so Playwright's
+    // default (non-exact) role-name matching would find the wrong one.
+    await page.keyboard.press('Meta+k')
+    await expect(paletteDialog(page)).toBeVisible()
+    await paletteDialog(page).getByRole('combobox').fill('vault')
+    await expect(paletteDialog(page).getByRole('option', { name: 'Lock vault', exact: true })).toBeVisible()
+    await expect(paletteDialog(page).getByRole('option', { name: 'Unlock vault', exact: true })).toHaveCount(0)
+    await page.keyboard.press('Escape')
+
     await page.getByTestId('secrets-lock').click()
     await expect(page.getByText('Vault is locked')).toBeVisible()
-    await page.getByTestId('secrets-unlock-cta').click()
+
+    // Locked now -- the palette flips to showing only "Unlock vault".
+    await page.keyboard.press('Meta+k')
+    await expect(paletteDialog(page)).toBeVisible()
+    await paletteDialog(page).getByRole('combobox').fill('vault')
+    await expect(paletteDialog(page).getByRole('option', { name: 'Unlock vault', exact: true })).toBeVisible()
+    await expect(paletteDialog(page).getByRole('option', { name: 'Lock vault', exact: true })).toHaveCount(0)
+
+    // Running it from the palette performs the exact same
+    // SecretService.UnlockVault() the view's own button makes.
+    await paletteDialog(page).getByRole('option', { name: 'Unlock vault', exact: true }).click()
+    await expect(paletteDialog(page)).toHaveCount(0)
     await expect(list.getByText('Example Login', { exact: true })).toBeVisible()
 
     // Regression: a Touch ID toggle error from the unlocked view must

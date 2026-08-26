@@ -15,7 +15,8 @@ import PlaceholderView from "../views/PlaceholderView";
 import { CapabilitiesService, ExecutionService, SettingsService } from '../shared/bindings'
 import type { BuildInfo } from '../shared/bindings'
 import { refreshKeybindings, refreshNodeTypes, refreshRequests, refreshWorkflows, useAppStore } from "../shared/store";
-import { refreshAIProviders, refreshDeclaredStepTypes, refreshDecisions, refreshExecEnvs, refreshLists, refreshMCPServers } from "../shared/configureEntityStore";
+import { refreshVaultStatus } from "../shared/vaultStatusStore";
+import { useDataChangedRouter } from "./useDataChangedRouter";
 import { WorkTabShell } from "./WorkTabShell";
 import { AppSidebar } from "./AppSidebar";
 import { MobileNavToggle } from "./MobileNavToggle";
@@ -202,6 +203,9 @@ function App() {
     void refreshNodeTypes();
     void refreshRequests();
     void refreshKeybindings();
+    // Vault-lock state door (goal 0222 S1) -- fetched eagerly so
+    // secrets.lockVault/unlockVault's enablement is honest app-wide.
+    void refreshVaultStatus();
   }, []);
 
   useEffect(() => {
@@ -226,45 +230,16 @@ function App() {
     SettingsService.AppVersion().then(setAppVersion).catch(console.error);
   }, []);
 
-  // Subscribed here, not inside ActivityView/CompositionView, so a
-  // headless trigger fired while on a different tab is still captured --
-  // the whole point of this feed is answering "did anything run at all"
-  // regardless of which page happened to be open, or how the run was
-  // triggered. Only the trigger source pushes via this Go-emitted event
-  // (still literally named "hotkey-activity" on the wire, kept for event-
-  // name compatibility -- see main.go's HotkeyActivity doc comment) --
-  // it's the only one of the two sources that fires headlessly;
-  // Composition Run-button clicks push directly from their own handler,
-  // since they already resolve synchronously in the browser.
-  // Live sync (docs/adr/0025 + goal 0017): every direct-mutation
-  // service now emits this, not just mcpsvc -- one refresher per
-  // entity kind, each routed to its own store (shared/store.ts's
-  // workflows/requests, shared/configureEntityStore.ts's lists/
-  // decisions/mcpServers/execEnvs/aiProviders/declaredStepTypes). Was
-  // previously misrouted for 'list'/'mcpserver'
-  // (refreshRequests()+refreshWorkflows(), neither of which holds
-  // either); 'decision'/'execenv' are new entity strings.
-  // 'guardrail-rule' has no shared-store consumer here --
-  // useGuardrailBadges/the Guardrails section subscribe to it directly.
-  // 'steptype' (ADR-0037, goal 0054) refreshes BOTH the Configure page's
-  // own inventory (refreshDeclaredStepTypes) and the canvas palette
-  // (refreshNodeTypes -- composition.NodeTypes() already merges declared
-  // types into the same catalog every built-in ships in), so creating/
-  // editing/deleting a step type reaches the palette without a reload.
-  useEffect(() => {
-    return Events.On('mill-data-changed', (evt) => {
-      const entity = (evt.data as { entity?: string })?.entity
-      if (entity === 'workflow' || entity === 'run') void refreshWorkflows()
-      if (entity === 'request') void refreshRequests()
-      if (entity === 'list') void refreshLists()
-      if (entity === 'mcpserver') void refreshMCPServers()
-      if (entity === 'decision') void refreshDecisions()
-      if (entity === 'execenv') void refreshExecEnvs()
-      if (entity === 'aiprovider') void refreshAIProviders()
-      if (entity === 'steptype') { void refreshDeclaredStepTypes(); void refreshNodeTypes() }
-      if (entity === 'keybinding') void refreshKeybindings()
-    })
-  }, [])
+  // Only the trigger source pushes activity via this Go-emitted event
+  // (still literally named "hotkey-activity" on the wire, kept for
+  // event-name compatibility -- see main.go's HotkeyActivity doc
+  // comment) -- it's the only one of the two sources that fires
+  // headlessly; Composition Run-button clicks push directly from their
+  // own handler, since they already resolve synchronously in the
+  // browser. The rest of mill-data-changed's routing lives in
+  // useDataChangedRouter (below) -- split out at CLAUDE.md's 500-line
+  // convention, zero behavior change.
+  useDataChangedRouter();
 
   useMillNavigate(setView);
   useReviewDeepLink(setView);

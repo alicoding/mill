@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { SettingsService, UpdateState } from '../shared/bindings'
 import { findCommand } from '../shared/commands'
+import { refreshUpdateNoticeState, useUpdateNoticeStore } from '../shared/updateNoticeStore'
 import styles from './NoticePill.module.css'
 
 // The app-notice pill (goal 0122, state-unified goal 0220 S1): renders
@@ -14,18 +15,16 @@ import styles from './NoticePill.module.css'
 // updates" lives when nothing is already in flight); available runs
 // update.downloadAndInstall; downloading is a static progress badge
 // (no action while a download is in flight); ready runs update.relaunch,
-// unchanged from before this goal. The notice STORE is the multi-
-// purpose seam -- a future notice type is one more emitter, not a new
-// surface.
+// unchanged from before this goal. shared/updateNoticeStore.ts (goal
+// 0222 S1) is the multi-purpose seam now -- the same store the
+// update.downloadAndInstall/update.relaunch commands read their own
+// enabled() off, so pill/palette/keyboard can never disagree about
+// which action currently applies.
 export function NoticePill() {
   const { t } = useTranslation('app')
-  const [state, setState] = useState<UpdateState>(UpdateState.UpdateStateIdle)
+  const state = useUpdateNoticeStore((s) => s.updateNoticeState)
 
-  const refresh = useCallback(() => {
-    SettingsService.UpdateNoticeState()
-      .then((n) => setState(n.state))
-      .catch(console.error)
-  }, [])
+  const refresh = useCallback(() => { void refreshUpdateNoticeState() }, [])
 
   useEffect(() => {
     refresh()

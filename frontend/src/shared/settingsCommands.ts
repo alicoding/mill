@@ -2,6 +2,7 @@ import type { Command } from './commands'
 import { useAppStore } from './store'
 import { BackupService, SettingsService, UpdateState } from './bindings'
 import { SETTINGS_SECTIONS, resolveSectionTitle } from './settingsSections'
+import { useUpdateNoticeStore } from './updateNoticeStore'
 
 // Settings-adjacent commands (panel.applyClipboard, backup.*, and one
 // palette-only deep-link command per registered Settings section) --
@@ -58,13 +59,12 @@ export const SETTINGS_COMMANDS: Command[] = [
   // The one update state machine's own commands (goal 0220 S1) -- the
   // pill and the Settings primary button both call these, never their
   // own parallel SettingsService calls, so every surface performs the
-  // exact same action for a given state. Each run() re-reads
-  // UpdateNoticeState itself and no-ops outside its own state, an
-  // inline guard against a stale palette entry, pill, or button firing
-  // from the wrong state -- goal 0222 will replace this with
-  // declarative per-command enablement; until then it stays inline
-  // per the registry's existing practice (see workflow.save/
-  // workflow.run's own isWorkflowEditorTabActive guards above).
+  // exact same action for a given state. downloadAndInstall/relaunch's
+  // own enabled() (goal 0222 S1) reads shared/updateNoticeStore.ts --
+  // the same store NoticePill itself renders off -- so run() no longer
+  // guards inline; a caller that skips checking enabled() first (there
+  // is none left, but the contract holds regardless) simply fires the
+  // action against whatever state the server is actually in.
   {
     id: 'update.check',
     label: 'Check for updates',
@@ -75,26 +75,14 @@ export const SETTINGS_COMMANDS: Command[] = [
     id: 'update.downloadAndInstall',
     label: 'Download the update and install',
     defaultBinding: null,
-    run: () => {
-      SettingsService.UpdateNoticeState()
-        .then((n) => {
-          if (n.state !== UpdateState.UpdateStateAvailable) return
-          return SettingsService.DownloadAndInstallUpdate()
-        })
-        .catch(console.error)
-    },
+    enabled: () => useUpdateNoticeStore.getState().updateNoticeState === UpdateState.UpdateStateAvailable,
+    run: () => { SettingsService.DownloadAndInstallUpdate().catch(console.error) },
   },
   {
     id: 'update.relaunch',
     label: 'Restart to finish updating',
     defaultBinding: null,
-    run: () => {
-      SettingsService.UpdateNoticeState()
-        .then((n) => {
-          if (n.state !== UpdateState.UpdateStateReady) return
-          return SettingsService.RestartApp()
-        })
-        .catch(console.error)
-    },
+    enabled: () => useUpdateNoticeStore.getState().updateNoticeState === UpdateState.UpdateStateReady,
+    run: () => { SettingsService.RestartApp().catch(console.error) },
   },
 ]

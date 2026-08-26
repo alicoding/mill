@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Heading, Stack, Text } from '@primer/react'
 import { DataTable } from '@primer/react/experimental'
 import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { CompositionService } from '../shared/bindings'
+import { useAppStore } from '../shared/store'
+import { findCommand } from '../shared/commands'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import styles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
@@ -15,9 +17,18 @@ import PageContainer from '../shared/PageContainer'
 // nothing a trigger or child call executes changes until Publish. The
 // version list is Primer's own DataTable, same adopted component every
 // other tabular surface uses.
-export function WorkflowVersionsPanel({ workflow, onChanged }: {
+export function WorkflowVersionsPanel({ workflow, onChanged, tabKey }: {
   workflow: Workflow
   onChanged: () => void
+  // The owning WorkTab's own identity (composition/WorkflowEditorTab.tsx)
+  // -- workflow.publish (shared/commands.ts) can't reach this specific
+  // mounted panel directly (shared/ can't import composition/), so it
+  // sets the store's canvasCommandRequest signal instead, same seam
+  // workflow.save/workflow.run already use; this panel (like every
+  // WorkflowEditorTab's own sub-panel) stays mounted-hidden alongside
+  // the canvas, so it consumes the request itself rather than relying
+  // on CompositionCanvas's own useCanvasCommandDispatch to reach it.
+  tabKey: string
 }) {
   const { t } = useTranslation('composition')
   const [error, setError] = useState('')
@@ -26,6 +37,24 @@ export function WorkflowVersionsPanel({ workflow, onChanged }: {
     setError('')
     p.then(onChanged).catch((err) => setError(String(err)))
   }
+
+  const canvasCommandRequest = useAppStore((s) => s.canvasCommandRequest)
+  const consumeCanvasCommandRequest = useAppStore((s) => s.consumeCanvasCommandRequest)
+  const activeWorkTabKey = useAppStore((s) => s.activeWorkTabKey)
+
+  useEffect(() => {
+    if (canvasCommandRequest !== 'publish') return
+    if (activeWorkTabKey !== tabKey) return
+    act(CompositionService.PublishWorkflow(workflow.ID))
+    consumeCanvasCommandRequest()
+    // act/workflow.ID/consumeCanvasCommandRequest deliberately excluded,
+    // same reasoning composition/useCanvasCommandDispatch.ts's own
+    // effect gives: act is a fresh closure every render, re-running just
+    // because its identity changed risks double-consuming a request
+    // mid-render -- canvasCommandRequest/activeWorkTabKey/tabKey are the
+    // real triggers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvasCommandRequest, activeWorkTabKey, tabKey])
 
   const versions = [...(workflow.Versions ?? [])].sort((a, b) => b.Version - a.Version)
 
@@ -53,7 +82,7 @@ export function WorkflowVersionsPanel({ workflow, onChanged }: {
           <Button
             size="small"
             variant="primary"
-            onClick={() => act(CompositionService.PublishWorkflow(workflow.ID))}
+            onClick={() => findCommand('workflow.publish')?.run()}
             data-testid="publish-workflow"
           >
             {t('workflowVersionsPanel.publishCurrentDraft')}

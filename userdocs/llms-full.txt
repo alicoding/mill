@@ -1370,7 +1370,9 @@ file, and imports it on another machine. Passwords and keys live in
 their own encrypted vault file on your device, deliberately excluded
 from every export. The vault's key sits in your OS keychain by
 default, or optionally behind Touch ID or your Mac password for an
-extra prompt every time you unlock.
+extra prompt every time you unlock. Lock and unlock the vault from the
+command palette (⌘K) too — search "vault" and only the action that
+currently applies shows up.
 
 **External effects ask first.** The guardrail model
 ([Guardrails](../concepts/guardrails.md)) parks any step that leaves

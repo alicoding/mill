@@ -4,6 +4,7 @@ import { ActionList, ActionMenu, Button, IconButton } from '@primer/react'
 import { ChecklistIcon, DownloadIcon, ProjectRoadmapIcon, TableIcon, UploadIcon, TagIcon, SparkleFillIcon } from '@primer/octicons-react'
 import type { Card, Kind, Link, LinkKind, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
+import { findCommand } from '../shared/commands'
 import { AtlasBreadcrumb } from './AtlasBreadcrumb'
 import { AtlasPerspectiveSwitcher } from './AtlasPerspectiveSwitcher'
 import { AtlasFolderImport } from './AtlasFolderImport'
@@ -72,7 +73,6 @@ export function AtlasToolbar({
 }) {
   const { t } = useTranslation('atlas')
   const importInputRef = useRef<HTMLInputElement>(null)
-  const toggleCompanion = useUISignalStore((s) => s.toggleCompanion)
 
   // atlas.import's own signal (shared/atlasBoardCommands.ts): a click
   // from the palette/keyboard opens the SAME native file picker the
@@ -151,7 +151,7 @@ export function AtlasToolbar({
         <IconButton icon={TagIcon} size="small" variant="invisible" aria-label={t('toolbar.kinds')} data-testid="atlas-open-kinds" onClick={onOpenKinds} />
         {/* Icon-only, same overflow-avoidance convention as the Kinds
             button above (goal 0101 slice 1). */}
-        <IconButton icon={SparkleFillIcon} size="small" variant="invisible" aria-label={t('companionPanel.toggleButton')} data-testid="atlas-open-companion" onClick={toggleCompanion} />
+        <IconButton icon={SparkleFillIcon} size="small" variant="invisible" aria-label={t('companionPanel.toggleButton')} data-testid="atlas-open-companion" onClick={() => findCommand('atlas.companion.toggle')?.run()} />
         <AtlasPerspectiveSwitcher
           perspectives={perspectives}
           activePerspectiveID={activePerspectiveID}
