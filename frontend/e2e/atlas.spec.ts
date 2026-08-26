@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { openToolbarAction } from './fixtures/toolbarActions'
 import { fillMarkdownNote, clickOutsideNoteEditor } from './fixtures/codeEditor'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
@@ -201,16 +202,18 @@ test('arrange is an action: dragging persists a position, Auto-arrange re-seats 
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
   // No mode toggle anywhere -- the Auto-arrange BUTTON is present at
-  // every level instead (positions are always sovereign).
+  // every level instead (positions are always sovereign). Its row
+  // testid can legitimately sit in Primer's ActionBar overflow menu at
+  // this width, so reachability below (openToolbarAction, which
+  // already asserts a successful click) stands in for a plain
+  // toBeVisible() row-only check.
   await expect(page.getByTestId('atlas-view-mode-toggle')).toHaveCount(0)
-  const arrange = page.getByTestId('atlas-auto-arrange')
-  await expect(arrange).toBeVisible()
 
   // One-shot arrange persists seats: click it, then a reload renders
   // the same FLOW positions (React Flow writes translate(x,y) in flow
   // coords on the node element -- camera-independent, unlike
   // boundingBox, which shifts with fitView's post-reload camera).
-  await arrange.click()
+  await openToolbarAction(page, 'atlas-auto-arrange')
   const adaNode = page.locator('.react-flow__node').filter({ has: page.locator('[aria-label="Open Jordan Reyes"]') })
   await expect(adaNode).toBeVisible()
   let before = ''
@@ -394,7 +397,7 @@ test('exporting the atlas graph downloads a portable JSON bundle with the seeded
   await expect(atlasView(page)).toBeVisible()
 
   const downloadPromise = page.waitForEvent('download')
-  await page.getByTestId('atlas-export').click()
+  await openToolbarAction(page, 'atlas-export')
   await page.getByTestId('atlas-export-json').click()
   const download = await downloadPromise
   const stream = await download.createReadStream()
@@ -413,7 +416,7 @@ test('exporting the viewed board downloads a .drawio file with its own cells', a
   await expect(atlasView(page)).toBeVisible()
 
   const downloadPromise = page.waitForEvent('download')
-  await page.getByTestId('atlas-export').click()
+  await openToolbarAction(page, 'atlas-export')
   await page.getByTestId('atlas-export-drawio').click()
   const download = await downloadPromise
   const stream = await download.createReadStream()

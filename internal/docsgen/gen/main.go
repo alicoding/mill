@@ -22,6 +22,14 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	if err := regenerateCommandTable(root); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if err := regenerateGuideQuotes(root); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	for name, gen := range map[string]func(string) (string, error){
 		"llms.txt":      docsgen.GenerateLLMSTxt,
 		"llms-full.txt": docsgen.GenerateLLMSFullTxt,
@@ -58,6 +66,74 @@ func regenerateNounFieldTable(docsRoot string) error {
 	}
 	if err := os.WriteFile(pagePath, []byte(updated), 0o600); err != nil { // #nosec G703 -- same fixed path as the read above
 		return fmt.Errorf("write extending-the-canvas.md: %w", err)
+	}
+	return nil
+}
+
+// regenerateCommandTable splices the freshly generated command registry
+// table into commands.md's one marked region, leaving the rest of the
+// hand-authored page untouched -- same shape as regenerateNounFieldTable
+// above.
+func regenerateCommandTable(docsRoot string) error {
+	pagePath := filepath.Join(docsRoot, "reference", "commands.md")
+	existing, err := os.ReadFile(pagePath) // #nosec G304 -- fixed path under this repo's own userdocs tree
+	if err != nil {
+		return fmt.Errorf("read commands.md: %w", err)
+	}
+	frontendSharedDir := filepath.Join("..", "..", "frontend", "src", "shared")
+	table, err := docsgen.GenerateCommandTable(frontendSharedDir)
+	if err != nil {
+		return fmt.Errorf("generate command table: %w", err)
+	}
+	updated, err := docsgen.ReplaceMarkedRegion(string(existing), docsgen.CommandTableBeginMarker, docsgen.CommandTableEndMarker, table)
+	if err != nil {
+		return fmt.Errorf("splice command table into commands.md: %w", err)
+	}
+	if err := os.WriteFile(pagePath, []byte(updated), 0o600); err != nil { // #nosec G703 -- same fixed path as the read above
+		return fmt.Errorf("write commands.md: %w", err)
+	}
+	return nil
+}
+
+// regenerateGuideQuotes splices each "register your first X" guide's
+// one real source file (whole, verbatim) into its own marked region --
+// same shape as regenerateNounFieldTable/regenerateCommandTable above,
+// applied twice for the two guides goal 0231 adds.
+func regenerateGuideQuotes(docsRoot string) error {
+	quotes := []struct {
+		pagePath, sourcePath, lang, beginMarker, endMarker string
+	}{
+		{
+			pagePath:    filepath.Join(docsRoot, "reference", "register-a-canvas-tool.md"),
+			sourcePath:  filepath.Join("..", "..", "frontend", "src", "atlas", "tools", "cardTool.ts"),
+			lang:        "ts",
+			beginMarker: docsgen.RegisterCanvasToolQuoteBeginMarker,
+			endMarker:   docsgen.RegisterCanvasToolQuoteEndMarker,
+		},
+		{
+			pagePath:    filepath.Join(docsRoot, "reference", "register-a-command.md"),
+			sourcePath:  filepath.Join("..", "..", "frontend", "src", "shared", "secretsCommands.ts"),
+			lang:        "ts",
+			beginMarker: docsgen.RegisterCommandQuoteBeginMarker,
+			endMarker:   docsgen.RegisterCommandQuoteEndMarker,
+		},
+	}
+	for _, q := range quotes {
+		existing, err := os.ReadFile(q.pagePath) // #nosec G304 -- fixed path under this repo's own userdocs tree
+		if err != nil {
+			return fmt.Errorf("read %s: %w", q.pagePath, err)
+		}
+		quote, err := docsgen.GenerateSourceFileQuote(q.sourcePath, q.lang)
+		if err != nil {
+			return err
+		}
+		updated, err := docsgen.ReplaceMarkedRegion(string(existing), q.beginMarker, q.endMarker, quote)
+		if err != nil {
+			return fmt.Errorf("splice source quote into %s: %w", filepath.Base(q.pagePath), err)
+		}
+		if err := os.WriteFile(q.pagePath, []byte(updated), 0o600); err != nil { // #nosec G703 -- same fixed path as the read above
+			return fmt.Errorf("write %s: %w", q.pagePath, err)
+		}
 	}
 	return nil
 }

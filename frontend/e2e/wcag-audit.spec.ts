@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { openToolbarAction } from './fixtures/toolbarActions'
 import { EXEMPT_RULE_IDS, wcagAuditBuilder } from './wcagAuditRule'
 import type { Page } from '@playwright/test'
 import type { Result } from 'axe-core'
@@ -22,7 +23,7 @@ const ROUTES: { name: string; open: (page: Page) => Promise<void>; waitTestId: s
     name: 'Atlas + companion panel',
     open: async (page) => {
       await page.getByRole('link', { name: 'Atlas' }).click()
-      await page.getByTestId('atlas-open-companion').click()
+      await openToolbarAction(page, 'atlas-open-companion')
     },
     waitTestId: 'companion-panel',
   },

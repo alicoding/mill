@@ -635,7 +635,7 @@ Calls a Configure-authored integration's API and replaces the payload with the r
 - Takes: anything — Produces: anything
 - Effect: external — parks for approval by default
 - Settings:
-  - **Integration** — Which Configure-authored integration this step calls.
+  - **Integration** — Which Configure-authored integration this step calls. (references an Integration)
 
 ### Call an MCP tool
 
@@ -644,7 +644,7 @@ Calls one tool on a configured MCP server and replaces the payload with its text
 - Takes: anything — Produces: anything
 - Effect: external — parks for approval by default
 - Settings:
-  - **MCP Server ID** — The ID of an MCP server configured on the Configure page.
+  - **MCP Server ID** — The ID of an MCP server configured on the Configure page. (references an MCP Server)
   - **Tool name** — The exact tool name, from that server's own tool list.
   - **Arguments (JSON)** — Optional JSON object of arguments to pass to the tool. Top-level string values of the form "attr:<name>" resolve to the named Attribute's typed value at run time (a number/boolean Attribute stays a JSON number/boolean, not stringified); every other value is sent as-is.
 
@@ -724,7 +724,7 @@ Looks up an Attributes value in a configured List and writes the matched entry b
 - Takes: nothing — Produces: its input, unchanged
 - Effect: reads local state
 - Settings:
-  - **List ID** — The ID of a list configured on the Configure page.
+  - **List ID** — The ID of a list configured on the Configure page. (references a List)
   - **Input attribute** — Which Attributes field's value to look up.
   - **Output attribute** — Which Attributes field the matched value gets written to.
   - **If no match** — What to do when the input value isn't in the list.
@@ -738,7 +738,7 @@ Runs one command locally, inside a configured execution environment (pinned shel
 - Takes: text (optional) — Produces: text
 - Effect: external — parks for approval by default
 - Settings:
-  - **Execution environment** — Which Configure-authored environment (shell, working directory, env vars) this command runs inside.
+  - **Execution environment** — Which Configure-authored environment (shell, working directory, env vars) this command runs inside. (references an Execution environment)
   - **Command source** — "payload" runs the captured/upstream payload as the command; "literal" runs the script below instead.
   - **Script** — The command to run when "Command source" is literal. Ignored when source is payload.
   - **Timeout (seconds)** — Kills the command if it hasn't finished within this many seconds.
@@ -750,7 +750,7 @@ Runs another of your workflows as a step and uses its result as this workflow's 
 - Takes: anything — Produces: anything
 - Effect: none — pure computation
 - Settings:
-  - **Workflow** — Which workflow to run. Only workflows whose trigger is "callable by another workflow" appear here -- if the list is empty, create a workflow and drag that trigger onto its canvas first.
+  - **Workflow** — Which workflow to run. Only workflows whose trigger is "callable by another workflow" appear here -- if the list is empty, create a workflow and drag that trigger onto its canvas first. (references a callable Workflow)
   - **Skip duplicate runs (optional)** — Leave empty to run fresh every time (the normal case). To make repeated runs with the same input reuse the first run's recorded result instead of running again, put a value here that identifies the input -- a literal, or attr:<name> to use one of this workflow's attributes.
   - **Pin to version (optional)** — Leave empty to always call the child's published version. Enter a version number to pin this step to that exact snapshot, unaffected by later publishes.
   - **Store result in attribute (optional)** — Also write the child workflow's result into this workflow's named Attribute, so later steps (a Decision condition, another binding) can reference it as attr:<name>.
@@ -762,7 +762,7 @@ Searches a Configure-authored List's rows against one or more match parameters (
 - Takes: nothing — Produces: its input, unchanged
 - Effect: reads local state
 - Settings:
-  - **List** — The Configure-authored List to search.
+  - **List** — The Configure-authored List to search. (references a List)
   - **Match parameters** — JSON array of match criteria, ALL must match (AND): [{"column":"code","value":"attr:code","matchType":"exact"},{"column":"name","value":"Untied States","matchType":"fuzzy","threshold":0.7}]. value is a literal or "attr:<name>". Authored via the Inspector's match-parameter rows; the raw JSON stays available for agent authoring.
   - **Include expired rows** — Off by default -- Expired rows never match unless explicitly included.
   - **Stop at first match** — Stops scanning after the first match. The output shape stays the same typed Object either way -- results just has at most one entry -- so turning this on or off never changes what a downstream Decision/binding can reference.
@@ -875,7 +875,7 @@ Creates or updates a row in a Configure-authored List: if an existing row's "Key
 - Takes: nothing — Produces: its input, unchanged
 - Effect: changes something on this machine
 - Settings:
-  - **List** — The Configure-authored List to write to.
+  - **List** — The Configure-authored List to write to. (references a List)
   - **Key column** — Which column identifies a row -- an existing row whose value in this column matches gets updated; no match appends a new row.
   - **Field values** — JSON object mapping the List's column keys to a literal or attr:<name>, e.g. {"task":"attr:taskName","status":"Done"}. Must include a value for the key column.
   - **Output attribute (optional)** — Which Attributes field receives the row's id.
@@ -938,8 +938,126 @@ Ends the workflow with a typed, configured outcome: an outcome category (approve
 - Takes: anything — Produces: nothing
 - Effect: changes something on this machine
 - Settings:
-  - **Decision** — Which Configure-authored Decision this terminal step reaches.
+  - **Decision** — Which Configure-authored Decision this terminal step reaches. (references a Decision)
   - **Pin to version (optional)** — Leave empty to always resolve this Decision's current definition. Enter a version number to pin this step to that exact published snapshot, unaffected by later edits.
+
+---
+
+# Commands
+
+Every user-facing action in Mill — a menu item, a toolbar button, a
+keyboard shortcut — is a registered command. The command palette (⌘K),
+the Quick Panel, keyboard shortcuts, and Settings → Keyboard shortcuts
+all read from this one list, so a command registered once shows up
+everywhere it applies automatically.
+
+Each command has a stable `id`, a label shown in the palette and
+Settings, an optional default keyboard binding, an optional surface
+scope (some commands only apply on one view, like Atlas), and an
+optional enablement rule (some commands are only available in a
+matching app state — an open workflow tab, an unlocked vault). A
+command with no listed binding still works from the palette and Quick
+Panel; it just has no keyboard shortcut by default. "Conditional"
+enablement means the command is hidden from the palette entirely,
+rather than shown disabled, whenever its state doesn't currently apply.
+
+<!-- BEGIN GENERATED: command registry (source: frontend/src/shared/commandsDeclaration.json) -->
+
+| ID | Label | Default binding | Surface | Enablement |
+|---|---|---|---|---|
+| `atlas.addFromFolder` | Add cards from a folder | — | atlas | Always available |
+| `atlas.arrange` | Auto-arrange | — | atlas | Always available |
+| `atlas.card.exportAs` | Export card as… | — | atlas | Always available |
+| `atlas.companion.toggle` | Toggle companion panel | — | atlas | Always available |
+| `atlas.coverage` | Open coverage | — | atlas | Always available |
+| `atlas.create.area` | Draw an area | — | atlas | Always available |
+| `atlas.create.card` | Add a card | — | atlas | Always available |
+| `atlas.create.eraser` | Erase things on the board | — | atlas | Always available |
+| `atlas.create.image` | Add an image | — | atlas | Always available |
+| `atlas.create.laser` | Point with the laser | — | atlas | Always available |
+| `atlas.create.note` | Add a note | — | atlas | Always available |
+| `atlas.create.pencil` | Draw with the pencil | — | atlas | Always available |
+| `atlas.create.shape` | Draw a shape | — | atlas | Always available |
+| `atlas.create.table` | New table | — | atlas | Always available |
+| `atlas.delete.selection` | Delete selection | `⌫` | atlas | Always available |
+| `atlas.escapeLadder` | Clear selection or go up a level | `ESCAPE` | atlas | Always available |
+| `atlas.export` | Export atlas | — | atlas | Always available |
+| `atlas.focusDirection` | Focus the nearest card in a direction | `⌥→` | atlas | Always available |
+| `atlas.focusNext` | Focus next card | `TAB` | atlas | Always available |
+| `atlas.focusPrevious` | Focus previous card | `⇧TAB` | atlas | Always available |
+| `atlas.group.selection` | Group into a new area | `G` | atlas | Always available |
+| `atlas.import` | Import atlas | — | atlas | Always available |
+| `atlas.jump` | Jump to a card | `⌘K` | atlas | Always available |
+| `atlas.matrix` | Open traceability matrix | — | atlas | Always available |
+| `atlas.minimap.toggle` | Toggle minimap | — | atlas | Always available |
+| `atlas.nudgeSelection` | Move the selected card | `→` | atlas | Always available |
+| `atlas.openFocused` | Open or zoom the focused card | `↩` | atlas | Always available |
+| `atlas.perspective` | Open perspective switcher | — | atlas | Always available |
+| `atlas.redo` | Redo | — | atlas | Always available |
+| `atlas.roadmap` | Open roadmap | — | atlas | Always available |
+| `atlas.selectAll` | Select all | `⌘A` | atlas | Always available |
+| `atlas.share.copyContext` | Copy space as context | — | atlas | Always available |
+| `atlas.share.copyLinks` | Copy space links | — | atlas | Always available |
+| `atlas.undo` | Undo | — | atlas | Always available |
+| `atlas.up` | Go up one level | `⌘↑` | atlas | Always available |
+| `backup.export` | Export everything | — | Global | Always available |
+| `backup.now` | Back up now | — | Global | Always available |
+| `canvas.delete` | Delete selected | `⌫` | composition | Always available |
+| `canvas.fitView` | Fit view | — | composition | Always available |
+| `canvas.redo` | Redo | `⌘⇧Z` | composition | Always available |
+| `canvas.undo` | Undo | `⌘Z` | composition | Always available |
+| `canvas.zoomIn` | Zoom in | `⌘+` | composition | Always available |
+| `canvas.zoomOut` | Zoom out | `⌘-` | composition | Always available |
+| `configure.new.aiproviders` | New AI provider | — | Global | Always available |
+| `configure.new.decisions` | New decision | — | Global | Always available |
+| `configure.new.execenvs` | New environment | — | Global | Always available |
+| `configure.new.integration` | New integration | — | Global | Always available |
+| `configure.new.lists` | New list | — | Global | Always available |
+| `configure.new.mcpservers` | New MCP server | — | Global | Always available |
+| `configure.new.steptypes` | New step type | — | Global | Always available |
+| `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
+| `palette.open` | Open command palette | `⌘K` | Global | Always available |
+| `panel.applyClipboard` | Apply from clipboard | — | Global | Always available |
+| `panel.openMill` | Open Mill | — | Global | Always available |
+| `review.rules` | Guardrail rules | — | review | Always available |
+| `secrets.lockVault` | Lock vault | — | Global | Conditional — available only in a matching state |
+| `secrets.unlockVault` | Unlock vault | — | Global | Conditional — available only in a matching state |
+| `settings.open` | Open Settings | `⌘,` | Global | Always available |
+| `settings.open.appearance` | Open Settings → Appearance | — | Global | Always available |
+| `settings.open.backups` | Open Settings → Backups | — | Global | Always available |
+| `settings.open.contract` | Open Settings → Contract | — | Global | Always available |
+| `settings.open.general` | Open Settings → General | — | Global | Always available |
+| `settings.open.global-hotkey` | Open Settings → Global hotkey | — | Global | Always available |
+| `settings.open.keyboard-shortcuts` | Open Settings → Keyboard Shortcuts | — | Global | Always available |
+| `settings.open.mcp-access` | Open Settings → MCP access | — | Global | Always available |
+| `settings.open.notifications` | Open Settings → Notifications | — | Global | Always available |
+| `settings.open.remote-access` | Open Settings → Remote access | — | Global | Always available |
+| `settings.open.updates` | Open Settings → Updates | — | Global | Always available |
+| `tab.close` | Close tab | `⌘W` | Global | Conditional — available only in a matching state |
+| `tab.closeAll` | Close all tabs | `⌘⇧W` | Global | Always available |
+| `tab.closeOthers` | Close other tabs | `⌘⌥W` | Global | Conditional — available only in a matching state |
+| `tab.next` | Next tab | `⌃TAB` | Global | Always available |
+| `tab.prev` | Previous tab | `⌃⇧TAB` | Global | Always available |
+| `update.check` | Check for updates | — | Global | Always available |
+| `update.downloadAndInstall` | Download the update and install | — | Global | Conditional — available only in a matching state |
+| `update.relaunch` | Restart to finish updating | — | Global | Conditional — available only in a matching state |
+| `view.activity` | Go to Activity | `⌘4` | Global | Always available |
+| `view.atlas` | Go to Atlas | `⌘3` | Global | Always available |
+| `view.composition` | Go to Workflows | `⌘1` | Global | Always available |
+| `view.configure` | Go to Configure | `⌘2` | Global | Always available |
+| `view.docs` | Open docs | — | Global | Always available |
+| `view.home` | Go to Home | `⌘0` | Global | Always available |
+| `view.review` | Go to Review | `⌘5` | Global | Always available |
+| `view.secrets` | Go to Secrets | `⌘6` | Global | Always available |
+| `workflow.new` | New workflow | `⌘N` | Global | Conditional — available only in a matching state |
+| `workflow.publish` | Publish current draft | — | composition | Conditional — available only in a matching state |
+| `workflow.run` | Run workflow | `⌘↩` | Global | Conditional — available only in a matching state |
+| `workflow.save` | Save workflow | `⌘S` | Global | Conditional — available only in a matching state |
+
+<!-- END GENERATED -->
+
+See "Register a command" for how to add a new one, and Settings →
+Keyboard shortcuts to rebind any command's default combo.
 
 ---
 
@@ -962,7 +1080,10 @@ restarts.
 - **Launch at login** — start Mill when you sign in.
 - **Summon hotkey** — a global shortcut that opens the Quick Panel
   from any app. Recording a combo captures it even if a menu
-  shortcut already uses it; Escape cancels recording.
+  shortcut already uses it; Escape cancels recording. The panel's own
+  actions — Open Mill, Open Settings, Review, Apply from clipboard,
+  and any update action currently available — match the command
+  palette exactly, since both read from the same list.
 
 ## Keyboard shortcuts
 
@@ -1052,9 +1173,9 @@ already downloaded and ready, Mill re-targets the newer one
 automatically — restarting always applies the newest version Mill
 knows about, never an older one left over from an earlier check.
 
-Every update action is also available from the command palette (⌘K):
-search "update" to check, download and install, or restart, whichever
-is currently possible.
+Every update action is also available from the command palette (⌘K)
+and the Quick Panel: search "update" to check, download and install,
+or restart, whichever is currently possible.
 
 Mill re-signs itself after each update with a signing identity unique
 to your Mac, so permissions like Accessibility and Input Monitoring
@@ -1302,6 +1423,207 @@ that honestly now (a platform that discovers its own contract gaps only
 after outside adopters build against them pays for the omission for
 years) — and for what actually triggers building the out-of-tree tier
 this page does not yet promise.
+
+---
+
+# Register a canvas tool
+
+A walkthrough of adding a new placeable tool to Atlas, using Mill's own
+simplest real one — `card` — as the worked example. Read "Extending the
+canvas" first for the full field-by-field contract this guide only
+walks through in order; that page's table is the reference, this one is
+the tutorial.
+
+## 1. Pick a stable id
+
+Every tool needs an id already declared in
+`frontend/src/shared/atlasToolIdentity.ts`'s `ATLAS_TOOL_IDENTITIES`
+array — this is where the id, its command label, its bare-key shortcut
+(if any), and its authoring gesture (`interaction`) live, shared by both
+the tool file and the identity-agreement check that fails the build if
+the two ever disagree.
+
+## 2. Write one file
+
+`frontend/src/atlas/tools/<id>Tool.ts` builds an object matching
+`AtlasToolShape` and calls `registerNoun(...)` on it at module scope.
+Below is Mill's own card tool, quoted whole — every declaration field
+`AtlasToolShape` requires, answered honestly (`false`/`null`/`[]` where
+a field doesn't apply, never omitted):
+
+<!-- BEGIN GENERATED: frontend/src/atlas/tools/cardTool.ts -->
+
+```ts
+import { FileIcon } from '@primer/octicons-react'
+import type { Kind } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { identityOf, registerNoun, type AtlasToolShape } from '../atlasNounRegistry'
+import { lastUsedKindID } from '../atlasCreateHelpers'
+
+const cardIdentity = identityOf('card')
+
+export interface AtlasCardArtifact { kind: 'card'; kindID: string; title: string; note: string }
+
+// Card's instant-placement default (goal 0144: the click IS the
+// creation, no form) resolves the last-used kind itself; a form-driven
+// create (right-click "Add card", paste, slot-link) instead supplies
+// kindID/title explicitly and this just shapes them into the same
+// artifact -- one function backs both placement doors.
+export const cardTool = {
+  id: cardIdentity.id,
+  icon: FileIcon,
+  label: cardIdentity.commandLabel,
+  shortcutKey: cardIdentity.shortcutKey,
+  tray: 'quick',
+  interaction: cardIdentity.interaction,
+  // Instant placement (goal 0144) always disarms after the one click --
+  // never reads a lock flag at all, so this stays false rather than N/A.
+  lockable: false,
+  // Rendered by AtlasNoteCardNode ('atlas-note'), whose own NodeResizer
+  // is the general card resize (goal 0193).
+  resizable: true,
+  boardNodeType: 'atlas-note',
+  // Not routed through the shared 'atlas-object' renderer -- always
+  // false, not N/A (atlasNounRegistry.ts's own header comment).
+  dragBand: false,
+  // Rendered by AtlasNoteCardNode, not the shared 'atlas-object'
+  // content contract -- always null, not N/A.
+  boardObjectKind: null,
+  content: null,
+  // No style surface of its own (goal 0209) -- always empty, not
+  // omitted.
+  styleFields: [],
+  // Never drags -- placed by a single click (useAtlasCreation.ts's
+  // placeAt), so this is never read at all; false, not N/A.
+  sticky: false,
+  gesture: null,
+  commit: (input: { kinds: Kind[]; kindID?: string; title?: string; note?: string }): AtlasCardArtifact => ({
+    kind: 'card',
+    kindID: input.kindID ?? lastUsedKindID(input.kinds),
+    title: input.title ?? 'Untitled',
+    note: input.note ?? '',
+  }),
+} as const satisfies AtlasToolShape
+
+registerNoun(cardTool)
+
+```
+
+<!-- END GENERATED -->
+
+`commit` is the one field on this shape that's runtime code, not inert
+data — it shapes the placement input into the artifact the board
+persists. Everything else here is read before any of this tool's own
+code runs.
+
+## 3. Nothing else to wire
+
+`frontend/src/atlas/atlasTools.ts` discovers `tools/*.ts` by glob, so
+there is no registry array to append to by hand. Add a translated
+string file at `frontend/src/locales/en/atlas/<id>.json` if the tool
+needs its own copy.
+
+## 4. Satisfy the conformance suite
+
+Run the frontend tests. A new tool has to keep
+`atlasNounDeclarationFields.test.ts`, `atlasArmConformance.test.ts`,
+`atlasBoardSurfaceConformance.test.ts`,
+`atlasEditorBoundsConformance.test.ts`, and
+`atlasSelectionRingConformance.test.ts` passing — see "Extending the
+canvas" for what each one actually checks. None of them render
+anything; they read your declaration and the live registry as data.
+
+---
+
+# Register a command
+
+A walkthrough of adding a new command to Mill's registry, using the
+vault lock/unlock commands as the worked example — small, self-contained,
+and demonstrating every field a command typically needs. Read
+"Commands" first for the full generated list of what's registered
+today; this page is the tutorial for adding to it.
+
+## 1. Decide where it lives
+
+`frontend/src/shared/commands.ts` holds the `COMMANDS` array directly
+for commands with no natural grouping; anything with 2+ related
+commands splits into its own satellite file under `shared/` (the
+500-line file convention) and spreads into `COMMANDS`. Below is one
+such satellite file, quoted whole:
+
+<!-- BEGIN GENERATED: frontend/src/shared/secretsCommands.ts -->
+
+```ts
+import type { Command } from './commands'
+import { SecretService } from './bindings'
+import { refreshVaultStatus, useVaultStatusStore } from './vaultStatusStore'
+
+// The vault lock/unlock actions (goal 0222 S1's own new state door,
+// vaultStatusStore.ts) -- split out of shared/commands.ts (CLAUDE.md's
+// 500-line convention), spread into its COMMANDS array. Both were
+// SecretsView.tsx-only onClick handlers before this; the view's own
+// Lock/Unlock buttons now call these directly (findCommand(id)?.run())
+// instead of their own SecretService calls, so a future palette/
+// keyboard invocation performs the exact same action. Neither call
+// needs input (UnlockVault/LockVault take no arguments -- any
+// passphrase-equivalent lives behind Touch ID/keychain, not a typed
+// field), so a direct service call is the whole implementation, same
+// shape backup.now/panel.applyClipboard already use.
+export const SECRETS_COMMANDS: Command[] = [
+  {
+    id: 'secrets.lockVault',
+    label: 'Lock vault',
+    defaultBinding: null,
+    enabled: () => useVaultStatusStore.getState().vaultStatus?.Unlocked === true,
+    run: () => { SecretService.LockVault().then(refreshVaultStatus).catch(console.error) },
+  },
+  {
+    id: 'secrets.unlockVault',
+    label: 'Unlock vault',
+    defaultBinding: null,
+    enabled: () => {
+      const status = useVaultStatusStore.getState().vaultStatus
+      return status !== null && status.Exists && !status.Unlocked
+    },
+    run: () => { SecretService.UnlockVault().then(refreshVaultStatus).catch(console.error) },
+  },
+]
+
+```
+
+<!-- END GENERATED -->
+
+## 2. Fill in the `Command` shape
+
+- `id` — a stable, namespaced string (`secrets.lockVault`, not
+  `lockVault`) — namespacing by the area it belongs to is the
+  convention every existing command follows.
+- `label` — what the palette and Settings show.
+- `defaultBinding` — a `KeyCombo`, or `null` for a command with no
+  keyboard shortcut by default.
+- `enabled` — omit for a command that's always valid. Provide a
+  function when the command only makes sense in a specific state (here,
+  only when the vault exists and is/isn't already unlocked) — never
+  guard inline inside `run()` and return silently; an unavailable
+  command is omitted from the palette entirely, not shown disabled.
+- `run` — the actual action. Calls a generated service binding
+  directly when the command needs no input, the same shape both
+  commands above use.
+
+## 3. Add it to `COMMANDS`
+
+Spread your new array into `frontend/src/shared/commands.ts`'s
+`COMMANDS` export (`...SECRETS_COMMANDS` is how the file above joins
+in) — this is the one array every surface (palette, keyboard dispatch,
+Settings' rebinding list, and the Quick Panel for anything opting into
+`quickPanel: true`) reads from.
+
+## 4. Verify
+
+`frontend/src/shared/commands.test.ts` covers the dispatch contract
+generically; add a case there if your command's `enabled` predicate has
+real branches worth pinning. `commandsDeclaration.json` regenerates via
+`go generate ./internal/docsgen` — run it and commit the result so
+"Commands" picks up the new row.
 
 ---
 

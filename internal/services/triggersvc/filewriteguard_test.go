@@ -34,9 +34,41 @@ func newFileWatchTestServices(t *testing.T) (*compositionsvc.CompositionService,
 	s.SetExecutionService(exec)
 	t.Cleanup(func() {
 		s.Sync(nil) // stop every listener this test starts
-		_ = exec.Shutdown(2 * time.Second)
+		// A generous budget: every caller of this fixture waits on a
+		// triggered run's own terminal status before returning, but
+		// leaves headroom for the durable-execution engine's trailing
+		// internal work to settle before the DB handle closes under it.
+		_ = exec.Shutdown(5 * time.Second)
 	})
 	return comp, s, exec
+}
+
+// waitForTriggeredRunSuccess polls ListRunsForWorkflow until a
+// RunKindTriggered run for workflowID reaches the terminal SUCCESS
+// status. A row's mere existence is not completion -- DBOS creates it
+// PENDING/RUNNING well before the workflow finishes, so asserting on
+// existence alone races the run and can also let the test return (and
+// its t.Cleanup close the execution DB) while the engine is still
+// mid-run.
+func waitForTriggeredRunSuccess(t *testing.T, exec *executionsvc.ExecutionService, workflowID string, deadline time.Time) {
+	t.Helper()
+	var last []executionsvc.RunSummary
+	for time.Now().Before(deadline) {
+		runs, err := exec.ListRunsForWorkflow(workflowID)
+		if err == nil {
+			last = triggeredRuns(runs)
+			for _, r := range last {
+				if r.Status == "SUCCESS" {
+					return
+				}
+			}
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if len(last) == 0 {
+		t.Fatalf("no triggered run appeared for workflow %s before the deadline", workflowID)
+	}
+	t.Fatalf("triggered run status = %q (error %q), want SUCCESS", last[0].Status, last[0].Error)
 }
 
 // TestFileWatchCycleGuard_MoveIntoOwnWatchedFolder_DoesNotReFire is the
@@ -79,13 +111,7 @@ func TestFileWatchCycleGuard_MoveIntoOwnWatchedFolder_DoesNotReFire(t *testing.T
 	}
 
 	deadline := time.Now().Add(10 * time.Second)
-	for time.Now().Before(deadline) {
-		runs, err := exec.ListRunsForWorkflow(wf.ID)
-		if err == nil && len(triggeredRuns(runs)) > 0 {
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
+	waitForTriggeredRunSuccess(t, exec, wf.ID, deadline)
 	// Give a would-be (incorrect) second fire time to also land before
 	// counting -- the guard's own TTL is 10s, so a loop bug would
 	// produce its second run well within this window.
@@ -167,23 +193,5 @@ func TestFileWatchCycleGuard_DifferentWorkflowWatchingSameFolder_StillFires(t *t
 	}
 
 	deadline := time.Now().Add(10 * time.Second)
-	for time.Now().Before(deadline) {
-		runs, err := exec.ListRunsForWorkflow(wfB.ID)
-		if err == nil && len(triggeredRuns(runs)) > 0 {
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-
-	runs, err := exec.ListRunsForWorkflow(wfB.ID)
-	if err != nil {
-		t.Fatalf("ListRunsForWorkflow (B): %v", err)
-	}
-	triggered := triggeredRuns(runs)
-	if len(triggered) == 0 {
-		t.Fatal("workflow B never fired -- a different workflow watching the same folder A wrote into must still fire")
-	}
-	if triggered[0].Status != "SUCCESS" {
-		t.Fatalf("B's triggered run status = %q (error %q), want SUCCESS", triggered[0].Status, triggered[0].Error)
-	}
+	waitForTriggeredRunSuccess(t, exec, wfB.ID, deadline)
 }

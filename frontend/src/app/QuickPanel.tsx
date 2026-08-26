@@ -11,6 +11,7 @@ import {
   useConfigureEntityStore, refreshLists, refreshMCPServers, refreshDecisions, refreshExecEnvs, refreshAIProviders, refreshDeclaredStepTypes,
 } from '../shared/configureEntityStore'
 import { useAtlasStore, scheduleAtlasRefresh, refreshAtlasCards, refreshAtlasKinds, refreshAtlasNotes } from '../atlas/atlasStore'
+import { refreshUpdateNoticeState, useUpdateNoticeStore } from '../shared/updateNoticeStore'
 import { findRootNode } from '../composition/triggerRowInfo'
 import { sortWorkflowsByPinnedAndFrecency } from './workflowFrecency'
 import { WorkflowRowTrailingVisual } from './WorkflowRowTrailingVisual'
@@ -97,6 +98,10 @@ export function QuickPanel() {
   // see shared/store.ts's own declaration comment for the schema.
   const pinnedWorkflowIds = useAppStore((s) => s.pinnedWorkflowIds)
   const togglePinnedWorkflow = useAppStore((s) => s.togglePinnedWorkflow)
+  // Subscribed (not getState()) so the update pipeline's quickPanel rows
+  // (shared/settingsCommands.ts) re-derive live -- same subscription
+  // CommandPalette.tsx already carries for the identical reason.
+  const updateNoticeState = useUpdateNoticeStore((s) => s.updateNoticeState)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<string | null>(null)
   // Frecency ranking (goal 0015's remainder item 1): workflowID ->
@@ -174,6 +179,9 @@ export function QuickPanel() {
       void refreshAtlasNotes()
       void refreshFrecency()
       void refreshHotkeyCombos()
+      // The update pipeline's quickPanel rows need this window's own
+      // copy of the state door, same per-window reasoning as above.
+      void refreshUpdateNoticeState()
       // This window is a separate Wails webview/JS context from the
       // main window (docs/adr/0033) -- its own keybindingOverrides copy
       // (shared/store.ts) only ever reflects whatever was true the last
@@ -227,6 +235,7 @@ export function QuickPanel() {
       if (entity === 'execenv') void refreshExecEnvs()
       if (entity === 'aiprovider') void refreshAIProviders()
       if (entity === 'steptype') void refreshDeclaredStepTypes()
+      if (entity === 'update-notice') void refreshUpdateNoticeState()
       // Coalesced (goal 0147): the shared debounced refresher covers
       // every store consumer, this window included.
       if (entity === 'atlas') scheduleAtlasRefresh()
@@ -381,6 +390,9 @@ export function QuickPanel() {
   }, [
     workflows, mostUsedRank, hotkeyCombos, pinnedWorkflowIds, requests, lists, mcpServers,
     decisions, execEnvs, aiProviders, declaredStepTypes, atlasCards, atlasKinds, reviewPendingCount,
+    // Not read directly below -- the command enabled() checks inside
+    // buildConfigureAndActionEntries read it via getState() instead.
+    updateNoticeState,
   ])
 
   // Faceted search (goal 0086) -- quickPanelFacets.ts's own hook, same

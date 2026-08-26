@@ -134,7 +134,7 @@ Calls a Configure-authored integration's API and replaces the payload with the r
 - Takes: anything — Produces: anything
 - Effect: external — parks for approval by default
 - Settings:
-  - **Integration** — Which Configure-authored integration this step calls.
+  - **Integration** — Which Configure-authored integration this step calls. (references an Integration)
 
 ### Call an MCP tool
 
@@ -143,7 +143,7 @@ Calls one tool on a configured MCP server and replaces the payload with its text
 - Takes: anything — Produces: anything
 - Effect: external — parks for approval by default
 - Settings:
-  - **MCP Server ID** — The ID of an MCP server configured on the Configure page.
+  - **MCP Server ID** — The ID of an MCP server configured on the Configure page. (references an MCP Server)
   - **Tool name** — The exact tool name, from that server's own tool list.
   - **Arguments (JSON)** — Optional JSON object of arguments to pass to the tool. Top-level string values of the form "attr:<name>" resolve to the named Attribute's typed value at run time (a number/boolean Attribute stays a JSON number/boolean, not stringified); every other value is sent as-is.
 
@@ -223,7 +223,7 @@ Looks up an Attributes value in a configured List and writes the matched entry b
 - Takes: nothing — Produces: its input, unchanged
 - Effect: reads local state
 - Settings:
-  - **List ID** — The ID of a list configured on the Configure page.
+  - **List ID** — The ID of a list configured on the Configure page. (references a List)
   - **Input attribute** — Which Attributes field's value to look up.
   - **Output attribute** — Which Attributes field the matched value gets written to.
   - **If no match** — What to do when the input value isn't in the list.
@@ -237,7 +237,7 @@ Runs one command locally, inside a configured execution environment (pinned shel
 - Takes: text (optional) — Produces: text
 - Effect: external — parks for approval by default
 - Settings:
-  - **Execution environment** — Which Configure-authored environment (shell, working directory, env vars) this command runs inside.
+  - **Execution environment** — Which Configure-authored environment (shell, working directory, env vars) this command runs inside. (references an Execution environment)
   - **Command source** — "payload" runs the captured/upstream payload as the command; "literal" runs the script below instead.
   - **Script** — The command to run when "Command source" is literal. Ignored when source is payload.
   - **Timeout (seconds)** — Kills the command if it hasn't finished within this many seconds.
@@ -249,7 +249,7 @@ Runs another of your workflows as a step and uses its result as this workflow's 
 - Takes: anything — Produces: anything
 - Effect: none — pure computation
 - Settings:
-  - **Workflow** — Which workflow to run. Only workflows whose trigger is "callable by another workflow" appear here -- if the list is empty, create a workflow and drag that trigger onto its canvas first.
+  - **Workflow** — Which workflow to run. Only workflows whose trigger is "callable by another workflow" appear here -- if the list is empty, create a workflow and drag that trigger onto its canvas first. (references a callable Workflow)
   - **Skip duplicate runs (optional)** — Leave empty to run fresh every time (the normal case). To make repeated runs with the same input reuse the first run's recorded result instead of running again, put a value here that identifies the input -- a literal, or attr:<name> to use one of this workflow's attributes.
   - **Pin to version (optional)** — Leave empty to always call the child's published version. Enter a version number to pin this step to that exact snapshot, unaffected by later publishes.
   - **Store result in attribute (optional)** — Also write the child workflow's result into this workflow's named Attribute, so later steps (a Decision condition, another binding) can reference it as attr:<name>.
@@ -261,7 +261,7 @@ Searches a Configure-authored List's rows against one or more match parameters (
 - Takes: nothing — Produces: its input, unchanged
 - Effect: reads local state
 - Settings:
-  - **List** — The Configure-authored List to search.
+  - **List** — The Configure-authored List to search. (references a List)
   - **Match parameters** — JSON array of match criteria, ALL must match (AND): [{"column":"code","value":"attr:code","matchType":"exact"},{"column":"name","value":"Untied States","matchType":"fuzzy","threshold":0.7}]. value is a literal or "attr:<name>". Authored via the Inspector's match-parameter rows; the raw JSON stays available for agent authoring.
   - **Include expired rows** — Off by default -- Expired rows never match unless explicitly included.
   - **Stop at first match** — Stops scanning after the first match. The output shape stays the same typed Object either way -- results just has at most one entry -- so turning this on or off never changes what a downstream Decision/binding can reference.
@@ -374,7 +374,7 @@ Creates or updates a row in a Configure-authored List: if an existing row's "Key
 - Takes: nothing — Produces: its input, unchanged
 - Effect: changes something on this machine
 - Settings:
-  - **List** — The Configure-authored List to write to.
+  - **List** — The Configure-authored List to write to. (references a List)
   - **Key column** — Which column identifies a row -- an existing row whose value in this column matches gets updated; no match appends a new row.
   - **Field values** — JSON object mapping the List's column keys to a literal or attr:<name>, e.g. {"task":"attr:taskName","status":"Done"}. Must include a value for the key column.
   - **Output attribute (optional)** — Which Attributes field receives the row's id.
@@ -437,5 +437,5 @@ Ends the workflow with a typed, configured outcome: an outcome category (approve
 - Takes: anything — Produces: nothing
 - Effect: changes something on this machine
 - Settings:
-  - **Decision** — Which Configure-authored Decision this terminal step reaches.
+  - **Decision** — Which Configure-authored Decision this terminal step reaches. (references a Decision)
   - **Pin to version (optional)** — Leave empty to always resolve this Decision's current definition. Enter a version number to pin this step to that exact published snapshot, unaffected by later edits.

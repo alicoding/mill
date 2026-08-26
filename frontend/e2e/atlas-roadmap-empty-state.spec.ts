@@ -1,5 +1,6 @@
 import { chromium, expect, test } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
+import { openToolbarAction } from './fixtures/toolbarActions'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -87,7 +88,7 @@ test('empty roadmap shows the skeleton + Place cards door; the picker auto-decla
     // Discovery workstream, Scratchpad) are all Topic cards, and Topic
     // declares no horizon field yet -- the root roadmap starts
     // genuinely untagged, the real empty state a first-time user hits.
-    await page.getByTestId('atlas-open-roadmap').click()
+    await openToolbarAction(page, 'atlas-open-roadmap')
     await expect(dialog).toBeVisible()
     await expect(dialog.getByTestId('atlas-roadmap-empty')).toHaveText('Place a card in Now, Next, or Then to start your roadmap.')
     await expect(dialog.getByTestId('atlas-roadmap-grid')).toBeVisible()
@@ -104,7 +105,7 @@ test('empty roadmap shows the skeleton + Place cards door; the picker auto-decla
     await createCardViaTray(page, cardTitle, { kindID: ATLAS_KIND_TOPIC })
     await expect(noteCard(page, cardTitle)).toBeVisible()
 
-    await page.getByTestId('atlas-open-roadmap').click()
+    await openToolbarAction(page, 'atlas-open-roadmap')
     await expect(dialog).toBeVisible()
 
     // Two clicks, zero Kind-editor visits (Acceptance): open the Now
@@ -119,24 +120,24 @@ test('empty roadmap shows the skeleton + Place cards door; the picker auto-decla
     // The auto-declared field is visible in the Kind editor, never hidden.
     await page.keyboard.press('Escape')
     await expect(dialog).not.toBeVisible()
-    await page.getByTestId('atlas-open-kinds').click()
+    await openToolbarAction(page, 'atlas-open-kinds')
     await page.getByTestId('atlas-kind-row').filter({ hasText: 'Topic' }).click()
     await expect(page.locator('input[data-testid="atlas-kind-field-key"][value="horizon"]')).toBeVisible()
     await page.keyboard.press('Escape')
 
     // Drag Now -> Then, persisted across a close/reopen of the dialog.
-    await page.getByTestId('atlas-open-roadmap').click()
+    await openToolbarAction(page, 'atlas-open-roadmap')
     await expect(dialog).toBeVisible()
     await dragRoadmapChip(page, cardTitle, roadmapCell(dialog, 'Topic', 'then'))
     await page.keyboard.press('Escape')
-    await page.getByTestId('atlas-open-roadmap').click()
+    await openToolbarAction(page, 'atlas-open-roadmap')
     await expect(roadmapCell(dialog, 'Topic', 'then').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toBeVisible()
     await expect(roadmapCell(dialog, 'Topic', 'now').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toHaveCount(0)
 
     // Drag to Unscheduled clears the tag, also persisted.
     await dragRoadmapChip(page, cardTitle, roadmapCell(dialog, 'Topic', 'unscheduled'))
     await page.keyboard.press('Escape')
-    await page.getByTestId('atlas-open-roadmap').click()
+    await openToolbarAction(page, 'atlas-open-roadmap')
     await expect(roadmapCell(dialog, 'Topic', 'unscheduled').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toBeVisible()
     await expect(roadmapCell(dialog, 'Topic', 'then').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toHaveCount(0)
     await page.keyboard.press('Escape')

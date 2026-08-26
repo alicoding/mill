@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { openToolbarAction } from './fixtures/toolbarActions'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { armAndPlaceTopicCard, clickBreadcrumbSegment, clickFrameGutter, openCard } from './fixtures/atlasBoard'
 
@@ -291,7 +292,7 @@ test('a group entry inside a page re-roots the board to a deeper card, and the b
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
   async function importReportsOnly() {
-    await page.getByTestId('atlas-add-from-folder').click()
+    await openToolbarAction(page, 'atlas-add-from-folder')
     const dialog = page.locator('[data-component="atlas-folder-import-dialog"]')
     await expect(dialog).toBeVisible()
     // Dedupe (goal 0088) default-unchecks rows whose content an
