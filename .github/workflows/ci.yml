@@ -15,14 +15,17 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  # Conditional, per GitHub's own docs pattern: a superseded PR run
-  # SHOULD die (per-PR synthetic ref), but main's post-merge runs must
-  # each complete — with `true` here, two merges landing close together
-  # cancelled the earlier merge commit's own verification run, leaving
-  # that main SHA's CI status permanently incomplete (observed live
-  # 2026-08-12: merges #1/#10 showed cancelled; the mirror image of
-  # ADR-0034's bisect-blind-spot concern).
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  # Never cancel: PR runs on merge refs were being phantom-cancelled
+  # mid-run with no superseding push visible (goal 0227 — five kills
+  # on one PR, two on another, both starved of any completed run),
+  # consistent with merge-ref recomputation spawning a suite that
+  # enters this group and kills the in-flight attempt. `false`
+  # everywhere both fixes the starvation and is the controlled test
+  # of that mechanism; the cost is an occasionally-wasted superseded
+  # run. Main already required `false` (a cancelled merge-commit run
+  # leaves that SHA's CI permanently incomplete — ADR-0034's
+  # bisect-blind-spot concern, observed live 2026-08-12).
+  cancel-in-progress: false
 
 jobs:
   # goal 0024 / ADR-0034's un-deferred path-filtering: skip the heavy
