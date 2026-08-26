@@ -490,3 +490,11 @@ export const UPDATES_WHATSNEW_EMPTY_MCP_BASE_PORT = 10980
 // rendered notes.
 export const UPDATES_WHATSNEW_NOTES_SERVER_BASE_PORT = 11000
 export const UPDATES_WHATSNEW_NOTES_MCP_BASE_PORT = 11020
+
+// clipboard-history.spec.ts (goal 0234): dedicated, same reasoning as
+// SECRETS_SERVER_BASE_PORT above -- Clipboard history's own entry list
+// is GLOBAL app state (testing.md's shared-vs-dedicated rule), and this
+// spec also asserts the true EMPTY state, which needs a guaranteed-
+// fresh settings file no other spec could have already written into.
+export const CLIPBOARD_HISTORY_SERVER_BASE_PORT = 11040
+export const CLIPBOARD_HISTORY_MCP_BASE_PORT = 11060

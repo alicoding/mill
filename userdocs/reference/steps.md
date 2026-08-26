@@ -20,6 +20,13 @@ Fires only when another workflow invokes this one with its Child Workflow step -
 - Takes: nothing — Produces: anything
 - Effect: none — pure computation
 
+### Clipboard captured
+
+Fires when you copy something new -- skips content marked confidential by the app you copied it from, and skips text Mill itself just wrote back to the clipboard.
+
+- Takes: nothing — Produces: text
+- Effect: none — pure computation
+
 ### Clipboard changed
 
 Fires whenever the clipboard's content changes.
@@ -378,6 +385,13 @@ Creates or updates a row in a Configure-authored List: if an existing row's "Key
   - **Key column** — Which column identifies a row -- an existing row whose value in this column matches gets updated; no match appends a new row.
   - **Field values** — JSON object mapping the List's column keys to a literal or attr:<name>, e.g. {"task":"attr:taskName","status":"Done"}. Must include a value for the key column.
   - **Output attribute (optional)** — Which Attributes field receives the row's id.
+
+### Save to clipboard history
+
+Scrubs any known secret value out of the payload, then adds what's left to Clipboard history. Confidential-marked content and Mill's own clipboard writes never reach this step -- the trigger above already filtered them.
+
+- Takes: text — Produces: its input, unchanged
+- Effect: changes something on this machine
 
 ### Update Atlas card
 

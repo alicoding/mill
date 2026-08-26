@@ -19,6 +19,13 @@ extra prompt every time you unlock. Lock and unlock the vault from the
 command palette (⌘K) too — search "vault" and only the action that
 currently applies shows up.
 
+**Clipboard history is opt-in and screened.** Turning on the
+Clipboard history workflow is the only way it starts watching, and
+turning it off stops watching immediately. Anything a password manager
+or similar app marks confidential is never recorded, and any known
+secret value is scrubbed before an entry is ever saved. Every entry you
+copy back leaves a line in your own access history.
+
 **External effects ask first.** The guardrail model
 ([Guardrails](../concepts/guardrails.md)) parks any step that leaves
 the machine until you approve it or a rule you wrote allows it.

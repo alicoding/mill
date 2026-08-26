@@ -72,6 +72,15 @@ func init() {
 		Produces:    PayloadProduce{Kind: PayloadText},
 	}, nil)
 	RegisterNodeType(NodeType{
+		ID: "trigger-clipboard-change", Kind: KindTrigger,
+		Label:       "Clipboard captured",
+		Output:      "the clipboard text that changed, already screened for confidential content and Mill's own writes",
+		Description: "Fires when you copy something new -- skips content marked confidential by the app you copied it from, and skips text Mill itself just wrote back to the clipboard.",
+		Complexity:  ComplexityBasic,
+		Consumes:    []PayloadKind{PayloadNone},
+		Produces:    PayloadProduce{Kind: PayloadText},
+	}, nil)
+	RegisterNodeType(NodeType{
 		ID: "trigger-filesystem-watch", Kind: KindTrigger,
 		Label:       "File changed",
 		Output:      "the changed file path",

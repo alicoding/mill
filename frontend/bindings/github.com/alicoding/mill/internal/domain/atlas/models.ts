@@ -71,6 +71,16 @@ export interface BoardObject {
      * contract, extended to this type) -- zero value means live.
      */
     "DeletedAt": string;
+
+    /**
+     * BuiltIn and Seed carry the exact same seed-provenance contract
+     * Card already does (goal 0037/0223): BuiltIn marks a golden
+     * atlassvc's reconcile inserted, Seed tracks which revision and
+     * whether the user has since touched it. A zero Seed means
+     * user-created, same as a Card with no seed origin.
+     */
+    "BuiltIn": boolean;
+    "Seed": seedorigin$0.Origin;
 }
 
 /**

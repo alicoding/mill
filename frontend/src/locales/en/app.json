@@ -221,5 +221,19 @@
     "versionHeading": "Version {{version}}",
     "empty": "Release notes appear here after an update check finds a new version.",
     "checkButton": "Check for updates"
+  },
+  "clipboardHistory": {
+    "title": "Clipboard history",
+    "subtitle": "Search, preview, and reuse what you've copied",
+    "searchPlaceholder": "Search clipboard history",
+    "empty": "Copies appear here once the Clipboard history workflow is on.",
+    "emptyPreview": "(no preview)",
+    "openWorkflow": "Open workflow",
+    "noSelection": "Select an entry to see its full content.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "delete": "Delete"
   }
 }

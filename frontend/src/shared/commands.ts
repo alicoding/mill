@@ -8,6 +8,8 @@ import { ATLAS_BOARD_COMMANDS } from './atlasBoardCommands'
 import { SETTINGS_COMMANDS } from './settingsCommands'
 import { CANVAS_COMMANDS } from './canvasCommands'
 import { SECRETS_COMMANDS } from './secretsCommands'
+import { CLIPBOARD_HISTORY_COMMANDS } from './clipboardHistoryCommands'
+import { REVIEW_COMMANDS } from './reviewCommands'
 import { ATLAS_TOOL_IDENTITIES } from './atlasToolIdentity'
 
 // The command registry (docs/goals/0016-keymap-system.md): named
@@ -396,18 +398,8 @@ export const COMMANDS: Command[] = [
     defaultBinding: null,
     run: () => setView({ kind: 'docs' }),
   },
-  {
-    // Deep-link reuse (goal 0078): unbound by default, discoverable via
-    // the palette while already on Review -- surface-scoped like
-    // atlas.jump, so it only ever fires with ReviewView already
-    // mounted, switching its own local tab state to "Rules" via the
-    // uiSignalStore counter it watches.
-    id: 'review.rules',
-    label: 'Guardrail rules',
-    defaultBinding: null,
-    surface: ['review'],
-    run: () => useUISignalStore.getState().requestReviewRules(),
-  },
+  // review.rules -- split out to shared/reviewCommands.ts.
+  ...REVIEW_COMMANDS,
   // settings.open moved to shared/settingsCommands.ts (goal 0222 S2),
   // alongside its own SettingsService import.
   // Per-Configure-tab create commands (goal 0071 G6) -- split out to
@@ -425,6 +417,8 @@ export const COMMANDS: Command[] = [
   ...CANVAS_COMMANDS,
   // Vault lock/unlock -- split out to shared/secretsCommands.ts.
   ...SECRETS_COMMANDS,
+  // clipboard.history.open -- split out to shared/clipboardHistoryCommands.ts.
+  ...CLIPBOARD_HISTORY_COMMANDS,
 ]
 
 export function findCommand(id: string): Command | undefined {

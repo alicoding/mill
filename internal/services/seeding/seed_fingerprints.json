@@ -159,6 +159,10 @@
     "seedRevision": 1,
     "fingerprint": "33182d6efa709f8e0e2ca012b2f1d90827afb85b1974a5e6b8af01b8827cab55"
   },
+  "workflow:clipboard-history-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "31bd5a8b83e7c01ae99900ee0f04e8779239d5e4857f1b83d09ba19c823cf352"
+  },
   "workflow:clipboard-html-to-markdown-workflow": {
     "seedRevision": 2,
     "fingerprint": "9de7e8459d7a325d2d78ba99704020dc0424cc0902060ea01d1dd9aedf48d234"

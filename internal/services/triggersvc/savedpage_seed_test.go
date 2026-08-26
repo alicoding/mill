@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicoding/mill/internal/adapters/clipboard/clipboardtest"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/executionsvc"
@@ -114,62 +115,72 @@ func TestSeededSavedPageToMarkdown_FiresRealWorkflowAndExtractsMainContent(t *te
 </main>
 <footer>Site footer chrome</footer>
 </body></html>`
-	if err := os.WriteFile(filepath.Join(watchDir, "saved-page.html"), []byte(fixtureHTML), 0o600); err != nil {
-		t.Fatalf("WriteFile: %v", err)
-	}
+	// The trigger fire through run completion below writes the real
+	// macOS clipboard (the seed's own apply-clipboard-write-text step) --
+	// held under the cross-process lock (clipboardtest) so this doesn't
+	// race internal/adapters/clipboard's own real-desktop tests when
+	// `go test ./...` runs both packages concurrently (confirmed by
+	// direct reproduction: a bare run failed
+	// TestWatchChanges_FiresOnRealChange with a value neither test
+	// itself wrote).
+	clipboardtest.WithRealClipboardLock(func() {
+		if err := os.WriteFile(filepath.Join(watchDir, "saved-page.html"), []byte(fixtureHTML), 0o600); err != nil {
+			t.Fatalf("WriteFile: %v", err)
+		}
 
-	deadline := time.Now().Add(10 * time.Second)
-	proofRunID := ""
-search:
-	for time.Now().Before(deadline) {
-		runs, err := exec.ListRunsForWorkflow(seed.ID)
-		if err == nil {
-			for _, r := range runs {
-				if r.Kind != executionsvc.RunKindTriggered {
-					continue
-				}
-				detail, err := exec.GetRun(r.RunID)
-				if err != nil {
-					continue
-				}
-				for _, step := range detail.Steps {
-					if step.NodeTypeID != "process-html-to-markdown" || step.Status != "succeeded" {
+		deadline := time.Now().Add(10 * time.Second)
+		proofRunID := ""
+	search:
+		for time.Now().Before(deadline) {
+			runs, err := exec.ListRunsForWorkflow(seed.ID)
+			if err == nil {
+				for _, r := range runs {
+					if r.Kind != executionsvc.RunKindTriggered {
 						continue
 					}
-					if !strings.Contains(step.Output, "Quarterly planning notes") {
-						t.Fatalf("markdown step output = %q, want it to contain the main-content heading", step.Output)
+					detail, err := exec.GetRun(r.RunID)
+					if err != nil {
+						continue
 					}
-					if strings.Contains(step.Output, "Site navigation chrome") || strings.Contains(step.Output, "Site footer chrome") {
-						t.Fatalf("markdown step output = %q, want the nav/footer chrome dropped", step.Output)
+					for _, step := range detail.Steps {
+						if step.NodeTypeID != "process-html-to-markdown" || step.Status != "succeeded" {
+							continue
+						}
+						if !strings.Contains(step.Output, "Quarterly planning notes") {
+							t.Fatalf("markdown step output = %q, want it to contain the main-content heading", step.Output)
+						}
+						if strings.Contains(step.Output, "Site navigation chrome") || strings.Contains(step.Output, "Site footer chrome") {
+							t.Fatalf("markdown step output = %q, want the nav/footer chrome dropped", step.Output)
+						}
+						// proof complete: real trigger fire -> real payload ->
+						// extracted-and-converted content
+						proofRunID = r.RunID
+						break search
 					}
-					// proof complete: real trigger fire -> real payload ->
-					// extracted-and-converted content
-					proofRunID = r.RunID
-					break search
 				}
 			}
+			time.Sleep(50 * time.Millisecond)
 		}
-		time.Sleep(50 * time.Millisecond)
-	}
-	if proofRunID == "" {
-		t.Fatal("no triggered run's process-html-to-markdown step ever reached succeeded with the expected extracted content")
-	}
-	// The proof step succeeding is not the run finishing: the later
-	// apply step may still be mid-flight, and returning now lets
-	// t.Cleanup close the execution DB under the live workflow (the
-	// live-run race in QUARANTINE.md's Go register). Wait for the
-	// run's own terminal status -- ERROR included, since this test's
-	// apply step legitimately fails where no pasteboard exists.
-	for time.Now().Before(deadline) {
-		runs, err := exec.ListRunsForWorkflow(seed.ID)
-		if err == nil {
-			for _, r := range runs {
-				if r.RunID == proofRunID && (r.Status == "SUCCESS" || r.Status == "ERROR") {
-					return
+		if proofRunID == "" {
+			t.Fatal("no triggered run's process-html-to-markdown step ever reached succeeded with the expected extracted content")
+		}
+		// The proof step succeeding is not the run finishing: the later
+		// apply step may still be mid-flight, and returning now lets
+		// t.Cleanup close the execution DB under the live workflow (the
+		// live-run race in QUARANTINE.md's Go register). Wait for the
+		// run's own terminal status -- ERROR included, since this test's
+		// apply step legitimately fails where no pasteboard exists.
+		for time.Now().Before(deadline) {
+			runs, err := exec.ListRunsForWorkflow(seed.ID)
+			if err == nil {
+				for _, r := range runs {
+					if r.RunID == proofRunID && (r.Status == "SUCCESS" || r.Status == "ERROR") {
+						return
+					}
 				}
 			}
+			time.Sleep(50 * time.Millisecond)
 		}
-		time.Sleep(50 * time.Millisecond)
-	}
-	t.Fatalf("triggered run %s never reached a terminal status before the deadline", proofRunID)
+		t.Fatalf("triggered run %s never reached a terminal status before the deadline", proofRunID)
+	})
 }

@@ -24,6 +24,8 @@ export type {
   ImportEverythingSummary,
 } from '../../bindings/github.com/alicoding/mill/internal/services/backupsvc'
 export { CapabilitiesService } from '../../bindings/github.com/alicoding/mill/internal/services/capabilitysvc'
+export { ClipboardHistoryService } from '../../bindings/github.com/alicoding/mill/internal/services/clipboardhistorysvc'
+export type { Entry as ClipboardHistoryEntry } from '../../bindings/github.com/alicoding/mill/internal/domain/clipboardhistory/models'
 export { DocsService } from '../../bindings/github.com/alicoding/mill/internal/services/docssvc'
 export { CompanionService } from '../../bindings/github.com/alicoding/mill/internal/services/companionsvc'
 export type {

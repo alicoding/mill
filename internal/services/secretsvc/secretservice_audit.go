@@ -81,6 +81,20 @@ func (s *SecretService) recordAccess(entryID, label string, actx secretaudit.Acc
 	}
 }
 
+// RecordAccess is recordAccess exported for a caller outside this
+// package (goal 0234: clipboardhistorysvc's own copy-back action, wired
+// through an injected function var so that package doesn't import
+// secretsvc directly -- .claude/rules/backend.md's cross-service seam
+// rule). The SAME audit store every vault-secret read already writes
+// to, reused rather than a second one; EntryID/Context tell a Clipboard
+// history row apart from a vault-secret row in the shared list.
+// Exported for wiring only, never a frontend RPC.
+//
+//wails:ignore
+func (s *SecretService) RecordAccess(entryID, label string, actx secretaudit.AccessContext, outcome secretaudit.Outcome, errText string) {
+	s.recordAccess(entryID, label, actx, outcome, errText)
+}
+
 // ListSecretAccessRequest is the bound read API's request shape --
 // EntryID empty means "no filter" (the Secrets view's global Access
 // history list); set means "this one entry's own history" (the detail

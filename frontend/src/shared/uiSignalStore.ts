@@ -153,6 +153,11 @@ interface UISignalState {
   whatsNewOpen: boolean
   openWhatsNew: () => void
   closeWhatsNew: () => void
+  // clipboard.history.open (goal 0234): same plain-boolean shape as
+  // whatsNewOpen above -- app/ClipboardHistoryDialog.tsx renders off it.
+  clipboardHistoryOpen: boolean
+  openClipboardHistory: () => void
+  closeClipboardHistory: () => void
 }
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
@@ -213,4 +218,7 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   whatsNewOpen: false,
   openWhatsNew: () => set({ whatsNewOpen: true }),
   closeWhatsNew: () => set({ whatsNewOpen: false }),
+  clipboardHistoryOpen: false,
+  openClipboardHistory: () => set({ clipboardHistoryOpen: true }),
+  closeClipboardHistory: () => set({ clipboardHistoryOpen: false }),
 }))

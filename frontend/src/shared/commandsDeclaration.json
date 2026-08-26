@@ -383,6 +383,13 @@
     "enabled": false
   },
   {
+    "id": "clipboard.history.open",
+    "label": "Clipboard history",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
     "id": "configure.new.aiproviders",
     "label": "New AI provider",
     "binding": null,
