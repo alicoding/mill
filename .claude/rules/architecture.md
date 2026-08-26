@@ -101,6 +101,24 @@ mirrors the ADR-0035 one: if a user or future feature could plausibly say
 "I want that, but for a different event/message," it's surface-shaped —
 build the surface.
 
+**Every user-facing action arrives as a registry command, with an
+honest enablement predicate — buttons render commands, they never own a
+second code path.** (goal 0222, `shared/commands.ts`'s VSCode-derived
+architecture: the command is the atom, palette/keyboard/buttons are
+renderings of it.) A button's `onClick` calls `findCommand(id)?.run()`
+rather than performing the action inline; a command whose validity
+depends on live state (an open editor tab, a locked resource, an
+in-flight pipeline) declares that in `Command.enabled`, never as an
+inline guard inside `run()` that returns silently — the palette omits
+a disabled command entirely rather than showing something that does
+nothing. Shipping a mouse-only action — a click handler with no
+matching registry command — needs a stated reason (a live on-screen
+selection the palette structurally can't supply is the one already-
+accepted shape, see `Command.paletteHidden`'s own doc comment); "it's
+just one button" is not a reason, since the next surface that wants
+the identical action is exactly how a bespoke click handler and a
+registry command drift apart.
+
 **Configure entity vs. node-local config — "business rules on canvas,
 integration rules in Configure."** A `ConfigField`'s value is a
 Configure-entity reference (`RefKind`, ADR-0009) exactly when two

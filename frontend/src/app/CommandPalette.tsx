@@ -9,6 +9,8 @@ import { ExecutionService, RunKind, TriggerService } from '../shared/bindings'
 import { COMMANDS } from '../shared/commands'
 import { generateSamplePayload } from '../shared/configSchema'
 import { useAppStore } from '../shared/store'
+import { useVaultStatusStore } from '../shared/vaultStatusStore'
+import { useUpdateNoticeStore } from '../shared/updateNoticeStore'
 import type { WorkTab } from '../shared/store'
 import { tabLabel } from './workTabLabel'
 import { findRootNode } from '../composition/triggerRowInfo'
@@ -157,6 +159,14 @@ export function CommandPalette() {
   // (unlike the Quick Panel's separate Wails window).
   const pinnedWorkflowIds = useAppStore((s) => s.pinnedWorkflowIds)
   const togglePinnedWorkflow = useAppStore((s) => s.togglePinnedWorkflow)
+  // Subscribed so a state door changing WHILE the palette is open
+  // (unlocking the vault from another tab, an update finishing its
+  // download) re-filters live -- goal 0222 S1's enablement predicates
+  // read these same stores (shared/vaultStatusStore.ts,
+  // shared/updateNoticeStore.ts) via getState(), which on its own
+  // wouldn't trigger a re-render here.
+  const vaultStatus = useVaultStatusStore((s) => s.vaultStatus)
+  const updateNoticeState = useUpdateNoticeStore((s) => s.updateNoticeState)
   const [query, setQuery] = useState('')
   const [mostUsedRank, setMostUsedRank] = useState<Record<string, number>>({})
   // workflowID -> its trigger-hotkey combo label (TriggerService.
@@ -332,20 +342,26 @@ export function CommandPalette() {
   // actually has open, already a small, self-limiting set.
   const restState = query.trim().length === 0
 
+  // A disabled command is OMITTED, not dimmed (goal 0222 S1, VSCode's
+  // own palette convention: a command failing its `when` clause simply
+  // doesn't appear in results) -- checked last since it's the only
+  // predicate that can call into live app state.
+  const isCommandAvailable = (c: (typeof COMMANDS)[number]) => !c.paletteHidden && (!c.enabled || c.enabled())
+
   const allEntries = useMemo<PaletteEntry[]>(() => {
     if (restState) {
-      const surfaceCommands = COMMANDS.filter((c) => c.surface?.includes(viewKind) && !c.paletteHidden).map(commandEntry)
+      const surfaceCommands = COMMANDS.filter((c) => c.surface?.includes(viewKind) && isCommandAvailable(c)).map(commandEntry)
       const navCommands = COMMANDS.filter((c) => isNavCommandId(c.id)).map(commandEntry)
       const topWorkflows = sortWorkflowsByPinnedAndFrecency(workflows ?? [], mostUsedRank, pinnedWorkflowIds).slice(0, REST_STATE_WORKFLOW_LIMIT)
       return [...surfaceCommands, ...navCommands, ...topWorkflows.flatMap(workflowEntries), ...workTabs.flatMap(tabEntries)]
     }
     return [
-      ...COMMANDS.filter((c) => (!c.surface || c.surface.includes(viewKind)) && !c.paletteHidden).map(commandEntry),
+      ...COMMANDS.filter((c) => (!c.surface || c.surface.includes(viewKind)) && isCommandAvailable(c)).map(commandEntry),
       ...sortWorkflowsByPinnedAndFrecency(workflows ?? [], mostUsedRank, pinnedWorkflowIds).flatMap(workflowEntries),
       ...workTabs.flatMap(tabEntries),
     ]
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- commandEntry/workflowEntries/tabEntries close over workflows/nodeTypes/requests/workTabs/mostUsedRank/hotkeyCombos/pinnedWorkflowIds/togglePinnedWorkflow/t, already listed
-  }, [restState, workflows, nodeTypes, requests, workTabs, mostUsedRank, hotkeyCombos, pinnedWorkflowIds, viewKind, t])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- commandEntry/workflowEntries/tabEntries/isCommandAvailable close over workflows/nodeTypes/requests/workTabs/mostUsedRank/hotkeyCombos/pinnedWorkflowIds/togglePinnedWorkflow/vaultStatus/updateNoticeState/t, already listed
+  }, [restState, workflows, nodeTypes, requests, workTabs, mostUsedRank, hotkeyCombos, pinnedWorkflowIds, viewKind, vaultStatus, updateNoticeState, t])
 
   // Faceted search (goal 0086): the scope narrows allEntries FIRST,
   // then filterPaletteEntries ranks the remainder against the

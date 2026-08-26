@@ -24,7 +24,7 @@ import { useAppStore } from './store'
 // it here would double-fire. Every entry still carries a real `run` so
 // a palette click works even though a raw keypress never reaches
 // dispatchCommandForEvent for it.
-function requestCanvas(command: 'undo' | 'redo' | 'delete' | 'zoomIn' | 'zoomOut' | 'fitView') {
+function requestCanvas(command: 'undo' | 'redo' | 'delete' | 'zoomIn' | 'zoomOut' | 'fitView' | 'publish') {
   useAppStore.getState().requestCanvasCommand(command)
 }
 
@@ -93,5 +93,25 @@ export const CANVAS_COMMANDS: Command[] = [
     defaultBinding: null,
     surface: ['composition'],
     run: () => requestCanvas('fitView'),
+  },
+  {
+    // The Versions tab's "Publish current draft" button
+    // (composition/WorkflowVersionsPanel.tsx, goal 0222 S1) -- same
+    // canvasCommandRequest signal seam as every command above (shared/
+    // can't reach into a specific mounted tab directly). Only a SAVED
+    // workflow's editor has a Versions tab to publish from, so this is
+    // enabled on a narrower condition than commands.ts's own
+    // isWorkflowEditorTabActive: the active work tab must be a
+    // 'workflow-edit' tab specifically (carries workflowId), never a
+    // not-yet-saved 'workflow-new' one.
+    id: 'workflow.publish',
+    label: 'Publish current draft',
+    defaultBinding: null,
+    surface: ['composition'],
+    enabled: () => {
+      const { activeWorkTabKey, workTabs } = useAppStore.getState()
+      return workTabs.some((t) => t.key === activeWorkTabKey && t.kind === 'workflow-edit')
+    },
+    run: () => requestCanvas('publish'),
   },
 ]

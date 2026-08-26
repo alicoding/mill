@@ -101,6 +101,19 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     run: () => {},
   },
   {
+    // The Sparkle companion-panel toggle (goal 0101 slice 1,
+    // AtlasToolbar.tsx) -- the button now calls this command instead of
+    // toggleCompanion directly, same "button runs the command" shape
+    // every other migrated action in goal 0222 S1 follows. Always valid
+    // while on the atlas surface -- opening/closing has no invalid
+    // state, so no `enabled` predicate is needed here.
+    id: 'atlas.companion.toggle',
+    label: 'Toggle companion panel',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().toggleCompanion(),
+  },
+  {
     id: 'atlas.minimap.toggle',
     label: 'Toggle minimap',
     defaultBinding: null,

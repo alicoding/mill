@@ -1,8 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { blurSticky, stickyEditor } from './fixtures/codeEditor'
 import type { Page } from '@playwright/test'
-import { clickCorner, zoomAllTheWayOut } from './fixtures/atlasBoard'
-import { contextMenu } from './fixtures/contextMenu'
+import { clickCorner, deleteSticky, zoomAllTheWayOut } from './fixtures/atlasBoard'
 
 // Atlas capture doors (goal 0081 slice A3, fallback redesigned by goal
 // 0218) and the Scratchpad seed rework, driven end to end against the
@@ -43,17 +42,6 @@ async function dispatchPaste(page: Page, data: { text?: string; html?: string })
   }, data)
 }
 
-// deleteSticky removes a persisted sticky note straight off the board
-// (its own context-menu Delete, no page to open -- mirrors atlas-
-// paste-convert.spec.ts's table-object cleanup pattern).
-async function deleteSticky(page: Page, sticky: import('@playwright/test').Locator): Promise<void> {
-  await sticky.click({ button: 'right' })
-  const menu = contextMenu(page)
-  await expect(menu).toBeVisible()
-  await menu.getByText('Delete note', { exact: true }).click()
-  await expect(sticky).toHaveCount(0)
-}
-
 test('unrecognized text paste lands a selected sticky note at the pointer, no modal', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
@@ -90,6 +78,9 @@ test('unrecognized HTML paste converts to Markdown and lands a selected sticky n
   await expect(sticky).toContainText('Prod credentials never stay with the requester.')
   const wrapper = page.locator('.react-flow__node.selected').filter({ has: sticky })
   await expect(wrapper).toHaveCount(1)
+  // Goal 0226: the converted markdown must DISPLAY formatted -- a real
+  // <h1>, not the heading's text surviving inside a plain line.
+  await expect(sticky.locator('h1')).toHaveText('Vendor policy')
 
   await deleteSticky(page, sticky)
 })
