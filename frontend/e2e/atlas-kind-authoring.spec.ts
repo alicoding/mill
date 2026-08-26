@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { openToolbarAction } from './fixtures/toolbarActions'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -48,7 +49,7 @@ const dialog = (page: import('@playwright/test').Page) => page.locator('[data-co
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
 test('create a card kind with a choice field, see it in the create picker, edit it under evolution rules, delete it', async ({}, testInfo) => {
   await withServer(testInfo, async (page) => {
-    await page.getByTestId('atlas-open-kinds').click()
+    await openToolbarAction(page, 'atlas-open-kinds')
     await expect(dialog(page)).toBeVisible()
 
     // Create: label + one Choice field.
@@ -88,7 +89,7 @@ test('create a card kind with a choice field, see it in the create picker, edit 
     await page.getByRole('button', { name: 'Cancel' }).click()
 
     // Delete: unused, so it goes; the row disappears.
-    await page.getByTestId('atlas-open-kinds').click()
+    await openToolbarAction(page, 'atlas-open-kinds')
     await dialog(page).getByRole('button', { name: 'Delete ZzE2eSignal' }).click()
     await page.getByRole('button', { name: 'Delete', exact: true }).click()
     await expect(dialog(page).getByTestId('atlas-kind-row').filter({ hasText: 'ZzE2eSignal' })).toHaveCount(0)
@@ -99,7 +100,7 @@ test('create a card kind with a choice field, see it in the create picker, edit 
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
 test('create, edit, and delete a link kind; deleting an in-use card kind is refused with the server reason', async ({}, testInfo) => {
   await withServer(testInfo, async (page) => {
-    await page.getByTestId('atlas-open-kinds').click()
+    await openToolbarAction(page, 'atlas-open-kinds')
     await expect(dialog(page)).toBeVisible()
 
     // Link kind: create, rename, delete.
@@ -140,7 +141,7 @@ test('show-on-card round-trips in the editor, and the seeded Topic status render
     await expect(getting.getByTestId('atlas-face-field')).toHaveText('Open')
 
     // Editor round-trip on a fresh kind (never a seeded one).
-    await page.getByTestId('atlas-open-kinds').click()
+    await openToolbarAction(page, 'atlas-open-kinds')
     await expect(dialog(page)).toBeVisible()
     await dialog(page).getByTestId('atlas-kind-new').click()
     await page.getByTestId('atlas-kind-label').fill('ZzE2eFaceKind')
@@ -175,7 +176,7 @@ test('show-on-card round-trips in the editor, and the seeded Topic status render
 test('a card-reference field filters to its target kind, derives a board edge, and shows on the face', async ({}, testInfo) => {
   await withServer(testInfo, async (page) => {
     // Author the kind: one cardref field targeting Contact, on-card.
-    await page.getByTestId('atlas-open-kinds').click()
+    await openToolbarAction(page, 'atlas-open-kinds')
     await expect(dialog(page)).toBeVisible()
     await dialog(page).getByTestId('atlas-kind-new').click()
     await page.getByTestId('atlas-kind-label').fill('ZzE2eTicket')
@@ -239,7 +240,7 @@ test('a card-reference field filters to its target kind, derives a board edge, a
     await ticketCard.click({ button: 'right' })
     await menu.getByText('Delete', { exact: true }).first().click()
     await expect(ticketCard).toHaveCount(0)
-    await page.getByTestId('atlas-open-kinds').click()
+    await openToolbarAction(page, 'atlas-open-kinds')
     await dialog(page).getByRole('button', { name: 'Delete ZzE2eTicket' }).click()
     await page.getByRole('button', { name: 'Delete', exact: true }).click()
     await expect(dialog(page).getByTestId('atlas-kind-row').filter({ hasText: 'ZzE2eTicket' })).toHaveCount(0)

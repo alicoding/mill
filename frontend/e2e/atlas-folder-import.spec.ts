@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { openToolbarAction } from './fixtures/toolbarActions'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { clickBreadcrumbSegment, openCard } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
@@ -35,7 +36,7 @@ test('add from folder: scan, partial accept, containment, and mirror rendering a
   // The single seeded root auto-enters "The engagement" directly.
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await page.getByTestId('atlas-add-from-folder').click()
+  await openToolbarAction(page, 'atlas-add-from-folder')
   const dialog = page.locator('[data-component="atlas-folder-import-dialog"]')
   await expect(dialog).toBeVisible()
 
@@ -125,7 +126,7 @@ test('add from folder: an already-imported file stays flagged and default-unchec
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await page.getByTestId('atlas-add-from-folder').click()
+  await openToolbarAction(page, 'atlas-add-from-folder')
   const dialog = page.locator('[data-component="atlas-folder-import-dialog"]')
   await expect(dialog).toBeVisible()
 
@@ -150,7 +151,7 @@ test('add from folder: an already-imported file stays flagged and default-unchec
   // own content still matches the card created under "The engagement" -- its
   // row must be flagged and default-unchecked, while an unrelated row
   // stays checked.
-  await page.getByTestId('atlas-add-from-folder').click()
+  await openToolbarAction(page, 'atlas-add-from-folder')
   await expect(dialog).toBeVisible()
   await expect(dialog.getByTestId('atlas-folder-import-duplicate')).toHaveText('Already on the map as “Meeting Notes”')
   await expect(dialog.getByRole('checkbox', { name: 'Meeting Notes' })).not.toBeChecked()
@@ -191,7 +192,7 @@ test('add from folder: an already-imported file stays flagged and default-unchec
 // fixture supports, isolating goal 0178 S2's container-mirror behaviour
 // from the other two scenarios' own cleanup.
 async function importReportsOnly(page: import('@playwright/test').Page, dialog: import('@playwright/test').Locator) {
-  await page.getByTestId('atlas-add-from-folder').click()
+  await openToolbarAction(page, 'atlas-add-from-folder')
   await expect(dialog).toBeVisible()
   const kindSelects = dialog.getByTestId('atlas-folder-import-kind')
   await kindSelects.nth(0).selectOption({ label: '🧭 Topic' })
@@ -268,7 +269,7 @@ test('add from folder: canceling the picker leaves the space untouched', async (
   // half of consent-first instead: scanning alone writes nothing.
   // Opening then closing the preview via Cancel must leave the space
   // exactly as it was.
-  await page.getByTestId('atlas-add-from-folder').click()
+  await openToolbarAction(page, 'atlas-add-from-folder')
   const dialog = page.locator('[data-component="atlas-folder-import-dialog"]')
   await expect(dialog).toBeVisible()
   await dialog.getByRole('button', { name: 'Cancel' }).click()

@@ -1,5 +1,6 @@
 import { chromium, expect, test } from '@playwright/test'
 import { blurSticky, fillSticky, stickyEditor } from './fixtures/codeEditor'
+import { openToolbarAction } from './fixtures/toolbarActions'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -85,7 +86,7 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     // Scratchpad; the reference-architecture landscape was de-seeded,
     // ADR-0041's Update) -- a hand-countable 1/3 linked, 0/3 mirrored
     // (same census atlas-projections.spec.ts's own coverage test pins).
-    await page.getByTestId('atlas-open-coverage').click()
+    await openToolbarAction(page, 'atlas-open-coverage')
     const coverageDialog = page.locator('[data-component="atlas-coverage-dialog"]')
     await expect(coverageDialog).toBeVisible()
     await expect(coverageDialog.getByTestId('atlas-coverage-link-value')).toHaveText('1/3 linked')
@@ -93,7 +94,7 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await page.keyboard.press('Escape')
     await expect(coverageDialog).not.toBeVisible()
 
-    await page.getByTestId('atlas-open-matrix').click()
+    await openToolbarAction(page, 'atlas-open-matrix')
     const matrixDialog = page.locator('[data-component="atlas-matrix-dialog"]')
     await expect(matrixDialog).toBeVisible()
     await expect(matrixDialog).not.toContainText('ZzE2eStickyNoteText')
