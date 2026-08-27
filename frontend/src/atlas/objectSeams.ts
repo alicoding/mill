@@ -28,8 +28,12 @@ export type ObjectSource =
 
 // EditRoute -- which door a Kind's edit affordance opens. The noun
 // states it; dispatchObjectEdit is the one place that acts on it.
-// 'inline' is a stub for a future cell-edit/short sticky jot
-// (ADR-0046's edit law) -- no implementation lands under this arm yet.
+// 'inline' (table's own cell-edit, goal 0244 S2; a future sticky jot)
+// names a Kind whose own content component owns the edit interaction
+// directly INSIDE the well -- there is no separate door for the host to
+// open, so dispatchObjectEdit's 'inline' arm stays a no-op by design
+// (mirrored by AtlasBoardObjectNode.tsx's own editable gate, which never
+// fires a double-click dispatch for it either).
 export type EditRoute =
   | { kind: 'external-app' }
   | { kind: 'embedded-engine'; engine: 'drawio' }

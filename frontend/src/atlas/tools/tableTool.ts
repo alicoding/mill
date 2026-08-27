@@ -56,10 +56,21 @@ export const tableTool = {
     role: undefined,
     // ADR-0046 (goal 0244 S0): Payload.listID names the backing
     // Configure List this Kind projects -- a provider source, not a
-    // file. No edit door of its own yet (a table's own cell/promote
-    // affordances aren't routed through this contract this slice).
+    // file.
     source: { kind: 'provider', refKey: 'listID' },
-    editRoute: { kind: 'none' },
+    // inline (goal 0244 S2, ADR-0046's edit law -- the Sheets/Notion/
+    // Airtable precedent): a cell edit writes the backing List entity
+    // directly, never a parallel copy. The well's own content
+    // (AtlasTableObjectContent -> AtlasCardProjectionTable ->
+    // shared/ListGrid) already owns click-to-edit end to end and calls
+    // ConfigureService.UpdateListRow itself -- the SAME write door
+    // Configure's own List page uses, so a table object's edit and
+    // Configure's edit are the one List, never two. This is why
+    // dispatchObjectEdit's own 'inline' arm stays a no-op host-level
+    // door AND AtlasBoardObjectNode's double-click gate never fires for
+    // it (editable = editRoute.kind === 'embedded-engine' only): inline
+    // editing is a click INSIDE the well, not a door the host opens.
+    editRoute: { kind: 'inline' },
   },
   // No style surface of its own (goal 0209) -- always empty, not
   // omitted.
