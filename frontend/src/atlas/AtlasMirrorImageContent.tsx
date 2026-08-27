@@ -16,7 +16,7 @@ import styles from './AtlasBoardObjectNode.module.css'
 // actually names which file's bytes this node renders), never the
 // whole Payload object, since atlasStore's own refreshAtlas() hands
 // every object a fresh Payload reference on any board mutation.
-function AtlasMirrorImageContentInner({ object, mirrorVersion, Glyph }: { object: BoardObject; mirrorVersion: number; Glyph: Icon }) {
+function AtlasMirrorImageContentInner({ object, mirrorVersion, Glyph }: { object: BoardObject; mirrorVersion: number; Glyph: Icon | null }) {
   const { t } = useTranslation('atlas')
   const [src, setSrc] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
@@ -54,7 +54,15 @@ function AtlasMirrorImageContentInner({ object, mirrorVersion, Glyph }: { object
     <img className={styles.image} data-sized={hasSize} src={src} alt="" draggable={false} />
   ) : (
     <div className={styles.placeholder} data-testid="atlas-board-object-placeholder">
-      <Glyph size={24} />
+      {/* Glyph is null for a Kind whose content is never available any
+          faster than this same load (ink, goal 0243): its stroke bytes
+          only ever exist as the file this fetch is reading, so a
+          fallback GLYPH would show a wrong picture (a pencil) for
+          every load, not just a failure -- an empty frame is the
+          honest "not there yet" state. A Kind whose bytes may already
+          be resident elsewhere (image, pasted/dropped before this
+          fetch starts) keeps its glyph. */}
+      {Glyph && <Glyph size={24} />}
       {failed && <span className={styles.error}>{t('boardObject.loadFailed')}</span>}
     </div>
   )
@@ -62,8 +70,10 @@ function AtlasMirrorImageContentInner({ object, mirrorVersion, Glyph }: { object
 
 // makeMirrorImageContent -- each file-backed noun's own tools/<id>Tool.ts
 // calls this once, at module scope, to build the Component its
-// `content` declaration carries. Never called per-render.
-export function makeMirrorImageContent(Glyph: Icon): ComponentType<{ object: BoardObject; mirrorVersion: number }> {
+// `content` declaration carries. Never called per-render. Pass null for
+// a Kind whose fallback should render an empty frame instead of a glyph
+// (see the comment above).
+export function makeMirrorImageContent(Glyph: Icon | null): ComponentType<{ object: BoardObject; mirrorVersion: number }> {
   return function AtlasMirrorImageContent({ object, mirrorVersion }: { object: BoardObject; mirrorVersion: number }) {
     return <AtlasMirrorImageContentInner object={object} mirrorVersion={mirrorVersion} Glyph={Glyph} />
   }
