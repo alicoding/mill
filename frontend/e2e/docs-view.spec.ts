@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from './fixtures/server'
 import { paletteDialog } from './fixtures/palette'
+import { withClipboardLock } from './fixtures/clipboardLock'
 
 // Shared worker pool: reads only the embedded docs tree, no app state
 // touched. The in-app Docs surface (goal 0125 phase 1): reachable on
@@ -178,4 +179,42 @@ test('a heading grows a hover-revealed anchor link', async ({ page, baseURL }) =
   await expect(anchor).toHaveCSS('opacity', '0')
   await heading.hover()
   await expect(anchor).toHaveCSS('opacity', '1')
+})
+
+// Code-block copy button (goal 0235 S3): same hover-revealed shape as
+// the heading anchor above -- present at rest (opacity 0), full opacity
+// only once the block is hovered.
+test('a code block grows a hover-revealed copy button', async ({ page, baseURL }) => {
+  await page.goto(`${baseURL}/`)
+  await page.getByTestId('footer-docs-link').click()
+  await page.getByTestId('docs-next-link').click()
+  await expect(page.getByTestId('docs-breadcrumb')).toContainText('Install')
+
+  const codeBlock = page.getByTestId('docs-content').getByTestId('docs-code-block').filter({ hasText: 'git clone' })
+  const copyButton = codeBlock.getByTestId('docs-code-copy')
+  await expect(copyButton).toHaveCSS('opacity', '0')
+  await codeBlock.hover()
+  await expect(copyButton).toHaveCSS('opacity', '1')
+})
+
+// Regression target: the button must copy the RAW code text (goldmark's
+// own entity-decoded textContent), never the block's rendered HTML or a
+// stale copy from a previous click.
+test("a code block's copy button copies the raw code and confirms briefly", async ({ page, baseURL }) => {
+  await withClipboardLock(async () => {
+    await page.goto(`${baseURL}/`)
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+    await page.getByTestId('footer-docs-link').click()
+    await page.getByTestId('docs-next-link').click()
+    await expect(page.getByTestId('docs-breadcrumb')).toContainText('Install')
+
+    const codeBlock = page.getByTestId('docs-content').getByTestId('docs-code-block').filter({ hasText: 'git clone' })
+    const copyButton = codeBlock.getByTestId('docs-code-copy')
+    await copyButton.click()
+
+    await expect
+      .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+      .toContain('git clone https://github.com/alicoding/mill.git')
+    await expect(copyButton).toHaveAccessibleName('Copied')
+  })
 })

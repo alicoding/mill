@@ -4,8 +4,10 @@ import { Browser } from '@wailsio/runtime'
 import { Text } from '@primer/react'
 import { DocsService } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
+import { writeClipboardText } from '../shared/clipboardWrite'
 import { resolveDocLink } from './docLinks'
 import { adjacentPages, groupDocsIndex, sectionTitleKey, type DocsIndexEntry } from './docsGroups'
+import { CHECK_ICON_SVG, COPY_ICON_SVG, injectCodeCopyButtons } from './docsCodeCopy'
 import { injectHeadingAnchors, parseHeadings } from './docsHeadings'
 import { useDocsScrollSpy } from './useDocsScrollSpy'
 import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'
@@ -18,6 +20,11 @@ function dirOf(rel: string): string {
   const slash = rel.indexOf('/')
   return slash === -1 ? '' : rel.slice(0, slash)
 }
+
+// Matches CopyDiagnosisButton's own confirm window (shared/CopyDiagnosisButton.tsx)
+// -- the house pattern for "brief confirmed state" every copy action in
+// the app already uses.
+const CODE_COPY_CONFIRM_MS = 1500
 
 // The in-app Docs surface (goal 0125 phase 1, restructured by goal
 // 0235 S1): the same userdocs tree the repository publishes and
@@ -74,6 +81,10 @@ function DocsView({ initialPage }: { initialPage?: string }) {
     () => injectHeadingAnchors(html, styles.headingAnchor, (heading) => t('docs.headingAnchorLabel', { heading })),
     [html, t],
   )
+  const htmlWithCopyButtons = useMemo(
+    () => injectCodeCopyButtons(htmlWithAnchors, styles.codeBlockWrapper, styles.codeCopyButton, t('docs.codeCopyAriaLabel')),
+    [htmlWithAnchors, t],
+  )
   const reducedMotion = usePrefersReducedMotion()
   const { activeId: activeHeadingId, scrollToHeading } = useDocsScrollSpy(headings, reducedMotion)
 
@@ -110,7 +121,24 @@ function DocsView({ initialPage }: { initialPage?: string }) {
                 className={styles.article}
                 data-testid="docs-content"
                 onClick={(ev) => {
-                  const anchor = (ev.target as HTMLElement).closest('a')
+                  const target = ev.target as HTMLElement
+                  const copyButton = target.closest<HTMLButtonElement>('[data-testid="docs-code-copy"]')
+                  if (copyButton) {
+                    ev.preventDefault()
+                    const code = copyButton.parentElement?.querySelector('pre code')
+                    void writeClipboardText(code?.textContent ?? '').then(() => {
+                      copyButton.innerHTML = CHECK_ICON_SVG
+                      copyButton.setAttribute('aria-label', t('docs.codeCopiedAriaLabel'))
+                      copyButton.classList.add(styles.codeCopyButtonCopied)
+                      window.setTimeout(() => {
+                        copyButton.innerHTML = COPY_ICON_SVG
+                        copyButton.setAttribute('aria-label', t('docs.codeCopyAriaLabel'))
+                        copyButton.classList.remove(styles.codeCopyButtonCopied)
+                      }, CODE_COPY_CONFIRM_MS)
+                    })
+                    return
+                  }
+                  const anchor = target.closest('a')
                   const href = anchor?.getAttribute('href')
                   if (!href) return
                   ev.preventDefault()
@@ -122,7 +150,7 @@ function DocsView({ initialPage }: { initialPage?: string }) {
                   if (link.kind === 'external') void Browser.OpenURL(link.url)
                   if (link.kind === 'page' && index.some((e) => e.rel === link.rel)) goTo(link.rel)
                 }}
-                dangerouslySetInnerHTML={{ __html: htmlWithAnchors }}
+                dangerouslySetInnerHTML={{ __html: htmlWithCopyButtons }}
               />
             )}
             {!error && <DocsPrevNext prev={prev} next={next} onNavigate={goTo} />}
