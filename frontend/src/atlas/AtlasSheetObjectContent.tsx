@@ -5,6 +5,8 @@ import { Button, Stack, Text } from '@primer/react'
 import { MirrorKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { BoardObject, MirrorContent } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
+import { boardObjectContentFor } from './atlasNounRegistry'
+import { dispatchObjectEdit } from './objectSeams'
 import { sheetTruncationNote, truncateSheetRows } from './atlasSheetTruncate'
 import { TABLE_WIDTH, TABLE_HEIGHT } from './atlasBoardLayout'
 import runbookStyles from '../shared/ListCard.module.css'
@@ -104,8 +106,14 @@ export function AtlasSheetObjectContent({ object, mirrorVersion }: { object: Boa
     }
   }, [content])
 
+  // ADR-0046 (goal 0244 S0): this button declares no editor of its own
+  // -- it reads sheet's own registered editRoute back and hands it to
+  // the host's dispatchObjectEdit (objectSeams.ts), which is the one
+  // place that actually calls AtlasService.
   const openInDefaultApp = () => {
-    AtlasService.OpenObjectMirrorInDefaultApp(object.ID).catch(() => {
+    const editRoute = boardObjectContentFor(object.Kind)?.editRoute
+    if (!editRoute) return
+    dispatchObjectEdit(object, editRoute).catch(() => {
       // The context menu's own "Open in default app" item surfaces the
       // same failure via its onError toast -- this button is a second
       // entry point to the identical RPC, not a second error surface.

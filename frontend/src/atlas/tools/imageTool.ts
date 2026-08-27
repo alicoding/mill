@@ -59,7 +59,16 @@ export const imageTool = {
   // unlike pencil's own Kind 'ink') -- content renders through the
   // same mirrored-file door ink shares (AtlasMirrorImageContent.tsx).
   boardObjectKind: 'image',
-  content: { Component: makeMirrorImageContent(ImageIcon), ariaLabelKey: 'boardObject.imageAriaLabel', role: 'img' },
+  content: {
+    Component: makeMirrorImageContent(ImageIcon),
+    ariaLabelKey: 'boardObject.imageAriaLabel',
+    role: 'img',
+    // ADR-0046 (goal 0244 S0): Payload.mirrorPath is the real image
+    // file; "Open in default app" (useAtlasObjectMenu.ts) is this
+    // Kind's only edit door today.
+    source: { kind: 'file', pathKey: 'mirrorPath' },
+    editRoute: { kind: 'external-app' },
+  },
   // No style surface of its own (goal 0209) -- always empty, not
   // omitted.
   styleFields: [],

@@ -4,6 +4,7 @@ import type { BoardObject } from '../../bindings/github.com/alicoding/mill/inter
 import { ATLAS_TOOL_IDENTITIES, type AtlasToolIdentity, type AtlasToolInteraction } from '../shared/atlasToolIdentity'
 import type { AtlasStyleField } from './atlasStyleVocabulary'
 import type { FrameBox } from './useAtlasDragFiling'
+import type { EditRoute, ObjectSource } from './objectSeams'
 
 // The frontend twin of composition/registry.go's RegisterNodeType
 // (ADR-0006, goal 0180 slice 1): each canvas noun's own fat descriptor
@@ -55,6 +56,18 @@ export interface AtlasNounContent {
   Component: ComponentType<{ object: BoardObject; mirrorVersion: number }>
   ariaLabelKey: string
   role: 'img' | undefined
+  // source / editRoute (ADR-0046, goal 0244): the two seams this Kind
+  // declares about its own artifact -- where it lives, and which door
+  // edits it. Optional (unlike Component/ariaLabelKey/role above)
+  // because a Kind with no external artifact at all (shape's own
+  // Payload-only geometry) has no honest ObjectSource member to declare
+  // yet, and a Kind not yet migrated onto the edit law has no EditRoute.
+  // Deliberately nested inside this `content` shape rather than a new
+  // top-level AtlasToolShapeBase field -- AtlasToolShapeBase's own field
+  // SET is a separately frozen contract (atlasNounDeclarationFields.json's
+  // exhaustiveness check).
+  source?: ObjectSource
+  editRoute?: EditRoute
 }
 
 // AtlasBoardObjectContent -- AtlasNounContent plus the board-facts
@@ -66,7 +79,12 @@ export interface AtlasNounContent {
 // above and the object.openInDefaultApp command's own honest
 // enablement (useAtlasObjectMenu.ts), so a new file-backed family's
 // entire platform-provided contract is this one boolean plus reading
-// mirrorVersion, never its own watch/open wiring.
+// mirrorVersion, never its own watch/open wiring. ADR-0046 (goal 0244
+// S0): for a Kind that declares `source`, fileBacked is DERIVED from it
+// (`source.kind === 'file'`) by registerBoardObjectContent below rather
+// than independently settable -- a Kind with no source still declares
+// this field directly (shape/ink today), so the field itself stays
+// required.
 interface AtlasBoardObjectContent extends AtlasNounContent {
   dragBand: boolean
   fileBacked: boolean
@@ -91,7 +109,13 @@ export function registerBoardObjectContent(kind: AtlasBoardObjectKind, content: 
   if (boardObjectContentRegistry.has(kind)) {
     throw new Error(`atlas board-object kind "${kind}" already has a registered content renderer -- check frontend/src/atlas/tools/`)
   }
-  boardObjectContentRegistry.set(kind, content)
+  // fileBacked derivation (ADR-0046, goal 0244 S0): once a Kind
+  // declares `source`, that union is the single source of truth for
+  // whether it is file-backed -- the caller's own literal fileBacked
+  // value (still required by the type) is superseded here rather than
+  // read back, so the two can never silently disagree.
+  const resolved = content.source ? { ...content, fileBacked: content.source.kind === 'file' } : content
+  boardObjectContentRegistry.set(kind, resolved)
 }
 
 // boardObjectContentFor -- the ONE lookup AtlasBoardObjectNode.tsx uses

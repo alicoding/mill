@@ -33,4 +33,11 @@ registerBoardObjectContent('sheet', {
   // renders (goal 0232 S1's contract) -- the shared watch subscription
   // and "Open in default app" enablement both key off this flag.
   fileBacked: true,
+  // ADR-0046 (goal 0244 S0): sheet is this slice's proof object -- its
+  // own "Open in default app" button (AtlasSheetObjectContent.tsx) now
+  // reads editRoute back off this declaration and calls
+  // dispatchObjectEdit (objectSeams.ts) instead of AtlasService
+  // directly.
+  source: { kind: 'file', pathKey: 'mirrorPath' },
+  editRoute: { kind: 'external-app' },
 })

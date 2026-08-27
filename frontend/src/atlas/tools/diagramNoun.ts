@@ -39,4 +39,12 @@ registerBoardObjectContent('diagram', {
   // AtlasDiagramObjectContent already narrows its own render by
   // extension for the SAME reason.
   editable: true,
+  // ADR-0046 (goal 0244 S0): declared for the contract's own record --
+  // NOT yet wired to dispatchObjectEdit this slice. The double-click
+  // (AtlasBoardObjectNode.tsx) and context-menu "Edit diagram" item
+  // (useAtlasObjectMenu.ts) keep calling openAtlasEditDiagram/the
+  // `editable` flag above directly; rerouting them through the declared
+  // EditRoute is goal 0244 S1's own migration, not this one's.
+  source: { kind: 'file', pathKey: 'mirrorPath' },
+  editRoute: { kind: 'embedded-engine', engine: 'drawio' },
 })
