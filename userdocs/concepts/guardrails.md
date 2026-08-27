@@ -1,5 +1,10 @@
 # Guardrails and effect classes
 
+Add a step that calls an API, and Mill won't send anything until you
+say yes: the run parks, and an approval prompt shows exactly what it's
+about to do. That's the guardrail model — it applies to every step
+that reaches outside your machine, not just API calls.
+
 Every step type declares an effect class — what kind of touch it has
 on the world:
 

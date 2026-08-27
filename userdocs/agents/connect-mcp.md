@@ -1,9 +1,10 @@
 # Automate with agents
 
-Mill exposes its full surface over MCP (Model Context Protocol), so
-an AI agent can do what you can do — compose workflows, run them,
-inspect results, read and write Atlas — under the same guardrails you
-have.
+Point an MCP-capable agent at Mill's address, and it can compose
+workflows, run them, inspect results, and read and write Atlas — the
+same things you can do, under the same guardrails. Its writes still
+park for your approval; nothing it does skips the gate a human action
+would hit.
 
 ## Connect
 
@@ -24,10 +25,9 @@ Your instance's exact address is the one Settings shows.
 - **Resources** describing the live registry — every step type with
   its typed input/output contract, effect class, and config fields —
   the same contract the canvas enforces, machine-readable.
-- **The same guardrails.** An agent's external effects and entity
-  writes park in Review for your approval. Deny-by-default until you
-  grant; nothing an agent does bypasses the gate a human action
-  would hit.
+- **Deny-by-default access.** Nothing works until you grant it in
+  Settings → MCP access, and writes stay off until you turn them on
+  separately from reads.
 
 ## See every call
 

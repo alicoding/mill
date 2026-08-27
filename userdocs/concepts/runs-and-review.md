@@ -1,9 +1,9 @@
 # Runs, review, and debugging
 
-Every run is durable and recorded. A crash or restart resumes
-mid-workflow instead of losing work, and the workflow's **Runs** tab
-shows each run step by step — inputs, outputs, timing, and where it
-stopped.
+Mill crashes or restarts mid-workflow, and the run picks up where it
+left off instead of vanishing. Open the workflow's **Runs** tab
+afterward and every run is there step by step — inputs, outputs,
+timing, and exactly where it stopped.
 
 ## When a run needs a person
 

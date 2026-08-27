@@ -1,18 +1,19 @@
 # Extending the canvas
 
-Mill's canvas (Atlas) supports nine placeable tools today — card, note,
-area, table, image, pencil, eraser, laser, shape — each one a single
-self-registered file under `frontend/src/atlas/tools/`. This page is
-the contract that file has to satisfy: how it gets discovered, what
-its declaration requires, and which platform services its runtime
-code may call — and may not.
+Add one file under `frontend/src/atlas/tools/` and rebuild, and Atlas
+has a new placeable tool — card, note, area, table, image, pencil,
+eraser, laser, and shape all work exactly this way today, nine
+self-registered files. This page is the contract that file has to
+satisfy: how it gets discovered, what its declaration requires, and
+which platform services its runtime code may call — and may not.
 
-Read this as a Mill developer working in this repo, not as a
-plugin author installing a package: today, adding a canvas tool means
-adding a file to Mill's own tree and rebuilding, the same way adding a
-workflow step type does. There is no out-of-tree loading mechanism yet.
-See `docs/goals/0211-extension-tiers.md` for why that's a deliberate,
-recorded gap rather than an oversight.
+Read this as a Mill developer working in this repo, not as a plugin
+author installing a package: there's no out-of-tree loading mechanism
+yet, so extending the canvas means editing Mill's own tree, the same
+way adding a workflow step type does. That's a deliberate, recorded
+gap, not an oversight — nothing here promises stability for a tool
+built outside this repo, and the "Stability" section below says
+exactly what is and isn't safe to build against.
 
 ## How it loads
 
@@ -42,11 +43,10 @@ discovered the same glob-and-merge way. The merge refuses two files
 declaring the same top-level key, so a new tool's own locale file can
 never silently clobber another tool's strings.
 
-**The declaration-vs-code split.** This is the same split VS Code's
-own extension model draws between `contributes` (inert JSON, read
-before any extension code runs) and its runtime API (where behavior
-actually lives) — worth naming explicitly, because it's what lets the
-registry be checked and documented as data. On `AtlasToolShape`:
+**The declaration-vs-code split.** `AtlasToolShape` splits into inert
+data, read before any of the tool's own code runs, and one runtime
+function. Naming the split explicitly is what lets the registry get
+checked and documented as data, table below included:
 
 - **Inert declaration** — read before any of this tool's own code
   runs, and enumerable purely as data: `id`, `icon`, `label`,
@@ -212,9 +212,8 @@ or any shared renderer's internal behavior — until there is a second
 adopter outside this repo to actually break. Today every "adopter" is
 one of Mill's own nine files, changed in the same pull request as any
 platform change that affects it, so nothing here has ever needed to
-stay backward compatible. This is deliberate, not an oversight: see
-`docs/goals/0211-extension-tiers.md` for the research behind stating
-that honestly now (a platform that discovers its own contract gaps only
-after outside adopters build against them pays for the omission for
-years) — and for what actually triggers building the out-of-tree tier
-this page does not yet promise.
+stay backward compatible. That's stated honestly now on purpose: a
+platform that only discovers its own contract gaps after outside
+adopters build against them pays for that omission for years. The
+out-of-tree tier this page doesn't yet promise gets built once a real
+outside adopter needs it, not before.

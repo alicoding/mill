@@ -1,8 +1,8 @@
 # Settings
 
-App-level preferences — things about Mill itself, not any one
-workflow. Everything here applies immediately and persists across
-restarts.
+Preferences about Mill itself, not any one workflow — most apply the
+moment you change them and persist across restarts; the few that need a
+restart say so.
 
 ## Appearance
 

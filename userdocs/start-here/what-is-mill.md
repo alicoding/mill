@@ -1,8 +1,13 @@
 # What is Mill
 
-Mill is a desktop app for building guardrailed automations — workflows
-you compose from typed steps, run by hotkey, schedule, or watcher, with
-every risky action gated for your approval.
+A script writes new shapes into a `.drawio` file on disk. Drop that file
+on an Atlas board and it keeps rendering the current version, updating
+itself every time the file changes outside Mill — no re-import, no
+stale diagram.
+
+That's Mill: a desktop app for building guardrailed automations —
+workflows you compose from typed steps, run by hotkey, schedule, or
+watcher, with every risky action gated for your approval.
 
 Three ideas carry the whole product:
 

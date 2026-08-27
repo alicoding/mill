@@ -1,9 +1,13 @@
 # Workflows and steps
 
-A workflow is a chain of steps on a canvas: one trigger, then capture,
-transform, and act steps connected in order. Runs execute the chain
-durably — a crash or restart resumes where it left off, and every run
-is recorded step by step.
+Copy something from a web page and the seeded Clipboard → Markdown
+workflow reads it, converts the HTML, writes the Markdown back to your
+clipboard, and notifies you — one trigger, three steps, connected in
+order on a canvas. That's every workflow: capture, transform, and act
+steps chained after a trigger.
+
+Runs execute the chain durably — a crash or restart resumes where it
+left off, and every run is recorded step by step.
 
 ## Triggers
 
