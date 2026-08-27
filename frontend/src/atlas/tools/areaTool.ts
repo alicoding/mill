@@ -14,6 +14,9 @@ export const areaTool = {
   label: areaIdentity.commandLabel,
   shortcutKey: areaIdentity.shortcutKey,
   tray: 'quick',
+  // Spatial organization of knowledge, not drawing (goal 0224's
+  // disposition table), tray-primary.
+  group: 'knowledge',
   interaction: areaIdentity.interaction,
   lockable: false,
   // AtlasGroupNode carries no NodeResizer at all -- a frame auto-fits

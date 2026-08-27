@@ -41,6 +41,9 @@ export const pencilTool = {
   label: pencilIdentity.commandLabel,
   shortcutKey: pencilIdentity.shortcutKey,
   tray: 'quick',
+  // The freehand-marking family (goal 0224's disposition table) --
+  // collapsed into the tray's one Annotate group.
+  group: 'annotate',
   interaction: pencilIdentity.interaction,
   // Continuous tool: toggleArm's own re-click always disarms (never
   // reads a lock flag) -- multiple strokes come from staying armed

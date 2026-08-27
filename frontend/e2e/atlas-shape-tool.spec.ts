@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { dragBetween, nonSeededBoardObjectWrapper } from './fixtures/atlasBoard'
+import { clickAtlasTrayTool } from './fixtures/atlasTray'
 import { deleteViaContextMenu, shapeDrawPoints, shapeObjects } from './fixtures/atlasShapeTool'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
@@ -35,7 +36,7 @@ test('dragging the shape tool lands a rectangle, never a card, disarms, and leav
   await expect(board).toBeVisible()
 
   const shapeTool = page.getByTestId('atlas-tray-shape')
-  await shapeTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-shape')
   await expect(shapeTool).toHaveAttribute('data-armed', 'true')
   const picker = page.getByTestId('atlas-shape-style-picker')
   await expect(picker).toBeVisible()
@@ -55,8 +56,10 @@ test('dragging the shape tool lands a rectangle, never a card, disarms, and leav
   // One-shot (goal 0199, contract items 1-2): the draw disarms the
   // tool (its own options bar closes with it) and leaves the new
   // object selected -- the load-bearing half that puts the resize
-  // handles on the thing just made instead of on nothing.
-  await expect(shapeTool).toHaveAttribute('data-armed', 'false')
+  // handles on the thing just made instead of on nothing. The Annotate
+  // group closes along with the disarm too (goal 0224) -- shape's own
+  // button leaves the DOM.
+  await expect(shapeTool).not.toBeVisible()
   await expect(picker).not.toBeVisible()
   const wrapper = nonSeededBoardObjectWrapper(page, 'shape')
   await expect(wrapper).toHaveClass(/selected/)
@@ -74,7 +77,7 @@ test('the second click after a draw selects rather than creates a second shape',
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
 
-  await page.getByTestId('atlas-tray-shape').click()
+  await clickAtlasTrayTool(page, 'atlas-tray-shape')
   const picker = page.getByTestId('atlas-shape-style-picker')
   const draw = await shapeDrawPoints(page, board, picker)
   await dragBetween(page, draw.from, draw.to)
@@ -97,13 +100,13 @@ test('re-clicking the armed shape tool locks it for deliberate repetition, and E
   await expect(board).toBeVisible()
 
   const shapeTool = page.getByTestId('atlas-tray-shape')
-  await shapeTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-shape')
   await expect(shapeTool).toHaveAttribute('data-armed', 'true')
   await expect(shapeTool).toHaveAttribute('data-locked', 'false')
 
   // Re-clicking the already-armed button locks it (the Excalidraw
   // convention) -- visually distinct from plain armed.
-  await shapeTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-shape')
   await expect(shapeTool).toHaveAttribute('data-locked', 'true')
 
   const picker = page.getByTestId('atlas-shape-style-picker')
@@ -121,9 +124,10 @@ test('re-clicking the armed shape tool locks it for deliberate repetition, and E
   await dragBetween(page, draw2.from, draw2.to)
   await expect(shapes).toHaveCount(2)
 
-  // Escape disarms even a locked tool.
+  // Escape disarms even a locked tool, and closes the Annotate group
+  // along with it (goal 0224).
   await page.keyboard.press('Escape')
-  await expect(shapeTool).toHaveAttribute('data-armed', 'false')
+  await expect(shapeTool).not.toBeVisible()
 
   await deleteViaContextMenu(page, shapes.nth(0))
   await deleteViaContextMenu(page, shapes.nth(0))
@@ -136,8 +140,7 @@ test('picking ellipse then arrow draws each type, and an arrow carries no Size (
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
 
-  const shapeTool = page.getByTestId('atlas-tray-shape')
-  await shapeTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-shape')
   const picker = page.getByTestId('atlas-shape-style-picker')
   await expect(picker).toBeVisible()
 
@@ -162,7 +165,7 @@ test('picking ellipse then arrow draws each type, and an arrow carries no Size (
   // cycle (this file's own third test proves the same store persists
   // stroke colour), so re-arming here is the realistic gesture, not a
   // workaround.
-  await shapeTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-shape')
   await expect(picker).toBeVisible()
   await picker.getByTestId('atlas-shape-type-arrow').click()
   const draw2 = await shapeDrawPoints(page, board, picker)
@@ -181,8 +184,7 @@ test('the shape style choice survives a disarm/re-arm cycle, and Promote to card
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
 
-  const shapeTool = page.getByTestId('atlas-tray-shape')
-  await shapeTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-shape')
   const picker = page.getByTestId('atlas-shape-style-picker')
   await expect(picker).toBeVisible()
 
@@ -198,7 +200,7 @@ test('the shape style choice survives a disarm/re-arm cycle, and Promote to card
   // armed button LOCKS it now (goal 0199 part D), it doesn't disarm.
   await page.keyboard.press('Escape')
   await expect(picker).not.toBeVisible()
-  await shapeTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-shape')
   await expect(picker).toBeVisible()
   await expect(picker.getByTestId('atlas-shape-stroke-da3633')).toHaveAttribute('data-selected', 'true')
 
@@ -240,8 +242,7 @@ test('a filled shape selects on a click inside its interior, not just on the str
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
 
-  const shapeTool = page.getByTestId('atlas-tray-shape')
-  await shapeTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-shape')
   const picker = page.getByTestId('atlas-shape-style-picker')
   await expect(picker).toBeVisible()
   await picker.getByTestId('atlas-shape-fill-da3633').click()
@@ -272,7 +273,7 @@ test('an unfilled (fill=none) shape selects on the exact same interior click', a
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
 
-  await page.getByTestId('atlas-tray-shape').click()
+  await clickAtlasTrayTool(page, 'atlas-tray-shape')
   const picker = page.getByTestId('atlas-shape-style-picker')
   const draw = await shapeDrawPoints(page, board, picker)
   await dragBetween(page, draw.from, draw.to)

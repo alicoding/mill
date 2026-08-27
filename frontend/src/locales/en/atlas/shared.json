@@ -97,6 +97,8 @@
     "laserTooltip": "Point at things on the board (L)",
     "shapeLabel": "Shape",
     "shapeTooltip": "Draw a shape (S)",
+    "annotateLabel": "Annotate",
+    "annotateTooltip": "Annotate — shape, pencil, eraser, laser",
     "lockedTooltip": "{{tool}} stays on until you click it again or press Escape"
   },
   "placement": {

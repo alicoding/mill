@@ -109,6 +109,21 @@ interface AtlasToolShapeBase {
   label: string
   shortcutKey: string | null
   tray: 'quick' | 'palette'
+  // group (goal 0224's tray-restructure slice): which tray cluster this
+  // noun's own button renders in -- 'knowledge' (Card/Note/Table/Area:
+  // the things that manage/arrange knowledge, tray-primary and rendered
+  // first), 'file' (Image and any future file-backed object that
+  // primarily arrives by drop/import, kept reachable but ordered after
+  // the primary cluster), or 'annotate' (the freehand-marking family --
+  // Shape/Pencil/Eraser/Laser -- collapsed into one expandable group so
+  // the tray doesn't read as a flat drawing-app toolbar). REQUIRED, the
+  // same honest-declaration shape lockable/resizable/sticky already
+  // establish, so a new tool declares its own cluster instead of
+  // silently landing wherever an array happens to iterate to.
+  // AtlasCreationTray.tsx's own TRAY_GROUP_ORDER renders every cluster
+  // from this field -- reversible by editing one tool's declaration,
+  // never a hand-enumerated JSX reshuffle.
+  group: 'knowledge' | 'file' | 'annotate'
   styleDefaults?: AtlasToolStyleDefaults
   // styleFields (goal 0209): this noun's own declared styleable
   // properties, drawn from atlasStyleVocabulary.ts's closed

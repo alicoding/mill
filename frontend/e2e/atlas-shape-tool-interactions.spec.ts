@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { dragBetween, dragResizeHandle, nonSeededBoardObjects, nonSeededBoardObjectWrapper } from './fixtures/atlasBoard'
+import { clickAtlasTrayTool } from './fixtures/atlasTray'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { deleteViaContextMenu, shapeDrawPoints, shapeObjects } from './fixtures/atlasShapeTool'
 import { contextMenu } from './fixtures/contextMenu'
@@ -31,7 +32,7 @@ test('draw, selected, drag by body, resize by handle, survives reload -- no Esca
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
 
-  await page.getByTestId('atlas-tray-shape').click()
+  await clickAtlasTrayTool(page, 'atlas-tray-shape')
   const picker = page.getByTestId('atlas-shape-style-picker')
   const draw = await shapeDrawPoints(page, board, picker)
   await dragBetween(page, draw.from, draw.to)
@@ -139,14 +140,14 @@ test('ink under a shape paints above it, even while the shape stays selected', a
   const boardBox = await board.boundingBox()
   if (!boardBox) throw new Error('board has no bounding box')
   const relPoint = (x: number, y: number) => ({ locator: board, position: { x: x - boardBox.x, y: y - boardBox.y } })
-  await page.getByTestId('atlas-tray-pencil').click()
+  await clickAtlasTrayTool(page, 'atlas-tray-pencil')
   await dragBetween(page, relPoint(origin.x + 20, origin.y + 90), relPoint(origin.x + 220, origin.y + 90))
   const ink = nonSeededBoardObjects(page, 'ink')
   await expect(ink).toHaveCount(1)
   const inkWrapper = nonSeededBoardObjectWrapper(page, 'ink')
   await page.keyboard.press('Escape')
 
-  await page.getByTestId('atlas-tray-shape').click()
+  await clickAtlasTrayTool(page, 'atlas-tray-shape')
   await dragBetween(page, relPoint(origin.x + 40, origin.y + 20), relPoint(origin.x + 200, origin.y + 160))
   const shapes = shapeObjects(page)
   await expect(shapes).toHaveCount(1)
@@ -176,7 +177,7 @@ test('the armed cursor beats a selected shape\'s own resize-handle cursor, and t
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
 
-  await page.getByTestId('atlas-tray-shape').click()
+  await clickAtlasTrayTool(page, 'atlas-tray-shape')
   const picker = page.getByTestId('atlas-shape-style-picker')
   const draw = await shapeDrawPoints(page, board, picker)
   await dragBetween(page, draw.from, draw.to)
@@ -195,7 +196,7 @@ test('the armed cursor beats a selected shape\'s own resize-handle cursor, and t
 
   // Arm pencil while the shape stays selected: the armed tool wins
   // everywhere, including over the handle it's hovering.
-  await page.getByTestId('atlas-tray-pencil').click()
+  await clickAtlasTrayTool(page, 'atlas-tray-pencil')
   await handle.hover()
   expect(await handle.evaluate((el) => getComputedStyle(el).cursor)).toBe('crosshair')
 
@@ -216,8 +217,7 @@ test('starting a second shape draw on top of the first one draws without draggin
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
   await waitForViewportStable(board)
-  const shapeTool = page.getByTestId('atlas-tray-shape')
-  await shapeTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-shape')
   const picker = page.getByTestId('atlas-shape-style-picker')
   const draw = await shapeDrawPoints(page, board, picker)
   await dragBetween(page, draw.from, draw.to)
@@ -228,7 +228,7 @@ test('starting a second shape draw on top of the first one draws without draggin
   const shapeABox = await shapeAHandle.boundingBox()
   if (!shapeABox) throw new Error('shape A node has no bounding box')
   const initialTransform = await shapeAHandle.evaluate((el) => (el as HTMLElement).style.transform)
-  await shapeTool.click() // discrete tool (goal 0199): needs a fresh arm
+  await clickAtlasTrayTool(page, 'atlas-tray-shape') // discrete tool (goal 0199): needs a fresh arm
   const startX = shapeABox.x + shapeABox.width * 0.5
   const startY = shapeABox.y + shapeABox.height * 0.5
   await dragBetween(page, { x: startX, y: startY }, { x: startX + 40, y: startY + 40 })

@@ -78,3 +78,14 @@
   justify-content: center;
   padding: 0 var(--base-size-8) var(--base-size-8);
 }
+
+/* The Annotate group's own popover content (goal 0224) -- a mini row of
+   the same .tool buttons, laid out the same way the tray itself is
+   (AnchoredOverlay's own Overlay already supplies the surrounding
+   surface: background/border/shadow), so a tool inside the group reads
+   identically to one rendered flat in the tray. */
+.annotateGroup {
+    display: inline-flex;
+    gap: 4px;
+    padding: 6px;
+}

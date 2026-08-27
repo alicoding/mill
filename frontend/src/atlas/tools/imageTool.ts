@@ -34,6 +34,10 @@ export const imageTool = {
   label: imageIdentity.commandLabel,
   shortcutKey: imageIdentity.shortcutKey,
   tray: 'quick',
+  // File-backed visual material (goal 0224's disposition table) --
+  // reachable in the tray but ordered after the knowledge cluster,
+  // never competing with it for primary space.
+  group: 'file',
   interaction: imageIdentity.interaction,
   // Arms through the paste/drop popover, never the toggleArm/lock state
   // machine -- always false, not N/A.

@@ -25,8 +25,20 @@ export function useAtlasPaneClick({ tablePicker, topLevelBoxes, screenToFlowPosi
     // canvas) -- an armed table size must place on the board, never
     // swallow a click on another tray button as a placement (goal
     // 0238: that swallow was the one path where re-arming a DIFFERENT
-    // tool could never actually reach React at all).
-    if (e.target instanceof Element && e.target.closest('[data-testid="atlas-creation-tray"]')) return
+    // tool could never actually reach React at all). Any tray chrome
+    // rendered through Primer's AnchoredOverlay (the Annotate group's
+    // own popover, goal 0224, plus the pre-existing table-size/image/
+    // style-panel popovers) portals to document.body -- `.closest()`
+    // walks the REAL DOM, so its own content is never a descendant of
+    // the tray's own testid no matter where it sits in the REACT tree.
+    // AnchoredOverlay's own rendered Overlay always carries
+    // `data-component="AnchoredOverlay"` (checked against the
+    // installed version's own source), the one stable marker every
+    // portaled tray popover shares -- matching it here is what keeps a
+    // click INSIDE the Annotate group's own popover (a tool button
+    // that only exists in a portal now) from being read as a canvas
+    // click and stealing it from that button's own onClick.
+    if (e.target instanceof Element && (e.target.closest('[data-testid="atlas-creation-tray"]') || e.target.closest('[data-component="AnchoredOverlay"]'))) return
     e.stopPropagation()
     e.preventDefault()
     // One placement per arming (the LOCKED design's own rule, same as
