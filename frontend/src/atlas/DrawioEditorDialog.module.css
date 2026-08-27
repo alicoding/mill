@@ -1,0 +1,28 @@
+/* Near-full-window Dialog (goal 0237 S1): the vendored editor draws its
+   own full UI (menus, toolbars, canvas) and needs the entire body area,
+   so this overrides Primer Dialog's own padded body slot rather than
+   nesting the iframe inside it. */
+.dialog {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Primer's own body wrapper (data-component="ScrollableRegion" is its
+   stable public styling hook, not a hashed class) defaults to intrinsic
+   height -- without stretching it, this component's own full-height
+   .body div resolves against a zero-height ancestor and the iframe
+   never actually occupies the space Playwright/the user can see it
+   render at, even though it paints there. */
+.dialog [data-component='ScrollableRegion'],
+.dialog [data-component='Dialog.Body'] {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: 0;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}

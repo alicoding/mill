@@ -311,6 +311,7 @@
     "addNoteInside": "Add note here",
     "promoteToCard": "Promote to card…",
     "openInDefaultApp": "Open in default app",
+    "editDiagram": "Edit diagram…",
     "deleteNote": "Delete note",
     "openCard": "Open {{title}}",
     "groupIntoArea": "Group into new area",

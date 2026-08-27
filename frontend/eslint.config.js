@@ -7,7 +7,16 @@ import sonarjs from 'eslint-plugin-sonarjs'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist', 'bindings'] },
+  // public/vendor: third-party asset bundles (drawio's viewer + full
+  // editor webapp, ADR-0043/goal 0237) never authored as ES modules --
+  // they're loaded as classic global <script>s (or served as-is,
+  // untouched by Vite's module graph), so ESLint's own module-mode
+  // parser rejects real, harmless patterns a global script permits
+  // (duplicate top-level var declarations across sibling files that
+  // never load together, ASI edge cases). Not Mill's own hand-written
+  // code -- same carve-out check-loc.sh/`.golangci.yml` already give
+  // vendored/generated trees.
+  { ignores: ['dist', 'bindings', 'public/vendor'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],

@@ -81,6 +81,15 @@ ignore:
   # naming inside, not the root rule.
   - userdocs
   - skills
+  # docs-drafts/ (goal 0237, ADR-0001 extension): ADR/goal-shaped
+  # drafts a build agent writes in ITS OWN worktree when the real
+  # docs/ repo is hard-blocked from that agent (CLAUDE.md's "In the
+  # nested docs repo, stage only the files you changed" rule) --
+  # content the orchestrator reviews and places into docs/adr/ or
+  # docs/goals/ by hand, never committed to the public repo itself in
+  # its own right (a stray leftover here is a review miss, not a
+  # shipped state).
+  - docs-drafts
   - build
   - frontend
   - bin

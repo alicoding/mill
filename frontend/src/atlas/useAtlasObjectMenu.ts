@@ -4,6 +4,8 @@ import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/i
 import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
 import { boardObjectContentFor } from './atlasNounRegistry'
+import { isDrawioEditableExtension } from './atlasDiagramMirror'
+import { openAtlasEditDiagram } from './atlasEditDiagramStore'
 import type { ContextMenuItem, ContextMenuState } from '../shared/ContextMenu'
 
 // A board object's own right-click menu (goal 0179/0180): Promote to
@@ -49,6 +51,18 @@ export function useAtlasObjectMenu({
         label: t('contextMenu.openInDefaultApp'),
         commandId: 'object.openInDefaultApp',
         run: () => openInDefaultApp(object.ID),
+      })
+    }
+    // goal 0237 S1: only a Kind that registered an embedded editor
+    // engine (diagramNoun.ts's editable: true) AND a mirror this
+    // slice's one engine actually opens (.drawio -- mermaid has no
+    // embeddable editor, S0's honest finding) ever gets this item.
+    if (boardObjectContentFor(object.Kind)?.editable && isDrawioEditableExtension(object.Payload?.mirrorPath ?? '')) {
+      items.push({
+        id: 'edit-diagram',
+        label: t('contextMenu.editDiagram'),
+        commandId: 'object.editDiagram',
+        run: () => openAtlasEditDiagram(object.ID),
       })
     }
     items.push({ id: 'delete-object', label: t('contextMenu.delete'), danger: true, run: () => deleteObject(object.ID) })

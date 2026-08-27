@@ -11,3 +11,16 @@ const DIAGRAM_MIRROR_EXTENSIONS = new Set(['.drawio', '.mmd', '.mermaid'])
 export function isDiagramMirrorExtension(path: string): boolean {
   return DIAGRAM_MIRROR_EXTENSIONS.has(extensionOf(path))
 }
+
+// Which of the diagram-mirror extensions above actually has an
+// EMBEDDED EDITOR engine registered (goal 0237 S1: drawio only --
+// mermaid has no embeddable editor to mount, S0's honest finding, so a
+// mermaid mirror stays previewable/live-watched/externally-openable
+// without an in-Mill edit door). Kept separate from the broader set
+// above rather than narrowing it, since every OTHER diagram-mirror
+// capability still applies to a mermaid mirror.
+const DRAWIO_EDITABLE_EXTENSIONS = new Set(['.drawio'])
+
+export function isDrawioEditableExtension(path: string): boolean {
+  return DRAWIO_EDITABLE_EXTENSIONS.has(extensionOf(path))
+}

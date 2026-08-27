@@ -4,6 +4,9 @@
   },
   "drawio": {
     "pageHeading": "Diagram",
-    "renderError": "Couldn't render this diagram."
+    "renderError": "Couldn't render this diagram.",
+    "editor": {
+      "untitledDiagram": "Untitled diagram"
+    }
   }
 }
