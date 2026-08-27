@@ -92,7 +92,18 @@ export const shapeTool = {
   // 0232 S1).
   fileBacked: false,
   boardObjectKind: 'shape',
-  content: { Component: AtlasShapeContent, ariaLabelKey: 'boardObject.shapeAriaLabel', role: 'img' },
+  content: {
+    Component: AtlasShapeContent,
+    ariaLabelKey: 'boardObject.shapeAriaLabel',
+    role: 'img',
+    // ADR-0046 (goal 0244 S1): a shape's geometry lives entirely in its
+    // own Payload (this file's own header comment) -- no external file,
+    // provider, or url, so `board-local` is the honest source. No edit
+    // door either (style changes are a live Payload write, not a
+    // separate "open to edit" step).
+    source: { kind: 'board-local' },
+    editRoute: { kind: 'none' },
+  },
   styleFields: SHAPE_STYLE_FIELDS,
   // The one discrete drag tool whose OWN lockable flag governs its
   // repeat mode (goal 0199 part D) -- never sticky itself, so the

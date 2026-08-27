@@ -1,5 +1,7 @@
 import { lazy } from 'react'
+import type { BoardObject } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { registerBoardObjectContent } from '../atlasNounRegistry'
+import { isDrawioEditableExtension } from '../atlasDiagramMirror'
 
 // Lazy-imported (React.lazy + Suspense, AtlasBoardObjectNode.tsx's own
 // boundary) rather than a static top-level import: AtlasDiagramObjectContent
@@ -39,12 +41,17 @@ registerBoardObjectContent('diagram', {
   // AtlasDiagramObjectContent already narrows its own render by
   // extension for the SAME reason.
   editable: true,
-  // ADR-0046 (goal 0244 S0): declared for the contract's own record --
-  // NOT yet wired to dispatchObjectEdit this slice. The double-click
-  // (AtlasBoardObjectNode.tsx) and context-menu "Edit diagram" item
-  // (useAtlasObjectMenu.ts) keep calling openAtlasEditDiagram/the
-  // `editable` flag above directly; rerouting them through the declared
-  // EditRoute is goal 0244 S1's own migration, not this one's.
   source: { kind: 'file', pathKey: 'mirrorPath' },
-  editRoute: { kind: 'embedded-engine', engine: 'drawio' },
+  // ADR-0046 (goal 0244 S1): a per-object RESOLVER, not a static route
+  // -- diagram is the one Kind whose door genuinely differs by its own
+  // artifact. A .drawio mirror opens the real embedded editor; a
+  // .mmd/.mermaid one has none (ADR-0045's own honest finding), so it
+  // resolves to external-app instead. AtlasBoardObjectNode.tsx's own
+  // double-click gate and objectSeams.ts's dispatchObjectEdit both read
+  // this resolver back rather than re-deriving the extension check.
+  editRoute: (object: BoardObject) => (
+    isDrawioEditableExtension(object.Payload?.mirrorPath ?? '')
+      ? { kind: 'embedded-engine', engine: 'drawio' }
+      : { kind: 'external-app' }
+  ),
 })

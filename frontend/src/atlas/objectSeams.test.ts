@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { boardObjectContentFor, registerBoardObjectContent } from './atlasNounRegistry'
-import { dispatchObjectEdit, resolveObjectSourceKey } from './objectSeams'
+import { dispatchObjectEdit, resolveEditRoute, resolveObjectSourceKey } from './objectSeams'
+import { openAtlasEditDiagram } from './atlasEditDiagramStore'
+
+vi.mock('./atlasEditDiagramStore', () => ({
+  openAtlasEditDiagram: vi.fn(),
+}))
 
 vi.mock('../shared/bindings', () => ({
   AtlasService: { OpenObjectMirrorInDefaultApp: vi.fn().mockResolvedValue(undefined) },
@@ -95,5 +100,59 @@ describe('canvas-object extension contract (ADR-0046, goal 0244 S0)', () => {
     await dispatchObjectEdit(object, { kind: 'inline' })
     await dispatchObjectEdit(object, { kind: 'none' })
     expect(AtlasService.OpenObjectMirrorInDefaultApp).not.toHaveBeenCalled()
+  })
+
+  it('a board-local source resolves to no external key -- the Payload IS the artifact', () => {
+    registerBoardObjectContent('fake-board-local-kind' as never, {
+      Component: () => null,
+      ariaLabelKey: 'boardObject.shapeAriaLabel',
+      role: undefined,
+      dragBand: false,
+      fileBacked: true,
+      source: { kind: 'board-local' },
+      editRoute: { kind: 'none' },
+    })
+
+    const content = boardObjectContentFor('fake-board-local-kind')
+    // fileBacked is derived false here too -- board-local is never a
+    // file, regardless of what the caller's own literal claimed.
+    expect(content?.fileBacked).toBe(false)
+
+    const object = fakeBoardObject({ mirrorPath: '/tmp/irrelevant' })
+    expect(resolveObjectSourceKey(object, content!.source!)).toBeUndefined()
+  })
+
+  it('a per-object RESOLVER editRoute picks its route per object, and dispatch normalizes it the same as a static route', async () => {
+    // A fake noun whose door differs by its own object, the same shape
+    // diagram needs (embedded-engine for one mirror extension,
+    // external-app for another) -- proving the resolver form holds for
+    // ANY registrant, not just diagram's own in-tree logic.
+    registerBoardObjectContent('fake-resolver-kind' as never, {
+      Component: () => null,
+      ariaLabelKey: 'boardObject.diagramAriaLabel',
+      role: 'img',
+      dragBand: true,
+      fileBacked: true,
+      source: { kind: 'file', pathKey: 'mirrorPath' },
+      editRoute: (object) => (
+        object.Payload?.mirrorPath?.endsWith('.embeddable')
+          ? { kind: 'embedded-engine', engine: 'drawio' }
+          : { kind: 'external-app' }
+      ),
+    })
+
+    const content = boardObjectContentFor('fake-resolver-kind')
+    const embeddableObject = fakeBoardObject({ mirrorPath: '/tmp/fake.embeddable' })
+    const externalObject = fakeBoardObject({ mirrorPath: '/tmp/fake.other' })
+
+    expect(resolveEditRoute(embeddableObject, content!.editRoute!)).toEqual({ kind: 'embedded-engine', engine: 'drawio' })
+    expect(resolveEditRoute(externalObject, content!.editRoute!)).toEqual({ kind: 'external-app' })
+
+    await dispatchObjectEdit(embeddableObject, content!.editRoute!)
+    expect(openAtlasEditDiagram).toHaveBeenCalledWith('fake-object-1')
+    expect(AtlasService.OpenObjectMirrorInDefaultApp).not.toHaveBeenCalled()
+
+    await dispatchObjectEdit(externalObject, content!.editRoute!)
+    expect(AtlasService.OpenObjectMirrorInDefaultApp).toHaveBeenCalledWith('fake-object-1')
   })
 })
