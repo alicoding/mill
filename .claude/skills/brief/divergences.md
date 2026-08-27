@@ -68,11 +68,13 @@ this file is the record, a brief is a projection of it.
   output with a bounded loop inside one Bash call, then deliver in
   the same turn.
 - The nested `docs/` repo: shared physical path, orchestrator-
-  committed. Builders edit files there ONLY as plain writes (SPEC.md,
-  goal files) and never run git against it. Do not treat "update
-  SPEC.md" and "don't touch docs/" as compatible instructions — SPEC
-  lives in docs/; the resolution is plain-file edits, orchestrator
-  commits.
+  committed — and for worktree-isolated agents it is now HARD-BLOCKED
+  entirely (the sandbox refuses even plain-file writes outside the
+  worktree; confirmed by two agents in one evening). The working
+  pattern: the agent DRAFTS its docs edits (SPEC.md paragraph, goal
+  frontmatter/record, BACKLOG line) VERBATIM in its final report,
+  each labeled with the target path, and the orchestrator applies
+  them at close. Briefs must ask for drafts, never for writes.
 - PR truth: after `gh pr create`, verify with
   `gh pr view <n> --json number,state` and report that output — one
   agent reported a PR that was never created.
