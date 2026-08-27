@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { boardPoint, createCardViaTray, deleteCardViaMenu, dragBetween, hittablePointOn, noteCard, nonSeededBoardObjects, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { clickAtlasTrayTool } from './fixtures/atlasTray'
 import { contextMenu } from './fixtures/contextMenu'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 
@@ -21,7 +22,7 @@ test('drawing a stroke: ⌘Z removes it, ⇧⌘Z brings it back', async ({ page 
   await expect(board).toBeVisible()
 
   const pencilTool = page.getByTestId('atlas-tray-pencil')
-  await pencilTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-pencil')
   await expect(pencilTool).toHaveAttribute('data-armed', 'true')
 
   await dragBetween(page, await boardPoint(board, 0.06, 0.12), await boardPoint(board, 0.16, 0.22))

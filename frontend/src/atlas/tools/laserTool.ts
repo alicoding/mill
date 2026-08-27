@@ -27,6 +27,9 @@ export const laserTool = {
   label: laserIdentity.commandLabel,
   shortcutKey: laserIdentity.shortcutKey,
   tray: 'quick',
+  // The freehand-marking family (goal 0224's disposition table) --
+  // collapsed into the tray's one Annotate group.
+  group: 'annotate',
   interaction: laserIdentity.interaction,
   // Continuous tool, plain toggle-to-disarm -- never reads a lock flag.
   lockable: false,

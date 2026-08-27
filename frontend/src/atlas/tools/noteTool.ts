@@ -11,6 +11,8 @@ export const noteTool = {
   label: noteIdentity.commandLabel,
   shortcutKey: noteIdentity.shortcutKey,
   tray: 'quick',
+  // Quick text on the board (goal 0224's disposition table), tray-primary.
+  group: 'knowledge',
   interaction: noteIdentity.interaction,
   // Instant placement always disarms after the one click, same as card.
   lockable: false,

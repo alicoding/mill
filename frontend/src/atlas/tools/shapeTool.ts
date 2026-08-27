@@ -64,6 +64,9 @@ export const shapeTool = {
   label: shapeIdentity.commandLabel,
   shortcutKey: shapeIdentity.shortcutKey,
   tray: 'quick',
+  // The freehand-marking family (goal 0224's disposition table) --
+  // collapsed into the tray's one Annotate group.
+  group: 'annotate',
   interaction: shapeIdentity.interaction,
   // The one discrete drag tool that locks for deliberate repetition
   // (goal 0199 part D) -- re-clicking the armed Shape button locks it

@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { boardPoint, dragBetween, createCardViaTray, noteCard, deleteCardViaMenu } from './fixtures/atlasBoard'
+import { clickAtlasTrayTool } from './fixtures/atlasTray'
 import { contextMenu } from './fixtures/contextMenu'
 import { blurSticky, fillSticky, stickyEditor } from './fixtures/codeEditor'
 
@@ -32,7 +33,7 @@ test('dragging the eraser across a card removes it, and the quick-delete undo to
   if (!box) throw new Error('card has no bounding box')
 
   const eraserTool = page.getByTestId('atlas-tray-eraser')
-  await eraserTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-eraser')
   await expect(eraserTool).toHaveAttribute('data-armed', 'true')
 
   // A horizontal sweep starting well left of the card and ending well
@@ -81,7 +82,7 @@ test('dragging the eraser across a card removes it, and ⌘Z brings it back', as
   if (!box) throw new Error('card has no bounding box')
 
   const eraserTool = page.getByTestId('atlas-tray-eraser')
-  await eraserTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-eraser')
   await expect(eraserTool).toHaveAttribute('data-armed', 'true')
 
   await dragBetween(
@@ -112,7 +113,7 @@ test('dragging the eraser across an ink stroke removes it, and the quick-delete 
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
 
-  await page.getByTestId('atlas-tray-pencil').click()
+  await clickAtlasTrayTool(page, 'atlas-tray-pencil')
   await dragBetween(page, await boardPoint(board, 0.05, 0.1), await boardPoint(board, 0.15, 0.2))
   const ink = boardObjects(page, 'ink')
   await expect(ink).toHaveCount(1)
@@ -120,7 +121,7 @@ test('dragging the eraser across an ink stroke removes it, and the quick-delete 
   if (!box) throw new Error('ink stroke has no bounding box')
 
   const eraserTool = page.getByTestId('atlas-tray-eraser')
-  await eraserTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-eraser')
   await expect(eraserTool).toHaveAttribute('data-armed', 'true')
 
   await dragBetween(
@@ -148,7 +149,7 @@ test('dragging the eraser across an ink stroke removes it, and ⌘Z brings it ba
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
 
-  await page.getByTestId('atlas-tray-pencil').click()
+  await clickAtlasTrayTool(page, 'atlas-tray-pencil')
   await dragBetween(page, await boardPoint(board, 0.05, 0.1), await boardPoint(board, 0.15, 0.2))
   const ink = boardObjects(page, 'ink')
   await expect(ink).toHaveCount(1)
@@ -156,7 +157,7 @@ test('dragging the eraser across an ink stroke removes it, and ⌘Z brings it ba
   if (!box) throw new Error('ink stroke has no bounding box')
 
   const eraserTool = page.getByTestId('atlas-tray-eraser')
-  await eraserTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-eraser')
   await expect(eraserTool).toHaveAttribute('data-armed', 'true')
 
   await dragBetween(
@@ -198,7 +199,7 @@ test('the eraser removes every erasable kind: ink, shape, image, card, note', as
     // creation.
     await page.keyboard.press('Escape')
     const eraserTool = page.getByTestId('atlas-tray-eraser')
-    await eraserTool.click()
+    await clickAtlasTrayTool(page, 'atlas-tray-eraser')
     await expect(eraserTool).toHaveAttribute('data-armed', 'true')
     await dragBetween(
       page,
@@ -208,7 +209,7 @@ test('the eraser removes every erasable kind: ink, shape, image, card, note', as
   }
 
   // Ink.
-  await page.getByTestId('atlas-tray-pencil').click()
+  await clickAtlasTrayTool(page, 'atlas-tray-pencil')
   await dragBetween(page, await boardPoint(board, 0.05, 0.1), await boardPoint(board, 0.15, 0.2))
   const ink = boardObjects(page, 'ink')
   await expect(ink).toHaveCount(1)
@@ -218,7 +219,7 @@ test('the eraser removes every erasable kind: ink, shape, image, card, note', as
   await expect(ink).toHaveCount(0)
 
   // Shape.
-  await page.getByTestId('atlas-tray-shape').click()
+  await clickAtlasTrayTool(page, 'atlas-tray-shape')
   await dragBetween(page, await boardPoint(board, 0.3, 0.1), await boardPoint(board, 0.4, 0.2))
   const shape = boardObjects(page, 'shape')
   await expect(shape).toHaveCount(1)
@@ -276,7 +277,7 @@ test('dragging the laser across the board draws a fading trail, creates nothing,
   const cardsBefore = await page.getByTestId('atlas-note-card').count()
 
   const laserTool = page.getByTestId('atlas-tray-laser')
-  await laserTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-laser')
   await expect(laserTool).toHaveAttribute('data-armed', 'true')
 
   const boardBox = await board.boundingBox()
@@ -316,16 +317,19 @@ test('Escape disarms the eraser and the laser back to select', async ({ page }) 
   await expect(board).toBeVisible()
 
   const eraserTool = page.getByTestId('atlas-tray-eraser')
-  await eraserTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-eraser')
   await expect(eraserTool).toHaveAttribute('data-armed', 'true')
   await page.keyboard.press('Escape')
-  await expect(eraserTool).toHaveAttribute('data-armed', 'false')
+  // The Annotate group closes along with the disarm (goal 0224:
+  // nothing armed inside it left open would swallow a LATER,
+  // unrelated Escape press) -- eraser's own button leaves the DOM.
+  await expect(eraserTool).not.toBeVisible()
   await expect(board).toHaveAttribute('data-armed', 'false')
 
   const laserTool = page.getByTestId('atlas-tray-laser')
-  await laserTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-laser')
   await expect(laserTool).toHaveAttribute('data-armed', 'true')
   await page.keyboard.press('Escape')
-  await expect(laserTool).toHaveAttribute('data-armed', 'false')
+  await expect(laserTool).not.toBeVisible()
   await expect(board).toHaveAttribute('data-armed', 'false')
 })

@@ -34,6 +34,9 @@ export const eraserTool = {
   label: eraserIdentity.commandLabel,
   shortcutKey: eraserIdentity.shortcutKey,
   tray: 'quick',
+  // The freehand-marking family (goal 0224's disposition table) --
+  // collapsed into the tray's one Annotate group.
+  group: 'annotate',
   interaction: eraserIdentity.interaction,
   // Continuous tool, plain toggle-to-disarm -- never reads a lock flag.
   lockable: false,

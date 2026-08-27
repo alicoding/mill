@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { dragBetween, nonSeededBoardObjects, nonSeededBoardObjectWrapper } from './fixtures/atlasBoard'
+import { clickAtlasTrayTool } from './fixtures/atlasTray'
 
 // Shared pool (testing.md): every assertion is scoped to a shape this
 // spec creates and deletes itself, or reads a seeded card's own
@@ -19,7 +20,7 @@ test('a selected board object and a selected card each carry a real box-shadow r
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
 
-  await page.getByTestId('atlas-tray-shape').click()
+  await clickAtlasTrayTool(page, 'atlas-tray-shape')
   const box = await board.boundingBox()
   if (!box) throw new Error('board has no bounding box')
   // Same top-left band atlas-shape-tool.spec.ts's own tests use --

@@ -26,6 +26,9 @@ export const tableTool = {
   label: tableIdentity.commandLabel,
   shortcutKey: tableIdentity.shortcutKey,
   tray: 'quick',
+  // A live view of List data -- typed, queryable (goal 0224's
+  // disposition table), tray-primary.
+  group: 'knowledge',
   interaction: tableIdentity.interaction,
   // Arms through the size-picker popover, never the toggleArm/lock
   // state machine -- always false, not N/A (atlasNounRegistry.ts's own
