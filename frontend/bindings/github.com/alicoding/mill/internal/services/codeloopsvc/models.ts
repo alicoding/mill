@@ -28,6 +28,15 @@ export interface CommandBlockPreview {
      */
     "workflowID": string;
     "nodeID": string;
+
+    /**
+     * SecretRequirements is every env-var-style secret placeholder this
+     * block references (goal 0240 S2), each with its resolution source --
+     * the Confirm screen's own design contract ("secrets it will need
+     * with their resolution source: vault name / env var / you'll type
+     * it"). Empty for a block that references none.
+     */
+    "secretRequirements": SecretRequirementView[] | null;
 }
 
 /**
@@ -41,4 +50,17 @@ export interface CommandBlockPreviewStep {
     "text": string;
     "join": string;
     "looksLikeSecretPlaceholder": boolean;
+}
+
+/**
+ * SecretRequirementView is composition.SecretRequirement with JSON tags
+ * added -- same "adapter/service type stays free of a frontend-JSON
+ * concern living in the domain type" split every other *View/*Record
+ * shape in this codebase already follows (e.g. secretsvc.
+ * SecretAccessRecord).
+ */
+export interface SecretRequirementView {
+    "varName": string;
+    "source": string;
+    "vaultLabel"?: string;
 }

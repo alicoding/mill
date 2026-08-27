@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Banner, Button, Label, Stack, Text } from '@primer/react'
+import { Banner, Button, Label, Stack, Text, TextInput } from '@primer/react'
 import type { CommandBlockPreview } from './bindings'
 import styles from './CodingLoopSurface.module.css'
 
@@ -7,15 +7,22 @@ interface Props {
   preview: CommandBlockPreview | null
   previewError: string | null
   startError: string | null
+  // typedSecrets/onTypedSecretChange (goal 0240 S2): the resolution
+  // chain's third source -- a "you'll type it" requirement renders a
+  // masked input right here, so Run always carries a resolvable value
+  // for every secret this block needs.
+  typedSecrets: Record<string, string>
+  onTypedSecretChange: (varName: string, value: string) => void
   onRun: () => void
   onCancel: () => void
 }
 
-// The Confirm state (docs/goals/0240 S1's design contract): the parsed
-// block shown as its real structure, the target shell+cwd, secrets
-// flagged as "will run as-is" (S1 has no resolution chain yet -- that's
-// S2), and the guardrail verdict. Primary: Run. Secondary: Cancel.
-export function CodingLoopConfirmState({ preview, previewError, startError, onRun, onCancel }: Props) {
+// The Confirm state (docs/goals/0240 design contract, S2 extending
+// S1's): the parsed block shown as its real structure, the target
+// shell+cwd, every secret this block needs with its resolution SOURCE
+// (vault name / shell env / type it here), and the guardrail verdict.
+// Primary: Run. Secondary: Cancel.
+export function CodingLoopConfirmState({ preview, previewError, startError, typedSecrets, onTypedSecretChange, onRun, onCancel }: Props) {
   const { t } = useTranslation('app')
 
   if (previewError) {
@@ -38,6 +45,9 @@ export function CodingLoopConfirmState({ preview, previewError, startError, onRu
   const steps = preview.steps ?? []
   const stepCount = steps.length
   const hasSecretPlaceholder = steps.some((s) => s.looksLikeSecretPlaceholder)
+  const secretRequirements = preview.secretRequirements ?? []
+  const untypedSecrets = secretRequirements.filter((r) => r.source === 'prompt' && !(typedSecrets[r.varName] ?? '').trim())
+  const runDisabled = untypedSecrets.length > 0
 
   return (
     <Stack gap="condensed" className={styles.panel} data-testid="coding-loop-confirm">
@@ -67,6 +77,38 @@ export function CodingLoopConfirmState({ preview, previewError, startError, onRu
         />
       )}
 
+      {secretRequirements.length > 0 && (
+        <Stack gap="condensed" data-testid="coding-loop-confirm-secrets">
+          <Text as="p" size="small" weight="semibold">{t('codingLoop.confirm.secrets.heading')}</Text>
+          {secretRequirements.map((req) => (
+            <Stack key={req.varName} gap="condensed" data-testid={`coding-loop-confirm-secret-${req.varName}`}>
+              <Stack direction="horizontal" gap="condensed" align="center" wrap="wrap">
+                <code className={styles.stepText}>{req.varName}</code>
+                {req.source === 'vault' && (
+                  <Label variant="success">{t('codingLoop.confirm.secrets.fromVault', { label: req.vaultLabel })}</Label>
+                )}
+                {req.source === 'env' && (
+                  <Label>{t('codingLoop.confirm.secrets.fromEnv')}</Label>
+                )}
+              </Stack>
+              {req.source === 'prompt' && (
+                <Stack gap="none">
+                  <TextInput
+                    type="password"
+                    placeholder={t('codingLoop.confirm.secrets.typePlaceholder')}
+                    value={typedSecrets[req.varName] ?? ''}
+                    onChange={(e) => onTypedSecretChange(req.varName, e.target.value)}
+                    data-testid={`coding-loop-confirm-secret-input-${req.varName}`}
+                    block
+                  />
+                  <Text size="small" className={styles.target}>{t('codingLoop.confirm.secrets.typedHint')}</Text>
+                </Stack>
+              )}
+            </Stack>
+          ))}
+        </Stack>
+      )}
+
       <Label
         variant={preview.guardrailVerdict === 'deny' ? 'danger' : preview.guardrailVerdict === 'allow' ? 'success' : 'attention'}
         data-testid="coding-loop-confirm-verdict"
@@ -78,9 +120,15 @@ export function CodingLoopConfirmState({ preview, previewError, startError, onRu
         <Banner variant="critical" title={t('codingLoop.confirm.startFailedTitle')} description={startError} data-testid="coding-loop-confirm-start-error" />
       )}
 
+      {runDisabled && (
+        <Text as="p" size="small" className={styles.target} data-testid="coding-loop-confirm-secrets-incomplete">
+          {t('codingLoop.confirm.secrets.typeBeforeRun')}
+        </Text>
+      )}
+
       <Stack direction="horizontal" gap="condensed" className={styles.actions}>
         <Button onClick={onCancel}>{t('codingLoop.confirm.cancel')}</Button>
-        <Button variant="primary" onClick={onRun} data-testid="coding-loop-confirm-run">
+        <Button variant="primary" onClick={onRun} disabled={runDisabled} data-testid="coding-loop-confirm-run">
           {t('codingLoop.confirm.run')}
         </Button>
       </Stack>

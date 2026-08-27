@@ -19,7 +19,7 @@ interface Props {
 export function CodingLoopSurface({ clipboardText, onClose }: Props) {
   const {
     phase, preview, previewError, detail, stepProgress, startError, copyState, lastProgressAt,
-    run, cancel, copyResult,
+    typedSecrets, setTypedSecret, run, cancel, copyResult,
   } = useCodingLoopRun(clipboardText)
 
   if (phase === 'confirm') {
@@ -28,6 +28,8 @@ export function CodingLoopSurface({ clipboardText, onClose }: Props) {
         preview={preview}
         previewError={previewError}
         startError={startError}
+        typedSecrets={typedSecrets}
+        onTypedSecretChange={setTypedSecret}
         onRun={run}
         onCancel={onClose}
       />

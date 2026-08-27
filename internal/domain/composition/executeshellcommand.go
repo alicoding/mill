@@ -9,6 +9,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/procexec"
 	"github.com/alicoding/mill/internal/domain/guardrail"
+	"github.com/alicoding/mill/internal/domain/secret"
 )
 
 // The process-shell-command node (docs/goals/0240 S1): the coding
@@ -127,12 +128,62 @@ type shellStepOutcome struct {
 	cancelled bool
 }
 
+// resolveShellSecretEnv resolves every env-var-style secret placeholder
+// referenced anywhere in steps through the goal 0240 S2 chain
+// (shellSecretResolverFn: typed-stash -> vault -> shell env), for this
+// one run. Returns (nil, nil) when no step references any such
+// placeholder -- the common case -- so the child process's Env stays
+// exactly nil (unchanged S1 behavior: inherit the calling process's own
+// environment verbatim) rather than paying an os.Environ() copy no run
+// needs. When env refs exist, env is a full explicit copy of the
+// process's own environment with each resolved name upserted (so
+// substitution is the ONLY thing that changes -- .claude/rules'
+// "verbatim except the resolved secret" contract), and redactValues is
+// every non-empty resolved value regardless of source, for the output
+// redaction pass below to scrub.
+func resolveShellSecretEnv(steps []ParsedCommandStep, ctx ExecContext) (env []string, redactValues []string) {
+	names := ExtractSecretEnvRefsAll(steps)
+	if len(names) == 0 {
+		return nil, nil
+	}
+	run := secretAccessRunFromCtx(ctx)
+	env = append(env, os.Environ()...)
+	for _, name := range names {
+		value, _, found := shellSecretResolverFn(name, ctx.SecretsToken, run)
+		if !found {
+			// Never fail to resolve (goal 0240's own decision): leave
+			// the shell to see its own ambient value for this name,
+			// same as any other unresolved env var.
+			continue
+		}
+		env = upsertEnv(env, name, value)
+		if value != "" {
+			redactValues = append(redactValues, value)
+		}
+	}
+	return env, redactValues
+}
+
 // runShellStep runs ONE parsed sub-command to completion, emitting its
 // running/done/failed progress -- split out of this file's init()
 // purely to keep the registered exec closure's own cognitive complexity
 // under the repo's gocognit threshold (.claude/rules/testing.md), not a
-// change in behavior.
-func runShellStep(node Node, step ParsedCommandStep, total int, target ResolvedShellCommandTarget, runCtx any) (shellStepOutcome, error) {
+// change in behavior. env/redactValues come from resolveShellSecretEnv,
+// computed once for the whole block.
+func runShellStep(node Node, step ParsedCommandStep, total int, target ResolvedShellCommandTarget, runCtx any, env, redactValues []string) (shellStepOutcome, error) {
+	redact := func(s string) string {
+		out := redactSecretsFn(s)
+		if len(redactValues) > 0 {
+			// Vault-wide redaction above only knows about values
+			// PERSISTED in the vault -- a typed-at-Confirm secret
+			// (goal 0240 S2) is never stored anywhere, so an echoed
+			// typed value needs this SEPARATE pass over exactly the
+			// values THIS run resolved, regardless of source.
+			out = secret.Redact(redactValues, out)
+		}
+		return out
+	}
+
 	emitShellStepProgressFn(runCtx, ShellStepProgress{
 		NodeID: node.ID, StepIndex: step.Index, TotalSteps: total,
 		Command: step.Text, Status: "running",
@@ -142,18 +193,22 @@ func runShellStep(node Node, step ParsedCommandStep, total int, target ResolvedS
 	tw.emit = func(tail string) {
 		emitShellStepProgressFn(runCtx, ShellStepProgress{
 			NodeID: node.ID, StepIndex: step.Index, TotalSteps: total,
-			Command: step.Text, Status: "running", OutputTail: redactSecretsFn(tail),
+			Command: step.Text, Status: "running", OutputTail: redact(tail),
 		})
 	}
 
 	handle, err := startShellProcessFn(procexec.Spec{
 		Argv: []string{target.Shell, "-c", step.Text},
 		Dir:  target.Dir,
-		// Env deliberately nil: procexec.Spec's own doc says a nil Env
-		// falls back to the calling process's real environment --
-		// exactly "the user's real shell environment" this node's own
+		// Env nil (the common case, resolveShellSecretEnv's own doc
+		// comment) falls back to the calling process's real environment
+		// -- exactly "the user's real shell environment" this node's own
 		// doc comment promises, unlike code-execution's explicit-only
-		// ExecEnv.Env.
+		// ExecEnv.Env. Non-nil only when this block references a secret
+		// placeholder: a full copy of that same real environment with
+		// the resolved value(s) upserted, so substitution is the ONLY
+		// change from the nil-Env behavior.
+		Env:    env,
 		Output: tw,
 	})
 	if err != nil {
@@ -164,7 +219,7 @@ func runShellStep(node Node, step ParsedCommandStep, total int, target ResolvedS
 	result := handle.Wait()
 	unregister()
 
-	stepOutput := redactSecretsFn(tw.String())
+	stepOutput := redact(tw.String())
 
 	if result.Outcome == procexec.OutcomeHardTimeout || result.Outcome == procexec.OutcomeIdleTimeout {
 		// No timeout is configured by this node (Spec.HardTimeout/
@@ -194,6 +249,7 @@ func runShellStep(node Node, step ParsedCommandStep, total int, target ResolvedS
 // an empty parse before calling this).
 func runShellCommandBlock(node Node, ctx ExecContext, steps []ParsedCommandStep) (ExecContext, error) {
 	target := ResolveShellCommandTarget()
+	env, redactValues := resolveShellSecretEnv(steps, ctx)
 	var combined strings.Builder
 	// lastFailed propagates a failure forward ONLY across && steps
 	// (docs/goals/0240 S1: "&&"'s own short-circuit meaning, preserved
@@ -213,7 +269,7 @@ func runShellCommandBlock(node Node, ctx ExecContext, steps []ParsedCommandStep)
 			continue
 		}
 
-		outcome, err := runShellStep(node, step, len(steps), target, ctx.RunContext)
+		outcome, err := runShellStep(node, step, len(steps), target, ctx.RunContext, env, redactValues)
 		if err != nil {
 			return ctx, err
 		}

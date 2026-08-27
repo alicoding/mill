@@ -47,7 +47,7 @@ func preflightRefusal(nodes []composition.Node, edges []composition.Edge, attrs 
 // button, the MCP authoring loop's run_workflow tool) behaves exactly
 // as before this field existed.
 func (e *ExecutionService) RunWorkflow(workflowID string, kind RunKind, values map[string]string) (RunSummary, error) {
-	return e.runWorkflowStart(workflowID, kind, values, "", false, "")
+	return e.runWorkflowStart(workflowID, kind, values, "", false, "", "")
 }
 
 // RunWorkflowWithPayload is RunWorkflow plus a starting payload for the
@@ -57,7 +57,22 @@ func (e *ExecutionService) RunWorkflow(workflowID string, kind RunKind, values m
 // filesystem-watch trigger's changed file path) into the run instead of
 // starting from "".
 func (e *ExecutionService) RunWorkflowWithPayload(workflowID string, kind RunKind, values map[string]string, payload string) (RunSummary, error) {
-	return e.runWorkflowStart(workflowID, kind, values, payload, false, "")
+	return e.runWorkflowStart(workflowID, kind, values, payload, false, "", "")
+}
+
+// RunWorkflowWithSecretsToken is RunWorkflowWithPayload plus a
+// codeloopsvc typed-secrets correlation token (goal 0240 S2) --
+// codeloopsvc.RunCommandBlock is this method's only caller: it stashes
+// any typed-at-Confirm secret VALUES under secretsToken (in memory,
+// never persisted) before calling this, so by the time the run's own
+// process-shell-command step needs them, the stash is already there
+// regardless of how quickly the guardrail gate lets the run proceed.
+// Every other caller of RunWorkflowWithPayload is unaffected -- this is
+// an additive method, not a signature change to the existing one.
+//
+//wails:ignore
+func (e *ExecutionService) RunWorkflowWithSecretsToken(workflowID string, kind RunKind, values map[string]string, payload, secretsToken string) (RunSummary, error) {
+	return e.runWorkflowStart(workflowID, kind, values, payload, false, "", secretsToken)
 }
 
 // RunWorkflowStepped starts a workflow run in debug "step mode"
@@ -73,5 +88,5 @@ func (e *ExecutionService) RunWorkflowWithPayload(workflowID string, kind RunKin
 // trigger normally supplies the input (a filesystem-watch path) needs
 // the same substitute input a plain test run does.
 func (e *ExecutionService) RunWorkflowStepped(workflowID string, values map[string]string, payload string) (RunSummary, error) {
-	return e.runWorkflowStart(workflowID, RunKindTest, values, payload, true, "")
+	return e.runWorkflowStart(workflowID, RunKindTest, values, payload, true, "", "")
 }

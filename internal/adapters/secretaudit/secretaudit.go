@@ -53,6 +53,13 @@ const (
 	// (goal 0234's own contract): EntryID here is a clipboard-history
 	// entry id, never a vault entry id.
 	ContextClipboardHistoryCopy Context = "clipboard-history-copy"
+	// ContextCodingLoopShell is the coding loop's own runtime secret
+	// chain (goal 0240 S2, wiring.WireCodingLoopSecrets): a captured
+	// command block's env-var-style placeholder resolved from the vault
+	// at the moment process-shell-command actually ran it. RunID/
+	// WorkflowID are always populated here -- unlike the other resolver
+	// seams, this one only ever fires from inside a real coding-loop run.
+	ContextCodingLoopShell Context = "coding-loop-shell"
 )
 
 // Outcome is one read's recorded result -- deliberately just two values

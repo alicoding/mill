@@ -16,6 +16,7 @@ import (
 
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/guardrail"
+	"github.com/alicoding/mill/internal/services/executionsvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 )
 
@@ -49,22 +50,57 @@ type CommandBlockPreview struct {
 	// change can't silently desync the two sides.
 	WorkflowID string `json:"workflowID"`
 	NodeID     string `json:"nodeID"`
+	// SecretRequirements is every env-var-style secret placeholder this
+	// block references (goal 0240 S2), each with its resolution source --
+	// the Confirm screen's own design contract ("secrets it will need
+	// with their resolution source: vault name / env var / you'll type
+	// it"). Empty for a block that references none.
+	SecretRequirements []SecretRequirementView `json:"secretRequirements"`
 }
 
-// CodeLoopService owns the coding loop's preview RPC only -- the actual
-// run/approve/cancel/result path reuses ExecutionService's existing
-// RunWorkflowWithPayload/ResolveApproval/GetRun/CancelRun directly (no
-// bespoke exec path, docs/goals/0240 S1's own divergence statement),
-// which is why this service has no dependency on ExecutionService at
-// all.
+// SecretRequirementView is composition.SecretRequirement with JSON tags
+// added -- same "adapter/service type stays free of a frontend-JSON
+// concern living in the domain type" split every other *View/*Record
+// shape in this codebase already follows (e.g. secretsvc.
+// SecretAccessRecord).
+type SecretRequirementView struct {
+	VarName    string `json:"varName"`
+	Source     string `json:"source"`
+	VaultLabel string `json:"vaultLabel,omitempty"`
+}
+
+// CodeLoopService owns the coding loop's preview RPC and, since goal
+// 0240 S2, the run-start entry point too: RunCommandBlock needs
+// ExecutionService because it must stash any typed-at-Confirm secret
+// VALUES (in memory, never persisted) BEFORE the run starts, atomically
+// in one Go call -- doing that from the frontend as two separate RPCs
+// would race against how quickly the guardrail gate lets the run
+// proceed (RunCommandBlock's own doc comment has the full reasoning).
+// Approve/cancel/result still reuse ExecutionService's existing
+// ResolveApproval/GetRun/CancelRun directly from the frontend, unchanged
+// from S1's own divergence statement -- only the run-START RPC moved.
 type CodeLoopService struct {
-	guard *guardrailsvc.GuardrailService
+	guard        *guardrailsvc.GuardrailService
+	exec         *executionsvc.ExecutionService
+	typedSecrets typedSecretsStore
 }
 
 // NewCodeLoopService constructs the service -- guard is read-only here
-// (Rules()), never mutated.
+// (Rules()), never mutated. exec is wired late via SetExecutionService
+// (main.go constructs codeLoopService before executionService: the same
+// late-bound-setter shape TriggerService.SetExecutionService already
+// uses, for the identical construction-order reason).
 func NewCodeLoopService(guard *guardrailsvc.GuardrailService) *CodeLoopService {
-	return &CodeLoopService{guard: guard}
+	return &CodeLoopService{guard: guard, typedSecrets: newTypedSecretsStore()}
+}
+
+// SetExecutionService late-binds the run-start dependency -- see the
+// struct's own doc comment. Exported for main.go wiring only, never a
+// frontend RPC.
+//
+//wails:ignore
+func (s *CodeLoopService) SetExecutionService(exec *executionsvc.ExecutionService) {
+	s.exec = exec
 }
 
 // PreviewCommandBlock parses text and returns the Confirm screen's full
@@ -92,10 +128,56 @@ func (s *CodeLoopService) PreviewCommandBlock(text string) (CommandBlockPreview,
 		NodeTypeID: "process-shell-command",
 	}, guardrail.ClassExternal)
 
+	names := composition.ExtractSecretEnvRefsAll(parsed)
+	reqs := composition.ResolveSecretRequirements(names)
+	secretReqs := make([]SecretRequirementView, len(reqs))
+	for i, r := range reqs {
+		secretReqs[i] = SecretRequirementView{VarName: r.VarName, Source: string(r.Source), VaultLabel: r.VaultLabel}
+	}
+
 	return CommandBlockPreview{
 		Steps: steps, Shell: target.Shell, Dir: target.Dir,
-		GuardrailVerdict: string(verdict.Effect),
-		WorkflowID:       composition.CodingLoopWorkflowID,
-		NodeID:           composition.CodingLoopShellStepID,
+		GuardrailVerdict:   string(verdict.Effect),
+		WorkflowID:         composition.CodingLoopWorkflowID,
+		NodeID:             composition.CodingLoopShellStepID,
+		SecretRequirements: secretReqs,
 	}, nil
+}
+
+// RunCommandBlock starts the coding loop's real run (goal 0240 S2,
+// replacing the frontend's own direct RunWorkflowWithPayload call from
+// S1): typedSecrets are the values the user typed at Confirm for
+// whichever SecretRequirements above came back "prompt" -- stashed here
+// under a fresh, single-use token BEFORE the run starts, so
+// process-shell-command's own secret resolution (composition.
+// shellSecretResolverFn, wired by wiring.WireCodingLoopSecrets) always
+// finds them regardless of how quickly the guardrail gate lets the run
+// through. This ordering is why RunCommandBlock exists as its own RPC
+// rather than the frontend calling a separate "stash" RPC followed by
+// ExecutionService.RunWorkflowWithPayload: two separate network round
+// trips can't give this same atomicity guarantee, and getting it wrong
+// would mean a fast/auto-approved run occasionally finding no stash at
+// all. typedSecrets values themselves never appear in this call's own
+// return value, in any log, or in workflowID/payload's own persisted
+// run record -- only the opaque token does (composition.ExecContext.
+// SecretsToken's own doc comment).
+func (s *CodeLoopService) RunCommandBlock(workflowID, payload string, typedSecrets map[string]string) (executionsvc.RunSummary, error) {
+	token := ""
+	if len(typedSecrets) > 0 {
+		token = s.typedSecrets.Stash(typedSecrets)
+	}
+	return s.exec.RunWorkflowWithSecretsToken(workflowID, executionsvc.RunKindTest, nil, payload, token)
+}
+
+// TakeTypedSecret pops varName's typed value out of token's stash --
+// wiring.WireCodingLoopSecrets' own resolver seam calls this first, the
+// SAME way it's the first source in the Confirm screen's own listed
+// chain (vault -> env -> prompt is the DISPLAY order; a typed value, once
+// it exists, always wins at resolution time since the user just
+// confirmed it for THIS run). Exported for wiring only, never a frontend
+// RPC.
+//
+//wails:ignore
+func (s *CodeLoopService) TakeTypedSecret(token, varName string) (string, bool) {
+	return s.typedSecrets.Take(token, varName)
 }
