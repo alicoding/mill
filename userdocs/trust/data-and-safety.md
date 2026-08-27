@@ -1,6 +1,7 @@
 # Trust, data, and safety
 
-Mill's trust posture in plain statements:
+Turn off your network and Mill keeps working — nothing here calls home
+on its own.
 
 **No phone-home, ever.** Mill makes no network call you didn't
 configure: no telemetry, no analytics, no AI API calls of its own.

@@ -1,5 +1,9 @@
 # Configure entities
 
+Two workflows call the same API. Point both at one Integration entry
+instead of pasting the base URL and auth into each step, and changing
+the endpoint later is a single edit that both workflows pick up.
+
 Configure holds the things workflows and boards *point at* — the
 values two independently-authored workflows should share, where
 drifting apart would be a bug:

@@ -1,9 +1,10 @@
 # Commands
 
-Every user-facing action in Mill — a menu item, a toolbar button, a
-keyboard shortcut — is a registered command. The command palette (⌘K),
+Press ⌘K and type any action's name — "lock vault", "check for
+updates", "add a card" — and it runs from wherever you are. Every
+user-facing action in Mill is a registered command, and the palette,
 the Quick Panel, keyboard shortcuts, and Settings → Keyboard shortcuts
-all read from this one list, so a command registered once shows up
+all read from the same list, so a command registered once shows up
 everywhere it applies automatically.
 
 Each command has a stable `id`, a label shown in the palette and

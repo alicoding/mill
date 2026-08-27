@@ -1,8 +1,11 @@
 # Atlas
 
-Atlas is Mill's knowledge board: one zoomable map of cards, typed by
-kinds you define, connected by links, grouped into areas you can drill
-into.
+Drop a folder of markdown files onto the board and every file becomes a
+card — edit one outside Mill and the card updates itself, no re-import.
+That's Atlas: one zoomable map of cards, typed by kinds you define,
+connected by links, grouped into areas you can drill into.
+
+## The board's building blocks
 
 - **Cards** carry a kind (Topic, Contact, Document — or your own,
   authored with typed fields), a title, notes, and typed field
@@ -40,6 +43,9 @@ into.
   edit it — and any note opens big: ⌘-click it (or right-click →
   Open note) for a full-size editor, like opening a note in its own
   window.
+
+## Drawing and images
+
 - **Images and ink live on the board, not inside a card.** Pick Image
   in the toolbar, choose a file, or paste a screenshot — it lands at
   its own size, right where you put it. Dropping an image file onto
@@ -61,17 +67,17 @@ into.
   for it, drawn from the same small set: a colour, a colour that can
   also be switched off, a numeric width shown as a line or a dot, or a
   named shape choice. Pencil's panel, for example, offers only colour
-  and stroke size, since a stroke has no separate fill. This is also
-  why fill was the first new option to land on shapes — it reuses the
-  "colour, switchable off" control every future style option of that
-  same kind gets for free. A diagram's own colours and styling stay
-  whatever its own file sets, not this panel.
+  and stroke size, since a stroke has no separate fill. A diagram's own
+  colours and styling stay whatever its own file sets, not this panel.
 - **Turn a rectangle or ellipse with the rotate handle.** Select one
   and a small circular grip appears above it — drag to turn the shape
   live, holding Shift to snap every 15 degrees. Press Escape mid-drag
   to cancel back to where it was. The handle only shows on a single
   selected shape, and an arrow doesn't get one since its own shape
   already comes from the direction it points.
+
+## Copy, paste, and create
+
 - **Copy and paste to duplicate.** Select cards or notes and press
   ⌘C, then ⌘V — copies appear where your cursor is, filed into
   whatever area it's over. A copy is just the card itself; when the
@@ -88,6 +94,9 @@ into.
   click — the card appears right there and you name it in place;
   Enter keeps the name, Escape keeps it as Untitled. Web addresses
   on a card are real links — click one to open it in your browser.
+
+## Finding what you need
+
 - **Filter without losing the map.** The search control on the board
   (top right) dims everything that doesn't match your text, chosen
   kinds, or field values (the Fields menu lists every choice-type
@@ -104,6 +113,9 @@ into.
   own colour, stroke, and rotation come along; a freeform arrow, a
   sketch, or an image doesn't have a faithful box to become yet, so
   it's named rather than silently left out.
+
+## Keeping Atlas in sync
+
 - **Sync a docs folder**: the seeded "Mirror a docs folder into
   Atlas" workflow regenerates a space from a folder of markdown,
   idempotently — a maintained docs set becomes a maintained map.
@@ -118,6 +130,9 @@ into.
   — your sign-off, verified date, and notes always stay put. The area
   you file them under shows how many are signed off, right on its own
   face — "12 of 40 done," alongside the card count.
+
+## Cards that act, and undo
+
 - **Cards can act.** A card can carry attached action workflows —
   run them from the card. Workflows can also read and write cards as
   steps (create, update, find, link), and a trigger can fire on card
@@ -128,6 +143,9 @@ into.
   also shows a brief Undo button; either one restores it. A change
   someone else makes at the same time is never something your own
   ⌘Z can undo.
+
+## Tables and the AI companion
+
 - **Tables are projections.** Start one from nothing with "New
   table" (the toolbar at the bottom of the board, next to Card,
   Note, and Area): sweep the size grid to the shape
@@ -157,6 +175,8 @@ into.
   integration appears on the card as a ready action — running it
   attaches it. Every action run receives the card's Source URL and
   field values, so a "refresh this page" workflow knows its target.
+
+## Other views
 
 Matrix and Coverage views project the same data as grids when a board
 is the wrong shape for the question. Roadmap lays a space's cards out

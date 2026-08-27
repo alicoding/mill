@@ -4,9 +4,14 @@
 
 # What is Mill
 
-Mill is a desktop app for building guardrailed automations — workflows
-you compose from typed steps, run by hotkey, schedule, or watcher, with
-every risky action gated for your approval.
+A script writes new shapes into a `.drawio` file on disk. Drop that file
+on an Atlas board and it keeps rendering the current version, updating
+itself every time the file changes outside Mill — no re-import, no
+stale diagram.
+
+That's Mill: a desktop app for building guardrailed automations —
+workflows you compose from typed steps, run by hotkey, schedule, or
+watcher, with every risky action gated for your approval.
 
 Three ideas carry the whole product:
 
@@ -37,8 +42,8 @@ building, or grab a release — see [Install](install.md).
 
 # Install
 
-Mill is one binary with no hosted service behind it. Two ways to get
-it:
+Two ways to get Mill running: download a release, or build it yourself.
+Either way you end up with one binary — no hosted service, no account.
 
 ## From a release (macOS)
 
@@ -141,10 +146,14 @@ way — open any of them on the canvas to read how it works.
 
 # Workflows and steps
 
-A workflow is a chain of steps on a canvas: one trigger, then capture,
-transform, and act steps connected in order. Runs execute the chain
-durably — a crash or restart resumes where it left off, and every run
-is recorded step by step.
+Copy something from a web page and the seeded Clipboard → Markdown
+workflow reads it, converts the HTML, writes the Markdown back to your
+clipboard, and notifies you — one trigger, three steps, connected in
+order on a canvas. That's every workflow: capture, transform, and act
+steps chained after a trigger.
+
+Runs execute the chain durably — a crash or restart resumes where it
+left off, and every run is recorded step by step.
 
 ## Triggers
 
@@ -198,6 +207,11 @@ production mid-composition.
 
 # Guardrails and effect classes
 
+Add a step that calls an API, and Mill won't send anything until you
+say yes: the run parks, and an approval prompt shows exactly what it's
+about to do. That's the guardrail model — it applies to every step
+that reaches outside your machine, not just API calls.
+
 Every step type declares an effect class — what kind of touch it has
 on the world:
 
@@ -241,6 +255,10 @@ endpoint is external and asks.
 ---
 
 # Configure entities
+
+Two workflows call the same API. Point both at one Integration entry
+instead of pasting the base URL and auth into each step, and changing
+the endpoint later is a single edit that both workflows pick up.
 
 Configure holds the things workflows and boards *point at* — the
 values two independently-authored workflows should share, where
@@ -292,9 +310,12 @@ deliberately never exported.
 
 # Atlas
 
-Atlas is Mill's knowledge board: one zoomable map of cards, typed by
-kinds you define, connected by links, grouped into areas you can drill
-into.
+Drop a folder of markdown files onto the board and every file becomes a
+card — edit one outside Mill and the card updates itself, no re-import.
+That's Atlas: one zoomable map of cards, typed by kinds you define,
+connected by links, grouped into areas you can drill into.
+
+## The board's building blocks
 
 - **Cards** carry a kind (Topic, Contact, Document — or your own,
   authored with typed fields), a title, notes, and typed field
@@ -332,6 +353,9 @@ into.
   edit it — and any note opens big: ⌘-click it (or right-click →
   Open note) for a full-size editor, like opening a note in its own
   window.
+
+## Drawing and images
+
 - **Images and ink live on the board, not inside a card.** Pick Image
   in the toolbar, choose a file, or paste a screenshot — it lands at
   its own size, right where you put it. Dropping an image file onto
@@ -353,17 +377,17 @@ into.
   for it, drawn from the same small set: a colour, a colour that can
   also be switched off, a numeric width shown as a line or a dot, or a
   named shape choice. Pencil's panel, for example, offers only colour
-  and stroke size, since a stroke has no separate fill. This is also
-  why fill was the first new option to land on shapes — it reuses the
-  "colour, switchable off" control every future style option of that
-  same kind gets for free. A diagram's own colours and styling stay
-  whatever its own file sets, not this panel.
+  and stroke size, since a stroke has no separate fill. A diagram's own
+  colours and styling stay whatever its own file sets, not this panel.
 - **Turn a rectangle or ellipse with the rotate handle.** Select one
   and a small circular grip appears above it — drag to turn the shape
   live, holding Shift to snap every 15 degrees. Press Escape mid-drag
   to cancel back to where it was. The handle only shows on a single
   selected shape, and an arrow doesn't get one since its own shape
   already comes from the direction it points.
+
+## Copy, paste, and create
+
 - **Copy and paste to duplicate.** Select cards or notes and press
   ⌘C, then ⌘V — copies appear where your cursor is, filed into
   whatever area it's over. A copy is just the card itself; when the
@@ -380,6 +404,9 @@ into.
   click — the card appears right there and you name it in place;
   Enter keeps the name, Escape keeps it as Untitled. Web addresses
   on a card are real links — click one to open it in your browser.
+
+## Finding what you need
+
 - **Filter without losing the map.** The search control on the board
   (top right) dims everything that doesn't match your text, chosen
   kinds, or field values (the Fields menu lists every choice-type
@@ -396,6 +423,9 @@ into.
   own colour, stroke, and rotation come along; a freeform arrow, a
   sketch, or an image doesn't have a faithful box to become yet, so
   it's named rather than silently left out.
+
+## Keeping Atlas in sync
+
 - **Sync a docs folder**: the seeded "Mirror a docs folder into
   Atlas" workflow regenerates a space from a folder of markdown,
   idempotently — a maintained docs set becomes a maintained map.
@@ -410,6 +440,9 @@ into.
   — your sign-off, verified date, and notes always stay put. The area
   you file them under shows how many are signed off, right on its own
   face — "12 of 40 done," alongside the card count.
+
+## Cards that act, and undo
+
 - **Cards can act.** A card can carry attached action workflows —
   run them from the card. Workflows can also read and write cards as
   steps (create, update, find, link), and a trigger can fire on card
@@ -420,6 +453,9 @@ into.
   also shows a brief Undo button; either one restores it. A change
   someone else makes at the same time is never something your own
   ⌘Z can undo.
+
+## Tables and the AI companion
+
 - **Tables are projections.** Start one from nothing with "New
   table" (the toolbar at the bottom of the board, next to Card,
   Note, and Area): sweep the size grid to the shape
@@ -450,6 +486,8 @@ into.
   attaches it. Every action run receives the card's Source URL and
   field values, so a "refresh this page" workflow knows its target.
 
+## Other views
+
 Matrix and Coverage views project the same data as grids when a board
 is the wrong shape for the question. Roadmap lays a space's cards out
 as swimlanes — one row per card type, one column per Now/Next/Then
@@ -466,10 +504,10 @@ retag it, or onto Unscheduled to clear the tag.
 
 # Runs, review, and debugging
 
-Every run is durable and recorded. A crash or restart resumes
-mid-workflow instead of losing work, and the workflow's **Runs** tab
-shows each run step by step — inputs, outputs, timing, and where it
-stopped.
+Mill crashes or restarts mid-workflow, and the run picks up where it
+left off instead of vanishing. Open the workflow's **Runs** tab
+afterward and every run is there step by step — inputs, outputs,
+timing, and exactly where it stopped.
 
 ## When a run needs a person
 
@@ -962,10 +1000,11 @@ Ends the workflow with a typed, configured outcome: an outcome category (approve
 
 # Commands
 
-Every user-facing action in Mill — a menu item, a toolbar button, a
-keyboard shortcut — is a registered command. The command palette (⌘K),
+Press ⌘K and type any action's name — "lock vault", "check for
+updates", "add a card" — and it runs from wherever you are. Every
+user-facing action in Mill is a registered command, and the palette,
 the Quick Panel, keyboard shortcuts, and Settings → Keyboard shortcuts
-all read from this one list, so a command registered once shows up
+all read from the same list, so a command registered once shows up
 everywhere it applies automatically.
 
 Each command has a stable `id`, a label shown in the palette and
@@ -1085,9 +1124,9 @@ Keyboard shortcuts to rebind any command's default combo.
 
 # Settings
 
-App-level preferences — things about Mill itself, not any one
-workflow. Everything here applies immediately and persists across
-restarts.
+Preferences about Mill itself, not any one workflow — most apply the
+moment you change them and persist across restarts; the few that need a
+restart say so.
 
 ## Appearance
 
@@ -1232,19 +1271,20 @@ tccutil reset Accessibility com.alicoding.mill
 
 # Extending the canvas
 
-Mill's canvas (Atlas) supports nine placeable tools today — card, note,
-area, table, image, pencil, eraser, laser, shape — each one a single
-self-registered file under `frontend/src/atlas/tools/`. This page is
-the contract that file has to satisfy: how it gets discovered, what
-its declaration requires, and which platform services its runtime
-code may call — and may not.
+Add one file under `frontend/src/atlas/tools/` and rebuild, and Atlas
+has a new placeable tool — card, note, area, table, image, pencil,
+eraser, laser, and shape all work exactly this way today, nine
+self-registered files. This page is the contract that file has to
+satisfy: how it gets discovered, what its declaration requires, and
+which platform services its runtime code may call — and may not.
 
-Read this as a Mill developer working in this repo, not as a
-plugin author installing a package: today, adding a canvas tool means
-adding a file to Mill's own tree and rebuilding, the same way adding a
-workflow step type does. There is no out-of-tree loading mechanism yet.
-See `docs/goals/0211-extension-tiers.md` for why that's a deliberate,
-recorded gap rather than an oversight.
+Read this as a Mill developer working in this repo, not as a plugin
+author installing a package: there's no out-of-tree loading mechanism
+yet, so extending the canvas means editing Mill's own tree, the same
+way adding a workflow step type does. That's a deliberate, recorded
+gap, not an oversight — nothing here promises stability for a tool
+built outside this repo, and the "Stability" section below says
+exactly what is and isn't safe to build against.
 
 ## How it loads
 
@@ -1274,11 +1314,10 @@ discovered the same glob-and-merge way. The merge refuses two files
 declaring the same top-level key, so a new tool's own locale file can
 never silently clobber another tool's strings.
 
-**The declaration-vs-code split.** This is the same split VS Code's
-own extension model draws between `contributes` (inert JSON, read
-before any extension code runs) and its runtime API (where behavior
-actually lives) — worth naming explicitly, because it's what lets the
-registry be checked and documented as data. On `AtlasToolShape`:
+**The declaration-vs-code split.** `AtlasToolShape` splits into inert
+data, read before any of the tool's own code runs, and one runtime
+function. Naming the split explicitly is what lets the registry get
+checked and documented as data, table below included:
 
 - **Inert declaration** — read before any of this tool's own code
   runs, and enumerable purely as data: `id`, `icon`, `label`,
@@ -1444,12 +1483,11 @@ or any shared renderer's internal behavior — until there is a second
 adopter outside this repo to actually break. Today every "adopter" is
 one of Mill's own nine files, changed in the same pull request as any
 platform change that affects it, so nothing here has ever needed to
-stay backward compatible. This is deliberate, not an oversight: see
-`docs/goals/0211-extension-tiers.md` for the research behind stating
-that honestly now (a platform that discovers its own contract gaps only
-after outside adopters build against them pays for the omission for
-years) — and for what actually triggers building the out-of-tree tier
-this page does not yet promise.
+stay backward compatible. That's stated honestly now on purpose: a
+platform that only discovers its own contract gaps after outside
+adopters build against them pays for that omission for years. The
+out-of-tree tier this page doesn't yet promise gets built once a real
+outside adopter needs it, not before.
 
 ---
 
@@ -1659,10 +1697,11 @@ real branches worth pinning. `commandsDeclaration.json` regenerates via
 
 # Automate with agents
 
-Mill exposes its full surface over MCP (Model Context Protocol), so
-an AI agent can do what you can do — compose workflows, run them,
-inspect results, read and write Atlas — under the same guardrails you
-have.
+Point an MCP-capable agent at Mill's address, and it can compose
+workflows, run them, inspect results, and read and write Atlas — the
+same things you can do, under the same guardrails. Its writes still
+park for your approval; nothing it does skips the gate a human action
+would hit.
 
 ## Connect
 
@@ -1683,10 +1722,9 @@ Your instance's exact address is the one Settings shows.
 - **Resources** describing the live registry — every step type with
   its typed input/output contract, effect class, and config fields —
   the same contract the canvas enforces, machine-readable.
-- **The same guardrails.** An agent's external effects and entity
-  writes park in Review for your approval. Deny-by-default until you
-  grant; nothing an agent does bypasses the gate a human action
-  would hit.
+- **Deny-by-default access.** Nothing works until you grant it in
+  Settings → MCP access, and writes stay off until you turn them on
+  separately from reads.
 
 ## See every call
 
@@ -1707,7 +1745,8 @@ set in one AI-readable file.
 
 # Trust, data, and safety
 
-Mill's trust posture in plain statements:
+Turn off your network and Mill keeps working — nothing here calls home
+on its own.
 
 **No phone-home, ever.** Mill makes no network call you didn't
 configure: no telemetry, no analytics, no AI API calls of its own.

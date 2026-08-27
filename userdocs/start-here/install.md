@@ -1,7 +1,7 @@
 # Install
 
-Mill is one binary with no hosted service behind it. Two ways to get
-it:
+Two ways to get Mill running: download a release, or build it yourself.
+Either way you end up with one binary — no hosted service, no account.
 
 ## From a release (macOS)
 
