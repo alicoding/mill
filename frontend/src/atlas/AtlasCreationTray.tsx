@@ -6,7 +6,7 @@ import { LockIcon } from '@primer/octicons-react'
 import { AtlasTableSizePicker } from './AtlasTableSizePicker'
 import { AtlasImageInput } from './AtlasImageInput'
 import { AtlasStylePanel } from './AtlasStylePanel'
-import { ATLAS_TOOLS, type AtlasArmableTool } from './atlasTools'
+import { ATLAS_TOOLS, type AtlasArmableTool, type AtlasToolID } from './atlasTools'
 import styles from './AtlasCreationTray.module.css'
 
 // The drag payload's own MIME key (goal 0081 slice A1) -- shared by
@@ -54,15 +54,31 @@ export const ATLAS_TOOL_DRAG_MIME = 'application/x-mill-atlas-tool'
 // few px, which would only defer the same class of collision to slice
 // 5's shapes tool. The full name is still discoverable via `title`
 // (hover) and `aria-label` (screen readers) on every button.
-export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen, onTableToggle, onPickTableSize, onTableFromList, imagePopoverOpen, onImageToggle, onImageSubmitPath, onImageSubmitFile }: {
-  armedTool: AtlasArmableTool | null
+export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen, onTableToggle, onClosePickerVisibility, onPickTableSize, onTableFromList, imagePopoverOpen, onImageToggle, onImageSubmitPath, onImageSubmitFile }: {
+  // The ONE shared armed-tool field (useAtlasArmedTool.ts, goal 0238)
+  // -- widened past AtlasArmableTool so Table/Image share the exact
+  // same value every OTHER tool's own `data-armed`/`aria-pressed`
+  // already derived from, instead of the two popover-only booleans
+  // this component used to read for those two branches alone (the bug
+  // this goal fixes: those booleans never disarmed when a DIFFERENT
+  // tool armed, so two tray buttons could show armed at once).
+  armedTool: AtlasToolID | null
   // Whether the CURRENTLY armed tool is locked (goal 0199 part D) --
   // only ever meaningful together with armedTool, so this is a single
   // flag rather than a second id to keep in sync with the first.
   locked: boolean
   onToggle: (tool: AtlasArmableTool) => void
+  // Table's own size-picker POPOVER visibility -- narrower than
+  // armedness (armedTool === 'table' stays true through the
+  // placement-pending phase after a size is picked, but the popover
+  // itself has nothing left to show by then).
   tablePickerOpen: boolean
   onTableToggle: (open: boolean) => void
+  // Closes the popover's own visibility WITHOUT disarming (see
+  // useTablePickerSignal.ts's own header comment for why this stays a
+  // dedicated call, called in the same handler as onPickTableSize,
+  // rather than a side effect derived from picking a size).
+  onClosePickerVisibility: () => void
   onPickTableSize: (cols: number, rows: number) => void
   onTableFromList: () => void
   imagePopoverOpen: boolean
@@ -90,6 +106,7 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
       {tools.map((tool) => {
         const Icon = tool.icon
         if (tool.interaction === 'pick-then-place') {
+          const tableArmed = armedTool === tool.id
           return (
             <Fragment key={tool.id}>
               <button
@@ -97,11 +114,11 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
                 type="button"
                 className={styles.tool}
                 data-testid={`atlas-tray-${tool.id}`}
-                data-armed={tablePickerOpen}
-                aria-pressed={tablePickerOpen}
+                data-armed={tableArmed}
+                aria-pressed={tableArmed}
                 title={t(`creationTray.${tool.id}Tooltip`)}
                 aria-label={t(`creationTray.${tool.id}Label`)}
-                onClick={() => onTableToggle(!tablePickerOpen)}
+                onClick={() => onTableToggle(!tableArmed)}
               >
                 <Icon size={14} />
                 <span className={styles.kbd}>{tool.shortcutKey}</span>
@@ -113,7 +130,10 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
                 renderAnchor={null}
                 side="outside-top"
               >
-                <AtlasTableSizePicker onPick={(cols, rows) => { onTableToggle(false); onPickTableSize(cols, rows) }} />
+                {/* Picking a size stays armed for the click-to-place
+                    phase (useTablePickerSignal.ts) -- closes only the
+                    popover's own visibility, never disarms. */}
+                <AtlasTableSizePicker onPick={(cols, rows) => { onClosePickerVisibility(); onPickTableSize(cols, rows) }} />
                 <div className={styles.pickerFooter}>
                   <Button size="small" variant="invisible" data-testid="atlas-table-from-list" onClick={() => { onTableToggle(false); onTableFromList() }}>
                     {t('creationTray.tableFromList')}
