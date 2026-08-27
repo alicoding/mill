@@ -21,9 +21,19 @@ export function useAtlasPaneClick({ tablePicker, topLevelBoxes, screenToFlowPosi
   const onWrapperClickCapture = useCallback((e: React.MouseEvent) => {
     const pending = tablePicker.pendingSize
     if (!pending) return
+    // The creation tray renders INSIDE this same wrapper (chrome, not
+    // canvas) -- an armed table size must place on the board, never
+    // swallow a click on another tray button as a placement (goal
+    // 0238: that swallow was the one path where re-arming a DIFFERENT
+    // tool could never actually reach React at all).
+    if (e.target instanceof Element && e.target.closest('[data-testid="atlas-creation-tray"]')) return
     e.stopPropagation()
     e.preventDefault()
-    tablePicker.setPendingSize(null)
+    // One placement per arming (the LOCKED design's own rule, same as
+    // every other tool's placeAt): disarms the shared field too, not
+    // just the local pendingSize, so the tray button's own indicator
+    // clears along with the placement.
+    tablePicker.disarm()
     const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
     const frameID = frameContainingPoint(topLevelBoxes, flowPos) ?? undefined
     onCreateTableSized(pending.cols, pending.rows, { X: flowPos.x, Y: flowPos.y }, frameID)

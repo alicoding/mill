@@ -7,7 +7,7 @@ import { refreshAtlas } from './atlasStore'
 import { resolveNoteCommitText, titleFromFilename, titleFromNoteText } from './atlasCreateHelpers'
 import { freeChildPosition } from './atlasContainmentPlacement'
 import { computeEnclosedBoundingBoxOrigin } from './atlasBoardBoxes'
-import { ATLAS_TOOLS, isLockableArmTool, type AtlasArmableTool, type AtlasCreationTool } from './atlasTools'
+import { ATLAS_TOOLS, isAtlasArmableTool, isLockableArmTool, type AtlasArmableTool, type AtlasCreationTool, type AtlasToolID } from './atlasTools'
 import { cardTool } from './tools/cardTool'
 import { noteTool } from './tools/noteTool'
 import { areaTool } from './tools/areaTool'
@@ -76,7 +76,20 @@ export interface AtlasGroupRequest { cardIDs: string[]; noteIDs: string[]; pos: 
 // parentID is the board's OWN current container (AtlasView's viewedID,
 // threaded down unchanged) -- the LOCKED design's "parent = where you
 // are" rule for every canvas-foremost creation door.
-export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes, noteBoxes }: {
+export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes, noteBoxes, armedToolId, armedToolLocked, armSharedTool, disarmShared, toggleShared }: {
+  // The single shared armed-tool field (useAtlasArmedTool.ts, goal
+  // 0238) -- owned by AtlasBoard.tsx and passed down here as its
+  // individual, already-stable functions rather than one nested
+  // object, so this hook's own useCallback/useMemo deps (guarding
+  // against the React #185 infinite-loop class this file's other
+  // comments document) never see a fresh object reference every
+  // render. Table/Image's own arming hooks read/write these exact
+  // same functions for cross-tool exclusivity to hold by construction.
+  armedToolId: AtlasToolID | null
+  armedToolLocked: boolean
+  armSharedTool: (tool: AtlasToolID) => void
+  disarmShared: () => void
+  toggleShared: (tool: AtlasToolID, lockable: boolean) => void
   parentID: string
   allCards: Card[]
   kinds: import('../../bindings/github.com/alicoding/mill/internal/domain/atlas/models').Kind[]
@@ -103,10 +116,11 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   // updates without the other. Discrete tools disarm on their own
   // commit unless locked; continuous tools (pencil/eraser/laser) never
   // read `locked` at all and keep today's plain toggle-to-disarm
-  // behaviour, unchanged in toggleArm below.
-  const [arm, setArm] = useState<{ tool: AtlasArmableTool; locked: boolean } | null>(null)
-  const armedTool = arm?.tool ?? null
-  const locked = arm?.locked ?? false
+  // behaviour, unchanged in toggleArm below. Narrowed off the SHARED
+  // armedToolId (goal 0238): Table/Image can hold that same field
+  // without this hook ever treating either as its own armed tool.
+  const armedTool = armedToolId !== null && isAtlasArmableTool(armedToolId) ? armedToolId : null
+  const locked = armedTool !== null ? armedToolLocked : false
   const [popover, setPopover] = useState<AtlasPlacementPopoverState | null>(null)
   const [draftNoteFlowPos, setDraftNoteFlowPos] = useState<{ x: number; y: number } | null>(null)
   const [draftNoteParentOverride, setDraftNoteParentOverride] = useState<string | null>(null)
@@ -127,6 +141,22 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
     kindsRef.current = kinds
   }, [allCards])
 
+  // Escape's own "did this press actually clear something" check
+  // (cancelAll below) reads this ref rather than closing over the
+  // state directly -- keeping cancelAll's own identity STABLE (empty
+  // deps) matters here specifically: a keydown listener that
+  // re-subscribes (remove+add) every time armedToolId/popover/etc
+  // changes gets pushed to the END of window's own listener queue,
+  // landing AFTER useAtlasSelectionTray's own Escape ladder (mounted
+  // once, never moves) instead of before it -- letting the SAME
+  // keypress climb a level right behind an arm this press just
+  // cleared, since the ladder's own e.defaultPrevented check never
+  // saw it set yet.
+  const escapeStateRef = useRef({ armedToolId, popover, draftNoteFlowPos, editingNoteID, editingTitleCardID })
+  useEffect(() => {
+    escapeStateRef.current = { armedToolId, popover, draftNoteFlowPos, editingNoteID, editingTitleCardID }
+  })
+
   // Every function below is useCallback-wrapped and returned to the
   // caller, which feeds several of them (commitDraftNote,
   // onCancelEdit, onCommitEdit, ...) into a React Flow node's own
@@ -145,21 +175,17 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   // on a THIRD click -- re-arming fresh always clears any prior lock.
   const toggleArm = useCallback((tool: AtlasArmableTool) => {
     if (readOnly) return
-    setArm((cur) => {
-      if (!cur || cur.tool !== tool) return { tool, locked: false }
-      if (isLockableArmTool(tool)) return cur.locked ? null : { tool, locked: true }
-      return null
-    })
-  }, [readOnly])
+    toggleShared(tool, isLockableArmTool(tool))
+  }, [readOnly, toggleShared])
   const armTool = useCallback((tool: AtlasArmableTool) => {
-    if (!readOnly) setArm({ tool, locked: false })
-  }, [readOnly])
-  const disarm = useCallback(() => setArm(null), [])
+    if (!readOnly) armSharedTool(tool)
+  }, [readOnly, armSharedTool])
+  const disarm = disarmShared
   // A discrete tool's own one-shot commit (goal 0199): disarms unless
   // the user explicitly locked it for deliberate repetition.
   const disarmUnlessLocked = useCallback(() => {
-    setArm((cur) => (cur?.locked ? cur : null))
-  }, [])
+    if (!locked) disarmShared()
+  }, [locked, disarmShared])
 
   // A canvas click/drop while armed places at that point and DISARMS
   // (one placement per arming, the LOCKED design's own rule) --
@@ -177,7 +203,7 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
     const tool = explicitTool ?? armedTool
     const hasGesture = tool ? (ATLAS_TOOLS.find((t) => t.id === tool)?.gesture ?? null) !== null : false
     if (!tool || hasGesture || readOnly) return
-    setArm(null)
+    disarmShared()
     // "Add linked card…" (goal 0081 slice A4) lands beside the linking
     // card, at a free spot in ITS parent -- never at the menu's own
     // click point, which is only where the popover visually anchors.
@@ -206,7 +232,7 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
       setDraftNoteFlowPos(flowPos)
       setDraftNoteParentOverride(parentIDOverride ?? null)
     }
-  }, [armedTool, readOnly, screenToFlowPosition, parentID])
+  }, [armedTool, readOnly, screenToFlowPosition, parentID, disarmShared])
 
   // Slot-drag's own guided-create door (goal 0081 slice A4, LOCKED
   // design §3): opens the SAME 'create' popover at the release point,
@@ -366,21 +392,36 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   // Esc's own single entry point (AtlasBoard's window listener calls
   // this) -- cancels whichever transient state is currently open. Every
   // setter is a no-op when already null/false, so calling all of them
-  // unconditionally is safe.
-  const cancelAll = useCallback(() => {
+  // unconditionally is safe. Returns whether it actually cleared
+  // anything, so the listener below can participate in Primer's own
+  // Escape composition contract (useAtlasSelectionTray.ts's own header
+  // comment): every OTHER registered handler must see
+  // e.defaultPrevented and skip once one of them already consumed the
+  // press, or the board's own Escape ladder (clear selection / climb a
+  // level) fires a SECOND time on the same keypress right after arming
+  // was cleared -- which is otherwise reachable regardless of focus,
+  // since closing a popover restores focus to its own (in-board)
+  // trigger button.
+  const cancelAll = useCallback((): boolean => {
+    const s = escapeStateRef.current
+    const hadSomethingOpen = s.armedToolId !== null || s.popover !== null || s.draftNoteFlowPos !== null || s.editingNoteID !== null || s.editingTitleCardID !== null
     // Escape disarms even a LOCKED tool (goal 0199's own contract item
     // 4) -- unlike disarmUnlessLocked above, this never checks lock.
-    setArm(null)
+    // Disarming the SHARED field (goal 0238) reaches Table/Image too,
+    // not just this hook's own narrower AtlasArmableTool set.
+    disarmShared()
     setPopover(null)
     setDraftNoteFlowPos(null)
     setDraftNoteParentOverride(null)
     setEditingNoteID(null)
     setEditingTitleCardID(null)
-  }, [])
+    return hadSomethingOpen
+  }, [disarmShared])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') cancelAll()
+      if (e.key !== 'Escape') return
+      if (cancelAll()) e.preventDefault()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)

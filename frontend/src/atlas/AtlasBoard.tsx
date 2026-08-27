@@ -15,6 +15,7 @@ import { useAtlasArrange } from './useAtlasArrange'
 import { useAtlasEdgeInteraction } from './useAtlasEdgeInteraction'
 import { useBoardFocus } from './useBoardFocus'
 import { useAtlasCreation } from './useAtlasCreation'
+import { useAtlasArmedTool } from './useAtlasArmedTool'
 import { useAtlasToolGesture } from './useAtlasToolGesture'
 import { ATLAS_TOOLS } from './atlasTools'
 import type { AtlasGestureCtx } from './atlasNounRegistry'
@@ -112,10 +113,16 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   )
   const noteBoxes = useMemo(() => (isFree ? computeNoteBoxes(notes) : []), [notes, isFree])
 
-  const tablePicker = useTablePickerSignal()
-  const imagePopover = useAtlasImagePopoverSignal()
+  // The ONE shared armed-tool field (useAtlasArmedTool.ts, goal 0238):
+  // every arming door below -- useAtlasCreation's own card/note/area/
+  // pencil/eraser/laser/shape, the table size picker, the image
+  // popover -- reads/writes this SAME state, so arming any one of them
+  // disarms whichever other one was armed, by construction.
+  const armedTool = useAtlasArmedTool()
+  const tablePicker = useTablePickerSignal({ armedToolId: armedTool.armedToolId, arm: armedTool.arm, disarm: armedTool.disarm })
+  const imagePopover = useAtlasImagePopoverSignal({ armedToolId: armedTool.armedToolId, arm: armedTool.arm, disarm: armedTool.disarm })
   const imageCreate = useAtlasImageCreate({ allCards, viewedID })
-  const creation = useAtlasCreation({ parentID, allCards, kinds, notes, objects, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes: topLevelBoxes, noteBoxes })
+  const creation = useAtlasCreation({ parentID, allCards, kinds, notes, objects, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes: topLevelBoxes, noteBoxes, armedToolId: armedTool.armedToolId, armedToolLocked: armedTool.locked, armSharedTool: armedTool.arm, disarmShared: armedTool.disarm, toggleShared: armedTool.toggle })
   const selection = useAtlasSelection({ cards, notes, objects, onMultiSelectContextMenu })
   const wrapperClicks = useAtlasPaneClick({ tablePicker, topLevelBoxes, screenToFlowPosition, onCreateTableSized, placeAt: creation.placeAt })
 
@@ -464,7 +471,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       {fileDrop.dropDuplicateNotice && <div className={styles.dropNotice} data-testid="atlas-file-drop-duplicate-notice">{fileDrop.dropDuplicateNotice}</div>}
       {!readOnly && (haveSelection
         ? <AtlasSelectionTray ref={trayRef} selectedCardCount={selection.selectedCards.length} selectedNoteCount={selection.selectedNotes.length} selectedObjectCount={selection.selectedObjects.length} onGroup={onTrayGroup} onDelete={onTrayDelete} />
-        : <AtlasCreationTray armedTool={creation.armedTool} locked={creation.locked} onToggle={creation.toggleArm} tablePickerOpen={tablePicker.open || tablePicker.pendingSize !== null} onTableToggle={tablePicker.setOpen} onPickTableSize={(cols, rows) => tablePicker.setPendingSize({ cols, rows })} onTableFromList={onOpenTableFromList} imagePopoverOpen={imagePopover.open} onImageToggle={imagePopover.setOpen} onImageSubmitPath={imageCreate.createFromPath} onImageSubmitFile={imageCreate.createFromFile} />)}
+        : <AtlasCreationTray armedTool={armedTool.armedToolId} locked={creation.locked} onToggle={creation.toggleArm} tablePickerOpen={tablePicker.open} onTableToggle={tablePicker.setOpen} onClosePickerVisibility={tablePicker.closePickerVisibility} onPickTableSize={(cols, rows) => tablePicker.setPendingSize({ cols, rows })} onTableFromList={onOpenTableFromList} imagePopoverOpen={imagePopover.open} onImageToggle={imagePopover.setOpen} onImageSubmitPath={imageCreate.createFromPath} onImageSubmitFile={imageCreate.createFromFile} />)}
       {creation.popover && (
         <AtlasPlacementPopover
           mode={creation.popover.mode}
