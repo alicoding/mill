@@ -61,10 +61,13 @@ export const pencilTool = {
   fileBacked: true,
   // Placed instance is Kind 'ink', NOT 'pencil' (this tool's own commit
   // below writes it) -- content registers against that Kind, sharing
-  // image's own mirrored-file renderer (AtlasMirrorImageContent.tsx)
-  // with a different fallback glyph.
+  // image's own mirrored-file renderer (AtlasMirrorImageContent.tsx).
+  // No fallback glyph (goal 0243): a stroke's SVG bytes are never
+  // available any sooner than this same mirror fetch, so a pencil
+  // glyph would flash on every single mount, not just a failure -- an
+  // empty frame is the honest "not there yet" state.
   boardObjectKind: 'ink',
-  content: { Component: makeMirrorImageContent(PencilIcon), ariaLabelKey: 'boardObject.inkAriaLabel', role: 'img' },
+  content: { Component: makeMirrorImageContent(null), ariaLabelKey: 'boardObject.inkAriaLabel', role: 'img' },
   styleDefaults: PENCIL_DEFAULT_STYLE,
   styleFields: PENCIL_STYLE_FIELDS,
   // Continuous tool: toggleArm's own re-click always disarms it (never
