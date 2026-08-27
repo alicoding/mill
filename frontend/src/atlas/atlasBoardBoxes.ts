@@ -1,5 +1,6 @@
 import type { Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH, STICKY_HEIGHT, STICKY_WIDTH } from './atlasBoardLayout'
+import { rotatedAABB } from './atlasRotation'
 import type { FrameBox } from './useAtlasDragFiling'
 
 // Every top-level card's own rendered flow-space box (goal 0081
@@ -31,6 +32,23 @@ export function computeTopLevelBoxes(
 
 export function computeNoteBoxes(notes: Note[]): { id: string; x: number; y: number; width: number; height: number }[] {
   return notes.map((n) => ({ id: n.ID, x: n.Position.X, y: n.Position.Y, width: STICKY_WIDTH, height: STICKY_HEIGHT }))
+}
+
+// Every board object's own rendered flow-space box, rotation-aware
+// (goal 0230's measured w/h, corrected by goal 0236's audit: a rotated
+// shape's real screen footprint extends past its unrotated measured
+// size, so the eraser/laser tools' own point-in-box hit test needs the
+// rotated AABB, not the raw one). rotatedAABB degenerates to the
+// identity box for every Kind with no `rotation` payload key at all,
+// so this stays exact for them too. Split out of AtlasBoard.tsx at the
+// 500-line seam, mirroring computeTopLevelBoxes/computeNoteBoxes above.
+export function computeObjectBoxes(nodes: { id: string; position: { x: number; y: number }; measured?: { width?: number; height?: number }; data: unknown }[]): { id: string; x: number; y: number; width: number; height: number }[] {
+  return nodes.map((n) => {
+    const object = (n.data as { object?: { Payload?: Record<string, string> } }).object
+    const rotation = Number(object?.Payload?.rotation) || 0
+    const box = rotatedAABB(n.position.x, n.position.y, n.measured?.width ?? 0, n.measured?.height ?? 0, rotation)
+    return { id: n.id, ...box }
+  })
 }
 
 // Every card nested ONE level inside a top-level region frame, in the

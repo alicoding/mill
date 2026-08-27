@@ -7,7 +7,7 @@ import { AtlasService } from '../shared/bindings'
 import { useIsNarrowViewport } from '../shared/useNarrowViewport'
 import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'
 import { computeGroupFrameLayout, isGroupCard } from './atlasBoardLayout'
-import { computeNoteBoxes, computeTopLevelBoxes } from './atlasBoardBoxes'
+import { computeNoteBoxes, computeObjectBoxes, computeTopLevelBoxes } from './atlasBoardBoxes'
 import { rfEdgeTypes, rfNodeTypes } from './atlasBoardNodeTypes'
 import { AtlasBoardChrome } from './AtlasBoardChrome'
 import { resolveBoardEdges } from './atlasLinkResolution'
@@ -302,11 +302,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   // already reads for floating-edge geometry) rather than
   // BoardObject.Size, which stays null until first resize.
   const objectBoxes = useMemo(() => (
-    isFree
-      ? nodes
-        .filter((n) => n.type === 'atlas-object')
-        .map((n) => ({ id: n.id, x: n.position.x, y: n.position.y, width: n.measured?.width ?? 0, height: n.measured?.height ?? 0 }))
-      : []
+    isFree ? computeObjectBoxes(nodes.filter((n) => n.type === 'atlas-object')) : []
   ), [nodes, isFree])
 
   const gestureCtx: AtlasGestureCtx = useMemo(() => ({

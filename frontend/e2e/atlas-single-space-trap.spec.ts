@@ -10,7 +10,7 @@ import {
 } from './fixtures/server'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickBoardPoint, groupCard, noteCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
-import { findEmptyBoardPoint } from './fixtures/atlasEmptyRegion'
+import { findEmptyBoardPoint, rectsOverlap } from './fixtures/atlasEmptyRegion'
 
 // Own dedicated server (docs/goals/0183): this spec deletes the seeded
 // root card down to ZERO spaces and back, a global root-card-count
@@ -138,44 +138,70 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
 
     // "Board gallery" nests board objects, never cards, so
     // isGroupCard() still treats it as a childless leaf for THIS
-    // delete. Its board objects are deleted through the real UI FIRST,
-    // before the card itself, rather than left for the card delete's
-    // own EffectiveParentID promotion to carry them out: a promoted
-    // object keeps its stored position from the board it was promoted
-    // OFF of, which can land on top of an unrelated card at the
-    // destination level (tracked as its own goal) -- draining the
-    // objects first means the card has zero children left when it's
-    // deleted, so that promotion path never runs here.
-    await page.locator('[data-testid="atlas-note-drill"][aria-label="Zoom into Board gallery"]').click()
-    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Board gallery')
-    const galleryObjects = page.locator('[data-testid="atlas-board-object"]')
-    // A one-shot count() read as the loop guard can outrun the delete's
-    // own async DOM update and re-queue a click against an element
-    // that's already gone -- toHaveCount confirms each deletion lands
-    // before the next iteration reads the count again.
-    for (let remaining = await galleryObjects.count(); remaining > 0; remaining--) {
-      await galleryObjects.first().click({ button: 'right' })
-      await expect(menu).toBeVisible()
-      await menu.getByText('Delete', { exact: true }).click()
-      await expect(galleryObjects).toHaveCount(remaining - 1)
-    }
-    await expect(galleryObjects).toHaveCount(0)
-    await page.keyboard.press('Meta+ArrowUp')
-    await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Board gallery')
-    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
+    // delete -- deleted directly, with its 3 seeded board objects still
+    // attached (goal 0233's own regression, replacing the drain-first
+    // workaround this spec used to need). The card delete's own
+    // EffectiveParentID promotion carries the objects out to THIS root
+    // level; they must land visibly placed, clear of "Client records",
+    // never stacked on top of it the way their stale pre-promotion X/Y
+    // used to.
+    const clientRecords = groupCard(page, 'Client records')
+    await expect(clientRecords).toBeVisible()
 
     await noteCard(page, 'Board gallery').click({ button: 'right' })
     await expect(menu).toBeVisible()
     await menu.getByText('Delete', { exact: true }).click()
     await expect(noteCard(page, 'Board gallery')).toHaveCount(0)
 
-    // "Client records" is now the SOLE remaining root: egocentric-root
-    // auto-entry (unregressed by this goal, since nothing here marked
-    // suppressAutoEntry -- this landing was never a deliberate up-nav)
-    // drills straight into it, exactly the "convenience" behaviour
-    // atlas.spec.ts's own sibling-deleted-back-to-one test already
-    // pins. It is itself now a root-level space, so the SAME
-    // rename/delete door applies recursively.
+    // "Client records" is now the only remaining ROOT CARD, so the
+    // SAME egocentric auto-entry the later part of this test exercises
+    // on purpose (singleRootCard, cards-only) fires here as a side
+    // effect and drills straight into it -- promoted board objects
+    // don't count as a "root card" for that check, so they're never
+    // enough on their own to hold the view at "All spaces". Back out
+    // once to actually SEE them where they landed.
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
+    await page.keyboard.press('Meta+ArrowUp')
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
+
+    const promotedObjects = page.locator('[data-testid="atlas-board-object"]')
+    await expect(promotedObjects).toHaveCount(3)
+    const clientRecordsBox = await clientRecords.boundingBox()
+    if (!clientRecordsBox) throw new Error('Client records has no bounding box')
+    const promotedBoxes = []
+    for (let i = 0; i < 3; i++) {
+      const box = await promotedObjects.nth(i).boundingBox()
+      if (!box) throw new Error('promoted board object has no bounding box')
+      expect(rectsOverlap(box, clientRecordsBox), 'a promoted board object must not overlap the sibling card').toBe(false)
+      promotedBoxes.push(box)
+    }
+    // Clear of EACH OTHER too -- a fresh position that just stacks all
+    // three promoted objects on top of one another would satisfy the
+    // check above while still being useless.
+    for (let i = 0; i < promotedBoxes.length; i++) {
+      for (let j = i + 1; j < promotedBoxes.length; j++) {
+        expect(rectsOverlap(promotedBoxes[i], promotedBoxes[j]), 'two promoted board objects must not overlap each other').toBe(false)
+      }
+    }
+
+    // Drain the newly-promoted objects too -- the root context needs
+    // to be back to just the two remaining cards for the assertions
+    // below (unaffected by this goal, same instant-delete door).
+    for (let remaining = await promotedObjects.count(); remaining > 0; remaining--) {
+      await promotedObjects.first().click({ button: 'right' })
+      await expect(menu).toBeVisible()
+      await menu.getByText('Delete', { exact: true }).click()
+      await expect(promotedObjects).toHaveCount(remaining - 1)
+    }
+
+    // "Client records" is now the SOLE remaining root. Entered
+    // explicitly rather than via egocentric-root auto-entry (atlas.spec.ts's
+    // own sibling-deleted-back-to-one test pins THAT convenience
+    // separately) -- the deliberate up-nav a few lines above this,
+    // needed to actually SEE the promoted objects at "All spaces",
+    // suppressed it for this landing. It is itself now a root-level
+    // space, so the SAME rename/delete door applies recursively.
+    await clientRecords.getByTestId('atlas-group-header').click()
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
     await zoomAllTheWayOut(page)

@@ -11,14 +11,17 @@ import { waitForViewportStable } from './animation'
 // call time, so it stays correct regardless of how much seeded content
 // the landing board carries in the future.
 
-interface Rect {
+export interface Rect {
   x: number
   y: number
   width: number
   height: number
 }
 
-function rectsOverlap(a: Rect, b: Rect): boolean {
+// Exported for atlas-single-space-trap.spec.ts's own overlap assertion
+// (goal 0233): the same rectangle-intersection test findEmptyBoardRect
+// already relies on internally, reused rather than a second copy.
+export function rectsOverlap(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
 }
 

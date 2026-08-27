@@ -203,10 +203,15 @@ func (a *AtlasService) DeleteCard(id string) (TombstoneResult, error) {
 		}
 	}
 	a.perspectives = kept
+	// goal 0233: id's own DeletedAt above already resolves
+	// EffectiveParentID to the POST-delete parent, so this repositions
+	// any promoted board-object children into it before persisting.
+	promotion := a.preparePromotionLocked(id)
 	perr := a.persistLocked()
 	if perr != nil {
 		a.cards[idx] = previous
 		a.perspectives = previousPerspectives
+		a.rollbackPromotionLocked(promotion)
 	}
 	a.mu.Unlock()
 	if perr != nil {
@@ -215,7 +220,7 @@ func (a *AtlasService) DeleteCard(id string) (TombstoneResult, error) {
 	dataevent.Emit("atlas", id)
 	a.disarmMirrorWatch(id)
 	a.recordUndo(actorUI, "card", id, previous.Title,
-		func(a *AtlasService) error { return a.UndoDelete([]string{id}, nil, nil) },
+		func(a *AtlasService) error { return a.undoCardDeleteWithPromotion(id, promotion) },
 		func(a *AtlasService) error { _, err := a.DeleteCard(id); return err },
 	)
 	return TombstoneResult{CardIDs: []string{id}, LinksRemoved: linksRemoved, ChildrenPromoted: childrenPromoted}, nil

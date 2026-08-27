@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { angleFromCenter, normalizeAngle, snapAngle } from './atlasRotation'
+import { angleFromCenter, normalizeAngle, rotatedAABB, snapAngle } from './atlasRotation'
 
 describe('angleFromCenter', () => {
   it('reads 0deg when the pointer sits directly above the center', () => {
@@ -42,5 +42,35 @@ describe('normalizeAngle', () => {
   it('leaves an in-range angle unchanged', () => {
     expect(normalizeAngle(45)).toBe(45)
     expect(normalizeAngle(0)).toBe(0)
+  })
+})
+
+describe('rotatedAABB', () => {
+  it('is the identity box at 0deg', () => {
+    expect(rotatedAABB(10, 20, 160, 100, 0)).toEqual({ x: 10, y: 20, width: 160, height: 100 })
+  })
+
+  it('swaps width/height at 90deg, still centered on the same point', () => {
+    const box = rotatedAABB(0, 0, 160, 100, 90)
+    expect(box.width).toBeCloseTo(100)
+    expect(box.height).toBeCloseTo(160)
+    // center stays (80, 50) regardless of rotation
+    expect(box.x + box.width / 2).toBeCloseTo(80)
+    expect(box.y + box.height / 2).toBeCloseTo(50)
+  })
+
+  it('grows both dimensions at 45deg past a square rectangle\'s own diagonal', () => {
+    const box = rotatedAABB(0, 0, 100, 100, 45)
+    expect(box.width).toBeCloseTo(100 * Math.SQRT2)
+    expect(box.height).toBeCloseTo(100 * Math.SQRT2)
+  })
+
+  it('is symmetric between a rotation and its 180deg-shifted mirror', () => {
+    const a = rotatedAABB(5, 5, 160, 96, 60)
+    const b = rotatedAABB(5, 5, 160, 96, 240)
+    expect(a.x).toBeCloseTo(b.x)
+    expect(a.y).toBeCloseTo(b.y)
+    expect(a.width).toBeCloseTo(b.width)
+    expect(a.height).toBeCloseTo(b.height)
   })
 })

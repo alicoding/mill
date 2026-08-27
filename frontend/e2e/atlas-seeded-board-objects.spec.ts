@@ -38,11 +38,14 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Board gallery')
 
     // The rotated shape (goal 0214's own retroactive seed proof): a
-    // real, nonzero rotation baked into the rendered SVG's own inline
-    // transform, not just the stored Payload value.
+    // real, nonzero rotation baked into the rendered board object's
+    // own inline transform, not just the stored Payload value. Lives
+    // on the object's own box (goal 0236), not its inner SVG paint --
+    // the ring/resize handles/rotate handle all share this same
+    // transform rather than disagreeing with it.
     const shape = page.locator('[data-testid="atlas-board-object"][data-object-kind="shape"]')
     await expect(shape).toBeVisible()
-    await expect(shape.locator('[data-testid="atlas-shape-content"]')).toHaveAttribute('style', /rotate\(15deg\)/)
+    await expect(shape).toHaveAttribute('style', /rotate\(15deg\)/)
 
     // Ink and image: both file-backed, rendered through the same
     // mirrored-image door -- a real <img> confirms the seed's own

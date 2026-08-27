@@ -1,6 +1,5 @@
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { arrowGeometry } from './atlasShapeSvg'
-import { useAtlasShapeRotateLive } from './atlasShapeRotateLiveStore'
 
 const DEFAULT_W = 160
 const DEFAULT_H = 100
@@ -38,10 +37,6 @@ export function AtlasShapeContent({ object }: { object: BoardObject; mirrorVersi
   const stroke = payload.stroke || '#1f6feb'
   const strokeWidth = Number(payload.strokeWidth) || 2
   const fill = payload.fill || 'none'
-  // Read unconditionally (react-hooks/rules-of-hooks) even though only
-  // the rectangle/ellipse branch below ever uses it -- arrow returns
-  // early and simply never applies it.
-  const liveRotation = useAtlasShapeRotateLive(object.ID)
 
   if (shapeType === 'arrow') {
     const dx = Number(payload.dx) || 0
@@ -62,16 +57,11 @@ export function AtlasShapeContent({ object }: { object: BoardObject; mirrorVersi
   const w = object.Size?.W ?? DEFAULT_W
   const h = object.Size?.H ?? DEFAULT_H
   const inset = strokeWidth / 2
-  // Rotation (goal 0214, rectangle/ellipse only -- arrow's own
-  // geometry IS its dx/dy payload, so an angle would be a second,
-  // conflicting representation). A live drag override (the rotate
-  // handle's own ephemeral store, read above) always wins over the
-  // persisted value so the shape turns with the pointer before
-  // anything is saved; rotating the whole <svg> (rather than its inner
-  // shape) keeps the transform origin unambiguous -- viewBox and this
-  // element's own CSS box coincide exactly since preserveAspectRatio
-  // ="none" never letterboxes.
-  const rotation = liveRotation ?? (Number(payload.rotation) || 0)
+  // Rotation (goal 0214, rectangle/ellipse only) is applied one level
+  // up, on AtlasBoardObjectNode's own box (goal 0236) -- this SVG just
+  // fills whatever box it's given, unrotated, so the selection ring/
+  // resize handles/rotate handle share the exact same transform the
+  // paint does rather than disagreeing with it.
 
   return (
     <svg
@@ -80,7 +70,7 @@ export function AtlasShapeContent({ object }: { object: BoardObject; mirrorVersi
       height="100%"
       viewBox={`0 0 ${w} ${h}`}
       preserveAspectRatio="none"
-      style={{ display: 'block', transform: rotation ? `rotate(${rotation}deg)` : undefined, transformOrigin: '50% 50%' }}
+      style={{ display: 'block' }}
     >
       {shapeType === 'ellipse' ? (
         <ellipse cx={w / 2} cy={h / 2} rx={Math.max(0, w / 2 - inset)} ry={Math.max(0, h / 2 - inset)} fill={fill} stroke={stroke} strokeWidth={strokeWidth} />

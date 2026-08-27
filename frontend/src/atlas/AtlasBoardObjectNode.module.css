@@ -113,7 +113,23 @@
     color: var(--fgColor-danger);
 }
 
-/* The board object's selection ring uses AtlasBoard.module.css's
-   shared defaults unmodified (goal 0197's own header comment there
-   has the outline-vs-box-shadow constraint) -- no override needed
-   here. */
+/* A rotatable shape's own ring (goal 0236): `.object` carries the
+   rotation transform (AtlasBoardObjectNode.tsx's own inline style), so
+   its selection ring is drawn HERE, on that same rotated element,
+   instead of AtlasBoard.module.css's shared default (which lives on
+   React Flow's axis-aligned wrapper and would sit still while the
+   shape turns away from it). `:has()` suppresses that default
+   specifically where it would otherwise double up with this one; every
+   other object Kind is untouched, since neither selector matches a
+   wrapper whose `.object` carries no `data-shape-type` at all. */
+:global(.react-flow__node.selected):has(.object[data-shape-type='rectangle']),
+:global(.react-flow__node.selected):has(.object[data-shape-type='ellipse']) {
+    box-shadow: none;
+}
+:global(.react-flow__node.selected) .object[data-shape-type='rectangle'],
+:global(.react-flow__node.selected) .object[data-shape-type='ellipse'] {
+    border-radius: var(--mill-ring-radius, var(--borderRadius-medium));
+    box-shadow:
+        0 0 0 var(--mill-ring-inner, 2px) var(--borderColor-accent-emphasis),
+        0 0 0 var(--mill-ring-outer, 5px) var(--bgColor-accent-muted);
+}

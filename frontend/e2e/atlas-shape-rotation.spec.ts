@@ -31,23 +31,26 @@ test('a selected shape shows the rotate handle, dragging it rotates live, Shift 
   const wrapper = nonSeededBoardObjectWrapper(page, 'shape')
   await expect(wrapper).toHaveClass(/selected/)
 
-  const content = shape.locator('[data-testid="atlas-shape-content"]')
   const handle = page.getByTestId('atlas-shape-rotate-handle')
 
   // Discrete draw tools leave the new shape selected (goal 0199) --
   // the handle appears on that same selection, no extra click needed.
   await expect(handle).toBeVisible()
-  const initialTransform = await content.evaluate((el) => (el as HTMLElement).style.transform)
+  // The rotation transform lives on the board object's own box (goal
+  // 0236), not its inner SVG paint -- reading it here is what proves
+  // the selection ring/resize handles/rotate handle (all children of
+  // this SAME box) share the exact transform the shape's paint does.
+  const initialTransform = await shape.evaluate((el) => (el as HTMLElement).style.transform)
   expect(parseRotationDeg(initialTransform)).toBeNull()
 
   // Plain drag: a real rotation applies live, before anything commits.
   await dragResizeHandle(page, handle, 80, 0, 6, async (i) => {
     if (i !== 3) return
-    const mid = await content.evaluate((el) => (el as HTMLElement).style.transform)
+    const mid = await shape.evaluate((el) => (el as HTMLElement).style.transform)
     expect(parseRotationDeg(mid), 'the shape must already be rotating mid-drag, not only after release').not.toBeNull()
   })
-  await expect.poll(async () => parseRotationDeg(await content.evaluate((el) => (el as HTMLElement).style.transform))).not.toBeNull()
-  const plainDeg = parseRotationDeg(await content.evaluate((el) => (el as HTMLElement).style.transform))
+  await expect.poll(async () => parseRotationDeg(await shape.evaluate((el) => (el as HTMLElement).style.transform))).not.toBeNull()
+  const plainDeg = parseRotationDeg(await shape.evaluate((el) => (el as HTMLElement).style.transform))
   if (plainDeg === null) throw new Error('no rotation after plain drag')
   // Dragging the handle rightward from its resting spot above the
   // shape is a clockwise turn -- a positive, sub-180deg reading.
@@ -66,10 +69,10 @@ test('a selected shape shows the rotate handle, dragging it rotates live, Shift 
   const beforeEscapeDrag = plainDeg
   await dragResizeHandle(page, handle, -80, 0, 4, async (i) => {
     if (i !== 2) return
-    await expect.poll(async () => parseRotationDeg(await content.evaluate((el) => (el as HTMLElement).style.transform))).not.toBe(beforeEscapeDrag)
+    await expect.poll(async () => parseRotationDeg(await shape.evaluate((el) => (el as HTMLElement).style.transform))).not.toBe(beforeEscapeDrag)
     await page.keyboard.press('Escape')
   })
-  await expect.poll(async () => parseRotationDeg(await content.evaluate((el) => (el as HTMLElement).style.transform))).toBe(beforeEscapeDrag)
+  await expect.poll(async () => parseRotationDeg(await shape.evaluate((el) => (el as HTMLElement).style.transform))).toBe(beforeEscapeDrag)
 
   // Shift-held drag snaps to 15deg increments. Raw page.mouse, not
   // dragResizeHandle: that checked helper's own hover-then-press
@@ -100,8 +103,8 @@ test('a selected shape shows the rotate handle, dragging it rotates live, Shift 
   await page.keyboard.up('Shift')
   // eslint-disable-next-line no-restricted-syntax -- interleaved Shift hold, see comment above
   await page.mouse.up()
-  await expect.poll(async () => parseRotationDeg(await content.evaluate((el) => (el as HTMLElement).style.transform))).not.toBeNull()
-  const snappedDeg = parseRotationDeg(await content.evaluate((el) => (el as HTMLElement).style.transform))
+  await expect.poll(async () => parseRotationDeg(await shape.evaluate((el) => (el as HTMLElement).style.transform))).not.toBeNull()
+  const snappedDeg = parseRotationDeg(await shape.evaluate((el) => (el as HTMLElement).style.transform))
   if (snappedDeg === null) throw new Error('no rotation after shift-snapped drag')
   expect(snappedDeg % 15).toBe(0)
 
@@ -116,10 +119,41 @@ test('a selected shape shows the rotate handle, dragging it rotates live, Shift 
   await page.getByRole('link', { name: 'Atlas' }).click()
   const reloadedShape = nonSeededBoardObjects(page, 'shape')
   await expect(reloadedShape).toBeVisible()
-  const reloadedContent = reloadedShape.locator('[data-testid="atlas-shape-content"]')
-  await expect.poll(async () => parseRotationDeg(await reloadedContent.evaluate((el) => (el as HTMLElement).style.transform))).toBe(snappedDeg)
+  await expect.poll(async () => parseRotationDeg(await reloadedShape.evaluate((el) => (el as HTMLElement).style.transform))).toBe(snappedDeg)
 
   await reloadedShape.click({ button: 'right' })
   await page.getByText('Delete', { exact: true }).click()
   await expect(reloadedShape).toHaveCount(0)
+})
+
+test('a rotated shape\'s selection ring lives on the rotating element, not the axis-aligned React Flow wrapper', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  await page.getByTestId('atlas-tray-shape').click()
+  await dragBetween(page, await boardPoint(board, 0.05, 0.1), await boardPoint(board, 0.2, 0.25))
+  const shape = nonSeededBoardObjects(page, 'shape')
+  const wrapper = nonSeededBoardObjectWrapper(page, 'shape')
+  await expect(wrapper).toHaveClass(/selected/)
+  const handle = page.getByTestId('atlas-shape-rotate-handle')
+  await expect(handle).toBeVisible()
+
+  await dragResizeHandle(page, handle, 80, 0, 6)
+  await expect.poll(async () => parseRotationDeg(await shape.evaluate((el) => (el as HTMLElement).style.transform))).not.toBeNull()
+
+  // Goal 0236's own regression: the ring now rotates WITH the shape --
+  // it renders as a box-shadow on the shape's own box (which carries
+  // the rotation transform), never on React Flow's axis-aligned
+  // wrapper, so it can never again sit still while the shape visually
+  // turns away from it.
+  const wrapperShadow = await wrapper.evaluate((el) => getComputedStyle(el).boxShadow)
+  const shapeShadow = await shape.evaluate((el) => getComputedStyle(el).boxShadow)
+  expect(wrapperShadow).toBe('none')
+  expect(shapeShadow).not.toBe('none')
+
+  await shape.click({ button: 'right' })
+  await page.getByText('Delete', { exact: true }).click()
+  await expect(shape).toHaveCount(0)
 })

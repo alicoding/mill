@@ -24,3 +24,21 @@ export function snapAngle(angle: number, step: number): number {
 export function normalizeAngle(angle: number): number {
   return ((angle % 360) + 360) % 360
 }
+
+// rotatedAABB -- the axis-aligned box a w x h rectangle actually
+// occupies once rotated `degrees` around its own center, expressed in
+// the same (x, y) top-left + width/height shape every unrotated box on
+// this board already uses (goal 0236's audit: eraser/laser hit-testing
+// reads this instead of a shape node's raw measured size, which
+// under-covers a rotated shape's real screen footprint). Degenerates
+// to the identity box at 0deg, matching every pre-existing caller's
+// unrotated math exactly.
+export function rotatedAABB(x: number, y: number, w: number, h: number, degrees: number): { x: number; y: number; width: number; height: number } {
+  if (!degrees) return { x, y, width: w, height: h }
+  const rad = (degrees * Math.PI) / 180
+  const cos = Math.abs(Math.cos(rad))
+  const sin = Math.abs(Math.sin(rad))
+  const width = w * cos + h * sin
+  const height = w * sin + h * cos
+  return { x: x + w / 2 - width / 2, y: y + h / 2 - height / 2, width, height }
+}
