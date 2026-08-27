@@ -7,7 +7,7 @@ it parsed before anything runs.
 
 Say a tool hands you a command to debug something — a `curl` to test
 a connection, a couple of setup lines to try. Copy it, then run
-**Run copied command…** from the command palette (⌘K) or Quick
+**Run from clipboard…** from the command palette (⌘K) or Quick
 Panel — the same panel a global hotkey opens from any app, so this
 works even when Mill isn't in front.
 

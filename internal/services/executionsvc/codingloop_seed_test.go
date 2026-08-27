@@ -23,7 +23,7 @@ func stubNotifier(t *testing.T) {
 }
 
 // TestSeededCodingLoopExample_Approve_RunsMultiStepCommandAndWritesClipboard
-// proves the real "Run copied command" seed end to end (docs/goals/0240
+// proves the real "Run from clipboard" seed end to end (docs/goals/0240
 // S1, seedproof_test.go's CodingLoopWorkflowID entry): the run parks
 // awaiting approval (process-shell-command's ClassExternal effect),
 // approving it actually runs a real multi-step payload -- one

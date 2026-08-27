@@ -51,7 +51,7 @@
       "reviewNoPending": "No pending reviews",
       "applyFromClipboard": "Apply from clipboard…",
       "applyFromClipboardDescription": "Create or update a workflow from a copied Mill export",
-      "runCodingLoop": "Run copied command…",
+      "runCodingLoop": "Run from clipboard…",
       "runCodingLoopDescription": "Run a shell command from your clipboard, with a preview before it runs",
       "pinWorkflow": "Pin \"{{label}}\"",
       "unpinWorkflow": "Unpin \"{{label}}\""
@@ -243,7 +243,7 @@
     "searchPlaceholder": "Search docs"
   },
   "codingLoop": {
-    "dialogTitle": "Run copied command",
+    "dialogTitle": "Run from clipboard",
     "reading": "Reading the clipboard…",
     "confirm": {
       "loading": "Parsing the copied command…",

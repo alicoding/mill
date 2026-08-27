@@ -10,8 +10,8 @@ import { paletteDialog } from './fixtures/palette'
 // global Activity/run count (testing.md's shared-vs-dedicated rule),
 // same choice codeexec.spec.ts already makes for the same reason.
 //
-// Drives the capture entry via the command palette (⌘K -> "Run copied
-// command"), not the Quick Panel's own separate window -- the Quick
+// Drives the capture entry via the command palette (⌘K -> "Run from
+// clipboard"), not the Quick Panel's own separate window -- the Quick
 // Panel is a second, auxiliary Wails window Playwright's single-page
 // harness doesn't attach to, while both doors render the exact same
 // shared CodingLoopSurface/useCodingLoopRun (shared/CodingLoopSurface.tsx),
@@ -41,10 +41,10 @@ test('Coding loop: capture, confirm, run, and copy back the result', async ({ pa
 
     await page.keyboard.press('Meta+K')
     await expect(paletteDialog(page)).toBeVisible()
-    await paletteDialog(page).getByRole('combobox').fill('run copied command')
-    await paletteDialog(page).getByRole('option', { name: 'Run copied command…', exact: true }).click()
+    await paletteDialog(page).getByRole('combobox').fill('run from clipboard')
+    await paletteDialog(page).getByRole('option', { name: 'Run from clipboard…', exact: true }).click()
 
-    const dialog = page.getByRole('dialog', { name: 'Run copied command' })
+    const dialog = page.getByRole('dialog', { name: 'Run from clipboard' })
     await expect(dialog).toBeVisible()
 
     if (!hostClipboardAvailable) {

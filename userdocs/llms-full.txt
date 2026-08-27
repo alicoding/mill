@@ -511,7 +511,7 @@ it parsed before anything runs.
 
 Say a tool hands you a command to debug something — a `curl` to test
 a connection, a couple of setup lines to try. Copy it, then run
-**Run copied command…** from the command palette (⌘K) or Quick
+**Run from clipboard…** from the command palette (⌘K) or Quick
 Panel — the same panel a global hotkey opens from any app, so this
 works even when Mill isn't in front.
 
@@ -1081,7 +1081,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `canvas.zoomIn` | Zoom in | `⌘+` | composition | Always available |
 | `canvas.zoomOut` | Zoom out | `⌘-` | composition | Always available |
 | `clipboard.history.open` | Clipboard history | — | Global | Always available |
-| `codingLoop.run` | Run copied command… | — | Global | Always available |
+| `codingLoop.run` | Run from clipboard… | — | Global | Always available |
 | `configure.new.aiproviders` | New AI provider | — | Global | Always available |
 | `configure.new.decisions` | New decision | — | Global | Always available |
 | `configure.new.execenvs` | New environment | — | Global | Always available |

@@ -15,7 +15,7 @@ import { useUISignalStore } from './uiSignalStore'
 export const CODING_LOOP_COMMANDS: Command[] = [
   {
     id: 'codingLoop.run',
-    label: 'Run copied command…',
+    label: 'Run from clipboard…',
     defaultBinding: null,
     quickPanel: true,
     run: () => useUISignalStore.getState().openCodingLoop(),

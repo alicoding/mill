@@ -391,7 +391,7 @@
   },
   {
     "id": "codingLoop.run",
-    "label": "Run copied command…",
+    "label": "Run from clipboard…",
     "binding": null,
     "surface": null,
     "enabled": false

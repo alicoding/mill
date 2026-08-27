@@ -27,7 +27,7 @@ func codingLoopBuiltInWorkflow() []Workflow {
 		{ID: CodingLoopShellStepID, NodeTypeID: "process-shell-command", Position: Position{X: 0, Y: 100}},
 		{ID: applyID, NodeTypeID: "apply-clipboard-write-text", Position: Position{X: 0, Y: 200}},
 		{ID: notifyID, NodeTypeID: "apply-notify", Position: Position{X: 0, Y: 300},
-			Config: map[string]string{"title": "Run copied command", "body": "Result copied -- open Mill to review the run."}},
+			Config: map[string]string{"title": "Run from clipboard", "body": "Result copied -- open Mill to review the run."}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
@@ -36,7 +36,7 @@ func codingLoopBuiltInWorkflow() []Workflow {
 	return []Workflow{
 		{
 			ID:          CodingLoopWorkflowID,
-			Label:       "Run copied command",
+			Label:       "Run from clipboard",
 			Description: "Runs a copied shell command block, then copies the result back to your clipboard and notifies you. Started from the command palette or Quick Panel, which show the parsed steps and ask for approval before anything runs; assign this workflow's own hotkey (canvas Inspector) if you'd rather trigger it directly, without that preview.",
 			Nodes:       nodes,
 			Edges: []Edge{
