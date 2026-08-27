@@ -117,3 +117,29 @@ export interface Rule {
      */
     "Seed": seedorigin$0.Origin;
 }
+
+/**
+ * Verdict is one evaluation's outcome: the effect plus which rule
+ * produced it (nil RuleID/RuleLabel means the effect-class default
+ * applied). Serialized into the run's checkpointed guardrail step, so
+ * the Runs UI reports what actually decided, not a re-evaluation
+ * against possibly-changed rules.
+ */
+export interface Verdict {
+    "effect": Effect;
+
+    /**
+     * RuleID/RuleLabel identify the deciding rule; empty when the
+     * effect-class default decided.
+     */
+    "ruleID"?: string;
+    "ruleLabel"?: string;
+
+    /**
+     * Source mirrors the deciding rule's Source (SourceDebug or "" for
+     * policy/the effect-class default) -- docs/adr/0031: lets a
+     * downstream park distinguish a breakpoint from a policy ask without
+     * re-inspecting the rule set.
+     */
+    "source"?: string;
+}

@@ -320,6 +320,22 @@ func GuardrailStep(workflowID string, node composition.Node, ec composition.Exec
 	}
 }
 
+// ShellCommandVerdicts returns one guardrail verdict per command in
+// commands, evaluated against the CURRENT rule set -- goal 0240 S3's
+// per-line allow/deny pattern-list decisions. Scoped to the coding
+// loop's own seeded process-shell-command node/workflow so a
+// NodeTypeID-scoped list rule (guardrail.BuiltIn's ShellAllow*/
+// ShellDeny* entries) matches, exactly like GuardrailStep's other
+// callers. Shared by the Confirm-screen preview (codeloopsvc) and the
+// real execution gate (guardrailGate) so they can never disagree,
+// extending GuardrailStep's own "never disagree" contract to per-line
+// granularity.
+func (g *GuardrailService) ShellCommandVerdicts(commands []string) []guardrail.Verdict {
+	node := composition.Node{ID: composition.CodingLoopShellStepID, NodeTypeID: "process-shell-command"}
+	base := GuardrailStep(composition.CodingLoopWorkflowID, node, composition.ExecContext{})
+	return guardrail.EvaluateCommandSteps(g.Rules(), base, commands, guardrail.ClassExternal)
+}
+
 // WorkflowVerdicts dry-runs the current rule set against every
 // executable step of one workflow at once -- the canvas's
 // nothing-hidden badge data (docs/adr/0022's Update: a step that will

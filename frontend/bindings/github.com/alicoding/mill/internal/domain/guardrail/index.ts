@@ -7,5 +7,6 @@ export {
 } from "./models.js";
 
 export type {
-    Rule
+    Rule,
+    Verdict
 } from "./models.js";

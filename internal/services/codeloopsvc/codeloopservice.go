@@ -29,6 +29,15 @@ type CommandBlockPreviewStep struct {
 	Text                       string `json:"text"`
 	Join                       string `json:"join"`
 	LooksLikeSecretPlaceholder bool   `json:"looksLikeSecretPlaceholder"`
+	// Verdict/RuleLabel (goal 0240 S3) are this ONE step's own guardrail
+	// verdict -- "allow" | "ask" | "deny", matching CommandBlockPreview's
+	// own GuardrailVerdict values. RuleLabel is empty when the
+	// effect-class default decided (no allow/deny-list pattern matched);
+	// the Confirm screen only renders a per-step badge when it's
+	// non-empty, so an unlisted step stays exactly as quiet as it was
+	// before this slice.
+	Verdict   string `json:"verdict"`
+	RuleLabel string `json:"ruleLabel,omitempty"`
 }
 
 // CommandBlockPreview is PreviewCommandBlock's full return shape.
@@ -36,13 +45,13 @@ type CommandBlockPreview struct {
 	Steps []CommandBlockPreviewStep `json:"steps"`
 	Shell string                    `json:"shell"`
 	Dir   string                    `json:"dir"`
-	// GuardrailVerdict is "allow" | "ask" | "deny" -- one verdict for
-	// the whole block, since S1's guardrail plane evaluates per NODE,
-	// not per parsed line (every step shares the seed's own single
-	// process-shell-command node). A future allow/deny pattern-list
-	// slice (goal 0240 S3) is what would ever make per-step verdicts
-	// differ; nothing in this preview's own shape needs to change for
-	// that to land.
+	// GuardrailVerdict is "allow" | "ask" | "deny" -- the block-level
+	// gate decision (goal 0240 S3): the MOST RESTRICTIVE of every step's
+	// own Verdict below, since the block still checkpoints/pauses as ONE
+	// DBOS step (composition/executeshellcommand.go's own one-step-per-
+	// node design). Each CommandBlockPreviewStep now carries its OWN
+	// verdict too -- this field is what actually decides whether Run
+	// pauses for approval, the per-step ones are display only.
 	GuardrailVerdict string `json:"guardrailVerdict"`
 	// WorkflowID/NodeID name which real seeded workflow/node the
 	// frontend will call RunWorkflowWithPayload/ResolveApproval
@@ -113,20 +122,28 @@ func (s *CodeLoopService) PreviewCommandBlock(text string) (CommandBlockPreview,
 		return CommandBlockPreview{}, fmt.Errorf("nothing to run -- the clipboard has no command text")
 	}
 
+	commands := make([]string, len(parsed))
+	for i, p := range parsed {
+		commands[i] = p.Text
+	}
+	// Per-step verdicts (goal 0240 S3): the SAME per-line evaluation the
+	// real execution gate uses (executionservice_guardrail.go's
+	// evaluateVerdict), so Confirm and the actual run can never disagree
+	// about which step an allow/deny-list pattern decided.
+	stepVerdicts := s.guard.ShellCommandVerdicts(commands)
+
 	steps := make([]CommandBlockPreviewStep, len(parsed))
 	for i, p := range parsed {
 		steps[i] = CommandBlockPreviewStep{
 			Index: p.Index, Text: p.Text, Join: string(p.Join),
 			LooksLikeSecretPlaceholder: p.LooksLikeSecretPlaceholder,
+			Verdict:                    string(stepVerdicts[i].Effect),
+			RuleLabel:                  stepVerdicts[i].RuleLabel,
 		}
 	}
 
 	target := composition.ResolveShellCommandTarget()
-	verdict := guardrail.Evaluate(s.guard.Rules(), guardrail.Step{
-		WorkflowID: composition.CodingLoopWorkflowID,
-		NodeID:     composition.CodingLoopShellStepID,
-		NodeTypeID: "process-shell-command",
-	}, guardrail.ClassExternal)
+	verdict := guardrail.WorstVerdict(stepVerdicts)
 
 	names := composition.ExtractSecretEnvRefsAll(parsed)
 	reqs := composition.ResolveSecretRequirements(names)
