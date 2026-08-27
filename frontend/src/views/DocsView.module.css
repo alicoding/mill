@@ -12,11 +12,81 @@
   padding: 8px;
 }
 
+/* No overflow-y here (goal 0235 S2 found this the hard way): .docs's
+   height:100% never actually bottoms out at a bounded ancestor height
+   through Primer PageLayout's own flex chain, so .content always grows
+   to its full content height and this box's own "auto" scrollbar never
+   activates -- the real scroll happens one level up, on PageLayout's
+   own MAIN.view-pane wrapper. Setting overflow here doesn't restore
+   real scrolling; it only creates an inert CSS scroll-container box
+   that STEALS the sticky containing block .toc below needs from the
+   ancestor that actually scrolls. */
 .content {
   flex: 1;
   min-width: 0;
-  overflow-y: auto;
   padding: 24px 32px;
+}
+
+/* Content grid (goal 0235 S2): mainColumn carries every existing S1
+   element (header/article/prevNext, each still self-centering via its
+   own max-width:72ch + margin-inline:auto below) unchanged; the TOC
+   rail is a sibling flex item that only ever renders when the current
+   page actually has h2/h3 headings (DocsToc.tsx returns null
+   otherwise), so a heading-less page's layout stays pixel-identical
+   to S1. */
+.contentGrid {
+  display: flex;
+  gap: var(--base-size-32, 32px);
+  align-items: flex-start;
+}
+
+.mainColumn {
+  flex: 1;
+  min-width: 0;
+}
+
+.toc {
+  width: 200px;
+  flex-shrink: 0;
+  position: sticky;
+  /* Matches .content's own padding-top, so a stuck rail sits flush
+     with the reading column's top edge rather than the scroll
+     container's raw edge. */
+  top: var(--base-size-24, 24px);
+  max-height: calc(100vh - var(--base-size-48, 48px));
+  overflow-y: auto;
+}
+
+.tocItemNested {
+  padding-left: var(--base-size-16, 16px);
+}
+
+@media (max-width: 768px) {
+  .toc {
+    display: none;
+  }
+}
+
+/* Heading anchor (goal 0235 S2, the S1-deferred piece): revealed on
+   heading hover/focus only -- a bare "#" would otherwise clutter every
+   heading at rest. position:relative on the heading (not the link)
+   keeps the link in normal text flow, trailing the heading text. */
+.article :global(h2),
+.article :global(h3) {
+  position: relative;
+}
+
+.headingAnchor {
+  margin-left: var(--base-size-8, 8px);
+  color: var(--fgColor-muted);
+  text-decoration: none;
+  opacity: 0;
+}
+
+.article :global(h2):hover .headingAnchor,
+.article :global(h3):hover .headingAnchor,
+.headingAnchor:focus {
+  opacity: 1;
 }
 
 /* Breadcrumb/page header (goal 0235 S1): section name over the page

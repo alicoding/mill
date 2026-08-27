@@ -416,6 +416,8 @@
       "trust": "Trust"
     },
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "tocAriaLabel": "On this page",
+    "headingAnchorLabel": "Link to {{heading}}"
   }
 }

@@ -439,6 +439,13 @@
     "enabled": false
   },
   {
+    "id": "docs.search",
+    "label": "Search docs",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
     "id": "help.shortcuts",
     "label": "Keyboard shortcuts help",
     "binding": null,

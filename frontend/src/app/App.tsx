@@ -25,6 +25,7 @@ import { CommandPalette } from "./CommandPalette";
 import { ShortcutsHelpDialog } from "./ShortcutsHelpDialog";
 import { WhatsNewDialog } from "./WhatsNewDialog";
 import { ClipboardHistoryDialog } from "./ClipboardHistoryDialog";
+import { DocsSearchDialog } from "./DocsSearchDialog";
 import { BuildIdentityBadge } from "./BuildIdentityBadge";
 import { NoticePill } from "./NoticePill";
 import DocsView from "../views/DocsView";
@@ -410,6 +411,10 @@ function App() {
           once shape, renders off the store's clipboardHistoryOpen
           flag -- opened via the clipboard.history.open command. */}
       <ClipboardHistoryDialog />
+      {/* Docs search (goal 0235 S2): same app-level-chrome-mounted-once
+          shape, renders off the store's docsSearchOpen flag -- opened
+          via the docs.search command, reachable from any view. */}
+      <DocsSearchDialog />
 
       {/* Every capability gets a nav entry, built or not (docs/SPEC.md
           §2.2) -- driven by CapabilitiesService's own data so the sidebar

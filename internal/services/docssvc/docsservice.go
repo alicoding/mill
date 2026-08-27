@@ -43,8 +43,23 @@ func (d *DocsService) DocsIndex() []DocsIndexEntry {
 }
 
 // DocPageHTML renders one indexed page. rel must be an index entry --
-// the closed list is the traversal guard, not path cleaning.
+// the closed list is the traversal guard, not path cleaning. Rendered
+// through RenderDocsHTML (not the shared RenderHTML every other
+// markdown consumer uses) so every heading carries a stable id -- the
+// TOC rail and heading-anchor links resolve against it.
 func (d *DocsService) DocPageHTML(rel string) (string, error) {
+	raw, err := d.readIndexedPage(rel)
+	if err != nil {
+		return "", err
+	}
+	html, err := markdown.RenderDocsHTML(string(raw))
+	if err != nil {
+		return "", fmt.Errorf("render docs page: %w", err)
+	}
+	return html, nil
+}
+
+func (d *DocsService) readIndexedPage(rel string) ([]byte, error) {
 	known := false
 	for _, p := range docsgen.PageIndex() {
 		if p.Rel == rel {
@@ -53,15 +68,41 @@ func (d *DocsService) DocPageHTML(rel string) (string, error) {
 		}
 	}
 	if !known {
-		return "", fmt.Errorf("no docs page %q", rel)
+		return nil, fmt.Errorf("no docs page %q", rel)
 	}
 	raw, err := fs.ReadFile(d.content, "userdocs/"+rel)
 	if err != nil {
-		return "", fmt.Errorf("read docs page: %w", err)
+		return nil, fmt.Errorf("read docs page: %w", err)
 	}
-	html, err := markdown.RenderHTML(string(raw))
-	if err != nil {
-		return "", fmt.Errorf("render docs page: %w", err)
+	return raw, nil
+}
+
+// DocSearchEntry is one page's contribution to the client-side search
+// index: title plus the page's full text (rendered then stripped to
+// plain text, so matches land on prose, not markdown syntax).
+type DocSearchEntry struct {
+	Rel   string `json:"rel"`
+	Title string `json:"title"`
+	Text  string `json:"text"`
+}
+
+// DocsSearchIndex serves every indexed page's full text in one call --
+// the offline, client-side `docs.search` command builds its match
+// index from this, computed once per session rather than re-fetched
+// per keystroke.
+func (d *DocsService) DocsSearchIndex() ([]DocSearchEntry, error) {
+	pages := docsgen.PageIndex()
+	out := make([]DocSearchEntry, 0, len(pages))
+	for _, p := range pages {
+		raw, err := d.readIndexedPage(p.Rel)
+		if err != nil {
+			return nil, err
+		}
+		html, err := markdown.RenderDocsHTML(string(raw))
+		if err != nil {
+			return nil, fmt.Errorf("render docs page %q: %w", p.Rel, err)
+		}
+		out = append(out, DocSearchEntry{Rel: p.Rel, Title: p.Title, Text: markdown.PlainText(html)})
 	}
-	return html, nil
+	return out, nil
 }

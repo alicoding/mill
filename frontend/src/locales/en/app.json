@@ -235,5 +235,9 @@
     "pin": "Pin",
     "unpin": "Unpin",
     "delete": "Delete"
+  },
+  "docsSearch": {
+    "title": "Search docs",
+    "searchPlaceholder": "Search docs"
   }
 }
