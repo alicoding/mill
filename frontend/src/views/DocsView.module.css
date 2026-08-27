@@ -159,6 +159,49 @@
   color: var(--fgColor-danger);
 }
 
+/* Code-block copy button (goal 0235 S3): hover-revealed like the
+   heading anchor above -- a bare button at rest would clutter every
+   code block, most of which are never copied. position:relative on
+   the wrapper (not .prose's own <pre>) keeps the button anchored to
+   the block without disturbing MarkdownProse's existing pre/code
+   rules. */
+.codeBlockWrapper {
+  position: relative;
+}
+
+.codeCopyButton {
+  position: absolute;
+  top: var(--base-size-8, 8px);
+  right: var(--base-size-8, 8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background-color: var(--bgColor-default, canvas);
+  color: var(--fgColor-muted);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.1s ease-in-out;
+}
+
+.codeBlockWrapper:hover .codeCopyButton,
+.codeCopyButton:focus {
+  opacity: 1;
+}
+
+.codeCopyButton:hover {
+  background-color: var(--control-transparent-bgColor-hover, #818b981a);
+  color: var(--fgColor-default);
+}
+
+.codeCopyButtonCopied {
+  color: var(--fgColor-success, #1a7f37);
+}
+
 /* Prev/next footer (goal 0235 S1): derived from DocsIndex's flat
    reading order, two symmetric cards -- the next card's text
    right-aligns so its label and title read toward the direction the

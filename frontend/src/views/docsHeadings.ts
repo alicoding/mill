@@ -28,7 +28,7 @@ function stripTags(inner: string): string {
 // HTML-escaped by the time it reaches here, but the label re-derives
 // plain text via stripTags above, so it needs the same treatment
 // before going back into an attribute.
-function escapeAttr(s: string): string {
+export function escapeAttr(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 

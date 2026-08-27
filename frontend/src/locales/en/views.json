@@ -418,6 +418,8 @@
     "previous": "Previous",
     "next": "Next",
     "tocAriaLabel": "On this page",
-    "headingAnchorLabel": "Link to {{heading}}"
+    "headingAnchorLabel": "Link to {{heading}}",
+    "codeCopyAriaLabel": "Copy code",
+    "codeCopiedAriaLabel": "Copied"
   }
 }
