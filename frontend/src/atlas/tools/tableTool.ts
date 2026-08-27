@@ -50,7 +50,17 @@ export const tableTool = {
   // own grid carries REAL interactive descendants (editable cells,
   // boundary-insert buttons) -- img's own ARIA semantics forbid
   // meaningful children.
-  content: { Component: AtlasTableObjectContent, ariaLabelKey: 'boardObject.tableAriaLabel', role: undefined },
+  content: {
+    Component: AtlasTableObjectContent,
+    ariaLabelKey: 'boardObject.tableAriaLabel',
+    role: undefined,
+    // ADR-0046 (goal 0244 S0): Payload.listID names the backing
+    // Configure List this Kind projects -- a provider source, not a
+    // file. No edit door of its own yet (a table's own cell/promote
+    // affordances aren't routed through this contract this slice).
+    source: { kind: 'provider', refKey: 'listID' },
+    editRoute: { kind: 'none' },
+  },
   // No style surface of its own (goal 0209) -- always empty, not
   // omitted.
   styleFields: [],
