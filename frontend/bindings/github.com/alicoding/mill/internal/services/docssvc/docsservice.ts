@@ -11,7 +11,10 @@ import * as $models from "./models.js";
 
 /**
  * DocPageHTML renders one indexed page. rel must be an index entry --
- * the closed list is the traversal guard, not path cleaning.
+ * the closed list is the traversal guard, not path cleaning. Rendered
+ * through RenderDocsHTML (not the shared RenderHTML every other
+ * markdown consumer uses) so every heading carries a stable id -- the
+ * TOC rail and heading-anchor links resolve against it.
  */
 export function DocPageHTML(rel: string): $CancellablePromise<string> {
     return $Call.ByID(1387628192, rel);
@@ -24,4 +27,14 @@ export function DocPageHTML(rel: string): $CancellablePromise<string> {
  */
 export function DocsIndex(): $CancellablePromise<$models.DocsIndexEntry[] | null> {
     return $Call.ByID(815044109);
+}
+
+/**
+ * DocsSearchIndex serves every indexed page's full text in one call --
+ * the offline, client-side `docs.search` command builds its match
+ * index from this, computed once per session rather than re-fetched
+ * per keystroke.
+ */
+export function DocsSearchIndex(): $CancellablePromise<$models.DocSearchEntry[] | null> {
+    return $Call.ByID(2050011821);
 }

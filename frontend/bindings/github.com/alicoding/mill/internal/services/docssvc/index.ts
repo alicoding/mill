@@ -7,5 +7,6 @@ export {
 };
 
 export type {
+    DocSearchEntry,
     DocsIndexEntry
 } from "./models.js";

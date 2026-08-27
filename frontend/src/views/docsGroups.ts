@@ -28,7 +28,10 @@ const SECTION_TITLE_KEYS: Record<string, string> = {
   trust: 'docs.sections.trust',
 }
 
-function dirOf(rel: string): string {
+// Exported for app/DocsSearchDialog.tsx's own result rows (goal 0235
+// S2: "page title + section name + snippet") -- the same derivation
+// groupDocsIndex uses internally.
+export function dirOf(rel: string): string {
   const slash = rel.indexOf('/')
   return slash === -1 ? '' : rel.slice(0, slash)
 }

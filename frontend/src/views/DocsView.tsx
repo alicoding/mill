@@ -6,8 +6,12 @@ import { DocsService } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
 import { resolveDocLink } from './docLinks'
 import { adjacentPages, groupDocsIndex, sectionTitleKey, type DocsIndexEntry } from './docsGroups'
+import { injectHeadingAnchors, parseHeadings } from './docsHeadings'
+import { useDocsScrollSpy } from './useDocsScrollSpy'
+import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'
 import DocsNav from './DocsNav'
 import DocsPrevNext from './DocsPrevNext'
+import DocsToc from './DocsToc'
 import styles from './DocsView.module.css'
 
 function dirOf(rel: string): string {
@@ -39,6 +43,19 @@ function DocsView({ initialPage }: { initialPage?: string }) {
       .catch((err) => setError(String(err)))
   }, [initialPage])
 
+  // A landing that arrives while DocsView is ALREADY mounted (goal
+  // 0235 S2's docs.search: pick a different page without leaving the
+  // Docs surface) changes the initialPage PROP, not the component's
+  // key -- React doesn't resync state from a changed prop on its own,
+  // so this effect is the resync. The functional setPage form reads
+  // no outer `page` binding, so it never fights goTo's own setPage on
+  // an in-page cross-link click (goTo also calls setView, which
+  // round-trips back here as the same value the state already holds).
+  useEffect(() => {
+    if (!initialPage) return
+    setPage((current) => (initialPage === current ? current : initialPage))
+  }, [initialPage])
+
   useEffect(() => {
     if (!page) return
     setError('')
@@ -52,6 +69,14 @@ function DocsView({ initialPage }: { initialPage?: string }) {
   const currentEntry = index.find((e) => e.rel === page)
   const currentSectionKey = sectionTitleKey(dirOf(page))
 
+  const headings = useMemo(() => parseHeadings(html), [html])
+  const htmlWithAnchors = useMemo(
+    () => injectHeadingAnchors(html, styles.headingAnchor, (heading) => t('docs.headingAnchorLabel', { heading })),
+    [html, t],
+  )
+  const reducedMotion = usePrefersReducedMotion()
+  const { activeId: activeHeadingId, scrollToHeading } = useDocsScrollSpy(headings, reducedMotion)
+
   const goTo = (rel: string) => {
     setPage(rel)
     setView({ kind: 'docs', page: rel })
@@ -61,38 +86,49 @@ function DocsView({ initialPage }: { initialPage?: string }) {
     <div className={styles.docs} data-testid="docs-view">
       <DocsNav groups={groups} currentPage={page} onSelect={goTo} />
       <div className={styles.content}>
-        {currentEntry && (
-          <header className={styles.pageHeader} data-testid="docs-breadcrumb">
-            <span className={styles.pageHeaderSection}>
-              {currentSectionKey ? t(currentSectionKey) : dirOf(page)}
-            </span>
-            <h1 className={styles.pageHeaderTitle}>{currentEntry.title}</h1>
-          </header>
-        )}
-        {error && <Text className={styles.error} data-testid="docs-error">{error}</Text>}
-        {!error && (
-          // Same trusted-render reasoning as the Atlas mirror preview:
-          // the HTML comes from Mill's own markdown renderer over
-          // repository-authored content embedded in the binary. Anchor
-          // clicks are intercepted (docLinks.ts): a raw click would
-          // navigate the app's own webview away from Mill -- external
-          // URLs go to the system browser, .md cross-links stay in-app.
-          <article
-            className={styles.article}
-            data-testid="docs-content"
-            onClick={(ev) => {
-              const anchor = (ev.target as HTMLElement).closest('a')
-              const href = anchor?.getAttribute('href')
-              if (!href) return
-              ev.preventDefault()
-              const link = resolveDocLink(page, href)
-              if (link.kind === 'external') void Browser.OpenURL(link.url)
-              if (link.kind === 'page' && index.some((e) => e.rel === link.rel)) goTo(link.rel)
-            }}
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
-        )}
-        {!error && <DocsPrevNext prev={prev} next={next} onNavigate={goTo} />}
+        <div className={styles.contentGrid}>
+          <div className={styles.mainColumn}>
+            {currentEntry && (
+              <header className={styles.pageHeader} data-testid="docs-breadcrumb">
+                <span className={styles.pageHeaderSection}>
+                  {currentSectionKey ? t(currentSectionKey) : dirOf(page)}
+                </span>
+                <h1 className={styles.pageHeaderTitle}>{currentEntry.title}</h1>
+              </header>
+            )}
+            {error && <Text className={styles.error} data-testid="docs-error">{error}</Text>}
+            {!error && (
+              // Same trusted-render reasoning as the Atlas mirror preview:
+              // the HTML comes from Mill's own markdown renderer over
+              // repository-authored content embedded in the binary.
+              // Anchor clicks are intercepted (docLinks.ts): a raw click
+              // would navigate the app's own webview away from Mill --
+              // external URLs go to the system browser, .md cross-links
+              // stay in-app, and a heading anchor's "#id" href scrolls
+              // within this same page instead of a real navigation.
+              <article
+                className={styles.article}
+                data-testid="docs-content"
+                onClick={(ev) => {
+                  const anchor = (ev.target as HTMLElement).closest('a')
+                  const href = anchor?.getAttribute('href')
+                  if (!href) return
+                  ev.preventDefault()
+                  if (href.startsWith('#')) {
+                    scrollToHeading(href.slice(1))
+                    return
+                  }
+                  const link = resolveDocLink(page, href)
+                  if (link.kind === 'external') void Browser.OpenURL(link.url)
+                  if (link.kind === 'page' && index.some((e) => e.rel === link.rel)) goTo(link.rel)
+                }}
+                dangerouslySetInnerHTML={{ __html: htmlWithAnchors }}
+              />
+            )}
+            {!error && <DocsPrevNext prev={prev} next={next} onNavigate={goTo} />}
+          </div>
+          {!error && <DocsToc headings={headings} activeId={activeHeadingId} onSelect={scrollToHeading} />}
+        </div>
       </div>
     </div>
   )

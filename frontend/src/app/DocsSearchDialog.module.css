@@ -1,0 +1,16 @@
+/* Docs search (goal 0235 S2): same fixed padding as
+   ClipboardHistoryDialog.module.css's own .empty -- Primer design
+   tokens only, per .claude/rules/frontend.md. */
+.empty {
+  padding: var(--base-size-16, 16px);
+}
+
+.emptyTitle {
+  display: block;
+  font-weight: var(--base-text-weight-semibold, 600);
+}
+
+.emptyDescription {
+  display: block;
+  color: var(--fgColor-muted);
+}

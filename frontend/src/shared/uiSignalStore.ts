@@ -158,6 +158,12 @@ interface UISignalState {
   clipboardHistoryOpen: boolean
   openClipboardHistory: () => void
   closeClipboardHistory: () => void
+  // docs.search (goal 0235 S2): same plain-boolean shape --
+  // app/DocsSearchDialog.tsx renders off it, reachable from any view
+  // (not scoped to the Docs surface itself).
+  docsSearchOpen: boolean
+  openDocsSearch: () => void
+  closeDocsSearch: () => void
 }
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
@@ -221,4 +227,7 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   clipboardHistoryOpen: false,
   openClipboardHistory: () => set({ clipboardHistoryOpen: true }),
   closeClipboardHistory: () => set({ clipboardHistoryOpen: false }),
+  docsSearchOpen: false,
+  openDocsSearch: () => set({ docsSearchOpen: true }),
+  closeDocsSearch: () => set({ docsSearchOpen: false }),
 }))
