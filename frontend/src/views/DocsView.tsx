@@ -1,28 +1,30 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Browser } from '@wailsio/runtime'
-import { NavList, Text } from '@primer/react'
+import { Text } from '@primer/react'
 import { DocsService } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
 import { resolveDocLink } from './docLinks'
-import mirrorStyles from '../atlas/AtlasCardMirrorPreview.module.css'
+import { adjacentPages, groupDocsIndex, sectionTitleKey, type DocsIndexEntry } from './docsGroups'
+import DocsNav from './DocsNav'
+import DocsPrevNext from './DocsPrevNext'
 import styles from './DocsView.module.css'
 
-// The in-app Docs surface (goal 0125 phase 1): the same userdocs tree
-// the repository publishes and llms.txt indexes, embedded in the
-// binary and rendered through the shared markdown path. Nav order is
-// the canonical reading order (DocsIndex == the llms index), so the
-// human surface and the AI surface can never disagree.
-interface IndexEntry {
-  rel: string
-  title: string
-  note: string
+function dirOf(rel: string): string {
+  const slash = rel.indexOf('/')
+  return slash === -1 ? '' : rel.slice(0, slash)
 }
 
+// The in-app Docs surface (goal 0125 phase 1, restructured by goal
+// 0235 S1): the same userdocs tree the repository publishes and
+// llms.txt indexes, embedded in the binary and rendered through the
+// shared markdown path. Nav order is the canonical reading order
+// (DocsIndex == the llms index), so the human surface and the AI
+// surface can never disagree.
 function DocsView({ initialPage }: { initialPage?: string }) {
   const { t } = useTranslation('views')
   const setView = useAppStore((s) => s.setView)
-  const [index, setIndex] = useState<IndexEntry[]>([])
+  const [index, setIndex] = useState<DocsIndexEntry[]>([])
   const [page, setPage] = useState(initialPage ?? '')
   const [html, setHtml] = useState('')
   const [error, setError] = useState('')
@@ -45,28 +47,28 @@ function DocsView({ initialPage }: { initialPage?: string }) {
       .catch((err) => setError(String(err)))
   }, [page])
 
+  const groups = useMemo(() => groupDocsIndex(index), [index])
+  const { prev, next } = useMemo(() => adjacentPages(index, page), [index, page])
+  const currentEntry = index.find((e) => e.rel === page)
+  const currentSectionKey = sectionTitleKey(dirOf(page))
+
+  const goTo = (rel: string) => {
+    setPage(rel)
+    setView({ kind: 'docs', page: rel })
+  }
+
   return (
     <div className={styles.docs} data-testid="docs-view">
-      <nav className={styles.nav} aria-label={t('docs.navAriaLabel')}>
-        <NavList>
-          {index.map((e) => (
-            <NavList.Item
-              key={e.rel}
-              href="#"
-              aria-current={e.rel === page ? 'page' : undefined}
-              onClick={(ev) => {
-                ev.preventDefault()
-                setPage(e.rel)
-                setView({ kind: 'docs', page: e.rel })
-              }}
-              data-testid="docs-nav-item"
-            >
-              {e.title}
-            </NavList.Item>
-          ))}
-        </NavList>
-      </nav>
+      <DocsNav groups={groups} currentPage={page} onSelect={goTo} />
       <div className={styles.content}>
+        {currentEntry && (
+          <header className={styles.pageHeader} data-testid="docs-breadcrumb">
+            <span className={styles.pageHeaderSection}>
+              {currentSectionKey ? t(currentSectionKey) : dirOf(page)}
+            </span>
+            <h1 className={styles.pageHeaderTitle}>{currentEntry.title}</h1>
+          </header>
+        )}
         {error && <Text className={styles.error} data-testid="docs-error">{error}</Text>}
         {!error && (
           // Same trusted-render reasoning as the Atlas mirror preview:
@@ -76,7 +78,7 @@ function DocsView({ initialPage }: { initialPage?: string }) {
           // navigate the app's own webview away from Mill -- external
           // URLs go to the system browser, .md cross-links stay in-app.
           <article
-            className={mirrorStyles.markdownBody}
+            className={styles.article}
             data-testid="docs-content"
             onClick={(ev) => {
               const anchor = (ev.target as HTMLElement).closest('a')
@@ -85,14 +87,12 @@ function DocsView({ initialPage }: { initialPage?: string }) {
               ev.preventDefault()
               const link = resolveDocLink(page, href)
               if (link.kind === 'external') void Browser.OpenURL(link.url)
-              if (link.kind === 'page' && index.some((e) => e.rel === link.rel)) {
-                setPage(link.rel)
-                setView({ kind: 'docs', page: link.rel })
-              }
+              if (link.kind === 'page' && index.some((e) => e.rel === link.rel)) goTo(link.rel)
             }}
             dangerouslySetInnerHTML={{ __html: html }}
           />
         )}
+        {!error && <DocsPrevNext prev={prev} next={next} onNavigate={goTo} />}
       </div>
     </div>
   )
