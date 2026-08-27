@@ -1,6 +1,6 @@
 import type { ElementType, ReactNode } from 'react'
 import { CounterLabel } from '@primer/react'
-import { CommandPaletteIcon, CopyIcon, GearIcon, HomeIcon } from '@primer/octicons-react'
+import { CommandPaletteIcon, CopyIcon, GearIcon, HomeIcon, PlayIcon } from '@primer/octicons-react'
 import { findCommand } from '../shared/commands'
 import { quickPanelRowIds } from '../shared/quickPanelCommands'
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
@@ -58,10 +58,12 @@ export function buildConfigureAndActionEntries(params: {
   jumpToAtlasCard: (cardID: string) => void
   openMain: (view: string) => void
   applyFromClipboard: () => void
+  runCodingLoopFromClipboard: () => void
 }): PanelEntry[] {
   const {
     t, requests, lists, mcpServers, decisions, execEnvs, aiProviders, declaredStepTypes,
     atlasCards, atlasKinds, reviewPendingCount, jumpToConfigure, jumpToAtlasCard, openMain, applyFromClipboard,
+    runCodingLoopFromClipboard,
   } = params
   const entries: PanelEntry[] = []
   const atlasKindByID = new Map((atlasKinds ?? []).map((k) => [k.ID, k]))
@@ -169,7 +171,7 @@ export function buildConfigureAndActionEntries(params: {
     })
   }
 
-  entries.push(...buildActionRows({ t, reviewPendingCount, openMain, applyFromClipboard }))
+  entries.push(...buildActionRows({ t, reviewPendingCount, openMain, applyFromClipboard, runCodingLoopFromClipboard }))
 
   return entries
 }
@@ -195,8 +197,9 @@ function buildActionRows(params: {
   reviewPendingCount: number
   openMain: (view: string) => void
   applyFromClipboard: () => void
+  runCodingLoopFromClipboard: () => void
 }): PanelEntry[] {
-  const { t, reviewPendingCount, openMain, applyFromClipboard } = params
+  const { t, reviewPendingCount, openMain, applyFromClipboard, runCodingLoopFromClipboard } = params
 
   const richRows: Record<string, () => PanelEntry> = {
     'panel.openMill': () => ({
@@ -250,6 +253,22 @@ function buildActionRows(params: {
       leadingVisual: CopyIcon,
       trailingVisual: <HotkeyHint commandId="panel.applyClipboard" />,
       run: applyFromClipboard,
+    }),
+    // docs/goals/0240 S1: always present, same unblock-yourself-in-place
+    // reasoning as panel.applyClipboard above -- this IS the away-from-
+    // app entry point the goal exists to fix (a hotkey summon opens
+    // this panel while another app is frontmost). run() reads the
+    // clipboard and opens the Confirm screen, never running anything
+    // without it.
+    'codingLoop.run': () => ({
+      id: 'cmd:codingLoop.run',
+      groupId: 'actions',
+      text: t('quickPanel.entries.runCodingLoop'),
+      description: t('quickPanel.entries.runCodingLoopDescription'),
+      searchText: 'run copied command shell terminal execute',
+      leadingVisual: PlayIcon,
+      trailingVisual: <HotkeyHint commandId="codingLoop.run" />,
+      run: runCodingLoopFromClipboard,
     }),
   }
 

@@ -134,6 +134,12 @@ var workflowProofRegistry = map[string]seedProof{
 		"executionsvc.TestCancelRun_KillsARealRunningProcess",
 		"e2e: codeexec.spec.ts > Run copied code (approve path)",
 	),
+	CodingLoopWorkflowID: proven(
+		"composition.TestParseShellCommandBlock",
+		"composition.TestProcessShellCommandExec_MultiStepPayload_RunsEachStepAndJoinsOutput",
+		"executionsvc.TestSeededCodingLoopExample_Approve_RunsMultiStepCommandAndWritesClipboard",
+		"e2e: coding-loop.spec.ts > capture, confirm, run, and copy back the result",
+	),
 	"update-available-notify-workflow": proven(
 		"triggersvc.TestSeededUpdateNotifyExample_UpdateAvailable_RunsToCompletion",
 		"manual-only remainder: the real OS banner (apply-notify's signed-bundle class, testing.md)",

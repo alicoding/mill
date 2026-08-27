@@ -185,6 +185,7 @@ func PageIndex() []DocPage {
 		{"concepts/configure.md", "Configure entities", "integrations, lists, MCP servers, AI providers, environments"},
 		{"concepts/atlas.md", "Atlas", "the knowledge board: kinds, links, areas, doc mirrors, card actions"},
 		{"concepts/runs-and-review.md", "Runs, review, and debugging", "durable runs, the review queue, breakpoints"},
+		{"concepts/coding-loop.md", "The coding loop", "copy a command, confirm the parsed steps, watch it run, copy the result back"},
 		{"reference/steps.md", "Step reference", "every step's contract, generated from the registry"},
 		{"reference/commands.md", "Commands", "every registered command's id, label, default binding, surface, and enablement, generated from the registry"},
 		{"reference/settings.md", "Settings", "app preferences: appearance, hotkeys, shortcuts, MCP access, remote access, backups, updates"},

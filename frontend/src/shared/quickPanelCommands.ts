@@ -7,7 +7,7 @@ import { COMMANDS } from './commands'
 // below is unit-testable without pulling in Primer/React (testing.md's
 // "components are proven in e2e, not unit tests" layering -- a plain
 // Vitest node run can't process the CSS a Primer JSX import drags in).
-export const QUICK_PANEL_RICH_ROW_ORDER = ['panel.openMill', 'settings.open', 'view.review', 'panel.applyClipboard']
+export const QUICK_PANEL_RICH_ROW_ORDER = ['panel.openMill', 'settings.open', 'view.review', 'panel.applyClipboard', 'codingLoop.run']
 
 // Every quickPanel-opted-in, currently-enabled command id, in render
 // order: the four rich rows first (fixed order), then any other

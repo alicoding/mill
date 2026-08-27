@@ -2623,6 +2623,24 @@
       "Complexity": "basic"
     },
     {
+      "ID": "process-shell-command",
+      "Kind": "process",
+      "Label": "Run a captured command",
+      "Description": "Runs the captured payload in your real login shell, exactly as written -- no sandboxing, no stored environment profile. A piped command stays one step; commands separated by a new line or \u0026\u0026 show as separate steps. External effect -- the run asks for your approval by default. No configurable fields: this node always runs whatever payload it receives.",
+      "ConfigFields": null,
+      "Output": "combined stdout+stderr from every sub-command that ran",
+      "Consumes": [
+        "text"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
+      "Effect": "external",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "advanced"
+    },
+    {
       "ID": "ruleset",
       "Kind": "process",
       "Label": "Validate with rules",
@@ -4800,6 +4818,24 @@
       "Declared": false,
       "PaletteGroup": "",
       "Complexity": "basic"
+    },
+    {
+      "ID": "process-shell-command",
+      "Kind": "process",
+      "Label": "Run a captured command",
+      "Description": "Runs the captured payload in your real login shell, exactly as written -- no sandboxing, no stored environment profile. A piped command stays one step; commands separated by a new line or \u0026\u0026 show as separate steps. External effect -- the run asks for your approval by default. No configurable fields: this node always runs whatever payload it receives.",
+      "ConfigFields": null,
+      "Output": "combined stdout+stderr from every sub-command that ran",
+      "Consumes": [
+        "text"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
+      "Effect": "external",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "advanced"
     },
     {
       "ID": "ruleset",

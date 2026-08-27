@@ -51,6 +51,8 @@
       "reviewNoPending": "No pending reviews",
       "applyFromClipboard": "Apply from clipboard…",
       "applyFromClipboardDescription": "Create or update a workflow from a copied Mill export",
+      "runCodingLoop": "Run from clipboard…",
+      "runCodingLoopDescription": "Run a shell command from your clipboard, with a preview before it runs",
       "pinWorkflow": "Pin \"{{label}}\"",
       "unpinWorkflow": "Unpin \"{{label}}\""
     },
@@ -239,5 +241,51 @@
   "docsSearch": {
     "title": "Search docs",
     "searchPlaceholder": "Search docs"
+  },
+  "codingLoop": {
+    "dialogTitle": "Run from clipboard",
+    "reading": "Reading the clipboard…",
+    "confirm": {
+      "loading": "Parsing the copied command…",
+      "unreadableTitle": "Couldn't read the clipboard",
+      "close": "Close",
+      "summary": "{{count}} step{{plural}} parsed from your clipboard",
+      "target": "Runs in {{shell}}, starting in {{dir}}",
+      "joinAnd": "runs only if the step before it succeeds",
+      "joinNewline": "runs regardless of the step before it",
+      "secretPlaceholderTitle": "Looks like it needs a secret",
+      "secretPlaceholderDescription": "One or more steps have a placeholder where a real value should go. It will run as-is for now.",
+      "verdict": {
+        "allow": "Runs without asking",
+        "ask": "Asks for approval before running",
+        "deny": "Blocked by a guardrail rule"
+      },
+      "startFailedTitle": "Couldn't start the run",
+      "cancel": "Cancel",
+      "run": "Run"
+    },
+    "running": {
+      "status": {
+        "pending": "Waiting",
+        "running": "Running",
+        "done": "Done",
+        "failed": "Failed",
+        "skipped": "Skipped"
+      },
+      "elapsed": "Running for {{elapsed}}",
+      "stuckFor": "Stuck for {{seconds}}s — no output yet",
+      "approvalFailedTitle": "Couldn't start the run",
+      "cancel": "Cancel"
+    },
+    "result": {
+      "loading": "Finishing up…",
+      "succeededTitle": "Finished",
+      "failedTitle": "Failed",
+      "noOutput": "(no output)",
+      "saved": "Saved to Activity — browse it there anytime.",
+      "copyFailedTitle": "Couldn't copy the result",
+      "copy": "Copy result",
+      "copied": "Copied"
+    }
   }
 }

@@ -452,7 +452,10 @@ func BuiltInWorkflows() []Workflow {
 	workflows = append(workflows, builtInLedgerSyncWorkflows()...)
 	// goal 0203 S2: the guardrail-attribute derivation's own seeded
 	// proof, same split-file reasoning.
-	return append(workflows, builtInSecretGuardWorkflows()...)
+	workflows = append(workflows, builtInSecretGuardWorkflows()...)
+	// goal 0240 S1: the coding loop's own seeded proof, same split-file
+	// reasoning.
+	return append(workflows, codingLoopBuiltInWorkflow()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any

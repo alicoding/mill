@@ -1,0 +1,66 @@
+/* The coding loop's own three-state surface (docs/goals/0240 S1).
+   Primer design tokens only, per .claude/rules/frontend.md -- no
+   bespoke colors. */
+
+.panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--base-size-16, 16px);
+}
+
+.target {
+  color: var(--fgColor-muted);
+}
+
+.stepList {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-8, 8px);
+}
+
+.stepRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--base-size-8, 8px);
+  flex-wrap: wrap;
+}
+
+.stepText {
+  font-family: var(--fontStack-monospace);
+  font-size: var(--text-body-size-small);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.outputTail {
+  flex-basis: 100%;
+  margin: 0;
+  padding: var(--base-size-8, 8px);
+  background: var(--bgColor-muted);
+  border-radius: var(--borderRadius-medium);
+  font-size: var(--text-body-size-small);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 8em;
+  overflow-y: auto;
+}
+
+.resultOutput {
+  margin: 0;
+  padding: var(--base-size-12, 12px);
+  background: var(--bgColor-muted);
+  border-radius: var(--borderRadius-medium);
+  font-family: var(--fontStack-monospace);
+  font-size: var(--text-body-size-small);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 24em;
+  overflow-y: auto;
+}
+
+.actions {
+  justify-content: flex-end;
+}

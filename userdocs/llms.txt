@@ -12,6 +12,7 @@
 - [Configure entities](concepts/configure.md): integrations, lists, MCP servers, AI providers, environments
 - [Atlas](concepts/atlas.md): the knowledge board: kinds, links, areas, doc mirrors, card actions
 - [Runs, review, and debugging](concepts/runs-and-review.md): durable runs, the review queue, breakpoints
+- [The coding loop](concepts/coding-loop.md): copy a command, confirm the parsed steps, watch it run, copy the result back
 - [Step reference](reference/steps.md): every step's contract, generated from the registry
 - [Commands](reference/commands.md): every registered command's id, label, default binding, surface, and enablement, generated from the registry
 - [Settings](reference/settings.md): app preferences: appearance, hotkeys, shortcuts, MCP access, remote access, backups, updates

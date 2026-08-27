@@ -164,6 +164,13 @@ interface UISignalState {
   docsSearchOpen: boolean
   openDocsSearch: () => void
   closeDocsSearch: () => void
+  // codingLoop.run (docs/goals/0240 S1): same plain-boolean shape --
+  // app/CodingLoopDialog.tsx renders off it in the main window. Quick
+  // Panel's own row uses its own local door state instead (a separate
+  // WKWebView has its own store instance), never this signal.
+  codingLoopOpen: boolean
+  openCodingLoop: () => void
+  closeCodingLoop: () => void
 }
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
@@ -230,4 +237,7 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   docsSearchOpen: false,
   openDocsSearch: () => set({ docsSearchOpen: true }),
   closeDocsSearch: () => set({ docsSearchOpen: false }),
+  codingLoopOpen: false,
+  openCodingLoop: () => set({ codingLoopOpen: true }),
+  closeCodingLoop: () => set({ codingLoopOpen: false }),
 }))
