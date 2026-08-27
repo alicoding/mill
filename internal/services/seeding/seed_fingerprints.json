@@ -175,6 +175,10 @@
     "seedRevision": 2,
     "fingerprint": "cbd789a974956ceea36271f5240de1d118b6966e4a7c9637fb00467f07f03d00"
   },
+  "workflow:coding-loop-run-copied-command-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "d3a1e130059c4752e2b64c98eabc715019d06781ab2658265bda5f78d3fd01ca"
+  },
   "workflow:example-ai-classify-branch-workflow": {
     "seedRevision": 2,
     "fingerprint": "251cb4a6272e3e7303a61a2cad8c988dca8c44edb324bef908c063eca2cc926c"

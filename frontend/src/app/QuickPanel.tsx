@@ -18,8 +18,10 @@ import { WorkflowRowTrailingVisual } from './WorkflowRowTrailingVisual'
 import { buildConfigureAndActionEntries } from './quickPanelActionEntries'
 import type { PanelEntry } from './quickPanelActionEntries'
 import { cascadeNotePosition, resolveNoteParentID } from './quickPanelCapture'
-import { QuickPanelClipboardApply } from './QuickPanelClipboardApply'
-import { QuickPanelReplyReview } from './QuickPanelReplyReview'
+import { QuickPanelClipboardApplyDoor } from './QuickPanelClipboardApplyDoor'
+import { QuickPanelCodingLoop } from './QuickPanelCodingLoop'
+import { useQuickPanelCodingLoopDoor } from './useQuickPanelCodingLoopDoor'
+import { QuickPanelReplyReviewDoor } from './QuickPanelReplyReviewDoor'
 import { useQuickPanelClipboardDoor } from './useQuickPanelClipboardDoor'
 import { FacetChipRow } from '../shared/FacetChipRow'
 import { useQuickPanelFacetSearch } from './quickPanelFacets'
@@ -325,6 +327,7 @@ export function QuickPanel() {
   // The clipboard door (goals 0039 + 0099) lives in its own hook --
   // one row recognizes both a workflow export and a mill reply.
   const { clipboardApply, setClipboardApply, replyReview, setReplyReview, applyFromClipboard } = useQuickPanelClipboardDoor(t)
+  const { codingLoopText, runFromClipboard: runCodingLoopFromClipboard, closeCodingLoop } = useQuickPanelCodingLoopDoor()
 
   // The away-capture door (docs/goals/0090): a typed query with no
   // intent to search becomes a Note instead, filed into the Scratchpad
@@ -384,9 +387,10 @@ export function QuickPanel() {
     entries.push(...buildConfigureAndActionEntries({
       t, requests, lists, mcpServers, decisions, execEnvs, aiProviders, declaredStepTypes,
       atlasCards, atlasKinds, reviewPendingCount, jumpToConfigure, jumpToAtlasCard, openMain, applyFromClipboard,
+      runCodingLoopFromClipboard,
     }))
     return entries
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- runWorkflow/jumpToConfigure/jumpToAtlasCard/openMain/applyFromClipboard/togglePinnedWorkflow close over state already listed or are stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runWorkflow/jumpToConfigure/jumpToAtlasCard/openMain/applyFromClipboard/runCodingLoopFromClipboard/togglePinnedWorkflow close over state already listed or are stable
   }, [
     workflows, mostUsedRank, hotkeyCombos, pinnedWorkflowIds, requests, lists, mcpServers,
     decisions, execEnvs, aiProviders, declaredStepTypes, atlasCards, atlasKinds, reviewPendingCount,
@@ -431,41 +435,34 @@ export function QuickPanel() {
     onAction: () => entry.run(),
   }))
 
-  // docs/goals/0039: a non-null clipboardApply swaps the ENTIRE panel
-  // body into the preview-confirm view -- the frameless floating window
+  // docs/goals/0039: a non-null clipboardApply/replyReview/codingLoopText
+  // swaps the ENTIRE panel body -- the frameless floating window
   // (ADR-0033) has no room for a second, nested surface, so this is a
-  // full replacement, not an overlay. Cancel/Applied both clear the
-  // state, returning to the ordinary search list.
+  // full replacement, not an overlay.
   if (replyReview) {
     return (
-      <div className={styles.panel} data-testid="quick-panel">
-        <QuickPanelReplyReview
-          preview={replyReview}
-          onCancel={() => setReplyReview(null)}
-          onApplied={(label) => {
-            setReplyReview(null)
-            setStatus(t('quickPanel.status.replyApplied', { label }))
-            window.setTimeout(() => { void SettingsService.DismissPanel().catch(() => {}) }, 600)
-          }}
-        />
-      </div>
+      <QuickPanelReplyReviewDoor
+        preview={replyReview}
+        t={t}
+        onCancel={() => setReplyReview(null)}
+        onApplied={(msg) => { setReplyReview(null); setStatus(msg) }}
+      />
     )
+  }
+
+  if (codingLoopText) {
+    return <QuickPanelCodingLoop clipboardText={codingLoopText} onClose={closeCodingLoop} />
   }
 
   if (clipboardApply) {
     return (
-      <div className={styles.panel} data-testid="quick-panel">
-        <QuickPanelClipboardApply
-          json={clipboardApply.json}
-          preview={clipboardApply.preview}
-          onCancel={() => setClipboardApply(null)}
-          onApplied={(label, isUpdate) => {
-            setClipboardApply(null)
-            setStatus(isUpdate ? t('quickPanel.status.appliedUpdated', { label }) : t('quickPanel.status.appliedCreated', { label }))
-            window.setTimeout(() => { void SettingsService.DismissPanel().catch(() => {}) }, 600)
-          }}
-        />
-      </div>
+      <QuickPanelClipboardApplyDoor
+        json={clipboardApply.json}
+        preview={clipboardApply.preview}
+        t={t}
+        onCancel={() => setClipboardApply(null)}
+        onApplied={(msg) => { setClipboardApply(null); setStatus(msg) }}
+      />
     )
   }
 

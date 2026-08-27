@@ -21,6 +21,7 @@ import (
 	"github.com/alicoding/mill/internal/services/backupsvc"
 	"github.com/alicoding/mill/internal/services/capabilitysvc"
 	"github.com/alicoding/mill/internal/services/clipboardhistorysvc"
+	"github.com/alicoding/mill/internal/services/codeloopsvc"
 	"github.com/alicoding/mill/internal/services/companionsvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
@@ -182,6 +183,11 @@ func main() {
 	wiring.WireClipboardHistory(clipboardHistoryService, secretService)
 
 	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
+	// docs/goals/0240 S1: the coding loop's Confirm-screen preview --
+	// read-only over guardrailService.Rules(), no dependency on
+	// ExecutionService (the actual run/approve/cancel path reuses
+	// ExecutionService's own RPCs directly, never a bespoke exec path).
+	codeLoopService := codeloopsvc.NewCodeLoopService(guardrailService)
 	executionService, err := executionsvc.NewExecutionService(executionDatabaseURL, compositionService, guardrailService)
 	if err != nil {
 		log.Fatal(err)
@@ -313,6 +319,7 @@ func main() {
 			application.NewService(agentLoopService),
 			application.NewService(guardrailService),
 			application.NewService(clipboardHistoryService),
+			application.NewService(codeLoopService),
 			application.NewService(executionService),
 			application.NewService(settingsService),
 			application.NewService(backupService),

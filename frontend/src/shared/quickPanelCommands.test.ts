@@ -10,10 +10,10 @@ import { useUpdateNoticeStore } from './updateNoticeStore'
 // presentation (which needs Primer/React and stays out of a plain
 // Vitest run, per testing.md's "components are proven in e2e" layering).
 describe('quickPanelRowIds (goal 0222 S2)', () => {
-  it('always includes the four bespoke rows, in their fixed order, with the update pipeline idle', () => {
+  it('always includes the bespoke rows, in their fixed order, with the update pipeline idle', () => {
     useUpdateNoticeStore.getState().setUpdateNoticeState(UpdateState.UpdateStateIdle)
     const ids = quickPanelRowIds()
-    expect(ids.slice(0, 4)).toEqual(QUICK_PANEL_RICH_ROW_ORDER)
+    expect(ids.slice(0, QUICK_PANEL_RICH_ROW_ORDER.length)).toEqual(QUICK_PANEL_RICH_ROW_ORDER)
   })
 
   it('update.check has no enabled() -- its generic-fallback id is always present', () => {

@@ -237,6 +237,13 @@ Looks up an Attributes value in a configured List and writes the matched entry b
   - **Default value** — Written to the output attribute when there's no match and "If no match" is "default".
   - **Pin to version (optional)** — Leave empty to always resolve this List's current rows. Enter a version number to pin this step to that exact published snapshot, unaffected by later row edits.
 
+### Run a captured command
+
+Runs the captured payload in your real login shell, exactly as written -- no sandboxing, no stored environment profile. A piped command stays one step; commands separated by a new line or && show as separate steps. External effect -- the run asks for your approval by default. No configurable fields: this node always runs whatever payload it receives.
+
+- Takes: text — Produces: text
+- Effect: external — parks for approval by default
+
 ### Run a command
 
 Runs one command locally, inside a configured execution environment (pinned shell, directory, and environment). External effect -- the run asks for approval by default. Source "payload" runs the upstream payload as the command; "literal" runs a fixed script instead. A running command can be stopped from this workflow's Runs tab.

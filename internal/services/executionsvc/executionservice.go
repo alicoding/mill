@@ -243,6 +243,10 @@ func NewExecutionService(databaseURL string, comp *compositionsvc.CompositionSer
 	// procexec.Handle here so CancelRun can reach it from outside the
 	// run (executionservice_cancel.go).
 	composition.SetProcessRegistrar(e.registerProcess)
+	// docs/goals/0240 S1: a running process-shell-command sub-command
+	// streams its live progress here (executionservice_codingloop.go),
+	// since DBOS itself only checkpoints the step on completion.
+	composition.SetShellStepProgressEmitter(e.emitShellStepProgress)
 	// goal 0052 slice 3, ADR-0036: a process-run-receipt node reads this
 	// run's own recorded evidence-so-far through this seam
 	// (executionservice_receipt.go).

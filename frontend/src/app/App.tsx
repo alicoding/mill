@@ -25,6 +25,7 @@ import { CommandPalette } from "./CommandPalette";
 import { ShortcutsHelpDialog } from "./ShortcutsHelpDialog";
 import { WhatsNewDialog } from "./WhatsNewDialog";
 import { ClipboardHistoryDialog } from "./ClipboardHistoryDialog";
+import { CodingLoopDialog } from "./CodingLoopDialog";
 import { DocsSearchDialog } from "./DocsSearchDialog";
 import { BuildIdentityBadge } from "./BuildIdentityBadge";
 import { NoticePill } from "./NoticePill";
@@ -415,6 +416,10 @@ function App() {
           shape, renders off the store's docsSearchOpen flag -- opened
           via the docs.search command, reachable from any view. */}
       <DocsSearchDialog />
+      {/* The coding loop (goal 0240 S1): same app-level-chrome-mounted-
+          once shape, renders off the store's codingLoopOpen flag --
+          opened via the codingLoop.run command. */}
+      <CodingLoopDialog />
 
       {/* Every capability gets a nav entry, built or not (docs/SPEC.md
           §2.2) -- driven by CapabilitiesService's own data so the sidebar

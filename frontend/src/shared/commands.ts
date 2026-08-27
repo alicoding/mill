@@ -9,6 +9,7 @@ import { SETTINGS_COMMANDS } from './settingsCommands'
 import { CANVAS_COMMANDS } from './canvasCommands'
 import { SECRETS_COMMANDS } from './secretsCommands'
 import { CLIPBOARD_HISTORY_COMMANDS } from './clipboardHistoryCommands'
+import { CODING_LOOP_COMMANDS } from './codingLoopCommands'
 import { DOCS_SEARCH_COMMANDS } from './docsSearchCommands'
 import { REVIEW_COMMANDS } from './reviewCommands'
 import { ATLAS_TOOL_IDENTITIES } from './atlasToolIdentity'
@@ -420,6 +421,8 @@ export const COMMANDS: Command[] = [
   ...SECRETS_COMMANDS,
   // clipboard.history.open -- split out to shared/clipboardHistoryCommands.ts.
   ...CLIPBOARD_HISTORY_COMMANDS,
+  // codingLoop.run -- split out to shared/codingLoopCommands.ts.
+  ...CODING_LOOP_COMMANDS,
   // docs.search -- split out to shared/docsSearchCommands.ts.
   ...DOCS_SEARCH_COMMANDS,
 ]

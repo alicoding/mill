@@ -502,6 +502,54 @@ badge, and a floating approval prompt.
 
 ---
 
+# The coding loop
+
+Copy a shell command, hit the hotkey, and Mill shows you exactly what
+it parsed before anything runs.
+
+## Copy a command, hit the hotkey
+
+Say a tool hands you a command to debug something — a `curl` to test
+a connection, a couple of setup lines to try. Copy it, then run
+**Run copied command…** from the command palette (⌘K) or Quick
+Panel — the same panel a global hotkey opens from any app, so this
+works even when Mill isn't in front.
+
+## Confirm before anything runs
+
+Mill parses the copied block into its real structure first:
+
+- A **piped command** (`a | b`) stays one step.
+- Commands on separate **lines** each show as their own step, and
+  run regardless of what came before.
+- Commands joined by **`&&`** also show as separate steps, but a
+  later one is skipped if an earlier one fails — matching what `&&`
+  already means.
+
+The confirm screen shows every step, the shell and folder it'll run
+in, and whether a step needs your approval. A step that looks like
+it has a placeholder for a secret — `<YOUR_TOKEN>` and similar — is
+flagged so you know it'll run exactly as copied, nothing filled in
+for you. Nothing runs until you click **Run**.
+
+## Watch it run
+
+Once you confirm, each step shows live: waiting, running, done,
+failed, or skipped, with the running step's own output as it
+happens. If a step goes quiet, Mill tells you it's stuck instead of
+leaving you guessing. Cancel stops it from there.
+
+Closing the window doesn't stop the run — it keeps going, and you
+can find it again in **Activity**.
+
+## Copy the result back
+
+When it finishes, every step's output is right there, with **Copy
+result** ready for pasting back into wherever the command came from.
+The run itself is saved too, so you can find it again later.
+
+---
+
 # Step reference
 
 Generated from the live step registry — every step's contract exactly as the canvas enforces it. Do not edit by hand; `go generate ./internal/docsgen` regenerates.
@@ -740,6 +788,13 @@ Looks up an Attributes value in a configured List and writes the matched entry b
   - **If no match** — What to do when the input value isn't in the list.
   - **Default value** — Written to the output attribute when there's no match and "If no match" is "default".
   - **Pin to version (optional)** — Leave empty to always resolve this List's current rows. Enter a version number to pin this step to that exact published snapshot, unaffected by later row edits.
+
+### Run a captured command
+
+Runs the captured payload in your real login shell, exactly as written -- no sandboxing, no stored environment profile. A piped command stays one step; commands separated by a new line or && show as separate steps. External effect -- the run asks for your approval by default. No configurable fields: this node always runs whatever payload it receives.
+
+- Takes: text — Produces: text
+- Effect: external — parks for approval by default
 
 ### Run a command
 
@@ -1026,6 +1081,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `canvas.zoomIn` | Zoom in | `⌘+` | composition | Always available |
 | `canvas.zoomOut` | Zoom out | `⌘-` | composition | Always available |
 | `clipboard.history.open` | Clipboard history | — | Global | Always available |
+| `codingLoop.run` | Run copied command… | — | Global | Always available |
 | `configure.new.aiproviders` | New AI provider | — | Global | Always available |
 | `configure.new.decisions` | New decision | — | Global | Always available |
 | `configure.new.execenvs` | New environment | — | Global | Always available |

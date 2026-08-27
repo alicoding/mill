@@ -390,6 +390,13 @@
     "enabled": false
   },
   {
+    "id": "codingLoop.run",
+    "label": "Run copied command…",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
     "id": "configure.new.aiproviders",
     "label": "New AI provider",
     "binding": null,
