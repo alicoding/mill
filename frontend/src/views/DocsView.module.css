@@ -19,23 +19,118 @@
   padding: 24px 32px;
 }
 
-/* Centered reading measure: the readable-line-length cap without a
-   boxed-into-the-corner look on wide windows. The shared markdownBody
-   class is a bounded PREVIEW box (480px cap, border, inner scroll) --
-   here it's a full reading page, so those constraints are lifted and
-   the page's own .content scroll is the one scrollbar. */
-.content article {
-  max-width: 80ch;
+/* Breadcrumb/page header (goal 0235 S1): section name over the page
+   title so location is evident before reading a word of the body --
+   the section uses the muted token to stay visually secondary to the
+   title beneath it. */
+.pageHeader {
+  max-width: 72ch;
   margin-inline: auto;
-  max-height: none;
-  overflow-y: visible;
-  border: none;
-  padding: 0;
+  margin-bottom: var(--base-size-24, 24px);
+}
+
+.pageHeaderSection {
+  display: block;
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small, 12px);
+  font-weight: var(--base-text-weight-semibold, 600);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--base-size-4, 4px);
+}
+
+.pageHeaderTitle {
+  margin: 0;
+  font-size: var(--text-title-size-large, 24px);
+  font-weight: var(--base-text-weight-semibold, 600);
+}
+
+/* Reading typography (goal 0235 S1): a co-located class consuming the
+   shared prose base (MarkdownProse.module.css -- the same element
+   styling every markdown renderer composes, links/code/tables/mermaid)
+   plus this surface's own reading-page rhythm. The mirror preview's
+   bounded-box chrome (480px cap, border, heading underlines) belongs
+   to that read-only preview alone and is deliberately NOT reused here
+   -- this is a full page, not a preview box. */
+.article {
+  composes: prose from '../atlas/MarkdownProse.module.css';
+  max-width: 72ch;
+  margin-inline: auto;
   font-size: 15px;
+}
+
+/* Every userdocs/ page opens with a single "# Title" heading matching
+   its DocsIndex title exactly, which the breadcrumb header above
+   already renders -- hidden here (scoped to .article only) rather than
+   stripped at render time, so the underlying HTML stays identical for
+   any other consumer of DocPageHTML. */
+.article :global(h1):first-child {
+  display: none;
+}
+
+.article :global(h2) {
+  margin-top: var(--base-size-32, 32px);
+  margin-bottom: var(--base-size-8, 8px);
+}
+
+.article :global(h3) {
+  margin-top: var(--base-size-24, 24px);
+  margin-bottom: var(--base-size-8, 8px);
+}
+
+.article :global(p),
+.article :global(ul),
+.article :global(ol) {
+  margin-top: 0;
+  margin-bottom: var(--base-size-16, 16px);
 }
 
 .error {
   color: var(--fgColor-danger);
+}
+
+/* Prev/next footer (goal 0235 S1): derived from DocsIndex's flat
+   reading order, two symmetric cards -- the next card's text
+   right-aligns so its label and title read toward the direction the
+   reader is about to move. */
+.prevNext {
+  max-width: 72ch;
+  margin-inline: auto;
+  margin-top: var(--base-size-32, 32px);
+  padding-top: var(--base-size-16, 16px);
+  border-top: 1px solid var(--borderColor-default);
+  display: flex;
+  gap: var(--base-size-16, 16px);
+}
+
+.prevNextCard {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-4, 4px);
+  padding: var(--base-size-12, 12px);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  text-decoration: none;
+  color: inherit;
+}
+
+.prevNextCard:hover {
+  background-color: var(--control-transparent-bgColor-hover, #818b981a);
+}
+
+.prevNextCardNext {
+  text-align: right;
+  align-items: flex-end;
+}
+
+.prevNextLabel {
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small, 12px);
+}
+
+.prevNextTitle {
+  font-weight: var(--base-text-weight-semibold, 600);
 }
 
 @media (max-width: 768px) {

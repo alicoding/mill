@@ -407,6 +407,15 @@
     "cancel": "Cancel"
   },
   "docs": {
-    "navAriaLabel": "Documentation pages"
+    "navAriaLabel": "Documentation pages",
+    "sections": {
+      "startHere": "Start here",
+      "concepts": "Concepts",
+      "reference": "Reference",
+      "agents": "Agents",
+      "trust": "Trust"
+    },
+    "previous": "Previous",
+    "next": "Next"
   }
 }
