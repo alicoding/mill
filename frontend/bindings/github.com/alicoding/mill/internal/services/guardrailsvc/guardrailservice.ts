@@ -71,6 +71,22 @@ export function RulesForStep(workflowID: string, nodeID: string): $CancellablePr
 }
 
 /**
+ * ShellCommandVerdicts returns one guardrail verdict per command in
+ * commands, evaluated against the CURRENT rule set -- goal 0240 S3's
+ * per-line allow/deny pattern-list decisions. Scoped to the coding
+ * loop's own seeded process-shell-command node/workflow so a
+ * NodeTypeID-scoped list rule (guardrail.BuiltIn's ShellAllow* /
+ * ShellDeny* entries) matches, exactly like GuardrailStep's other
+ * callers. Shared by the Confirm-screen preview (codeloopsvc) and the
+ * real execution gate (guardrailGate) so they can never disagree,
+ * extending GuardrailStep's own "never disagree" contract to per-line
+ * granularity.
+ */
+export function ShellCommandVerdicts(commands: string[] | null): $CancellablePromise<guardrail$0.Verdict[] | null> {
+    return $Call.ByID(3894821199, commands);
+}
+
+/**
  * TestRules dry-runs the current rule set against one real workflow
  * step -- §8's locked testability requirement: see what would happen
  * before trusting a rule live. Uses the node's stored config and the

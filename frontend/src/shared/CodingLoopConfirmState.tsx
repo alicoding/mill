@@ -64,6 +64,20 @@ export function CodingLoopConfirmState({ preview, previewError, startError, type
             <code className={styles.stepText}>{step.text}</code>
             {step.join === 'and' && <Label size="small">{t('codingLoop.confirm.joinAnd')}</Label>}
             {step.join === 'newline' && <Label size="small">{t('codingLoop.confirm.joinNewline')}</Label>}
+            {/* A per-step allow/deny-list badge only renders when a NAMED
+                rule decided this step (goal 0240 S3) -- an ordinary
+                default-ask step (no list match) stays exactly as quiet
+                as it was before this slice; the block-level verdict Label
+                below already communicates "needs approval" for it. */}
+            {step.ruleLabel && (step.verdict === 'allow' || step.verdict === 'ask' || step.verdict === 'deny') && (
+              <Label
+                size="small"
+                variant={step.verdict === 'allow' ? 'success' : step.verdict === 'deny' ? 'danger' : 'attention'}
+                data-testid={`coding-loop-confirm-step-verdict-${step.index}`}
+              >
+                {t(`codingLoop.confirm.stepVerdict.${step.verdict}`, { rule: step.ruleLabel })}
+              </Label>
+            )}
           </li>
         ))}
       </ol>

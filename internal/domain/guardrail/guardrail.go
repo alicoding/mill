@@ -7,6 +7,7 @@ package guardrail
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/alicoding/mill/internal/adapters/expression"
 	"github.com/alicoding/mill/internal/domain/seedorigin"
@@ -239,6 +240,70 @@ func ScopeMatches(r Rule, step Step) bool {
 		(r.RequestID == "" || r.RequestID == step.RequestID) &&
 		(r.WorkflowID == "" || r.WorkflowID == step.WorkflowID) &&
 		(r.NodeID == "" || r.NodeID == step.NodeID)
+}
+
+// NormalizeCommandForMatch trims a shell command's leading/trailing
+// whitespace before it is matched against a rule Condition's
+// Attributes["command"] (goal 0240 S3's allow/deny pattern lists) --
+// without this, a Condition anchored at the command's real start (e.g.
+// `Attributes.command startsWith "rm "`) could be dodged by an
+// incidental or deliberate leading space ("  rm -rf /"), since the
+// anchor would no longer sit where the command actually begins.
+func NormalizeCommandForMatch(cmd string) string {
+	return strings.TrimSpace(cmd)
+}
+
+// EvaluateCommandSteps evaluates rules once per entry in commands, each
+// against its OWN normalized Attributes["command"] -- every other scope
+// field and Env entry (Attributes["secrets"], goal 0203 S2, included)
+// shared from base -- the coding loop's per-line guardrail verdicts
+// (goal 0240 S3): the SAME rule set and the SAME Evaluate() precedence
+// (deny > ask > allow > class default) as any other guardrail decision,
+// just applied once per parsed step instead of once per node. Merges
+// into a COPY of base.Env's own Attributes map per step, mirroring
+// GuardrailStep's own "never mutate the caller's shared map" contract.
+func EvaluateCommandSteps(rules []Rule, base Step, commands []string, class EffectClass) []Verdict {
+	baseAttrs, _ := base.Env["Attributes"].(map[string]any)
+	out := make([]Verdict, len(commands))
+	for i, cmd := range commands {
+		attrs := make(map[string]any, len(baseAttrs)+1)
+		for k, v := range baseAttrs {
+			attrs[k] = v
+		}
+		attrs["command"] = NormalizeCommandForMatch(cmd)
+
+		env := make(map[string]any, len(base.Env))
+		for k, v := range base.Env {
+			env[k] = v
+		}
+		env["Attributes"] = attrs
+
+		step := base
+		step.Env = env
+		out[i] = Evaluate(rules, step, class)
+	}
+	return out
+}
+
+// WorstVerdict returns the most restrictive of several verdicts (deny >
+// ask > allow), matching Evaluate's own precedence order -- the coding
+// loop's single block-level gate decision (goal 0240 S3), derived from
+// its own per-step display verdicts (EvaluateCommandSteps above). The
+// block-level pause/skip decision stays at the DBOS-checkpointed
+// granularity every other node uses (composition/executeshellcommand.go's
+// own one-step-per-node design) even though each step's own verdict is
+// still individually computed and shown. verdicts is never empty in
+// practice (a parsed command block always has at least one step); an
+// empty slice returns the zero Verdict rather than panicking.
+func WorstVerdict(verdicts []Verdict) Verdict {
+	for _, want := range []Effect{EffectDeny, EffectAsk, EffectAllow} {
+		for _, v := range verdicts {
+			if v.Effect == want {
+				return v
+			}
+		}
+	}
+	return Verdict{}
 }
 
 func matches(r Rule, step Step) bool {

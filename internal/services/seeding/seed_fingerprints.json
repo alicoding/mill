@@ -107,6 +107,26 @@
     "seedRevision": 1,
     "fingerprint": "1c08007bbeeea7f8badb47a7d1d2d85fb6669fbbc917f0d81104666e5ae52c41"
   },
+  "guardrailrule:shell-allow-curl-head": {
+    "seedRevision": 1,
+    "fingerprint": "1c1939763cdcaf5eb5c68d7a9fd679636b5af1f2e887b4c7342c721a93db3dde"
+  },
+  "guardrailrule:shell-allow-ls": {
+    "seedRevision": 1,
+    "fingerprint": "6cdd303d3a73ad355be02c10d5c3538ccca1c0fef8419f1b316e8636bfc50151"
+  },
+  "guardrailrule:shell-allow-openssl-s-client": {
+    "seedRevision": 1,
+    "fingerprint": "029cfc50304e15db2388d2186da8d5658af577c77344c5386011da6a869198c1"
+  },
+  "guardrailrule:shell-deny-pipe-to-shell": {
+    "seedRevision": 1,
+    "fingerprint": "bd062224b9a553f9893f1e5b7b3bf152d7753da341ce42f57702edae02b7ce2b"
+  },
+  "guardrailrule:shell-deny-rm-rf": {
+    "seedRevision": 1,
+    "fingerprint": "5560760323746176e66279c0769c37aa3fbb8378ab0af80323215120a48af0ce"
+  },
   "list:example-country-codes-list": {
     "seedRevision": 4,
     "fingerprint": "e5f0f240a11b3186184fc845f0a5b43e0a866f354c90c6cb22286a3ca4a4b755"

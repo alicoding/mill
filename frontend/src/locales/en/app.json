@@ -268,6 +268,11 @@
         "ask": "Asks for approval before running",
         "deny": "Blocked by a guardrail rule"
       },
+      "stepVerdict": {
+        "allow": "Allowed by \"{{rule}}\"",
+        "ask": "Blocked by \"{{rule}}\". Approve to run.",
+        "deny": "Blocked by \"{{rule}}\". Can't run."
+      },
       "startFailedTitle": "Couldn't start the run",
       "cancel": "Cancel",
       "run": "Run"

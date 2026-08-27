@@ -117,6 +117,41 @@ type approvalDecision struct {
 	Continue bool
 }
 
+// shellCommandNodeTypeID mirrors composition's "process-shell-command"
+// NodeType ID as a literal string, same as guardrail.BuiltIn's own
+// shellCommandNodeTypeID (avoiding an import solely for one string
+// comparison).
+const shellCommandNodeTypeID = "process-shell-command"
+
+// evaluateVerdict computes the guardrail verdict for one about-to-
+// execute node -- the generic per-NODE guardrail.Evaluate call for
+// every node type, except process-shell-command (goal 0240 S3): a
+// captured command block is several parsed lines sharing one node, and
+// the allow/deny pattern lists are meant to match each line's OWN
+// command text, not the node as a whole (guardrail.BuiltIn's
+// NodeTypeID-scoped ShellAllow*/ShellDeny* rules). The node still
+// checkpoints and pauses/skips as ONE unit (composition/
+// executeshellcommand.go's own one-DBOS-step-per-node design is
+// unchanged) -- this takes the MOST RESTRICTIVE of the block's own
+// per-line verdicts (guardrail.WorstVerdict) as that one decision, so a
+// pure allow-listed block (every line matches an allow pattern) skips
+// the approval ceremony entirely, and a block containing even one
+// unlisted or deny-listed line still asks, same as today.
+func (e *ExecutionService) evaluateVerdict(workflowID string, node composition.Node, ec composition.ExecContext, class guardrail.EffectClass) guardrail.Verdict {
+	if node.NodeTypeID != shellCommandNodeTypeID {
+		return guardrail.Evaluate(e.guard.Rules(), guardrailsvc.GuardrailStep(workflowID, node, ec), class)
+	}
+	steps := composition.ParseShellCommandBlock(ec.Payload)
+	if len(steps) == 0 {
+		return guardrail.Evaluate(e.guard.Rules(), guardrailsvc.GuardrailStep(workflowID, node, ec), class)
+	}
+	commands := make([]string, len(steps))
+	for i, s := range steps {
+		commands[i] = s.Text
+	}
+	return guardrail.WorstVerdict(e.guard.ShellCommandVerdicts(commands))
+}
+
 // guardrailGate is installed as composition.SetGuardrailGate at
 // ExecutionService construction -- see docs/adr/0022 for the full flow,
 // and docs/adr/0031 for the breakpoint/step-mode additions. Returns the
@@ -139,7 +174,7 @@ func (e *ExecutionService) guardrailGate(runCtx any, workflowID string, node com
 		// anyway: an ask with nowhere to ask is a deny, not a pass --
 		// including a stepped run, which by definition always needs to
 		// ask, even on an otherwise-allowed pure node.
-		v := guardrail.Evaluate(e.guard.Rules(), guardrailsvc.GuardrailStep(workflowID, node, ec), class)
+		v := e.evaluateVerdict(workflowID, node, ec, class)
 		if v.Effect != guardrail.EffectAllow || ec.Stepped {
 			return ec, fmt.Errorf("guardrail: step requires approval but the run has no interactive context")
 		}
@@ -156,7 +191,7 @@ func (e *ExecutionService) guardrailGate(runCtx any, workflowID string, node com
 	// breakpoint or policy ask hit during a stepped run still reads as
 	// what it actually is, not generic "step mode").
 	verdict, err := execution.RunAsStep(ctx, func(context.Context) (guardrail.Verdict, error) {
-		v := guardrail.Evaluate(e.guard.Rules(), guardrailsvc.GuardrailStep(workflowID, node, ec), class)
+		v := e.evaluateVerdict(workflowID, node, ec, class)
 		if ec.Stepped && v.Effect == guardrail.EffectAllow {
 			v = guardrail.Verdict{Effect: guardrail.EffectAsk, Source: guardrail.SourceDebug, RuleLabel: "Step mode"}
 		}

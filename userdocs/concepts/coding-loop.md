@@ -28,6 +28,13 @@ it has a placeholder for a secret — `<YOUR_TOKEN>` and similar — is
 flagged so you know it'll run exactly as copied, nothing filled in
 for you. Nothing runs until you click **Run**.
 
+Some shell commands are common enough that Mill recognizes them: a
+read-only check like `curl -I` or `ls` shows **Allowed by** its rule
+and never needs a click. A command that looks destructive — `rm -rf`,
+piping a download straight into a shell — shows **Blocked by** its
+rule instead, so you still have to approve it before it runs. You can
+add your own patterns to either list in Review's Rules tab.
+
 ## Watch it run
 
 Once you confirm, each step shows live: waiting, running, done,

@@ -10,13 +10,13 @@ export interface CommandBlockPreview {
     "dir": string;
 
     /**
-     * GuardrailVerdict is "allow" | "ask" | "deny" -- one verdict for
-     * the whole block, since S1's guardrail plane evaluates per NODE,
-     * not per parsed line (every step shares the seed's own single
-     * process-shell-command node). A future allow/deny pattern-list
-     * slice (goal 0240 S3) is what would ever make per-step verdicts
-     * differ; nothing in this preview's own shape needs to change for
-     * that to land.
+     * GuardrailVerdict is "allow" | "ask" | "deny" -- the block-level
+     * gate decision (goal 0240 S3): the MOST RESTRICTIVE of every step's
+     * own Verdict below, since the block still checkpoints/pauses as ONE
+     * DBOS step (composition/executeshellcommand.go's own one-step-per-
+     * node design). Each CommandBlockPreviewStep now carries its OWN
+     * verdict too -- this field is what actually decides whether Run
+     * pauses for approval, the per-step ones are display only.
      */
     "guardrailVerdict": string;
 
@@ -50,6 +50,18 @@ export interface CommandBlockPreviewStep {
     "text": string;
     "join": string;
     "looksLikeSecretPlaceholder": boolean;
+
+    /**
+     * Verdict/RuleLabel (goal 0240 S3) are this ONE step's own guardrail
+     * verdict -- "allow" | "ask" | "deny", matching CommandBlockPreview's
+     * own GuardrailVerdict values. RuleLabel is empty when the
+     * effect-class default decided (no allow/deny-list pattern matched);
+     * the Confirm screen only renders a per-step badge when it's
+     * non-empty, so an unlisted step stays exactly as quiet as it was
+     * before this slice.
+     */
+    "verdict": string;
+    "ruleLabel"?: string;
 }
 
 /**
