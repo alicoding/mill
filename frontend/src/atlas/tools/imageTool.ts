@@ -3,7 +3,7 @@ import { AtlasService } from '../../shared/bindings'
 import { fileToBase64 } from '../../shared/base64Blob'
 import { identityOf, registerNoun, type AtlasToolShape } from '../atlasNounRegistry'
 import { normalizeLocalPathInput, titleFromFilename } from '../atlasCreateHelpers'
-import { makeMirrorImageContent } from '../AtlasMirrorImageContent'
+import { makeMirrorImageContent } from '../extensions/AtlasMirrorImageContent'
 
 const imageIdentity = identityOf('image')
 

@@ -1,10 +1,12 @@
 import type { ComponentType } from 'react'
 import type { Icon } from '@primer/octicons-react'
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { ListProjection } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { ATLAS_TOOL_IDENTITIES, type AtlasToolIdentity, type AtlasToolInteraction } from '../shared/atlasToolIdentity'
 import type { AtlasStyleField } from './atlasStyleVocabulary'
 import type { FrameBox } from './useAtlasDragFiling'
 import type { EditRouteDecl, ObjectSource } from './objectSeams'
+import type { MirrorReadState } from './useAtlasObjectMirrorRead'
 
 // The frontend twin of composition/registry.go's RegisterNodeType
 // (ADR-0006, goal 0180 slice 1): each canvas noun's own fat descriptor
@@ -53,7 +55,27 @@ export type AtlasBoardObjectKind = 'shape' | 'image' | 'ink' | 'table' | 'diagra
 // below). A Component whose Kind is fileBacked: false receives it too
 // (it just never changes) rather than a second, optional prop shape.
 export interface AtlasNounContent {
-  Component: ComponentType<{ object: BoardObject; mirrorVersion: number }>
+  // object/mirrorVersion stay required (every Kind receives them,
+  // whether or not it reads them -- the existing "declare honestly even
+  // when meaningless" convention this file already documents for
+  // dragBand/resizable/etc). mirrorContent/fetchListProjection/
+  // repickMirror (ADR-0046, goal 0244 S1b) are the kernel reads/writes
+  // a fileBacked or provider-backed Kind's own Component needs, now
+  // supplied by the host (AtlasBoardObjectNode.tsx) as props instead of
+  // the Component importing AtlasService directly -- the import the
+  // extensions/ cruiser rule forbids. Optional, unlike every other
+  // field on this interface, for one reason: AtlasMirrorImageContent.test.tsx
+  // (goal 0243's regression pin) constructs a registered Component
+  // directly with no host at all, and omitting these three must still
+  // resolve to each one's own honest "not loaded"/no-op state rather
+  // than a compile error.
+  Component: ComponentType<{
+    object: BoardObject
+    mirrorVersion: number
+    mirrorContent?: MirrorReadState
+    fetchListProjection?: (id: string) => Promise<ListProjection>
+    repickMirror?: (path: string) => Promise<unknown>
+  }>
   ariaLabelKey: string
   role: 'img' | undefined
   // source / editRoute (ADR-0046, goal 0244): the two seams this Kind

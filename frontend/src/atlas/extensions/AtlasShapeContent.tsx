@@ -1,5 +1,5 @@
-import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import { arrowGeometry } from './atlasShapeSvg'
+import type { BoardObject } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { arrowGeometry } from '../atlasShapeSvg'
 
 const DEFAULT_W = 160
 const DEFAULT_H = 100

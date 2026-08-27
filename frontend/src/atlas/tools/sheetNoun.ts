@@ -9,7 +9,7 @@ import { registerBoardObjectContent } from '../atlasNounRegistry'
 // atlasTools.ts -- a static import here would drag all of that into
 // every pure-logic import graph that reaches ATLAS_TOOLS, not only the
 // real board render path that actually needs it.
-const AtlasSheetObjectContent = lazy(() => import('../AtlasSheetObjectContent').then((m) => ({ default: m.AtlasSheetObjectContent })))
+const AtlasSheetObjectContent = lazy(() => import('../extensions/AtlasSheetObjectContent').then((m) => ({ default: m.AtlasSheetObjectContent })))
 
 // sheet (goal 0232 S2): the honest home for a tool-less noun, the same
 // shape diagramNoun.ts already established -- sheet lands by native

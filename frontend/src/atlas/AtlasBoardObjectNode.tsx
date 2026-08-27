@@ -7,6 +7,7 @@ import { AtlasService } from '../shared/bindings'
 import { boardObjectContentFor } from './atlasNounRegistry'
 import { AtlasShapeRotateHandle } from './AtlasShapeRotateHandle'
 import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
+import { useAtlasObjectMirrorRead } from './useAtlasObjectMirrorRead'
 import { useAtlasShapeRotateLive } from './atlasShapeRotateLiveStore'
 import { dispatchObjectEdit, resolveEditRoute } from './objectSeams'
 import styles from './AtlasBoardObjectNode.module.css'
@@ -73,6 +74,14 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
   // the entire tax a new family pays for live re-render.
   const [mirrorVersion, setMirrorVersion] = useState(0)
   useAtlasMirrorChanged(facts?.fileBacked ? object.ID : '', () => setMirrorVersion((v) => v + 1))
+  // The kernel import boundary (ADR-0046, goal 0244 S1b): this read
+  // used to live inside each fileBacked Kind's own content Component
+  // (AtlasMirrorImageContent/AtlasSheetObjectContent/AtlasDiagramObjectContent),
+  // each importing AtlasService directly. Relocated here so
+  // extensions/ has no import path to it at all -- the result is
+  // handed down as the mirrorContent prop below. Called unconditionally
+  // (rules-of-hooks: `facts` may be undefined on the first render).
+  const mirrorContent = useAtlasObjectMirrorRead(object.ID, object.Payload?.mirrorPath, facts?.fileBacked ?? false, mirrorVersion)
 
   if (!facts) {
     // Every persisted Kind self-registers a content contribution
@@ -156,7 +165,19 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
           header explains why that stays lazy). */}
       <div className={styles.content}>
         <Suspense fallback={null}>
-          <Component object={object} mirrorVersion={mirrorVersion} />
+          {/* mirrorContent/fetchListProjection/repickMirror: the three
+              host-resolved kernel seams a Kind's own Component may need
+              (ADR-0046, goal 0244 S1b) -- passed uniformly to every
+              Kind, the same "receives it, never changes" shape this
+              file already gives mirrorVersion, rather than a per-Kind
+              branch on which props to supply. */}
+          <Component
+            object={object}
+            mirrorVersion={mirrorVersion}
+            mirrorContent={mirrorContent}
+            fetchListProjection={AtlasService.ObjectListProjection}
+            repickMirror={(path) => AtlasService.RepickObjectMirror(object.ID, path)}
+          />
         </Suspense>
       </div>
     </div>

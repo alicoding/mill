@@ -8,7 +8,7 @@ import { frameContainingPoint } from '../atlasFramePoint'
 import { refreshAtlas } from '../atlasStore'
 import { meetsDragThreshold } from '../useAtlasToolGesture'
 import { AtlasShapeLivePreview } from '../AtlasShapeLivePreview'
-import { AtlasShapeContent } from '../AtlasShapeContent'
+import { AtlasShapeContent } from '../extensions/AtlasShapeContent'
 
 const shapeIdentity = identityOf('shape')
 

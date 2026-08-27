@@ -9,7 +9,7 @@ import { isDrawioEditableExtension } from '../atlasDiagramMirror'
 // by atlasTools.ts -- a static import here would drag that dependency
 // into every pure-logic import graph that reaches ATLAS_TOOLS, not only
 // the real board render path that actually needs it.
-const AtlasDiagramObjectContent = lazy(() => import('../AtlasDiagramObjectContent').then((m) => ({ default: m.AtlasDiagramObjectContent })))
+const AtlasDiagramObjectContent = lazy(() => import('../extensions/AtlasDiagramObjectContent').then((m) => ({ default: m.AtlasDiagramObjectContent })))
 
 // diagram (goal 0179 S2, goal 0215 S3): the honest home for a
 // tool-less noun. Diagram lands by native file-drop only -- no tray
