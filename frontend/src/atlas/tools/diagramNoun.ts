@@ -30,4 +30,13 @@ registerBoardObjectContent('diagram', {
   // watch subscription and useAtlasObjectMenu.ts's "Open in default
   // app" enablement both key off this flag.
   fileBacked: true,
+  // goal 0237 S1: draw.io's real engine mounts inside Mill for a
+  // .drawio mirror (double-click or the context menu's "Edit diagram").
+  // A mermaid mirror has no embeddable editor (goal 0237 S0's honest
+  // finding) so this stays true even though the actual mount only
+  // opens for a drawio-extension mirror -- useAtlasObjectMenu.ts's own
+  // enablement check narrows further by extension, same as
+  // AtlasDiagramObjectContent already narrows its own render by
+  // extension for the SAME reason.
+  editable: true,
 })

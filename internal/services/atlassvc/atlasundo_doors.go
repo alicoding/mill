@@ -95,6 +95,7 @@ var exemptDoors = map[string]string{
 	"SetGuardedDataPaths":      "wails:ignore, app-level config, not board content",
 	"SetMirrorsDir":            "wails:ignore, app-level config, not board content",
 	"SetViewMode":              "container view-mode toggle, not in ADR-0044's v1 door list",
+	"WriteObjectMirror":        "the embedded editor engine's own continuous autosave writes (goal 0237 S1) -- journaling every keystroke-driven autosave would flood the undo stack with noise no user gesture maps to; the engine's own in-app undo (Ctrl+Z inside the editor) is the actual undo surface for an in-progress edit",
 	"UpdateNow":                "triggers a workflow run against a card, not a canvas gesture",
 	"NotifyRunCompleted":       "workflow-run completion bookkeeping, not a canvas gesture",
 

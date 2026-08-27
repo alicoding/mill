@@ -70,6 +70,13 @@ export interface AtlasNounContent {
 interface AtlasBoardObjectContent extends AtlasNounContent {
   dragBand: boolean
   fileBacked: boolean
+  // editable (goal 0237 S1): does this Kind register an EMBEDDED EDITOR
+  // engine (the tool's own real UI mounted inside Mill, not just a
+  // preview)? Optional and defaulted false, unlike fileBacked/dragBand
+  // above -- only diagram declares it true this slice; S2's mermaid
+  // registration is what actually generalizes this into a required,
+  // honestly-declared field the way those two already are.
+  editable?: boolean
 }
 
 const boardObjectContentRegistry = new Map<AtlasBoardObjectKind, AtlasBoardObjectContent>()

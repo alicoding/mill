@@ -19,6 +19,7 @@ import { pasteSummaryText } from './pasteSummary'
 import { type AtlasFocusRequest } from './useBoardFocus'
 import { type ContextMenuState } from '../shared/ContextMenu'
 import { AtlasViewOverlays } from './AtlasViewOverlays'
+import { closeAtlasEditDiagram, useAtlasEditDiagramStore } from './atlasEditDiagramStore'
 import { AtlasBoardEmptyState } from './AtlasBoardEmptyState'
 import { CompanionPanel } from './CompanionPanel'
 import { isGroupCard } from './atlasBoardLayout'
@@ -232,6 +233,13 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // apply-time staleness skip rides the same quiet toast above.
   useAtlasUndoJournal({ onSkip: quietToast.show })
   const [openNoteID, setOpenNoteID] = useState<string | null>(null)
+  // goal 0237 S1: which board object's embedded editor engine is open,
+  // read from the small directly-imported store both the context-menu
+  // item (useAtlasObjectMenu.ts) and the double-click handler
+  // (AtlasBoardObjectNode.tsx) write to -- same shape openNoteID above
+  // already establishes for a per-entity modal, but sourced from a
+  // store instead of a callback threaded through React Flow node data.
+  const editingDiagramObjectID = useAtlasEditDiagramStore((s) => s.openObjectID)
 
   const deleteConfirm = useAtlasDeleteConfirm({ t, allCards, notes: allNotes })
 
@@ -458,6 +466,8 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         tableFromListOpen={tableFromListOpen} onCloseTableFromList={() => setTableFromListOpen(false)} newSpaceOpen={newSpaceOpen} onCloseNewSpace={() => setNewSpaceOpen(false)} onCreateTable={createTableFromList} onCreateSpace={(kindID, title) => createCard('sibling', kindID, title)}
         menu={menu} onCloseMenu={() => setMenu(null)} linkMenus={linkMenus} containmentMenus={containmentMenus} deleteConfirm={deleteConfirm}
         openNote={openNoteID ? allNotes.find((n) => n.ID === openNoteID) ?? null : null} onCloseNote={() => setOpenNoteID(null)}
+        editingDiagramObject={editingDiagramObjectID ? allObjects.find((o) => o.ID === editingDiagramObjectID) ?? null : null}
+        onCloseEditDiagram={closeAtlasEditDiagram}
         matrixOpen={projectionViews.matrixOpen} onCloseMatrix={() => projectionViews.setMatrixOpen(false)} coverageOpen={projectionViews.coverageOpen} onCloseCoverage={() => projectionViews.setCoverageOpen(false)} roadmapOpen={projectionViews.roadmapOpen} onCloseRoadmap={() => projectionViews.setRoadmapOpen(false)} childrenAll={childrenAll} kindsOpen={kindsOpen} onCloseKinds={() => setKindsOpen(false)} onOpenCardFromProjection={projectionViews.openCardFromProjection}
       />
     </div>

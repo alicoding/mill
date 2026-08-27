@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
-import type { Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { BoardObject, Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { refreshAtlas } from './atlasStore'
 import { AtlasJumpDialog } from './AtlasJumpDialog'
 import { AtlasCardOverlay } from './AtlasCardOverlay'
 import { AtlasNoteOverlay } from './AtlasNoteOverlay'
+import { DrawioEditorDialog } from './DrawioEditorDialog'
 import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
 import { AtlasMatrixView } from './AtlasMatrixView'
 import { AtlasCoverageView } from './AtlasCoverageView'
@@ -29,6 +30,7 @@ export function AtlasViewOverlays({
   tableFromListOpen, onCloseTableFromList, newSpaceOpen, onCloseNewSpace, onCreateTable, onCreateSpace,
   menu, onCloseMenu, linkMenus, containmentMenus, deleteConfirm,
   openNote, onCloseNote,
+  editingDiagramObject, onCloseEditDiagram,
   matrixOpen, onCloseMatrix, coverageOpen, onCloseCoverage, roadmapOpen, onCloseRoadmap, childrenAll, kindsOpen, onCloseKinds, onOpenCardFromProjection,
 }: {
   jumpOpen: boolean
@@ -57,6 +59,8 @@ export function AtlasViewOverlays({
   deleteConfirm: ReturnType<typeof useAtlasDeleteConfirm>
   openNote: Note | null
   onCloseNote: () => void
+  editingDiagramObject: BoardObject | null
+  onCloseEditDiagram: () => void
   matrixOpen: boolean
   onCloseMatrix: () => void
   coverageOpen: boolean
@@ -92,6 +96,7 @@ export function AtlasViewOverlays({
       {linkMenus.labelPopover}
       {containmentMenus.dissolveDialog}{deleteConfirm.deleteConfirmDialog}
       {openNote && <AtlasNoteOverlay key={openNote.ID} note={openNote} onClose={onCloseNote} />}
+      {editingDiagramObject && <DrawioEditorDialog key={editingDiagramObject.ID} object={editingDiagramObject} onClose={onCloseEditDiagram} />}
 
       <AtlasMatrixView
         open={matrixOpen}
