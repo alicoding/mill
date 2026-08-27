@@ -8,7 +8,7 @@ import { frameContainingPoint } from '../atlasFramePoint'
 import { refreshAtlas } from '../atlasStore'
 import { meetsDragThreshold } from '../useAtlasToolGesture'
 import { AtlasPencilLivePreview } from '../AtlasPencilLivePreview'
-import { makeMirrorImageContent } from '../AtlasMirrorImageContent'
+import { makeMirrorImageContent } from '../extensions/AtlasMirrorImageContent'
 
 const pencilIdentity = identityOf('pencil')
 

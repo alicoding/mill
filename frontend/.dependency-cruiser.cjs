@@ -59,6 +59,13 @@ module.exports = {
       from: { path: '^src/views' },
       to: { path: '^src/app' },
     },
+    {
+      name: 'canvas-extensions-must-not-import-kernel',
+      severity: 'error',
+      comment: 'ADR-0046 / goal 0244 S1b: a canvas-object extension (src/atlas/extensions/**) receives its object\'s data and mutators as host-supplied props (AtlasBoardObjectNode.tsx) -- it has no import path to a Wails-bound service (identity/persistence/undo/guardrail mutators, the kernel ADR-0046 names), whether via the shared/bindings barrel or a direct services/ binding path. Domain-model TYPE shapes (bindings/**/internal/domain/**) stay reachable -- an extension legitimately needs to know the shape of the already-loaded data it is handed.',
+      from: { path: '^src/atlas/extensions' },
+      to: { path: '^(src/shared/bindings\\.ts|bindings/.*/internal/services/)' },
+    },
   ],
   options: {
     doNotFollow: { path: 'node_modules' },

@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Stack, Text } from '@primer/react'
-import { MirrorKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import type { BoardObject, MirrorContent } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import { AtlasService } from '../shared/bindings'
-import { boardObjectContentFor } from './atlasNounRegistry'
-import { dispatchObjectEdit } from './objectSeams'
-import { sheetTruncationNote, truncateSheetRows } from './atlasSheetTruncate'
-import { TABLE_WIDTH, TABLE_HEIGHT } from './atlasBoardLayout'
-import runbookStyles from '../shared/ListCard.module.css'
+import { MirrorKind } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { BoardObject, MirrorContent } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { boardObjectContentFor } from '../atlasNounRegistry'
+import { dispatchObjectEdit } from '../objectSeams'
+import type { MirrorReadState } from '../useAtlasObjectMirrorRead'
+import { sheetTruncationNote, truncateSheetRows } from '../atlasSheetTruncate'
+import { TABLE_WIDTH, TABLE_HEIGHT } from '../atlasBoardLayout'
+import runbookStyles from '../../shared/ListCard.module.css'
 import styles from './AtlasSheetObjectContent.module.css'
 
 type SheetRows = unknown[][]
@@ -60,38 +60,24 @@ async function parseSheet(content: MirrorContent): Promise<SheetRows> {
 // rendered generically by useAtlasObjectMenu.ts's context menu, plus
 // the button below for the unreadable state so the empty state itself
 // offers the action it names).
-export function AtlasSheetObjectContent({ object, mirrorVersion }: { object: BoardObject; mirrorVersion: number }) {
+export function AtlasSheetObjectContent({ object, mirrorContent }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState }) {
   const { t } = useTranslation('atlas')
-  const [content, setContent] = useState<MirrorContent | null>(null)
-  const [fetchError, setFetchError] = useState('')
+  const content = mirrorContent?.content
+  const fetchError = mirrorContent?.error ?? ''
   const [rows, setRows] = useState<SheetRows | null>(null)
   const [parseFailed, setParseFailed] = useState(false)
 
-  const fetchContent = useCallback(() => {
-    AtlasService.ObjectMirrorContent(object.ID)
-      .then(setContent)
-      .catch((err) => setFetchError(String(err)))
-  }, [object.ID])
-
+  // content is now the host's own settled read (ADR-0046, goal 0244
+  // S1b) rather than something this component fetches -- !content
+  // covers both "not yet loaded" and the identity-change reset the old
+  // local fetch effect used to perform explicitly, so rows/parseFailed
+  // clear here exactly when they used to.
   useEffect(() => {
-    setContent(null)
-    setRows(null)
-    setParseFailed(false)
-    setFetchError('')
-    fetchContent()
-  }, [object.ID, fetchContent])
-
-  // mirrorVersion starts at 0 for a freshly mounted node and only
-  // increments on a REAL fsnotify-observed change (AtlasBoardObjectNode.tsx)
-  // -- skipping the initial 0 avoids a redundant second fetch alongside
-  // the identity effect above's own mount-time fetch.
-  const mountedVersion = useRef(mirrorVersion)
-  useEffect(() => {
-    if (mirrorVersion !== mountedVersion.current) fetchContent()
-  }, [mirrorVersion, fetchContent])
-
-  useEffect(() => {
-    if (!content || content.Missing || content.TooLarge) return
+    if (!content || content.Missing || content.TooLarge) {
+      setRows(null)
+      setParseFailed(false)
+      return undefined
+    }
     let stale = false
     setParseFailed(false)
     parseSheet(content)

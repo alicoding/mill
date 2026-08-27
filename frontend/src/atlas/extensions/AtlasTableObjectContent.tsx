@@ -1,8 +1,14 @@
-import type { CSSProperties } from 'react'
-import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import { AtlasService } from '../shared/bindings'
-import { AtlasCardProjectionTable } from './AtlasCardProjectionTable'
-import { TABLE_WIDTH, TABLE_HEIGHT } from './atlasBoardLayout'
+import type { CSSProperties, ComponentProps } from 'react'
+import type { BoardObject } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { AtlasCardProjectionTable } from '../AtlasCardProjectionTable'
+import { TABLE_WIDTH, TABLE_HEIGHT } from '../atlasBoardLayout'
+
+// FetchListProjection -- derived from AtlasCardProjectionTable's own
+// prop type rather than importing ListProjection from bindings
+// directly (ADR-0046, goal 0244 S1b: extensions/ has no import path to
+// the generated bindings at all -- AtlasCardProjectionTable itself
+// stays outside extensions/ and is free to import that type).
+type FetchListProjection = ComponentProps<typeof AtlasCardProjectionTable>['fetchProjection']
 
 // A "table" object's own persisted render (goal 0179 S2): the SAME
 // shared grid a table CARD's board face/page already mount
@@ -12,6 +18,12 @@ import { TABLE_WIDTH, TABLE_HEIGHT } from './atlasBoardLayout'
 // ProjectionDensity of its own (that's a Card-only field); Promote to
 // card is how a table object reaches the pills density and every other
 // card-only affordance.
+//
+// fetchListProjection (ADR-0046, goal 0244 S1b) is the host's own bound
+// AtlasService.ObjectListProjection, handed down as a prop rather than
+// this component importing AtlasService itself -- the exact same
+// function reference the pre-relocation version called inline, just
+// sourced from the host instead of a local import.
 //
 // Two distinct height regimes (goal 0199 part C): once a resize
 // persists BoardObject.Size, that box wins forever -- this renders at
@@ -29,14 +41,21 @@ import { TABLE_WIDTH, TABLE_HEIGHT } from './atlasBoardLayout'
 // unused -- a table projects a Configure List, never a mirrored file
 // (fileBacked: false in tools/tableTool.ts), so this Kind's own
 // version counter never actually bumps.
-export function AtlasTableObjectContent({ object }: { object: BoardObject; mirrorVersion: number }) {
+export function AtlasTableObjectContent({ object, fetchListProjection }: { object: BoardObject; mirrorVersion: number; fetchListProjection?: FetchListProjection }) {
   const hasSize = !!object.Size
   const style: CSSProperties = hasSize
     ? { width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }
     : { width: TABLE_WIDTH, height: 'auto', maxHeight: TABLE_HEIGHT, display: 'flex', flexDirection: 'column' }
+  // fetchListProjection is always supplied by the real host
+  // (AtlasBoardObjectNode.tsx) -- undefined only in a hypothetical
+  // Component constructed with no host at all, which no table test
+  // does today; rendering nothing rather than a non-null assertion
+  // keeps this Kind's own "recoverable, never throws" convention
+  // (atlasNounRegistry.ts's own boardObjectContentFor doc comment).
+  if (!fetchListProjection) return null
   return (
     <div style={style}>
-      <AtlasCardProjectionTable scopeID={object.ID} fetchProjection={AtlasService.ObjectListProjection} />
+      <AtlasCardProjectionTable scopeID={object.ID} fetchProjection={fetchListProjection} />
     </div>
   )
 }

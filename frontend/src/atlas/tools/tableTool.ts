@@ -11,7 +11,7 @@ import { identityOf, registerNoun, type AtlasToolShape } from '../atlasNounRegis
 // here would drag that dependency into every pure-logic import graph
 // that reaches ATLAS_TOOLS (atlasTools.test.ts among them), not only
 // the real board render path that actually needs it.
-const AtlasTableObjectContent = lazy(() => import('../AtlasTableObjectContent').then((m) => ({ default: m.AtlasTableObjectContent })))
+const AtlasTableObjectContent = lazy(() => import('../extensions/AtlasTableObjectContent').then((m) => ({ default: m.AtlasTableObjectContent })))
 
 const tableIdentity = identityOf('table')
 
