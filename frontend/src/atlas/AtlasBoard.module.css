@@ -22,6 +22,10 @@
    Each noun renderer overrides only the two custom properties below,
    on its own type-scoped selector, to vary ring weight/radius -- never
    the box-shadow declaration itself. */
+/* A rotatable shape (goal 0236) overrides this default -- see
+   AtlasBoardObjectNode.module.css's own ring rules -- since its ring
+   must share the shape's own rotation transform rather than this
+   axis-aligned wrapper's. */
 :global(.react-flow__node.selected) {
     border-radius: var(--mill-ring-radius, var(--borderRadius-medium));
     box-shadow:

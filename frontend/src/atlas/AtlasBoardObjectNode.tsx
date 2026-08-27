@@ -7,6 +7,7 @@ import { AtlasService } from '../shared/bindings'
 import { boardObjectContentFor } from './atlasNounRegistry'
 import { AtlasShapeRotateHandle } from './AtlasShapeRotateHandle'
 import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
+import { useAtlasShapeRotateLive } from './atlasShapeRotateLiveStore'
 import styles from './AtlasBoardObjectNode.module.css'
 
 export interface AtlasBoardObjectData extends Record<string, unknown> {
@@ -50,6 +51,16 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
   const resizable = !(isShape && object.Payload?.shapeType === 'arrow')
   const shapeType = isShape ? object.Payload?.shapeType : undefined
   const rotatable = isShape && shapeType !== 'arrow'
+  // The rotation transform lives on THIS box, not the shape's own SVG
+  // (AtlasShapeContent.tsx no longer applies it) -- goal 0236's fix for
+  // "state computed in one frame of reference, displayed in another":
+  // every consumer that reads this box's geometry (the selection ring
+  // below, NodeResizer's handles, the rotate handle's own anchor, real
+  // pointer hit-testing) now shares the shape's actual rotated frame
+  // instead of disagreeing with it. Read unconditionally (rules-of-
+  // hooks) even though only a rotatable shape ever has a nonzero value.
+  const liveRotation = useAtlasShapeRotateLive(object.ID)
+  const rotationDeg = rotatable ? (liveRotation ?? (Number(object.Payload?.rotation) || 0)) : 0
   const boxRef = useRef<HTMLDivElement>(null)
   const facts = boardObjectContentFor(object.Kind)
   // The ONE shared watch subscription every fileBacked Kind inherits
@@ -76,7 +87,10 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
     <div
       ref={boxRef}
       className={styles.object}
-      style={hasSize ? { width: '100%', height: '100%' } : undefined}
+      style={{
+        ...(hasSize ? { width: '100%', height: '100%' } : null),
+        ...(rotationDeg ? { transform: `rotate(${rotationDeg}deg)`, transformOrigin: '50% 50%' } : null),
+      }}
       data-testid="atlas-board-object"
       data-object-kind={object.Kind}
       data-shape-type={shapeType}

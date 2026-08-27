@@ -37,10 +37,14 @@ test('a selected board object and a selected card each carry a real box-shadow r
   // The shape tool is discrete (goal 0199): the draw itself disarms
   // the tool and leaves the new object selected, so the ring this
   // test is proving is already up -- no extra click needed to
-  // reproduce it.
+  // reproduce it. A rectangle/ellipse shape's own ring lives on its
+  // OWN box, not React Flow's axis-aligned wrapper (goal 0236: the
+  // ring must share whatever rotation transform the shape carries),
+  // so the wrapper still carries the `selected` class but its own
+  // box-shadow is deliberately suppressed for this Kind.
   const shapeWrapper = nonSeededBoardObjectWrapper(page, 'shape')
   await expect(shapeWrapper).toHaveClass(/selected/)
-  await expect.poll(() => shapeWrapper.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
+  await expect.poll(() => shape.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
 
   // A seeded card's own ring, read-only (never modified/deleted) --
   // covers the note/sticky/region-chip/group family, which already
