@@ -27,6 +27,7 @@ import (
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/backupsvc"
 	"github.com/alicoding/mill/internal/services/clipboardhistorysvc"
+	"github.com/alicoding/mill/internal/services/codeloopsvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
 	"github.com/alicoding/mill/internal/services/executionsvc"
@@ -254,6 +255,45 @@ func WireSecrets(vaultPath string, credentials credential.Store, configureServic
 // its own failure text.
 func WireSecretRedaction(secretService *secretsvc.SecretService) {
 	composition.SetSecretRedactor(secretService.RedactKnownSecrets)
+}
+
+// WireCodingLoopSecrets connects the coding loop's secret resolution
+// CHAIN (goal 0240 S2, closing goal 0203 S4's held design) to its two
+// composition seams: SetVaultSecretLookup (preview-time, a cheap label
+// match, never a decrypt/audit) and SetShellSecretResolver (run-time,
+// the real three-source chain -- codeLoopService's own typed-secrets
+// stash, then a vault decrypt through secretService.ResolveSecretValue
+// (leaving the existing goal-0203 audit line via
+// secretaudit.ContextCodingLoopShell, never a second audit store), then
+// the process's own shell environment). "Fail to resolve" is banned by
+// the goal's own decision -- every branch below either returns a value
+// or falls through to the next source, ending in found=false, never an
+// error.
+func WireCodingLoopSecrets(codeLoopService *codeloopsvc.CodeLoopService, secretService *secretsvc.SecretService) {
+	composition.SetVaultSecretLookup(func(varName string) (string, bool) {
+		_, label, found := secretService.LookupVaultSecretByEnvName(varName)
+		return label, found
+	})
+	composition.SetShellSecretResolver(func(varName, secretsToken string, run composition.SecretAccessRun) (string, composition.SecretSource, bool) {
+		if secretsToken != "" {
+			if v, ok := codeLoopService.TakeTypedSecret(secretsToken, varName); ok {
+				return v, composition.SecretSourcePrompt, true
+			}
+		}
+		if id, _, found := secretService.LookupVaultSecretByEnvName(varName); found {
+			actx := secretaudit.AccessContext{Context: secretaudit.ContextCodingLoopShell, RunID: run.RunID, WorkflowID: run.WorkflowID}
+			if v, err := secretService.ResolveSecretValue(id, actx); err == nil {
+				return v, composition.SecretSourceVault, true
+			}
+			// A vault resolution error (a lock raced with this run, a
+			// deleted entry) falls through rather than failing the run --
+			// the goal's own "never fail to resolve" mandate.
+		}
+		if v := os.Getenv(varName); v != "" {
+			return v, composition.SecretSourceEnv, true
+		}
+		return "", "", false
+	})
 }
 
 // WireClipboardHistory connects goal 0234's clipboard-history service to

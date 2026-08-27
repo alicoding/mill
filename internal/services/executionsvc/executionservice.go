@@ -94,6 +94,15 @@ type runInput struct {
 	// AtlasSourceCardID names the card whose write fired trigger-atlas-card
 	// to start this run, "" otherwise (executionservice_atlascard.go).
 	AtlasSourceCardID string
+	// SecretsToken correlates this run to codeloopsvc's own in-memory
+	// typed-secrets stash (goal 0240 S2, composition.ExecContext's own
+	// field doc comment) -- an opaque, meaningless-without-the-stash
+	// token, never the secret value itself, so persisting it as part of
+	// this durably-checkpointed input is harmless. "" for every run
+	// started before this field existed and every caller with no typed
+	// secrets to correlate (RunWorkflow/RunWorkflowWithPayload/
+	// RunWorkflowStepped's own zero-value delegation below).
+	SecretsToken string
 }
 
 // RunStep is one node's recorded execution within a run, for the
@@ -289,8 +298,9 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 			// (which does pass workflowID) reported the rule as live.
 			// Fixed here, load-bearing for this feature, not a
 			// speculative unrelated cleanup.
-			WorkflowID: in.WorkflowID,
-			Stepped:    in.Stepped,
+			WorkflowID:   in.WorkflowID,
+			Stepped:      in.Stepped,
+			SecretsToken: in.SecretsToken,
 		})
 
 	// run-completed/run-failed (docs/adr/0035 item 4): emitted HERE, not
@@ -335,7 +345,7 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 	return output, err
 }
 
-func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, values map[string]string, payload string, stepped bool, atlasSourceCardID string) (RunSummary, error) {
+func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, values map[string]string, payload string, stepped bool, atlasSourceCardID string, secretsToken string) (RunSummary, error) {
 	wf, ok := e.findWorkflow(workflowID)
 	if !ok {
 		return RunSummary{}, fmt.Errorf("unknown workflow: %s", workflowID)
@@ -366,6 +376,7 @@ func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, val
 		Payload:           payload,
 		Stepped:           stepped,
 		AtlasSourceCardID: atlasSourceCardID,
+		SecretsToken:      secretsToken,
 	}, execution.WithWorkflowID(runID))
 	if err != nil {
 		return RunSummary{}, fmt.Errorf("start run: %w", err)

@@ -73,3 +73,36 @@ func looksLikeSecretPlaceholder(text string) bool {
 	}
 	return false
 }
+
+// secretEnvRefPattern is the ONE placeholder shape goal 0240 S2 actually
+// resolves and substitutes: a shell env-var reference, `${VAR}` or bare
+// `$VAR`, whose name is itself secret-shaped. This is the DECIDED
+// answer to "how do M365-style commands actually reference a secret" --
+// env-var style is primary because it's real, already-valid shell
+// syntax (a captured `curl -H "Authorization: Bearer ${GITHUB_TOKEN}"`
+// needs no rewriting) and because resolving through the child process's
+// ENVIRONMENT rather than by rewriting the command TEXT means the
+// resolved value never has to touch (and therefore can never leak
+// into) the displayed step text, the captured-command history, or any
+// log line -- only the placeholder name ever appears there. The other
+// two S1 heuristic shapes (`<TOKEN>`, `YOUR_TOKEN`) are not valid shell
+// substitution syntax and stay display-only, exactly as S1 left them --
+// this pattern is deliberately its OWN definition, not a capture-group
+// retrofit of secretPlaceholderPatterns's third entry, so a future
+// change to one heuristic's display shape can't silently change what
+// actually gets resolved.
+var secretEnvRefPattern = regexp.MustCompile(`\$\{?([A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY|CRED)[A-Z0-9_]*)\}?`)
+
+// TypedSecretsTokenTTL bounds how long codeloopsvc's in-memory typed-
+// secrets stash keeps an unused entry (a Confirm screen where the user
+// typed a secret then cancelled instead of running) -- long enough to
+// cover a real "type it, then click Run" pause, short enough that a
+// stash never accumulates across a session. Not a persistence window:
+// a typed secret is never written to disk at any point in its
+// lifetime, this only bounds how long it sits in process memory.
+// Declared here (composition owns the coding loop's own constants
+// module, this file's header comment) even though only codeloopsvc's
+// stash (a service-layer concern) reads it -- a service importing a
+// domain-layer constant is the normal Bindings->Domain->Adapters
+// direction (.claude/rules/backend.md), never the reverse.
+const TypedSecretsTokenTTL = 15 * time.Minute

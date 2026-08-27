@@ -184,14 +184,18 @@ func main() {
 
 	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
 	// docs/goals/0240 S1: the coding loop's Confirm-screen preview --
-	// read-only over guardrailService.Rules(), no dependency on
-	// ExecutionService (the actual run/approve/cancel path reuses
-	// ExecutionService's own RPCs directly, never a bespoke exec path).
+	// read-only over guardrailService.Rules(). Its ExecutionService
+	// dependency (goal 0240 S2, RunCommandBlock's own doc comment) is
+	// late-bound below via SetExecutionService, same shape
+	// TriggerService.SetExecutionService already uses just after this,
+	// since ExecutionService itself isn't constructed yet at this point.
 	codeLoopService := codeloopsvc.NewCodeLoopService(guardrailService)
 	executionService, err := executionsvc.NewExecutionService(executionDatabaseURL, compositionService, guardrailService)
 	if err != nil {
 		log.Fatal(err)
 	}
+	codeLoopService.SetExecutionService(executionService)
+	wiring.WireCodingLoopSecrets(codeLoopService, secretService)
 	// Single execution path (docs/adr/0008): a headless trigger fire now
 	// runs through the same durable ExecutionService.RunWorkflow every
 	// other entrypoint uses, tagged RunKindTriggered -- constructed after

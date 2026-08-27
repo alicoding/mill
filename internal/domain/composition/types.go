@@ -400,6 +400,16 @@ type ExecContext struct {
 	// own test-only primitive use) -- the guard simply never matches an
 	// empty workflow id.
 	WorkflowID string
+	// SecretsToken correlates this run to typed-at-Confirm secret values
+	// held in codeloopsvc's own in-memory stash (goal 0240 S2) -- opaque
+	// to composition itself (never inspected, only carried, same
+	// reasoning WorkflowID's own doc comment gives above), so the real
+	// secret VALUE never enters ExecContext/Payload/Attributes and
+	// therefore never reaches DBOS's checkpointed run record -- only this
+	// meaningless-without-the-stash token would. Empty for every caller
+	// that supplied no typed secrets (every existing run, every unit
+	// test).
+	SecretsToken string
 }
 
 // SecretAccessRun is the run/workflow identity a node's in-run

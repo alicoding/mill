@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Events } from '@wailsio/runtime'
-import { CodeLoopService, ExecutionService, RunKind } from './bindings'
+import { CodeLoopService, ExecutionService } from './bindings'
 import type { CommandBlockPreview, RunDetail } from './bindings'
 import type { CodingLoopStepProgressEvent } from './codingLoopTypes'
 import { CODING_LOOP_POLL_INTERVAL_MS, CODING_LOOP_PROGRESS_EVENT } from './codingLoopConstants'
@@ -30,6 +30,12 @@ export interface UseCodingLoopRunResult {
   startError: string | null
   copyState: 'idle' | 'copied' | 'error'
   lastProgressAt: number | null
+  // typedSecrets/setTypedSecret (goal 0240 S2): the values the user
+  // typed at Confirm for a "you'll type it"-sourced secret requirement,
+  // keyed by var name -- lives here (not inside CodingLoopConfirmState)
+  // so run() can read it directly without a round trip through state.
+  typedSecrets: Record<string, string>
+  setTypedSecret: (varName: string, value: string) => void
   run: () => void
   cancel: () => void
   copyResult: () => void
@@ -50,6 +56,10 @@ export function useCodingLoopRun(clipboardText: string): UseCodingLoopRunResult 
   const [stepProgress, setStepProgress] = useState<Record<number, CodingLoopStepProgressEvent>>({})
   const [startError, setStartError] = useState<string | null>(null)
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle')
+  const [typedSecrets, setTypedSecrets] = useState<Record<string, string>>({})
+  const setTypedSecret = (varName: string, value: string) => {
+    setTypedSecrets((prev) => ({ ...prev, [varName]: value }))
+  }
   // lastProgressAt is the Running screen's own "stuck for Ns" clock --
   // the timestamp of the most recent progress event of ANY kind (the
   // initial "running" emit included), so a command that produces
@@ -153,11 +163,15 @@ export function useCodingLoopRun(clipboardText: string): UseCodingLoopRunResult 
   const run = () => {
     if (!preview) return
     setStartError(null)
-    // RunKindTest (not Triggered): matches the seeded "Example: Run
-    // copied code" precedent (codeexec_seed_test.go) -- a triggered run
+    // CodeLoopService.RunCommandBlock (goal 0240 S2, replacing S1's own
+    // direct RunWorkflowWithPayload call): stashes any typed-at-Confirm
+    // secret values and starts the SAME real run (RunKindTest, matching
+    // the seeded "Example: Run copied code" precedent -- a triggered run
     // requires a PUBLISHED snapshot, a publish-state concern this
-    // hotkey/palette-invoked capture has no reason to depend on.
-    ExecutionService.RunWorkflowWithPayload(preview.workflowID, RunKind.RunKindTest, {}, clipboardText)
+    // hotkey/palette-invoked capture has no reason to depend on) in one
+    // atomic backend call, so the stash is guaranteed to exist before
+    // process-shell-command's own secret resolution ever needs it.
+    CodeLoopService.RunCommandBlock(preview.workflowID, clipboardText, typedSecrets)
       .then((summary) => {
         if (!mounted.current) return
         setRunID(summary.runID)
@@ -183,5 +197,8 @@ export function useCodingLoopRun(clipboardText: string): UseCodingLoopRunResult 
       .catch(() => setCopyState('error'))
   }
 
-  return { phase, preview, previewError, detail, stepProgress, startError, copyState, lastProgressAt, run, cancel, copyResult }
+  return {
+    phase, preview, previewError, detail, stepProgress, startError, copyState, lastProgressAt,
+    typedSecrets, setTypedSecret, run, cancel, copyResult,
+  }
 }

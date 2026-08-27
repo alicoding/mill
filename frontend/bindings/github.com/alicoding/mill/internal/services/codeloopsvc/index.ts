@@ -8,5 +8,6 @@ export {
 
 export type {
     CommandBlockPreview,
-    CommandBlockPreviewStep
+    CommandBlockPreviewStep,
+    SecretRequirementView
 } from "./models.js";
