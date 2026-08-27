@@ -67,7 +67,17 @@ export const pencilTool = {
   // glyph would flash on every single mount, not just a failure -- an
   // empty frame is the honest "not there yet" state.
   boardObjectKind: 'ink',
-  content: { Component: makeMirrorImageContent(null), ariaLabelKey: 'boardObject.inkAriaLabel', role: 'img' },
+  content: {
+    Component: makeMirrorImageContent(null),
+    ariaLabelKey: 'boardObject.inkAriaLabel',
+    role: 'img',
+    // ADR-0046 (goal 0244 S1): a stroke bakes to a real SVG mirror file
+    // (this tool's own commit above) -- it fits `file`, not
+    // `board-local`, despite never being opened outside Mill; no edit
+    // door exists for it (drawn once, never re-edited in place).
+    source: { kind: 'file', pathKey: 'mirrorPath' },
+    editRoute: { kind: 'none' },
+  },
   styleDefaults: PENCIL_DEFAULT_STYLE,
   styleFields: PENCIL_STYLE_FIELDS,
   // Continuous tool: toggleArm's own re-click always disarms it (never

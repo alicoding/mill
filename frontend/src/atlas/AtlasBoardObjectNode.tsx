@@ -8,8 +8,7 @@ import { boardObjectContentFor } from './atlasNounRegistry'
 import { AtlasShapeRotateHandle } from './AtlasShapeRotateHandle'
 import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
 import { useAtlasShapeRotateLive } from './atlasShapeRotateLiveStore'
-import { isDrawioEditableExtension } from './atlasDiagramMirror'
-import { openAtlasEditDiagram } from './atlasEditDiagramStore'
+import { dispatchObjectEdit, resolveEditRoute } from './objectSeams'
 import styles from './AtlasBoardObjectNode.module.css'
 
 export interface AtlasBoardObjectData extends Record<string, unknown> {
@@ -84,13 +83,17 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
     return null
   }
   const { Component, ariaLabelKey, role, dragBand } = facts
-  // goal 0237 S1: double-click opens the embedded editor engine, the
-  // same door the context menu's "Edit diagram" item opens
-  // (useAtlasObjectMenu.ts) -- the convention every canvas app follows
-  // for its own editable objects. Gated the same way that item is:
-  // the Kind must have registered an engine AND the mirror must be one
-  // this slice's one engine (drawio) actually opens.
-  const editable = !!facts.editable && isDrawioEditableExtension(object.Payload?.mirrorPath ?? '')
+  // ADR-0046 (goal 0244 S1): double-click dispatches through the
+  // object's own DECLARED edit route (resolved per-object, since a Kind
+  // like diagram opens different doors for different mirror
+  // extensions), never a hardcoded "if diagram, open drawio" check.
+  // Only an embedded-engine route gets a double-click door -- an
+  // external-app route (image/ink/sheet, and diagram's own mermaid
+  // case) stays reachable via the context menu / an explicit button
+  // only, matching every other file-backed Kind's convention of never
+  // launching another app on an accidental double-click.
+  const editRoute = facts.editRoute ? resolveEditRoute(object, facts.editRoute) : undefined
+  const editable = editRoute?.kind === 'embedded-engine'
 
   return (
     <div
@@ -105,7 +108,7 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
       data-shape-type={shapeType}
       role={role}
       aria-label={t(ariaLabelKey)}
-      onDoubleClick={editable ? () => openAtlasEditDiagram(object.ID) : undefined}
+      onDoubleClick={editable ? () => { void dispatchObjectEdit(object, editRoute!) } : undefined}
     >
       {/* The rotation handle (goal 0214): visible only when this shape
           is the board's SOLE selection -- never during a multi-select,

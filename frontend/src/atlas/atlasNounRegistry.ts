@@ -4,7 +4,7 @@ import type { BoardObject } from '../../bindings/github.com/alicoding/mill/inter
 import { ATLAS_TOOL_IDENTITIES, type AtlasToolIdentity, type AtlasToolInteraction } from '../shared/atlasToolIdentity'
 import type { AtlasStyleField } from './atlasStyleVocabulary'
 import type { FrameBox } from './useAtlasDragFiling'
-import type { EditRoute, ObjectSource } from './objectSeams'
+import type { EditRouteDecl, ObjectSource } from './objectSeams'
 
 // The frontend twin of composition/registry.go's RegisterNodeType
 // (ADR-0006, goal 0180 slice 1): each canvas noun's own fat descriptor
@@ -67,7 +67,10 @@ export interface AtlasNounContent {
   // SET is a separately frozen contract (atlasNounDeclarationFields.json's
   // exhaustiveness check).
   source?: ObjectSource
-  editRoute?: EditRoute
+  // editRoute (ADR-0046, goal 0244 S1): a static route or a per-object
+  // RESOLVER -- see EditRouteDecl's own header for why a single Kind
+  // (diagram) needs the function form.
+  editRoute?: EditRouteDecl
 }
 
 // AtlasBoardObjectContent -- AtlasNounContent plus the board-facts
