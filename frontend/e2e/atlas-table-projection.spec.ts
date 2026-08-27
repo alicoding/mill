@@ -220,6 +220,46 @@ test('an options column renders pills and edits as a select on the board object,
   await deleteViaPageMenu(page, overlay)
 })
 
+// The table's own `inline` EditRoute (ADR-0046, goal 0244 S2): a text
+// cell edited directly on the raw board object -- no promote, no card --
+// commits through the SAME List write door (shared/ListGrid ->
+// ConfigureService.UpdateListRow) Configure's own List page uses. A
+// reload re-fetches the object's projection fresh off the backing List
+// (ObjectListProjection), so the value surviving it proves the edit
+// wrote through to the List entity, not just local component state.
+test('a text cell edited directly on a table board object writes the backing List, surviving a reload', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await page.getByTestId('atlas-tray-table').click()
+  await page.getByTestId('atlas-table-size-2x2').click()
+  await clickBoardPoint(page, { x: 400, y: 500 })
+  const tableObject = tableObjects(page).filter({ hasText: 'Column 1' })
+  await expect(tableObject).toBeVisible()
+
+  const firstCell = tableObject.getByTestId('atlas-projection-cell').first()
+  await firstCell.click()
+  await tableObject.getByTestId('atlas-projection-cell-input').fill('Widget')
+  await tableObject.getByTestId('atlas-projection-cell-input').press('Enter')
+  await expect(firstCell).toContainText('Widget')
+
+  await page.reload()
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const reloaded = tableObjects(page).filter({ hasText: 'Widget' })
+  await expect(reloaded).toBeVisible()
+  await expect(reloaded.getByTestId('atlas-projection-cell').first()).toContainText('Widget')
+
+  // Cleanup: the object, then the List it minted.
+  await deleteObjectViaMenu(reloaded)
+  await expect(reloaded).toHaveCount(0)
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByRole('tab', { name: 'Lists' }).click()
+  const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })
+  await clickRowAction(page, listRow, 'Delete')
+  await expect(listRow).toHaveCount(0)
+})
+
 // Table from scratch (goal 0137, relocated onto a board object by goal
 // 0179 S2): "New table" opens a sweepable size grid; the click IS the
 // creation -- no dialog, identity automatic (auto-unique "Table" title,
