@@ -21,6 +21,32 @@ var keyByName = map[string]gohotkey.Key{
 	"4": gohotkey.Key4, "5": gohotkey.Key5, "6": gohotkey.Key6, "7": gohotkey.Key7,
 	"8": gohotkey.Key8, "9": gohotkey.Key9,
 	"SPACE": gohotkey.KeySpace,
+	// Punctuation the library defines no named Key constant for on any
+	// platform (checked hotkey_darwin.go/hotkey_windows.go/hotkey_x11.go
+	// in the vendored v0.6.1 source: only letters/digits/media/function
+	// keys get symbols). Key is just a raw platform keycode
+	// (hotkey_darwin.go's own header comment: "See: .../HIToolbox.framework/
+	// .../Events.h"), so these are literal kVK_ANSI_* values from that
+	// same Carbon header -- valid because macOS is desktop mode's only
+	// build target today (no Windows/Linux desktop CI job exists; the
+	// `!server` tag on this file only ever resolves to darwin in
+	// practice). A future non-darwin desktop target would need this
+	// block split behind its own build tag with that platform's keycodes
+	// -- the letter/digit map above stays portable as-is since KeyA etc.
+	// are named per-platform constants, but there is no equivalent named
+	// constant for punctuation to reuse.
+	// String keys match keyFromEventCode's own output exactly
+	// (frontend/src/shared/keybinding.ts) -- '+' for Equal, not '=', is
+	// deliberate: that function normalizes Equal to '+' to match how the
+	// combo is conventionally written (⌘+), and this map has no
+	// independent parsing step, so it must match verbatim or a valid
+	// frontend combo would report "unsupported key".
+	",": gohotkey.Key(0x2B), // kVK_ANSI_Comma
+	"/": gohotkey.Key(0x2C), // kVK_ANSI_Slash
+	"[": gohotkey.Key(0x21), // kVK_ANSI_LeftBracket
+	"]": gohotkey.Key(0x1E), // kVK_ANSI_RightBracket
+	"-": gohotkey.Key(0x1B), // kVK_ANSI_Minus
+	"+": gohotkey.Key(0x18), // kVK_ANSI_Equal
 }
 
 var modByName = map[string]gohotkey.Modifier{
