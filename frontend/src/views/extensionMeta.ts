@@ -1,5 +1,7 @@
+import type { Icon } from '@primer/octicons-react'
 import type { EditRouteDecl, ObjectSource } from '../atlas/objectSeams'
 import type { AtlasToolShape } from '../atlas/atlasTools'
+import type { ToolLessNounExtension } from '../atlas/atlasNounRegistry'
 
 // Pure enum -> user-vocabulary mapping for the Extensions section
 // (Settings > Extensions). Kept in its own file, apart from
@@ -9,6 +11,62 @@ import type { AtlasToolShape } from '../atlas/atlasTools'
 // Vitest unit test" layering) -- every other Settings section already
 // keeps its own pure formatter/description logic inline since none of
 // them branch on an enum this way.
+
+// ExtensionRowSource -- the ONE row shape ExtensionRow.tsx renders,
+// normalized from either a tray tool (AtlasToolShape) or a tool-less
+// noun (ToolLessNounExtension) by the two builders below -- so the row
+// component itself never branches on which kind of noun it's showing.
+// group/description/capabilities/disableScopeNote stay optional: a
+// tool-less noun has no tray cluster to report (there is no `group`
+// chip for a noun with no tray at all) and only IT ever sets
+// disableScopeNote, since only it needs to say its toggle's scope
+// differs from a tray tool's.
+export interface ExtensionRowSource {
+  id: string
+  icon: Icon
+  label: string
+  description?: string
+  group?: AtlasToolShape['group']
+  source?: ObjectSource
+  editRoute?: EditRouteDecl
+  capabilities?: readonly string[]
+  disableScopeNote?: string
+}
+
+// toolRowSource -- every ATLAS_TOOLS member becomes a row exactly as it
+// already did before goal 0237 S3's rider (ExtensionsSection.tsx used
+// to read AtlasToolShape fields directly); this is that same read,
+// pulled out so it composes with toolLessRowSource below into one list.
+export function toolRowSource(tool: AtlasToolShape): ExtensionRowSource {
+  return {
+    id: tool.id,
+    icon: tool.icon,
+    label: tool.label,
+    description: tool.description,
+    group: tool.group,
+    source: tool.content?.source,
+    editRoute: tool.content?.editRoute,
+    capabilities: tool.capabilities,
+  }
+}
+
+// toolLessRowSource -- a tool-less noun's own row (goal 0237 S3 rider):
+// icon/label/description/disableScopeNote come from its declared
+// `extension` (atlasNounRegistry.ts's ExtensionRowMeta), source/
+// editRoute from the same content declaration a tray tool's row reads,
+// and no `group` -- there is no tray cluster to report honestly.
+export function toolLessRowSource({ kind, content, extension }: ToolLessNounExtension): ExtensionRowSource {
+  return {
+    id: kind,
+    icon: extension.icon,
+    label: extension.label,
+    description: extension.description,
+    source: content.source,
+    editRoute: content.editRoute,
+    capabilities: extension.capabilities,
+    disableScopeNote: extension.disableScopeNote,
+  }
+}
 
 // groupLabel -- AtlasToolShape.group's own three clusters, restated as
 // short chip text a user would recognize (never the tray's own

@@ -1,4 +1,5 @@
 import { lazy } from 'react'
+import { FlowchartIcon } from '@primer/octicons-react'
 import type { BoardObject } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { registerBoardObjectContent } from '../atlasNounRegistry'
 import { isDrawioEditableExtension } from '../atlasDiagramMirror'
@@ -45,4 +46,16 @@ registerBoardObjectContent('diagram', {
       ? { kind: 'embedded-engine', engine: 'drawio' }
       : { kind: 'external-app' }
   ),
+  // extension (goal 0237 S3 rider): the Settings > Extensions row for
+  // this tool-less noun. disableScopeNote states its scope honestly --
+  // there is no tray button to hide, so the toggle instead gates
+  // useAtlasNativeFileDrop.ts's own routing (a disabled drop falls
+  // through to the plain card path) and dispatchObjectEdit's
+  // embedded-engine arm (objectSeams.ts, already keyed off object.Kind).
+  extension: {
+    icon: FlowchartIcon,
+    label: 'Diagram',
+    description: 'View and edit diagrams — draw.io files open in the real editor.',
+    disableScopeNote: 'Turning this off stops new diagrams from landing on drop and closes the built-in editor. Diagrams already on the board keep working.',
+  },
 })

@@ -2,33 +2,45 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionList, Button, Stack, Text } from '@primer/react'
 import { ATLAS_TOOLS, type AtlasToolID } from '../atlas/atlasTools'
+import { toolLessNounExtensions } from '../atlas/atlasNounRegistry'
 import { SettingsService } from '../shared/bindings'
 import { refreshDisabledExtensions, useExtensionEnablementStore } from '../shared/extensionEnablementStore'
 import { ExtensionRow } from './ExtensionRow'
+import { toolLessRowSource, toolRowSource, type ExtensionRowSource } from './extensionMeta'
 import styles from '../shared/ListCard.module.css'
 
 // Settings > Extensions (goal 0237 S2, extended by goal 0211's plugin-
-// manager UX slice): a registry-DERIVED list of every registered
-// canvas tool, each expandable into a registry-derived detail panel
-// (ExtensionRow.tsx) -- never a hand-curated array, so a new tool's own
-// registerNoun() call (atlasNounRegistry.ts) makes it appear here with
-// zero edits to this file. `card` is the one exception: it's the
+// manager UX slice, and by goal 0237 S3's rider): a registry-DERIVED
+// list of every registered NOUN -- every tray tool (ATLAS_TOOLS) plus
+// every tool-less noun that declares Extensions-row metadata
+// (toolLessNounExtensions(), diagram/sheet today) -- each expandable
+// into a registry-derived detail panel (ExtensionRow.tsx) via one
+// normalized row shape (extensionMeta.ts's ExtensionRowSource). Never a
+// hand-curated array: a new tray tool's registerNoun() call or a new
+// tool-less noun's own `extension` declaration both make it appear here
+// with zero edits to this file. `card` is the one exception: it's the
 // kernel knowledge object (ADR-0046), not a guest extension, so its row
 // renders a "Built-in" label instead of a toggle -- shown rather than
 // omitted, so the Extensions list still reads as a complete inventory
-// of every canvas tool, not a mysteriously-short one.
+// of every canvas noun, not a mysteriously-short one.
 //
-// Disabling a tool here only changes what CAN be created from now on:
-// it removes the tool's own button from the creation tray
+// Disabling a TRAY tool here only changes what CAN be created from now
+// on: it removes the tool's own button from the creation tray
 // (AtlasCreationTray.tsx's own ATLAS_TOOLS.filter) and its
 // `atlas.create.<id>` command from the palette/keyboard
 // (shared/commands.ts's own `enabled()` predicate) -- existing board
 // objects of that kind keep rendering exactly as before, since neither
 // the board's own render path nor AtlasBoardObjectNode.tsx's content
 // lookup (atlasNounRegistry.ts's boardObjectContentFor) ever consults
-// this list at all.
+// this list at all. A TOOL-LESS noun has no tray button to remove --
+// its own row states its narrower disable scope directly (see each
+// noun's own `extension.disableScopeNote`, atlasNounRegistry.ts).
 const CARD_TOOL_ID: AtlasToolID = 'card'
-const NON_BUILT_IN_IDS: AtlasToolID[] = ATLAS_TOOLS.filter((t) => t.id !== CARD_TOOL_ID).map((t) => t.id)
+const EXTENSION_ROWS: ExtensionRowSource[] = [
+  ...ATLAS_TOOLS.map(toolRowSource),
+  ...toolLessNounExtensions().map(toolLessRowSource),
+]
+const NON_BUILT_IN_IDS: string[] = EXTENSION_ROWS.filter((r) => r.id !== CARD_TOOL_ID).map((r) => r.id)
 
 export default function ExtensionsSection() {
   const { t } = useTranslation('views')
@@ -40,7 +52,7 @@ export default function ExtensionsSection() {
     SettingsService.AppVersion().then(setAppVersion).catch(console.error)
   }, [])
 
-  const toggle = (id: AtlasToolID, enabled: boolean) => {
+  const toggle = (id: string, enabled: boolean) => {
     SettingsService.SetExtensionEnabled(id, enabled).then(refreshDisabledExtensions).catch(console.error)
   }
 
@@ -77,14 +89,14 @@ export default function ExtensionsSection() {
         </Button>
       </Stack>
       <ActionList role="list" showDividers data-testid="extensions-list">
-        {ATLAS_TOOLS.map((tool) => (
-          <ActionList.Item key={tool.id}>
+        {EXTENSION_ROWS.map((row) => (
+          <ActionList.Item key={row.id}>
             <ExtensionRow
-              tool={tool}
-              builtIn={tool.id === CARD_TOOL_ID}
-              enabled={!disabledIds.includes(tool.id)}
+              row={row}
+              builtIn={row.id === CARD_TOOL_ID}
+              enabled={!disabledIds.includes(row.id)}
               appVersion={appVersion}
-              onToggle={(enabled) => toggle(tool.id, enabled)}
+              onToggle={(enabled) => toggle(row.id, enabled)}
             />
           </ActionList.Item>
         ))}

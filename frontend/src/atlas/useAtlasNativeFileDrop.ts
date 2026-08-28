@@ -4,6 +4,7 @@ import { Events } from '@wailsio/runtime'
 import { AtlasService } from '../shared/bindings'
 import { titleFromFilename } from './atlasCreateHelpers'
 import { refreshAtlas } from './atlasStore'
+import { isExtensionEnabled } from '../shared/extensionEnablementStore'
 import { useAtlasFolderImportRequestStore } from './atlasFolderImportRequest'
 import { FILE_DROP_EVENT_NAME, FILE_DROP_CONTEXT_BOARD } from './atlasFileDropShared'
 import { frameContainingPoint } from './atlasFramePoint'
@@ -15,6 +16,26 @@ import type { FrameBox } from './useAtlasDragFiling'
 const DROP_ERROR_MS = 4000
 const PULSE_MS = 1200
 const PULSE_MS_REDUCED = 1500
+
+// resolveFileDropKind -- the pure routing decision behind the Events.On
+// handler below: which board-object kind a resolved drop path lands
+// as, or 'card' for the generic reference-card fallback. Pulled out as
+// its own function (goal 0237 S3 rider) purely so it's Vitest-testable
+// on its own -- the real OS drop GESTURE that reaches it is a
+// structural e2e gap (testing.md's own manual-only registry:
+// WindowFilesDropped needs a real *WebviewWindow, which server-mode
+// Playwright's connection is not), but this decision is plain data in,
+// data out. isEnabled is injected rather than read from the store
+// directly so a test can drive both branches without touching global
+// state.
+export type FileDropKind = 'diagram' | 'image' | 'sheet' | 'card'
+
+export function resolveFileDropKind(path: string, isEnabled: (id: string) => boolean): FileDropKind {
+  if (isDiagramPath(path) && isEnabled('diagram')) return 'diagram'
+  if (isImagePath(path)) return 'image'
+  if (isSheetPath(path) && isEnabled('sheet')) return 'sheet'
+  return 'card'
+}
 
 // The board-context half of the native OS file-drop door (goal 0081
 // slice A3, LOCKED design §3b): a single non-directory file lands
@@ -63,34 +84,31 @@ export function useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPo
             return
           }
           const path = route.Path
-          // A dropped .drawio/.mmd/.mermaid file lands as a "diagram"
-          // board object, never a card (goal 0179 S2) -- no pulse/
-          // duplicate-notice machinery applies, since a board object
-          // carries neither.
-          if (isDiagramPath(path)) {
-            return diagramCreate.land(path, targetParentID, { X: point.x, Y: point.y })
+          // A dropped .drawio/.mmd/.mermaid or .xlsx/.csv file lands as
+          // its own board object, never a card (goal 0179 S2, goal
+          // 0232 S2) -- no pulse/duplicate-notice machinery applies to
+          // either, since a board object carries neither. Disabling
+          // diagram/sheet from Settings > Extensions (goal 0237 S3
+          // rider -- neither noun has a tray button to hide) falls the
+          // drop through to the plain-card path instead, exactly the
+          // resolveFileDropKind decision above states.
+          switch (resolveFileDropKind(path, isExtensionEnabled)) {
+            case 'diagram':
+              return diagramCreate.land(path, targetParentID, { X: point.x, Y: point.y })
+            case 'image':
+              return imageCreate.land(path, targetParentID, { X: point.x, Y: point.y })
+            case 'sheet':
+              return sheetCreate.land(path, targetParentID, { X: point.x, Y: point.y })
+            case 'card':
+              return AtlasService.CreateCardFromFileDrop(path, titleFromFilename(path), targetParentID, { X: point.x, Y: point.y })
+                .then((result) => refreshAtlas().then(() => {
+                  pulse(result.Card.ID)
+                  window.setTimeout(() => pulse(null), reduced ? PULSE_MS_REDUCED : PULSE_MS)
+                  if (result.DuplicateOfTitle) {
+                    setDropDuplicateNotice(t('board.dropDuplicateNotice', { title: result.DuplicateOfTitle }))
+                  }
+                }))
           }
-          // A dropped image file lands as an "image" board object the
-          // same way (goal 0206, 0179's founding rule): the reference-
-          // card fallback below is scoped to non-image, non-diagram
-          // drops now.
-          if (isImagePath(path)) {
-            return imageCreate.land(path, targetParentID, { X: point.x, Y: point.y })
-          }
-          // A dropped .xlsx/.csv file lands as a "sheet" board object
-          // the same way (goal 0232 S2) -- the reference-card fallback
-          // below is scoped to non-image, non-diagram, non-sheet drops.
-          if (isSheetPath(path)) {
-            return sheetCreate.land(path, targetParentID, { X: point.x, Y: point.y })
-          }
-          return AtlasService.CreateCardFromFileDrop(path, titleFromFilename(path), targetParentID, { X: point.x, Y: point.y })
-            .then((result) => refreshAtlas().then(() => {
-              pulse(result.Card.ID)
-              window.setTimeout(() => pulse(null), reduced ? PULSE_MS_REDUCED : PULSE_MS)
-              if (result.DuplicateOfTitle) {
-                setDropDuplicateNotice(t('board.dropDuplicateNotice', { title: result.DuplicateOfTitle }))
-              }
-            }))
         })
         .catch(() => setDropError(t('capture.dropError')))
     })
