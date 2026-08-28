@@ -138,8 +138,12 @@ const shellCommandNodeTypeID = "process-shell-command"
 // the approval ceremony entirely, and a block containing even one
 // unlisted or deny-listed line still asks, same as today.
 func (e *ExecutionService) evaluateVerdict(workflowID string, node composition.Node, ec composition.ExecContext, class guardrail.EffectClass) guardrail.Verdict {
+	// One rule-evaluation core, two entry points (docs/adr/0047 §5):
+	// EvaluateStep is the same core guardrailsvc.RequestGuardedAction's
+	// EvaluateAction calls -- this is the execution gate's own call
+	// site, never a second evaluation of these rules.
 	if node.NodeTypeID != shellCommandNodeTypeID {
-		return guardrail.Evaluate(e.guard.Rules(), guardrailsvc.GuardrailStep(workflowID, node, ec), class)
+		return e.guard.EvaluateStep(guardrailsvc.GuardrailStep(workflowID, node, ec), class)
 	}
 	steps := composition.ParseShellCommandBlock(ec.Payload)
 	if len(steps) == 0 {

@@ -58,6 +58,12 @@ type GuardrailService struct {
 	store settings.Store
 	rules []guardrail.Rule
 	comp  *compositionsvc.CompositionService
+	// guardedActionsMu guards guardedActions (guardrailservice_request.go)
+	// -- a separate lock from mu (rule CRUD): the two protect unrelated
+	// state, and a long-parked guarded action must never block a rule
+	// save/list.
+	guardedActionsMu sync.Mutex
+	guardedActions   map[string]*guardedActionRecord
 }
 
 func NewGuardrailService(store settings.Store, comp *compositionsvc.CompositionService) *GuardrailService {
