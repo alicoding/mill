@@ -5,21 +5,19 @@
    this component a persisted Size the way a canvas object/sticky does,
    so the bound is this component's OWN sane elastic range -- min-height
    matches .rendered's own floor below (no visible jump entering edit),
-   max-height is where the editor's OWN internal scroll (.cm-scroller)
-   takes over instead of the surrounding page/dialog growing. Same
-   flex + cm-editor/cm-scroller height:100% shape AtlasStickyNode's
-   own .editingUnsized already uses successfully. */
-/* A percentage-height cascade down through shared/CodeEditor.tsx's own
-   wrapper/mount divs into .cm-editor/.cm-scroller (the shape
-   AtlasStickyNode.module.css's own .editingUnsized uses) was tried
-   here first and measured NOT to work: a flex item's height:100%
-   against this container's own auto-but-max-height-clamped cross size
-   resolved to the CHILD's unclamped content height instead (738px for
-   40 lines, verified live), not the 320px ceiling -- Chromium doesn't
-   treat that clamp as a definite size for descendant percentage
-   resolution. overflow-y here is what actually clips/scrolls
-   regardless of how any descendant resolves its own height, so it
-   doesn't depend on that chain at all. */
+   max-height is where this element's OWN overflow-y takes over instead
+   of the surrounding page/dialog growing. */
+/* A percentage-height cascade down through shared/MilkdownEditor.tsx's
+   own wrapper/mount divs (the shape AtlasStickyNode.module.css's own
+   .editingUnsized uses) measured NOT to work here: a flex item's
+   height:100% against this container's own auto-but-max-height-clamped
+   cross size resolved to the CHILD's unclamped content height instead
+   (738px for 40 lines, verified live against CodeEditor before this
+   field's editor was replaced), not the 320px ceiling -- Chromium
+   doesn't treat that clamp as a definite size for descendant
+   percentage resolution. overflow-y here is what actually clips/
+   scrolls regardless of how any descendant resolves its own height, so
+   it doesn't depend on that chain at all. */
 .editorWrap {
   width: 100%;
   min-height: 28px;

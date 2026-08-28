@@ -45,11 +45,16 @@ test('a title-only card\'s page renders calm: title + property strip + write-inv
   await expect(strip.getByTestId('atlas-page-freshness-dot')).toHaveCount(0)
 
   // Borderless write-invitation: empty, placeholder only.
-  // An empty note IS the editor (goal 0145) -- the CodeEditor mount
-  // with its placeholder is the write invitation.
+  // An empty note IS the editor (goal 0145; Milkdown since goal 0244
+  // S3) -- the mount with its placeholder is the write invitation.
+  // Milkdown's own placeholder is a CSS pseudo-element
+  // (`.crepe-placeholder::before { content: attr(data-placeholder) }`,
+  // never a real text node) -- toContainText can't see it, so this
+  // reads the decorated paragraph's own data-placeholder attribute
+  // instead of its rendered text content.
   const note = overlay.getByTestId('atlas-page-note')
   await expect(note).toBeVisible()
-  await expect(note).toContainText('Write anything…')
+  await expect(note.locator('.crepe-placeholder')).toHaveAttribute('data-placeholder', 'Write anything…')
 
   // The Topic kind's OTHER declared field (Summary) collapses to its
   // own one-line invitation -- status itself never appears here, since

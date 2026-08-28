@@ -4,7 +4,7 @@ import { NodeResizer } from '@xyflow/react'
 import type { NodeProps, Node as RFNode } from '@xyflow/react'
 import type { Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
-import { CodeEditor } from '../shared/CodeEditor'
+import { MilkdownEditor } from '../shared/MilkdownEditor'
 import styles from './AtlasStickyNode.module.css'
 
 export interface AtlasStickyData extends Record<string, unknown> {
@@ -31,20 +31,22 @@ export interface AtlasStickyData extends Record<string, unknown> {
 export type AtlasStickyRFNode = RFNode<AtlasStickyData>
 
 // A sticky note (goal 0081 slice A1's LOCKED design, section 5; goal
-// 0145 made its text markdown): unmistakably annotation -- soft tinted
-// background, no kind glyph, no flip, no connection handles (a note
-// can never be a link endpoint). At rest the text renders as markdown
-// (lists, bold, headings) and a long note wheel-scrolls in place;
-// editing swaps in the shared prose CodeEditor with live preview.
-// Doubles as both the draft-in-progress node (note === null, always
-// editing) and an existing note's own render/re-edit -- one component,
-// since the two states differ only in whether a commit creates or
-// updates.
+// 0145 made its text markdown; goal 0244 S3 replaced the editor with
+// Milkdown, a markdown-canonical WYSIWYG): unmistakably annotation --
+// soft tinted background, no kind glyph, no flip, no connection
+// handles (a note can never be a link endpoint). At rest AND while
+// editing, the SAME engine renders formatted markdown (lists, bold,
+// headings, checkboxes) -- no raw source is ever shown, and no server
+// round-trip renders it (MilkdownEditor is client-side, ADR-0046). A
+// long note wheel-scrolls in place; editing swaps in an editable
+// Milkdown mount in place of the read-only one. Doubles as both the
+// draft-in-progress node (note === null, always editing) and an
+// existing note's own render/re-edit -- one component, since the two
+// states differ only in whether a commit creates or updates.
 export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }: NodeProps<AtlasStickyRFNode>) {
   const { t } = useTranslation('atlas')
   const { note, editing, onCommit, onCancelEdit, onEnterEdit, onOpenBig, isSoleSelected } = data
   const [draftText, setDraftText] = useState(note?.Text ?? '')
-  const [html, setHtml] = useState('')
   // Guards against a double-fire: Escape (which unmounts this editing
   // view) must never also let a trailing outside-press re-commit the
   // same text.
@@ -54,6 +56,15 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
   // tick as the last keystroke must never commit the previous
   // render's stale text.
   const draftRef = useRef(draftText)
+  // The authoritative read at commit time (MilkdownEditor's own
+  // onReady) -- draftRef alone isn't enough once Milkdown owns the
+  // surface: its markdownUpdated listener is DEBOUNCED, so a fast
+  // pointer-driven commit (this component's own interaction model) can
+  // fire before the listener ever lands, committing stale/empty text.
+  // getMarkdown() reads the live document directly. Falls back to
+  // draftRef while the engine is still on its textarea fallback (that
+  // path's onChange is synchronous, no debounce to race).
+  const getMarkdownRef = useRef<(() => string) | undefined>(undefined)
 
   const text = note?.Text ?? ''
 
@@ -68,17 +79,18 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
     draftRef.current = note?.Text ?? ''
     setDraftText(note?.Text ?? '')
     // Focus whichever editing surface is mounted. The first-ever
-    // editor mount swaps a fallback textarea for the lazily-loaded CM6
-    // content, dropping focus mid-draft -- retry briefly until the CM
-    // surface exists and holds focus, then stop. Purely a focus
-    // convenience now (commit is pointer-driven, below) -- nothing
-    // about this loop can race or cancel a commit anymore.
+    // editor mount swaps a fallback textarea for the lazily-loaded
+    // Milkdown engine's own contenteditable surface, dropping focus
+    // mid-draft -- retry briefly until it exists and holds focus, then
+    // stop. Purely a focus convenience now (commit is pointer-driven,
+    // below) -- nothing about this loop can race or cancel a commit
+    // anymore.
     let tries = 0
     const id = window.setInterval(() => {
-      const cm = wrapRef.current?.querySelector<HTMLElement>('.cm-content')
-      const target = cm ?? wrapRef.current?.querySelector<HTMLElement>('textarea')
+      const editable = wrapRef.current?.querySelector<HTMLElement>('[contenteditable="true"]')
+      const target = editable ?? wrapRef.current?.querySelector<HTMLElement>('textarea')
       target?.focus()
-      if ((cm && document.activeElement === cm) || ++tries > 8) window.clearInterval(id)
+      if ((editable && document.activeElement === editable) || ++tries > 8) window.clearInterval(id)
     }, 60)
     return () => window.clearInterval(id)
     // note?.Text deliberately excluded: seeding happens on edit ENTRY
@@ -116,23 +128,10 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
     }
   }, [editing])
 
-  useEffect(() => {
-    if (editing || text.trim() === '') return
-    let stale = false
-    AtlasService.RenderNoteMarkdown(text)
-      .then((h) => {
-        if (!stale) setHtml(h)
-      })
-      .catch(() => setHtml(''))
-    return () => {
-      stale = true
-    }
-  }, [text, editing])
-
   const commit = () => {
     if (settledRef.current) return
     settledRef.current = true
-    onCommit(draftRef.current)
+    onCommit(getMarkdownRef.current?.() ?? draftRef.current)
   }
   // Refreshes commitRef with this render's closure -- outside render,
   // per React's own rule (no dependency array: every render's commit
@@ -178,15 +177,15 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
             }}
           />
         )}
-        <CodeEditor
+        <MilkdownEditor
           value={draftText}
           onChange={(v) => {
             draftRef.current = v
             setDraftText(v)
           }}
-          language="markdown"
-          prose
-          minHeightRows={4}
+          onReady={(fn) => {
+            getMarkdownRef.current = fn
+          }}
           ariaLabel={t('sticky.ariaLabel')}
           placeholder={t('sticky.placeholder')}
           testId="atlas-sticky-editor"
@@ -254,8 +253,16 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
           // `.text` -- overflow-y:auto): a named surface for goal
           // 0156's layout-fitness audit, not an undeclared scroller.
           data-scroll-region="sticky-note-body"
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
+        >
+          {/* Read-only Milkdown mount (goal 0244 S3): the SAME engine
+              that edits also renders at rest, client-side -- no
+              server round-trip (the old RenderNoteMarkdown RPC).
+              Keyed by the note's own text so an external change (a
+              background refresh landing while this note isn't the one
+              being edited) remounts fresh rather than needing a live
+              external-value sync the editing session never needs. */}
+          <MilkdownEditor key={text} value={text} ariaLabel={t('sticky.ariaLabel')} testId="atlas-sticky-note-render" />
+        </div>
       )}
     </div>
   )

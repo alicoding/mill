@@ -1,9 +1,26 @@
 import { NoteIcon } from '@primer/octicons-react'
 import { identityOf, registerNoun, type AtlasToolShape } from '../atlasNounRegistry'
+import type { ObjectSource, EditRoute } from '../objectSeams'
 
 const noteIdentity = identityOf('note')
 
 export interface AtlasNoteArtifact { kind: 'note'; text: string }
+
+// The note's own ADR-0046 seam declaration (goal 0244 S3): its text
+// lives in the Note entity itself, no external file/provider/url --
+// board-local, same source kind as shape's own geometry. editRoute is
+// 'inline': the sticky/overlay/page field ARE the editor, no separate
+// door to dispatch to. Exported as standalone constants rather than
+// nested under `content` below -- a Note is its own domain entity
+// (internal/domain/atlas/note.go), not a BoardObject, so it never
+// flows through boardObjectContentFor/dispatchObjectEdit (both keyed
+// on BoardObject); atlasNounRegistry.ts's own AtlasToolShapeBase
+// contract requires `content` to stay null whenever boardObjectKind is
+// null (note's case), so this names the same two seams in the same
+// vocabulary (objectSeams.ts's own types) without forcing the note
+// through machinery built for a different entity shape.
+export const noteSource: ObjectSource = { kind: 'board-local' }
+export const noteEditRoute: EditRoute = { kind: 'inline' }
 
 export const noteTool = {
   id: noteIdentity.id,

@@ -1,0 +1,84 @@
+/* shared/MilkdownEditor.tsx's own wrapper. Crepe's structural CSS
+   (milkdownCore.ts's own theme/common/style.css import) draws every
+   color/font/shadow from a `--crepe-*` custom property -- this scope
+   maps each one to Mill's own Primer tokens (frontend.md: Primer
+   tokens only) instead of importing one of Crepe's own hex-valued
+   theme skins, so the note stays on Mill's design system and follows
+   its light/dark switch automatically. */
+/* No height opinion here, only width -- same contract as
+   CodeEditor.module.css's own .mount. A percentage-height chain down
+   through this door into Milkdown's own nested divs was tried and
+   measured live to resolve wrong (a "One line" note's box measured
+   152px against an expected content height under 40px): the shared
+   door stays height-agnostic, and a caller that needs to FILL a fixed
+   box states so on its own scoped selector instead (AtlasStickyNode.
+   module.css's own `.sticky.editing :global(.milkdown)` rule) --
+   MarkdownNoteField's own bounded field needs no such override at all,
+   relying purely on its outer .editorWrap's max-height + overflow-y to
+   clip/scroll regardless of how this mount resolves its own height
+   (same strategy MarkdownNoteField.module.css's own header documents
+   for the equivalent CodeMirror-era chain). */
+.wrapper {
+    display: block;
+    width: 100%;
+}
+
+.mount {
+    width: 100%;
+    --crepe-color-background: transparent;
+    --crepe-color-surface: var(--bgColor-default);
+    --crepe-color-surface-low: var(--bgColor-muted);
+    --crepe-color-on-background: var(--fgColor-default);
+    --crepe-color-on-surface: var(--fgColor-default);
+    --crepe-color-on-surface-variant: var(--fgColor-muted);
+    --crepe-color-primary: var(--fgColor-accent);
+    --crepe-color-secondary: var(--bgColor-accent-muted);
+    --crepe-color-on-secondary: var(--fgColor-accent);
+    --crepe-color-outline: var(--borderColor-default);
+    --crepe-color-inverse: var(--fgColor-onEmphasis);
+    --crepe-color-on-inverse: var(--bgColor-emphasis);
+    --crepe-color-inline-code: var(--fgColor-default);
+    --crepe-color-error: var(--fgColor-danger);
+    --crepe-color-hover: var(--bgColor-neutral-muted);
+    --crepe-color-selected: var(--bgColor-accent-muted);
+    --crepe-color-inline-area: var(--bgColor-neutral-muted);
+    --crepe-font-title: inherit;
+    --crepe-font-default: inherit;
+    --crepe-font-code: var(--mill-mono);
+    --crepe-shadow-1: none;
+    --crepe-shadow-2: var(--shadow-resting-medium);
+}
+
+/* Three global classes deep, not two: Crepe's own reset.css sets
+   `.milkdown .ProseMirror { padding: 60px 120px }` (its document-style
+   default margins, measured live to be the entire cause of a
+   one-line note's box coming out at 152px against an expected ~30px)
+   at EQUAL specificity to a plain `.mount :global(.ProseMirror)` --
+   and Crepe's own CSS loads after this module's (milkdownCore.ts's
+   dynamic chunk resolves at runtime, after this static CSS Module is
+   already injected), so the tie went to Crepe's rule. One extra class
+   in the selector, matching the same element, wins deterministically
+   regardless of load order. */
+.mount :global(.milkdown) :global(.ProseMirror) {
+    padding: 0;
+    font-size: inherit;
+}
+
+.fallback {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    padding: 6px 8px;
+    font: inherit;
+    font-size: 12px;
+    background-color: var(--bgColor-default);
+    color: var(--fgColor-default);
+    border: 1px solid var(--borderColor-default);
+    border-radius: 6px;
+    resize: none;
+}
+
+.fallback:focus {
+    outline: none;
+    border-color: var(--borderColor-accent-emphasis);
+}

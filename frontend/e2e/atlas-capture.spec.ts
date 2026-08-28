@@ -97,7 +97,7 @@ test('paste is inert while an editable field has focus', async ({ page }) => {
   await zoomAllTheWayOut(page)
   await page.keyboard.press('n')
   await clickCorner(board, 'top-left')
-  const editorContent = page.locator('[data-testid="atlas-sticky-editor"] .cm-content')
+  const editorContent = page.locator('[data-testid="atlas-sticky-editor"] [contenteditable="true"]')
   await editorContent.waitFor()
   await editorContent.focus()
 

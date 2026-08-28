@@ -16,15 +16,15 @@
 /* Editing chrome, shared by both editing states below -- the box
    itself never changes size on entering/leaving edit (goal 0193: no
    automatic resize, ever). overflow-y here is the actual clip/scroll
-   boundary (goal 0226 regression: the .cm-editor/.cm-scroller
-   height:100% pair below declares intent, but CodeMirror's own mount
-   divs -- shared/CodeEditor.tsx's .wrapper/.mount -- carry no height
-   of their own, so that percentage chain doesn't resolve and the
-   editor silently rendered at its full, unclamped content height,
-   painting past this box with `.sticky`'s inherited overflow:visible).
-   Same fix shape as MarkdownNoteField.module.css's own `.editorWrap`:
-   an outer overflow that clips/scrolls regardless of how any
-   descendant resolves its own height. */
+   boundary (goal 0226 regression, still true after goal 0244 S3
+   replaced the editor: shared/MilkdownEditor.tsx's own .wrapper/.mount
+   carry a height:100% intent, but that percentage chain isn't
+   guaranteed to resolve against this box's own auto-but-clamped cross
+   size, so the editor could render at its full unclamped content
+   height, painting past this box with `.sticky`'s inherited
+   overflow:visible). Same fix shape as MarkdownNoteField.module.css's
+   own `.editorWrap`: an outer overflow that clips/scrolls regardless
+   of how any descendant resolves its own height. */
 .sticky.editing {
     cursor: text;
     padding: 6px 8px;
@@ -50,13 +50,8 @@
    dropped onto a note. Fills whatever box the sticky itself resolves
    to (its own persisted/default size, or editingUnsized's grow-to-fit
    cap for a draft), so the editor never needs its own size opinion. */
-.sticky.editing :global(.cm-editor) {
-    border: none;
+.sticky.editing :global(.milkdown) {
     background: transparent;
-    height: 100%;
-}
-.sticky.editing :global(.cm-scroller) {
-    overflow-y: auto;
     height: 100%;
 }
 .sticky.editing textarea {

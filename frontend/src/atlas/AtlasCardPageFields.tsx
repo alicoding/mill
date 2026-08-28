@@ -39,7 +39,11 @@ export function AtlasCardPageFields({
   note: string
   noteError: string
   onNoteChange: (value: string) => void
-  onNoteCommit: () => void
+  // Receives the AUTHORITATIVE current text directly (see
+  // MarkdownNoteField's own onCommit comment) -- never re-read from the
+  // page overlay's own `note` state, which trails Milkdown's debounced
+  // update.
+  onNoteCommit: (text: string) => void
   fields: Record<string, string>
   fieldErrors: Record<string, string>
   onFieldsChange: (key: string, value: string) => void
