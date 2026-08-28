@@ -17,3 +17,9 @@ func SignBundle(_ string) error {
 func TrustIdentity() error {
 	return ErrUnsupportedPlatform
 }
+
+// IsTrusted always fails, for the same reason: there is no signing
+// concept to have trusted anything on this platform.
+func IsTrusted() (bool, error) {
+	return false, ErrUnsupportedPlatform
+}

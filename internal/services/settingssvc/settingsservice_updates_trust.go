@@ -20,3 +20,20 @@ var trustIdentityFn = codesigning.TrustIdentity
 func (s *SettingsService) TrustSigningIdentity() error {
 	return trustIdentityFn()
 }
+
+// isTrustedFn is the trust-state read seam IsSigningTrusted calls --
+// the same swappable-var shape as trustIdentityFn, so tests can
+// substitute a fake instead of touching the real keychain/security
+// binary.
+var isTrustedFn = codesigning.IsTrusted
+
+// IsSigningTrusted reports whether Mill's own signing certificate
+// already carries "Always Trust" for code signing. Unlike
+// TrustSigningIdentity's write, this is a plain state read with no
+// authorization step, so the Settings > Updates "How updates stay
+// trusted" section calls it on every mount to hide itself once trust
+// is already established, rather than showing a button there is no
+// longer any reason to click.
+func (s *SettingsService) IsSigningTrusted() (bool, error) {
+	return isTrustedFn()
+}

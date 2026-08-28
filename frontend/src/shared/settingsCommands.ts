@@ -129,9 +129,10 @@ export const SETTINGS_COMMANDS: Command[] = [
     // Trust Mill's signing certificate (goal 0220 S3): replaces the
     // former "find it in Keychain Access" instructions with one call
     // at the codesigning adapter's existing seam. Always enabled --
-    // whether the certificate is already trusted can't be detected
-    // reliably (the spike's own finding), so the action stays
-    // idempotent and safe to re-run rather than gated on that state.
+    // the command only ever renders while views/TrustDisclosure.tsx's
+    // own section is showing (already gated on "not yet trusted" via
+    // trustDisclosureVisible), and the underlying write is idempotent
+    // and safe to re-run regardless of prior state.
     id: 'update.trustSigning',
     label: "Trust Mill's signing",
     defaultBinding: null,
