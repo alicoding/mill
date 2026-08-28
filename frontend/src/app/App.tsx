@@ -16,6 +16,7 @@ import { CapabilitiesService, ExecutionService, SettingsService } from '../share
 import type { BuildInfo } from '../shared/bindings'
 import { refreshKeybindings, refreshNodeTypes, refreshRequests, refreshWorkflows, useAppStore } from "../shared/store";
 import { refreshVaultStatus } from "../shared/vaultStatusStore";
+import { refreshDisabledExtensions } from "../shared/extensionEnablementStore";
 import { useDataChangedRouter } from "./useDataChangedRouter";
 import { WorkTabShell } from "./WorkTabShell";
 import { AppSidebar } from "./AppSidebar";
@@ -210,6 +211,8 @@ function App() {
     // Vault-lock state door (goal 0222 S1) -- fetched eagerly so
     // secrets.lockVault/unlockVault's enablement is honest app-wide.
     void refreshVaultStatus();
+    // Disabled-extension ids (Settings > Extensions) -- fetched eagerly so the tray/palette are honest from first render.
+    void refreshDisabledExtensions();
   }, []);
 
   useEffect(() => {

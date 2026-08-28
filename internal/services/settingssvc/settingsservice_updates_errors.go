@@ -27,6 +27,26 @@ const updaterDiagnosisCap = 4096
 // final segment of the chain.
 var githubAPIErrorPattern = regexp.MustCompile(`(?s)github: api (\d+): (.*)$`)
 
+// githubDownload404Pattern matches the github provider's own download
+// error shape (wailsapp/wails/v3 pkg/updater/providers/github,
+// Download's non-2xx branch: `fmt.Errorf("github: download: HTTP %d",
+// resp.StatusCode)`), returned unwrapped all the way up through
+// u.DownloadAndInstall -- unlike githubAPIErrorPattern's Check-path
+// shape, this one is never chained through joinErrors, so an exact
+// match (not a substring search) is correct.
+var githubDownload404Pattern = regexp.MustCompile(`^github: download: HTTP 404$`)
+
+// isStaleAssetDownloadError reports whether err is specifically a 404
+// on the release asset -- the failure shape a rolling single-release
+// channel produces when the release is replaced between
+// CheckForUpdates and the download itself (the beta channel keeps
+// exactly one release, so every merge to main deletes the previous
+// asset). Any other download failure (network error, a non-404 HTTP
+// status) is not this race and must not trigger a retry.
+func isStaleAssetDownloadError(err error) bool {
+	return err != nil && githubDownload404Pattern.MatchString(err.Error())
+}
+
 // sanitizeUpdaterError rewrites a github-provider error whose echoed
 // body isn't JSON -- an HTML error page from an intermediate gateway
 // (a 502/504, with an embedded base64 image) rendered whole in
