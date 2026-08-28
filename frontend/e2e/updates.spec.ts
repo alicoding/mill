@@ -121,12 +121,12 @@ test('Release-channel build offers to download, and a failed install surfaces th
     await expect(primary).toHaveText('Download v9.9.9 and install')
     await expect(card).not.toContainText('This copy was built from source')
 
-    // A failed install (fake mode always refuses, standing in for the
-    // real blocked-network 403 class) surfaces the browser-download
-    // escape hatch inside the card, not just the raw error -- and the
+    // A failed download (fake mode always refuses with a download-shaped
+    // error) surfaces the browser-download escape hatch, named as a
+    // download failure rather than a generic install failure -- and the
     // primary action offers an immediate retry rather than dead-ending.
     await primary.click()
-    await expect(card).toContainText("Couldn't install the update")
+    await expect(card).toContainText("Couldn't download the update")
     await expect(card).toContainText('Get the update with your browser instead')
     await expect(card.getByTestId('open-releases-page')).toBeVisible()
     // goal 0127: the failure carries a copyable diagnosis.

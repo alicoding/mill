@@ -103,6 +103,12 @@ type UpdateNotice struct {
 	StateVersion string `json:"stateVersion"`
 	// StateReason is populated only alongside State == error.
 	StateReason string `json:"stateReason"`
+	// StateReasonStage classifies StateReason (classifyUpdateFailureStage's
+	// UpdateFailureStage) when it came from a DownloadAndInstallUpdate
+	// failure -- "download", "install", or "unknown". Empty for a check
+	// failure (checkForUpdates has only the one stage, so nothing to
+	// classify) and for every non-error state.
+	StateReasonStage string `json:"stateReasonStage"`
 	// NotesVersion/NotesHTML (goal 0220 S2) carry the release notes from
 	// CheckForUpdates' most recent found result, rendered through the
 	// same markdown adapter docssvc uses -- the "What's new" surface's
@@ -143,23 +149,23 @@ const (
 // repeat sighting of the same release on a later check tick) is NOT a
 // supersede -- ready keeps winning, matching UpdateNotice's original
 // "ready wins" contract for that case.
-func deriveUpdateState(checking, downloading, ready bool, availableVersion, stagedVersion, installError string, lastCheckOutcome UpdateCheckOutcome, lastCheckError string) (state UpdateState, version, reason string) {
+func deriveUpdateState(checking, downloading, ready bool, availableVersion, stagedVersion, installError string, installStage UpdateFailureStage, lastCheckOutcome UpdateCheckOutcome, lastCheckError string) (state UpdateState, version, reason string, reasonStage UpdateFailureStage) {
 	supersedes := availableVersion != "" && availableVersion != stagedVersion
 	switch {
 	case downloading:
-		return UpdateStateDownloading, availableVersion, ""
+		return UpdateStateDownloading, availableVersion, "", ""
 	case checking:
-		return UpdateStateChecking, "", ""
+		return UpdateStateChecking, "", "", ""
 	case ready && !supersedes:
-		return UpdateStateReady, stagedVersion, ""
+		return UpdateStateReady, stagedVersion, "", ""
 	case installError != "":
-		return UpdateStateError, "", installError
+		return UpdateStateError, "", installError, installStage
 	case availableVersion != "":
-		return UpdateStateAvailable, availableVersion, ""
+		return UpdateStateAvailable, availableVersion, "", ""
 	case lastCheckOutcome == UpdateCheckOutcomeFailed:
-		return UpdateStateError, "", lastCheckError
+		return UpdateStateError, "", lastCheckError, ""
 	default:
-		return UpdateStateIdle, "", ""
+		return UpdateStateIdle, "", "", ""
 	}
 }
 
@@ -170,7 +176,7 @@ func (s *SettingsService) UpdateNoticeState() UpdateNotice {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	state, version, reason := deriveUpdateState(s.checking, s.updateDownloading, s.updateReady, s.availableUpdate, s.stagedUpdateVersion, s.lastInstallError, s.lastCheckOutcome, s.lastCheckError)
+	state, version, reason, reasonStage := deriveUpdateState(s.checking, s.updateDownloading, s.updateReady, s.availableUpdate, s.stagedUpdateVersion, s.lastInstallError, s.lastInstallStage, s.lastCheckOutcome, s.lastCheckError)
 	n := UpdateNotice{
 		Ready:            s.updateReady,
 		AvailableVersion: s.availableUpdate,
@@ -181,6 +187,7 @@ func (s *SettingsService) UpdateNoticeState() UpdateNotice {
 		State:            state,
 		StateVersion:     version,
 		StateReason:      reason,
+		StateReasonStage: string(reasonStage),
 		NotesVersion:     s.lastNotesVersion,
 	}
 	if !s.lastCheckAt.IsZero() {

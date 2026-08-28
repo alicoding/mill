@@ -135,6 +135,15 @@ export interface UpdateNotice {
     "stateReason": string;
 
     /**
+     * StateReasonStage classifies StateReason (classifyUpdateFailureStage's
+     * UpdateFailureStage) when it came from a DownloadAndInstallUpdate
+     * failure -- "download", "install", or "unknown". Empty for a check
+     * failure (checkForUpdates has only the one stage, so nothing to
+     * classify) and for every non-error state.
+     */
+    "stateReasonStage": string;
+
+    /**
      * NotesVersion/NotesHTML (goal 0220 S2) carry the release notes from
      * CheckForUpdates' most recent found result, rendered through the
      * same markdown adapter docssvc uses -- the "What's new" surface's

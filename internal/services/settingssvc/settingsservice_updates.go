@@ -320,6 +320,7 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 	s.updateDownloading = true
 	s.resignWarning = ""
 	s.lastInstallError = ""
+	s.lastInstallStage = ""
 	// Captured now, before any later CheckForUpdates tick can overwrite
 	// availableUpdate mid-flight -- this is the version this specific
 	// call is staging, recorded on success so a repeat sighting of the
@@ -346,7 +347,11 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 		if ms, err := strconv.Atoi(os.Getenv(testUpdateDownloadDelayEnv)); err == nil && ms > 0 {
 			time.Sleep(time.Duration(ms) * time.Millisecond)
 		}
-		return s.failInstall(wasReady, false, fmt.Errorf("no release asset in test mode"))
+		// Download-shaped on purpose: fake mode stands in for the real
+		// blocked-network case (a corporate proxy answering the asset
+		// fetch with 403/timeout), so its error must classify the same
+		// way a genuine download failure does.
+		return s.failInstall(wasReady, false, fmt.Errorf("github: download: no release asset in test mode"))
 	}
 	s.mu.Lock()
 	backupRunner := s.backupRunner
@@ -418,6 +423,7 @@ func (s *SettingsService) failInstall(wasReady, destroyedPriorStaging bool, err 
 	}
 	s.mu.Lock()
 	s.lastInstallError = err.Error()
+	s.lastInstallStage = classifyUpdateFailureStage(err)
 	s.mu.Unlock()
 	return err
 }
