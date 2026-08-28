@@ -60,12 +60,20 @@ test('sticky notes render markdown via Milkdown; live formatting, a checkbox tog
   await page.keyboard.type('some ')
   await page.keyboard.type('**bold**')
   await page.keyboard.press('Enter')
-  // One continuous type() call, not two: a real typist's keystrokes for
-  // "- [ ] first task" are one unbroken stream, and splitting it across
-  // two separate .type() calls was measured live to occasionally race
-  // with the list/task-item transaction the "- [ ] " prefix triggers,
-  // scrambling the following characters.
-  await page.keyboard.type('- [ ] first task')
+  // "- [ ] " is its OWN type() call, followed by an explicit wait for
+  // the task-item transaction to actually land (the icon widget
+  // appearing) before typing the rest -- typing the trailing text
+  // WHILE that transaction is still in flight was observed (CI, a
+  // slower/more-contended runner than a dev machine) to race it: the
+  // node conversion partially lands, leaving a plain bullet with a
+  // stray "]" instead of a real task item. Splitting on a WAITED
+  // condition, rather than gambling on one long continuous call being
+  // fast enough end to end, is what actually closes the race -- see
+  // checkboxIcon below for the assertion this wait is priming.
+  await page.keyboard.type('- [ ] ')
+  const checkboxIcon = editable.locator('.milkdown-icon.label').first()
+  await expect(checkboxIcon).toBeVisible()
+  await page.keyboard.type('first task')
 
   // Live formatting WHILE editing: real elements, never raw syntax --
   // the editor IS the rendered view, no separate source-vs-rendered
@@ -79,7 +87,6 @@ test('sticky notes render markdown via Milkdown; live formatting, a checkbox tog
   // Milkdown's task-list checkbox is its own clickable icon widget, not
   // a native <input type="checkbox"> (verified live: zero <input> in
   // the mount).
-  const checkboxIcon = editable.locator('.milkdown-icon.label').first()
   await expect(checkboxIcon).toHaveClass(/unchecked/)
   await checkboxIcon.click()
   await expect(checkboxIcon).toHaveClass(/\bchecked\b/)
