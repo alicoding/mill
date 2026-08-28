@@ -239,6 +239,7 @@ func (m *MillMCPService) registerAtlasTools() {
 		return res, nil, err
 	})
 
+	m.registerAtlasBoardObjectTools()
 	m.registerAtlasWriteTools()
 	m.registerAuthoringExtTools()
 }
