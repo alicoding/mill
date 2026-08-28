@@ -284,9 +284,12 @@ test('New table creates a sized grid instantly from the size picker, landing a t
   await expect(tableObject.getByTestId('atlas-projection-table')).toContainText('Column 3')
   await expect(tableObject.getByTestId('atlas-projection-table').locator('tbody tr')).toHaveCount(2)
 
-  // Empty rows hold a real grid height.
+  // Empty rows hold a real grid height. Threshold pins the NON-COLLAPSED
+  // property (a collapsed row measures ~0-4px), not exact metrics: cell
+  // height varies with the environment's font rendering (16.9px observed
+  // on one macOS runner vs 20+ on others), so 10 is the honest floor.
   const cellHeight = await tableObject.getByTestId('atlas-projection-cell').first().evaluate((el) => el.getBoundingClientRect().height)
-  expect(cellHeight).toBeGreaterThanOrEqual(20)
+  expect(cellHeight).toBeGreaterThanOrEqual(10)
 
   // The minted List is a real Configure entity named after the table.
   await page.getByRole('link', { name: 'Configure' }).click()
