@@ -12,16 +12,19 @@ import (
 )
 
 // Per-write MCP approval lifecycle: park-and-poll (docs/adr/0032,
-// superseding the old bounded-120s-blocking-wait shape). A gated write
-// tool call submits (description, toolName, argsJSON) to gateWrite,
-// which parks the write itself -- not a live channel -- as a durable
+// superseding the old bounded-120s-blocking-wait shape). gateWrite first
+// judges the write through the shared guardrail rule-evaluation core
+// (writeVerdictShortCircuit, millmcpservice_approval_guardrail.go --
+// docs/adr/0047 §5.4): an explicit allow/deny rule short-circuits the
+// park entirely; the ask default (no rule, matching pre-rebase behavior)
+// parks the write itself -- not a live channel -- as a durable
 // MCPWriteRecord persisted via the settings store, so an approval can
 // execute the write later even if the requester (or Mill itself) has
-// since restarted. A short in-call courtesy window (10s) keeps the
-// co-present-approver case a single round trip; past that, the call
-// returns a SUCCESSFUL parked-pending text so the client polls
-// check_write_status instead of the connection dying against a real
-// host's own ~60s to-first-byte timer (ADR-0032's own research).
+// since restarted. A short in-call courtesy window (10s) keeps a
+// co-present approver to one round trip; past that, the call returns a
+// SUCCESSFUL parked-pending text so the client polls check_write_status
+// instead of the connection dying against a real host's own ~60s
+// to-first-byte timer (ADR-0032's own research).
 
 // MCPWriteApprovalKey: when writes are enabled at all
 // (MCPWriteEnabledKey), this second toggle decides whether each write
@@ -189,6 +192,13 @@ func (m *MillMCPService) gateWrite(toolName, description, argsJSON string) (*mcp
 			return nil, err
 		}
 		return textResult(text), nil
+	}
+
+	// docs/adr/0047 §5.4: an explicit allow/deny rule short-circuits the
+	// ask-every-time default here; "ask" (no rule, or no guardrail
+	// service wired) falls through to the unchanged park below.
+	if result, err, handled := m.writeVerdictShortCircuit(toolName, description, argsJSON); handled {
+		return result, err
 	}
 
 	rec := &MCPWriteRecord{

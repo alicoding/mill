@@ -25,6 +25,7 @@ import (
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
+	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -95,6 +96,15 @@ type MillMCPService struct {
 	// until wired (every test that doesn't call SetAuditResolver), in
 	// which case resolution calls are simply skipped.
 	auditResolver func(writeID string, outcome mcpaudit.Outcome, errText string)
+	// guard is the shared guardrail rule-evaluation core (docs/adr/0047
+	// §5.4) -- late-bound via SetGuardrailService, same injected-seam
+	// shape as auditResolver above (guardrailsvc.NewGuardrailService is
+	// constructed before this service in main.go, but wiring it as a
+	// constructor parameter would force every existing test in this
+	// package to construct one too; nil until wired, in which case
+	// gateWrite falls through to its unconditional-ask park, exactly the
+	// pre-rebase behavior).
+	guard *guardrailsvc.GuardrailService
 }
 
 // SetAuditResolver wires the audit trail's parked-write resolution
@@ -105,6 +115,15 @@ type MillMCPService struct {
 // AFTER this service).
 func (m *MillMCPService) SetAuditResolver(fn func(writeID string, outcome mcpaudit.Outcome, errText string)) {
 	m.auditResolver = fn
+}
+
+// SetGuardrailService wires the shared rule-evaluation core (main.go,
+// after guardrailsvc.NewGuardrailService succeeds) so a gated write is
+// judged by the SAME user-authored rules a workflow step's own guardrail
+// gate already evaluates (docs/adr/0047 §5.4) -- see the guard field's
+// own doc comment for why this is late-bound.
+func (m *MillMCPService) SetGuardrailService(g *guardrailsvc.GuardrailService) {
+	m.guard = g
 }
 
 // NewMillMCPService builds the MCP server and registers every

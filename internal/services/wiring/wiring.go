@@ -378,3 +378,21 @@ func publishSystemEventNotification(notif *notificationsvc.NotificationService, 
 		slog.Warn("publish system-event notification", "event", ev.Event, "error", err)
 	}
 }
+
+// WireMillMCPService late-binds every cross-service seam MillMCPService
+// needs (docs/adr/0047 §5.4's guardrail wiring included) and starts its
+// HTTP listener -- a bind failure is logged, not fatal, since this is
+// additive local tooling the rest of the app doesn't depend on to
+// function.
+func WireMillMCPService(mill *mcpsvc.MillMCPService, settingsService *settingssvc.SettingsService, exec *executionsvc.ExecutionService, atlas *atlassvc.AtlasService, audit *mcpauditsvc.MCPAuditService, guard *guardrailsvc.GuardrailService, addr string, logger *slog.Logger) {
+	settingsService.SetMCPService(mill)
+	mill.SetExecutionService(exec)
+	mill.SetAtlasService(atlas)
+	mill.SetAuditResolver(audit.ResolveParkedWrite)
+	mill.SetGuardrailService(guard)
+	if err := mill.Start(addr); err != nil {
+		logger.Error("mill MCP server", "error", err)
+	} else {
+		logger.Info("mill MCP server listening", "addr", addr)
+	}
+}
