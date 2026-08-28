@@ -109,3 +109,40 @@ func TestSanitizeUpdaterError_Nil_ReturnsNil(t *testing.T) {
 		t.Errorf("sanitizeUpdaterError(nil) = %v, want nil", got)
 	}
 }
+
+// TestClassifyUpdateFailureStage covers every error shape the vendored
+// wails/v3 pkg/updater actually returns from DownloadAndInstall's three
+// phases (confirmed against that package's own source: download.go,
+// providers/github/github.go, verify.go, extract.go, and
+// finaliseDownload in updater.go), plus the pre-download guard errors
+// DownloadAndInstallUpdate itself raises before ever reaching the
+// updater.
+func TestClassifyUpdateFailureStage(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want UpdateFailureStage
+	}{
+		{"nil", nil, UpdateFailureStageUnknown},
+		{"github transport failure (a blocked or unreachable network)", errors.New(`github: download: Get "https://release-assets.githubusercontent.com/x": dial tcp: i/o timeout`), UpdateFailureStageDownload},
+		{"github non-2xx download", errors.New("github: download: HTTP 403"), UpdateFailureStageDownload},
+		{"github release missing artifact metadata", errors.New("github: release missing metadata (was it produced by this provider?)"), UpdateFailureStageDownload},
+		{"updater temp dir", errors.New("updater: temp dir: no space left on device"), UpdateFailureStageDownload},
+		{"updater fsync", errors.New("updater: fsync: input/output error"), UpdateFailureStageDownload},
+		{"digest mismatch", errors.New("updater: digest mismatch"), UpdateFailureStageInstall},
+		{"unverified signature", errors.New("updater: ed25519 signature did not verify"), UpdateFailureStageInstall},
+		{"archive extract failure", errors.New("updater: extract: updater: zip open: zip: not a valid zip file"), UpdateFailureStageInstall},
+		{"archive shape violation", errors.New("updater: archive must contain exactly one top-level entry, got 3"), UpdateFailureStageInstall},
+		{"swap rename failure", errors.New("updater: finalise: rename /tmp/a /tmp/b: cross-device link"), UpdateFailureStageInstall},
+		{"channel gate (not download or install)", errors.New("updates only install on the release or beta channel -- this copy was built from source"), UpdateFailureStageUnknown},
+		{"missing backup runner", errors.New("update aborted: no pre-update backup available"), UpdateFailureStageUnknown},
+		{"unconfigured updater", errors.New("updater not configured"), UpdateFailureStageUnknown},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := classifyUpdateFailureStage(tc.err); got != tc.want {
+				t.Errorf("classifyUpdateFailureStage(%v) = %q, want %q", tc.err, got, tc.want)
+			}
+		})
+	}
+}

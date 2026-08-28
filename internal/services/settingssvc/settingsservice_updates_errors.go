@@ -131,3 +131,78 @@ func truncateDiagnosis(s string) string {
 	}
 	return s[:updaterDiagnosisCap] + "…"
 }
+
+// UpdateFailureStage classifies which phase of DownloadAndInstallUpdate's
+// chain produced a failure, so the UI can name the stage that actually
+// failed instead of always attributing it to install (a network-blocked
+// download previously read as "couldn't install the update").
+type UpdateFailureStage string
+
+const (
+	UpdateFailureStageDownload UpdateFailureStage = "download"
+	UpdateFailureStageInstall  UpdateFailureStage = "install"
+	UpdateFailureStageUnknown  UpdateFailureStage = "unknown"
+)
+
+// downloadStageMarkers are the wails/v3 pkg/updater error shapes that
+// originate in its download phase: the github provider's own Download
+// method (pkg/updater/providers/github/github.go, unwrapped all the way
+// up through u.DownloadAndInstall) and the updater's own temp-file I/O
+// wrapped around it (pkg/updater/download.go). Checked before
+// installStageMarkers since a handful of these ("updater: temp dir:",
+// "updater: close:", ...) share the plain "updater: " prefix that also
+// covers verify/install-phase errors below.
+var downloadStageMarkers = []string{
+	"github: download:",
+	"github: release missing metadata",
+	"github: release metadata missing asset url",
+	"updater: temp dir:",
+	"updater: create temp:",
+	"updater: fsync:",
+	"updater: close:",
+}
+
+// installStageMarkers are the error shapes from the updater's verify
+// phase (pkg/updater/verify.go: digest/signature checks) and its
+// install/extract/swap phase (pkg/updater/extract.go, and
+// finaliseDownload in pkg/updater/updater.go) -- both surfaced to the
+// user as one "couldn't install" bucket, since from the download's
+// completed to the swap the story is the same: the update didn't apply.
+var installStageMarkers = []string{
+	"updater: digest",
+	"updater: signature",
+	"updater: ed25519",
+	"updater: ecdsa",
+	"updater: extract",
+	"updater: zip",
+	"updater: tar",
+	"updater: gzip",
+	"updater: archive",
+	"updater: promote extracted",
+	"updater: remove staged archive",
+	"updater: finalise",
+}
+
+// classifyUpdateFailureStage reports which phase of the update chain err
+// came from, matched against the vendored updater's own error-shape
+// vocabulary above. An error matching neither list (a channel gate, a
+// missing backup runner, an unconfigured updater -- none of which are a
+// download or an install/swap problem) classifies as Unknown, so the UI
+// falls back to a neutral message rather than guessing.
+func classifyUpdateFailureStage(err error) UpdateFailureStage {
+	if err == nil {
+		return UpdateFailureStageUnknown
+	}
+	msg := strings.ToLower(err.Error())
+	for _, m := range downloadStageMarkers {
+		if strings.Contains(msg, m) {
+			return UpdateFailureStageDownload
+		}
+	}
+	for _, m := range installStageMarkers {
+		if strings.Contains(msg, m) {
+			return UpdateFailureStageInstall
+		}
+	}
+	return UpdateFailureStageUnknown
+}

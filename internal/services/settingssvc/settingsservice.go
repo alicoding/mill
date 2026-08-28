@@ -140,6 +140,9 @@ type SettingsService struct {
 	// newer update couldn't download" rather than a fresh install
 	// error.
 	lastInstallError string
+	// lastInstallStage classifies lastInstallError (classifyUpdateFailureStage)
+	// -- same lifecycle, cleared and set alongside it.
+	lastInstallStage UpdateFailureStage
 	// lastNotesVersion/lastNotesRaw record the release notes CheckForUpdates
 	// most recently found (goal 0220 S2) -- the "What's new" surface's
 	// only data source, read (and rendered) by UpdateNoticeState. Set on

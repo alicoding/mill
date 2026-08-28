@@ -5,6 +5,7 @@ package settingssvc
 // convention (architecture.md).
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -23,11 +24,13 @@ func TestDeriveUpdateState(t *testing.T) {
 		availableVersion string
 		stagedVersion    string
 		installError     string
+		installStage     UpdateFailureStage
 		lastCheckOutcome UpdateCheckOutcome
 		lastCheckError   string
 		wantState        UpdateState
 		wantVersion      string
 		wantReason       string
+		wantReasonStage  UpdateFailureStage
 	}{
 		{
 			name:      "never checked",
@@ -126,9 +129,20 @@ func TestDeriveUpdateState(t *testing.T) {
 		{
 			name:             "a non-supersede install failure is its own error state",
 			installError:     "digest mismatch",
+			installStage:     UpdateFailureStageInstall,
 			availableVersion: "0.5.0",
 			wantState:        UpdateStateError,
 			wantReason:       "digest mismatch",
+			wantReasonStage:  UpdateFailureStageInstall,
+		},
+		{
+			name:             "a non-supersede download failure carries the download stage",
+			installError:     "github: download: HTTP 403",
+			installStage:     UpdateFailureStageDownload,
+			availableVersion: "0.5.0",
+			wantState:        UpdateStateError,
+			wantReason:       "github: download: HTTP 403",
+			wantReasonStage:  UpdateFailureStageDownload,
 		},
 		{
 			name:             "a failed check with nothing ever found",
@@ -146,7 +160,7 @@ func TestDeriveUpdateState(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			state, version, reason := deriveUpdateState(tc.checking, tc.downloading, tc.ready, tc.availableVersion, tc.stagedVersion, tc.installError, tc.lastCheckOutcome, tc.lastCheckError)
+			state, version, reason, reasonStage := deriveUpdateState(tc.checking, tc.downloading, tc.ready, tc.availableVersion, tc.stagedVersion, tc.installError, tc.installStage, tc.lastCheckOutcome, tc.lastCheckError)
 			if state != tc.wantState {
 				t.Errorf("state = %q, want %q", state, tc.wantState)
 			}
@@ -155,6 +169,9 @@ func TestDeriveUpdateState(t *testing.T) {
 			}
 			if reason != tc.wantReason {
 				t.Errorf("reason = %q, want %q", reason, tc.wantReason)
+			}
+			if reasonStage != tc.wantReasonStage {
+				t.Errorf("reasonStage = %q, want %q", reasonStage, tc.wantReasonStage)
 			}
 		})
 	}
@@ -312,5 +329,56 @@ func TestDownloadAndInstallUpdate_FailedSupersedeSurfacesCheckErrorAndClearsRead
 	}
 	if n.LastCheckError == "" {
 		t.Error("LastCheckError is empty, want the supersede failure reason")
+	}
+}
+
+// TestDownloadAndInstallUpdate_DownloadFailureReportsDownloadStage runs
+// the REAL updater chain (not a hand-rolled stand-in) against a fake
+// provider whose Download fails with the exact shape the github
+// provider itself returns for a blocked network
+// (pkg/updater/providers/github/github.go: "github: download: %w"),
+// and confirms UpdateNoticeState surfaces it as the download stage, not
+// install -- the regression test for the bug this classification
+// exists to fix (a network-blocked download read as an install
+// failure).
+func TestDownloadAndInstallUpdate_DownloadFailureReportsDownloadStage(t *testing.T) {
+	host := &fakeUpdaterHost{}
+	rel := releaseFor("0.5.0", []byte("expected-bytes"))
+	provider := &fakeUpdaterProvider{
+		rel: rel,
+		dlErrForVersion: map[string]error{
+			"0.5.0": errors.New(`github: download: Get "https://release-assets.githubusercontent.com/x": dial tcp: connect: network is unreachable`),
+		},
+	}
+
+	u := updater.New(host)
+	if err := u.Init(updater.Config{
+		CurrentVersion: "0.4.0",
+		Providers:      []updater.Provider{provider},
+	}); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	s := newTestSettingsService(t)
+	s.SetUpdater(u)
+	s.SetUpdateChannel("beta")
+	s.SetBackupRunner(func(int) (string, error) { return "/backups/ok", nil })
+
+	if _, err := s.CheckForUpdates(); err != nil {
+		t.Fatalf("CheckForUpdates: %v", err)
+	}
+	if err := s.DownloadAndInstallUpdate(); err == nil {
+		t.Fatal("DownloadAndInstallUpdate with a blocked-network download: want an error, got nil")
+	}
+
+	n := s.UpdateNoticeState()
+	if n.State != UpdateStateError {
+		t.Fatalf("State = %q, want %q", n.State, UpdateStateError)
+	}
+	if n.StateReasonStage != string(UpdateFailureStageDownload) {
+		t.Errorf("StateReasonStage = %q, want %q -- a download failure must never read as an install failure", n.StateReasonStage, UpdateFailureStageDownload)
+	}
+	if n.StateReason == "" {
+		t.Error("StateReason is empty, want the raw download error preserved for the copyable detail")
 	}
 }

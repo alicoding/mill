@@ -26,6 +26,16 @@ function truncate(s: string, max: number): string {
   return s.length > max ? `${s.slice(0, max)}…` : s
 }
 
+// installFailedText names the stage that actually failed (goal: a
+// network-blocked download must never read as a corrupted install) --
+// the raw error stays out of the headline entirely and lives only in
+// CopyDiagnosisButton's copyable detail beside it.
+function installFailedText(stage: string, t: TFunc): string {
+  if (stage === 'download') return t('settings.updates.installFailedDownload')
+  if (stage === 'install') return t('settings.updates.installFailedInstall')
+  return t('settings.updates.installFailedUnknown')
+}
+
 // lastCheckText maps CheckForUpdates' persisted outcome to its display
 // copy -- pulled out of the component so the outcome ternary chain
 // doesn't count against UpdatesSection's own cognitive-complexity budget
@@ -140,6 +150,7 @@ function applyUpdateNotice(
   n: UpdateNotice,
   setState: Dispatch<SetStateAction<UpdateState>>,
   setStateReason: Dispatch<SetStateAction<string>>,
+  setStateReasonStage: Dispatch<SetStateAction<string>>,
   setUpdateResult: Dispatch<SetStateAction<UpdateResult | null>>,
   setLastCheckAt: Dispatch<SetStateAction<string>>,
   setLastCheckOutcome: Dispatch<SetStateAction<LastCheckOutcome>>,
@@ -147,6 +158,7 @@ function applyUpdateNotice(
 ) {
   setState(n.state)
   setStateReason(n.stateReason)
+  setStateReasonStage(n.stateReasonStage)
   // Recovers the version after a fresh mount that didn't run the check
   // itself -- e.g. reloading while a background auto-download (goal
   // 0207) is already downloading or ready.
@@ -165,6 +177,11 @@ function UpdatesSection() {
   const [updateResult, setUpdateResult] = useState<UpdateResult | null>(null)
   const [state, setState] = useState<UpdateState>(UpdateState.UpdateStateIdle)
   const [stateReason, setStateReason] = useState('')
+  // Classifies stateReason when it came from a DownloadAndInstallUpdate
+  // failure ('download' | 'install' | 'unknown') -- installFailedText
+  // below picks the honest headline from it. '' for a check failure or
+  // any non-error state.
+  const [stateReasonStage, setStateReasonStage] = useState('')
   const [proxyUrl, setProxyUrl] = useState('')
   // '' = Auto (system), 'off' = direct, 'manual' = the URL field.
   const [proxyMode, setProxyMode] = useState<'auto' | 'manual' | 'off'>('auto')
@@ -189,7 +206,7 @@ function UpdatesSection() {
   // auto-download finishing while Settings isn't open, is never missed.
   useEffect(() => {
     const sync = () => void SettingsService.UpdateNoticeState()
-      .then((n) => applyUpdateNotice(n, setState, setStateReason, setUpdateResult, setLastCheckAt, setLastCheckOutcome, setLastCheckError))
+      .then((n) => applyUpdateNotice(n, setState, setStateReason, setStateReasonStage, setUpdateResult, setLastCheckAt, setLastCheckOutcome, setLastCheckError))
       .catch(console.error)
     sync()
     return Events.On('mill-data-changed', (evt) => {
@@ -442,7 +459,7 @@ function UpdatesSection() {
               <>
                 <Stack direction="horizontal" gap="condensed" align="center">
                   <Text size="small" className={styles.error}>
-                    {t('settings.updates.installFailed', { error: truncate(stateReason, 200) })}
+                    {installFailedText(stateReasonStage, t)}
                   </Text>
                   <CopyDiagnosisButton error={stateReason} testId="update-error-copy" />
                 </Stack>
