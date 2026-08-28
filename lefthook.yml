@@ -70,7 +70,14 @@ pre-commit:
       # golangci-lint's lock file -- without the flag whichever starts
       # second dies with "parallel golangci-lint is running" (hit
       # repeatedly; previously worked around by re-running the commit).
-      run: golangci-lint run . ./internal/... --build-tags=server --allow-parallel-runners
+      # GOLANGCI_LINT_CACHE per-checkout (all three golangci jobs): the
+      # user-level cache (~/Library/Caches/golangci-lint) is shared
+      # across every worktree on the machine and retains absolute paths
+      # from deleted checkouts, producing spurious findings in files a
+      # commit never touched (twice-hit class). A cache under this
+      # checkout's own gitignored .task/ isolates each worktree; the
+      # cost is one cold lint per fresh worktree.
+      run: GOLANGCI_LINT_CACHE="$PWD/.task/golangci-cache" golangci-lint run . ./internal/... --build-tags=server --allow-parallel-runners
     - name: gocognit-new
       glob: "*.go"
       # Cognitive complexity gates NEW/CHANGED code only (goal 0109,
@@ -81,7 +88,7 @@ pre-commit:
       # lives in .golangci.yml's gocognit settings; --tests=false is
       # the goal file's own recorded verdict (seeded-example tests
       # dominate the noise; production code is the gate's subject).
-      run: golangci-lint run . ./internal/... --build-tags=server --enable-only gocognit --new-from-merge-base=origin/main --tests=false --allow-parallel-runners
+      run: GOLANGCI_LINT_CACHE="$PWD/.task/golangci-cache" golangci-lint run . ./internal/... --build-tags=server --enable-only gocognit --new-from-merge-base=origin/main --tests=false --allow-parallel-runners
     - name: depguard-new
       glob: "*.go"
       # Boundary-enforcement gate on NEW/CHANGED code only (goal 0168):
@@ -91,7 +98,7 @@ pre-commit:
       # build. Threshold/rule lives in .golangci.yml's depguard
       # settings; same --tests=false / --allow-parallel-runners
       # reasoning as gocognit-new just above.
-      run: golangci-lint run . ./internal/... --build-tags=server --enable-only depguard --new-from-merge-base=origin/main --tests=false --allow-parallel-runners
+      run: GOLANGCI_LINT_CACHE="$PWD/.task/golangci-cache" golangci-lint run . ./internal/... --build-tags=server --enable-only depguard --new-from-merge-base=origin/main --tests=false --allow-parallel-runners
     - name: go-test
       glob: "*.go"
       # Root package (`.`) included alongside ./internal/... -- the
