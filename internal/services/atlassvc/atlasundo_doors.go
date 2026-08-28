@@ -72,11 +72,10 @@ var exemptDoors = map[string]string{
 	// Background/bulk/non-gesture callers (goal 0219 S2 scope cut,
 	// named in the PR report): not a single user gesture, or not
 	// reachable from the UI at all.
-	"CreateListProjectionCard": "wails:ignore, list-projection wiring call, not a canvas gesture",
-	"ImportAtlas":              "bulk multi-entity import, not a single gesture -- out of v1 scope",
-	"MergeCardFields":          "wails:ignore, workflow-only write -- never a UI actor's gesture",
-	"SyncDocsFolder":           "wails:ignore, background folder sync, not a canvas gesture",
-	"SyncLedgerFolder":         "wails:ignore, background folder sync, not a canvas gesture",
+	"ImportAtlas":      "bulk multi-entity import, not a single gesture -- out of v1 scope",
+	"MergeCardFields":  "wails:ignore, workflow-only write -- never a UI actor's gesture",
+	"SyncDocsFolder":   "wails:ignore, background folder sync, not a canvas gesture",
+	"SyncLedgerFolder": "wails:ignore, background folder sync, not a canvas gesture",
 
 	// Mirror/file-management + app-config doors: not named in
 	// ADR-0044's v1 door enumeration (position/size/move/content/

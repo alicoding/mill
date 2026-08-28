@@ -2,7 +2,6 @@ package atlassvc
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/alicoding/mill/internal/domain/atlas"
 	"github.com/alicoding/mill/internal/services/dataevent"
@@ -61,48 +60,6 @@ type listProjectionFn func(listID string) (ListProjection, bool)
 //wails:ignore
 func (a *AtlasService) WireListProjection(fn listProjectionFn) {
 	a.listProjection = fn
-}
-
-// CreateListProjectionCard lands a new card projecting listID, kinded
-// and titled like any other card (the projection is a facet, not a
-// kind). Validates the List resolves at creation -- a projection born
-// pointing at nothing is an authoring mistake, refused with the fix.
-func (a *AtlasService) CreateListProjectionCard(kindID, title, parentID string, position *atlas.Position, listID string) (atlas.Card, error) {
-	if strings.TrimSpace(listID) == "" {
-		return atlas.Card{}, fmt.Errorf("pick the List this table should mirror")
-	}
-	// An empty kindID defaults to the seeded Reference kind (goal 0137:
-	// the size picker asks no identity questions) -- falling back to
-	// the first kind when Reference was deleted, so creation never
-	// fails over a default the user didn't pick.
-	if strings.TrimSpace(kindID) == "" {
-		kindID = a.defaultProjectionKindLocked()
-	}
-	if a.listProjection == nil {
-		return atlas.Card{}, fmt.Errorf("list projection is not available in this build")
-	}
-	if _, ok := a.listProjection(listID); !ok {
-		return atlas.Card{}, fmt.Errorf("that List no longer exists -- pick another")
-	}
-	card, err := a.CreateCard(kindID, title, "", nil, parentID, position, "", "", "", "")
-	if err != nil {
-		return atlas.Card{}, err
-	}
-	a.mu.Lock()
-	idx := a.findCardLocked(card.ID)
-	if idx == -1 {
-		a.mu.Unlock()
-		return atlas.Card{}, fmt.Errorf("no card with id %q", card.ID)
-	}
-	a.cards[idx].ProjectionListID = listID
-	if err := a.persistLocked(); err != nil {
-		a.mu.Unlock()
-		return atlas.Card{}, err
-	}
-	out := a.cards[idx]
-	a.mu.Unlock()
-	dataevent.Emit("atlas", out.ID)
-	return out, nil
 }
 
 // SetCardProjectionDensity persists the projection's render mode

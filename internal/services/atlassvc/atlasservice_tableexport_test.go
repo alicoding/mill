@@ -213,10 +213,7 @@ func TestTableProjectionExport_EndToEnd_AllFourFormats(t *testing.T) {
 	wireExportProjection(a)
 	kind := firstKindWithLabel(t, a, "Document")
 
-	card, err := a.CreateListProjectionCard(kind, "Inventory", "", nil, "list-inventory")
-	if err != nil {
-		t.Fatalf("CreateListProjectionCard: %v", err)
-	}
+	card := makeProjectionCard(t, a, kind, "Inventory", "list-inventory")
 
 	for format, wantExt := range map[string]string{"csv": ".csv", "tsv": ".tsv", "markdown": ".md", "xlsx": ".xlsx"} {
 		result, err := a.TableProjectionExport(card.ID, format)
