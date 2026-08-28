@@ -44,6 +44,7 @@ export const cardTool = {
   id: cardIdentity.id,
   icon: FileIcon,
   label: cardIdentity.commandLabel,
+  description: 'Adds a typed card of knowledge you can link, tag, and search.',
   shortcutKey: cardIdentity.shortcutKey,
   tray: 'quick',
   // The atom -- typed, linked, filed, searchable knowledge (goal 0224's

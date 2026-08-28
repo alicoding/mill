@@ -1,21 +1,22 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionList, Label, Stack, Text, ToggleSwitch } from '@primer/react'
-import { ATLAS_TOOLS, type AtlasToolID, type AtlasToolShape } from '../atlas/atlasTools'
+import { ActionList, Button, Stack, Text } from '@primer/react'
+import { ATLAS_TOOLS, type AtlasToolID } from '../atlas/atlasTools'
 import { SettingsService } from '../shared/bindings'
 import { refreshDisabledExtensions, useExtensionEnablementStore } from '../shared/extensionEnablementStore'
-import { editRouteLabel, groupLabel, sourceLabel } from './extensionMeta'
+import { ExtensionRow } from './ExtensionRow'
 import styles from '../shared/ListCard.module.css'
 
-// Settings > Extensions (goal 0237 S2): a registry-DERIVED list of
-// every registered canvas tool (ATLAS_TOOLS, atlas/atlasTools.ts) --
-// never a hand-curated array, so a new tool's own registerNoun() call
-// (atlasNounRegistry.ts) makes it appear here with zero edits to this
-// file. `card` is the one exception: it's the kernel knowledge object
-// (ADR-0046), not a guest extension, so its row renders a "Built-in"
-// label instead of a toggle -- shown rather than omitted, so the
-// Extensions list still reads as a complete inventory of every canvas
-// tool, not a mysteriously-short one.
+// Settings > Extensions (goal 0237 S2, extended by goal 0211's plugin-
+// manager UX slice): a registry-DERIVED list of every registered
+// canvas tool, each expandable into a registry-derived detail panel
+// (ExtensionRow.tsx) -- never a hand-curated array, so a new tool's own
+// registerNoun() call (atlasNounRegistry.ts) makes it appear here with
+// zero edits to this file. `card` is the one exception: it's the
+// kernel knowledge object (ADR-0046), not a guest extension, so its row
+// renders a "Built-in" label instead of a toggle -- shown rather than
+// omitted, so the Extensions list still reads as a complete inventory
+// of every canvas tool, not a mysteriously-short one.
 //
 // Disabling a tool here only changes what CAN be created from now on:
 // it removes the tool's own button from the creation tray
@@ -27,74 +28,67 @@ import styles from '../shared/ListCard.module.css'
 // lookup (atlasNounRegistry.ts's boardObjectContentFor) ever consults
 // this list at all.
 const CARD_TOOL_ID: AtlasToolID = 'card'
+const NON_BUILT_IN_IDS: AtlasToolID[] = ATLAS_TOOLS.filter((t) => t.id !== CARD_TOOL_ID).map((t) => t.id)
 
 export default function ExtensionsSection() {
   const { t } = useTranslation('views')
   const disabledIds = useExtensionEnablementStore((s) => s.disabledExtensionIds)
+  const [appVersion, setAppVersion] = useState('')
 
   useEffect(() => {
     void refreshDisabledExtensions()
+    SettingsService.AppVersion().then(setAppVersion).catch(console.error)
   }, [])
 
   const toggle = (id: AtlasToolID, enabled: boolean) => {
     SettingsService.SetExtensionEnabled(id, enabled).then(refreshDisabledExtensions).catch(console.error)
   }
 
+  // Obsidian's restricted-mode analog (goal 0211's plugin-manager UX
+  // slice): one control turns every non-built-in extension off at
+  // once, or back on. Reuses the same per-id SetExtensionEnabled call
+  // every row's own toggle already makes -- no new settings key. The
+  // calls run SEQUENTIALLY, not Promise.all: SetExtensionEnabled is a
+  // read-modify-write over one shared JSON blob
+  // (settingsservice_extensions.go), so firing the whole set
+  // concurrently lets a later write's own read miss an earlier write's
+  // still-in-flight update, silently dropping it.
+  const allOff = NON_BUILT_IN_IDS.length > 0 && NON_BUILT_IN_IDS.every((id) => disabledIds.includes(id))
+  const toggleAll = async () => {
+    for (const id of NON_BUILT_IN_IDS) {
+      await SettingsService.SetExtensionEnabled(id, allOff).catch(console.error)
+    }
+    await refreshDisabledExtensions()
+  }
+
   return (
     <Stack direction="vertical" gap="condensed">
-      <Text as="p" size="small" className={styles.muted}>
-        {t('settings.extensions.subtitle')}
-      </Text>
+      <Stack direction="horizontal" justify="space-between" align="start" gap="condensed">
+        <Stack direction="vertical" gap="none">
+          <Text as="p" size="small" className={styles.muted}>
+            {t('settings.extensions.subtitle')}
+          </Text>
+          <Text as="p" size="small" className={styles.muted} data-testid="extensions-install-story">
+            {t('settings.extensions.installStory')}
+          </Text>
+        </Stack>
+        <Button size="small" onClick={toggleAll} data-testid="extensions-toggle-all">
+          {t(allOff ? 'settings.extensions.turnAllOn' : 'settings.extensions.turnAllOff')}
+        </Button>
+      </Stack>
       <ActionList role="list" showDividers data-testid="extensions-list">
         {ATLAS_TOOLS.map((tool) => (
-          <ActionList.Item key={tool.id} data-testid="extensions-row" data-extension-id={tool.id}>
+          <ActionList.Item key={tool.id}>
             <ExtensionRow
               tool={tool}
               builtIn={tool.id === CARD_TOOL_ID}
               enabled={!disabledIds.includes(tool.id)}
+              appVersion={appVersion}
               onToggle={(enabled) => toggle(tool.id, enabled)}
             />
           </ActionList.Item>
         ))}
       </ActionList>
-    </Stack>
-  )
-}
-
-function ExtensionRow({ tool, builtIn, enabled, onToggle }: {
-  tool: AtlasToolShape
-  builtIn: boolean
-  enabled: boolean
-  onToggle: (enabled: boolean) => void
-}) {
-  const { t } = useTranslation('views')
-  const Icon = tool.icon
-  const labelId = `extension-row-label-${tool.id}`
-  const meta = [groupLabel(tool.group), sourceLabel(tool.content?.source), editRouteLabel(tool.content?.editRoute)]
-    .filter((m): m is string => m !== null)
-
-  return (
-    <Stack direction="horizontal" gap="condensed" align="center" justify="space-between" style={{ width: '100%' }}>
-      <Stack direction="horizontal" gap="condensed" align="center">
-        <Icon size={16} />
-        <Stack direction="vertical" gap="none">
-          <Text id={labelId} size="small" weight="semibold">{tool.label}</Text>
-          {meta.length > 0 && (
-            <Text size="small" className={styles.muted}>{meta.join(' · ')}</Text>
-          )}
-        </Stack>
-      </Stack>
-      {builtIn ? (
-        <Label data-testid="extensions-row-built-in">{t('settings.extensions.builtIn')}</Label>
-      ) : (
-        <ToggleSwitch
-          aria-labelledby={labelId}
-          checked={enabled}
-          onChange={onToggle}
-          size="small"
-          data-testid="extensions-row-toggle"
-        />
-      )}
     </Stack>
   )
 }

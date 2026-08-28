@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { editRouteLabel, groupLabel, sourceLabel } from './extensionMeta'
+import { descriptionLabel, editRouteLabel, groupLabel, reachLabel, sourceLabel, versionLabel } from './extensionMeta'
 
 describe('groupLabel', () => {
   it('maps every declared group to user-facing text', () => {
@@ -38,5 +38,33 @@ describe('editRouteLabel', () => {
 
   it('falls back to one honest generic phrase for a per-object resolver', () => {
     expect(editRouteLabel(() => ({ kind: 'external-app' }))).toBe('Edit method depends on the file')
+  })
+})
+
+describe('descriptionLabel', () => {
+  it('returns the declared description when present', () => {
+    expect(descriptionLabel({ description: 'Draws things.', label: 'Shape' })).toBe('Draws things.')
+  })
+
+  it('falls back to the label when no description is declared', () => {
+    expect(descriptionLabel({ label: 'Shape' })).toBe('Shape')
+  })
+})
+
+describe('reachLabel', () => {
+  it('reads honestly when no capabilities are declared', () => {
+    expect(reachLabel(undefined)).toBe('Reaches nothing outside Mill.')
+    expect(reachLabel([])).toBe('Reaches nothing outside Mill.')
+  })
+
+  it('lists declared capabilities verbatim, derived rather than hardcoded', () => {
+    expect(reachLabel(['network: example.com'])).toBe('Reaches network: example.com.')
+    expect(reachLabel(['read files', 'write files'])).toBe('Reaches read files, write files.')
+  })
+})
+
+describe('versionLabel', () => {
+  it('reads the app\'s own build version -- every extension ships with Mill itself', () => {
+    expect(versionLabel('1.2.3')).toBe('Ships with Mill v1.2.3')
   })
 })

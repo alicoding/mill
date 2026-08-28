@@ -19,6 +19,73 @@ async function openExtensionsSection(page: import('@playwright/test').Page) {
   await expect(page.getByTestId('extensions-list')).toBeVisible()
 }
 
+test('The section explains where extensions come from today', async ({ page }) => {
+  await page.goto('/')
+  await openExtensionsSection(page)
+  await expect(page.getByTestId('extensions-install-story')).toHaveText(
+    'Extensions ship with Mill today. Installing your own arrives with the plugin loader.',
+  )
+})
+
+test('A row expands to show its description, an honest reach line, and the app version', async ({ page }) => {
+  await page.goto('/')
+  await openExtensionsSection(page)
+
+  const shapeRow = page.locator('[data-testid="extensions-row"][data-extension-id="shape"]')
+  const expanded = shapeRow.getByTestId('extensions-row-expanded')
+  await expect(expanded).toBeHidden()
+
+  // Native <details>/<summary> (goal 0211's plugin-manager UX slice):
+  // clicking the summary text opens the disclosure without touching the
+  // enable/disable toggle, which lives outside the summary specifically
+  // so it never double-fires the native expand/collapse.
+  await shapeRow.locator('summary').click()
+  await expect(expanded).toBeVisible()
+  await expect(shapeRow.getByTestId('extensions-row-description')).toHaveText('Draws a rectangle, ellipse, or arrow.')
+  await expect(shapeRow.getByTestId('extensions-row-reach')).toHaveText('Reaches nothing outside Mill.')
+  await expect(shapeRow.getByTestId('extensions-row-version')).toHaveText(/^Ships with Mill v/)
+
+  // Collapses again on a second click of the same summary.
+  await shapeRow.locator('summary').click()
+  await expect(expanded).toBeHidden()
+})
+
+test('Turn all off empties the tray of every non-built-in tool; turn all on restores them', async ({ page }) => {
+  await page.goto('/')
+  await openExtensionsSection(page)
+
+  const toggleAll = page.getByTestId('extensions-toggle-all')
+  await expect(toggleAll).toHaveText('Turn all off')
+  await toggleAll.click()
+  await expect(toggleAll).toHaveText('Turn all on')
+
+  // Every row but card now shows its toggle off.
+  for (const id of ['note', 'area', 'table', 'image', 'pencil', 'eraser', 'laser', 'shape']) {
+    const toggle = page.locator(`[data-testid="extensions-row"][data-extension-id="${id}"]`).getByTestId('extensions-row-toggle').getByRole('button')
+    await expect(toggle).toHaveAttribute('data-checked', 'false')
+  }
+
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+  for (const id of ['note', 'area', 'table', 'image', 'shape', 'pencil', 'eraser', 'laser']) {
+    await expect(page.getByTestId(`atlas-tray-${id}`)).toHaveCount(0)
+  }
+  // card is the kernel object, never affected by the bulk toggle.
+  await expect(page.getByTestId('atlas-tray-card')).toBeVisible()
+
+  // Restore -- shared-pool cleanup discipline.
+  await page.getByRole('link', { name: 'Settings' }).click()
+  await openExtensionsSection(page)
+  await expect(toggleAll).toHaveText('Turn all on')
+  await toggleAll.click()
+  await expect(toggleAll).toHaveText('Turn all off')
+  for (const id of ['note', 'area', 'table', 'image', 'pencil', 'eraser', 'laser', 'shape']) {
+    const toggle = page.locator(`[data-testid="extensions-row"][data-extension-id="${id}"]`).getByTestId('extensions-row-toggle').getByRole('button')
+    await expect(toggle).toHaveAttribute('data-checked', 'true')
+  }
+})
+
 test('Extensions section lists every registered canvas tool; the built-in card row has no toggle', async ({ page }) => {
   await page.goto('/')
   await openExtensionsSection(page)

@@ -49,3 +49,29 @@ export function editRouteLabel(decl: EditRouteDecl | undefined): string | null {
     case 'none': return null
   }
 }
+
+// descriptionLabel -- AtlasToolShape.description's own display text
+// (goal 0211's plugin-manager UX slice), falling back to the tool's own
+// label for a noun that hasn't been given a description yet, so the
+// Extensions section's disclosure always shows something rather than an
+// empty line.
+export function descriptionLabel(tool: { description?: string; label: string }): string {
+  return tool.description ?? tool.label
+}
+
+// reachLabel -- ADR-0047's declared-capability set, rendered honestly:
+// no current noun declares any capabilities, so this reads "Reaches
+// nothing outside Mill." for every one of them today. Once a noun
+// declares real capabilities, this lists them verbatim -- the line
+// derives from the registry, it is never hardcoded per tool.
+export function reachLabel(capabilities: readonly string[] | undefined): string {
+  if (!capabilities || capabilities.length === 0) return 'Reaches nothing outside Mill.'
+  return `Reaches ${capabilities.join(', ')}.`
+}
+
+// versionLabel -- every extension today is compiled into Mill itself
+// (goal 0211's tier model), so its own "version" is simply the app's
+// own build version rather than a per-extension one.
+export function versionLabel(appVersion: string): string {
+  return `Ships with Mill v${appVersion}`
+}

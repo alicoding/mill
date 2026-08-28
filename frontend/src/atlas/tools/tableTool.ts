@@ -24,6 +24,7 @@ export const tableTool = {
   id: tableIdentity.id,
   icon: TableIcon,
   label: tableIdentity.commandLabel,
+  description: 'Adds a live table backed by a Configure List.',
   shortcutKey: tableIdentity.shortcutKey,
   tray: 'quick',
   // A live view of List data -- typed, queryable (goal 0224's

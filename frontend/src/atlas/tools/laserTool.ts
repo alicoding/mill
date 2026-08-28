@@ -25,6 +25,7 @@ export const laserTool = {
   id: laserIdentity.id,
   icon: ZapIcon,
   label: laserIdentity.commandLabel,
+  description: 'Points at things with a fading trail. Nothing is saved.',
   shortcutKey: laserIdentity.shortcutKey,
   tray: 'quick',
   // The freehand-marking family (goal 0224's disposition table) --

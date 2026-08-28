@@ -62,6 +62,7 @@ export const shapeTool = {
   id: shapeIdentity.id,
   icon: DiamondIcon,
   label: shapeIdentity.commandLabel,
+  description: 'Draws a rectangle, ellipse, or arrow.',
   shortcutKey: shapeIdentity.shortcutKey,
   tray: 'quick',
   // The freehand-marking family (goal 0224's disposition table) --

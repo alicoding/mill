@@ -149,6 +149,13 @@ export function boardObjectContentFor(kind: string): AtlasBoardObjectContent | u
 interface AtlasToolShapeBase {
   icon: Icon
   label: string
+  // description (goal 0211's plugin-manager UX slice): a one-sentence,
+  // user-vocabulary summary of what this noun does, read by the
+  // Extensions section's per-row disclosure (views/ExtensionsSection.tsx,
+  // views/extensionMeta.ts's descriptionLabel). Optional -- a noun that
+  // hasn't been given one yet still compiles and falls back to `label`
+  // there rather than rendering nothing.
+  description?: string
   shortcutKey: string | null
   tray: 'quick' | 'palette'
   // group (goal 0224's tray-restructure slice): which tray cluster this
@@ -244,6 +251,16 @@ interface AtlasToolShapeBase {
   // killing AtlasBoardObjectNode.tsx's former per-Kind hand branch.
   // null exactly when boardObjectKind is null, never omitted.
   content: AtlasNounContent | null
+  // capabilities (ADR-0047's declared-capability set): the external
+  // reach this noun's own manifest declares. No current noun sets it --
+  // every noun today reaches nothing outside Mill -- so the Extensions
+  // section's reach line (views/extensionMeta.ts's reachLabel) derives
+  // an honest "Reaches nothing outside Mill." from its absence instead
+  // of a hardcoded string, and lists these values verbatim once a noun
+  // actually declares some. Deliberately a plain string list, not an
+  // enum -- the capability vocabulary itself is undesigned here (ADR-0047
+  // defers it to when the compiled-in plugin tier is built).
+  capabilities?: readonly string[]
   // sticky (goal 0215 S2): does this tool stay armed after a completed
   // gesture (pencil/eraser/laser -- repeated strokes/passes are the
   // point), or disarm after one (area, and shape via its OWN lockable
