@@ -363,7 +363,8 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 	if u == nil {
 		return s.failInstall(wasReady, false, fmt.Errorf("updater not configured"))
 	}
-	if err := u.DownloadAndInstall(context.Background()); err != nil {
+	finalVersion, err := s.downloadWithStaleAssetRetry(u, version)
+	if err != nil {
 		// u.DownloadAndInstall's FIRST action is discardStaging(),
 		// unconditionally removing whatever this *updater.Updater
 		// already had staged, before the new download even begins
@@ -381,7 +382,7 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 	// verify, then re-sign, then the swap RestartApp triggers).
 	s.resignStagedBundle(u.DownloadedPath())
 	s.mu.Lock()
-	s.stagedUpdateVersion = version
+	s.stagedUpdateVersion = finalVersion
 	s.mu.Unlock()
 	s.markUpdateReady()
 	return nil

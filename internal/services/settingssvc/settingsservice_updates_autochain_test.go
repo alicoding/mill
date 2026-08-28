@@ -72,16 +72,46 @@ func (w *fakeUpdaterWindow) Close()                        {}
 // fakeUpdaterProvider serves whatever release/body is currently set,
 // letting a test swap both between two DownloadAndInstallUpdate calls
 // to simulate a newer build appearing.
+//
+// releases, when non-empty, overrides rel for Check: each call walks
+// to the next entry, repeating the last one once exhausted -- lets a
+// test simulate a rolling release channel discovering a newer version
+// on ITS OWN across two Check calls (settingsservice_updates.go's own
+// re-check retry), rather than the test hand-driving provider.rel
+// between two calls it fully controls.
+//
+// dlErrForVersion, when set for a release's Version, fails Download
+// for that specific version instead of writing body -- simulates one
+// version's asset being unreachable (a 404 on a since-replaced
+// rolling release) while other versions still download fine.
 type fakeUpdaterProvider struct {
 	rel  *updater.Release
 	body []byte
+
+	releases   []*updater.Release
+	checkCalls int
+
+	dlErrForVersion map[string]error
+	downloadLog     []string
 }
 
 func (p *fakeUpdaterProvider) Name() string { return "fake" }
 func (p *fakeUpdaterProvider) Check(context.Context, updater.CheckRequest) (*updater.Release, error) {
-	return p.rel, nil
+	if len(p.releases) == 0 {
+		return p.rel, nil
+	}
+	idx := p.checkCalls
+	if idx >= len(p.releases) {
+		idx = len(p.releases) - 1
+	}
+	p.checkCalls++
+	return p.releases[idx], nil
 }
-func (p *fakeUpdaterProvider) Download(_ context.Context, _ *updater.Release, dst io.Writer, onProgress func(int64, int64)) error {
+func (p *fakeUpdaterProvider) Download(_ context.Context, r *updater.Release, dst io.Writer, onProgress func(int64, int64)) error {
+	p.downloadLog = append(p.downloadLog, r.Version)
+	if err, ok := p.dlErrForVersion[r.Version]; ok {
+		return err
+	}
 	if _, err := dst.Write(p.body); err != nil {
 		return err
 	}
