@@ -93,6 +93,32 @@ export interface AtlasNounContent {
   // RESOLVER -- see EditRouteDecl's own header for why a single Kind
   // (diagram) needs the function form.
   editRoute?: EditRouteDecl
+  // extension (goal 0237 S3 rider): Settings > Extensions row metadata
+  // for a NOUN WITH NO TRAY TOOL. A tool-bearing noun already carries
+  // icon/label/description on its own AtlasToolShapeBase descriptor
+  // (registerNoun below), so this stays undefined there; a tool-less
+  // noun (diagram, sheet -- file-drop only, no AtlasToolShape to
+  // declare these on) sets it directly in its own registerBoardObjectContent
+  // call so the Extensions list can render an honest row for it too,
+  // mirroring goal 0211's own description-field precedent. Presence of
+  // this field is exactly how toolLessNounExtensions() below finds a
+  // tool-less noun worth listing.
+  extension?: ExtensionRowMeta
+}
+
+// ExtensionRowMeta -- the fields ExtensionRow.tsx needs for a tool-less
+// noun's own row that AtlasToolShapeBase would otherwise supply.
+// disableScopeNote is REQUIRED (never optional): a tool-less noun has
+// no tray button to hide, so its own disable toggle gates a narrower,
+// noun-specific seam (file-drop routing, and for diagram the embedded-
+// editor door) -- the row must always say so rather than silently
+// implying the same tray-wide scope a tool row's toggle has.
+export interface ExtensionRowMeta {
+  icon: Icon
+  label: string
+  description: string
+  disableScopeNote: string
+  capabilities?: readonly string[]
 }
 
 // AtlasBoardObjectContent -- AtlasNounContent plus the board-facts
@@ -110,7 +136,7 @@ export interface AtlasNounContent {
 // than independently settable -- a Kind with no source still declares
 // this field directly (shape/ink today), so the field itself stays
 // required.
-interface AtlasBoardObjectContent extends AtlasNounContent {
+export interface AtlasBoardObjectContent extends AtlasNounContent {
   dragBand: boolean
   fileBacked: boolean
 }
@@ -144,6 +170,34 @@ export function registerBoardObjectContent(kind: AtlasBoardObjectKind, content: 
 // stay recoverable even against bad/legacy data.
 export function boardObjectContentFor(kind: string): AtlasBoardObjectContent | undefined {
   return boardObjectContentRegistry.get(kind as AtlasBoardObjectKind)
+}
+
+// ToolLessNounExtension -- one entry of toolLessNounExtensions() below,
+// with `extension` already narrowed to non-optional (the filter that
+// builds this array is the one place that check happens, so every
+// consumer downstream gets a guaranteed ExtensionRowMeta instead of
+// re-checking for undefined itself).
+export interface ToolLessNounExtension {
+  kind: AtlasBoardObjectKind
+  content: AtlasBoardObjectContent
+  extension: ExtensionRowMeta
+}
+
+// toolLessNounExtensions -- every registered noun with NO AtlasToolShape
+// of its own (diagram, sheet: file-drop only) that has declared
+// Extensions-row metadata, so Settings > Extensions (ExtensionsSection.tsx)
+// can list it alongside every tray tool. A tool-bearing noun's content
+// also lives in this same registry (registerNoun folds it in below) but
+// never sets `extension`, so it's excluded here -- it already gets its
+// own row from ATLAS_TOOLS directly. Sorted by kind for a stable,
+// deterministic row order independent of import.meta.glob's own
+// alphabetical file-discovery order.
+export function toolLessNounExtensions(): ToolLessNounExtension[] {
+  const found: ToolLessNounExtension[] = []
+  for (const [kind, content] of boardObjectContentRegistry.entries()) {
+    if (content.extension) found.push({ kind, content, extension: content.extension })
+  }
+  return found.sort((a, b) => a.kind.localeCompare(b.kind))
 }
 
 interface AtlasToolShapeBase {

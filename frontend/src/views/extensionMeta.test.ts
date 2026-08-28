@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { descriptionLabel, editRouteLabel, groupLabel, reachLabel, sourceLabel, versionLabel } from './extensionMeta'
+import { ATLAS_TOOLS } from '../atlas/atlasTools'
+import { toolLessNounExtensions } from '../atlas/atlasNounRegistry'
+import {
+  descriptionLabel, editRouteLabel, groupLabel, reachLabel, sourceLabel, versionLabel,
+  toolLessRowSource, toolRowSource,
+} from './extensionMeta'
 
 describe('groupLabel', () => {
   it('maps every declared group to user-facing text', () => {
@@ -66,5 +71,40 @@ describe('reachLabel', () => {
 describe('versionLabel', () => {
   it('reads the app\'s own build version -- every extension ships with Mill itself', () => {
     expect(versionLabel('1.2.3')).toBe('Ships with Mill v1.2.3')
+  })
+})
+
+describe('toolRowSource (goal 0237 S3 rider)', () => {
+  it('normalizes a tray tool into a row, carrying its group and content declarations', () => {
+    const shape = ATLAS_TOOLS.find((t) => t.id === 'shape')!
+    const row = toolRowSource(shape)
+    expect(row).toEqual({
+      id: 'shape',
+      icon: shape.icon,
+      label: shape.label,
+      description: shape.description,
+      group: shape.group,
+      source: shape.content?.source,
+      editRoute: shape.content?.editRoute,
+      capabilities: shape.capabilities,
+    })
+  })
+})
+
+describe('toolLessRowSource (goal 0237 S3 rider)', () => {
+  it('normalizes a tool-less noun into a row, with no group chip and its own disableScopeNote', () => {
+    const diagram = toolLessNounExtensions().find((e) => e.kind === 'diagram')!
+    const row = toolLessRowSource(diagram)
+    expect(row).toEqual({
+      id: 'diagram',
+      icon: diagram.extension.icon,
+      label: diagram.extension.label,
+      description: diagram.extension.description,
+      source: diagram.content.source,
+      editRoute: diagram.content.editRoute,
+      capabilities: diagram.extension.capabilities,
+      disableScopeNote: diagram.extension.disableScopeNote,
+    })
+    expect(row.group).toBeUndefined()
   })
 })

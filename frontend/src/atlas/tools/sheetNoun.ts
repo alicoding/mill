@@ -1,4 +1,5 @@
 import { lazy } from 'react'
+import { ColumnsIcon } from '@primer/octicons-react'
 import { registerBoardObjectContent } from '../atlasNounRegistry'
 
 // Lazy-imported (React.lazy + Suspense, AtlasBoardObjectNode.tsx's own
@@ -40,4 +41,16 @@ registerBoardObjectContent('sheet', {
   // directly.
   source: { kind: 'file', pathKey: 'mirrorPath' },
   editRoute: { kind: 'external-app' },
+  // extension (goal 0237 S3 rider): the Settings > Extensions row for
+  // this tool-less noun. disableScopeNote states its scope honestly --
+  // there is no tray button to hide and no embedded editor to close
+  // (editRoute above is a static 'external-app', which dispatchObjectEdit
+  // never gates), so the toggle only affects
+  // useAtlasNativeFileDrop.ts's own routing.
+  extension: {
+    icon: ColumnsIcon,
+    label: 'Sheet',
+    description: 'Preview spreadsheets and CSV files dropped onto the board.',
+    disableScopeNote: 'Turning this off stops new sheets from landing on drop. Sheets already on the board keep working, including opening in your default app.',
+  },
 })

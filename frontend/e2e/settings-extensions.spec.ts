@@ -4,12 +4,25 @@ import { clickAtlasTrayTool } from './fixtures/atlasTray'
 import { deleteViaContextMenu, shapeDrawPoints, shapeObjects } from './fixtures/atlasShapeTool'
 import { paletteDialog } from './fixtures/palette'
 
-// Settings > Extensions (goal 0237 S2): a registry-derived list of
-// every canvas tool, each toggleable off. Shared pool: the only global
-// state this spec writes (Shape's own disabled flag) is restored to
-// its default (enabled) before the file ends, same cleanup discipline
-// display-density.spec.ts already establishes for a Settings toggle in
-// the shared pool; every board object created here is deleted here.
+// Settings > Extensions (goal 0237 S2, extended by goal 0237 S3's
+// rider): a registry-derived list of every registered canvas NOUN --
+// every tray tool plus every tool-less noun (diagram, sheet -- native
+// file-drop only, no tray button), each toggleable off. Shared pool:
+// the only global state this spec writes (Shape's own disabled flag)
+// is restored to its default (enabled) before the file ends, same
+// cleanup discipline display-density.spec.ts already establishes for a
+// Settings toggle in the shared pool; every board object created here
+// is deleted here.
+//
+// Disabling diagram/sheet gates useAtlasNativeFileDrop.ts's own drop
+// routing (a disabled drop falls through to the plain-card path). The
+// OS drop GESTURE itself is a structural e2e gap (testing.md's own
+// manual-only registry: WindowFilesDropped needs a real
+// *WebviewWindow, which server-mode Playwright's connection is not),
+// so the routing DECISION is proven at the honest layer instead --
+// useAtlasNativeFileDrop.test.ts's resolveFileDropKind Vitest suite --
+// and this spec only proves the row/toggle exists and states its
+// narrower scope.
 
 async function openExtensionsSection(page: import('@playwright/test').Page) {
   await page.getByRole('link', { name: 'Settings' }).click()
@@ -59,8 +72,10 @@ test('Turn all off empties the tray of every non-built-in tool; turn all on rest
   await toggleAll.click()
   await expect(toggleAll).toHaveText('Turn all on')
 
-  // Every row but card now shows its toggle off.
-  for (const id of ['note', 'area', 'table', 'image', 'pencil', 'eraser', 'laser', 'shape']) {
+  // Every row but card now shows its toggle off -- including the
+  // tool-less nouns (diagram, sheet), which have no tray button to
+  // empty but still participate in the bulk toggle.
+  for (const id of ['note', 'area', 'table', 'image', 'pencil', 'eraser', 'laser', 'shape', 'diagram', 'sheet']) {
     const toggle = page.locator(`[data-testid="extensions-row"][data-extension-id="${id}"]`).getByTestId('extensions-row-toggle').getByRole('button')
     await expect(toggle).toHaveAttribute('data-checked', 'false')
   }
@@ -80,7 +95,7 @@ test('Turn all off empties the tray of every non-built-in tool; turn all on rest
   await expect(toggleAll).toHaveText('Turn all on')
   await toggleAll.click()
   await expect(toggleAll).toHaveText('Turn all off')
-  for (const id of ['note', 'area', 'table', 'image', 'pencil', 'eraser', 'laser', 'shape']) {
+  for (const id of ['note', 'area', 'table', 'image', 'pencil', 'eraser', 'laser', 'shape', 'diagram', 'sheet']) {
     const toggle = page.locator(`[data-testid="extensions-row"][data-extension-id="${id}"]`).getByTestId('extensions-row-toggle').getByRole('button')
     await expect(toggle).toHaveAttribute('data-checked', 'true')
   }
@@ -90,9 +105,10 @@ test('Extensions section lists every registered canvas tool; the built-in card r
   await page.goto('/')
   await openExtensionsSection(page)
 
-  // Every ATLAS_TOOLS member (atlas/atlasTools.ts) gets exactly one
-  // row -- card, note, area, table, image, pencil, eraser, laser, shape.
-  await expect(page.getByTestId('extensions-row')).toHaveCount(9)
+  // Every ATLAS_TOOLS member (atlas/atlasTools.ts) plus every
+  // tool-less noun (diagram, sheet) gets exactly one row -- card, note,
+  // area, table, image, pencil, eraser, laser, shape, diagram, sheet.
+  await expect(page.getByTestId('extensions-row')).toHaveCount(11)
 
   const cardRow = page.locator('[data-testid="extensions-row"][data-extension-id="card"]')
   await expect(cardRow).toBeVisible()
@@ -103,6 +119,40 @@ test('Extensions section lists every registered canvas tool; the built-in card r
   const tableRow = page.locator('[data-testid="extensions-row"][data-extension-id="table"]')
   const tableToggle = tableRow.getByTestId('extensions-row-toggle').getByRole('button')
   await expect(tableToggle).toHaveAttribute('data-checked', 'true')
+})
+
+test('A tool-less noun (diagram, sheet) gets a row with a toggle and states its narrower disable scope', async ({ page }) => {
+  await page.goto('/')
+  await openExtensionsSection(page)
+
+  const diagramRow = page.locator('[data-testid="extensions-row"][data-extension-id="diagram"]')
+  await expect(diagramRow).toBeVisible()
+  await expect(diagramRow.getByTestId('extensions-row-toggle').getByRole('button')).toHaveAttribute('data-checked', 'true')
+  await diagramRow.locator('summary').click()
+  await expect(diagramRow.getByTestId('extensions-row-description')).toHaveText(
+    'View and edit diagrams — draw.io files open in the real editor.',
+  )
+  await expect(diagramRow.getByTestId('extensions-row-disable-scope')).toHaveText(
+    'Turning this off stops new diagrams from landing on drop and closes the built-in editor. Diagrams already on the board keep working.',
+  )
+
+  const sheetRow = page.locator('[data-testid="extensions-row"][data-extension-id="sheet"]')
+  await expect(sheetRow).toBeVisible()
+  await expect(sheetRow.getByTestId('extensions-row-toggle').getByRole('button')).toHaveAttribute('data-checked', 'true')
+  await sheetRow.locator('summary').click()
+  await expect(sheetRow.getByTestId('extensions-row-description')).toHaveText(
+    'Preview spreadsheets and CSV files dropped onto the board.',
+  )
+  await expect(sheetRow.getByTestId('extensions-row-disable-scope')).toHaveText(
+    'Turning this off stops new sheets from landing on drop. Sheets already on the board keep working, including opening in your default app.',
+  )
+
+  // A tray tool's row never shows a disable-scope note -- its toggle's
+  // scope (tray button + palette command) is already the standing
+  // default every row implicitly shares.
+  const tableRow = page.locator('[data-testid="extensions-row"][data-extension-id="table"]')
+  await tableRow.locator('summary').click()
+  await expect(tableRow.getByTestId('extensions-row-disable-scope')).toHaveCount(0)
 })
 
 test('Disabling a tool removes it from the tray and palette, keeps existing objects rendering, and persists across reload', async ({ page }) => {
