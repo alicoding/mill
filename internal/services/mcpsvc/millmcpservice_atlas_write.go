@@ -19,9 +19,10 @@ import (
 // which mode applies is decided purely by whether cardId is present.
 // atlas_get_write_status is this family's own typed poll tool -- the
 // generic check_write_status (millmcpservice_tools.go) already works
-// against the same record (same m.writes map, same MCPWriteRecord),
-// this one just unmarshals the executor's own JSON result so a caller
-// gets a typed cardId back directly instead of a second decode step.
+// against the same durable pending-action record (guardrailsvc's shared
+// PendingActionStore, docs/adr/0047 §5.4), this one just unmarshals the
+// executor's own JSON result so a caller gets a typed cardId back
+// directly instead of a second decode step.
 
 // atlasProposedLink is one link atlas_propose_card_write's create mode
 // creates alongside the new card -- FromCardID is always the new card
@@ -56,9 +57,9 @@ func (a atlasProposeCardWriteArgs) isUpdate() bool { return a.CardID != "" }
 // gateWrite's ResultText carries once approved, and what
 // atlas_get_write_status unmarshals back out to answer with a typed
 // cardId (docs/goals/0083's own "additive field?" question: no new
-// MCPWriteRecord field was needed, ResultText already carries whatever
-// JSON an executor returns -- see check_write_status's identical
-// pattern for import_workflow's {id,label}).
+// pending-action record field was needed, ResultText already carries
+// whatever JSON an executor returns -- see check_write_status's
+// identical pattern for import_workflow's {id,label}).
 type atlasWriteResult struct {
 	CardID string `json:"cardId"`
 	Title  string `json:"title,omitempty"`

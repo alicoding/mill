@@ -58,19 +58,32 @@ type GuardrailService struct {
 	store settings.Store
 	rules []guardrail.Rule
 	comp  *compositionsvc.CompositionService
-	// guardedActionsMu guards guardedActions (guardrailservice_request.go)
-	// -- a separate lock from mu (rule CRUD): the two protect unrelated
-	// state, and a long-parked guarded action must never block a rule
-	// save/list.
-	guardedActionsMu sync.Mutex
-	guardedActions   map[string]*guardedActionRecord
+	// pending is the durable generic pending-action store
+	// (guardrailservice_pendingstore.go, docs/adr/0047 §5.4's follow-up)
+	// -- its own internal lock, separate from mu (rule CRUD): the two
+	// protect unrelated state, and a long-parked guarded action must
+	// never block a rule save/list.
+	pending *PendingActionStore
 }
 
 func NewGuardrailService(store settings.Store, comp *compositionsvc.CompositionService) *GuardrailService {
-	g := &GuardrailService{store: store, comp: comp}
+	g := &GuardrailService{store: store, comp: comp, pending: NewPendingActionStore(store)}
 	g.restore()
 	g.reconcileBuiltInRules()
 	return g
+}
+
+// PendingActionStore exposes the shared durable pending-action store
+// for a caller that wants to park through the SAME persisted store this
+// service's own RequestGuardedAction uses (mcpsvc's SetGuardrailService
+// wiring, replacing its own constructor-time default -- see
+// millmcpservice.go's pendingActionStore field doc comment for why a
+// default exists at all). Go-internal wiring only, never a frontend
+// RPC.
+//
+//wails:ignore
+func (g *GuardrailService) PendingActionStore() *PendingActionStore {
+	return g.pending
 }
 
 func (g *GuardrailService) restore() {

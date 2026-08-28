@@ -7,7 +7,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/mcpaudit"
 	"github.com/alicoding/mill/internal/adapters/windowing"
-	"github.com/google/uuid"
+	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -17,14 +17,15 @@ import (
 // (writeVerdictShortCircuit, millmcpservice_approval_guardrail.go --
 // docs/adr/0047 §5.4): an explicit allow/deny rule short-circuits the
 // park entirely; the ask default (no rule, matching pre-rebase behavior)
-// parks the write itself -- not a live channel -- as a durable
-// MCPWriteRecord persisted via the settings store, so an approval can
-// execute the write later even if the requester (or Mill itself) has
-// since restarted. A short in-call courtesy window (10s) keeps a
-// co-present approver to one round trip; past that, the call returns a
-// SUCCESSFUL parked-pending text so the client polls check_write_status
-// instead of the connection dying against a real host's own ~60s
-// to-first-byte timer (ADR-0032's own research).
+// parks the write itself -- not a live channel -- through the shared
+// durable pending-action store (guardrailsvc.PendingActionStore,
+// docs/adr/0047 §5.4's follow-up), so an approval can execute the write
+// later even if the requester (or Mill itself) has since restarted. A
+// short in-call courtesy window (10s) keeps a co-present approver to
+// one round trip; past that, the call returns a SUCCESSFUL
+// parked-pending text so the client polls check_write_status instead of
+// the connection dying against a real host's own ~60s to-first-byte
+// timer (ADR-0032's own research).
 
 // MCPWriteApprovalKey: when writes are enabled at all
 // (MCPWriteEnabledKey), this second toggle decides whether each write
@@ -32,11 +33,6 @@ import (
 // writes must not silently mean unattended writes (§8's fail-safe
 // default); relaxing to unattended is its own explicit opt-out.
 const MCPWriteApprovalKey = "mcp-write-approval-required" //nolint:gosec // a settings-store key name, not a credential (G101 false positive)
-
-// mcpPendingWritesKey persists every MCPWriteRecord (pending and, for
-// 24h, resolved) as one JSON blob -- same one-atomic-blob-per-key shape
-// every other settings.Store consumer in this repo already uses.
-const mcpPendingWritesKey = "mcp-pending-writes"
 
 // mcpWriteCourtesyWindow is how long a gated write call blocks
 // in-process hoping for a co-present approver before returning the
@@ -49,11 +45,22 @@ var mcpWriteCourtesyWindow = 10 * time.Second
 // pending before a lazy sweep marks it expired, and how long a
 // resolved/expired record stays queryable via check_write_status
 // before being swept away entirely -- matches the guardrail park's own
-// timeout (§8), not a new number. A package var so tests can shrink or
-// backdate around it instead of sleeping 24 real hours.
+// timeout (§8), not a new number. Passed explicitly as the retention
+// argument to every m.parkStore call (the shared store takes retention
+// per-call, not as a package var -- see
+// guardrailsvc.PendingActionStore's own defaultGuardedActionRetention
+// doc comment for why), so shrinking this package var here still
+// controls this package's own sweep timing exactly as it always has.
+// A package var, not a const, so tests can shrink or backdate around it
+// instead of sleeping 24 real hours.
 var mcpWriteExpiry = 24 * time.Hour
 
-// MCPWriteStatus is one pending write's lifecycle state.
+// MCPWriteStatus is one pending write's lifecycle state -- string
+// values are this package's own wire contract (check_write_status,
+// Review, the sidebar badge), kept independent of
+// guardrailsvc.GuardedActionStatus's own vocabulary at the seam
+// (mcpStatusFrom) rather than aliased to it, so a future change to
+// either vocabulary can never silently ripple into the other.
 type MCPWriteStatus string
 
 const (
@@ -70,57 +77,45 @@ const (
 	MCPWriteStatusCancelled MCPWriteStatus = "cancelled"
 )
 
-// MCPWriteRecord is one gated write's full durable lifecycle record --
-// persisted via the settings store (mcpPendingWritesKey) so it survives
-// a Mill restart (docs/adr/0032 §1: "the record... is what must be
-// durable"). ToolName + ArgsJSON carry the write itself, re-dispatched
-// by name through the executor registry at approval time -- a Go
-// closure captured at request time can't survive a persisted record's
-// trip through a restart.
-type MCPWriteRecord struct {
-	ID          string         `json:"id"`
-	Description string         `json:"description"`
-	ToolName    string         `json:"toolName"`
-	ArgsJSON    string         `json:"argsJson"`
-	CreatedAt   time.Time      `json:"createdAt"`
-	Status      MCPWriteStatus `json:"status"`
-	// ResultText is the executor's own success text, set once approved
-	// and the write itself succeeds.
-	ResultText string `json:"resultText,omitempty"`
-	// Error explains a denial ("denied by the user..."), an expiry, or
-	// -- distinctly -- an approved write whose own execution failed
-	// (Status stays "approved", since the human's decision was to
-	// approve it; Error then carries the write's own failure).
-	Error      string     `json:"error,omitempty"`
-	ResolvedAt *time.Time `json:"resolvedAt,omitempty"`
-	// LastPolledAt records the most recent check_write_status call for
-	// this write (docs/goals/0026 item 3, decided without further
-	// research) -- polling IS the natural requester heartbeat, so a
-	// pending write nobody has checked on in a while visibly reads as
-	// abandoned rather than merely old. Persisted like every other
-	// lifecycle field so it survives a restart.
-	LastPolledAt *time.Time `json:"lastPolledAt,omitempty"`
+// mcpStatusFrom converts the shared store's generic status into this
+// package's own wire vocabulary -- see MCPWriteStatus's own doc
+// comment for why these stay two independent string sets rather than
+// one aliased to the other.
+func mcpStatusFrom(s guardrailsvc.GuardedActionStatus) MCPWriteStatus {
+	switch s {
+	case guardrailsvc.GuardedActionApproved:
+		return MCPWriteStatusApproved
+	case guardrailsvc.GuardedActionDenied:
+		return MCPWriteStatusDenied
+	case guardrailsvc.GuardedActionExpired:
+		return MCPWriteStatusExpired
+	case guardrailsvc.GuardedActionCancelled:
+		return MCPWriteStatusCancelled
+	default:
+		return MCPWriteStatusPending
+	}
+}
 
-	// decision signals the courtesy-window select in gateWrite once
-	// ResolveMCPWrite finalizes this record -- unexported, so
-	// encoding/json already skips it with no explicit tag needed;
-	// rebuilt on load (loadWrites) for any record that survived a
-	// restart. Buffered size 1: ResolveMCPWrite's send must never block
-	// on whether anyone is still listening (the original in-call
-	// courtesy window may have already returned).
-	decision chan struct{}
+// mcpWritePayload is what this package carries as the shared store's
+// opaque Payload -- ToolName + ArgsJSON re-dispatched by name through
+// the executor registry at approval time (see execute's own doc
+// comment): a Go closure can't survive a persisted record's trip
+// through a restart, dispatch-by-name through a marshaled payload can.
+type mcpWritePayload struct {
+	ToolName string `json:"toolName"`
+	ArgsJSON string `json:"argsJson"`
 }
 
 // MCPWriteRequest is the frontend-facing shape for a still-PENDING
 // write (the "mcp-write-approval" event payload and PendingMCPWrites'
-// own return type) -- narrower than MCPWriteRecord (no ToolName/
-// ArgsJSON/executor internals), same field names the banner/Review UI
-// already bind against.
+// own return type) -- narrower than the shared store's own
+// GuardedActionRecord (no ToolName/ArgsJSON/executor internals), same
+// field names the banner/Review UI already bind against.
 type MCPWriteRequest struct {
 	ID          string    `json:"id"`
 	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"createdAt"`
-	// LastPolledAt mirrors MCPWriteRecord's own field (docs/goals/0026
+	// LastPolledAt mirrors the shared record's own field (docs/goals/0026
 	// item 3) -- nil when the requester has never called
 	// check_write_status on this id yet.
 	LastPolledAt *time.Time `json:"lastPolledAt,omitempty"`
@@ -129,8 +124,8 @@ type MCPWriteRequest struct {
 // MCPWriteResolved is the frontend-facing shape for an already-resolved
 // write (docs/goals/0026 item 6) -- Review's Recently-resolved section
 // reads this alongside RunSummary's own resolved rows, merged
-// newest-first. Retained for the same 24h window check_write_status
-// already promises (sweepLocked's own retention) -- "durable across a
+// newest-first. Retained for the same retention window check_write_status
+// already promises (the shared store's own sweep) -- "durable across a
 // restart" and "still visible for the same window an MCP client can
 // still poll" are the same guarantee, not two.
 type MCPWriteResolved struct {
@@ -153,7 +148,7 @@ func (m *MillMCPService) approvalRequired() bool {
 // mcpWriteExecutor performs one gated write's real side effect, keyed
 // by tool name in MillMCPService.executors (registerWriteExecutor).
 // Dispatch-by-name (rather than a captured closure) is what lets
-// approval-time execution survive a restart: a persisted MCPWriteRecord
+// approval-time execution survive a restart: a persisted payload
 // carries ToolName + ArgsJSON, never a func value.
 type mcpWriteExecutor func(argsJSON string) (resultText string, err error)
 
@@ -168,13 +163,25 @@ func (m *MillMCPService) registerWriteExecutor(toolName string, fn mcpWriteExecu
 // execute dispatches toolName's registered executor. m.executors is
 // populated once at construction and never mutated afterward (see
 // registerWriteExecutor's doc comment), so this is safe to call without
-// m.writesMu.
+// a lock.
 func (m *MillMCPService) execute(toolName, argsJSON string) (string, error) {
 	fn, ok := m.executors[toolName]
 	if !ok {
 		return "", fmt.Errorf("no registered executor for MCP write tool %q", toolName)
 	}
 	return fn(argsJSON)
+}
+
+// applyMCPWrite is the apply-on-approve callback handed to the shared
+// store's Resolve -- decodes the payload Park below encoded and
+// dispatches through execute, run INSIDE Resolve's own lock hold (its
+// own doc comment has the at-most-once reasoning).
+func (m *MillMCPService) applyMCPWrite(payload []byte) (string, error) {
+	var p mcpWritePayload
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return "", fmt.Errorf("decode gated write payload: %w", err)
+	}
+	return m.execute(p.ToolName, p.ArgsJSON)
 }
 
 // gateWrite is the shared park-and-poll gate every mutation tool call
@@ -201,196 +208,148 @@ func (m *MillMCPService) gateWrite(toolName, description, argsJSON string) (*mcp
 		return result, err
 	}
 
-	rec := &MCPWriteRecord{
-		ID:          uuid.NewString(),
-		Description: description,
-		ToolName:    toolName,
-		ArgsJSON:    argsJSON,
-		CreatedAt:   time.Now(),
-		Status:      MCPWriteStatusPending,
-		decision:    make(chan struct{}, 1),
+	payload, err := json.Marshal(mcpWritePayload{ToolName: toolName, ArgsJSON: argsJSON})
+	if err != nil {
+		return nil, fmt.Errorf("marshal gated write payload: %w", err)
 	}
-	m.writesMu.Lock()
-	if m.writes == nil {
-		m.writes = map[string]*MCPWriteRecord{}
-	}
-	m.writes[rec.ID] = rec
-	if err := m.persistWritesLocked(); err != nil {
+	rec, err := m.parkStore.Park(guardrailsvc.GuardedAction{
+		Kind: mcpWriteGuardrailKind, Attributes: map[string]string{"toolName": toolName}, Description: description, Source: "mcp",
+	}, payload)
+	if err != nil {
 		// The record's durability across a restart is the entire point
 		// of parking it (docs/adr/0032 §1: "the record... is what must
 		// be durable") -- a record that only lives in memory isn't a
 		// real park, so don't leave a phantom-parked write behind; fail
 		// the call instead (docs/goals/0025 items 1/2).
-		delete(m.writes, rec.ID)
-		m.writesMu.Unlock()
 		return nil, fmt.Errorf("park write for approval: %w", err)
 	}
-	m.writesMu.Unlock()
 
 	// Surface it to the desktop window; the frontend also polls
 	// PendingMCPWrites on mount, so a request raised while the window
 	// was closed still shows up.
 	windowing.Emit("mcp-write-approval", MCPWriteRequest{ID: rec.ID, Description: rec.Description, CreatedAt: rec.CreatedAt})
 
-	select {
-	case <-rec.decision:
-		m.writesMu.Lock()
-		status, resultText, errText := rec.Status, rec.ResultText, rec.Error
-		m.writesMu.Unlock()
-		// Denied and cancelled both mean the original call never gets
-		// the write it asked for -- an error either way, distinguished
-		// only in the persisted record/Activity row, not in this
-		// in-flight caller's own result (docs/goals/0026 item 1).
-		if status == MCPWriteStatusDenied || status == MCPWriteStatusCancelled || (status == MCPWriteStatusApproved && errText != "") {
-			return nil, fmt.Errorf("%s", errText)
-		}
-		return textResult(resultText), nil
-	case <-time.After(mcpWriteCourtesyWindow):
+	resolved, decided := m.parkStore.AwaitDecision(rec.ID, mcpWriteCourtesyWindow)
+	if !decided {
 		return textResult(mcpaudit.ParkedPendingText(rec.ID)), nil
 	}
-}
-
-// finalizeLocked transitions rec to a terminal state and persists it --
-// caller must hold writesMu. Does not signal or emit an Activity row;
-// callers do that themselves after unlocking (an Activity push touches
-// the Wails event system, kept out of the critical section on
-// principle, same as the pre-ADR-0032 code's own lock-free emit).
-//
-// Deliberately does NOT roll rec's in-memory fields back on a persist
-// failure, unlike every other rollback-on-persist-failure site in this
-// change (docs/goals/0025 items 1/2): for an approved write, the real
-// side effect (m.execute, called by ResolveMCPWrite before this runs)
-// has already happened by the time this is reached, so reverting
-// Status back to "pending" would let a second ResolveMCPWrite call
-// re-run that same executor after a crash/restart wiped the
-// unpersisted change -- a real double-execution risk strictly worse
-// than a resolution that's merely slow to durably record. The error is
-// still returned and surfaced to the human (a durability gap worth
-// knowing about), it just doesn't undo a decision that's already real.
-func (m *MillMCPService) finalizeLocked(rec *MCPWriteRecord, status MCPWriteStatus, resultText, errText string) error {
-	now := time.Now()
-	rec.Status = status
-	rec.ResultText = resultText
-	rec.Error = errText
-	rec.ResolvedAt = &now
-	if err := m.persistWritesLocked(); err != nil {
-		return fmt.Errorf("save write resolution: %w", err)
+	status := mcpStatusFrom(resolved.Status)
+	// Denied and cancelled both mean the original call never gets the
+	// write it asked for -- an error either way, distinguished only in
+	// the persisted record/Activity row, not in this in-flight caller's
+	// own result (docs/goals/0026 item 1).
+	if status == MCPWriteStatusDenied || status == MCPWriteStatusCancelled || (status == MCPWriteStatusApproved && resolved.Error != "") {
+		return nil, fmt.Errorf("%s", resolved.Error)
 	}
-	return nil
-}
-
-// signalLocked wakes a courtesy-window select still waiting on rec, if
-// any -- a non-blocking buffered send, since resolution routinely
-// happens well after the window already returned. Caller must hold
-// writesMu.
-func (m *MillMCPService) signalLocked(rec *MCPWriteRecord) {
-	if rec.decision == nil {
-		rec.decision = make(chan struct{}, 1)
-	}
-	select {
-	case rec.decision <- struct{}{}:
-	default:
-	}
+	return textResult(resolved.ResultText), nil
 }
 
 // ResolveMCPWrite delivers the human's decision to a parked write. On
-// approve, the write's registered executor runs INSIDE the same lock
-// hold that checked the record was still pending -- the at-most-once
-// guarantee (docs/adr/0032 §1) this way needs no separate compare-and-
-// swap: two concurrent resolutions of the same id can't both observe
-// Status==pending. An approved write whose own execution then fails is
-// still a successful *approval* (Status stays "approved"); the failure
-// is carried in Error, visible to check_write_status and to the
+// approve, the write's registered executor runs INSIDE the shared
+// store's own lock hold that checked the record was still pending --
+// the at-most-once guarantee (docs/adr/0032 §1) this way needs no
+// separate compare-and-swap: two concurrent resolutions of the same id
+// can't both observe Status==pending (guardrailsvc.PendingActionStore.
+// Resolve's own doc comment has the full reasoning, now shared by every
+// caller of that store). An approved write whose own execution then
+// fails is still a successful *approval* (Status stays "approved"); the
+// failure is carried in Error, visible to check_write_status and to the
 // courtesy-window caller if still connected.
 func (m *MillMCPService) ResolveMCPWrite(id string, approve bool) error {
-	m.writesMu.Lock()
-	expiredDuringSweep := m.sweepLocked(time.Now())
-
-	rec, ok := m.writes[id]
-	if !ok {
-		m.writesMu.Unlock()
-		m.emitExpired(expiredDuringSweep)
-		return fmt.Errorf("no MCP write with id %s (it may have already been swept, 24h after resolution)", id)
-	}
-	if rec.Status != MCPWriteStatusPending {
-		m.writesMu.Unlock()
-		m.emitExpired(expiredDuringSweep)
-		return fmt.Errorf("MCP write %s was already resolved (%s)", id, rec.Status)
-	}
-
-	var activityOutcome string
-	var finalizeErr error
-	if !approve {
-		finalizeErr = m.finalizeLocked(rec, MCPWriteStatusDenied, "", mcpaudit.DeniedInWindowText)
-		activityOutcome = string(MCPWriteStatusDenied)
+	var (
+		resolved guardrailsvc.GuardedActionRecord
+		expired  []guardrailsvc.GuardedActionRecord
+		err      error
+	)
+	if approve {
+		resolved, expired, err = m.parkStore.Resolve(id, true, "", mcpWriteExpiry, m.applyMCPWrite)
 	} else {
-		resultText, err := m.execute(rec.ToolName, rec.ArgsJSON)
-		if err != nil {
-			finalizeErr = m.finalizeLocked(rec, MCPWriteStatusApproved, "", err.Error())
-		} else {
-			finalizeErr = m.finalizeLocked(rec, MCPWriteStatusApproved, resultText, "")
-		}
-		activityOutcome = string(MCPWriteStatusApproved)
+		resolved, expired, err = m.parkStore.Resolve(id, false, mcpaudit.DeniedInWindowText, mcpWriteExpiry, nil)
 	}
-	// Signal regardless of finalizeErr -- the decision (and, for
-	// approve, the real side effect) already happened; a courtesy-window
-	// caller still waiting must not hang just because the durable record
-	// of it lagged.
-	m.signalLocked(rec)
-	// Every field emitMCPWriteActivity needs, captured while the lock is
-	// still held (docs/goals/0026 item 7) -- reading rec's fields after
-	// Unlock below would be the exact data race the pre-existing
-	// `description := rec.Description` line already avoided for
-	// Description alone; extended here to the new fields.
-	description, toolName, argsJSON, resultText, errText := rec.Description, rec.ToolName, rec.ArgsJSON, rec.ResultText, rec.Error
-	m.writesMu.Unlock()
+	m.emitExpired(expired)
+	if err != nil {
+		// Covers both "no such write" / "already resolved" (err != nil,
+		// resolved is zero) and a persist failure on an otherwise-real
+		// resolution (err != nil, resolved is populated) -- the caller
+		// needs to see this error either way to learn about a durability
+		// gap in the second case (docs/goals/0025 items 1/2's
+		// "approval-record" case), not a silent `_ =`.
+		if resolved.ID == "" {
+			return err
+		}
+		m.finishResolve(id, resolved)
+		return err
+	}
+	m.finishResolve(id, resolved)
+	return nil
+}
 
+// finishResolve runs every side effect ResolveMCPWrite needs once the
+// shared store has durably (or best-effort) recorded a decision --
+// split out so both the persist-failure and clean-success paths above
+// share it, since the decision (and any real side effect) is already
+// final either way (Resolve's own doc comment).
+func (m *MillMCPService) finishResolve(id string, resolved guardrailsvc.GuardedActionRecord) {
+	status := mcpStatusFrom(resolved.Status)
 	// Mutates this write's own OutcomeParked audit row (goal 0159 slice
 	// 1) to its terminal value -- a no-op when SetAuditResolver was
 	// never wired (tests that don't care about the audit trail).
 	if m.auditResolver != nil {
-		if activityOutcome == string(MCPWriteStatusDenied) {
-			m.auditResolver(id, mcpaudit.OutcomeParkedDenied, errText)
+		if status == MCPWriteStatusDenied {
+			m.auditResolver(id, mcpaudit.OutcomeParkedDenied, resolved.Error)
 		} else {
-			m.auditResolver(id, mcpaudit.OutcomeParkedApproved, errText)
+			m.auditResolver(id, mcpaudit.OutcomeParkedApproved, resolved.Error)
 		}
 	}
 
-	m.emitExpired(expiredDuringSweep)
-	result := resultText
+	result := resolved.ResultText
 	if result == "" {
-		result = errText
+		result = resolved.Error
 	}
 	if result == "" {
-		result = description
+		result = resolved.Description
+	}
+	toolName := ""
+	if p, ok := decodeMCPWritePayload(resolved.Payload); ok {
+		toolName = p.ToolName
 	}
 	// An approved write whose own execution then failed is still an
 	// "approved" Status (the human's decision was to approve it -- see
-	// finalizeLocked's own doc comment), but Activity's own outcome
-	// vocabulary only ever showed "denied"/"expired" before this --
-	// only push a real Activity row for the two genuinely traceless
+	// the shared store's own Resolve doc comment), but Activity's own
+	// outcome vocabulary only ever showed "denied"/"expired" before this
+	// -- only push a real Activity row for the two genuinely traceless
 	// outcomes (deny, and an approval whose write itself failed);
 	// approved-and-succeeded already has a visible trace (the new
 	// entity itself, plus check_write_status/Review's own resolved
 	// list, docs/goals/0026 item 6).
-	if activityOutcome == string(MCPWriteStatusDenied) || (activityOutcome == string(MCPWriteStatusApproved) && errText != "") {
-		emitMCPWriteActivity(description, activityOutcome, toolName, argsJSON, result)
+	if status == MCPWriteStatusDenied || (status == MCPWriteStatusApproved && resolved.Error != "") {
+		emitMCPWriteActivity(resolved.Description, string(status), toolName, argsJSONFromPayload(resolved.Payload), result)
 	}
 	// The pending-count signal fires on EVERY resolution outcome,
 	// unconditionally -- unlike the Activity push above, a resolved
 	// write must always stop counting as pending regardless of whether
-	// it also gets an Activity row (docs/goals/0026 item 5, the BUG this
-	// whole function previously never emitted this for at all).
+	// it also gets an Activity row (docs/goals/0026 item 5).
 	emitMCPWriteApprovalChanged()
-	if finalizeErr != nil {
-		// The decision (and any real side effect) is final either way --
-		// this error means it failed to durably RECORD, which the human
-		// resolving it from Mill's window should still learn about
-		// (docs/goals/0025 items 1/2's "approval-record" case), not a
-		// silent `_ =`.
-		return finalizeErr
+}
+
+// decodeMCPWritePayload best-effort decodes payload back into its
+// {ToolName,ArgsJSON} shape -- payload is nil/unparseable for a record
+// this package didn't itself park (defensive only; every record
+// mcpsvc's own gateWrite parks always carries a valid payload).
+func decodeMCPWritePayload(payload []byte) (mcpWritePayload, bool) {
+	var p mcpWritePayload
+	if len(payload) == 0 {
+		return p, false
 	}
-	return nil
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return p, false
+	}
+	return p, true
+}
+
+func argsJSONFromPayload(payload []byte) string {
+	p, _ := decodeMCPWritePayload(payload)
+	return p.ArgsJSON
 }
 
 // CancelMCPWrite lets the requester withdraw its own still-pending
@@ -403,34 +362,15 @@ func (m *MillMCPService) ResolveMCPWrite(id string, approve bool) error {
 // cancelling your own request only ever REDUCES pending work, so no
 // approval/write-toggle gate applies here (same "ungated" shape as
 // check_write_status, not gateWrite's). At-most-once, same locking
-// shape as ResolveMCPWrite -- two concurrent cancel/resolve calls on
-// the same id can't both observe Status==pending.
+// shape as ResolveMCPWrite (the shared store's Withdraw) -- two
+// concurrent cancel/resolve calls on the same id can't both observe
+// Status==pending.
 func (m *MillMCPService) CancelMCPWrite(id string) error {
-	m.writesMu.Lock()
-	expiredDuringSweep := m.sweepLocked(time.Now())
-
-	rec, ok := m.writes[id]
-	if !ok {
-		m.writesMu.Unlock()
-		m.emitExpired(expiredDuringSweep)
-		return fmt.Errorf("no MCP write with id %s (it may have already been swept, 24h after resolution)", id)
+	resolved, expired, err := m.parkStore.Withdraw(id, "cancelled by the requester", mcpWriteExpiry)
+	m.emitExpired(expired)
+	if err != nil {
+		return err
 	}
-	if rec.Status != MCPWriteStatusPending {
-		m.writesMu.Unlock()
-		m.emitExpired(expiredDuringSweep)
-		return fmt.Errorf("MCP write %s was already resolved (%s)", id, rec.Status)
-	}
-
-	finalizeErr := m.finalizeLocked(rec, MCPWriteStatusCancelled, "", "cancelled by the requester")
-	// Signal regardless of finalizeErr, same reasoning as
-	// ResolveMCPWrite's own decision-already-happened comment -- a
-	// courtesy-window caller (unlikely for a self-cancel, since the
-	// requester is usually the one who'd be blocked in it, but not
-	// impossible if a second client polls) must not hang on a
-	// durability lag.
-	m.signalLocked(rec)
-	description, toolName, argsJSON := rec.Description, rec.ToolName, rec.ArgsJSON
-	m.writesMu.Unlock()
 
 	// See ResolveMCPWrite's own doc comment -- same goal 0159 slice 1
 	// audit-row mutation, OutcomeParkedCancelled being the fourth Parked*
@@ -440,58 +380,11 @@ func (m *MillMCPService) CancelMCPWrite(id string) error {
 		m.auditResolver(id, mcpaudit.OutcomeParkedCancelled, "cancelled by the requester")
 	}
 
-	m.emitExpired(expiredDuringSweep)
-	emitMCPWriteActivity(description, string(MCPWriteStatusCancelled), toolName, argsJSON, description)
+	toolName := ""
+	if p, ok := decodeMCPWritePayload(resolved.Payload); ok {
+		toolName = p.ToolName
+	}
+	emitMCPWriteActivity(resolved.Description, string(MCPWriteStatusCancelled), toolName, argsJSONFromPayload(resolved.Payload), resolved.Description)
 	emitMCPWriteApprovalChanged()
-	if finalizeErr != nil {
-		return finalizeErr
-	}
 	return nil
-}
-
-// persistWritesLocked marshals m.writes to the settings store -- caller
-// must hold writesMu. Returns the marshal/store error rather than
-// swallowing it (docs/goals/0025 item 1) -- callers decide whether to
-// propagate (gateWrite/finalizeLocked, an approval-record write) or log
-// (sweepLocked's own incidental bookkeeping, below).
-func (m *MillMCPService) persistWritesLocked() error {
-	data, err := json.Marshal(m.writes)
-	if err != nil {
-		return fmt.Errorf("marshal pending MCP writes: %w", err)
-	}
-	if err := m.store.Set(mcpPendingWritesKey, string(data)); err != nil {
-		return fmt.Errorf("persist pending MCP writes: %w", err)
-	}
-	return nil
-}
-
-// loadWrites reloads every persisted MCPWriteRecord from the settings
-// store -- called once from NewMillMCPService, the restart-survival
-// half of docs/adr/0032 §1. Each pending record's decision channel is
-// unexported and so never persisted; rebuilt here so ResolveMCPWrite
-// can always signal safely even for a record that outlived a restart
-// (nothing is listening on it in that case -- the buffered, non-
-// blocking send in signalLocked handles that fine).
-func (m *MillMCPService) loadWrites() {
-	m.writesMu.Lock()
-	defer m.writesMu.Unlock()
-	m.writes = map[string]*MCPWriteRecord{}
-	if raw, ok := m.store.Get(mcpPendingWritesKey).(string); ok && raw != "" {
-		var loaded map[string]*MCPWriteRecord
-		if err := json.Unmarshal([]byte(raw), &loaded); err == nil {
-			m.writes = loaded
-		}
-	}
-	for _, rec := range m.writes {
-		if rec.decision == nil {
-			rec.decision = make(chan struct{}, 1)
-		}
-	}
-	// Discard the expired list here rather than emitting Activity rows:
-	// no window is open yet at construction time for anyone to see
-	// them, and the record itself is still correctly marked expired
-	// either way -- a later PendingMCPWrites/check_write_status/
-	// ResolveMCPWrite call sweeps again and emits normally for anything
-	// that expires from then on.
-	_ = m.sweepLocked(time.Now())
 }

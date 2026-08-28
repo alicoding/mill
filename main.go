@@ -183,6 +183,11 @@ func main() {
 	clipboardHistoryService := clipboardhistorysvc.NewClipboardHistoryService(settingsStore)
 	wiring.WireClipboardHistory(clipboardHistoryService, secretService)
 
+	// MUST precede NewGuardrailService -- see MigrateLegacyPendingWrites'
+	// own doc comment for why the ordering here is load-bearing.
+	if err := mcpsvc.MigrateLegacyPendingWrites(settingsStore); err != nil {
+		logger.Error("migrate legacy MCP pending writes", "error", err)
+	}
 	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
 	// docs/goals/0240 S1: the coding loop's Confirm-screen preview --
 	// read-only over guardrailService.Rules(). Its ExecutionService
