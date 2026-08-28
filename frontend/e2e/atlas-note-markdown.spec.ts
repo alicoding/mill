@@ -202,6 +202,86 @@ test("the note overlay's editor box stays bounded as content grows, never the pa
   await expect(sticky).toHaveCount(0)
 })
 
+// Regression (goal 0247, the canvas-note trim): the sticky is a short
+// canvas note, not a document editor -- the CodeMirror code-block
+// widget (language picker, Copy button, line gutter) and the block
+// drag-handle feature never mount here (milkdownCore's NOTE_FEATURES).
+// A fenced code block still renders its content as a plain monospace
+// block, in both the editing mount and the rest render.
+test('a fenced code block renders as a plain block -- no language picker, no Copy button, no drag handles', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+  await page.keyboard.press('n')
+  await clickCorner(board, 'top-left')
+  await expect(stickyEditor(page)).toBeVisible()
+
+  const editable = stickyEditor(page).locator('[contenteditable="true"]')
+  await editable.click()
+  await page.keyboard.type('```js')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('console.log(1)')
+
+  // Content lands as a plain <pre>/<code>, not the CodeMirror widget.
+  await expect(editable.locator('pre code')).toHaveText('console.log(1)')
+  await expect(editable.locator('.language-button')).toHaveCount(0)
+  await expect(editable.locator('.copy-button')).toHaveCount(0)
+  await expect(editable.locator('.milkdown-block-handle')).toHaveCount(0)
+
+  await blurSticky(page)
+  const sticky = page.getByTestId('atlas-sticky-note')
+  await expect(sticky.locator('pre code')).toHaveText('console.log(1)')
+  await expect(sticky.locator('.language-button')).toHaveCount(0)
+  await expect(sticky.locator('.copy-button')).toHaveCount(0)
+  await expect(sticky.locator('.milkdown-block-handle')).toHaveCount(0)
+
+  // Cleanup.
+  const menu = contextMenu(page)
+  await sticky.click({ button: 'right' })
+  await menu.getByText('Delete note', { exact: true }).click()
+  await expect(sticky).toHaveCount(0)
+})
+
+// Regression (goal 0247, defect_class markdown-round-trip-corruption):
+// CommonMark's INDENTED code-block rule (a line starting with 4
+// spaces/a tab) silently swallowed an entire line into a code block --
+// including a real heading, reproduced live via Milkdown's own
+// always-on Tab-indent shortcut (4 literal spaces) pressed at a
+// paragraph's start before typing "# text". milkdownCore's
+// disableIndentedCodeBlock (a `$remark` plugin disabling micromark's
+// `codeIndented` construct) means incidental leading whitespace never
+// promotes a line into a code block, across a real reload.
+test('leading whitespace never swallows a line into a code block across reload', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+  await page.keyboard.press('n')
+  await clickCorner(board, 'top-right')
+  await expect(stickyEditor(page)).toBeVisible()
+
+  const editable = stickyEditor(page).locator('[contenteditable="true"]')
+  await editable.click()
+  await page.keyboard.press('Tab')
+  await page.keyboard.type('# ddka')
+  await blurSticky(page)
+
+  const sticky = page.locator('[data-testid="atlas-sticky-note"]').filter({ hasText: 'ddka' })
+  await expect(sticky).toBeVisible()
+  await expect(sticky.locator('pre')).toHaveCount(0)
+
+  // The actual persistence round-trip -- a fresh Milkdown parse of the
+  // saved Note.Text is where the corruption bug actually surfaced.
+  await page.reload()
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const stickyAfterReload = page.locator('[data-testid="atlas-sticky-note"]').filter({ hasText: 'ddka' })
+  await expect(stickyAfterReload).toBeVisible()
+  await expect(stickyAfterReload.locator('pre')).toHaveCount(0)
+
+  await deleteSticky(page, stickyAfterReload)
+})
+
 // Goal 0226 (interim contract, superseded by goal 0244 S3's canonical-
 // not-byte-exact contract, see this file's own header): edit and
 // display must agree -- display renders the same markdown structure
