@@ -86,7 +86,7 @@ func (a *AtlasService) SaveImageBytes(base64Data, ext, title string) (string, er
 	}
 
 	path := filepath.Join(dir, seeding.NewSlugID(title, "image")+ext)
-	if err := os.WriteFile(path, data, 0o600); err != nil {
+	if err := os.WriteFile(path, data, 0o600); err != nil { //nolint:gosec // ext is checked against IsImageExtension's fixed allow-list above, and the filename itself is a minted seeding.NewSlugID, never the raw title/caller-supplied path
 		return "", fmt.Errorf("atlas image capture: write: %w", err)
 	}
 	return path, nil

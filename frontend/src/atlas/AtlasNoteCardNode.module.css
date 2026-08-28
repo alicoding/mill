@@ -148,6 +148,23 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+/* The mirror-image unit's board face (goal 0179 closing gap 2): a
+   small, fixed-height thumbnail -- deliberately not flex-growing, so
+   it never competes with .title for the box's remaining space the way
+   a full-bleed image would. */
+.mirrorFacePreview {
+    margin-top: 4px;
+    height: 56px;
+    border-radius: 4px;
+    overflow: clip;
+    flex: 0 0 auto;
+}
+.mirrorFacePreview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
 /* The kind-declared face fields (goal 0152): one compact row of
    values -- pills carry their own Label styling; plain values stay
    muted so the title keeps the face's emphasis. */
