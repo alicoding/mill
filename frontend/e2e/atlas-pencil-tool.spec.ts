@@ -4,6 +4,7 @@ import { clickAtlasTrayTool } from './fixtures/atlasTray'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 import { waitForViewportStable } from './fixtures/animation'
+import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 
 // The pencil tool (goal 0169 slice 3, re-pointed by goal 0179 S1's own
 // correction): drag-to-draw lands ink as a board-local BoardObject --
@@ -189,19 +190,19 @@ test('Escape disarms the pencil back to select', async ({ page }) => {
 // panning the instant Space is held, once this board's own capture-
 // phase pointer handlers step aside for it (useAtlasPanActivation.ts).
 //
-// fixme (goal 0224, QUARANTINE.md's own entry has the full trace):
-// arming Pencil via the Annotate group's two-step door (open the
-// drawer, then click the tool inside it) leaves Space-to-pan
-// completely inert for the rest of that arming -- `data-panning` and
-// `.react-flow__pane`'s own 'draggable' class both read correctly
-// throughout, but the viewport transform never moves a single pixel
-// across a full drag. Confirmed NOT caused by focus-trap, focus-zone,
-// spatial popover collision, cross-tool (table/image) interference, or
-// timing -- every one of those was independently disabled/isolated and
-// the regression persisted; arming the SAME tool via one direct click
-// (no drawer) never reproduces it. Root cause not yet isolated inside
-// Primer AnchoredOverlay / React Flow's own useKeyPress interaction.
-test.fixme('holding Space pans the board without drawing while the pencil stays armed', async ({ page }) => {
+// Regression pinned here (goal 0242): a fixed 50%/50%-of-board drag
+// start is not stable across arming paths -- the Annotate drawer's own
+// two-step door settles the viewport's fitView at a different pan/zoom
+// than a direct click, and at that settled fit the fixed point landed
+// on a seeded card's own node instead of the empty pane. A pointerdown
+// on a node is captured by that node's own drag/selection handling and
+// never reaches the pane's pan machinery -- correct React Flow
+// behavior, not a Space-to-pan defect. Same class atlasEmptyRegion.ts's
+// own header names (goal 0223): a fixed viewport fraction chases
+// whatever fitView settles on, not the content actually rendered.
+// findEmptyBoardRect finds a region clear of every node (and the
+// tray/style-panel chrome) at call time instead.
+test('holding Space pans the board without drawing while the pencil stays armed', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   const board = page.getByTestId('atlas-board')
@@ -215,9 +216,13 @@ test.fixme('holding Space pans the board without drawing while the pencil stays 
   const viewport = page.locator('.react-flow__viewport')
   const before = await viewport.evaluate((el) => el.style.transform)
 
-  const box = await board.boundingBox()
-  if (!box) throw new Error('board has no bounding box')
-  await board.hover({ position: { x: box.width * 0.5, y: box.height * 0.5 } })
+  const creationTray = page.getByTestId('atlas-creation-tray')
+  const stylePicker = page.getByTestId('atlas-pencil-style-picker')
+  const region = await findEmptyBoardRect(page, board, 260, 200, [creationTray, stylePicker])
+  const boardBox = await board.boundingBox()
+  if (!boardBox) throw new Error('board has no bounding box')
+  const startPoint = { locator: board, position: { x: region.x + 20 - boardBox.x, y: region.y + 20 - boardBox.y } }
+  await board.hover({ position: startPoint.position })
   await page.keyboard.down('Space')
   await expect(board).toHaveAttribute('data-panning', 'true')
   await expect(page.locator('.react-flow__pane')).toHaveClass(/draggable/)
@@ -227,7 +232,7 @@ test.fixme('holding Space pans the board without drawing while the pencil stays 
   // Playwright's own actionability pipeline; the free-form pan
   // destination has no owning element to check against, so it stays a
   // plain page point per dragBetween's own documented boundary.
-  await dragBetween(page, { locator: board, position: { x: box.width * 0.5, y: box.height * 0.5 } }, { x: box.x + box.width * 0.65, y: box.y + box.height * 0.6 })
+  await dragBetween(page, startPoint, { x: region.x + 220, y: region.y + 160 })
   await page.keyboard.up('Space')
   await expect(board).toHaveAttribute('data-panning', 'false')
 
