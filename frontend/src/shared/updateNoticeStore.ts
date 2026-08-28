@@ -29,9 +29,18 @@ interface UpdateNoticeState {
   trustSigningStatus: 'idle' | 'busy' | 'success' | 'error'
   trustSigningError: string
   runTrustSigning: () => void
+  // Trust-disclosure visibility (owner-ruled progressive disclosure):
+  // "How updates stay trusted" hides itself once trust is already
+  // established, and on platforms with no signing concept at all
+  // (SettingsService.IsSigningTrusted's ErrUnsupportedPlatform).
+  // Defaults to visible, matching the section's behavior before this
+  // read existed, and stays visible on any other read error -- if
+  // trust can't be proven, the section still offers the action.
+  trustDisclosureVisible: boolean
+  refreshTrustDisclosureVisibility: () => void
 }
 
-export const useUpdateNoticeStore = create<UpdateNoticeState>()((set) => ({
+export const useUpdateNoticeStore = create<UpdateNoticeState>()((set, get) => ({
   updateNoticeState: UpdateState.UpdateStateIdle,
   setUpdateNoticeState: (state) => set({ updateNoticeState: state }),
   notesVersion: '',
@@ -41,9 +50,18 @@ export const useUpdateNoticeStore = create<UpdateNoticeState>()((set) => ({
   trustSigningError: '',
   runTrustSigning: () => {
     set({ trustSigningStatus: 'busy', trustSigningError: '' })
-    SettingsService.TrustSigningIdentity()
-      .then(() => set({ trustSigningStatus: 'success' }))
+    return SettingsService.TrustSigningIdentity()
+      .then(() => {
+        set({ trustSigningStatus: 'success' })
+        return get().refreshTrustDisclosureVisibility()
+      })
       .catch((err) => set({ trustSigningStatus: 'error', trustSigningError: String(err) }))
+  },
+  trustDisclosureVisible: true,
+  refreshTrustDisclosureVisibility: () => {
+    return SettingsService.IsSigningTrusted()
+      .then((trusted) => set({ trustDisclosureVisible: !trusted }))
+      .catch((err) => set({ trustDisclosureVisible: !String(err).includes('unsupported on this platform') }))
   },
 }))
 

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Stack, Text } from '@primer/react'
 import { findCommand } from '../shared/commands'
@@ -16,11 +17,24 @@ function truncate(s: string, max: number): string {
 // re-sign explainer plus the one button that grants Mill's own signing
 // certificate trust directly (goal 0220 S3), replacing the former
 // "find it in Keychain Access" hunt. Split out of UpdatesSection.tsx
-// to keep that file under CLAUDE.md's 500-line convention.
+// to keep that file under CLAUDE.md's 500-line convention. Renders
+// nothing once trust is already established or on a platform with no
+// signing concept -- progressive disclosure, so the panel only ever
+// asks for an action the user actually still needs to take.
 export function TrustDisclosure() {
   const { t } = useTranslation('views')
   const status = useUpdateNoticeStore((s) => s.trustSigningStatus)
   const error = useUpdateNoticeStore((s) => s.trustSigningError)
+  const visible = useUpdateNoticeStore((s) => s.trustDisclosureVisible)
+  const refreshVisibility = useUpdateNoticeStore((s) => s.refreshTrustDisclosureVisibility)
+
+  useEffect(() => {
+    refreshVisibility()
+  }, [refreshVisibility])
+
+  if (!visible) {
+    return null
+  }
 
   return (
     <details data-testid="trust-disclosure">

@@ -42,3 +42,47 @@ func TestTrustSigningIdentity_PropagatesError(t *testing.T) {
 		t.Errorf("TrustSigningIdentity error = %v, want %v", err, wantErr)
 	}
 }
+
+// swapIsTrustedFn substitutes isTrustedFn for the duration of a test
+// and restores it afterward -- isTrustedFn defaults to the real
+// codesigning.IsTrusted, which touches a real macOS keychain.
+func swapIsTrustedFn(t *testing.T, fake func() (bool, error)) {
+	t.Helper()
+	original := isTrustedFn
+	isTrustedFn = fake
+	t.Cleanup(func() { isTrustedFn = original })
+}
+
+func TestIsSigningTrusted_CallsIsTrustedFn(t *testing.T) {
+	set := newTestSettingsService(t)
+	var called bool
+	swapIsTrustedFn(t, func() (bool, error) {
+		called = true
+		return true, nil
+	})
+
+	trusted, err := set.IsSigningTrusted()
+	if err != nil {
+		t.Fatalf("IsSigningTrusted: %v", err)
+	}
+	if !called {
+		t.Error("isTrustedFn was not called")
+	}
+	if !trusted {
+		t.Error("trusted = false, want true")
+	}
+}
+
+func TestIsSigningTrusted_PropagatesError(t *testing.T) {
+	set := newTestSettingsService(t)
+	wantErr := errors.New("unsupported platform")
+	swapIsTrustedFn(t, func() (bool, error) { return false, wantErr })
+
+	trusted, err := set.IsSigningTrusted()
+	if !errors.Is(err, wantErr) {
+		t.Errorf("IsSigningTrusted error = %v, want %v", err, wantErr)
+	}
+	if trusted {
+		t.Error("trusted = true, want false alongside the error")
+	}
+}

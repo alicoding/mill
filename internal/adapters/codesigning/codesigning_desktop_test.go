@@ -138,6 +138,71 @@ func TestTrustIdentityWith_ExportsAndWritesTrustSettingsFile(t *testing.T) {
 	}
 }
 
+// TestIsTrustedAt_NoIdentity_ReturnsFalse pins the not-yet-provisioned
+// case: a keychain path that was never created must report untrusted
+// without creating anything, never an error -- the Settings section
+// this backs shows its button by default until a user actually starts
+// the trust flow.
+func TestIsTrustedAt_NoIdentity_ReturnsFalse(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "never-created.keychain-db")
+
+	trusted, err := isTrustedAt(path)
+	if err != nil {
+		t.Fatalf("isTrustedAt: %v", err)
+	}
+	if trusted {
+		t.Error("trusted = true for a keychain path that was never created, want false")
+	}
+	if _, statErr := os.Stat(path); statErr == nil {
+		t.Error("isTrustedAt created the keychain file as a side effect of a read")
+	}
+}
+
+// TestIsTrustedAt_UntrustedIdentity_ReturnsFalse exercises the real
+// export + verify-cert call end to end against a freshly created
+// identity. This suite has no Window Server session to grant real
+// trust through (the same constraint TestTrustIdentityWith_
+// ExportsAndWritesTrustSettingsFile works around for the write side),
+// so the identity here is deterministically untrusted -- verifying
+// that state reads back as false is exactly what a CI run can safely
+// exercise for the read path.
+func TestIsTrustedAt_UntrustedIdentity_ReturnsFalse(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test-mill-signing.keychain-db")
+
+	original := captureSearchList(t)
+	t.Cleanup(func() { restoreSearchList(t, original) })
+
+	if _, err := ensureIdentityAt(path); err != nil {
+		t.Fatalf("ensureIdentityAt: %v", err)
+	}
+
+	trusted, err := isTrustedAt(path)
+	if err != nil {
+		t.Fatalf("isTrustedAt: %v", err)
+	}
+	if trusted {
+		t.Error("trusted = true for a freshly created, never-trusted identity, want false")
+	}
+}
+
+// TestVerifyTrust_MissingIdentity_ReturnsWrappedError pins the
+// export-step error wrapping (security's stderr must land in the
+// returned error, not be swallowed), mirroring
+// TestTrustIdentityWith_MissingIdentity_ReturnsWrappedError for the
+// read side's own export step.
+func TestVerifyTrust_MissingIdentity_ReturnsWrappedError(t *testing.T) {
+	dir := t.TempDir()
+	_, err := verifyTrust("Mill-Nonexistent-Test-Identity", filepath.Join(dir, "missing.keychain-db"))
+	if err == nil {
+		t.Fatal("verifyTrust succeeded against a nonexistent identity, want an error")
+	}
+	if !strings.Contains(err.Error(), "export") {
+		t.Errorf("error = %v, want it to name the export step for a copyable diagnostic", err)
+	}
+}
+
 // TestTrustIdentityWith_MissingIdentity_ReturnsWrappedError pins the
 // export-step error wrapping (security's stderr must land in the
 // returned error, not be swallowed) using a failure mode independent

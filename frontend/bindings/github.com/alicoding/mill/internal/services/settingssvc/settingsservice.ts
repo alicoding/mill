@@ -316,6 +316,19 @@ export function IsIsolatedData(): $CancellablePromise<boolean> {
 }
 
 /**
+ * IsSigningTrusted reports whether Mill's own signing certificate
+ * already carries "Always Trust" for code signing. Unlike
+ * TrustSigningIdentity's write, this is a plain state read with no
+ * authorization step, so the Settings > Updates "How updates stay
+ * trusted" section calls it on every mount to hide itself once trust
+ * is already established, rather than showing a button there is no
+ * longer any reason to click.
+ */
+export function IsSigningTrusted(): $CancellablePromise<boolean> {
+    return $Call.ByID(3424767642);
+}
+
+/**
  * ListKeybindings returns every command-keybinding OVERRIDE, raw
  * (mods+key, not pre-formatted) -- the frontend formats for display
  * itself (shared/keybinding.ts's formatCombo) so a default binding

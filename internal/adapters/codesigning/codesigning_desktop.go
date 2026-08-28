@@ -9,6 +9,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -387,6 +388,83 @@ func trustIdentityWith(identityName, keychainPath, settingsFileOut string) error
 		return fmt.Errorf("trust signing certificate: %w", err)
 	}
 	return nil
+}
+
+// IsTrusted reports whether Mill's own signing identity currently
+// carries "Always Trust" for code signing, purely by reading existing
+// state -- it creates nothing and never prompts. This is a different
+// operation from TrustIdentity's write: granting trust is gated behind
+// a live Window Server authentication dialog and can silently no-op
+// headless (TrustIdentity's doc comment above), but evaluating whether
+// an already-exported certificate currently verifies needs no
+// authorization at all, so it carries none of that unreliability.
+// Settings > Updates' "How updates stay trusted" section calls this on
+// mount to hide itself once trust is already established.
+func IsTrusted() (bool, error) {
+	path, err := defaultKeychainPath()
+	if err != nil {
+		return false, err
+	}
+	return isTrustedAt(path)
+}
+
+// isTrustedAt is IsTrusted's keychain-path-parameterized core, split
+// out so tests can point it at a disposable keychain instead of the
+// real per-machine one.
+func isTrustedAt(keychainPath string) (bool, error) {
+	id, ok, err := findExistingIdentity(keychainPath)
+	if err != nil {
+		return false, err
+	}
+	if !ok {
+		return false, nil
+	}
+	return verifyTrust(id.Name, keychainPath)
+}
+
+// verifyTrust exports identityName's certificate from keychainPath and
+// asks `security verify-cert` to evaluate it against the codeSign
+// policy -- the same evaluation `codesign` performs when SignBundle
+// runs, so a true result here means SignBundle's trust gate would
+// currently pass. -L skips fetching any missing CA cert over the
+// network: the identity is self-signed with no CA to fetch, and this
+// keeps the check itself making no outbound calls of its own. A
+// nonzero exit from `security verify-cert` (wrapped by Go as
+// *exec.ExitError) is verify-cert's normal "did not verify" outcome,
+// reported here as untrusted rather than an error; any other failure
+// (the binary missing, a canceled context) is a real error.
+func verifyTrust(identityName, keychainPath string) (bool, error) {
+	ctx, cancel := timeoutContext()
+	defer cancel()
+	// #nosec G204 -- identityName/keychainPath come from
+	// findExistingIdentity (this package's own generated identity),
+	// never external input.
+	out, err := exec.CommandContext(ctx, "security", "find-certificate", "-c", identityName, "-p", keychainPath).CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("export signing certificate for trust check: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	dir, err := os.MkdirTemp("", "mill-codesigning-trustcheck-*")
+	if err != nil {
+		return false, fmt.Errorf("create temp dir for trust check: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(dir) }()
+	certFile := filepath.Join(dir, "cert.pem")
+	if err := os.WriteFile(certFile, out, 0o600); err != nil {
+		return false, fmt.Errorf("write exported certificate: %w", err)
+	}
+
+	verifyCtx, verifyCancel := timeoutContext()
+	defer verifyCancel()
+	// #nosec G204 -- certFile is this call's own tempdir output above.
+	verifyErr := exec.CommandContext(verifyCtx, "security", "verify-cert", "-c", certFile, "-p", "codeSign", "-L").Run()
+	if verifyErr == nil {
+		return true, nil
+	}
+	var exitErr *exec.ExitError
+	if errors.As(verifyErr, &exitErr) {
+		return false, nil
+	}
+	return false, fmt.Errorf("evaluate signing certificate trust: %w", verifyErr)
 }
 
 // signBundleWith is SignBundle's keychain/identity-parameterized core,

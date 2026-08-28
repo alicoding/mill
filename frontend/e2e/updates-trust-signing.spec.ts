@@ -1,34 +1,30 @@
 import { test, expect } from './fixtures/server'
 
-// Trust Mill's signing certificate (goal 0220 S3): the button that
-// replaces the former "find it in Keychain Access" hunt. Shared
-// worker pool, not a dedicated server (testing.md) -- this test's
-// assertions are scoped entirely to its own click, and
-// TrustSigningIdentity's server-mode path is a stateless,
-// deterministic failure (codesigning_other.go's ErrUnsupportedPlatform
-// stub -- server-mode builds never carry the real darwin
-// implementation) that depends on no state another test could leave
-// behind, the same server-mode fail-closed shape secrets.spec.ts
-// already proves for Touch ID. The REAL macOS trust write (and its
-// authentication dialog) is desktop-only and manual-only -- see
-// testing.md's manual-only registry.
-test("Settings shows the Trust Mill's signing button, and its server-mode failure surfaces a copyable error", async ({ page }) => {
+// Trust Mill's signing certificate (goal 0220 S3, hidden-once-trusted
+// refinement). Shared worker pool, not a dedicated server (testing.md)
+// -- this spec's only assertion is scoped to the section's own
+// visibility, which depends on nothing another test could leave
+// behind.
+//
+// Contract change from goal 0220 S3's original spec: the "How updates
+// stay trusted" section now hides itself entirely on a platform with
+// no signing concept (SettingsService.IsSigningTrusted's
+// ErrUnsupportedPlatform, TrustDisclosure.tsx's mount-time refresh) --
+// server-mode's own `codesigning_other.go` stub always takes that
+// path, so the section is structurally absent here rather than
+// rendering a dead button. The prior version of this spec asserted the
+// section visible and drove a click through it; that assertion is now
+// the wrong contract for server mode, so it is replaced rather than
+// kept alongside the new one. The real trust write (and the button
+// that triggers it, and the section hiding once that write succeeds)
+// stays desktop-only and manual-only -- see testing.md's manual-only
+// registry -- and the visibility STATE MACHINE itself (trusted/
+// not-trusted/error branches this platform can't reach) is proven by
+// shared/updateNoticeStore.test.ts instead.
+test("Settings hides the 'How updates stay trusted' section on a platform with no signing concept", async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Settings' }).click()
   await expect(page.getByTestId('settings-view')).toBeVisible()
 
-  const disclosure = page.getByTestId('trust-disclosure')
-  await disclosure.locator('summary').click()
-  await expect(page.getByTestId('resign-setup-notice')).toContainText("Trust Mill's signing certificate once")
-
-  const button = page.getByTestId('trust-signing-button')
-  await expect(button).toHaveText("Trust Mill's signing")
-  await expect(page.getByTestId('trust-signing-error')).toHaveCount(0)
-
-  await button.click()
-
-  await expect(page.getByTestId('trust-signing-error')).toContainText("Couldn't trust the signing certificate")
-  await expect(page.getByTestId('trust-signing-error-copy')).toBeVisible()
-  await expect(button).toBeEnabled()
-  await expect(button).toHaveText("Trust Mill's signing")
+  await expect(page.getByTestId('trust-disclosure')).toHaveCount(0)
 })
