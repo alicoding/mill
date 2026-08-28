@@ -101,59 +101,29 @@ via test.skip; the behavior stays covered by TestSetCardSize (Go)
 and the local run. Leave by fix (a deterministic resize driver) or
 review-date decision.
 
-## atlas-pencil-tool.spec.ts: Space-to-pan after arming via the Annotate drawer (goal 0224)
-- **Class**: deterministic, not a flake (100% reproducible, both
-  locally and presumably CI) -- a real defect surfaced by goal 0224's
-  tray-restructure slice (Shape/Pencil/Eraser/Laser moved behind a
-  collapsed "Annotate" group, opened via its own trigger).
-- **Symptom**: with Pencil armed by clicking the Annotate group's
-  trigger THEN Pencil inside it (`clickAtlasTrayTool`, the standing
-  helper), holding Space and dragging never pans the board -- the
-  viewport's own CSS transform is byte-identical before and after a
-  full drag. `board`'s own `data-panning` attribute and
-  `.react-flow__pane`'s `draggable` class both read correctly
-  ('true'/present) at every step of the drag, so React Flow's and
-  Mill's own Space-activation STATE agree throughout; only the actual
-  pointer-driven pan never applies.
-- **Ruled out** (each independently verified against a rebuilt app,
-  not assumed): Primer AnchoredOverlay's own focus-trap (disabled via
-  `focusTrapSettings`, regression persisted); its own focus-zone
-  (disabled via `focusZoneSettings`, persisted); a SECOND overlay
-  nested inside the group's own popover (removed entirely -- the
-  armed tool now renders flat, its own single style-panel overlay the
-  only one mounted, matching a never-grouped tool exactly -- persisted
-  regardless); spatial collision with Table/Image's own popovers (ruled
-  out structurally, neither is open in this repro); timing (500ms
-  waits inserted before and after arming, persisted); the drawer's own
-  open/close cycle in isolation (opening and closing it WITHOUT arming
-  anything, then plain-dragging with nothing armed at all, pans fine --
-  so merely having interacted with an AnchoredOverlay earlier in the
-  test is not sufficient on its own).
-- **Isolated to**: arming Pencil (or presumably any Annotate-group
-  tool) via the drawer's own two-click door specifically. The
-  IDENTICAL tool, armed via a single direct click on an always-visible
-  button (verified by temporarily reclassifying Pencil's own `group`
-  declaration to render it flat, bypassing the drawer entirely), pans
-  correctly every time. The defect lives somewhere in the interaction
-  between Primer's AnchoredOverlay machinery and React Flow's own
-  `useKeyPress`/`panActivationKeyCode` internals, not yet isolated
-  further.
-- **Entered**: 2026-08-27. **Review**: 2026-09-27.
-- **Status**: test.fixme (runs nowhere, not retry-tolerated -- the
-  failure is deterministic, a retry never clears it). The Annotate
-  group's own exclusivity, collapse/expand, and every OTHER interaction
-  (arm/disarm/lock, drag-to-draw commit, cross-tool boundary
-  exclusivity) are unaffected and covered by
-  atlas-tool-exclusivity.spec.ts and the rest of this file.
-- **Follow-up**: a dedicated goal to isolate and fix the actual
-  mechanism (candidates worth checking first: whether React Flow's own
-  `useKeyPress(panActivationKeyCode, { target: win })` call and Mill's
-  own `useKeyPress('Space')` call in useAtlasToolGesture.ts ever
-  observably disagree mid-drag despite agreeing at every point checked
-  so far; whether Primer's `useOnOutsideClick` module-level singleton
-  registry's suspend/reactivate bookkeeping for stacked focus traps
-  leaves a stale entry across an overlay unmount/mount pair in the same
-  commit).
+## atlas-pencil-tool.spec.ts: Space-to-pan after arming via the Annotate drawer (goal 0224) -- RESOLVED (goal 0242)
+- **Class (reclassified)**: local canvas geometry, not overlay-
+  interaction -- the same class `atlasEmptyRegion.ts`'s own header
+  names (goal 0223), not a focus/keypress defect. See goal 0242 for
+  the full root-cause trail.
+- **Root cause**: the fixme test's drag-start point was a fixed
+  50%/50%-of-board fraction. Arming Pencil via the Annotate drawer
+  settles React Flow's own fitView at a different pan/zoom than a
+  direct click, and at that settled fit the fixed point landed on a
+  seeded card's own node instead of the empty pane -- a pointerdown on
+  a node is captured by that node's own drag/selection handling and
+  never reaches the pane's pan machinery, which is correct React Flow
+  behavior, not a Space-to-pan regression.
+- **Disproven** (live evidence, not assumption): Primer's
+  AnchoredOverlay auto-focuses the style panel's first swatch button
+  on both the failing (drawer) and working (direct-click) arming
+  paths identically -- forcing that same focus state outside the
+  drawer entirely still pans correctly, so focus/AnchoredOverlay/
+  useKeyPress timing was never the mechanism.
+- **Fix**: the test now derives its drag-start from
+  `findEmptyBoardRect` (`fixtures/atlasEmptyRegion.ts`) instead of a
+  fixed fraction, un-fixme'd and green standalone and in the full
+  spec.
 
 ## composition-canvas-interactions: process-inject-text Inspector compose
 - Class: local canvas geometry (the same runner-geometry class the
