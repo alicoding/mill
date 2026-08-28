@@ -1,5 +1,6 @@
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
+import { isExtensionEnabled } from '../shared/extensionEnablementStore'
 import { openAtlasEditDiagram } from './atlasEditDiagramStore'
 
 // ADR-0046's two genuinely new seams (goal 0244 S0): a canvas-object
@@ -80,6 +81,16 @@ export function dispatchObjectEdit(object: BoardObject, editRoute: EditRouteDecl
     case 'external-app':
       return AtlasService.OpenObjectMirrorInDefaultApp(object.ID)
     case 'embedded-engine':
+      // Extensions section disable semantics, item 3 (Settings >
+      // Extensions): a disabled extension's embedded-editor door goes
+      // inert -- the object still renders (this function is never in
+      // that path) and "Open in default app" (a separate menu item,
+      // gated on fileBacked, not on this route) still works when that
+      // route exists. Keyed by object.Kind rather than a tool id: this
+      // Kind (diagram) has no creation-tray tool of its own to disable
+      // (native file-drop only), so its own Kind string IS the id a
+      // caller would disable.
+      if (!isExtensionEnabled(object.Kind ?? '')) return Promise.resolve()
       openAtlasEditDiagram(object.ID)
       return Promise.resolve()
     case 'inline':

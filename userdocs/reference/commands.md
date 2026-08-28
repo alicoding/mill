@@ -26,15 +26,15 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.card.exportAs` | Export card as… | — | atlas | Always available |
 | `atlas.companion.toggle` | Toggle companion panel | — | atlas | Always available |
 | `atlas.coverage` | Open coverage | — | atlas | Always available |
-| `atlas.create.area` | Draw an area | — | atlas | Always available |
-| `atlas.create.card` | Add a card | — | atlas | Always available |
-| `atlas.create.eraser` | Erase things on the board | — | atlas | Always available |
-| `atlas.create.image` | Add an image | — | atlas | Always available |
-| `atlas.create.laser` | Point with the laser | — | atlas | Always available |
-| `atlas.create.note` | Add a note | — | atlas | Always available |
-| `atlas.create.pencil` | Draw with the pencil | — | atlas | Always available |
-| `atlas.create.shape` | Draw a shape | — | atlas | Always available |
-| `atlas.create.table` | New table | — | atlas | Always available |
+| `atlas.create.area` | Draw an area | — | atlas | Conditional — available only in a matching state |
+| `atlas.create.card` | Add a card | — | atlas | Conditional — available only in a matching state |
+| `atlas.create.eraser` | Erase things on the board | — | atlas | Conditional — available only in a matching state |
+| `atlas.create.image` | Add an image | — | atlas | Conditional — available only in a matching state |
+| `atlas.create.laser` | Point with the laser | — | atlas | Conditional — available only in a matching state |
+| `atlas.create.note` | Add a note | — | atlas | Conditional — available only in a matching state |
+| `atlas.create.pencil` | Draw with the pencil | — | atlas | Conditional — available only in a matching state |
+| `atlas.create.shape` | Draw a shape | — | atlas | Conditional — available only in a matching state |
+| `atlas.create.table` | New table | — | atlas | Conditional — available only in a matching state |
 | `atlas.delete.selection` | Delete selection | `⌫` | atlas | Always available |
 | `atlas.escapeLadder` | Clear selection or go up a level | `ESCAPE` | atlas | Always available |
 | `atlas.export` | Export atlas | — | atlas | Always available |
@@ -86,6 +86,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `settings.open.appearance` | Open Settings → Appearance | — | Global | Always available |
 | `settings.open.backups` | Open Settings → Backups | — | Global | Always available |
 | `settings.open.contract` | Open Settings → Contract | — | Global | Always available |
+| `settings.open.extensions` | Open Settings → Extensions | — | Global | Always available |
 | `settings.open.general` | Open Settings → General | — | Global | Always available |
 | `settings.open.global-hotkey` | Open Settings → Global hotkey | — | Global | Always available |
 | `settings.open.keyboard-shortcuts` | Open Settings → Keyboard Shortcuts | — | Global | Always available |

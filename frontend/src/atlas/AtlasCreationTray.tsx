@@ -7,6 +7,7 @@ import { AtlasTableSizePicker } from './AtlasTableSizePicker'
 import { AtlasImageInput } from './AtlasImageInput'
 import { AtlasStylePanel } from './AtlasStylePanel'
 import { ATLAS_TOOLS, type AtlasArmableTool, type AtlasToolID, type AtlasToolShape } from './atlasTools'
+import { useExtensionEnablementStore } from '../shared/extensionEnablementStore'
 import styles from './AtlasCreationTray.module.css'
 
 // The drag payload's own MIME key (goal 0081 slice A1) -- shared by
@@ -103,7 +104,12 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
   onImageSubmitFile: (file: File) => Promise<void>
 }) {
   const { t } = useTranslation('atlas')
-  const tools = ATLAS_TOOLS.filter((tool) => tool.tray === 'quick')
+  // Settings > Extensions disable semantics, item 1: a disabled tool's
+  // own button is removed from the tray entirely (never shown
+  // dimmed/disabled) -- subscribed live so a toggle flipped in Settings
+  // updates an already-open board without a reload.
+  const disabledExtensionIds = useExtensionEnablementStore((s) => s.disabledExtensionIds)
+  const tools = ATLAS_TOOLS.filter((tool) => tool.tray === 'quick' && !disabledExtensionIds.includes(tool.id))
   // One anchor ref PER TOOL ID (not one shared ref reused across every
   // mapped button) -- created once, since ATLAS_TOOLS is a module-level
   // constant whose ids never change across renders. A single shared ref

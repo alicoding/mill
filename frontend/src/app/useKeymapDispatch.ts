@@ -88,8 +88,15 @@ export function useKeymapDispatch(): void {
       const key = e.key.toUpperCase()
       const tool = ATLAS_TOOL_IDENTITIES.find((t) => t.shortcutKey === key)
       if (!tool) return
+      const command = findCommand(`atlas.create.${tool.id}`)
+      // Extensions section disable semantics, item 1 (Settings >
+      // Extensions): a disabled tool's own bare-key shortcut does
+      // nothing, same as its tray button and palette entry -- mirrors
+      // dispatchCommandForEvent's own enabled() gate (shared/commands.ts)
+      // rather than a second, silent no-op inside run().
+      if (!command || (command.enabled && !command.enabled())) return
       e.preventDefault()
-      findCommand(`atlas.create.${tool.id}`)?.run()
+      command.run()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)

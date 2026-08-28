@@ -210,6 +210,16 @@ export function GetBuildInfo(): $CancellablePromise<$models.BuildInfo> {
 }
 
 /**
+ * GetDisabledExtensions returns every extension id the user has turned
+ * off. Never nil -- always at least an empty slice, so a caller can
+ * range over it (or json-encode it straight to the frontend) without a
+ * nil check.
+ */
+export function GetDisabledExtensions(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(1823101054);
+}
+
+/**
  * GetDisplayDensity returns the persisted preference, defaulting to
  * Comfortable when unset or set to anything other than the one
  * recognized override -- Comfortable is required to match today's
@@ -516,6 +526,21 @@ export function SetAutoUpdateCheck(on: boolean): $CancellablePromise<void> {
  */
 export function SetDisplayDensity(density: string): $CancellablePromise<void> {
     return $Call.ByID(1473451146, density);
+}
+
+/**
+ * SetExtensionEnabled turns id on (enabled=true) or off
+ * (enabled=false), persists the updated set, and emits dataevent so
+ * every open Settings section and the live canvas both refresh --
+ * disabling drops the tool from the creation tray/palette immediately
+ * in any open Atlas view, never only after a reload. Existing board
+ * objects of that kind are untouched by this call and every future
+ * one: disabling an extension changes what CAN be created, never what
+ * was already created (the frontend registry lookup that renders a
+ * placed object never consults this list).
+ */
+export function SetExtensionEnabled(id: string, enabled: boolean): $CancellablePromise<void> {
+    return $Call.ByID(3200447126, id, enabled);
 }
 
 /**
