@@ -13,9 +13,9 @@ import (
 	"fmt"
 	"github.com/alicoding/mill/internal/services/executionsvc"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/mcpaudit"
@@ -67,14 +67,15 @@ type MillMCPService struct {
 	http    *http.Server
 	// Per-write approval state: park-and-poll (millmcpservice_approval.go,
 	// docs/adr/0032, superseding ADR-0017's second half's old bounded-
-	// blocking-wait shape). writes is the durable pending/resolved
-	// record set, persisted via store; executors dispatches an approved
-	// write's real side effect by tool name (registerWriteExecutor,
+	// blocking-wait shape). parkStore is the durable pending/resolved
+	// record set (docs/adr/0047 §5.4's follow-up: the shared generic
+	// store, not a bespoke one) -- see its own doc comment below for why
+	// a constructor-time default exists at all; executors dispatches an
+	// approved write's real side effect by tool name (registerWriteExecutor,
 	// called once per gated tool during registerTools/
 	// registerAuthoringTools -- never mutated afterward, see execute's
 	// doc comment).
-	writesMu  sync.Mutex
-	writes    map[string]*MCPWriteRecord
+	parkStore pendingActionStore
 	executors map[string]mcpWriteExecutor
 	// exec backs the authoring tier's list_runs/get_run/run_workflow
 	// (millmcpservice_authoring.go); late-bound from main.go.
@@ -107,6 +108,26 @@ type MillMCPService struct {
 	guard *guardrailsvc.GuardrailService
 }
 
+// pendingActionStore is the durable park mcpsvc's gated-write lifecycle
+// persists through (docs/adr/0047 §5.4's follow-up) --
+// *guardrailsvc.PendingActionStore is the real implementation;
+// satisfied structurally, no explicit assertion needed. A thin
+// interface (not the concrete type) purely so this package's own tests
+// keep constructing a MillMCPService with no real GuardrailService at
+// all, exactly as they did before this migration -- see parkStore's own
+// construction below for how that's solved structurally rather than by
+// injecting a fake in every test.
+type pendingActionStore interface {
+	Park(action guardrailsvc.GuardedAction, payload []byte) (guardrailsvc.GuardedActionRecord, error)
+	AwaitDecision(id string, timeout time.Duration) (guardrailsvc.GuardedActionRecord, bool)
+	Resolve(id string, approve bool, denyReason string, retention time.Duration, apply func([]byte) (string, error)) (guardrailsvc.GuardedActionRecord, []guardrailsvc.GuardedActionRecord, error)
+	Withdraw(id, reason string, retention time.Duration) (guardrailsvc.GuardedActionRecord, []guardrailsvc.GuardedActionRecord, error)
+	Poll(id string, retention time.Duration) (guardrailsvc.GuardedActionRecord, bool, []guardrailsvc.GuardedActionRecord)
+	Pending(kind string, retention time.Duration) ([]guardrailsvc.GuardedActionRecord, []guardrailsvc.GuardedActionRecord)
+	Resolved(kind string, retention time.Duration) ([]guardrailsvc.GuardedActionRecord, []guardrailsvc.GuardedActionRecord)
+	Backdate(id string, ageMinutes int) error
+}
+
 // SetAuditResolver wires the audit trail's parked-write resolution
 // hook (main.go, after mcpauditsvc.New succeeds) -- see the field's own
 // doc comment above for why this is late-bound rather than a
@@ -121,9 +142,15 @@ func (m *MillMCPService) SetAuditResolver(fn func(writeID string, outcome mcpaud
 // after guardrailsvc.NewGuardrailService succeeds) so a gated write is
 // judged by the SAME user-authored rules a workflow step's own guardrail
 // gate already evaluates (docs/adr/0047 §5.4) -- see the guard field's
-// own doc comment for why this is late-bound.
+// own doc comment for why this is late-bound. ALSO replaces parkStore
+// with g's own shared PendingActionStore, so a production instance
+// parks through the SAME durable store the rest of the guardrail plane
+// uses (main.go's wiring calls this before Start(), so nothing has
+// parked through the constructor-time default yet -- see parkStore's
+// own doc comment).
 func (m *MillMCPService) SetGuardrailService(g *guardrailsvc.GuardrailService) {
 	m.guard = g
+	m.parkStore = g.PendingActionStore()
 }
 
 // NewMillMCPService builds the MCP server and registers every
@@ -144,13 +171,26 @@ func NewMillMCPService(version string, comp *compositionsvc.CompositionService, 
 	m.registerContractResources()
 	m.registerAtlasResources()
 	m.registerSkillResource()
-	// Restart-survival (docs/adr/0032 §1): reload any pending/recently-
-	// resolved write record left over from a previous process. Must run
-	// after registerTools (so a loaded record's ToolName resolves
-	// against a populated executors map the moment it's approved) but
-	// before Start (so a client connecting immediately sees the
-	// restored state, not a race against a background load).
-	m.loadWrites()
+	// Defensive, idempotent second call (main.go's own call, BEFORE
+	// guardrailsvc.NewGuardrailService, is the one that actually matters
+	// -- see MigrateLegacyPendingWrites' own doc comment for why
+	// ordering there is load-bearing). A no-op once the old key is
+	// already cleared, which it always is by the time a real
+	// GuardrailService gets wired via SetGuardrailService.
+	if err := MigrateLegacyPendingWrites(store); err != nil {
+		slog.Error("migrate legacy MCP pending writes", "error", err)
+	}
+	// Restart-survival (docs/adr/0032 §1, docs/adr/0047 §5.4's follow-up):
+	// a durable pending-action store, defaulting to one built directly
+	// from store -- every existing test in this package constructs a
+	// MillMCPService with no GuardrailService at all, and still needs a
+	// REAL, working, restart-surviving park (see this package's own
+	// persist-failure/restart-survival tests). SetGuardrailService
+	// replaces this with the shared production instance before Start()
+	// is ever called (main.go's wiring order), so nothing in production
+	// ever actually parks through this default -- it exists purely so
+	// tests need no extra wiring.
+	m.parkStore = guardrailsvc.NewPendingActionStore(store)
 
 	m.server.AddResource(&mcp.Resource{
 		URI: "mill://workflows", Name: "workflows", MIMEType: "application/json",

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/guardrail"
-	"github.com/google/uuid"
 )
 
 // One rule-evaluation core, two entry points (docs/adr/0047 §5): every
@@ -94,14 +93,6 @@ type PendingGuardedAction struct {
 	CreatedAt   time.Time
 }
 
-// guardedActionRecord is one parked action's live bookkeeping --
-// decision is unexported so it never round-trips through anything that
-// marshals PendingGuardedAction.
-type guardedActionRecord struct {
-	PendingGuardedAction
-	decision chan bool
-}
-
 // RequestGuardedAction is the guardrail's public "submit an action for
 // evaluation" entry (docs/adr/0047 §5) -- the second caller of the
 // rule-evaluation core EvaluateStep/EvaluateAction above already share
@@ -131,22 +122,22 @@ func (g *GuardrailService) RequestGuardedAction(ctx context.Context, action Guar
 		return Decision{Approved: false, Effect: verdict.Effect, RuleID: verdict.RuleID, RuleLabel: verdict.RuleLabel}, nil
 	}
 
-	rec := &guardedActionRecord{
-		PendingGuardedAction: PendingGuardedAction{
-			ID:          uuid.NewString(),
-			Kind:        action.Kind,
-			Attributes:  action.Attributes,
-			Description: action.Description,
-			Source:      action.Source,
-			CreatedAt:   time.Now(),
-		},
-		decision: make(chan bool, 1),
+	rec, err := g.pending.Park(action, nil)
+	if err != nil {
+		return Decision{}, fmt.Errorf("park guarded action: %w", err)
 	}
-	g.parkGuardedAction(rec)
-	defer g.unparkGuardedAction(rec.ID)
+	// Unconditional cleanup on every exit path (decision, ctx-cancel, or
+	// timeout) -- this caller is a blocking in-process wait with no
+	// resolved-history consumer, unlike mcpsvc's own poll-and-retain
+	// flow (Resolve/Withdraw), so nothing is kept once it stops waiting.
+	defer g.pending.Delete(rec.ID)
 
+	ch, ok := g.pending.decisionChan(rec.ID)
+	if !ok {
+		return Decision{}, fmt.Errorf("guardrail: guarded action %s vanished immediately after park", rec.ID)
+	}
 	select {
-	case approve := <-rec.decision:
+	case approve := <-ch:
 		return Decision{Approved: approve, Effect: verdict.Effect, RuleID: verdict.RuleID, RuleLabel: verdict.RuleLabel}, nil
 	case <-ctx.Done():
 		return Decision{}, ctx.Err()
@@ -155,57 +146,29 @@ func (g *GuardrailService) RequestGuardedAction(ctx context.Context, action Guar
 	}
 }
 
-// parkGuardedAction/unparkGuardedAction/resolveGuardedAction/
-// pendingGuardedActions are the in-process pending store: an in-memory
-// map, not settings-persisted (unlike mcpsvc's MCPWriteRecord) --
-// RequestGuardedAction has no real caller yet in this slice (the MCP
-// rebase is next), so there is nothing whose restart-survival matters
-// today; the record shape (PendingGuardedAction) carries everything a
-// future durable store would need to persist.
-
-func (g *GuardrailService) parkGuardedAction(rec *guardedActionRecord) {
-	g.guardedActionsMu.Lock()
-	defer g.guardedActionsMu.Unlock()
-	if g.guardedActions == nil {
-		g.guardedActions = map[string]*guardedActionRecord{}
-	}
-	g.guardedActions[rec.ID] = rec
-}
-
-func (g *GuardrailService) unparkGuardedAction(id string) {
-	g.guardedActionsMu.Lock()
-	defer g.guardedActionsMu.Unlock()
-	delete(g.guardedActions, id)
-}
-
 // resolveGuardedAction delivers a human decision to a parked action --
 // the Go-internal analogue of executionsvc.ResolveApproval. Returns
 // false when id names no currently-parked action (already resolved,
 // timed out, or never existed), mirroring ResolveApproval's own
-// unknown-id error path at the caller's discretion.
+// unknown-id error path at the caller's discretion. A raw signal only
+// (guardrailservice_pendingstore.go's signal) -- no status transition
+// or persistence, since RequestGuardedAction's own deferred Delete is
+// what clears the record regardless of outcome.
 func (g *GuardrailService) resolveGuardedAction(id string, approve bool) bool {
-	g.guardedActionsMu.Lock()
-	rec, ok := g.guardedActions[id]
-	g.guardedActionsMu.Unlock()
-	if !ok {
-		return false
-	}
-	select {
-	case rec.decision <- approve:
-	default:
-	}
-	return true
+	return g.pending.signal(id, approve)
 }
 
 // pendingGuardedActions lists every currently-parked action -- the
 // listing half of the pending model a future Review/floating-prompt
-// wiring (or the MCP rebase) will read from.
+// wiring will read from.
 func (g *GuardrailService) pendingGuardedActions() []PendingGuardedAction {
-	g.guardedActionsMu.Lock()
-	defer g.guardedActionsMu.Unlock()
-	out := make([]PendingGuardedAction, 0, len(g.guardedActions))
-	for _, rec := range g.guardedActions {
-		out = append(out, rec.PendingGuardedAction)
+	records, _ := g.pending.Pending("", defaultGuardedActionRetention)
+	out := make([]PendingGuardedAction, 0, len(records))
+	for _, rec := range records {
+		out = append(out, PendingGuardedAction{
+			ID: rec.ID, Kind: rec.Kind, Attributes: rec.Attributes,
+			Description: rec.Description, Source: rec.Source, CreatedAt: rec.CreatedAt,
+		})
 	}
 	return out
 }
