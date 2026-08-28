@@ -36,7 +36,11 @@
     },
     "extensions": {
       "subtitle": "Turn canvas tools on or off. Objects you already created keep working.",
-      "builtIn": "Built-in"
+      "installStory": "Extensions ship with Mill today. Installing your own arrives with the plugin loader.",
+      "builtIn": "Built-in",
+      "turnAllOff": "Turn all off",
+      "turnAllOn": "Turn all on",
+      "docsLink": "See how canvas objects work"
     },
     "keyboardShortcuts": {
       "description": "Every in-window command Mill dispatches. Rebind one by clicking its combo and pressing a new one — the same recorder used for a workflow's own trigger hotkey below."

@@ -12,6 +12,7 @@ export const areaTool = {
   id: areaIdentity.id,
   icon: SquareIcon,
   label: areaIdentity.commandLabel,
+  description: 'Groups nearby cards and notes into a labeled frame.',
   shortcutKey: areaIdentity.shortcutKey,
   tray: 'quick',
   // Spatial organization of knowledge, not drawing (goal 0224's

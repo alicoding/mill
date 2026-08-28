@@ -1,0 +1,54 @@
+/* Settings > Extensions' per-row disclosure (goal 0211's plugin-manager
+   UX slice) -- a native <details>/<summary> pair (Primer's own
+   Details/Details.Summary wrapper, .claude/rules/frontend.md's
+   "adopted overlay/disclosure machinery" rule), never a hand-rolled
+   collapse. .row keeps the enable/disable control OUTSIDE <summary> as
+   a flex sibling rather than nesting it inside the native toggle
+   trigger -- a click on the ToggleSwitch would otherwise also fire the
+   browser's own details-open toggle, since that activation behavior is
+   scoped to any click landing inside <summary> regardless of the
+   descendant's own React event handling. */
+.row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--base-size-8);
+    width: 100%;
+}
+.details {
+    flex: 1;
+    min-width: 0;
+}
+.summary {
+    display: flex;
+    align-items: center;
+    gap: var(--base-size-8);
+    cursor: pointer;
+    list-style: none;
+}
+.summary::-webkit-details-marker {
+    display: none;
+}
+.chevron {
+    flex-shrink: 0;
+    color: var(--fgColor-muted);
+    transition: transform 0.1s ease;
+}
+.details[open] .chevron {
+    transform: rotate(90deg);
+}
+.rowAction {
+    flex-shrink: 0;
+    padding-top: 2px;
+}
+.expanded {
+    margin: var(--base-size-8) 0 0 24px;
+    padding-left: var(--base-size-8);
+    border-left: 2px solid var(--borderColor-muted);
+    display: flex;
+    flex-direction: column;
+    gap: var(--base-size-4);
+}
+.chips {
+    flex-wrap: wrap;
+}
