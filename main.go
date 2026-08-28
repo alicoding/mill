@@ -291,15 +291,7 @@ func main() {
 	// something the rest of the app depends on to function.
 	millMCPAddr, _ := settingssvc.ResolveMCPAddr(os.Getenv("MILL_MCP_ADDR"), settingsService.MCPAccessAddress())
 	millMCPService := mcpsvc.NewMillMCPService(millVersion, compositionService, configureService, settingsStore, userdocsFS, mcpAuditService.ServerMiddleware())
-	settingsService.SetMCPService(millMCPService)
-	millMCPService.SetExecutionService(executionService)
-	millMCPService.SetAtlasService(atlasService)
-	millMCPService.SetAuditResolver(mcpAuditService.ResolveParkedWrite)
-	if err := millMCPService.Start(millMCPAddr); err != nil {
-		logger.Error("mill MCP server", "error", err)
-	} else {
-		logger.Info("mill MCP server listening", "addr", millMCPAddr)
-	}
+	wiring.WireMillMCPService(millMCPService, settingsService, executionService, atlasService, mcpAuditService, guardrailService, millMCPAddr, logger)
 
 	agentLoopService := agentloopsvc.NewAgentLoopService(millMCPService) // an MCP client of it, ADR-0035
 
