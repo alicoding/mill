@@ -606,6 +606,9 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write
+      # Read-only: "Compute beta version" below queries the open
+      # release-please PR for the next version number.
+      pull-requests: read
     # Newest merge wins -- an in-flight beta-release run for an older
     # commit is redundant the moment a newer merge lands, so it's
     # cancelled rather than left to publish a stale rolling beta after
@@ -639,10 +642,34 @@ jobs:
       # available update. GITHUB_RUN_NUMBER is ci.yml's own
       # monotonically increasing counter (never resets), reused here
       # rather than a timestamp or SHA for exactly that guarantee.
+      #
+      # The base MUST be the NEXT release, not main.go's currently-
+      # shipped millVersion: a prerelease's own base version also
+      # ranks by SemVer precedence, so basing betas on the released
+      # version they postdate (0.5.0-beta.N while v0.5.0 already
+      # exists) puts every beta BELOW the stable release it comes
+      # after -- backwards, and the same bug class the comment above
+      # already guards against one level up. release-please's own
+      # open PR (branch release-please--branches--main, title
+      # "chore(main): release X.Y.Z") already computed the next
+      # version from Conventional Commits on main, so read it there
+      # first. Fall back to bumping millVersion's MINOR (X.Y.Z ->
+      # X.(Y+1).0) only when that PR is absent or unparseable --
+      # release-please's release-type:go defaults to a feat-driven
+      # minor bump for this repo's commit history, so the fallback
+      # matches its own convention.
       - name: Compute beta version
         run: |
           BASE_VERSION=$(grep -m1 'const millVersion' main.go | sed -E 's/.*"([0-9][0-9A-Za-z.+-]*)".*/\1/')
-          echo "BETA_VERSION=${BASE_VERSION}-beta.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          NEXT_VERSION=$(gh pr list --repo "${GITHUB_REPOSITORY}" \
+            --head release-please--branches--main --state open \
+            --json title -q '.[0].title // empty' \
+            | sed -E -n 's/.*release ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p')
+          if [ -z "$NEXT_VERSION" ]; then
+            NEXT_VERSION=$(echo "$BASE_VERSION" | awk -F. '{printf "%d.%d.0", $1, $2+1}')
+            echo "::notice::no open release-please PR (or unparseable title) -- falling back to minor-bumped $NEXT_VERSION from millVersion $BASE_VERSION"
+          fi
+          echo "BETA_VERSION=${NEXT_VERSION}-beta.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
       # task package already ad-hoc codesigns (build/darwin/Taskfile.yml's
       # create:app:bundle -> codesign:adhoc) -- goal 0100's own DoR
       # research confirmed ad-hoc signing + a documented first-run
