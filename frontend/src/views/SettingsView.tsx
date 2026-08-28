@@ -14,6 +14,7 @@ import { SETTINGS_SECTIONS, sectionMatchesQuery } from '../shared/settingsSectio
 import { applyDensity } from '../shared/density'
 import type { DisplayDensity } from '../shared/density'
 import KeyboardShortcutsSection from './KeyboardShortcutsSection'
+import ExtensionsSection from './ExtensionsSection'
 import ContractSection from './ContractSection'
 import DataStewardshipSection from './DataStewardshipSection'
 import UpdatesSection from './UpdatesSection'
@@ -320,6 +321,7 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
         )}
       </>
     ),
+    extensions: <ExtensionsSection />,
     'keyboard-shortcuts': (
       <>
         <Text as="p" size="small" className={styles.muted}>

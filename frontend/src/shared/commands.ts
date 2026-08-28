@@ -12,7 +12,7 @@ import { CLIPBOARD_HISTORY_COMMANDS } from './clipboardHistoryCommands'
 import { CODING_LOOP_COMMANDS } from './codingLoopCommands'
 import { DOCS_SEARCH_COMMANDS } from './docsSearchCommands'
 import { REVIEW_COMMANDS } from './reviewCommands'
-import { ATLAS_TOOL_IDENTITIES } from './atlasToolIdentity'
+import { ATLAS_CREATE_COMMANDS } from './atlasCreateCommands'
 
 // The command registry (docs/goals/0016-keymap-system.md): named
 // commands with a default binding, dispatched by one window keydown
@@ -293,33 +293,8 @@ export const COMMANDS: Command[] = [
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasJump(),
   },
-  // atlas.create.card/note/area/table/image (bare C/N/A/T/I, goal 0081
-  // slices A1/A2, goal 0139, goal 0169 slice 2): comboFromEvent requires
-  // Cmd/Ctrl by design (every other keymap default needs one of the two
-  // -- see its own doc comment, shared/keybinding.ts), so a bare letter
-  // can never be one of these commands' REAL dispatched binding --
-  // defaultBinding stays null, same shape help.shortcuts above already
-  // takes for its own bare `?`. The actual keypress is a dedicated
-  // listener (app/useKeymapDispatch.ts) that calls run() directly; the
-  // tray itself (AtlasCreationTray.tsx) renders its own kbd hint from
-  // the SAME registry (atlas/atlasTools.ts), not derived from this
-  // binding. Generated from shared/atlasToolIdentity.ts's identity list
-  // (the cross-layer seed atlas/atlasTools.ts's own descriptors also
-  // read) rather than five separate hand-written commands -- 'arm'
-  // tools request a placement arm, 'picker' requests the size picker
-  // (Table's own click-IS-the-creation flow), 'popover' requests the
-  // image tool's own path/paste popover.
-  ...ATLAS_TOOL_IDENTITIES.map((tool): Command => ({
-    id: `atlas.create.${tool.id}`,
-    label: tool.commandLabel,
-    defaultBinding: null,
-    surface: ['atlas'],
-    run: () => {
-      if (tool.requestKind === 'picker') return useUISignalStore.getState().requestAtlasTablePicker()
-      if (tool.requestKind === 'popover') return useUISignalStore.getState().requestAtlasImagePopover()
-      return useUISignalStore.getState().requestAtlasArmTool(tool.id)
-    },
-  })),
+  // atlas.create.<id> (bare C/N/A/T/I/P/E/L/S) -- own file, atlasCreateCommands.ts, same reason every other feature-specific cluster below already is.
+  ...ATLAS_CREATE_COMMANDS,
   // The board's ⌘Z/⇧⌘Z (goal 0219 S2, ADR-0044): null binding -- ⌘Z is
   // ALSO native text-undo, dispatched by useKeymapDispatch.ts's own
   // listener instead; these exist for palette/HotkeyHint discovery only.

@@ -25,6 +25,7 @@ export interface SettingsSection {
 export const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: 'appearance', titleKey: 'settings.sections.appearance', keywords: ['theme', 'dark', 'light', 'color', 'appearance'] },
   { id: 'general', titleKey: 'settings.sections.general', keywords: ['launch', 'login', 'startup', 'general'] },
+  { id: 'extensions', titleKey: 'settings.sections.extensions', keywords: ['extension', 'plugin', 'tool', 'canvas', 'enable', 'disable', 'toggle'] },
   { id: 'keyboard-shortcuts', titleKey: 'settings.sections.keyboardShortcuts', keywords: ['keyboard', 'shortcut', 'hotkey', 'keymap', 'rebind', 'command'] },
   { id: 'global-hotkey', titleKey: 'settings.sections.globalHotkey', keywords: ['hotkey', 'summon', 'quick panel', 'global'] },
   { id: 'mcp-access', titleKey: 'settings.sections.mcpAccess', keywords: ['mcp', 'import', 'approval', 'access', 'client', 'address', 'port'] },

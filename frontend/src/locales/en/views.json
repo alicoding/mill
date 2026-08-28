@@ -7,6 +7,7 @@
     "sections": {
       "appearance": "Appearance",
       "general": "General",
+      "extensions": "Extensions",
       "keyboardShortcuts": "Keyboard Shortcuts",
       "globalHotkey": "Global hotkey",
       "mcpAccess": "MCP access",
@@ -32,6 +33,10 @@
       "openLoginItemsSettings": "Open Login Items Settings",
       "errorDevBinary": "Not available in this dev build -- only a built .app bundle can be a login item.",
       "errorServerMode": "Not available in server mode -- there is no login-item concept without a desktop app to register."
+    },
+    "extensions": {
+      "subtitle": "Turn canvas tools on or off. Objects you already created keep working.",
+      "builtIn": "Built-in"
     },
     "keyboardShortcuts": {
       "description": "Every in-window command Mill dispatches. Rebind one by clicking its combo and pressing a new one — the same recorder used for a workflow's own trigger hotkey below."

@@ -3,6 +3,7 @@ import { Events } from '@wailsio/runtime'
 import { refreshKeybindings, refreshNodeTypes, refreshRequests, refreshWorkflows } from '../shared/store'
 import { refreshAIProviders, refreshDeclaredStepTypes, refreshDecisions, refreshExecEnvs, refreshLists, refreshMCPServers } from '../shared/configureEntityStore'
 import { refreshVaultStatus } from '../shared/vaultStatusStore'
+import { refreshDisabledExtensions } from '../shared/extensionEnablementStore'
 
 // The one mill-data-changed router (docs/adr/0025 + goal 0017), split
 // out of App.tsx (CLAUDE.md's 500-line convention) -- zero behavior
@@ -34,6 +35,7 @@ export function useDataChangedRouter(): void {
       if (entity === 'steptype') { void refreshDeclaredStepTypes(); void refreshNodeTypes() }
       if (entity === 'keybinding') void refreshKeybindings()
       if (entity === 'secret') void refreshVaultStatus()
+      if (entity === 'extension') void refreshDisabledExtensions()
     })
   }, [])
 }
