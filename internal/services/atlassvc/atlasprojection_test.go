@@ -19,39 +19,31 @@ func wireFakeProjection(a *AtlasService) {
 	})
 }
 
-// The projection principle (goal 0105): the card is a VIEW of the
-// List -- creation validates the List resolves, reads are live, and a
-// deleted List surfaces as an honest Missing state, never an error.
-func TestListProjectionCard_CreateValidatesAndReadsLive(t *testing.T) {
-	a := newTestAtlasService(t)
-	wireFakeProjection(a)
-	kind := firstKindWithLabel(t, a, "Document")
-
-	if _, err := a.CreateListProjectionCard(kind, "Vendors", "", nil, "no-such-list"); err == nil {
-		t.Fatal("creation against a missing List must refuse")
-	}
-	if _, err := a.CreateListProjectionCard(kind, "Vendors", "", nil, " "); err == nil {
-		t.Fatal("creation without a List must refuse with the fix")
-	}
-
-	card, err := a.CreateListProjectionCard(kind, "Vendors", "", nil, "list-vendors")
+// makeProjectionCard creates a plain card and stamps ProjectionListID
+// directly (the production door that once did this, CreateListProjectionCard,
+// was retired -- goal 0179 replaced list-projection cards with
+// list-backed table board objects). Whitebox: same package as
+// AtlasService's internals.
+func makeProjectionCard(t *testing.T, a *AtlasService, kind, title, listID string) atlas.Card {
+	t.Helper()
+	card, err := a.CreateCard(kind, title, "", nil, "", nil, "", "", "", "")
 	if err != nil {
-		t.Fatalf("CreateListProjectionCard: %v", err)
+		t.Fatalf("CreateCard: %v", err)
 	}
-	if card.ProjectionListID != "list-vendors" {
-		t.Errorf("ProjectionListID = %q, want list-vendors", card.ProjectionListID)
+	a.mu.Lock()
+	idx := a.findCardLocked(card.ID)
+	if idx == -1 {
+		a.mu.Unlock()
+		t.Fatalf("no card with id %q", card.ID)
 	}
-
-	proj, err := a.CardListProjection(card.ID)
-	if err != nil {
-		t.Fatalf("CardListProjection: %v", err)
+	a.cards[idx].ProjectionListID = listID
+	if err := a.persistLocked(); err != nil {
+		a.mu.Unlock()
+		t.Fatalf("persistLocked: %v", err)
 	}
-	if proj.Label != "Vendor tracker" || len(proj.Columns) != 2 || len(proj.Rows) != 1 {
-		t.Errorf("projection = %+v, want the wired List view", proj)
-	}
-	if proj.Rows[0].Values["status"] != "healthy" || proj.Rows[0].ID != "row-1" {
-		t.Errorf("row = %+v, want healthy with its id", proj.Rows[0])
-	}
+	out := a.cards[idx]
+	a.mu.Unlock()
+	return out
 }
 
 func TestCardListProjection_MissingListAndPlainCards(t *testing.T) {
@@ -59,10 +51,7 @@ func TestCardListProjection_MissingListAndPlainCards(t *testing.T) {
 	wireFakeProjection(a)
 	kind := firstKindWithLabel(t, a, "Document")
 
-	card, err := a.CreateListProjectionCard(kind, "Vendors", "", nil, "list-vendors")
-	if err != nil {
-		t.Fatalf("CreateListProjectionCard: %v", err)
-	}
+	card := makeProjectionCard(t, a, kind, "Vendors", "list-vendors")
 	// The List disappears after creation: honest Missing, not an error.
 	a.WireListProjection(func(string) (ListProjection, bool) { return ListProjection{}, false })
 	proj, err := a.CardListProjection(card.ID)
@@ -125,10 +114,7 @@ func TestSetCardSize_PersistsAndBoundsChecks(t *testing.T) {
 	a := newTestAtlasService(t)
 	wireFakeProjection(a)
 	kind := firstKindWithLabel(t, a, "Document")
-	card, err := a.CreateListProjectionCard(kind, "Vendors", "", nil, "list-vendors")
-	if err != nil {
-		t.Fatalf("CreateListProjectionCard: %v", err)
-	}
+	card := makeProjectionCard(t, a, kind, "Vendors", "list-vendors")
 
 	if _, err := a.SetCardSize(card.ID, 60, 40); err == nil {
 		t.Fatal("a degenerate size must refuse")

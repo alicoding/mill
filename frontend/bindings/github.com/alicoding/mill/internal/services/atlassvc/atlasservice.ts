@@ -237,16 +237,6 @@ export function CreateLinkedFileCard(openCardID: string, path: string, title: st
 }
 
 /**
- * CreateListProjectionCard lands a new card projecting listID, kinded
- * and titled like any other card (the projection is a facet, not a
- * kind). Validates the List resolves at creation -- a projection born
- * pointing at nothing is an authoring mistake, refused with the fix.
- */
-export function CreateListProjectionCard(kindID: string, title: string, parentID: string, position: atlas$0.Position | null, listID: string): $CancellablePromise<atlas$0.Card> {
-    return $Call.ByID(3315563497, kindID, title, parentID, position, listID);
-}
-
-/**
  * CreateNote makes a new Note, optionally inside parentID ("" for
  * root-level) -- same containment-existence check CreateCard runs.
  */
