@@ -60,12 +60,20 @@ test('sticky notes render markdown via Milkdown; live formatting, a checkbox tog
   await page.keyboard.type('some ')
   await page.keyboard.type('**bold**')
   await page.keyboard.press('Enter')
-  // One continuous type() call, not two: a real typist's keystrokes for
-  // "- [ ] first task" are one unbroken stream, and splitting it across
-  // two separate .type() calls was measured live to occasionally race
-  // with the list/task-item transaction the "- [ ] " prefix triggers,
-  // scrambling the following characters.
-  await page.keyboard.type('- [ ] first task')
+  // "- [ ] " is its OWN type() call, followed by an explicit wait for
+  // the task-item transaction to actually land (the icon widget
+  // appearing) before typing the rest -- typing the trailing text
+  // WHILE that transaction is still in flight was observed (CI, a
+  // slower/more-contended runner than a dev machine) to race it: the
+  // node conversion partially lands, leaving a plain bullet with a
+  // stray "]" instead of a real task item. Splitting on a WAITED
+  // condition, rather than gambling on one long continuous call being
+  // fast enough end to end, is what actually closes the race -- see
+  // checkboxIcon below for the assertion this wait is priming.
+  await page.keyboard.type('- [ ] ')
+  const checkboxIcon = editable.locator('.milkdown-icon.label').first()
+  await expect(checkboxIcon).toBeVisible()
+  await page.keyboard.type('first task')
 
   // Live formatting WHILE editing: real elements, never raw syntax --
   // the editor IS the rendered view, no separate source-vs-rendered
@@ -79,7 +87,6 @@ test('sticky notes render markdown via Milkdown; live formatting, a checkbox tog
   // Milkdown's task-list checkbox is its own clickable icon widget, not
   // a native <input type="checkbox"> (verified live: zero <input> in
   // the mount).
-  const checkboxIcon = editable.locator('.milkdown-icon.label').first()
   await expect(checkboxIcon).toHaveClass(/unchecked/)
   await checkboxIcon.click()
   await expect(checkboxIcon).toHaveClass(/\bchecked\b/)
@@ -200,6 +207,86 @@ test("the note overlay's editor box stays bounded as content grows, never the pa
   await sticky.click({ button: 'right' })
   await menu.getByText('Delete note', { exact: true }).click()
   await expect(sticky).toHaveCount(0)
+})
+
+// Regression (goal 0247, the canvas-note trim): the sticky is a short
+// canvas note, not a document editor -- the CodeMirror code-block
+// widget (language picker, Copy button, line gutter) and the block
+// drag-handle feature never mount here (milkdownCore's NOTE_FEATURES).
+// A fenced code block still renders its content as a plain monospace
+// block, in both the editing mount and the rest render.
+test('a fenced code block renders as a plain block -- no language picker, no Copy button, no drag handles', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+  await page.keyboard.press('n')
+  await clickCorner(board, 'top-left')
+  await expect(stickyEditor(page)).toBeVisible()
+
+  const editable = stickyEditor(page).locator('[contenteditable="true"]')
+  await editable.click()
+  await page.keyboard.type('```js')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('console.log(1)')
+
+  // Content lands as a plain <pre>/<code>, not the CodeMirror widget.
+  await expect(editable.locator('pre code')).toHaveText('console.log(1)')
+  await expect(editable.locator('.language-button')).toHaveCount(0)
+  await expect(editable.locator('.copy-button')).toHaveCount(0)
+  await expect(editable.locator('.milkdown-block-handle')).toHaveCount(0)
+
+  await blurSticky(page)
+  const sticky = page.getByTestId('atlas-sticky-note')
+  await expect(sticky.locator('pre code')).toHaveText('console.log(1)')
+  await expect(sticky.locator('.language-button')).toHaveCount(0)
+  await expect(sticky.locator('.copy-button')).toHaveCount(0)
+  await expect(sticky.locator('.milkdown-block-handle')).toHaveCount(0)
+
+  // Cleanup.
+  const menu = contextMenu(page)
+  await sticky.click({ button: 'right' })
+  await menu.getByText('Delete note', { exact: true }).click()
+  await expect(sticky).toHaveCount(0)
+})
+
+// Regression (goal 0247, defect_class markdown-round-trip-corruption):
+// CommonMark's INDENTED code-block rule (a line starting with 4
+// spaces/a tab) silently swallowed an entire line into a code block --
+// including a real heading, reproduced live via Milkdown's own
+// always-on Tab-indent shortcut (4 literal spaces) pressed at a
+// paragraph's start before typing "# text". milkdownCore's
+// disableIndentedCodeBlock (a `$remark` plugin disabling micromark's
+// `codeIndented` construct) means incidental leading whitespace never
+// promotes a line into a code block, across a real reload.
+test('leading whitespace never swallows a line into a code block across reload', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+  await page.keyboard.press('n')
+  await clickCorner(board, 'top-right')
+  await expect(stickyEditor(page)).toBeVisible()
+
+  const editable = stickyEditor(page).locator('[contenteditable="true"]')
+  await editable.click()
+  await page.keyboard.press('Tab')
+  await page.keyboard.type('# ddka')
+  await blurSticky(page)
+
+  const sticky = page.locator('[data-testid="atlas-sticky-note"]').filter({ hasText: 'ddka' })
+  await expect(sticky).toBeVisible()
+  await expect(sticky.locator('pre')).toHaveCount(0)
+
+  // The actual persistence round-trip -- a fresh Milkdown parse of the
+  // saved Note.Text is where the corruption bug actually surfaced.
+  await page.reload()
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const stickyAfterReload = page.locator('[data-testid="atlas-sticky-note"]').filter({ hasText: 'ddka' })
+  await expect(stickyAfterReload).toBeVisible()
+  await expect(stickyAfterReload.locator('pre')).toHaveCount(0)
+
+  await deleteSticky(page, stickyAfterReload)
 })
 
 // Goal 0226 (interim contract, superseded by goal 0244 S3's canonical-

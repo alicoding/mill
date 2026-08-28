@@ -75,7 +75,7 @@ export function MilkdownEditor({ value, onChange, ariaLabel, placeholder, testId
 
   useEffect(() => {
     if (!core || !containerRef.current) return
-    const { Crepe, NOTE_FEATURES } = core
+    const { Crepe, NOTE_FEATURES, disableIndentedCodeBlock } = core
     const crepe = new Crepe({
       root: containerRef.current,
       defaultValue: value,
@@ -84,6 +84,10 @@ export function MilkdownEditor({ value, onChange, ariaLabel, placeholder, testId
         ? { [Crepe.Feature.Placeholder]: { text: placeholder } }
         : undefined,
     })
+    // Registered on the underlying Editor before create() -- milkdownCore's
+    // own $remark extension point, applied here rather than baked into
+    // NOTE_FEATURES since it isn't a Crepe feature flag.
+    crepe.editor.use(disableIndentedCodeBlock)
     crepe.on((listener) => {
       listener.markdownUpdated((_ctx, markdown) => {
         onChangeRef.current?.(markdown)
