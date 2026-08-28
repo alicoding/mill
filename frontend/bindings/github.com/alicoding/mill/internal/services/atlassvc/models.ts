@@ -321,6 +321,13 @@ export interface PasteResult {
     "Cards": number;
     "Links": number;
     "Tables": number;
+
+    /**
+     * Images counts a paste landing an "image" board object (goal 0179
+     * Slice 0, atlaspasteimage.go) -- always 0 or 1, since a single
+     * paste names exactly one path or URL.
+     */
+    "Images": number;
     "SkippedPages": string[] | null;
 }
 

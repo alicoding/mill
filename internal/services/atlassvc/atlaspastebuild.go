@@ -176,10 +176,14 @@ func contains(list []string, v string) bool {
 // only when Recognized is also true, since a page can only be skipped
 // out of a file that WAS recognized as one.
 type PasteResult struct {
-	Recognized   bool
-	Cards        int
-	Links        int
-	Tables       int
+	Recognized bool
+	Cards      int
+	Links      int
+	Tables     int
+	// Images counts a paste landing an "image" board object (goal 0179
+	// Slice 0, atlaspasteimage.go) -- always 0 or 1, since a single
+	// paste names exactly one path or URL.
+	Images       int
 	SkippedPages []string
 }
 
@@ -205,15 +209,22 @@ type pasteRecognizer func(a *AtlasService, text, html, parentID string, pos atla
 
 // pasteRecognizers is the paste door's one ordered chain: drawio XML
 // (a diagramming tool's own clipboard payload) -> HTML table (an M365
-// app's copied table) -> TSV (a spreadsheet range). PasteToBoard tries
-// each in order and returns the first that recognizes the payload;
-// when NONE do, the frontend's own paste handler lands the pasted
-// content as a note at the pointer instead -- the named last resort,
-// never a card (docs/goals/0179, 0218).
+// app's copied table) -> TSV (a spreadsheet range) -> an image path/URL
+// (atlaspasteimage.go, goal 0179 Slice 0). The image entry runs LAST of
+// the Go-side recognizers -- each earlier entry demands specific markup
+// (mxGraph XML, an HTML <table>, tab-separated columns) a bare path or
+// URL string never carries, so checking it first would cost every other
+// shape a wasted url.Parse/os.Stat for nothing; ordering it after them
+// costs nothing since their own detection already rejects a bare
+// string immediately. When NONE recognize the payload, the frontend's
+// own paste handler lands the pasted content as a note at the pointer
+// instead -- the named last resort, never a card (docs/goals/0179,
+// 0218).
 var pasteRecognizers = []pasteRecognizer{
 	recognizeDrawioPaste,
 	recognizeHTMLTablePaste,
 	recognizeTSVPaste,
+	recognizeImagePaste,
 }
 
 // PasteToBoard converts understood clipboard content into entities

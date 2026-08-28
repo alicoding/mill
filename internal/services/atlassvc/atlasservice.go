@@ -76,9 +76,17 @@ type AtlasService struct {
 	// Paste-conversion seams (goal 0138) -- see WirePasteListWrites.
 	pasteListFactory func(label string, columns []typedfield.Field) (string, error)
 	pasteRowAppender func(listID string, values map[string]string) error
-	cards            []atlas.Card
-	links            []atlas.Link
-	notes            []atlas.Note
+	// imageURLFetcher performs the image-paste recognizer's own URL
+	// fetch (goal 0179 Slice 0, atlaspasteimage.go) -- defaulted to a
+	// real bounded HTTP GET below rather than left nil-means-off like
+	// pasteListFactory above, since a URL fetch is Mill's own internal
+	// behavior with no external composition-root wiring to do; a test
+	// overwrites this field directly so no test suite ever makes a
+	// real network call.
+	imageURLFetcher func(rawURL string) ([]byte, error)
+	cards           []atlas.Card
+	links           []atlas.Link
+	notes           []atlas.Note
 	// objects holds every board-local canvas object (goal 0179/0180) --
 	// same own-family posture as notes above.
 	objects []atlas.BoardObject
@@ -159,6 +167,7 @@ func NewAtlasService(store settings.Store) *AtlasService {
 	a := &AtlasService{
 		store: store, lenses: map[string]atlas.LensSetting{},
 		mirrorWatches: map[string]*filewatch.Binding{}, mirrorDebouncers: map[string]*time.Timer{},
+		imageURLFetcher: fetchImageURLBytes,
 	}
 	a.restore()
 	a.reconcileBuiltIns()

@@ -6,13 +6,21 @@ import { pasteSummaryText } from './pasteSummary'
 const t = ((key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key)) as TFunction<'atlas'>
 
 function result(overrides: Partial<PasteResult> = {}): PasteResult {
-  return { Recognized: true, Cards: 0, Links: 0, Tables: 0, SkippedPages: null, ...overrides }
+  return { Recognized: true, Cards: 0, Links: 0, Tables: 0, Images: 0, SkippedPages: null, ...overrides }
 }
 
 describe('pasteSummaryText', () => {
   it('reports only the converted counts when nothing was skipped', () => {
     const text = pasteSummaryText(t, result({ Cards: 2, Links: 1 }))
     expect(text).toBe('paste.converted:{"what":"paste.cards:{\\"count\\":2}, paste.links:{\\"count\\":1}"}')
+  })
+
+  // Goal 0179 Slice 0: an image-shaped paste (a local path or URL) has
+  // no Cards/Links/Tables at all -- it must still produce a non-empty
+  // summary rather than "Pasted as " with nothing after it.
+  it('reports an image paste', () => {
+    const text = pasteSummaryText(t, result({ Images: 1 }))
+    expect(text).toBe('paste.converted:{"what":"paste.images:{\\"count\\":1}"}')
   })
 
   // Regression (goal 0194): a multi-page source that lost a page must

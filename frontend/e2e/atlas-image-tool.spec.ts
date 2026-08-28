@@ -41,6 +41,10 @@ test('picking an image via the native file dialog lands a board object, never a 
 
   const object = imageObjects(page)
   await expect(object).toHaveCount(1)
+  // Goal 0179 closing gap 2: a picked image actually renders on the
+  // board, not just an empty titled box -- a real <img> confirms the
+  // mirrored bytes loaded.
+  await expect(object.locator('img')).toBeVisible()
   // The rule, absolute: nothing turned into a card the user didn't ask for.
   await expect(page.getByTestId('atlas-note-card').filter({ hasText: 'logo' })).toHaveCount(0)
   // dragBand (goal 0206): an image's whole body already drags, so the
@@ -63,6 +67,10 @@ test('picking an image via the native file dialog lands a board object, never a 
   const card = page.getByTestId('atlas-note-card').filter({ hasText: 'logo' })
   await expect(card).toBeVisible()
   await expect(card.getByText('IMG')).toBeVisible()
+  // Goal 0179 closing gap 2: the promoted card shows its image on the
+  // board face itself (AtlasUnitMirrorImageFace via the mirror-image
+  // unit's Face loader) -- never only once opened.
+  await expect(card.locator('img')).toBeVisible()
 
   await openCard(page, card)
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
@@ -89,6 +97,8 @@ test('pasting a clipboard image lands a board object -- selectable, draggable, d
 
   const object = imageObjects(page)
   await expect(object).toHaveCount(1)
+  // Goal 0179 closing gap 2: same render proof as the pick-file test.
+  await expect(object.locator('img')).toBeVisible()
   // The rule, absolute: nothing turned into a card the user didn't ask
   // for -- checked against a title this paste would have produced had
   // it (wrongly) landed as a card, not a blanket zero (the seeded

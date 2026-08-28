@@ -10,6 +10,8 @@ import { childrenOf } from './atlasGrouping'
 import { Label } from '@primer/react'
 import { optionColor } from '../shared/projectionColors'
 import { markdownSnippet } from './markdownSnippet'
+import { resolveUnit } from './atlasUnits'
+import { UnitRenderSlot } from './UnitRenderSlot'
 import styles from './AtlasNoteCardNode.module.css'
 import slotStyles from './AtlasSlotRows.module.css'
 import type { PointerEvent as ReactPointerEvent } from 'react'
@@ -77,6 +79,13 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data, selecte
   const tokens = kindColorTokens(card.KindID)
   const fileTag = deriveFileTag(card)
   const dot = freshnessDotColor(card)
+  // A unit's compact board-face preview (goal 0179 closing gap 2,
+  // currently only mirror-image declares one). Skipped for a
+  // ProjectionListID card: it already shows its own table-identity
+  // chip below (a region frame's one-level-deep children preview,
+  // goal 0105) and swapping that for the table unit's live interactive
+  // grid would break that deliberately note-styled, fixed-size preview.
+  const faceLoader = card.ProjectionListID ? undefined : resolveUnit(card)?.render.Face
   const childCount = childrenOf(allCards, card.ID).length
   // The kind's declared face fields (goal 0152): fields marked
   // ShowOnCard, in declaration order, rendering this card's non-empty
@@ -204,6 +213,7 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data, selecte
           </span>
         )}
       </div>
+      {faceLoader && <UnitRenderSlot loader={faceLoader} card={card} />}
       {data.titleEditing ? (
         <input
           autoFocus

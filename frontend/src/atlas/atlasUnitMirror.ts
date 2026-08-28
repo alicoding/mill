@@ -48,7 +48,13 @@ export const MIRROR_UNITS: UnitRenderer[] = [
     id: 'mirror-image',
     detect: (card) => IMAGE_EXTENSIONS.has(extensionOf(card.MirrorPath)),
     tag: () => ({ label: 'IMG', color: 'attention' }),
-    render: { Page: mirrorPageLoader },
+    render: {
+      Page: mirrorPageLoader,
+      // Closing goal 0179's gap 2: a promoted image card is otherwise
+      // an empty titled box until opened (AtlasNoteCardNode.tsx
+      // consumes this Face for every unit that declares one).
+      Face: cachedLoader(() => import('./AtlasUnitMirrorImageFace').then((m) => m.AtlasUnitMirrorImageFace)),
+    },
     exporters: [],
   },
   {
