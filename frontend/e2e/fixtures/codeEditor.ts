@@ -24,33 +24,63 @@ export async function fillCodeEditor(page: Page, testId: string, text: string) {
   await page.keyboard.insertText(text)
 }
 
-// fillMarkdownNote drives the markdown note field (goal 0145) in
+// fillMilkdown drives a Milkdown-backed note editor (goal 0244 S3;
+// replaces the old shared/CodeEditor-backed prose field, goal 0145) --
+// the note's ONE markdown-canonical WYSIWYG door, used by both the
+// sticky's own editing mount and MarkdownNoteField's. Real keystrokes
+// (testing.md: user primitives, not synthetic events), never a bulk
+// insertText: Milkdown's own input rules (## -> heading, **x** ->
+// bold, - [ ] -> a task item) fire off the browser's native
+// beforeinput stream typing produces, and a bulk single-shot
+// insertText call was measured live to skip them entirely (the mark
+// stays literal `**x**` text). Multi-line input types each line
+// separately with a real Enter between -- a single .type() call
+// carrying an embedded "\n" was measured live to scramble character
+// order (Playwright's own newline-as-Enter synthesis racing
+// Milkdown's async list/paragraph transactions), where a real user
+// physically cannot generate that race (one key at a time).
+//
+// focus(), never click() -- carried over from the CodeMirror-era
+// fillSticky this folds into (see blurSticky's own comment on why
+// programmatic focus is still the deterministic door): a click on the
+// STICKY specifically is a React Flow node click, which measured live
+// to select-and-replace whatever else the board had selected (a real
+// regression the multi-select suite caught). The draft/rendered mount
+// this targets already autofocuses or accepts focus() directly, so a
+// click was never load-bearing for any consumer.
+export async function fillMilkdown(page: Page, testId: string, text: string) {
+  const content = page.locator(`[data-testid="${testId}"] [contenteditable="true"]`)
+  await content.waitFor()
+  await content.focus()
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a')
+  await page.keyboard.press('Delete')
+  const lines = text.split('\n')
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i]) await page.keyboard.type(lines[i])
+    if (i < lines.length - 1) await page.keyboard.press('Enter')
+  }
+}
+
+// fillMarkdownNote drives the shared MarkdownNoteField (goal 0145) in
 // either mode: a non-empty note renders at rest, so entering edit
 // means clicking the rendered view first; an empty note IS the
 // editor already.
 export async function fillMarkdownNote(page: Page, testId: string, text: string) {
   const rendered = page.getByTestId(`${testId}-rendered`)
   if (await rendered.count()) await rendered.click()
-  await fillCodeEditor(page, testId, text)
+  await fillMilkdown(page, testId, text)
 }
 
-// The sticky note's editing surface (goal 0145): the shared prose
-// CodeEditor, or its pre-engine textarea fallback. `fillSticky`
-// replaces the draft text; `blurSticky` commits it. stickyEditor
-// targets the wrapper CodeEditor renders.
+// The sticky note's editing surface (goal 0145; Milkdown since goal
+// 0244 S3). `fillSticky` replaces the draft text; `blurSticky` commits
+// it. stickyEditor targets the wrapper MilkdownEditor renders --
+// unchanged testid, so it doubles as the pre-engine textarea fallback
+// locator too.
 export function stickyEditor(page: Page) {
   return page.locator('[data-testid="atlas-sticky-editor"]')
 }
 export async function fillSticky(page: Page, text: string) {
-  // focus(), never click(): a click on the sticky is a React Flow
-  // node click, which select-and-replaces whatever the test had
-  // selected -- the draft editor autofocuses, so focus is enough.
-  const content = page.locator('[data-testid="atlas-sticky-editor"] .cm-content')
-  await content.waitFor()
-  await content.focus()
-  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a')
-  await page.keyboard.press('Delete')
-  await page.keyboard.insertText(text)
+  await fillMilkdown(page, 'atlas-sticky-editor', text)
 }
 // Commit is POINTER-driven now (AtlasStickyNode: a press outside the
 // note, or the whole window losing focus) -- a real user's blur/tab-
@@ -60,7 +90,7 @@ export async function fillSticky(page: Page, text: string) {
 // unaffected by the pointer-vs-focus split) is the deterministic
 // commit path for a test -- kept named `blurSticky` so no spec churn.
 export async function blurSticky(page: Page) {
-  const content = page.locator('[data-testid="atlas-sticky-editor"] .cm-content, [data-testid="atlas-sticky-editor"] textarea').first()
+  const content = page.locator('[data-testid="atlas-sticky-editor"] [contenteditable="true"], [data-testid="atlas-sticky-editor"] textarea').first()
   await content.focus()
   await page.keyboard.press('Control+Enter')
   await page.locator('[data-testid="atlas-sticky-editor"]').waitFor({ state: 'detached' })

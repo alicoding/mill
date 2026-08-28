@@ -238,7 +238,11 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
   }
 
   const commitTitle = () => void persist({ title }, 'title')
-  const commitNote = () => void persist({ note }, 'note')
+  // Takes the authoritative current text directly from
+  // MarkdownNoteField's own onCommit (its own comment has the debounce
+  // race this closes) -- `note` state (kept for the field's controlled
+  // `value` prop) can lag behind it by one Milkdown update cycle.
+  const commitNote = (text: string) => void persist({ note: text }, 'note')
   const commitSource = () => void persist({ source }, 'source')
   const commitMirrorPath = () => void persist({ mirrorPath }, 'mirrorPath')
   const commitField = (key: string, value: string) => {
@@ -319,7 +323,19 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
         />
       )}
       renderBody={() => (
-        <div className={styles.body} data-file-drop-target data-file-drop-context={FILE_DROP_CONTEXT_CARD_PAGE}>
+        // Own Escape handler, not just Dialog's built-in one:
+        // ProseMirror (the note field's own Milkdown editor, goal 0244
+        // S3) calls preventDefault() on every Escape keydown by
+        // construction, and Dialog's own close-on-Escape skips a
+        // defaultPrevented event -- so with focus inside the note
+        // field, Escape would otherwise silently do nothing (see
+        // AtlasNoteOverlay.tsx's identical fix for the full finding).
+        <div
+          className={styles.body}
+          data-file-drop-target
+          data-file-drop-context={FILE_DROP_CONTEXT_CARD_PAGE}
+          onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); onClose() } }}
+        >
           <div>
             <AtlasCardPropertyStrip
               card={displayedCard}

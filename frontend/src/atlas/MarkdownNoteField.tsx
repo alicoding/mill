@@ -1,25 +1,44 @@
 import { useEffect, useRef, useState } from 'react'
-import { AtlasService } from '../shared/bindings'
-import { CodeEditor } from '../shared/CodeEditor'
+import { MilkdownEditor } from '../shared/MilkdownEditor'
 import styles from './MarkdownNoteField.module.css'
 
-// The note as a record (goal 0145): the stored string IS markdown.
-// At rest it renders (same safe GFM path the mirror preview trusts);
-// click to edit the source in the one editor door (CodeEditor,
-// markdown mode); a press outside the editor commits it and returns
-// to the rendered view. An empty note stays an editor -- the write
-// invitation is the field.
-export function MarkdownNoteField({ value, onChange, onCommit, placeholder, ariaLabel, testId }: {
+// The note as a record (goal 0145); goal 0244 S3 replaced the editor
+// with Milkdown, a markdown-canonical WYSIWYG: the stored string IS
+// markdown, but no raw source is ever shown. At rest the SAME engine
+// renders it read-only, client-side (no server round-trip); click to
+// edit swaps in the editable Milkdown mount; a press outside the
+// editor commits it and returns to the rendered view. An empty note
+// stays an editor -- the write invitation is the field.
+export function MarkdownNoteField({ value, onChange, onCommit, placeholder, ariaLabel, testId, onRequestCommitReady }: {
   value: string
   onChange: (v: string) => void
-  onCommit: () => void
+  // Receives the AUTHORITATIVE current text directly (testing.md:
+  // computed into a local and passed, never round-tripped through the
+  // caller's own state first) -- see getMarkdownRef's own comment
+  // below for why `value`/`onChange`'s state alone isn't safe to read
+  // at commit time.
+  onCommit: (text: string) => void
   placeholder: string
   ariaLabel: string
   testId: string
+  // Hands the caller a "commit right now, the same authoritative way a
+  // press-outside does" trigger (undefined again on unmount) -- for a
+  // dismissal path that isn't a pointerdown or a window blur (a
+  // Dialog's own Escape/close-affordance, AtlasNoteOverlay.tsx's own
+  // consumer). Without this, a caller wrapping its OWN close handler
+  // around a commit would have to re-read `value` itself, which is
+  // exactly the debounced, can-be-stale read this field exists to
+  // avoid.
+  onRequestCommitReady?: (requestCommit: (() => void) | undefined) => void
 }) {
   const [editing, setEditing] = useState(false)
-  const [html, setHtml] = useState('')
   const editorWrapRef = useRef<HTMLDivElement>(null)
+  // The synchronous "read the doc right now" accessor MilkdownEditor's
+  // own onReady hands over -- see MilkdownEditorProps's onReady comment
+  // for the debounce race this exists to close. Falls back to `value`
+  // (the caller's own last onChange-delivered state) before the engine
+  // reports ready.
+  const getMarkdownRef = useRef<(() => string) | undefined>(undefined)
 
   const showEditor = editing || value.trim() === ''
 
@@ -47,23 +66,10 @@ export function MarkdownNoteField({ value, onChange, onCommit, placeholder, aria
     }
   }, [editing])
 
-  useEffect(() => {
-    if (showEditor) return
-    let stale = false
-    AtlasService.RenderNoteMarkdown(value)
-      .then((h) => {
-        if (!stale) setHtml(h)
-      })
-      .catch(() => setHtml(''))
-    return () => {
-      stale = true
-    }
-  }, [value, showEditor])
-
   // Entering edit puts the caret where the click promised it.
   useEffect(() => {
     if (!editing) return
-    editorWrapRef.current?.querySelector<HTMLElement>('.cm-content, textarea')?.focus()
+    editorWrapRef.current?.querySelector<HTMLElement>('[contenteditable="true"], textarea')?.focus()
   }, [editing])
 
   // Refreshes commitRef with this render's closure -- outside render,
@@ -72,9 +78,20 @@ export function MarkdownNoteField({ value, onChange, onCommit, placeholder, aria
   useEffect(() => {
     commitRef.current = () => {
       setEditing(false)
-      onCommit()
+      onCommit(getMarkdownRef.current?.() ?? value)
     }
   })
+
+  // Hands the caller's own requestCommit ref this field's live commit
+  // trigger once (mount) and clears it on unmount -- deliberately NOT
+  // re-run every render (commitRef's own ref indirection already keeps
+  // the closure fresh, so the caller's stored function never goes
+  // stale).
+  useEffect(() => {
+    onRequestCommitReady?.(() => commitRef.current())
+    return () => onRequestCommitReady?.(undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (showEditor) {
     return (
@@ -83,7 +100,7 @@ export function MarkdownNoteField({ value, onChange, onCommit, placeholder, aria
         className={styles.editorWrap}
         // The bounded box itself (goal 0199's own no-auto-resize
         // regression test measures THIS, not testId's own inner
-        // CodeEditor wrapper -- that inner element keeps its full
+        // MilkdownEditor wrapper -- that inner element keeps its full
         // unclipped intrinsic height; .editorWrap's own overflow is
         // what actually bounds what's visible/measurable).
         data-testid={`${testId}-wrap`}
@@ -92,14 +109,14 @@ export function MarkdownNoteField({ value, onChange, onCommit, placeholder, aria
         // mid-keystroke (value no longer empty, editing still false).
         onFocus={() => setEditing(true)}
       >
-        <CodeEditor
+        <MilkdownEditor
           value={value}
           onChange={onChange}
-          language="markdown"
-          prose
+          onReady={(fn) => {
+            getMarkdownRef.current = fn
+          }}
           ariaLabel={ariaLabel}
           placeholder={placeholder}
-          minHeightRows={2}
           testId={testId}
         />
       </div>
@@ -116,7 +133,12 @@ export function MarkdownNoteField({ value, onChange, onCommit, placeholder, aria
       onKeyDown={(e) => {
         if (e.key === 'Enter') setEditing(true)
       }}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    >
+      {/* Read-only Milkdown mount, keyed by value so an external
+          change remounts fresh rather than needing a live sync path
+          this field's own edit sessions never need (see
+          AtlasStickyNode's identical comment). */}
+      <MilkdownEditor key={value} value={value} ariaLabel={ariaLabel} />
+    </div>
   )
 }
