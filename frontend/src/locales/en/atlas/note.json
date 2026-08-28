@@ -1,8 +1,7 @@
 {
   "sticky": {
     "placeholder": "Type a note…",
-    "ariaLabel": "Note",
-    "empty": "Empty note"
+    "ariaLabel": "Note"
   },
   "noteOverlay": {
     "title": "Note"

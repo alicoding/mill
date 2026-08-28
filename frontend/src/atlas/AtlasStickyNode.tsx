@@ -140,19 +140,43 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
     commitRef.current = commit
   })
 
-  if (editing) {
-    // A draft (note === null) has no prior size to preserve, so it
-    // still grows to fit the first typed content; an existing note's
-    // own re-edit stays pinned to its current box (goal 0193: editing
-    // never resizes anything automatically -- if you can't see enough,
-    // you resize it yourself, and it stays where you put it).
+  // Empty-state unification (goal 0247, the 0226 rule): an empty note
+  // has no separate at-rest presentation -- the write invitation IS
+  // the field, same as MarkdownNoteField's own `showEditor` contract.
+  // A draft (note === null) has no prior size to preserve, so it still
+  // grows to fit the first typed content; an existing note's own
+  // re-edit (or an existing-but-emptied note's own invitation) stays
+  // pinned to its current box (goal 0193: editing never resizes
+  // anything automatically).
+  if (editing || text.trim() === '') {
     const sizeClass = note ? '' : ` ${styles.editingUnsized}`
     return (
       <div
         ref={wrapRef}
         className={`${styles.sticky} ${styles.editing}${sizeClass} nodrag nopan nowheel`}
         data-testid="atlas-sticky-note"
-        data-editing="true"
+        data-editing={editing ? 'true' : 'false'}
+        // A press into an empty note (not yet a real editing session,
+        // just showing its own placeholder) promotes to a real one --
+        // the same promotion MarkdownNoteField's onFocus does. Idle
+        // while already editing (editing is already true).
+        onFocus={() => {
+          if (!editing) onEnterEdit()
+        }}
+        // A short/empty note's own contenteditable is only as tall as
+        // its one line of placeholder text (a percentage-height chain
+        // to fill the box was tried and measured unreliable --
+        // MilkdownEditor.module.css's own header carries that finding)
+        // -- a press anywhere in the REMAINING box below it must still
+        // focus the field, the same way clicking blank space in a
+        // native textarea does. Idle once a real click already landed
+        // on the editable itself (this would just re-focus the same
+        // element).
+        onClick={(e) => {
+          if (editing) return
+          const target = e.currentTarget.querySelector<HTMLElement>('[contenteditable="true"], textarea')
+          target?.focus()
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Escape') {
             e.preventDefault()
@@ -188,7 +212,12 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
           }}
           ariaLabel={t('sticky.ariaLabel')}
           placeholder={t('sticky.placeholder')}
-          testId="atlas-sticky-editor"
+          // The real editing session keeps the stable testid every
+          // existing fixture (stickyEditor/blurSticky) targets; the
+          // pre-click invitation (editing still false, text empty)
+          // shares the rest render's own testid -- it detaches the
+          // moment a real session starts, same as the rest view would.
+          testId={editing ? 'atlas-sticky-editor' : 'atlas-sticky-note-render'}
         />
       </div>
     )
@@ -244,26 +273,22 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
           }}
         />
       )}
-      {text.trim() === '' ? (
-        <div className={`${styles.text} ${styles.emptyText}`}>{t('sticky.empty')}</div>
-      ) : (
-        <div
-          className={`${styles.text} ${styles.mdBody} nowheel`}
-          // A long note wheel-scrolls in place (AtlasStickyNode.module.css's
-          // `.text` -- overflow-y:auto): a named surface for goal
-          // 0156's layout-fitness audit, not an undeclared scroller.
-          data-scroll-region="sticky-note-body"
-        >
-          {/* Read-only Milkdown mount (goal 0244 S3): the SAME engine
-              that edits also renders at rest, client-side -- no
-              server round-trip (the old RenderNoteMarkdown RPC).
-              Keyed by the note's own text so an external change (a
-              background refresh landing while this note isn't the one
-              being edited) remounts fresh rather than needing a live
-              external-value sync the editing session never needs. */}
-          <MilkdownEditor key={text} value={text} ariaLabel={t('sticky.ariaLabel')} testId="atlas-sticky-note-render" />
-        </div>
-      )}
+      <div
+        className={`${styles.text} ${styles.mdBody} nowheel`}
+        // A long note wheel-scrolls in place (AtlasStickyNode.module.css's
+        // `.text` -- overflow-y:auto): a named surface for goal
+        // 0156's layout-fitness audit, not an undeclared scroller.
+        data-scroll-region="sticky-note-body"
+      >
+        {/* Read-only Milkdown mount (goal 0244 S3): the SAME engine
+            that edits also renders at rest, client-side -- no
+            server round-trip (the old RenderNoteMarkdown RPC).
+            Keyed by the note's own text so an external change (a
+            background refresh landing while this note isn't the one
+            being edited) remounts fresh rather than needing a live
+            external-value sync the editing session never needs. */}
+        <MilkdownEditor key={text} value={text} ariaLabel={t('sticky.ariaLabel')} testId="atlas-sticky-note-render" />
+      </div>
     </div>
   )
 })

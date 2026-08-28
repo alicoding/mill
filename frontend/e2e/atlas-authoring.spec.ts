@@ -210,10 +210,14 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
 })
 
 // Regression: an empty note is creatable -- placement itself is the
-// capture (the place-then-type flow), and the empty sticky renders a
-// muted placeholder until typed into.
+// capture (the place-then-type flow). Empty-state unification (goal
+// 0247, the 0226 rule): no separate "Empty note" at-rest label -- the
+// note's OWN Milkdown mount shows its own placeholder decoration
+// (`.crepe-placeholder`), the SAME editor a real edit session uses,
+// and a single click anywhere in it (no prior selection needed, unlike
+// a non-empty note) starts typing directly.
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
-test('an empty note places, renders its placeholder, and takes text later', async ({}, testInfo) => {
+test('an empty note places, shows its own placeholder inline, and takes text later', async ({}, testInfo) => {
   const idx = testInfo.parallelIndex
   const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-atlas-emptynote-${idx}-`))
   const port = ATLAS_AUTHORING_SERVER_BASE_PORT + 40 + idx
@@ -242,17 +246,20 @@ test('an empty note places, renders its placeholder, and takes text later', asyn
 
     const sticky = page.getByTestId('atlas-sticky-note')
     await expect(sticky).toHaveCount(1)
-    await expect(sticky).toContainText('Empty note')
+    // The placeholder is a CSS decoration (`content: attr(data-placeholder)`
+    // on `::before`), invisible to textContent -- assert the attribute
+    // Milkdown's own placeholder feature sets, not rendered text.
+    await expect(sticky.locator('.crepe-placeholder')).toHaveAttribute('data-placeholder', 'Type a note…')
 
-    // Click-select then click-commit enters edit; typed text persists
-    // and the placeholder leaves.
-    await sticky.click()
+    // A single press into the empty note's own field starts typing
+    // directly -- no prior selection needed (unlike a non-empty note's
+    // select-then-click), since the placeholder IS the invitation.
     await sticky.click()
     await expect(stickyEditor(page)).toBeVisible()
     await fillSticky(page, 'ZzE2eTypedLater')
     await blurSticky(page)
     await expect(sticky).toContainText('ZzE2eTypedLater')
-    await expect(sticky).not.toContainText('Empty note')
+    await expect(sticky.locator('.crepe-placeholder')).toHaveCount(0)
   } finally {
     await server?.stop()
     rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })

@@ -1,15 +1,21 @@
-/* Unmistakably annotation, never a card: a soft attention-muted tint
-   (Primer's own already theme-tuned token, no manual color-mix needed)
-   and a fixed footprint slightly smaller than a note card's 190x128
-   (atlasBoardLayout.ts's STICKY_WIDTH/STICKY_HEIGHT). */
+/* The knowledge-canvas paper-card convention (goal 0247, converged
+   pattern research: Heptabase/Obsidian Canvas over the FigJam/Miro
+   workshop-tool yellow-sticky look) -- the SAME neutral surface every
+   other board card uses (AtlasTableCardNode.module.css's own
+   background/border/shadow triple), not a tinted attention color.
+   Recognition against a Topic/kind card comes from STRUCTURE, not
+   paint: a note carries no title/kind-pill header, content starts
+   flush at this padding. Fixed footprint slightly smaller than a note
+   card's 190x128 (atlasBoardLayout.ts's STICKY_WIDTH/STICKY_HEIGHT). */
 .sticky {
     box-sizing: border-box;
     width: 100%;
     height: 100%;
     padding: 10px 12px;
-    border: 1px solid var(--borderColor-attention-muted);
+    border: 1px solid var(--borderColor-default);
     border-radius: var(--borderRadius-medium);
-    background: var(--bgColor-attention-muted);
+    background: var(--bgColor-default);
+    box-shadow: var(--shadow-resting-small, 0 1px 3px rgba(0, 0, 0, 0.08));
     cursor: pointer;
     display: flex;
 }
@@ -64,15 +70,6 @@
     font-size: 12px;
 }
 
-/* Heavier than the shared ring default (AtlasBoard.module.css, goal
-   0197) on purpose -- the sticky's attention-tinted ground swallows the
-   default 2px accent line cards get away with on white. Only the two
-   custom properties the shared rule reads are set here; the box-shadow
-   declaration itself lives in ONE place. */
-:global(.react-flow__node-atlas-sticky.selected) {
-    --mill-ring-inner: 3px;
-    --mill-ring-outer: 7px;
-}
 :global(.react-flow__node.selected) .sticky {
     border-color: var(--borderColor-accent-emphasis);
 }
@@ -164,7 +161,3 @@
     outline: none;
 }
 
-.emptyText {
-    color: var(--fgColor-muted);
-    font-style: italic;
-}

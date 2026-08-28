@@ -25,6 +25,18 @@
 
 .mount {
     width: 100%;
+    /* Containment (goal 0247, the canvas-note trim): every absolutely-
+       positioned Milkdown decoration -- the drop-cursor line, the
+       selection toolbar's tooltip -- targets its nearest POSITIONED
+       ancestor (`offsetParent`) or falls back to this element's own
+       parent chain; without `position: relative` here, the drop-cursor
+       specifically walks up to an unpositioned ancestor (often <body>)
+       and paints at document scale, outside the note entirely. Pairing
+       it with `overflow: hidden` clips any of that decoration to this
+       mount's own box regardless of which ancestor it resolved to,
+       since clipping is DOM-containment-based, not positioning-based. */
+    position: relative;
+    overflow: hidden;
     --crepe-color-background: transparent;
     --crepe-color-surface: var(--bgColor-default);
     --crepe-color-surface-low: var(--bgColor-muted);
@@ -62,6 +74,29 @@
 .mount :global(.milkdown) :global(.ProseMirror) {
     padding: 0;
     font-size: inherit;
+}
+
+/* A fenced code block with the CodeMirror feature off (milkdownCore's
+   NOTE_FEATURES, goal 0247) falls back to the commonmark preset's own
+   plain `pre`/`code` node view -- no language picker, no Copy button,
+   no line gutter. Styled here as a simple monospace block; content
+   wraps (never a fixed-width overflow past the note's own bounds,
+   the same containment .mount's own rule above enforces for Milkdown's
+   floating chrome). */
+.mount :global(.milkdown) :global(pre) {
+    margin: 0 0 4px;
+    padding: 6px 8px;
+    background: var(--bgColor-neutral-muted);
+    border-radius: var(--borderRadius-medium);
+    font-family: var(--mill-mono);
+    font-size: 11px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.mount :global(.milkdown) :global(pre) :global(code) {
+    background: none;
+    padding: 0;
 }
 
 .fallback {
