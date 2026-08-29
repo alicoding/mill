@@ -40,6 +40,57 @@ import (
 type ResolvedShellCommandTarget struct {
 	Shell string
 	Dir   string
+	// EnvLabel names the Configure-authored execution environment the
+	// block runs inside (docs/goals/0240 S4) -- empty in the default
+	// real-login-shell posture.
+	EnvLabel string
+	// env is the child process's exact environment when an ExecEnv is
+	// set (explicit-only, codeexec.go's materialize-don't-inherit
+	// posture); nil in the default posture, where the process inherits
+	// the caller's real environment.
+	env []string
+	// argvFor builds the spawn argv for one sub-command -- the ExecEnv
+	// path routes through codeexec.go's shellArgv (clean/login flags
+	// per the environment's ProfileMode); the default path is the bare
+	// login-shell `-c` invocation this node has always used.
+	argvFor func(script string) []string
+}
+
+// resolveShellCommandRunTarget picks the block's execution target from
+// the node's own envId config (docs/goals/0240 S4): empty keeps the
+// documented default posture (the user's real login shell and real
+// environment, exactly as S1 shipped); a set envId resolves the
+// Configure-authored ExecEnv through the SAME lookup code-execution
+// uses -- shell flags via shellArgv, a per-BLOCK materialized dir via
+// resolveDir (one temp dir for the whole block, so its sub-commands
+// see each other's files), and the environment's explicit Env with
+// codeexec.go's same minimal-PATH default when it declares none.
+func resolveShellCommandRunTarget(envID string, run SecretAccessRun) (ResolvedShellCommandTarget, error) {
+	if strings.TrimSpace(envID) == "" {
+		t := ResolveShellCommandTarget()
+		t.argvFor = func(script string) []string { return []string{t.Shell, "-c", script} }
+		return t, nil
+	}
+	re, err := lookupExecEnvFn(envID, run)
+	if err != nil {
+		return ResolvedShellCommandTarget{}, fmt.Errorf("process-shell-command: %w", err)
+	}
+	dir, err := resolveDir(re.Dir)
+	if err != nil {
+		return ResolvedShellCommandTarget{}, fmt.Errorf("process-shell-command: %w", err)
+	}
+	env := re.Env
+	if len(env) == 0 {
+		env = []string{"PATH=/usr/bin:/bin:/usr/sbin:/sbin"}
+	}
+	shell, profile := re.Shell, re.ProfileMode
+	return ResolvedShellCommandTarget{
+		Shell:    shellArgv(shell, profile, "")[0],
+		Dir:      dir,
+		EnvLabel: re.Label,
+		env:      env,
+		argvFor:  func(script string) []string { return shellArgv(shell, profile, script) },
+	}, nil
 }
 
 // ResolveShellCommandTarget reads the process's own SHELL/HOME, exactly
@@ -141,13 +192,20 @@ type shellStepOutcome struct {
 // "verbatim except the resolved secret" contract), and redactValues is
 // every non-empty resolved value regardless of source, for the output
 // redaction pass below to scrub.
-func resolveShellSecretEnv(steps []ParsedCommandStep, ctx ExecContext) (env []string, redactValues []string) {
+func resolveShellSecretEnv(steps []ParsedCommandStep, ctx ExecContext, baseEnv []string) (env []string, redactValues []string) {
 	names := ExtractSecretEnvRefsAll(steps)
 	if len(names) == 0 {
-		return nil, nil
+		// An ExecEnv target's environment stays explicit-only even with
+		// no secret refs to resolve (docs/goals/0240 S4) -- baseEnv nil
+		// is the default posture's inherit-the-real-environment case.
+		return baseEnv, nil
 	}
 	run := secretAccessRunFromCtx(ctx)
-	env = append(env, os.Environ()...)
+	if baseEnv != nil {
+		env = append(env, baseEnv...)
+	} else {
+		env = append(env, os.Environ()...)
+	}
 	for _, name := range names {
 		value, _, found := shellSecretResolverFn(name, ctx.SecretsToken, run)
 		if !found {
@@ -198,7 +256,7 @@ func runShellStep(node Node, step ParsedCommandStep, total int, target ResolvedS
 	}
 
 	handle, err := startShellProcessFn(procexec.Spec{
-		Argv: []string{target.Shell, "-c", step.Text},
+		Argv: target.argvFor(step.Text),
 		Dir:  target.Dir,
 		// Env nil (the common case, resolveShellSecretEnv's own doc
 		// comment) falls back to the calling process's real environment
@@ -248,8 +306,11 @@ func runShellStep(node Node, step ParsedCommandStep, total int, target ResolvedS
 // states. steps is always non-empty (the init() closure below rejects
 // an empty parse before calling this).
 func runShellCommandBlock(node Node, ctx ExecContext, steps []ParsedCommandStep) (ExecContext, error) {
-	target := ResolveShellCommandTarget()
-	env, redactValues := resolveShellSecretEnv(steps, ctx)
+	target, err := resolveShellCommandRunTarget(node.Config["envId"], secretAccessRunFromCtx(ctx))
+	if err != nil {
+		return ctx, err
+	}
+	env, redactValues := resolveShellSecretEnv(steps, ctx, target.env)
 	var combined strings.Builder
 	// lastFailed propagates a failure forward ONLY across && steps
 	// (docs/goals/0240 S1: "&&"'s own short-circuit meaning, preserved
@@ -299,7 +360,14 @@ func init() {
 		Produces:    PayloadProduce{Kind: PayloadText},
 		Output:      "combined stdout+stderr from every sub-command that ran",
 		Label:       "Run a captured command",
-		Description: "Runs the captured payload in your real login shell, exactly as written -- no sandboxing, no stored environment profile. A piped command stays one step; commands separated by a new line or && show as separate steps. External effect -- the run asks for your approval by default. No configurable fields: this node always runs whatever payload it receives.",
+		Description: "Runs the captured payload exactly as written -- in your real login shell by default, or inside a Configure-authored execution environment (its shell, directory, and variables) when one is chosen. A piped command stays one step; commands separated by a new line or && show as separate steps. External effect -- the run asks for your approval by default.",
+		ConfigFields: []ConfigField{
+			{
+				Key: "envId", Label: "Execution environment",
+				Description: "Runs the block inside a Configure-authored environment. Empty runs your real login shell.",
+				Default:     "", Type: FieldText, RefKind: "execenv", OptionalRef: true,
+			},
+		},
 	}, func(node Node, ctx ExecContext) (ExecContext, error) {
 		steps := ParseShellCommandBlock(ctx.Payload)
 		if len(steps) == 0 {

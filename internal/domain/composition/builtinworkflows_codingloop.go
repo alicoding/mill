@@ -45,7 +45,7 @@ func codingLoopBuiltInWorkflow() []Workflow {
 				{ID: "coding-loop-e2", Source: applyID, Target: notifyID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(1),
+			Seed:    seedorigin.Stamp(2),
 		},
 	}
 }

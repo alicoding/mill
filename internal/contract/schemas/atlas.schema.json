@@ -46,6 +46,9 @@
         "RefKind": {
           "type": "string"
         },
+        "OptionalRef": {
+          "type": "boolean"
+        },
         "ShowOnCard": {
           "type": "boolean"
         },

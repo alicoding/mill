@@ -203,6 +203,7 @@ func main() {
 	}
 	codeLoopService.SetExecutionService(executionService)
 	wiring.WireCodingLoopSecrets(codeLoopService, secretService)
+	wiring.WireCodingLoopEnvPreview(codeLoopService, compositionService, configureService) // docs/goals/0240 S4
 	// Single execution path (docs/adr/0008): a headless trigger fire now
 	// runs through the same durable ExecutionService.RunWorkflow every
 	// other entrypoint uses, tagged RunKindTriggered -- constructed after

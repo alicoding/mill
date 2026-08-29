@@ -81,6 +81,9 @@
             "RefKind": {
               "type": "string"
             },
+            "OptionalRef": {
+              "type": "boolean"
+            },
             "ShowOnCard": {
               "type": "boolean"
             },
@@ -402,6 +405,9 @@
             "RefKind": {
               "type": "string"
             },
+            "OptionalRef": {
+              "type": "boolean"
+            },
             "ShowOnCard": {
               "type": "boolean"
             },
@@ -586,6 +592,9 @@
             },
             "RefKind": {
               "type": "string"
+            },
+            "OptionalRef": {
+              "type": "boolean"
             },
             "ShowOnCard": {
               "type": "boolean"
@@ -1155,6 +1164,9 @@
             },
             "RefKind": {
               "type": "string"
+            },
+            "OptionalRef": {
+              "type": "boolean"
             },
             "ShowOnCard": {
               "type": "boolean"
@@ -2626,8 +2638,24 @@
       "ID": "process-shell-command",
       "Kind": "process",
       "Label": "Run a captured command",
-      "Description": "Runs the captured payload in your real login shell, exactly as written -- no sandboxing, no stored environment profile. A piped command stays one step; commands separated by a new line or \u0026\u0026 show as separate steps. External effect -- the run asks for your approval by default. No configurable fields: this node always runs whatever payload it receives.",
-      "ConfigFields": null,
+      "Description": "Runs the captured payload exactly as written -- in your real login shell by default, or inside a Configure-authored execution environment (its shell, directory, and variables) when one is chosen. A piped command stays one step; commands separated by a new line or \u0026\u0026 show as separate steps. External effect -- the run asks for your approval by default.",
+      "ConfigFields": [
+        {
+          "Key": "envId",
+          "Label": "Execution environment",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Runs the block inside a Configure-authored environment. Empty runs your real login shell.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "execenv",
+          "OptionalRef": true,
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
       "Output": "combined stdout+stderr from every sub-command that ran",
       "Consumes": [
         "text"
@@ -4823,8 +4851,24 @@
       "ID": "process-shell-command",
       "Kind": "process",
       "Label": "Run a captured command",
-      "Description": "Runs the captured payload in your real login shell, exactly as written -- no sandboxing, no stored environment profile. A piped command stays one step; commands separated by a new line or \u0026\u0026 show as separate steps. External effect -- the run asks for your approval by default. No configurable fields: this node always runs whatever payload it receives.",
-      "ConfigFields": null,
+      "Description": "Runs the captured payload exactly as written -- in your real login shell by default, or inside a Configure-authored execution environment (its shell, directory, and variables) when one is chosen. A piped command stays one step; commands separated by a new line or \u0026\u0026 show as separate steps. External effect -- the run asks for your approval by default.",
+      "ConfigFields": [
+        {
+          "Key": "envId",
+          "Label": "Execution environment",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Runs the block inside a Configure-authored environment. Empty runs your real login shell.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "execenv",
+          "OptionalRef": true,
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
       "Output": "combined stdout+stderr from every sub-command that ran",
       "Consumes": [
         "text"

@@ -90,7 +90,7 @@ func (c *ConfigureService) resolveExecEnv(id string, run composition.SecretAcces
 		return composition.ResolvedExecEnv{}, err
 	}
 	return composition.ResolvedExecEnv{
-		Shell: string(found.Shell), ProfileMode: string(found.ProfileMode), Dir: found.Dir, Env: env,
+		Shell: string(found.Shell), ProfileMode: string(found.ProfileMode), Dir: found.Dir, Env: env, Label: found.Label,
 	}, nil
 }
 

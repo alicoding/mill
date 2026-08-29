@@ -12,6 +12,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/buildinfo"
@@ -412,4 +413,41 @@ func WireWorkflowLifecycle(comp *compositionsvc.CompositionService, triggers *tr
 		ids = append(ids, wf.ID)
 	}
 	triggers.PruneOrphanedHotkeys(ids)
+}
+
+// WireCodingLoopEnvPreview connects the Confirm screen's environment
+// line (docs/goals/0240 S4): the seeded shell step's CURRENT envId
+// (read live from CompositionService, so an edit takes effect on the
+// next preview) joined to that environment's label/shell/dir from
+// ConfigureService's plain entity list -- deliberately NOT the
+// secret-resolving lookup, since a preview must never trigger vault
+// reads or their audit lines.
+func WireCodingLoopEnvPreview(codeLoop *codeloopsvc.CodeLoopService, comp *compositionsvc.CompositionService, cfg *configuresvc.ConfigureService) {
+	codeLoop.SetShellEnvPreview(func() (string, string, string, bool) {
+		envID := codingLoopShellEnvID(comp)
+		if envID == "" {
+			return "", "", "", false
+		}
+		for _, e := range cfg.ExecEnvs() {
+			if e.ID == envID {
+				return e.Label, string(e.Shell), e.Dir, true
+			}
+		}
+		return "", "", "", false
+	})
+}
+
+// codingLoopShellEnvID reads the seeded shell step's current envId.
+func codingLoopShellEnvID(comp *compositionsvc.CompositionService) string {
+	for _, wf := range comp.Workflows() {
+		if wf.ID != composition.CodingLoopWorkflowID {
+			continue
+		}
+		for _, n := range wf.Nodes {
+			if n.ID == composition.CodingLoopShellStepID {
+				return strings.TrimSpace(n.Config["envId"])
+			}
+		}
+	}
+	return ""
 }

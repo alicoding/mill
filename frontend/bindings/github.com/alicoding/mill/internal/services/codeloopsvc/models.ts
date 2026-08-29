@@ -10,6 +10,14 @@ export interface CommandBlockPreview {
     "dir": string;
 
     /**
+     * EnvironmentLabel names the Configure-authored execution
+     * environment the seeded shell step is configured to run inside
+     * (docs/goals/0240 S4) -- empty in the default real-login-shell
+     * posture, where Shell/Dir above already tell the whole story.
+     */
+    "environmentLabel": string;
+
+    /**
      * GuardrailVerdict is "allow" | "ask" | "deny" -- the block-level
      * gate decision (goal 0240 S3): the MOST RESTRICTIVE of every step's
      * own Verdict below, since the block still checkpoints/pauses as ONE

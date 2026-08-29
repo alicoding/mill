@@ -39,6 +39,10 @@ type ResolvedExecEnv struct {
 	ProfileMode string
 	Dir         string
 	Env         []string
+	// Label is the environment's own display name -- the shell step's
+	// target line names which environment a block runs inside
+	// (docs/goals/0240 S4); code-execution ignores it.
+	Label string
 }
 
 // lookupExecEnvFn defaults to erroring so a code-execution node run
