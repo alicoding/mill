@@ -7,13 +7,16 @@ self-registered files. This page is the contract that file has to
 satisfy: how it gets discovered, what its declaration requires, and
 which platform services its runtime code may call — and may not.
 
-Read this as a Mill developer working in this repo, not as a plugin
-author installing a package: there's no out-of-tree loading mechanism
-yet, so extending the canvas means editing Mill's own tree, the same
-way adding a workflow step type does. That's a deliberate, recorded
-gap, not an oversight — nothing here promises stability for a tool
-built outside this repo, and the "Stability" section below says
-exactly what is and isn't safe to build against.
+Two doors exist now. A **runtime plugin** — a folder with a manifest
+and a `main.js`, copied into the app's plugins folder, no rebuild —
+is the out-of-tree door, and [Install a plugin](install-a-plugin.md)
+covers it end to end, including the `activate(api)` contract and the
+guarded-capability model. This page is the OTHER door: a compiled-in
+tool built by editing Mill's own tree, the same way adding a workflow
+step type does — fuller reach (custom React rendering, gestures,
+style fields) at the price of a rebuild. The "Stability" section
+below says exactly what is and isn't safe to build against either
+way.
 
 ## How it loads
 

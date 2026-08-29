@@ -40,7 +40,15 @@
       "builtIn": "Built-in",
       "turnAllOff": "Turn all off",
       "turnAllOn": "Turn all on",
-      "docsLink": "See how canvas objects work"
+      "docsLink": "See how canvas objects work",
+      "pluginsTitle": "Installed plugins",
+      "openPluginsFolder": "Open plugins folder",
+      "reload": "Reload",
+      "installHint": "Copy a plugin's folder here, then reload.",
+      "noPlugins": "No plugins installed yet.",
+      "pluginCapabilities": "Can request: {{list}}",
+      "pluginDisabledNote": "Turned off. Turn on and reload to load it.",
+      "pluginToggleAria": "Enable {{name}}"
     },
     "keyboardShortcuts": {
       "description": "Every in-window command Mill dispatches. Rebind one by clicking its combo and pressing a new one — the same recorder used for a workflow's own trigger hotkey below."
