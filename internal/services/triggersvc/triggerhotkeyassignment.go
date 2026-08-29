@@ -173,6 +173,38 @@ func (s *TriggerService) DebugAssignHotkey(workflowID string, mods []string, key
 	return label, nil
 }
 
+// PruneOrphanedHotkeys drops every binding whose workflow id is not
+// in validIDs -- the one-shot boot heal for bindings leaked by
+// deletes that predate the delete-releases-binding hook
+// (docs/goals/0250, the composition-state class). Deliberately NOT
+// folded into Sync: Sync can run with transient partial workflow
+// lists, and pruning there would silently drop live bindings; this
+// runs once from the composition root, after both services have
+// loaded their persisted state, with the full id set.
+//
+//wails:ignore
+func (s *TriggerService) PruneOrphanedHotkeys(validIDs []string) {
+	valid := make(map[string]bool, len(validIDs))
+	for _, id := range validIDs {
+		valid[id] = true
+	}
+	s.mu.Lock()
+	var dropped []string
+	for id := range s.hkRaw {
+		if !valid[id] {
+			dropped = append(dropped, id)
+			delete(s.hkRaw, id)
+		}
+	}
+	s.mu.Unlock()
+	if len(dropped) == 0 {
+		return
+	}
+	s.persistHotkeys()
+	s.logger.Info("orphaned trigger hotkeys pruned", "workflows", dropped)
+	s.Sync(s.comp.Workflows())
+}
+
 // ListHotkeys returns every workflow ID with an assigned hotkey, mapped
 // to its human-readable binding label (e.g. "⌘⇧M").
 func (s *TriggerService) ListHotkeys() map[string]string {
