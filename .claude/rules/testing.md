@@ -95,6 +95,17 @@ at:
   not, because …" — never silence.
 - **Manual-only registry** — OS-bound checks, listed explicitly with
   reasons, never silently absent (goal 0010's enforcement):
+  - **The menu-bar surface's OS half** (goal 0189,
+    `SystemTray.AttachWindow` + `newTrayPanelWindow`) -- the tray
+    ATTACHMENT is OS-bound end to end; the panel's CONTENT is
+    e2e-proven at /#/traypanel (tray-panel.spec.ts). Verify on an
+    installed build: the icon renders as a template glyph legible on
+    BOTH light and dark menu bars; clicking it toggles the panel
+    anchored under the icon (frontmost app stays active -- the panel
+    is a non-activating NSPanel); clicking away dismisses it; parking
+    an approval shows the count beside the icon (SetLabel) and
+    clearing it removes the count; the panel's Stop actually cancels
+    a live run; right-click still opens the Open Mill/Quit menu.
   - **Away-attention dock bounce** (`dockBounceFn`,
     `settingsservice_attention.go`) — the notify adapter's cgo send
     aborts headless; verify desktop-mode by parking an approval while

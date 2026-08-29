@@ -110,9 +110,29 @@ func (s *SettingsService) IsAway(focused bool) bool {
 // class §1's what-you-see-is-what-I-see thesis exists to prevent,
 // applied to Mill's own plumbing).
 func (s *SettingsService) SetPendingBadge(count int) {
-	if err := dockbadge.Set(count); err != nil {
+	if err := dockBadgeSetFn(count); err != nil {
 		slog.Warn("dock badge set failed", "count", count, "error", err)
 	}
+	if s.trayCountFn != nil {
+		s.trayCountFn(count)
+	}
+}
+
+// dockBadgeSetFn is SetPendingBadge's seam to the real dock adapter --
+// the same package-var shape dockBounceFn uses, and for the same
+// reason: the real call needs a live app (it hangs a headless test),
+// so a test swaps this to observe the fan-out instead.
+var dockBadgeSetFn = dockbadge.Set
+
+// SetTrayCount wires the menu-bar label hook SetPendingBadge also
+// drives (docs/goals/0189): the frontend aggregates the pending count
+// ONCE and every OS chrome -- dock badge, tray label -- renders that
+// same number. Injected from main.go (settingssvc never imports the
+// application package), nil in server mode where no tray exists.
+//
+//wails:ignore
+func (s *SettingsService) SetTrayCount(fn func(count int)) {
+	s.trayCountFn = fn
 }
 
 // dockBounceFn is NotifyPendingApproval's one seam to the OS dock

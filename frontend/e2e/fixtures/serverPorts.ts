@@ -266,3 +266,10 @@ export const CODING_LOOP_SECRETS_MCP_BASE_PORT = 11100
 // pending-guarded-action list.
 export const RUNTIME_PLUGINS_SERVER_BASE_PORT = 11120
 export const RUNTIME_PLUGINS_MCP_BASE_PORT = 11140
+
+// tray-panel.spec.ts's own dedicated pair (goal 0189): its assertions
+// read the GLOBAL run/pending queues (exact empty states, a parked
+// run's row), which a shared worker's cohabiting specs would
+// contaminate.
+export const TRAY_PANEL_SERVER_BASE_PORT = 11160
+export const TRAY_PANEL_MCP_BASE_PORT = 11180

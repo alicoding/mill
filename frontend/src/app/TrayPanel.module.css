@@ -1,0 +1,135 @@
+/* The menu-bar status panel (docs/goals/0189). Primer design tokens
+   only, per .claude/rules/frontend.md -- one compact vertical surface
+   filling the whole frameless panel window, same family as
+   QuickPanel.module.css. */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  overflow: hidden;
+  font-size: var(--text-body-size-medium, 14px);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8, 8px);
+  padding: var(--base-size-12, 12px) var(--base-size-12, 12px) var(--base-size-8, 8px);
+  border-bottom: 1px solid var(--borderColor-default);
+}
+
+.presenceDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fgColor-success);
+  flex: none;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.muted {
+  color: var(--fgColor-muted);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  padding: var(--base-size-8, 8px) var(--base-size-8, 8px) 0;
+}
+
+.sectionTitle {
+  color: var(--fgColor-muted);
+  text-transform: uppercase;
+  font-size: var(--text-caption-size, 12px);
+  letter-spacing: 0.04em;
+  padding: 0 var(--base-size-4, 4px) var(--base-size-4, 4px);
+}
+
+.emptyLine {
+  padding: var(--base-size-8, 8px) var(--base-size-12, 12px);
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--base-size-6, 6px) var(--base-size-8, 8px);
+  border: none;
+  border-radius: var(--borderRadius-medium, 6px);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.row:hover {
+  background: var(--bgColor-muted);
+}
+
+.rowTitle {
+  font-weight: var(--base-text-weight-medium, 500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.rowDetail {
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small, 12px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.runRow {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8, 8px);
+  padding: var(--base-size-6, 6px) var(--base-size-8, 8px);
+  border-radius: var(--borderRadius-medium, 6px);
+}
+
+.runRow:hover {
+  background: var(--bgColor-muted);
+}
+
+.runInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.stopButton {
+  color: var(--fgColor-danger);
+  flex: none;
+}
+
+.footer {
+  margin-top: auto;
+  padding: var(--base-size-8, 8px) var(--base-size-12, 12px);
+  border-top: 1px solid var(--borderColor-default);
+}
+
+.quitBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-8, 8px);
+}
+
+.quitButtons {
+  display: flex;
+  gap: var(--base-size-8, 8px);
+}

@@ -16,6 +16,7 @@ import App from './App'
 import { AppErrorBoundary, CrashProbe } from './AppErrorBoundary'
 import { QuickPanelApp } from './QuickPanelApp'
 import { ApprovalPromptApp } from './ApprovalPromptApp'
+import { TrayPanelApp } from './TrayPanelApp'
 import { COLOR_MODE_STORAGE_KEY } from './theme'
 
 // Read once, synchronously, before the first render, to seed
@@ -46,6 +47,7 @@ const initialColorMode = (localStorage.getItem(COLOR_MODE_STORAGE_KEY) as 'light
 // small-floating-second-window surface" consequence, applied.
 const isQuickPanel = window.location.hash === '#/quickpanel'
 const isApprovalPrompt = window.location.hash === '#/approvalprompt'
+const isTrayPanel = window.location.hash === '#/traypanel'
 // The boundary's own e2e seam (AppErrorBoundary.tsx) -- a deliberate
 // render crash at its own hash route, never reachable from normal UI.
 const isCrashProbe = window.location.hash === '#/millcrashprobe'
@@ -76,10 +78,12 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 // mounts a canvas.
 async function bootstrap() {
   const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement)
-  if (isCrashProbe || isQuickPanel || isApprovalPrompt) {
+  if (isCrashProbe || isQuickPanel || isApprovalPrompt || isTrayPanel) {
     root.render(
       <React.StrictMode>
-        <AppErrorBoundary>{isCrashProbe ? <CrashProbe /> : isQuickPanel ? <QuickPanelApp /> : <ApprovalPromptApp />}</AppErrorBoundary>
+        <AppErrorBoundary>
+          {isCrashProbe ? <CrashProbe /> : isQuickPanel ? <QuickPanelApp /> : isTrayPanel ? <TrayPanelApp /> : <ApprovalPromptApp />}
+        </AppErrorBoundary>
       </React.StrictMode>,
     )
     return
