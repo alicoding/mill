@@ -16,7 +16,9 @@ installing one is copying that folder into Mill's plugins folder.
 
 A plugin that can't load shows exactly why on its row — a missing
 file, invalid manifest, or a capability Mill doesn't recognize —
-instead of silently doing nothing.
+instead of silently doing nothing. A plugin whose manifest sets
+`minMillVersion` to a version newer than your Mill is refused the
+same visible way: update Mill, then reload.
 
 ## Turning a plugin off
 

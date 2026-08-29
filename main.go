@@ -189,7 +189,7 @@ func main() {
 		logger.Error("migrate legacy MCP pending writes", "error", err)
 	}
 	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
-	pluginService := wiring.NewPluginService(settingsPath, guardrailService)
+	pluginService := wiring.NewPluginService(settingsPath, guardrailService, millChannel, millUpdateVersion)
 	// docs/goals/0240 S1: the coding loop's Confirm-screen preview --
 	// read-only over guardrailService.Rules(). Its ExecutionService
 	// dependency (goal 0240 S2, RunCommandBlock's own doc comment) is

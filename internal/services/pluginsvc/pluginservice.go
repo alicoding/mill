@@ -18,6 +18,8 @@ import (
 	"sort"
 	"strings"
 
+	"golang.org/x/mod/semver"
+
 	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 )
@@ -89,15 +91,17 @@ var knownCapabilities = map[string]bool{
 var pluginIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
 
 // PluginService is Wails-bound. openURL is injected so tests never
-// shell out to the real OS handler.
+// shell out to the real OS handler. appVersion is the build-stamped
+// Mill version minMillVersion enforcement compares against.
 type PluginService struct {
-	dir       string
-	guardrail *guardrailsvc.GuardrailService
-	openURL   func(url string) error
+	dir        string
+	guardrail  *guardrailsvc.GuardrailService
+	openURL    func(url string) error
+	appVersion string
 }
 
-func New(dir string, guardrail *guardrailsvc.GuardrailService) *PluginService {
-	return &PluginService{dir: dir, guardrail: guardrail, openURL: windowing.OpenURL}
+func New(dir string, guardrail *guardrailsvc.GuardrailService, appVersion string) *PluginService {
+	return &PluginService{dir: dir, guardrail: guardrail, openURL: windowing.OpenURL, appVersion: appVersion}
 }
 
 // PluginsDir returns the directory plugins are installed into --
@@ -193,7 +197,40 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 	if info.Error == "" {
 		info.Error = validateContributes(m.Contributes)
 	}
+	if info.Error == "" {
+		info.Error = checkMinMillVersion(m.MinMillVersion, p.appVersion)
+	}
 	return info
+}
+
+// checkMinMillVersion refuses a plugin that declares it needs a newer
+// Mill (the converged app-plugin convention: plugins version against
+// the APP's version, never a separate API number -- docs/goals/0245's
+// stability contract). The app's prerelease/build tags are stripped
+// before comparing: a beta is stamped against the NEXT release
+// (main.go's build-stamp trio documents exactly this), so plain
+// semver would rank it below that release's minimum forever. A
+// malformed minimum fails closed like any other manifest error; an
+// unparseable app version (an unstamped source build) skips
+// enforcement rather than refusing every version-pinned plugin.
+func checkMinMillVersion(minVersion, appVersion string) string {
+	if strings.TrimSpace(minVersion) == "" {
+		return ""
+	}
+	minV := "v" + strings.TrimPrefix(minVersion, "v")
+	if !semver.IsValid(minV) {
+		return fmt.Sprintf("the manifest minMillVersion %q must be a version like \"1.2.3\"", minVersion)
+	}
+	appV := "v" + strings.TrimPrefix(appVersion, "v")
+	if !semver.IsValid(appV) {
+		return ""
+	}
+	appV = strings.TrimSuffix(appV, semver.Build(appV))
+	appV = strings.TrimSuffix(appV, semver.Prerelease(appV))
+	if semver.Compare(appV, minV) < 0 {
+		return fmt.Sprintf("needs Mill %s or newer -- this is Mill %s", minVersion, appVersion)
+	}
+	return ""
 }
 
 // fileExtensionPattern pins a contributed extension claim to the

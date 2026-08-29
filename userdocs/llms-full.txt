@@ -1547,18 +1547,25 @@ structural change, and any drift is caught immediately — the suite
 breaks the moment a field's meaning or a renderer's contract changes
 underneath an existing tool.
 
-**Not promised:** no semver, no deprecation window, and no
-compatibility guarantee on the *runtime* API — `commit`'s own
-signature shape, the exact set of `AtlasService` RPCs a tool may call,
-or any shared renderer's internal behavior — until there is a second
-adopter outside this repo to actually break. Today every "adopter" is
-one of Mill's own nine files, changed in the same pull request as any
-platform change that affects it, so nothing here has ever needed to
-stay backward compatible. That's stated honestly now on purpose: a
-platform that only discovers its own contract gaps after outside
-adopters build against them pays for that omission for years. The
-out-of-tree tier this page doesn't yet promise gets built once a real
-outside adopter needs it, not before.
+**Not promised for compiled-in tools:** no semver, no deprecation
+window, and no compatibility guarantee on the *runtime* API —
+`commit`'s own signature shape, the exact set of `AtlasService` RPCs a
+tool may call, or any shared renderer's internal behavior. Every
+compiled-in adopter is one of Mill's own files, changed in the same
+pull request as any platform change that affects it, so nothing here
+needs to stay backward compatible.
+
+**Promised for runtime plugins:** the plugin surface — the manifest
+schema, the `activate(api)` shape and its argument's methods, the
+`renderFace` contract, and the payload keys each `source` implies — is
+versioned against **Mill's own version**, the way desktop app-plugin
+ecosystems converge on versioning against the app rather than a
+separate API number. A plugin pins the Mill it needs with
+`minMillVersion` in its manifest; a Mill older than that refuses to
+load it, saying so on its Extensions row, instead of half-running it
+against a surface it predates. Within versions that satisfy the
+minimum, an existing manifest field or `api` method keeps its meaning
+— growth is additive.
 
 ---
 
