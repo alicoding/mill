@@ -239,10 +239,12 @@ Looks up an Attributes value in a configured List and writes the matched entry b
 
 ### Run a captured command
 
-Runs the captured payload in your real login shell, exactly as written -- no sandboxing, no stored environment profile. A piped command stays one step; commands separated by a new line or && show as separate steps. External effect -- the run asks for your approval by default. No configurable fields: this node always runs whatever payload it receives.
+Runs the captured payload exactly as written -- in your real login shell by default, or inside a Configure-authored execution environment (its shell, directory, and variables) when one is chosen. A piped command stays one step; commands separated by a new line or && show as separate steps. External effect -- the run asks for your approval by default.
 
 - Takes: text — Produces: text
 - Effect: external — parks for approval by default
+- Settings:
+  - **Execution environment** — Runs the block inside a Configure-authored environment. Empty runs your real login shell. (references an Execution environment)
 
 ### Run a command
 

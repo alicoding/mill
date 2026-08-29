@@ -156,6 +156,7 @@ func TestProcessShellCommandExec_SecretChain_NoRefsLeavesEnvNil(t *testing.T) {
 	env, redactValues := resolveShellSecretEnv(
 		[]ParsedCommandStep{{Index: 0, Text: "echo hello"}},
 		ExecContext{},
+		nil,
 	)
 	if env != nil {
 		t.Errorf("env = %v, want nil (no secret placeholder referenced)", env)

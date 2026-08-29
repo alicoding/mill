@@ -125,6 +125,14 @@ type Field struct {
 	// field. Orthogonal to Type: the wire value is still a plain string
 	// ID.
 	RefKind string
+	// OptionalRef marks a RefKind field whose EMPTY value is a legal,
+	// meaningful configuration rather than "not configured yet"
+	// (docs/goals/0240 S4's shell-step environment: empty means the
+	// user's real login shell, a deliberate posture, not a gap) --
+	// graph preflight skips its required-ref check. Meaningless
+	// without RefKind. JSON-tagged omitempty for the same
+	// byte-identical-marshaling reason Deprecated below documents.
+	OptionalRef bool `json:"OptionalRef,omitempty"`
 	// ShowOnCard surfaces this field's value on a card's compact face
 	// (docs/goals/0152) -- read by Atlas Kinds only; other
 	// schema-carrying surfaces (List columns, Decision outputs) ignore

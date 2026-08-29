@@ -55,7 +55,9 @@ export function CodingLoopConfirmState({ preview, previewError, startError, type
         {t('codingLoop.confirm.summary', { count: stepCount, plural: stepCount === 1 ? '' : 's' })}
       </Text>
       <Text as="p" size="small" className={styles.target} data-testid="coding-loop-confirm-target">
-        {t('codingLoop.confirm.target', { shell: preview.shell, dir: preview.dir })}
+        {preview.environmentLabel
+          ? t('codingLoop.confirm.targetEnv', { env: preview.environmentLabel, shell: preview.shell, dir: preview.dir })
+          : t('codingLoop.confirm.target', { shell: preview.shell, dir: preview.dir })}
       </Text>
 
       <ol className={styles.stepList} data-testid="coding-loop-confirm-steps">

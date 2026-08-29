@@ -3,7 +3,8 @@
 
 /**
  * PluginService is Wails-bound. openURL is injected so tests never
- * shell out to the real OS handler.
+ * shell out to the real OS handler. appVersion is the build-stamped
+ * Mill version minMillVersion enforcement compares against.
  * @module
  */
 

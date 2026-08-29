@@ -53,7 +53,7 @@ func validateRequiredRefs(nodes []Node) []Issue {
 			continue
 		}
 		for _, field := range nt.ConfigFields {
-			if field.RefKind == "" {
+			if field.RefKind == "" || field.OptionalRef {
 				continue
 			}
 			if strings.TrimSpace(n.Config[field.Key]) != "" {

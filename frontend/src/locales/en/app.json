@@ -275,7 +275,8 @@
       },
       "startFailedTitle": "Couldn't start the run",
       "cancel": "Cancel",
-      "run": "Run"
+      "run": "Run",
+      "targetEnv": "Runs in the {{env}} environment ({{shell}}, {{dir}})"
     },
     "running": {
       "status": {

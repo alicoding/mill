@@ -89,3 +89,27 @@ func TestPreviewCommandBlock_DenyListedLine_TopLevelVerdictIsAsk(t *testing.T) {
 		t.Errorf("Steps[0] = %+v, want ask with a non-empty rule label naming the deny-list rule", preview.Steps[0])
 	}
 }
+
+// The Confirm screen names the configured execution environment
+// (docs/goals/0240 S4): a wired preview lookup overrides shell/dir and
+// sets the label; unwired (or no environment set) keeps the default
+// real-login-shell target untouched.
+func TestPreviewCommandBlock_EnvironmentLabel(t *testing.T) {
+	s := newTestPreviewService(t)
+	preview, err := s.PreviewCommandBlock("echo hi")
+	if err != nil {
+		t.Fatalf("PreviewCommandBlock: %v", err)
+	}
+	if preview.EnvironmentLabel != "" {
+		t.Fatalf("unwired EnvironmentLabel = %q, want empty", preview.EnvironmentLabel)
+	}
+
+	s.SetShellEnvPreview(func() (string, string, string, bool) { return "Safe sandbox", "/bin/sh", "/tmp/box", true })
+	preview, err = s.PreviewCommandBlock("echo hi")
+	if err != nil {
+		t.Fatalf("PreviewCommandBlock (env): %v", err)
+	}
+	if preview.EnvironmentLabel != "Safe sandbox" || preview.Shell != "/bin/sh" || preview.Dir != "/tmp/box" {
+		t.Fatalf("preview = %+v, want the environment's label/shell/dir", preview)
+	}
+}

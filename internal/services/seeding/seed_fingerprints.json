@@ -196,8 +196,8 @@
     "fingerprint": "cbd789a974956ceea36271f5240de1d118b6966e4a7c9637fb00467f07f03d00"
   },
   "workflow:coding-loop-run-copied-command-workflow": {
-    "seedRevision": 1,
-    "fingerprint": "318bcade8496af80091696c776202693cfa0a435d168cdb9fc8a9f47602e852e"
+    "seedRevision": 2,
+    "fingerprint": "ebf1af11ee05a917b9a32c405acf2f1648bca1727d01f8764f4d41ac5c68bef6"
   },
   "workflow:example-ai-classify-branch-workflow": {
     "seedRevision": 2,

@@ -45,6 +45,11 @@ type CommandBlockPreview struct {
 	Steps []CommandBlockPreviewStep `json:"steps"`
 	Shell string                    `json:"shell"`
 	Dir   string                    `json:"dir"`
+	// EnvironmentLabel names the Configure-authored execution
+	// environment the seeded shell step is configured to run inside
+	// (docs/goals/0240 S4) -- empty in the default real-login-shell
+	// posture, where Shell/Dir above already tell the whole story.
+	EnvironmentLabel string `json:"environmentLabel"`
 	// GuardrailVerdict is "allow" | "ask" | "deny" -- the block-level
 	// gate decision (goal 0240 S3): the MOST RESTRICTIVE of every step's
 	// own Verdict below, since the block still checkpoints/pauses as ONE
@@ -92,6 +97,8 @@ type CodeLoopService struct {
 	guard        *guardrailsvc.GuardrailService
 	exec         *executionsvc.ExecutionService
 	typedSecrets typedSecretsStore
+	// shellEnvPreviewFn -- see SetShellEnvPreview.
+	shellEnvPreviewFn func() (label, shell, dir string, ok bool)
 }
 
 // NewCodeLoopService constructs the service -- guard is read-only here
@@ -110,6 +117,19 @@ func NewCodeLoopService(guard *guardrailsvc.GuardrailService) *CodeLoopService {
 //wails:ignore
 func (s *CodeLoopService) SetExecutionService(exec *executionsvc.ExecutionService) {
 	s.exec = exec
+}
+
+// SetShellEnvPreview wires the Confirm screen's environment lookup
+// (docs/goals/0240 S4): reads the seeded shell step's CURRENT envId
+// and that environment's label/shell/dir WITHOUT resolving its env
+// values -- a preview must never trigger vault reads or their audit
+// lines, so this deliberately does not ride lookupExecEnvFn. Wired
+// from the composition root; nil (never wired, or no environment set)
+// keeps the default real-login-shell preview.
+//
+//wails:ignore
+func (s *CodeLoopService) SetShellEnvPreview(fn func() (label, shell, dir string, ok bool)) {
+	s.shellEnvPreviewFn = fn
 }
 
 // PreviewCommandBlock parses text and returns the Confirm screen's full
@@ -143,6 +163,12 @@ func (s *CodeLoopService) PreviewCommandBlock(text string) (CommandBlockPreview,
 	}
 
 	target := composition.ResolveShellCommandTarget()
+	envLabel := ""
+	if s.shellEnvPreviewFn != nil {
+		if label, shell, dir, ok := s.shellEnvPreviewFn(); ok {
+			envLabel, target.Shell, target.Dir = label, shell, dir
+		}
+	}
 	verdict := guardrail.WorstVerdict(stepVerdicts)
 
 	names := composition.ExtractSecretEnvRefsAll(parsed)
@@ -154,6 +180,7 @@ func (s *CodeLoopService) PreviewCommandBlock(text string) (CommandBlockPreview,
 
 	return CommandBlockPreview{
 		Steps: steps, Shell: target.Shell, Dir: target.Dir,
+		EnvironmentLabel:   envLabel,
 		GuardrailVerdict:   string(verdict.Effect),
 		WorkflowID:         composition.CodingLoopWorkflowID,
 		NodeID:             composition.CodingLoopShellStepID,
