@@ -32,6 +32,7 @@ export const imageTool = {
   id: imageIdentity.id,
   icon: ImageIcon,
   label: imageIdentity.commandLabel,
+  nounName: 'Image',
   description: 'Adds an image from your files or the clipboard.',
   shortcutKey: imageIdentity.shortcutKey,
   tray: 'quick',

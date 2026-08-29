@@ -5,14 +5,18 @@ import { deleteViaContextMenu, shapeDrawPoints, shapeObjects } from './fixtures/
 import { paletteDialog } from './fixtures/palette'
 
 // Settings > Extensions (goal 0237 S2, extended by goal 0237 S3's
-// rider): a registry-derived list of every registered canvas NOUN --
-// every tray tool plus every tool-less noun (diagram, sheet -- native
-// file-drop only, no tray button), each toggleable off. Shared pool:
-// the only global state this spec writes (Shape's own disabled flag)
-// is restored to its default (enabled) before the file ends, same
-// cleanup discipline display-density.spec.ts already establishes for a
-// Settings toggle in the shared pool; every board object created here
-// is deleted here.
+// rider and its own hands-on-review follow-up): a registry-derived
+// list of every registered canvas NOUN -- every tray tool plus every
+// tool-less noun (diagram, sheet -- native file-drop only, no tray
+// button), each toggleable off. Grouped into three sections
+// (Knowledge/Files/Drawing, one per registry `group` -- goal 0237 S3's
+// review rider); each row's own title is the noun ("Shape"), never the
+// command-verb phrase ("Draw a shape") that still surfaces in the tray
+// tooltip and command palette. Shared pool: the only global state this
+// spec writes (Shape's own disabled flag) is restored to its default
+// (enabled) before the file ends, same cleanup discipline
+// display-density.spec.ts already establishes for a Settings toggle in
+// the shared pool; every board object created here is deleted here.
 //
 // Disabling diagram/sheet gates useAtlasNativeFileDrop.ts's own drop
 // routing (a disabled drop falls through to the plain-card path). The
@@ -45,6 +49,9 @@ test('A row expands to show its description, an honest reach line, and the app v
   await openExtensionsSection(page)
 
   const shapeRow = page.locator('[data-testid="extensions-row"][data-extension-id="shape"]')
+  // The row's own title is the bare noun, never the tray/palette's own
+  // command-verb phrase ("Draw a shape").
+  await expect(shapeRow.getByTestId('extensions-row-title')).toHaveText('Shape')
   const expanded = shapeRow.getByTestId('extensions-row-expanded')
   await expect(expanded).toBeHidden()
 
@@ -57,10 +64,107 @@ test('A row expands to show its description, an honest reach line, and the app v
   await expect(shapeRow.getByTestId('extensions-row-description')).toHaveText('Draws a rectangle, ellipse, or arrow.')
   await expect(shapeRow.getByTestId('extensions-row-reach')).toHaveText('Reaches nothing outside Mill.')
   await expect(shapeRow.getByTestId('extensions-row-version')).toHaveText(/^Ships with Mill v/)
+  // The group chip survives in the expanded view even though the
+  // collapsed meta line below no longer repeats it.
+  await expect(expanded.getByText('Drawing', { exact: true })).toBeVisible()
 
   // Collapses again on a second click of the same summary.
   await shapeRow.locator('summary').click()
   await expect(expanded).toBeHidden()
+})
+
+test('The list groups into three sections; every row title is a noun, and the collapsed meta line never repeats the group', async ({ page }) => {
+  await page.goto('/')
+  await openExtensionsSection(page)
+
+  // Three sections, registry-derived, in knowledge/files/drawing order.
+  const knowledge = page.getByTestId('extensions-group-knowledge')
+  const files = page.getByTestId('extensions-group-file')
+  const drawing = page.getByTestId('extensions-group-annotate')
+  await expect(knowledge.getByRole('heading', { name: 'Knowledge' })).toBeVisible()
+  await expect(files.getByRole('heading', { name: 'Files' })).toBeVisible()
+  await expect(drawing.getByRole('heading', { name: 'Drawing' })).toBeVisible()
+
+  // card/note/area/table land in Knowledge; image/diagram/sheet in
+  // Files (image/diagram/sheet are the file-backed family); the
+  // freehand-marking tools in Drawing.
+  for (const id of ['card', 'note', 'area', 'table']) {
+    await expect(knowledge.locator(`[data-testid="extensions-row"][data-extension-id="${id}"]`)).toBeVisible()
+  }
+  for (const id of ['image', 'diagram', 'sheet']) {
+    await expect(files.locator(`[data-testid="extensions-row"][data-extension-id="${id}"]`)).toBeVisible()
+  }
+  for (const id of ['pencil', 'eraser', 'laser', 'shape']) {
+    await expect(drawing.locator(`[data-testid="extensions-row"][data-extension-id="${id}"]`)).toBeVisible()
+  }
+
+  // Every row's own title is the bare noun, one word.
+  const expectedTitles: Record<string, string> = {
+    card: 'Card', note: 'Note', area: 'Area', table: 'Table', image: 'Image',
+    pencil: 'Pencil', eraser: 'Eraser', laser: 'Laser', shape: 'Shape',
+    diagram: 'Diagram', sheet: 'Sheet',
+  }
+  for (const [id, title] of Object.entries(expectedTitles)) {
+    const row = page.locator(`[data-testid="extensions-row"][data-extension-id="${id}"]`)
+    await expect(row.getByTestId('extensions-row-title')).toHaveText(title)
+  }
+
+  // The collapsed meta line states source/edit-route facts, never the
+  // group word its own section heading already carries.
+  const imageMeta = page.locator('[data-testid="extensions-row"][data-extension-id="image"]').getByTestId('extensions-row-meta')
+  await expect(imageMeta).toHaveText('Backed by a file · Opens in your default app')
+  const tableMeta = page.locator('[data-testid="extensions-row"][data-extension-id="table"]').getByTestId('extensions-row-meta')
+  await expect(tableMeta).toHaveText('Live view of a List · Edits in place')
+  const shapeMeta = page.locator('[data-testid="extensions-row"][data-extension-id="shape"]').getByTestId('extensions-row-meta')
+  await expect(shapeMeta).toHaveText('Stored on the board')
+})
+
+test('The collapsed meta line stays single-line at 1000px viewport width', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 660 })
+  await page.goto('/')
+  await openExtensionsSection(page)
+
+  // diagram's own meta line is the longest in the list (a file source
+  // plus its per-object edit-route resolver's own generic phrase) --
+  // the stress case for wrapping.
+  const diagramMeta = page.locator('[data-testid="extensions-row"][data-extension-id="diagram"]').getByTestId('extensions-row-meta')
+  await expect(diagramMeta).toBeVisible()
+  const box = await diagramMeta.boundingBox()
+  if (!box) throw new Error('extensions-row-meta has no bounding box')
+  // A single line of this small-text token is well under 24px tall;
+  // two wrapped lines would roughly double it.
+  expect(box.height).toBeLessThan(24)
+})
+
+test('The toggle knob stays contained within its own row, even scrolled with a disclosure open (regression: it painted over the sticky search bar)', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 660 })
+  await page.goto('/')
+  await openExtensionsSection(page)
+
+  // Scrolling to a row well below the fold pins the sticky search bar
+  // (.filterRow, SettingsView.module.css) to the top of the scroll
+  // pane -- the exact live condition the bug needed.
+  const sheetRow = page.locator('[data-testid="extensions-row"][data-extension-id="sheet"]')
+  await sheetRow.scrollIntoViewIfNeeded()
+  await sheetRow.locator('summary').click()
+  await expect(sheetRow.getByTestId('extensions-row-expanded')).toBeVisible()
+
+  const searchBar = page.getByTestId('settings-filter')
+  await expect(searchBar).toBeVisible()
+  const box = await searchBar.boundingBox()
+  if (!box) throw new Error('settings-filter has no bounding box')
+  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+
+  const hit = await page.evaluate(({ x, y }) => {
+    const el = document.elementFromPoint(x, y)
+    return {
+      isSearchBar: el?.closest('[data-testid="settings-filter"]') !== null,
+      isToggleKnob: el?.className?.toString().includes('ToggleKnob') ?? false,
+    }
+  }, point)
+
+  expect(hit.isToggleKnob).toBe(false)
+  expect(hit.isSearchBar).toBe(true)
 })
 
 test('Turn all off empties the tray of every non-built-in tool; turn all on restores them', async ({ page }) => {

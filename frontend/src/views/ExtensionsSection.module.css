@@ -8,12 +8,25 @@
    browser's own details-open toggle, since that activation behavior is
    scoped to any click landing inside <summary> regardless of the
    descendant's own React event handling. */
+/* contain: paint scopes every descendant's own painted output --
+   including the ToggleSwitch's absolutely-positioned, transform-
+   transitioning knob in .rowAction below -- to this row's own border
+   box, and makes the row the containing block for any descendant that
+   paints as its own compositor layer. Without it, the knob's own
+   layer painted OUTSIDE the row entirely once the settings pane was
+   scrolled with a row's <details> open (reproduced live: the knob
+   rendered over the sticky search bar several rows above, hit-tested
+   via document.elementFromPoint at the search bar's own coordinates).
+   position: relative is required for contain: paint's containing-block
+   effect to apply as expected across engines. */
 .row {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: var(--base-size-8);
     width: 100%;
+    position: relative;
+    contain: paint;
 }
 .details {
     flex: 1;
@@ -41,6 +54,25 @@
     flex-shrink: 0;
     padding-top: 2px;
 }
+/* ToggleSwitch renders its own visible "On"/"Off" text next to the
+   switch by default (Primer's own buttonLabelOn/buttonLabelOff,
+   defaulting to those two words) -- but that span always carries
+   aria-hidden="true" in Primer's own markup, so it never reaches a
+   screen reader in the first place; the switch's real accessible
+   label/state comes from aria-labelledby (this row's own title) plus
+   the native button's aria-pressed. Hiding it here is a pure visual
+   change -- bare switches, state carried by the switch itself -- with
+   no accessible-name loss. Targets the aria-hidden attribute directly
+   rather than one of Primer's own hashed CSS-module class names, so it
+   keeps working across a @primer/react version bump. */
+.toggle > span[aria-hidden='true'] {
+    display: none;
+}
+/* Indent + a subtle left rule (mirrors Primer's own TreeView indent
+   guide, TreeViewItemLevelLine's border-right convention) keeps the
+   expanded disclosure reading as part of its own row rather than a
+   free-floating block, even mid-scroll with several other rows above
+   and below it. */
 .expanded {
     margin: var(--base-size-8) 0 0 24px;
     padding-left: var(--base-size-8);

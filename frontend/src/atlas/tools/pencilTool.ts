@@ -39,6 +39,7 @@ export const pencilTool = {
   id: pencilIdentity.id,
   icon: PencilIcon,
   label: pencilIdentity.commandLabel,
+  nounName: 'Pencil',
   description: 'Draws a freehand ink stroke on the board.',
   shortcutKey: pencilIdentity.shortcutKey,
   tray: 'quick',

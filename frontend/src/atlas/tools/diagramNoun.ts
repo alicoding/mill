@@ -57,5 +57,8 @@ registerBoardObjectContent('diagram', {
     label: 'Diagram',
     description: 'View and edit diagrams — draw.io files open in the real editor.',
     disableScopeNote: 'Turning this off stops new diagrams from landing on drop and closes the built-in editor. Diagrams already on the board keep working.',
+    // File-drop-only, the same family Image's own 'file' group already
+    // names (atlasNounRegistry.ts's AtlasNounGroup).
+    group: 'file',
   },
 })

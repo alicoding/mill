@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ATLAS_TOOLS } from '../atlas/atlasTools'
 import { toolLessNounExtensions } from '../atlas/atlasNounRegistry'
 import {
-  descriptionLabel, editRouteLabel, groupLabel, reachLabel, sourceLabel, versionLabel,
+  descriptionLabel, editRouteLabel, groupLabel, groupSectionLabel, reachLabel, sourceLabel, versionLabel,
   toolLessRowSource, toolRowSource,
 } from './extensionMeta'
 
@@ -11,6 +11,14 @@ describe('groupLabel', () => {
     expect(groupLabel('knowledge')).toBe('Knowledge')
     expect(groupLabel('file')).toBe('File')
     expect(groupLabel('annotate')).toBe('Drawing')
+  })
+})
+
+describe('groupSectionLabel', () => {
+  it('maps every declared group to its section-heading text, plural where the chip is singular', () => {
+    expect(groupSectionLabel('knowledge')).toBe('Knowledge')
+    expect(groupSectionLabel('file')).toBe('Files')
+    expect(groupSectionLabel('annotate')).toBe('Drawing')
   })
 })
 
@@ -75,24 +83,25 @@ describe('versionLabel', () => {
 })
 
 describe('toolRowSource (goal 0237 S3 rider)', () => {
-  it('normalizes a tray tool into a row, carrying its group and content declarations', () => {
+  it('normalizes a tray tool into a row, reading nounName (not the command-verb label) for the title', () => {
     const shape = ATLAS_TOOLS.find((t) => t.id === 'shape')!
     const row = toolRowSource(shape)
     expect(row).toEqual({
       id: 'shape',
       icon: shape.icon,
-      label: shape.label,
+      label: shape.nounName,
       description: shape.description,
       group: shape.group,
       source: shape.content?.source,
       editRoute: shape.content?.editRoute,
       capabilities: shape.capabilities,
     })
+    expect(row.label).toBe('Shape')
   })
 })
 
 describe('toolLessRowSource (goal 0237 S3 rider)', () => {
-  it('normalizes a tool-less noun into a row, with no group chip and its own disableScopeNote', () => {
+  it('normalizes a tool-less noun into a row, carrying its own group and disableScopeNote', () => {
     const diagram = toolLessNounExtensions().find((e) => e.kind === 'diagram')!
     const row = toolLessRowSource(diagram)
     expect(row).toEqual({
@@ -100,11 +109,12 @@ describe('toolLessRowSource (goal 0237 S3 rider)', () => {
       icon: diagram.extension.icon,
       label: diagram.extension.label,
       description: diagram.extension.description,
+      group: diagram.extension.group,
       source: diagram.content.source,
       editRoute: diagram.content.editRoute,
       capabilities: diagram.extension.capabilities,
       disableScopeNote: diagram.extension.disableScopeNote,
     })
-    expect(row.group).toBeUndefined()
+    expect(row.group).toBe('file')
   })
 })

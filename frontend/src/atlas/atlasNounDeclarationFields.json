@@ -12,7 +12,12 @@
   {
     "field": "label",
     "legalValues": "a string",
-    "meaning": "the button/command text. By convention every in-tree noun sources this from identityOf(id).commandLabel rather than restating it, but the field itself accepts any string."
+    "meaning": "the button/command text. By convention every in-tree noun sources this from identityOf(id).commandLabel rather than restating it, but the field itself accepts any string. NEVER read as this noun's row title in Settings > Extensions -- see nounName below."
+  },
+  {
+    "field": "nounName",
+    "legalValues": "a string",
+    "meaning": "the bare noun a user would call this thing (\"Card\", \"Pencil\"), read only by Settings > Extensions' row title. Kept separate from label because label is a command verb phrase (\"Add a card\") and a row title needs the noun, not the verb."
   },
   {
     "field": "description",
@@ -77,7 +82,7 @@
   {
     "field": "content",
     "legalValues": "an object with Component (a React component accepting { object, mirrorVersion }), ariaLabelKey (a string), and role ('img' or undefined) -- or null",
-    "meaning": "this noun's own placed-instance content contribution. registerNoun() feeds it into the board-object content registry (atlasNounRegistry.ts's registerBoardObjectContent) whenever boardObjectKind is non-null, killing AtlasBoardObjectNode.tsx's former per-Kind hand branch. A tool-less noun (diagram, sheet) calls registerBoardObjectContent directly instead of declaring this field at all, since it has no AtlasToolShape to satisfy -- it instead sets this same content shape's own optional `extension` member (icon, label, description, disableScopeNote) so Settings > Extensions can still render an honest row for it. mirrorVersion bumps on a live disk change to a fileBacked Kind's own mirrored file (see fileBacked below) -- a non-file-backed Component simply ignores it."
+    "meaning": "this noun's own placed-instance content contribution. registerNoun() feeds it into the board-object content registry (atlasNounRegistry.ts's registerBoardObjectContent) whenever boardObjectKind is non-null, killing AtlasBoardObjectNode.tsx's former per-Kind hand branch. A tool-less noun (diagram, sheet) calls registerBoardObjectContent directly instead of declaring this field at all, since it has no AtlasToolShape to satisfy -- it instead sets this same content shape's own optional `extension` member (icon, label, description, disableScopeNote, group) so Settings > Extensions can still render an honest, correctly-sectioned row for it. mirrorVersion bumps on a live disk change to a fileBacked Kind's own mirrored file (see fileBacked below) -- a non-file-backed Component simply ignores it."
   },
   {
     "field": "capabilities",

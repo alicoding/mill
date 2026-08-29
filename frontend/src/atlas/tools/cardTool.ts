@@ -16,6 +16,7 @@ export const cardTool = {
   id: cardIdentity.id,
   icon: FileIcon,
   label: cardIdentity.commandLabel,
+  nounName: 'Card',
   description: 'Adds a typed card of knowledge you can link, tag, and search.',
   shortcutKey: cardIdentity.shortcutKey,
   tray: 'quick',
