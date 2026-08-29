@@ -12,15 +12,10 @@ import '@primer/primitives/dist/css/functional/themes/dark.css'
 // the wrong element).
 import './mill-tokens.css'
 import { ThemeProvider, BaseStyles } from '@primer/react'
-// App is imported DYNAMICALLY inside bootstrap() below -- a static
-// import would evaluate the whole app module graph (including the
-// tool-registry snapshot) before the plugin loader has run. See
-// src/plugins/loader.ts's boot-order contract.
+import App from './App'
 import { AppErrorBoundary, CrashProbe } from './AppErrorBoundary'
-// QuickPanelApp/ApprovalPromptApp are dynamic for the same boot-order
-// reason as App: their own import graphs are deep enough to reach the
-// tool-registry snapshot, and hand-auditing them forever is exactly
-// the maintenance trap the dynamic import avoids structurally.
+import { QuickPanelApp } from './QuickPanelApp'
+import { ApprovalPromptApp } from './ApprovalPromptApp'
 import { COLOR_MODE_STORAGE_KEY } from './theme'
 
 // Read once, synchronously, before the first render, to seed
@@ -70,24 +65,21 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   })
 }
 
-// The main window loads runtime plugins BEFORE the app module graph
-// evaluates (docs/goals/0249): activation must precede the tool-list/
-// command-table snapshots those modules take at eval. Raced against a
-// deadline so a hung plugin import can never brick the boot -- the app
-// then simply starts without the slow plugin, whose row shows the
-// state. The auxiliary windows (Quick Panel, approval prompt, crash
-// probe) render immediately -- none of them mounts a canvas.
+// The main window loads runtime plugins before the FIRST RENDER
+// (docs/goals/0249): the module graph above evaluates statically (CSS
+// cascade order and chunking stay exactly as before), and the
+// registry snapshots those modules export are LAZY
+// (shared/lazySnapshot.ts) -- they materialize on first access, which
+// is always a render- or event-time read, after activation. Raced
+// against a deadline so a hung plugin import can never brick the
+// boot. The auxiliary windows render immediately -- none of them
+// mounts a canvas.
 async function bootstrap() {
   const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement)
   if (isCrashProbe || isQuickPanel || isApprovalPrompt) {
-    const aux = isCrashProbe
-      ? <CrashProbe />
-      : isQuickPanel
-        ? await import('./QuickPanelApp').then((m) => <m.QuickPanelApp />)
-        : await import('./ApprovalPromptApp').then((m) => <m.ApprovalPromptApp />)
     root.render(
       <React.StrictMode>
-        <AppErrorBoundary>{aux}</AppErrorBoundary>
+        <AppErrorBoundary>{isCrashProbe ? <CrashProbe /> : isQuickPanel ? <QuickPanelApp /> : <ApprovalPromptApp />}</AppErrorBoundary>
       </React.StrictMode>,
     )
     return
@@ -99,7 +91,6 @@ async function bootstrap() {
   ])
   const { markPluginsSettled } = await import('../plugins/loadGate')
   markPluginsSettled()
-  const { default: App } = await import('./App')
   root.render(
     <React.StrictMode>
       <AppErrorBoundary>

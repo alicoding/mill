@@ -7,6 +7,7 @@ import { SettingsService } from '../shared/bindings'
 import { refreshDisabledExtensions, useExtensionEnablementStore } from '../shared/extensionEnablementStore'
 import { ExtensionRow } from './ExtensionRow'
 import { ExtensionsInstalledPlugins } from './ExtensionsInstalledPlugins'
+import { lazyArray } from '../shared/lazySnapshot'
 import { groupSectionLabel, toolLessRowSource, toolRowSource, type ExtensionRowSource } from './extensionMeta'
 import type { AtlasNounGroup } from '../atlas/atlasNounRegistry'
 import styles from '../shared/ListCard.module.css'
@@ -38,14 +39,14 @@ import styles from '../shared/ListCard.module.css'
 // its own row states its narrower disable scope directly (see each
 // noun's own `extension.disableScopeNote`, atlasNounRegistry.ts).
 const CARD_TOOL_ID: AtlasToolID = 'card'
-const EXTENSION_ROWS: ExtensionRowSource[] = [
+const EXTENSION_ROWS: ExtensionRowSource[] = lazyArray(() => [
   // Runtime plugin tools are excluded here -- they get their own
   // richer row (manifest metadata, load state) in the installed-
   // plugins section below, never a second compiled-in-style one.
   ...ATLAS_TOOLS.filter((tool) => !(tool as { thirdParty?: boolean }).thirdParty).map(toolRowSource),
   ...toolLessNounExtensions().filter((n) => !isThirdPartyToolId(n.kind)).map(toolLessRowSource),
-]
-const NON_BUILT_IN_IDS: string[] = EXTENSION_ROWS.filter((r) => r.id !== CARD_TOOL_ID).map((r) => r.id)
+])
+const NON_BUILT_IN_IDS: string[] = lazyArray(() => EXTENSION_ROWS.filter((r) => r.id !== CARD_TOOL_ID).map((r) => r.id))
 
 // The list's own three sections (goal 0237 S3's review rider --
 // "group the list, stop repeating the group"), in the same

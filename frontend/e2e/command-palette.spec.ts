@@ -85,6 +85,10 @@ async function createHotkeyTriggerWorkflow(page: import('@playwright/test').Page
 // fit however many results that was).
 test('Meta+K rest-state shows a bounded set (nav commands only) until a query narrows it', async ({ page }) => {
   await page.goto('/')
+  // The shell paints after a short async boot (plugins load first --
+  // docs/goals/0249); a keypress before anything is visible is not a
+  // user primitive, so the first press waits for the painted nav.
+  await expect(page.getByTestId('sidebar-nav')).toBeVisible()
   await page.keyboard.press('Meta+k')
   await expect(paletteDialog(page)).toBeVisible()
 
@@ -103,6 +107,10 @@ test('Meta+K rest-state shows a bounded set (nav commands only) until a query na
 
 test('the palette list is height-bounded with internal scroll, not the Dialog growing unbounded', async ({ page }) => {
   await page.goto('/')
+  // The shell paints after a short async boot (plugins load first --
+  // docs/goals/0249); a keypress before anything is visible is not a
+  // user primitive, so the first press waits for the painted nav.
+  await expect(page.getByTestId('sidebar-nav')).toBeVisible()
   await page.keyboard.press('Meta+k')
   await expect(paletteDialog(page)).toBeVisible()
 

@@ -210,6 +210,10 @@ test('Quick Panel jump rows exist for Decisions and AI Providers (goal 0071 pari
 // share the exact same wiring).
 test('Running "New list" from the palette opens Configure -> Lists with the create form already open', async ({ page }) => {
   await page.goto('/')
+  // The shell paints after a short async boot (plugins load first --
+  // docs/goals/0249); a keypress before anything is visible is not a
+  // user primitive, so the first press waits for the painted nav.
+  await expect(page.getByTestId('sidebar-nav')).toBeVisible()
   await page.keyboard.press('Meta+k')
   const palette = page.getByRole('dialog', { name: 'Command palette' })
   await expect(palette).toBeVisible()

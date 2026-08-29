@@ -1,5 +1,6 @@
 import { ATLAS_TOOL_IDENTITIES, type AtlasToolIdentity } from '../shared/atlasToolIdentity'
 import { warnIfSnapshotBeforePlugins } from '../plugins/loadGate'
+import { lazyArray } from '../shared/lazySnapshot'
 import { assertRegistryAgreesWithIdentity, orderedRegisteredTools } from './atlasNounRegistry'
 
 // The canvas tool registry (goal 0169 slice 1, re-platformed onto
@@ -31,15 +32,21 @@ import { assertRegistryAgreesWithIdentity, orderedRegisteredTools } from './atla
 // somewhere, and nowhere else needs to enumerate the tools/ directory.
 import.meta.glob(['./tools/*.ts', '!./tools/*.test.ts'], { eager: true })
 
-warnIfSnapshotBeforePlugins()
-
 // Fails fast (at the module-eval time every test/dev/build reaches by
 // importing this file) if a noun's identity and registered descriptor
 // ever disagree -- a noun that half-exists on either side never ships
 // half-wired.
 assertRegistryAgreesWithIdentity()
 
-export const ATLAS_TOOLS = orderedRegisteredTools()
+// LAZY snapshot (shared/lazySnapshot.ts, docs/goals/0249): built on
+// first ACCESS, not at eval -- runtime plugins register between this
+// module's eval and the first render, and every read of ATLAS_TOOLS
+// is a render- or event-time read. The tripwire fires if that
+// ordering ever regresses.
+export const ATLAS_TOOLS = lazyArray(() => {
+  warnIfSnapshotBeforePlugins()
+  return orderedRegisteredTools()
+})
 
 export { cardTool, type AtlasCardArtifact } from './tools/cardTool'
 export { noteTool, type AtlasNoteArtifact } from './tools/noteTool'
