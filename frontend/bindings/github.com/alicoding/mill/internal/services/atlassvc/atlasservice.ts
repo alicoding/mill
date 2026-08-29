@@ -882,6 +882,19 @@ export function SetAtlasSession(state: $models.AtlasSessionState): $CancellableP
 }
 
 /**
+ * SetBoardObjectPayload merges patch into a board object's Payload --
+ * the content-plane write door for a payload-carrying object whose
+ * data changes after placement (docs/goals/0249: a plugin object's own
+ * fields, written host-mediated so plugin code never touches a
+ * binding). A key with an empty value deletes that key; every other
+ * key overwrites. mirrorPath changes re-arm the file watch the same
+ * way creation does.
+ */
+export function SetBoardObjectPayload(id: string, patch: { [_ in string]?: string } | null): $CancellablePromise<atlas$0.BoardObject> {
+    return $Call.ByID(1717906545, id, patch);
+}
+
+/**
  * SetBoardObjectPosition updates a board object's placement within its
  * parent's canvas -- the same drag-persistence call cards/notes go
  * through via SetPosition/SetNotePosition.

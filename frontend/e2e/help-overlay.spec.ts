@@ -91,6 +91,10 @@ test('"Open coverage" from the palette on Atlas opens the coverage dialog', asyn
 
 test('"Rebind in Settings" in the overlay footer navigates to Settings and closes the overlay', async ({ page }) => {
   await page.goto('/')
+  // The shell paints after a short async boot (plugins load first --
+  // docs/goals/0249); a keypress before anything is visible is not a
+  // user primitive, so the first press waits for the painted nav.
+  await expect(page.getByTestId('sidebar-nav')).toBeVisible()
   await page.keyboard.press('?')
   await expect(helpDialog(page)).toBeVisible()
 

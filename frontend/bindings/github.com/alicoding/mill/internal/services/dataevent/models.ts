@@ -13,6 +13,8 @@
  * one shared entity string rather than one per family, since they all
  * persist as a single blob (atlassvc's own atlasStateKey) and a
  * change to any of them means the whole surface should refresh.
+ * "extension" carries the canvas-extension id whose enabled/disabled
+ * state just changed (Settings > Extensions).
  */
 export interface Changed {
     "entity": string;

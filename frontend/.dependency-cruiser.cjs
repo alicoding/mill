@@ -66,6 +66,13 @@ module.exports = {
       from: { path: '^src/atlas/extensions' },
       to: { path: '^(src/shared/bindings\\.ts|bindings/.*/internal/services/)' },
     },
+    {
+      name: 'plugin-sdk-imports-nothing',
+      severity: 'error',
+      comment: 'ADR-0047 / goal 0249: src/plugins/sdk.ts describes exactly what an out-of-tree plugin sees, and a plugin receives capabilities only through the api object handed to activate() -- never through an import. The SDK module therefore imports NOTHING (kernel, bindings, or otherwise); host-side plumbing lives in src/plugins/{hostApi,loader,PluginFaceContent} which legitimately reach the kernel.',
+      from: { path: '^src/plugins/sdk\\.ts$' },
+      to: {},
+    },
   ],
   options: {
     doNotFollow: { path: 'node_modules' },

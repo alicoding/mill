@@ -12,6 +12,7 @@ import { useAppStore } from '../shared/store'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { formatRunStartedAt } from '../shared/runTime'
 import { StalenessBadge } from '../shared/StalenessBadge'
+import { ReviewGuardedActions } from './ReviewGuardedActions'
 import { formatLastChecked } from '../shared/staleness'
 import { ReviewAlwaysRuleDialog } from './ReviewAlwaysRuleDialog'
 import { GuardrailRulesPanel } from './GuardrailRulesPanel'
@@ -31,12 +32,12 @@ interface AlwaysRuleRequest { run: RunSummary; effect: 'allow' | 'deny' }
 // 'mcp-write' isn't a RunSummary at all (docs/adr/0032's own pending
 // store) -- it's counted separately and only ever shown when present.
 type PendingKind = 'ask' | 'human-review' | 'debug'
-type KindFilterValue = '' | PendingKind | 'mcp-write'
+type KindFilterValue = '' | PendingKind | 'mcp-write' | 'guarded-action'
 
 // Order the kind Select's options render in when 2+ are present --
 // fixed, not Set-insertion-order, so the list doesn't reshuffle as
 // different kinds come and go.
-const KIND_ORDER: Array<Exclude<KindFilterValue, ''>> = ['ask', 'human-review', 'debug', 'mcp-write']
+const KIND_ORDER: Array<Exclude<KindFilterValue, ''>> = ['ask', 'human-review', 'debug', 'mcp-write', 'guarded-action']
 
 // Wording reused verbatim from what the row itself already renders
 // (isDebugPark's Label text, the pendingWrites card's "MCP write
@@ -51,6 +52,7 @@ function kindLabelsFor(t: (key: string) => string): Record<Exclude<KindFilterVal
     'human-review': t('reviewView.kindLabels.human-review'),
     debug: t('reviewView.kindLabels.debug'),
     'mcp-write': t('reviewView.kindLabels.mcp-write'),
+    'guarded-action': t('reviewView.kindLabels.guarded-action'),
   }
 }
 
@@ -313,6 +315,8 @@ function ReviewView() {
           )
         })}
       </Stack>
+
+      <ReviewGuardedActions visible={kindFilter === '' || kindFilter === 'guarded-action'} />
 
       <Stack direction="vertical" gap="normal">
         {pending.filter((r) => (!workflowFilter || r.workflowID === workflowFilter) && kindMatches(r)).map((run) => (

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/domain/guardrail"
 )
 
@@ -126,6 +127,7 @@ func (g *GuardrailService) RequestGuardedAction(ctx context.Context, action Guar
 	if err != nil {
 		return Decision{}, fmt.Errorf("park guarded action: %w", err)
 	}
+	windowing.Emit("guardrail-pending-changed", struct{}{})
 	// Unconditional cleanup on every exit path (decision, ctx-cancel, or
 	// timeout) -- this caller is a blocking in-process wait with no
 	// resolved-history consumer, unlike mcpsvc's own poll-and-retain
@@ -156,6 +158,24 @@ func (g *GuardrailService) RequestGuardedAction(ctx context.Context, action Guar
 // what clears the record regardless of outcome.
 func (g *GuardrailService) resolveGuardedAction(id string, approve bool) bool {
 	return g.pending.signal(id, approve)
+}
+
+// ResolveGuardedAction is the Review queue's approve/deny door for a
+// parked guarded action (docs/goals/0249 closed the render-alongside
+// half this park always promised): the blocked RequestGuardedAction
+// caller wakes with the human's answer.
+func (g *GuardrailService) ResolveGuardedAction(id string, approve bool) error {
+	if !g.resolveGuardedAction(id, approve) {
+		return fmt.Errorf("no pending guarded action with id %q", id)
+	}
+	windowing.Emit("guardrail-pending-changed", struct{}{})
+	return nil
+}
+
+// PendingGuardedActions is the Wails-bound listing the Review queue
+// renders -- the same records RequestGuardedAction parks.
+func (g *GuardrailService) PendingGuardedActions() []PendingGuardedAction {
+	return g.pendingGuardedActions()
 }
 
 // pendingGuardedActions lists every currently-parked action -- the

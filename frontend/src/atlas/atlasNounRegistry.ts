@@ -338,9 +338,57 @@ export function assertRegistryAgreesWithIdentity(): void {
 // import.meta.glob's own alphabetical file-path sort and silently
 // reorder the tray the next time a noun's filename changes).
 export function orderedRegisteredTools(): AtlasToolShape[] {
-  return ATLAS_TOOL_IDENTITIES.map((i) => {
+  const builtIns = ATLAS_TOOL_IDENTITIES.map((i) => {
     const found = registry.get(i.id)
     if (!found) throw new Error(`atlas noun "${i.id}" missing its registered descriptor`)
     return found
   })
+  return [...builtIns, ...thirdPartyRegistry.values()] as AtlasToolShape[]
+}
+
+// --- Third-party nouns (docs/goals/0249, ADR-0047's out-of-tree tier) ---
+//
+// A runtime-loaded plugin's canvas object registers here, through the
+// SAME conceptual door built-ins use, with two honest differences:
+// its id/kind are open strings (the built-in literal unions stay
+// closed and keep guarding built-ins), and it is exempt from
+// assertRegistryAgreesWithIdentity (which checks exactly the
+// shared/atlasToolIdentity.ts list, where a runtime id cannot appear).
+// orderedRegisteredTools appends third-party tools AFTER every
+// built-in, cast into the AtlasToolShape array at this ONE site:
+// consumers discriminate on `interaction` and read string fields
+// generically; a consumer comparing `id` against a built-in literal
+// simply never matches a plugin id, which is the correct behavior.
+export type ThirdPartyNounShape = Omit<AtlasToolShapeBase, 'boardObjectKind'> & {
+  id: string
+  interaction: 'arm-then-click'
+  boardObjectKind: string
+  thirdParty: true
+  // The owning plugin (manifest id) -- the Extensions page's join key.
+  pluginId: string
+  defaultPayload: Record<string, string>
+}
+
+const thirdPartyRegistry = new Map<string, ThirdPartyNounShape>()
+
+export function registerThirdPartyNoun(shape: ThirdPartyNounShape): void {
+  if (registry.has(shape.id) || thirdPartyRegistry.has(shape.id)) {
+    throw new Error(`canvas object kind "${shape.id}" is already registered`)
+  }
+  thirdPartyRegistry.set(shape.id, shape)
+  if (shape.content) {
+    registerBoardObjectContent(shape.boardObjectKind, { ...shape.content, dragBand: shape.dragBand, fileBacked: shape.fileBacked })
+  }
+}
+
+export function thirdPartyNouns(): ThirdPartyNounShape[] {
+  return [...thirdPartyRegistry.values()]
+}
+
+export function isThirdPartyToolId(id: string): boolean {
+  return thirdPartyRegistry.has(id)
+}
+
+export function thirdPartyNounFor(id: string): ThirdPartyNounShape | undefined {
+  return thirdPartyRegistry.get(id)
 }

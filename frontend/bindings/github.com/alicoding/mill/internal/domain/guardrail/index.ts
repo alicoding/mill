@@ -8,5 +8,6 @@ export {
 
 export type {
     Rule,
+    Step,
     Verdict
 } from "./models.js";

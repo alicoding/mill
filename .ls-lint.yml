@@ -90,6 +90,12 @@ ignore:
   # its own right (a stray leftover here is a review miss, not a
   # shipped state).
   - docs-drafts
+  # examples/ (goal 0249, ADR-0001 extension): shippable example
+  # content a user copies OUT of the repo -- the first resident is
+  # examples/plugins/mill-bookmark, the runtime-plugin platform's own
+  # reference plugin (copy the folder into the app's plugins directory
+  # and reload). Plain web-file naming inside, not the root rule.
+  - examples
   - build
   - frontend
   - bin

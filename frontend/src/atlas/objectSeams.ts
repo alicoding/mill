@@ -16,15 +16,17 @@ import { openAtlasEditDiagram } from './atlasEditDiagramStore'
 // string-sniffing (the map that found this contract implicit: mirrorPath
 // for a file, listID for a Configure List projection). pathKey/refKey
 // ARE the literal Payload key -- resolveObjectSourceKey below is the one
-// place that turns the declaration into the actual value. `url` and
-// `bundled` are the future self-hosted/vendored engine-source arms
-// (ADR-0045 S2) -- named in the ADR's glossary but not yet a member any
-// registered noun declares. `board-local` (ADR-0046, goal 0244 S1) names
+// place that turns the declaration into the actual value. `url` names a Kind whose
+// artifact is a web reference the Payload carries (docs/goals/0249's
+// bookmark object is its first declarer); `bundled` stays a future
+// engine-source arm (ADR-0045 S2), named in the ADR's glossary but not
+// yet a member any registered noun declares. `board-local` (ADR-0046, goal 0244 S1) names
 // a Kind whose Payload IS the artifact -- no external file/provider/url
 // to resolve at all (shape's own geometry).
 export type ObjectSource =
   | { kind: 'file'; pathKey: 'mirrorPath' }
   | { kind: 'provider'; refKey: 'listID' }
+  | { kind: 'url'; urlKey: 'url' }
   | { kind: 'board-local' }
 
 // EditRoute -- which door a Kind's edit affordance opens. The noun
@@ -64,7 +66,7 @@ export function resolveEditRoute(object: BoardObject, decl: EditRouteDecl): Edit
 // directly by the Kind's own Component, never fetched by key here.
 export function resolveObjectSourceKey(object: BoardObject, source: ObjectSource): string | undefined {
   if (source.kind === 'board-local') return undefined
-  const key = source.kind === 'file' ? source.pathKey : source.refKey
+  const key = source.kind === 'file' ? source.pathKey : source.kind === 'url' ? source.urlKey : source.refKey
   return object.Payload?.[key]
 }
 

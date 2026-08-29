@@ -135,7 +135,7 @@ export interface AtlasBoardObjectContent extends AtlasNounContent {
   fileBacked: boolean
 }
 
-const boardObjectContentRegistry = new Map<AtlasBoardObjectKind, AtlasBoardObjectContent>()
+const boardObjectContentRegistry = new Map<string, AtlasBoardObjectContent>()
 
 // registerBoardObjectContent -- the honest home for a noun with no
 // tray tool at all (diagram: file-drop only, goal 0179 S2). Called
@@ -144,7 +144,7 @@ const boardObjectContentRegistry = new Map<AtlasBoardObjectKind, AtlasBoardObjec
 // that declares `boardObjectKind`/`content`. Throws on a duplicate
 // Kind so two sources can never silently overwrite each other's
 // content.
-export function registerBoardObjectContent(kind: AtlasBoardObjectKind, content: AtlasBoardObjectContent): void {
+export function registerBoardObjectContent(kind: string, content: AtlasBoardObjectContent): void {
   if (boardObjectContentRegistry.has(kind)) {
     throw new Error(`atlas board-object kind "${kind}" already has a registered content renderer -- check frontend/src/atlas/tools/`)
   }
@@ -164,7 +164,7 @@ export function registerBoardObjectContent(kind: AtlasBoardObjectKind, content: 
 // an unregistered Kind rather than throwing, since a render path must
 // stay recoverable even against bad/legacy data.
 export function boardObjectContentFor(kind: string): AtlasBoardObjectContent | undefined {
-  return boardObjectContentRegistry.get(kind as AtlasBoardObjectKind)
+  return boardObjectContentRegistry.get(kind)
 }
 
 // ToolLessNounExtension -- one entry of toolLessNounExtensions() below,
@@ -173,7 +173,7 @@ export function boardObjectContentFor(kind: string): AtlasBoardObjectContent | u
 // consumer downstream gets a guaranteed ExtensionRowMeta instead of
 // re-checking for undefined itself).
 export interface ToolLessNounExtension {
-  kind: AtlasBoardObjectKind
+  kind: string
   content: AtlasBoardObjectContent
   extension: ExtensionRowMeta
 }

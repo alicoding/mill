@@ -119,6 +119,28 @@ export interface Rule {
 }
 
 /**
+ * Step is what one about-to-execute step looks like to the evaluator.
+ */
+export interface Step {
+    "NodeTypeID": string;
+
+    /**
+     * RequestID is the step's configured HTTPRequest reference, if any
+     * (an integration-http node's requestId config).
+     */
+    "RequestID": string;
+    "WorkflowID": string;
+    "NodeID": string;
+
+    /**
+     * Env is the condition-evaluation environment: Payload, Attributes,
+     * Config -- same shape Decision-edge conditions already evaluate
+     * against, so rule authors learn one expression surface.
+     */
+    "Env": { [_ in string]?: any } | null;
+}
+
+/**
  * Verdict is one evaluation's outcome: the effect plus which rule
  * produced it (nil RuleID/RuleLabel means the effect-class default
  * applied). Serialized into the run's checkpointed guardrail step, so

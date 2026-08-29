@@ -181,6 +181,10 @@ test('Back up now from the command palette takes a real snapshot, live-updating 
 // deep-link command already follows.
 test('Export everything from the command palette lands on the Backups settings section', async ({ page }) => {
   await page.goto('/')
+  // The shell paints after a short async boot (plugins load first --
+  // docs/goals/0249); a keypress before anything is visible is not a
+  // user primitive, so the first press waits for the painted nav.
+  await expect(page.getByTestId('sidebar-nav')).toBeVisible()
   await page.keyboard.press('Meta+k')
   const palette = page.getByRole('dialog', { name: 'Command palette' })
   await palette.getByRole('combobox').fill('Export everything')

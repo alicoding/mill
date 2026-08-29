@@ -65,22 +65,43 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   })
 }
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
-    <AppErrorBoundary>
-      {isCrashProbe ? (
-        <CrashProbe />
-      ) : isQuickPanel ? (
-        <QuickPanelApp />
-      ) : isApprovalPrompt ? (
-        <ApprovalPromptApp />
-      ) : (
+// The main window loads runtime plugins before the FIRST RENDER
+// (docs/goals/0249): the module graph above evaluates statically (CSS
+// cascade order and chunking stay exactly as before), and the
+// registry snapshots those modules export are LAZY
+// (shared/lazySnapshot.ts) -- they materialize on first access, which
+// is always a render- or event-time read, after activation. Raced
+// against a deadline so a hung plugin import can never brick the
+// boot. The auxiliary windows render immediately -- none of them
+// mounts a canvas.
+async function bootstrap() {
+  const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement)
+  if (isCrashProbe || isQuickPanel || isApprovalPrompt) {
+    root.render(
+      <React.StrictMode>
+        <AppErrorBoundary>{isCrashProbe ? <CrashProbe /> : isQuickPanel ? <QuickPanelApp /> : <ApprovalPromptApp />}</AppErrorBoundary>
+      </React.StrictMode>,
+    )
+    return
+  }
+  const { loadPlugins } = await import('../plugins/loader')
+  await Promise.race([
+    loadPlugins().catch((err) => console.error('plugin loading failed', err)),
+    new Promise((resolve) => window.setTimeout(resolve, 4000)),
+  ])
+  const { markPluginsSettled } = await import('../plugins/loadGate')
+  markPluginsSettled()
+  root.render(
+    <React.StrictMode>
+      <AppErrorBoundary>
         <ThemeProvider colorMode={initialColorMode}>
           <BaseStyles>
             <App />
           </BaseStyles>
         </ThemeProvider>
-      )}
-    </AppErrorBoundary>
-  </React.StrictMode>,
-)
+      </AppErrorBoundary>
+    </React.StrictMode>,
+  )
+}
+
+void bootstrap()
