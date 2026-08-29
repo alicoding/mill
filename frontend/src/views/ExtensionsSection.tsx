@@ -97,34 +97,42 @@ export default function ExtensionsSection() {
           {t(allOff ? 'settings.extensions.turnAllOn' : 'settings.extensions.turnAllOff')}
         </Button>
       </Stack>
-      <ActionList role="list" showDividers data-testid="extensions-list">
+      {/* One ActionList PER SECTION rather than ActionList.Group:
+          with list semantics Primer's Group renders its own <li
+          role="presentation"> wrapper, hoisting the heading and inner
+          <ul role="group"> into the outer list in the accessibility
+          tree (aria-required-children, WCAG gate); WITHOUT list
+          semantics every Item renders as a <button>, nesting the
+          row's own switch inside an interactive (nested-interactive).
+          A section as its own h3-labeled list is valid both ways and
+          keeps the same rendered chrome. h3 nests under the page's
+          own h2 section headings (SettingsView.tsx). */}
+      <Stack direction="vertical" gap="condensed" data-testid="extensions-list">
         {SECTION_ORDER.map((group) => {
           const rows = EXTENSION_ROWS.filter((row) => row.group === group)
           if (rows.length === 0) return null
           return (
-            <ActionList.Group key={group} data-testid={`extensions-group-${group}`}>
-              {/* as="h3" is REQUIRED here -- Primer's own GroupHeading
-                  throws ("requires a heading level") without it once the
-                  parent ActionList carries role="list" (this one does,
-                  for the assistive-tech list semantics every other row
-                  in Settings already gets). h3 nests correctly under the
-                  page's own h2 section headings (SettingsView.tsx). */}
-              <ActionList.GroupHeading as="h3" variant="subtle">{groupSectionLabel(group)}</ActionList.GroupHeading>
-              {rows.map((row) => (
-                <ActionList.Item key={row.id}>
-                  <ExtensionRow
-                    row={row}
-                    builtIn={row.id === CARD_TOOL_ID}
-                    enabled={!disabledIds.includes(row.id)}
-                    appVersion={appVersion}
-                    onToggle={(enabled) => toggle(row.id, enabled)}
-                  />
-                </ActionList.Item>
-              ))}
-            </ActionList.Group>
+            <Stack direction="vertical" gap="none" key={group} data-testid={`extensions-group-${group}`}>
+              <Text as="h3" size="small" weight="semibold" className={styles.muted}>
+                {groupSectionLabel(group)}
+              </Text>
+              <ActionList role="list" showDividers aria-label={groupSectionLabel(group)}>
+                {rows.map((row) => (
+                  <ActionList.Item key={row.id}>
+                    <ExtensionRow
+                      row={row}
+                      builtIn={row.id === CARD_TOOL_ID}
+                      enabled={!disabledIds.includes(row.id)}
+                      appVersion={appVersion}
+                      onToggle={(enabled) => toggle(row.id, enabled)}
+                    />
+                  </ActionList.Item>
+                ))}
+              </ActionList>
+            </Stack>
           )
         })}
-      </ActionList>
+      </Stack>
     </Stack>
   )
 }
