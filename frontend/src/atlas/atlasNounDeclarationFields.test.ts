@@ -24,6 +24,7 @@ const EXHAUSTIVE_FIELD_KEYS = {
   id: true,
   icon: true,
   label: true,
+  nounName: true,
   description: true,
   shortcutKey: true,
   tray: true,

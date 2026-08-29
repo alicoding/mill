@@ -32,7 +32,8 @@ export const eraserTool = {
   id: eraserIdentity.id,
   icon: TrashIcon,
   label: eraserIdentity.commandLabel,
-  description: 'Erases whatever you drag over.',
+  nounName: 'Eraser',
+  description: 'Erases whatever you drag over on the board.',
   shortcutKey: eraserIdentity.shortcutKey,
   tray: 'quick',
   // The freehand-marking family (goal 0224's disposition table) --

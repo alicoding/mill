@@ -124,6 +124,14 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
   )
   const primaryTools = PRIMARY_GROUP_ORDER.flatMap((group) => tools.filter((tool) => tool.group === group))
   const annotateTools = tools.filter((tool) => tool.group === 'annotate')
+  // The collapsed group trigger's own face glyph (goal 0237 S3's review
+  // rider): derived from the first ENABLED annotate tool rather than a
+  // hardcoded icon, so disabling that tool from Settings > Extensions
+  // never leaves the trigger showing a glyph for a tool that's no
+  // longer in the group at all. Falls back to the generic paintbrush
+  // only when every annotate tool is disabled and the drawer would
+  // have nothing left to show anyway.
+  const AnnotateGroupIcon = annotateTools[0]?.icon ?? PaintbrushIcon
   const annotateGroupAnchorRef = useRef<HTMLButtonElement>(null)
   // The Annotate group's own disclosure state (goal 0224). At most ONE
   // AnchoredOverlay for the whole annotate family is ever mounted at a
@@ -354,7 +362,7 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
               setManualOpen((open) => !open)
             }}
           >
-            <PaintbrushIcon size={14} />
+            <AnnotateGroupIcon size={14} />
             <ChevronDownIcon size={12} />
           </button>
           <AnchoredOverlay

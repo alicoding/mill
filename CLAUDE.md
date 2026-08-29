@@ -8,18 +8,44 @@ update it as decisions land. Do not treat this CLAUDE.md as a substitute for
 it. (Backticked pointer, not an `@`-import: an `@`-import eagerly loads the
 whole file into every session's context — see SPEC §9.1.)
 
-## Model economics: expensive models orchestrate, cheap models toil
+## The orchestrator owns the app; delegation must earn its keep
 
-Fable/Opus sessions do design, research synthesis, architecture, review, and
-decisions — never toil. Bulk/mechanical work is delegated to a cheaper
-subagent, picked by complexity: **Haiku** for read-only volume (codebase
-exploration, log/grep sweeps, doc lookups — `explorer` in `.claude/agents/`),
-**Sonnet** for well-specified mechanical implementation and verification
-(`test-investigator`, bounded refactors/migrations from a written plan).
-Every `Agent` delegation states its model explicitly — never rely on
-inheritance. The delegated task must be *fixed and bounded* (a written brief
-with objective gates); if it can't be specified that tightly, it's still
-design work — do it in the main session.
+Owner-ratified 2026-08-29, superseding the earlier economics-first
+framing ("expensive models orchestrate, cheap models toil"): too many
+app decisions had drifted to subagents, and the felt quality showed it
+— agent-built surfaces repeatedly needed orchestrator eyes-on-code to
+find the layers a report never surfaces (goal 0248's trail is the
+worked case: the core surgery was right, and the dead typography, the
+async focus strip, and the shared-board test leak underneath were all
+found only by reading the diff and probing the live build). The
+operational law:
+
+1. **Anything the user feels, the orchestrator authors or line-reviews
+   itself** — interaction behavior, CSS/typography, UX states, copy,
+   component structure. Review means reading the diff, running it
+   live, and probing it — never accepting an agent's report as the
+   evidence.
+2. **Agents get only machine-verifiable mechanical scope** — regens,
+   bounded migrations from a written spec, test runs, read-only
+   research volume. If correctness can't be checked by a gate or a
+   diff the orchestrator reads, it isn't delegated.
+3. **No agent-authored user-facing change merges without the
+   orchestrator's eyes-on-diff plus a live hands-on pass.** The
+   design contract stays in the brief as before; this adds the
+   back half — the contract is verified by the contract's author.
+4. **The economics tradeoff inverts for the app**: decision quality
+   outranks orchestrator-token economy. Delegation is the exception
+   that must earn its keep, not the default that must be argued out
+   of.
+
+Model picks when delegation IS warranted: **Haiku** for read-only
+volume (codebase exploration, log/grep sweeps, doc lookups —
+`explorer` in `.claude/agents/`), **Sonnet** for the mechanical scope
+above (`test-investigator`, bounded refactors/migrations from a
+written plan). Every `Agent` delegation states its model explicitly —
+never rely on inheritance. The delegated task must be *fixed and
+bounded* (a written brief with objective gates); if it can't be
+specified that tightly, it's the orchestrator's own work.
 
 **Every dispatched BUILD agent works in its own git worktree; the main
 checkout belongs to the orchestrator.** State it in the brief. Before ANY
@@ -120,8 +146,8 @@ the record. (A `UserPromptSubmit` hook in `.claude/settings.json`
 resurfaces this just-in-time.)
 
 **With a ratified queue, sessions self-drive.** Finish a goal (or hit a
-real block), pull the next queue item, delegate per the model-economics
-rules, continue — never idle awaiting a go-ahead the queue already gave.
+real block), pull the next queue item, work it under the orchestrator-owns-the-app
+rules above, continue — never idle awaiting a go-ahead the queue already gave.
 Stop for the owner ONLY when: it costs money, it is irreversible, it is
 a SPEC `OPEN` item, or it is a pure taste/product call with no
 defensible industry precedent to research against. Everything else

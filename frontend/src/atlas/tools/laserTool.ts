@@ -25,6 +25,7 @@ export const laserTool = {
   id: laserIdentity.id,
   icon: ZapIcon,
   label: laserIdentity.commandLabel,
+  nounName: 'Laser',
   description: 'Points at things with a fading trail. Nothing is saved.',
   shortcutKey: laserIdentity.shortcutKey,
   tray: 'quick',

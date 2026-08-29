@@ -7,7 +7,8 @@ import { SettingsService } from '../shared/bindings'
 import { refreshDisabledExtensions, useExtensionEnablementStore } from '../shared/extensionEnablementStore'
 import { ExtensionRow } from './ExtensionRow'
 import { ExtensionsInstalledPlugins } from './ExtensionsInstalledPlugins'
-import { toolLessRowSource, toolRowSource, type ExtensionRowSource } from './extensionMeta'
+import { groupSectionLabel, toolLessRowSource, toolRowSource, type ExtensionRowSource } from './extensionMeta'
+import type { AtlasNounGroup } from '../atlas/atlasNounRegistry'
 import styles from '../shared/ListCard.module.css'
 
 // Settings > Extensions (goal 0237 S2, extended by goal 0211's plugin-
@@ -45,6 +46,14 @@ const EXTENSION_ROWS: ExtensionRowSource[] = [
   ...toolLessNounExtensions().filter((n) => !isThirdPartyToolId(n.kind)).map(toolLessRowSource),
 ]
 const NON_BUILT_IN_IDS: string[] = EXTENSION_ROWS.filter((r) => r.id !== CARD_TOOL_ID).map((r) => r.id)
+
+// The list's own three sections (goal 0237 S3's review rider --
+// "group the list, stop repeating the group"), in the same
+// knowledge-then-file-then-annotate order AtlasCreationTray.tsx's own
+// PRIMARY_GROUP_ORDER renders the tray in. Rows within each section
+// keep EXTENSION_ROWS' own registry order (a stable filter, never a
+// re-sort) -- never a hand-curated per-id array.
+const SECTION_ORDER: AtlasNounGroup[] = ['knowledge', 'file', 'annotate']
 
 export default function ExtensionsSection() {
   const { t } = useTranslation('views')
@@ -92,19 +101,42 @@ export default function ExtensionsSection() {
           {t(allOff ? 'settings.extensions.turnAllOn' : 'settings.extensions.turnAllOff')}
         </Button>
       </Stack>
-      <ActionList role="list" showDividers data-testid="extensions-list">
-        {EXTENSION_ROWS.map((row) => (
-          <ActionList.Item key={row.id}>
-            <ExtensionRow
-              row={row}
-              builtIn={row.id === CARD_TOOL_ID}
-              enabled={!disabledIds.includes(row.id)}
-              appVersion={appVersion}
-              onToggle={(enabled) => toggle(row.id, enabled)}
-            />
-          </ActionList.Item>
-        ))}
-      </ActionList>
+      {/* One ActionList PER SECTION rather than ActionList.Group:
+          with list semantics Primer's Group renders its own <li
+          role="presentation"> wrapper, hoisting the heading and inner
+          <ul role="group"> into the outer list in the accessibility
+          tree (aria-required-children, WCAG gate); WITHOUT list
+          semantics every Item renders as a <button>, nesting the
+          row's own switch inside an interactive (nested-interactive).
+          A section as its own h3-labeled list is valid both ways and
+          keeps the same rendered chrome. h3 nests under the page's
+          own h2 section headings (SettingsView.tsx). */}
+      <Stack direction="vertical" gap="condensed" data-testid="extensions-list">
+        {SECTION_ORDER.map((group) => {
+          const rows = EXTENSION_ROWS.filter((row) => row.group === group)
+          if (rows.length === 0) return null
+          return (
+            <Stack direction="vertical" gap="none" key={group} data-testid={`extensions-group-${group}`}>
+              <Text as="h3" size="small" weight="semibold" className={styles.muted}>
+                {groupSectionLabel(group)}
+              </Text>
+              <ActionList role="list" showDividers aria-label={groupSectionLabel(group)}>
+                {rows.map((row) => (
+                  <ActionList.Item key={row.id}>
+                    <ExtensionRow
+                      row={row}
+                      builtIn={row.id === CARD_TOOL_ID}
+                      enabled={!disabledIds.includes(row.id)}
+                      appVersion={appVersion}
+                      onToggle={(enabled) => toggle(row.id, enabled)}
+                    />
+                  </ActionList.Item>
+                ))}
+              </ActionList>
+            </Stack>
+          )
+        })}
+      </Stack>
       <ExtensionsInstalledPlugins />
     </Stack>
   )

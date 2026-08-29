@@ -50,6 +50,7 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string): MillPlu
 				defaultPayload: { ...(decl.defaultPayload ?? {}) },
 				icon: emojiIcon(decl.icon),
 				label: decl.label,
+				nounName: decl.label,
 				description: decl.description,
 				shortcutKey: null,
 				tray: 'quick',

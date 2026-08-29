@@ -1,13 +1,18 @@
-import type { AtlasToolGesture } from './atlasGestureTypes'
-export type { AtlasGestureCtx, AtlasGesturePoint, AtlasToolGesture } from './atlasGestureTypes'
 import type { ComponentType } from 'react'
 import type { Icon } from '@primer/octicons-react'
-import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import type { ListProjection } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { ATLAS_TOOL_IDENTITIES, type AtlasToolIdentity, type AtlasToolInteraction } from '../shared/atlasToolIdentity'
 import type { AtlasStyleField } from './atlasStyleVocabulary'
-import type { EditRouteDecl, ObjectSource } from './objectSeams'
-import type { MirrorReadState } from './useAtlasObjectMirrorRead'
+import type { FrameBox } from './useAtlasDragFiling'
+import { registerBoardObjectContent, type AtlasBoardObjectKind, type AtlasNounContent } from './atlasBoardObjectContent'
+
+// The board-object CONTENT registry (AtlasNounContent, ExtensionRowMeta,
+// registerBoardObjectContent, toolLessNounExtensions, ...) lives in its
+// own file, atlasBoardObjectContent.ts (architecture.md's 500-line file
+// limit split this registry's own real seam along) -- re-exported here
+// IN FULL so every existing `from '../atlasNounRegistry'` import keeps
+// resolving unchanged; only this file and atlasBoardObjectContent.ts
+// know the split happened.
+export * from './atlasBoardObjectContent'
 
 // The frontend twin of composition/registry.go's RegisterNodeType
 // (ADR-0006, goal 0180 slice 1): each canvas noun's own fat descriptor
@@ -17,6 +22,16 @@ import type { MirrorReadState } from './useAtlasObjectMirrorRead'
 // import.meta.glob(..., { eager: true }) rather than holding a literal
 // array every noun is appended to.
 export type { AtlasToolInteraction }
+
+// AtlasNounGroup -- which tray cluster a noun belongs to (goal 0224's
+// tray-restructure slice), shared by AtlasToolShapeBase.group below AND
+// ExtensionRowMeta.group -- one union, so a tool-bearing noun and a
+// tool-less noun declare the SAME three values rather than two
+// independently-typed fields that could drift apart. Settings >
+// Extensions' section grouping (views/ExtensionsSection.tsx) reads
+// this field off every row, tool-bearing or not, never a hand-curated
+// per-id list.
+export type AtlasNounGroup = 'knowledge' | 'file' | 'annotate'
 
 // Session-only cache seeding a newly created object's own style
 // (colour/size, ...) -- never persisted document data.
@@ -33,177 +48,23 @@ export type AtlasToolStyleDefaults = Record<string, unknown>
 // renderer source a `resizable: true` answer must hold true against.
 export type AtlasBoardNodeType = 'atlas-note' | 'atlas-sticky' | 'atlas-group' | 'atlas-object' | null
 
-// AtlasBoardObjectKind -- the persisted BoardObject.Kind values that
-// route through the shared 'atlas-object' renderer. Deliberately NOT
-// the same set as a tool's own id: pencilTool's own id is 'pencil' but
-// its placed instance is Kind 'ink' (its own commit call names it), so
-// content resolution below keys off THIS set, read from object.Kind,
-// never off a tool id.
-export type AtlasBoardObjectKind = 'shape' | 'image' | 'ink' | 'table' | 'diagram' | 'sheet'
-
-// AtlasNounContent -- a Kind's own placed-instance rendering (goal
-// 0215 S3): the content component AtlasBoardObjectNode.tsx mounts, the
-// locale key for its wrapper's aria-label, and whether that wrapper
-// carries img semantics (false only for table -- its own grid holds
-// real interactive descendants, which img's ARIA role forbids).
-// mirrorVersion (goal 0232 S1's file-backed preview/open/watch
-// contract) bumps once for every live disk-change AtlasBoardObjectNode
-// observes on this object's own mirrored file -- required, not
-// optional, so a fileBacked Component can react to it via a plain
-// useEffect dependency without also having to declare its own
-// useAtlasMirrorChanged subscription (AtlasBoardObjectNode is now the
-// ONE place that subscribes, per Kind's own fileBacked declaration
-// below). A Component whose Kind is fileBacked: false receives it too
-// (it just never changes) rather than a second, optional prop shape.
-export interface AtlasNounContent {
-  // object/mirrorVersion stay required (every Kind receives them,
-  // whether or not it reads them -- the existing "declare honestly even
-  // when meaningless" convention this file already documents for
-  // dragBand/resizable/etc). mirrorContent/fetchListProjection/
-  // repickMirror (ADR-0046, goal 0244 S1b) are the kernel reads/writes
-  // a fileBacked or provider-backed Kind's own Component needs, now
-  // supplied by the host (AtlasBoardObjectNode.tsx) as props instead of
-  // the Component importing AtlasService directly -- the import the
-  // extensions/ cruiser rule forbids. Optional, unlike every other
-  // field on this interface, for one reason: AtlasMirrorImageContent.test.tsx
-  // (goal 0243's regression pin) constructs a registered Component
-  // directly with no host at all, and omitting these three must still
-  // resolve to each one's own honest "not loaded"/no-op state rather
-  // than a compile error.
-  Component: ComponentType<{
-    object: BoardObject
-    mirrorVersion: number
-    mirrorContent?: MirrorReadState
-    fetchListProjection?: (id: string) => Promise<ListProjection>
-    repickMirror?: (path: string) => Promise<unknown>
-  }>
-  ariaLabelKey: string
-  role: 'img' | undefined
-  // source / editRoute (ADR-0046, goal 0244): the two seams this Kind
-  // declares about its own artifact -- where it lives, and which door
-  // edits it. Optional (unlike Component/ariaLabelKey/role above)
-  // because a Kind with no external artifact at all (shape's own
-  // Payload-only geometry) has no honest ObjectSource member to declare
-  // yet, and a Kind not yet migrated onto the edit law has no EditRoute.
-  // Deliberately nested inside this `content` shape rather than a new
-  // top-level AtlasToolShapeBase field -- AtlasToolShapeBase's own field
-  // SET is a separately frozen contract (atlasNounDeclarationFields.json's
-  // exhaustiveness check).
-  source?: ObjectSource
-  // editRoute (ADR-0046, goal 0244 S1): a static route or a per-object
-  // RESOLVER -- see EditRouteDecl's own header for why a single Kind
-  // (diagram) needs the function form.
-  editRoute?: EditRouteDecl
-  // extension (goal 0237 S3 rider): Settings > Extensions row metadata
-  // for a NOUN WITH NO TRAY TOOL. A tool-bearing noun already carries
-  // icon/label/description on its own AtlasToolShapeBase descriptor
-  // (registerNoun below), so this stays undefined there; a tool-less
-  // noun (diagram, sheet -- file-drop only, no AtlasToolShape to
-  // declare these on) sets it directly in its own registerBoardObjectContent
-  // call so the Extensions list can render an honest row for it too,
-  // mirroring goal 0211's own description-field precedent. Presence of
-  // this field is exactly how toolLessNounExtensions() below finds a
-  // tool-less noun worth listing.
-  extension?: ExtensionRowMeta
-}
-
-// ExtensionRowMeta -- the fields ExtensionRow.tsx needs for a tool-less
-// noun's own row that AtlasToolShapeBase would otherwise supply.
-// disableScopeNote is REQUIRED (never optional): a tool-less noun has
-// no tray button to hide, so its own disable toggle gates a narrower,
-// noun-specific seam (file-drop routing, and for diagram the embedded-
-// editor door) -- the row must always say so rather than silently
-// implying the same tray-wide scope a tool row's toggle has.
-export interface ExtensionRowMeta {
-  icon: Icon
-  label: string
-  description: string
-  disableScopeNote: string
-  capabilities?: readonly string[]
-}
-
-// AtlasBoardObjectContent -- AtlasNounContent plus the board-facts
-// AtlasBoardObjectNode.tsx also resolves per Kind; kept as the
-// registry's own stored shape so a lookup returns everything the
-// renderer needs in one call. fileBacked (goal 0232 S1): does this
-// Kind's own Payload.mirrorPath name a real external file this content
-// previews -- the ONE flag that drives both the live-watch subscription
-// above and the object.openInDefaultApp command's own honest
-// enablement (useAtlasObjectMenu.ts), so a new file-backed family's
-// entire platform-provided contract is this one boolean plus reading
-// mirrorVersion, never its own watch/open wiring. ADR-0046 (goal 0244
-// S0): for a Kind that declares `source`, fileBacked is DERIVED from it
-// (`source.kind === 'file'`) by registerBoardObjectContent below rather
-// than independently settable -- a Kind with no source still declares
-// this field directly (shape/ink today), so the field itself stays
-// required.
-export interface AtlasBoardObjectContent extends AtlasNounContent {
-  dragBand: boolean
-  fileBacked: boolean
-}
-
-const boardObjectContentRegistry = new Map<string, AtlasBoardObjectContent>()
-
-// registerBoardObjectContent -- the honest home for a noun with no
-// tray tool at all (diagram: file-drop only, goal 0179 S2). Called
-// either directly by a tool-less noun's own registration file, or by
-// registerNoun below on behalf of a tool descriptor that declares
-// `boardObjectKind`/`content`. Throws on a duplicate Kind so two
-// sources can never silently overwrite each other's content.
-export function registerBoardObjectContent(kind: string, content: AtlasBoardObjectContent): void {
-  if (boardObjectContentRegistry.has(kind)) {
-    throw new Error(`atlas board-object kind "${kind}" already has a registered content renderer -- check frontend/src/atlas/tools/`)
-  }
-  // fileBacked derivation (ADR-0046, goal 0244 S0): once a Kind
-  // declares `source`, that union is the single source of truth for
-  // whether it is file-backed -- the caller's own literal fileBacked
-  // value (still required by the type) is superseded here rather than
-  // read back, so the two can never silently disagree.
-  const resolved = content.source ? { ...content, fileBacked: content.source.kind === 'file' } : content
-  boardObjectContentRegistry.set(kind, resolved)
-}
-
-// boardObjectContentFor -- the ONE lookup AtlasBoardObjectNode.tsx uses
-// to resolve a placed object's own content/ariaLabel/role/dragBand,
-// replacing its former per-Kind hand branch. Accepts a plain string
-// (BoardObject.Kind is untyped on the wire) and returns undefined for
-// an unregistered Kind rather than throwing, since a render path must
-// stay recoverable even against bad/legacy data.
-export function boardObjectContentFor(kind: string): AtlasBoardObjectContent | undefined {
-  return boardObjectContentRegistry.get(kind)
-}
-
-// ToolLessNounExtension -- one entry of toolLessNounExtensions() below,
-// with `extension` already narrowed to non-optional (the filter that
-// builds this array is the one place that check happens, so every
-// consumer downstream gets a guaranteed ExtensionRowMeta instead of
-// re-checking for undefined itself).
-export interface ToolLessNounExtension {
-  kind: string
-  content: AtlasBoardObjectContent
-  extension: ExtensionRowMeta
-}
-
-// toolLessNounExtensions -- every registered noun with NO AtlasToolShape
-// of its own (diagram, sheet: file-drop only) that has declared
-// Extensions-row metadata, so Settings > Extensions (ExtensionsSection.tsx)
-// can list it alongside every tray tool. A tool-bearing noun's content
-// also lives in this same registry (registerNoun folds it in below) but
-// never sets `extension`, so it's excluded here -- it already gets its
-// own row from ATLAS_TOOLS directly. Sorted by kind for a stable,
-// deterministic row order independent of import.meta.glob's own
-// alphabetical file-discovery order.
-export function toolLessNounExtensions(): ToolLessNounExtension[] {
-  const found: ToolLessNounExtension[] = []
-  for (const [kind, content] of boardObjectContentRegistry.entries()) {
-    if (content.extension) found.push({ kind, content, extension: content.extension })
-  }
-  return found.sort((a, b) => a.kind.localeCompare(b.kind))
-}
-
 interface AtlasToolShapeBase {
   icon: Icon
+  // label: the command/button text, sourced from identityOf(id).commandLabel
+  // (a verb phrase -- "Add a note", "Draw a shape") -- read by the
+  // command palette (shared/commands.ts) and every tray tooltip/aria-label.
+  // NEVER read by Settings > Extensions' row title (goal 0237 S3's
+  // review rider) -- that reads nounName below instead, since a single
+  // field can't honestly serve both "what click does" (a verb) and
+  // "what this thing is called" (a noun) at once.
   label: string
+  // nounName: the bare noun a user would call this thing -- "Card",
+  // "Note", "Pencil" -- read ONLY by Settings > Extensions' row title
+  // (views/extensionMeta.ts's toolRowSource). A tool-less noun has no
+  // separate field for this at all: its own `extension.label`
+  // (ExtensionRowMeta) already IS the noun, since it has no command
+  // verb phrase to disambiguate from in the first place.
+  nounName: string
   // description (goal 0211's plugin-manager UX slice): a one-sentence,
   // user-vocabulary summary of what this noun does, read by the
   // Extensions section's per-row disclosure (views/ExtensionsSection.tsx,
@@ -227,7 +88,7 @@ interface AtlasToolShapeBase {
   // AtlasCreationTray.tsx's own TRAY_GROUP_ORDER renders every cluster
   // from this field -- reversible by editing one tool's declaration,
   // never a hand-enumerated JSX reshuffle.
-  group: 'knowledge' | 'file' | 'annotate'
+  group: AtlasNounGroup
   styleDefaults?: AtlasToolStyleDefaults
   // styleFields (goal 0209): this noun's own declared styleable
   // properties, drawn from atlasStyleVocabulary.ts's closed
@@ -339,6 +200,63 @@ interface AtlasToolShapeBase {
   // accept every one of them for the registry's own element type to
   // work, never call through it generically.
   commit: (input: never) => unknown
+}
+
+// AtlasGesturePoint -- one accumulated point of an in-flight gesture,
+// always carrying its own capture timestamp so an ephemeral tool
+// (laser's fadeMs) can age individual points out independently; every
+// other tool simply ignores `t`.
+export interface AtlasGesturePoint { x: number; y: number; t: number }
+
+// AtlasGestureCtx -- what a tool's own gesture.onPoint/onEnd may reach,
+// assembled fresh each render by AtlasBoard.tsx and threaded through by
+// the engine. Deliberately NOT the wrapper box or React Flow's own
+// screenToFlowPosition internals beyond the function itself -- kept to
+// exactly what the five hooks this contract replaces actually consumed
+// (goal 0215 S2 design lock item 1).
+export interface AtlasGestureCtx {
+  screenToFlowPosition: (p: { x: number; y: number }) => { x: number; y: number }
+  parentID: string
+  cardBoxes: FrameBox[]
+  noteBoxes: { id: string; x: number; y: number; width: number; height: number }[]
+  // Every board-local object's (ink/shape/image/table/diagram) own
+  // rendered flow-space box -- read off React Flow's own measured node
+  // state (goal 0230), since a BoardObject's persisted Size stays null
+  // until first resize and its rendered footprint is otherwise CSS-
+  // intrinsic (atlasBuildBoardObjectNodes.ts's own header comment).
+  objectBoxes: { id: string; x: number; y: number; width: number; height: number }[]
+  onDeleteSelection: (cardIDs: string[], noteIDs: string[], objectIDs: string[]) => void
+  openAreaPopover: (screenPos: { x: number; y: number }, flowPos: { x: number; y: number }, enclosedCardIDs: string[], enclosedNoteIDs: string[]) => void
+  onShapeCreated: (objectID: string) => void
+  // Real functions for a one-shot tool; no-ops for a sticky one (the
+  // engine's own gestureDisarmFns enforces this, not each tool).
+  disarm: () => void
+  disarmUnlessLocked: () => void
+  // Fresh per-gesture scratch space the engine allocates at pointerdown
+  // and discards after onEnd -- eraser's own onPoint is the sole
+  // consumer today; no other tool touches it.
+  hitAccumulator: { cardIDs: Set<string>; noteIDs: Set<string>; objectIDs: Set<string> }
+}
+
+// AtlasToolGesture -- a drag-shaped tool's own pure behavior
+// contribution. onEnd receives the FULL client-space point list
+// unconditionally (even a below-threshold stray click) -- deciding
+// whether that constitutes a real gesture (a distance threshold, a
+// hit count, or nothing at all) is each tool's own call, matching how
+// the five hooks this contract replaces each guarded their own commit
+// differently (eraser's own guard is "did we hit anything", never a
+// distance).
+export interface AtlasToolGesture {
+  onPoint?: (pt: AtlasGesturePoint, ctx: AtlasGestureCtx) => void
+  onEnd: (points: AtlasGesturePoint[], ctx: AtlasGestureCtx) => void
+  // Rendered generically by AtlasBoard.tsx in ONE overlay slot, wrapper-
+  // spanning, fed the engine's own wrapper-local point accumulation.
+  preview?: ComponentType<{ points: AtlasGesturePoint[]; now: number }>
+  // Ephemeral tools (laser) never commit -- their accumulated points
+  // fade out on their own timer instead of clearing at pointerup, the
+  // one generic mechanism useAtlasToolGesture.ts owns for an
+  // 'ephemeral-drag' tool so no tool needs its own rAF loop.
+  fadeMs?: number
 }
 
 // AtlasToolShape: a discriminated union, one member per

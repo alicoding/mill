@@ -1,7 +1,7 @@
 import type { Icon } from '@primer/octicons-react'
 import type { EditRouteDecl, ObjectSource } from '../atlas/objectSeams'
 import type { AtlasToolShape } from '../atlas/atlasTools'
-import type { ToolLessNounExtension } from '../atlas/atlasNounRegistry'
+import type { AtlasNounGroup, ToolLessNounExtension } from '../atlas/atlasNounRegistry'
 
 // Pure enum -> user-vocabulary mapping for the Extensions section
 // (Settings > Extensions). Kept in its own file, apart from
@@ -16,17 +16,19 @@ import type { ToolLessNounExtension } from '../atlas/atlasNounRegistry'
 // normalized from either a tray tool (AtlasToolShape) or a tool-less
 // noun (ToolLessNounExtension) by the two builders below -- so the row
 // component itself never branches on which kind of noun it's showing.
-// group/description/capabilities/disableScopeNote stay optional: a
-// tool-less noun has no tray cluster to report (there is no `group`
-// chip for a noun with no tray at all) and only IT ever sets
-// disableScopeNote, since only it needs to say its toggle's scope
-// differs from a tray tool's.
+// group is REQUIRED (goal 0237 S3's Extensions-list review rider):
+// every row, tool-bearing or not, now belongs to one of the three
+// Settings > Extensions sections (ExtensionsSection.tsx), so a row
+// with no honest group would silently vanish from every one of them.
+// description/capabilities/disableScopeNote stay optional: only a
+// tool-less noun ever sets disableScopeNote, since only it needs to
+// say its toggle's scope differs from a tray tool's.
 export interface ExtensionRowSource {
   id: string
   icon: Icon
   label: string
   description?: string
-  group?: AtlasToolShape['group']
+  group: AtlasNounGroup
   source?: ObjectSource
   editRoute?: EditRouteDecl
   capabilities?: readonly string[]
@@ -37,11 +39,15 @@ export interface ExtensionRowSource {
 // already did before goal 0237 S3's rider (ExtensionsSection.tsx used
 // to read AtlasToolShape fields directly); this is that same read,
 // pulled out so it composes with toolLessRowSource below into one list.
+// `label` reads nounName, not the tool's own command-verb `label` (goal
+// 0237 S3's Extensions-list review rider) -- the row title is what a
+// user calls this thing ("Card"), never what clicking it does ("Add a
+// card").
 export function toolRowSource(tool: AtlasToolShape): ExtensionRowSource {
   return {
     id: tool.id,
     icon: tool.icon,
-    label: tool.label,
+    label: tool.nounName,
     description: tool.description,
     group: tool.group,
     source: tool.content?.source,
@@ -51,16 +57,18 @@ export function toolRowSource(tool: AtlasToolShape): ExtensionRowSource {
 }
 
 // toolLessRowSource -- a tool-less noun's own row (goal 0237 S3 rider):
-// icon/label/description/disableScopeNote come from its declared
-// `extension` (atlasNounRegistry.ts's ExtensionRowMeta), source/
-// editRoute from the same content declaration a tray tool's row reads,
-// and no `group` -- there is no tray cluster to report honestly.
+// icon/label/description/disableScopeNote/group come from its declared
+// `extension` (atlasNounRegistry.ts's ExtensionRowMeta) -- `label` is
+// already the noun itself here (diagram/sheet have no separate command
+// verb to disambiguate from) -- source/editRoute come from the same
+// content declaration a tray tool's row reads.
 export function toolLessRowSource({ kind, content, extension }: ToolLessNounExtension): ExtensionRowSource {
   return {
     id: kind,
     icon: extension.icon,
     label: extension.label,
     description: extension.description,
+    group: extension.group,
     source: content.source,
     editRoute: content.editRoute,
     capabilities: extension.capabilities,
@@ -68,13 +76,30 @@ export function toolLessRowSource({ kind, content, extension }: ToolLessNounExte
   }
 }
 
-// groupLabel -- AtlasToolShape.group's own three clusters, restated as
-// short chip text a user would recognize (never the tray's own
-// internal cluster name).
-export function groupLabel(group: AtlasToolShape['group']): string {
+// groupLabel -- AtlasNounGroup's own three clusters, restated as short
+// chip text a user would recognize (never the tray's own internal
+// cluster name). Used only by the expanded row's own chip list
+// (ExtensionRow.tsx) -- the collapsed row's meta line reads
+// groupSectionLabel below instead, since the section heading above
+// every row already says this once (goal 0237 S3's review rider:
+// repeating it a second time on every row read as noise).
+export function groupLabel(group: AtlasNounGroup): string {
   switch (group) {
     case 'knowledge': return 'Knowledge'
     case 'file': return 'File'
+    case 'annotate': return 'Drawing'
+  }
+}
+
+// groupSectionLabel -- the same three clusters, restated as the
+// SECTION heading text (goal 0237 S3's review rider: "Knowledge",
+// "Files", "Drawing") -- plural where groupLabel's per-row chip stays
+// singular ("File"), since a heading names a collection and a chip
+// names one row's own attribute.
+export function groupSectionLabel(group: AtlasNounGroup): string {
+  switch (group) {
+    case 'knowledge': return 'Knowledge'
+    case 'file': return 'Files'
     case 'annotate': return 'Drawing'
   }
 }
