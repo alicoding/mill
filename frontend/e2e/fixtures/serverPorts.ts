@@ -258,3 +258,11 @@ export const CLIPBOARD_HISTORY_MCP_BASE_PORT = 11060
 // worker pool coding-loop.spec.ts itself runs on must never see.
 export const CODING_LOOP_SECRETS_SERVER_BASE_PORT = 11080
 export const CODING_LOOP_SECRETS_MCP_BASE_PORT = 11100
+
+// runtime-plugins.spec.ts's own dedicated pair (goal 0249): its server
+// boots with MILL_PLUGINS_DIR pointed at the repo's own
+// examples/plugins fixture, a whole-process env the shared pool must
+// never inherit, and its Review-queue assertions read the global
+// pending-guarded-action list.
+export const RUNTIME_PLUGINS_SERVER_BASE_PORT = 11120
+export const RUNTIME_PLUGINS_MCP_BASE_PORT = 11140

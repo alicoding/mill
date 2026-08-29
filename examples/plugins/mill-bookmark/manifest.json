@@ -1,0 +1,9 @@
+{
+  "id": "mill-bookmark",
+  "name": "Bookmark",
+  "version": "1.0.0",
+  "description": "Keeps a web address on the board and opens it in your browser.",
+  "author": "Mill examples",
+  "minMillVersion": "0.9.0",
+  "capabilities": ["open-url"]
+}
