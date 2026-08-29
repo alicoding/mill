@@ -23,17 +23,41 @@ import (
 )
 
 // Manifest is the converged plugin manifest shape (docs/adr/0047 §1:
-// identity metadata + a declared capability set; contributions happen
-// at activate() time through the host API, so they are not restated
-// here).
+// identity metadata + a declared capability set). Rendering
+// contributions happen at activate() time through the host API, so
+// they are not restated here; INGESTION claims are the deliberate
+// exception (docs/goals/0251) -- both ingestion chains must consult
+// them without running plugin code, so they live in Contributes.
 type Manifest struct {
-	ID             string   `json:"id"`
-	Name           string   `json:"name"`
-	Version        string   `json:"version"`
-	Description    string   `json:"description"`
-	Author         string   `json:"author"`
-	MinMillVersion string   `json:"minMillVersion"`
-	Capabilities   []string `json:"capabilities"`
+	ID             string              `json:"id"`
+	Name           string              `json:"name"`
+	Version        string              `json:"version"`
+	Description    string              `json:"description"`
+	Author         string              `json:"author"`
+	MinMillVersion string              `json:"minMillVersion"`
+	Capabilities   []string            `json:"capabilities"`
+	Contributes    ManifestContributes `json:"contributes"`
+}
+
+// ManifestContributes is the manifest's declarative contribution
+// point (docs/goals/0251, the VSCode-shaped convention): data other
+// parts of Mill read to ROUTE to a plugin, distinct from capabilities
+// (what a plugin may ask to do).
+type ManifestContributes struct {
+	CanvasObjects []CanvasObjectContribution `json:"canvasObjects"`
+}
+
+// CanvasObjectContribution claims the ingestion doors for one canvas
+// object kind: which dropped-file extensions and which clipboard
+// shapes land as this plugin's object. Payload shape is not declared
+// here -- it derives from the object's own registered source (a
+// fileExtensions claim requires a file-backed object landing
+// mirrorPath+title; PastesURLs requires a url-backed one landing
+// url+title), enforced host-side at registration.
+type CanvasObjectContribution struct {
+	Kind           string   `json:"kind"`
+	FileExtensions []string `json:"fileExtensions"`
+	PastesURLs     bool     `json:"pastesURLs"`
 }
 
 // PluginInfo is one scanned plugin as the Extensions surface and the
@@ -166,7 +190,66 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 			}
 		}
 	}
+	if info.Error == "" {
+		info.Error = validateContributes(m.Contributes)
+	}
 	return info
+}
+
+// fileExtensionPattern pins a contributed extension claim to the
+// ".ext" shape the drop router compares against (unitRegistry's own
+// extensionOf yields a lowercased dot-prefixed extension).
+var fileExtensionPattern = regexp.MustCompile(`^\.[a-z0-9]+$`)
+
+// validateContributes fail-closes ingestion claims the same way an
+// unknown capability does: a malformed claim blocks the load with a
+// human-readable reason, never routes half-right.
+func validateContributes(c ManifestContributes) string {
+	for _, obj := range c.CanvasObjects {
+		if !pluginIDPattern.MatchString(obj.Kind) {
+			return fmt.Sprintf("contributed canvas object kind %q must be lowercase letters, digits, and hyphens", obj.Kind)
+		}
+		for _, ext := range obj.FileExtensions {
+			if !fileExtensionPattern.MatchString(ext) {
+				return fmt.Sprintf("contributed file extension %q must look like \".ext\" in lowercase", ext)
+			}
+		}
+	}
+	return ""
+}
+
+// IngestionClaim is one valid plugin's claim on bare-URL pastes as
+// the paste chain's wiring consumes it (docs/goals/0251).
+type IngestionClaim struct {
+	PluginID string
+	Kind     string
+}
+
+// URLPasteClaims returns the claims of every VALID plugin whose
+// manifest sets pastesURLs, in ListPlugins' own deterministic id
+// order. Consulted by the paste recognizer chain through the
+// composition root's enablement filter -- never by running plugin
+// code: a claim only routes the paste; the plugin's JS renders the
+// object it produced, later, in the webview.
+//
+//wails:ignore
+func (p *PluginService) URLPasteClaims() []IngestionClaim {
+	infos, err := p.ListPlugins()
+	if err != nil {
+		return nil
+	}
+	var out []IngestionClaim
+	for _, info := range infos {
+		if info.Error != "" {
+			continue
+		}
+		for _, obj := range info.Manifest.Contributes.CanvasObjects {
+			if obj.PastesURLs {
+				out = append(out, IngestionClaim{PluginID: info.Manifest.ID, Kind: obj.Kind})
+			}
+		}
+	}
+	return out
 }
 
 // GuardedActionDecision is RequestGuardedAction's wire shape.

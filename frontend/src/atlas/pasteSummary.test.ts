@@ -6,7 +6,7 @@ import { pasteSummaryText } from './pasteSummary'
 const t = ((key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key)) as TFunction<'atlas'>
 
 function result(overrides: Partial<PasteResult> = {}): PasteResult {
-  return { Recognized: true, Cards: 0, Links: 0, Tables: 0, Images: 0, SkippedPages: null, ...overrides }
+  return { Recognized: true, Cards: 0, Links: 0, Tables: 0, Images: 0, PluginObjects: 0, SkippedPages: null, ...overrides }
 }
 
 describe('pasteSummaryText', () => {

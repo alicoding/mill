@@ -16,7 +16,7 @@ PROFILE="${1:?usage: check-go-coverage.sh <coverprofile>}"
 # latter. Re-raise only when the CI number climbs clear of the floor by
 # more than the observed ~0.5pt inter-PR swing, never on a single
 # comfortably-green reading.
-FLOOR="71.0"
+FLOOR="75.0"
 TOTAL=$(go tool cover -func="$PROFILE" | awk '/^total:/ {gsub(/%/,"",$3); print $3}')
 if [ -z "$TOTAL" ]; then
   echo "check-go-coverage: no total in $PROFILE" >&2

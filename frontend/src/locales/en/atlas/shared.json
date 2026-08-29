@@ -404,6 +404,8 @@
     "links_other": "{{count}} links",
     "images_one": "{{count}} image",
     "images_other": "{{count}} images",
+    "pluginObjects_one": "{{count}} object",
+    "pluginObjects_other": "{{count}} objects",
     "pagesSkipped_one": "{{count}} page couldn't be read: {{pages}}",
     "pagesSkipped_other": "{{count}} pages couldn't be read: {{pages}}"
   },

@@ -161,6 +161,9 @@ test('the Extensions page tells the install story: plugin row with manifest meta
 		await expect(bookmarkRow).toContainText('Bookmark')
 		await expect(bookmarkRow).toContainText('1.0.0')
 		await expect(bookmarkRow).toContainText('open-url')
+		// Ingestion claims render declare-first (goal 0251): the row
+		// states what the plugin catches before it ever runs.
+		await expect(bookmarkRow.locator('[data-testid="extensions-plugin-catches"]')).toContainText('web links pasted')
 		await expect(bookmarkRow.locator('[data-testid="extensions-plugin-toggle"]')).toBeVisible()
 
 		// A broken folder is a visible row naming its exact problem --
@@ -171,6 +174,39 @@ test('the Extensions page tells the install story: plugin row with manifest meta
 
 		// The plugin never gets a second compiled-in-style row.
 		await expect(page.locator('[data-testid="extensions-row"][data-extension-id="bookmark"]')).toHaveCount(0)
+	} finally {
+		await close()
+	}
+})
+
+test('a URL pasted from another app lands as the claiming plugin object, not a note (goal 0251)', async () => {
+	const { page, close } = await launchWithPlugins(6)
+	try {
+		await page.goto('/')
+		await page.getByRole('link', { name: 'Atlas' }).click()
+		const board = page.getByTestId('atlas-board')
+		await expect(board).toBeVisible()
+
+		// The paste anchors at the pointer -- aim at open canvas first
+		// (atlas-paste-convert.spec.ts's own cursor-position gesture).
+		const spot = await findEmptyBoardRect(page, board, 300, 200)
+		// eslint-disable-next-line no-restricted-syntax -- cursor-position-only gesture, not a checkable interaction (atlas-paste-convert.spec.ts's pasteText comment has the full reasoning)
+		await page.mouse.move(spot.x + 20, spot.y + 20)
+		await page.evaluate(() => {
+			const dt = new DataTransfer()
+			dt.setData('text/plain', 'https://example.com/some/page')
+			window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
+		})
+
+		// The whole claims chain fires: manifest scan -> wiring's
+		// enablement filter -> the Go recognizer -> a bookmark object
+		// rendered by the plugin's own face, carrying the pasted URL.
+		const face = page.locator('[data-testid="plugin-face-bookmark"]')
+		await expect(face).toBeVisible()
+		await expect(face.locator('[data-testid="bookmark-url-input"]')).toHaveValue('https://example.com/some/page')
+
+		// And it landed as the claimed object, never the note fallback.
+		await expect(page.locator('[data-testid="atlas-sticky-note"]')).toHaveCount(0)
 	} finally {
 		await close()
 	}

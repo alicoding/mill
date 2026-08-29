@@ -84,6 +84,11 @@ type AtlasService struct {
 	// overwrites this field directly so no test suite ever makes a
 	// real network call.
 	imageURLFetcher func(rawURL string) ([]byte, error)
+	// pluginPasteClaims resolves runtime plugins' bare-URL paste
+	// claims (docs/goals/0251, atlaspasteplugin.go) -- nil-means-off
+	// like pasteListFactory above; wired from the composition root
+	// (wiring.WirePluginIngestion).
+	pluginPasteClaims func() []PluginPasteClaim
 	cards           []atlas.Card
 	links           []atlas.Link
 	notes           []atlas.Note

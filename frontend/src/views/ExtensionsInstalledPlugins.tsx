@@ -15,6 +15,17 @@ import styles from '../shared/ListCard.module.css'
 // disabled, or visibly broken with the exact reason. The install
 // story lives here too: the folder is one click away, and a fresh
 // install takes effect on reload (plugins load at app start).
+// The row states a plugin's ingestion claims (docs/goals/0251) so
+// what a plugin catches is visible before it ever runs -- the same
+// declare-first posture the capabilities line carries.
+function claimedExtensions(p: PluginInfo): string[] {
+	return (p.Manifest.contributes?.canvasObjects ?? []).flatMap((c) => c.fileExtensions ?? [])
+}
+
+function claimsURLPastes(p: PluginInfo): boolean {
+	return (p.Manifest.contributes?.canvasObjects ?? []).some((c) => c.pastesURLs)
+}
+
 export function ExtensionsInstalledPlugins() {
 	const { t } = useTranslation('views')
 	const disabledIds = useExtensionEnablementStore((s) => s.disabledExtensionIds)
@@ -77,6 +88,16 @@ export function ExtensionsInstalledPlugins() {
 										{(p.Manifest.capabilities?.length ?? 0) > 0 && (
 											<Text size="small" className={styles.muted}>
 												{t('settings.extensions.pluginCapabilities', { list: (p.Manifest.capabilities ?? []).join(', ') })}
+											</Text>
+										)}
+										{claimedExtensions(p).length > 0 && (
+											<Text size="small" className={styles.muted} data-testid="extensions-plugin-catches">
+												{t('settings.extensions.pluginCatchesFiles', { list: claimedExtensions(p).join(', ') })}
+											</Text>
+										)}
+										{claimsURLPastes(p) && (
+											<Text size="small" className={styles.muted} data-testid="extensions-plugin-catches">
+												{t('settings.extensions.pluginCatchesLinks')}
 											</Text>
 										)}
 										{error && (

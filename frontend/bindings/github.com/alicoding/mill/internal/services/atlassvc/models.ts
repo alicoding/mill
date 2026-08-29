@@ -328,6 +328,13 @@ export interface PasteResult {
      * paste names exactly one path or URL.
      */
     "Images": number;
+
+    /**
+     * PluginObjects counts a paste landing a runtime plugin's claimed
+     * board object (docs/goals/0251, atlaspasteplugin.go) -- always 0
+     * or 1, same single-payload property Images documents.
+     */
+    "PluginObjects": number;
     "SkippedPages": string[] | null;
 }
 

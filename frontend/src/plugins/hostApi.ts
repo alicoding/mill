@@ -3,6 +3,7 @@ import type { Icon } from '@primer/octicons-react'
 import { registerThirdPartyNoun } from '../atlas/atlasNounRegistry'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
+import { ingestionClaimMismatch } from './ingestionClaims'
 import { collectPluginCommand } from './pluginCommands'
 import { pluginFaceComponent } from './PluginFaceContent'
 import type { CanvasObjectDecl, MillPluginAPI } from './sdk'
@@ -42,12 +43,16 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string): MillPlu
 			if (!SOURCES.has(decl.source)) throw new Error(`plugin ${pluginId}: unknown source "${decl.source}"`)
 			if (!EDIT_ROUTES.has(decl.editRoute)) throw new Error(`plugin ${pluginId}: unknown editRoute "${decl.editRoute}"`)
 			if (typeof decl.renderFace !== 'function') throw new Error(`plugin ${pluginId}: renderFace must be a function`)
+			const contribution = (manifest.contributes?.canvasObjects ?? []).find((c) => c.kind === decl.kind)
+			const claimError = ingestionClaimMismatch(contribution, decl.source)
+			if (claimError) throw new Error(`plugin ${pluginId}: ${claimError}`)
 			registerThirdPartyNoun({
 				id: decl.kind,
 				interaction: 'arm-then-click',
 				thirdParty: true,
 				pluginId,
 				defaultPayload: { ...(decl.defaultPayload ?? {}) },
+				fileExtensions: (contribution?.fileExtensions ?? []).map((e) => e.toLowerCase()),
 				icon: emojiIcon(decl.icon),
 				label: decl.label,
 				nounName: decl.label,
