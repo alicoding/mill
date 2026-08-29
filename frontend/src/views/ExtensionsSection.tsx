@@ -6,7 +6,8 @@ import { toolLessNounExtensions } from '../atlas/atlasNounRegistry'
 import { SettingsService } from '../shared/bindings'
 import { refreshDisabledExtensions, useExtensionEnablementStore } from '../shared/extensionEnablementStore'
 import { ExtensionRow } from './ExtensionRow'
-import { toolLessRowSource, toolRowSource, type ExtensionRowSource } from './extensionMeta'
+import { groupSectionLabel, toolLessRowSource, toolRowSource, type ExtensionRowSource } from './extensionMeta'
+import type { AtlasNounGroup } from '../atlas/atlasNounRegistry'
 import styles from '../shared/ListCard.module.css'
 
 // Settings > Extensions (goal 0237 S2, extended by goal 0211's plugin-
@@ -41,6 +42,14 @@ const EXTENSION_ROWS: ExtensionRowSource[] = [
   ...toolLessNounExtensions().map(toolLessRowSource),
 ]
 const NON_BUILT_IN_IDS: string[] = EXTENSION_ROWS.filter((r) => r.id !== CARD_TOOL_ID).map((r) => r.id)
+
+// The list's own three sections (goal 0237 S3's review rider --
+// "group the list, stop repeating the group"), in the same
+// knowledge-then-file-then-annotate order AtlasCreationTray.tsx's own
+// PRIMARY_GROUP_ORDER renders the tray in. Rows within each section
+// keep EXTENSION_ROWS' own registry order (a stable filter, never a
+// re-sort) -- never a hand-curated per-id array.
+const SECTION_ORDER: AtlasNounGroup[] = ['knowledge', 'file', 'annotate']
 
 export default function ExtensionsSection() {
   const { t } = useTranslation('views')
@@ -89,17 +98,32 @@ export default function ExtensionsSection() {
         </Button>
       </Stack>
       <ActionList role="list" showDividers data-testid="extensions-list">
-        {EXTENSION_ROWS.map((row) => (
-          <ActionList.Item key={row.id}>
-            <ExtensionRow
-              row={row}
-              builtIn={row.id === CARD_TOOL_ID}
-              enabled={!disabledIds.includes(row.id)}
-              appVersion={appVersion}
-              onToggle={(enabled) => toggle(row.id, enabled)}
-            />
-          </ActionList.Item>
-        ))}
+        {SECTION_ORDER.map((group) => {
+          const rows = EXTENSION_ROWS.filter((row) => row.group === group)
+          if (rows.length === 0) return null
+          return (
+            <ActionList.Group key={group} data-testid={`extensions-group-${group}`}>
+              {/* as="h3" is REQUIRED here -- Primer's own GroupHeading
+                  throws ("requires a heading level") without it once the
+                  parent ActionList carries role="list" (this one does,
+                  for the assistive-tech list semantics every other row
+                  in Settings already gets). h3 nests correctly under the
+                  page's own h2 section headings (SettingsView.tsx). */}
+              <ActionList.GroupHeading as="h3" variant="subtle">{groupSectionLabel(group)}</ActionList.GroupHeading>
+              {rows.map((row) => (
+                <ActionList.Item key={row.id}>
+                  <ExtensionRow
+                    row={row}
+                    builtIn={row.id === CARD_TOOL_ID}
+                    enabled={!disabledIds.includes(row.id)}
+                    appVersion={appVersion}
+                    onToggle={(enabled) => toggle(row.id, enabled)}
+                  />
+                </ActionList.Item>
+              ))}
+            </ActionList.Group>
+          )
+        })}
       </ActionList>
     </Stack>
   )

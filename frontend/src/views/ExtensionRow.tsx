@@ -12,11 +12,16 @@ import styles from './ExtensionsSection.module.css'
 const ATLAS_CONCEPTS_DOCS_PAGE = 'concepts/atlas.md'
 
 // ExtensionRow -- one row of Settings > Extensions, collapsed to
-// icon/label/meta by default, expanding (native <details>, see
+// icon/noun-title/meta by default, expanding (native <details>, see
 // ExtensionsSection.module.css's own header comment) into a registry-
-// derived detail panel: description, meta chips, an optional disable-
-// scope note, the honest reach line, the app's own build version, and
-// the shared Docs link. Every value here is READ off the noun's own
+// derived detail panel: description, meta chips (including the group,
+// dropped from the collapsed meta line since the section heading above
+// already states it once), an optional disable-scope note, the honest
+// reach line, the app's own build version, and the shared Docs link.
+// The row's own title is the noun (`row.label`, sourced from nounName
+// for a tray tool -- goal 0237 S3's review rider), never the command
+// verb phrase ("Add a note") that surfaces elsewhere (tray tooltips,
+// the command palette). Every value here is READ off the noun's own
 // registered descriptor, normalized into ExtensionRowSource by
 // extensionMeta.ts's toolRowSource/toolLessRowSource -- nothing here is
 // hand-curated per extension, and this component never itself branches
@@ -31,7 +36,15 @@ export function ExtensionRow({ row, builtIn, enabled, appVersion, onToggle }: {
   const { t } = useTranslation('views')
   const Icon = row.icon
   const labelId = `extension-row-label-${row.id}`
-  const meta = [row.group ? groupLabel(row.group) : null, sourceLabel(row.source), editRouteLabel(row.editRoute)]
+  // The collapsed row's own meta line never repeats the group word
+  // (goal 0237 S3's review rider) -- the section heading above every
+  // row already says it once; source/editRoute are the only per-row
+  // facts left. The expanded view's own chip list is a different
+  // reading context (scanned one row at a time, the heading scrolled
+  // out of view by then) and keeps the group chip.
+  const summaryMeta = [sourceLabel(row.source), editRouteLabel(row.editRoute)]
+    .filter((m): m is string => m !== null)
+  const chips = [groupLabel(row.group), sourceLabel(row.source), editRouteLabel(row.editRoute)]
     .filter((m): m is string => m !== null)
 
   return (
@@ -41,17 +54,17 @@ export function ExtensionRow({ row, builtIn, enabled, appVersion, onToggle }: {
           <ChevronRightIcon className={styles.chevron} size={16} />
           <Icon size={16} />
           <Stack direction="vertical" gap="none">
-            <Text id={labelId} size="small" weight="semibold">{row.label}</Text>
-            {meta.length > 0 && (
-              <Text size="small" className={listStyles.muted}>{meta.join(' · ')}</Text>
+            <Text id={labelId} size="small" weight="semibold" data-testid="extensions-row-title">{row.label}</Text>
+            {summaryMeta.length > 0 && (
+              <Text size="small" className={listStyles.muted} data-testid="extensions-row-meta">{summaryMeta.join(' · ')}</Text>
             )}
           </Stack>
         </summary>
         <div className={styles.expanded} data-testid="extensions-row-expanded">
           <Text as="p" size="small" data-testid="extensions-row-description">{descriptionLabel(row)}</Text>
-          {meta.length > 0 && (
+          {chips.length > 0 && (
             <Stack direction="horizontal" gap="condensed" className={styles.chips}>
-              {meta.map((chip) => <Label key={chip}>{chip}</Label>)}
+              {chips.map((chip) => <Label key={chip}>{chip}</Label>)}
             </Stack>
           )}
           {row.disableScopeNote && (
@@ -87,6 +100,7 @@ export function ExtensionRow({ row, builtIn, enabled, appVersion, onToggle }: {
             checked={enabled}
             onChange={onToggle}
             size="small"
+            className={styles.toggle}
             data-testid="extensions-row-toggle"
           />
         )}

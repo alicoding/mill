@@ -52,5 +52,8 @@ registerBoardObjectContent('sheet', {
     label: 'Sheet',
     description: 'Preview spreadsheets and CSV files dropped onto the board.',
     disableScopeNote: 'Turning this off stops new sheets from landing on drop. Sheets already on the board keep working, including opening in your default app.',
+    // File-drop-only, the same family Image's own 'file' group already
+    // names (atlasNounRegistry.ts's AtlasNounGroup).
+    group: 'file',
   },
 })

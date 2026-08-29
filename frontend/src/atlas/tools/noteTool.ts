@@ -26,6 +26,7 @@ export const noteTool = {
   id: noteIdentity.id,
   icon: NoteIcon,
   label: noteIdentity.commandLabel,
+  nounName: 'Note',
   description: 'Adds a quick sticky note for jotting text on the board.',
   shortcutKey: noteIdentity.shortcutKey,
   tray: 'quick',

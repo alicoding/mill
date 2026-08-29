@@ -24,6 +24,7 @@ export const tableTool = {
   id: tableIdentity.id,
   icon: TableIcon,
   label: tableIdentity.commandLabel,
+  nounName: 'Table',
   description: 'Adds a live table backed by a Configure List.',
   shortcutKey: tableIdentity.shortcutKey,
   tray: 'quick',
