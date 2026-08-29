@@ -9,6 +9,11 @@ export interface RuntimeCommandDecl {
   id: string
   label: string
   run: () => void
+  // surface scopes the command to a view the way Command.surface does
+  // (docs/goals/0251 audit rider: a plugin object's own create
+  // command belongs to the atlas surface, exactly like the built-in
+  // tools' atlas.create.<id> commands) -- omitted means global.
+  surface?: import('../shared/commands').Command['surface']
 }
 
 const collected: RuntimeCommandDecl[] = []

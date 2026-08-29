@@ -5,6 +5,7 @@ import type { NodeProps, Node as RFNode } from '@xyflow/react'
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { boardObjectContentFor } from './atlasNounRegistry'
+import { unknownKindContent } from './atlasBoardObjectContent'
 import { AtlasShapeRotateHandle } from './AtlasShapeRotateHandle'
 import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
 import { useAtlasObjectMirrorRead } from './useAtlasObjectMirrorRead'
@@ -83,15 +84,12 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
   // (rules-of-hooks: `facts` may be undefined on the first render).
   const mirrorContent = useAtlasObjectMirrorRead(object.ID, object.Payload?.mirrorPath, facts?.fileBacked ?? false, mirrorVersion)
 
-  if (!facts) {
-    // Every persisted Kind self-registers a content contribution
-    // (goal 0215 S3) -- reaching here means a BoardObject exists whose
-    // own Kind has none, a registry/data mismatch this renderer cannot
-    // recover from.
-    console.error(`atlas board object "${object.ID}" has unregistered Kind "${object.Kind}"`)
-    return null
-  }
-  const { Component, ariaLabelKey, role, dragBand } = facts
+  // An unregistered Kind renders the fallback face instead of null
+  // (docs/goals/0249's audit rider): a disabled/uninstalled plugin's
+  // objects stay visible, selectable and deletable, and a built-in
+  // registry/data mismatch becomes VISIBLE on the board instead of an
+  // invisible node only a console reader could diagnose.
+  const { Component, ariaLabelKey, role, dragBand } = facts ?? unknownKindContent
   // ADR-0046 (goal 0244 S1): double-click dispatches through the
   // object's own DECLARED edit route (resolved per-object, since a Kind
   // like diagram opens different doors for different mirror
@@ -101,7 +99,7 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
   // case) stays reachable via the context menu / an explicit button
   // only, matching every other file-backed Kind's convention of never
   // launching another app on an accidental double-click.
-  const editRoute = facts.editRoute ? resolveEditRoute(object, facts.editRoute) : undefined
+  const editRoute = facts?.editRoute ? resolveEditRoute(object, facts.editRoute) : undefined
   const editable = editRoute?.kind === 'embedded-engine'
 
   return (

@@ -211,3 +211,82 @@ test('a URL pasted from another app lands as the claiming plugin object, not a n
 		await close()
 	}
 })
+
+test('the palette offers the plugin tool as a create command on the atlas surface', async () => {
+	const { page, close } = await launchWithPlugins(8)
+	try {
+		await page.goto('/')
+		await page.getByRole('link', { name: 'Atlas' }).click()
+		await expect(page.getByTestId('atlas-board')).toBeVisible()
+		// Meta+/ is the palette's own binding on the atlas surface (⌘K
+		// is jump-to-card there -- command-palette.spec.ts's own atlas
+		// pattern).
+		await page.keyboard.press('Meta+/')
+		const dialog = page.getByRole('dialog', { name: 'Command palette' })
+		await expect(dialog).toBeVisible()
+		await dialog.getByRole('combobox').fill('Bookmark')
+		// The plugin's atlas.create.<kind> command -- the same palette
+		// parity every built-in tool's create command has.
+		await expect(dialog.getByRole('option', { name: 'Bookmark' })).toBeVisible()
+	} finally {
+		await close()
+	}
+})
+
+test('a plugin object placed before its plugin is removed stays visible, honest, and deletable', async () => {
+	// Two servers over ONE data dir (the persistence.spec restart
+	// pattern): place with the plugin installed, relaunch with an empty
+	// plugins dir -- the object must render the fallback face, never
+	// nothing (the 0249 "objects stay untouched" promise, made visible).
+	const dir = mkdtempSync(path.join(tmpdir(), 'mill-plugins-e2e-orphan-'))
+	const pluginsDir = path.join(dir, 'plugins')
+	mkdirSync(pluginsDir, { recursive: true })
+	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-bookmark'), path.join(pluginsDir, 'mill-bookmark'), { recursive: true })
+	const emptyPluginsDir = path.join(dir, 'plugins-empty')
+	mkdirSync(emptyPluginsDir, { recursive: true })
+	const spawnOpts = {
+		port: RUNTIME_PLUGINS_SERVER_BASE_PORT + 12,
+		mcpPort: RUNTIME_PLUGINS_MCP_BASE_PORT + 12,
+		settingsPath: path.join(dir, 'settings.json'),
+		executionDbPath: path.join(dir, 'exec.db'),
+		backupDir: path.join(dir, 'backups'),
+	}
+	const browser = await chromium.launch()
+	try {
+		const first = await spawnMillServer({ ...spawnOpts, extraEnv: { MILL_PLUGINS_DIR: pluginsDir } })
+		const page1 = await browser.newPage({ baseURL: first.baseURL })
+		await page1.goto('/')
+		await page1.getByRole('link', { name: 'Atlas' }).click()
+		const board = page1.getByTestId('atlas-board')
+		await expect(board).toBeVisible()
+		await page1.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]').click()
+		const spot = await findEmptyBoardRect(page1, board, 300, 200)
+		const bb = await board.boundingBox()
+		if (!bb) throw new Error('board has no bounding box')
+		await board.click({ position: { x: spot.x - bb.x + 10, y: spot.y - bb.y + 10 } })
+		await expect(page1.locator('[data-testid="plugin-face-bookmark"]')).toBeVisible()
+		await page1.close()
+		await first.stop()
+
+		const second = await spawnMillServer({ ...spawnOpts, extraEnv: { MILL_PLUGINS_DIR: emptyPluginsDir } })
+		const page2 = await browser.newPage({ baseURL: second.baseURL })
+		await page2.goto('/')
+		await page2.getByRole('link', { name: 'Atlas' }).click()
+		const face = page2.getByTestId('atlas-unknown-kind-face')
+		await expect(face).toBeVisible()
+		await expect(face).toContainText("Its extension isn't running")
+		// Still a real, selectable object -- delete it through the
+		// standard context-menu door (atlas-diagram-object.spec.ts's own
+		// object-menu pattern: the shared context-menu testid + a plain
+		// Delete text item, never an ARIA menuitem role).
+		await face.click({ button: 'right' })
+		const menu = page2.getByTestId('context-menu')
+		await expect(menu).toBeVisible()
+		await menu.getByText('Delete', { exact: true }).click()
+		await expect(page2.getByTestId('atlas-unknown-kind-face')).toHaveCount(0)
+		await second.stop()
+	} finally {
+		await browser.close()
+		rmSync(dir, { recursive: true, force: true })
+	}
+})

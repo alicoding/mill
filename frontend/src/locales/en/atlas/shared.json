@@ -453,5 +453,9 @@
     "errorTitle": "That didn't work",
     "retry": "Retry",
     "close": "Close AI panel"
+  },
+  "unknownKind": {
+    "note": "Its extension isn't running. Turn it on in Settings to bring it back.",
+    "aria": "Object from an extension that isn't running"
   }
 }
