@@ -53,6 +53,10 @@ export function useAtlasPaste({ topLevelBoxes, screenToFlowPosition, viewedID, o
 
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
+      // A more specific paste surface (the image popover's own paste
+      // zone) marks the event handled via preventDefault before it
+      // bubbles here -- acting anyway would land the same paste twice.
+      if (e.defaultPrevented) return
       if (isEditableTarget(document.activeElement)) return
       const data = e.clipboardData
       if (!data) return

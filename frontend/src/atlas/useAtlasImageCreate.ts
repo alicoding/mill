@@ -35,5 +35,19 @@ export function useAtlasImageCreate({ allCards, viewedID }: { allCards: Card[]; 
     await land(artifact.mirrorPath, artifact.title)
   }
 
-  return { createFromPath, createFromFile }
+  // A pasted image path/URL (text) delegates to the SAME server-side
+  // recognizer the board's own paste door runs (recognizeImagePaste
+  // behind PasteToBoard: existence check, URL fetch, mirror-copy) --
+  // never a second frontend land path that would drift from it. The
+  // caller has already gated on image SHAPE (imagePathFromClipboardText),
+  // so an unrecognized result here means the file wasn't readable at
+  // that path (or the URL fetch failed), not a wrong extension.
+  const createFromPastedText = async (text: string) => {
+    const position = freeChildPosition(allCards, viewedID) ?? { X: 0, Y: 0 }
+    const res = await AtlasService.PasteToBoard(text, '', viewedID, position.X, position.Y)
+    if (!res.Recognized) throw new Error('pasted image path not recognized')
+    await refreshAtlas()
+  }
+
+  return { createFromPath, createFromFile, createFromPastedText }
 }

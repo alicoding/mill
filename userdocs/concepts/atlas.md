@@ -48,8 +48,9 @@ connected by links, grouped into areas you can drill into.
 
 - **Images and ink live on the board, not inside a card.** Pick Image
   in the toolbar, choose a file, or paste a screenshot — it lands at
-  its own size, right where you put it. Dropping an image file onto
-  the board does the same. Pick Pencil and drag to draw; lift and draw
+  its own size, right where you put it. Pasting an image file's path
+  as text works too: the board shows the image from that file.
+  Dropping an image file onto the board does the same. Pick Pencil and drag to draw; lift and draw
   again for the next stroke, no interruption. Either one is a thing in
   space you can move, select, and delete, and ink stays visually on
   top of an image so you can mark one up. Nothing becomes a card until

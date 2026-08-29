@@ -33,6 +33,21 @@
 .sticky.editing {
     cursor: text;
 }
+/* The empty-note invitation at rest: the SAME editable mount as an
+   edit session (Crepe's placeholder plugin bails on `crepe.readonly`,
+   so a read-only mount would lose the "Type a note…" decoration), but
+   the node itself must stay a normal draggable/selectable board object
+   -- so the editor subtree is pointer-inert until a click promotes it
+   to a real session, and every press belongs to the canvas library's
+   own drag/select. The resize-control exclusion mirrors the width rule
+   below: NodeResizer's handles are direct children of this wrapper. */
+.sticky.editing.invitation {
+    cursor: pointer;
+}
+.sticky.editing.invitation > *:not(:global(.react-flow__resize-control)) {
+    pointer-events: none;
+}
+
 /* The editor's own wrapper fills the note's width and carries the
    growth cap: content-driven height stops here and wheel-scrolls past
    it (goal 0199's bounded-editor contract, checked by

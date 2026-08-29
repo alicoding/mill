@@ -1,3 +1,6 @@
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { test, expect } from './fixtures/server'
 import { dragResizeHandle, nonSeededBoardObjects, openCard } from './fixtures/atlasBoard'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
@@ -122,6 +125,50 @@ test('pasting a clipboard image lands a board object -- selectable, draggable, d
   await object.click()
   await page.keyboard.press('Delete')
   await expect(object).toHaveCount(0)
+})
+
+// Regression: the paste zone answered only bitmap clipboard data -- a
+// pasted image-file PATH (plain text) was silently ignored, and the
+// board's window-level paste door acting on the same event could land
+// a second copy. The zone now routes image-shaped text through the
+// same server-side recognizer the board door uses (mirror-copy), and
+// marks the event handled so exactly ONE object lands.
+test('pasting an image file path as text lands a board object rendering that file', async ({ page }) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mill-e2e-atlas-image-paste-path-'))
+  const pngPath = path.join(dir, 'ZzE2ePastedPath.png')
+  fs.writeFileSync(pngPath, Buffer.from(ONE_PIXEL_PNG_BASE64, 'base64'))
+  try {
+    await page.goto('/')
+    await page.getByRole('link', { name: 'Atlas' }).click()
+    await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+    await openImagePopover(page)
+    // Same dispatched-ClipboardEvent escape hatch as the bitmap-paste
+    // test above: no user primitive can place arbitrary text on the
+    // real OS clipboard portably in this harness, and the dispatched
+    // event carries the exact DataTransfer shape a real ⌘V delivers.
+    await page.getByTestId('atlas-image-paste-zone').evaluate((el, p) => {
+      const dt = new DataTransfer()
+      dt.setData('text/plain', p)
+      el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
+    }, pngPath)
+
+    const object = imageObjects(page)
+    await expect(object).toHaveCount(1)
+    // The object renders the file found at the pasted path -- a real
+    // <img> confirms the bytes loaded, not just a titled box.
+    await expect(object.locator('img')).toBeVisible()
+    // The popover closes itself once the paste resolves.
+    await expect(page.getByTestId('atlas-image-input')).not.toBeVisible()
+    // The rule, absolute: never a card.
+    await expect(page.getByTestId('atlas-note-card').filter({ hasText: 'ZzE2ePastedPath' })).toHaveCount(0)
+
+    await object.click()
+    await page.keyboard.press('Delete')
+    await expect(object).toHaveCount(0)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
 })
 
 // Note (goal 0206): the prior "a non-image path shows an inline error"
