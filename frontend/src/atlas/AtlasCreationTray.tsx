@@ -71,7 +71,7 @@ const PRIMARY_GROUP_ORDER = ['knowledge', 'file'] as const
 // near the board's bottom-left. The full name is still discoverable
 // via `title` (hover) and `aria-label` (screen readers) on every
 // button, including the Annotate group's own trigger.
-export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen, onTableToggle, onClosePickerVisibility, onPickTableSize, onTableFromList, imagePopoverOpen, onImageToggle, onImageSubmitPath, onImageSubmitFile }: {
+export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen, onTableToggle, onClosePickerVisibility, onPickTableSize, onTableFromList, imagePopoverOpen, onImageToggle, onImageSubmitPath, onImageSubmitFile, onImageSubmitText }: {
   // The ONE shared armed-tool field (useAtlasArmedTool.ts, goal 0238)
   // -- widened past AtlasArmableTool so Table/Image share the exact
   // same value every OTHER tool's own `data-armed`/`aria-pressed`
@@ -102,6 +102,7 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
   onImageToggle: (open: boolean) => void
   onImageSubmitPath: (path: string) => Promise<void>
   onImageSubmitFile: (file: File) => Promise<void>
+  onImageSubmitText: (text: string) => Promise<void>
 }) {
   const { t } = useTranslation('atlas')
   // Settings > Extensions disable semantics, item 1: a disabled tool's
@@ -284,7 +285,7 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
             renderAnchor={null}
             side="outside-top"
           >
-            <AtlasImageInput onSubmitPath={onImageSubmitPath} onSubmitFile={onImageSubmitFile} onDone={() => onImageToggle(false)} />
+            <AtlasImageInput onSubmitPath={onImageSubmitPath} onSubmitFile={onImageSubmitFile} onSubmitText={onImageSubmitText} onDone={() => onImageToggle(false)} />
           </AnchoredOverlay>
         </Fragment>
       )

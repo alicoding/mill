@@ -12,7 +12,7 @@ import {
 } from './fixtures/server'
 import { contextMenu, rightClickEmptyArea } from './fixtures/contextMenu'
 import { ATLAS_KIND_CONTACT, ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { clickCorner, groupCard, noteCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { clickCorner, dragBetween, groupCard, noteCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
 
 // Atlas creation core (goal 0081 slice A1): the tray, its placement
 // popover, right-click create, sticky notes, and the note promotion
@@ -250,6 +250,17 @@ test('an empty note places, shows its own placeholder inline, and takes text lat
     // on `::before`), invisible to textContent -- assert the attribute
     // Milkdown's own placeholder feature sets, not rendered text.
     await expect(sticky.locator('.crepe-placeholder')).toHaveAttribute('data-placeholder', 'Type a note…')
+
+    // Regression: the invitation's whole surface carried `nodrag`, so
+    // an empty note could never be moved at all. A body drag moves it
+    // like any other node -- and a moved gesture never opens an edit
+    // session (the drag machinery suppresses its trailing click).
+    const beforeBox = await sticky.boundingBox()
+    if (!beforeBox) throw new Error('empty sticky has no bounding box')
+    const center = { x: beforeBox.x + beforeBox.width / 2, y: beforeBox.y + beforeBox.height / 2 }
+    await dragBetween(page, center, { x: center.x + 120, y: center.y + 80 })
+    await expect.poll(async () => (await sticky.boundingBox())?.x ?? 0).toBeGreaterThan(beforeBox.x + 60)
+    await expect(stickyEditor(page)).toHaveCount(0)
 
     // A single press into the empty note's own field starts typing
     // directly -- no prior selection needed (unlike a non-empty note's

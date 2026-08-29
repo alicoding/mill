@@ -228,30 +228,37 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
     return (
       <div
         ref={wrapRef}
-        className={`${styles.sticky} ${styles.editing} nodrag nopan nowheel`}
+        // nodrag/nopan/nowheel only while a REAL edit session runs: the
+        // empty-note invitation (editing false) must stay an ordinary
+        // draggable/selectable board node -- its editor subtree is
+        // pointer-inert instead (styles.invitation), so the canvas
+        // library owns every press until a click promotes to editing.
+        className={`${styles.sticky} ${styles.editing} ${editing ? 'nodrag nopan nowheel' : styles.invitation}`}
         style={boxStyle}
         data-testid="atlas-sticky-note"
         data-editing={editing ? 'true' : 'false'}
-        // A press into an empty note (not yet a real editing session,
-        // just showing its own placeholder) promotes to a real one --
-        // the same promotion MarkdownNoteField's onFocus does. Idle
-        // while already editing (editing is already true).
+        // Keyboard focus (Tab) landing on the invitation's field
+        // promotes to a real editing session -- the same promotion
+        // MarkdownNoteField's onFocus does; pointer presses never
+        // focus the field (it is pointer-inert at rest). Idle while
+        // already editing (editing is already true).
         onFocus={() => {
           if (!editing) onEnterEdit()
         }}
-        // A short/empty note's own contenteditable is only as tall as
-        // its one line of placeholder text (a percentage-height chain
-        // to fill the box was tried and measured unreliable --
-        // MilkdownEditor.module.css's own header carries that finding)
-        // -- a press anywhere in the REMAINING box below it must still
-        // focus the field, the same way clicking blank space in a
-        // native textarea does. Idle once a real click already landed
-        // on the editable itself (this would just re-focus the same
-        // element).
+        // A single click anywhere in the invitation starts typing --
+        // no prior selection needed, the placeholder IS the invitation
+        // (unlike a non-empty note's select-then-click). Modifier
+        // gestures match the at-rest branch: shift leaves the click to
+        // multi-select, ⌘ opens the big surface. A real drag never
+        // reaches here -- the drag machinery suppresses the click that
+        // follows a moved gesture.
         onClick={(e) => {
-          if (editing) return
-          const target = e.currentTarget.querySelector<HTMLElement>('[contenteditable="true"], textarea')
-          target?.focus()
+          if (editing || e.shiftKey) return
+          if (e.metaKey || e.ctrlKey) {
+            onOpenBig()
+            return
+          }
+          onEnterEdit()
         }}
         onKeyDown={(e) => {
           if (e.key === 'Escape') {

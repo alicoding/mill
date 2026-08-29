@@ -471,7 +471,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       {fileDrop.dropDuplicateNotice && <div className={styles.dropNotice} data-testid="atlas-file-drop-duplicate-notice">{fileDrop.dropDuplicateNotice}</div>}
       {!readOnly && (haveSelection
         ? <AtlasSelectionTray ref={trayRef} selectedCardCount={selection.selectedCards.length} selectedNoteCount={selection.selectedNotes.length} selectedObjectCount={selection.selectedObjects.length} onGroup={onTrayGroup} onDelete={onTrayDelete} />
-        : <AtlasCreationTray armedTool={armedTool.armedToolId} locked={creation.locked} onToggle={creation.toggleArm} tablePickerOpen={tablePicker.open} onTableToggle={tablePicker.setOpen} onClosePickerVisibility={tablePicker.closePickerVisibility} onPickTableSize={(cols, rows) => tablePicker.setPendingSize({ cols, rows })} onTableFromList={onOpenTableFromList} imagePopoverOpen={imagePopover.open} onImageToggle={imagePopover.setOpen} onImageSubmitPath={imageCreate.createFromPath} onImageSubmitFile={imageCreate.createFromFile} />)}
+        : <AtlasCreationTray armedTool={armedTool.armedToolId} locked={creation.locked} onToggle={creation.toggleArm} tablePickerOpen={tablePicker.open} onTableToggle={tablePicker.setOpen} onClosePickerVisibility={tablePicker.closePickerVisibility} onPickTableSize={(cols, rows) => tablePicker.setPendingSize({ cols, rows })} onTableFromList={onOpenTableFromList} imagePopoverOpen={imagePopover.open} onImageToggle={imagePopover.setOpen} onImageSubmitPath={imageCreate.createFromPath} onImageSubmitFile={imageCreate.createFromFile} onImageSubmitText={imageCreate.createFromPastedText} />)}
       {creation.popover && (
         <AtlasPlacementPopover
           mode={creation.popover.mode}

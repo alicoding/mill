@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, Text } from '@primer/react'
 import { AtlasService } from '../shared/bindings'
 import { readClipboardImageFile } from '../shared/clipboardRead'
+import { imagePathFromClipboardText } from './atlasCreateHelpers'
 import { IMAGE_EXTENSIONS } from './atlasUnitMirror'
 import { extensionOf } from './unitRegistry'
 import styles from './AtlasImageInput.module.css'
@@ -14,9 +15,10 @@ import styles from './AtlasImageInput.module.css'
 // user is asked to type (ux-writing.md). Rendering the created object
 // is the placement door's job (useAtlasImageCreate.ts); this component
 // only resolves WHICH path or file to hand off.
-export function AtlasImageInput({ onSubmitPath, onSubmitFile, onDone }: {
+export function AtlasImageInput({ onSubmitPath, onSubmitFile, onSubmitText, onDone }: {
   onSubmitPath: (path: string) => Promise<void>
   onSubmitFile: (file: File) => Promise<void>
+  onSubmitText: (text: string) => Promise<void>
   onDone: () => void
 }) {
   const { t } = useTranslation('atlas')
@@ -74,10 +76,41 @@ export function AtlasImageInput({ onSubmitPath, onSubmitFile, onDone }: {
         tabIndex={0}
         autoFocus
         onPaste={(e) => {
+          // preventDefault on every handled shape below also tells the
+          // board's own window-level paste door (useAtlasPaste.ts) to
+          // stand down -- without it, both doors land the same paste
+          // and the object appears twice.
           const file = readClipboardImageFile(e.clipboardData)
-          if (!file) return
-          e.preventDefault()
-          submitFile(file)
+          if (file) {
+            e.preventDefault()
+            submitFile(file)
+            return
+          }
+          // No bitmap on the clipboard: a pasted image-file PATH or
+          // image URL (text) lands through the same server-side
+          // recognizer the board's own paste door uses. Text that
+          // isn't image-shaped gets the same inline answer the
+          // picker's own extension re-check gives, never silence.
+          const path = imagePathFromClipboardText(
+            e.clipboardData.getData('text/uri-list'),
+            e.clipboardData.getData('text/plain'),
+          )
+          if (path) {
+            e.preventDefault()
+            setBusy(true)
+            setError(null)
+            onSubmitText(path)
+              .then(onDone)
+              .catch(() => {
+                setBusy(false)
+                setError(t('imageInput.addFailed'))
+              })
+            return
+          }
+          if (e.clipboardData.getData('text/plain').trim() !== '') {
+            e.preventDefault()
+            setError(t('imageInput.invalidExtension'))
+          }
         }}
       >
         <Text size="small" className={styles.hint} data-testid="atlas-image-paste-hint">

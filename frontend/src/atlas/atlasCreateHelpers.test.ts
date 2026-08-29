@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeLocalPathInput, resolveDefaultKindID, resolveNoteCommitText, titleFromFilename, titleFromNoteText } from './atlasCreateHelpers'
+import { imagePathFromClipboardText, normalizeLocalPathInput, resolveDefaultKindID, resolveNoteCommitText, titleFromFilename, titleFromNoteText } from './atlasCreateHelpers'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 
 function kind(id: string): Kind {
@@ -120,5 +120,50 @@ describe('resolveNoteCommitText', () => {
 
   it('treats empty text as blank, skipping the write', () => {
     expect(resolveNoteCommitText('')).toBeNull()
+  })
+})
+
+describe('imagePathFromClipboardText', () => {
+  // Regression: the image paste zone answered only bitmap clipboard
+  // data -- a pasted image-file path (text) was silently ignored.
+  it('accepts a plain absolute image path', () => {
+    expect(imagePathFromClipboardText('/Users/me/photo.png')).toBe('/Users/me/photo.png')
+  })
+
+  it('trims surrounding whitespace and a trailing newline', () => {
+    expect(imagePathFromClipboardText(' /Users/me/photo.jpg \n')).toBe('/Users/me/photo.jpg')
+  })
+
+  it('strips matched wrapping quotes from a terminal-copied path', () => {
+    expect(imagePathFromClipboardText('"/Users/me/My Photo.png"')).toBe('/Users/me/My Photo.png')
+    expect(imagePathFromClipboardText("'/Users/me/photo.webp'")).toBe('/Users/me/photo.webp')
+  })
+
+  it('resolves a file:// URL through the same normalization the picker uses', () => {
+    expect(imagePathFromClipboardText('file:///Users/me/My%20Photo.png')).toBe('/Users/me/My Photo.png')
+  })
+
+  it('takes only the first line of a uri-list flavor, in preference order', () => {
+    expect(imagePathFromClipboardText('file:///a/first.png\nfile:///b/second.png', '/c/plain.png')).toBe('/a/first.png')
+  })
+
+  it('falls through an unusable first flavor to a later one', () => {
+    expect(imagePathFromClipboardText('', '/Users/me/photo.gif')).toBe('/Users/me/photo.gif')
+  })
+
+  it('passes an image URL through untouched for the server-side recognizer', () => {
+    expect(imagePathFromClipboardText('https://example.com/pics/logo.png')).toBe('https://example.com/pics/logo.png')
+  })
+
+  it('rejects a path with a non-image extension', () => {
+    expect(imagePathFromClipboardText('/Users/me/notes.txt')).toBeNull()
+  })
+
+  it('rejects prose that is not a path at all', () => {
+    expect(imagePathFromClipboardText('hello world')).toBeNull()
+  })
+
+  it('rejects empty input', () => {
+    expect(imagePathFromClipboardText('', '   ')).toBeNull()
   })
 })

@@ -1,7 +1,7 @@
 {
   "imageInput": {
     "pick": "Choose an image…",
-    "pasteHint": "Or paste an image (⌘V)",
+    "pasteHint": "Or paste an image or its file path (⌘V)",
     "invalidExtension": "Choose an image file.",
     "addFailed": "Couldn't add that image."
   }

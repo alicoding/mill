@@ -1,4 +1,6 @@
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { extensionOf } from './unitRegistry'
+import { IMAGE_EXTENSIONS } from './atlasUnitMirror'
 
 // The placement popover's own two pure decisions (goal 0081 slice A1),
 // split out so both are Vitest-unit-testable without a React render --
@@ -65,6 +67,31 @@ export function normalizeLocalPathInput(input: string): string {
   } catch {
     return withoutScheme
   }
+}
+
+// imagePathFromClipboardText resolves a pasted TEXT clipboard into an
+// image-file path or image URL, or null when no candidate is one --
+// the image paste zone's own SHAPE gate after readClipboardImageFile
+// finds no bitmap (an http(s) URL whose path ends in an image
+// extension passes through untouched; the server-side recognizer owns
+// fetching it).
+// Callers pass the paste's text flavors in preference order (a
+// `text/uri-list` before `text/plain`); only each flavor's FIRST line
+// is considered (uri-list is defined as one URI per line, and a
+// multi-line plain-text paste isn't a path). Wrapping quotes are
+// stripped (a path copied out of a terminal often carries them), then
+// the same normalize + extension gate the picker's own re-check uses
+// decides. Pure -- existence is the backend's own concern, exactly as
+// it is for a picked path.
+export function imagePathFromClipboardText(...candidates: string[]): string | null {
+  for (const candidate of candidates) {
+    const firstLine = (candidate.split('\n')[0] ?? '').trim()
+    const unquoted = /^(['"]).*\1$/.test(firstLine) ? firstLine.slice(1, -1) : firstLine
+    if (!unquoted) continue
+    const path = normalizeLocalPathInput(unquoted)
+    if (IMAGE_EXTENSIONS.has(extensionOf(path))) return path
+  }
+  return null
 }
 
 // resolveNoteCommitText decides whether a re-edited note's text should
