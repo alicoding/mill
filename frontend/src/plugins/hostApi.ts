@@ -4,6 +4,8 @@ import { registerThirdPartyNoun } from '../atlas/atlasNounRegistry'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { ingestionClaimMismatch } from './ingestionClaims'
+import { useUISignalStore } from '../shared/uiSignalStore'
+import type { AtlasArmRequestTool } from '../shared/atlasToolIdentity'
 import { collectPluginCommand } from './pluginCommands'
 import { pluginFaceComponent } from './PluginFaceContent'
 import type { CanvasObjectDecl, MillPluginAPI } from './sdk'
@@ -82,6 +84,24 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string): MillPlu
 				commit: () => {
 					throw new Error('third-party placement goes through useAtlasCreation’s generic branch, never commit()')
 				},
+			})
+			// The palette parity built-in tools already have (their
+			// atlas.create.<id> commands, shared/atlasCreateCommands.ts):
+			// a plugin's tool gets the same registry command through the
+			// same collector its own commands ride, arming the identical
+			// placement mechanism the tray click uses. Enablement is
+			// structural -- a disabled plugin never activates, so its
+			// command is never collected.
+			collectPluginCommand({
+				id: `atlas.create.${decl.kind}`,
+				label: decl.label,
+				surface: ['atlas'],
+				// The arm signal's type is the built-in literal union; the
+				// runtime gate already accepts any registered third-party
+				// id (useAtlasCreation's isThirdPartyToolId OR) -- the
+				// same one-documented-cast convention
+				// orderedRegisteredTools carries for the registry itself.
+				run: () => useUISignalStore.getState().requestAtlasArmTool(decl.kind as AtlasArmRequestTool),
 			})
 		},
 		registerCommand: (decl) => {

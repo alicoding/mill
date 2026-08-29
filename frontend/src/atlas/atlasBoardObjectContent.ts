@@ -5,6 +5,7 @@ import type { ListProjection } from '../../bindings/github.com/alicoding/mill/in
 import type { EditRouteDecl, ObjectSource } from './objectSeams'
 import type { MirrorReadState } from './useAtlasObjectMirrorRead'
 import type { AtlasNounGroup } from './atlasNounRegistry'
+import { AtlasUnknownKindContent } from './AtlasUnknownKindContent'
 
 // The board-object CONTENT registry -- split out of atlasNounRegistry.ts
 // (architecture.md's 500-line file limit) as its own real seam: this
@@ -165,6 +166,22 @@ export function registerBoardObjectContent(kind: string, content: AtlasBoardObje
 // stay recoverable even against bad/legacy data.
 export function boardObjectContentFor(kind: string): AtlasBoardObjectContent | undefined {
   return boardObjectContentRegistry.get(kind)
+}
+
+// unknownKindContent -- the fallback record AtlasBoardObjectNode uses
+// when boardObjectContentFor misses (docs/goals/0249's audit rider):
+// a disabled/uninstalled plugin's objects, and an ingestion-claimed
+// kind whose plugin never registered, must stay VISIBLE, selectable
+// and deletable rather than rendering null. Board-local and inert:
+// no file backing, no drag band (nothing to scrub), no edit route.
+export const unknownKindContent: AtlasBoardObjectContent = {
+  Component: AtlasUnknownKindContent,
+  ariaLabelKey: 'unknownKind.aria',
+  role: undefined,
+  source: { kind: 'board-local' },
+  editRoute: { kind: 'none' },
+  dragBand: false,
+  fileBacked: false,
 }
 
 // ToolLessNounExtension -- one entry of toolLessNounExtensions() below,
