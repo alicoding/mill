@@ -203,6 +203,18 @@ export async function dragResizeHandle(page: Page, handle: Locator, dx: number, 
 // synchronous check this specific helper needs -- it already answers
 // the real question ("is this exact point hittable") without an extra
 // per-candidate wait budget.
+// Clicks `locator` at a point hittablePointOn verified reachable,
+// converted to the locator-relative position Playwright's own checked
+// click wants -- for clicks on seeded content that fixed screen chrome
+// (the minimap, the creation tray) may cover wherever the restored
+// viewport left it.
+export async function clickHittable(page: Page, locator: Locator): Promise<void> {
+  const p = await hittablePointOn(page, locator)
+  const box = await locator.boundingBox()
+  if (!box) throw new Error('clickHittable: element has no bounding box')
+  await locator.click({ position: { x: p.x - box.x, y: p.y - box.y } })
+}
+
 export async function hittablePointOn(page: Page, locator: Locator): Promise<{ x: number; y: number }> {
   const box = await locator.boundingBox()
   if (!box) throw new Error('element has no bounding box')

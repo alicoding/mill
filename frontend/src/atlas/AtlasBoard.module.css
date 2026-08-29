@@ -62,6 +62,15 @@
     cursor: crosshair;
 }
 
+/* Resize handles/lines in Mill's own accent token, not the library's
+   default blue -- matches the selection ring's own border-color-accent-
+   emphasis above. Set once here (the `--xy-resize-*` custom property
+   `.react-flow__resize-control` itself reads) so every Atlas node type
+   sharing the library's own NodeResizer picks it up uniformly. */
+.board :global(.react-flow__resize-control) {
+    --xy-resize-background-color: var(--borderColor-accent-emphasis);
+}
+
 /* Space-hold panning (goal 0208 defect 2): while the pointer capture
    handlers below skip the armed tool's own gesture (AtlasBoard.tsx's
    onPointerDownCapture), React Flow's OWN panActivationKeyCode
