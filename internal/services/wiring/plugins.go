@@ -19,12 +19,12 @@ import (
 // (<data dir>/plugins/<id>/), so MILL_SETTINGS_PATH isolation covers
 // plugins for free; MILL_PLUGINS_DIR overrides independently for
 // fixture-driven tests.
-func NewPluginService(settingsPath string, guardrail *guardrailsvc.GuardrailService) *pluginsvc.PluginService {
+func NewPluginService(settingsPath string, guardrail *guardrailsvc.GuardrailService, appVersion string) *pluginsvc.PluginService {
 	dir := os.Getenv("MILL_PLUGINS_DIR")
 	if dir == "" {
 		dir = filepath.Join(filepath.Dir(settingsPath), "plugins")
 	}
-	return pluginsvc.New(dir, guardrail)
+	return pluginsvc.New(dir, guardrail, appVersion)
 }
 
 // ComposedAssetMiddleware chains the remote-auth gate (server builds
