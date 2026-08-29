@@ -3,6 +3,8 @@ import { AtlasService } from '../shared/bindings'
 import type { PasteResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { refreshAtlas } from './atlasStore'
 import { frameContainingPoint } from './atlasFramePoint'
+import { localPathFromPastedText } from './atlasCreateHelpers'
+import { modalSurfaceOpen } from '../shared/modalGate'
 import type { FrameBox } from './useAtlasDragFiling'
 
 // isEditableTarget mirrors the LOCKED design's own gate ("when the
@@ -27,7 +29,7 @@ function isEditableTarget(el: Element | null): boolean {
 // cheap: a ref updated on pointermove, no re-renders) rather than a
 // fixed viewport center, so the note lands near where the user
 // actually is.
-export function useAtlasPaste({ topLevelBoxes, screenToFlowPosition, viewedID, onPasteConverted, onNoteCreated }: {
+export function useAtlasPaste({ topLevelBoxes, screenToFlowPosition, viewedID, onPasteConverted, onNoteCreated, landFiles }: {
   topLevelBoxes: FrameBox[]
   screenToFlowPosition: (p: { x: number; y: number }) => { x: number; y: number }
   viewedID: string
@@ -36,12 +38,17 @@ export function useAtlasPaste({ topLevelBoxes, screenToFlowPosition, viewedID, o
   // caller's own selection mechanism (useAtlasSelection's selectNote)
   // marks it selected without a pointer event ever touching it.
   onNoteCreated: (id: string) => void
+  // The native drop door's landing half (useAtlasNativeFileDrop.ts):
+  // a pasted local file path lands through the exact same pipeline a
+  // dropped file does. Rejects when the path doesn't resolve, which
+  // this hook answers by falling back to the ordinary text flow.
+  landFiles: (filenames: string[], screenPoint: { x: number; y: number }) => Promise<unknown>
 }) {
   const lastMouse = useRef<{ x: number; y: number } | null>(null)
-  const stateRef = useRef({ topLevelBoxes, screenToFlowPosition, viewedID, onPasteConverted, onNoteCreated })
+  const stateRef = useRef({ topLevelBoxes, screenToFlowPosition, viewedID, onPasteConverted, onNoteCreated, landFiles })
   useEffect(() => {
-    stateRef.current = { topLevelBoxes, screenToFlowPosition, viewedID, onPasteConverted, onNoteCreated }
-  }, [topLevelBoxes, screenToFlowPosition, viewedID, onPasteConverted, onNoteCreated])
+    stateRef.current = { topLevelBoxes, screenToFlowPosition, viewedID, onPasteConverted, onNoteCreated, landFiles }
+  }, [topLevelBoxes, screenToFlowPosition, viewedID, onPasteConverted, onNoteCreated, landFiles])
 
   useEffect(() => {
     const onPointerMove = (e: PointerEvent) => {
@@ -57,6 +64,9 @@ export function useAtlasPaste({ topLevelBoxes, screenToFlowPosition, viewedID, o
       // zone) marks the event handled via preventDefault before it
       // bubbles here -- acting anyway would land the same paste twice.
       if (e.defaultPrevented) return
+      // A modal above the board (a card page, the palette) owns the
+      // screen: pasting here would land a note invisibly BEHIND it.
+      if (modalSurfaceOpen()) return
       if (isEditableTarget(document.activeElement)) return
       const data = e.clipboardData
       if (!data) return
@@ -111,21 +121,38 @@ export function useAtlasPaste({ topLevelBoxes, screenToFlowPosition, viewedID, o
       // through to the note door above. text/html can't both be empty
       // here (guarded above), so PasteToBoard always gets something to
       // try.
-      void AtlasService.PasteToBoard(text, html, targetParentID, flowPos.x, flowPos.y)
-        .then((res) => {
-          if (res.Recognized) {
-            void refreshAtlas()
-            converted(res)
-            return
-          }
-          fallThrough()
-        })
-        .catch((err) => {
-          // A conversion failure falls through to the note door --
-          // logged so a real defect is visible, not silent.
-          console.error('paste conversion failed', err)
-          fallThrough()
-        })
+      const runRecognizer = () => {
+        void AtlasService.PasteToBoard(text, html, targetParentID, flowPos.x, flowPos.y)
+          .then((res) => {
+            if (res.Recognized) {
+              void refreshAtlas()
+              converted(res)
+              return
+            }
+            fallThrough()
+          })
+          .catch((err) => {
+            // A conversion failure falls through to the note door --
+            // logged so a real defect is visible, not silent.
+            console.error('paste conversion failed', err)
+            fallThrough()
+          })
+      }
+
+      // A pasted LOCAL FILE PATH behaves exactly like dropping that
+      // file at the pointer (goal 0179's founding rule: creating a
+      // thing creates THAT THING) -- routed through the drop door's own
+      // landing pipeline, so diagram/sheet/image extensions, plugin
+      // claims, folder import, and the card fallback all match a real
+      // drop. A path that doesn't resolve on disk is just text that
+      // looks like a path: it falls back to the recognizer flow and
+      // still lands as a note, never a dead end.
+      const pastedPath = localPathFromPastedText(text)
+      if (pastedPath) {
+        void stateRef.current.landFiles([pastedPath], anchorPos).catch(runRecognizer)
+        return
+      }
+      runRecognizer()
     }
     window.addEventListener('paste', onPaste)
     return () => window.removeEventListener('paste', onPaste)

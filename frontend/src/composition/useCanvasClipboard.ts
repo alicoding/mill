@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { newLocalID } from '../shared/localId'
+import { modalSurfaceOpen } from '../shared/modalGate'
 import type { CanvasStore } from './canvasStore'
 import { materializeCanvasClones, parseWorkflowClonePayload, serializeCanvasSelection } from './canvasClipboard'
 
@@ -38,6 +39,10 @@ export function useCanvasClipboard({ store, readOnly, screenToFlowPosition, flas
       lastMouse.current = { x: e.clientX, y: e.clientY }
     }
     const onCopy = (e: ClipboardEvent) => {
+      // A modal above the canvas owns the screen (shared/modalGate.ts):
+      // copying here would silently overwrite the clipboard with a
+      // hidden canvas selection.
+      if (modalSurfaceOpen()) return
       if (isEditableTarget(document.activeElement)) return
       if (window.getSelection()?.toString()) return
       const { nodes, edges, notes } = stateRef.current.store.getState()
@@ -56,6 +61,9 @@ export function useCanvasClipboard({ store, readOnly, screenToFlowPosition, flas
     const onPaste = (e: ClipboardEvent) => {
       const { readOnly: ro, screenToFlowPosition: toFlow, flash: show, t: tt } = stateRef.current
       if (ro) return
+      // Same modal stand-down as onCopy: pasted clones would land
+      // behind the open dialog.
+      if (modalSurfaceOpen()) return
       if (isEditableTarget(document.activeElement)) return
       const payload = parseWorkflowClonePayload(e.clipboardData?.getData('text/plain') ?? '')
       if (!payload) return

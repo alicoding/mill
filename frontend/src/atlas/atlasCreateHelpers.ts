@@ -94,6 +94,24 @@ export function imagePathFromClipboardText(...candidates: string[]): string | nu
   return null
 }
 
+// localPathFromPastedText resolves a pasted text/plain clipboard into
+// a local ABSOLUTE file path, or null when the text isn't path-shaped
+// -- the board paste door's gate before treating a paste as a file
+// drop. Deliberately stricter than imagePathFromClipboardText above:
+// the WHOLE text must be one line (the first line of pasted prose must
+// never silently swallow the rest), and only absolute paths qualify.
+// Wrapping quotes are stripped (a terminal-copied path) and file://
+// URLs normalize through the same helper the picker uses. SHAPE only:
+// whether the path actually exists is the backend's decision
+// (ResolveFileDropRoute), and a dead path falls back to ordinary text.
+export function localPathFromPastedText(text: string): string | null {
+  const trimmed = text.trim()
+  if (trimmed === '' || /[\r\n]/.test(trimmed)) return null
+  const unquoted = /^(['"]).*\1$/.test(trimmed) ? trimmed.slice(1, -1) : trimmed
+  const path = normalizeLocalPathInput(unquoted)
+  return path.startsWith('/') ? path : null
+}
+
 // resolveNoteCommitText decides whether a re-edited note's text should
 // persist, and exactly what to persist (goal 0226's round-trip
 // contract): null skips the write entirely (an existing note's own

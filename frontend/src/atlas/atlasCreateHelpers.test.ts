@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { imagePathFromClipboardText, normalizeLocalPathInput, resolveDefaultKindID, resolveNoteCommitText, titleFromFilename, titleFromNoteText } from './atlasCreateHelpers'
+import { imagePathFromClipboardText, localPathFromPastedText, normalizeLocalPathInput, resolveDefaultKindID, resolveNoteCommitText, titleFromFilename, titleFromNoteText } from './atlasCreateHelpers'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 
 function kind(id: string): Kind {
@@ -165,5 +165,45 @@ describe('imagePathFromClipboardText', () => {
 
   it('rejects empty input', () => {
     expect(imagePathFromClipboardText('', '   ')).toBeNull()
+  })
+})
+
+describe('localPathFromPastedText', () => {
+  // The board paste door's file-drop gate: pasting a local file path
+  // must route like dropping that file, and nothing else may.
+  it('accepts an absolute path', () => {
+    expect(localPathFromPastedText('/Users/me/notes/plan.md')).toBe('/Users/me/notes/plan.md')
+  })
+
+  it('accepts a quoted absolute path', () => {
+    expect(localPathFromPastedText('"/Users/me/My Docs/plan.md"')).toBe('/Users/me/My Docs/plan.md')
+  })
+
+  it('accepts a file:// URL, percent-decoded', () => {
+    expect(localPathFromPastedText('file:///Users/me/My%20Docs/plan.md')).toBe('/Users/me/My Docs/plan.md')
+  })
+
+  it('accepts a directory path (no extension required)', () => {
+    expect(localPathFromPastedText('/Users/me/project')).toBe('/Users/me/project')
+  })
+
+  it('rejects multi-line text even when the first line is a path', () => {
+    expect(localPathFromPastedText('/Users/me/plan.md\nand more prose')).toBeNull()
+  })
+
+  it('rejects relative paths', () => {
+    expect(localPathFromPastedText('notes/plan.md')).toBeNull()
+  })
+
+  it('rejects http URLs', () => {
+    expect(localPathFromPastedText('https://example.com/plan.md')).toBeNull()
+  })
+
+  it('rejects ordinary prose', () => {
+    expect(localPathFromPastedText('meet at the usual place')).toBeNull()
+  })
+
+  it('rejects empty and whitespace text', () => {
+    expect(localPathFromPastedText('   ')).toBeNull()
   })
 })
