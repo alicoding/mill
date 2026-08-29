@@ -396,3 +396,20 @@ func WireMillMCPService(mill *mcpsvc.MillMCPService, settingsService *settingssv
 		logger.Info("mill MCP server listening", "addr", addr)
 	}
 }
+
+// WireWorkflowLifecycle connects CompositionService's workflow
+// lifecycle to TriggerService (docs/goals/0250): the sync seam, the
+// delete-releases-hotkey hook, and a one-shot orphan prune healing
+// bindings already leaked by deletes that predate the hook -- safe to
+// run here because both services have loaded their persisted state by
+// wire time.
+func WireWorkflowLifecycle(comp *compositionsvc.CompositionService, triggers *triggersvc.TriggerService) {
+	comp.SetSyncer(triggers)
+	comp.SetWorkflowDeleted(triggers.UnassignHotkey)
+	workflows := comp.Workflows()
+	ids := make([]string, 0, len(workflows))
+	for _, wf := range workflows {
+		ids = append(ids, wf.ID)
+	}
+	triggers.PruneOrphanedHotkeys(ids)
+}

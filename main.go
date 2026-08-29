@@ -130,7 +130,7 @@ func main() {
 
 	compositionService := compositionsvc.NewCompositionService(settingsStore)
 	triggerService := triggersvc.NewTriggerService(compositionService, logger, settingsStore)
-	compositionService.SetSyncer(triggerService)
+	wiring.WireWorkflowLifecycle(compositionService, triggerService) // docs/goals/0250-workflow-delete-releases-hotkey.md
 	// MILL_TEST_KEYRING=memory swaps the OS keychain for a process-
 	// local store (e2e servers only): Linux CI has no Secret Service,
 	// so real-keychain semantics -- including "credential absent" --
