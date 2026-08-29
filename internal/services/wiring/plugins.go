@@ -5,9 +5,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
+	"github.com/alicoding/mill/internal/services/notificationsvc"
 	"github.com/alicoding/mill/internal/services/pluginsvc"
 	"github.com/alicoding/mill/internal/services/remoteauthsvc"
+	"github.com/alicoding/mill/internal/services/settingssvc"
+	"github.com/alicoding/mill/internal/services/triggersvc"
 )
 
 // NewPluginService resolves the plugins directory and constructs the
@@ -31,4 +35,37 @@ func ComposedAssetMiddleware(remoteAuth *remoteauthsvc.RemoteAuthService, plugin
 	return func(next http.Handler) http.Handler {
 		return AssetMiddleware(remoteAuth)(plugins.AssetMiddleware()(next))
 	}
+}
+
+// WireSettingsEraSeams bundles the cross-service seams that can only
+// exist once SettingsService is constructed (main.go calls it as one
+// line right after that construction -- composition-root grouping,
+// the backupsvc.Wire shape): notification channels, the phone
+// channel, update trigger events, and plugin ingestion claims.
+func WireSettingsEraSeams(settings *settingssvc.SettingsService, notif *notificationsvc.NotificationService, remoteAuth *remoteauthsvc.RemoteAuthService, triggers *triggersvc.TriggerService, atlas *atlassvc.AtlasService, plugins *pluginsvc.PluginService) {
+	WireNotificationChannels(settings, notif) // docs/goals/0171-notification-spine.md
+	WirePhoneChannel(remoteAuth, notif)       // docs/goals/0132-remote-access.md SLICE B
+	WireUpdateEvents(settings, triggers)
+	WirePluginIngestion(atlas, plugins, settings) // docs/goals/0251-plugin-ingestion-claims.md
+}
+
+// WirePluginIngestion connects the paste chain's plugin-claims seam
+// (docs/goals/0251): every valid manifest claiming bare-URL pastes,
+// minus plugins the user has turned off -- the SAME disabled-
+// extensions list the frontend loader consults, keyed by plugin id,
+// so both ingestion chains and the tray agree on what "off" means.
+func WirePluginIngestion(atlas *atlassvc.AtlasService, plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService) {
+	atlas.WirePluginPasteClaims(func() []atlassvc.PluginPasteClaim {
+		disabled := map[string]bool{}
+		for _, id := range settings.GetDisabledExtensions() {
+			disabled[id] = true
+		}
+		var out []atlassvc.PluginPasteClaim
+		for _, c := range plugins.URLPasteClaims() {
+			if !disabled[c.PluginID] {
+				out = append(out, atlassvc.PluginPasteClaim{Kind: c.Kind})
+			}
+		}
+		return out
+	})
 }

@@ -40,6 +40,33 @@ that — opening a web address in your browser, say — it must:
 Undeclared asks are refused outright. Approved actions are performed
 by Mill itself, never by the plugin's own code.
 
+## Catching drops and pastes
+
+A plugin can claim the two ways outside content lands on the board:
+a file dragged in from your file manager, and content pasted from
+another app. Claims are declared in the manifest, so the Extensions
+row shows what a plugin catches before it ever runs:
+
+```json
+"contributes": {
+  "canvasObjects": [
+    { "kind": "bookmark", "pastesURLs": true, "fileExtensions": [".webloc"] }
+  ]
+}
+```
+
+- `fileExtensions` — dropped files with a listed extension land as
+  this plugin's object, pointing at the file where it is. Requires
+  `source: "file"` on the registered object.
+- `pastesURLs` — a web address pasted from any app lands as this
+  plugin's object instead of a note. Requires `source: "url"`.
+
+Mill's own built-in shapes always win first — a diagram, image, or
+spreadsheet file keeps landing as its built-in object — and anything
+no one claims still lands the way it does today. With the Bookmark
+example installed, pasting a link from your browser drops a bookmark
+right on the board.
+
 ## The example plugin
 
 Mill's repository ships a working example, **Bookmark** — a web

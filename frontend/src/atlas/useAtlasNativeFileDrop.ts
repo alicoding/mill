@@ -8,6 +8,8 @@ import { isExtensionEnabled } from '../shared/extensionEnablementStore'
 import { useAtlasFolderImportRequestStore } from './atlasFolderImportRequest'
 import { FILE_DROP_EVENT_NAME, FILE_DROP_CONTEXT_BOARD } from './atlasFileDropShared'
 import { frameContainingPoint } from './atlasFramePoint'
+import { extensionOf } from './unitRegistry'
+import { thirdPartyNounForExtension, type ThirdPartyNounShape } from './atlasNounRegistry'
 import { isDiagramPath, useAtlasDiagramObjectCreate } from './useAtlasDiagramObjectCreate'
 import { isImagePath, useAtlasImageObjectCreate } from './useAtlasImageObjectCreate'
 import { isSheetPath, useAtlasSheetObjectCreate } from './useAtlasSheetObjectCreate'
@@ -19,22 +21,29 @@ const PULSE_MS_REDUCED = 1500
 
 // resolveFileDropKind -- the pure routing decision behind the Events.On
 // handler below: which board-object kind a resolved drop path lands
-// as, or 'card' for the generic reference-card fallback. Pulled out as
-// its own function (goal 0237 S3 rider) purely so it's Vitest-testable
-// on its own -- the real OS drop GESTURE that reaches it is a
-// structural e2e gap (testing.md's own manual-only registry:
+// as, a runtime plugin's noun when its manifest claims the extension
+// (docs/goals/0251 -- always BEHIND the built-in shapes, ahead of the
+// card fallback, so a plugin can extend routing but never shadow a
+// built-in), or 'card' for the generic reference-card fallback. Pulled
+// out as its own function (goal 0237 S3 rider) purely so it's
+// Vitest-testable on its own -- the real OS drop GESTURE that reaches
+// it is a structural e2e gap (testing.md's own manual-only registry:
 // WindowFilesDropped needs a real *WebviewWindow, which server-mode
 // Playwright's connection is not), but this decision is plain data in,
-// data out. isEnabled is injected rather than read from the store
-// directly so a test can drive both branches without touching global
-// state.
+// data out. isEnabled and the claim lookup are injected rather than
+// read from the stores directly so a test can drive every branch
+// without touching global state.
 export type FileDropKind = 'diagram' | 'image' | 'sheet' | 'card'
 
-export function resolveFileDropKind(path: string, isEnabled: (id: string) => boolean): FileDropKind {
+export function resolveFileDropKind(
+  path: string,
+  isEnabled: (id: string) => boolean,
+  claimedNounForExtension: (ext: string) => ThirdPartyNounShape | undefined = thirdPartyNounForExtension,
+): FileDropKind | ThirdPartyNounShape {
   if (isDiagramPath(path) && isEnabled('diagram')) return 'diagram'
   if (isImagePath(path)) return 'image'
   if (isSheetPath(path) && isEnabled('sheet')) return 'sheet'
-  return 'card'
+  return claimedNounForExtension(extensionOf(path)) ?? 'card'
 }
 
 // The board-context half of the native OS file-drop door (goal 0081
@@ -92,7 +101,16 @@ export function useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPo
           // rider -- neither noun has a tray button to hide) falls the
           // drop through to the plain-card path instead, exactly the
           // resolveFileDropKind decision above states.
-          switch (resolveFileDropKind(path, isExtensionEnabled)) {
+          const verdict = resolveFileDropKind(path, isExtensionEnabled)
+          if (typeof verdict === 'object') {
+            // A claimed-extension drop lands the plugin's own object
+            // through the same file-backed payload contract diagram/
+            // sheet use (mirrorPath + title) -- the file stays where
+            // it is, the object points at it (docs/goals/0251).
+            return AtlasService.CreateBoardObject(verdict.boardObjectKind, { ...verdict.defaultPayload, mirrorPath: path, title: titleFromFilename(path) }, { X: point.x, Y: point.y }, targetParentID)
+              .then(() => refreshAtlas())
+          }
+          switch (verdict) {
             case 'diagram':
               return diagramCreate.land(path, targetParentID, { X: point.x, Y: point.y })
             case 'image':

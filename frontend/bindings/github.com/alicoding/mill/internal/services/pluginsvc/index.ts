@@ -7,7 +7,9 @@ export {
 };
 
 export type {
+    CanvasObjectContribution,
     GuardedActionDecision,
     Manifest,
+    ManifestContributes,
     PluginInfo
 } from "./models.js";

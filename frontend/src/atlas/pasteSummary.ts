@@ -10,6 +10,7 @@ export function pasteSummaryText(t: TFunction<'atlas'>, res: PasteResult): strin
     res.Cards > 0 ? t('paste.cards', { count: res.Cards }) : '',
     res.Links > 0 ? t('paste.links', { count: res.Links }) : '',
     res.Images > 0 ? t('paste.images', { count: res.Images }) : '',
+    res.PluginObjects > 0 ? t('paste.pluginObjects', { count: res.PluginObjects }) : '',
   ].filter(Boolean)
   const summary = t('paste.converted', { what: parts.join(', ') })
   if (!res.SkippedPages || res.SkippedPages.length === 0) return summary

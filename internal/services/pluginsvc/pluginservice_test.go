@@ -132,3 +132,47 @@ func TestPerform_OpenURLRejectsNonHTTP(t *testing.T) {
 		t.Fatalf("https open failed: ok=%v err=%v opened=%q", ok, err, opened)
 	}
 }
+
+// Ingestion claims (docs/goals/0251) fail closed the same way an
+// unknown capability does: a malformed kind or extension blocks the
+// load with a stated reason.
+func TestListPlugins_ValidatesContributes(t *testing.T) {
+	root := t.TempDir()
+	writePlugin(t, root, "claims-ok", `{"id":"claims-ok","name":"C","version":"1","contributes":{"canvasObjects":[{"kind":"bookmark","pastesURLs":true,"fileExtensions":[".webloc"]}]}}`, nil)
+	writePlugin(t, root, "bad-kind", `{"id":"bad-kind","name":"C","version":"1","contributes":{"canvasObjects":[{"kind":"Not A Slug"}]}}`, nil)
+	writePlugin(t, root, "bad-ext", `{"id":"bad-ext","name":"C","version":"1","contributes":{"canvasObjects":[{"kind":"thing","fileExtensions":["webloc"]}]}}`, nil)
+
+	svc := New(root, nil)
+	infos, err := svc.ListPlugins()
+	if err != nil {
+		t.Fatal(err)
+	}
+	byID := map[string]PluginInfo{}
+	for _, i := range infos {
+		byID[filepath.Base(i.Dir)] = i
+	}
+	if got := byID["claims-ok"]; got.Error != "" {
+		t.Fatalf("claims-ok should be valid, got error %q", got.Error)
+	}
+	if got := byID["bad-kind"]; !strings.Contains(got.Error, "canvas object kind") {
+		t.Fatalf("bad-kind error = %q", got.Error)
+	}
+	if got := byID["bad-ext"]; !strings.Contains(got.Error, "file extension") {
+		t.Fatalf("bad-ext error = %q", got.Error)
+	}
+}
+
+// URLPasteClaims returns only VALID plugins' claims, in id order --
+// a broken manifest or one without pastesURLs never routes a paste.
+func TestURLPasteClaims_ValidClaimersOnly(t *testing.T) {
+	root := t.TempDir()
+	writePlugin(t, root, "bookmarker", `{"id":"bookmarker","name":"B","version":"1","contributes":{"canvasObjects":[{"kind":"bookmark","pastesURLs":true}]}}`, nil)
+	writePlugin(t, root, "no-claim", `{"id":"no-claim","name":"N","version":"1"}`, nil)
+	writePlugin(t, root, "broken-claimer", `{"id":"broken-claimer","name":"X","version":"1","capabilities":["format-disk"],"contributes":{"canvasObjects":[{"kind":"thing","pastesURLs":true}]}}`, nil)
+
+	svc := New(root, nil)
+	claims := svc.URLPasteClaims()
+	if len(claims) != 1 || claims[0].PluginID != "bookmarker" || claims[0].Kind != "bookmark" {
+		t.Fatalf("URLPasteClaims() = %+v, want exactly bookmarker/bookmark", claims)
+	}
+}

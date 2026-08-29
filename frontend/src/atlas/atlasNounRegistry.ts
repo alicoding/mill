@@ -367,6 +367,10 @@ export type ThirdPartyNounShape = Omit<AtlasToolShapeBase, 'boardObjectKind'> & 
   // The owning plugin (manifest id) -- the Extensions page's join key.
   pluginId: string
   defaultPayload: Record<string, string>
+  // Dropped-file extensions this object claims (docs/goals/0251),
+  // joined from the manifest's contributes by the host -- lowercased
+  // ".ext" entries the drop router compares against extensionOf().
+  fileExtensions: string[]
 }
 
 const thirdPartyRegistry = new Map<string, ThirdPartyNounShape>()
@@ -391,4 +395,17 @@ export function isThirdPartyToolId(id: string): boolean {
 
 export function thirdPartyNounFor(id: string): ThirdPartyNounShape | undefined {
   return thirdPartyRegistry.get(id)
+}
+
+// thirdPartyNounForExtension -- the drop router's claim lookup
+// (docs/goals/0251). Registration order decides ties (first claimant
+// wins, deterministic: the loader activates plugins in ListPlugins'
+// sorted id order). The registry only ever holds ENABLED plugins (the
+// loader skips disabled ids at boot), so presence here IS enablement.
+export function thirdPartyNounForExtension(ext: string): ThirdPartyNounShape | undefined {
+  const lower = ext.toLowerCase()
+  for (const noun of thirdPartyRegistry.values()) {
+    if (noun.fileExtensions.includes(lower)) return noun
+  }
+  return undefined
 }

@@ -133,5 +133,6 @@ var notMutationDoors = map[string]string{
 	"TableProjectionExport": "read/export", "UndoState": "read",
 	"WireCompositionSeams": "wails:ignore wiring call", "WireFileDropWindow": "wails:ignore wiring call",
 	"WireListProjection": "wails:ignore wiring call", "WirePasteListWrites": "wails:ignore wiring call",
+	"WirePluginPasteClaims": "wails:ignore wiring call",
 	"WireSourceRecognition": "wails:ignore wiring call",
 }
