@@ -1,7 +1,8 @@
 import { test, expect } from './fixtures/server'
+import { placeNoteClear } from './fixtures/atlasEmptyRegion'
 import { blurSticky, stickyEditor } from './fixtures/codeEditor'
 import type { Page } from '@playwright/test'
-import { clickCorner, deleteSticky, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { deleteSticky, zoomAllTheWayOut } from './fixtures/atlasBoard'
 
 // Atlas capture doors (goal 0081 slice A3, fallback redesigned by goal
 // 0218) and the Scratchpad seed rework, driven end to end against the
@@ -95,8 +96,7 @@ test('paste is inert while an editable field has focus', async ({ page }) => {
   // never create a second note on top of it.
   const board = page.getByTestId('atlas-board')
   await zoomAllTheWayOut(page)
-  await page.keyboard.press('n')
-  await clickCorner(board, 'top-left')
+  await placeNoteClear(page, board)
   const editorContent = page.locator('[data-testid="atlas-sticky-editor"] [contenteditable="true"]')
   await editorContent.waitFor()
   await editorContent.focus()
@@ -104,8 +104,17 @@ test('paste is inert while an editable field has focus', async ({ page }) => {
   await dispatchPaste(page, { text: 'should stay in the editor' })
   await expect(page.locator('[data-testid="atlas-sticky-note"]').filter({ hasText: 'should stay in the editor' })).toHaveCount(0)
 
+  // A typed marker before the commit makes the committed note findable
+  // for cleanup regardless of whether the synthetic paste actually
+  // inserted text (a synthetic ClipboardEvent carries no real
+  // clipboard payload into the editor). Without this, the commit
+  // leaked a note -- usually BLANK -- into the worker's shared board,
+  // stretching every later spec's fitView extents (the measured cause
+  // of seeded cards landing under the minimap).
+  await page.keyboard.type('ZzInertPasteNote')
   await blurSticky(page)
   await expect(stickyEditor(page)).toHaveCount(0)
+  await deleteSticky(page, page.locator('[data-testid="atlas-sticky-note"]').filter({ hasText: 'ZzInertPasteNote' }))
 })
 
 test('Scratchpad seed is a container card with the inbox guidance note', async ({ page }) => {

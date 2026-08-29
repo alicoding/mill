@@ -173,6 +173,12 @@ export function buildBoardCardNodes({
             onCancelEdit: noteHandlers.onCancelEdit,
             onEnterEdit: () => noteHandlers.onEnterEdit(sticky.note.ID),
             onOpenBig: () => noteHandlers.onOpenNote(sticky.note.ID),
+            // This preview tile is a fixed uniform grid slot (this
+            // function's own header contract: "never reads a child's
+            // own Size"), never content-driven the way a top-level
+            // sticky is -- clamps to the slot instead of growing past
+            // it and breaking the grid.
+            previewHeight: sticky.size.height,
           },
         })
       }

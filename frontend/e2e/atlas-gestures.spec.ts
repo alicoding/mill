@@ -1,7 +1,8 @@
 import { test, expect } from './fixtures/server'
+import { placeNoteClear } from './fixtures/atlasEmptyRegion'
 import { blurSticky, fillSticky } from './fixtures/codeEditor'
 import { groupCard, noteCard } from './fixtures/atlasCards'
-import { clickCorner, zoomAllTheWayOut, clickFrameGutter } from './fixtures/atlasBoard'
+import { clickHittable, clickCorner, zoomAllTheWayOut, clickFrameGutter } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { waitForViewportStable } from './fixtures/animation'
 
@@ -21,23 +22,31 @@ function selectedWrapper(page: import('@playwright/test').Page, card: import('@p
 test('plain click selects (replacing any prior selection); a second click on the already-selected node commits', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await expect(page.getByTestId('atlas-board')).toBeVisible()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+  // The restore-driven fitView animates via d3's JS interpolation
+  // (fixtures/animation.ts's own header) -- a click fired mid-flight
+  // fails actionability as "element is not stable" against whatever
+  // extents worker-shared leftovers have stretched the fit to.
+  await waitForViewportStable(board)
 
   const getting = noteCard(page, 'Discovery workstream')
   const scratchpad = noteCard(page, 'Scratchpad')
 
-  await getting.click()
+  await clickHittable(page, getting)
   await expect(selectedWrapper(page, getting)).toHaveCount(1)
 
   // A DIFFERENT card's plain click replaces the selection outright --
-  // never a surface pop, never a co-selection.
-  await scratchpad.click()
+  // never a surface pop, never a co-selection. clickHittable: the
+  // minimap legitimately paints over whichever card the restored
+  // viewport left beneath it.
+  await clickHittable(page, scratchpad)
   await expect(selectedWrapper(page, scratchpad)).toHaveCount(1)
   await expect(selectedWrapper(page, getting)).toHaveCount(0)
 
   // The already-selected card's own second click commits -- a leaf's
   // commit is its page.
-  await scratchpad.click()
+  await clickHittable(page, scratchpad)
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
   await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Scratchpad')
@@ -67,8 +76,7 @@ test('a plain click leaves the selection ring visibly showing on the clicked car
   // A sticky note's own, separately-declared (heavier) ring rule.
   const board = page.getByTestId('atlas-board')
   await zoomAllTheWayOut(page)
-  await page.keyboard.press('n')
-  await clickCorner(board, 'top-right')
+  await placeNoteClear(page, board)
   await fillSticky(page, 'ZzE2eStickyRing')
   await blurSticky(page)
   const sticky = page.locator('[data-testid="atlas-sticky-note"]')

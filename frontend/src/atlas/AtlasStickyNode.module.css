@@ -5,12 +5,17 @@
    background/border/shadow triple), not a tinted attention color.
    Recognition against a Topic/kind card comes from STRUCTURE, not
    paint: a note carries no title/kind-pill header, content starts
-   flush at this padding. Fixed footprint slightly smaller than a note
-   card's 190x128 (atlasBoardLayout.ts's STICKY_WIDTH/STICKY_HEIGHT). */
+   flush at this padding.
+   Height is content-driven (auto), never a hard box: React Flow leaves
+   the wrapper's height unset (atlasStickyNodes.ts's own builder) so
+   this element's real intrinsic height, including min-height below, IS
+   the node's own measured size -- content taller than min-height grows
+   the box instead of clipping; a shorter note sits at min-height. Width
+   stays the one fixed, RF-controlled dimension. */
 .sticky {
     box-sizing: border-box;
     width: 100%;
-    height: 100%;
+    height: auto;
     padding: 10px 12px;
     border: 1px solid var(--borderColor-default);
     border-radius: var(--borderRadius-medium);
@@ -20,45 +25,38 @@
     display: flex;
 }
 /* Editing chrome, shared by both editing states below -- the box
-   itself never changes size on entering/leaving edit (goal 0193: no
-   automatic resize, ever). overflow-y here is the actual clip/scroll
-   boundary (goal 0226 regression, still true after goal 0244 S3
-   replaced the editor: shared/MilkdownEditor.tsx's own .wrapper/.mount
-   carry a height:100% intent, but that percentage chain isn't
-   guaranteed to resolve against this box's own auto-but-clamped cross
-   size, so the editor could render at its full unclamped content
-   height, painting past this box with `.sticky`'s inherited
-   overflow:visible). Same fix shape as MarkdownNoteField.module.css's
-   own `.editorWrap`: an outer overflow that clips/scrolls regardless
-   of how any descendant resolves its own height. */
+   itself never changes SHAPE on entering/leaving edit (same auto-height
+   flex column, same min-height floor, same padding as `.sticky` above:
+   a padding delta here would alone make the box jump on every
+   enter/leave), only grows/shrinks with content the way the at-rest box
+   already does. */
 .sticky.editing {
     cursor: text;
-    padding: 6px 8px;
-    overflow-y: auto;
 }
-.sticky.editing > * {
+/* The editor's own wrapper fills the note's width and carries the
+   growth cap: content-driven height stops here and wheel-scrolls past
+   it (goal 0199's bounded-editor contract, checked by
+   atlasEditorBoundsConformance.test.ts) -- a note is an annotation,
+   never a document-height column on the board; the same cap value as
+   `.text` below so committing at the cap never snaps the box. The cap
+   lives on this wrapper, NOT on `.sticky`, so overflow clipping never
+   eats the resize handles. Excluding `.react-flow__resize-control` is
+   load-bearing, not defensive: the library's own NodeResizer renders
+   its line/handle elements as DIRECT children of this wrapper (no
+   wrapping element of its own), so an unscoped `> *` here forces every
+   resize handle to this note's own width too -- height stays at the
+   library's 5px, producing four full-width bars instead of small
+   corner squares (measured live: 514x5px). */
+.sticky.editing > *:not(:global(.react-flow__resize-control)) {
     width: 100%;
-}
-/* The DRAFT sticky only (note === null -- not yet persisted, so there
-   is no prior size to preserve): grows to fit the first typed content,
-   capped with internal scroll past ~380px (buildStickyNodes omits the
-   node's width/height only for this case). An existing note's own
-   re-edit never carries this modifier -- it stays pinned to its
-   current (persisted or default) box the way goal 0193 requires. */
-.sticky.editingUnsized {
-    width: 300px;
-    height: auto;
-    min-height: 110px;
-    max-height: 380px;
+    max-height: 460px;
+    overflow-y: auto;
 }
 /* Inside the sticky the editor is chromeless -- the tinted sticky IS
    the surface; a second border/background would read as a form field
-   dropped onto a note. Fills whatever box the sticky itself resolves
-   to (its own persisted/default size, or editingUnsized's grow-to-fit
-   cap for a draft), so the editor never needs its own size opinion. */
+   dropped onto a note. */
 .sticky.editing :global(.milkdown) {
     background: transparent;
-    height: 100%;
 }
 .sticky.editing textarea {
     border: none;
@@ -81,31 +79,48 @@
     outline: none;
 }
 
+/* The note's own box (`.sticky` above) grows to fit this content up
+   to the growth cap -- the same 460px the editing wrapper carries, so
+   entering/leaving edit never snaps the box at the cap boundary; a
+   longer note wheel-scrolls in place past it (`nowheel` keeps the
+   canvas zoom out of it). */
 .text {
     font-size: 12px;
     line-height: 1.35;
     color: var(--fgColor-default);
     width: 100%;
+    max-height: 460px;
     overflow-y: auto;
     word-break: break-word;
-    /* Overflow fade, not a hard clip -- a long note visibly continues
-       past the visible edge rather than looking abruptly truncated;
-       the body wheel-scrolls in place (nowheel keeps the canvas zoom
-       out of it). */
-    mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
 }
 
-/* Rendered-markdown compaction: goldmark's block elements at sticky
-   scale -- tight margins, small headings, real list bullets. */
-.mdBody p,
-.mdBody ul,
-.mdBody ol,
-.mdBody blockquote,
-.mdBody pre {
+/* Rendered-markdown compaction at note scale -- tight margins, small
+   headings, real list bullets -- scoped to `.sticky` so the SAME scale
+   governs the editing mount and the at-rest mount alike: both are the
+   same engine rendering the same document, and a scale that applied to
+   only one of them is exactly what made the box jump ~20px on every
+   enter/leave edit (measured live: the editing h1 at Crepe's own
+   2.625em/42px + 32px margin-top against the at-rest 16px).
+   `:global(.milkdown) :global(.ProseMirror)` in every selector here is
+   load-bearing, not decorative: Crepe's own reset.css sets
+   `.milkdown .ProseMirror h1` (and p/code/etc.) at (0,2,1) specificity,
+   strictly higher than a bare class rule at (0,1,1), which LOSES
+   regardless of load order. Matches MilkdownEditor.module.css's own
+   documented fix for the identical class of bug on `.ProseMirror`'s
+   padding. */
+.sticky :global(.milkdown) :global(.ProseMirror) {
+    font-size: 12px;
+    line-height: 1.35;
+}
+.sticky :global(.milkdown) :global(.ProseMirror) p,
+.sticky :global(.milkdown) :global(.ProseMirror) ul,
+.sticky :global(.milkdown) :global(.ProseMirror) ol,
+.sticky :global(.milkdown) :global(.ProseMirror) blockquote,
+.sticky :global(.milkdown) :global(.ProseMirror) pre {
     margin: 0 0 4px;
 }
-.mdBody ul,
-.mdBody ol {
+.sticky :global(.milkdown) :global(.ProseMirror) ul,
+.sticky :global(.milkdown) :global(.ProseMirror) ol {
     padding-left: 16px;
 }
 /* A real size step per level (goal 0226 regression: h1 at 13px next
@@ -113,38 +128,38 @@
    the same 1.5/1.3/1.15em ratio shared/markdownLivePreview.ts already
    uses for the editor's own live-preview decorations, scaled down
    from its 12px prose base to stay compact). */
-.mdBody h1,
-.mdBody h2,
-.mdBody h3,
-.mdBody h4,
-.mdBody h5,
-.mdBody h6 {
+.sticky :global(.milkdown) :global(.ProseMirror) h1,
+.sticky :global(.milkdown) :global(.ProseMirror) h2,
+.sticky :global(.milkdown) :global(.ProseMirror) h3,
+.sticky :global(.milkdown) :global(.ProseMirror) h4,
+.sticky :global(.milkdown) :global(.ProseMirror) h5,
+.sticky :global(.milkdown) :global(.ProseMirror) h6 {
     margin: 0 0 4px;
     font-weight: 700;
 }
-.mdBody h1 {
+.sticky :global(.milkdown) :global(.ProseMirror) h1 {
     font-size: 16px;
 }
-.mdBody h2 {
+.sticky :global(.milkdown) :global(.ProseMirror) h2 {
     font-size: 14px;
 }
-.mdBody h3 {
+.sticky :global(.milkdown) :global(.ProseMirror) h3 {
     font-size: 12.5px;
 }
-.mdBody h4,
-.mdBody h5,
-.mdBody h6 {
+.sticky :global(.milkdown) :global(.ProseMirror) h4,
+.sticky :global(.milkdown) :global(.ProseMirror) h5,
+.sticky :global(.milkdown) :global(.ProseMirror) h6 {
     font-size: 12px;
     font-weight: 600;
 }
-.mdBody code {
+.sticky :global(.milkdown) :global(.ProseMirror) code {
     font-family: var(--mill-mono);
     font-size: 11px;
     background: var(--bgColor-neutral-muted);
     border-radius: 3px;
     padding: 0 3px;
 }
-.mdBody input[type='checkbox'] {
+.sticky :global(.milkdown) :global(.ProseMirror) input[type='checkbox'] {
     margin-right: 4px;
 }
 

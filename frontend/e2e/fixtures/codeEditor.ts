@@ -52,8 +52,17 @@ export async function fillMilkdown(page: Page, testId: string, text: string) {
   const content = page.locator(`[data-testid="${testId}"] [contenteditable="true"]`)
   await content.waitFor()
   await content.focus()
-  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a')
-  await page.keyboard.press('Delete')
+  // Clearing is two async editor steps (select-all, then the delete
+  // transaction); under load the pair can land partially, leaving old
+  // text the new text then merges into. Verify the doc is OBSERVABLY
+  // empty before typing -- retrying the same select-all+delete a real
+  // user would -- rather than trusting the keypresses landed.
+  for (let round = 0; round < 3; round++) {
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a')
+    await page.keyboard.press('Delete')
+    const empty = await content.evaluate((el) => (el.textContent ?? '').trim() === '')
+    if (empty) break
+  }
   const lines = text.split('\n')
   for (let i = 0; i < lines.length; i++) {
     if (lines[i]) await page.keyboard.type(lines[i])
@@ -90,10 +99,25 @@ export async function fillSticky(page: Page, text: string) {
 // unaffected by the pointer-vs-focus split) is the deterministic
 // commit path for a test -- kept named `blurSticky` so no spec churn.
 export async function blurSticky(page: Page) {
-  const content = page.locator('[data-testid="atlas-sticky-editor"] [contenteditable="true"], [data-testid="atlas-sticky-editor"] textarea').first()
-  await content.focus()
-  await page.keyboard.press('Control+Enter')
-  await page.locator('[data-testid="atlas-sticky-editor"]').waitFor({ state: 'detached' })
+  const editor = page.locator('[data-testid="atlas-sticky-editor"]')
+  // Focus can be stolen between the focus() and the keypress by the
+  // editing mount's own async swap/remount (the lazily-loaded engine
+  // replacing the fallback, a growth-driven refresh) -- the chord then
+  // lands on nothing, exactly like a real user's ⌘↵ during that blink.
+  // The user's own recovery is pressing again; this loop is that
+  // recovery, bounded, with the detach wait as the honest condition.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const content = page.locator('[data-testid="atlas-sticky-editor"] [contenteditable="true"], [data-testid="atlas-sticky-editor"] textarea').first()
+    await content.focus()
+    await page.keyboard.press('Control+Enter')
+    try {
+      await editor.waitFor({ state: 'detached', timeout: 2_000 })
+      return
+    } catch {
+      // Still mounted -- the chord missed; re-focus and press again.
+    }
+  }
+  await editor.waitFor({ state: 'detached' })
 }
 
 // clickOutsideNoteEditor commits a page overlay's MarkdownNoteField
