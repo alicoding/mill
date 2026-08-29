@@ -192,7 +192,10 @@ never leave the working tree dirty or a completed, verified change sitting
 staged-but-uncommitted at the end of a turn. Write a real commit message
 (not a placeholder), double-check staged content doesn't include anything
 secret-shaped, and never force-push, amend a previous commit, or rewrite
-history without being explicitly asked.
+history without being explicitly asked. (Force-push and
+filter-branch/filter-repo are hook-denied outright —
+`scripts/hook-command-guard.sh`, which also denies `pkill -f`/`killall`;
+amend/rebase stay judgement since "explicitly asked" is legal.)
 
 **Deliver through short-lived branches + a PR per goal; push at least once
 per session — never let unpushed work accumulate**

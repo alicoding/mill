@@ -252,8 +252,14 @@ test('a plugin object placed before its plugin is removed stays visible, honest,
 		backupDir: path.join(dir, 'backups'),
 	}
 	const browser = await chromium.launch()
+	// Track every spawned server so a mid-test failure still stops them
+	// in finally -- a server stopped only after its assertions leaks on
+	// timeout, and the leaked port then fails the retry with a bind
+	// error that masks the real failure.
+	const servers: SpawnedServer[] = []
 	try {
 		const first = await spawnMillServer({ ...spawnOpts, extraEnv: { MILL_PLUGINS_DIR: pluginsDir } })
+		servers.push(first)
 		const page1 = await browser.newPage({ baseURL: first.baseURL })
 		await page1.goto('/')
 		await page1.getByRole('link', { name: 'Atlas' }).click()
@@ -269,6 +275,7 @@ test('a plugin object placed before its plugin is removed stays visible, honest,
 		await first.stop()
 
 		const second = await spawnMillServer({ ...spawnOpts, extraEnv: { MILL_PLUGINS_DIR: emptyPluginsDir } })
+		servers.push(second)
 		const page2 = await browser.newPage({ baseURL: second.baseURL })
 		await page2.goto('/')
 		await page2.getByRole('link', { name: 'Atlas' }).click()
@@ -284,9 +291,9 @@ test('a plugin object placed before its plugin is removed stays visible, honest,
 		await expect(menu).toBeVisible()
 		await menu.getByText('Delete', { exact: true }).click()
 		await expect(page2.getByTestId('atlas-unknown-kind-face')).toHaveCount(0)
-		await second.stop()
 	} finally {
 		await browser.close()
+		for (const s of servers) await s.stop().catch(() => {})
 		rmSync(dir, { recursive: true, force: true })
 	}
 })
