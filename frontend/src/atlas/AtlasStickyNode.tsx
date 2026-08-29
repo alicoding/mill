@@ -5,6 +5,7 @@ import type { NodeProps, Node as RFNode } from '@xyflow/react'
 import type { Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { MilkdownEditor } from '../shared/MilkdownEditor'
+import { STICKY_HEIGHT } from './atlasBoardLayout'
 import styles from './AtlasStickyNode.module.css'
 
 export interface AtlasStickyData extends Record<string, unknown> {
@@ -26,6 +27,13 @@ export interface AtlasStickyData extends Record<string, unknown> {
   // selected node before the current click gesture began -- see
   // useAtlasSelection.ts's own header comment.
   isSoleSelected: (id: string) => boolean
+  // Set only by a region frame's own preview grid (atlasBuildBoardNodes
+  // .ts): a fixed uniform slot height, clamped rather than content-
+  // driven, since the grid's own layout never reads a child's Size.
+  // undefined for a normal top-level board note, which uses the
+  // content-driven box model instead (this component's own header
+  // comment).
+  previewHeight?: number
 }
 
 export type AtlasStickyRFNode = RFNode<AtlasStickyData>
@@ -37,15 +45,29 @@ export type AtlasStickyRFNode = RFNode<AtlasStickyData>
 // handles (a note can never be a link endpoint). At rest AND while
 // editing, the SAME engine renders formatted markdown (lists, bold,
 // headings, checkboxes) -- no raw source is ever shown, and no server
-// round-trip renders it (MilkdownEditor is client-side, ADR-0046). A
-// long note wheel-scrolls in place; editing swaps in an editable
-// Milkdown mount in place of the read-only one. Doubles as both the
-// draft-in-progress node (note === null, always editing) and an
-// existing note's own render/re-edit -- one component, since the two
-// states differ only in whether a commit creates or updates.
+// round-trip renders it (MilkdownEditor is client-side, ADR-0046).
+// Editing swaps in an editable Milkdown mount in place of the
+// read-only one. Doubles as both the draft-in-progress node
+// (note === null, always editing) and an existing note's own
+// render/re-edit -- one component, since the two states differ only in
+// whether a commit creates or updates.
+//
+// One box model, editing or at rest (never a size snap between them):
+// the box's height is content-driven (CSS auto-height), floored by a
+// min-height -- either a persisted Note.Size.H (once the user has
+// resized) or STICKY_HEIGHT's default. Content taller than that floor
+// grows the box; it never clips invisibly. Width stays the one
+// RF-controlled, user-resizable dimension.
 export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }: NodeProps<AtlasStickyRFNode>) {
   const { t } = useTranslation('atlas')
-  const { note, editing, onCommit, onCancelEdit, onEnterEdit, onOpenBig, isSoleSelected } = data
+  const { note, editing, onCommit, onCancelEdit, onEnterEdit, onOpenBig, isSoleSelected, previewHeight } = data
+  // The content-driven box model's own min-height floor (this
+  // component's own header comment) -- a region-frame preview slot
+  // overrides both height AND overflow instead, clamping to its fixed
+  // uniform grid size rather than growing with content.
+  const boxStyle = previewHeight !== undefined
+    ? { height: previewHeight, minHeight: previewHeight, overflow: 'hidden' as const }
+    : { minHeight: note?.Size?.H ?? STICKY_HEIGHT }
   const [draftText, setDraftText] = useState(note?.Text ?? '')
   // Guards against a double-fire: Escape (which unmounts this editing
   // view) must never also let a trailing outside-press re-commit the
@@ -78,19 +100,24 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
     settledRef.current = false
     draftRef.current = note?.Text ?? ''
     setDraftText(note?.Text ?? '')
-    // Focus whichever editing surface is mounted. The first-ever
-    // editor mount swaps a fallback textarea for the lazily-loaded
-    // Milkdown engine's own contenteditable surface, dropping focus
-    // mid-draft -- retry briefly until it exists and holds focus, then
-    // stop. Purely a focus convenience now (commit is pointer-driven,
-    // below) -- nothing about this loop can race or cancel a commit
-    // anymore.
+    // Focus whichever editing surface is mounted, and HOLD it for the
+    // entry's whole settling window rather than stopping at first
+    // success: the first-ever editor mount swaps a fallback textarea
+    // for the lazily-loaded engine's own contenteditable (dropping
+    // focus mid-draft), and the engine's own async plumbing can strip
+    // focus once more 45-200ms after it landed (measured live:
+    // focusout to BODY with no blur() call, no DOM detach, no
+    // attribute flip -- focus simply falls to nobody). Re-asserting
+    // only while nothing else holds focus never fights a real focus
+    // move; commit is pointer-driven, so nothing here can race or
+    // cancel a commit.
     let tries = 0
     const id = window.setInterval(() => {
       const editable = wrapRef.current?.querySelector<HTMLElement>('[contenteditable="true"]')
       const target = editable ?? wrapRef.current?.querySelector<HTMLElement>('textarea')
-      target?.focus()
-      if ((editable && document.activeElement === editable) || ++tries > 8) window.clearInterval(id)
+      const idle = document.activeElement === document.body || document.activeElement === null
+      if (target && document.activeElement !== target && (idle || wrapRef.current?.contains(document.activeElement))) target.focus()
+      if (++tries > 8) window.clearInterval(id)
     }, 60)
     return () => window.clearInterval(id)
     // note?.Text deliberately excluded: seeding happens on edit ENTRY
@@ -110,23 +137,74 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
   // press's own target handling (React Flow's pane click, another
   // node's select), and never preventDefault so that press still does
   // whatever it does. A window blur (the whole app losing focus --
-  // app/tab switch) commits too, since no further press is coming.
+  // app/tab switch) commits too, since no further press is coming. A
+  // press on this note's OWN resize handle is explicitly excluded --
+  // never treated as an outside press -- so a resize drag can never
+  // commit/unmount the edit session mid-gesture, named here rather
+  // than left to depend on the handle's own DOM position inside
+  // wrapRef.
   useEffect(() => {
     if (!editing) return
     const handlePointerDown = (e: PointerEvent) => {
-      if (wrapRef.current?.contains(e.target as Node | null)) return
+      const target = e.target as Element | null
+      if (wrapRef.current?.contains(target)) return
+      if (target?.closest('.react-flow__resize-control')) return
       commitRef.current()
     }
     const handleWindowBlur = () => {
       commitRef.current()
     }
+    // A press on a resize handle must not move DOM focus off the
+    // contenteditable at all (the handle is part of this note's own
+    // surface, never an interruption of the edit session): suppressing
+    // mousedown's default is THE focus-preserving primitive here --
+    // editor toolbars converge on the same move. The library's own
+    // resize drag still runs: its drag machinery never consults
+    // defaultPrevented, only the event's button/position.
+    const handleMouseDown = (e: MouseEvent) => {
+      const target = e.target as Element | null
+      if (target?.closest('.react-flow__resize-control')) e.preventDefault()
+    }
     document.addEventListener('pointerdown', handlePointerDown, true)
+    document.addEventListener('mousedown', handleMouseDown, true)
     window.addEventListener('blur', handleWindowBlur)
     return () => {
       document.removeEventListener('pointerdown', handlePointerDown, true)
+      document.removeEventListener('mousedown', handleMouseDown, true)
       window.removeEventListener('blur', handleWindowBlur)
     }
   }, [editing])
+
+  // A resize drag can shift DOM focus away from the contenteditable as
+  // a pointer-event side effect of the handle itself (outside this
+  // component's control) -- captured at resize-start and restored at
+  // resize-end so the edit session survives a resize (contract: the
+  // resize handles are part of this note's own surface, never an
+  // interruption of the edit session).
+  const resizeFocusRef = useRef<HTMLElement | null>(null)
+  const captureResizeFocus = () => {
+    resizeFocusRef.current = wrapRef.current?.querySelector<HTMLElement>('[contenteditable="true"], textarea') ?? null
+  }
+  const restoreResizeFocus = () => {
+    const target = resizeFocusRef.current
+    resizeFocusRef.current = null
+    if (!target) return
+    // A windowed hold, not a one-shot: onResizeEnd fires during the
+    // drag's own pointerup dispatch, and focus is stripped again up to
+    // ~200ms later (measured live: focusout to BODY with no blur()
+    // call and no DOM detach -- the engine's own async plumbing).
+    // Re-asserting only while focus sits on nobody never fights a real
+    // focus move (an outside press's commit path included).
+    window.setTimeout(() => {
+      if (target.isConnected) target.focus()
+    }, 0)
+    let ticks = 0
+    const id = window.setInterval(() => {
+      const idle = document.activeElement === document.body || document.activeElement === null
+      if (target.isConnected && document.activeElement !== target && idle) target.focus()
+      if (++ticks > 6) window.clearInterval(id)
+    }, 60)
+  }
 
   const commit = () => {
     if (settledRef.current) return
@@ -143,17 +221,15 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
   // Empty-state unification (goal 0247, the 0226 rule): an empty note
   // has no separate at-rest presentation -- the write invitation IS
   // the field, same as MarkdownNoteField's own `showEditor` contract.
-  // A draft (note === null) has no prior size to preserve, so it still
-  // grows to fit the first typed content; an existing note's own
-  // re-edit (or an existing-but-emptied note's own invitation) stays
-  // pinned to its current box (goal 0193: editing never resizes
-  // anything automatically).
+  // Every note -- draft or existing -- shares the SAME box model here:
+  // min-height floored by its persisted size (or the default, for a
+  // draft with no prior Size), growing with typed content.
   if (editing || text.trim() === '') {
-    const sizeClass = note ? '' : ` ${styles.editingUnsized}`
     return (
       <div
         ref={wrapRef}
-        className={`${styles.sticky} ${styles.editing}${sizeClass} nodrag nopan nowheel`}
+        className={`${styles.sticky} ${styles.editing} nodrag nopan nowheel`}
+        style={boxStyle}
         data-testid="atlas-sticky-note"
         data-editing={editing ? 'true' : 'false'}
         // A press into an empty note (not yet a real editing session,
@@ -188,16 +264,22 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
           }
         }}
       >
-        {/* Resize persists as Note.Size (goal 0193) -- available while
-            editing too, since resizing IS the answer to "I can't see
-            enough while editing". */}
+        {/* Resize persists as Note.Size -- available while editing too,
+            since resizing IS the answer to "I can't see enough while
+            editing". The persisted height becomes this box's own
+            min-height floor (see the component header comment), never
+            a clamp. onResizeStart/onResizeEnd around the write also
+            carry the edit session's focus across the drag (N3's own
+            contract: the resize handles never interrupt editing). */}
         {note && (
           <NodeResizer
             isVisible={selected ?? false}
             minWidth={100}
             minHeight={70}
+            onResizeStart={captureResizeFocus}
             onResizeEnd={(_e, params) => {
               void AtlasService.SetNoteSize(note.ID, { W: params.width, H: params.height })
+              restoreResizeFocus()
             }}
           />
         )}
@@ -205,7 +287,14 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
           value={draftText}
           onChange={(v) => {
             draftRef.current = v
-            setDraftText(v)
+            // State (and its re-render) only while the plain-textarea
+            // fallback is mounted -- that path renders `value`
+            // controlled. The engine mount reads `value` once at
+            // create and never again, so re-rendering per keystroke
+            // there only pits the whole node tree's re-render against
+            // the user's own typing (measured under load: keystrokes
+            // and input-rule transactions dropped mid-word).
+            if (!getMarkdownRef.current) setDraftText(v)
           }}
           onReady={(fn) => {
             getMarkdownRef.current = fn
@@ -226,6 +315,7 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
   return (
     <div
       className={styles.sticky}
+      style={boxStyle}
       data-testid="atlas-sticky-note"
       data-editing="false"
       role="button"
@@ -260,9 +350,10 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
         }
       }}
     >
-      {/* Resize persists as Note.Size (goal 0193's own resize door for
-          notes) -- the canvas library's own resizer, shown only while
-          selected so the face stays quiet at rest. */}
+      {/* Resize persists as Note.Size -- the canvas library's own
+          resizer, shown only while selected so the face stays quiet at
+          rest. The persisted height becomes this box's own min-height
+          floor (see the component header comment), never a clamp. */}
       {note && (
         <NodeResizer
           isVisible={selected ?? false}
@@ -273,13 +364,7 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
           }}
         />
       )}
-      <div
-        className={`${styles.text} ${styles.mdBody} nowheel`}
-        // A long note wheel-scrolls in place (AtlasStickyNode.module.css's
-        // `.text` -- overflow-y:auto): a named surface for goal
-        // 0156's layout-fitness audit, not an undeclared scroller.
-        data-scroll-region="sticky-note-body"
-      >
+      <div className={`${styles.text} nowheel`}>
         {/* Read-only Milkdown mount (goal 0244 S3): the SAME engine
             that edits also renders at rest, client-side -- no
             server round-trip (the old RenderNoteMarkdown RPC).

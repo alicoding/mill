@@ -108,3 +108,18 @@ export async function findEmptyBoardRect(page: Page, board: Locator, width: numb
 export async function findEmptyBoardPoint(page: Page, board: Locator, avoid: Locator[] = []): Promise<{ x: number; y: number }> {
   return findEmptyBoardRect(page, board, 12, 12, avoid)
 }
+
+// Places a fresh draft note (the N tool) in a region findEmptyBoardRect
+// proves clear of every rendered node, with margin for the caller's own
+// later pointer work: at the note's default-width footprint a corner
+// placement crowds the seeded cards, and later clicks/drags on the note
+// or its handles hit-test a neighboring card's surface instead --
+// order-dependently, since the restored session level shifts what
+// fitView shows. Promoted per the 2+-spec-files fixture rule.
+export async function placeNoteClear(page: Page, board: Locator): Promise<void> {
+  await page.keyboard.press('n')
+  const spot = await findEmptyBoardRect(page, board, 300, 200)
+  const boardBox = await board.boundingBox()
+  if (!boardBox) throw new Error('placeNoteClear: board has no bounding box')
+  await board.click({ position: { x: spot.x - boardBox.x + 10, y: spot.y - boardBox.y + 10 } })
+}

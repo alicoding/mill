@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
-import { clickCorner, deleteSticky } from './fixtures/atlasBoard'
+import { deleteSticky } from './fixtures/atlasBoard'
+import { placeNoteClear } from './fixtures/atlasEmptyRegion'
 import { contextMenu } from './fixtures/contextMenu'
 import { fillMilkdown, fillSticky, stickyEditor, blurSticky } from './fixtures/codeEditor'
 
@@ -46,8 +47,7 @@ test('sticky notes render markdown via Milkdown; live formatting, a checkbox tog
   await page.getByRole('link', { name: 'Atlas' }).click()
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
-  await page.keyboard.press('n')
-  await clickCorner(board, 'top-left')
+  await placeNoteClear(page, board)
   await expect(stickyEditor(page)).toBeVisible()
 
   // Real user primitives (testing.md): type each line, no synthetic
@@ -60,19 +60,42 @@ test('sticky notes render markdown via Milkdown; live formatting, a checkbox tog
   await page.keyboard.type('some ')
   await page.keyboard.type('**bold**')
   await page.keyboard.press('Enter')
-  // "- [ ] " is its OWN type() call, followed by an explicit wait for
-  // the task-item transaction to actually land (the icon widget
-  // appearing) before typing the rest -- typing the trailing text
-  // WHILE that transaction is still in flight was observed (CI, a
-  // slower/more-contended runner than a dev machine) to race it: the
-  // node conversion partially lands, leaving a plain bullet with a
-  // stray "]" instead of a real task item. Splitting on a WAITED
-  // condition, rather than gambling on one long continuous call being
-  // fast enough end to end, is what actually closes the race -- see
-  // checkboxIcon below for the assertion this wait is priming.
-  await page.keyboard.type('- [ ] ')
+  // The task item is built in two WAITED stages at human keystroke
+  // pacing, each synchronizing on ITS OWN icon (`.bullet` then
+  // `.unchecked` -- the bare `.milkdown-icon.label` matches both, so
+  // waiting on it synchronizes on nothing): the bullet and task
+  // conversions are async editor transactions, and delay-0 typing was
+  // measured (repeat-each, this spec) to land keystrokes inside their
+  // windows, partially applying a conversion. The task rule can also
+  // miss OUTRIGHT under load, leaving literal "[ ]" text -- a real
+  // user's recovery is erasing and retyping, so the bounded loop below
+  // performs exactly that recovery before the hard assertion.
+  await page.keyboard.type('- ', { delay: 40 })
+  await expect(editable.locator('.milkdown-icon.label.bullet')).toBeVisible()
+  const unchecked = editable.locator('.milkdown-icon.label.unchecked')
+  for (let round = 0; round < 3; round++) {
+    await page.keyboard.type('[ ] ', { delay: 40 })
+    try {
+      await unchecked.waitFor({ state: 'visible', timeout: 1_500 })
+      break
+    } catch {
+      for (let i = 0; i < 4; i++) await page.keyboard.press('Backspace')
+    }
+  }
+  await expect(unchecked).toBeVisible()
+  // The icon proves the task item EXISTS; the caret can still be
+  // mid-relocation into it (the conversion transaction moves it last)
+  // -- typing before it lands was observed to insert into the
+  // preceding h1 instead. Poll the live selection, the only observable
+  // for caret position.
+  await expect
+    .poll(() => page.evaluate(() => {
+      const anchor = document.getSelection()?.anchorNode
+      const el = anchor instanceof Element ? anchor : anchor?.parentElement
+      return el?.closest('li') != null
+    }))
+    .toBe(true)
   const checkboxIcon = editable.locator('.milkdown-icon.label').first()
-  await expect(checkboxIcon).toBeVisible()
   await page.keyboard.type('first task')
 
   // Live formatting WHILE editing: real elements, never raw syntax --
@@ -110,8 +133,11 @@ test('sticky notes render markdown via Milkdown; live formatting, a checkbox tog
   expect(rpcCalls).not.toContain('RenderNoteMarkdown')
 
   // Regression: a REAL double-click enters edit -- the second press
-  // used to beat the selection snapshot's re-render and no-op.
-  await page.keyboard.press('Escape')
+  // used to beat the selection snapshot's re-render and no-op. No
+  // pane-level Escape first: with nothing selected, Escape NAVIGATES
+  // (drills up to the root view), and at root fit this note lands
+  // under the minimap, where every later pointer action hit-tests the
+  // minimap instead and times out.
   await sticky.dblclick()
   await expect(stickyEditor(page)).toBeVisible()
   await page.keyboard.press('Escape')
@@ -164,8 +190,7 @@ test("the note overlay's editor box stays bounded as content grows, never the pa
   await page.getByRole('link', { name: 'Atlas' }).click()
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
-  await page.keyboard.press('n')
-  await clickCorner(board, 'top-left')
+  await placeNoteClear(page, board)
   await expect(stickyEditor(page)).toBeVisible()
   await fillSticky(page, 'One line')
   await blurSticky(page)
@@ -220,8 +245,7 @@ test('a fenced code block renders as a plain block -- no language picker, no Cop
   await page.getByRole('link', { name: 'Atlas' }).click()
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
-  await page.keyboard.press('n')
-  await clickCorner(board, 'top-left')
+  await placeNoteClear(page, board)
   await expect(stickyEditor(page)).toBeVisible()
 
   const editable = stickyEditor(page).locator('[contenteditable="true"]')
@@ -264,8 +288,7 @@ test('leading whitespace never swallows a line into a code block across reload',
   await page.getByRole('link', { name: 'Atlas' }).click()
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
-  await page.keyboard.press('n')
-  await clickCorner(board, 'top-right')
+  await placeNoteClear(page, board)
   await expect(stickyEditor(page)).toBeVisible()
 
   const editable = stickyEditor(page).locator('[contenteditable="true"]')
@@ -312,8 +335,7 @@ test('a note holding markdown renders real elements, keeps the edit surface insi
   await page.getByRole('link', { name: 'Atlas' }).click()
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
-  await page.keyboard.press('n')
-  await clickCorner(board, 'top-right')
+  await placeNoteClear(page, board)
   await expect(stickyEditor(page)).toBeVisible()
   const editable = stickyEditor(page).locator('[contenteditable="true"]')
   await editable.click()

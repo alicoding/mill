@@ -1,5 +1,5 @@
 import type { Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import { STICKY_HEIGHT, STICKY_WIDTH } from './atlasBoardLayout'
+import { STICKY_WIDTH } from './atlasBoardLayout'
 import type { AtlasStickyRFNode } from './AtlasStickyNode'
 
 // Builds every sticky-note React Flow node for the current board:
@@ -25,17 +25,19 @@ export function buildStickyNodes({
   onCommitEdit: (id: string, text: string) => void
   onOpenNote: (id: string) => void
 }): AtlasStickyRFNode[] {
-  // The box never moves on entering/leaving edit (goal 0193: no
-  // automatic resize, ever) -- every existing note always carries its
-  // own persisted-or-default footprint, editing included. Only the
-  // still-unpersisted draft below (no prior size to preserve) grows to
-  // its content.
+  // Width is the one RF-controlled dimension (persisted-or-default,
+  // user-resizable); height is deliberately OMITTED here -- the note's
+  // box height is content-driven (AtlasStickyNode.tsx's own inline
+  // min-height + CSS auto-height), so React Flow measures the real
+  // rendered height via its own ResizeObserver instead of this builder
+  // clamping it to a stale value. Same box model, editing or at rest --
+  // no snap between the two. The still-unpersisted draft below shares
+  // this exact model, just with no prior Size to read.
   const nodes: AtlasStickyRFNode[] = notes.map((note) => ({
     id: note.ID,
     type: 'atlas-sticky',
     position: { x: note.Position.X, y: note.Position.Y },
     width: note.Size?.W ?? STICKY_WIDTH,
-    height: note.Size?.H ?? STICKY_HEIGHT,
     draggable: !readOnly && editingNoteID !== note.ID,
     data: {
       note,
@@ -52,6 +54,7 @@ export function buildStickyNodes({
       id: '__atlas-sticky-draft__',
       type: 'atlas-sticky',
       position: draftNotePos,
+      width: STICKY_WIDTH,
       draggable: false,
       data: {
         note: null,
