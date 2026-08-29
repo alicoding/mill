@@ -107,6 +107,11 @@ test('a guarded action parks for the human, renders in Review, and the approve/d
 		await face.locator('[data-testid="bookmark-url-input"]').click()
 		await page.keyboard.type('example.com')
 		await page.keyboard.press('Enter')
+		// The commit re-renders the face (payload change); wait for the
+		// derived title so the Open click below hits the CURRENT
+		// elements, not the doomed pre-commit ones a slower runner can
+		// still be swapping out.
+		await expect(face.locator('span').nth(1)).toHaveText('example.com')
 
 		// Open asks the guardrail; ClassExternal's ask-by-default parks.
 		await face.locator('[data-testid="bookmark-open"]').click()
