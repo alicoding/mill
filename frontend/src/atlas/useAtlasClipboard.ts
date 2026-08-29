@@ -7,6 +7,7 @@ import { childrenOf } from './atlasGrouping'
 import { frameContainingPoint } from './atlasFramePoint'
 import type { FrameBox } from './useAtlasDragFiling'
 import { parseAtlasClonePayload, serializeAtlasSelection, type AtlasClonePayload } from './atlasClipboard'
+import { modalSurfaceOpen } from '../shared/modalGate'
 
 // createClones performs the payload's writes: cards parents-before-
 // children (co-copied structure re-parents onto fresh clone ids, pass
@@ -83,6 +84,9 @@ export function useAtlasClipboard({ allCards, allNotes, links, kinds, selectedCa
 
     const onCopy = (e: ClipboardEvent) => {
       const s = stateRef.current
+      // A modal above the board owns the screen: copying here would
+      // silently overwrite the clipboard with a HIDDEN board selection.
+      if (modalSurfaceOpen()) return
       if (isEditableTarget(document.activeElement)) return
       if (window.getSelection()?.toString()) return
       const payload = serializeAtlasSelection(s.allCards, s.allNotes, s.links, s.selectedCardIDs, s.selectedNoteIDs)
@@ -138,6 +142,9 @@ export function useAtlasClipboard({ allCards, allNotes, links, kinds, selectedCa
     const onPaste = (e: ClipboardEvent) => {
       const s = stateRef.current
       if (s.readOnly) return
+      // Same modal stand-down as onCopy: pasted clones would land
+      // invisibly behind the open dialog.
+      if (modalSurfaceOpen()) return
       if (isEditableTarget(document.activeElement)) return
       const payload = parseAtlasClonePayload(e.clipboardData?.getData('text/plain') ?? '')
       if (!payload) return

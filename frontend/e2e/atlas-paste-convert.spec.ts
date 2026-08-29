@@ -1,6 +1,9 @@
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { test, expect } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
-import { openCard } from './fixtures/atlasBoard'
+import { closeCard, deleteSticky, openCard } from './fixtures/atlasBoard'
 import { clickRowAction } from './inventoryRow'
 import { contextMenu } from './fixtures/contextMenu'
 
@@ -52,6 +55,19 @@ async function pasteHTML(page: import('@playwright/test').Page, html: string, pl
     dt.setData('text/plain', text)
     window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
   }, { html, text: plainTextSibling })
+}
+
+// pastePlainText injects text/plain VERBATIM (unlike pasteText below,
+// which URI-encodes to mimic the diagram tool's own copy format) --
+// the shape a copied file path or ordinary prose actually has.
+async function pastePlainText(page: import('@playwright/test').Page, raw: string) {
+  // eslint-disable-next-line no-restricted-syntax -- cursor-position-only gesture, not a checkable interaction (pasteText's own comment below has the full reasoning)
+  await page.mouse.move(1000, 220)
+  await page.evaluate((t) => {
+    const dt = new DataTransfer()
+    dt.setData('text/plain', t)
+    window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
+  }, raw)
 }
 
 async function pasteText(page: import('@playwright/test').Page, raw: string) {
@@ -185,4 +201,91 @@ test('a table copied from an M365 app (HTML clipboard flavor) lands a board-loca
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Pasted table', { exact: true }) })
   await clickRowAction(page, listRow, 'Delete')
   await expect(listRow).toHaveCount(0)
+})
+
+// Regression: pasting a local file PATH (text) landed a sticky note
+// containing the raw path string, while DROPPING the same file landed
+// the real thing (goal 0179's founding rule). A pasted path now routes
+// through the drop door's own landing pipeline: .md becomes a mirrored
+// document card, .drawio a diagram board object -- and a path that
+// doesn't resolve on disk still falls back to the note, never a dead
+// end.
+test('pasting a file path lands what dropping the file would; a dead path still falls back to a note', async ({ page }) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mill-e2e-paste-path-'))
+  const mdPath = path.join(dir, 'ZzE2ePastedDocPath.md')
+  fs.writeFileSync(mdPath, '# Pasted doc\n\nbody\n')
+  const drawioPath = path.join(dir, 'ZzE2ePastedDiagramPath.drawio')
+  fs.writeFileSync(drawioPath, '<mxfile><diagram name="P">'
+    + '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>'
+    + '<mxCell id="2" value="Box" vertex="1" parent="1"><mxGeometry x="0" y="0" width="80" height="40"/></mxCell>'
+    + '</root></mxGraphModel></diagram></mxfile>')
+  try {
+    await page.goto('/')
+    await page.getByRole('link', { name: 'Atlas' }).click()
+    await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+    // .md path -> mirrored document card, exactly like dropping the file.
+    await pastePlainText(page, mdPath)
+    const card = page.getByTestId('atlas-note-card').filter({ hasText: 'ZzE2ePastedDocPath' })
+    await expect(card).toBeVisible()
+    await expect(page.getByTestId('atlas-sticky-note').filter({ hasText: 'ZzE2ePastedDocPath' })).toHaveCount(0)
+
+    // .drawio path -> diagram board object, never a card or note.
+    await pastePlainText(page, drawioPath)
+    const diagram = page.locator('[data-testid="atlas-board-object"][data-object-kind="diagram"]')
+    await expect(diagram).toHaveCount(1)
+    await expect(page.getByTestId('atlas-note-card').filter({ hasText: 'ZzE2ePastedDiagramPath' })).toHaveCount(0)
+
+    // A path-shaped string that doesn't exist stays ordinary text: the
+    // note fallback, so nothing a user pastes ever vanishes.
+    const deadPath = path.join(dir, 'ZzE2eDeadPath.md')
+    await pastePlainText(page, deadPath)
+    const note = page.getByTestId('atlas-sticky-note').filter({ hasText: 'ZzE2eDeadPath' })
+    await expect(note).toBeVisible()
+
+    // Cleanup (shared pool): note, diagram object, card.
+    await deleteSticky(page, note)
+    await deleteObjectViaMenu(diagram)
+    await expect(diagram).toHaveCount(0)
+    await card.click({ button: 'right' })
+    const menu = contextMenu(page)
+    await expect(menu).toBeVisible()
+    await menu.getByText('Delete', { exact: true }).click()
+    await expect(card).toHaveCount(0)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+// Regression: the board's window-level paste door stayed live while a
+// card page (a modal dialog) covered the board -- pasting with focus
+// on no field landed a sticky note INVISIBLY behind the dialog. The
+// door now stands down while a modal surface is open, and comes back
+// the moment it closes.
+test('pasting while a card page is open lands nothing behind it; the door returns on close', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  const card = page.getByTestId('atlas-note-card').filter({ hasText: 'Discovery workstream' }).first()
+  await openCard(page, card)
+  const overlay = page.locator('[data-component="atlas-card-overlay"]')
+  await expect(overlay).toBeVisible()
+  // Land focus on nothing editable: click the page's own header region
+  // (the real state a user reaches by clicking any non-field area).
+  await page.getByTestId('atlas-page-header').click()
+
+  await pastePlainText(page, 'ZzE2eModalGateProbe')
+  // No observable "nothing happened" signal exists to await -- a fixed
+  // settle window is the only way to assert the note did NOT land.
+  await page.waitForTimeout(800) // asserting a no-op: no observable condition exists to await
+  await expect(page.getByTestId('atlas-sticky-note').filter({ hasText: 'ZzE2eModalGateProbe' })).toHaveCount(0)
+
+  await closeCard(page, overlay)
+
+  // The same paste with the board foreground again lands its note.
+  await pastePlainText(page, 'ZzE2eModalGateProbe')
+  const note = page.getByTestId('atlas-sticky-note').filter({ hasText: 'ZzE2eModalGateProbe' })
+  await expect(note).toBeVisible()
+  await deleteSticky(page, note)
 })

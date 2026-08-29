@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useRenderStormGuard } from '../shared/renderStormGuard'
+import { useAtlasDeleteKey } from './useAtlasDeleteKey'
 import { useTranslation } from 'react-i18next'
 import { ReactFlow, ReactFlowProvider, useNodesState, useReactFlow } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
@@ -126,24 +127,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   const selection = useAtlasSelection({ cards, notes, objects, onMultiSelectContextMenu })
   const wrapperClicks = useAtlasPaneClick({ tablePicker, topLevelBoxes, screenToFlowPosition, onCreateTableSized, placeAt: creation.placeAt })
 
-  // Delete/Backspace over a live selection -> the shared confirm
-  // (never fires from editable elements; single or multi).
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Delete' && e.key !== 'Backspace') return
-      const el = document.activeElement
-      if (el instanceof HTMLElement && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return
-      const sel = selection.selectedIDsRef.current
-      if (sel.length === 0) return
-      e.preventDefault()
-      const cardIDs = sel.filter((id) => cards.some((c) => c.ID === id))
-      const noteIDs = sel.filter((id) => notes.some((n) => n.ID === id))
-      const objectIDs = sel.filter((id) => objects.some((o) => o.ID === id))
-      if (cardIDs.length + noteIDs.length + objectIDs.length > 0) onDeleteSelection(cardIDs, noteIDs, objectIDs)
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [cards, notes, objects, onDeleteSelection, selection.selectedIDsRef])
+  useAtlasDeleteKey({ cards, notes, objects, selectedIDsRef: selection.selectedIDsRef, onDeleteSelection })
 
   // Zoom chip / group-header click / Enter on a region frame (routed
   // here through AtlasGroupNode's own data.onDrill) all fly the camera
@@ -183,7 +167,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
 
   // The capture doors (goal 0081 slice A3): own hook files, 500-line cap.
   const fileDrop = useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPosition, setPulsedID, reduceMotion })
-  useAtlasPaste({ topLevelBoxes, screenToFlowPosition, viewedID, onPasteConverted, onNoteCreated: selection.selectNote })
+  useAtlasPaste({ topLevelBoxes, screenToFlowPosition, viewedID, onPasteConverted, onNoteCreated: selection.selectNote, landFiles: fileDrop.landFiles })
   useAtlasClipboard({ allCards, allNotes, links, kinds, selectedCardIDs: selection.selectedCards, selectedNoteIDs: selection.selectedNotes, topLevelBoxes, screenToFlowPosition, viewedID, readOnly, showToast: onQuietToast })
 
   // Handle honesty: no kind restricts linking, so zero legal targets means a board with nothing else on it.

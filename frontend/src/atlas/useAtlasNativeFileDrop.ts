@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { AtlasService } from '../shared/bindings'
@@ -78,15 +78,19 @@ export function useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPo
     stateRef.current = { parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion, diagramObjectCreate, imageObjectCreate, sheetObjectCreate }
   }, [parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion, diagramObjectCreate, imageObjectCreate, sheetObjectCreate])
 
-  useEffect(() => {
-    return Events.On(FILE_DROP_EVENT_NAME, (evt) => {
-      const payload = evt.data as { filenames?: string[]; x?: number; y?: number; context?: string } | undefined
-      if (!payload || payload.context !== FILE_DROP_CONTEXT_BOARD || !payload.filenames?.length) return
-      const { topLevelBoxes: boxes, screenToFlowPosition: toFlow, parentID: currentParentID, requestFolderImport: request, setPulsedID: pulse, reduceMotion: reduced, diagramObjectCreate: diagramCreate, imageObjectCreate: imageCreate, sheetObjectCreate: sheetCreate } = stateRef.current
-      const point = toFlow({ x: payload.x ?? 0, y: payload.y ?? 0 })
-      const targetParentID = frameContainingPoint(boxes, point) ?? currentParentID
+  // The drop door's LANDING half, split from the OS drop gesture so the
+  // board's paste door can land a pasted file PATH through the exact
+  // same pipeline (routing, plugin claims, extension enablement, folder
+  // import, the card fallback's pulse/duplicate notice). Returns the
+  // un-caught promise: each gesture owns its own failure answer -- the
+  // OS drop shows dropError below, a pasted path falls back to the
+  // ordinary text-paste flow (useAtlasPaste.ts).
+  const landFiles = useCallback((filenames: string[], screenPoint: { x: number; y: number }) => {
+    const { topLevelBoxes: boxes, screenToFlowPosition: toFlow, parentID: currentParentID, requestFolderImport: request, setPulsedID: pulse, reduceMotion: reduced, diagramObjectCreate: diagramCreate, imageObjectCreate: imageCreate, sheetObjectCreate: sheetCreate } = stateRef.current
+    const point = toFlow(screenPoint)
+    const targetParentID = frameContainingPoint(boxes, point) ?? currentParentID
 
-      AtlasService.ResolveFileDropRoute(payload.filenames)
+    return AtlasService.ResolveFileDropRoute(filenames)
         .then((route) => {
           if (route.Kind === 'import') {
             request(route.Path, targetParentID)
@@ -128,9 +132,16 @@ export function useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPo
                 }))
           }
         })
+  }, [t])
+
+  useEffect(() => {
+    return Events.On(FILE_DROP_EVENT_NAME, (evt) => {
+      const payload = evt.data as { filenames?: string[]; x?: number; y?: number; context?: string } | undefined
+      if (!payload || payload.context !== FILE_DROP_CONTEXT_BOARD || !payload.filenames?.length) return
+      void landFiles(payload.filenames, { x: payload.x ?? 0, y: payload.y ?? 0 })
         .catch(() => setDropError(t('capture.dropError')))
     })
-  }, [t])
+  }, [t, landFiles])
 
   useEffect(() => {
     if (!dropError) return
@@ -144,5 +155,5 @@ export function useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPo
     return () => window.clearTimeout(timer)
   }, [dropDuplicateNotice])
 
-  return { dropError, dropDuplicateNotice }
+  return { dropError, dropDuplicateNotice, landFiles }
 }
