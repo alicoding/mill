@@ -17,12 +17,7 @@ import * as $models from "./models.js";
 
 /**
  * AssetMiddleware serves GET /plugins/<id>/<file> from the scanned
- * plugins directory and passes every other request through. Only ids
- * that scan to a VALID manifest serve at all (a broken plugin is
- * visible in Extensions, never half-loaded via a dangling script
- * URL), only allowlisted extensions serve, and the resolved path must
- * stay inside the plugin's own folder (filepath.Rel guards traversal
- * after cleaning).
+ * plugins directory and passes every other request through.
  */
 export function AssetMiddleware(): $CancellablePromise<any> {
     return $Call.ByID(3587145368);

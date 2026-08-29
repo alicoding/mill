@@ -72,6 +72,24 @@ export function EvaluateStep(step: guardrail$0.Step, $class: guardrail$0.EffectC
 }
 
 /**
+ * PendingGuardedActions is the Wails-bound listing the Review queue
+ * renders -- the same records RequestGuardedAction parks.
+ */
+export function PendingGuardedActions(): $CancellablePromise<$models.PendingGuardedAction[] | null> {
+    return $Call.ByID(4230330282);
+}
+
+/**
+ * ResolveGuardedAction is the Review queue's approve/deny door for a
+ * parked guarded action (docs/goals/0249 closed the render-alongside
+ * half this park always promised): the blocked RequestGuardedAction
+ * caller wakes with the human's answer.
+ */
+export function ResolveGuardedAction(id: string, approve: boolean): $CancellablePromise<void> {
+    return $Call.ByID(3175233248, id, approve);
+}
+
+/**
  * Rules returns every stored rule.
  */
 export function Rules(): $CancellablePromise<guardrail$0.Rule[] | null> {

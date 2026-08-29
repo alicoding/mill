@@ -1,5 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -16,15 +16,25 @@ import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 // wide, and the Review-queue assertions read the global pending list.
 const EXAMPLES_PLUGINS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'examples', 'plugins')
 
-async function launchWithPlugins(offset: number) {
+async function launchWithPlugins(offset: number, opts: { withBroken?: boolean } = {}) {
 	const dir = mkdtempSync(path.join(tmpdir(), 'mill-plugins-e2e-'))
+	// The plugins dir is a per-test COPY of examples/plugins (the exact
+	// artifact a user copies from) -- never the repo folder itself, so
+	// a test can add a deliberately-broken sibling without touching it.
+	const pluginsDir = path.join(dir, 'plugins')
+	mkdirSync(pluginsDir, { recursive: true })
+	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-bookmark'), path.join(pluginsDir, 'mill-bookmark'), { recursive: true })
+	if (opts.withBroken) {
+		mkdirSync(path.join(pluginsDir, 'broken-one'))
+		writeFileSync(path.join(pluginsDir, 'broken-one', 'manifest.json'), '{not json')
+	}
 	const server: SpawnedServer = await spawnMillServer({
 		port: RUNTIME_PLUGINS_SERVER_BASE_PORT + offset,
 		mcpPort: RUNTIME_PLUGINS_MCP_BASE_PORT + offset,
 		settingsPath: path.join(dir, 'settings.json'),
 		executionDbPath: path.join(dir, 'exec.db'),
 		backupDir: path.join(dir, 'backups'),
-		extraEnv: { MILL_PLUGINS_DIR: EXAMPLES_PLUGINS_DIR },
+		extraEnv: { MILL_PLUGINS_DIR: pluginsDir },
 	})
 	const browser = await chromium.launch()
 	const context = await browser.newContext({ baseURL: `http://127.0.0.1:${RUNTIME_PLUGINS_SERVER_BASE_PORT + offset}` })
@@ -128,6 +138,34 @@ test('a guarded action parks for the human, renders in Review, and the approve/d
 		await expect(row).toHaveCount(0)
 		await expect(face.locator('[data-testid="bookmark-status"]')).toContainText('Not allowed')
 		await reviewPage.close()
+	} finally {
+		await close()
+	}
+})
+
+test('the Extensions page tells the install story: plugin row with manifest metadata and capabilities, a broken plugin names its error, no duplicate compiled-in row', async () => {
+	const { page, close } = await launchWithPlugins(4, { withBroken: true })
+	try {
+		await page.goto('/')
+		await page.getByRole('link', { name: 'Settings' }).click()
+		const section = page.locator('[data-testid="extensions-installed-plugins"]')
+		await section.scrollIntoViewIfNeeded()
+		await expect(section).toBeVisible()
+
+		const bookmarkRow = section.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-bookmark"]')
+		await expect(bookmarkRow).toContainText('Bookmark')
+		await expect(bookmarkRow).toContainText('1.0.0')
+		await expect(bookmarkRow).toContainText('open-url')
+		await expect(bookmarkRow.locator('[data-testid="extensions-plugin-toggle"]')).toBeVisible()
+
+		// A broken folder is a visible row naming its exact problem --
+		// never silently skipped, never a switch pretending it could run.
+		const brokenRow = section.locator('[data-testid="extensions-plugin-row"][data-plugin-id="broken-one"]')
+		await expect(brokenRow.locator('[data-testid="extensions-plugin-error"]')).toContainText('not valid JSON')
+		await expect(brokenRow.locator('[data-testid="extensions-plugin-toggle"]')).toHaveCount(0)
+
+		// The plugin never gets a second compiled-in-style row.
+		await expect(page.locator('[data-testid="extensions-row"][data-extension-id="bookmark"]')).toHaveCount(0)
 	} finally {
 		await close()
 	}

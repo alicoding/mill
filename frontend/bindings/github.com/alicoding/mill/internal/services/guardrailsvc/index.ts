@@ -7,5 +7,6 @@ export {
 };
 
 export type {
+    PendingGuardedAction,
     RuleTestResult
 } from "./models.js";
