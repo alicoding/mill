@@ -189,6 +189,7 @@ func main() {
 		logger.Error("migrate legacy MCP pending writes", "error", err)
 	}
 	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
+	pluginService := wiring.NewPluginService(settingsPath, guardrailService)
 	// docs/goals/0240 S1: the coding loop's Confirm-screen preview --
 	// read-only over guardrailService.Rules(). Its ExecutionService
 	// dependency (goal 0240 S2, RunCommandBlock's own doc comment) is
@@ -320,6 +321,7 @@ func main() {
 			application.NewService(companionService),
 			application.NewService(agentLoopService),
 			application.NewService(guardrailService),
+			application.NewService(pluginService),
 			application.NewService(clipboardHistoryService),
 			application.NewService(codeLoopService),
 			application.NewService(executionService),
@@ -332,8 +334,9 @@ func main() {
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
-			// Armed only for a server build (wiring.AssetMiddleware).
-			Middleware: wiring.AssetMiddleware(remoteAuthService),
+			// Auth gate around the plugin asset route around the embedded
+			// bundle -- wiring.ComposedAssetMiddleware's own doc.
+			Middleware: wiring.ComposedAssetMiddleware(remoteAuthService, pluginService),
 		},
 		// Mill's macOS archetype and its termination contract live in the
 		// windowing adapter, where they are documented and pinned by a test

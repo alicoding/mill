@@ -1,10 +1,11 @@
+import type { AtlasToolGesture } from './atlasGestureTypes'
+export type { AtlasGestureCtx, AtlasGesturePoint, AtlasToolGesture } from './atlasGestureTypes'
 import type { ComponentType } from 'react'
 import type { Icon } from '@primer/octicons-react'
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { ListProjection } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { ATLAS_TOOL_IDENTITIES, type AtlasToolIdentity, type AtlasToolInteraction } from '../shared/atlasToolIdentity'
 import type { AtlasStyleField } from './atlasStyleVocabulary'
-import type { FrameBox } from './useAtlasDragFiling'
 import type { EditRouteDecl, ObjectSource } from './objectSeams'
 import type { MirrorReadState } from './useAtlasObjectMirrorRead'
 
@@ -141,7 +142,7 @@ export interface AtlasBoardObjectContent extends AtlasNounContent {
   fileBacked: boolean
 }
 
-const boardObjectContentRegistry = new Map<AtlasBoardObjectKind, AtlasBoardObjectContent>()
+const boardObjectContentRegistry = new Map<string, AtlasBoardObjectContent>()
 
 // registerBoardObjectContent -- the honest home for a noun with no
 // tray tool at all (diagram: file-drop only, goal 0179 S2). Called
@@ -149,7 +150,7 @@ const boardObjectContentRegistry = new Map<AtlasBoardObjectKind, AtlasBoardObjec
 // registerNoun below on behalf of a tool descriptor that declares
 // `boardObjectKind`/`content`. Throws on a duplicate Kind so two
 // sources can never silently overwrite each other's content.
-export function registerBoardObjectContent(kind: AtlasBoardObjectKind, content: AtlasBoardObjectContent): void {
+export function registerBoardObjectContent(kind: string, content: AtlasBoardObjectContent): void {
   if (boardObjectContentRegistry.has(kind)) {
     throw new Error(`atlas board-object kind "${kind}" already has a registered content renderer -- check frontend/src/atlas/tools/`)
   }
@@ -169,7 +170,7 @@ export function registerBoardObjectContent(kind: AtlasBoardObjectKind, content: 
 // an unregistered Kind rather than throwing, since a render path must
 // stay recoverable even against bad/legacy data.
 export function boardObjectContentFor(kind: string): AtlasBoardObjectContent | undefined {
-  return boardObjectContentRegistry.get(kind as AtlasBoardObjectKind)
+  return boardObjectContentRegistry.get(kind)
 }
 
 // ToolLessNounExtension -- one entry of toolLessNounExtensions() below,
@@ -178,7 +179,7 @@ export function boardObjectContentFor(kind: string): AtlasBoardObjectContent | u
 // consumer downstream gets a guaranteed ExtensionRowMeta instead of
 // re-checking for undefined itself).
 export interface ToolLessNounExtension {
-  kind: AtlasBoardObjectKind
+  kind: string
   content: AtlasBoardObjectContent
   extension: ExtensionRowMeta
 }
@@ -340,63 +341,6 @@ interface AtlasToolShapeBase {
   commit: (input: never) => unknown
 }
 
-// AtlasGesturePoint -- one accumulated point of an in-flight gesture,
-// always carrying its own capture timestamp so an ephemeral tool
-// (laser's fadeMs) can age individual points out independently; every
-// other tool simply ignores `t`.
-export interface AtlasGesturePoint { x: number; y: number; t: number }
-
-// AtlasGestureCtx -- what a tool's own gesture.onPoint/onEnd may reach,
-// assembled fresh each render by AtlasBoard.tsx and threaded through by
-// the engine. Deliberately NOT the wrapper box or React Flow's own
-// screenToFlowPosition internals beyond the function itself -- kept to
-// exactly what the five hooks this contract replaces actually consumed
-// (goal 0215 S2 design lock item 1).
-export interface AtlasGestureCtx {
-  screenToFlowPosition: (p: { x: number; y: number }) => { x: number; y: number }
-  parentID: string
-  cardBoxes: FrameBox[]
-  noteBoxes: { id: string; x: number; y: number; width: number; height: number }[]
-  // Every board-local object's (ink/shape/image/table/diagram) own
-  // rendered flow-space box -- read off React Flow's own measured node
-  // state (goal 0230), since a BoardObject's persisted Size stays null
-  // until first resize and its rendered footprint is otherwise CSS-
-  // intrinsic (atlasBuildBoardObjectNodes.ts's own header comment).
-  objectBoxes: { id: string; x: number; y: number; width: number; height: number }[]
-  onDeleteSelection: (cardIDs: string[], noteIDs: string[], objectIDs: string[]) => void
-  openAreaPopover: (screenPos: { x: number; y: number }, flowPos: { x: number; y: number }, enclosedCardIDs: string[], enclosedNoteIDs: string[]) => void
-  onShapeCreated: (objectID: string) => void
-  // Real functions for a one-shot tool; no-ops for a sticky one (the
-  // engine's own gestureDisarmFns enforces this, not each tool).
-  disarm: () => void
-  disarmUnlessLocked: () => void
-  // Fresh per-gesture scratch space the engine allocates at pointerdown
-  // and discards after onEnd -- eraser's own onPoint is the sole
-  // consumer today; no other tool touches it.
-  hitAccumulator: { cardIDs: Set<string>; noteIDs: Set<string>; objectIDs: Set<string> }
-}
-
-// AtlasToolGesture -- a drag-shaped tool's own pure behavior
-// contribution. onEnd receives the FULL client-space point list
-// unconditionally (even a below-threshold stray click) -- deciding
-// whether that constitutes a real gesture (a distance threshold, a
-// hit count, or nothing at all) is each tool's own call, matching how
-// the five hooks this contract replaces each guarded their own commit
-// differently (eraser's own guard is "did we hit anything", never a
-// distance).
-export interface AtlasToolGesture {
-  onPoint?: (pt: AtlasGesturePoint, ctx: AtlasGestureCtx) => void
-  onEnd: (points: AtlasGesturePoint[], ctx: AtlasGestureCtx) => void
-  // Rendered generically by AtlasBoard.tsx in ONE overlay slot, wrapper-
-  // spanning, fed the engine's own wrapper-local point accumulation.
-  preview?: ComponentType<{ points: AtlasGesturePoint[]; now: number }>
-  // Ephemeral tools (laser) never commit -- their accumulated points
-  // fade out on their own timer instead of clearing at pointerup, the
-  // one generic mechanism useAtlasToolGesture.ts owns for an
-  // 'ephemeral-drag' tool so no tool needs its own rAF loop.
-  fadeMs?: number
-}
-
 // AtlasToolShape: a discriminated union, one member per
 // shared/atlasToolIdentity.ts entry, correlating id<->interaction the
 // same way the pre-registry hand-written ATLAS_TOOLS tuple did --
@@ -476,9 +420,57 @@ export function assertRegistryAgreesWithIdentity(): void {
 // import.meta.glob's own alphabetical file-path sort and silently
 // reorder the tray the next time a noun's filename changes).
 export function orderedRegisteredTools(): AtlasToolShape[] {
-  return ATLAS_TOOL_IDENTITIES.map((i) => {
+  const builtIns = ATLAS_TOOL_IDENTITIES.map((i) => {
     const found = registry.get(i.id)
     if (!found) throw new Error(`atlas noun "${i.id}" missing its registered descriptor`)
     return found
   })
+  return [...builtIns, ...thirdPartyRegistry.values()] as AtlasToolShape[]
+}
+
+// --- Third-party nouns (docs/goals/0249, ADR-0047's out-of-tree tier) ---
+//
+// A runtime-loaded plugin's canvas object registers here, through the
+// SAME conceptual door built-ins use, with two honest differences:
+// its id/kind are open strings (the built-in literal unions stay
+// closed and keep guarding built-ins), and it is exempt from
+// assertRegistryAgreesWithIdentity (which checks exactly the
+// shared/atlasToolIdentity.ts list, where a runtime id cannot appear).
+// orderedRegisteredTools appends third-party tools AFTER every
+// built-in, cast into the AtlasToolShape array at this ONE site:
+// consumers discriminate on `interaction` and read string fields
+// generically; a consumer comparing `id` against a built-in literal
+// simply never matches a plugin id, which is the correct behavior.
+export type ThirdPartyNounShape = Omit<AtlasToolShapeBase, 'boardObjectKind'> & {
+  id: string
+  interaction: 'arm-then-click'
+  boardObjectKind: string
+  thirdParty: true
+  // The owning plugin (manifest id) -- the Extensions page's join key.
+  pluginId: string
+  defaultPayload: Record<string, string>
+}
+
+const thirdPartyRegistry = new Map<string, ThirdPartyNounShape>()
+
+export function registerThirdPartyNoun(shape: ThirdPartyNounShape): void {
+  if (registry.has(shape.id) || thirdPartyRegistry.has(shape.id)) {
+    throw new Error(`canvas object kind "${shape.id}" is already registered`)
+  }
+  thirdPartyRegistry.set(shape.id, shape)
+  if (shape.content) {
+    registerBoardObjectContent(shape.boardObjectKind, { ...shape.content, dragBand: shape.dragBand, fileBacked: shape.fileBacked })
+  }
+}
+
+export function thirdPartyNouns(): ThirdPartyNounShape[] {
+  return [...thirdPartyRegistry.values()]
+}
+
+export function isThirdPartyToolId(id: string): boolean {
+  return thirdPartyRegistry.has(id)
+}
+
+export function thirdPartyNounFor(id: string): ThirdPartyNounShape | undefined {
+  return thirdPartyRegistry.get(id)
 }

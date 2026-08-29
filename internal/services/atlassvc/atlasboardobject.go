@@ -92,6 +92,68 @@ func (a *AtlasService) SetBoardObjectPosition(id string, pos atlas.Position) (at
 	return o, nil
 }
 
+// SetBoardObjectPayload merges patch into a board object's Payload --
+// the content-plane write door for a payload-carrying object whose
+// data changes after placement (docs/goals/0249: a plugin object's own
+// fields, written host-mediated so plugin code never touches a
+// binding). A key with an empty value deletes that key; every other
+// key overwrites. mirrorPath changes re-arm the file watch the same
+// way creation does.
+//
+//nolint:dupl // same lock/mutate/persist/emit/recordScalar shape as SetBoardObjectPosition -- see its own dupl note
+func (a *AtlasService) SetBoardObjectPayload(id string, patch map[string]string) (atlas.BoardObject, error) {
+	a.mu.Lock()
+	idx := a.findObjectLocked(id)
+	if idx == -1 {
+		a.mu.Unlock()
+		return atlas.BoardObject{}, fmt.Errorf("no board object with id %q", id)
+	}
+	previous := a.objects[idx]
+	o := previous
+	o.Payload = copyPayload(previous.Payload)
+	for k, v := range patch {
+		if v == "" {
+			delete(o.Payload, k)
+			continue
+		}
+		o.Payload[k] = v
+	}
+	o.UpdatedAt = time.Now()
+	a.objects[idx] = o
+	perr := a.persistLocked()
+	if perr != nil {
+		a.objects[idx] = previous
+	}
+	a.mu.Unlock()
+	if perr != nil {
+		return atlas.BoardObject{}, fmt.Errorf("save board object payload: %w", perr)
+	}
+	dataevent.Emit("atlas", o.ID)
+	a.armMirrorWatch(o.ID, o.Payload["mirrorPath"])
+	recordScalar(a, actorUI, "object", id, o.Kind,
+		func(a *AtlasService, prev map[string]string) error {
+			a.mu.Lock()
+			if i := a.findObjectLocked(id); i != -1 {
+				restored := a.objects[i]
+				restored.Payload = copyPayload(prev)
+				restored.UpdatedAt = time.Now()
+				a.objects[i] = restored
+				if err := a.persistLocked(); err != nil {
+					a.mu.Unlock()
+					return err
+				}
+				a.mu.Unlock()
+				dataevent.Emit("atlas", id)
+				return nil
+			}
+			a.mu.Unlock()
+			return fmt.Errorf("no board object with id %q", id)
+		},
+		previous.Payload, o.Payload,
+	)
+	return o, nil
+}
+
 // SetBoardObjectSize persists a user-driven resize -- nil until the
 // object's own natural/intrinsic render size is first overridden (S2+;
 // S1 never calls this, but the door exists so a future resize handle

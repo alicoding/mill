@@ -280,3 +280,40 @@ func TestPromoteBoardObject_TableCarriesProjectionListID(t *testing.T) {
 		t.Errorf("PromoteBoardObject's card MirrorPath = %q, want empty for a table object", card.MirrorPath)
 	}
 }
+
+func TestSetBoardObjectPayload_MergesDeletesAndUndoes(t *testing.T) {
+	a := newTestAtlasService(t)
+	o, err := a.CreateBoardObject("bookmark", map[string]string{"url": "https://old.example", "title": "Old"}, atlas.Position{}, "")
+	if err != nil {
+		t.Fatalf("CreateBoardObject: %v", err)
+	}
+	updated, err := a.SetBoardObjectPayload(o.ID, map[string]string{"url": "https://new.example", "title": ""})
+	if err != nil {
+		t.Fatalf("SetBoardObjectPayload: %v", err)
+	}
+	if updated.Payload["url"] != "https://new.example" {
+		t.Errorf("url = %q, want the patched value", updated.Payload["url"])
+	}
+	if _, still := updated.Payload["title"]; still {
+		t.Error("an empty patch value must delete the key")
+	}
+	// Undo restores the FULL previous payload -- the deleted key
+	// returns and the patched key reverts (replacement, not re-patch).
+	if res := a.Undo(); !res.Applied || res.Skipped {
+		t.Fatalf("Undo did not apply cleanly: %+v", res)
+	}
+	for _, got := range a.Objects() {
+		if got.ID == o.ID {
+			if got.Payload["url"] != "https://old.example" || got.Payload["title"] != "Old" {
+				t.Errorf("undone payload = %#v, want the original", got.Payload)
+			}
+		}
+	}
+}
+
+func TestSetBoardObjectPayload_UnknownIDErrors(t *testing.T) {
+	a := newTestAtlasService(t)
+	if _, err := a.SetBoardObjectPayload("nope", map[string]string{"k": "v"}); err == nil {
+		t.Fatal("want an error for an unknown id")
+	}
+}

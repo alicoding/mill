@@ -12,10 +12,15 @@ import '@primer/primitives/dist/css/functional/themes/dark.css'
 // the wrong element).
 import './mill-tokens.css'
 import { ThemeProvider, BaseStyles } from '@primer/react'
-import App from './App'
+// App is imported DYNAMICALLY inside bootstrap() below -- a static
+// import would evaluate the whole app module graph (including the
+// tool-registry snapshot) before the plugin loader has run. See
+// src/plugins/loader.ts's boot-order contract.
 import { AppErrorBoundary, CrashProbe } from './AppErrorBoundary'
-import { QuickPanelApp } from './QuickPanelApp'
-import { ApprovalPromptApp } from './ApprovalPromptApp'
+// QuickPanelApp/ApprovalPromptApp are dynamic for the same boot-order
+// reason as App: their own import graphs are deep enough to reach the
+// tool-registry snapshot, and hand-auditing them forever is exactly
+// the maintenance trap the dynamic import avoids structurally.
 import { COLOR_MODE_STORAGE_KEY } from './theme'
 
 // Read once, synchronously, before the first render, to seed
@@ -65,22 +70,47 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   })
 }
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
-    <AppErrorBoundary>
-      {isCrashProbe ? (
-        <CrashProbe />
-      ) : isQuickPanel ? (
-        <QuickPanelApp />
-      ) : isApprovalPrompt ? (
-        <ApprovalPromptApp />
-      ) : (
+// The main window loads runtime plugins BEFORE the app module graph
+// evaluates (docs/goals/0249): activation must precede the tool-list/
+// command-table snapshots those modules take at eval. Raced against a
+// deadline so a hung plugin import can never brick the boot -- the app
+// then simply starts without the slow plugin, whose row shows the
+// state. The auxiliary windows (Quick Panel, approval prompt, crash
+// probe) render immediately -- none of them mounts a canvas.
+async function bootstrap() {
+  const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement)
+  if (isCrashProbe || isQuickPanel || isApprovalPrompt) {
+    const aux = isCrashProbe
+      ? <CrashProbe />
+      : isQuickPanel
+        ? await import('./QuickPanelApp').then((m) => <m.QuickPanelApp />)
+        : await import('./ApprovalPromptApp').then((m) => <m.ApprovalPromptApp />)
+    root.render(
+      <React.StrictMode>
+        <AppErrorBoundary>{aux}</AppErrorBoundary>
+      </React.StrictMode>,
+    )
+    return
+  }
+  const { loadPlugins } = await import('../plugins/loader')
+  await Promise.race([
+    loadPlugins().catch((err) => console.error('plugin loading failed', err)),
+    new Promise((resolve) => window.setTimeout(resolve, 4000)),
+  ])
+  const { markPluginsSettled } = await import('../plugins/loadGate')
+  markPluginsSettled()
+  const { default: App } = await import('./App')
+  root.render(
+    <React.StrictMode>
+      <AppErrorBoundary>
         <ThemeProvider colorMode={initialColorMode}>
           <BaseStyles>
             <App />
           </BaseStyles>
         </ThemeProvider>
-      )}
-    </AppErrorBoundary>
-  </React.StrictMode>,
-)
+      </AppErrorBoundary>
+    </React.StrictMode>,
+  )
+}
+
+void bootstrap()

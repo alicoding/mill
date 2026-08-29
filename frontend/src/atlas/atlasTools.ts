@@ -1,4 +1,5 @@
 import { ATLAS_TOOL_IDENTITIES, type AtlasToolIdentity } from '../shared/atlasToolIdentity'
+import { warnIfSnapshotBeforePlugins } from '../plugins/loadGate'
 import { assertRegistryAgreesWithIdentity, orderedRegisteredTools } from './atlasNounRegistry'
 
 // The canvas tool registry (goal 0169 slice 1, re-platformed onto
@@ -29,6 +30,8 @@ import { assertRegistryAgreesWithIdentity, orderedRegisteredTools } from './atla
 // happen here, because Vite's glob pattern is necessarily written
 // somewhere, and nowhere else needs to enumerate the tools/ directory.
 import.meta.glob(['./tools/*.ts', '!./tools/*.test.ts'], { eager: true })
+
+warnIfSnapshotBeforePlugins()
 
 // Fails fast (at the module-eval time every test/dev/build reaches by
 // importing this file) if a noun's identity and registered descriptor

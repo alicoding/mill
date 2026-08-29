@@ -8,6 +8,8 @@ import { resolveNoteCommitText, titleFromFilename, titleFromNoteText } from './a
 import { freeChildPosition } from './atlasContainmentPlacement'
 import { computeEnclosedBoundingBoxOrigin } from './atlasBoardBoxes'
 import { ATLAS_TOOLS, isAtlasArmableTool, isLockableArmTool, type AtlasArmableTool, type AtlasCreationTool, type AtlasToolID } from './atlasTools'
+import { isThirdPartyToolId } from './atlasNounRegistry'
+import { placeThirdPartyObject } from './atlasThirdPartyPlacement'
 import { cardTool } from './tools/cardTool'
 import { noteTool } from './tools/noteTool'
 import { areaTool } from './tools/areaTool'
@@ -119,7 +121,7 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   // behaviour, unchanged in toggleArm below. Narrowed off the SHARED
   // armedToolId (goal 0238): Table/Image can hold that same field
   // without this hook ever treating either as its own armed tool.
-  const armedTool = armedToolId !== null && isAtlasArmableTool(armedToolId) ? armedToolId : null
+  const armedTool = armedToolId !== null && (isAtlasArmableTool(armedToolId) || isThirdPartyToolId(armedToolId)) ? armedToolId : null
   const locked = armedTool !== null ? armedToolLocked : false
   const [popover, setPopover] = useState<AtlasPlacementPopoverState | null>(null)
   const [draftNoteFlowPos, setDraftNoteFlowPos] = useState<{ x: number; y: number } | null>(null)
@@ -214,6 +216,10 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
       return
     }
     const flowPos = screenToFlowPosition(screenPos)
+    // Third-party canvas objects route through the one generic
+    // placement (atlasThirdPartyPlacement.ts); built-in branches below
+    // stay built-in-only by construction.
+    if (placeThirdPartyObject(tool, flowPos, parentIDOverride ?? parentID)) return
     if (tool === 'card') {
       // Instant placement (goal 0144): the click IS the creation --
       // last-used kind, "Untitled", inline title editor on the node.

@@ -38,9 +38,9 @@ export interface MCPWriteActivity {
 /**
  * MCPWriteRequest is the frontend-facing shape for a still-PENDING
  * write (the "mcp-write-approval" event payload and PendingMCPWrites'
- * own return type) -- narrower than MCPWriteRecord (no ToolName/
- * ArgsJSON/executor internals), same field names the banner/Review UI
- * already bind against.
+ * own return type) -- narrower than the shared store's own
+ * GuardedActionRecord (no ToolName/ArgsJSON/executor internals), same
+ * field names the banner/Review UI already bind against.
  */
 export interface MCPWriteRequest {
     "id": string;
@@ -48,7 +48,7 @@ export interface MCPWriteRequest {
     "createdAt": string;
 
     /**
-     * LastPolledAt mirrors MCPWriteRecord's own field (docs/goals/0026
+     * LastPolledAt mirrors the shared record's own field (docs/goals/0026
      * item 3) -- nil when the requester has never called
      * check_write_status on this id yet.
      */
@@ -59,8 +59,8 @@ export interface MCPWriteRequest {
  * MCPWriteResolved is the frontend-facing shape for an already-resolved
  * write (docs/goals/0026 item 6) -- Review's Recently-resolved section
  * reads this alongside RunSummary's own resolved rows, merged
- * newest-first. Retained for the same 24h window check_write_status
- * already promises (sweepLocked's own retention) -- "durable across a
+ * newest-first. Retained for the same retention window check_write_status
+ * already promises (the shared store's own sweep) -- "durable across a
  * restart" and "still visible for the same window an MCP client can
  * still poll" are the same guarantee, not two.
  */

@@ -36,6 +36,7 @@ var journaledDoors = map[string]string{
 	"PromoteBoardObject":     "promote family (demote/repromote, atlasundo_promote.go)",
 	"PromoteNote":            "promote family (demote/repromote, atlasundo_promote.go)",
 	"SetBoardObjectPosition": "scalar family",
+	"SetBoardObjectPayload":  "scalar family",
 	"SetBoardObjectRotation": "scalar family",
 	"SetBoardObjectSize":     "scalar family",
 	"SetCardSize":            "scalar family",

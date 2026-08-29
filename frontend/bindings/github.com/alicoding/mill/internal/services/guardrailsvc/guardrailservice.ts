@@ -48,6 +48,30 @@ export function DeleteRule(id: string): $CancellablePromise<void> {
 }
 
 /**
+ * EvaluateAction adapts a generic action's kind/attributes into a Step
+ * and evaluates it through EvaluateStep. kind fills Step.NodeTypeID --
+ * the same scope axis a workflow node's own NodeTypeID already targets
+ * -- so a rule authored against a NodeTypeID scope also targets a
+ * guarded action of that kind, by construction, with no separate rule
+ * vocabulary to maintain.
+ */
+export function EvaluateAction(kind: string, attributes: { [_ in string]?: string } | null, $class: guardrail$0.EffectClass): $CancellablePromise<guardrail$0.Verdict> {
+    return $Call.ByID(4024562939, kind, attributes, $class);
+}
+
+/**
+ * EvaluateStep is the guardrail's rule-evaluation core: judges a
+ * fully-formed Step against the current rules with guardrail.Evaluate's
+ * deny > ask > allow > class-default precedence. A thin wrapper by
+ * design -- the extraction this pays for is a single call site every
+ * caller (a workflow step, a generic action) shares, so they can never
+ * silently diverge into two different evaluations of the same rules.
+ */
+export function EvaluateStep(step: guardrail$0.Step, $class: guardrail$0.EffectClass): $CancellablePromise<guardrail$0.Verdict> {
+    return $Call.ByID(1285652131, step, $class);
+}
+
+/**
  * Rules returns every stored rule.
  */
 export function Rules(): $CancellablePromise<guardrail$0.Rule[] | null> {

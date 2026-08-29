@@ -87,6 +87,7 @@ export function sourceLabel(source: ObjectSource | undefined): string | null {
   switch (source.kind) {
     case 'board-local': return 'Stored on the board'
     case 'file': return 'Backed by a file'
+    case 'url': return 'Points at a web address'
     case 'provider': return 'Live view of a List'
   }
 }
