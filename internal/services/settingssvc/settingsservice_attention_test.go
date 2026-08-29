@@ -77,3 +77,19 @@ func TestIsAway_IdleReadError_FailsTowardAway(t *testing.T) {
 		t.Error("IsAway(focused=true) with an idletime read error = false, want true (fail-safe toward away)")
 	}
 }
+
+// The tray-label hook mirrors the dock badge (docs/goals/0189): one
+// pending count, applied to every OS chrome through the same call.
+func TestSetPendingBadge_DrivesTrayCountHook(t *testing.T) {
+	svc := newAttentionHarness(t)
+	orig := dockBadgeSetFn
+	dockBadgeSetFn = func(int) error { return nil }
+	t.Cleanup(func() { dockBadgeSetFn = orig })
+	var got []int
+	svc.SetTrayCount(func(count int) { got = append(got, count) })
+	svc.SetPendingBadge(3)
+	svc.SetPendingBadge(0)
+	if len(got) != 2 || got[0] != 3 || got[1] != 0 {
+		t.Fatalf("tray hook calls = %v, want [3 0]", got)
+	}
+}

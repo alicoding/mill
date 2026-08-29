@@ -33,3 +33,17 @@ badge, and a floating approval prompt.
   workflows, so a scheduled or watching workflow is never invisibly
   running. Its MCP calls section logs every call to or from Mill's
   agent connection — who called what, when, and what happened.
+
+## The menu bar shows what Mill is doing
+
+Mill's menu-bar icon is a live status surface, not just a launcher.
+The icon itself means Mill is running; a count beside it means
+something is waiting on you. Clicking it opens a small panel:
+
+- **Needs you** — approvals, agent writes, and plugin asks waiting
+  for a decision. Click a row to land on Review.
+- **Running now** — what's executing, each with a Stop button.
+- **Quit Mill…** — quitting tells you first what stops: your
+  schedules, hotkeys and watchers pause until Mill runs again.
+
+Right-clicking the icon keeps the plain menu: Open Mill, Quit.

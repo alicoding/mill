@@ -300,5 +300,23 @@
       "copy": "Copy result",
       "copied": "Copied"
     }
+  },
+  "trayPanel": {
+    "running": "Running",
+    "openMill": "Open Mill",
+    "needsYou": "Needs you",
+    "waitingApproval": "Waiting for your approval",
+    "agentWrite": "Agent write",
+    "viewAll": "View all {{count}} in Review",
+    "nothingWaiting": "Nothing waiting on you.",
+    "runningSection": "Running now",
+    "nothingRunning": "Nothing running.",
+    "stop": "Stop",
+    "quit": "Quit Mill…",
+    "quitContract_one": "Quitting stops {{count}} automatic workflow — schedules, hotkeys and watchers stop until Mill runs again.",
+    "quitContract_other": "Quitting stops {{count}} automatic workflows — schedules, hotkeys and watchers stop until Mill runs again.",
+    "quitContractNone": "Nothing automatic is scheduled right now.",
+    "quitConfirm": "Quit",
+    "keepRunning": "Keep running"
   }
 }

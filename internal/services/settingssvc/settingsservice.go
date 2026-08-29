@@ -56,6 +56,9 @@ type SettingsService struct {
 	// always-alive floating window the summon hotkey toggles, distinct
 	// from window (the main window) above. See settingsservice_panel.go.
 	panel *windowing.Window
+	// trayCountFn mirrors the dock badge's pending count onto the
+	// menu-bar label (docs/goals/0189) -- see SetTrayCount.
+	trayCountFn func(count int)
 	// approvalPrompt is the floating approval-prompt window
 	// (docs/goals/0023-attention-escalation.md item 1) -- ADR-0033's
 	// second-window mechanism reused, but shown by the backend itself
