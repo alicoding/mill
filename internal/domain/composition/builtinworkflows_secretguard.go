@@ -55,7 +55,7 @@ func builtInSecretGuardWorkflows() []Workflow {
 				{ID: "example-secret-guard-e0", Source: secretGuardTriggerID, Target: ExampleSecretGuardStepID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(1),
+			Seed:    seedorigin.Stamp(2),
 		},
 	}
 }

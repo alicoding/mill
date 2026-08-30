@@ -206,3 +206,99 @@ func TestShellArgv_CleanAndLoginModesPerShell(t *testing.T) {
 		}
 	}
 }
+
+// TestCodeExecution_LiteralPassInputStdin_PipesThePayload pins goal
+// 0240 S5's pass-input default (the Shortcuts convention): a literal
+// script receives the upstream payload on stdin.
+func TestCodeExecution_LiteralPassInputStdin_PipesThePayload(t *testing.T) {
+	swapExecEnvLookupForTest(t, func(id string) (ResolvedExecEnv, error) { return testExecEnv(t), nil })
+
+	out, err := runCodeExecution(t, Node{ID: "n1", Config: map[string]string{
+		"envId": "e1", "source": "literal", "script": `cat`, "timeoutSeconds": "10",
+	}}, "payload on stdin\n")
+	if err != nil {
+		t.Fatalf("exec: %v", err)
+	}
+	if got := strings.TrimSpace(out.Payload); got != "payload on stdin" {
+		t.Errorf("Payload = %q, want the piped input", got)
+	}
+}
+
+// TestCodeExecution_LiteralPassInputArguments_OneArgPerLine pins the
+// "as arguments" half: each payload line lands as its own positional
+// argument, reachable as "$@".
+func TestCodeExecution_LiteralPassInputArguments_OneArgPerLine(t *testing.T) {
+	swapExecEnvLookupForTest(t, func(id string) (ResolvedExecEnv, error) { return testExecEnv(t), nil })
+
+	out, err := runCodeExecution(t, Node{ID: "n1", Config: map[string]string{
+		"envId": "e1", "source": "literal", "script": `printf '%s|' "$@"`, "passInput": "arguments", "timeoutSeconds": "10",
+	}}, "alpha\nbeta\ngamma\n")
+	if err != nil {
+		t.Fatalf("exec: %v", err)
+	}
+	if got := strings.TrimSpace(out.Payload); got != "alpha|beta|gamma|" {
+		t.Errorf("Payload = %q, want one argument per input line", got)
+	}
+}
+
+// TestCodeExecution_SourcePayload_PassInputIgnored pins the no-op:
+// source "payload" runs the payload AS the script, so there is no
+// separate input to route and the passInput setting changes nothing.
+func TestCodeExecution_SourcePayload_PassInputIgnored(t *testing.T) {
+	swapExecEnvLookupForTest(t, func(id string) (ResolvedExecEnv, error) { return testExecEnv(t), nil })
+
+	out, err := runCodeExecution(t, Node{ID: "n1", Config: map[string]string{
+		"envId": "e1", "source": "payload", "passInput": "arguments", "timeoutSeconds": "10",
+	}}, `echo unrouted`)
+	if err != nil {
+		t.Fatalf("exec: %v", err)
+	}
+	if got := strings.TrimSpace(out.Payload); got != "unrouted" {
+		t.Errorf("Payload = %q, want %q", got, "unrouted")
+	}
+}
+
+func TestInputArgs_LineSplitting(t *testing.T) {
+	cases := []struct {
+		in   string
+		want []string
+	}{
+		{"", nil},
+		{"one", []string{"one"}},
+		{"a\nb\n", []string{"a", "b"}},
+		{"a\n\nb", []string{"a", "", "b"}},
+		{"a\r\nb\r\n", []string{"a", "b"}},
+	}
+	for _, c := range cases {
+		got := inputArgs(c.in)
+		if len(got) != len(c.want) {
+			t.Errorf("inputArgs(%q) = %v, want %v", c.in, got, c.want)
+			continue
+		}
+		for i := range got {
+			if got[i] != c.want[i] {
+				t.Errorf("inputArgs(%q)[%d] = %q, want %q", c.in, i, got[i], c.want[i])
+			}
+		}
+	}
+}
+
+// TestAppendShellArgs_DollarZeroPlaceholder pins the POSIX -c operand
+// convention: the first appended operand becomes $0, so the shell's
+// own basename is inserted ahead of the real arguments.
+func TestAppendShellArgs_DollarZeroPlaceholder(t *testing.T) {
+	base := []string{"/bin/sh", "-c", "printf '%s' \"$1\""}
+	got := appendShellArgs(base, []string{"first"})
+	want := []string{"/bin/sh", "-c", "printf '%s' \"$1\"", "sh", "first"}
+	if len(got) != len(want) {
+		t.Fatalf("appendShellArgs = %v, want %v", got, want)
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Fatalf("appendShellArgs[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+	if out := appendShellArgs(base, nil); len(out) != len(base) {
+		t.Fatalf("appendShellArgs with no args = %v, want argv unchanged", out)
+	}
+}

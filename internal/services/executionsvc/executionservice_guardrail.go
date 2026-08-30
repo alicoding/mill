@@ -142,18 +142,27 @@ func (e *ExecutionService) evaluateVerdict(workflowID string, node composition.N
 	// EvaluateStep is the same core guardrailsvc.RequestGuardedAction's
 	// EvaluateAction calls -- this is the execution gate's own call
 	// site, never a second evaluation of these rules.
-	if node.NodeTypeID != shellCommandNodeTypeID {
-		return e.guard.EvaluateStep(guardrailsvc.GuardrailStep(workflowID, node, ec), class)
+	v := func() guardrail.Verdict {
+		if node.NodeTypeID != shellCommandNodeTypeID {
+			return e.guard.EvaluateStep(guardrailsvc.GuardrailStep(workflowID, node, ec), class)
+		}
+		steps := composition.ParseShellCommandBlock(ec.Payload)
+		if len(steps) == 0 {
+			return guardrail.Evaluate(e.guard.Rules(), guardrailsvc.GuardrailStep(workflowID, node, ec), class)
+		}
+		commands := make([]string, len(steps))
+		for i, s := range steps {
+			commands[i] = s.Text
+		}
+		return guardrail.WorstVerdict(e.guard.ShellCommandVerdicts(commands))
+	}()
+	// An admin run always asks (composition.AdminForcedAsk's fail-safe
+	// policy): an allow verdict -- a matching allow rule included --
+	// upgrades to ask; deny keeps winning unchanged.
+	if composition.AdminForcedAsk(node) && v.Effect == guardrail.EffectAllow {
+		v = guardrail.Verdict{Effect: guardrail.EffectAsk, RuleLabel: "Runs with admin rights"}
 	}
-	steps := composition.ParseShellCommandBlock(ec.Payload)
-	if len(steps) == 0 {
-		return guardrail.Evaluate(e.guard.Rules(), guardrailsvc.GuardrailStep(workflowID, node, ec), class)
-	}
-	commands := make([]string, len(steps))
-	for i, s := range steps {
-		commands[i] = s.Text
-	}
-	return guardrail.WorstVerdict(e.guard.ShellCommandVerdicts(commands))
+	return v
 }
 
 // guardrailGate is installed as composition.SetGuardrailGate at
@@ -372,6 +381,11 @@ func (e *ExecutionService) mayRequireApproval(workflowID string, nodes []composi
 		// checkpoint, ADR-0023; a manual-review-category decision-outcome
 		// node, ADR-0027) -- no allow rule vouches either away.
 		if composition.NodeAlwaysParks(n) {
+			return true
+		}
+		// An admin shell step always asks -- same fail-safe policy the
+		// gate's evaluateVerdict applies.
+		if composition.AdminForcedAsk(n) {
 			return true
 		}
 		step := guardrail.Step{

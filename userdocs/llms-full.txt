@@ -860,6 +860,7 @@ Runs the captured payload exactly as written -- in your real login shell by defa
 - Effect: external — parks for approval by default
 - Settings:
   - **Execution environment** — Runs the block inside a Configure-authored environment. Empty runs your real login shell. (references an Execution environment)
+  - **Run with admin rights** — Runs each command with administrator rights. macOS asks you to approve every run — Touch ID when it's set up for sudo, your password otherwise.
 
 ### Run a command
 
@@ -871,6 +872,7 @@ Runs one command locally, inside a configured execution environment (pinned shel
   - **Execution environment** — Which Configure-authored environment (shell, working directory, env vars) this command runs inside. (references an Execution environment)
   - **Command source** — "payload" runs the captured/upstream payload as the command; "literal" runs the script below instead.
   - **Script** — The command to run when "Command source" is literal. Ignored when source is payload.
+  - **Pass input** — How a literal script receives the upstream payload: piped to stdin, or one argument per line ($1, $2, …).
   - **Timeout (seconds)** — Kills the command if it hasn't finished within this many seconds.
 
 ### Run another workflow

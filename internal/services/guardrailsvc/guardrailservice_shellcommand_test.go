@@ -3,6 +3,7 @@ package guardrailsvc
 import (
 	"testing"
 
+	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/guardrail"
 )
 
@@ -45,5 +46,45 @@ func TestShellCommandVerdicts_UnlistedCommand_FallsBackToTheClassDefault(t *test
 	verdicts := g.ShellCommandVerdicts([]string{"echo hello"})
 	if verdicts[0].Effect != guardrail.EffectAsk || verdicts[0].RuleID != "" {
 		t.Fatalf("verdict = %+v, want the plain class default (ask, no rule)", verdicts[0])
+	}
+}
+
+// TestShellCommandVerdicts_AdminRun_UpgradesAllowToAsk pins goal 0240
+// S5's fail-safe policy at the shared preview/gate seam: with the
+// seeded shell step configured runWithAdmin, even a command matching a
+// seeded ALLOW rule reports ask -- privilege is never auto-granted by a
+// pattern list -- while a deny-listed shape keeps its own rule
+// attribution unchanged.
+func TestShellCommandVerdicts_AdminRun_UpgradesAllowToAsk(t *testing.T) {
+	g, comp := newTestGuardrailService(t)
+	g.rules = guardrail.BuiltIn()
+
+	var loop composition.Workflow
+	for _, w := range comp.Workflows() {
+		if w.ID == composition.CodingLoopWorkflowID {
+			loop = w
+		}
+	}
+	if loop.ID == "" {
+		t.Fatal("seeded coding-loop workflow missing from the test composition service")
+	}
+	for i := range loop.Nodes {
+		if loop.Nodes[i].ID == composition.CodingLoopShellStepID {
+			if loop.Nodes[i].Config == nil {
+				loop.Nodes[i].Config = map[string]string{}
+			}
+			loop.Nodes[i].Config["runWithAdmin"] = "true"
+		}
+	}
+	if _, err := comp.UpdateWorkflow(loop.ID, loop.Label, loop.Description, loop.Nodes, loop.Edges); err != nil {
+		t.Fatalf("UpdateWorkflow: %v", err)
+	}
+
+	verdicts := g.ShellCommandVerdicts([]string{"curl -I https://example.test", "rm -rf /tmp/whatever"})
+	if verdicts[0].Effect != guardrail.EffectAsk || verdicts[0].RuleLabel != "Runs with admin rights" {
+		t.Fatalf("allow-listed verdict = %+v, want the admin ask upgrade", verdicts[0])
+	}
+	if verdicts[1].Effect != guardrail.EffectAsk || verdicts[1].RuleID != guardrail.ShellDenyRmRfRuleID {
+		t.Fatalf("deny-listed verdict = %+v, want the deny rule's own attribution unchanged", verdicts[1])
 	}
 }
