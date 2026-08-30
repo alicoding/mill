@@ -1,0 +1,12 @@
+{
+  "id": "mill-scribble",
+  "name": "Scribble",
+  "version": "1.0.0",
+  "description": "A freehand drawing tool: drag on the board to draw a stroke that lands as its own object.",
+  "author": "Mill examples",
+  "minMillVersion": "0.14.1",
+  "capabilities": [],
+  "contributes": {
+    "canvasObjects": [{ "kind": "scribble" }]
+  }
+}

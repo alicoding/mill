@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { spawnMillServer, type SpawnedServer } from './fixtures/server'
 import { RUNTIME_PLUGINS_SERVER_BASE_PORT, RUNTIME_PLUGINS_MCP_BASE_PORT } from './fixtures/serverPorts'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
+import { clickBoardPoint, dragBetween } from './fixtures/atlasBoard'
 
 // The runtime plugin platform, proven against a REAL out-of-tree
 // plugin (docs/goals/0249): the server boots with MILL_PLUGINS_DIR
@@ -24,6 +25,7 @@ async function launchWithPlugins(offset: number, opts: { withBroken?: boolean } 
 	const pluginsDir = path.join(dir, 'plugins')
 	mkdirSync(pluginsDir, { recursive: true })
 	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-bookmark'), path.join(pluginsDir, 'mill-bookmark'), { recursive: true })
+	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-scribble'), path.join(pluginsDir, 'mill-scribble'), { recursive: true })
 	if (opts.withBroken) {
 		mkdirSync(path.join(pluginsDir, 'broken-one'))
 		writeFileSync(path.join(pluginsDir, 'broken-one', 'manifest.json'), '{not json')
@@ -295,5 +297,59 @@ test('a plugin object placed before its plugin is removed stays visible, honest,
 		await browser.close()
 		for (const s of servers) await s.stop().catch(() => {})
 		rmSync(dir, { recursive: true, force: true })
+	}
+})
+
+// The three plugin doors (goal 0252 S1), proven against the shipping
+// mill-scribble artifact: a drag-shaped plugin tool rides the one
+// gesture engine (a real pointer drag lands the plugin's own object,
+// a stray armed click lands nothing), its declared styleFields render
+// in the generic style picker and the picked value reaches the
+// committed object, and its renderPreview overlay mounts during the
+// drag.
+test('a plugin drag tool draws through the gesture engine with its own style picker and preview (goal 0252 S1)', async () => {
+	const { page, close } = await launchWithPlugins(6)
+	try {
+		await page.goto('/')
+		await page.getByRole('link', { name: 'Atlas' }).click()
+		const board = page.getByTestId('atlas-board')
+		await expect(board).toBeVisible()
+
+		const scribbleBtn = page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Scribble"]')
+		await expect(scribbleBtn).toBeVisible()
+		await scribbleBtn.click()
+
+		// The generic style picker renders this tool's declared fields;
+		// pick the second color so the commit provably reads the store,
+		// not the default.
+		const secondColor = page.locator('[data-testid="atlas-scribble-color-da3633"]')
+		await expect(secondColor).toBeVisible()
+		await secondColor.click()
+
+		// A stray armed click never places (drag tools create only
+		// through their own gesture).
+		const spot = await findEmptyBoardRect(page, board, 300, 200)
+		await clickBoardPoint(page, { x: spot.x + 20, y: spot.y + 20 })
+		await expect(page.locator('[data-testid="plugin-face-scribble"]')).toHaveCount(0)
+
+		// A real drag through the checked fixture helper; the preview
+		// overlay must be live mid-drag (onArrived fires with the
+		// button still down).
+		await dragBetween(page, { x: spot.x + 20, y: spot.y + 20 }, { x: spot.x + 160, y: spot.y + 80 }, async () => {
+			await expect(page.locator('[data-testid="atlas-scribble-plugin-preview"] svg')).toBeVisible()
+		})
+
+		const face = page.locator('[data-testid="plugin-face-scribble"]')
+		await expect(face).toBeVisible()
+		const stroke = face.locator('svg polyline')
+		await expect(stroke).toBeVisible()
+		await expect(stroke).toHaveAttribute('stroke', '#da3633')
+
+		// Sticky: the tool stays armed after a stroke (the drawing-tool
+		// convention) -- a second drag lands a second object.
+		await dragBetween(page, { x: spot.x + 30, y: spot.y + 120 }, { x: spot.x + 130, y: spot.y + 160 })
+		await expect(page.locator('[data-testid="plugin-face-scribble"]')).toHaveCount(2)
+	} finally {
+		await close()
 	}
 })

@@ -30,13 +30,87 @@ export interface CanvasObjectDecl {
   editRoute: 'inline' | 'external-app' | 'none'
   // Payload a fresh placement starts with.
   defaultPayload?: Record<string, string>
+  // The authoring gesture (goal 0252 S1). 'arm-then-click' (the
+  // default): the armed click places one object with defaultPayload.
+  // 'drag-to-draw': the armed pointer drag feeds `gesture`, whose own
+  // onEnd decides what to create. 'ephemeral-drag': the drag renders
+  // only the live preview and never creates anything (a laser-pointer
+  // shape) -- renderFace, source, and editRoute are unused there.
+  interaction?: 'arm-then-click' | 'drag-to-draw' | 'ephemeral-drag'
+  // Does the tool stay armed after a completed drag (repeated strokes
+  // are the point), or disarm after one? Only meaningful for a drag
+  // interaction; defaults to true there (the drawing-tool convention).
+  sticky?: boolean
+  // The tool's styleable properties, from Mill's closed style
+  // vocabulary. Declaring any makes the style picker render next to
+  // the armed tool automatically; current values arrive on the
+  // gesture ctx keyed by each field's own `key`, starting at its
+  // `default`.
+  styleFields?: readonly CanvasStyleFieldDecl[]
+  // The drag behavior for a 'drag-to-draw' / 'ephemeral-drag'
+  // interaction. Required there, forbidden for 'arm-then-click'.
+  gesture?: CanvasGestureDecl
   // renderFace draws the object's board face into el (a host-owned
   // div, already sized to the object's box). Called on mount and again
   // whenever the object's data changes -- el's contents are the
   // plugin's own to manage between calls (checking ctx.object for
   // what changed). Framework-agnostic on purpose: plain DOM, no
   // renderer library coupling, no build step required of a plugin.
-  renderFace: (el: HTMLElement, ctx: CanvasObjectFaceCtx) => void
+  // Optional ONLY for 'ephemeral-drag' (nothing is ever placed).
+  renderFace?: (el: HTMLElement, ctx: CanvasObjectFaceCtx) => void
+}
+
+// Mill's closed style vocabulary (the same shapes built-in tools
+// declare) -- restated as plain data for the SDK's compile-time
+// independence; the host validates and fills the panel's own
+// accessibility/test plumbing at registration time. 'shape-kind' (an
+// icon-button picker) is deliberately absent from the plugin surface
+// for now: its options require icon components a no-build plugin
+// can't supply.
+export type CanvasStyleFieldDecl =
+  | { type: 'color'; key: string; options: readonly string[]; default: string }
+  | { type: 'color-or-none'; key: string; options: readonly string[] }
+  | { type: 'stroke-width'; key: string; render?: 'line' | 'dot'; options: readonly number[]; default: number }
+
+// One accumulated point of an in-flight drag, in wrapper-local client
+// space, with its capture timestamp (an ephemeral tool ages points out
+// by `t`; every other tool can ignore it).
+export interface CanvasGesturePoint { x: number; y: number; t: number }
+
+// What a gesture's own callbacks may reach -- deliberately narrow
+// (docs/goals/0252 S1): the conversion into board space, the tool's
+// own current style values, and the one creation door, scoped to this
+// plugin's own kind. Kernel internals (other objects' boxes, deletion,
+// selection) are not part of this surface.
+export interface CanvasGestureCtx {
+  // Converts a gesture point's client position into board (flow)
+  // coordinates.
+  screenToFlowPosition: (p: { x: number; y: number }) => { x: number; y: number }
+  // The tool's current style-picker values, keyed by style field
+  // ('color' -> a hex string, 'stroke-width' -> a number under key
+  // 'size'), falling back to styleDefaults.
+  styleValues: Record<string, string | number>
+  // Creates one instance of THIS plugin's object at a board position
+  // -- files into the frame under the point, syncs, and participates
+  // in undo exactly like a click placement.
+  createObject: (payload: Record<string, string>, flowPos: { x: number; y: number }) => Promise<void>
+}
+
+export interface CanvasGestureDecl {
+  // Called per accumulated point while the drag is live.
+  onPoint?: (pt: CanvasGesturePoint, ctx: CanvasGestureCtx) => void
+  // Called once at pointer-up with the FULL point list -- a stray
+  // click included, so deciding what counts as a real gesture (a
+  // distance threshold, a point count) is the plugin's own call.
+  onEnd: (points: CanvasGesturePoint[], ctx: CanvasGestureCtx) => void
+  // Draws the live in-drag preview into el (a host-owned overlay
+  // element spanning the board) -- called on every point and, for an
+  // ephemeral tool, on every fade frame. el's contents are the
+  // plugin's own to manage between calls.
+  renderPreview?: (el: HTMLElement, points: CanvasGesturePoint[], now: number) => void
+  // Ephemeral tools: accumulated points age out over this many
+  // milliseconds instead of clearing at pointer-up.
+  fadeMs?: number
 }
 
 export interface CanvasObjectFaceCtx {
