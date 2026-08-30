@@ -196,8 +196,8 @@
     "fingerprint": "cbd789a974956ceea36271f5240de1d118b6966e4a7c9637fb00467f07f03d00"
   },
   "workflow:coding-loop-run-copied-command-workflow": {
-    "seedRevision": 2,
-    "fingerprint": "ebf1af11ee05a917b9a32c405acf2f1648bca1727d01f8764f4d41ac5c68bef6"
+    "seedRevision": 3,
+    "fingerprint": "921927c388734f3530778d090134ad9b5900b77eb6cdfb5573036cb7fba10c7a"
   },
   "workflow:example-ai-classify-branch-workflow": {
     "seedRevision": 2,
@@ -229,7 +229,7 @@
   },
   "workflow:example-codeexec-workflow": {
     "seedRevision": 2,
-    "fingerprint": "885b37e75639c22e576436b7272754c86854bb0d896fffd677c43c61c1e13586"
+    "fingerprint": "224be4f17aca05b95354151cf5f718c0902c6a193dcd288a79065bee7ce1da8a"
   },
   "workflow:example-confluence-to-markdown-workflow": {
     "seedRevision": 2,
@@ -288,7 +288,7 @@
     "fingerprint": "4ed20ba60b7602a75b0bb7490f3a2780faab1be1c7906618f1c578408be174d3"
   },
   "workflow:example-mcp-echo-workflow": {
-    "seedRevision": 2,
+    "seedRevision": 3,
     "fingerprint": "a24f6a0a19fa008c61e7f8baa641b1de67b9b80ad2a0cab642d9853af0de7666"
   },
   "workflow:example-parent-workflow": {
@@ -312,8 +312,8 @@
     "fingerprint": "58474919963eb4da78947e7f46802b2c75d2c0e51f4e685b5c7e94774d00550c"
   },
   "workflow:example-secret-guard-workflow": {
-    "seedRevision": 1,
-    "fingerprint": "e30cb4264a5bc4557450609fe2fa0af0eadd9715cc6de756b84498e4ba195f68"
+    "seedRevision": 2,
+    "fingerprint": "78cc6d87d6308837ab1da6c316e430f65c60af174aa9ab1c6d1f36e636fa5eb7"
   },
   "workflow:example-step-failure-workflow": {
     "seedRevision": 1,

@@ -27,6 +27,7 @@ import (
 	"errors"
 	"io"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 )
@@ -116,6 +117,14 @@ type Spec struct {
 	// which case output is discarded but LastOutputAt still advances
 	// (idle-timeout tracking doesn't require a caller-supplied sink).
 	Output io.Writer
+
+	// Stdin, when non-empty, is written to the child's standard input
+	// (then closed, so a reader sees EOF after it). Empty keeps
+	// exec.Cmd's own default: the child reads from the null device.
+	// A string, not a Reader, deliberately: every caller's input is an
+	// already-materialized payload, and a bounded value can never hold
+	// the child open waiting on a slow producer.
+	Stdin string
 }
 
 // Result is one Start call's terminal outcome.
@@ -184,6 +193,9 @@ func Start(spec Spec) (*Handle, error) {
 	fw := newFanWriter(spec.Output)
 	cmd.Stdout = fw
 	cmd.Stderr = fw
+	if spec.Stdin != "" {
+		cmd.Stdin = strings.NewReader(spec.Stdin)
+	}
 
 	if err := cmd.Start(); err != nil {
 		return nil, err

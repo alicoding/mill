@@ -1,8 +1,11 @@
 package composition
 
 import (
+	"os"
 	"strings"
 	"testing"
+
+	"github.com/alicoding/mill/internal/adapters/procexec"
 )
 
 func runShellCommand(t *testing.T, payload string) (ExecContext, error) {
@@ -105,5 +108,106 @@ func TestTailLines_ShorterThanCapIsUnchanged(t *testing.T) {
 	got := tailLines("a\nb", 5)
 	if want := "a\nb"; got != want {
 		t.Errorf("tailLines = %q, want %q", got, want)
+	}
+}
+
+func TestAdminForcedAsk_ReadsNodeConfig(t *testing.T) {
+	if AdminForcedAsk(Node{NodeTypeID: "process-shell-command", Config: map[string]string{"runWithAdmin": "true"}}) != true {
+		t.Fatal("admin shell node must force ask")
+	}
+	if AdminForcedAsk(Node{NodeTypeID: "process-shell-command"}) {
+		t.Fatal("default shell node must not force ask")
+	}
+	if AdminForcedAsk(Node{NodeTypeID: "code-execution", Config: map[string]string{"runWithAdmin": "true"}}) {
+		t.Fatal("only the shell step carries the admin mode")
+	}
+}
+
+// TestWrapArgvForAdmin_SudoAskpassShape pins the escalation mechanism
+// (goal 0240 S5): sudo's own -A/SUDO_ASKPASS hook, an executable
+// askpass helper materialized 0700, and NEVER the deprecated
+// administrator-privileges AppleScript API.
+func TestWrapArgvForAdmin_SudoAskpassShape(t *testing.T) {
+	argv, env, err := wrapArgvForAdmin([]string{"/bin/zsh", "-c", "whoami"})
+	if err != nil {
+		t.Fatalf("wrapArgvForAdmin: %v", err)
+	}
+	if argv[0] != "/usr/bin/sudo" || argv[1] != "-A" || argv[2] != "/bin/zsh" {
+		t.Fatalf("argv = %v, want the original argv behind sudo -A", argv)
+	}
+	var askpass string
+	for _, kv := range env {
+		if strings.HasPrefix(kv, "SUDO_ASKPASS=") {
+			askpass = strings.TrimPrefix(kv, "SUDO_ASKPASS=")
+		}
+	}
+	if askpass == "" {
+		t.Fatal("env carries no SUDO_ASKPASS")
+	}
+	info, err := os.Stat(askpass)
+	if err != nil {
+		t.Fatalf("askpass helper missing: %v", err)
+	}
+	if info.Mode().Perm() != 0o700 {
+		t.Fatalf("askpass mode = %v, want 0700", info.Mode().Perm())
+	}
+	content, err := os.ReadFile(askpass) //nolint:gosec // the path under test comes from this test's own env assertion, not user input
+	if err != nil {
+		t.Fatalf("read askpass: %v", err)
+	}
+	if !strings.Contains(string(content), "hidden answer") || strings.Contains(string(content), "administrator privileges") {
+		t.Fatalf("askpass content = %q, want a hidden-answer dialog and never the admin-privileges API", content)
+	}
+}
+
+// TestProcessShellCommand_AdminRun_WrapsEveryStep proves the exec path
+// consults the node's own runWithAdmin config: each step's Spec argv is
+// wrapped and its env carries SUDO_ASKPASS, without any real sudo
+// spawn (runner stubbed).
+func TestProcessShellCommand_AdminRun_WrapsEveryStep(t *testing.T) {
+	var specs []procexec.Spec
+	orig := startShellProcessFn
+	SetShellCommandRunner(func(s procexec.Spec) (*procexec.Handle, error) {
+		specs = append(specs, s)
+		return procexec.Start(procexec.Spec{Argv: []string{"true"}, Output: s.Output})
+	})
+	t.Cleanup(func() { startShellProcessFn = orig })
+
+	entry := nodeTypeRegistry["process-shell-command"]
+	node := Node{ID: "n1", NodeTypeID: "process-shell-command", Config: map[string]string{"runWithAdmin": "true"}}
+	if _, err := entry.exec(node, ExecContext{Payload: "echo a\necho b", Attributes: map[string]any{}}); err != nil {
+		t.Fatalf("exec: %v", err)
+	}
+	if len(specs) != 2 {
+		t.Fatalf("got %d specs, want 2", len(specs))
+	}
+	for i, s := range specs {
+		if s.Argv[0] != "/usr/bin/sudo" || s.Argv[1] != "-A" {
+			t.Fatalf("step %d argv = %v, want sudo -A wrapping", i, s.Argv)
+		}
+		found := false
+		for _, kv := range s.Env {
+			if strings.HasPrefix(kv, "SUDO_ASKPASS=") {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("step %d env carries no SUDO_ASKPASS", i)
+		}
+	}
+}
+
+// TestProcessShellCommand_AdminWithSecrets_RefusedHonestly pins the
+// recorded seam: sudo's env_reset would strip a resolved secret from
+// the escalated child, so the combination fails with a clear message
+// instead of silently running without the secret.
+func TestProcessShellCommand_AdminWithSecrets_RefusedHonestly(t *testing.T) {
+	entry := nodeTypeRegistry["process-shell-command"]
+	node := Node{ID: "n1", NodeTypeID: "process-shell-command", Config: map[string]string{"runWithAdmin": "true"}}
+	// $MILL_S5_TOKEN matches the secret-shaped env-ref pattern, so the
+	// block resolves a secret env and the admin combination must refuse.
+	_, err := entry.exec(node, ExecContext{Payload: "echo $MILL_S5_TOKEN", Attributes: map[string]any{}})
+	if err == nil || !strings.Contains(err.Error(), "can't run with admin rights") {
+		t.Fatalf("err = %v, want the honest secrets-with-admin refusal", err)
 	}
 }

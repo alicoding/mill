@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -175,6 +176,41 @@ func shellArgv(shell, profile, script string) []string {
 	}
 }
 
+// inputArgs turns an upstream payload into the argument list a
+// pass-input=arguments script receives -- one argument per line, the
+// Shortcuts convention for list-shaped input. Lines arrive VERBATIM
+// (interior empty lines stay empty arguments); only a single trailing
+// newline's empty remainder is dropped, so "a\nb\n" is two arguments,
+// not three. CR is stripped per line for CRLF payloads. Empty input
+// means no arguments at all.
+func inputArgs(input string) []string {
+	if input == "" {
+		return nil
+	}
+	lines := strings.Split(strings.TrimSuffix(input, "\n"), "\n")
+	for i, l := range lines {
+		lines[i] = strings.TrimSuffix(l, "\r")
+	}
+	return lines
+}
+
+// appendShellArgs extends a shellArgv-built `-c` invocation with
+// positional arguments. POSIX `-c` semantics: the first operand after
+// the command string becomes $0, the rest $1..$N -- so the shell's own
+// name is inserted as the $0 placeholder and the input lines land as
+// "$@" exactly the way a terminal invocation would deliver them. A nil
+// args returns argv unchanged (no stray $0 operand for the common
+// no-arguments case).
+func appendShellArgs(argv []string, args []string) []string {
+	if len(args) == 0 {
+		return argv
+	}
+	out := make([]string, 0, len(argv)+1+len(args))
+	out = append(out, argv...)
+	out = append(out, filepath.Base(argv[0]))
+	return append(out, args...)
+}
+
 // resolveDir turns an ExecEnv's Dir into a real, existing directory --
 // TempDirSentinel mints a fresh one per run (os.MkdirTemp), matching
 // the seeded "Safe sandbox" env's own design (nothing this env
@@ -221,6 +257,11 @@ func init() {
 				Default:     "", Type: FieldText,
 			},
 			{
+				Key: "passInput", Label: "Pass input", Type: FieldOptions,
+				Description: "How a literal script receives the upstream payload: piped to stdin, or one argument per line ($1, $2, …).",
+				Default:     "stdin", Options: []string{"stdin", "arguments"},
+			},
+			{
 				Key: "timeoutSeconds", Label: "Timeout (seconds)", Type: FieldNumber,
 				Description: "Kills the command if it hasn't finished within this many seconds.",
 				Default:     strconv.Itoa(defaultTimeoutSeconds),
@@ -233,8 +274,20 @@ func init() {
 		}
 
 		script := ctx.Payload
+		// A literal script receives the upstream payload as INPUT --
+		// the Shortcuts/Automator pass-input convention (goal 0240 S5):
+		// piped to stdin (default), or one argument per line. Source
+		// "payload" runs the payload AS the script, so there is no
+		// separate input to route and both modes are no-ops there.
+		var stdin string
+		var extraArgs []string
 		if node.Config["source"] == "literal" {
 			script = node.Config["script"]
+			if node.Config["passInput"] == "arguments" {
+				extraArgs = inputArgs(ctx.Payload)
+			} else {
+				stdin = ctx.Payload
+			}
 		}
 		if strings.TrimSpace(script) == "" {
 			return ctx, fmt.Errorf("code-execution: nothing to run (empty command)")
@@ -263,10 +316,11 @@ func init() {
 
 		var out strings.Builder
 		handle, err := startProcessFn(procexec.Spec{
-			Argv:        shellArgv(re.Shell, re.ProfileMode, script),
+			Argv:        appendShellArgs(shellArgv(re.Shell, re.ProfileMode, script), extraArgs),
 			Dir:         dir,
 			Env:         env,
 			HardTimeout: timeout,
+			Stdin:       stdin,
 			Output:      &out,
 		})
 		if err != nil {

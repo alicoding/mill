@@ -286,3 +286,46 @@ func TestCancel_EscalatesToSIGKILL_WhenSIGTERMIsTrapped(t *testing.T) {
 	}
 	waitForGroupGone(t, h.PGID())
 }
+
+// TestStart_StdinPipedToChild pins Spec.Stdin's contract (goal 0240
+// S5): a non-empty Stdin reaches the child verbatim and is followed by
+// EOF, so a stdin-reading command terminates on its own.
+func TestStart_StdinPipedToChild(t *testing.T) {
+	var out bytes.Buffer
+	h, err := Start(Spec{
+		Argv:   []string{"cat"},
+		Stdin:  "line one\nline two\n",
+		Output: &out,
+	})
+	if err != nil {
+		t.Fatalf("Start() error: %v", err)
+	}
+	result := h.Wait()
+	if result.Outcome != OutcomeExited || result.ExitCode != 0 {
+		t.Fatalf("Outcome/ExitCode = %q/%d, want exited/0", result.Outcome, result.ExitCode)
+	}
+	if got := out.String(); got != "line one\nline two\n" {
+		t.Errorf("output = %q, want the stdin content verbatim", got)
+	}
+}
+
+// TestStart_EmptyStdin_ChildSeesEOF pins the zero value's behavior:
+// no Stdin means the child reads the null device (immediate EOF), the
+// pre-S5 behavior unchanged.
+func TestStart_EmptyStdin_ChildSeesEOF(t *testing.T) {
+	var out bytes.Buffer
+	h, err := Start(Spec{
+		Argv:   []string{"cat"},
+		Output: &out,
+	})
+	if err != nil {
+		t.Fatalf("Start() error: %v", err)
+	}
+	result := h.Wait()
+	if result.Outcome != OutcomeExited || result.ExitCode != 0 {
+		t.Fatalf("Outcome/ExitCode = %q/%d, want exited/0 (cat must see EOF, not hang)", result.Outcome, result.ExitCode)
+	}
+	if got := out.String(); got != "" {
+		t.Errorf("output = %q, want empty", got)
+	}
+}

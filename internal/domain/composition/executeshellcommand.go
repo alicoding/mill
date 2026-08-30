@@ -3,6 +3,7 @@ package composition
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -179,6 +180,60 @@ type shellStepOutcome struct {
 	cancelled bool
 }
 
+// AdminForcedAsk reports whether node is a shell step configured to run
+// with administrator rights (goal 0240 S5). Read by the guardrail
+// evaluation seams as well as this file's own exec path: an admin run
+// ALWAYS asks -- an allow rule matching the command text never
+// auto-grants privilege (the goal's recorded fail-safe policy) -- so
+// every evaluator upgrades an allow verdict to ask for such a node,
+// while a deny still wins unchanged.
+func AdminForcedAsk(node Node) bool {
+	return node.NodeTypeID == "process-shell-command" && node.Config["runWithAdmin"] == "true"
+}
+
+// adminWrapFn wraps one step's argv for an admin run -- overridable so
+// tests assert the wrapping without a real sudo prompt.
+var adminWrapFn = wrapArgvForAdmin
+
+// wrapArgvForAdmin escalates via sudo's own documented GUI hook (goal
+// 0240 S5's owner-decided mechanism): `sudo -A` invokes the program
+// named by SUDO_ASKPASS to collect the password when no terminal
+// exists, and where pam_tid is configured for sudo the system Touch ID
+// prompt satisfies authentication before the askpass is ever consulted
+// -- Mill never handles the credential on that path at all. The
+// returned env is the real environment plus SUDO_ASKPASS (the caller
+// guarantees no resolved-secret env reaches here). Headless (server
+// mode) the askpass's dialog cannot appear, sudo's auth fails, and the
+// step errors -- fail-closed, never a hang: sudo -A exits rather than
+// waiting on a TTY.
+func wrapArgvForAdmin(argv []string) ([]string, []string, error) {
+	askpass, err := materializeAskpass()
+	if err != nil {
+		return nil, nil, err
+	}
+	wrapped := append([]string{"/usr/bin/sudo", "-A"}, argv...)
+	env := append(os.Environ(), "SUDO_ASKPASS="+askpass)
+	return wrapped, env, nil
+}
+
+// materializeAskpass writes the askpass helper sudo -A executes: a
+// two-line shell script showing the standard macOS password dialog
+// (osascript `display dialog ... with hidden answer` -- the
+// ssh-askpass ecosystem shape; NOT the deprecated
+// administrator-privileges AppleScript API) and printing the entered
+// text to stdout for sudo to consume. Rewritten on every call so the
+// content is always exactly this script; 0700 in the per-user temp dir
+// so no other user can swap it.
+func materializeAskpass() (string, error) {
+	const script = "#!/bin/sh\n" +
+		"exec /usr/bin/osascript -e 'display dialog \"Mill needs an administrator password to run this command.\" default answer \"\" with hidden answer with title \"Mill\" with icon caution' -e 'text returned of result'\n"
+	path := filepath.Join(os.TempDir(), "mill-sudo-askpass.sh")
+	if err := os.WriteFile(path, []byte(script), 0o700); err != nil { //nolint:gosec // 0700, not 0600: sudo -A EXECUTES this file; owner-only exec is the askpass contract
+		return "", fmt.Errorf("write askpass helper: %w", err)
+	}
+	return path, nil
+}
+
 // resolveShellSecretEnv resolves every env-var-style secret placeholder
 // referenced anywhere in steps through the goal 0240 S2 chain
 // (shellSecretResolverFn: typed-stash -> vault -> shell env), for this
@@ -255,8 +310,23 @@ func runShellStep(node Node, step ParsedCommandStep, total int, target ResolvedS
 		})
 	}
 
+	argv := target.argvFor(step.Text)
+	if AdminForcedAsk(node) {
+		// Secret env values cannot survive sudo's own env_reset -- the
+		// escalated child would silently run WITHOUT the resolved
+		// secrets, which is exactly the silent-divergence the verbatim
+		// contract forbids. Refuse the combination honestly instead.
+		if env != nil {
+			return shellStepOutcome{}, fmt.Errorf("process-shell-command: a block referencing secrets can't run with admin rights (sudo strips the resolved environment)")
+		}
+		var wrapErr error
+		argv, env, wrapErr = adminWrapFn(argv)
+		if wrapErr != nil {
+			return shellStepOutcome{}, fmt.Errorf("process-shell-command: %w", wrapErr)
+		}
+	}
 	handle, err := startShellProcessFn(procexec.Spec{
-		Argv: target.argvFor(step.Text),
+		Argv: argv,
 		Dir:  target.Dir,
 		// Env nil (the common case, resolveShellSecretEnv's own doc
 		// comment) falls back to the calling process's real environment
@@ -366,6 +436,11 @@ func init() {
 				Key: "envId", Label: "Execution environment",
 				Description: "Runs the block inside a Configure-authored environment. Empty runs your real login shell.",
 				Default:     "", Type: FieldText, RefKind: "execenv", OptionalRef: true,
+			},
+			{
+				Key: "runWithAdmin", Label: "Run with admin rights", Type: FieldBoolean,
+				Description: "Runs each command with administrator rights. macOS asks you to approve every run — Touch ID when it's set up for sudo, your password otherwise.",
+				Default:     "false",
 			},
 		},
 	}, func(node Node, ctx ExecContext) (ExecContext, error) {

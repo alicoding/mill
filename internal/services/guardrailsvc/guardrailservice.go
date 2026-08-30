@@ -257,6 +257,12 @@ func (g *GuardrailService) TestRules(workflowID, nodeID string) (RuleTestResult,
 	verdict := guardrail.Evaluate(g.Rules(), GuardrailStep(workflowID, *target, composition.ExecContext{
 		Attributes: composition.AttributesEnv(wf.Attributes, nil),
 	}), class)
+	// An admin shell step always asks (composition.AdminForcedAsk's
+	// fail-safe policy) -- the dry-run must report exactly what the
+	// execution gate will do, never an allow the gate would upgrade.
+	if composition.AdminForcedAsk(*target) && verdict.Effect == guardrail.EffectAllow {
+		verdict = guardrail.Verdict{Effect: guardrail.EffectAsk, RuleLabel: "Runs with admin rights"}
+	}
 	return RuleTestResult{
 		Effect:      string(verdict.Effect),
 		RuleID:      verdict.RuleID,
@@ -351,8 +357,30 @@ func GuardrailStep(workflowID string, node composition.Node, ec composition.Exec
 // granularity.
 func (g *GuardrailService) ShellCommandVerdicts(commands []string) []guardrail.Verdict {
 	node := composition.Node{ID: composition.CodingLoopShellStepID, NodeTypeID: "process-shell-command"}
+	// The REAL seeded node's config, when present -- its runWithAdmin
+	// answer must reach the admin upgrade below, or the Confirm
+	// preview's per-line verdicts would promise an unattended run the
+	// execution gate (which shares this same function) won't give.
+	for _, w := range g.comp.Workflows() {
+		if w.ID != composition.CodingLoopWorkflowID {
+			continue
+		}
+		for i := range w.Nodes {
+			if w.Nodes[i].ID == composition.CodingLoopShellStepID {
+				node = w.Nodes[i]
+			}
+		}
+	}
 	base := GuardrailStep(composition.CodingLoopWorkflowID, node, composition.ExecContext{})
-	return guardrail.EvaluateCommandSteps(g.Rules(), base, commands, guardrail.ClassExternal)
+	verdicts := guardrail.EvaluateCommandSteps(g.Rules(), base, commands, guardrail.ClassExternal)
+	if composition.AdminForcedAsk(node) {
+		for i := range verdicts {
+			if verdicts[i].Effect == guardrail.EffectAllow {
+				verdicts[i] = guardrail.Verdict{Effect: guardrail.EffectAsk, RuleLabel: "Runs with admin rights"}
+			}
+		}
+	}
+	return verdicts
 }
 
 // WorkflowVerdicts dry-runs the current rule set against every
@@ -388,6 +416,11 @@ func (g *GuardrailService) WorkflowVerdicts(workflowID string) (map[string]RuleT
 		}
 		class := composition.EffectForNode(n)
 		v := guardrail.Evaluate(rules, GuardrailStep(workflowID, n, composition.ExecContext{Attributes: attrs}), class)
+		// Same admin upgrade the execution gate applies -- the canvas
+		// badge must never promise an unattended run the gate won't give.
+		if composition.AdminForcedAsk(n) && v.Effect == guardrail.EffectAllow {
+			v = guardrail.Verdict{Effect: guardrail.EffectAsk, RuleLabel: "Runs with admin rights"}
+		}
 		out[n.ID] = RuleTestResult{
 			Effect: string(v.Effect), RuleID: v.RuleID, RuleLabel: v.RuleLabel, EffectClass: string(class), Source: v.Source,
 		}

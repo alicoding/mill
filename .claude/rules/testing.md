@@ -254,6 +254,20 @@ at:
     confirm it now REQUIRES the authentication prompt to return data
     instead of returning it silently — the regression test for the
     finding this goal exists to close.
+  - **The real sudo askpass / Touch ID escalation prompt** (goal 0240
+    S5, `wrapArgvForAdmin`/`materializeAskpass`) — sudo's PAM
+    conversation (pam_tid's Touch ID sheet, or the osascript
+    hidden-answer password dialog) is out-of-process system UI no
+    headless harness can trigger or dismiss; unit tests pin the argv
+    wrapping, askpass content/mode, and the secrets-refusal, and the
+    guardrail tests pin the always-asks policy — never the real
+    prompt. Verify on an installed build: configure the seeded "Run
+    from clipboard" shell step with "Run with admin rights", run
+    `whoami`, approve the forced ask, confirm the Touch ID sheet
+    appears (pam_tid configured) and the output reads `root`; cancel
+    the prompt on a second run and confirm the step fails with sudo's
+    own error rather than hanging; then confirm an allow-listed
+    command STILL parked for approval while the toggle was on.
   - **The real browser-tab approval notification** (goal 0132 slice A) —
     requires a real granted browser permission and a real OS compositor;
     verify via a server-mode instance reached from a real browser tab:

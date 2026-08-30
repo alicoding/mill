@@ -372,7 +372,7 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-mcp-e0", Source: mcpTriggerID, Target: mcpCallID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(2),
+			Seed:    seedorigin.Stamp(3),
 		},
 		{
 			ID:          "example-codeexec-workflow",

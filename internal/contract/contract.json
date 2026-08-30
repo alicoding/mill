@@ -1863,6 +1863,23 @@
           "SystemManaged": false
         },
         {
+          "Key": "passInput",
+          "Label": "Pass input",
+          "Type": "options",
+          "Required": false,
+          "Default": "stdin",
+          "Description": "How a literal script receives the upstream payload: piped to stdin, or one argument per line ($1, $2, …).",
+          "Options": [
+            "stdin",
+            "arguments"
+          ],
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
           "Key": "timeoutSeconds",
           "Label": "Timeout (seconds)",
           "Type": "number",
@@ -2652,6 +2669,20 @@
           "Secret": false,
           "RefKind": "execenv",
           "OptionalRef": true,
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "runWithAdmin",
+          "Label": "Run with admin rights",
+          "Type": "boolean",
+          "Required": false,
+          "Default": "false",
+          "Description": "Runs each command with administrator rights. macOS asks you to approve every run — Touch ID when it's set up for sudo, your password otherwise.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
           "Multiline": false,
           "SystemManaged": false
         }
@@ -4076,6 +4107,23 @@
           "SystemManaged": false
         },
         {
+          "Key": "passInput",
+          "Label": "Pass input",
+          "Type": "options",
+          "Required": false,
+          "Default": "stdin",
+          "Description": "How a literal script receives the upstream payload: piped to stdin, or one argument per line ($1, $2, …).",
+          "Options": [
+            "stdin",
+            "arguments"
+          ],
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
           "Key": "timeoutSeconds",
           "Label": "Timeout (seconds)",
           "Type": "number",
@@ -4865,6 +4913,20 @@
           "Secret": false,
           "RefKind": "execenv",
           "OptionalRef": true,
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "runWithAdmin",
+          "Label": "Run with admin rights",
+          "Type": "boolean",
+          "Required": false,
+          "Default": "false",
+          "Description": "Runs each command with administrator rights. macOS asks you to approve every run — Touch ID when it's set up for sudo, your password otherwise.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
           "Multiline": false,
           "SystemManaged": false
         }
