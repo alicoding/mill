@@ -1,12 +1,15 @@
 import { createElement, useEffect, useRef } from 'react'
 import type { ComponentType } from 'react'
-import type { Icon } from '@primer/octicons-react'
+import { ArrowUpRightIcon, CircleIcon, DiamondIcon, PencilIcon, SquareIcon, TrashIcon, ZapIcon, type Icon } from '@primer/octicons-react'
 import { AtlasService } from '../shared/bindings'
+import { ATLAS_TOOL_IDENTITIES } from '../shared/atlasToolIdentity'
 import { refreshAtlas } from '../atlas/atlasStore'
 import { frameContainingPoint } from '../atlas/atlasFramePoint'
+import { pointHitIDs } from '../atlas/atlasEnclosure'
 import { useAtlasStyleValues, type AtlasStyleValue } from '../atlas/atlasStyleValueStore'
 import type { AtlasStyleField } from '../atlas/atlasStyleVocabulary'
-import type { AtlasGestureCtx, AtlasGesturePoint, AtlasToolGesture, ThirdPartyNounShape } from '../atlas/atlasNounRegistry'
+import { thirdPartyNouns, type AtlasGestureCtx, type AtlasGesturePoint, type AtlasToolGesture, type ThirdPartyNounShape } from '../atlas/atlasNounRegistry'
+import { meetsDragThreshold } from '../atlas/useAtlasToolGesture'
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { ingestionClaimMismatch } from './ingestionClaims'
 import { pluginFaceComponent } from './PluginFaceContent'
@@ -18,10 +21,50 @@ import type { CanvasGestureCtx, CanvasGestureDecl, CanvasObjectDecl, CanvasStyle
 // AtlasStylePanel, and the one gesture engine all serve a plugin tool
 // with zero plugin-aware branches of their own.
 
-// Registration-time validation, split out pure so a unit test can
-// drive every refusal without touching the live registry. Returns an
-// error string (with no plugin prefix -- the caller adds it) or null.
-export function canvasToolDeclError(decl: CanvasObjectDecl): string | null {
+// The named glyph set (goal 0252 S2, the codicon convention): a
+// no-build plugin names an icon instead of shipping one; the host maps
+// the name onto the same icon family built-in tools use. Grows per
+// real plugin need, never speculatively.
+const NAMED_GLYPHS: Record<string, Icon> = {
+	'pencil': PencilIcon,
+	'zap': ZapIcon,
+	'trash': TrashIcon,
+	'diamond': DiamondIcon,
+	'square': SquareIcon,
+	'circle': CircleIcon,
+	'arrow-up-right': ArrowUpRightIcon,
+}
+
+// A glyph-shaped string (a lowercase name) either resolves in the
+// table or is an error; anything else renders as emoji text.
+const GLYPH_NAME_PATTERN = /^[a-z][a-z0-9-]*$/
+const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/
+
+function iconDeclError(value: string, field: string): string | null {
+	if (GLYPH_NAME_PATTERN.test(value) && !NAMED_GLYPHS[value]) {
+		return `${field} "${value}" is not a known glyph (known: ${Object.keys(NAMED_GLYPHS).join(', ')}) -- use one of those or an emoji`
+	}
+	return null
+}
+
+function styleFieldError(f: CanvasStyleFieldDecl): string | null {
+	if (!['color', 'color-or-none', 'stroke-width', 'shape-kind'].includes(f.type)) {
+		return `unknown style field type "${String((f as { type?: string }).type)}"`
+	}
+	if (!/^[a-zA-Z][a-zA-Z0-9-]{0,31}$/.test(f.key)) return `style field key "${f.key}" must be a short alphanumeric name`
+	if (!Array.isArray(f.options) || f.options.length === 0) return `style field "${f.key}" needs a non-empty options list`
+	if (f.type === 'shape-kind') {
+		for (const opt of f.options) {
+			const iconError = iconDeclError(opt.icon, `style field "${f.key}" option icon`)
+			if (iconError) return iconError
+		}
+	}
+	return null
+}
+
+// The interaction/gesture/face pairing rules, one concern of
+// canvasToolDeclError's below.
+function interactionDeclError(decl: CanvasObjectDecl): string | null {
 	const interaction = decl.interaction ?? 'arm-then-click'
 	if (!['arm-then-click', 'drag-to-draw', 'ephemeral-drag'].includes(interaction)) {
 		return `unknown interaction "${String(decl.interaction)}"`
@@ -36,12 +79,35 @@ export function canvasToolDeclError(decl: CanvasObjectDecl): string | null {
 	if (interaction !== 'ephemeral-drag' && typeof decl.renderFace !== 'function') {
 		return 'renderFace must be a function (it is optional only for "ephemeral-drag")'
 	}
+	if (decl.lockable && (decl.sticky ?? dragShaped)) {
+		return 'lockable requires a drag tool with sticky: false (a sticky tool never disarms, so a lock would be meaningless)'
+	}
+	return null
+}
+
+// The identity/appearance field rules (goal 0252 S2's doors).
+function identityDeclError(decl: CanvasObjectDecl): string | null {
+	if (decl.objectKind !== undefined && !SLUG_PATTERN.test(decl.objectKind)) {
+		return `objectKind "${decl.objectKind}" must be a lowercase slug`
+	}
+	if (decl.shortcutKey !== undefined && !/^[A-Z]$/.test(decl.shortcutKey)) {
+		return `shortcutKey "${decl.shortcutKey}" must be a single A-Z letter`
+	}
+	if (decl.group !== undefined && !['knowledge', 'file', 'annotate'].includes(decl.group)) {
+		return `unknown group "${String(decl.group)}"`
+	}
+	return iconDeclError(decl.icon, 'icon')
+}
+
+// Registration-time validation, split out pure so a unit test can
+// drive every refusal without touching the live registry. Returns an
+// error string (with no plugin prefix -- the caller adds it) or null.
+export function canvasToolDeclError(decl: CanvasObjectDecl): string | null {
+	const pairingError = interactionDeclError(decl) ?? identityDeclError(decl)
+	if (pairingError) return pairingError
 	for (const f of decl.styleFields ?? []) {
-		if (!['color', 'color-or-none', 'stroke-width'].includes(f.type)) {
-			return `unknown style field type "${String((f as { type?: string }).type)}"`
-		}
-		if (!/^[a-zA-Z][a-zA-Z0-9-]{0,31}$/.test(f.key)) return `style field key "${f.key}" must be a short alphanumeric name`
-		if (!Array.isArray(f.options) || f.options.length === 0) return `style field "${f.key}" needs a non-empty options list`
+		const fieldError = styleFieldError(f)
+		if (fieldError) return fieldError
 	}
 	return null
 }
@@ -53,15 +119,15 @@ export function styleFieldDefault(f: CanvasStyleFieldDecl): AtlasStyleValue {
 }
 
 // adaptStyleFields fills the panel's own accessibility/test plumbing
-// the SDK deliberately doesn't expose: testids derive from the kind,
-// group labels render VERBATIM through i18next's missing-key fallback
-// (a plugin has no locale bundle -- the same convention hostApi's
-// ariaLabelKey already uses), and stroke-width option labels reuse the
-// existing generic "{{size}}px"/"{{width}}px" strings so screen
-// readers get real interpolated values.
+// the SDK deliberately doesn't expose: testids derive from the tool id
+// + field key, labels render VERBATIM through i18next's missing-key
+// fallback (a plugin has no locale bundle -- the same convention
+// hostApi's ariaLabelKey already uses), and stroke-width option labels
+// reuse the existing generic "{{size}}px"/"{{width}}px" strings so
+// screen readers get real interpolated values.
 export function adaptStyleFields(kind: string, label: string, fields: readonly CanvasStyleFieldDecl[]): AtlasStyleField[] {
 	return fields.map((f): AtlasStyleField => {
-		const base = { key: f.key, testidPrefix: `atlas-${kind}-${f.key}`, groupLabelKey: `${label} ${f.key}` }
+		const base = { key: f.key, testidPrefix: `atlas-${kind}-${f.key}`, groupLabelKey: f.label ?? `${label} ${f.key}` }
 		switch (f.type) {
 			case 'color':
 				return { ...base, type: 'color', options: f.options, default: f.default }
@@ -71,6 +137,13 @@ export function adaptStyleFields(kind: string, label: string, fields: readonly C
 				const render = f.render ?? 'dot'
 				return { ...base, type: 'stroke-width', render, options: f.options, optionLabelKey: render === 'dot' ? 'pencilStyle.sizeOption' : 'shapeStyle.widthOption', default: f.default }
 			}
+			case 'shape-kind':
+				return {
+					...base,
+					type: 'shape-kind',
+					options: f.options.map((opt) => ({ value: opt.value, Icon: NAMED_GLYPHS[opt.icon] ?? emojiIcon(opt.icon), labelKey: opt.label })),
+					default: f.default,
+				}
 		}
 	})
 }
@@ -78,7 +151,7 @@ export function adaptStyleFields(kind: string, label: string, fields: readonly C
 // seedStyleValues writes each declared field's default into the one
 // generic style store at registration, so the panel highlights a
 // current choice before the first pick -- the plugin twin of the
-// store's own INITIAL_VALUES entries for shape/pencil.
+// store's own INITIAL_VALUES entries.
 export function seedStyleValues(kind: string, fields: readonly CanvasStyleFieldDecl[]): void {
 	for (const f of fields) {
 		useAtlasStyleValues.getState().setValue(kind, f.key, styleFieldDefault(f))
@@ -87,27 +160,53 @@ export function seedStyleValues(kind: string, fields: readonly CanvasStyleFieldD
 
 // pluginGestureCtx narrows the kernel's own AtlasGestureCtx to the SDK
 // contract (goal 0252 S1's design lock): board-space conversion, the
-// tool's current style values, and creation scoped to this plugin's
-// own kind -- nothing else leaks.
-function pluginGestureCtx(kind: string, fields: readonly CanvasStyleFieldDecl[], ctx: AtlasGestureCtx): CanvasGestureCtx {
+// tool's own current style values, creation scoped to the plugin's own
+// declared object kind, the mirror-store bake, and -- only for a
+// manifest that declares "erase-board-items" -- the erase door.
+// Nothing else from the kernel ctx leaks.
+function pluginGestureCtx(kind: string, objectKind: string, fields: readonly CanvasStyleFieldDecl[], canErase: boolean, ctx: AtlasGestureCtx): CanvasGestureCtx {
 	const defaults: Record<string, AtlasStyleValue> = {}
 	for (const f of fields) defaults[f.key] = styleFieldDefault(f)
-	return {
+	const out: CanvasGestureCtx = {
 		screenToFlowPosition: ctx.screenToFlowPosition,
 		styleValues: { ...defaults, ...(useAtlasStyleValues.getState().values[kind] ?? {}) },
-		createObject: async (payload, flowPos) => {
+		createObject: async (payload, flowPos, opts) => {
 			const parent = frameContainingPoint(ctx.cardBoxes, flowPos) ?? ctx.parentID
-			await AtlasService.CreateBoardObject(kind, payload, { X: flowPos.x, Y: flowPos.y }, parent)
+			const created = await AtlasService.CreateBoardObject(objectKind, payload, { X: flowPos.x, Y: flowPos.y }, parent)
+			if (opts?.size) await AtlasService.SetBoardObjectSize(created.ID, { W: opts.size.w, H: opts.size.h })
 			await refreshAtlas()
+			if (opts?.select) ctx.onShapeCreated(created.ID)
 		},
+		saveImageBytes: (base64, ext, title) => AtlasService.SaveImageBytes(base64, ext, title),
 	}
+	if (canErase) {
+		// The built-in eraser's exact hit contract: every point tests
+		// top-level LEAF boxes only (containers excluded -- a frame's
+		// bounds cover its whole child area, so touching it would risk
+		// sweeping the frame away); ids accumulate host-side in the
+		// engine's own per-gesture scratch and never reach plugin code.
+		out.eraseHitTest = (pt) => {
+			const flow = ctx.screenToFlowPosition(pt)
+			for (const id of pointHitIDs(flow, ctx.cardBoxes.filter((b) => !b.isFrame))) ctx.hitAccumulator.cardIDs.add(id)
+			for (const id of pointHitIDs(flow, ctx.noteBoxes)) ctx.hitAccumulator.noteIDs.add(id)
+			for (const id of pointHitIDs(flow, ctx.objectBoxes)) ctx.hitAccumulator.objectIDs.add(id)
+		}
+		out.commitErase = () => {
+			const cardIDs = [...ctx.hitAccumulator.cardIDs]
+			const noteIDs = [...ctx.hitAccumulator.noteIDs]
+			const objectIDs = [...ctx.hitAccumulator.objectIDs]
+			if (cardIDs.length + noteIDs.length + objectIDs.length === 0) return
+			ctx.onDeleteSelection(cardIDs, noteIDs, objectIDs)
+		}
+	}
+	return out
 }
 
 // pluginPreviewComponent wraps a plugin's DOM renderPreview into the
 // generic {points, now} component the engine's ONE overlay slot
 // renders -- absolute, wrapper-spanning, pointer-events disabled so it
 // never steals the very drag it's rendering (the same conventions
-// AtlasPencilLivePreview carries).
+// AtlasPencilLivePreview carried).
 function pluginPreviewComponent(kind: string, render: (el: HTMLElement, points: AtlasGesturePoint[], now: number) => void): ComponentType<{ points: AtlasGesturePoint[]; now: number }> {
 	return function PluginGesturePreview({ points, now }: { points: AtlasGesturePoint[]; now: number }) {
 		const ref = useRef<HTMLDivElement>(null)
@@ -122,7 +221,7 @@ function pluginPreviewComponent(kind: string, render: (el: HTMLElement, points: 
 	}
 }
 
-// One emoji as the tray/palette icon -- wrapped into the octicon
+// One emoji as a tray/palette icon -- wrapped into the octicon
 // component shape the registry's `icon` field expects. The cast is the
 // one place the two icon worlds meet; the rendered output honors the
 // same size prop octicons do.
@@ -149,23 +248,36 @@ function faceContent(pluginId: string, decl: CanvasObjectDecl, ephemeral: boolea
 	}
 }
 
+// shortcutConflictError -- a declared key must not collide with a
+// built-in identity's key or another registered tool's; first
+// registrant wins deterministically (the loader activates plugins in
+// sorted id order), the loser is a visible registration error.
+function shortcutConflictError(key: string | undefined): string | null {
+	if (!key) return null
+	if (ATLAS_TOOL_IDENTITIES.some((i) => i.shortcutKey === key) || thirdPartyNouns().some((n) => n.shortcutKey === key)) {
+		return `shortcutKey "${key}" is already taken by another tool`
+	}
+	return null
+}
+
 // buildThirdPartyNoun turns one validated SDK declaration into the
 // full registry shape -- the hostApi's registerCanvasObject body,
 // extracted whole so the API assembly stays a thin door. Throws with
 // the plugin's own id in the message so a broken plugin names itself.
 export function buildThirdPartyNoun(pluginId: string, manifest: Manifest, decl: CanvasObjectDecl): ThirdPartyNounShape {
-	const declError = canvasToolDeclError(decl)
+	const declError = canvasToolDeclError(decl) ?? shortcutConflictError(decl.shortcutKey)
 	if (declError) throw new Error(`plugin ${pluginId}: ${declError}`)
 	const interaction = decl.interaction ?? 'arm-then-click'
 	const ephemeral = interaction === 'ephemeral-drag'
 	const dragShaped = interaction !== 'arm-then-click'
 	// Drag tools default sticky (repeated strokes are the point, the
-	// built-in pencil convention); a click tool never is.
+	// drawing-tool convention); a click tool never is.
 	const sticky = dragShaped ? (decl.sticky ?? true) : false
 	const styleDecls = decl.styleFields ?? []
 	const contribution = (manifest.contributes?.canvasObjects ?? []).find((c) => c.kind === decl.kind)
 	const claimError = ephemeral ? null : ingestionClaimMismatch(contribution, decl.source)
 	if (claimError) throw new Error(`plugin ${pluginId}: ${claimError}`)
+	const canErase = (manifest.capabilities ?? []).includes('erase-board-items')
 	return {
 		id: decl.kind,
 		interaction,
@@ -175,23 +287,23 @@ export function buildThirdPartyNoun(pluginId: string, manifest: Manifest, decl: 
 		// An ephemeral tool never places anything, so it claims no
 		// dropped files either.
 		fileExtensions: ephemeral ? [] : (contribution?.fileExtensions ?? []).map((e) => e.toLowerCase()),
-		icon: emojiIcon(decl.icon),
+		icon: NAMED_GLYPHS[decl.icon] ?? emojiIcon(decl.icon),
 		label: decl.label,
 		nounName: decl.label,
 		description: decl.description,
-		shortcutKey: null,
+		shortcutKey: decl.shortcutKey ?? null,
 		tray: 'quick',
-		group: decl.source === 'file' ? 'file' : 'knowledge',
+		group: decl.group ?? (decl.source === 'file' ? 'file' : 'knowledge'),
 		styleFields: adaptStyleFields(decl.kind, decl.label, styleDecls),
-		lockable: false,
+		lockable: decl.lockable ?? false,
 		resizable: !ephemeral,
 		boardNodeType: ephemeral ? null : 'atlas-object',
-		dragBand: !ephemeral,
+		dragBand: ephemeral ? false : (decl.dragBand ?? true),
 		fileBacked: !ephemeral && decl.source === 'file',
-		boardObjectKind: decl.kind,
+		boardObjectKind: decl.objectKind ?? decl.kind,
 		content: faceContent(pluginId, decl, ephemeral),
 		sticky,
-		gesture: dragShaped && decl.gesture ? adaptGesture(decl.kind, styleDecls, decl.gesture, sticky) : null,
+		gesture: dragShaped && decl.gesture ? adaptGesture(decl.kind, decl.objectKind ?? decl.kind, styleDecls, decl.gesture, sticky, canErase) : null,
 		commit: () => {
 			throw new Error('third-party placement goes through useAtlasCreation’s generic branch, never commit()')
 		},
@@ -200,17 +312,21 @@ export function buildThirdPartyNoun(pluginId: string, manifest: Manifest, decl: 
 
 // adaptGesture builds the registry-facing AtlasToolGesture from a
 // plugin's declaration. Disarm semantics are HOST-owned (the design
-// lock): a non-sticky tool disarms after its own onEnd returns; a
-// sticky one relies on the engine's gestureDisarmFns no-ops exactly
-// like built-in pencil.
-export function adaptGesture(kind: string, fields: readonly CanvasStyleFieldDecl[], decl: CanvasGestureDecl, sticky: boolean): AtlasToolGesture {
+// lock): a non-sticky tool disarms after a COMPLETED drag's onEnd --
+// gated on the engine's own shared drag threshold, because a stray
+// armed click also reaches onEnd (the engine fires it
+// unconditionally) and disarming there would unmount the tray button
+// out from under that same click's own toggle handling. A sticky tool
+// relies on the engine's gestureDisarmFns no-ops exactly like the
+// drawing tools.
+export function adaptGesture(kind: string, objectKind: string, fields: readonly CanvasStyleFieldDecl[], decl: CanvasGestureDecl, sticky: boolean, canErase: boolean): AtlasToolGesture {
 	return {
-		onPoint: decl.onPoint ? (pt, ctx) => decl.onPoint?.(pt, pluginGestureCtx(kind, fields, ctx)) : undefined,
+		onPoint: decl.onPoint ? (pt, ctx) => decl.onPoint?.(pt, pluginGestureCtx(kind, objectKind, fields, canErase, ctx)) : undefined,
 		onEnd: (points, ctx) => {
 			try {
-				decl.onEnd(points, pluginGestureCtx(kind, fields, ctx))
+				decl.onEnd(points, pluginGestureCtx(kind, objectKind, fields, canErase, ctx))
 			} finally {
-				if (!sticky) ctx.disarmUnlessLocked()
+				if (!sticky && meetsDragThreshold(points)) ctx.disarmUnlessLocked()
 			}
 		},
 		preview: decl.renderPreview ? pluginPreviewComponent(kind, decl.renderPreview) : undefined,

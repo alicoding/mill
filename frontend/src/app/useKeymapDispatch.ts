@@ -4,6 +4,7 @@ import { comboFromEvent, comboKey, isEditableTarget } from '../shared/keybinding
 import { useAppStore } from '../shared/store'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { ATLAS_TOOL_IDENTITIES } from '../shared/atlasToolIdentity'
+import { thirdPartyNouns } from '../atlas/atlasNounRegistry'
 
 // canvas.undo/redo/zoomIn/zoomOut's own dispatch (Listener 6, below):
 // every id this listener may match, in match-priority order (only ever
@@ -86,9 +87,13 @@ export function useKeymapDispatch(): void {
       if (isEditableTarget(e.target)) return
       if (document.querySelector('[role="dialog"]')) return
       const key = e.key.toUpperCase()
-      const tool = ATLAS_TOOL_IDENTITIES.find((t) => t.shortcutKey === key)
-      if (!tool) return
-      const command = findCommand(`atlas.create.${tool.id}`)
+      // Built-in identities first, then runtime plugin tools (goal
+      // 0252 S2's shortcutKey door) -- registration already refuses a
+      // key collision, so at most one can match.
+      const toolId = ATLAS_TOOL_IDENTITIES.find((t) => t.shortcutKey === key)?.id
+        ?? thirdPartyNouns().find((n) => n.shortcutKey === key)?.id
+      if (!toolId) return
+      const command = findCommand(`atlas.create.${toolId}`)
       // Extensions section disable semantics, item 1 (Settings >
       // Extensions): a disabled tool's own bare-key shortcut does
       // nothing, same as its tray button and palette entry -- mirrors

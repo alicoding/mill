@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { adaptStyleFields, canvasToolDeclError, styleFieldDefault } from './canvasToolAdapter'
+import { adaptGesture, adaptStyleFields, canvasToolDeclError, styleFieldDefault } from './canvasToolAdapter'
 import type { CanvasObjectDecl } from './sdk'
 
 const base: CanvasObjectDecl = {
@@ -55,5 +55,80 @@ describe('styleFieldDefault', () => {
   it('pins color-or-none to none and passes explicit defaults through', () => {
     expect(styleFieldDefault({ type: 'color-or-none', key: 'fill', options: ['#333'] })).toBe('none')
     expect(styleFieldDefault({ type: 'stroke-width', key: 'size', options: [2, 4], default: 4 })).toBe(4)
+  })
+})
+
+describe('goal 0252 S2 doors', () => {
+  it('validates the new identity fields: objectKind slug, single-letter shortcutKey, known group, named glyphs', () => {
+    expect(canvasToolDeclError({ ...base, objectKind: 'Ink!' })).toMatch(/lowercase slug/)
+    expect(canvasToolDeclError({ ...base, objectKind: 'ink' })).toBeNull()
+    expect(canvasToolDeclError({ ...base, shortcutKey: 'PP' })).toMatch(/single A-Z letter/)
+    expect(canvasToolDeclError({ ...base, shortcutKey: 'P' })).toBeNull()
+    expect(canvasToolDeclError({ ...base, group: 'toolbar' as never })).toMatch(/unknown group/)
+    expect(canvasToolDeclError({ ...base, icon: 'pencils' })).toMatch(/not a known glyph/)
+    expect(canvasToolDeclError({ ...base, icon: 'pencil' })).toBeNull()
+    expect(canvasToolDeclError({ ...base, styleFields: [{ type: 'shape-kind', key: 'type', options: [{ value: 'r', icon: 'not-a-glyph', label: 'R' }], default: 'r' }] })).toMatch(/not a known glyph/)
+    expect(canvasToolDeclError({ ...base, styleFields: [{ type: 'shape-kind', key: 'type', options: [{ value: 'r', icon: 'square', label: 'R' }], default: 'r' }] })).toBeNull()
+  })
+
+  it('lockable is only legal on a non-sticky drag tool', () => {
+    expect(canvasToolDeclError({ ...base, interaction: 'drag-to-draw', gesture: { onEnd: () => {} }, lockable: true })).toMatch(/sticky: false/)
+    expect(canvasToolDeclError({ ...base, interaction: 'drag-to-draw', gesture: { onEnd: () => {} }, sticky: false, lockable: true })).toBeNull()
+  })
+
+  // Regression: a stray armed click also reaches onEnd (the engine
+  // fires it unconditionally), and an unconditional host disarm there
+  // unmounted the tray button out from under that same click's own
+  // toggle -- the lock-on-re-click convention broke. The host disarm
+  // is gated on the engine's shared drag threshold instead.
+  it('host-owned disarm fires only after a real drag, never on a stray click', () => {
+    const calls: string[] = []
+    const ctx = {
+      screenToFlowPosition: (p: { x: number; y: number }) => p,
+      parentID: '', cardBoxes: [], noteBoxes: [], objectBoxes: [],
+      onDeleteSelection: () => {}, openAreaPopover: () => {}, onShapeCreated: () => {},
+      disarm: () => calls.push('disarm'),
+      disarmUnlessLocked: () => calls.push('disarmUnlessLocked'),
+      hitAccumulator: { cardIDs: new Set<string>(), noteIDs: new Set<string>(), objectIDs: new Set<string>() },
+    }
+    const gesture = adaptGesture('thing', 'thing', [], { onEnd: () => {} }, false, false)
+    gesture.onEnd([{ x: 5, y: 5, t: 0 }], ctx)
+    expect(calls).toEqual([])
+    gesture.onEnd([{ x: 5, y: 5, t: 0 }, { x: 40, y: 40, t: 1 }], ctx)
+    expect(calls).toEqual(['disarmUnlessLocked'])
+  })
+
+  it('a sticky drag tool never receives a host disarm at all', () => {
+    const calls: string[] = []
+    const ctx = {
+      screenToFlowPosition: (p: { x: number; y: number }) => p,
+      parentID: '', cardBoxes: [], noteBoxes: [], objectBoxes: [],
+      onDeleteSelection: () => {}, openAreaPopover: () => {}, onShapeCreated: () => {},
+      disarm: () => calls.push('disarm'),
+      disarmUnlessLocked: () => calls.push('disarmUnlessLocked'),
+      hitAccumulator: { cardIDs: new Set<string>(), noteIDs: new Set<string>(), objectIDs: new Set<string>() },
+    }
+    const gesture = adaptGesture('thing', 'thing', [], { onEnd: () => {} }, true, false)
+    gesture.onEnd([{ x: 0, y: 0, t: 0 }, { x: 90, y: 90, t: 1 }], ctx)
+    expect(calls).toEqual([])
+  })
+
+  it('the erase doors exist only when the manifest capability grants them', () => {
+    const probeCtx = (canErase: boolean) => {
+      let seen: { eraseHitTest: boolean; commitErase: boolean } | null = null
+      const gesture = adaptGesture('thing', 'thing', [], {
+        onEnd: (_pts, ctx) => { seen = { eraseHitTest: typeof ctx.eraseHitTest === 'function', commitErase: typeof ctx.commitErase === 'function' } },
+      }, true, canErase)
+      gesture.onEnd([{ x: 0, y: 0, t: 0 }], {
+        screenToFlowPosition: (p: { x: number; y: number }) => p,
+        parentID: '', cardBoxes: [], noteBoxes: [], objectBoxes: [],
+        onDeleteSelection: () => {}, openAreaPopover: () => {}, onShapeCreated: () => {},
+        disarm: () => {}, disarmUnlessLocked: () => {},
+        hitAccumulator: { cardIDs: new Set<string>(), noteIDs: new Set<string>(), objectIDs: new Set<string>() },
+      })
+      return seen
+    }
+    expect(probeCtx(false)).toEqual({ eraseHitTest: false, commitErase: false })
+    expect(probeCtx(true)).toEqual({ eraseHitTest: true, commitErase: true })
   })
 })

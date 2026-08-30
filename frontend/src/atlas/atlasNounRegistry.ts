@@ -155,11 +155,10 @@ interface AtlasToolShapeBase {
   // boardObjectKind (goal 0215 S3): the persisted BoardObject.Kind this
   // tool's own placed instance carries, or null for a tool that never
   // routes through the shared 'atlas-object' renderer (card/note/area
-  // persist as their own Kind-less node types; eraser/laser persist
-  // nothing at all). Exists because a tool's own id is not always its
-  // Kind (pencilTool's own commit above writes Kind 'ink') -- content
-  // below resolves purely off this field, via registerBoardObjectContent,
-  // never off id.
+  // persist as their own Kind-less node types). Exists because a
+  // tool's own id is not always its Kind (the Drawing plugin's pencil
+  // places Kind 'ink') -- content below resolves purely off this
+  // field, via registerBoardObjectContent, never off id.
   boardObjectKind: AtlasBoardObjectKind | null
   // content (goal 0215 S3): this noun's own placed-instance content
   // contribution -- registerNoun below feeds it straight into

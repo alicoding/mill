@@ -260,8 +260,9 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   const openPromoteObject = useCallback((objectID: string, screenPos: { x: number; y: number }) => {
     const object = objects.find((o) => o.ID === objectID)
     if (!object) return
-    // Payload.title (useAtlasImageCreate.ts's/pencilTool.ts's gesture
-    // onEnd's own artifact.title, carried along purely for this moment) beats
+    // Payload.title (useAtlasImageCreate.ts's -- and the Drawing
+    // plugin pencil's -- own placement title, carried along purely
+    // for this moment) beats
     // re-deriving one from the mirror file's own randomized-suffix
     // filename; 'Untitled' matches cardTool's own instant-placement
     // default (atlasTools.ts) for the residual case of neither existing.

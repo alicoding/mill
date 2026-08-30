@@ -28,12 +28,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.coverage` | Open coverage | — | atlas | Always available |
 | `atlas.create.area` | Draw an area | — | atlas | Conditional — available only in a matching state |
 | `atlas.create.card` | Add a card | — | atlas | Conditional — available only in a matching state |
-| `atlas.create.eraser` | Erase things on the board | — | atlas | Conditional — available only in a matching state |
 | `atlas.create.image` | Add an image | — | atlas | Conditional — available only in a matching state |
-| `atlas.create.laser` | Point with the laser | — | atlas | Conditional — available only in a matching state |
 | `atlas.create.note` | Add a note | — | atlas | Conditional — available only in a matching state |
-| `atlas.create.pencil` | Draw with the pencil | — | atlas | Conditional — available only in a matching state |
-| `atlas.create.shape` | Draw a shape | — | atlas | Conditional — available only in a matching state |
 | `atlas.create.table` | New table | — | atlas | Conditional — available only in a matching state |
 | `atlas.delete.selection` | Delete selection | `⌫` | atlas | Always available |
 | `atlas.escapeLadder` | Clear selection or go up a level | `ESCAPE` | atlas | Always available |

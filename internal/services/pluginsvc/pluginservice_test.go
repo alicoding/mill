@@ -61,11 +61,78 @@ func TestListPlugins_ValidAndInvalidRows(t *testing.T) {
 	}
 }
 
-func TestListPlugins_MissingDirIsEmptyNotError(t *testing.T) {
+func TestListPlugins_MissingDirIsBuiltinsOnlyNotError(t *testing.T) {
 	svc := New(filepath.Join(t.TempDir(), "never-created"), nil, "1.0.0")
 	infos, err := svc.ListPlugins()
-	if err != nil || len(infos) != 0 {
-		t.Fatalf("want empty, no error; got %d infos, err %v", len(infos), err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, i := range infos {
+		if !i.Builtin {
+			t.Fatalf("a missing plugins dir must yield only built-in rows, got %+v", i)
+		}
+	}
+	if len(infos) == 0 {
+		t.Fatal("built-in plugins must list even with no plugins dir")
+	}
+}
+
+// The bundled Drawing plugin (goal 0252 S2) is embedded in the binary:
+// valid in every mode, marked Builtin, serving its assets from the
+// embedded bundle -- and a user folder with the same id shadows it,
+// which is what makes a built-in replaceable.
+func TestBuiltinDrawingPlugin_ListsValidAndServes(t *testing.T) {
+	svc := New(filepath.Join(t.TempDir(), "never-created"), nil, "1.0.0")
+	infos, err := svc.ListPlugins()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var drawing *PluginInfo
+	for i := range infos {
+		if infos[i].Manifest.ID == "mill-drawing" {
+			drawing = &infos[i]
+		}
+	}
+	if drawing == nil {
+		t.Fatal("mill-drawing must list with no plugins dir at all")
+	}
+	if !drawing.Builtin || drawing.Error != "" {
+		t.Fatalf("mill-drawing row = %+v, want Builtin with no error", drawing)
+	}
+	if rec := serveThrough(t, svc, "/plugins/mill-drawing/main.js"); rec.Code != http.StatusOK || !strings.Contains(rec.Header().Get("Content-Type"), "javascript") {
+		t.Fatalf("embedded main.js: code %d type %q", rec.Code, rec.Header().Get("Content-Type"))
+	}
+	if rec := serveThrough(t, svc, "/plugins/mill-drawing/../../go.mod"); rec.Code == http.StatusOK {
+		t.Fatalf("embedded traversal must never serve, got %d", rec.Code)
+	}
+	if rec := serveThrough(t, svc, "/plugins/mill-drawing/missing.js"); rec.Code != http.StatusNotFound {
+		t.Fatalf("missing embedded file must 404, got %d", rec.Code)
+	}
+}
+
+func TestBuiltinPlugin_UserFolderShadowsIt(t *testing.T) {
+	root := t.TempDir()
+	writePlugin(t, root, "mill-drawing", `{"id":"mill-drawing","name":"My Drawing","version":"9.9.9"}`, map[string]string{"main.js": "export function activate() { /* user copy */ }"})
+	svc := New(root, nil, "1.0.0")
+	infos, err := svc.ListPlugins()
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := 0
+	for _, i := range infos {
+		if i.Manifest.ID != "mill-drawing" {
+			continue
+		}
+		seen++
+		if i.Builtin || i.Manifest.Name != "My Drawing" {
+			t.Fatalf("user folder must shadow the built-in, got %+v", i)
+		}
+	}
+	if seen != 1 {
+		t.Fatalf("mill-drawing must list exactly once, got %d rows", seen)
+	}
+	if rec := serveThrough(t, svc, "/plugins/mill-drawing/main.js"); !strings.Contains(rec.Body.String(), "user copy") {
+		t.Fatalf("assets must serve the shadowing user copy, got %q", rec.Body.String())
 	}
 }
 
@@ -213,10 +280,16 @@ func TestListPlugins_EnforcesMinMillVersion(t *testing.T) {
 	writePlugin(t, root, "too-new", `{"id":"too-new","name":"T","version":"1","minMillVersion":"99.0.0"}`, nil)
 	svc := New(root, nil, "1.0.0")
 	infos, err := svc.ListPlugins()
-	if err != nil || len(infos) != 1 {
-		t.Fatalf("ListPlugins() = %+v err=%v, want 1 row", infos, err)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(infos[0].Error, "needs Mill 99.0.0") {
-		t.Fatalf("Error = %q, want the version refusal naming the minimum", infos[0].Error)
+	var tooNew *PluginInfo
+	for i := range infos {
+		if infos[i].Manifest.ID == "too-new" {
+			tooNew = &infos[i]
+		}
+	}
+	if tooNew == nil || !strings.Contains(tooNew.Error, "needs Mill 99.0.0") {
+		t.Fatalf("infos = %+v, want too-new carrying the version refusal naming the minimum", infos)
 	}
 }

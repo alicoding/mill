@@ -38,9 +38,12 @@ export type AtlasToolInteraction =
   | 'ephemeral-drag'
   | 'paste-or-drop'
 
-// Nine distinct members, not one member with a unioned id -- so that
+// Five distinct members, not one member with a unioned id -- so that
 // Extract<AtlasToolIdentity, { id: 'card' }> (each noun module's own
-// lookup) can actually narrow to a single one.
+// lookup) can actually narrow to a single one. The drawing tools
+// (pencil/eraser/laser/shape) are NOT here anymore: goal 0252 demoted
+// them into the bundled Drawing runtime plugin, so they register as
+// third-party nouns with open-string ids, like any plugin tool.
 export type AtlasToolIdentity =
   | { id: 'card'; shortcutKey: string; commandLabel: string; requestKind: 'arm'; interaction: 'arm-then-click' }
   | { id: 'note'; shortcutKey: string; commandLabel: string; requestKind: 'arm'; interaction: 'arm-then-click' }
@@ -52,10 +55,6 @@ export type AtlasToolIdentity =
   | { id: 'area'; shortcutKey: string; commandLabel: string; requestKind: 'arm'; interaction: 'drag-to-draw' }
   | { id: 'table'; shortcutKey: string; commandLabel: string; requestKind: 'picker'; interaction: 'pick-then-place' }
   | { id: 'image'; shortcutKey: string; commandLabel: string; requestKind: 'popover'; interaction: 'paste-or-drop' }
-  | { id: 'pencil'; shortcutKey: string; commandLabel: string; requestKind: 'arm'; interaction: 'drag-to-draw' }
-  | { id: 'eraser'; shortcutKey: string; commandLabel: string; requestKind: 'arm'; interaction: 'drag-to-erase' }
-  | { id: 'laser'; shortcutKey: string; commandLabel: string; requestKind: 'arm'; interaction: 'ephemeral-drag' }
-  | { id: 'shape'; shortcutKey: string; commandLabel: string; requestKind: 'arm'; interaction: 'drag-to-draw' }
 
 export const ATLAS_TOOL_IDENTITIES: AtlasToolIdentity[] = [
   { id: 'card', shortcutKey: 'C', commandLabel: 'Add a card', requestKind: 'arm', interaction: 'arm-then-click' },
@@ -63,10 +62,6 @@ export const ATLAS_TOOL_IDENTITIES: AtlasToolIdentity[] = [
   { id: 'area', shortcutKey: 'A', commandLabel: 'Draw an area', requestKind: 'arm', interaction: 'drag-to-draw' },
   { id: 'table', shortcutKey: 'T', commandLabel: 'New table', requestKind: 'picker', interaction: 'pick-then-place' },
   { id: 'image', shortcutKey: 'I', commandLabel: 'Add an image', requestKind: 'popover', interaction: 'paste-or-drop' },
-  { id: 'pencil', shortcutKey: 'P', commandLabel: 'Draw with the pencil', requestKind: 'arm', interaction: 'drag-to-draw' },
-  { id: 'eraser', shortcutKey: 'E', commandLabel: 'Erase things on the board', requestKind: 'arm', interaction: 'drag-to-erase' },
-  { id: 'laser', shortcutKey: 'L', commandLabel: 'Point with the laser', requestKind: 'arm', interaction: 'ephemeral-drag' },
-  { id: 'shape', shortcutKey: 'S', commandLabel: 'Draw a shape', requestKind: 'arm', interaction: 'drag-to-draw' },
 ]
 
 // Every identity whose bare key ARMS a placement (as opposed to

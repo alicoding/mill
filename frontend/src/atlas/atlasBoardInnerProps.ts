@@ -74,9 +74,9 @@ export interface AtlasBoardInnerProps {
   // Keyboard Delete/Backspace over the live selection (goal 0089
   // rider): routed through the same confirm dialog as the menu item;
   // React Flow's own deleteKeyCode stays disabled -- a local node
-  // removal would just resurrect on the next data refresh. objectIDs is
-  // optional so the eraser's own gesture.onEnd (tools/eraserTool.ts,
-  // cards/notes only in S1) keeps calling this with two arguments.
+  // removal would just resurrect on the next data refresh. objectIDs
+  // stayed optional through the era when the eraser's own onEnd called
+  // this with two arguments (cards/notes only).
   onDeleteSelection: (cardIDs: string[], noteIDs: string[], objectIDs?: string[]) => void
   onPasteConverted: (res: import('../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models').PasteResult) => void
   onQuietToast: (text: string, action?: { label: string; run: () => void }) => void

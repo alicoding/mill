@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/alicoding/mill/internal/services/pluginsvc"
 )
 
 func writeVersionPinnedPlugin(t *testing.T, root string) {
@@ -31,18 +33,29 @@ func TestNewPluginService_SourceChannelSkipsMinVersionEnforcement(t *testing.T) 
 	settingsPath := filepath.Join(root, "settings.json")
 
 	srcInfos, err := NewPluginService(settingsPath, nil, "source", "0.5.0").ListPlugins()
-	if err != nil || len(srcInfos) != 1 {
-		t.Fatalf("source ListPlugins() = %+v err=%v, want 1 row", srcInfos, err)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if srcInfos[0].Error != "" {
-		t.Fatalf("source build refused the pinned plugin: %q", srcInfos[0].Error)
+	if row := pinnedRow(t, srcInfos); row.Error != "" {
+		t.Fatalf("source build refused the pinned plugin: %q", row.Error)
 	}
 
 	betaInfos, err := NewPluginService(settingsPath, nil, "beta", "0.5.0").ListPlugins()
-	if err != nil || len(betaInfos) != 1 {
-		t.Fatalf("beta ListPlugins() = %+v err=%v, want 1 row", betaInfos, err)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(betaInfos[0].Error, "needs Mill 9.9.9") {
-		t.Fatalf("beta build Error = %q, want the version refusal", betaInfos[0].Error)
+	if row := pinnedRow(t, betaInfos); !strings.Contains(row.Error, "needs Mill 9.9.9") {
+		t.Fatalf("beta build Error = %q, want the version refusal", row.Error)
 	}
+}
+
+func pinnedRow(t *testing.T, infos []pluginsvc.PluginInfo) pluginsvc.PluginInfo {
+	t.Helper()
+	for _, i := range infos {
+		if i.Manifest.ID == "pinned" {
+			return i
+		}
+	}
+	t.Fatalf("infos = %+v, want a row for the pinned plugin", infos)
+	return pluginsvc.PluginInfo{}
 }

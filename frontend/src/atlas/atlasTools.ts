@@ -53,10 +53,6 @@ export { noteTool, type AtlasNoteArtifact } from './tools/noteTool'
 export { areaTool, type AtlasAreaArtifact } from './tools/areaTool'
 export { tableTool, type AtlasTableArtifact } from './tools/tableTool'
 export { imageTool, type AtlasImageArtifact } from './tools/imageTool'
-export { pencilTool, type AtlasPencilArtifact } from './tools/pencilTool'
-export { eraserTool } from './tools/eraserTool'
-export { laserTool } from './tools/laserTool'
-export { shapeTool, type AtlasShapeArtifact } from './tools/shapeTool'
 
 export type { AtlasToolShape, AtlasToolInteraction, AtlasToolStyleDefaults } from './atlasNounRegistry'
 

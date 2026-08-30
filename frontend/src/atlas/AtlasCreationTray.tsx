@@ -46,16 +46,16 @@ const PRIMARY_GROUP_ORDER = ['knowledge', 'file'] as const
 // marquee drag) share that same interaction and branch, each one's own
 // options bar (Area has none: an empty styleFields) rendered from its
 // own styleFields declaration (goal 0209) rather than a second branch.
-// Eraser and Laser ('drag-to-erase', 'ephemeral-drag') fall through to
-// the same plain arm-on-click button the default branch already
-// renders for Card/Note -- neither needs an options popover, so no new
-// branch was needed here at all; only their own drag gesture
-// (tools/eraserTool.ts, tools/laserTool.ts) differs.
+// An ephemeral drag tool falls through to the same plain arm-on-click
+// button the default branch already renders for Card/Note -- it needs
+// no options popover, so no branch of its own; only its declared drag
+// gesture differs.
 //
 // Knowledge/File render flat and primary (Card, Note, Table, Area, then
-// Image); Shape/Pencil/Eraser/Laser -- the freehand-marking family --
-// collapse into one "Annotate" disclosure group (goal 0224's
-// disposition table: native shapes/pencil/eraser/laser on a flat
+// Image); the freehand-marking family -- the Drawing plugin's
+// shape/pencil/eraser/laser, and any other tool declaring group
+// 'annotate' -- collapses into one "Annotate" disclosure group (goal
+// 0224's disposition table: native shapes/pencil/eraser/laser on a flat
 // toolbar are the "we're draw.io" signal). Nothing is REMOVED -- every
 // tool renders through the exact same renderToolButton function either
 // way, so arming/locking/style-panel behaviour is unchanged; only WHERE
@@ -294,10 +294,11 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
     // A drag-from-tray placement lands via a single drop point
     // (creation.placeAt's own guard skips a gesture-declaring tool
     // outright, since its placement is a drawn gesture, never a
-    // click point) -- Eraser and Laser carry no drag source. Area
-    // no longer reaches this branch at all (goal 0215 S2: its own
+    // click point) -- so any gesture-declaring tool reaching this
+    // branch (drag-to-erase, ephemeral-drag) carries no drag source.
+    // Area never reaches this branch at all (goal 0215 S2: its own
     // 'drag-to-draw' interaction routes it into the branch above).
-    const draggable = tool.id !== 'eraser' && tool.id !== 'laser'
+    const draggable = tool.gesture === null
     return (
       <button
         key={tool.id}
@@ -328,12 +329,15 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
   return (
     <div className={styles.tray} data-testid="atlas-creation-tray" role="toolbar" aria-label={t('creationTray.ariaLabel')}>
       {primaryTools.map((tool) => renderToolButton(tool))}
-      {annotateArmedTool ? (
+      {annotateTools.length === 0 ? null : annotateArmedTool ? (
         // Armed: this tool's OWN button (+ style panel, if it has one)
         // renders exactly like a primary tool would -- the ONE
         // AnchoredOverlay invariant above. The generic trigger doesn't
         // exist right now; disarming (Escape, or re-clicking this same
-        // button) brings it back next render.
+        // button) brings it back next render. With NO annotate tools
+        // at all (every one disabled, or the Drawing plugin off) the
+        // trigger renders nothing -- a drawer with nothing to disclose
+        // is a dead end, not an affordance.
         renderToolButton(annotateArmedTool)
       ) : (
         <Fragment>

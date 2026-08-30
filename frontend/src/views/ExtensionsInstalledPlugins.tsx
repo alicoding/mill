@@ -82,6 +82,7 @@ export function ExtensionsInstalledPlugins() {
 											<Text size="small" className={styles.muted}>
 												{p.Manifest.version}
 												{p.Manifest.author ? ` · ${p.Manifest.author}` : ''}
+												{p.Builtin ? ` · ${t('settings.extensions.pluginBuiltIn')}` : ''}
 											</Text>
 										</Stack>
 										{p.Manifest.description && <Text size="small">{p.Manifest.description}</Text>}

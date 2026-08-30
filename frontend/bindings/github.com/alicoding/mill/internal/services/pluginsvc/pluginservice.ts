@@ -18,7 +18,9 @@ import * as $models from "./models.js";
 
 /**
  * AssetMiddleware serves GET /plugins/<id>/<file> from the scanned
- * plugins directory and passes every other request through.
+ * plugins directory (built-in plugins serve from the embedded bundle
+ * behind it -- the same shadowing rule resolvePlugin applies) and
+ * passes every other request through.
  */
 export function AssetMiddleware(): $CancellablePromise<any> {
     return $Call.ByID(3587145368);

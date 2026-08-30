@@ -4,19 +4,16 @@ import { clickAtlasTrayTool } from './fixtures/atlasTray'
 import { deleteViaContextMenu, shapeDrawPoints, shapeObjects } from './fixtures/atlasShapeTool'
 import { paletteDialog } from './fixtures/palette'
 
-// Settings > Extensions (goal 0237 S2, extended by goal 0237 S3's
-// rider and its own hands-on-review follow-up): a registry-derived
-// list of every registered canvas NOUN -- every tray tool plus every
-// tool-less noun (diagram, sheet -- native file-drop only, no tray
-// button), each toggleable off. Grouped into three sections
-// (Knowledge/Files/Drawing, one per registry `group` -- goal 0237 S3's
-// review rider); each row's own title is the noun ("Shape"), never the
-// command-verb phrase ("Draw a shape") that still surfaces in the tray
-// tooltip and command palette. Shared pool: the only global state this
-// spec writes (Shape's own disabled flag) is restored to its default
-// (enabled) before the file ends, same cleanup discipline
-// display-density.spec.ts already establishes for a Settings toggle in
-// the shared pool; every board object created here is deleted here.
+// Settings > Extensions (goal 0237 S2/S3, re-shaped by goal 0252): a
+// registry-derived list of every registered compiled-in NOUN -- tray
+// tools plus tool-less nouns (diagram, sheet) -- each toggleable off,
+// grouped by registry `group` (empty groups hide). The drawing tools
+// are NOT rows here anymore: they live in the bundled Drawing runtime
+// plugin, whose ONE row renders in the installed-plugins section with
+// the manifest's own metadata. Shared pool: every global flag this
+// spec writes (a noun's disabled flag, the Drawing plugin's disabled
+// flag) is restored to its default before the file ends; every board
+// object created here is deleted here.
 //
 // Disabling diagram/sheet gates useAtlasNativeFileDrop.ts's own drop
 // routing (a disabled drop falls through to the plain-card path). The
@@ -40,7 +37,7 @@ test('The section explains where extensions come from today', async ({ page }) =
   await page.goto('/')
   await openExtensionsSection(page)
   await expect(page.getByTestId('extensions-install-story')).toHaveText(
-    'Extensions ship with Mill today. Installing your own arrives with the plugin loader.',
+    'These extensions ship with Mill. Install more under Installed plugins below.',
   )
 })
 
@@ -48,60 +45,64 @@ test('A row expands to show its description, an honest reach line, and the app v
   await page.goto('/')
   await openExtensionsSection(page)
 
-  const shapeRow = page.locator('[data-testid="extensions-row"][data-extension-id="shape"]')
+  const imageRow = page.locator('[data-testid="extensions-row"][data-extension-id="image"]')
   // The row's own title is the bare noun, never the tray/palette's own
-  // command-verb phrase ("Draw a shape").
-  await expect(shapeRow.getByTestId('extensions-row-title')).toHaveText('Shape')
-  const expanded = shapeRow.getByTestId('extensions-row-expanded')
+  // command-verb phrase ("Add an image").
+  await expect(imageRow.getByTestId('extensions-row-title')).toHaveText('Image')
+  const expanded = imageRow.getByTestId('extensions-row-expanded')
   await expect(expanded).toBeHidden()
 
   // Native <details>/<summary> (goal 0211's plugin-manager UX slice):
   // clicking the summary text opens the disclosure without touching the
   // enable/disable toggle, which lives outside the summary specifically
   // so it never double-fires the native expand/collapse.
-  await shapeRow.locator('summary').click()
+  await imageRow.locator('summary').click()
   await expect(expanded).toBeVisible()
-  await expect(shapeRow.getByTestId('extensions-row-description')).toHaveText('Draws a rectangle, ellipse, or arrow.')
-  await expect(shapeRow.getByTestId('extensions-row-reach')).toHaveText('Reaches nothing outside Mill.')
-  await expect(shapeRow.getByTestId('extensions-row-version')).toHaveText(/^Ships with Mill v/)
+  await expect(imageRow.getByTestId('extensions-row-description')).toHaveText('Adds an image from your files or the clipboard.')
+  await expect(imageRow.getByTestId('extensions-row-reach')).toHaveText('Reaches nothing outside Mill.')
+  await expect(imageRow.getByTestId('extensions-row-version')).toHaveText(/^Ships with Mill v/)
   // The group chip survives in the expanded view even though the
-  // collapsed meta line below no longer repeats it.
-  await expect(expanded.getByText('Drawing', { exact: true })).toBeVisible()
+  // collapsed meta line below no longer repeats it (the per-row chip
+  // stays singular where the section heading is plural).
+  await expect(expanded.getByText('File', { exact: true })).toBeVisible()
 
   // Collapses again on a second click of the same summary.
-  await shapeRow.locator('summary').click()
+  await imageRow.locator('summary').click()
   await expect(expanded).toBeHidden()
 })
 
-test('The list groups into three sections; every row title is a noun, and the collapsed meta line never repeats the group', async ({ page }) => {
+test('The list groups into sections; every row title is a noun, and the drawing tools live in the plugin row instead', async ({ page }) => {
   await page.goto('/')
   await openExtensionsSection(page)
 
-  // Three sections, registry-derived, in knowledge/files/drawing order.
+  // Two sections, registry-derived, in knowledge/files order. The
+  // Drawing section is GONE (goal 0252): with the freehand tools
+  // demoted into the Drawing plugin no compiled-in noun declares
+  // group 'annotate', and an empty group hides rather than rendering
+  // a heading over nothing.
   const knowledge = page.getByTestId('extensions-group-knowledge')
   const files = page.getByTestId('extensions-group-file')
-  const drawing = page.getByTestId('extensions-group-annotate')
   await expect(knowledge.getByRole('heading', { name: 'Knowledge' })).toBeVisible()
   await expect(files.getByRole('heading', { name: 'Files' })).toBeVisible()
-  await expect(drawing.getByRole('heading', { name: 'Drawing' })).toBeVisible()
+  await expect(page.getByTestId('extensions-group-annotate')).toHaveCount(0)
 
   // card/note/area/table land in Knowledge; image/diagram/sheet in
-  // Files (image/diagram/sheet are the file-backed family); the
-  // freehand-marking tools in Drawing.
+  // Files (image/diagram/sheet are the file-backed family).
   for (const id of ['card', 'note', 'area', 'table']) {
     await expect(knowledge.locator(`[data-testid="extensions-row"][data-extension-id="${id}"]`)).toBeVisible()
   }
   for (const id of ['image', 'diagram', 'sheet']) {
     await expect(files.locator(`[data-testid="extensions-row"][data-extension-id="${id}"]`)).toBeVisible()
   }
-  for (const id of ['pencil', 'eraser', 'laser', 'shape']) {
-    await expect(drawing.locator(`[data-testid="extensions-row"][data-extension-id="${id}"]`)).toBeVisible()
-  }
+
+  // The drawing tools surface as the bundled Drawing plugin's ONE row.
+  const drawingPlugin = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-drawing"]')
+  await expect(drawingPlugin).toBeVisible()
+  await expect(drawingPlugin.getByText('Built into Mill')).toBeVisible()
 
   // Every row's own title is the bare noun, one word.
   const expectedTitles: Record<string, string> = {
     card: 'Card', note: 'Note', area: 'Area', table: 'Table', image: 'Image',
-    pencil: 'Pencil', eraser: 'Eraser', laser: 'Laser', shape: 'Shape',
     diagram: 'Diagram', sheet: 'Sheet',
   }
   for (const [id, title] of Object.entries(expectedTitles)) {
@@ -115,8 +116,6 @@ test('The list groups into three sections; every row title is a noun, and the co
   await expect(imageMeta).toHaveText('Backed by a file · Opens in your default app')
   const tableMeta = page.locator('[data-testid="extensions-row"][data-extension-id="table"]').getByTestId('extensions-row-meta')
   await expect(tableMeta).toHaveText('Live view of a List · Edits in place')
-  const shapeMeta = page.locator('[data-testid="extensions-row"][data-extension-id="shape"]').getByTestId('extensions-row-meta')
-  await expect(shapeMeta).toHaveText('Stored on the board')
 })
 
 test('The collapsed meta line stays single-line at 1000px viewport width', async ({ page }) => {
@@ -179,7 +178,7 @@ test('Turn all off empties the tray of every non-built-in tool; turn all on rest
   // Every row but card now shows its toggle off -- including the
   // tool-less nouns (diagram, sheet), which have no tray button to
   // empty but still participate in the bulk toggle.
-  for (const id of ['note', 'area', 'table', 'image', 'pencil', 'eraser', 'laser', 'shape', 'diagram', 'sheet']) {
+  for (const id of ['note', 'area', 'table', 'image', 'diagram', 'sheet']) {
     const toggle = page.locator(`[data-testid="extensions-row"][data-extension-id="${id}"]`).getByTestId('extensions-row-toggle').getByRole('button')
     await expect(toggle).toHaveAttribute('data-checked', 'false')
   }
@@ -187,11 +186,15 @@ test('Turn all off empties the tray of every non-built-in tool; turn all on rest
   await page.getByRole('link', { name: 'Atlas' }).click()
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
-  for (const id of ['note', 'area', 'table', 'image', 'shape', 'pencil', 'eraser', 'laser']) {
+  for (const id of ['note', 'area', 'table', 'image']) {
     await expect(page.getByTestId(`atlas-tray-${id}`)).toHaveCount(0)
   }
   // card is the kernel object, never affected by the bulk toggle.
   await expect(page.getByTestId('atlas-tray-card')).toBeVisible()
+  // The Drawing plugin's tools ride the PLUGIN's own toggle (its row
+  // in Installed plugins), never the compiled-in bulk toggle -- the
+  // annotate drawer stays.
+  await expect(page.getByTestId('atlas-tray-annotate-group')).toBeVisible()
 
   // Restore -- shared-pool cleanup discipline.
   await page.getByRole('link', { name: 'Settings' }).click()
@@ -199,7 +202,7 @@ test('Turn all off empties the tray of every non-built-in tool; turn all on rest
   await expect(toggleAll).toHaveText('Turn all on')
   await toggleAll.click()
   await expect(toggleAll).toHaveText('Turn all off')
-  for (const id of ['note', 'area', 'table', 'image', 'pencil', 'eraser', 'laser', 'shape', 'diagram', 'sheet']) {
+  for (const id of ['note', 'area', 'table', 'image', 'diagram', 'sheet']) {
     const toggle = page.locator(`[data-testid="extensions-row"][data-extension-id="${id}"]`).getByTestId('extensions-row-toggle').getByRole('button')
     await expect(toggle).toHaveAttribute('data-checked', 'true')
   }
@@ -209,10 +212,11 @@ test('Extensions section lists every registered canvas tool; the built-in card r
   await page.goto('/')
   await openExtensionsSection(page)
 
-  // Every ATLAS_TOOLS member (atlas/atlasTools.ts) plus every
-  // tool-less noun (diagram, sheet) gets exactly one row -- card, note,
-  // area, table, image, pencil, eraser, laser, shape, diagram, sheet.
-  await expect(page.getByTestId('extensions-row')).toHaveCount(11)
+  // Every compiled-in ATLAS_TOOLS member (atlas/atlasTools.ts) plus
+  // every tool-less noun (diagram, sheet) gets exactly one row --
+  // card, note, area, table, image, diagram, sheet. The drawing tools
+  // are the Drawing plugin's row, not four rows here (goal 0252).
+  await expect(page.getByTestId('extensions-row')).toHaveCount(7)
 
   const cardRow = page.locator('[data-testid="extensions-row"][data-extension-id="card"]')
   await expect(cardRow).toBeVisible()
@@ -259,14 +263,14 @@ test('A tool-less noun (diagram, sheet) gets a row with a toggle and states its 
   await expect(tableRow.getByTestId('extensions-row-disable-scope')).toHaveCount(0)
 })
 
-test('Disabling a tool removes it from the tray and palette, keeps existing objects rendering, and persists across reload', async ({ page }) => {
+test('Disabling the Drawing plugin removes its tray tools and palette commands after reload, keeps existing objects on the board, and re-enabling restores everything', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   const board = page.getByTestId('atlas-board')
   await expect(board).toBeVisible()
 
-  // A shape placed BEFORE the tool is disabled -- proves disabling
-  // never touches already-created objects.
+  // A shape placed BEFORE the plugin is disabled -- proves disabling
+  // never deletes already-created objects (goal 0252 acceptance).
   await clickAtlasTrayTool(page, 'atlas-tray-shape')
   const picker = page.getByTestId('atlas-shape-style-picker')
   await expect(picker).toBeVisible()
@@ -275,43 +279,48 @@ test('Disabling a tool removes it from the tray and palette, keeps existing obje
   const shapes = shapeObjects(page)
   await expect(shapes).toHaveCount(1)
 
-  // Disable Shape from Settings.
+  // Disable the Drawing plugin from its own installed-plugins row.
   await openExtensionsSection(page)
-  const shapeRow = page.locator('[data-testid="extensions-row"][data-extension-id="shape"]')
-  const shapeToggle = shapeRow.getByTestId('extensions-row-toggle').getByRole('button')
-  await expect(shapeToggle).toHaveAttribute('data-checked', 'true')
-  await shapeToggle.click()
-  await expect(shapeToggle).toHaveAttribute('data-checked', 'false')
+  const drawingRow = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-drawing"]')
+  const drawingToggle = drawingRow.getByTestId('extensions-plugin-toggle').getByRole('button')
+  await expect(drawingToggle).toHaveAttribute('data-checked', 'true')
+  await drawingToggle.click()
+  await expect(drawingToggle).toHaveAttribute('data-checked', 'false')
 
-  // Tray: the button is gone entirely (never shown dimmed).
+  // Plugins load at app start (the standing plugin contract), so the
+  // change takes effect on reload.
+  await page.reload()
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(board).toBeVisible()
-  await expect(page.getByTestId('atlas-tray-shape')).toHaveCount(0)
+  for (const id of ['pencil', 'eraser', 'laser', 'shape']) {
+    await expect(page.getByTestId(`atlas-tray-${id}`)).toHaveCount(0)
+  }
+  // With every annotate tool gone, the drawer trigger has nothing to
+  // disclose.
+  await expect(page.getByTestId('atlas-tray-annotate-group')).toHaveCount(0)
 
-  // The object placed earlier still renders untouched.
-  await expect(shapeObjects(page)).toHaveCount(1)
+  // The object placed earlier is still ON the board -- visible,
+  // selectable, deletable (the unknown-kind fallback face), never
+  // silently dropped.
+  await expect(shapes).toHaveCount(1)
 
-  // Palette: the creation command is gone too (Cmd+/ opens the global
-  // palette even on the atlas surface, since Cmd+K is atlas.jump there).
+  // Palette: the plugin's creation commands are gone too (Cmd+/ opens
+  // the global palette even on the atlas surface).
   await page.keyboard.press('Meta+/')
   await expect(paletteDialog(page)).toBeVisible()
   await paletteDialog(page).getByRole('combobox').fill('Draw a shape')
   await expect(paletteDialog(page).getByRole('option', { name: 'Draw a shape' })).toHaveCount(0)
   await page.keyboard.press('Escape')
 
-  // Persists across reload.
-  await page.reload()
+  // Cleanup: re-enable the plugin, reload, delete the object.
   await openExtensionsSection(page)
-  const shapeToggleAfterReload = page.locator('[data-testid="extensions-row"][data-extension-id="shape"]').getByTestId('extensions-row-toggle').getByRole('button')
-  await expect(shapeToggleAfterReload).toHaveAttribute('data-checked', 'false')
-
-  // Cleanup: re-enable Shape, delete the object this test created.
-  await shapeToggleAfterReload.click()
-  await expect(shapeToggleAfterReload).toHaveAttribute('data-checked', 'true')
+  const toggleAfter = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-drawing"]').getByTestId('extensions-plugin-toggle').getByRole('button')
+  await expect(toggleAfter).toHaveAttribute('data-checked', 'false')
+  await toggleAfter.click()
+  await expect(toggleAfter).toHaveAttribute('data-checked', 'true')
+  await page.reload()
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(board).toBeVisible()
-  // Shape lives in the tray's collapsed Annotate group -- opening the
-  // drawer is how clickAtlasTrayTool itself reaches it (fixtures/atlasTray.ts).
   await page.getByTestId('atlas-tray-annotate-group').click()
   await expect(page.getByTestId('atlas-tray-shape')).toBeVisible()
   await page.keyboard.press('Escape')

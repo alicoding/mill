@@ -19,7 +19,7 @@
   },
   {
     "id": "atlas.card.exportAs",
-    "label": "Export card as…",
+    "label": "Export card as\u2026",
     "binding": null,
     "surface": [
       "atlas"
@@ -63,15 +63,6 @@
     "enabled": true
   },
   {
-    "id": "atlas.create.eraser",
-    "label": "Erase things on the board",
-    "binding": null,
-    "surface": [
-      "atlas"
-    ],
-    "enabled": true
-  },
-  {
     "id": "atlas.create.image",
     "label": "Add an image",
     "binding": null,
@@ -81,35 +72,8 @@
     "enabled": true
   },
   {
-    "id": "atlas.create.laser",
-    "label": "Point with the laser",
-    "binding": null,
-    "surface": [
-      "atlas"
-    ],
-    "enabled": true
-  },
-  {
     "id": "atlas.create.note",
     "label": "Add a note",
-    "binding": null,
-    "surface": [
-      "atlas"
-    ],
-    "enabled": true
-  },
-  {
-    "id": "atlas.create.pencil",
-    "label": "Draw with the pencil",
-    "binding": null,
-    "surface": [
-      "atlas"
-    ],
-    "enabled": true
-  },
-  {
-    "id": "atlas.create.shape",
-    "label": "Draw a shape",
     "binding": null,
     "surface": [
       "atlas"
@@ -128,7 +92,7 @@
   {
     "id": "atlas.delete.selection",
     "label": "Delete selection",
-    "binding": "⌫",
+    "binding": "\u232b",
     "surface": [
       "atlas"
     ],
@@ -155,7 +119,7 @@
   {
     "id": "atlas.focusDirection",
     "label": "Focus the nearest card in a direction",
-    "binding": "⌥→",
+    "binding": "\u2325\u2192",
     "surface": [
       "atlas"
     ],
@@ -173,7 +137,7 @@
   {
     "id": "atlas.focusPrevious",
     "label": "Focus previous card",
-    "binding": "⇧TAB",
+    "binding": "\u21e7TAB",
     "surface": [
       "atlas"
     ],
@@ -200,7 +164,7 @@
   {
     "id": "atlas.jump",
     "label": "Jump to a card",
-    "binding": "⌘K",
+    "binding": "\u2318K",
     "surface": [
       "atlas"
     ],
@@ -227,7 +191,7 @@
   {
     "id": "atlas.nudgeSelection",
     "label": "Move the selected card",
-    "binding": "→",
+    "binding": "\u2192",
     "surface": [
       "atlas"
     ],
@@ -236,7 +200,7 @@
   {
     "id": "atlas.openFocused",
     "label": "Open or zoom the focused card",
-    "binding": "↩",
+    "binding": "\u21a9",
     "surface": [
       "atlas"
     ],
@@ -272,7 +236,7 @@
   {
     "id": "atlas.selectAll",
     "label": "Select all",
-    "binding": "⌘A",
+    "binding": "\u2318A",
     "surface": [
       "atlas"
     ],
@@ -308,7 +272,7 @@
   {
     "id": "atlas.up",
     "label": "Go up one level",
-    "binding": "⌘↑",
+    "binding": "\u2318\u2191",
     "surface": [
       "atlas"
     ],
@@ -331,7 +295,7 @@
   {
     "id": "canvas.delete",
     "label": "Delete selected",
-    "binding": "⌫",
+    "binding": "\u232b",
     "surface": [
       "composition"
     ],
@@ -349,7 +313,7 @@
   {
     "id": "canvas.redo",
     "label": "Redo",
-    "binding": "⌘⇧Z",
+    "binding": "\u2318\u21e7Z",
     "surface": [
       "composition"
     ],
@@ -358,7 +322,7 @@
   {
     "id": "canvas.undo",
     "label": "Undo",
-    "binding": "⌘Z",
+    "binding": "\u2318Z",
     "surface": [
       "composition"
     ],
@@ -367,7 +331,7 @@
   {
     "id": "canvas.zoomIn",
     "label": "Zoom in",
-    "binding": "⌘+",
+    "binding": "\u2318+",
     "surface": [
       "composition"
     ],
@@ -376,7 +340,7 @@
   {
     "id": "canvas.zoomOut",
     "label": "Zoom out",
-    "binding": "⌘-",
+    "binding": "\u2318-",
     "surface": [
       "composition"
     ],
@@ -391,7 +355,7 @@
   },
   {
     "id": "codingLoop.run",
-    "label": "Run from clipboard…",
+    "label": "Run from clipboard\u2026",
     "binding": null,
     "surface": null,
     "enabled": false
@@ -471,7 +435,7 @@
   {
     "id": "palette.open",
     "label": "Open command palette",
-    "binding": "⌘K",
+    "binding": "\u2318K",
     "surface": null,
     "enabled": false
   },
@@ -515,83 +479,83 @@
   {
     "id": "settings.open",
     "label": "Open Settings",
-    "binding": "⌘,",
+    "binding": "\u2318,",
     "surface": null,
     "enabled": false
   },
   {
     "id": "settings.open.appearance",
-    "label": "Open Settings → Appearance",
+    "label": "Open Settings \u2192 Appearance",
     "binding": null,
     "surface": null,
     "enabled": false
   },
   {
     "id": "settings.open.backups",
-    "label": "Open Settings → Backups",
+    "label": "Open Settings \u2192 Backups",
     "binding": null,
     "surface": null,
     "enabled": false
   },
   {
     "id": "settings.open.contract",
-    "label": "Open Settings → Contract",
+    "label": "Open Settings \u2192 Contract",
     "binding": null,
     "surface": null,
     "enabled": false
   },
   {
     "id": "settings.open.extensions",
-    "label": "Open Settings → Extensions",
+    "label": "Open Settings \u2192 Extensions",
     "binding": null,
     "surface": null,
     "enabled": false
   },
   {
     "id": "settings.open.general",
-    "label": "Open Settings → General",
+    "label": "Open Settings \u2192 General",
     "binding": null,
     "surface": null,
     "enabled": false
   },
   {
     "id": "settings.open.global-hotkey",
-    "label": "Open Settings → Global hotkey",
+    "label": "Open Settings \u2192 Global hotkey",
     "binding": null,
     "surface": null,
     "enabled": false
   },
   {
     "id": "settings.open.keyboard-shortcuts",
-    "label": "Open Settings → Keyboard Shortcuts",
+    "label": "Open Settings \u2192 Keyboard Shortcuts",
     "binding": null,
     "surface": null,
     "enabled": false
   },
   {
     "id": "settings.open.mcp-access",
-    "label": "Open Settings → MCP access",
+    "label": "Open Settings \u2192 MCP access",
     "binding": null,
     "surface": null,
     "enabled": false
   },
   {
     "id": "settings.open.notifications",
-    "label": "Open Settings → Notifications",
+    "label": "Open Settings \u2192 Notifications",
     "binding": null,
     "surface": null,
     "enabled": false
   },
   {
     "id": "settings.open.remote-access",
-    "label": "Open Settings → Remote access",
+    "label": "Open Settings \u2192 Remote access",
     "binding": null,
     "surface": null,
     "enabled": false
   },
   {
     "id": "settings.open.updates",
-    "label": "Open Settings → Updates",
+    "label": "Open Settings \u2192 Updates",
     "binding": null,
     "surface": null,
     "enabled": false
@@ -599,35 +563,35 @@
   {
     "id": "tab.close",
     "label": "Close tab",
-    "binding": "⌘W",
+    "binding": "\u2318W",
     "surface": null,
     "enabled": true
   },
   {
     "id": "tab.closeAll",
     "label": "Close all tabs",
-    "binding": "⌘⇧W",
+    "binding": "\u2318\u21e7W",
     "surface": null,
     "enabled": false
   },
   {
     "id": "tab.closeOthers",
     "label": "Close other tabs",
-    "binding": "⌘⌥W",
+    "binding": "\u2318\u2325W",
     "surface": null,
     "enabled": true
   },
   {
     "id": "tab.next",
     "label": "Next tab",
-    "binding": "⌃TAB",
+    "binding": "\u2303TAB",
     "surface": null,
     "enabled": false
   },
   {
     "id": "tab.prev",
     "label": "Previous tab",
-    "binding": "⌃⇧TAB",
+    "binding": "\u2303\u21e7TAB",
     "surface": null,
     "enabled": false
   },
@@ -669,28 +633,28 @@
   {
     "id": "view.activity",
     "label": "Go to Activity",
-    "binding": "⌘4",
+    "binding": "\u23184",
     "surface": null,
     "enabled": false
   },
   {
     "id": "view.atlas",
     "label": "Go to Atlas",
-    "binding": "⌘3",
+    "binding": "\u23183",
     "surface": null,
     "enabled": false
   },
   {
     "id": "view.composition",
     "label": "Go to Workflows",
-    "binding": "⌘1",
+    "binding": "\u23181",
     "surface": null,
     "enabled": false
   },
   {
     "id": "view.configure",
     "label": "Go to Configure",
-    "binding": "⌘2",
+    "binding": "\u23182",
     "surface": null,
     "enabled": false
   },
@@ -704,28 +668,28 @@
   {
     "id": "view.home",
     "label": "Go to Home",
-    "binding": "⌘0",
+    "binding": "\u23180",
     "surface": null,
     "enabled": false
   },
   {
     "id": "view.review",
     "label": "Go to Review",
-    "binding": "⌘5",
+    "binding": "\u23185",
     "surface": null,
     "enabled": false
   },
   {
     "id": "view.secrets",
     "label": "Go to Secrets",
-    "binding": "⌘6",
+    "binding": "\u23186",
     "surface": null,
     "enabled": false
   },
   {
     "id": "workflow.new",
     "label": "New workflow",
-    "binding": "⌘N",
+    "binding": "\u2318N",
     "surface": null,
     "enabled": true
   },
@@ -741,14 +705,14 @@
   {
     "id": "workflow.run",
     "label": "Run workflow",
-    "binding": "⌘↩",
+    "binding": "\u2318\u21a9",
     "surface": null,
     "enabled": true
   },
   {
     "id": "workflow.save",
     "label": "Save workflow",
-    "binding": "⌘S",
+    "binding": "\u2318S",
     "surface": null,
     "enabled": true
   }
