@@ -1,4 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
+import { IconButton } from '@primer/react'
+import { BoldIcon, CodeIcon, ItalicIcon, StrikethroughIcon } from '@primer/octicons-react'
+import type { SelectionToolbarAction, SelectionToolbarHandle, SelectionToolbarState } from './milkdownCore'
 import styles from './MilkdownEditor.module.css'
 
 export interface MilkdownEditorProps {
@@ -48,6 +53,11 @@ export function MilkdownEditor({ value, onChange, ariaLabel, placeholder, testId
   const containerRef = useRef<HTMLDivElement | null>(null)
   const editable = onChange !== undefined
   const [core, setCore] = useState<CoreModule | null>(null)
+  // The floating selection toolbar's live handle (goal 0253) -- set
+  // once the engine mounts an EDITABLE instance, null otherwise; the
+  // React buttons render into its body-level element via portal.
+  const [toolbar, setToolbar] = useState<SelectionToolbarHandle | null>(null)
+  const [toolbarState, setToolbarState] = useState<SelectionToolbarState>({ bold: false, italic: false, strikethrough: false, code: false })
   // The doc's own draft, updated on every keystroke (markdownUpdated)
   // and read directly by the caller's own commit -- never round-
   // tripped through React state first (testing.md). Refreshed via an
@@ -88,6 +98,15 @@ export function MilkdownEditor({ value, onChange, ariaLabel, placeholder, testId
     // own $remark extension point, applied here rather than baked into
     // NOTE_FEATURES since it isn't a Crepe feature flag.
     crepe.editor.use(disableIndentedCodeBlock)
+    // The floating selection toolbar (goal 0253): editable mounts
+    // only -- a readonly display has no selection to format. Wired
+    // before create(), like every plugin registration.
+    let toolbarHandle: SelectionToolbarHandle | null = null
+    if (editable) {
+      toolbarHandle = core.attachSelectionToolbar(crepe, styles.selectionToolbar)
+      toolbarHandle.onState(setToolbarState)
+      setToolbar(toolbarHandle)
+    }
     crepe.on((listener) => {
       listener.markdownUpdated((_ctx, markdown) => {
         onChangeRef.current?.(markdown)
@@ -115,7 +134,11 @@ export function MilkdownEditor({ value, onChange, ariaLabel, placeholder, testId
     return () => {
       destroyed = true
       onReadyRef.current?.(undefined)
-      void ready.finally(() => crepe.destroy())
+      setToolbar(null)
+      void ready.finally(() => {
+        toolbarHandle?.destroy()
+        return crepe.destroy()
+      })
     }
     // value/ariaLabel/placeholder deliberately excluded: every caller
     // remounts this component fresh for a new edit session or a new
@@ -141,6 +164,39 @@ export function MilkdownEditor({ value, onChange, ariaLabel, placeholder, testId
       ) : (
         <div ref={containerRef} className={styles.mount} />
       )}
+      {toolbar && createPortal(<SelectionToolbarButtons toolbar={toolbar} state={toolbarState} />, toolbar.contentEl)}
     </div>
+  )
+}
+
+// The floating toolbar's buttons -- portaled into the body-level
+// element the kit's TooltipProvider positions (goal 0253). Pointer-
+// down is prevented so pressing a button never steals the editor's
+// focus/selection out from under the very command it dispatches (the
+// selection-toolbar convention Crepe's own buttons also follow).
+function SelectionToolbarButtons({ toolbar, state }: { toolbar: SelectionToolbarHandle; state: SelectionToolbarState }) {
+  const { t } = useTranslation('common')
+  const items: { action: SelectionToolbarAction; icon: typeof BoldIcon; label: string }[] = [
+    { action: 'bold', icon: BoldIcon, label: t('formattingToolbar.bold') },
+    { action: 'italic', icon: ItalicIcon, label: t('formattingToolbar.italic') },
+    { action: 'strikethrough', icon: StrikethroughIcon, label: t('formattingToolbar.strikethrough') },
+    { action: 'code', icon: CodeIcon, label: t('formattingToolbar.code') },
+  ]
+  return (
+    <>
+      {items.map(({ action, icon, label }) => (
+        <IconButton
+          key={action}
+          icon={icon}
+          size="small"
+          variant="invisible"
+          aria-label={label}
+          aria-pressed={state[action]}
+          data-testid={`milkdown-toolbar-${action}`}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => toolbar.run(action)}
+        />
+      ))}
+    </>
   )
 }

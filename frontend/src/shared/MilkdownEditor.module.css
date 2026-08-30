@@ -117,3 +117,29 @@
     outline: none;
     border-color: var(--borderColor-accent-emphasis);
 }
+
+/* The floating selection toolbar (goal 0253): appended to
+   document.body by the kit's own TooltipProvider (root option), so it
+   floats at UI scale beside the selection -- never inside the note
+   node, never clipped by its box, never shrunk by the board's zoom
+   transform. TooltipProvider writes left/top and toggles data-show;
+   this rule owns everything else. z-index sits above the board's own
+   node tiers (inline, small integers) and below nothing it needs to
+   defer to -- the toolbar only exists while its editor has focus. */
+.selectionToolbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    background: var(--overlay-bgColor, var(--bgColor-default));
+    border: 1px solid var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+    box-shadow: var(--shadow-floating-small, var(--shadow-resting-medium));
+}
+
+.selectionToolbar[data-show='false'] {
+    display: none;
+}
