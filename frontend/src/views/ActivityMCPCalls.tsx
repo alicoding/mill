@@ -5,6 +5,7 @@ import { Blankslate } from '@primer/react/experimental'
 import { ArrowDownIcon, ArrowUpIcon, PulseIcon, ChevronLeftIcon, ChevronRightIcon } from '@primer/octicons-react'
 import { MCPAuditService } from '../shared/bindings'
 import type { MCPCallRecord } from '../shared/bindings'
+import { useAppStore } from '../shared/store'
 import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import styles from '../shared/ListCard.module.css'
 
@@ -60,6 +61,7 @@ function formatTimestamp(iso: string): string {
 
 export function ActivityMCPCalls() {
   const { t } = useTranslation('views')
+  const setView = useAppStore((s) => s.setView)
   const [records, setRecords] = useState<MCPCallRecord[] | null>(null)
   const [total, setTotal] = useState(0)
   const [error, setError] = useState('')
@@ -148,6 +150,12 @@ export function ActivityMCPCalls() {
           </Blankslate.Visual>
           <Blankslate.Heading>{t('activityView.mcpCalls.noCallsHeading')}</Blankslate.Heading>
           <Blankslate.Description>{t('activityView.mcpCalls.noCallsDescription')}</Blankslate.Description>
+          {/* The first-run door (goal 0202's empty-state rule: offer
+              the action the sentence names): connecting an agent starts
+              at the MCP access address in Settings. */}
+          <Blankslate.PrimaryAction onClick={() => setView({ kind: 'settings', section: 'mcp-access' })}>
+            {t('activityView.mcpCalls.connectAgentAction')}
+          </Blankslate.PrimaryAction>
         </Blankslate>
       ) : (
         <>

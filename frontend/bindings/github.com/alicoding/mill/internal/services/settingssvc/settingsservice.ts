@@ -270,6 +270,14 @@ export function GetMCPWriteEnabled(): $CancellablePromise<boolean> {
 }
 
 /**
+ * GetSeenFirstRunIntros returns every intro id the user has dismissed.
+ * Never nil -- always at least an empty slice.
+ */
+export function GetSeenFirstRunIntros(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(2281568907);
+}
+
+/**
  * GetSummonHotkey returns the current summon hotkey's human-readable
  * binding label (e.g. "⌥⇧Space"), or "" if unassigned.
  */
@@ -366,6 +374,17 @@ export function MCPAccessAddress(): $CancellablePromise<string> {
  */
 export function MCPAccessAddressInfo(): $CancellablePromise<$models.MCPAddrInfo> {
     return $Call.ByID(3235387734);
+}
+
+/**
+ * MarkFirstRunIntroSeen records one intro as dismissed. Idempotent --
+ * marking an already-seen id changes nothing. Seen state only ever
+ * transitions unseen->seen (there is no user-facing reset: an intro
+ * shows exactly once, ever), so no dataevent fires -- only the
+ * dismissing window's own state cares.
+ */
+export function MarkFirstRunIntroSeen(id: string): $CancellablePromise<void> {
+    return $Call.ByID(1488471203, id);
 }
 
 /**

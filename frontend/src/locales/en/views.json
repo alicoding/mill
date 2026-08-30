@@ -341,6 +341,7 @@
       "sentAriaLabel": "Mill sent this call",
       "noCallsHeading": "No MCP calls recorded",
       "noCallsDescription": "Calls will show up here once an agent calls Mill, or a workflow calls a configured MCP server.",
+      "connectAgentAction": "Connect an agent",
       "durationMs": "{{ms}}ms",
       "showingRange": "Showing {{start}}-{{end}} of {{total}}.",
       "previousPageAriaLabel": "Previous page",
@@ -446,5 +447,8 @@
     "headingAnchorLabel": "Link to {{heading}}",
     "codeCopyAriaLabel": "Copy code",
     "codeCopiedAriaLabel": "Copied"
+  },
+  "firstRunIntro": {
+    "gotIt": "Got it"
   }
 }

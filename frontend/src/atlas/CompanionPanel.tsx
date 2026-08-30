@@ -73,6 +73,7 @@ export function CompanionPanel({ viewedID }: { viewedID: string }) {
           <Blankslate data-testid="companion-provider-empty">
             <Blankslate.Visual><SparkleFillIcon size={24} /></Blankslate.Visual>
             <Blankslate.Heading>{t('companionPanel.providerEmptyHeading')}</Blankslate.Heading>
+            <Blankslate.Description>{t('companionPanel.providerEmptyDescription')}</Blankslate.Description>
             <Blankslate.PrimaryAction onClick={() => setView({ kind: 'configure', tab: 'aiproviders' })}>
               {t('companionPanel.providerEmptyAction')}
             </Blankslate.PrimaryAction>

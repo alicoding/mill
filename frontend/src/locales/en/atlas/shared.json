@@ -438,6 +438,7 @@
     "toggleButton": "AI",
     "providerLabel": "AI provider",
     "providerEmptyHeading": "Add an AI provider in Configure to start",
+    "providerEmptyDescription": "Chat about this board with a local model — replies can propose cards to add.",
     "providerEmptyAction": "Open Configure",
     "composerPlaceholder": "Ask about this space…",
     "send": "Send",

@@ -13,6 +13,7 @@ import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
 import PageContainer from '../shared/PageContainer'
+import { FirstRunIntro } from '../shared/FirstRunIntro'
 import { SecretsEntryDialog } from './SecretsEntryDialog'
 import { SecretsDetailDialog } from './SecretsDetailDialog'
 import { SecretsHistoryDialog } from './SecretsHistoryDialog'
@@ -97,9 +98,18 @@ export default function SecretsView() {
 
   if (status === null) return null
 
+  // The first-run intro (goal 0202): rendered in every state of this
+  // view -- a first visit usually lands on setup, but "first visit to
+  // Secrets" is the moment, not any one vault state. The surface shows
+  // itself at most once, ever (shared/FirstRunIntro.tsx).
+  const firstRunIntro = (
+    <FirstRunIntro id="secrets" title={t('firstRun.title')} body={[t('firstRun.body1'), t('firstRun.body2')]} />
+  )
+
   if (!status.Exists) {
     return (
       <PageContainer variant="wide" data-testid="secrets-view">
+        {firstRunIntro}
         <Blankslate>
           <Blankslate.Visual><KeyIcon size={32} /></Blankslate.Visual>
           <Blankslate.Heading>{t('setup.heading')}</Blankslate.Heading>
@@ -118,6 +128,7 @@ export default function SecretsView() {
   if (!status.Unlocked) {
     return (
       <PageContainer variant="wide" data-testid="secrets-view">
+        {firstRunIntro}
         <Blankslate>
           <Blankslate.Visual><LockIcon size={32} /></Blankslate.Visual>
           <Blankslate.Heading>{t('locked.heading')}</Blankslate.Heading>
@@ -160,6 +171,7 @@ export default function SecretsView() {
 
   return (
     <PageContainer variant="wide" data-testid="secrets-view">
+      {firstRunIntro}
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.header}>
         <Stack direction="vertical" gap="none">
           <Heading as="h1" id="secrets-heading">{t('heading')}</Heading>

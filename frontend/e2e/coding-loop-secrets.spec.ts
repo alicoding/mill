@@ -45,6 +45,10 @@ test('Coding loop secret chain: a vault entry resolves, a typed value resolves, 
     // --- Set up the vault and one fixture entry the chain will match ---
     await page.getByRole('link', { name: 'Secrets' }).click()
     await expect(page.getByTestId('secrets-view')).toBeVisible()
+    // Fresh server, first Secrets visit: the first-run intro (goal
+    // 0202) shows once -- dismissing it here also proves it never
+    // traps an unrelated flow.
+    await page.getByRole('dialog', { name: 'Keep credentials out of your workflows' }).getByRole('button', { name: 'Got it' }).click()
     await page.getByTestId('secrets-setup-cta').click()
     const list = page.getByTestId('secrets-view')
     await expect(list.getByText('Example Login', { exact: true })).toBeVisible()
