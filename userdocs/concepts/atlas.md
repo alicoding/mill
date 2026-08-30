@@ -39,7 +39,9 @@ connected by links, grouped into areas you can drill into.
 - **Notes are markdown.** Write headings, lists, bold, tables — in
   a card's note or a board sticky note (press N and click). While
   you type, formatting appears in place and the markdown syntax
-  fades on every line except the one you're editing; at rest the
+  fades on every line except the one you're editing; select some
+  text and a small toolbar floats beside it with bold, italic,
+  strikethrough, and code; at rest the
   note shows the rendered result, and clicking it brings the source
   back. A long sticky note scrolls in place, and grows while you
   edit it — and any note opens big: ⌘-click it (or right-click →
