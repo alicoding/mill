@@ -100,3 +100,13 @@ export function dispatchObjectEdit(object: BoardObject, editRoute: EditRouteDecl
       return Promise.resolve()
   }
 }
+
+// writeObjectMirror -- the content-plane WRITE door for an
+// extension-rendered face (goal 0239 S2's sheet quick-edit): an
+// extension component never imports AtlasService (the extensions/
+// cruiser rule); a whole-file mirror write dispatches through this one
+// seam, the same posture dispatchObjectEdit above holds for the edit
+// doors.
+export function writeObjectMirror(objectID: string, content: string): Promise<void> {
+  return AtlasService.WriteObjectMirror(objectID, content)
+}

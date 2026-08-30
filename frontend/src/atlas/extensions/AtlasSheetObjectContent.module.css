@@ -47,3 +47,26 @@
   border-bottom: 1px solid var(--borderColor-muted);
   white-space: nowrap;
 }
+
+/* Quick-edit (goal 0239 S2): the editing cell swaps its padding for
+   the input's own so the text doesn't jump, and the input inherits the
+   grid's type scale -- the cell looks like itself with a caret, the
+   converged inline-edit feel. */
+.editingCell {
+  padding: 0;
+}
+
+.cellInput {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 64px;
+  border: none;
+  outline: 2px solid var(--focus-outlineColor, var(--borderColor-accent-emphasis));
+  outline-offset: -2px;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--fgColor-default);
+  background: var(--bgColor-default);
+}

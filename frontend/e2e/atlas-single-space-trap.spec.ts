@@ -138,7 +138,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
 
     // "Board gallery" nests board objects, never cards, so
     // isGroupCard() still treats it as a childless leaf for THIS
-    // delete -- deleted directly, with its 3 seeded board objects still
+    // delete -- deleted directly, with its 4 seeded board objects still
     // attached (goal 0233's own regression, replacing the drain-first
     // workaround this spec used to need). The card delete's own
     // EffectiveParentID promotion carries the objects out to THIS root
@@ -165,11 +165,11 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
 
     const promotedObjects = page.locator('[data-testid="atlas-board-object"]')
-    await expect(promotedObjects).toHaveCount(3)
+    await expect(promotedObjects).toHaveCount(4)
     const clientRecordsBox = await clientRecords.boundingBox()
     if (!clientRecordsBox) throw new Error('Client records has no bounding box')
     const promotedBoxes = []
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
       const box = await promotedObjects.nth(i).boundingBox()
       if (!box) throw new Error('promoted board object has no bounding box')
       expect(rectsOverlap(box, clientRecordsBox), 'a promoted board object must not overlap the sibling card').toBe(false)
@@ -187,6 +187,12 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     // Drain the newly-promoted objects too -- the root context needs
     // to be back to just the two remaining cards for the assertions
     // below (unaffected by this goal, same instant-delete door).
+    // Zoomed all the way out first: a wide promoted object (the seeded
+    // sheet) can land under the MiniMap's fixed bottom-right panel,
+    // where a right-click never becomes actionable -- the exact hazard
+    // this file's own header documents; shrinking the content to the
+    // center clears every object of the fixed chrome at once.
+    await zoomAllTheWayOut(page)
     for (let remaining = await promotedObjects.count(); remaining > 0; remaining--) {
       await promotedObjects.first().click({ button: 'right' })
       await expect(menu).toBeVisible()

@@ -1,6 +1,7 @@
 {
   "sheet": {
     "unreadable": "Can't read this file.",
+    "writeFailed": "Couldn't save that change to the file.",
     "truncatedRowsOnly": "Showing the first {{shownRows}} of {{totalRows}} rows.",
     "truncatedColsOnly": "Showing the first {{shownCols}} of {{totalCols}} columns.",
     "truncatedBoth": "Showing the first {{shownRows}} of {{totalRows}} rows and the first {{shownCols}} of {{totalCols}} columns."

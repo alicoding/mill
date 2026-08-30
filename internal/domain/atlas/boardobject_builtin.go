@@ -75,6 +75,18 @@ func BuiltInBoardObjects() []BoardObject {
 			CreatedAt: now, UpdatedAt: now,
 			BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
+		{
+			// File-backed csv (goal 0239 S2): proof that a 'sheet'
+			// BoardObject renders the mirrored-file preview AND that a
+			// csv cell quick-edits in place -- double-click a cell of
+			// this one to try it; the edit writes this seeded file.
+			ID: objectSheetExampleID, Kind: "sheet",
+			Payload:   map[string]string{"title": "Sample sheet", BoardObjectSeedAssetKey: "sheet"},
+			Position:  Position{X: 740, Y: 80},
+			ParentID:  cardSketchesID,
+			CreatedAt: now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
 	}
 }
 
@@ -89,6 +101,8 @@ func BuiltInBoardObjectAsset(key string) (content, ext string, ok bool) {
 		return seedInkStrokeSVG, ".svg", true
 	case "image":
 		return seedReferenceImageSVG, ".svg", true
+	case "sheet":
+		return seedSampleSheetCSV, ".csv", true
 	}
 	return "", "", false
 }
@@ -103,4 +117,8 @@ const (
 	// 'image' BoardObject renders through the same mirrored-file door a
 	// pasted/dropped image uses.
 	seedReferenceImageSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120"><rect x="4" y="4" width="152" height="112" rx="8" fill="#ffffff" stroke="#1f6feb" stroke-width="4"/><circle cx="48" cy="40" r="14" fill="#9a6700"/><path d="M12 100 L56 60 L84 84 L112 52 L152 96 Z" fill="#238636"/></svg>`
+	// seedSampleSheetCSV is a small editable list -- proof that a
+	// 'sheet' BoardObject previews a real csv AND that a cell
+	// quick-edits in place, writing this same file back.
+	seedSampleSheetCSV = "Item,Qty,Notes\nCoffee beans,2,Whole bean\nOat milk,1,\nFilters,100,No. 4\n"
 )
