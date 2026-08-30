@@ -361,7 +361,11 @@ export function orderedRegisteredTools(): AtlasToolShape[] {
 // simply never matches a plugin id, which is the correct behavior.
 export type ThirdPartyNounShape = Omit<AtlasToolShapeBase, 'boardObjectKind'> & {
   id: string
-  interaction: 'arm-then-click'
+  // Widened past 'arm-then-click' by goal 0252 S1: a plugin tool may
+  // be drag-shaped, riding the SAME gesture engine built-ins do (its
+  // `gesture` field carries the host-adapted contribution). The click
+  // placement door (atlasThirdPartyPlacement.ts) gates on this.
+  interaction: 'arm-then-click' | 'drag-to-draw' | 'ephemeral-drag'
   boardObjectKind: string
   thirdParty: true
   // The owning plugin (manifest id) -- the Extensions page's join key.

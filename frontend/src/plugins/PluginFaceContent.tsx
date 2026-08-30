@@ -11,7 +11,7 @@ import type { CanvasObjectDecl, GuardedActionResult } from './sdk'
 // CodeMirror-widget/Obsidian-contentEl convergence, docs/goals/0249).
 // renderFace re-runs whenever the object's own data changes; the
 // plugin reads ctx.object to decide what to redraw.
-export function pluginFaceComponent(pluginId: string, decl: CanvasObjectDecl): ComponentType<{ object: BoardObject; mirrorVersion: number }> {
+export function pluginFaceComponent(pluginId: string, decl: CanvasObjectDecl & { renderFace: NonNullable<CanvasObjectDecl['renderFace']> }): ComponentType<{ object: BoardObject; mirrorVersion: number }> {
 	const Face = memo(function PluginFace({ object, mirrorVersion }: { object: BoardObject; mirrorVersion: number }) {
 		const elRef = useRef<HTMLDivElement>(null)
 		// Payload identity changes on every fetch; re-render on VALUE

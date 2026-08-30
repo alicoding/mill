@@ -69,13 +69,39 @@ no one claims still lands the way it does today. With the Bookmark
 example installed, pasting a link from your browser drops a bookmark
 right on the board.
 
-## The example plugin
+## Drawing tools
 
-Mill's repository ships a working example, **Bookmark** — a web
-address pinned to the board, edited in place, opened through a
-guarded ask. Copy `examples/plugins/mill-bookmark` from the
-repository into your plugins folder to try it, or use it as the
-starting point for your own.
+A plugin isn't limited to click-to-place objects: it can register a
+DRAG tool that rides the same gesture engine, style picker, and
+live-preview overlay Mill's own drawing tools use. Three declaration
+fields open that up:
+
+- `interaction` — `"arm-then-click"` (the default), `"drag-to-draw"`
+  (the armed pointer drag feeds your `gesture`, which decides what to
+  create), or `"ephemeral-drag"` (the drag only renders a live
+  preview and never creates anything — a laser-pointer shape;
+  `renderFace` is optional there, since nothing is ever placed).
+- `styleFields` — the tool's styleable properties (`color`,
+  `color-or-none`, `stroke-width`), each with its own options and
+  default. Declaring any renders Mill's style picker next to the
+  armed tool automatically; current values arrive on the gesture ctx.
+- `gesture` — `{ onPoint?, onEnd, renderPreview?, fadeMs? }`. `onEnd`
+  receives the full drag's points plus a ctx carrying
+  `screenToFlowPosition`, `styleValues`, and `createObject(payload,
+  flowPos)` (scoped to your own kind; lands, syncs, and undoes like
+  any placement). `renderPreview(el, points, now)` draws the live
+  in-drag stroke into a host-owned overlay element. Drag tools stay
+  armed across strokes by default (`sticky: false` opts out).
+
+## The example plugins
+
+Mill's repository ships two working examples: **Bookmark**
+(`examples/plugins/mill-bookmark`) — a web address pinned to the
+board, edited in place, opened through a guarded ask — and
+**Scribble** (`examples/plugins/mill-scribble`) — a freehand drawing
+tool exercising the drag interaction, style fields, and live preview
+above. Copy either folder into your plugins folder to try it, or use
+it as the starting point for your own.
 
 ## Writing one
 
