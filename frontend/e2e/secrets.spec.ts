@@ -41,6 +41,20 @@ test('secret manager: create vault, store/reveal/copy/edit/history/delete a pass
     await page.getByRole('link', { name: 'Secrets' }).click()
     await expect(page.getByTestId('secrets-view')).toBeVisible()
 
+    // --- First visit shows the first-run intro exactly once (goal
+    // 0202, shared/FirstRunIntro.tsx): dismissing records seen
+    // SERVER-side, so a reload -- a fresh page/session against the
+    // same server, the second-device stand-in this harness can
+    // reach -- never shows it again. ---
+    const intro = page.getByRole('dialog', { name: 'Keep credentials out of your workflows' })
+    await expect(intro).toBeVisible()
+    await intro.getByRole('button', { name: 'Got it' }).click()
+    await expect(intro).toHaveCount(0)
+    await page.reload()
+    await page.getByRole('link', { name: 'Secrets' }).click()
+    await expect(page.getByTestId('secrets-view')).toBeVisible()
+    await expect(page.getByRole('dialog', { name: 'Keep credentials out of your workflows' })).toHaveCount(0)
+
     // --- No vault yet: Create vault ---
     await expect(page.getByText('Store a password')).toBeVisible()
     await page.getByTestId('secrets-setup-cta').click()
