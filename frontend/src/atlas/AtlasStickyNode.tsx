@@ -149,6 +149,11 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
       const target = e.target as Element | null
       if (wrapRef.current?.contains(target)) return
       if (target?.closest('.react-flow__resize-control')) return
+      // The floating selection toolbar (goal 0253) lives at body
+      // level -- outside wrapRef by design, so board zoom/clipping
+      // can't touch it -- but a press on it is part of THIS edit
+      // session, never an outside press.
+      if (target?.closest('[data-milkdown-selection-toolbar]')) return
       commitRef.current()
     }
     const handleWindowBlur = () => {

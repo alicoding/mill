@@ -59,5 +59,11 @@
     "deleteRow": "Delete row",
     "booleanTrue": "Yes",
     "booleanFalse": "No"
+  },
+  "formattingToolbar": {
+    "bold": "Bold",
+    "italic": "Italic",
+    "strikethrough": "Strikethrough",
+    "code": "Code"
   }
 }
