@@ -84,19 +84,19 @@ describe('versionLabel', () => {
 
 describe('toolRowSource (goal 0237 S3 rider)', () => {
   it('normalizes a tray tool into a row, reading nounName (not the command-verb label) for the title', () => {
-    const shape = ATLAS_TOOLS.find((t) => t.id === 'shape')!
-    const row = toolRowSource(shape)
+    const image = ATLAS_TOOLS.find((t) => t.id === 'image')!
+    const row = toolRowSource(image)
     expect(row).toEqual({
-      id: 'shape',
-      icon: shape.icon,
-      label: shape.nounName,
-      description: shape.description,
-      group: shape.group,
-      source: shape.content?.source,
-      editRoute: shape.content?.editRoute,
-      capabilities: shape.capabilities,
+      id: 'image',
+      icon: image.icon,
+      label: image.nounName,
+      description: image.description,
+      group: image.group,
+      source: image.content?.source,
+      editRoute: image.content?.editRoute,
+      capabilities: image.capabilities,
     })
-    expect(row.label).toBe('Shape')
+    expect(row.label).toBe('Image')
   })
 })
 

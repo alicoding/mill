@@ -66,11 +66,14 @@ type CanvasObjectContribution struct {
 // loader see it. Error is a load-blocking validation problem stated
 // for the human (the row renders it; the loader skips the plugin) --
 // a plugin is either fully valid or visibly broken, never silently
-// half-loaded.
+// half-loaded. Builtin marks a plugin embedded in the binary
+// (pluginservice_builtin.go): same loader and disable list as any
+// plugin, but nothing on disk to reveal or delete.
 type PluginInfo struct {
 	Manifest Manifest
 	Dir      string
 	Error    string
+	Builtin  bool
 }
 
 // knownCapabilities is the enumerated capability vocabulary
@@ -82,6 +85,12 @@ var knownCapabilities = map[string]bool{
 	// browser. The plugin never receives the primitive; on approval
 	// Mill itself performs the open.
 	"open-url": true,
+	// erase-board-items: a drag-shaped canvas tool may hit-test and
+	// erase board items through the host's own quick-delete-with-undo
+	// door (goal 0252 S2). Enforced host-side in the webview: the
+	// gesture ctx only carries the erase calls when the manifest
+	// declares this; the ids of hit items never cross into plugin code.
+	"erase-board-items": true,
 }
 
 // pluginIDPattern pins ids to a filesystem- and URL-safe slug: the id
@@ -137,21 +146,50 @@ func (p *PluginService) openInOS(url string) error {
 // invalid ones carrying their human-readable Error.
 func (p *PluginService) ListPlugins() ([]PluginInfo, error) {
 	entries, err := os.ReadDir(p.dir)
-	if os.IsNotExist(err) {
-		return []PluginInfo{}, nil
-	}
-	if err != nil {
+	if err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("read plugins directory: %w", err)
 	}
+	// A missing plugins dir is normal (nothing installed yet) -- the
+	// built-ins below still list.
 	infos := make([]PluginInfo, 0, len(entries))
+	scanned := map[string]bool{}
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
 		}
 		infos = append(infos, p.scanOne(e.Name()))
+		scanned[e.Name()] = true
+	}
+	// Built-ins fill in behind the scanned directory: a user folder
+	// with the same id shadows its built-in entirely (even an invalid
+	// one -- its own error row is the honest state, and deleting the
+	// folder restores the built-in).
+	for _, id := range builtinPluginIDs() {
+		if !scanned[id] {
+			infos = append(infos, scanBuiltin(id, p.appVersion))
+		}
 	}
 	sort.Slice(infos, func(i, j int) bool { return infos[i].Manifest.ID < infos[j].Manifest.ID })
 	return infos, nil
+}
+
+// resolvePlugin is the by-id lookup every non-list path uses
+// (guarded actions, asset serving): the user's own folder first, the
+// built-in behind it -- the same shadowing rule ListPlugins applies.
+// The pattern gate up front makes the joined path traversal-safe for
+// a caller-supplied id (RequestGuardedAction's pluginID arrives
+// straight off the wire).
+func (p *PluginService) resolvePlugin(id string) PluginInfo {
+	if !pluginIDPattern.MatchString(id) {
+		return PluginInfo{Manifest: Manifest{ID: id}, Error: "the manifest id must be lowercase letters, digits, and hyphens"}
+	}
+	if _, err := os.Stat(filepath.Join(p.dir, id)); err == nil { // #nosec G703 -- id passed pluginIDPattern above (no separators, no dots)
+		return p.scanOne(id)
+	}
+	if isBuiltinPluginID(id) {
+		return scanBuiltin(id, p.appVersion)
+	}
+	return p.scanOne(id)
 }
 
 func (p *PluginService) scanOne(folder string) PluginInfo {
@@ -168,39 +206,40 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 		return info
 	}
 	info.Manifest = m
+	_, mainErr := os.Stat(filepath.Join(dir, "main.js")) // #nosec G703 -- folder passed pluginIDPattern (no separators, no dots)
+	info.Error = manifestProblem(m, folder, mainErr == nil, p.appVersion)
+	return info
+}
+
+// manifestProblem runs every load-blocking validation shared by the
+// scanned-directory and built-in scan paths, returning the first
+// human-readable problem or "".
+func manifestProblem(m Manifest, folder string, mainJSExists bool, appVersion string) string {
 	switch {
 	case !pluginIDPattern.MatchString(m.ID):
-		info.Error = "the manifest id must be lowercase letters, digits, and hyphens"
+		return "the manifest id must be lowercase letters, digits, and hyphens"
 	case m.ID != folder:
 		// The Obsidian convention, adopted deliberately: the folder IS
 		// the identity, so a copied folder can never impersonate a
 		// different plugin's id.
-		info.Error = fmt.Sprintf("the manifest id %q must match the folder name %q", m.ID, folder)
+		return fmt.Sprintf("the manifest id %q must match the folder name %q", m.ID, folder)
 	case strings.TrimSpace(m.Name) == "" || strings.TrimSpace(m.Version) == "":
-		info.Error = "the manifest needs a name and a version"
-	default:
-		if _, err := os.Stat(filepath.Join(dir, "main.js")); err != nil { // #nosec G703 -- folder passed pluginIDPattern (no separators, no dots)
-			info.Error = "main.js is missing"
+		return "the manifest needs a name and a version"
+	case !mainJSExists:
+		return "main.js is missing"
+	}
+	for _, c := range m.Capabilities {
+		if !knownCapabilities[c] {
+			// Fail-closed: an unknown capability blocks the LOAD,
+			// never silently narrows to the known set -- the user
+			// sees exactly why the plugin won't run.
+			return fmt.Sprintf("unknown capability %q", c)
 		}
 	}
-	if info.Error == "" {
-		for _, c := range m.Capabilities {
-			if !knownCapabilities[c] {
-				// Fail-closed: an unknown capability blocks the LOAD,
-				// never silently narrows to the known set -- the user
-				// sees exactly why the plugin won't run.
-				info.Error = fmt.Sprintf("unknown capability %q", c)
-				break
-			}
-		}
+	if problem := validateContributes(m.Contributes); problem != "" {
+		return problem
 	}
-	if info.Error == "" {
-		info.Error = validateContributes(m.Contributes)
-	}
-	if info.Error == "" {
-		info.Error = checkMinMillVersion(m.MinMillVersion, p.appVersion)
-	}
-	return info
+	return checkMinMillVersion(m.MinMillVersion, appVersion)
 }
 
 // checkMinMillVersion refuses a plugin that declares it needs a newer
@@ -307,7 +346,7 @@ type GuardedActionDecision struct {
 // a human and blocks this call until resolved (the same park the MCP
 // write plane uses). On approval Mill performs the action itself.
 func (p *PluginService) RequestGuardedAction(pluginID string, kind string, attributes map[string]string, description string) (GuardedActionDecision, error) {
-	plugin := p.scanOne(pluginID)
+	plugin := p.resolvePlugin(pluginID)
 	if plugin.Error != "" {
 		return GuardedActionDecision{}, fmt.Errorf("plugin %q: %s", pluginID, plugin.Error)
 	}

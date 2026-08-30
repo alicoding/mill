@@ -6,8 +6,8 @@ import type { Icon } from '@primer/octicons-react'
 // documented where an outsider could read it -- see
 // userdocs/reference/canvas-styling.md). Exactly four shapes; a fifth
 // property TYPE (not a fifth per-noun FIELD -- that costs a noun one
-// declaration line, see e.g. shapeTool.ts's own SHAPE_STYLE_FIELDS)
-// means widening this union and AtlasStylePanel.tsx's own render
+// declaration line, see e.g. the Drawing plugin shape tool's own
+// styleFields) means widening this union and AtlasStylePanel.tsx's own render
 // dispatch, deliberately the more expensive of the two costs. This
 // module knows nothing about which noun uses which type -- 'shape' and
 // 'pencil' never appear here -- every option list lives on the FIELD

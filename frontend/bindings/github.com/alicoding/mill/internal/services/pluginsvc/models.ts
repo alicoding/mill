@@ -65,10 +65,13 @@ export interface ManifestContributes {
  * loader see it. Error is a load-blocking validation problem stated
  * for the human (the row renders it; the loader skips the plugin) --
  * a plugin is either fully valid or visibly broken, never silently
- * half-loaded.
+ * half-loaded. Builtin marks a plugin embedded in the binary
+ * (pluginservice_builtin.go): same loader and disable list as any
+ * plugin, but nothing on disk to reveal or delete.
  */
 export interface PluginInfo {
     "Manifest": Manifest;
     "Dir": string;
     "Error": string;
+    "Builtin": boolean;
 }

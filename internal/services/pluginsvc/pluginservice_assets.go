@@ -18,7 +18,9 @@ var assetExtensions = map[string]string{
 }
 
 // AssetMiddleware serves GET /plugins/<id>/<file> from the scanned
-// plugins directory and passes every other request through.
+// plugins directory (built-in plugins serve from the embedded bundle
+// behind it -- the same shadowing rule resolvePlugin applies) and
+// passes every other request through.
 func (p *PluginService) AssetMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -27,13 +29,8 @@ func (p *PluginService) AssetMiddleware() func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			full, contentType, ok := p.resolveAsset(rest)
+			data, contentType, ok := p.readAsset(rest)
 			if !ok {
-				http.NotFound(w, r)
-				return
-			}
-			data, err := os.ReadFile(full) // #nosec G304 G703 -- full is Rel-verified inside the id's own validated plugin folder (resolveAsset)
-			if err != nil {
 				http.NotFound(w, r)
 				return
 			}
@@ -41,34 +38,42 @@ func (p *PluginService) AssetMiddleware() func(http.Handler) http.Handler {
 			// The loader appends the plugin version as a query param, so
 			// a reinstall busts any intermediary cache naturally.
 			w.Header().Set("Cache-Control", "no-cache")
-			_, _ = w.Write(data) // #nosec G705 -- served under the allowlisted Content-Type set above, from the user's own plugins directory
+			_, _ = w.Write(data) // #nosec G705 -- served under the allowlisted Content-Type set above, from the user's own plugins directory or the embedded bundle
 		})
 	}
 }
 
-// resolveAsset validates <id>/<file> and returns the on-disk path and
-// content type. Only ids that scan to a VALID manifest serve at all (a
-// broken plugin is visible in Extensions, never half-loaded via a
-// dangling script URL), only allowlisted extensions serve, and the
-// resolved path must stay inside the plugin's own folder
+// readAsset validates <id>/<file> and returns the file's bytes and
+// content type. Only ids that resolve to a VALID manifest serve at all
+// (a broken plugin is visible in Extensions, never half-loaded via a
+// dangling script URL), only allowlisted extensions serve, and a
+// directory-resolved path must stay inside the plugin's own folder
 // (filepath.Rel guards traversal after cleaning).
-func (p *PluginService) resolveAsset(rest string) (full, contentType string, ok bool) {
+func (p *PluginService) readAsset(rest string) (data []byte, contentType string, ok bool) {
 	id, file, hasFile := strings.Cut(rest, "/")
 	if !hasFile || file == "" || !pluginIDPattern.MatchString(id) {
-		return "", "", false
+		return nil, "", false
 	}
-	if info := p.scanOne(id); info.Error != "" {
-		return "", "", false
+	if info := p.resolvePlugin(id); info.Error != "" {
+		return nil, "", false
 	}
 	contentType, allowed := assetExtensions[strings.ToLower(filepath.Ext(file))]
 	if !allowed {
-		return "", "", false
+		return nil, "", false
 	}
 	pluginDir := filepath.Join(p.dir, id)
-	full = filepath.Join(pluginDir, filepath.FromSlash(file))
+	if _, err := os.Stat(pluginDir); err != nil && isBuiltinPluginID(id) { // #nosec G703 -- id passed pluginIDPattern above (no separators, no dots)
+		data, ok = readBuiltinAsset(id, file)
+		return data, contentType, ok
+	}
+	full := filepath.Join(pluginDir, filepath.FromSlash(file))
 	rel, err := filepath.Rel(pluginDir, full)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", "", false
+		return nil, "", false
 	}
-	return full, contentType, true
+	data, err = os.ReadFile(full) // #nosec G304 G703 -- full is Rel-verified inside the id's own validated plugin folder
+	if err != nil {
+		return nil, "", false
+	}
+	return data, contentType, true
 }

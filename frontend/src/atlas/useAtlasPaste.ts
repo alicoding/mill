@@ -100,8 +100,9 @@ export function useAtlasPaste({ topLevelBoxes, screenToFlowPosition, viewedID, o
             // refreshAtlas MUST resolve before selecting -- the
             // selection-apply effect (AtlasBoard.tsx) only marks a node
             // selected if it's already present in allNodes; selecting
-            // before the new note lands there is a no-op (shapeTool.ts's
-            // own onShapeCreated await is the proven precedent).
+            // before the new note lands there is a no-op (the plugin
+            // adapter's own refresh-then-select createObject ordering
+            // is the same proven precedent).
             await refreshAtlas()
             noteCreated(note.ID)
           })

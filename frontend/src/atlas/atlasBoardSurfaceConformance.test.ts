@@ -95,12 +95,12 @@ describe('atlas board-object drag-band conformance (goal 0181 S3, regression for
     expect(source).toMatch(/dragBand\s*&&[\s\S]{0,300}data-testid="atlas-board-object-frame"/)
   })
 
-  it('matches the DESIGN DECIDED table exactly: table true, image/pencil/shape false', () => {
+  it('matches the DESIGN DECIDED table exactly: table true, image false (ink/shape now declare theirs through the Drawing plugin, goal 0252)', () => {
     const objectNouns = ATLAS_TOOLS.filter((t) => t.boardNodeType === 'atlas-object')
     const withBand = objectNouns.filter((t) => t.dragBand).map((t) => t.id).sort()
     const withoutBand = objectNouns.filter((t) => !t.dragBand).map((t) => t.id).sort()
     expect(withBand).toEqual(['table'])
-    expect(withoutBand).toEqual(['image', 'pencil', 'shape'])
+    expect(withoutBand).toEqual(['image'])
   })
 })
 

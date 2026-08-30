@@ -73,8 +73,11 @@ right on the board.
 
 A plugin isn't limited to click-to-place objects: it can register a
 DRAG tool that rides the same gesture engine, style picker, and
-live-preview overlay Mill's own drawing tools use. Three declaration
-fields open that up:
+live-preview overlay Mill's own drawing tools use — in fact Mill's
+own pencil, shape, eraser, and laser ARE such a plugin (**Drawing**,
+built into the app; its row sits under Installed plugins, and a
+folder named `mill-drawing` in your plugins folder replaces it). The
+declaration fields that open this up:
 
 - `interaction` — `"arm-then-click"` (the default), `"drag-to-draw"`
   (the armed pointer drag feeds your `gesture`, which decides what to
@@ -82,16 +85,37 @@ fields open that up:
   preview and never creates anything — a laser-pointer shape;
   `renderFace` is optional there, since nothing is ever placed).
 - `styleFields` — the tool's styleable properties (`color`,
-  `color-or-none`, `stroke-width`), each with its own options and
-  default. Declaring any renders Mill's style picker next to the
+  `color-or-none`, `stroke-width`, and `shape-kind`, an icon-button
+  picker whose options name their icons from the same named glyph set
+  as `icon` below), each with its own options, default, and optional
+  `label`. Declaring any renders Mill's style picker next to the
   armed tool automatically; current values arrive on the gesture ctx.
 - `gesture` — `{ onPoint?, onEnd, renderPreview?, fadeMs? }`. `onEnd`
   receives the full drag's points plus a ctx carrying
-  `screenToFlowPosition`, `styleValues`, and `createObject(payload,
-  flowPos)` (scoped to your own kind; lands, syncs, and undoes like
-  any placement). `renderPreview(el, points, now)` draws the live
+  `screenToFlowPosition`, `styleValues`, `createObject(payload,
+  flowPos, opts?)` (scoped to your own kind; lands, syncs, and undoes
+  like any placement — `opts.size` sets the placed size, `opts.select`
+  selects it), and `saveImageBytes(base64, ext, title)` for baking
+  drawn bytes into a Mill-owned file a file-backed object's payload
+  can point at. `renderPreview(el, points, now)` draws the live
   in-drag stroke into a host-owned overlay element. Drag tools stay
-  armed across strokes by default (`sticky: false` opts out).
+  armed across strokes by default (`sticky: false` opts out, and a
+  non-sticky tool may add `lockable: true` so re-clicking its armed
+  button locks it for deliberate repetition).
+- Identity extras — `icon` takes an emoji or a named glyph (`pencil`,
+  `zap`, `trash`, `diamond`, `square`, `circle`, `arrow-up-right`);
+  `shortcutKey` gives the tool a bare-letter shortcut and tray key
+  chip; `group: "annotate"` files its button into the tray's Annotate
+  drawer; `objectKind` lets the persisted object kind differ from the
+  tool id (the pencil places `ink` objects); `dragBand: false` drops
+  the drag-handle band when the object's whole body already drags.
+- Erasing — a tool that erases instead of creating declares the
+  `erase-board-items` capability in its manifest. Its gesture ctx
+  then carries `eraseHitTest(pt)` (accumulates whatever board item
+  sits under the point) and `commitErase()` (erases the accumulated
+  set through the same undoable quick-delete a Delete key press
+  uses — one undo step per pass). What was hit stays on Mill's side;
+  the plugin never sees item identities.
 
 ## The example plugins
 

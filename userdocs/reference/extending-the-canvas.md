@@ -1,9 +1,11 @@
 # Extending the canvas
 
 Add one file under `frontend/src/atlas/tools/` and rebuild, and Atlas
-has a new placeable tool — card, note, area, table, image, pencil,
-eraser, laser, and shape all work exactly this way today, nine
-self-registered files. This page is the contract that file has to
+has a new placeable tool — card, note, area, table, and image all work
+exactly this way today, five self-registered files. (The drawing
+tools — pencil, eraser, laser, shape — used to as well; they now ship
+as the bundled Drawing runtime plugin, registered through the same
+plugin door you can use.) This page is the contract that file has to
 satisfy: how it gets discovered, what its declaration requires, and
 which platform services its runtime code may call — and may not.
 
@@ -14,8 +16,8 @@ covers it end to end, including the `activate(api)` contract, drag
 tools with style pickers and live previews, and the
 guarded-capability model. This page is the OTHER door: a compiled-in
 tool built by editing Mill's own tree, the same way adding a workflow
-step type does — fuller reach (custom React rendering, the icon-based
-shape-kind style field, erase-class gestures) at the price of a
+step type does — fuller reach (custom React rendering, and any
+platform hook the plugin surface doesn't carry yet) at the price of a
 rebuild. The "Stability" section
 below says exactly what is and isn't safe to build against either
 way.
@@ -138,8 +140,8 @@ free" below), may call:
   `frontend/bindings/.../internal/services/atlassvc/atlasservice.ts`).
 - **Mirroring and captures** — `AtlasService.SaveImageBytes` writes
   pasted or drawn bytes to a Mill-owned file and returns its path (used
-  by both `imageTool.ts` for a pasted clipboard image and
-  `pencilTool.ts` for a baked stroke SVG); `ObjectMirrorContent` reads
+  by `imageTool.ts` for a pasted clipboard image, and by the Drawing
+  plugin's pencil for a baked stroke SVG); `ObjectMirrorContent` reads
   a mirrored file's bytes back for rendering; `RepickObjectMirror`
   re-points an existing object at a different local file.
 - **The mirror-changed subscription** —

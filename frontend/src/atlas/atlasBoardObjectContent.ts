@@ -19,10 +19,12 @@ import { AtlasUnknownKindContent } from './AtlasUnknownKindContent'
 
 // AtlasBoardObjectKind -- the persisted BoardObject.Kind values that
 // route through the shared 'atlas-object' renderer. Deliberately NOT
-// the same set as a tool's own id: pencilTool's own id is 'pencil' but
-// its placed instance is Kind 'ink' (its own commit call names it), so
-// content resolution below keys off THIS set, read from object.Kind,
-// never off a tool id.
+// the same set as a tool's own id: the pencil tool's id is 'pencil'
+// but its placed instance is Kind 'ink' (the Drawing plugin's own
+// objectKind declaration names it), so content resolution below keys
+// off THIS set, read from object.Kind, never off a tool id. 'shape'
+// and 'ink' stay members even though their tools are plugin-registered
+// now (goal 0252): they are persisted Kinds real boards carry.
 export type AtlasBoardObjectKind = 'shape' | 'image' | 'ink' | 'table' | 'diagram' | 'sheet'
 
 // AtlasNounContent -- a Kind's own placed-instance rendering (goal

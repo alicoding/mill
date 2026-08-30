@@ -36,7 +36,7 @@
     },
     "extensions": {
       "subtitle": "Turn canvas tools on or off. Objects you already created keep working.",
-      "installStory": "Extensions ship with Mill today. Installing your own arrives with the plugin loader.",
+      "installStory": "These extensions ship with Mill. Install more under Installed plugins below.",
       "builtIn": "Built-in",
       "turnAllOff": "Turn all off",
       "turnAllOn": "Turn all on",
@@ -46,6 +46,7 @@
       "reload": "Reload",
       "installHint": "Copy a plugin's folder here, then reload.",
       "noPlugins": "No plugins installed yet.",
+      "pluginBuiltIn": "Built into Mill",
       "pluginCapabilities": "Can request: {{list}}",
       "pluginCatchesFiles": "Catches {{list}} files dropped on the board",
       "pluginCatchesLinks": "Catches web links pasted on the board",
