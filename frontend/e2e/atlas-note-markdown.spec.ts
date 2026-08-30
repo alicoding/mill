@@ -401,7 +401,10 @@ test('selecting note text shows the floating toolbar outside the text, and Bold 
   await placeNoteClear(page, board)
   await expect(stickyEditor(page)).toBeVisible()
   await fillSticky(page, 'Quarterly review meeting notes')
-  await page.keyboard.press('Meta+a')
+  // ControlOrMeta: select-all is Ctrl+A on the Linux CI runner and
+  // Cmd+A locally -- Meta alone selects nothing on Linux, leaving the
+  // toolbar honestly hidden.
+  await page.keyboard.press('ControlOrMeta+a')
 
   const toolbar = page.getByTestId('milkdown-selection-toolbar')
   await expect(toolbar).toBeVisible()
