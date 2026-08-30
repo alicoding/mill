@@ -85,7 +85,7 @@ export function MilkdownEditor({ value, onChange, ariaLabel, placeholder, testId
 
   useEffect(() => {
     if (!core || !containerRef.current) return
-    const { Crepe, NOTE_FEATURES, disableIndentedCodeBlock } = core
+    const { Crepe, NOTE_FEATURES, disableIndentedCodeBlock, taskAtLineStart, configureTaskEnter } = core
     const crepe = new Crepe({
       root: containerRef.current,
       defaultValue: value,
@@ -98,6 +98,10 @@ export function MilkdownEditor({ value, onChange, ariaLabel, placeholder, testId
     // own $remark extension point, applied here rather than baked into
     // NOTE_FEATURES since it isn't a Crepe feature flag.
     crepe.editor.use(disableIndentedCodeBlock)
+    // Line-start to-do shortcut + unchecked Enter-continuation (goal
+    // 0254) -- same registration seam.
+    crepe.editor.use(taskAtLineStart)
+    configureTaskEnter(crepe)
     // The floating selection toolbar (goal 0253): editable mounts
     // only -- a readonly display has no selection to format. Wired
     // before create(), like every plugin registration.
