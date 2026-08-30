@@ -214,3 +214,79 @@ test('a corrupt .xlsx shows "Can\'t read this file." with an Open in default app
   await openBoard(page)
   await expect(sheetObjects(page)).toHaveCount(0)
 })
+
+// Quick-edit (goal 0239 S2): the middle rung between the read-only
+// preview and open-in-the-owning-app -- a csv cell edits in place and
+// the WHOLE file writes back with structure intact (the exact-bytes
+// assertion below is the fidelity contract, trailing newline
+// included). xlsx stays read-only by design: no editor ever mounts.
+async function tempCsv(name: string, content: string): Promise<string> {
+  const fs = await import('node:fs')
+  const os = await import('node:os')
+  const nodePath = await import('node:path')
+  const dir = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'mill-e2e-sheet-edit-'))
+  const file = nodePath.join(dir, name)
+  fs.writeFileSync(file, content)
+  return file
+}
+
+test('double-clicking a csv cell edits it in place: Enter commits to the grid and to the file on disk', async ({ page }) => {
+  const fs = await import('node:fs')
+  const file = await tempCsv('ZzE2eSheetEdit.csv', 'Name,Age\nAda,36\n')
+
+  const sheetObject = await landSheetObject(page, file)
+  const grid = sheetObject.getByTestId('atlas-object-sheet-grid')
+  await expect(grid).toBeVisible()
+
+  const ageCell = grid.locator('tbody tr').first().locator('td').nth(1)
+  await expect(ageCell).toHaveText('36')
+  await ageCell.dblclick()
+  const input = sheetObject.getByTestId('atlas-object-sheet-cell-input')
+  await expect(input).toBeVisible()
+  await expect(input).toBeFocused()
+  // Focus selects the current value, so typing replaces it -- the
+  // spreadsheet convention.
+  await page.keyboard.type('37')
+  await page.keyboard.press('Enter')
+
+  await expect(input).toHaveCount(0)
+  await expect(grid.locator('tbody tr').first().locator('td').nth(1)).toHaveText('37')
+  // The write reaches the real file with structure intact: delimiter,
+  // untouched cells, and the trailing newline all survive.
+  await expect.poll(() => fs.readFileSync(file, 'utf8')).toBe('Name,Age\nAda,37\n')
+
+  await deleteViaContextMenu(page, sheetObject)
+  await expect(sheetObjects(page)).toHaveCount(0)
+})
+
+test('Escape cancels a cell edit, leaving the grid and the file untouched', async ({ page }) => {
+  const fs = await import('node:fs')
+  const file = await tempCsv('ZzE2eSheetEscape.csv', 'Name,Age\nAda,36\n')
+
+  const sheetObject = await landSheetObject(page, file)
+  const grid = sheetObject.getByTestId('atlas-object-sheet-grid')
+  const ageCell = grid.locator('tbody tr').first().locator('td').nth(1)
+  await ageCell.dblclick()
+  const input = sheetObject.getByTestId('atlas-object-sheet-cell-input')
+  await expect(input).toBeFocused()
+  await page.keyboard.type('999')
+  await page.keyboard.press('Escape')
+
+  await expect(input).toHaveCount(0)
+  await expect(ageCell).toHaveText('36')
+  expect(fs.readFileSync(file, 'utf8')).toBe('Name,Age\nAda,36\n')
+
+  await deleteViaContextMenu(page, sheetObject)
+  await expect(sheetObjects(page)).toHaveCount(0)
+})
+
+test('an xlsx cell never opens an editor on double-click (read-only by design)', async ({ page }) => {
+  const sheetObject = await landSheetObject(page, XLSX_FIXTURE)
+  const grid = sheetObject.getByTestId('atlas-object-sheet-grid')
+  await expect(grid).toBeVisible()
+  await grid.locator('tbody tr').first().locator('td').first().dblclick()
+  await expect(sheetObject.getByTestId('atlas-object-sheet-cell-input')).toHaveCount(0)
+
+  await deleteViaContextMenu(page, sheetObject)
+  await expect(sheetObjects(page)).toHaveCount(0)
+})

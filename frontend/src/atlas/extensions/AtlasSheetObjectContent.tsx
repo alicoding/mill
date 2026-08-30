@@ -1,18 +1,30 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Stack, Text } from '@primer/react'
 import { MirrorKind } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { BoardObject, MirrorContent } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { boardObjectContentFor } from '../atlasNounRegistry'
-import { dispatchObjectEdit } from '../objectSeams'
+import { dispatchObjectEdit, writeObjectMirror } from '../objectSeams'
 import type { MirrorReadState } from '../useAtlasObjectMirrorRead'
+import type { CsvEditModel } from '../atlasCsvQuickEdit'
 import { sheetTruncationNote, truncateSheetRows } from '../atlasSheetTruncate'
 import { TABLE_WIDTH, TABLE_HEIGHT } from '../atlasBoardLayout'
 import runbookStyles from '../../shared/ListCard.module.css'
 import styles from './AtlasSheetObjectContent.module.css'
 
 type SheetRows = unknown[][]
+
+// The parsed sheet, tagged by which rung it sits on: an xlsx renders
+// read-only (every researched writer either rewrites lossily or is
+// dormant -- goal 0239 S2's data-stewardship refusal; revisit when an
+// in-place editor earns a track record), a csv carries the full-
+// fidelity edit model quick-edit serializes back through.
+type ParsedSheet =
+  | { kind: 'readonly'; rows: SheetRows }
+  | { kind: 'csv'; model: CsvEditModel }
+
+interface CellEdit { row: number; col: number; value: string }
 
 function formatMirrorSize(bytes: number): string {
   if (bytes < 1000) return `${bytes} B`
@@ -41,48 +53,61 @@ function formatCell(value: unknown): string {
 // read-excel-file's own `/universal` export takes a Blob/ArrayBuffer
 // and runs single-threaded (no Web Worker) -- the right fit for files
 // already capped at mirrorPreviewMaxBytes server-side.
-async function parseSheet(content: MirrorContent): Promise<SheetRows> {
+async function parseSheet(content: MirrorContent): Promise<ParsedSheet> {
   if (content.Kind === MirrorKind.MirrorKindSheet) {
     const { readSheet } = await import('read-excel-file/universal')
     const rows = await readSheet(base64ToArrayBuffer(content.Content))
-    return rows as SheetRows
+    return { kind: 'readonly', rows: rows as SheetRows }
   }
-  const Papa = (await import('papaparse')).default
-  return Papa.parse<string[]>(content.Content, { skipEmptyLines: true }).data
+  const { parseCsvForEdit: parse } = await import('../atlasCsvQuickEdit')
+  return { kind: 'csv', model: parse(content.Content) }
 }
 
-// A "sheet" object's own persisted render (goal 0232 S2): the first
-// slice of the file-backed preview/open/watch contract's own S2
-// consumer (goal 0232 S1) with a genuinely new renderer, rather than
-// migrating an existing one. Read-only by construction -- there is no
-// edit affordance anywhere in this component; the only door onto the
-// real file is "Open in default app" (object.openInDefaultApp,
-// rendered generically by useAtlasObjectMenu.ts's context menu, plus
-// the button below for the unreadable state so the empty state itself
-// offers the action it names).
+// A "sheet" object's own persisted render (goal 0232 S2), grown a
+// middle rung by goal 0239 S2: a csv-backed sheet quick-edits in
+// place -- double-click a cell, type, Enter (or click away) commits
+// the whole file back through the same write door the embedded
+// diagram editor saves through; Escape cancels. The deep edit stays
+// "Open in default app" (object.openInDefaultApp, rendered generically
+// by useAtlasObjectMenu.ts's context menu, plus the button below for
+// the unreadable state so the empty state itself offers the action it
+// names). An xlsx keeps the read-only preview: no edit affordance at
+// all.
 export function AtlasSheetObjectContent({ object, mirrorContent }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState }) {
   const { t } = useTranslation('atlas')
   const content = mirrorContent?.content
   const fetchError = mirrorContent?.error ?? ''
-  const [rows, setRows] = useState<SheetRows | null>(null)
+  const [parsed, setParsed] = useState<ParsedSheet | null>(null)
   const [parseFailed, setParseFailed] = useState(false)
+  const [editing, setEditing] = useState<CellEdit | null>(null)
+  const [writeError, setWriteError] = useState(false)
+  // Escape cancels by clearing this ref BEFORE the editor unmounts --
+  // the input's own blur (which commits) may still fire during that
+  // unmount, and must find nothing to commit. Synced by effect (never
+  // written during render); the cancel/edit handlers below keep it
+  // current within a single event turn themselves.
+  const editingRef = useRef<CellEdit | null>(null)
+  useEffect(() => {
+    editingRef.current = editing
+  }, [editing])
 
-  // content is now the host's own settled read (ADR-0046, goal 0244
-  // S1b) rather than something this component fetches -- !content
-  // covers both "not yet loaded" and the identity-change reset the old
-  // local fetch effect used to perform explicitly, so rows/parseFailed
-  // clear here exactly when they used to.
+  // content is the host's own settled read (ADR-0046, goal 0244 S1b)
+  // -- !content covers both "not yet loaded" and the identity-change
+  // reset, so parsed/parseFailed clear here exactly when they used to.
+  // An open cell editor survives a refresh landing mid-edit (our own
+  // write's watch echo, or an external change): the value being typed
+  // lives in `editing`, not in the re-parsed grid.
   useEffect(() => {
     if (!content || content.Missing || content.TooLarge) {
-      setRows(null)
+      setParsed(null)
       setParseFailed(false)
       return undefined
     }
     let stale = false
     setParseFailed(false)
     parseSheet(content)
-      .then((parsed) => {
-        if (!stale) setRows(parsed)
+      .then((next) => {
+        if (!stale) setParsed(next)
       })
       .catch(() => {
         if (!stale) setParseFailed(true)
@@ -106,11 +131,88 @@ export function AtlasSheetObjectContent({ object, mirrorContent }: { object: Boa
     })
   }
 
-  // rows only ever becomes non-null once content exists, is neither
-  // Missing nor TooLarge, and parsing actually succeeded (the parse
-  // effect above never runs at all for Missing/TooLarge, and never
-  // calls setRows on a parse failure) -- so these branches are
-  // mutually exclusive in exactly this order, never nested.
+  const cancelEdit = () => {
+    editingRef.current = null
+    setEditing(null)
+  }
+
+  const commitEdit = () => {
+    const edit = editingRef.current
+    if (!edit || parsed?.kind !== 'csv') return
+    cancelEdit()
+    const current = parsed.model.displayRows[edit.row]?.[edit.col] ?? ''
+    if (edit.value === current) return
+    // The dynamic import resolves from cache -- parseSheet already
+    // loaded this module before any csv model could exist.
+    void import('../atlasCsvQuickEdit').then(({ parseCsvForEdit, serializeCellEdit }) => {
+      const text = serializeCellEdit(parsed.model, edit.row, edit.col, edit.value)
+      // Optimistic: the grid shows the committed value immediately;
+      // the mirror watch's own refresh re-parses the same bytes right
+      // after.
+      setParsed({ kind: 'csv', model: parseCsvForEdit(text) })
+      setWriteError(false)
+      return writeObjectMirror(object.ID, text).catch(() => {
+        // Revert to the last content the host actually read -- the
+        // file never changed -- and say so inline.
+        setParsed({ kind: 'csv', model: parseCsvForEdit(content?.Content ?? '') })
+        setWriteError(true)
+      })
+    })
+  }
+
+  const editableCell = (row: number, col: number, cell: unknown, isHeader: boolean): ReactNode => {
+    const Tag = isHeader ? 'th' : 'td'
+    if (editing && editing.row === row && editing.col === col) {
+      return (
+        <Tag key={col} className={styles.editingCell}>
+          <input
+            className={styles.cellInput}
+            data-testid="atlas-object-sheet-cell-input"
+            value={editing.value}
+            autoFocus
+            onFocus={(e) => e.currentTarget.select()}
+            onChange={(e) => setEditing({ row, col, value: e.target.value })}
+            onKeyDown={(e) => {
+              // Enter commits, Escape cancels -- both stop here so the
+              // board's own window-level listeners (tool disarm,
+              // gesture cancel) never see a keystroke meant for the
+              // cell.
+              if (e.key === 'Enter') {
+                e.stopPropagation()
+                commitEdit()
+              } else if (e.key === 'Escape') {
+                e.stopPropagation()
+                cancelEdit()
+              }
+            }}
+            onBlur={commitEdit}
+          />
+        </Tag>
+      )
+    }
+    const editable = parsed?.kind === 'csv'
+    return (
+      <Tag
+        key={col}
+        onDoubleClick={
+          editable
+            ? (e) => {
+                e.stopPropagation()
+                setWriteError(false)
+                setEditing({ row, col, value: formatCell(cell) })
+              }
+            : undefined
+        }
+      >
+        {formatCell(cell)}
+      </Tag>
+    )
+  }
+
+  // parsed only ever becomes non-null once content exists, is neither
+  // Missing nor TooLarge, and parsing actually succeeded -- so these
+  // branches are mutually exclusive in exactly this order, never
+  // nested.
   let inner: ReactNode
   if (fetchError) {
     inner = <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-object-sheet-error">{fetchError}</Text>
@@ -131,10 +233,11 @@ export function AtlasSheetObjectContent({ object, mirrorContent }: { object: Boa
         {t('overlay.mirrorTooLarge', { size: formatMirrorSize(content.Size) })}
       </Text>
     )
-  } else if (!rows) {
+  } else if (!parsed) {
     inner = <Text as="p" size="small" className={runbookStyles.muted} data-testid="atlas-object-sheet-loading">{t('overlay.mirrorLoading')}</Text>
   } else {
-    const capped = truncateSheetRows(rows)
+    const displayRows = parsed.kind === 'csv' ? parsed.model.displayRows : parsed.rows
+    const capped = truncateSheetRows(displayRows)
     const note = sheetTruncationNote(capped)
     const [header, ...body] = capped.rows
     inner = (
@@ -144,19 +247,24 @@ export function AtlasSheetObjectContent({ object, mirrorContent }: { object: Boa
             {header && (
               <thead>
                 <tr>
-                  {header.map((cell, i) => <th key={i}>{formatCell(cell)}</th>)}
+                  {header.map((cell, i) => editableCell(0, i, cell, true))}
                 </tr>
               </thead>
             )}
             <tbody>
               {body.map((row, r) => (
                 <tr key={r}>
-                  {row.map((cell, c) => <td key={c}>{formatCell(cell)}</td>)}
+                  {row.map((cell, c) => editableCell(r + 1, c, cell, false))}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        {writeError && (
+          <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-object-sheet-write-error">
+            {t('sheet.writeFailed')}
+          </Text>
+        )}
         {note && (
           <Text as="p" size="small" className={runbookStyles.muted} data-testid="atlas-object-sheet-truncated">
             {t(note.key, note.values)}

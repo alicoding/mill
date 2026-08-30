@@ -58,6 +58,13 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     await expect(image).toBeVisible()
     await expect(image.locator('img')).toBeVisible()
 
+    // Sheet (goal 0239 S2): the seeded csv renders as a real grid with
+    // its own header row -- the same materialized-bytes signal the
+    // ink/image <img> checks above carry, for the tabular door.
+    const sheet = page.locator('[data-testid="atlas-board-object"][data-object-kind="sheet"]')
+    await expect(sheet).toBeVisible()
+    await expect(sheet.getByTestId('atlas-object-sheet-grid').locator('thead th').first()).toHaveText('Item')
+
     // Diagram: renders through the vendored mermaid host -- an honest
     // absence of the loading/error fallback states is the same "did it
     // actually render" signal AtlasDiagramObjectContent.tsx's own

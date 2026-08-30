@@ -83,6 +83,10 @@
     "seedRevision": 1,
     "fingerprint": "c2221b9e336989c19ff77763679204d1ef6092622cd65e2a5dd7766197a0eb6d"
   },
+  "atlasobject:atlas-object-example-sheet": {
+    "seedRevision": 1,
+    "fingerprint": "1e55d1591c9b7a0f98a7cd22d2de9940b4d3fa2a8094a8fd9496870e500b549a"
+  },
   "decision:example-approve-decision": {
     "seedRevision": 3,
     "fingerprint": "b29aebfd8e13eeb833999fac0c970922830f2c61b514441c1edfa410b92b1e34"

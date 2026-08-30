@@ -57,6 +57,53 @@ func TestWriteObjectMirror_NoMirrorPath_Errors(t *testing.T) {
 	}
 }
 
+func TestWriteObjectMirror_CsvSheet_Writes(t *testing.T) {
+	a := newTestAtlasService(t)
+	path := filepath.Join(t.TempDir(), "budget.csv")
+	if err := os.WriteFile(path, []byte("a,b\n1,2\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	o, err := a.CreateBoardObject("sheet", map[string]string{"mirrorPath": path}, atlas.Position{}, "")
+	if err != nil {
+		t.Fatalf("CreateBoardObject: %v", err)
+	}
+	edited := "a,b\n1,3\n"
+	if err := a.WriteObjectMirror(o.ID, edited); err != nil {
+		t.Fatalf("WriteObjectMirror over csv: %v", err)
+	}
+	got, err := os.ReadFile(path) // #nosec G304 -- t.TempDir()-rooted fixed path this test itself created
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != edited {
+		t.Errorf("csv content = %q, want %q", got, edited)
+	}
+}
+
+// A text write over a binary workbook is corruption by construction --
+// the quick-edit slice's own data-stewardship refusal (goal 0239 S2).
+func TestWriteObjectMirror_BinarySheetExtension_Refuses(t *testing.T) {
+	a := newTestAtlasService(t)
+	path := filepath.Join(t.TempDir(), "budget.xlsx")
+	if err := os.WriteFile(path, []byte{0x50, 0x4b, 0x03, 0x04}, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	o, err := a.CreateBoardObject("sheet", map[string]string{"mirrorPath": path}, atlas.Position{}, "")
+	if err != nil {
+		t.Fatalf("CreateBoardObject: %v", err)
+	}
+	if err := a.WriteObjectMirror(o.ID, "a,b\n1,2\n"); err == nil {
+		t.Fatal("expected a refusal writing text over a binary spreadsheet")
+	}
+	got, err := os.ReadFile(path) // #nosec G304 -- t.TempDir()-rooted fixed path this test itself created
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "PK\x03\x04" {
+		t.Errorf("xlsx bytes were touched by a refused write: %q", got)
+	}
+}
+
 func TestWriteObjectMirror_NonDiagramExtension_Errors(t *testing.T) {
 	a := newTestAtlasService(t)
 	path := filepath.Join(t.TempDir(), "notes.md")

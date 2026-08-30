@@ -1142,15 +1142,16 @@ export function UpdateNow(cardID: string): $CancellablePromise<atlas$0.Card> {
 }
 
 /**
- * WriteObjectMirror overwrites objectID's own mirrored diagram file with
- * xml -- the embedded editor engine's own save/autosave path (goal 0237
- * S1: the engine's postMessage protocol is the only caller). The file is
- * the SAME mirror armMirrorWatch already watches, so this deliberately
- * does not emit MirrorChangedEvent itself: the write lands on disk, the
- * existing fsnotify watch (goal 0194) picks it up on its own debounce,
- * and the board preview refreshes through that one path -- never a
- * second, race-prone signal alongside the watch's own.
+ * WriteObjectMirror overwrites objectID's own mirrored file with
+ * content -- the embedded editor engine's save/autosave path (goal
+ * 0237 S1) and the sheet quick-edit's csv commit (goal 0239 S2), both
+ * whole-file text writes. The file is the SAME mirror armMirrorWatch
+ * already watches, so this deliberately does not emit
+ * MirrorChangedEvent itself: the write lands on disk, the existing
+ * fsnotify watch (goal 0194) picks it up on its own debounce, and the
+ * board preview refreshes through that one path -- never a second,
+ * race-prone signal alongside the watch's own.
  */
-export function WriteObjectMirror(objectID: string, xml: string): $CancellablePromise<void> {
-    return $Call.ByID(3607737869, objectID, xml);
+export function WriteObjectMirror(objectID: string, content: string): $CancellablePromise<void> {
+    return $Call.ByID(3607737869, objectID, content);
 }
