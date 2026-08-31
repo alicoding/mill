@@ -123,14 +123,16 @@
    floats at UI scale beside the selection -- never inside the note
    node, never clipped by its box, never shrunk by the board's zoom
    transform. TooltipProvider writes left/top and toggles data-show;
-   this rule owns everything else. z-index sits above the board's own
-   node tiers (inline, small integers) and below nothing it needs to
-   defer to -- the toolbar only exists while its editor has focus. */
+   this rule owns everything else. z-index must clear the Primer
+   portal root's 1200 (app/index.css) -- a note opened full-size edits
+   inside a Dialog, and anything lower buries the toolbar under the
+   dialog surface. Topmost is safe: the toolbar only exists while its
+   editor has focus, and it defers to nothing. */
 .selectionToolbar {
     position: absolute;
     top: 0;
     left: 0;
-    z-index: 100;
+    z-index: 1300;
     display: flex;
     gap: 2px;
     padding: 2px;

@@ -65,6 +65,72 @@ test('selecting note text shows the floating toolbar outside the text, and Bold 
   await deleteSticky(page, note)
 })
 
+// Regression (goal 0253 follow-up): in the full-size note overlay the
+// toolbar rendered UNDER the Dialog -- its body-level element sat at a
+// z-index below the Primer portal root's, so it existed with
+// data-show=true yet the dialog surface painted over it and swallowed
+// its clicks. Pinned by hit-testing the toolbar's own center, not just
+// visibility (Playwright "visible" was true throughout the bug). Also
+// pinned: a toolbar press must not END the overlay's edit session --
+// MarkdownNoteField's outside-press commit excludes the body-level
+// toolbar the same way the sticky's does.
+test('the full-size note overlay shows the toolbar above the dialog, and Bold applies without ending the edit', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  await placeNoteClear(page, board)
+  await expect(stickyEditor(page)).toBeVisible()
+  await fillSticky(page, 'Overlay formatting target')
+  await blurSticky(page)
+  const note = page.getByTestId('atlas-sticky-note').filter({ hasText: 'Overlay formatting target' })
+  await expect(note).toBeVisible()
+
+  await note.click({ modifiers: ['Meta'] })
+  const overlay = page.locator('[data-component="atlas-note-overlay"]')
+  await expect(overlay).toBeVisible()
+  await page.getByTestId('atlas-note-overlay-editor-rendered').click()
+  const editor = page.getByTestId('atlas-note-overlay-editor')
+  await expect(editor).toBeVisible()
+  // The engine mounts async (lazy chunk): the field's own focus hop
+  // can fire before the contenteditable exists, so acquire focus the
+  // user's way -- click the text itself -- before selecting.
+  const editable = editor.locator('[contenteditable="true"]')
+  await editable.click()
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.getAttribute('contenteditable') === 'true'))
+    .toBe(true)
+  await page.keyboard.press('ControlOrMeta+a')
+
+  const toolbar = page.getByTestId('milkdown-selection-toolbar')
+  await expect(toolbar).toBeVisible()
+  // The regression's own observable: the topmost element at the
+  // toolbar's center must be the toolbar itself, not the dialog.
+  await expect
+    .poll(() => page.evaluate(() => {
+      const tb = document.querySelector('[data-testid="milkdown-selection-toolbar"]')
+      if (!tb) return 'no-toolbar'
+      const r = tb.getBoundingClientRect()
+      const under = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+      return under && tb.contains(under) ? 'toolbar-on-top' : 'buried'
+    }))
+    .toBe('toolbar-on-top')
+
+  // Bold from the toolbar: applies, and the edit session SURVIVES the
+  // press (the editor stays mounted instead of committing closed).
+  await page.getByTestId('milkdown-toolbar-bold').click()
+  await expect(page.getByTestId('milkdown-toolbar-bold')).toHaveAttribute('aria-pressed', 'true')
+  await expect(editor).toBeVisible()
+  await expect(editor.locator('strong')).toHaveText('Overlay formatting target')
+
+  await page.keyboard.press('Escape')
+  await expect(overlay).not.toBeVisible()
+  await expect(note.locator('strong')).toHaveText('Overlay formatting target')
+
+  await deleteSticky(page, note)
+})
+
 // Regression (goal 0254): typing `[x] `/`[ ] `/`[] ` at the START of
 // a plain note line creates a to-do -- the engine's own task rule
 // only fires inside an existing list item, so the converged

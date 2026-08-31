@@ -53,6 +53,10 @@ export function MarkdownNoteField({ value, onChange, onCommit, placeholder, aria
     if (!editing) return
     const handlePointerDown = (e: PointerEvent) => {
       if (editorWrapRef.current?.contains(e.target as Node | null)) return
+      // The floating selection toolbar lives at body level, outside
+      // this wrap -- but a press on it is part of THIS edit session,
+      // never an outside press (same exclusion as AtlasStickyNode's).
+      if ((e.target as Element | null)?.closest?.('[data-milkdown-selection-toolbar]')) return
       commitRef.current()
     }
     const handleWindowBlur = () => {
