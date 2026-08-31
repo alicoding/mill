@@ -320,4 +320,12 @@ func (a *AtlasService) WireFileDropWindow(window *windowing.Window) {
 		}
 		windowing.Emit(FileDropEventName, payload)
 	})
+	// File-PROMISE drags (the post-screenshot floating thumbnail, a
+	// browser image drag -- goal 0256) arrive through Mill's own
+	// receiver with materialized temp-file paths but no attribute
+	// hit-test; Context stays empty and the frontend resolves it from
+	// the drop coordinates (atlasFileDropShared's resolveDropContext).
+	window.AttachFilePromiseReceiver(func(paths []string, x, y int) {
+		windowing.Emit(FileDropEventName, FileDropPayload{Filenames: paths, X: x, Y: y})
+	})
 }

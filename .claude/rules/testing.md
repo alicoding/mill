@@ -288,9 +288,18 @@ at:
     (clipboard screenshot) → ⌘V on the board lands the image at the
     pointer; Finder ⌘C a .png → ⌘V lands an image object mirroring
     the REAL file path; Finder ⌘C a .md → ⌘V lands a card, same as
-    dropping it. Known-refused, not a defect: dragging the
-    post-screenshot floating thumbnail shows the no-entry cursor
-    (upstream file-promise gap, BACKLOG 0P0-PROMISE).
+    dropping it.
+  - **File-promise drops: the post-screenshot floating thumbnail**
+    (goal 0256, `MillFilePromiseDropView` /
+    `AttachFilePromiseReceiver`) — a promise drag needs a real AppKit
+    drag session end to end; no harness can synthesize one. Verify on
+    an installed build: ⌘⇧4 a region, drag the floating THUMBNAIL
+    (before it saves) onto the board — the image object lands at the
+    drop point, no no-entry cursor; drag an image out of a browser
+    page — same; then drag a real file from Finder and confirm it
+    still lands exactly as before (the promise view sits BELOW the
+    toolkit's own drag view precisely so filename-carrying drags
+    never reroute).
 
 **Tests drive user primitives, not synthetic events.** An interaction
 test reaches behavior through the same primitives a user has — real

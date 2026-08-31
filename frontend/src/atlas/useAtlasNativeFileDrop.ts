@@ -6,7 +6,7 @@ import { titleFromFilename } from './atlasCreateHelpers'
 import { refreshAtlas } from './atlasStore'
 import { isExtensionEnabled } from '../shared/extensionEnablementStore'
 import { useAtlasFolderImportRequestStore } from './atlasFolderImportRequest'
-import { FILE_DROP_EVENT_NAME, FILE_DROP_CONTEXT_BOARD } from './atlasFileDropShared'
+import { FILE_DROP_EVENT_NAME, FILE_DROP_CONTEXT_BOARD, resolveDropContext } from './atlasFileDropShared'
 import { frameContainingPoint } from './atlasFramePoint'
 import { extensionOf } from './unitRegistry'
 import { thirdPartyNounForExtension, type ThirdPartyNounShape } from './atlasNounRegistry'
@@ -137,7 +137,8 @@ export function useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPo
   useEffect(() => {
     return Events.On(FILE_DROP_EVENT_NAME, (evt) => {
       const payload = evt.data as { filenames?: string[]; x?: number; y?: number; context?: string } | undefined
-      if (!payload || payload.context !== FILE_DROP_CONTEXT_BOARD || !payload.filenames?.length) return
+      if (!payload || !payload.filenames?.length) return
+      if (resolveDropContext(payload) !== FILE_DROP_CONTEXT_BOARD) return
       void landFiles(payload.filenames, { x: payload.x ?? 0, y: payload.y ?? 0 })
         .catch(() => setDropError(t('capture.dropError')))
     })
