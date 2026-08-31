@@ -713,6 +713,20 @@ export function PromoteNote(noteID: string, kindID: string, title: string): $Can
 }
 
 /**
+ * ReadPasteboardFilePaths returns the real absolute paths of any files
+ * on the OS pasteboard (a Finder ⌘C) -- the half of a copied-file
+ * paste the web Clipboard API structurally can't deliver (it exposes
+ * bytes, never paths), so the board's paste door asks the host and
+ * routes the answer through the same landing pipeline a drop uses
+ * (goal 0255). Fail-closed: no osascript, no file flavor, or any
+ * error at all is an empty list -- the paste gesture then falls back
+ * to the pasted bytes or a no-op, never an error the user sees.
+ */
+export function ReadPasteboardFilePaths(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(1957268351);
+}
+
+/**
  * Redo re-applies the UI actor's last undone mark, forward, through the
  * same doors (ADR-0044 decision 3: "redo is the inverse's inverse,
  * same rule").

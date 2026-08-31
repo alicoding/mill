@@ -173,3 +173,18 @@ func TestConsumeSelfWrite_NoMatchLeavesMarkerIntact(t *testing.T) {
 		t.Error("ConsumeSelfWrite() = false for the actual self-written text after a non-matching call, want true (marker must survive a non-match)")
 	}
 }
+
+// ReadFileURLs must fail closed where osascript is unavailable (a CI
+// runner, a stripped PATH) -- the paste door treats any error as "no
+// files on the pasteboard", so the error must actually surface rather
+// than a panic or a fabricated result.
+func TestReadFileURLs_FailsClosedWithoutOsascript(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	paths, err := ReadFileURLs()
+	if err == nil {
+		t.Fatal("ReadFileURLs() with no osascript on PATH: expected an error")
+	}
+	if paths != nil {
+		t.Fatalf("ReadFileURLs() with no osascript on PATH: paths = %v, want nil", paths)
+	}
+}

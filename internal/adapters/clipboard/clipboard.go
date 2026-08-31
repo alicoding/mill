@@ -163,7 +163,15 @@ func WatchChanges(interval time.Duration, fn func(text string)) (stop func()) {
 				}
 				if text != last {
 					last = text
-					fn(text)
+					// A transition to EMPTY never fires: pbcopy's own
+					// clear-then-set exposes a transient empty pasteboard
+					// to a concurrent poll (measured live: baseline ->
+					// "" -> new value at a 20ms interval), and a
+					// non-text clipboard (an image copy) also reads as
+					// empty -- neither is a text change worth capturing.
+					if text != "" {
+						fn(text)
+					}
 				}
 			case <-done:
 				return
@@ -192,6 +200,39 @@ func Types() ([]string, error) {
 		return nil, fmt.Errorf("decode pasteboard types: %w", err)
 	}
 	return types, nil
+}
+
+// ReadFileURLs returns the absolute filesystem paths of any files on
+// the pasteboard (a Finder ⌘C), via the same JXA/NSPasteboard bridge
+// Types uses -- the web Clipboard API exposes a pasted file's BYTES
+// but never its real path, so the board's paste door has to ask the
+// host for the paths a file drop would have delivered. Empty (with the
+// error) wherever osascript is absent or no file flavor exists --
+// callers treat any error as "no files", never a user-facing failure.
+func ReadFileURLs() ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	const script = `ObjC.import('AppKit');
+const pb = $.NSPasteboard.generalPasteboard;
+const out = [];
+const items = pb.pasteboardItems;
+for (let i = 0; i < items.count; i++) {
+  const s = items.objectAtIndex(i).stringForType('public.file-url');
+  if (!s.isNil()) {
+    const u = $.NSURL.URLWithString(s);
+    if (!u.isNil() && !u.path.isNil()) out.push(ObjC.unwrap(u.path));
+  }
+}
+JSON.stringify(out)`
+	out, err := exec.CommandContext(ctx, "osascript", "-l", "JavaScript", "-e", script).Output()
+	if err != nil {
+		return nil, fmt.Errorf("osascript pasteboard file urls failed: %w", err)
+	}
+	var paths []string
+	if err := json.Unmarshal(out, &paths); err != nil {
+		return nil, fmt.Errorf("decode pasteboard file urls: %w", err)
+	}
+	return paths, nil
 }
 
 // concealedTypes are the nspasteboard.org convention's own markers
