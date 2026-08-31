@@ -13,6 +13,9 @@ import "C"
 import (
 	"sync"
 	"unsafe"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 // promiseDropFn holds the one registered promise-drop callback -- a
@@ -49,15 +52,25 @@ func millFilePromiseDropped(paths **C.char, count C.int, x C.int, y C.int) {
 // the toolkit's own file-drop event). One callback app-wide; the last
 // registration wins. See filepromise_darwin.m's own view comment for
 // why this cannot interfere with ordinary file drops.
+//
+// The NATIVE attach is deferred to the window's first RuntimeReady
+// event: this method is called from main.go's wiring, BEFORE
+// app.Run() -- and InvokeSync before the run loop exists dereferences
+// the toolkit's not-yet-initialized dispatcher (a launch-time SIGSEGV,
+// reproduced live). RuntimeReady fires only once the app is running,
+// so the marshal inside is always legal by construction.
 func (win *Window) AttachFilePromiseReceiver(fn func(paths []string, x, y int)) {
 	promiseDropMu.Lock()
 	promiseDropFn = fn
 	promiseDropMu.Unlock()
-	runMainThreadAction("AttachFilePromiseReceiver", func() {
-		// NativeWindow is a stored-pointer read (nil when the window
-		// is destroyed or not yet realized -- the C side guards nil);
-		// read inside the marshal so the attach sees the freshest
-		// window state.
-		C.millAttachPromiseView(win.w.NativeWindow())
+	var once sync.Once
+	win.w.OnWindowEvent(events.Common.WindowRuntimeReady, func(*application.WindowEvent) {
+		once.Do(func() {
+			runMainThreadAction("AttachFilePromiseReceiver", func() {
+				// NativeWindow is a stored-pointer read (nil when the
+				// window is destroyed -- the C side guards nil).
+				C.millAttachPromiseView(win.w.NativeWindow())
+			})
+		})
 	})
 }
