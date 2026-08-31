@@ -40,6 +40,11 @@
     "meaning": "which tray cluster this noun's own button renders in. AtlasCreationTray.tsx's TRAY_GROUP_ORDER renders 'knowledge' and 'file' flat, primary-first; 'annotate' tools collapse into the tray's one expandable Annotate group instead of rendering flat."
   },
   {
+    "field": "settings",
+    "legalValues": "an array of {key, label, description, defaultValue} boolean setting declarations, or omitted entirely",
+    "meaning": "the noun's own user settings (goal 0258): declared here, rendered generically inside its Settings > Extensions row, persisted centrally per extension id + key. defaultValue applies whenever the user has never touched the toggle. Omitted means the row shows no settings block."
+  },
+  {
     "field": "interaction",
     "legalValues": "'arm-then-click', 'pick-then-place', 'drag-to-draw', 'drag-to-erase', 'ephemeral-drag', or 'paste-or-drop'",
     "meaning": "the authoring gesture that places this noun. Must equal the same field on this id's own shared/atlasToolIdentity.ts entry -- the registry's own agreement check cross-validates the two so they can never silently drift apart."

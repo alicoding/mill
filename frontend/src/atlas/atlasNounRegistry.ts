@@ -48,6 +48,20 @@ export type AtlasToolStyleDefaults = Record<string, unknown>
 // renderer source a `resizable: true` answer must hold true against.
 export type AtlasBoardNodeType = 'atlas-note' | 'atlas-sticky' | 'atlas-group' | 'atlas-object' | null
 
+// ExtensionSettingDecl -- one declared, boolean user setting an
+// extension offers (goal 0258 S1: booleans only; the shape grows by
+// adding variants here, never per-extension UI). `key` is the stable
+// persistence key under the extension's id; `defaultValue` is the
+// behavior with nothing stored -- the store never learns defaults, so
+// changing a default in a later release affects only users who never
+// touched the toggle, exactly the converged settings semantic.
+export interface ExtensionSettingDecl {
+  key: string
+  label: string
+  description: string
+  defaultValue: boolean
+}
+
 interface AtlasToolShapeBase {
   icon: Icon
   // label: the command/button text, sourced from identityOf(id).commandLabel
@@ -89,6 +103,14 @@ interface AtlasToolShapeBase {
   // from this field -- reversible by editing one tool's declaration,
   // never a hand-enumerated JSX reshuffle.
   group: AtlasNounGroup
+  // settings (goal 0258): this noun's own declared user settings,
+  // rendered generically by Settings > Extensions' row disclosure
+  // (views/ExtensionRow.tsx) and persisted centrally
+  // (shared/extensionSettingsStore.ts) -- the extension declares, the
+  // host renders and stores, so no extension ever ships its own
+  // settings page. Optional: most nouns have none, and an absent
+  // array renders no settings block at all.
+  settings?: readonly ExtensionSettingDecl[]
   styleDefaults?: AtlasToolStyleDefaults
   // styleFields (goal 0209): this noun's own declared styleable
   // properties, drawn from atlasStyleVocabulary.ts's closed

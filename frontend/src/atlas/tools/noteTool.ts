@@ -32,6 +32,20 @@ export const noteTool = {
   tray: 'quick',
   // Quick text on the board (goal 0224's disposition table), tray-primary.
   group: 'knowledge',
+  // The first declared extension setting (goal 0258 S1). richCodeBlocks
+  // re-enables the markdown engine's own code-block editor feature that
+  // the canvas trim keeps off by default (milkdownCore.ts's
+  // NOTE_FEATURES) -- an explicit user opt-in is exactly what that trim
+  // left room for. Read at editor mount (MilkdownEditor.tsx), so the
+  // description states the taking-effect honestly.
+  settings: [
+    {
+      key: 'richCodeBlocks',
+      label: 'Rich code blocks',
+      description: 'Code fences get syntax coloring and the full code editor. Applies the next time a note opens for editing.',
+      defaultValue: false,
+    },
+  ],
   interaction: noteIdentity.interaction,
   // Instant placement always disarms after the one click, same as card.
   lockable: false,

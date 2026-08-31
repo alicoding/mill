@@ -1,7 +1,7 @@
 import type { Icon } from '@primer/octicons-react'
 import type { EditRouteDecl, ObjectSource } from '../atlas/objectSeams'
 import type { AtlasToolShape } from '../atlas/atlasTools'
-import type { AtlasNounGroup, ToolLessNounExtension } from '../atlas/atlasNounRegistry'
+import type { AtlasNounGroup, ExtensionSettingDecl, ToolLessNounExtension } from '../atlas/atlasNounRegistry'
 
 // Pure enum -> user-vocabulary mapping for the Extensions section
 // (Settings > Extensions). Kept in its own file, apart from
@@ -33,6 +33,7 @@ export interface ExtensionRowSource {
   editRoute?: EditRouteDecl
   capabilities?: readonly string[]
   disableScopeNote?: string
+  settings?: readonly ExtensionSettingDecl[]
 }
 
 // toolRowSource -- every ATLAS_TOOLS member becomes a row exactly as it
@@ -53,6 +54,7 @@ export function toolRowSource(tool: AtlasToolShape): ExtensionRowSource {
     source: tool.content?.source,
     editRoute: tool.content?.editRoute,
     capabilities: tool.capabilities,
+    settings: tool.settings,
   }
 }
 
@@ -73,6 +75,7 @@ export function toolLessRowSource({ kind, content, extension }: ToolLessNounExte
     editRoute: content.editRoute,
     capabilities: extension.capabilities,
     disableScopeNote: extension.disableScopeNote,
+    settings: extension.settings,
   }
 }
 

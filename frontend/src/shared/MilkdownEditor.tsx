@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { IconButton } from '@primer/react'
 import { BoldIcon, CodeIcon, ItalicIcon, StrikethroughIcon } from '@primer/octicons-react'
 import type { SelectionToolbarAction, SelectionToolbarHandle, SelectionToolbarState } from './milkdownCore'
+import { extensionSetting } from './extensionSettingsStore'
 import styles from './MilkdownEditor.module.css'
 
 export interface MilkdownEditorProps {
@@ -89,7 +90,14 @@ export function MilkdownEditor({ value, onChange, ariaLabel, placeholder, testId
     const crepe = new Crepe({
       root: containerRef.current,
       defaultValue: value,
-      features: NOTE_FEATURES,
+      // The note extension's declared richCodeBlocks setting (goal
+      // 0258) re-enables the engine's own code-block editor feature
+      // over the canvas trim's default-off -- read at mount, so the
+      // setting's own caption honestly says "next time a note opens".
+      features: {
+        ...NOTE_FEATURES,
+        [Crepe.Feature.CodeMirror]: extensionSetting('note', 'richCodeBlocks', false),
+      },
       featureConfigs: placeholder
         ? { [Crepe.Feature.Placeholder]: { text: placeholder } }
         : undefined,

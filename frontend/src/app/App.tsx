@@ -14,9 +14,8 @@ import SecretsView from "../views/SecretsView";
 import PlaceholderView from "../views/PlaceholderView";
 import { CapabilitiesService, ExecutionService, SettingsService } from '../shared/bindings'
 import type { BuildInfo } from '../shared/bindings'
-import { refreshKeybindings, refreshNodeTypes, refreshRequests, refreshWorkflows, useAppStore } from "../shared/store";
-import { refreshVaultStatus } from "../shared/vaultStatusStore";
-import { refreshDisabledExtensions } from "../shared/extensionEnablementStore";
+import { useAppStore } from "../shared/store";
+import { useBootRefresh } from "./useBootRefresh";
 import { useDataChangedRouter } from "./useDataChangedRouter";
 import { WorkTabShell } from "./WorkTabShell";
 import { AppSidebar } from "./AppSidebar";
@@ -199,21 +198,7 @@ function App() {
     return off;
   }, []);
 
-  useEffect(() => {
-    // The shared server-data trio the store owns (workflows for the
-    // sidebar/hotkey handler, nodeTypes/requests for the app-wide
-    // work-tab shell's editors) -- fetched once here, refetched by
-    // whichever surface mutates them.
-    void refreshWorkflows();
-    void refreshNodeTypes();
-    void refreshRequests();
-    void refreshKeybindings();
-    // Vault-lock state door (goal 0222 S1) -- fetched eagerly so
-    // secrets.lockVault/unlockVault's enablement is honest app-wide.
-    void refreshVaultStatus();
-    // Disabled-extension ids (Settings > Extensions) -- fetched eagerly so the tray/palette are honest from first render.
-    void refreshDisabledExtensions();
-  }, []);
+  useBootRefresh();
 
   useEffect(() => {
     CapabilitiesService.List().then((list) => setCapabilities(list ?? [])).catch(console.error);

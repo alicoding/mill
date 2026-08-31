@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { dragBetween } from './fixtures/atlasBoard'
 import { clickAtlasTrayTool } from './fixtures/atlasTray'
+import { placeNoteClear } from './fixtures/atlasEmptyRegion'
 import { deleteViaContextMenu, shapeDrawPoints, shapeObjects } from './fixtures/atlasShapeTool'
 import { paletteDialog } from './fixtures/palette'
 
@@ -326,4 +327,58 @@ test('Disabling the Drawing plugin removes its tray tools and palette commands a
   await page.keyboard.press('Escape')
   await deleteViaContextMenu(page, shapeObjects(page).first())
   await expect(shapeObjects(page)).toHaveCount(0)
+})
+
+// A declared extension setting (goal 0258 S1): the note row's expanded
+// panel renders its declared "Rich code blocks" control generically,
+// the value persists through the central settings blob, and the note
+// editor honors it -- a code fence renders the engine's CodeMirror
+// block only while the setting is on. Cleanup restores the default
+// (off) before the file ends, per this spec's own global-flag rule.
+test('The note row offers its declared Rich code blocks setting, and the note editor honors it', async ({ page }) => {
+  await page.goto('/')
+  await openExtensionsSection(page)
+  const noteRow = page.locator('[data-testid="extensions-row"][data-extension-id="note"]')
+  await noteRow.locator('summary').click()
+  const settingControl = page.getByTestId('extension-setting-note-richCodeBlocks')
+  await expect(settingControl).toBeVisible()
+  await expect(settingControl).toContainText('Rich code blocks')
+  const checkbox = settingControl.locator('input[type="checkbox"]')
+  await expect(checkbox).not.toBeChecked()
+  await checkbox.check()
+  await expect(checkbox).toBeChecked()
+
+  // The editor honors it on the next mount: a note with a code fence
+  // renders CodeMirror's own editor block.
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+  await placeNoteClear(page, board)
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.getAttribute('contenteditable') === 'true'))
+    .toBe(true)
+  await page.keyboard.type('```js', { delay: 30 })
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('const x = 1', { delay: 30 })
+  const sticky = page.getByTestId('atlas-sticky-note')
+  await expect(sticky.locator('.cm-editor')).toBeVisible()
+
+  // Turn the setting back off; a FRESH edit session drops CodeMirror.
+  await openExtensionsSection(page)
+  await noteRow.locator('summary').click()
+  await checkbox.uncheck()
+  await expect(checkbox).not.toBeChecked()
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(board).toBeVisible()
+  await sticky.dblclick()
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.getAttribute('contenteditable') === 'true'))
+    .toBe(true)
+  await expect(sticky.locator('.cm-editor')).toHaveCount(0)
+
+  // Cleanup: the note itself.
+  await page.keyboard.press('Escape')
+  await sticky.click()
+  await page.keyboard.press('Delete')
+  await expect(sticky).toHaveCount(0)
 })

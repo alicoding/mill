@@ -4,6 +4,7 @@ import { refreshKeybindings, refreshNodeTypes, refreshRequests, refreshWorkflows
 import { refreshAIProviders, refreshDeclaredStepTypes, refreshDecisions, refreshExecEnvs, refreshLists, refreshMCPServers } from '../shared/configureEntityStore'
 import { refreshVaultStatus } from '../shared/vaultStatusStore'
 import { refreshDisabledExtensions } from '../shared/extensionEnablementStore'
+import { refreshExtensionSettings } from '../shared/extensionSettingsStore'
 
 // The one mill-data-changed router (docs/adr/0025 + goal 0017), split
 // out of App.tsx (CLAUDE.md's 500-line convention) -- zero behavior
@@ -36,6 +37,7 @@ export function useDataChangedRouter(): void {
       if (entity === 'keybinding') void refreshKeybindings()
       if (entity === 'secret') void refreshVaultStatus()
       if (entity === 'extension') void refreshDisabledExtensions()
+      if (entity === 'extension-setting') void refreshExtensionSettings()
     })
   }, [])
 }
