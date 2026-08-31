@@ -289,6 +289,15 @@ at:
     pointer; Finder ⌘C a .png → ⌘V lands an image object mirroring
     the REAL file path; Finder ⌘C a .md → ⌘V lands a card, same as
     dropping it.
+  - **Canvas navigation with a REAL trackpad** (goal 0257,
+    `shared/canvasNavigation.ts`) — Playwright's wheel is synthetic;
+    a real two-finger scroll, pinch, and ⌘-scroll are OS/driver-bound
+    gestures no harness can produce. Verify on an installed build in
+    default Trackpad mode: two-finger scroll pans the Atlas board in
+    both axes (no zoom), pinch zooms around the pointer, ⌘-scroll
+    zooms; flip Settings > General > Canvas navigation to Mouse and
+    confirm a mouse wheel zooms; confirm the workflow editor follows
+    the same mode without a reload.
   - **File-promise drops: the post-screenshot floating thumbnail**
     (goal 0256, `MillFilePromiseDropView` /
     `AttachFilePromiseReceiver`) — a promise drag needs a real AppKit

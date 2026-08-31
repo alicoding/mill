@@ -1234,6 +1234,10 @@ restart say so.
 ## General
 
 - **Launch at login** — start Mill when you sign in.
+- **Canvas navigation** — how scrolling moves the Atlas board and the
+  workflow canvas. Trackpad: scrolling pans, pinch or ⌘-scroll zooms.
+  Mouse: scrolling zooms, drag pans. Stored per device, so each
+  computer keeps its own choice.
 - **Summon hotkey** — a global shortcut that opens the Quick Panel
   from any app. Recording a combo captures it even if a menu
   shortcut already uses it; Escape cancels recording. The panel's own
