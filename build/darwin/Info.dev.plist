@@ -10,10 +10,17 @@
 		<string>icons</string>
 		<key>CFBundleIconName</key>
 		<string>appicon</string>
+		<!-- Deliberately NOT the installed app's com.alicoding.mill /
+		     "Mill": LaunchServices registers every bundle it ever sees,
+		     and a dev bundle sharing the installed app's identity can win
+		     `open -a Mill` resolution -- the owner then unknowingly runs
+		     real data through a stale dev build (goal 0262). A distinct
+		     id and name keep dev bundles resolvable only by explicit
+		     path. -->
 		<key>CFBundleIdentifier</key>
-		<string>com.alicoding.mill</string>
+		<string>com.alicoding.mill.dev</string>
 		<key>CFBundleName</key>
-		<string>Mill</string>
+		<string>Mill Dev</string>
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>
