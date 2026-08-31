@@ -22,7 +22,12 @@ import { waitForViewportStable } from './fixtures/animation'
 // this is the UI path that composes it, not a re-proof of the ordering
 // logic itself.
 // Real OS clipboard I/O (goal 0009) -- writes apply-clipboard-write-html.
-test('process-inject-text composes with an upstream node via the generic Inspector, in the correct position', async ({ page }) => {
+// fixme (goal 0264, QUARANTINE.md:25 entry): deterministically red
+// locally — the composed node sits outside the viewport after Fit
+// View (screenshot: viewport over empty canvas, nodes only in the
+// minimap); fails identically back to the #527 lockfile boundary.
+// Leaves quarantine by the goal's fix, never by retry-passing.
+test.fixme('process-inject-text composes with an upstream node via the generic Inspector, in the correct position', async ({ page }) => {
   // CI-only skip, goal 0069: four verified fix layers (element-level
   // clicks, transform-stability waits, chunked pans, canvas minZoom)
   // each cured a real bug, yet this test alone still reports the

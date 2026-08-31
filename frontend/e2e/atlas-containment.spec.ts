@@ -177,7 +177,12 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     // flake (goal 0184 migration fix). The header band sits above every
     // child/preview row, so it stays clear regardless of nesting.
     const header = groupArea.getByTestId('atlas-group-header')
+    // ⌘-held: a bare wheel PANS under the default trackpad navigation
+    // mode (goal 0257); ⌘-scroll is the mode-independent zoom gesture
+    // (zoomActivationKeyCode), so this stays a zoom in both modes.
+    await page.keyboard.down('Meta')
     await wheelAt(page, header, 0, -300)
+    await page.keyboard.up('Meta')
     await waitForViewportStable(board)
     const headerBox = await header.boundingBox()
     const groupBox = await groupArea.boundingBox()
@@ -193,7 +198,10 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await interiorInline.fill('ZzC2eInterior')
     await interiorInline.press('Enter')
     await expect(interiorInline).toHaveCount(0)
+    // ⌘-held for the same goal-0257 reason as the zoom-in above.
+    await page.keyboard.down('Meta')
     await wheelAt(page, header, 0, 300)
+    await page.keyboard.up('Meta')
     await waitForViewportStable(board)
     await expect(groupArea.getByTestId('atlas-group-header')).toContainText('3 cards')
 
