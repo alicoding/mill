@@ -38,6 +38,7 @@ import { CurrentStepBar, type RunButtonHandle } from './LiveRunControls'
 import { useCanvasCommandDispatch } from './useCanvasCommandDispatch'
 import styles from './CompositionCanvas.module.css'
 import { newLocalID } from '../shared/localId'
+import { canvasNavigationProps, useCanvasNavigationMode } from '../shared/canvasNavigation'
 
 interface CompositionCanvasProps {
   nodeTypes: NodeType[]
@@ -102,6 +103,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
   const [useCanvasStore] = useState(() => createCanvasStore(initial.nodes, initial.edges, initial.notes))
 
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const canvasNavProps = canvasNavigationProps(useCanvasNavigationMode())
 
   const nodes = useCanvasStore((s) => s.nodes)
   const edges = useCanvasStore((s) => s.edges)
@@ -349,6 +351,10 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
             // before it can reach onNodeDoubleClick above -- off, since a
             // node double-click opens the step-detail overlay instead.
             zoomOnDoubleClick={false}
+            // Scroll/pinch navigation is the user's declared mode (goal
+            // 0257) -- the SAME bundle the Atlas board spreads, one
+            // source so the two canvases can't drift.
+            {...canvasNavProps}
             // React Flow's default minZoom (0.5) caps Fit View: a graph
             // wider than 2x the pane can never be fully brought into
             // view, leaving nodes unreachable on small windows. 0.1

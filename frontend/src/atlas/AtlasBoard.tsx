@@ -45,6 +45,7 @@ import { useAtlasNativeFileDrop } from './useAtlasNativeFileDrop'
 import { useAtlasPaste } from './useAtlasPaste'
 import { useAtlasClipboard } from './useAtlasClipboard'
 import { FILE_DROP_CONTEXT_BOARD } from './atlasFileDropShared'
+import { canvasNavigationProps, useCanvasNavigationMode } from '../shared/canvasNavigation'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasBoard.module.css'
 
@@ -286,6 +287,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   // -- shift-drag box-select is unaffected (selectionKeyCode is
   // independent of panOnDrag).
   const anyDragToolArmed = isFree && !readOnly && armedToolDescriptor?.gesture != null
+  const canvasNavProps = canvasNavigationProps(useCanvasNavigationMode())
 
   // Every board object's own rendered flow-space box (goal 0230): read
   // off the live `nodes` state's own `measured` field (React Flow's own
@@ -366,6 +368,11 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
         // (atlasBuildBoardObjectNodes.ts's own comment has the defect).
         elevateNodesOnSelect={false}
         panOnDrag={!anyDragToolArmed}
+        // Scroll/pinch navigation is the user's declared mode (goal
+        // 0257, shared/canvasNavigation.ts) -- one bundle shared with
+        // the workflow canvas. Independent of the drag gate above: an
+        // armed draw tool owns pointer DRAGS, never the wheel.
+        {...canvasNavProps}
         // Un-filing (goal 0081 slice A2) means dragging a card TOWARD and past the board's
         // own visible edge, on purpose -- React Flow's own default auto-pan-while-dragging
         // would fight that gesture, sliding the content back under the cursor instead of
