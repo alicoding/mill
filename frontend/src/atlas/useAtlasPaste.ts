@@ -4,6 +4,8 @@ import type { PasteResult } from '../../bindings/github.com/alicoding/mill/inter
 import { refreshAtlas } from './atlasStore'
 import { frameContainingPoint } from './atlasFramePoint'
 import { localPathFromPastedText } from './atlasCreateHelpers'
+import { readClipboardImageFile } from '../shared/clipboardRead'
+import { imageTool } from './tools/imageTool'
 import { modalSurfaceOpen } from '../shared/modalGate'
 import type { FrameBox } from './useAtlasDragFiling'
 
@@ -70,14 +72,34 @@ export function useAtlasPaste({ topLevelBoxes, screenToFlowPosition, viewedID, o
       if (isEditableTarget(document.activeElement)) return
       const data = e.clipboardData
       if (!data) return
-      // A copied FILE (a Finder ⌘C) is meant to behave exactly like a
-      // file drop (LOCKED design §2b) -- real absolute paths for a
-      // pasted file are not resolvable through the standard Clipboard
-      // API (the same sandboxing that motivated the native drag-and-drop
-      // door for files), so this door is TEXT/HTML only for now; a
-      // copied file currently falls through as a no-op rather than
-      // faking a path.
-      if (data.files.length > 0) return
+      // A copied FILE (a Finder ⌘C) or a screenshot bitmap arrives as
+      // files, whose real paths the web Clipboard API structurally
+      // never exposes -- so the HOST pasteboard supplies them
+      // (ReadPasteboardFilePaths, goal 0255) and the paste lands with
+      // full drop parity through landFiles. No paths (a pure bitmap,
+      // or a non-Mac host) falls back to the image File's own bytes
+      // through the image tool's commit door. The File ref is taken
+      // synchronously: clipboardData is transient after the handler
+      // returns.
+      if (data.files.length > 0) {
+        const imageFile = readClipboardImageFile(data)
+        e.preventDefault()
+        const filesAnchor = lastMouse.current ?? { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+        void AtlasService.ReadPasteboardFilePaths()
+          .then((paths) => {
+            if (paths && paths.length > 0) return stateRef.current.landFiles(paths, filesAnchor)
+            if (!imageFile) return
+            const { topLevelBoxes: boxes, screenToFlowPosition: toFlow, viewedID: viewed } = stateRef.current
+            const pos = toFlow(filesAnchor)
+            const parent = frameContainingPoint(boxes, pos) ?? viewed
+            return imageTool
+              .commit({ file: imageFile, title: 'Pasted image' })
+              .then((artifact) => AtlasService.CreateBoardObject('image', { mirrorPath: artifact.mirrorPath, title: artifact.title }, { X: pos.x, Y: pos.y }, parent))
+              .then(() => refreshAtlas())
+          })
+          .catch((err) => console.error('pasted file landing failed', err))
+        return
+      }
       const html = data.getData('text/html')
       const text = data.getData('text/plain')
       if (!html && !text) return

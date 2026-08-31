@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alicoding/mill/internal/adapters/clipboard"
 	"github.com/alicoding/mill/internal/adapters/markdown"
 	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/domain/atlas"
@@ -286,6 +287,22 @@ func (a *AtlasService) CreateLinkedFileCard(openCardID, path, title string, posi
 // placement popover ever opens -- never a second, JS-side converter.
 func (a *AtlasService) ConvertHTMLToMarkdown(html string) (string, error) {
 	return markdown.ToMarkdown(html)
+}
+
+// ReadPasteboardFilePaths returns the real absolute paths of any files
+// on the OS pasteboard (a Finder ⌘C) -- the half of a copied-file
+// paste the web Clipboard API structurally can't deliver (it exposes
+// bytes, never paths), so the board's paste door asks the host and
+// routes the answer through the same landing pipeline a drop uses
+// (goal 0255). Fail-closed: no osascript, no file flavor, or any
+// error at all is an empty list -- the paste gesture then falls back
+// to the pasted bytes or a no-op, never an error the user sees.
+func (a *AtlasService) ReadPasteboardFilePaths() []string {
+	paths, err := clipboard.ReadFileURLs()
+	if err != nil {
+		return nil
+	}
+	return paths
 }
 
 // WireFileDropWindow relays window's own native OS file-drop events

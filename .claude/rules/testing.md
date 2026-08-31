@@ -279,6 +279,18 @@ at:
     verify by installing the ntfy Android app, subscribing to a paired
     device's URL, parking an approval, confirming the phone receives it
     backgrounded, and tapping lands on Review.
+  - **Board ⌘V with a REAL pasteboard: screenshot bitmap and Finder
+    ⌘C** (goal 0255, `ReadPasteboardFilePaths`/`clipboard.ReadFileURLs`)
+    — real pasteboard file flavors and WKWebView's own ⌘V event
+    delivery are both OS-bound (the e2e drives a synthesized
+    files-carrying paste and the fail-closed empty-paths branch, never
+    the real gesture). Verify on an installed build: ⌃⇧⌘4 a region
+    (clipboard screenshot) → ⌘V on the board lands the image at the
+    pointer; Finder ⌘C a .png → ⌘V lands an image object mirroring
+    the REAL file path; Finder ⌘C a .md → ⌘V lands a card, same as
+    dropping it. Known-refused, not a defect: dragging the
+    post-screenshot floating thumbnail shows the no-entry cursor
+    (upstream file-promise gap, BACKLOG 0P0-PROMISE).
 
 **Tests drive user primitives, not synthetic events.** An interaction
 test reaches behavior through the same primitives a user has — real

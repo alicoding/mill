@@ -51,10 +51,13 @@ connected by links, grouped into areas you can drill into.
 
 ## Drawing and images
 
-- **Images and ink live on the board, not inside a card.** Pick Image
-  in the toolbar, choose a file, or paste a screenshot — it lands at
-  its own size, right where you put it. Pasting an image file's path
-  as text works too: the board shows the image from that file.
+- **Images and ink live on the board, not inside a card.** Take a
+  screenshot to the clipboard and press ⌘V on the board — the image
+  lands at your pointer, at its own size. Copy a file in Finder and
+  paste it, and it lands exactly the way dropping it would: an image
+  as an image, a diagram as a diagram, a document as a card. The
+  Image button in the toolbar offers a file picker and a paste zone
+  too, and pasting an image file's path as text also works.
   Dropping an image file onto the board does the same. Pick Pencil and drag to draw; lift and draw
   again for the next stroke, no interruption. Either one is a thing in
   space you can move, select, and delete, and ink stays visually on
