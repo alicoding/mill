@@ -11,3 +11,17 @@
 export const FILE_DROP_EVENT_NAME = 'atlas-native-file-drop'
 export const FILE_DROP_CONTEXT_BOARD = 'board'
 export const FILE_DROP_CONTEXT_CARD_PAGE = 'card-page'
+
+// resolveDropContext answers WHERE a native drop landed: the payload's
+// own context when the toolkit's attribute hit-test supplied one, else
+// a DOM hit-test at the drop coordinates -- the file-promise receiver
+// (goal 0256) delivers materialized paths plus coordinates but no
+// attribute walk, so its payloads arrive with an empty context. Null
+// when the point hits no declared drop target (the drop is ignored,
+// same as the toolkit answering no attributes).
+export function resolveDropContext(payload: { context?: string; x?: number; y?: number }): string | null {
+  if (payload.context) return payload.context
+  if (payload.x === undefined || payload.y === undefined) return null
+  const el = document.elementFromPoint(payload.x, payload.y)
+  return el?.closest('[data-file-drop-context]')?.getAttribute('data-file-drop-context') ?? null
+}

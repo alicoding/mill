@@ -6,7 +6,7 @@ import { AtlasService } from '../shared/bindings'
 import { titleFromFilename } from './atlasCreateHelpers'
 import { freeChildPosition } from './atlasContainmentPlacement'
 import { useAtlasFolderImportRequestStore } from './atlasFolderImportRequest'
-import { FILE_DROP_EVENT_NAME, FILE_DROP_CONTEXT_CARD_PAGE } from './atlasFileDropShared'
+import { FILE_DROP_EVENT_NAME, FILE_DROP_CONTEXT_CARD_PAGE, resolveDropContext } from './atlasFileDropShared'
 
 // The card-foremost half of the native OS file-drop door (D5, LOCKED
 // design): while a card's page is open, a dropped file becomes a
@@ -36,8 +36,9 @@ export function useAtlasCardPageFileDrop({ card, allCards, onSaved, onError }: {
 
   useEffect(() => {
     return Events.On(FILE_DROP_EVENT_NAME, (evt) => {
-      const payload = evt.data as { filenames?: string[]; context?: string } | undefined
-      if (!payload || payload.context !== FILE_DROP_CONTEXT_CARD_PAGE || !payload.filenames?.length) return
+      const payload = evt.data as { filenames?: string[]; x?: number; y?: number; context?: string } | undefined
+      if (!payload || !payload.filenames?.length) return
+      if (resolveDropContext(payload) !== FILE_DROP_CONTEXT_CARD_PAGE) return
       const { card: openCard, allCards: cards, onSaved: saved, onError: fail, requestFolderImport: request } = stateRef.current
 
       AtlasService.ResolveFileDropRoute(payload.filenames)
