@@ -20,7 +20,10 @@ connected by links, grouped into areas you can drill into.
   live diagrams. Drop a `.drawio` or `.mmd` file and it renders the
   same way, updating automatically whenever you edit that file outside
   Mill — a missing file shows a clear notice with a button to choose
-  another one. General and flowchart shapes render with their real
+  another one. Click anywhere on a diagram to select it and get its
+  resize handles. A multi-page draw.io file shows page arrows when you
+  hover it, so you can flip through its pages right on the board.
+  General and flowchart shapes render with their real
   outlines; less common shape libraries still show as plain boxes.
   Drop an `.xlsx` or `.csv` file and it shows a preview of its first
   sheet, updating automatically whenever the file changes. For a CSV,

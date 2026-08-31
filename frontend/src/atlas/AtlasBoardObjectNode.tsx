@@ -1,6 +1,6 @@
 import { memo, Suspense, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NodeResizer } from '@xyflow/react'
+import { NodeResizer, useReactFlow } from '@xyflow/react'
 import type { NodeProps, Node as RFNode } from '@xyflow/react'
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
@@ -33,9 +33,10 @@ export type AtlasBoardObjectRFNode = RFNode<AtlasBoardObjectData>
 // boardObjectContentFor). No title, no flip, no connection handles --
 // structurally excluded from every card mechanism, the same way
 // AtlasStickyNode's note is.
-function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjectRFNode>) {
+function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardObjectRFNode>) {
   const { t } = useTranslation('atlas')
   const { object, soleSelected } = data
+  const { setNodes } = useReactFlow()
   const isShape = object.Kind === 'shape'
   // A persisted Size wins forever (goal 0193's own no-auto-resize
   // rule) -- once set, the node's own RF width/height already carry
@@ -161,7 +162,31 @@ function AtlasBoardObjectNodeInner({ data, selected }: NodeProps<AtlasBoardObjec
           real code-split boundary for a lazy one (table/diagram, whose
           own content pulls @primer/react -- tools/tableTool.ts's own
           header explains why that stays lazy). */}
-      <div className={styles.content}>
+      {/* A dragBand Kind's content captures pointer events (the very
+          fact dragBand declares), which also swallows the pointerdown
+          React Flow's own click-to-select listens for -- so without
+          this, the thin band above is the ONLY place a click can ever
+          produce the selection ring and resize handles (goal 0259's
+          dead end). Forwarding selection at capture phase runs before
+          the content's own handlers can consume the event, and leaves
+          propagation untouched: the viewer's toolbar/pan and a grid's
+          cell edit keep working exactly as before. Mirrors React
+          Flow's own click semantics: plain click selects just this
+          node, shift/meta adds to the selection, and a click on an
+          already-selected node changes nothing. */}
+      <div
+        className={styles.content}
+        onPointerDownCapture={dragBand ? (e) => {
+          // Primary button only: a right-click must reach the context
+          // menu with the CURRENT selection intact (a multi-select
+          // context menu reads it), never collapse it first.
+          if (selected || e.button !== 0) return
+          const additive = e.shiftKey || e.metaKey
+          setNodes((nds) => nds.map((n) => (
+            n.id === id ? { ...n, selected: true } : additive ? n : { ...n, selected: false }
+          )))
+        } : undefined}
+      >
         <Suspense fallback={null}>
           {/* mirrorContent/fetchListProjection/repickMirror: the three
               host-resolved kernel seams a Kind's own Component may need

@@ -117,3 +117,54 @@ test('a diagram board object offers "Open in default app"; a shape object does n
   await menu.getByText('Delete', { exact: true }).click()
   await expect(diagramObjects(page)).toHaveCount(0)
 })
+
+// Two pages, two goal-0259 regressions pinned on the same object:
+// (1) clicking the diagram BODY selects the object -- the vendored
+// viewer consumes the pointerdown React Flow's own click-to-select
+// needs, so without the shared renderer's capture-phase forwarding the
+// thin chrome band is the only selection surface and the resize frame
+// is unreachable from where a user actually clicks; (2) a multi-page
+// file's pages are switchable right on the board face via the viewer's
+// own pages toolbar cluster, without opening the editor.
+const DRAWIO_TWO_PAGE_XML = `<mxfile host="mill-e2e"><diagram id="page1" name="Page-1"><mxGraphModel dx="800" dy="600" grid="1" gridSize="10" tooltips="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100"><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="2" value="FirstPageCell" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="120" y="120" width="160" height="60" as="geometry"/></mxCell></root></mxGraphModel></diagram><diagram id="page2" name="Page-2"><mxGraphModel dx="800" dy="600" grid="1" gridSize="10" tooltips="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100"><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="2" value="SecondPageCell" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="120" y="120" width="160" height="60" as="geometry"/></mxCell></root></mxGraphModel></diagram></mxfile>`
+
+test('clicking a diagram body selects the object, and a multi-page file pages right on the board face', async ({ page }) => {
+  const fs = await import('node:fs')
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mill-e2e-diagram-pages-'))
+  const drawioFile = path.join(dir, 'ZzE2eDiagramPages.drawio')
+  fs.writeFileSync(drawioFile, DRAWIO_TWO_PAGE_XML)
+
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await createBoardObjectViaRPC(page, 'diagram', { mirrorPath: drawioFile }, { X: 0, Y: 820 }, ATLAS_DEFAULT_SPACE_ID)
+  await page.reload()
+  await page.getByRole('link', { name: 'Atlas' }).click()
+
+  const diagramObject = diagramObjects(page)
+  await expect(diagramObject.getByText('FirstPageCell')).toBeVisible()
+
+  // (1) Body click -> selected: the shared resize handles appear, the
+  // same observable the band click already produced.
+  await diagramObject.getByText('FirstPageCell').click()
+  await expect(page.locator('.react-flow__resize-control.handle.top.right')).toBeVisible()
+
+  // (2) The viewer's own pages cluster (prev / "1 / 2" / next) shows on
+  // the face for a multi-page file, and paging swaps the rendered page
+  // in place.
+  await diagramObject.hover()
+  await expect(page.getByText('1 / 2', { exact: true })).toBeVisible()
+  await page.locator('[title="Next Page"]').click()
+  await expect(diagramObject.getByText('SecondPageCell')).toBeVisible()
+  await expect(diagramObject.getByText('FirstPageCell')).toHaveCount(0)
+
+  // Cleanup.
+  await diagramObject.click({ button: 'right' })
+  const menu = page.getByTestId('context-menu')
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+  await expect(diagramObjects(page)).toHaveCount(0)
+})

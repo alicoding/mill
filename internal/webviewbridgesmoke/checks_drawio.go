@@ -68,8 +68,10 @@ func landTwoPageDiagram(c mcpCaller) error {
 	return nil
 }
 
-// bandSel is the diagram's chrome band -- its ONLY selection surface
-// (the vendored viewer captures body clicks for pan/zoom).
+// bandSel is the diagram's chrome band -- the drag surface (the
+// vendored viewer captures body pointer events for pan/zoom; a body
+// CLICK still selects via the shared renderer's capture-phase
+// forwarding, goal 0259).
 const drawioBandSel = `.react-flow__node [data-testid="atlas-board-object-frame"]`
 
 // openDrawioEditor double-clicks the band to open the embedded editor.
@@ -101,6 +103,24 @@ func openDrawioEditor(c mcpCaller, dialogSel string) error {
 func checkDrawioEditorLayout(c mcpCaller) (string, error) {
 	if err := landTwoPageDiagram(c); err != nil {
 		return "", err
+	}
+
+	// Clicking the diagram BODY must select in the real engine too
+	// (goal 0259): the shared renderer forwards selection at capture
+	// phase before the vendored viewer can consume the pointerdown --
+	// pointer/selection semantics are the known engine-divergence
+	// class, so the Chromium e2e alone doesn't prove this.
+	if _, err := c.call("mouse_click", withWindow(map[string]any{"selector": `[data-testid="atlas-drawio-page-body"]`})); err != nil {
+		return "", err
+	}
+	if err := pollJSEval(c, `return document.querySelectorAll('.react-flow__resize-control').length >= 8;`, 5*time.Second); err != nil {
+		return "", fmt.Errorf("resize handles never appeared after clicking the diagram body: %w", err)
+	}
+	if _, err := c.call("keyboard_press", withWindow(map[string]any{"key": "Escape"})); err != nil {
+		return "", err
+	}
+	if err := pollJSEval(c, `return document.querySelectorAll('.react-flow__resize-control').length === 0;`, 5*time.Second); err != nil {
+		return "", fmt.Errorf("selection never cleared after Escape: %w", err)
 	}
 
 	// Selecting the band must produce the shared NodeResizer's full
