@@ -116,7 +116,12 @@ export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: stri
     const host = ref.current
     if (!host || !xml) return
     let cancelled = false
-    host.setAttribute('data-mxgraph', JSON.stringify({ xml, resize: true, toolbar: 'zoom', editable: false, lightbox: false }))
+    // 'pages' is the viewer's own prev/next page selector (goal 0259):
+    // it renders ahead of the zoom cluster only when the file has more
+    // than one page (the viewer hides it otherwise), so a multi-page
+    // diagram's pages are reachable right on the rendered face without
+    // opening the editor.
+    host.setAttribute('data-mxgraph', JSON.stringify({ xml, resize: true, toolbar: 'pages zoom', editable: false, lightbox: false }))
     loadDrawioViewer()
       .then((GraphViewer) => {
         if (cancelled) return
