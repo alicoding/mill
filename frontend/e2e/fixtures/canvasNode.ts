@@ -61,23 +61,49 @@ export async function clickCanvasNode(page: Page, panel: Locator, label: string)
       const dx = paneCenter.x - nodeCenter.x
       const dy = paneCenter.y - nodeCenter.y
       if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
-        // Anchored at the pane's bottom-center, not top-center: the
-        // canvas toolbar Panel spans the top-left and can reach past
-        // the pane's own horizontal center, so a top-anchored drag can
-        // itself start on top of it -- bottom-center clears the
-        // toolbar (top) and both Controls/MiniMap (corners) alike.
+        // The drag anchor must be a point whose REAL hit-test target
+        // is the pane itself -- never assumed from geometry. A fixed
+        // bottom-center anchor silently landed on the MiniMap once the
+        // Inspector narrowed the pane below ~2x the MiniMap's width: a
+        // MiniMap drag pans INVERTED and amplified, so every chunk
+        // flung the graph further away and the retry loop repeated it
+        // deterministically (goal 0264's root cause -- and goal
+        // 0069's "CI-only" geometry was this same collision at CI's
+        // narrower pane). elementFromPoint over a candidate grid finds
+        // a spot where a press really starts a pane drag; re-picked
+        // per chunk since each pan slides nodes under old anchors.
+        // Same occluded-drag-start class fixtures/atlasBoard.ts's
+        // hittablePointOn already fixes for atlas card drags -- this
+        // is that verification applied to the pane-pan press.
         // Chunked: a single drag to (anchor + d) can exceed the window
         // bounds for a far-off node, and mouse events outside the
         // window are lost -- the pan silently truncates and the node
         // stays unreachable. Cap each drag well inside the pane and
         // repeat.
-        const anchor = { x: paneBox.x + paneBox.width / 2, y: paneBox.y + paneBox.height - 20 }
         const maxChunk = Math.min(paneBox.width, paneBox.height) / 3
         let rx = dx
         let ry = dy
         for (let i = 0; i < 8 && (Math.abs(rx) > 1 || Math.abs(ry) > 1); i++) {
           const cx = Math.max(-maxChunk, Math.min(maxChunk, rx))
           const cy = Math.max(-maxChunk, Math.min(maxChunk, ry))
+          const anchor = await page.evaluate(({ pane, cdx, cdy }) => {
+            // Both the press point AND its drag end point must land on
+            // open pane -- a drag ending on chrome is fine (only the
+            // press target matters to d3-zoom), but a press on a NODE
+            // would drag the node, so exclude every interactive layer.
+            const fractions = [0.5, 0.35, 0.65, 0.2, 0.8]
+            for (const fy of fractions) {
+              for (const fx of fractions) {
+                const x = pane.x + pane.width * fx
+                const y = pane.y + pane.height * fy
+                if (x + cdx < pane.x || x + cdx > pane.x + pane.width || y + cdy < pane.y || y + cdy > pane.y + pane.height) continue
+                const el = document.elementFromPoint(x, y)
+                if (el && el.classList.contains('react-flow__pane')) return { x, y }
+              }
+            }
+            return null
+          }, { pane: paneBox, cdx: cx, cdy: cy })
+          if (!anchor) break
           await page.mouse.move(anchor.x, anchor.y)
           await page.mouse.down()
           await page.mouse.move(anchor.x + cx, anchor.y + cy, { steps: 5 })
