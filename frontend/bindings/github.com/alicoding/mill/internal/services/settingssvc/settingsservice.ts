@@ -231,6 +231,15 @@ export function GetDisplayDensity(): $CancellablePromise<string> {
 }
 
 /**
+ * GetExtensionSettings returns every stored per-extension setting
+ * value. Never nil — always at least an empty map, so a caller can
+ * json-encode it straight to the frontend without a nil check.
+ */
+export function GetExtensionSettings(): $CancellablePromise<{ [_ in string]?: { [_ in string]?: boolean } | null } | null> {
+    return $Call.ByID(1523849532);
+}
+
+/**
  * GetLaunchAtLogin queries the real OS registration state via
  * SMAppService (internal/adapters/launchatlogin) rather than a
  * persisted preference -- authoritative even if the user changed it
@@ -573,6 +582,16 @@ export function SetDisplayDensity(density: string): $CancellablePromise<void> {
  */
 export function SetExtensionEnabled(id: string, enabled: boolean): $CancellablePromise<void> {
     return $Call.ByID(3200447126, id, enabled);
+}
+
+/**
+ * SetExtensionSetting stores one extension's one declared-setting
+ * value, persists the updated blob, and emits dataevent so every open
+ * consumer (the Extensions section, a canvas surface reading the
+ * setting) refreshes live rather than only after a reload.
+ */
+export function SetExtensionSetting(extensionID: string, key: string, value: boolean): $CancellablePromise<void> {
+    return $Call.ByID(2797582563, extensionID, key, value);
 }
 
 /**

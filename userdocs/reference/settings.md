@@ -22,6 +22,17 @@ restart say so.
   and any update action currently available — match the command
   palette exactly, since both read from the same list.
 
+## Extensions
+
+Every canvas object type is listed here with a toggle; turning one
+off hides its tray button (or, for file-backed types like Diagram and
+Sheet, stops new ones landing on drop). Some extensions offer their
+own settings inside the row — expand the row to find them. The Note
+offers **Rich code blocks**: turn it on and code fences in notes get
+syntax coloring and the full code editor, starting the next time a
+note opens for editing. Installed plugins appear below the built-in
+list with their own rows.
+
 ## Keyboard shortcuts
 
 Every command Mill exposes, searchable, with editable bindings.

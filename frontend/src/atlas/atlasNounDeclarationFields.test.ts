@@ -29,6 +29,7 @@ const EXHAUSTIVE_FIELD_KEYS = {
   shortcutKey: true,
   tray: true,
   group: true,
+  settings: true,
   interaction: true,
   styleDefaults: true,
   styleFields: true,

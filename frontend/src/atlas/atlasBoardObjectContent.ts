@@ -4,7 +4,7 @@ import type { BoardObject } from '../../bindings/github.com/alicoding/mill/inter
 import type { ListProjection } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import type { EditRouteDecl, ObjectSource } from './objectSeams'
 import type { MirrorReadState } from './useAtlasObjectMirrorRead'
-import type { AtlasNounGroup } from './atlasNounRegistry'
+import type { AtlasNounGroup, ExtensionSettingDecl } from './atlasNounRegistry'
 import { AtlasUnknownKindContent } from './AtlasUnknownKindContent'
 
 // The board-object CONTENT registry -- split out of atlasNounRegistry.ts
@@ -107,6 +107,10 @@ export interface ExtensionRowMeta {
   description: string
   disableScopeNote: string
   capabilities?: readonly string[]
+  // settings (goal 0258): same declared-settings contract
+  // AtlasToolShapeBase.settings carries for a tray tool -- see that
+  // field's own comment for the declare/render/store split.
+  settings?: readonly ExtensionSettingDecl[]
   // group (goal 0237 S3's Extensions-list review rider): the same tray
   // cluster AtlasToolShapeBase.group declares, REQUIRED for the same
   // reason -- Settings > Extensions groups every row into one of three
