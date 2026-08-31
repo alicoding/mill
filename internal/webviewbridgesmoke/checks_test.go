@@ -125,18 +125,20 @@ func TestCheckIsolatedDataBadge(t *testing.T) {
 	})
 }
 
-// realWindows is the app's true three-window shape (ADR-0033) as
-// app_info reports it.
+// realWindows is the app's true window shape (ADR-0033 plus the
+// menu-bar panel's attachable window, goal 0189) as app_info reports
+// it.
 func realWindows() []map[string]any {
 	return []map[string]any{
 		{"name": "main", "visible": true},
 		{"name": "quickpanel", "visible": false},
 		{"name": "approvalprompt", "visible": false},
+		{"name": "traypanel", "visible": false},
 	}
 }
 
 func TestCheckAppInfo(t *testing.T) {
-	t.Run("darwin, real three-window shape", func(t *testing.T) {
+	t.Run("darwin, real window set", func(t *testing.T) {
 		f := newFakeCaller()
 		f.onJSON("app_info", map[string]any{"os": "darwin", "windows": realWindows()})
 		detail, err := checkAppInfo(f)

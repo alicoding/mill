@@ -28,9 +28,21 @@ import (
 
 const (
 	mcpHost        = "127.0.0.1"
-	mcpPort        = 9099
 	appBootTimeout = 30 * time.Second
 )
+
+// mcpPort defaults to the bridge's own 9099 but yields to
+// MILL_SMOKE_MCP_PORT -- the installed production app holds 9099
+// itself (its release build ships the bridge), so a smoke run beside
+// a live Mill needs its own port rather than a quit-and-relaunch.
+var mcpPort = func() int {
+	if v := os.Getenv("MILL_SMOKE_MCP_PORT"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n < 65536 {
+			return n
+		}
+	}
+	return 9099
+}()
 
 func main() {
 	if err := run(); err != nil {

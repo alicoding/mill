@@ -97,7 +97,7 @@ var registry = []check{
 	},
 	{
 		name:   "app-info-window-sane",
-		reason: "the real Wails process reports the app's true three-window shape on darwin (main + quickpanel + approvalprompt, ADR-0033) -- proves a genuine desktop process booted with its real window set, not just that a binary exists.",
+		reason: "the real Wails process reports the app's true window set on darwin (main + quickpanel + approvalprompt + traypanel, ADR-0033 + goal 0189) -- proves a genuine desktop process booted with its real window set, not just that a binary exists.",
 		run:    checkAppInfo,
 	},
 	{
@@ -119,6 +119,11 @@ var registry = []check{
 		name:   "sticky-click-to-edit",
 		reason: "owner-reported on the installed beta.724 (WebKit): click-to-edit a sticky got jumpy and the editor never opened; Chromium layers all pass -- the exact engine-parity class this registry exists for.",
 		run:    checkStickyClickToEdit,
+	},
+	{
+		name:   "drawio-editor-layout",
+		reason: "owner-reported on the installed build (goal 0259): the embedded drawio editor's bottom page-tab bar sat outside the visible window with no scroll to it, and the diagram's resize frame seemed absent -- both measure CORRECT in Chromium at harness sizes, the exact engine/window-divergence class this registry exists for. Asserts, in the real WKWebView: band-click selection produces the full resize-handle set, and the editor dialog, its iframe, and the two-page tab bar all sit inside the real window.",
+		run:    checkDrawioEditorLayout,
 	},
 	{
 		name:   "sticky-border-color-flip",
@@ -151,10 +156,12 @@ func checkAppInfo(c mcpCaller) (string, error) {
 	if info.OS != "darwin" {
 		return "", fmt.Errorf("expected os darwin, got %q", info.OS)
 	}
-	// The app's real window set (ADR-0033): the named main window plus
-	// the two auxiliary windows. Asserted by name, not count, so a
-	// missing or unexpected window is named in the failure.
-	want := map[string]bool{mainWindowName: false, "quickpanel": false, "approvalprompt": false}
+	// The app's real window set (ADR-0033, plus the menu-bar panel's
+	// own attachable window -- goal 0189's SystemTray.AttachWindow):
+	// the named main window plus the three auxiliary windows. Asserted
+	// by name, not count, so a missing or unexpected window is named
+	// in the failure.
+	want := map[string]bool{mainWindowName: false, "quickpanel": false, "approvalprompt": false, "traypanel": false}
 	mainVisible := false
 	for _, w := range info.Windows {
 		seen, expected := want[w.Name]
@@ -177,7 +184,7 @@ func checkAppInfo(c mcpCaller) (string, error) {
 	if !mainVisible {
 		return "", fmt.Errorf("main window reported not visible")
 	}
-	return fmt.Sprintf("os=%s windows=main+quickpanel+approvalprompt, main visible", info.OS), nil
+	return fmt.Sprintf("os=%s windows=main+quickpanel+approvalprompt+traypanel, main visible", info.OS), nil
 }
 
 // pollJSEval retries a boolean-returning js_eval snippet until it's
