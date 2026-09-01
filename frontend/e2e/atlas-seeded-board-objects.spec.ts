@@ -75,6 +75,24 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     await expect(diagram).toBeVisible()
     await expect(page.getByTestId('atlas-object-diagram-error')).toHaveCount(0)
     await expect(page.getByTestId('atlas-object-diagram-loading')).toHaveCount(0)
+
+    // Pdf (goal 0267): the vendored pdf.js viewer renders the seeded
+    // two-page document -- page 1's real canvas paints inside the
+    // viewer iframe, and the viewer's OWN next-page control reaches
+    // page 2 (the page-flip proof, through the engine's own UI, the
+    // same adopt-the-viewer's-controls choice the drawio face made).
+    const pdf = page.locator('[data-testid="atlas-board-object"][data-object-kind="pdf"]')
+    await expect(pdf).toBeVisible()
+    const viewer = page.frameLocator('[data-testid="atlas-pdf-viewer"]')
+    await expect(viewer.locator('.page[data-page-number="1"] canvas')).toBeVisible()
+    await expect(viewer.locator('#numPages')).toContainText('2')
+    // At board-tile widths the viewer's own responsive toolbar
+    // collapses prev/next; the page-number INPUT is the always-visible
+    // paging control -- drive that (a real user primitive on the
+    // control the user actually sees).
+    await viewer.locator('#pageNumber').fill('2')
+    await viewer.locator('#pageNumber').press('Enter')
+    await expect(viewer.locator('.page[data-page-number="2"] canvas')).toBeVisible()
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

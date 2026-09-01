@@ -13,6 +13,7 @@ import { thirdPartyNounForExtension, type ThirdPartyNounShape } from './atlasNou
 import { isDiagramPath, useAtlasDiagramObjectCreate } from './useAtlasDiagramObjectCreate'
 import { isImagePath, useAtlasImageObjectCreate } from './useAtlasImageObjectCreate'
 import { isSheetPath, useAtlasSheetObjectCreate } from './useAtlasSheetObjectCreate'
+import { isPdfPath, useAtlasPdfObjectCreate } from './useAtlasPdfObjectCreate'
 import type { FrameBox } from './useAtlasDragFiling'
 
 const DROP_ERROR_MS = 4000
@@ -33,7 +34,7 @@ const PULSE_MS_REDUCED = 1500
 // data out. isEnabled and the claim lookup are injected rather than
 // read from the stores directly so a test can drive every branch
 // without touching global state.
-export type FileDropKind = 'diagram' | 'image' | 'sheet' | 'card'
+export type FileDropKind = 'diagram' | 'image' | 'sheet' | 'pdf' | 'card'
 
 export function resolveFileDropKind(
   path: string,
@@ -43,6 +44,7 @@ export function resolveFileDropKind(
   if (isDiagramPath(path) && isEnabled('diagram')) return 'diagram'
   if (isImagePath(path)) return 'image'
   if (isSheetPath(path) && isEnabled('sheet')) return 'sheet'
+  if (isPdfPath(path) && isEnabled('pdf')) return 'pdf'
   return claimedNounForExtension(extensionOf(path)) ?? 'card'
 }
 
@@ -69,14 +71,15 @@ export function useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPo
   const diagramObjectCreate = useAtlasDiagramObjectCreate()
   const imageObjectCreate = useAtlasImageObjectCreate()
   const sheetObjectCreate = useAtlasSheetObjectCreate()
+  const pdfObjectCreate = useAtlasPdfObjectCreate()
 
   // Latest-refs (useBoardFocus.ts's own convention): the Events.On
   // subscription below is set up once and must never re-fire on every
   // unrelated re-render, but always needs this render's current values.
-  const stateRef = useRef({ parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion, diagramObjectCreate, imageObjectCreate, sheetObjectCreate })
+  const stateRef = useRef({ parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion, diagramObjectCreate, imageObjectCreate, sheetObjectCreate, pdfObjectCreate })
   useEffect(() => {
-    stateRef.current = { parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion, diagramObjectCreate, imageObjectCreate, sheetObjectCreate }
-  }, [parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion, diagramObjectCreate, imageObjectCreate, sheetObjectCreate])
+    stateRef.current = { parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion, diagramObjectCreate, imageObjectCreate, sheetObjectCreate, pdfObjectCreate }
+  }, [parentID, topLevelBoxes, screenToFlowPosition, requestFolderImport, setPulsedID, reduceMotion, diagramObjectCreate, imageObjectCreate, sheetObjectCreate, pdfObjectCreate])
 
   // The drop door's LANDING half, split from the OS drop gesture so the
   // board's paste door can land a pasted file PATH through the exact
@@ -86,7 +89,7 @@ export function useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPo
   // OS drop shows dropError below, a pasted path falls back to the
   // ordinary text-paste flow (useAtlasPaste.ts).
   const landFiles = useCallback((filenames: string[], screenPoint: { x: number; y: number }) => {
-    const { topLevelBoxes: boxes, screenToFlowPosition: toFlow, parentID: currentParentID, requestFolderImport: request, setPulsedID: pulse, reduceMotion: reduced, diagramObjectCreate: diagramCreate, imageObjectCreate: imageCreate, sheetObjectCreate: sheetCreate } = stateRef.current
+    const { topLevelBoxes: boxes, screenToFlowPosition: toFlow, parentID: currentParentID, requestFolderImport: request, setPulsedID: pulse, reduceMotion: reduced, diagramObjectCreate: diagramCreate, imageObjectCreate: imageCreate, sheetObjectCreate: sheetCreate, pdfObjectCreate: pdfCreate } = stateRef.current
     const point = toFlow(screenPoint)
     const targetParentID = frameContainingPoint(boxes, point) ?? currentParentID
 
@@ -121,6 +124,8 @@ export function useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPo
               return imageCreate.land(path, targetParentID, { X: point.x, Y: point.y })
             case 'sheet':
               return sheetCreate.land(path, targetParentID, { X: point.x, Y: point.y })
+            case 'pdf':
+              return pdfCreate.land(path, targetParentID, { X: point.x, Y: point.y })
             case 'card':
               return AtlasService.CreateCardFromFileDrop(path, titleFromFilename(path), targetParentID, { X: point.x, Y: point.y })
                 .then((result) => refreshAtlas().then(() => {

@@ -39,6 +39,17 @@ describe('resolveFileDropKind (goal 0237 S3 rider)', () => {
     expect(resolveFileDropKind('/tmp/photo.png', alwaysDisabled)).toBe('image')
   })
 
+  it('routes a .pdf path to "pdf" when enabled, case-insensitively (goal 0267)', () => {
+    expect(resolveFileDropKind('/tmp/report.pdf', alwaysEnabled)).toBe('pdf')
+    expect(resolveFileDropKind('/tmp/REPORT.PDF', alwaysEnabled)).toBe('pdf')
+  })
+
+  // Same fall-through as diagram/sheet -- pdf has no tray button
+  // either.
+  it('falls a disabled pdf drop through to the "card" path', () => {
+    expect(resolveFileDropKind('/tmp/report.pdf', (id) => id !== 'pdf')).toBe('card')
+  })
+
   it('falls an unrelated extension through to "card"', () => {
     expect(resolveFileDropKind('/tmp/notes.md', alwaysEnabled)).toBe('card')
   })

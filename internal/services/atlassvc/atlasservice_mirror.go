@@ -21,6 +21,14 @@ import (
 // read into memory.
 const mirrorPreviewMaxBytes = 5 * 1024 * 1024 // 5MB
 
+// pdfPreviewMaxBytes is MirrorKindPdf's own, larger cap: real working
+// PDFs routinely exceed the 5MB text/image preview budget, and the
+// vendored viewer streams from an in-memory blob without parsing cost
+// on the Go side. Past this, the face shows the honest too-large state
+// with open-in-default-app (goal 0267; revisit toward a streaming
+// asset door if large boards feel it).
+const pdfPreviewMaxBytes = 25 * 1024 * 1024 // 25MB
+
 // MirrorContent resolves cardID's MirrorPath into a read-only overlay
 // preview: markdown renders to HTML, plain text passes through as-is,
 // an image or a binary spreadsheet becomes base64-encoded bytes paired
@@ -84,7 +92,11 @@ func mirrorContentForPath(path string) (atlas.MirrorContent, error) {
 	if kind == atlas.MirrorKindOther {
 		return out, nil
 	}
-	if size > mirrorPreviewMaxBytes {
+	capBytes := int64(mirrorPreviewMaxBytes)
+	if kind == atlas.MirrorKindPdf {
+		capBytes = pdfPreviewMaxBytes
+	}
+	if size > capBytes {
 		out.TooLarge = true
 		return out, nil
 	}
@@ -108,6 +120,9 @@ func mirrorContentForPath(path string) (atlas.MirrorContent, error) {
 		out.Content = base64.StdEncoding.EncodeToString([]byte(raw))
 	case atlas.MirrorKindSheet:
 		out.MimeType = atlas.MirrorSheetMimeType(path)
+		out.Content = base64.StdEncoding.EncodeToString([]byte(raw))
+	case atlas.MirrorKindPdf:
+		out.MimeType = "application/pdf"
 		out.Content = base64.StdEncoding.EncodeToString([]byte(raw))
 	case atlas.MirrorKindOther:
 		// Unreachable (handled above) -- listed so this switch stays
