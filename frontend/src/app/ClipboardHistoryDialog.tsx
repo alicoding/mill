@@ -8,6 +8,7 @@ import { useAppStore } from '../shared/store'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { ClipboardHistoryDetail } from './ClipboardHistoryDetail'
 import styles from './ClipboardHistoryDialog.module.css'
+import { searchInputTextAssistOff } from '../shared/searchInputProps'
 
 const PREVIEW_LINE_CAP = 80
 
@@ -105,6 +106,7 @@ export function ClipboardHistoryDialog() {
             filterValue={query}
             onFilterChange={setQuery}
             placeholderText={t('clipboardHistory.searchPlaceholder')}
+            textInputProps={searchInputTextAssistOff}
             showItemDividers
             messageText={{ title: t('search.noMatchesTitle'), description: t('search.noMatchesDescription', { query }) }}
           />

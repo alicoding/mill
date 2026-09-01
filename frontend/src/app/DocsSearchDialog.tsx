@@ -8,6 +8,7 @@ import { useUISignalStore } from '../shared/uiSignalStore'
 import { dirOf, sectionTitleKey } from '../views/docsGroups'
 import { searchDocs } from '../views/docsSearch'
 import styles from './DocsSearchDialog.module.css'
+import { searchInputTextAssistOff } from '../shared/searchInputProps'
 
 // DocsSearchDialog (goal 0235 S2): the `docs.search` command's palette-
 // style picker, same FilteredActionList + Dialog shape as
@@ -76,6 +77,7 @@ export function DocsSearchDialog() {
         filterValue={query}
         onFilterChange={setQuery}
         placeholderText={t('docsSearch.searchPlaceholder')}
+        textInputProps={searchInputTextAssistOff}
         showItemDividers
         message={
           showNoMatches ? (

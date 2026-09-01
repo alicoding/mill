@@ -26,6 +26,7 @@ import { useQuickPanelClipboardDoor } from './useQuickPanelClipboardDoor'
 import { FacetChipRow } from '../shared/FacetChipRow'
 import { useQuickPanelFacetSearch } from './quickPanelFacets'
 import styles from './QuickPanel.module.css'
+import { searchInputTextAssistOff } from '../shared/searchInputProps'
 
 // docs/adr/0033-quick-panel-second-window.md: the search+run surface
 // hosted in the Quick Panel's own dedicated Wails window, toggled by
@@ -480,7 +481,7 @@ export function QuickPanel() {
         onFilterChange={(value) => setQuery(value)}
         placeholderText={t('quickPanel.searchPlaceholder')}
         inputRef={inputRef}
-        textInputProps={{ 'aria-label': t('quickPanel.searchAriaLabel'), autoFocus: true }}
+        textInputProps={{ 'aria-label': t('quickPanel.searchAriaLabel'), autoFocus: true, ...searchInputTextAssistOff }}
         showItemDividers
         messageText={{ title: t('search.noMatchesTitle'), description: t('search.noMatchesDescription', { query }) }}
       />

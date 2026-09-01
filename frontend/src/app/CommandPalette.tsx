@@ -25,6 +25,7 @@ import type { FacetVocabEntry } from '../shared/facetQuery'
 import { FacetChipRow } from '../shared/FacetChipRow'
 import styles from './CommandPalette.module.css'
 import { newLocalID } from '../shared/localId'
+import { searchInputTextAssistOff } from '../shared/searchInputProps'
 
 // The ⌘K command palette (docs/goals/0015-summon-quick-invoke.md): the
 // "what can I do, and what's the shortcut for it next time" surface --
@@ -425,7 +426,7 @@ export function CommandPalette() {
         onFilterChange={(value) => setQuery(value)}
         placeholderText={t('commandPalette.searchPlaceholder')}
         inputRef={inputRef}
-        textInputProps={{ 'aria-label': t('commandPalette.searchAriaLabel') }}
+        textInputProps={{ 'aria-label': t('commandPalette.searchAriaLabel'), ...searchInputTextAssistOff }}
         showItemDividers
         messageText={{ title: t('search.noMatchesTitle'), description: t('search.noMatchesDescription', { query }) }}
       />
