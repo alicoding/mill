@@ -142,14 +142,14 @@ test.fixme('atlas multi-select: the selection-overlay context menu reaches Group
       await menu.getByText('Group into new area', { exact: true }).click({ timeout: 2_000 })
       await expect(popover).toBeVisible({ timeout: 2_000 })
     }).toPass({ timeout: 25_000, intervals: [500] })
-    await expect(page.getByTestId('atlas-placement-context')).toContainText('2 cards')
+    await expect(page.getByTestId('atlas-placement-context')).toContainText('2 items')
     await selectKind(popover, ATLAS_KIND_TOPIC)
     await popover.getByTestId('atlas-placement-title').fill('ZzC2eGroupedArea')
     await popover.getByTestId('atlas-placement-submit').click()
     await expect(popover).not.toBeVisible()
     const groupedArea = groupCard(page, 'ZzC2eGroupedArea')
     await expect(groupedArea).toBeVisible()
-    await expect(groupedArea.getByTestId('atlas-group-header')).toContainText('2 cards')
+    await expect(groupedArea.getByTestId('atlas-group-header')).toContainText('2 items')
 
     // Cleanup (testing.md's within-file discipline): dissolving the
     // area promotes both cards back to top level, then delete them.
@@ -294,7 +294,7 @@ test('atlas shift-click select: toggle membership, group via member right-click,
     const preBareGLeft = Math.min(boxAPreBareG.x, boxBPreBareG.x)
     await page.keyboard.press('g')
     await expect(popover).toBeVisible()
-    await expect(page.getByTestId('atlas-placement-context')).toContainText('2 cards')
+    await expect(page.getByTestId('atlas-placement-context')).toContainText('2 items')
     await selectKind(popover, ATLAS_KIND_TOPIC)
     await popover.getByTestId('atlas-placement-title').fill('ZzK2eBareGArea')
     await popover.getByTestId('atlas-placement-submit').click()
@@ -356,14 +356,14 @@ test('atlas shift-click select: toggle membership, group via member right-click,
       await menu.getByText('Group into new area', { exact: true }).click({ timeout: 2_000 })
       await expect(popover).toBeVisible({ timeout: 2_000 })
     }).toPass({ timeout: 25_000, intervals: [500] })
-    await expect(page.getByTestId('atlas-placement-context')).toContainText('2 cards')
+    await expect(page.getByTestId('atlas-placement-context')).toContainText('2 items')
     await selectKind(popover, ATLAS_KIND_TOPIC)
     await popover.getByTestId('atlas-placement-title').fill('ZzK2eClickArea')
     await popover.getByTestId('atlas-placement-submit').click()
     await expect(popover).not.toBeVisible()
     const groupedArea = groupCard(page, 'ZzK2eClickArea')
     await expect(groupedArea).toBeVisible()
-    await expect(groupedArea.getByTestId('atlas-group-header')).toContainText('2 cards')
+    await expect(groupedArea.getByTestId('atlas-group-header')).toContainText('2 items')
 
     // Regression: the new area's Position previously came from the
     // triggering right-click/button point, not the grouped members' own
@@ -442,6 +442,8 @@ test('atlas shift-click select: toggle membership, group via member right-click,
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+
 
 // atlas select-all (⌘A) moved to atlas-select-all.spec.ts at the 500-line
 // convention (CLAUDE.md) -- fully self-contained, no shared state with

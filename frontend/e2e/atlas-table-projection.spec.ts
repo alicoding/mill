@@ -462,7 +462,7 @@ test('an armed table size escapes cleanly and files into frames', async ({ page 
   // this level.
   const frame = page.locator('[data-testid="atlas-group-card"]').filter({ hasText: 'Client records' }).first()
   const frameHeader = frame.getByTestId('atlas-group-header')
-  await expect(frameHeader).toContainText('2 cards')
+  await expect(frameHeader).toContainText('2 items')
   await page.getByTestId('atlas-tray-table').click()
   await page.getByTestId('atlas-table-size-2x2').click()
   await clickFrameGutter(frame)

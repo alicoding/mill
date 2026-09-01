@@ -42,29 +42,34 @@ export type AtlasBoardObjectRFNode = RFNode<AtlasBoardObjectData>
 // boardObjectContentFor). No title, no flip, no connection handles --
 // structurally excluded from every card mechanism, the same way
 // AtlasStickyNode's note is.
+// The per-render capability flags, pure and outside the component
+// (also keeps the render function under the cognitive-complexity
+// gate). A persisted Size wins forever (goal 0193's no-auto-resize
+// rule) -- once set, the node's own RF width/height carry it
+// (atlasBuildBoardObjectNodes.ts) and .object/.content just fill the
+// box; a preview tile fills its slot the same way. An arrow's own
+// geometry is entirely payload.dx/dy (atlasTools.ts) -- no sound
+// mapping back from a corner-drag resize or a rotation angle, so
+// arrows opt out of both handles (goals 0199/0214); a preview tile
+// opts out of every interactive affordance by definition.
+function objectNodeCaps(object: BoardObject, preview: boolean): { isShape: boolean; hasSize: boolean; resizable: boolean; shapeType: string | undefined; rotatable: boolean } {
+  const isShape = object.Kind === 'shape'
+  const arrow = isShape && object.Payload?.shapeType === 'arrow'
+  return {
+    isShape,
+    hasSize: !!object.Size || preview,
+    resizable: !preview && !arrow,
+    shapeType: isShape ? object.Payload?.shapeType : undefined,
+    rotatable: !preview && isShape && !arrow,
+  }
+}
+
 function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardObjectRFNode>) {
   const { t } = useTranslation('atlas')
   const { object, soleSelected } = data
   const preview = data.preview === true
   const { setNodes } = useReactFlow()
-  const isShape = object.Kind === 'shape'
-  // A persisted Size wins forever (goal 0193's own no-auto-resize
-  // rule) -- once set, the node's own RF width/height already carry
-  // it (atlasBuildBoardObjectNodes.ts), so .object/.content just fill
-  // that box instead of falling back to each Kind's natural sizing.
-  const hasSize = !!object.Size || preview
-  // An arrow's own geometry is entirely payload.dx/dy (atlasTools.ts),
-  // never a rectangular Size -- a generic corner-drag resize has no
-  // sound mapping back onto a direction vector, and no backend call
-  // exists to persist one, so arrows opt out of the shared resizer
-  // rather than offering a handle that silently does nothing. This is
-  // the one per-object (not per-Kind) exception, so it stays a payload
-  // check here rather than moving into the registry. The rotation
-  // handle (goal 0214) shares this exact carve-out for the same
-  // reason -- an arrow's own geometry has no rotation angle to apply.
-  const resizable = !preview && !(isShape && object.Payload?.shapeType === 'arrow')
-  const shapeType = isShape ? object.Payload?.shapeType : undefined
-  const rotatable = !preview && isShape && shapeType !== 'arrow'
+  const { hasSize, resizable, shapeType, rotatable } = objectNodeCaps(object, preview)
   // The rotation transform lives on THIS box, not the shape's own SVG
   // (AtlasShapeContent.tsx no longer applies it) -- goal 0236's fix for
   // "state computed in one frame of reference, displayed in another":
@@ -121,13 +126,20 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
         ...(hasSize ? { width: '100%', height: '100%' } : null),
         ...(rotationDeg ? { transform: `rotate(${rotationDeg}deg)`, transformOrigin: '50% 50%' } : null),
       }}
-      data-testid="atlas-board-object"
+      data-testid={preview ? 'atlas-board-object-preview' : 'atlas-board-object'}
       data-object-kind={object.Kind}
       data-shape-type={shapeType}
       data-pulse={data.pulsed ? 'true' : undefined}
       data-preview={preview ? 'true' : undefined}
       role={role}
-      aria-label={t(ariaLabelKey)}
+      // aria-label is PROHIBITED on a role-less (generic) element
+      // (WCAG aria-prohibited-attr) -- only Kinds that declare a role
+      // (img: image/diagram) may carry it. A preview tile is an inert
+      // duplicate of content reachable by drilling in, hidden from AT
+      // the way decorative repetition is; the frame header's own item
+      // count announces membership.
+      aria-label={role && !preview ? t(ariaLabelKey) : undefined}
+      aria-hidden={preview ? true : undefined}
       onDoubleClick={editable ? () => { void dispatchObjectEdit(object, editRoute!) } : undefined}
     >
       {/* The rotation handle (goal 0214): visible only when this shape

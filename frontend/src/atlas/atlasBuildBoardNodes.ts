@@ -136,7 +136,9 @@ export function buildBoardCardNodes({
         draggable: isFree && !readOnly,
         data: {
           card,
-          childCount: childrenOf(allCards, card.ID).length,
+          // Every filed member counts, not only cards (goal 0266's
+          // peer law; the label reads "items").
+          childCount: childrenOf(allCards, card.ID).length + allNotes.filter((n) => n.ParentID === card.ID).length + allObjects.filter((o) => o.ParentID === card.ID).length,
           // Roll-up covers EVERY direct child, drawn or capped -- the
           // pills stay the deep truth regardless of the preview.
           freshness: computeFreshnessRollup(childrenOf(allCards, card.ID)),
@@ -218,7 +220,7 @@ export function buildBoardCardNodes({
             data: {
               card: child.card,
               kind: kindByID.get(child.card.KindID),
-              childCount: childrenOf(allCards, child.card.ID).length,
+              childCount: childrenOf(allCards, child.card.ID).length + allNotes.filter((n) => n.ParentID === child.card.ID).length + allObjects.filter((o) => o.ParentID === child.card.ID).length,
               rollup: computeRollupSummary(childrenOf(allCards, child.card.ID), kindByID),
               pulsed: pulsedID === child.card.ID,
               isSoleSelected,

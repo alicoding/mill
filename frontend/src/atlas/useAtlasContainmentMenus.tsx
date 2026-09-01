@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { TFunction } from 'i18next'
-import type { Card, Note, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { BoardObject, Card, Note, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
@@ -31,11 +31,12 @@ import { perspectiveMembershipMenuItems } from './atlasPerspectiveMenuItems'
 // exact same AtlasService.DeleteCard -- only Dissolve's own confirm
 // copy names the act deliberately, the other doors skip it.
 export function useAtlasContainmentMenus({
-  t, allCards, notes, perspectives, setMenu, drill, onError, onDeleted, onPerspectiveToast, requestPlacementInside, requestGroup, guardDelete,
+  t, allCards, notes, allObjects, perspectives, setMenu, drill, onError, onDeleted, onPerspectiveToast, requestPlacementInside, requestGroup, guardDelete,
 }: {
   t: TFunction<'atlas'>
   allCards: Card[]
   notes: Note[]
+  allObjects: BoardObject[]
   perspectives: Perspective[]
   setMenu: (state: ContextMenuState | null) => void
   drill: (id: string) => void
@@ -53,9 +54,11 @@ export function useAtlasContainmentMenus({
 }) {
   const [dissolveTarget, setDissolveTarget] = useState<Card | null>(null)
 
-  // Every direct child (card + note) a dissolve is about to virtually
-  // promote -- the confirm dialog's own "N cards move up a level" fact.
-  const promotedCount = (frameID: string) => childrenOf(allCards, frameID).length + notes.filter((n) => n.ParentID === frameID).length
+  // Every direct child (card + note + board object) a dissolve is
+  // about to virtually promote -- the confirm dialog's own "N items
+  // move up a level" fact (goal 0266: objects promote through the
+  // same EffectiveParentID seam, goal 0233).
+  const promotedCount = (frameID: string) => childrenOf(allCards, frameID).length + notes.filter((n) => n.ParentID === frameID).length + allObjects.filter((o) => o.ParentID === frameID).length
 
   const deleteCard = (id: string) => {
     AtlasService.DeleteCard(id)

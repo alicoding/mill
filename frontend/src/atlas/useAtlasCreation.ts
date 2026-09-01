@@ -112,9 +112,8 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   // current position instead of the triggering click point.
   cardBoxes?: { id: string; x: number; y: number }[]
   noteBoxes?: { id: string; x: number; y: number }[]
-  // Ref, not a prop (goal 0266): object boxes derive from the live
-  // nodes state, computed after this hook mounts -- read only at
-  // group-request time, same reasoning useAtlasArrange documents.
+  // Ref, not a prop: read only at group-request time -- see
+  // useAtlasArrange's own objectBoxesRef comment (goal 0266).
   objectBoxesRef?: { current: { id: string; x: number; y: number }[] }
 }) {
   // armedTool + locked as ONE state (goal 0199 part D), not two --

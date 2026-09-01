@@ -34,7 +34,9 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     await page.getByRole('link', { name: 'Atlas' }).click()
     await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-    await page.locator('[data-testid="atlas-note-drill"][aria-label="Zoom into Board gallery"]').click()
+    // The gallery renders as a region frame now (goal 0266's
+    // frame-role law: object children count) -- drill via its header.
+    await page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator('[aria-label="Zoom into Board gallery"]') }).getByTestId('atlas-group-header').click()
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Board gallery')
 
     // The rotated shape (goal 0214's own retroactive seed proof): a

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { Heading } from '@primer/react'
 import { Tabs } from '@primer/react/experimental'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import { ConfigureRequests } from './ConfigureRequests'
@@ -9,6 +10,7 @@ import { ConfigureDecisions } from './ConfigureDecisions'
 import { ConfigureExecEnv } from './ConfigureExecEnv'
 import { ConfigureAIProviders } from './ConfigureAIProviders'
 import { ConfigureStepTypes } from './ConfigureStepTypes'
+import styles from '../shared/ListCard.module.css'
 
 // The Configure surface (docs/SPEC.md §3.5): eight sections for
 // Configure-authored data -- Integration (HTTPRequests, 1:many
@@ -40,6 +42,12 @@ import { ConfigureStepTypes } from './ConfigureStepTypes'
 function ConfigureView({ initialTab }: { initialTab?: string }) {
   const { t } = useTranslation('configure')
   return (
+    <>
+    {/* The orienting sentence every sibling surface already carries
+        (0162 finding 1, riding goal 0266's PR). */}
+    <Heading as="h1" variant="medium" className={styles.subtitle}>
+      {t('configureView.subtitle')}
+    </Heading>
     <Tabs defaultValue={initialTab ?? 'integration'}>
       <TabList aria-label={t('configureView.ariaLabel')}>
         <TabItem value="integration">{t('configureView.integration')}</TabItem>
@@ -60,6 +68,7 @@ function ConfigureView({ initialTab }: { initialTab?: string }) {
       <TabPanel value="aiproviders"><ConfigureAIProviders /></TabPanel>
       <TabPanel value="steptypes"><ConfigureStepTypes /></TabPanel>
     </Tabs>
+    </>
   )
 }
 

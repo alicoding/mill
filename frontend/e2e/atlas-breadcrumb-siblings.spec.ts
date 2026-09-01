@@ -27,7 +27,7 @@ test('a breadcrumb segment opens a dropdown of its level\'s siblings, current on
   await expect(dropdown).toBeVisible()
   const mySpaceRow = dropdown.getByTestId('atlas-breadcrumb-sibling').filter({ hasText: 'The engagement' })
   await expect(mySpaceRow).toBeVisible()
-  await expect(mySpaceRow).toContainText(/\d+ cards/)
+  await expect(mySpaceRow).toContainText(/\d+ items/)
 
   // Clicking the current place navigates to it (reproducing the old
   // direct-navigate behavior) -- the crumb collapses back to
@@ -58,7 +58,7 @@ test('clicking a DIFFERENT sibling in the dropdown navigates laterally', async (
 
   const gettingRow = dropdown.getByTestId('atlas-breadcrumb-sibling').filter({ hasText: 'Discovery workstream' })
   await expect(gettingRow).toBeVisible()
-  await expect(gettingRow).toContainText('0 cards')
+  await expect(gettingRow).toContainText('0 items')
   await gettingRow.click()
 
   await expect(dropdown).toHaveCount(0)

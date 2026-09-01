@@ -1,5 +1,4 @@
 import { test, expect } from './fixtures/server'
-import { noteCard } from './fixtures/atlasCards'
 import { contextMenu } from './fixtures/contextMenu'
 
 // The away-capture door (docs/goals/0090): QuickPanel.tsx's own
@@ -35,11 +34,13 @@ test('typing text with no matches renders only the auto-highlighted Save-as-note
 
     await mainPage.getByRole('link', { name: 'Atlas' }).click()
     await expect(mainPage.getByTestId('atlas-board')).toBeVisible()
-    const scratchpad = noteCard(mainPage, 'Scratchpad')
-    await scratchpad.click({ button: 'right' })
+    // The capture just filed a note into Scratchpad, so it renders
+    // as a region frame now (goal 0266's frame-role law) -- and the
+    // captured sticky is already visible in its preview from here.
+    const scratchpad = mainPage.locator('[data-testid="atlas-group-card"]').filter({ has: mainPage.locator('[aria-label="Zoom into Scratchpad"]') })
+    await expect(scratchpad).toBeVisible()
+    await scratchpad.getByTestId('atlas-group-header').click()
     const menu = contextMenu(mainPage)
-    await expect(menu).toBeVisible()
-    await menu.getByText('Zoom in', { exact: true }).click()
     await expect(mainPage.getByTestId('atlas-breadcrumb')).toContainText('Scratchpad')
 
     const sticky = mainPage.getByTestId('atlas-sticky-note').filter({ hasText: captureText })

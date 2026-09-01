@@ -241,7 +241,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // store instead of a callback threaded through React Flow node data.
   const editingDiagramObjectID = useAtlasEditDiagramStore((s) => s.openObjectID)
 
-  const deleteConfirm = useAtlasDeleteConfirm({ t, allCards, notes: allNotes })
+  const deleteConfirm = useAtlasDeleteConfirm({ t, allCards, notes: allNotes, allObjects })
 
   const linkMenus = useAtlasLinkMenus({
     t, allCards, allLinks, allNotes, allObjects, linkKinds: allLinkKinds, perspectives: allPerspectives, setMenu, drill,
@@ -299,7 +299,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // header comment for why the area-draw/drag-filing half stays in
   // AtlasBoard.tsx instead.
   const containmentMenus = useAtlasContainmentMenus({
-    t, allCards, notes: allNotes, perspectives: allPerspectives, setMenu, drill, onError: setShareError,
+    t, allCards, notes: allNotes, allObjects, perspectives: allPerspectives, setMenu, drill, onError: setShareError,
     onDeleted: undoToast.registerDelete,
     onPerspectiveToast: quietToast.show,
     requestPlacementInside: (tool, pos, parentID) => creationRequests.requestPlacement(tool, pos, parentID),
@@ -468,7 +468,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
       </div>
 
       <AtlasViewOverlays
-        jumpOpen={jumpOpen} onCloseJump={() => setJumpOpen(false)} allCards={allCards} allKinds={allKinds} allLinks={allLinks} allLinkKinds={allLinkKinds} allObjects={allObjects} jumpToCard={jumpToCard} jumpToObject={jumpToObject}
+        jumpOpen={jumpOpen} onCloseJump={() => setJumpOpen(false)} allCards={allCards} allKinds={allKinds} allLinks={allLinks} allLinkKinds={allLinkKinds} allNotes={allNotes} allObjects={allObjects} jumpToCard={jumpToCard} jumpToObject={jumpToObject}
         overlayCard={overlayCard} onCloseOverlay={() => setOverlayCardID(null)} undoToast={undoToast} openGroupEntry={openGroupEntry} guardDelete={deleteConfirm.guardDelete}
         importConfirmDialog={importConfirmDialog}
         tableFromListOpen={tableFromListOpen} onCloseTableFromList={() => setTableFromListOpen(false)} newSpaceOpen={newSpaceOpen} onCloseNewSpace={() => setNewSpaceOpen(false)} onCreateTable={createTableFromList} onCreateSpace={(kindID, title) => createCard('sibling', kindID, title)}

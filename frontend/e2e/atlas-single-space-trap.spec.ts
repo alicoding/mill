@@ -125,7 +125,9 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     await expect(groupCard(page, 'Client records')).toBeVisible()
     await expect(noteCard(page, 'Discovery workstream')).toBeVisible()
     await expect(noteCard(page, 'Scratchpad')).toBeVisible()
-    await expect(noteCard(page, 'Board gallery')).toBeVisible()
+    // A frame, not a leaf: its seeded objects count as children
+    // (goal 0266's frame-role law).
+    await expect(groupCard(page, 'Board gallery')).toBeVisible()
 
     // Drain the two truly childless promoted leaves -- ordinary,
     // already-covered-elsewhere instant leaf deletes.
@@ -136,22 +138,26 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
       await expect(noteCard(page, title)).toHaveCount(0)
     }
 
-    // "Board gallery" nests board objects, never cards, so
-    // isGroupCard() still treats it as a childless leaf for THIS
-    // delete -- deleted directly, with its 4 seeded board objects still
-    // attached (goal 0233's own regression, replacing the drain-first
-    // workaround this spec used to need). The card delete's own
-    // EffectiveParentID promotion carries the objects out to THIS root
+    // "Board gallery" nests board objects, never cards -- a region
+    // frame under goal 0266's law. Deleting it promotes its 4 seeded
+    // objects (goal 0233's EffectiveParentID seam) out to THIS root
     // level; they must land visibly placed, clear of "Client records",
-    // never stacked on top of it the way their stale pre-promotion X/Y
-    // used to.
+    // never stacked on top of it the way their stale pre-promotion
+    // X/Y used to.
     const clientRecords = groupCard(page, 'Client records')
     await expect(clientRecords).toBeVisible()
 
-    await noteCard(page, 'Board gallery').click({ button: 'right' })
+    // A frame under the 0266 law: delete via its header menu, and the
+    // container-delete gate now counts the 4 filed objects it promotes.
+    await groupCard(page, 'Board gallery').getByTestId('atlas-group-header').click({ button: 'right' })
     await expect(menu).toBeVisible()
     await menu.getByText('Delete', { exact: true }).click()
-    await expect(noteCard(page, 'Board gallery')).toHaveCount(0)
+    await expect(page.getByText('4 items inside move up a level. You can undo right after.')).toBeVisible()
+    // The confirm dialog's own Delete button (deletePromoteConfirm),
+    // scoped to the dialog so the frame menu's identical label can't
+    // double-match.
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(groupCard(page, 'Board gallery')).toHaveCount(0)
 
     // "Client records" is now the only remaining ROOT CARD, so the
     // SAME egocentric auto-entry the later part of this test exercises
