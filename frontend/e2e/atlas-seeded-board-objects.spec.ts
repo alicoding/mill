@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { createBoardObjectViaRPC } from './fixtures/atlasNativeDropEscapeHatch'
+import { createBoardObjectViaRPC, ATLAS_DEFAULT_SPACE_ID } from './fixtures/atlasNativeDropEscapeHatch'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -154,3 +154,90 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
 // the assertions above navigate to, or it exists server-side but
 // never renders where this test looks for it.
 const ATLAS_BOARD_GALLERY_ID = 'atlas-card-session-sketches'
+
+// linkPdfBytes builds a minimal single-page PDF carrying one URI link
+// annotation, with a correct xref (never pdf.js's lenient recovery
+// path) -- the TS twin of internal/webviewbridgesmoke's smokePdfBytes.
+function linkPdfBytes(url: string): string {
+  const content = 'BT /F1 24 Tf 72 690 Td (Link here) Tj ET'
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> /Annots [6 0 R] >>',
+    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    `<< /Type /Annot /Subtype /Link /Rect [60 660 320 730] /Border [0 0 0] /A << /S /URI /URI (${url}) >> >>`,
+  ]
+  let out = '%PDF-1.4\n'
+  const offsets: number[] = []
+  objects.forEach((obj, i) => {
+    offsets.push(out.length)
+    out += `${i + 1} 0 obj\n${obj}\nendobj\n`
+  })
+  const xrefAt = out.length
+  out += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`
+  for (const off of offsets) out += `${String(off).padStart(10, '0')} 00000 n \n`
+  out += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`
+  return out
+}
+
+// goal 0271: an external link clicked inside the live viewer opens
+// through the system-browser door, and the app NEVER navigates away
+// (the raw default replaced Mill's whole webview with the link's site,
+// no back button). The runtime Browser call is intercepted at the
+// network layer -- asserting it fired without opening anything real.
+test('a link annotation in a live pdf opens externally and never navigates the app', async ({ page }) => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mill-e2e-pdf-link-'))
+  try {
+    const pdfFile = path.join(dir, 'ZzE2eLinkDoc.pdf')
+    writeFileSync(pdfFile, linkPdfBytes('https://example.com/mill-e2e-pdf-link'))
+
+    // Best-effort suppression of the runtime's Browser.OpenURL HTTP
+    // call so the worker host never actually opens a browser tab. Not
+    // an assertion vehicle: the runtime may route calls over its
+    // WebSocket transport instead, which no page route can see -- the
+    // test's real pin is behavioral (the viewer survives the click).
+    await page.route('**/wails/runtime*', async (route) => {
+      if (route.request().postData()?.includes('"object":9')) {
+        return route.fulfill({ status: 200, body: '{}' })
+      }
+      return route.fallback()
+    })
+    await page.goto('/')
+    await page.getByRole('link', { name: 'Atlas' }).click()
+    await expect(page.getByTestId('atlas-board')).toBeVisible()
+    await createBoardObjectViaRPC(page, 'pdf', { mirrorPath: pdfFile, title: 'link doc' }, { X: 40, Y: 900 }, ATLAS_DEFAULT_SPACE_ID)
+    await page.reload()
+    await page.getByRole('link', { name: 'Atlas' }).click()
+
+    const pdfObject = page.locator('.react-flow__node:not([data-id^="atlas-object-example-"]) [data-testid="atlas-board-object"][data-object-kind="pdf"]')
+    await expect(pdfObject).toBeVisible()
+    await waitForViewportStable(page.getByTestId('atlas-board'))
+    await pdfObject.locator('[data-testid="atlas-object-click-shield"]').click()
+    const viewer = page.frameLocator('[data-testid="atlas-pdf-viewer"]')
+    const link = viewer.locator('.annotationLayer a').first()
+    await expect(link).toBeVisible()
+    const appUrl = page.url()
+    await link.evaluate((a) => (a as HTMLElement).click()) // escape hatch: a pointer click cannot reach the link -- the iframe sits under the canvas's CSS scale transform, where Playwright's coordinate mapping into subframes lands off-target at board zoom levels
+    // The regression pin: WITHOUT the interceptor this click navigates
+    // the iframe (and in the desktop webview, the whole app) to the
+    // link's site -- the viewer element vanishes. Poll across a settle
+    // beat so an in-flight navigation would be caught, then confirm
+    // the app itself never moved.
+    await page.waitForTimeout(500) // a navigation this test must NOT see has no positive signal to await
+    expect(page.url()).toBe(appUrl)
+    await expect(page.getByTestId('atlas-board')).toBeVisible()
+    await expect(viewer.locator('#viewerContainer')).toBeVisible()
+    await expect(link).toBeVisible()
+    await page.unroute('**/wails/runtime*')
+
+    // Cleanup: the object.
+    await pdfObject.click({ button: 'right' })
+    const menu = page.getByTestId('context-menu')
+    await expect(menu).toBeVisible()
+    await menu.getByText('Delete', { exact: true }).click()
+    await expect(pdfObject).toHaveCount(0)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})

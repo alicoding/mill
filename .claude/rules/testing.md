@@ -302,6 +302,15 @@ at:
     pointer; Finder ⌘C a .png → ⌘V lands an image object mirroring
     the REAL file path; Finder ⌘C a .md → ⌘V lands a card, same as
     dropping it.
+  - **A pdf link annotation actually reaching the system browser**
+    (goal 0271, `openExternalUrl` via the runtime's Browser API) —
+    launching the real default browser is OS-bound; the e2e pins the
+    negative (the click never navigates the app/viewer) and suppresses
+    the HTTP-transport call, but the runtime may route over its
+    WebSocket transport, so no harness observes the real open. Verify
+    on an installed build: click an external link inside a live pdf
+    object — the system browser opens the page and Mill stays exactly
+    where it was.
   - **Canvas navigation with a REAL trackpad** (goal 0257,
     `shared/canvasNavigation.ts`) — Playwright's wheel is synthetic;
     a real two-finger scroll, pinch, and ⌘-scroll are OS/driver-bound
