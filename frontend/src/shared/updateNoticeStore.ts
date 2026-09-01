@@ -38,7 +38,18 @@ interface UpdateNoticeState {
   // trust can't be proven, the section still offers the action.
   trustDisclosureVisible: boolean
   refreshTrustDisclosureVisibility: () => void
+  // User-run check feedback (goal 0275): a palette/Quick Panel/Settings
+  // check the USER started must always answer -- the pill renders these
+  // outcomes; automatic checks never set them, staying as quiet as
+  // before. 'upToDate' auto-dismisses; 'failed' waits for the user.
+  userCheck: 'idle' | 'checking' | 'upToDate' | 'failed'
+  runUserCheck: () => void
+  dismissUserCheckNotice: () => void
 }
+
+// Long enough to read one short sentence, short enough that the
+// footer never feels stuck (the converged transient-toast range).
+const UP_TO_DATE_NOTICE_MS = 6000
 
 export const useUpdateNoticeStore = create<UpdateNoticeState>()((set, get) => ({
   updateNoticeState: UpdateState.UpdateStateIdle,
@@ -57,6 +68,26 @@ export const useUpdateNoticeStore = create<UpdateNoticeState>()((set, get) => ({
       })
       .catch((err) => set({ trustSigningStatus: 'error', trustSigningError: String(err) }))
   },
+  userCheck: 'idle',
+  runUserCheck: () => {
+    set({ userCheck: 'checking' })
+    SettingsService.CheckForUpdates()
+      .then(() => refreshUpdateNoticeState())
+      .then(() => {
+        const landed = get().updateNoticeState
+        if (landed === UpdateState.UpdateStateAvailable || landed === UpdateState.UpdateStateDownloading || landed === UpdateState.UpdateStateReady) {
+          // The pill's existing states take over -- no extra notice.
+          set({ userCheck: 'idle' })
+          return
+        }
+        set({ userCheck: 'upToDate' })
+        window.setTimeout(() => {
+          if (get().userCheck === 'upToDate') set({ userCheck: 'idle' })
+        }, UP_TO_DATE_NOTICE_MS)
+      })
+      .catch(() => set({ userCheck: 'failed' }))
+  },
+  dismissUserCheckNotice: () => set({ userCheck: 'idle' }),
   trustDisclosureVisible: true,
   refreshTrustDisclosureVisibility: () => {
     return SettingsService.IsSigningTrusted()

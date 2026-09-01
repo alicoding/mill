@@ -110,7 +110,11 @@ it does next: "Check for updates" while idle, "Download vX and
 install" once a newer version is found, and "Restart to update" once
 it's ready to go — Mill never restarts on its own, so nothing happens
 until you click it. The status line above it shows your current
-version, release channel, and when Mill last checked. The same
+version, release channel, and when Mill last checked. Running "Check
+for updates" from anywhere — the command palette, the Quick Panel, or
+here — always answers in the bottom-right corner: a brief "Checking
+for updates…", then "You're up to date." when there's nothing new, or
+a notice you can click through to this page if the check fails. The same
 "Update available" notice in the bottom-right corner acts the same
 way: click it to download directly, or click "Restart to update" once
 it's ready — it never just opens Settings.
