@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Heading } from '@primer/react'
+import PageContainer from '../shared/PageContainer'
 import { Tabs } from '@primer/react/experimental'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import { ConfigureRequests } from './ConfigureRequests'
@@ -44,10 +45,14 @@ function ConfigureView({ initialTab }: { initialTab?: string }) {
   return (
     <>
     {/* The orienting sentence every sibling surface already carries
-        (0162 finding 1, riding goal 0266's PR). */}
-    <Heading as="h1" variant="medium" className={styles.subtitle}>
-      {t('configureView.subtitle')}
-    </Heading>
+        (0162 finding 1) -- in the same PageContainer padding they get,
+        so it doesn't sit flush against the pane edge; the Tabs below
+        keep their own full-width layout. */}
+    <PageContainer>
+      <Heading as="h1" variant="medium" className={styles.subtitle}>
+        {t('configureView.subtitle')}
+      </Heading>
+    </PageContainer>
     <Tabs defaultValue={initialTab ?? 'integration'}>
       <TabList aria-label={t('configureView.ariaLabel')}>
         <TabItem value="integration">{t('configureView.integration')}</TabItem>
