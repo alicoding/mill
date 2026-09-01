@@ -5,7 +5,7 @@ import { FileIcon } from '@primer/octicons-react'
 import type { BoardObject } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { MirrorReadState } from '../useAtlasObjectMirrorRead'
 import { boardObjectContentFor } from '../atlasNounRegistry'
-import { dispatchObjectEdit } from '../objectSeams'
+import { dispatchObjectEdit, openExternalUrl } from '../objectSeams'
 import { applyTextAssistOff } from '../../shared/searchInputProps'
 import nodeStyles from '../AtlasBoardObjectNode.module.css'
 import styles from './AtlasPdfObjectContent.module.css'
@@ -92,6 +92,21 @@ export function AtlasPdfObjectContent({ object, mirrorContent, preview }: { obje
           const doc = frame.contentDocument
           if (!doc) return
           applyTextAssistOff(doc, 'input.toolbarField, input#findInput')
+          // An external link annotation clicked inside the viewer
+          // otherwise navigates the WEBVIEW to the link's site --
+          // full-screen, no back button, Mill gone until restart.
+          // Capture-phase (ahead of the viewer's own link handling):
+          // http(s) hrefs open in the system browser through the
+          // extension seam; fragment/page-destination links (the
+          // outline, internal jumps) carry no http scheme and stay
+          // the viewer's own.
+          doc.addEventListener('click', (ev) => {
+            const anchor = (ev.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null
+            if (!anchor || !/^https?:/i.test(anchor.href)) return
+            ev.preventDefault()
+            ev.stopPropagation()
+            void openExternalUrl(anchor.href)
+          }, true)
           // Right-click inside the live viewer otherwise opens the
           // ENGINE's own frame menu (Open Frame in New Window, Reload
           // Frame -- dead items inside the app). Suppress it and
