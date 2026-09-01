@@ -80,8 +80,8 @@ describe('noteTool.commit', () => {
 
 describe('areaTool.commit', () => {
   it('carries the enclosed membership through unchanged', () => {
-    const artifact = areaTool.commit({ kindID: 'a', title: 'Area', enclosedCardIDs: ['c1'], enclosedNoteIDs: ['n1'] })
-    expect(artifact).toEqual({ kind: 'area', kindID: 'a', title: 'Area', enclosedCardIDs: ['c1'], enclosedNoteIDs: ['n1'] })
+    const artifact = areaTool.commit({ kindID: 'a', title: 'Area', enclosedCardIDs: ['c1'], enclosedNoteIDs: ['n1'], enclosedObjectIDs: ['o1'] })
+    expect(artifact).toEqual({ kind: 'area', kindID: 'a', title: 'Area', enclosedCardIDs: ['c1'], enclosedNoteIDs: ['n1'], enclosedObjectIDs: ['o1'] })
   })
 })
 
@@ -137,3 +137,26 @@ describe('imageTool.commit', () => {
   })
 })
 
+
+describe('areaTool.gesture.onEnd encloses board objects (goal 0266)', () => {
+  it('passes enclosed object ids through to the popover alongside cards and notes', () => {
+    const opened: unknown[][] = []
+    const ctx = {
+      disarm: () => {},
+      screenToFlowPosition: (p: { x: number; y: number }) => p,
+      cardBoxes: [{ id: 'c1', x: 10, y: 10, width: 20, height: 20 }],
+      noteBoxes: [],
+      objectBoxes: [
+        { id: 'o1', x: 50, y: 50, width: 20, height: 20 },
+        { id: 'far', x: 500, y: 500, width: 20, height: 20 },
+      ],
+      openAreaPopover: (...args: unknown[]) => { opened.push(args) },
+    }
+    areaTool.gesture!.onEnd([{ x: 0, y: 0, t: 0 }, { x: 200, y: 200, t: 100 }], ctx as never)
+    expect(opened).toHaveLength(1)
+    const [, , cardIDs, noteIDs, objectIDs] = opened[0] as [unknown, unknown, string[], string[], string[]]
+    expect(cardIDs).toEqual(['c1'])
+    expect(noteIDs).toEqual([])
+    expect(objectIDs).toEqual(['o1'])
+  })
+})

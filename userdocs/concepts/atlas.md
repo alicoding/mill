@@ -122,6 +122,11 @@ connected by links, grouped into areas you can drill into.
   everything on the current level — cards and objects alike — into
   clean rows, then leaves you in control: anything you drag
   afterwards stays where you put it.
+- **Group anything into an area.** Select any two or more things —
+  cards, notes, diagrams, images — and press G (or draw an area
+  around them) to file them into a named area together. The area
+  shows a small preview of everything inside, objects included, and
+  its count includes every member.
 - **Filter without losing the map.** The search control on the board
   (top right) dims everything that doesn't match your text, chosen
   kinds, or field values (the Fields menu lists every choice-type

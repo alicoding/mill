@@ -36,6 +36,7 @@ export interface AtlasPlacementPopoverState {
   // gesture is about to reparent into the new container card.
   enclosedCardIDs?: string[]
   enclosedNoteIDs?: string[]
+  enclosedObjectIDs?: string[]
   // Slot-drag's own guided-create door (goal 0081 slice A4, LOCKED
   // design decision D1=B): a link-slot drag released on empty canvas
   // -- the kind is already fixed by the row that was dragged, so
@@ -67,7 +68,7 @@ export interface AtlasPromoteRequest { noteID?: string; objectID?: string; pos: 
 // Select-then-group (goal 0081 slice A2, LOCKED design §2): a
 // multi-selection's own "Group into new area" menu item, requesting
 // the SAME area-mode popover the marker-box drag opens.
-export interface AtlasGroupRequest { cardIDs: string[]; noteIDs: string[]; pos: { x: number; y: number }; token: number }
+export interface AtlasGroupRequest { cardIDs: string[]; noteIDs: string[]; objectIDs: string[]; pos: { x: number; y: number }; token: number }
 
 // The full arm -> place -> confirm state machine behind the creation
 // tray, right-click create, sticky notes, note promotion (goal 0081
@@ -78,7 +79,7 @@ export interface AtlasGroupRequest { cardIDs: string[]; noteIDs: string[]; pos: 
 // parentID is the board's OWN current container (AtlasView's viewedID,
 // threaded down unchanged) -- the LOCKED design's "parent = where you
 // are" rule for every canvas-foremost creation door.
-export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes, noteBoxes, armedToolId, armedToolLocked, armSharedTool, disarmShared, toggleShared }: {
+export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes, noteBoxes, objectBoxesRef, armedToolId, armedToolLocked, armSharedTool, disarmShared, toggleShared }: {
   // The single shared armed-tool field (useAtlasArmedTool.ts, goal
   // 0238) -- owned by AtlasBoard.tsx and passed down here as its
   // individual, already-stable functions rather than one nested
@@ -111,6 +112,9 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   // current position instead of the triggering click point.
   cardBoxes?: { id: string; x: number; y: number }[]
   noteBoxes?: { id: string; x: number; y: number }[]
+  // Ref, not a prop: read only at group-request time -- see
+  // useAtlasArrange's own objectBoxesRef comment (goal 0266).
+  objectBoxesRef?: { current: { id: string; x: number; y: number }[] }
 }) {
   // armedTool + locked as ONE state (goal 0199 part D), not two --
   // "locked" only ever means anything relative to whichever tool is
@@ -275,8 +279,8 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   // SAME popover in 'area' mode, anchored at screenPos, with the
   // enclosed membership already resolved by the caller (areaTool.ts's
   // own gesture.onEnd enclosure test, or AtlasView's multi-selection).
-  const openAreaPopover = useCallback((screenPos: { x: number; y: number }, flowPos: { x: number; y: number }, enclosedCardIDs: string[], enclosedNoteIDs: string[]) => {
-    setPopover({ mode: 'area', anchorPos: screenPos, flowPos, enclosedCardIDs, enclosedNoteIDs })
+  const openAreaPopover = useCallback((screenPos: { x: number; y: number }, flowPos: { x: number; y: number }, enclosedCardIDs: string[], enclosedNoteIDs: string[], enclosedObjectIDs: string[]) => {
+    setPopover({ mode: 'area', anchorPos: screenPos, flowPos, enclosedCardIDs, enclosedNoteIDs, enclosedObjectIDs })
   }, [])
 
   const cancelPopover = useCallback(() => setPopover(null), [])
@@ -329,7 +333,7 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
           .then(() => refreshAtlas())
           .catch(console.error)
       } else if (pending.mode === 'area') {
-        const artifact = areaTool.commit({ kindID, title, enclosedCardIDs: pending.enclosedCardIDs ?? [], enclosedNoteIDs: pending.enclosedNoteIDs ?? [] })
+        const artifact = areaTool.commit({ kindID, title, enclosedCardIDs: pending.enclosedCardIDs ?? [], enclosedNoteIDs: pending.enclosedNoteIDs ?? [], enclosedObjectIDs: pending.enclosedObjectIDs ?? [] })
         const position = pending.flowPos ? { X: pending.flowPos.x, Y: pending.flowPos.y } : null
         // An area drawn/grouped via a spatial gesture defaults its OWN
         // children to Canvas mode -- drag filing (and the Area tool
@@ -341,6 +345,7 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
           .then((created) => Promise.all([
             ...artifact.enclosedCardIDs.map((id) => AtlasService.MoveCard(id, created.ID)),
             ...artifact.enclosedNoteIDs.map((id) => AtlasService.MoveNote(id, created.ID)),
+            ...artifact.enclosedObjectIDs.map((id) => AtlasService.MoveBoardObject(id, created.ID)),
           ]))
           .then(() => refreshAtlas())
           .catch(console.error)
@@ -477,8 +482,8 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   useEffect(() => {
     if (!groupRequest || groupRequest.token === lastGroupToken.current) return
     lastGroupToken.current = groupRequest.token
-    const anchor = computeEnclosedBoundingBoxOrigin(groupRequest.cardIDs, groupRequest.noteIDs, cardBoxes ?? [], noteBoxes ?? [])
-    openAreaPopover(groupRequest.pos, anchor ?? screenToFlowPosition(groupRequest.pos), groupRequest.cardIDs, groupRequest.noteIDs)
+    const anchor = computeEnclosedBoundingBoxOrigin(groupRequest.cardIDs, groupRequest.noteIDs, groupRequest.objectIDs, cardBoxes ?? [], noteBoxes ?? [], objectBoxesRef?.current ?? [])
+    openAreaPopover(groupRequest.pos, anchor ?? screenToFlowPosition(groupRequest.pos), groupRequest.cardIDs, groupRequest.noteIDs, groupRequest.objectIDs)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the request's own token
   }, [groupRequest])
 

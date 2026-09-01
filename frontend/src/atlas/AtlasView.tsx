@@ -173,7 +173,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const viewedCard = allCards.find((c) => c.ID === viewedID) ?? null
   const childrenAll = childrenOf(boardAllCards, viewedID)
   const presentKinds = groupByKind(childrenAll, allKinds).map((shelf) => shelf.kind)
-  const { boardFilter, setBoardFilter, filterMatchCount, filterTotalCount, filterPresentKindIDs } = useAtlasBoardFilter(boardAllCards, viewedID)
+  const { boardFilter, setBoardFilter, filterMatchCount, filterTotalCount, filterPresentKindIDs } = useAtlasBoardFilter(boardAllCards, viewedID, allNotes, allObjects)
   // The lens filters cards by KIND, but containment is a ROLE
   // orthogonal to kind (ADR-0038 Decision 3): a card currently
   // holding children renders as a region frame and stays on the board
@@ -181,7 +181,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // declutter notes must never remove a whole area and everything
   // previewed inside it.
   const lensed = applyLens(childrenAll, hiddenKindIDs)
-  const visibleChildren = childrenAll.filter((c) => lensed.includes(c) || isGroupCard(boardAllCards, c))
+  const visibleChildren = childrenAll.filter((c) => lensed.includes(c) || isGroupCard(boardAllCards, c, allNotes, allObjects))
   // A note's own containment is spatial-only, orthogonal to the lens
   // (which filters by Kind -- a note has none): every note whose
   // ParentID names the viewed space renders here, unfiltered.
@@ -241,10 +241,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // store instead of a callback threaded through React Flow node data.
   const editingDiagramObjectID = useAtlasEditDiagramStore((s) => s.openObjectID)
 
-  const deleteConfirm = useAtlasDeleteConfirm({ t, allCards, notes: allNotes })
+  const deleteConfirm = useAtlasDeleteConfirm({ t, allCards, notes: allNotes, allObjects })
 
   const linkMenus = useAtlasLinkMenus({
-    t, allCards, allLinks, allNotes, linkKinds: allLinkKinds, perspectives: allPerspectives, setMenu, drill,
+    t, allCards, allLinks, allNotes, allObjects, linkKinds: allLinkKinds, perspectives: allPerspectives, setMenu, drill,
     onOpenCard: (id) => setOverlayCardID(id),
     onError: setShareError,
     onDeleted: undoToast.registerDelete,
@@ -299,11 +299,11 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // header comment for why the area-draw/drag-filing half stays in
   // AtlasBoard.tsx instead.
   const containmentMenus = useAtlasContainmentMenus({
-    t, allCards, notes: allNotes, perspectives: allPerspectives, setMenu, drill, onError: setShareError,
+    t, allCards, notes: allNotes, allObjects, perspectives: allPerspectives, setMenu, drill, onError: setShareError,
     onDeleted: undoToast.registerDelete,
     onPerspectiveToast: quietToast.show,
     requestPlacementInside: (tool, pos, parentID) => creationRequests.requestPlacement(tool, pos, parentID),
-    requestGroup: (cardIDs, noteIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, pos), guardDelete: deleteConfirm.guardDelete,
+    requestGroup: (cardIDs, noteIDs, objectIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, objectIDs, pos), guardDelete: deleteConfirm.guardDelete,
   })
 
   // ⌘K's GO/OPEN (goal 0072 slice B): a target already rendered (a
@@ -429,6 +429,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           notes={visibleNotes}
           allNotes={allNotes}
           objects={visibleObjects}
+          allObjects={allObjects}
           parentID={viewedID}
           arrangeRequest={arrangeRequest}
           viewedID={viewedID}
@@ -448,7 +449,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onDeleteSelection={containmentMenus.deleteSelection}
           onQuietToast={quietToast.show}
           onOpenNote={setOpenNoteID}
-          onGroupSelection={(cardIDs, noteIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, pos)}
+          onGroupSelection={(cardIDs, noteIDs, objectIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, objectIDs, pos)}
           placementRequest={creationRequests.placementRequest}
           promoteRequest={creationRequests.promoteRequest}
           groupRequest={creationRequests.groupRequest}
@@ -467,7 +468,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
       </div>
 
       <AtlasViewOverlays
-        jumpOpen={jumpOpen} onCloseJump={() => setJumpOpen(false)} allCards={allCards} allKinds={allKinds} allLinks={allLinks} allLinkKinds={allLinkKinds} allObjects={allObjects} jumpToCard={jumpToCard} jumpToObject={jumpToObject}
+        jumpOpen={jumpOpen} onCloseJump={() => setJumpOpen(false)} allCards={allCards} allKinds={allKinds} allLinks={allLinks} allLinkKinds={allLinkKinds} allNotes={allNotes} allObjects={allObjects} jumpToCard={jumpToCard} jumpToObject={jumpToObject}
         overlayCard={overlayCard} onCloseOverlay={() => setOverlayCardID(null)} undoToast={undoToast} openGroupEntry={openGroupEntry} guardDelete={deleteConfirm.guardDelete}
         importConfirmDialog={importConfirmDialog}
         tableFromListOpen={tableFromListOpen} onCloseTableFromList={() => setTableFromListOpen(false)} newSpaceOpen={newSpaceOpen} onCloseNewSpace={() => setNewSpaceOpen(false)} onCreateTable={createTableFromList} onCreateSpace={(kindID, title) => createCard('sibling', kindID, title)}

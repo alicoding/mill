@@ -73,7 +73,7 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     await expect(ghost).toHaveText('+ 7 more')
 
     // The header count states the deep truth regardless of the cap.
-    await expect(velocity.getByTestId('atlas-group-header')).toContainText('12 cards')
+    await expect(velocity.getByTestId('atlas-group-header')).toContainText('12 items')
 
     // Semantic zoom for lines: endpoints lift to TOP-LEVEL cards, so
     // arteries attach at frame boundaries and intra-area links draw

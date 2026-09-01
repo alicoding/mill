@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionList, Dialog, TextInput } from '@primer/react'
-import type { BoardObject, Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { BoardObject, Card, Kind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { kindColorTokens } from './atlasKindColor'
 import { AREA_FACET_KEY, filterJumpCards, filterJumpObjects } from './atlasJumpFilter'
 import { matchFacetSuggestions, parseFacetQuery } from '../shared/facetQuery'
@@ -19,7 +19,7 @@ import styles from './AtlasJumpDialog.module.css'
 // this component no longer runs its own capture-phase window listener
 // to win the ⌘K race against the app-wide command palette; dispatch
 // order (shared/commands.ts's dispatchCommandForEvent) does that now.
-export function AtlasJumpDialog({ open, onClose, cards, kinds, objects, onJump, onJumpObject }: {
+export function AtlasJumpDialog({ open, onClose, cards, kinds, notes, objects, onJump, onJumpObject }: {
   open: boolean
   onClose: () => void
   cards: Card[]
@@ -27,6 +27,9 @@ export function AtlasJumpDialog({ open, onClose, cards, kinds, objects, onJump, 
   // Board objects are jump peers (goal 0265) -- found by their
   // creation title / mirror basename, listed after card matches.
   objects: BoardObject[]
+  // Notes feed the Area facet's frame-role law only (goal 0266) --
+  // note text itself is deliberately not searched here.
+  notes: Note[]
   // Consumed by AtlasView: re-roots when needed, then hands the target
   // card to AtlasBoard's own fly/pulse/hint sequence.
   onJump: (card: Card, openImmediately: boolean) => void
@@ -57,7 +60,7 @@ export function AtlasJumpDialog({ open, onClose, cards, kinds, objects, onJump, 
     [kinds, t],
   )
   const parsed = useMemo(() => parseFacetQuery(query, vocabulary), [query, vocabulary])
-  const results = useMemo(() => filterJumpCards(cards, kinds, parsed.text, parsed.scopeKey), [cards, kinds, parsed])
+  const results = useMemo(() => filterJumpCards(cards, kinds, parsed.text, parsed.scopeKey, notes, objects), [cards, kinds, notes, objects, parsed])
   const objectResults = useMemo(() => filterJumpObjects(objects, cards, parsed.text, parsed.scopeKey), [objects, cards, parsed])
   const totalResults = results.length + objectResults.length
   const chipSuggestions = useMemo(

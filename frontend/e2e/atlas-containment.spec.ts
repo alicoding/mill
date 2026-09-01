@@ -134,7 +134,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await expect(groupCard(page, 'ZzC2eEmptyArea')).toHaveCount(0)
 
     // --- Marker-box: place two cards, draw a marquee around both ->
-    // "2 cards move into this area" -> confirm -> a frame with 2
+    // "2 items move into this area" -> confirm -> a frame with 2
     // children. Placements stay >= 0.3 board-width fractions apart --
     // a card's own rendered footprint at this zoom level is wide
     // enough that a tighter gap lands a later click ON the earlier
@@ -144,7 +144,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await page.keyboard.press('a')
     await dragBetween(page, await boardPoint(board, 0.18, 0.01), await boardPoint(board, 0.63, 0.16))
     await expect(popover).toBeVisible()
-    await expect(popover.getByTestId('atlas-placement-context')).toHaveText('2 cards move into this area')
+    await expect(popover.getByTestId('atlas-placement-context')).toHaveText('2 items move into this area')
     await selectKind(popover, ATLAS_KIND_TOPIC)
     await popover.getByTestId('atlas-placement-title').fill('ZzC2eGroupArea')
     await popover.getByTestId('atlas-placement-submit').click()
@@ -154,7 +154,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     // documented nesting behavior) -- the header's own count is the
     // real proof of containment, not the cards' mere presence/absence.
     const groupArea = groupCard(page, 'ZzC2eGroupArea')
-    await expect(groupArea.getByTestId('atlas-group-header')).toContainText('2 cards')
+    await expect(groupArea.getByTestId('atlas-group-header')).toContainText('2 items')
 
     // --- Frame interior: right-click the frame's own empty band
     // (below the header, above its tile grid -- never on the header
@@ -203,7 +203,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await wheelAt(page, header, 0, 300)
     await page.keyboard.up('Meta')
     await waitForViewportStable(board)
-    await expect(groupArea.getByTestId('atlas-group-header')).toContainText('3 cards')
+    await expect(groupArea.getByTestId('atlas-group-header')).toContainText('3 items')
 
     // --- Drag filing IN: a loner card dragged onto the frame highlights
     // it live (goal 0161 slice 1: the highlight now reaches the frame
@@ -222,7 +222,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     )
     // Same nested-preview caveat as the marker-box members above --
     // the header count is the real proof of filing.
-    await expect(groupArea.getByTestId('atlas-group-header')).toContainText('4 cards')
+    await expect(groupArea.getByTestId('atlas-group-header')).toContainText('4 items')
     await expect(groupArea).toHaveAttribute('data-drag-highlight', 'false')
 
     // --- Drag OUT from the preview (goal 0141): WITHOUT drilling in,
@@ -234,9 +234,13 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await dragBetween(
       page,
       await hittablePointOn(page, previewLoner),
-      await boardPoint(board, 0.88, 0.72),
+      // Left-middle open canvas: the bottom-right previously used here
+      // now sits under the seeded Board gallery frame, whose footprint
+      // grew when frame previews learned to draw filed objects (goal
+      // 0266) -- and under the minimap beneath it.
+      await boardPoint(board, 0.12, 0.60),
     )
-    await expect(groupArea.getByTestId('atlas-group-header')).toContainText('3 cards')
+    await expect(groupArea.getByTestId('atlas-group-header')).toContainText('3 items')
     await expect(noteCard(page, 'ZzC2eLoner')).toBeVisible()
 
     // Re-file it for the drilled drag-out below (3 -> 4), keeping the
@@ -248,7 +252,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
       await hittablePointOn(page, noteCard(page, 'ZzC2eLoner')),
       { x: groupBox3.x + groupBox3.width / 2, y: groupBox3.y + groupBox3.height / 2 },
     )
-    await expect(groupArea.getByTestId('atlas-group-header')).toContainText('4 cards')
+    await expect(groupArea.getByTestId('atlas-group-header')).toContainText('4 items')
 
     // --- Drag filing OUT: drilled inside the frame, drag the same
     // card past the board's own visible edge -- un-files it back to
@@ -272,7 +276,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('ZzC2eGroupArea')
     await waitForViewportStable(board)
     await expect(noteCard(page, 'ZzC2eLoner')).toBeVisible()
-    await expect(groupArea.getByTestId('atlas-group-header')).toContainText('3 cards')
+    await expect(groupArea.getByTestId('atlas-group-header')).toContainText('3 items')
 
     // --- Dissolve: the frame's own header menu -> confirm names the
     // promotion -> the frame is gone, its 3 children are back at the
@@ -281,7 +285,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await expect(menu).toBeVisible()
     await menu.getByText('Dissolve area', { exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Dissolve ZzC2eGroupArea?' })).toBeVisible()
-    await expect(page.getByText('Its 3 cards move up a level.')).toBeVisible()
+    await expect(page.getByText('Its 3 items move up a level.')).toBeVisible()
     await page.getByRole('button', { name: 'Dissolve' }).click()
     await expect(groupCard(page, 'ZzC2eGroupArea')).toHaveCount(0)
     await expect(noteCard(page, 'ZzC2eMemberA')).toBeVisible()
@@ -355,13 +359,13 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
       { x: memberABox.x + memberABox.width + 20, y: memberABox.y + memberABox.height + 20 },
     )
     await expect(popover).toBeVisible()
-    await expect(popover.getByTestId('atlas-placement-context')).toHaveText('1 card moves into this area')
+    await expect(popover.getByTestId('atlas-placement-context')).toHaveText('1 item moves into this area')
     await selectKind(popover, ATLAS_KIND_TOPIC)
     await popover.getByTestId('atlas-placement-title').fill('ZzC2eEmptyHost')
     await popover.getByTestId('atlas-placement-submit').click()
     await expect(popover).not.toBeVisible()
     const emptyHostFrame = groupCard(page, 'ZzC2eEmptyHost')
-    await expect(emptyHostFrame.getByTestId('atlas-group-header')).toContainText('1 card')
+    await expect(emptyHostFrame.getByTestId('atlas-group-header')).toContainText('1 item')
     await emptyHostFrame.getByTestId('atlas-group-header').click()
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('ZzC2eEmptyHost')
     await deleteCardViaMenu(page, menu, 'ZzC2eMemberA')

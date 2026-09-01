@@ -155,3 +155,14 @@
         outline-offset: 2px;
     }
 }
+
+/* Frame-preview tile: the real face, inert -- content pointer events
+   off so an embedded viewer (diagram pan/zoom, a table's grid) can't
+   swallow the frame's own clicks; the slot clips natural-size
+   content the same way a persisted Size does. */
+.object[data-preview='true'] {
+    overflow: hidden;
+}
+.object[data-preview='true'] > * {
+    pointer-events: none;
+}

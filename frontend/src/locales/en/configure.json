@@ -569,6 +569,7 @@
     "noFieldsFound": "No fields found in the pasted sample."
   },
   "configureView": {
+    "subtitle": "Reusable connections, lists, and values that workflows reference — defined once, used anywhere.",
     "ariaLabel": "Configure",
     "integration": "Integrations",
     "lists": "Lists",

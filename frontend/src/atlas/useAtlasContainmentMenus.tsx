@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { TFunction } from 'i18next'
-import type { Card, Note, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { BoardObject, Card, Note, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
@@ -31,11 +31,12 @@ import { perspectiveMembershipMenuItems } from './atlasPerspectiveMenuItems'
 // exact same AtlasService.DeleteCard -- only Dissolve's own confirm
 // copy names the act deliberately, the other doors skip it.
 export function useAtlasContainmentMenus({
-  t, allCards, notes, perspectives, setMenu, drill, onError, onDeleted, onPerspectiveToast, requestPlacementInside, requestGroup, guardDelete,
+  t, allCards, notes, allObjects, perspectives, setMenu, drill, onError, onDeleted, onPerspectiveToast, requestPlacementInside, requestGroup, guardDelete,
 }: {
   t: TFunction<'atlas'>
   allCards: Card[]
   notes: Note[]
+  allObjects: BoardObject[]
   perspectives: Perspective[]
   setMenu: (state: ContextMenuState | null) => void
   drill: (id: string) => void
@@ -43,7 +44,7 @@ export function useAtlasContainmentMenus({
   onDeleted: (result: TombstoneResult) => void
   onPerspectiveToast: (message: string) => void
   requestPlacementInside: (tool: AtlasCreationTool, pos: { x: number; y: number }, parentID: string) => void
-  requestGroup: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
+  requestGroup: (cardIDs: string[], noteIDs: string[], objectIDs: string[], pos: { x: number; y: number }) => void
   // The container-delete gate (goal 0149 gap 3) -- confirms when the
   // delete promotes children, runs exec directly otherwise. Dissolve
   // bypasses it: its own dialog already names the promotion. objectIDs
@@ -53,9 +54,11 @@ export function useAtlasContainmentMenus({
 }) {
   const [dissolveTarget, setDissolveTarget] = useState<Card | null>(null)
 
-  // Every direct child (card + note) a dissolve is about to virtually
-  // promote -- the confirm dialog's own "N cards move up a level" fact.
-  const promotedCount = (frameID: string) => childrenOf(allCards, frameID).length + notes.filter((n) => n.ParentID === frameID).length
+  // Every direct child (card + note + board object) a dissolve is
+  // about to virtually promote -- the confirm dialog's own "N items
+  // move up a level" fact (goal 0266: objects promote through the
+  // same EffectiveParentID seam, goal 0233).
+  const promotedCount = (frameID: string) => childrenOf(allCards, frameID).length + notes.filter((n) => n.ParentID === frameID).length + allObjects.filter((o) => o.ParentID === frameID).length
 
   const deleteCard = (id: string) => {
     AtlasService.DeleteCard(id)
@@ -147,16 +150,13 @@ export function useAtlasContainmentMenus({
   }
 
   // A multi-selection (LOCKED design §6d): "Group into new area" only
-  // once 2+ CARDS are selected (a notes-only selection gets no group
-  // item -- notes simply ride along when cards ARE present); Delete
-  // covers every selected card + note + board object together,
-  // instantly. A board object never joins a group (goal 0179/0180: it
-  // is board-local, not a document a region frame files) -- objectIDs
-  // rides only into the Delete action below.
+  // once ANY 2+ placed things are selected (goal 0266's peer law:
+  // cards, notes and board objects all group); Delete covers every
+  // selected card + note + board object together, instantly.
   const openMultiSelectMenu = (cardIDs: string[], noteIDs: string[], objectIDs: string[], pos: { x: number; y: number }) => {
     const items: ContextMenuItem[] = []
-    if (cardIDs.length >= 2) {
-      items.push({ id: 'group', label: t('contextMenu.groupIntoArea'), commandId: 'atlas.group.selection', run: () => requestGroup(cardIDs, noteIDs, pos) })
+    if (cardIDs.length + noteIDs.length + objectIDs.length >= 2) {
+      items.push({ id: 'group', label: t('contextMenu.groupIntoArea'), commandId: 'atlas.group.selection', run: () => requestGroup(cardIDs, noteIDs, objectIDs, pos) })
     }
     // Notes never join a perspective (ADR-0041's MemberCardIDs is cards
     // only) -- only the selection's card ids are offered.

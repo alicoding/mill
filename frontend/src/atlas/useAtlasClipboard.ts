@@ -89,7 +89,21 @@ export function useAtlasClipboard({ allCards, allNotes, links, kinds, selectedCa
       if (modalSurfaceOpen()) return
       if (isEditableTarget(document.activeElement)) return
       if (window.getSelection()?.toString()) return
-      const payload = serializeAtlasSelection(s.allCards, s.allNotes, s.links, s.selectedCardIDs, s.selectedNoteIDs)
+      // Read the DOM's own .selected nodes, not the selectedCardIDs/
+      // selectedNoteIDs state mirror -- a copy fired right after the
+      // click that selected something races the mirror's commit and
+      // silently copies nothing (readSelectedNodeIDs' own recorded
+      // render-order gap, the same fix the Escape ladder adopted).
+      // The mirror props remain the fallback for anything the DOM
+      // read misses.
+      const domSelected = new Set(
+        Array.from(document.querySelectorAll<HTMLElement>('.react-flow__node.selected'))
+          .map((el) => el.dataset.id)
+          .filter((id): id is string => !!id),
+      )
+      const cardIDs = domSelected.size > 0 ? s.allCards.filter((c) => domSelected.has(c.ID)).map((c) => c.ID) : s.selectedCardIDs
+      const noteIDs = domSelected.size > 0 ? s.allNotes.filter((n) => domSelected.has(n.ID)).map((n) => n.ID) : s.selectedNoteIDs
+      const payload = serializeAtlasSelection(s.allCards, s.allNotes, s.links, cardIDs, noteIDs)
       if (!payload) return
       e.preventDefault()
       e.clipboardData?.setData('text/plain', JSON.stringify(payload))

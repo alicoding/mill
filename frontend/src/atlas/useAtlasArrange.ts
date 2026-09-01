@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import type { RefObject } from 'react'
-import type { BoardObject, Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { BoardObject, Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
 import { computeAutoArrangeLayout, computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH, OBJECT_FALLBACK_EXTENT, type ArrangeObjectTile } from './atlasBoardLayout'
@@ -25,18 +25,20 @@ export function computeFreeMoves(
   arrangeAdjacency: Map<string, string[]>,
   boardWidth: number,
   objects: BoardObject[] = [],
+  allNotes: Note[] = [],
+  allObjects: BoardObject[] = [],
 ): { id: string; x: number; y: number }[] {
   const positioned = cards.filter((c) => c.Position != null)
   const unpositioned = cards.filter((c) => c.Position == null)
   const packed = unpositioned.length > 0
-    ? computeAutoArrangeLayout(unpositioned, allCards, arrangeAdjacency, boardWidth > 0 ? boardWidth - 48 : undefined).boxes
+    ? computeAutoArrangeLayout(unpositioned, allCards, arrangeAdjacency, boardWidth > 0 ? boardWidth - 48 : undefined, allNotes, [], allObjects).boxes
     : new Map<string, { x: number; y: number }>()
-  const cardMaxY = positioned.reduce((m, c) => Math.max(m, (c.Position?.Y ?? 0) + (isGroupCard(allCards, c) ? computeGroupFrameLayout(allCards, c.ID).size.height : NOTE_HEIGHT)), 0)
+  const cardMaxY = positioned.reduce((m, c) => Math.max(m, (c.Position?.Y ?? 0) + (isGroupCard(allCards, c, allNotes, allObjects) ? computeGroupFrameLayout(allCards, c.ID, allNotes, allObjects).size.height : NOTE_HEIGHT)), 0)
   const maxY = objects.reduce((m, o) => Math.max(m, o.Position.Y + (o.Size?.H ?? OBJECT_FALLBACK_EXTENT)), cardMaxY)
   const yBase = positioned.length > 0 || objects.length > 0 ? maxY + 48 : 0
   const seatedBoxes = cards.map((card) => {
-    const frame = isGroupCard(allCards, card)
-    const size = frame ? computeGroupFrameLayout(allCards, card.ID).size : { width: NOTE_WIDTH, height: NOTE_HEIGHT }
+    const frame = isGroupCard(allCards, card, allNotes, allObjects)
+    const size = frame ? computeGroupFrameLayout(allCards, card.ID, allNotes, allObjects).size : { width: NOTE_WIDTH, height: NOTE_HEIGHT }
     const seat = packed.get(card.ID)
     return {
       id: card.ID,
@@ -89,9 +91,11 @@ export function objectArrangeTiles(
 // Board objects are full packing peers of cards (goal 0265): the
 // arrange button seats and persists them too, superseding the
 // boardobject.go comment that once scoped arrange to cards.
-export function useAtlasArrange({ cards, allCards, arteries, boardWidth, arrangeRequest, objects, objectBoxesRef }: {
+export function useAtlasArrange({ cards, allCards, arteries, boardWidth, arrangeRequest, objects, allNotes, allObjects, objectBoxesRef }: {
   cards: Card[]
   allCards: Card[]
+  allNotes: Note[]
+  allObjects: BoardObject[]
   arteries: ReturnType<typeof resolveBoardEdges>
   boardWidth: number
   arrangeRequest?: number
@@ -120,8 +124,8 @@ export function useAtlasArrange({ cards, allCards, arteries, boardWidth, arrange
   // ones, last-writer-wins); persistence belongs to user actions
   // alone: a drag, or the arrange button below.
   const freeMoves = useMemo(
-    () => computeFreeMoves(cards, allCards, arrangeAdjacency, boardWidth, objects),
-    [cards, allCards, arrangeAdjacency, boardWidth, objects],
+    () => computeFreeMoves(cards, allCards, arrangeAdjacency, boardWidth, objects, allNotes, allObjects),
+    [cards, allCards, arrangeAdjacency, boardWidth, objects, allNotes, allObjects],
   )
 
   // The Auto-arrange BUTTON (goal 0089): one-shot packer over this
@@ -137,7 +141,7 @@ export function useAtlasArrange({ cards, allCards, arteries, boardWidth, arrange
     lastArrangeRef.current = arrangeRequest
     const measuredBoxes = objectBoxesRef.current ?? []
     const tiles = objectArrangeTiles(objects, measuredBoxes)
-    const layout = computeAutoArrangeLayout(cards, allCards, arrangeAdjacency, boardWidth - 48, [], tiles).boxes
+    const layout = computeAutoArrangeLayout(cards, allCards, arrangeAdjacency, boardWidth - 48, allNotes, tiles, allObjects).boxes
     const measuredByID = new Map(measuredBoxes.map((b) => [b.id, b]))
     void Promise.all([
       ...cards.map((c) => {
@@ -156,7 +160,7 @@ export function useAtlasArrange({ cards, allCards, arteries, boardWidth, arrange
         return AtlasService.SetBoardObjectPosition(o.ID, { X: seat.x + dx, Y: seat.y + dy })
       }),
     ]).then(() => refreshAtlas()).catch(console.error)
-  }, [arrangeRequest, cards, allCards, arrangeAdjacency, boardWidth, objects, objectBoxesRef])
+  }, [arrangeRequest, cards, allCards, arrangeAdjacency, boardWidth, objects, allNotes, allObjects, objectBoxesRef])
 
   return { freeMoves }
 }
