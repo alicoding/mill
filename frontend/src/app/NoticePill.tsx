@@ -26,6 +26,8 @@ import styles from './NoticePill.module.css'
 export function NoticePill() {
   const { t } = useTranslation('app')
   const state = useUpdateNoticeStore((s) => s.updateNoticeState)
+  const userCheck = useUpdateNoticeStore((s) => s.userCheck)
+  const dismissUserCheckNotice = useUpdateNoticeStore((s) => s.dismissUserCheckNotice)
 
   const refresh = useCallback(() => { void refreshUpdateNoticeState() }, [])
 
@@ -72,6 +74,42 @@ export function NoticePill() {
           aria-label={t('noticePill.dismissAriaLabel')}
           onClick={() => void SettingsService.DismissUpdateNotice()}
           data-testid="notice-dismiss"
+        >
+          ×
+        </button>
+      </span>
+    )
+  }
+  // User-run check outcomes (goal 0275): rendered only when no server
+  // state above claimed the pill, and only for a check the USER
+  // started (updateNoticeStore.userCheck) -- automatic checks stay
+  // silent here exactly as before.
+  if (userCheck === 'checking') {
+    return (
+      <span className={`${styles.pill} ${styles.downloading}`} data-testid="notice-update-checking">
+        {t('noticePill.checking')}
+      </span>
+    )
+  }
+  if (userCheck === 'upToDate') {
+    return (
+      <span className={`${styles.pill} ${styles.downloading}`} data-testid="notice-update-uptodate">
+        {t('noticePill.upToDate')}
+      </span>
+    )
+  }
+  if (userCheck === 'failed') {
+    return (
+      <span className={`${styles.pill} ${styles.failed}`} data-testid="notice-update-check-failed">
+        <button type="button" className={styles.pillAction} onClick={() => findCommand('settings.open')?.run()}>
+          {t('noticePill.checkFailed')}
+        </button>
+        <button
+          type="button"
+          className={styles.dismiss}
+          aria-label={t('noticePill.dismissAriaLabel')}
+          onClick={() => dismissUserCheckNotice()}
+          data-testid="notice-check-failed-dismiss"
         >
           ×
         </button>

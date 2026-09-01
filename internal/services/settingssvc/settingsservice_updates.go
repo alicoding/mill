@@ -82,6 +82,12 @@ const testUpdateCheckDelayEnv = "MILL_TEST_UPDATE_CHECK_DELAY_MS"
 // network call. Ignored outside fake mode.
 const testUpdateCheckFailEnv = "MILL_TEST_UPDATE_CHECK_FAIL"
 
+// testUpdateUpToDateEnv makes fake mode return a clean nothing-new
+// outcome, so e2e can prove a user-run check ANSWERS when there is no
+// update (goal 0275) without a real network call. Ignored outside
+// fake mode.
+const testUpdateUpToDateEnv = "MILL_TEST_UPDATE_UP_TO_DATE"
+
 // testUpdateDownloadDelayEnv holds DownloadAndInstallUpdate's fake-mode
 // refusal for a set number of milliseconds before returning, so e2e can
 // observe the Downloading phase (goal 0142's UpdateNotice.Downloading)
@@ -257,6 +263,10 @@ func (s *SettingsService) checkForUpdates(ctx context.Context) (UpdateCheckResul
 			err := fmt.Errorf("simulated check failure")
 			s.recordCheckOutcome(UpdateCheckOutcomeFailed, err.Error())
 			return UpdateCheckResult{}, err
+		}
+		if os.Getenv(testUpdateUpToDateEnv) != "" {
+			s.recordCheckOutcome(UpdateCheckOutcomeUpToDate, "")
+			return UpdateCheckResult{UpdateAvailable: false, CurrentVersion: s.AppVersion()}, nil
 		}
 		s.recordAvailableUpdate(fake)
 		s.recordCheckOutcome(UpdateCheckOutcomeFound, "")

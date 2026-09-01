@@ -216,7 +216,10 @@
     "updateAvailable": "Update available — download",
     "updateDownloading": "Downloading update…",
     "dismissAriaLabel": "Dismiss this update notice",
-    "whatsNew": "What's new"
+    "whatsNew": "What's new",
+    "checking": "Checking for updates…",
+    "upToDate": "You're up to date.",
+    "checkFailed": "Couldn't check for updates — open Settings for details"
   },
   "whatsNew": {
     "title": "What's new",
