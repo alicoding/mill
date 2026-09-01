@@ -98,9 +98,14 @@ export function MilkdownEditor({ value, onChange, ariaLabel, placeholder, testId
         ...NOTE_FEATURES,
         [Crepe.Feature.CodeMirror]: extensionSetting('note', 'richCodeBlocks', false),
       },
-      featureConfigs: placeholder
-        ? { [Crepe.Feature.Placeholder]: { text: placeholder } }
-        : undefined,
+      featureConfigs: {
+        ...(placeholder ? { [Crepe.Feature.Placeholder]: { text: placeholder } } : null),
+        // Shift-Alt-F formats the focused code block (goal 0268) --
+        // mounted through the feature's own CodeMirror `extensions`
+        // seam; see codeBlockFormat.ts's header for why the keybinding
+        // IS the affordance.
+        [Crepe.Feature.CodeMirror]: { extensions: [core.codeBlockFormatKeymap] },
+      },
     })
     // Registered on the underlying Editor before create() -- milkdownCore's
     // own $remark extension point, applied here rather than baked into

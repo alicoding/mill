@@ -266,3 +266,7 @@ export function attachSelectionToolbar(crepe: Crepe, className: string): Selecti
     },
   }
 }
+
+// Re-exported through this lazy core module so @codemirror/* stays out
+// of every eager import graph that reaches MilkdownEditor (goal 0268).
+export { codeBlockFormatKeymap } from './codeBlockFormat'
