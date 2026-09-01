@@ -6,6 +6,7 @@ import type { BoardObject } from '../../../bindings/github.com/alicoding/mill/in
 import type { MirrorReadState } from '../useAtlasObjectMirrorRead'
 import { boardObjectContentFor } from '../atlasNounRegistry'
 import { dispatchObjectEdit } from '../objectSeams'
+import { applyTextAssistOff } from '../../shared/searchInputProps'
 import nodeStyles from '../AtlasBoardObjectNode.module.css'
 import styles from './AtlasPdfObjectContent.module.css'
 
@@ -78,6 +79,18 @@ export function AtlasPdfObjectContent({ object, mirrorContent, preview }: { obje
         src={`/vendor/pdfjs/web/viewer.html?file=${encodeURIComponent(blobUrl)}#zoom=page-width`}
         title={t('boardObject.pdfViewerTitle')}
         data-testid="atlas-pdf-viewer"
+        // The viewer's own toolbar inputs (findbar, page number) never
+        // opt out of OS text assistance -- built for Firefox, which
+        // has none -- so WKWebView autocorrects find queries as prose
+        // (observed live: an acronym query drew the system suggestion
+        // bubble inside the findbar and matched nothing). Applied here
+        // at the seam so the vendored tree stays pristine; same-origin
+        // by construction (the viewer is served from Mill's own
+        // assets).
+        onLoad={(e) => {
+          const doc = e.currentTarget.contentDocument
+          if (doc) applyTextAssistOff(doc, 'input.toolbarField, input#findInput')
+        }}
       />
     )
   }

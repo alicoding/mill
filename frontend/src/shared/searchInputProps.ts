@@ -11,3 +11,24 @@ export const searchInputTextAssistOff = {
   autoCapitalize: 'none',
   spellCheck: false,
 } as const
+
+// The same set as plain DOM attributes, for inputs Mill doesn't render
+// itself -- a vendored engine's own document (the pdf.js viewer's
+// findbar) reached through an iframe seam. WKWebView applies the OS's
+// autocorrect to any input that doesn't opt out, and a vendored viewer
+// built for Firefox never does; the parent applies these post-load
+// rather than patching the vendored tree.
+export const searchInputTextAssistOffAttrs: ReadonlyArray<[string, string]> = [
+  ['autocomplete', 'off'],
+  ['autocorrect', 'off'],
+  ['autocapitalize', 'none'],
+  ['spellcheck', 'false'],
+]
+
+export function applyTextAssistOff(doc: Document, selector: string): void {
+  for (const el of doc.querySelectorAll(selector)) {
+    for (const [name, value] of searchInputTextAssistOffAttrs) {
+      el.setAttribute(name, value)
+    }
+  }
+}

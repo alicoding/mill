@@ -106,6 +106,13 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     await expect(pdf.locator('[data-testid="atlas-object-click-shield"]')).toHaveCount(0)
     const viewer = page.frameLocator('[data-testid="atlas-pdf-viewer"]')
     await expect(viewer.locator('.page[data-page-number="1"] canvas')).toBeVisible()
+    // The viewer's findbar input opts out of OS text assistance (goal
+    // 0271): the vendored viewer never sets these itself, and WKWebView
+    // autocorrected find queries as prose -- the parent applies the
+    // attributes through the iframe seam on load.
+    await expect(viewer.locator('#findInput')).toHaveAttribute('autocorrect', 'off')
+    await expect(viewer.locator('#findInput')).toHaveAttribute('autocomplete', 'off')
+    await expect(viewer.locator('#findInput')).toHaveAttribute('spellcheck', 'false')
     // Wheel routing, live viewer (goal 0271): with the shield lifted
     // the registry's wheelContained fact puts nowheel on the whole
     // node box -- a scroll aimed into the viewer must never ALSO pan
