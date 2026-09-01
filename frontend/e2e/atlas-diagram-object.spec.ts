@@ -1,7 +1,9 @@
 import { test, expect } from './fixtures/server'
-import { promoteBoardObject, nonSeededBoardObjects } from './fixtures/atlasBoard'
+import { promoteBoardObject, nonSeededBoardObjects, zoomAllTheWayOut } from './fixtures/atlasBoard'
 import { createBoardObjectViaRPC, ATLAS_DEFAULT_SPACE_ID } from './fixtures/atlasNativeDropEscapeHatch'
 import { ATLAS_KIND_DOCUMENT } from './fixtures/kindPicker'
+import { waitForViewportStable } from './fixtures/animation'
+import { wheelAt } from './fixtures/pointer'
 
 // The "diagram" board object (goal 0179 S2): dropping a .drawio/.mmd
 // file lands a board-local object, never a card -- rendered through
@@ -42,6 +44,23 @@ test('a dropped .drawio file renders as a board object through the vendored view
   const diagramObject = diagramObjects(page)
   await expect(diagramObject).toBeVisible()
   await expect(diagramObject.locator('svg')).toBeVisible()
+
+  // Wheel routing (goal 0271): the vendored viewer consumes wheel for
+  // its own pan/zoom, so a scroll ANYWHERE over the diagram node must
+  // never also pan the board -- the registry's wheelContained fact
+  // puts the canvas kit's nowheel class on the whole node box
+  // (shieldless Kind, so it is always live).
+  await expect(diagramObject).toHaveClass(/nowheel/)
+  // The pointer must actually reach the object: worker-shared board
+  // state shifts fitView between runs, and a transform-based canvas
+  // can't be auto-scrolled by hover -- zoom out first, then settle.
+  await zoomAllTheWayOut(page)
+  const viewportTransform = () => page.locator('.react-flow__viewport').evaluate((el) => el.style.transform)
+  await waitForViewportStable(page.getByTestId('atlas-board'))
+  const beforeWheel = await viewportTransform()
+  await wheelAt(page, diagramObject, 0, 80)
+  await page.waitForTimeout(300) // no observable "wheel fully routed" signal exists for a negative assertion
+  expect(await viewportTransform()).toBe(beforeWheel)
 
   // dragBand (goal 0206): diagram carries no tray descriptor of its own
   // (drop-only), so its dragBand: true fact can't be covered by

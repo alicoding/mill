@@ -301,7 +301,15 @@ at:
     both axes (no zoom), pinch zooms around the pointer, ⌘-scroll
     zooms; flip Settings > General > Canvas navigation to Mouse and
     confirm a mouse wheel zooms; confirm the workflow editor follows
-    the same mode without a reload.
+    the same mode without a reload. Additionally (goal 0271): with a
+    live (selected) PDF object and a draw.io object on the board,
+    two-finger scroll in every direction with the pointer inside each
+    viewer -- the viewer scrolls/zooms and the BOARD holds still (no
+    simultaneous pan), including diagonal gestures over a page-width
+    PDF whose horizontal axis has nothing to scroll; with the object
+    UNSELECTED (shield up), the same gesture pans the board only.
+    Synthetic wheel can't reproduce the real gesture stream's
+    double-handling, so this stays manual.
   - **File-promise drops: the post-screenshot floating thumbnail**
     (goal 0256, `MillFilePromiseDropView` /
     `AttachFilePromiseReceiver`) — a promise drag needs a real AppKit

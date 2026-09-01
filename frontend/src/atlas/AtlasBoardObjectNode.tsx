@@ -5,7 +5,7 @@ import type { NodeProps, Node as RFNode } from '@xyflow/react'
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { boardObjectContentFor } from './atlasNounRegistry'
-import { unknownKindContent } from './atlasBoardObjectContent'
+import { unknownKindContent, viewerOwnsWheel } from './atlasBoardObjectContent'
 import { AtlasShapeRotateHandle } from './AtlasShapeRotateHandle'
 import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
 import { useAtlasObjectMirrorRead } from './useAtlasObjectMirrorRead'
@@ -64,6 +64,10 @@ function objectNodeCaps(object: BoardObject, preview: boolean): { isShape: boole
   }
 }
 
+function objectBoxClassName(wheelOptOut: boolean): string {
+  return wheelOptOut ? `${styles.object} nowheel` : styles.object
+}
+
 function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardObjectRFNode>) {
   const { t } = useTranslation('atlas')
   const { object, soleSelected } = data
@@ -105,7 +109,13 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
   // objects stay visible, selectable and deletable, and a built-in
   // registry/data mismatch becomes VISIBLE on the board instead of an
   // invisible node only a console reader could diagnose.
-  const { Component, ariaLabelKey, role, dragBand, clickShield } = facts ?? unknownKindContent
+  const resolvedFacts = facts ?? unknownKindContent
+  const { Component, ariaLabelKey, role, dragBand, clickShield } = resolvedFacts
+  // Node-level rather than face-level because the kit resolves
+  // `nowheel` by event-target ancestry and a wheel can land on node
+  // chrome (drag band, padding) outside the face -- see
+  // viewerOwnsWheel's own contract comment.
+  const wheelOptOut = viewerOwnsWheel(resolvedFacts, preview, !!selected)
   // ADR-0046 (goal 0244 S1): double-click dispatches through the
   // object's own DECLARED edit route (resolved per-object, since a Kind
   // like diagram opens different doors for different mirror
@@ -121,7 +131,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
   return (
     <div
       ref={boxRef}
-      className={styles.object}
+      className={objectBoxClassName(wheelOptOut)}
       style={{
         ...(hasSize ? { width: '100%', height: '100%' } : null),
         ...(rotationDeg ? { transform: `rotate(${rotationDeg}deg)`, transformOrigin: '50% 50%' } : null),
