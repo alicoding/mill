@@ -26,6 +26,7 @@ registerBoardObjectContent('pdf', {
   // table/diagram/sheet.
   dragBand: true,
   clickShield: true,
+  wheelContained: true,
   // Payload.mirrorPath names the real .pdf file (goal 0232 S1's
   // contract): shared watch + "Open in default app" enablement.
   fileBacked: true,

@@ -3,6 +3,8 @@ import { createBoardObjectViaRPC } from './fixtures/atlasNativeDropEscapeHatch'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { waitForViewportStable } from './fixtures/animation'
+import { wheelAt } from './fixtures/pointer'
 
 // Goal 0223: the live-app proof that the seeded board-object examples
 // (shape/ink/image, plus a diagram this test creates for itself --
@@ -83,6 +85,19 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     // same adopt-the-viewer's-controls choice the drawio face made).
     const pdf = page.locator('[data-testid="atlas-board-object"][data-object-kind="pdf"]')
     await expect(pdf).toBeVisible()
+    // Wheel routing, shield up (goal 0271): an UNSELECTED clickShield
+    // Kind is inert, so the wheelContained fact withholds nowheel and
+    // a scroll over it pans the board like any body. The reverse wheel
+    // restores the viewport exactly (panOnScroll is a 1:1 delta, no
+    // zoom), keeping later geometry in this test intact.
+    await expect(pdf).not.toHaveClass(/nowheel/)
+    const viewportTransform = () => page.locator('.react-flow__viewport').evaluate((el) => el.style.transform)
+    await waitForViewportStable(page.getByTestId('atlas-board'))
+    const shieldUpTransform = await viewportTransform()
+    await wheelAt(page, pdf, 0, 80)
+    await expect.poll(viewportTransform).not.toBe(shieldUpTransform)
+    await wheelAt(page, pdf, 0, -80)
+    await expect.poll(viewportTransform).toBe(shieldUpTransform)
     // Click-to-activate (the clickShield contract): the first click on
     // the face selects the object -- only then is the embedded viewer
     // live. A frameLocator could technically pierce the shield, but
@@ -91,6 +106,18 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     await expect(pdf.locator('[data-testid="atlas-object-click-shield"]')).toHaveCount(0)
     const viewer = page.frameLocator('[data-testid="atlas-pdf-viewer"]')
     await expect(viewer.locator('.page[data-page-number="1"] canvas')).toBeVisible()
+    // Wheel routing, live viewer (goal 0271): with the shield lifted
+    // the registry's wheelContained fact puts nowheel on the whole
+    // node box -- a scroll aimed into the viewer must never ALSO pan
+    // the board.
+    await expect(pdf).toHaveClass(/nowheel/)
+    await waitForViewportStable(page.getByTestId('atlas-board'))
+    const liveTransform = await viewportTransform()
+    await wheelAt(page, pdf, 0, 80)
+    // A settled negative: poll the transform staying put across a beat
+    // rather than asserting once immediately.
+    await page.waitForTimeout(300) // no observable "wheel fully routed" signal exists for a negative assertion
+    expect(await viewportTransform()).toBe(liveTransform)
     await expect(viewer.locator('#numPages')).toContainText('2')
     // At board-tile widths the viewer's own responsive toolbar
     // collapses prev/next; the page-number INPUT is the always-visible
