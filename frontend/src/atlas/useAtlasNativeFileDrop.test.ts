@@ -72,3 +72,21 @@ describe('resolveFileDropKind (goal 0237 S3 rider)', () => {
     expect(resolveFileDropKind('/tmp/notes.md', alwaysEnabled, claimLookup)).toBe('card')
   })
 })
+
+// goal 0274: the backend's content hint routes an exported draw.io
+// .xml as a diagram -- extension rules alone would card-ify it.
+describe('resolveFileDropKind drawio-xml content hint', () => {
+  const noClaim = () => undefined
+
+  it('routes a sniffed .xml to "diagram" when the diagram extension is enabled', () => {
+    expect(resolveFileDropKind('/tmp/export.xml', alwaysEnabled, noClaim, 'drawio-xml')).toBe('diagram')
+  })
+
+  it('falls a sniffed .xml through to "card" when the diagram extension is disabled', () => {
+    expect(resolveFileDropKind('/tmp/export.xml', alwaysDisabled, noClaim, 'drawio-xml')).toBe('card')
+  })
+
+  it('a plain .xml with no hint stays a card', () => {
+    expect(resolveFileDropKind('/tmp/config.xml', alwaysEnabled, noClaim, '')).toBe('card')
+  })
+})

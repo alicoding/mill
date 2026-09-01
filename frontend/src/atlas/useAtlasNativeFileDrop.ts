@@ -40,8 +40,14 @@ export function resolveFileDropKind(
   path: string,
   isEnabled: (id: string) => boolean,
   claimedNounForExtension: (ext: string) => ThirdPartyNounShape | undefined = thirdPartyNounForExtension,
+  contentKind = '',
 ): FileDropKind | ThirdPartyNounShape {
-  if (isDiagramPath(path) && isEnabled('diagram')) return 'diagram'
+  // contentKind is the backend's head-sniff hint (goal 0274,
+  // FileDropRoute.ContentKind): an exported draw.io .xml carries the
+  // same mxfile content a .drawio save does, so it lands as a diagram
+  // -- behind the same enablement toggle, falling through to the card
+  // path exactly as a disabled .drawio drop does.
+  if ((isDiagramPath(path) || contentKind === 'drawio-xml') && isEnabled('diagram')) return 'diagram'
   if (isImagePath(path)) return 'image'
   if (isSheetPath(path) && isEnabled('sheet')) return 'sheet'
   if (isPdfPath(path) && isEnabled('pdf')) return 'pdf'
@@ -108,7 +114,7 @@ export function useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPo
           // rider -- neither noun has a tray button to hide) falls the
           // drop through to the plain-card path instead, exactly the
           // resolveFileDropKind decision above states.
-          const verdict = resolveFileDropKind(path, isExtensionEnabled)
+          const verdict = resolveFileDropKind(path, isExtensionEnabled, thirdPartyNounForExtension, route.ContentKind ?? '')
           if (typeof verdict === 'object') {
             // A claimed-extension drop lands the plugin's own object
             // through the same file-backed payload contract diagram/

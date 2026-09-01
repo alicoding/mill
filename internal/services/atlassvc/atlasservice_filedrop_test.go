@@ -244,3 +244,51 @@ func TestConvertHTMLToMarkdown(t *testing.T) {
 		t.Error("ConvertHTMLToMarkdown returned empty output for non-empty HTML")
 	}
 }
+
+// goal 0274: the .xml content sniff behind ResolveFileDropRoute's
+// ContentKind hint, across its input space.
+func TestSniffContentKind(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, content string) string {
+		p := filepath.Join(dir, name)
+		if err := os.WriteFile(p, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+
+	cases := []struct {
+		name, file, content, want string
+	}{
+		{"drawio export with xml declaration", "a.xml", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mxfile host=\"app.diagrams.net\"><diagram/></mxfile>", "drawio-xml"},
+		{"bare mxGraphModel", "b.xml", "<mxGraphModel><root/></mxGraphModel>", "drawio-xml"},
+		{"plain xml stays a card", "c.xml", "<?xml version=\"1.0\"?>\n<catalog><item/></catalog>", ""},
+		{"uppercase extension still sniffs", "d.XML", "<mxfile><diagram/></mxfile>", "drawio-xml"},
+		{"non-xml extension never sniffs", "e.drawio", "<mxfile/>", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := sniffContentKind(write(tc.file, tc.content)); got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+
+	t.Run("unreadable path yields empty, never an error path", func(t *testing.T) {
+		if got := sniffContentKind(filepath.Join(dir, "missing.xml")); got != "" {
+			t.Errorf("got %q, want empty", got)
+		}
+	})
+
+	t.Run("route resolution carries the hint for a single drawio xml", func(t *testing.T) {
+		p := write("route.xml", "<mxfile><diagram/></mxfile>")
+		a := newTestAtlasService(t)
+		route, err := a.ResolveFileDropRoute([]string{p})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if route.Kind != "instant" || route.ContentKind != "drawio-xml" {
+			t.Errorf("route = %+v, want instant/drawio-xml", route)
+		}
+	})
+}

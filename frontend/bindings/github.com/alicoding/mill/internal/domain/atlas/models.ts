@@ -44,9 +44,10 @@ export interface BoardObject {
     "Payload": { [_ in string]?: string } | null;
 
     /**
-     * Position is this object's placement within ParentID's canvas --
-     * board objects are Free-mode-only (no shelves-auto-arrange
-     * concept applies to a thing in space rather than a document).
+     * Position is this object's placement within ParentID's canvas.
+     * Required on the wire (never nil, unlike Card.Position): an
+     * object is born placed. Objects are full packing peers of cards
+     * in Auto-arrange (goal 0265's peer law).
      */
     "Position": Position;
 
@@ -383,6 +384,13 @@ export enum MirrorKind {
      * or interpreted on the Go side.
      */
     MirrorKindSheet = "sheet",
+
+    /**
+     * MirrorKindPdf is a PDF document (goal 0267): its bytes travel
+     * base64-encoded like MirrorKindSheet's -- the frontend's vendored
+     * pdf.js viewer renders them client-side, never the Go side.
+     */
+    MirrorKindPdf = "pdf",
 
     /**
      * MirrorKindOther never has its content loaded -- the overlay shows
