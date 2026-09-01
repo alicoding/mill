@@ -6,7 +6,7 @@ import { AtlasAreaMarquee } from '../AtlasAreaMarquee'
 
 const areaIdentity = identityOf('area')
 
-export interface AtlasAreaArtifact { kind: 'area'; kindID: string; title: string; enclosedCardIDs: string[]; enclosedNoteIDs: string[] }
+export interface AtlasAreaArtifact { kind: 'area'; kindID: string; title: string; enclosedCardIDs: string[]; enclosedNoteIDs: string[]; enclosedObjectIDs: string[] }
 
 export const areaTool = {
   id: areaIdentity.id,
@@ -56,16 +56,18 @@ export const areaTool = {
       const start = points[0], end = points[points.length - 1]
       const flowRect = normalizeRect(ctx.screenToFlowPosition(start), ctx.screenToFlowPosition(end))
       const enclosedCardIDs = enclosedIDs(flowRect, ctx.cardBoxes)
+      const enclosedObjectIDs = enclosedIDs(flowRect, ctx.objectBoxes)
       const enclosedNoteIDs = enclosedIDs(flowRect, ctx.noteBoxes)
-      ctx.openAreaPopover(start, { x: flowRect.x, y: flowRect.y }, enclosedCardIDs, enclosedNoteIDs)
+      ctx.openAreaPopover(start, { x: flowRect.x, y: flowRect.y }, enclosedCardIDs, enclosedNoteIDs, enclosedObjectIDs)
     },
     preview: AtlasAreaMarquee,
   },
-  commit: (input: { kindID: string; title: string; enclosedCardIDs: string[]; enclosedNoteIDs: string[] }): AtlasAreaArtifact => ({
+  commit: (input: { kindID: string; title: string; enclosedCardIDs: string[]; enclosedNoteIDs: string[]; enclosedObjectIDs: string[] }): AtlasAreaArtifact => ({
     kind: 'area',
     kindID: input.kindID,
     title: input.title,
     enclosedCardIDs: input.enclosedCardIDs,
+    enclosedObjectIDs: input.enclosedObjectIDs,
     enclosedNoteIDs: input.enclosedNoteIDs,
   }),
 } as const satisfies AtlasToolShape

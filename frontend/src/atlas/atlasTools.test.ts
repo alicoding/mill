@@ -80,8 +80,8 @@ describe('noteTool.commit', () => {
 
 describe('areaTool.commit', () => {
   it('carries the enclosed membership through unchanged', () => {
-    const artifact = areaTool.commit({ kindID: 'a', title: 'Area', enclosedCardIDs: ['c1'], enclosedNoteIDs: ['n1'] })
-    expect(artifact).toEqual({ kind: 'area', kindID: 'a', title: 'Area', enclosedCardIDs: ['c1'], enclosedNoteIDs: ['n1'] })
+    const artifact = areaTool.commit({ kindID: 'a', title: 'Area', enclosedCardIDs: ['c1'], enclosedNoteIDs: ['n1'], enclosedObjectIDs: ['o1'] })
+    expect(artifact).toEqual({ kind: 'area', kindID: 'a', title: 'Area', enclosedCardIDs: ['c1'], enclosedNoteIDs: ['n1'], enclosedObjectIDs: ['o1'] })
   })
 })
 

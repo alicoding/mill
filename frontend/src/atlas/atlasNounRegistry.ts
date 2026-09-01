@@ -247,7 +247,7 @@ export interface AtlasGestureCtx {
   // intrinsic (atlasBuildBoardObjectNodes.ts's own header comment).
   objectBoxes: { id: string; x: number; y: number; width: number; height: number }[]
   onDeleteSelection: (cardIDs: string[], noteIDs: string[], objectIDs: string[]) => void
-  openAreaPopover: (screenPos: { x: number; y: number }, flowPos: { x: number; y: number }, enclosedCardIDs: string[], enclosedNoteIDs: string[]) => void
+  openAreaPopover: (screenPos: { x: number; y: number }, flowPos: { x: number; y: number }, enclosedCardIDs: string[], enclosedNoteIDs: string[], enclosedObjectIDs: string[]) => void
   onShapeCreated: (objectID: string) => void
   // Real functions for a one-shot tool; no-ops for a sticky one (the
   // engine's own gestureDisarmFns enforces this, not each tool).

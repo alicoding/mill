@@ -1,4 +1,4 @@
-import type { BoardObject, Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { BoardObject, Card, Kind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { buildBreadcrumbPath, singleRootCard } from './atlasGrouping'
 import { isGroupCard } from './atlasBoardLayout'
 
@@ -49,13 +49,13 @@ function stableSortResults(results: AtlasJumpResult[]): AtlasJumpResult[] {
 // group-card "areas") -- once scoped, an empty query still lists every
 // candidate of that scope (title-ascending), since the facet itself is
 // already a specific enough ask.
-export function filterJumpCards(cards: Card[], kinds: Kind[], query: string, scopeKey?: string): AtlasJumpResult[] {
+export function filterJumpCards(cards: Card[], kinds: Kind[], query: string, scopeKey?: string, allNotes: Note[] = [], allObjects: BoardObject[] = []): AtlasJumpResult[] {
   const q = query.trim().toLowerCase()
   if (!q && !scopeKey) return []
 
   const kindByID = new Map(kinds.map((k) => [k.ID, k]))
   const candidates = scopeKey === AREA_FACET_KEY
-    ? cards.filter((c) => isGroupCard(cards, c))
+    ? cards.filter((c) => isGroupCard(cards, c, allNotes, allObjects))
     : scopeKey
       ? cards.filter((c) => c.KindID === scopeKey)
       : cards

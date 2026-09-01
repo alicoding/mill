@@ -24,6 +24,12 @@ export interface AtlasBoardObjectData extends Record<string, unknown> {
   // Jump/entry pulse (goal 0265): objects are ⌘K jump peers, so the
   // same one-shot pulse ring card nodes render lands here too.
   pulsed?: boolean
+  // Frame-preview tile (goal 0266): the object is being drawn inside
+  // its parent frame's capped preview grid -- render the real face
+  // clamped to the slot, but inert: no drag band, no edit
+  // double-click, no resize, and content pointer events off so an
+  // embedded viewer can't swallow frame clicks.
+  preview?: boolean
 }
 
 export type AtlasBoardObjectRFNode = RFNode<AtlasBoardObjectData>
@@ -39,13 +45,14 @@ export type AtlasBoardObjectRFNode = RFNode<AtlasBoardObjectData>
 function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardObjectRFNode>) {
   const { t } = useTranslation('atlas')
   const { object, soleSelected } = data
+  const preview = data.preview === true
   const { setNodes } = useReactFlow()
   const isShape = object.Kind === 'shape'
   // A persisted Size wins forever (goal 0193's own no-auto-resize
   // rule) -- once set, the node's own RF width/height already carry
   // it (atlasBuildBoardObjectNodes.ts), so .object/.content just fill
   // that box instead of falling back to each Kind's natural sizing.
-  const hasSize = !!object.Size
+  const hasSize = !!object.Size || preview
   // An arrow's own geometry is entirely payload.dx/dy (atlasTools.ts),
   // never a rectangular Size -- a generic corner-drag resize has no
   // sound mapping back onto a direction vector, and no backend call
@@ -55,9 +62,9 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
   // check here rather than moving into the registry. The rotation
   // handle (goal 0214) shares this exact carve-out for the same
   // reason -- an arrow's own geometry has no rotation angle to apply.
-  const resizable = !(isShape && object.Payload?.shapeType === 'arrow')
+  const resizable = !preview && !(isShape && object.Payload?.shapeType === 'arrow')
   const shapeType = isShape ? object.Payload?.shapeType : undefined
-  const rotatable = isShape && shapeType !== 'arrow'
+  const rotatable = !preview && isShape && shapeType !== 'arrow'
   // The rotation transform lives on THIS box, not the shape's own SVG
   // (AtlasShapeContent.tsx no longer applies it) -- goal 0236's fix for
   // "state computed in one frame of reference, displayed in another":
@@ -104,7 +111,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
   // only, matching every other file-backed Kind's convention of never
   // launching another app on an accidental double-click.
   const editRoute = facts?.editRoute ? resolveEditRoute(object, facts.editRoute) : undefined
-  const editable = editRoute?.kind === 'embedded-engine'
+  const editable = !preview && editRoute?.kind === 'embedded-engine'
 
   return (
     <div
@@ -118,6 +125,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
       data-object-kind={object.Kind}
       data-shape-type={shapeType}
       data-pulse={data.pulsed ? 'true' : undefined}
+      data-preview={preview ? 'true' : undefined}
       role={role}
       aria-label={t(ariaLabelKey)}
       onDoubleClick={editable ? () => { void dispatchObjectEdit(object, editRoute!) } : undefined}
@@ -160,7 +168,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
           band there rendered as a floating strip with nothing behind
           it -- gating on dragBand removes it from those Kinds entirely
           rather than leaving inert chrome. */}
-      {dragBand && <div className={styles.frame} data-testid="atlas-board-object-frame" title={t('boardObject.dragHandleTitle')} />}
+      {dragBand && !preview && <div className={styles.frame} data-testid="atlas-board-object-frame" title={t('boardObject.dragHandleTitle')} />}
       {/* Suspense boundary for every Kind uniformly, a no-op for a
           synchronously-imported Component (shape/image/ink) and the
           real code-split boundary for a lazy one (table/diagram, whose

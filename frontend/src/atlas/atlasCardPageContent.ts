@@ -71,8 +71,13 @@ function byTitleThenID(a: Card, b: Card): number {
 // arrange/free layout, since the page is a read list, not a canvas.
 export function orderContentChildren(allCards: Card[], parentID: string): Card[] {
   const kids = childrenOf(allCards, parentID)
-  const docs = kids.filter((c) => !isGroupCard(allCards, c)).sort(byTitleThenID)
-  const groups = kids.filter((c) => isGroupCard(allCards, c)).sort(byTitleThenID)
+  // Deliberately cards-only ([], []): the page's docs/groups split
+  // orders CARD children of a read list -- a child that is a frame
+  // solely via filed notes/objects still lists as a document here,
+  // which matches the page's document framing (goal 0266's one
+  // recorded divergence from the frame-role law).
+  const docs = kids.filter((c) => !isGroupCard(allCards, c, [], [])).sort(byTitleThenID)
+  const groups = kids.filter((c) => isGroupCard(allCards, c, [], [])).sort(byTitleThenID)
   return [...docs, ...groups]
 }
 

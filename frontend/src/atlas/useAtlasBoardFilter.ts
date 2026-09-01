@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { BoardObject, Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { childrenOf } from './atlasGrouping'
 import { isGroupCard } from './atlasBoardLayout'
 import { type BoardFilter, EMPTY_BOARD_FILTER, matchesBoardFilter } from './cardFilter'
@@ -11,12 +11,12 @@ import { type BoardFilter, EMPTY_BOARD_FILTER, matchesBoardFilter } from './card
 // configuration). Counting covers what the board actually RENDERS as
 // leaf cards: the level's non-group cards plus each frame's one-level
 // preview children -- frames are structure, never counted or dimmed.
-export function useAtlasBoardFilter(boardAllCards: Card[], viewedID: string) {
+export function useAtlasBoardFilter(boardAllCards: Card[], viewedID: string, allNotes: Note[], allObjects: BoardObject[]) {
   const [boardFilter, setBoardFilter] = useState<BoardFilter>(EMPTY_BOARD_FILTER)
   const level = childrenOf(boardAllCards, viewedID)
   const renderedLeaves = [
-    ...level.filter((c) => !isGroupCard(boardAllCards, c)),
-    ...level.filter((c) => isGroupCard(boardAllCards, c)).flatMap((g) => childrenOf(boardAllCards, g.ID).filter((c) => !isGroupCard(boardAllCards, c))),
+    ...level.filter((c) => !isGroupCard(boardAllCards, c, allNotes, allObjects)),
+    ...level.filter((c) => isGroupCard(boardAllCards, c, allNotes, allObjects)).flatMap((g) => childrenOf(boardAllCards, g.ID).filter((c) => !isGroupCard(boardAllCards, c, allNotes, allObjects))),
   ]
   return {
     boardFilter,

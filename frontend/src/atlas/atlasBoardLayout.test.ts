@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { BoardObject, Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import {
   BOARD_GAP,
   GROUP_PREVIEW_SLOTS,
@@ -17,8 +17,8 @@ function card(id: string, parentID: string, createdAt: string): Card {
 describe('isGroupCard', () => {
   it('is true exactly when the card has at least one child', () => {
     const all = [card('parent', '', '1'), card('leaf', '', '1'), card('child', 'parent', '2')]
-    expect(isGroupCard(all, all[0])).toBe(true)
-    expect(isGroupCard(all, all[1])).toBe(false)
+    expect(isGroupCard(all, all[0], [], [])).toBe(true)
+    expect(isGroupCard(all, all[1], [], [])).toBe(false)
   })
 })
 
@@ -30,7 +30,7 @@ describe('computeGroupFrameLayout', () => {
       card('b', 'group', '1'),
       card('grandchild', 'a', '1'),
     ]
-    const layout = computeGroupFrameLayout(all, 'group')
+    const layout = computeGroupFrameLayout(all, 'group', [], [])
     expect(layout.children.map((c) => c.card.ID)).toEqual(['a', 'b'])
     expect(layout.children.map((c) => c.variant)).toEqual(['chip', 'note'])
     expect(layout.children.every((c) => c.card.ID !== 'grandchild')).toBe(true)
@@ -40,7 +40,7 @@ describe('computeGroupFrameLayout', () => {
   it('caps the preview at GROUP_PREVIEW_SLOTS with a truthful overflow remainder', () => {
     const kids = Array.from({ length: 12 }, (_, i) => card(`k${String(i).padStart(2, '0')}`, 'group', '1'))
     const all = [card('group', '', '1'), ...kids]
-    const layout = computeGroupFrameLayout(all, 'group')
+    const layout = computeGroupFrameLayout(all, 'group', [], [])
     expect(layout.children).toHaveLength(GROUP_PREVIEW_SLOTS - 1)
     expect(layout.overflow?.count).toBe(12 - (GROUP_PREVIEW_SLOTS - 1))
     // Bounded: the frame never grows past the capped grid's rows.
@@ -50,14 +50,14 @@ describe('computeGroupFrameLayout', () => {
   it('renders exactly at the cap without a pointless "+ 1 more" ghost', () => {
     const kids = Array.from({ length: GROUP_PREVIEW_SLOTS }, (_, i) => card(`k${i}`, 'group', '1'))
     const all = [card('group', '', '1'), ...kids]
-    const layout = computeGroupFrameLayout(all, 'group')
+    const layout = computeGroupFrameLayout(all, 'group', [], [])
     expect(layout.children).toHaveLength(GROUP_PREVIEW_SLOTS)
     expect(layout.overflow).toBeNull()
   })
 
   it('sizes the frame to fit its own children in a wrapping grid', () => {
     const all = [card('group', '', '1'), ...['a', 'b', 'c', 'd'].map((id) => card(id, 'group', '1'))]
-    const layout = computeGroupFrameLayout(all, 'group')
+    const layout = computeGroupFrameLayout(all, 'group', [], [])
     // 4 children at 3 max columns -> 3 cols x 2 rows.
     expect(layout.size.width).toBe(12 * 2 + 3 * NOTE_WIDTH + 2 * BOARD_GAP)
     expect(layout.size.height).toBe(34 + 12 + 2 * NOTE_HEIGHT + BOARD_GAP)
@@ -65,7 +65,7 @@ describe('computeGroupFrameLayout', () => {
 
   it('returns an empty frame for a card with no children', () => {
     const all = [card('group', '', '1')]
-    const layout = computeGroupFrameLayout(all, 'group')
+    const layout = computeGroupFrameLayout(all, 'group', [], [])
     expect(layout.children).toEqual([])
     expect(layout.size.width).toBeGreaterThan(0)
   })
@@ -156,8 +156,8 @@ describe('computeGroupFrameLayout with filed notes', () => {
 
   it('draws a filed note as a sticky tile and grows the frame for it', () => {
     const cards = [card('frame', 'root'), card('kid', 'frame')]
-    const bare = computeGroupFrameLayout(cards, 'frame')
-    const withNote = computeGroupFrameLayout(cards, 'frame', [note('n1', 'frame'), note('elsewhere', 'root')])
+    const bare = computeGroupFrameLayout(cards, 'frame', [], [])
+    const withNote = computeGroupFrameLayout(cards, 'frame', [note('n1', 'frame'), note('elsewhere', 'root')], [])
     expect(withNote.stickies).toHaveLength(1)
     expect(withNote.stickies[0].note.ID).toBe('n1')
     // The frame's own size accounts for the extra tile.
@@ -167,7 +167,7 @@ describe('computeGroupFrameLayout with filed notes', () => {
   it('notes share the preview cap with cards; the ghost counts both', () => {
     const cards = [card('frame', 'root'), ...Array.from({ length: 6 }, (_, i) => card(`kid${i}`, 'frame'))]
     const notes = [note('n1', 'frame'), note('n2', 'frame')]
-    const layout = computeGroupFrameLayout(cards, 'frame', notes)
+    const layout = computeGroupFrameLayout(cards, 'frame', notes, [])
     expect(layout.children.length + layout.stickies.length).toBe(5)
     expect(layout.overflow?.count).toBe(3)
   })
@@ -198,5 +198,33 @@ describe('computeAutoArrangeLayout with object tiles (goal 0265)', () => {
     const plain = computeAutoArrangeLayout([a, b], [a, b])
     const withEmpty = computeAutoArrangeLayout([a, b], [a, b], new Map(), undefined, [], [])
     expect([...withEmpty.boxes.entries()]).toEqual([...plain.boxes.entries()])
+  })
+})
+
+describe('the frame-role law: any child type makes a frame (goal 0266)', () => {
+  const obj = (id: string, parent: string): BoardObject => ({ ID: id, Kind: 'image', Payload: {}, ParentID: parent, Position: { X: 0, Y: 0 }, CreatedAt: '2024-01-02' } as unknown as BoardObject)
+  const noteAt = (id: string, parent: string): Note => ({ ID: id, Text: id, ParentID: parent, Position: { X: 0, Y: 0 } } as unknown as Note)
+
+  it('a card whose only child is a filed object or note is a frame', () => {
+    const solo = card('solo', '', '1')
+    expect(isGroupCard([solo], solo, [], [obj('o1', 'solo')])).toBe(true)
+    expect(isGroupCard([solo], solo, [noteAt('n1', 'solo')], [])).toBe(true)
+    expect(isGroupCard([solo], solo, [], [])).toBe(false)
+  })
+
+  it('draws a filed object as a preview tile and grows the frame for it', () => {
+    const cards = [card('frame', 'root', '1'), card('kid', 'frame', '2')]
+    const bare = computeGroupFrameLayout(cards, 'frame', [], [])
+    const withObject = computeGroupFrameLayout(cards, 'frame', [], [obj('o1', 'frame'), obj('elsewhere', 'root')])
+    expect(withObject.objects).toHaveLength(1)
+    expect(withObject.objects[0].object.ID).toBe('o1')
+    expect(withObject.size.width > bare.size.width || withObject.size.height > bare.size.height).toBe(true)
+  })
+
+  it('objects share the preview cap with cards and notes; the ghost counts all three', () => {
+    const cards = [card('frame', 'root', '1'), ...Array.from({ length: 4 }, (_, i) => card(`kid${i}`, 'frame', `${i + 2}`))]
+    const layout = computeGroupFrameLayout(cards, 'frame', [noteAt('n1', 'frame')], [obj('o1', 'frame'), obj('o2', 'frame')])
+    expect(layout.children.length + layout.stickies.length + layout.objects.length).toBe(GROUP_PREVIEW_SLOTS - 1)
+    expect(layout.overflow?.count).toBe(2)
   })
 })

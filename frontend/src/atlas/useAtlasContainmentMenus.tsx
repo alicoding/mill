@@ -43,7 +43,7 @@ export function useAtlasContainmentMenus({
   onDeleted: (result: TombstoneResult) => void
   onPerspectiveToast: (message: string) => void
   requestPlacementInside: (tool: AtlasCreationTool, pos: { x: number; y: number }, parentID: string) => void
-  requestGroup: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
+  requestGroup: (cardIDs: string[], noteIDs: string[], objectIDs: string[], pos: { x: number; y: number }) => void
   // The container-delete gate (goal 0149 gap 3) -- confirms when the
   // delete promotes children, runs exec directly otherwise. Dissolve
   // bypasses it: its own dialog already names the promotion. objectIDs
@@ -147,16 +147,13 @@ export function useAtlasContainmentMenus({
   }
 
   // A multi-selection (LOCKED design §6d): "Group into new area" only
-  // once 2+ CARDS are selected (a notes-only selection gets no group
-  // item -- notes simply ride along when cards ARE present); Delete
-  // covers every selected card + note + board object together,
-  // instantly. A board object never joins a group (goal 0179/0180: it
-  // is board-local, not a document a region frame files) -- objectIDs
-  // rides only into the Delete action below.
+  // once ANY 2+ placed things are selected (goal 0266's peer law:
+  // cards, notes and board objects all group); Delete covers every
+  // selected card + note + board object together, instantly.
   const openMultiSelectMenu = (cardIDs: string[], noteIDs: string[], objectIDs: string[], pos: { x: number; y: number }) => {
     const items: ContextMenuItem[] = []
-    if (cardIDs.length >= 2) {
-      items.push({ id: 'group', label: t('contextMenu.groupIntoArea'), commandId: 'atlas.group.selection', run: () => requestGroup(cardIDs, noteIDs, pos) })
+    if (cardIDs.length + noteIDs.length + objectIDs.length >= 2) {
+      items.push({ id: 'group', label: t('contextMenu.groupIntoArea'), commandId: 'atlas.group.selection', run: () => requestGroup(cardIDs, noteIDs, objectIDs, pos) })
     }
     // Notes never join a perspective (ADR-0041's MemberCardIDs is cards
     // only) -- only the selection's card ids are offered.
