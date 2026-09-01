@@ -130,6 +130,15 @@ at:
     banner is OS-bound (signed-bundle handshake); verify by running the
     seeded Clipboard→Markdown workflow via its hotkey while another app is
     focused and confirming the banner.
+  - **Close means hide, and the tray always brings the window back**
+    (goal 0276, main.go's WindowClosing hook) — the red traffic-light
+    close, the hook's Cancel+Hide, and the tray's "Open Mill" restore
+    are all native AppKit round trips no harness reaches. Verify on an
+    installed build: red-close the main window, confirm Mill stays in
+    the tray; tray → "Open Mill" restores the SAME window (state
+    intact, no empty "No pending approvals." window appearing); then
+    Quit from the tray and confirm the process actually exits, and ⌘Q
+    likewise.
   - **App archetype: closing the last window must NOT quit Mill**
     (goal 0188) — `Mac.ActivationPolicy` is Regular and
     `ApplicationShouldTerminateAfterLastWindowClosed` is false, which no

@@ -8,4 +8,7 @@
     min-height: 240px;
     border: none;
     display: block;
+    /* Same no-drag opt-out as the drawio host (goal 0276's rider):
+       nothing inside an embedded viewer is window chrome. */
+    --wails-draggable: no-drag;
 }
