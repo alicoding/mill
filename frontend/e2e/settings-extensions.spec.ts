@@ -360,9 +360,20 @@ test('The note row offers its declared Rich code blocks setting, and the note ed
     .toBe(true)
   await page.keyboard.type('```js', { delay: 30 })
   await page.keyboard.press('Enter')
-  await page.keyboard.type('const x = 1', { delay: 30 })
+  await page.keyboard.type('const  x=1', { delay: 30 })
   const sticky = page.getByTestId('atlas-sticky-note')
   await expect(sticky.locator('.cm-editor')).toBeVisible()
+
+  // Shift-Alt-F formats the block via prettier (goal 0268) -- the
+  // converged format keybinding, mounted through the code-block
+  // feature's own CodeMirror extensions seam. Mangled spacing
+  // normalizes in place.
+  await sticky.locator('.cm-editor .cm-content').click()
+  await page.keyboard.press('Shift+Alt+f')
+  // Generous timeout: the FIRST format cold-loads the prettier
+  // chunk (dynamic import), which under parallel-worker contention
+  // can exceed the default 5s.
+  await expect(sticky.locator('.cm-editor .cm-content')).toContainText('const x = 1;', { timeout: 15_000 })
 
   // Turn the setting back off; a FRESH edit session drops CodeMirror.
   await openExtensionsSection(page)
