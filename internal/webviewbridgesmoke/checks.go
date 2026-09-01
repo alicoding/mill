@@ -126,6 +126,11 @@ var registry = []check{
 		run:    checkDrawioEditorLayout,
 	},
 	{
+		name:   "pdf-find-in-viewer",
+		reason: "owner-reported (goal 0271): pdf.js find returns no matches in the installed app while the same document searches fine outside Mill -- the full findbar pipeline passes in Chromium AND Playwright WebKit against server mode, so the real WKWebView is the one engine left uncovered; drives the vendored viewer's own find controller over a known-text fixture and asserts the match count.",
+		run:    checkPdfFindInViewer,
+	},
+	{
 		name:   "sticky-border-color-flip",
 		reason: "the second burned class: a selected sticky note's border-color flip to the accent token (AtlasStickyNode.module.css) -- a real Note, created live via AtlasService.CreateNote so the check exercises the same call_bound_method path an agent driving Mill would use.",
 		run:    checkStickyBorderColorFlip,
