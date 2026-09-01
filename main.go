@@ -453,6 +453,20 @@ func main() {
 		windowOptions.InitialPosition = application.WindowXY
 	}
 	mainWindow = app.Window.NewWithOptions(windowOptions)
+	// Close means hide (goal 0276): the toolkit's default WindowClosing
+	// listener DESTROYS the window, after which every show-main path
+	// (tray "Open Mill", summon, dock reopen) calls Show() on a dead
+	// window -- a silent no-op that strands the user. Hooks run BEFORE
+	// that listener and Cancel() stops it (verified against the
+	// toolkit's own HandleWindowEvent); app.Quit destroys the
+	// application directly without consulting window hooks, so quitting
+	// is unaffected. Hide-on-close is the tray-app archetype goal 0188
+	// adopted (ApplicationShouldTerminateAfterLastWindowClosed=false is
+	// only honest if the window is still there to bring back).
+	mainWindow.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		e.Cancel()
+		mainWindow.Hide()
+	})
 	settingsService.SetWindow(windowing.WrapWindow(mainWindow))
 	settingsService.WatchWindowGeometry()
 	atlasService.WireFileDropWindow(windowing.WrapWindow(mainWindow))

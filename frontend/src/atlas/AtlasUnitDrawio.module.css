@@ -9,4 +9,10 @@
     overflow: auto;
     border: 1px solid var(--borderColor-default);
     border-radius: var(--borderRadius-medium);
+    /* Body defaults --wails-draggable:drag (drag the window by its
+       background); the vendored viewer INJECTS its own toolbar/pager
+       chrome here, which would inherit that and drag the whole native
+       window when held (goal 0276's rider). Everything inside the
+       host is the viewer's, never window chrome. */
+    --wails-draggable: no-drag;
 }

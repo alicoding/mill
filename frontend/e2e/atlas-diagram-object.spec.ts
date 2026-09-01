@@ -51,6 +51,12 @@ test('a dropped .drawio file renders as a board object through the vendored view
   // puts the canvas kit's nowheel class on the whole node box
   // (shieldless Kind, so it is always live).
   await expect(diagramObject).toHaveClass(/nowheel/)
+
+  // Window-drag opt-out (goal 0276 rider): body drags the native
+  // window by its background, and the vendored viewer injects its own
+  // toolbar/pager chrome into the host -- the host must opt the whole
+  // subtree out or holding that chrome drags the app window.
+  expect(await diagramObject.locator('[data-testid="atlas-drawio-page-body"]').evaluate((el) => getComputedStyle(el).getPropertyValue('--wails-draggable').trim())).toBe('no-drag')
   // The pointer must actually reach the object: worker-shared board
   // state shifts fitView between runs, and a transform-based canvas
   // can't be auto-scrolled by hover -- zoom out first, then settle.
