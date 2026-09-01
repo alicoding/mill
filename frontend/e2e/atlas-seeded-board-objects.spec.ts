@@ -83,6 +83,12 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     // same adopt-the-viewer's-controls choice the drawio face made).
     const pdf = page.locator('[data-testid="atlas-board-object"][data-object-kind="pdf"]')
     await expect(pdf).toBeVisible()
+    // Click-to-activate (the clickShield contract): the first click on
+    // the face selects the object -- only then is the embedded viewer
+    // live. A frameLocator could technically pierce the shield, but
+    // the test drives what a user must actually do.
+    await pdf.locator('[data-testid="atlas-object-click-shield"]').click()
+    await expect(pdf.locator('[data-testid="atlas-object-click-shield"]')).toHaveCount(0)
     const viewer = page.frameLocator('[data-testid="atlas-pdf-viewer"]')
     await expect(viewer.locator('.page[data-page-number="1"] canvas')).toBeVisible()
     await expect(viewer.locator('#numPages')).toContainText('2')

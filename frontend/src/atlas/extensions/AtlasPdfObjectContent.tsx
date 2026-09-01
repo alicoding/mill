@@ -31,10 +31,22 @@ function usePdfBlobUrl(base64: string | undefined): string | null {
   return url
 }
 
-export function AtlasPdfObjectContent({ object, mirrorContent }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState }) {
+export function AtlasPdfObjectContent({ object, mirrorContent, preview }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState; preview?: boolean }) {
   const { t } = useTranslation('atlas')
   const content = mirrorContent?.content
-  const blobUrl = usePdfBlobUrl(content?.Content || undefined)
+  // A frame's preview tile never boots the viewer -- a full pdf.js
+  // iframe in a 190px slot is pure weight (it measurably slowed every
+  // landing-board mount when the seeded document's tile did it), and
+  // nothing in it is interactable there anyway. The blob hook still
+  // runs (rules-of-hooks) but is fed nothing.
+  const blobUrl = usePdfBlobUrl(preview ? undefined : (content?.Content || undefined))
+  if (preview) {
+    return (
+      <div className={nodeStyles.placeholder} data-testid="atlas-pdf-preview-tile">
+        <FileIcon size={24} />
+      </div>
+    )
+  }
 
   // Same ADR-0046 shape as the sheet face's own button: read the
   // registered editRoute back, hand it to the host's one dispatch door.

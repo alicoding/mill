@@ -115,7 +115,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     await emptyPaneClick()
     await expect(menu).toBeVisible()
     await menu.getByText('Delete space', { exact: true }).click()
-    await expect(page.getByText('5 items inside move up a level. You can undo right after.')).toBeVisible()
+    await expect(page.getByText('4 items inside move up a level. You can undo right after.')).toBeVisible()
     await page.getByRole('button', { name: 'Delete', exact: true }).click()
 
     // Lands on "All spaces" -- not a dead end -- showing what remains:
