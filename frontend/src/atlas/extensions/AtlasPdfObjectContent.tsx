@@ -88,8 +88,28 @@ export function AtlasPdfObjectContent({ object, mirrorContent, preview }: { obje
         // by construction (the viewer is served from Mill's own
         // assets).
         onLoad={(e) => {
-          const doc = e.currentTarget.contentDocument
-          if (doc) applyTextAssistOff(doc, 'input.toolbarField, input#findInput')
+          const frame = e.currentTarget
+          const doc = frame.contentDocument
+          if (!doc) return
+          applyTextAssistOff(doc, 'input.toolbarField, input#findInput')
+          // Right-click inside the live viewer otherwise opens the
+          // ENGINE's own frame menu (Open Frame in New Window, Reload
+          // Frame -- dead items inside the app). Suppress it and
+          // re-dispatch on the iframe element with translated
+          // coordinates, so the canvas's own node context-menu path
+          // opens the object menu -- one right-click behavior across
+          // the whole object, shielded or live.
+          doc.addEventListener('contextmenu', (ev) => {
+            ev.preventDefault()
+            const rect = frame.getBoundingClientRect()
+            frame.dispatchEvent(new MouseEvent('contextmenu', {
+              bubbles: true,
+              cancelable: true,
+              clientX: rect.left + ev.clientX,
+              clientY: rect.top + ev.clientY,
+              button: 2,
+            }))
+          })
         }}
       />
     )

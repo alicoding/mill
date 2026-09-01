@@ -133,6 +133,16 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     await viewer.locator('#pageNumber').fill('2')
     await viewer.locator('#pageNumber').press('Enter')
     await expect(viewer.locator('.page[data-page-number="2"] canvas')).toBeVisible()
+    // Right-click INSIDE the live viewer opens the OBJECT's own menu
+    // (goal 0271): the engine's default frame menu is suppressed and
+    // the gesture forwards to the canvas's node context-menu path --
+    // proven with a real right-click into the iframe document.
+    await viewer.locator('.page[data-page-number="2"]').click({ button: 'right' })
+    const objectMenu = page.getByTestId('context-menu')
+    await expect(objectMenu).toBeVisible()
+    await expect(objectMenu.getByText('Open in default app', { exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(objectMenu).toHaveCount(0)
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
