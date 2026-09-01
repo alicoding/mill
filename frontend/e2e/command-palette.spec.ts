@@ -92,6 +92,16 @@ test('Meta+K rest-state shows a bounded set (nav commands only) until a query na
   await page.keyboard.press('Meta+k')
   await expect(paletteDialog(page)).toBeVisible()
 
+  // The search field opts out of platform text assistance (goal 0272)
+  // -- a query box is not prose, and the OS autocorrect fighting the
+  // query was a live owner report. The attributes ARE the contract
+  // (the actual suppression is engine-side).
+  const searchInput = paletteDialog(page).getByRole('combobox')
+  await expect(searchInput).toHaveAttribute('autocomplete', 'off')
+  await expect(searchInput).toHaveAttribute('autocorrect', 'off')
+  await expect(searchInput).toHaveAttribute('autocapitalize', 'none')
+  await expect(searchInput).toHaveAttribute('spellcheck', 'false')
+
   // Nav ("Go to <X>" + Settings) commands are present at rest.
   await expect(paletteDialog(page).getByRole('option', { name: /Go to Workflows/ })).toBeVisible()
   await expect(paletteDialog(page).getByRole('option', { name: 'Open Settings' })).toBeVisible()
@@ -145,6 +155,12 @@ test('Meta+K opens the palette; typing filters to a command and shows its effect
 
   // A command not matching "tab" at all is filtered out.
   await expect(paletteDialog(page).getByText('Open Settings', { exact: true })).toHaveCount(0)
+
+  // Fuzzy tier (goal 0272): a word-initial abbreviation with no
+  // substring hit still finds its command -- "gtw" is only a
+  // subsequence of "Go to Workflows".
+  await paletteDialog(page).getByRole('combobox').fill('gtw')
+  await expect(paletteDialog(page).getByRole('option', { name: /Go to Workflows/ })).toBeVisible()
 
   await page.keyboard.press('Escape')
   await expect(paletteDialog(page)).toHaveCount(0)

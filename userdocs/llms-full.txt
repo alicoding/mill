@@ -1115,7 +1115,8 @@ Ends the workflow with a typed, configured outcome: an outcome category (approve
 # Commands
 
 Press ⌘K and type any action's name — "lock vault", "check for
-updates", "add a card" — and it runs from wherever you are. Every
+updates", "add a card" — and it runs from wherever you are.
+Abbreviations work too: "gtw" finds "Go to Workflows". Every
 user-facing action in Mill is a registered command, and the palette,
 the Quick Panel, keyboard shortcuts, and Settings → Keyboard shortcuts
 all read from the same list, so a command registered once shows up

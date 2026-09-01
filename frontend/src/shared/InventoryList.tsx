@@ -6,6 +6,7 @@ import { KebabHorizontalIcon, SearchIcon, type Icon } from '@primer/octicons-rea
 import { ConfirmDialog } from './ConfirmDialog'
 import { ContextMenu, type ContextMenuItem, type ContextMenuState } from './ContextMenu'
 import styles from './InventoryList.module.css'
+import { searchInputTextAssistOff } from './searchInputProps'
 
 // The shared inventory-row component (docs/goals/0007-resource-
 // inventory-redesign.md): one dense, identity-differentiated row for
@@ -128,6 +129,7 @@ export function InventoryList({ items, emptyState, searchPlaceholder }: {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         aria-label={t('inventoryList.searchAriaLabel')}
+        {...searchInputTextAssistOff}
         data-testid="inventory-search"
         block
       />
