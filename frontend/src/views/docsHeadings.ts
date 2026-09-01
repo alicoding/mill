@@ -18,8 +18,19 @@ export interface DocsHeading {
 
 const HEADING_RE = /<h([23])\s+id="([^"]+)">([\s\S]*?)<\/h\1>/g
 
+// Fixpoint loop, not a single strip-tags pass: one replace leaves
+// reassembled fragments behind ("<scr<script>ipt>" collapses back
+// into a tag -- the incomplete-multi-character-sanitization class),
+// so strip until stable, then drop any residual unclosed "<..." tail.
+// Runs in both browser and node test env (no DOMParser dependency).
 function stripTags(inner: string): string {
-  return inner.replace(/<[^>]+>/g, '').trim()
+  let out = inner
+  for (;;) {
+    const next = out.replace(/<[^>]*>/g, '')
+    if (next === out) break
+    out = next
+  }
+  return out.replace(/<[^>]*$/, '').trim()
 }
 
 // escapeAttr guards the injected aria-label/href against a heading
