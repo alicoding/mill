@@ -33,6 +33,13 @@
   padding: 4px 10px;
 }
 
+.failed {
+  border: 1px solid var(--borderColor-danger-emphasis);
+  background: var(--bgColor-danger-muted);
+  color: var(--fgColor-danger);
+  padding: 2px 4px 2px 10px;
+}
+
 .pillAction {
   border: none;
   background: none;

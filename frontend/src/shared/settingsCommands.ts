@@ -97,7 +97,7 @@ export const SETTINGS_COMMANDS: Command[] = [
     label: 'Check for updates',
     defaultBinding: null,
     quickPanel: true,
-    run: () => { SettingsService.CheckForUpdates().catch(console.error) },
+    run: () => { useUpdateNoticeStore.getState().runUserCheck() },
   },
   {
     id: 'update.downloadAndInstall',
