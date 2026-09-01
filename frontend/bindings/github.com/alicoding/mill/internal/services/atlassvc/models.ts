@@ -157,6 +157,17 @@ export interface FileDropRoute {
      * Finder window is the common case this covers).
      */
     "Path": string;
+
+    /**
+     * ContentKind refines an "instant" route for extensions whose
+     * meaning depends on content, not name (goal 0274): "drawio-xml"
+     * when a .xml file's head carries draw.io's own markup (the owner's
+     * tooling exports diagrams as .xml, identical mxfile content to a
+     * .drawio save). Empty everywhere else, and empty on any sniff
+     * failure -- the drop must still land (as a card), never error on
+     * an unreadable head.
+     */
+    "ContentKind": string;
 }
 
 /**

@@ -20,7 +20,9 @@ connected by links, grouped into areas you can drill into.
   live diagrams. Drop a `.drawio` or `.mmd` file and it renders the
   same way, updating automatically whenever you edit that file outside
   Mill — a missing file shows a clear notice with a button to choose
-  another one. Click anywhere on a diagram to select it and get its
+  another one. A `.xml` file that holds a draw.io diagram (an
+  exported one, say) lands as a diagram too — Mill reads the file to
+  tell it apart from ordinary XML. Click anywhere on a diagram to select it and get its
   resize handles. A multi-page draw.io file shows page arrows when you
   hover it, so you can flip through its pages right on the board.
   General and flowchart shapes render with their real

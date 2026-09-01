@@ -187,3 +187,38 @@ test('clicking a diagram body selects the object, and a multi-page file pages ri
   await menu.getByText('Delete', { exact: true }).click()
   await expect(diagramObjects(page)).toHaveCount(0)
 })
+
+// goal 0274: an exported draw.io .xml (same mxfile content, different
+// extension) renders through the same vendored drawio host. The drop
+// ROUTING (backend content sniff -> 'diagram') is unit-tested at both
+// layers (sniffContentKind in Go, resolveFileDropKind's hint branch in
+// Vitest); this proves the RESULT -- the host picker sends a non-
+// mermaid extension to the drawio viewer and the SVG actually paints.
+test('an exported draw.io .xml renders as a diagram board object through the vendored viewer', async ({ page }) => {
+  const fs = await import('node:fs')
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mill-e2e-atlas-drawio-xml-'))
+  const xmlFile = path.join(dir, 'ZzE2eExportedDiagram.xml')
+  fs.writeFileSync(xmlFile, `<?xml version="1.0" encoding="UTF-8"?>\n${DRAWIO_XML}`)
+
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await createBoardObjectViaRPC(page, 'diagram', { mirrorPath: xmlFile }, { X: 0, Y: 820 }, ATLAS_DEFAULT_SPACE_ID)
+  await page.reload()
+  await page.getByRole('link', { name: 'Atlas' }).click()
+
+  const diagramObject = diagramObjects(page)
+  await expect(diagramObject).toBeVisible()
+  await expect(diagramObject.locator('svg')).toBeVisible()
+  await expect(page.getByTestId('atlas-object-diagram-error')).toHaveCount(0)
+
+  // Cleanup.
+  await diagramObject.click({ button: 'right' })
+  const menu = page.getByTestId('context-menu')
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+  await expect(diagramObjects(page)).toHaveCount(0)
+})
