@@ -166,3 +166,12 @@
 .object[data-preview='true'] > * {
     pointer-events: none;
 }
+
+/* Click-to-activate shield for iframe-hosting faces (clickShield fact):
+   transparent, over the content, below the drag band -- present only
+   while unselected. */
+.clickShield {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}

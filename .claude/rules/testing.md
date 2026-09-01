@@ -171,7 +171,11 @@ at:
     S2) — verify by dragging a `.md` file from Finder onto the running
     app and confirming the card lands with the real path; separately,
     drag a `.drawio` and a `.mmd` file and confirm each lands as a
-    "diagram" board object (not a card). The DROP GESTURE itself is a
+    "diagram" board object (not a card); separately, drag a `.pdf`
+    and confirm it lands as a "pdf" object rendering page 1 through
+    the vendored viewer (goal 0267 -- the routing decision is
+    Vitest-tested, the rendered result e2e-proven via the seeded
+    two-page document). The DROP GESTURE itself is a
     structural gap in this harness (Wails3's `WindowFilesDropped` needs
     a real `*WebviewWindow`, which server-mode Playwright's connection
     is not) — the routing decision is Vitest-tested instead

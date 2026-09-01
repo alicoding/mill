@@ -23,6 +23,10 @@ const (
 	// base64-encoded the same way MirrorKindImage's do, never rendered
 	// or interpreted on the Go side.
 	MirrorKindSheet MirrorKind = "sheet"
+	// MirrorKindPdf is a PDF document (goal 0267): its bytes travel
+	// base64-encoded like MirrorKindSheet's -- the frontend's vendored
+	// pdf.js viewer renders them client-side, never the Go side.
+	MirrorKindPdf MirrorKind = "pdf"
 	// MirrorKindOther never has its content loaded -- the overlay shows
 	// only its kind and size, plus the existing reveal-file action.
 	MirrorKindOther MirrorKind = "other"
@@ -86,6 +90,8 @@ func ClassifyMirrorKind(path string) MirrorKind {
 		return MirrorKindSheet
 	case textExtensions[ext]:
 		return MirrorKindText
+	case ext == ".pdf":
+		return MirrorKindPdf
 	default:
 		return MirrorKindOther
 	}

@@ -62,6 +62,11 @@ export interface AtlasNounContent {
     mirrorContent?: MirrorReadState
     fetchListProjection?: (id: string) => Promise<ListProjection>
     repickMirror?: (path: string) => Promise<unknown>
+    // Frame-preview tile (goal 0266/0267): true when this render is a
+    // frame's inert capped-budget tile -- a Kind whose full face is
+    // heavyweight (pdf's viewer iframe) renders a light static face
+    // instead; most Kinds ignore it.
+    preview?: boolean
   }>
   ariaLabelKey: string
   role: 'img' | undefined
@@ -139,6 +144,13 @@ export interface ExtensionRowMeta {
 // required.
 export interface AtlasBoardObjectContent extends AtlasNounContent {
   dragBand: boolean
+  // clickShield (goal 0267): the face hosts an IFRAME (a hard event
+  // boundary -- clicks inside never reach the board at all, unlike an
+  // in-page viewer's), so while the object is NOT selected a
+  // transparent shield sits over the content: first click selects (or
+  // drags/right-clicks) like any body, and only a selected object's
+  // embed is live -- the converged click-to-activate embed pattern.
+  clickShield?: boolean
   fileBacked: boolean
 }
 

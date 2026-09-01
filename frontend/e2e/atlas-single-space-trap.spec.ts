@@ -152,7 +152,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     await groupCard(page, 'Board gallery').getByTestId('atlas-group-header').click({ button: 'right' })
     await expect(menu).toBeVisible()
     await menu.getByText('Delete', { exact: true }).click()
-    await expect(page.getByText('4 items inside move up a level. You can undo right after.')).toBeVisible()
+    await expect(page.getByText('5 items inside move up a level. You can undo right after.')).toBeVisible()
     // The confirm dialog's own Delete button (deletePromoteConfirm),
     // scoped to the dialog so the frame menu's identical label can't
     // double-match.
@@ -171,11 +171,11 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
 
     const promotedObjects = page.locator('[data-testid="atlas-board-object"]')
-    await expect(promotedObjects).toHaveCount(4)
+    await expect(promotedObjects).toHaveCount(5)
     const clientRecordsBox = await clientRecords.boundingBox()
     if (!clientRecordsBox) throw new Error('Client records has no bounding box')
     const promotedBoxes = []
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       const box = await promotedObjects.nth(i).boundingBox()
       if (!box) throw new Error('promoted board object has no bounding box')
       expect(rectsOverlap(box, clientRecordsBox), 'a promoted board object must not overlap the sibling card').toBe(false)

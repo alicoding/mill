@@ -105,7 +105,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
   // objects stay visible, selectable and deletable, and a built-in
   // registry/data mismatch becomes VISIBLE on the board instead of an
   // invisible node only a console reader could diagnose.
-  const { Component, ariaLabelKey, role, dragBand } = facts ?? unknownKindContent
+  const { Component, ariaLabelKey, role, dragBand, clickShield } = facts ?? unknownKindContent
   // ADR-0046 (goal 0244 S1): double-click dispatches through the
   // object's own DECLARED edit route (resolved per-object, since a Kind
   // like diagram opens different doors for different mirror
@@ -181,6 +181,10 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
           it -- gating on dragBand removes it from those Kinds entirely
           rather than leaving inert chrome. */}
       {dragBand && !preview && <div className={styles.frame} data-testid="atlas-board-object-frame" title={t('boardObject.dragHandleTitle')} />}
+      {/* See clickShield's own contract comment (atlasBoardObjectContent.ts):
+          unselected iframe-hosting faces select/drag/right-click like a
+          body; selecting lifts the shield and the embed goes live. */}
+      {clickShield && !preview && !selected && <div className={styles.clickShield} data-testid="atlas-object-click-shield" />}
       {/* Suspense boundary for every Kind uniformly, a no-op for a
           synchronously-imported Component (shape/image/ink) and the
           real code-split boundary for a lazy one (table/diagram, whose
@@ -222,6 +226,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
             object={object}
             mirrorVersion={mirrorVersion}
             mirrorContent={mirrorContent}
+            preview={preview}
             fetchListProjection={AtlasService.ObjectListProjection}
             repickMirror={(path) => AtlasService.RepickObjectMirror(object.ID, path)}
           />

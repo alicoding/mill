@@ -412,7 +412,9 @@ connected by links, grouped into areas you can drill into.
   thing.** A table copied from a spreadsheet or a document app becomes
   a table on the board, ready to browse and edit like any other list.
   A pasted file path lands what dropping the file would: a document
-  becomes a card, a diagram or spreadsheet file its own board object,
+  becomes a card, a diagram, spreadsheet, or PDF file its own board
+  object (a PDF shows its pages right on the board — search, zoom,
+  and page through it in place),
   a folder path opens the folder import. Everything else lands as a
   sticky note at your pointer, already selected — nothing else to
   fill in. Multiple tables in one paste each land as their own table,
