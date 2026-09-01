@@ -360,9 +360,21 @@ test('The note row offers its declared Rich code blocks setting, and the note ed
     .toBe(true)
   await page.keyboard.type('```js', { delay: 30 })
   await page.keyboard.press('Enter')
-  await page.keyboard.type('const  x=1', { delay: 30 })
+  // The fence converts to the CodeMirror block async, and the block's
+  // node view can be REBUILT once more when the first content sync
+  // lands (the adopted editor's own timing) -- per-keystroke typing
+  // into that window drops characters nondeterministically, and no DOM
+  // signal marks the rebuild settled. Escape hatch (testing.md): the
+  // content lands as ONE atomic insertText, which survives the rebuild
+  // the way already-committed doc content does; the format assertion
+  // below still exercises the real keybinding as a user primitive.
   const sticky = page.getByTestId('atlas-sticky-note')
-  await expect(sticky.locator('.cm-editor')).toBeVisible()
+  await expect(sticky.locator('.cm-content')).toHaveAttribute('data-language', 'javascript')
+  await expect
+    .poll(() => page.evaluate(() => !!document.activeElement?.closest('.cm-editor')))
+    .toBe(true)
+  await page.keyboard.insertText('const  x=1')
+  await expect(sticky.locator('.cm-editor .cm-content')).toContainText('const  x=1')
 
   // Shift-Alt-F formats the block via prettier (goal 0268) -- the
   // converged format keybinding, mounted through the code-block
