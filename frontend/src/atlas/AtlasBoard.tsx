@@ -103,7 +103,10 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   // Auto-arrange consumes them as the adjacency that seats linked things beside each other.
   const arteries = useMemo(() => resolveBoardEdges(links, new Set(cards.map((c) => c.ID)), allCards), [links, cards, allCards])
 
-  const { freeMoves } = useAtlasArrange({ cards, allCards, arteries, boardWidth, arrangeRequest })
+  // Ref, not a prop: objectBoxes derives from `nodes` below, which
+  // derives from freeMoves -- see useAtlasArrange's own param comment.
+  const objectBoxesRef = useRef<{ id: string; x: number; y: number; width: number; height: number }[]>([])
+  const { freeMoves } = useAtlasArrange({ cards, allCards, arteries, boardWidth, arrangeRequest, objects, objectBoxesRef })
 
   // Rendered flow-space boxes (atlasBoardBoxes.ts, split at the
   // 500-line seam) -- Free mode only. Computed BEFORE useAtlasCreation
@@ -154,8 +157,9 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
         for (const child of computeGroupFrameLayout(allCards, card.ID).children) ids.add(child.card.ID)
       }
     }
+    for (const o of objects) ids.add(o.ID)
     return ids
-  }, [cards, allCards])
+  }, [cards, allCards, objects])
 
   const dragFiling = useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperRef })
 
@@ -215,7 +219,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   // Board objects (goal 0179/0180): built separately, same reasoning
   // sticky notes' own comment gives -- a board object is never a card
   // and never enters the group-frame preview layout either.
-  const objectNodes = useMemo(() => buildBoardObjectNodes({ objects, readOnly, isFree, soleSelectedID: soleSelectedObjectID }), [objects, readOnly, isFree, soleSelectedObjectID])
+  const objectNodes = useMemo(() => buildBoardObjectNodes({ objects, readOnly, isFree, soleSelectedID: soleSelectedObjectID, pulsedID }), [objects, readOnly, isFree, soleSelectedObjectID, pulsedID])
 
   const allNodes = useMemo(() => [...builtNodes, ...stickyNodes, ...objectNodes], [builtNodes, stickyNodes, objectNodes])
   const [nodes, setNodes, onNodesChange] = useNodesState(allNodes)
@@ -297,6 +301,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   const objectBoxes = useMemo(() => (
     isFree ? computeObjectBoxes(nodes.filter((n) => n.type === 'atlas-object')) : []
   ), [nodes, isFree])
+  useEffect(() => { objectBoxesRef.current = objectBoxes }, [objectBoxes])
 
   const gestureCtx: AtlasGestureCtx = useMemo(() => ({
     screenToFlowPosition,

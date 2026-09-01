@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionList, Dialog, TextInput } from '@primer/react'
-import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { BoardObject, Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { kindColorTokens } from './atlasKindColor'
-import { AREA_FACET_KEY, filterJumpCards } from './atlasJumpFilter'
+import { AREA_FACET_KEY, filterJumpCards, filterJumpObjects } from './atlasJumpFilter'
 import { matchFacetSuggestions, parseFacetQuery } from '../shared/facetQuery'
 import type { FacetVocabEntry } from '../shared/facetQuery'
 import { FacetChipRow } from '../shared/FacetChipRow'
@@ -19,14 +19,20 @@ import styles from './AtlasJumpDialog.module.css'
 // this component no longer runs its own capture-phase window listener
 // to win the ⌘K race against the app-wide command palette; dispatch
 // order (shared/commands.ts's dispatchCommandForEvent) does that now.
-export function AtlasJumpDialog({ open, onClose, cards, kinds, onJump }: {
+export function AtlasJumpDialog({ open, onClose, cards, kinds, objects, onJump, onJumpObject }: {
   open: boolean
   onClose: () => void
   cards: Card[]
   kinds: Kind[]
+  // Board objects are jump peers (goal 0265) -- found by their
+  // creation title / mirror basename, listed after card matches.
+  objects: BoardObject[]
   // Consumed by AtlasView: re-roots when needed, then hands the target
   // card to AtlasBoard's own fly/pulse/hint sequence.
   onJump: (card: Card, openImmediately: boolean) => void
+  // Same re-root-then-pulse plumbing, object flavored. No ⌘↵ open --
+  // an object has no page overlay to open.
+  onJumpObject: (object: BoardObject) => void
 }) {
   const { t } = useTranslation('atlas')
   const [query, setQuery] = useState('')
@@ -52,6 +58,8 @@ export function AtlasJumpDialog({ open, onClose, cards, kinds, onJump }: {
   )
   const parsed = useMemo(() => parseFacetQuery(query, vocabulary), [query, vocabulary])
   const results = useMemo(() => filterJumpCards(cards, kinds, parsed.text, parsed.scopeKey), [cards, kinds, parsed])
+  const objectResults = useMemo(() => filterJumpObjects(objects, cards, parsed.text, parsed.scopeKey), [objects, cards, parsed])
+  const totalResults = results.length + objectResults.length
   const chipSuggestions = useMemo(
     () => (parsed.scopeKey || !query.trim() ? [] : matchFacetSuggestions(query, vocabulary)),
     [parsed.scopeKey, query, vocabulary],
@@ -73,20 +81,30 @@ export function AtlasJumpDialog({ open, onClose, cards, kinds, onJump }: {
     onClose()
     onJump(card, true)
   }
+  const goObject = (object: BoardObject) => {
+    onClose()
+    onJumpObject(object)
+  }
 
   const onInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setActiveIndex((i) => Math.min(i + 1, Math.max(results.length - 1, 0)))
+      setActiveIndex((i) => Math.min(i + 1, Math.max(totalResults - 1, 0)))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setActiveIndex((i) => Math.max(i - 1, 0))
     } else if (e.key === 'Enter') {
       e.preventDefault()
       const target = results[activeIndex]
-      if (!target) return
-      if (e.metaKey || e.ctrlKey) goOpen(target.card)
-      else go(target.card)
+      if (target) {
+        if (e.metaKey || e.ctrlKey) goOpen(target.card)
+        else go(target.card)
+        return
+      }
+      // Object rows sit after the card rows in one arrow-key list;
+      // ⌘↵ falls through to a plain jump (no page to open).
+      const objectTarget = objectResults[activeIndex - results.length]
+      if (objectTarget) goObject(objectTarget.object)
     }
   }
 
@@ -143,7 +161,27 @@ export function AtlasJumpDialog({ open, onClose, cards, kinds, onJump }: {
             </ActionList.Item>
           )
         })}
-        {query.trim() !== '' && results.length === 0 && (
+        {objectResults.map((r, i) => (
+          <ActionList.Item
+            key={r.object.ID}
+            active={results.length + i === activeIndex}
+            onSelect={() => goObject(r.object)}
+            data-testid="atlas-jump-object-result"
+          >
+            <ActionList.LeadingVisual>
+              <span className={styles.glyph} style={{ background: 'var(--bgColor-neutral-emphasis)' }}>
+                {r.object.Kind.charAt(0).toUpperCase()}
+              </span>
+            </ActionList.LeadingVisual>
+            <span className={styles.title}>{r.label}</span>
+            {r.path && (
+              <ActionList.TrailingVisual>
+                <span className={`${styles.path} ${monoStyles.mono}`}>{r.path}</span>
+              </ActionList.TrailingVisual>
+            )}
+          </ActionList.Item>
+        ))}
+        {query.trim() !== '' && totalResults === 0 && (
           <ActionList.Item disabled data-testid="atlas-jump-no-matches">{t('jump.noMatches')}</ActionList.Item>
         )}
       </ActionList>

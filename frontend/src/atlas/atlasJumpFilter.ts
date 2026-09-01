@@ -1,4 +1,4 @@
-import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { BoardObject, Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { buildBreadcrumbPath, singleRootCard } from './atlasGrouping'
 import { isGroupCard } from './atlasBoardLayout'
 
@@ -29,10 +29,7 @@ export interface AtlasJumpResult {
 // chains, so "which ancestor is the auto-entered root" stays defined
 // in exactly one place (atlasGrouping.ts).
 export function ancestorPathLabel(cards: Card[], card: Card): string {
-  const root = singleRootCard(cards)
-  const ancestors = buildBreadcrumbPath(cards, card.ParentID)
-  const named = root ? ancestors.filter((c) => c.ID !== root.ID) : ancestors
-  return named.map((c) => c.Title).join(' ▸ ')
+  return ancestorPathFromParent(cards, card.ParentID)
 }
 
 function stableSortResults(results: AtlasJumpResult[]): AtlasJumpResult[] {
@@ -76,4 +73,66 @@ export function filterJumpCards(cards: Card[], kinds: Kind[], query: string, sco
   }
 
   return [...stableSortResults(byRank[0]), ...stableSortResults(byRank[1])].slice(0, MAX_RESULTS)
+}
+
+export interface AtlasJumpObjectResult {
+  object: BoardObject
+  label: string
+  path: string
+}
+
+// objectJumpLabel: what a board object answers to in search (goal
+// 0265) -- objects deliberately render no title on the board
+// (AtlasBoardObjectNode.tsx's own contract), but they still have a
+// findable name: the creation-time title (file-drop kinds store
+// titleFromFilename), else the mirror file's own basename, else the
+// Kind itself, capitalized (honest for plugin kinds whose slug is all
+// that exists).
+export function objectJumpLabel(object: BoardObject): string {
+  const title = object.Payload?.title?.trim()
+  if (title) return title
+  const mirror = object.Payload?.mirrorPath
+  if (mirror) {
+    const base = mirror.split('/').pop() ?? mirror
+    if (base) return base
+  }
+  return object.Kind.charAt(0).toUpperCase() + object.Kind.slice(1)
+}
+
+function stableSortObjectResults(results: AtlasJumpObjectResult[]): AtlasJumpObjectResult[] {
+  return [...results].sort((a, b) => {
+    if (a.label !== b.label) return a.label < b.label ? -1 : 1
+    if (a.object.ID === b.object.ID) return 0
+    return a.object.ID < b.object.ID ? -1 : 1
+  })
+}
+
+// filterJumpObjects: the object half of the jump dialog's results
+// (goal 0265) -- same case-insensitive substring match over the
+// label, same cap. Facet scopes stay card-vocabulary (Kind IDs and
+// the area role), so a scoped query returns no objects by design.
+export function filterJumpObjects(objects: BoardObject[], cards: Card[], query: string, scopeKey?: string): AtlasJumpObjectResult[] {
+  const q = query.trim().toLowerCase()
+  if (!q || scopeKey) return []
+  const matches: AtlasJumpObjectResult[] = []
+  for (const object of objects) {
+    const label = objectJumpLabel(object)
+    if (!label.toLowerCase().includes(q)) continue
+    matches.push({
+      object,
+      label,
+      path: ancestorPathFromParent(cards, object.ParentID),
+    })
+  }
+  return stableSortObjectResults(matches).slice(0, MAX_RESULTS)
+}
+
+// The breadcrumb trail for anything filed under a card by ParentID --
+// the object counterpart of ancestorPathLabel above, sharing the same
+// root-elision rule.
+export function ancestorPathFromParent(cards: Card[], parentID: string): string {
+  const root = singleRootCard(cards)
+  const ancestors = buildBreadcrumbPath(cards, parentID)
+  const named = root ? ancestors.filter((c) => c.ID !== root.ID) : ancestors
+  return named.map((c) => c.Title).join(' ▸ ')
 }

@@ -3,7 +3,7 @@ import { useRenderStormGuard } from '../shared/renderStormGuard'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
-import { type Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { type BoardObject, type Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useAtlasCreationRequests } from './useAtlasCreationRequests'
 import { AtlasService } from '../shared/bindings'
 import { scheduleAtlasRefresh, refreshAtlas, useAtlasStore } from './atlasStore'
@@ -315,6 +315,13 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     setFocusRequest({ cardID: card.ID, openImmediately })
   }
 
+  // Objects are jump peers (goal 0265): same re-root-then-fly, no
+  // preview-grandchild case (an object only renders on its own board).
+  const jumpToObject = (object: BoardObject) => {
+    if (object.ParentID !== viewedID) setViewedID(object.ParentID)
+    setFocusRequest({ cardID: object.ID, openImmediately: false })
+  }
+
   // A group entry inside a card's page (goal 0072 slice C item 2):
   // closes the page and reuses the SAME re-root-then-pulse focus
   // plumbing a ⌘K jump uses (jumpToCard above) -- the page itself may
@@ -460,7 +467,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
       </div>
 
       <AtlasViewOverlays
-        jumpOpen={jumpOpen} onCloseJump={() => setJumpOpen(false)} allCards={allCards} allKinds={allKinds} allLinks={allLinks} allLinkKinds={allLinkKinds} jumpToCard={jumpToCard}
+        jumpOpen={jumpOpen} onCloseJump={() => setJumpOpen(false)} allCards={allCards} allKinds={allKinds} allLinks={allLinks} allLinkKinds={allLinkKinds} allObjects={allObjects} jumpToCard={jumpToCard} jumpToObject={jumpToObject}
         overlayCard={overlayCard} onCloseOverlay={() => setOverlayCardID(null)} undoToast={undoToast} openGroupEntry={openGroupEntry} guardDelete={deleteConfirm.guardDelete}
         importConfirmDialog={importConfirmDialog}
         tableFromListOpen={tableFromListOpen} onCloseTableFromList={() => setTableFromListOpen(false)} newSpaceOpen={newSpaceOpen} onCloseNewSpace={() => setNewSpaceOpen(false)} onCreateTable={createTableFromList} onCreateSpace={(kindID, title) => createCard('sibling', kindID, title)}

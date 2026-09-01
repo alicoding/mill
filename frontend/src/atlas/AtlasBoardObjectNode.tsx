@@ -21,6 +21,9 @@ export interface AtlasBoardObjectData extends Record<string, unknown> {
   // never derived locally here (a plain per-node `selected` flag can't
   // tell "sole" from "part of a multi-selection").
   soleSelected: boolean
+  // Jump/entry pulse (goal 0265): objects are ⌘K jump peers, so the
+  // same one-shot pulse ring card nodes render lands here too.
+  pulsed?: boolean
 }
 
 export type AtlasBoardObjectRFNode = RFNode<AtlasBoardObjectData>
@@ -114,6 +117,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
       data-testid="atlas-board-object"
       data-object-kind={object.Kind}
       data-shape-type={shapeType}
+      data-pulse={data.pulsed ? 'true' : undefined}
       role={role}
       aria-label={t(ariaLabelKey)}
       onDoubleClick={editable ? () => { void dispatchObjectEdit(object, editRoute!) } : undefined}

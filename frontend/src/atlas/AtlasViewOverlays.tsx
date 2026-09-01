@@ -24,7 +24,7 @@ import type { useAtlasDeleteConfirm } from './useAtlasDeleteConfirm'
 // of them share logic with each other, only with the state AtlasView
 // still owns.
 export function AtlasViewOverlays({
-  jumpOpen, onCloseJump, allCards, allKinds, allLinks, allLinkKinds, jumpToCard,
+  jumpOpen, onCloseJump, allCards, allKinds, allLinks, allLinkKinds, allObjects, jumpToCard, jumpToObject,
   overlayCard, onCloseOverlay, undoToast, openGroupEntry, guardDelete,
   importConfirmDialog,
   tableFromListOpen, onCloseTableFromList, newSpaceOpen, onCloseNewSpace, onCreateTable, onCreateSpace,
@@ -39,7 +39,9 @@ export function AtlasViewOverlays({
   allKinds: Kind[]
   allLinks: Link[]
   allLinkKinds: LinkKind[]
+  allObjects: BoardObject[]
   jumpToCard: (card: Card, openImmediately: boolean) => void
+  jumpToObject: (object: BoardObject) => void
   overlayCard: Card | null
   onCloseOverlay: () => void
   undoToast: ReturnType<typeof useAtlasUndoToast>
@@ -74,7 +76,7 @@ export function AtlasViewOverlays({
 }) {
   return (
     <>
-      <AtlasJumpDialog open={jumpOpen} onClose={onCloseJump} cards={allCards} kinds={allKinds} onJump={jumpToCard} />
+      <AtlasJumpDialog open={jumpOpen} onClose={onCloseJump} cards={allCards} kinds={allKinds} objects={allObjects} onJump={jumpToCard} onJumpObject={jumpToObject} />
 
       {overlayCard && (
         <AtlasCardOverlay

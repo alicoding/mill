@@ -1,4 +1,6 @@
 import { test, expect } from './fixtures/server'
+import { nonSeededBoardObjectWrapper } from './fixtures/atlasBoard'
+import { createBoardObjectViaRPC, ATLAS_DEFAULT_SPACE_ID } from './fixtures/atlasNativeDropEscapeHatch'
 
 // Exercises the ⌘K jump dialog (goal 0072 slice B, AtlasJumpDialog.tsx)
 // over real Go bindings (Wails3 server mode), against the same seeded
@@ -198,4 +200,47 @@ test('typing a Kind-label prefix offers a kind-glyph-colored suggestion chip; cl
   await expect(jumpDialog(page).getByRole('button', { name: 'Topic' })).toHaveCount(0)
 
   await page.keyboard.press('Escape')
+})
+
+// Board objects are jump peers (goal 0265): found by their creation
+// title, listed after card matches, and Enter lands the camera on the
+// object with the same pulse affordance a card jump gets. This test
+// creates its own object and deletes it (the header's read-only note
+// predates it).
+test('an object is findable by title; Enter flies to it and pulses it', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await createBoardObjectViaRPC(
+    page,
+    'image',
+    { title: 'ZzE2eJumpTarget', mirrorPath: '/nonexistent/zz-e2e-jump-target.png' },
+    { X: -600, Y: 900 },
+    ATLAS_DEFAULT_SPACE_ID,
+  )
+  await page.reload()
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await page.keyboard.press('Meta+k')
+  await expect(jumpDialog(page)).toBeVisible()
+  await page.getByTestId('atlas-jump-input').fill('ZzE2eJumpTarget')
+  const objectRow = jumpDialog(page).getByTestId('atlas-jump-object-result')
+  await expect(objectRow).toHaveCount(1)
+  await expect(objectRow).toContainText('ZzE2eJumpTarget')
+
+  await page.keyboard.press('Enter')
+  await expect(jumpDialog(page)).toHaveCount(0)
+  const objectWrapper = nonSeededBoardObjectWrapper(page, 'image')
+  await expect(objectWrapper).toBeVisible()
+  // The fly-to-target pulse (useBoardFocus's PULSE_MS window).
+  await expect(objectWrapper.locator('[data-pulse="true"]')).toBeVisible()
+
+  // Cleanup.
+  await objectWrapper.click({ button: 'right' })
+  const menu = page.getByTestId('context-menu')
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+  await expect(objectWrapper).toHaveCount(0)
 })

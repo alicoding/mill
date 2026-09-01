@@ -39,10 +39,14 @@ import type { AtlasBoardObjectRFNode } from './AtlasBoardObjectNode'
 // `style.zIndex: "1000"` against ink's own declared `"1"`).
 const OBJECT_Z_INDEX: Record<string, number> = { image: 0, shape: 0, table: 0, diagram: 0, ink: 1 }
 
-export function buildBoardObjectNodes({ objects, readOnly, isFree, soleSelectedID = null }: {
+export function buildBoardObjectNodes({ objects, readOnly, isFree, soleSelectedID = null, pulsedID = null }: {
   objects: BoardObject[]
   readOnly: boolean
   isFree: boolean
+  // The board's jump/entry pulse target (goal 0265): objects are ⌘K
+  // jump peers, so the same one-shot pulse card nodes render lands
+  // here too. Optional/defaulted like soleSelectedID, same reason.
+  pulsedID?: string | null
   // The board's own sole-selected object id, if any (goal 0214) --
   // threaded through so AtlasBoardObjectNode.tsx can show the shape
   // rotation handle only on that ONE node, never derived per-node from
@@ -59,6 +63,6 @@ export function buildBoardObjectNodes({ objects, readOnly, isFree, soleSelectedI
     draggable: isFree && !readOnly,
     zIndex: OBJECT_Z_INDEX[object.Kind] ?? 0,
     ...(object.Size ? { width: object.Size.W, height: object.Size.H } : {}),
-    data: { object, soleSelected: object.ID === soleSelectedID },
+    data: { object, soleSelected: object.ID === soleSelectedID, pulsed: object.ID === pulsedID },
   }))
 }

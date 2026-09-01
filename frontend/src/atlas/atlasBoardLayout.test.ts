@@ -172,3 +172,31 @@ describe('computeGroupFrameLayout with filed notes', () => {
     expect(layout.overflow?.count).toBe(3)
   })
 })
+
+describe('computeAutoArrangeLayout with object tiles (goal 0265)', () => {
+  it('packs object tiles into the same non-overlapping row flow, after the cards', () => {
+    const a = card('a', 'p', '2024-01-01')
+    const tiles = [
+      { id: 'obj-2', width: 300, height: 200, createdAt: '2024-01-03' },
+      { id: 'obj-1', width: 300, height: 200, createdAt: '2024-01-02' },
+    ]
+    const { boxes } = computeAutoArrangeLayout([a], [a], new Map(), undefined, [], tiles)
+    expect([...boxes.keys()]).toEqual(['a', 'obj-1', 'obj-2'])
+    const all = [...boxes.values()]
+    for (let i = 0; i < all.length; i++) {
+      for (let j = i + 1; j < all.length; j++) {
+        const x = all[i], y = all[j]
+        const overlaps = x.x < y.x + y.width && y.x < x.x + x.width && x.y < y.y + y.height && y.y < x.y + x.height
+        expect(overlaps).toBe(false)
+      }
+    }
+  })
+
+  it('a card-only layout stays byte-identical when the tiles list is empty', () => {
+    const a = card('a', 'p', '2024-01-01')
+    const b = card('b', 'p', '2024-01-02')
+    const plain = computeAutoArrangeLayout([a, b], [a, b])
+    const withEmpty = computeAutoArrangeLayout([a, b], [a, b], new Map(), undefined, [], [])
+    expect([...withEmpty.boxes.entries()]).toEqual([...plain.boxes.entries()])
+  })
+})

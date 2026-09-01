@@ -163,7 +163,7 @@
   },
   {
     "id": "atlas.jump",
-    "label": "Jump to a card",
+    "label": "Jump to a card or object",
     "binding": "\u2318K",
     "surface": [
       "atlas"
