@@ -44,8 +44,8 @@
     "inlineTitleAriaLabel": "Name this card"
   },
   "jump": {
-    "placeholder": "Jump to a card",
-    "noMatches": "No cards match",
+    "placeholder": "Jump to a card or object",
+    "noMatches": "No matches",
     "footerHint": "↵ go · ⌘↵ open",
     "areaFacetLabel": "Area",
     "suggestionsAriaLabel": "Search type suggestions"

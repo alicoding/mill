@@ -293,7 +293,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
     // AtlasJumpDialog itself is now purely controlled off this signal
     // (its own former capture-phase window listener is retired).
     id: 'atlas.jump',
-    label: 'Jump to a card',
+    label: 'Jump to a card or object',
     defaultBinding: { mods: ['cmd'], key: 'K' },
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasJump(),

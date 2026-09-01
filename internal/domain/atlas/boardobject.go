@@ -37,9 +37,10 @@ type BoardObject struct {
 	// wire, the same convention Card.Fields already carries against
 	// typedfield.Field.
 	Payload map[string]string
-	// Position is this object's placement within ParentID's canvas --
-	// board objects are Free-mode-only (no shelves-auto-arrange
-	// concept applies to a thing in space rather than a document).
+	// Position is this object's placement within ParentID's canvas.
+	// Required on the wire (never nil, unlike Card.Position): an
+	// object is born placed. Objects are full packing peers of cards
+	// in Auto-arrange (goal 0265's peer law).
 	Position Position
 	// Size is the object's user-chosen board footprint, nil until
 	// first resized -- the renderer's own natural/intrinsic size wins

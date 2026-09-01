@@ -200,6 +200,19 @@ function linkAdjacentOrder(cards: Card[], allCards: Card[], adjacency: Map<strin
   return out
 }
 
+// ArrangeObjectTile: a board object's footprint as the packer sees it
+// -- the caller resolves the size (persisted Size, measured AABB, or a
+// fallback) since this pure layout has no access to rendered
+// measurements. Objects pack AFTER cards, in creation order: they have
+// no link adjacency to order by, and cards-first keeps every existing
+// card-only layout byte-identical.
+export interface ArrangeObjectTile {
+  id: string
+  width: number
+  height: number
+  createdAt: string
+}
+
 // computeAutoArrangeLayout is Auto-arrange mode's own deterministic
 // placement: link-adjacent order (above) flowed into wrapping rows of
 // mixed sizes. The row cap follows the real board width when the
@@ -213,6 +226,7 @@ export function computeAutoArrangeLayout(
   adjacency: Map<string, string[]> = new Map(),
   maxRowWidth: number = BOARD_MAX_ROW_WIDTH,
   allNotes: Note[] = [],
+  objectTiles: ArrangeObjectTile[] = [],
 ): BoardLayout {
   const rowCap = Math.max(BOARD_MAX_ROW_WIDTH, maxRowWidth)
   const ordered = linkAdjacentOrder(cards, allCards, adjacency)
@@ -248,6 +262,13 @@ export function computeAutoArrangeLayout(
     }
   }
 
+  const tiles = [...objectTiles].sort((a, b) => {
+    if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1
+    if (a.id === b.id) return 0
+    return a.id < b.id ? -1 : 1
+  })
+  for (const tile of tiles) place(tile.id, tile.width, tile.height)
+
   return { boxes }
 }
 
@@ -256,3 +277,11 @@ export function computeAutoArrangeLayout(
 // inner scroll takes over.
 export const TABLE_WIDTH = 520
 export const TABLE_HEIGHT = 320
+
+// A board object's footprint guess when neither a persisted Size nor a
+// live measurement is at hand: the natural-size CSS clamp's own ceiling
+// (AtlasBoardObjectNode.module.css caps unresized content at 480px per
+// axis). Deliberately conservative -- it only ever pads WHERE fresh
+// position-less cards seat and where an unmeasured object packs, and an
+// over-guess costs a gap while an under-guess costs an overlap.
+export const OBJECT_FALLBACK_EXTENT = 480

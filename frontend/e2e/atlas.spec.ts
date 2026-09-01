@@ -21,11 +21,12 @@ import { clickBreadcrumbSegment, openCard, createCardViaTray } from './fixtures/
 // lands on "The engagement" without needing to click it, and the
 // "All spaces" meta-level crumb is absent unless a test explicitly
 // creates a second root card.
-// The share (goal 0063) and projection (goal 0064) test groups live in
-// sibling files, atlas-share.spec.ts and atlas-projections.spec.ts --
-// split out to stay under architecture.md's 500-line convention, same
-// pattern composition.spec.ts/composition-canvas-interactions.spec.ts
-// already established.
+// The share (goal 0063), projection (goal 0064), and Auto-arrange
+// (goals 0089/0265) test groups live in sibling files,
+// atlas-share.spec.ts, atlas-projections.spec.ts and
+// atlas-arrange.spec.ts -- split out to stay under architecture.md's
+// 500-line convention, same pattern composition.spec.ts/
+// composition-canvas-interactions.spec.ts already established.
 
 function atlasView(page: import('@playwright/test').Page) {
   return page.getByTestId('atlas-view')
@@ -193,62 +194,6 @@ test('clicking a card selects it (replacing any prior selection) without moving 
 
   await page.keyboard.press('Escape')
   await expect(scratchpadWrapper).toHaveCount(0)
-})
-
-test('arrange is an action: dragging persists a position, Auto-arrange re-seats it (goal 0089)', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Atlas' }).click()
-  await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
-  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
-
-  // No mode toggle anywhere -- the Auto-arrange BUTTON is present at
-  // every level instead (positions are always sovereign). Its row
-  // testid can legitimately sit in Primer's ActionBar overflow menu at
-  // this width, so reachability below (openToolbarAction, which
-  // already asserts a successful click) stands in for a plain
-  // toBeVisible() row-only check.
-  await expect(page.getByTestId('atlas-view-mode-toggle')).toHaveCount(0)
-
-  // One-shot arrange persists seats: click it, then a reload renders
-  // the same FLOW positions (React Flow writes translate(x,y) in flow
-  // coords on the node element -- camera-independent, unlike
-  // boundingBox, which shifts with fitView's post-reload camera).
-  await openToolbarAction(page, 'atlas-auto-arrange')
-  const adaNode = page.locator('.react-flow__node').filter({ has: page.locator('[aria-label="Open Jordan Reyes"]') })
-  await expect(adaNode).toBeVisible()
-  let before = ''
-  await expect.poll(async () => {
-    before = (await adaNode.evaluate((el) => (el as HTMLElement).style.transform)) ?? ''
-    return before
-  }).toContain('translate')
-  await page.reload()
-  await expect(atlasView(page)).toBeVisible()
-  await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
-  await expect(adaNode).toBeVisible()
-  await expect.poll(async () => adaNode.evaluate((el) => (el as HTMLElement).style.transform), { timeout: 10_000 }).toBe(before)
-})
-
-// atlas.arrange (shared/atlasBoardCommands.ts): the palette path runs
-// the SAME arrange action the toolbar button above does -- proven by
-// the same transform-changes-to-a-translate assertion, not a second
-// reload-persistence check (already covered above).
-test('Auto-arrange from the command palette runs the same action as the toolbar button', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Atlas' }).click()
-  await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
-  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
-
-  const adaNode = page.locator('.react-flow__node').filter({ has: page.locator('[aria-label="Open Jordan Reyes"]') })
-  await expect(adaNode).toBeVisible()
-
-  await page.keyboard.press('Meta+/')
-  const palette = page.getByRole('dialog', { name: 'Command palette' })
-  await expect(palette).toBeVisible()
-  await palette.getByRole('combobox').fill('Auto-arrange')
-  await palette.getByRole('option', { name: 'Auto-arrange' }).click()
-  await expect(palette).toHaveCount(0)
-
-  await expect.poll(async () => (await adaNode.evaluate((el) => (el as HTMLElement).style.transform)) ?? '').toContain('translate')
 })
 
 test('create a child card, edit + persist it via the card page, then delete it', async ({ page }) => {

@@ -114,6 +114,14 @@ connected by links, grouped into areas you can drill into.
 
 ## Finding what you need
 
+- **Jump anywhere with ⌘K.** Type a few letters and pick from every
+  card and every placed object — a diagram, an image, a table —
+  matched by its name. Enter flies the board to it and pulses it so
+  your eye lands in the right place, even when it lives levels away.
+- **Tidy the whole board with Auto-arrange.** One click packs
+  everything on the current level — cards and objects alike — into
+  clean rows, then leaves you in control: anything you drag
+  afterwards stays where you put it.
 - **Filter without losing the map.** The search control on the board
   (top right) dims everything that doesn't match your text, chosen
   kinds, or field values (the Fields menu lists every choice-type

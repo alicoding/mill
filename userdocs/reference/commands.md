@@ -39,7 +39,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.focusPrevious` | Focus previous card | `⇧TAB` | atlas | Always available |
 | `atlas.group.selection` | Group into a new area | `G` | atlas | Always available |
 | `atlas.import` | Import atlas | — | atlas | Always available |
-| `atlas.jump` | Jump to a card | `⌘K` | atlas | Always available |
+| `atlas.jump` | Jump to a card or object | `⌘K` | atlas | Always available |
 | `atlas.matrix` | Open traceability matrix | — | atlas | Always available |
 | `atlas.minimap.toggle` | Toggle minimap | — | atlas | Always available |
 | `atlas.nudgeSelection` | Move the selected card | `→` | atlas | Always available |
