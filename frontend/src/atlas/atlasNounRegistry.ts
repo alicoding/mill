@@ -48,19 +48,13 @@ export type AtlasToolStyleDefaults = Record<string, unknown>
 // renderer source a `resizable: true` answer must hold true against.
 export type AtlasBoardNodeType = 'atlas-note' | 'atlas-sticky' | 'atlas-group' | 'atlas-object' | null
 
-// ExtensionSettingDecl -- one declared, boolean user setting an
-// extension offers (goal 0258 S1: booleans only; the shape grows by
-// adding variants here, never per-extension UI). `key` is the stable
-// persistence key under the extension's id; `defaultValue` is the
-// behavior with nothing stored -- the store never learns defaults, so
-// changing a default in a later release affects only users who never
-// touched the toggle, exactly the converged settings semantic.
-export interface ExtensionSettingDecl {
-  key: string
-  label: string
-  description: string
-  defaultValue: boolean
-}
+// ExtensionSettingDecl / ExtensionSettingValue live in
+// shared/extensionSettingDecl.ts (shared/ is a dependency leaf and the
+// settings store there resolves against the declaration); re-exported
+// here so a noun declares its settings from the same module it
+// declares everything else.
+import type { ExtensionSettingDecl } from '../shared/extensionSettingDecl'
+export type { ExtensionSettingDecl, ExtensionSettingValue } from '../shared/extensionSettingDecl'
 
 interface AtlasToolShapeBase {
   icon: Icon

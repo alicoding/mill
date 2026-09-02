@@ -8,7 +8,8 @@ import { boardObjectContentFor } from '../atlasNounRegistry'
 import { dispatchObjectEdit, writeObjectMirror } from '../objectSeams'
 import type { MirrorReadState } from '../useAtlasObjectMirrorRead'
 import type { CsvEditModel } from '../atlasCsvQuickEdit'
-import { sheetTruncationNote, truncateSheetRows } from '../atlasSheetTruncate'
+import { SHEET_MAX_COLS, SHEET_MAX_ROWS, sheetTruncationNote, truncateSheetRows } from '../atlasSheetTruncate'
+import { extensionSetting, useExtensionSettingsStore } from '../../shared/extensionSettingsStore'
 import { TABLE_WIDTH, TABLE_HEIGHT } from '../atlasBoardLayout'
 import runbookStyles from '../../shared/ListCard.module.css'
 import styles from './AtlasSheetObjectContent.module.css'
@@ -75,6 +76,12 @@ async function parseSheet(content: MirrorContent): Promise<ParsedSheet> {
 // all.
 export function AtlasSheetObjectContent({ object, mirrorContent }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState }) {
   const { t } = useTranslation('atlas')
+  // The sheet noun's declared preview caps (goal 0258 slice 1) --
+  // subscribed, not just read, so a cap change in Settings re-renders
+  // every open sheet live.
+  useExtensionSettingsStore((s) => s.values)
+  const previewRows = extensionSetting('sheet', 'previewRows', SHEET_MAX_ROWS)
+  const previewCols = extensionSetting('sheet', 'previewCols', SHEET_MAX_COLS)
   const content = mirrorContent?.content
   const fetchError = mirrorContent?.error ?? ''
   const [parsed, setParsed] = useState<ParsedSheet | null>(null)
@@ -237,8 +244,8 @@ export function AtlasSheetObjectContent({ object, mirrorContent }: { object: Boa
     inner = <Text as="p" size="small" className={runbookStyles.muted} data-testid="atlas-object-sheet-loading">{t('overlay.mirrorLoading')}</Text>
   } else {
     const displayRows = parsed.kind === 'csv' ? parsed.model.displayRows : parsed.rows
-    const capped = truncateSheetRows(displayRows)
-    const note = sheetTruncationNote(capped)
+    const capped = truncateSheetRows(displayRows, previewRows, previewCols)
+    const note = sheetTruncationNote(capped, previewRows, previewCols)
     const [header, ...body] = capped.rows
     inner = (
       <>

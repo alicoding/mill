@@ -232,10 +232,11 @@ export function GetDisplayDensity(): $CancellablePromise<string> {
 
 /**
  * GetExtensionSettings returns every stored per-extension setting
- * value. Never nil — always at least an empty map, so a caller can
- * json-encode it straight to the frontend without a nil check.
+ * value as its JSON literal ("true", "\"hostname\"", "25"). Never nil
+ * — always at least an empty map, so a caller can json-encode it
+ * straight to the frontend without a nil check.
  */
-export function GetExtensionSettings(): $CancellablePromise<{ [_ in string]?: { [_ in string]?: boolean } | null } | null> {
+export function GetExtensionSettings(): $CancellablePromise<{ [_ in string]?: { [_ in string]?: string } | null } | null> {
     return $Call.ByID(1523849532);
 }
 
@@ -586,12 +587,14 @@ export function SetExtensionEnabled(id: string, enabled: boolean): $CancellableP
 
 /**
  * SetExtensionSetting stores one extension's one declared-setting
- * value, persists the updated blob, and emits dataevent so every open
- * consumer (the Extensions section, a canvas surface reading the
- * setting) refreshes live rather than only after a reload.
+ * value (given as its JSON literal), persists the updated blob, and
+ * emits dataevent so every open consumer (the Extensions section, a
+ * canvas surface reading the setting, a plugin's onChange) refreshes
+ * live rather than only after a reload. Anything but a JSON scalar is
+ * refused before the blob is touched.
  */
-export function SetExtensionSetting(extensionID: string, key: string, value: boolean): $CancellablePromise<void> {
-    return $Call.ByID(2797582563, extensionID, key, value);
+export function SetExtensionSetting(extensionID: string, key: string, jsonValue: string): $CancellablePromise<void> {
+    return $Call.ByID(2797582563, extensionID, key, jsonValue);
 }
 
 /**

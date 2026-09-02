@@ -47,19 +47,12 @@ type Manifest struct {
 // (what a plugin may ask to do).
 type ManifestContributes struct {
 	CanvasObjects []CanvasObjectContribution `json:"canvasObjects"`
-}
-
-// CanvasObjectContribution claims the ingestion doors for one canvas
-// object kind: which dropped-file extensions and which clipboard
-// shapes land as this plugin's object. Payload shape is not declared
-// here -- it derives from the object's own registered source (a
-// fileExtensions claim requires a file-backed object landing
-// mirrorPath+title; PastesURLs requires a url-backed one landing
-// url+title), enforced host-side at registration.
-type CanvasObjectContribution struct {
-	Kind           string   `json:"kind"`
-	FileExtensions []string `json:"fileExtensions"`
-	PastesURLs     bool     `json:"pastesURLs"`
+	// Settings (docs/goals/0258 slice 1): the plugin's own declared
+	// user settings, the same declare -> host renders/stores/serves
+	// contract compiled-in nouns use. Declared in the manifest, not
+	// at activate() time, so the Extensions row can render them
+	// without running plugin code and validation fails the LOAD.
+	Settings []SettingContribution `json:"settings"`
 }
 
 // PluginInfo is one scanned plugin as the Extensions surface and the
@@ -290,6 +283,16 @@ func validateContributes(c ManifestContributes) string {
 				return fmt.Sprintf("contributed file extension %q must look like \".ext\" in lowercase", ext)
 			}
 		}
+	}
+	seen := map[string]bool{}
+	for _, st := range c.Settings {
+		if problem := validateSettingContribution(st); problem != "" {
+			return problem
+		}
+		if seen[st.Key] {
+			return fmt.Sprintf("contributed setting %q is declared twice", st.Key)
+		}
+		seen[st.Key] = true
 	}
 	return ""
 }

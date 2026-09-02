@@ -5,6 +5,8 @@ import { useUISignalStore } from '../shared/uiSignalStore'
 import type { AtlasArmRequestTool } from '../shared/atlasToolIdentity'
 import { collectPluginCommand } from './pluginCommands'
 import { buildThirdPartyNoun, seedStyleValues } from './canvasToolAdapter'
+import { settingDeclsFromManifest } from './pluginSettings'
+import { resolveExtensionSetting, subscribeExtensionSetting } from '../shared/extensionSettingsStore'
 import type { CanvasObjectDecl, MillPluginAPI } from './sdk'
 
 // buildPluginAPI constructs the ONE object a plugin ever holds
@@ -24,9 +26,23 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string): MillPlu
 		const d = await PluginService.RequestGuardedAction(pluginId, kind, attributes, description)
 		return { approved: d.Approved, effect: d.Effect, ruleLabel: d.RuleLabel, performed: d.Performed }
 	}
+	// The settings door (goal 0258 slice 1): declarations come from the
+	// validated manifest, values from the same central store the
+	// Settings row writes -- one resolver for built-ins and plugins.
+	const settingDecls = settingDeclsFromManifest(manifest)
+	const declFor = (key: string) => {
+		const decl = settingDecls.find((d) => d.key === key)
+		if (!decl) throw new Error(`plugin ${pluginId}: setting "${key}" is not declared in the manifest's contributes.settings`)
+		return decl
+	}
+	const settings = Object.freeze({
+		get: (key: string) => resolveExtensionSetting(pluginId, declFor(key)),
+		onChange: (key: string, fn: (value: boolean | string | number) => void) => subscribeExtensionSetting(pluginId, declFor(key), fn),
+	})
 	return Object.freeze({
 		millVersion,
 		pluginId,
+		settings,
 		registerCanvasObject: (decl: CanvasObjectDecl) => {
 			if (!KIND_PATTERN.test(decl.kind)) throw new Error(`plugin ${pluginId}: canvas object kind "${decl.kind}" must be a lowercase slug`)
 			if (!SOURCES.has(decl.source)) throw new Error(`plugin ${pluginId}: unknown source "${decl.source}"`)
@@ -53,7 +69,7 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string): MillPlu
 			})
 		},
 		registerCommand: (decl) => {
-			collectPluginCommand({ id: `plugin.${pluginId}.${decl.id}`, label: decl.label, run: decl.run })
+			collectPluginCommand({ id: `plugin.${pluginId}.${decl.id}`, label: decl.label, enabled: decl.enabled, run: decl.run })
 		},
 		requestGuardedAction,
 	})

@@ -1,6 +1,7 @@
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { SettingsService } from '../shared/bindings'
+import { refreshExtensionSettings } from '../shared/extensionSettingsStore'
 import { buildPluginAPI } from './hostApi'
 import type { MillPluginAPI, PluginModule } from './sdk'
 
@@ -69,6 +70,11 @@ export async function loadPlugins(): Promise<void> {
 		// An unreadable disabled set loads everything -- matching how
 		// built-in extensions already behave when the same read fails.
 	}
+	// Stored setting values load BEFORE any activate() runs, so a plugin
+	// reading api.settings.get() at activation sees the user's value,
+	// not the default (the store's own refresh path; App's boot effect
+	// refetches again later, harmlessly).
+	await refreshExtensionSettings()
 	for (const info of plugins) {
 		const id = info.Manifest.id
 		if (info.Error) {

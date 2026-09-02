@@ -411,7 +411,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
   // default-bound -- a plugin command is palette-reachable; a
   // keybinding for third-party code is assigned in Settings, never
   // shipped by the plugin.
-  ...drainedPluginCommands().map((c) => ({ id: c.id, label: c.label, defaultBinding: null, surface: c.surface, run: c.run })),
+  ...drainedPluginCommands().map((c) => ({ id: c.id, label: c.label, defaultBinding: null, surface: c.surface, enabled: c.enabled, run: c.run })),
 ])
 
 export function findCommand(id: string): Command | undefined {

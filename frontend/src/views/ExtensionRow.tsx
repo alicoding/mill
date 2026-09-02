@@ -1,9 +1,8 @@
 import { ChevronRightIcon } from '@primer/octicons-react'
 import { useTranslation } from 'react-i18next'
-import { Checkbox, FormControl, Label, Link, Stack, Text, ToggleSwitch } from '@primer/react'
+import { Label, Link, Stack, Text, ToggleSwitch } from '@primer/react'
 import { useAppStore } from '../shared/store'
-import { SettingsService } from '../shared/bindings'
-import { extensionSetting, refreshExtensionSettings, setExtensionSettingLocal, useExtensionSettingsStore } from '../shared/extensionSettingsStore'
+import { ExtensionSettingControl } from './ExtensionSettingControl'
 import { descriptionLabel, editRouteLabel, groupLabel, reachLabel, sourceLabel, versionLabel, type ExtensionRowSource } from './extensionMeta'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './ExtensionsSection.module.css'
@@ -114,48 +113,6 @@ export function ExtensionRow({ row, builtIn, enabled, appVersion, onToggle }: {
           />
         )}
       </div>
-    </div>
-  )
-}
-
-// ExtensionSettingControl -- ONE declared setting rendered generically
-// (goal 0258): the extension declares {key, label, description,
-// defaultValue}; this host control reads the stored value (falling
-// back to the declared default), writes through the central
-// SettingsService blob, and refreshes the shared store so every
-// consumer -- including a canvas surface reading extensionSetting()
-// at its next mount -- sees the same truth. Subscribing to the store
-// (not just reading it) keeps two open Settings views in agreement
-// live, the same dataevent-driven convergence the enable toggle has.
-function ExtensionSettingControl({ extensionId, setting }: {
-  extensionId: string
-  setting: { key: string; label: string; description: string; defaultValue: boolean }
-}) {
-  useExtensionSettingsStore((s) => s.values)
-  const checked = extensionSetting(extensionId, setting.key, setting.defaultValue)
-  return (
-    // Plain wrapper for the testid: FormControl's prop set is closed
-    // (no HTML-attribute forwarding), so the hook lives one element up.
-    <div data-testid={`extension-setting-${extensionId}-${setting.key}`}>
-      <FormControl>
-        <Checkbox
-          checked={checked}
-          onChange={(e) => {
-            // Optimistic flip first (a controlled checkbox that waits
-            // out the persistence round-trip visibly reverts on click);
-            // the refresh after the write reconciles either way.
-            setExtensionSettingLocal(extensionId, setting.key, e.target.checked)
-            void SettingsService.SetExtensionSetting(extensionId, setting.key, e.target.checked)
-              .then(refreshExtensionSettings)
-              .catch((err) => {
-                console.error(err)
-                void refreshExtensionSettings()
-              })
-          }}
-        />
-        <FormControl.Label>{setting.label}</FormControl.Label>
-        <FormControl.Caption>{setting.description}</FormControl.Caption>
-      </FormControl>
     </div>
   )
 }

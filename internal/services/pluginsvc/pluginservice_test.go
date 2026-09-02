@@ -293,3 +293,58 @@ func TestListPlugins_EnforcesMinMillVersion(t *testing.T) {
 		t.Fatalf("infos = %+v, want too-new carrying the version refusal naming the minimum", infos)
 	}
 }
+
+// contributes.settings (docs/goals/0258 slice 1) fail-closes exactly
+// like ingestion claims: every malformed declaration blocks the load
+// with a reason naming the key, and a well-formed set of all four
+// types loads.
+func TestListPlugins_ValidatesContributedSettings(t *testing.T) {
+	root := t.TempDir()
+	base := func(id, settings string) string {
+		return `{"id":"` + id + `","name":"S","version":"1","contributes":{"settings":` + settings + `}}`
+	}
+	writePlugin(t, root, "all-types", base("all-types", `[
+		{"key":"flag","type":"boolean","label":"Flag","description":"","default":true},
+		{"key":"title","type":"string","label":"Title","description":"","default":"Hi"},
+		{"key":"rows","type":"number","label":"Rows","description":"","default":10,"min":1,"max":100},
+		{"key":"style","type":"enum","label":"Style","description":"","default":"a","options":[{"value":"a","label":"A"},{"value":"b","label":"B"}]}
+	]`), nil)
+	cases := map[string]struct{ settings, want string }{
+		"bad-key":      {`[{"key":"1st","type":"boolean","label":"X","default":true}]`, "setting key"},
+		"no-label":     {`[{"key":"k","type":"boolean","label":" ","default":true}]`, "needs a label"},
+		"bad-type":     {`[{"key":"k","type":"password","label":"X","default":""}]`, "unknown type"},
+		"bool-default": {`[{"key":"k","type":"boolean","label":"X","default":"yes"}]`, "not true or false"},
+		"str-default":  {`[{"key":"k","type":"string","label":"X","default":3}]`, "not a string"},
+		"num-default":  {`[{"key":"k","type":"number","label":"X","default":"3"}]`, "not a number"},
+		"num-range":    {`[{"key":"k","type":"number","label":"X","default":5,"min":10,"max":1}]`, "min above max"},
+		"num-outside":  {`[{"key":"k","type":"number","label":"X","default":500,"min":1,"max":100}]`, "outside its min/max"},
+		"enum-no-opts": {`[{"key":"k","type":"enum","label":"X","default":"a"}]`, "declares no options"},
+		"enum-bad-opt": {`[{"key":"k","type":"enum","label":"X","default":"a","options":[{"value":"a","label":""}]}]`, "missing its value or label"},
+		"enum-default": {`[{"key":"k","type":"enum","label":"X","default":"z","options":[{"value":"a","label":"A"}]}]`, "not one of its options"},
+		"dup-key":      {`[{"key":"k","type":"boolean","label":"X","default":true},{"key":"k","type":"boolean","label":"Y","default":false}]`, "declared twice"},
+	}
+	for id, c := range cases {
+		writePlugin(t, root, id, base(id, c.settings), nil)
+	}
+
+	svc := New(root, nil, "1.0.0")
+	infos, err := svc.ListPlugins()
+	if err != nil {
+		t.Fatal(err)
+	}
+	byID := map[string]PluginInfo{}
+	for _, i := range infos {
+		byID[filepath.Base(i.Dir)] = i
+	}
+	if got := byID["all-types"]; got.Error != "" {
+		t.Fatalf("all-types should be valid, got error %q", got.Error)
+	}
+	if got := byID["all-types"].Manifest.Contributes.Settings; len(got) != 4 || got[2].Default != 10.0 || *got[2].Max != 100 {
+		t.Fatalf("all-types settings decoded wrong: %+v", got)
+	}
+	for id, c := range cases {
+		if got := byID[id]; !strings.Contains(got.Error, c.want) {
+			t.Errorf("%s error = %q, want it to contain %q", id, got.Error, c.want)
+		}
+	}
+}

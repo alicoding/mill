@@ -195,6 +195,28 @@ export interface PluginCommandDecl {
   id: string
   label: string
   run: () => void
+  // enabled (goal 0258 slice 1, the same "when" clause built-in
+  // commands carry): omit for an always-valid command; provide a
+  // predicate when the command only makes sense in a state -- the
+  // palette omits a disabled command entirely rather than showing
+  // something that does nothing. Never guard inside run() and return
+  // silently. A default keybinding is deliberately NOT part of this
+  // declaration: a shortcut for third-party code is assigned by the
+  // user in Settings, never shipped by the plugin.
+  enabled?: () => boolean
+}
+
+// PluginSettingsAPI (goal 0258 slice 1): the plugin's own declared
+// settings (manifest `contributes.settings`), served back typed. The
+// host renders the controls and stores the values -- a plugin never
+// builds a settings UI. get() answers the stored value or the
+// manifest default; onChange() fires whenever the user changes that
+// key (a face that depends on a setting re-renders itself from here
+// -- renderFace re-runs on object DATA changes only) and returns the
+// unsubscribe function. An undeclared key throws, naming the plugin.
+export interface PluginSettingsAPI {
+  get: (key: string) => boolean | string | number
+  onChange: (key: string, fn: (value: boolean | string | number) => void) => () => void
 }
 
 // MillPluginAPI is the one object a plugin ever holds -- handed to its
@@ -205,6 +227,7 @@ export interface MillPluginAPI {
   registerCanvasObject: (decl: CanvasObjectDecl) => void
   registerCommand: (decl: PluginCommandDecl) => void
   requestGuardedAction: (kind: string, attributes: Record<string, string>, description: string) => Promise<GuardedActionResult>
+  settings: PluginSettingsAPI
 }
 
 // A plugin's main.js default-exports (or named-exports) activate:

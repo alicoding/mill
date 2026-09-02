@@ -1274,8 +1274,12 @@ Sheet, stops new ones landing on drop). Some extensions offer their
 own settings inside the row — expand the row to find them. The Note
 offers **Rich code blocks**: turn it on and code fences in notes get
 syntax coloring and the full code editor, starting the next time a
-note opens for editing. Installed plugins appear below the built-in
-list with their own rows.
+note opens for editing. The Sheet offers **Preview rows** and
+**Preview columns**: how much of a spreadsheet shows on the board
+before the "showing the first…" note. Text and number settings save
+when you press Enter or leave the field. Installed plugins appear
+below the built-in list with their own rows, including any settings
+they declare.
 
 ## Keyboard shortcuts
 
@@ -1491,7 +1495,7 @@ are never omissions.
 | `shortcutKey` | a single-character string, or null | the bare keypress that arms this tool from the board. null for a tool with no bare-key shortcut. |
 | `tray` | 'quick' or 'palette' | which tray surface renders this tool's button. |
 | `group` | 'knowledge', 'file', or 'annotate' -- REQUIRED, never optional | which tray cluster this noun's own button renders in. AtlasCreationTray.tsx's TRAY_GROUP_ORDER renders 'knowledge' and 'file' flat, primary-first; 'annotate' tools collapse into the tray's one expandable Annotate group instead of rendering flat. |
-| `settings` | an array of {key, label, description, defaultValue} boolean setting declarations, or omitted entirely | the noun's own user settings (goal 0258): declared here, rendered generically inside its Settings > Extensions row, persisted centrally per extension id + key. defaultValue applies whenever the user has never touched the toggle. Omitted means the row shows no settings block. |
+| `settings` | an array of {type, key, label, description, defaultValue} setting declarations -- type is boolean | string (optional placeholder) | number (optional min/max/step) | enum (options: [{value, label}]) -- or omitted entirely | the noun's own user settings (goal 0258): declared here, rendered generically inside its Settings > Extensions row, persisted centrally per extension id + key. defaultValue applies whenever the user has never touched the control; a stored value of the wrong type, or an enum value no longer among the options, falls back to it. Omitted means the row shows no settings block. A runtime plugin declares the same shape as manifest contributes.settings and reads it back through api.settings. |
 | `interaction` | 'arm-then-click', 'pick-then-place', 'drag-to-draw', 'drag-to-erase', 'ephemeral-drag', or 'paste-or-drop' | the authoring gesture that places this noun. Must equal the same field on this id's own shared/atlasToolIdentity.ts entry -- the registry's own agreement check cross-validates the two so they can never silently drift apart. |
 | `styleDefaults` | a record of style-field key to value, or omitted entirely | session-only seed values for a freshly placed instance's style state (colour, size, ...). Never persisted document data -- omit this field for a noun with no style surface rather than declaring an empty object. |
 | `styleFields` | a readonly array of AtlasStyleField entries (atlasStyleVocabulary.ts's closed union: color, color-or-none, stroke-width, or shape-kind) -- REQUIRED, never optional | this noun's own declared styleable properties. An empty array is the honest answer for a noun with no style surface at all. A non-empty array makes AtlasStylePanel.tsx render this tool's style picker automatically -- no other file needs to name this noun's id. |
