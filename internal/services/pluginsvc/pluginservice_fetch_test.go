@@ -3,6 +3,8 @@ package pluginsvc
 import (
 	"strings"
 	"testing"
+
+	"github.com/alicoding/mill/internal/adapters/osopen"
 )
 
 // Every refusal that needs no rule happens before the guardrail is
@@ -70,5 +72,18 @@ func TestNetworkAllows(t *testing.T) {
 	}
 	if networkAllows(entries, "c.example.com", "GET") {
 		t.Error("an undeclared host never matches")
+	}
+}
+
+// An approved open-url in server mode is approved-but-not-performed,
+// never an error and never a real browser: the adapter's server no-op
+// maps to performed=false (the leak this pins was e2e runs opening
+// example.com on the developer's machine).
+func TestPerform_OpenURLServerModeIsNotPerformed(t *testing.T) {
+	svc := New(t.TempDir(), nil, "1.0.0")
+	svc.openURL = func(string) error { return osopen.ErrUnsupportedInServerMode }
+	performed, err := svc.perform("open-url", map[string]string{"url": "https://example.com"})
+	if err != nil || performed {
+		t.Fatalf("server-mode open = performed %v, err %v; want false, nil", performed, err)
 	}
 }

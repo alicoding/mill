@@ -9,9 +9,12 @@
 package pluginsvc
 
 import (
+	"errors"
+
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/alicoding/mill/internal/adapters/osopen"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -20,7 +23,6 @@ import (
 
 	"golang.org/x/mod/semver"
 
-	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 )
 
@@ -122,7 +124,11 @@ type PluginService struct {
 }
 
 func New(dir string, guardrail *guardrailsvc.GuardrailService, appVersion string) *PluginService {
-	return &PluginService{dir: dir, guardrail: guardrail, openURL: windowing.OpenURL, appVersion: appVersion}
+	// osopen, not the runtime's Browser API: the adapter's server build
+	// is a documented no-op (ErrUnsupportedInServerMode), so an approved
+	// open-url in server mode -- every e2e run of the plugin spec --
+	// never reaches the machine's real browser. The runtime opener did.
+	return &PluginService{dir: dir, guardrail: guardrail, openURL: osopen.Open, appVersion: appVersion}
 }
 
 // PluginsDir returns the directory plugins are installed into --
@@ -414,7 +420,11 @@ func (p *PluginService) perform(kind string, attributes map[string]string) (bool
 		if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
 			return false, fmt.Errorf("open-url only opens http(s) URLs")
 		}
-		if err := p.openInOS(u); err != nil {
+		if err := p.openInOS(u); errors.Is(err, osopen.ErrUnsupportedInServerMode) {
+			// Approved but not performed: server mode has no browser to
+			// open (the caller sees approved=true, performed=false).
+			return false, nil
+		} else if err != nil {
 			return false, fmt.Errorf("open URL: %w", err)
 		}
 		return true, nil
