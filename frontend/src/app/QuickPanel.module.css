@@ -50,3 +50,34 @@
   color: var(--fgColor-accent);
   pointer-events: auto;
 }
+
+/* Footer (goal 0294): outcome left, shortcut hints + Actions right --
+   the launcher footer layout. The status wraps and never pushes the
+   hints off the edge. */
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8, 8px);
+  padding: var(--base-size-4, 4px) var(--base-size-8, 8px) var(--base-size-4, 4px) var(--base-size-16, 16px);
+  border-top: 1px solid var(--borderColor-default);
+  min-height: 36px;
+}
+.footerStatus {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--fgColor-muted);
+  overflow-wrap: anywhere;
+}
+.footerHints {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--base-size-8, 8px);
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small);
+}
+.footerHint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--base-size-4, 4px);
+}

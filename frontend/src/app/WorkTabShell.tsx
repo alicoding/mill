@@ -144,6 +144,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
             workflow={workflow}
             tabKey={tab.key}
             mode={mode}
+            requestedRunId={tab.kind === 'workflow-edit' ? tab.runId : undefined}
             onBack={() => requestClose({ kind: 'one', key: tab.key })}
             onSaved={() => { void refreshWorkflows(); closeWorkTab(tab.key) }}
             onWorkflowsChanged={() => void refreshWorkflows()}

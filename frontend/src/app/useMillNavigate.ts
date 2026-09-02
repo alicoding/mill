@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { Events } from '@wailsio/runtime'
+import { useAppStore } from '../shared/store'
 import type { View } from '../shared/store'
+import { parseNavigateTarget } from './navigateTarget'
 
 // docs/adr/0033: the Quick Panel's (and ApprovalPrompt's) "Open in
 // Mill"/jump rows live in separate Wails windows with their own React
@@ -23,11 +25,10 @@ import type { View } from '../shared/store'
 export function useMillNavigate(setView: (view: View) => void): void {
   useEffect(() => {
     return Events.On('mill-navigate', (evt) => {
-      const target = evt.data as string
-      if (target === 'settings') setView({ kind: 'settings' })
-      else if (target === 'review') setView({ kind: 'review' })
-      else if (target.startsWith('configure:')) setView({ kind: 'configure', tab: target.slice('configure:'.length) })
-      else if (target.startsWith('atlas:')) setView({ kind: 'atlas', cardID: target.slice('atlas:'.length) })
+      const action = parseNavigateTarget(evt.data as string)
+      if (!action) return
+      if ('view' in action) setView(action.view)
+      else useAppStore.getState().openWorkTab(action.workTab)
     })
   }, [setView])
 }

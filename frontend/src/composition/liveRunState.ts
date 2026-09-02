@@ -81,8 +81,29 @@ export interface UseLiveRunResult {
 // WorkflowRunsPanel.tsx's own 1s-poll-while-in-flight pattern exactly,
 // scoped to a single "the one run currently shown on this canvas"
 // instead of a whole history list.
-export function useLiveRun(workflowId: string | undefined): UseLiveRunResult {
+// requestedRunId (goal 0294): a run this canvas was opened to show --
+// an exact run id, or 'latest' for the workflow's newest run in any
+// state (a run that already finished still gets its per-node marks and
+// the finished bar). Without it, only an in-flight run is adopted.
+export function useLiveRun(workflowId: string | undefined, requestedRunId?: string): UseLiveRunResult {
   const [activeRunId, setActiveRunId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!workflowId || !requestedRunId) return
+    if (requestedRunId !== 'latest') {
+      setActiveRunId(requestedRunId)
+      return
+    }
+    let cancelled = false
+    ExecutionService.ListRunsForWorkflow(workflowId)
+      .then((runs) => {
+        const newest = (runs ?? [])[0]
+        if (!cancelled && newest) setActiveRunId(newest.runID)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [workflowId, requestedRunId])
   const [detail, setDetail] = useState<RunDetail | null>(null)
   // A rejected START (pre-flight refusal) -- distinct from a run that
   // ran and failed; rendered through the same finished bar.
