@@ -62,10 +62,11 @@
     "status": {
       "running": "Running \"{{label}}\"…",
       "failed": "\"{{label}}\" failed: {{error}}",
-      "started": "Started \"{{label}}\"",
       "appliedUpdated": "Updated \"{{label}}\"",
       "appliedCreated": "Created \"{{label}}\"",
-      "replyApplied": "Done — {{label}}"
+      "replyApplied": "Done — {{label}}",
+      "done": "Done — \"{{label}}\" in {{seconds}}s",
+      "parked": "\"{{label}}\" is waiting for your approval"
     },
     "clipboard": {
       "emptyError": "Clipboard is empty -- copy a workflow export first",
@@ -73,7 +74,15 @@
     },
     "searchPlaceholder": "Search workflows or jump into Mill…",
     "searchAriaLabel": "Quick Panel search",
-    "noWorkflowsYet": "No workflows yet."
+    "noWorkflowsYet": "No workflows yet.",
+    "actions": {
+      "run": "Run",
+      "runAndWatch": "Run and watch",
+      "openWorkflow": "Open workflow",
+      "pin": "Pin",
+      "unpin": "Unpin",
+      "menu": "Actions"
+    }
   },
   "shortcutsHelp": {
     "title": "Keyboard shortcuts",
@@ -325,6 +334,11 @@
     "quitContract_other": "Quitting stops {{count}} automatic workflows — schedules, hotkeys and watchers stop until Mill runs again.",
     "quitContractNone": "Nothing automatic is scheduled right now.",
     "quitConfirm": "Quit",
-    "keepRunning": "Keep running"
+    "keepRunning": "Keep running",
+    "recentSection": "Recent",
+    "noRunsYet": "No runs yet.",
+    "runDone": "Done",
+    "runFailed": "Failed",
+    "runStopped": "Stopped"
   }
 }

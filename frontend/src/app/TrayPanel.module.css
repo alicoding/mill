@@ -133,3 +133,9 @@
   display: flex;
   gap: var(--base-size-8, 8px);
 }
+
+/* Recent rows (goal 0294): a failed run's outcome line reads as danger
+   at a glance; done/stopped stay muted. */
+.row[data-run-kind="failed"] .rowDetail {
+  color: var(--fgColor-danger);
+}

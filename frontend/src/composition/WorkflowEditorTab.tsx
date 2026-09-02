@@ -18,9 +18,11 @@ import editorStyles from './CompositionView.module.css'
 // Owns its inner-tab state locally: each open work tab's
 // Canvas/Runs/Versions selection is independent.
 export function WorkflowEditorTab({
-  nodeTypes, workflow, tabKey, mode, onBack, onSaved, onWorkflowsChanged, onSwitchToEdit,
+  nodeTypes, workflow, tabKey, mode, requestedRunId, onBack, onSaved, onWorkflowsChanged, onSwitchToEdit,
 }: {
   nodeTypes: NodeType[]
+  // The run the canvas should show on open (shared/workTabs.ts's runId).
+  requestedRunId?: string
   workflow: Workflow | null
   // The owning WorkTab's own identity (shared/store.ts) -- passed
   // straight through to CompositionCanvas as its hot-exit scratch key
@@ -63,7 +65,7 @@ export function WorkflowEditorTab({
   }, [focusRunId])
 
   if (!workflow) {
-    return <CompositionCanvas nodeTypes={nodeTypes} workflow={workflow} tabKey={tabKey} onBack={onBack} onSaved={onSaved} readOnly={false} onSwitchToEdit={onSwitchToEdit} />
+    return <CompositionCanvas nodeTypes={nodeTypes} workflow={workflow} tabKey={tabKey} requestedRunId={requestedRunId} onBack={onBack} onSaved={onSaved} readOnly={false} onSwitchToEdit={onSwitchToEdit} />
   }
 
   return (
@@ -74,7 +76,7 @@ export function WorkflowEditorTab({
         <TabItem value="versions">{t('workflowEditorTab.versions')}</TabItem>
       </TabList>
       <TabPanel value="canvas" className={editorStyles.editorPanel}>
-        <CompositionCanvas nodeTypes={nodeTypes} workflow={workflow} tabKey={tabKey} onBack={onBack} onSaved={onSaved} readOnly={readOnly} onSwitchToEdit={onSwitchToEdit} />
+        <CompositionCanvas nodeTypes={nodeTypes} workflow={workflow} tabKey={tabKey} requestedRunId={requestedRunId} onBack={onBack} onSaved={onSaved} readOnly={readOnly} onSwitchToEdit={onSwitchToEdit} />
       </TabPanel>
       <TabPanel value="runs">
         <WorkflowRunsPanel

@@ -72,6 +72,9 @@ interface CompositionCanvasProps {
   // Switches THIS tab from view to edit in place (store.ts's
   // setWorkTabMode) -- CanvasMetaHeader's own Edit button.
   onSwitchToEdit?: () => void
+  // A run to show on open -- an exact id or 'latest' (shared/workTabs.ts's
+  // runId, goal 0294); the live-run bar and node marks come from it.
+  requestedRunId?: string
 }
 
 // A prototype canvas for SPEC.md §3 / ADR-0005 -- built ahead of B2's
@@ -81,7 +84,7 @@ interface CompositionCanvasProps {
 // gets its node type's default config immediately, editable via the
 // Inspector the moment it's selected, never a bare unconfigured
 // reference.
-function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, onSwitchToEdit }: CompositionCanvasProps) {
+function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, onSwitchToEdit, requestedRunId }: CompositionCanvasProps) {
   const { t } = useTranslation('composition')
   // Computed once, synchronously, at first render -- see
   // computeInitialCanvas's own doc comment for why this isn't a
@@ -150,7 +153,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
   // from the Run button below or already in flight when this editor
   // opened. Never touches useCanvasStore (zundo-wrapped undo history,
   // §3.3) -- see liveRunState.ts's own header comment.
-  const { detail: liveRunDetail, statusByNodeId: liveStepStatusByNodeId, barState, startRun, resolve: resolveApprovalStep, dismiss: dismissRunState } = useLiveRun(workflow?.ID)
+  const { detail: liveRunDetail, statusByNodeId: liveStepStatusByNodeId, barState, startRun, resolve: resolveApprovalStep, dismiss: dismissRunState } = useLiveRun(workflow?.ID, requestedRunId)
 
   // GetRun's steps only ever cover Capture/Process/Apply/Decision-
   // adjacent nodes -- a Trigger node never checkpoints its own step, so

@@ -592,10 +592,29 @@ something is waiting on you. Clicking it opens a small panel:
 - **Needs you** — approvals, agent writes, and plugin asks waiting
   for a decision. Click a row to land on Review.
 - **Running now** — what's executing, each with a Stop button.
+- **Recent** — the last few runs that finished, with Done, Failed or
+  Stopped and how long ago. Click one to open that run on its
+  workflow's canvas and see which steps ran.
 - **Quit Mill…** — quitting tells you first what stops: your
   schedules, hotkeys and watchers pause until Mill runs again.
 
 Right-clicking the icon keeps the plain menu: Open Mill, Quit.
+
+## Run from the Quick Panel
+
+Summon the Quick Panel with your hotkey, type a workflow's name, and
+the footer shows what the highlighted row can do:
+
+- **↩** runs it. The panel stays open and the footer tells you the
+  outcome: done and how long it took, failed and why, or waiting for
+  your approval. Press Escape when you're done reading.
+- **⌘↩** opens the workflow in Mill, read-only, with its Run and
+  step-by-step controls. Right after a run, this opens that run, so
+  you see which steps ran and where it stopped.
+- **⌘⇧↩** runs the workflow and opens it straight away, so a longer
+  run is watched step by step.
+- **⌘⇧P** pins or unpins it.
+- **⌘K** lists all of these with their shortcuts.
 
 ---
 

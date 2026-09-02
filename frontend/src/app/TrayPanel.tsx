@@ -5,7 +5,8 @@ import { Events } from '@wailsio/runtime'
 import { ExecutionService, SettingsService, CompositionService } from '../shared/bindings'
 import { GuardrailService } from '../../bindings/github.com/alicoding/mill/internal/services/guardrailsvc'
 import type { RunSummary } from '../../bindings/github.com/alicoding/mill/internal/services/executionsvc/models'
-import { runningRuns } from './trayPanelRuns'
+import { recentRuns, runningRuns, settledRunKind } from './trayPanelRuns'
+import { workflowTarget } from './navigateTarget'
 import styles from './TrayPanel.module.css'
 
 // The menu-bar status panel (docs/goals/0189): the surface the tray
@@ -36,6 +37,7 @@ export function TrayPanel() {
   const { t } = useTranslation('app')
   const [needsYou, setNeedsYou] = useState<NeedsYouRow[]>([])
   const [running, setRunning] = useState<RunSummary[]>([])
+  const [recent, setRecent] = useState<RunSummary[]>([])
   const [automaticCount, setAutomaticCount] = useState(0)
   const [confirmingQuit, setConfirmingQuit] = useState(false)
 
@@ -68,6 +70,7 @@ export function TrayPanel() {
       ]
       setNeedsYou(rows)
       setRunning(runningRuns(runs))
+      setRecent(recentRuns(runs))
     })
     // The quit contract's honest count: workflows carrying a
     // non-manual trigger node -- the schedules, hotkeys and watchers
@@ -158,6 +161,28 @@ export function TrayPanel() {
             </Button>
           </div>
         ))}
+      </div>
+
+      {/* Recent (goal 0294): a settled run, one click from its steps on
+          the canvas -- the "did it work" answer from the menu bar. */}
+      <div className={styles.section} data-testid="tray-recent-section">
+        <Text size="small" weight="semibold" className={styles.sectionTitle}>{t('trayPanel.recentSection')}</Text>
+        {recent.length === 0 && (
+          <Text size="small" className={`${styles.muted} ${styles.emptyLine}`} data-testid="tray-no-runs-yet">
+            {t('trayPanel.noRunsYet')}
+          </Text>
+        )}
+        {recent.map((r) => {
+          const kind = settledRunKind(r.status)
+          return (
+            <button key={r.runID} type="button" className={styles.row} onClick={() => openMain(workflowTarget(r.workflowID, r.runID))} data-testid="tray-recent-row" data-run-kind={kind}>
+              <span className={styles.rowTitle}>{r.workflowLabel || r.workflowID}</span>
+              <span className={styles.rowDetail}>
+                {t(kind === 'done' ? 'trayPanel.runDone' : kind === 'failed' ? 'trayPanel.runFailed' : 'trayPanel.runStopped')} · {startedAgo(String(r.completedAt || r.startedAt))}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
       <div className={styles.footer}>

@@ -24,7 +24,10 @@ import { newLocalID } from './localId'
 // creation call site has to make the view-vs-edit call explicitly
 // rather than silently defaulting one way.
 export type WorkTabSpec =
-  | { kind: 'workflow-edit'; workflowId: string; mode: 'view' | 'edit' }
+  // runId (goal 0294): the run the canvas should show on open -- an
+  // exact run id, or 'latest' for the workflow's newest run whatever
+  // its state. Absent means the canvas adopts only an in-flight run.
+  | { kind: 'workflow-edit'; workflowId: string; mode: 'view' | 'edit'; runId?: string }
   | { kind: 'workflow-new' }
   | { kind: 'request-view'; requestId: string }
   | { kind: 'request-edit'; requestId: string }

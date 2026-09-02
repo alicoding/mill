@@ -4,8 +4,7 @@ import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
 import { FilteredActionList } from '@primer/react/experimental'
 import { NoteIcon, PlayIcon } from '@primer/octicons-react'
-import { AtlasService, ExecutionService, RunKind, SettingsService, TriggerService } from '../shared/bindings'
-import { generateSamplePayload } from '../shared/configSchema'
+import { AtlasService, ExecutionService, SettingsService, TriggerService } from '../shared/bindings'
 import { useAppStore, refreshWorkflows, refreshRequests, refreshKeybindings } from '../shared/store'
 import {
   useConfigureEntityStore, refreshLists, refreshMCPServers, refreshDecisions, refreshExecEnvs, refreshAIProviders, refreshDeclaredStepTypes,
@@ -25,6 +24,8 @@ import { QuickPanelReplyReviewDoor } from './QuickPanelReplyReviewDoor'
 import { useQuickPanelClipboardDoor } from './useQuickPanelClipboardDoor'
 import { FacetChipRow } from '../shared/FacetChipRow'
 import { useQuickPanelFacetSearch } from './quickPanelFacets'
+import { useQuickPanelWorkflowActions } from './useQuickPanelWorkflowActions'
+import { QuickPanelFooter } from './QuickPanelFooter'
 import styles from './QuickPanel.module.css'
 import { searchInputTextAssistOff } from '../shared/searchInputProps'
 
@@ -266,20 +267,6 @@ export function QuickPanel() {
     return () => { offGuardrail(); offMCP() }
   }, [])
 
-  // ⌘, opens Settings directly, matching the "Open Settings · ⌘," row's
-  // own shortcut hint -- HideOnEscape covers Escape natively (Go-side),
-  // this is the one panel-local keydown binding that has no native
-  // equivalent to defer to.
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === ',') {
-        e.preventDefault()
-        openMain('settings')
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
 
   // A Configure-entity row's "run" is a jump, not an execution: shows
   // the main window navigated straight to the tab that entity lives on
@@ -301,28 +288,12 @@ export function QuickPanel() {
     openMain(`atlas:${cardID}`)
   }
 
-  // Same RPC + RunKind CompositionView's own list-row Run button and
-  // CommandPalette's runWorkflowTest use (ExecutionService.RunWorkflow,
-  // RunKindTest -- docs/adr/0008's single execution path). A workflow
-  // with declared Attributes runs with generateSamplePayload's defaults
-  // immediately, same "skip the manual-review step, this is a *quick*
-  // invoke" reasoning CommandPalette already documents. Shows a brief
-  // started/failed confirmation, then dismisses the panel shortly after
-  // so the confirmation is actually readable before the window
-  // disappears.
-  const runWorkflow = (id: string, label: string) => {
+  // Workflow row actions (goal 0294): Enter runs, ⌘Enter opens the
+  // workflow, ⌘⇧Enter runs and opens its canvas, ⌘K lists them all.
+  const rowActions = useQuickPanelWorkflowActions({ workflows, pinnedWorkflowIds, togglePinnedWorkflow, setStatus, t })
+  const runWorkflow = (id: string) => {
     const wf = workflows?.find((w) => w.ID === id)
-    const attrs = wf?.Attributes ?? []
-    const values = attrs.length > 0 ? generateSamplePayload(attrs) : null
-    setStatus(t('quickPanel.status.running', { label }))
-    ExecutionService.RunWorkflow(id, RunKind.RunKindTest, values)
-      .then((summary) => {
-        setStatus(summary.error ? t('quickPanel.status.failed', { label, error: summary.error }) : t('quickPanel.status.started', { label }))
-        window.setTimeout(() => { void SettingsService.DismissPanel().catch(() => {}) }, 600)
-      })
-      .catch((err) => {
-        setStatus(t('quickPanel.status.failed', { label, error: String(err) }))
-      })
+    if (wf) rowActions.runWorkflow(wf)
   }
 
   // The clipboard door (goals 0039 + 0099) lives in its own hook --
@@ -376,7 +347,7 @@ export function QuickPanel() {
             onTogglePin={() => togglePinnedWorkflow(wf.ID)}
           />
         ),
-        run: () => runWorkflow(wf.ID, wf.Label),
+        run: () => runWorkflow(wf.ID),
       })
     }
     // Configure-entity jump rows + the panel's fixed action rows
@@ -433,6 +404,9 @@ export function QuickPanel() {
     description: entry.description,
     leadingVisual: entry.leadingVisual,
     trailingVisual: entry.trailingVisual,
+    // The row's own entry id, read back off the active descendant by
+    // useQuickPanelWorkflowActions (the list generates the DOM id).
+    'data-entry-id': entry.id,
     onAction: () => entry.run(),
   }))
 
@@ -483,16 +457,25 @@ export function QuickPanel() {
         inputRef={inputRef}
         textInputProps={{ 'aria-label': t('quickPanel.searchAriaLabel'), autoFocus: true, ...searchInputTextAssistOff }}
         showItemDividers
+        onActiveDescendantChanged={rowActions.onActiveDescendantChanged}
         messageText={{ title: t('search.noMatchesTitle'), description: t('search.noMatchesDescription', { query }) }}
       />
-      {status && (
-        <Text as="p" size="small" className={styles.status} data-testid="quick-panel-status">
-          {status}
-        </Text>
-      )}
       {allEntries.length === 0 && (
         <Text as="p" size="small" className={styles.status}>{t('quickPanel.noWorkflowsYet')}</Text>
       )}
+      <QuickPanelFooter
+        status={status}
+        hasWorkflowRow={rowActions.activeWorkflow !== null}
+        actions={rowActions.actions}
+        open={rowActions.actionsOpen}
+        onOpenChange={(open) => {
+          rowActions.setActionsOpen(open)
+          // The menu hands focus back to its anchor button; typing must
+          // land in the search again, after the menu's own focus return.
+          if (!open) window.requestAnimationFrame(() => inputRef.current?.focus())
+        }}
+        t={t}
+      />
     </div>
   )
 }
