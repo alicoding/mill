@@ -388,7 +388,10 @@ export function QuickPanel() {
   const trimmedQuery = query.trim()
   const withCapture: PanelEntry[] = trimmedQuery
     ? [...filtered, {
-      id: 'save-note',
+      // Keyed by its query: as the one row surviving every filter change
+      // it became the list's "previous" active row, stealing Enter from
+      // the top result (goal 0294).
+      id: `save-note:${trimmedQuery}`,
       groupId: 'actions',
       text: t('quickPanel.saveNote'),
       description: t('quickPanel.saveNoteHint'),

@@ -140,6 +140,21 @@ export function useQuickPanelWorkflowActions({ workflows, visibleWorkflowIds, pi
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey
+      // Plain Enter is the list's own, EXCEPT when the row it remembers
+      // is gone: after a filter change the list keeps pointing at the
+      // previous row's element until an arrow key or the pointer
+      // re-activates one (later still under load), and its Enter is
+      // re-dispatched into a detached node. The launcher convention
+      // covers it: Enter runs the top result, the row the shortcuts
+      // resolve to.
+      const rememberedId = document.activeElement?.getAttribute('aria-activedescendant')
+      const rememberedRow = rememberedId ? document.getElementById(rememberedId) : null
+      if (!mod && e.key === 'Enter' && !e.shiftKey && activeWorkflow && !rememberedRow) {
+        e.preventDefault()
+        e.stopPropagation()
+        runWorkflow(activeWorkflow)
+        return
+      }
       if (!mod) return
       if (e.key === ',') {
         e.preventDefault()
@@ -165,7 +180,7 @@ export function useQuickPanelWorkflowActions({ workflows, visibleWorkflowIds, pi
     window.addEventListener('keydown', onKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- actionsFor closes over the same state the deps already list
-  }, [activeWorkflow, lastRun, pinnedWorkflowIds])
+  }, [activeWorkflow, lastRun, pinnedWorkflowIds, runWorkflow])
 
   // Sticky: the list drops its active descendant whenever focus
   // leaves it (opening the Actions menu does exactly that), and the
