@@ -163,6 +163,16 @@ at:
     app switcher/dock, and focus returns to the app you summoned from;
     finally reactivate Mill (dock click or Cmd+Tab) and confirm the main
     window is back, right where it was before the summon.
+  - **The run monitor window** (goal 0294 S2, `newRunMonitorWindow` +
+    `ShowRunMonitor`/`HideRunMonitor`) -- the floating window, its
+    close-means-hide hook and the Quick Panel / tray doors that show
+    it are native round trips; the route's CONTENT is e2e-proven at
+    /#/runmonitor (run-monitor.spec.ts). Verify on an installed
+    build: ⌘⇧↩ on a Quick Panel row opens the window floating over
+    the current app with the run stepping; the red close hides it;
+    ⌘⇧↩ again re-shows it on the new run; a tray Recent row opens it
+    on that run; Open in Mill hides it and lands the main window on
+    the same run.
   - **Bringing a hidden app back on screen** (goal 0186, goal 0188 slice
     2 — `bringMainToFront`/`bringFloatingToFront`,
     `settingssvc/settingsservice_presence.go`) — every path that shows a

@@ -593,8 +593,8 @@ something is waiting on you. Clicking it opens a small panel:
   for a decision. Click a row to land on Review.
 - **Running now** — what's executing, each with a Stop button.
 - **Recent** — the last few runs that finished, with Done, Failed or
-  Stopped and how long ago. Click one to open that run on its
-  workflow's canvas and see which steps ran.
+  Stopped and how long ago. Click one to see which steps ran, in the
+  same small floating window.
 - **Quit Mill…** — quitting tells you first what stops: your
   schedules, hotkeys and watchers pause until Mill runs again.
 
@@ -611,8 +611,10 @@ the footer shows what the highlighted row can do:
 - **⌘↩** opens the workflow in Mill, read-only, with its Run and
   step-by-step controls. Right after a run, this opens that run, so
   you see which steps ran and where it stopped.
-- **⌘⇧↩** runs the workflow and opens it straight away, so a longer
-  run is watched step by step.
+- **⌘⇧↩** runs the workflow and opens a small floating window with
+  its canvas, so you watch the steps light up without leaving what
+  you were doing. Close it when you're done, or press Open in Mill to
+  continue in the full app on that run.
 - **⌘⇧P** pins or unpins it.
 - **⌘K** lists all of these with their shortcuts.
 
