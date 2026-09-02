@@ -294,3 +294,69 @@ test('a plugin content write is guarded: approved in Review it lands on the boar
 		await close()
 	}
 })
+
+// A plugin view (goal 0290) is a work tab: declared in the manifest
+// (the Extensions row states it before the plugin runs), registered
+// at activate, opened by its own palette command; the panel keeps
+// its DOM across a tab switch and is restored, re-rendered, after a
+// reload.
+test('a plugin view opens as a work tab from the palette, survives switching away, and is restored after a reload', async () => {
+	const { page, close } = await launchWithPlugins(20, {
+		extraPlugins: [{
+			id: 'view-probe',
+			manifest: { name: 'View probe', contributes: { views: [{ id: 'issues', title: 'Probe issues' }] } },
+			main: `let renders = 0
+export function activate(api) {
+	api.registerView({ id: 'issues', render(el, ctx) {
+		renders += 1
+		el.replaceChildren()
+		const p = document.createElement('p')
+		p.setAttribute('data-testid', 'probe-view-body')
+		p.textContent = 'Issues view alive (' + ctx.pluginId + '/' + ctx.viewId + ') render #' + renders
+		el.append(p)
+	} })
+}
+` }],
+	})
+	try {
+		await page.goto('/')
+		await page.getByRole('link', { name: 'Settings' }).click()
+		const row = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="view-probe"]')
+		await row.scrollIntoViewIfNeeded()
+		await expect(row.getByTestId('extensions-plugin-views')).toHaveText('Adds views: Probe issues')
+
+		await page.getByRole('link', { name: 'Atlas' }).click()
+		await expect(page.getByTestId('atlas-board')).toBeVisible()
+		await runFromPalette(page, 'Probe issues')
+		const tab = page.getByRole('tab', { name: /Probe issues/ })
+		await expect(tab).toBeVisible()
+		await expect(tab).toHaveAttribute('aria-selected', 'true')
+		const body = page.getByTestId('probe-view-body')
+		await expect(body).toHaveText('Issues view alive (view-probe/issues) render #1')
+
+		// Running the command again reuses the one tab. With the tab open
+		// the palette also offers its own "switch to"/"close" rows for it,
+		// so the command row is addressed by its id.
+		await page.keyboard.press('Meta+/')
+		const dialog = page.getByRole('dialog', { name: 'Command palette' })
+		await expect(dialog).toBeVisible()
+		await dialog.getByRole('combobox').fill('Probe issues')
+		await dialog.locator('[data-id="cmd:view.open.view-probe.issues"]').click()
+		await expect(page.getByRole('tab', { name: /Probe issues/ })).toHaveCount(1)
+
+		// Switch to the page tab and back: the panel kept its DOM (no
+		// re-render, same render count).
+		await page.getByRole('tab', { name: 'Atlas' }).click()
+		await expect(tab).toHaveAttribute('aria-selected', 'false')
+		await tab.click()
+		await expect(body).toHaveText('Issues view alive (view-probe/issues) render #1')
+
+		// A reload restores the tab and renders the view again.
+		await page.reload()
+		await expect(page.getByRole('tab', { name: /Probe issues/ })).toBeVisible()
+		await page.getByRole('tab', { name: /Probe issues/ }).click()
+		await expect(page.getByTestId('probe-view-body')).toContainText('Issues view alive (view-probe/issues) render #1')
+	} finally {
+		await close()
+	}
+})

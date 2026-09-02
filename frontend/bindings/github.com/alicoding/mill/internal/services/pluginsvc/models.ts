@@ -84,6 +84,13 @@ export interface ManifestContributes {
      * meaningful with the "fetch" capability.
      */
     "network": NetworkContribution[] | null;
+
+    /**
+     * Views (docs/goals/0290): the work tabs a plugin may open, declared
+     * so the Extensions row can state them before the plugin runs and
+     * so activate-time registerView is checked against a declaration.
+     */
+    "views": ViewContribution[] | null;
 }
 
 /**
@@ -195,4 +202,13 @@ export interface SettingContribution {
 export interface SettingOption {
     "value": string;
     "label": string;
+}
+
+/**
+ * ViewContribution declares one plugin-owned work tab: a slug id
+ * unique within the plugin and the tab's title.
+ */
+export interface ViewContribution {
+    "id": string;
+    "title": string;
 }

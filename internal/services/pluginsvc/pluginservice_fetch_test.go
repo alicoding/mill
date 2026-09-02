@@ -87,3 +87,28 @@ func TestPerform_OpenURLServerModeIsNotPerformed(t *testing.T) {
 		t.Fatalf("server-mode open = performed %v, err %v; want false, nil", performed, err)
 	}
 }
+
+func TestListPlugins_ValidatesContributedViews(t *testing.T) {
+	root := t.TempDir()
+	writePlugin(t, root, "views-ok", `{"id":"views-ok","name":"V","version":"1","contributes":{"views":[{"id":"issues","title":"Issues"},{"id":"queue","title":"Clip queue"}]}}`, nil)
+	writePlugin(t, root, "bad-id", `{"id":"bad-id","name":"V","version":"1","contributes":{"views":[{"id":"Not Slug","title":"X"}]}}`, nil)
+	writePlugin(t, root, "no-title", `{"id":"no-title","name":"V","version":"1","contributes":{"views":[{"id":"a","title":" "}]}}`, nil)
+	writePlugin(t, root, "dup", `{"id":"dup","name":"V","version":"1","contributes":{"views":[{"id":"a","title":"A"},{"id":"a","title":"B"}]}}`, nil)
+	svc := New(root, nil, "1.0.0")
+	infos, err := svc.ListPlugins()
+	if err != nil {
+		t.Fatal(err)
+	}
+	byID := map[string]PluginInfo{}
+	for _, i := range infos {
+		byID[i.Manifest.ID] = i
+	}
+	if got := byID["views-ok"]; got.Error != "" || len(got.Manifest.Contributes.Views) != 2 {
+		t.Errorf("views-ok: %q %+v", got.Error, got.Manifest.Contributes.Views)
+	}
+	for id, want := range map[string]string{"bad-id": "view id", "no-title": "needs a title", "dup": "declared twice"} {
+		if got := byID[id]; !strings.Contains(got.Error, want) {
+			t.Errorf("%s error = %q, want %q", id, got.Error, want)
+		}
+	}
+}

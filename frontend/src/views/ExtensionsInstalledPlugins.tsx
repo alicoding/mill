@@ -98,6 +98,11 @@ export function ExtensionsInstalledPlugins() {
 												{t('settings.extensions.pluginCatchesFiles', { list: claimedExtensions(p).join(', ') })}
 											</Text>
 										)}
+										{(p.Manifest.contributes?.views?.length ?? 0) > 0 && (
+											<Text size="small" className={styles.muted} data-testid="extensions-plugin-views">
+												{t('settings.extensions.pluginViews', { list: (p.Manifest.contributes?.views ?? []).map((v) => v.title).join(', ') })}
+											</Text>
+										)}
 										{claimsURLPastes(p) && (
 											<Text size="small" className={styles.muted} data-testid="extensions-plugin-catches">
 												{t('settings.extensions.pluginCatchesLinks')}

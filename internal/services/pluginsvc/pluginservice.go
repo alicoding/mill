@@ -60,6 +60,17 @@ type ManifestContributes struct {
 	// runs and so an undeclared host is refused before any rule. Only
 	// meaningful with the "fetch" capability.
 	Network []NetworkContribution `json:"network"`
+	// Views (docs/goals/0290): the work tabs a plugin may open, declared
+	// so the Extensions row can state them before the plugin runs and
+	// so activate-time registerView is checked against a declaration.
+	Views []ViewContribution `json:"views"`
+}
+
+// ViewContribution declares one plugin-owned work tab: a slug id
+// unique within the plugin and the tab's title.
+type ViewContribution struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
 }
 
 // NetworkContribution names one host (lowercase, optional :port) and
@@ -317,6 +328,9 @@ func validateContributes(c ManifestContributes) string {
 		}
 	}
 	if problem := validateNetwork(c.Network); problem != "" {
+		return problem
+	}
+	if problem := validateViews(c.Views); problem != "" {
 		return problem
 	}
 	seen := map[string]bool{}

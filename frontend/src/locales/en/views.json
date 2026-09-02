@@ -55,6 +55,7 @@
       "pluginCapabilities": "Can request: {{list}}",
       "pluginCatchesFiles": "Catches {{list}} files dropped on the board",
       "pluginCatchesLinks": "Catches web links pasted on the board",
+      "pluginViews": "Adds views: {{list}}",
       "pluginDisabledNote": "Turned off. Turn on and reload to load it.",
       "pluginToggleAria": "Enable {{name}}"
     },
