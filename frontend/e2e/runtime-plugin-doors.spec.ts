@@ -137,9 +137,10 @@ test('the Board index plugin lists notes by first line and stays current through
 		await expect
 			.poll(() => page.evaluate(() => document.activeElement?.getAttribute('contenteditable') === 'true'))
 			.toBe(true)
-		await page.keyboard.type('Call the bank', { delay: 20 })
-		await page.keyboard.press('Enter')
-		await page.keyboard.type('tomorrow', { delay: 20 })
+		// Atomic insert, not per-keystroke typing: the fresh note's first
+		// content sync rebuilds the editor and drops characters typed into
+		// that window (the note spec's own escape hatch; it cost a CI red).
+		await page.keyboard.insertText('Call the bank\ntomorrow')
 		// Leaving the editor by clicking the board commits the note
 		// (Escape on a never-saved note discards it).
 		const blurSpot = await findEmptyBoardRect(page, board, 120, 80)
