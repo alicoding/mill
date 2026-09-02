@@ -4,6 +4,8 @@ import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
 import type { ListProjection } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { ListGrid } from '../shared/ListGrid'
+import { ListGridGlide } from '../shared/ListGridGlide'
+import { extensionSetting, useExtensionSettingsStore } from '../shared/extensionSettingsStore'
 import styles from './AtlasCardProjectionTable.module.css'
 
 // The projected List on a card OR a board object (goal 0105, widened by
@@ -31,6 +33,10 @@ export function AtlasCardProjectionTable({ scopeID, density, fetchProjection, on
 }) {
   const { t } = useTranslation('atlas')
   const [proj, setProj] = useState<ListProjection | null>(null)
+  // The grid implementation is the table extension's own flag (ADR-0049);
+  // subscribed so flipping it in Settings re-renders open tables.
+  useExtensionSettingsStore((s) => s.values)
+  const Grid = extensionSetting('table', 'newGrid', false) ? ListGridGlide : ListGrid
 
   // Scoped + debounced (goal 0147): a list event names WHICH list
   // changed (dataevent.Emit's id) -- other lists' bursts are free; a
@@ -88,7 +94,7 @@ export function AtlasCardProjectionTable({ scopeID, density, fetchProjection, on
       className={`${styles.wrap} nowheel nodrag`}
       onClick={(e) => e.stopPropagation()}
     >
-      <ListGrid
+      <Grid
         listID={proj.ListID}
         columns={proj.Columns ?? []}
         rows={(proj.Rows ?? []).filter((r) => r !== null)}
