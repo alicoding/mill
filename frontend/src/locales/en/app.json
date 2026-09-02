@@ -348,5 +348,11 @@
     "runDone": "Done",
     "runFailed": "Failed",
     "runStopped": "Stopped"
+  },
+  "runMonitor": {
+    "title": "Run",
+    "openInMill": "Open in Mill",
+    "empty": "Run a workflow from the Quick Panel with ⌘⇧↩ to watch it here.",
+    "loading": "Loading…"
   }
 }

@@ -139,10 +139,11 @@ test('the Board index plugin lists notes by first line and stays current through
 		await expect
 			.poll(() => page.evaluate(() => document.activeElement?.getAttribute('contenteditable') === 'true'))
 			.toBe(true)
-		// Atomic insert, not per-keystroke typing: the fresh note's first
-		// content sync rebuilds the editor and drops characters typed into
-		// that window (the note spec's own escape hatch; it cost a CI red).
-		await page.keyboard.insertText('Call the bank\ntomorrow')
+		// Per-keystroke on purpose (goal 0296): a fresh sticky used to lose
+		// or reorder its first word under load; typing is the regression test.
+		await page.keyboard.type('Call the bank', { delay: 20 })
+		await page.keyboard.press('Enter')
+		await page.keyboard.type('tomorrow', { delay: 20 })
 		// Leaving the editor by clicking the board commits the note
 		// (Escape on a never-saved note discards it).
 		const blurSpot = await findEmptyBoardRect(page, board, 120, 80)
@@ -406,7 +407,12 @@ test('a plugin menu item appears on its own object once enabled, not on a note, 
 		await board.click({ position: { x: noteSpot.x - bb.x + 10, y: noteSpot.y - bb.y + 10 } })
 		const sticky = page.getByTestId('atlas-sticky-note')
 		await expect(sticky).toBeVisible()
-		await page.keyboard.insertText('menu probe') // atomic: the fresh note drops typed characters
+		// The engine mounts async: wait for its root to hold focus before
+		// the first keystroke (a key before that is dropped by design).
+		await expect
+			.poll(() => page.evaluate(() => document.activeElement?.getAttribute('contenteditable') === 'true'))
+			.toBe(true)
+		await page.keyboard.type('menu probe', { delay: 20 })
 		await board.click({ position: { x: spot.x - bb.x + 280, y: spot.y - bb.y + 190 } })
 		await sticky.click({ button: 'right' })
 		await expect(menu).toBeVisible()

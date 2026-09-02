@@ -75,6 +75,10 @@ interface CompositionCanvasProps {
   // A run to show on open -- an exact id or 'latest' (shared/workTabs.ts's
   // runId, goal 0294); the live-run bar and node marks come from it.
   requestedRunId?: string
+  // The run monitor window (goal 0294 S2): canvas + run bar only -- no
+  // meta header (label/description/offer/Edit) and no back button; the
+  // window's own header and close are that chrome.
+  viewer?: boolean
 }
 
 // A prototype canvas for SPEC.md §3 / ADR-0005 -- built ahead of B2's
@@ -84,7 +88,7 @@ interface CompositionCanvasProps {
 // gets its node type's default config immediately, editable via the
 // Inspector the moment it's selected, never a bare unconfigured
 // reference.
-function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, onSwitchToEdit, requestedRunId }: CompositionCanvasProps) {
+function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, onSwitchToEdit, requestedRunId, viewer }: CompositionCanvasProps) {
   const { t } = useTranslation('composition')
   // Computed once, synchronously, at first render -- see
   // computeInitialCanvas's own doc comment for why this isn't a
@@ -297,22 +301,24 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
   return (
     <div className={styles.canvasSection} data-testid="composition-canvas">
       {pendingExternalChange && <ExternalChangeBanner onReload={reloadFromExternal} onKeep={keepDraft} />}
-      <CanvasMetaHeader
-        workflow={workflow}
-        draftLabel={draftLabel}
-        onLabelChange={setDraftLabel}
-        descOpen={descOpen}
-        onToggleDesc={() => setDescOpen((v) => !v)}
-        draftDescription={draftDescription}
-        onDescriptionChange={setDraftDescription}
-        save={save}
-        saving={saving}
-        saveError={saveError}
-        runButtonRef={runButtonRef}
-        onStartRun={startRun}
-        readOnly={readOnly}
-        onSwitchToEdit={onSwitchToEdit}
-      />
+      {!viewer && (
+        <CanvasMetaHeader
+          workflow={workflow}
+          draftLabel={draftLabel}
+          onLabelChange={setDraftLabel}
+          descOpen={descOpen}
+          onToggleDesc={() => setDescOpen((v) => !v)}
+          draftDescription={draftDescription}
+          onDescriptionChange={setDraftDescription}
+          save={save}
+          saving={saving}
+          saveError={saveError}
+          runButtonRef={runButtonRef}
+          onStartRun={startRun}
+          readOnly={readOnly}
+          onSwitchToEdit={onSwitchToEdit}
+        />
+      )}
 
       <RunStateContext.Provider value={runStateContextValue}>
       <BreakpointContext.Provider value={breakpoints}>
@@ -403,6 +409,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
             <ConnectionRefusalHint hint={refusalHint} />
             <CanvasToolbar
               onBack={onBack}
+              hideBack={viewer}
               readOnly={readOnly}
               paletteOpen={paletteOpen}
               onTogglePalette={() => setPaletteOpen((v) => !v)}

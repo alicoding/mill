@@ -65,6 +65,7 @@ type SettingsService struct {
 	// (NotifyPendingApproval's away verdict) rather than toggled by a
 	// hotkey. See settingsservice_approvalprompt.go.
 	approvalPrompt *windowing.Window
+	runMonitor     *windowing.Window
 	trig           *triggersvc.TriggerService
 	summon         *hotkey.Binding
 	summonHK       triggersvc.PersistedHotkey // zero value (nil Mods) means unassigned

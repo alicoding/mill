@@ -115,6 +115,15 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
     const id = window.setInterval(() => {
       const editable = wrapRef.current?.querySelector<HTMLElement>('[contenteditable="true"]')
       const target = editable ?? wrapRef.current?.querySelector<HTMLElement>('textarea')
+      // Done the moment the engine's own root has focus: a later
+      // focus() on a content-editable moves the caret to the START, and
+      // this loop was still firing while the user's first keystrokes
+      // landed (goal 0296: under CPU throttle a momentary focus flicker
+      // let it re-focus mid-word, so text arrived reordered or lost).
+      if (editable && document.activeElement === editable) {
+        window.clearInterval(id)
+        return
+      }
       const idle = document.activeElement === document.body || document.activeElement === null
       if (target && document.activeElement !== target && (idle || wrapRef.current?.contains(document.activeElement))) target.focus()
       if (++tries > 8) window.clearInterval(id)

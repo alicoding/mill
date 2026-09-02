@@ -21,6 +21,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as windowing$0 from "../../adapters/windowing/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as mcpsvc$0 from "../mcpsvc/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -319,6 +322,14 @@ export function GetSummonHotkey(): $CancellablePromise<string> {
  */
 export function GetWorkflowMinutesSaved(workflowID: string): $CancellablePromise<number> {
     return $Call.ByID(1967529281, workflowID);
+}
+
+/**
+ * HideRunMonitor is the monitor's own "Open in Mill" hand-off: hide
+ * this window, then the caller opens the main window on the run.
+ */
+export function HideRunMonitor(): $CancellablePromise<void> {
+    return $Call.ByID(2995307865);
 }
 
 /**
@@ -698,6 +709,14 @@ export function SetPluginStorageValue(pluginID: string, key: string, jsonValue: 
 }
 
 /**
+ * SetRunMonitorWindow wires the run monitor window (auxwindows.go's
+ * newRunMonitorWindow) -- goal 0294 S2.
+ */
+export function SetRunMonitorWindow(w: windowing$0.Window | null): $CancellablePromise<void> {
+    return $Call.ByID(4103434777, w);
+}
+
+/**
  * SetUpdateChannelPreference persists the channel override. The
  * preference resolves at BOOT (ResolveUpdateChannel below): the update
  * provider's feed selection is fixed at Init, so a change applies
@@ -739,6 +758,15 @@ export function SetWorkflowMinutesSaved(workflowID: string, minutes: number): $C
  */
 export function ShowPanel(): $CancellablePromise<void> {
     return $Call.ByID(4093568137);
+}
+
+/**
+ * ShowRunMonitor points the monitor at a run and brings it forward.
+ * The target is emitted first so a hidden-but-alive page has it before
+ * it is shown; a visible monitor simply switches target.
+ */
+export function ShowRunMonitor(workflowID: string, runID: string): $CancellablePromise<void> {
+    return $Call.ByID(1541214296, workflowID, runID);
 }
 
 /**

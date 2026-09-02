@@ -1,0 +1,42 @@
+/* The run monitor window (goal 0294 S2): a slim header, then the
+   canvas filling the rest. Design tokens only, per frontend.md. */
+.monitor {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  overflow: hidden;
+}
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8, 8px);
+  padding: var(--base-size-8, 8px) var(--base-size-12, 12px);
+  border-bottom: 1px solid var(--borderColor-default);
+  /* The window's own drag surface: the title bar is native, but the
+     header band drags too, like the main window's tab band. */
+  --wails-draggable: drag;
+}
+.header button {
+  --wails-draggable: no-drag;
+}
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.empty {
+  margin: 0;
+  padding: var(--base-size-16, 16px);
+  color: var(--fgColor-muted);
+}
+.canvas {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}

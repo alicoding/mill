@@ -6,6 +6,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/services/settingssvc"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 // The ADR-0033 second-window family: always-alive auxiliary windows
@@ -129,6 +130,44 @@ func newTrayPanelWindow(app *application.App) *application.WebviewWindow {
 // setupTray builds the menu-bar surface (docs/goals/0189) -- lives
 // with the aux-window family since the attached status panel IS one
 // of them, and main.go stays under the 500-line convention.
+// The run monitor (goal 0294 S2): a floating, titled, resizable window
+// that shows one workflow's canvas read-only with its live run bar --
+// "watch it step" without switching to the full app. Not frameless:
+// the native title bar's close is its dismiss (close means hide, the
+// main window's own rule), Escape too; deliberately NOT
+// HideOnFocusLost, a run is watched while working elsewhere.
+func newRunMonitorWindow(app *application.App) *application.WebviewWindow {
+	w := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:             "runmonitor",
+		Title:            "Mill Run",
+		Width:            760,
+		Height:           520,
+		MinWidth:         480,
+		MinHeight:        320,
+		Hidden:           true,
+		HideOnEscape:     true,
+		BackgroundColour: application.NewRGB(6, 7, 15),
+		Mac: application.MacWindow{
+			WindowLevel:        application.MacWindowLevelFloating,
+			CollectionBehavior: application.MacWindowCollectionBehaviorCanJoinAllSpaces | application.MacWindowCollectionBehaviorFullScreenAuxiliary,
+		},
+		URL: "/#/runmonitor",
+	})
+	w.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		e.Cancel()
+		w.Hide()
+	})
+	return w
+}
+
+// wireAuxWindows creates the auxiliary windows and hands each to the
+// settings service, which owns their show/hide choreography.
+func wireAuxWindows(app *application.App, settingsService *settingssvc.SettingsService) {
+	settingsService.SetPanelWindow(windowing.WrapWindow(newQuickPanelWindow(app)))
+	settingsService.SetApprovalPromptWindow(windowing.WrapWindow(newApprovalPromptWindow(app)))
+	settingsService.SetRunMonitorWindow(windowing.WrapWindow(newRunMonitorWindow(app)))
+}
+
 func setupTray(app *application.App, settingsService *settingssvc.SettingsService) {
 	// docs/goals/0189: the menu bar is a SURFACE, not a launcher. The
 	// icon's existence is presence (windowing.MacAppOptions keeps Mill

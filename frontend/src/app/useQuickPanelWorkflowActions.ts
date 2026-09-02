@@ -104,13 +104,15 @@ export function useQuickPanelWorkflowActions({ workflows, visibleWorkflowIds, pi
   const activeWorkflowId = resolveActiveWorkflowId(activeEntryId, visibleWorkflowIds)
   const activeWorkflow = activeWorkflowId ? (workflows?.find((w) => w.ID === activeWorkflowId) ?? null) : null
 
-  // Fire the run, then open the canvas on the workflow's newest run:
-  // the run record exists before the main window finishes navigating,
-  // so the canvas adopts this run whether it is still stepping or
-  // already finished (shared/workTabs.ts's 'latest').
+  // Fire the run, then point the run monitor (its own floating window,
+  // goal 0294 S2) at the workflow's newest run: the run record exists
+  // before the monitor finishes rendering, so it adopts this run
+  // whether it is still stepping or already finished. The panel steps
+  // aside; the monitor is the surface now.
   const runAndWatch = (wf: WorkflowLike) => {
     ExecutionService.RunWorkflow(wf.ID, RunKind.RunKindTest, valuesFor(wf)).catch(() => {})
-    openMain(workflowTarget(wf.ID, 'latest'))
+    void SettingsService.ShowRunMonitor(wf.ID, 'latest').catch(() => {})
+    void SettingsService.DismissPanel().catch(() => {})
   }
 
   const openWorkflow = (wf: WorkflowLike) => {
