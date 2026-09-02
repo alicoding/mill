@@ -80,6 +80,19 @@ test('a dropped .drawio file renders as a board object through the vendored view
   expect(await zoomIn.locator('img').evaluate(draggableOf)).toBe('no-drag')
   expect(await zoomIn.evaluate((el) => (el.parentElement ? getComputedStyle(el.parentElement).getPropertyValue('--wails-draggable').trim() : 'missing'))).toBe('no-drag')
 
+  // Toolbar width (goal 0292, second owner report): the viewer sizes
+  // the bar from the host's LAYOUT width, but the board is zoomed all
+  // the way out here, so the bar was several times wider than the
+  // object on screen. It must match the host's on-screen width, never
+  // narrower than the viewer's own button floor (34px per button).
+  const hostOnScreenWidth = (await diagramObject.locator('[data-testid="atlas-drawio-page-body"]').boundingBox())?.width ?? 0
+  const toolbarBox = await zoomIn.evaluate((el) => {
+    const bar = el.parentElement as HTMLElement
+    return { width: bar.getBoundingClientRect().width, buttons: bar.childElementCount }
+  })
+  expect(toolbarBox.width).toBeGreaterThanOrEqual(hostOnScreenWidth - 1)
+  expect(toolbarBox.width).toBeLessThanOrEqual(Math.max(hostOnScreenWidth, 34 * toolbarBox.buttons) + 2)
+
   // dragBand (goal 0206): diagram carries no tray descriptor of its own
   // (drop-only), so its dragBand: true fact can't be covered by
   // atlasBoardSurfaceConformance.test.ts's static registry check the
