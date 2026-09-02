@@ -16,7 +16,17 @@ import type { RefObject } from 'react'
 // than as a JSX prop, matching this hook's fully imperative DOM
 // ownership (see the interface below).
 interface DrawioGraphViewer {
-  createViewerForElement: (element: Element, callback?: (viewer: unknown) => void) => void
+  createViewerForElement: (element: Element, callback?: (viewer: DrawioViewerInstance) => void) => void
+}
+
+// The instance the callback receives. `toolbar` is the hover toolbar
+// (zoom/pages cluster) -- GraphViewer.prototype.addToolbar's own
+// `this.toolbar`. It is NOT a child of the host: unless the config sets
+// toolbar-nohide, the viewer appends it to document.body on pointer
+// enter, absolutely positioned over the host, and removes it again on
+// leave (viewer.min.js, addToolbar's body-append branch).
+interface DrawioViewerInstance {
+  toolbar?: HTMLElement
 }
 
 declare global {
@@ -116,6 +126,7 @@ export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: stri
     const host = ref.current
     if (!host || !xml) return
     let cancelled = false
+    let viewer: DrawioViewerInstance | null = null
     // 'pages' is the viewer's own prev/next page selector (goal 0259):
     // it renders ahead of the zoom cluster only when the file has more
     // than one page (the viewer hides it otherwise), so a multi-page
@@ -126,7 +137,17 @@ export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: stri
       .then((GraphViewer) => {
         if (cancelled) return
         try {
-          GraphViewer.createViewerForElement(host)
+          GraphViewer.createViewerForElement(host, (instance) => {
+            viewer = instance
+            // body defaults --wails-draggable:drag (drag the native window
+            // by its background) and the runtime reads that property off
+            // the EVENT TARGET's computed style (@wailsio/runtime drag.js).
+            // The toolbar lives under body, so the host's own no-drag
+            // never reaches it and holding a zoom/page button dragged
+            // the whole app window (goal 0292). Opt the element out
+            // directly; the custom property inherits to its buttons.
+            instance.toolbar?.style.setProperty('--wails-draggable', 'no-drag')
+          })
         } catch (err) {
           setError(err instanceof Error ? err.message : String(err))
         }
@@ -136,6 +157,10 @@ export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: stri
       })
     return () => {
       cancelled = true
+      // The viewer only detaches its body-appended toolbar on a later
+      // pointer leave; a host unmounted while hovered would leave it
+      // orphaned over the board.
+      viewer?.toolbar?.remove()
       host.innerHTML = ''
       host.removeAttribute('data-mxgraph')
     }

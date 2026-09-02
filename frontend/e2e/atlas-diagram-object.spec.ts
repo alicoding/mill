@@ -52,10 +52,8 @@ test('a dropped .drawio file renders as a board object through the vendored view
   // (shieldless Kind, so it is always live).
   await expect(diagramObject).toHaveClass(/nowheel/)
 
-  // Window-drag opt-out (goal 0276 rider): body drags the native
-  // window by its background, and the vendored viewer injects its own
-  // toolbar/pager chrome into the host -- the host must opt the whole
-  // subtree out or holding that chrome drags the app window.
+  // Window-drag opt-out, in-host half (goal 0276 rider): body drags
+  // the native window by its background; the host opts its subtree out.
   expect(await diagramObject.locator('[data-testid="atlas-drawio-page-body"]').evaluate((el) => getComputedStyle(el).getPropertyValue('--wails-draggable').trim())).toBe('no-drag')
   // The pointer must actually reach the object: worker-shared board
   // state shifts fitView between runs, and a transform-based canvas
@@ -67,6 +65,20 @@ test('a dropped .drawio file renders as a board object through the vendored view
   await wheelAt(page, diagramObject, 0, 80)
   await page.waitForTimeout(300) // no observable "wheel fully routed" signal exists for a negative assertion
   expect(await viewportTransform()).toBe(beforeWheel)
+
+  // Window-drag opt-out, toolbar half (goal 0292, reopening 0276's
+  // rider): the viewer appends its hover toolbar to document.body, NOT
+  // into the host, so the host assertion above never covered it and
+  // holding a zoom button dragged the whole app window. The runtime
+  // reads the property off the event target's computed style, so pin
+  // it exactly there: the button's own icon (innermost target) and the
+  // toolbar container, once the toolbar is actually on screen.
+  await diagramObject.locator('[data-testid="atlas-drawio-page-body"]').hover()
+  const zoomIn = page.locator('div[title="Zoom In"]') // the canvas kit's own controls carry a <button> of the same title
+  await expect(zoomIn).toBeVisible()
+  const draggableOf = (el: Element) => getComputedStyle(el).getPropertyValue('--wails-draggable').trim()
+  expect(await zoomIn.locator('img').evaluate(draggableOf)).toBe('no-drag')
+  expect(await zoomIn.evaluate((el) => (el.parentElement ? getComputedStyle(el.parentElement).getPropertyValue('--wails-draggable').trim() : 'missing'))).toBe('no-drag')
 
   // dragBand (goal 0206): diagram carries no tray descriptor of its own
   // (drop-only), so its dragBand: true fact can't be covered by
