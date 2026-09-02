@@ -117,6 +117,7 @@ var exemptDoors = map[string]string{
 var notMutationDoors = map[string]string{
 	"AtlasSession": "read", "CardContextBlock": "read/export text", "CardContextEnvelope": "read/export text",
 	"CardListProjection": "read", "Cards": "read", "CardsByKind": "read", "CardSourceOffer": "read",
+	"Contents": "read", "ListContents": "read",
 	"CloseAllMirrorWatches": "test/shutdown helper", "ConvertHTMLToMarkdown": "pure conversion, no state",
 	"CorrectionEnvelope": "read/export text", "DetectSyncRoots": "read/scan", "DiffPerspectives": "read/diff",
 	"ExportAtlas": "read/export", "ExportBoardAsDrawio": "read/export", "ImportFolderSuggestions": "read/scan",

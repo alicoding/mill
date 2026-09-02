@@ -13,6 +13,8 @@ export type {
     CardSourceOffer,
     ClipbridgeCardOffer,
     ClipbridgeReplyPreview,
+    ContentEntry,
+    ContentsFilter,
     FileDropCreateResult,
     FileDropRoute,
     FolderImportSummary,

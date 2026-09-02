@@ -1,5 +1,8 @@
 import { registerThirdPartyNoun } from '../atlas/atlasNounRegistry'
+import { Events } from '@wailsio/runtime'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
+import { AtlasService } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc'
+import { contentEntryFromWire } from './pluginQuery'
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import type { AtlasArmRequestTool } from '../shared/atlasToolIdentity'
@@ -9,7 +12,7 @@ import { settingDeclsFromManifest } from './pluginSettings'
 import { buildPluginStorage } from './pluginStorage'
 import { pushNotice } from '../shared/noticeStore'
 import { resolveExtensionSetting, subscribeExtensionSetting } from '../shared/extensionSettingsStore'
-import type { CanvasObjectDecl, MillPluginAPI } from './sdk'
+import type { CanvasObjectDecl, ContentQuery, MillPluginAPI } from './sdk'
 
 // buildPluginAPI constructs the ONE object a plugin ever holds
 // (docs/adr/0047 §2: capabilities arrive as api calls the host
@@ -59,6 +62,18 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		settings,
 		notify,
 		storage: buildPluginStorage(pluginId, storageSnapshot),
+		// The read doors (goal 0278): query is the bound content index
+		// (the same Go index the MCP atlas_list_contents tool reads);
+		// on('contents:changed') is the existing 'atlas' dataevent every
+		// card/note/object mutation already emits.
+		query: async (q: ContentQuery = {}) => ((await AtlasService.ListContents(q.kind ?? '', q.parentId ?? '')) ?? []).map(contentEntryFromWire),
+		on: (event, handler) => {
+			if (event !== 'contents:changed') throw new Error(`plugin ${pluginId}: unknown event "${String(event)}"`)
+			return Events.On('mill-data-changed', (evt) => {
+				const data = evt.data as { entity?: string; id?: string } | undefined
+				if (data?.entity === 'atlas') handler({ id: data.id ?? '' })
+			})
+		},
 		registerCanvasObject: (decl: CanvasObjectDecl) => {
 			if (!KIND_PATTERN.test(decl.kind)) throw new Error(`plugin ${pluginId}: canvas object kind "${decl.kind}" must be a lowercase slug`)
 			if (!SOURCES.has(decl.source)) throw new Error(`plugin ${pluginId}: unknown source "${decl.source}"`)

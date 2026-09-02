@@ -133,6 +133,14 @@ export function CardsByKind(kindID: string): $CancellablePromise<atlas$0.Card[] 
 }
 
 /**
+ * Contents lists live entries matching filter, sorted by kind then
+ * title then id -- a stable order every door shares.
+ */
+export function Contents(filter: $models.ContentsFilter): $CancellablePromise<$models.ContentEntry[] | null> {
+    return $Call.ByID(951604272, filter);
+}
+
+/**
  * ConvertHTMLToMarkdown is the paste door's own HTML branch (LOCKED
  * design §2b/§3b): clipboard HTML converts to Markdown through the
  * exact same domain function process-html-to-markdown's workflow node
@@ -464,6 +472,14 @@ export function LinkKinds(): $CancellablePromise<atlas$0.LinkKind[] | null> {
  */
 export function Links(): $CancellablePromise<atlas$0.Link[] | null> {
     return $Call.ByID(1082434947);
+}
+
+/**
+ * ListContents is the Wails-bound door onto Contents (plugin SDK
+ * api.query, the Contents view). Never nil.
+ */
+export function ListContents(kind: string, parentID: string): $CancellablePromise<$models.ContentEntry[] | null> {
+    return $Call.ByID(804981692, kind, parentID);
 }
 
 /**

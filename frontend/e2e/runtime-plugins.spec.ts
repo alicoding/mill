@@ -1,10 +1,5 @@
-import { chromium, expect, test } from '@playwright/test'
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { spawnMillServer, type SpawnedServer } from './fixtures/server'
-import { RUNTIME_PLUGINS_SERVER_BASE_PORT, RUNTIME_PLUGINS_MCP_BASE_PORT } from './fixtures/serverPorts'
+import { expect, test } from '@playwright/test'
+import { launchWithPlugins } from './fixtures/runtimePlugins'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { clickBoardPoint, dragBetween } from './fixtures/atlasBoard'
 
@@ -15,52 +10,6 @@ import { clickBoardPoint, dragBetween } from './fixtures/atlasBoard'
 // artifact, not a compiled-in stand-in. Dedicated server per test
 // (testing.md's dedicated-spec exception): the plugins env is process-
 // wide, and the Review-queue assertions read the global pending list.
-const EXAMPLES_PLUGINS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'examples', 'plugins')
-
-async function launchWithPlugins(offset: number, opts: { withBroken?: boolean; withNotifier?: boolean } = {}) {
-	const dir = mkdtempSync(path.join(tmpdir(), 'mill-plugins-e2e-'))
-	// The plugins dir is a per-test COPY of examples/plugins (the exact
-	// artifact a user copies from) -- never the repo folder itself, so
-	// a test can add a deliberately-broken sibling without touching it.
-	const pluginsDir = path.join(dir, 'plugins')
-	mkdirSync(pluginsDir, { recursive: true })
-	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-bookmark'), path.join(pluginsDir, 'mill-bookmark'), { recursive: true })
-	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-scribble'), path.join(pluginsDir, 'mill-scribble'), { recursive: true })
-	if (opts.withBroken) {
-		mkdirSync(path.join(pluginsDir, 'broken-one'))
-		writeFileSync(path.join(pluginsDir, 'broken-one', 'manifest.json'), '{not json')
-	}
-	if (opts.withNotifier) {
-		// A minimal plugin exercising the notice door (goal 0277): one
-		// registered command that notifies, run from the palette.
-		mkdirSync(path.join(pluginsDir, 'notify-probe'))
-		writeFileSync(path.join(pluginsDir, 'notify-probe', 'manifest.json'), JSON.stringify({ id: 'notify-probe', name: 'Notify probe', version: '1.0.0' }))
-		writeFileSync(path.join(pluginsDir, 'notify-probe', 'main.js'), `export function activate(api) {
-	api.registerCommand({ id: 'hello', label: 'Say hello from the probe', run: () => { api.notify({ level: 'warning', text: 'Hello from the probe.' }) } })
-}
-`)
-	}
-	const server: SpawnedServer = await spawnMillServer({
-		port: RUNTIME_PLUGINS_SERVER_BASE_PORT + offset,
-		mcpPort: RUNTIME_PLUGINS_MCP_BASE_PORT + offset,
-		settingsPath: path.join(dir, 'settings.json'),
-		executionDbPath: path.join(dir, 'exec.db'),
-		backupDir: path.join(dir, 'backups'),
-		extraEnv: { MILL_PLUGINS_DIR: pluginsDir },
-	})
-	const browser = await chromium.launch()
-	const context = await browser.newContext({ baseURL: `http://127.0.0.1:${RUNTIME_PLUGINS_SERVER_BASE_PORT + offset}` })
-	const page = await context.newPage()
-	return {
-		page,
-		async close() {
-			await browser.close()
-			await server.stop()
-			rmSync(dir, { recursive: true, force: true })
-		},
-	}
-}
-
 test('a dropped plugin folder yields a working canvas object: tray entry, placement, face render, payload edit, reload persistence', async () => {
 	const { page, close } = await launchWithPlugins(0)
 	try {
@@ -186,90 +135,6 @@ test('the Extensions page tells the install story: plugin row with manifest meta
 
 		// The plugin never gets a second compiled-in-style row.
 		await expect(page.locator('[data-testid="extensions-row"][data-extension-id="bookmark"]')).toHaveCount(0)
-	} finally {
-		await close()
-	}
-})
-
-// A plugin's declared settings (manifest contributes.settings, goal
-// 0258 slice 1) render host-side in its own Installed-plugins row --
-// an enum as a select, a string as a text field -- and reach plugin
-// code through api.settings: the bookmark's title style flips live on
-// every open face (onChange), and the value survives a reload.
-test('a plugin declares settings in its manifest; Mill renders them, stores them, and serves them back to the plugin', async () => {
-	const { page, close } = await launchWithPlugins(10)
-	try {
-		await page.goto('/')
-		await page.getByRole('link', { name: 'Atlas' }).click()
-		const board = page.getByTestId('atlas-board')
-		await expect(board).toBeVisible()
-		await page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]').click()
-		const spot = await findEmptyBoardRect(page, board, 300, 200)
-		const bb = await board.boundingBox()
-		if (!bb) throw new Error('board has no bounding box')
-		await board.click({ position: { x: spot.x - bb.x + 10, y: spot.y - bb.y + 10 } })
-		const face = page.locator('[data-testid="plugin-face-bookmark"]')
-		const title = face.locator('[data-testid="bookmark-title"]')
-		// The string setting's default shows before any address.
-		await expect(title).toHaveText('Bookmark')
-		await face.locator('[data-testid="bookmark-url-input"]').click()
-		await page.keyboard.type('example.com/docs')
-		await page.keyboard.press('Enter')
-		await expect(title).toHaveText('example.com')
-
-		// Settings: the row renders both declared controls.
-		await page.getByRole('link', { name: 'Settings' }).click()
-		const row = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-bookmark"]')
-		await row.scrollIntoViewIfNeeded()
-		const settings = row.locator('[data-testid="extensions-plugin-settings"]')
-		await expect(settings).toBeVisible()
-		const styleSelect = settings.locator('[data-testid="extension-setting-mill-bookmark-titleStyle"] select')
-		await expect(styleSelect).toHaveValue('hostname')
-		await styleSelect.selectOption('address')
-		const placeholder = settings.locator('[data-testid="extension-setting-mill-bookmark-placeholderTitle"] input')
-		await expect(placeholder).toHaveValue('Bookmark')
-		await placeholder.fill('Link')
-		await page.keyboard.press('Enter')
-
-		// Back on the board the plugin has re-read both values.
-		await page.getByRole('link', { name: 'Atlas' }).click()
-		await expect(title).toHaveText('https://example.com/docs')
-		// A second bookmark on its own empty rect (the first face would
-		// swallow a click inside it) shows the new placeholder title.
-		await page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]').click()
-		const spot2 = await findEmptyBoardRect(page, board, 300, 200)
-		await board.click({ position: { x: spot2.x - bb.x + 10, y: spot2.y - bb.y + 10 } })
-		await expect(page.locator('[data-testid="bookmark-title"]', { hasText: 'Link' })).toBeVisible()
-
-		// Persisted centrally: a reload serves the same values.
-		await page.reload()
-		await page.getByRole('link', { name: 'Atlas' }).click()
-		await expect(page.locator('[data-testid="bookmark-title"]', { hasText: 'https://example.com/docs' })).toBeVisible()
-	} finally {
-		await close()
-	}
-})
-
-// api.notify (goal 0277): a plugin's notice renders in Mill's own
-// footer pill labelled with the plugin's name, a warning stays until
-// dismissed, and the dismiss clears it.
-test('a plugin notice renders in the app notice pill with the plugin named, and dismisses', async () => {
-	const { page, close } = await launchWithPlugins(12, { withNotifier: true })
-	try {
-		await page.goto('/')
-		// The shell must be mounted before the palette shortcut can land.
-		await expect(page.getByRole('link', { name: 'Atlas' })).toBeVisible()
-		await page.keyboard.press('Meta+/')
-		const dialog = page.getByRole('dialog', { name: 'Command palette' })
-		await expect(dialog).toBeVisible()
-		await dialog.getByRole('combobox').fill('Say hello')
-		await dialog.getByRole('option', { name: 'Say hello from the probe' }).click()
-		const notice = page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Hello from the probe.' })
-		await expect(notice).toBeVisible()
-		await expect(notice).toHaveAttribute('data-notice-level', 'warning')
-		await expect(notice.getByTestId('notice-source')).toHaveText('Notify probe')
-		await notice.getByTestId('notice-dismiss').click()
-		await expect(notice).toHaveCount(0)
 	} finally {
 		await close()
 	}
