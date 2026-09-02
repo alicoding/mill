@@ -117,6 +117,14 @@ export function DebugBackdatePendingMCPWrite(id: string, ageMinutes: number): $C
 }
 
 /**
+ * DeletePluginStorageValue removes one key; deleting an absent key is
+ * a no-op success (the converged storage semantic).
+ */
+export function DeletePluginStorageValue(pluginID: string, key: string): $CancellablePromise<void> {
+    return $Call.ByID(3419479534, pluginID, key);
+}
+
+/**
  * DismissApprovalPrompt hides the floating approval prompt and applies
  * the same focus-yield mitigation DismissPanel already uses -- called
  * by the prompt's own frontend once the last pending item resolves (or
@@ -277,6 +285,14 @@ export function GetMCPWriteApprovalRequired(): $CancellablePromise<boolean> {
  */
 export function GetMCPWriteEnabled(): $CancellablePromise<boolean> {
     return $Call.ByID(236919252);
+}
+
+/**
+ * GetPluginStorage returns every plugin's stored values as JSON
+ * literals. Never nil.
+ */
+export function GetPluginStorage(): $CancellablePromise<{ [_ in string]?: { [_ in string]?: string } | null } | null> {
+    return $Call.ByID(3251565236);
 }
 
 /**
@@ -669,6 +685,16 @@ export function SetOutboundProxyURL(raw: string): $CancellablePromise<void> {
  */
 export function SetPendingBadge(count: number): $CancellablePromise<void> {
     return $Call.ByID(4240483754, count);
+}
+
+/**
+ * SetPluginStorageValue stores one plugin's one value (any valid JSON,
+ * given as its literal) and persists the blob. A JSON null is refused
+ * -- deleting is DeletePluginStorageValue's job, so a stored null can
+ * never masquerade as "absent".
+ */
+export function SetPluginStorageValue(pluginID: string, key: string, jsonValue: string): $CancellablePromise<void> {
+    return $Call.ByID(2946178161, pluginID, key, jsonValue);
 }
 
 /**

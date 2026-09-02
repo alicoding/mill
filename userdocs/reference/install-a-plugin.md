@@ -163,6 +163,34 @@ out of the palette rather than shown doing nothing. A default
 keyboard shortcut is not something a plugin ships — the user assigns
 one under Keyboard shortcuts.
 
+## Notices
+
+A plugin tells the user something through Mill's own notice pill in
+the footer, labelled with the plugin's name. Info and success notices
+leave on their own after a few seconds; warnings and errors stay until
+dismissed. A user-started action that fails should always say so here,
+never only in the console.
+
+```js
+const dismiss = api.notify({ level: 'error', text: 'Could not save the bookmark address.' })
+// Optional: a secondary link running one of this plugin's own commands.
+api.notify({ text: 'Imported 12 rows.', action: { label: 'Show', commandId: 'showImport' } })
+```
+
+## Storage
+
+A plugin keeps its own state in `api.storage`, saved centrally under
+the plugin's id: any JSON value, read synchronously, written through
+on `set`. Nothing else in Mill reads it. The Drawing plugin uses it to
+remember the last-used pencil and shape style across restarts.
+
+```js
+const saved = api.storage.get('pencil') || {}          // undefined when never set
+await api.storage.set('pencil', { color, size })
+await api.storage.delete('pencil')
+api.storage.keys()                                      // ['pencil', …]
+```
+
 ## The example plugins
 
 Mill's repository ships two working examples: **Bookmark**

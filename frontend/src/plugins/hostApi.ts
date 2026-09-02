@@ -6,6 +6,8 @@ import type { AtlasArmRequestTool } from '../shared/atlasToolIdentity'
 import { collectPluginCommand } from './pluginCommands'
 import { buildThirdPartyNoun, seedStyleValues } from './canvasToolAdapter'
 import { settingDeclsFromManifest } from './pluginSettings'
+import { buildPluginStorage } from './pluginStorage'
+import { pushNotice } from '../shared/noticeStore'
 import { resolveExtensionSetting, subscribeExtensionSetting } from '../shared/extensionSettingsStore'
 import type { CanvasObjectDecl, MillPluginAPI } from './sdk'
 
@@ -20,7 +22,7 @@ const KIND_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/
 const SOURCES = new Set(['board-local', 'url', 'file'])
 const EDIT_ROUTES = new Set(['inline', 'external-app', 'none'])
 
-export function buildPluginAPI(manifest: Manifest, millVersion: string): MillPluginAPI {
+export function buildPluginAPI(manifest: Manifest, millVersion: string, storageSnapshot: Record<string, string> = {}): MillPluginAPI {
 	const pluginId = manifest.id
 	const requestGuardedAction = async (kind: string, attributes: Record<string, string>, description: string) => {
 		const d = await PluginService.RequestGuardedAction(pluginId, kind, attributes, description)
@@ -39,10 +41,24 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string): MillPlu
 		get: (key: string) => resolveExtensionSetting(pluginId, declFor(key)),
 		onChange: (key: string, fn: (value: boolean | string | number) => void) => subscribeExtensionSetting(pluginId, declFor(key), fn),
 	})
+	// The notice door (goal 0277): the plugin's display name is the
+	// notice's source; an action must be one of the plugin's OWN
+	// registered commands, namespaced exactly as registerCommand did.
+	const notify = (input: { text: string; level?: 'info' | 'success' | 'warning' | 'error'; action?: { label: string; commandId: string } }) => {
+		if (typeof input?.text !== 'string' || input.text.trim() === '') throw new Error(`plugin ${pluginId}: notify needs a non-empty text`)
+		return pushNotice({
+			text: input.text,
+			level: input.level,
+			source: manifest.name || pluginId,
+			actions: input.action ? [{ label: input.action.label, commandId: `plugin.${pluginId}.${input.action.commandId}` }] : undefined,
+		})
+	}
 	return Object.freeze({
 		millVersion,
 		pluginId,
 		settings,
+		notify,
+		storage: buildPluginStorage(pluginId, storageSnapshot),
 		registerCanvasObject: (decl: CanvasObjectDecl) => {
 			if (!KIND_PATTERN.test(decl.kind)) throw new Error(`plugin ${pluginId}: canvas object kind "${decl.kind}" must be a lowercase slug`)
 			if (!SOURCES.has(decl.source)) throw new Error(`plugin ${pluginId}: unknown source "${decl.source}"`)
