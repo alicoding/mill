@@ -122,3 +122,22 @@ func validateEnumSetting(st SettingContribution) string {
 	}
 	return ""
 }
+
+// validateViews fail-closes contributes.views (docs/goals/0290): a
+// view needs a slug id, unique within the plugin, and a title.
+func validateViews(views []ViewContribution) string {
+	seen := map[string]bool{}
+	for _, v := range views {
+		if !pluginIDPattern.MatchString(v.ID) {
+			return fmt.Sprintf("contributed view id %q must be lowercase letters, digits, and hyphens", v.ID)
+		}
+		if strings.TrimSpace(v.Title) == "" {
+			return fmt.Sprintf("contributed view %q needs a title", v.ID)
+		}
+		if seen[v.ID] {
+			return fmt.Sprintf("contributed view %q is declared twice", v.ID)
+		}
+		seen[v.ID] = true
+	}
+	return ""
+}

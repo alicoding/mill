@@ -270,6 +270,31 @@ A note without a position lands just right of the last item in its
 parent. A denied write resolves with `approved: false`; an approved
 one carries the new entity's `id`.
 
+## Views
+
+A plugin can own a work tab — the same strip a workflow editor opens
+in. Declare the view in the manifest (its title is the tab's label,
+and the Extensions row lists it), register how to draw it when the
+plugin activates, and it appears in the command palette under that
+title. The panel keeps what you drew while another tab is in front;
+after Mill restarts, the tab comes back and draws again.
+
+```json
+"contributes": { "views": [{ "id": "issues", "title": "Issues" }] }
+```
+
+```js
+export function activate(api) {
+  api.registerView({ id: 'issues', render(el, ctx) {
+    el.replaceChildren()            // plain DOM, same as renderFace
+    // ... list issues here; api.query / api.fetch / api.storage all work
+  } })
+}
+```
+
+Your own commands can open it too: run the registry command
+`view.open.<plugin id>.issues`.
+
 ## The example plugins
 
 Mill's repository ships three working examples: **Bookmark**

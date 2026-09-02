@@ -3,6 +3,7 @@ import { Events } from '@wailsio/runtime'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import { AtlasService } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc'
 import { contentEntryFromWire } from './pluginQuery'
+import { collectPluginView } from './pluginViews'
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import type { AtlasArmRequestTool } from '../shared/atlasToolIdentity'
@@ -125,6 +126,23 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 				// same one-documented-cast convention
 				// orderedRegisteredTools carries for the registry itself.
 				run: () => useUISignalStore.getState().requestAtlasArmTool(decl.kind as AtlasArmRequestTool),
+			})
+		},
+		// A plugin view (goal 0290): declared in the manifest, registered
+		// here with its render, opened by a registry command. The store is
+		// imported lazily inside run() -- at activation time the app module
+		// graph must not be pulled forward (loader.ts's import discipline).
+		registerView: (decl) => {
+			const declared = (manifest.contributes?.views ?? []).find((v) => v.id === decl.id)
+			if (!declared) throw new Error(`plugin ${pluginId}: view "${decl.id}" is not declared in the manifest's contributes.views`)
+			if (typeof decl.render !== 'function') throw new Error(`plugin ${pluginId}: view "${decl.id}" needs a render function`)
+			collectPluginView({ pluginId, pluginName: manifest.name || pluginId, viewId: decl.id, title: declared.title, render: decl.render })
+			collectPluginCommand({
+				id: `view.open.${pluginId}.${decl.id}`,
+				label: declared.title,
+				run: () => {
+					void import('../shared/store').then((m) => m.useAppStore.getState().openWorkTab({ kind: 'plugin-view', pluginId, viewId: decl.id }))
+				},
 			})
 		},
 		registerCommand: (decl) => {

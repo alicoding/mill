@@ -29,6 +29,9 @@ export type WorkTabSpec =
   | { kind: 'request-view'; requestId: string }
   | { kind: 'request-edit'; requestId: string }
   | { kind: 'request-new'; duplicateFromId?: string }
+  // plugin-view (docs/goals/0290): a plugin-owned tab, one per
+  // plugin + view id, rendered by app/PluginViewHost.tsx.
+  | { kind: 'plugin-view'; pluginId: string; viewId: string }
 
 export type WorkTab = WorkTabSpec & { key: string }
 
@@ -53,7 +56,7 @@ export type WorkTabCloseRequest =
 // brand-new, not-yet-saved workflow's tab now persists across reload
 // too, not just already-saved ones.
 export function isRestorable(tab: WorkTab): boolean {
-  return tab.kind === 'workflow-edit' || tab.kind === 'request-view' || tab.kind === 'workflow-new'
+  return tab.kind === 'workflow-edit' || tab.kind === 'request-view' || tab.kind === 'workflow-new' || tab.kind === 'plugin-view'
 }
 
 // Raw localStorage existence check for a canvas tab's hot-exit scratch
@@ -118,6 +121,7 @@ export function sameWorkTarget(a: WorkTab, b: WorkTabSpec): boolean {
   if ((a.kind === 'request-view' && b.kind === 'request-view') || (a.kind === 'request-edit' && b.kind === 'request-edit')) {
     return a.requestId === b.requestId
   }
+  if (a.kind === 'plugin-view' && b.kind === 'plugin-view') return a.pluginId === b.pluginId && a.viewId === b.viewId
   return false
 }
 

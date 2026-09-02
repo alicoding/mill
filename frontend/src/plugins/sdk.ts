@@ -326,6 +326,24 @@ export interface PluginContentAPI {
   appendListRow: (listId: string, values: Record<string, string>) => Promise<PluginWriteResult>
 }
 
+// PluginViewDecl (goal 0290): a plugin-owned work tab. id must match a
+// view the manifest declares under contributes.views (which carries
+// the tab's title); render draws into a host-owned div sized to the
+// panel, plain DOM like renderFace, and runs once per mount -- the
+// panel stays mounted while its tab is hidden, and mounts again after
+// an app reload restores the tab. Opening the view is a registry
+// command, view.open.<plugin>.<id>, palette-reachable and callable
+// from the plugin's own commands.
+export interface PluginViewCtx {
+  pluginId: string
+  viewId: string
+}
+
+export interface PluginViewDecl {
+  id: string
+  render: (el: HTMLElement, ctx: PluginViewCtx) => void
+}
+
 // MillPluginAPI is the one object a plugin ever holds -- handed to its
 // exported activate(api), frozen by the host.
 export interface MillPluginAPI {
@@ -347,6 +365,7 @@ export interface MillPluginAPI {
   // PluginFetchInit for the contract.
   fetch: (url: string, init?: PluginFetchInit) => Promise<PluginFetchResult>
   content: PluginContentAPI
+  registerView: (decl: PluginViewDecl) => void
 }
 
 // A plugin's main.js default-exports (or named-exports) activate:

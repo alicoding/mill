@@ -19,5 +19,6 @@ export type {
     PluginFetchResult,
     PluginInfo,
     SettingContribution,
-    SettingOption
+    SettingOption,
+    ViewContribution
 } from "./models.js";

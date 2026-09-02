@@ -161,7 +161,11 @@
     "docs": "Docs",
     "secrets": "Secrets"
   },
+  "pluginView": {
+    "missing": "This view's plugin is not loaded."
+  },
   "workTabLabel": {
+    "pluginView": "Plugin view",
     "workflow": "Workflow",
     "integration": "Integration",
     "newWorkflow": "New workflow",
