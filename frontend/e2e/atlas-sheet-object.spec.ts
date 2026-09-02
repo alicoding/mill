@@ -297,9 +297,9 @@ test('double-clicking a csv cell edits it in place: Enter commits to the grid an
   const input = sheetObject.getByTestId('atlas-object-sheet-cell-input')
   await expect(input).toBeVisible()
   await expect(input).toBeFocused()
-  // Focus selects the current value, so typing replaces it -- the
+  // Focus selects the current value, so filling replaces it -- the
   // spreadsheet convention.
-  await page.keyboard.type('37')
+  await input.fill('37') // fill: a form control; per-keystroke typing drops characters under CI load (goal 0296)
   await page.keyboard.press('Enter')
 
   await expect(input).toHaveCount(0)
@@ -322,7 +322,7 @@ test('Escape cancels a cell edit, leaving the grid and the file untouched', asyn
   await ageCell.dblclick()
   const input = sheetObject.getByTestId('atlas-object-sheet-cell-input')
   await expect(input).toBeFocused()
-  await page.keyboard.type('999')
+  await input.fill('999') // fill: a form control; per-keystroke typing drops characters under CI load (goal 0296)
   await page.keyboard.press('Escape')
 
   await expect(input).toHaveCount(0)
