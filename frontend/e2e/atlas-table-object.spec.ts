@@ -60,6 +60,59 @@ test('a newly created table object has no dead space below a small grid', async 
   await expect(listRow).toHaveCount(0)
 })
 
+// Goal 0286 (owner report: "clicked + multiple times and the table
+// disappeared"): adding columns used to scroll the first columns out
+// of a fixed-width box with no visible scrollbar. An unsized table now
+// widens with its columns up to TABLE_MAX_WIDTH, so the first header
+// stays inside the object's own box; past the cap the width holds.
+test('adding columns widens an unsized table instead of scrolling its first column away, up to a cap', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await page.getByTestId('atlas-tray-table').click()
+  await page.getByTestId('atlas-table-size-2x2').click()
+  await clickBoardPoint(page, { x: 400, y: 500 })
+  const tableObject = tableObjects(page).filter({ hasText: 'Column 1' })
+  await expect(tableObject).toBeVisible()
+  const firstHeader = tableObject.locator('thead th').first()
+  const startBox = await tableObject.boundingBox()
+  if (!startBox) throw new Error('no table object box')
+
+  const addColumn = async () => {
+    await tableObject.getByTestId('atlas-projection-add-column').click()
+    // Each insert opens the new column's rename field; leave it.
+    await expect(tableObject.getByTestId('atlas-projection-rename-input')).toBeVisible()
+    await page.keyboard.press('Escape')
+  }
+  for (let i = 0; i < 4; i++) await addColumn()
+  await expect(tableObject.locator('thead th')).toHaveCount(6)
+  await expect.poll(async () => (await tableObject.boundingBox())?.width ?? 0).toBeGreaterThan(startBox.width + 60)
+  // The first column is still inside the object's own box.
+  const box = await tableObject.boundingBox()
+  const head = await firstHeader.boundingBox()
+  if (!box || !head) throw new Error('no boxes')
+  expect(head.x).toBeGreaterThanOrEqual(box.x - 1)
+  expect(head.x + head.width).toBeLessThanOrEqual(box.x + box.width + 1)
+
+  // Past the cap the width holds (screen px = board units at this zoom
+  // only approximately; assert it stopped growing, not an exact value).
+  for (let i = 0; i < 8; i++) await addColumn()
+  await expect(tableObject.locator('thead th')).toHaveCount(14)
+  const capped = await tableObject.boundingBox()
+  if (!capped) throw new Error('no capped box')
+  for (let i = 0; i < 2; i++) await addColumn()
+  await expect.poll(async () => (await tableObject.boundingBox())?.width ?? 0).toBeLessThanOrEqual(capped.width + 1)
+
+  await deleteObjectViaMenu(tableObject)
+  await expect(tableObject).toHaveCount(0)
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByRole('tab', { name: 'Lists' }).click()
+  const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })
+  await clickRowAction(page, listRow, 'Delete')
+  await expect(listRow).toHaveCount(0)
+})
+
 // Goal 0199 part B: NodeResizer was rendered by exactly one component
 // (AtlasTableCardNode) -- a board object had a Size field and a
 // SetBoardObjectSize call with no way to reach either. The resize

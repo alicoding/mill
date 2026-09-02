@@ -18,10 +18,16 @@ import styles from './AtlasCardProjectionTable.module.css'
 // for a board object) -- the ONE piece that differs between the two
 // entities a projection can ride on; scopeID is whichever id that
 // resolver takes, used only as this effect's own dependency/cache key.
-export function AtlasCardProjectionTable({ scopeID, density, fetchProjection }: {
+export function AtlasCardProjectionTable({ scopeID, density, fetchProjection, onColumnCount }: {
   scopeID: string
   density?: string
   fetchProjection: (id: string) => Promise<ListProjection>
+  // onColumnCount (goal 0286) tells the host how many columns the
+  // projection currently has, so an unsized table object can size its
+  // box from the count -- a deterministic width, never intrinsic
+  // sizing, which feeds back through the scrollbars into React Flow's
+  // node measurement and oscillates.
+  onColumnCount?: (count: number) => void
 }) {
   const { t } = useTranslation('atlas')
   const [proj, setProj] = useState<ListProjection | null>(null)
@@ -57,6 +63,9 @@ export function AtlasCardProjectionTable({ scopeID, density, fetchProjection }: 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchProjection is one of the two stable AtlasService bound methods, never a fresh closure per render
   }, [scopeID])
+
+  const columnCount = proj?.Columns?.length ?? 0
+  useEffect(() => { onColumnCount?.(columnCount) }, [columnCount, onColumnCount])
 
   if (!proj || proj.ListID === '') return null
   if (proj.Missing) {

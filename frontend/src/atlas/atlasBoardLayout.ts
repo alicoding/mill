@@ -310,6 +310,12 @@ export function computeAutoArrangeLayout(
 // inner scroll takes over.
 export const TABLE_WIDTH = 520
 export const TABLE_HEIGHT = 320
+// TABLE_MAX_WIDTH (goal 0286): an unsized table's width follows its
+// column count from TABLE_WIDTH up to this cap, the same content-
+// following footprint its height already has -- so adding columns
+// never scrolls the first ones out of the box until the table is
+// genuinely wider than a board object should be.
+export const TABLE_MAX_WIDTH = 960
 
 // A board object's footprint guess when neither a persisted Size nor a
 // live measurement is at hand: the natural-size CSS clamp's own ceiling
