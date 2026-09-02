@@ -7,6 +7,8 @@ export {
 };
 
 export type {
+    Decision,
+    GuardedAction,
     PendingGuardedAction,
     RuleTestResult
 } from "./models.js";
