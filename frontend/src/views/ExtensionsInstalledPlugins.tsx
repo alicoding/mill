@@ -98,6 +98,13 @@ export function ExtensionsInstalledPlugins() {
 												{t('settings.extensions.pluginCatchesFiles', { list: claimedExtensions(p).join(', ') })}
 											</Text>
 										)}
+										{(p.Manifest.contributes?.network?.length ?? 0) > 0 && (
+											<Text size="small" className={styles.muted} data-testid="extensions-plugin-network">
+												{(p.Manifest.contributes?.network ?? []).some((n) => n.host === '*')
+													? t('settings.extensions.pluginReachesAnyHost')
+													: t('settings.extensions.pluginReachesHosts', { list: (p.Manifest.contributes?.network ?? []).map((n) => n.host).join(', ') })}
+											</Text>
+										)}
 										{(p.Manifest.contributes?.views?.length ?? 0) > 0 && (
 											<Text size="small" className={styles.muted} data-testid="extensions-plugin-views">
 												{t('settings.extensions.pluginViews', { list: (p.Manifest.contributes?.views ?? []).map((v) => v.title).join(', ') })}

@@ -234,7 +234,10 @@ manifest does not declare is refused before any rule runs.
 ```
 
 An entry without `methods` allows GET only. Responses are capped at
-4 MB.
+4 MB. A plugin whose hosts are typed by the user — a request tester,
+say — declares `{ "host": "*" }`: every request to a host not
+otherwise declared then asks you first, every time, and no rule can
+make it silent. The Extensions row says so before the plugin runs.
 
 ```js
 const res = await api.fetch('https://api.example.com/issues?open=1')
@@ -316,15 +319,18 @@ api.registerCanvasObject({
 
 ## The example plugins
 
-Mill's repository ships three working examples: **Bookmark**
+Mill's repository ships four working examples: **Bookmark**
 (`examples/plugins/mill-bookmark`) — a web address pinned to the
 board, edited in place, opened through a guarded ask, with two
 declared settings — **Scribble** (`examples/plugins/mill-scribble`) —
 a freehand drawing tool exercising the drag interaction, style fields,
 and live preview above — and **Board index**
 (`examples/plugins/mill-index`) — a live listing of the board through
-`api.query` and `api.on`. Copy any folder into your plugins folder to
-try it, or use it as the starting point for your own.
+`api.query` and `api.on` — and **Request tester**
+(`examples/plugins/mill-request-tester`), a real tool on nothing but
+the doors: a work tab, any-host guarded fetch, a storage-backed
+history, and a declared setting. Copy any folder into your plugins
+folder to try it, or use it as the starting point for your own.
 
 ## Writing one
 
