@@ -430,3 +430,54 @@ test('a plugin menu item appears on its own object once enabled, not on a note, 
 		await close()
 	}
 })
+
+// The Request tester example (goal 0291): a useful extension on
+// nothing but the doors -- a work tab, any-host guarded fetch (every
+// request asks, rules skipped), storage-backed history, a declared
+// setting. Its Extensions row states the any-host reach declare-first.
+test('the Request tester sends to a host you approve in Review, shows the response, and remembers the request across a reload', async () => {
+	const http = createServer((_req, res) => { res.setHeader('Content-Type', 'application/json'); res.end('{"pong":true}') })
+	await new Promise<void>((resolve) => http.listen(0, '127.0.0.1', resolve))
+	const port = (http.address() as AddressInfo).port
+	const { page, close } = await launchWithPlugins(24)
+	try {
+		await page.goto('/')
+		await page.getByRole('link', { name: 'Settings' }).click()
+		const row = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-request-tester"]')
+		await row.scrollIntoViewIfNeeded()
+		await expect(row.getByTestId('extensions-plugin-network')).toHaveText('Can reach any host you approve, one request at a time')
+
+		await page.getByRole('link', { name: 'Atlas' }).click()
+		await expect(page.getByTestId('atlas-board')).toBeVisible()
+		await runFromPalette(page, 'Request tester')
+		const view = page.getByTestId('plugin-view-mill-request-tester-tester')
+		await expect(view).toBeVisible()
+		await expect(view.getByTestId('tester-method')).toHaveValue('GET')
+		await view.getByTestId('tester-url').fill(`http://127.0.0.1:${port}/ping`)
+		await view.getByTestId('tester-send').click()
+		await expect(view.getByTestId('tester-status')).toContainText('needs your approval')
+
+		const reviewPage = await page.context().newPage()
+		await reviewPage.goto('/')
+		await reviewPage.getByRole('link', { name: 'Review' }).click()
+		const parked = reviewPage.locator('[data-testid="review-guarded-action-item"]')
+		await expect(parked).toBeVisible()
+		await expect(parked.locator('[data-testid="review-guarded-action-source"]')).toContainText('plugin:mill-request-tester')
+		await expect(parked).toContainText('did not declare')
+		await parked.locator('[data-testid="review-guarded-action-approve"]').click()
+		await expect(parked).toHaveCount(0)
+		await reviewPage.close()
+
+		await expect(view.getByTestId('tester-status')).toContainText('200')
+		await expect(view.getByTestId('tester-response')).toHaveText('{"pong":true}')
+		await expect(view.getByTestId('tester-history-item')).toHaveCount(1)
+
+		// History is plugin storage: it survives a reload of the restored tab.
+		await page.reload()
+		await page.getByRole('tab', { name: /Request tester/ }).click()
+		await expect(page.getByTestId('plugin-view-mill-request-tester-tester').getByTestId('tester-history-item')).toContainText(`GET http://127.0.0.1:${port}/ping → 200`)
+	} finally {
+		await close()
+		await new Promise<void>((resolve) => http.close(() => resolve()))
+	}
+})

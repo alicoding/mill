@@ -1,0 +1,29 @@
+{
+  "id": "mill-request-tester",
+  "name": "Request tester",
+  "version": "1.0.0",
+  "description": "Send an HTTP request to any host you approve, and read the response in a tab.",
+  "author": "Mill examples",
+  "minMillVersion": "0.9.0",
+  "capabilities": ["fetch"],
+  "contributes": {
+    "network": [{ "host": "*", "methods": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"] }],
+    "views": [{ "id": "tester", "title": "Request tester" }],
+    "settings": [
+      {
+        "key": "defaultMethod",
+        "type": "enum",
+        "label": "Default method",
+        "description": "The method a new request starts with.",
+        "default": "GET",
+        "options": [
+          { "value": "GET", "label": "GET" },
+          { "value": "POST", "label": "POST" },
+          { "value": "PUT", "label": "PUT" },
+          { "value": "PATCH", "label": "PATCH" },
+          { "value": "DELETE", "label": "DELETE" }
+        ]
+      }
+    ]
+  }
+}
