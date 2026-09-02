@@ -353,7 +353,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const [tableFromListOpen, setTableFromListOpen] = useState(false)
   const [newSpaceOpen, setNewSpaceOpen] = useState(false)
 
-  useAtlasCommandSignals({ viewedID, onArrange: requestAutoArrange, onExport: exportAtlas, onError: setShareError })
+  useAtlasCommandSignals({ viewedID, onArrange: requestAutoArrange, onExport: exportAtlas, onError: setShareError, onOpenContents: () => projectionViews.setContentsOpen(true) })
 
   if (kinds === null || cards === null || landingPending) {
     return <Text as="p" className={runbookStyles.muted}>{t('loading')}</Text>
@@ -385,6 +385,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         onOpenMatrix={() => projectionViews.setMatrixOpen(true)}
         onOpenCoverage={() => projectionViews.setCoverageOpen(true)}
         onOpenRoadmap={() => projectionViews.setRoadmapOpen(true)}
+        onOpenContents={() => projectionViews.setContentsOpen(true)}
         onOpenKinds={() => setKindsOpen(true)}
       />
 
@@ -476,7 +477,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         openNote={openNoteID ? allNotes.find((n) => n.ID === openNoteID) ?? null : null} onCloseNote={() => setOpenNoteID(null)}
         editingDiagramObject={editingDiagramObjectID ? allObjects.find((o) => o.ID === editingDiagramObjectID) ?? null : null}
         onCloseEditDiagram={closeAtlasEditDiagram}
-        matrixOpen={projectionViews.matrixOpen} onCloseMatrix={() => projectionViews.setMatrixOpen(false)} coverageOpen={projectionViews.coverageOpen} onCloseCoverage={() => projectionViews.setCoverageOpen(false)} roadmapOpen={projectionViews.roadmapOpen} onCloseRoadmap={() => projectionViews.setRoadmapOpen(false)} childrenAll={childrenAll} kindsOpen={kindsOpen} onCloseKinds={() => setKindsOpen(false)} onOpenCardFromProjection={projectionViews.openCardFromProjection}
+        matrixOpen={projectionViews.matrixOpen} onCloseMatrix={() => projectionViews.setMatrixOpen(false)} coverageOpen={projectionViews.coverageOpen} onCloseCoverage={() => projectionViews.setCoverageOpen(false)} roadmapOpen={projectionViews.roadmapOpen} onCloseRoadmap={() => projectionViews.setRoadmapOpen(false)} contentsOpen={projectionViews.contentsOpen} onCloseContents={() => projectionViews.setContentsOpen(false)} onFocusItemFromContents={(id) => setFocusRequest({ cardID: id, openImmediately: false })} childrenAll={childrenAll} kindsOpen={kindsOpen} onCloseKinds={() => setKindsOpen(false)} onOpenCardFromProjection={projectionViews.openCardFromProjection}
       />
     </div>
   )

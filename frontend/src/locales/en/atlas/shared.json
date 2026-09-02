@@ -149,6 +149,7 @@
     "matrix": "Matrix",
     "coverage": "Coverage",
     "roadmap": "Roadmap",
+    "contents": "Contents",
     "kinds": "Kinds",
     "dataActionsLabel": "Arrange, import, export, and folder actions",
     "shareViewActionsLabel": "Share and view actions"
@@ -201,6 +202,11 @@
     "noLinkKinds": "No link kinds are declared yet.",
     "viewMissing": "View missing ({{count}})",
     "hideMissing": "Hide missing"
+  },
+  "contents": {
+    "title": "Contents",
+    "filterPlaceholder": "Filter by name",
+    "empty": "Nothing matches."
   },
   "roadmap": {
     "title": "Roadmap",

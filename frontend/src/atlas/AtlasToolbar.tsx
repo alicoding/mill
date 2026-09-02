@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionBar, ActionList, ActionMenu } from '@primer/react'
-import { ChecklistIcon, DownloadIcon, ProjectRoadmapIcon, TableIcon, UploadIcon, TagIcon, SparkleFillIcon, ShareIcon } from '@primer/octicons-react'
+import { ChecklistIcon, DownloadIcon, ProjectRoadmapIcon,
+  ListUnorderedIcon, TableIcon, UploadIcon, TagIcon, SparkleFillIcon, ShareIcon } from '@primer/octicons-react'
 import type { Card, Kind, Link, LinkKind, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { findCommand } from '../shared/commands'
@@ -48,7 +49,7 @@ export function AtlasToolbar({
   perspectives, activePerspectiveID, onSwitchPerspective, onCreatePerspective, onRenamePerspective, onDeletePerspective, onPerspectiveToast,
   links, linkKinds,
   onExport, onExportDrawio, onImportFile, onShareError,
-  onOpenMatrix, onOpenCoverage, onOpenRoadmap, onOpenKinds,
+  onOpenMatrix, onOpenCoverage, onOpenRoadmap, onOpenContents, onOpenKinds,
 }: {
   cards: Card[]
   viewedID: string
@@ -85,6 +86,7 @@ export function AtlasToolbar({
   onOpenMatrix: () => void
   onOpenCoverage: () => void
   onOpenRoadmap: () => void
+  onOpenContents: () => void
   onOpenKinds: () => void
   // The board pane's right-click "Add card…" (goal 0075's audit G3) --
   // forwarded straight through to AtlasCreateMenu, which owns the form.
@@ -181,6 +183,7 @@ export function AtlasToolbar({
           <ActionBar.Button ref={shareAnchorRef} leadingVisual={ShareIcon} data-testid="atlas-space-share" onClick={() => setShareOpen((open) => !open)}>
             {t('share.spaceMenuButton')}
           </ActionBar.Button>
+          <ActionBar.IconButton icon={ListUnorderedIcon} aria-label={t('toolbar.contents')} data-testid="atlas-open-contents" onClick={onOpenContents} />
           <ActionBar.Button leadingVisual={TableIcon} data-testid="atlas-open-matrix" onClick={onOpenMatrix}>
             {t('toolbar.matrix')}
           </ActionBar.Button>

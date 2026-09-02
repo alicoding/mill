@@ -56,6 +56,14 @@ connected by links, grouped into areas you can drill into.
   Open note) for a full-size editor, like opening a note in its own
   window.
 
+## Contents
+
+Everything on the board, listed by kind: cards, notes by their first
+line, and every other object. Open it from the toolbar's list button
+or the command palette ("Contents"), type to filter by name, and
+activate a row to jump there — a card opens, a note or object is
+brought into view.
+
 ## Drawing and images
 
 - **Images and ink live on the board, not inside a card.** Take a
