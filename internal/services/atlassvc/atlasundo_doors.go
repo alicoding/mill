@@ -129,7 +129,7 @@ var notMutationDoors = map[string]string{
 	"PickFolder": "native folder picker, no board-state change", "PickImageFile": "native file picker, no board-state change",
 	"PreviewClipbridgeReply": "read/preview", "RenderNoteMarkdown": "pure conversion, no state",
 	"ReadPasteboardFilePaths": "read/pasteboard, no board-state change",
-	"ResolveFileDropRoute": "read/route decision", "RevealCardMirror": "OS reveal-in-Finder, no board-state change",
+	"ResolveFileDropRoute":    "read/route decision", "RevealCardMirror": "OS reveal-in-Finder, no board-state change",
 	"RevealSpaceFolder": "OS reveal-in-Finder, no board-state change", "ScanFolder": "read/scan",
 	"SpaceBundleContext": "read/export text", "SpaceContextEnvelope": "read/export text", "SpaceLinksList": "read/export text",
 	"TableProjectionExport": "read/export", "UndoState": "read",
