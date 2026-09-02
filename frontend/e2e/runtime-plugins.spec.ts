@@ -1,5 +1,10 @@
-import { expect, test } from '@playwright/test'
-import { launchWithPlugins } from './fixtures/runtimePlugins'
+import { chromium, expect, test } from '@playwright/test'
+import { cpSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import { spawnMillServer, type SpawnedServer } from './fixtures/server'
+import { RUNTIME_PLUGINS_SERVER_BASE_PORT, RUNTIME_PLUGINS_MCP_BASE_PORT } from './fixtures/serverPorts'
+import { launchWithPlugins, EXAMPLES_PLUGINS_DIR } from './fixtures/runtimePlugins'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { clickBoardPoint, dragBetween } from './fixtures/atlasBoard'
 
