@@ -82,6 +82,14 @@
       "pin": "Pin",
       "unpin": "Unpin",
       "menu": "Actions"
+    },
+    "update": {
+      "checking": "Checking for updates…",
+      "failed": "Couldn't check for updates.",
+      "upToDate": "You're up to date — Mill {{version}}",
+      "available": "Mill {{version}} is available — run \"Download the update and install\"",
+      "downloading": "Downloading Mill {{version}}…",
+      "ready": "Mill {{version}} is downloaded — run \"Restart to finish updating\""
     }
   },
   "shortcutsHelp": {

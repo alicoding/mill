@@ -96,6 +96,13 @@ export const SETTINGS_COMMANDS: Command[] = [
     id: 'update.check',
     label: 'Check for updates',
     defaultBinding: null,
+    keywords: ['update', 'updates', 'upgrade', 'version', 'new version'],
+    // One update door at a time (goal 0295): once an update is in hand
+    // the download / restart command is the row, not another check.
+    enabled: () => {
+      const state = useUpdateNoticeStore.getState().updateNoticeState
+      return state !== UpdateState.UpdateStateAvailable && state !== UpdateState.UpdateStateDownloading && state !== UpdateState.UpdateStateReady
+    },
     quickPanel: true,
     run: () => { useUpdateNoticeStore.getState().runUserCheck() },
   },
@@ -103,6 +110,7 @@ export const SETTINGS_COMMANDS: Command[] = [
     id: 'update.downloadAndInstall',
     label: 'Download the update and install',
     defaultBinding: null,
+    keywords: ['update', 'install', 'download', 'upgrade'],
     enabled: () => useUpdateNoticeStore.getState().updateNoticeState === UpdateState.UpdateStateAvailable,
     quickPanel: true,
     run: () => { SettingsService.DownloadAndInstallUpdate().catch(console.error) },
@@ -111,6 +119,7 @@ export const SETTINGS_COMMANDS: Command[] = [
     id: 'update.relaunch',
     label: 'Restart to finish updating',
     defaultBinding: null,
+    keywords: ['relaunch', 'restart', 'update', 'finish updating'],
     enabled: () => useUpdateNoticeStore.getState().updateNoticeState === UpdateState.UpdateStateReady,
     quickPanel: true,
     run: () => { SettingsService.RestartApp().catch(console.error) },

@@ -39,9 +39,10 @@ test('Contents lists the seeded cards under Card, a placed note under Note by it
   await expect
     .poll(() => page.evaluate(() => document.activeElement?.getAttribute('contenteditable') === 'true'))
     .toBe(true)
-  await page.keyboard.type('Contents probe note', { delay: 20 })
-  await page.keyboard.press('Enter')
-  await page.keyboard.type('second line', { delay: 20 })
+  // One atomic insert, not per-keystroke typing: a just-created sticky
+  // rebuilds its editor on the first content sync and drops keystrokes
+  // under CI shard load (the title then never matches).
+  await page.keyboard.insertText('Contents probe note\nsecond line')
   const bb = await board.boundingBox()
   if (!bb) throw new Error('board has no bounding box')
   const blur = await findEmptyBoardRect(page, board, 120, 80)

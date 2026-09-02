@@ -26,6 +26,7 @@ import { FacetChipRow } from '../shared/FacetChipRow'
 import { useQuickPanelFacetSearch } from './quickPanelFacets'
 import { useQuickPanelWorkflowActions } from './useQuickPanelWorkflowActions'
 import { QuickPanelFooter } from './QuickPanelFooter'
+import { useQuickPanelUpdateStatus } from './useQuickPanelUpdateStatus'
 import styles from './QuickPanel.module.css'
 import { searchInputTextAssistOff } from '../shared/searchInputProps'
 
@@ -291,6 +292,7 @@ export function QuickPanel() {
   // Workflow row actions (goal 0294): Enter runs, ⌘Enter opens the
   // workflow, ⌘⇧Enter runs and opens its canvas, ⌘K lists them all.
   const rowActions = useQuickPanelWorkflowActions({ workflows, pinnedWorkflowIds, togglePinnedWorkflow, setStatus, t })
+  useQuickPanelUpdateStatus(setStatus, t)
   const runWorkflow = (id: string) => {
     const wf = workflows?.find((w) => w.ID === id)
     if (wf) rowActions.runWorkflow(wf)
@@ -396,6 +398,16 @@ export function QuickPanel() {
     }]
     : filtered
 
+  // Group order follows the ranking while a query is typed (goal 0295):
+  // the group holding the best match renders first, so a keyword hit
+  // on a Mill action outranks a workflow that merely contains the
+  // word. At rest the fixed order stands.
+  const groupMetadata = trimmedQuery
+    ? [...GROUP_METADATA].sort((a, b) => {
+      const rank = (id: string) => { const i = withCapture.findIndex((e) => e.groupId === id); return i < 0 ? Number.MAX_SAFE_INTEGER : i }
+      return rank(a.groupId) - rank(b.groupId)
+    })
+    : GROUP_METADATA
   const items = withCapture.map((entry) => ({
     key: entry.id,
     id: entry.id,
@@ -450,7 +462,7 @@ export function QuickPanel() {
       />
       <FilteredActionList
         items={items}
-        groupMetadata={GROUP_METADATA}
+        groupMetadata={groupMetadata}
         filterValue={query}
         onFilterChange={(value) => setQuery(value)}
         placeholderText={t('quickPanel.searchPlaceholder')}

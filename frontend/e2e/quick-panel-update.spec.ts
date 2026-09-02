@@ -36,7 +36,11 @@ test('the Quick Panel shows "Download the update and install" only once CheckFor
     // Settings would.
     await search.fill('Download the update and install')
     await expect(page.getByRole('option', { name: 'Download the update and install' })).toHaveCount(0)
-    await search.fill('Check for updates')
+    // goal 0295: the user's own word ranks the command first -- above
+    // the seeded "Notify when an update is available" workflow, which
+    // merely contains it -- so Enter means "check", never "run".
+    await search.fill('update')
+    await expect(page.getByRole('option').first()).toHaveText(/Check for updates/)
     const checkOption = page.getByRole('option', { name: 'Check for updates' })
     await expect(checkOption).toBeVisible()
     await checkOption.click()
@@ -44,7 +48,13 @@ test('the Quick Panel shows "Download the update and install" only once CheckFor
     // The check runs server-side and pushes update-notice over
     // mill-data-changed -- the panel's own live listener (app/
     // QuickPanel.tsx) re-derives its rows with no reload, same as the
-    // pill's own live subscription.
+    // pill's own live subscription. The footer says what happened and
+    // names the next row (goal 0295).
+    await expect(page.getByTestId('quick-panel-status')).toHaveText('Mill 9.9.9 is available — run "Download the update and install"', { timeout: 10_000 })
+    // One update door at a time: the check row yields to the download row.
+    await search.fill('update')
+    await expect(page.getByRole('option').first()).toHaveText(/Download the update and install/)
+    await expect(page.getByRole('option', { name: 'Check for updates' })).toHaveCount(0)
     await search.fill('Download the update and install')
     await expect(page.getByRole('option', { name: 'Download the update and install' })).toBeVisible({ timeout: 10_000 })
 
