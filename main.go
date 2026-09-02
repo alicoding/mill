@@ -473,8 +473,7 @@ func main() {
 	launchatlogin.SetAutostartManager(app.Autostart)
 
 	// ADR-0033 second-window family, built in auxwindows.go.
-	settingsService.SetPanelWindow(windowing.WrapWindow(newQuickPanelWindow(app)))
-	settingsService.SetApprovalPromptWindow(windowing.WrapWindow(newApprovalPromptWindow(app)))
+	wireAuxWindows(app, settingsService)
 
 	setupTray(app, settingsService)
 
