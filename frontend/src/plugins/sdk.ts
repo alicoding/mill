@@ -78,6 +78,14 @@ export interface CanvasObjectDecl {
   // The drag behavior for a 'drag-to-draw' / 'ephemeral-drag'
   // interaction. Required there, forbidden for 'arm-then-click'.
   gesture?: CanvasGestureDecl
+  // menuItems (goal 0280): this object kind's own context-menu items,
+  // rendered on the right-click menu of the plugin's OWN objects only,
+  // between the built-in items and Delete. Object-scoped by nature
+  // (they act on the object that was right-clicked), so they carry a
+  // handler rather than a registry command: run receives the same ctx
+  // renderFace does. An item whose enabled predicate answers false is
+  // left out of the menu entirely, never shown dimmed.
+  menuItems?: readonly CanvasObjectMenuItem[]
   // renderFace draws the object's board face into el (a host-owned
   // div, already sized to the object's box). Called on mount and again
   // whenever the object's data changes -- el's contents are the
@@ -157,6 +165,13 @@ export interface CanvasGestureDecl {
   // Ephemeral tools: accumulated points age out over this many
   // milliseconds instead of clearing at pointer-up.
   fadeMs?: number
+}
+
+export interface CanvasObjectMenuItem {
+  id: string
+  label: string
+  run: (ctx: CanvasObjectFaceCtx) => void
+  enabled?: (ctx: CanvasObjectFaceCtx) => boolean
 }
 
 export interface CanvasObjectFaceCtx {

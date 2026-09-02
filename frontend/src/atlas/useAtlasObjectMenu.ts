@@ -6,6 +6,7 @@ import { refreshAtlas } from './atlasStore'
 import { boardObjectContentFor } from './atlasNounRegistry'
 import { dispatchObjectEdit, resolveEditRoute } from './objectSeams'
 import type { ContextMenuItem, ContextMenuState } from '../shared/ContextMenu'
+import { thirdPartyNounFor } from './atlasNounRegistry'
 
 // A board object's own right-click menu (goal 0179/0180): Promote to
 // card is the one explicit, one-way, reversible-only-by-undo action
@@ -68,6 +69,13 @@ export function useAtlasObjectMenu({
         commandId: 'object.editDiagram',
         run: () => { void dispatchObjectEdit(object, editRoute!) },
       })
+    }
+    // A plugin's own items (goal 0280): only on objects of its kind,
+    // between the built-in items and Delete; an item whose enabled
+    // predicate answers false is left out, never shown dimmed.
+    for (const item of thirdPartyNounFor(object.Kind)?.menuItems ?? []) {
+      if (!item.enabled(object)) continue
+      items.push({ id: `plugin-${item.id}`, label: item.label, run: () => item.run(object) })
     }
     items.push({ id: 'delete-object', label: t('contextMenu.delete'), danger: true, run: () => deleteObject(object.ID) })
     setMenu({ x: pos.x, y: pos.y, items })

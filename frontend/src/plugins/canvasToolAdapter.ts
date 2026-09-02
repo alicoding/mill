@@ -12,8 +12,8 @@ import { thirdPartyNouns, type AtlasGestureCtx, type AtlasGesturePoint, type Atl
 import { meetsDragThreshold } from '../atlas/useAtlasToolGesture'
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { ingestionClaimMismatch } from './ingestionClaims'
-import { pluginFaceComponent } from './PluginFaceContent'
-import type { CanvasGestureCtx, CanvasGestureDecl, CanvasObjectDecl, CanvasStyleFieldDecl } from './sdk'
+import { pluginFaceComponent, pluginObjectCtx } from './PluginFaceContent'
+import type { CanvasGestureCtx, CanvasGestureDecl, CanvasObjectDecl, CanvasObjectMenuItem, CanvasStyleFieldDecl } from './sdk'
 
 // The gesture/style half of a plugin's canvas registration (goal 0252
 // S1): adapts the SDK's plain-data declarations onto the SAME registry
@@ -79,6 +79,8 @@ function interactionDeclError(decl: CanvasObjectDecl): string | null {
 	if (interaction !== 'ephemeral-drag' && typeof decl.renderFace !== 'function') {
 		return 'renderFace must be a function (it is optional only for "ephemeral-drag")'
 	}
+	const menuProblem = menuItemsProblem(decl.menuItems ?? [])
+	if (menuProblem) return menuProblem
 	if (decl.lockable && (decl.sticky ?? dragShaped)) {
 		return 'lockable requires a drag tool with sticky: false (a sticky tool never disarms, so a lock would be meaningless)'
 	}
@@ -252,6 +254,22 @@ function faceContent(pluginId: string, decl: CanvasObjectDecl, ephemeral: boolea
 // built-in identity's key or another registered tool's; first
 // registrant wins deterministically (the loader activates plugins in
 // sorted id order), the loser is a visible registration error.
+// menuItemsProblem validates a declaration's context-menu items (goal
+// 0280): slug ids, unique, a label, a run function, enabled a function
+// when present.
+function menuItemsProblem(items: readonly CanvasObjectMenuItem[]): string | null {
+	const seen = new Set<string>()
+	for (const item of items) {
+		if (!SLUG_PATTERN.test(item.id)) return `menu item id "${item.id}" must be a lowercase slug`
+		if (seen.has(item.id)) return `menu item "${item.id}" is declared twice`
+		seen.add(item.id)
+		if (typeof item.label !== 'string' || item.label.trim() === '') return `menu item "${item.id}" needs a label`
+		if (typeof item.run !== 'function') return `menu item "${item.id}" needs a run function`
+		if (item.enabled !== undefined && typeof item.enabled !== 'function') return `menu item "${item.id}" enabled must be a function`
+	}
+	return null
+}
+
 function shortcutConflictError(key: string | undefined): string | null {
 	if (!key) return null
 	if (ATLAS_TOOL_IDENTITIES.some((i) => i.shortcutKey === key) || thirdPartyNouns().some((n) => n.shortcutKey === key)) {
@@ -287,6 +305,14 @@ export function buildThirdPartyNoun(pluginId: string, manifest: Manifest, decl: 
 		// An ephemeral tool never places anything, so it claims no
 		// dropped files either.
 		fileExtensions: ephemeral ? [] : (contribution?.fileExtensions ?? []).map((e) => e.toLowerCase()),
+		// Menu items bound to the object ctx (goal 0280); disabled ones are
+		// omitted at render (useAtlasObjectMenu.ts), the palette's rule.
+		menuItems: (decl.menuItems ?? []).map((item) => ({
+			id: item.id,
+			label: item.label,
+			run: (object) => { item.run(pluginObjectCtx(pluginId, object)) },
+			enabled: (object) => (item.enabled ? item.enabled(pluginObjectCtx(pluginId, object)) : true),
+		})),
 		icon: NAMED_GLYPHS[decl.icon] ?? emojiIcon(decl.icon),
 		label: decl.label,
 		nounName: decl.label,

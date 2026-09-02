@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net'
 import { launchWithPlugins } from './fixtures/runtimePlugins'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { clickAtlasTrayTool } from './fixtures/atlasTray'
+import { contextMenu } from './fixtures/contextMenu'
 
 // runFromPalette -- the one way these tests fire a plugin command: the
 // palette's own binding, the command by its registered label.
@@ -356,6 +357,74 @@ export function activate(api) {
 		await expect(page.getByRole('tab', { name: /Probe issues/ })).toBeVisible()
 		await page.getByRole('tab', { name: /Probe issues/ }).click()
 		await expect(page.getByTestId('probe-view-body')).toContainText('Issues view alive (view-probe/issues) render #1')
+	} finally {
+		await close()
+	}
+})
+
+// A plugin's context-menu items (goal 0280) render on the plugin's own
+// objects only, hide while their enabled predicate says no, and act
+// on the object that was right-clicked -- here the bookmark's guarded
+// open, which parks in Review with the plugin as source.
+test('a plugin menu item appears on its own object once enabled, not on a note, and acts on that object', async () => {
+	const { page, close } = await launchWithPlugins(22)
+	try {
+		await page.goto('/')
+		await page.getByRole('link', { name: 'Atlas' }).click()
+		const board = page.getByTestId('atlas-board')
+		await expect(board).toBeVisible()
+		await page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]').click()
+		const spot = await findEmptyBoardRect(page, board, 300, 200)
+		const bb = await board.boundingBox()
+		if (!bb) throw new Error('board has no bounding box')
+		await board.click({ position: { x: spot.x - bb.x + 10, y: spot.y - bb.y + 10 } })
+		const face = page.locator('[data-testid="plugin-face-bookmark"]')
+		await expect(face).toBeVisible()
+		const bookmark = page.locator('[data-testid="atlas-board-object"][data-object-kind="bookmark"]')
+
+		// No address yet: the item's enabled predicate hides it.
+		await bookmark.click({ button: 'right' })
+		const menu = contextMenu(page)
+		await expect(menu).toBeVisible()
+		await expect(menu.getByText('Open in browser', { exact: true })).toHaveCount(0)
+		await expect(menu.getByText('Delete', { exact: true })).toBeVisible()
+		await page.keyboard.press('Escape')
+
+		await face.locator('[data-testid="bookmark-url-input"]').click()
+		await page.keyboard.type('example.com')
+		await page.keyboard.press('Enter')
+		await expect(face.locator('[data-testid="bookmark-title"]')).toHaveText('example.com')
+
+		// A note's menu never carries the bookmark's item.
+		await page.keyboard.press('Escape')
+		await clickAtlasTrayTool(page, 'atlas-tray-note')
+		const noteSpot = await findEmptyBoardRect(page, board, 300, 200)
+		await board.click({ position: { x: noteSpot.x - bb.x + 10, y: noteSpot.y - bb.y + 10 } })
+		const sticky = page.getByTestId('atlas-sticky-note')
+		await expect(sticky).toBeVisible()
+		await page.keyboard.type('menu probe', { delay: 20 })
+		await board.click({ position: { x: spot.x - bb.x + 280, y: spot.y - bb.y + 190 } })
+		await sticky.click({ button: 'right' })
+		await expect(menu).toBeVisible()
+		await expect(menu.getByText('Open in browser', { exact: true })).toHaveCount(0)
+		await page.keyboard.press('Escape')
+
+		// With an address the item shows; activating it parks the guarded
+		// open in Review with the plugin as source.
+		await bookmark.click({ button: 'right' })
+		await expect(menu).toBeVisible()
+		await menu.getByText('Open in browser', { exact: true }).click()
+		const reviewPage = await page.context().newPage()
+		await reviewPage.goto('/')
+		await reviewPage.getByRole('link', { name: 'Review' }).click()
+		const row = reviewPage.locator('[data-testid="review-guarded-action-item"]')
+		await expect(row).toBeVisible()
+		await expect(row.locator('[data-testid="review-guarded-action-source"]')).toContainText('plugin:mill-bookmark')
+		await expect(row).toContainText('example.com')
+		await row.locator('[data-testid="review-guarded-action-deny"]').click()
+		await expect(row).toHaveCount(0)
+		await expect(page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Not allowed' })).toBeVisible()
+		await reviewPage.close()
 	} finally {
 		await close()
 	}

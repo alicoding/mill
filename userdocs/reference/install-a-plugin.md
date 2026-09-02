@@ -295,6 +295,25 @@ export function activate(api) {
 Your own commands can open it too: run the registry command
 `view.open.<plugin id>.issues`.
 
+## Context-menu items
+
+A plugin can add items to the right-click menu of its own objects.
+Each item acts on the object that was clicked and receives the same
+context the face gets; an item can say when it applies, and Mill leaves
+it out of the menu until then. Other kinds of object never show it.
+
+```js
+api.registerCanvasObject({
+  kind: 'bookmark',
+  menuItems: [
+    { id: 'open', label: 'Open in browser',
+      enabled: (ctx) => !!ctx.object.Payload.url,
+      run: (ctx) => ctx.requestGuardedAction('open-url', { url: ctx.object.Payload.url }, 'Open the bookmark') },
+  ],
+  // ...
+})
+```
+
 ## The example plugins
 
 Mill's repository ships three working examples: **Bookmark**
