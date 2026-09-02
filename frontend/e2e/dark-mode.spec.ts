@@ -61,6 +61,9 @@ test('the canvas minimap is themed in dark mode, not React Flow\'s light default
 // themes, rather than trusting the specificity math alone.
 test('Mill\'s teal accent tokens override Primer\'s default blue, light and dark', async ({ page }) => {
   await page.goto('/')
+  // Read only once the app has applied its theme (App.tsx mirrors the
+  // resolved mode onto <html>): the tokens below depend on it.
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.colorMode)).toBe('auto')
 
   const readAccent = () => page.evaluate(() => {
     const style = getComputedStyle(document.documentElement)
