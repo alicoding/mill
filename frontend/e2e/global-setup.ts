@@ -42,6 +42,10 @@ const REPO_ROOT = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '..
 // two reads only ever agree by construction when they're taken back to
 // back, so both builds now happen in the same globalSetup invocation.
 export default function globalSetup(): void {
+  // A killed Playwright run orphans its workers' servers (found days
+  // old); sweep any past their TTL before spawning fresh ones (goal
+  // 0293). Reports only, never fails setup.
+  execFileSync(path.join(REPO_ROOT, 'scripts', 'sweep-stale-servers.sh'), { cwd: REPO_ROOT, stdio: 'inherit' })
   execFileSync('npm', ['run', 'build:dev'], {
     cwd: path.join(REPO_ROOT, 'frontend'),
     stdio: 'inherit',
