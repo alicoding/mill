@@ -14,11 +14,11 @@ package backupsvc
 
 import (
 	"fmt"
+	"github.com/alicoding/mill/internal/adapters/osopen"
 	"sync"
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/backup"
-	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/services/dataevent"
 )
 
@@ -195,5 +195,5 @@ func (b *BackupService) RevealBackupFolder() error {
 	dir := b.dir
 	b.mu.Unlock()
 
-	return windowing.OpenURL("file://" + dir)
+	return osopen.Open("file://" + dir)
 }

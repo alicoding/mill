@@ -213,6 +213,38 @@ The Board index example (`examples/plugins/mill-index`) is exactly
 this: one object whose face lists the board by kind and re-renders
 on every change.
 
+## Reaching the network
+
+A plugin never opens a connection itself. It declares the hosts it
+needs in the manifest, asks Mill to fetch, and Mill decides through
+your guardrail rules — allow, ask you first, or deny — the same way it
+decides an agent's write. Approved requests run inside Mill, confined
+to the declared host on every hop (a redirect elsewhere is refused),
+and the response comes back to the plugin. A host or method the
+manifest does not declare is refused before any rule runs.
+
+```json
+"capabilities": ["fetch"],
+"contributes": {
+  "network": [
+    { "host": "api.example.com" },
+    { "host": "hooks.example.com", "methods": ["GET", "POST"] }
+  ]
+}
+```
+
+An entry without `methods` allows GET only. Responses are capped at
+4 MB.
+
+```js
+const res = await api.fetch('https://api.example.com/issues?open=1')
+if (res.approved) console.log(res.status, res.body)   // headers in res.headers
+else api.notify({ level: 'warning', text: 'Not allowed' + (res.ruleLabel ? ' (' + res.ruleLabel + ')' : '') })
+```
+
+Credentials belong in the vault, not in plugin code; the setting type
+that names a vault entry is on the roadmap.
+
 ## The example plugins
 
 Mill's repository ships three working examples: **Bookmark**

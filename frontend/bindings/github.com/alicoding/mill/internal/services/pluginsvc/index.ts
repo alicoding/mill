@@ -11,6 +11,9 @@ export type {
     GuardedActionDecision,
     Manifest,
     ManifestContributes,
+    NetworkContribution,
+    PluginFetchRequest,
+    PluginFetchResult,
     PluginInfo,
     SettingContribution,
     SettingOption

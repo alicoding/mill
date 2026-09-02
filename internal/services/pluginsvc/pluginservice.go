@@ -9,9 +9,12 @@
 package pluginsvc
 
 import (
+	"errors"
+
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/alicoding/mill/internal/adapters/osopen"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -20,7 +23,6 @@ import (
 
 	"golang.org/x/mod/semver"
 
-	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 )
 
@@ -53,6 +55,19 @@ type ManifestContributes struct {
 	// at activate() time, so the Extensions row can render them
 	// without running plugin code and validation fails the LOAD.
 	Settings []SettingContribution `json:"settings"`
+	// Network (docs/goals/0288): the hosts a plugin may fetch from,
+	// declared so the Extensions row can state them before the plugin
+	// runs and so an undeclared host is refused before any rule. Only
+	// meaningful with the "fetch" capability.
+	Network []NetworkContribution `json:"network"`
+}
+
+// NetworkContribution names one host (lowercase, optional :port) and
+// the HTTP methods a plugin may use against it. An empty Methods means
+// GET only -- the read-only default.
+type NetworkContribution struct {
+	Host    string   `json:"host"`
+	Methods []string `json:"methods"`
 }
 
 // PluginInfo is one scanned plugin as the Extensions surface and the
@@ -84,6 +99,12 @@ var knownCapabilities = map[string]bool{
 	// gesture ctx only carries the erase calls when the manifest
 	// declares this; the ids of hit items never cross into plugin code.
 	"erase-board-items": true,
+	// fetch: ask Mill to perform an HTTP request against a host the
+	// manifest's contributes.network declares (docs/goals/0288). The
+	// request is a guarded action (kind net.fetch) executed host-side
+	// with confinement to the declared host on every hop; the plugin
+	// receives the response, never a socket.
+	"fetch": true,
 }
 
 // pluginIDPattern pins ids to a filesystem- and URL-safe slug: the id
@@ -103,7 +124,11 @@ type PluginService struct {
 }
 
 func New(dir string, guardrail *guardrailsvc.GuardrailService, appVersion string) *PluginService {
-	return &PluginService{dir: dir, guardrail: guardrail, openURL: windowing.OpenURL, appVersion: appVersion}
+	// osopen, not the runtime's Browser API: the adapter's server build
+	// is a documented no-op (ErrUnsupportedInServerMode), so an approved
+	// open-url in server mode -- every e2e run of the plugin spec --
+	// never reaches the machine's real browser. The runtime opener did.
+	return &PluginService{dir: dir, guardrail: guardrail, openURL: osopen.Open, appVersion: appVersion}
 }
 
 // PluginsDir returns the directory plugins are installed into --
@@ -284,6 +309,9 @@ func validateContributes(c ManifestContributes) string {
 			}
 		}
 	}
+	if problem := validateNetwork(c.Network); problem != "" {
+		return problem
+	}
 	seen := map[string]bool{}
 	for _, st := range c.Settings {
 		if problem := validateSettingContribution(st); problem != "" {
@@ -392,7 +420,11 @@ func (p *PluginService) perform(kind string, attributes map[string]string) (bool
 		if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
 			return false, fmt.Errorf("open-url only opens http(s) URLs")
 		}
-		if err := p.openInOS(u); err != nil {
+		if err := p.openInOS(u); errors.Is(err, osopen.ErrUnsupportedInServerMode) {
+			// Approved but not performed: server mode has no browser to
+			// open (the caller sees approved=true, performed=false).
+			return false, nil
+		} else if err != nil {
 			return false, fmt.Errorf("open URL: %w", err)
 		}
 		return true, nil

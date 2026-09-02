@@ -67,6 +67,51 @@ export interface ManifestContributes {
      * without running plugin code and validation fails the LOAD.
      */
     "settings": SettingContribution[] | null;
+
+    /**
+     * Network (docs/goals/0288): the hosts a plugin may fetch from,
+     * declared so the Extensions row can state them before the plugin
+     * runs and so an undeclared host is refused before any rule. Only
+     * meaningful with the "fetch" capability.
+     */
+    "network": NetworkContribution[] | null;
+}
+
+/**
+ * NetworkContribution names one host (lowercase, optional :port) and
+ * the HTTP methods a plugin may use against it. An empty Methods means
+ * GET only -- the read-only default.
+ */
+export interface NetworkContribution {
+    "host": string;
+    "methods": string[] | null;
+}
+
+/**
+ * PluginFetchRequest is what a plugin asks for; Headers and Body are
+ * the plugin's own (a credential belongs in the vault -- goal 0281's
+ * secretRef -- never here; nothing stops a plugin from passing a
+ * token it holds, but the description in Review names the host so
+ * the owner sees where it goes).
+ */
+export interface PluginFetchRequest {
+    "method": string;
+    "url": string;
+    "headers": { [_ in string]?: string } | null;
+    "body": string;
+}
+
+/**
+ * PluginFetchResult carries the guardrail decision and, when
+ * approved and performed, the response.
+ */
+export interface PluginFetchResult {
+    "approved": boolean;
+    "effect": string;
+    "ruleLabel": string;
+    "status": number;
+    "headers": { [_ in string]?: string } | null;
+    "body": string;
 }
 
 /**
