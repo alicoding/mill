@@ -27,9 +27,13 @@ the fastest way to confirm a change actually works, not just that it builds.
    target directly if `task`/`wails3` happen to be on `PATH`; the raw `go
    build` above always works and needs neither.)
 
-3. Launch it in the background and confirm it's up:
+3. Launch it in the background under a time budget, keep its PID, and
+   confirm it's up. `timeout` (Homebrew coreutils) guarantees the
+   server never outlives the session even if step 5 is skipped; a
+   server found running days later shared the desktop app's data files
+   (goal 0293).
    ```
-   ./bin/mill-server &
+   timeout 4h ./bin/mill-server & echo $! > "$SCRATCHPAD/mill-server.pid"
    curl -sS http://localhost:8080/health   # {"status":"ok"}
    ```
 
@@ -40,9 +44,14 @@ the fastest way to confirm a change actually works, not just that it builds.
    over HTTP/WebSocket — clicking "Run" on a Runbook action actually shells
    out to `pbcopy` on the host, actually converts HTML to Markdown, etc.
 
-5. Kill the background server when done (`pkill -f bin/mill-server` or stop
-   the backgrounded Bash task) — nothing about this leaves state behind
-   except whatever the action itself did (e.g. real clipboard writes).
+5. Kill the background server when done, by its own PID only:
+   `kill "$(cat "$SCRATCHPAD/mill-server.pid")"`, or resolve the port
+   with `lsof -ti tcp@127.0.0.1:8080` and kill that PID. `pkill -f` and
+   `killall` are hook-denied (a broad kill once took down the
+   LaunchAgent server) — a skipped stop is what the `timeout` budget
+   and the SessionStart sweep (`scripts/sweep-stale-servers.sh`) exist
+   for. Nothing else leaves state behind except whatever the action
+   itself did (e.g. real clipboard writes).
 
 ## Testing from another device (phone, tablet) without remote desktop
 
@@ -63,7 +72,7 @@ controlling the whole Mac's screen.
    not `0.0.0.0` — this means the port never opens on the regular WiFi
    interface at all, not "open to the LAN and hope nobody else notices":
    ```
-   WAILS_SERVER_HOST=<mac's-tailscale-ip> ./bin/mill-server &
+   WAILS_SERVER_HOST=<mac's-tailscale-ip> timeout 4h ./bin/mill-server &
    ```
    Then open `http://<mac's-tailscale-ip>:8080` in the other device's
    browser. (Tailscale itself depends on a coordination server for device
