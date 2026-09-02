@@ -27,6 +27,15 @@ export function AssetMiddleware(): $CancellablePromise<any> {
 }
 
 /**
+ * FetchForPlugin performs one guarded fetch. Refusals that need no
+ * rule -- undeclared capability, undeclared host, undeclared method,
+ * a non-http(s) URL -- happen BEFORE the guardrail is consulted.
+ */
+export function FetchForPlugin(pluginID: string, req: $models.PluginFetchRequest): $CancellablePromise<$models.PluginFetchResult> {
+    return $Call.ByID(1434947460, pluginID, req);
+}
+
+/**
  * ListPlugins scans the plugins directory fresh on every call (the
  * Extensions page's Rescan is just another call) and returns every
  * plugin folder with its manifest -- valid ones ready to load,

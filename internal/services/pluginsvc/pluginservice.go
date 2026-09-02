@@ -53,6 +53,19 @@ type ManifestContributes struct {
 	// at activate() time, so the Extensions row can render them
 	// without running plugin code and validation fails the LOAD.
 	Settings []SettingContribution `json:"settings"`
+	// Network (docs/goals/0288): the hosts a plugin may fetch from,
+	// declared so the Extensions row can state them before the plugin
+	// runs and so an undeclared host is refused before any rule. Only
+	// meaningful with the "fetch" capability.
+	Network []NetworkContribution `json:"network"`
+}
+
+// NetworkContribution names one host (lowercase, optional :port) and
+// the HTTP methods a plugin may use against it. An empty Methods means
+// GET only -- the read-only default.
+type NetworkContribution struct {
+	Host    string   `json:"host"`
+	Methods []string `json:"methods"`
 }
 
 // PluginInfo is one scanned plugin as the Extensions surface and the
@@ -84,6 +97,12 @@ var knownCapabilities = map[string]bool{
 	// gesture ctx only carries the erase calls when the manifest
 	// declares this; the ids of hit items never cross into plugin code.
 	"erase-board-items": true,
+	// fetch: ask Mill to perform an HTTP request against a host the
+	// manifest's contributes.network declares (docs/goals/0288). The
+	// request is a guarded action (kind net.fetch) executed host-side
+	// with confinement to the declared host on every hop; the plugin
+	// receives the response, never a socket.
+	"fetch": true,
 }
 
 // pluginIDPattern pins ids to a filesystem- and URL-safe slug: the id
@@ -283,6 +302,9 @@ func validateContributes(c ManifestContributes) string {
 				return fmt.Sprintf("contributed file extension %q must look like \".ext\" in lowercase", ext)
 			}
 		}
+	}
+	if problem := validateNetwork(c.Network); problem != "" {
+		return problem
 	}
 	seen := map[string]bool{}
 	for _, st := range c.Settings {
