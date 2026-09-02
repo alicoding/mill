@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { waitForViewportStable } from './fixtures/animation'
 import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel } from './fixtures/canvas'
 
@@ -103,23 +104,32 @@ async function runBranch(page: import('@playwright/test').Page, panel: import('@
 async function dblClickReachedTerminal(page: import('@playwright/test').Page, panel: import('@playwright/test').Locator) {
   const node = panel.locator('.react-flow__node').filter({ hasText: 'Decision' }).filter({ hasText: 'DONE' }).first()
   await expect(node).toBeVisible({ timeout: 10_000 })
-  const box = await node.boundingBox()
-  if (!box) throw new Error('dblClickReachedTerminal: reached terminal card has no bounding box')
-  const candidates = [
-    { x: box.x + 10, y: box.y + 10 },
-    { x: box.x + box.width - 10, y: box.y + 10 },
-    { x: box.x + box.width / 2, y: box.y + box.height / 2 },
-    { x: box.x + 10, y: box.y + box.height - 10 },
-  ]
-  for (const point of candidates) {
-    const insideNode = await page.evaluate(({ x, y }) => {
-      const el = document.elementFromPoint(x, y)
-      return !!el?.closest('.react-flow__node')
-    }, point)
-    if (insideNode) {
-      await node.dblclick({ position: { x: point.x - box.x, y: point.y - box.y } })
-      return
+  // The reached terminal is the bottom-most card, where the run bar and
+  // the minimap overlay the canvas; on a runner whose header wraps
+  // taller, every probe point can land on an overlay. Zoom out (the
+  // canvas kit's own control, cards shrink toward the center) and
+  // re-measure before giving up (goal 0296's register re-run).
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const box = await node.boundingBox()
+    if (!box) throw new Error('dblClickReachedTerminal: reached terminal card has no bounding box')
+    const candidates = [
+      { x: box.x + 10, y: box.y + 10 },
+      { x: box.x + box.width - 10, y: box.y + 10 },
+      { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+      { x: box.x + 10, y: box.y + box.height - 10 },
+    ]
+    for (const point of candidates) {
+      const insideNode = await page.evaluate(({ x, y }) => {
+        const el = document.elementFromPoint(x, y)
+        return !!el?.closest('.react-flow__node')
+      }, point)
+      if (insideNode) {
+        await node.dblclick({ position: { x: point.x - box.x, y: point.y - box.y } })
+        return
+      }
     }
+    await panel.getByRole('button', { name: 'Zoom Out' }).click()
+    await waitForViewportStable(panel)
   }
   throw new Error('dblClickReachedTerminal: no point resolved inside the reached terminal card')
 }
