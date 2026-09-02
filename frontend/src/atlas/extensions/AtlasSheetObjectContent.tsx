@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { registerFlusher } from '../../shared/flushRegistry'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Stack, Text } from '@primer/react'
@@ -143,6 +144,14 @@ export function AtlasSheetObjectContent({ object, mirrorContent }: { object: Boa
     setEditing(null)
   }
 
+  // A cell mid-edit is a live edit the quit / restart handshake flushes
+  // (shared/flushRegistry.ts, goal 0295 S2): the flusher is commitEdit,
+  // reached through a ref so the registration never goes stale.
+  const commitEditRef = useRef<() => void>(() => {})
+  useEffect(() => {
+    if (!editing) return
+    return registerFlusher(`sheet:${object.ID}`, () => commitEditRef.current())
+  }, [editing, object.ID])
   const commitEdit = () => {
     const edit = editingRef.current
     if (!edit || parsed?.kind !== 'csv') return
@@ -166,6 +175,9 @@ export function AtlasSheetObjectContent({ object, mirrorContent }: { object: Boa
       })
     })
   }
+  useEffect(() => {
+    commitEditRef.current = commitEdit
+  })
 
   const editableCell = (row: number, col: number, cell: unknown, isHeader: boolean): ReactNode => {
     const Tag = isHeader ? 'th' : 'td'

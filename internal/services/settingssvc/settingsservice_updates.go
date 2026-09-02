@@ -441,6 +441,9 @@ func (s *SettingsService) failInstall(wasReady, destroyedPriorStaging bool, err 
 // RestartApp relaunches into the update DownloadAndInstallUpdate just
 // staged.
 func (s *SettingsService) RestartApp() error {
+	// Live edits first (goal 0295 S2), even when the restart itself is
+	// unavailable: the flush is what a user counts on.
+	s.flushFrontend()
 	s.mu.Lock()
 	u := s.updater
 	s.mu.Unlock()

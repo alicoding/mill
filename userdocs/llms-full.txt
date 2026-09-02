@@ -621,7 +621,9 @@ the footer shows what the highlighted row can do:
 The same panel is the fastest way to update Mill: type "update" and
 press ↩ to check. The footer tells you whether you're up to date, or
 names the next step — download and install, then restart to finish —
-and typing "update" or "relaunch" again finds that step.
+and typing "update" or "relaunch" again finds that step. A restart, or
+quitting from the menu bar, first saves whatever you were still
+typing: a note mid-edit, a cell being edited, a workflow draft.
 
 ---
 
