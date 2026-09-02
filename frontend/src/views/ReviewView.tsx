@@ -86,6 +86,9 @@ function ReviewView() {
   // already durable.
   const [resolvedWrites, setResolvedWrites] = useState<MCPWriteResolved[]>([])
   const [inputs, setInputs] = useState<Record<string, Record<string, string>>>({})
+  // Parked guarded actions live in their own section (ReviewGuardedActions);
+  // the queue blankslate must count them too.
+  const [guardedCount, setGuardedCount] = useState(0)
   const [workflowFilter, setWorkflowFilter] = useState('')
   const [kindFilter, setKindFilter] = useState<KindFilterValue>('')
   const [error, setError] = useState('')
@@ -266,7 +269,7 @@ function ReviewView() {
         </Stack>
       )}
 
-      {pending.length === 0 && pendingWrites.length === 0 && (
+      {pending.length === 0 && pendingWrites.length === 0 && guardedCount === 0 && (
         <Blankslate data-testid="review-empty">
           <Blankslate.Visual>
             <InboxIcon size={32} />
@@ -316,7 +319,7 @@ function ReviewView() {
         })}
       </Stack>
 
-      <ReviewGuardedActions visible={kindFilter === '' || kindFilter === 'guarded-action'} />
+      <ReviewGuardedActions visible={kindFilter === '' || kindFilter === 'guarded-action'} onCount={setGuardedCount} />
 
       <Stack direction="vertical" gap="normal">
         {pending.filter((r) => (!workflowFilter || r.workflowID === workflowFilter) && kindMatches(r)).map((run) => (

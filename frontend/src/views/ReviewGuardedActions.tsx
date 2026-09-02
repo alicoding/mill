@@ -17,9 +17,13 @@ import styles from './ReviewView.module.css'
 // caller wakes with the answer. Self-contained data-wise (its own
 // fetch + the same pending-changed event the run queue refreshes on)
 // so ReviewView stays a thin composition of queue sections.
-export function ReviewGuardedActions({ visible }: { visible: boolean }) {
+// onCount reports how many actions are parked so the queue's blankslate
+// (ReviewView.tsx) can stay away while a guarded action is live -- it
+// used to render "Nothing waiting for you" above a live row.
+export function ReviewGuardedActions({ visible, onCount }: { visible: boolean; onCount?: (count: number) => void }) {
 	const { t } = useTranslation('views')
 	const [actions, setActions] = useState<PendingGuardedAction[]>([])
+	useEffect(() => { onCount?.(actions.length) }, [actions.length, onCount])
 
 	const refresh = () => {
 		GuardrailService.PendingGuardedActions().then((a) => setActions(a ?? [])).catch(() => {})
