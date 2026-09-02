@@ -39,9 +39,8 @@ test('a dropped plugin folder yields a working canvas object: tray entry, placem
 
 		// The face's URL field writes through the host's content-plane
 		// door; the plugin derives the title from the committed value.
-		await face.locator('[data-testid="bookmark-url-input"]').click()
-		await page.keyboard.type('example.com/docs')
-		await page.keyboard.press('Enter')
+		await face.locator('[data-testid="bookmark-url-input"]').fill('example.com/docs') // fill: a form control; per-keystroke typing drops characters under CI load (goal 0296)
+		await face.locator('[data-testid="bookmark-url-input"]').press('Enter')
 		await expect(face.locator('[data-testid="bookmark-url-input"]')).toHaveValue('example.com/docs')
 		await expect(face.locator('span').nth(1)).toHaveText('example.com')
 
@@ -70,9 +69,8 @@ test('a guarded action parks for the human, renders in Review, and the approve/d
 		await board.click({ position: { x: spot.x - bb.x + 10, y: spot.y - bb.y + 10 } })
 		const face = page.locator('[data-testid="plugin-face-bookmark"]')
 		await expect(face).toBeVisible()
-		await face.locator('[data-testid="bookmark-url-input"]').click()
-		await page.keyboard.type('example.com')
-		await page.keyboard.press('Enter')
+		await face.locator('[data-testid="bookmark-url-input"]').fill('example.com') // fill: a form control; per-keystroke typing drops characters under CI load (goal 0296)
+		await face.locator('[data-testid="bookmark-url-input"]').press('Enter')
 		// The commit re-renders the face (payload change); wait for the
 		// derived title so the Open click below hits the CURRENT
 		// elements, not the doomed pre-commit ones a slower runner can
