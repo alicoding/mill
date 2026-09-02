@@ -262,6 +262,20 @@ export const test = base.extend<Record<string, never>, WorkerFixtures>({
     // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(workerServer.baseURL)
   },
+
+  // E2E_CPU_THROTTLE=<rate> slows the page's CPU through Chromium's own
+  // emulation (goal 0296): CI runners are a fraction of this machine,
+  // and the flakes that only reproduce there are load races. A 4x
+  // throttle locally reproduces the CI shard's timing without CI.
+  page: async ({ page }, use) => {
+    const rate = Number(process.env.E2E_CPU_THROTTLE ?? '0')
+    if (rate > 1) {
+      const cdp = await page.context().newCDPSession(page)
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate })
+    }
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    await use(page)
+  },
 })
 
 export { expect }
