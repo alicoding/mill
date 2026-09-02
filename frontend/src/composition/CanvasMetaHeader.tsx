@@ -72,19 +72,15 @@ export function CanvasMetaHeader({
   return (
     <div className={styles.metaHeader}>
       <Stack direction="horizontal" gap="condensed" align="center">
-        {readOnly ? (
-          // View mode shows the label as text, never a disabled field (goal 0297).
-          <Text weight="semibold" className={styles.metaTitleInput} data-testid="workflow-label-readonly">{draftLabel || t('canvasMetaHeader.labelPlaceholder')}</Text>
-        ) : (
-          <TextInput
+        <TextInput
           value={draftLabel}
           onChange={(e) => onLabelChange(e.target.value)}
           aria-label={t('canvasMetaHeader.labelAriaLabel')}
           placeholder={t('canvasMetaHeader.labelPlaceholder')}
           size="small"
+          disabled={readOnly}
           className={styles.metaTitleInput}
         />
-        )}
         <IconButton
           icon={descOpen ? ChevronUpIcon : ChevronDownIcon}
           aria-label={descOpen ? t('canvasMetaHeader.hideDetails') : t('canvasMetaHeader.addDetails')}
