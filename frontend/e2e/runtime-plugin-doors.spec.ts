@@ -44,9 +44,10 @@ test('a plugin declares settings in its manifest; Mill renders them, stores them
 		const title = face.locator('[data-testid="bookmark-title"]')
 		// The string setting's default shows before any address.
 		await expect(title).toHaveText('Bookmark')
-		await face.locator('[data-testid="bookmark-url-input"]').click()
-		await page.keyboard.type('example.com/docs')
-		await page.keyboard.press('Enter')
+		// fill, not per-keystroke typing: the face's input lost its first
+		// character under CI load once ("xample.com").
+		await face.locator('[data-testid="bookmark-url-input"]').fill('example.com/docs')
+		await face.locator('[data-testid="bookmark-url-input"]').press('Enter')
 		await expect(title).toHaveText('example.com')
 
 		// Settings: the row renders both declared controls.
