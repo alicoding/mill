@@ -27,6 +27,8 @@ interface DrawioGraphViewer {
 // leave (viewer.min.js, addToolbar's body-append branch).
 interface DrawioViewerInstance {
   toolbar?: HTMLElement
+  // Width floor the viewer computes for its toolbar (34px per button).
+  minToolbarWidth?: number
 }
 
 declare global {
@@ -127,6 +129,7 @@ export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: stri
     if (!host || !xml) return
     let cancelled = false
     let viewer: DrawioViewerInstance | null = null
+    let detachFit: (() => void) | null = null
     // 'pages' is the viewer's own prev/next page selector (goal 0259):
     // it renders ahead of the zoom cluster only when the file has more
     // than one page (the viewer hides it otherwise), so a multi-page
@@ -147,6 +150,26 @@ export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: stri
             // the whole app window (goal 0292). Opt the element out
             // directly; the custom property inherits to its buttons.
             instance.toolbar?.style.setProperty('--wails-draggable', 'no-drag')
+            // The viewer sizes the toolbar from the host's offsetWidth --
+            // its LAYOUT width -- while positioning it in screen space.
+            // On the board the host sits inside the canvas kit's zoom
+            // transform, so the bar came out wider than the object at
+            // any zoom below 1 (goal 0292). Re-fit it from the on-screen
+            // rect, after the viewer's own handlers (registered first)
+            // have placed it; only while it is mounted.
+            const fitToolbar = () => {
+              const toolbar = instance.toolbar
+              if (!toolbar?.parentNode) return
+              const onScreen = host.getBoundingClientRect().width
+              toolbar.style.width = `${Math.max(instance.minToolbarWidth ?? 0, onScreen)}px`
+            }
+            host.addEventListener('mouseenter', fitToolbar)
+            const observer = new ResizeObserver(fitToolbar)
+            observer.observe(host)
+            detachFit = () => {
+              host.removeEventListener('mouseenter', fitToolbar)
+              observer.disconnect()
+            }
           })
         } catch (err) {
           setError(err instanceof Error ? err.message : String(err))
@@ -161,6 +184,7 @@ export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: stri
       // pointer leave; a host unmounted while hovered would leave it
       // orphaned over the board.
       viewer?.toolbar?.remove()
+      detachFit?.()
       host.innerHTML = ''
       host.removeAttribute('data-mxgraph')
     }
