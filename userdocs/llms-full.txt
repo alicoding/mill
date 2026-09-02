@@ -1276,7 +1276,10 @@ offers **Rich code blocks**: turn it on and code fences in notes get
 syntax coloring and the full code editor, starting the next time a
 note opens for editing. The Sheet offers **Preview rows** and
 **Preview columns**: how much of a spreadsheet shows on the board
-before the "showing the first…" note. Text and number settings save
+before the "showing the first…" note. The Table offers **New grid
+(experimental)**: tables render with the adopted spreadsheet grid
+(keyboard navigation, range selection, copy and paste); column
+editing stays in the current grid for now. Text and number settings save
 when you press Enter or leave the field. Installed plugins appear
 below the built-in list with their own rows, including any settings
 they declare.
