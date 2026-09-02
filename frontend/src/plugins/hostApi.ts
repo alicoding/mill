@@ -12,7 +12,7 @@ import { settingDeclsFromManifest } from './pluginSettings'
 import { buildPluginStorage } from './pluginStorage'
 import { pushNotice } from '../shared/noticeStore'
 import { resolveExtensionSetting, subscribeExtensionSetting } from '../shared/extensionSettingsStore'
-import type { CanvasObjectDecl, ContentQuery, MillPluginAPI } from './sdk'
+import type { CanvasObjectDecl, ContentQuery, MillPluginAPI, PluginFetchInit } from './sdk'
 
 // buildPluginAPI constructs the ONE object a plugin ever holds
 // (docs/adr/0047 §2: capabilities arrive as api calls the host
@@ -67,6 +67,15 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		// on('contents:changed') is the existing 'atlas' dataevent every
 		// card/note/object mutation already emits.
 		query: async (q: ContentQuery = {}) => ((await AtlasService.ListContents(q.kind ?? '', q.parentId ?? '')) ?? []).map(contentEntryFromWire),
+		// The network door (goal 0288): the bound call does every check --
+		// capability, declared host + method, guardrail -- and executes
+		// host-side; this is only the shape adapter.
+		fetch: async (url: string, init: PluginFetchInit = {}) => {
+			const r = await PluginService.FetchForPlugin(pluginId, { method: init.method ?? 'GET', url, headers: init.headers ?? {}, body: init.body ?? '' })
+			const headers: Record<string, string> = {}
+			for (const [k, v] of Object.entries(r.headers ?? {})) if (v !== undefined) headers[k] = v
+			return { approved: r.approved, effect: r.effect, ruleLabel: r.ruleLabel, status: r.status, headers, body: r.body }
+		},
 		on: (event, handler) => {
 			if (event !== 'contents:changed') throw new Error(`plugin ${pluginId}: unknown event "${String(event)}"`)
 			return Events.On('mill-data-changed', (evt) => {

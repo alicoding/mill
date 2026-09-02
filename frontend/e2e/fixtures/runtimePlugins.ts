@@ -15,7 +15,15 @@ import { RUNTIME_PLUGINS_SERVER_BASE_PORT, RUNTIME_PLUGINS_MCP_BASE_PORT } from 
 // original spec uses 0-8, the doors spec 10+.
 export const EXAMPLES_PLUGINS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'examples', 'plugins')
 
-export async function launchWithPlugins(offset: number, opts: { withBroken?: boolean; withNotifier?: boolean } = {}) {
+// ExtraPlugin -- a fixture plugin a test writes into the copied
+// plugins dir before boot: a manifest object and a main.js source.
+export interface ExtraPlugin {
+	id: string
+	manifest: Record<string, unknown>
+	main: string
+}
+
+export async function launchWithPlugins(offset: number, opts: { withBroken?: boolean; withNotifier?: boolean; extraPlugins?: ExtraPlugin[] } = {}) {
 	const dir = mkdtempSync(path.join(tmpdir(), 'mill-plugins-e2e-'))
 	// The plugins dir is a per-test COPY of examples/plugins (the exact
 	// artifact a user copies from) -- never the repo folder itself, so
@@ -28,6 +36,11 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 	if (opts.withBroken) {
 		mkdirSync(path.join(pluginsDir, 'broken-one'))
 		writeFileSync(path.join(pluginsDir, 'broken-one', 'manifest.json'), '{not json')
+	}
+	for (const extra of opts.extraPlugins ?? []) {
+		mkdirSync(path.join(pluginsDir, extra.id))
+		writeFileSync(path.join(pluginsDir, extra.id, 'manifest.json'), JSON.stringify({ id: extra.id, version: '1.0.0', ...extra.manifest }))
+		writeFileSync(path.join(pluginsDir, extra.id, 'main.js'), extra.main)
 	}
 	if (opts.withNotifier) {
 		// A minimal plugin exercising the notice door (goal 0277): one

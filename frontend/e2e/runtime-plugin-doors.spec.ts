@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test'
+import { createServer } from 'node:http'
+import type { AddressInfo } from 'node:net'
 import { launchWithPlugins } from './fixtures/runtimePlugins'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { clickAtlasTrayTool } from './fixtures/atlasTray'
@@ -147,5 +149,74 @@ test('the Board index plugin lists notes by first line and stays current through
 		await expect(face.getByTestId('index-kind-note')).toHaveCount(0)
 	} finally {
 		await close()
+	}
+})
+
+// api.fetch (goal 0288): a declared host reaches the guardrail (ask by
+// default -> parks in Review with the plugin as source -> approve ->
+// the response reaches the plugin); an undeclared host is refused
+// before any rule runs. The target is a throwaway local HTTP server
+// this test owns -- Mill's constraint that no outbound call happens
+// without the user configuring it holds even inside the proof.
+test('a plugin fetch is guarded: a declared host parks in Review and returns the response on approval; an undeclared host is refused outright', async () => {
+	const http = createServer((_req, res) => { res.setHeader('Content-Type', 'text/plain'); res.end('pong from the probe target') })
+	await new Promise<void>((resolve) => http.listen(0, '127.0.0.1', resolve))
+	const port = (http.address() as AddressInfo).port
+	const host = `127.0.0.1:${port}`
+	const { page, close } = await launchWithPlugins(16, {
+		extraPlugins: [{
+			id: 'fetch-probe',
+			manifest: { name: 'Fetch probe', capabilities: ['fetch'], contributes: { network: [{ host }] } },
+			main: `export function activate(api) {
+	api.registerCommand({ id: 'ok', label: 'Probe fetch declared', run: async () => {
+		try {
+			const r = await api.fetch('http://${host}/ping')
+			api.notify({ level: r.approved ? 'success' : 'warning', text: r.approved ? 'Got ' + r.status + ': ' + r.body : 'Not allowed ' + r.ruleLabel, action: undefined })
+		} catch (e) { api.notify({ level: 'error', text: 'Threw: ' + (e && e.message ? e.message : e) }) }
+	} })
+	api.registerCommand({ id: 'bad', label: 'Probe fetch undeclared', run: async () => {
+		try { await api.fetch('https://example.com/'); api.notify({ level: 'error', text: 'Undeclared host went through' }) }
+		catch (e) { api.notify({ level: 'warning', text: 'Refused: ' + (e && e.message ? e.message : e) }) }
+	} })
+}
+` }],
+	})
+	try {
+		await page.goto('/')
+		await expect(page.getByRole('link', { name: 'Atlas' })).toBeVisible()
+		const runFromPalette = async (label: string) => {
+			await page.keyboard.press('Meta+/')
+			const dialog = page.getByRole('dialog', { name: 'Command palette' })
+			await expect(dialog).toBeVisible()
+			await dialog.getByRole('combobox').fill(label)
+			await dialog.getByRole('option', { name: label }).click()
+		}
+
+		// Undeclared host: refused before the guardrail -- nothing parks.
+		await runFromPalette('Probe fetch undeclared')
+		const refused = page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Refused:' })
+		await expect(refused).toBeVisible()
+		await expect(refused).toContainText('contributes.network')
+		await refused.getByTestId('notice-dismiss').click()
+
+		// Declared host: parks in Review (ask by default), approved from a
+		// second tab so the asking plugin stays mounted and gets the answer.
+		await runFromPalette('Probe fetch declared')
+		const reviewPage = await page.context().newPage()
+		await reviewPage.goto('/')
+		await reviewPage.getByRole('link', { name: 'Review' }).click()
+		const row = reviewPage.locator('[data-testid="review-guarded-action-item"]')
+		await expect(row).toBeVisible()
+		await expect(row.locator('[data-testid="review-guarded-action-source"]')).toContainText('plugin:fetch-probe')
+		await expect(row).toContainText(host)
+		await row.locator('[data-testid="review-guarded-action-approve"]').click()
+		await expect(row).toHaveCount(0)
+		const got = page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Got 200' })
+		await expect(got).toBeVisible()
+		await expect(got).toContainText('pong from the probe target')
+		await reviewPage.close()
+	} finally {
+		await close()
+		await new Promise<void>((resolve) => http.close(() => resolve()))
 	}
 })

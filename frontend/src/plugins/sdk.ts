@@ -277,6 +277,30 @@ export interface PluginEventMap {
   'contents:changed': { id: string }
 }
 
+// PluginFetchInit / PluginFetchResult (goal 0288): the network door.
+// A plugin never opens a connection -- api.fetch asks Mill, whose
+// guardrail rules allow, park in Review, or deny the request; on
+// approval Mill performs it host-side, confined to a host the
+// manifest's contributes.network declares (redirects included), and
+// hands the response back. A host or method the manifest does not
+// declare, or a non-http(s) URL, REJECTS the promise before any rule
+// runs; a denied or still-parked-then-denied request RESOLVES with
+// approved: false and the rule's label.
+export interface PluginFetchInit {
+  method?: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  headers?: Record<string, string>
+  body?: string
+}
+
+export interface PluginFetchResult {
+  approved: boolean
+  effect: string
+  ruleLabel: string
+  status: number
+  headers: Record<string, string>
+  body: string
+}
+
 // MillPluginAPI is the one object a plugin ever holds -- handed to its
 // exported activate(api), frozen by the host.
 export interface MillPluginAPI {
@@ -294,6 +318,9 @@ export interface MillPluginAPI {
   query: (q?: ContentQuery) => Promise<ContentEntry[]>
   // on subscribes to a host event and returns the unsubscribe function.
   on: <K extends keyof PluginEventMap>(event: K, handler: (payload: PluginEventMap[K]) => void) => () => void
+  // fetch performs a guarded HTTP request (goal 0288); see
+  // PluginFetchInit for the contract.
+  fetch: (url: string, init?: PluginFetchInit) => Promise<PluginFetchResult>
 }
 
 // A plugin's main.js default-exports (or named-exports) activate:
