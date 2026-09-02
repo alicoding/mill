@@ -32,8 +32,33 @@ export function activate(api) {
 		return api.settings.get('titleStyle') === 'address' ? withScheme(url) : new URL(withScheme(url)).hostname
 	}
 
+	// The guarded open, shared by the face's Open button and the
+	// object's context-menu item (menuItems below): Mill performs the
+	// open on approval; the plugin never touches the browser.
+	const openGuarded = async (ctx, onStatus) => {
+		const url = withScheme((ctx.object.Payload.url || '').trim())
+		if (!url) { onStatus('Enter an address first.'); return }
+		onStatus('Asking…')
+		try {
+			const result = await ctx.requestGuardedAction('open-url', { url }, `Open ${url} in the browser`)
+			onStatus(result.approved ? 'Opened.' : 'Not allowed' + (result.ruleLabel ? ` (${result.ruleLabel}).` : '.'))
+		} catch (err) {
+			onStatus(String(err && err.message ? err.message : err))
+		}
+	}
+
 	api.registerCanvasObject({
 		kind: 'bookmark',
+		// Context-menu items on bookmark objects only (goal 0280); the
+		// open needs an address, so the item hides until there is one.
+		menuItems: [
+			{
+				id: 'open',
+				label: 'Open in browser',
+				enabled: (ctx) => !!(ctx.object.Payload.url || '').trim(),
+				run: (ctx) => { void openGuarded(ctx, (text) => { if (text !== 'Asking…' && text !== 'Opened.') api.notify({ level: 'warning', text }) }) },
+			},
+		],
 		label: 'Bookmark',
 		description: 'A web address pinned to the board.',
 		icon: '🔖',
@@ -96,17 +121,7 @@ export function activate(api) {
 		const status = document.createElement('span')
 		status.setAttribute('data-testid', 'bookmark-status')
 		status.style.cssText = 'font:11px system-ui;color:#57606a'
-		open.addEventListener('click', async () => {
-			const url = withScheme((ctx.object.Payload.url || '').trim())
-			if (!url) { status.textContent = 'Enter an address first.'; return }
-			status.textContent = 'Asking…'
-			try {
-				const result = await ctx.requestGuardedAction('open-url', { url }, `Open ${url} in the browser`)
-				status.textContent = result.approved ? 'Opened.' : 'Not allowed' + (result.ruleLabel ? ` (${result.ruleLabel}).` : '.')
-			} catch (err) {
-				status.textContent = String(err && err.message ? err.message : err)
-			}
-		})
+		open.addEventListener('click', () => { void openGuarded(ctx, (text) => { status.textContent = text }) })
 		row.append(open, status)
 
 		el.append(title, input, row)

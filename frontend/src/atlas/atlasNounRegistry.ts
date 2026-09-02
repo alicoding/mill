@@ -1,3 +1,4 @@
+import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { ComponentType } from 'react'
 import type { Icon } from '@primer/octicons-react'
 import { ATLAS_TOOL_IDENTITIES, type AtlasToolIdentity, type AtlasToolInteraction } from '../shared/atlasToolIdentity'
@@ -390,6 +391,17 @@ export type ThirdPartyNounShape = Omit<AtlasToolShapeBase, 'boardObjectKind'> & 
   // joined from the manifest's contributes by the host -- lowercased
   // ".ext" entries the drop router compares against extensionOf().
   fileExtensions: string[]
+  // menuItems (goal 0280): the plugin's own context-menu items for
+  // objects of this kind, validated and bound to the object ctx by
+  // plugins/canvasToolAdapter.ts, read by atlas/useAtlasObjectMenu.ts.
+  menuItems: readonly ThirdPartyMenuItem[]
+}
+
+export interface ThirdPartyMenuItem {
+  id: string
+  label: string
+  run: (object: BoardObject) => void
+  enabled: (object: BoardObject) => boolean
 }
 
 const thirdPartyRegistry = new Map<string, ThirdPartyNounShape>()
