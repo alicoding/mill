@@ -105,6 +105,10 @@ var knownCapabilities = map[string]bool{
 	// with confinement to the declared host on every hop; the plugin
 	// receives the response, never a socket.
 	"fetch": true,
+	// write-content: create notes and cards and append List rows
+	// through the guarded content plane (docs/goals/0289) -- the same
+	// guard an agent's write takes, kind content.write.
+	"write-content": true,
 }
 
 // pluginIDPattern pins ids to a filesystem- and URL-safe slug: the id
@@ -121,6 +125,9 @@ type PluginService struct {
 	guardrail  *guardrailsvc.GuardrailService
 	openURL    func(url string) error
 	appVersion string
+	// content is the guarded content-write seam (docs/goals/0289),
+	// nil until the composition root wires it.
+	content ContentWriter
 }
 
 func New(dir string, guardrail *guardrailsvc.GuardrailService, appVersion string) *PluginService {

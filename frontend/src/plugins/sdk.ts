@@ -301,6 +301,31 @@ export interface PluginFetchResult {
   body: string
 }
 
+// PluginContentAPI (goal 0289): writes to the board through the SAME
+// guarded content plane an agent's writes take -- create a note, a
+// card, update a card, append a List row -- each evaluated by the
+// owner's guardrail rules (allow / park in Review / deny) with the
+// plugin as the named source, and recorded under the plugin's own
+// undo actor. Needs the "write-content" capability; without it every
+// call rejects before any rule runs. A denied write resolves with
+// approved: false and the rule's label; an approved one carries the
+// created (or updated) entity's id.
+export interface PluginWriteResult {
+  approved: boolean
+  effect: string
+  ruleLabel: string
+  id: string
+}
+
+export interface PluginContentAPI {
+  // position defaults to just right of the parent's right-most item.
+  createNote: (input: { text: string; parentId?: string; position?: { x: number; y: number } }) => Promise<PluginWriteResult>
+  createCard: (input: { kindId: string; title: string; note?: string; fields?: Record<string, string>; parentId?: string }) => Promise<PluginWriteResult>
+  // An empty title/note leaves that part unchanged.
+  updateCard: (id: string, patch: { title?: string; note?: string; fields?: Record<string, string> }) => Promise<PluginWriteResult>
+  appendListRow: (listId: string, values: Record<string, string>) => Promise<PluginWriteResult>
+}
+
 // MillPluginAPI is the one object a plugin ever holds -- handed to its
 // exported activate(api), frozen by the host.
 export interface MillPluginAPI {
@@ -321,6 +346,7 @@ export interface MillPluginAPI {
   // fetch performs a guarded HTTP request (goal 0288); see
   // PluginFetchInit for the contract.
   fetch: (url: string, init?: PluginFetchInit) => Promise<PluginFetchResult>
+  content: PluginContentAPI
 }
 
 // A plugin's main.js default-exports (or named-exports) activate:

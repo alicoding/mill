@@ -8,10 +8,13 @@ export {
 
 export type {
     CanvasObjectContribution,
+    ContentWriter,
     GuardedActionDecision,
     Manifest,
     ManifestContributes,
     NetworkContribution,
+    PluginContentWrite,
+    PluginContentWriteResult,
     PluginFetchRequest,
     PluginFetchResult,
     PluginInfo,

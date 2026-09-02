@@ -245,6 +245,31 @@ else api.notify({ level: 'warning', text: 'Not allowed' + (res.ruleLabel ? ' (' 
 Credentials belong in the vault, not in plugin code; the setting type
 that names a vault entry is on the roadmap.
 
+## Writing to the board
+
+A plugin creates notes and cards, updates cards, and adds rows to a
+List through the same guarded door an agent uses: each write goes to
+your guardrail rules — allow, ask you first in Review, or deny — with
+the plugin named as the source, and lands with its own undo history.
+The manifest declares the capability; without it every write is
+refused before any rule runs.
+
+```json
+"capabilities": ["write-content"]
+```
+
+```js
+const note = await api.content.createNote({ text: 'Call the bank\ntomorrow', parentId })
+const card = await api.content.createCard({ kindId, title: 'Acme', fields: { status: 'active' } })
+await api.content.updateCard(card.id, { note: 'Renewal due in March' })
+await api.content.appendListRow(listId, { vendor: 'Acme', tier: 'gold' })
+if (!note.approved) api.notify({ level: 'warning', text: 'Not allowed' + (note.ruleLabel ? ' (' + note.ruleLabel + ')' : '') })
+```
+
+A note without a position lands just right of the last item in its
+parent. A denied write resolves with `approved: false`; an approved
+one carries the new entity's `id`.
+
 ## The example plugins
 
 Mill's repository ships three working examples: **Bookmark**
