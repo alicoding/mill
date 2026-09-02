@@ -402,7 +402,9 @@
     "model": "Model",
     "modelPlaceholder": "llama3.2",
     "url": "URL",
-    "command": "Command"
+    "command": "Command",
+    "none": "None",
+    "edit": "Edit"
   },
   "manualSchemaEditor": {
     "methodTooltip": "The request's own Method (set at the top of this form) -- the schema only describes the payload, never the transport.",

@@ -6,6 +6,7 @@ import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal
 import { CompositionService } from '../shared/bindings'
 import { EntityRefField } from '../configure/EntityRefField'
 import { RunButton, type RunButtonHandle } from './LiveRunControls'
+import { findCommand } from '../shared/commands'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from '../shared/ListCard.module.css'
 
@@ -101,7 +102,7 @@ export function CanvasMetaHeader({
             <Label variant="secondary" size="small" data-testid="view-mode-chip">
               <EyeIcon size={12} /> {t('canvasMetaHeader.viewing')}
             </Label>
-            <Button size="small" leadingVisual={PencilIcon} onClick={onSwitchToEdit} data-testid="edit-workflow">
+            <Button size="small" leadingVisual={PencilIcon} onClick={() => { const cmd = findCommand('workflow.edit'); if (cmd?.enabled?.()) cmd.run(); else onSwitchToEdit?.() }} data-testid="edit-workflow">
               {t('canvasMetaHeader.edit')}
             </Button>
           </>
@@ -125,7 +126,14 @@ export function CanvasMetaHeader({
         <Stack direction="horizontal" gap="normal" align="start">
           <FormControl className={styles.metaDescription}>
             <FormControl.Label>{t('canvasMetaHeader.description')}</FormControl.Label>
-            <Textarea value={draftDescription} onChange={(e) => onDescriptionChange(e.target.value)} rows={2} block disabled={readOnly} />
+            {readOnly ? (
+              // Read-only shows the VALUE, never a disabled control (goal 0297).
+              <Text as="p" size="small" className={runbookStyles.muted} style={{ margin: 0, whiteSpace: 'pre-wrap' }} data-testid="workflow-description-readonly">
+                {draftDescription || t('canvasMetaHeader.noDescription')}
+              </Text>
+            ) : (
+              <Textarea value={draftDescription} onChange={(e) => onDescriptionChange(e.target.value)} rows={2} block />
+            )}
           </FormControl>
           {workflow && (
             // fieldset-disabled in view mode, the inspector's own
@@ -133,7 +141,7 @@ export function CanvasMetaHeader({
             <fieldset disabled={readOnly} className={styles.metaOfferFieldset} data-testid="workflow-offer-field">
               <FormControl>
                 <FormControl.Label>{t('canvasMetaHeader.offerLabel')}</FormControl.Label>
-                <EntityRefField refKind="request" value={offerValue} onChange={commitOffer} />
+                <EntityRefField refKind="request" value={offerValue} onChange={commitOffer} readOnly={readOnly} />
                 <FormControl.Caption>{t('canvasMetaHeader.offerCaption')}</FormControl.Caption>
               </FormControl>
               {offerError && <Text as="p" size="small" className={runbookStyles.error}>{offerError}</Text>}

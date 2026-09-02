@@ -696,6 +696,13 @@
     "enabled": false
   },
   {
+    "id": "workflow.edit",
+    "label": "Edit workflow",
+    "binding": null,
+    "surface": null,
+    "enabled": true
+  },
+  {
     "id": "workflow.new",
     "label": "New workflow",
     "binding": "⌘N",

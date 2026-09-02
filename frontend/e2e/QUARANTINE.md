@@ -19,7 +19,7 @@ trace (now auto-captured on retry).
 | breakpoints.spec.ts:80 | live-run | 2026-08-16 | 2026-09-16 | paused-at-breakpoint polling |
 | seed-completeness.spec.ts:62,84 | live-run | 2026-08-16 | 2026-09-16 | SUCCESS-status polling |
 | decision-outcome.spec.ts:192 | live-run | 2026-08-16 | 2026-09-16 | SUCCESS-status polling |
-| decision-outcome.spec.ts:132 | live-run | 2026-08-26 | 2026-09-26 | second live-run sighting in this file (:192 already registered): pinned-arm test hit CI-load timeout once on an unrelated PR (#472's run), passed on retry #1, 5/5 green locally -- same SUCCESS-status-polling class |
+| decision-outcome.spec.ts:132 | live-run → FIXED 2026-09-02 | 2026-08-26 | — | third CI sighting (2026-09-02, #585 shard 5): the reached terminal card's probe points all landed on the run bar / minimap overlays on the runner's taller layout (`dblClickReachedTerminal`), NOT the SUCCESS poll; the helper now zooms out and re-measures. Passed 12/12 under 4x throttle before the fix, which is what said it was geometry, not load |
 | mcp-write-staleness.spec.ts:21 | live-run | 2026-08-16 | 2026-09-16 | real MCP round-trip |
 | guardrail.spec.ts:238 | live-run | 2026-08-16 | 2026-09-16 | approve/deny resolve polling |
 | state-persistence.spec.ts:74 | unclear | 2026-08-16 | 2026-09-16 | reload/IPC timing; await first trace |

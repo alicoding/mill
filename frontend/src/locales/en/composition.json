@@ -319,7 +319,8 @@
     "saving": "Saving…",
     "saveChanges": "Save changes",
     "saveWorkflow": "Save workflow",
-    "description": "Description"
+    "description": "Description",
+    "noDescription": "No description"
   },
   "canvasToolbar": {
     "backAriaLabel": "Back to workflows",

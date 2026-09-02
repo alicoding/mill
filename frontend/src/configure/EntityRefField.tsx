@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Dialog, FormControl, Select, TextInput } from '@primer/react'
+import { Dialog, FormControl, Link, Select, Text, TextInput } from '@primer/react'
+import { findCommand } from '../shared/commands'
 import { AtlasService, CompositionService, ConfigureService } from '../shared/bindings'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -88,7 +89,12 @@ function kindNounFor(t: (key: string) => string): Record<string, string> {
 // lightweight sub-form; the picker only lists what already exists.
 const QUICK_CREATABLE_KINDS = new Set(['request', 'list', 'mcpserver', 'decision', 'execenv', 'aiprovider'])
 
-export function EntityRefField({ refKind, value, onChange }: { refKind: string; value: string; onChange: (id: string) => void }) {
+// readOnly (goal 0297): a read-only canvas never shows a control that
+// does nothing -- the field renders its VALUE (the entity's label, or
+// None) and, while the tab can be switched to edit, an Edit link that
+// runs workflow.edit. Links are not disabled by an enclosing disabled
+// fieldset, which is what makes this reachable inside the inspector.
+export function EntityRefField({ refKind, value, onChange, readOnly }: { refKind: string; value: string; onChange: (id: string) => void; readOnly?: boolean }) {
   const { t } = useTranslation('configure')
   const KIND_NOUN = kindNounFor(t)
   const [entities, setEntities] = useState<Entity[] | null>(null)
@@ -114,6 +120,24 @@ export function EntityRefField({ refKind, value, onChange }: { refKind: string; 
     onChange(id)
   }
 
+  if (readOnly) {
+    const editCommand = findCommand('workflow.edit')
+    const canEdit = editCommand ? (editCommand.enabled?.() ?? true) : false
+    const label = entities === null ? t('loading') : (entities.find((e) => e.ID === value)?.Label ?? (value ? t('entityRefField.unknownEntity', { noun: KIND_NOUN[refKind], value }) : t('entityRefField.none')))
+    return (
+      <Text as="p" size="small" data-testid="entity-ref-readonly" style={{ margin: 0 }}>
+        {label}
+        {canEdit && (
+          <>
+            {' · '}
+            {/* An anchor, not a button: buttons inside the inspector's
+                disabled fieldset are disabled with it; anchors are not. */}
+            <Link href="#" onClick={(e) => { e.preventDefault(); editCommand?.run() }} data-testid="entity-ref-edit">{t('entityRefField.edit')}</Link>
+          </>
+        )}
+      </Text>
+    )
+  }
   return (
     <>
       <Select
