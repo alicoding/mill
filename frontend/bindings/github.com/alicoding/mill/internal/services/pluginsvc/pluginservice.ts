@@ -74,3 +74,19 @@ export function RequestGuardedAction(pluginID: string, kind: string, attributes:
 export function RevealPluginsDir(): $CancellablePromise<void> {
     return $Call.ByID(4165393810);
 }
+
+/**
+ * WireContentWrites installs the writer (composition root only).
+ */
+export function WireContentWrites(w: $models.ContentWriter): $CancellablePromise<void> {
+    return $Call.ByID(794793522, w);
+}
+
+/**
+ * WriteContentForPlugin performs one guarded content write. Refusals
+ * that need no rule -- undeclared capability, unknown op, a malformed
+ * ask -- happen BEFORE the guardrail is consulted.
+ */
+export function WriteContentForPlugin(pluginID: string, req: $models.PluginContentWrite): $CancellablePromise<$models.PluginContentWriteResult> {
+    return $Call.ByID(3781653108, pluginID, req);
+}

@@ -5,6 +5,16 @@ import { launchWithPlugins } from './fixtures/runtimePlugins'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { clickAtlasTrayTool } from './fixtures/atlasTray'
 
+// runFromPalette -- the one way these tests fire a plugin command: the
+// palette's own binding, the command by its registered label.
+async function runFromPalette(page: import('@playwright/test').Page, label: string) {
+	await page.keyboard.press('Meta+/')
+	const dialog = page.getByRole('dialog', { name: 'Command palette' })
+	await expect(dialog).toBeVisible()
+	await dialog.getByRole('combobox').fill(label)
+	await dialog.getByRole('option', { name: label }).click()
+}
+
 // The platform DOORS a runtime plugin gets beyond rendering its own
 // object (goal 0261's ratified order): declared settings (0258),
 // notify (0277), query + change events (0278) -- each proven against
@@ -80,11 +90,7 @@ test('a plugin notice renders in the app notice pill with the plugin named, and 
 		await page.goto('/')
 		// The shell must be mounted before the palette shortcut can land.
 		await expect(page.getByRole('link', { name: 'Atlas' })).toBeVisible()
-		await page.keyboard.press('Meta+/')
-		const dialog = page.getByRole('dialog', { name: 'Command palette' })
-		await expect(dialog).toBeVisible()
-		await dialog.getByRole('combobox').fill('Say hello')
-		await dialog.getByRole('option', { name: 'Say hello from the probe' }).click()
+		await runFromPalette(page, 'Say hello from the probe')
 		const notice = page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Hello from the probe.' })
 		await expect(notice).toBeVisible()
 		await expect(notice).toHaveAttribute('data-notice-level', 'warning')
@@ -184,16 +190,9 @@ test('a plugin fetch is guarded: a declared host parks in Review and returns the
 	try {
 		await page.goto('/')
 		await expect(page.getByRole('link', { name: 'Atlas' })).toBeVisible()
-		const runFromPalette = async (label: string) => {
-			await page.keyboard.press('Meta+/')
-			const dialog = page.getByRole('dialog', { name: 'Command palette' })
-			await expect(dialog).toBeVisible()
-			await dialog.getByRole('combobox').fill(label)
-			await dialog.getByRole('option', { name: label }).click()
-		}
 
 		// Undeclared host: refused before the guardrail -- nothing parks.
-		await runFromPalette('Probe fetch undeclared')
+		await runFromPalette(page, 'Probe fetch undeclared')
 		const refused = page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Refused:' })
 		await expect(refused).toBeVisible()
 		await expect(refused).toContainText('contributes.network')
@@ -201,7 +200,7 @@ test('a plugin fetch is guarded: a declared host parks in Review and returns the
 
 		// Declared host: parks in Review (ask by default), approved from a
 		// second tab so the asking plugin stays mounted and gets the answer.
-		await runFromPalette('Probe fetch declared')
+		await runFromPalette(page, 'Probe fetch declared')
 		const reviewPage = await page.context().newPage()
 		await reviewPage.goto('/')
 		await reviewPage.getByRole('link', { name: 'Review' }).click()
@@ -218,5 +217,80 @@ test('a plugin fetch is guarded: a declared host parks in Review and returns the
 	} finally {
 		await close()
 		await new Promise<void>((resolve) => http.close(() => resolve()))
+	}
+})
+
+// api.content (goal 0289): a plugin's note creation parks in Review
+// with the plugin as source and, approved, lands on the board -- which
+// the Board index example (api.query + api.on) then lists by its first
+// line without a reload. A plugin without the capability is refused
+// before any rule runs.
+test('a plugin content write is guarded: approved in Review it lands on the board and the index lists it; without the capability it is refused outright', async () => {
+	const { page, close } = await launchWithPlugins(18, {
+		extraPlugins: [
+			{
+				id: 'writer-probe',
+				manifest: { name: 'Writer probe', capabilities: ['write-content'] },
+				main: `export function activate(api) {
+	api.registerCommand({ id: 'note', label: 'Probe write a note', run: async () => {
+		try {
+			const r = await api.content.createNote({ text: 'Written by the probe' })
+			api.notify({ level: r.approved ? 'success' : 'warning', text: r.approved ? 'Wrote ' + r.id : 'Not allowed ' + r.ruleLabel })
+		} catch (e) { api.notify({ level: 'error', text: 'Threw: ' + (e && e.message ? e.message : e) }) }
+	} })
+}
+` },
+			{
+				id: 'reader-probe',
+				manifest: { name: 'Reader probe' },
+				main: `export function activate(api) {
+	api.registerCommand({ id: 'note', label: 'Probe write without capability', run: async () => {
+		try { await api.content.createNote({ text: 'nope' }); api.notify({ level: 'error', text: 'Undeclared write went through' }) }
+		catch (e) { api.notify({ level: 'warning', text: 'Refused: ' + (e && e.message ? e.message : e) }) }
+	} })
+}
+` },
+		],
+	})
+	try {
+		await page.goto('/')
+		await page.getByRole('link', { name: 'Atlas' }).click()
+		const board = page.getByTestId('atlas-board')
+		await expect(board).toBeVisible()
+		// The Board index example is on the board so the write's landing
+		// is observed through the platform's own read door.
+		await page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Board index"]').click()
+		const spot = await findEmptyBoardRect(page, board, 300, 200)
+		const bb = await board.boundingBox()
+		if (!bb) throw new Error('board has no bounding box')
+		await board.click({ position: { x: spot.x - bb.x + 10, y: spot.y - bb.y + 10 } })
+		const face = page.locator('[data-testid="index-face"]')
+		await expect(face).toBeVisible()
+		await expect(face.getByTestId('index-kind-note')).toHaveCount(0)
+		await page.keyboard.press('Escape')
+
+
+		await runFromPalette(page, 'Probe write without capability')
+		const refused = page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Refused:' })
+		await expect(refused).toContainText('write-content')
+		await refused.getByTestId('notice-dismiss').click()
+
+		await runFromPalette(page, 'Probe write a note')
+		const reviewPage = await page.context().newPage()
+		await reviewPage.goto('/')
+		await reviewPage.getByRole('link', { name: 'Review' }).click()
+		const row = reviewPage.locator('[data-testid="review-guarded-action-item"]')
+		await expect(row).toBeVisible()
+		await expect(row.locator('[data-testid="review-guarded-action-source"]')).toContainText('plugin:writer-probe')
+		await expect(row).toContainText('Create a note: Written by the probe')
+		await row.locator('[data-testid="review-guarded-action-approve"]').click()
+		await expect(row).toHaveCount(0)
+		await expect(page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Wrote ' })).toBeVisible()
+		await expect(face.getByTestId('index-kind-note')).toHaveText('Note · 1')
+		await expect(face.locator('[data-testid="index-row"][data-kind="note"]')).toHaveText('Written by the probe')
+		await expect(page.getByTestId('atlas-sticky-note')).toBeVisible()
+		await reviewPage.close()
+	} finally {
+		await close()
 	}
 })

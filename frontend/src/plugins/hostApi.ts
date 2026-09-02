@@ -25,6 +25,16 @@ const KIND_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/
 const SOURCES = new Set(['board-local', 'url', 'file'])
 const EDIT_ROUTES = new Set(['inline', 'external-app', 'none'])
 
+type ContentWriteWire = Parameters<typeof PluginService.WriteContentForPlugin>[1]
+
+async function writeContent(pluginId: string, req: Partial<ContentWriteWire>) {
+	const r = await PluginService.WriteContentForPlugin(pluginId, {
+		op: '', text: '', title: '', note: '', kindId: '', cardId: '', parentId: '', listId: '', fields: {}, values: {}, position: null,
+		...req,
+	} as ContentWriteWire)
+	return { approved: r.approved, effect: r.effect, ruleLabel: r.ruleLabel, id: r.id }
+}
+
 export function buildPluginAPI(manifest: Manifest, millVersion: string, storageSnapshot: Record<string, string> = {}): MillPluginAPI {
 	const pluginId = manifest.id
 	const requestGuardedAction = async (kind: string, attributes: Record<string, string>, description: string) => {
@@ -76,6 +86,15 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			for (const [k, v] of Object.entries(r.headers ?? {})) if (v !== undefined) headers[k] = v
 			return { approved: r.approved, effect: r.effect, ruleLabel: r.ruleLabel, status: r.status, headers, body: r.body }
 		},
+		// The content-write door (goal 0289): every check and the write
+		// itself live host-side (WriteContentForPlugin); these are shape
+		// adapters over one bound call.
+		content: Object.freeze({
+			createNote: (input) => writeContent(pluginId, { op: 'note', text: input.text, parentId: input.parentId ?? '', position: input.position ? { X: input.position.x, Y: input.position.y } : null }),
+			createCard: (input) => writeContent(pluginId, { op: 'card', kindId: input.kindId, title: input.title, note: input.note ?? '', fields: input.fields ?? {}, parentId: input.parentId ?? '' }),
+			updateCard: (id, patch) => writeContent(pluginId, { op: 'card-update', cardId: id, title: patch.title ?? '', note: patch.note ?? '', fields: patch.fields ?? {} }),
+			appendListRow: (listId, values) => writeContent(pluginId, { op: 'list-row', listId, values }),
+		}),
 		on: (event, handler) => {
 			if (event !== 'contents:changed') throw new Error(`plugin ${pluginId}: unknown event "${String(event)}"`)
 			return Events.On('mill-data-changed', (evt) => {

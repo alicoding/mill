@@ -18,6 +18,8 @@ var journaledDoors = map[string]string{
 	"CreateBoardObject":      "create family",
 	"CreateCard":             "create family",
 	"CreateCardForMCP":       "create family, actor=mcp (never popped by the UI actor)",
+	"CreateCardForPlugin":    "create family, actor=plugin (never popped by the UI actor)",
+	"CreateNoteForPlugin":    "create family, actor=plugin",
 	"CreateCardForWorkflow":  "create family, actor=workflow (never popped by the UI actor)",
 	"CreateCardFromFileDrop": "create family",
 	"CreateCardLinkedFrom":   "composes commitLinkedCardLocked + DeleteCard as its undo",
@@ -47,6 +49,7 @@ var journaledDoors = map[string]string{
 	"SetPosition":            "scalar family",
 	"UpdateCard":             "content family",
 	"UpdateCardForMCP":       "content family, actor=mcp",
+	"UpdateCardForPlugin":    "content family, actor=plugin",
 	"UpdateLink":             "scalar family (label)",
 	"UpdateNoteText":         "content family",
 }
