@@ -10,15 +10,16 @@ import { atlasSpaceShareActions } from './atlasSpaceShareActions'
 // actions AtlasSpaceShareMenu.tsx uses. A `latest` ref (Part G's own
 // shape) so every effect always reads the current viewedID/callbacks
 // without needing them in its dependency array.
-export function useAtlasCommandSignals({ viewedID, onArrange, onExport, onError }: {
+export function useAtlasCommandSignals({ viewedID, onArrange, onExport, onError, onOpenContents }: {
   viewedID: string
   onArrange: () => void
   onExport: () => void
   onError: (message: string) => void
+  onOpenContents: () => void
 }) {
-  const latest = useRef({ viewedID, onArrange, onExport, onError })
+  const latest = useRef({ viewedID, onArrange, onExport, onError, onOpenContents })
   useEffect(() => {
-    latest.current = { viewedID, onArrange, onExport, onError }
+    latest.current = { viewedID, onArrange, onExport, onError, onOpenContents }
   })
 
   const arrangeRequest = useUISignalStore((s) => s.atlasArrangeRequest)
@@ -28,6 +29,14 @@ export function useAtlasCommandSignals({ viewedID, onArrange, onExport, onError 
     lastArrangeRequest.current = arrangeRequest
     latest.current.onArrange()
   }, [arrangeRequest])
+
+  const contentsRequest = useUISignalStore((s) => s.atlasContentsRequest)
+  const lastContentsRequest = useRef(contentsRequest)
+  useEffect(() => {
+    if (contentsRequest === lastContentsRequest.current) return
+    lastContentsRequest.current = contentsRequest
+    latest.current.onOpenContents()
+  }, [contentsRequest])
 
   const exportRequest = useUISignalStore((s) => s.atlasExportRequest)
   const lastExportRequest = useRef(exportRequest)

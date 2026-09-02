@@ -26,6 +26,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.arrange` | Auto-arrange | — | atlas | Always available |
 | `atlas.card.exportAs` | Export card as… | — | atlas | Always available |
 | `atlas.companion.toggle` | Toggle companion panel | — | atlas | Always available |
+| `atlas.contents.open` | Contents | — | atlas | Always available |
 | `atlas.coverage` | Open coverage | — | atlas | Always available |
 | `atlas.create.area` | Draw an area | — | atlas | Conditional — available only in a matching state |
 | `atlas.create.card` | Add a card | — | atlas | Conditional — available only in a matching state |

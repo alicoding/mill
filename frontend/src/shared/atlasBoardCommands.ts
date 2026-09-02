@@ -18,6 +18,15 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     run: () => useUISignalStore.getState().requestAtlasArrange(),
   },
   {
+    // The board's Contents dialog (docs/goals/0279): every card, note,
+    // and object listed by kind with display names.
+    id: 'atlas.contents.open',
+    label: 'Contents',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasContents(),
+  },
+  {
     id: 'atlas.import',
     label: 'Import atlas',
     defaultBinding: null,

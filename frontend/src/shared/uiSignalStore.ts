@@ -109,6 +109,9 @@ interface UISignalState {
   // does exactly what the toolbar button does.
   atlasArrangeRequest: number
   requestAtlasArrange: () => void
+  // atlas.contents.open (docs/goals/0279): opens the board's Contents dialog.
+  atlasContentsRequest: number
+  requestAtlasContents: () => void
   atlasImportRequest: number
   requestAtlasImport: () => void
   atlasExportRequest: number
@@ -207,6 +210,8 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   bumpAtlasUndoApplied: () => set((s) => ({ atlasUndoAppliedTick: s.atlasUndoAppliedTick + 1 })),
   atlasArrangeRequest: 0,
   requestAtlasArrange: () => set((s) => ({ atlasArrangeRequest: s.atlasArrangeRequest + 1 })),
+  atlasContentsRequest: 0,
+  requestAtlasContents: () => set((s) => ({ atlasContentsRequest: s.atlasContentsRequest + 1 })),
   atlasImportRequest: 0,
   requestAtlasImport: () => set((s) => ({ atlasImportRequest: s.atlasImportRequest + 1 })),
   atlasExportRequest: 0,
