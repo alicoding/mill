@@ -132,12 +132,14 @@ test('a run started from the Quick Panel shows under Recent as done', async ({},
     await search.fill(parkedLabel)
     await expect(page.getByRole('option', { name: parkedLabel })).toBeVisible()
     await page.keyboard.press('Enter')
-    await expect(page.getByTestId('quick-panel-status')).toHaveText(`"${parkedLabel}" is waiting for your approval`)
+    // The parked-run RPC returns once the run has parked; give a loaded
+    // runner the same headroom the settled case gets.
+    await expect(page.getByTestId('quick-panel-status')).toHaveText(`"${parkedLabel}" is waiting for your approval`, { timeout: 15_000 })
 
     const panelPage = await s.browser.newPage({ baseURL: s.server.baseURL })
     await panelPage.goto(`${s.server.baseURL}/#/traypanel`)
     const recentRow = panelPage.getByTestId('tray-recent-row').filter({ hasText: label })
-    await expect(recentRow).toBeVisible()
+    await expect(recentRow).toBeVisible({ timeout: 15_000 }) // the panel refreshes every 5s
     await expect(recentRow).toHaveAttribute('data-run-kind', 'done')
     await expect(recentRow).toContainText('Done')
     await expect(panelPage.getByTestId('tray-no-runs-yet')).toHaveCount(0)

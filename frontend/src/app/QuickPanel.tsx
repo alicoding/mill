@@ -24,7 +24,7 @@ import { QuickPanelReplyReviewDoor } from './QuickPanelReplyReviewDoor'
 import { useQuickPanelClipboardDoor } from './useQuickPanelClipboardDoor'
 import { FacetChipRow } from '../shared/FacetChipRow'
 import { useQuickPanelFacetSearch } from './quickPanelFacets'
-import { useQuickPanelWorkflowActions } from './useQuickPanelWorkflowActions'
+import { useQuickPanelRun, useQuickPanelWorkflowActions } from './useQuickPanelWorkflowActions'
 import { QuickPanelFooter } from './QuickPanelFooter'
 import { useQuickPanelUpdateStatus } from './useQuickPanelUpdateStatus'
 import styles from './QuickPanel.module.css'
@@ -291,11 +291,11 @@ export function QuickPanel() {
 
   // Workflow row actions (goal 0294): Enter runs, ⌘Enter opens the
   // workflow, ⌘⇧Enter runs and opens its canvas, ⌘K lists them all.
-  const rowActions = useQuickPanelWorkflowActions({ workflows, pinnedWorkflowIds, togglePinnedWorkflow, setStatus, t })
+  const { runWorkflow: runWorkflowRow, lastRun } = useQuickPanelRun({ setStatus, t })
   useQuickPanelUpdateStatus(setStatus, t)
   const runWorkflow = (id: string) => {
     const wf = workflows?.find((w) => w.ID === id)
-    if (wf) rowActions.runWorkflow(wf)
+    if (wf) runWorkflowRow(wf)
   }
 
   // The clipboard door (goals 0039 + 0099) lives in its own hook --
@@ -388,7 +388,10 @@ export function QuickPanel() {
   const trimmedQuery = query.trim()
   const withCapture: PanelEntry[] = trimmedQuery
     ? [...filtered, {
-      id: 'save-note',
+      // Keyed by its query: as the one row surviving every filter change
+      // it became the list's "previous" active row, stealing Enter from
+      // the top result (goal 0294).
+      id: `save-note:${trimmedQuery}`,
       groupId: 'actions',
       text: t('quickPanel.saveNote'),
       description: t('quickPanel.saveNoteHint'),
@@ -408,6 +411,10 @@ export function QuickPanel() {
       return rank(a.groupId) - rank(b.groupId)
     })
     : GROUP_METADATA
+  // The rows the shortcuts can target, in list order (the hook falls
+  // back to the first when the list has no active row yet).
+  const visibleWorkflowIds = withCapture.filter((e) => e.groupId === 'workflows').map((e) => e.id.slice('run:'.length))
+  const rowActions = useQuickPanelWorkflowActions({ workflows, visibleWorkflowIds, pinnedWorkflowIds, togglePinnedWorkflow, runWorkflow: runWorkflowRow, lastRun, t })
   const items = withCapture.map((entry) => ({
     key: entry.id,
     id: entry.id,
