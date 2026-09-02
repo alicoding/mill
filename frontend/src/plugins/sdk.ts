@@ -245,6 +245,38 @@ export interface PluginStorageAPI {
   keys: () => string[]
 }
 
+// ContentEntry (goal 0278): one thing on the board as api.query lists
+// it -- a card (kind 'card', subkind = its Atlas Kind id), a note
+// (kind 'note', payload.text), or a board object (its own kind, its
+// payload). title is the display name a person sees: a card's title,
+// a note's first line, an object's payload title or kind.
+export interface ContentEntry {
+  id: string
+  kind: string
+  subkind?: string
+  title: string
+  parentId?: string
+  position: { x: number; y: number }
+  size?: { w: number; h: number }
+  payload: Record<string, string>
+}
+
+export interface ContentQuery {
+  // kind narrows to 'card', 'note', or one object kind; omitted lists
+  // everything.
+  kind?: string
+  // parentId narrows to one card's direct children.
+  parentId?: string
+}
+
+// PluginEventMap (goal 0278): the events a plugin can subscribe to.
+// 'contents:changed' fires whenever anything on the board is created,
+// edited, moved, or deleted, with the changed entry's id. A closed
+// map, so a new event is a type addition here, never a convention.
+export interface PluginEventMap {
+  'contents:changed': { id: string }
+}
+
 // MillPluginAPI is the one object a plugin ever holds -- handed to its
 // exported activate(api), frozen by the host.
 export interface MillPluginAPI {
@@ -257,6 +289,11 @@ export interface MillPluginAPI {
   // notify shows a notice and returns its dismiss function.
   notify: (input: PluginNoticeInput) => () => void
   storage: PluginStorageAPI
+  // query lists the board's contents (goal 0278); always the current
+  // state, never a cache.
+  query: (q?: ContentQuery) => Promise<ContentEntry[]>
+  // on subscribes to a host event and returns the unsubscribe function.
+  on: <K extends keyof PluginEventMap>(event: K, handler: (payload: PluginEventMap[K]) => void) => () => void
 }
 
 // A plugin's main.js default-exports (or named-exports) activate:

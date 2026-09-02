@@ -190,16 +190,40 @@ await api.storage.set('pencil', { color, size })
 await api.storage.delete('pencil')
 api.storage.keys()                                      // ['pencil', …]
 ```
+## Reading the board
+
+A plugin lists what is on the board through `api.query`, and hears
+about changes through `api.on`. Every entry carries the name a person
+sees it by: a card's title, a note's first line, an object's title or
+kind. Cards, notes, and every object kind — built-in or another
+plugin's — come back the same shape.
+
+```js
+const notes = await api.query({ kind: 'note' })        // [{ id, kind, title, parentId, position, size, payload }]
+const everything = await api.query({})
+const children = await api.query({ parentId: someCardId })
+
+const stop = api.on('contents:changed', ({ id }) => {
+  // Something on the board was created, edited, moved, or deleted.
+  // A face only re-renders on its own data, so re-list here.
+})
+```
+
+The Board index example (`examples/plugins/mill-index`) is exactly
+this: one object whose face lists the board by kind and re-renders
+on every change.
 
 ## The example plugins
 
-Mill's repository ships two working examples: **Bookmark**
+Mill's repository ships three working examples: **Bookmark**
 (`examples/plugins/mill-bookmark`) — a web address pinned to the
-board, edited in place, opened through a guarded ask — and
-**Scribble** (`examples/plugins/mill-scribble`) — a freehand drawing
-tool exercising the drag interaction, style fields, and live preview
-above. Copy either folder into your plugins folder to try it, or use
-it as the starting point for your own.
+board, edited in place, opened through a guarded ask, with two
+declared settings — **Scribble** (`examples/plugins/mill-scribble`) —
+a freehand drawing tool exercising the drag interaction, style fields,
+and live preview above — and **Board index**
+(`examples/plugins/mill-index`) — a live listing of the board through
+`api.query` and `api.on`. Copy any folder into your plugins folder to
+try it, or use it as the starting point for your own.
 
 ## Writing one
 

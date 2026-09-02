@@ -125,6 +125,37 @@ export interface ClipbridgeReplyPreview {
 }
 
 /**
+ * ContentEntry is the index's one envelope. Title is the display
+ * name (a card's title; a note's derived first line, never stored --
+ * atlas.NoteDisplayName; an object's payload title, else its kind).
+ * Subkind carries a card's Atlas Kind id (a note or object has none).
+ * Payload is a board object's own payload, and {"text": …} for a
+ * note; a card's fields are deliberately NOT here (agents read them
+ * through atlas_read_card; the plugin-side question is recorded on
+ * goal 0261's remaining list).
+ */
+export interface ContentEntry {
+    "ID": string;
+    "Kind": string;
+    "Subkind": string;
+    "Title": string;
+    "ParentID": string;
+    "Position": atlas$0.Position;
+    "Size": atlas$0.Dimensions | null;
+    "Payload": { [_ in string]?: string } | null;
+}
+
+/**
+ * ContentsFilter narrows the index: Kind to one kind ("card", "note",
+ * or an object kind), ParentID to one parent's direct children. Empty
+ * means everything.
+ */
+export interface ContentsFilter {
+    "Kind": string;
+    "ParentID": string;
+}
+
+/**
  * FileDropCreateResult is CreateCardFromFileDrop's own response --
  * wraps the newly created card with an additive duplicate-detection
  * verdict (goal 0088): DuplicateOfCardID/DuplicateOfTitle are empty
