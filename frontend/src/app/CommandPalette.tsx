@@ -260,6 +260,7 @@ export function CommandPalette() {
     groupId: command.surface ? 'surface' : 'commands',
     text: command.label,
     searchText: `${command.label} ${command.id}`.toLowerCase(),
+    keywords: command.keywords,
     leadingVisual: CommandPaletteIcon,
     // HotkeyHint (app/HotkeyHint.tsx) resolves the command's live
     // effective binding itself (default merged with any Settings

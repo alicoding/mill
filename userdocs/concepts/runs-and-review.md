@@ -66,3 +66,8 @@ the footer shows what the highlighted row can do:
   run is watched step by step.
 - **⌘⇧P** pins or unpins it.
 - **⌘K** lists all of these with their shortcuts.
+
+The same panel is the fastest way to update Mill: type "update" and
+press ↩ to check. The footer tells you whether you're up to date, or
+names the next step — download and install, then restart to finish —
+and typing "update" or "relaunch" again finds that step.

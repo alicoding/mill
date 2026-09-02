@@ -43,6 +43,10 @@ interface UpdateNoticeState {
   // outcomes; automatic checks never set them, staying as quiet as
   // before. 'upToDate' auto-dismisses; 'failed' waits for the user.
   userCheck: 'idle' | 'checking' | 'upToDate' | 'failed'
+  // Versions for outcome copy: the notice's own available version, and
+  // the last user-started check's current version.
+  availableVersion: string
+  currentVersion: string
   runUserCheck: () => void
   dismissUserCheckNotice: () => void
 }
@@ -69,10 +73,15 @@ export const useUpdateNoticeStore = create<UpdateNoticeState>()((set, get) => ({
       .catch((err) => set({ trustSigningStatus: 'error', trustSigningError: String(err) }))
   },
   userCheck: 'idle',
+  availableVersion: '',
+  currentVersion: '',
   runUserCheck: () => {
     set({ userCheck: 'checking' })
     SettingsService.CheckForUpdates()
-      .then(() => refreshUpdateNoticeState())
+      .then((result) => {
+        set({ currentVersion: result.currentVersion, availableVersion: result.updateAvailable ? result.version : '' })
+        return refreshUpdateNoticeState()
+      })
       .then(() => {
         const landed = get().updateNoticeState
         if (landed === UpdateState.UpdateStateAvailable || landed === UpdateState.UpdateStateDownloading || landed === UpdateState.UpdateStateReady) {
@@ -105,6 +114,7 @@ export function refreshUpdateNoticeState(): Promise<void> {
     .then((n) => {
       useUpdateNoticeStore.getState().setUpdateNoticeState(n.state)
       useUpdateNoticeStore.getState().setNotes(n.notesVersion, n.notesHTML)
+      if (n.availableVersion) useUpdateNoticeStore.setState({ availableVersion: n.availableVersion })
     })
     .catch(console.error)
 }

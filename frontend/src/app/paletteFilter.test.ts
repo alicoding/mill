@@ -92,3 +92,14 @@ describe('filterPaletteEntries fuzzy tier', () => {
     expect(result).toEqual(['first', 'second'])
   })
 })
+
+describe('keywords (goal 0295)', () => {
+  it('ranks a keyword-prefix match ahead of a plain contains match, regardless of order', () => {
+    const entries = [
+      { id: 'wf', searchText: 'notify when an update is available' },
+      { id: 'cmd', searchText: 'check for updates', keywords: ['update', 'upgrade', 'version'] },
+    ]
+    expect(filterPaletteEntries(entries, 'update').map((e) => e.id)).toEqual(['cmd', 'wf'])
+    expect(filterPaletteEntries(entries, 'upg').map((e) => e.id)).toEqual(['cmd'])
+  })
+})

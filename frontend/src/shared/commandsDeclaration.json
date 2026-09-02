@@ -609,7 +609,7 @@
     "label": "Check for updates",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": true
   },
   {
     "id": "update.downloadAndInstall",

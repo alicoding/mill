@@ -97,7 +97,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `tab.closeOthers` | Close other tabs | `⌘⌥W` | Global | Conditional — available only in a matching state |
 | `tab.next` | Next tab | `⌃TAB` | Global | Always available |
 | `tab.prev` | Previous tab | `⌃⇧TAB` | Global | Always available |
-| `update.check` | Check for updates | — | Global | Always available |
+| `update.check` | Check for updates | — | Global | Conditional — available only in a matching state |
 | `update.downloadAndInstall` | Download the update and install | — | Global | Conditional — available only in a matching state |
 | `update.relaunch` | Restart to finish updating | — | Global | Conditional — available only in a matching state |
 | `update.trustSigning` | Trust Mill's signing | — | Global | Always available |

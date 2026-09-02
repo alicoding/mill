@@ -74,6 +74,12 @@ export interface Command {
   // palette has no way to supply. Still reachable via HotkeyHint,
   // ContextMenu items, and the Shortcuts Help overlay.
   paletteHidden?: boolean
+  // Search aliases (goal 0295, the launcher convention Raycast calls
+  // keywords): a query that starts any keyword ranks the command as a
+  // prefix match, ahead of rows that merely contain it -- so "update"
+  // finds "Check for updates" above a workflow whose label happens to
+  // mention an update. Lowercase, user vocabulary, never ids.
+  keywords?: string[]
   // State-aware enablement (goal 0222 S1, VSCode's "when" clause): omit
   // for an always-valid command. Replaces guarding inline inside run()
   // and returning silently. CommandPalette.tsx omits a disabled command

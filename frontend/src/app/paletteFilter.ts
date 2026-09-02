@@ -26,6 +26,8 @@ export interface PaletteSearchable {
   // -- built once per entry at render time, not re-derived per
   // keystroke inside this function.
   searchText: string
+  // Aliases that rank as prefix matches (Command.keywords).
+  keywords?: string[]
 }
 
 // Below this normalized fuzzysort score (0..1, 1 = exact) a
@@ -44,7 +46,7 @@ export function filterPaletteEntries<T extends PaletteSearchable>(entries: T[], 
   const fuzzyCandidates: { entry: T; score: number; index: number }[] = []
   entries.forEach((entry, index) => {
     const at = entry.searchText.indexOf(q)
-    if (at === 0) {
+    if (at === 0 || entry.keywords?.some((k) => k.startsWith(q))) {
       prefixMatches.push(entry)
       return
     }
