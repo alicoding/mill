@@ -130,29 +130,34 @@ export function MilkdownEditor({ value, onChange, ariaLabel, placeholder, testId
       })
     })
     let destroyed = false
-    // create() is async; StrictMode's dev-only double-invoke (mount ->
-    // cleanup -> mount) means the cleanup below can run before it
-    // resolves. destroy() is only ever called AFTER create() settles
-    // -- never synchronously in the cleanup -- so a still-in-flight
-    // instance is never torn down mid-construction, which was measured
-    // live to corrupt the SURVIVING instance while both raced to mount
-    // into the same container.
-    const ready = crepe.create().then(() => {
+    let creating: Promise<void> | null = null
+    // StrictMode's dev-only double-invoke runs mount -> cleanup -> mount
+    // synchronously in one commit. Creating eagerly put TWO instances
+    // into the same container, the cancelled first one torn down only
+    // after its own create() settled (measured live to corrupt the
+    // survivor). Deferring create() by a microtask lets that cancelled
+    // mount never build at all; a real mount is unaffected, and
+    // destroy() still only ever runs AFTER create() settles.
+    queueMicrotask(() => {
       if (destroyed) return
-      crepe.setReadonly(!editable)
-      // Exact match, not just [contenteditable]: Milkdown's own
-      // widget decorations (e.g. a placeholder node) carry
-      // contenteditable="false", which the attribute-presence selector
-      // alone would also match.
-      const root = containerRef.current?.querySelector<HTMLElement>('[contenteditable="true"]')
-      root?.setAttribute('aria-label', ariaLabel)
-      onReadyRef.current?.(() => crepe.getMarkdown())
+      creating = crepe.create().then(() => {
+        if (destroyed) return
+        crepe.setReadonly(!editable)
+        // Exact match, not just [contenteditable]: Milkdown's own
+        // widget decorations (e.g. a placeholder node) carry
+        // contenteditable="false", which the attribute-presence selector
+        // alone would also match.
+        const root = containerRef.current?.querySelector<HTMLElement>('[contenteditable="true"]')
+        root?.setAttribute('aria-label', ariaLabel)
+        onReadyRef.current?.(() => crepe.getMarkdown())
+      })
     })
     return () => {
       destroyed = true
       onReadyRef.current?.(undefined)
       setToolbar(null)
-      void ready.finally(() => {
+      if (!creating) return
+      void creating.finally(() => {
         toolbarHandle?.destroy()
         return crepe.destroy()
       })

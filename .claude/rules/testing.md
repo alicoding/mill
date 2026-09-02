@@ -361,6 +361,20 @@ user primitive can reach the state.
   'only-on-failure'`; CI retries 2 / local 1. A flake's first CI
   recurrence ships a trace.zip in the failure artifact — read it before
   theorizing.
+- **A CI-only flake is chased locally under CPU throttle, never by
+  rerunning CI** (goal 0296): `E2E_CPU_THROTTLE=4 npx playwright test
+  <spec> --retries=0 --repeat-each=3` applies Chromium's own CPU
+  throttling through the shared `page` fixture (a public-repo runner
+  is 4 vCPU; measured 4x = 92 ms for a 23 ms busy loop). A failure that
+  reproduces this way is a load race with a local repro; one that
+  doesn't is not "the runner", look elsewhere (state leak, order
+  dependence).
+- **CI shards are balanced per test** (`fullyParallel` on in CI only,
+  goal 0296): Playwright only distributes evenly with it on, and a CI
+  shard runs one worker, so a file's tests may land on DIFFERENT
+  shards, each with its own fresh server. A file whose tests genuinely
+  must run in order declares `test.describe.configure({ mode:
+  'serial' })` at its top — never rely on file order implicitly.
 - **The flake protocol**: a test observed flaking twice either gets FIXED
   or enters `frontend/e2e/QUARANTINE.md` with class, entered/review dates,
   and notes. Retry-passing is never a fix. The same two-strikes shape
