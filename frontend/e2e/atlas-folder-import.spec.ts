@@ -96,8 +96,11 @@ test('add from folder: scan, partial accept, containment, and mirror rendering a
   // carries one of each, so exactly one diagram and one surviving
   // fence prove both the render and the honest fallback.
   const diagram = overlay.getByTestId('atlas-mermaid-diagram')
-  await expect(diagram).toHaveCount(1)
-  await expect(diagram.locator('svg')).toBeVisible()
+  // The diagram engine is a lazy chunk rendered after the prose mounts:
+  // under a loaded runner the load + render outruns the default wait
+  // (instrumented: the render completed, after the assertion expired).
+  await expect(diagram).toHaveCount(1, { timeout: 30_000 })
+  await expect(diagram.locator('svg')).toBeVisible({ timeout: 30_000 })
   await expect(overlay.getByTestId('atlas-mirror-markdown').locator('code.language-mermaid')).toHaveCount(1)
 
   // Cleanup (testing.md's within-file/within-worker discipline): the
