@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/alicoding/mill/internal/adapters/httpconnector"
@@ -36,9 +37,15 @@ var allowedMethods = map[string]bool{"GET": true, "HEAD": true, "POST": true, "P
 // validateNetwork fail-closes a contributes.network block like every
 // other contribution: a malformed host or an unknown method blocks
 // the load with the reason named.
+// AnyHost is the network declaration whose meaning is fixed (docs/
+// goals/0291): a request to a host the manifest does not otherwise
+// declare is ALWAYS a live ask, never rule-allowable -- an any-host
+// plugin can never be made silent.
+const AnyHost = "*"
+
 func validateNetwork(entries []NetworkContribution) string {
 	for _, n := range entries {
-		if !hostPattern.MatchString(n.Host) {
+		if n.Host != AnyHost && !hostPattern.MatchString(n.Host) {
 			return fmt.Sprintf("contributed network host %q must be a lowercase hostname with an optional port", n.Host)
 		}
 		for _, m := range n.Methods {
@@ -92,19 +99,32 @@ func (p *PluginService) FetchForPlugin(pluginID string, req PluginFetchRequest) 
 	if err != nil {
 		return PluginFetchResult{}, err
 	}
-	allowHost := func(h string) bool { return networkAllows(plugin.Manifest.Contributes.Network, h, method) }
-	if !allowHost(host) {
+	network := plugin.Manifest.Contributes.Network
+	declared := networkAllows(network, host, method)
+	anyHost := !declared && networkAllows(network, AnyHost, method)
+	if !declared && !anyHost {
 		return PluginFetchResult{}, fmt.Errorf("plugin %q does not declare %s %s in its manifest's contributes.network", pluginID, method, host)
 	}
+	// Confinement is to the host being asked about (redirects included):
+	// a wildcard plugin still cannot hop to a second host silently.
+	allowHost := func(h string) bool { return h == host || networkAllows(network, h, method) }
 	if p.guardrail == nil {
 		return PluginFetchResult{}, errors.New("guardrail unavailable: a plugin fetch is always guarded")
 	}
-	decision, err := p.guardrail.RequestGuardedAction(context.Background(), guardrailsvc.GuardedAction{
+	action := guardrailsvc.GuardedAction{
 		Kind:        FetchKind,
-		Attributes:  map[string]string{"host": host, "method": method, "url": req.URL},
+		Attributes:  map[string]string{"host": host, "method": method, "url": req.URL, "declared": strconv.FormatBool(declared)},
 		Description: fmt.Sprintf("%s %s", method, host),
 		Source:      "plugin:" + pluginID,
-	})
+	}
+	var decision guardrailsvc.Decision
+	if anyHost {
+		// Undeclared host under "*": always a live ask, rules skipped.
+		action.Description += " (a host this plugin did not declare)"
+		decision, err = p.guardrail.AskGuardedAction(context.Background(), action)
+	} else {
+		decision, err = p.guardrail.RequestGuardedAction(context.Background(), action)
+	}
 	if err != nil {
 		return PluginFetchResult{}, err
 	}
@@ -146,7 +166,8 @@ func hostOf(raw string) (string, error) {
 }
 
 // networkAllows answers whether the manifest declares host for method
-// (an entry with no methods means GET only).
+// (an entry with no methods means GET only). Asking about AnyHost
+// answers whether the wildcard entry exists for that method.
 func networkAllows(entries []NetworkContribution, host, method string) bool {
 	for _, n := range entries {
 		if n.Host != host {

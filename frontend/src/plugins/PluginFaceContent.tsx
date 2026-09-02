@@ -3,7 +3,7 @@ import type { BoardObject } from '../../bindings/github.com/alicoding/mill/inter
 import { AtlasService } from '../shared/bindings'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import type { MirrorReadState } from '../atlas/useAtlasObjectMirrorRead'
-import type { CanvasObjectDecl, GuardedActionResult } from './sdk'
+import type { CanvasObjectDecl, CanvasObjectFaceCtx, GuardedActionResult } from './sdk'
 
 // pluginFaceComponent adapts a plugin's framework-agnostic
 // renderFace(el, ctx) callback into the one React component shape the
@@ -14,6 +14,28 @@ import type { CanvasObjectDecl, GuardedActionResult } from './sdk'
 // a file-source object, when its mirrored bytes load/change (the host
 // already owns that read; goal 0252 S2 passes it through as
 // ctx.mirror) -- the plugin reads ctx to decide what to redraw.
+// pluginObjectCtx -- the object half of a face ctx (goal 0280): what a
+// menu item's run() receives, and what the face itself spreads its
+// mirror state onto. One construction, so a plugin sees the same
+// object shape from both doors.
+export function pluginObjectCtx(pluginId: string, object: BoardObject): Omit<CanvasObjectFaceCtx, 'mirror'> {
+	return {
+		object: {
+			ID: object.ID,
+			Kind: object.Kind,
+			Payload: Object.fromEntries(Object.entries(object.Payload ?? {}).flatMap(([k, v]) => (v === undefined ? [] : [[k, v]]))),
+			Size: object.Size ? { W: object.Size.W, H: object.Size.H } : null,
+		},
+		updatePayload: async (patch) => {
+			await AtlasService.SetBoardObjectPayload(object.ID, patch)
+		},
+		requestGuardedAction: async (kind, attributes, description): Promise<GuardedActionResult> => {
+			const d = await PluginService.RequestGuardedAction(pluginId, kind, attributes, description)
+			return { approved: d.Approved, effect: d.Effect, ruleLabel: d.RuleLabel, performed: d.Performed }
+		},
+	}
+}
+
 export function pluginFaceComponent(pluginId: string, decl: CanvasObjectDecl & { renderFace: NonNullable<CanvasObjectDecl['renderFace']> }): ComponentType<{ object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState }> {
 	const fileSource = decl.source === 'file'
 	const Face = memo(function PluginFace({ object, mirrorVersion, mirrorContent }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState }) {
@@ -31,20 +53,8 @@ export function pluginFaceComponent(pluginId: string, decl: CanvasObjectDecl & {
 			if (!el) return
 			try {
 				decl.renderFace(el, {
-					object: {
-						ID: object.ID,
-						Kind: object.Kind,
-						Payload: Object.fromEntries(Object.entries(object.Payload ?? {}).flatMap(([k, v]) => (v === undefined ? [] : [[k, v]]))),
-						Size: object.Size ? { W: object.Size.W, H: object.Size.H } : null,
-					},
+					...pluginObjectCtx(pluginId, object),
 					mirror: fileSource ? { dataUrl: mirrorDataUrl, failed: mirrorFailed } : undefined,
-					updatePayload: async (patch) => {
-						await AtlasService.SetBoardObjectPayload(object.ID, patch)
-					},
-					requestGuardedAction: async (kind, attributes, description): Promise<GuardedActionResult> => {
-						const d = await PluginService.RequestGuardedAction(pluginId, kind, attributes, description)
-						return { approved: d.Approved, effect: d.Effect, ruleLabel: d.RuleLabel, performed: d.Performed }
-					},
 				})
 			} catch (err) {
 				// A plugin's render crash stays inside its own face --

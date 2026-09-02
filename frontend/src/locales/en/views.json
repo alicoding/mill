@@ -56,6 +56,10 @@
       "pluginCatchesFiles": "Catches {{list}} files dropped on the board",
       "pluginCatchesLinks": "Catches web links pasted on the board",
       "pluginViews": "Adds views: {{list}}",
+      "pluginReachesHosts": "Can reach: {{list}}",
+      "pluginReachesAnyHost": "Can reach any host you approve, one request at a time",
+      "pluginReachesHosts": "Can reach: {{list}}",
+      "pluginReachesAnyHost": "Can reach any host you approve, one request at a time",
       "pluginDisabledNote": "Turned off. Turn on and reload to load it.",
       "pluginToggleAria": "Enable {{name}}"
     },
