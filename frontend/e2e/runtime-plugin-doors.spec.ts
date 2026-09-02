@@ -209,6 +209,8 @@ test('a plugin fetch is guarded: a declared host parks in Review and returns the
 		const row = reviewPage.locator('[data-testid="review-guarded-action-item"]')
 		await expect(row).toBeVisible()
 		await expect(row.locator('[data-testid="review-guarded-action-source"]')).toContainText('plugin:fetch-probe')
+		// A live guarded action means the queue is NOT empty: no blankslate over it.
+		await expect(reviewPage.getByTestId('review-empty')).toHaveCount(0)
 		await expect(row).toContainText(host)
 		await row.locator('[data-testid="review-guarded-action-approve"]').click()
 		await expect(row).toHaveCount(0)
