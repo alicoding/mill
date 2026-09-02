@@ -6,6 +6,8 @@ import { PluginService } from '../../bindings/github.com/alicoding/mill/internal
 import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { SettingsService } from '../shared/bindings'
 import { pluginLoadStates } from '../plugins/loader'
+import { settingDeclsFromManifest } from '../plugins/pluginSettings'
+import { ExtensionSettingControl } from './ExtensionSettingControl'
 import { refreshDisabledExtensions, useExtensionEnablementStore } from '../shared/extensionEnablementStore'
 import styles from '../shared/ListCard.module.css'
 
@@ -109,6 +111,13 @@ export function ExtensionsInstalledPlugins() {
 										)}
 										{!error && runtime?.status === 'disabled' && (
 											<Text size="small" className={styles.muted}>{t('settings.extensions.pluginDisabledNote')}</Text>
+										)}
+										{!error && settingDeclsFromManifest(p.Manifest).length > 0 && (
+											<Stack direction="vertical" gap="condensed" data-testid="extensions-plugin-settings">
+												{settingDeclsFromManifest(p.Manifest).map((setting) => (
+													<ExtensionSettingControl key={setting.key} extensionId={id} setting={setting} />
+												))}
+											</Stack>
 										)}
 									</Stack>
 									{!error && (

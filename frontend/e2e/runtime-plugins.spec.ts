@@ -181,6 +181,65 @@ test('the Extensions page tells the install story: plugin row with manifest meta
 	}
 })
 
+// A plugin's declared settings (manifest contributes.settings, goal
+// 0258 slice 1) render host-side in its own Installed-plugins row --
+// an enum as a select, a string as a text field -- and reach plugin
+// code through api.settings: the bookmark's title style flips live on
+// every open face (onChange), and the value survives a reload.
+test('a plugin declares settings in its manifest; Mill renders them, stores them, and serves them back to the plugin', async () => {
+	const { page, close } = await launchWithPlugins(10)
+	try {
+		await page.goto('/')
+		await page.getByRole('link', { name: 'Atlas' }).click()
+		const board = page.getByTestId('atlas-board')
+		await expect(board).toBeVisible()
+		await page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]').click()
+		const spot = await findEmptyBoardRect(page, board, 300, 200)
+		const bb = await board.boundingBox()
+		if (!bb) throw new Error('board has no bounding box')
+		await board.click({ position: { x: spot.x - bb.x + 10, y: spot.y - bb.y + 10 } })
+		const face = page.locator('[data-testid="plugin-face-bookmark"]')
+		const title = face.locator('[data-testid="bookmark-title"]')
+		// The string setting's default shows before any address.
+		await expect(title).toHaveText('Bookmark')
+		await face.locator('[data-testid="bookmark-url-input"]').click()
+		await page.keyboard.type('example.com/docs')
+		await page.keyboard.press('Enter')
+		await expect(title).toHaveText('example.com')
+
+		// Settings: the row renders both declared controls.
+		await page.getByRole('link', { name: 'Settings' }).click()
+		const row = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-bookmark"]')
+		await row.scrollIntoViewIfNeeded()
+		const settings = row.locator('[data-testid="extensions-plugin-settings"]')
+		await expect(settings).toBeVisible()
+		const styleSelect = settings.locator('[data-testid="extension-setting-mill-bookmark-titleStyle"] select')
+		await expect(styleSelect).toHaveValue('hostname')
+		await styleSelect.selectOption('address')
+		const placeholder = settings.locator('[data-testid="extension-setting-mill-bookmark-placeholderTitle"] input')
+		await expect(placeholder).toHaveValue('Bookmark')
+		await placeholder.fill('Link')
+		await page.keyboard.press('Enter')
+
+		// Back on the board the plugin has re-read both values.
+		await page.getByRole('link', { name: 'Atlas' }).click()
+		await expect(title).toHaveText('https://example.com/docs')
+		// A second bookmark on its own empty rect (the first face would
+		// swallow a click inside it) shows the new placeholder title.
+		await page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]').click()
+		const spot2 = await findEmptyBoardRect(page, board, 300, 200)
+		await board.click({ position: { x: spot2.x - bb.x + 10, y: spot2.y - bb.y + 10 } })
+		await expect(page.locator('[data-testid="bookmark-title"]', { hasText: 'Link' })).toBeVisible()
+
+		// Persisted centrally: a reload serves the same values.
+		await page.reload()
+		await page.getByRole('link', { name: 'Atlas' }).click()
+		await expect(page.locator('[data-testid="bookmark-title"]', { hasText: 'https://example.com/docs' })).toBeVisible()
+	} finally {
+		await close()
+	}
+})
+
 test('a URL pasted from another app lands as the claiming plugin object, not a note (goal 0251)', async () => {
 	const { page, close } = await launchWithPlugins(6)
 	try {

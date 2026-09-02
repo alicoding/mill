@@ -40,6 +40,7 @@ export const noteTool = {
   // description states the taking-effect honestly.
   settings: [
     {
+      type: 'boolean',
       key: 'richCodeBlocks',
       label: 'Rich code blocks',
       description: 'Code fences get syntax coloring and the full code editor. Applies the next time a note opens for editing.',

@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 import { ColumnsIcon } from '@primer/octicons-react'
 import { registerBoardObjectContent } from '../atlasNounRegistry'
+import { SHEET_MAX_COLS, SHEET_MAX_ROWS } from '../atlasSheetTruncate'
 
 // Lazy-imported (React.lazy + Suspense, AtlasBoardObjectNode.tsx's own
 // boundary) rather than a static top-level import: AtlasSheetObjectContent
@@ -55,5 +56,29 @@ registerBoardObjectContent('sheet', {
     // File-drop-only, the same family Image's own 'file' group already
     // names (atlasNounRegistry.ts's AtlasNounGroup).
     group: 'file',
+    // The preview caps (goal 0258 slice 1's number consumer): the
+    // parameters truncateSheetRows already takes, read by
+    // AtlasSheetObjectContent.tsx per render. The defaults restate
+    // atlasSheetTruncate.ts's own constants.
+    settings: [
+      {
+        type: 'number',
+        key: 'previewRows',
+        label: 'Preview rows',
+        description: 'How many rows a sheet shows on the board. Larger sheets say how many rows were left out.',
+        defaultValue: SHEET_MAX_ROWS,
+        min: 1,
+        max: 500,
+      },
+      {
+        type: 'number',
+        key: 'previewCols',
+        label: 'Preview columns',
+        description: 'How many columns a sheet shows on the board.',
+        defaultValue: SHEET_MAX_COLS,
+        min: 1,
+        max: 100,
+      },
+    ],
   },
 })

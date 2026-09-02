@@ -58,6 +58,15 @@ export interface Manifest {
  */
 export interface ManifestContributes {
     "canvasObjects": CanvasObjectContribution[] | null;
+
+    /**
+     * Settings (docs/goals/0258 slice 1): the plugin's own declared
+     * user settings, the same declare -> host renders/stores/serves
+     * contract compiled-in nouns use. Declared in the manifest, not
+     * at activate() time, so the Extensions row can render them
+     * without running plugin code and validation fails the LOAD.
+     */
+    "settings": SettingContribution[] | null;
 }
 
 /**
@@ -74,4 +83,33 @@ export interface PluginInfo {
     "Dir": string;
     "Error": string;
     "Builtin": boolean;
+}
+
+/**
+ * SettingContribution is one declared plugin setting. Type is the
+ * four-type floor every declarative settings platform shares:
+ * "boolean", "string", "number", "enum". Default is the value in
+ * effect until the user touches the control (the converged
+ * `default` spelling), decoded as whatever JSON scalar the manifest
+ * wrote; validateContributes pins it to Type. Options is enum-only;
+ * Min/Max are number-only, both optional.
+ */
+export interface SettingContribution {
+    "key": string;
+    "type": string;
+    "label": string;
+    "description": string;
+    "default": any;
+    "options": SettingOption[] | null;
+    "min": number | null;
+    "max": number | null;
+}
+
+/**
+ * SettingOption is one enum choice: the stored value and its
+ * user-facing label.
+ */
+export interface SettingOption {
+    "value": string;
+    "label": string;
 }

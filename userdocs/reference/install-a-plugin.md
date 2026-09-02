@@ -117,6 +117,52 @@ declaration fields that open this up:
   uses — one undo step per pass). What was hit stays on Mill's side;
   the plugin never sees item identities.
 
+## Settings
+
+A plugin declares its own settings in the manifest, and Mill does the
+rest: the controls render inside the plugin's row under Installed
+plugins, the values are stored centrally, and the plugin reads them
+back through `api.settings`. A plugin never builds a settings screen.
+
+```json
+"contributes": {
+  "settings": [
+    { "key": "titleStyle", "type": "enum", "label": "Title",
+      "description": "What a bookmark shows as its title.",
+      "default": "hostname",
+      "options": [
+        { "value": "hostname", "label": "Site name" },
+        { "value": "address", "label": "Full address" }
+      ] },
+    { "key": "placeholderTitle", "type": "string",
+      "label": "Title before an address", "default": "Bookmark" }
+  ]
+}
+```
+
+Four types: `boolean` (a checkbox), `string` (a text field),
+`number` (a number field, with optional `min` and `max`), and `enum`
+(a dropdown over `options`). `default` is the value in effect until
+the user changes the control; a mistyped manifest — a default of the
+wrong type, an enum default missing from its options — blocks the
+plugin from loading and names the key in its row.
+
+```js
+export function activate(api) {
+  const style = api.settings.get('titleStyle')        // 'hostname' | 'address'
+  const stop = api.settings.onChange('titleStyle', (next) => {
+    // Redraw whatever depends on it -- a face only re-renders on its
+    // own data changes, so this is the door for a settings change.
+  })
+}
+```
+
+Commands a plugin registers can carry `enabled: () => boolean`, the
+same state check built-in commands use; a disabled command is left
+out of the palette rather than shown doing nothing. A default
+keyboard shortcut is not something a plugin ships — the user assigns
+one under Keyboard shortcuts.
+
 ## The example plugins
 
 Mill's repository ships two working examples: **Bookmark**

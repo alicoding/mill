@@ -11,5 +11,7 @@ export type {
     GuardedActionDecision,
     Manifest,
     ManifestContributes,
-    PluginInfo
+    PluginInfo,
+    SettingContribution,
+    SettingOption
 } from "./models.js";

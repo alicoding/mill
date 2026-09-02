@@ -155,6 +155,59 @@ test('a sheet with more than 50 rows shows the truncation note', async ({ page }
   await expect(sheetObjects(page)).toHaveCount(0)
 })
 
+// The preview caps are the Sheet extension's own declared NUMBER
+// settings (goal 0258 slice 1): the host renders a number field in
+// the Sheet row, commits on Enter (clamped to the declared range, an
+// invalid draft reverting), and every open sheet re-renders against
+// the new cap. Restored to the default before the test ends (shared-
+// pool global-flag discipline).
+test('the sheet preview row cap is a declared number setting the sheet honors live', async ({ page }) => {
+  const fs = await import('node:fs')
+  const os = await import('node:os')
+  const nodePath = await import('node:path')
+  const dir = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'mill-e2e-atlas-sheet-cap-'))
+  const bigCSV = nodePath.join(dir, 'ZzE2eSheetCap.csv')
+  const lines = ['Header']
+  for (let i = 0; i < 60; i++) lines.push(`row-${i}`)
+  fs.writeFileSync(bigCSV, lines.join('\n'))
+
+  const setPreviewRows = async (draft: string) => {
+    await page.getByRole('link', { name: 'Settings' }).click()
+    const sheetRow = page.locator('[data-testid="extensions-row"][data-extension-id="sheet"]')
+    if (!(await sheetRow.getByTestId('extensions-row-expanded').isVisible())) await sheetRow.locator('summary').click()
+    const field = page.getByTestId('extension-setting-sheet-previewRows').locator('input')
+    await field.fill(draft)
+    await page.keyboard.press('Enter')
+    return field
+  }
+
+  await page.goto('/')
+  let field = await setPreviewRows('5')
+  await expect(field).toHaveValue('5')
+  // An empty draft (the one non-numeric state a number field can
+  // reach -- the browser refuses letters) reverts to the committed
+  // value; one above the declared max clamps to it (below).
+  await field.fill('')
+  await page.keyboard.press('Enter')
+  await expect(field).toHaveValue('5')
+
+  const sheetObject = await landSheetObject(page, bigCSV)
+  await expect(sheetObject.getByTestId('atlas-object-sheet-truncated')).toHaveText('Showing the first 5 of 61 rows.')
+
+  field = await setPreviewRows('9999')
+  await expect(field).toHaveValue('500')
+
+  // Restore the default, then confirm the sheet is back on it.
+  field = await setPreviewRows('50')
+  await expect(field).toHaveValue('50')
+  await openBoard(page)
+  await waitForBoardSettled(page)
+  await expect(sheetObjects(page).getByTestId('atlas-object-sheet-truncated')).toHaveText('Showing the first 50 of 61 rows.')
+
+  await deleteViaContextMenu(page, sheetObjects(page))
+  await expect(sheetObjects(page)).toHaveCount(0)
+})
+
 // The file-backed preview/open/watch contract's own command (goal
 // 0232 S1, extended to this Kind by S2): "Open in default app" appears
 // on a sheet board object's own context menu, the same generic

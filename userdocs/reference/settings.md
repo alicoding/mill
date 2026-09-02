@@ -34,8 +34,12 @@ Sheet, stops new ones landing on drop). Some extensions offer their
 own settings inside the row — expand the row to find them. The Note
 offers **Rich code blocks**: turn it on and code fences in notes get
 syntax coloring and the full code editor, starting the next time a
-note opens for editing. Installed plugins appear below the built-in
-list with their own rows.
+note opens for editing. The Sheet offers **Preview rows** and
+**Preview columns**: how much of a spreadsheet shows on the board
+before the "showing the first…" note. Text and number settings save
+when you press Enter or leave the field. Installed plugins appear
+below the built-in list with their own rows, including any settings
+they declare.
 
 ## Keyboard shortcuts
 

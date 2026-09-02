@@ -14,6 +14,10 @@ export interface RuntimeCommandDecl {
   // command belongs to the atlas surface, exactly like the built-in
   // tools' atlas.create.<id> commands) -- omitted means global.
   surface?: import('../shared/commands').Command['surface']
+  // enabled mirrors Command.enabled (goal 0258 slice 1): a plugin
+  // command's own "when" clause, honored by the palette and dispatch
+  // exactly like a built-in's.
+  enabled?: () => boolean
 }
 
 const collected: RuntimeCommandDecl[] = []
