@@ -40,7 +40,15 @@ function styleFrom(values) {
 }
 
 export function registerShape(api) {
-	let liveStyle = { type: 'rectangle', stroke: COLORS[0], width: WIDTHS[1] }
+	// Last-used style survives a restart (goal 0277): declared defaults
+	// read the plugin's own storage; each completed shape writes back.
+	// A stored value outside an option set falls back to the shipped
+	// default.
+	const saved = api.storage.get('shape') || {}
+	const defaultType = ['rectangle', 'ellipse', 'arrow'].includes(saved.type) ? saved.type : 'rectangle'
+	const defaultStroke = COLORS.includes(saved.stroke) ? saved.stroke : COLORS[0]
+	const defaultWidth = WIDTHS.includes(saved.width) ? saved.width : WIDTHS[1]
+	let liveStyle = { type: defaultType, stroke: defaultStroke, width: defaultWidth }
 
 	api.registerCanvasObject({
 		kind: 'shape',
@@ -69,10 +77,10 @@ export function registerShape(api) {
 					{ value: 'ellipse', icon: 'circle', label: 'Ellipse' },
 					{ value: 'arrow', icon: 'arrow-up-right', label: 'Arrow' },
 				],
-				default: 'rectangle',
+				default: defaultType,
 			},
-			{ type: 'color', key: 'stroke', label: 'Stroke', options: COLORS, default: COLORS[0] },
-			{ type: 'stroke-width', key: 'width', label: 'Width', render: 'line', options: WIDTHS, default: WIDTHS[1] },
+			{ type: 'color', key: 'stroke', label: 'Stroke', options: COLORS, default: defaultStroke },
+			{ type: 'stroke-width', key: 'width', label: 'Width', render: 'line', options: WIDTHS, default: defaultWidth },
 			{ type: 'color-or-none', key: 'fill', label: 'Fill', options: COLORS },
 		],
 		gesture: {
@@ -106,6 +114,7 @@ export function registerShape(api) {
 			onEnd(points, ctx) {
 				if (!meetsDragThreshold(points)) return
 				const s = styleFrom(ctx.styleValues)
+				void api.storage.set('shape', { type: s.type, stroke: s.stroke, width: s.width }).catch(console.error)
 				const startFlow = ctx.screenToFlowPosition(points[0])
 				const endFlow = ctx.screenToFlowPosition(points[points.length - 1])
 				const dx = endFlow.x - startFlow.x

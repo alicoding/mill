@@ -17,7 +17,7 @@ import { clickBoardPoint, dragBetween } from './fixtures/atlasBoard'
 // wide, and the Review-queue assertions read the global pending list.
 const EXAMPLES_PLUGINS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'examples', 'plugins')
 
-async function launchWithPlugins(offset: number, opts: { withBroken?: boolean } = {}) {
+async function launchWithPlugins(offset: number, opts: { withBroken?: boolean; withNotifier?: boolean } = {}) {
 	const dir = mkdtempSync(path.join(tmpdir(), 'mill-plugins-e2e-'))
 	// The plugins dir is a per-test COPY of examples/plugins (the exact
 	// artifact a user copies from) -- never the repo folder itself, so
@@ -29,6 +29,16 @@ async function launchWithPlugins(offset: number, opts: { withBroken?: boolean } 
 	if (opts.withBroken) {
 		mkdirSync(path.join(pluginsDir, 'broken-one'))
 		writeFileSync(path.join(pluginsDir, 'broken-one', 'manifest.json'), '{not json')
+	}
+	if (opts.withNotifier) {
+		// A minimal plugin exercising the notice door (goal 0277): one
+		// registered command that notifies, run from the palette.
+		mkdirSync(path.join(pluginsDir, 'notify-probe'))
+		writeFileSync(path.join(pluginsDir, 'notify-probe', 'manifest.json'), JSON.stringify({ id: 'notify-probe', name: 'Notify probe', version: '1.0.0' }))
+		writeFileSync(path.join(pluginsDir, 'notify-probe', 'main.js'), `export function activate(api) {
+	api.registerCommand({ id: 'hello', label: 'Say hello from the probe', run: () => { api.notify({ level: 'warning', text: 'Hello from the probe.' }) } })
+}
+`)
 	}
 	const server: SpawnedServer = await spawnMillServer({
 		port: RUNTIME_PLUGINS_SERVER_BASE_PORT + offset,
@@ -235,6 +245,31 @@ test('a plugin declares settings in its manifest; Mill renders them, stores them
 		await page.reload()
 		await page.getByRole('link', { name: 'Atlas' }).click()
 		await expect(page.locator('[data-testid="bookmark-title"]', { hasText: 'https://example.com/docs' })).toBeVisible()
+	} finally {
+		await close()
+	}
+})
+
+// api.notify (goal 0277): a plugin's notice renders in Mill's own
+// footer pill labelled with the plugin's name, a warning stays until
+// dismissed, and the dismiss clears it.
+test('a plugin notice renders in the app notice pill with the plugin named, and dismisses', async () => {
+	const { page, close } = await launchWithPlugins(12, { withNotifier: true })
+	try {
+		await page.goto('/')
+		// The shell must be mounted before the palette shortcut can land.
+		await expect(page.getByRole('link', { name: 'Atlas' })).toBeVisible()
+		await page.keyboard.press('Meta+/')
+		const dialog = page.getByRole('dialog', { name: 'Command palette' })
+		await expect(dialog).toBeVisible()
+		await dialog.getByRole('combobox').fill('Say hello')
+		await dialog.getByRole('option', { name: 'Say hello from the probe' }).click()
+		const notice = page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Hello from the probe.' })
+		await expect(notice).toBeVisible()
+		await expect(notice).toHaveAttribute('data-notice-level', 'warning')
+		await expect(notice.getByTestId('notice-source')).toHaveText('Notify probe')
+		await notice.getByTestId('notice-dismiss').click()
+		await expect(notice).toHaveCount(0)
 	} finally {
 		await close()
 	}

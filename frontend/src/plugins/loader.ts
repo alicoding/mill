@@ -45,6 +45,26 @@ function resolveActivate(mod: PluginModule): ((api: MillPluginAPI) => void | Pro
 	return null
 }
 
+// loadPluginStorage fetches every plugin's stored values in one call
+// (goal 0277), BEFORE any activate(), so api.storage.get() is
+// synchronous and honest from the first call. An unreadable blob means
+// every plugin starts empty. The generated binding types every nested
+// value as possibly-absent; this densifies it.
+async function loadPluginStorage(): Promise<Record<string, Record<string, string>>> {
+	const storage: Record<string, Record<string, string>> = {}
+	try {
+		const raw = (await SettingsService.GetPluginStorage()) ?? {}
+		for (const [plugin, keys] of Object.entries(raw)) {
+			if (!keys) continue
+			storage[plugin] = {}
+			for (const [k, v] of Object.entries(keys)) if (v !== undefined) storage[plugin][k] = v
+		}
+	} catch {
+		return {}
+	}
+	return storage
+}
+
 // loadPlugins scans, filters to enabled+valid, and activates each
 // plugin's main.js. Every failure is PER-PLUGIN -- recorded on its own
 // row, never thrown upward -- and the whole pass is raced against a
@@ -75,6 +95,7 @@ export async function loadPlugins(): Promise<void> {
 	// not the default (the store's own refresh path; App's boot effect
 	// refetches again later, harmlessly).
 	await refreshExtensionSettings()
+	const storage = await loadPluginStorage()
 	for (const info of plugins) {
 		const id = info.Manifest.id
 		if (info.Error) {
@@ -90,7 +111,7 @@ export async function loadPlugins(): Promise<void> {
 			const mod = (await import(/* @vite-ignore */ url)) as PluginModule
 			const activate = resolveActivate(mod)
 			if (!activate) throw new Error('main.js exports no activate() function')
-			await Promise.resolve(activate(buildPluginAPI(info.Manifest, millVersion)))
+			await Promise.resolve(activate(buildPluginAPI(info.Manifest, millVersion, storage[id] ?? {})))
 			loadStates.set(id, { status: 'loaded', info })
 		} catch (err) {
 			loadStates.set(id, { status: 'error', error: err instanceof Error ? err.message : String(err), info })

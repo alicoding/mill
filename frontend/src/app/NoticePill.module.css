@@ -1,4 +1,8 @@
-/* Token-only styling per the footer's existing conventions. */
+/* Token-only styling per the footer's existing conventions. One look
+   per notice level (goal 0277): success/info/progress/error are the
+   four looks the update pill always had (ready/available/downloading/
+   failed), warning joins them for a pushed notice that needs
+   attention without being an error. */
 .pill {
   display: inline-flex;
   align-items: center;
@@ -6,38 +10,68 @@
   border-radius: 999px;
   font-size: 11px;
   line-height: 1;
+  /* One line, always: a footer pill that wraps reads as two labels.
+     Long pushed text truncates instead (the source and actions stay
+     whole -- they are the parts a reader keys off). */
+  white-space: nowrap;
 }
 
-.ready {
+.success {
   border: none;
   background: var(--bgColor-accent-emphasis);
   color: var(--fgColor-onEmphasis);
   padding: 2px 4px 2px 10px;
 }
 
-.ready:hover {
+.success:hover {
   filter: brightness(1.08);
 }
 
-.available {
+.info {
   border: 1px solid var(--borderColor-default);
   background: var(--bgColor-muted);
   color: var(--fgColor-default);
   padding: 2px 4px 2px 10px;
 }
 
-.downloading {
+.progress {
   border: 1px solid var(--borderColor-default);
   background: var(--bgColor-muted);
   color: var(--fgColor-muted);
   padding: 4px 10px;
 }
 
-.failed {
+.warning {
+  border: 1px solid var(--borderColor-attention-emphasis);
+  background: var(--bgColor-attention-muted);
+  color: var(--fgColor-attention);
+  padding: 2px 4px 2px 10px;
+}
+
+.error {
   border: 1px solid var(--borderColor-danger-emphasis);
   background: var(--bgColor-danger-muted);
   color: var(--fgColor-danger);
   padding: 2px 4px 2px 10px;
+}
+
+/* A notice's origin (a plugin's name), set apart from the text it
+   precedes. */
+.source {
+  font-weight: 600;
+  opacity: 0.8;
+  padding-right: 6px;
+}
+
+.text,
+.pillAction {
+  max-width: 44ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.text {
+  padding: 2px 0;
 }
 
 .pillAction {
@@ -50,10 +84,10 @@
   cursor: pointer;
 }
 
-/* The pill's secondary action (goal 0220 S2): visually lighter than
-   .pillAction so the primary download/relaunch action stays the one
-   thing the pill is fighting for attention with. */
-.whatsNewLink {
+/* Secondary actions (goal 0220 S2's "What's new" link, now any
+   notice's): visually lighter than .pillAction so the primary action
+   stays the one thing the pill is fighting for attention with. */
+.secondaryAction {
   border: none;
   background: none;
   color: inherit;
@@ -64,7 +98,7 @@
   cursor: pointer;
 }
 
-.whatsNewLink:hover {
+.secondaryAction:hover {
   opacity: 1;
 }
 

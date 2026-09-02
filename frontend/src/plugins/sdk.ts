@@ -219,6 +219,32 @@ export interface PluginSettingsAPI {
   onChange: (key: string, fn: (value: boolean | string | number) => void) => () => void
 }
 
+// PluginNoticeInput (goal 0277): a one-call transient message Mill
+// renders in its own notice surface (the footer pill), labelled with
+// the plugin's name. level defaults to 'info'; info/success leave on
+// their own after a few seconds, warning/error stay until dismissed.
+// action names one of THIS plugin's own registered commands (the id
+// given to registerCommand) as a secondary link.
+export interface PluginNoticeInput {
+  text: string
+  level?: 'info' | 'success' | 'warning' | 'error'
+  action?: { label: string; commandId: string }
+}
+
+// PluginStorageAPI (goal 0277): the plugin's own key-value store,
+// persisted centrally under the plugin id -- VS Code's globalState /
+// Obsidian's saveData shape. Values are any JSON-serialisable value
+// (a non-serialisable one throws at the door). get/keys are
+// synchronous over a cache loaded before activate(); set/delete
+// persist through the host and resolve when written. Storage is
+// plugin-private: nothing else in Mill reads it.
+export interface PluginStorageAPI {
+  get: (key: string) => unknown
+  set: (key: string, value: unknown) => Promise<void>
+  delete: (key: string) => Promise<void>
+  keys: () => string[]
+}
+
 // MillPluginAPI is the one object a plugin ever holds -- handed to its
 // exported activate(api), frozen by the host.
 export interface MillPluginAPI {
@@ -228,6 +254,9 @@ export interface MillPluginAPI {
   registerCommand: (decl: PluginCommandDecl) => void
   requestGuardedAction: (kind: string, attributes: Record<string, string>, description: string) => Promise<GuardedActionResult>
   settings: PluginSettingsAPI
+  // notify shows a notice and returns its dismiss function.
+  notify: (input: PluginNoticeInput) => () => void
+  storage: PluginStorageAPI
 }
 
 // A plugin's main.js default-exports (or named-exports) activate:

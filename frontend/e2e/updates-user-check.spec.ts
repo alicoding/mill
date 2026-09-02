@@ -84,7 +84,7 @@ test('a failed palette check answers honestly, offers Settings, and dismisses on
     await failed.getByRole('button', { name: /Couldn't check/ }).click()
     await expect(page.getByTestId('settings-view')).toBeVisible()
     // Dismiss clears it without waiting.
-    await failed.getByTestId('notice-check-failed-dismiss').click()
+    await failed.getByTestId('notice-dismiss').click()
     await expect(failed).toHaveCount(0)
 
     await page.close()

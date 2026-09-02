@@ -25,7 +25,13 @@ function bakeStrokeSvg(points, color, size) {
 }
 
 export function registerPencil(api) {
-	let liveStyle = { color: COLORS[0], size: SIZES[1] }
+	// Last-used style survives a restart (goal 0277): the declared
+	// defaults read the plugin's own storage, each completed stroke
+	// writes back. A stored value outside the option set falls back.
+	const saved = api.storage.get('pencil') || {}
+	const defaultColor = COLORS.includes(saved.color) ? saved.color : COLORS[0]
+	const defaultSize = SIZES.includes(saved.size) ? saved.size : SIZES[1]
+	let liveStyle = { color: defaultColor, size: defaultSize }
 
 	api.registerCanvasObject({
 		kind: 'pencil',
@@ -42,8 +48,8 @@ export function registerPencil(api) {
 		// would only be debris.
 		dragBand: false,
 		styleFields: [
-			{ type: 'color', key: 'color', label: 'Color', options: COLORS, default: COLORS[0] },
-			{ type: 'stroke-width', key: 'size', label: 'Size', render: 'dot', options: SIZES, default: SIZES[1] },
+			{ type: 'color', key: 'color', label: 'Color', options: COLORS, default: defaultColor },
+			{ type: 'stroke-width', key: 'size', label: 'Size', render: 'dot', options: SIZES, default: defaultSize },
 		],
 		gesture: {
 			onPoint(_pt, ctx) {
@@ -62,6 +68,7 @@ export function registerPencil(api) {
 				if (!meetsDragThreshold(points) || points.length < 2) return
 				const color = String(ctx.styleValues.color || COLORS[0])
 				const size = Number(ctx.styleValues.size) || SIZES[1]
+				void api.storage.set('pencil', { color, size }).catch(console.error)
 				const baked = bakeStrokeSvg(points, color, size)
 				if (!baked) return
 				// The stroke's own bounding-box origin converts through

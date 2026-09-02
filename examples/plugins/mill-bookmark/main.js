@@ -75,7 +75,9 @@ export function activate(api) {
 			const next = input.value.trim()
 			if (next === (ctx.object.Payload.url || '')) return
 			void ctx.updatePayload({ url: next, title: next ? new URL(withScheme(next)).hostname : '' }).catch(() => {
-				status.textContent = 'Could not save the address.'
+				// A failed save reaches the user through Mill's own notice
+				// surface, never only the console.
+				api.notify({ level: 'error', text: 'Could not save the bookmark address.' })
 			})
 		}
 		input.addEventListener('keydown', (e) => {
