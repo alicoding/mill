@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { Node as CompNode, Edge as CompEdge, Note as CompNote } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { NodeKind } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { draftsEqual, type ScratchDraft } from './canvasScratch'
@@ -164,5 +164,23 @@ describe('draftsEqual', () => {
     const a = draft('wf', '', nodes, [], [note('n1', 'first'), note('n2', 'second')])
     const b = draft('wf', '', nodes, [], [note('n2', 'second'), note('n1', 'first')])
     expect(draftsEqual(a, b)).toBe(true)
+  })
+})
+
+describe('flushScratchWrites (goal 0295 S2)', () => {
+  it('writes a draft still inside its debounce window immediately', async () => {
+    // This suite runs without a DOM: give the module a storage to write to.
+    const store = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => { store.set(k, v) },
+      removeItem: (k: string) => { store.delete(k) },
+    })
+    const { scheduleScratchWrite, flushScratchWrites, readScratch } = await import('./canvasScratch')
+    scheduleScratchWrite('tab-flush', draft('flush me', '', [node('t', 'trigger-manual')], []))
+    expect(readScratch('tab-flush')).toBeNull()
+    flushScratchWrites()
+    expect(readScratch('tab-flush')?.label).toBe('flush me')
+    vi.unstubAllGlobals()
   })
 })

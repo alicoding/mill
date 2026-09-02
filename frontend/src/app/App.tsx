@@ -34,6 +34,7 @@ import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
 import { applyDensity } from "../shared/density";
 import { pageIconFor, pageLabelFor } from './pageMeta'
 import { useMillNavigate } from './useMillNavigate'
+import { useBeforeQuitFlush } from './useBeforeQuitFlush'
 import { useReviewDeepLink } from './useReviewDeepLink'
 import { useKeymapDispatch } from './useKeymapDispatch'
 import { useBrowserNotify } from './useBrowserNotify'
@@ -234,6 +235,7 @@ function App() {
   useDataChangedRouter();
 
   useMillNavigate(setView);
+  useBeforeQuitFlush();
   useReviewDeepLink(setView);
 
   const notifyBrowserTab = useBrowserNotify();

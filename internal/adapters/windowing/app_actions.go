@@ -1,6 +1,10 @@
 package windowing
 
-import "github.com/wailsapp/wails/v3/pkg/application"
+import (
+	"time"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
+)
 
 // ShowApp activates the whole app (application.App-level Show, as
 // opposed to a single window's own Show) -- always main-thread
@@ -44,5 +48,31 @@ func Quit() {
 func Emit(name string, payload any) {
 	if app := application.Get(); app != nil {
 		app.Event.Emit(name, payload)
+	}
+}
+
+// WaitForEvent blocks until the named custom event arrives from any
+// window or the timeout passes; it reports which. Used for the
+// quit / restart handshake (goal 0295 S2): Go asks the page to flush
+// its live edits and waits, bounded, for the page's answer. Never call
+// on the main thread -- bound-method calls run on their own goroutine.
+func WaitForEvent(name string, timeout time.Duration) bool {
+	app := application.Get()
+	if app == nil {
+		return false
+	}
+	done := make(chan struct{}, 1)
+	off := app.Event.On(name, func(*application.CustomEvent) {
+		select {
+		case done <- struct{}{}:
+		default:
+		}
+	})
+	defer off()
+	select {
+	case <-done:
+		return true
+	case <-time.After(timeout):
+		return false
 	}
 }

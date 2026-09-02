@@ -5,6 +5,7 @@ import type { NodeProps, Node as RFNode } from '@xyflow/react'
 import type { Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { MilkdownEditor } from '../shared/MilkdownEditor'
+import { registerFlusher } from '../shared/flushRegistry'
 import { STICKY_HEIGHT } from './atlasBoardLayout'
 import styles from './AtlasStickyNode.module.css'
 
@@ -138,6 +139,13 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
   // read by the document/window listeners below, which are only
   // re-registered when `editing` flips, never on every keystroke.
   const commitRef = useRef<() => void>(() => {})
+  // While editing, this note is a live edit the quit / restart handshake
+  // flushes (shared/flushRegistry.ts, goal 0295 S2): its flusher is the
+  // same commit a click-away performs.
+  useEffect(() => {
+    if (!editing) return
+    return registerFlusher(`sticky:${note?.ID ?? 'draft'}`, () => commitRef.current())
+  }, [editing, note?.ID])
 
   // Commit is POINTER-driven (the FigJam/Miro/tldraw canvas
   // convergence), not focus-driven: a press outside this note while
