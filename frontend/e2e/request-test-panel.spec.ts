@@ -52,6 +52,12 @@ test('Running a test against an unreachable address logs a deterministic error',
 
   // A single declared operation auto-selects, no dropdown to drive
   // (docs/SPEC.md §3.5's "no UI for a decision that doesn't exist").
+  // Testing is the saved integration's own tab (goal 0315): save, then
+  // open it there.
+  await page.getByRole('button', { name: 'Save integration' }).click()
+  await requestRow(page, 'Test Panel Request').getByText('Test Panel Request', { exact: true }).click()
+  await expect(page.getByTestId('request-summary')).toBeVisible()
+  await page.getByRole('tab', { name: 'Testing' }).click()
   const testPanel = page.getByTestId('request-test-panel')
   await expect(testPanel).toBeVisible()
   await expect(testPanel.getByTestId('test-operation-single')).toHaveText('GET /')
@@ -65,8 +71,6 @@ test('Running a test against an unreachable address logs a deterministic error',
   await expect(logEntry).toBeVisible({ timeout: 30_000 })
   await expect(logEntry.getByText('error', { exact: true })).toBeVisible()
 
-  await page.getByRole('button', { name: 'Save request' }).click()
-  await expect(requestRow(page, 'Test Panel Request')).toBeVisible()
   await deleteRequest(page, 'Test Panel Request')
 })
 
@@ -80,7 +84,7 @@ test('Duplicating a request pre-fills a new form without carrying over the secre
   await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
   await page.getByLabel('Auth type').selectOption('bearer')
   await page.getByLabel('Secret', { exact: true }).fill('shh-original-secret')
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
   await expect(requestRow(page, 'Original Request')).toBeVisible()
 
   // docs/adr/0014: Duplicate lives on the read-only summary view now,
@@ -97,7 +101,7 @@ test('Duplicating a request pre-fills a new form without carrying over the secre
   await expect(page.getByLabel('Secret', { exact: true })).toHaveValue('')
   await page.getByLabel('Secret', { exact: true }).fill('shh-copy-secret')
 
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
   await expect(requestRow(page, 'Original Request copy')).toBeVisible()
 
   await deleteRequest(page, 'Original Request')
