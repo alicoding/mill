@@ -12,7 +12,7 @@ import styles from './ListGrid.module.css'
 // this popover re-homes the old Configure column form's remaining
 // fields so the grid is the whole editor. Key is shown, not editable
 // (immutable once saved -- the schema-evolution guard).
-export function ListGridColumnPopover({ column, onCommit, onRemove }: {
+export function ListGridColumnPopover({ column, onCommit, onRemove, open: openIn, onClose, anchorRef }: {
   column: Field
   // onCommit receives the changed column; the grid owns the
   // read-modify-write against the List record.
@@ -20,9 +20,25 @@ export function ListGridColumnPopover({ column, onCommit, onRemove }: {
   // onRemove tombstones the column (the grid supplies the confirm's
   // consequence -- ADR-0040's removal rules run server-side).
   onRemove: () => void
+  // Controlled mode (the adopted grid's column menu, ADR-0049): the
+  // caller owns open/close and supplies the anchor; the gear button
+  // is not rendered. Uncontrolled (the hand-rolled grid) renders its
+  // own gear as the anchor.
+  open?: boolean
+  onClose?: () => void
+  anchorRef?: React.RefObject<HTMLElement | null>
 }) {
   const { t } = useTranslation('common')
-  const [open, setOpen] = useState(false)
+  const controlled = anchorRef !== undefined
+  const [openState, setOpenState] = useState(false)
+  const open = controlled ? (openIn ?? false) : openState
+  const setOpen = (next: boolean) => {
+    if (controlled) {
+      if (!next) onClose?.()
+    } else {
+      setOpenState(next)
+    }
+  }
   const [confirming, setConfirming] = useState(false)
   const [draft, setDraft] = useState<Field>(column)
 
@@ -37,22 +53,8 @@ export function ListGridColumnPopover({ column, onCommit, onRemove }: {
 
   return (
     <>
-      <AnchoredOverlay
-        open={open}
-        onOpen={openWithFresh}
-        onClose={() => setOpen(false)}
-        renderAnchor={(anchorProps) => (
-          <IconButton
-            {...anchorProps}
-            icon={GearIcon}
-            size="small"
-            variant="invisible"
-            className={styles.headerGear}
-            aria-label={t('listGrid.columnSettingsAriaLabel', { column: column.Label || column.Key })}
-            data-testid={`list-grid-column-settings-${column.Key}`}
-          />
-        )}
-      >
+      {controlled ? (
+        <AnchoredOverlay open={open} onOpen={openWithFresh} onClose={() => setOpen(false)} anchorRef={anchorRef as React.RefObject<HTMLElement>} renderAnchor={null}>
         <div className={styles.popover}>
           <Text size="small" className={styles.keyLine}>
             {t('listGrid.keyLabel')}: <code>{column.Key}</code>
@@ -100,7 +102,73 @@ export function ListGridColumnPopover({ column, onCommit, onRemove }: {
             {t('listGrid.removeColumn')}
           </Button>
         </div>
-      </AnchoredOverlay>
+        </AnchoredOverlay>
+      ) : (
+        <AnchoredOverlay
+          open={open}
+          onOpen={openWithFresh}
+          onClose={() => setOpen(false)}
+          renderAnchor={(anchorProps) => (
+            <IconButton
+              {...anchorProps}
+              icon={GearIcon}
+              size="small"
+              variant="invisible"
+              className={styles.headerGear}
+              aria-label={t('listGrid.columnSettingsAriaLabel', { column: column.Label || column.Key })}
+              data-testid={`list-grid-column-settings-${column.Key}`}
+            />
+          )}
+        >
+        <div className={styles.popover}>
+          <Text size="small" className={styles.keyLine}>
+            {t('listGrid.keyLabel')}: <code>{column.Key}</code>
+          </Text>
+          <FormControl>
+            <FormControl.Label>{t('listGrid.typeLabel')}</FormControl.Label>
+            <Select
+              value={draft.Type}
+              data-testid="list-grid-column-type"
+              onChange={(e) => commit({ ...draft, Type: e.target.value as Field['Type'] })}
+            >
+              <Select.Option value={FieldType.TypeText}>{t('listGrid.typeText')}</Select.Option>
+              <Select.Option value={FieldType.TypeNumber}>{t('listGrid.typeNumber')}</Select.Option>
+              <Select.Option value={FieldType.TypeBoolean}>{t('listGrid.typeBoolean')}</Select.Option>
+              <Select.Option value={FieldType.TypeOptions}>{t('listGrid.typeOptions')}</Select.Option>
+            </Select>
+          </FormControl>
+          {draft.Type === FieldType.TypeOptions && (
+            <FormControl>
+              <FormControl.Label>{t('listGrid.optionsLabel')}</FormControl.Label>
+              <Textarea
+                rows={4}
+                value={(draft.Options ?? []).join('\n')}
+                data-testid="list-grid-column-options"
+                onChange={(e) => setDraft({ ...draft, Options: e.target.value.split('\n') })}
+                onBlur={() => commit({ ...draft, Options: (draft.Options ?? []).map((o) => o.trim()).filter((o) => o !== '') })}
+              />
+              <FormControl.Caption>{t('listGrid.optionsCaption')}</FormControl.Caption>
+            </FormControl>
+          )}
+          <FormControl>
+            <Checkbox
+              checked={draft.deprecated ?? false}
+              data-testid="list-grid-column-deprecated"
+              onChange={(e) => commit({ ...draft, deprecated: e.target.checked })}
+            />
+            <FormControl.Label>{t('listGrid.deprecatedLabel')}</FormControl.Label>
+          </FormControl>
+          <Button
+            size="small"
+            variant="danger"
+            data-testid="list-grid-column-remove"
+            onClick={() => { setOpen(false); setConfirming(true) }}
+          >
+            {t('listGrid.removeColumn')}
+          </Button>
+        </div>
+        </AnchoredOverlay>
+      )}
       {confirming && (
         <ConfirmDialog
           title={t('listGrid.removeColumnConfirmTitle')}
