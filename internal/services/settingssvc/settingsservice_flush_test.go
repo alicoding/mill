@@ -1,6 +1,7 @@
 package settingssvc
 
 import (
+	"sync"
 	"testing"
 	"time"
 )
@@ -99,5 +100,100 @@ func TestQuitApp_HeadlessProceeds(t *testing.T) {
 	set.leave.mu.Unlock()
 	if !approved {
 		t.Error("QuitApp() headless did not approve the leave")
+	}
+}
+
+// scriptedPage answers the handshake on cue: each WaitForAnyEvent call
+// pops the next scripted answer (name, payload, ok).
+type scriptedPage struct {
+	mu      sync.Mutex
+	answers []struct {
+		name string
+		data any
+		ok   bool
+	}
+	emitted []string
+}
+
+func (p *scriptedPage) Emit(name string, _ any) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.emitted = append(p.emitted, name)
+}
+
+func (p *scriptedPage) WaitForAnyEvent(_ time.Duration, _ ...string) (string, any, bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if len(p.answers) == 0 {
+		return "", nil, false
+	}
+	a := p.answers[0]
+	p.answers = p.answers[1:]
+	return a.name, a.data, a.ok
+}
+
+func swapLeaveTransport(t *testing.T, page *scriptedPage) {
+	t.Helper()
+	prev := leaveEvents
+	leaveEvents = page
+	t.Cleanup(func() { leaveEvents = prev })
+}
+
+// The page's answers decide: a flushed=true proceeds, a held sheet
+// whose final answer is false cancels, a held sheet that then says
+// yes proceeds, and a page that never answers is not waited for.
+func TestConfirmLeave_FollowsThePagesAnswer(t *testing.T) {
+	type ans = struct {
+		name string
+		data any
+		ok   bool
+	}
+	cases := []struct {
+		name    string
+		answers []ans
+		want    bool
+	}{
+		{"flushed at once", []ans{{"mill-flushed", true, true}}, true},
+		{"held then cancelled", []ans{{"mill-quit-held", true, true}, {"mill-flushed", false, true}}, false},
+		{"held then saved", []ans{{"mill-quit-held", true, true}, {"mill-flushed", true, true}}, true},
+		{"held then the page vanished", []ans{{"mill-quit-held", true, true}, {"", nil, false}}, true},
+		{"never answered", nil, true},
+		{"odd payload proceeds", []ans{{"mill-flushed", "yes", true}}, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			set := newDensityHarness(t)
+			page := &scriptedPage{}
+			page.answers = append(page.answers, c.answers...)
+			swapLeaveTransport(t, page)
+			if got := set.confirmLeave(leaveReasonQuit); got != c.want {
+				t.Errorf("confirmLeave() = %v, want %v", got, c.want)
+			}
+			if len(page.emitted) == 0 || page.emitted[0] != "mill-before-quit" {
+				t.Errorf("emitted %v, want mill-before-quit first", page.emitted)
+			}
+		})
+	}
+}
+
+// RestartApp through the gate: a cancelled leave returns nil without
+// touching the updater and leaves nothing approved.
+func TestRestartApp_CancelledLeaveIsNotAnError(t *testing.T) {
+	set := newDensityHarness(t)
+	page := &scriptedPage{}
+	page.answers = append(page.answers, struct {
+		name string
+		data any
+		ok   bool
+	}{"mill-flushed", false, true})
+	swapLeaveTransport(t, page)
+	if err := set.RestartApp(); err != nil {
+		t.Errorf("RestartApp() after Cancel = %v, want nil", err)
+	}
+	set.leave.mu.Lock()
+	approved := set.leave.approved
+	set.leave.mu.Unlock()
+	if approved {
+		t.Error("a cancelled leave left approved = true")
 	}
 }

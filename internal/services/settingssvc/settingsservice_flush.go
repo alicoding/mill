@@ -44,6 +44,24 @@ const (
 	leaveReasonClose   = "close"
 )
 
+// leaveTransport is the page-event seam the handshake talks through
+// -- the windowing adapter in the app, a fake in tests (the held /
+// cancel / timeout branches need a page that answers on cue).
+type leaveTransport interface {
+	Emit(name string, payload any)
+	WaitForAnyEvent(timeout time.Duration, names ...string) (string, any, bool)
+}
+
+type windowingTransport struct{}
+
+func (windowingTransport) Emit(name string, payload any) { windowing.Emit(name, payload) }
+func (windowingTransport) WaitForAnyEvent(timeout time.Duration, names ...string) (string, any, bool) {
+	return windowing.WaitForAnyEvent(timeout, names...)
+}
+
+// leaveEvents is swapped by tests only.
+var leaveEvents leaveTransport = windowingTransport{}
+
 // leaveGate is the quit gate's state: approved short-circuits
 // ShouldQuit once the handshake has said yes; inFlight collapses a
 // second quit request while the sheet is up into a re-prompt.
@@ -86,7 +104,7 @@ func (s *SettingsService) confirmLeaveOnce(reason string) bool {
 	}
 	if s.leave.inFlight {
 		s.leave.mu.Unlock()
-		windowing.Emit("mill-before-quit", map[string]string{"reason": reason})
+		leaveEvents.Emit("mill-before-quit", map[string]string{"reason": reason})
 		return false
 	}
 	s.leave.inFlight = true
@@ -120,12 +138,12 @@ func (s *SettingsService) confirmLeave(reason string) bool {
 	first := make(chan answer, 1)
 	// Subscribe before emitting so a fast answer cannot be missed.
 	go func() {
-		name, data, ok := windowing.WaitForAnyEvent(flushBound, "mill-flushed", "mill-quit-held")
+		name, data, ok := leaveEvents.WaitForAnyEvent(flushBound, "mill-flushed", "mill-quit-held")
 		first <- answer{name, data, ok}
 	}()
 	// Give the subscriber a moment to attach before the request goes out.
 	time.Sleep(10 * time.Millisecond)
-	windowing.Emit("mill-before-quit", map[string]string{"reason": reason})
+	leaveEvents.Emit("mill-before-quit", map[string]string{"reason": reason})
 	a := <-first
 	if !a.ok {
 		return true
@@ -136,7 +154,7 @@ func (s *SettingsService) confirmLeave(reason string) bool {
 		if reason != leaveReasonClose {
 			s.ShowWindow()
 		}
-		_, data, ok := windowing.WaitForAnyEvent(heldBound, "mill-flushed")
+		_, data, ok := leaveEvents.WaitForAnyEvent(heldBound, "mill-flushed")
 		if !ok {
 			return true
 		}
