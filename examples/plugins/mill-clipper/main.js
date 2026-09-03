@@ -63,7 +63,14 @@ export function activate(api) {
 		status.setAttribute('data-testid', 'clip-status')
 		status.style.cssText = 'font:11px system-ui;color:#57606a'
 		status.textContent = statusByID.get(ctx.object.ID) || (ctx.object.Payload.clipped ? 'Clipped → ' + ctx.object.Payload.clipped : '')
-		const setStatus = (text) => { statusByID.set(ctx.object.ID, text); status.textContent = text }
+		// Write through the face's LIVE status element: the host rebuilds
+		// the face on any data change (its first measured size lands
+		// mid-clip), and a span captured here would then be detached.
+		const setStatus = (text) => {
+			statusByID.set(ctx.object.ID, text)
+			const live = el.querySelector('[data-testid="clip-status"]') || status
+			live.textContent = text
+		}
 		clip.addEventListener('click', () => { void clipPage(ctx, input.value.trim(), setStatus).catch((err) => setStatus('Failed: ' + String(err && err.message ? err.message : err))) })
 		row.append(clip, status)
 
