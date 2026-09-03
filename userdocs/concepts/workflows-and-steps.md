@@ -44,7 +44,7 @@ Data flows two ways through a run:
 
 ## Configuring a step
 
-Click a step to open its inspector. Fields are typed — pickers for
+Click a step to open its inspector. Drag the inspector's edge to make it wider, double-click the edge to reset it, or use the Expand button to give a long value the whole side of the canvas; the width you choose is remembered on this device. Fields are typed — pickers for
 Configure entities, code editors with highlighting for scripts and
 JSON, plain inputs for plain values. A field that names *which
 external thing* to talk to (an API, a model, a list) always points at
