@@ -339,6 +339,10 @@
     "seedRevision": 1,
     "fingerprint": "c4c6feedce67ba803cd59737c0ca5836cbca536dd79d591e94601c05a19aafdf"
   },
+  "workflow:example-todo-scan-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "795b40612c6f8e45931126926811fa8c0ef5b0fa0a4974130a8e89ba49334832"
+  },
   "workflow:load-sample-html-workflow": {
     "seedRevision": 1,
     "fingerprint": "add39815b73d840c233f266f01043b9cbec60ed37d04cba12a8306e85ce23214"
