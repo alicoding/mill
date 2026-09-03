@@ -570,5 +570,13 @@ copy the finished drawing into `el`, then call the detach it returned.
 The Mind map example does exactly this on every repaint, and Mill
 detaches anything you left mounted when the object leaves the board.
 
+## Scheduled and background work
+
+There is no timer or alarm API. Work that should happen on a schedule,
+on an event, or while no window is open is a workflow: ship a
+workflow that uses your step or object, and it runs, pauses for
+approval, and shows in Activity like anything a user builds. Your
+plugin can open or reference it, and a user can edit it.
+
 The full contract — every field, every capability, and what stays
 stable between versions — is in [Extending the canvas](extending-the-canvas.md).
