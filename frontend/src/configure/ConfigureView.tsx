@@ -55,7 +55,10 @@ function ConfigureView({ initialTab }: { initialTab?: string }) {
       </Heading>
     </PageContainer>
     <Tabs defaultValue={initialTab ?? 'integration'}>
-      <TabList aria-label={t('configureView.ariaLabel')}>
+      {/* Nine tabs overflow the narrower viewports; the tab strip is the
+          kit's own horizontal scroller, declared so the layout-fitness
+          rule reads it as deliberate. */}
+      <TabList aria-label={t('configureView.ariaLabel')} data-scroll-region="configure-tabs">
         <TabItem value="integration">{t('configureView.integration')}</TabItem>
         <TabItem value="lists">{t('configureView.lists')}</TabItem>
         <TabItem value="attributes">{t('configureView.attributes')}</TabItem>
