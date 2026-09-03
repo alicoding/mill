@@ -167,3 +167,16 @@ writes, `shared/localId.ts` for local ids. Adding a new
 secure-context-dependent capability means adding the next such helper
 with an insecure-context fallback (or an honest error the user sees),
 plus a unit test pinning the fallback path.
+
+## Error surfacing — a user-initiated failure reaches the user
+
+`.catch(console.error)` is honest only for a background refresh whose
+failure leaves a degraded-but-visible state (a stale list, a missing
+badge). A failure of something the user just DID — a click, a submit,
+a palette command, a drop — must reach them where they acted: the
+inline error slot of the form or page, the notice channel
+(`shared/notices`, `api.notify` for plugins), or the toast that
+offered the action. The console is never the only place. Rider of
+goal 0261, owner-raised on the 0258 toggle; the sweep of existing
+sites is goal 0313. A new handler that swallows a user action's
+failure into the console needs the reason stated at the call site.
