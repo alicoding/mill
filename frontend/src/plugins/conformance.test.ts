@@ -40,6 +40,7 @@ function recordingAPI(manifest: Manifest, touched: Set<string>): MillPluginAPI {
     fetch: async () => { touched.add('fetch'); return { approved: false, effect: 'deny' as const, ruleLabel: '', status: 0, headers: {}, body: '' } },
     content: { createNote: async () => { touched.add('content'); return { approved: false, effect: 'deny' as const, ruleLabel: '', id: '' } }, createCard: async () => { touched.add('content'); return { approved: false, effect: 'deny' as const, ruleLabel: '', id: '' } }, updateCard: async () => { touched.add('content'); return { approved: false, effect: 'deny' as const, ruleLabel: '', id: '' } }, appendListRow: async () => { touched.add('content'); return { approved: false, effect: 'deny' as const, ruleLabel: '', id: '' } } },
     convert: { htmlToMarkdown: async (html: string) => { touched.add('convert'); return html } },
+    files: { list: async () => { touched.add('files'); return { approved: false, effect: 'deny' as const, ruleLabel: '', entries: [] } } },
   }
   return Object.freeze(api) as unknown as MillPluginAPI
 }

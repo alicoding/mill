@@ -361,6 +361,16 @@ export interface PluginContentAPI {
   appendListRow: (listId: string, values: Record<string, string>) => Promise<PluginWriteResult>
 }
 
+// PluginFilesAPI (goal 0310): list a folder on this machine through
+// Mill under the "list-files" capability -- a read-class action a rule
+// may deny or park; entries arrive only when approved. Hidden entries
+// and dependency folders never appear.
+export interface PluginFileEntry { name: string; path: string; isDir: boolean; size: number }
+export interface PluginListDirResult { approved: boolean; effect: string; ruleLabel: string; entries: PluginFileEntry[] }
+export interface PluginFilesAPI {
+  list: (path: string) => Promise<PluginListDirResult>
+}
+
 // PluginConvertAPI (goal 0282): pure transforms Mill already owns,
 // offered to a plugin as-is. htmlToMarkdown is the same conversion
 // every workflow convert step and every paste uses. No capability --
@@ -430,6 +440,7 @@ export interface MillPluginAPI {
   fetch: (url: string, init?: PluginFetchInit) => Promise<PluginFetchResult>
   content: PluginContentAPI
   convert: PluginConvertAPI
+  files: PluginFilesAPI
   registerView: (decl: PluginViewDecl) => void
   registerCapture: (decl: PluginCaptureDecl) => void
 }

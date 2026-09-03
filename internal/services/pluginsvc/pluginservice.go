@@ -121,6 +121,14 @@ var knownCapabilities = map[string]bool{
 	// browser. The plugin never receives the primitive; on approval
 	// Mill itself performs the open.
 	"open-url": true,
+	// open-app (goal 0310): open a local path in a NAMED application
+	// (a collection folder in Bruno) -- the OS's own open-with, never a
+	// shell; server mode approves without performing, like open-url.
+	"open-app": true,
+	// list-files (goal 0310): list a folder's direct children through
+	// Mill (pluginservice_files.go) -- a read-class action, evaluated
+	// and audited, never the plugin's own filesystem access.
+	"list-files": true,
 	// erase-board-items: a drag-shaped canvas tool may hit-test and
 	// erase board items through the host's own quick-delete-with-undo
 	// door (goal 0252 S2). Enforced host-side in the webview: the
@@ -454,6 +462,18 @@ func (p *PluginService) RequestGuardedAction(pluginID string, kind string, attri
 // capability's execution lives here, next to its vocabulary entry --
 // the plugin's request never contained the primitive, only the ask.
 func (p *PluginService) perform(kind string, attributes map[string]string) (bool, error) {
+	if kind == "open-app" {
+		app, path := strings.TrimSpace(attributes["app"]), strings.TrimSpace(attributes["path"])
+		if app == "" || !filepath.IsAbs(path) {
+			return false, fmt.Errorf("open-app needs an app name and an absolute path")
+		}
+		if err := osopen.OpenWith(app, path); errors.Is(err, osopen.ErrUnsupportedInServerMode) {
+			return false, nil
+		} else if err != nil {
+			return false, fmt.Errorf("open in %s: %w", app, err)
+		}
+		return true, nil
+	}
 	if kind == "open-url" {
 		u := attributes["url"]
 		if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {

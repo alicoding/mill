@@ -322,6 +322,15 @@ as sent by the extension. The value is redacted from the response
 before the plugin sees it — a server echoing the token back gets
 `[redacted]`.
 
+## Opening a path in another app, and listing a folder
+
+Two more guarded doors, both declared as capabilities:
+
+- `open-app` — `ctx.requestGuardedAction('open-app', { app: 'Bruno', path: '/abs/folder' }, 'Open the collection in Bruno')` hands a local path to a named application through the OS's own open-with. It asks like every guarded action (Review shows the plugin's name) and, once approved, opens the app.
+- `list-files` — `api.files.list('/abs/folder')` returns the folder's direct children (`{ name, path, isDir, size }`), hidden entries and dependency folders left out. It is a read: allowed unless one of your rules denies or parks it, and audited either way; `entries` is empty when it was not approved.
+
+The Bruno collection example uses both: its face lists the collection's requests and offers "Open in Bruno".
+
 ## Writing to the board
 
 A plugin creates notes and cards, updates cards, and adds rows to a

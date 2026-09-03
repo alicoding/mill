@@ -211,6 +211,16 @@ export interface PluginFetchSecret {
 }
 
 /**
+ * PluginFileEntry is one listed entry.
+ */
+export interface PluginFileEntry {
+    "name": string;
+    "path": string;
+    "isDir": boolean;
+    "size": number;
+}
+
+/**
  * PluginInfo is one scanned plugin as the Extensions surface and the
  * loader see it. Error is a load-blocking validation problem stated
  * for the human (the row renders it; the loader skips the plugin) --
@@ -239,6 +249,17 @@ export interface PluginInfo {
      */
     "SigningPolicy": boolean;
     "Signed": boolean;
+}
+
+/**
+ * PluginListDirResult carries the verdict and, when approved, the
+ * entries.
+ */
+export interface PluginListDirResult {
+    "approved": boolean;
+    "effect": string;
+    "ruleLabel": string;
+    "entries": PluginFileEntry[] | null;
 }
 
 /**

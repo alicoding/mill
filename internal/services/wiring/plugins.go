@@ -46,7 +46,9 @@ func NewPluginService(settingsPath string, guardrail *guardrailsvc.GuardrailServ
 // too), which falls through to the embedded bundle.
 func ComposedAssetMiddleware(remoteAuth *remoteauthsvc.RemoteAuthService, plugins *pluginsvc.PluginService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		return AssetMiddleware(remoteAuth)(plugins.AssetMiddleware()(next))
+		// The document policy (cspmiddleware.go) wraps everything so every
+		// served document carries it, the remote-auth gate included.
+		return CSPMiddleware()(AssetMiddleware(remoteAuth)(plugins.AssetMiddleware()(next)))
 	}
 }
 
