@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { GridCellKind, type CustomCell, type CustomRenderer, type EditableGridCell, type GridCell } from '@glideapps/glide-data-grid'
 import { type OptionColor, optionColor } from './projectionColors'
-import type { GridColumn, GridRow } from './ListGrid'
+import type { GridColumn, GridRow } from './listGridTypes'
 import type { GridPalette } from './listGridGlideTheme'
 
 // Field -> the adopted grid's cell kinds (ADR-0049): text and number

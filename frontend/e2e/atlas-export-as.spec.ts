@@ -1,4 +1,5 @@
 import type { Download, Locator } from '@playwright/test'
+import { createTableFromList } from './fixtures/atlasTable'
 import { test, expect } from './fixtures/server'
 import { createCardViaTray, noteCard, openCard, promoteBoardObject } from './fixtures/atlasBoard'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
@@ -215,10 +216,7 @@ test('a table-projection card offers all four declared formats (no Original file
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await page.getByTestId('atlas-tray-table').click()
-  await page.getByTestId('atlas-table-from-list').click()
-  await page.getByTestId('entity-ref-field').selectOption({ label: 'Example: Country codes' })
-  await page.getByRole('button', { name: 'Create' }).click()
+  await createTableFromList(page, 'Example: Country codes', 'US')
 
   const tableObject = page.locator('[data-testid="atlas-board-object"][data-object-kind="table"]').filter({ hasText: 'US' })
   await expect(tableObject).toBeVisible()

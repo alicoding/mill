@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ActionList, ActionMenu } from '@primer/react'
 import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { RowStatus } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
-import type { GridColumn, GridRow } from './ListGrid'
+import type { GridColumn, GridRow } from './listGridTypes'
 import { ListGridColumnPopover } from './ListGridColumnPopover'
 import styles from './ListGrid.module.css'
 

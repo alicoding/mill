@@ -26,6 +26,7 @@ import { isGroupCard } from './atlasBoardLayout'
 import { useAtlasBoardFilter } from './useAtlasBoardFilter'
 import { useAtlasCardCreate } from './useAtlasCardCreate'
 import { useAtlasTableObjectCreate } from './useAtlasTableObjectCreate'
+import type { FreePlacement } from './atlasFreePlacement'
 import { useAtlasContainmentMenus } from './useAtlasContainmentMenus'
 import { useAtlasDeleteConfirm } from './useAtlasDeleteConfirm'
 import { useAtlasCommandSignals } from './useAtlasCommandSignals'
@@ -346,7 +347,8 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const { exportAtlas, exportBoardDrawio, importFile, importConfirmDialog } = useAtlasShareIO({ allKinds, allLinkKinds, allCards, allLinks, viewedID, t, onError: setImportError, onSummary: quietToast.show })
 
   const { createCard } = useAtlasCardCreate({ allCards, viewedID, viewedCard })
-  const { createTableFromList, createTableFromScratch } = useAtlasTableObjectCreate({ allCards, viewedID })
+  const freePlacementRef = useRef<FreePlacement | null>(null)
+  const { createTableFromList, createTableFromScratch } = useAtlasTableObjectCreate({ allCards, allNotes, allObjects, viewedID, freePlacementRef })
   // Goal 0139's two surviving dialogs: the from-a-List projection
   // (reached from the tray picker's footer) and New space (the one
   // create with no canvas to point at).
@@ -414,6 +416,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           )
         })()}
         <AtlasBoard
+          freePlacementRef={freePlacementRef}
           onPasteConverted={(res) => quietToast.show(pasteSummaryText(t, res))}
           onCreateTableSized={(cols, rows, at, parentID) => void createTableFromScratch(cols, rows, at, parentID)}
           onOpenTableFromList={() => setTableFromListOpen(true)}
@@ -472,7 +475,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         jumpOpen={jumpOpen} onCloseJump={() => setJumpOpen(false)} allCards={allCards} allKinds={allKinds} allLinks={allLinks} allLinkKinds={allLinkKinds} allNotes={allNotes} allObjects={allObjects} jumpToCard={jumpToCard} jumpToObject={jumpToObject}
         overlayCard={overlayCard} onCloseOverlay={() => setOverlayCardID(null)} undoToast={undoToast} openGroupEntry={openGroupEntry} guardDelete={deleteConfirm.guardDelete}
         importConfirmDialog={importConfirmDialog}
-        tableFromListOpen={tableFromListOpen} onCloseTableFromList={() => setTableFromListOpen(false)} newSpaceOpen={newSpaceOpen} onCloseNewSpace={() => setNewSpaceOpen(false)} onCreateTable={createTableFromList} onCreateSpace={(kindID, title) => createCard('sibling', kindID, title)}
+        tableFromListOpen={tableFromListOpen} onCloseTableFromList={() => setTableFromListOpen(false)} newSpaceOpen={newSpaceOpen} onCloseNewSpace={() => setNewSpaceOpen(false)} onCreateTable={async (listID) => { await createTableFromList(listID) }} onCreateSpace={(kindID, title) => createCard('sibling', kindID, title)}
         menu={menu} onCloseMenu={() => setMenu(null)} linkMenus={linkMenus} containmentMenus={containmentMenus} deleteConfirm={deleteConfirm}
         openNote={openNoteID ? allNotes.find((n) => n.ID === openNoteID) ?? null : null} onCloseNote={() => setOpenNoteID(null)}
         editingDiagramObject={editingDiagramObjectID ? allObjects.find((o) => o.ID === editingDiagramObjectID) ?? null : null}

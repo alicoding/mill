@@ -7,7 +7,8 @@ import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer } from '../shared/ResizableTable'
 import { ConfigureService } from '../shared/bindings'
 import type { List } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
-import { ListGrid, type GridColumn, type GridRow } from '../shared/ListGrid'
+import { ListGridGlide } from '../shared/ListGridGlide'
+import type { GridColumn, GridRow } from '../shared/listGridTypes'
 import { ListRowImport } from './ListRowImport'
 import { NewListFromFile } from './NewListFromFile'
 import { ListVersionsSection } from './ListVersionsSection'
@@ -28,9 +29,9 @@ import PageContainer from '../shared/PageContainer'
 
 // Configure's Lists section (docs/SPEC.md §3.5): CRUD over
 // ConfigureService's typed Lists. Schema AND data edit in the ONE
-// shared grid (shared/ListGrid, goal 0136) -- header row is the
-// columns editor, cells are the rows, identical to the Atlas table
-// face. Both a list-lookup and a list-search workflow node resolve
+// shared grid (shared/ListGridGlide, goal 0136 / ADR-0049) -- the
+// header menu is the columns editor, cells are the rows, identical to
+// the Atlas table face. Both a list-lookup and a list-search workflow node resolve
 // against these same Columns/Rows.
 export function ConfigureLists() {
   const { t } = useTranslation('configure')
@@ -279,7 +280,7 @@ export function ConfigureLists() {
                     <ListRowImport listId={editingID} columns={editingList.Columns ?? []} onImported={refetch} />
                   </Stack>
                 )}
-                <ListGrid
+                <ListGridGlide
                   listID={editingID}
                   columns={(editingList.Columns ?? []).map((c): GridColumn => ({
                     Key: c.Key, Label: c.Label, Type: c.Type,

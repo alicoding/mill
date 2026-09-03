@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { editGlideCell, glideCellText } from './fixtures/glideGrid'
 import { addGridColumn } from './fixtures/listGrid'
 import { clickRowAction } from './inventoryRow'
 
@@ -71,11 +72,9 @@ test('Exporting and importing a List round-trips its typed columns and rows', as
 
   await addGridColumn(page, 'Color')
   await page.getByTestId('atlas-projection-add-row').click()
-  const cell = page.getByTestId('atlas-projection-cell').first()
-  await cell.click()
-  await page.getByTestId('atlas-projection-cell-input').fill('blue')
-  await page.getByTestId('atlas-projection-cell-input').press('Enter')
-  await expect(cell).toContainText('blue')
+  const glide = page.getByTestId('atlas-projection-glide')
+  await editGlideCell(page, glide, 0, 0, 'blue')
+  await expect(glideCellText(glide, 0, 0)).toHaveText('blue')
 
   const originalRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('E2E export list', { exact: true }) })
   await expect(originalRow).toBeVisible()

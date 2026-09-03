@@ -9,5 +9,5 @@ export async function addGridColumn(page: Page, label: string) {
   await expect(input).toBeVisible()
   await input.fill(label)
   await input.press('Enter')
-  await expect(page.getByTestId('atlas-projection-header').filter({ hasText: label })).toBeVisible()
+  await expect(page.getByTestId('atlas-projection-glide').locator('[role="columnheader"]').filter({ hasText: label })).toBeAttached()
 }

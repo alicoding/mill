@@ -1,12 +1,14 @@
+import type React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@primer/react'
 import { DataEditor, type DataEditorRef, type Rectangle } from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
-import type { GridColumn, GridRow } from './ListGrid'
+import type { GridColumn, GridRow } from './listGridTypes'
 import { useListSchemaEdits } from './useListSchemaEdits'
 import { optionsRenderer } from './listGridGlideCells'
-import { GLIDE_DEFAULT_COLUMN_WIDTH, GLIDE_HEADER_HEIGHT, GLIDE_ROW_HEIGHT, paletteFromTokens } from './listGridGlideTheme'
+import { GLIDE_DEFAULT_COLUMN_WIDTH, GLIDE_HEADER_HEIGHT, GLIDE_HEADER_HEIGHT_COMPACT, GLIDE_ROW_HEIGHT, GLIDE_ROW_HEIGHT_COMPACT, paletteFromTokens } from './listGridGlideTheme'
+import { useDisplayDensity } from './density'
 import { anchorFromBounds, type Anchor } from './ListGridGlideMenus'
 import { GlideOverlays, schemaEditorProps, useGlideCellEdits, useGlideColumns, useRowTint, type GlideMenuState } from './ListGridGlideOverlays'
 import styles from './ListGrid.module.css'
@@ -37,10 +39,18 @@ function readWidths(listID: string): Record<string, number> {
   }
 }
 
-export function ListGridGlide({ listID, columns, rows, density, schemaEditing = true }: { listID: string; columns: GridColumn[]; rows: GridRow[]; density?: string; schemaEditing?: boolean }) {
+// editorPortal: where the library mounts its overlay cell editor.
+// 'body' (default) is its own body-level #portal, which keeps the
+// editor out of any CSS-transformed ancestor (a board object scales
+// with the canvas). 'host' mounts it inside this grid's own tree --
+// required inside a focus-trapping dialog (the card page): a trap
+// pulls focus back from anything outside its subtree, so a body-level
+// editor never receives keystrokes and every commit is lost.
+export function ListGridGlide({ listID, columns, rows, density, schemaEditing = true, editorPortal = 'body' }: { listID: string; columns: GridColumn[]; rows: GridRow[]; density?: string; schemaEditing?: boolean; editorPortal?: 'body' | 'host' }) {
   const { t } = useTranslation('common')
   const [host, setHost] = useState<HTMLDivElement | null>(null)
   const gridRef = useRef<DataEditorRef>(null)
+  const portalRef = useRef<HTMLDivElement>(null)
   const edits = useListSchemaEdits(listID, columns, rows)
   const palette = useMemo(() => paletteFromTokens(host), [host])
   const renderers = useMemo(() => [optionsRenderer(palette)], [palette])
@@ -60,13 +70,27 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
     })
   }, [listID])
 
+  // The header's rectangle comes from the grid's own layout; on a
+  // first mount (an empty List's first column) it is not there for a
+  // few frames yet, so the lookup retries briefly instead of giving up.
   const openRename = useCallback((col: number, at?: Anchor) => {
     const column = columns[col]
-    const bounds = gridRef.current?.getBounds(col, -1)
-    const where = at ?? (bounds && toAnchor(bounds))
-    if (!column || !where) return
+    if (!column) return
     setMenu(null)
-    setRenaming({ key: column.Key, at: where })
+    if (at) {
+      setRenaming({ key: column.Key, at })
+      return
+    }
+    let tries = 0
+    const attempt = () => {
+      const bounds = gridRef.current?.getBounds(col, -1)
+      if (bounds && bounds.width > 0) {
+        setRenaming({ key: column.Key, at: toAnchor(bounds) })
+        return
+      }
+      if (++tries < 30) window.requestAnimationFrame(attempt)
+    }
+    attempt()
   }, [columns, toAnchor])
 
   // A fresh column goes straight into rename once its insert LANDED,
@@ -84,7 +108,10 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
     return () => window.clearTimeout(id)
   }, [columns, openRename])
 
-  const height = GLIDE_HEADER_HEIGHT + (rows.length + (schemaEditing ? 1 : 0)) * GLIDE_ROW_HEIGHT + 2
+  const compact = useDisplayDensity() === 'compact'
+  const rowHeight = compact ? GLIDE_ROW_HEIGHT_COMPACT : GLIDE_ROW_HEIGHT
+  const headerHeight = compact ? GLIDE_HEADER_HEIGHT_COMPACT : GLIDE_HEADER_HEIGHT
+  const height = headerHeight + (rows.length + (schemaEditing ? 1 : 0)) * rowHeight + 2
 
   return (
     <div
@@ -96,8 +123,10 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
       data-rows={rows.length}
       data-col-widths={columns.map((c) => widths[c.Key] ?? GLIDE_DEFAULT_COLUMN_WIDTH).join(',')}
       data-col-types={columns.map((c) => ((c.Options?.length ?? 0) > 0 ? 'options' : c.Type || 'text')).join(',')}
-      data-header-height={GLIDE_HEADER_HEIGHT}
-      data-row-height={GLIDE_ROW_HEIGHT}
+      data-col-keys={columns.map((c) => c.Key).join(',')}
+      data-col-deprecated={columns.filter((c) => c.Deprecated).map((c) => c.Key).join(',')}
+      data-header-height={headerHeight}
+      data-row-height={rowHeight}
       // Arrow keys and typing inside the grid belong to the grid --
       // never to the board's node keyboard handling (which would move
       // the object) nor the canvas's own shortcuts; a right-click is
@@ -105,12 +134,13 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
       onKeyDown={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.stopPropagation()}
     >
-      <div className={`${styles.scroll} nowheel nodrag`} style={{ minHeight: 120, maxHeight: 420 }}>
+      <div className={`${styles.scroll} nowheel nodrag nopan`} style={{ minHeight: 120, maxHeight: 420 }}>
         {columns.length === 0 ? (
           <p className={styles.empty} data-testid="atlas-projection-empty">{t('listGrid.noColumns')}</p>
         ) : (
           <DataEditor
             ref={gridRef}
+            portalElementRef={editorPortal === 'host' ? (portalRef as React.RefObject<HTMLElement>) : undefined}
             columns={gridColumns}
             rows={rows.length}
             {...cellEdits}
@@ -121,8 +151,8 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
             getRowThemeOverride={getRowThemeOverride}
             width="100%"
             height={Math.min(420, height)}
-            rowHeight={GLIDE_ROW_HEIGHT}
-            headerHeight={GLIDE_HEADER_HEIGHT}
+            rowHeight={rowHeight}
+            headerHeight={headerHeight}
             rowMarkers="number"
             smoothScrollX
             smoothScrollY
@@ -151,6 +181,12 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
         )}
       </div>
       {edits.error && <p className={styles.errorLine} data-testid="atlas-projection-error">{edits.error}</p>}
+      {editorPortal === 'host' && (
+        // A fixed, zero-size box at the viewport origin: the library
+        // positions its editor absolutely in viewport coordinates, so
+        // this resolves them exactly like the body-level portal does.
+        <div ref={portalRef} className={styles.editorPortal} data-testid="atlas-projection-glide-portal" />
+      )}
     </div>
   )
 }

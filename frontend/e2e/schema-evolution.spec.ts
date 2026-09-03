@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { clickGlideCell, editGlideCell, glideCellText } from './fixtures/glideGrid'
 import { addGridColumn } from './fixtures/listGrid'
 import { clickRowAction } from './inventoryRow'
 import { activePanel, dragPaletteItemToCanvas, connectNodes } from './fixtures/canvas'
@@ -29,20 +30,18 @@ test('Deprecated column: de-emphasized in the List editor and excluded from a ne
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Example: Country codes', { exact: true }) })
   await listRow.getByText('Example: Country codes', { exact: true }).click()
 
-  const codeHeader = page.getByTestId('atlas-projection-header').filter({ hasText: 'Code' }).first()
-  const deprecatedHeader = page.locator('[data-testid="atlas-projection-header"][data-deprecated="true"]')
-  await expect(deprecatedHeader).toHaveCount(1)
-  // The gear popover shows the stored deprecation.
-  await deprecatedHeader.hover()
-  await deprecatedHeader.locator('[data-testid^="list-grid-column-settings-"]').click()
+  // The grid publishes which columns are deprecated (the header paint
+  // is the library's; the muted header theme was screenshot-reviewed).
+  const glide = page.getByTestId('atlas-projection-glide')
+  await expect(glide).toHaveAttribute('data-col-deprecated', /.+/)
+  const deprecatedKey = (await glide.getAttribute('data-col-deprecated')) ?? ''
+  const deprecatedIndex = ((await glide.getAttribute('data-col-keys')) ?? '').split(',').indexOf(deprecatedKey)
+  expect(deprecatedIndex).toBeGreaterThanOrEqual(0)
+  // The popover shows the stored deprecation for that column.
+  await clickGlideCell(page, glide, -1, deprecatedIndex, { button: 'right' })
+  await page.getByTestId(`list-grid-column-settings-${deprecatedKey}`).click()
   await expect(page.getByTestId('list-grid-column-deprecated')).toBeChecked()
   await page.keyboard.press('Escape')
-  // De-emphasized: a computed-style check (testing.md's interaction-e2e
-  // guidance), not a screenshot -- the deprecated column's header color
-  // differs from an ordinary one's.
-  const codeColor = await codeHeader.evaluate((el) => getComputedStyle(el).color)
-  const deprecatedColor = await deprecatedHeader.evaluate((el) => getComputedStyle(el).color)
-  expect(deprecatedColor).not.toBe(codeColor)
 
   await page.getByRole('button', { name: 'Close' }).click()
 
@@ -109,29 +108,26 @@ test('Deleting a saved column tombstones it (confirmed); re-adding the same key/
   await expect(page.getByTestId('list-rows-editor')).toBeVisible()
   await addGridColumn(page, 'Code')
   await page.getByTestId('atlas-projection-add-row').click()
-  const cell = page.getByTestId('atlas-projection-cell').first()
-  await cell.click()
-  await page.getByTestId('atlas-projection-cell-input').fill('KEEP-ME')
-  await page.getByTestId('atlas-projection-cell-input').press('Enter')
-  await expect(cell).toContainText('KEEP-ME')
+  const glide = page.getByTestId('atlas-projection-glide')
+  await editGlideCell(page, glide, 0, 0, 'KEEP-ME')
+  await expect(glideCellText(glide, 0, 0)).toHaveText('KEEP-ME')
 
-  // Remove the saved column via the header gear -- a confirm names it
+  // Remove the saved column via the header menu -- a confirm names it
   // and states data is preserved.
-  const codeHeader = page.getByTestId('atlas-projection-header').filter({ hasText: 'Code' })
-  await codeHeader.hover()
+  await clickGlideCell(page, glide, -1, 0, { button: 'right' })
   await page.getByTestId('list-grid-column-settings-code').click()
   await page.getByTestId('list-grid-column-remove').click()
   const confirmDialog = page.getByRole('alertdialog')
   await expect(confirmDialog).toContainText('Code')
   await confirmDialog.getByRole('button', { name: 'Remove column' }).click()
-  await expect(codeHeader).toHaveCount(0)
+  await expect(glide).toHaveAttribute('data-columns', '0')
 
   // Re-add the same key at the same type (naming a fresh empty column
   // "Code" re-keys it to code) -- a legal resurrect
   // (typedfield.ValidateFieldEvolution) -- and the row's own value for
   // it is still there, never wiped by the delete.
   await addGridColumn(page, 'Code')
-  await expect(page.getByTestId('atlas-projection-cell').first()).toContainText('KEEP-ME')
+  await expect(glideCellText(glide, 0, 0)).toHaveText('KEEP-ME')
 
   // Clean up.
   await page.getByRole('button', { name: 'Close' }).click()

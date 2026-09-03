@@ -43,4 +43,8 @@ export function paletteFromTokens(el: HTMLElement | null): GridPalette {
 
 export const GLIDE_ROW_HEIGHT = 28
 export const GLIDE_HEADER_HEIGHT = 32
+// Compact display density (shared/density.ts) tightens the grid's
+// rows the way it tightens card padding and Settings stacks.
+export const GLIDE_ROW_HEIGHT_COMPACT = 24
+export const GLIDE_HEADER_HEIGHT_COMPACT = 28
 export const GLIDE_DEFAULT_COLUMN_WIDTH = 160

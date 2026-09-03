@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { clickBoardPoint } from './fixtures/atlasBoard'
+import { placeSizedTable } from './fixtures/atlasTable'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
 import { clickGlideCell, editGlideCell, glideCellText } from './fixtures/glideGrid'
@@ -12,57 +12,6 @@ import { clickGlideCell, editGlideCell, glideCellText } from './fixtures/glideGr
 // restored to its default and the table + its List deleted before
 // the test ends.
 
-async function setNewGrid(page: import('@playwright/test').Page, on: boolean) {
-  await page.getByRole('link', { name: 'Settings' }).click()
-  await expect(page.getByTestId('extensions-list')).toBeVisible()
-  const row = page.locator('[data-testid="extensions-row"][data-extension-id="table"]')
-  if (!(await row.getByTestId('extensions-row-expanded').isVisible())) await row.locator('summary').click()
-  const box = page.getByTestId('extension-setting-table-newGrid').locator('input[type="checkbox"]')
-  if (on) await box.check()
-  else await box.uncheck()
-  await expect(box).toBeChecked({ checked: on })
-}
-
-test('the table extension\'s New grid flag swaps a table object onto the adopted grid, and back', async ({ page }) => {
-  await page.goto('/')
-  await setNewGrid(page, true)
-
-  await page.getByRole('link', { name: 'Atlas' }).click()
-  await expect(page.getByTestId('atlas-board')).toBeVisible()
-  await page.getByTestId('atlas-tray-table').click()
-  await page.getByTestId('atlas-table-size-2x2').click()
-  await clickBoardPoint(page, { x: 400, y: 500 })
-  const tableObject = page.locator('[data-testid="atlas-board-object"][data-object-kind="table"]')
-  await expect(tableObject).toBeVisible()
-  const glide = tableObject.getByTestId('atlas-projection-glide')
-  await expect(glide).toBeVisible()
-  await expect(glide).toHaveAttribute('data-columns', '2')
-  await expect(glide).toHaveAttribute('data-rows', '2')
-  // The library's accessibility DOM (visually hidden by design) names
-  // the List's columns.
-  await expect(glide.locator('[role="grid"]')).toBeAttached()
-  await expect(glide.locator('[role="grid"]')).toContainText('Column 1')
-  await expect(tableObject.getByTestId('atlas-projection-table')).toHaveCount(0)
-
-  // Off again: the hand-rolled grid is back on the same object, live.
-  await setNewGrid(page, false)
-  await page.getByRole('link', { name: 'Atlas' }).click()
-  await expect(tableObject.getByTestId('atlas-projection-table')).toBeVisible()
-  await expect(tableObject.getByTestId('atlas-projection-glide')).toHaveCount(0)
-
-  // Cleanup: the object, then its List.
-  await tableObject.click({ button: 'right' })
-  const menu = contextMenu(page)
-  await expect(menu).toBeVisible()
-  await menu.getByText('Delete', { exact: true }).click()
-  await expect(tableObject).toHaveCount(0)
-  await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
-  const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })
-  await clickRowAction(page, listRow, 'Delete')
-  await expect(listRow).toHaveCount(0)
-})
-
 // Slice 1 (goal 0287): every interaction below is the adopted grid's
 // own -- selection by click, Enter to edit, Enter to commit -- with
 // Mill's schema and row menus composed on its header and cell events.
@@ -70,12 +19,9 @@ test('the table extension\'s New grid flag swaps a table object onto the adopted
 // plus the List it created.
 async function landGlideTable(page: import('@playwright/test').Page) {
   await page.goto('/')
-  await setNewGrid(page, true)
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
-  await page.getByTestId('atlas-tray-table').click()
-  await page.getByTestId('atlas-table-size-2x2').click()
-  await clickBoardPoint(page, { x: 400, y: 500 })
+  await placeSizedTable(page, '2x2')
   const tableObject = page.locator('[data-testid="atlas-board-object"][data-object-kind="table"]')
   await expect(tableObject).toBeVisible()
   const glide = tableObject.getByTestId('atlas-projection-glide')
@@ -85,9 +31,9 @@ async function landGlideTable(page: import('@playwright/test').Page) {
 }
 
 async function cleanupGlideTable(page: import('@playwright/test').Page, tableObject: import('@playwright/test').Locator) {
-  await setNewGrid(page, false)
-  await page.getByRole('link', { name: 'Atlas' }).click()
-  await tableObject.click({ button: 'right' })
+  // The grid host claims right-click for its own row/column menus --
+  // the object's own menu opens off its chrome frame instead.
+  await tableObject.getByTestId('atlas-board-object-frame').click({ button: 'right' })
   const menu = contextMenu(page)
   await expect(menu).toBeVisible()
   await menu.getByText('Delete', { exact: true }).click()

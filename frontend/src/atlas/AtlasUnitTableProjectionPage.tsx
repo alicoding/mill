@@ -18,7 +18,7 @@ export function AtlasUnitTableProjectionPage({ card }: UnitRenderProps) {
   return (
     <Stack direction="vertical" gap="condensed" data-testid="atlas-page-projection">
       <Text weight="semibold">{t('projection.pageHeading')}</Text>
-      <AtlasCardProjectionTable scopeID={card.ID} density={card.ProjectionDensity} fetchProjection={AtlasService.CardListProjection} />
+      <AtlasCardProjectionTable scopeID={card.ID} density={card.ProjectionDensity} fetchProjection={AtlasService.CardListProjection} editorPortal="host" />
       <Text size="small" className={runbookStyles.muted}>
         {t('projection.pageCaption')}{' '}
         <PrimerLink as="button" type="button" data-testid="atlas-projection-open-configure" onClick={() => setView({ kind: 'configure', tab: 'lists' })}>

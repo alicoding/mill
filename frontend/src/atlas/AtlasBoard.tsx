@@ -8,6 +8,7 @@ import { AtlasService } from '../shared/bindings'
 import { useIsNarrowViewport } from '../shared/useNarrowViewport'
 import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'
 import { computeGroupFrameLayout, isGroupCard } from './atlasBoardLayout'
+import { freePositionAmong } from './atlasFreePlacement'
 import { computeNoteBoxes, computeObjectBoxes, computeTopLevelBoxes } from './atlasBoardBoxes'
 import { rfEdgeTypes, rfNodeTypes } from './atlasBoardNodeTypes'
 import { AtlasBoardChrome } from './AtlasBoardChrome'
@@ -68,7 +69,7 @@ import styles from './AtlasBoard.module.css'
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, allNotes, objects, allObjects, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onObjectContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, onCreateTableSized, onOpenTableFromList, onQuietToast, onOpenNote, placementRequest, promoteRequest, groupRequest }: AtlasBoardInnerProps) {
+function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, allNotes, objects, allObjects, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onObjectContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, onCreateTableSized, onOpenTableFromList, onQuietToast, onOpenNote, placementRequest, promoteRequest, groupRequest, freePlacementRef }: AtlasBoardInnerProps) {
   const { t } = useTranslation('atlas')
   const readOnly = useIsNarrowViewport()
   const reduceMotion = usePrefersReducedMotion()
@@ -117,6 +118,11 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     [cards, allCards, freeMoves, allNotes, allObjects, isFree],
   )
   const noteBoxes = useMemo(() => (isFree ? computeNoteBoxes(notes) : []), [notes, isFree])
+  useEffect(() => {
+    if (!freePlacementRef) return
+    freePlacementRef.current = (size) => freePositionAmong([...topLevelBoxes, ...noteBoxes, ...objectBoxesRef.current], size)
+    return () => { freePlacementRef.current = null }
+  }, [freePlacementRef, topLevelBoxes, noteBoxes])
 
   // The ONE shared armed-tool field (useAtlasArmedTool.ts, goal 0238):
   // every arming door below -- useAtlasCreation's own card/note/area/

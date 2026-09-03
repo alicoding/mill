@@ -31,18 +31,6 @@ export const tableTool = {
   // A live view of List data -- typed, queryable (goal 0224's
   // disposition table), tray-primary.
   group: 'knowledge',
-  // The adopted grid behind a flag (ADR-0049, goal 0287 slice 0): off
-  // by default until it replaces the hand-rolled grid; read per mount
-  // by AtlasCardProjectionTable.tsx.
-  settings: [
-    {
-      type: 'boolean',
-      key: 'newGrid',
-      label: 'New grid (experimental)',
-      description: 'Renders tables with the adopted spreadsheet grid. Column editing stays in the current grid for now.',
-      defaultValue: false,
-    },
-  ],
   interaction: tableIdentity.interaction,
   // Arms through the size-picker popover, never the toggleArm/lock
   // state machine -- always false, not N/A (atlasNounRegistry.ts's own
