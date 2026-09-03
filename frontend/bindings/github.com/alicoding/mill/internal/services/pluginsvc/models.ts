@@ -197,6 +197,21 @@ export interface PluginInfo {
     "Dir": string;
     "Error": string;
     "Builtin": boolean;
+
+    /**
+     * ContentHash is the folder's current content hash
+     * (pluginservice_hash.go), "" for a built-in or an invalid plugin
+     * -- what the lock compares against.
+     */
+    "ContentHash": string;
+
+    /**
+     * SigningPolicy reports whether an administrator pinned signing
+     * keys; Signed whether this folder's signature verified against one
+     * (pluginservice_signing.go). Both false with no policy.
+     */
+    "SigningPolicy": boolean;
+    "Signed": boolean;
 }
 
 /**

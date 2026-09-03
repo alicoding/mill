@@ -49,9 +49,12 @@ const legacyForwardApprovalsEnabledKey = "settings-forward-approvals-enabled"
 // per-workflow triggers -- same registration mechanism, different
 // callback).
 type SettingsService struct {
-	mu     sync.Mutex
-	store  settings.Store
-	window *windowing.Window
+	mu    sync.Mutex
+	store settings.Store
+	// pluginHasher is the plugin lock's hash source
+	// (settingsservice_pluginlock.go), nil until wired.
+	pluginHasher PluginHasher
+	window       *windowing.Window
 	// leave is the quit gate's state (settingsservice_flush.go).
 	leave leaveGate
 	// panel is the Quick Panel window (docs/adr/0033) -- a second,

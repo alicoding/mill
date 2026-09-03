@@ -103,7 +103,7 @@ func TestOrderPasteClaims(t *testing.T) {
 // enabled AND allowed after review (ADR-0051 §4).
 func TestSettingsTrust_MayRun(t *testing.T) {
 	set, store := newSettingsForTrust(t)
-	trust := settingsTrust{set}
+	trust := settingsTrust{settings: set}
 	if trust.mayRun("mill-a", false) {
 		t.Fatal("an unreviewed plugin ran")
 	}
@@ -160,5 +160,39 @@ func setPluginAllowlist(t *testing.T, store *servicetest.FakeStore, raw string) 
 	t.Helper()
 	if err := store.Set("settings-plugin-allowlist", raw); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// The lock: a plugin allowed at one hash stops running when its files
+// change, and runs again once re-allowed at the new hash.
+func TestSettingsTrust_LockRevokesChangedPlugins(t *testing.T) {
+	set, _ := newSettingsForTrust(t)
+	current := "sha256-aaa"
+	set.SetPluginHasher(func(id string) (string, string) { return "1.0.0", current })
+	trust := settingsTrust{settings: set, hashOf: func(string) string { return current }}
+	if err := set.SetPluginAllowed("mill-a", true); err != nil {
+		t.Fatal(err)
+	}
+	if !trust.mayRun("mill-a", false) {
+		t.Fatal("allowed plugin did not run")
+	}
+	if got := set.GetPluginLock()["mill-a"]; got.Hash != "sha256-aaa" || got.Version != "1.0.0" {
+		t.Fatalf("lock = %+v", got)
+	}
+	current = "sha256-bbb"
+	if trust.mayRun("mill-a", false) {
+		t.Fatal("a changed plugin ran")
+	}
+	if err := set.SetPluginAllowed("mill-a", true); err != nil {
+		t.Fatal(err)
+	}
+	if !trust.mayRun("mill-a", false) {
+		t.Fatal("re-allowed plugin did not run")
+	}
+	if err := set.SetPluginAllowed("mill-a", false); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := set.GetPluginLock()["mill-a"]; ok {
+		t.Fatal("withdrawing consent kept the lock entry")
 	}
 }

@@ -66,7 +66,14 @@ func WireSettingsEraSeams(settings *settingssvc.SettingsService, notif *notifica
 
 // settingsTrust adapts SettingsService to the plugin service's trust
 // reader (pluginsvc.PluginTrustReader).
-type settingsTrust struct{ settings *settingssvc.SettingsService }
+type settingsTrust struct {
+	settings *settingssvc.SettingsService
+	// hashOf answers a plugin's current content hash ("" when unknown);
+	// signedOK answers the signed tier's verdict; both nil in the
+	// paste-chain wiring's own tests.
+	hashOf   func(id string) string
+	signedOK func(id string) bool
+}
 
 func (t settingsTrust) Enabled(id string) bool {
 	for _, d := range t.settings.GetDisabledExtensions() {
@@ -87,6 +94,18 @@ func (t settingsTrust) Allowed(id string) bool {
 }
 
 func (t settingsTrust) Allowlist() []string { return t.settings.GetPluginAllowlist() }
+
+func (t settingsTrust) LockedHash(id string) string { return t.settings.GetPluginLock()[id].Hash }
+
+// unchanged reports whether the plugin's files still match the hash
+// its consent covered (ADR-0051 §4, slice 5) -- true with no hasher
+// wired or nothing recorded.
+func (t settingsTrust) unchanged(id string) bool {
+	if t.hashOf == nil {
+		return true
+	}
+	return t.settings.PluginLockMatches(id, t.hashOf(id))
+}
 
 // mayRun is the ONE run-policy predicate the Go side applies (the
 // frontend loader mirrors it in plugins/pluginTrust.ts): a plugin must
@@ -110,7 +129,10 @@ func (t settingsTrust) mayRun(id string, builtin bool) bool {
 			return false
 		}
 	}
-	return t.Allowed(id)
+	if t.signedOK != nil && !t.signedOK(id) {
+		return false
+	}
+	return t.Allowed(id) && t.unchanged(id)
 }
 
 // WirePluginTrust grandfathers the plugins already installed the first
@@ -118,8 +140,12 @@ func (t settingsTrust) mayRun(id string, builtin bool) bool {
 // plugin present is recorded as allowed -- an upgrade never turns a
 // working plugin off), and installs the audit export's read seams.
 func WirePluginTrust(plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService, secrets *secretsvc.SecretService) {
+	settings.SetPluginHasher(func(id string) (string, string) {
+		return plugins.VersionOf(id), plugins.ContentHashOf(id)
+	})
+	plugins.SetSigningKeys(settings.GetPluginSigningKeys)
 	grandfatherInstalledPlugins(plugins, settings)
-	trust := settingsTrust{settings}
+	trust := settingsTrust{settings: settings, hashOf: plugins.ContentHashOf, signedOK: plugins.SignedOK}
 	plugins.WireAudit(trust, pluginSecretAccessReader(secrets))
 	// The step-pack door (ADR-0051 §5): every runnable plugin's declared
 	// steps join the catalog and the executor, read fresh per lookup.
@@ -202,7 +228,7 @@ func (r pluginSecretResolver) Resolve(id, pluginID string) (string, error) {
 // in precedence order: the user's preferred kind (Settings >
 // Extensions, ADR-0051 slice 2) first, then ListPlugins' id order.
 func WirePluginIngestion(atlas *atlassvc.AtlasService, plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService) {
-	trust := settingsTrust{settings}
+	trust := settingsTrust{settings: settings, hashOf: plugins.ContentHashOf, signedOK: plugins.SignedOK}
 	atlas.WirePluginPasteClaims(func() []atlassvc.PluginPasteClaim {
 		return orderPasteClaims(plugins.URLPasteClaims(), func(c pluginsvc.IngestionClaim) bool { return trust.mayRun(c.PluginID, c.Builtin) }, settings.GetPreferredLinkPasteKind())
 	})

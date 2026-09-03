@@ -3,6 +3,7 @@ module github.com/alicoding/mill
 go 1.25.7
 
 require (
+	aead.dev/minisign v0.3.0
 	github.com/JohannesKaufmann/dom v0.3.1
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2
 	github.com/PuerkitoBio/goquery v1.12.0

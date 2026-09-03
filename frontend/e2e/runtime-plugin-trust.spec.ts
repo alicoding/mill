@@ -5,7 +5,7 @@
 // (launchWithPlugins). Offsets 42/44/46 (the fixture's range map).
 import { expect, test } from '@playwright/test'
 import { launchWithPlugins } from './fixtures/runtimePlugins'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
 const LATE_PLUGIN = `export function activate(api) {
@@ -108,6 +108,63 @@ test('Export plugin audit saves one JSON document naming every plugin, its reach
 		expect(Array.isArray(body.guardedActions)).toBe(true)
 		expect(Array.isArray(body.secretAccess)).toBe(true)
 		expect(body.guardedActionsWindow).toBe('24h0m0s')
+	} finally {
+		await close()
+	}
+})
+
+test('a plugin whose files change after it was allowed stops running until allowed again (the lock)', async () => {
+	const { page, pluginsDir, close } = await launchWithPlugins(56)
+	try {
+		await page.goto('/')
+		await page.getByRole('link', { name: 'Atlas' }).click()
+		const bookmark = page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]')
+		await expect(bookmark).toBeVisible()
+
+		// Grandfathered at boot with its hash recorded; an edit after that
+		// is drift the lock catches on the next boot.
+		writeFileSync(path.join(pluginsDir, 'mill-bookmark', 'main.js'), '// edited after consent\n' + readFileSync(path.join(pluginsDir, 'mill-bookmark', 'main.js'), 'utf8'))
+		await page.reload()
+		await page.getByRole('link', { name: 'Atlas' }).click()
+		await expect(page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Scribble"]')).toBeVisible()
+		await expect(bookmark).toHaveCount(0)
+
+		await page.getByRole('link', { name: 'Settings' }).click()
+		const row = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-bookmark"]')
+		await row.scrollIntoViewIfNeeded()
+		await expect(row.getByTestId('extensions-plugin-review')).toContainText('Its files changed since you allowed it')
+		await expect(row.getByTestId('extensions-plugin-toggle')).toHaveCount(0)
+		await row.getByTestId('extensions-plugin-allow').click()
+		await expect(row.getByTestId('extensions-plugin-review')).toContainText('Allowed. Reload to load it.')
+
+		await page.reload()
+		await page.getByRole('link', { name: 'Atlas' }).click()
+		await expect(bookmark).toBeVisible()
+	} finally {
+		await close()
+	}
+})
+
+test('with signing keys pinned, an unsigned plugin cannot run and the bar says so', async () => {
+	// A real minisign public key (the format the policy accepts); no
+	// example ships a signature for it, so every plugin is unsigned.
+	const key = 'RWTV8L06+shYI4jnCBc0V3XvcBqz2y0Q2Zc4tQ5qmJ2tbiuvkgpzEUrb'
+	const { page, close } = await launchWithPlugins(58, { settings: { 'settings-plugin-signing-keys': JSON.stringify([key]) } })
+	try {
+		await page.goto('/')
+		await page.getByRole('link', { name: 'Atlas' }).click()
+		const tray = page.locator('[data-testid="atlas-creation-tray"]')
+		await expect(tray).toBeVisible()
+		await expect(tray.locator('button[aria-label="Bookmark"]')).toHaveCount(0)
+		await page.getByRole('link', { name: 'Settings' }).click()
+		const section = page.locator('[data-testid="extensions-installed-plugins"]')
+		await section.scrollIntoViewIfNeeded()
+		await expect(section.getByTestId('extensions-allowlist')).toContainText('Only plugins signed by the 1 key this Mill trusts can run.')
+		const row = section.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-bookmark"]')
+		await expect(row.getByTestId('extensions-plugin-unsigned')).toContainText('Not signed by a key this Mill trusts')
+		await expect(row.getByTestId('extensions-plugin-toggle')).toHaveCount(0)
+		// The built-in Drawing plugin is exempt from the signing policy.
+		await expect(section.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-drawing"]').getByTestId('extensions-plugin-toggle')).toBeVisible()
 	} finally {
 		await close()
 	}

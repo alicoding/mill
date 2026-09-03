@@ -307,6 +307,21 @@ export function GetPluginAllowlist(): $CancellablePromise<string[] | null> {
 }
 
 /**
+ * GetPluginLock returns every recorded entry. Never nil.
+ */
+export function GetPluginLock(): $CancellablePromise<{ [_ in string]?: $models.PluginLockEntry } | null> {
+    return $Call.ByID(742066904);
+}
+
+/**
+ * GetPluginSigningKeys returns the pinned minisign public keys, empty
+ * when no signing policy is set. Never nil. Read-only from the UI.
+ */
+export function GetPluginSigningKeys(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(2403520042);
+}
+
+/**
  * GetPluginStorage returns every plugin's stored values as JSON
  * literals. Never nil.
  */
@@ -509,6 +524,16 @@ export function OutboundProxyURL(): $CancellablePromise<string> {
  */
 export function PendingMCPWrites(): $CancellablePromise<mcpsvc$0.MCPWriteRequest[] | null> {
     return $Call.ByID(1300694793);
+}
+
+/**
+ * PluginLockMatches reports whether id's recorded hash equals current
+ * -- true as well when nothing was ever recorded for it (an instance
+ * from before the lock existed, or a plugin without a readable
+ * folder), so the lock only ever REVOKES consent it saw granted.
+ */
+export function PluginLockMatches(id: string, current: string): $CancellablePromise<boolean> {
+    return $Call.ByID(3689995257, id, current);
 }
 
 /**

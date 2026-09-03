@@ -25,6 +25,10 @@ import (
 const (
 	allowedPluginsKey  = "settings-allowed-plugins"
 	pluginAllowlistKey = "settings-plugin-allowlist"
+	// pluginSigningKeysKey: minisign public keys an administrator pinned
+	// (the opt-in signed tier); written by policy tooling like the
+	// allow-list, reported read-only.
+	pluginSigningKeysKey = "settings-plugin-signing-keys"
 )
 
 // readIDList decodes one JSON-array-of-ids setting; recorded reports
@@ -76,6 +80,15 @@ func (s *SettingsService) SetPluginAllowed(id string, allowed bool) error {
 	if err := s.writeIDList(allowedPluginsKey, next); err != nil {
 		return err
 	}
+	// The lock records the hash the consent covers; withdrawing consent
+	// forgets it (settingsservice_pluginlock.go).
+	if allowed {
+		if err := s.recordPluginLock(id); err != nil {
+			return err
+		}
+	} else if err := s.forgetPluginLock(id); err != nil {
+		return err
+	}
 	dataevent.Emit("extension", id)
 	return nil
 }
@@ -90,12 +103,22 @@ func (s *SettingsService) RecordAllowedPluginsIfUnset(ids []string) (bool, error
 	if _, recorded := s.readIDList(allowedPluginsKey); recorded {
 		return false, nil
 	}
-	return true, s.writeIDList(allowedPluginsKey, ids)
+	if err := s.writeIDList(allowedPluginsKey, ids); err != nil {
+		return true, err
+	}
+	return true, s.recordPluginLock(ids...)
 }
 
 // GetPluginAllowlist returns the administrator's allow-list, empty
 // when no policy is set. Never nil. Read-only from the UI by design.
 func (s *SettingsService) GetPluginAllowlist() []string {
 	ids, _ := s.readIDList(pluginAllowlistKey)
+	return ids
+}
+
+// GetPluginSigningKeys returns the pinned minisign public keys, empty
+// when no signing policy is set. Never nil. Read-only from the UI.
+func (s *SettingsService) GetPluginSigningKeys() []string {
+	ids, _ := s.readIDList(pluginSigningKeysKey)
 	return ids
 }

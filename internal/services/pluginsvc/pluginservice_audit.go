@@ -23,6 +23,9 @@ type PluginTrustReader interface {
 	Enabled(id string) bool
 	Allowed(id string) bool
 	Allowlist() []string
+	// LockedHash is the content hash the plugin's consent covers ("" when
+	// none recorded).
+	LockedHash(id string) string
 }
 
 // PluginSecretAccess is one secret-read row as the export carries it.
@@ -47,6 +50,10 @@ type PluginAuditPlugin struct {
 	ClaimsFiles  []string `json:"claimsFiles"`
 	Enabled      bool     `json:"enabled"`
 	Allowed      bool     `json:"allowed"`
+	ContentHash  string   `json:"contentHash,omitempty"`
+	LockedHash   string   `json:"lockedHash,omitempty"`
+	Changed      bool     `json:"changed"`
+	Signed       bool     `json:"signed"`
 	Error        string   `json:"error,omitempty"`
 }
 
@@ -69,6 +76,7 @@ type PluginAuditExport struct {
 	ExportedAt     time.Time            `json:"exportedAt"`
 	MillVersion    string               `json:"millVersion"`
 	Allowlist      []string             `json:"allowlist"`
+	SigningPolicy  bool                 `json:"signingPolicy"`
 	ActionsWindow  string               `json:"guardedActionsWindow"`
 	Plugins        []PluginAuditPlugin  `json:"plugins"`
 	GuardedActions []PluginAuditAction  `json:"guardedActions"`
@@ -106,6 +114,7 @@ func (p *PluginService) ExportPluginAudit() (string, error) {
 	if p.trust != nil {
 		doc.Allowlist = append(doc.Allowlist, p.trust.Allowlist()...)
 	}
+	doc.SigningPolicy = p.SigningPolicyActive()
 	for _, info := range infos {
 		doc.Plugins = append(doc.Plugins, p.auditRow(info))
 	}
@@ -139,6 +148,8 @@ func (p *PluginService) auditRow(info PluginInfo) PluginAuditPlugin {
 		Error:        info.Error,
 		Enabled:      true,
 		Allowed:      info.Builtin,
+		ContentHash:  info.ContentHash,
+		Signed:       info.Signed,
 	}
 	for _, n := range m.Contributes.Network {
 		row.Hosts = append(row.Hosts, n.Host)
@@ -150,6 +161,8 @@ func (p *PluginService) auditRow(info PluginInfo) PluginAuditPlugin {
 	if p.trust != nil && !info.Builtin {
 		row.Enabled = p.trust.Enabled(m.ID)
 		row.Allowed = p.trust.Allowed(m.ID)
+		row.LockedHash = p.trust.LockedHash(m.ID)
+		row.Changed = row.LockedHash != "" && row.ContentHash != "" && row.LockedHash != row.ContentHash
 	}
 	return row
 }
