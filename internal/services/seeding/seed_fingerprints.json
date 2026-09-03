@@ -91,6 +91,18 @@
     "seedRevision": 1,
     "fingerprint": "1e55d1591c9b7a0f98a7cd22d2de9940b4d3fa2a8094a8fd9496870e500b549a"
   },
+  "conversionprofile:conversionprofile-confluence": {
+    "seedRevision": 1,
+    "fingerprint": "355b494d5bef930d6d9abd6d902a8273cb625c6b0aa55898737dd5c99e06d359"
+  },
+  "conversionprofile:conversionprofile-default": {
+    "seedRevision": 1,
+    "fingerprint": "9b5a0a684d5f98a0cba7ef8796be4c1063fdc88b45a4c2de35c504a4442281d4"
+  },
+  "conversionprofile:conversionprofile-plain": {
+    "seedRevision": 1,
+    "fingerprint": "ec28a24e27155cb779a8c34828cbbecb873dec529e333d19cc7d749562989e1e"
+  },
   "decision:example-approve-decision": {
     "seedRevision": 3,
     "fingerprint": "b29aebfd8e13eeb833999fac0c970922830f2c61b514441c1edfa410b92b1e34"
@@ -205,7 +217,7 @@
   },
   "workflow:clipboard-html-to-markdown-workflow": {
     "seedRevision": 2,
-    "fingerprint": "9de7e8459d7a325d2d78ba99704020dc0424cc0902060ea01d1dd9aedf48d234"
+    "fingerprint": "c302b0fb457d5be7b4e37b96df52adeabc76668fd1105747322636a46c25adbd"
   },
   "workflow:clipbridge-reply-cards-workflow": {
     "seedRevision": 2,
@@ -257,7 +269,7 @@
   },
   "workflow:example-confluence-to-markdown-workflow": {
     "seedRevision": 2,
-    "fingerprint": "dace385d3abf00368202f0332540f35602f7a2ad034d429761b716714cfd9401"
+    "fingerprint": "fac7be4c91db9cdc175e81cee06f86cd58f9a27ec9608f7924df7dd789def084"
   },
   "workflow:example-decision-with-review-workflow": {
     "seedRevision": 3,
@@ -333,7 +345,7 @@
   },
   "workflow:example-saved-page-to-markdown-workflow": {
     "seedRevision": 2,
-    "fingerprint": "3cd5e1bab8414c4d6ae353830b2a27cc9fa5f49747d8d540a752d955f1b162a8"
+    "fingerprint": "c0cf374d1e86f7ece3d7c8144d5b100c85bf67c06e6b2f7feb81c4d3bfb30396"
   },
   "workflow:example-scratch-capture-workflow": {
     "seedRevision": 2,

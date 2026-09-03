@@ -179,6 +179,8 @@ Converts HTML into Markdown, preserving structure (headings, bold, lists).
 
 - Takes: HTML — Produces: Markdown
 - Effect: none — pure computation
+- Settings:
+  - **Conversion profile** — Which source-specific rules apply (Confluence, Office). Empty applies every rule set. (references a Conversion profile)
 
 ### Create run receipt
 

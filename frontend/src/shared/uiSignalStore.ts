@@ -49,6 +49,12 @@ interface UISignalState {
   configureCreateRequest: string | null
   requestConfigureCreate: (tab: string) => void
   consumeConfigureCreate: () => void
+  // configureEditRequest (goal 0312): "open THIS entity's editor" --
+  // the reference field's Open in Configure jump; the tab's page
+  // consumes it the same set-then-consume way as the create signal.
+  configureEditRequest: { tab: string; id: string } | null
+  requestConfigureEdit: (tab: string, id: string) => void
+  consumeConfigureEdit: () => void
   // review.rules (goal 0078): a monotonic counter, same shape as
   // atlasJumpRequest -- legal because the command is surface-scoped to
   // 'review' (shared/commands.ts), so ReviewView is always already
@@ -199,6 +205,9 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   configureCreateRequest: null,
   requestConfigureCreate: (tab) => set({ configureCreateRequest: tab }),
   consumeConfigureCreate: () => set({ configureCreateRequest: null }),
+  configureEditRequest: null,
+  requestConfigureEdit: (tab, id) => set({ configureEditRequest: { tab, id } }),
+  consumeConfigureEdit: () => set({ configureEditRequest: null }),
   reviewRulesRequest: 0,
   requestReviewRules: () => set((s) => ({ reviewRulesRequest: s.reviewRulesRequest + 1 })),
   atlasArmToolRequest: null,

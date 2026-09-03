@@ -40,6 +40,10 @@ drifting apart would be a bug:
 - **Execution environments** — a pinned shell, directory, and
   environment for Run a command. This is reproducibility, not a
   sandbox: the script runs with your full user account.
+- **Conversion profiles** — which source-specific rules an HTML to
+  Markdown conversion applies (Confluence, Office and Word). The
+  converter step picks one; leave it empty and every rule applies.
+  The page's sample preview shows what each profile makes of a paste.
 - **Attributes** — a workflow's declared typed fields.
 - **Decisions** — named outcome sets a workflow records against,
   with published versions.

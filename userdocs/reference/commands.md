@@ -66,6 +66,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `clipboard.history.open` | Clipboard history | — | Global | Always available |
 | `codingLoop.run` | Run from clipboard… | — | Global | Always available |
 | `configure.new.aiproviders` | New AI provider | — | Global | Always available |
+| `configure.new.conversionprofiles` | New conversion profile | — | Global | Always available |
 | `configure.new.decisions` | New decision | — | Global | Always available |
 | `configure.new.execenvs` | New environment | — | Global | Always available |
 | `configure.new.integration` | New integration | — | Global | Always available |

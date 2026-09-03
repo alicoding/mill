@@ -96,9 +96,9 @@ test('Double-clicking a step with a recorded run opens the overlay with real inp
     const overlay = stepDetailOverlay(page)
     await expect(overlay).toBeVisible()
     await expect(overlay).toContainText('Convert HTML to Markdown')
-    // CONFIG pane: process-html-to-markdown takes no configuration --
-    // the same generic Inspector copy the sidebar renders.
-    await expect(overlay).toContainText('This step type takes no configuration.')
+    // CONFIG pane: the same fields the sidebar Inspector renders --
+    // the converter's one field, its conversion profile (goal 0305).
+    await expect(overlay).toContainText('Conversion profile')
     // DATA panes: the latest recorded run's real input/output, not a
     // placeholder -- the main content survived, the dropped nav chrome
     // didn't.

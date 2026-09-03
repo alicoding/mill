@@ -384,6 +384,13 @@
     "enabled": false
   },
   {
+    "id": "configure.new.conversionprofiles",
+    "label": "New conversion profile",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
     "id": "configure.new.decisions",
     "label": "New decision",
     "binding": null,
