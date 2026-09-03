@@ -54,8 +54,11 @@ export interface CanvasObjectDecl {
   // 'board-local' | 'url' | 'file'.
   source: 'board-local' | 'url' | 'file'
   // Which door edits it: 'inline' (the face itself is the editor) |
-  // 'external-app' | 'none'.
-  editRoute: 'inline' | 'external-app' | 'none'
+  // 'external-app' | 'none' -- one static route, or a resolver called
+  // per object when the door depends on the object's own artifact
+  // (goal 0310: a file-backed kind whose editor exists for some
+  // extensions and not others).
+  editRoute: CanvasEditRoute | ((object: CanvasObjectRef) => CanvasEditRoute)
   // Payload a fresh placement starts with.
   defaultPayload?: Record<string, string>
   // The authoring gesture (goal 0252 S1). 'arm-then-click' (the
@@ -121,6 +124,12 @@ export interface CanvasGesturePoint { x: number; y: number; t: number }
 // own current style values, and the one creation door, scoped to this
 // plugin's own kind. Kernel internals (other objects' boxes, deletion,
 // selection) are not part of this surface.
+export type CanvasEditRoute = 'inline' | 'external-app' | 'none'
+// CanvasObjectRef: the object an edit-route resolver sees.
+export interface CanvasObjectRef { ID: string; Kind: string; Payload: Record<string, string> }
+export interface CanvasRect { x: number; y: number; width: number; height: number }
+export interface CanvasItemsInRect { cardIds: string[]; noteIds: string[]; objectIds: string[] }
+
 export interface CanvasGestureCtx {
   // Converts a gesture point's client position into board (flow)
   // coordinates.
@@ -139,6 +148,10 @@ export interface CanvasGestureCtx {
   // the pencil convention: draw, bake to SVG, place with mirrorPath).
   // base64 is the file's content; ext is a lowercase ".ext".
   saveImageBytes: (base64: string, ext: string, title: string) => Promise<string>
+  // The spatial-query door (goal 0310): the ids of the board's top-
+  // level cards, notes and objects whose CENTER falls inside a board-
+  // space rect -- the same enclosure rule the built-in Area tool uses.
+  itemsInRect: (rect: CanvasRect) => CanvasItemsInRect
   // The erase door (goal 0252 S2), present ONLY when the plugin's
   // manifest declares the "erase-board-items" capability. eraseHitTest
   // accumulates whatever board item sits under the point (top-level
@@ -359,6 +372,11 @@ export interface PluginContentAPI {
   // An empty title/note leaves that part unchanged.
   updateCard: (id: string, patch: { title?: string; note?: string; fields?: Record<string, string> }) => Promise<PluginWriteResult>
   appendListRow: (listId: string, values: Record<string, string>) => Promise<PluginWriteResult>
+  // createList (goal 0310) creates a Configure List: columns by display
+  // name with an optional type (text | number | integer | boolean |
+  // date | datetime; text when omitted) and optional first rows keyed
+  // by column name. Resolves with the new list's id.
+  createList: (input: { title: string; description?: string; columns: { name: string; type?: string }[]; rows?: Record<string, string>[] }) => Promise<PluginWriteResult>
 }
 
 // PluginFilesAPI (goal 0310): list a folder on this machine through

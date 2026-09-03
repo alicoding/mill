@@ -89,8 +89,7 @@ export const tableTool = {
       Required: false, Default: '', Description: '', Options: null,
       Suggestions: null, Secret: false, RefKind: '', Multiline: false, SystemManaged: false,
     }))
-    const created = await ConfigureService.CreateList(title, '', columns)
-    for (let i = 0; i < input.rowCount; i++) await ConfigureService.AddListRow(created.ID, {})
+    const created = await ConfigureService.CreateListWithRows(title, '', columns, Array.from({ length: input.rowCount }, () => ({})))
     return { kind: 'table', title, listID: created.ID }
   },
 } as const satisfies AtlasToolShape

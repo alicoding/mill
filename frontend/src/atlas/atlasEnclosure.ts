@@ -54,6 +54,14 @@ export function enclosedIDs(rect: Rect, boxes: EnclosureBox[]): string[] {
 // removes what it visibly passes over, not just what's mostly covered;
 // enclosedIDs' center rule is a marquee-SELECT convention (Excalidraw/
 // tldraw/FigJam all use it for that), not an erase one.
+// enclosureQuery binds the three box lists into the one spatial door a
+// gesture reaches (AtlasGestureCtx.enclosedIn, goal 0310): center-
+// inside membership for top-level cards, notes and objects.
+export function enclosureQuery(cardBoxes: EnclosureBox[], noteBoxes: EnclosureBox[], objectBoxes: EnclosureBox[]): (rect: Rect) => EnclosedIDs {
+  return (rect) => ({ cardIDs: enclosedIDs(rect, cardBoxes), noteIDs: enclosedIDs(rect, noteBoxes), objectIDs: enclosedIDs(rect, objectBoxes) })
+}
+export interface EnclosedIDs { cardIDs: string[]; noteIDs: string[]; objectIDs: string[] }
+
 export function pointHitIDs(point: { x: number; y: number }, boxes: EnclosureBox[]): string[] {
   return boxes
     .filter((b) => point.x >= b.x && point.x <= b.x + b.width && point.y >= b.y && point.y <= b.y + b.height)
