@@ -50,7 +50,7 @@ test('Authoring a schema via the Manual editor round-trips alias/path through th
   await dialog.getByLabel('Extract path').fill('data.name')
   await dialog.getByTestId('field-edit-done').click()
 
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
 
   const row = requestRow(page, 'Manual Schema Request')
   await expect(row).toBeVisible()

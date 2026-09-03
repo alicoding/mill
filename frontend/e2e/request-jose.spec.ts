@@ -33,6 +33,10 @@ test('JOSE encryption toggle, recipient public key, and decrypt-response persist
   await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
 
   // The JOSE section's config fields are hidden until Enable is checked.
+  // JOSE lives behind the form's Advanced disclosure (goal 0315), closed
+  // for a new integration.
+  await expect(page.getByTestId('jose-enabled-checkbox')).toBeHidden()
+  await page.getByTestId('request-advanced-summary').click()
   await expect(page.getByTestId('jose-recipient-public-key')).toHaveCount(0)
   await page.getByTestId('jose-enabled-checkbox').click()
   await expect(page.getByTestId('jose-recipient-public-key')).toBeVisible()
@@ -45,7 +49,7 @@ test('JOSE encryption toggle, recipient public key, and decrypt-response persist
   await expect(page.getByTestId('jose-private-key')).toBeVisible()
   await page.getByTestId('jose-private-key').fill(fakePrivateKeyPEM)
 
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
 
   const row = requestRow(page, 'JOSE Request')
   await expect(row).toBeVisible()
@@ -73,13 +77,14 @@ test('JOSE encryption is disabled by default, and toggling it off after enabling
   await page.getByLabel('Label').fill('Plain Request')
   await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
 
+  await page.getByTestId('request-advanced-summary').click()
   await expect(page.getByTestId('jose-recipient-public-key')).toHaveCount(0)
   await page.getByTestId('jose-enabled-checkbox').click()
   await expect(page.getByTestId('jose-recipient-public-key')).toBeVisible()
   await page.getByTestId('jose-enabled-checkbox').click()
   await expect(page.getByTestId('jose-recipient-public-key')).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
   await expect(requestRow(page, 'Plain Request')).toBeVisible()
 
   await requestRow(page, 'Plain Request').getByText('Plain Request', { exact: true }).click()

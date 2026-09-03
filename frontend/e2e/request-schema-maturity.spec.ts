@@ -63,7 +63,7 @@ test('Paste sample infers output fields, Default/Description/Enum and the respon
   await dialog.getByLabel('Allowed values').fill('Ada, Bob')
   await dialog.getByTestId('field-edit-done').click()
 
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
 
   const row = requestRow(page, 'Schema Maturity Request')
   await expect(row).toBeVisible()

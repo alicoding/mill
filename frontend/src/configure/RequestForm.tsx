@@ -8,7 +8,7 @@ import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/doma
 import { ManualSchemaEditor } from './ManualSchemaEditor'
 import { SchemaIntake, type IntakeResult } from './SchemaIntake'
 import { RequestAuthSections } from './RequestAuthSections'
-import { RequestTestPanel } from './RequestTestPanel'
+import { RequestAdvancedSection } from './RequestAdvancedSection'
 import { headersToRows, rowsToHeaders } from './requestHeaders'
 import { parseOpenAPIToOperations, synthesizeOpenAPISpec, type ManualOperation } from './openapiSynth'
 import { EMPTY_DRAFT, authConfigFrom, draftFrom, joseConfigFrom, type HeaderRow, type RequestDraft } from './requestDraft'
@@ -36,8 +36,8 @@ function emptyOperation(): ManualOperation {
 }
 
 // docs/adr/0014: the request create/edit form -- one continuous guided
-// scroll (General -> Auth -> Headers -> Schema -> Test, as Heading
-// section breaks), replacing the previous Primer-Tabs layout. Matches
+// scroll (General -> Auth -> Headers -> Schema -> Advanced, as Heading
+// section breaks; testing lives on the saved record's own tab), replacing the previous Primer-Tabs layout. Matches
 // the reference platform's own precedent: tab the saved-record summary
 // (RequestSummary.tsx), never the act of authoring. Owns its own
 // draft/headerRows/error state internally (seeded once from props,
@@ -142,9 +142,6 @@ export function RequestForm({
   const effectiveSpec = effectiveDirty
     ? (opsHaveContent ? synthesizeOpenAPISpec(toSchemaOps(manualOperations)) : '')
     : draft.openAPISpec
-  const effectiveOperations = effectiveDirty
-    ? (opsHaveContent ? toSchemaOps(manualOperations) : [])
-    : parseOpenAPIToOperations(t, draft.openAPISpec).operations
 
   // Direct raw-spec editing (the disclosure textarea below) makes the
   // raw text authoritative again and re-seeds the editor from it.
@@ -239,13 +236,6 @@ export function RequestForm({
               </FormControl>
             </Stack>
             <FormControl>
-              <FormControl.Label>{t('requestForm.body')}</FormControl.Label>
-              <FormControl.Caption>
-                {t('requestForm.bodyCaption')}
-              </FormControl.Caption>
-              <Textarea value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} rows={2} block data-testid="request-body" />
-            </FormControl>
-            <FormControl>
               <FormControl.Label>{t('requestForm.description')}</FormControl.Label>
               <FormControl.Caption>{t('requestForm.descriptionCaption')}</FormControl.Caption>
               <Textarea value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} rows={2} block data-testid="request-description" />
@@ -307,21 +297,7 @@ export function RequestForm({
           </Stack>
         </section>
 
-        <section>
-          <Heading as="h3" variant="small" className={styles.sectionHeading}>{t('requestForm.test')}</Heading>
-          <RequestTestPanel
-            operations={effectiveOperations}
-            effectiveSpec={effectiveSpec}
-            baseURL={draft.baseURL}
-            authType={draft.authType}
-            auth={authConfigFrom(draft)}
-            jose={joseConfigFrom(draft)}
-            josePrivateKeyPEM={draft.josePrivateKeyPEM}
-            headers={rowsToHeaders(headerRows)}
-            secret={draft.authType === AuthType.AuthOAuth1 ? draft.oauth1ConsumerSecret : draft.secret}
-            requestID={isEditing ? editingRequest.ID : null}
-          />
-        </section>
+        <RequestAdvancedSection draft={draft} setDraft={setDraft} isEditing={isEditing} />
       </Stack>
 
       {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}

@@ -284,7 +284,9 @@ The entities:
 
 - **Integration** — an HTTP API: base URL, auth (the secret lives in
   your OS keychain, never in config), operations with typed inputs
-  and outputs.
+  and outputs. Choosing an auth type shows only that type's fields;
+  encrypting the request body (JWE) and a fixed fallback body sit
+  under Advanced. Test a saved integration from its own Testing tab.
 - **Lists** — typed tabular data steps can look up, search, and
   write; Atlas can project them too. A list edits as one spreadsheet-
   style grid: click a cell to select it, click again (or press
