@@ -36,7 +36,7 @@ export function AtlasCardProjectionTable({ scopeID, density, fetchProjection, on
   // The grid implementation is the table extension's own flag (ADR-0049);
   // subscribed so flipping it in Settings re-renders open tables.
   useExtensionSettingsStore((s) => s.values)
-  const Grid = extensionSetting('table', 'newGrid', false) ? ListGridGlide : ListGrid
+  const Grid = extensionSetting('table', 'newGrid', true) ? ListGridGlide : ListGrid
 
   // Scoped + debounced (goal 0147): a list event names WHICH list
   // changed (dataevent.Emit's id) -- other lists' bursts are free; a

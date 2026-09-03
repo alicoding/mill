@@ -40,7 +40,7 @@ export const tableTool = {
       key: 'newGrid',
       label: 'New grid (experimental)',
       description: 'Renders tables with the adopted spreadsheet grid. Column editing stays in the current grid for now.',
-      defaultValue: false,
+      defaultValue: true,
     },
   ],
   interaction: tableIdentity.interaction,
