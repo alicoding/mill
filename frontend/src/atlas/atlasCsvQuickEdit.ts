@@ -65,3 +65,19 @@ export function serializeCellEdit(model: CsvEditModel, displayRow: number, col: 
   row[col] = value
   return Papa.unparse(rows, { delimiter: model.delimiter, newline: model.newline })
 }
+
+// serializeCellEdits -- the full matrix with SEVERAL cells changed, as
+// the text to write back: explicit save mode's one write for every
+// cell held since the last save (goal 0295 S2b). Same padding rule as
+// serializeCellEdit, applied per edit in order.
+export function serializeCellEdits(model: CsvEditModel, edits: { row: number; col: number; value: string }[]): string {
+  const rows = model.fullRows.map((row) => [...row])
+  for (const edit of edits) {
+    const target = model.sourceIndex[edit.row]
+    if (target === undefined) throw new Error(`no source row for display row ${edit.row}`)
+    const row = rows[target]
+    while (row.length <= edit.col) row.push('')
+    row[edit.col] = edit.value
+  }
+  return Papa.unparse(rows, { delimiter: model.delimiter, newline: model.newline })
+}

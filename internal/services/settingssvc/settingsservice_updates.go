@@ -438,21 +438,6 @@ func (s *SettingsService) failInstall(wasReady, destroyedPriorStaging bool, err 
 	return err
 }
 
-// RestartApp relaunches into the update DownloadAndInstallUpdate just
-// staged.
-func (s *SettingsService) RestartApp() error {
-	// Live edits first (goal 0295 S2), even when the restart itself is
-	// unavailable: the flush is what a user counts on.
-	s.flushFrontend()
-	s.mu.Lock()
-	u := s.updater
-	s.mu.Unlock()
-	if u == nil {
-		return fmt.Errorf("updater not configured")
-	}
-	return u.Restart(context.Background())
-}
-
 // inAppNotesEndMarker splits a release body's two audiences (goal
 // 0127): what the in-app update card shows ends here; the GitHub
 // releases page's manual-install instructions live below it --

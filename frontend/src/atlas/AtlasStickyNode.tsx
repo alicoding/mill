@@ -6,6 +6,8 @@ import type { Note } from '../../bindings/github.com/alicoding/mill/internal/dom
 import { AtlasService } from '../shared/bindings'
 import { MilkdownEditor } from '../shared/MilkdownEditor'
 import { registerFlusher } from '../shared/flushRegistry'
+import { useSaveMode } from '../shared/saveMode'
+import { DirtyDot } from '../shared/DirtyDot'
 import { STICKY_HEIGHT } from './atlasBoardLayout'
 import styles from './AtlasStickyNode.module.css'
 
@@ -16,7 +18,13 @@ export interface AtlasStickyData extends Record<string, unknown> {
   // structurally annotation, not data.
   note: Note | null
   editing: boolean
+  // Held unsaved (explicit save mode, useAtlasStickyNodes.ts): the
+  // note's Text is the held text and the dirty marker shows.
+  dirty: boolean
   onCommit: (text: string) => void
+  // ⌘S / the leave sheet's Save all mid-edit: the write, session kept
+  // (a draft's save is its creation and does end the session).
+  onSave: (text: string) => void
   onCancelEdit: () => void
   onEnterEdit: () => void
   // The big surface's door (docs/goals/0154): ⌘-click / ⌘↵ / the
@@ -61,7 +69,11 @@ export type AtlasStickyRFNode = RFNode<AtlasStickyData>
 // RF-controlled, user-resizable dimension.
 export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }: NodeProps<AtlasStickyRFNode>) {
   const { t } = useTranslation('atlas')
-  const { note, editing, onCommit, onCancelEdit, onEnterEdit, onOpenBig, isSoleSelected, previewHeight } = data
+  const { note, editing, dirty, onCommit, onSave, onCancelEdit, onEnterEdit, onOpenBig, isSoleSelected, previewHeight } = data
+  const saveMode = useSaveMode()
+  // Typed since the session started (or since the last ⌘S): explicit
+  // mode's dirty marker while the note is still being edited.
+  const [changed, setChanged] = useState(false)
   // The content-driven box model's own min-height floor (this
   // component's own header comment) -- a region-frame preview slot
   // overrides both height AND overflow instead, clamping to its fixed
@@ -99,6 +111,7 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
   useEffect(() => {
     if (!editing) return
     settledRef.current = false
+    setChanged(false)
     draftRef.current = note?.Text ?? ''
     setDraftText(note?.Text ?? '')
     // Focus whichever editing surface is mounted, and HOLD it for the
@@ -139,12 +152,24 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
   // read by the document/window listeners below, which are only
   // re-registered when `editing` flips, never on every keystroke.
   const commitRef = useRef<() => void>(() => {})
-  // While editing, this note is a live edit the quit / restart handshake
-  // flushes (shared/flushRegistry.ts, goal 0295 S2): its flusher is the
-  // same commit a click-away performs.
+  const saveRef = useRef<() => void>(() => {})
+  const cancelRef = useRef<() => void>(() => {})
+  const saveModeRef = useRef(saveMode)
+  useEffect(() => {
+    saveModeRef.current = saveMode
+  }, [saveMode])
+  // While editing, this note is a live edit the leave handshake settles
+  // (shared/flushRegistry.ts, goal 0295 S2): in automatic mode its
+  // flusher is the same commit a click-away performs; in explicit mode
+  // it is the write itself (⌘S), session kept. Its discard is the
+  // session's cancel; its root lets ⌘S find it by focus.
   useEffect(() => {
     if (!editing) return
-    return registerFlusher(`sticky:${note?.ID ?? 'draft'}`, () => commitRef.current())
+    return registerFlusher(`sticky:${note?.ID ?? 'draft'}`, {
+      flush: () => (saveModeRef.current === 'explicit' ? saveRef.current() : commitRef.current()),
+      discard: () => cancelRef.current(),
+      root: () => wrapRef.current,
+    })
   }, [editing, note?.ID])
 
   // Commit is POINTER-driven (the FigJam/Miro/tldraw canvas
@@ -238,7 +263,16 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
   // must land, not just the one active when the effect was created).
   useEffect(() => {
     commitRef.current = commit
+    saveRef.current = () => {
+      setChanged(false)
+      onSave(getMarkdownRef.current?.() ?? draftRef.current)
+    }
+    cancelRef.current = () => {
+      settledRef.current = true
+      onCancelEdit()
+    }
   })
+  const showDirty = dirty || (saveMode === 'explicit' && editing && changed)
 
   // Empty-state unification (goal 0247, the 0226 rule): an empty note
   // has no separate at-rest presentation -- the write invitation IS
@@ -300,6 +334,7 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
             a clamp. onResizeStart/onResizeEnd around the write also
             carry the edit session's focus across the drag (N3's own
             contract: the resize handles never interrupt editing). */}
+        {showDirty && <DirtyDot />}
         {note && (
           <NodeResizer
             isVisible={selected ?? false}
@@ -316,6 +351,7 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
           value={draftText}
           onChange={(v) => {
             draftRef.current = v
+            if (!changed && v !== (note?.Text ?? '')) setChanged(true)
             // State (and its re-render) only while the plain-textarea
             // fallback is mounted -- that path renders `value`
             // controlled. The engine mount reads `value` once at
@@ -383,6 +419,7 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
           resizer, shown only while selected so the face stays quiet at
           rest. The persisted height becomes this box's own min-height
           floor (see the component header comment), never a clamp. */}
+      {showDirty && <DirtyDot />}
       {note && (
         <NodeResizer
           isVisible={selected ?? false}

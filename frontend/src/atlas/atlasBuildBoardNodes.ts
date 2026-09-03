@@ -174,8 +174,13 @@ export function buildBoardCardNodes({
           data: {
             note: sticky.note,
             editing: noteHandlers.editingNoteID === sticky.note.ID,
+            // A preview note commits on click-away in every save mode
+            // (its slot renders the saved note, never a held text):
+            // goal 0295's own deferral record.
+            dirty: false,
             isSoleSelected,
             onCommit: (text: string) => noteHandlers.onCommitEdit(sticky.note.ID, text),
+            onSave: (text: string) => noteHandlers.onCommitEdit(sticky.note.ID, text),
             onCancelEdit: noteHandlers.onCancelEdit,
             onEnterEdit: () => noteHandlers.onEnterEdit(sticky.note.ID),
             onOpenBig: () => noteHandlers.onOpenNote(sticky.note.ID),

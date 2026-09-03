@@ -72,6 +72,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.new.mcpservers` | New MCP server | — | Global | Always available |
 | `configure.new.steptypes` | New step type | — | Global | Always available |
 | `docs.search` | Search docs | — | Global | Always available |
+| `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
+| `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `palette.open` | Open command palette | `⌘K` | Global | Always available |

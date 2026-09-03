@@ -37,7 +37,12 @@
       "canvasNavigationTrackpad": "Trackpad",
       "canvasNavigationMouse": "Mouse",
       "canvasNavigationTrackpadCaption": "Scrolling pans the board. Pinch or ⌘-scroll zooms.",
-      "canvasNavigationMouseCaption": "Scrolling zooms the board. Drag to pan."
+      "canvasNavigationMouseCaption": "Scrolling zooms the board. Drag to pan.",
+      "saveModeLabel": "Save changes",
+      "saveModeAutomatic": "Automatically",
+      "saveModeExplicit": "When I choose",
+      "saveModeAutomaticCaption": "Edits save as you make them.",
+      "saveModeExplicitCaption": "Edits wait until you press ⌘S. Mill asks before it quits or closes."
     },
     "extensions": {
       "subtitle": "Turn canvas tools on or off. Objects you already created keep working.",
@@ -56,8 +61,6 @@
       "pluginCatchesFiles": "Catches {{list}} files dropped on the board",
       "pluginCatchesLinks": "Catches web links pasted on the board",
       "pluginViews": "Adds views: {{list}}",
-      "pluginReachesHosts": "Can reach: {{list}}",
-      "pluginReachesAnyHost": "Can reach any host you approve, one request at a time",
       "pluginReachesHosts": "Can reach: {{list}}",
       "pluginReachesAnyHost": "Can reach any host you approve, one request at a time",
       "pluginDisabledNote": "Turned off. Turn on and reload to load it.",

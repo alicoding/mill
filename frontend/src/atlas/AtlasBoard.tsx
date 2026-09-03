@@ -31,7 +31,7 @@ import { useAtlasMinimapToggle } from './useAtlasMinimapToggle'
 import { useAtlasSlotDrag } from './useAtlasSlotDrag'
 import { AtlasSlotDragLine } from './AtlasSlotDragLine'
 import { buildBoardCardNodes } from './atlasBuildBoardNodes'
-import { buildStickyNodes } from './atlasStickyNodes'
+import { useAtlasStickyNodes } from './useAtlasStickyNodes'
 import { buildBoardObjectNodes } from './atlasBuildBoardObjectNodes'
 import { AtlasCreationTray, ATLAS_TOOL_DRAG_MIME } from './AtlasCreationTray'
 import type { AtlasCreationTool } from './atlasTools'
@@ -196,15 +196,16 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   })
 
   // Sticky notes (goal 0081 slice A1): built separately from
-  // builtNodes above (its own file, atlasStickyNodes.ts) since a note
-  // is never a card and never enters the shelves auto-arrange/group-
-  // frame layout that dominates that memo.
-  const stickyNodes = useMemo(() => buildStickyNodes({
+  // builtNodes above (its own hook, useAtlasStickyNodes.ts, which also
+  // owns explicit save mode's held edits) since a note is never a card
+  // and never enters the shelves auto-arrange/group-frame layout that
+  // dominates that memo.
+  const stickyNodes = useAtlasStickyNodes({
     notes, draftNotePos: creation.draftNoteFlowPos, editingNoteID: creation.editingNoteID, readOnly: readOnly || !isFree,
     isSoleSelected: selection.isSoleSelected,
     onCommitDraft: creation.commitDraftNote, onCancelDraft: creation.cancelDraftNote,
     onEnterEdit: creation.enterNoteEdit, onCancelEdit: creation.cancelNoteEdit, onCommitEdit: creation.commitNoteEdit, onOpenNote,
-  }), [notes, creation.draftNoteFlowPos, creation.editingNoteID, readOnly, isFree, selection.isSoleSelected, creation.commitDraftNote, creation.cancelDraftNote, creation.enterNoteEdit, creation.cancelNoteEdit, creation.commitNoteEdit, onOpenNote])
+  })
 
   // The board's own sole-selected object id (goal 0214) -- "sole"
   // means nothing ELSE (card, note, or another object) is selected

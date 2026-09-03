@@ -4,6 +4,7 @@
    chrome), so it stays a plain <table> rather than reusing ListGrid
    itself (goal 0232 S2). */
 .wrap {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -69,4 +70,10 @@
   line-height: 1.4;
   color: var(--fgColor-default);
   background: var(--bgColor-default);
+}
+
+/* A cell held unsaved (explicit save mode): the value is the new one,
+   the tint says it is not in the file yet. */
+.table .pendingCell {
+  background: var(--bgColor-attention-muted);
 }

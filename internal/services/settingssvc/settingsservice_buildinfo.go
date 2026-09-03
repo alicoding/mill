@@ -102,6 +102,7 @@ func (s *SettingsService) ExportSkillDoc() (string, error) {
 // native webview -- a browser tab on the shared server-mode instance
 // must never be able to kill the server out from under other clients.
 func (s *SettingsService) QuitApp() {
-	s.flushFrontend()
-	windowing.Quit()
+	if s.confirmLeaveOnce(leaveReasonQuit) {
+		windowing.Quit()
+	}
 }

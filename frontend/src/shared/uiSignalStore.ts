@@ -174,6 +174,14 @@ interface UISignalState {
   codingLoopOpen: boolean
   openCodingLoop: () => void
   closeCodingLoop: () => void
+  // The leave sheet (goal 0295 S2b, app/UnsavedChangesDialog.tsx):
+  // set by the quit / restart / close handshake
+  // (app/useBeforeQuitFlush.ts) when explicit save mode holds unsaved
+  // edits; carries WHY the app is leaving so the sheet's title can say
+  // so. Cleared by the sheet's own answer.
+  unsavedLeave: 'quit' | 'restart' | 'close' | null
+  requestUnsavedLeave: (reason: 'quit' | 'restart' | 'close') => void
+  clearUnsavedLeave: () => void
 }
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
@@ -245,4 +253,7 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   codingLoopOpen: false,
   openCodingLoop: () => set({ codingLoopOpen: true }),
   closeCodingLoop: () => set({ codingLoopOpen: false }),
+  unsavedLeave: null,
+  requestUnsavedLeave: (reason) => set({ unsavedLeave: reason }),
+  clearUnsavedLeave: () => set({ unsavedLeave: null }),
 }))

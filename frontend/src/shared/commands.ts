@@ -9,6 +9,7 @@ import { CONFIGURE_CREATE_COMMANDS } from './configureCreateCommands'
 import { ATLAS_BOARD_COMMANDS } from './atlasBoardCommands'
 import { SETTINGS_COMMANDS } from './settingsCommands'
 import { CANVAS_COMMANDS } from './canvasCommands'
+import { SAVE_COMMANDS } from './saveCommands'
 import { SECRETS_COMMANDS } from './secretsCommands'
 import { CLIPBOARD_HISTORY_COMMANDS } from './clipboardHistoryCommands'
 import { CODING_LOOP_COMMANDS } from './codingLoopCommands'
@@ -403,6 +404,9 @@ export const COMMANDS: Command[] = lazyArray(() => [
   // (CLAUDE.md's 500-line convention); see that file's own header for
   // why every entry is hintOnly.
   ...CANVAS_COMMANDS,
+  // edit.save / edit.saveAll over the flush registry (goal 0295 S2b) --
+  // split out to shared/saveCommands.ts.
+  ...SAVE_COMMANDS,
   // Vault lock/unlock -- split out to shared/secretsCommands.ts.
   ...SECRETS_COMMANDS,
   // clipboard.history.open -- split out to shared/clipboardHistoryCommands.ts.

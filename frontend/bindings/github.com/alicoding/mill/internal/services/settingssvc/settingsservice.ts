@@ -299,6 +299,14 @@ export function GetPluginStorage(): $CancellablePromise<{ [_ in string]?: { [_ i
 }
 
 /**
+ * GetSaveMode returns the persisted preference; anything but the one
+ * recognized override reads as automatic, the default.
+ */
+export function GetSaveMode(): $CancellablePromise<string> {
+    return $Call.ByID(1822681766);
+}
+
+/**
  * GetSeenFirstRunIntros returns every intro id the user has dismissed.
  * Never nil -- always at least an empty slice.
  */
@@ -714,6 +722,13 @@ export function SetPluginStorageValue(pluginID: string, key: string, jsonValue: 
  */
 export function SetRunMonitorWindow(w: windowing$0.Window | null): $CancellablePromise<void> {
     return $Call.ByID(4103434777, w);
+}
+
+/**
+ * SetSaveMode persists the preference; only the two modes are legal.
+ */
+export function SetSaveMode(mode: string): $CancellablePromise<void> {
+    return $Call.ByID(2320500362, mode);
 }
 
 /**

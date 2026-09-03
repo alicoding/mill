@@ -343,3 +343,50 @@ test('an xlsx cell never opens an editor on double-click (read-only by design)',
   await deleteViaContextMenu(page, sheetObject)
   await expect(sheetObjects(page)).toHaveCount(0)
 })
+
+// Explicit save mode (goal 0295 S2b): Enter HOLDS the cell -- the grid
+// shows the new value tinted, the file is untouched -- and ⌘S writes
+// every held cell in one go. The mode is app-global; the test sets it
+// and puts it back.
+test('in explicit save mode Enter holds a cell and ⌘S writes every held cell at once', async ({ page }) => {
+  const fs = await import('node:fs')
+  const { callBindingViaRPC } = await import('./fixtures/wailsRpc')
+  const setMode = (mode: string) => callBindingViaRPC(page, 'github.com/alicoding/mill/internal/services/settingssvc.SettingsService.SetSaveMode', [mode])
+  const file = await tempCsv('ZzE2eSheetHeld.csv', 'Name,Age\nAda,36\n')
+  // The page reads the mode once at mount: set it before the board
+  // loads (the RPC needs a loaded page of its own first).
+  await page.goto('/')
+  await setMode('explicit')
+  try {
+    const object = await landSheetObject(page, file)
+    const grid = object.getByTestId('atlas-object-sheet-grid')
+    await expect(grid).toBeVisible()
+    const firstRow = grid.locator('tbody tr').first()
+
+    await firstRow.locator('td').nth(1).dblclick()
+    const input = object.getByTestId('atlas-object-sheet-cell-input')
+    await expect(input).toBeFocused()
+    await input.fill('37') // fill: a form control (goal 0296)
+    await page.keyboard.press('Enter')
+    await expect(input).toHaveCount(0)
+    await expect(firstRow.locator('td').nth(1)).toHaveText('37')
+    await expect(firstRow.locator('td').nth(1)).toHaveAttribute('data-pending', 'true')
+    await expect(object.getByTestId('atlas-object-sheet-unsaved-dot')).toBeVisible()
+    expect(fs.readFileSync(file, 'utf8')).toBe('Name,Age\nAda,36\n')
+
+    await firstRow.locator('td').nth(0).dblclick()
+    await expect(input).toBeFocused()
+    await input.fill('Grace') // fill: a form control (goal 0296)
+    await page.keyboard.press('Enter')
+    await expect(firstRow.locator('td').nth(0)).toHaveText('Grace')
+
+    await page.keyboard.press('Meta+s')
+    await expect(object.getByTestId('atlas-object-sheet-unsaved-dot')).toHaveCount(0)
+    await expect.poll(() => fs.readFileSync(file, 'utf8')).toBe('Name,Age\nGrace,37\n')
+    await expect(firstRow.locator('td').nth(1)).not.toHaveAttribute('data-pending', 'true')
+  } finally {
+    await setMode('automatic')
+  }
+  await deleteViaContextMenu(page, sheetObjects(page).first())
+  await expect(sheetObjects(page)).toHaveCount(0)
+})
