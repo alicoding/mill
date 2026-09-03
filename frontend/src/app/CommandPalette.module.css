@@ -45,3 +45,15 @@
   color: var(--fgColor-accent);
   pointer-events: auto;
 }
+/* The pin control's box never exceeds the row's text line (goal 0303,
+   the same rule the Quick Panel applies). */
+.pinToggle,
+.pinnedIndicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--borderRadius-small);
+  cursor: pointer;
+}

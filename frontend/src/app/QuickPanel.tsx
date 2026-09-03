@@ -374,12 +374,16 @@ export function QuickPanel() {
   // the group holding the best match renders first, so a keyword hit
   // on a Mill action outranks a workflow that merely contains the
   // word. At rest the fixed order stands.
+  // Only groups with a row render (goal 0303): the kit renders every
+  // group header it is handed, rows or not, and a no-match query left
+  // three empty headings under the capture rows.
+  const presentGroups = GROUP_METADATA.filter((g) => withCapture.some((e) => e.groupId === g.groupId))
   const groupMetadata = trimmedQuery
-    ? [...GROUP_METADATA].sort((a, b) => {
+    ? [...presentGroups].sort((a, b) => {
       const rank = (id: string) => { const i = withCapture.findIndex((e) => e.groupId === id); return i < 0 ? Number.MAX_SAFE_INTEGER : i }
       return rank(a.groupId) - rank(b.groupId)
     })
-    : GROUP_METADATA
+    : presentGroups
   // The rows the shortcuts can target, in list order (the hook falls
   // back to the first when the list has no active row yet).
   const visibleWorkflowIds = withCapture.filter((e) => e.groupId === 'workflows').map((e) => e.id.slice('run:'.length))
