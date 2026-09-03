@@ -105,6 +105,11 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			updateCard: (id, patch) => writeContent(pluginId, { op: 'card-update', cardId: id, title: patch.title ?? '', note: patch.note ?? '', fields: patch.fields ?? {} }),
 			appendListRow: (listId, values) => writeContent(pluginId, { op: 'list-row', listId, values }),
 		}),
+		// The convert door (goal 0282): the shared HTML-to-Markdown
+		// converter as a pure transform over one bound call.
+		convert: Object.freeze({
+			htmlToMarkdown: (html: string) => PluginService.ConvertHTMLToMarkdown(html),
+		}),
 		on: (event, handler) => {
 			if (event !== 'contents:changed') throw new Error(`plugin ${pluginId}: unknown event "${String(event)}"`)
 			return Events.On('mill-data-changed', (evt) => {

@@ -27,6 +27,17 @@ export function AssetMiddleware(): $CancellablePromise<any> {
 }
 
 /**
+ * ConvertHTMLToMarkdown is the plugin SDK's convert door (goal 0282):
+ * the same HTML-to-Markdown conversion every workflow convert step and
+ * paste already uses, offered to a plugin as a pure transform. No
+ * capability gates it -- it reaches nothing outside its own input --
+ * and no plugin id is taken for the same reason.
+ */
+export function ConvertHTMLToMarkdown(html: string): $CancellablePromise<string> {
+    return $Call.ByID(3842719554, html);
+}
+
+/**
  * FetchForPlugin performs one guarded fetch. Refusals that need no
  * rule -- undeclared capability, undeclared host, undeclared method,
  * a non-http(s) URL -- happen BEFORE the guardrail is consulted.
