@@ -8,6 +8,7 @@ import { SettingsService } from '../shared/bindings'
 import { pluginLoadStates } from '../plugins/loader'
 import { settingDeclsFromManifest } from '../plugins/pluginSettings'
 import { ExtensionSettingControl } from './ExtensionSettingControl'
+import { ExtensionsLinkPasteControl } from './ExtensionsLinkPasteControl'
 import { refreshDisabledExtensions, useExtensionEnablementStore } from '../shared/extensionEnablementStore'
 import styles from '../shared/ListCard.module.css'
 
@@ -68,6 +69,7 @@ export function ExtensionsInstalledPlugins() {
 					{t('settings.extensions.noPlugins')}
 				</Text>
 			)}
+			{plugins !== null && <ExtensionsLinkPasteControl plugins={plugins} disabledIds={disabledIds} />}
 			{plugins !== null && plugins.length > 0 && (
 				<ActionList role="list" showDividers>
 					{plugins.map((p) => {

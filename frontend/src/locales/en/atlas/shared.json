@@ -406,6 +406,8 @@
   },
   "paste": {
     "converted": "Pasted as {{what}}",
+    "pastedAs": "Pasted as {{kind}}",
+    "pasteAsInstead": "Paste as {{kind}} instead",
     "tables_one": "{{count}} table",
     "tables_other": "{{count}} tables",
     "cards_one": "{{count}} card",

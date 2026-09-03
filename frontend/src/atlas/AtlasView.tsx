@@ -15,7 +15,8 @@ import { useAtlasProjectionViews } from './useAtlasProjectionViews'
 import { useAtlasShareIO } from './useAtlasShareIO'
 import { AtlasToolbar } from './AtlasToolbar'
 import { AtlasBoard } from './AtlasBoard'
-import { pasteSummaryText } from './pasteSummary'
+import { pasteAsOffer, pasteSummaryText } from './pasteSummary'
+import { thirdPartyNounForKind } from './atlasNounRegistry'
 import { type AtlasFocusRequest } from './useBoardFocus'
 import { type ContextMenuState } from '../shared/ContextMenu'
 import { AtlasViewOverlays } from './AtlasViewOverlays'
@@ -417,7 +418,17 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         })()}
         <AtlasBoard
           freePlacementRef={freePlacementRef}
-          onPasteConverted={(res) => quietToast.show(pasteSummaryText(t, res))}
+          onPasteConverted={(res) => {
+            // Two plugins claimed the pasted link: the first landed, the
+            // toast offers the other (the converged paste-provider model,
+            // ADR-0051 slice 2) -- re-typing the same object in place.
+            const offer = pasteAsOffer(t, res, (kind) => thirdPartyNounForKind(kind)?.label ?? kind)
+            if (!offer) { quietToast.show(pasteSummaryText(t, res)); return }
+            quietToast.show(offer.text, {
+              label: offer.alternative.label,
+              run: () => { void AtlasService.SetBoardObjectKind(res.PluginObjectID, offer.alternative.kind).then(() => refreshAtlas()).catch((err) => console.error('paste as failed', err)) },
+            })
+          }}
           onCreateTableSized={(cols, rows, at, parentID) => void createTableFromScratch(cols, rows, at, parentID)}
           onOpenTableFromList={() => setTableFromListOpen(true)}
           boardFilter={boardFilter}

@@ -18,7 +18,27 @@ import type { CanvasObjectDecl, CanvasObjectFaceCtx, GuardedActionResult } from 
 // menu item's run() receives, and what the face itself spreads its
 // mirror state onto. One construction, so a plugin sees the same
 // object shape from both doors.
-export function pluginObjectCtx(pluginId: string, object: BoardObject): Omit<CanvasObjectFaceCtx, 'mirror'> {
+// mountOffBoardStage is the ctx.mountOffBoard door's implementation: a
+// fixed-position host wrapper parked far off-screen (never display:none
+// -- a hidden subtree measures as zero, which is the very problem the
+// door solves), sized exactly, holding the plugin's element. `stages`
+// collects every live detach so the face's unmount can sweep what a
+// plugin forgot.
+function mountOffBoardStage(el: Element, size: { w: number; h: number }, stages: Set<() => void>): () => void {
+	const host = document.createElement('div')
+	host.setAttribute('data-plugin-offboard-stage', '')
+	host.style.cssText = `position:fixed;left:-100000px;top:0;width:${Math.max(1, size.w)}px;height:${Math.max(1, size.h)}px;overflow:hidden;pointer-events:none`
+	host.append(el)
+	document.body.append(host)
+	const detach = () => {
+		host.remove()
+		stages.delete(detach)
+	}
+	stages.add(detach)
+	return detach
+}
+
+export function pluginObjectCtx(pluginId: string, object: BoardObject, stages: Set<() => void> = new Set()): Omit<CanvasObjectFaceCtx, 'mirror'> {
 	return {
 		object: {
 			ID: object.ID,
@@ -33,6 +53,7 @@ export function pluginObjectCtx(pluginId: string, object: BoardObject): Omit<Can
 			const d = await PluginService.RequestGuardedAction(pluginId, kind, attributes, description)
 			return { approved: d.Approved, effect: d.Effect, ruleLabel: d.RuleLabel, performed: d.Performed }
 		},
+		mountOffBoard: (el, size) => mountOffBoardStage(el, size, stages),
 	}
 }
 
@@ -40,6 +61,11 @@ export function pluginFaceComponent(pluginId: string, decl: CanvasObjectDecl & {
 	const fileSource = decl.source === 'file'
 	const Face = memo(function PluginFace({ object, mirrorVersion, mirrorContent }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState }) {
 		const elRef = useRef<HTMLDivElement>(null)
+		// Off-board stages this face mounted and has not detached yet;
+		// swept on unmount so a plugin's forgotten stage never outlives
+		// its object.
+		const stagesRef = useRef(new Set<() => void>())
+		useEffect(() => () => { for (const detach of [...stagesRef.current]) detach() }, [])
 		// Payload identity changes on every fetch; re-render on VALUE
 		// change only, or a plugin's own updatePayload would re-invoke
 		// renderFace mid-typing with a stale echo of what it just wrote.
@@ -62,7 +88,7 @@ export function pluginFaceComponent(pluginId: string, decl: CanvasObjectDecl & {
 			if (!el) return
 			try {
 				decl.renderFace(el, {
-					...pluginObjectCtx(pluginId, object),
+					...pluginObjectCtx(pluginId, object, stagesRef.current),
 					mirror: fileSource ? { dataUrl: mirrorDataUrl, failed: mirrorFailed } : undefined,
 				})
 			} catch (err) {

@@ -7,7 +7,7 @@
   "minMillVersion": "0.14.1",
   "capabilities": ["fetch", "write-content"],
   "contributes": {
-    "canvasObjects": [{ "kind": "clip" }],
+    "canvasObjects": [{ "kind": "clip", "pastesURLs": true }],
     "network": [{ "host": "*" }]
   }
 }

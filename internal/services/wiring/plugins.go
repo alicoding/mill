@@ -95,19 +95,34 @@ func (r pluginSecretResolver) Resolve(id, pluginID string) (string, error) {
 // (docs/goals/0251): every valid manifest claiming bare-URL pastes,
 // minus plugins the user has turned off -- the SAME disabled-
 // extensions list the frontend loader consults, keyed by plugin id,
-// so both ingestion chains and the tray agree on what "off" means.
+// so both ingestion chains and the tray agree on what "off" means --
+// in precedence order: the user's preferred kind (Settings >
+// Extensions, ADR-0051 slice 2) first, then ListPlugins' id order.
 func WirePluginIngestion(atlas *atlassvc.AtlasService, plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService) {
 	atlas.WirePluginPasteClaims(func() []atlassvc.PluginPasteClaim {
 		disabled := map[string]bool{}
 		for _, id := range settings.GetDisabledExtensions() {
 			disabled[id] = true
 		}
-		var out []atlassvc.PluginPasteClaim
-		for _, c := range plugins.URLPasteClaims() {
-			if !disabled[c.PluginID] {
-				out = append(out, atlassvc.PluginPasteClaim{Kind: c.Kind})
-			}
-		}
-		return out
+		return orderPasteClaims(plugins.URLPasteClaims(), disabled, settings.GetPreferredLinkPasteKind())
 	})
+}
+
+// orderPasteClaims drops disabled plugins' claims and moves the
+// preferred kind's claim to the front, keeping the given order
+// otherwise. A preferred kind nobody enabled claims changes nothing.
+func orderPasteClaims(claims []pluginsvc.IngestionClaim, disabled map[string]bool, preferred string) []atlassvc.PluginPasteClaim {
+	var out []atlassvc.PluginPasteClaim
+	for _, c := range claims {
+		if disabled[c.PluginID] {
+			continue
+		}
+		claim := atlassvc.PluginPasteClaim{Kind: c.Kind}
+		if preferred != "" && c.Kind == preferred {
+			out = append([]atlassvc.PluginPasteClaim{claim}, out...)
+			continue
+		}
+		out = append(out, claim)
+	}
+	return out
 }

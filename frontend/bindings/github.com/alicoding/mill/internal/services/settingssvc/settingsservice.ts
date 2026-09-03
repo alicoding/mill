@@ -299,6 +299,17 @@ export function GetPluginStorage(): $CancellablePromise<{ [_ in string]?: { [_ i
 }
 
 /**
+ * GetPreferredLinkPasteKind returns the preferred claimant kind, or ""
+ * when the user never chose one. A kind whose plugin is disabled or
+ * gone is still returned as stored -- the paste chain's wiring simply
+ * finds no claim to promote, so the id order applies until the plugin
+ * is back.
+ */
+export function GetPreferredLinkPasteKind(): $CancellablePromise<string> {
+    return $Call.ByID(1170587834);
+}
+
+/**
  * GetSaveMode returns the persisted preference; anything but the one
  * recognized override reads as automatic, the default.
  */
@@ -714,6 +725,15 @@ export function SetPendingBadge(count: number): $CancellablePromise<void> {
  */
 export function SetPluginStorageValue(pluginID: string, key: string, jsonValue: string): $CancellablePromise<void> {
     return $Call.ByID(2946178161, pluginID, key, jsonValue);
+}
+
+/**
+ * SetPreferredLinkPasteKind stores kind ("" clears the preference) and
+ * emits the extension dataevent so the Extensions page and the paste
+ * chain's next lookup both see it without a reload.
+ */
+export function SetPreferredLinkPasteKind(kind: string): $CancellablePromise<void> {
+    return $Call.ByID(130220358, kind);
 }
 
 /**
