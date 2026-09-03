@@ -13,6 +13,8 @@ func TestClassifyMirrorKind(t *testing.T) {
 		{"photo.JPG", MirrorKindImage},
 		{"diagram.svg", MirrorKindImage},
 		{"log.txt", MirrorKindText},
+		{"report.pdf", MirrorKindPdf},
+		{"REPORT.PDF", MirrorKindPdf},
 		{"data.json", MirrorKindText},
 		{"diagram.mmd", MirrorKindText},
 		{"diagram.MERMAID", MirrorKindText},

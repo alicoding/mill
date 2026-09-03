@@ -50,7 +50,16 @@ const (
 	ShellAllowOpensslVerifyRuleID = "shell-allow-openssl-s-client"
 	ShellDenyRmRfRuleID           = "shell-deny-rm-rf"
 	ShellDenyPipeToShellRuleID    = "shell-deny-pipe-to-shell"
+	// PluginFetchSecretRuleID parks every plugin fetch that attaches a
+	// vault secret (ADR-0048): the net.fetch action carries the entry's
+	// title as Attributes["secret"], and ask outranks any allow rule a
+	// user later adds for the host.
+	PluginFetchSecretRuleID = "plugin-fetch-uses-secret"
 )
+
+// pluginFetchKind mirrors pluginsvc.FetchKind without importing the
+// service package (domain stays leaf).
+const pluginFetchKind = "net.fetch"
 
 // BuiltIn returns the seeded example guardrail rules -- goal 0203 S2's
 // "uses a stored secret" proof, plus goal 0240 S3's default shell
@@ -111,6 +120,18 @@ func BuiltIn() []Rule {
 			Condition:  `Attributes.command contains "| sh" or Attributes.command contains "|sh" or Attributes.command contains "| bash" or Attributes.command contains "|bash"`,
 			BuiltIn:    true,
 			Seed:       seedorigin.Stamp(1),
+		},
+		{
+			ID:         PluginFetchSecretRuleID,
+			Label:      "An extension sends a stored secret",
+			Effect:     EffectAsk,
+			NodeTypeID: pluginFetchKind,
+			// Presence-checked: a missing key errors under len(), and an
+			// erroring condition matches (fail-closed), which would park
+			// every plain fetch.
+			Condition: `("secret" in Attributes) and Attributes["secret"] != ""`,
+			BuiltIn:   true,
+			Seed:      seedorigin.Stamp(1),
 		},
 	}
 }

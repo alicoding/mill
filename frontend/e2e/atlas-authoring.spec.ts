@@ -172,7 +172,7 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     // header's own count is the real proof here, not the card's mere
     // presence/absence at root.)
     const exampleArea = groupCard(page, 'Client records')
-    await expect(exampleArea.getByTestId('atlas-group-header')).toContainText('2 cards')
+    await expect(exampleArea.getByTestId('atlas-group-header')).toContainText('2 items')
     await exampleArea.getByTestId('atlas-group-header').click()
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
     await zoomAllTheWayOut(page)
@@ -188,7 +188,7 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
 
     await page.keyboard.press('Meta+ArrowUp')
     await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Client records')
-    await expect(exampleArea.getByTestId('atlas-group-header')).toContainText('3 cards')
+    await expect(exampleArea.getByTestId('atlas-group-header')).toContainText('3 items')
 
     // --- Within-file cleanup: delete every card created above (goal
     // 0093: instant, no confirm) ---

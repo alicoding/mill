@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import type { CSSProperties, ComponentProps } from 'react'
 import type { BoardObject } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasCardProjectionTable } from '../AtlasCardProjectionTable'
-import { TABLE_WIDTH, TABLE_HEIGHT } from '../atlasBoardLayout'
+import { TABLE_HEIGHT } from '../atlasBoardLayout'
+import { tableWidthForColumns } from '../atlasTableWidth'
 
 // FetchListProjection -- derived from AtlasCardProjectionTable's own
 // prop type rather than importing ListProjection from bindings
@@ -34,18 +36,21 @@ type FetchListProjection = ComponentProps<typeof AtlasCardProjectionTable>['fetc
 // content, header + however many rows) up to TABLE_HEIGHT as a
 // ceiling -- past that the grid's own internal scroll (shared/
 // ListGrid.module.css's .scroll) takes over, exactly like today's
-// fixed box did for a large table. Width stays TABLE_WIDTH either way
-// -- the reported defect was dead space below a short table, not
-// alongside a narrow one.
+// fixed box did for a large table. Width follows the SAME rule (goal
+// 0286): unsized, the box is the grid's own width from TABLE_WIDTH up
+// to TABLE_MAX_WIDTH (tableWidthForColumns), so adding a column widens the table instead of
+// scrolling the first columns out of sight; past the cap the grid
+// scrolls horizontally with a visible scrollbar (ListGrid.module.css).
 // mirrorVersion (goal 0232 S1's file-backed contract) is accepted but
 // unused -- a table projects a Configure List, never a mirrored file
 // (fileBacked: false in tools/tableTool.ts), so this Kind's own
 // version counter never actually bumps.
 export function AtlasTableObjectContent({ object, fetchListProjection }: { object: BoardObject; mirrorVersion: number; fetchListProjection?: FetchListProjection }) {
+  const [columnCount, setColumnCount] = useState(0)
   const hasSize = !!object.Size
   const style: CSSProperties = hasSize
     ? { width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }
-    : { width: TABLE_WIDTH, height: 'auto', maxHeight: TABLE_HEIGHT, display: 'flex', flexDirection: 'column' }
+    : { width: tableWidthForColumns(columnCount), height: 'auto', maxHeight: TABLE_HEIGHT, display: 'flex', flexDirection: 'column' }
   // fetchListProjection is always supplied by the real host
   // (AtlasBoardObjectNode.tsx) -- undefined only in a hypothetical
   // Component constructed with no host at all, which no table test
@@ -55,7 +60,7 @@ export function AtlasTableObjectContent({ object, fetchListProjection }: { objec
   if (!fetchListProjection) return null
   return (
     <div style={style}>
-      <AtlasCardProjectionTable scopeID={object.ID} fetchProjection={fetchListProjection} />
+      <AtlasCardProjectionTable scopeID={object.ID} fetchProjection={fetchListProjection} onColumnCount={setColumnCount} />
     </div>
   )
 }

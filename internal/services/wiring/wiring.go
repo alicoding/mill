@@ -9,6 +9,7 @@ package wiring
 import (
 	"context"
 	"errors"
+	atlasdomain "github.com/alicoding/mill/internal/domain/atlas"
 	"log"
 	"log/slog"
 	"os"
@@ -36,6 +37,7 @@ import (
 	"github.com/alicoding/mill/internal/services/mcpauditsvc"
 	"github.com/alicoding/mill/internal/services/mcpsvc"
 	"github.com/alicoding/mill/internal/services/notificationsvc"
+	"github.com/alicoding/mill/internal/services/pluginsvc"
 	"github.com/alicoding/mill/internal/services/remoteauthsvc"
 	"github.com/alicoding/mill/internal/services/secretsvc"
 	"github.com/alicoding/mill/internal/services/settingssvc"
@@ -139,6 +141,49 @@ func WirePasteConversion(atlas *atlassvc.AtlasService, cfg *configuresvc.Configu
 			return err
 		},
 	)
+}
+
+// WireConfigureSeams bundles the two seams that need both Atlas and
+// Configure: the board's paste-understanding List writes and the
+// plugin content-write door -- one line at the composition root.
+func WireConfigureSeams(atlas *atlassvc.AtlasService, cfg *configuresvc.ConfigureService, plugins *pluginsvc.PluginService) {
+	WirePasteConversion(atlas, cfg)
+	WirePluginContentWrites(plugins, atlas, cfg)
+}
+
+// WirePluginContentWrites connects pluginsvc's guarded content-write
+// seam (docs/goals/0289) to the atlas plugin-actor doors and
+// Configure's List row append -- one guard, the same writes an agent
+// reaches, never a parallel path.
+func WirePluginContentWrites(plugins *pluginsvc.PluginService, atlas *atlassvc.AtlasService, cfg *configuresvc.ConfigureService) {
+	plugins.WireContentWrites(pluginContentWriter{atlas: atlas, cfg: cfg})
+}
+
+type pluginContentWriter struct {
+	atlas *atlassvc.AtlasService
+	cfg   *configuresvc.ConfigureService
+}
+
+func (w pluginContentWriter) CreateNote(text, parentID string, pos *atlasdomain.Position) (atlasdomain.Note, error) {
+	return w.atlas.CreateNoteForPlugin(text, parentID, pos)
+}
+
+func (w pluginContentWriter) CreateCard(kindID, title, note string, fields map[string]string, parentID string) (atlasdomain.Card, error) {
+	return w.atlas.CreateCardForPlugin(kindID, title, note, fields, parentID)
+}
+
+func (w pluginContentWriter) UpdateCard(id, title, note string, fields map[string]string) (atlasdomain.Card, error) {
+	return w.atlas.UpdateCardForPlugin(id, title, note, fields)
+}
+
+func (w pluginContentWriter) AppendListRow(listID string, values map[string]string) error {
+	_, err := w.cfg.AddListRow(listID, values)
+	return err
+}
+
+func (w pluginContentWriter) CreateList(label, description string, columns []typedfield.Field, rows []map[string]string) (string, error) {
+	l, err := w.cfg.CreateListWithRows(label, description, columns, rows)
+	return l.ID, err
 }
 
 // WireAtlasStorageDirs resolves and wires every Mill-owned directory
@@ -245,6 +290,7 @@ func WireRemoteAuth(store settings.Store, logger *slog.Logger) *remoteauthsvc.Re
 func WireSecrets(vaultPath string, credentials credential.Store, configureService *configuresvc.ConfigureService) *secretsvc.SecretService {
 	secretService := secretsvc.NewSecretService(secretvault.New(vaultPath), credentials)
 	configureService.SetSecretResolver(secretService.ResolveSecretValue)
+	secretService.SetSourcesLister(configureService.SecretSources)
 	configureService.SetSecretLabelsLister(secretService.ListSecrets)
 	guardrailsvc.SetSecretLabelsLookup(configureService.DeriveSecretLabels)
 	return secretService

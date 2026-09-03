@@ -115,6 +115,7 @@ export default function HomeView() {
         <SegmentedControl
           aria-label={t('home.timeRangeAriaLabel')}
           size="small"
+          className={styles.rangeToggle}
           onChange={(i) => setRangeDays(i === 0 ? 7 : 30)}
         >
           <SegmentedControl.Button selected={rangeDays === 7}>{t('home.last7Days')}</SegmentedControl.Button>

@@ -62,6 +62,11 @@ export interface AtlasNounContent {
     mirrorContent?: MirrorReadState
     fetchListProjection?: (id: string) => Promise<ListProjection>
     repickMirror?: (path: string) => Promise<unknown>
+    // Frame-preview tile (goal 0266/0267): true when this render is a
+    // frame's inert capped-budget tile -- a Kind whose full face is
+    // heavyweight (pdf's viewer iframe) renders a light static face
+    // instead; most Kinds ignore it.
+    preview?: boolean
   }>
   ariaLabelKey: string
   role: 'img' | undefined
@@ -139,7 +144,33 @@ export interface ExtensionRowMeta {
 // required.
 export interface AtlasBoardObjectContent extends AtlasNounContent {
   dragBand: boolean
+  // clickShield (goal 0267): the face hosts an IFRAME (a hard event
+  // boundary -- clicks inside never reach the board at all, unlike an
+  // in-page viewer's), so while the object is NOT selected a
+  // transparent shield sits over the content: first click selects (or
+  // drags/right-clicks) like any body, and only a selected object's
+  // embed is live -- the converged click-to-activate embed pattern.
+  clickShield?: boolean
+  // wheelContained (goal 0271): the face hosts a viewer that consumes
+  // wheel for its own scroll/pan/zoom (pdf.js, the drawio host), so
+  // while that viewer is LIVE the board must never also pan from the
+  // same gesture -- the node's whole box carries the canvas kit's
+  // `nowheel` class then. A shielded (unselected) clickShield Kind is
+  // inert, so the class is withheld and the board pans as over any
+  // body. The sheet face's own scroll div predates this flag and keeps
+  // its local class.
+  wheelContained?: boolean
   fileBacked: boolean
+}
+
+// viewerOwnsWheel (goal 0271): whether a node's whole box should carry
+// the canvas kit's `nowheel` class right now -- true exactly while a
+// wheelContained Kind's viewer is LIVE (shieldless Kinds always,
+// clickShield Kinds only once selected; never for a frame's preview
+// tile). Pure and exported for its unit test; AtlasBoardObjectNode is
+// the one caller.
+export function viewerOwnsWheel(facts: Pick<AtlasBoardObjectContent, 'wheelContained' | 'clickShield'>, preview: boolean, selected: boolean): boolean {
+  return !!facts.wheelContained && !preview && (!facts.clickShield || selected)
 }
 
 const boardObjectContentRegistry = new Map<string, AtlasBoardObjectContent>()

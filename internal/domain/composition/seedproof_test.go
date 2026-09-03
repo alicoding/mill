@@ -210,8 +210,32 @@ var workflowProofRegistry = map[string]seedProof{
 	"example-jira-search-workflow": proven(
 		"seed: validates + resolves end-to-end; live PAT run is goal 0111's owner acceptance step",
 	),
+	"example-jira-issues-sync-workflow": proven(
+		"composition.TestSeededJiraIssuesSync_MapsTheSearchResultOntoTheSeededList",
+		"configuresvc.TestSyncListRows_UpsertsByKeyAndExpiresTheMissing",
+	),
 	ExampleSecretGuardWorkflowID: proven(
 		"guardrailsvc.TestSeededSecretGuardWorkflow_ParksWithSecretsRuleLabel",
+	),
+	ExampleBrunoRunWorkflowID: proven(
+		"composition.TestSeededBrunoRun_MapsTheReportOntoTheSeededList",
+		"e2e: bruno-run.spec.ts",
+	),
+	ExampleSha256ClipboardWorkflowID: proven(
+		"composition.TestTransformText_KnownVectors",
+		"composition.TestExecuteWorkflow_TransformText_HashesPayloadAndRecordsTheOperation",
+		"composition.TestSeededSha256Clipboard_HashesTheClipboardTextEndToEnd",
+	),
+	"example-todo-scan-workflow": proven(
+		"todoscan.TestScan_HitsAcrossTwoFiles",
+		"todoscan.TestScan_WholeWordMatchingSkipsTODOS",
+		"todoscan.TestScan_SkipsDotDirsAndKnownSkipList",
+		"todoscan.TestScan_SkipsBinaryFiles",
+		"todoscan.TestScan_MaxFilesStopsTheWalk",
+		"composition.TestExecProcessTodoScan_ProducesCSVAndAttributes",
+		"composition.TestExecProcessTodoScan_PathResolvesAttrBinding",
+		"composition.TestTodoScanNode_ResolvesThroughExecuteWorkflow",
+		"e2e: todo-scan.spec.ts",
 	),
 }
 
@@ -273,6 +297,13 @@ var listProofRegistry = map[string]seedProof{
 		"executionsvc.TestSeededCountryLookupExample_NoMatch_FailsClosed",
 		"configuresvc.TestConfigureService_FreshInstall_SeedsBuiltInLists",
 	),
+	list.ExampleBrunoResultsID: proven(
+		"composition.TestSeededBrunoRun_MapsTheReportOntoTheSeededList",
+	),
+	list.ExampleJiraIssuesID: proven(
+		"composition.TestSeededJiraIssuesSync_MapsTheSearchResultOntoTheSeededList",
+		"configuresvc.TestSyncListRows_UpsertsByKeyAndExpiresTheMissing",
+	),
 	list.ExampleTaskTrackerID: proven(
 		"executionsvc.TestGuardrail_ApplyListRowParks_ApproveWritesRow",
 		"executionsvc.TestSeededTaskTrackerExample_PinnedSearch_ResolvesFrozenV1AfterLiveWrite",
@@ -306,9 +337,6 @@ var execEnvProofRegistry = map[string]seedProof{
 // already proves better. Each entry names its real proof layer/test
 // (unit/integration/interaction-e2e) or a ManualOnly reason.
 var nodeTypeProofRegistry = map[string]seedProof{
-	"trigger-hotkey": manualOnly(
-		"OS-level global hotkey delivery needs a live macOS Cocoa run loop -- headless/server-mode CI has none (docs/SPEC.md §1.3: \"HotkeyService cannot be exercised by headless/server-mode CI\"). Persistence/conflict-rejection ARE unit-tested (triggersvc.TestAssignHotkey_RejectsConflict et al.) but the actual hotkey delivery itself stays a documented manual desktop-mode check (.claude/skills/run-mill).",
-	),
 	"trigger-clipboard-watch": manualOnly(
 		"Needs a real macOS pasteboard session -- docs/SPEC.md §1.3: the real clipboard round-trip test is \"skipped specifically in CI, not just on non-macOS -- GitHub's macos-latest runners are headless, no GUI/pasteboard session for osascript either.\" The polling/no-op-on-empty-config mechanism is otherwise identical to trigger-filesystem-watch's already-proven shape.",
 	),

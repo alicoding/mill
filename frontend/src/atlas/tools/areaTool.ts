@@ -1,12 +1,12 @@
 import { SquareIcon } from '@primer/octicons-react'
 import { identityOf, registerNoun, type AtlasToolShape } from '../atlasNounRegistry'
-import { enclosedIDs, normalizeRect } from '../atlasEnclosure'
+import { normalizeRect } from '../atlasEnclosure'
 import { meetsDragThreshold } from '../useAtlasToolGesture'
 import { AtlasAreaMarquee } from '../AtlasAreaMarquee'
 
 const areaIdentity = identityOf('area')
 
-export interface AtlasAreaArtifact { kind: 'area'; kindID: string; title: string; enclosedCardIDs: string[]; enclosedNoteIDs: string[] }
+export interface AtlasAreaArtifact { kind: 'area'; kindID: string; title: string; enclosedCardIDs: string[]; enclosedNoteIDs: string[]; enclosedObjectIDs: string[] }
 
 export const areaTool = {
   id: areaIdentity.id,
@@ -55,17 +55,17 @@ export const areaTool = {
       if (!meetsDragThreshold(points)) return
       const start = points[0], end = points[points.length - 1]
       const flowRect = normalizeRect(ctx.screenToFlowPosition(start), ctx.screenToFlowPosition(end))
-      const enclosedCardIDs = enclosedIDs(flowRect, ctx.cardBoxes)
-      const enclosedNoteIDs = enclosedIDs(flowRect, ctx.noteBoxes)
-      ctx.openAreaPopover(start, { x: flowRect.x, y: flowRect.y }, enclosedCardIDs, enclosedNoteIDs)
+      const enclosed = ctx.enclosedIn(flowRect)
+      ctx.openAreaPopover(start, { x: flowRect.x, y: flowRect.y }, enclosed.cardIDs, enclosed.noteIDs, enclosed.objectIDs)
     },
     preview: AtlasAreaMarquee,
   },
-  commit: (input: { kindID: string; title: string; enclosedCardIDs: string[]; enclosedNoteIDs: string[] }): AtlasAreaArtifact => ({
+  commit: (input: { kindID: string; title: string; enclosedCardIDs: string[]; enclosedNoteIDs: string[]; enclosedObjectIDs: string[] }): AtlasAreaArtifact => ({
     kind: 'area',
     kindID: input.kindID,
     title: input.title,
     enclosedCardIDs: input.enclosedCardIDs,
+    enclosedObjectIDs: input.enclosedObjectIDs,
     enclosedNoteIDs: input.enclosedNoteIDs,
   }),
 } as const satisfies AtlasToolShape

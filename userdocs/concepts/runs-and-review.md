@@ -27,8 +27,14 @@ badge, and a floating approval prompt.
 - **Breakpoints** pause a run before a step; edit values, then
   resume — or run in step mode and walk the chain one step at a
   time.
-- **Try it** on the Convert HTML to Markdown step previews a
-  conversion without running anything.
+- **New note…** in the Quick Panel opens a small note window away from
+  the canvas; pick where it lands (the Scratchpad, a space, or the top
+  level) and ⌘↩ saves it there. Plugins can add their own captures the
+  same way.
+- **Try this step** on any step runs just that step on an input you
+  type, paste from the clipboard, or take from its last run — and
+  shows the output right there, without running the workflow. A step
+  that would need your approval tells you so instead of running.
 - **Activity** shows trigger fires and run outcomes across all
   workflows, so a scheduled or watching workflow is never invisibly
   running. Its MCP calls section logs every call to or from Mill's
@@ -43,7 +49,40 @@ something is waiting on you. Clicking it opens a small panel:
 - **Needs you** — approvals, agent writes, and plugin asks waiting
   for a decision. Click a row to land on Review.
 - **Running now** — what's executing, each with a Stop button.
+- **Recent** — the last few runs that finished, with Done, Failed or
+  Stopped and how long ago. Click one to see which steps ran, in the
+  same small floating window.
 - **Quit Mill…** — quitting tells you first what stops: your
   schedules, hotkeys and watchers pause until Mill runs again.
 
 Right-clicking the icon keeps the plain menu: Open Mill, Quit.
+
+## Run from the Quick Panel
+
+Summon the Quick Panel with your hotkey, type a workflow's name, and
+the footer shows what the highlighted row can do:
+
+- **↩** runs it. The panel stays open and the footer tells you the
+  outcome: done and how long it took, failed and why, or waiting for
+  your approval. Press Escape when you're done reading.
+- **⌘↩** opens the workflow in Mill, read-only, with its Run and
+  step-by-step controls. Right after a run, this opens that run, so
+  you see which steps ran and where it stopped.
+- **⌘⇧↩** runs the workflow and opens a small floating window with
+  its canvas, so you watch the steps light up without leaving what
+  you were doing. Close it when you're done, or press Open in Mill to
+  continue in the full app on that run.
+- **⌘⇧P** pins or unpins it.
+- **⌘K** lists all of these with their shortcuts.
+
+Anything you type that isn't a workflow's name can be kept: **Save as
+note** files it into the Scratchpad card on the board, **Save as
+task** adds it as a row to the Example: Task tracker list, scheduled
+for today. Both close the panel the moment they land.
+
+The same panel is the fastest way to update Mill: type "update" and
+press ↩ to check. The footer tells you whether you're up to date, or
+names the next step — download and install, then restart to finish —
+and typing "update" or "relaunch" again finds that step. A restart, or
+quitting from the menu bar, first saves whatever you were still
+typing: a note mid-edit, a cell being edited, a workflow draft.

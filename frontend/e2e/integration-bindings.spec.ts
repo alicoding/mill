@@ -49,7 +49,7 @@ test('Matching an Integration node to a declared operation shows a binding edito
   await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
   await page.getByTestId('toggle-raw-openapi').click()
   await page.getByTestId('request-openapi-spec').fill(bindingSpec)
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
   await expect(requestRow(page, 'E2E bindings request')).toBeVisible()
 
   await page.getByRole('link', { name: 'Workflows' }).click()

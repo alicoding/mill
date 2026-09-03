@@ -1,3 +1,4 @@
+import { Browser } from '@wailsio/runtime'
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { isExtensionEnabled } from '../shared/extensionEnablementStore'
@@ -109,4 +110,15 @@ export function dispatchObjectEdit(object: BoardObject, editRoute: EditRouteDecl
 // doors.
 export function writeObjectMirror(objectID: string, content: string): Promise<void> {
   return AtlasService.WriteObjectMirror(objectID, content)
+}
+
+// openExternalUrl -- the one door an extension face uses to send a
+// link OUT of the app (goal 0271): a raw anchor click inside an
+// embedded viewer navigates the webview itself away from Mill (a
+// desktop webview has no back button -- the app is gone until
+// restart), the exact hazard DocsView/WhatsNewDialog's own anchor
+// interception documents for in-app HTML. Routed through the adopted
+// runtime's Browser API, which opens the system browser.
+export function openExternalUrl(url: string): Promise<void> {
+  return Browser.OpenURL(url)
 }

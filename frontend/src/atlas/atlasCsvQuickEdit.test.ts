@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseCsvForEdit, serializeCellEdit } from './atlasCsvQuickEdit'
+import { parseCsvForEdit, serializeCellEdit, serializeCellEdits } from './atlasCsvQuickEdit'
 
 // The quick-edit round-trip's fidelity table (goal 0239 S2): a single
 // cell change writes the whole file back, and everything else about
@@ -59,5 +59,17 @@ describe('serializeCellEdit', () => {
     const m = parseCsvForEdit('a,b\n1,2\n')
     serializeCellEdit(m, 1, 1, '3')
     expect(m.fullRows[1]).toEqual(['1', '2'])
+  })
+})
+
+describe('serializeCellEdits (goal 0295 S2b)', () => {
+  it('applies several held cells in one write, padding short rows per edit', () => {
+    const model = parseCsvForEdit('a,b\n1,2\n3\n')
+    const text = serializeCellEdits(model, [
+      { row: 1, col: 1, value: 'two' },
+      { row: 2, col: 1, value: 'four' },
+      { row: 0, col: 0, value: 'A' },
+    ])
+    expect(text).toBe('A,b\n1,two\n3,four\n')
   })
 })

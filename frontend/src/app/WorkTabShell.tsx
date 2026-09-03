@@ -14,6 +14,8 @@ import { RequestForm } from '../configure/RequestForm'
 import { RequestSummary } from '../configure/RequestSummary'
 import editorStyles from '../composition/CompositionView.module.css'
 import { tabLabel } from './workTabLabel'
+import { PluginViewHost } from './PluginViewHost'
+import { getPluginView } from '../plugins/pluginViews'
 import { HotkeyHint } from '../shared/HotkeyHint'
 import { useWorkTabCloseGuard } from './useWorkTabCloseGuard'
 import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
@@ -50,7 +52,7 @@ const PAGE_TAB = '__page__'
 // use) replaces the two-line kicker, which put labels at varying
 // heights inside the 38px band.
 function tabEntityVisual(tab: WorkTab): ReactNode {
-  const entity = tab.kind.startsWith('workflow') ? 'workflow' : 'request'
+  const entity = tab.kind === 'plugin-view' ? 'plugin' : tab.kind.startsWith('workflow') ? 'workflow' : 'request'
   const e = ENTITY_ICON[entity]
   if (!e) return null
   return (
@@ -115,6 +117,9 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
     pruneWorkTabs((tab) => {
       if (tab.kind === 'workflow-edit') return workflows.some((w) => w.ID === tab.workflowId)
       if (tab.kind === 'request-view' || tab.kind === 'request-edit') return requests.some((r) => r.ID === tab.requestId)
+      // A plugin-view tab whose plugin is not loaded this boot is
+      // pruned, never rendered empty (docs/goals/0290).
+      if (tab.kind === 'plugin-view') return getPluginView(tab.pluginId, tab.viewId) !== undefined
       return true
     })
   }, [workflows, requests, pruneWorkTabs])
@@ -139,6 +144,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
             workflow={workflow}
             tabKey={tab.key}
             mode={mode}
+            requestedRunId={tab.kind === 'workflow-edit' ? tab.runId : undefined}
             onBack={() => requestClose({ kind: 'one', key: tab.key })}
             onSaved={() => { void refreshWorkflows(); closeWorkTab(tab.key) }}
             onWorkflowsChanged={() => void refreshWorkflows()}
@@ -162,6 +168,8 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
           />
         )
       }
+      case 'plugin-view':
+        return <PluginViewHost pluginId={tab.pluginId} viewId={tab.viewId} />
       case 'request-edit':
       case 'request-new': {
         const editing = tab.kind === 'request-edit' ? (requests?.find((r) => r.ID === tab.requestId) ?? null) : null

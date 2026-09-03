@@ -227,6 +227,7 @@ export function NodeConfigFields({ node, workflowId, attrs, nodeType, sameKindNo
                 refKind={field.RefKind}
                 value={node.data.config[field.Key] ?? ''}
                 onChange={(id) => onConfigChange(field.Key, id)}
+                readOnly={readOnly}
               />
               {/* Hover-preview + jump for a selected workflow reference
                   (docs/SPEC.md §3.8's n8n pattern) -- see the

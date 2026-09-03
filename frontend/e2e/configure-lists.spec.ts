@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test, expect } from './fixtures/server'
+import { clickGlideCell, editGlideCell, glideCellText } from './fixtures/glideGrid'
 import { addGridColumn } from './fixtures/listGrid'
 import { clickCanvasNode } from './fixtures/canvasNode'
 import { clickRowAction } from './inventoryRow'
@@ -37,11 +38,9 @@ test('Configuring a typed List: add a column, add a row, both persist', async ({
   await expect(page.getByTestId('list-rows-editor')).toBeVisible()
   await addGridColumn(page, 'SKU')
   await page.getByTestId('atlas-projection-add-row').click()
-  const cell = page.getByTestId('atlas-projection-cell').first()
-  await cell.click()
-  await page.getByTestId('atlas-projection-cell-input').fill('SKU-1')
-  await page.getByTestId('atlas-projection-cell-input').press('Enter')
-  await expect(cell).toContainText('SKU-1')
+  const glide = page.getByTestId('atlas-projection-glide')
+  await editGlideCell(page, glide, 0, 0, 'SKU-1')
+  await expect(glideCellText(glide, 0, 0)).toHaveText('SKU-1')
 
   await page.getByRole('button', { name: 'Close' }).click()
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('E2E typed list UI', { exact: true }) })
@@ -153,12 +152,14 @@ test('Configure > Lists: CSV import — mapping preview, one manual remap, a mal
   await expect(page.getByTestId('list-rows-editor')).toBeVisible()
   await addGridColumn(page, 'SKU')
   await addGridColumn(page, 'Amount')
-  // The header gear is the column's schema home -- Amount becomes a
+  // The header menu is the column's schema home -- Amount becomes a
   // number column there.
-  await page.getByTestId('atlas-projection-header').filter({ hasText: 'Amount' }).hover()
+  const glide = page.getByTestId('atlas-projection-glide')
+  await clickGlideCell(page, glide, -1, 1, { button: 'right' })
   await page.getByTestId('list-grid-column-settings-amount').click()
   await page.getByTestId('list-grid-column-type').selectOption('number')
   await page.keyboard.press('Escape')
+  await expect(glide).toHaveAttribute('data-col-types', 'text,number')
 
   await page.getByTestId('import-list-rows').click()
   await page.getByTestId('import-list-rows-input').setInputFiles(CSV_FIXTURE)
@@ -188,9 +189,9 @@ test('Configure > Lists: CSV import — mapping preview, one manual remap, a mal
   await expect(result).toContainText('"Amount" must be a number')
 
   // The malformed row never became a real List row -- only the valid one
-  // did. TextInput values are DOM `value` attributes, not text nodes.
-  await expect(page.getByTestId('atlas-projection-row')).toHaveCount(1)
-  await expect(page.getByTestId('atlas-projection-row')).toContainText('WIDGET-1')
+  // did.
+  await expect(glide).toHaveAttribute('data-rows', '1')
+  await expect(glideCellText(glide, 0, 0)).toHaveText('WIDGET-1')
 
   // Clean up.
   await page.getByRole('button', { name: 'Close' }).click()
@@ -221,9 +222,14 @@ test('Example: Track in a list runs end to end -- creates then updates the same 
   await expect(trackerRow).toBeVisible()
   await trackerRow.click()
 
-  const shippedRow = page.getByTestId('atlas-projection-row').filter({ hasText: 'Ship goal 0070' })
+  const glide = page.getByTestId('atlas-projection-glide')
+  const shippedRow = glide.locator('[role="grid"] [role="row"]').filter({ hasText: 'Ship goal 0070' })
   await expect(shippedRow).toHaveCount(1)
-  await expect(shippedRow).toHaveAttribute('data-row-status', 'active')
+  // Active: its row menu offers "Mark expired", never "Mark active".
+  const rowIndex = Number(await shippedRow.getAttribute('aria-rowindex')) - 2
+  await clickGlideCell(page, glide, rowIndex, 0, { button: 'right' })
+  await expect(page.getByTestId('list-grid-row-expire')).toBeVisible()
+  await page.keyboard.press('Escape')
   await page.getByTestId('configure-lists').getByRole('button', { name: 'Close' }).click()
 })
 
@@ -244,35 +250,27 @@ test('cell editing never shifts the row, and Tab/Enter walk the grid', async ({ 
   await page.getByTestId('atlas-projection-add-row').click()
   await page.getByTestId('atlas-projection-add-row').click()
 
-  const firstRow = page.getByTestId('atlas-projection-row').first()
-  const boxBefore = await firstRow.boundingBox()
-  const firstCell = firstRow.getByTestId('atlas-projection-cell').first()
-  await firstCell.click()
-  const input = page.getByTestId('atlas-projection-cell-input')
-  await expect(input).toBeVisible()
+  // The grid's own chain: Tab commits and selects the cell to the
+  // right (typing then opens it), Enter commits and moves down.
+  const glide = page.getByTestId('atlas-projection-glide')
+  await clickGlideCell(page, glide, 0, 0)
+  await clickGlideCell(page, glide, 0, 0)
+  const editor = page.locator('#portal textarea, #portal input').first()
+  await expect(editor).toBeVisible()
+  await editor.fill('a1') // fill: a form control (goal 0296)
+  await page.keyboard.press('Tab')
+  await expect(editor).toHaveCount(0)
+  // Tab selected the next cell; Enter opens it (type-to-edit is the
+  // focus test's own case below).
+  await page.keyboard.press('Enter')
+  await expect(page.locator('#portal textarea, #portal input').first()).toBeFocused()
+  await page.locator('#portal textarea, #portal input').first().fill('b1') // fill: a form control (goal 0296)
+  await page.keyboard.press('Enter')
+  await expect(page.locator('#portal textarea, #portal input')).toHaveCount(0)
 
-  // Zero layout shift: the row's box is identical while editing.
-  const boxDuring = await firstRow.boundingBox()
-  expect(boxDuring?.height).toBe(boxBefore?.height)
-  expect(boxDuring?.y).toBe(boxBefore?.y)
+  await expect(glideCellText(glide, 0, 0)).toHaveText('a1')
+  await expect(glideCellText(glide, 0, 1)).toHaveText('b1')
 
-  // Visible boundary: the cell carries a right border.
-  const borderRight = await firstCell.evaluate((el) => getComputedStyle(el).borderRightWidth)
-  expect(borderRight).toBe('1px')
-
-  // Keyboard chain: type in A1, Tab -> B1, type, Enter -> B2.
-  await input.fill('a1')
-  await input.press('Tab')
-  await expect(page.getByTestId('atlas-projection-cell-input')).toBeVisible()
-  await page.getByTestId('atlas-projection-cell-input').fill('b1')
-  await page.getByTestId('atlas-projection-cell-input').press('Enter')
-  await expect(page.getByTestId('atlas-projection-cell-input')).toBeVisible()
-  await page.getByTestId('atlas-projection-cell-input').press('Escape')
-
-  await expect(firstRow.getByTestId('atlas-projection-cell').nth(0)).toContainText('a1')
-  await expect(firstRow.getByTestId('atlas-projection-cell').nth(1)).toContainText('b1')
-
-  // Clean up.
   await page.getByTestId('configure-lists').getByRole('button', { name: 'Close' }).click()
   const row = listRow(page, 'E2E keyboard grid')
   await clickRowAction(page, row, 'Delete')
@@ -295,29 +293,28 @@ test('escape lands on the cell, arrows walk, typing replaces', async ({ page }) 
   await addGridColumn(page, 'Beta')
   await page.getByTestId('atlas-projection-add-row').click()
 
-  const firstRow = page.getByTestId('atlas-projection-row').first()
-  await firstRow.getByTestId('atlas-projection-cell').first().click()
-  await page.getByTestId('atlas-projection-cell-input').press('Escape')
-  const focusedCell = page.locator('td[data-focused="true"]')
-  await expect(focusedCell).toHaveCount(1)
+  // The grid's own selection model: Escape leaves the editor with the
+  // cell selected, arrows walk, typing opens a fresh entry seeded with
+  // the keystroke, Enter re-opens the current value.
+  const glide = page.getByTestId('atlas-projection-glide')
+  await clickGlideCell(page, glide, 0, 0)
+  await clickGlideCell(page, glide, 0, 0)
+  const editor = () => page.locator('#portal textarea, #portal input').first()
+  await expect(editor()).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('#portal textarea, #portal input')).toHaveCount(0)
 
   await page.keyboard.press('ArrowRight')
-  await expect(focusedCell).toHaveAttribute('data-cell', /\|beta$/)
-
-  // Typing seeds a fresh edit with the keystroke.
   await page.keyboard.press('x')
-  const input = page.getByTestId('atlas-projection-cell-input')
-  await expect(input).toBeVisible()
-  await expect(input).toHaveValue('x')
-  await input.press('Escape')
-  await expect(focusedCell).toHaveCount(1)
-
-  // Enter re-edits the focused cell; Escape twice leaves the grid.
-  await page.keyboard.press('Enter')
-  await expect(input).toBeVisible()
-  await input.press('Escape')
+  await expect(editor()).toBeFocused()
+  await expect(editor()).toHaveValue('x')
   await page.keyboard.press('Escape')
-  await expect(focusedCell).toHaveCount(0)
+  await expect(page.locator('#portal textarea, #portal input')).toHaveCount(0)
+
+  await page.keyboard.press('Enter')
+  await expect(editor()).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('#portal textarea, #portal input')).toHaveCount(0)
 
   // Clean up.
   await page.getByTestId('configure-lists').getByRole('button', { name: 'Close' }).click()
@@ -356,7 +353,7 @@ test('New from file infers a typed schema and creates the list with its rows', a
 
   // Lands in the list editor with every row imported.
   await expect(page.getByTestId('list-rows-editor')).toBeVisible()
-  await expect(page.getByTestId('list-rows-editor').getByText('Ship release')).toBeVisible()
+  await expect(page.getByTestId('atlas-projection-glide').locator('[role="grid"]')).toContainText('Ship release')
   await page.getByRole('button', { name: 'Close' }).click()
 
   const row = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('ZzE2eImportedList', { exact: true }) })

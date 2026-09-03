@@ -348,6 +348,44 @@ export interface StepFailureCount {
 }
 
 /**
+ * StepTestRequest is one "run this step on…" call.
+ */
+export interface StepTestRequest {
+    "workflowId": string;
+    "nodeId": string;
+    "nodeTypeId": string;
+    "config": { [_ in string]?: string } | null;
+    "payload": string;
+
+    /**
+     * Attributes overrides the workflow's attribute defaults when
+     * non-nil (a "last run's input" replay passes the recorded bag).
+     */
+    "attributes": { [_ in string]?: any } | null;
+}
+
+/**
+ * StepTestResult is what came out -- or why nothing ran.
+ */
+export interface StepTestResult {
+    "output": string;
+    "outputAttributes": { [_ in string]?: any } | null;
+
+    /**
+     * Error is the step's own failure text (the step ran and failed).
+     */
+    "error": string;
+
+    /**
+     * Refused is set when the guardrail would not let this step run
+     * unattended; RefusedEffect/RefusedRule carry the verdict.
+     */
+    "refused": boolean;
+    "refusedEffect": string;
+    "refusedRule": string;
+}
+
+/**
  * TimeSavedMetric is docs/goals/0014's Layer-1 value accounting: minutes
  * saved = Σ over Success + non-test-kind runs (RunKindTriggered or
  * RunKindMCP, goal 0021 Phase 3 -- an MCP client running a workflow

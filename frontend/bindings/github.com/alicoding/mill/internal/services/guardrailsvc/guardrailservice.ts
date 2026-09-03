@@ -24,6 +24,16 @@ import * as guardrail$0 from "../../domain/guardrail/models.js";
 import * as $models from "./models.js";
 
 /**
+ * AskGuardedAction parks the action for a live decision WITHOUT
+ * consulting the rules (docs/goals/0291): the door for an ask that
+ * must never be made silent by an allow rule -- a plugin's request to
+ * a host it did not declare. The wait is RequestGuardedAction's own.
+ */
+export function AskGuardedAction(action: $models.GuardedAction): $CancellablePromise<$models.Decision> {
+    return $Call.ByID(1565055455, action);
+}
+
+/**
  * CreateRule validates and stores a new rule, minting its ID. On a
  * persist failure the appended rule is rolled back rather than left
  * live in memory only -- a rule that silently failed to save must not

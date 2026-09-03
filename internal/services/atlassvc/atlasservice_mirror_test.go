@@ -453,3 +453,4 @@ func TestMirrorRawBytes_UnknownCard_Errors(t *testing.T) {
 		t.Error("MirrorRawBytes() for an unknown card = nil error, want an error")
 	}
 }
+

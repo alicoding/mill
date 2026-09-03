@@ -14,6 +14,10 @@ import (
 // leaves it empty.
 type Filter struct {
 	EntryID string
+	// ActorPrefix keeps only rows whose actor starts with it -- the
+	// plugin audit export's "plugin:" slice (ADR-0051 §4). Empty means
+	// no filter.
+	ActorPrefix string
 }
 
 // List returns, newest first, the page of records matching filter
@@ -27,13 +31,17 @@ func (s *Store) List(filter Filter, limit, offset int) ([]secretaudit.Record, in
 		where += " AND entry_id = ?"
 		args = append(args, filter.EntryID)
 	}
+	if filter.ActorPrefix != "" {
+		where += " AND substr(actor, 1, ?) = ?"
+		args = append(args, len(filter.ActorPrefix), filter.ActorPrefix)
+	}
 
 	var total int
 	if err := s.db.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM secret_access "+where, args...).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("secretauditstore: count: %w", err)
 	}
 
-	q := "SELECT id, timestamp, entry_id, label, context, run_id, workflow_id, outcome, error_text FROM secret_access " +
+	q := "SELECT id, timestamp, entry_id, label, context, run_id, workflow_id, actor, outcome, error_text FROM secret_access " +
 		where + " ORDER BY id DESC LIMIT ? OFFSET ?"
 	rows, err := s.db.QueryContext(context.Background(), q, append(args, limit, offset)...)
 	if err != nil {
@@ -45,7 +53,7 @@ func (s *Store) List(filter Filter, limit, offset int) ([]secretaudit.Record, in
 	for rows.Next() {
 		var r secretaudit.Record
 		var ts, ctxVal, outcome string
-		if err := rows.Scan(&r.ID, &ts, &r.EntryID, &r.Label, &ctxVal, &r.RunID, &r.WorkflowID, &outcome, &r.ErrorText); err != nil {
+		if err := rows.Scan(&r.ID, &ts, &r.EntryID, &r.Label, &ctxVal, &r.RunID, &r.WorkflowID, &r.Actor, &outcome, &r.ErrorText); err != nil {
 			return nil, 0, fmt.Errorf("secretauditstore: scan: %w", err)
 		}
 		r.Context = secretaudit.Context(ctxVal)

@@ -260,6 +260,7 @@ func (c *ConfigureService) DeleteHTTPRequest(id string) error {
 		c.mu.Unlock()
 		return fmt.Errorf("save request deletion: %w", err)
 	}
+	c.undo.remember("request", id, c.httpRequestRestorer(id, idx, removed, wasBuiltIn))
 	_ = c.credentials.Delete(id)
 	_ = c.credentials.Delete(joseKeychainID(id))
 	dataevent.Emit("request", id) // goal 0017: live-sync every open surface

@@ -3,7 +3,7 @@ import { useRenderStormGuard } from '../shared/renderStormGuard'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
-import { type Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { type BoardObject, type Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useAtlasCreationRequests } from './useAtlasCreationRequests'
 import { AtlasService } from '../shared/bindings'
 import { scheduleAtlasRefresh, refreshAtlas, useAtlasStore } from './atlasStore'
@@ -15,7 +15,8 @@ import { useAtlasProjectionViews } from './useAtlasProjectionViews'
 import { useAtlasShareIO } from './useAtlasShareIO'
 import { AtlasToolbar } from './AtlasToolbar'
 import { AtlasBoard } from './AtlasBoard'
-import { pasteSummaryText } from './pasteSummary'
+import { pasteAsOffer, pasteSummaryText } from './pasteSummary'
+import { thirdPartyNounForKind } from './atlasNounRegistry'
 import { type AtlasFocusRequest } from './useBoardFocus'
 import { type ContextMenuState } from '../shared/ContextMenu'
 import { AtlasViewOverlays } from './AtlasViewOverlays'
@@ -26,6 +27,7 @@ import { isGroupCard } from './atlasBoardLayout'
 import { useAtlasBoardFilter } from './useAtlasBoardFilter'
 import { useAtlasCardCreate } from './useAtlasCardCreate'
 import { useAtlasTableObjectCreate } from './useAtlasTableObjectCreate'
+import type { FreePlacement } from './atlasFreePlacement'
 import { useAtlasContainmentMenus } from './useAtlasContainmentMenus'
 import { useAtlasDeleteConfirm } from './useAtlasDeleteConfirm'
 import { useAtlasCommandSignals } from './useAtlasCommandSignals'
@@ -173,7 +175,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const viewedCard = allCards.find((c) => c.ID === viewedID) ?? null
   const childrenAll = childrenOf(boardAllCards, viewedID)
   const presentKinds = groupByKind(childrenAll, allKinds).map((shelf) => shelf.kind)
-  const { boardFilter, setBoardFilter, filterMatchCount, filterTotalCount, filterPresentKindIDs } = useAtlasBoardFilter(boardAllCards, viewedID)
+  const { boardFilter, setBoardFilter, filterMatchCount, filterTotalCount, filterPresentKindIDs } = useAtlasBoardFilter(boardAllCards, viewedID, allNotes, allObjects)
   // The lens filters cards by KIND, but containment is a ROLE
   // orthogonal to kind (ADR-0038 Decision 3): a card currently
   // holding children renders as a region frame and stays on the board
@@ -181,7 +183,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // declutter notes must never remove a whole area and everything
   // previewed inside it.
   const lensed = applyLens(childrenAll, hiddenKindIDs)
-  const visibleChildren = childrenAll.filter((c) => lensed.includes(c) || isGroupCard(boardAllCards, c))
+  const visibleChildren = childrenAll.filter((c) => lensed.includes(c) || isGroupCard(boardAllCards, c, allNotes, allObjects))
   // A note's own containment is spatial-only, orthogonal to the lens
   // (which filters by Kind -- a note has none): every note whose
   // ParentID names the viewed space renders here, unfiltered.
@@ -241,10 +243,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // store instead of a callback threaded through React Flow node data.
   const editingDiagramObjectID = useAtlasEditDiagramStore((s) => s.openObjectID)
 
-  const deleteConfirm = useAtlasDeleteConfirm({ t, allCards, notes: allNotes })
+  const deleteConfirm = useAtlasDeleteConfirm({ t, allCards, notes: allNotes, allObjects })
 
   const linkMenus = useAtlasLinkMenus({
-    t, allCards, allLinks, allNotes, linkKinds: allLinkKinds, perspectives: allPerspectives, setMenu, drill,
+    t, allCards, allLinks, allNotes, allObjects, linkKinds: allLinkKinds, perspectives: allPerspectives, setMenu, drill,
     onOpenCard: (id) => setOverlayCardID(id),
     onError: setShareError,
     onDeleted: undoToast.registerDelete,
@@ -299,11 +301,11 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // header comment for why the area-draw/drag-filing half stays in
   // AtlasBoard.tsx instead.
   const containmentMenus = useAtlasContainmentMenus({
-    t, allCards, notes: allNotes, perspectives: allPerspectives, setMenu, drill, onError: setShareError,
+    t, allCards, notes: allNotes, allObjects, perspectives: allPerspectives, setMenu, drill, onError: setShareError,
     onDeleted: undoToast.registerDelete,
     onPerspectiveToast: quietToast.show,
     requestPlacementInside: (tool, pos, parentID) => creationRequests.requestPlacement(tool, pos, parentID),
-    requestGroup: (cardIDs, noteIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, pos), guardDelete: deleteConfirm.guardDelete,
+    requestGroup: (cardIDs, noteIDs, objectIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, objectIDs, pos), guardDelete: deleteConfirm.guardDelete,
   })
 
   // ⌘K's GO/OPEN (goal 0072 slice B): a target already rendered (a
@@ -313,6 +315,13 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     const parentIsRenderedChild = allCards.find((c) => c.ID === card.ParentID)?.ParentID === viewedID
     if (card.ParentID !== viewedID && !parentIsRenderedChild) setViewedID(card.ParentID)
     setFocusRequest({ cardID: card.ID, openImmediately })
+  }
+
+  // Objects are jump peers (goal 0265): same re-root-then-fly, no
+  // preview-grandchild case (an object only renders on its own board).
+  const jumpToObject = (object: BoardObject) => {
+    if (object.ParentID !== viewedID) setViewedID(object.ParentID)
+    setFocusRequest({ cardID: object.ID, openImmediately: false })
   }
 
   // A group entry inside a card's page (goal 0072 slice C item 2):
@@ -339,14 +348,15 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const { exportAtlas, exportBoardDrawio, importFile, importConfirmDialog } = useAtlasShareIO({ allKinds, allLinkKinds, allCards, allLinks, viewedID, t, onError: setImportError, onSummary: quietToast.show })
 
   const { createCard } = useAtlasCardCreate({ allCards, viewedID, viewedCard })
-  const { createTableFromList, createTableFromScratch } = useAtlasTableObjectCreate({ allCards, viewedID })
+  const freePlacementRef = useRef<FreePlacement | null>(null)
+  const { createTableFromList, createTableFromScratch } = useAtlasTableObjectCreate({ allCards, allNotes, allObjects, viewedID, freePlacementRef })
   // Goal 0139's two surviving dialogs: the from-a-List projection
   // (reached from the tray picker's footer) and New space (the one
   // create with no canvas to point at).
   const [tableFromListOpen, setTableFromListOpen] = useState(false)
   const [newSpaceOpen, setNewSpaceOpen] = useState(false)
 
-  useAtlasCommandSignals({ viewedID, onArrange: requestAutoArrange, onExport: exportAtlas, onError: setShareError })
+  useAtlasCommandSignals({ viewedID, onArrange: requestAutoArrange, onExport: exportAtlas, onError: setShareError, onOpenContents: () => projectionViews.setContentsOpen(true) })
 
   if (kinds === null || cards === null || landingPending) {
     return <Text as="p" className={runbookStyles.muted}>{t('loading')}</Text>
@@ -378,6 +388,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         onOpenMatrix={() => projectionViews.setMatrixOpen(true)}
         onOpenCoverage={() => projectionViews.setCoverageOpen(true)}
         onOpenRoadmap={() => projectionViews.setRoadmapOpen(true)}
+        onOpenContents={() => projectionViews.setContentsOpen(true)}
         onOpenKinds={() => setKindsOpen(true)}
       />
 
@@ -406,7 +417,18 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           )
         })()}
         <AtlasBoard
-          onPasteConverted={(res) => quietToast.show(pasteSummaryText(t, res))}
+          freePlacementRef={freePlacementRef}
+          onPasteConverted={(res) => {
+            // Two plugins claimed the pasted link: the first landed, the
+            // toast offers the other (the converged paste-provider model,
+            // ADR-0051 slice 2) -- re-typing the same object in place.
+            const offer = pasteAsOffer(t, res, (kind) => thirdPartyNounForKind(kind)?.label ?? kind)
+            if (!offer) { quietToast.show(pasteSummaryText(t, res)); return }
+            quietToast.show(offer.text, {
+              label: offer.alternative.label,
+              run: () => { void AtlasService.SetBoardObjectKind(res.PluginObjectID, offer.alternative.kind).then(() => refreshAtlas()).catch((err) => console.error('paste as failed', err)) },
+            })
+          }}
           onCreateTableSized={(cols, rows, at, parentID) => void createTableFromScratch(cols, rows, at, parentID)}
           onOpenTableFromList={() => setTableFromListOpen(true)}
           boardFilter={boardFilter}
@@ -422,6 +444,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           notes={visibleNotes}
           allNotes={allNotes}
           objects={visibleObjects}
+          allObjects={allObjects}
           parentID={viewedID}
           arrangeRequest={arrangeRequest}
           viewedID={viewedID}
@@ -441,7 +464,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onDeleteSelection={containmentMenus.deleteSelection}
           onQuietToast={quietToast.show}
           onOpenNote={setOpenNoteID}
-          onGroupSelection={(cardIDs, noteIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, pos)}
+          onGroupSelection={(cardIDs, noteIDs, objectIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, objectIDs, pos)}
           placementRequest={creationRequests.placementRequest}
           promoteRequest={creationRequests.promoteRequest}
           groupRequest={creationRequests.groupRequest}
@@ -460,15 +483,15 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
       </div>
 
       <AtlasViewOverlays
-        jumpOpen={jumpOpen} onCloseJump={() => setJumpOpen(false)} allCards={allCards} allKinds={allKinds} allLinks={allLinks} allLinkKinds={allLinkKinds} jumpToCard={jumpToCard}
+        jumpOpen={jumpOpen} onCloseJump={() => setJumpOpen(false)} allCards={allCards} allKinds={allKinds} allLinks={allLinks} allLinkKinds={allLinkKinds} allNotes={allNotes} allObjects={allObjects} jumpToCard={jumpToCard} jumpToObject={jumpToObject}
         overlayCard={overlayCard} onCloseOverlay={() => setOverlayCardID(null)} undoToast={undoToast} openGroupEntry={openGroupEntry} guardDelete={deleteConfirm.guardDelete}
         importConfirmDialog={importConfirmDialog}
-        tableFromListOpen={tableFromListOpen} onCloseTableFromList={() => setTableFromListOpen(false)} newSpaceOpen={newSpaceOpen} onCloseNewSpace={() => setNewSpaceOpen(false)} onCreateTable={createTableFromList} onCreateSpace={(kindID, title) => createCard('sibling', kindID, title)}
+        tableFromListOpen={tableFromListOpen} onCloseTableFromList={() => setTableFromListOpen(false)} newSpaceOpen={newSpaceOpen} onCloseNewSpace={() => setNewSpaceOpen(false)} onCreateTable={async (listID) => { await createTableFromList(listID) }} onCreateSpace={(kindID, title) => createCard('sibling', kindID, title)}
         menu={menu} onCloseMenu={() => setMenu(null)} linkMenus={linkMenus} containmentMenus={containmentMenus} deleteConfirm={deleteConfirm}
         openNote={openNoteID ? allNotes.find((n) => n.ID === openNoteID) ?? null : null} onCloseNote={() => setOpenNoteID(null)}
         editingDiagramObject={editingDiagramObjectID ? allObjects.find((o) => o.ID === editingDiagramObjectID) ?? null : null}
         onCloseEditDiagram={closeAtlasEditDiagram}
-        matrixOpen={projectionViews.matrixOpen} onCloseMatrix={() => projectionViews.setMatrixOpen(false)} coverageOpen={projectionViews.coverageOpen} onCloseCoverage={() => projectionViews.setCoverageOpen(false)} roadmapOpen={projectionViews.roadmapOpen} onCloseRoadmap={() => projectionViews.setRoadmapOpen(false)} childrenAll={childrenAll} kindsOpen={kindsOpen} onCloseKinds={() => setKindsOpen(false)} onOpenCardFromProjection={projectionViews.openCardFromProjection}
+        matrixOpen={projectionViews.matrixOpen} onCloseMatrix={() => projectionViews.setMatrixOpen(false)} coverageOpen={projectionViews.coverageOpen} onCloseCoverage={() => projectionViews.setCoverageOpen(false)} roadmapOpen={projectionViews.roadmapOpen} onCloseRoadmap={() => projectionViews.setRoadmapOpen(false)} contentsOpen={projectionViews.contentsOpen} onCloseContents={() => projectionViews.setContentsOpen(false)} onFocusItemFromContents={(id) => setFocusRequest({ cardID: id, openImmediately: false })} childrenAll={childrenAll} kindsOpen={kindsOpen} onCloseKinds={() => setKindsOpen(false)} onOpenCardFromProjection={projectionViews.openCardFromProjection}
       />
     </div>
   )

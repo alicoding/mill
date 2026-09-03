@@ -1,7 +1,8 @@
 # Commands
 
 Press ⌘K and type any action's name — "lock vault", "check for
-updates", "add a card" — and it runs from wherever you are. Every
+updates", "add a card" — and it runs from wherever you are.
+Abbreviations work too: "gtw" finds "Go to Workflows". Every
 user-facing action in Mill is a registered command, and the palette,
 the Quick Panel, keyboard shortcuts, and Settings → Keyboard shortcuts
 all read from the same list, so a command registered once shows up
@@ -25,6 +26,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.arrange` | Auto-arrange | — | atlas | Always available |
 | `atlas.card.exportAs` | Export card as… | — | atlas | Always available |
 | `atlas.companion.toggle` | Toggle companion panel | — | atlas | Always available |
+| `atlas.contents.open` | Contents | — | atlas | Always available |
 | `atlas.coverage` | Open coverage | — | atlas | Always available |
 | `atlas.create.area` | Draw an area | — | atlas | Conditional — available only in a matching state |
 | `atlas.create.card` | Add a card | — | atlas | Conditional — available only in a matching state |
@@ -39,7 +41,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.focusPrevious` | Focus previous card | `⇧TAB` | atlas | Always available |
 | `atlas.group.selection` | Group into a new area | `G` | atlas | Always available |
 | `atlas.import` | Import atlas | — | atlas | Always available |
-| `atlas.jump` | Jump to a card | `⌘K` | atlas | Always available |
+| `atlas.jump` | Jump to a card or object | `⌘K` | atlas | Always available |
 | `atlas.matrix` | Open traceability matrix | — | atlas | Always available |
 | `atlas.minimap.toggle` | Toggle minimap | — | atlas | Always available |
 | `atlas.nudgeSelection` | Move the selected card | `→` | atlas | Always available |
@@ -60,9 +62,11 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `canvas.undo` | Undo | `⌘Z` | composition | Always available |
 | `canvas.zoomIn` | Zoom in | `⌘+` | composition | Always available |
 | `canvas.zoomOut` | Zoom out | `⌘-` | composition | Always available |
+| `capture.note` | Capture a note | — | Global | Always available |
 | `clipboard.history.open` | Clipboard history | — | Global | Always available |
 | `codingLoop.run` | Run from clipboard… | — | Global | Always available |
 | `configure.new.aiproviders` | New AI provider | — | Global | Always available |
+| `configure.new.conversionprofiles` | New conversion profile | — | Global | Always available |
 | `configure.new.decisions` | New decision | — | Global | Always available |
 | `configure.new.execenvs` | New environment | — | Global | Always available |
 | `configure.new.integration` | New integration | — | Global | Always available |
@@ -70,6 +74,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.new.mcpservers` | New MCP server | — | Global | Always available |
 | `configure.new.steptypes` | New step type | — | Global | Always available |
 | `docs.search` | Search docs | — | Global | Always available |
+| `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
+| `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
+| `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `palette.open` | Open command palette | `⌘K` | Global | Always available |
@@ -95,7 +102,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `tab.closeOthers` | Close other tabs | `⌘⌥W` | Global | Conditional — available only in a matching state |
 | `tab.next` | Next tab | `⌃TAB` | Global | Always available |
 | `tab.prev` | Previous tab | `⌃⇧TAB` | Global | Always available |
-| `update.check` | Check for updates | — | Global | Always available |
+| `update.check` | Check for updates | — | Global | Conditional — available only in a matching state |
 | `update.downloadAndInstall` | Download the update and install | — | Global | Conditional — available only in a matching state |
 | `update.relaunch` | Restart to finish updating | — | Global | Conditional — available only in a matching state |
 | `update.trustSigning` | Trust Mill's signing | — | Global | Always available |
@@ -108,6 +115,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `view.home` | Go to Home | `⌘0` | Global | Always available |
 | `view.review` | Go to Review | `⌘5` | Global | Always available |
 | `view.secrets` | Go to Secrets | `⌘6` | Global | Always available |
+| `workflow.edit` | Edit workflow | — | Global | Conditional — available only in a matching state |
 | `workflow.new` | New workflow | `⌘N` | Global | Conditional — available only in a matching state |
 | `workflow.publish` | Publish current draft | — | composition | Conditional — available only in a matching state |
 | `workflow.run` | Run workflow | `⌘↩` | Global | Conditional — available only in a matching state |

@@ -137,9 +137,17 @@ test('View-mode chip is present in view, absent once switched to Edit', async ({
   await expect(chip).toBeVisible()
   await expect(chip).toContainText('Viewing')
 
-  await page.getByTestId('edit-workflow').click()
+  // goal 0297: in view mode a reference field is its VALUE plus an Edit
+  // link, never a disabled control; the link is the way into edit mode.
+  const offer = page.getByTestId('workflow-offer-field')
+  if ((await offer.count()) === 0) await page.getByTestId('toggle-description').click() // details open by default only when the workflow has a description
+  await expect(offer.getByTestId('entity-ref-readonly')).toContainText('None')
+  await expect(offer.locator('select')).toHaveCount(0)
+  await expect(page.getByTestId('workflow-description-readonly')).toBeVisible()
+  await offer.getByTestId('entity-ref-edit').click()
   await expect(chip).toHaveCount(0)
   await expect(page.getByTestId('save-workflow')).toBeVisible()
+  await expect(offer.locator('select')).toHaveCount(1)
 
   await page.getByRole('button', { name: 'Close tab' }).last().click()
 })

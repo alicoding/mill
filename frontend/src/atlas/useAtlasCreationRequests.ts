@@ -43,9 +43,9 @@ export function useAtlasCreationRequests() {
   // Select-then-group (LOCKED design §2's "select, then group" door):
   // the SAME area-mode popover the marker-box draws uses, requested
   // from AtlasView's multi-select context menu instead of a drag.
-  const requestGroup = (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => {
+  const requestGroup = (cardIDs: string[], noteIDs: string[], objectIDs: string[], pos: { x: number; y: number }) => {
     counter.current += 1
-    setGroupRequest({ cardIDs, noteIDs, pos, token: counter.current })
+    setGroupRequest({ cardIDs, noteIDs, objectIDs, pos, token: counter.current })
   }
 
   return { placementRequest, requestPlacement, requestLinkedCard, promoteRequest, requestPromote, requestPromoteObject, groupRequest, requestGroup }

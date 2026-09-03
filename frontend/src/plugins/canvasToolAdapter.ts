@@ -6,14 +6,15 @@ import { ATLAS_TOOL_IDENTITIES } from '../shared/atlasToolIdentity'
 import { refreshAtlas } from '../atlas/atlasStore'
 import { frameContainingPoint } from '../atlas/atlasFramePoint'
 import { pointHitIDs } from '../atlas/atlasEnclosure'
+import type { EditRouteDecl } from '../atlas/objectSeams'
 import { useAtlasStyleValues, type AtlasStyleValue } from '../atlas/atlasStyleValueStore'
 import type { AtlasStyleField } from '../atlas/atlasStyleVocabulary'
 import { thirdPartyNouns, type AtlasGestureCtx, type AtlasGesturePoint, type AtlasToolGesture, type ThirdPartyNounShape } from '../atlas/atlasNounRegistry'
 import { meetsDragThreshold } from '../atlas/useAtlasToolGesture'
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { ingestionClaimMismatch } from './ingestionClaims'
-import { pluginFaceComponent } from './PluginFaceContent'
-import type { CanvasGestureCtx, CanvasGestureDecl, CanvasObjectDecl, CanvasStyleFieldDecl } from './sdk'
+import { pluginFaceComponent, pluginObjectCtx } from './PluginFaceContent'
+import type { CanvasGestureCtx, CanvasGestureDecl, CanvasObjectDecl, CanvasObjectMenuItem, CanvasStyleFieldDecl } from './sdk'
 
 // The gesture/style half of a plugin's canvas registration (goal 0252
 // S1): adapts the SDK's plain-data declarations onto the SAME registry
@@ -79,6 +80,8 @@ function interactionDeclError(decl: CanvasObjectDecl): string | null {
 	if (interaction !== 'ephemeral-drag' && typeof decl.renderFace !== 'function') {
 		return 'renderFace must be a function (it is optional only for "ephemeral-drag")'
 	}
+	const menuProblem = menuItemsProblem(decl.menuItems ?? [])
+	if (menuProblem) return menuProblem
 	if (decl.lockable && (decl.sticky ?? dragShaped)) {
 		return 'lockable requires a drag tool with sticky: false (a sticky tool never disarms, so a lock would be meaningless)'
 	}
@@ -178,6 +181,10 @@ function pluginGestureCtx(kind: string, objectKind: string, fields: readonly Can
 			if (opts?.select) ctx.onShapeCreated(created.ID)
 		},
 		saveImageBytes: (base64, ext, title) => AtlasService.SaveImageBytes(base64, ext, title),
+		itemsInRect: (rect) => {
+			const r = ctx.enclosedIn(rect)
+			return { cardIds: r.cardIDs, noteIds: r.noteIDs, objectIds: r.objectIDs }
+		},
 	}
 	if (canErase) {
 		// The built-in eraser's exact hit contract: every point tests
@@ -244,7 +251,20 @@ function faceContent(pluginId: string, decl: CanvasObjectDecl, ephemeral: boolea
 		ariaLabelKey: decl.label,
 		role: undefined,
 		source: decl.source === 'file' ? { kind: 'file', pathKey: 'mirrorPath' } : decl.source === 'url' ? { kind: 'url', urlKey: 'url' } : { kind: 'board-local' },
-		editRoute: { kind: decl.editRoute },
+		editRoute: adaptEditRoute(decl.editRoute),
+	}
+}
+
+// adaptEditRoute: a static route stays static; a resolver is wrapped
+// into the kernel's own per-object EditRouteDecl. A resolver returning
+// an unknown route resolves to 'none' -- the object still renders, it
+// just has no edit door.
+function adaptEditRoute(route: CanvasObjectDecl['editRoute']): EditRouteDecl {
+	if (typeof route !== 'function') return { kind: route }
+	return (object) => {
+		const payload = Object.fromEntries(Object.entries(object.Payload ?? {}).flatMap(([k, v]) => (v === undefined ? [] : [[k, v]])))
+		const kind = route({ ID: object.ID, Kind: object.Kind ?? '', Payload: payload })
+		return { kind: kind === 'inline' || kind === 'external-app' ? kind : 'none' }
 	}
 }
 
@@ -252,6 +272,22 @@ function faceContent(pluginId: string, decl: CanvasObjectDecl, ephemeral: boolea
 // built-in identity's key or another registered tool's; first
 // registrant wins deterministically (the loader activates plugins in
 // sorted id order), the loser is a visible registration error.
+// menuItemsProblem validates a declaration's context-menu items (goal
+// 0280): slug ids, unique, a label, a run function, enabled a function
+// when present.
+function menuItemsProblem(items: readonly CanvasObjectMenuItem[]): string | null {
+	const seen = new Set<string>()
+	for (const item of items) {
+		if (!SLUG_PATTERN.test(item.id)) return `menu item id "${item.id}" must be a lowercase slug`
+		if (seen.has(item.id)) return `menu item "${item.id}" is declared twice`
+		seen.add(item.id)
+		if (typeof item.label !== 'string' || item.label.trim() === '') return `menu item "${item.id}" needs a label`
+		if (typeof item.run !== 'function') return `menu item "${item.id}" needs a run function`
+		if (item.enabled !== undefined && typeof item.enabled !== 'function') return `menu item "${item.id}" enabled must be a function`
+	}
+	return null
+}
+
 function shortcutConflictError(key: string | undefined): string | null {
 	if (!key) return null
 	if (ATLAS_TOOL_IDENTITIES.some((i) => i.shortcutKey === key) || thirdPartyNouns().some((n) => n.shortcutKey === key)) {
@@ -287,6 +323,14 @@ export function buildThirdPartyNoun(pluginId: string, manifest: Manifest, decl: 
 		// An ephemeral tool never places anything, so it claims no
 		// dropped files either.
 		fileExtensions: ephemeral ? [] : (contribution?.fileExtensions ?? []).map((e) => e.toLowerCase()),
+		// Menu items bound to the object ctx (goal 0280); disabled ones are
+		// omitted at render (useAtlasObjectMenu.ts), the palette's rule.
+		menuItems: (decl.menuItems ?? []).map((item) => ({
+			id: item.id,
+			label: item.label,
+			run: (object) => { item.run(pluginObjectCtx(pluginId, object)) },
+			enabled: (object) => (item.enabled ? item.enabled(pluginObjectCtx(pluginId, object)) : true),
+		})),
 		icon: NAMED_GLYPHS[decl.icon] ?? emojiIcon(decl.icon),
 		label: decl.label,
 		nounName: decl.label,

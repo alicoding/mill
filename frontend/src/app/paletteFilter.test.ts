@@ -58,3 +58,48 @@ describe('filterPaletteEntries', () => {
     expect(result.map((e) => e.id)).toEqual(['tab.next', 'tab.prev'])
   })
 })
+
+// goal 0272: the fuzzy tier -- subsequence matching behind the
+// substring tiers, never shadowing them.
+describe('filterPaletteEntries fuzzy tier', () => {
+  it('matches a word-initial abbreviation with no substring hit', () => {
+    const entries = [entry('ows', 'open workflow settings'), entry('other', 'delete card')]
+    expect(filterPaletteEntries(entries, 'ows').map((e) => e.id)).toEqual(['ows'])
+  })
+
+  it('ranks every substring hit ahead of every fuzzy hit', () => {
+    const entries = [
+      entry('fuzzy', 'open workflow settings'),
+      entry('contains', 'browse rows'),
+    ]
+    // "ows" is a literal substring of "browse rOWS" and only a
+    // subsequence of "Open Workflow Settings".
+    expect(filterPaletteEntries(entries, 'ows').map((e) => e.id)).toEqual(['contains', 'fuzzy'])
+  })
+
+  it('rejects scattered-letter noise', () => {
+    const entries = [entry('noise', 'zoom out to fit board contents')]
+    // "wqx" appears nowhere as a subsequence worth surfacing.
+    expect(filterPaletteEntries(entries, 'wqx')).toEqual([])
+  })
+
+  it('keeps original order between equal-scored fuzzy hits', () => {
+    const entries = [
+      entry('first', 'run alpha workflow now'),
+      entry('second', 'run alpha workflow too'),
+    ]
+    const result = filterPaletteEntries(entries, 'raw').map((e) => e.id)
+    expect(result).toEqual(['first', 'second'])
+  })
+})
+
+describe('keywords (goal 0295)', () => {
+  it('ranks a keyword-prefix match ahead of a plain contains match, regardless of order', () => {
+    const entries = [
+      { id: 'wf', searchText: 'notify when an update is available' },
+      { id: 'cmd', searchText: 'check for updates', keywords: ['update', 'upgrade', 'version'] },
+    ]
+    expect(filterPaletteEntries(entries, 'update').map((e) => e.id)).toEqual(['cmd', 'wf'])
+    expect(filterPaletteEntries(entries, 'upg').map((e) => e.id)).toEqual(['cmd'])
+  })
+})

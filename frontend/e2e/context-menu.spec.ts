@@ -215,7 +215,10 @@ test('right-click on a canvas edge: Select connection surfaces the edge inspecto
   const panel = activePanel(page)
   await expect(panel.getByTestId('save-workflow')).toBeVisible()
   const inspector = panel.getByTestId('composition-inspector')
-  await expect(inspector).toContainText('Select a step to configure it.')
+  // Nothing selected: no inspector at all (goal 0304 -- the panel mounts
+  // with a selection; before it, the old zero-width panel only hid a
+  // placeholder no one saw).
+  await expect(inspector).toHaveCount(0)
 
   // This seeded workflow's two steps auto-position directly above/
   // below each other, so the edge draws as a perfectly vertical line

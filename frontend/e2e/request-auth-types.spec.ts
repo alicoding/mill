@@ -33,7 +33,7 @@ test('An OAuth 2.0 request persists its non-secret config and reloads it into Ed
   await page.getByLabel('Client ID').fill('client-abc')
   await page.getByLabel('Scope').fill('read write')
   await page.getByLabel('Client secret').fill('super-secret')
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
 
   const row = requestRow(page, 'OAuth2 Request')
   await expect(row).toBeVisible();
@@ -69,7 +69,7 @@ test('An HMAC request persists a custom signature header name', async ({ page })
   await page.getByLabel('Auth type').selectOption('hmac')
   await page.getByLabel('Signature header name').fill('X-Vendor-Signature')
   await page.getByLabel('Secret', { exact: true }).fill('signing-key')
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
 
   await expect(requestRow(page, 'HMAC Request')).toBeVisible()
   await requestRow(page, 'HMAC Request').getByText('HMAC Request', { exact: true }).click()
@@ -88,9 +88,11 @@ test('mTLS is selectable but clearly marked not yet implemented', async ({ page 
   await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('mTLS Request')
   await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
-  await page.getByLabel('Auth type').selectOption('mtls')
-
-  await expect(page.getByText('Not yet implemented')).toBeVisible()
+  // An unimplemented type is not offered for a new integration (goal
+  // 0315); the wire value stays for records that carry it.
+  await expect(page.getByLabel('Auth type').locator('option[value="mtls"]')).toHaveCount(0)
+  await expect(page.getByLabel('Auth type').locator('option[value="oauth1vendor"]')).toHaveCount(0)
+  await expect(page.getByLabel('Auth type').locator('option[value="oauth2"]')).toHaveCount(1)
 
   // Never persisted -- Cancel, nothing to clean up.
   await page.getByRole('button', { name: 'Cancel' }).click()

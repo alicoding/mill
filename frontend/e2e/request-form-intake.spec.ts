@@ -27,7 +27,7 @@ test('Method is set beside Base URL and round-trips through save/edit', async ({
   await page.getByLabel('Label').fill('Method Row Request')
   await page.getByTestId('request-method').selectOption('POST')
   await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
 
   const row = requestRow(page, 'Method Row Request')
   await expect(row).toBeVisible()
@@ -63,7 +63,7 @@ test('Schema intake infers request-body fields from a pasted JSON sample', async
   await expect(rows.nth(1).getByLabel('Field name')).toHaveValue('count')
   await expect(rows.nth(1).getByLabel('Field type')).toHaveValue('integer')
 
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
   await expect(requestRow(page, 'Sample Intake Request')).toBeVisible()
   await deleteRequest(page, 'Sample Intake Request')
 })
@@ -94,7 +94,7 @@ test('Schema intake loads CSV field rows into the editor', async ({ page }) => {
   await expect(rows).toHaveCount(2)
   await expect(rows.nth(0).getByLabel('Field name')).toHaveValue('q')
 
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
   await expect(requestRow(page, 'CSV Intake Request')).toBeVisible()
   await deleteRequest(page, 'CSV Intake Request')
 })

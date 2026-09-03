@@ -78,7 +78,9 @@ export function AtlasCardPageContents({ card, allCards, kinds, onOpenGroupEntry,
 
       {rendered.map((child) => {
         const kind = kindByID.get(child.KindID)
-        const isGroup = isGroupCard(allCards, child)
+        // Cards-only ([], []) -- same deliberate divergence
+        // atlasCardPageContent.ts's orderContentChildren records.
+        const isGroup = isGroupCard(allCards, child, [], [])
         if (isGroup) {
           const count = childrenOf(allCards, child.ID).length
           return (

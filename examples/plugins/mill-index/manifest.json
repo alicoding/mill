@@ -1,0 +1,12 @@
+{
+  "id": "mill-index",
+  "name": "Board index",
+  "version": "1.0.0",
+  "description": "Lists everything on the board by kind, and keeps the list current as the board changes.",
+  "author": "Mill examples",
+  "minMillVersion": "0.9.0",
+  "capabilities": [],
+  "contributes": {
+    "canvasObjects": [{ "kind": "index" }]
+  }
+}

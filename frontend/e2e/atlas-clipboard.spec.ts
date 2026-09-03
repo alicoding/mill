@@ -141,7 +141,7 @@ test('copy/paste clones a card at the cursor; a frame paste offers its items', a
     await expect(toast).toContainText('Copied 2 items inside')
     const frames = groupCard(page, 'ZzClipFrame')
     await expect(frames).toHaveCount(2)
-    await expect(frames.nth(1).getByTestId('atlas-group-header')).toContainText('2 cards')
+    await expect(frames.nth(1).getByTestId('atlas-group-header')).toContainText('2 items')
   } finally {
     await server?.stop()
     rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })

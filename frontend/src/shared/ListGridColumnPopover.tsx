@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AnchoredOverlay, Button, Checkbox, FormControl, IconButton, Select, Text, Textarea } from '@primer/react'
-import { GearIcon } from '@primer/octicons-react'
+import { AnchoredOverlay, Button, Checkbox, FormControl, Select, Text, Textarea } from '@primer/react'
 import { type Field, Type as FieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { ConfirmDialog } from './ConfirmDialog'
 import styles from './ListGrid.module.css'
@@ -12,7 +11,7 @@ import styles from './ListGrid.module.css'
 // this popover re-homes the old Configure column form's remaining
 // fields so the grid is the whole editor. Key is shown, not editable
 // (immutable once saved -- the schema-evolution guard).
-export function ListGridColumnPopover({ column, onCommit, onRemove }: {
+export function ListGridColumnPopover({ column, onCommit, onRemove, open, onClose, anchorRef }: {
   column: Field
   // onCommit receives the changed column; the grid owns the
   // read-modify-write against the List record.
@@ -20,9 +19,16 @@ export function ListGridColumnPopover({ column, onCommit, onRemove }: {
   // onRemove tombstones the column (the grid supplies the confirm's
   // consequence -- ADR-0040's removal rules run server-side).
   onRemove: () => void
+  // Controlled (ADR-0049): the grid's column menu owns open/close and
+  // supplies the anchor at the header's own rectangle.
+  open: boolean
+  onClose: () => void
+  anchorRef: React.RefObject<HTMLElement | null>
 }) {
   const { t } = useTranslation('common')
-  const [open, setOpen] = useState(false)
+  const setOpen = (next: boolean) => {
+    if (!next) onClose()
+  }
   const [confirming, setConfirming] = useState(false)
   const [draft, setDraft] = useState<Field>(column)
 
@@ -37,22 +43,7 @@ export function ListGridColumnPopover({ column, onCommit, onRemove }: {
 
   return (
     <>
-      <AnchoredOverlay
-        open={open}
-        onOpen={openWithFresh}
-        onClose={() => setOpen(false)}
-        renderAnchor={(anchorProps) => (
-          <IconButton
-            {...anchorProps}
-            icon={GearIcon}
-            size="small"
-            variant="invisible"
-            className={styles.headerGear}
-            aria-label={t('listGrid.columnSettingsAriaLabel', { column: column.Label || column.Key })}
-            data-testid={`list-grid-column-settings-${column.Key}`}
-          />
-        )}
-      >
+      <AnchoredOverlay open={open && !confirming} onOpen={openWithFresh} onClose={() => setOpen(false)} anchorRef={anchorRef as React.RefObject<HTMLElement>} renderAnchor={null}>
         <div className={styles.popover}>
           <Text size="small" className={styles.keyLine}>
             {t('listGrid.keyLabel')}: <code>{column.Key}</code>
@@ -95,7 +86,7 @@ export function ListGridColumnPopover({ column, onCommit, onRemove }: {
             size="small"
             variant="danger"
             data-testid="list-grid-column-remove"
-            onClick={() => { setOpen(false); setConfirming(true) }}
+            onClick={() => setConfirming(true)}
           >
             {t('listGrid.removeColumn')}
           </Button>
@@ -107,7 +98,7 @@ export function ListGridColumnPopover({ column, onCommit, onRemove }: {
           body={t('listGrid.removeColumnConfirmBody', { column: column.Label || column.Key })}
           confirmLabel={t('listGrid.removeColumn')}
           cancelLabel={t('cancel')}
-          onCancel={() => setConfirming(false)}
+          onCancel={() => { setConfirming(false); onClose() }}
           onConfirm={() => { setConfirming(false); onRemove() }}
         />
       )}

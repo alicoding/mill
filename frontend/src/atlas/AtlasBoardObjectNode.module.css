@@ -61,6 +61,15 @@
     flex: 1 1 auto;
     min-width: 0;
     min-height: 0;
+    /* One contract for every kind (goal 0311): what a face paints stays
+       inside the object's box. A sized object is exactly its box, so a
+       drawing, a document, or a plugin face taller than it is clipped
+       here, never at each face -- the band above remains the object's
+       edge and neighbours are never painted over. An unsized object
+       takes its face's own size, so nothing is lost. Handles, the
+       rotation grip, and every viewer's body-appended chrome sit
+       outside this box and are unaffected. */
+    overflow: hidden;
 }
 
 .image {
@@ -132,4 +141,46 @@
     box-shadow:
         0 0 0 var(--mill-ring-inner, 2px) var(--borderColor-accent-emphasis),
         0 0 0 var(--mill-ring-outer, 5px) var(--bgColor-accent-muted);
+}
+
+/* Jump/entry pulse -- same ring the note card animates (its own
+   keyframes; CSS-module scoping keeps each copy local). */
+@keyframes objectPulseRing {
+    from {
+        box-shadow: 0 0 0 0 var(--fgColor-accent);
+    }
+    to {
+        box-shadow: 0 0 0 10px transparent;
+    }
+}
+.object[data-pulse='true'] {
+    border-radius: var(--borderRadius-medium);
+    animation: objectPulseRing 0.6s ease-out 2;
+}
+@media (prefers-reduced-motion: reduce) {
+    .object[data-pulse='true'] {
+        animation: none;
+        outline: 2px solid var(--fgColor-accent);
+        outline-offset: 2px;
+    }
+}
+
+/* Frame-preview tile: the real face, inert -- content pointer events
+   off so an embedded viewer (diagram pan/zoom, a table's grid) can't
+   swallow the frame's own clicks; the slot clips natural-size
+   content the same way a persisted Size does. */
+.object[data-preview='true'] {
+    overflow: hidden;
+}
+.object[data-preview='true'] > * {
+    pointer-events: none;
+}
+
+/* Click-to-activate shield for iframe-hosting faces (clickShield fact):
+   transparent, over the content, below the drag band -- present only
+   while unselected. */
+.clickShield {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
 }

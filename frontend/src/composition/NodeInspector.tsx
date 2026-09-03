@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconButton, Stack, Text } from '@primer/react'
 import { ScreenFullIcon } from '@primer/octicons-react'
@@ -9,7 +10,7 @@ import type { CanvasNode } from './canvasStore'
 import { useHotkeyCapture } from './hotkeyCapture'
 import { NodeExecutionSection } from './NodeExecutionSection'
 import { NodeConfigFields } from './NodeConfigFields'
-import { TryConversionSection } from './TryConversionSection'
+import { StepTestSection } from './StepTestSection'
 import { DecisionRulesPanel, type BranchRulesActions } from './DecisionRulesPanel'
 import { describeConsumes, describeKind } from './payloadKinds'
 
@@ -30,6 +31,9 @@ function ioContractParts(nt: NodeType, t: TFunction<'composition'>): { consumes:
 
 interface NodeInspectorProps {
   node: CanvasNode
+  // headerActions: controls the host renders in the header row beside
+  // Open details (the panel's own Expand/Shrink toggle).
+  headerActions?: ReactNode
   workflowId: string
   attrs: AttributeDef[]
   nodeType: NodeType | undefined
@@ -66,11 +70,12 @@ interface NodeInspectorProps {
 // NodeConfigFields at a workable size instead of forking a second
 // config form; this component's own job is just the sidebar's
 // glance-sized layout plus the affordance to open that overlay.
-export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeTypes, hasWorkflow, hotkeyCapture, runStep, readOnly, onOpenDetail, onChangeType, onConfigChange, edges, pendingRuleCount, issuesByEdgeId, branchRuleActions }: NodeInspectorProps) {
+export function NodeInspector({ node, headerActions, workflowId, attrs, nodeType, sameKindNodeTypes, hasWorkflow, hotkeyCapture, runStep, readOnly, onOpenDetail, onChangeType, onConfigChange, edges, pendingRuleCount, issuesByEdgeId, branchRuleActions }: NodeInspectorProps) {
   const { t } = useTranslation('composition')
   return (
     <Stack direction="vertical" gap="condensed">
-      <Stack direction="horizontal" justify="end">
+      <Stack direction="horizontal" justify="end" gap="condensed">
+        {headerActions}
         <IconButton
           icon={ScreenFullIcon}
           aria-label={t('nodeInspector.openStepDetail')}
@@ -108,7 +113,7 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
           {...branchRuleActions}
         />
       )}
-      <TryConversionSection nodeType={nodeType} />
+      <StepTestSection node={node} workflowId={workflowId} runStep={runStep} />
       <NodeExecutionSection step={runStep} />
     </Stack>
   )

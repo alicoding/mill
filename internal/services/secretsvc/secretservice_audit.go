@@ -73,7 +73,7 @@ func (s *SecretService) recordAccess(entryID, label string, actx secretaudit.Acc
 	}
 	rec := secretaudit.Record{
 		EntryID: entryID, Label: label, Context: actx.Context,
-		RunID: actx.RunID, WorkflowID: actx.WorkflowID,
+		RunID: actx.RunID, WorkflowID: actx.WorkflowID, Actor: actx.Actor,
 		Outcome: outcome, ErrorText: errText,
 	}
 	if _, err := s.auditStore.Insert(context.Background(), rec); err != nil {
@@ -102,8 +102,11 @@ func (s *SecretService) RecordAccess(entryID, label string, actx secretaudit.Acc
 // own shape.
 type ListSecretAccessRequest struct {
 	EntryID string `json:"entryId"`
-	Limit   int    `json:"limit"`
-	Offset  int    `json:"offset"`
+	// ActorPrefix narrows to actors starting with it (the plugin audit
+	// export passes "plugin:"); empty means every actor.
+	ActorPrefix string `json:"actorPrefix"`
+	Limit       int    `json:"limit"`
+	Offset      int    `json:"offset"`
 }
 
 // SecretAccessRecord is the frontend-facing JSON shape for one audit
@@ -118,6 +121,7 @@ type SecretAccessRecord struct {
 	Context    string `json:"context"`
 	RunID      string `json:"runId"`
 	WorkflowID string `json:"workflowId"`
+	Actor      string `json:"actor"`
 	Outcome    string `json:"outcome"`
 	ErrorText  string `json:"errorText"`
 }
@@ -161,7 +165,7 @@ func (s *SecretService) ListSecretAccess(req ListSecretAccessRequest) (ListSecre
 		offset = 0
 	}
 
-	records, total, err := s.auditStore.List(secretauditstore.Filter{EntryID: req.EntryID}, limit, offset)
+	records, total, err := s.auditStore.List(secretauditstore.Filter{EntryID: req.EntryID, ActorPrefix: req.ActorPrefix}, limit, offset)
 	if err != nil {
 		return ListSecretAccessResponse{}, fmt.Errorf("secretsvc: list secret access: %w", err)
 	}
@@ -170,7 +174,7 @@ func (s *SecretService) ListSecretAccess(req ListSecretAccessRequest) (ListSecre
 		out = append(out, SecretAccessRecord{
 			ID: r.ID, Timestamp: r.Timestamp.Format("2006-01-02T15:04:05.000Z07:00"),
 			EntryID: r.EntryID, Label: r.Label, Context: string(r.Context),
-			RunID: r.RunID, WorkflowID: r.WorkflowID, Outcome: string(r.Outcome), ErrorText: r.ErrorText,
+			RunID: r.RunID, WorkflowID: r.WorkflowID, Actor: r.Actor, Outcome: string(r.Outcome), ErrorText: r.ErrorText,
 		})
 	}
 	return ListSecretAccessResponse{Records: out, Total: total}, nil

@@ -91,13 +91,28 @@ func callBoundJSON(c mcpCaller, name string, args []any, out any) error {
 
 var registry = []check{
 	{
+		name:   "quickpanel-down-steps-once",
+		reason: "owner-reported on the installed build (goal 0303): one Down press moved the active row twice; Chromium's suite proves one step, so the real WKWebView is the engine this regression must run on.",
+		run:    checkQuickPanelDownStepsOnce,
+	},
+	{
+		name:   "quickpanel-hover-holds-scroll",
+		reason: "owner-reported on the installed build (goal 0303): hovering between rows jumps the list; the active row may follow the pointer but the list must not scroll under it.",
+		run:    checkQuickPanelHoverDoesNotScroll,
+	},
+	{
+		name:   "quickpanel-rows-one-height",
+		reason: "owner-reported on the installed build (goal 0303): a row with long text grows taller than its neighbors; rows keep one height and truncate.",
+		run:    checkQuickPanelRowsShareOneHeight,
+	},
+	{
 		name:   "isolated-data-badge",
 		reason: "confirms the real desktop window is serving throwaway MILL_SETTINGS_PATH/MILL_EXECUTION_DB_PATH, never real user data, before any further check touches it (mirrors frontend/e2e/fixtures/server.ts's own per-server guard).",
 		run:    checkIsolatedDataBadge,
 	},
 	{
 		name:   "app-info-window-sane",
-		reason: "the real Wails process reports the app's true window set on darwin (main + quickpanel + approvalprompt + traypanel, ADR-0033 + goal 0189) -- proves a genuine desktop process booted with its real window set, not just that a binary exists.",
+		reason: "the real Wails process reports the app's true window set on darwin (main + quickpanel + approvalprompt + traypanel + runmonitor, ADR-0033 + goals 0189 and 0294) -- proves a genuine desktop process booted with its real window set, not just that a binary exists.",
 		run:    checkAppInfo,
 	},
 	{
@@ -124,6 +139,11 @@ var registry = []check{
 		name:   "drawio-editor-layout",
 		reason: "owner-reported on the installed build (goal 0259): the embedded drawio editor's bottom page-tab bar sat outside the visible window with no scroll to it, and the diagram's resize frame seemed absent -- both measure CORRECT in Chromium at harness sizes, the exact engine/window-divergence class this registry exists for. Asserts, in the real WKWebView: band-click selection produces the full resize-handle set, and the editor dialog, its iframe, and the two-page tab bar all sit inside the real window.",
 		run:    checkDrawioEditorLayout,
+	},
+	{
+		name:   "pdf-find-in-viewer",
+		reason: "owner-reported (goal 0271): pdf.js find returns no matches in the installed app while the same document searches fine outside Mill -- the full findbar pipeline passes in Chromium AND Playwright WebKit against server mode, so the real WKWebView is the one engine left uncovered; drives the vendored viewer's own find controller over a known-text fixture and asserts the match count.",
+		run:    checkPdfFindInViewer,
 	},
 	{
 		name:   "sticky-border-color-flip",
@@ -161,7 +181,7 @@ func checkAppInfo(c mcpCaller) (string, error) {
 	// the named main window plus the three auxiliary windows. Asserted
 	// by name, not count, so a missing or unexpected window is named
 	// in the failure.
-	want := map[string]bool{mainWindowName: false, "quickpanel": false, "approvalprompt": false, "traypanel": false}
+	want := map[string]bool{mainWindowName: false, "quickpanel": false, "approvalprompt": false, "traypanel": false, "runmonitor": false}
 	mainVisible := false
 	for _, w := range info.Windows {
 		seen, expected := want[w.Name]

@@ -5,6 +5,7 @@ import { FilterIcon, SearchIcon, TagIcon } from '@primer/octicons-react'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { type BoardFilter, facetFieldsFrom, filterIsActive } from './cardFilter'
 import styles from './AtlasFilterBar.module.css'
+import { searchInputTextAssistOff } from '../shared/searchInputProps'
 
 // The board filter group (goal 0129 slices 1+3): text + kinds +
 // attribute values, ANDed, applied as DIM-in-place by the board
@@ -54,7 +55,8 @@ export function AtlasFilterBar({ kinds, presentKindIDs, filter, onChange, matchC
   if (!expanded) {
     return (
       <div className={styles.filterBar} data-testid="atlas-filter-bar">
-        <IconButton icon={SearchIcon} size="small" variant="invisible" aria-label={t('filter.placeholder')} data-testid="atlas-filter-toggle" onClick={() => setOpen(true)} />
+        <IconButton icon={SearchIcon} size="small" variant="invisible" aria-label={t('filter.placeholder')}
+        {...searchInputTextAssistOff} data-testid="atlas-filter-toggle" onClick={() => setOpen(true)} />
       </div>
     )
   }
@@ -66,6 +68,7 @@ export function AtlasFilterBar({ kinds, presentKindIDs, filter, onChange, matchC
         leadingVisual={SearchIcon}
         placeholder={t('filter.placeholder')}
         aria-label={t('filter.placeholder')}
+        {...searchInputTextAssistOff}
         value={filter.query}
         data-testid="atlas-filter-query"
         onChange={(e) => onChange({ ...filter, query: e.target.value })}

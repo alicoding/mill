@@ -9,9 +9,12 @@ import type { AtlasStickyRFNode } from './AtlasStickyNode'
 // own builtNodes memo stays a thin composition of card + sticky nodes
 // (architecture.md's 500-line convention).
 export function buildStickyNodes({
-  notes, draftNotePos, editingNoteID, readOnly, isSoleSelected, onCommitDraft, onCancelDraft, onEnterEdit, onCancelEdit, onCommitEdit, onOpenNote,
+  notes, dirtyIDs, draftNotePos, editingNoteID, readOnly, isSoleSelected, onCommitDraft, onCancelDraft, onEnterEdit, onCancelEdit, onCommitEdit, onSaveEdit, onOpenNote,
 }: {
   notes: Note[]
+  // Notes whose text is held unsaved (explicit save mode,
+  // useAtlasStickyNodes.ts) -- rendered with the dirty marker.
+  dirtyIDs: Set<string>
   draftNotePos: { x: number; y: number } | null
   editingNoteID: string | null
   readOnly: boolean
@@ -23,6 +26,8 @@ export function buildStickyNodes({
   onEnterEdit: (id: string) => void
   onCancelEdit: () => void
   onCommitEdit: (id: string, text: string) => void
+  // ⌘S mid-edit: the write without ending the session.
+  onSaveEdit: (id: string, text: string) => void
   onOpenNote: (id: string) => void
 }): AtlasStickyRFNode[] {
   // Width is the one RF-controlled dimension (persisted-or-default,
@@ -42,8 +47,10 @@ export function buildStickyNodes({
     data: {
       note,
       editing: editingNoteID === note.ID,
+      dirty: dirtyIDs.has(note.ID),
       isSoleSelected,
       onCommit: (text: string) => onCommitEdit(note.ID, text),
+      onSave: (text: string) => onSaveEdit(note.ID, text),
       onCancelEdit,
       onEnterEdit: () => onEnterEdit(note.ID),
       onOpenBig: () => onOpenNote(note.ID),
@@ -59,8 +66,11 @@ export function buildStickyNodes({
       data: {
         note: null,
         editing: true,
+        dirty: false,
         isSoleSelected,
         onCommit: onCommitDraft,
+        // A draft's save IS its creation -- the session ends with it.
+        onSave: onCommitDraft,
         onCancelEdit: onCancelDraft,
         onEnterEdit: () => {},
         onOpenBig: () => {},

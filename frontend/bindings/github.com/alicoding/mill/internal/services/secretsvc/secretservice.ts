@@ -58,6 +58,17 @@ export function GeneratePassword(length: number, upper: boolean, lower: boolean,
 }
 
 /**
+ * ListProviderSecrets lists every key of every enabled source as a
+ * Summary whose ID is the reference itself and whose Title names the
+ * key and its source -- titles only, never a value; a source whose
+ * file cannot be read contributes nothing (the picker stays honest,
+ * the source's own row reports the problem).
+ */
+export function ListProviderSecrets(): $CancellablePromise<secret$0.Summary[] | null> {
+    return $Call.ByID(4191075382);
+}
+
+/**
  * ListSecretAccess is the bound read API the Secrets view's Access
  * history list calls -- newest first, optionally filtered to one entry,
  * limit/offset paged. Returns an empty page (never an error) when no
@@ -129,6 +140,10 @@ export function SecretHistory(id: string): $CancellablePromise<secret$0.Entry[] 
     return $Call.ByID(3113557004, id);
 }
 
+export function SetSourcesLister(fn: $models.SourcesLister): $CancellablePromise<void> {
+    return $Call.ByID(3955565257, fn);
+}
+
 /**
  * SetTouchIDProtection turns Touch ID protection on or off for the
  * vault's master key (goal 0204's BUILD CONTRACT). The vault must
@@ -151,6 +166,15 @@ export function SetTouchIDProtection(enabled: boolean): $CancellablePromise<void
  */
 export function SetupVault(): $CancellablePromise<void> {
     return $Call.ByID(1816045847);
+}
+
+/**
+ * SourceProblems reports, per source id, why a source currently lists
+ * nothing ("" for a healthy one): a missing or locked CLI, an
+ * unreadable file or collection. The Configure row shows it.
+ */
+export function SourceProblems(): $CancellablePromise<{ [_ in string]?: string } | null> {
+    return $Call.ByID(2210922477);
 }
 
 /**

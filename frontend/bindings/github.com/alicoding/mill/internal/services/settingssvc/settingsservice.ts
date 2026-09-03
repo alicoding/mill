@@ -21,6 +21,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as windowing$0 from "../../adapters/windowing/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as mcpsvc$0 from "../mcpsvc/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -117,6 +120,14 @@ export function DebugBackdatePendingMCPWrite(id: string, ageMinutes: number): $C
 }
 
 /**
+ * DeletePluginStorageValue removes one key; deleting an absent key is
+ * a no-op success (the converged storage semantic).
+ */
+export function DeletePluginStorageValue(pluginID: string, key: string): $CancellablePromise<void> {
+    return $Call.ByID(3419479534, pluginID, key);
+}
+
+/**
  * DismissApprovalPrompt hides the floating approval prompt and applies
  * the same focus-yield mitigation DismissPanel already uses -- called
  * by the prompt's own frontend once the last pending item resolves (or
@@ -189,6 +200,14 @@ export function ExportSkillDoc(): $CancellablePromise<string> {
 }
 
 /**
+ * GetAllowedPlugins returns every plugin id the user allowed to run.
+ * Never nil.
+ */
+export function GetAllowedPlugins(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(110833324);
+}
+
+/**
  * GetAttentionIdleThreshold returns the configured idle-seconds
  * threshold: the presence gate below treats the user as away once
  * idletime.Seconds() reaches this, even while the window is focused --
@@ -207,6 +226,14 @@ export function GetAttentionIdleThreshold(): $CancellablePromise<number> {
  */
 export function GetBuildInfo(): $CancellablePromise<$models.BuildInfo> {
     return $Call.ByID(2673585232);
+}
+
+/**
+ * GetCaptureDestinations returns every remembered destination. Never
+ * nil.
+ */
+export function GetCaptureDestinations(): $CancellablePromise<{ [_ in string]?: string } | null> {
+    return $Call.ByID(1849425987);
 }
 
 /**
@@ -232,10 +259,11 @@ export function GetDisplayDensity(): $CancellablePromise<string> {
 
 /**
  * GetExtensionSettings returns every stored per-extension setting
- * value. Never nil — always at least an empty map, so a caller can
- * json-encode it straight to the frontend without a nil check.
+ * value as its JSON literal ("true", "\"hostname\"", "25"). Never nil
+ * — always at least an empty map, so a caller can json-encode it
+ * straight to the frontend without a nil check.
  */
-export function GetExtensionSettings(): $CancellablePromise<{ [_ in string]?: { [_ in string]?: boolean } | null } | null> {
+export function GetExtensionSettings(): $CancellablePromise<{ [_ in string]?: { [_ in string]?: string } | null } | null> {
     return $Call.ByID(1523849532);
 }
 
@@ -279,6 +307,56 @@ export function GetMCPWriteEnabled(): $CancellablePromise<boolean> {
 }
 
 /**
+ * GetPluginAllowlist returns the administrator's allow-list, empty
+ * when no policy is set. Never nil. Read-only from the UI by design.
+ */
+export function GetPluginAllowlist(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(72528832);
+}
+
+/**
+ * GetPluginLock returns every recorded entry. Never nil.
+ */
+export function GetPluginLock(): $CancellablePromise<{ [_ in string]?: $models.PluginLockEntry } | null> {
+    return $Call.ByID(742066904);
+}
+
+/**
+ * GetPluginSigningKeys returns the pinned minisign public keys, empty
+ * when no signing policy is set. Never nil. Read-only from the UI.
+ */
+export function GetPluginSigningKeys(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(2403520042);
+}
+
+/**
+ * GetPluginStorage returns every plugin's stored values as JSON
+ * literals. Never nil.
+ */
+export function GetPluginStorage(): $CancellablePromise<{ [_ in string]?: { [_ in string]?: string } | null } | null> {
+    return $Call.ByID(3251565236);
+}
+
+/**
+ * GetPreferredLinkPasteKind returns the preferred claimant kind, or ""
+ * when the user never chose one. A kind whose plugin is disabled or
+ * gone is still returned as stored -- the paste chain's wiring simply
+ * finds no claim to promote, so the id order applies until the plugin
+ * is back.
+ */
+export function GetPreferredLinkPasteKind(): $CancellablePromise<string> {
+    return $Call.ByID(1170587834);
+}
+
+/**
+ * GetSaveMode returns the persisted preference; anything but the one
+ * recognized override reads as automatic, the default.
+ */
+export function GetSaveMode(): $CancellablePromise<string> {
+    return $Call.ByID(1822681766);
+}
+
+/**
  * GetSeenFirstRunIntros returns every intro id the user has dismissed.
  * Never nil -- always at least an empty slice.
  */
@@ -302,6 +380,21 @@ export function GetSummonHotkey(): $CancellablePromise<string> {
  */
 export function GetWorkflowMinutesSaved(workflowID: string): $CancellablePromise<number> {
     return $Call.ByID(1967529281, workflowID);
+}
+
+/**
+ * HideCapture is the window's own Save/Cancel hand-off.
+ */
+export function HideCapture(): $CancellablePromise<void> {
+    return $Call.ByID(2546623058);
+}
+
+/**
+ * HideRunMonitor is the monitor's own "Open in Mill" hand-off: hide
+ * this window, then the caller opens the main window on the run.
+ */
+export function HideRunMonitor(): $CancellablePromise<void> {
+    return $Call.ByID(2995307865);
 }
 
 /**
@@ -449,6 +542,16 @@ export function PendingMCPWrites(): $CancellablePromise<mcpsvc$0.MCPWriteRequest
 }
 
 /**
+ * PluginLockMatches reports whether id's recorded hash equals current
+ * -- true as well when nothing was ever recorded for it (an instance
+ * from before the lock existed, or a plugin without a readable
+ * folder), so the lock only ever REVOKES consent it saw granted.
+ */
+export function PluginLockMatches(id: string, current: string): $CancellablePromise<boolean> {
+    return $Call.ByID(3689995257, id, current);
+}
+
+/**
  * QuitApp closes this application instance -- the stale-build badge's
  * one-click action (docs/SPEC.md §3.8): when a fresh bundle detects an
  * orphaned old binary behind it, the fix is quitting the stale
@@ -561,6 +664,13 @@ export function SetAutoUpdateCheck(on: boolean): $CancellablePromise<void> {
 }
 
 /**
+ * SetCaptureDestination remembers where key's captures land.
+ */
+export function SetCaptureDestination(key: string, parentID: string): $CancellablePromise<void> {
+    return $Call.ByID(1339015142, key, parentID);
+}
+
+/**
  * SetDisplayDensity persists the preference. Rejects any value besides
  * the two locked tiers so a typo'd/future caller can't wedge the
  * preference into a state no CSS selector matches.
@@ -586,12 +696,14 @@ export function SetExtensionEnabled(id: string, enabled: boolean): $CancellableP
 
 /**
  * SetExtensionSetting stores one extension's one declared-setting
- * value, persists the updated blob, and emits dataevent so every open
- * consumer (the Extensions section, a canvas surface reading the
- * setting) refreshes live rather than only after a reload.
+ * value (given as its JSON literal), persists the updated blob, and
+ * emits dataevent so every open consumer (the Extensions section, a
+ * canvas surface reading the setting, a plugin's onChange) refreshes
+ * live rather than only after a reload. Anything but a JSON scalar is
+ * refused before the blob is touched.
  */
-export function SetExtensionSetting(extensionID: string, key: string, value: boolean): $CancellablePromise<void> {
-    return $Call.ByID(2797582563, extensionID, key, value);
+export function SetExtensionSetting(extensionID: string, key: string, jsonValue: string): $CancellablePromise<void> {
+    return $Call.ByID(2797582563, extensionID, key, jsonValue);
 }
 
 /**
@@ -669,6 +781,50 @@ export function SetPendingBadge(count: number): $CancellablePromise<void> {
 }
 
 /**
+ * SetPluginAllowed records (or withdraws) the user's consent for id to
+ * run, and emits the extension dataevent so the Extensions page
+ * refreshes. Withdrawing consent does not stop an already-activated
+ * plugin -- like disabling, it changes what loads at the next boot.
+ */
+export function SetPluginAllowed(id: string, allowed: boolean): $CancellablePromise<void> {
+    return $Call.ByID(1454348197, id, allowed);
+}
+
+/**
+ * SetPluginStorageValue stores one plugin's one value (any valid JSON,
+ * given as its literal) and persists the blob. A JSON null is refused
+ * -- deleting is DeletePluginStorageValue's job, so a stored null can
+ * never masquerade as "absent".
+ */
+export function SetPluginStorageValue(pluginID: string, key: string, jsonValue: string): $CancellablePromise<void> {
+    return $Call.ByID(2946178161, pluginID, key, jsonValue);
+}
+
+/**
+ * SetPreferredLinkPasteKind stores kind ("" clears the preference) and
+ * emits the extension dataevent so the Extensions page and the paste
+ * chain's next lookup both see it without a reload.
+ */
+export function SetPreferredLinkPasteKind(kind: string): $CancellablePromise<void> {
+    return $Call.ByID(130220358, kind);
+}
+
+/**
+ * SetRunMonitorWindow wires the run monitor window (auxwindows.go's
+ * newRunMonitorWindow) -- goal 0294 S2.
+ */
+export function SetRunMonitorWindow(w: windowing$0.Window | null): $CancellablePromise<void> {
+    return $Call.ByID(4103434777, w);
+}
+
+/**
+ * SetSaveMode persists the preference; only the two modes are legal.
+ */
+export function SetSaveMode(mode: string): $CancellablePromise<void> {
+    return $Call.ByID(2320500362, mode);
+}
+
+/**
  * SetUpdateChannelPreference persists the channel override. The
  * preference resolves at BOOT (ResolveUpdateChannel below): the update
  * provider's feed selection is fixed at Init, so a change applies
@@ -698,6 +854,15 @@ export function SetWorkflowMinutesSaved(workflowID: string, minutes: number): $C
 }
 
 /**
+ * ShowCapture points the window at a capture and brings it forward;
+ * the target is emitted first so a hidden-but-alive page has it before
+ * it is shown.
+ */
+export function ShowCapture(pluginID: string, captureID: string): $CancellablePromise<void> {
+    return $Call.ByID(4061206901, pluginID, captureID);
+}
+
+/**
  * ShowPanel shows+focuses the Quick Panel -- the bound counterpart to
  * TogglePanel (which stays //wails:ignore, Go-internal-only: the
  * summon hotkey's own callback is the only caller that ever needs
@@ -710,6 +875,15 @@ export function SetWorkflowMinutesSaved(workflowID: string, minutes: number): $C
  */
 export function ShowPanel(): $CancellablePromise<void> {
     return $Call.ByID(4093568137);
+}
+
+/**
+ * ShowRunMonitor points the monitor at a run and brings it forward.
+ * The target is emitted first so a hidden-but-alive page has it before
+ * it is shown; a visible monitor simply switches target.
+ */
+export function ShowRunMonitor(workflowID: string, runID: string): $CancellablePromise<void> {
+    return $Call.ByID(1541214296, workflowID, runID);
 }
 
 /**

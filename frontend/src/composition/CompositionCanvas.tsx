@@ -26,6 +26,7 @@ import { useGuardrailBadges } from './useGuardrailBadges'
 import { NodePalette } from './NodePalette'
 import { CanvasToolbar } from './CanvasToolbar'
 import { CanvasInspectorPanel } from './CanvasInspectorPanel'
+import { CanvasSplit } from './CanvasSplit'
 import { useTranslation } from 'react-i18next'
 import { StepDetailOverlay } from './StepDetailOverlay'
 import { ContextMenu } from '../shared/ContextMenu'
@@ -72,6 +73,13 @@ interface CompositionCanvasProps {
   // Switches THIS tab from view to edit in place (store.ts's
   // setWorkTabMode) -- CanvasMetaHeader's own Edit button.
   onSwitchToEdit?: () => void
+  // A run to show on open -- an exact id or 'latest' (shared/workTabs.ts's
+  // runId, goal 0294); the live-run bar and node marks come from it.
+  requestedRunId?: string
+  // The run monitor window (goal 0294 S2): canvas + run bar only -- no
+  // meta header (label/description/offer/Edit) and no back button; the
+  // window's own header and close are that chrome.
+  viewer?: boolean
 }
 
 // A prototype canvas for SPEC.md §3 / ADR-0005 -- built ahead of B2's
@@ -81,7 +89,7 @@ interface CompositionCanvasProps {
 // gets its node type's default config immediately, editable via the
 // Inspector the moment it's selected, never a bare unconfigured
 // reference.
-function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, onSwitchToEdit }: CompositionCanvasProps) {
+function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, onSwitchToEdit, requestedRunId, viewer }: CompositionCanvasProps) {
   const { t } = useTranslation('composition')
   // Computed once, synchronously, at first render -- see
   // computeInitialCanvas's own doc comment for why this isn't a
@@ -150,7 +158,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
   // from the Run button below or already in flight when this editor
   // opened. Never touches useCanvasStore (zundo-wrapped undo history,
   // §3.3) -- see liveRunState.ts's own header comment.
-  const { detail: liveRunDetail, statusByNodeId: liveStepStatusByNodeId, barState, startRun, resolve: resolveApprovalStep, dismiss: dismissRunState } = useLiveRun(workflow?.ID)
+  const { detail: liveRunDetail, statusByNodeId: liveStepStatusByNodeId, barState, startRun, resolve: resolveApprovalStep, dismiss: dismissRunState } = useLiveRun(workflow?.ID, requestedRunId)
 
   // GetRun's steps only ever cover Capture/Process/Apply/Decision-
   // adjacent nodes -- a Trigger node never checkpoints its own step, so
@@ -294,28 +302,31 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
   return (
     <div className={styles.canvasSection} data-testid="composition-canvas">
       {pendingExternalChange && <ExternalChangeBanner onReload={reloadFromExternal} onKeep={keepDraft} />}
-      <CanvasMetaHeader
-        workflow={workflow}
-        draftLabel={draftLabel}
-        onLabelChange={setDraftLabel}
-        descOpen={descOpen}
-        onToggleDesc={() => setDescOpen((v) => !v)}
-        draftDescription={draftDescription}
-        onDescriptionChange={setDraftDescription}
-        save={save}
-        saving={saving}
-        saveError={saveError}
-        runButtonRef={runButtonRef}
-        onStartRun={startRun}
-        readOnly={readOnly}
-        onSwitchToEdit={onSwitchToEdit}
-      />
+      {!viewer && (
+        <CanvasMetaHeader
+          workflow={workflow}
+          draftLabel={draftLabel}
+          onLabelChange={setDraftLabel}
+          descOpen={descOpen}
+          onToggleDesc={() => setDescOpen((v) => !v)}
+          draftDescription={draftDescription}
+          onDescriptionChange={setDraftDescription}
+          save={save}
+          saving={saving}
+          saveError={saveError}
+          runButtonRef={runButtonRef}
+          onStartRun={startRun}
+          readOnly={readOnly}
+          onSwitchToEdit={onSwitchToEdit}
+        />
+      )}
 
       <RunStateContext.Provider value={runStateContextValue}>
       <BreakpointContext.Provider value={breakpoints}>
       <NoteActionsContext.Provider value={noteActions}>
       <div className={styles.canvasWrap}>
         {!readOnly && paletteOpen && <NodePalette nodeTypes={nodeTypes} hasTrigger={nodes.some((n) => n.data.kind === 'trigger')} />}
+        <CanvasSplit hasSelection={!!selectedNode || !!selectedEdge} canvas={
         <div className={styles.canvas} onDrop={onCanvasDrop} onDragOver={(e) => e.preventDefault()}>
           <ReactFlow
             nodes={allNodes}
@@ -400,6 +411,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
             <ConnectionRefusalHint hint={refusalHint} />
             <CanvasToolbar
               onBack={onBack}
+              hideBack={viewer}
               readOnly={readOnly}
               paletteOpen={paletteOpen}
               onTogglePalette={() => setPaletteOpen((v) => !v)}
@@ -420,8 +432,9 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
             <CurrentStepBar barState={barState} attrs={workflow?.Attributes ?? []} runDetail={liveRunDetail} onResolve={resolveApprovalStep} onDismiss={dismissRunState} />
           </ReactFlow>
         </div>
-
+        } inspector={(headerActions) => (
         <CanvasInspectorPanel
+          headerActions={headerActions}
           workflow={workflow}
           selectedNode={selectedNode}
           selectedEdge={selectedEdge}
@@ -438,6 +451,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
           edges={edges}
           {...branchRules}
         />
+        )} />
       </div>
       </NoteActionsContext.Provider>
       </BreakpointContext.Provider>

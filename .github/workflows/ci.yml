@@ -414,8 +414,11 @@ jobs:
         # cost. Only "CI gate" is ruleset-required, and ci-gate needs
         # the e2e JOB id (not per-shard display names), so shard count
         # changes here never touch branch protection.
-        shardIndex: [1, 2, 3, 4, 5, 6]
-        shardTotal: [6]
+        # 10 shards (goal 0296): public-repo runners are free and 4 vCPU;
+        # with fullyParallel the split is even, so more shards means each
+        # runs cooler and shorter (6 shards spanned 4-12 minutes).
+        shardIndex: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        shardTotal: [10]
     env:
       # Required for the same reason as build-go's ubuntu-latest entry:
       # playwright.config.ts's webServer builds the real server-mode

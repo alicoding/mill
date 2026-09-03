@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import { AREA_FACET_KEY, ancestorPathLabel, filterJumpCards } from './atlasJumpFilter'
+import type { BoardObject, Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { AREA_FACET_KEY, ancestorPathLabel, filterJumpCards, filterJumpObjects, objectJumpLabel } from './atlasJumpFilter'
 
 function card(id: string, title: string, parentID: string, note = '', kindID = 'k1'): Card {
   return { ID: id, KindID: kindID, Title: title, Note: note, ParentID: parentID } as Card
@@ -129,5 +129,32 @@ describe('ancestorPathLabel', () => {
     const rootB = card('rootB', 'Second root', '')
     const target = card('leaf', 'Card', 'rootA')
     expect(ancestorPathLabel([rootA, rootB, target], target)).toBe('The engagement')
+  })
+})
+
+describe('filterJumpObjects / objectJumpLabel (goal 0265)', () => {
+  function obj(id: string, kind: string, payload: Record<string, string>, parentID = 'root'): BoardObject {
+    return { ID: id, Kind: kind, Payload: payload, ParentID: parentID } as unknown as BoardObject
+  }
+
+  it('labels by payload title, then mirror basename, then capitalized kind', () => {
+    expect(objectJumpLabel(obj('a', 'diagram', { title: 'Network map', mirrorPath: '/x/y.drawio' }))).toBe('Network map')
+    expect(objectJumpLabel(obj('b', 'image', { mirrorPath: '/mirrors/screenshot.png' }))).toBe('screenshot.png')
+    expect(objectJumpLabel(obj('c', 'shape', {}))).toBe('Shape')
+  })
+
+  it('matches case-insensitively on the label and carries the parent breadcrumb', () => {
+    const root = card('root', 'The engagement', '')
+    const area = card('area', 'Client records', 'root')
+    const results = filterJumpObjects([obj('d1', 'diagram', { title: 'Network map' }, 'area')], [root, area], 'network')
+    expect(results).toHaveLength(1)
+    expect(results[0].label).toBe('Network map')
+    expect(results[0].path).toBe('Client records')
+  })
+
+  it('returns nothing for an empty or facet-scoped query', () => {
+    const objects = [obj('d1', 'diagram', { title: 'Network map' })]
+    expect(filterJumpObjects(objects, [], '')).toEqual([])
+    expect(filterJumpObjects(objects, [], 'network', 'k1')).toEqual([])
   })
 })

@@ -42,3 +42,15 @@ describe('injectHeadingAnchors', () => {
     expect(got).toContain('aria-label="A &quot;quoted&quot; &amp; emphatic title"')
   })
 })
+
+describe('stripTags robustness (via parseHeadings)', () => {
+  it('reduces malformed fragments to inert text -- no surviving tag openers', () => {
+    const [h] = parseHeadings('<h2 id="x">Hi <b>there</b> <script bad</h2>')
+    expect(h.text).not.toContain('<')
+    expect(h.text).toContain('Hi there')
+    // Reassembly: stripping the complete inner tag must not leave a
+    // freshly-formed one behind.
+    const [r] = parseHeadings('<h2 id="y">a<scr<b>ipt>b</h2>')
+    expect(r.text).not.toContain('<')
+  })
+})

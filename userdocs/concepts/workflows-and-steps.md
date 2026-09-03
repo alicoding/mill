@@ -44,7 +44,7 @@ Data flows two ways through a run:
 
 ## Configuring a step
 
-Click a step to open its inspector. Fields are typed — pickers for
+Click a step to open its inspector. Drag the inspector's edge to make it wider, double-click the edge to reset it, or use the Expand button to give a long value the whole side of the canvas; the width you choose is remembered on this device. Fields are typed — pickers for
 Configure entities, code editors with highlighting for scripts and
 JSON, plain inputs for plain values. A field that names *which
 external thing* to talk to (an API, a model, a list) always points at
@@ -56,3 +56,16 @@ a Configure entity rather than holding the value inline — see
 Saving edits a draft. Publishing snapshots a version — callers and
 triggers run the published version, so edits never leak into
 production mid-composition.
+
+## Seeing what a step points at
+
+A step that references something you configured — an integration, a
+list, an MCP server, an AI provider — shows two links under the
+picker. **Details** opens a short summary right there: an
+integration's address, method, and auth, and whether its secret is
+stored; a list's columns and row count. **Open** takes you to that
+entity's own editor: an integration opens as a tab beside your
+workflow, everything else opens on its Configure page with the form
+ready. If the entity cannot work as it stands — an integration whose
+auth has no secret yet — the step says so on the field, with the same
+Edit link.

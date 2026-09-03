@@ -13,6 +13,7 @@
    the box instead of clipping; a shorter note sits at min-height. Width
    stays the one fixed, RF-controlled dimension. */
 .sticky {
+    position: relative;
     box-sizing: border-box;
     width: 100%;
     height: auto;
@@ -62,7 +63,9 @@
    resize handle to this note's own width too -- height stays at the
    library's 5px, producing four full-width bars instead of small
    corner squares (measured live: 514x5px). */
-.sticky.editing > *:not(:global(.react-flow__resize-control)) {
+/* The unsaved dot (shared/DirtyDot.tsx) is excluded the same way: an
+   absolutely-positioned 8px disc, never a full-width child. */
+.sticky.editing > *:not(:global(.react-flow__resize-control)):not([data-unsaved-dot]) {
     width: 100%;
     max-height: 460px;
     overflow-y: auto;

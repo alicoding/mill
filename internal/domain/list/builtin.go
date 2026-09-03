@@ -21,6 +21,16 @@ const ExampleCountryCodesID = "example-country-codes-list"
 // references it without a string literal that could drift).
 const ExampleTaskTrackerID = "example-task-tracker-list"
 
+// ExampleJiraIssuesID is the seeded synced-List example (docs/goals/
+// 0299): the target of the seeded "Example: Jira issues → List"
+// workflow, exported for the same reason the two above are.
+const ExampleJiraIssuesID = "example-jira-issues-list"
+
+// ExampleBrunoResultsID is the seeded List the Bruno run workflow
+// (goal 0308) mirrors a collection run's report into, one row per
+// request matched by its path.
+const ExampleBrunoResultsID = "example-bruno-results-list"
+
 // BuiltIn returns the seeded example List -- pure config, no
 // persistence (mirrors httprequest.BuiltIn/decision.BuiltIn's shape:
 // this package stays free of the settings-store concern, per
@@ -64,6 +74,26 @@ func BuiltIn() []List {
 
 	return []List{
 		{
+			ID:    ExampleJiraIssuesID,
+			Label: "Example: Jira issues",
+			Description: "A one-way mirror of a Jira search: \"Example: Jira issues → List\" refreshes these " +
+				"rows on a schedule once its Jira integration is configured, matching each issue by key. " +
+				"Mill never writes back to Jira -- an issue's own door is its link in the url column, and " +
+				"the next sync overwrites what you change here.",
+			Columns: []typedfield.Field{
+				{Key: "key", Label: "Key", Type: typedfield.TypeText, Required: true},
+				{Key: "summary", Label: "Summary", Type: typedfield.TypeText},
+				// Jira's default workflow statuses; the sync writes whatever
+				// the source says, so an unlisted status still lands as text.
+				{Key: "status", Label: "Status", Type: typedfield.TypeText},
+				{Key: "assignee", Label: "Assignee", Type: typedfield.TypeText},
+				{Key: "updated", Label: "Updated", Type: typedfield.TypeText},
+				{Key: "url", Label: "Link", Type: typedfield.TypeText},
+			},
+			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
+		},
+		{
 			ID:    ExampleCountryCodesID,
 			Label: "Example: Country codes",
 			Description: "A typed lookup dataset (code -> country name) -- the seeded proof for " +
@@ -103,14 +133,26 @@ func BuiltIn() []List {
 				// goal 0105 part 3): Done=success, Blocked=danger,
 				// In progress=attention.
 				{Key: "status", Label: "Status", Type: typedfield.TypeOptions, Options: []string{"Done", "Blocked", "In progress"}},
+				// The converged task record (docs/goals/0300): what every
+				// task app agrees a task carries beyond a title and a
+				// status. The Quick Panel's "Save as task" fills task,
+				// status, scheduled and done.
+				{Key: "description", Label: "Description", Type: typedfield.TypeText, Multiline: true},
+				{Key: "due", Label: "Due", Type: typedfield.TypeDate},
+				{Key: "scheduled", Label: "Scheduled", Type: typedfield.TypeDate},
+				{Key: "start", Label: "Start", Type: typedfield.TypeDate},
+				{Key: "priority", Label: "Priority", Type: typedfield.TypeOptions, Options: []string{"Low", "Medium", "High"}},
+				{Key: "recurrence", Label: "Repeats", Type: typedfield.TypeText},
+				{Key: "done", Label: "Done", Type: typedfield.TypeBoolean},
+				{Key: "tags", Label: "Tags", Type: typedfield.TypeText},
 			},
 			Rows: []Row{
 				taskRow("row-tracker-setup", "Set up Mill", "Done"),
 			},
 			BuiltIn: true,
-			// SeedRevision 2: the status column became a typed Options
-			// column so the seeded projection demonstrates status pills.
-			Seed: seedorigin.Stamp(2),
+			// SeedRevision 3: the converged task fields joined the schema
+			// (goal 0300); revision 2 made status a typed Options column.
+			Seed:             seedorigin.Stamp(3),
 			PublishedVersion: 1,
 			Versions: []ListVersion{
 				{
@@ -123,6 +165,24 @@ func BuiltIn() []List {
 					Rows: []Row{taskRow("row-tracker-setup", "Set up Mill", "Done")},
 				},
 			},
+		},
+		{
+			ID:    ExampleBrunoResultsID,
+			Label: "Example: Bruno results",
+			Description: "The last run of a Bruno collection, one row per request: \"Example: Run a Bruno collection\" " +
+				"runs the bru CLI and mirrors its JSON report here, matched by request path. Bruno stays the " +
+				"tool for authoring and running requests; this List is where the outcome lands.",
+			Columns: []typedfield.Field{
+				{Key: "path", Label: "Request", Type: typedfield.TypeText, Required: true},
+				{Key: "name", Label: "Name", Type: typedfield.TypeText},
+				{Key: "method", Label: "Method", Type: typedfield.TypeText},
+				{Key: "status", Label: "Result", Type: typedfield.TypeText},
+				{Key: "httpStatus", Label: "HTTP status", Type: typedfield.TypeText},
+				{Key: "durationMs", Label: "Duration (ms)", Type: typedfield.TypeText},
+				{Key: "error", Label: "Error", Type: typedfield.TypeText},
+			},
+			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
 		},
 	}
 }

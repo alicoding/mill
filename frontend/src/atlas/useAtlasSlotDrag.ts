@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { BoardObject, Card, Kind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { computeNestedCardBoxes } from './atlasBoardBoxes'
 import type { FrameBox } from './useAtlasDragFiling'
 
@@ -45,10 +45,12 @@ function hitTest(p: { x: number; y: number }, boxes: { id: string; x: number; y:
 // the refusal hint. Empty canvas opens the guided-create popover
 // through onGuidedCreate. Esc cancels mid-drag.
 export function useAtlasSlotDrag({
-  topLevelBoxes, noteBoxes, allCards, kinds, screenToFlowPosition, onLink, onGuidedCreate,
+  topLevelBoxes, noteBoxes, allCards, allNotes, allObjects, kinds, screenToFlowPosition, onLink, onGuidedCreate,
 }: {
   topLevelBoxes: FrameBox[]
   noteBoxes: { id: string; x: number; y: number; width: number; height: number }[]
+  allNotes: Note[]
+  allObjects: BoardObject[]
   allCards: Card[]
   kinds: Kind[]
   screenToFlowPosition: (p: { x: number; y: number }) => { x: number; y: number }
@@ -62,7 +64,7 @@ export function useAtlasSlotDrag({
   // The specific card under a frame's own preview tile -- see
   // computeNestedCardBoxes's own header comment for why a release
   // needs this ahead of topLevelBoxes.
-  const nestedBoxes = useMemo(() => computeNestedCardBoxes(topLevelBoxes, allCards), [topLevelBoxes, allCards])
+  const nestedBoxes = useMemo(() => computeNestedCardBoxes(topLevelBoxes, allCards, allNotes, allObjects), [topLevelBoxes, allCards, allNotes, allObjects])
 
   // Latest-refs (useAtlasDragFiling's own convention): every box/
   // callback below is read at pointerup time, never captured stale

@@ -344,10 +344,16 @@ export const useAppStore = create<AppState>()(
         set((state) => {
           const existing = state.workTabs.find((t) => sameWorkTarget(t, tab))
           if (existing) {
-            if (shouldUpgradeToEdit(existing, tab)) {
+            const upgrade = shouldUpgradeToEdit(existing, tab)
+            // A requested run (goal 0294) always lands on the existing
+            // tab, even when nothing else about it changes.
+            const runId = tab.kind === 'workflow-edit' ? tab.runId : undefined
+            if (upgrade || runId) {
               return {
                 activeWorkTabKey: existing.key,
-                workTabs: state.workTabs.map((t) => (t.key === existing.key ? { ...t, mode: 'edit' as const } : t)),
+                workTabs: state.workTabs.map((t) => (t.key === existing.key
+                  ? { ...t, ...(upgrade ? { mode: 'edit' as const } : {}), ...(runId ? { runId } : {}) }
+                  : t)),
               }
             }
             return { activeWorkTabKey: existing.key }

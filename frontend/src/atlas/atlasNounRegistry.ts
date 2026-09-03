@@ -1,3 +1,5 @@
+import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { EnclosedIDs, Rect } from './atlasEnclosure'
 import type { ComponentType } from 'react'
 import type { Icon } from '@primer/octicons-react'
 import { ATLAS_TOOL_IDENTITIES, type AtlasToolIdentity, type AtlasToolInteraction } from '../shared/atlasToolIdentity'
@@ -48,19 +50,13 @@ export type AtlasToolStyleDefaults = Record<string, unknown>
 // renderer source a `resizable: true` answer must hold true against.
 export type AtlasBoardNodeType = 'atlas-note' | 'atlas-sticky' | 'atlas-group' | 'atlas-object' | null
 
-// ExtensionSettingDecl -- one declared, boolean user setting an
-// extension offers (goal 0258 S1: booleans only; the shape grows by
-// adding variants here, never per-extension UI). `key` is the stable
-// persistence key under the extension's id; `defaultValue` is the
-// behavior with nothing stored -- the store never learns defaults, so
-// changing a default in a later release affects only users who never
-// touched the toggle, exactly the converged settings semantic.
-export interface ExtensionSettingDecl {
-  key: string
-  label: string
-  description: string
-  defaultValue: boolean
-}
+// ExtensionSettingDecl / ExtensionSettingValue live in
+// shared/extensionSettingDecl.ts (shared/ is a dependency leaf and the
+// settings store there resolves against the declaration); re-exported
+// here so a noun declares its settings from the same module it
+// declares everything else.
+import type { ExtensionSettingDecl } from '../shared/extensionSettingDecl'
+export type { ExtensionSettingDecl, ExtensionSettingValue } from '../shared/extensionSettingDecl'
 
 interface AtlasToolShapeBase {
   icon: Icon
@@ -246,8 +242,13 @@ export interface AtlasGestureCtx {
   // until first resize and its rendered footprint is otherwise CSS-
   // intrinsic (atlasBuildBoardObjectNodes.ts's own header comment).
   objectBoxes: { id: string; x: number; y: number; width: number; height: number }[]
+  // The spatial-query door (goal 0310): which top-level cards, notes
+  // and objects a board-space rect encloses (atlasEnclosure.ts's own
+  // center-inside rule) -- the Area tool's and a plugin gesture's one
+  // shared answer.
+  enclosedIn: (rect: Rect) => EnclosedIDs
   onDeleteSelection: (cardIDs: string[], noteIDs: string[], objectIDs: string[]) => void
-  openAreaPopover: (screenPos: { x: number; y: number }, flowPos: { x: number; y: number }, enclosedCardIDs: string[], enclosedNoteIDs: string[]) => void
+  openAreaPopover: (screenPos: { x: number; y: number }, flowPos: { x: number; y: number }, enclosedCardIDs: string[], enclosedNoteIDs: string[], enclosedObjectIDs: string[]) => void
   onShapeCreated: (objectID: string) => void
   // Real functions for a one-shot tool; no-ops for a sticky one (the
   // engine's own gestureDisarmFns enforces this, not each tool).
@@ -396,6 +397,17 @@ export type ThirdPartyNounShape = Omit<AtlasToolShapeBase, 'boardObjectKind'> & 
   // joined from the manifest's contributes by the host -- lowercased
   // ".ext" entries the drop router compares against extensionOf().
   fileExtensions: string[]
+  // menuItems (goal 0280): the plugin's own context-menu items for
+  // objects of this kind, validated and bound to the object ctx by
+  // plugins/canvasToolAdapter.ts, read by atlas/useAtlasObjectMenu.ts.
+  menuItems: readonly ThirdPartyMenuItem[]
+}
+
+export interface ThirdPartyMenuItem {
+  id: string
+  label: string
+  run: (object: BoardObject) => void
+  enabled: (object: BoardObject) => boolean
 }
 
 const thirdPartyRegistry = new Map<string, ThirdPartyNounShape>()
@@ -420,6 +432,17 @@ export function isThirdPartyToolId(id: string): boolean {
 
 export function thirdPartyNounFor(id: string): ThirdPartyNounShape | undefined {
   return thirdPartyRegistry.get(id)
+}
+
+// thirdPartyNounForKind resolves a persisted board-object kind (which
+// may differ from the tool id, CanvasObjectDecl.objectKind) to its
+// enabled plugin noun -- the label source for anything naming a plugin
+// kind to the user (the paste-as offer, the link-paste preference).
+export function thirdPartyNounForKind(kind: string): ThirdPartyNounShape | undefined {
+  for (const noun of thirdPartyRegistry.values()) {
+    if (noun.boardObjectKind === kind) return noun
+  }
+  return undefined
 }
 
 // thirdPartyNounForExtension -- the drop router's claim lookup

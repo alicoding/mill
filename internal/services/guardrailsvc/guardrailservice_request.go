@@ -122,7 +122,18 @@ func (g *GuardrailService) RequestGuardedAction(ctx context.Context, action Guar
 	case guardrail.EffectDeny:
 		return Decision{Approved: false, Effect: verdict.Effect, RuleID: verdict.RuleID, RuleLabel: verdict.RuleLabel}, nil
 	}
+	return g.parkAndWait(ctx, action, verdict)
+}
 
+// AskGuardedAction parks the action for a live decision WITHOUT
+// consulting the rules (docs/goals/0291): the door for an ask that
+// must never be made silent by an allow rule -- a plugin's request to
+// a host it did not declare. The wait is RequestGuardedAction's own.
+func (g *GuardrailService) AskGuardedAction(ctx context.Context, action GuardedAction) (Decision, error) {
+	return g.parkAndWait(ctx, action, guardrail.Verdict{Effect: guardrail.EffectAsk})
+}
+
+func (g *GuardrailService) parkAndWait(ctx context.Context, action GuardedAction, verdict guardrail.Verdict) (Decision, error) {
 	rec, err := g.pending.Park(action, nil)
 	if err != nil {
 		return Decision{}, fmt.Errorf("park guarded action: %w", err)

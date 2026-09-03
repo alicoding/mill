@@ -82,6 +82,12 @@ const testUpdateCheckDelayEnv = "MILL_TEST_UPDATE_CHECK_DELAY_MS"
 // network call. Ignored outside fake mode.
 const testUpdateCheckFailEnv = "MILL_TEST_UPDATE_CHECK_FAIL"
 
+// testUpdateUpToDateEnv makes fake mode return a clean nothing-new
+// outcome, so e2e can prove a user-run check ANSWERS when there is no
+// update (goal 0275) without a real network call. Ignored outside
+// fake mode.
+const testUpdateUpToDateEnv = "MILL_TEST_UPDATE_UP_TO_DATE"
+
 // testUpdateDownloadDelayEnv holds DownloadAndInstallUpdate's fake-mode
 // refusal for a set number of milliseconds before returning, so e2e can
 // observe the Downloading phase (goal 0142's UpdateNotice.Downloading)
@@ -258,6 +264,10 @@ func (s *SettingsService) checkForUpdates(ctx context.Context) (UpdateCheckResul
 			s.recordCheckOutcome(UpdateCheckOutcomeFailed, err.Error())
 			return UpdateCheckResult{}, err
 		}
+		if os.Getenv(testUpdateUpToDateEnv) != "" {
+			s.recordCheckOutcome(UpdateCheckOutcomeUpToDate, "")
+			return UpdateCheckResult{UpdateAvailable: false, CurrentVersion: s.AppVersion()}, nil
+		}
 		s.recordAvailableUpdate(fake)
 		s.recordCheckOutcome(UpdateCheckOutcomeFound, "")
 		s.triggerAutoDownloadPolicy(fake)
@@ -426,18 +436,6 @@ func (s *SettingsService) failInstall(wasReady, destroyedPriorStaging bool, err 
 	s.lastInstallStage = classifyUpdateFailureStage(err)
 	s.mu.Unlock()
 	return err
-}
-
-// RestartApp relaunches into the update DownloadAndInstallUpdate just
-// staged.
-func (s *SettingsService) RestartApp() error {
-	s.mu.Lock()
-	u := s.updater
-	s.mu.Unlock()
-	if u == nil {
-		return fmt.Errorf("updater not configured")
-	}
-	return u.Restart(context.Background())
 }
 
 // inAppNotesEndMarker splits a release body's two audiences (goal

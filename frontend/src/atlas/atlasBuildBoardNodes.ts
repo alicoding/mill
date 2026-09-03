@@ -1,5 +1,5 @@
 import type { PointerEvent as ReactPointerEvent } from 'react'
-import type { Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { BoardObject, Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { childrenOf } from './atlasGrouping'
 import { computeAutoArrangeLayout, computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH, TABLE_HEIGHT, TABLE_WIDTH } from './atlasBoardLayout'
 import { computeFreshnessRollup, computeRollupSummary } from './atlasCardPresentation'
@@ -8,8 +8,9 @@ import type { AtlasNoteCardRFNode } from './AtlasNoteCardNode'
 import type { AtlasGroupRFNode } from './AtlasGroupNode'
 import type { AtlasStickyRFNode } from './AtlasStickyNode'
 import type { AtlasRegionChipRFNode } from './AtlasRegionChipNode'
+import type { AtlasBoardObjectRFNode } from './AtlasBoardObjectNode'
 
-export type BoardCardRFNode = AtlasNoteCardRFNode | AtlasGroupRFNode | AtlasRegionChipRFNode | AtlasStickyRFNode
+export type BoardCardRFNode = AtlasNoteCardRFNode | AtlasGroupRFNode | AtlasRegionChipRFNode | AtlasStickyRFNode | AtlasBoardObjectRFNode
 
 // The board's own card/frame/chip React Flow nodes -- pulled out of
 // AtlasBoard.tsx's builtNodes memo (architecture.md's 500-line
@@ -24,7 +25,7 @@ export type BoardCardRFNode = AtlasNoteCardRFNode | AtlasGroupRFNode | AtlasRegi
 // mode; a childless card renders as a flippable note (AtlasNoteCardNode).
 // eslint-disable-next-line sonarjs/cognitive-complexity -- legacy complexity grandfathered at gate adoption; pay down when touched (goal 0109 burn-down)
 export function buildBoardCardNodes({
-  cards, allCards, allNotes, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
+  cards, allCards, allNotes, allObjects, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
   pulsedID, hintedID, isSoleSelected, onOpenOverlay, handleDrill,
   slotDragSourceID, onSlotAnchorPointerDown, hasLegalTargets, boardFilter,
   titleEditCardID, onTitleCommit, onTitleCancel, noteHandlers,
@@ -35,6 +36,9 @@ export function buildBoardCardNodes({
   // stickies filed inside it, so a filed note stays visible from one
   // level up exactly like a filed card.
   allNotes: Note[]
+  // Every board object, same reasoning (goal 0266): a frame's preview
+  // draws the objects filed inside it.
+  allObjects: BoardObject[]
   kinds: Kind[]
   links: Link[]
   linkKinds: LinkKind[]
@@ -84,7 +88,7 @@ export function buildBoardCardNodes({
     adjacency.set(a.source, [...(adjacency.get(a.source) ?? []), a.target])
     adjacency.set(a.target, [...(adjacency.get(a.target) ?? []), a.source])
   }
-  const autoLayout = !isFree ? computeAutoArrangeLayout(cards, allCards, adjacency, boardWidth > 0 ? boardWidth - 48 : undefined, allNotes) : null
+  const autoLayout = !isFree ? computeAutoArrangeLayout(cards, allCards, adjacency, boardWidth > 0 ? boardWidth - 48 : undefined, allNotes, [], allObjects) : null
   const moveByID = new Map(freeMoves.map((m) => [m.id, m]))
   const nodes: BoardCardRFNode[] = []
 
@@ -120,8 +124,8 @@ export function buildBoardCardNodes({
       ? { x: move?.x ?? card.Position?.X ?? 0, y: move?.y ?? card.Position?.Y ?? 0 }
       : { x: box?.x ?? 0, y: box?.y ?? 0 }
 
-    if (isGroupCard(allCards, card)) {
-      const frame = computeGroupFrameLayout(allCards, card.ID, allNotes)
+    if (isGroupCard(allCards, card, allNotes, allObjects)) {
+      const frame = computeGroupFrameLayout(allCards, card.ID, allNotes, allObjects)
       const size = isFree ? frame.size : { width: box?.width ?? frame.size.width, height: box?.height ?? frame.size.height }
       nodes.push({
         id: card.ID,
@@ -132,7 +136,9 @@ export function buildBoardCardNodes({
         draggable: isFree && !readOnly,
         data: {
           card,
-          childCount: childrenOf(allCards, card.ID).length,
+          // Every filed member counts, not only cards (goal 0266's
+          // peer law; the label reads "items").
+          childCount: childrenOf(allCards, card.ID).length + allNotes.filter((n) => n.ParentID === card.ID).length + allObjects.filter((o) => o.ParentID === card.ID).length,
           // Roll-up covers EVERY direct child, drawn or capped -- the
           // pills stay the deep truth regardless of the preview.
           freshness: computeFreshnessRollup(childrenOf(allCards, card.ID)),
@@ -168,8 +174,13 @@ export function buildBoardCardNodes({
           data: {
             note: sticky.note,
             editing: noteHandlers.editingNoteID === sticky.note.ID,
+            // A preview note commits on click-away in every save mode
+            // (its slot renders the saved note, never a held text):
+            // goal 0295's own deferral record.
+            dirty: false,
             isSoleSelected,
             onCommit: (text: string) => noteHandlers.onCommitEdit(sticky.note.ID, text),
+            onSave: (text: string) => noteHandlers.onCommitEdit(sticky.note.ID, text),
             onCancelEdit: noteHandlers.onCancelEdit,
             onEnterEdit: () => noteHandlers.onEnterEdit(sticky.note.ID),
             onOpenBig: () => noteHandlers.onOpenNote(sticky.note.ID),
@@ -180,6 +191,22 @@ export function buildBoardCardNodes({
             // it and breaking the grid.
             previewHeight: sticky.size.height,
           },
+        })
+      }
+      // Filed board objects preview as their REAL faces in a slot
+      // (goal 0266) -- inert: `preview` suppresses the drag band, the
+      // edit double-click, and content pointer capture so a diagram's
+      // own viewer can't swallow frame clicks.
+      for (const filed of frame.objects) {
+        nodes.push({
+          id: filed.object.ID,
+          type: 'atlas-object',
+          position: filed.position,
+          width: filed.size.width,
+          height: filed.size.height,
+          parentId: card.ID,
+          draggable: false,
+          data: { object: filed.object, soleSelected: false, preview: true },
         })
       }
       for (const child of frame.children) {
@@ -198,7 +225,7 @@ export function buildBoardCardNodes({
             data: {
               card: child.card,
               kind: kindByID.get(child.card.KindID),
-              childCount: childrenOf(allCards, child.card.ID).length,
+              childCount: childrenOf(allCards, child.card.ID).length + allNotes.filter((n) => n.ParentID === child.card.ID).length + allObjects.filter((o) => o.ParentID === child.card.ID).length,
               rollup: computeRollupSummary(childrenOf(allCards, child.card.ID), kindByID),
               pulsed: pulsedID === child.card.ID,
               isSoleSelected,

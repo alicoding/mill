@@ -28,6 +28,14 @@ registerBoardObjectContent('diagram', {
   // A diagram's own vendored pan/zoom viewer captures pointer events --
   // the shared chrome band is its only drag surface, same as table's.
   dragBand: true,
+  // Click-to-activate, the same contract the pdf face carries (goal
+  // 0302 closed the gap 0271 left): unselected, a transparent shield
+  // takes the first click and every wheel goes to the board (pan,
+  // pinch and ⌘-scroll zoom, like over any object); selected, the
+  // viewer owns the wheel (scroll pans it, ctrl/pinch zooms it) and
+  // the node opts the board out.
+  clickShield: true,
+  wheelContained: true,
   // Payload.mirrorPath names the real drawio/mermaid file this content
   // renders (goal 0232 S1) -- AtlasBoardObjectNode.tsx's own shared
   // watch subscription and useAtlasObjectMenu.ts's "Open in default

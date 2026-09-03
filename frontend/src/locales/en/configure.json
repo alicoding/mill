@@ -62,8 +62,6 @@
     "enabled": "Enabled",
     "decryptsResponses": " (decrypts responses)",
     "disabled": "Disabled",
-    "deleteConfirmTitle": "Delete integration?",
-    "deleteConfirmBody": "This permanently deletes \"{{label}}\". This cannot be undone.",
     "noSchemaDeclared": "No schema declared for this request.",
     "noOperationsInSpec": "This spec declares no operations.",
     "operationAriaLabel": "Operation",
@@ -113,8 +111,6 @@
     "emptyHeading": "No lists yet",
     "emptyDescription": "A reusable typed dataset a workflow's List Search (or List Lookup) step can resolve against.",
     "columnsRowsSummary": "{{columns}} columns, {{rows}} rows",
-    "deleteConfirmTitle": "Delete list?",
-    "deleteConfirmBody": "This permanently deletes \"{{label}}\". This cannot be undone.",
     "unset": "(unset)",
     "rowStatusAriaLabel": "Row status",
     "active": "Active",
@@ -207,9 +203,7 @@
     "searchPlaceholder": "Search execution environments…",
     "emptyHeading": "No execution environments yet",
     "emptyDescription": "A reusable, pinned shell/directory/env a code-execution workflow step can run inside.",
-    "freshTempDirPerRun": "fresh temp dir per run",
-    "deleteConfirmTitle": "Delete execution environment?",
-    "deleteConfirmBody": "This permanently deletes \"{{label}}\". This cannot be undone."
+    "freshTempDirPerRun": "fresh temp dir per run"
   },
   "configureDecisions": {
     "heading": "Decisions",
@@ -249,8 +243,6 @@
     "emptyDescription": "A reusable, typed TERMINAL outcome a workflow's Decision step reaches to end the run.",
     "outputsSummary": "Outputs: {{keys}}",
     "none": "none",
-    "deleteConfirmTitle": "Delete decision?",
-    "deleteConfirmBody": "This permanently deletes \"{{label}}\". This cannot be undone.",
     "versions": {
       "heading": "Versions",
       "neverPublished": "Never published",
@@ -285,9 +277,7 @@
     "emptyHeading": "No MCP servers yet",
     "emptyDescription": "A reusable stdio connection an mcp-tool-call workflow step can resolve by ID.",
     "serverTools": "{{label}} — tools",
-    "noToolsExposed": "This server exposes no tools.",
-    "deleteConfirmTitle": "Delete MCP server?",
-    "deleteConfirmBody": "This permanently deletes \"{{label}}\". This cannot be undone."
+    "noToolsExposed": "This server exposes no tools."
   },
   "configureAIProviders": {
     "kindLabel": {
@@ -316,8 +306,6 @@
     "editAriaLabel": "Edit {{label}}",
     "exportAriaLabel": "Export {{label}}",
     "deleteAriaLabel": "Delete {{label}}",
-    "deleteConfirmTitle": "Delete AI provider?",
-    "deleteConfirmBody": "This permanently deletes \"{{label}}\". This cannot be undone.",
     "searchPlaceholder": "Search AI providers…",
     "emptyHeading": "No AI providers yet",
     "emptyDescription": "A reusable connection to local Ollama, or a BYO OpenAI-compatible or Anthropic endpoint, that an AI workflow step resolves by ID."
@@ -355,8 +343,6 @@
     "editAriaLabel": "Edit {{label}}",
     "exportAriaLabel": "Export {{label}}",
     "deleteAriaLabel": "Delete {{label}}",
-    "deleteConfirmTitle": "Delete step type?",
-    "deleteConfirmBody": "This permanently deletes \"{{label}}\". Workflows already using it keep their steps, but they'll stop resolving. This cannot be undone.",
     "searchPlaceholder": "Search step types…",
     "emptyHeading": "No step types yet",
     "emptyDescription": "A named palette step assembled from a request, an MCP tool, or another workflow you've already configured."
@@ -371,10 +357,16 @@
       "decision": "decision",
       "execenv": "execution environment",
       "aiprovider": "AI provider",
+      "conversionprofile": "Conversion profile",
       "atlas-kind": "Atlas card kind",
       "atlas-linkkind": "Atlas relation"
     },
     "unknownEntity": "Unknown {{noun}} ({{value}})",
+    "details": "Details",
+    "hideDetails": "Hide details",
+    "openEntity": "Edit {{noun}}",
+    "openIntegration": "Edit integration",
+    "openWorkflow": "Open workflow",
     "allWorkflows": "All workflows",
     "selectEntity": "Select a {{noun}}…",
     "createNewEntity": "+ Create new {{noun}}…",
@@ -402,7 +394,9 @@
     "model": "Model",
     "modelPlaceholder": "llama3.2",
     "url": "URL",
-    "command": "Command"
+    "command": "Command",
+    "none": "None",
+    "edit": "Edit"
   },
   "manualSchemaEditor": {
     "methodTooltip": "The request's own Method (set at the top of this form) -- the schema only describes the payload, never the transport.",
@@ -505,17 +499,7 @@
     "tokenSecret": "Token secret",
     "tokenSecretCaption": "Optional -- omit for 2-legged OAuth 1.0a, same as Token above.",
     "clientSecret": "Client secret",
-    "secret": "Secret",
-    "joseEncryption": "JOSE encryption",
-    "joseDescription": "Optional, independent of the Auth type above. Encrypts what Mill sends to this request, and optionally decrypts what it receives back (JWE, RFC 7516).",
-    "enableJose": "Enable JOSE encryption",
-    "recipientPublicKey": "Recipient public key (PEM)",
-    "recipientPublicKeyCaption": "The vendor's RSA public key -- used to encrypt the outgoing request body. Not a secret.",
-    "decryptResponseAriaLabel": "Decrypt response",
-    "decryptResponseLabel": "Decrypt response (this request's replies are also JWE-encrypted)",
-    "millsPrivateKey": "Mill's private key (PEM)",
-    "millsPrivateKeyCaption": "Write-only -- stored in the OS keychain, separately from the Auth secret above, never readable back through Mill.",
-    "leaveBlankToKeepKey": " Leave blank to keep the existing key."
+    "secret": "Secret"
   },
   "requestForm": {
     "general": "General",
@@ -524,8 +508,6 @@
     "url": "URL",
     "urlCaption": "The complete URL this integration calls, path included. Use {{brace}}param{{closeBrace}} templates, bound via the Schema's path parameters.",
     "urlPlaceholder": "https://api.example.com/v1/widgets/{id}",
-    "body": "Body",
-    "bodyCaption": "Optional raw request body, sent as-is (e.g. fixed JSON). If the Schema below declares body fields that a workflow binds, the bound body wins and this becomes the fallback.",
     "description": "Description",
     "descriptionCaption": "Optional -- what this request is for, or any caveat worth noting.",
     "headers": "Headers",
@@ -539,9 +521,21 @@
     "multiOperationNote": "This request's stored schema declares {{count}} operations, but a request is one call. Remove the extras below, or duplicate the request once per operation.",
     "hideRawOpenapi": "Hide raw OpenAPI",
     "viewRawOpenapi": "View raw OpenAPI",
-    "test": "Test",
-    "saveRequest": "Save request",
-    "cancel": "Cancel"
+    "saveRequest": "Save integration",
+    "cancel": "Cancel",
+    "advanced": "Advanced",
+    "fallbackBody": "Fallback body",
+    "fallbackBodyCaption": "Sent as-is when the schema declares no body fields.",
+    "joseEncryption": "JOSE encryption",
+    "joseDescription": "Encrypts what Mill sends to this integration and, if you choose, decrypts what comes back.",
+    "enableJose": "Encrypt the request body (JWE)",
+    "recipientPublicKey": "Recipient public key (PEM)",
+    "recipientPublicKeyCaption": "The vendor's RSA public key -- used to encrypt the outgoing request body. Not a secret.",
+    "decryptResponseAriaLabel": "Decrypt response",
+    "decryptResponseLabel": "Decrypt response (this request's replies are also JWE-encrypted)",
+    "millsPrivateKey": "Mill's private key (PEM)",
+    "millsPrivateKeyCaption": "Write-only -- stored in the OS keychain, separately from the Auth secret above, never readable back through Mill.",
+    "leaveBlankToKeepKey": " Leave blank to keep the existing key."
   },
   "openapiSynth": {
     "csvRowError": "Row {{row}}: {{message}}",
@@ -569,6 +563,7 @@
     "noFieldsFound": "No fields found in the pasted sample."
   },
   "configureView": {
+    "subtitle": "Reusable connections, lists, and values that workflows reference — defined once, used anywhere.",
     "ariaLabel": "Configure",
     "integration": "Integrations",
     "lists": "Lists",
@@ -577,6 +572,57 @@
     "decisions": "Decisions",
     "execEnvs": "Execution Environments",
     "aiProviders": "AI Providers",
-    "stepTypes": "Step types"
+    "stepTypes": "Step types",
+    "secretSources": "Secret sources",
+    "conversionProfiles": "Conversion profiles"
+  },
+  "configureConversionProfiles": {
+    "heading": "Conversion profiles",
+    "newProfile": "New profile",
+    "label": "Label",
+    "description": "Description",
+    "ruleSets": "Rules applied",
+    "noRules": "Stock converter only",
+    "saveProfile": "Save profile",
+    "searchPlaceholder": "Search conversion profiles…",
+    "emptyHeading": "No conversion profiles yet",
+    "emptyDescription": "A profile chooses which source-specific rules an HTML to Markdown conversion applies.",
+    "editAriaLabel": "Edit {{label}}",
+    "deleteAriaLabel": "Delete {{label}}",
+    "sampleHeading": "Try a sample",
+    "sampleCaption": "Paste HTML you copied from a page or a document and compare what each profile makes of it.",
+    "samplePlaceholder": "Paste HTML here",
+    "sampleRun": "Convert with every profile",
+    "columns": {
+      "label": "Label",
+      "ruleSets": "Rules applied"
+    }
+  },
+  "configureSecretSources": {
+    "heading": "Secret sources",
+    "newSource": "New source",
+    "label": "Label",
+    "kind": "Kind",
+    "kindDotenv": "Dotenv file (.env)",
+    "kindBruno": "Bruno collection",
+    "kindOnePassword": "1Password (op command line)",
+    "kindBitwarden": "Bitwarden (bw command line)",
+    "filter": "Scope",
+    "pathCaptionOnePassword": "Lists your 1Password items by title through the op tool; a vault name narrows it. Values are read one at a time when a step runs.",
+    "pathCaptionBitwarden": "Lists your Bitwarden items by name through the bw tool, using the session of the shell that started Mill. Values are read one at a time when a step runs.",
+    "path": "Path",
+    "pathCaptionBruno": "The collection folder (or its bruno.json): its .env supplies values, and every secret its environments declare is listed by name.",
+    "pathCaption": "Keys in this file appear as secrets in every picker; values are read when a step runs and never copied.",
+    "saveSource": "Save source",
+    "searchPlaceholder": "Search secret sources…",
+    "emptyHeading": "No secret sources yet",
+    "emptyDescription": "Point Mill at a .env file you already keep — a project's, or a Bruno collection's — and its keys become secrets you can reference.",
+    "editAriaLabel": "Edit {{label}}",
+    "deleteAriaLabel": "Delete {{label}}",
+    "columns": {
+      "label": "Label",
+      "kind": "Kind",
+      "path": "Path"
+    }
   }
 }

@@ -1,0 +1,96 @@
+import { chromium, expect, type Page } from '@playwright/test'
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { spawnMillServer, type SpawnedServer } from './server'
+import { RUNTIME_PLUGINS_SERVER_BASE_PORT, RUNTIME_PLUGINS_MCP_BASE_PORT } from './serverPorts'
+
+// The runtime-plugin e2e harness (docs/goals/0249), promoted from
+// runtime-plugins.spec.ts once a second spec (runtime-plugin-doors)
+// needed it (testing.md's promotion rule). Each caller gets a
+// DEDICATED server whose plugins dir is a per-test COPY of
+// examples/plugins -- the exact artifact a user copies from -- plus
+// optional fixture plugins. Callers pick disjoint port OFFSETS: the
+// original spec uses 0-8, the doors spec 10+.
+export const EXAMPLES_PLUGINS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'examples', 'plugins')
+
+// ExtraPlugin -- a fixture plugin a test writes into the copied
+// plugins dir before boot: a manifest object and a main.js source.
+export interface ExtraPlugin {
+	id: string
+	manifest: Record<string, unknown>
+	main: string
+}
+
+// extraExamples names further example folders to copy in (a plugin
+// that claims a gesture another example also claims stays out of the
+// shared set, so the other specs keep their claimant).
+// settings pre-seeds Mill's settings file before boot (the store is one
+// JSON object of key -> JSON-encoded string), the way policy tooling
+// writes an administrator's plugin allow-list.
+export async function launchWithPlugins(offset: number, opts: { withBroken?: boolean; withNotifier?: boolean; extraPlugins?: ExtraPlugin[]; extraExamples?: string[]; settings?: Record<string, string> } = {}) {
+	const dir = mkdtempSync(path.join(tmpdir(), 'mill-plugins-e2e-'))
+	// The plugins dir is a per-test COPY of examples/plugins (the exact
+	// artifact a user copies from) -- never the repo folder itself, so
+	// a test can add a deliberately-broken sibling without touching it.
+	const pluginsDir = path.join(dir, 'plugins')
+	mkdirSync(pluginsDir, { recursive: true })
+	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-bookmark'), path.join(pluginsDir, 'mill-bookmark'), { recursive: true })
+	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-scribble'), path.join(pluginsDir, 'mill-scribble'), { recursive: true })
+	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-index'), path.join(pluginsDir, 'mill-index'), { recursive: true })
+	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-request-tester'), path.join(pluginsDir, 'mill-request-tester'), { recursive: true })
+	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-markmap'), path.join(pluginsDir, 'mill-markmap'), { recursive: true })
+	for (const id of opts.extraExamples ?? []) cpSync(path.join(EXAMPLES_PLUGINS_DIR, id), path.join(pluginsDir, id), { recursive: true })
+	if (opts.withBroken) {
+		mkdirSync(path.join(pluginsDir, 'broken-one'))
+		writeFileSync(path.join(pluginsDir, 'broken-one', 'manifest.json'), '{not json')
+	}
+	for (const extra of opts.extraPlugins ?? []) {
+		mkdirSync(path.join(pluginsDir, extra.id))
+		writeFileSync(path.join(pluginsDir, extra.id, 'manifest.json'), JSON.stringify({ id: extra.id, version: '1.0.0', ...extra.manifest }))
+		writeFileSync(path.join(pluginsDir, extra.id, 'main.js'), extra.main)
+	}
+	if (opts.withNotifier) {
+		// A minimal plugin exercising the notice door (goal 0277): one
+		// registered command that notifies, run from the palette.
+		mkdirSync(path.join(pluginsDir, 'notify-probe'))
+		writeFileSync(path.join(pluginsDir, 'notify-probe', 'manifest.json'), JSON.stringify({ id: 'notify-probe', name: 'Notify probe', version: '1.0.0' }))
+		writeFileSync(path.join(pluginsDir, 'notify-probe', 'main.js'), `export function activate(api) {
+	api.registerCommand({ id: 'hello', label: 'Say hello from the probe', run: () => { api.notify({ level: 'warning', text: 'Hello from the probe.' }) } })
+}
+`)
+	}
+	if (opts.settings) writeFileSync(path.join(dir, 'settings.json'), JSON.stringify(opts.settings))
+	const server: SpawnedServer = await spawnMillServer({
+		port: RUNTIME_PLUGINS_SERVER_BASE_PORT + offset,
+		mcpPort: RUNTIME_PLUGINS_MCP_BASE_PORT + offset,
+		settingsPath: path.join(dir, 'settings.json'),
+		executionDbPath: path.join(dir, 'exec.db'),
+		backupDir: path.join(dir, 'backups'),
+		extraEnv: { MILL_PLUGINS_DIR: pluginsDir },
+	})
+	const browser = await chromium.launch()
+	const context = await browser.newContext({ baseURL: `http://127.0.0.1:${RUNTIME_PLUGINS_SERVER_BASE_PORT + offset}` })
+	const page = await context.newPage()
+	return {
+		page,
+		pluginsDir,
+		async close() {
+			await browser.close()
+			await server.stop()
+			rmSync(dir, { recursive: true, force: true })
+		},
+	}
+}
+
+// runFromPalette -- the one way these tests fire a plugin command: the
+// palette's own binding, the command by its registered label.
+export async function runFromPalette(page: Page, label: string) {
+	await page.keyboard.press('Meta+/')
+	const dialog = page.getByRole('dialog', { name: 'Command palette' })
+	await expect(dialog).toBeVisible()
+	await dialog.getByRole('combobox').fill(label)
+	await dialog.getByRole('option', { name: label }).click()
+}
+

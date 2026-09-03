@@ -54,8 +54,11 @@ export interface CanvasObjectDecl {
   // 'board-local' | 'url' | 'file'.
   source: 'board-local' | 'url' | 'file'
   // Which door edits it: 'inline' (the face itself is the editor) |
-  // 'external-app' | 'none'.
-  editRoute: 'inline' | 'external-app' | 'none'
+  // 'external-app' | 'none' -- one static route, or a resolver called
+  // per object when the door depends on the object's own artifact
+  // (goal 0310: a file-backed kind whose editor exists for some
+  // extensions and not others).
+  editRoute: CanvasEditRoute | ((object: CanvasObjectRef) => CanvasEditRoute)
   // Payload a fresh placement starts with.
   defaultPayload?: Record<string, string>
   // The authoring gesture (goal 0252 S1). 'arm-then-click' (the
@@ -78,6 +81,14 @@ export interface CanvasObjectDecl {
   // The drag behavior for a 'drag-to-draw' / 'ephemeral-drag'
   // interaction. Required there, forbidden for 'arm-then-click'.
   gesture?: CanvasGestureDecl
+  // menuItems (goal 0280): this object kind's own context-menu items,
+  // rendered on the right-click menu of the plugin's OWN objects only,
+  // between the built-in items and Delete. Object-scoped by nature
+  // (they act on the object that was right-clicked), so they carry a
+  // handler rather than a registry command: run receives the same ctx
+  // renderFace does. An item whose enabled predicate answers false is
+  // left out of the menu entirely, never shown dimmed.
+  menuItems?: readonly CanvasObjectMenuItem[]
   // renderFace draws the object's board face into el (a host-owned
   // div, already sized to the object's box). Called on mount and again
   // whenever the object's data changes -- el's contents are the
@@ -113,6 +124,12 @@ export interface CanvasGesturePoint { x: number; y: number; t: number }
 // own current style values, and the one creation door, scoped to this
 // plugin's own kind. Kernel internals (other objects' boxes, deletion,
 // selection) are not part of this surface.
+export type CanvasEditRoute = 'inline' | 'external-app' | 'none'
+// CanvasObjectRef: the object an edit-route resolver sees.
+export interface CanvasObjectRef { ID: string; Kind: string; Payload: Record<string, string> }
+export interface CanvasRect { x: number; y: number; width: number; height: number }
+export interface CanvasItemsInRect { cardIds: string[]; noteIds: string[]; objectIds: string[] }
+
 export interface CanvasGestureCtx {
   // Converts a gesture point's client position into board (flow)
   // coordinates.
@@ -131,6 +148,10 @@ export interface CanvasGestureCtx {
   // the pencil convention: draw, bake to SVG, place with mirrorPath).
   // base64 is the file's content; ext is a lowercase ".ext".
   saveImageBytes: (base64: string, ext: string, title: string) => Promise<string>
+  // The spatial-query door (goal 0310): the ids of the board's top-
+  // level cards, notes and objects whose CENTER falls inside a board-
+  // space rect -- the same enclosure rule the built-in Area tool uses.
+  itemsInRect: (rect: CanvasRect) => CanvasItemsInRect
   // The erase door (goal 0252 S2), present ONLY when the plugin's
   // manifest declares the "erase-board-items" capability. eraseHitTest
   // accumulates whatever board item sits under the point (top-level
@@ -159,6 +180,13 @@ export interface CanvasGestureDecl {
   fadeMs?: number
 }
 
+export interface CanvasObjectMenuItem {
+  id: string
+  label: string
+  run: (ctx: CanvasObjectFaceCtx) => void
+  enabled?: (ctx: CanvasObjectFaceCtx) => boolean
+}
+
 export interface CanvasObjectFaceCtx {
   object: {
     ID: string
@@ -170,8 +198,11 @@ export interface CanvasObjectFaceCtx {
   }
   // For a file-source object: the mirrored file's current bytes as a
   // data: URL once loaded (null while loading), and whether the read
-  // failed. renderFace re-runs when either changes. Absent for
-  // board-local and url objects.
+  // failed. Binary files (images, sheets, pdf) are base64 data: URLs
+  // with their MIME type; text files (markdown source, json, csv,
+  // .env) are text/plain data: URLs, percent-encoded. renderFace
+  // re-runs when either changes. Absent for board-local and url
+  // objects.
   mirror?: { dataUrl: string | null; failed: boolean }
   // updatePayload merges patch into this object's payload through the
   // host (an empty string deletes a key). The write persists, syncs,
@@ -182,6 +213,15 @@ export interface CanvasObjectFaceCtx {
   // plugin's manifest capabilities; each use is evaluated by the
   // owner's guardrail rules and may require live approval.
   requestGuardedAction: (kind: string, attributes: Record<string, string>, description: string) => Promise<GuardedActionResult>
+  // mountOffBoard attaches el to the document OFF the board, at exactly
+  // `size` CSS pixels and unscaled by the board's zoom, and returns the
+  // detach. The face's own el is CSS-scaled with the canvas, so an
+  // engine that measures and fits its layout from screen rectangles
+  // (a mind-map or graph layout, a text-measuring chart) lays out wrong
+  // in place -- render it on this stage at the face's size, copy the
+  // finished drawing into el, detach. Anything still mounted when the
+  // face unmounts is detached by the host.
+  mountOffBoard: (el: Element, size: { w: number; h: number }) => () => void
 }
 
 export interface GuardedActionResult {
@@ -195,16 +235,232 @@ export interface PluginCommandDecl {
   id: string
   label: string
   run: () => void
+  // enabled (goal 0258 slice 1, the same "when" clause built-in
+  // commands carry): omit for an always-valid command; provide a
+  // predicate when the command only makes sense in a state -- the
+  // palette omits a disabled command entirely rather than showing
+  // something that does nothing. Never guard inside run() and return
+  // silently. A default keybinding is deliberately NOT part of this
+  // declaration: a shortcut for third-party code is assigned by the
+  // user in Settings, never shipped by the plugin.
+  enabled?: () => boolean
+}
+
+// PluginSettingsAPI (goal 0258 slice 1): the plugin's own declared
+// settings (manifest `contributes.settings`), served back typed. The
+// host renders the controls and stores the values -- a plugin never
+// builds a settings UI. get() answers the stored value or the
+// manifest default; onChange() fires whenever the user changes that
+// key (a face that depends on a setting re-renders itself from here
+// -- renderFace re-runs on object DATA changes only) and returns the
+// unsubscribe function. An undeclared key throws, naming the plugin.
+// A secretRef setting answers the picked vault entry's TITLE ('' when
+// none is picked or it no longer exists) -- never the value.
+export interface PluginSettingsAPI {
+  get: (key: string) => boolean | string | number
+  onChange: (key: string, fn: (value: boolean | string | number) => void) => () => void
+}
+
+// PluginNoticeInput (goal 0277): a one-call transient message Mill
+// renders in its own notice surface (the footer pill), labelled with
+// the plugin's name. level defaults to 'info'; info/success leave on
+// their own after a few seconds, warning/error stay until dismissed.
+// action names one of THIS plugin's own registered commands (the id
+// given to registerCommand) as a secondary link.
+export interface PluginNoticeInput {
+  text: string
+  level?: 'info' | 'success' | 'warning' | 'error'
+  action?: { label: string; commandId: string }
+}
+
+// PluginStorageAPI (goal 0277): the plugin's own key-value store,
+// persisted centrally under the plugin id -- VS Code's globalState /
+// Obsidian's saveData shape. Values are any JSON-serialisable value
+// (a non-serialisable one throws at the door). get/keys are
+// synchronous over a cache loaded before activate(); set/delete
+// persist through the host and resolve when written. Storage is
+// plugin-private: nothing else in Mill reads it.
+export interface PluginStorageAPI {
+  get: (key: string) => unknown
+  set: (key: string, value: unknown) => Promise<void>
+  delete: (key: string) => Promise<void>
+  keys: () => string[]
+}
+
+// ContentEntry (goal 0278): one thing on the board as api.query lists
+// it -- a card (kind 'card', subkind = its Atlas Kind id), a note
+// (kind 'note', payload.text), or a board object (its own kind, its
+// payload). title is the display name a person sees: a card's title,
+// a note's first line, an object's payload title or kind.
+export interface ContentEntry {
+  id: string
+  kind: string
+  subkind?: string
+  title: string
+  parentId?: string
+  position: { x: number; y: number }
+  size?: { w: number; h: number }
+  payload: Record<string, string>
+}
+
+export interface ContentQuery {
+  // kind narrows to 'card', 'note', or one object kind; omitted lists
+  // everything.
+  kind?: string
+  // parentId narrows to one card's direct children.
+  parentId?: string
+}
+
+// PluginEventMap (goal 0278): the events a plugin can subscribe to.
+// 'contents:changed' fires whenever anything on the board is created,
+// edited, moved, or deleted, with the changed entry's id. A closed
+// map, so a new event is a type addition here, never a convention.
+export interface PluginEventMap {
+  'contents:changed': { id: string }
+}
+
+// PluginFetchInit / PluginFetchResult (goal 0288): the network door.
+// A plugin never opens a connection -- api.fetch asks Mill, whose
+// guardrail rules allow, park in Review, or deny the request; on
+// approval Mill performs it host-side, confined to a host the
+// manifest's contributes.network declares (redirects included), and
+// hands the response back. A host or method the manifest does not
+// declare, or a non-http(s) URL, REJECTS the promise before any rule
+// runs; a denied or still-parked-then-denied request RESOLVES with
+// approved: false and the rule's label.
+export interface PluginFetchInit {
+  method?: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  headers?: Record<string, string>
+  body?: string
+  // Attach a vault entry the user picked in one of this plugin's
+  // secretRef settings (ADR-0048): Mill resolves it host-side after
+  // the request is approved, sends it as `header` (default
+  // Authorization) with `prefix` (default "Bearer "), and redacts the
+  // value from the response. The value never reaches plugin code.
+  secret?: { settingKey: string; header?: string; prefix?: string }
+}
+
+export interface PluginFetchResult {
+  approved: boolean
+  effect: string
+  ruleLabel: string
+  status: number
+  headers: Record<string, string>
+  body: string
+}
+
+// PluginContentAPI (goal 0289): writes to the board through the SAME
+// guarded content plane an agent's writes take -- create a note, a
+// card, update a card, append a List row -- each evaluated by the
+// owner's guardrail rules (allow / park in Review / deny) with the
+// plugin as the named source, and recorded under the plugin's own
+// undo actor. Needs the "write-content" capability; without it every
+// call rejects before any rule runs. A denied write resolves with
+// approved: false and the rule's label; an approved one carries the
+// created (or updated) entity's id.
+export interface PluginWriteResult {
+  approved: boolean
+  effect: string
+  ruleLabel: string
+  id: string
+}
+
+export interface PluginContentAPI {
+  // position defaults to just right of the parent's right-most item.
+  createNote: (input: { text: string; parentId?: string; position?: { x: number; y: number } }) => Promise<PluginWriteResult>
+  createCard: (input: { kindId: string; title: string; note?: string; fields?: Record<string, string>; parentId?: string }) => Promise<PluginWriteResult>
+  // An empty title/note leaves that part unchanged.
+  updateCard: (id: string, patch: { title?: string; note?: string; fields?: Record<string, string> }) => Promise<PluginWriteResult>
+  appendListRow: (listId: string, values: Record<string, string>) => Promise<PluginWriteResult>
+  // createList (goal 0310) creates a Configure List: columns by display
+  // name with an optional type (text | number | integer | boolean |
+  // date | datetime; text when omitted) and optional first rows keyed
+  // by column name. Resolves with the new list's id.
+  createList: (input: { title: string; description?: string; columns: { name: string; type?: string }[]; rows?: Record<string, string>[] }) => Promise<PluginWriteResult>
+}
+
+// PluginFilesAPI (goal 0310): list a folder on this machine through
+// Mill under the "list-files" capability -- a read-class action a rule
+// may deny or park; entries arrive only when approved. Hidden entries
+// and dependency folders never appear.
+export interface PluginFileEntry { name: string; path: string; isDir: boolean; size: number }
+export interface PluginListDirResult { approved: boolean; effect: string; ruleLabel: string; entries: PluginFileEntry[] }
+export interface PluginFilesAPI {
+  list: (path: string) => Promise<PluginListDirResult>
+}
+
+// PluginConvertAPI (goal 0282): pure transforms Mill already owns,
+// offered to a plugin as-is. htmlToMarkdown is the same conversion
+// every workflow convert step and every paste uses. No capability --
+// a transform reaches nothing outside its own input.
+export interface PluginConvertAPI {
+  htmlToMarkdown: (html: string) => Promise<string>
+}
+
+// PluginViewDecl (goal 0290): a plugin-owned work tab. id must match a
+// view the manifest declares under contributes.views (which carries
+// the tab's title); render draws into a host-owned div sized to the
+// panel, plain DOM like renderFace, and runs once per mount -- the
+// panel stays mounted while its tab is hidden, and mounts again after
+// an app reload restores the tab. Opening the view is a registry
+// command, view.open.<plugin>.<id>, palette-reachable and callable
+// from the plugin's own commands.
+export interface PluginViewCtx {
+  pluginId: string
+  viewId: string
+}
+
+export interface PluginViewDecl {
+  id: string
+  render: (el: HTMLElement, ctx: PluginViewCtx) => void
 }
 
 // MillPluginAPI is the one object a plugin ever holds -- handed to its
 // exported activate(api), frozen by the host.
+// A capture (goal 0309): a quick-capture face the host shows in the
+// floating capture window, summoned from the Quick Panel or the
+// palette away from the canvas. render draws the face into el (a
+// host-owned div); the plugin writes through the content doors with
+// ctx.destinationId as the parent, then calls ctx.done() -- or
+// ctx.cancel() to close without writing. Declared in the manifest's
+// contributes.captures (id, label) so the Quick Panel can offer it
+// without running plugin code.
+export interface PluginCaptureCtx {
+  // destinationId is the card the user chose to land the capture in
+  // ("" for the top level) -- pass it as parentId to a content door.
+  destinationId: string
+  done: () => void
+  cancel: () => void
+}
+
+export interface PluginCaptureDecl {
+  id: string
+  render: (el: HTMLElement, ctx: PluginCaptureCtx) => void
+}
+
 export interface MillPluginAPI {
   millVersion: string
   pluginId: string
   registerCanvasObject: (decl: CanvasObjectDecl) => void
   registerCommand: (decl: PluginCommandDecl) => void
   requestGuardedAction: (kind: string, attributes: Record<string, string>, description: string) => Promise<GuardedActionResult>
+  settings: PluginSettingsAPI
+  // notify shows a notice and returns its dismiss function.
+  notify: (input: PluginNoticeInput) => () => void
+  storage: PluginStorageAPI
+  // query lists the board's contents (goal 0278); always the current
+  // state, never a cache.
+  query: (q?: ContentQuery) => Promise<ContentEntry[]>
+  // on subscribes to a host event and returns the unsubscribe function.
+  on: <K extends keyof PluginEventMap>(event: K, handler: (payload: PluginEventMap[K]) => void) => () => void
+  // fetch performs a guarded HTTP request (goal 0288); see
+  // PluginFetchInit for the contract.
+  fetch: (url: string, init?: PluginFetchInit) => Promise<PluginFetchResult>
+  content: PluginContentAPI
+  convert: PluginConvertAPI
+  files: PluginFilesAPI
+  registerView: (decl: PluginViewDecl) => void
+  registerCapture: (decl: PluginCaptureDecl) => void
 }
 
 // A plugin's main.js default-exports (or named-exports) activate:

@@ -1,10 +1,10 @@
 import { chromium, expect, test } from '@playwright/test'
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { spawnMillServer, type SpawnedServer } from './fixtures/server'
 import { RUNTIME_PLUGINS_SERVER_BASE_PORT, RUNTIME_PLUGINS_MCP_BASE_PORT } from './fixtures/serverPorts'
+import { launchWithPlugins, EXAMPLES_PLUGINS_DIR } from './fixtures/runtimePlugins'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { clickBoardPoint, dragBetween } from './fixtures/atlasBoard'
 
@@ -15,42 +15,6 @@ import { clickBoardPoint, dragBetween } from './fixtures/atlasBoard'
 // artifact, not a compiled-in stand-in. Dedicated server per test
 // (testing.md's dedicated-spec exception): the plugins env is process-
 // wide, and the Review-queue assertions read the global pending list.
-const EXAMPLES_PLUGINS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'examples', 'plugins')
-
-async function launchWithPlugins(offset: number, opts: { withBroken?: boolean } = {}) {
-	const dir = mkdtempSync(path.join(tmpdir(), 'mill-plugins-e2e-'))
-	// The plugins dir is a per-test COPY of examples/plugins (the exact
-	// artifact a user copies from) -- never the repo folder itself, so
-	// a test can add a deliberately-broken sibling without touching it.
-	const pluginsDir = path.join(dir, 'plugins')
-	mkdirSync(pluginsDir, { recursive: true })
-	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-bookmark'), path.join(pluginsDir, 'mill-bookmark'), { recursive: true })
-	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-scribble'), path.join(pluginsDir, 'mill-scribble'), { recursive: true })
-	if (opts.withBroken) {
-		mkdirSync(path.join(pluginsDir, 'broken-one'))
-		writeFileSync(path.join(pluginsDir, 'broken-one', 'manifest.json'), '{not json')
-	}
-	const server: SpawnedServer = await spawnMillServer({
-		port: RUNTIME_PLUGINS_SERVER_BASE_PORT + offset,
-		mcpPort: RUNTIME_PLUGINS_MCP_BASE_PORT + offset,
-		settingsPath: path.join(dir, 'settings.json'),
-		executionDbPath: path.join(dir, 'exec.db'),
-		backupDir: path.join(dir, 'backups'),
-		extraEnv: { MILL_PLUGINS_DIR: pluginsDir },
-	})
-	const browser = await chromium.launch()
-	const context = await browser.newContext({ baseURL: `http://127.0.0.1:${RUNTIME_PLUGINS_SERVER_BASE_PORT + offset}` })
-	const page = await context.newPage()
-	return {
-		page,
-		async close() {
-			await browser.close()
-			await server.stop()
-			rmSync(dir, { recursive: true, force: true })
-		},
-	}
-}
-
 test('a dropped plugin folder yields a working canvas object: tray entry, placement, face render, payload edit, reload persistence', async () => {
 	const { page, close } = await launchWithPlugins(0)
 	try {
@@ -75,9 +39,8 @@ test('a dropped plugin folder yields a working canvas object: tray entry, placem
 
 		// The face's URL field writes through the host's content-plane
 		// door; the plugin derives the title from the committed value.
-		await face.locator('[data-testid="bookmark-url-input"]').click()
-		await page.keyboard.type('example.com/docs')
-		await page.keyboard.press('Enter')
+		await face.locator('[data-testid="bookmark-url-input"]').fill('example.com/docs') // fill: a form control; per-keystroke typing drops characters under CI load (goal 0296)
+		await face.locator('[data-testid="bookmark-url-input"]').press('Enter')
 		await expect(face.locator('[data-testid="bookmark-url-input"]')).toHaveValue('example.com/docs')
 		await expect(face.locator('span').nth(1)).toHaveText('example.com')
 
@@ -106,9 +69,8 @@ test('a guarded action parks for the human, renders in Review, and the approve/d
 		await board.click({ position: { x: spot.x - bb.x + 10, y: spot.y - bb.y + 10 } })
 		const face = page.locator('[data-testid="plugin-face-bookmark"]')
 		await expect(face).toBeVisible()
-		await face.locator('[data-testid="bookmark-url-input"]').click()
-		await page.keyboard.type('example.com')
-		await page.keyboard.press('Enter')
+		await face.locator('[data-testid="bookmark-url-input"]').fill('example.com') // fill: a form control; per-keystroke typing drops characters under CI load (goal 0296)
+		await face.locator('[data-testid="bookmark-url-input"]').press('Enter')
 		// The commit re-renders the face (payload change); wait for the
 		// derived title so the Open click below hits the CURRENT
 		// elements, not the doomed pre-commit ones a slower runner can

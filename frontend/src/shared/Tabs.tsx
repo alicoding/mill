@@ -13,7 +13,10 @@ import styles from './Tabs.module.css'
 // usage of a headless primitive, not a reinvention of tabs. Must be
 // used inside a `<Tabs>` provider from the same package.
 
-export function TabList({ 'aria-label': ariaLabel, children }: { 'aria-label': string; children: ReactNode }) {
+// scrollRegion names the strip as a deliberate horizontal scroller
+// (the layout-fitness rule's data-scroll-region) for a tab set that
+// can overflow its viewport.
+export function TabList({ 'aria-label': ariaLabel, scrollRegion, children }: { 'aria-label': string; scrollRegion?: string; children: ReactNode }) {
   const { tabListProps } = useTabList<HTMLDivElement>({ 'aria-label': ariaLabel })
   // tabListProps.ref is typed against React 19's nullable RefObject
   // shape; this app's @types/react (18) is stricter about what a JSX
@@ -26,7 +29,7 @@ export function TabList({ 'aria-label': ariaLabel, children }: { 'aria-label': s
   // the attach point, not a stray read of `.current` during render.
   return (
     // eslint-disable-next-line react-hooks/refs
-    <div {...tabListProps} ref={tabListProps.ref as Ref<HTMLDivElement>} className={styles.tabList}>
+    <div {...tabListProps} ref={tabListProps.ref as Ref<HTMLDivElement>} className={styles.tabList} data-scroll-region={scrollRegion}>
       {children}
     </div>
   )

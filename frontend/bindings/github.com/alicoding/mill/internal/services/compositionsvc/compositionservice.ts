@@ -18,6 +18,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as markdown$0 from "../../adapters/markdown/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as composition$0 from "../../domain/composition/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -45,6 +48,14 @@ export function CapabilityMap(): $CancellablePromise<composition$0.MapEntry[] | 
  */
 export function ConfirmClipboardApply(jsonData: string): $CancellablePromise<composition$0.Workflow> {
     return $Call.ByID(215205686, jsonData);
+}
+
+/**
+ * ConversionRuleSets lists the switchable rule sets a conversion
+ * profile can turn on -- the profile page's check boxes.
+ */
+export function ConversionRuleSets(): $CancellablePromise<markdown$0.RuleSet[] | null> {
+    return $Call.ByID(245187735);
 }
 
 /**
@@ -115,12 +126,28 @@ export function PreviewClipboardApply(jsonData: string): $CancellablePromise<$mo
 }
 
 /**
+ * PreviewConversion converts html with exactly the given rule sets --
+ * the profile page's side-by-side sample (goal 0305 slice 6): one call
+ * per profile, the same converter a run uses.
+ */
+export function PreviewConversion(html: string, ruleSets: string[] | null): $CancellablePromise<string> {
+    return $Call.ByID(5780220, html, ruleSets);
+}
+
+/**
+ * PreviewConversionWithProfile converts through a profile by id
+ * (empty: every rule set) -- what the converter step does.
+ */
+export function PreviewConversionWithProfile(html: string, profileID: string): $CancellablePromise<string> {
+    return $Call.ByID(643203713, html, profileID);
+}
+
+/**
  * PreviewHTMLToMarkdown converts html through the same converter
- * process-html-to-markdown's node execution uses (htmlToMarkdown in
- * internal/domain/composition/processmarkdown.go), so the inspector's
- * "Try it" preview always matches what a real run would produce. Empty
- * input returns empty without invoking the converter -- there's nothing
- * to preview.
+ * process-html-to-markdown's node execution uses with no profile
+ * chosen (every rule set), so a preview always matches what a real run
+ * would produce. Empty input returns empty without invoking the
+ * converter -- there's nothing to preview.
  */
 export function PreviewHTMLToMarkdown(html: string): $CancellablePromise<string> {
     return $Call.ByID(600847809, html);

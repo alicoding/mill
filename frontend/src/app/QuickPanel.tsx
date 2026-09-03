@@ -3,9 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
 import { FilteredActionList } from '@primer/react/experimental'
-import { NoteIcon, PlayIcon } from '@primer/octicons-react'
-import { AtlasService, ExecutionService, RunKind, SettingsService, TriggerService } from '../shared/bindings'
-import { generateSamplePayload } from '../shared/configSchema'
+import { PlayIcon } from '@primer/octicons-react'
+import { ExecutionService, SettingsService, TriggerService } from '../shared/bindings'
 import { useAppStore, refreshWorkflows, refreshRequests, refreshKeybindings } from '../shared/store'
 import {
   useConfigureEntityStore, refreshLists, refreshMCPServers, refreshDecisions, refreshExecEnvs, refreshAIProviders, refreshDeclaredStepTypes,
@@ -17,7 +16,7 @@ import { sortWorkflowsByPinnedAndFrecency } from './workflowFrecency'
 import { WorkflowRowTrailingVisual } from './WorkflowRowTrailingVisual'
 import { buildConfigureAndActionEntries } from './quickPanelActionEntries'
 import type { PanelEntry } from './quickPanelActionEntries'
-import { cascadeNotePosition, resolveNoteParentID } from './quickPanelCapture'
+import { useQuickPanelCaptureDoors } from './useQuickPanelCaptureDoors'
 import { QuickPanelClipboardApplyDoor } from './QuickPanelClipboardApplyDoor'
 import { QuickPanelCodingLoop } from './QuickPanelCodingLoop'
 import { useQuickPanelCodingLoopDoor } from './useQuickPanelCodingLoopDoor'
@@ -25,7 +24,11 @@ import { QuickPanelReplyReviewDoor } from './QuickPanelReplyReviewDoor'
 import { useQuickPanelClipboardDoor } from './useQuickPanelClipboardDoor'
 import { FacetChipRow } from '../shared/FacetChipRow'
 import { useQuickPanelFacetSearch } from './quickPanelFacets'
+import { useQuickPanelRun, useQuickPanelWorkflowActions } from './useQuickPanelWorkflowActions'
+import { QuickPanelFooter } from './QuickPanelFooter'
+import { useQuickPanelUpdateStatus } from './useQuickPanelUpdateStatus'
 import styles from './QuickPanel.module.css'
+import { searchInputTextAssistOff } from '../shared/searchInputProps'
 
 // docs/adr/0033-quick-panel-second-window.md: the search+run surface
 // hosted in the Quick Panel's own dedicated Wails window, toggled by
@@ -94,7 +97,6 @@ export function QuickPanel() {
   // the current note count per parent -- fetched alongside cards/kinds
   // below, never rendered as its own row (notes stay excluded from
   // search, same as the main Atlas surface).
-  const atlasNotes = useAtlasStore((s) => s.notes)
   // Workflow pins/favorites (docs/goals/BACKLOG.md Standing #5): a
   // plain ordered workflow-ID list, store-owned/localStorage-tier --
   // see shared/store.ts's own declaration comment for the schema.
@@ -265,20 +267,6 @@ export function QuickPanel() {
     return () => { offGuardrail(); offMCP() }
   }, [])
 
-  // ⌘, opens Settings directly, matching the "Open Settings · ⌘," row's
-  // own shortcut hint -- HideOnEscape covers Escape natively (Go-side),
-  // this is the one panel-local keydown binding that has no native
-  // equivalent to defer to.
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === ',') {
-        e.preventDefault()
-        openMain('settings')
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
 
   // A Configure-entity row's "run" is a jump, not an execution: shows
   // the main window navigated straight to the tab that entity lives on
@@ -300,28 +288,13 @@ export function QuickPanel() {
     openMain(`atlas:${cardID}`)
   }
 
-  // Same RPC + RunKind CompositionView's own list-row Run button and
-  // CommandPalette's runWorkflowTest use (ExecutionService.RunWorkflow,
-  // RunKindTest -- docs/adr/0008's single execution path). A workflow
-  // with declared Attributes runs with generateSamplePayload's defaults
-  // immediately, same "skip the manual-review step, this is a *quick*
-  // invoke" reasoning CommandPalette already documents. Shows a brief
-  // started/failed confirmation, then dismisses the panel shortly after
-  // so the confirmation is actually readable before the window
-  // disappears.
-  const runWorkflow = (id: string, label: string) => {
+  // Workflow row actions (goal 0294): Enter runs, ⌘Enter opens the
+  // workflow, ⌘⇧Enter runs and opens its canvas, ⌘K lists them all.
+  const { runWorkflow: runWorkflowRow, lastRun } = useQuickPanelRun({ setStatus, t })
+  useQuickPanelUpdateStatus(setStatus, t)
+  const runWorkflow = (id: string) => {
     const wf = workflows?.find((w) => w.ID === id)
-    const attrs = wf?.Attributes ?? []
-    const values = attrs.length > 0 ? generateSamplePayload(attrs) : null
-    setStatus(t('quickPanel.status.running', { label }))
-    ExecutionService.RunWorkflow(id, RunKind.RunKindTest, values)
-      .then((summary) => {
-        setStatus(summary.error ? t('quickPanel.status.failed', { label, error: summary.error }) : t('quickPanel.status.started', { label }))
-        window.setTimeout(() => { void SettingsService.DismissPanel().catch(() => {}) }, 600)
-      })
-      .catch((err) => {
-        setStatus(t('quickPanel.status.failed', { label, error: String(err) }))
-      })
+    if (wf) runWorkflowRow(wf)
   }
 
   // The clipboard door (goals 0039 + 0099) lives in its own hook --
@@ -329,25 +302,8 @@ export function QuickPanel() {
   const { clipboardApply, setClipboardApply, replyReview, setReplyReview, applyFromClipboard } = useQuickPanelClipboardDoor(t)
   const { codingLoopText, runFromClipboard: runCodingLoopFromClipboard, closeCodingLoop } = useQuickPanelCodingLoopDoor()
 
-  // The away-capture door (docs/goals/0090): a typed query with no
-  // intent to search becomes a Note instead, filed into the Scratchpad
-  // inbox (root, if the seed was deleted) at a cascaded position so
-  // repeated captures never land exactly stacked. Success clears the
-  // query and dismisses through the SAME focus-yield path the other
-  // rows use, silently -- no confirmation to read before the window
-  // goes away, matching capture-first's own "no app focus change"
-  // intent. A failure never dismisses, so the query stays typed and
-  // the panel's own status line carries the error.
-  const createNoteFromQuery = (text: string) => {
-    const parentID = resolveNoteParentID(atlasCards)
-    const position = cascadeNotePosition(atlasNotes, parentID)
-    AtlasService.CreateNote(text, position, parentID)
-      .then(() => {
-        setQuery('')
-        void SettingsService.DismissPanel().catch(() => {})
-      })
-      .catch(() => setStatus(t('quickPanel.saveNoteError')))
-  }
+  // The capture doors (note, task) live in their own hook.
+  const { captureEntries, captureLaunchEntries, pluginCaptures } = useQuickPanelCaptureDoors({ t, setQuery, setStatus })
 
   const allEntries = useMemo<PanelEntry[]>(() => {
     const entries: PanelEntry[] = []
@@ -375,7 +331,7 @@ export function QuickPanel() {
             onTogglePin={() => togglePinnedWorkflow(wf.ID)}
           />
         ),
-        run: () => runWorkflow(wf.ID, wf.Label),
+        run: () => runWorkflow(wf.ID),
       })
     }
     // Configure-entity jump rows + the panel's fixed action rows
@@ -384,6 +340,7 @@ export function QuickPanel() {
     // convention); this useMemo owns only the workflow-row loop above,
     // which needs per-row pin/hotkey-chip state this shared builder
     // doesn't.
+    entries.push(...captureLaunchEntries())
     entries.push(...buildConfigureAndActionEntries({
       t, requests, lists, mcpServers, decisions, execEnvs, aiProviders, declaredStepTypes,
       atlasCards, atlasKinds, reviewPendingCount, jumpToConfigure, jumpToAtlasCard, openMain, applyFromClipboard,
@@ -394,6 +351,9 @@ export function QuickPanel() {
   }, [
     workflows, mostUsedRank, hotkeyCombos, pinnedWorkflowIds, requests, lists, mcpServers,
     decisions, execEnvs, aiProviders, declaredStepTypes, atlasCards, atlasKinds, reviewPendingCount,
+    // The capture launch rows (goal 0309) re-render once the plugin
+    // captures list resolves.
+    pluginCaptures,
     // Not read directly below -- the command enabled() checks inside
     // buildConfigureAndActionEntries read it via getState() instead.
     updateNoticeState,
@@ -412,18 +372,26 @@ export function QuickPanel() {
   // buckets items by groupId while preserving each bucket's original
   // push order.
   const trimmedQuery = query.trim()
-  const withCapture: PanelEntry[] = trimmedQuery
-    ? [...filtered, {
-      id: 'save-note',
-      groupId: 'actions',
-      text: t('quickPanel.saveNote'),
-      description: t('quickPanel.saveNoteHint'),
-      searchText: '',
-      leadingVisual: NoteIcon,
-      run: () => createNoteFromQuery(trimmedQuery),
-    }]
-    : filtered
+  const withCapture: PanelEntry[] = [...filtered, ...captureEntries(trimmedQuery)]
 
+  // Group order follows the ranking while a query is typed (goal 0295):
+  // the group holding the best match renders first, so a keyword hit
+  // on a Mill action outranks a workflow that merely contains the
+  // word. At rest the fixed order stands.
+  // Only groups with a row render (goal 0303): the kit renders every
+  // group header it is handed, rows or not, and a no-match query left
+  // three empty headings under the capture rows.
+  const presentGroups = GROUP_METADATA.filter((g) => withCapture.some((e) => e.groupId === g.groupId))
+  const groupMetadata = trimmedQuery
+    ? [...presentGroups].sort((a, b) => {
+      const rank = (id: string) => { const i = withCapture.findIndex((e) => e.groupId === id); return i < 0 ? Number.MAX_SAFE_INTEGER : i }
+      return rank(a.groupId) - rank(b.groupId)
+    })
+    : presentGroups
+  // The rows the shortcuts can target, in list order (the hook falls
+  // back to the first when the list has no active row yet).
+  const visibleWorkflowIds = withCapture.filter((e) => e.groupId === 'workflows').map((e) => e.id.slice('run:'.length))
+  const rowActions = useQuickPanelWorkflowActions({ workflows, visibleWorkflowIds, pinnedWorkflowIds, togglePinnedWorkflow, runWorkflow: runWorkflowRow, lastRun, t })
   const items = withCapture.map((entry) => ({
     key: entry.id,
     id: entry.id,
@@ -432,6 +400,9 @@ export function QuickPanel() {
     description: entry.description,
     leadingVisual: entry.leadingVisual,
     trailingVisual: entry.trailingVisual,
+    // The row's own entry id, read back off the active descendant by
+    // useQuickPanelWorkflowActions (the list generates the DOM id).
+    'data-entry-id': entry.id,
     onAction: () => entry.run(),
   }))
 
@@ -475,23 +446,32 @@ export function QuickPanel() {
       />
       <FilteredActionList
         items={items}
-        groupMetadata={GROUP_METADATA}
+        groupMetadata={groupMetadata}
         filterValue={query}
         onFilterChange={(value) => setQuery(value)}
         placeholderText={t('quickPanel.searchPlaceholder')}
         inputRef={inputRef}
-        textInputProps={{ 'aria-label': t('quickPanel.searchAriaLabel'), autoFocus: true }}
+        textInputProps={{ 'aria-label': t('quickPanel.searchAriaLabel'), autoFocus: true, ...searchInputTextAssistOff }}
         showItemDividers
+        onActiveDescendantChanged={rowActions.onActiveDescendantChanged}
         messageText={{ title: t('search.noMatchesTitle'), description: t('search.noMatchesDescription', { query }) }}
       />
-      {status && (
-        <Text as="p" size="small" className={styles.status} data-testid="quick-panel-status">
-          {status}
-        </Text>
-      )}
       {allEntries.length === 0 && (
         <Text as="p" size="small" className={styles.status}>{t('quickPanel.noWorkflowsYet')}</Text>
       )}
+      <QuickPanelFooter
+        status={status}
+        hasWorkflowRow={rowActions.activeWorkflow !== null}
+        actions={rowActions.actions}
+        open={rowActions.actionsOpen}
+        onOpenChange={(open) => {
+          rowActions.setActionsOpen(open)
+          // The menu hands focus back to its anchor button; typing must
+          // land in the search again, after the menu's own focus return.
+          if (!open) window.requestAnimationFrame(() => inputRef.current?.focus())
+        }}
+        t={t}
+      />
     </div>
   )
 }

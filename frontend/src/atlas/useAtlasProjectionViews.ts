@@ -10,6 +10,7 @@ export function useAtlasProjectionViews({ onOpenOverlay }: { onOpenOverlay: (id:
   const [matrixOpen, setMatrixOpen] = useState(false)
   const [coverageOpen, setCoverageOpen] = useState(false)
   const [roadmapOpen, setRoadmapOpen] = useState(false)
+  const [contentsOpen, setContentsOpen] = useState(false)
 
   // Closes whichever projection dialog is open first, so the card
   // overlay never renders stacked behind it.
@@ -17,8 +18,9 @@ export function useAtlasProjectionViews({ onOpenOverlay }: { onOpenOverlay: (id:
     setMatrixOpen(false)
     setCoverageOpen(false)
     setRoadmapOpen(false)
+    setContentsOpen(false)
     onOpenOverlay(id)
   }
 
-  return { matrixOpen, setMatrixOpen, coverageOpen, setCoverageOpen, roadmapOpen, setRoadmapOpen, openCardFromProjection }
+  return { matrixOpen, setMatrixOpen, coverageOpen, setCoverageOpen, roadmapOpen, setRoadmapOpen, contentsOpen, setContentsOpen, openCardFromProjection }
 }

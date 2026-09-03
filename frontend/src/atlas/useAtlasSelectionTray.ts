@@ -31,14 +31,14 @@ export function useAtlasSelectionTray<TNode extends Node>({
 }: {
   selectedCards: string[]
   selectedNotes: string[]
-  // Board objects (goal 0179/0180): included in the tray's own
-  // visibility threshold and its Delete action, excluded from Group
-  // (an object is board-local, never a document a region frame files).
+  // Board objects: full Group peers alongside cards and notes (goal
+  // 0266's peer law, reversing the earlier board-local-never-files
+  // decision), and part of the visibility threshold and Delete.
   selectedObjects: string[]
   clearSelection: () => void
   setNodes: (updater: (nodes: TNode[]) => TNode[]) => void
   onDeleteSelection: (cardIDs: string[], noteIDs: string[], objectIDs?: string[]) => void
-  onGroupSelection: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
+  onGroupSelection: (cardIDs: string[], noteIDs: string[], objectIDs: string[], pos: { x: number; y: number }) => void
   // Escape's own ladder must never fire on top of some OTHER surface
   // (a Dialog, a popover) that's legitimately consuming the same
   // keypress to close/cancel itself -- see atlasFocusContainment.ts's
@@ -71,8 +71,10 @@ export function useAtlasSelectionTray<TNode extends Node>({
   }, [])
 
   const triggerGroup = useCallback((pos: { x: number; y: number }) => {
-    const { selectedCards: cards, selectedNotes: notes, onGroupSelection: onGroup } = latest.current
-    if (cards.length >= 2) onGroup(cards, notes, pos)
+    const { selectedCards: cards, selectedNotes: notes, selectedObjects: objects, onGroupSelection: onGroup } = latest.current
+    // Any 2+ placed things group (goal 0266) -- same threshold the
+    // tray's own visibility uses.
+    if (cards.length + notes.length + objects.length >= 2) onGroup(cards, notes, objects, pos)
   }, [])
 
   // Bare-G has no click point of its own -- anchors the SAME popover a
@@ -107,7 +109,8 @@ export function useAtlasSelectionTray<TNode extends Node>({
         return
       }
       if (e.metaKey || e.ctrlKey || e.altKey || isEditableTarget(e.target)) return
-      if (e.key.toUpperCase() !== 'G' || latest.current.selectedCards.length < 2) return
+      const sel = latest.current
+      if (e.key.toUpperCase() !== 'G' || sel.selectedCards.length + sel.selectedNotes.length + sel.selectedObjects.length < 2) return
       e.preventDefault()
       groupFromKeyboard()
     }

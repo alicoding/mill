@@ -10,5 +10,6 @@ export type {
     ListSecretAccessRequest,
     ListSecretAccessResponse,
     SecretAccessRecord,
+    SourcesLister,
     Status
 } from "./models.js";

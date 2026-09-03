@@ -37,4 +37,25 @@ func init() {
 		ctx.Payload = text
 		return ctx, nil
 	})
+	// The plain-text sibling: an id, a token, a line copied as-is. The
+	// HTML reader above prefers the HTML flavor, which a browser puts on
+	// the clipboard for even one selected word -- wrong input for a
+	// hash or an encoder.
+	RegisterNodeType(NodeType{
+		ID: "capture-clipboard-text", Kind: KindCapture,
+		Effect:      guardrail.ClassRead,
+		Complexity:  ComplexityBasic,
+		Consumes:    []PayloadKind{PayloadNone},
+		Produces:    PayloadProduce{Kind: PayloadText},
+		Output:      "plain text from the clipboard",
+		Label:       "Read clipboard text",
+		Description: "Reads the clipboard's plain text only, never its HTML -- for ids, tokens, and anything copied as-is.",
+	}, func(_ Node, ctx ExecContext) (ExecContext, error) {
+		text, err := readClipboardText()
+		if err != nil {
+			return ctx, err
+		}
+		ctx.Payload = text
+		return ctx, nil
+	})
 }

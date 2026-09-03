@@ -125,6 +125,37 @@ export interface ClipbridgeReplyPreview {
 }
 
 /**
+ * ContentEntry is the index's one envelope. Title is the display
+ * name (a card's title; a note's derived first line, never stored --
+ * atlas.NoteDisplayName; an object's payload title, else its kind).
+ * Subkind carries a card's Atlas Kind id (a note or object has none).
+ * Payload is a board object's own payload, and {"text": …} for a
+ * note; a card's fields are deliberately NOT here (agents read them
+ * through atlas_read_card; the plugin-side question is recorded on
+ * goal 0261's remaining list).
+ */
+export interface ContentEntry {
+    "ID": string;
+    "Kind": string;
+    "Subkind": string;
+    "Title": string;
+    "ParentID": string;
+    "Position": atlas$0.Position;
+    "Size": atlas$0.Dimensions | null;
+    "Payload": { [_ in string]?: string } | null;
+}
+
+/**
+ * ContentsFilter narrows the index: Kind to one kind ("card", "note",
+ * or an object kind), ParentID to one parent's direct children. Empty
+ * means everything.
+ */
+export interface ContentsFilter {
+    "Kind": string;
+    "ParentID": string;
+}
+
+/**
  * FileDropCreateResult is CreateCardFromFileDrop's own response --
  * wraps the newly created card with an additive duplicate-detection
  * verdict (goal 0088): DuplicateOfCardID/DuplicateOfTitle are empty
@@ -157,6 +188,17 @@ export interface FileDropRoute {
      * Finder window is the common case this covers).
      */
     "Path": string;
+
+    /**
+     * ContentKind refines an "instant" route for extensions whose
+     * meaning depends on content, not name (goal 0274): "drawio-xml"
+     * when a .xml file's head carries draw.io's own markup -- an
+     * exported .xml holds identical mxfile content to a .drawio save.
+     * Empty everywhere else, and empty on any sniff failure -- the
+     * drop must still land (as a card), never error on an unreadable
+     * head.
+     */
+    "ContentKind": string;
 }
 
 /**
@@ -335,6 +377,18 @@ export interface PasteResult {
      * or 1, same single-payload property Images documents.
      */
     "PluginObjects": number;
+
+    /**
+     * PluginObjectID / PluginKind name the object a plugin claim landed
+     * (ADR-0051 slice 2), and AlternativeKinds the OTHER enabled
+     * claimants for the same paste in their precedence order -- the
+     * frontend's "paste as … instead" offer runs SetBoardObjectKind on
+     * PluginObjectID with one of them. Empty when no plugin claim fired
+     * or when only one plugin claims links.
+     */
+    "PluginObjectID": string;
+    "PluginKind": string;
+    "AlternativeKinds": string[] | null;
     "SkippedPages": string[] | null;
 }
 

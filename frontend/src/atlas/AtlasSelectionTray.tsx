@@ -11,15 +11,15 @@ const CLEAR_KBD = 'esc'
 // The floating tray a live multi-selection replaces the creation tray
 // with (owner-caught follow-up to goal 0092): same bottom-center
 // position/container the creation tray occupies -- AtlasBoard renders
-// exactly one of the two, never both. Group only ever shows for 2+
-// selected CARDS (notes don't group, same rule the multi-select
-// context menu's own item already enforces) -- a notes-only selection
-// still gets the count label, Delete, and the clear hint.
+// exactly one of the two, never both. Group shows for ANY 2+
+// selected things -- cards, notes, and board objects all group (goal
+// 0266's peer law, matching the multi-select context menu and
+// bare-G).
 export const AtlasSelectionTray = forwardRef<HTMLDivElement, {
   selectedCardCount: number
   selectedNoteCount: number
-  // Board objects (goal 0179/0180) count toward the tray's own total
-  // and its Delete action, same as notes -- never toward Group.
+  // Board objects: full Group peers (goal 0266), and part of the
+  // total and Delete like notes.
   selectedObjectCount: number
   onGroup: (pos: { x: number; y: number }) => void
   onDelete: () => void
@@ -31,7 +31,7 @@ export const AtlasSelectionTray = forwardRef<HTMLDivElement, {
     <div ref={ref} className={styles.tray} data-testid="atlas-selection-tray" role="toolbar" aria-label={t('board.selectionTrayAriaLabel')}>
       <span className={styles.count} data-testid="atlas-selection-count">{t('board.selectionCount', { count })}</span>
       <span className={styles.divider} aria-hidden="true" />
-      {selectedCardCount >= 2 && (
+      {count >= 2 && (
         <button
           type="button"
           className={styles.action}
