@@ -52,6 +52,8 @@ type SettingsService struct {
 	mu     sync.Mutex
 	store  settings.Store
 	window *windowing.Window
+	// leave is the quit gate's state (settingsservice_flush.go).
+	leave leaveGate
 	// panel is the Quick Panel window (docs/adr/0033) -- a second,
 	// always-alive floating window the summon hotkey toggles, distinct
 	// from window (the main window) above. See settingsservice_panel.go.

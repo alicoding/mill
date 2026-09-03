@@ -354,5 +354,18 @@
     "openInMill": "Open in Mill",
     "empty": "Run a workflow from the Quick Panel with ⌘⇧↩ to watch it here.",
     "loading": "Loading…"
+  },
+  "unsavedChangesDialog": {
+    "titleQuit": "Save changes before quitting?",
+    "titleRestart": "Save changes before restarting?",
+    "titleClose": "Save changes before closing?",
+    "body_one": "{{count}} unsaved change will be lost if you don't save it.",
+    "body_other": "{{count}} unsaved changes will be lost if you don't save them.",
+    "saveAll": "Save all",
+    "discard": "Discard",
+    "cancel": "Cancel"
+  },
+  "unsaved": {
+    "marker": "Unsaved changes"
   }
 }

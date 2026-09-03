@@ -17,5 +17,12 @@ export async function callBindingViaRPC<T = unknown>(page: Page, methodName: str
     return { ok: res.ok, status: res.status, text: await res.text() }
   }, { methodName, args })
   if (!result.ok) throw new Error(`callBindingViaRPC(${methodName}) failed: ${result.status} ${result.text}`)
-  return (result.text ? JSON.parse(result.text) : undefined) as T
+  if (!result.text) return undefined as T
+  // A bound method returning a bare string answers with the raw text,
+  // not a JSON document.
+  try {
+    return JSON.parse(result.text) as T
+  } catch {
+    return result.text as T
+  }
 }

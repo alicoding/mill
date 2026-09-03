@@ -338,6 +338,22 @@ at:
     UNSELECTED (shield up), the same gesture pans the board only.
     Synthetic wheel can't reproduce the real gesture stream's
     double-handling, so this stays manual.
+  - **The quit gate on every native quit path, and explicit mode's
+    close guard** (goal 0295 S2b, `SettingsService.ShouldQuit` wired
+    as `application.Options.ShouldQuit`, `HideMainWindowGuarded`) --
+    ⌘Q, the Dock's Quit, the tray menu's Quit and the red close all
+    reach AppKit's applicationShouldTerminate / the WindowClosing
+    hook, which no server-mode harness has (the e2e drives the same
+    handshake through RestartApp). Verify on an installed build with
+    Settings > General > Save changes = When I choose: type into a
+    note and click away (the dot shows); ⌘Q shows the Save all /
+    Discard / Cancel sheet and Cancel keeps Mill running; hide the
+    window, then the tray's Quit brings the window back with the
+    sheet; Discard quits. Again with a held note: red-close the window
+    shows the sheet titled "...before closing?" and Save all hides
+    the window with the note written. Then switch back to
+    Automatically and confirm ⌘Q quits with no sheet and the note
+    text survives relaunch.
   - **File-promise drops: the post-screenshot floating thumbnail**
     (goal 0256, `MillFilePromiseDropView` /
     `AttachFilePromiseReceiver`) — a promise drag needs a real AppKit

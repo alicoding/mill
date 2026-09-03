@@ -426,6 +426,20 @@
     "enabled": false
   },
   {
+    "id": "edit.save",
+    "label": "Save",
+    "binding": "⌘S",
+    "surface": null,
+    "enabled": true
+  },
+  {
+    "id": "edit.saveAll",
+    "label": "Save all changes",
+    "binding": null,
+    "surface": null,
+    "enabled": true
+  },
+  {
     "id": "help.shortcuts",
     "label": "Keyboard shortcuts help",
     "binding": null,

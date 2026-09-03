@@ -35,6 +35,7 @@ import { applyDensity } from "../shared/density";
 import { pageIconFor, pageLabelFor } from './pageMeta'
 import { useMillNavigate } from './useMillNavigate'
 import { useBeforeQuitFlush } from './useBeforeQuitFlush'
+import { UnsavedChangesDialog } from './UnsavedChangesDialog'
 import { useReviewDeepLink } from './useReviewDeepLink'
 import { useKeymapDispatch } from './useKeymapDispatch'
 import { useBrowserNotify } from './useBrowserNotify'
@@ -394,6 +395,9 @@ function App() {
           app-level-chrome-mounted-once shape as CommandPalette above,
           renders off the store's helpOpen flag. */}
       <ShortcutsHelpDialog />
+      {/* Explicit save mode's leave sheet (goal 0295 S2b): renders off
+          the signal store's unsavedLeave, set by the quit handshake. */}
+      <UnsavedChangesDialog />
       {/* The update changelog surface (goal 0220 S2): same app-level-
           chrome-mounted-once shape, renders off the store's
           whatsNewOpen flag. */}

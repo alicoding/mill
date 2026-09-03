@@ -76,3 +76,37 @@ func WaitForEvent(name string, timeout time.Duration) bool {
 		return false
 	}
 }
+
+// WaitForAnyEvent blocks until the first of the named custom events
+// arrives from any window, or the timeout passes; it reports which
+// event (and its payload) or ok=false on timeout / no live app. The
+// leave handshake (settingssvc/settingsservice_flush.go) waits on two
+// answers at once -- the page's "flushed" and its "held, a sheet is
+// up". Never call on the main thread.
+func WaitForAnyEvent(timeout time.Duration, names ...string) (name string, data any, ok bool) {
+	app := application.Get()
+	if app == nil {
+		return "", nil, false
+	}
+	type arrival struct {
+		name string
+		data any
+	}
+	done := make(chan arrival, 1)
+	for _, n := range names {
+		n := n
+		off := app.Event.On(n, func(ev *application.CustomEvent) {
+			select {
+			case done <- arrival{name: n, data: ev.Data}:
+			default:
+			}
+		})
+		defer off()
+	}
+	select {
+	case a := <-done:
+		return a.name, a.data, true
+	case <-time.After(timeout):
+		return "", nil, false
+	}
+}
