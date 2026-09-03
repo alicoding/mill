@@ -21,7 +21,14 @@ export function SecretRefPicker({ value, onChange }: { value: string; onChange: 
     <>
       <Select value={value} onChange={(e) => onChange(e.target.value)} data-testid="secret-ref-picker">
         <Select.Option value="">{t('settings.extensions.secretRefNone')}</Select.Option>
-        {Object.entries(titles).map(([id, title]) => <Select.Option key={id} value={id}>{title}</Select.Option>)}
+        <Select.OptGroup label={t('settings.extensions.secretRefGroupVault')}>
+          {Object.entries(titles).filter(([id]) => !id.includes(':')).map(([id, title]) => <Select.Option key={id} value={id}>{title}</Select.Option>)}
+        </Select.OptGroup>
+        {Object.keys(titles).some((id) => id.includes(':')) && (
+          <Select.OptGroup label={t('settings.extensions.secretRefGroupSources')}>
+            {Object.entries(titles).filter(([id]) => id.includes(':')).map(([id, title]) => <Select.Option key={id} value={id}>{title}</Select.Option>)}
+          </Select.OptGroup>
+        )}
         {gone && <Select.Option value={value}>{t('settings.extensions.secretRefGone')}</Select.Option>}
       </Select>
       {gone && (

@@ -27,6 +27,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
 	"github.com/alicoding/mill/internal/domain/secret"
+	"github.com/alicoding/mill/internal/domain/secretsource"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 )
 
@@ -83,6 +84,7 @@ type ConfigureService struct {
 	mcpServers        []mcpserver.MCPServer
 	decisions         []decision.Decision
 	execEnvs          []execenv.ExecEnv
+	secretSources     []secretsource.Source
 	aiProviders       []aiprovider.AIProvider
 	declaredStepTypes []declaredsteptype.DeclaredStepType
 	composition       *compositionsvc.CompositionService
@@ -141,6 +143,7 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.restoreMCPServers()
 	c.restoreDecisions()
 	c.restoreExecEnvs()
+	c.restoreSecretSources()
 	c.restoreAIProviders()
 	c.restoreDeclaredStepTypes()
 	// reconcileBuiltIn* (configureservice_builtin.go, docs/goals/0037)

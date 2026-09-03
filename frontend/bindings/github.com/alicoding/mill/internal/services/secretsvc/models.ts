@@ -43,6 +43,12 @@ export interface SecretAccessRecord {
 }
 
 /**
+ * SourcesLister hands the service the user's enabled secret sources
+ * (the Configure entity); wired late like every other seam.
+ */
+export type SourcesLister = any;
+
+/**
  * Status is VaultStatus's return shape -- the one read the frontend
  * needs to decide which of "set up," "unlock," or "browse" to show.
  * PresenceProtected is a plain credential.Store read (never a prompt),

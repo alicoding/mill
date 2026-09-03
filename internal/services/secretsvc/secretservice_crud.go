@@ -26,6 +26,9 @@ func (s *SecretService) ListSecrets() ([]secret.Summary, error) {
 //
 //wails:ignore
 func (s *SecretService) ResolveSecretValue(id string, actx secretaudit.AccessContext) (string, error) {
+	if value, handled, err := s.resolveProvider(id, actx); handled {
+		return value, err
+	}
 	e, err := s.vault.Get(id)
 	if err != nil {
 		s.recordAccess(id, "", actx, secretaudit.OutcomeError, err.Error())

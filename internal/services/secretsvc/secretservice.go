@@ -82,6 +82,9 @@ type SecretService struct {
 	// degrades to a no-op rather than a nil-pointer panic.
 	auditStore *secretauditstore.Store
 	auditLog   *slog.Logger
+	// sources lists the user's enabled secret sources (ADR-0050); nil
+	// until wired, when only the vault resolves.
+	sources SourcesLister
 }
 
 // NewSecretService constructs the service and starts the auto-lock poll

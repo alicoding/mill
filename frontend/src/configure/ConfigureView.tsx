@@ -9,6 +9,7 @@ import { ConfigureAttributes } from './ConfigureAttributes'
 import { ConfigureMCPServers } from './ConfigureMCPServers'
 import { ConfigureDecisions } from './ConfigureDecisions'
 import { ConfigureExecEnv } from './ConfigureExecEnv'
+import { ConfigureSecretSources } from './ConfigureSecretSources'
 import { ConfigureAIProviders } from './ConfigureAIProviders'
 import { ConfigureStepTypes } from './ConfigureStepTypes'
 import styles from '../shared/ListCard.module.css'
@@ -61,6 +62,7 @@ function ConfigureView({ initialTab }: { initialTab?: string }) {
         <TabItem value="mcpservers">{t('configureView.mcpServers')}</TabItem>
         <TabItem value="decisions">{t('configureView.decisions')}</TabItem>
         <TabItem value="execenvs">{t('configureView.execEnvs')}</TabItem>
+        <TabItem value="secretsources">{t('configureView.secretSources')}</TabItem>
         <TabItem value="aiproviders">{t('configureView.aiProviders')}</TabItem>
         <TabItem value="steptypes">{t('configureView.stepTypes')}</TabItem>
       </TabList>
@@ -70,6 +72,7 @@ function ConfigureView({ initialTab }: { initialTab?: string }) {
       <TabPanel value="mcpservers"><ConfigureMCPServers /></TabPanel>
       <TabPanel value="decisions"><ConfigureDecisions /></TabPanel>
       <TabPanel value="execenvs"><ConfigureExecEnv /></TabPanel>
+      <TabPanel value="secretsources"><ConfigureSecretSources /></TabPanel>
       <TabPanel value="aiproviders"><ConfigureAIProviders /></TabPanel>
       <TabPanel value="steptypes"><ConfigureStepTypes /></TabPanel>
     </Tabs>
