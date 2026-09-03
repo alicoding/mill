@@ -4,6 +4,8 @@ import { PluginService } from '../../bindings/github.com/alicoding/mill/internal
 import { AtlasService } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc'
 import { contentEntryFromWire } from './pluginQuery'
 import { collectPluginView } from './pluginViews'
+import { collectPluginCapture } from './pluginCaptures'
+import { SettingsService } from '../shared/bindings'
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import type { AtlasArmRequestTool } from '../shared/atlasToolIdentity'
@@ -157,6 +159,20 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 				run: () => {
 					void import('../shared/store').then((m) => m.useAppStore.getState().openWorkTab({ kind: 'plugin-view', pluginId, viewId: decl.id }))
 				},
+			})
+		},
+		// registerCapture (goal 0309): declare-first like views; the face
+		// is kept here for the capture window, and a palette command
+		// summons that window on it.
+		registerCapture: (decl) => {
+			const declared = (manifest.contributes?.captures ?? []).find((c) => c.id === decl.id)
+			if (!declared) throw new Error(`plugin ${pluginId}: capture "${decl.id}" is not declared in the manifest's contributes.captures`)
+			if (typeof decl.render !== 'function') throw new Error(`plugin ${pluginId}: capture "${decl.id}" needs a render function`)
+			collectPluginCapture({ pluginId, pluginName: manifest.name || pluginId, captureId: decl.id, label: declared.label, render: decl.render })
+			collectPluginCommand({
+				id: `capture.${pluginId}.${decl.id}`,
+				label: declared.label,
+				run: () => { void SettingsService.ShowCapture(pluginId, decl.id) },
 			})
 		},
 		registerCommand: (decl) => {

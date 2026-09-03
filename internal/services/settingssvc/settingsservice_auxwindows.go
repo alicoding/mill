@@ -1,5 +1,7 @@
 package settingssvc
 
+import "github.com/alicoding/mill/internal/adapters/windowing"
+
 // HideAuxWindows orders every floating window Mill creates hidden at
 // boot -- the Quick Panel, the approval prompt, the run monitor --
 // back out of sight (docs/goals/0301). Two callers, one property:
@@ -14,15 +16,11 @@ package settingssvc
 //wails:ignore
 func (s *SettingsService) HideAuxWindows() {
 	s.mu.Lock()
-	p, a, r := s.panel, s.approvalPrompt, s.runMonitor
+	p, a, r, c := s.panel, s.approvalPrompt, s.runMonitor, s.capture
 	s.mu.Unlock()
-	if p != nil {
-		p.Hide()
-	}
-	if a != nil {
-		a.Hide()
-	}
-	if r != nil {
-		r.Hide()
+	for _, w := range []*windowing.Window{p, a, r, c} {
+		if w != nil {
+			w.Hide()
+		}
 	}
 }

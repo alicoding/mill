@@ -31,6 +31,14 @@ export function AssetMiddleware(): $CancellablePromise<any> {
 }
 
 /**
+ * Captures lists every runnable plugin's declared captures, by plugin
+ * then capture id.
+ */
+export function Captures(): $CancellablePromise<$models.PluginCapture[] | null> {
+    return $Call.ByID(3991103051);
+}
+
+/**
  * ContentHashOf answers the current hash of an installed plugin by id
  * ("" for a built-in or an unreadable folder) -- the run policy's
  * comparison input.

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { CheckIcon, NoteIcon } from '@primer/octicons-react'
+import { CheckIcon, NoteIcon, PlusIcon } from '@primer/octicons-react'
 import type { TFunction } from 'i18next'
 import { AtlasService, ConfigureService, SettingsService } from '../shared/bindings'
+import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
+import type { PluginCapture } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { useAtlasStore } from '../atlas/atlasStore'
 import type { PanelEntry } from './quickPanelActionEntries'
 import { cascadeNotePosition, resolveNoteParentID } from './quickPanelCapture'
@@ -100,5 +102,40 @@ export function useQuickPanelCaptureDoors({ t, setQuery, setStatus }: {
     return entries
   }
 
-  return { captureEntries }
+  // Capture launch rows (goal 0309): "New note…" and one row per plugin
+  // capture declared in a manifest (declare-first -- this window runs
+  // no plugin code), each summoning the capture window on that face.
+  const [pluginCaptures, setPluginCaptures] = useState<PluginCapture[]>([])
+  useEffect(() => {
+    PluginService.Captures().then((c) => setPluginCaptures(c ?? [])).catch(() => setPluginCaptures([]))
+  }, [])
+  const launchCapture = (pluginId: string, captureId: string) => {
+    void SettingsService.ShowCapture(pluginId, captureId).catch(() => setStatus(t('quickPanel.captureOpenError')))
+    dismiss()
+  }
+  const captureLaunchEntries = (): PanelEntry[] => {
+    const entries: PanelEntry[] = [{
+      id: 'capture:note',
+      groupId: 'actions',
+      text: t('quickPanel.newNote'),
+      description: t('quickPanel.newNoteHint'),
+      searchText: `${t('quickPanel.newNote')} note capture`,
+      leadingVisual: NoteIcon,
+      run: () => launchCapture('', 'note'),
+    }]
+    for (const c of pluginCaptures) {
+      entries.push({
+        id: `capture:${c.pluginId}/${c.id}`,
+        groupId: 'actions',
+        text: t('quickPanel.newCapture', { label: c.label }),
+        description: c.description || t('quickPanel.newCaptureHint', { plugin: c.pluginName }),
+        searchText: `${c.label} ${c.pluginName} capture`,
+        leadingVisual: PlusIcon,
+        run: () => launchCapture(c.pluginId, c.id),
+      })
+    }
+    return entries
+  }
+
+  return { captureEntries, captureLaunchEntries, pluginCaptures }
 }

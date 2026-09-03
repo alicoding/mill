@@ -229,6 +229,14 @@ export function GetBuildInfo(): $CancellablePromise<$models.BuildInfo> {
 }
 
 /**
+ * GetCaptureDestinations returns every remembered destination. Never
+ * nil.
+ */
+export function GetCaptureDestinations(): $CancellablePromise<{ [_ in string]?: string } | null> {
+    return $Call.ByID(1849425987);
+}
+
+/**
  * GetDisabledExtensions returns every extension id the user has turned
  * off. Never nil -- always at least an empty slice, so a caller can
  * range over it (or json-encode it straight to the frontend) without a
@@ -372,6 +380,13 @@ export function GetSummonHotkey(): $CancellablePromise<string> {
  */
 export function GetWorkflowMinutesSaved(workflowID: string): $CancellablePromise<number> {
     return $Call.ByID(1967529281, workflowID);
+}
+
+/**
+ * HideCapture is the window's own Save/Cancel hand-off.
+ */
+export function HideCapture(): $CancellablePromise<void> {
+    return $Call.ByID(2546623058);
 }
 
 /**
@@ -649,6 +664,13 @@ export function SetAutoUpdateCheck(on: boolean): $CancellablePromise<void> {
 }
 
 /**
+ * SetCaptureDestination remembers where key's captures land.
+ */
+export function SetCaptureDestination(key: string, parentID: string): $CancellablePromise<void> {
+    return $Call.ByID(1339015142, key, parentID);
+}
+
+/**
  * SetDisplayDensity persists the preference. Rejects any value besides
  * the two locked tiers so a typo'd/future caller can't wedge the
  * preference into a state no CSS selector matches.
@@ -829,6 +851,15 @@ export function SetUpdateCheckInterval(pref: string): $CancellablePromise<void> 
  */
 export function SetWorkflowMinutesSaved(workflowID: string, minutes: number): $CancellablePromise<void> {
     return $Call.ByID(2551027173, workflowID, minutes);
+}
+
+/**
+ * ShowCapture points the window at a capture and brings it forward;
+ * the target is emitted first so a hidden-but-alive page has it before
+ * it is shown.
+ */
+export function ShowCapture(pluginID: string, captureID: string): $CancellablePromise<void> {
+    return $Call.ByID(4061206901, pluginID, captureID);
 }
 
 /**
