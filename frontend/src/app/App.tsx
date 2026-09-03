@@ -39,6 +39,7 @@ import { UnsavedChangesDialog } from './UnsavedChangesDialog'
 import { useReviewDeepLink } from './useReviewDeepLink'
 import { useKeymapDispatch } from './useKeymapDispatch'
 import { useBrowserNotify } from './useBrowserNotify'
+import { usePluginReviewNotice } from './usePluginReviewNotice'
 import styles from "./App.module.css";
 import { newLocalID } from '../shared/localId'
 
@@ -209,6 +210,7 @@ function App() {
   useEffect(() => {
     SettingsService.IsIsolatedData().then(setIsIsolatedData).catch(console.error);
   }, []);
+  usePluginReviewNotice()
 
   // Display density (docs/goals/0096): applied once here, on mount, so
   // a Compact preference holds from first paint even when Settings is

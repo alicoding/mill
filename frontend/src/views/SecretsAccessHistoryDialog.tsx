@@ -66,7 +66,7 @@ export function SecretsAccessHistoryDialog({ entryId, entryLabel, onClose }: {
   }, [])
 
   const refresh = useCallback(() => {
-    SecretService.ListSecretAccess({ entryId: entryId ?? '', limit: PAGE_SIZE, offset })
+    SecretService.ListSecretAccess({ entryId: entryId ?? '', actorPrefix: '', limit: PAGE_SIZE, offset })
       .then((resp) => {
         setRecords(resp.records ?? [])
         setTotal(resp.total)

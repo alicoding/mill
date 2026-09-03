@@ -38,6 +38,15 @@ export function ConvertHTMLToMarkdown(html: string): $CancellablePromise<string>
 }
 
 /**
+ * ExportPluginAudit assembles the document and returns it as JSON text
+ * (the frontend saves it through the same download door every other
+ * export uses).
+ */
+export function ExportPluginAudit(): $CancellablePromise<string> {
+    return $Call.ByID(233730988);
+}
+
+/**
  * FetchForPlugin performs one guarded fetch. Refusals that need no
  * rule -- undeclared capability, undeclared host, undeclared method,
  * a non-http(s) URL -- happen BEFORE the guardrail is consulted.

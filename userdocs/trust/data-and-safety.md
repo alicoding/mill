@@ -39,6 +39,12 @@ copy back leaves a line in your own access history.
 the machine until you approve it or a rule you wrote allows it.
 Agents get no shortcut around this.
 
+**Plugins run only with your say-so.** A plugin you install waits in
+Settings > Extensions, showing what it can request and reach, until
+you allow it; an administrator can pin the allowed set in the settings
+file; and Export plugin audit files what every plugin asked for and
+read ([Install a plugin](../reference/install-a-plugin.md)).
+
 **Execution environments are not a sandbox.** Run a command executes
 with your full user account — the pinned shell, directory, and
 environment give reproducibility, not confinement. Anything the

@@ -200,6 +200,14 @@ export function ExportSkillDoc(): $CancellablePromise<string> {
 }
 
 /**
+ * GetAllowedPlugins returns every plugin id the user allowed to run.
+ * Never nil.
+ */
+export function GetAllowedPlugins(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(110833324);
+}
+
+/**
  * GetAttentionIdleThreshold returns the configured idle-seconds
  * threshold: the presence gate below treats the user as away once
  * idletime.Seconds() reaches this, even while the window is focused --
@@ -288,6 +296,14 @@ export function GetMCPWriteApprovalRequired(): $CancellablePromise<boolean> {
  */
 export function GetMCPWriteEnabled(): $CancellablePromise<boolean> {
     return $Call.ByID(236919252);
+}
+
+/**
+ * GetPluginAllowlist returns the administrator's allow-list, empty
+ * when no policy is set. Never nil. Read-only from the UI by design.
+ */
+export function GetPluginAllowlist(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(72528832);
 }
 
 /**
@@ -715,6 +731,16 @@ export function SetOutboundProxyURL(raw: string): $CancellablePromise<void> {
  */
 export function SetPendingBadge(count: number): $CancellablePromise<void> {
     return $Call.ByID(4240483754, count);
+}
+
+/**
+ * SetPluginAllowed records (or withdraws) the user's consent for id to
+ * run, and emits the extension dataevent so the Extensions page
+ * refreshes. Withdrawing consent does not stop an already-activated
+ * plugin -- like disabling, it changes what loads at the next boot.
+ */
+export function SetPluginAllowed(id: string, allowed: boolean): $CancellablePromise<void> {
+    return $Call.ByID(1454348197, id, allowed);
 }
 
 /**

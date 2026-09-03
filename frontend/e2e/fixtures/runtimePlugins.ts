@@ -26,7 +26,10 @@ export interface ExtraPlugin {
 // extraExamples names further example folders to copy in (a plugin
 // that claims a gesture another example also claims stays out of the
 // shared set, so the other specs keep their claimant).
-export async function launchWithPlugins(offset: number, opts: { withBroken?: boolean; withNotifier?: boolean; extraPlugins?: ExtraPlugin[]; extraExamples?: string[] } = {}) {
+// settings pre-seeds Mill's settings file before boot (the store is one
+// JSON object of key -> JSON-encoded string), the way policy tooling
+// writes an administrator's plugin allow-list.
+export async function launchWithPlugins(offset: number, opts: { withBroken?: boolean; withNotifier?: boolean; extraPlugins?: ExtraPlugin[]; extraExamples?: string[]; settings?: Record<string, string> } = {}) {
 	const dir = mkdtempSync(path.join(tmpdir(), 'mill-plugins-e2e-'))
 	// The plugins dir is a per-test COPY of examples/plugins (the exact
 	// artifact a user copies from) -- never the repo folder itself, so
@@ -58,6 +61,7 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 }
 `)
 	}
+	if (opts.settings) writeFileSync(path.join(dir, 'settings.json'), JSON.stringify(opts.settings))
 	const server: SpawnedServer = await spawnMillServer({
 		port: RUNTIME_PLUGINS_SERVER_BASE_PORT + offset,
 		mcpPort: RUNTIME_PLUGINS_MCP_BASE_PORT + offset,
@@ -71,6 +75,7 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 	const page = await context.newPage()
 	return {
 		page,
+		pluginsDir,
 		async close() {
 			await browser.close()
 			await server.stop()

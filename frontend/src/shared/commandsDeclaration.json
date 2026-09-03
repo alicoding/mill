@@ -440,6 +440,13 @@
     "enabled": true
   },
   {
+    "id": "extensions.exportAudit",
+    "label": "Export plugin audit",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
     "id": "help.shortcuts",
     "label": "Keyboard shortcuts help",
     "binding": null,

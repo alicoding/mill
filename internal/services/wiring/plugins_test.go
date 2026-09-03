@@ -1,13 +1,18 @@
 package wiring
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/alicoding/mill/internal/services/atlassvc"
+	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/pluginsvc"
+	"github.com/alicoding/mill/internal/services/servicetest"
+	"github.com/alicoding/mill/internal/services/settingssvc"
+	"github.com/alicoding/mill/internal/services/triggersvc"
 )
 
 func writeVersionPinnedPlugin(t *testing.T, root string) {
@@ -77,16 +82,77 @@ func TestOrderPasteClaims(t *testing.T) {
 		}
 		return strings.Join(s, ",")
 	}
-	if got := kinds(orderPasteClaims(claims, nil, "")); got != "archive,bookmark,clip" {
+	all := func(pluginsvc.IngestionClaim) bool { return true }
+	if got := kinds(orderPasteClaims(claims, all, "")); got != "archive,bookmark,clip" {
 		t.Errorf("no preference = %q", got)
 	}
-	if got := kinds(orderPasteClaims(claims, nil, "clip")); got != "clip,archive,bookmark" {
+	if got := kinds(orderPasteClaims(claims, all, "clip")); got != "clip,archive,bookmark" {
 		t.Errorf("preferred clip = %q", got)
 	}
-	if got := kinds(orderPasteClaims(claims, map[string]bool{"mill-archive": true}, "bookmark")); got != "bookmark,clip" {
-		t.Errorf("disabled archive, preferred bookmark = %q", got)
+	notArchive := func(c pluginsvc.IngestionClaim) bool { return c.PluginID != "mill-archive" }
+	if got := kinds(orderPasteClaims(claims, notArchive, "bookmark")); got != "bookmark,clip" {
+		t.Errorf("archive may not run, preferred bookmark = %q", got)
 	}
-	if got := kinds(orderPasteClaims(claims, nil, "nobody")); got != "archive,bookmark,clip" {
+	if got := kinds(orderPasteClaims(claims, all, "nobody")); got != "archive,bookmark,clip" {
 		t.Errorf("unknown preference = %q", got)
+	}
+}
+
+// The one run-policy predicate: built-ins always run; an allow-list,
+// when set, excludes everything not on it; otherwise a plugin runs when
+// enabled AND allowed after review (ADR-0051 §4).
+func TestSettingsTrust_MayRun(t *testing.T) {
+	set, store := newSettingsForTrust(t)
+	trust := settingsTrust{set}
+	if trust.mayRun("mill-a", false) {
+		t.Fatal("an unreviewed plugin ran")
+	}
+	if !trust.mayRun("mill-drawing", true) {
+		t.Fatal("a built-in was gated")
+	}
+	if err := set.SetPluginAllowed("mill-a", true); err != nil {
+		t.Fatal(err)
+	}
+	if !trust.mayRun("mill-a", false) {
+		t.Fatal("an allowed plugin did not run")
+	}
+	if err := set.SetExtensionEnabled("mill-a", false); err != nil {
+		t.Fatal(err)
+	}
+	if trust.mayRun("mill-a", false) {
+		t.Fatal("a turned-off plugin ran")
+	}
+	if err := set.SetExtensionEnabled("mill-a", true); err != nil {
+		t.Fatal(err)
+	}
+	if err := set.SetPluginAllowed("mill-b", true); err != nil {
+		t.Fatal(err)
+	}
+	setPluginAllowlist(t, store, `["mill-b"]`)
+	if trust.mayRun("mill-a", false) {
+		t.Fatal("a plugin off the allow-list ran")
+	}
+	if !trust.mayRun("mill-b", false) {
+		t.Fatal("a listed, allowed plugin did not run")
+	}
+	if !trust.mayRun("mill-drawing", true) {
+		t.Fatal("the allow-list gated a built-in")
+	}
+}
+
+func newSettingsForTrust(t *testing.T) (*settingssvc.SettingsService, *servicetest.FakeStore) {
+	t.Helper()
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	trig := triggersvc.NewTriggerService(comp, slog.Default(), store)
+	return settingssvc.NewSettingsService(store, trig, false), store
+}
+
+// setPluginAllowlist writes the administrator's policy the way policy
+// tooling does -- straight into the settings store, never through a UI.
+func setPluginAllowlist(t *testing.T, store *servicetest.FakeStore, raw string) {
+	t.Helper()
+	if err := store.Set("settings-plugin-allowlist", raw); err != nil {
+		t.Fatal(err)
 	}
 }
