@@ -7,7 +7,8 @@ import '@glideapps/glide-data-grid/dist/index.css'
 import type { GridColumn, GridRow } from './listGridTypes'
 import { useListSchemaEdits } from './useListSchemaEdits'
 import { optionsRenderer } from './listGridGlideCells'
-import { GLIDE_DEFAULT_COLUMN_WIDTH, GLIDE_HEADER_HEIGHT, GLIDE_ROW_HEIGHT, paletteFromTokens } from './listGridGlideTheme'
+import { GLIDE_DEFAULT_COLUMN_WIDTH, GLIDE_HEADER_HEIGHT, GLIDE_HEADER_HEIGHT_COMPACT, GLIDE_ROW_HEIGHT, GLIDE_ROW_HEIGHT_COMPACT, paletteFromTokens } from './listGridGlideTheme'
+import { useDisplayDensity } from './density'
 import { anchorFromBounds, type Anchor } from './ListGridGlideMenus'
 import { GlideOverlays, schemaEditorProps, useGlideCellEdits, useGlideColumns, useRowTint, type GlideMenuState } from './ListGridGlideOverlays'
 import styles from './ListGrid.module.css'
@@ -107,7 +108,10 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
     return () => window.clearTimeout(id)
   }, [columns, openRename])
 
-  const height = GLIDE_HEADER_HEIGHT + (rows.length + (schemaEditing ? 1 : 0)) * GLIDE_ROW_HEIGHT + 2
+  const compact = useDisplayDensity() === 'compact'
+  const rowHeight = compact ? GLIDE_ROW_HEIGHT_COMPACT : GLIDE_ROW_HEIGHT
+  const headerHeight = compact ? GLIDE_HEADER_HEIGHT_COMPACT : GLIDE_HEADER_HEIGHT
+  const height = headerHeight + (rows.length + (schemaEditing ? 1 : 0)) * rowHeight + 2
 
   return (
     <div
@@ -121,8 +125,8 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
       data-col-types={columns.map((c) => ((c.Options?.length ?? 0) > 0 ? 'options' : c.Type || 'text')).join(',')}
       data-col-keys={columns.map((c) => c.Key).join(',')}
       data-col-deprecated={columns.filter((c) => c.Deprecated).map((c) => c.Key).join(',')}
-      data-header-height={GLIDE_HEADER_HEIGHT}
-      data-row-height={GLIDE_ROW_HEIGHT}
+      data-header-height={headerHeight}
+      data-row-height={rowHeight}
       // Arrow keys and typing inside the grid belong to the grid --
       // never to the board's node keyboard handling (which would move
       // the object) nor the canvas's own shortcuts; a right-click is
@@ -147,8 +151,8 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
             getRowThemeOverride={getRowThemeOverride}
             width="100%"
             height={Math.min(420, height)}
-            rowHeight={GLIDE_ROW_HEIGHT}
-            headerHeight={GLIDE_HEADER_HEIGHT}
+            rowHeight={rowHeight}
+            headerHeight={headerHeight}
             rowMarkers="number"
             smoothScrollX
             smoothScrollY
