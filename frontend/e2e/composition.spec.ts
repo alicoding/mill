@@ -98,8 +98,9 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   // trigger-clipboard-change, apply-clipboard-history-store (goal
   // 0234's guarded clipboard-history capture) + process-shell-command
   // (the coding loop's verbatim-shell-execution node, goal 0240 S1) +
-  // apply-list-sync (the synced List's writer, goal 0299).
-  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(48)
+  // apply-list-sync (the synced List's writer, goal 0299) +
+  // process-todo-scan (goal 0285).
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(49)
 })
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {
