@@ -137,9 +137,11 @@ declaration fields that open this up:
   `screenToFlowPosition`, `styleValues`, `createObject(payload,
   flowPos, opts?)` (scoped to your own kind; lands, syncs, and undoes
   like any placement — `opts.size` sets the placed size, `opts.select`
-  selects it), and `saveImageBytes(base64, ext, title)` for baking
+  selects it), `saveImageBytes(base64, ext, title)` for baking
   drawn bytes into a Mill-owned file a file-backed object's payload
-  can point at. `renderPreview(el, points, now)` draws the live
+  can point at, and `itemsInRect(rect)` for the ids of the top-level
+  cards, notes and objects whose center falls inside a board-space
+  rect (the rule the built-in Area tool uses). `renderPreview(el, points, now)` draws the live
   in-drag stroke into a host-owned overlay element. Drag tools stay
   armed across strokes by default (`sticky: false` opts out, and a
   non-sticky tool may add `lockable: true` so re-clicking its armed
@@ -322,6 +324,15 @@ as sent by the extension. The value is redacted from the response
 before the plugin sees it — a server echoing the token back gets
 `[redacted]`.
 
+## Opening a path in another app, and listing a folder
+
+Two more guarded doors, both declared as capabilities:
+
+- `open-app` — `ctx.requestGuardedAction('open-app', { app: 'Bruno', path: '/abs/folder' }, 'Open the collection in Bruno')` hands a local path to a named application through the OS's own open-with. It asks like every guarded action (Review shows the plugin's name) and, once approved, opens the app.
+- `list-files` — `api.files.list('/abs/folder')` returns the folder's direct children (`{ name, path, isDir, size }`), hidden entries and dependency folders left out. It is a read: allowed unless one of your rules denies or parks it, and audited either way; `entries` is empty when it was not approved.
+
+The Bruno collection example uses both: its face lists the collection's requests and offers "Open in Bruno".
+
 ## Writing to the board
 
 A plugin creates notes and cards, updates cards, and adds rows to a
@@ -340,12 +351,16 @@ const note = await api.content.createNote({ text: 'Call the bank\ntomorrow', par
 const card = await api.content.createCard({ kindId, title: 'Acme', fields: { status: 'active' } })
 await api.content.updateCard(card.id, { note: 'Renewal due in March' })
 await api.content.appendListRow(listId, { vendor: 'Acme', tier: 'gold' })
+const list = await api.content.createList({ title: 'Vendors', columns: [{ name: 'Vendor' }, { name: 'Tier', type: 'text' }], rows: [{ Vendor: 'Acme', Tier: 'gold' }] })
 if (!note.approved) api.notify({ level: 'warning', text: 'Not allowed' + (note.ruleLabel ? ' (' + note.ruleLabel + ')' : '') })
 ```
 
 A note without a position lands just right of the last item in its
 parent. A denied write resolves with `approved: false`; an approved
-one carries the new entity's `id`.
+one carries the new entity's `id`. `createList` takes columns by
+display name with an optional type (`text`, `number`, `integer`,
+`boolean`, `date`, `datetime`; text when omitted) and first rows keyed
+by column name.
 
 ## Workflow steps
 
@@ -382,6 +397,35 @@ hanging it. Config fields are text or a fixed option list. The step
 appears in the palette under Transform as "<label>", and the
 Extensions row lists "Adds workflow steps". The **Text case** example
 (`examples/plugins/mill-textcase`) is the whole pattern in one file.
+
+## Captures
+
+A plugin can offer a quick capture: a small face that opens in its own
+floating window from the Quick Panel or the command palette, away from
+the canvas, and lands what the user writes where they choose. Declare
+it in the manifest and register the face:
+
+```json
+"contributes": { "captures": [ { "id": "thought", "label": "Thought", "description": "A one-line thought." } ] }
+```
+
+```js
+api.registerCapture({
+  id: 'thought',
+  render(el, ctx) {
+    // Draw the face into el. ctx.destinationId is the card the user
+    // chose in the window's header ("" for the top level) -- pass it
+    // as parentId to a content door, then call ctx.done().
+    // ctx.cancel() closes without writing.
+  },
+})
+```
+
+The Quick Panel lists "New <label>…" straight off the manifest, so the
+row is there before any plugin code runs; the capture window loads the
+plugin and calls `render`. Writes go through the same guarded content
+doors as everywhere else. Mill's own note is the first capture (the
+"New note…" row); the destination is remembered per capture.
 
 ## Views
 
@@ -451,6 +495,32 @@ guarded network door, extracts the article with Mozilla's Readability
 guarded content door. Copy any folder into your plugins
 folder to try it, or use it as the starting point for your own.
 
+## Integrating a real tool
+
+Mill never rebuilds a tool you already use; it puts the tool's files
+and its command line on the board and in workflows. The pattern, with
+Bruno (an API client) as the worked example:
+
+1. **Find the tool's own seams.** Bruno keeps a collection as a folder
+   of `.bru` files with a `bruno.json`, and its CLI runs one with
+   `bru run --reporter-json`. Files and a CLI are exactly what Mill
+   integrates through -- a file-backed object kind and a shell step.
+2. **Place the artifact as an object.** The Bruno collection example
+   (`examples/plugins/mill-bruno`) registers a file-backed kind over
+   `bruno.json`: the face names the collection, lists its requests
+   through the files door, and offers "Open in Bruno" through the
+   open-app door. Editing stays in Bruno.
+3. **Run it as a workflow.** The seeded "Example: Run a Bruno
+   collection" runs the CLI on an execution environment, reads the JSON
+   report it wrote, and lands the results as rows of the seeded "Bruno
+   results" List -- guarded and audited like every command Mill runs.
+4. **Keep secrets in the tool's own store.** Bruno reads a `.env` at
+   the collection root; point Configure > Secret sources at that file
+   and the keys appear in every secret picker without a copy.
+
+Nothing here is Bruno-specific in the platform: the same four moves
+fit any tool with files and a command line.
+
 ## Checking a plugin
 
 Two commands run the same checks Mill's own examples pass:
@@ -478,7 +548,7 @@ export function activate(api) {
     label: 'My thing',
     icon: '⭐',
     source: 'board-local',
-    editRoute: 'inline',
+    editRoute: 'inline', // or 'external-app' | 'none', or (object) => one of them
     defaultPayload: {},
     renderFace(el, ctx) {
       // Draw into el with plain DOM. ctx.object holds the data;
@@ -499,6 +569,14 @@ element off the board at exactly that size, unscaled; render there,
 copy the finished drawing into `el`, then call the detach it returned.
 The Mind map example does exactly this on every repaint, and Mill
 detaches anything you left mounted when the object leaves the board.
+
+## Scheduled and background work
+
+There is no timer or alarm API. Work that should happen on a schedule,
+on an event, or while no window is open is a workflow: ship a
+workflow that uses your step or object, and it runs, pauses for
+approval, and shows in Activity like anything a user builds. Your
+plugin can open or reference it, and a user can edit it.
 
 The full contract — every field, every capability, and what stays
 stable between versions — is in [Extending the canvas](extending-the-canvas.md).

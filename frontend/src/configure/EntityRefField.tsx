@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dialog, FormControl, Link, Select, Text, TextInput } from '@primer/react'
 import { findCommand } from '../shared/commands'
+import { ReferencePeek } from './ReferencePeek'
 import { AtlasService, CompositionService, ConfigureService } from '../shared/bindings'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -56,6 +57,8 @@ async function fetchEntities(refKind: string): Promise<Entity[]> {
       return (await ConfigureService.ExecEnvs()) ?? []
     case 'aiprovider':
       return (await ConfigureService.AIProviders()) ?? []
+    case 'conversionprofile':
+      return (await ConfigureService.ConversionProfiles()) ?? []
     // docs/goals/0066: atlas-card-* steps' Kind/Relation pickers -- a
     // bindings-populated dropdown over Atlas's own user-declared Kinds/
     // LinkKinds, the same "reuse the existing picker, parameterized by
@@ -79,6 +82,7 @@ function kindNounFor(t: (key: string) => string): Record<string, string> {
     decision: t('entityRefField.kindNoun.decision'),
     execenv: t('entityRefField.kindNoun.execenv'),
     aiprovider: t('entityRefField.kindNoun.aiprovider'),
+    conversionprofile: t('entityRefField.kindNoun.conversionprofile'),
     'atlas-kind': t('entityRefField.kindNoun.atlas-kind'),
     'atlas-linkkind': t('entityRefField.kindNoun.atlas-linkkind'),
   }
@@ -87,7 +91,7 @@ function kindNounFor(t: (key: string) => string): Record<string, string> {
 // docs/adr/0010 §2: no quick-create for a workflow reference -- creating
 // one is Composition's own existing "New workflow" flow, not a
 // lightweight sub-form; the picker only lists what already exists.
-const QUICK_CREATABLE_KINDS = new Set(['request', 'list', 'mcpserver', 'decision', 'execenv', 'aiprovider'])
+const QUICK_CREATABLE_KINDS = new Set(['request', 'list', 'mcpserver', 'decision', 'execenv', 'aiprovider', 'conversionprofile'])
 
 // readOnly (goal 0297): a read-only canvas never shows a control that
 // does nothing -- the field renders its VALUE (the entity's label, or
@@ -121,22 +125,7 @@ export function EntityRefField({ refKind, value, onChange, readOnly }: { refKind
   }
 
   if (readOnly) {
-    const editCommand = findCommand('workflow.edit')
-    const canEdit = editCommand ? (editCommand.enabled?.() ?? true) : false
-    const label = entities === null ? t('loading') : (entities.find((e) => e.ID === value)?.Label ?? (value ? t('entityRefField.unknownEntity', { noun: KIND_NOUN[refKind], value }) : t('entityRefField.none')))
-    return (
-      <Text as="p" size="small" data-testid="entity-ref-readonly" style={{ margin: 0 }}>
-        {label}
-        {canEdit && (
-          <>
-            {' · '}
-            {/* An anchor, not a button: buttons inside the inspector's
-                disabled fieldset are disabled with it; anchors are not. */}
-            <Link href="#" onClick={(e) => { e.preventDefault(); editCommand?.run() }} data-testid="entity-ref-edit">{t('entityRefField.edit')}</Link>
-          </>
-        )}
-      </Text>
-    )
+    return <ReadOnlyReference refKind={refKind} value={value} entities={entities} noun={KIND_NOUN[refKind]} />
   }
   return (
     <>
@@ -162,6 +151,7 @@ export function EntityRefField({ refKind, value, onChange, readOnly }: { refKind
         )}
       </Select>
       {error && <span>{error}</span>}
+      <ReferencePeek refKind={refKind} id={entities?.some((e) => e.ID === value) ? value : ''} noun={KIND_NOUN[refKind] ?? refKind} />
       {/* An empty callable-workflow list is a dead end without saying
           how to fix it (reported from live use: "Select a callable
           workflow…" with zero options and no hint) -- name the exact
@@ -337,5 +327,28 @@ function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; 
       )}
       {error && <FormControl.Caption>{error}</FormControl.Caption>}
     </Dialog>
+  )
+}
+
+// The read-only rendering (goal 0297): the entity's label (or None),
+// an Edit link when the tab can switch to edit, and the peek/open
+// doors (goal 0312) -- anchors, never buttons, since buttons inside
+// the inspector's disabled fieldset are disabled with it.
+function ReadOnlyReference({ refKind, value, entities, noun }: { refKind: string; value: string; entities: Entity[] | null; noun: string }) {
+  const { t } = useTranslation('configure')
+  const editCommand = findCommand('workflow.edit')
+  const canEdit = editCommand ? (editCommand.enabled?.() ?? true) : false
+  const label = entities === null ? t('loading') : (entities.find((e) => e.ID === value)?.Label ?? (value ? t('entityRefField.unknownEntity', { noun, value }) : t('entityRefField.none')))
+  return (
+    <Text as="p" size="small" data-testid="entity-ref-readonly" style={{ margin: 0 }}>
+      {label}
+      {canEdit && (
+        <>
+          {' · '}
+          <Link href="#" onClick={(e) => { e.preventDefault(); editCommand?.run() }} data-testid="entity-ref-edit">{t('entityRefField.edit')}</Link>
+        </>
+      )}
+      <ReferencePeek refKind={refKind} id={value} noun={noun} />
+    </Text>
   )
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+import { useAtlasGestureCtx } from './useAtlasGestureCtx'
 import { useRenderStormGuard } from '../shared/renderStormGuard'
 import { useAtlasDeleteKey } from './useAtlasDeleteKey'
 import { useTranslation } from 'react-i18next'
@@ -20,7 +21,6 @@ import { useAtlasCreation } from './useAtlasCreation'
 import { useAtlasArmedTool } from './useAtlasArmedTool'
 import { useAtlasToolGesture } from './useAtlasToolGesture'
 import { ATLAS_TOOLS } from './atlasTools'
-import type { AtlasGestureCtx } from './atlasNounRegistry'
 import { useAtlasDragFiling, type FrameBox } from './useAtlasDragFiling'
 import { AtlasDragHighlightContext } from './atlasDragHighlightContext'
 import type { AtlasBoardInnerProps } from './atlasBoardInnerProps'
@@ -310,19 +310,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   ), [nodes, isFree])
   useEffect(() => { objectBoxesRef.current = objectBoxes }, [objectBoxes])
 
-  const gestureCtx: AtlasGestureCtx = useMemo(() => ({
-    screenToFlowPosition,
-    parentID,
-    cardBoxes: topLevelBoxes,
-    noteBoxes,
-    objectBoxes,
-    onDeleteSelection,
-    openAreaPopover: creation.openAreaPopover,
-    onShapeCreated: selection.selectObject,
-    disarm: creation.disarm,
-    disarmUnlessLocked: creation.disarmUnlessLocked,
-    hitAccumulator: { cardIDs: new Set(), noteIDs: new Set(), objectIDs: new Set() },
-  }), [screenToFlowPosition, parentID, topLevelBoxes, noteBoxes, objectBoxes, onDeleteSelection, creation.openAreaPopover, creation.disarm, creation.disarmUnlessLocked, selection.selectObject])
+  const gestureCtx = useAtlasGestureCtx({ screenToFlowPosition, parentID, cardBoxes: topLevelBoxes, noteBoxes, objectBoxes, onDeleteSelection, openAreaPopover: creation.openAreaPopover, onShapeCreated: selection.selectObject, disarm: creation.disarm, disarmUnlessLocked: creation.disarmUnlessLocked })
 
   const gesture = useAtlasToolGesture({ tool: armedToolDescriptor, readOnly, isFree, ctx: gestureCtx, wrapperRef })
 

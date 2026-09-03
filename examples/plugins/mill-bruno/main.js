@@ -62,6 +62,48 @@ export function activate(api) {
 		input.addEventListener('blur', commit)
 
 		el.append(title, meta, input)
+
+		// The collection folder is the manifest's own folder: its requests
+		// are the .bru files (one level, plus folders), listed through the
+		// files door; "Open in Bruno" hands the folder to the real app.
+		const folder = collectionDir(ctx.object.Payload.mirrorPath)
+		if (folder && manifest) {
+			const actions = document.createElement('div')
+			actions.style.cssText = 'display:flex;gap:6px;align-items:center'
+			const open = document.createElement('button')
+			open.textContent = 'Open in Bruno'
+			open.className = 'nodrag'
+			open.setAttribute('data-testid', 'bruno-open')
+			const status = document.createElement('span')
+			status.setAttribute('data-testid', 'bruno-open-status')
+			status.style.cssText = 'color:#57606a'
+			open.addEventListener('click', () => {
+				status.textContent = 'Asking…'
+				ctx.requestGuardedAction('open-app', { app: 'Bruno', path: folder }, 'Open the collection in Bruno')
+					.then((r) => { status.textContent = r.approved ? (r.performed ? 'Opened.' : 'Approved.') : 'Not allowed' + (r.ruleLabel ? ' (' + r.ruleLabel + ')' : '') })
+					.catch(() => { status.textContent = 'Could not open Bruno.' })
+			})
+			actions.append(open, status)
+			const list = document.createElement('ul')
+			list.setAttribute('data-testid', 'bruno-requests')
+			list.style.cssText = 'margin:0;padding-left:16px;color:#1f2328;max-height:140px;overflow:auto'
+			api.files.list(folder).then((r) => {
+				if (!r.approved) { list.textContent = 'Requests not listed' + (r.ruleLabel ? ' (' + r.ruleLabel + ')' : '') + '.'; return }
+				const requests = r.entries.filter((e) => !e.isDir && e.name.endsWith('.bru'))
+				const folders = r.entries.filter((e) => e.isDir && e.name !== 'environments')
+				for (const f of folders) { const li = document.createElement('li'); li.textContent = f.name + '/'; list.append(li) }
+				for (const q of requests) { const li = document.createElement('li'); li.textContent = q.name.replace(/\.bru$/, ''); list.append(li) }
+				if (!list.childElementCount) list.textContent = 'No requests yet.'
+			}).catch(() => { list.textContent = 'Could not list the requests.' })
+			el.append(actions, list)
+		}
+	}
+
+	// collectionDir: the folder holding bruno.json (an absolute path).
+	function collectionDir(mirrorPath) {
+		const p = (mirrorPath || '').trim()
+		if (!p.startsWith('/')) return ''
+		return p.slice(0, p.lastIndexOf('/')) || '/'
 	}
 
 	// readManifest decodes the mirrored bruno.json (a data: URL the host

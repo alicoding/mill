@@ -80,7 +80,7 @@ test('Creating a request with an OpenAPI spec and listing its operations', async
   await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
   await page.getByTestId('toggle-raw-openapi').click()
   await page.getByTestId('request-openapi-spec').fill(sampleSpec)
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
 
   const row = requestRow(page, 'Sample Request')
   await expect(row).toBeVisible()
@@ -112,7 +112,7 @@ test('An invalid OpenAPI spec is rejected with a visible error', async ({ page }
   await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
   await page.getByTestId('toggle-raw-openapi').click()
   await page.getByTestId('request-openapi-spec').fill('not an openapi spec')
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
 
   // "OpenAPI spec: ..." (the error's own wrapped-message prefix,
   // configureservice.go's validateOpenAPISpec) -- distinct from the
@@ -137,7 +137,7 @@ test('A request persists custom headers and shows them in its Details tab', asyn
   await page.getByTestId('add-request-header').click()
   await page.getByTestId('request-header-key').fill('X-Client-Version')
   await page.getByTestId('request-header-value').fill('42')
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
 
   const row = requestRow(page, 'Header Request')
   await expect(row).toBeVisible()
@@ -164,7 +164,7 @@ test('Showing an operation\'s schema reveals its declared fields, with the secre
   await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
   await page.getByTestId('toggle-raw-openapi').click()
   await page.getByTestId('request-openapi-spec').fill(schemaSpec)
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
 
   await openRequestView(page, 'Schema Request')
 
@@ -197,7 +197,7 @@ test('A request with no OpenAPI spec shows no declared schema', async ({ page })
   await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('Plain Request')
   await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
 
   const row = requestRow(page, 'Plain Request')
   await expect(row).toBeVisible()

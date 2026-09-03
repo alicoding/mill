@@ -1,0 +1,23 @@
+/* The reference peek's summary (goal 0312): a compact label/value
+   list in the inspector's own type scale. */
+.summary {
+  margin: var(--base-size-4) 0 0;
+  display: grid;
+  gap: var(--base-size-4);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(64px, auto) 1fr;
+  gap: var(--base-size-8);
+  font-size: var(--text-body-size-small);
+}
+
+.row dt {
+  color: var(--fgColor-muted);
+}
+
+.row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

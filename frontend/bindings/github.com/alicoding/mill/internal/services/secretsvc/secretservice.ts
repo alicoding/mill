@@ -169,6 +169,15 @@ export function SetupVault(): $CancellablePromise<void> {
 }
 
 /**
+ * SourceProblems reports, per source id, why a source currently lists
+ * nothing ("" for a healthy one): a missing or locked CLI, an
+ * unreadable file or collection. The Configure row shows it.
+ */
+export function SourceProblems(): $CancellablePromise<{ [_ in string]?: string } | null> {
+    return $Call.ByID(2210922477);
+}
+
+/**
  * UnlockVault fetches the master key -- from the keychain directly, or
  * (goal 0204) via the presence-gated read when Touch ID protection is
  * on, which blocks through the system authentication prompt -- and

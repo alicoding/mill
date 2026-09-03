@@ -5,6 +5,7 @@ import type { Decision } from '../../bindings/github.com/alicoding/mill/internal
 import type { MCPServer } from '../../bindings/github.com/alicoding/mill/internal/domain/mcpserver/models'
 import type { ExecEnv } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
 import type { Source as SecretSource } from '../../bindings/github.com/alicoding/mill/internal/domain/secretsource/models'
+import type { Profile as ConversionProfile } from '../../bindings/github.com/alicoding/mill/internal/domain/conversionprofile/models'
 import type { AIProvider } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 import type { DeclaredStepType } from '../../bindings/github.com/alicoding/mill/internal/domain/declaredsteptype/models'
 
@@ -28,6 +29,7 @@ interface ConfigureEntityState {
   mcpServers: MCPServer[] | null
   execEnvs: ExecEnv[] | null
   secretSources: SecretSource[] | null
+  conversionProfiles: ConversionProfile[] | null
   aiProviders: AIProvider[] | null
   declaredStepTypes: DeclaredStepType[] | null
   setLists: (lists: List[]) => void
@@ -35,6 +37,7 @@ interface ConfigureEntityState {
   setMCPServers: (mcpServers: MCPServer[]) => void
   setExecEnvs: (execEnvs: ExecEnv[]) => void
   setSecretSources: (secretSources: SecretSource[]) => void
+  setConversionProfiles: (conversionProfiles: ConversionProfile[]) => void
   setAIProviders: (aiProviders: AIProvider[]) => void
   setDeclaredStepTypes: (declaredStepTypes: DeclaredStepType[]) => void
 }
@@ -45,6 +48,7 @@ export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => (
   mcpServers: null,
   execEnvs: null,
   secretSources: null,
+  conversionProfiles: null,
   aiProviders: null,
   declaredStepTypes: null,
   setLists: (lists) => set({ lists }),
@@ -52,6 +56,7 @@ export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => (
   setMCPServers: (mcpServers) => set({ mcpServers }),
   setExecEnvs: (execEnvs) => set({ execEnvs }),
   setSecretSources: (secretSources) => set({ secretSources }),
+  setConversionProfiles: (conversionProfiles) => set({ conversionProfiles }),
   setAIProviders: (aiProviders) => set({ aiProviders }),
   setDeclaredStepTypes: (declaredStepTypes) => set({ declaredStepTypes }),
 }))
@@ -82,6 +87,12 @@ export function refreshMCPServers(): Promise<void> {
 export function refreshExecEnvs(): Promise<void> {
   return ConfigureService.ExecEnvs()
     .then((list) => useConfigureEntityStore.getState().setExecEnvs(list ?? []))
+    .catch(console.error)
+}
+
+export function refreshConversionProfiles(): Promise<void> {
+  return ConfigureService.ConversionProfiles()
+    .then((list) => useConfigureEntityStore.getState().setConversionProfiles(list ?? []))
     .catch(console.error)
 }
 

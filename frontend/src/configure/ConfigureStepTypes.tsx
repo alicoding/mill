@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { Button, FormControl, Heading, IconButton, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
 import { DownloadIcon, InfoIcon, PackageIcon, PencilIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
@@ -15,7 +16,6 @@ import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
-import { useConfirmDelete } from '../shared/useConfirmDelete'
 import { useImportConfirm } from '../shared/useImportConfirm'
 import { PALETTE_GROUP_LABEL, PALETTE_GROUP_ORDER } from '../shared/paletteGroups'
 import { bindingComplete, bindingFieldKeysFor, engineNodeTypeIdFor } from './declaredStepTypeEngine'
@@ -139,15 +139,9 @@ export function ConfigureStepTypes() {
     }
   }
 
-  const remove = (id: string) => {
-    ConfigureService.DeleteDeclaredStepType(id).then(refetch).catch(console.error)
+  const remove = (id: string, label: string) => {
+    void deleteWithUndo({ entity: 'steptype', id, label, remove: () => ConfigureService.DeleteDeclaredStepType(id), refetch: refetch, onError: console.error })
   }
-
-  const { requestDelete, dialog: confirmDialog } = useConfirmDelete<DeclaredStepType>({
-    entityType: 'step type',
-    labelOf: (d) => d.Label,
-    onConfirm: (d) => remove(d.ID),
-  })
 
   // The underlying engine's own raw ConfigFields (not the synthesized
   // declared view -- that already has PinnedConfig/HiddenFields applied,
@@ -178,9 +172,8 @@ export function ConfigureStepTypes() {
       { label: t('export'), onClick: () => exportStepType(d.ID, d.Label) },
       {
         label: t('delete'),
-        onClick: () => remove(d.ID),
+        onClick: () => remove(d.ID, d.Label),
         danger: true,
-        confirm: { title: t('configureStepTypes.deleteConfirmTitle'), body: t('configureStepTypes.deleteConfirmBody', { label: d.Label }) },
       },
     ],
   }))
@@ -304,7 +297,7 @@ export function ConfigureStepTypes() {
                   <Stack direction="horizontal" gap="condensed">
                     <IconButton icon={PencilIcon} aria-label={t('configureStepTypes.editAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => startEdit(d)} />
                     <IconButton icon={DownloadIcon} aria-label={t('configureStepTypes.exportAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => exportStepType(d.ID, d.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={t('configureStepTypes.deleteAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => requestDelete(d)} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureStepTypes.deleteAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => remove(d.ID, d.Label)} />
                   </Stack>
                 ),
               },
@@ -324,7 +317,6 @@ export function ConfigureStepTypes() {
           }}
         />
       )}
-      {confirmDialog}
       {importConfirm.dialog}
     </PageContainer>
   )

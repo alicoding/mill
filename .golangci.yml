@@ -60,6 +60,13 @@ linters:
       # for the full reasoning).
       - path: internal/services/configuresvc/configureservice_import_generic\.go
         linters: [dupl]
+      # The entity store's Descriptor literal (goal 0165) is declarative
+      # wiring every seeded entity declares once -- the same six
+      # accessors in the same order. Two such literals read as a clone
+      # to dupl's tokenizer; folding them behind more accessor
+      # indirection would hide the wiring, not remove duplication.
+      - path: internal/services/configuresvc/configure(secretsource|conversionprofile)\.go
+        linters: [dupl]
 
   settings:
     dupl:

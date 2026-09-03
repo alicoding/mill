@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { promoteBoardObject, nonSeededBoardObjects, zoomAllTheWayOut } from './fixtures/atlasBoard'
 import { createBoardObjectViaRPC, ATLAS_DEFAULT_SPACE_ID } from './fixtures/atlasNativeDropEscapeHatch'
+import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { ATLAS_KIND_DOCUMENT } from './fixtures/kindPicker'
 import { waitForViewportStable } from './fixtures/animation'
 import { wheelAt } from './fixtures/pointer'
@@ -261,6 +262,64 @@ test('an exported draw.io .xml renders as a diagram board object through the ven
   await expect(page.getByTestId('atlas-object-diagram-error')).toHaveCount(0)
 
   // Cleanup.
+  await diagramObject.click({ button: 'right' })
+  const menu = page.getByTestId('context-menu')
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+  await expect(diagramObjects(page)).toHaveCount(0)
+})
+
+// Regression (goal 0311): a face taller than its sized object never
+// paints past the object's box -- the shared wrapper clips every kind,
+// so the band stays the object's top edge and neighbours are never
+// painted over.
+test('a drawing taller than its resized object is clipped to the object box', async ({ page }) => {
+  const fs = await import('node:fs')
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mill-e2e-diagram-clip-'))
+  const drawioFile = path.join(dir, 'ZzE2eDiagramClip.drawio')
+  fs.writeFileSync(drawioFile, DRAWIO_XML)
+
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+  await createBoardObjectViaRPC(page, 'diagram', { mirrorPath: drawioFile }, { X: 0, Y: 1300 }, ATLAS_DEFAULT_SPACE_ID)
+  await page.reload()
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const diagramObject = diagramObjects(page)
+  await expect(diagramObject.getByText('Start')).toBeVisible()
+
+  // Shrink the object well below the viewer's own minimum height
+  // through the same door a resize handle uses.
+  const objectID = await diagramObject.locator('..').getAttribute('data-id')
+  expect(objectID).toBeTruthy()
+  await callBindingViaRPC(page, 'github.com/alicoding/mill/internal/services/atlassvc.AtlasService.SetBoardObjectSize', [objectID, { W: 260, H: 40 }])
+
+  await expect.poll(async () => {
+    const box = await diagramObject.boundingBox()
+    return box ? Math.round(box.height) : 0
+  }).toBeLessThan(80)
+  const objectBox = (await diagramObject.boundingBox())!
+  const drawing = diagramObject.locator('[data-testid="atlas-drawio-page-body"] svg').first()
+  const drawingBox = (await drawing.boundingBox())!
+  // The drawing is taller than the box, but what is VISIBLE stops at
+  // the box: the wrapper clips.
+  const clipped = await diagramObject.locator('[class*="content"]').first().evaluate((el) => getComputedStyle(el).overflow)
+  expect(clipped).toBe('hidden')
+  expect(drawingBox.height).toBeGreaterThan(objectBox.height)
+  const visibleBottom = await drawing.evaluate((el) => {
+    const r = el.getBoundingClientRect()
+    let parent = el.parentElement
+    let bottom = r.bottom
+    while (parent) {
+      if (getComputedStyle(parent).overflow !== 'visible') bottom = Math.min(bottom, parent.getBoundingClientRect().bottom)
+      parent = parent.parentElement
+    }
+    return bottom
+  })
+  expect(visibleBottom).toBeLessThanOrEqual(objectBox.y + objectBox.height + 1)
+
   await diagramObject.click({ button: 'right' })
   const menu = page.getByTestId('context-menu')
   await expect(menu).toBeVisible()

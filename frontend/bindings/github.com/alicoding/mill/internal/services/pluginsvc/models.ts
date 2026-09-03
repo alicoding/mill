@@ -21,6 +21,15 @@ export interface CanvasObjectContribution {
 }
 
 /**
+ * CaptureContribution is one declared capture.
+ */
+export interface CaptureContribution {
+    "id": string;
+    "label": string;
+    "description": string;
+}
+
+/**
  * ContentWriter is the seam pluginsvc writes through; nil until wired.
  */
 export type ContentWriter = any;
@@ -76,6 +85,12 @@ export interface ManifestContributes {
     "steps": StepContribution[] | null;
 
     /**
+     * Captures (goal 0309, pluginservice_captures.go): quick-capture
+     * surfaces the plugin renders in the capture window.
+     */
+    "captures": CaptureContribution[] | null;
+
+    /**
      * Settings (docs/goals/0258 slice 1): the plugin's own declared
      * user settings, the same declare -> host renders/stores/serves
      * contract compiled-in nouns use. Declared in the manifest, not
@@ -111,8 +126,20 @@ export interface NetworkContribution {
 }
 
 /**
+ * PluginCapture is one runnable plugin's declared capture as the Quick
+ * Panel and the palette list it.
+ */
+export interface PluginCapture {
+    "pluginId": string;
+    "pluginName": string;
+    "id": string;
+    "label": string;
+    "description": string;
+}
+
+/**
  * PluginContentWrite is one ask. Op is "note", "card", "card-update",
- * or "list-row"; the other fields apply per op.
+ * "list-row", or "list"; the other fields apply per op.
  */
 export interface PluginContentWrite {
     "op": string;
@@ -126,6 +153,14 @@ export interface PluginContentWrite {
     "fields": { [_ in string]?: string } | null;
     "values": { [_ in string]?: string } | null;
     "position": atlas$0.Position | null;
+
+    /**
+     * The "list" op: Title names the list; Rows are keyed by column
+     * name (or derived key).
+     */
+    "description": string;
+    "columns": PluginListColumn[] | null;
+    "rows": ({ [_ in string]?: string } | null)[] | null;
 }
 
 /**
@@ -184,6 +219,16 @@ export interface PluginFetchSecret {
 }
 
 /**
+ * PluginFileEntry is one listed entry.
+ */
+export interface PluginFileEntry {
+    "name": string;
+    "path": string;
+    "isDir": boolean;
+    "size": number;
+}
+
+/**
  * PluginInfo is one scanned plugin as the Extensions surface and the
  * loader see it. Error is a load-blocking validation problem stated
  * for the human (the row renders it; the loader skips the plugin) --
@@ -212,6 +257,27 @@ export interface PluginInfo {
      */
     "SigningPolicy": boolean;
     "Signed": boolean;
+}
+
+/**
+ * PluginListColumn is one column of a plugin-created list: a display
+ * name (its key is derived) and an optional type from listColumnTypes
+ * (text when empty).
+ */
+export interface PluginListColumn {
+    "name": string;
+    "type": string;
+}
+
+/**
+ * PluginListDirResult carries the verdict and, when approved, the
+ * entries.
+ */
+export interface PluginListDirResult {
+    "approved": boolean;
+    "effect": string;
+    "ruleLabel": string;
+    "entries": PluginFileEntry[] | null;
 }
 
 /**

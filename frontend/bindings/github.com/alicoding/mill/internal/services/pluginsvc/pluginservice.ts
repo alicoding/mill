@@ -31,6 +31,14 @@ export function AssetMiddleware(): $CancellablePromise<any> {
 }
 
 /**
+ * Captures lists every runnable plugin's declared captures, by plugin
+ * then capture id.
+ */
+export function Captures(): $CancellablePromise<$models.PluginCapture[] | null> {
+    return $Call.ByID(3991103051);
+}
+
+/**
  * ContentHashOf answers the current hash of an installed plugin by id
  * ("" for a built-in or an unreadable folder) -- the run policy's
  * comparison input.
@@ -66,6 +74,14 @@ export function ExportPluginAudit(): $CancellablePromise<string> {
  */
 export function FetchForPlugin(pluginID: string, req: $models.PluginFetchRequest): $CancellablePromise<$models.PluginFetchResult> {
     return $Call.ByID(1434947460, pluginID, req);
+}
+
+/**
+ * ListDirForPlugin lists dir for pluginID under the "list-files"
+ * capability.
+ */
+export function ListDirForPlugin(pluginID: string, dir: string): $CancellablePromise<$models.PluginListDirResult> {
+    return $Call.ByID(3623751117, pluginID, dir);
 }
 
 /**

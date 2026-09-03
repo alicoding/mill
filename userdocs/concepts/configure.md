@@ -6,11 +6,18 @@ the endpoint later is a single edit that both workflows pick up.
 
 Configure holds the things workflows and boards *point at* — the
 values two independently-authored workflows should share, where
-drifting apart would be a bug:
+drifting apart would be a bug. Deleting any of them takes effect at
+once and offers Undo for ten seconds; an entry a workflow still uses
+refuses to delete and names the workflow. An undone Integration comes
+back without its secret — enter it again.
+
+The entities:
 
 - **Integration** — an HTTP API: base URL, auth (the secret lives in
   your OS keychain, never in config), operations with typed inputs
-  and outputs.
+  and outputs. Choosing an auth type shows only that type's fields;
+  encrypting the request body (JWE) and a fixed fallback body sit
+  under Advanced. Test a saved integration from its own Testing tab.
 - **Lists** — typed tabular data steps can look up, search, and
   write; Atlas can project them too. A list edits as one spreadsheet-
   style grid: click a cell to select it, click again (or press
@@ -40,6 +47,10 @@ drifting apart would be a bug:
 - **Execution environments** — a pinned shell, directory, and
   environment for Run a command. This is reproducibility, not a
   sandbox: the script runs with your full user account.
+- **Conversion profiles** — which source-specific rules an HTML to
+  Markdown conversion applies (Confluence, Office and Word). The
+  converter step picks one; leave it empty and every rule applies.
+  The page's sample preview shows what each profile makes of a paste.
 - **Attributes** — a workflow's declared typed fields.
 - **Decisions** — named outcome sets a workflow records against,
   with published versions.

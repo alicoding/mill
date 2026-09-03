@@ -17,6 +17,23 @@ export enum Kind {
      * channel is exactly this file at the collection root.
      */
     KindEnv = "env",
+
+    /**
+     * KindBruno reads a Bruno collection (its folder, or its
+     * bruno.json): the .env at the collection root supplies values, the
+     * environments' `vars:secret` blocks name what the collection
+     * expects, and bruno.json names it (goal 0306 slice 2).
+     */
+    KindBruno = "bruno",
+
+    /**
+     * KindOnePassword / KindBitwarden reach the user's password manager
+     * through its own CLI (goal 0306 slice 3): titles are listed and one
+     * value is read at use time; nothing is stored. Path is an optional
+     * vault name for 1Password, unused for Bitwarden.
+     */
+    KindOnePassword = "op",
+    KindBitwarden = "bw",
 };
 
 export interface Source {

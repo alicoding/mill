@@ -52,3 +52,55 @@ test('a dotenv secret source lists its keys as secrets by title, never a value, 
     fs.rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('a Bruno collection source lists the secrets its environments declare and the .env keys, by the collection\'s name', async ({ page }) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mill-e2e-bruno-source-'))
+  fs.writeFileSync(path.join(dir, 'bruno.json'), JSON.stringify({ name: 'ZzE2eGazette', version: '1', type: 'collection' }))
+  fs.writeFileSync(path.join(dir, '.env'), 'API_TOKEN=tok-e2e-bruno\n')
+  fs.mkdirSync(path.join(dir, 'environments'))
+  fs.writeFileSync(path.join(dir, 'environments', 'dev.bru'), 'vars:secret [ API_TOKEN, SIGNING_KEY ]\n')
+  try {
+    await page.goto('/')
+    await page.getByRole('link', { name: 'Configure' }).click()
+    await page.getByRole('tab', { name: 'Secret sources', exact: true }).click()
+    await page.getByTestId('new-secretsource').click()
+    await page.getByTestId('secretsource-label').fill('ZzE2eBrunoSource')
+    await page.getByTestId('secretsource-kind').selectOption('bruno')
+    await page.getByTestId('secretsource-path').fill(dir)
+    await page.getByTestId('save-secretsource').click()
+    const row = page.locator('[data-testid="inventory-row"][data-entity="secretsource"]').filter({ hasText: 'ZzE2eBrunoSource' })
+    await expect(row).toBeVisible()
+    await expect(row).toContainText('Bruno collection')
+
+    const listed = await callBindingViaRPC<{ ID: string; Title: string }[]>(page, SECRETS + 'ListProviderSecrets', [])
+    const mine = listed.filter((s) => s.Title.endsWith('— ZzE2eGazette'))
+    expect(mine.map((s) => s.Title)).toEqual(['API_TOKEN — ZzE2eGazette', 'SIGNING_KEY — ZzE2eGazette'])
+    expect(mine[0].ID).toMatch(/^bruno:[a-z0-9-]+\/API_TOKEN$/)
+    expect(JSON.stringify(listed)).not.toContain('tok-e2e-bruno')
+
+    await clickRowAction(page, row, 'Delete')
+    await expect(row).toHaveCount(0)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('a 1Password source with no op tool on this machine lists nothing and its row says why', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByRole('tab', { name: 'Secret sources', exact: true }).click()
+  await page.getByTestId('new-secretsource').click()
+  await page.getByTestId('secretsource-label').fill('ZzE2eOnePassword')
+  await page.getByTestId('secretsource-kind').selectOption('op')
+  await expect(page.getByTestId('secretsource-path')).toHaveAttribute('placeholder', 'Vault name (optional)')
+  await page.getByTestId('save-secretsource').click()
+  const row = page.locator('[data-testid="inventory-row"][data-entity="secretsource"]').filter({ hasText: 'ZzE2eOnePassword' })
+  await expect(row).toBeVisible()
+  await expect(row).toContainText('1Password')
+  // The e2e machine has no op tool: the row states it rather than listing nothing silently.
+  await expect(row).toContainText('op is not installed')
+  const listed = await callBindingViaRPC<{ Title: string }[]>(page, SECRETS + 'ListProviderSecrets', [])
+  expect((listed ?? []).some((s) => s.Title.endsWith('— ZzE2eOnePassword'))).toBe(false)
+  await clickRowAction(page, row, 'Delete')
+  await expect(row).toHaveCount(0)
+})

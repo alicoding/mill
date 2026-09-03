@@ -18,7 +18,7 @@ const EXAMPLES = path.resolve(__dirname, '../../../examples/plugins')
 interface Manifest {
   id: string
   capabilities?: string[]
-  contributes?: { canvasObjects?: { kind: string }[]; views?: { id: string }[]; settings?: { key: string }[] }
+  contributes?: { canvasObjects?: { kind: string }[]; views?: { id: string }[]; settings?: { key: string }[]; captures?: { id: string }[] }
 }
 
 function recordingAPI(manifest: Manifest, touched: Set<string>): MillPluginAPI {
@@ -30,6 +30,7 @@ function recordingAPI(manifest: Manifest, touched: Set<string>): MillPluginAPI {
     registerCanvasObject: record('registerCanvasObject'),
     registerCommand: record('registerCommand'),
     registerView: record('registerView'),
+    registerCapture: record('registerCapture'),
     requestGuardedAction: async () => { touched.add('requestGuardedAction'); return { approved: false, effect: 'deny' as const, ruleLabel: '', performed: false } },
     settings: { get: (key: string) => { touched.add(`settings.get:${key}`); return '' }, onChange: (key: string) => { touched.add(`settings.onChange:${key}`); return noop } },
     notify: () => { touched.add('notify'); return noop },
@@ -37,8 +38,9 @@ function recordingAPI(manifest: Manifest, touched: Set<string>): MillPluginAPI {
     query: async () => { touched.add('query'); return [] },
     on: () => { touched.add('on'); return noop },
     fetch: async () => { touched.add('fetch'); return { approved: false, effect: 'deny' as const, ruleLabel: '', status: 0, headers: {}, body: '' } },
-    content: { createNote: async () => { touched.add('content'); return { approved: false, effect: 'deny' as const, ruleLabel: '', id: '' } }, createCard: async () => { touched.add('content'); return { approved: false, effect: 'deny' as const, ruleLabel: '', id: '' } }, updateCard: async () => { touched.add('content'); return { approved: false, effect: 'deny' as const, ruleLabel: '', id: '' } }, appendListRow: async () => { touched.add('content'); return { approved: false, effect: 'deny' as const, ruleLabel: '', id: '' } } },
+    content: { createNote: async () => { touched.add('content'); return { approved: false, effect: 'deny' as const, ruleLabel: '', id: '' } }, createCard: async () => { touched.add('content'); return { approved: false, effect: 'deny' as const, ruleLabel: '', id: '' } }, updateCard: async () => { touched.add('content'); return { approved: false, effect: 'deny' as const, ruleLabel: '', id: '' } }, appendListRow: async () => { touched.add('content'); return { approved: false, effect: 'deny' as const, ruleLabel: '', id: '' } }, createList: async () => { touched.add('content'); return { approved: false, effect: 'deny' as const, ruleLabel: '', id: '' } } },
     convert: { htmlToMarkdown: async (html: string) => { touched.add('convert'); return html } },
+    files: { list: async () => { touched.add('files'); return { approved: false, effect: 'deny' as const, ruleLabel: '', entries: [] } } },
   }
   return Object.freeze(api) as unknown as MillPluginAPI
 }
@@ -49,13 +51,14 @@ describe('every shipped example plugin conforms to the platform contract', () =>
   it.each(examples)('%s registers only what its manifest declares', async (id) => {
     const dir = path.join(EXAMPLES, id)
     const manifest = JSON.parse(readFileSync(path.join(dir, 'manifest.json'), 'utf8')) as Manifest
-    const registered = { objects: [] as string[], views: [] as string[] }
+    const registered = { objects: [] as string[], views: [] as string[], captures: [] as string[] }
     const touched = new Set<string>()
     const api = recordingAPI(manifest, touched)
     const spy = {
       ...api,
       registerCanvasObject: (decl: { kind: string }) => { registered.objects.push(decl.kind); touched.add('registerCanvasObject') },
       registerView: (decl: { id: string }) => { registered.views.push(decl.id); touched.add('registerView') },
+      registerCapture: (decl: { id: string }) => { registered.captures.push(decl.id); touched.add('registerCapture') },
     }
     const mod = (await import(/* @vite-ignore */ pathToFileURL(path.join(dir, 'main.js')).href)) as PluginModule
     const activate = mod.activate ?? (typeof mod.default === 'function' ? mod.default : mod.default?.activate)
@@ -66,6 +69,8 @@ describe('every shipped example plugin conforms to the platform contract', () =>
     for (const kind of registered.objects) expect(declaredObjects, `canvas object "${kind}" is declared`).toContain(kind)
     const declaredViews = (manifest.contributes?.views ?? []).map((v) => v.id)
     for (const view of registered.views) expect(declaredViews, `view "${view}" is declared`).toContain(view)
+    const declaredCaptures = (manifest.contributes?.captures ?? []).map((c) => c.id)
+    for (const capture of registered.captures) expect(declaredCaptures, `capture "${capture}" is declared`).toContain(capture)
     const declaredSettings = (manifest.contributes?.settings ?? []).map((s) => s.key)
     for (const door of touched) {
       const m = /^settings\.(get|onChange):(.+)$/.exec(door)

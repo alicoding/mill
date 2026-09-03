@@ -1,0 +1,29 @@
+/* The form's one disclosure: the summary reads like the sibling
+   section headings, the body indents under it. */
+.summary {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--base-size-4);
+    cursor: pointer;
+    font-size: var(--text-body-size-medium);
+    font-weight: var(--base-text-weight-semibold);
+    color: var(--fgColor-default);
+    list-style: none;
+    padding: var(--base-size-4) 0;
+}
+
+.body {
+    padding-top: var(--base-size-8);
+}
+
+.summary::-webkit-details-marker {
+    display: none;
+}
+
+.chevron {
+    transition: transform 120ms ease-in-out;
+}
+
+details[open] > .summary .chevron {
+    transform: rotate(90deg);
+}

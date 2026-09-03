@@ -104,7 +104,7 @@ test('A seeded example can be cloned and the clone deleted, without disturbing t
   await expect(page.getByTestId('request-summary')).toBeVisible()
   await page.getByRole('button', { name: 'Duplicate' }).click()
   await expect(page.getByLabel('Label')).toHaveValue(cloneLabel)
-  await page.getByRole('button', { name: 'Save request' }).click()
+  await page.getByRole('button', { name: 'Save integration' }).click()
 
   const cloneRow = page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(cloneLabel, { exact: true }) })
   await expect(cloneRow).toBeVisible()

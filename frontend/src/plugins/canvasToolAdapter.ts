@@ -6,6 +6,7 @@ import { ATLAS_TOOL_IDENTITIES } from '../shared/atlasToolIdentity'
 import { refreshAtlas } from '../atlas/atlasStore'
 import { frameContainingPoint } from '../atlas/atlasFramePoint'
 import { pointHitIDs } from '../atlas/atlasEnclosure'
+import type { EditRouteDecl } from '../atlas/objectSeams'
 import { useAtlasStyleValues, type AtlasStyleValue } from '../atlas/atlasStyleValueStore'
 import type { AtlasStyleField } from '../atlas/atlasStyleVocabulary'
 import { thirdPartyNouns, type AtlasGestureCtx, type AtlasGesturePoint, type AtlasToolGesture, type ThirdPartyNounShape } from '../atlas/atlasNounRegistry'
@@ -180,6 +181,10 @@ function pluginGestureCtx(kind: string, objectKind: string, fields: readonly Can
 			if (opts?.select) ctx.onShapeCreated(created.ID)
 		},
 		saveImageBytes: (base64, ext, title) => AtlasService.SaveImageBytes(base64, ext, title),
+		itemsInRect: (rect) => {
+			const r = ctx.enclosedIn(rect)
+			return { cardIds: r.cardIDs, noteIds: r.noteIDs, objectIds: r.objectIDs }
+		},
 	}
 	if (canErase) {
 		// The built-in eraser's exact hit contract: every point tests
@@ -246,7 +251,20 @@ function faceContent(pluginId: string, decl: CanvasObjectDecl, ephemeral: boolea
 		ariaLabelKey: decl.label,
 		role: undefined,
 		source: decl.source === 'file' ? { kind: 'file', pathKey: 'mirrorPath' } : decl.source === 'url' ? { kind: 'url', urlKey: 'url' } : { kind: 'board-local' },
-		editRoute: { kind: decl.editRoute },
+		editRoute: adaptEditRoute(decl.editRoute),
+	}
+}
+
+// adaptEditRoute: a static route stays static; a resolver is wrapped
+// into the kernel's own per-object EditRouteDecl. A resolver returning
+// an unknown route resolves to 'none' -- the object still renders, it
+// just has no edit door.
+function adaptEditRoute(route: CanvasObjectDecl['editRoute']): EditRouteDecl {
+	if (typeof route !== 'function') return { kind: route }
+	return (object) => {
+		const payload = Object.fromEntries(Object.entries(object.Payload ?? {}).flatMap(([k, v]) => (v === undefined ? [] : [[k, v]])))
+		const kind = route({ ID: object.ID, Kind: object.Kind ?? '', Payload: payload })
+		return { kind: kind === 'inline' || kind === 'external-app' ? kind : 'none' }
 	}
 }
 
