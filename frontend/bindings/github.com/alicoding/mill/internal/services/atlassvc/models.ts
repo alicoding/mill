@@ -377,6 +377,18 @@ export interface PasteResult {
      * or 1, same single-payload property Images documents.
      */
     "PluginObjects": number;
+
+    /**
+     * PluginObjectID / PluginKind name the object a plugin claim landed
+     * (ADR-0051 slice 2), and AlternativeKinds the OTHER enabled
+     * claimants for the same paste in their precedence order -- the
+     * frontend's "paste as … instead" offer runs SetBoardObjectKind on
+     * PluginObjectID with one of them. Empty when no plugin claim fired
+     * or when only one plugin claims links.
+     */
+    "PluginObjectID": string;
+    "PluginKind": string;
+    "AlternativeKinds": string[] | null;
     "SkippedPages": string[] | null;
 }
 

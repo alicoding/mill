@@ -200,6 +200,15 @@ export interface CanvasObjectFaceCtx {
   // plugin's manifest capabilities; each use is evaluated by the
   // owner's guardrail rules and may require live approval.
   requestGuardedAction: (kind: string, attributes: Record<string, string>, description: string) => Promise<GuardedActionResult>
+  // mountOffBoard attaches el to the document OFF the board, at exactly
+  // `size` CSS pixels and unscaled by the board's zoom, and returns the
+  // detach. The face's own el is CSS-scaled with the canvas, so an
+  // engine that measures and fits its layout from screen rectangles
+  // (a mind-map or graph layout, a text-measuring chart) lays out wrong
+  // in place -- render it on this stage at the face's size, copy the
+  // finished drawing into el, detach. Anything still mounted when the
+  // face unmounts is detached by the host.
+  mountOffBoard: (el: Element, size: { w: number; h: number }) => () => void
 }
 
 export interface GuardedActionResult {

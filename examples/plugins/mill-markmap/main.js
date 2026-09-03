@@ -103,9 +103,9 @@ export function activate(api) {
 	// its layout from screen rectangles, but the board scales its
 	// objects with the canvas zoom -- rendered in place, every label
 	// measured that much too narrow and the map huddled in a corner.
-	// An unscaled stage the size of the face gives the engine the
-	// coordinates it assumes; the face then shows the result as a
-	// drawing that zooms with the board like any other object.
+	// The host's off-board stage (ctx.mountOffBoard) gives the engine an
+	// unscaled box the size of the face; the face then shows the result
+	// as a drawing that zooms with the board like any other object.
 	let paintSerial = 0
 	async function paintMap(face, note) {
 		const svg = face.svg
@@ -115,8 +115,8 @@ export function activate(api) {
 		const height = Math.max(1, svg.clientHeight)
 		const stage = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
 		stage.setAttribute('class', 'markmap')
-		stage.style.cssText = `position:fixed;left:-100000px;top:0;width:${width}px;height:${height}px;display:block`
-		document.body.append(stage)
+		stage.style.cssText = `width:${width}px;height:${height}px;display:block`
+		const detach = face.ctx.mountOffBoard(stage, { w: width, h: height })
 		const { root } = transformer.transform(headingsMarkdown(note))
 		const mm = Markmap.create(stage, { autoFit: false, duration: 0, fitRatio: 0.92 })
 		let drawing = ''
@@ -126,7 +126,7 @@ export function activate(api) {
 			drawing = stage.innerHTML
 		} finally {
 			mm.destroy()
-			stage.remove()
+			detach()
 		}
 		if (serial === paintSerial && svg.isConnected) {
 			svg.setAttribute('viewBox', `0 0 ${width} ${height}`)

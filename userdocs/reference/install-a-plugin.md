@@ -69,6 +69,13 @@ no one claims still lands the way it does today. With the Bookmark
 example installed, pasting a link from your browser drops a bookmark
 right on the board.
 
+When two plugins claim pasted links (Bookmark and the Web clipper both
+do), the first one lands and the board's toast offers the other:
+"Pasted as Bookmark · Paste as Web clipper instead" re-types that same
+object in place, undo included. Settings > Extensions' "Pasted links
+become" picks which one lands first; without a choice, plugins take
+turns in id order.
+
 ## Drawing tools
 
 A plugin isn't limited to click-to-place objects: it can register a
@@ -411,6 +418,16 @@ export function activate(api) {
   })
 }
 ```
+
+`el` is scaled with the board: zoom out and every pixel inside it
+shrinks. Plain DOM does not care, but a rendering engine that measures
+its own labels or fits a layout from screen rectangles (a mind map, a
+graph layout, a text-measuring chart) lays out wrong inside a scaled
+box. For those, `ctx.mountOffBoard(element, { w, h })` parks your
+element off the board at exactly that size, unscaled; render there,
+copy the finished drawing into `el`, then call the detach it returned.
+The Mind map example does exactly this on every repaint, and Mill
+detaches anything you left mounted when the object leaves the board.
 
 The full contract — every field, every capability, and what stays
 stable between versions — is in [Extending the canvas](extending-the-canvas.md).

@@ -428,6 +428,17 @@ export function thirdPartyNounFor(id: string): ThirdPartyNounShape | undefined {
   return thirdPartyRegistry.get(id)
 }
 
+// thirdPartyNounForKind resolves a persisted board-object kind (which
+// may differ from the tool id, CanvasObjectDecl.objectKind) to its
+// enabled plugin noun -- the label source for anything naming a plugin
+// kind to the user (the paste-as offer, the link-paste preference).
+export function thirdPartyNounForKind(kind: string): ThirdPartyNounShape | undefined {
+  for (const noun of thirdPartyRegistry.values()) {
+    if (noun.boardObjectKind === kind) return noun
+  }
+  return undefined
+}
+
 // thirdPartyNounForExtension -- the drop router's claim lookup
 // (docs/goals/0251). Registration order decides ties (first claimant
 // wins, deterministic: the loader activates plugins in ListPlugins'

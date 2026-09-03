@@ -93,3 +93,63 @@ func TestPasteToBoard_PluginURLClaim_BuiltInsWinFirst(t *testing.T) {
 		t.Fatalf("image URL result = %+v, want the image entry to win", res)
 	}
 }
+
+// With several claimants the FIRST wins and the rest are reported as
+// alternatives once each, in order (ADR-0051 slice 2); a lone claimant
+// reports none.
+func TestPasteToBoard_PluginURLClaim_ReportsAlternatives(t *testing.T) {
+	a := newTestAtlasService(t)
+	a.WirePluginPasteClaims(func() []PluginPasteClaim {
+		return []PluginPasteClaim{{Kind: "clip"}, {Kind: "bookmark"}, {Kind: "clip"}, {Kind: "archive"}}
+	})
+	res, err := a.PasteToBoard("https://example.com/some/page", "", "", 0, 0)
+	if err != nil {
+		t.Fatalf("PasteToBoard: %v", err)
+	}
+	if res.PluginKind != "clip" || res.PluginObjectID == "" {
+		t.Fatalf("result = %+v, want the first claimant's kind and the landed id", res)
+	}
+	if got := res.AlternativeKinds; len(got) != 2 || got[0] != "bookmark" || got[1] != "archive" {
+		t.Fatalf("AlternativeKinds = %v, want [bookmark archive]", got)
+	}
+
+	b := newTestAtlasService(t)
+	wireBookmarkClaim(b)
+	res, err = b.PasteToBoard("https://example.com/x", "", "", 0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.AlternativeKinds) != 0 {
+		t.Fatalf("lone claimant AlternativeKinds = %v, want none", res.AlternativeKinds)
+	}
+}
+
+// SetBoardObjectKind re-types the landed object in place: same id,
+// payload, and position; undo restores the previous kind.
+func TestSetBoardObjectKind_RetypesInPlaceAndUndoes(t *testing.T) {
+	a := newTestAtlasService(t)
+	wireBookmarkClaim(a)
+	res, err := a.PasteToBoard("https://example.com/some/page", "", "", 40, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	o, err := a.SetBoardObjectKind(res.PluginObjectID, "clip")
+	if err != nil {
+		t.Fatalf("SetBoardObjectKind: %v", err)
+	}
+	if o.ID != res.PluginObjectID || o.Kind != "clip" || o.Payload["url"] != "https://example.com/some/page" || o.Position.X != 40 {
+		t.Fatalf("retyped = %+v, want same id/payload/position with kind clip", o)
+	}
+	if _, err := a.SetBoardObjectKind(o.ID, ""); err == nil {
+		t.Fatal("empty kind accepted")
+	}
+	if _, err := a.SetBoardObjectKind("missing", "clip"); err == nil {
+		t.Fatal("unknown id accepted")
+	}
+	a.Undo()
+	for _, got := range a.Objects() {
+		if got.ID == o.ID && got.Kind != "bookmark" {
+			t.Fatalf("after undo kind = %q, want bookmark", got.Kind)
+		}
+	}
+}

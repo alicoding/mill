@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { TFunction } from 'i18next'
 import type { PasteResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
-import { pasteSummaryText } from './pasteSummary'
+import { pasteAsOffer, pasteSummaryText } from './pasteSummary'
 
 const t = ((key: string, opts?: Record<string, unknown>) => (opts ? `${key}:${JSON.stringify(opts)}` : key)) as TFunction<'atlas'>
 
 function result(overrides: Partial<PasteResult> = {}): PasteResult {
-  return { Recognized: true, Cards: 0, Links: 0, Tables: 0, Images: 0, PluginObjects: 0, SkippedPages: null, ...overrides }
+  return { Recognized: true, Cards: 0, Links: 0, Tables: 0, Images: 0, PluginObjects: 0, PluginObjectID: '', PluginKind: '', AlternativeKinds: null, SkippedPages: null, ...overrides }
 }
 
 describe('pasteSummaryText', () => {
@@ -35,5 +35,24 @@ describe('pasteSummaryText', () => {
     const text = pasteSummaryText(t, result({ SkippedPages: ['Page 3', 'Page 7'] }))
     expect(text).toContain('"count":2')
     expect(text).toContain('"pages":"Page 3, Page 7"')
+  })
+})
+
+describe('pasteAsOffer', () => {
+  const labelFor = (kind: string) => (kind === 'bookmark' ? 'Bookmark' : kind === 'clip' ? 'Web clipper' : kind)
+
+  it('offers the first alternative claimant by label, naming what landed', () => {
+    const offer = pasteAsOffer(t, result({ PluginObjects: 1, PluginObjectID: 'o1', PluginKind: 'bookmark', AlternativeKinds: ['clip', 'archive'] }), labelFor)
+    expect(offer).toEqual({
+      text: 'paste.pastedAs:{"kind":"Bookmark"}',
+      alternative: { kind: 'clip', label: 'paste.pasteAsInstead:{"kind":"Web clipper"}' },
+    })
+  })
+
+  // A lone claimant, or a paste no plugin landed, has nothing to offer
+  // -- the ordinary summary toast stays.
+  it('is null without an alternative or without a landed plugin object', () => {
+    expect(pasteAsOffer(t, result({ PluginObjects: 1, PluginObjectID: 'o1', PluginKind: 'bookmark' }), labelFor)).toBeNull()
+    expect(pasteAsOffer(t, result({ Cards: 2, AlternativeKinds: ['clip'] }), labelFor)).toBeNull()
   })
 })

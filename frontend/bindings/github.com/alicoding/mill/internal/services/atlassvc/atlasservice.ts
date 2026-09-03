@@ -912,6 +912,21 @@ export function SetAtlasSession(state: $models.AtlasSessionState): $CancellableP
 }
 
 /**
+ * SetBoardObjectKind re-types an object in place -- same id, payload,
+ * position, size, and parent -- so the board's "paste as … instead"
+ * offer (ADR-0051 slice 2) can hand a just-pasted link from one
+ * claiming plugin's kind to another's without a delete-and-recreate
+ * (which would cost the user two undo steps and the object its id).
+ * Both kinds share the url-source payload contract (url + title), which
+ * is what makes the payload carry over verbatim; the call itself does
+ * not police that -- the frontend only ever offers kinds that were
+ * claimants for the same paste. Undoable as one step.
+ */
+export function SetBoardObjectKind(id: string, kind: string): $CancellablePromise<atlas$0.BoardObject> {
+    return $Call.ByID(3909090495, id, kind);
+}
+
+/**
  * SetBoardObjectPayload merges patch into a board object's Payload --
  * the content-plane write door for a payload-carrying object whose
  * data changes after placement (docs/goals/0249: a plugin object's own

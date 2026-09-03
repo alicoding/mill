@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/pluginsvc"
 )
 
@@ -58,4 +59,34 @@ func pinnedRow(t *testing.T, infos []pluginsvc.PluginInfo) pluginsvc.PluginInfo 
 	}
 	t.Fatalf("infos = %+v, want a row for the pinned plugin", infos)
 	return pluginsvc.PluginInfo{}
+}
+
+// The paste chain's claim order: disabled plugins drop out, the
+// preferred kind moves first, everything else keeps id order, and an
+// unknown preference changes nothing (ADR-0051 slice 2).
+func TestOrderPasteClaims(t *testing.T) {
+	claims := []pluginsvc.IngestionClaim{
+		{PluginID: "mill-archive", Kind: "archive"},
+		{PluginID: "mill-bookmark", Kind: "bookmark"},
+		{PluginID: "mill-clipper", Kind: "clip"},
+	}
+	kinds := func(out []atlassvc.PluginPasteClaim) string {
+		s := make([]string, 0, len(out))
+		for _, c := range out {
+			s = append(s, c.Kind)
+		}
+		return strings.Join(s, ",")
+	}
+	if got := kinds(orderPasteClaims(claims, nil, "")); got != "archive,bookmark,clip" {
+		t.Errorf("no preference = %q", got)
+	}
+	if got := kinds(orderPasteClaims(claims, nil, "clip")); got != "clip,archive,bookmark" {
+		t.Errorf("preferred clip = %q", got)
+	}
+	if got := kinds(orderPasteClaims(claims, map[string]bool{"mill-archive": true}, "bookmark")); got != "bookmark,clip" {
+		t.Errorf("disabled archive, preferred bookmark = %q", got)
+	}
+	if got := kinds(orderPasteClaims(claims, nil, "nobody")); got != "archive,bookmark,clip" {
+		t.Errorf("unknown preference = %q", got)
+	}
 }
