@@ -19,6 +19,11 @@ const (
 	// .env, or a Bruno collection's -- Bruno's documented secrets
 	// channel is exactly this file at the collection root.
 	KindEnv Kind = "env"
+	// KindBruno reads a Bruno collection (its folder, or its
+	// bruno.json): the .env at the collection root supplies values, the
+	// environments' `vars:secret` blocks name what the collection
+	// expects, and bruno.json names it (goal 0306 slice 2).
+	KindBruno Kind = "bruno"
 )
 
 type Source struct {
@@ -38,11 +43,11 @@ func Validate(s Source) error {
 	if strings.TrimSpace(s.Label) == "" {
 		return errors.Join(ErrInvalid, errors.New("a label is required"))
 	}
-	if s.Kind != KindEnv {
+	if s.Kind != KindEnv && s.Kind != KindBruno {
 		return errors.Join(ErrInvalid, errors.New("unknown source kind "+string(s.Kind)))
 	}
 	if strings.TrimSpace(s.Path) == "" {
-		return errors.Join(ErrInvalid, errors.New("a file path is required"))
+		return errors.Join(ErrInvalid, errors.New("a path is required"))
 	}
 	return nil
 }

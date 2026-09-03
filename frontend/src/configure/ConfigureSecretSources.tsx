@@ -32,15 +32,18 @@ export function ConfigureSecretSources() {
   const [editingID, setEditingID] = useState<string | null>(null)
   const [label, setLabel] = useState('')
   const [path, setPath] = useState('')
+  const [kind, setKind] = useState<Kind>(Kind.KindEnv)
   const [error, setError] = useState('')
 
   const refetch = () => { void refreshSecretSources(); void refreshSecretTitles() }
+  const kindLabel = (k: Kind) => (k === Kind.KindBruno ? t('configureSecretSources.kindBruno') : t('configureSecretSources.kindDotenv'))
   useEffect(() => { refetch() }, [])
 
   const startCreate = () => {
     setEditingID(null)
     setLabel('')
     setPath('')
+    setKind(Kind.KindEnv)
     setFormOpen(true)
     setError('')
   }
@@ -56,6 +59,7 @@ export function ConfigureSecretSources() {
     setEditingID(s.ID)
     setLabel(s.Label)
     setPath(s.Path)
+    setKind(s.Kind)
     setFormOpen(true)
     setError('')
   }
@@ -63,8 +67,8 @@ export function ConfigureSecretSources() {
   const save = async () => {
     setError('')
     try {
-      if (editingID) await ConfigureService.UpdateSecretSource(editingID, label, Kind.KindEnv, path)
-      else await ConfigureService.CreateSecretSource(label, Kind.KindEnv, path)
+      if (editingID) await ConfigureService.UpdateSecretSource(editingID, label, kind, path)
+      else await ConfigureService.CreateSecretSource(label, kind, path)
       setFormOpen(false)
       refetch()
     } catch (err) {
@@ -88,7 +92,7 @@ export function ConfigureSecretSources() {
     icon: ENTITY_ICON.secretsource,
     label: s.Label,
     updatedLabel: formatUpdated(s.UpdatedAt),
-    description: `${t('configureSecretSources.kindDotenv')} · ${s.Path}`,
+    description: `${kindLabel(s.Kind)} · ${s.Path}`,
     onOpen: () => startEdit(s),
     menuActions: [
       {
@@ -119,14 +123,15 @@ export function ConfigureSecretSources() {
           </FormControl>
           <FormControl>
             <FormControl.Label>{t('configureSecretSources.kind')}</FormControl.Label>
-            <Select value={Kind.KindEnv} onChange={() => undefined} data-testid="secretsource-kind">
+            <Select value={kind} onChange={(e) => setKind(e.target.value as Kind)} data-testid="secretsource-kind">
               <Select.Option value={Kind.KindEnv}>{t('configureSecretSources.kindDotenv')}</Select.Option>
+              <Select.Option value={Kind.KindBruno}>{t('configureSecretSources.kindBruno')}</Select.Option>
             </Select>
           </FormControl>
           <FormControl>
             <FormControl.Label>{t('configureSecretSources.path')}</FormControl.Label>
-            <TextInput value={path} onChange={(e) => setPath(e.target.value)} block placeholder="/path/to/project/.env" data-testid="secretsource-path" />
-            <FormControl.Caption>{t('configureSecretSources.pathCaption')}</FormControl.Caption>
+            <TextInput value={path} onChange={(e) => setPath(e.target.value)} block placeholder={kind === Kind.KindBruno ? '/path/to/collection' : '/path/to/project/.env'} data-testid="secretsource-path" />
+            <FormControl.Caption>{kind === Kind.KindBruno ? t('configureSecretSources.pathCaptionBruno') : t('configureSecretSources.pathCaption')}</FormControl.Caption>
           </FormControl>
           {error && <Text as="p" size="small" className={styles.error} data-testid="secretsource-error">{error}</Text>}
           <Stack direction="horizontal" gap="condensed">
@@ -144,7 +149,7 @@ export function ConfigureSecretSources() {
             data={sorted.map((s) => ({ ...s, id: s.ID }))}
             columns={[
               { header: t('configureSecretSources.columns.label'), field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
-              { header: t('configureSecretSources.columns.kind'), id: 'kind', renderCell: () => t('configureSecretSources.kindDotenv') },
+              { header: t('configureSecretSources.columns.kind'), id: 'kind', renderCell: (s) => kindLabel(s.Kind) },
               { header: t('configureSecretSources.columns.path'), id: 'path', width: 'growCollapse', minWidth: '160px', renderCell: (s) => <TruncatedCell text={s.Path} mono /> },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',

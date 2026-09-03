@@ -17,6 +17,14 @@ export enum Kind {
      * channel is exactly this file at the collection root.
      */
     KindEnv = "env",
+
+    /**
+     * KindBruno reads a Bruno collection (its folder, or its
+     * bruno.json): the .env at the collection root supplies values, the
+     * environments' `vars:secret` blocks name what the collection
+     * expects, and bruno.json names it (goal 0306 slice 2).
+     */
+    KindBruno = "bruno",
 };
 
 export interface Source {
