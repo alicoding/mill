@@ -15,9 +15,10 @@ const Prefix = "vault:"
 const (
 	ProviderVault = "vault"
 	ProviderEnv   = "env"
+	ProviderBruno = "bruno"
 )
 
-var providers = map[string]bool{ProviderVault: true, ProviderEnv: true}
+var providers = map[string]bool{ProviderVault: true, ProviderEnv: true, ProviderBruno: true}
 
 // Split separates a reference into its provider and provider-local id.
 func Split(value string) (provider, id string, ok bool) {

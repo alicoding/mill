@@ -62,3 +62,50 @@ func TestResolveSecretValue_ProviderQualifiedIDReadsTheDotenvKey(t *testing.T) {
 		t.Errorf("bare id must go to the vault: %v", err)
 	}
 }
+
+func brunoSourceService(t *testing.T) (*SecretService, string) {
+	t.Helper()
+	dir := t.TempDir()
+	must := func(name, content string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	must("bruno.json", `{"name":"Gazette","version":"1","type":"collection"}`)
+	must(".env", "API_TOKEN=tok-bruno\n")
+	must("environments/dev.bru", "vars:secret [ API_TOKEN, SIGNING_KEY ]\n")
+	src := secretsource.Source{ID: "gazette", Label: "Gazette collection", Kind: secretsource.KindBruno, Path: dir, UpdatedAt: time.Now()}
+	s := NewSecretService(secretvault.New(filepath.Join(dir, "secrets.kdbx")), credential.NewInMemory())
+	t.Cleanup(s.stopAutoLock)
+	s.SetSourcesLister(func() []secretsource.Source { return []secretsource.Source{src} })
+	return s, dir
+}
+
+// A Bruno source lists the .env's keys AND every name its environments
+// declare as secret, labelled by the collection's own name; a declared
+// name the .env lacks resolves to a stated error, never an empty value.
+func TestBrunoSource_ListsDeclaredAndEnvKeys_ResolvesFromEnv(t *testing.T) {
+	s, _ := brunoSourceService(t)
+	list, err := s.ListProviderSecrets()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 2 || list[0].ID != "bruno:gazette/API_TOKEN" || list[0].Title != "API_TOKEN — Gazette" || list[1].ID != "bruno:gazette/SIGNING_KEY" {
+		t.Fatalf("list = %+v", list)
+	}
+	v, err := s.ResolveSecretValue("bruno:gazette/API_TOKEN", secretaudit.AccessContext{Context: secretaudit.ContextExecEnv, Actor: "test"})
+	if err != nil || v != "tok-bruno" {
+		t.Fatalf("resolve = %q err=%v", v, err)
+	}
+	if _, err := s.ResolveSecretValue("bruno:gazette/SIGNING_KEY", secretaudit.AccessContext{Context: secretaudit.ContextExecEnv, Actor: "test"}); err == nil || !strings.Contains(err.Error(), "no key") {
+		t.Fatalf("missing declared secret err = %v", err)
+	}
+	// An env-provider id never reaches a Bruno source.
+	if _, err := s.ResolveSecretValue("env:gazette/API_TOKEN", secretaudit.AccessContext{Context: secretaudit.ContextExecEnv, Actor: "test"}); err == nil {
+		t.Fatal("an env id resolved through a Bruno source")
+	}
+}
