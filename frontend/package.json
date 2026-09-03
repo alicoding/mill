@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run --coverage",
-    "boundaries": "depcruise -c .dependency-cruiser.cjs src"
+    "boundaries": "depcruise -c .dependency-cruiser.cjs src",
+    "plugin:conform": "vitest run src/plugins/conformance.test.ts"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

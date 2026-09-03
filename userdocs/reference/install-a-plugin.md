@@ -368,6 +368,21 @@ committed bundle (`scripts/vendor-markmap.sh`) so it never loads
 anything from the network. Copy any folder into your plugins
 folder to try it, or use it as the starting point for your own.
 
+## Checking a plugin
+
+Two commands run the same checks Mill's own examples pass:
+
+```sh
+go run ./internal/pluginconform path/to/your-plugin   # the loader's rules, ahead of time
+cd frontend && npm run plugin:conform                 # activates every example against a recording host
+```
+
+The first refuses what the loader would refuse — id and folder name,
+capabilities, contributions, file types the plugin route serves, a
+symlink leaving the folder. The second activates each plugin against a
+recording stand-in for `api` and checks that every object, view, and
+setting it registers or reads is declared in its manifest.
+
 ## Writing one
 
 A plugin's `main.js` is a plain JavaScript module — no build step —
