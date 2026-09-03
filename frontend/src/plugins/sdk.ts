@@ -349,6 +349,14 @@ export interface PluginContentAPI {
   appendListRow: (listId: string, values: Record<string, string>) => Promise<PluginWriteResult>
 }
 
+// PluginConvertAPI (goal 0282): pure transforms Mill already owns,
+// offered to a plugin as-is. htmlToMarkdown is the same conversion
+// every workflow convert step and every paste uses. No capability --
+// a transform reaches nothing outside its own input.
+export interface PluginConvertAPI {
+  htmlToMarkdown: (html: string) => Promise<string>
+}
+
 // PluginViewDecl (goal 0290): a plugin-owned work tab. id must match a
 // view the manifest declares under contributes.views (which carries
 // the tab's title); render draws into a host-owned div sized to the
@@ -388,6 +396,7 @@ export interface MillPluginAPI {
   // PluginFetchInit for the contract.
   fetch: (url: string, init?: PluginFetchInit) => Promise<PluginFetchResult>
   content: PluginContentAPI
+  convert: PluginConvertAPI
   registerView: (decl: PluginViewDecl) => void
 }
 

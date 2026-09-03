@@ -667,6 +667,19 @@ export function SetHTTPRequestSecret(id: string, secret: string): $CancellablePr
 }
 
 /**
+ * SyncListRows is the apply-list-sync node's wired writer (docs/goals/
+ * 0299): every incoming row goes through ApplyListRow -- the same
+ * upsert-by-key, typed-validation, persist-and-emit path a single
+ * apply-list-row takes -- and, when asked, rows whose key the batch
+ * did not carry are marked expired through UpdateListRow. Never a
+ * delete: an issue that left the source's result set is still a row
+ * someone may have annotated.
+ */
+export function SyncListRows(listID: string, keyColumn: string, rows: ({ [_ in string]?: string } | null)[] | null, expireMissing: boolean): $CancellablePromise<composition$0.ListSyncResult> {
+    return $Call.ByID(883733198, listID, keyColumn, rows, expireMissing);
+}
+
+/**
  * TestHTTPRequestOperation executes one real HTTP call against a
  * request draft's current configuration -- docs/adr/0013's
  * test-before-save flow. Runs server-side (not a browser fetch) so it

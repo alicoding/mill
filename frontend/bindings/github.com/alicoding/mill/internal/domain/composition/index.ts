@@ -15,6 +15,7 @@ export type {
     ConfigField,
     Edge,
     Issue,
+    ListSyncResult,
     MapEntry,
     Node,
     NodeType,
