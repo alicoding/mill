@@ -371,10 +371,16 @@
       "decision": "decision",
       "execenv": "execution environment",
       "aiprovider": "AI provider",
+      "conversionprofile": "Conversion profile",
       "atlas-kind": "Atlas card kind",
       "atlas-linkkind": "Atlas relation"
     },
     "unknownEntity": "Unknown {{noun}} ({{value}})",
+    "details": "Details",
+    "hideDetails": "Hide details",
+    "openEntity": "Edit {{noun}}",
+    "openIntegration": "Edit integration",
+    "openWorkflow": "Open workflow",
     "allWorkflows": "All workflows",
     "selectEntity": "Select a {{noun}}…",
     "createNewEntity": "+ Create new {{noun}}…",
@@ -581,7 +587,32 @@
     "execEnvs": "Execution Environments",
     "aiProviders": "AI Providers",
     "stepTypes": "Step types",
-    "secretSources": "Secret sources"
+    "secretSources": "Secret sources",
+    "conversionProfiles": "Conversion profiles"
+  },
+  "configureConversionProfiles": {
+    "heading": "Conversion profiles",
+    "newProfile": "New profile",
+    "label": "Label",
+    "description": "Description",
+    "ruleSets": "Rules applied",
+    "noRules": "Stock converter only",
+    "saveProfile": "Save profile",
+    "searchPlaceholder": "Search conversion profiles…",
+    "emptyHeading": "No conversion profiles yet",
+    "emptyDescription": "A profile chooses which source-specific rules an HTML to Markdown conversion applies.",
+    "deleteConfirmTitle": "Delete this conversion profile?",
+    "deleteConfirmBody": "\"{{label}}\" is removed. Steps that referenced it fall back to every rule set.",
+    "editAriaLabel": "Edit {{label}}",
+    "deleteAriaLabel": "Delete {{label}}",
+    "sampleHeading": "Try a sample",
+    "sampleCaption": "Paste HTML you copied from a page or a document and compare what each profile makes of it.",
+    "samplePlaceholder": "Paste HTML here",
+    "sampleRun": "Convert with every profile",
+    "columns": {
+      "label": "Label",
+      "ruleSets": "Rules applied"
+    }
   },
   "configureSecretSources": {
     "heading": "Secret sources",

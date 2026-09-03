@@ -203,6 +203,19 @@ Saving edits a draft. Publishing snapshots a version — callers and
 triggers run the published version, so edits never leak into
 production mid-composition.
 
+## Seeing what a step points at
+
+A step that references something you configured — an integration, a
+list, an MCP server, an AI provider — shows two links under the
+picker. **Details** opens a short summary right there: an
+integration's address, method, and auth, and whether its secret is
+stored; a list's columns and row count. **Open** takes you to that
+entity's own editor: an integration opens as a tab beside your
+workflow, everything else opens on its Configure page with the form
+ready. If the entity cannot work as it stands — an integration whose
+auth has no secret yet — the step says so on the field, with the same
+Edit link.
+
 ---
 
 # Guardrails and effect classes
@@ -296,6 +309,10 @@ drifting apart would be a bug:
 - **Execution environments** — a pinned shell, directory, and
   environment for Run a command. This is reproducibility, not a
   sandbox: the script runs with your full user account.
+- **Conversion profiles** — which source-specific rules an HTML to
+  Markdown conversion applies (Confluence, Office and Word). The
+  converter step picks one; leave it empty and every rule applies.
+  The page's sample preview shows what each profile makes of a paste.
 - **Attributes** — a workflow's declared typed fields.
 - **Decisions** — named outcome sets a workflow records against,
   with published versions.
@@ -584,6 +601,10 @@ badge, and a floating approval prompt.
 - **Breakpoints** pause a run before a step; edit values, then
   resume — or run in step mode and walk the chain one step at a
   time.
+- **New note…** in the Quick Panel opens a small note window away from
+  the canvas; pick where it lands (the Scratchpad, a space, or the top
+  level) and ⌘↩ saves it there. Plugins can add their own captures the
+  same way.
 - **Try this step** on any step runs just that step on an input you
   type, paste from the clipboard, or take from its last run — and
   shows the output right there, without running the workflow. A step
@@ -878,6 +899,8 @@ Converts HTML into Markdown, preserving structure (headings, bold, lists).
 
 - Takes: HTML — Produces: Markdown
 - Effect: none — pure computation
+- Settings:
+  - **Conversion profile** — Which source-specific rules apply (Confluence, Office). Empty applies every rule set. (references a Conversion profile)
 
 ### Create run receipt
 
@@ -1271,9 +1294,11 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `canvas.undo` | Undo | `⌘Z` | composition | Always available |
 | `canvas.zoomIn` | Zoom in | `⌘+` | composition | Always available |
 | `canvas.zoomOut` | Zoom out | `⌘-` | composition | Always available |
+| `capture.note` | Capture a note | — | Global | Always available |
 | `clipboard.history.open` | Clipboard history | — | Global | Always available |
 | `codingLoop.run` | Run from clipboard… | — | Global | Always available |
 | `configure.new.aiproviders` | New AI provider | — | Global | Always available |
+| `configure.new.conversionprofiles` | New conversion profile | — | Global | Always available |
 | `configure.new.decisions` | New decision | — | Global | Always available |
 | `configure.new.execenvs` | New environment | — | Global | Always available |
 | `configure.new.integration` | New integration | — | Global | Always available |

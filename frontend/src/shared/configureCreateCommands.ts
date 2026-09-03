@@ -71,6 +71,15 @@ export const CONFIGURE_CREATE_COMMANDS: Command[] = [
     },
   },
   {
+    id: 'configure.new.conversionprofiles',
+    label: 'New conversion profile',
+    defaultBinding: null,
+    run: () => {
+      useAppStore.getState().setView({ kind: 'configure', tab: 'conversionprofiles' })
+      useUISignalStore.getState().requestConfigureCreate('conversionprofiles')
+    },
+  },
+  {
     id: 'configure.new.steptypes',
     label: 'New step type',
     defaultBinding: null,

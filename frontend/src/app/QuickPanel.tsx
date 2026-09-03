@@ -303,7 +303,7 @@ export function QuickPanel() {
   const { codingLoopText, runFromClipboard: runCodingLoopFromClipboard, closeCodingLoop } = useQuickPanelCodingLoopDoor()
 
   // The capture doors (note, task) live in their own hook.
-  const { captureEntries } = useQuickPanelCaptureDoors({ t, setQuery, setStatus })
+  const { captureEntries, captureLaunchEntries, pluginCaptures } = useQuickPanelCaptureDoors({ t, setQuery, setStatus })
 
   const allEntries = useMemo<PanelEntry[]>(() => {
     const entries: PanelEntry[] = []
@@ -340,6 +340,7 @@ export function QuickPanel() {
     // convention); this useMemo owns only the workflow-row loop above,
     // which needs per-row pin/hotkey-chip state this shared builder
     // doesn't.
+    entries.push(...captureLaunchEntries())
     entries.push(...buildConfigureAndActionEntries({
       t, requests, lists, mcpServers, decisions, execEnvs, aiProviders, declaredStepTypes,
       atlasCards, atlasKinds, reviewPendingCount, jumpToConfigure, jumpToAtlasCard, openMain, applyFromClipboard,
@@ -350,6 +351,9 @@ export function QuickPanel() {
   }, [
     workflows, mostUsedRank, hotkeyCombos, pinnedWorkflowIds, requests, lists, mcpServers,
     decisions, execEnvs, aiProviders, declaredStepTypes, atlasCards, atlasKinds, reviewPendingCount,
+    // The capture launch rows (goal 0309) re-render once the plugin
+    // captures list resolves.
+    pluginCaptures,
     // Not read directly below -- the command enabled() checks inside
     // buildConfigureAndActionEntries read it via getState() instead.
     updateNoticeState,
