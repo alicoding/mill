@@ -128,14 +128,26 @@ func BuiltIn() []List {
 				// goal 0105 part 3): Done=success, Blocked=danger,
 				// In progress=attention.
 				{Key: "status", Label: "Status", Type: typedfield.TypeOptions, Options: []string{"Done", "Blocked", "In progress"}},
+				// The converged task record (docs/goals/0300): what every
+				// task app agrees a task carries beyond a title and a
+				// status. The Quick Panel's "Save as task" fills task,
+				// status, scheduled and done.
+				{Key: "description", Label: "Description", Type: typedfield.TypeText, Multiline: true},
+				{Key: "due", Label: "Due", Type: typedfield.TypeDate},
+				{Key: "scheduled", Label: "Scheduled", Type: typedfield.TypeDate},
+				{Key: "start", Label: "Start", Type: typedfield.TypeDate},
+				{Key: "priority", Label: "Priority", Type: typedfield.TypeOptions, Options: []string{"Low", "Medium", "High"}},
+				{Key: "recurrence", Label: "Repeats", Type: typedfield.TypeText},
+				{Key: "done", Label: "Done", Type: typedfield.TypeBoolean},
+				{Key: "tags", Label: "Tags", Type: typedfield.TypeText},
 			},
 			Rows: []Row{
 				taskRow("row-tracker-setup", "Set up Mill", "Done"),
 			},
 			BuiltIn: true,
-			// SeedRevision 2: the status column became a typed Options
-			// column so the seeded projection demonstrates status pills.
-			Seed:             seedorigin.Stamp(2),
+			// SeedRevision 3: the converged task fields joined the schema
+			// (goal 0300); revision 2 made status a typed Options column.
+			Seed:             seedorigin.Stamp(3),
 			PublishedVersion: 1,
 			Versions: []ListVersion{
 				{

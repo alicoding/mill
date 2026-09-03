@@ -90,7 +90,10 @@
       "available": "Mill {{version}} is available — run \"Download the update and install\"",
       "downloading": "Downloading Mill {{version}}…",
       "ready": "Mill {{version}} is downloaded — run \"Restart to finish updating\""
-    }
+    },
+    "saveTask": "Save as task",
+    "saveTaskHint": "Lands in the Task tracker, scheduled for today.",
+    "saveTaskError": "Couldn't save the task."
   },
   "shortcutsHelp": {
     "title": "Keyboard shortcuts",
