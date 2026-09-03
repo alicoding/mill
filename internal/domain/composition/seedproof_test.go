@@ -213,6 +213,17 @@ var workflowProofRegistry = map[string]seedProof{
 	ExampleSecretGuardWorkflowID: proven(
 		"guardrailsvc.TestSeededSecretGuardWorkflow_ParksWithSecretsRuleLabel",
 	),
+	"example-todo-scan-workflow": proven(
+		"todoscan.TestScan_HitsAcrossTwoFiles",
+		"todoscan.TestScan_WholeWordMatchingSkipsTODOS",
+		"todoscan.TestScan_SkipsDotDirsAndKnownSkipList",
+		"todoscan.TestScan_SkipsBinaryFiles",
+		"todoscan.TestScan_MaxFilesStopsTheWalk",
+		"composition.TestExecProcessTodoScan_ProducesCSVAndAttributes",
+		"composition.TestExecProcessTodoScan_PathResolvesAttrBinding",
+		"composition.TestTodoScanNode_ResolvesThroughExecuteWorkflow",
+		"e2e: todo-scan.spec.ts",
+	),
 }
 
 // httpRequestProofRegistry: every httprequest.BuiltIn() ID.

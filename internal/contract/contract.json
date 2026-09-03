@@ -2700,6 +2700,81 @@
       "Complexity": "advanced"
     },
     {
+      "ID": "process-todo-scan",
+      "Kind": "process",
+      "Label": "Scan a folder for TODO markers",
+      "Description": "Walks a folder and lists every TODO-style marker it finds as a table: one row per hit with the file, line, marker, and the text after it. Hidden folders, node_modules, vendor and .git are skipped.",
+      "ConfigFields": [
+        {
+          "Key": "path",
+          "Label": "Folder",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The folder to scan. A literal path or attr:\u003cname\u003e.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "markers",
+          "Label": "Markers",
+          "Type": "text",
+          "Required": false,
+          "Default": "TODO,FIXME,HACK,XXX",
+          "Description": "Comma-separated words to look for, matched as whole words, case-sensitive.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "extensions",
+          "Label": "File types",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Comma-separated extensions to include, e.g. go,ts,md. Blank scans every text file.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "maxFiles",
+          "Label": "File limit",
+          "Type": "text",
+          "Required": false,
+          "Default": "5000",
+          "Description": "Stops after this many files so a huge folder never runs away.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "a CSV table of every marker hit: file, line, marker, text",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "advanced"
+    },
+    {
       "ID": "ruleset",
       "Kind": "process",
       "Label": "Validate with rules",
@@ -4939,6 +5014,81 @@
         "kind": "text"
       },
       "Effect": "external",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "advanced"
+    },
+    {
+      "ID": "process-todo-scan",
+      "Kind": "process",
+      "Label": "Scan a folder for TODO markers",
+      "Description": "Walks a folder and lists every TODO-style marker it finds as a table: one row per hit with the file, line, marker, and the text after it. Hidden folders, node_modules, vendor and .git are skipped.",
+      "ConfigFields": [
+        {
+          "Key": "path",
+          "Label": "Folder",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The folder to scan. A literal path or attr:\u003cname\u003e.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "markers",
+          "Label": "Markers",
+          "Type": "text",
+          "Required": false,
+          "Default": "TODO,FIXME,HACK,XXX",
+          "Description": "Comma-separated words to look for, matched as whole words, case-sensitive.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "extensions",
+          "Label": "File types",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Comma-separated extensions to include, e.g. go,ts,md. Blank scans every text file.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "maxFiles",
+          "Label": "File limit",
+          "Type": "text",
+          "Required": false,
+          "Default": "5000",
+          "Description": "Stops after this many files so a huge folder never runs away.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "a CSV table of every marker hit: file, line, marker, text",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
+      "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
       "Complexity": "advanced"
