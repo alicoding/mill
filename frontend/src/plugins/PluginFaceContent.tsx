@@ -45,7 +45,16 @@ export function pluginFaceComponent(pluginId: string, decl: CanvasObjectDecl & {
 		// renderFace mid-typing with a stale echo of what it just wrote.
 		const payloadJSON = JSON.stringify(object.Payload ?? {})
 		const content = mirrorContent?.content
-		const mirrorDataUrl = content?.MimeType && content?.Content ? `data:${content.MimeType};base64,${content.Content}` : null
+		// Binary kinds arrive base64-encoded with a MIME type; a text kind
+		// (markdown source, json, csv, .env -- ClassifyMirrorKind's text
+		// set) arrives as the raw text with no MIME type, and reaches the
+		// plugin as a text/plain data: URL so every file kind the mirror
+		// door reads is one a plugin face can decode.
+		const mirrorDataUrl = content?.MimeType && content?.Content
+			? `data:${content.MimeType};base64,${content.Content}`
+			: content?.Kind === 'text' && typeof content.Content === 'string'
+				? `data:text/plain;charset=utf-8,${encodeURIComponent(content.Content)}`
+				: null
 		const mirrorFailed = !!mirrorContent?.error || (!!content && !mirrorDataUrl)
 		const sizeJSON = object.Size ? JSON.stringify(object.Size) : ''
 		useEffect(() => {
