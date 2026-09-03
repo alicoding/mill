@@ -3552,6 +3552,97 @@
       "Complexity": "advanced"
     },
     {
+      "ID": "apply-list-sync",
+      "Kind": "apply",
+      "Label": "Sync rows into a list",
+      "Description": "Turns a JSON payload's array of items into rows of a Configure-authored List, one row per item, matched by \"Key column\": an existing row with the same key is updated in the mapped columns, a new key appends a row, and with \"Expire missing rows\" on, rows whose key is absent from this result are marked expired (never deleted). One-way: nothing is written back to the source, and a later sync overwrites the mapped columns of a row edited by hand.",
+      "ConfigFields": [
+        {
+          "Key": "listId",
+          "Label": "List",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The Configure-authored List that mirrors the source.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "list",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "itemsPath",
+          "Label": "Items path",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Dotted path to the array of items inside the JSON payload, e.g. issues. Blank when the payload itself is the array.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "keyColumn",
+          "Label": "Key column",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The List column that identifies an item -- must be named in the field map.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "fieldMap",
+          "Label": "Field map",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "JSON object mapping List column keys to a dotted path inside each item, e.g. {\"key\":\"key\",\"summary\":\"fields.summary\",\"status\":\"fields.status.name\"}. A value with {{path}} placeholders is a template, e.g. \"https://jira.example.com/browse/{{key}}\".",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        },
+        {
+          "Key": "expireMissing",
+          "Label": "Expire missing rows",
+          "Type": "boolean",
+          "Required": false,
+          "Default": "true",
+          "Description": "Mark rows whose key is absent from this result as expired.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "payload unchanged; syncedRows and expiredRows -\u003e Attributes",
+      "Consumes": [
+        "json",
+        "text",
+        "any"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "advanced"
+    },
+    {
       "ID": "apply-notify",
       "Kind": "apply",
       "Label": "Notify me",
@@ -5861,6 +5952,97 @@
       "Output": "payload unchanged; the row's id -\u003e the output attribute, if named",
       "Consumes": [
         "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "advanced"
+    },
+    {
+      "ID": "apply-list-sync",
+      "Kind": "apply",
+      "Label": "Sync rows into a list",
+      "Description": "Turns a JSON payload's array of items into rows of a Configure-authored List, one row per item, matched by \"Key column\": an existing row with the same key is updated in the mapped columns, a new key appends a row, and with \"Expire missing rows\" on, rows whose key is absent from this result are marked expired (never deleted). One-way: nothing is written back to the source, and a later sync overwrites the mapped columns of a row edited by hand.",
+      "ConfigFields": [
+        {
+          "Key": "listId",
+          "Label": "List",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The Configure-authored List that mirrors the source.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "list",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "itemsPath",
+          "Label": "Items path",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Dotted path to the array of items inside the JSON payload, e.g. issues. Blank when the payload itself is the array.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "keyColumn",
+          "Label": "Key column",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The List column that identifies an item -- must be named in the field map.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "fieldMap",
+          "Label": "Field map",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "JSON object mapping List column keys to a dotted path inside each item, e.g. {\"key\":\"key\",\"summary\":\"fields.summary\",\"status\":\"fields.status.name\"}. A value with {{path}} placeholders is a template, e.g. \"https://jira.example.com/browse/{{key}}\".",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        },
+        {
+          "Key": "expireMissing",
+          "Label": "Expire missing rows",
+          "Type": "boolean",
+          "Required": false,
+          "Default": "true",
+          "Description": "Mark rows whose key is absent from this result as expired.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "payload unchanged; syncedRows and expiredRows -\u003e Attributes",
+      "Consumes": [
+        "json",
+        "text",
+        "any"
       ],
       "Produces": {
         "passthrough": true

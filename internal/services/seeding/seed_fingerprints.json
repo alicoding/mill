@@ -143,6 +143,10 @@
     "seedRevision": 4,
     "fingerprint": "e5f0f240a11b3186184fc845f0a5b43e0a866f354c90c6cb22286a3ca4a4b755"
   },
+  "list:example-jira-issues-list": {
+    "seedRevision": 1,
+    "fingerprint": "775af5909025d026b3d20469002becacaec8b516a6ad08ab197ef5e8652b080b"
+  },
   "list:example-task-tracker-list": {
     "seedRevision": 2,
     "fingerprint": "d7323e0ad888af81e08709ee5c3d19cce42091a50621d709cbf0256cbba6dab6"
@@ -274,6 +278,10 @@
   "workflow:example-guarded-http-workflow": {
     "seedRevision": 2,
     "fingerprint": "06ff189f9ff1362321c0187466a2336f34cb6a16217ee3c129900ab2da6e2b9f"
+  },
+  "workflow:example-jira-issues-sync-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "1afd7bdc6ec10020a1837753007250b86498cd4ee41c88734b391db09ce632cb"
   },
   "workflow:example-jira-search-workflow": {
     "seedRevision": 1,
