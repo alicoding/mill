@@ -14,6 +14,10 @@ import (
 // leaves it empty.
 type Filter struct {
 	EntryID string
+	// ActorPrefix keeps only rows whose actor starts with it -- the
+	// plugin audit export's "plugin:" slice (ADR-0051 §4). Empty means
+	// no filter.
+	ActorPrefix string
 }
 
 // List returns, newest first, the page of records matching filter
@@ -26,6 +30,10 @@ func (s *Store) List(filter Filter, limit, offset int) ([]secretaudit.Record, in
 	if filter.EntryID != "" {
 		where += " AND entry_id = ?"
 		args = append(args, filter.EntryID)
+	}
+	if filter.ActorPrefix != "" {
+		where += " AND substr(actor, 1, ?) = ?"
+		args = append(args, len(filter.ActorPrefix), filter.ActorPrefix)
 	}
 
 	var total int

@@ -4,6 +4,8 @@ import { BackupService, SettingsService, UpdateState } from './bindings'
 import { SETTINGS_SECTIONS, resolveSectionTitle } from './settingsSections'
 import { useUpdateNoticeStore } from './updateNoticeStore'
 import { useUISignalStore } from './uiSignalStore'
+import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
+import { downloadBlob } from './downloadBlob'
 
 // Settings-adjacent commands (panel.applyClipboard, backup.*, and one
 // palette-only deep-link command per registered Settings section) --
@@ -60,6 +62,20 @@ export const SETTINGS_COMMANDS: Command[] = [
     // whatever retention count is already configured there, never
     // resets it.
     run: () => { BackupService.BackupNow(0).catch(console.error) },
+  },
+  {
+    id: 'extensions.exportAudit',
+    label: 'Export plugin audit',
+    // The plugin audit document (ADR-0051 §4): every installed plugin's
+    // reach and trust state, the guarded actions plugins asked for
+    // within the guardrail window, and every plugin secret read -- saved
+    // through the same download door every other export uses.
+    defaultBinding: null,
+    run: () => {
+      PluginService.ExportPluginAudit()
+        .then((json) => downloadBlob(`mill-plugin-audit-${new Date().toISOString().slice(0, 10)}.json`, new Blob([json], { type: 'application/json' })))
+        .catch(console.error)
+    },
   },
   {
     id: 'backup.export',

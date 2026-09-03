@@ -584,8 +584,10 @@ badge, and a floating approval prompt.
 - **Breakpoints** pause a run before a step; edit values, then
   resume — or run in step mode and walk the chain one step at a
   time.
-- **Try it** on the Convert HTML to Markdown step previews a
-  conversion without running anything.
+- **Try this step** on any step runs just that step on an input you
+  type, paste from the clipboard, or take from its last run — and
+  shows the output right there, without running the workflow. A step
+  that would need your approval tells you so instead of running.
 - **Activity** shows trigger fires and run outcomes across all
   workflows, so a scheduled or watching workflow is never invisibly
   running. Its MCP calls section logs every call to or from Mill's
@@ -1281,6 +1283,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `docs.search` | Search docs | — | Global | Always available |
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
+| `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `palette.open` | Open command palette | `⌘K` | Global | Always available |
@@ -2048,6 +2051,12 @@ copy back leaves a line in your own access history.
 ([Guardrails](../concepts/guardrails.md)) parks any step that leaves
 the machine until you approve it or a rule you wrote allows it.
 Agents get no shortcut around this.
+
+**Plugins run only with your say-so.** A plugin you install waits in
+Settings > Extensions, showing what it can request and reach, until
+you allow it; an administrator can pin the allowed set in the settings
+file; and Export plugin audit files what every plugin asked for and
+read ([Install a plugin](../reference/install-a-plugin.md)).
 
 **Execution environments are not a sandbox.** Run a command executes
 with your full user account — the pinned shell, directory, and

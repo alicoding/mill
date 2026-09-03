@@ -102,8 +102,11 @@ func (s *SecretService) RecordAccess(entryID, label string, actx secretaudit.Acc
 // own shape.
 type ListSecretAccessRequest struct {
 	EntryID string `json:"entryId"`
-	Limit   int    `json:"limit"`
-	Offset  int    `json:"offset"`
+	// ActorPrefix narrows to actors starting with it (the plugin audit
+	// export passes "plugin:"); empty means every actor.
+	ActorPrefix string `json:"actorPrefix"`
+	Limit       int    `json:"limit"`
+	Offset      int    `json:"offset"`
 }
 
 // SecretAccessRecord is the frontend-facing JSON shape for one audit
@@ -162,7 +165,7 @@ func (s *SecretService) ListSecretAccess(req ListSecretAccessRequest) (ListSecre
 		offset = 0
 	}
 
-	records, total, err := s.auditStore.List(secretauditstore.Filter{EntryID: req.EntryID}, limit, offset)
+	records, total, err := s.auditStore.List(secretauditstore.Filter{EntryID: req.EntryID, ActorPrefix: req.ActorPrefix}, limit, offset)
 	if err != nil {
 		return ListSecretAccessResponse{}, fmt.Errorf("secretsvc: list secret access: %w", err)
 	}

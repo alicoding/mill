@@ -26,6 +26,28 @@ Each installed plugin has the same switch every built-in extension
 has. Turning it off removes its tool from the tray and palette;
 objects it already placed stay on your boards untouched.
 
+## Before a plugin runs
+
+A plugin you install after Mill first ran with this check waits for
+your review: Settings > Extensions lists it with what it can request,
+which hosts it can reach, and what it catches, and nothing of it runs
+until you click **Allow** and reload. A notice in the footer tells you
+when one is waiting. Plugins that were already installed when the
+check arrived keep running; only new arrivals wait.
+
+An administrator can pin which plugins may run at all by writing an
+allow-list into Mill's settings file — the key
+`settings-plugin-allowlist`, a JSON array of plugin ids, placed the
+way device-management tooling places any managed setting. When it is
+set, Settings > Extensions reports it and every plugin off the list
+shows as blocked, with no way to turn it on from the app. The Drawing
+plugin built into Mill is exempt.
+
+**Export plugin audit** (Settings > Extensions, or the command
+palette) saves one JSON file: every installed plugin with its declared
+reach and whether it is allowed and on, every action a plugin asked
+Mill to perform within the last day, and every secret a plugin read.
+
 ## What a plugin can and cannot do
 
 A plugin draws its own objects and edits their data through Mill.

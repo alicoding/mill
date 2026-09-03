@@ -10,6 +10,12 @@
  */
 export interface ListSecretAccessRequest {
     "entryId": string;
+
+    /**
+     * ActorPrefix narrows to actors starting with it (the plugin audit
+     * export passes "plugin:"); empty means every actor.
+     */
+    "actorPrefix": string;
     "limit": number;
     "offset": number;
 }

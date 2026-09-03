@@ -144,6 +144,10 @@ type PluginService struct {
 	// naming a secret then refuses rather than sends unauthenticated.
 	secretRefs  SecretRefResolver
 	readSetting SettingReader
+	// trust / secretAccess are the audit export's read seams
+	// (pluginservice_audit.go), nil until wired.
+	trust        PluginTrustReader
+	secretAccess func(actorPrefix string) ([]PluginSecretAccess, error)
 }
 
 func New(dir string, guardrail *guardrailsvc.GuardrailService, appVersion string) *PluginService {
@@ -356,6 +360,9 @@ func validateContributes(c ManifestContributes) string {
 type IngestionClaim struct {
 	PluginID string
 	Kind     string
+	// Builtin marks a claim from a plugin shipped in the bundle -- exempt
+	// from the run gate and the allow-list (ADR-0051 §4).
+	Builtin bool
 }
 
 // URLPasteClaims returns the claims of every VALID plugin whose
@@ -378,7 +385,7 @@ func (p *PluginService) URLPasteClaims() []IngestionClaim {
 		}
 		for _, obj := range info.Manifest.Contributes.CanvasObjects {
 			if obj.PastesURLs {
-				out = append(out, IngestionClaim{PluginID: info.Manifest.ID, Kind: obj.Kind})
+				out = append(out, IngestionClaim{PluginID: info.Manifest.ID, Kind: obj.Kind, Builtin: info.Builtin})
 			}
 		}
 	}

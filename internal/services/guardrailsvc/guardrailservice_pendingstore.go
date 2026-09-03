@@ -373,3 +373,9 @@ func (s *PendingActionStore) sweepLocked(now time.Time, retention time.Duration)
 	}
 	return expired
 }
+
+// GuardedActionRetention is the window a resolved guarded action stays
+// queryable (Pending/Resolved sweep older records) -- exported so the
+// plugin audit export (ADR-0051 §4) can state the window it covers
+// rather than imply a permanent log.
+func GuardedActionRetention() time.Duration { return defaultGuardedActionRetention }
