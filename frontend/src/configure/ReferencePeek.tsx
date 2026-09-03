@@ -19,7 +19,7 @@ import peekStyles from './ReferencePeek.module.css'
 // field without opening Details, beside the same Open door. The Open
 // link is object-scoped (this field's own entity) and so mouse-only,
 // the same reason the plugin menu items give.
-export function ReferencePeek({ refKind, id }: { refKind: string; id: string }) {
+export function ReferencePeek({ refKind, id, noun }: { refKind: string; id: string; noun: string }) {
   const { t } = useTranslation('configure')
   const [summary, setSummary] = useState<ReferenceSummary | null>(null)
   const [open, setOpen] = useState(false)
@@ -47,7 +47,10 @@ export function ReferencePeek({ refKind, id }: { refKind: string; id: string }) 
     useUISignalStore.getState().requestConfigureEdit(target.tab, id)
     useAppStore.getState().setView({ kind: 'configure', tab: target.tab })
   }
-  const openLabel = refKind === 'request' ? t('entityRefField.openIntegration') : refKind === 'workflow' || refKind === 'workflow-scope' ? t('entityRefField.openWorkflow') : t('entityRefField.openInConfigure')
+  // The link's own name avoids the word "Configure": the app's nav
+  // link carries it, and a substring match on the two would be
+  // ambiguous for anyone (a test, a screen reader) naming a link.
+  const openLabel = refKind === 'request' ? t('entityRefField.openIntegration') : refKind === 'workflow' || refKind === 'workflow-scope' ? t('entityRefField.openWorkflow') : t('entityRefField.openEntity', { noun })
   const problems = summary?.problems ?? []
 
   return (

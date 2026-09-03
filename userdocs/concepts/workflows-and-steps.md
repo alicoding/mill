@@ -68,4 +68,4 @@ entity's own editor: an integration opens as a tab beside your
 workflow, everything else opens on its Configure page with the form
 ready. If the entity cannot work as it stands — an integration whose
 auth has no secret yet — the step says so on the field, with the same
-Open link.
+Edit link.

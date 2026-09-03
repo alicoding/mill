@@ -151,7 +151,7 @@ export function EntityRefField({ refKind, value, onChange, readOnly }: { refKind
         )}
       </Select>
       {error && <span>{error}</span>}
-      <ReferencePeek refKind={refKind} id={entities?.some((e) => e.ID === value) ? value : ''} />
+      <ReferencePeek refKind={refKind} id={entities?.some((e) => e.ID === value) ? value : ''} noun={KIND_NOUN[refKind] ?? refKind} />
       {/* An empty callable-workflow list is a dead end without saying
           how to fix it (reported from live use: "Select a callable
           workflow…" with zero options and no hint) -- name the exact
@@ -348,7 +348,7 @@ function ReadOnlyReference({ refKind, value, entities, noun }: { refKind: string
           <Link href="#" onClick={(e) => { e.preventDefault(); editCommand?.run() }} data-testid="entity-ref-edit">{t('entityRefField.edit')}</Link>
         </>
       )}
-      <ReferencePeek refKind={refKind} id={value} />
+      <ReferencePeek refKind={refKind} id={value} noun={noun} />
     </Text>
   )
 }
