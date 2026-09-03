@@ -2,6 +2,7 @@ package composition
 
 import (
 	"github.com/alicoding/mill/internal/domain/httprequest"
+	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/seedorigin"
 )
 
@@ -49,7 +50,45 @@ func builtInAtlassianWorkflows() []Workflow {
 		panic("built-in workflow references an unknown node type: " + err.Error())
 	}
 
+	const (
+		jiraSyncTriggerID = "atlassian-jira-sync-trigger"
+		jiraSyncHTTPID    = "atlassian-jira-sync-http"
+		jiraSyncApplyID   = "atlassian-jira-sync-apply"
+	)
+	jiraSyncNodes, err := ResolveNodeDefaults([]Node{
+		{ID: jiraSyncTriggerID, NodeTypeID: "trigger-schedule", Position: Position{X: 0, Y: 0},
+			Config: map[string]string{"cron": "*/15 * * * *"}},
+		{ID: jiraSyncHTTPID, NodeTypeID: "integration-http", Position: Position{X: 0, Y: 100},
+			Config: map[string]string{"requestId": httprequest.ExampleJiraSearchID}},
+		{ID: jiraSyncApplyID, NodeTypeID: "apply-list-sync", Position: Position{X: 0, Y: 200},
+			Config: map[string]string{
+				"listId": list.ExampleJiraIssuesID, "itemsPath": "issues", "keyColumn": "key", "expireMissing": "true",
+				"fieldMap": `{"key":"key","summary":"fields.summary","status":"fields.status.name",` +
+					`"assignee":"fields.assignee.displayName","updated":"fields.updated",` +
+					`"url":"https://jira.example.com/browse/{{key}}"}`,
+			}},
+	})
+	if err != nil {
+		panic("built-in workflow references an unknown node type: " + err.Error())
+	}
+
 	return []Workflow{
+		{
+			ID:    "example-jira-issues-sync-workflow",
+			Label: "Example: Jira issues → List",
+			Description: "Every 15 minutes, runs the Example: Jira search (PAT) integration and mirrors the " +
+				"issues it returns into the Example: Jira issues List, one row per issue matched by key -- " +
+				"one-way, nothing is written back to Jira. Configure the integration's base URL and token, " +
+				"set the url column's base in the sync step, then enable this workflow.",
+			Nodes: jiraSyncNodes,
+			Edges: []Edge{
+				{ID: "atlassian-jira-sync-e0", Source: jiraSyncTriggerID, Target: jiraSyncHTTPID},
+				{ID: "atlassian-jira-sync-e1", Source: jiraSyncHTTPID, Target: jiraSyncApplyID},
+			},
+			BuiltIn:  true,
+			Seed:     seedorigin.Stamp(1),
+			Disabled: true,
+		},
 		{
 			ID:    "example-confluence-to-markdown-workflow",
 			Label: "Example: Confluence page → Markdown",

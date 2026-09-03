@@ -76,6 +76,19 @@ func BuiltInBoardObjects() []BoardObject {
 			BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
 		{
+			// File-backed pdf (goal 0267): proof that a 'pdf' BoardObject
+			// renders through the vendored viewer, pages and all -- two
+			// pages, so the viewer's own page controls are exercised by
+			// the seed itself.
+			ID: objectPdfExampleID, Kind: "pdf",
+			Payload:   map[string]string{"title": "Sample document", BoardObjectSeedAssetKey: "pdf"},
+			Position:  Position{X: 80, Y: 240},
+			Size:      &Dimensions{W: 420, H: 320},
+			ParentID:  cardSketchesID,
+			CreatedAt: now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
+		{
 			// File-backed csv (goal 0239 S2): proof that a 'sheet'
 			// BoardObject renders the mirrored-file preview AND that a
 			// csv cell quick-edits in place -- double-click a cell of
@@ -103,6 +116,8 @@ func BuiltInBoardObjectAsset(key string) (content, ext string, ok bool) {
 		return seedReferenceImageSVG, ".svg", true
 	case "sheet":
 		return seedSampleSheetCSV, ".csv", true
+	case "pdf":
+		return seedSamplePDF, ".pdf", true
 	}
 	return "", "", false
 }
@@ -121,4 +136,51 @@ const (
 	// 'sheet' BoardObject previews a real csv AND that a cell
 	// quick-edits in place, writing this same file back.
 	seedSampleSheetCSV = "Item,Qty,Notes\nCoffee beans,2,Whole bean\nOat milk,1,\nFilters,100,No. 4\n"
+	// seedSamplePDF is a minimal, valid, ASCII-only two-page PDF --
+	// proof that a 'pdf' BoardObject renders through the vendored
+	// viewer AND that its page controls page (two pages on purpose).
+	seedSamplePDF = `%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 360 240] /Contents 4 0 R /Resources << /Font << /F1 7 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 50 >>
+stream
+BT /F1 24 Tf 40 140 Td (Sample PDF - page 1) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 360 240] /Contents 6 0 R /Resources << /Font << /F1 7 0 R >> >> >>
+endobj
+6 0 obj
+<< /Length 42 >>
+stream
+BT /F1 24 Tf 40 140 Td (Page 2 of 2) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000247 00000 n 
+0000000347 00000 n 
+0000000473 00000 n 
+0000000565 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+635
+%%EOF
+`
 )

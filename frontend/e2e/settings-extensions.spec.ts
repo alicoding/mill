@@ -214,10 +214,11 @@ test('Extensions section lists every registered canvas tool; the built-in card r
   await openExtensionsSection(page)
 
   // Every compiled-in ATLAS_TOOLS member (atlas/atlasTools.ts) plus
-  // every tool-less noun (diagram, sheet) gets exactly one row --
-  // card, note, area, table, image, diagram, sheet. The drawing tools
-  // are the Drawing plugin's row, not four rows here (goal 0252).
-  await expect(page.getByTestId('extensions-row')).toHaveCount(7)
+  // every tool-less noun (diagram, sheet, pdf -- goal 0267) gets
+  // exactly one row -- card, note, area, table, image, diagram,
+  // sheet, pdf. The drawing tools are the Drawing plugin's row, not
+  // four rows here (goal 0252).
+  await expect(page.getByTestId('extensions-row')).toHaveCount(8)
 
   const cardRow = page.locator('[data-testid="extensions-row"][data-extension-id="card"]')
   await expect(cardRow).toBeVisible()
@@ -359,9 +360,32 @@ test('The note row offers its declared Rich code blocks setting, and the note ed
     .toBe(true)
   await page.keyboard.type('```js', { delay: 30 })
   await page.keyboard.press('Enter')
-  await page.keyboard.type('const x = 1', { delay: 30 })
+  // The fence converts to the CodeMirror block async, and the block's
+  // node view can be REBUILT once more when the first content sync
+  // lands (the adopted editor's own timing) -- per-keystroke typing
+  // into that window drops characters nondeterministically, and no DOM
+  // signal marks the rebuild settled. Escape hatch (testing.md): the
+  // content lands as ONE atomic insertText, which survives the rebuild
+  // the way already-committed doc content does; the format assertion
+  // below still exercises the real keybinding as a user primitive.
   const sticky = page.getByTestId('atlas-sticky-note')
-  await expect(sticky.locator('.cm-editor')).toBeVisible()
+  await expect(sticky.locator('.cm-content')).toHaveAttribute('data-language', 'javascript')
+  await expect
+    .poll(() => page.evaluate(() => !!document.activeElement?.closest('.cm-editor')))
+    .toBe(true)
+  await page.keyboard.insertText('const  x=1')
+  await expect(sticky.locator('.cm-editor .cm-content')).toContainText('const  x=1')
+
+  // Shift-Alt-F formats the block via prettier (goal 0268) -- the
+  // converged format keybinding, mounted through the code-block
+  // feature's own CodeMirror extensions seam. Mangled spacing
+  // normalizes in place.
+  await sticky.locator('.cm-editor .cm-content').click()
+  await page.keyboard.press('Shift+Alt+f')
+  // Generous timeout: the FIRST format cold-loads the prettier
+  // chunk (dynamic import), which under parallel-worker contention
+  // can exceed the default 5s.
+  await expect(sticky.locator('.cm-editor .cm-content')).toContainText('const x = 1;', { timeout: 15_000 })
 
   // Turn the setting back off; a FRESH edit session drops CodeMirror.
   await openExtensionsSection(page)

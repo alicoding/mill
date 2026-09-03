@@ -14,8 +14,8 @@
   "board": {
     "cardAriaLabel": "Open {{title}}",
     "zoomIntoAriaLabel": "Zoom into {{title}}",
-    "cardsCount_one": "{{count}} card",
-    "cardsCount_other": "{{count}} cards",
+    "cardsCount_one": "{{count}} item",
+    "cardsCount_other": "{{count}} items",
     "leafChip": "leaf",
     "freshChip": "{{count}} fresh",
     "staleChip": "{{count}} stale",
@@ -44,8 +44,8 @@
     "inlineTitleAriaLabel": "Name this card"
   },
   "jump": {
-    "placeholder": "Jump to a card",
-    "noMatches": "No cards match",
+    "placeholder": "Jump to a card or object",
+    "noMatches": "No matches",
     "footerHint": "↵ go · ⌘↵ open",
     "areaFacetLabel": "Area",
     "suggestionsAriaLabel": "Search type suggestions"
@@ -105,8 +105,8 @@
     "title": "Add card",
     "promoteTitle": "Promote to card",
     "areaTitle": "New area",
-    "areaContextLine_one": "{{count}} card moves into this area",
-    "areaContextLine_other": "{{count}} cards move into this area",
+    "areaContextLine_one": "{{count}} item moves into this area",
+    "areaContextLine_other": "{{count}} items move into this area",
     "kindLabel": "Kind",
     "titleLabel": "Title",
     "add": "Add",
@@ -119,6 +119,10 @@
     "tableAriaLabel": "Table",
     "diagramAriaLabel": "Diagram",
     "sheetAriaLabel": "Sheet",
+    "pdfAriaLabel": "PDF document",
+    "pdfViewerTitle": "PDF viewer",
+    "pdfTooLarge": "Too large to preview here.",
+    "pdfOpenInApp": "Open in default app",
     "loadFailed": "Couldn't load this file.",
     "dragHandleTitle": "Drag to move",
     "rotateHandleTitle": "Drag to rotate"
@@ -145,6 +149,7 @@
     "matrix": "Matrix",
     "coverage": "Coverage",
     "roadmap": "Roadmap",
+    "contents": "Contents",
     "kinds": "Kinds",
     "dataActionsLabel": "Arrange, import, export, and folder actions",
     "shareViewActionsLabel": "Share and view actions"
@@ -197,6 +202,11 @@
     "noLinkKinds": "No link kinds are declared yet.",
     "viewMissing": "View missing ({{count}})",
     "hideMissing": "Hide missing"
+  },
+  "contents": {
+    "title": "Contents",
+    "filterPlaceholder": "Filter by name",
+    "empty": "Nothing matches."
   },
   "roadmap": {
     "title": "Roadmap",
@@ -336,8 +346,8 @@
   },
   "confirm": {
     "dissolveTitle": "Dissolve {{title}}?",
-    "dissolveBody_one": "Its {{count}} card moves up a level.",
-    "dissolveBody_other": "Its {{count}} cards move up a level.",
+    "dissolveBody_one": "Its {{count}} item moves up a level.",
+    "dissolveBody_other": "Its {{count}} items move up a level.",
     "dissolveConfirm": "Dissolve",
     "deletePromoteTitle_one": "Delete {{count}} item?",
     "deletePromoteTitle_other": "Delete {{count}} items?",
@@ -396,6 +406,8 @@
   },
   "paste": {
     "converted": "Pasted as {{what}}",
+    "pastedAs": "Pasted as {{kind}}",
+    "pasteAsInstead": "Paste as {{kind}} instead",
     "tables_one": "{{count}} table",
     "tables_other": "{{count}} tables",
     "cards_one": "{{count}} card",

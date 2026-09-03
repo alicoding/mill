@@ -1,4 +1,6 @@
 import { useTranslation } from 'react-i18next'
+import { Heading } from '@primer/react'
+import PageContainer from '../shared/PageContainer'
 import { Tabs } from '@primer/react/experimental'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import { ConfigureRequests } from './ConfigureRequests'
@@ -7,8 +9,11 @@ import { ConfigureAttributes } from './ConfigureAttributes'
 import { ConfigureMCPServers } from './ConfigureMCPServers'
 import { ConfigureDecisions } from './ConfigureDecisions'
 import { ConfigureExecEnv } from './ConfigureExecEnv'
+import { ConfigureSecretSources } from './ConfigureSecretSources'
+import { ConfigureConversionProfiles } from './ConfigureConversionProfiles'
 import { ConfigureAIProviders } from './ConfigureAIProviders'
 import { ConfigureStepTypes } from './ConfigureStepTypes'
+import styles from '../shared/ListCard.module.css'
 
 // The Configure surface (docs/SPEC.md §3.5): eight sections for
 // Configure-authored data -- Integration (HTTPRequests, 1:many
@@ -40,14 +45,29 @@ import { ConfigureStepTypes } from './ConfigureStepTypes'
 function ConfigureView({ initialTab }: { initialTab?: string }) {
   const { t } = useTranslation('configure')
   return (
+    <>
+    {/* The orienting sentence every sibling surface already carries
+        (0162 finding 1) -- in the same PageContainer padding they get,
+        so it doesn't sit flush against the pane edge; the Tabs below
+        keep their own full-width layout. */}
+    <PageContainer>
+      <Heading as="h1" variant="medium" className={styles.subtitle}>
+        {t('configureView.subtitle')}
+      </Heading>
+    </PageContainer>
     <Tabs defaultValue={initialTab ?? 'integration'}>
-      <TabList aria-label={t('configureView.ariaLabel')}>
+      {/* Nine tabs overflow the narrower viewports; the tab strip is the
+          kit's own horizontal scroller, declared so the layout-fitness
+          rule reads it as deliberate. */}
+      <TabList aria-label={t('configureView.ariaLabel')} scrollRegion="configure-tabs">
         <TabItem value="integration">{t('configureView.integration')}</TabItem>
         <TabItem value="lists">{t('configureView.lists')}</TabItem>
         <TabItem value="attributes">{t('configureView.attributes')}</TabItem>
         <TabItem value="mcpservers">{t('configureView.mcpServers')}</TabItem>
         <TabItem value="decisions">{t('configureView.decisions')}</TabItem>
         <TabItem value="execenvs">{t('configureView.execEnvs')}</TabItem>
+        <TabItem value="secretsources">{t('configureView.secretSources')}</TabItem>
+        <TabItem value="conversionprofiles">{t('configureView.conversionProfiles')}</TabItem>
         <TabItem value="aiproviders">{t('configureView.aiProviders')}</TabItem>
         <TabItem value="steptypes">{t('configureView.stepTypes')}</TabItem>
       </TabList>
@@ -57,9 +77,12 @@ function ConfigureView({ initialTab }: { initialTab?: string }) {
       <TabPanel value="mcpservers"><ConfigureMCPServers /></TabPanel>
       <TabPanel value="decisions"><ConfigureDecisions /></TabPanel>
       <TabPanel value="execenvs"><ConfigureExecEnv /></TabPanel>
+      <TabPanel value="secretsources"><ConfigureSecretSources /></TabPanel>
+      <TabPanel value="conversionprofiles"><ConfigureConversionProfiles /></TabPanel>
       <TabPanel value="aiproviders"><ConfigureAIProviders /></TabPanel>
       <TabPanel value="steptypes"><ConfigureStepTypes /></TabPanel>
     </Tabs>
+    </>
   )
 }
 

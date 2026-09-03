@@ -20,7 +20,9 @@ connected by links, grouped into areas you can drill into.
   live diagrams. Drop a `.drawio` or `.mmd` file and it renders the
   same way, updating automatically whenever you edit that file outside
   Mill — a missing file shows a clear notice with a button to choose
-  another one. Click anywhere on a diagram to select it and get its
+  another one. A `.xml` file that holds a draw.io diagram (an
+  exported one, say) lands as a diagram too — Mill reads the file to
+  tell it apart from ordinary XML. Click anywhere on a diagram to select it and get its
   resize handles. A multi-page draw.io file shows page arrows when you
   hover it, so you can flip through its pages right on the board.
   General and flowchart shapes render with their real
@@ -47,10 +49,22 @@ connected by links, grouped into areas you can drill into.
   strikethrough, and code; type `[]` or `[x]` at the start of a line
   for a to-do, and Enter continues the list unchecked; at rest the
   note shows the rendered result, and clicking it brings the source
-  back. A long sticky note scrolls in place, and grows while you
+  back. With Rich code blocks turned on (Settings → Extensions →
+  Note), press Shift-Option-F inside a code block to format it —
+  JSON, JavaScript, TypeScript, CSS, HTML, YAML, and Markdown. A long sticky note scrolls in place, and grows while you
   edit it — and any note opens big: ⌘-click it (or right-click →
   Open note) for a full-size editor, like opening a note in its own
-  window.
+  window. Notes save when you click away; with Settings → General →
+  Save changes set to "When I choose", they wait for ⌘S instead and
+  show a dot until then.
+
+## Contents
+
+Everything on the board, listed by kind: cards, notes by their first
+line, and every other object. Open it from the toolbar's list button
+or the command palette ("Contents"), type to filter by name, and
+activate a row to jump there — a card opens, a note or object is
+brought into view.
 
 ## Drawing and images
 
@@ -102,7 +116,10 @@ connected by links, grouped into areas you can drill into.
   thing.** A table copied from a spreadsheet or a document app becomes
   a table on the board, ready to browse and edit like any other list.
   A pasted file path lands what dropping the file would: a document
-  becomes a card, a diagram or spreadsheet file its own board object,
+  becomes a card, a diagram, spreadsheet, or PDF file its own board
+  object (a PDF shows its pages right on the board — click it once to
+  select it, then search, zoom, and page through it in place; while
+  you scroll inside it the board holds still),
   a folder path opens the folder import. Everything else lands as a
   sticky note at your pointer, already selected — nothing else to
   fill in. Multiple tables in one paste each land as their own table,
@@ -114,6 +131,19 @@ connected by links, grouped into areas you can drill into.
 
 ## Finding what you need
 
+- **Jump anywhere with ⌘K.** Type a few letters and pick from every
+  card and every placed object — a diagram, an image, a table —
+  matched by its name. Enter flies the board to it and pulses it so
+  your eye lands in the right place, even when it lives levels away.
+- **Tidy the whole board with Auto-arrange.** One click packs
+  everything on the current level — cards and objects alike — into
+  clean rows, then leaves you in control: anything you drag
+  afterwards stays where you put it.
+- **Group anything into an area.** Select any two or more things —
+  cards, notes, diagrams, images — and press G (or draw an area
+  around them) to file them into a named area together. The area
+  shows a small preview of everything inside, objects included, and
+  its count includes every member.
 - **Filter without losing the map.** The search control on the board
   (top right) dims everything that doesn't match your text, chosen
   kinds, or field values (the Fields menu lists every choice-type

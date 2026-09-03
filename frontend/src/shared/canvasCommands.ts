@@ -114,4 +114,20 @@ export const CANVAS_COMMANDS: Command[] = [
     },
     run: () => requestCanvas('publish'),
   },
+  {
+    id: 'workflow.edit',
+    label: 'Edit workflow',
+    defaultBinding: null,
+    // The active work tab is a workflow open read-only (goal 0297): the
+    // header's Edit button and every read-only reference field's Edit
+    // link render this one command.
+    enabled: () => {
+      const { activeWorkTabKey, workTabs } = useAppStore.getState()
+      return workTabs.some((t) => t.key === activeWorkTabKey && t.kind === 'workflow-edit' && t.mode === 'view')
+    },
+    run: () => {
+      const { activeWorkTabKey, setWorkTabMode } = useAppStore.getState()
+      if (activeWorkTabKey) setWorkTabMode(activeWorkTabKey, 'edit')
+    },
+  },
 ]

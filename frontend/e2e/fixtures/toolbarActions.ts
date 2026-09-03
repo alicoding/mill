@@ -15,6 +15,7 @@ const TOOLBAR_ACTION_LABELS: Record<string, string> = {
   'atlas-open-matrix': 'Matrix',
   'atlas-open-coverage': 'Coverage',
   'atlas-open-roadmap': 'Roadmap',
+  'atlas-open-contents': 'Contents',
   'atlas-open-kinds': 'Kinds',
   'atlas-open-companion': 'AI',
 }

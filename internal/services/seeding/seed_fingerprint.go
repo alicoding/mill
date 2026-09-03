@@ -9,6 +9,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/atlas"
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/domain/conversionprofile"
 	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/guardrail"
@@ -111,6 +112,12 @@ func AllSeedFingerprints() map[string]SeedFingerprint {
 		rev := e.Seed.SeedRevision
 		e.ID, e.CreatedAt, e.UpdatedAt, e.Seed = "", time.Time{}, time.Time{}, seedorigin.Origin{}
 		out[keyFor("execenv", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(e)}
+	}
+	for _, cp := range conversionprofile.BuiltIn() {
+		id := cp.ID
+		rev := cp.Seed.SeedRevision
+		cp.ID, cp.CreatedAt, cp.UpdatedAt, cp.Seed = "", time.Time{}, time.Time{}, seedorigin.Origin{}
+		out[keyFor("conversionprofile", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(cp)}
 	}
 	for _, p := range aiprovider.BuiltIn() {
 		id := p.ID

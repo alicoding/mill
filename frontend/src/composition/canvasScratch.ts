@@ -47,39 +47,46 @@ export function readScratch(tabKey: string): ScratchDraft | null {
   }
 }
 
-const pendingWrites = new Map<string, ReturnType<typeof setTimeout>>()
+const pendingWrites = new Map<string, { timer: ReturnType<typeof setTimeout>; draft: ScratchDraft }>()
 
 export function cancelScheduledScratchWrite(tabKey: string): void {
   const existing = pendingWrites.get(tabKey)
   if (existing !== undefined) {
-    clearTimeout(existing)
+    clearTimeout(existing.timer)
     pendingWrites.delete(tabKey)
   }
 }
 
-// Debounced (~500ms per the goal doc) -- every keystroke/drag would
-// otherwise thrash localStorage on a large canvas.
-export function scheduleScratchWrite(tabKey: string, draft: ScratchDraft): void {
-  cancelScheduledScratchWrite(tabKey)
-  pendingWrites.set(
-    tabKey,
-    setTimeout(() => {
-      pendingWrites.delete(tabKey)
-      try {
-        localStorage.setItem(storageKey(tabKey), JSON.stringify(draft))
-      } catch {
-        // localStorage can throw (quota, private-mode Safari) -- hot
-        // exit is best-effort convenience, never a hard requirement of
-        // the editing session itself.
-      }
-    }, DEBOUNCE_MS),
-  )
+function writeScratch(tabKey: string, draft: ScratchDraft): void {
+  try {
+    localStorage.setItem(storageKey(tabKey), JSON.stringify(draft))
+  } catch {
+    // storage unavailable: the draft stays in memory until the next write
+  }
 }
 
-// Cancels any in-flight debounced write before removing the entry, so a
-// timer scheduled just before a deliberate close/save can never land
-// AFTER the clear and silently resurrect the scratch it was told to
-// discard.
+export function scheduleScratchWrite(tabKey: string, draft: ScratchDraft): void {
+  cancelScheduledScratchWrite(tabKey)
+  pendingWrites.set(tabKey, {
+    draft,
+    timer: setTimeout(() => {
+      pendingWrites.delete(tabKey)
+      writeScratch(tabKey, draft)
+    }, DEBOUNCE_MS),
+  })
+}
+
+// Writes every draft still inside its debounce window, now (goal 0295
+// S2): the quit / restart handshake's canvas half -- edits younger than
+// the timer used to be the ones a relaunch lost.
+export function flushScratchWrites(): void {
+  for (const [tabKey, pending] of pendingWrites) {
+    clearTimeout(pending.timer)
+    writeScratch(tabKey, pending.draft)
+  }
+  pendingWrites.clear()
+}
+
 export function clearScratch(tabKey: string): void {
   cancelScheduledScratchWrite(tabKey)
   try {

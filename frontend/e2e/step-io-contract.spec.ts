@@ -3,7 +3,7 @@ import { test, expect } from './fixtures/server'
 import { clickCanvasNode } from './fixtures/canvasNode'
 import { activePanel, dragBetweenHandles, dragPaletteItemToCanvas } from './fixtures/canvas'
 import { waitForViewportStable } from './fixtures/animation'
-import { fillCodeEditor } from './fixtures/codeEditor'
+import { stepOutput, tryStep } from './fixtures/stepTest'
 
 // Shared worker pool: every test here opens its own fresh, never-saved
 // "New workflow" tab and only reads/asserts on nodes/edges it just
@@ -84,28 +84,25 @@ test('the Inspector states the selected step\'s I/O contract in full', async ({ 
   await expect(panel.getByTestId('inspector-io-contract')).toHaveText('Takes: HTML — Produces: Markdown')
 })
 
-// The trust-gap "Try it" preview (docs/goals/0115 slice 1): only the
-// converter step gets a live paste-HTML-see-Markdown surface, run
-// through the same converter a real execution uses.
-test('the converter step\'s Inspector offers a Try it preview; other steps do not', async ({ page }) => {
+// The step-test surface (ADR-0051 §5, generalizing goal 0115's
+// converter-only Try it): the converter step runs alone on pasted HTML
+// through the same converter a real execution uses, and keeps its trust
+// line; a trigger has nothing to try and gets no section.
+test('the converter step\'s Inspector runs the step alone on pasted HTML; the trigger has no section', async ({ page }) => {
   await openPaletteOnNewWorkflow(page)
   await dragPaletteItemToCanvas(page, 'process-html-to-markdown')
 
   const panel = activePanel(page)
   await clickCanvasNode(page, panel, 'Convert HTML to Markdown')
-  await expect(panel.getByTestId('try-conversion-section')).toBeVisible()
-
-  await fillCodeEditor(page, 'try-html-input', '<h1>Hi</h1><ul><li>a</li></ul>')
-  await panel.getByTestId('try-convert').click()
-  const output = panel.getByTestId('try-markdown-output')
-  await expect(output).toBeVisible()
+  const section = await tryStep(page, panel, '<h1>Hi</h1><ul><li>a</li></ul>')
+  const output = await stepOutput(section)
   await expect(output).toContainText('# Hi')
   await expect(output).toContainText('- a')
   // Goal 0115 slice 2: the result names what converted it.
-  await expect(panel.getByTestId('try-engine-note')).toContainText('built-in converter')
+  await expect(section.getByTestId('try-engine-note')).toContainText('built-in converter')
 
   // The starter trigger node (dropped first, so index 0) has nothing
   // to try -- the section must not render for it.
   await panel.locator('.react-flow__node').first().click()
-  await expect(panel.getByTestId('try-conversion-section')).not.toBeVisible()
+  await expect(panel.getByTestId('step-test-section')).not.toBeVisible()
 })

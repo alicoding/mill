@@ -56,6 +56,12 @@ test('double-click opens the real editor engine, and editing round-trips through
   const editorFrame = dialog.getByTestId('drawio-editor-frame')
   await expect(editorFrame).toBeVisible()
 
+  // Window-drag opt-out (goal 0276's rider, second instance): the
+  // editor iframe inherits body's drag-by-background in the top
+  // document's hit-test -- holding editor chrome the inner document
+  // doesn't consume (the page-tab bar) dragged the native window.
+  expect(await editorFrame.evaluate((el) => getComputedStyle(el).getPropertyValue('--wails-draggable').trim())).toBe('no-drag')
+
   // The real engine actually mounted, not a blank/broken iframe -- its
   // own toolbar renders a "File" menu once init/load completes.
   const frame = page.frameLocator('[data-testid="drawio-editor-frame"]')

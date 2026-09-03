@@ -9,6 +9,7 @@ import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
 import { AtlasMatrixView } from './AtlasMatrixView'
 import { AtlasCoverageView } from './AtlasCoverageView'
 import { AtlasRoadmapView } from './AtlasRoadmapView'
+import { AtlasContentsView } from './AtlasContentsView'
 import { AtlasKindManager } from './AtlasKindManager'
 import { AtlasStructureDialogs } from './AtlasStructureDialogs'
 import type { useAtlasUndoToast } from './useAtlasUndoToast'
@@ -24,14 +25,14 @@ import type { useAtlasDeleteConfirm } from './useAtlasDeleteConfirm'
 // of them share logic with each other, only with the state AtlasView
 // still owns.
 export function AtlasViewOverlays({
-  jumpOpen, onCloseJump, allCards, allKinds, allLinks, allLinkKinds, jumpToCard,
+  jumpOpen, onCloseJump, allCards, allKinds, allLinks, allLinkKinds, allNotes, allObjects, jumpToCard, jumpToObject,
   overlayCard, onCloseOverlay, undoToast, openGroupEntry, guardDelete,
   importConfirmDialog,
   tableFromListOpen, onCloseTableFromList, newSpaceOpen, onCloseNewSpace, onCreateTable, onCreateSpace,
   menu, onCloseMenu, linkMenus, containmentMenus, deleteConfirm,
   openNote, onCloseNote,
   editingDiagramObject, onCloseEditDiagram,
-  matrixOpen, onCloseMatrix, coverageOpen, onCloseCoverage, roadmapOpen, onCloseRoadmap, childrenAll, kindsOpen, onCloseKinds, onOpenCardFromProjection,
+  matrixOpen, onCloseMatrix, coverageOpen, onCloseCoverage, roadmapOpen, onCloseRoadmap, contentsOpen, onCloseContents, onFocusItemFromContents, childrenAll, kindsOpen, onCloseKinds, onOpenCardFromProjection,
 }: {
   jumpOpen: boolean
   onCloseJump: () => void
@@ -39,7 +40,10 @@ export function AtlasViewOverlays({
   allKinds: Kind[]
   allLinks: Link[]
   allLinkKinds: LinkKind[]
+  allNotes: Note[]
+  allObjects: BoardObject[]
   jumpToCard: (card: Card, openImmediately: boolean) => void
+  jumpToObject: (object: BoardObject) => void
   overlayCard: Card | null
   onCloseOverlay: () => void
   undoToast: ReturnType<typeof useAtlasUndoToast>
@@ -67,6 +71,9 @@ export function AtlasViewOverlays({
   onCloseCoverage: () => void
   roadmapOpen: boolean
   onCloseRoadmap: () => void
+  contentsOpen: boolean
+  onCloseContents: () => void
+  onFocusItemFromContents: (id: string) => void
   childrenAll: Card[]
   kindsOpen: boolean
   onCloseKinds: () => void
@@ -74,7 +81,7 @@ export function AtlasViewOverlays({
 }) {
   return (
     <>
-      <AtlasJumpDialog open={jumpOpen} onClose={onCloseJump} cards={allCards} kinds={allKinds} onJump={jumpToCard} />
+      <AtlasJumpDialog open={jumpOpen} onClose={onCloseJump} cards={allCards} kinds={allKinds} notes={allNotes} objects={allObjects} onJump={jumpToCard} onJumpObject={jumpToObject} />
 
       {overlayCard && (
         <AtlasCardOverlay
@@ -122,6 +129,7 @@ export function AtlasViewOverlays({
         kinds={allKinds}
         onOpenCard={onOpenCardFromProjection}
       />
+      <AtlasContentsView open={contentsOpen} onClose={onCloseContents} kinds={allKinds} onOpenCard={onOpenCardFromProjection} onFocusItem={onFocusItemFromContents} />
       <AtlasKindManager open={kindsOpen} onClose={onCloseKinds} kinds={allKinds} linkKinds={allLinkKinds} />
     </>
   )

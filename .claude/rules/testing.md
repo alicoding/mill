@@ -130,6 +130,15 @@ at:
     banner is OS-bound (signed-bundle handshake); verify by running the
     seeded Clipboard→Markdown workflow via its hotkey while another app is
     focused and confirming the banner.
+  - **Close means hide, and the tray always brings the window back**
+    (goal 0276, main.go's WindowClosing hook) — the red traffic-light
+    close, the hook's Cancel+Hide, and the tray's "Open Mill" restore
+    are all native AppKit round trips no harness reaches. Verify on an
+    installed build: red-close the main window, confirm Mill stays in
+    the tray; tray → "Open Mill" restores the SAME window (state
+    intact, no empty "No pending approvals." window appearing); then
+    Quit from the tray and confirm the process actually exits, and ⌘Q
+    likewise.
   - **App archetype: closing the last window must NOT quit Mill**
     (goal 0188) — `Mac.ActivationPolicy` is Regular and
     `ApplicationShouldTerminateAfterLastWindowClosed` is false, which no
@@ -154,6 +163,16 @@ at:
     app switcher/dock, and focus returns to the app you summoned from;
     finally reactivate Mill (dock click or Cmd+Tab) and confirm the main
     window is back, right where it was before the summon.
+  - **The run monitor window** (goal 0294 S2, `newRunMonitorWindow` +
+    `ShowRunMonitor`/`HideRunMonitor`) -- the floating window, its
+    close-means-hide hook and the Quick Panel / tray doors that show
+    it are native round trips; the route's CONTENT is e2e-proven at
+    /#/runmonitor (run-monitor.spec.ts). Verify on an installed
+    build: ⌘⇧↩ on a Quick Panel row opens the window floating over
+    the current app with the run stepping; the red close hides it;
+    ⌘⇧↩ again re-shows it on the new run; a tray Recent row opens it
+    on that run; Open in Mill hides it and lands the main window on
+    the same run.
   - **Bringing a hidden app back on screen** (goal 0186, goal 0188 slice
     2 — `bringMainToFront`/`bringFloatingToFront`,
     `settingssvc/settingsservice_presence.go`) — every path that shows a
@@ -171,7 +190,11 @@ at:
     S2) — verify by dragging a `.md` file from Finder onto the running
     app and confirming the card lands with the real path; separately,
     drag a `.drawio` and a `.mmd` file and confirm each lands as a
-    "diagram" board object (not a card). The DROP GESTURE itself is a
+    "diagram" board object (not a card); separately, drag a `.pdf`
+    and confirm it lands as a "pdf" object rendering page 1 through
+    the vendored viewer (goal 0267 -- the routing decision is
+    Vitest-tested, the rendered result e2e-proven via the seeded
+    two-page document). The DROP GESTURE itself is a
     structural gap in this harness (Wails3's `WindowFilesDropped` needs
     a real `*WebviewWindow`, which server-mode Playwright's connection
     is not) — the routing decision is Vitest-tested instead
@@ -289,6 +312,15 @@ at:
     pointer; Finder ⌘C a .png → ⌘V lands an image object mirroring
     the REAL file path; Finder ⌘C a .md → ⌘V lands a card, same as
     dropping it.
+  - **A pdf link annotation actually reaching the system browser**
+    (goal 0271, `openExternalUrl` via the runtime's Browser API) —
+    launching the real default browser is OS-bound; the e2e pins the
+    negative (the click never navigates the app/viewer) and suppresses
+    the HTTP-transport call, but the runtime may route over its
+    WebSocket transport, so no harness observes the real open. Verify
+    on an installed build: click an external link inside a live pdf
+    object — the system browser opens the page and Mill stays exactly
+    where it was.
   - **Canvas navigation with a REAL trackpad** (goal 0257,
     `shared/canvasNavigation.ts`) — Playwright's wheel is synthetic;
     a real two-finger scroll, pinch, and ⌘-scroll are OS/driver-bound
@@ -297,7 +329,57 @@ at:
     both axes (no zoom), pinch zooms around the pointer, ⌘-scroll
     zooms; flip Settings > General > Canvas navigation to Mouse and
     confirm a mouse wheel zooms; confirm the workflow editor follows
-    the same mode without a reload.
+    the same mode without a reload. Additionally (goal 0271): with a
+    live (selected) PDF object and a draw.io object on the board,
+    two-finger scroll in every direction with the pointer inside each
+    viewer -- the viewer scrolls/zooms and the BOARD holds still (no
+    simultaneous pan), including diagonal gestures over a page-width
+    PDF whose horizontal axis has nothing to scroll; with the object
+    UNSELECTED (shield up -- pdf AND diagram carry it, goal 0302), the
+    same gesture pans the board only, and pinch / ⌘-scroll zoom the
+    board.
+    Synthetic wheel can't reproduce the real gesture stream's
+    double-handling, so this stays manual.
+  - **The quit gate on every native quit path, and explicit mode's
+    close guard** (goal 0295 S2b, `SettingsService.ShouldQuit` wired
+    as `application.Options.ShouldQuit`, `HideMainWindowGuarded`) --
+    ⌘Q, the Dock's Quit, the tray menu's Quit and the red close all
+    reach AppKit's applicationShouldTerminate / the WindowClosing
+    hook, which no server-mode harness has (the e2e drives the same
+    handshake through RestartApp). Verify on an installed build with
+    Settings > General > Save changes = When I choose: type into a
+    note and click away (the dot shows); ⌘Q shows the Save all /
+    Discard / Cancel sheet and Cancel keeps Mill running; hide the
+    window, then the tray's Quit brings the window back with the
+    sheet; Discard quits. Again with a held note: red-close the window
+    shows the sheet titled "...before closing?" and Save all hides
+    the window with the note written. Then switch back to
+    Automatically and confirm ⌘Q quits with no sheet and the note
+    text survives relaunch.
+  - **The adopted table grid's range and drag interactions** (goal
+    0287, ADR-0049, `shared/ListGridGlide.tsx`) -- range ⌘C/⌘V, the
+    fill handle, header-edge resize and header drag-reorder are the
+    library's own pointer gestures over one canvas; Playwright's
+    forced positional click reaches a single cell but not a drag or
+    the real clipboard. Verify on an installed build on a table
+    object and on Configure's List page: select a 2x2 range, ⌘C, move,
+    ⌘V (the rows write through); drag the fill handle down a column;
+    drag a header edge (width survives a reload on this device) and
+    drag a header onto another (the List's column order changes on
+    every projection); then a VoiceOver pass -- the grid's
+    accessibility DOM reads the headers and cells (ADR-0049's own
+    verification, the library hedges its a11y).
+  - **A relaunch never restores the floating windows** (goal 0301,
+    `SettingsService.HideAuxWindows` on ApplicationStarted and before
+    every approved quit / restart) -- macOS Resume re-showing windows
+    that were on screen when the process ended is an OS behavior no
+    harness reproduces. Verify on an installed build: open the Quick
+    Panel, press ⌘⇧↩ on a workflow so the run monitor floats, then
+    from the panel type "update" and restart (or ⌘Q from the panel's
+    Open Mill) -- on relaunch only the main window appears, the panel
+    and the monitor stay hidden until summoned; also relaunch with
+    "Close windows when quitting an application" OFF in System
+    Settings > Desktop & Dock (the default) and confirm the same.
   - **File-promise drops: the post-screenshot floating thumbnail**
     (goal 0256, `MillFilePromiseDropView` /
     `AttachFilePromiseReceiver`) — a promise drag needs a real AppKit
@@ -331,6 +413,20 @@ user primitive can reach the state.
   'only-on-failure'`; CI retries 2 / local 1. A flake's first CI
   recurrence ships a trace.zip in the failure artifact — read it before
   theorizing.
+- **A CI-only flake is chased locally under CPU throttle, never by
+  rerunning CI** (goal 0296): `E2E_CPU_THROTTLE=4 npx playwright test
+  <spec> --retries=0 --repeat-each=3` applies Chromium's own CPU
+  throttling through the shared `page` fixture (a public-repo runner
+  is 4 vCPU; measured 4x = 92 ms for a 23 ms busy loop). A failure that
+  reproduces this way is a load race with a local repro; one that
+  doesn't is not "the runner", look elsewhere (state leak, order
+  dependence).
+- **CI shards are balanced per test** (`fullyParallel` on in CI only,
+  goal 0296): Playwright only distributes evenly with it on, and a CI
+  shard runs one worker, so a file's tests may land on DIFFERENT
+  shards, each with its own fresh server. A file whose tests genuinely
+  must run in order declares `test.describe.configure({ mode:
+  'serial' })` at its top — never rely on file order implicitly.
 - **The flake protocol**: a test observed flaking twice either gets FIXED
   or enters `frontend/e2e/QUARANTINE.md` with class, entered/review dates,
   and notes. Retry-passing is never a fix. The same two-strikes shape

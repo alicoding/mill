@@ -1,4 +1,6 @@
-import { CheckCircleIcon, KeyIcon, ListUnorderedIcon, PackageIcon, PlugIcon, ServerIcon, SparkleFillIcon, TerminalIcon, WorkflowIcon, type Icon } from '@primer/octicons-react'
+import {
+  ArrowSwitchIcon,
+  AppsIcon, CheckCircleIcon, KeyIcon, ListUnorderedIcon, PackageIcon, PlugIcon, ServerIcon, SparkleFillIcon, TerminalIcon, WorkflowIcon, type Icon, LockIcon } from '@primer/octicons-react'
 
 // Per-entity leading-visual identity for InventoryList.tsx rows
 // (docs/goals/0007-resource-inventory-redesign.md): the ambient
@@ -43,4 +45,10 @@ export const ENTITY_ICON: Record<string, EntityIcon> = {
   aiprovider: { Icon: SparkleFillIcon, bg: 'var(--bgColor-open-muted)', fg: 'var(--fgColor-open)' },
   steptype: { Icon: PackageIcon, bg: 'var(--bgColor-neutral-muted)', fg: 'var(--fgColor-neutral)' },
   secret: { Icon: KeyIcon, bg: 'var(--bgColor-danger-muted)', fg: 'var(--fgColor-danger)' },
+  // secretsource (ADR-0050): a store Mill reads secrets through.
+  secretsource: { Icon: LockIcon, bg: 'var(--bgColor-danger-muted)', fg: 'var(--fgColor-danger)' },
+  // conversionprofile (goal 0305): which rule sets a conversion applies.
+  conversionprofile: { Icon: ArrowSwitchIcon, bg: 'var(--bgColor-accent-muted)', fg: 'var(--fgColor-accent)' },
+  // plugin (docs/goals/0290): a plugin-owned work tab's visual.
+  plugin: { Icon: AppsIcon, bg: 'var(--bgColor-neutral-muted)', fg: 'var(--fgColor-muted)' },
 }

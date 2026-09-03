@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runningRuns } from './trayPanelRuns'
+import { recentRuns, runningRuns, settledRunKind } from './trayPanelRuns'
 import type { RunSummary } from '../../bindings/github.com/alicoding/mill/internal/services/executionsvc/models'
 
 const run = (partial: Partial<RunSummary>): RunSummary =>
@@ -23,5 +23,21 @@ describe('runningRuns (goal 0189)', () => {
   it('excludes parked-awaiting-approval runs even when in-flight', () => {
     const parked = run({ runID: 'p', status: 'PENDING', pending: { nodeID: 'n' } as RunSummary['pending'] })
     expect(runningRuns([parked])).toEqual([])
+  })
+})
+
+describe('recentRuns', () => {
+  it('keeps only settled runs, newest first, capped at five', () => {
+    const runs = [
+      run({ runID: 'running', status: 'RUNNING' }),
+      run({ runID: 'parked', pending: { runID: 'parked' } as unknown as RunSummary['pending'] }),
+      ...[1, 2, 3, 4, 5, 6].map((n) => run({ runID: `s${n}`, completedAt: `2026-09-02T10:00:0${n}Z` })),
+    ]
+    expect(recentRuns(runs).map((r) => r.runID)).toEqual(['s6', 's5', 's4', 's3', 's2'])
+  })
+  it('names the settled kinds', () => {
+    expect(settledRunKind('SUCCESS')).toBe('done')
+    expect(settledRunKind('ERROR')).toBe('failed')
+    expect(settledRunKind('CANCELLED')).toBe('stopped')
   })
 })

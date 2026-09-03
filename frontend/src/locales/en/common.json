@@ -1,4 +1,8 @@
 {
+  "undoDelete": {
+    "undo": "Undo",
+    "deleted": "Deleted \"{{label}}\""
+  },
   "actions": {
     "change": "Change",
     "clear": "Clear",
@@ -58,7 +62,13 @@
     "markActive": "Mark active",
     "deleteRow": "Delete row",
     "booleanTrue": "Yes",
-    "booleanFalse": "No"
+    "booleanFalse": "No",
+    "renameColumn": "Rename",
+    "insertColumnLeft": "Insert column left",
+    "insertColumnRight": "Insert column right",
+    "columnSettings": "Type and choices…",
+    "insertRowBelow": "Insert row below",
+    "addRowHint": "New row"
   },
   "formattingToolbar": {
     "bold": "Bold",

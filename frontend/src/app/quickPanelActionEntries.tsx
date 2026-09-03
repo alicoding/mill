@@ -290,6 +290,7 @@ function buildActionRows(params: {
       groupId: 'actions',
       text: command.label,
       searchText: command.label.toLowerCase(),
+      keywords: command.keywords,
       leadingVisual: CommandPaletteIcon,
       trailingVisual: <HotkeyHint commandId={command.id} />,
       run: command.run,

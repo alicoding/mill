@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { TFunction } from 'i18next'
-import type { Card, Link, LinkKind, Note, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { BoardObject, Card, Link, LinkKind, Note, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
@@ -30,12 +30,13 @@ function truncateTitle(title: string): string {
 // (count === 1), since acting on one specific link within a count>1
 // aggregated artery has no per-link picker in this slice.
 export function useAtlasLinkMenus({
-  t, allCards, allLinks, allNotes, linkKinds, perspectives, setMenu, drill, onOpenCard, onError, onDeleted, onPerspectiveToast, requestLinkedCard, guardDelete,
+  t, allCards, allLinks, allNotes, allObjects, linkKinds, perspectives, setMenu, drill, onOpenCard, onError, onDeleted, onPerspectiveToast, requestLinkedCard, guardDelete,
 }: {
   t: TFunction<'atlas'>
   allCards: Card[]
   allLinks: Link[]
   allNotes: Note[]
+  allObjects: BoardObject[]
   linkKinds: LinkKind[]
   perspectives: Perspective[]
   setMenu: (state: ContextMenuState | null) => void
@@ -68,7 +69,7 @@ export function useAtlasLinkMenus({
     // its own Zoom-in door, since a Note's containment is otherwise
     // unreachable from the board (visibleNotes only renders once
     // viewedID equals the note's own ParentID).
-    const place = isGroupCard(allCards, card) || allNotes.some((n) => n.ParentID === card.ID)
+    const place = isGroupCard(allCards, card, allNotes, allObjects)
     const perspectiveItems = perspectiveMembershipMenuItems({ t, perspectives, cardIDs: [card.ID], pos, setMenu, onToast: onPerspectiveToast })
     const mirrorItems: ContextMenuItem[] = card.MirrorPath
       ? [
@@ -98,7 +99,7 @@ export function useAtlasLinkMenus({
     // only the plain note face has content that clips by a fixed line
     // count -- a frame's box is computed from its children and a
     // table's from its rows, neither of which this measures.
-    const fitToContentItem: ContextMenuItem[] = !isGroupCard(allCards, card) && !card.ProjectionListID
+    const fitToContentItem: ContextMenuItem[] = !isGroupCard(allCards, card, allNotes, allObjects) && !card.ProjectionListID
       ? [{
           id: 'fit-to-content',
           label: t('contextMenu.fitToContent'),

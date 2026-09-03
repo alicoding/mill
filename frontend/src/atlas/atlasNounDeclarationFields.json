@@ -41,8 +41,8 @@
   },
   {
     "field": "settings",
-    "legalValues": "an array of {key, label, description, defaultValue} boolean setting declarations, or omitted entirely",
-    "meaning": "the noun's own user settings (goal 0258): declared here, rendered generically inside its Settings > Extensions row, persisted centrally per extension id + key. defaultValue applies whenever the user has never touched the toggle. Omitted means the row shows no settings block."
+    "legalValues": "an array of {type, key, label, description, defaultValue} setting declarations -- type is boolean | string (optional placeholder) | number (optional min/max/step) | enum (options: [{value, label}]) -- or omitted entirely",
+    "meaning": "the noun's own user settings (goal 0258): declared here, rendered generically inside its Settings > Extensions row, persisted centrally per extension id + key. defaultValue applies whenever the user has never touched the control; a stored value of the wrong type, or an enum value no longer among the options, falls back to it. Omitted means the row shows no settings block. A runtime plugin declares the same shape as manifest contributes.settings and reads it back through api.settings."
   },
   {
     "field": "interaction",

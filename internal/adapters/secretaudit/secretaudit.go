@@ -60,6 +60,12 @@ const (
 	// WorkflowID are always populated here -- unlike the other resolver
 	// seams, this one only ever fires from inside a real coding-loop run.
 	ContextCodingLoopShell Context = "coding-loop-shell"
+	// ContextPluginFetch is pluginsvc's host-side secret injection
+	// (ADR-0048, goal 0281): a plugin's api.fetch naming a secretRef
+	// setting, resolved after the guardrail approved the request and
+	// attached as a header Mill sends on the plugin's behalf. Actor
+	// carries "plugin:<id>" -- the same source label Review shows.
+	ContextPluginFetch Context = "plugin-fetch"
 )
 
 // Outcome is one read's recorded result -- deliberately just two values
@@ -99,6 +105,10 @@ type AccessContext struct {
 	Context    Context
 	RunID      string
 	WorkflowID string
+	// Actor names a non-workflow reader ("plugin:<id>"); empty for
+	// every workflow-run and human seam, whose identity the other
+	// fields already carry.
+	Actor string
 }
 
 // Record is one vault entry read. Label is denormalized (the entry's
@@ -113,6 +123,7 @@ type Record struct {
 	Context    Context
 	RunID      string
 	WorkflowID string
+	Actor      string
 	Outcome    Outcome
 	// ErrorText is capped via TruncateError before it ever reaches
 	// storage; empty for OutcomeRead.

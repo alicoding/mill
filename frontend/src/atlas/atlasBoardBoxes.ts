@@ -1,4 +1,4 @@
-import type { Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { BoardObject, Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH, STICKY_HEIGHT, STICKY_WIDTH } from './atlasBoardLayout'
 import { rotatedAABB } from './atlasRotation'
 import type { FrameBox } from './useAtlasDragFiling'
@@ -13,12 +13,14 @@ export function computeTopLevelBoxes(
   cards: Card[],
   allCards: Card[],
   freeMoves: { id: string; x: number; y: number }[],
+  allNotes: Note[],
+  allObjects: BoardObject[],
 ): FrameBox[] {
   const moveByID = new Map(freeMoves.map((m) => [m.id, m]))
   return cards.map((card) => {
     const move = moveByID.get(card.ID)
-    const frame = isGroupCard(allCards, card)
-    const size = frame ? computeGroupFrameLayout(allCards, card.ID).size : { width: NOTE_WIDTH, height: NOTE_HEIGHT }
+    const frame = isGroupCard(allCards, card, allNotes, allObjects)
+    const size = frame ? computeGroupFrameLayout(allCards, card.ID, allNotes, allObjects).size : { width: NOTE_WIDTH, height: NOTE_HEIGHT }
     return {
       id: card.ID,
       x: move?.x ?? card.Position?.X ?? 0,
@@ -61,11 +63,11 @@ export function computeObjectBoxes(nodes: { id: string; position: { x: number; y
 // over a nested card's own preview tile resolved to the FRAME's card
 // instead -- the release point fell inside the frame's box (the only
 // box on offer) and never matched the smaller nested tile beneath it.
-export function computeNestedCardBoxes(topLevelBoxes: FrameBox[], allCards: Card[]): FrameBox[] {
+export function computeNestedCardBoxes(topLevelBoxes: FrameBox[], allCards: Card[], allNotes: Note[], allObjects: BoardObject[]): FrameBox[] {
   const boxes: FrameBox[] = []
   for (const frame of topLevelBoxes) {
     if (!frame.isFrame) continue
-    for (const child of computeGroupFrameLayout(allCards, frame.id).children) {
+    for (const child of computeGroupFrameLayout(allCards, frame.id, allNotes, allObjects).children) {
       boxes.push({
         id: child.card.ID,
         x: frame.x + child.position.x,
@@ -89,11 +91,13 @@ export function computeNestedCardBoxes(topLevelBoxes: FrameBox[], allCards: Card
 export function computeEnclosedBoundingBoxOrigin(
   cardIDs: string[],
   noteIDs: string[],
+  objectIDs: string[],
   cardBoxes: { id: string; x: number; y: number }[],
   noteBoxes: { id: string; x: number; y: number }[],
+  objectBoxes: { id: string; x: number; y: number }[],
 ): { x: number; y: number } | null {
-  const ids = new Set([...cardIDs, ...noteIDs])
-  const boxes = [...cardBoxes, ...noteBoxes].filter((b) => ids.has(b.id))
+  const ids = new Set([...cardIDs, ...noteIDs, ...objectIDs])
+  const boxes = [...cardBoxes, ...noteBoxes, ...objectBoxes].filter((b) => ids.has(b.id))
   if (boxes.length === 0) return null
   return {
     x: Math.min(...boxes.map((b) => b.x)),

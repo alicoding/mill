@@ -13,6 +13,7 @@ import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'
 import { SETTINGS_SECTIONS, sectionMatchesQuery } from '../shared/settingsSections'
 import { applyDensity } from '../shared/density'
 import { CanvasNavigationControl } from './CanvasNavigationControl'
+import { SaveModeControl } from './SaveModeControl'
 import type { DisplayDensity } from '../shared/density'
 import KeyboardShortcutsSection from './KeyboardShortcutsSection'
 import ExtensionsSection from './ExtensionsSection'
@@ -320,6 +321,7 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
                 : launchAtLoginError}
           </Text>
         )}
+        <SaveModeControl />
         <CanvasNavigationControl />
       </>
     ),

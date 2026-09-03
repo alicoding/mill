@@ -20,6 +20,17 @@ extra prompt every time you unlock. Lock and unlock the vault from the
 command palette (⌘K) too — search "vault" and only the action that
 currently applies shows up.
 
+Secrets you already keep elsewhere need no copy. Configure > Secret
+sources points Mill at a dotenv file — a project's `.env` — or at a
+Bruno collection, whose root `.env` supplies values and whose
+environments name the secrets it expects — or at 1Password or
+Bitwarden through their own command-line tools, which Mill asks for one
+value at the moment a step runs, the way those tools' scripting docs
+recommend. The keys appear in every secret picker beside the vault's
+entries, by name only, and every read is in your access history. The value is read from the file at the
+moment a step runs, recorded in the same access history as a vault
+read, and never stored by Mill.
+
 **Clipboard history is opt-in and screened.** Turning on the
 Clipboard history workflow is the only way it starts watching, and
 turning it off stops watching immediately. Anything a password manager
@@ -31,6 +42,14 @@ copy back leaves a line in your own access history.
 ([Guardrails](../concepts/guardrails.md)) parks any step that leaves
 the machine until you approve it or a rule you wrote allows it.
 Agents get no shortcut around this.
+
+**Plugins run only with your say-so.** A plugin you install waits in
+Settings > Extensions, showing what it can request and reach, until
+you allow it; Mill fingerprints its files at that moment and stops it
+if they change; an administrator can pin the allowed set and require
+signatures in the settings file; and Export plugin audit files what
+every plugin asked for and read
+([Install a plugin](../reference/install-a-plugin.md)).
 
 **Execution environments are not a sandbox.** Run a command executes
 with your full user account — the pinned shell, directory, and

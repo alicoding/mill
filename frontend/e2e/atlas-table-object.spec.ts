@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
-import { clickBoardPoint, dragBetween, dragResizeHandle } from './fixtures/atlasBoard'
+import { createTableFromList, placeSizedTable } from './fixtures/atlasTable'
+import { dragBetween, dragResizeHandle } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
 import type { Locator, Page } from '@playwright/test'
@@ -14,16 +15,12 @@ function tableObjects(page: Page): Locator {
   return page.locator('[data-testid="atlas-board-object"][data-object-kind="table"]')
 }
 
-async function createTableFromList(page: Page, listLabel: string): Promise<void> {
-  await page.getByTestId('atlas-tray-table').click()
-  await page.getByTestId('atlas-table-from-list').click()
-  await page.getByTestId('entity-ref-field').selectOption({ label: listLabel })
-  await page.getByRole('button', { name: 'Create' }).click()
-}
-
 async function deleteObjectViaMenu(object: Locator): Promise<void> {
   const page = object.page()
-  await object.click({ button: 'right' })
+  // The grid host claims right-click for its own row/column menus
+  // (ListGridGlide's onContextMenu stops propagation) -- the object's
+  // own menu opens off its chrome frame instead.
+  await object.getByTestId('atlas-board-object-frame').click({ button: 'right' })
   const menu = contextMenu(page)
   await expect(menu).toBeVisible()
   await menu.getByText('Delete', { exact: true }).click()
@@ -38,18 +35,71 @@ test('a newly created table object has no dead space below a small grid', async 
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await page.getByTestId('atlas-tray-table').click()
-  await page.getByTestId('atlas-table-size-2x2').click()
-  await clickBoardPoint(page, { x: 400, y: 500 })
+  await placeSizedTable(page, '2x2')
   const tableObject = tableObjects(page).filter({ hasText: 'Column 1' })
   await expect(tableObject).toBeVisible()
-  await expect(tableObject.getByTestId('atlas-projection-table').locator('tbody tr')).toHaveCount(2)
+  const glide = tableObject.getByTestId('atlas-projection-glide')
+  await expect(glide).toHaveAttribute('data-rows', '2')
 
   const box = await tableObject.boundingBox()
   if (!box) throw new Error('no table object box')
-  // A 2-row grid's real content sits well under the old fixed 320px
-  // default -- measuring the box itself, never anything wrap-dependent.
-  expect(box.height).toBeLessThan(200)
+  // A 2-row grid's real content sits well under a fixed 320px default
+  // -- bounded by the grid's own published geometry (header + rows +
+  // the trailing row + the actions row and chrome), never a collapsed
+  // or wrap-dependent measurement.
+  expect(box.height).toBeLessThanOrEqual((2 + 1) * 28 + 32 + 80)
+
+  await deleteObjectViaMenu(tableObject)
+  await expect(tableObject).toHaveCount(0)
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByRole('tab', { name: 'Lists' }).click()
+  const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })
+  await clickRowAction(page, listRow, 'Delete')
+  await expect(listRow).toHaveCount(0)
+})
+
+// Goal 0286 (owner report: "clicked + multiple times and the table
+// disappeared"): adding columns used to scroll the first columns out
+// of a fixed-width box with no visible scrollbar. An unsized table now
+// widens with its columns up to TABLE_MAX_WIDTH, so the first header
+// stays inside the object's own box; past the cap the width holds.
+test('adding columns widens an unsized table instead of scrolling its first column away, up to a cap', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await placeSizedTable(page, '2x2')
+  const tableObject = tableObjects(page).filter({ hasText: 'Column 1' })
+  await expect(tableObject).toBeVisible()
+  const glide = tableObject.getByTestId('atlas-projection-glide')
+  const startBox = await tableObject.boundingBox()
+  if (!startBox) throw new Error('no table object box')
+
+  const addColumn = async () => {
+    await glide.getByTestId('atlas-projection-add-column').click()
+    // Each insert opens the new column's rename field; leave it.
+    await expect(glide.getByTestId('atlas-projection-rename-input')).toBeVisible()
+    await page.keyboard.press('Escape')
+  }
+  for (let i = 0; i < 4; i++) await addColumn()
+  await expect(glide).toHaveAttribute('data-columns', '6')
+  await expect.poll(async () => (await tableObject.boundingBox())?.width ?? 0).toBeGreaterThan(startBox.width + 60)
+  // The grid's own canvas -- where every column paints -- is still
+  // inside the object's own box.
+  const box = await tableObject.boundingBox()
+  const canvasBox = await glide.locator('canvas').first().boundingBox()
+  if (!box || !canvasBox) throw new Error('no boxes')
+  expect(canvasBox.x).toBeGreaterThanOrEqual(box.x - 1)
+  expect(canvasBox.x).toBeLessThanOrEqual(box.x + 40)
+
+  // Past the cap the width holds (screen px = board units at this zoom
+  // only approximately; assert it stopped growing, not an exact value).
+  for (let i = 0; i < 8; i++) await addColumn()
+  await expect(glide).toHaveAttribute('data-columns', '14')
+  const capped = await tableObject.boundingBox()
+  if (!capped) throw new Error('no capped box')
+  for (let i = 0; i < 2; i++) await addColumn()
+  await expect.poll(async () => (await tableObject.boundingBox())?.width ?? 0).toBeLessThanOrEqual(capped.width + 1)
 
   await deleteObjectViaMenu(tableObject)
   await expect(tableObject).toHaveCount(0)
@@ -71,7 +121,7 @@ test('a table object can be resized by its own handle, and the size persists acr
   test.skip(!!process.env.CI, 'drag synthesis coalesces on CI -- QUARANTINE.md atlas-table-resize')
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await createTableFromList(page, 'Example: Country codes')
+  await createTableFromList(page, 'Example: Country codes', 'US')
   const tableObject = tableObjects(page).filter({ hasText: 'US' })
   await expect(tableObject).toBeVisible()
 
@@ -103,7 +153,7 @@ test('a table object can be resized by its own handle, and the size persists acr
 test('a table object can be dragged by its own frame', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await createTableFromList(page, 'Example: Country codes')
+  await createTableFromList(page, 'Example: Country codes', 'US')
   const tableObject = tableObjects(page).filter({ hasText: 'US' })
   await expect(tableObject).toBeVisible()
 

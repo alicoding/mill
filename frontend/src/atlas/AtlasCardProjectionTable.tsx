@@ -3,13 +3,13 @@ import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
 import type { ListProjection } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
-import { ListGrid } from '../shared/ListGrid'
+import { ListGridGlide } from '../shared/ListGridGlide'
 import styles from './AtlasCardProjectionTable.module.css'
 
 // The projected List on a card OR a board object (goal 0105, widened by
 // goal 0179 S2): the board's table node, a table board object's own
 // board face, AND the card page all mount the ONE shared grid
-// (shared/ListGrid, goal 0136 -- Configure's List page is its other
+// (shared/ListGridGlide, ADR-0049 -- Configure's List page is its other
 // consumer, so tables read identically everywhere). This wrapper owns
 // only what's projection-shaped: the fetch (live -- re-fetched on
 // every persisted List change), the honest missing-List state, and the
@@ -18,10 +18,17 @@ import styles from './AtlasCardProjectionTable.module.css'
 // for a board object) -- the ONE piece that differs between the two
 // entities a projection can ride on; scopeID is whichever id that
 // resolver takes, used only as this effect's own dependency/cache key.
-export function AtlasCardProjectionTable({ scopeID, density, fetchProjection }: {
+export function AtlasCardProjectionTable({ scopeID, density, fetchProjection, onColumnCount, editorPortal }: {
+  editorPortal?: 'body' | 'host'
   scopeID: string
   density?: string
   fetchProjection: (id: string) => Promise<ListProjection>
+  // onColumnCount (goal 0286) tells the host how many columns the
+  // projection currently has, so an unsized table object can size its
+  // box from the count -- a deterministic width, never intrinsic
+  // sizing, which feeds back through the scrollbars into React Flow's
+  // node measurement and oscillates.
+  onColumnCount?: (count: number) => void
 }) {
   const { t } = useTranslation('atlas')
   const [proj, setProj] = useState<ListProjection | null>(null)
@@ -58,6 +65,9 @@ export function AtlasCardProjectionTable({ scopeID, density, fetchProjection }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchProjection is one of the two stable AtlasService bound methods, never a fresh closure per render
   }, [scopeID])
 
+  const columnCount = proj?.Columns?.length ?? 0
+  useEffect(() => { onColumnCount?.(columnCount) }, [columnCount, onColumnCount])
+
   if (!proj || proj.ListID === '') return null
   if (proj.Missing) {
     return (
@@ -67,23 +77,28 @@ export function AtlasCardProjectionTable({ scopeID, density, fetchProjection }: 
     )
   }
   return (
-    // nowheel/nodrag: the table scrolls and its inputs receive clicks
-    // without zooming or dragging the canvas underneath (React Flow's
-    // own utility classes; nodrag on the container covers children).
+    // nowheel/nodrag/nopan: the table scrolls and its inputs receive
+    // clicks without zooming, dragging, or panning the canvas
+    // underneath (React Flow's own utility classes; nodrag on the
+    // container covers children). nopan matters after a programmatic
+    // fly (a reveal): without it the pane's pan gesture captured the
+    // pointer on the grid's own pointerdown, so the click composed on
+    // the pane and the cell never activated.
     // stopPropagation: a cell click must never reach the card node's
     // own click model -- a second click inside the table otherwise
     // reads as "commit the selected card" and opens the page over the
     // edit (the spreadsheet-node convention: the frame moves/opens the
     // card, the grid edits the grid).
     <div
-      className={`${styles.wrap} nowheel nodrag`}
+      className={`${styles.wrap} nowheel nodrag nopan`}
       onClick={(e) => e.stopPropagation()}
     >
-      <ListGrid
+      <ListGridGlide
         listID={proj.ListID}
         columns={proj.Columns ?? []}
         rows={(proj.Rows ?? []).filter((r) => r !== null)}
         density={density}
+        editorPortal={editorPortal}
       />
     </div>
   )

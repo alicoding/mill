@@ -1,0 +1,28 @@
+{
+  "id": "mill-textcase",
+  "name": "Text case",
+  "version": "1.0.0",
+  "description": "A workflow step that changes the text's case: upper, lower, or title.",
+  "author": "Mill examples",
+  "minMillVersion": "0.14.1",
+  "capabilities": [],
+  "contributes": {
+    "steps": [
+      {
+        "id": "text-case",
+        "label": "Text case",
+        "description": "Changes the text's case.",
+        "config": [
+          {
+            "key": "mode",
+            "label": "Mode",
+            "description": "Which case the text becomes.",
+            "type": "options",
+            "options": ["upper", "lower", "title"],
+            "default": "upper"
+          }
+        ]
+      }
+    ]
+  }
+}

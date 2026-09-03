@@ -155,6 +155,59 @@ test('a sheet with more than 50 rows shows the truncation note', async ({ page }
   await expect(sheetObjects(page)).toHaveCount(0)
 })
 
+// The preview caps are the Sheet extension's own declared NUMBER
+// settings (goal 0258 slice 1): the host renders a number field in
+// the Sheet row, commits on Enter (clamped to the declared range, an
+// invalid draft reverting), and every open sheet re-renders against
+// the new cap. Restored to the default before the test ends (shared-
+// pool global-flag discipline).
+test('the sheet preview row cap is a declared number setting the sheet honors live', async ({ page }) => {
+  const fs = await import('node:fs')
+  const os = await import('node:os')
+  const nodePath = await import('node:path')
+  const dir = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'mill-e2e-atlas-sheet-cap-'))
+  const bigCSV = nodePath.join(dir, 'ZzE2eSheetCap.csv')
+  const lines = ['Header']
+  for (let i = 0; i < 60; i++) lines.push(`row-${i}`)
+  fs.writeFileSync(bigCSV, lines.join('\n'))
+
+  const setPreviewRows = async (draft: string) => {
+    await page.getByRole('link', { name: 'Settings' }).click()
+    const sheetRow = page.locator('[data-testid="extensions-row"][data-extension-id="sheet"]')
+    if (!(await sheetRow.getByTestId('extensions-row-expanded').isVisible())) await sheetRow.locator('summary').click()
+    const field = page.getByTestId('extension-setting-sheet-previewRows').locator('input')
+    await field.fill(draft)
+    await page.keyboard.press('Enter')
+    return field
+  }
+
+  await page.goto('/')
+  let field = await setPreviewRows('5')
+  await expect(field).toHaveValue('5')
+  // An empty draft (the one non-numeric state a number field can
+  // reach -- the browser refuses letters) reverts to the committed
+  // value; one above the declared max clamps to it (below).
+  await field.fill('')
+  await page.keyboard.press('Enter')
+  await expect(field).toHaveValue('5')
+
+  const sheetObject = await landSheetObject(page, bigCSV)
+  await expect(sheetObject.getByTestId('atlas-object-sheet-truncated')).toHaveText('Showing the first 5 of 61 rows.')
+
+  field = await setPreviewRows('9999')
+  await expect(field).toHaveValue('500')
+
+  // Restore the default, then confirm the sheet is back on it.
+  field = await setPreviewRows('50')
+  await expect(field).toHaveValue('50')
+  await openBoard(page)
+  await waitForBoardSettled(page)
+  await expect(sheetObjects(page).getByTestId('atlas-object-sheet-truncated')).toHaveText('Showing the first 50 of 61 rows.')
+
+  await deleteViaContextMenu(page, sheetObjects(page))
+  await expect(sheetObjects(page)).toHaveCount(0)
+})
+
 // The file-backed preview/open/watch contract's own command (goal
 // 0232 S1, extended to this Kind by S2): "Open in default app" appears
 // on a sheet board object's own context menu, the same generic
@@ -244,9 +297,9 @@ test('double-clicking a csv cell edits it in place: Enter commits to the grid an
   const input = sheetObject.getByTestId('atlas-object-sheet-cell-input')
   await expect(input).toBeVisible()
   await expect(input).toBeFocused()
-  // Focus selects the current value, so typing replaces it -- the
+  // Focus selects the current value, so filling replaces it -- the
   // spreadsheet convention.
-  await page.keyboard.type('37')
+  await input.fill('37') // fill: a form control; per-keystroke typing drops characters under CI load (goal 0296)
   await page.keyboard.press('Enter')
 
   await expect(input).toHaveCount(0)
@@ -269,7 +322,7 @@ test('Escape cancels a cell edit, leaving the grid and the file untouched', asyn
   await ageCell.dblclick()
   const input = sheetObject.getByTestId('atlas-object-sheet-cell-input')
   await expect(input).toBeFocused()
-  await page.keyboard.type('999')
+  await input.fill('999') // fill: a form control; per-keystroke typing drops characters under CI load (goal 0296)
   await page.keyboard.press('Escape')
 
   await expect(input).toHaveCount(0)
@@ -288,5 +341,52 @@ test('an xlsx cell never opens an editor on double-click (read-only by design)',
   await expect(sheetObject.getByTestId('atlas-object-sheet-cell-input')).toHaveCount(0)
 
   await deleteViaContextMenu(page, sheetObject)
+  await expect(sheetObjects(page)).toHaveCount(0)
+})
+
+// Explicit save mode (goal 0295 S2b): Enter HOLDS the cell -- the grid
+// shows the new value tinted, the file is untouched -- and ⌘S writes
+// every held cell in one go. The mode is app-global; the test sets it
+// and puts it back.
+test('in explicit save mode Enter holds a cell and ⌘S writes every held cell at once', async ({ page }) => {
+  const fs = await import('node:fs')
+  const { callBindingViaRPC } = await import('./fixtures/wailsRpc')
+  const setMode = (mode: string) => callBindingViaRPC(page, 'github.com/alicoding/mill/internal/services/settingssvc.SettingsService.SetSaveMode', [mode])
+  const file = await tempCsv('ZzE2eSheetHeld.csv', 'Name,Age\nAda,36\n')
+  // The page reads the mode once at mount: set it before the board
+  // loads (the RPC needs a loaded page of its own first).
+  await page.goto('/')
+  await setMode('explicit')
+  try {
+    const object = await landSheetObject(page, file)
+    const grid = object.getByTestId('atlas-object-sheet-grid')
+    await expect(grid).toBeVisible()
+    const firstRow = grid.locator('tbody tr').first()
+
+    await firstRow.locator('td').nth(1).dblclick()
+    const input = object.getByTestId('atlas-object-sheet-cell-input')
+    await expect(input).toBeFocused()
+    await input.fill('37') // fill: a form control (goal 0296)
+    await page.keyboard.press('Enter')
+    await expect(input).toHaveCount(0)
+    await expect(firstRow.locator('td').nth(1)).toHaveText('37')
+    await expect(firstRow.locator('td').nth(1)).toHaveAttribute('data-pending', 'true')
+    await expect(object.getByTestId('atlas-object-sheet-unsaved-dot')).toBeVisible()
+    expect(fs.readFileSync(file, 'utf8')).toBe('Name,Age\nAda,36\n')
+
+    await firstRow.locator('td').nth(0).dblclick()
+    await expect(input).toBeFocused()
+    await input.fill('Grace') // fill: a form control (goal 0296)
+    await page.keyboard.press('Enter')
+    await expect(firstRow.locator('td').nth(0)).toHaveText('Grace')
+
+    await page.keyboard.press('Meta+s')
+    await expect(object.getByTestId('atlas-object-sheet-unsaved-dot')).toHaveCount(0)
+    await expect.poll(() => fs.readFileSync(file, 'utf8')).toBe('Name,Age\nGrace,37\n')
+    await expect(firstRow.locator('td').nth(1)).not.toHaveAttribute('data-pending', 'true')
+  } finally {
+    await setMode('automatic')
+  }
+  await deleteViaContextMenu(page, sheetObjects(page).first())
   await expect(sheetObjects(page)).toHaveCount(0)
 })

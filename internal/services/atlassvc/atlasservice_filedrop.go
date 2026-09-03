@@ -2,6 +2,7 @@ package atlassvc
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -79,6 +80,14 @@ type FileDropRoute struct {
 	// path for a multi-file drop (dropping several files from the same
 	// Finder window is the common case this covers).
 	Path string
+	// ContentKind refines an "instant" route for extensions whose
+	// meaning depends on content, not name (goal 0274): "drawio-xml"
+	// when a .xml file's head carries draw.io's own markup -- an
+	// exported .xml holds identical mxfile content to a .drawio save.
+	// Empty everywhere else, and empty on any sniff failure -- the
+	// drop must still land (as a card), never error on an unreadable
+	// head.
+	ContentKind string
 }
 
 // ResolveFileDropRoute decides what a drop/paste of paths means --
@@ -97,9 +106,33 @@ func (a *AtlasService) ResolveFileDropRoute(paths []string) (FileDropRoute, erro
 		if info.IsDir() {
 			return FileDropRoute{Kind: "import", Path: paths[0]}, nil
 		}
-		return FileDropRoute{Kind: "instant", Path: paths[0]}, nil
+		return FileDropRoute{Kind: "instant", Path: paths[0], ContentKind: sniffContentKind(paths[0])}, nil
 	}
 	return FileDropRoute{Kind: "import", Path: commonAncestorDir(paths)}, nil
+}
+
+// sniffContentKind reads at most the first 4KB of a .xml file and
+// reports "drawio-xml" when draw.io's own root markup (<mxfile or
+// <mxGraphModel) appears there -- past any XML declaration, comments,
+// or leading whitespace, which a plain Contains over the head handles
+// without an XML parse. Any other extension, and any read failure,
+// yields "" (routing then falls back to the extension rules alone).
+func sniffContentKind(path string) string {
+	if !strings.EqualFold(filepath.Ext(path), ".xml") {
+		return ""
+	}
+	f, err := os.Open(path) //nolint:gosec // the path IS the user's own dropped file -- reading it is the function's purpose
+	if err != nil {
+		return ""
+	}
+	defer f.Close() //nolint:errcheck // read-only handle
+	head := make([]byte, 4096)
+	n, _ := io.ReadFull(f, head)
+	s := string(head[:n])
+	if strings.Contains(s, "<mxfile") || strings.Contains(s, "<mxGraphModel") {
+		return "drawio-xml"
+	}
+	return ""
 }
 
 // commonAncestorDir returns the deepest directory that contains every

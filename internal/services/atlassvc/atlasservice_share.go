@@ -270,7 +270,7 @@ func DefaultMirrorsDir(override string) string {
 // equivalent): a nil application (go test, no live Wails app running)
 // is a no-op.
 func revealPath(path string) error {
-	return windowing.OpenURL("file://" + path)
+	return osopen.Open("file://" + path)
 }
 
 // RevealSpaceFolder lazily creates (if needed) and opens spaceID's own

@@ -9,6 +9,7 @@ import { CONFIGURE_CREATE_COMMANDS } from './configureCreateCommands'
 import { ATLAS_BOARD_COMMANDS } from './atlasBoardCommands'
 import { SETTINGS_COMMANDS } from './settingsCommands'
 import { CANVAS_COMMANDS } from './canvasCommands'
+import { SAVE_COMMANDS } from './saveCommands'
 import { SECRETS_COMMANDS } from './secretsCommands'
 import { CLIPBOARD_HISTORY_COMMANDS } from './clipboardHistoryCommands'
 import { CODING_LOOP_COMMANDS } from './codingLoopCommands'
@@ -74,6 +75,12 @@ export interface Command {
   // palette has no way to supply. Still reachable via HotkeyHint,
   // ContextMenu items, and the Shortcuts Help overlay.
   paletteHidden?: boolean
+  // Search aliases (goal 0295, the launcher convention Raycast calls
+  // keywords): a query that starts any keyword ranks the command as a
+  // prefix match, ahead of rows that merely contain it -- so "update"
+  // finds "Check for updates" above a workflow whose label happens to
+  // mention an update. Lowercase, user vocabulary, never ids.
+  keywords?: string[]
   // State-aware enablement (goal 0222 S1, VSCode's "when" clause): omit
   // for an always-valid command. Replaces guarding inline inside run()
   // and returning silently. CommandPalette.tsx omits a disabled command
@@ -293,7 +300,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
     // AtlasJumpDialog itself is now purely controlled off this signal
     // (its own former capture-phase window listener is retired).
     id: 'atlas.jump',
-    label: 'Jump to a card',
+    label: 'Jump to a card or object',
     defaultBinding: { mods: ['cmd'], key: 'K' },
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasJump(),
@@ -397,6 +404,9 @@ export const COMMANDS: Command[] = lazyArray(() => [
   // (CLAUDE.md's 500-line convention); see that file's own header for
   // why every entry is hintOnly.
   ...CANVAS_COMMANDS,
+  // edit.save / edit.saveAll over the flush registry (goal 0295 S2b) --
+  // split out to shared/saveCommands.ts.
+  ...SAVE_COMMANDS,
   // Vault lock/unlock -- split out to shared/secretsCommands.ts.
   ...SECRETS_COMMANDS,
   // clipboard.history.open -- split out to shared/clipboardHistoryCommands.ts.
@@ -411,7 +421,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
   // default-bound -- a plugin command is palette-reachable; a
   // keybinding for third-party code is assigned in Settings, never
   // shipped by the plugin.
-  ...drainedPluginCommands().map((c) => ({ id: c.id, label: c.label, defaultBinding: null, surface: c.surface, run: c.run })),
+  ...drainedPluginCommands().map((c) => ({ id: c.id, label: c.label, defaultBinding: null, surface: c.surface, enabled: c.enabled, run: c.run })),
 ])
 
 export function findCommand(id: string): Command | undefined {

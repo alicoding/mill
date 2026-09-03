@@ -108,7 +108,7 @@ test('the Quick Panel route renders standalone with an autofocused search input'
   await expect(page.getByRole('option', { name: /Open Settings/ })).toBeVisible()
 })
 
-test('a seeded workflow is listed and Enter runs it, showing a started confirmation', async ({ page }) => {
+test('a seeded workflow is listed and Enter runs it, showing the outcome in the footer and offering the row actions', async ({ page }) => {
   const label = 'ZzE2eQuickPanelRunTarget'
   await createSimpleWorkflow(page, label)
 
@@ -126,8 +126,28 @@ test('a seeded workflow is listed and Enter runs it, showing a started confirmat
   const runOption = page.getByRole('option', { name: label })
   await expect(runOption).toBeVisible()
 
+  // The footer names the active row's actions before anything runs.
+  await expect(page.getByTestId('quick-panel-run-hint')).toHaveText('↩')
   await page.keyboard.press('Enter')
-  await expect(page.getByTestId('quick-panel-status')).toContainText(`Started "${label}"`)
+  // Outcome stays put (goal 0294): no auto-dismiss, the footer says
+  // whether it worked and how long it took.
+  await expect(page.getByTestId('quick-panel-status')).toContainText(`Done — "${label}" in`)
+  await expect(page.getByTestId('quick-panel-status')).toContainText('s')
+
+  // ⌘K opens the row's actions, each with its own shortcut.
+  await page.keyboard.press('Meta+k')
+  const menu = page.getByRole('menu')
+  await expect(menu).toBeVisible()
+  await expect(page.getByTestId('quick-panel-action-run')).toContainText('Run')
+  await expect(page.getByTestId('quick-panel-action-run-watch')).toContainText('Run and watch')
+  await expect(page.getByTestId('quick-panel-action-run-watch-shortcut')).toHaveText('⌘⇧↩')
+  await expect(page.getByTestId('quick-panel-action-open')).toContainText('Open workflow')
+  await expect(page.getByTestId('quick-panel-action-open-shortcut')).toHaveText('⌘↩')
+  await expect(page.getByTestId('quick-panel-action-pin')).toContainText('Pin')
+  await page.keyboard.press('Escape')
+  await expect(menu).toHaveCount(0)
+  // Typing resumes in the search, not on the menu's anchor button.
+  await expect(search).toBeFocused()
 
   await deleteWorkflow(page, label)
 })
@@ -255,7 +275,7 @@ test('a workflow run from the panel a few times sorts above one that was never r
     await search.fill(frequentLabel)
     await expect(page.getByRole('option', { name: frequentLabel })).toBeVisible()
     await page.keyboard.press('Enter')
-    await expect(page.getByTestId('quick-panel-status')).toContainText(`Started "${frequentLabel}"`)
+    await expect(page.getByTestId('quick-panel-status')).toContainText(`Done — "${frequentLabel}"`)
     await search.fill('')
   }
 
@@ -366,7 +386,7 @@ test('pinning a workflow from the panel row sorts it above frecency, unpinning r
     await search.fill(frequentLabel)
     await expect(page.getByRole('option', { name: frequentLabel })).toBeVisible()
     await page.keyboard.press('Enter')
-    await expect(page.getByTestId('quick-panel-status')).toContainText(`Started "${frequentLabel}"`)
+    await expect(page.getByTestId('quick-panel-status')).toContainText(`Done — "${frequentLabel}"`)
     await search.fill('')
   }
 

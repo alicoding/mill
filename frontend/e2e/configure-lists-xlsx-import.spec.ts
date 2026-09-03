@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test, expect } from './fixtures/server'
+import { clickGlideCell, glideCellText } from './fixtures/glideGrid'
 import { addGridColumn } from './fixtures/listGrid'
 import { clickRowAction } from './inventoryRow'
 
@@ -35,10 +36,12 @@ test('Configure > Lists: .xlsx import — mapping preview populated from a real 
   // Amount becomes a number column, same schema the CSV import test uses
   // -- lets the same "oops" row prove typed validation still runs on an
   // xlsx-sourced value, not just a CSV-sourced one.
-  await page.getByTestId('atlas-projection-header').filter({ hasText: 'Amount' }).hover()
+  const glide = page.getByTestId('atlas-projection-glide')
+  await clickGlideCell(page, glide, -1, 1, { button: 'right' })
   await page.getByTestId('list-grid-column-settings-amount').click()
   await page.getByTestId('list-grid-column-type').selectOption('number')
   await page.keyboard.press('Escape')
+  await expect(glide).toHaveAttribute('data-col-types', 'text,number')
 
   await page.getByTestId('import-list-rows').click()
   await page.getByTestId('import-list-rows-input').setInputFiles(XLSX_FIXTURE)
@@ -64,8 +67,8 @@ test('Configure > Lists: .xlsx import — mapping preview populated from a real 
   await expect(result).toContainText('Imported 1 row.')
 
   // Only the valid row landed as a real List row.
-  await expect(page.getByTestId('atlas-projection-row')).toHaveCount(1)
-  await expect(page.getByTestId('atlas-projection-row')).toContainText('WIDGET-1')
+  await expect(glide).toHaveAttribute('data-rows', '1')
+  await expect(glideCellText(glide, 0, 0)).toHaveText('WIDGET-1')
 
   // Clean up.
   await page.getByTestId('configure-lists').getByRole('button', { name: 'Close' }).click()

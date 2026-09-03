@@ -9,6 +9,8 @@ import runbookStyles from '../shared/ListCard.module.css'
 
 interface CanvasToolbarProps {
   onBack: () => void
+  // The run monitor has no "back": its window's close is the way out.
+  hideBack?: boolean
   // docs/goals/0022-workflow-view-mode.md: authoring-only controls
   // (palette toggle, undo/redo, auto-layout, delete-selected) are
   // absent entirely in view mode, not just disabled -- the goal's own
@@ -42,14 +44,14 @@ interface CanvasToolbarProps {
 // a real seam" discipline CanvasMetaHeader/NodePalette already
 // established.
 export function CanvasToolbar({
-  onBack, readOnly, paletteOpen, onTogglePalette, canUndo, onUndo, canRedo, onRedo,
+  onBack, hideBack, readOnly, paletteOpen, onTogglePalette, canUndo, onUndo, canRedo, onRedo,
   layingOut, hasNodes, onAutoLayout, onDeleteSelected, onAddNote, validationIssues, workflowLabel, workflowId, onSelectIssue,
 }: CanvasToolbarProps) {
   const { t } = useTranslation('composition')
   return (
     <Panel position="top-left" className={styles.canvasToolbar}>
       <Stack direction="horizontal" gap="condensed" align="center">
-        <IconButton icon={ArrowLeftIcon} aria-label={t('canvasToolbar.backAriaLabel')} size="small" onClick={onBack} />
+        {!hideBack && <IconButton icon={ArrowLeftIcon} aria-label={t('canvasToolbar.backAriaLabel')} size="small" onClick={onBack} />}
         {!readOnly && (
           <>
             <Button

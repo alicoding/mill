@@ -93,7 +93,10 @@ test('a vanished mirror file renders an honest state instead of a stale or blank
   // "Choose file" re-points the mirror -- MILL_TEST_DIAGRAM_PICK_PATH
   // (fixtures/server.ts) stands in for the native OS dialog server-mode
   // Playwright has no display for, returning fixtures/diagram-pick.drawio
-  // (label "Replacement") every time it's invoked.
+  // (label "Replacement") every time it's invoked. The object is
+  // shielded until selected (goal 0302): the first click selects it,
+  // only then is its face live for the button.
+  await object.click()
   await object.getByTestId('atlas-object-diagram-choose-file').click()
   await expect(object.locator('svg')).toContainText('Replacement', { timeout: 10000 })
 

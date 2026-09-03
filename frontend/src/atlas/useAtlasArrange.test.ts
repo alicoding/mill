@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { computeFreeMoves } from './useAtlasArrange'
-import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { computeFreeMoves, objectArrangeTiles } from './useAtlasArrange'
+import type { BoardObject, Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { OBJECT_FALLBACK_EXTENT } from './atlasBoardLayout'
 
 const mk = (id: string, pos?: { x: number; y: number }): Card =>
   ({
@@ -48,5 +49,53 @@ describe('computeFreeMoves', () => {
     const moves = computeFreeMoves([fixed, loose], [fixed, loose], new Map(), 0)
     expect(moves.map((m) => m.id)).toEqual(['loose'])
     expect(moves[0].y).toBeGreaterThan(40)
+  })
+})
+
+const mkObj = (id: string, pos: { x: number; y: number }, size?: { w: number; h: number }): BoardObject =>
+  ({
+    ID: id, Kind: 'image', Payload: {}, ParentID: 'p',
+    Position: { X: pos.x, Y: pos.y },
+    Size: size ? { W: size.w, H: size.h } : null,
+    CreatedAt: '2024-01-01',
+  } as unknown as BoardObject)
+
+describe('computeFreeMoves with board objects (goal 0265)', () => {
+  // Regression: the seating extent only counted cards, so on an
+  // object-heavy board every fresh position-less card seated at the
+  // zero row, straight underneath the objects.
+  it('seats a position-less card below the objects’ extent, not under them', () => {
+    const loose = mk('loose')
+    const obj = mkObj('obj', { x: 0, y: 0 }, { w: 400, h: 300 })
+    const moves = computeFreeMoves([loose], [loose], new Map(), 0, [obj])
+    expect(moves.map((m) => m.id)).toEqual(['loose'])
+    expect(moves[0].y).toBeGreaterThanOrEqual(300)
+  })
+
+  it('an unsized object counts at the fallback extent', () => {
+    const loose = mk('loose')
+    const obj = mkObj('obj', { x: 0, y: 10 })
+    const moves = computeFreeMoves([loose], [loose], new Map(), 0, [obj])
+    expect(moves[0].y).toBeGreaterThanOrEqual(10 + OBJECT_FALLBACK_EXTENT)
+  })
+})
+
+describe('objectArrangeTiles', () => {
+  it('prefers the measured box, then the persisted Size, then the fallback', () => {
+    const measured = mkObj('m', { x: 0, y: 0 }, { w: 100, h: 100 })
+    const sized = mkObj('s', { x: 0, y: 0 }, { w: 250, h: 150 })
+    const bare = mkObj('b', { x: 0, y: 0 })
+    const tiles = objectArrangeTiles([measured, sized, bare], [{ id: 'm', width: 320, height: 240 }])
+    expect(tiles).toEqual([
+      { id: 'm', width: 320, height: 240, createdAt: '2024-01-01' },
+      { id: 's', width: 250, height: 150, createdAt: '2024-01-01' },
+      { id: 'b', width: OBJECT_FALLBACK_EXTENT, height: OBJECT_FALLBACK_EXTENT, createdAt: '2024-01-01' },
+    ])
+  })
+
+  it('ignores a zero-sized measurement (an unrendered node) in favor of the fallback chain', () => {
+    const obj = mkObj('z', { x: 0, y: 0 }, { w: 200, h: 120 })
+    const tiles = objectArrangeTiles([obj], [{ id: 'z', width: 0, height: 0 }])
+    expect(tiles[0]).toMatchObject({ width: 200, height: 120 })
   })
 })

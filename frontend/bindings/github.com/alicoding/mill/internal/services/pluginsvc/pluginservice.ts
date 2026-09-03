@@ -14,6 +14,10 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as composition$0 from "../../domain/composition/models.js";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
 /**
@@ -24,6 +28,60 @@ import * as $models from "./models.js";
  */
 export function AssetMiddleware(): $CancellablePromise<any> {
     return $Call.ByID(3587145368);
+}
+
+/**
+ * Captures lists every runnable plugin's declared captures, by plugin
+ * then capture id.
+ */
+export function Captures(): $CancellablePromise<$models.PluginCapture[] | null> {
+    return $Call.ByID(3991103051);
+}
+
+/**
+ * ContentHashOf answers the current hash of an installed plugin by id
+ * ("" for a built-in or an unreadable folder) -- the run policy's
+ * comparison input.
+ */
+export function ContentHashOf(id: string): $CancellablePromise<string> {
+    return $Call.ByID(3013757580, id);
+}
+
+/**
+ * ConvertHTMLToMarkdown is the plugin SDK's convert door (goal 0282):
+ * the same HTML-to-Markdown conversion every workflow convert step and
+ * paste already uses, offered to a plugin as a pure transform. No
+ * capability gates it -- it reaches nothing outside its own input --
+ * and no plugin id is taken for the same reason.
+ */
+export function ConvertHTMLToMarkdown(html: string): $CancellablePromise<string> {
+    return $Call.ByID(3842719554, html);
+}
+
+/**
+ * ExportPluginAudit assembles the document and returns it as JSON text
+ * (the frontend saves it through the same download door every other
+ * export uses).
+ */
+export function ExportPluginAudit(): $CancellablePromise<string> {
+    return $Call.ByID(233730988);
+}
+
+/**
+ * FetchForPlugin performs one guarded fetch. Refusals that need no
+ * rule -- undeclared capability, undeclared host, undeclared method,
+ * a non-http(s) URL -- happen BEFORE the guardrail is consulted.
+ */
+export function FetchForPlugin(pluginID: string, req: $models.PluginFetchRequest): $CancellablePromise<$models.PluginFetchResult> {
+    return $Call.ByID(1434947460, pluginID, req);
+}
+
+/**
+ * ListDirForPlugin lists dir for pluginID under the "list-files"
+ * capability.
+ */
+export function ListDirForPlugin(pluginID: string, dir: string): $CancellablePromise<$models.PluginListDirResult> {
+    return $Call.ByID(3623751117, pluginID, dir);
 }
 
 /**
@@ -64,4 +122,62 @@ export function RequestGuardedAction(pluginID: string, kind: string, attributes:
  */
 export function RevealPluginsDir(): $CancellablePromise<void> {
     return $Call.ByID(4165393810);
+}
+
+/**
+ * SignedOK is the run policy's question: with no policy every plugin
+ * passes; with one, only a verified signature does.
+ */
+export function SignedOK(id: string): $CancellablePromise<boolean> {
+    return $Call.ByID(1767199442, id);
+}
+
+/**
+ * SigningPolicyActive reports whether any key is pinned.
+ */
+export function SigningPolicyActive(): $CancellablePromise<boolean> {
+    return $Call.ByID(1203437115);
+}
+
+/**
+ * StepNodeTypes synthesizes every runnable plugin's declared steps as
+ * external node types -- the provider composition reads through
+ * SetExternalNodeTypeLookup. A plugin whose steps.js fails to load
+ * contributes nothing (its Extensions row states the load error via
+ * StepPackProblem).
+ */
+export function StepNodeTypes(): $CancellablePromise<composition$0.ExternalNodeType[] | null> {
+    return $Call.ByID(3703519807);
+}
+
+/**
+ * StepPackProblem reports why a plugin's declared steps are not
+ * available ("" when they are): the Extensions row's honest line.
+ */
+export function StepPackProblem(id: string): $CancellablePromise<string> {
+    return $Call.ByID(3840929602, id);
+}
+
+/**
+ * VersionOf answers an installed plugin's manifest version ("" when
+ * unknown) -- recorded beside the hash in the lock.
+ */
+export function VersionOf(id: string): $CancellablePromise<string> {
+    return $Call.ByID(1443551781, id);
+}
+
+/**
+ * WireContentWrites installs the writer (composition root only).
+ */
+export function WireContentWrites(w: $models.ContentWriter): $CancellablePromise<void> {
+    return $Call.ByID(794793522, w);
+}
+
+/**
+ * WriteContentForPlugin performs one guarded content write. Refusals
+ * that need no rule -- undeclared capability, unknown op, a malformed
+ * ask -- happen BEFORE the guardrail is consulted.
+ */
+export function WriteContentForPlugin(pluginID: string, req: $models.PluginContentWrite): $CancellablePromise<$models.PluginContentWriteResult> {
+    return $Call.ByID(3781653108, pluginID, req);
 }

@@ -58,14 +58,20 @@
     },
     "saveNote": "Save as note",
     "saveNoteHint": "Lands in Scratchpad — organize later.",
+    "newNote": "New note…",
+    "newNoteHint": "Write a note in its own window and choose where it lands.",
+    "newCapture": "New {{label}}…",
+    "newCaptureHint": "From the {{plugin}} plugin.",
+    "captureOpenError": "Couldn't open the capture window.",
     "saveNoteError": "Couldn't save the note.",
     "status": {
       "running": "Running \"{{label}}\"…",
       "failed": "\"{{label}}\" failed: {{error}}",
-      "started": "Started \"{{label}}\"",
       "appliedUpdated": "Updated \"{{label}}\"",
       "appliedCreated": "Created \"{{label}}\"",
-      "replyApplied": "Done — {{label}}"
+      "replyApplied": "Done — {{label}}",
+      "done": "Done — \"{{label}}\" in {{seconds}}s",
+      "parked": "\"{{label}}\" is waiting for your approval"
     },
     "clipboard": {
       "emptyError": "Clipboard is empty -- copy a workflow export first",
@@ -73,13 +79,45 @@
     },
     "searchPlaceholder": "Search workflows or jump into Mill…",
     "searchAriaLabel": "Quick Panel search",
-    "noWorkflowsYet": "No workflows yet."
+    "noWorkflowsYet": "No workflows yet.",
+    "actions": {
+      "run": "Run",
+      "runAndWatch": "Run and watch",
+      "openWorkflow": "Open workflow",
+      "pin": "Pin",
+      "unpin": "Unpin",
+      "menu": "Actions"
+    },
+    "update": {
+      "checking": "Checking for updates…",
+      "failed": "Couldn't check for updates.",
+      "upToDate": "You're up to date — Mill {{version}}",
+      "available": "Mill {{version}} is available — run \"Download the update and install\"",
+      "downloading": "Downloading Mill {{version}}…",
+      "ready": "Mill {{version}} is downloaded — run \"Restart to finish updating\""
+    },
+    "saveTask": "Save as task",
+    "saveTaskHint": "Lands in the Task tracker, scheduled for today.",
+    "saveTaskError": "Couldn't save the task."
   },
   "shortcutsHelp": {
     "title": "Keyboard shortcuts",
     "onThisPage": "On this page",
     "everywhere": "Everywhere",
     "rebindInSettings": "Rebind in Settings"
+  },
+  "capture": {
+    "noteTitle": "New note",
+    "landsIn": "Lands in",
+    "topLevel": "Board (top level)",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saveHint": "⌘↩ saves · Esc closes",
+    "noteAriaLabel": "Note text",
+    "notePlaceholder": "Write it down…",
+    "saveError": "Couldn't save the note.",
+    "noTarget": "Open a capture from the Quick Panel or the command palette.",
+    "missingFace": "The {{plugin}} plugin has no capture named {{id}}."
   },
   "quickPanelClipboardApply": {
     "unrecognizedTitle": "Couldn't read that as a Mill export",
@@ -161,7 +199,11 @@
     "docs": "Docs",
     "secrets": "Secrets"
   },
+  "pluginView": {
+    "missing": "This view's plugin is not loaded."
+  },
   "workTabLabel": {
+    "pluginView": "Plugin view",
     "workflow": "Workflow",
     "integration": "Integration",
     "newWorkflow": "New workflow",
@@ -216,7 +258,10 @@
     "updateAvailable": "Update available — download",
     "updateDownloading": "Downloading update…",
     "dismissAriaLabel": "Dismiss this update notice",
-    "whatsNew": "What's new"
+    "whatsNew": "What's new",
+    "checking": "Checking for updates…",
+    "upToDate": "You're up to date.",
+    "checkFailed": "Couldn't check for updates — open Settings for details"
   },
   "whatsNew": {
     "title": "What's new",
@@ -318,6 +363,30 @@
     "quitContract_other": "Quitting stops {{count}} automatic workflows — schedules, hotkeys and watchers stop until Mill runs again.",
     "quitContractNone": "Nothing automatic is scheduled right now.",
     "quitConfirm": "Quit",
-    "keepRunning": "Keep running"
+    "keepRunning": "Keep running",
+    "recentSection": "Recent",
+    "noRunsYet": "No runs yet.",
+    "runDone": "Done",
+    "runFailed": "Failed",
+    "runStopped": "Stopped"
+  },
+  "runMonitor": {
+    "title": "Run",
+    "openInMill": "Open in Mill",
+    "empty": "Run a workflow from the Quick Panel with ⌘⇧↩ to watch it here.",
+    "loading": "Loading…"
+  },
+  "unsavedChangesDialog": {
+    "titleQuit": "Save changes before quitting?",
+    "titleRestart": "Save changes before restarting?",
+    "titleClose": "Save changes before closing?",
+    "body_one": "{{count}} unsaved change will be lost if you don't save it.",
+    "body_other": "{{count}} unsaved changes will be lost if you don't save them.",
+    "saveAll": "Save all",
+    "discard": "Discard",
+    "cancel": "Cancel"
+  },
+  "unsaved": {
+    "marker": "Unsaved changes"
   }
 }

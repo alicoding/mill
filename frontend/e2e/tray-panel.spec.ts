@@ -58,6 +58,7 @@ test('at rest the panel states presence, both honest empties, and the quit contr
     // Both empties are honest sentences, not blank space.
     await expect(page.getByTestId('tray-nothing-waiting')).toHaveText('Nothing waiting on you.')
     await expect(page.getByTestId('tray-nothing-running')).toHaveText('Nothing running.')
+    await expect(page.getByTestId('tray-no-runs-yet')).toHaveText('No runs yet.')
 
     // The quit contract names what stops (the seeded examples include
     // automatic triggers, so the count copy renders), and Keep
@@ -102,6 +103,49 @@ test('a parked run surfaces as a Needs-you row naming its workflow', async ({}, 
     await expect(needsRow).toContainText('Waiting for your approval')
     await expect(panelPage.getByTestId('tray-nothing-waiting')).toHaveCount(0)
     await expect(panelPage.getByTestId('tray-run-row')).toHaveCount(0)
+  } finally {
+    await closeDedicated(s)
+  }
+})
+
+// goal 0294: a settled run shows under Recent with its outcome, so the
+// menu bar answers "did it work" -- seeded through the Quick Panel's
+// own Enter, the path the report came from.
+// eslint-disable-next-line no-empty-pattern -- needs testInfo (second arg), no fixture.
+test('a run started from the Quick Panel shows under Recent as done', async ({}, testInfo) => {
+  // Offset 5: the file's server ports run 11160-11179 and the MCP ports
+  // start at 11180, so offsets stay below 20 minus the worker count.
+  const s = await openDedicated(5, testInfo.parallelIndex)
+  try {
+    const { page } = s
+    const label = 'Backup Mill data'
+    await page.goto(`${s.server.baseURL}/#/quickpanel`)
+    const search = page.getByRole('combobox', { name: 'Quick Panel search' })
+    await search.fill(label)
+    await expect(page.getByRole('option', { name: label })).toBeVisible()
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId('quick-panel-status')).toContainText(`Done — "${label}"`)
+
+    // A run that parks for approval says so, instead of "Done" (the RPC
+    // returns while the run is still pending).
+    const parkedLabel = 'Example: Human review with input'
+    await search.fill(parkedLabel)
+    await expect(page.getByRole('option', { name: parkedLabel })).toBeVisible()
+    await page.keyboard.press('Enter')
+    // The parked-run RPC returns once the run has parked; give a loaded
+    // runner the same headroom the settled case gets.
+    await expect(page.getByTestId('quick-panel-status')).toHaveText(`"${parkedLabel}" is waiting for your approval`, { timeout: 15_000 })
+
+    const panelPage = await s.browser.newPage({ baseURL: s.server.baseURL })
+    await panelPage.goto(`${s.server.baseURL}/#/traypanel`)
+    const recentRow = panelPage.getByTestId('tray-recent-row').filter({ hasText: label })
+    await expect(recentRow).toBeVisible({ timeout: 15_000 }) // the panel refreshes every 5s
+    await expect(recentRow).toHaveAttribute('data-run-kind', 'done')
+    await expect(recentRow).toContainText('Done')
+    await expect(panelPage.getByTestId('tray-no-runs-yet')).toHaveCount(0)
+    // The parked run is under Needs you, never under Recent.
+    await expect(panelPage.getByTestId('tray-needs-row').filter({ hasText: parkedLabel })).toBeVisible()
+    await expect(panelPage.getByTestId('tray-recent-row').filter({ hasText: parkedLabel })).toHaveCount(0)
   } finally {
     await closeDedicated(s)
   }

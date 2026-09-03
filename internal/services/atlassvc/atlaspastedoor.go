@@ -28,7 +28,16 @@ type PasteResult struct {
 	// board object (docs/goals/0251, atlaspasteplugin.go) -- always 0
 	// or 1, same single-payload property Images documents.
 	PluginObjects int
-	SkippedPages  []string
+	// PluginObjectID / PluginKind name the object a plugin claim landed
+	// (ADR-0051 slice 2), and AlternativeKinds the OTHER enabled
+	// claimants for the same paste in their precedence order -- the
+	// frontend's "paste as … instead" offer runs SetBoardObjectKind on
+	// PluginObjectID with one of them. Empty when no plugin claim fired
+	// or when only one plugin claims links.
+	PluginObjectID   string
+	PluginKind       string
+	AlternativeKinds []string
+	SkippedPages     []string
 }
 
 // WirePasteListWrites installs the Configure-owned write seams the

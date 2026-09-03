@@ -79,6 +79,10 @@
     "seedRevision": 1,
     "fingerprint": "2c19aa57810f5a47d25587fb4931161ca1996bc515ecb6e1eea7332f39432bcb"
   },
+  "atlasobject:atlas-object-example-pdf": {
+    "seedRevision": 1,
+    "fingerprint": "3868528ce5f6cf899ff276ae508f4002ec81aa5c0ae7ed02da25ec1b8473a807"
+  },
   "atlasobject:atlas-object-example-shape": {
     "seedRevision": 1,
     "fingerprint": "c2221b9e336989c19ff77763679204d1ef6092622cd65e2a5dd7766197a0eb6d"
@@ -86,6 +90,18 @@
   "atlasobject:atlas-object-example-sheet": {
     "seedRevision": 1,
     "fingerprint": "1e55d1591c9b7a0f98a7cd22d2de9940b4d3fa2a8094a8fd9496870e500b549a"
+  },
+  "conversionprofile:conversionprofile-confluence": {
+    "seedRevision": 1,
+    "fingerprint": "355b494d5bef930d6d9abd6d902a8273cb625c6b0aa55898737dd5c99e06d359"
+  },
+  "conversionprofile:conversionprofile-default": {
+    "seedRevision": 1,
+    "fingerprint": "9b5a0a684d5f98a0cba7ef8796be4c1063fdc88b45a4c2de35c504a4442281d4"
+  },
+  "conversionprofile:conversionprofile-plain": {
+    "seedRevision": 1,
+    "fingerprint": "ec28a24e27155cb779a8c34828cbbecb873dec529e333d19cc7d749562989e1e"
   },
   "decision:example-approve-decision": {
     "seedRevision": 3,
@@ -111,6 +127,10 @@
     "seedRevision": 1,
     "fingerprint": "1c08007bbeeea7f8badb47a7d1d2d85fb6669fbbc917f0d81104666e5ae52c41"
   },
+  "guardrailrule:plugin-fetch-uses-secret": {
+    "seedRevision": 1,
+    "fingerprint": "0761a2ab97e66eda41464a3d3869c27a8779e9f325242b796e6878e0b95840cc"
+  },
   "guardrailrule:shell-allow-curl-head": {
     "seedRevision": 1,
     "fingerprint": "1c1939763cdcaf5eb5c68d7a9fd679636b5af1f2e887b4c7342c721a93db3dde"
@@ -131,13 +151,21 @@
     "seedRevision": 1,
     "fingerprint": "5560760323746176e66279c0769c37aa3fbb8378ab0af80323215120a48af0ce"
   },
+  "list:example-bruno-results-list": {
+    "seedRevision": 1,
+    "fingerprint": "2affeabaf4eaeeb1a27b498d88521a1cb50b857e8d18319136cb8db3769cb927"
+  },
   "list:example-country-codes-list": {
     "seedRevision": 4,
     "fingerprint": "e5f0f240a11b3186184fc845f0a5b43e0a866f354c90c6cb22286a3ca4a4b755"
   },
+  "list:example-jira-issues-list": {
+    "seedRevision": 1,
+    "fingerprint": "775af5909025d026b3d20469002becacaec8b516a6ad08ab197ef5e8652b080b"
+  },
   "list:example-task-tracker-list": {
-    "seedRevision": 2,
-    "fingerprint": "d7323e0ad888af81e08709ee5c3d19cce42091a50621d709cbf0256cbba6dab6"
+    "seedRevision": 3,
+    "fingerprint": "1ae423f8d305f6060e7e30d60d76a597b2075c0402e6484a1a74b379384f59e0"
   },
   "mcpserver:example-reference-mcpserver": {
     "seedRevision": 1,
@@ -189,7 +217,7 @@
   },
   "workflow:clipboard-html-to-markdown-workflow": {
     "seedRevision": 2,
-    "fingerprint": "9de7e8459d7a325d2d78ba99704020dc0424cc0902060ea01d1dd9aedf48d234"
+    "fingerprint": "c302b0fb457d5be7b4e37b96df52adeabc76668fd1105747322636a46c25adbd"
   },
   "workflow:clipbridge-reply-cards-workflow": {
     "seedRevision": 2,
@@ -215,6 +243,10 @@
     "seedRevision": 3,
     "fingerprint": "a029c7c1d3ee9f7da229f81689b341d455a51a6dfe8efe488158c5ac137b2bc0"
   },
+  "workflow:example-bruno-run-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "fda4bc0cdd289206124540d6c872622b142ba1c12194e286b780cc754ed6e67d"
+  },
   "workflow:example-card-create-link-workflow": {
     "seedRevision": 1,
     "fingerprint": "7b2ad643f36f99b161876ddf497a868473cf13b709575b59f4e24ac1e005ef5a"
@@ -237,7 +269,7 @@
   },
   "workflow:example-confluence-to-markdown-workflow": {
     "seedRevision": 2,
-    "fingerprint": "dace385d3abf00368202f0332540f35602f7a2ad034d429761b716714cfd9401"
+    "fingerprint": "fac7be4c91db9cdc175e81cee06f86cd58f9a27ec9608f7924df7dd789def084"
   },
   "workflow:example-decision-with-review-workflow": {
     "seedRevision": 3,
@@ -266,6 +298,10 @@
   "workflow:example-guarded-http-workflow": {
     "seedRevision": 2,
     "fingerprint": "06ff189f9ff1362321c0187466a2336f34cb6a16217ee3c129900ab2da6e2b9f"
+  },
+  "workflow:example-jira-issues-sync-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "1afd7bdc6ec10020a1837753007250b86498cd4ee41c88734b391db09ce632cb"
   },
   "workflow:example-jira-search-workflow": {
     "seedRevision": 1,
@@ -309,7 +345,7 @@
   },
   "workflow:example-saved-page-to-markdown-workflow": {
     "seedRevision": 2,
-    "fingerprint": "3cd5e1bab8414c4d6ae353830b2a27cc9fa5f49747d8d540a752d955f1b162a8"
+    "fingerprint": "c0cf374d1e86f7ece3d7c8144d5b100c85bf67c06e6b2f7feb81c4d3bfb30396"
   },
   "workflow:example-scratch-capture-workflow": {
     "seedRevision": 2,
@@ -319,9 +355,17 @@
     "seedRevision": 2,
     "fingerprint": "78cc6d87d6308837ab1da6c316e430f65c60af174aa9ab1c6d1f36e636fa5eb7"
   },
+  "workflow:example-sha256-clipboard-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "e7c9950a28196aeac0692b308dcafa3cb96586c98f017f5aae968f119f0ece12"
+  },
   "workflow:example-step-failure-workflow": {
     "seedRevision": 1,
     "fingerprint": "c4c6feedce67ba803cd59737c0ca5836cbca536dd79d591e94601c05a19aafdf"
+  },
+  "workflow:example-todo-scan-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "795b40612c6f8e45931126926811fa8c0ef5b0fa0a4974130a8e89ba49334832"
   },
   "workflow:load-sample-html-workflow": {
     "seedRevision": 1,

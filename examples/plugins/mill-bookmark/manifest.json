@@ -7,6 +7,26 @@
   "minMillVersion": "0.9.0",
   "capabilities": ["open-url"],
   "contributes": {
-    "canvasObjects": [{ "kind": "bookmark", "pastesURLs": true }]
+    "canvasObjects": [{ "kind": "bookmark", "pastesURLs": true }],
+    "settings": [
+      {
+        "key": "titleStyle",
+        "type": "enum",
+        "label": "Title",
+        "description": "What a bookmark shows as its title.",
+        "default": "hostname",
+        "options": [
+          { "value": "hostname", "label": "Site name" },
+          { "value": "address", "label": "Full address" }
+        ]
+      },
+      {
+        "key": "placeholderTitle",
+        "type": "string",
+        "label": "Title before an address",
+        "description": "Shown until you enter an address.",
+        "default": "Bookmark"
+      }
+    ]
   }
 }

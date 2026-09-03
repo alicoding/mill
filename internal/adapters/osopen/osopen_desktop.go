@@ -17,7 +17,7 @@ import "os/exec"
 // openCmd/revealCmd are package vars (not called directly) so a test
 // can substitute a non-side-effecting exec.Cmd -- same seam Wails3's
 // own internal/browser package uses for its equivalent openCmd var.
-var openCmd = func(path string) *exec.Cmd { return exec.Command("open", path) } //nolint:gosec // a card's own MirrorPath, a local filesystem path Mill itself resolved, not external input
+var openCmd = func(path string) *exec.Cmd { return exec.Command("open", path) }         //nolint:gosec // a card's own MirrorPath, a local filesystem path Mill itself resolved, not external input
 var revealCmd = func(path string) *exec.Cmd { return exec.Command("open", "-R", path) } //nolint:gosec // same MirrorPath, by design
 
 // Open launches path with the OS default application for its file

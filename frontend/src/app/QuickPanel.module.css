@@ -45,8 +45,82 @@
   color: var(--fgColor-muted);
   pointer-events: auto;
 }
+/* The pin control's box never exceeds the row's text line (goal 0303):
+   one row height across the list. */
+.pinToggle,
+.pinnedIndicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--borderRadius-small);
+  cursor: pointer;
+}
+.pinToggle:hover,
+.pinnedIndicator:hover {
+  background: var(--bgColor-neutral-muted);
+}
 
 .pinnedIndicator {
   color: var(--fgColor-accent);
   pointer-events: auto;
+}
+
+/* Footer (goal 0294): outcome left, shortcut hints + Actions right --
+   the launcher footer layout. The status wraps and never pushes the
+   hints off the edge. */
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8, 8px);
+  padding: var(--base-size-4, 4px) var(--base-size-8, 8px) var(--base-size-4, 4px) var(--base-size-16, 16px);
+  border-top: 1px solid var(--borderColor-default);
+  min-height: 36px;
+}
+.footerStatus {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--fgColor-muted);
+  overflow-wrap: anywhere;
+}
+.footerHints {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--base-size-8, 8px);
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small);
+}
+.footerHint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--base-size-4, 4px);
+}
+
+/* One row height, always (goal 0303): a long title or description
+   truncates with an ellipsis instead of wrapping the row taller than
+   its neighbors -- the converged launcher-list convention. Scoped to
+   the panel's own option rows; the kit's compiled class fragments are
+   the only stable hook (see the trailingVisual note above). */
+.panel [role="option"] {
+    white-space: nowrap;
+}
+.panel [role="option"] [class*="ItemLabel"],
+.panel [role="option"] [class*="ItemDescription"],
+.panel [role="option"] [class*="Description"] {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+/* The leading and trailing visuals (icon, hotkey chip, pin) sit in a
+   20px box the row's text line already spans, so no row is taller
+   than its neighbors (goal 0303); the chip may draw past the box. */
+.panel [role="option"] [data-component="ActionList.TrailingVisual"],
+.panel [role="option"] [data-component="ActionList.LeadingVisual"] {
+    height: 20px;
+    max-height: 20px;
+    align-items: center;
+    overflow: visible;
 }

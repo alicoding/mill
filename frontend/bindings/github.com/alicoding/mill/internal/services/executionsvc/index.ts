@@ -22,6 +22,8 @@ export type {
     RunStep,
     RunSummary,
     StepFailureCount,
+    StepTestRequest,
+    StepTestResult,
     TimeSavedMetric,
     WorkflowTimeSaved,
     WorkflowUsage

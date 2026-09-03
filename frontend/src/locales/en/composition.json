@@ -234,14 +234,24 @@
     "openStepDetail": "Open step detail",
     "ioContract": "Takes: {{consumes}} — Produces: {{produced}}",
     "ioContractPassthrough": "passes its input through",
-    "ioContractOptionalSuffix": "(optional)",
-    "tryItHeading": "Try it",
-    "tryItCaption": "Paste page HTML and see the exact Markdown this step would produce.",
-    "tryItEngineNote": "Converted by Mill's built-in converter — the same one every run of this step uses, with no settings to drift.",
-    "tryItPlaceholder": "Paste HTML here",
-    "tryItConvert": "Convert",
-    "tryItError": "Couldn't convert: {{message}}",
-    "tryItResultAriaLabel": "Converted Markdown"
+    "ioContractOptionalSuffix": "(optional)"
+  },
+  "stepTest": {
+    "heading": "Try this step",
+    "caption": "Runs just this step on the input below and shows what comes out.",
+    "inputPlaceholder": "Paste or type the input this step would receive",
+    "inputAriaLabel": "Step input",
+    "run": "Run step",
+    "useLastRun": "Use last run's input",
+    "useClipboard": "Use clipboard",
+    "output": "Output",
+    "outputAriaLabel": "Step output",
+    "engineNote": "Converted by Mill's built-in converter — the same one every run of this step uses, with no settings to drift.",
+    "refusedAsk": "This step asks for approval before it runs. Run the workflow to approve it.",
+    "refusedAskRule": "This step asks for approval before it runs ({{rule}}). Run the workflow to approve it.",
+    "refusedDeny": "This step is not allowed to run.",
+    "refusedDenyRule": "A rule blocks this step from running ({{rule}}).",
+    "stepFailed": "The step failed: {{message}}"
   },
   "stepDetailOverlay": {
     "title": "Step: {{label}}",
@@ -319,7 +329,8 @@
     "saving": "Saving…",
     "saveChanges": "Save changes",
     "saveWorkflow": "Save workflow",
-    "description": "Description"
+    "description": "Description",
+    "noDescription": "No description"
   },
   "canvasToolbar": {
     "backAriaLabel": "Back to workflows",
@@ -334,6 +345,9 @@
   "compositionCanvas": {
     "onlyDecisionEdgesConfigurable": "Only a Decision step’s outgoing edges are configurable.",
     "selectNodeToConfigure": "Select a step to configure it.",
+    "resizeInspector": "Resize the inspector",
+    "expandInspector": "Expand the inspector",
+    "shrinkInspector": "Shrink the inspector",
     "connectionRefusalHint": "Not connected — {{reason}}"
   },
   "compositionView": {

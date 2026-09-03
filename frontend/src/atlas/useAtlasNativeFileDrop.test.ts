@@ -39,6 +39,17 @@ describe('resolveFileDropKind (goal 0237 S3 rider)', () => {
     expect(resolveFileDropKind('/tmp/photo.png', alwaysDisabled)).toBe('image')
   })
 
+  it('routes a .pdf path to "pdf" when enabled, case-insensitively (goal 0267)', () => {
+    expect(resolveFileDropKind('/tmp/report.pdf', alwaysEnabled)).toBe('pdf')
+    expect(resolveFileDropKind('/tmp/REPORT.PDF', alwaysEnabled)).toBe('pdf')
+  })
+
+  // Same fall-through as diagram/sheet -- pdf has no tray button
+  // either.
+  it('falls a disabled pdf drop through to the "card" path', () => {
+    expect(resolveFileDropKind('/tmp/report.pdf', (id) => id !== 'pdf')).toBe('card')
+  })
+
   it('falls an unrelated extension through to "card"', () => {
     expect(resolveFileDropKind('/tmp/notes.md', alwaysEnabled)).toBe('card')
   })
@@ -59,5 +70,23 @@ describe('resolveFileDropKind (goal 0237 S3 rider)', () => {
 
   it('falls an unclaimed extension through to "card" even with claims registered', () => {
     expect(resolveFileDropKind('/tmp/notes.md', alwaysEnabled, claimLookup)).toBe('card')
+  })
+})
+
+// goal 0274: the backend's content hint routes an exported draw.io
+// .xml as a diagram -- extension rules alone would card-ify it.
+describe('resolveFileDropKind drawio-xml content hint', () => {
+  const noClaim = () => undefined
+
+  it('routes a sniffed .xml to "diagram" when the diagram extension is enabled', () => {
+    expect(resolveFileDropKind('/tmp/export.xml', alwaysEnabled, noClaim, 'drawio-xml')).toBe('diagram')
+  })
+
+  it('falls a sniffed .xml through to "card" when the diagram extension is disabled', () => {
+    expect(resolveFileDropKind('/tmp/export.xml', alwaysDisabled, noClaim, 'drawio-xml')).toBe('card')
+  })
+
+  it('a plain .xml with no hint stays a card', () => {
+    expect(resolveFileDropKind('/tmp/config.xml', alwaysEnabled, noClaim, '')).toBe('card')
   })
 })

@@ -1,3 +1,4 @@
+import { getPluginView } from '../plugins/pluginViews'
 import type { WorkTab } from '../shared/store'
 
 // The display label for an open work tab -- shared by app/WorkTabShell.tsx
@@ -23,6 +24,10 @@ export function tabKindLabel(tab: WorkTab, t: (key: string) => string): string {
     case 'request-edit':
     case 'request-new':
       return t('workTabLabel.integration')
+    case 'plugin-view':
+      // The kicker names the PLUGIN (recognition before reading); the
+      // label below it is the view's own title.
+      return getPluginView(tab.pluginId, tab.viewId)?.pluginName ?? t('workTabLabel.pluginView')
   }
 }
 
@@ -37,5 +42,7 @@ export function tabLabel(tab: WorkTab, workflowLabel: (id: string) => string | u
       return requestLabel(tab.requestId) ?? t('workTabLabel.integration')
     case 'request-new':
       return t('workTabLabel.newIntegration')
+    case 'plugin-view':
+      return getPluginView(tab.pluginId, tab.viewId)?.title ?? t('workTabLabel.pluginView')
   }
 }

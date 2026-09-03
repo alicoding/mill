@@ -9,6 +9,7 @@ import { useAppStore } from '../shared/store'
 import { KeyComboChip } from '../shared/KeyComboChip'
 import { useCommandKeybindingCapture } from '../composition/hotkeyCapture'
 import styles from '../shared/ListCard.module.css'
+import { searchInputTextAssistOff } from '../shared/searchInputProps'
 
 // Settings → Keyboard Shortcuts (docs/goals/0016-keymap-system.md): a
 // searchable list of every registered command (shared/commands.ts),
@@ -50,6 +51,7 @@ export default function KeyboardShortcutsSection() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         aria-label={t('keyboardShortcutsSection.searchAriaLabel')}
+        {...searchInputTextAssistOff}
         data-testid="keymap-search"
         block
       />

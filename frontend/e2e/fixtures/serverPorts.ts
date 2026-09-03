@@ -273,3 +273,11 @@ export const RUNTIME_PLUGINS_MCP_BASE_PORT = 11140
 // contaminate.
 export const TRAY_PANEL_SERVER_BASE_PORT = 11160
 export const TRAY_PANEL_MCP_BASE_PORT = 11180
+
+// updates-user-check.spec.ts's own dedicated pairs (goal 0275): each
+// test needs a fixed MILL_TEST_UPDATE_* env for its whole lifetime,
+// same reasoning as every UPDATES_* pair above.
+export const UPDATES_USERCHECK_UPTODATE_SERVER_BASE_PORT = 11200
+export const UPDATES_USERCHECK_UPTODATE_MCP_BASE_PORT = 11220
+export const UPDATES_USERCHECK_FAIL_SERVER_BASE_PORT = 11240
+export const UPDATES_USERCHECK_FAIL_MCP_BASE_PORT = 11260

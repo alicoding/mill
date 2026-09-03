@@ -190,7 +190,7 @@ Data flows two ways through a run:
 
 ## Configuring a step
 
-Click a step to open its inspector. Fields are typed — pickers for
+Click a step to open its inspector. Drag the inspector's edge to make it wider, double-click the edge to reset it, or use the Expand button to give a long value the whole side of the canvas; the width you choose is remembered on this device. Fields are typed — pickers for
 Configure entities, code editors with highlighting for scripts and
 JSON, plain inputs for plain values. A field that names *which
 external thing* to talk to (an API, a model, a list) always points at
@@ -202,6 +202,19 @@ a Configure entity rather than holding the value inline — see
 Saving edits a draft. Publishing snapshots a version — callers and
 triggers run the published version, so edits never leak into
 production mid-composition.
+
+## Seeing what a step points at
+
+A step that references something you configured — an integration, a
+list, an MCP server, an AI provider — shows two links under the
+picker. **Details** opens a short summary right there: an
+integration's address, method, and auth, and whether its secret is
+stored; a list's columns and row count. **Open** takes you to that
+entity's own editor: an integration opens as a tab beside your
+workflow, everything else opens on its Configure page with the form
+ready. If the entity cannot work as it stands — an integration whose
+auth has no secret yet — the step says so on the field, with the same
+Edit link.
 
 ---
 
@@ -262,26 +275,37 @@ the endpoint later is a single edit that both workflows pick up.
 
 Configure holds the things workflows and boards *point at* — the
 values two independently-authored workflows should share, where
-drifting apart would be a bug:
+drifting apart would be a bug. Deleting any of them takes effect at
+once and offers Undo for ten seconds; an entry a workflow still uses
+refuses to delete and names the workflow. An undone Integration comes
+back without its secret — enter it again.
+
+The entities:
 
 - **Integration** — an HTTP API: base URL, auth (the secret lives in
   your OS keychain, never in config), operations with typed inputs
   and outputs.
 - **Lists** — typed tabular data steps can look up, search, and
-  write; Atlas can project them too. A list edits as one table:
-  click a cell to change it, click a header to rename its column,
-  hover a header or row for the ⊕ that inserts one exactly there,
-  and open the header's gear for the column's type, choices, and
-  removal. A column's type can change until it holds data. While
-  editing a cell, Tab moves right, Enter moves down, Escape steps
-  back to the cell — then arrows walk the grid, typing starts a
-  fresh entry, and Escape again leaves the table. Commits happen as
-  you go. Bring data in from a CSV or JSON file: "Import rows…" on a
+  write; Atlas can project them too. A list edits as one spreadsheet-
+  style grid: click a cell to select it, click again (or press
+  Enter, or just type) to edit it; Tab commits and moves right, Enter
+  commits and moves down, Escape cancels. Select a range and copy or
+  paste it, drag the fill handle to repeat a value, press Delete to
+  clear. Drag a header's edge to resize a column, drag the header to
+  reorder. The header's menu (or a right-click on it) renames the
+  column, inserts one to either side, and opens its type, choices,
+  deprecation, and removal; a right-click on a row inserts a row
+  below it, marks it expired or active, or deletes it. A column's type
+  can change until it holds data. Commits happen as you go. Bring data in from a CSV or JSON file: "Import rows…" on a
   list maps file columns to its fields, and "New from file…" on the
   Lists page proposes a whole typed schema from your sample — edit
   the proposed names and types, then create the list with every row
-  in one step. Deleting a list is immediate and permanent, so export
-  first if you might want it back.
+  in one step. A list can also mirror an outside source, one way: the
+  "Sync rows into a list" step turns a request's JSON result into rows
+  matched by a key column, on whatever schedule its workflow runs —
+  "Example: Jira issues → List" shows the shape, and Mill never writes
+  back to the source. Deleting a list is immediate and permanent, so
+  export first if you might want it back.
 - **MCP Servers** — other MCP servers Mill can call as workflow
   steps. (Connecting an agent *to* Mill is the other direction — see
   Settings → MCP access.)
@@ -290,6 +314,10 @@ drifting apart would be a bug:
 - **Execution environments** — a pinned shell, directory, and
   environment for Run a command. This is reproducibility, not a
   sandbox: the script runs with your full user account.
+- **Conversion profiles** — which source-specific rules an HTML to
+  Markdown conversion applies (Confluence, Office and Word). The
+  converter step picks one; leave it empty and every rule applies.
+  The page's sample preview shows what each profile makes of a paste.
 - **Attributes** — a workflow's declared typed fields.
 - **Decisions** — named outcome sets a workflow records against,
   with published versions.
@@ -330,7 +358,9 @@ connected by links, grouped into areas you can drill into.
   live diagrams. Drop a `.drawio` or `.mmd` file and it renders the
   same way, updating automatically whenever you edit that file outside
   Mill — a missing file shows a clear notice with a button to choose
-  another one. Click anywhere on a diagram to select it and get its
+  another one. A `.xml` file that holds a draw.io diagram (an
+  exported one, say) lands as a diagram too — Mill reads the file to
+  tell it apart from ordinary XML. Click anywhere on a diagram to select it and get its
   resize handles. A multi-page draw.io file shows page arrows when you
   hover it, so you can flip through its pages right on the board.
   General and flowchart shapes render with their real
@@ -357,10 +387,22 @@ connected by links, grouped into areas you can drill into.
   strikethrough, and code; type `[]` or `[x]` at the start of a line
   for a to-do, and Enter continues the list unchecked; at rest the
   note shows the rendered result, and clicking it brings the source
-  back. A long sticky note scrolls in place, and grows while you
+  back. With Rich code blocks turned on (Settings → Extensions →
+  Note), press Shift-Option-F inside a code block to format it —
+  JSON, JavaScript, TypeScript, CSS, HTML, YAML, and Markdown. A long sticky note scrolls in place, and grows while you
   edit it — and any note opens big: ⌘-click it (or right-click →
   Open note) for a full-size editor, like opening a note in its own
-  window.
+  window. Notes save when you click away; with Settings → General →
+  Save changes set to "When I choose", they wait for ⌘S instead and
+  show a dot until then.
+
+## Contents
+
+Everything on the board, listed by kind: cards, notes by their first
+line, and every other object. Open it from the toolbar's list button
+or the command palette ("Contents"), type to filter by name, and
+activate a row to jump there — a card opens, a note or object is
+brought into view.
 
 ## Drawing and images
 
@@ -412,7 +454,10 @@ connected by links, grouped into areas you can drill into.
   thing.** A table copied from a spreadsheet or a document app becomes
   a table on the board, ready to browse and edit like any other list.
   A pasted file path lands what dropping the file would: a document
-  becomes a card, a diagram or spreadsheet file its own board object,
+  becomes a card, a diagram, spreadsheet, or PDF file its own board
+  object (a PDF shows its pages right on the board — click it once to
+  select it, then search, zoom, and page through it in place; while
+  you scroll inside it the board holds still),
   a folder path opens the folder import. Everything else lands as a
   sticky note at your pointer, already selected — nothing else to
   fill in. Multiple tables in one paste each land as their own table,
@@ -424,6 +469,19 @@ connected by links, grouped into areas you can drill into.
 
 ## Finding what you need
 
+- **Jump anywhere with ⌘K.** Type a few letters and pick from every
+  card and every placed object — a diagram, an image, a table —
+  matched by its name. Enter flies the board to it and pulses it so
+  your eye lands in the right place, even when it lives levels away.
+- **Tidy the whole board with Auto-arrange.** One click packs
+  everything on the current level — cards and objects alike — into
+  clean rows, then leaves you in control: anything you drag
+  afterwards stays where you put it.
+- **Group anything into an area.** Select any two or more things —
+  cards, notes, diagrams, images — and press G (or draw an area
+  around them) to file them into a named area together. The area
+  shows a small preview of everything inside, objects included, and
+  its count includes every member.
 - **Filter without losing the map.** The search control on the board
   (top right) dims everything that doesn't match your text, chosen
   kinds, or field values (the Fields menu lists every choice-type
@@ -548,8 +606,14 @@ badge, and a floating approval prompt.
 - **Breakpoints** pause a run before a step; edit values, then
   resume — or run in step mode and walk the chain one step at a
   time.
-- **Try it** on the Convert HTML to Markdown step previews a
-  conversion without running anything.
+- **New note…** in the Quick Panel opens a small note window away from
+  the canvas; pick where it lands (the Scratchpad, a space, or the top
+  level) and ⌘↩ saves it there. Plugins can add their own captures the
+  same way.
+- **Try this step** on any step runs just that step on an input you
+  type, paste from the clipboard, or take from its last run — and
+  shows the output right there, without running the workflow. A step
+  that would need your approval tells you so instead of running.
 - **Activity** shows trigger fires and run outcomes across all
   workflows, so a scheduled or watching workflow is never invisibly
   running. Its MCP calls section logs every call to or from Mill's
@@ -564,10 +628,43 @@ something is waiting on you. Clicking it opens a small panel:
 - **Needs you** — approvals, agent writes, and plugin asks waiting
   for a decision. Click a row to land on Review.
 - **Running now** — what's executing, each with a Stop button.
+- **Recent** — the last few runs that finished, with Done, Failed or
+  Stopped and how long ago. Click one to see which steps ran, in the
+  same small floating window.
 - **Quit Mill…** — quitting tells you first what stops: your
   schedules, hotkeys and watchers pause until Mill runs again.
 
 Right-clicking the icon keeps the plain menu: Open Mill, Quit.
+
+## Run from the Quick Panel
+
+Summon the Quick Panel with your hotkey, type a workflow's name, and
+the footer shows what the highlighted row can do:
+
+- **↩** runs it. The panel stays open and the footer tells you the
+  outcome: done and how long it took, failed and why, or waiting for
+  your approval. Press Escape when you're done reading.
+- **⌘↩** opens the workflow in Mill, read-only, with its Run and
+  step-by-step controls. Right after a run, this opens that run, so
+  you see which steps ran and where it stopped.
+- **⌘⇧↩** runs the workflow and opens a small floating window with
+  its canvas, so you watch the steps light up without leaving what
+  you were doing. Close it when you're done, or press Open in Mill to
+  continue in the full app on that run.
+- **⌘⇧P** pins or unpins it.
+- **⌘K** lists all of these with their shortcuts.
+
+Anything you type that isn't a workflow's name can be kept: **Save as
+note** files it into the Scratchpad card on the board, **Save as
+task** adds it as a row to the Example: Task tracker list, scheduled
+for today. Both close the panel the moment they land.
+
+The same panel is the fastest way to update Mill: type "update" and
+press ↩ to check. The footer tells you whether you're up to date, or
+names the next step — download and install, then restart to finish —
+and typing "update" or "relaunch" again finds that step. A restart, or
+quitting from the menu bar, first saves whatever you were still
+typing: a note mid-edit, a cell being edited, a workflow draft.
 
 ---
 
@@ -730,6 +827,13 @@ Reads the clipboard's HTML. If there's no HTML flavor (many apps only put plain 
 - Takes: nothing — Produces: HTML
 - Effect: reads local state
 
+### Read clipboard text
+
+Reads the clipboard's plain text only, never its HTML -- for ids, tokens, and anything copied as-is.
+
+- Takes: nothing — Produces: text
+- Effect: reads local state
+
 ### Read file
 
 Reads a local file into the payload. "payload" source treats the current payload as the file path -- what a File changed trigger supplies; "literal" reads a fixed path instead.
@@ -800,6 +904,8 @@ Converts HTML into Markdown, preserving structure (headings, bold, lists).
 
 - Takes: HTML — Produces: Markdown
 - Effect: none — pure computation
+- Settings:
+  - **Conversion profile** — Which source-specific rules apply (Confluence, Office). Empty applies every rule set. (references a Conversion profile)
 
 ### Create run receipt
 
@@ -900,6 +1006,18 @@ Runs another of your workflows as a step and uses its result as this workflow's 
   - **Pin to version (optional)** — Leave empty to always call the child's published version. Enter a version number to pin this step to that exact snapshot, unaffected by later publishes.
   - **Store result in attribute (optional)** — Also write the child workflow's result into this workflow's named Attribute, so later steps (a Decision condition, another binding) can reference it as attr:<name>.
 
+### Scan a folder for TODO markers
+
+Walks a folder and lists every TODO-style marker it finds as a table: one row per hit with the file, line, marker, and the text after it. Hidden folders, node_modules, vendor and .git are skipped.
+
+- Takes: anything — Produces: text
+- Effect: changes something on this machine
+- Settings:
+  - **Folder** — The folder to scan. A literal path or attr:<name>.
+  - **Markers** — Comma-separated words to look for, matched as whole words, case-sensitive.
+  - **File types** — Comma-separated extensions to include, e.g. go,ts,md. Blank scans every text file.
+  - **File limit** — Stops after this many files so a huge folder never runs away.
+
 ### Search list rows
 
 Searches a Configure-authored List's rows against one or more match parameters (exact or fuzzy, per-column, AND'd together) and writes the result into Attributes. Supersedes list-lookup for anything beyond a single exact key match -- list-lookup keeps working unchanged for existing workflows. Expired rows are excluded by default; "Include expired rows" opts in.
@@ -913,6 +1031,15 @@ Searches a Configure-authored List's rows against one or more match parameters (
   - **Stop at first match** — Stops scanning after the first match. The output shape stays the same typed Object either way -- results just has at most one entry -- so turning this on or off never changes what a downstream Decision/binding can reference.
   - **Output attribute** — Which Attributes field receives the typed search-result object.
   - **Pin to version (optional)** — Leave empty to always resolve this List's current rows. Enter a version number to pin this step to that exact published snapshot, unaffected by later row edits.
+
+### Transform text
+
+Hashes or encodes the payload -- SHA-256, base64, URL encoding and more. Hashes are one-way; decoding applies to base64, URL, and hex.
+
+- Takes: text or HTML — Produces: text
+- Effect: none — pure computation
+- Settings:
+  - **Operation** — What to do with the text.
 
 ### Validate with rules
 
@@ -1032,6 +1159,19 @@ Scrubs any known secret value out of the payload, then adds what's left to Clipb
 - Takes: text — Produces: its input, unchanged
 - Effect: changes something on this machine
 
+### Sync rows into a list
+
+Turns a JSON payload's array of items into rows of a Configure-authored List, one row per item, matched by "Key column": an existing row with the same key is updated in the mapped columns, a new key appends a row, and with "Expire missing rows" on, rows whose key is absent from this result are marked expired (never deleted). One-way: nothing is written back to the source, and a later sync overwrites the mapped columns of a row edited by hand.
+
+- Takes: JSON or text or anything — Produces: its input, unchanged
+- Effect: changes something on this machine
+- Settings:
+  - **List** — The Configure-authored List that mirrors the source. (references a List)
+  - **Items path** — Dotted path to the array of items inside the JSON payload, e.g. issues. Blank when the payload itself is the array.
+  - **Key column** — The List column that identifies an item -- must be named in the field map.
+  - **Field map** — JSON object mapping List column keys to a dotted path inside each item, e.g. {"key":"key","summary":"fields.summary","status":"fields.status.name"}. A value with {{path}} placeholders is a template, e.g. "https://jira.example.com/browse/{{key}}".
+  - **Expire missing rows** — Mark rows whose key is absent from this result as expired.
+
 ### Update Atlas card
 
 Writes field values onto an existing Atlas card, resolved by "Card" (a literal card id or attr:<name> -- e.g. attr:cardId from a trigger-atlas-card event, or an earlier Atlas: find cards result). Only the fields named in "Field values" change; everything else on the card is untouched.
@@ -1098,7 +1238,8 @@ Ends the workflow with a typed, configured outcome: an outcome category (approve
 # Commands
 
 Press ⌘K and type any action's name — "lock vault", "check for
-updates", "add a card" — and it runs from wherever you are. Every
+updates", "add a card" — and it runs from wherever you are.
+Abbreviations work too: "gtw" finds "Go to Workflows". Every
 user-facing action in Mill is a registered command, and the palette,
 the Quick Panel, keyboard shortcuts, and Settings → Keyboard shortcuts
 all read from the same list, so a command registered once shows up
@@ -1122,6 +1263,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.arrange` | Auto-arrange | — | atlas | Always available |
 | `atlas.card.exportAs` | Export card as… | — | atlas | Always available |
 | `atlas.companion.toggle` | Toggle companion panel | — | atlas | Always available |
+| `atlas.contents.open` | Contents | — | atlas | Always available |
 | `atlas.coverage` | Open coverage | — | atlas | Always available |
 | `atlas.create.area` | Draw an area | — | atlas | Conditional — available only in a matching state |
 | `atlas.create.card` | Add a card | — | atlas | Conditional — available only in a matching state |
@@ -1136,7 +1278,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.focusPrevious` | Focus previous card | `⇧TAB` | atlas | Always available |
 | `atlas.group.selection` | Group into a new area | `G` | atlas | Always available |
 | `atlas.import` | Import atlas | — | atlas | Always available |
-| `atlas.jump` | Jump to a card | `⌘K` | atlas | Always available |
+| `atlas.jump` | Jump to a card or object | `⌘K` | atlas | Always available |
 | `atlas.matrix` | Open traceability matrix | — | atlas | Always available |
 | `atlas.minimap.toggle` | Toggle minimap | — | atlas | Always available |
 | `atlas.nudgeSelection` | Move the selected card | `→` | atlas | Always available |
@@ -1157,9 +1299,11 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `canvas.undo` | Undo | `⌘Z` | composition | Always available |
 | `canvas.zoomIn` | Zoom in | `⌘+` | composition | Always available |
 | `canvas.zoomOut` | Zoom out | `⌘-` | composition | Always available |
+| `capture.note` | Capture a note | — | Global | Always available |
 | `clipboard.history.open` | Clipboard history | — | Global | Always available |
 | `codingLoop.run` | Run from clipboard… | — | Global | Always available |
 | `configure.new.aiproviders` | New AI provider | — | Global | Always available |
+| `configure.new.conversionprofiles` | New conversion profile | — | Global | Always available |
 | `configure.new.decisions` | New decision | — | Global | Always available |
 | `configure.new.execenvs` | New environment | — | Global | Always available |
 | `configure.new.integration` | New integration | — | Global | Always available |
@@ -1167,6 +1311,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.new.mcpservers` | New MCP server | — | Global | Always available |
 | `configure.new.steptypes` | New step type | — | Global | Always available |
 | `docs.search` | Search docs | — | Global | Always available |
+| `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
+| `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
+| `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `palette.open` | Open command palette | `⌘K` | Global | Always available |
@@ -1192,7 +1339,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `tab.closeOthers` | Close other tabs | `⌘⌥W` | Global | Conditional — available only in a matching state |
 | `tab.next` | Next tab | `⌃TAB` | Global | Always available |
 | `tab.prev` | Previous tab | `⌃⇧TAB` | Global | Always available |
-| `update.check` | Check for updates | — | Global | Always available |
+| `update.check` | Check for updates | — | Global | Conditional — available only in a matching state |
 | `update.downloadAndInstall` | Download the update and install | — | Global | Conditional — available only in a matching state |
 | `update.relaunch` | Restart to finish updating | — | Global | Conditional — available only in a matching state |
 | `update.trustSigning` | Trust Mill's signing | — | Global | Always available |
@@ -1205,6 +1352,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `view.home` | Go to Home | `⌘0` | Global | Always available |
 | `view.review` | Go to Review | `⌘5` | Global | Always available |
 | `view.secrets` | Go to Secrets | `⌘6` | Global | Always available |
+| `workflow.edit` | Edit workflow | — | Global | Conditional — available only in a matching state |
 | `workflow.new` | New workflow | `⌘N` | Global | Conditional — available only in a matching state |
 | `workflow.publish` | Publish current draft | — | composition | Conditional — available only in a matching state |
 | `workflow.run` | Run workflow | `⌘↩` | Global | Conditional — available only in a matching state |
@@ -1234,6 +1382,11 @@ restart say so.
 ## General
 
 - **Launch at login** — start Mill when you sign in.
+- **Save changes** — Automatically (the default): edits save as you
+  make them, and quitting or restarting saves anything still open.
+  When I choose: edits wait until you press ⌘S; a note or sheet with
+  unsaved edits shows a dot, and Mill asks Save all / Discard / Cancel
+  before it quits, restarts, or closes its window.
 - **Canvas navigation** — how scrolling moves the Atlas board and the
   workflow canvas. Trackpad: scrolling pans, pinch or ⌘-scroll zooms.
   Mouse: scrolling zooms, drag pans. Stored per device, so each
@@ -1253,8 +1406,15 @@ Sheet, stops new ones landing on drop). Some extensions offer their
 own settings inside the row — expand the row to find them. The Note
 offers **Rich code blocks**: turn it on and code fences in notes get
 syntax coloring and the full code editor, starting the next time a
-note opens for editing. Installed plugins appear below the built-in
-list with their own rows.
+note opens for editing. The Sheet offers **Preview rows** and
+**Preview columns**: how much of a spreadsheet shows on the board
+before the "showing the first…" note. The Table offers **New grid
+(experimental)**: tables render with the adopted spreadsheet grid
+(keyboard navigation, range selection, copy and paste); column
+editing stays in the current grid for now. Text and number settings save
+when you press Enter or leave the field. Installed plugins appear
+below the built-in list with their own rows, including any settings
+they declare.
 
 ## Keyboard shortcuts
 
@@ -1329,7 +1489,11 @@ it does next: "Check for updates" while idle, "Download vX and
 install" once a newer version is found, and "Restart to update" once
 it's ready to go — Mill never restarts on its own, so nothing happens
 until you click it. The status line above it shows your current
-version, release channel, and when Mill last checked. The same
+version, release channel, and when Mill last checked. Running "Check
+for updates" from anywhere — the command palette, the Quick Panel, or
+here — always answers in the bottom-right corner: a brief "Checking
+for updates…", then "You're up to date." when there's nothing new, or
+a notice you can click through to this page if the check fails. The same
 "Update available" notice in the bottom-right corner acts the same
 way: click it to download directly, or click "Restart to update" once
 it's ready — it never just opens Settings.
@@ -1466,7 +1630,7 @@ are never omissions.
 | `shortcutKey` | a single-character string, or null | the bare keypress that arms this tool from the board. null for a tool with no bare-key shortcut. |
 | `tray` | 'quick' or 'palette' | which tray surface renders this tool's button. |
 | `group` | 'knowledge', 'file', or 'annotate' -- REQUIRED, never optional | which tray cluster this noun's own button renders in. AtlasCreationTray.tsx's TRAY_GROUP_ORDER renders 'knowledge' and 'file' flat, primary-first; 'annotate' tools collapse into the tray's one expandable Annotate group instead of rendering flat. |
-| `settings` | an array of {key, label, description, defaultValue} boolean setting declarations, or omitted entirely | the noun's own user settings (goal 0258): declared here, rendered generically inside its Settings > Extensions row, persisted centrally per extension id + key. defaultValue applies whenever the user has never touched the toggle. Omitted means the row shows no settings block. |
+| `settings` | an array of {type, key, label, description, defaultValue} setting declarations -- type is boolean | string (optional placeholder) | number (optional min/max/step) | enum (options: [{value, label}]) -- or omitted entirely | the noun's own user settings (goal 0258): declared here, rendered generically inside its Settings > Extensions row, persisted centrally per extension id + key. defaultValue applies whenever the user has never touched the control; a stored value of the wrong type, or an enum value no longer among the options, falls back to it. Omitted means the row shows no settings block. A runtime plugin declares the same shape as manifest contributes.settings and reads it back through api.settings. |
 | `interaction` | 'arm-then-click', 'pick-then-place', 'drag-to-draw', 'drag-to-erase', 'ephemeral-drag', or 'paste-or-drop' | the authoring gesture that places this noun. Must equal the same field on this id's own shared/atlasToolIdentity.ts entry -- the registry's own agreement check cross-validates the two so they can never silently drift apart. |
 | `styleDefaults` | a record of style-field key to value, or omitted entirely | session-only seed values for a freshly placed instance's style state (colour, size, ...). Never persisted document data -- omit this field for a noun with no style surface rather than declaring an empty object. |
 | `styleFields` | a readonly array of AtlasStyleField entries (atlasStyleVocabulary.ts's closed union: color, color-or-none, stroke-width, or shape-kind) -- REQUIRED, never optional | this noun's own declared styleable properties. An empty array is the honest answer for a noun with no style surface at all. A non-empty array makes AtlasStylePanel.tsx render this tool's style picker automatically -- no other file needs to name this noun's id. |
@@ -1899,6 +2063,17 @@ extra prompt every time you unlock. Lock and unlock the vault from the
 command palette (⌘K) too — search "vault" and only the action that
 currently applies shows up.
 
+Secrets you already keep elsewhere need no copy. Configure > Secret
+sources points Mill at a dotenv file — a project's `.env` — or at a
+Bruno collection, whose root `.env` supplies values and whose
+environments name the secrets it expects — or at 1Password or
+Bitwarden through their own command-line tools, which Mill asks for one
+value at the moment a step runs, the way those tools' scripting docs
+recommend. The keys appear in every secret picker beside the vault's
+entries, by name only, and every read is in your access history. The value is read from the file at the
+moment a step runs, recorded in the same access history as a vault
+read, and never stored by Mill.
+
 **Clipboard history is opt-in and screened.** Turning on the
 Clipboard history workflow is the only way it starts watching, and
 turning it off stops watching immediately. Anything a password manager
@@ -1910,6 +2085,14 @@ copy back leaves a line in your own access history.
 ([Guardrails](../concepts/guardrails.md)) parks any step that leaves
 the machine until you approve it or a rule you wrote allows it.
 Agents get no shortcut around this.
+
+**Plugins run only with your say-so.** A plugin you install waits in
+Settings > Extensions, showing what it can request and reach, until
+you allow it; Mill fingerprints its files at that moment and stops it
+if they change; an administrator can pin the allowed set and require
+signatures in the settings file; and Export plugin audit files what
+every plugin asked for and read
+([Install a plugin](../reference/install-a-plugin.md)).
 
 **Execution environments are not a sandbox.** Run a command executes
 with your full user account — the pinned shell, directory, and

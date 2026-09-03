@@ -188,3 +188,11 @@ export function RunWorkflowWithPayload(workflowID: string, kind: $models.RunKind
 export function StepFailureBreakdown(): $CancellablePromise<$models.StepFailureCount[] | null> {
     return $Call.ByID(3427322667);
 }
+
+/**
+ * TestStep runs req's step alone. Only a malformed request errors; a
+ * step failure or a guardrail refusal is a normal result.
+ */
+export function TestStep(req: $models.StepTestRequest): $CancellablePromise<$models.StepTestResult> {
+    return $Call.ByID(3026201910, req);
+}

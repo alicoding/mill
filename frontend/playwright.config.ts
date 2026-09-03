@@ -39,13 +39,20 @@ export default defineConfig({
   // handled per-test via ./e2e/fixtures/clipboardLock.ts regardless of
   // worker count.
   workers: process.env.CI ? 1 : 4,
-  // fullyParallel stays false (Playwright's own default): tests within
-  // one spec FILE still run serially against that worker's one server,
-  // since several files deliberately share state/fixtures across their
-  // own tests (e.g. composition.spec.ts's "Load sample HTML" row).
-  // Different files still run concurrently across workers -- that's the
-  // actual lever this goal pulls.
-  fullyParallel: false,
+  // fullyParallel (goal 0296): Playwright balances SHARDS evenly only
+  // with this on; off, each shard gets a contiguous alphabetical chunk
+  // of files, which put every atlas-* spec on two shards running 12
+  // minutes against 4 for the rest, at the runner's limit. A file's
+  // tests may now run on different workers, each against its own
+  // server -- testing.md already forbids depending on an earlier test.
+  // A file that genuinely must run in order says so with
+  // test.describe.configure({ mode: 'serial' }) (resizable-table's own
+  // precedent), which keeps its tests together on one worker. CI only:
+  // each CI shard runs ONE worker, so this changes only which shard a
+  // test lands on; locally, four workers interleaving tests from one
+  // file measured 13 flaky (load, not order) against a file-serial
+  // baseline, with nothing to balance.
+  fullyParallel: !!process.env.CI,
   // One retry: the resizable-table drag test measures column width
   // after a synthetic pointer drag, which under load occasionally has
   // pointermove events coalesced (the column moves only partway) -- a
@@ -66,8 +73,10 @@ export default defineConfig({
   // starts its own steps, which a serial (workers: 1) suite never had
   // to account for since nothing else was ever running concurrently.
   // Caught directly as a real spurious timeout, not pre-emptively
-  // padded on a guess.
-  timeout: 60_000,
+  // padded on a guess. 90s (goal 0296): a 4-vCPU CI runner at full
+  // load ran several long Atlas tests to exactly 60s; the cap must
+  // clear the slow-but-correct case.
+  timeout: 90_000,
   // Playwright's own default reporter (list locally, dot in CI) never
   // writes a report to disk -- ci.yml's e2e job already expects one at
   // frontend/playwright-report on failure (its own upload-artifact

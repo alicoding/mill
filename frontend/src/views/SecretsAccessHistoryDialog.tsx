@@ -38,6 +38,7 @@ function contextCopyKey(context: string, hasWorkflow: boolean): string {
     case 'configure-tools-preview': return 'accessHistory.readConfigureToolsPreview'
     case 'ui-reveal': return 'accessHistory.readUiReveal'
     case 'ui-copy': return 'accessHistory.readUiCopy'
+    case 'plugin-fetch': return 'accessHistory.readPluginFetch'
     default: return 'accessHistory.readGeneric'
   }
 }
@@ -65,7 +66,7 @@ export function SecretsAccessHistoryDialog({ entryId, entryLabel, onClose }: {
   }, [])
 
   const refresh = useCallback(() => {
-    SecretService.ListSecretAccess({ entryId: entryId ?? '', limit: PAGE_SIZE, offset })
+    SecretService.ListSecretAccess({ entryId: entryId ?? '', actorPrefix: '', limit: PAGE_SIZE, offset })
       .then((resp) => {
         setRecords(resp.records ?? [])
         setTotal(resp.total)
@@ -103,7 +104,7 @@ export function SecretsAccessHistoryDialog({ entryId, entryLabel, onClose }: {
               const isError = r.outcome === 'error'
               const description = isError
                 ? t('accessHistory.readFailed')
-                : t(contextCopyKey(r.context, Boolean(workflowLabel)), { label: workflowLabel })
+                : t(contextCopyKey(r.context, Boolean(workflowLabel)), { label: workflowLabel, actor: r.actor?.replace(/^plugin:/, '') })
               return (
                 <ActionList.Item key={r.id} role="listitem" data-testid="secrets-access-history-row">
                   {entryId ? description : r.label}

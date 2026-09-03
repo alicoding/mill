@@ -1,7 +1,10 @@
 import { test, expect } from './fixtures/server'
-import { promoteBoardObject, nonSeededBoardObjects } from './fixtures/atlasBoard'
+import { promoteBoardObject, nonSeededBoardObjects, zoomAllTheWayOut } from './fixtures/atlasBoard'
 import { createBoardObjectViaRPC, ATLAS_DEFAULT_SPACE_ID } from './fixtures/atlasNativeDropEscapeHatch'
+import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { ATLAS_KIND_DOCUMENT } from './fixtures/kindPicker'
+import { waitForViewportStable } from './fixtures/animation'
+import { wheelAt } from './fixtures/pointer'
 
 // The "diagram" board object (goal 0179 S2): dropping a .drawio/.mmd
 // file lands a board-local object, never a card -- rendered through
@@ -42,6 +45,65 @@ test('a dropped .drawio file renders as a board object through the vendored view
   const diagramObject = diagramObjects(page)
   await expect(diagramObject).toBeVisible()
   await expect(diagramObject.locator('svg')).toBeVisible()
+
+  // Wheel routing (goals 0271 + 0302): unselected, the diagram is
+  // shielded and the board owns every wheel (no nowheel opt-out);
+  // selected, the vendored viewer owns the wheel and the node carries
+  // the canvas kit's nowheel class -- the same contract the pdf face
+  // has, so every object on the board reads alike.
+  await expect(diagramObject).not.toHaveClass(/nowheel/)
+  await expect(diagramObject.locator('[data-testid="atlas-object-click-shield"]')).toBeVisible()
+
+  // Window-drag opt-out, in-host half (goal 0276 rider): body drags
+  // the native window by its background; the host opts its subtree out.
+  expect(await diagramObject.locator('[data-testid="atlas-drawio-page-body"]').evaluate((el) => getComputedStyle(el).getPropertyValue('--wails-draggable').trim())).toBe('no-drag')
+  // The pointer must actually reach the object: worker-shared board
+  // state shifts fitView between runs, and a transform-based canvas
+  // can't be auto-scrolled by hover -- zoom out first, then settle.
+  await zoomAllTheWayOut(page)
+  const viewportTransform = () => page.locator('.react-flow__viewport').evaluate((el) => el.style.transform)
+  await waitForViewportStable(page.getByTestId('atlas-board'))
+  const beforeWheel = await viewportTransform()
+  // Shield up: a scroll over the diagram pans the board like over any
+  // object.
+  await wheelAt(page, diagramObject, 0, 80)
+  await expect.poll(viewportTransform).not.toBe(beforeWheel)
+  await waitForViewportStable(page.getByTestId('atlas-board'))
+  // Selected (the shield's click): the viewer owns the wheel, the
+  // board holds still.
+  await diagramObject.locator('[data-testid="atlas-object-click-shield"]').click()
+  await expect(diagramObject).toHaveClass(/nowheel/)
+  const beforeLiveWheel = await viewportTransform()
+  await wheelAt(page, diagramObject, 0, 80)
+  await page.waitForTimeout(300) // no observable "wheel fully routed" signal exists for a negative assertion
+  expect(await viewportTransform()).toBe(beforeLiveWheel)
+
+  // Window-drag opt-out, toolbar half (goal 0292, reopening 0276's
+  // rider): the viewer appends its hover toolbar to document.body, NOT
+  // into the host, so the host assertion above never covered it and
+  // holding a zoom button dragged the whole app window. The runtime
+  // reads the property off the event target's computed style, so pin
+  // it exactly there: the button's own icon (innermost target) and the
+  // toolbar container, once the toolbar is actually on screen.
+  await diagramObject.locator('[data-testid="atlas-drawio-page-body"]').hover()
+  const zoomIn = page.locator('div[title="Zoom In"]') // the canvas kit's own controls carry a <button> of the same title
+  await expect(zoomIn).toBeVisible()
+  const draggableOf = (el: Element) => getComputedStyle(el).getPropertyValue('--wails-draggable').trim()
+  expect(await zoomIn.locator('img').evaluate(draggableOf)).toBe('no-drag')
+  expect(await zoomIn.evaluate((el) => (el.parentElement ? getComputedStyle(el.parentElement).getPropertyValue('--wails-draggable').trim() : 'missing'))).toBe('no-drag')
+
+  // Toolbar width (goal 0292, second owner report): the viewer sizes
+  // the bar from the host's LAYOUT width, but the board is zoomed all
+  // the way out here, so the bar was several times wider than the
+  // object on screen. It must match the host's on-screen width, never
+  // narrower than the viewer's own button floor (34px per button).
+  const hostOnScreenWidth = (await diagramObject.locator('[data-testid="atlas-drawio-page-body"]').boundingBox())?.width ?? 0
+  const toolbarBox = await zoomIn.evaluate((el) => {
+    const bar = el.parentElement as HTMLElement
+    return { width: bar.getBoundingClientRect().width, buttons: bar.childElementCount }
+  })
+  expect(toolbarBox.width).toBeGreaterThanOrEqual(hostOnScreenWidth - 1)
+  expect(toolbarBox.width).toBeLessThanOrEqual(Math.max(hostOnScreenWidth, 34 * toolbarBox.buttons) + 2)
 
   // dragBand (goal 0206): diagram carries no tray descriptor of its own
   // (drop-only), so its dragBand: true fact can't be covered by
@@ -147,9 +209,12 @@ test('clicking a diagram body selects the object, and a multi-page file pages ri
   const diagramObject = diagramObjects(page)
   await expect(diagramObject.getByText('FirstPageCell')).toBeVisible()
 
-  // (1) Body click -> selected: the shared resize handles appear, the
-  // same observable the band click already produced.
-  await diagramObject.getByText('FirstPageCell').click()
+  // (1) Body click -> selected: the click lands on the shield that
+  // covers the body while unselected (goal 0302, the pdf face's own
+  // contract) and the shared resize handles appear, the same
+  // observable the band click already produced.
+  await diagramObject.locator('[data-testid="atlas-object-click-shield"]').click()
+  await expect(diagramObject.locator('[data-testid="atlas-object-click-shield"]')).toHaveCount(0)
   await expect(page.locator('.react-flow__resize-control.handle.top.right')).toBeVisible()
 
   // (2) The viewer's own pages cluster (prev / "1 / 2" / next) shows on
@@ -162,6 +227,99 @@ test('clicking a diagram body selects the object, and a multi-page file pages ri
   await expect(diagramObject.getByText('FirstPageCell')).toHaveCount(0)
 
   // Cleanup.
+  await diagramObject.click({ button: 'right' })
+  const menu = page.getByTestId('context-menu')
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+  await expect(diagramObjects(page)).toHaveCount(0)
+})
+
+// goal 0274: an exported draw.io .xml (same mxfile content, different
+// extension) renders through the same vendored drawio host. The drop
+// ROUTING (backend content sniff -> 'diagram') is unit-tested at both
+// layers (sniffContentKind in Go, resolveFileDropKind's hint branch in
+// Vitest); this proves the RESULT -- the host picker sends a non-
+// mermaid extension to the drawio viewer and the SVG actually paints.
+test('an exported draw.io .xml renders as a diagram board object through the vendored viewer', async ({ page }) => {
+  const fs = await import('node:fs')
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mill-e2e-atlas-drawio-xml-'))
+  const xmlFile = path.join(dir, 'ZzE2eExportedDiagram.xml')
+  fs.writeFileSync(xmlFile, `<?xml version="1.0" encoding="UTF-8"?>\n${DRAWIO_XML}`)
+
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await createBoardObjectViaRPC(page, 'diagram', { mirrorPath: xmlFile }, { X: 0, Y: 820 }, ATLAS_DEFAULT_SPACE_ID)
+  await page.reload()
+  await page.getByRole('link', { name: 'Atlas' }).click()
+
+  const diagramObject = diagramObjects(page)
+  await expect(diagramObject).toBeVisible()
+  await expect(diagramObject.locator('svg')).toBeVisible()
+  await expect(page.getByTestId('atlas-object-diagram-error')).toHaveCount(0)
+
+  // Cleanup.
+  await diagramObject.click({ button: 'right' })
+  const menu = page.getByTestId('context-menu')
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+  await expect(diagramObjects(page)).toHaveCount(0)
+})
+
+// Regression (goal 0311): a face taller than its sized object never
+// paints past the object's box -- the shared wrapper clips every kind,
+// so the band stays the object's top edge and neighbours are never
+// painted over.
+test('a drawing taller than its resized object is clipped to the object box', async ({ page }) => {
+  const fs = await import('node:fs')
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mill-e2e-diagram-clip-'))
+  const drawioFile = path.join(dir, 'ZzE2eDiagramClip.drawio')
+  fs.writeFileSync(drawioFile, DRAWIO_XML)
+
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+  await createBoardObjectViaRPC(page, 'diagram', { mirrorPath: drawioFile }, { X: 0, Y: 1300 }, ATLAS_DEFAULT_SPACE_ID)
+  await page.reload()
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const diagramObject = diagramObjects(page)
+  await expect(diagramObject.getByText('Start')).toBeVisible()
+
+  // Shrink the object well below the viewer's own minimum height
+  // through the same door a resize handle uses.
+  const objectID = await diagramObject.locator('..').getAttribute('data-id')
+  expect(objectID).toBeTruthy()
+  await callBindingViaRPC(page, 'github.com/alicoding/mill/internal/services/atlassvc.AtlasService.SetBoardObjectSize', [objectID, { W: 260, H: 40 }])
+
+  await expect.poll(async () => {
+    const box = await diagramObject.boundingBox()
+    return box ? Math.round(box.height) : 0
+  }).toBeLessThan(80)
+  const objectBox = (await diagramObject.boundingBox())!
+  const drawing = diagramObject.locator('[data-testid="atlas-drawio-page-body"] svg').first()
+  const drawingBox = (await drawing.boundingBox())!
+  // The drawing is taller than the box, but what is VISIBLE stops at
+  // the box: the wrapper clips.
+  const clipped = await diagramObject.locator('[class*="content"]').first().evaluate((el) => getComputedStyle(el).overflow)
+  expect(clipped).toBe('hidden')
+  expect(drawingBox.height).toBeGreaterThan(objectBox.height)
+  const visibleBottom = await drawing.evaluate((el) => {
+    const r = el.getBoundingClientRect()
+    let parent = el.parentElement
+    let bottom = r.bottom
+    while (parent) {
+      if (getComputedStyle(parent).overflow !== 'visible') bottom = Math.min(bottom, parent.getBoundingClientRect().bottom)
+      parent = parent.parentElement
+    }
+    return bottom
+  })
+  expect(visibleBottom).toBeLessThanOrEqual(objectBox.y + objectBox.height + 1)
+
   await diagramObject.click({ button: 'right' })
   const menu = page.getByTestId('context-menu')
   await expect(menu).toBeVisible()

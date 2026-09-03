@@ -15,6 +15,11 @@ restart say so.
 ## General
 
 - **Launch at login** — start Mill when you sign in.
+- **Save changes** — Automatically (the default): edits save as you
+  make them, and quitting or restarting saves anything still open.
+  When I choose: edits wait until you press ⌘S; a note or sheet with
+  unsaved edits shows a dot, and Mill asks Save all / Discard / Cancel
+  before it quits, restarts, or closes its window.
 - **Canvas navigation** — how scrolling moves the Atlas board and the
   workflow canvas. Trackpad: scrolling pans, pinch or ⌘-scroll zooms.
   Mouse: scrolling zooms, drag pans. Stored per device, so each
@@ -34,8 +39,15 @@ Sheet, stops new ones landing on drop). Some extensions offer their
 own settings inside the row — expand the row to find them. The Note
 offers **Rich code blocks**: turn it on and code fences in notes get
 syntax coloring and the full code editor, starting the next time a
-note opens for editing. Installed plugins appear below the built-in
-list with their own rows.
+note opens for editing. The Sheet offers **Preview rows** and
+**Preview columns**: how much of a spreadsheet shows on the board
+before the "showing the first…" note. The Table offers **New grid
+(experimental)**: tables render with the adopted spreadsheet grid
+(keyboard navigation, range selection, copy and paste); column
+editing stays in the current grid for now. Text and number settings save
+when you press Enter or leave the field. Installed plugins appear
+below the built-in list with their own rows, including any settings
+they declare.
 
 ## Keyboard shortcuts
 
@@ -110,7 +122,11 @@ it does next: "Check for updates" while idle, "Download vX and
 install" once a newer version is found, and "Restart to update" once
 it's ready to go — Mill never restarts on its own, so nothing happens
 until you click it. The status line above it shows your current
-version, release channel, and when Mill last checked. The same
+version, release channel, and when Mill last checked. Running "Check
+for updates" from anywhere — the command palette, the Quick Panel, or
+here — always answers in the bottom-right corner: a brief "Checking
+for updates…", then "You're up to date." when there's nothing new, or
+a notice you can click through to this page if the check fails. The same
 "Update available" notice in the bottom-right corner acts the same
 way: click it to download directly, or click "Restart to update" once
 it's ready — it never just opens Settings.

@@ -1,3 +1,5 @@
+import type { MutableRefObject } from 'react'
+import type { FreePlacement } from './atlasFreePlacement'
 import type { BoardObject, Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { BoardFilter } from './cardFilter'
 import type { AtlasFocusRequest } from './useBoardFocus'
@@ -8,6 +10,9 @@ import type { AtlasGroupRequest, AtlasPlacementRequest, AtlasPromoteRequest } fr
 // definition with no closure over the component's own state, so it
 // moves cleanly without touching behavior.
 export interface AtlasBoardInnerProps {
+  // freePlacementRef: filled by the board with a measured-box placement
+  // for doors that create without a pointer (atlasFreePlacement.ts).
+  freePlacementRef?: MutableRefObject<FreePlacement | null>
   // The board filter (goal 0129 slice 1) -- applied as dim-in-place
   // by the node builder; state lives in AtlasView; rendered as a
   // floating top-right Panel (the toolbar row is full by its own
@@ -29,10 +34,12 @@ export interface AtlasBoardInnerProps {
   // parentID is the board's CURRENT container (AtlasView's viewedID).
   notes: Note[]
   // Board objects (goal 0179/0180): board-local canvas nouns (image,
-  // ink, ...), scoped to this container the same way notes are; objects
-  // has no allObjects counterpart since an object never renders inside
-  // a region frame's own preview (S1 -- see AtlasBoardObjectNode.tsx).
+  // ink, ...), scoped to this container the same way notes are.
   objects: BoardObject[]
+  // Every board object (goal 0266): a frame's preview draws the
+  // objects filed inside it, and the frame-role law counts them --
+  // the same reason allNotes exists beside notes.
+  allObjects: BoardObject[]
   parentID: string
   // Arrange-is-an-action (goal 0089): a one-shot token; each bump
   // runs the packer over this level and PERSISTS the result.
@@ -85,7 +92,7 @@ export interface AtlasBoardInnerProps {
   onCreateTableSized: (cols: number, rows: number, at?: { X: number; Y: number }, parentID?: string) => void
   onOpenTableFromList: () => void
   // The selection tray's own "Group into new area" -- the multi-select context menu's own dispatcher, reused.
-  onGroupSelection: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
+  onGroupSelection: (cardIDs: string[], noteIDs: string[], objectIDs: string[], pos: { x: number; y: number }) => void
   // AtlasView's downward creation requests (pane-menu adds, promote,
   // frame placements, group) -- useAtlasCreation.ts has the shape.
   placementRequest?: AtlasPlacementRequest | null

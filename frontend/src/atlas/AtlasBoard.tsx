@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+import { useAtlasGestureCtx } from './useAtlasGestureCtx'
 import { useRenderStormGuard } from '../shared/renderStormGuard'
 import { useAtlasDeleteKey } from './useAtlasDeleteKey'
 import { useTranslation } from 'react-i18next'
@@ -8,6 +9,7 @@ import { AtlasService } from '../shared/bindings'
 import { useIsNarrowViewport } from '../shared/useNarrowViewport'
 import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'
 import { computeGroupFrameLayout, isGroupCard } from './atlasBoardLayout'
+import { freePositionAmong } from './atlasFreePlacement'
 import { computeNoteBoxes, computeObjectBoxes, computeTopLevelBoxes } from './atlasBoardBoxes'
 import { rfEdgeTypes, rfNodeTypes } from './atlasBoardNodeTypes'
 import { AtlasBoardChrome } from './AtlasBoardChrome'
@@ -19,7 +21,6 @@ import { useAtlasCreation } from './useAtlasCreation'
 import { useAtlasArmedTool } from './useAtlasArmedTool'
 import { useAtlasToolGesture } from './useAtlasToolGesture'
 import { ATLAS_TOOLS } from './atlasTools'
-import type { AtlasGestureCtx } from './atlasNounRegistry'
 import { useAtlasDragFiling, type FrameBox } from './useAtlasDragFiling'
 import { AtlasDragHighlightContext } from './atlasDragHighlightContext'
 import type { AtlasBoardInnerProps } from './atlasBoardInnerProps'
@@ -31,7 +32,7 @@ import { useAtlasMinimapToggle } from './useAtlasMinimapToggle'
 import { useAtlasSlotDrag } from './useAtlasSlotDrag'
 import { AtlasSlotDragLine } from './AtlasSlotDragLine'
 import { buildBoardCardNodes } from './atlasBuildBoardNodes'
-import { buildStickyNodes } from './atlasStickyNodes'
+import { useAtlasStickyNodes } from './useAtlasStickyNodes'
 import { buildBoardObjectNodes } from './atlasBuildBoardObjectNodes'
 import { AtlasCreationTray, ATLAS_TOOL_DRAG_MIME } from './AtlasCreationTray'
 import type { AtlasCreationTool } from './atlasTools'
@@ -68,7 +69,7 @@ import styles from './AtlasBoard.module.css'
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, allNotes, objects, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onObjectContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, onCreateTableSized, onOpenTableFromList, onQuietToast, onOpenNote, placementRequest, promoteRequest, groupRequest }: AtlasBoardInnerProps) {
+function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, allNotes, objects, allObjects, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onObjectContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, onCreateTableSized, onOpenTableFromList, onQuietToast, onOpenNote, placementRequest, promoteRequest, groupRequest, freePlacementRef }: AtlasBoardInnerProps) {
   const { t } = useTranslation('atlas')
   const readOnly = useIsNarrowViewport()
   const reduceMotion = usePrefersReducedMotion()
@@ -103,17 +104,25 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   // Auto-arrange consumes them as the adjacency that seats linked things beside each other.
   const arteries = useMemo(() => resolveBoardEdges(links, new Set(cards.map((c) => c.ID)), allCards), [links, cards, allCards])
 
-  const { freeMoves } = useAtlasArrange({ cards, allCards, arteries, boardWidth, arrangeRequest })
+  // Ref, not a prop: objectBoxes derives from `nodes` below, which
+  // derives from freeMoves -- see useAtlasArrange's own param comment.
+  const objectBoxesRef = useRef<{ id: string; x: number; y: number; width: number; height: number }[]>([])
+  const { freeMoves } = useAtlasArrange({ cards, allCards, arteries, boardWidth, arrangeRequest, objects, allNotes, allObjects, objectBoxesRef })
 
   // Rendered flow-space boxes (atlasBoardBoxes.ts, split at the
   // 500-line seam) -- Free mode only. Computed BEFORE useAtlasCreation
   // (below) so select-then-group can anchor the new container at its
   // members' own current box, not the triggering click point.
   const topLevelBoxes: FrameBox[] = useMemo(
-    () => (isFree ? computeTopLevelBoxes(cards, allCards, freeMoves) : []),
-    [cards, allCards, freeMoves, isFree],
+    () => (isFree ? computeTopLevelBoxes(cards, allCards, freeMoves, allNotes, allObjects) : []),
+    [cards, allCards, freeMoves, allNotes, allObjects, isFree],
   )
   const noteBoxes = useMemo(() => (isFree ? computeNoteBoxes(notes) : []), [notes, isFree])
+  useEffect(() => {
+    if (!freePlacementRef) return
+    freePlacementRef.current = (size) => freePositionAmong([...topLevelBoxes, ...noteBoxes, ...objectBoxesRef.current], size)
+    return () => { freePlacementRef.current = null }
+  }, [freePlacementRef, topLevelBoxes, noteBoxes])
 
   // The ONE shared armed-tool field (useAtlasArmedTool.ts, goal 0238):
   // every arming door below -- useAtlasCreation's own card/note/area/
@@ -124,7 +133,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   const tablePicker = useTablePickerSignal({ armedToolId: armedTool.armedToolId, arm: armedTool.arm, disarm: armedTool.disarm })
   const imagePopover = useAtlasImagePopoverSignal({ armedToolId: armedTool.armedToolId, arm: armedTool.arm, disarm: armedTool.disarm })
   const imageCreate = useAtlasImageCreate({ allCards, viewedID })
-  const creation = useAtlasCreation({ parentID, allCards, kinds, notes, objects, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes: topLevelBoxes, noteBoxes, armedToolId: armedTool.armedToolId, armedToolLocked: armedTool.locked, armSharedTool: armedTool.arm, disarmShared: armedTool.disarm, toggleShared: armedTool.toggle })
+  const creation = useAtlasCreation({ parentID, allCards, kinds, notes, objects, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes: topLevelBoxes, noteBoxes, objectBoxesRef, armedToolId: armedTool.armedToolId, armedToolLocked: armedTool.locked, armSharedTool: armedTool.arm, disarmShared: armedTool.disarm, toggleShared: armedTool.toggle })
   const selection = useAtlasSelection({ cards, notes, objects, onMultiSelectContextMenu })
   const wrapperClicks = useAtlasPaneClick({ tablePicker, topLevelBoxes, screenToFlowPosition, onCreateTableSized, placeAt: creation.placeAt })
 
@@ -150,18 +159,19 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     const ids = new Set<string>()
     for (const card of cards) {
       ids.add(card.ID)
-      if (isGroupCard(allCards, card)) {
-        for (const child of computeGroupFrameLayout(allCards, card.ID).children) ids.add(child.card.ID)
+      if (isGroupCard(allCards, card, allNotes, allObjects)) {
+        for (const child of computeGroupFrameLayout(allCards, card.ID, allNotes, allObjects).children) ids.add(child.card.ID)
       }
     }
+    for (const o of objects) ids.add(o.ID)
     return ids
-  }, [cards, allCards])
+  }, [cards, allCards, allNotes, allObjects, objects])
 
   const dragFiling = useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperRef })
 
   // Slot-drag = instant typed link (goal 0081 A4): see useAtlasSlotDrag.ts.
   const slotDrag = useAtlasSlotDrag({
-    topLevelBoxes, noteBoxes, allCards, kinds, screenToFlowPosition,
+    topLevelBoxes, noteBoxes, allCards, allNotes, allObjects, kinds, screenToFlowPosition,
     onLink: (fromCardID, toCardID, linkKindID) => void AtlasService.CreateLink(fromCardID, toCardID, linkKindID, '').catch(console.error),
     onGuidedCreate: creation.openSlotLinkedCreate,
   })
@@ -180,27 +190,28 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   // AtlasDragHighlightContext instead, below, so only frame nodes
   // re-render on a crossing rather than the whole board.
   const builtNodes = useMemo(() => buildBoardCardNodes({
-    cards, allCards, allNotes, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
+    cards, allCards, allNotes, allObjects, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
     pulsedID, hintedID,
     isSoleSelected: selection.isSoleSelected, onOpenOverlay, handleDrill,
     slotDragSourceID: slotDrag.dragSourceID, onSlotAnchorPointerDown: slotDrag.startDrag, hasLegalTargets, boardFilter, titleEditCardID: creation.editingTitleCardID, onTitleCommit: creation.commitCardTitle, onTitleCancel: creation.cancelCardTitle,
     noteHandlers: { editingNoteID: creation.editingNoteID, onEnterEdit: creation.enterNoteEdit, onCancelEdit: creation.cancelNoteEdit, onCommitEdit: creation.commitNoteEdit, onOpenNote },
-  }), [cards, allCards, allNotes, kinds, links, linkKinds, isFree, readOnly, pulsedID, hintedID, onOpenOverlay, handleDrill, freeMoves, arteries, boardWidth, selection.isSoleSelected, slotDrag.dragSourceID, slotDrag.startDrag, hasLegalTargets, boardFilter, creation.editingTitleCardID, creation.commitCardTitle, creation.cancelCardTitle, creation.editingNoteID, creation.enterNoteEdit, creation.cancelNoteEdit, creation.commitNoteEdit, onOpenNote])
+  }), [cards, allCards, allNotes, allObjects, kinds, links, linkKinds, isFree, readOnly, pulsedID, hintedID, onOpenOverlay, handleDrill, freeMoves, arteries, boardWidth, selection.isSoleSelected, slotDrag.dragSourceID, slotDrag.startDrag, hasLegalTargets, boardFilter, creation.editingTitleCardID, creation.commitCardTitle, creation.cancelCardTitle, creation.editingNoteID, creation.enterNoteEdit, creation.cancelNoteEdit, creation.commitNoteEdit, onOpenNote])
 
   const { edges, setHoveredEdgeID, onSelectionChange } = useAtlasEdgeInteraction({
     arteries, linkKinds, cards, kinds, t, onEdgeDeleteLink, onEdgeChangeKind, onNodeSelectionChange: selection.onSelectionChange,
   })
 
   // Sticky notes (goal 0081 slice A1): built separately from
-  // builtNodes above (its own file, atlasStickyNodes.ts) since a note
-  // is never a card and never enters the shelves auto-arrange/group-
-  // frame layout that dominates that memo.
-  const stickyNodes = useMemo(() => buildStickyNodes({
+  // builtNodes above (its own hook, useAtlasStickyNodes.ts, which also
+  // owns explicit save mode's held edits) since a note is never a card
+  // and never enters the shelves auto-arrange/group-frame layout that
+  // dominates that memo.
+  const stickyNodes = useAtlasStickyNodes({
     notes, draftNotePos: creation.draftNoteFlowPos, editingNoteID: creation.editingNoteID, readOnly: readOnly || !isFree,
     isSoleSelected: selection.isSoleSelected,
     onCommitDraft: creation.commitDraftNote, onCancelDraft: creation.cancelDraftNote,
     onEnterEdit: creation.enterNoteEdit, onCancelEdit: creation.cancelNoteEdit, onCommitEdit: creation.commitNoteEdit, onOpenNote,
-  }), [notes, creation.draftNoteFlowPos, creation.editingNoteID, readOnly, isFree, selection.isSoleSelected, creation.commitDraftNote, creation.cancelDraftNote, creation.enterNoteEdit, creation.cancelNoteEdit, creation.commitNoteEdit, onOpenNote])
+  })
 
   // The board's own sole-selected object id (goal 0214) -- "sole"
   // means nothing ELSE (card, note, or another object) is selected
@@ -215,7 +226,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   // Board objects (goal 0179/0180): built separately, same reasoning
   // sticky notes' own comment gives -- a board object is never a card
   // and never enters the group-frame preview layout either.
-  const objectNodes = useMemo(() => buildBoardObjectNodes({ objects, readOnly, isFree, soleSelectedID: soleSelectedObjectID }), [objects, readOnly, isFree, soleSelectedObjectID])
+  const objectNodes = useMemo(() => buildBoardObjectNodes({ objects, readOnly, isFree, soleSelectedID: soleSelectedObjectID, pulsedID }), [objects, readOnly, isFree, soleSelectedObjectID, pulsedID])
 
   const allNodes = useMemo(() => [...builtNodes, ...stickyNodes, ...objectNodes], [builtNodes, stickyNodes, objectNodes])
   const [nodes, setNodes, onNodesChange] = useNodesState(allNodes)
@@ -241,7 +252,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     cards, readOnly, wrapperRef,
     cardBoxes: topLevelBoxes, noteBoxes,
     setNodes,
-    isGroupCardFn: (card) => isGroupCard(allCards, card),
+    isGroupCardFn: (card) => isGroupCard(allCards, card, allNotes, allObjects),
     onOpenOverlay, onDrill: handleDrill,
     getViewport, setViewport,
   })
@@ -297,20 +308,9 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   const objectBoxes = useMemo(() => (
     isFree ? computeObjectBoxes(nodes.filter((n) => n.type === 'atlas-object')) : []
   ), [nodes, isFree])
+  useEffect(() => { objectBoxesRef.current = objectBoxes }, [objectBoxes])
 
-  const gestureCtx: AtlasGestureCtx = useMemo(() => ({
-    screenToFlowPosition,
-    parentID,
-    cardBoxes: topLevelBoxes,
-    noteBoxes,
-    objectBoxes,
-    onDeleteSelection,
-    openAreaPopover: creation.openAreaPopover,
-    onShapeCreated: selection.selectObject,
-    disarm: creation.disarm,
-    disarmUnlessLocked: creation.disarmUnlessLocked,
-    hitAccumulator: { cardIDs: new Set(), noteIDs: new Set(), objectIDs: new Set() },
-  }), [screenToFlowPosition, parentID, topLevelBoxes, noteBoxes, objectBoxes, onDeleteSelection, creation.openAreaPopover, creation.disarm, creation.disarmUnlessLocked, selection.selectObject])
+  const gestureCtx = useAtlasGestureCtx({ screenToFlowPosition, parentID, cardBoxes: topLevelBoxes, noteBoxes, objectBoxes, onDeleteSelection, openAreaPopover: creation.openAreaPopover, onShapeCreated: selection.selectObject, disarm: creation.disarm, disarmUnlessLocked: creation.disarmUnlessLocked })
 
   const gesture = useAtlasToolGesture({ tool: armedToolDescriptor, readOnly, isFree, ctx: gestureCtx, wrapperRef })
 
@@ -469,7 +469,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
           anchorPos={creation.popover.anchorPos}
           kinds={kinds}
           initialTitle={creation.popover.initialTitle}
-          enclosedCount={(creation.popover.enclosedCardIDs?.length ?? 0) + (creation.popover.enclosedNoteIDs?.length ?? 0)}
+          enclosedCount={(creation.popover.enclosedCardIDs?.length ?? 0) + (creation.popover.enclosedNoteIDs?.length ?? 0) + (creation.popover.enclosedObjectIDs?.length ?? 0)}
           onSubmit={creation.submitPopover}
           onCancel={creation.cancelPopover}
         />

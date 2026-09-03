@@ -36,3 +36,11 @@
 .section :global(h2) {
     margin-bottom: var(--base-size-4);
 }
+
+/* The range toggle shares its row with the (long) subtitle -- without
+   a shrink guard the flex squeeze wraps "Last 7 days" onto two cramped
+   lines (overnight sweep finding, goal 0162's record). */
+.rangeToggle {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
