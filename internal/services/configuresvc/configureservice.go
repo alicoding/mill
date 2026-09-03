@@ -155,6 +155,7 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	composition.SetHTTPRequestLookup(c.resolveHTTPRequest)
 	composition.SetListLookup(c.resolveList)
 	composition.SetApplyListRow(c.ApplyListRow)
+	composition.SetApplyListSync(c.SyncListRows)
 	composition.SetMCPServerLookup(c.resolveMCPServer)
 	composition.SetDecisionLookup(c.resolveDecision)
 	composition.SetExecEnvLookup(c.resolveExecEnv)
