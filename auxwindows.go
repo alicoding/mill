@@ -160,12 +160,41 @@ func newRunMonitorWindow(app *application.App) *application.WebviewWindow {
 	return w
 }
 
+// newCaptureWindow is the quick-capture window (goal 0309): a floating
+// window that renders one capture face and lands the result where the
+// user chose; Escape hides it, close means hide, the same contract the
+// run monitor carries.
+func newCaptureWindow(app *application.App) *application.WebviewWindow {
+	w := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:             "capture",
+		Title:            "Mill Capture",
+		Width:            560,
+		Height:           440,
+		MinWidth:         420,
+		MinHeight:        300,
+		Hidden:           true,
+		HideOnEscape:     true,
+		BackgroundColour: application.NewRGB(6, 7, 15),
+		Mac: application.MacWindow{
+			WindowLevel:        application.MacWindowLevelFloating,
+			CollectionBehavior: application.MacWindowCollectionBehaviorCanJoinAllSpaces | application.MacWindowCollectionBehaviorFullScreenAuxiliary,
+		},
+		URL: "/#/capture",
+	})
+	w.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		e.Cancel()
+		w.Hide()
+	})
+	return w
+}
+
 // wireAuxWindows creates the auxiliary windows and hands each to the
 // settings service, which owns their show/hide choreography.
 func wireAuxWindows(app *application.App, settingsService *settingssvc.SettingsService) {
 	settingsService.SetPanelWindow(windowing.WrapWindow(newQuickPanelWindow(app)))
 	settingsService.SetApprovalPromptWindow(windowing.WrapWindow(newApprovalPromptWindow(app)))
 	settingsService.SetRunMonitorWindow(windowing.WrapWindow(newRunMonitorWindow(app)))
+	settingsService.SetCaptureWindow(windowing.WrapWindow(newCaptureWindow(app)))
 	// Resume may re-show any of these after a relaunch (docs/goals/
 	// 0301); the app starts with all of them hidden, whatever the OS
 	// remembers.

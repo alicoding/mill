@@ -383,6 +383,35 @@ appears in the palette under Transform as "<label>", and the
 Extensions row lists "Adds workflow steps". The **Text case** example
 (`examples/plugins/mill-textcase`) is the whole pattern in one file.
 
+## Captures
+
+A plugin can offer a quick capture: a small face that opens in its own
+floating window from the Quick Panel or the command palette, away from
+the canvas, and lands what the user writes where they choose. Declare
+it in the manifest and register the face:
+
+```json
+"contributes": { "captures": [ { "id": "thought", "label": "Thought", "description": "A one-line thought." } ] }
+```
+
+```js
+api.registerCapture({
+  id: 'thought',
+  render(el, ctx) {
+    // Draw the face into el. ctx.destinationId is the card the user
+    // chose in the window's header ("" for the top level) -- pass it
+    // as parentId to a content door, then call ctx.done().
+    // ctx.cancel() closes without writing.
+  },
+})
+```
+
+The Quick Panel lists "New <label>…" straight off the manifest, so the
+row is there before any plugin code runs; the capture window loads the
+plugin and calls `render`. Writes go through the same guarded content
+doors as everywhere else. Mill's own note is the first capture (the
+"New note…" row); the destination is remembered per capture.
+
 ## Views
 
 A plugin can own a work tab — the same strip a workflow editor opens

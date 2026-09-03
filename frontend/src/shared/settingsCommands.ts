@@ -64,6 +64,14 @@ export const SETTINGS_COMMANDS: Command[] = [
     run: () => { BackupService.BackupNow(0).catch(console.error) },
   },
   {
+    id: 'capture.note',
+    label: 'Capture a note',
+    // The capture window (goal 0309): a note written away from the
+    // canvas lands where the user chose.
+    defaultBinding: null,
+    run: () => { SettingsService.ShowCapture('', 'note').catch(console.error) },
+  },
+  {
     id: 'extensions.exportAudit',
     label: 'Export plugin audit',
     // The plugin audit document (ADR-0051 §4): every installed plugin's

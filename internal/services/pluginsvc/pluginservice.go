@@ -54,6 +54,9 @@ type ManifestContributes struct {
 	// plugin implements in steps.js, declared here so the catalog and
 	// the Extensions row know them before any code runs.
 	Steps []StepContribution `json:"steps"`
+	// Captures (goal 0309, pluginservice_captures.go): quick-capture
+	// surfaces the plugin renders in the capture window.
+	Captures []CaptureContribution `json:"captures"`
 	// Settings (docs/goals/0258 slice 1): the plugin's own declared
 	// user settings, the same declare -> host renders/stores/serves
 	// contract compiled-in nouns use. Declared in the manifest, not
@@ -374,6 +377,9 @@ func validateContributes(c ManifestContributes) string {
 		return problem
 	}
 	if problem := validateSteps(c.Steps); problem != "" {
+		return problem
+	}
+	if problem := validateCaptures(c.Captures); problem != "" {
 		return problem
 	}
 	if problem := validateViews(c.Views); problem != "" {

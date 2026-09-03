@@ -21,6 +21,15 @@ export interface CanvasObjectContribution {
 }
 
 /**
+ * CaptureContribution is one declared capture.
+ */
+export interface CaptureContribution {
+    "id": string;
+    "label": string;
+    "description": string;
+}
+
+/**
  * ContentWriter is the seam pluginsvc writes through; nil until wired.
  */
 export type ContentWriter = any;
@@ -76,6 +85,12 @@ export interface ManifestContributes {
     "steps": StepContribution[] | null;
 
     /**
+     * Captures (goal 0309, pluginservice_captures.go): quick-capture
+     * surfaces the plugin renders in the capture window.
+     */
+    "captures": CaptureContribution[] | null;
+
+    /**
      * Settings (docs/goals/0258 slice 1): the plugin's own declared
      * user settings, the same declare -> host renders/stores/serves
      * contract compiled-in nouns use. Declared in the manifest, not
@@ -108,6 +123,18 @@ export interface ManifestContributes {
 export interface NetworkContribution {
     "host": string;
     "methods": string[] | null;
+}
+
+/**
+ * PluginCapture is one runnable plugin's declared capture as the Quick
+ * Panel and the palette list it.
+ */
+export interface PluginCapture {
+    "pluginId": string;
+    "pluginName": string;
+    "id": string;
+    "label": string;
+    "description": string;
 }
 
 /**

@@ -356,6 +356,13 @@
     "enabled": false
   },
   {
+    "id": "capture.note",
+    "label": "Capture a note",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
     "id": "clipboard.history.open",
     "label": "Clipboard history",
     "binding": null,

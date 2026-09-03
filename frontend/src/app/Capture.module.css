@@ -1,0 +1,30 @@
+/* The capture window (goal 0309): one face, a destination, two
+   buttons -- the whole window is the form. */
+.shell {
+  padding: var(--base-size-12);
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+}
+
+.title {
+  margin: 0;
+}
+
+.editor {
+  flex: 1 1 auto;
+  min-height: 200px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  padding: var(--base-size-8);
+  overflow: auto;
+}
+
+.face {
+  flex: 1 1 auto;
+  min-height: 200px;
+}
+
+.muted { color: var(--fgColor-muted); }
+.error { color: var(--fgColor-danger); margin: 0; }
