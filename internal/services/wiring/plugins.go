@@ -88,11 +88,15 @@ func (t settingsTrust) Allowed(id string) bool {
 func (t settingsTrust) Allowlist() []string { return t.settings.GetPluginAllowlist() }
 
 // mayRun is the ONE run-policy predicate the Go side applies (the
-// frontend loader mirrors it in plugins/pluginTrust.ts): a built-in
-// always may; otherwise the plugin must be on the administrator's
-// allow-list when one is set, not turned off, and allowed to run by the
-// user after the install-time review (ADR-0051 §4).
+// frontend loader mirrors it in plugins/pluginTrust.ts): a plugin must
+// be on the administrator's allow-list when one is set, not turned off,
+// and allowed to run by the user after the install-time review
+// (ADR-0051 §4). A built-in skips the two trust gates but never the
+// user's own on/off switch.
 func (t settingsTrust) mayRun(id string, builtin bool) bool {
+	if !t.Enabled(id) {
+		return false
+	}
 	if builtin {
 		return true
 	}
@@ -105,7 +109,7 @@ func (t settingsTrust) mayRun(id string, builtin bool) bool {
 			return false
 		}
 	}
-	return t.Enabled(id) && t.Allowed(id)
+	return t.Allowed(id)
 }
 
 // WirePluginTrust grandfathers the plugins already installed the first

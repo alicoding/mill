@@ -3,8 +3,9 @@ import { pluginRunState } from './pluginTrust'
 
 describe('pluginRunState', () => {
   const none = { disabled: [], allowed: [], allowlist: [] }
-  it('lets a built-in run regardless of policy', () => {
-    expect(pluginRunState('mill-drawing', true, { disabled: ['mill-drawing'], allowed: [], allowlist: ['other'] })).toBe('run')
+  it('a built-in skips the review gate and the allow-list, but the user can still turn it off', () => {
+    expect(pluginRunState('mill-drawing', true, { disabled: [], allowed: [], allowlist: ['other'] })).toBe('run')
+    expect(pluginRunState('mill-drawing', true, { disabled: ['mill-drawing'], allowed: [], allowlist: [] })).toBe('disabled')
   })
   it('waits for review until allowed, then runs', () => {
     expect(pluginRunState('mill-a', false, none)).toBe('unallowed')
