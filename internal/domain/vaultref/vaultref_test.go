@@ -9,7 +9,7 @@ func TestParse_VaultStaysBare_ProvidersStayQualified(t *testing.T) {
 	if id, ok := Parse("env:src/KEY"); !ok || id != "env:src/KEY" {
 		t.Errorf("env ref: %q %v", id, ok)
 	}
-	for _, v := range []string{"plain", "http://x", "vault:", "op:secret"} {
+	for _, v := range []string{"plain", "http://x", "vault:", "zz:secret"} {
 		if _, ok := Parse(v); ok {
 			t.Errorf("%q must not parse as a reference", v)
 		}

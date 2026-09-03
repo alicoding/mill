@@ -1,12 +1,14 @@
 package secretsvc
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/alicoding/mill/internal/adapters/clisecrets"
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/adapters/secretvault"
@@ -107,5 +109,46 @@ func TestBrunoSource_ListsDeclaredAndEnvKeys_ResolvesFromEnv(t *testing.T) {
 	// An env-provider id never reaches a Bruno source.
 	if _, err := s.ResolveSecretValue("env:gazette/API_TOKEN", secretaudit.AccessContext{Context: secretaudit.ContextExecEnv, Actor: "test"}); err == nil {
 		t.Fatal("an env id resolved through a Bruno source")
+	}
+}
+
+// A CLI source lists the tool's titles under the source's label and
+// resolves through the tool at use time; a tool that answers an error
+// contributes nothing and the source's row states why.
+func TestCLISources_ListResolveAndProblems(t *testing.T) {
+	dir := t.TempDir()
+	op := secretsource.Source{ID: "work-op", Label: "Work 1Password", Kind: secretsource.KindOnePassword, Path: "Work", UpdatedAt: time.Now()}
+	bw := secretsource.Source{ID: "my-bw", Label: "Bitwarden", Kind: secretsource.KindBitwarden, UpdatedAt: time.Now()}
+	s := NewSecretService(secretvault.New(filepath.Join(dir, "secrets.kdbx")), credential.NewInMemory())
+	t.Cleanup(s.stopAutoLock)
+	s.SetSourcesLister(func() []secretsource.Source { return []secretsource.Source{op, bw} })
+	prevEntries, prevResolve := cliEntries, cliResolve
+	t.Cleanup(func() { cliEntries, cliResolve = prevEntries, prevResolve })
+	cliEntries = func(src secretsource.Source) ([]clisecrets.Entry, error) {
+		if src.Kind == secretsource.KindBitwarden {
+			return nil, errors.New("bw: locked -- unlock with `bw unlock`")
+		}
+		return []clisecrets.Entry{{ID: "Work/abc", Title: "Jira PAT — Work"}}, nil
+	}
+	cliResolve = func(src secretsource.Source, id string) (string, error) {
+		if src.Kind == secretsource.KindOnePassword && id == "Work/abc" {
+			return "pat-value", nil
+		}
+		return "", errors.New("unexpected")
+	}
+	list, err := s.ListProviderSecrets()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || list[0].ID != "op:work-op/Work/abc" || list[0].Title != "Jira PAT — Work — Work 1Password" {
+		t.Fatalf("list = %+v", list)
+	}
+	v, err := s.ResolveSecretValue("op:work-op/Work/abc", secretaudit.AccessContext{Context: secretaudit.ContextExecEnv, Actor: "test"})
+	if err != nil || v != "pat-value" {
+		t.Fatalf("resolve = %q err=%v", v, err)
+	}
+	problems := s.SourceProblems()
+	if problems["my-bw"] == "" || !strings.Contains(problems["my-bw"], "locked") || problems["work-op"] != "" {
+		t.Fatalf("problems = %v", problems)
 	}
 }
