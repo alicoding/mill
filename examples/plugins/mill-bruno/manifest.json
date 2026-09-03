@@ -1,0 +1,12 @@
+{
+  "id": "mill-bruno",
+  "name": "Bruno collection",
+  "version": "1.0.0",
+  "description": "Keeps a Bruno API collection on the board and shows what it is; the seeded workflow runs it and lands the results in a List.",
+  "author": "Mill examples",
+  "minMillVersion": "0.14.1",
+  "capabilities": [],
+  "contributes": {
+    "canvasObjects": [{ "kind": "bruno-collection" }]
+  }
+}

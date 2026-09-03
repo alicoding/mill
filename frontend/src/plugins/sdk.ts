@@ -185,8 +185,11 @@ export interface CanvasObjectFaceCtx {
   }
   // For a file-source object: the mirrored file's current bytes as a
   // data: URL once loaded (null while loading), and whether the read
-  // failed. renderFace re-runs when either changes. Absent for
-  // board-local and url objects.
+  // failed. Binary files (images, sheets, pdf) are base64 data: URLs
+  // with their MIME type; text files (markdown source, json, csv,
+  // .env) are text/plain data: URLs, percent-encoded. renderFace
+  // re-runs when either changes. Absent for board-local and url
+  // objects.
   mirror?: { dataUrl: string | null; failed: boolean }
   // updatePayload merges patch into this object's payload through the
   // host (an empty string deletes a key). The write persists, syncs,

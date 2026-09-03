@@ -26,6 +26,11 @@ const ExampleTaskTrackerID = "example-task-tracker-list"
 // workflow, exported for the same reason the two above are.
 const ExampleJiraIssuesID = "example-jira-issues-list"
 
+// ExampleBrunoResultsID is the seeded List the Bruno run workflow
+// (goal 0308) mirrors a collection run's report into, one row per
+// request matched by its path.
+const ExampleBrunoResultsID = "example-bruno-results-list"
+
 // BuiltIn returns the seeded example List -- pure config, no
 // persistence (mirrors httprequest.BuiltIn/decision.BuiltIn's shape:
 // this package stays free of the settings-store concern, per
@@ -160,6 +165,24 @@ func BuiltIn() []List {
 					Rows: []Row{taskRow("row-tracker-setup", "Set up Mill", "Done")},
 				},
 			},
+		},
+		{
+			ID:    ExampleBrunoResultsID,
+			Label: "Example: Bruno results",
+			Description: "The last run of a Bruno collection, one row per request: \"Example: Run a Bruno collection\" " +
+				"runs the bru CLI and mirrors its JSON report here, matched by request path. Bruno stays the " +
+				"tool for authoring and running requests; this List is where the outcome lands.",
+			Columns: []typedfield.Field{
+				{Key: "path", Label: "Request", Type: typedfield.TypeText, Required: true},
+				{Key: "name", Label: "Name", Type: typedfield.TypeText},
+				{Key: "method", Label: "Method", Type: typedfield.TypeText},
+				{Key: "status", Label: "Result", Type: typedfield.TypeText},
+				{Key: "httpStatus", Label: "HTTP status", Type: typedfield.TypeText},
+				{Key: "durationMs", Label: "Duration (ms)", Type: typedfield.TypeText},
+				{Key: "error", Label: "Error", Type: typedfield.TypeText},
+			},
+			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
 		},
 	}
 }

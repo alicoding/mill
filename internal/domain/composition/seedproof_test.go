@@ -217,6 +217,10 @@ var workflowProofRegistry = map[string]seedProof{
 	ExampleSecretGuardWorkflowID: proven(
 		"guardrailsvc.TestSeededSecretGuardWorkflow_ParksWithSecretsRuleLabel",
 	),
+	ExampleBrunoRunWorkflowID: proven(
+		"composition.TestSeededBrunoRun_MapsTheReportOntoTheSeededList",
+		"e2e: bruno-run.spec.ts",
+	),
 	ExampleSha256ClipboardWorkflowID: proven(
 		"composition.TestTransformText_KnownVectors",
 		"composition.TestExecuteWorkflow_TransformText_HashesPayloadAndRecordsTheOperation",
@@ -292,6 +296,9 @@ var listProofRegistry = map[string]seedProof{
 		"executionsvc.TestSeededCountryLookupExample_Match_WritesCountryAttribute",
 		"executionsvc.TestSeededCountryLookupExample_NoMatch_FailsClosed",
 		"configuresvc.TestConfigureService_FreshInstall_SeedsBuiltInLists",
+	),
+	list.ExampleBrunoResultsID: proven(
+		"composition.TestSeededBrunoRun_MapsTheReportOntoTheSeededList",
 	),
 	list.ExampleJiraIssuesID: proven(
 		"composition.TestSeededJiraIssuesSync_MapsTheSearchResultOntoTheSeededList",
