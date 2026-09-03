@@ -25,6 +25,15 @@ export enum Kind {
      * expects, and bruno.json names it (goal 0306 slice 2).
      */
     KindBruno = "bruno",
+
+    /**
+     * KindOnePassword / KindBitwarden reach the user's password manager
+     * through its own CLI (goal 0306 slice 3): titles are listed and one
+     * value is read at use time; nothing is stored. Path is an optional
+     * vault name for 1Password, unused for Bitwarden.
+     */
+    KindOnePassword = "op",
+    KindBitwarden = "bw",
 };
 
 export interface Source {

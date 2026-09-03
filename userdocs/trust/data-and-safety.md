@@ -23,8 +23,11 @@ currently applies shows up.
 Secrets you already keep elsewhere need no copy. Configure > Secret
 sources points Mill at a dotenv file — a project's `.env` — or at a
 Bruno collection, whose root `.env` supplies values and whose
-environments name the secrets it expects; the keys appear in every
-secret picker beside the vault's entries, by name only. The value is read from the file at the
+environments name the secrets it expects — or at 1Password or
+Bitwarden through their own command-line tools, which Mill asks for one
+value at the moment a step runs, the way those tools' scripting docs
+recommend. The keys appear in every secret picker beside the vault's
+entries, by name only, and every read is in your access history. The value is read from the file at the
 moment a step runs, recorded in the same access history as a vault
 read, and never stored by Mill.
 
