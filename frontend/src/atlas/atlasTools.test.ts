@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const createListMock = vi.hoisted(() => vi.fn())
-const addListRowMock = vi.hoisted(() => vi.fn())
 const saveImageBytesMock = vi.hoisted(() => vi.fn())
 vi.mock('../shared/bindings', () => ({
-  ConfigureService: { CreateList: createListMock, AddListRow: addListRowMock },
+  ConfigureService: { CreateListWithRows: createListMock },
   AtlasService: { SaveImageBytes: saveImageBytesMock },
 }))
 
 import { ATLAS_TOOLS, cardTool, noteTool, areaTool, tableTool, imageTool } from './atlasTools'
+import { enclosureQuery } from './atlasEnclosure'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 
 function kind(id: string): Kind {
@@ -88,7 +88,6 @@ describe('areaTool.commit', () => {
 describe('tableTool.commit', () => {
   afterEach(() => {
     createListMock.mockReset()
-    addListRowMock.mockReset()
   })
 
   it('mints the backing List, uniquifying the title against existing cards', async () => {
@@ -98,16 +97,14 @@ describe('tableTool.commit', () => {
     expect(createListMock).toHaveBeenCalledWith('Table 2', '', expect.arrayContaining([
       expect.objectContaining({ Key: 'column-1', Label: 'Column 1' }),
       expect.objectContaining({ Key: 'column-2', Label: 'Column 2' }),
-    ]))
-    expect(addListRowMock).toHaveBeenCalledTimes(1)
-    expect(addListRowMock).toHaveBeenCalledWith('list-1', {})
+    ]), [{}])
   })
 
   it('keeps the default title when nothing collides', async () => {
     createListMock.mockResolvedValue({ ID: 'list-2' })
     const artifact = await tableTool.commit({ cols: 0, rowCount: 0, existingTitles: new Set() })
     expect(artifact.title).toBe('Table')
-    expect(addListRowMock).not.toHaveBeenCalled()
+    expect(createListMock).toHaveBeenCalledWith('Table', '', [], [])
   })
 })
 
@@ -141,15 +138,16 @@ describe('imageTool.commit', () => {
 describe('areaTool.gesture.onEnd encloses board objects (goal 0266)', () => {
   it('passes enclosed object ids through to the popover alongside cards and notes', () => {
     const opened: unknown[][] = []
+    const cardBoxes = [{ id: 'c1', x: 10, y: 10, width: 20, height: 20 }]
+    const objectBoxes = [
+      { id: 'o1', x: 50, y: 50, width: 20, height: 20 },
+      { id: 'far', x: 500, y: 500, width: 20, height: 20 },
+    ]
     const ctx = {
       disarm: () => {},
       screenToFlowPosition: (p: { x: number; y: number }) => p,
-      cardBoxes: [{ id: 'c1', x: 10, y: 10, width: 20, height: 20 }],
-      noteBoxes: [],
-      objectBoxes: [
-        { id: 'o1', x: 50, y: 50, width: 20, height: 20 },
-        { id: 'far', x: 500, y: 500, width: 20, height: 20 },
-      ],
+      cardBoxes, noteBoxes: [], objectBoxes,
+      enclosedIn: enclosureQuery(cardBoxes, [], objectBoxes),
       openAreaPopover: (...args: unknown[]) => { opened.push(args) },
     }
     areaTool.gesture!.onEnd([{ x: 0, y: 0, t: 0 }, { x: 200, y: 200, t: 100 }], ctx as never)

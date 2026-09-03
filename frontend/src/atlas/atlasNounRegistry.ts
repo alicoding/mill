@@ -1,4 +1,5 @@
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { EnclosedIDs, Rect } from './atlasEnclosure'
 import type { ComponentType } from 'react'
 import type { Icon } from '@primer/octicons-react'
 import { ATLAS_TOOL_IDENTITIES, type AtlasToolIdentity, type AtlasToolInteraction } from '../shared/atlasToolIdentity'
@@ -241,6 +242,11 @@ export interface AtlasGestureCtx {
   // until first resize and its rendered footprint is otherwise CSS-
   // intrinsic (atlasBuildBoardObjectNodes.ts's own header comment).
   objectBoxes: { id: string; x: number; y: number; width: number; height: number }[]
+  // The spatial-query door (goal 0310): which top-level cards, notes
+  // and objects a board-space rect encloses (atlasEnclosure.ts's own
+  // center-inside rule) -- the Area tool's and a plugin gesture's one
+  // shared answer.
+  enclosedIn: (rect: Rect) => EnclosedIDs
   onDeleteSelection: (cardIDs: string[], noteIDs: string[], objectIDs: string[]) => void
   openAreaPopover: (screenPos: { x: number; y: number }, flowPos: { x: number; y: number }, enclosedCardIDs: string[], enclosedNoteIDs: string[], enclosedObjectIDs: string[]) => void
   onShapeCreated: (objectID: string) => void
@@ -426,6 +432,17 @@ export function isThirdPartyToolId(id: string): boolean {
 
 export function thirdPartyNounFor(id: string): ThirdPartyNounShape | undefined {
   return thirdPartyRegistry.get(id)
+}
+
+// thirdPartyNounForKind resolves a persisted board-object kind (which
+// may differ from the tool id, CanvasObjectDecl.objectKind) to its
+// enabled plugin noun -- the label source for anything naming a plugin
+// kind to the user (the paste-as offer, the link-paste preference).
+export function thirdPartyNounForKind(kind: string): ThirdPartyNounShape | undefined {
+  for (const noun of thirdPartyRegistry.values()) {
+    if (noun.boardObjectKind === kind) return noun
+  }
+  return undefined
 }
 
 // thirdPartyNounForExtension -- the drop router's claim lookup

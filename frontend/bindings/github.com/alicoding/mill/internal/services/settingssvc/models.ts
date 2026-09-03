@@ -67,6 +67,14 @@ export interface MCPAddrInfo {
 }
 
 /**
+ * PluginLockEntry is one recorded trust moment.
+ */
+export interface PluginLockEntry {
+    "version": string;
+    "hash": string;
+}
+
+/**
  * UpdateCheckResult is CheckForUpdates' Wails-bound result shape.
  */
 export interface UpdateCheckResult {

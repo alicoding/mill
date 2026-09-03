@@ -2587,7 +2587,23 @@
       "Kind": "process",
       "Label": "Convert HTML to Markdown",
       "Description": "Converts HTML into Markdown, preserving structure (headings, bold, lists).",
-      "ConfigFields": null,
+      "ConfigFields": [
+        {
+          "Key": "profileId",
+          "Label": "Conversion profile",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which source-specific rules apply (Confluence, Office). Empty applies every rule set.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "conversionprofile",
+          "OptionalRef": true,
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
       "Output": "Markdown text",
       "Consumes": [
         "html"
@@ -5063,7 +5079,23 @@
       "Kind": "process",
       "Label": "Convert HTML to Markdown",
       "Description": "Converts HTML into Markdown, preserving structure (headings, bold, lists).",
-      "ConfigFields": null,
+      "ConfigFields": [
+        {
+          "Key": "profileId",
+          "Label": "Conversion profile",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which source-specific rules apply (Confluence, Office). Empty applies every rule set.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "conversionprofile",
+          "OptionalRef": true,
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
       "Output": "Markdown text",
       "Consumes": [
         "html"

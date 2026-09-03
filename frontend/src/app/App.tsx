@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { UndoDeleteToast } from '../shared/UndoDeleteToast'
 import { useTranslation } from 'react-i18next'
 import {Events, WML} from "@wailsio/runtime";
 import {PageLayout, useTheme} from "@primer/react";
@@ -39,6 +40,7 @@ import { UnsavedChangesDialog } from './UnsavedChangesDialog'
 import { useReviewDeepLink } from './useReviewDeepLink'
 import { useKeymapDispatch } from './useKeymapDispatch'
 import { useBrowserNotify } from './useBrowserNotify'
+import { usePluginReviewNotice } from './usePluginReviewNotice'
 import styles from "./App.module.css";
 import { newLocalID } from '../shared/localId'
 
@@ -209,6 +211,7 @@ function App() {
   useEffect(() => {
     SettingsService.IsIsolatedData().then(setIsIsolatedData).catch(console.error);
   }, []);
+  usePluginReviewNotice()
 
   // Display density (docs/goals/0096): applied once here, on mount, so
   // a Compact preference holds from first paint even when Settings is
@@ -476,6 +479,7 @@ function App() {
           <span>{time}</span>
         </span>
         <span className={styles.rightControls}>
+          <UndoDeleteToast />
           <NoticePill />
           {/* No external-link arrow: this opens the in-app Docs view,
               and the arrow glyph promised leaving the app. */}

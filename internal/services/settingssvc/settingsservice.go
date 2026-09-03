@@ -49,9 +49,12 @@ const legacyForwardApprovalsEnabledKey = "settings-forward-approvals-enabled"
 // per-workflow triggers -- same registration mechanism, different
 // callback).
 type SettingsService struct {
-	mu     sync.Mutex
-	store  settings.Store
-	window *windowing.Window
+	mu    sync.Mutex
+	store settings.Store
+	// pluginHasher is the plugin lock's hash source
+	// (settingsservice_pluginlock.go), nil until wired.
+	pluginHasher PluginHasher
+	window       *windowing.Window
 	// leave is the quit gate's state (settingsservice_flush.go).
 	leave leaveGate
 	// panel is the Quick Panel window (docs/adr/0033) -- a second,
@@ -68,10 +71,12 @@ type SettingsService struct {
 	// hotkey. See settingsservice_approvalprompt.go.
 	approvalPrompt *windowing.Window
 	runMonitor     *windowing.Window
-	trig           *triggersvc.TriggerService
-	summon         *hotkey.Binding
-	summonHK       triggersvc.PersistedHotkey // zero value (nil Mods) means unassigned
-	updater        *updater.Updater
+	// capture is the quick-capture window (settingsservice_capture.go).
+	capture  *windowing.Window
+	trig     *triggersvc.TriggerService
+	summon   *hotkey.Binding
+	summonHK triggersvc.PersistedHotkey // zero value (nil Mods) means unassigned
+	updater  *updater.Updater
 	// backupRunner is the pre-update-snapshot seam DownloadAndInstallUpdate
 	// calls before any bundle swap (goal 0100) -- an injected closure,
 	// never a direct backupsvc import (backend.md), same shape as

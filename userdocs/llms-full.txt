@@ -203,6 +203,19 @@ Saving edits a draft. Publishing snapshots a version — callers and
 triggers run the published version, so edits never leak into
 production mid-composition.
 
+## Seeing what a step points at
+
+A step that references something you configured — an integration, a
+list, an MCP server, an AI provider — shows two links under the
+picker. **Details** opens a short summary right there: an
+integration's address, method, and auth, and whether its secret is
+stored; a list's columns and row count. **Open** takes you to that
+entity's own editor: an integration opens as a tab beside your
+workflow, everything else opens on its Configure page with the form
+ready. If the entity cannot work as it stands — an integration whose
+auth has no secret yet — the step says so on the field, with the same
+Edit link.
+
 ---
 
 # Guardrails and effect classes
@@ -262,7 +275,12 @@ the endpoint later is a single edit that both workflows pick up.
 
 Configure holds the things workflows and boards *point at* — the
 values two independently-authored workflows should share, where
-drifting apart would be a bug:
+drifting apart would be a bug. Deleting any of them takes effect at
+once and offers Undo for ten seconds; an entry a workflow still uses
+refuses to delete and names the workflow. An undone Integration comes
+back without its secret — enter it again.
+
+The entities:
 
 - **Integration** — an HTTP API: base URL, auth (the secret lives in
   your OS keychain, never in config), operations with typed inputs
@@ -296,6 +314,10 @@ drifting apart would be a bug:
 - **Execution environments** — a pinned shell, directory, and
   environment for Run a command. This is reproducibility, not a
   sandbox: the script runs with your full user account.
+- **Conversion profiles** — which source-specific rules an HTML to
+  Markdown conversion applies (Confluence, Office and Word). The
+  converter step picks one; leave it empty and every rule applies.
+  The page's sample preview shows what each profile makes of a paste.
 - **Attributes** — a workflow's declared typed fields.
 - **Decisions** — named outcome sets a workflow records against,
   with published versions.
@@ -584,8 +606,14 @@ badge, and a floating approval prompt.
 - **Breakpoints** pause a run before a step; edit values, then
   resume — or run in step mode and walk the chain one step at a
   time.
-- **Try it** on the Convert HTML to Markdown step previews a
-  conversion without running anything.
+- **New note…** in the Quick Panel opens a small note window away from
+  the canvas; pick where it lands (the Scratchpad, a space, or the top
+  level) and ⌘↩ saves it there. Plugins can add their own captures the
+  same way.
+- **Try this step** on any step runs just that step on an input you
+  type, paste from the clipboard, or take from its last run — and
+  shows the output right there, without running the workflow. A step
+  that would need your approval tells you so instead of running.
 - **Activity** shows trigger fires and run outcomes across all
   workflows, so a scheduled or watching workflow is never invisibly
   running. Its MCP calls section logs every call to or from Mill's
@@ -876,6 +904,8 @@ Converts HTML into Markdown, preserving structure (headings, bold, lists).
 
 - Takes: HTML — Produces: Markdown
 - Effect: none — pure computation
+- Settings:
+  - **Conversion profile** — Which source-specific rules apply (Confluence, Office). Empty applies every rule set. (references a Conversion profile)
 
 ### Create run receipt
 
@@ -1269,9 +1299,11 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `canvas.undo` | Undo | `⌘Z` | composition | Always available |
 | `canvas.zoomIn` | Zoom in | `⌘+` | composition | Always available |
 | `canvas.zoomOut` | Zoom out | `⌘-` | composition | Always available |
+| `capture.note` | Capture a note | — | Global | Always available |
 | `clipboard.history.open` | Clipboard history | — | Global | Always available |
 | `codingLoop.run` | Run from clipboard… | — | Global | Always available |
 | `configure.new.aiproviders` | New AI provider | — | Global | Always available |
+| `configure.new.conversionprofiles` | New conversion profile | — | Global | Always available |
 | `configure.new.decisions` | New decision | — | Global | Always available |
 | `configure.new.execenvs` | New environment | — | Global | Always available |
 | `configure.new.integration` | New integration | — | Global | Always available |
@@ -1281,6 +1313,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `docs.search` | Search docs | — | Global | Always available |
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
+| `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `palette.open` | Open command palette | `⌘K` | Global | Always available |
@@ -2030,6 +2063,17 @@ extra prompt every time you unlock. Lock and unlock the vault from the
 command palette (⌘K) too — search "vault" and only the action that
 currently applies shows up.
 
+Secrets you already keep elsewhere need no copy. Configure > Secret
+sources points Mill at a dotenv file — a project's `.env` — or at a
+Bruno collection, whose root `.env` supplies values and whose
+environments name the secrets it expects — or at 1Password or
+Bitwarden through their own command-line tools, which Mill asks for one
+value at the moment a step runs, the way those tools' scripting docs
+recommend. The keys appear in every secret picker beside the vault's
+entries, by name only, and every read is in your access history. The value is read from the file at the
+moment a step runs, recorded in the same access history as a vault
+read, and never stored by Mill.
+
 **Clipboard history is opt-in and screened.** Turning on the
 Clipboard history workflow is the only way it starts watching, and
 turning it off stops watching immediately. Anything a password manager
@@ -2041,6 +2085,14 @@ copy back leaves a line in your own access history.
 ([Guardrails](../concepts/guardrails.md)) parks any step that leaves
 the machine until you approve it or a rule you wrote allows it.
 Agents get no shortcut around this.
+
+**Plugins run only with your say-so.** A plugin you install waits in
+Settings > Extensions, showing what it can request and reach, until
+you allow it; Mill fingerprints its files at that moment and stops it
+if they change; an administrator can pin the allowed set and require
+signatures in the settings file; and Export plugin audit files what
+every plugin asked for and read
+([Install a plugin](../reference/install-a-plugin.md)).
 
 **Execution environments are not a sandbox.** Run a command executes
 with your full user account — the pinned shell, directory, and

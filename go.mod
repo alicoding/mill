@@ -3,11 +3,13 @@ module github.com/alicoding/mill
 go 1.25.7
 
 require (
+	aead.dev/minisign v0.3.0
 	github.com/JohannesKaufmann/dom v0.3.1
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2
 	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/andybalholm/cascadia v1.3.4
 	github.com/dbos-inc/dbos-transact-golang v1.2.0
+	github.com/dop251/goja v0.0.0-20260901132549-43234fa61381
 	github.com/expr-lang/expr v1.17.8
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/getkin/kin-openapi v0.147.0
@@ -16,6 +18,7 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/hbollon/go-edlib v1.7.0
 	github.com/invopop/jsonschema v0.14.0
+	github.com/joho/godotenv v1.5.1
 	github.com/modelcontextprotocol/go-sdk v1.7.0
 	github.com/netresearch/go-cron v0.15.1
 	github.com/rapid7/go-get-proxied v1.4.0
@@ -41,12 +44,15 @@ require (
 	github.com/buger/jsonparser v1.1.2 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect
+	github.com/dlclark/regexp2/v2 v2.5.2 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.22.5 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.5 // indirect
+	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/google/jsonschema-go v0.4.3 // indirect
+	github.com/google/pprof v0.0.0-20260802141513-ef3492d7dac3 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6 // indirect

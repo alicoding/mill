@@ -11,3 +11,6 @@ func Open(_ string) error { return ErrUnsupportedInServerMode }
 
 // Reveal always fails in server mode; see ErrUnsupportedInServerMode.
 func Reveal(_ string) error { return ErrUnsupportedInServerMode }
+
+// OpenWith is the server stub of the open-app performer.
+func OpenWith(_, _ string) error { return ErrUnsupportedInServerMode }

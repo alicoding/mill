@@ -5,6 +5,7 @@ import { refreshExtensionSettings } from '../shared/extensionSettingsStore'
 import { refreshSecretTitles } from '../shared/secretTitleCache'
 import { buildPluginAPI } from './hostApi'
 import type { MillPluginAPI, PluginModule } from './sdk'
+import { pluginRunState } from './pluginTrust'
 
 // The runtime plugin loader (docs/goals/0249). Runs BEFORE the app
 // module graph evaluates (main.tsx awaits it and only then
@@ -23,7 +24,10 @@ import type { MillPluginAPI, PluginModule } from './sdk'
 // plugin commands go through plugins/pluginCommands.ts's collector for
 // the same reason.
 
-export type PluginLoadStatus = 'loaded' | 'disabled' | 'error'
+// 'unallowed': installed after the run gate and not yet allowed by the
+// user (the install-time review, ADR-0051 §4); 'blocked': off the
+// administrator's allow-list. Neither runs any plugin code.
+export type PluginLoadStatus = 'loaded' | 'disabled' | 'unallowed' | 'blocked' | 'unsigned' | 'changed' | 'error'
 
 export interface PluginLoadState {
 	status: PluginLoadStatus
@@ -37,6 +41,35 @@ const loadStates = new Map<string, PluginLoadState>()
 // scanned plugin folder with what actually happened to it this boot.
 export function pluginLoadStates(): Map<string, PluginLoadState> {
 	return loadStates
+}
+
+// pluginsAwaitingReview counts the plugins installed but not yet
+// allowed to run -- the boot notice's number.
+export function pluginsAwaitingReview(): number {
+	let n = 0
+	for (const s of loadStates.values()) if (s.status === 'unallowed') n++
+	return n
+}
+
+// readLock flattens the lock to id -> hash; unreadable means an empty
+// lock (nothing revoked), the same fail-open shape as the lists.
+async function readLock(): Promise<Record<string, string>> {
+	try {
+		const raw = (await SettingsService.GetPluginLock()) ?? {}
+		const out: Record<string, string> = {}
+		for (const [id, entry] of Object.entries(raw)) if (entry?.hash) out[id] = entry.hash
+		return out
+	} catch {
+		return {}
+	}
+}
+
+async function readIDs(read: () => Promise<string[] | null | undefined>): Promise<string[]> {
+	try {
+		return (await read()) ?? []
+	} catch {
+		return []
+	}
 }
 
 function resolveActivate(mod: PluginModule): ((api: MillPluginAPI) => void | Promise<void>) | null {
@@ -84,12 +117,15 @@ export async function loadPlugins(): Promise<void> {
 		console.error('plugin scan failed', err)
 		return
 	}
-	let disabled: string[] = []
-	try {
-		disabled = (await SettingsService.GetDisabledExtensions()) ?? []
-	} catch {
-		// An unreadable disabled set loads everything -- matching how
-		// built-in extensions already behave when the same read fails.
+	// An unreadable disabled set loads everything -- matching how
+	// built-in extensions already behave when the same read fails; an
+	// unreadable allowed set or allow-list fails the same open way (the
+	// row then says what it could not read, never a silent block).
+	const policy = {
+		disabled: await readIDs(() => SettingsService.GetDisabledExtensions()),
+		allowed: await readIDs(() => SettingsService.GetAllowedPlugins()),
+		allowlist: await readIDs(() => SettingsService.GetPluginAllowlist()),
+		lock: await readLock(),
 	}
 	// Stored setting values load BEFORE any activate() runs, so a plugin
 	// reading api.settings.get() at activation sees the user's value,
@@ -106,8 +142,9 @@ export async function loadPlugins(): Promise<void> {
 			loadStates.set(id, { status: 'error', error: info.Error, info })
 			continue
 		}
-		if (disabled.includes(id)) {
-			loadStates.set(id, { status: 'disabled', info })
+		const state = pluginRunState(id, !!info.Builtin, policy, { contentHash: info.ContentHash ?? '', signingPolicy: !!info.SigningPolicy, signed: !!info.Signed })
+		if (state !== 'run') {
+			loadStates.set(id, { status: state, info })
 			continue
 		}
 		try {

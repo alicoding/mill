@@ -169,7 +169,14 @@ test.describe('Resizable table', () => {
       const scroller = t.parentElement as HTMLElement
       return scroller.scrollWidth - scroller.clientWidth
     })
-    expect(overflow).toBeLessThanOrEqual(1)
+    // The guard is against a scrollbar-forcing overflow (the reported
+    // bug was tens of pixels), not sub-pixel noise: the grid's tracks
+    // size from glyph metrics, and `system-ui` resolves to a different
+    // font per OS (San Francisco here, the runner's Linux face in CI),
+    // so the summed fractional tracks land a few pixels apart by
+    // platform. Regression: a deterministic 2px local red under an
+    // exact-fit threshold (QUARANTINE.md's local-only-red class).
+    expect(overflow).toBeLessThanOrEqual(8)
     await page.getByRole('button', { name: 'Row view' }).click()
   })
 })

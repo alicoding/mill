@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { adaptGesture, adaptStyleFields, canvasToolDeclError, styleFieldDefault } from './canvasToolAdapter'
+import { adaptGesture, adaptStyleFields, buildThirdPartyNoun, canvasToolDeclError, styleFieldDefault } from './canvasToolAdapter'
+import { resolveEditRoute } from '../atlas/objectSeams'
+import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { CanvasObjectDecl } from './sdk'
 
 const base: CanvasObjectDecl = {
@@ -86,7 +88,7 @@ describe('goal 0252 S2 doors', () => {
     const ctx = {
       screenToFlowPosition: (p: { x: number; y: number }) => p,
       parentID: '', cardBoxes: [], noteBoxes: [], objectBoxes: [],
-      onDeleteSelection: () => {}, openAreaPopover: () => {}, onShapeCreated: () => {},
+      onDeleteSelection: () => {}, openAreaPopover: () => {}, onShapeCreated: () => {}, enclosedIn: () => ({ cardIDs: [], noteIDs: [], objectIDs: [] }),
       disarm: () => calls.push('disarm'),
       disarmUnlessLocked: () => calls.push('disarmUnlessLocked'),
       hitAccumulator: { cardIDs: new Set<string>(), noteIDs: new Set<string>(), objectIDs: new Set<string>() },
@@ -103,7 +105,7 @@ describe('goal 0252 S2 doors', () => {
     const ctx = {
       screenToFlowPosition: (p: { x: number; y: number }) => p,
       parentID: '', cardBoxes: [], noteBoxes: [], objectBoxes: [],
-      onDeleteSelection: () => {}, openAreaPopover: () => {}, onShapeCreated: () => {},
+      onDeleteSelection: () => {}, openAreaPopover: () => {}, onShapeCreated: () => {}, enclosedIn: () => ({ cardIDs: [], noteIDs: [], objectIDs: [] }),
       disarm: () => calls.push('disarm'),
       disarmUnlessLocked: () => calls.push('disarmUnlessLocked'),
       hitAccumulator: { cardIDs: new Set<string>(), noteIDs: new Set<string>(), objectIDs: new Set<string>() },
@@ -122,7 +124,7 @@ describe('goal 0252 S2 doors', () => {
       gesture.onEnd([{ x: 0, y: 0, t: 0 }], {
         screenToFlowPosition: (p: { x: number; y: number }) => p,
         parentID: '', cardBoxes: [], noteBoxes: [], objectBoxes: [],
-        onDeleteSelection: () => {}, openAreaPopover: () => {}, onShapeCreated: () => {},
+        onDeleteSelection: () => {}, openAreaPopover: () => {}, onShapeCreated: () => {}, enclosedIn: () => ({ cardIDs: [], noteIDs: [], objectIDs: [] }),
         disarm: () => {}, disarmUnlessLocked: () => {},
         hitAccumulator: { cardIDs: new Set<string>(), noteIDs: new Set<string>(), objectIDs: new Set<string>() },
       })
@@ -130,5 +132,36 @@ describe('goal 0252 S2 doors', () => {
     }
     expect(probeCtx(false)).toEqual({ eraseHitTest: false, commitErase: false })
     expect(probeCtx(true)).toEqual({ eraseHitTest: true, commitErase: true })
+  })
+})
+
+describe('goal 0310 doors', () => {
+  it('itemsInRect answers through the host enclosure query, in the SDK\'s own id names', () => {
+    let seen: { cardIds: string[]; noteIds: string[]; objectIds: string[] } | null = null
+    const gesture = adaptGesture('thing', 'thing', [], {
+      onEnd: (_pts, ctx) => { seen = ctx.itemsInRect({ x: 0, y: 0, width: 10, height: 10 }) },
+    }, true, false)
+    gesture.onEnd([{ x: 0, y: 0, t: 0 }], {
+      screenToFlowPosition: (p: { x: number; y: number }) => p,
+      parentID: '', cardBoxes: [], noteBoxes: [], objectBoxes: [],
+      onDeleteSelection: () => {}, openAreaPopover: () => {}, onShapeCreated: () => {},
+      enclosedIn: (rect) => ({ cardIDs: [`c@${rect.width}`], noteIDs: ['n1'], objectIDs: [] }),
+      disarm: () => {}, disarmUnlessLocked: () => {},
+      hitAccumulator: { cardIDs: new Set<string>(), noteIDs: new Set<string>(), objectIDs: new Set<string>() },
+    })
+    expect(seen).toEqual({ cardIds: ['c@10'], noteIds: ['n1'], objectIds: [] })
+  })
+
+  it('a resolver editRoute is asked per object; an unknown answer means no edit door', () => {
+    const noun = buildThirdPartyNoun('p', { id: 'p', name: 'P', version: '1' } as never, {
+      ...base, source: 'file',
+      editRoute: (o) => (o.Payload.mirrorPath?.endsWith('.txt') ? 'inline' : o.Payload.mirrorPath ? 'external-app' : ('bogus' as never)),
+    })
+    const decl = noun.content?.editRoute
+    if (!decl) throw new Error('no content')
+    const obj = (mirrorPath?: string) => ({ ID: 'o', Kind: 'thing', Payload: mirrorPath ? { mirrorPath } : {} }) as unknown as BoardObject
+    expect(resolveEditRoute(obj('/a.txt'), decl)).toEqual({ kind: 'inline' })
+    expect(resolveEditRoute(obj('/a.bin'), decl)).toEqual({ kind: 'external-app' })
+    expect(resolveEditRoute(obj(), decl)).toEqual({ kind: 'none' })
   })
 })

@@ -20,6 +20,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/domain/conversionprofile"
 	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/declaredsteptype"
 	"github.com/alicoding/mill/internal/domain/execenv"
@@ -27,6 +28,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
 	"github.com/alicoding/mill/internal/domain/secret"
+	"github.com/alicoding/mill/internal/domain/secretsource"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 )
 
@@ -75,17 +77,20 @@ const (
 // package directly, same reasoning as CompositionService's Syncer
 // interface for TriggerService.
 type ConfigureService struct {
-	mu                sync.Mutex
-	store             settings.Store
-	credentials       credential.Store
-	requests          []httprequest.HTTPRequest
-	lists             []list.List
-	mcpServers        []mcpserver.MCPServer
-	decisions         []decision.Decision
-	execEnvs          []execenv.ExecEnv
-	aiProviders       []aiprovider.AIProvider
-	declaredStepTypes []declaredsteptype.DeclaredStepType
-	composition       *compositionsvc.CompositionService
+	mu                 sync.Mutex
+	undo               deleteUndo
+	store              settings.Store
+	credentials        credential.Store
+	requests           []httprequest.HTTPRequest
+	lists              []list.List
+	mcpServers         []mcpserver.MCPServer
+	decisions          []decision.Decision
+	execEnvs           []execenv.ExecEnv
+	secretSources      []secretsource.Source
+	conversionProfiles []conversionprofile.Profile
+	aiProviders        []aiprovider.AIProvider
+	declaredStepTypes  []declaredsteptype.DeclaredStepType
+	composition        *compositionsvc.CompositionService
 	// secretResolver resolves a vault entry id to its password (goal
 	// 0185 S3) -- wired late via SetSecretResolver once secretsvc's
 	// SecretService exists (main.go/wiring.go construct it after this
@@ -141,6 +146,8 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.restoreMCPServers()
 	c.restoreDecisions()
 	c.restoreExecEnvs()
+	c.restoreSecretSources()
+	c.restoreConversionProfiles()
 	c.restoreAIProviders()
 	c.restoreDeclaredStepTypes()
 	// reconcileBuiltIn* (configureservice_builtin.go, docs/goals/0037)
@@ -151,7 +158,9 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.reconcileBuiltInMCPServers()
 	c.reconcileBuiltInExecEnvs()
 	c.reconcileBuiltInAIProviders()
+	c.reconcileBuiltInConversionProfiles()
 	c.reconcileBuiltInDeclaredStepTypes()
+	composition.SetConversionProfileLookup(c.resolveConversionProfile)
 	composition.SetHTTPRequestLookup(c.resolveHTTPRequest)
 	composition.SetListLookup(c.resolveList)
 	composition.SetApplyListRow(c.ApplyListRow)

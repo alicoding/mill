@@ -4,6 +4,8 @@ import { PluginService } from '../../bindings/github.com/alicoding/mill/internal
 import { AtlasService } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc'
 import { contentEntryFromWire } from './pluginQuery'
 import { collectPluginView } from './pluginViews'
+import { collectPluginCapture } from './pluginCaptures'
+import { SettingsService } from '../shared/bindings'
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import type { AtlasArmRequestTool } from '../shared/atlasToolIdentity'
@@ -31,7 +33,7 @@ type ContentWriteWire = Parameters<typeof PluginService.WriteContentForPlugin>[1
 
 async function writeContent(pluginId: string, req: Partial<ContentWriteWire>) {
 	const r = await PluginService.WriteContentForPlugin(pluginId, {
-		op: '', text: '', title: '', note: '', kindId: '', cardId: '', parentId: '', listId: '', fields: {}, values: {}, position: null,
+		op: '', text: '', title: '', note: '', kindId: '', cardId: '', parentId: '', listId: '', fields: {}, values: {}, position: null, description: '', columns: [], rows: [],
 		...req,
 	} as ContentWriteWire)
 	return { approved: r.approved, effect: r.effect, ruleLabel: r.ruleLabel, id: r.id }
@@ -104,6 +106,20 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			createCard: (input) => writeContent(pluginId, { op: 'card', kindId: input.kindId, title: input.title, note: input.note ?? '', fields: input.fields ?? {}, parentId: input.parentId ?? '' }),
 			updateCard: (id, patch) => writeContent(pluginId, { op: 'card-update', cardId: id, title: patch.title ?? '', note: patch.note ?? '', fields: patch.fields ?? {} }),
 			appendListRow: (listId, values) => writeContent(pluginId, { op: 'list-row', listId, values }),
+			createList: (input) => writeContent(pluginId, { op: 'list', title: input.title, description: input.description ?? '', columns: input.columns.map((c) => ({ name: c.name, type: c.type ?? '' })), rows: input.rows ?? [] }),
+		}),
+		// The files door (goal 0310): a folder listing through Mill's
+		// read-class evaluation, never the plugin's own filesystem.
+		files: Object.freeze({
+			list: async (path: string) => {
+				const r = await PluginService.ListDirForPlugin(pluginId, path)
+				return { approved: r.approved, effect: r.effect, ruleLabel: r.ruleLabel, entries: (r.entries ?? []).map((e) => ({ name: e.name, path: e.path, isDir: e.isDir, size: e.size })) }
+			},
+		}),
+		// The convert door (goal 0282): the shared HTML-to-Markdown
+		// converter as a pure transform over one bound call.
+		convert: Object.freeze({
+			htmlToMarkdown: (html: string) => PluginService.ConvertHTMLToMarkdown(html),
 		}),
 		on: (event, handler) => {
 			if (event !== 'contents:changed') throw new Error(`plugin ${pluginId}: unknown event "${String(event)}"`)
@@ -115,7 +131,7 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		registerCanvasObject: (decl: CanvasObjectDecl) => {
 			if (!KIND_PATTERN.test(decl.kind)) throw new Error(`plugin ${pluginId}: canvas object kind "${decl.kind}" must be a lowercase slug`)
 			if (!SOURCES.has(decl.source)) throw new Error(`plugin ${pluginId}: unknown source "${decl.source}"`)
-			if (!EDIT_ROUTES.has(decl.editRoute)) throw new Error(`plugin ${pluginId}: unknown editRoute "${decl.editRoute}"`)
+			if (typeof decl.editRoute !== 'function' && !EDIT_ROUTES.has(decl.editRoute)) throw new Error(`plugin ${pluginId}: unknown editRoute "${decl.editRoute}"`)
 			registerThirdPartyNoun(buildThirdPartyNoun(pluginId, manifest, decl))
 			seedStyleValues(decl.kind, decl.styleFields ?? [])
 			// The palette parity built-in tools already have (their
@@ -152,6 +168,20 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 				run: () => {
 					void import('../shared/store').then((m) => m.useAppStore.getState().openWorkTab({ kind: 'plugin-view', pluginId, viewId: decl.id }))
 				},
+			})
+		},
+		// registerCapture (goal 0309): declare-first like views; the face
+		// is kept here for the capture window, and a palette command
+		// summons that window on it.
+		registerCapture: (decl) => {
+			const declared = (manifest.contributes?.captures ?? []).find((c) => c.id === decl.id)
+			if (!declared) throw new Error(`plugin ${pluginId}: capture "${decl.id}" is not declared in the manifest's contributes.captures`)
+			if (typeof decl.render !== 'function') throw new Error(`plugin ${pluginId}: capture "${decl.id}" needs a render function`)
+			collectPluginCapture({ pluginId, pluginName: manifest.name || pluginId, captureId: decl.id, label: declared.label, render: decl.render })
+			collectPluginCommand({
+				id: `capture.${pluginId}.${decl.id}`,
+				label: declared.label,
+				run: () => { void SettingsService.ShowCapture(pluginId, decl.id) },
 			})
 		},
 		registerCommand: (decl) => {

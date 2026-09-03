@@ -1,6 +1,6 @@
 import { SquareIcon } from '@primer/octicons-react'
 import { identityOf, registerNoun, type AtlasToolShape } from '../atlasNounRegistry'
-import { enclosedIDs, normalizeRect } from '../atlasEnclosure'
+import { normalizeRect } from '../atlasEnclosure'
 import { meetsDragThreshold } from '../useAtlasToolGesture'
 import { AtlasAreaMarquee } from '../AtlasAreaMarquee'
 
@@ -55,10 +55,8 @@ export const areaTool = {
       if (!meetsDragThreshold(points)) return
       const start = points[0], end = points[points.length - 1]
       const flowRect = normalizeRect(ctx.screenToFlowPosition(start), ctx.screenToFlowPosition(end))
-      const enclosedCardIDs = enclosedIDs(flowRect, ctx.cardBoxes)
-      const enclosedObjectIDs = enclosedIDs(flowRect, ctx.objectBoxes)
-      const enclosedNoteIDs = enclosedIDs(flowRect, ctx.noteBoxes)
-      ctx.openAreaPopover(start, { x: flowRect.x, y: flowRect.y }, enclosedCardIDs, enclosedNoteIDs, enclosedObjectIDs)
+      const enclosed = ctx.enclosedIn(flowRect)
+      ctx.openAreaPopover(start, { x: flowRect.x, y: flowRect.y }, enclosed.cardIDs, enclosed.noteIDs, enclosed.objectIDs)
     },
     preview: AtlasAreaMarquee,
   },

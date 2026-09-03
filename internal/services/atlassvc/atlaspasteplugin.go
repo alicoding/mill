@@ -28,7 +28,10 @@ func (a *AtlasService) WirePluginPasteClaims(claims func() []PluginPasteClaim) {
 // recognizePluginURLPaste is the recognizer chain's LAST entry
 // (docs/goals/0251): a single-token bare http(s) URL lands as the
 // first claiming plugin's own board object, with the url-source
-// contract's payload (url + title=host). Ordered after
+// contract's payload (url + title=host). The claims arrive already in
+// precedence order (the wiring puts the user's preferred kind first,
+// ADR-0051 slice 2); every further distinct kind is reported as an
+// alternative so the board can offer "paste as … instead". Ordered after
 // recognizeImagePaste so a pasted image URL still lands as an image;
 // with no claims wired (or none matching) the paste falls through to
 // the frontend's note fallback exactly as before, so built-in
@@ -49,8 +52,24 @@ func recognizePluginURLPaste(a *AtlasService, text, _, parentID string, pos atla
 	if len(claims) == 0 {
 		return PasteResult{}, false, nil
 	}
-	if _, err := a.CreateBoardObject(claims[0].Kind, map[string]string{"url": candidate, "title": u.Host}, pos, parentID); err != nil {
+	o, err := a.CreateBoardObject(claims[0].Kind, map[string]string{"url": candidate, "title": u.Host}, pos, parentID)
+	if err != nil {
 		return PasteResult{}, true, err
 	}
-	return PasteResult{Recognized: true, PluginObjects: 1}, true, nil
+	return PasteResult{Recognized: true, PluginObjects: 1, PluginObjectID: o.ID, PluginKind: o.Kind, AlternativeKinds: alternativeKinds(claims)}, true, nil
+}
+
+// alternativeKinds lists every claimant kind after the winner, once
+// each, in the order given (nil when the winner is the only claimant).
+func alternativeKinds(claims []PluginPasteClaim) []string {
+	var out []string
+	seen := map[string]bool{claims[0].Kind: true}
+	for _, c := range claims[1:] {
+		if seen[c.Kind] {
+			continue
+		}
+		seen[c.Kind] = true
+		out = append(out, c.Kind)
+	}
+	return out
 }

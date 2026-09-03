@@ -10,7 +10,7 @@ import type { CanvasNode } from './canvasStore'
 import { useHotkeyCapture } from './hotkeyCapture'
 import { NodeExecutionSection } from './NodeExecutionSection'
 import { NodeConfigFields } from './NodeConfigFields'
-import { TryConversionSection } from './TryConversionSection'
+import { StepTestSection } from './StepTestSection'
 import { DecisionRulesPanel, type BranchRulesActions } from './DecisionRulesPanel'
 import { describeConsumes, describeKind } from './payloadKinds'
 
@@ -113,7 +113,7 @@ export function NodeInspector({ node, headerActions, workflowId, attrs, nodeType
           {...branchRuleActions}
         />
       )}
-      <TryConversionSection nodeType={nodeType} />
+      <StepTestSection node={node} workflowId={workflowId} runStep={runStep} />
       <NodeExecutionSection step={runStep} />
     </Stack>
   )

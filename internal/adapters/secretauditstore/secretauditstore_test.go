@@ -222,3 +222,28 @@ func TestStore_ActorRoundTripsAndOldSchemaIsWidened(t *testing.T) {
 		t.Errorf("actors = %q, %q; want plugin:tester then empty (legacy row)", rows[0].Actor, rows[1].Actor)
 	}
 }
+
+func TestStore_List_FiltersByActorPrefix(t *testing.T) {
+	store := openTestStore(t)
+	for _, r := range []secretaudit.Record{
+		{EntryID: "e1", Label: "PAT", Actor: "plugin:mill-clipper", Outcome: secretaudit.OutcomeRead},
+		{EntryID: "e1", Label: "PAT", Actor: "workflow", Outcome: secretaudit.OutcomeRead},
+		{EntryID: "e2", Label: "Token", Actor: "plugin:mill-request-tester", Outcome: secretaudit.OutcomeRead},
+	} {
+		if _, err := store.Insert(context.Background(), r); err != nil {
+			t.Fatalf("Insert: %v", err)
+		}
+	}
+	rows, total, err := store.List(Filter{ActorPrefix: "plugin:"}, 10, 0)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if total != 2 || len(rows) != 2 {
+		t.Fatalf("plugin rows: total=%d len=%d, want 2/2", total, len(rows))
+	}
+	for _, r := range rows {
+		if len(r.Actor) < 7 || r.Actor[:7] != "plugin:" {
+			t.Fatalf("row actor %q escaped the prefix filter", r.Actor)
+		}
+	}
+}

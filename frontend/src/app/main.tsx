@@ -51,6 +51,10 @@ const isApprovalPrompt = window.location.hash === '#/approvalprompt'
 const isTrayPanel = window.location.hash === '#/traypanel'
 // The run monitor carries its target in the hash query (RunMonitor.tsx).
 const isRunMonitor = window.location.hash.startsWith('#/runmonitor')
+// The capture window (goal 0309) carries its target in the hash query
+// and, unlike the other auxiliary windows, LOADS plugins: a plugin's
+// capture face renders here.
+const isCapture = window.location.hash.startsWith('#/capture')
 // The boundary's own e2e seam (AppErrorBoundary.tsx) -- a deliberate
 // render crash at its own hash route, never reachable from normal UI.
 const isCrashProbe = window.location.hash === '#/millcrashprobe'
@@ -81,12 +85,15 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 // mounts a canvas.
 async function bootstrap() {
   const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement)
-  if (isCrashProbe || isQuickPanel || isApprovalPrompt || isTrayPanel || isRunMonitor) {
+  if (isCapture) {
+    await bootCapture(root)
+    return
+  }
+  const auxiliary = auxiliaryApp()
+  if (auxiliary) {
     root.render(
       <React.StrictMode>
-        <AppErrorBoundary>
-          {isCrashProbe ? <CrashProbe /> : isQuickPanel ? <QuickPanelApp /> : isTrayPanel ? <TrayPanelApp /> : isRunMonitor ? <RunMonitorApp /> : <ApprovalPromptApp />}
-        </AppErrorBoundary>
+        <AppErrorBoundary>{auxiliary}</AppErrorBoundary>
       </React.StrictMode>,
     )
     return
@@ -112,3 +119,31 @@ async function bootstrap() {
 }
 
 void bootstrap()
+
+// The capture window (goal 0309): plugins load here -- a plugin's
+// capture face renders in this window -- under the same deadline the
+// main window's boot uses, then the shell renders.
+async function bootCapture(root: ReturnType<typeof ReactDOM.createRoot>) {
+  const { loadPlugins } = await import('../plugins/loader')
+  await Promise.race([
+    loadPlugins().catch((err) => console.error('plugin loading failed', err)),
+    new Promise((resolve) => window.setTimeout(resolve, 4000)),
+  ])
+  const { CaptureApp } = await import('./CaptureApp')
+  root.render(
+    <React.StrictMode>
+      <CaptureApp />
+    </React.StrictMode>,
+  )
+}
+
+// The auxiliary windows' shells, one per hash route (none for the
+// main window).
+function auxiliaryApp() {
+  if (isCrashProbe) return <CrashProbe />
+  if (isQuickPanel) return <QuickPanelApp />
+  if (isTrayPanel) return <TrayPanelApp />
+  if (isRunMonitor) return <RunMonitorApp />
+  if (isApprovalPrompt) return <ApprovalPromptApp />
+  return null
+}

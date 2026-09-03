@@ -10,6 +10,12 @@
  */
 export interface ListSecretAccessRequest {
     "entryId": string;
+
+    /**
+     * ActorPrefix narrows to actors starting with it (the plugin audit
+     * export passes "plugin:"); empty means every actor.
+     */
+    "actorPrefix": string;
     "limit": number;
     "offset": number;
 }
@@ -41,6 +47,12 @@ export interface SecretAccessRecord {
     "outcome": string;
     "errorText": string;
 }
+
+/**
+ * SourcesLister hands the service the user's enabled secret sources
+ * (the Configure entity); wired late like every other seam.
+ */
+export type SourcesLister = any;
 
 /**
  * Status is VaultStatus's return shape -- the one read the frontend

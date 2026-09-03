@@ -27,8 +27,14 @@ badge, and a floating approval prompt.
 - **Breakpoints** pause a run before a step; edit values, then
   resume — or run in step mode and walk the chain one step at a
   time.
-- **Try it** on the Convert HTML to Markdown step previews a
-  conversion without running anything.
+- **New note…** in the Quick Panel opens a small note window away from
+  the canvas; pick where it lands (the Scratchpad, a space, or the top
+  level) and ⌘↩ saves it there. Plugins can add their own captures the
+  same way.
+- **Try this step** on any step runs just that step on an input you
+  type, paste from the clipboard, or take from its last run — and
+  shows the output right there, without running the workflow. A step
+  that would need your approval tells you so instead of running.
 - **Activity** shows trigger fires and run outcomes across all
   workflows, so a scheduled or watching workflow is never invisibly
   running. Its MCP calls section logs every call to or from Mill's

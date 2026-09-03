@@ -62,9 +62,11 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `canvas.undo` | Undo | `⌘Z` | composition | Always available |
 | `canvas.zoomIn` | Zoom in | `⌘+` | composition | Always available |
 | `canvas.zoomOut` | Zoom out | `⌘-` | composition | Always available |
+| `capture.note` | Capture a note | — | Global | Always available |
 | `clipboard.history.open` | Clipboard history | — | Global | Always available |
 | `codingLoop.run` | Run from clipboard… | — | Global | Always available |
 | `configure.new.aiproviders` | New AI provider | — | Global | Always available |
+| `configure.new.conversionprofiles` | New conversion profile | — | Global | Always available |
 | `configure.new.decisions` | New decision | — | Global | Always available |
 | `configure.new.execenvs` | New environment | — | Global | Always available |
 | `configure.new.integration` | New integration | — | Global | Always available |
@@ -74,6 +76,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `docs.search` | Search docs | — | Global | Always available |
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
+| `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `palette.open` | Open command palette | `⌘K` | Global | Always available |

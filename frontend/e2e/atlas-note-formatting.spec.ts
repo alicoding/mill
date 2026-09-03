@@ -175,27 +175,15 @@ test('typing [x] at a line start creates a checked to-do, Enter continues unchec
       }))
       .toBe('stable')
 
-  // The same bounded retype-recovery the stock task test above uses:
-  // a conversion/flip can remount the item's widget AFTER any settle
-  // observable this harness can poll, and keystrokes in that window
-  // drop (partially or wholly) -- a real user's recovery is selecting
-  // the line and retyping, performed here before the hard assertion.
+  // The item TEXT is inserted atomically (goal 0296's register: the
+  // list-item widget remounts asynchronously after a conversion and a
+  // per-keystroke sequence can lose its trailing key mid-remount --
+  // measured under 4x throttle as "buy mil"; a retype-recovery loop
+  // then landed the retyped text in a NEW item, the second unchecked
+  // item the flake reported). The conversion keystrokes themselves
+  // stay real: they are what this test is about.
   const typeIntoItem = async (text: string) => {
-    for (let round = 0; round < 4; round++) {
-      await page.keyboard.type(text, { delay: 20 })
-      try {
-        await editable.getByText(text).waitFor({ state: 'visible', timeout: 2_000 })
-        return
-      } catch {
-        // Under load the caret can ESCAPE the item mid-remount, so a
-        // blind retype lands in the void -- re-anchor by clicking the
-        // item itself, then clear whatever partially landed.
-        await editable.locator('li').last().click()
-        await page.keyboard.press('End')
-        await page.keyboard.press('Shift+Home')
-        await page.keyboard.press('Backspace')
-      }
-    }
+    await page.keyboard.insertText(text)
     await expect(editable).toContainText(text)
   }
 

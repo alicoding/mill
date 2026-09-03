@@ -34,6 +34,9 @@ import * as aiprovider$0 from "../../domain/aiprovider/models.js";
 import * as composition$0 from "../../domain/composition/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as conversionprofile$0 from "../../domain/conversionprofile/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as decision$0 from "../../domain/decision/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -50,6 +53,9 @@ import * as list$0 from "../../domain/list/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as mcpserver$0 from "../../domain/mcpserver/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as secretsource$0 from "../../domain/secretsource/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as typedfield$0 from "../../domain/typedfield/models.js";
@@ -122,8 +128,16 @@ export function CaptureShellPath(): $CancellablePromise<string> {
     return $Call.ByID(759717731);
 }
 
+export function ConversionProfiles(): $CancellablePromise<conversionprofile$0.Profile[] | null> {
+    return $Call.ByID(1251097066);
+}
+
 export function CreateAIProvider(label: string, kind: aiprovider$0.Kind, baseURL: string, model: string): $CancellablePromise<aiprovider$0.AIProvider> {
     return $Call.ByID(427493887, label, kind, baseURL, model);
+}
+
+export function CreateConversionProfile(label: string, description: string, ruleSets: string[] | null): $CancellablePromise<conversionprofile$0.Profile> {
+    return $Call.ByID(716040745, label, description, ruleSets);
 }
 
 export function CreateDecision(label: string, category: decision$0.Category, outputs: decision$0.OutputField[] | null, webhookRequestID: string): $CancellablePromise<decision$0.Decision> {
@@ -154,8 +168,22 @@ export function CreateList(label: string, description: string, columns: typedfie
     return $Call.ByID(1760985996, label, description, columns);
 }
 
+/**
+ * CreateListWithRows creates a list and appends its first rows in one
+ * door -- the table noun's and the plugin content door's shared
+ * creation path (goal 0310): one round trip, and the rows are on the
+ * list before any reader sees it.
+ */
+export function CreateListWithRows(label: string, description: string, columns: typedfield$0.Field[] | null, rows: ({ [_ in string]?: string } | null)[] | null): $CancellablePromise<list$0.List> {
+    return $Call.ByID(2579741481, label, description, columns, rows);
+}
+
 export function CreateMCPServer(label: string, command: string, args: string[] | null, env: string[] | null): $CancellablePromise<mcpserver$0.MCPServer> {
     return $Call.ByID(1284256739, label, command, args, env);
+}
+
+export function CreateSecretSource(label: string, kind: secretsource$0.Kind, path: string): $CancellablePromise<secretsource$0.Source> {
+    return $Call.ByID(2593717437, label, kind, path);
 }
 
 export function Decisions(): $CancellablePromise<decision$0.Decision[] | null> {
@@ -183,6 +211,10 @@ export function DeleteAIProvider(id: string): $CancellablePromise<void> {
  */
 export function DeleteAIProviderSecret(id: string): $CancellablePromise<void> {
     return $Call.ByID(2178752064, id);
+}
+
+export function DeleteConversionProfile(id: string): $CancellablePromise<void> {
+    return $Call.ByID(3998413764, id);
 }
 
 export function DeleteDecision(id: string): $CancellablePromise<void> {
@@ -236,6 +268,10 @@ export function DeleteMCPServer(id: string): $CancellablePromise<void> {
     return $Call.ByID(3847603582, id);
 }
 
+export function DeleteSecretSource(id: string): $CancellablePromise<void> {
+    return $Call.ByID(4158252478, id);
+}
+
 /**
  * DeriveSecretLabels answers, statically from a node's own type and
  * config -- never by resolving a real secret VALUE -- which vault
@@ -248,6 +284,14 @@ export function DeleteMCPServer(id: string): $CancellablePromise<void> {
  */
 export function DeriveSecretLabels(nodeTypeID: string, config: { [_ in string]?: string } | null): $CancellablePromise<string[] | null> {
     return $Call.ByID(3138098164, nodeTypeID, config);
+}
+
+/**
+ * DescribeReference answers a summary for kind (a ConfigField RefKind)
+ * and id. An unknown kind or id is an error naming it.
+ */
+export function DescribeReference(kind: string, id: string): $CancellablePromise<$models.ReferenceSummary> {
+    return $Call.ByID(3538022950, kind, id);
 }
 
 export function ExecEnvs(): $CancellablePromise<execenv$0.ExecEnv[] | null> {
@@ -605,6 +649,10 @@ export function RestoreMCPServer(id: string): $CancellablePromise<mcpserver$0.MC
     return $Call.ByID(3242563609, id);
 }
 
+export function SecretSources(): $CancellablePromise<secretsource$0.Source[] | null> {
+    return $Call.ByID(421745118);
+}
+
 /**
  * SeedRevisions returns the CURRENTLY SHIPPED revision of every golden
  * Configure entity (every type this service owns), keyed by its own
@@ -667,6 +715,19 @@ export function SetHTTPRequestSecret(id: string, secret: string): $CancellablePr
 }
 
 /**
+ * SyncListRows is the apply-list-sync node's wired writer (docs/goals/
+ * 0299): every incoming row goes through ApplyListRow -- the same
+ * upsert-by-key, typed-validation, persist-and-emit path a single
+ * apply-list-row takes -- and, when asked, rows whose key the batch
+ * did not carry are marked expired through UpdateListRow. Never a
+ * delete: an issue that left the source's result set is still a row
+ * someone may have annotated.
+ */
+export function SyncListRows(listID: string, keyColumn: string, rows: ({ [_ in string]?: string } | null)[] | null, expireMissing: boolean): $CancellablePromise<composition$0.ListSyncResult> {
+    return $Call.ByID(883733198, listID, keyColumn, rows, expireMissing);
+}
+
+/**
  * TestHTTPRequestOperation executes one real HTTP call against a
  * request draft's current configuration -- docs/adr/0013's
  * test-before-save flow. Runs server-side (not a browser fetch) so it
@@ -679,8 +740,23 @@ export function TestHTTPRequestOperation(req: $models.TestHTTPRequestInput): $Ca
     return $Call.ByID(2859699262, req);
 }
 
+/**
+ * UndoDelete restores an entity deleted earlier in this session. entity
+ * is the family's data-event name ("list", "request", "decision", ...),
+ * id the deleted entity's id. Credential material purged by the delete
+ * is not restored: the entity comes back with its secret unset, which
+ * its own status reads report honestly.
+ */
+export function UndoDelete(entity: string, id: string): $CancellablePromise<void> {
+    return $Call.ByID(2705919001, entity, id);
+}
+
 export function UpdateAIProvider(id: string, label: string, kind: aiprovider$0.Kind, baseURL: string, model: string): $CancellablePromise<aiprovider$0.AIProvider> {
     return $Call.ByID(3997420794, id, label, kind, baseURL, model);
+}
+
+export function UpdateConversionProfile(id: string, label: string, description: string, ruleSets: string[] | null): $CancellablePromise<conversionprofile$0.Profile> {
+    return $Call.ByID(2782308242, id, label, description, ruleSets);
 }
 
 /**
@@ -734,6 +810,10 @@ export function UpdateListRow(listID: string, rowID: string, values: { [_ in str
 
 export function UpdateMCPServer(id: string, label: string, command: string, args: string[] | null, env: string[] | null): $CancellablePromise<mcpserver$0.MCPServer> {
     return $Call.ByID(2916384132, id, label, command, args, env);
+}
+
+export function UpdateSecretSource(id: string, label: string, kind: secretsource$0.Kind, path: string): $CancellablePromise<secretsource$0.Source> {
+    return $Call.ByID(2006063992, id, label, kind, path);
 }
 
 export function UpdateWorkflowAttributes(workflowID: string, attrs: composition$0.AttributeDef[] | null): $CancellablePromise<composition$0.Workflow> {

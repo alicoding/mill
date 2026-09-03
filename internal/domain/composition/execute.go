@@ -204,3 +204,84 @@ func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepR
 
 	return ctx.Payload, nil
 }
+
+// ExecuteNodeAlone runs ONE node's exec function on ctx -- the step-test
+// door (ADR-0051 §5): the same registered ExecFunc a full run calls, on
+// a caller-supplied input, with no graph walk, no checkpoint and no
+// guardrail gate (the caller gates; executionsvc's TestStep refuses an
+// ask/deny verdict rather than running). Trigger and Decision nodes
+// have no exec to run and are refused by name. ctx.Attributes nil means
+// attrs' zero-valued defaults, the same seed a real run starts from.
+func ExecuteNodeAlone(node Node, attrs []AttributeDef, ctx ExecContext) (ExecContext, error) {
+	if node.Kind == KindTrigger || node.Kind == KindDecision {
+		return ctx, fmt.Errorf("a %s step has nothing to run on its own", node.Kind)
+	}
+	entry, ok := lookupNodeTypeEntry(node.NodeTypeID)
+	if !ok || entry.exec == nil {
+		if ok && entry.nodeType.Kind != "" {
+			return ctx, fmt.Errorf("a %s step has nothing to run on its own", entry.nodeType.Kind)
+		}
+		return ctx, fmt.Errorf("unknown step type: %s", node.NodeTypeID)
+	}
+	if ctx.Attributes == nil {
+		ctx.Attributes = attributesEnv(attrs, nil)
+	}
+	return entry.exec(node, ctx)
+}
+
+// LookupNodeType resolves a node type by id across the compile-time
+// registry and the Configure-declared types -- the read the step-test
+// door needs to learn a node's Kind from its type alone.
+func LookupNodeType(id string) (NodeType, bool) {
+	entry, ok := lookupNodeTypeEntry(id)
+	return entry.nodeType, ok
+}
+
+// AttributeDefaults is the zero-valued attribute environment a run
+// starts from when no values are supplied -- exported for the step-test
+// door so a single step sees the same seed a full run would.
+func AttributeDefaults(attrs []AttributeDef) map[string]any {
+	return attributesEnv(attrs, nil)
+}
+
+// ExternalNodeType is a node type contributed from OUTSIDE this package
+// at runtime with its own exec -- a plugin's step (ADR-0051 §5's
+// "perform" step-pack door), synthesized by the plugin service. Unlike
+// a declared step type (ADR-0037), which only binds config over an
+// engine registered here, an external type brings its own exec.
+type ExternalNodeType struct {
+	NodeType NodeType
+	Exec     ExecFunc
+}
+
+// externalNodeTypeLookupFn defaults to nothing so the package stays
+// executable standalone (tests, the contract generator).
+var externalNodeTypeLookupFn = func() []ExternalNodeType { return nil }
+
+// SetExternalNodeTypeLookup wires the live external set (the plugin
+// service's step packs, filtered by the run policy) -- read fresh at
+// every lookup, like the declared-type provider.
+func SetExternalNodeTypeLookup(fn func() []ExternalNodeType) {
+	if fn == nil {
+		fn = func() []ExternalNodeType { return nil }
+	}
+	externalNodeTypeLookupFn = fn
+}
+
+func lookupExternalEntry(id string) (nodeTypeEntry, bool) {
+	for _, ext := range externalNodeTypeLookupFn() {
+		if ext.NodeType.ID == id {
+			return nodeTypeEntry{nodeType: ext.NodeType, exec: ext.Exec}, true
+		}
+	}
+	return nodeTypeEntry{}, false
+}
+
+func externalNodeTypes() []NodeType {
+	exts := externalNodeTypeLookupFn()
+	out := make([]NodeType, 0, len(exts))
+	for _, ext := range exts {
+		out = append(out, ext.NodeType)
+	}
+	return out
+}

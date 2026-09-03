@@ -8,6 +8,8 @@ import { SettingsService } from '../shared/bindings'
 import { pluginLoadStates } from '../plugins/loader'
 import { settingDeclsFromManifest } from '../plugins/pluginSettings'
 import { ExtensionSettingControl } from './ExtensionSettingControl'
+import { ExtensionsLinkPasteControl } from './ExtensionsLinkPasteControl'
+import { ExtensionsTrustBar } from './ExtensionsTrustBar'
 import { refreshDisabledExtensions, useExtensionEnablementStore } from '../shared/extensionEnablementStore'
 import styles from '../shared/ListCard.module.css'
 
@@ -40,6 +42,10 @@ export function ExtensionsInstalledPlugins() {
 	const toggle = (id: string, enabled: boolean) => {
 		SettingsService.SetExtensionEnabled(id, enabled).then(refreshDisabledExtensions).catch(console.error)
 	}
+	const allow = (id: string) => {
+		SettingsService.SetPluginAllowed(id, true).then(() => setAllowedNow((prev) => [...prev, id])).catch(console.error)
+	}
+	const [allowedNow, setAllowedNow] = useState<string[]>([])
 	const openFolder = () => {
 		PluginService.RevealPluginsDir().catch(console.error)
 	}
@@ -68,6 +74,8 @@ export function ExtensionsInstalledPlugins() {
 					{t('settings.extensions.noPlugins')}
 				</Text>
 			)}
+			<ExtensionsTrustBar />
+			{plugins !== null && <ExtensionsLinkPasteControl plugins={plugins} disabledIds={disabledIds} />}
 			{plugins !== null && plugins.length > 0 && (
 				<ActionList role="list" showDividers>
 					{plugins.map((p) => {
@@ -110,6 +118,11 @@ export function ExtensionsInstalledPlugins() {
 												{t('settings.extensions.pluginViews', { list: (p.Manifest.contributes?.views ?? []).map((v) => v.title).join(', ') })}
 											</Text>
 										)}
+										{(p.Manifest.contributes?.steps?.length ?? 0) > 0 && (
+											<Text size="small" className={styles.muted} data-testid="extensions-plugin-steps">
+												{t('settings.extensions.pluginSteps', { list: (p.Manifest.contributes?.steps ?? []).map((s) => s.label).join(', ') })}
+											</Text>
+										)}
 										{claimsURLPastes(p) && (
 											<Text size="small" className={styles.muted} data-testid="extensions-plugin-catches">
 												{t('settings.extensions.pluginCatchesLinks')}
@@ -124,6 +137,26 @@ export function ExtensionsInstalledPlugins() {
 										{!error && runtime?.status === 'disabled' && (
 											<Text size="small" className={styles.muted}>{t('settings.extensions.pluginDisabledNote')}</Text>
 										)}
+										{!error && runtime?.status === 'blocked' && (
+											<Text size="small" className={styles.muted} data-testid="extensions-plugin-blocked">{t('settings.extensions.pluginBlockedNote')}</Text>
+										)}
+										{!error && runtime?.status === 'unsigned' && (
+											<Text size="small" className={styles.muted} data-testid="extensions-plugin-unsigned">{t('settings.extensions.pluginUnsignedNote')}</Text>
+										)}
+										{!error && (runtime?.status === 'unallowed' || runtime?.status === 'changed') && (
+											<Stack direction="horizontal" gap="condensed" align="center" data-testid="extensions-plugin-review">
+												<Text size="small" weight="semibold">
+													{allowedNow.includes(id)
+														? t('settings.extensions.pluginAllowedNote')
+														: runtime.status === 'changed' ? t('settings.extensions.pluginChangedNote') : t('settings.extensions.pluginAwaitingNote')}
+												</Text>
+												{!allowedNow.includes(id) && (
+													<Button size="small" variant="primary" onClick={() => allow(id)} data-testid="extensions-plugin-allow">
+														{t('settings.extensions.pluginAllow')}
+													</Button>
+												)}
+											</Stack>
+										)}
 										{!error && settingDeclsFromManifest(p.Manifest).length > 0 && (
 											<Stack direction="vertical" gap="condensed" data-testid="extensions-plugin-settings">
 												{settingDeclsFromManifest(p.Manifest).map((setting) => (
@@ -132,7 +165,7 @@ export function ExtensionsInstalledPlugins() {
 											</Stack>
 										)}
 									</Stack>
-									{!error && (
+									{!error && runtime?.status !== 'blocked' && runtime?.status !== 'unallowed' && runtime?.status !== 'changed' && runtime?.status !== 'unsigned' && (
 										<ToggleSwitch
 											size="small"
 											checked={enabled}
