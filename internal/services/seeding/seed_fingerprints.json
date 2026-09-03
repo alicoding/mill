@@ -139,6 +139,10 @@
     "seedRevision": 1,
     "fingerprint": "5560760323746176e66279c0769c37aa3fbb8378ab0af80323215120a48af0ce"
   },
+  "list:example-bruno-results-list": {
+    "seedRevision": 1,
+    "fingerprint": "2affeabaf4eaeeb1a27b498d88521a1cb50b857e8d18319136cb8db3769cb927"
+  },
   "list:example-country-codes-list": {
     "seedRevision": 4,
     "fingerprint": "e5f0f240a11b3186184fc845f0a5b43e0a866f354c90c6cb22286a3ca4a4b755"
@@ -226,6 +230,10 @@
   "workflow:example-branch-to-decision-workflow": {
     "seedRevision": 3,
     "fingerprint": "a029c7c1d3ee9f7da229f81689b341d455a51a6dfe8efe488158c5ac137b2bc0"
+  },
+  "workflow:example-bruno-run-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "fda4bc0cdd289206124540d6c872622b142ba1c12194e286b780cc754ed6e67d"
   },
   "workflow:example-card-create-link-workflow": {
     "seedRevision": 1,
