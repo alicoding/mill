@@ -458,7 +458,8 @@ func BuiltInWorkflows() []Workflow {
 	workflows = append(workflows, codingLoopBuiltInWorkflow()...)
 	// goal 0285: the TODO-scan node's own seeded proof, same split-file
 	// reasoning.
-	return append(workflows, builtInTodoScanWorkflows()...)
+	workflows = append(workflows, builtInTodoScanWorkflows()...)
+	return append(workflows, builtInTransformWorkflows()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any

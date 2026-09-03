@@ -335,6 +335,10 @@
     "seedRevision": 2,
     "fingerprint": "78cc6d87d6308837ab1da6c316e430f65c60af174aa9ab1c6d1f36e636fa5eb7"
   },
+  "workflow:example-sha256-clipboard-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "e7c9950a28196aeac0692b308dcafa3cb96586c98f017f5aae968f119f0ece12"
+  },
   "workflow:example-step-failure-workflow": {
     "seedRevision": 1,
     "fingerprint": "c4c6feedce67ba803cd59737c0ca5836cbca536dd79d591e94601c05a19aafdf"
