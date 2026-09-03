@@ -4,7 +4,7 @@ import { ConfigureService } from './bindings'
 import { type Field, Type as FieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { RowStatus } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
 import { nextColumnKey } from './projectionColumns'
-import type { GridColumn, GridRow } from './ListGrid'
+import type { GridColumn, GridRow } from './listGridTypes'
 
 // The List's edit round trips, shared by every grid implementation
 // (ADR-0049): a cell commit, a row insert/status/delete, and the

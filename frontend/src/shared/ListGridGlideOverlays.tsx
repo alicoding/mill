@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import type { DataEditorProps, EditListItem, EditableGridCell, GridCell, GridColumn as GlideColumn, GridSelection, Item, Rectangle, Theme } from '@glideapps/glide-data-grid'
-import type { GridColumn, GridRow } from './ListGrid'
+import type { GridColumn, GridRow } from './listGridTypes'
 import type { useListSchemaEdits } from './useListSchemaEdits'
 import { cellForColumn, valueFromEdited } from './listGridGlideCells'
 import { ColumnMenu, RenameOverlay, RowMenu, type Anchor } from './ListGridGlideMenus'

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@primer/react'
 import { DataEditor, type DataEditorRef, type Rectangle } from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
-import type { GridColumn, GridRow } from './ListGrid'
+import type { GridColumn, GridRow } from './listGridTypes'
 import { useListSchemaEdits } from './useListSchemaEdits'
 import { optionsRenderer } from './listGridGlideCells'
 import { GLIDE_DEFAULT_COLUMN_WIDTH, GLIDE_HEADER_HEIGHT, GLIDE_ROW_HEIGHT, paletteFromTokens } from './listGridGlideTheme'
@@ -60,13 +60,27 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
     })
   }, [listID])
 
+  // The header's rectangle comes from the grid's own layout; on a
+  // first mount (an empty List's first column) it is not there for a
+  // few frames yet, so the lookup retries briefly instead of giving up.
   const openRename = useCallback((col: number, at?: Anchor) => {
     const column = columns[col]
-    const bounds = gridRef.current?.getBounds(col, -1)
-    const where = at ?? (bounds && toAnchor(bounds))
-    if (!column || !where) return
+    if (!column) return
     setMenu(null)
-    setRenaming({ key: column.Key, at: where })
+    if (at) {
+      setRenaming({ key: column.Key, at })
+      return
+    }
+    let tries = 0
+    const attempt = () => {
+      const bounds = gridRef.current?.getBounds(col, -1)
+      if (bounds && bounds.width > 0) {
+        setRenaming({ key: column.Key, at: toAnchor(bounds) })
+        return
+      }
+      if (++tries < 30) window.requestAnimationFrame(attempt)
+    }
+    attempt()
   }, [columns, toAnchor])
 
   // A fresh column goes straight into rename once its insert LANDED,
@@ -96,6 +110,8 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
       data-rows={rows.length}
       data-col-widths={columns.map((c) => widths[c.Key] ?? GLIDE_DEFAULT_COLUMN_WIDTH).join(',')}
       data-col-types={columns.map((c) => ((c.Options?.length ?? 0) > 0 ? 'options' : c.Type || 'text')).join(',')}
+      data-col-keys={columns.map((c) => c.Key).join(',')}
+      data-col-deprecated={columns.filter((c) => c.Deprecated).map((c) => c.Key).join(',')}
       data-header-height={GLIDE_HEADER_HEIGHT}
       data-row-height={GLIDE_ROW_HEIGHT}
       // Arrow keys and typing inside the grid belong to the grid --

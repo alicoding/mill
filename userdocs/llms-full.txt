@@ -268,15 +268,17 @@ drifting apart would be a bug:
   your OS keychain, never in config), operations with typed inputs
   and outputs.
 - **Lists** — typed tabular data steps can look up, search, and
-  write; Atlas can project them too. A list edits as one table:
-  click a cell to change it, click a header to rename its column,
-  hover a header or row for the ⊕ that inserts one exactly there,
-  and open the header's gear for the column's type, choices, and
-  removal. A column's type can change until it holds data. While
-  editing a cell, Tab moves right, Enter moves down, Escape steps
-  back to the cell — then arrows walk the grid, typing starts a
-  fresh entry, and Escape again leaves the table. Commits happen as
-  you go. Bring data in from a CSV or JSON file: "Import rows…" on a
+  write; Atlas can project them too. A list edits as one spreadsheet-
+  style grid: click a cell to select it, click again (or press
+  Enter, or just type) to edit it; Tab commits and moves right, Enter
+  commits and moves down, Escape cancels. Select a range and copy or
+  paste it, drag the fill handle to repeat a value, press Delete to
+  clear. Drag a header's edge to resize a column, drag the header to
+  reorder. The header's menu (or a right-click on it) renames the
+  column, inserts one to either side, and opens its type, choices,
+  deprecation, and removal; a right-click on a row inserts a row
+  below it, marks it expired or active, or deletes it. A column's type
+  can change until it holds data. Commits happen as you go. Bring data in from a CSV or JSON file: "Import rows…" on a
   list maps file columns to its fields, and "New from file…" on the
   Lists page proposes a whole typed schema from your sample — edit
   the proposed names and types, then create the list with every row
