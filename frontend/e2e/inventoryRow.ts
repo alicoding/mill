@@ -23,7 +23,9 @@ import type { Locator, Page } from '@playwright/test'
 export async function clickRowAction(page: Page, row: Locator, actionLabel: string | RegExp) {
   await row.getByTestId('inventory-row-menu').click()
   await page.getByRole('menuitem', { name: actionLabel }).click()
-  if (actionLabel === 'Delete') {
+  // A workflow's Delete still confirms first; a Configure entity's
+  // deletes at once and offers Undo (goal 0270).
+  if (actionLabel === 'Delete' && (await row.getAttribute('data-entity')) === 'workflow') {
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
   }
 }

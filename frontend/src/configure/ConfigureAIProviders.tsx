@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { Button, FormControl, IconButton, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, PencilIcon, PlusIcon, SparkleFillIcon, TrashIcon } from '@primer/octicons-react'
@@ -14,7 +15,6 @@ import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
-import { useConfirmDelete } from '../shared/useConfirmDelete'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { EntityConfigFields } from './EntityConfigFields'
@@ -147,11 +147,11 @@ export function ConfigureAIProviders() {
     }
   }
 
-  const remove = (id: string) => {
-    ConfigureService.DeleteAIProvider(id).then(() => {
+  const remove = (id: string, label: string) => {
+    void deleteWithUndo({ entity: 'aiprovider', id, label, remove: () => ConfigureService.DeleteAIProvider(id), refetch: () => {
       refetch()
       seedLifecycle.refresh()
-    }).catch((err) => importExport.setImportError(String(err)))
+    }, onError: (err) => importExport.setImportError(String(err)) })
   }
 
   const resetToSeed = (id: string) => {
@@ -160,12 +160,6 @@ export function ConfigureAIProviders() {
       seedLifecycle.refresh()
     }).catch((err) => importExport.setImportError(String(err)))
   }
-
-  const { requestDelete, dialog: confirmDialog } = useConfirmDelete<AIProvider>({
-    entityType: 'AI provider',
-    labelOf: (p) => p.Label,
-    onConfirm: (p) => remove(p.ID),
-  })
 
   const sortedProviders = useMemo(() => sortByUpdatedDesc(providers ?? [], (p) => p.UpdatedAt), [providers])
 
@@ -185,9 +179,8 @@ export function ConfigureAIProviders() {
         ...(p.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(p.ID) }] : []),
         {
           label: t('delete'),
-          onClick: () => remove(p.ID),
+          onClick: () => remove(p.ID, p.Label),
           danger: true,
-          confirm: { title: t('configureAIProviders.deleteConfirmTitle'), body: t('configureAIProviders.deleteConfirmBody', { label: p.Label }) },
         },
       ],
     }
@@ -259,7 +252,7 @@ export function ConfigureAIProviders() {
                   <Stack direction="horizontal" gap="condensed">
                     <IconButton icon={PencilIcon} aria-label={t('configureAIProviders.editAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => startEdit(p)} />
                     <IconButton icon={DownloadIcon} aria-label={t('configureAIProviders.exportAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => importExport.exportItem(p.ID, p.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={t('configureAIProviders.deleteAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => requestDelete(p)} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureAIProviders.deleteAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => remove(p.ID, p.Label)} />
                   </Stack>
                 ),
               },
@@ -280,7 +273,6 @@ export function ConfigureAIProviders() {
           }}
         />
       )}
-      confirmDialog={confirmDialog}
       importConfirmDialog={importExport.importConfirm.dialog}
     />
   )

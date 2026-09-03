@@ -1,4 +1,8 @@
 {
+  "undoDelete": {
+    "undo": "Undo",
+    "deleted": "Deleted \"{{label}}\""
+  },
   "actions": {
     "change": "Change",
     "clear": "Clear",

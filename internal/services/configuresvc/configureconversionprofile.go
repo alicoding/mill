@@ -80,9 +80,12 @@ func (c *ConfigureService) UpdateConversionProfile(id, label, description string
 
 func (c *ConfigureService) DeleteConversionProfile(id string) error {
 	recordTombstone := func(id string) error { return seeding.RecordTombstone(c.store, id) }
-	if err := entitystore.DeleteWithTombstone(&c.mu, &c.conversionProfiles, c.persistConversionProfiles, recordTombstone, conversionProfileDescriptor, id); err != nil {
+	clearTombstone := func(id string) error { return seeding.ClearTombstone(c.store, id) }
+	restore, err := entitystore.DeleteRecoverable(&c.mu, &c.conversionProfiles, c.persistConversionProfiles, recordTombstone, clearTombstone, conversionProfileDescriptor, id)
+	if err != nil {
 		return err
 	}
+	c.undo.remember("conversionprofile", id, restore)
 	dataevent.Emit("conversionprofile", id)
 	return nil
 }

@@ -341,9 +341,12 @@ func (c *ConfigureService) DeleteList(id string) error {
 	// (docs/goals/0025 item 2): an untombstoned removal would silently
 	// come back on the next restart's top-up seeding.
 	recordTombstone := func(id string) error { return seeding.RecordTombstone(c.store, id) }
-	if err := entitystore.DeleteWithTombstone(&c.mu, &c.lists, c.persistLists, recordTombstone, listDescriptor, id); err != nil {
+	clearTombstone := func(id string) error { return seeding.ClearTombstone(c.store, id) }
+	restore, err := entitystore.DeleteRecoverable(&c.mu, &c.lists, c.persistLists, recordTombstone, clearTombstone, listDescriptor, id)
+	if err != nil {
 		return err
 	}
+	c.undo.remember("list", id, restore)
 	dataevent.Emit("list", id) // goal 0017: live-sync every open surface
 	return nil
 }

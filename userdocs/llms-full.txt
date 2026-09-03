@@ -275,7 +275,12 @@ the endpoint later is a single edit that both workflows pick up.
 
 Configure holds the things workflows and boards *point at* — the
 values two independently-authored workflows should share, where
-drifting apart would be a bug:
+drifting apart would be a bug. Deleting any of them takes effect at
+once and offers Undo for ten seconds; an entry a workflow still uses
+refuses to delete and names the workflow. An undone Integration comes
+back without its secret — enter it again.
+
+The entities:
 
 - **Integration** — an HTTP API: base URL, auth (the secret lives in
   your OS keychain, never in config), operations with typed inputs

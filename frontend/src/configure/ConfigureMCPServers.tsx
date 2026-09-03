@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { Button, IconButton, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, PencilIcon, PlusIcon, ServerIcon, TrashIcon } from '@primer/octicons-react'
@@ -15,7 +16,6 @@ import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
-import { useConfirmDelete } from '../shared/useConfirmDelete'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { EntityConfigFields } from './EntityConfigFields'
@@ -144,11 +144,11 @@ export function ConfigureMCPServers() {
     }
   }
 
-  const remove = (id: string) => {
-    ConfigureService.DeleteMCPServer(id).then(() => {
+  const remove = (id: string, label: string) => {
+    void deleteWithUndo({ entity: 'mcpserver', id, label, remove: () => ConfigureService.DeleteMCPServer(id), refetch: () => {
       refetch()
       seedLifecycle.refresh()
-    }).catch((err) => importExport.setImportError(String(err)))
+    }, onError: (err) => importExport.setImportError(String(err)) })
   }
 
   // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037
@@ -163,12 +163,6 @@ export function ConfigureMCPServers() {
   // Table-view direct-wiring half of the Button-semantics convention
   // (.claude/rules/frontend.md) -- see ConfigureRequests.tsx's
   // identical comment.
-  const { requestDelete, dialog: confirmDialog } = useConfirmDelete<MCPServer>({
-    entityType: 'MCP server',
-    labelOf: (s) => s.Label,
-    onConfirm: (s) => remove(s.ID),
-  })
-
   const listTools = (id: string) => {
     ConfigureService.ListMCPServerTools(id)
       .then((tools) => setToolsByServer((prev) => ({ ...prev, [id]: tools ?? [] })))
@@ -206,9 +200,8 @@ export function ConfigureMCPServers() {
         ...(s.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(s.ID) }] : []),
         {
           label: t('delete'),
-          onClick: () => remove(s.ID),
+          onClick: () => remove(s.ID, s.Label),
           danger: true,
-          confirm: { title: t('configureMCPServers.deleteConfirmTitle'), body: t('configureMCPServers.deleteConfirmBody', { label: s.Label }) },
         },
       ],
     }
@@ -332,7 +325,7 @@ export function ConfigureMCPServers() {
                     <Button size="small" variant="invisible" onClick={() => listTools(s.ID)}>{t('configureMCPServers.listTools')}</Button>
                     <IconButton icon={PencilIcon} aria-label={t('configureMCPServers.editAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => startEdit(s)} />
                     <IconButton icon={DownloadIcon} aria-label={t('configureMCPServers.exportAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => importExport.exportItem(s.ID, s.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={t('configureMCPServers.deleteAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => requestDelete(s)} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureMCPServers.deleteAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => remove(s.ID, s.Label)} />
                   </Stack>
                 ),
               },
@@ -353,7 +346,6 @@ export function ConfigureMCPServers() {
           }}
         />
       )}
-      confirmDialog={confirmDialog}
       importConfirmDialog={importExport.importConfirm.dialog}
       trailingContent={toolsPanels}
     />

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, FormControl, IconButton, Stack, Text, TextInput } from '@primer/react'
 import { PencilIcon, PlusIcon, TrashIcon, ArrowSwitchIcon } from '@primer/octicons-react'
@@ -12,7 +13,6 @@ import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
-import { useConfirmDelete } from '../shared/useConfirmDelete'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { ConfigureEntityPage } from './ConfigureEntityPage'
 import { ConversionSamplePreview } from './ConversionSamplePreview'
@@ -89,15 +89,9 @@ export function ConfigureConversionProfiles() {
       setError(String(err))
     }
   }
-  const remove = (id: string) => {
-    ConfigureService.DeleteConversionProfile(id).then(refetch).catch((err) => setError(String(err)))
+  const remove = (id: string, label: string) => {
+    void deleteWithUndo({ entity: 'conversionprofile', id, label, remove: () => ConfigureService.DeleteConversionProfile(id), refetch: refetch, onError: (err) => setError(String(err)) })
   }
-  const { requestDelete, dialog: confirmDialog } = useConfirmDelete<Profile>({
-    entityType: 'conversion profile',
-    labelOf: (p) => p.Label,
-    onConfirm: (p) => remove(p.ID),
-  })
-
   const ruleLabel = (id: string) => ruleSets.find((r) => r.id === id)?.label ?? id
   const rulesText = (p: Profile) => ((p.RuleSets ?? []).length > 0 ? (p.RuleSets ?? []).map(ruleLabel).join(', ') : t('configureConversionProfiles.noRules'))
   const sorted = useMemo(() => sortByUpdatedDesc(profiles ?? [], (p) => p.UpdatedAt), [profiles])
@@ -113,9 +107,8 @@ export function ConfigureConversionProfiles() {
     menuActions: [
       {
         label: t('delete'),
-        onClick: () => remove(p.ID),
+        onClick: () => remove(p.ID, p.Label),
         danger: true,
-        confirm: { title: t('configureConversionProfiles.deleteConfirmTitle'), body: t('configureConversionProfiles.deleteConfirmBody', { label: p.Label }) },
       },
     ],
   }))
@@ -171,7 +164,7 @@ export function ConfigureConversionProfiles() {
                 renderCell: (p) => (
                   <Stack direction="horizontal" gap="condensed">
                     <IconButton icon={PencilIcon} aria-label={t('configureConversionProfiles.editAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => startEdit(p)} />
-                    <IconButton icon={TrashIcon} aria-label={t('configureConversionProfiles.deleteAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => requestDelete(p)} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureConversionProfiles.deleteAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => remove(p.ID, p.Label)} />
                   </Stack>
                 ),
               },
@@ -195,7 +188,6 @@ export function ConfigureConversionProfiles() {
           <ConversionSamplePreview profiles={sorted} />
         </Stack>
       )}
-      confirmDialog={confirmDialog}
     />
   )
 }
