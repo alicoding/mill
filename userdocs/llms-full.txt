@@ -296,6 +296,10 @@ drifting apart would be a bug:
 - **Execution environments** — a pinned shell, directory, and
   environment for Run a command. This is reproducibility, not a
   sandbox: the script runs with your full user account.
+- **Conversion profiles** — which source-specific rules an HTML to
+  Markdown conversion applies (Confluence, Office and Word). The
+  converter step picks one; leave it empty and every rule applies.
+  The page's sample preview shows what each profile makes of a paste.
 - **Attributes** — a workflow's declared typed fields.
 - **Decisions** — named outcome sets a workflow records against,
   with published versions.
@@ -878,6 +882,8 @@ Converts HTML into Markdown, preserving structure (headings, bold, lists).
 
 - Takes: HTML — Produces: Markdown
 - Effect: none — pure computation
+- Settings:
+  - **Conversion profile** — Which source-specific rules apply (Confluence, Office). Empty applies every rule set. (references a Conversion profile)
 
 ### Create run receipt
 
@@ -1274,6 +1280,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `clipboard.history.open` | Clipboard history | — | Global | Always available |
 | `codingLoop.run` | Run from clipboard… | — | Global | Always available |
 | `configure.new.aiproviders` | New AI provider | — | Global | Always available |
+| `configure.new.conversionprofiles` | New conversion profile | — | Global | Always available |
 | `configure.new.decisions` | New decision | — | Global | Always available |
 | `configure.new.execenvs` | New environment | — | Global | Always available |
 | `configure.new.integration` | New integration | — | Global | Always available |

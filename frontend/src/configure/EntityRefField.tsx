@@ -56,6 +56,8 @@ async function fetchEntities(refKind: string): Promise<Entity[]> {
       return (await ConfigureService.ExecEnvs()) ?? []
     case 'aiprovider':
       return (await ConfigureService.AIProviders()) ?? []
+    case 'conversionprofile':
+      return (await ConfigureService.ConversionProfiles()) ?? []
     // docs/goals/0066: atlas-card-* steps' Kind/Relation pickers -- a
     // bindings-populated dropdown over Atlas's own user-declared Kinds/
     // LinkKinds, the same "reuse the existing picker, parameterized by
@@ -79,6 +81,7 @@ function kindNounFor(t: (key: string) => string): Record<string, string> {
     decision: t('entityRefField.kindNoun.decision'),
     execenv: t('entityRefField.kindNoun.execenv'),
     aiprovider: t('entityRefField.kindNoun.aiprovider'),
+    conversionprofile: t('entityRefField.kindNoun.conversionprofile'),
     'atlas-kind': t('entityRefField.kindNoun.atlas-kind'),
     'atlas-linkkind': t('entityRefField.kindNoun.atlas-linkkind'),
   }
@@ -87,7 +90,7 @@ function kindNounFor(t: (key: string) => string): Record<string, string> {
 // docs/adr/0010 §2: no quick-create for a workflow reference -- creating
 // one is Composition's own existing "New workflow" flow, not a
 // lightweight sub-form; the picker only lists what already exists.
-const QUICK_CREATABLE_KINDS = new Set(['request', 'list', 'mcpserver', 'decision', 'execenv', 'aiprovider'])
+const QUICK_CREATABLE_KINDS = new Set(['request', 'list', 'mcpserver', 'decision', 'execenv', 'aiprovider', 'conversionprofile'])
 
 // readOnly (goal 0297): a read-only canvas never shows a control that
 // does nothing -- the field renders its VALUE (the entity's label, or

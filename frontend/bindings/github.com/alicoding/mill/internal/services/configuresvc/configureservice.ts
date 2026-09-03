@@ -34,6 +34,9 @@ import * as aiprovider$0 from "../../domain/aiprovider/models.js";
 import * as composition$0 from "../../domain/composition/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as conversionprofile$0 from "../../domain/conversionprofile/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as decision$0 from "../../domain/decision/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -125,8 +128,16 @@ export function CaptureShellPath(): $CancellablePromise<string> {
     return $Call.ByID(759717731);
 }
 
+export function ConversionProfiles(): $CancellablePromise<conversionprofile$0.Profile[] | null> {
+    return $Call.ByID(1251097066);
+}
+
 export function CreateAIProvider(label: string, kind: aiprovider$0.Kind, baseURL: string, model: string): $CancellablePromise<aiprovider$0.AIProvider> {
     return $Call.ByID(427493887, label, kind, baseURL, model);
+}
+
+export function CreateConversionProfile(label: string, description: string, ruleSets: string[] | null): $CancellablePromise<conversionprofile$0.Profile> {
+    return $Call.ByID(716040745, label, description, ruleSets);
 }
 
 export function CreateDecision(label: string, category: decision$0.Category, outputs: decision$0.OutputField[] | null, webhookRequestID: string): $CancellablePromise<decision$0.Decision> {
@@ -190,6 +201,10 @@ export function DeleteAIProvider(id: string): $CancellablePromise<void> {
  */
 export function DeleteAIProviderSecret(id: string): $CancellablePromise<void> {
     return $Call.ByID(2178752064, id);
+}
+
+export function DeleteConversionProfile(id: string): $CancellablePromise<void> {
+    return $Call.ByID(3998413764, id);
 }
 
 export function DeleteDecision(id: string): $CancellablePromise<void> {
@@ -709,6 +724,10 @@ export function TestHTTPRequestOperation(req: $models.TestHTTPRequestInput): $Ca
 
 export function UpdateAIProvider(id: string, label: string, kind: aiprovider$0.Kind, baseURL: string, model: string): $CancellablePromise<aiprovider$0.AIProvider> {
     return $Call.ByID(3997420794, id, label, kind, baseURL, model);
+}
+
+export function UpdateConversionProfile(id: string, label: string, description: string, ruleSets: string[] | null): $CancellablePromise<conversionprofile$0.Profile> {
+    return $Call.ByID(2782308242, id, label, description, ruleSets);
 }
 
 /**
