@@ -27,7 +27,7 @@ import { pluginRunState } from './pluginTrust'
 // 'unallowed': installed after the run gate and not yet allowed by the
 // user (the install-time review, ADR-0051 §4); 'blocked': off the
 // administrator's allow-list. Neither runs any plugin code.
-export type PluginLoadStatus = 'loaded' | 'disabled' | 'unallowed' | 'blocked' | 'error'
+export type PluginLoadStatus = 'loaded' | 'disabled' | 'unallowed' | 'blocked' | 'unsigned' | 'changed' | 'error'
 
 export interface PluginLoadState {
 	status: PluginLoadStatus
@@ -49,6 +49,19 @@ export function pluginsAwaitingReview(): number {
 	let n = 0
 	for (const s of loadStates.values()) if (s.status === 'unallowed') n++
 	return n
+}
+
+// readLock flattens the lock to id -> hash; unreadable means an empty
+// lock (nothing revoked), the same fail-open shape as the lists.
+async function readLock(): Promise<Record<string, string>> {
+	try {
+		const raw = (await SettingsService.GetPluginLock()) ?? {}
+		const out: Record<string, string> = {}
+		for (const [id, entry] of Object.entries(raw)) if (entry?.hash) out[id] = entry.hash
+		return out
+	} catch {
+		return {}
+	}
 }
 
 async function readIDs(read: () => Promise<string[] | null | undefined>): Promise<string[]> {
@@ -112,6 +125,7 @@ export async function loadPlugins(): Promise<void> {
 		disabled: await readIDs(() => SettingsService.GetDisabledExtensions()),
 		allowed: await readIDs(() => SettingsService.GetAllowedPlugins()),
 		allowlist: await readIDs(() => SettingsService.GetPluginAllowlist()),
+		lock: await readLock(),
 	}
 	// Stored setting values load BEFORE any activate() runs, so a plugin
 	// reading api.settings.get() at activation sees the user's value,
@@ -128,7 +142,7 @@ export async function loadPlugins(): Promise<void> {
 			loadStates.set(id, { status: 'error', error: info.Error, info })
 			continue
 		}
-		const state = pluginRunState(id, !!info.Builtin, policy)
+		const state = pluginRunState(id, !!info.Builtin, policy, { contentHash: info.ContentHash ?? '', signingPolicy: !!info.SigningPolicy, signed: !!info.Signed })
 		if (state !== 'run') {
 			loadStates.set(id, { status: state, info })
 			continue

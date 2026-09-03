@@ -31,6 +31,15 @@ export function AssetMiddleware(): $CancellablePromise<any> {
 }
 
 /**
+ * ContentHashOf answers the current hash of an installed plugin by id
+ * ("" for a built-in or an unreadable folder) -- the run policy's
+ * comparison input.
+ */
+export function ContentHashOf(id: string): $CancellablePromise<string> {
+    return $Call.ByID(3013757580, id);
+}
+
+/**
  * ConvertHTMLToMarkdown is the plugin SDK's convert door (goal 0282):
  * the same HTML-to-Markdown conversion every workflow convert step and
  * paste already uses, offered to a plugin as a pure transform. No
@@ -100,6 +109,21 @@ export function RevealPluginsDir(): $CancellablePromise<void> {
 }
 
 /**
+ * SignedOK is the run policy's question: with no policy every plugin
+ * passes; with one, only a verified signature does.
+ */
+export function SignedOK(id: string): $CancellablePromise<boolean> {
+    return $Call.ByID(1767199442, id);
+}
+
+/**
+ * SigningPolicyActive reports whether any key is pinned.
+ */
+export function SigningPolicyActive(): $CancellablePromise<boolean> {
+    return $Call.ByID(1203437115);
+}
+
+/**
  * StepNodeTypes synthesizes every runnable plugin's declared steps as
  * external node types -- the provider composition reads through
  * SetExternalNodeTypeLookup. A plugin whose steps.js fails to load
@@ -116,6 +140,14 @@ export function StepNodeTypes(): $CancellablePromise<composition$0.ExternalNodeT
  */
 export function StepPackProblem(id: string): $CancellablePromise<string> {
     return $Call.ByID(3840929602, id);
+}
+
+/**
+ * VersionOf answers an installed plugin's manifest version ("" when
+ * unknown) -- recorded beside the hash in the lock.
+ */
+export function VersionOf(id: string): $CancellablePromise<string> {
+    return $Call.ByID(1443551781, id);
 }
 
 /**

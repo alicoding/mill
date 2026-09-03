@@ -13,13 +13,19 @@ import styles from '../shared/ListCard.module.css'
 export function ExtensionsTrustBar() {
 	const { t } = useTranslation('views')
 	const [allowlist, setAllowlist] = useState<string[]>([])
+	const [signingKeys, setSigningKeys] = useState<string[]>([])
 	useEffect(() => {
 		SettingsService.GetPluginAllowlist().then((ids) => setAllowlist(ids ?? [])).catch(() => setAllowlist([]))
+		SettingsService.GetPluginSigningKeys().then((keys) => setSigningKeys(keys ?? [])).catch(() => setSigningKeys([]))
 	}, [])
+	const policyText = [
+		allowlist.length > 0 ? t('settings.extensions.allowlistActive', { list: allowlist.join(', ') }) : '',
+		signingKeys.length > 0 ? t('settings.extensions.signingActive', { count: signingKeys.length }) : '',
+	].filter(Boolean).join(' ')
 	return (
 		<Stack direction="horizontal" justify="space-between" align="center" gap="condensed" data-testid="extensions-trust-bar">
 			<Text size="small" className={styles.muted} data-testid="extensions-allowlist">
-				{allowlist.length > 0 ? t('settings.extensions.allowlistActive', { list: allowlist.join(', ') }) : t('settings.extensions.reviewHint')}
+				{policyText || t('settings.extensions.reviewHint')}
 			</Text>
 			<Button size="small" onClick={() => findCommand('extensions.exportAudit')?.run()} data-testid="extensions-export-audit">
 				{t('settings.extensions.exportAudit')}

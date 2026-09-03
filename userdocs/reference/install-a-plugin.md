@@ -35,6 +35,11 @@ until you click **Allow** and reload. A notice in the footer tells you
 when one is waiting. Plugins that were already installed when the
 check arrived keep running; only new arrivals wait.
 
+Mill remembers what you allowed: the plugin's files are fingerprinted
+at that moment, and if they change later — an update you copied in,
+or an edit — the plugin stops until you look again and allow it once
+more. The row says "Its files changed since you allowed it."
+
 An administrator can pin which plugins may run at all by writing an
 allow-list into Mill's settings file — the key
 `settings-plugin-allowlist`, a JSON array of plugin ids, placed the
@@ -42,6 +47,14 @@ way device-management tooling places any managed setting. When it is
 set, Settings > Extensions reports it and every plugin off the list
 shows as blocked, with no way to turn it on from the app. The Drawing
 plugin built into Mill is exempt.
+
+An administrator can also require signatures: the key
+`settings-plugin-signing-keys`, a JSON array of minisign public keys.
+With keys pinned, a plugin runs only when its folder holds
+`mill-plugin.minisig`, a minisign signature of the folder's content
+hash (Export plugin audit shows each plugin's `contentHash`; sign that
+string with `minisign -S`). Unsigned plugins show as such and cannot be
+turned on.
 
 **Export plugin audit** (Settings > Extensions, or the command
 palette) saves one JSON file: every installed plugin with its declared

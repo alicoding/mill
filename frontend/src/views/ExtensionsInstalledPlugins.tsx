@@ -140,10 +140,15 @@ export function ExtensionsInstalledPlugins() {
 										{!error && runtime?.status === 'blocked' && (
 											<Text size="small" className={styles.muted} data-testid="extensions-plugin-blocked">{t('settings.extensions.pluginBlockedNote')}</Text>
 										)}
-										{!error && runtime?.status === 'unallowed' && (
+										{!error && runtime?.status === 'unsigned' && (
+											<Text size="small" className={styles.muted} data-testid="extensions-plugin-unsigned">{t('settings.extensions.pluginUnsignedNote')}</Text>
+										)}
+										{!error && (runtime?.status === 'unallowed' || runtime?.status === 'changed') && (
 											<Stack direction="horizontal" gap="condensed" align="center" data-testid="extensions-plugin-review">
 												<Text size="small" weight="semibold">
-													{allowedNow.includes(id) ? t('settings.extensions.pluginAllowedNote') : t('settings.extensions.pluginAwaitingNote')}
+													{allowedNow.includes(id)
+														? t('settings.extensions.pluginAllowedNote')
+														: runtime.status === 'changed' ? t('settings.extensions.pluginChangedNote') : t('settings.extensions.pluginAwaitingNote')}
 												</Text>
 												{!allowedNow.includes(id) && (
 													<Button size="small" variant="primary" onClick={() => allow(id)} data-testid="extensions-plugin-allow">
@@ -160,7 +165,7 @@ export function ExtensionsInstalledPlugins() {
 											</Stack>
 										)}
 									</Stack>
-									{!error && runtime?.status !== 'blocked' && runtime?.status !== 'unallowed' && (
+									{!error && runtime?.status !== 'blocked' && runtime?.status !== 'unallowed' && runtime?.status !== 'changed' && runtime?.status !== 'unsigned' && (
 										<ToggleSwitch
 											size="small"
 											checked={enabled}

@@ -13,6 +13,12 @@ type fakeTrust struct{ allowed, disabled map[string]bool }
 func (f fakeTrust) Enabled(id string) bool { return !f.disabled[id] }
 func (f fakeTrust) Allowed(id string) bool { return f.allowed[id] }
 func (f fakeTrust) Allowlist() []string    { return []string{"mill-a"} }
+func (f fakeTrust) LockedHash(id string) string {
+	if id == "mill-a" {
+		return "sha256-stale"
+	}
+	return ""
+}
 
 // The export lists every installed plugin with its declared reach and
 // trust state, the plugin-actor secret reads, and states the guarded-
@@ -49,6 +55,9 @@ func TestExportPluginAudit_ListsReachTrustAndSecretReads(t *testing.T) {
 	a := rows["mill-a"]
 	if !a.Allowed || !a.Enabled || !a.ClaimsLinks || len(a.ClaimsFiles) != 1 || len(a.Hosts) != 1 || a.Hosts[0] != "example.com" || len(a.Capabilities) != 1 {
 		t.Fatalf("mill-a row = %+v", a)
+	}
+	if a.ContentHash == "" || a.LockedHash != "sha256-stale" || !a.Changed {
+		t.Fatalf("mill-a integrity = hash %q locked %q changed %v, want a changed row", a.ContentHash, a.LockedHash, a.Changed)
 	}
 	b := rows["mill-b"]
 	if b.Allowed || b.Enabled || b.Hosts == nil || b.ClaimsFiles == nil || b.Capabilities == nil {
