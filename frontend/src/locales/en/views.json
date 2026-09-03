@@ -64,7 +64,10 @@
       "pluginReachesHosts": "Can reach: {{list}}",
       "pluginReachesAnyHost": "Can reach any host you approve, one request at a time",
       "pluginDisabledNote": "Turned off. Turn on and reload to load it.",
-      "pluginToggleAria": "Enable {{name}}"
+      "pluginToggleAria": "Enable {{name}}",
+      "secretRefNone": "No secret picked",
+      "secretRefGone": "This secret no longer exists. Pick another.",
+      "secretRefUnavailable": "Unlock the vault in Secrets to pick one."
     },
     "keyboardShortcuts": {
       "description": "Every in-window command Mill dispatches. Rebind one by clicking its combo and pressing a new one — the same recorder used for a workflow's own trigger hotkey below."

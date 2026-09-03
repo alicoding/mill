@@ -10,6 +10,7 @@ import type { AtlasArmRequestTool } from '../shared/atlasToolIdentity'
 import { collectPluginCommand } from './pluginCommands'
 import { buildThirdPartyNoun, seedStyleValues } from './canvasToolAdapter'
 import { settingDeclsFromManifest } from './pluginSettings'
+import { secretTitleOf } from '../shared/secretTitleCache'
 import { buildPluginStorage } from './pluginStorage'
 import { pushNotice } from '../shared/noticeStore'
 import { resolveExtensionSetting, subscribeExtensionSetting } from '../shared/extensionSettingsStore'
@@ -52,7 +53,12 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		return decl
 	}
 	const settings = Object.freeze({
-		get: (key: string) => resolveExtensionSetting(pluginId, declFor(key)),
+		get: (key: string) => {
+			const decl = declFor(key)
+			const value = resolveExtensionSetting(pluginId, decl)
+			// A secretRef answers the entry's title, never its value or id.
+			return decl.type === 'secretRef' ? secretTitleOf(String(value)) : value
+		},
 		onChange: (key: string, fn: (value: boolean | string | number) => void) => subscribeExtensionSetting(pluginId, declFor(key), fn),
 	})
 	// The notice door (goal 0277): the plugin's display name is the
@@ -82,7 +88,10 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		// capability, declared host + method, guardrail -- and executes
 		// host-side; this is only the shape adapter.
 		fetch: async (url: string, init: PluginFetchInit = {}) => {
-			const r = await PluginService.FetchForPlugin(pluginId, { method: init.method ?? 'GET', url, headers: init.headers ?? {}, body: init.body ?? '' })
+			const r = await PluginService.FetchForPlugin(pluginId, {
+				method: init.method ?? 'GET', url, headers: init.headers ?? {}, body: init.body ?? '',
+				secret: init.secret ? { settingKey: init.secret.settingKey, header: init.secret.header ?? '', prefix: init.secret.prefix ?? '' } : null,
+			})
 			const headers: Record<string, string> = {}
 			for (const [k, v] of Object.entries(r.headers ?? {})) if (v !== undefined) headers[k] = v
 			return { approved: r.approved, effect: r.effect, ruleLabel: r.ruleLabel, status: r.status, headers, body: r.body }

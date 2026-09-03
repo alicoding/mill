@@ -73,7 +73,7 @@ func (s *SecretService) recordAccess(entryID, label string, actx secretaudit.Acc
 	}
 	rec := secretaudit.Record{
 		EntryID: entryID, Label: label, Context: actx.Context,
-		RunID: actx.RunID, WorkflowID: actx.WorkflowID,
+		RunID: actx.RunID, WorkflowID: actx.WorkflowID, Actor: actx.Actor,
 		Outcome: outcome, ErrorText: errText,
 	}
 	if _, err := s.auditStore.Insert(context.Background(), rec); err != nil {
@@ -118,6 +118,7 @@ type SecretAccessRecord struct {
 	Context    string `json:"context"`
 	RunID      string `json:"runId"`
 	WorkflowID string `json:"workflowId"`
+	Actor      string `json:"actor"`
 	Outcome    string `json:"outcome"`
 	ErrorText  string `json:"errorText"`
 }
@@ -170,7 +171,7 @@ func (s *SecretService) ListSecretAccess(req ListSecretAccessRequest) (ListSecre
 		out = append(out, SecretAccessRecord{
 			ID: r.ID, Timestamp: r.Timestamp.Format("2006-01-02T15:04:05.000Z07:00"),
 			EntryID: r.EntryID, Label: r.Label, Context: string(r.Context),
-			RunID: r.RunID, WorkflowID: r.WorkflowID, Outcome: string(r.Outcome), ErrorText: r.ErrorText,
+			RunID: r.RunID, WorkflowID: r.WorkflowID, Actor: r.Actor, Outcome: string(r.Outcome), ErrorText: r.ErrorText,
 		})
 	}
 	return ListSecretAccessResponse{Records: out, Total: total}, nil

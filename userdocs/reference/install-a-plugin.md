@@ -140,12 +140,29 @@ back through `api.settings`. A plugin never builds a settings screen.
 }
 ```
 
-Four types: `boolean` (a checkbox), `string` (a text field),
-`number` (a number field, with optional `min` and `max`), and `enum`
-(a dropdown over `options`). `default` is the value in effect until
+Five types: `boolean` (a checkbox), `string` (a text field),
+`number` (a number field, with optional `min` and `max`), `enum`
+(a dropdown over `options`), and `secretRef` (a picker over the
+vault's entries — see below). `default` is the value in effect until
 the user changes the control; a mistyped manifest — a default of the
-wrong type, an enum default missing from its options — blocks the
-plugin from loading and names the key in its row.
+wrong type, an enum default missing from its options, a default on a
+`secretRef` — blocks the plugin from loading and names the key in its
+row.
+
+A `secretRef` setting names a credential without ever holding it:
+
+```json
+{ "key": "auth", "type": "secretRef", "label": "Authorization",
+  "description": "Sent as a bearer token with every request." }
+```
+
+The user picks one of their vault entries in the plugin's row; the
+stored value is a reference, and `api.settings.get('auth')` answers
+the entry's title (or an empty string when nothing is picked). The
+value itself only ever travels inside `api.fetch` — see Reaching the
+network. A picked entry that is later deleted shows "This secret no
+longer exists. Pick another." in the row, and a request naming it is
+refused with the same words.
 
 ```js
 export function activate(api) {
@@ -245,8 +262,23 @@ if (res.approved) console.log(res.status, res.body)   // headers in res.headers
 else api.notify({ level: 'warning', text: 'Not allowed' + (res.ruleLabel ? ' (' + res.ruleLabel + ')' : '') })
 ```
 
-Credentials belong in the vault, not in plugin code; the setting type
-that names a vault entry is on the roadmap.
+Credentials belong in the vault, not in plugin code. A request that
+needs one names a `secretRef` setting, and Mill attaches the entry's
+value itself — after you approve the request — as a header:
+
+```js
+const res = await api.fetch('https://api.example.com/me', {
+  secret: { settingKey: 'auth' }                 // Authorization: Bearer <value>
+  // or: secret: { settingKey: 'auth', header: 'X-Api-Key', prefix: '' }
+})
+```
+
+Every request that carries a secret asks you first, whatever your
+other rules say: the Review row reads "GET api.example.com · uses
+secret ‘Jira PAT’", and the vault's access history records the read
+as sent by the extension. The value is redacted from the response
+before the plugin sees it — a server echoing the token back gets
+`[redacted]`.
 
 ## Writing to the board
 

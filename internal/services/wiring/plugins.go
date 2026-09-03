@@ -5,11 +5,14 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/alicoding/mill/internal/adapters/secretaudit"
+
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/notificationsvc"
 	"github.com/alicoding/mill/internal/services/pluginsvc"
 	"github.com/alicoding/mill/internal/services/remoteauthsvc"
+	"github.com/alicoding/mill/internal/services/secretsvc"
 	"github.com/alicoding/mill/internal/services/settingssvc"
 	"github.com/alicoding/mill/internal/services/triggersvc"
 )
@@ -50,11 +53,42 @@ func ComposedAssetMiddleware(remoteAuth *remoteauthsvc.RemoteAuthService, plugin
 // line right after that construction -- composition-root grouping,
 // the backupsvc.Wire shape): notification channels, the phone
 // channel, update trigger events, and plugin ingestion claims.
-func WireSettingsEraSeams(settings *settingssvc.SettingsService, notif *notificationsvc.NotificationService, remoteAuth *remoteauthsvc.RemoteAuthService, triggers *triggersvc.TriggerService, atlas *atlassvc.AtlasService, plugins *pluginsvc.PluginService) {
+func WireSettingsEraSeams(settings *settingssvc.SettingsService, notif *notificationsvc.NotificationService, remoteAuth *remoteauthsvc.RemoteAuthService, triggers *triggersvc.TriggerService, atlas *atlassvc.AtlasService, plugins *pluginsvc.PluginService, secrets *secretsvc.SecretService) {
 	WireNotificationChannels(settings, notif) // docs/goals/0171-notification-spine.md
 	WirePhoneChannel(remoteAuth, notif)       // docs/goals/0132-remote-access.md SLICE B
 	WireUpdateEvents(settings, triggers)
-	WirePluginIngestion(atlas, plugins, settings) // docs/goals/0251-plugin-ingestion-claims.md
+	WirePluginIngestion(atlas, plugins, settings)    // docs/goals/0251-plugin-ingestion-claims.md
+	WirePluginSecretRefs(plugins, secrets, settings) // docs/adr/0048-plugin-secret-references.md
+}
+
+// WirePluginSecretRefs connects the secretRef door (ADR-0048) to the
+// vault and the extension-settings blob: a title lookup that never
+// decrypts, and a resolve that leaves the audit line under
+// plugin:<id> -- the same store every other vault read writes to.
+func WirePluginSecretRefs(plugins *pluginsvc.PluginService, secrets *secretsvc.SecretService, settings *settingssvc.SettingsService) {
+	plugins.WireSecretRefs(pluginSecretResolver{secrets: secrets}, func(pluginID, key string) (string, bool) {
+		v, ok := settings.GetExtensionSettings()[pluginID][key]
+		return v, ok
+	})
+}
+
+type pluginSecretResolver struct{ secrets *secretsvc.SecretService }
+
+func (r pluginSecretResolver) TitleOf(id string) (string, bool) {
+	entries, err := r.secrets.ListSecrets()
+	if err != nil {
+		return "", false
+	}
+	for _, e := range entries {
+		if e.ID == id {
+			return e.Title, true
+		}
+	}
+	return "", false
+}
+
+func (r pluginSecretResolver) Resolve(id, pluginID string) (string, error) {
+	return r.secrets.ResolveSecretValue(id, secretaudit.AccessContext{Context: secretaudit.ContextPluginFetch, Actor: "plugin:" + pluginID})
 }
 
 // WirePluginIngestion connects the paste chain's plugin-claims seam

@@ -115,6 +115,10 @@
     "seedRevision": 1,
     "fingerprint": "1c08007bbeeea7f8badb47a7d1d2d85fb6669fbbc917f0d81104666e5ae52c41"
   },
+  "guardrailrule:plugin-fetch-uses-secret": {
+    "seedRevision": 1,
+    "fingerprint": "0761a2ab97e66eda41464a3d3869c27a8779e9f325242b796e6878e0b95840cc"
+  },
   "guardrailrule:shell-allow-curl-head": {
     "seedRevision": 1,
     "fingerprint": "1c1939763cdcaf5eb5c68d7a9fd679636b5af1f2e887b4c7342c721a93db3dde"

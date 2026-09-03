@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Checkbox, FormControl, Select, TextInput } from '@primer/react'
 import type { ExtensionSettingDecl } from '../atlas/atlasNounRegistry'
 import { persistExtensionSetting, resolveExtensionSetting, useExtensionSettingsStore } from '../shared/extensionSettingsStore'
+import { SecretRefPicker } from './SecretRefPicker'
 
 // ExtensionSettingControl -- ONE declared setting rendered generically
 // (goal 0258), shared by the built-in noun row (ExtensionRow.tsx) and
@@ -34,6 +35,9 @@ export function ExtensionSettingControl({ extensionId, setting }: {
       <FormControl>
         {setting.type === 'boolean' && (
           <Checkbox checked={value === true} onChange={(e) => persist(e.target.checked)} />
+        )}
+        {setting.type === 'secretRef' && (
+          <SecretRefPicker value={String(value)} onChange={persist} />
         )}
         {setting.type === 'enum' && (
           <Select value={String(value)} onChange={(e) => persist(e.target.value)}>

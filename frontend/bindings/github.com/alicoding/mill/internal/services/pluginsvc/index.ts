@@ -17,6 +17,7 @@ export type {
     PluginContentWriteResult,
     PluginFetchRequest,
     PluginFetchResult,
+    PluginFetchSecret,
     PluginInfo,
     SettingContribution,
     SettingOption,

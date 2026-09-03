@@ -2,12 +2,17 @@ package secretauditstore
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
 )
+
+// sqlOpen opens the raw database the way Open does, for building a
+// pre-migration schema by hand.
+func sqlOpen(dbPath string) (*sql.DB, error) { return sql.Open("sqlite", dbPath) }
 
 func openTestStore(t *testing.T) *Store {
 	t.Helper()
@@ -176,5 +181,44 @@ func TestStore_Insert_RecordsErrorOutcomeWithTruncatedText(t *testing.T) {
 	}
 	if len(records[0].ErrorText) != secretaudit.ErrorTextCap {
 		t.Fatalf("ErrorText len = %d, want capped to %d", len(records[0].ErrorText), secretaudit.ErrorTextCap)
+	}
+}
+
+// Actor (ADR-0048's plugin readers) round-trips, and a store created
+// before the column existed is widened in place on open.
+func TestStore_ActorRoundTripsAndOldSchemaIsWidened(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "execution.db")
+	legacy, err := sqlOpen(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := legacy.ExecContext(context.Background(), `CREATE TABLE secret_access (
+	id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, entry_id TEXT NOT NULL,
+	label TEXT NOT NULL DEFAULT '', context TEXT NOT NULL, run_id TEXT NOT NULL DEFAULT '',
+	workflow_id TEXT NOT NULL DEFAULT '', outcome TEXT NOT NULL, error_text TEXT NOT NULL DEFAULT '')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := legacy.ExecContext(context.Background(), `INSERT INTO secret_access (timestamp, entry_id, context, outcome) VALUES ('2026-01-01T00:00:00.000Z', 'old', 'ui-reveal', 'read')`); err != nil {
+		t.Fatal(err)
+	}
+	_ = legacy.Close()
+
+	store, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open on a pre-actor schema: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	if _, err := store.Insert(context.Background(), secretaudit.Record{EntryID: "e1", Context: secretaudit.ContextPluginFetch, Actor: "plugin:tester", Outcome: secretaudit.OutcomeRead}); err != nil {
+		t.Fatal(err)
+	}
+	rows, total, err := store.List(Filter{}, 10, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 2 || len(rows) != 2 {
+		t.Fatalf("List = %d rows / total %d, want 2 / 2", len(rows), total)
+	}
+	if rows[0].Actor != "plugin:tester" || rows[1].Actor != "" {
+		t.Errorf("actors = %q, %q; want plugin:tester then empty (legacy row)", rows[0].Actor, rows[1].Actor)
 	}
 }
