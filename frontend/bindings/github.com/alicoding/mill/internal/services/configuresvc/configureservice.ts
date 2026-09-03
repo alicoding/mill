@@ -740,6 +740,17 @@ export function TestHTTPRequestOperation(req: $models.TestHTTPRequestInput): $Ca
     return $Call.ByID(2859699262, req);
 }
 
+/**
+ * UndoDelete restores an entity deleted earlier in this session. entity
+ * is the family's data-event name ("list", "request", "decision", ...),
+ * id the deleted entity's id. Credential material purged by the delete
+ * is not restored: the entity comes back with its secret unset, which
+ * its own status reads report honestly.
+ */
+export function UndoDelete(entity: string, id: string): $CancellablePromise<void> {
+    return $Call.ByID(2705919001, entity, id);
+}
+
 export function UpdateAIProvider(id: string, label: string, kind: aiprovider$0.Kind, baseURL: string, model: string): $CancellablePromise<aiprovider$0.AIProvider> {
     return $Call.ByID(3997420794, id, label, kind, baseURL, model);
 }

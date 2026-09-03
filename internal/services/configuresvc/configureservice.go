@@ -78,6 +78,7 @@ const (
 // interface for TriggerService.
 type ConfigureService struct {
 	mu                 sync.Mutex
+	undo               deleteUndo
 	store              settings.Store
 	credentials        credential.Store
 	requests           []httprequest.HTTPRequest

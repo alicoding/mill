@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { Button, FormControl, IconButton, Select, Stack, Text, TextInput } from '@primer/react'
 import { LockIcon, PencilIcon, PlusIcon, TrashIcon } from '@primer/octicons-react'
@@ -13,7 +14,6 @@ import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
-import { useConfirmDelete } from '../shared/useConfirmDelete'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { ConfigureEntityPage } from './ConfigureEntityPage'
 import styles from '../shared/ListCard.module.css'
@@ -93,15 +93,9 @@ export function ConfigureSecretSources() {
     }
   }
 
-  const remove = (id: string) => {
-    ConfigureService.DeleteSecretSource(id).then(refetch).catch((err) => setError(String(err)))
+  const remove = (id: string, label: string) => {
+    void deleteWithUndo({ entity: 'secretsource', id, label, remove: () => ConfigureService.DeleteSecretSource(id), refetch: refetch, onError: (err) => setError(String(err)) })
   }
-  const { requestDelete, dialog: confirmDialog } = useConfirmDelete<SecretSource>({
-    entityType: 'secret source',
-    labelOf: (s) => s.Label,
-    onConfirm: (s) => remove(s.ID),
-  })
-
   const sorted = useMemo(() => sortByUpdatedDesc(sources ?? [], (s) => s.UpdatedAt), [sources])
   const items: InventoryItem[] = sorted.map((s) => ({
     id: s.ID,
@@ -114,9 +108,8 @@ export function ConfigureSecretSources() {
     menuActions: [
       {
         label: t('delete'),
-        onClick: () => remove(s.ID),
+        onClick: () => remove(s.ID, s.Label),
         danger: true,
-        confirm: { title: t('configureSecretSources.deleteConfirmTitle'), body: t('configureSecretSources.deleteConfirmBody', { label: s.Label }) },
       },
     ],
   }))
@@ -175,7 +168,7 @@ export function ConfigureSecretSources() {
                 renderCell: (s) => (
                   <Stack direction="horizontal" gap="condensed">
                     <IconButton icon={PencilIcon} aria-label={t('configureSecretSources.editAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => startEdit(s)} />
-                    <IconButton icon={TrashIcon} aria-label={t('configureSecretSources.deleteAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => requestDelete(s)} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureSecretSources.deleteAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => remove(s.ID, s.Label)} />
                   </Stack>
                 ),
               },
@@ -196,7 +189,6 @@ export function ConfigureSecretSources() {
           }}
         />
       )}
-      confirmDialog={confirmDialog}
     />
   )
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
 import { DownloadIcon, ListUnorderedIcon, PencilIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
@@ -20,7 +21,6 @@ import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
-import { useConfirmDelete } from '../shared/useConfirmDelete'
 import { useImportConfirm } from '../shared/useImportConfirm'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
@@ -158,11 +158,11 @@ export function ConfigureLists() {
     }
   }
 
-  const remove = (id: string) => {
-    ConfigureService.DeleteList(id).then(() => {
+  const remove = (id: string, label: string) => {
+    void deleteWithUndo({ entity: 'list', id, label, remove: () => ConfigureService.DeleteList(id), refetch: () => {
       refetch()
       refreshSeedLifecycle()
-    }).catch((err) => setImportError(String(err)))
+    }, onError: (err) => setImportError(String(err)) })
   }
 
   // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037
@@ -183,12 +183,6 @@ export function ConfigureLists() {
   // Table-view direct-wiring half of the Button-semantics convention
   // (.claude/rules/frontend.md) -- see ConfigureRequests.tsx's
   // identical comment.
-  const { requestDelete, dialog: confirmDialog } = useConfirmDelete<List>({
-    entityType: 'list',
-    labelOf: (l) => l.Label,
-    onConfirm: (l) => remove(l.ID),
-  })
-
   // Last-updated-first, applied once so both view modes render the
   // same order (docs/SPEC.md §3.8's InventoryList entry).
   const sortedLists = useMemo(() => sortByUpdatedDesc(lists ?? [], (l) => l.UpdatedAt), [lists])
@@ -215,9 +209,8 @@ export function ConfigureLists() {
         ...(l.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(l.ID) }] : []),
         {
           label: t('delete'),
-          onClick: () => remove(l.ID),
+          onClick: () => remove(l.ID, l.Label),
           danger: true,
-          confirm: { title: t('configureLists.deleteConfirmTitle'), body: t('configureLists.deleteConfirmBody', { label: l.Label }) },
         },
       ],
     }
@@ -323,7 +316,7 @@ export function ConfigureLists() {
                   <Stack direction="horizontal" gap="condensed">
                     <IconButton icon={PencilIcon} aria-label={t('configureLists.editAriaLabel', { label: l.Label })} size="small" variant="invisible" onClick={() => startEdit(l)} />
                     <IconButton icon={DownloadIcon} aria-label={t('configureLists.exportAriaLabel', { label: l.Label })} size="small" variant="invisible" onClick={() => exportList(l.ID, l.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={t('configureLists.deleteAriaLabel', { label: l.Label })} size="small" variant="invisible" onClick={() => requestDelete(l)} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureLists.deleteAriaLabel', { label: l.Label })} size="small" variant="invisible" onClick={() => remove(l.ID, l.Label)} />
                   </Stack>
                 ),
               },
@@ -343,7 +336,6 @@ export function ConfigureLists() {
           }}
         />
       )}
-      {confirmDialog}
       {importConfirm.dialog}
     </PageContainer>
   )

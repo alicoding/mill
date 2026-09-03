@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { ActionList, ActionMenu, Button, Heading, IconButton, Label, Stack, Text, VisuallyHidden } from '@primer/react'
 import { DownloadIcon, PencilIcon, PlugIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
@@ -15,7 +16,6 @@ import { downloadJSON } from '../shared/downloadJSON'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
-import { useConfirmDelete } from '../shared/useConfirmDelete'
 import { useImportConfirm } from '../shared/useImportConfirm'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
@@ -89,11 +89,11 @@ export function ConfigureRequests() {
     file.text().then(importConfirm.requestImport).catch((err) => setImportError(String(err)))
   }
 
-  const remove = (id: string) => {
-    ConfigureService.DeleteHTTPRequest(id).then(() => {
+  const remove = (id: string, label: string) => {
+    void deleteWithUndo({ entity: 'request', id, label, remove: () => ConfigureService.DeleteHTTPRequest(id), refetch: () => {
       void refreshRequests()
       refreshSeedLifecycle()
-    }).catch((err) => setImportError(String(err)))
+    }, onError: (err) => setImportError(String(err)) })
   }
 
   // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037
@@ -116,12 +116,6 @@ export function ConfigureRequests() {
   // confirmation for free via InventoryList's own opt-in `confirm`
   // field; the DataTable view's bare TrashIcon wires ConfirmDialog
   // directly via the shared hook.
-  const { requestDelete, dialog: confirmDialog } = useConfirmDelete<HTTPRequest>({
-    entityType: 'integration',
-    labelOf: (r) => r.Label,
-    onConfirm: (r) => remove(r.ID),
-  })
-
   // One "New integration" entry point with a typed menu -- the
   // integration *kind* is the first authoring decision (docs/SPEC.md
   // §4.1's connector-kind row: REST today; DB/other kinds are future
@@ -178,9 +172,8 @@ export function ConfigureRequests() {
         ...(r.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(r.ID) }] : []),
         {
           label: t('delete'),
-          onClick: () => remove(r.ID),
+          onClick: () => remove(r.ID, r.Label),
           danger: true,
-          confirm: { title: t('requestSummary.deleteConfirmTitle'), body: t('requestSummary.deleteConfirmBody', { label: r.Label }) },
         },
       ],
     }
@@ -242,7 +235,7 @@ export function ConfigureRequests() {
                   <Stack direction="horizontal" gap="condensed">
                     <IconButton icon={PencilIcon} aria-label={t('configureRequests.editAriaLabel', { label: r.Label })} size="small" variant="invisible" onClick={() => openWorkTab({ kind: 'request-edit', requestId: r.ID })} />
                     <IconButton icon={DownloadIcon} aria-label={t('configureRequests.exportAriaLabel', { label: r.Label })} size="small" variant="invisible" onClick={() => exportRequest(r.ID, r.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={t('configureRequests.deleteAriaLabel', { label: r.Label })} size="small" variant="invisible" onClick={() => requestDelete(r)} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureRequests.deleteAriaLabel', { label: r.Label })} size="small" variant="invisible" onClick={() => remove(r.ID, r.Label)} />
                   </Stack>
                 ),
               },
@@ -262,7 +255,6 @@ export function ConfigureRequests() {
           }}
         />
       )}
-      {confirmDialog}
       {importConfirm.dialog}
     </PageContainer>
   )

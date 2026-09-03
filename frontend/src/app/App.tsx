@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { UndoDeleteToast } from '../shared/UndoDeleteToast'
 import { useTranslation } from 'react-i18next'
 import {Events, WML} from "@wailsio/runtime";
 import {PageLayout, useTheme} from "@primer/react";
@@ -478,6 +479,7 @@ function App() {
           <span>{time}</span>
         </span>
         <span className={styles.rightControls}>
+          <UndoDeleteToast />
           <NoticePill />
           {/* No external-link arrow: this opens the in-app Docs view,
               and the arrow glyph promised leaving the app. */}

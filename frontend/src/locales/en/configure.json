@@ -62,8 +62,6 @@
     "enabled": "Enabled",
     "decryptsResponses": " (decrypts responses)",
     "disabled": "Disabled",
-    "deleteConfirmTitle": "Delete integration?",
-    "deleteConfirmBody": "This permanently deletes \"{{label}}\". This cannot be undone.",
     "noSchemaDeclared": "No schema declared for this request.",
     "noOperationsInSpec": "This spec declares no operations.",
     "operationAriaLabel": "Operation",
@@ -113,8 +111,6 @@
     "emptyHeading": "No lists yet",
     "emptyDescription": "A reusable typed dataset a workflow's List Search (or List Lookup) step can resolve against.",
     "columnsRowsSummary": "{{columns}} columns, {{rows}} rows",
-    "deleteConfirmTitle": "Delete list?",
-    "deleteConfirmBody": "This permanently deletes \"{{label}}\". This cannot be undone.",
     "unset": "(unset)",
     "rowStatusAriaLabel": "Row status",
     "active": "Active",
@@ -207,9 +203,7 @@
     "searchPlaceholder": "Search execution environments…",
     "emptyHeading": "No execution environments yet",
     "emptyDescription": "A reusable, pinned shell/directory/env a code-execution workflow step can run inside.",
-    "freshTempDirPerRun": "fresh temp dir per run",
-    "deleteConfirmTitle": "Delete execution environment?",
-    "deleteConfirmBody": "This permanently deletes \"{{label}}\". This cannot be undone."
+    "freshTempDirPerRun": "fresh temp dir per run"
   },
   "configureDecisions": {
     "heading": "Decisions",
@@ -249,8 +243,6 @@
     "emptyDescription": "A reusable, typed TERMINAL outcome a workflow's Decision step reaches to end the run.",
     "outputsSummary": "Outputs: {{keys}}",
     "none": "none",
-    "deleteConfirmTitle": "Delete decision?",
-    "deleteConfirmBody": "This permanently deletes \"{{label}}\". This cannot be undone.",
     "versions": {
       "heading": "Versions",
       "neverPublished": "Never published",
@@ -285,9 +277,7 @@
     "emptyHeading": "No MCP servers yet",
     "emptyDescription": "A reusable stdio connection an mcp-tool-call workflow step can resolve by ID.",
     "serverTools": "{{label}} — tools",
-    "noToolsExposed": "This server exposes no tools.",
-    "deleteConfirmTitle": "Delete MCP server?",
-    "deleteConfirmBody": "This permanently deletes \"{{label}}\". This cannot be undone."
+    "noToolsExposed": "This server exposes no tools."
   },
   "configureAIProviders": {
     "kindLabel": {
@@ -316,8 +306,6 @@
     "editAriaLabel": "Edit {{label}}",
     "exportAriaLabel": "Export {{label}}",
     "deleteAriaLabel": "Delete {{label}}",
-    "deleteConfirmTitle": "Delete AI provider?",
-    "deleteConfirmBody": "This permanently deletes \"{{label}}\". This cannot be undone.",
     "searchPlaceholder": "Search AI providers…",
     "emptyHeading": "No AI providers yet",
     "emptyDescription": "A reusable connection to local Ollama, or a BYO OpenAI-compatible or Anthropic endpoint, that an AI workflow step resolves by ID."
@@ -355,8 +343,6 @@
     "editAriaLabel": "Edit {{label}}",
     "exportAriaLabel": "Export {{label}}",
     "deleteAriaLabel": "Delete {{label}}",
-    "deleteConfirmTitle": "Delete step type?",
-    "deleteConfirmBody": "This permanently deletes \"{{label}}\". Workflows already using it keep their steps, but they'll stop resolving. This cannot be undone.",
     "searchPlaceholder": "Search step types…",
     "emptyHeading": "No step types yet",
     "emptyDescription": "A named palette step assembled from a request, an MCP tool, or another workflow you've already configured."
@@ -601,8 +587,6 @@
     "searchPlaceholder": "Search conversion profiles…",
     "emptyHeading": "No conversion profiles yet",
     "emptyDescription": "A profile chooses which source-specific rules an HTML to Markdown conversion applies.",
-    "deleteConfirmTitle": "Delete this conversion profile?",
-    "deleteConfirmBody": "\"{{label}}\" is removed. Steps that referenced it fall back to every rule set.",
     "editAriaLabel": "Edit {{label}}",
     "deleteAriaLabel": "Delete {{label}}",
     "sampleHeading": "Try a sample",
@@ -633,8 +617,6 @@
     "searchPlaceholder": "Search secret sources…",
     "emptyHeading": "No secret sources yet",
     "emptyDescription": "Point Mill at a .env file you already keep — a project's, or a Bruno collection's — and its keys become secrets you can reference.",
-    "deleteConfirmTitle": "Delete this secret source?",
-    "deleteConfirmBody": "\"{{label}}\" stops offering its keys. The file itself is untouched.",
     "editAriaLabel": "Edit {{label}}",
     "deleteAriaLabel": "Delete {{label}}",
     "columns": {

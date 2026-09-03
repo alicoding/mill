@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { Button, FormControl, IconButton, Select, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, PencilIcon, PlusIcon, TerminalIcon, TrashIcon } from '@primer/octicons-react'
@@ -14,7 +15,6 @@ import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
-import { useConfirmDelete } from '../shared/useConfirmDelete'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { ConfigureEntityPage } from './ConfigureEntityPage'
@@ -166,11 +166,11 @@ export function ConfigureExecEnv() {
     }
   }
 
-  const remove = (id: string) => {
-    ConfigureService.DeleteExecEnv(id).then(() => {
+  const remove = (id: string, label: string) => {
+    void deleteWithUndo({ entity: 'execenv', id, label, remove: () => ConfigureService.DeleteExecEnv(id), refetch: () => {
       refetch()
       seedLifecycle.refresh()
-    }).catch((err) => importExport.setImportError(String(err)))
+    }, onError: (err) => importExport.setImportError(String(err)) })
   }
 
   // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037
@@ -185,12 +185,6 @@ export function ConfigureExecEnv() {
   // Table-view direct-wiring half of the Button-semantics convention
   // (.claude/rules/frontend.md) -- see ConfigureRequests.tsx's
   // identical comment.
-  const { requestDelete, dialog: confirmDialog } = useConfirmDelete<ExecEnv>({
-    entityType: 'execution environment',
-    labelOf: (e) => e.Label,
-    onConfirm: (e) => remove(e.ID),
-  })
-
   const updateEnvRow = (i: number, patch: Partial<EnvRow>) => {
     setEnvRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)))
   }
@@ -239,9 +233,8 @@ export function ConfigureExecEnv() {
         ...(e.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(e.ID) }] : []),
         {
           label: t('delete'),
-          onClick: () => remove(e.ID),
+          onClick: () => remove(e.ID, e.Label),
           danger: true,
-          confirm: { title: t('configureExecEnv.deleteConfirmTitle'), body: t('configureExecEnv.deleteConfirmBody', { label: e.Label }) },
         },
       ],
     }
@@ -371,7 +364,7 @@ export function ConfigureExecEnv() {
                   <Stack direction="horizontal" gap="condensed">
                     <IconButton icon={PencilIcon} aria-label={t('configureExecEnv.editAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => startEdit(e)} />
                     <IconButton icon={DownloadIcon} aria-label={t('configureExecEnv.exportAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => importExport.exportItem(e.ID, e.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={t('configureExecEnv.deleteAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => requestDelete(e)} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureExecEnv.deleteAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => remove(e.ID, e.Label)} />
                   </Stack>
                 ),
               },
@@ -392,7 +385,6 @@ export function ConfigureExecEnv() {
           }}
         />
       )}
-      confirmDialog={confirmDialog}
       importConfirmDialog={importExport.importConfirm.dialog}
     />
   )
