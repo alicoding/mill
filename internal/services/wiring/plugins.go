@@ -8,6 +8,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
 
+	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/notificationsvc"
@@ -118,7 +119,12 @@ func (t settingsTrust) mayRun(id string, builtin bool) bool {
 // working plugin off), and installs the audit export's read seams.
 func WirePluginTrust(plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService, secrets *secretsvc.SecretService) {
 	grandfatherInstalledPlugins(plugins, settings)
-	plugins.WireAudit(settingsTrust{settings}, pluginSecretAccessReader(secrets))
+	trust := settingsTrust{settings}
+	plugins.WireAudit(trust, pluginSecretAccessReader(secrets))
+	// The step-pack door (ADR-0051 §5): every runnable plugin's declared
+	// steps join the catalog and the executor, read fresh per lookup.
+	plugins.SetRunPolicy(trust.mayRun)
+	composition.SetExternalNodeTypeLookup(plugins.StepNodeTypes)
 }
 
 func grandfatherInstalledPlugins(plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService) {

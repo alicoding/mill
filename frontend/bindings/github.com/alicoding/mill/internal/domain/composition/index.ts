@@ -14,6 +14,8 @@ export type {
     AttributeDef,
     ConfigField,
     Edge,
+    ExecFunc,
+    ExternalNodeType,
     Issue,
     ListSyncResult,
     MapEntry,

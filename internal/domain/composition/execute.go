@@ -243,3 +243,45 @@ func LookupNodeType(id string) (NodeType, bool) {
 func AttributeDefaults(attrs []AttributeDef) map[string]any {
 	return attributesEnv(attrs, nil)
 }
+
+// ExternalNodeType is a node type contributed from OUTSIDE this package
+// at runtime with its own exec -- a plugin's step (ADR-0051 §5's
+// "perform" step-pack door), synthesized by the plugin service. Unlike
+// a declared step type (ADR-0037), which only binds config over an
+// engine registered here, an external type brings its own exec.
+type ExternalNodeType struct {
+	NodeType NodeType
+	Exec     ExecFunc
+}
+
+// externalNodeTypeLookupFn defaults to nothing so the package stays
+// executable standalone (tests, the contract generator).
+var externalNodeTypeLookupFn = func() []ExternalNodeType { return nil }
+
+// SetExternalNodeTypeLookup wires the live external set (the plugin
+// service's step packs, filtered by the run policy) -- read fresh at
+// every lookup, like the declared-type provider.
+func SetExternalNodeTypeLookup(fn func() []ExternalNodeType) {
+	if fn == nil {
+		fn = func() []ExternalNodeType { return nil }
+	}
+	externalNodeTypeLookupFn = fn
+}
+
+func lookupExternalEntry(id string) (nodeTypeEntry, bool) {
+	for _, ext := range externalNodeTypeLookupFn() {
+		if ext.NodeType.ID == id {
+			return nodeTypeEntry{nodeType: ext.NodeType, exec: ext.Exec}, true
+		}
+	}
+	return nodeTypeEntry{}, false
+}
+
+func externalNodeTypes() []NodeType {
+	exts := externalNodeTypeLookupFn()
+	out := make([]NodeType, 0, len(exts))
+	for _, ext := range exts {
+		out = append(out, ext.NodeType)
+	}
+	return out
+}

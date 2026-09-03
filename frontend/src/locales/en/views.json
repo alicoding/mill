@@ -73,6 +73,7 @@
       "linkPasteLabel": "Pasted links become",
       "linkPasteCaption": "The other plugins that catch links offer themselves right after you paste.",
       "pluginViews": "Adds views: {{list}}",
+      "pluginSteps": "Adds workflow steps: {{list}}",
       "pluginReachesHosts": "Can reach: {{list}}",
       "pluginReachesAnyHost": "Can reach any host you approve, one request at a time",
       "pluginDisabledNote": "Turned off. Turn on and reload to load it.",

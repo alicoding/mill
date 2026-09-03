@@ -69,6 +69,13 @@ export interface ManifestContributes {
     "canvasObjects": CanvasObjectContribution[] | null;
 
     /**
+     * Steps (ADR-0051 §5, pluginservice_steps.go): workflow steps the
+     * plugin implements in steps.js, declared here so the catalog and
+     * the Extensions row know them before any code runs.
+     */
+    "steps": StepContribution[] | null;
+
+    /**
      * Settings (docs/goals/0258 slice 1): the plugin's own declared
      * user settings, the same declare -> host renders/stores/serves
      * contract compiled-in nouns use. Declared in the manifest, not
@@ -221,6 +228,30 @@ export interface SettingContribution {
 export interface SettingOption {
     "value": string;
     "label": string;
+}
+
+/**
+ * StepConfigContribution is one authored field of a declared step --
+ * text or a fixed option list, the two shapes a no-build plugin can
+ * state as data.
+ */
+export interface StepConfigContribution {
+    "key": string;
+    "label": string;
+    "description": string;
+    "type": string;
+    "default": string;
+    "options": string[] | null;
+}
+
+/**
+ * StepContribution is one declared step.
+ */
+export interface StepContribution {
+    "id": string;
+    "label": string;
+    "description": string;
+    "config": StepConfigContribution[] | null;
 }
 
 /**
