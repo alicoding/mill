@@ -26,6 +26,7 @@ import { useGuardrailBadges } from './useGuardrailBadges'
 import { NodePalette } from './NodePalette'
 import { CanvasToolbar } from './CanvasToolbar'
 import { CanvasInspectorPanel } from './CanvasInspectorPanel'
+import { CanvasSplit } from './CanvasSplit'
 import { useTranslation } from 'react-i18next'
 import { StepDetailOverlay } from './StepDetailOverlay'
 import { ContextMenu } from '../shared/ContextMenu'
@@ -325,6 +326,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
       <NoteActionsContext.Provider value={noteActions}>
       <div className={styles.canvasWrap}>
         {!readOnly && paletteOpen && <NodePalette nodeTypes={nodeTypes} hasTrigger={nodes.some((n) => n.data.kind === 'trigger')} />}
+        <CanvasSplit hasSelection={!!selectedNode || !!selectedEdge} canvas={
         <div className={styles.canvas} onDrop={onCanvasDrop} onDragOver={(e) => e.preventDefault()}>
           <ReactFlow
             nodes={allNodes}
@@ -430,8 +432,9 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
             <CurrentStepBar barState={barState} attrs={workflow?.Attributes ?? []} runDetail={liveRunDetail} onResolve={resolveApprovalStep} onDismiss={dismissRunState} />
           </ReactFlow>
         </div>
-
+        } inspector={(headerActions) => (
         <CanvasInspectorPanel
+          headerActions={headerActions}
           workflow={workflow}
           selectedNode={selectedNode}
           selectedEdge={selectedEdge}
@@ -448,6 +451,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
           edges={edges}
           {...branchRules}
         />
+        )} />
       </div>
       </NoteActionsContext.Provider>
       </BreakpointContext.Provider>

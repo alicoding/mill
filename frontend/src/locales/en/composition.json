@@ -335,6 +335,9 @@
   "compositionCanvas": {
     "onlyDecisionEdgesConfigurable": "Only a Decision step’s outgoing edges are configurable.",
     "selectNodeToConfigure": "Select a step to configure it.",
+    "resizeInspector": "Resize the inspector",
+    "expandInspector": "Expand the inspector",
+    "shrinkInspector": "Shrink the inspector",
     "connectionRefusalHint": "Not connected — {{reason}}"
   },
   "compositionView": {

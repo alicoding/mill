@@ -1,0 +1,36 @@
+/* The canvas | inspector split (goal 0304). The library lays the
+   panels out with inline flex styles; these rules only size the seam
+   and draw the separator -- a 1px line with a 9px hit zone, the
+   converged sash. */
+.group {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.canvasPanel {
+    min-width: 0;
+    display: flex;
+}
+.inspectorPanel {
+    min-width: 0;
+    position: relative;
+}
+.separator {
+    flex: 0 0 auto;
+    width: 7px;
+    display: flex;
+    justify-content: center;
+    cursor: col-resize;
+    outline: none;
+}
+.separator::before {
+    content: '';
+    width: 1px;
+    height: 100%;
+    background: var(--borderColor-default);
+}
+.separator:hover::before,
+.separator:focus-visible::before,
+.separator[data-resize]::before {
+    background: var(--borderColor-accent-emphasis);
+    width: 2px;
+}
