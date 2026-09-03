@@ -80,6 +80,13 @@ test('Selecting the Update Atlas card node offers a live Kind picker and the Kin
   const inspector = activePanel(page).getByTestId('composition-inspector')
   await expect(inspector).toContainText('Update Atlas card')
 
+  // View mode (a row click opens the workflow read-only) shows the
+  // reference's VALUE with an Edit link (goal 0297); the link switches
+  // the tab to edit, where the live picker appears with that value.
+  const readOnlyValue = inspector.getByTestId('entity-ref-readonly')
+  await expect(readOnlyValue).toContainText('Intake')
+  await expect(inspector.getByTestId('entity-ref-field')).toHaveCount(0)
+  await readOnlyValue.getByTestId('entity-ref-edit').click()
   const picker = inspector.getByTestId('entity-ref-field')
   await expect(picker).toBeVisible()
   await expect(picker.locator('option:checked')).toHaveText('Intake')

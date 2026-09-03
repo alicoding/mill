@@ -1,4 +1,4 @@
-import { chromium } from '@playwright/test'
+import { chromium, expect, type Page } from '@playwright/test'
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -23,7 +23,13 @@ export interface ExtraPlugin {
 	main: string
 }
 
-export async function launchWithPlugins(offset: number, opts: { withBroken?: boolean; withNotifier?: boolean; extraPlugins?: ExtraPlugin[] } = {}) {
+// extraExamples names further example folders to copy in (a plugin
+// that claims a gesture another example also claims stays out of the
+// shared set, so the other specs keep their claimant).
+// settings pre-seeds Mill's settings file before boot (the store is one
+// JSON object of key -> JSON-encoded string), the way policy tooling
+// writes an administrator's plugin allow-list.
+export async function launchWithPlugins(offset: number, opts: { withBroken?: boolean; withNotifier?: boolean; extraPlugins?: ExtraPlugin[]; extraExamples?: string[]; settings?: Record<string, string> } = {}) {
 	const dir = mkdtempSync(path.join(tmpdir(), 'mill-plugins-e2e-'))
 	// The plugins dir is a per-test COPY of examples/plugins (the exact
 	// artifact a user copies from) -- never the repo folder itself, so
@@ -34,7 +40,8 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-scribble'), path.join(pluginsDir, 'mill-scribble'), { recursive: true })
 	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-index'), path.join(pluginsDir, 'mill-index'), { recursive: true })
 	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-request-tester'), path.join(pluginsDir, 'mill-request-tester'), { recursive: true })
-	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-request-tester'), path.join(pluginsDir, 'mill-request-tester'), { recursive: true })
+	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-markmap'), path.join(pluginsDir, 'mill-markmap'), { recursive: true })
+	for (const id of opts.extraExamples ?? []) cpSync(path.join(EXAMPLES_PLUGINS_DIR, id), path.join(pluginsDir, id), { recursive: true })
 	if (opts.withBroken) {
 		mkdirSync(path.join(pluginsDir, 'broken-one'))
 		writeFileSync(path.join(pluginsDir, 'broken-one', 'manifest.json'), '{not json')
@@ -54,6 +61,7 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 }
 `)
 	}
+	if (opts.settings) writeFileSync(path.join(dir, 'settings.json'), JSON.stringify(opts.settings))
 	const server: SpawnedServer = await spawnMillServer({
 		port: RUNTIME_PLUGINS_SERVER_BASE_PORT + offset,
 		mcpPort: RUNTIME_PLUGINS_MCP_BASE_PORT + offset,
@@ -67,6 +75,7 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 	const page = await context.newPage()
 	return {
 		page,
+		pluginsDir,
 		async close() {
 			await browser.close()
 			await server.stop()
@@ -74,3 +83,14 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 		},
 	}
 }
+
+// runFromPalette -- the one way these tests fire a plugin command: the
+// palette's own binding, the command by its registered label.
+export async function runFromPalette(page: Page, label: string) {
+	await page.keyboard.press('Meta+/')
+	const dialog = page.getByRole('dialog', { name: 'Command palette' })
+	await expect(dialog).toBeVisible()
+	await dialog.getByRole('combobox').fill(label)
+	await dialog.getByRole('option', { name: label }).click()
+}
+

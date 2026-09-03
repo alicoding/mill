@@ -1,0 +1,10 @@
+/* Pinned to the window above the footer, centered -- the one place a
+   delete's way back shows whichever Configure page or work tab fired
+   it. z-index sits above page content and below dialogs. */
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: 56px;
+    transform: translateX(-50%);
+    z-index: 20;
+}

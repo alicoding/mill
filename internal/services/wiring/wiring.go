@@ -181,6 +181,11 @@ func (w pluginContentWriter) AppendListRow(listID string, values map[string]stri
 	return err
 }
 
+func (w pluginContentWriter) CreateList(label, description string, columns []typedfield.Field, rows []map[string]string) (string, error) {
+	l, err := w.cfg.CreateListWithRows(label, description, columns, rows)
+	return l.ID, err
+}
+
 // WireAtlasStorageDirs resolves and wires every Mill-owned directory
 // AtlasService writes into on its own -- the share model's mirror root
 // (goal 0063/0067) and the image tool's captures folder (goal 0169
@@ -285,6 +290,7 @@ func WireRemoteAuth(store settings.Store, logger *slog.Logger) *remoteauthsvc.Re
 func WireSecrets(vaultPath string, credentials credential.Store, configureService *configuresvc.ConfigureService) *secretsvc.SecretService {
 	secretService := secretsvc.NewSecretService(secretvault.New(vaultPath), credentials)
 	configureService.SetSecretResolver(secretService.ResolveSecretValue)
+	secretService.SetSourcesLister(configureService.SecretSources)
 	configureService.SetSecretLabelsLister(secretService.ListSecrets)
 	guardrailsvc.SetSecretLabelsLookup(configureService.DeriveSecretLabels)
 	return secretService

@@ -8,17 +8,25 @@ export {
 
 export type {
     CanvasObjectContribution,
+    CaptureContribution,
     ContentWriter,
     GuardedActionDecision,
     Manifest,
     ManifestContributes,
     NetworkContribution,
+    PluginCapture,
     PluginContentWrite,
     PluginContentWriteResult,
     PluginFetchRequest,
     PluginFetchResult,
+    PluginFetchSecret,
+    PluginFileEntry,
     PluginInfo,
+    PluginListColumn,
+    PluginListDirResult,
     SettingContribution,
     SettingOption,
+    StepConfigContribution,
+    StepContribution,
     ViewContribution
 } from "./models.js";

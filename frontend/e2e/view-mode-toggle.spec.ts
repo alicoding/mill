@@ -186,36 +186,34 @@ test('A genuinely empty inventory renders Blankslate, not a bare table/list', as
   await expect(mcpEchoWorkflow).toBeVisible()
 })
 
-test('Row delete asks for confirmation naming the entity -- Cancel keeps it, Delete removes it', async ({ page }) => {
-  // Button-semantics convention (.claude/rules/frontend.md rule (b) /
-  // docs/SPEC.md §3.8): irreversible destruction of a persisted entity
-  // must be confirmed via a dialog naming it, not fired straight off
-  // the kebab-menu click. Exercised against Lists (InventoryList's own
-  // Delete menu action, shared/useConfirmDelete.tsx-free path) rather
-  // than a second copy per entity type -- all six inventories share the
-  // identical InventoryList.tsx wiring (docs/SPEC.md §3.8's entry), so
-  // one end-to-end proof covers the mechanism.
+test('Row delete removes the entity at once and offers Undo, which brings it back', async ({ page }) => {
+  // Destructive actions are instantly reversible, not interrogated up
+  // front (goal 0270, the board's own quick-delete law): the kebab's
+  // Delete removes the row and the window-pinned toast names the
+  // entity with an Undo. Exercised against Lists -- every inventory
+  // shares the identical InventoryList.tsx wiring, so one end-to-end
+  // proof covers the mechanism.
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
   await page.getByRole('tab', { name: 'Lists' }).click()
   await page.getByTestId('new-list').click()
-  await page.getByLabel('Label').fill('E2E confirm delete list')
+  await page.getByLabel('Label').fill('E2E undo delete list')
   await page.getByRole('button', { name: 'Save list' }).click()
-  const row = page.locator('[data-testid="inventory-row"][data-entity="list"]').filter({ has: page.getByText('E2E confirm delete list', { exact: true }) })
+  const row = page.locator('[data-testid="inventory-row"][data-entity="list"]').filter({ has: page.getByText('E2E undo delete list', { exact: true }) })
   await expect(row).toBeVisible()
 
-  // Cancel: the dialog names the entity, and cancelling leaves it intact.
-  await row.getByTestId('inventory-row-menu').click()
-  await page.getByRole('menuitem', { name: 'Delete' }).click()
-  const dialog = page.getByRole('alertdialog')
-  await expect(dialog).toBeVisible()
-  await expect(dialog).toContainText('Delete list?')
-  await expect(dialog).toContainText('E2E confirm delete list')
-  await dialog.getByRole('button', { name: 'Cancel' }).click()
-  await expect(dialog).not.toBeVisible()
-  await expect(row).toBeVisible()
+  // Delete: gone at once, the toast names it.
+  await clickRowAction(page, row, 'Delete')
+  await expect(row).toHaveCount(0)
+  const toast = page.getByTestId('undo-delete-toast')
+  await expect(toast).toContainText('Deleted "E2E undo delete list"')
 
-  // Delete: confirming actually removes it.
+  // Undo: back in the list, the toast gone.
+  await toast.getByTestId('undo-delete-toast-button').click()
+  await expect(row).toBeVisible()
+  await expect(toast).toHaveCount(0)
+
+  // Cleanup.
   await clickRowAction(page, row, 'Delete')
   await expect(row).toHaveCount(0)
 })

@@ -1,0 +1,12 @@
+{
+  "id": "mill-markmap",
+  "name": "Mind map",
+  "version": "1.0.0",
+  "description": "Shows a note's headings as a mind map that follows the note as it changes.",
+  "author": "Mill examples",
+  "minMillVersion": "0.14.1",
+  "capabilities": [],
+  "contributes": {
+    "canvasObjects": [{ "kind": "mindmap" }]
+  }
+}

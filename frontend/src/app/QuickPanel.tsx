@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
 import { FilteredActionList } from '@primer/react/experimental'
-import { NoteIcon, PlayIcon } from '@primer/octicons-react'
-import { AtlasService, ExecutionService, SettingsService, TriggerService } from '../shared/bindings'
+import { PlayIcon } from '@primer/octicons-react'
+import { ExecutionService, SettingsService, TriggerService } from '../shared/bindings'
 import { useAppStore, refreshWorkflows, refreshRequests, refreshKeybindings } from '../shared/store'
 import {
   useConfigureEntityStore, refreshLists, refreshMCPServers, refreshDecisions, refreshExecEnvs, refreshAIProviders, refreshDeclaredStepTypes,
@@ -16,7 +16,7 @@ import { sortWorkflowsByPinnedAndFrecency } from './workflowFrecency'
 import { WorkflowRowTrailingVisual } from './WorkflowRowTrailingVisual'
 import { buildConfigureAndActionEntries } from './quickPanelActionEntries'
 import type { PanelEntry } from './quickPanelActionEntries'
-import { cascadeNotePosition, resolveNoteParentID } from './quickPanelCapture'
+import { useQuickPanelCaptureDoors } from './useQuickPanelCaptureDoors'
 import { QuickPanelClipboardApplyDoor } from './QuickPanelClipboardApplyDoor'
 import { QuickPanelCodingLoop } from './QuickPanelCodingLoop'
 import { useQuickPanelCodingLoopDoor } from './useQuickPanelCodingLoopDoor'
@@ -24,7 +24,7 @@ import { QuickPanelReplyReviewDoor } from './QuickPanelReplyReviewDoor'
 import { useQuickPanelClipboardDoor } from './useQuickPanelClipboardDoor'
 import { FacetChipRow } from '../shared/FacetChipRow'
 import { useQuickPanelFacetSearch } from './quickPanelFacets'
-import { useQuickPanelWorkflowActions } from './useQuickPanelWorkflowActions'
+import { useQuickPanelRun, useQuickPanelWorkflowActions } from './useQuickPanelWorkflowActions'
 import { QuickPanelFooter } from './QuickPanelFooter'
 import { useQuickPanelUpdateStatus } from './useQuickPanelUpdateStatus'
 import styles from './QuickPanel.module.css'
@@ -97,7 +97,6 @@ export function QuickPanel() {
   // the current note count per parent -- fetched alongside cards/kinds
   // below, never rendered as its own row (notes stay excluded from
   // search, same as the main Atlas surface).
-  const atlasNotes = useAtlasStore((s) => s.notes)
   // Workflow pins/favorites (docs/goals/BACKLOG.md Standing #5): a
   // plain ordered workflow-ID list, store-owned/localStorage-tier --
   // see shared/store.ts's own declaration comment for the schema.
@@ -291,11 +290,11 @@ export function QuickPanel() {
 
   // Workflow row actions (goal 0294): Enter runs, ⌘Enter opens the
   // workflow, ⌘⇧Enter runs and opens its canvas, ⌘K lists them all.
-  const rowActions = useQuickPanelWorkflowActions({ workflows, pinnedWorkflowIds, togglePinnedWorkflow, setStatus, t })
+  const { runWorkflow: runWorkflowRow, lastRun } = useQuickPanelRun({ setStatus, t })
   useQuickPanelUpdateStatus(setStatus, t)
   const runWorkflow = (id: string) => {
     const wf = workflows?.find((w) => w.ID === id)
-    if (wf) rowActions.runWorkflow(wf)
+    if (wf) runWorkflowRow(wf)
   }
 
   // The clipboard door (goals 0039 + 0099) lives in its own hook --
@@ -303,25 +302,8 @@ export function QuickPanel() {
   const { clipboardApply, setClipboardApply, replyReview, setReplyReview, applyFromClipboard } = useQuickPanelClipboardDoor(t)
   const { codingLoopText, runFromClipboard: runCodingLoopFromClipboard, closeCodingLoop } = useQuickPanelCodingLoopDoor()
 
-  // The away-capture door (docs/goals/0090): a typed query with no
-  // intent to search becomes a Note instead, filed into the Scratchpad
-  // inbox (root, if the seed was deleted) at a cascaded position so
-  // repeated captures never land exactly stacked. Success clears the
-  // query and dismisses through the SAME focus-yield path the other
-  // rows use, silently -- no confirmation to read before the window
-  // goes away, matching capture-first's own "no app focus change"
-  // intent. A failure never dismisses, so the query stays typed and
-  // the panel's own status line carries the error.
-  const createNoteFromQuery = (text: string) => {
-    const parentID = resolveNoteParentID(atlasCards)
-    const position = cascadeNotePosition(atlasNotes, parentID)
-    AtlasService.CreateNote(text, position, parentID)
-      .then(() => {
-        setQuery('')
-        void SettingsService.DismissPanel().catch(() => {})
-      })
-      .catch(() => setStatus(t('quickPanel.saveNoteError')))
-  }
+  // The capture doors (note, task) live in their own hook.
+  const { captureEntries, captureLaunchEntries, pluginCaptures } = useQuickPanelCaptureDoors({ t, setQuery, setStatus })
 
   const allEntries = useMemo<PanelEntry[]>(() => {
     const entries: PanelEntry[] = []
@@ -358,6 +340,7 @@ export function QuickPanel() {
     // convention); this useMemo owns only the workflow-row loop above,
     // which needs per-row pin/hotkey-chip state this shared builder
     // doesn't.
+    entries.push(...captureLaunchEntries())
     entries.push(...buildConfigureAndActionEntries({
       t, requests, lists, mcpServers, decisions, execEnvs, aiProviders, declaredStepTypes,
       atlasCards, atlasKinds, reviewPendingCount, jumpToConfigure, jumpToAtlasCard, openMain, applyFromClipboard,
@@ -368,6 +351,9 @@ export function QuickPanel() {
   }, [
     workflows, mostUsedRank, hotkeyCombos, pinnedWorkflowIds, requests, lists, mcpServers,
     decisions, execEnvs, aiProviders, declaredStepTypes, atlasCards, atlasKinds, reviewPendingCount,
+    // The capture launch rows (goal 0309) re-render once the plugin
+    // captures list resolves.
+    pluginCaptures,
     // Not read directly below -- the command enabled() checks inside
     // buildConfigureAndActionEntries read it via getState() instead.
     updateNoticeState,
@@ -386,28 +372,26 @@ export function QuickPanel() {
   // buckets items by groupId while preserving each bucket's original
   // push order.
   const trimmedQuery = query.trim()
-  const withCapture: PanelEntry[] = trimmedQuery
-    ? [...filtered, {
-      id: 'save-note',
-      groupId: 'actions',
-      text: t('quickPanel.saveNote'),
-      description: t('quickPanel.saveNoteHint'),
-      searchText: '',
-      leadingVisual: NoteIcon,
-      run: () => createNoteFromQuery(trimmedQuery),
-    }]
-    : filtered
+  const withCapture: PanelEntry[] = [...filtered, ...captureEntries(trimmedQuery)]
 
   // Group order follows the ranking while a query is typed (goal 0295):
   // the group holding the best match renders first, so a keyword hit
   // on a Mill action outranks a workflow that merely contains the
   // word. At rest the fixed order stands.
+  // Only groups with a row render (goal 0303): the kit renders every
+  // group header it is handed, rows or not, and a no-match query left
+  // three empty headings under the capture rows.
+  const presentGroups = GROUP_METADATA.filter((g) => withCapture.some((e) => e.groupId === g.groupId))
   const groupMetadata = trimmedQuery
-    ? [...GROUP_METADATA].sort((a, b) => {
+    ? [...presentGroups].sort((a, b) => {
       const rank = (id: string) => { const i = withCapture.findIndex((e) => e.groupId === id); return i < 0 ? Number.MAX_SAFE_INTEGER : i }
       return rank(a.groupId) - rank(b.groupId)
     })
-    : GROUP_METADATA
+    : presentGroups
+  // The rows the shortcuts can target, in list order (the hook falls
+  // back to the first when the list has no active row yet).
+  const visibleWorkflowIds = withCapture.filter((e) => e.groupId === 'workflows').map((e) => e.id.slice('run:'.length))
+  const rowActions = useQuickPanelWorkflowActions({ workflows, visibleWorkflowIds, pinnedWorkflowIds, togglePinnedWorkflow, runWorkflow: runWorkflowRow, lastRun, t })
   const items = withCapture.map((entry) => ({
     key: entry.id,
     id: entry.id,

@@ -22,6 +22,10 @@ export type ExtensionSettingDecl =
   | (ExtensionSettingDeclBase & { type: 'string'; defaultValue: string; placeholder?: string })
   | (ExtensionSettingDeclBase & { type: 'number'; defaultValue: number; min?: number; max?: number; step?: number })
   | (ExtensionSettingDeclBase & { type: 'enum'; defaultValue: string; options: readonly { value: string; label: string }[] })
+  // A vault reference (ADR-0048): the stored value is the entry's id
+  // ('' = nothing picked); the host renders a picker over the vault's
+  // titles and the plugin only ever reads the title back.
+  | (ExtensionSettingDeclBase & { type: 'secretRef'; defaultValue: '' })
 
 // ExtensionSettingValue -- what a stored or resolved setting can be.
 export type ExtensionSettingValue = boolean | string | number

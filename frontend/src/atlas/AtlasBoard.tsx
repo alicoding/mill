@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+import { useAtlasGestureCtx } from './useAtlasGestureCtx'
 import { useRenderStormGuard } from '../shared/renderStormGuard'
 import { useAtlasDeleteKey } from './useAtlasDeleteKey'
 import { useTranslation } from 'react-i18next'
@@ -8,6 +9,7 @@ import { AtlasService } from '../shared/bindings'
 import { useIsNarrowViewport } from '../shared/useNarrowViewport'
 import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'
 import { computeGroupFrameLayout, isGroupCard } from './atlasBoardLayout'
+import { freePositionAmong } from './atlasFreePlacement'
 import { computeNoteBoxes, computeObjectBoxes, computeTopLevelBoxes } from './atlasBoardBoxes'
 import { rfEdgeTypes, rfNodeTypes } from './atlasBoardNodeTypes'
 import { AtlasBoardChrome } from './AtlasBoardChrome'
@@ -19,7 +21,6 @@ import { useAtlasCreation } from './useAtlasCreation'
 import { useAtlasArmedTool } from './useAtlasArmedTool'
 import { useAtlasToolGesture } from './useAtlasToolGesture'
 import { ATLAS_TOOLS } from './atlasTools'
-import type { AtlasGestureCtx } from './atlasNounRegistry'
 import { useAtlasDragFiling, type FrameBox } from './useAtlasDragFiling'
 import { AtlasDragHighlightContext } from './atlasDragHighlightContext'
 import type { AtlasBoardInnerProps } from './atlasBoardInnerProps'
@@ -31,7 +32,7 @@ import { useAtlasMinimapToggle } from './useAtlasMinimapToggle'
 import { useAtlasSlotDrag } from './useAtlasSlotDrag'
 import { AtlasSlotDragLine } from './AtlasSlotDragLine'
 import { buildBoardCardNodes } from './atlasBuildBoardNodes'
-import { buildStickyNodes } from './atlasStickyNodes'
+import { useAtlasStickyNodes } from './useAtlasStickyNodes'
 import { buildBoardObjectNodes } from './atlasBuildBoardObjectNodes'
 import { AtlasCreationTray, ATLAS_TOOL_DRAG_MIME } from './AtlasCreationTray'
 import type { AtlasCreationTool } from './atlasTools'
@@ -68,7 +69,7 @@ import styles from './AtlasBoard.module.css'
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, allNotes, objects, allObjects, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onObjectContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, onCreateTableSized, onOpenTableFromList, onQuietToast, onOpenNote, placementRequest, promoteRequest, groupRequest }: AtlasBoardInnerProps) {
+function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, allNotes, objects, allObjects, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onObjectContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, onCreateTableSized, onOpenTableFromList, onQuietToast, onOpenNote, placementRequest, promoteRequest, groupRequest, freePlacementRef }: AtlasBoardInnerProps) {
   const { t } = useTranslation('atlas')
   const readOnly = useIsNarrowViewport()
   const reduceMotion = usePrefersReducedMotion()
@@ -117,6 +118,11 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     [cards, allCards, freeMoves, allNotes, allObjects, isFree],
   )
   const noteBoxes = useMemo(() => (isFree ? computeNoteBoxes(notes) : []), [notes, isFree])
+  useEffect(() => {
+    if (!freePlacementRef) return
+    freePlacementRef.current = (size) => freePositionAmong([...topLevelBoxes, ...noteBoxes, ...objectBoxesRef.current], size)
+    return () => { freePlacementRef.current = null }
+  }, [freePlacementRef, topLevelBoxes, noteBoxes])
 
   // The ONE shared armed-tool field (useAtlasArmedTool.ts, goal 0238):
   // every arming door below -- useAtlasCreation's own card/note/area/
@@ -196,15 +202,16 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   })
 
   // Sticky notes (goal 0081 slice A1): built separately from
-  // builtNodes above (its own file, atlasStickyNodes.ts) since a note
-  // is never a card and never enters the shelves auto-arrange/group-
-  // frame layout that dominates that memo.
-  const stickyNodes = useMemo(() => buildStickyNodes({
+  // builtNodes above (its own hook, useAtlasStickyNodes.ts, which also
+  // owns explicit save mode's held edits) since a note is never a card
+  // and never enters the shelves auto-arrange/group-frame layout that
+  // dominates that memo.
+  const stickyNodes = useAtlasStickyNodes({
     notes, draftNotePos: creation.draftNoteFlowPos, editingNoteID: creation.editingNoteID, readOnly: readOnly || !isFree,
     isSoleSelected: selection.isSoleSelected,
     onCommitDraft: creation.commitDraftNote, onCancelDraft: creation.cancelDraftNote,
     onEnterEdit: creation.enterNoteEdit, onCancelEdit: creation.cancelNoteEdit, onCommitEdit: creation.commitNoteEdit, onOpenNote,
-  }), [notes, creation.draftNoteFlowPos, creation.editingNoteID, readOnly, isFree, selection.isSoleSelected, creation.commitDraftNote, creation.cancelDraftNote, creation.enterNoteEdit, creation.cancelNoteEdit, creation.commitNoteEdit, onOpenNote])
+  })
 
   // The board's own sole-selected object id (goal 0214) -- "sole"
   // means nothing ELSE (card, note, or another object) is selected
@@ -303,19 +310,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   ), [nodes, isFree])
   useEffect(() => { objectBoxesRef.current = objectBoxes }, [objectBoxes])
 
-  const gestureCtx: AtlasGestureCtx = useMemo(() => ({
-    screenToFlowPosition,
-    parentID,
-    cardBoxes: topLevelBoxes,
-    noteBoxes,
-    objectBoxes,
-    onDeleteSelection,
-    openAreaPopover: creation.openAreaPopover,
-    onShapeCreated: selection.selectObject,
-    disarm: creation.disarm,
-    disarmUnlessLocked: creation.disarmUnlessLocked,
-    hitAccumulator: { cardIDs: new Set(), noteIDs: new Set(), objectIDs: new Set() },
-  }), [screenToFlowPosition, parentID, topLevelBoxes, noteBoxes, objectBoxes, onDeleteSelection, creation.openAreaPopover, creation.disarm, creation.disarmUnlessLocked, selection.selectObject])
+  const gestureCtx = useAtlasGestureCtx({ screenToFlowPosition, parentID, cardBoxes: topLevelBoxes, noteBoxes, objectBoxes, onDeleteSelection, openAreaPopover: creation.openAreaPopover, onShapeCreated: selection.selectObject, disarm: creation.disarm, disarmUnlessLocked: creation.disarmUnlessLocked })
 
   const gesture = useAtlasToolGesture({ tool: armedToolDescriptor, readOnly, isFree, ctx: gestureCtx, wrapperRef })
 

@@ -104,17 +104,18 @@ than per-page ad hoc (docs/SPEC.md §3.8):
 - **(a)** Exactly one `variant="primary"` button per page/region — the
   page-level create CTA, or a form's Save. Never two primaries
   competing in the same view.
-- **(b)** Irreversible destruction of a persisted entity is
-  `variant="danger"` (or `buttonType: 'danger'` on a Dialog footer
-  button) **and** confirmed via `shared/ConfirmDialog.tsx`, naming the
-  entity being deleted — never fired straight off a click.
-  `shared/InventoryList.tsx`'s `InventoryMenuAction.confirm` field
-  routes a kebab-menu Delete through the dialog automatically; a bare
-  `TrashIcon` `IconButton` (a DataTable row, a summary panel) wires
-  `ConfirmDialog` directly, via `shared/useConfirmDelete.tsx` when the
-  same page also renders a collection (avoids re-deriving the same
-  state/JSX per page — CLAUDE.md's "a fourth repetition is the signal
-  to share it").
+- **(b)** Destruction of a persisted entity is `variant="danger"`
+  (or `buttonType: 'danger'` on a Dialog footer button) and
+  **reversible, not interrogated**: a Configure entity deletes at
+  once and offers Undo through the window-pinned toast
+  (`configure/deleteWithUndo.ts` → `shared/undoDeleteStore.ts` →
+  `shared/UndoDeleteToast.tsx`, goal 0270; the board's quick delete is
+  the same law, goal 0093). The confirm dialog
+  (`shared/ConfirmDialog.tsx`, `shared/useConfirmDelete.tsx`,
+  `InventoryMenuAction.confirm`) is reserved for a delete that
+  genuinely cannot be undone or cascades beyond the entity — a
+  workflow (runs, schedules), a guardrail rule, a vault secret — and
+  a new confirm needs that reason stated at the call site.
 - **(c)** A decision pair (approve/deny a guardrail ask, a review
   verdict) is `primary` (affirm) / `danger` (reject) — never both
   neutral, never both colored the same way.

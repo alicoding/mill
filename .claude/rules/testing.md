@@ -163,6 +163,16 @@ at:
     app switcher/dock, and focus returns to the app you summoned from;
     finally reactivate Mill (dock click or Cmd+Tab) and confirm the main
     window is back, right where it was before the summon.
+  - **The run monitor window** (goal 0294 S2, `newRunMonitorWindow` +
+    `ShowRunMonitor`/`HideRunMonitor`) -- the floating window, its
+    close-means-hide hook and the Quick Panel / tray doors that show
+    it are native round trips; the route's CONTENT is e2e-proven at
+    /#/runmonitor (run-monitor.spec.ts). Verify on an installed
+    build: ⌘⇧↩ on a Quick Panel row opens the window floating over
+    the current app with the run stepping; the red close hides it;
+    ⌘⇧↩ again re-shows it on the new run; a tray Recent row opens it
+    on that run; Open in Mill hides it and lands the main window on
+    the same run.
   - **Bringing a hidden app back on screen** (goal 0186, goal 0188 slice
     2 — `bringMainToFront`/`bringFloatingToFront`,
     `settingssvc/settingsservice_presence.go`) — every path that shows a
@@ -325,9 +335,51 @@ at:
     viewer -- the viewer scrolls/zooms and the BOARD holds still (no
     simultaneous pan), including diagonal gestures over a page-width
     PDF whose horizontal axis has nothing to scroll; with the object
-    UNSELECTED (shield up), the same gesture pans the board only.
+    UNSELECTED (shield up -- pdf AND diagram carry it, goal 0302), the
+    same gesture pans the board only, and pinch / ⌘-scroll zoom the
+    board.
     Synthetic wheel can't reproduce the real gesture stream's
     double-handling, so this stays manual.
+  - **The quit gate on every native quit path, and explicit mode's
+    close guard** (goal 0295 S2b, `SettingsService.ShouldQuit` wired
+    as `application.Options.ShouldQuit`, `HideMainWindowGuarded`) --
+    ⌘Q, the Dock's Quit, the tray menu's Quit and the red close all
+    reach AppKit's applicationShouldTerminate / the WindowClosing
+    hook, which no server-mode harness has (the e2e drives the same
+    handshake through RestartApp). Verify on an installed build with
+    Settings > General > Save changes = When I choose: type into a
+    note and click away (the dot shows); ⌘Q shows the Save all /
+    Discard / Cancel sheet and Cancel keeps Mill running; hide the
+    window, then the tray's Quit brings the window back with the
+    sheet; Discard quits. Again with a held note: red-close the window
+    shows the sheet titled "...before closing?" and Save all hides
+    the window with the note written. Then switch back to
+    Automatically and confirm ⌘Q quits with no sheet and the note
+    text survives relaunch.
+  - **The adopted table grid's range and drag interactions** (goal
+    0287, ADR-0049, `shared/ListGridGlide.tsx`) -- range ⌘C/⌘V, the
+    fill handle, header-edge resize and header drag-reorder are the
+    library's own pointer gestures over one canvas; Playwright's
+    forced positional click reaches a single cell but not a drag or
+    the real clipboard. Verify on an installed build on a table
+    object and on Configure's List page: select a 2x2 range, ⌘C, move,
+    ⌘V (the rows write through); drag the fill handle down a column;
+    drag a header edge (width survives a reload on this device) and
+    drag a header onto another (the List's column order changes on
+    every projection); then a VoiceOver pass -- the grid's
+    accessibility DOM reads the headers and cells (ADR-0049's own
+    verification, the library hedges its a11y).
+  - **A relaunch never restores the floating windows** (goal 0301,
+    `SettingsService.HideAuxWindows` on ApplicationStarted and before
+    every approved quit / restart) -- macOS Resume re-showing windows
+    that were on screen when the process ended is an OS behavior no
+    harness reproduces. Verify on an installed build: open the Quick
+    Panel, press ⌘⇧↩ on a workflow so the run monitor floats, then
+    from the panel type "update" and restart (or ⌘Q from the panel's
+    Open Mill) -- on relaunch only the main window appears, the panel
+    and the monitor stay hidden until summoned; also relaunch with
+    "Close windows when quitting an application" OFF in System
+    Settings > Desktop & Dock (the default) and confirm the same.
   - **File-promise drops: the post-screenshot floating thumbnail**
     (goal 0256, `MillFilePromiseDropView` /
     `AttachFilePromiseReceiver`) — a promise drag needs a real AppKit

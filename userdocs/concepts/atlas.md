@@ -54,7 +54,9 @@ connected by links, grouped into areas you can drill into.
   JSON, JavaScript, TypeScript, CSS, HTML, YAML, and Markdown. A long sticky note scrolls in place, and grows while you
   edit it — and any note opens big: ⌘-click it (or right-click →
   Open note) for a full-size editor, like opening a note in its own
-  window.
+  window. Notes save when you click away; with Settings → General →
+  Save changes set to "When I choose", they wait for ⌘S instead and
+  show a dot until then.
 
 ## Contents
 

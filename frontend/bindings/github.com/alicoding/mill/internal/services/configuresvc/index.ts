@@ -8,6 +8,8 @@ export {
 
 export type {
     ParsedXlsxFile,
+    ReferenceSummary,
+    SummaryLine,
     TestHTTPRequestInput,
     TestHTTPRequestResult
 } from "./models.js";

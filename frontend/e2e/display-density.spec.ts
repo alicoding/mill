@@ -102,11 +102,13 @@ test('Compact reads on canvas cards, the list grid, and Settings stacks', async 
     const row = page.locator('[data-testid="inventory-row"][data-entity="list"]').first()
     await expect(row).toBeVisible()
     await row.click()
-    const header = page.locator('[data-testid="list-rows-editor"] th').first()
-    await expect(header).toBeVisible()
-    const pad = await header.evaluate((el) => getComputedStyle(el).paddingTop)
+    // The adopted grid paints on canvas; its row height is a prop the
+    // host publishes (converged-differs from the old th padding).
+    const grid = page.getByTestId('atlas-projection-glide')
+    await expect(grid).toBeVisible()
+    const rowHeight = await grid.getAttribute('data-row-height')
     await page.getByRole('button', { name: 'Close' }).click()
-    return pad
+    return rowHeight
   }
   const settingsGap = async () => {
     await page.getByRole('link', { name: 'Settings' }).click()
@@ -115,12 +117,12 @@ test('Compact reads on canvas cards, the list grid, and Settings stacks', async 
   }
 
   expect(await cardPad()).toBe('7px')
-  expect(await gridPad()).toBe('3px')
+  expect(await gridPad()).toBe('28')
   const comfortableGap = await settingsGap()
 
   await setDensity(page, 'Compact')
   expect(await cardPad()).toBe('4px')
-  expect(await gridPad()).toBe('1px')
+  expect(await gridPad()).toBe('24')
   const compactGap = await settingsGap()
   expect(parseFloat(compactGap)).toBeLessThan(parseFloat(comfortableGap))
 

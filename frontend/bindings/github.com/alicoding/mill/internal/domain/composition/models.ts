@@ -128,6 +128,27 @@ export interface Edge {
 }
 
 /**
+ * ExecFunc executes one node's step given the running ExecContext.
+ * Registered per NodeTypeID alongside its NodeType via RegisterNodeType.
+ * Trigger and Decision kinds register with exec: nil -- ExecuteWorkflow
+ * skips them structurally (see its own Kind check), they carry no
+ * payload transformation of their own.
+ */
+export type ExecFunc = any;
+
+/**
+ * ExternalNodeType is a node type contributed from OUTSIDE this package
+ * at runtime with its own exec -- a plugin's step (ADR-0051 §5's
+ * "perform" step-pack door), synthesized by the plugin service. Unlike
+ * a declared step type (ADR-0037), which only binds config over an
+ * engine registered here, an external type brings its own exec.
+ */
+export interface ExternalNodeType {
+    "NodeType": NodeType;
+    "Exec": ExecFunc;
+}
+
+/**
  * Issue is one problem ValidateGraph found. NodeID/EdgeID identify the
  * offending node/edge when the issue is scoped to one -- both empty for
  * a whole-graph issue (e.g. "no starting node," which names no single
@@ -149,6 +170,14 @@ export interface Issue {
      * refuses to start on it (executionsvc's runWorkflowStart).
      */
     "WillFail": boolean;
+}
+
+/**
+ * ListSyncResult is what the wired sync reports back.
+ */
+export interface ListSyncResult {
+    "Synced": number;
+    "Expired": number;
 }
 
 /**

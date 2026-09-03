@@ -356,6 +356,13 @@
     "enabled": false
   },
   {
+    "id": "capture.note",
+    "label": "Capture a note",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
     "id": "clipboard.history.open",
     "label": "Clipboard history",
     "binding": null,
@@ -372,6 +379,13 @@
   {
     "id": "configure.new.aiproviders",
     "label": "New AI provider",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "configure.new.conversionprofiles",
+    "label": "New conversion profile",
     "binding": null,
     "surface": null,
     "enabled": false
@@ -421,6 +435,27 @@
   {
     "id": "docs.search",
     "label": "Search docs",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "edit.save",
+    "label": "Save",
+    "binding": "⌘S",
+    "surface": null,
+    "enabled": true
+  },
+  {
+    "id": "edit.saveAll",
+    "label": "Save all changes",
+    "binding": null,
+    "surface": null,
+    "enabled": true
+  },
+  {
+    "id": "extensions.exportAudit",
+    "label": "Export plugin audit",
     "binding": null,
     "surface": null,
     "enabled": false
@@ -694,6 +729,13 @@
     "binding": "⌘6",
     "surface": null,
     "enabled": false
+  },
+  {
+    "id": "workflow.edit",
+    "label": "Edit workflow",
+    "binding": null,
+    "surface": null,
+    "enabled": true
   },
   {
     "id": "workflow.new",

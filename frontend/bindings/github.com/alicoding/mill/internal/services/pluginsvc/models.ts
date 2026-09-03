@@ -21,6 +21,15 @@ export interface CanvasObjectContribution {
 }
 
 /**
+ * CaptureContribution is one declared capture.
+ */
+export interface CaptureContribution {
+    "id": string;
+    "label": string;
+    "description": string;
+}
+
+/**
  * ContentWriter is the seam pluginsvc writes through; nil until wired.
  */
 export type ContentWriter = any;
@@ -69,6 +78,19 @@ export interface ManifestContributes {
     "canvasObjects": CanvasObjectContribution[] | null;
 
     /**
+     * Steps (ADR-0051 §5, pluginservice_steps.go): workflow steps the
+     * plugin implements in steps.js, declared here so the catalog and
+     * the Extensions row know them before any code runs.
+     */
+    "steps": StepContribution[] | null;
+
+    /**
+     * Captures (goal 0309, pluginservice_captures.go): quick-capture
+     * surfaces the plugin renders in the capture window.
+     */
+    "captures": CaptureContribution[] | null;
+
+    /**
      * Settings (docs/goals/0258 slice 1): the plugin's own declared
      * user settings, the same declare -> host renders/stores/serves
      * contract compiled-in nouns use. Declared in the manifest, not
@@ -104,8 +126,20 @@ export interface NetworkContribution {
 }
 
 /**
+ * PluginCapture is one runnable plugin's declared capture as the Quick
+ * Panel and the palette list it.
+ */
+export interface PluginCapture {
+    "pluginId": string;
+    "pluginName": string;
+    "id": string;
+    "label": string;
+    "description": string;
+}
+
+/**
  * PluginContentWrite is one ask. Op is "note", "card", "card-update",
- * or "list-row"; the other fields apply per op.
+ * "list-row", or "list"; the other fields apply per op.
  */
 export interface PluginContentWrite {
     "op": string;
@@ -119,6 +153,14 @@ export interface PluginContentWrite {
     "fields": { [_ in string]?: string } | null;
     "values": { [_ in string]?: string } | null;
     "position": atlas$0.Position | null;
+
+    /**
+     * The "list" op: Title names the list; Rows are keyed by column
+     * name (or derived key).
+     */
+    "description": string;
+    "columns": PluginListColumn[] | null;
+    "rows": ({ [_ in string]?: string } | null)[] | null;
 }
 
 /**
@@ -144,6 +186,13 @@ export interface PluginFetchRequest {
     "url": string;
     "headers": { [_ in string]?: string } | null;
     "body": string;
+
+    /**
+     * Secret names a declared secretRef setting whose vault entry Mill
+     * attaches host-side (pluginservice_fetch_secret.go); nil sends
+     * the request exactly as given.
+     */
+    "secret": PluginFetchSecret | null;
 }
 
 /**
@@ -160,6 +209,26 @@ export interface PluginFetchResult {
 }
 
 /**
+ * PluginFetchSecret is api.fetch's init.secret: WHICH setting names
+ * the entry, and how it travels (default: Authorization: Bearer …).
+ */
+export interface PluginFetchSecret {
+    "settingKey": string;
+    "header": string;
+    "prefix": string;
+}
+
+/**
+ * PluginFileEntry is one listed entry.
+ */
+export interface PluginFileEntry {
+    "name": string;
+    "path": string;
+    "isDir": boolean;
+    "size": number;
+}
+
+/**
  * PluginInfo is one scanned plugin as the Extensions surface and the
  * loader see it. Error is a load-blocking validation problem stated
  * for the human (the row renders it; the loader skips the plugin) --
@@ -173,12 +242,50 @@ export interface PluginInfo {
     "Dir": string;
     "Error": string;
     "Builtin": boolean;
+
+    /**
+     * ContentHash is the folder's current content hash
+     * (pluginservice_hash.go), "" for a built-in or an invalid plugin
+     * -- what the lock compares against.
+     */
+    "ContentHash": string;
+
+    /**
+     * SigningPolicy reports whether an administrator pinned signing
+     * keys; Signed whether this folder's signature verified against one
+     * (pluginservice_signing.go). Both false with no policy.
+     */
+    "SigningPolicy": boolean;
+    "Signed": boolean;
+}
+
+/**
+ * PluginListColumn is one column of a plugin-created list: a display
+ * name (its key is derived) and an optional type from listColumnTypes
+ * (text when empty).
+ */
+export interface PluginListColumn {
+    "name": string;
+    "type": string;
+}
+
+/**
+ * PluginListDirResult carries the verdict and, when approved, the
+ * entries.
+ */
+export interface PluginListDirResult {
+    "approved": boolean;
+    "effect": string;
+    "ruleLabel": string;
+    "entries": PluginFileEntry[] | null;
 }
 
 /**
  * SettingContribution is one declared plugin setting. Type is the
- * four-type floor every declarative settings platform shares:
- * "boolean", "string", "number", "enum". Default is the value in
+ * four-type floor every declarative settings platform shares --
+ * "boolean", "string", "number", "enum" -- plus "secretRef" (ADR-0048):
+ * the user picks a vault entry, the stored value is that entry's id,
+ * and the plugin only ever reads its title. Default is the value in
  * effect until the user touches the control (the converged
  * `default` spelling), decoded as whatever JSON scalar the manifest
  * wrote; validateContributes pins it to Type. Options is enum-only;
@@ -202,6 +309,30 @@ export interface SettingContribution {
 export interface SettingOption {
     "value": string;
     "label": string;
+}
+
+/**
+ * StepConfigContribution is one authored field of a declared step --
+ * text or a fixed option list, the two shapes a no-build plugin can
+ * state as data.
+ */
+export interface StepConfigContribution {
+    "key": string;
+    "label": string;
+    "description": string;
+    "type": string;
+    "default": string;
+    "options": string[] | null;
+}
+
+/**
+ * StepContribution is one declared step.
+ */
+export interface StepContribution {
+    "id": string;
+    "label": string;
+    "description": string;
+    "config": StepConfigContribution[] | null;
 }
 
 /**

@@ -6,7 +6,6 @@ import { ExecutionService, SettingsService, CompositionService } from '../shared
 import { GuardrailService } from '../../bindings/github.com/alicoding/mill/internal/services/guardrailsvc'
 import type { RunSummary } from '../../bindings/github.com/alicoding/mill/internal/services/executionsvc/models'
 import { recentRuns, runningRuns, settledRunKind } from './trayPanelRuns'
-import { workflowTarget } from './navigateTarget'
 import styles from './TrayPanel.module.css'
 
 // The menu-bar status panel (docs/goals/0189): the surface the tray
@@ -163,8 +162,9 @@ export function TrayPanel() {
         ))}
       </div>
 
-      {/* Recent (goal 0294): a settled run, one click from its steps on
-          the canvas -- the "did it work" answer from the menu bar. */}
+      {/* Recent (goal 0294): a settled run, one click from its steps in
+          the run monitor window -- the "did it work" answer from the
+          menu bar, without opening the full app. */}
       <div className={styles.section} data-testid="tray-recent-section">
         <Text size="small" weight="semibold" className={styles.sectionTitle}>{t('trayPanel.recentSection')}</Text>
         {recent.length === 0 && (
@@ -175,7 +175,7 @@ export function TrayPanel() {
         {recent.map((r) => {
           const kind = settledRunKind(r.status)
           return (
-            <button key={r.runID} type="button" className={styles.row} onClick={() => openMain(workflowTarget(r.workflowID, r.runID))} data-testid="tray-recent-row" data-run-kind={kind}>
+            <button key={r.runID} type="button" className={styles.row} onClick={() => void SettingsService.ShowRunMonitor(r.workflowID, r.runID).catch(() => {})} data-testid="tray-recent-row" data-run-kind={kind}>
               <span className={styles.rowTitle}>{r.workflowLabel || r.workflowID}</span>
               <span className={styles.rowDetail}>
                 {t(kind === 'done' ? 'trayPanel.runDone' : kind === 'failed' ? 'trayPanel.runFailed' : 'trayPanel.runStopped')} · {startedAgo(String(r.completedAt || r.startedAt))}

@@ -1,3 +1,5 @@
+import type { MutableRefObject } from 'react'
+import type { FreePlacement } from './atlasFreePlacement'
 import type { BoardObject, Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { BoardFilter } from './cardFilter'
 import type { AtlasFocusRequest } from './useBoardFocus'
@@ -8,6 +10,9 @@ import type { AtlasGroupRequest, AtlasPlacementRequest, AtlasPromoteRequest } fr
 // definition with no closure over the component's own state, so it
 // moves cleanly without touching behavior.
 export interface AtlasBoardInnerProps {
+  // freePlacementRef: filled by the board with a measured-box placement
+  // for doors that create without a pointer (atlasFreePlacement.ts).
+  freePlacementRef?: MutableRefObject<FreePlacement | null>
   // The board filter (goal 0129 slice 1) -- applied as dim-in-place
   // by the node builder; state lives in AtlasView; rendered as a
   // floating top-right Panel (the toolbar row is full by its own

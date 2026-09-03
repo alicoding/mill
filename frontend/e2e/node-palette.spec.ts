@@ -95,7 +95,7 @@ test('palette search matches the step label, case-insensitively', async ({ page 
   // RegisterNodeType call sites, latest process-shell-command
   // (goal 0240 S1), + the seeded "Check httpbin" declared step type).
   await search.fill('')
-  await expect(panel.getByTestId('palette-item')).toHaveCount(47)
+  await expect(panel.getByTestId('palette-item')).toHaveCount(51)
 })
 
 // Goal 0113 slice 1: typing an intent-shaped query (not a step name)
@@ -137,7 +137,7 @@ test('the advanced toggle states its count, and the badge count matches while ch
   // this worker's browser context (and its localStorage) is shared with
   // every other test in this file.
   await panel.getByTestId('palette-show-advanced').check()
-  await expect(panel.getByTestId('palette-item')).toHaveCount(47)
+  await expect(panel.getByTestId('palette-item')).toHaveCount(51)
 })
 
 // Progressive-disclosure "Show advanced steps" toggle (goal 0047): the
@@ -148,7 +148,7 @@ test('the palette shows every step by default, "Show advanced steps" checked', a
   await openPaletteOnNewWorkflow(page)
   const panel = activePanel(page)
   await expect(panel.getByTestId('palette-show-advanced')).toBeChecked()
-  await expect(panel.getByTestId('palette-item')).toHaveCount(47)
+  await expect(panel.getByTestId('palette-item')).toHaveCount(51)
 })
 
 test('unchecking "Show advanced steps" hides advanced steps, keeps basic ones, and persists across a reload', async ({ page }) => {

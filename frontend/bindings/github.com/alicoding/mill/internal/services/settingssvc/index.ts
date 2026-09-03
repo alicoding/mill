@@ -13,6 +13,7 @@ export {
 export type {
     BuildInfo,
     MCPAddrInfo,
+    PluginLockEntry,
     UpdateCheckResult,
     UpdateNotice
 } from "./models.js";

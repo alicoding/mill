@@ -49,6 +49,12 @@ interface UISignalState {
   configureCreateRequest: string | null
   requestConfigureCreate: (tab: string) => void
   consumeConfigureCreate: () => void
+  // configureEditRequest (goal 0312): "open THIS entity's editor" --
+  // the reference field's Open in Configure jump; the tab's page
+  // consumes it the same set-then-consume way as the create signal.
+  configureEditRequest: { tab: string; id: string } | null
+  requestConfigureEdit: (tab: string, id: string) => void
+  consumeConfigureEdit: () => void
   // review.rules (goal 0078): a monotonic counter, same shape as
   // atlasJumpRequest -- legal because the command is surface-scoped to
   // 'review' (shared/commands.ts), so ReviewView is always already
@@ -174,6 +180,14 @@ interface UISignalState {
   codingLoopOpen: boolean
   openCodingLoop: () => void
   closeCodingLoop: () => void
+  // The leave sheet (goal 0295 S2b, app/UnsavedChangesDialog.tsx):
+  // set by the quit / restart / close handshake
+  // (app/useBeforeQuitFlush.ts) when explicit save mode holds unsaved
+  // edits; carries WHY the app is leaving so the sheet's title can say
+  // so. Cleared by the sheet's own answer.
+  unsavedLeave: 'quit' | 'restart' | 'close' | null
+  requestUnsavedLeave: (reason: 'quit' | 'restart' | 'close') => void
+  clearUnsavedLeave: () => void
 }
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
@@ -191,6 +205,9 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   configureCreateRequest: null,
   requestConfigureCreate: (tab) => set({ configureCreateRequest: tab }),
   consumeConfigureCreate: () => set({ configureCreateRequest: null }),
+  configureEditRequest: null,
+  requestConfigureEdit: (tab, id) => set({ configureEditRequest: { tab, id } }),
+  consumeConfigureEdit: () => set({ configureEditRequest: null }),
   reviewRulesRequest: 0,
   requestReviewRules: () => set((s) => ({ reviewRulesRequest: s.reviewRulesRequest + 1 })),
   atlasArmToolRequest: null,
@@ -245,4 +262,7 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   codingLoopOpen: false,
   openCodingLoop: () => set({ codingLoopOpen: true }),
   closeCodingLoop: () => set({ codingLoopOpen: false }),
+  unsavedLeave: null,
+  requestUnsavedLeave: (reason) => set({ unsavedLeave: reason }),
+  clearUnsavedLeave: () => set({ unsavedLeave: null }),
 }))

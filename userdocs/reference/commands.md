@@ -62,9 +62,11 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `canvas.undo` | Undo | `⌘Z` | composition | Always available |
 | `canvas.zoomIn` | Zoom in | `⌘+` | composition | Always available |
 | `canvas.zoomOut` | Zoom out | `⌘-` | composition | Always available |
+| `capture.note` | Capture a note | — | Global | Always available |
 | `clipboard.history.open` | Clipboard history | — | Global | Always available |
 | `codingLoop.run` | Run from clipboard… | — | Global | Always available |
 | `configure.new.aiproviders` | New AI provider | — | Global | Always available |
+| `configure.new.conversionprofiles` | New conversion profile | — | Global | Always available |
 | `configure.new.decisions` | New decision | — | Global | Always available |
 | `configure.new.execenvs` | New environment | — | Global | Always available |
 | `configure.new.integration` | New integration | — | Global | Always available |
@@ -72,6 +74,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.new.mcpservers` | New MCP server | — | Global | Always available |
 | `configure.new.steptypes` | New step type | — | Global | Always available |
 | `docs.search` | Search docs | — | Global | Always available |
+| `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
+| `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
+| `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `palette.open` | Open command palette | `⌘K` | Global | Always available |
@@ -110,6 +115,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `view.home` | Go to Home | `⌘0` | Global | Always available |
 | `view.review` | Go to Review | `⌘5` | Global | Always available |
 | `view.secrets` | Go to Secrets | `⌘6` | Global | Always available |
+| `workflow.edit` | Edit workflow | — | Global | Conditional — available only in a matching state |
 | `workflow.new` | New workflow | `⌘N` | Global | Conditional — available only in a matching state |
 | `workflow.publish` | Publish current draft | — | composition | Conditional — available only in a matching state |
 | `workflow.run` | Run workflow | `⌘↩` | Global | Conditional — available only in a matching state |

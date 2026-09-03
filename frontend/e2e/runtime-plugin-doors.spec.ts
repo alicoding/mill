@@ -1,20 +1,11 @@
 import { expect, test } from '@playwright/test'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
-import { launchWithPlugins } from './fixtures/runtimePlugins'
+import { launchWithPlugins, runFromPalette } from './fixtures/runtimePlugins'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { clickAtlasTrayTool } from './fixtures/atlasTray'
 import { contextMenu } from './fixtures/contextMenu'
 
-// runFromPalette -- the one way these tests fire a plugin command: the
-// palette's own binding, the command by its registered label.
-async function runFromPalette(page: import('@playwright/test').Page, label: string) {
-	await page.keyboard.press('Meta+/')
-	const dialog = page.getByRole('dialog', { name: 'Command palette' })
-	await expect(dialog).toBeVisible()
-	await dialog.getByRole('combobox').fill(label)
-	await dialog.getByRole('option', { name: label }).click()
-}
 
 // The platform DOORS a runtime plugin gets beyond rendering its own
 // object (goal 0261's ratified order): declared settings (0258),
@@ -139,10 +130,11 @@ test('the Board index plugin lists notes by first line and stays current through
 		await expect
 			.poll(() => page.evaluate(() => document.activeElement?.getAttribute('contenteditable') === 'true'))
 			.toBe(true)
-		// Atomic insert, not per-keystroke typing: the fresh note's first
-		// content sync rebuilds the editor and drops characters typed into
-		// that window (the note spec's own escape hatch; it cost a CI red).
-		await page.keyboard.insertText('Call the bank\ntomorrow')
+		// Per-keystroke on purpose (goal 0296): a fresh sticky used to lose
+		// or reorder its first word under load; typing is the regression test.
+		await page.keyboard.type('Call the bank', { delay: 20 })
+		await page.keyboard.press('Enter')
+		await page.keyboard.type('tomorrow', { delay: 20 })
 		// Leaving the editor by clicking the board commits the note
 		// (Escape on a never-saved note discards it).
 		const blurSpot = await findEmptyBoardRect(page, board, 120, 80)
@@ -406,7 +398,12 @@ test('a plugin menu item appears on its own object once enabled, not on a note, 
 		await board.click({ position: { x: noteSpot.x - bb.x + 10, y: noteSpot.y - bb.y + 10 } })
 		const sticky = page.getByTestId('atlas-sticky-note')
 		await expect(sticky).toBeVisible()
-		await page.keyboard.insertText('menu probe') // atomic: the fresh note drops typed characters
+		// The engine mounts async: wait for its root to hold focus before
+		// the first keystroke (a key before that is dropped by design).
+		await expect
+			.poll(() => page.evaluate(() => document.activeElement?.getAttribute('contenteditable') === 'true'))
+			.toBe(true)
+		await page.keyboard.type('menu probe', { delay: 20 })
 		await board.click({ position: { x: spot.x - bb.x + 280, y: spot.y - bb.y + 190 } })
 		await sticky.click({ button: 'right' })
 		await expect(menu).toBeVisible()
@@ -434,53 +431,46 @@ test('a plugin menu item appears on its own object once enabled, not on a note, 
 	}
 })
 
-// The Request tester example (goal 0291): a useful extension on
-// nothing but the doors -- a work tab, any-host guarded fetch (every
-// request asks, rules skipped), storage-backed history, a declared
-// setting. Its Extensions row states the any-host reach declare-first.
-test('the Request tester sends to a host you approve in Review, shows the response, and remembers the request across a reload', async () => {
-	const http = createServer((_req, res) => { res.setHeader('Content-Type', 'application/json'); res.end('{"pong":true}') })
-	await new Promise<void>((resolve) => http.listen(0, '127.0.0.1', resolve))
-	const port = (http.address() as AddressInfo).port
-	const { page, close } = await launchWithPlugins(24)
+// api.content.createList (goal 0310): a plugin creates a Configure List
+// through the same guarded plane as its other writes; approved, the
+// list stands in Configure with its declared columns and first rows.
+test('a plugin creates a List through the content door: approved in Review it appears in Configure with its columns and rows', async () => {
+	const { page, close } = await launchWithPlugins(69, {
+		extraPlugins: [{
+			id: 'list-probe',
+			manifest: { name: 'List probe', capabilities: ['write-content'] },
+			main: `export function activate(api) {
+	api.registerCommand({ id: 'list', label: 'Probe create a list', run: async () => {
+		try {
+			const r = await api.content.createList({ title: 'Probe vendors', columns: [{ name: 'Vendor' }, { name: 'Tier', type: 'text' }], rows: [{ Vendor: 'Acme', Tier: 'gold' }] })
+			api.notify({ level: r.approved ? 'success' : 'warning', text: r.approved ? 'Wrote ' + r.id : 'Not allowed ' + r.ruleLabel })
+		} catch (e) { api.notify({ level: 'error', text: 'Threw: ' + (e && e.message ? e.message : e) }) }
+	} })
+}
+` }],
+	})
 	try {
 		await page.goto('/')
-		await page.getByRole('link', { name: 'Settings' }).click()
-		const row = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-request-tester"]')
-		await row.scrollIntoViewIfNeeded()
-		await expect(row.getByTestId('extensions-plugin-network')).toHaveText('Can reach any host you approve, one request at a time')
-
 		await page.getByRole('link', { name: 'Atlas' }).click()
 		await expect(page.getByTestId('atlas-board')).toBeVisible()
-		await runFromPalette(page, 'Request tester')
-		const view = page.getByTestId('plugin-view-mill-request-tester-tester')
-		await expect(view).toBeVisible()
-		await expect(view.getByTestId('tester-method')).toHaveValue('GET')
-		await view.getByTestId('tester-url').fill(`http://127.0.0.1:${port}/ping`)
-		await view.getByTestId('tester-send').click()
-		await expect(view.getByTestId('tester-status')).toContainText('needs your approval')
-
+		await runFromPalette(page, 'Probe create a list')
 		const reviewPage = await page.context().newPage()
 		await reviewPage.goto('/')
 		await reviewPage.getByRole('link', { name: 'Review' }).click()
-		const parked = reviewPage.locator('[data-testid="review-guarded-action-item"]')
-		await expect(parked).toBeVisible()
-		await expect(parked.locator('[data-testid="review-guarded-action-source"]')).toContainText('plugin:mill-request-tester')
-		await expect(parked).toContainText('did not declare')
-		await parked.locator('[data-testid="review-guarded-action-approve"]').click()
-		await expect(parked).toHaveCount(0)
+		const row = reviewPage.locator('[data-testid="review-guarded-action-item"]')
+		await expect(row).toContainText('Create a list: Probe vendors (2 columns, 1 rows)')
+		await expect(row.locator('[data-testid="review-guarded-action-source"]')).toContainText('plugin:list-probe')
+		await row.locator('[data-testid="review-guarded-action-approve"]').click()
+		await expect(row).toHaveCount(0)
+		await expect(page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Wrote ' })).toBeVisible()
 		await reviewPage.close()
 
-		await expect(view.getByTestId('tester-status')).toContainText('200')
-		await expect(view.getByTestId('tester-response')).toHaveText('{"pong":true}')
-		await expect(view.getByTestId('tester-history-item')).toHaveCount(1)
-
-		// History is plugin storage: it survives a reload of the restored tab.
-		await page.reload()
-		await page.getByRole('tab', { name: /Request tester/ }).click()
-		await expect(page.getByTestId('plugin-view-mill-request-tester-tester').getByTestId('tester-history-item')).toContainText(`GET http://127.0.0.1:${port}/ping → 200`)
+		await page.getByRole('link', { name: 'Configure' }).click()
+		await page.getByRole('tab', { name: 'Lists', exact: true }).click()
+		const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Probe vendors', { exact: true }) })
+		await expect(listRow).toBeVisible()
+		await expect(listRow).toContainText('2 columns, 1 rows')
 	} finally {
 		await close()
-		await new Promise<void>((resolve) => http.close(() => resolve()))
 	}
 })

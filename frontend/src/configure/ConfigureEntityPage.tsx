@@ -16,15 +16,18 @@ export interface ConfigureEntityPageProps {
   viewMode: ViewMode
   onViewModeChange: (mode: ViewMode) => void
 
-  importInputRef: RefObject<HTMLInputElement | null>
-  importInputTestId: string
-  importTestId: string
-  onImportFile: (e: React.ChangeEvent<HTMLInputElement>) => void
-  onImportClick: () => void
+  // Import/export is per entity kind; a kind that names a file on this
+  // machine (a secret source) has nothing portable to import, and
+  // omits these.
+  importInputRef?: RefObject<HTMLInputElement | null>
+  importInputTestId?: string
+  importTestId?: string
+  onImportFile?: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onImportClick?: () => void
   importErrorNode?: ReactNode
 
-  restorable: RestorableItem[]
-  onRestore: (id: string) => void
+  restorable?: RestorableItem[]
+  onRestore?: (id: string) => void
 
   // Extra header controls a specific page needs beyond the shared
   // import/restore/primary trio (e.g. ConfigureLists' "New list from
@@ -87,18 +90,22 @@ export function ConfigureEntityPage({
         </VisuallyHidden>
         <Stack direction="horizontal" gap="condensed">
           <ViewModeToggle mode={viewMode} onChange={onViewModeChange} />
-          <input
-            ref={importInputRef}
-            type="file"
-            accept="application/json,.json"
-            data-testid={importInputTestId}
-            style={{ display: 'none' }}
-            onChange={onImportFile}
-          />
-          <Button leadingVisual={UploadIcon} size="small" onClick={onImportClick} data-testid={importTestId}>
-            {t('import')}
-          </Button>
-          <RestoreExamplesButton items={restorable} onRestore={onRestore} />
+          {onImportClick && (
+            <>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json,.json"
+                data-testid={importInputTestId}
+                style={{ display: 'none' }}
+                onChange={onImportFile}
+              />
+              <Button leadingVisual={UploadIcon} size="small" onClick={onImportClick} data-testid={importTestId}>
+                {t('import')}
+              </Button>
+            </>
+          )}
+          {onRestore && <RestoreExamplesButton items={restorable ?? []} onRestore={onRestore} />}
           {extraHeaderActions}
           <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={onPrimary} data-testid={primaryTestId}>
             {primaryLabel}

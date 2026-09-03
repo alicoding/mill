@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/alicoding/mill/internal/adapters/httpconnector"
+	"github.com/alicoding/mill/internal/domain/secret"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 )
 
@@ -67,6 +68,10 @@ type PluginFetchRequest struct {
 	URL     string            `json:"url"`
 	Headers map[string]string `json:"headers"`
 	Body    string            `json:"body"`
+	// Secret names a declared secretRef setting whose vault entry Mill
+	// attaches host-side (pluginservice_fetch_secret.go); nil sends
+	// the request exactly as given.
+	Secret *PluginFetchSecret `json:"secret"`
 }
 
 // PluginFetchResult carries the guardrail decision and, when
@@ -108,6 +113,10 @@ func (p *PluginService) FetchForPlugin(pluginID string, req PluginFetchRequest) 
 	// Confinement is to the host being asked about (redirects included):
 	// a wildcard plugin still cannot hop to a second host silently.
 	allowHost := func(h string) bool { return h == host || networkAllows(network, h, method) }
+	sec, err := p.secretForFetch(plugin, req)
+	if err != nil {
+		return PluginFetchResult{}, err
+	}
 	if p.guardrail == nil {
 		return PluginFetchResult{}, errors.New("guardrail unavailable: a plugin fetch is always guarded")
 	}
@@ -116,6 +125,12 @@ func (p *PluginService) FetchForPlugin(pluginID string, req PluginFetchRequest) 
 		Attributes:  map[string]string{"host": host, "method": method, "url": req.URL, "declared": strconv.FormatBool(declared)},
 		Description: fmt.Sprintf("%s %s", method, host),
 		Source:      "plugin:" + pluginID,
+	}
+	if sec != nil {
+		// The secret's TITLE is the rule vocabulary and the Review
+		// wording; the value is resolved only after approval.
+		action.Attributes["secret"] = sec.title
+		action.Description += fmt.Sprintf(" · uses secret ‘%s’", sec.title)
 	}
 	var decision guardrailsvc.Decision
 	if anyHost {
@@ -132,13 +147,23 @@ func (p *PluginService) FetchForPlugin(pluginID string, req PluginFetchRequest) 
 	if !decision.Approved {
 		return out, nil
 	}
-	resp, err := httpconnector.ExecuteConfined(httpconnector.Request{Method: method, URL: req.URL, Headers: req.Headers, Body: req.Body}, allowHost, fetchMaxBody)
+	headers := req.Headers
+	value := ""
+	if sec != nil {
+		value, err = p.secretRefs.Resolve(sec.id, pluginID)
+		if err != nil {
+			return out, fmt.Errorf("fetch: secret ‘%s’: %w", sec.title, err)
+		}
+		headers = withSecretHeader(headers, sec, value)
+	}
+	resp, err := httpconnector.ExecuteConfined(httpconnector.Request{Method: method, URL: req.URL, Headers: headers, Body: req.Body}, allowHost, fetchMaxBody)
 	if err != nil {
-		return out, fmt.Errorf("fetch: %w", err)
+		return out, fmt.Errorf("fetch: %s", secret.Redact([]string{value}, err.Error()))
 	}
 	out.Status = resp.StatusCode
 	out.Headers = resp.Headers
 	out.Body = resp.Body
+	redactSecret(&out, value)
 	return out, nil
 }
 

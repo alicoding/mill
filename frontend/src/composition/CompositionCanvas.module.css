@@ -169,26 +169,20 @@
 .canvas :global(.react-flow__attribution a) {
     color: var(--fgColor-muted);
 }
-/* Reserves space only while it has something to show -- canvas-first
-   layout (docs/SPEC.md §3's layout pass): the config surface appears on
-   selection instead of permanently claiming 260px for a "Select a node
-   to configure it." placeholder. width (not flex-basis) so the collapse
-   transitions smoothly; .canvas's flex: 1 1 auto fills whatever space
-   this frees automatically, no extra layout logic needed. */
+/* The inspector fills its panel of the canvas | inspector split
+   (CanvasSplit.tsx, goal 0304): the panel owns the width, its collapse
+   when nothing is selected, and the user's own resize. */
 .inspector {
-    flex: 0 0 auto;
-    width: 260px;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
     min-width: 0;
-    border-left: 1px solid var(--borderColor-default);
     background: var(--bgColor-default);
     padding: var(--base-size-12);
     overflow-y: auto;
-    transition: width 0.15s ease, padding 0.15s ease, border-color 0.15s ease;
 }
 .inspectorCollapsed {
-    width: 0;
     padding: 0;
-    border-left-color: transparent;
     overflow: hidden;
 }
 .inspectorEmpty {

@@ -62,3 +62,22 @@ func TestGuardrailService_DeletingTheBuiltInRule_DoesNotReturnOnRestart(t *testi
 		t.Errorf("Rules() after restart = %d entries, want %d (one deleted, the rest persisted)", len(restarted.Rules()), len(guardrail.BuiltIn())-1)
 	}
 }
+
+// ADR-0048: a plugin fetch carrying a secret parks by the seeded rule,
+// and ask outranks a later allow rule for the same host; a fetch with
+// no secret is untouched by it.
+func TestBuiltIn_PluginFetchWithSecretAlwaysAsks(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	g := NewGuardrailService(store, compositionsvc.NewCompositionService(store))
+	if _, err := g.CreateRule(guardrail.Rule{ID: "allow-host", Label: "Allow api", Effect: guardrail.EffectAllow, NodeTypeID: "net.fetch", Condition: `Attributes.host == "api.example.com"`}); err != nil {
+		t.Fatal(err)
+	}
+	with := g.EvaluateAction("net.fetch", map[string]string{"host": "api.example.com", "method": "GET", "secret": "Jira PAT"}, guardrail.ClassExternal)
+	if with.Effect != guardrail.EffectAsk || with.RuleID != guardrail.PluginFetchSecretRuleID {
+		t.Errorf("with secret: %+v, want ask by %s", with, guardrail.PluginFetchSecretRuleID)
+	}
+	without := g.EvaluateAction("net.fetch", map[string]string{"host": "api.example.com", "method": "GET"}, guardrail.ClassExternal)
+	if without.Effect != guardrail.EffectAllow || without.RuleLabel != "Allow api" {
+		t.Errorf("without secret: %+v, want the host allow", without)
+	}
+}

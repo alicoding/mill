@@ -162,9 +162,12 @@ func (c *ConfigureService) DeleteDeclaredStepType(id string) error {
 	// package applies. Removal and tombstone must succeed together
 	// (docs/goals/0025 item 2).
 	recordTombstone := func(id string) error { return seeding.RecordTombstone(c.store, id) }
-	if err := entitystore.DeleteWithTombstone(&c.mu, &c.declaredStepTypes, c.persistDeclaredStepTypes, recordTombstone, declaredStepTypeDescriptor, id); err != nil {
+	clearTombstone := func(id string) error { return seeding.ClearTombstone(c.store, id) }
+	restore, err := entitystore.DeleteRecoverable(&c.mu, &c.declaredStepTypes, c.persistDeclaredStepTypes, recordTombstone, clearTombstone, declaredStepTypeDescriptor, id)
+	if err != nil {
 		return err
 	}
+	c.undo.remember("steptype", id, restore)
 	dataevent.Emit("steptype", id)
 	return nil
 }

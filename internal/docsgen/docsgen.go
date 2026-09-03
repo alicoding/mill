@@ -98,6 +98,8 @@ func describeRefKind(refKind string) string {
 		return " (references a callable Workflow)"
 	case "execenv":
 		return " (references an Execution environment)"
+	case "conversionprofile":
+		return " (references a Conversion profile)"
 	default:
 		return ""
 	}

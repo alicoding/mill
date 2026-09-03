@@ -23,6 +23,10 @@ func TestWriteContentForPlugin_RefusesBeforeRules(t *testing.T) {
 		{"writer", PluginContentWrite{Op: "card", Title: "T"}, "kindId and a title"},
 		{"writer", PluginContentWrite{Op: "card-update"}, "needs a cardId"},
 		{"writer", PluginContentWrite{Op: "list-row"}, "needs a listId"},
+		{"writer", PluginContentWrite{Op: "list", Columns: []PluginListColumn{{Name: "A"}}}, "needs a title"},
+		{"writer", PluginContentWrite{Op: "list", Title: "T"}, "at least one column"},
+		{"writer", PluginContentWrite{Op: "list", Title: "T", Columns: []PluginListColumn{{Name: " "}}}, "needs a name"},
+		{"writer", PluginContentWrite{Op: "list", Title: "T", Columns: []PluginListColumn{{Name: "A", Type: "emoji"}}}, "column type"},
 		// Well-formed but unwired: refused rather than performed unguarded.
 		{"writer", PluginContentWrite{Op: "note", Text: "Plan"}, "unavailable"},
 	}
@@ -46,5 +50,25 @@ func TestDescribeContentWrite_NamesTheTargetForReview(t *testing.T) {
 	_, desc, err = describeContentWrite(PluginContentWrite{Op: "list-row", ListID: "list-1", Values: map[string]string{"a": "b"}})
 	if err != nil || !strings.Contains(desc, "list-1") {
 		t.Errorf("list-row: %v %q", err, desc)
+	}
+	attrs, desc, err = describeContentWrite(PluginContentWrite{Op: "list", Title: "Vendors", Columns: []PluginListColumn{{Name: "Vendor"}, {Name: "Tier", Type: "text"}}, Rows: []map[string]string{{"Vendor": "Acme"}}})
+	if err != nil || desc != "Create a list: Vendors (2 columns, 1 rows)" || attrs["title"] != "Vendors" {
+		t.Errorf("list: %v %q %v", err, desc, attrs)
+	}
+}
+
+func TestListColumns_UniqueSlugKeysAndNameKeyedRows(t *testing.T) {
+	fields, rows := listColumns(
+		[]PluginListColumn{{Name: "Vendor Name"}, {Name: "vendor name", Type: "number"}, {Name: "!!"}},
+		[]map[string]string{{"Vendor Name": "Acme", "vendor name": "3", "other": "x"}},
+	)
+	if len(fields) != 3 || fields[0].Key != "vendor-name" || fields[1].Key != "vendor-name-2" || fields[2].Key != "column" {
+		t.Fatalf("fields = %+v", fields)
+	}
+	if fields[1].Type != "number" || fields[0].Type != "text" || fields[0].Label != "Vendor Name" {
+		t.Fatalf("types/labels = %+v", fields)
+	}
+	if rows[0]["vendor-name"] != "Acme" || rows[0]["vendor-name-2"] != "3" || rows[0]["other"] != "x" {
+		t.Fatalf("rows = %+v", rows)
 	}
 }

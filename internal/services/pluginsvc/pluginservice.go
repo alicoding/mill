@@ -10,6 +10,7 @@ package pluginsvc
 
 import (
 	"errors"
+	"sync"
 
 	"context"
 	"encoding/json"
@@ -49,6 +50,13 @@ type Manifest struct {
 // (what a plugin may ask to do).
 type ManifestContributes struct {
 	CanvasObjects []CanvasObjectContribution `json:"canvasObjects"`
+	// Steps (ADR-0051 §5, pluginservice_steps.go): workflow steps the
+	// plugin implements in steps.js, declared here so the catalog and
+	// the Extensions row know them before any code runs.
+	Steps []StepContribution `json:"steps"`
+	// Captures (goal 0309, pluginservice_captures.go): quick-capture
+	// surfaces the plugin renders in the capture window.
+	Captures []CaptureContribution `json:"captures"`
 	// Settings (docs/goals/0258 slice 1): the plugin's own declared
 	// user settings, the same declare -> host renders/stores/serves
 	// contract compiled-in nouns use. Declared in the manifest, not
@@ -93,6 +101,15 @@ type PluginInfo struct {
 	Dir      string
 	Error    string
 	Builtin  bool
+	// ContentHash is the folder's current content hash
+	// (pluginservice_hash.go), "" for a built-in or an invalid plugin
+	// -- what the lock compares against.
+	ContentHash string
+	// SigningPolicy reports whether an administrator pinned signing
+	// keys; Signed whether this folder's signature verified against one
+	// (pluginservice_signing.go). Both false with no policy.
+	SigningPolicy bool
+	Signed        bool
 }
 
 // knownCapabilities is the enumerated capability vocabulary
@@ -104,6 +121,14 @@ var knownCapabilities = map[string]bool{
 	// browser. The plugin never receives the primitive; on approval
 	// Mill itself performs the open.
 	"open-url": true,
+	// open-app (goal 0310): open a local path in a NAMED application
+	// (a collection folder in Bruno) -- the OS's own open-with, never a
+	// shell; server mode approves without performing, like open-url.
+	"open-app": true,
+	// list-files (goal 0310): list a folder's direct children through
+	// Mill (pluginservice_files.go) -- a read-class action, evaluated
+	// and audited, never the plugin's own filesystem access.
+	"list-files": true,
 	// erase-board-items: a drag-shaped canvas tool may hit-test and
 	// erase board items through the host's own quick-delete-with-undo
 	// door (goal 0252 S2). Enforced host-side in the webview: the
@@ -139,6 +164,23 @@ type PluginService struct {
 	// content is the guarded content-write seam (docs/goals/0289),
 	// nil until the composition root wires it.
 	content ContentWriter
+	// secretRefs / readSetting are the secretRef door's seams
+	// (pluginservice_fetch_secret.go), nil until wired -- a fetch
+	// naming a secret then refuses rather than sends unauthenticated.
+	secretRefs  SecretRefResolver
+	readSetting SettingReader
+	// trust / secretAccess are the audit export's read seams
+	// (pluginservice_audit.go), nil until wired.
+	trust        PluginTrustReader
+	secretAccess func(actorPrefix string) ([]PluginSecretAccess, error)
+	// mayRun / packs are the step-pack door's policy and cache
+	// (pluginservice_steps.go).
+	mayRun  func(id string, builtin bool) bool
+	packsMu sync.Mutex
+	packs   map[string]loadedPack
+	// signingKeys is the signed tier's policy source
+	// (pluginservice_signing.go), nil until wired.
+	signingKeys func() []string
 }
 
 func New(dir string, guardrail *guardrailsvc.GuardrailService, appVersion string) *PluginService {
@@ -244,6 +286,18 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 	info.Manifest = m
 	_, mainErr := os.Stat(filepath.Join(dir, "main.js")) // #nosec G703 -- folder passed pluginIDPattern (no separators, no dots)
 	info.Error = manifestProblem(m, folder, mainErr == nil, p.appVersion)
+	if info.Error == "" {
+		info.Error = stepsFileProblem(dir, m)
+	}
+	if info.Error == "" {
+		if h, err := ContentHash(dir); err == nil {
+			info.ContentHash = h
+		}
+	}
+	if keys := p.signingKeySet(); len(keys) > 0 {
+		info.SigningPolicy = true
+		info.Signed = SignatureVerified(dir, info.ContentHash, keys)
+	}
 	return info
 }
 
@@ -330,6 +384,12 @@ func validateContributes(c ManifestContributes) string {
 	if problem := validateNetwork(c.Network); problem != "" {
 		return problem
 	}
+	if problem := validateSteps(c.Steps); problem != "" {
+		return problem
+	}
+	if problem := validateCaptures(c.Captures); problem != "" {
+		return problem
+	}
 	if problem := validateViews(c.Views); problem != "" {
 		return problem
 	}
@@ -344,40 +404,6 @@ func validateContributes(c ManifestContributes) string {
 		seen[st.Key] = true
 	}
 	return ""
-}
-
-// IngestionClaim is one valid plugin's claim on bare-URL pastes as
-// the paste chain's wiring consumes it (docs/goals/0251).
-type IngestionClaim struct {
-	PluginID string
-	Kind     string
-}
-
-// URLPasteClaims returns the claims of every VALID plugin whose
-// manifest sets pastesURLs, in ListPlugins' own deterministic id
-// order. Consulted by the paste recognizer chain through the
-// composition root's enablement filter -- never by running plugin
-// code: a claim only routes the paste; the plugin's JS renders the
-// object it produced, later, in the webview.
-//
-//wails:ignore
-func (p *PluginService) URLPasteClaims() []IngestionClaim {
-	infos, err := p.ListPlugins()
-	if err != nil {
-		return nil
-	}
-	var out []IngestionClaim
-	for _, info := range infos {
-		if info.Error != "" {
-			continue
-		}
-		for _, obj := range info.Manifest.Contributes.CanvasObjects {
-			if obj.PastesURLs {
-				out = append(out, IngestionClaim{PluginID: info.Manifest.ID, Kind: obj.Kind})
-			}
-		}
-	}
-	return out
 }
 
 // GuardedActionDecision is RequestGuardedAction's wire shape.
@@ -436,6 +462,18 @@ func (p *PluginService) RequestGuardedAction(pluginID string, kind string, attri
 // capability's execution lives here, next to its vocabulary entry --
 // the plugin's request never contained the primitive, only the ask.
 func (p *PluginService) perform(kind string, attributes map[string]string) (bool, error) {
+	if kind == "open-app" {
+		app, path := strings.TrimSpace(attributes["app"]), strings.TrimSpace(attributes["path"])
+		if app == "" || !filepath.IsAbs(path) {
+			return false, fmt.Errorf("open-app needs an app name and an absolute path")
+		}
+		if err := osopen.OpenWith(app, path); errors.Is(err, osopen.ErrUnsupportedInServerMode) {
+			return false, nil
+		} else if err != nil {
+			return false, fmt.Errorf("open in %s: %w", app, err)
+		}
+		return true, nil
+	}
 	if kind == "open-url" {
 		u := attributes["url"]
 		if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {

@@ -42,7 +42,7 @@ test('ruleset\'s "Edit as JSON" fallback feeds back into the structured rule lis
   await expect(panel.getByTestId('ruleset-rule-name')).toHaveValue('has amount')
 })
 
-test('the Try-it output stays readonly', async ({ page }) => {
+test('the step-test output stays readonly', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
@@ -52,10 +52,10 @@ test('the Try-it output stays readonly', async ({ page }) => {
   const panel = activePanel(page)
   await clickCanvasNode(page, panel, 'Convert HTML to Markdown')
 
-  await fillCodeEditor(page, 'try-html-input', '<p>hello</p>')
-  await panel.getByTestId('try-convert').click()
+  await fillCodeEditor(page, 'step-test-input', '<p>hello</p>')
+  await panel.getByTestId('step-test-run').click()
 
-  const output = panel.getByTestId('try-markdown-output')
+  const output = panel.getByTestId('step-test-output')
   await expect(output).toContainText('hello')
 
   const before = await output.locator('.cm-content').textContent()

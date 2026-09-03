@@ -61,6 +61,15 @@
     flex: 1 1 auto;
     min-width: 0;
     min-height: 0;
+    /* One contract for every kind (goal 0311): what a face paints stays
+       inside the object's box. A sized object is exactly its box, so a
+       drawing, a document, or a plugin face taller than it is clipped
+       here, never at each face -- the band above remains the object's
+       edge and neighbours are never painted over. An unsized object
+       takes its face's own size, so nothing is lost. Handles, the
+       rotation grip, and every viewer's body-appended chrome sit
+       outside this box and are unaffected. */
+    overflow: hidden;
 }
 
 .image {

@@ -259,7 +259,7 @@ func main() {
 	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger) // docs/goals/0132-remote-access.md SLICE 1
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
-	wiring.WireSettingsEraSeams(settingsService, notificationService, remoteAuthService, triggerService, atlasService, pluginService)
+	wiring.WireSettingsEraSeams(settingsService, notificationService, remoteAuthService, triggerService, atlasService, pluginService, secretService)
 	settingsService.SetAppVersion(millUpdateVersion)
 	// The user's persisted channel opt-in wins over the build stamp --
 	// a source-built copy can deliberately follow the beta feed
@@ -341,6 +341,8 @@ func main() {
 		// windowing adapter, where they are documented and pinned by a test
 		// (goal 0188) rather than sitting as bare option values here.
 		Mac: windowing.MacAppOptions(),
+		// The one termination gate every quit path reaches (settingsservice_flush.go).
+		ShouldQuit: settingsService.ShouldQuit,
 		// Production-only single-instance guard (docs/SPEC.md §3.7's
 		// data-corruption hazard). nil in dev/server builds -- see
 		// singleinstance_{production,dev}.go for why the guard must NOT
@@ -458,14 +460,13 @@ func main() {
 	// (tray "Open Mill", summon, dock reopen) calls Show() on a dead
 	// window -- a silent no-op that strands the user. Hooks run BEFORE
 	// that listener and Cancel() stops it (verified against the
-	// toolkit's own HandleWindowEvent); app.Quit destroys the
-	// application directly without consulting window hooks, so quitting
-	// is unaffected. Hide-on-close is the tray-app archetype goal 0188
+	// toolkit's own HandleWindowEvent); quitting has its own gate
+	// (ShouldQuit above). Hide-on-close is the archetype goal 0188
 	// adopted (ApplicationShouldTerminateAfterLastWindowClosed=false is
 	// only honest if the window is still there to bring back).
 	mainWindow.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		e.Cancel()
-		mainWindow.Hide()
+		settingsService.HideMainWindowGuarded()
 	})
 	settingsService.SetWindow(windowing.WrapWindow(mainWindow))
 	settingsService.WatchWindowGeometry()
@@ -473,8 +474,7 @@ func main() {
 	launchatlogin.SetAutostartManager(app.Autostart)
 
 	// ADR-0033 second-window family, built in auxwindows.go.
-	settingsService.SetPanelWindow(windowing.WrapWindow(newQuickPanelWindow(app)))
-	settingsService.SetApprovalPromptWindow(windowing.WrapWindow(newApprovalPromptWindow(app)))
+	wireAuxWindows(app, settingsService)
 
 	setupTray(app, settingsService)
 

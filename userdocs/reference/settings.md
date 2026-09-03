@@ -15,6 +15,11 @@ restart say so.
 ## General
 
 - **Launch at login** — start Mill when you sign in.
+- **Save changes** — Automatically (the default): edits save as you
+  make them, and quitting or restarting saves anything still open.
+  When I choose: edits wait until you press ⌘S; a note or sheet with
+  unsaved edits shows a dot, and Mill asks Save all / Discard / Cancel
+  before it quits, restarts, or closes its window.
 - **Canvas navigation** — how scrolling moves the Atlas board and the
   workflow canvas. Trackpad: scrolling pans, pinch or ⌘-scroll zooms.
   Mouse: scrolling zooms, drag pans. Stored per device, so each

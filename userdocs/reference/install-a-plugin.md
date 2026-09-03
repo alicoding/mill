@@ -26,6 +26,41 @@ Each installed plugin has the same switch every built-in extension
 has. Turning it off removes its tool from the tray and palette;
 objects it already placed stay on your boards untouched.
 
+## Before a plugin runs
+
+A plugin you install after Mill first ran with this check waits for
+your review: Settings > Extensions lists it with what it can request,
+which hosts it can reach, and what it catches, and nothing of it runs
+until you click **Allow** and reload. A notice in the footer tells you
+when one is waiting. Plugins that were already installed when the
+check arrived keep running; only new arrivals wait.
+
+Mill remembers what you allowed: the plugin's files are fingerprinted
+at that moment, and if they change later — an update you copied in,
+or an edit — the plugin stops until you look again and allow it once
+more. The row says "Its files changed since you allowed it."
+
+An administrator can pin which plugins may run at all by writing an
+allow-list into Mill's settings file — the key
+`settings-plugin-allowlist`, a JSON array of plugin ids, placed the
+way device-management tooling places any managed setting. When it is
+set, Settings > Extensions reports it and every plugin off the list
+shows as blocked, with no way to turn it on from the app. The Drawing
+plugin built into Mill is exempt.
+
+An administrator can also require signatures: the key
+`settings-plugin-signing-keys`, a JSON array of minisign public keys.
+With keys pinned, a plugin runs only when its folder holds
+`mill-plugin.minisig`, a minisign signature of the folder's content
+hash (Export plugin audit shows each plugin's `contentHash`; sign that
+string with `minisign -S`). Unsigned plugins show as such and cannot be
+turned on.
+
+**Export plugin audit** (Settings > Extensions, or the command
+palette) saves one JSON file: every installed plugin with its declared
+reach and whether it is allowed and on, every action a plugin asked
+Mill to perform within the last day, and every secret a plugin read.
+
 ## What a plugin can and cannot do
 
 A plugin draws its own objects and edits their data through Mill.
@@ -69,6 +104,13 @@ no one claims still lands the way it does today. With the Bookmark
 example installed, pasting a link from your browser drops a bookmark
 right on the board.
 
+When two plugins claim pasted links (Bookmark and the Web clipper both
+do), the first one lands and the board's toast offers the other:
+"Pasted as Bookmark · Paste as Web clipper instead" re-types that same
+object in place, undo included. Settings > Extensions' "Pasted links
+become" picks which one lands first; without a choice, plugins take
+turns in id order.
+
 ## Drawing tools
 
 A plugin isn't limited to click-to-place objects: it can register a
@@ -95,9 +137,11 @@ declaration fields that open this up:
   `screenToFlowPosition`, `styleValues`, `createObject(payload,
   flowPos, opts?)` (scoped to your own kind; lands, syncs, and undoes
   like any placement — `opts.size` sets the placed size, `opts.select`
-  selects it), and `saveImageBytes(base64, ext, title)` for baking
+  selects it), `saveImageBytes(base64, ext, title)` for baking
   drawn bytes into a Mill-owned file a file-backed object's payload
-  can point at. `renderPreview(el, points, now)` draws the live
+  can point at, and `itemsInRect(rect)` for the ids of the top-level
+  cards, notes and objects whose center falls inside a board-space
+  rect (the rule the built-in Area tool uses). `renderPreview(el, points, now)` draws the live
   in-drag stroke into a host-owned overlay element. Drag tools stay
   armed across strokes by default (`sticky: false` opts out, and a
   non-sticky tool may add `lockable: true` so re-clicking its armed
@@ -140,12 +184,29 @@ back through `api.settings`. A plugin never builds a settings screen.
 }
 ```
 
-Four types: `boolean` (a checkbox), `string` (a text field),
-`number` (a number field, with optional `min` and `max`), and `enum`
-(a dropdown over `options`). `default` is the value in effect until
+Five types: `boolean` (a checkbox), `string` (a text field),
+`number` (a number field, with optional `min` and `max`), `enum`
+(a dropdown over `options`), and `secretRef` (a picker over the
+vault's entries — see below). `default` is the value in effect until
 the user changes the control; a mistyped manifest — a default of the
-wrong type, an enum default missing from its options — blocks the
-plugin from loading and names the key in its row.
+wrong type, an enum default missing from its options, a default on a
+`secretRef` — blocks the plugin from loading and names the key in its
+row.
+
+A `secretRef` setting names a credential without ever holding it:
+
+```json
+{ "key": "auth", "type": "secretRef", "label": "Authorization",
+  "description": "Sent as a bearer token with every request." }
+```
+
+The user picks one of their vault entries in the plugin's row; the
+stored value is a reference, and `api.settings.get('auth')` answers
+the entry's title (or an empty string when nothing is picked). The
+value itself only ever travels inside `api.fetch` — see Reaching the
+network. A picked entry that is later deleted shows "This secret no
+longer exists. Pick another." in the row, and a request naming it is
+refused with the same words.
 
 ```js
 export function activate(api) {
@@ -245,8 +306,32 @@ if (res.approved) console.log(res.status, res.body)   // headers in res.headers
 else api.notify({ level: 'warning', text: 'Not allowed' + (res.ruleLabel ? ' (' + res.ruleLabel + ')' : '') })
 ```
 
-Credentials belong in the vault, not in plugin code; the setting type
-that names a vault entry is on the roadmap.
+Credentials belong in the vault, not in plugin code. A request that
+needs one names a `secretRef` setting, and Mill attaches the entry's
+value itself — after you approve the request — as a header:
+
+```js
+const res = await api.fetch('https://api.example.com/me', {
+  secret: { settingKey: 'auth' }                 // Authorization: Bearer <value>
+  // or: secret: { settingKey: 'auth', header: 'X-Api-Key', prefix: '' }
+})
+```
+
+Every request that carries a secret asks you first, whatever your
+other rules say: the Review row reads "GET api.example.com · uses
+secret ‘Jira PAT’", and the vault's access history records the read
+as sent by the extension. The value is redacted from the response
+before the plugin sees it — a server echoing the token back gets
+`[redacted]`.
+
+## Opening a path in another app, and listing a folder
+
+Two more guarded doors, both declared as capabilities:
+
+- `open-app` — `ctx.requestGuardedAction('open-app', { app: 'Bruno', path: '/abs/folder' }, 'Open the collection in Bruno')` hands a local path to a named application through the OS's own open-with. It asks like every guarded action (Review shows the plugin's name) and, once approved, opens the app.
+- `list-files` — `api.files.list('/abs/folder')` returns the folder's direct children (`{ name, path, isDir, size }`), hidden entries and dependency folders left out. It is a read: allowed unless one of your rules denies or parks it, and audited either way; `entries` is empty when it was not approved.
+
+The Bruno collection example uses both: its face lists the collection's requests and offers "Open in Bruno".
 
 ## Writing to the board
 
@@ -266,12 +351,81 @@ const note = await api.content.createNote({ text: 'Call the bank\ntomorrow', par
 const card = await api.content.createCard({ kindId, title: 'Acme', fields: { status: 'active' } })
 await api.content.updateCard(card.id, { note: 'Renewal due in March' })
 await api.content.appendListRow(listId, { vendor: 'Acme', tier: 'gold' })
+const list = await api.content.createList({ title: 'Vendors', columns: [{ name: 'Vendor' }, { name: 'Tier', type: 'text' }], rows: [{ Vendor: 'Acme', Tier: 'gold' }] })
 if (!note.approved) api.notify({ level: 'warning', text: 'Not allowed' + (note.ruleLabel ? ' (' + note.ruleLabel + ')' : '') })
 ```
 
 A note without a position lands just right of the last item in its
 parent. A denied write resolves with `approved: false`; an approved
-one carries the new entity's `id`.
+one carries the new entity's `id`. `createList` takes columns by
+display name with an optional type (`text`, `number`, `integer`,
+`boolean`, `date`, `datetime`; text when omitted) and first rows keyed
+by column name.
+
+## Workflow steps
+
+A plugin can add steps to the workflow palette. Declare them in the
+manifest and implement them in a `steps.js` next to `main.js`:
+
+```json
+"contributes": {
+  "steps": [
+    { "id": "text-case", "label": "Text case", "description": "Changes the text's case.",
+      "config": [ { "key": "mode", "label": "Mode", "type": "options", "options": ["upper", "lower", "title"], "default": "upper" } ] }
+  ]
+}
+```
+
+```js
+// steps.js -- plain script, no imports or exports
+registerStep('text-case', {
+  perform: function (input) {
+    // input.payload: the text arriving from the previous step
+    // input.config: this step's authored fields (input.config.mode)
+    // input.attributes: the run's attribute values
+    return input.payload.toUpperCase()          // or { payload, attributes }
+  },
+})
+```
+
+`steps.js` runs inside Mill's workflow engine, not in the window: a
+step works in a scheduled or headless run exactly as it does from the
+editor, and Try this step in the Inspector runs the same function. It
+sees only its input — no network, no files, no other plugin — and a
+step that runs longer than a few seconds fails the run instead of
+hanging it. Config fields are text or a fixed option list. The step
+appears in the palette under Transform as "<label>", and the
+Extensions row lists "Adds workflow steps". The **Text case** example
+(`examples/plugins/mill-textcase`) is the whole pattern in one file.
+
+## Captures
+
+A plugin can offer a quick capture: a small face that opens in its own
+floating window from the Quick Panel or the command palette, away from
+the canvas, and lands what the user writes where they choose. Declare
+it in the manifest and register the face:
+
+```json
+"contributes": { "captures": [ { "id": "thought", "label": "Thought", "description": "A one-line thought." } ] }
+```
+
+```js
+api.registerCapture({
+  id: 'thought',
+  render(el, ctx) {
+    // Draw the face into el. ctx.destinationId is the card the user
+    // chose in the window's header ("" for the top level) -- pass it
+    // as parentId to a content door, then call ctx.done().
+    // ctx.cancel() closes without writing.
+  },
+})
+```
+
+The Quick Panel lists "New <label>…" straight off the manifest, so the
+row is there before any plugin code runs; the capture window loads the
+plugin and calls `render`. Writes go through the same guarded content
+doors as everywhere else. Mill's own note is the first capture (the
+"New note…" row); the destination is remembered per capture.
 
 ## Views
 
@@ -319,7 +473,7 @@ api.registerCanvasObject({
 
 ## The example plugins
 
-Mill's repository ships four working examples: **Bookmark**
+Mill's repository ships six working examples: **Bookmark**
 (`examples/plugins/mill-bookmark`) — a web address pinned to the
 board, edited in place, opened through a guarded ask, with two
 declared settings — **Scribble** (`examples/plugins/mill-scribble`) —
@@ -329,8 +483,58 @@ and live preview above — and **Board index**
 `api.query` and `api.on` — and **Request tester**
 (`examples/plugins/mill-request-tester`), a real tool on nothing but
 the doors: a work tab, any-host guarded fetch, a storage-backed
-history, and a declared setting. Copy any folder into your plugins
+history, and a declared setting — and **Mind map**
+(`examples/plugins/mill-markmap`), a view over a note's headings that
+follows the note as it changes, its rendering engine vendored as one
+committed bundle (`scripts/vendor-markmap.sh`) so it never loads
+anything from the network — and **Web clipper**
+(`examples/plugins/mill-clipper`), which fetches a page through the
+guarded network door, extracts the article with Mozilla's Readability
+(vendored the same way), converts it through the SDK's convert door
+(`api.convert.htmlToMarkdown`), and saves it as a note through the
+guarded content door. Copy any folder into your plugins
 folder to try it, or use it as the starting point for your own.
+
+## Integrating a real tool
+
+Mill never rebuilds a tool you already use; it puts the tool's files
+and its command line on the board and in workflows. The pattern, with
+Bruno (an API client) as the worked example:
+
+1. **Find the tool's own seams.** Bruno keeps a collection as a folder
+   of `.bru` files with a `bruno.json`, and its CLI runs one with
+   `bru run --reporter-json`. Files and a CLI are exactly what Mill
+   integrates through -- a file-backed object kind and a shell step.
+2. **Place the artifact as an object.** The Bruno collection example
+   (`examples/plugins/mill-bruno`) registers a file-backed kind over
+   `bruno.json`: the face names the collection, lists its requests
+   through the files door, and offers "Open in Bruno" through the
+   open-app door. Editing stays in Bruno.
+3. **Run it as a workflow.** The seeded "Example: Run a Bruno
+   collection" runs the CLI on an execution environment, reads the JSON
+   report it wrote, and lands the results as rows of the seeded "Bruno
+   results" List -- guarded and audited like every command Mill runs.
+4. **Keep secrets in the tool's own store.** Bruno reads a `.env` at
+   the collection root; point Configure > Secret sources at that file
+   and the keys appear in every secret picker without a copy.
+
+Nothing here is Bruno-specific in the platform: the same four moves
+fit any tool with files and a command line.
+
+## Checking a plugin
+
+Two commands run the same checks Mill's own examples pass:
+
+```sh
+go run ./internal/pluginconform path/to/your-plugin   # the loader's rules, ahead of time
+cd frontend && npm run plugin:conform                 # activates every example against a recording host
+```
+
+The first refuses what the loader would refuse — id and folder name,
+capabilities, contributions, file types the plugin route serves, a
+symlink leaving the folder. The second activates each plugin against a
+recording stand-in for `api` and checks that every object, view, and
+setting it registers or reads is declared in its manifest.
 
 ## Writing one
 
@@ -344,7 +548,7 @@ export function activate(api) {
     label: 'My thing',
     icon: '⭐',
     source: 'board-local',
-    editRoute: 'inline',
+    editRoute: 'inline', // or 'external-app' | 'none', or (object) => one of them
     defaultPayload: {},
     renderFace(el, ctx) {
       // Draw into el with plain DOM. ctx.object holds the data;
@@ -355,6 +559,16 @@ export function activate(api) {
   })
 }
 ```
+
+`el` is scaled with the board: zoom out and every pixel inside it
+shrinks. Plain DOM does not care, but a rendering engine that measures
+its own labels or fits a layout from screen rectangles (a mind map, a
+graph layout, a text-measuring chart) lays out wrong inside a scaled
+box. For those, `ctx.mountOffBoard(element, { w, h })` parks your
+element off the board at exactly that size, unscaled; render there,
+copy the finished drawing into `el`, then call the detach it returned.
+The Mind map example does exactly this on every repaint, and Mill
+detaches anything you left mounted when the object leaves the board.
 
 The full contract — every field, every capability, and what stays
 stable between versions — is in [Extending the canvas](extending-the-canvas.md).
