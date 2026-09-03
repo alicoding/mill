@@ -1686,6 +1686,24 @@
       "Complexity": "basic"
     },
     {
+      "ID": "capture-clipboard-text",
+      "Kind": "capture",
+      "Label": "Read clipboard text",
+      "Description": "Reads the clipboard's plain text only, never its HTML -- for ids, tokens, and anything copied as-is.",
+      "ConfigFields": null,
+      "Output": "plain text from the clipboard",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
+      "Effect": "read",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
+    },
+    {
       "ID": "capture-file",
       "Kind": "capture",
       "Label": "Read file",
@@ -2773,6 +2791,54 @@
       "Declared": false,
       "PaletteGroup": "",
       "Complexity": "advanced"
+    },
+    {
+      "ID": "process-transform-text",
+      "Kind": "process",
+      "Label": "Transform text",
+      "Description": "Hashes or encodes the payload -- SHA-256, base64, URL encoding and more. Hashes are one-way; decoding applies to base64, URL, and hex.",
+      "ConfigFields": [
+        {
+          "Key": "operation",
+          "Label": "Operation",
+          "Type": "options",
+          "Required": false,
+          "Default": "sha256",
+          "Description": "What to do with the text.",
+          "Options": [
+            "sha256",
+            "sha1",
+            "md5",
+            "base64-encode",
+            "base64-decode",
+            "url-encode",
+            "url-decode",
+            "hex-encode",
+            "hex-decode",
+            "uuid",
+            "trim",
+            "upper",
+            "lower"
+          ],
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "the transformed text",
+      "Consumes": [
+        "text",
+        "html"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
+      "Effect": "",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "ruleset",
@@ -4096,6 +4162,24 @@
       "Complexity": "basic"
     },
     {
+      "ID": "capture-clipboard-text",
+      "Kind": "capture",
+      "Label": "Read clipboard text",
+      "Description": "Reads the clipboard's plain text only, never its HTML -- for ids, tokens, and anything copied as-is.",
+      "ConfigFields": null,
+      "Output": "plain text from the clipboard",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
+      "Effect": "read",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
+    },
+    {
       "ID": "capture-file",
       "Kind": "capture",
       "Label": "Read file",
@@ -5183,6 +5267,54 @@
       "Declared": false,
       "PaletteGroup": "",
       "Complexity": "advanced"
+    },
+    {
+      "ID": "process-transform-text",
+      "Kind": "process",
+      "Label": "Transform text",
+      "Description": "Hashes or encodes the payload -- SHA-256, base64, URL encoding and more. Hashes are one-way; decoding applies to base64, URL, and hex.",
+      "ConfigFields": [
+        {
+          "Key": "operation",
+          "Label": "Operation",
+          "Type": "options",
+          "Required": false,
+          "Default": "sha256",
+          "Description": "What to do with the text.",
+          "Options": [
+            "sha256",
+            "sha1",
+            "md5",
+            "base64-encode",
+            "base64-decode",
+            "url-encode",
+            "url-decode",
+            "hex-encode",
+            "hex-decode",
+            "uuid",
+            "trim",
+            "upper",
+            "lower"
+          ],
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "the transformed text",
+      "Consumes": [
+        "text",
+        "html"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
+      "Effect": "",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "ruleset",

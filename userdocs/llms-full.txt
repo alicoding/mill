@@ -792,6 +792,13 @@ Reads the clipboard's HTML. If there's no HTML flavor (many apps only put plain 
 - Takes: nothing — Produces: HTML
 - Effect: reads local state
 
+### Read clipboard text
+
+Reads the clipboard's plain text only, never its HTML -- for ids, tokens, and anything copied as-is.
+
+- Takes: nothing — Produces: text
+- Effect: reads local state
+
 ### Read file
 
 Reads a local file into the payload. "payload" source treats the current payload as the file path -- what a File changed trigger supplies; "literal" reads a fixed path instead.
@@ -987,6 +994,15 @@ Searches a Configure-authored List's rows against one or more match parameters (
   - **Stop at first match** — Stops scanning after the first match. The output shape stays the same typed Object either way -- results just has at most one entry -- so turning this on or off never changes what a downstream Decision/binding can reference.
   - **Output attribute** — Which Attributes field receives the typed search-result object.
   - **Pin to version (optional)** — Leave empty to always resolve this List's current rows. Enter a version number to pin this step to that exact published snapshot, unaffected by later row edits.
+
+### Transform text
+
+Hashes or encodes the payload -- SHA-256, base64, URL encoding and more. Hashes are one-way; decoding applies to base64, URL, and hex.
+
+- Takes: text or HTML — Produces: text
+- Effect: none — pure computation
+- Settings:
+  - **Operation** — What to do with the text.
 
 ### Validate with rules
 

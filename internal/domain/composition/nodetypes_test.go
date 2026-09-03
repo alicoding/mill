@@ -40,6 +40,7 @@ var pureNodeTypes = map[string]string{
 	"capture-attribute":        "reads ExecContext.Attributes in-memory, no I/O",
 	"process-extract-html":     "pure string/DOM transform on the in-memory payload, no I/O",
 	"process-inject-text":      "pure string transform on the in-memory payload, no I/O",
+	"process-transform-text":   "hashes/encodes the payload string in memory -- no I/O",
 	"process-html-to-markdown": "pure string transform on the in-memory payload, no I/O",
 }
 
