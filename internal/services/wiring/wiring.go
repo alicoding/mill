@@ -285,6 +285,7 @@ func WireRemoteAuth(store settings.Store, logger *slog.Logger) *remoteauthsvc.Re
 func WireSecrets(vaultPath string, credentials credential.Store, configureService *configuresvc.ConfigureService) *secretsvc.SecretService {
 	secretService := secretsvc.NewSecretService(secretvault.New(vaultPath), credentials)
 	configureService.SetSecretResolver(secretService.ResolveSecretValue)
+	secretService.SetSourcesLister(configureService.SecretSources)
 	configureService.SetSecretLabelsLister(secretService.ListSecrets)
 	guardrailsvc.SetSecretLabelsLookup(configureService.DeriveSecretLabels)
 	return secretService

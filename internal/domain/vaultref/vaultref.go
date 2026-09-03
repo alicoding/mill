@@ -1,35 +1,48 @@
-// Package vaultref holds the one string-level convention every
-// Configure entity field that may name a stored secret shares: a value
-// of the literal form "vault:<entry-id>" points at a secretsvc vault
-// entry rather than carrying a literal value itself (goal 0185 S3,
-// extended to a general reference type by goal 0203 S1). Originally
-// declared only inside internal/domain/mcpserver (MCPServer.Env was
-// the sole consumer); lifted here once a second KEY=VALUE-shaped field
-// (ExecEnv.Env) and a third, single-value field (HTTPRequest.Headers)
-// needed the identical parsing rule, so every consumer shares one
-// spelling instead of each declaring its own prefix constant.
-//
-// A leaf package deliberately, mirroring internal/domain/typedfield's
-// own reasoning: zero internal imports, so every domain package that
-// declares a vault-referenceable field (mcpserver, execenv, httprequest)
-// and the configuresvc service layer that resolves the reference can
-// all import this without creating a cycle. Parsing only -- resolving
-// an id to its real secret is a service-layer concern (it needs
-// secretsvc's own store), never done here.
+// Package vaultref is the reference grammar every secret-referenceable
+// field shares: "<provider>:<id>". "vault:<id>" names an entry of
+// Mill's own vault (the original and default provider); "env:<source-
+// id>/<KEY>" names a key of a dotenv secret source (ADR-0050). A
+// field holds the reference, never the value; the secret service
+// resolves it at the moment of use and records the read.
 package vaultref
 
 import "strings"
 
-// Prefix marks a field value as a vault entry reference rather than a
-// literal -- "vault:<entry-id>". Exported so every resolving call site
-// and every declaring domain package's own doc comment share one
-// spelling.
 const Prefix = "vault:"
 
-// Parse reports whether value (a field's own value, or a KEY=VALUE env
-// entry's value half after the "KEY=" split) names a vault entry,
-// returning its id.
-func Parse(value string) (id string, ok bool) {
-	rest, found := strings.CutPrefix(value, Prefix)
-	return rest, found
+// ProviderVault is the default provider; ProviderEnv the dotenv
+// source provider. Any other prefix is not a reference.
+const (
+	ProviderVault = "vault"
+	ProviderEnv   = "env"
+)
+
+var providers = map[string]bool{ProviderVault: true, ProviderEnv: true}
+
+// Split separates a reference into its provider and provider-local id.
+func Split(value string) (provider, id string, ok bool) {
+	p, rest, found := strings.Cut(value, ":")
+	if !found || !providers[p] || rest == "" {
+		return "", "", false
+	}
+	return p, rest, true
 }
+
+// Parse returns the id the secret service resolves: for the vault
+// provider the bare entry id (every existing "vault:<id>" reference
+// and resolver keeps working unchanged); for any other provider the
+// provider-qualified id ("env:<source>/<KEY>"), which the secret
+// service dispatches by prefix.
+func Parse(value string) (id string, ok bool) {
+	provider, rest, found := Split(value)
+	if !found {
+		return "", false
+	}
+	if provider == ProviderVault {
+		return rest, true
+	}
+	return provider + ":" + rest, true
+}
+
+// Ref builds a reference for a provider and its local id.
+func Ref(provider, id string) string { return provider + ":" + id }

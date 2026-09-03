@@ -18,9 +18,12 @@ function notify(): void {
 
 export async function refreshSecretTitles(): Promise<void> {
   try {
-    const list = (await SecretService.ListSecrets()) ?? []
+    // The vault's entries, then every enabled secret source's keys
+    // (ADR-0050) -- titles only, keyed by the reference each resolves as.
+    const [vault, providers] = await Promise.all([SecretService.ListSecrets(), SecretService.ListProviderSecrets()])
     const next: Record<string, string> = {}
-    for (const e of list) next[e.ID] = e.Title
+    for (const e of vault ?? []) next[e.ID] = e.Title
+    for (const e of providers ?? []) next[e.ID] = e.Title
     titles = next
     loadError = ''
   } catch (err) {

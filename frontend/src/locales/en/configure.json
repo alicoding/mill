@@ -580,6 +580,29 @@
     "decisions": "Decisions",
     "execEnvs": "Execution Environments",
     "aiProviders": "AI Providers",
-    "stepTypes": "Step types"
+    "stepTypes": "Step types",
+    "secretSources": "Secret sources"
+  },
+  "configureSecretSources": {
+    "heading": "Secret sources",
+    "newSource": "New source",
+    "label": "Label",
+    "kind": "Kind",
+    "kindDotenv": "Dotenv file (.env)",
+    "path": "File path",
+    "pathCaption": "Keys in this file appear as secrets in every picker; values are read when a step runs and never copied.",
+    "saveSource": "Save source",
+    "searchPlaceholder": "Search secret sources…",
+    "emptyHeading": "No secret sources yet",
+    "emptyDescription": "Point Mill at a .env file you already keep — a project's, or a Bruno collection's — and its keys become secrets you can reference.",
+    "deleteConfirmTitle": "Delete this secret source?",
+    "deleteConfirmBody": "\"{{label}}\" stops offering its keys. The file itself is untouched.",
+    "editAriaLabel": "Edit {{label}}",
+    "deleteAriaLabel": "Delete {{label}}",
+    "columns": {
+      "label": "Label",
+      "kind": "Kind",
+      "path": "Path"
+    }
   }
 }

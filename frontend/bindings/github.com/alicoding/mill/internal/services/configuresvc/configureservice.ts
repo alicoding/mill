@@ -52,6 +52,9 @@ import * as list$0 from "../../domain/list/models.js";
 import * as mcpserver$0 from "../../domain/mcpserver/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as secretsource$0 from "../../domain/secretsource/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as typedfield$0 from "../../domain/typedfield/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -158,6 +161,10 @@ export function CreateMCPServer(label: string, command: string, args: string[] |
     return $Call.ByID(1284256739, label, command, args, env);
 }
 
+export function CreateSecretSource(label: string, kind: secretsource$0.Kind, path: string): $CancellablePromise<secretsource$0.Source> {
+    return $Call.ByID(2593717437, label, kind, path);
+}
+
 export function Decisions(): $CancellablePromise<decision$0.Decision[] | null> {
     return $Call.ByID(3569228287);
 }
@@ -234,6 +241,10 @@ export function DeleteListRow(listID: string, rowID: string): $CancellablePromis
 
 export function DeleteMCPServer(id: string): $CancellablePromise<void> {
     return $Call.ByID(3847603582, id);
+}
+
+export function DeleteSecretSource(id: string): $CancellablePromise<void> {
+    return $Call.ByID(4158252478, id);
 }
 
 /**
@@ -605,6 +616,10 @@ export function RestoreMCPServer(id: string): $CancellablePromise<mcpserver$0.MC
     return $Call.ByID(3242563609, id);
 }
 
+export function SecretSources(): $CancellablePromise<secretsource$0.Source[] | null> {
+    return $Call.ByID(421745118);
+}
+
 /**
  * SeedRevisions returns the CURRENTLY SHIPPED revision of every golden
  * Configure entity (every type this service owns), keyed by its own
@@ -747,6 +762,10 @@ export function UpdateListRow(listID: string, rowID: string, values: { [_ in str
 
 export function UpdateMCPServer(id: string, label: string, command: string, args: string[] | null, env: string[] | null): $CancellablePromise<mcpserver$0.MCPServer> {
     return $Call.ByID(2916384132, id, label, command, args, env);
+}
+
+export function UpdateSecretSource(id: string, label: string, kind: secretsource$0.Kind, path: string): $CancellablePromise<secretsource$0.Source> {
+    return $Call.ByID(2006063992, id, label, kind, path);
 }
 
 export function UpdateWorkflowAttributes(workflowID: string, attrs: composition$0.AttributeDef[] | null): $CancellablePromise<composition$0.Workflow> {
