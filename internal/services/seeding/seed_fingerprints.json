@@ -148,8 +148,8 @@
     "fingerprint": "775af5909025d026b3d20469002becacaec8b516a6ad08ab197ef5e8652b080b"
   },
   "list:example-task-tracker-list": {
-    "seedRevision": 2,
-    "fingerprint": "d7323e0ad888af81e08709ee5c3d19cce42091a50621d709cbf0256cbba6dab6"
+    "seedRevision": 3,
+    "fingerprint": "1ae423f8d305f6060e7e30d60d76a597b2075c0402e6484a1a74b379384f59e0"
   },
   "mcpserver:example-reference-mcpserver": {
     "seedRevision": 1,

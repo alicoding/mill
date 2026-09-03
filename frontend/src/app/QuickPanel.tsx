@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
 import { FilteredActionList } from '@primer/react/experimental'
-import { NoteIcon, PlayIcon } from '@primer/octicons-react'
-import { AtlasService, ExecutionService, SettingsService, TriggerService } from '../shared/bindings'
+import { PlayIcon } from '@primer/octicons-react'
+import { ExecutionService, SettingsService, TriggerService } from '../shared/bindings'
 import { useAppStore, refreshWorkflows, refreshRequests, refreshKeybindings } from '../shared/store'
 import {
   useConfigureEntityStore, refreshLists, refreshMCPServers, refreshDecisions, refreshExecEnvs, refreshAIProviders, refreshDeclaredStepTypes,
@@ -16,7 +16,7 @@ import { sortWorkflowsByPinnedAndFrecency } from './workflowFrecency'
 import { WorkflowRowTrailingVisual } from './WorkflowRowTrailingVisual'
 import { buildConfigureAndActionEntries } from './quickPanelActionEntries'
 import type { PanelEntry } from './quickPanelActionEntries'
-import { cascadeNotePosition, resolveNoteParentID } from './quickPanelCapture'
+import { useQuickPanelCaptureDoors } from './useQuickPanelCaptureDoors'
 import { QuickPanelClipboardApplyDoor } from './QuickPanelClipboardApplyDoor'
 import { QuickPanelCodingLoop } from './QuickPanelCodingLoop'
 import { useQuickPanelCodingLoopDoor } from './useQuickPanelCodingLoopDoor'
@@ -97,7 +97,6 @@ export function QuickPanel() {
   // the current note count per parent -- fetched alongside cards/kinds
   // below, never rendered as its own row (notes stay excluded from
   // search, same as the main Atlas surface).
-  const atlasNotes = useAtlasStore((s) => s.notes)
   // Workflow pins/favorites (docs/goals/BACKLOG.md Standing #5): a
   // plain ordered workflow-ID list, store-owned/localStorage-tier --
   // see shared/store.ts's own declaration comment for the schema.
@@ -303,25 +302,8 @@ export function QuickPanel() {
   const { clipboardApply, setClipboardApply, replyReview, setReplyReview, applyFromClipboard } = useQuickPanelClipboardDoor(t)
   const { codingLoopText, runFromClipboard: runCodingLoopFromClipboard, closeCodingLoop } = useQuickPanelCodingLoopDoor()
 
-  // The away-capture door (docs/goals/0090): a typed query with no
-  // intent to search becomes a Note instead, filed into the Scratchpad
-  // inbox (root, if the seed was deleted) at a cascaded position so
-  // repeated captures never land exactly stacked. Success clears the
-  // query and dismisses through the SAME focus-yield path the other
-  // rows use, silently -- no confirmation to read before the window
-  // goes away, matching capture-first's own "no app focus change"
-  // intent. A failure never dismisses, so the query stays typed and
-  // the panel's own status line carries the error.
-  const createNoteFromQuery = (text: string) => {
-    const parentID = resolveNoteParentID(atlasCards)
-    const position = cascadeNotePosition(atlasNotes, parentID)
-    AtlasService.CreateNote(text, position, parentID)
-      .then(() => {
-        setQuery('')
-        void SettingsService.DismissPanel().catch(() => {})
-      })
-      .catch(() => setStatus(t('quickPanel.saveNoteError')))
-  }
+  // The capture doors (note, task) live in their own hook.
+  const { captureEntries } = useQuickPanelCaptureDoors({ t, setQuery, setStatus })
 
   const allEntries = useMemo<PanelEntry[]>(() => {
     const entries: PanelEntry[] = []
@@ -386,20 +368,7 @@ export function QuickPanel() {
   // buckets items by groupId while preserving each bucket's original
   // push order.
   const trimmedQuery = query.trim()
-  const withCapture: PanelEntry[] = trimmedQuery
-    ? [...filtered, {
-      // Keyed by its query: as the one row surviving every filter change
-      // it became the list's "previous" active row, stealing Enter from
-      // the top result (goal 0294).
-      id: `save-note:${trimmedQuery}`,
-      groupId: 'actions',
-      text: t('quickPanel.saveNote'),
-      description: t('quickPanel.saveNoteHint'),
-      searchText: '',
-      leadingVisual: NoteIcon,
-      run: () => createNoteFromQuery(trimmedQuery),
-    }]
-    : filtered
+  const withCapture: PanelEntry[] = [...filtered, ...captureEntries(trimmedQuery)]
 
   // Group order follows the ranking while a query is typed (goal 0295):
   // the group holding the best match renders first, so a keyword hit
