@@ -432,8 +432,9 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
             <CurrentStepBar barState={barState} attrs={workflow?.Attributes ?? []} runDetail={liveRunDetail} onResolve={resolveApprovalStep} onDismiss={dismissRunState} />
           </ReactFlow>
         </div>
-        } inspector={
+        } inspector={(headerActions) => (
         <CanvasInspectorPanel
+          headerActions={headerActions}
           workflow={workflow}
           selectedNode={selectedNode}
           selectedEdge={selectedEdge}
@@ -450,7 +451,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
           edges={edges}
           {...branchRules}
         />
-        } />
+        )} />
       </div>
       </NoteActionsContext.Provider>
       </BreakpointContext.Provider>

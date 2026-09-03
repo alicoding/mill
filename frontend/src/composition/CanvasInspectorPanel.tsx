@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Edge as RFEdge } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { Text } from '@primer/react'
@@ -11,6 +12,7 @@ import { useHotkeyCapture } from './hotkeyCapture'
 import styles from './CompositionCanvas.module.css'
 
 interface CanvasInspectorPanelProps {
+  headerActions?: ReactNode
   workflow: Workflow | null | undefined
   selectedNode: CanvasNode | null
   selectedEdge: RFEdge | null
@@ -43,7 +45,7 @@ interface CanvasInspectorPanelProps {
 // inline form: an edge-selected branch (DecisionEdgeInspector), a
 // node-selected branch (NodeInspector), or the empty prompt when
 // neither is selected.
-export function CanvasInspectorPanel({ workflow, selectedNode, selectedEdge, selectedEdgeFromDecision, selectedNodeType, sameKindNodeTypes, hotkeyCapture, readOnly, runStep, onOpenDetail, onChangeType, onConfigChange, onEdgeConditionChange, edges, pendingRuleClaims, issuesByEdgeId, branchRuleActions }: CanvasInspectorPanelProps) {
+export function CanvasInspectorPanel({ headerActions, workflow, selectedNode, selectedEdge, selectedEdgeFromDecision, selectedNodeType, sameKindNodeTypes, hotkeyCapture, readOnly, runStep, onOpenDetail, onChangeType, onConfigChange, onEdgeConditionChange, edges, pendingRuleClaims, issuesByEdgeId, branchRuleActions }: CanvasInspectorPanelProps) {
   const { t } = useTranslation('composition')
   return (
     <div
@@ -67,6 +69,7 @@ export function CanvasInspectorPanel({ workflow, selectedNode, selectedEdge, sel
         <NodeInspector
           key={selectedNode.id}
           node={selectedNode}
+          headerActions={headerActions}
           workflowId={workflow?.ID ?? ''}
           attrs={workflow?.Attributes ?? []}
           nodeType={selectedNodeType}

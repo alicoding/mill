@@ -14,12 +14,6 @@
     min-width: 0;
     position: relative;
 }
-.expandToggle {
-    position: absolute;
-    top: var(--base-size-6);
-    right: var(--base-size-6);
-    z-index: 1;
-}
 .separator {
     flex: 0 0 auto;
     width: 7px;

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconButton } from '@primer/react'
-import { ScreenFullIcon, ScreenNormalIcon } from '@primer/octicons-react'
+import { SidebarCollapseIcon, SidebarExpandIcon } from '@primer/octicons-react'
 import { Group, Panel, Separator, useDefaultLayout, usePanelRef } from 'react-resizable-panels'
 import styles from './CanvasSplit.module.css'
 
@@ -26,7 +26,7 @@ function deviceStorage(): Pick<Storage, 'getItem' | 'setItem'> {
   }
 }
 
-export function CanvasSplit({ hasSelection, canvas, inspector }: { hasSelection: boolean; canvas: ReactNode; inspector: ReactNode }) {
+export function CanvasSplit({ hasSelection, canvas, inspector }: { hasSelection: boolean; canvas: ReactNode; inspector: (headerActions: ReactNode) => ReactNode }) {
   const { t } = useTranslation('composition')
   const panelRef = usePanelRef()
   // Only a user's own drag is worth remembering across sessions.
@@ -76,17 +76,17 @@ export function CanvasSplit({ hasSelection, canvas, inspector }: { hasSelection:
             className={styles.inspectorPanel}
             onResize={(size) => { if (size.inPixels > 0) liveWidth.current = size.inPixels }}
           >
-            <IconButton
-              className={styles.expandToggle}
-              icon={expanded ? ScreenNormalIcon : ScreenFullIcon}
-              size="small"
-              variant="invisible"
-              aria-label={expanded ? t('compositionCanvas.shrinkInspector') : t('compositionCanvas.expandInspector')}
-              aria-pressed={expanded}
-              onClick={toggleExpanded}
-              data-testid="composition-inspector-expand"
-            />
-            {inspector}
+            {inspector(
+              <IconButton
+                icon={expanded ? SidebarExpandIcon : SidebarCollapseIcon}
+                size="small"
+                variant="invisible"
+                aria-label={expanded ? t('compositionCanvas.shrinkInspector') : t('compositionCanvas.expandInspector')}
+                aria-pressed={expanded}
+                onClick={toggleExpanded}
+                data-testid="composition-inspector-expand"
+              />,
+            )}
           </Panel>
         </>
       )}
