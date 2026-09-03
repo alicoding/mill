@@ -69,6 +69,14 @@ export function FetchForPlugin(pluginID: string, req: $models.PluginFetchRequest
 }
 
 /**
+ * ListDirForPlugin lists dir for pluginID under the "list-files"
+ * capability.
+ */
+export function ListDirForPlugin(pluginID: string, dir: string): $CancellablePromise<$models.PluginListDirResult> {
+    return $Call.ByID(3623751117, pluginID, dir);
+}
+
+/**
  * ListPlugins scans the plugins directory fresh on every call (the
  * Extensions page's Rescan is just another call) and returns every
  * plugin folder with its manifest -- valid ones ready to load,

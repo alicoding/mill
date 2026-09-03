@@ -105,6 +105,14 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			updateCard: (id, patch) => writeContent(pluginId, { op: 'card-update', cardId: id, title: patch.title ?? '', note: patch.note ?? '', fields: patch.fields ?? {} }),
 			appendListRow: (listId, values) => writeContent(pluginId, { op: 'list-row', listId, values }),
 		}),
+		// The files door (goal 0310): a folder listing through Mill's
+		// read-class evaluation, never the plugin's own filesystem.
+		files: Object.freeze({
+			list: async (path: string) => {
+				const r = await PluginService.ListDirForPlugin(pluginId, path)
+				return { approved: r.approved, effect: r.effect, ruleLabel: r.ruleLabel, entries: (r.entries ?? []).map((e) => ({ name: e.name, path: e.path, isDir: e.isDir, size: e.size })) }
+			},
+		}),
 		// The convert door (goal 0282): the shared HTML-to-Markdown
 		// converter as a pure transform over one bound call.
 		convert: Object.freeze({

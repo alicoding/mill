@@ -4,15 +4,7 @@
     <!-- Theme before first paint: the persisted choice, else the system's
          (the same key App.tsx writes). Without this the page painted dark
          until React mounted, seconds later behind plugin loading. -->
-    <script>
-      (function () {
-        try {
-          var mode = localStorage.getItem('mill-color-mode') || 'auto'
-          document.documentElement.setAttribute('data-color-mode', mode)
-          document.documentElement.style.colorScheme = mode === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode
-        } catch (e) { /* storage unavailable: 'auto' from the markup stands */ }
-      })()
-    </script>
+    <script src="/color-mode-boot.js"></script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/mill.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
