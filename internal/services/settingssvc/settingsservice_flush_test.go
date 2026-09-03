@@ -197,3 +197,13 @@ func TestRestartApp_CancelledLeaveIsNotAnError(t *testing.T) {
 		t.Error("a cancelled leave left approved = true")
 	}
 }
+
+// With no windows wired (headless) hiding the floating set is a
+// no-op, and an approved leave calls it without a panic.
+func TestHideAuxWindows_HeadlessIsANoop(t *testing.T) {
+	set := newDensityHarness(t)
+	set.HideAuxWindows()
+	if !set.confirmLeaveOnce(leaveReasonQuit) {
+		t.Fatal("headless leave should approve")
+	}
+}
