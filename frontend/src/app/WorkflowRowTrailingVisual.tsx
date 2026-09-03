@@ -1,4 +1,4 @@
-import { IconButton, Stack } from '@primer/react'
+import { Stack } from '@primer/react'
 import { PinIcon } from '@primer/octicons-react'
 import { KeyComboChip } from '../shared/KeyComboChip'
 
@@ -25,17 +25,23 @@ export function WorkflowRowTrailingVisual({
   return (
     <Stack direction="horizontal" gap="condensed" align="center">
       {combo && <KeyComboChip label={combo} data-testid="workflow-hotkey-chip" />}
-      <IconButton
-        icon={PinIcon}
+      {/* A plain role=button, never a focusable control: the list's
+          focus zone counts every element carrying a tabindex as a
+          stop, so a real button here became the first ArrowDown target
+          on WebKit (goal 0303) and its 28px box grew the row. Keyboard
+          pinning stays on the row's own ⌘⇧P. */}
+      <span
+        role="button"
         aria-label={pinAriaLabel}
-        size="small"
-        variant="invisible"
+        title={pinAriaLabel}
         className={pinned ? pinnedClassName : unpinnedClassName}
         onClick={(e) => {
           e.stopPropagation()
           onTogglePin()
         }}
-      />
+      >
+        <PinIcon size={16} />
+      </span>
     </Stack>
   )
 }

@@ -133,7 +133,7 @@ func realWindows() []map[string]any {
 		{"name": "main", "visible": true},
 		{"name": "quickpanel", "visible": false},
 		{"name": "approvalprompt", "visible": false},
-		{"name": "traypanel", "visible": false},
+		{"name": "traypanel", "visible": false}, {"name": "runmonitor", "visible": false},
 	}
 }
 

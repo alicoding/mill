@@ -29,6 +29,11 @@ test('typing text with no matches renders only the two capture rows, Save as not
     await expect(page.getByRole('option')).toHaveCount(2)
     await expect(page.getByRole('option').nth(0)).toHaveAccessibleName('Save as note')
     await expect(page.getByRole('option').nth(1)).toHaveAccessibleName('Save as task')
+    // No empty group headings under them (goal 0303): only the group
+    // that has rows renders.
+    await expect(page.getByText('Workflows', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Configure', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Atlas', { exact: true })).toHaveCount(0)
     const saveNoteOption = page.getByRole('option', { name: 'Save as note' })
     await expect(saveNoteOption).toBeVisible()
     await expect(saveNoteOption).toContainText('Lands in Scratchpad')
