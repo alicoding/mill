@@ -22,6 +22,7 @@ export type {
     PluginFetchSecret,
     PluginFileEntry,
     PluginInfo,
+    PluginListColumn,
     PluginListDirResult,
     SettingContribution,
     SettingOption,

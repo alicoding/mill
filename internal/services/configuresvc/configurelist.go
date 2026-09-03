@@ -124,6 +124,23 @@ func (c *ConfigureService) CreateList(label, description string, columns []typed
 	return c.createListWithID(seeding.NewSlugID(label, "list"), label, description, columns, nil)
 }
 
+// CreateListWithRows creates a list and appends its first rows in one
+// door -- the table noun's and the plugin content door's shared
+// creation path (goal 0310): one round trip, and the rows are on the
+// list before any reader sees it.
+func (c *ConfigureService) CreateListWithRows(label, description string, columns []typedfield.Field, rows []map[string]string) (list.List, error) {
+	l, err := c.CreateList(label, description, columns)
+	if err != nil {
+		return list.List{}, err
+	}
+	for _, values := range rows {
+		if l, err = c.AddListRow(l.ID, values); err != nil {
+			return list.List{}, err
+		}
+	}
+	return l, nil
+}
+
 // createListWithID is CreateList's own logic, parameterized on the new
 // list's id -- the seam ImportList uses to preserve a caller-supplied
 // id (ADR-0036 decision 3). fieldTombstones lets an import carry a

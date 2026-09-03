@@ -137,9 +137,11 @@ declaration fields that open this up:
   `screenToFlowPosition`, `styleValues`, `createObject(payload,
   flowPos, opts?)` (scoped to your own kind; lands, syncs, and undoes
   like any placement — `opts.size` sets the placed size, `opts.select`
-  selects it), and `saveImageBytes(base64, ext, title)` for baking
+  selects it), `saveImageBytes(base64, ext, title)` for baking
   drawn bytes into a Mill-owned file a file-backed object's payload
-  can point at. `renderPreview(el, points, now)` draws the live
+  can point at, and `itemsInRect(rect)` for the ids of the top-level
+  cards, notes and objects whose center falls inside a board-space
+  rect (the rule the built-in Area tool uses). `renderPreview(el, points, now)` draws the live
   in-drag stroke into a host-owned overlay element. Drag tools stay
   armed across strokes by default (`sticky: false` opts out, and a
   non-sticky tool may add `lockable: true` so re-clicking its armed
@@ -349,12 +351,16 @@ const note = await api.content.createNote({ text: 'Call the bank\ntomorrow', par
 const card = await api.content.createCard({ kindId, title: 'Acme', fields: { status: 'active' } })
 await api.content.updateCard(card.id, { note: 'Renewal due in March' })
 await api.content.appendListRow(listId, { vendor: 'Acme', tier: 'gold' })
+const list = await api.content.createList({ title: 'Vendors', columns: [{ name: 'Vendor' }, { name: 'Tier', type: 'text' }], rows: [{ Vendor: 'Acme', Tier: 'gold' }] })
 if (!note.approved) api.notify({ level: 'warning', text: 'Not allowed' + (note.ruleLabel ? ' (' + note.ruleLabel + ')' : '') })
 ```
 
 A note without a position lands just right of the last item in its
 parent. A denied write resolves with `approved: false`; an approved
-one carries the new entity's `id`.
+one carries the new entity's `id`. `createList` takes columns by
+display name with an optional type (`text`, `number`, `integer`,
+`boolean`, `date`, `datetime`; text when omitted) and first rows keyed
+by column name.
 
 ## Workflow steps
 
@@ -542,7 +548,7 @@ export function activate(api) {
     label: 'My thing',
     icon: '⭐',
     source: 'board-local',
-    editRoute: 'inline',
+    editRoute: 'inline', // or 'external-app' | 'none', or (object) => one of them
     defaultPayload: {},
     renderFace(el, ctx) {
       // Draw into el with plain DOM. ctx.object holds the data;

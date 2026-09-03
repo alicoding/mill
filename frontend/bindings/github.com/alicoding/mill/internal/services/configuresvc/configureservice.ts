@@ -168,6 +168,16 @@ export function CreateList(label: string, description: string, columns: typedfie
     return $Call.ByID(1760985996, label, description, columns);
 }
 
+/**
+ * CreateListWithRows creates a list and appends its first rows in one
+ * door -- the table noun's and the plugin content door's shared
+ * creation path (goal 0310): one round trip, and the rows are on the
+ * list before any reader sees it.
+ */
+export function CreateListWithRows(label: string, description: string, columns: typedfield$0.Field[] | null, rows: ({ [_ in string]?: string } | null)[] | null): $CancellablePromise<list$0.List> {
+    return $Call.ByID(2579741481, label, description, columns, rows);
+}
+
 export function CreateMCPServer(label: string, command: string, args: string[] | null, env: string[] | null): $CancellablePromise<mcpserver$0.MCPServer> {
     return $Call.ByID(1284256739, label, command, args, env);
 }

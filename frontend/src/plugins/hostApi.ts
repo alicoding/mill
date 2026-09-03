@@ -33,7 +33,7 @@ type ContentWriteWire = Parameters<typeof PluginService.WriteContentForPlugin>[1
 
 async function writeContent(pluginId: string, req: Partial<ContentWriteWire>) {
 	const r = await PluginService.WriteContentForPlugin(pluginId, {
-		op: '', text: '', title: '', note: '', kindId: '', cardId: '', parentId: '', listId: '', fields: {}, values: {}, position: null,
+		op: '', text: '', title: '', note: '', kindId: '', cardId: '', parentId: '', listId: '', fields: {}, values: {}, position: null, description: '', columns: [], rows: [],
 		...req,
 	} as ContentWriteWire)
 	return { approved: r.approved, effect: r.effect, ruleLabel: r.ruleLabel, id: r.id }
@@ -106,6 +106,7 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			createCard: (input) => writeContent(pluginId, { op: 'card', kindId: input.kindId, title: input.title, note: input.note ?? '', fields: input.fields ?? {}, parentId: input.parentId ?? '' }),
 			updateCard: (id, patch) => writeContent(pluginId, { op: 'card-update', cardId: id, title: patch.title ?? '', note: patch.note ?? '', fields: patch.fields ?? {} }),
 			appendListRow: (listId, values) => writeContent(pluginId, { op: 'list-row', listId, values }),
+			createList: (input) => writeContent(pluginId, { op: 'list', title: input.title, description: input.description ?? '', columns: input.columns.map((c) => ({ name: c.name, type: c.type ?? '' })), rows: input.rows ?? [] }),
 		}),
 		// The files door (goal 0310): a folder listing through Mill's
 		// read-class evaluation, never the plugin's own filesystem.
@@ -130,7 +131,7 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		registerCanvasObject: (decl: CanvasObjectDecl) => {
 			if (!KIND_PATTERN.test(decl.kind)) throw new Error(`plugin ${pluginId}: canvas object kind "${decl.kind}" must be a lowercase slug`)
 			if (!SOURCES.has(decl.source)) throw new Error(`plugin ${pluginId}: unknown source "${decl.source}"`)
-			if (!EDIT_ROUTES.has(decl.editRoute)) throw new Error(`plugin ${pluginId}: unknown editRoute "${decl.editRoute}"`)
+			if (typeof decl.editRoute !== 'function' && !EDIT_ROUTES.has(decl.editRoute)) throw new Error(`plugin ${pluginId}: unknown editRoute "${decl.editRoute}"`)
 			registerThirdPartyNoun(buildThirdPartyNoun(pluginId, manifest, decl))
 			seedStyleValues(decl.kind, decl.styleFields ?? [])
 			// The palette parity built-in tools already have (their

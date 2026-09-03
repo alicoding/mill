@@ -139,7 +139,7 @@ export interface PluginCapture {
 
 /**
  * PluginContentWrite is one ask. Op is "note", "card", "card-update",
- * or "list-row"; the other fields apply per op.
+ * "list-row", or "list"; the other fields apply per op.
  */
 export interface PluginContentWrite {
     "op": string;
@@ -153,6 +153,14 @@ export interface PluginContentWrite {
     "fields": { [_ in string]?: string } | null;
     "values": { [_ in string]?: string } | null;
     "position": atlas$0.Position | null;
+
+    /**
+     * The "list" op: Title names the list; Rows are keyed by column
+     * name (or derived key).
+     */
+    "description": string;
+    "columns": PluginListColumn[] | null;
+    "rows": ({ [_ in string]?: string } | null)[] | null;
 }
 
 /**
@@ -249,6 +257,16 @@ export interface PluginInfo {
      */
     "SigningPolicy": boolean;
     "Signed": boolean;
+}
+
+/**
+ * PluginListColumn is one column of a plugin-created list: a display
+ * name (its key is derived) and an optional type from listColumnTypes
+ * (text when empty).
+ */
+export interface PluginListColumn {
+    "name": string;
+    "type": string;
 }
 
 /**
