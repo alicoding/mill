@@ -45,12 +45,13 @@ test('a dropped .drawio file renders as a board object through the vendored view
   await expect(diagramObject).toBeVisible()
   await expect(diagramObject.locator('svg')).toBeVisible()
 
-  // Wheel routing (goal 0271): the vendored viewer consumes wheel for
-  // its own pan/zoom, so a scroll ANYWHERE over the diagram node must
-  // never also pan the board -- the registry's wheelContained fact
-  // puts the canvas kit's nowheel class on the whole node box
-  // (shieldless Kind, so it is always live).
-  await expect(diagramObject).toHaveClass(/nowheel/)
+  // Wheel routing (goals 0271 + 0302): unselected, the diagram is
+  // shielded and the board owns every wheel (no nowheel opt-out);
+  // selected, the vendored viewer owns the wheel and the node carries
+  // the canvas kit's nowheel class -- the same contract the pdf face
+  // has, so every object on the board reads alike.
+  await expect(diagramObject).not.toHaveClass(/nowheel/)
+  await expect(diagramObject.locator('[data-testid="atlas-object-click-shield"]')).toBeVisible()
 
   // Window-drag opt-out, in-host half (goal 0276 rider): body drags
   // the native window by its background; the host opts its subtree out.
@@ -62,9 +63,19 @@ test('a dropped .drawio file renders as a board object through the vendored view
   const viewportTransform = () => page.locator('.react-flow__viewport').evaluate((el) => el.style.transform)
   await waitForViewportStable(page.getByTestId('atlas-board'))
   const beforeWheel = await viewportTransform()
+  // Shield up: a scroll over the diagram pans the board like over any
+  // object.
+  await wheelAt(page, diagramObject, 0, 80)
+  await expect.poll(viewportTransform).not.toBe(beforeWheel)
+  await waitForViewportStable(page.getByTestId('atlas-board'))
+  // Selected (the shield's click): the viewer owns the wheel, the
+  // board holds still.
+  await diagramObject.locator('[data-testid="atlas-object-click-shield"]').click()
+  await expect(diagramObject).toHaveClass(/nowheel/)
+  const beforeLiveWheel = await viewportTransform()
   await wheelAt(page, diagramObject, 0, 80)
   await page.waitForTimeout(300) // no observable "wheel fully routed" signal exists for a negative assertion
-  expect(await viewportTransform()).toBe(beforeWheel)
+  expect(await viewportTransform()).toBe(beforeLiveWheel)
 
   // Window-drag opt-out, toolbar half (goal 0292, reopening 0276's
   // rider): the viewer appends its hover toolbar to document.body, NOT
@@ -197,9 +208,12 @@ test('clicking a diagram body selects the object, and a multi-page file pages ri
   const diagramObject = diagramObjects(page)
   await expect(diagramObject.getByText('FirstPageCell')).toBeVisible()
 
-  // (1) Body click -> selected: the shared resize handles appear, the
-  // same observable the band click already produced.
-  await diagramObject.getByText('FirstPageCell').click()
+  // (1) Body click -> selected: the click lands on the shield that
+  // covers the body while unselected (goal 0302, the pdf face's own
+  // contract) and the shared resize handles appear, the same
+  // observable the band click already produced.
+  await diagramObject.locator('[data-testid="atlas-object-click-shield"]').click()
+  await expect(diagramObject.locator('[data-testid="atlas-object-click-shield"]')).toHaveCount(0)
   await expect(page.locator('.react-flow__resize-control.handle.top.right')).toBeVisible()
 
   // (2) The viewer's own pages cluster (prev / "1 / 2" / next) shows on

@@ -335,7 +335,9 @@ at:
     viewer -- the viewer scrolls/zooms and the BOARD holds still (no
     simultaneous pan), including diagonal gestures over a page-width
     PDF whose horizontal axis has nothing to scroll; with the object
-    UNSELECTED (shield up), the same gesture pans the board only.
+    UNSELECTED (shield up -- pdf AND diagram carry it, goal 0302), the
+    same gesture pans the board only, and pinch / ⌘-scroll zoom the
+    board.
     Synthetic wheel can't reproduce the real gesture stream's
     double-handling, so this stays manual.
   - **The quit gate on every native quit path, and explicit mode's
@@ -354,6 +356,19 @@ at:
     the window with the note written. Then switch back to
     Automatically and confirm ⌘Q quits with no sheet and the note
     text survives relaunch.
+  - **The adopted table grid's range and drag interactions** (goal
+    0287, ADR-0049, `shared/ListGridGlide.tsx`) -- range ⌘C/⌘V, the
+    fill handle, header-edge resize and header drag-reorder are the
+    library's own pointer gestures over one canvas; Playwright's
+    forced positional click reaches a single cell but not a drag or
+    the real clipboard. Verify on an installed build on a table
+    object and on Configure's List page: select a 2x2 range, ⌘C, move,
+    ⌘V (the rows write through); drag the fill handle down a column;
+    drag a header edge (width survives a reload on this device) and
+    drag a header onto another (the List's column order changes on
+    every projection); then a VoiceOver pass -- the grid's
+    accessibility DOM reads the headers and cells (ADR-0049's own
+    verification, the library hedges its a11y).
   - **File-promise drops: the post-screenshot floating thumbnail**
     (goal 0256, `MillFilePromiseDropView` /
     `AttachFilePromiseReceiver`) — a promise drag needs a real AppKit
