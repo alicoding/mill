@@ -64,7 +64,7 @@ export function activate(api) {
 		status.style.cssText = 'font:11px system-ui;color:#57606a'
 		status.textContent = statusByID.get(ctx.object.ID) || (ctx.object.Payload.clipped ? 'Clipped → ' + ctx.object.Payload.clipped : '')
 		const setStatus = (text) => { statusByID.set(ctx.object.ID, text); status.textContent = text }
-		clip.addEventListener('click', () => { void clipPage(ctx, input.value.trim(), setStatus) })
+		clip.addEventListener('click', () => { void clipPage(ctx, input.value.trim(), setStatus).catch((err) => setStatus('Failed: ' + String(err && err.message ? err.message : err))) })
 		row.append(clip, status)
 
 		el.append(title, input, row)
@@ -84,11 +84,17 @@ export function activate(api) {
 		if (!fetched.approved) { onStatus('Not allowed' + (fetched.ruleLabel ? ' (' + fetched.ruleLabel + ')' : '') + '.'); return }
 		if (fetched.status < 200 || fetched.status >= 300) { onStatus("Couldn't fetch: the page answered " + fetched.status + '.'); return }
 
-		const doc = new DOMParser().parseFromString(fetched.body, 'text/html')
-		const base = doc.createElement('base')
-		base.href = url
-		doc.head.append(base)
-		const article = new Readability(doc).parse()
+		let article
+		try {
+			const doc = new DOMParser().parseFromString(fetched.body, 'text/html')
+			const base = doc.createElement('base')
+			base.href = url
+			;(doc.head || doc.documentElement).append(base)
+			article = new Readability(doc).parse()
+		} catch (err) {
+			onStatus("Couldn't read the page: " + String(err && err.message ? err.message : err))
+			return
+		}
 		if (!article || !article.content || !article.textContent.trim()) { onStatus('Nothing readable on that page.'); return }
 
 		onStatus('Converting…')
