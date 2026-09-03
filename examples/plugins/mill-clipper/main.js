@@ -7,6 +7,12 @@
 import { Readability } from './vendor/readability.js'
 
 export function activate(api) {
+	// In-flight status per object: the host re-renders a face whenever
+	// the object's data changes (its first measured size lands while a
+	// clip is asking in Review), and a rebuilt face must show the same
+	// status, not a blank one.
+	const statusByID = new Map()
+
 	api.registerCanvasObject({
 		kind: 'clip',
 		label: 'Web clipper',
@@ -56,8 +62,9 @@ export function activate(api) {
 		const status = document.createElement('span')
 		status.setAttribute('data-testid', 'clip-status')
 		status.style.cssText = 'font:11px system-ui;color:#57606a'
-		if (ctx.object.Payload.clipped) status.textContent = 'Clipped → ' + ctx.object.Payload.clipped
-		clip.addEventListener('click', () => { void clipPage(ctx, input.value.trim(), (text) => { status.textContent = text }) })
+		status.textContent = statusByID.get(ctx.object.ID) || (ctx.object.Payload.clipped ? 'Clipped → ' + ctx.object.Payload.clipped : '')
+		const setStatus = (text) => { statusByID.set(ctx.object.ID, text); status.textContent = text }
+		clip.addEventListener('click', () => { void clipPage(ctx, input.value.trim(), setStatus) })
 		row.append(clip, status)
 
 		el.append(title, input, row)
