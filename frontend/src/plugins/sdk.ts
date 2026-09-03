@@ -229,6 +229,8 @@ export interface PluginCommandDecl {
 // key (a face that depends on a setting re-renders itself from here
 // -- renderFace re-runs on object DATA changes only) and returns the
 // unsubscribe function. An undeclared key throws, naming the plugin.
+// A secretRef setting answers the picked vault entry's TITLE ('' when
+// none is picked or it no longer exists) -- never the value.
 export interface PluginSettingsAPI {
   get: (key: string) => boolean | string | number
   onChange: (key: string, fn: (value: boolean | string | number) => void) => () => void
@@ -305,6 +307,12 @@ export interface PluginFetchInit {
   method?: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   headers?: Record<string, string>
   body?: string
+  // Attach a vault entry the user picked in one of this plugin's
+  // secretRef settings (ADR-0048): Mill resolves it host-side after
+  // the request is approved, sends it as `header` (default
+  // Authorization) with `prefix` (default "Bearer "), and redacts the
+  // value from the response. The value never reaches plugin code.
+  secret?: { settingKey: string; header?: string; prefix?: string }
 }
 
 export interface PluginFetchResult {

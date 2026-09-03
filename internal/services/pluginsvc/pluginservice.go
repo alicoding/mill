@@ -139,6 +139,11 @@ type PluginService struct {
 	// content is the guarded content-write seam (docs/goals/0289),
 	// nil until the composition root wires it.
 	content ContentWriter
+	// secretRefs / readSetting are the secretRef door's seams
+	// (pluginservice_fetch_secret.go), nil until wired -- a fetch
+	// naming a secret then refuses rather than sends unauthenticated.
+	secretRefs  SecretRefResolver
+	readSetting SettingReader
 }
 
 func New(dir string, guardrail *guardrailsvc.GuardrailService, appVersion string) *PluginService {

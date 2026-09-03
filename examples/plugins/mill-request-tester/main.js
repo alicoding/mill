@@ -6,7 +6,10 @@
 //
 // Every send goes through Mill's guardrail: with "*" declared, each
 // request parks for approval in Review -- Mill never lets a plugin
-// choose its own hosts silently.
+// choose its own hosts silently. Authentication is a secretRef
+// setting (ADR-0048): the user picks a vault entry in Settings >
+// Extensions, this code only ever learns its title, and Mill attaches
+// the value host-side after approval -- the Review row names it.
 
 export function activate(api) {
 	const HISTORY_KEY = 'history'
@@ -35,6 +38,14 @@ export function activate(api) {
 		send.setAttribute('data-testid', 'tester-send')
 		send.style.cssText = 'font:12px system-ui;padding:6px 12px;border:1px solid #d0d7de;border-radius:6px;background:#f6f8fa;cursor:pointer'
 		row.append(method, url, send)
+
+		// The picked secret's title, or nothing: api.settings.get on a
+		// secretRef never answers the value.
+		const authTitle = String(api.settings.get('auth') || '')
+		const auth = document.createElement('div')
+		auth.setAttribute('data-testid', 'tester-auth')
+		auth.style.cssText = 'color:#57606a;font-size:12px'
+		auth.textContent = authTitle ? 'Sends ‘' + authTitle + '’ as a bearer token. Change it in Settings → Extensions.' : 'No authorization. Pick a vault entry in Settings → Extensions to send one.'
 
 		const body = document.createElement('textarea')
 		body.placeholder = 'Request body (optional)'
@@ -84,7 +95,7 @@ export function activate(api) {
 			status.textContent = 'Asking… (this request needs your approval in Review)'
 			response.textContent = ''
 			try {
-				const r = await api.fetch(target, { method: method.value, body: body.value || undefined })
+				const r = await api.fetch(target, { method: method.value, body: body.value || undefined, secret: authTitle ? { settingKey: 'auth' } : undefined })
 				if (!r.approved) { status.textContent = 'Not allowed' + (r.ruleLabel ? ' (' + r.ruleLabel + ')' : '') + '.'; return }
 				status.textContent = r.status + ' · ' + Object.keys(r.headers).length + ' headers'
 				response.textContent = r.body
@@ -94,7 +105,7 @@ export function activate(api) {
 			}
 		})
 
-		el.append(row, body, status, response, historyTitle, history)
+		el.append(row, auth, body, status, response, historyTitle, history)
 		renderHistory()
 	}
 }
