@@ -334,6 +334,42 @@ A note without a position lands just right of the last item in its
 parent. A denied write resolves with `approved: false`; an approved
 one carries the new entity's `id`.
 
+## Workflow steps
+
+A plugin can add steps to the workflow palette. Declare them in the
+manifest and implement them in a `steps.js` next to `main.js`:
+
+```json
+"contributes": {
+  "steps": [
+    { "id": "text-case", "label": "Text case", "description": "Changes the text's case.",
+      "config": [ { "key": "mode", "label": "Mode", "type": "options", "options": ["upper", "lower", "title"], "default": "upper" } ] }
+  ]
+}
+```
+
+```js
+// steps.js -- plain script, no imports or exports
+registerStep('text-case', {
+  perform: function (input) {
+    // input.payload: the text arriving from the previous step
+    // input.config: this step's authored fields (input.config.mode)
+    // input.attributes: the run's attribute values
+    return input.payload.toUpperCase()          // or { payload, attributes }
+  },
+})
+```
+
+`steps.js` runs inside Mill's workflow engine, not in the window: a
+step works in a scheduled or headless run exactly as it does from the
+editor, and Try this step in the Inspector runs the same function. It
+sees only its input — no network, no files, no other plugin — and a
+step that runs longer than a few seconds fails the run instead of
+hanging it. Config fields are text or a fixed option list. The step
+appears in the palette under Transform as "<label>", and the
+Extensions row lists "Adds workflow steps". The **Text case** example
+(`examples/plugins/mill-textcase`) is the whole pattern in one file.
+
 ## Views
 
 A plugin can own a work tab — the same strip a workflow editor opens

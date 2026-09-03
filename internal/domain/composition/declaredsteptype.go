@@ -155,7 +155,7 @@ func lookupNodeTypeEntry(id string) (nodeTypeEntry, bool) {
 			return resolveDeclaredEntry(b)
 		}
 	}
-	return nodeTypeEntry{}, false
+	return lookupExternalEntry(id)
 }
 
 // declaredNodeTypes returns every currently-resolvable declared step

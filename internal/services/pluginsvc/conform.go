@@ -36,6 +36,7 @@ func ConformDir(dir, appVersion string) []string {
 	if p := manifestProblem(m, folder, mainErr == nil, appVersion); p != "" {
 		problems = append(problems, p)
 	}
+	problems = append(problems, conformStepPack(dir, m)...)
 	problems = append(problems, conformFiles(dir)...)
 	sort.Strings(problems)
 	return problems

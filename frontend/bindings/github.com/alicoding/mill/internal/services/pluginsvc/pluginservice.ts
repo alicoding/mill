@@ -14,6 +14,10 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as composition$0 from "../../domain/composition/models.js";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
 /**
@@ -93,6 +97,25 @@ export function RequestGuardedAction(pluginID: string, kind: string, attributes:
  */
 export function RevealPluginsDir(): $CancellablePromise<void> {
     return $Call.ByID(4165393810);
+}
+
+/**
+ * StepNodeTypes synthesizes every runnable plugin's declared steps as
+ * external node types -- the provider composition reads through
+ * SetExternalNodeTypeLookup. A plugin whose steps.js fails to load
+ * contributes nothing (its Extensions row states the load error via
+ * StepPackProblem).
+ */
+export function StepNodeTypes(): $CancellablePromise<composition$0.ExternalNodeType[] | null> {
+    return $Call.ByID(3703519807);
+}
+
+/**
+ * StepPackProblem reports why a plugin's declared steps are not
+ * available ("" when they are): the Extensions row's honest line.
+ */
+export function StepPackProblem(id: string): $CancellablePromise<string> {
+    return $Call.ByID(3840929602, id);
 }
 
 /**

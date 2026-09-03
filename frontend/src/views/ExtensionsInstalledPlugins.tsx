@@ -118,6 +118,11 @@ export function ExtensionsInstalledPlugins() {
 												{t('settings.extensions.pluginViews', { list: (p.Manifest.contributes?.views ?? []).map((v) => v.title).join(', ') })}
 											</Text>
 										)}
+										{(p.Manifest.contributes?.steps?.length ?? 0) > 0 && (
+											<Text size="small" className={styles.muted} data-testid="extensions-plugin-steps">
+												{t('settings.extensions.pluginSteps', { list: (p.Manifest.contributes?.steps ?? []).map((s) => s.label).join(', ') })}
+											</Text>
+										)}
 										{claimsURLPastes(p) && (
 											<Text size="small" className={styles.muted} data-testid="extensions-plugin-catches">
 												{t('settings.extensions.pluginCatchesLinks')}

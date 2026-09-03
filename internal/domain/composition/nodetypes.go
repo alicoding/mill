@@ -35,6 +35,9 @@ func NodeTypes() []NodeType {
 	// wires SetDeclaredNodeTypeLookup, so every existing caller of
 	// NodeTypes() is unaffected until a declared type actually exists.
 	out = append(out, declaredNodeTypes()...)
+	// externalNodeTypes() (execute.go, ADR-0051 §5) is the plugin half:
+	// empty until the plugin service wires SetExternalNodeTypeLookup.
+	out = append(out, externalNodeTypes()...)
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Kind != out[j].Kind {
 			return kindOrder[out[i].Kind] < kindOrder[out[j].Kind]

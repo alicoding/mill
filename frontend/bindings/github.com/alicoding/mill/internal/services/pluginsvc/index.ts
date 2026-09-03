@@ -21,5 +21,7 @@ export type {
     PluginInfo,
     SettingContribution,
     SettingOption,
+    StepConfigContribution,
+    StepContribution,
     ViewContribution
 } from "./models.js";

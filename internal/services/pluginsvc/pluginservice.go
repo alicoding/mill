@@ -10,6 +10,7 @@ package pluginsvc
 
 import (
 	"errors"
+	"sync"
 
 	"context"
 	"encoding/json"
@@ -49,6 +50,10 @@ type Manifest struct {
 // (what a plugin may ask to do).
 type ManifestContributes struct {
 	CanvasObjects []CanvasObjectContribution `json:"canvasObjects"`
+	// Steps (ADR-0051 §5, pluginservice_steps.go): workflow steps the
+	// plugin implements in steps.js, declared here so the catalog and
+	// the Extensions row know them before any code runs.
+	Steps []StepContribution `json:"steps"`
 	// Settings (docs/goals/0258 slice 1): the plugin's own declared
 	// user settings, the same declare -> host renders/stores/serves
 	// contract compiled-in nouns use. Declared in the manifest, not
@@ -148,6 +153,11 @@ type PluginService struct {
 	// (pluginservice_audit.go), nil until wired.
 	trust        PluginTrustReader
 	secretAccess func(actorPrefix string) ([]PluginSecretAccess, error)
+	// mayRun / packs are the step-pack door's policy and cache
+	// (pluginservice_steps.go).
+	mayRun  func(id string, builtin bool) bool
+	packsMu sync.Mutex
+	packs   map[string]loadedPack
 }
 
 func New(dir string, guardrail *guardrailsvc.GuardrailService, appVersion string) *PluginService {
@@ -253,6 +263,9 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 	info.Manifest = m
 	_, mainErr := os.Stat(filepath.Join(dir, "main.js")) // #nosec G703 -- folder passed pluginIDPattern (no separators, no dots)
 	info.Error = manifestProblem(m, folder, mainErr == nil, p.appVersion)
+	if info.Error == "" {
+		info.Error = stepsFileProblem(dir, m)
+	}
 	return info
 }
 
@@ -337,6 +350,9 @@ func validateContributes(c ManifestContributes) string {
 		}
 	}
 	if problem := validateNetwork(c.Network); problem != "" {
+		return problem
+	}
+	if problem := validateSteps(c.Steps); problem != "" {
 		return problem
 	}
 	if problem := validateViews(c.Views); problem != "" {
