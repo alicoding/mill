@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+import { carryMeasured } from './atlasNodeMeasured'
 import { useAtlasGestureCtx } from './useAtlasGestureCtx'
 import { useRenderStormGuard } from '../shared/renderStormGuard'
 import { useAtlasDeleteKey } from './useAtlasDeleteKey'
@@ -239,7 +240,8 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     // freshly created object's own arrival didn't itself change
     // allNodes's identity yet.
     const sel = selection.selectedIDsRef.current
-    setNodes(sel.length > 0 ? allNodes.map((n) => (sel.includes(n.id) ? { ...n, selected: true } : n)) : allNodes)
+    // carryMeasured: a rebuild never un-measures a node (goal 0316).
+    setNodes((current) => carryMeasured(current, sel.length > 0 ? allNodes.map((n) => (sel.includes(n.id) ? { ...n, selected: true } : n)) : allNodes))
   }, [allNodes, setNodes, selection.selectedIDsRef, selection.applyToken])
 
   useAtlasSelectAll({ cards, notes, objects, setNodes })
