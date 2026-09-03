@@ -33,7 +33,9 @@ async function landGlideTable(page: import('@playwright/test').Page) {
 }
 
 async function cleanupGlideTable(page: import('@playwright/test').Page, tableObject: import('@playwright/test').Locator) {
-  await tableObject.click({ button: 'right' })
+  // The grid host claims right-click for its own row/column menus --
+  // the object's own menu opens off its chrome frame instead.
+  await tableObject.getByTestId('atlas-board-object-frame').click({ button: 'right' })
   const menu = contextMenu(page)
   await expect(menu).toBeVisible()
   await menu.getByText('Delete', { exact: true }).click()

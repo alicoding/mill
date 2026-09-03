@@ -116,7 +116,7 @@ test('a pasted table selection becomes a board-local table object with its List 
 
   const tableObject = tableObjects(page).filter({ hasText: 'Acme' })
   await expect(tableObject).toBeVisible()
-  await expect(tableObject.getByTestId('atlas-projection-table')).toContainText('Name')
+  await expect(tableObject.getByTestId('atlas-projection-glide').locator('[role="grid"]')).toContainText('Name')
   // The rule, absolute: pasting never creates a card the user didn't
   // explicitly ask for.
   await expect(page.getByTestId('atlas-table-card')).toHaveCount(0)
@@ -148,7 +148,7 @@ test('a pasted spreadsheet range becomes a board-local table object', async ({ p
 
   const tableObject = tableObjects(page).filter({ hasText: 'Acme' })
   await expect(tableObject).toBeVisible()
-  await expect(tableObject.getByTestId('atlas-projection-table')).toContainText('Acme')
+  await expect(tableObject.getByTestId('atlas-projection-glide').locator('[role="grid"]')).toContainText('Acme')
 
   // Cleanup: the object, then the minted List.
   await deleteObjectViaMenu(tableObject)
@@ -188,7 +188,7 @@ test('a table copied from an M365 app (HTML clipboard flavor) lands a board-loca
 
   const tableObject = tableObjects(page).filter({ hasText: 'Acme Corp' })
   await expect(tableObject).toBeVisible()
-  await expect(tableObject.getByTestId('atlas-projection-table')).toContainText('Vendor')
+  await expect(tableObject.getByTestId('atlas-projection-glide').locator('[role="grid"]')).toContainText('Vendor')
   // The rule, absolute: pasting never creates a card the user didn't
   // explicitly ask for.
   await expect(page.getByTestId('atlas-table-card')).toHaveCount(0)
