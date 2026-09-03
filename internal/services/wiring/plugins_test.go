@@ -138,6 +138,12 @@ func TestSettingsTrust_MayRun(t *testing.T) {
 	if !trust.mayRun("mill-drawing", true) {
 		t.Fatal("the allow-list gated a built-in")
 	}
+	if err := set.SetExtensionEnabled("mill-drawing", false); err != nil {
+		t.Fatal(err)
+	}
+	if trust.mayRun("mill-drawing", true) {
+		t.Fatal("a built-in the user turned off ran")
+	}
 }
 
 func newSettingsForTrust(t *testing.T) (*settingssvc.SettingsService, *servicetest.FakeStore) {
