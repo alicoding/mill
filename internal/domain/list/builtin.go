@@ -21,6 +21,11 @@ const ExampleCountryCodesID = "example-country-codes-list"
 // references it without a string literal that could drift).
 const ExampleTaskTrackerID = "example-task-tracker-list"
 
+// ExampleJiraIssuesID is the seeded synced-List example (docs/goals/
+// 0299): the target of the seeded "Example: Jira issues → List"
+// workflow, exported for the same reason the two above are.
+const ExampleJiraIssuesID = "example-jira-issues-list"
+
 // BuiltIn returns the seeded example List -- pure config, no
 // persistence (mirrors httprequest.BuiltIn/decision.BuiltIn's shape:
 // this package stays free of the settings-store concern, per
@@ -63,6 +68,26 @@ func BuiltIn() []List {
 	}
 
 	return []List{
+		{
+			ID:    ExampleJiraIssuesID,
+			Label: "Example: Jira issues",
+			Description: "A one-way mirror of a Jira search: \"Example: Jira issues → List\" refreshes these " +
+				"rows on a schedule once its Jira integration is configured, matching each issue by key. " +
+				"Mill never writes back to Jira -- an issue's own door is its link in the url column, and " +
+				"the next sync overwrites what you change here.",
+			Columns: []typedfield.Field{
+				{Key: "key", Label: "Key", Type: typedfield.TypeText, Required: true},
+				{Key: "summary", Label: "Summary", Type: typedfield.TypeText},
+				// Jira's default workflow statuses; the sync writes whatever
+				// the source says, so an unlisted status still lands as text.
+				{Key: "status", Label: "Status", Type: typedfield.TypeText},
+				{Key: "assignee", Label: "Assignee", Type: typedfield.TypeText},
+				{Key: "updated", Label: "Updated", Type: typedfield.TypeText},
+				{Key: "url", Label: "Link", Type: typedfield.TypeText},
+			},
+			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
+		},
 		{
 			ID:    ExampleCountryCodesID,
 			Label: "Example: Country codes",
@@ -110,7 +135,7 @@ func BuiltIn() []List {
 			BuiltIn: true,
 			// SeedRevision 2: the status column became a typed Options
 			// column so the seeded projection demonstrates status pills.
-			Seed: seedorigin.Stamp(2),
+			Seed:             seedorigin.Stamp(2),
 			PublishedVersion: 1,
 			Versions: []ListVersion{
 				{

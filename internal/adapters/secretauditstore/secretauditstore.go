@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS secret_access (
 	context TEXT NOT NULL,
 	run_id TEXT NOT NULL DEFAULT '',
 	workflow_id TEXT NOT NULL DEFAULT '',
+	actor TEXT NOT NULL DEFAULT '',
 	outcome TEXT NOT NULL,
 	error_text TEXT NOT NULL DEFAULT ''
 );
@@ -73,6 +74,41 @@ CREATE INDEX IF NOT EXISTS idx_secret_access_context ON secret_access(context);
 `
 	if _, err := db.ExecContext(context.Background(), schema); err != nil {
 		return fmt.Errorf("secretauditstore: ensure schema: %w", err)
+	}
+	// actor arrived with ADR-0048 (plugin readers); a store created
+	// before it lacks the column and is widened in place.
+	if err := ensureColumn(db, "actor", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ensureColumn adds a column to secret_access when a pre-existing
+// store predates it -- SQLite's one supported ALTER, guarded by the
+// table's own column listing so a fresh schema is never altered twice.
+func ensureColumn(db *sql.DB, name, decl string) error {
+	rows, err := db.QueryContext(context.Background(), "PRAGMA table_info(secret_access)")
+	if err != nil {
+		return fmt.Errorf("secretauditstore: table_info: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var cid int
+		var colName, colType string
+		var notNull, pk int
+		var dflt sql.NullString
+		if err := rows.Scan(&cid, &colName, &colType, &notNull, &dflt, &pk); err != nil {
+			return fmt.Errorf("secretauditstore: table_info scan: %w", err)
+		}
+		if colName == name {
+			return nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("secretauditstore: table_info: %w", err)
+	}
+	if _, err := db.ExecContext(context.Background(), "ALTER TABLE secret_access ADD COLUMN "+name+" "+decl); err != nil {
+		return fmt.Errorf("secretauditstore: add column %s: %w", name, err)
 	}
 	return nil
 }
@@ -90,9 +126,9 @@ func (s *Store) Insert(ctx context.Context, r secretaudit.Record) (int64, error)
 		ts = time.Now().UTC()
 	}
 	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO secret_access (timestamp, entry_id, label, context, run_id, workflow_id, outcome, error_text)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		ts.Format(timestampLayout), r.EntryID, r.Label, string(r.Context), r.RunID, r.WorkflowID,
+		`INSERT INTO secret_access (timestamp, entry_id, label, context, run_id, workflow_id, actor, outcome, error_text)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		ts.Format(timestampLayout), r.EntryID, r.Label, string(r.Context), r.RunID, r.WorkflowID, r.Actor,
 		string(r.Outcome), secretaudit.TruncateError(r.ErrorText),
 	)
 	if err != nil {

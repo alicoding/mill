@@ -144,6 +144,13 @@ export interface PluginFetchRequest {
     "url": string;
     "headers": { [_ in string]?: string } | null;
     "body": string;
+
+    /**
+     * Secret names a declared secretRef setting whose vault entry Mill
+     * attaches host-side (pluginservice_fetch_secret.go); nil sends
+     * the request exactly as given.
+     */
+    "secret": PluginFetchSecret | null;
 }
 
 /**
@@ -157,6 +164,16 @@ export interface PluginFetchResult {
     "status": number;
     "headers": { [_ in string]?: string } | null;
     "body": string;
+}
+
+/**
+ * PluginFetchSecret is api.fetch's init.secret: WHICH setting names
+ * the entry, and how it travels (default: Authorization: Bearer …).
+ */
+export interface PluginFetchSecret {
+    "settingKey": string;
+    "header": string;
+    "prefix": string;
 }
 
 /**
@@ -177,8 +194,10 @@ export interface PluginInfo {
 
 /**
  * SettingContribution is one declared plugin setting. Type is the
- * four-type floor every declarative settings platform shares:
- * "boolean", "string", "number", "enum". Default is the value in
+ * four-type floor every declarative settings platform shares --
+ * "boolean", "string", "number", "enum" -- plus "secretRef" (ADR-0048):
+ * the user picks a vault entry, the stored value is that entry's id,
+ * and the plugin only ever reads its title. Default is the value in
  * effect until the user touches the control (the converged
  * `default` spelling), decoded as whatever JSON scalar the manifest
  * wrote; validateContributes pins it to Type. Options is enum-only;

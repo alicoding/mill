@@ -2,11 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionList, ActionMenu, Button, IconButton, Text } from '@primer/react'
 import { KebabHorizontalIcon } from '@primer/octicons-react'
-import { ConfigureService } from './bindings'
-import { type Field, Type as FieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
+import { Type as FieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { RowStatus } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
-import { nextColumnKey } from './projectionColumns'
 import { cellContent, rowTintStyle } from './listGridCells'
+import { useListSchemaEdits } from './useListSchemaEdits'
 import { ListGridColumnPopover } from './ListGridColumnPopover'
 import styles from './ListGrid.module.css'
 
@@ -120,17 +119,9 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
   const [focused, setFocused] = useState<{ rowID: string; key: string } | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const [renaming, setRenaming] = useState<{ key: string; label: string } | null>(null)
-  const [error, setError] = useState('')
-
-  // Rapid commits in one row must not lose each other: UpdateListRow
-  // replaces the row's whole values map, and the rows PROP lags the
-  // server, so a Tab-chain's second commit built from props alone
-  // would wipe the first (goal 0140's keyboard chain surfaced it).
-  // This ref carries the session's own commits until fresh rows land.
-  const committedRef = useRef(new Map<string, Record<string, string>>())
-  useEffect(() => {
-    committedRef.current.clear()
-  }, [rows])
+  // Every round trip (cell commit, row insert/status/delete, schema
+  // edits) is the shared hook's -- identical to the adopted grid's.
+  const edits = useListSchemaEdits(listID, columns, rows)
 
   // Programmatic DOM focus follows the focused cell so its keydown
   // handler receives the arrows.
@@ -181,9 +172,6 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
     }
   }
 
-  const report = (err: unknown) => setError(String(err))
-  const clearThen = () => setError('')
-
   // advanceEdit commits the current cell and opens the neighbor
   // (goal 0140's Tab/Enter chain); off-grid movement just commits.
   const advanceEdit = (dRow: number, dCol: number) => {
@@ -214,101 +202,30 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
     const edit = { ...editing, value: value ?? editing.value }
     setEditing(null)
     if (!row) return
-    const values: Record<string, string> = {}
-    for (const [k, v] of Object.entries(row.Values ?? {})) values[k] = v ?? ''
-    Object.assign(values, committedRef.current.get(row.ID))
-    values[edit.key] = edit.value
-    committedRef.current.set(row.ID, values)
-    ConfigureService.UpdateListRow(listID, row.ID, values, (row.Status || 'active') as RowStatus)
-      .then(clearThen).catch(report)
+    void edits.commitCell(row, edit.key, edit.value)
   }
 
-  const insertRowAt = (index: number) => {
-    ConfigureService.AddListRowAt(listID, {}, index).then(clearThen).catch(report)
-  }
+  const insertRowAt = (index: number) => edits.insertRowAt(index)
+  const setRowStatus = (row: GridRow, status: RowStatus) => edits.setRowStatus(row, status)
+  const deleteRow = (rowID: string) => edits.deleteRow(rowID)
 
-  const setRowStatus = (row: GridRow, status: RowStatus) => {
-    const values = Object.fromEntries(Object.entries(row.Values ?? {}).map(([k, v]) => [k, v ?? '']))
-    ConfigureService.UpdateListRow(listID, row.ID, values, status).then(clearThen).catch(report)
-  }
-
-  const deleteRow = (rowID: string) => {
-    ConfigureService.DeleteListRow(listID, rowID).then(clearThen).catch(report)
-  }
-
-  // withList runs fn against the List's CURRENT full record
-  // (UpdateList replaces the whole columns slice, so schema edits need
-  // label+description+columns as they stand right now; new tombstones
-  // MERGE server-side, so passing null never wipes stored ones). One
-  // GetList, never a fetch of every list (goal 0147).
-  const withList = (fn: (l: { ID: string; Label: string; Description: string; Columns: Field[] | null }) => Promise<unknown> | undefined) => {
-    void ConfigureService.GetList(listID).then((l) => fn(l)).then(clearThen).catch(report)
-  }
-
+  // Straight into rename once the insert has LANDED (the hook resolves
+  // with the new key only then).
   const insertColumnAt = (index: number) => {
-    withList((l) => {
-      const cols = l.Columns ?? []
-      const key = nextColumnKey(t('listGrid.newColumnLabel'), cols.map((c) => c.Key))
-      const newColumn: Field = {
-        Key: key, Label: t('listGrid.newColumnLabel'), Type: FieldType.TypeText,
-        Required: false, Default: '', Description: '', Options: null,
-        Suggestions: null, Secret: false, RefKind: '', Multiline: false, SystemManaged: false,
-      }
-      const next = [...cols.slice(0, index), newColumn, ...cols.slice(index)]
-      // Straight into rename once the insert has LANDED -- opening it
-      // earlier races the rename's own read-modify-write against the
-      // insert's, and the loser silently drops the other's column.
-      return ConfigureService.UpdateList(l.ID, l.Label, l.Description, next, null)
-        .then(() => setRenaming({ key, label: '' }))
-    })
+    void edits.insertColumnAt(index).then((key) => { if (key) setRenaming({ key, label: '' }) })
   }
 
-  // A rename on a column that holds NO data yet also re-keys it from
-  // the new label (tombstoning the placeholder key): grid-authored
-  // schemas get real keys ("SKU" -> sku) for workflows and imports to
-  // match on, while a data-bearing column keeps its immutable key and
-  // renames label-only (the schema-evolution guard's split).
   const commitRename = () => {
     if (!renaming) return
     const rename = renaming
     setRenaming(null)
-    if (!rename.label.trim()) return
-    const label = rename.label.trim()
-    const hasData = rows.some((r) => (r.Values?.[rename.key] ?? '') !== '')
-    withList((l) => {
-      const cols = l.Columns ?? []
-      const target = cols.find((c) => c.Key === rename.key)
-      if (!target) return
-      if (hasData) {
-        const next = cols.map((c) => (c.Key === rename.key ? { ...c, Label: label } : c))
-        return ConfigureService.UpdateList(l.ID, l.Label, l.Description, next, null)
-      }
-      const newKey = nextColumnKey(label, cols.map((c) => c.Key))
-      const next = cols.map((c) => (c.Key === rename.key ? { ...c, Key: newKey, Label: label } : c))
-      return ConfigureService.UpdateList(l.ID, l.Label, l.Description, next, [{ Key: target.Key, Type: target.Type }])
-    })
+    edits.renameColumn(rename.key, rename.label)
   }
 
-  // Merge ONLY the popover-editable facets onto the stored column --
-  // replacing wholesale would wipe facets the render column doesn't
-  // carry (Default, Description, Required...).
-  const commitColumnChange = (next: Field) => {
-    withList((l) => {
-      const cols = (l.Columns ?? []).map((c) => (c.Key === next.Key
-        ? { ...c, Type: next.Type, Options: next.Options, deprecated: next.deprecated }
-        : c))
-      return ConfigureService.UpdateList(l.ID, l.Label, l.Description, cols, null)
-    })
-  }
-
-  const removeColumn = (key: string) => {
-    withList((l) => {
-      const removed = (l.Columns ?? []).find((c) => c.Key === key)
-      if (!removed) return
-      const cols = (l.Columns ?? []).filter((c) => c.Key !== key)
-      return ConfigureService.UpdateList(l.ID, l.Label, l.Description, cols, [{ Key: removed.Key, Type: removed.Type }])
-    })
-  }
+  const commitColumnChange = edits.changeColumn
+  const removeColumn = edits.removeColumn
+  const fieldFor = edits.fieldFor
+  const error = edits.error
 
   const headerCell = (c: GridColumn, colIdx: number) => (
     <th key={c.Key} data-testid="atlas-projection-header" data-deprecated={c.Deprecated ? 'true' : undefined}>
@@ -356,16 +273,6 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
       </button>
     </th>
   )
-
-  // fieldFor lifts a render column back to a full Field for the
-  // popover -- the authoritative record is re-read in withList at
-  // commit time, so only identity and the editable facets matter here.
-  const fieldFor = (c: GridColumn): Field => ({
-    Key: c.Key, Label: c.Label, Type: (c.Type || 'text') as Field['Type'],
-    Required: false, Default: '', Description: '', Options: c.Options,
-    Suggestions: null, Secret: false, RefKind: '', Multiline: false, SystemManaged: false,
-    deprecated: c.Deprecated ?? false,
-  })
 
   return (
     <div ref={rootRef} className={styles.gridRoot} data-testid="atlas-projection-table">

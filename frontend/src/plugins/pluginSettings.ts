@@ -20,6 +20,8 @@ function settingDeclFromContribution(c: SettingContribution): ExtensionSettingDe
       return { ...base, type: 'boolean', defaultValue: Boolean(c.default) }
     case 'number':
       return { ...base, type: 'number', defaultValue: Number(c.default), min: c.min ?? undefined, max: c.max ?? undefined }
+    case 'secretRef':
+      return { ...base, type: 'secretRef', defaultValue: '' }
     case 'enum':
       return {
         ...base,

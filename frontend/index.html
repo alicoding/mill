@@ -31,6 +31,9 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- The adopted data grid's overlay editors mount here (ADR-0049):
+         the library requires a body-level portal by this id. -->
+    <div id="portal"></div>
     <script type="module" src="/src/app/main.tsx"></script>
   </body>
 </html>

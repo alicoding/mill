@@ -37,6 +37,7 @@ export interface SecretAccessRecord {
     "context": string;
     "runId": string;
     "workflowId": string;
+    "actor": string;
     "outcome": string;
     "errorText": string;
 }

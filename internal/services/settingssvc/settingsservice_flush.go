@@ -114,6 +114,11 @@ func (s *SettingsService) confirmLeaveOnce(reason string) bool {
 	s.leave.inFlight = false
 	s.leave.approved = ok
 	s.leave.mu.Unlock()
+	if ok {
+		// Nothing floating stays on screen for the OS to restore on the
+		// next launch (docs/goals/0301).
+		s.HideAuxWindows()
+	}
 	return ok
 }
 

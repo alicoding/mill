@@ -140,7 +140,10 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data, selected }:
       }
       const idle = document.activeElement === document.body || document.activeElement === null
       if (target && document.activeElement !== target && (idle || wrapRef.current?.contains(document.activeElement))) target.focus()
-      if (++tries > 8) window.clearInterval(id)
+      // Long enough to outlast the engine's own create() under load:
+      // the mount is inert until then (MilkdownEditor.tsx), so focus
+      // can only land once typing is safe.
+      if (++tries > 30) window.clearInterval(id)
     }, 60)
     return () => window.clearInterval(id)
     // note?.Text deliberately excluded: seeding happens on edit ENTRY

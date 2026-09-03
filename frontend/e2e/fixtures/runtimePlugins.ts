@@ -1,4 +1,4 @@
-import { chromium } from '@playwright/test'
+import { chromium, expect, type Page } from '@playwright/test'
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -74,3 +74,14 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 		},
 	}
 }
+
+// runFromPalette -- the one way these tests fire a plugin command: the
+// palette's own binding, the command by its registered label.
+export async function runFromPalette(page: Page, label: string) {
+	await page.keyboard.press('Meta+/')
+	const dialog = page.getByRole('dialog', { name: 'Command palette' })
+	await expect(dialog).toBeVisible()
+	await dialog.getByRole('combobox').fill(label)
+	await dialog.getByRole('option', { name: label }).click()
+}
+

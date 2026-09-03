@@ -369,6 +369,17 @@ at:
     every projection); then a VoiceOver pass -- the grid's
     accessibility DOM reads the headers and cells (ADR-0049's own
     verification, the library hedges its a11y).
+  - **A relaunch never restores the floating windows** (goal 0301,
+    `SettingsService.HideAuxWindows` on ApplicationStarted and before
+    every approved quit / restart) -- macOS Resume re-showing windows
+    that were on screen when the process ended is an OS behavior no
+    harness reproduces. Verify on an installed build: open the Quick
+    Panel, press ⌘⇧↩ on a workflow so the run monitor floats, then
+    from the panel type "update" and restart (or ⌘Q from the panel's
+    Open Mill) -- on relaunch only the main window appears, the panel
+    and the monitor stay hidden until summoned; also relaunch with
+    "Close windows when quitting an application" OFF in System
+    Settings > Desktop & Dock (the default) and confirm the same.
   - **File-promise drops: the post-screenshot floating thumbnail**
     (goal 0256, `MillFilePromiseDropView` /
     `AttachFilePromiseReceiver`) — a promise drag needs a real AppKit

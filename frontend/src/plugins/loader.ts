@@ -2,6 +2,7 @@ import { PluginService } from '../../bindings/github.com/alicoding/mill/internal
 import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { SettingsService } from '../shared/bindings'
 import { refreshExtensionSettings } from '../shared/extensionSettingsStore'
+import { refreshSecretTitles } from '../shared/secretTitleCache'
 import { buildPluginAPI } from './hostApi'
 import type { MillPluginAPI, PluginModule } from './sdk'
 
@@ -95,6 +96,9 @@ export async function loadPlugins(): Promise<void> {
 	// not the default (the store's own refresh path; App's boot effect
 	// refetches again later, harmlessly).
 	await refreshExtensionSettings()
+	// Vault titles load the same way, so a secretRef setting's get()
+	// answers the title from the first activate() on.
+	await refreshSecretTitles()
 	const storage = await loadPluginStorage()
 	for (const info of plugins) {
 		const id = info.Manifest.id
