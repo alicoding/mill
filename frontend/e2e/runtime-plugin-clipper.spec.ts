@@ -65,7 +65,9 @@ test('a clip fetches the page (approved in Review), keeps the article and not th
 		await expect(face.getByTestId('clip-status')).toContainText('Asking')
 		await approveInReview(page, 'plugin:mill-clipper', '127.0.0.1')
 		// So does the note write.
-		await expect(face.getByTestId('clip-status')).toContainText('Saving')
+		// The approval's answer travels back through the bound call and
+		// the fetch itself before the face moves on -- a longer wait.
+		await expect(face.getByTestId('clip-status')).toContainText('Saving', { timeout: 20_000 })
 		await approveInReview(page, 'plugin:mill-clipper', 'note')
 		await expect(face.getByTestId('clip-status')).toHaveText('Clipped → Why kettles whistle')
 
