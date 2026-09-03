@@ -157,6 +157,17 @@ export function ConfigureDecisions() {
     setFormOpen(true)
     setError('')
   }
+  // goal 0312: a reference field's Open in Configure lands on THIS
+  // entity's editor, once its list has loaded.
+  const configureEditRequest = useUISignalStore((s) => s.configureEditRequest)
+  const consumeConfigureEdit = useUISignalStore((s) => s.consumeConfigureEdit)
+  useEffect(() => {
+    if (configureEditRequest?.tab !== 'decisions' || decisions === null) return
+    const target = decisions.find((x) => x.ID === configureEditRequest.id)
+    consumeConfigureEdit()
+    if (target) startEdit(target)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- startEdit/consumeConfigureEdit deliberately excluded, same reasoning as the create effect above
+  }, [configureEditRequest, decisions])
 
   const save = async () => {
     setError('')

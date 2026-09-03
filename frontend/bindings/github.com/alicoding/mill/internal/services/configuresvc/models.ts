@@ -19,6 +19,25 @@ export interface ParsedXlsxFile {
 }
 
 /**
+ * ReferenceSummary is what the peek renders.
+ */
+export interface ReferenceSummary {
+    "kind": string;
+    "id": string;
+    "label": string;
+    "lines": SummaryLine[] | null;
+    "problems": string[] | null;
+}
+
+/**
+ * SummaryLine is one label/value pair of a reference summary.
+ */
+export interface SummaryLine {
+    "label": string;
+    "value": string;
+}
+
+/**
  * TestHTTPRequestInput carries a request draft (possibly unsaved --
  * docs/adr/0013) plus the one operation to call and example field
  * values. Config comes as plain values (BaseURL/AuthType/Headers/

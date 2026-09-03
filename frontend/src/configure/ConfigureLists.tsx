@@ -127,6 +127,17 @@ export function ConfigureLists() {
     setFormOpen(true)
     setError('')
   }
+  // goal 0312: a reference field's Open in Configure lands on THIS
+  // entity's editor, once its list has loaded.
+  const configureEditRequest = useUISignalStore((s) => s.configureEditRequest)
+  const consumeConfigureEdit = useUISignalStore((s) => s.consumeConfigureEdit)
+  useEffect(() => {
+    if (configureEditRequest?.tab !== 'lists' || lists === null) return
+    const target = lists.find((x) => x.ID === configureEditRequest.id)
+    consumeConfigureEdit()
+    if (target) startEdit(target)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- startEdit/consumeConfigureEdit deliberately excluded, same reasoning as the create effect above
+  }, [configureEditRequest, lists])
 
   // Save persists label/description; the grid below owns columns and
   // rows through the List's own methods (its read-modify-write always

@@ -56,3 +56,16 @@ a Configure entity rather than holding the value inline — see
 Saving edits a draft. Publishing snapshots a version — callers and
 triggers run the published version, so edits never leak into
 production mid-composition.
+
+## Seeing what a step points at
+
+A step that references something you configured — an integration, a
+list, an MCP server, an AI provider — shows two links under the
+picker. **Details** opens a short summary right there: an
+integration's address, method, and auth, and whether its secret is
+stored; a list's columns and row count. **Open** takes you to that
+entity's own editor: an integration opens as a tab beside your
+workflow, everything else opens on its Configure page with the form
+ready. If the entity cannot work as it stands — an integration whose
+auth has no secret yet — the step says so on the field, with the same
+Open link.

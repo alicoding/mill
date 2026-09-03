@@ -276,6 +276,14 @@ export function DeriveSecretLabels(nodeTypeID: string, config: { [_ in string]?:
     return $Call.ByID(3138098164, nodeTypeID, config);
 }
 
+/**
+ * DescribeReference answers a summary for kind (a ConfigField RefKind)
+ * and id. An unknown kind or id is an error naming it.
+ */
+export function DescribeReference(kind: string, id: string): $CancellablePromise<$models.ReferenceSummary> {
+    return $Call.ByID(3538022950, kind, id);
+}
+
 export function ExecEnvs(): $CancellablePromise<execenv$0.ExecEnv[] | null> {
     return $Call.ByID(1392956673);
 }

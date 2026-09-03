@@ -376,6 +376,11 @@
       "atlas-linkkind": "Atlas relation"
     },
     "unknownEntity": "Unknown {{noun}} ({{value}})",
+    "details": "Details",
+    "hideDetails": "Hide details",
+    "openInConfigure": "Open in Configure",
+    "openIntegration": "Open integration",
+    "openWorkflow": "Open workflow",
     "allWorkflows": "All workflows",
     "selectEntity": "Select a {{noun}}…",
     "createNewEntity": "+ Create new {{noun}}…",
