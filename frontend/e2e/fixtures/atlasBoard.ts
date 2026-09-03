@@ -54,8 +54,12 @@ export function nonSeededBoardObjectWrapper(page: Page, kind: string): Locator {
 // (the table grid's row menu, a viewer's own menu), so the frame is the
 // one surface every object kind answers the same way (goal 0287 S3).
 export async function promoteBoardObject(page: Page, object: Locator, title: string, kindID = ATLAS_KIND_TOPIC): Promise<void> {
-  const frame = object.locator('[data-testid="atlas-board-object-frame"]')
-  if (await frame.count()) await frame.click({ button: 'right' })
+  // A grid object claims right-click for its own row/column menus, so
+  // its object menu opens off the chrome band; every other kind opens
+  // it from the body (a viewer's band animates while its engine loads
+  // and never reads as stable to a checked click).
+  const grid = object.locator('[data-testid="atlas-projection-glide"]')
+  if (await grid.count()) await object.locator('[data-testid="atlas-board-object-frame"]').click({ button: 'right' })
   else await object.click({ button: 'right' })
   const menu = contextMenu(page)
   await expect(menu).toBeVisible()
