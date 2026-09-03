@@ -24,8 +24,12 @@ drifting apart would be a bug:
   list maps file columns to its fields, and "New from file…" on the
   Lists page proposes a whole typed schema from your sample — edit
   the proposed names and types, then create the list with every row
-  in one step. Deleting a list is immediate and permanent, so export
-  first if you might want it back.
+  in one step. A list can also mirror an outside source, one way: the
+  "Sync rows into a list" step turns a request's JSON result into rows
+  matched by a key column, on whatever schedule its workflow runs —
+  "Example: Jira issues → List" shows the shape, and Mill never writes
+  back to the source. Deleting a list is immediate and permanent, so
+  export first if you might want it back.
 - **MCP Servers** — other MCP servers Mill can call as workflow
   steps. (Connecting an agent *to* Mill is the other direction — see
   Settings → MCP access.)

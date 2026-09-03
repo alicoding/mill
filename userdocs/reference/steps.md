@@ -272,6 +272,18 @@ Runs another of your workflows as a step and uses its result as this workflow's 
   - **Pin to version (optional)** — Leave empty to always call the child's published version. Enter a version number to pin this step to that exact snapshot, unaffected by later publishes.
   - **Store result in attribute (optional)** — Also write the child workflow's result into this workflow's named Attribute, so later steps (a Decision condition, another binding) can reference it as attr:<name>.
 
+### Scan a folder for TODO markers
+
+Walks a folder and lists every TODO-style marker it finds as a table: one row per hit with the file, line, marker, and the text after it. Hidden folders, node_modules, vendor and .git are skipped.
+
+- Takes: anything — Produces: text
+- Effect: changes something on this machine
+- Settings:
+  - **Folder** — The folder to scan. A literal path or attr:<name>.
+  - **Markers** — Comma-separated words to look for, matched as whole words, case-sensitive.
+  - **File types** — Comma-separated extensions to include, e.g. go,ts,md. Blank scans every text file.
+  - **File limit** — Stops after this many files so a huge folder never runs away.
+
 ### Search list rows
 
 Searches a Configure-authored List's rows against one or more match parameters (exact or fuzzy, per-column, AND'd together) and writes the result into Attributes. Supersedes list-lookup for anything beyond a single exact key match -- list-lookup keeps working unchanged for existing workflows. Expired rows are excluded by default; "Include expired rows" opts in.
@@ -403,6 +415,19 @@ Scrubs any known secret value out of the payload, then adds what's left to Clipb
 
 - Takes: text — Produces: its input, unchanged
 - Effect: changes something on this machine
+
+### Sync rows into a list
+
+Turns a JSON payload's array of items into rows of a Configure-authored List, one row per item, matched by "Key column": an existing row with the same key is updated in the mapped columns, a new key appends a row, and with "Expire missing rows" on, rows whose key is absent from this result are marked expired (never deleted). One-way: nothing is written back to the source, and a later sync overwrites the mapped columns of a row edited by hand.
+
+- Takes: JSON or text or anything — Produces: its input, unchanged
+- Effect: changes something on this machine
+- Settings:
+  - **List** — The Configure-authored List that mirrors the source. (references a List)
+  - **Items path** — Dotted path to the array of items inside the JSON payload, e.g. issues. Blank when the payload itself is the array.
+  - **Key column** — The List column that identifies an item -- must be named in the field map.
+  - **Field map** — JSON object mapping List column keys to a dotted path inside each item, e.g. {"key":"key","summary":"fields.summary","status":"fields.status.name"}. A value with {{path}} placeholders is a template, e.g. "https://jira.example.com/browse/{{key}}".
+  - **Expire missing rows** — Mark rows whose key is absent from this result as expired.
 
 ### Update Atlas card
 
