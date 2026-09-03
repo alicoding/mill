@@ -31,7 +31,23 @@ async function cellPoint(host: Locator, row: number, col: number): Promise<{ x: 
 // the plain click never passes its hit-target wait); the canvas
 // itself is asserted visible first, and the outcome (selection, the
 // portal editor, the a11y text) is what every caller asserts.
+// The board pans and zooms to reveal a new object; a forced click
+// computed from a mid-animation box lands on whatever was under that
+// point a frame ago (a seeded card, whose page then opens). Wait for
+// the host's box to hold still across two frames first.
+async function waitForBoxStable(host: Locator): Promise<void> {
+  let last = ''
+  await expect.poll(async () => {
+    const box = await host.boundingBox()
+    const key = box ? [box.x, box.y, box.width, box.height].map((n) => Math.round(n)).join(',') : ''
+    const stable = key !== '' && key === last
+    last = key
+    return stable
+  }, { timeout: 5000, intervals: [80, 80, 120, 200] }).toBe(true)
+}
+
 export async function clickGlideCell(page: Page, host: Locator, row: number, col: number, opts: { button?: 'left' | 'right'; clickCount?: number } = {}): Promise<void> {
+  await waitForBoxStable(host)
   const p = await cellPoint(host, row, col)
   const canvas = host.locator('canvas').first()
   await expect(canvas).toBeVisible()
@@ -43,11 +59,29 @@ export async function clickGlideCell(page: Page, host: Locator, row: number, col
 // The text overlay editor: a click selects the cell, a second click
 // activates it (the grid's own "second-click" behavior), fill, commit
 // with Enter (the spreadsheet model the grid ships).
+// openGlideCellEditor activates a cell's overlay editor the way a user
+// does under the grid's second-click model: a click on an unselected
+// cell selects it and a further click activates; a click on a cell
+// that is ALREADY selected (the grid keeps the last edited cell
+// selected after a commit) activates at once, and a second click there
+// would close what just opened. So: click, give the editor a moment to
+// appear, click again only if it has not.
+export async function openGlideCellEditor(page: Page, host: Locator, row: number, col: number, editor: Locator): Promise<void> {
+  await clickGlideCell(page, host, row, col)
+  const opened = await editor.first().waitFor({ state: 'visible', timeout: 600 }).then(() => true, () => false)
+  if (!opened) await clickGlideCell(page, host, row, col)
+  await expect(editor.first()).toBeVisible()
+}
+
+// The editor mounts in the body-level portal, or inside the grid's own
+// portal on a focus-trapping page (ListGridGlide's editorPortal).
+export function glideTextEditor(page: Page): Locator {
+  return page.locator('#portal, [data-testid="atlas-projection-glide-portal"]').locator('textarea, input')
+}
+
 export async function editGlideCell(page: Page, host: Locator, row: number, col: number, text: string): Promise<void> {
-  await clickGlideCell(page, host, row, col)
-  await clickGlideCell(page, host, row, col)
-  const editor = page.locator('#portal textarea, #portal input').first()
-  await expect(editor).toBeVisible()
+  const editor = glideTextEditor(page).first()
+  await openGlideCellEditor(page, host, row, col, editor)
   await editor.fill(text) // fill: a form control (goal 0296)
   await page.keyboard.press('Enter')
   await expect(editor).toHaveCount(0)

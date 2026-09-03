@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { clickBoardPoint } from './fixtures/atlasBoard'
+import { placeSizedTable } from './fixtures/atlasTable'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
 import { clickGlideCell, editGlideCell, glideCellText } from './fixtures/glideGrid'
@@ -21,9 +21,7 @@ async function landGlideTable(page: import('@playwright/test').Page) {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
-  await page.getByTestId('atlas-tray-table').click()
-  await page.getByTestId('atlas-table-size-2x2').click()
-  await clickBoardPoint(page, { x: 400, y: 500 })
+  await placeSizedTable(page, '2x2')
   const tableObject = page.locator('[data-testid="atlas-board-object"][data-object-kind="table"]')
   await expect(tableObject).toBeVisible()
   const glide = tableObject.getByTestId('atlas-projection-glide')

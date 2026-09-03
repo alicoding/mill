@@ -81,4 +81,12 @@
 .errorLine {
   color: var(--fgColor-danger);
 }
-
+.editorPortal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    overflow: visible;
+    z-index: 20;
+}

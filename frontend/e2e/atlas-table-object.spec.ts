@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
-import { clickBoardPoint, dragBetween, dragResizeHandle } from './fixtures/atlasBoard'
+import { createTableFromList, placeSizedTable } from './fixtures/atlasTable'
+import { dragBetween, dragResizeHandle } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
 import type { Locator, Page } from '@playwright/test'
@@ -12,13 +13,6 @@ import type { Locator, Page } from '@playwright/test'
 
 function tableObjects(page: Page): Locator {
   return page.locator('[data-testid="atlas-board-object"][data-object-kind="table"]')
-}
-
-async function createTableFromList(page: Page, listLabel: string): Promise<void> {
-  await page.getByTestId('atlas-tray-table').click()
-  await page.getByTestId('atlas-table-from-list').click()
-  await page.getByTestId('entity-ref-field').selectOption({ label: listLabel })
-  await page.getByRole('button', { name: 'Create' }).click()
 }
 
 async function deleteObjectViaMenu(object: Locator): Promise<void> {
@@ -41,9 +35,7 @@ test('a newly created table object has no dead space below a small grid', async 
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await page.getByTestId('atlas-tray-table').click()
-  await page.getByTestId('atlas-table-size-2x2').click()
-  await clickBoardPoint(page, { x: 400, y: 500 })
+  await placeSizedTable(page, '2x2')
   const tableObject = tableObjects(page).filter({ hasText: 'Column 1' })
   await expect(tableObject).toBeVisible()
   const glide = tableObject.getByTestId('atlas-projection-glide')
@@ -76,9 +68,7 @@ test('adding columns widens an unsized table instead of scrolling its first colu
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await page.getByTestId('atlas-tray-table').click()
-  await page.getByTestId('atlas-table-size-2x2').click()
-  await clickBoardPoint(page, { x: 400, y: 500 })
+  await placeSizedTable(page, '2x2')
   const tableObject = tableObjects(page).filter({ hasText: 'Column 1' })
   await expect(tableObject).toBeVisible()
   const glide = tableObject.getByTestId('atlas-projection-glide')
@@ -131,7 +121,7 @@ test('a table object can be resized by its own handle, and the size persists acr
   test.skip(!!process.env.CI, 'drag synthesis coalesces on CI -- QUARANTINE.md atlas-table-resize')
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await createTableFromList(page, 'Example: Country codes')
+  await createTableFromList(page, 'Example: Country codes', 'US')
   const tableObject = tableObjects(page).filter({ hasText: 'US' })
   await expect(tableObject).toBeVisible()
 
@@ -163,7 +153,7 @@ test('a table object can be resized by its own handle, and the size persists acr
 test('a table object can be dragged by its own frame', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await createTableFromList(page, 'Example: Country codes')
+  await createTableFromList(page, 'Example: Country codes', 'US')
   const tableObject = tableObjects(page).filter({ hasText: 'US' })
   await expect(tableObject).toBeVisible()
 

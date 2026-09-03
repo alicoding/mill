@@ -1,10 +1,11 @@
 import { test, expect } from './fixtures/server'
+import { createTableFromList, panToEmptyBoard, placeSizedTable, revealBoardObject } from './fixtures/atlasTable'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_DOCUMENT, selectKind } from './fixtures/kindPicker'
 import { clickBoardPoint, clickFrameGutter, dragResizeHandle, openCard } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
-import { clickGlideCell, editGlideCell, glideCellText } from './fixtures/glideGrid'
+import { clickGlideCell, editGlideCell, glideCellText, openGlideCellEditor } from './fixtures/glideGrid'
 import type { Locator, Page } from '@playwright/test'
 
 // List -> table projection (goal 0105 minimal slice, relocated onto a
@@ -24,13 +25,6 @@ const tableTitle = (card: Locator) => card.locator('[class*="title"]').first()
 
 function tableObjects(page: Page): Locator {
   return page.locator('[data-testid="atlas-board-object"][data-object-kind="table"]')
-}
-
-async function createTableFromList(page: Page, listLabel: string): Promise<void> {
-  await page.getByTestId('atlas-tray-table').click()
-  await page.getByTestId('atlas-table-from-list').click()
-  await page.getByTestId('entity-ref-field').selectOption({ label: listLabel })
-  await page.getByRole('button', { name: 'Create' }).click()
 }
 
 async function deleteObjectViaMenu(object: Locator): Promise<void> {
@@ -72,7 +66,7 @@ test('a table object projects a List live on the board, and Promote to card keep
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await createTableFromList(page, 'Example: Country codes')
+  await createTableFromList(page, 'Example: Country codes', 'US')
 
   // The board face renders the live table straight off the object --
   // no card, no kind/title question asked to get here.
@@ -107,7 +101,7 @@ test('a table object projects a List live on the board, and Promote to card keep
 test('auto-arrange keeps a promoted table card at its real footprint', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await createTableFromList(page, 'Example: Country codes')
+  await createTableFromList(page, 'Example: Country codes', 'US')
   const tableObject = tableObjects(page).filter({ hasText: 'US' })
   await expect(tableObject).toBeVisible()
   await promoteTableObject(page, tableObject, 'ZzE2eProjectionArrangeCard', ATLAS_KIND_DOCUMENT)
@@ -142,7 +136,7 @@ test('boundary inserts, cell edits, and column rename all work in place on the c
   await page.getByTestId('save-list').click()
 
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await createTableFromList(page, 'ZzE2eProjectionEditList')
+  await createTableFromList(page, 'ZzE2eProjectionEditList', 'No columns yet')
   const tableObject = tableObjects(page).filter({ hasText: 'No columns yet' })
   await expect(tableObject).toBeVisible()
   await promoteTableObject(page, tableObject, 'ZzE2eProjectionEditList', ATLAS_KIND_DOCUMENT)
@@ -205,7 +199,7 @@ test('boundary inserts, cell edits, and column rename all work in place on the c
 test('an options column renders pills and edits as a select on the board object, and the promoted card\'s pills density tints rows', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await createTableFromList(page, 'Example: Task tracker')
+  await createTableFromList(page, 'Example: Task tracker', 'Set up Mill')
 
   // Filtered by the stable seeded task text, not the edited status
   // value below -- a filter keyed on content this test itself mutates
@@ -219,17 +213,14 @@ test('an options column renders pills and edits as a select on the board object,
   await expect(glideCellText(glide, 0, 1)).toHaveText('Done')
 
   // An options cell edits as a select over the declared values.
-  await clickGlideCell(page, glide, 0, 1)
-  await clickGlideCell(page, glide, 0, 1)
   const select = page.getByTestId('atlas-projection-cell-select')
-  await expect(select).toBeVisible()
+  await openGlideCellEditor(page, glide, 0, 1, select)
   await select.selectOption('Blocked')
   await expect(glideCellText(glide, 0, 1)).toHaveText('Blocked')
 
   // Restore the seeded row's value before promoting.
-  await clickGlideCell(page, glide, 0, 1)
-  await clickGlideCell(page, glide, 0, 1)
-  await page.getByTestId('atlas-projection-cell-select').selectOption('Done')
+  await openGlideCellEditor(page, glide, 0, 1, select)
+  await select.selectOption('Done')
   await expect(glideCellText(glide, 0, 1)).toHaveText('Done')
 
   await promoteTableObject(page, tableObject, 'ZzE2ePillsCard', ATLAS_KIND_DOCUMENT)
@@ -259,9 +250,7 @@ test('a text cell edited directly on a table board object writes the backing Lis
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await page.getByTestId('atlas-tray-table').click()
-  await page.getByTestId('atlas-table-size-2x2').click()
-  await clickBoardPoint(page, { x: 400, y: 500 })
+  await placeSizedTable(page, '2x2')
   const tableObject = tableObjects(page).filter({ hasText: 'Column 1' })
   await expect(tableObject).toBeVisible()
   const glide = tableObject.getByTestId('atlas-projection-glide')
@@ -303,8 +292,9 @@ test('New table creates a sized grid instantly from the size picker, landing a t
   await page.getByTestId('atlas-table-size-3x2').click()
 
   // Picking a size ARMS the tool (goal 0148) -- the click places the
-  // table at that canvas point.
-  await clickBoardPoint(page, { x: 400, y: 500 })
+  // table at that canvas point (an empty one; testing.md).
+  const armedSpot = await panToEmptyBoard(page, { width: 560, height: 220 })
+  await clickBoardPoint(page, { x: armedSpot.x + 12, y: armedSpot.y + 12 })
   const tableObject = tableObjects(page).filter({ hasText: 'Column 1' })
   await expect(tableObject).toBeVisible()
   const glide = tableObject.getByTestId('atlas-projection-glide')
@@ -346,15 +336,18 @@ test('resizing a promoted table card persists its footprint across reload', asyn
   test.skip(!!process.env.CI, 'drag synthesis coalesces on CI -- QUARANTINE.md atlas-table-resize')
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await createTableFromList(page, 'Example: Country codes')
+  await createTableFromList(page, 'Example: Country codes', 'US')
   const tableObject = tableObjects(page).filter({ hasText: 'US' })
   await expect(tableObject).toBeVisible()
   await promoteTableObject(page, tableObject, 'Example: Country codes', ATLAS_KIND_DOCUMENT)
   const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'Example: Country codes' })
   await expect(tableCard).toBeVisible()
 
-  const before = await tableCard.boundingBox()
-  if (!before) throw new Error('no table card box')
+  // Layout width (flow units): a reload re-fits the viewport to a board
+  // whose extents this test itself changed, so screen pixels would
+  // compare two different zooms.
+  const layoutWidth = (card: Locator) => card.evaluate((el) => (el as HTMLElement).offsetWidth)
+  const beforeWidth = await layoutWidth(tableCard)
 
   // Select the node, then drag the resizer's bottom-right handle.
   await tableTitle(tableCard).click()
@@ -365,11 +358,11 @@ test('resizing a promoted table card persists its footprint across reload', asyn
   await dragResizeHandle(page, handle, 120, -60)
 
   // The node grew, and the growth survives a reload (persisted Size).
-  await expect.poll(async () => (await tableCard.boundingBox())?.width ?? 0).toBeGreaterThan(before.width + 80)
+  await expect.poll(() => layoutWidth(tableCard)).toBeGreaterThan(beforeWidth + 80)
   await page.reload()
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(tableCard).toBeVisible()
-  await expect.poll(async () => (await tableCard.boundingBox())?.width ?? 0).toBeGreaterThan(before.width + 80)
+  await expect.poll(() => layoutWidth(tableCard)).toBeGreaterThan(beforeWidth + 80)
 
   await openCard(page, tableTitle(tableCard))
   await deleteViaPageMenu(page, page.locator('[data-component="atlas-card-overlay"]'))
@@ -391,7 +384,8 @@ test('an armed table size escapes cleanly and files into frames', async ({ page 
   await page.getByTestId('atlas-tray-table').click()
   await page.getByTestId('atlas-table-size-2x2').click()
   await page.keyboard.press('Escape')
-  await clickBoardPoint(page, { x: 400, y: 500 })
+  const escapedSpot = await panToEmptyBoard(page, { width: 300, height: 200 })
+  await clickBoardPoint(page, { x: escapedSpot.x + 12, y: escapedSpot.y + 12 })
   await expect.poll(objectCount).toBe(before)
 
   // Armed again, clicking inside "Client records" files the table
@@ -402,6 +396,7 @@ test('an armed table size escapes cleanly and files into frames', async ({ page 
   // containment is confirmed by drilling in, never by a DOM count at
   // this level.
   const frame = page.locator('[data-testid="atlas-group-card"]').filter({ hasText: 'Client records' }).first()
+  await revealBoardObject(page, frame)
   const frameHeader = frame.getByTestId('atlas-group-header')
   await expect(frameHeader).toContainText('2 items')
   await page.getByTestId('atlas-tray-table').click()

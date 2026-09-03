@@ -1,3 +1,4 @@
+import type React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@primer/react'
@@ -37,10 +38,18 @@ function readWidths(listID: string): Record<string, number> {
   }
 }
 
-export function ListGridGlide({ listID, columns, rows, density, schemaEditing = true }: { listID: string; columns: GridColumn[]; rows: GridRow[]; density?: string; schemaEditing?: boolean }) {
+// editorPortal: where the library mounts its overlay cell editor.
+// 'body' (default) is its own body-level #portal, which keeps the
+// editor out of any CSS-transformed ancestor (a board object scales
+// with the canvas). 'host' mounts it inside this grid's own tree --
+// required inside a focus-trapping dialog (the card page): a trap
+// pulls focus back from anything outside its subtree, so a body-level
+// editor never receives keystrokes and every commit is lost.
+export function ListGridGlide({ listID, columns, rows, density, schemaEditing = true, editorPortal = 'body' }: { listID: string; columns: GridColumn[]; rows: GridRow[]; density?: string; schemaEditing?: boolean; editorPortal?: 'body' | 'host' }) {
   const { t } = useTranslation('common')
   const [host, setHost] = useState<HTMLDivElement | null>(null)
   const gridRef = useRef<DataEditorRef>(null)
+  const portalRef = useRef<HTMLDivElement>(null)
   const edits = useListSchemaEdits(listID, columns, rows)
   const palette = useMemo(() => paletteFromTokens(host), [host])
   const renderers = useMemo(() => [optionsRenderer(palette)], [palette])
@@ -121,12 +130,13 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
       onKeyDown={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.stopPropagation()}
     >
-      <div className={`${styles.scroll} nowheel nodrag`} style={{ minHeight: 120, maxHeight: 420 }}>
+      <div className={`${styles.scroll} nowheel nodrag nopan`} style={{ minHeight: 120, maxHeight: 420 }}>
         {columns.length === 0 ? (
           <p className={styles.empty} data-testid="atlas-projection-empty">{t('listGrid.noColumns')}</p>
         ) : (
           <DataEditor
             ref={gridRef}
+            portalElementRef={editorPortal === 'host' ? (portalRef as React.RefObject<HTMLElement>) : undefined}
             columns={gridColumns}
             rows={rows.length}
             {...cellEdits}
@@ -167,6 +177,12 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
         )}
       </div>
       {edits.error && <p className={styles.errorLine} data-testid="atlas-projection-error">{edits.error}</p>}
+      {editorPortal === 'host' && (
+        // A fixed, zero-size box at the viewport origin: the library
+        // positions its editor absolutely in viewport coordinates, so
+        // this resolves them exactly like the body-level portal does.
+        <div ref={portalRef} className={styles.editorPortal} data-testid="atlas-projection-glide-portal" />
+      )}
     </div>
   )
 }
