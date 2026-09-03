@@ -5,7 +5,10 @@ import (
 	"sort"
 	"strings"
 
+	"context"
+
 	"github.com/alicoding/mill/internal/adapters/brunosource"
+	"github.com/alicoding/mill/internal/adapters/clisecrets"
 	"github.com/alicoding/mill/internal/adapters/dotenvsource"
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/domain/secret"
@@ -47,6 +50,16 @@ func (s *SecretService) sourcesSnapshot() []secretsource.Source {
 func (s *SecretService) ListProviderSecrets() ([]secret.Summary, error) {
 	var out []secret.Summary
 	for _, src := range s.sourcesSnapshot() {
+		if isCLIKind(src.Kind) {
+			entries, err := cliEntries(src)
+			if err != nil {
+				continue // the source's own row states the problem (SourceProblems)
+			}
+			for _, e := range entries {
+				out = append(out, secret.Summary{ID: vaultref.Ref(providerOf(src), src.ID+"/"+e.ID), Title: e.Title + " — " + src.Label, UpdatedAt: src.UpdatedAt})
+			}
+			continue
+		}
 		provider, keys, label := sourceKeys(src)
 		for _, k := range keys {
 			out = append(out, secret.Summary{
@@ -85,6 +98,15 @@ func (s *SecretService) resolveProvider(id string, actx secretaudit.AccessContex
 		s.recordAccess(id, "", actx, secretaudit.OutcomeError, err.Error())
 		return "", true, err
 	}
+	if isCLIKind(src.Kind) {
+		v, cerr := cliResolve(*src, key)
+		if cerr != nil {
+			s.recordAccess(id, key+" — "+src.Label, actx, secretaudit.OutcomeError, cerr.Error())
+			return "", true, cerr
+		}
+		s.recordAccess(id, key+" — "+src.Label, actx, secretaudit.OutcomeRead, "")
+		return v, true, nil
+	}
 	values, err := dotenvsource.Read(envPathOf(*src))
 	if err != nil {
 		s.recordAccess(id, key+" — "+src.Label, actx, secretaudit.OutcomeError, err.Error())
@@ -102,10 +124,57 @@ func (s *SecretService) resolveProvider(id string, actx secretaudit.AccessContex
 
 // providerOf names the reference provider a source answers to.
 func providerOf(src secretsource.Source) string {
-	if src.Kind == secretsource.KindBruno {
+	switch src.Kind {
+	case secretsource.KindBruno:
 		return vaultref.ProviderBruno
+	case secretsource.KindOnePassword:
+		return vaultref.ProviderOP
+	case secretsource.KindBitwarden:
+		return vaultref.ProviderBW
 	}
 	return vaultref.ProviderEnv
+}
+
+func isCLIKind(k secretsource.Kind) bool {
+	return k == secretsource.KindOnePassword || k == secretsource.KindBitwarden
+}
+
+// cliEntries / cliResolve are the CLI providers' seams
+// (internal/adapters/clisecrets), swappable for tests.
+var cliEntries = func(src secretsource.Source) ([]clisecrets.Entry, error) {
+	if src.Kind == secretsource.KindOnePassword {
+		return clisecrets.ListOnePassword(context.Background(), src.Path)
+	}
+	return clisecrets.ListBitwarden(context.Background())
+}
+
+var cliResolve = func(src secretsource.Source, id string) (string, error) {
+	if src.Kind == secretsource.KindOnePassword {
+		return clisecrets.ResolveOnePassword(context.Background(), id)
+	}
+	return clisecrets.ResolveBitwarden(context.Background(), id)
+}
+
+// SourceProblems reports, per source id, why a source currently lists
+// nothing ("" for a healthy one): a missing or locked CLI, an
+// unreadable file or collection. The Configure row shows it.
+func (s *SecretService) SourceProblems() map[string]string {
+	out := map[string]string{}
+	for _, src := range s.sourcesSnapshot() {
+		var err error
+		switch {
+		case isCLIKind(src.Kind):
+			_, err = cliEntries(src)
+		case src.Kind == secretsource.KindBruno:
+			_, err = brunosource.Read(src.Path)
+		default:
+			_, err = dotenvsource.Keys(src.Path)
+		}
+		if err != nil {
+			out[src.ID] = err.Error()
+		}
+	}
+	return out
 }
 
 // envPathOf is the dotenv file a source's values come from: the path

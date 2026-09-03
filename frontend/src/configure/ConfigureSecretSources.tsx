@@ -4,7 +4,7 @@ import { Button, FormControl, IconButton, Select, Stack, Text, TextInput } from 
 import { LockIcon, PencilIcon, PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
-import { ConfigureService } from '../shared/bindings'
+import { ConfigureService, SecretService } from '../shared/bindings'
 import type { Source as SecretSource } from '../../bindings/github.com/alicoding/mill/internal/domain/secretsource/models'
 import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secretsource/models'
 import { refreshSecretSources, useConfigureEntityStore } from '../shared/configureEntityStore'
@@ -33,10 +33,27 @@ export function ConfigureSecretSources() {
   const [label, setLabel] = useState('')
   const [path, setPath] = useState('')
   const [kind, setKind] = useState<Kind>(Kind.KindEnv)
+  // Per-source problems (a missing or locked CLI, an unreadable file):
+  // the row states why a source lists nothing right now.
+  const [problems, setProblems] = useState<Record<string, string>>({})
   const [error, setError] = useState('')
 
-  const refetch = () => { void refreshSecretSources(); void refreshSecretTitles() }
-  const kindLabel = (k: Kind) => (k === Kind.KindBruno ? t('configureSecretSources.kindBruno') : t('configureSecretSources.kindDotenv'))
+  const refetch = () => {
+    void refreshSecretSources()
+    void refreshSecretTitles()
+    SecretService.SourceProblems()
+      .then((p) => setProblems(Object.fromEntries(Object.entries(p ?? {}).flatMap(([id, v]) => (v ? [[id, v]] : [])))))
+      .catch(() => setProblems({}))
+  }
+  const kindLabel = (k: Kind) => {
+    if (k === Kind.KindBruno) return t('configureSecretSources.kindBruno')
+    if (k === Kind.KindOnePassword) return t('configureSecretSources.kindOnePassword')
+    if (k === Kind.KindBitwarden) return t('configureSecretSources.kindBitwarden')
+    return t('configureSecretSources.kindDotenv')
+  }
+  const needsPath = kind === Kind.KindEnv || kind === Kind.KindBruno
+  const pathCaption = kind === Kind.KindBruno ? t('configureSecretSources.pathCaptionBruno') : kind === Kind.KindOnePassword ? t('configureSecretSources.pathCaptionOnePassword') : kind === Kind.KindBitwarden ? t('configureSecretSources.pathCaptionBitwarden') : t('configureSecretSources.pathCaption')
+  const pathPlaceholder = kind === Kind.KindBruno ? '/path/to/collection' : kind === Kind.KindOnePassword ? 'Vault name (optional)' : kind === Kind.KindBitwarden ? '' : '/path/to/project/.env'
   useEffect(() => { refetch() }, [])
 
   const startCreate = () => {
@@ -92,7 +109,7 @@ export function ConfigureSecretSources() {
     icon: ENTITY_ICON.secretsource,
     label: s.Label,
     updatedLabel: formatUpdated(s.UpdatedAt),
-    description: `${kindLabel(s.Kind)} · ${s.Path}`,
+    description: [kindLabel(s.Kind), s.Path, problems[s.ID] ? `⚠ ${problems[s.ID]}` : ''].filter(Boolean).join(' · '),
     onOpen: () => startEdit(s),
     menuActions: [
       {
@@ -126,12 +143,14 @@ export function ConfigureSecretSources() {
             <Select value={kind} onChange={(e) => setKind(e.target.value as Kind)} data-testid="secretsource-kind">
               <Select.Option value={Kind.KindEnv}>{t('configureSecretSources.kindDotenv')}</Select.Option>
               <Select.Option value={Kind.KindBruno}>{t('configureSecretSources.kindBruno')}</Select.Option>
+              <Select.Option value={Kind.KindOnePassword}>{t('configureSecretSources.kindOnePassword')}</Select.Option>
+              <Select.Option value={Kind.KindBitwarden}>{t('configureSecretSources.kindBitwarden')}</Select.Option>
             </Select>
           </FormControl>
           <FormControl>
-            <FormControl.Label>{t('configureSecretSources.path')}</FormControl.Label>
-            <TextInput value={path} onChange={(e) => setPath(e.target.value)} block placeholder={kind === Kind.KindBruno ? '/path/to/collection' : '/path/to/project/.env'} data-testid="secretsource-path" />
-            <FormControl.Caption>{kind === Kind.KindBruno ? t('configureSecretSources.pathCaptionBruno') : t('configureSecretSources.pathCaption')}</FormControl.Caption>
+            <FormControl.Label>{needsPath ? t('configureSecretSources.path') : t('configureSecretSources.filter')}</FormControl.Label>
+            <TextInput value={path} onChange={(e) => setPath(e.target.value)} block placeholder={pathPlaceholder} disabled={kind === Kind.KindBitwarden} data-testid="secretsource-path" />
+            <FormControl.Caption>{pathCaption}</FormControl.Caption>
           </FormControl>
           {error && <Text as="p" size="small" className={styles.error} data-testid="secretsource-error">{error}</Text>}
           <Stack direction="horizontal" gap="condensed">
