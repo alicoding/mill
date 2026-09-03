@@ -23,7 +23,10 @@ export interface ExtraPlugin {
 	main: string
 }
 
-export async function launchWithPlugins(offset: number, opts: { withBroken?: boolean; withNotifier?: boolean; extraPlugins?: ExtraPlugin[] } = {}) {
+// extraExamples names further example folders to copy in (a plugin
+// that claims a gesture another example also claims stays out of the
+// shared set, so the other specs keep their claimant).
+export async function launchWithPlugins(offset: number, opts: { withBroken?: boolean; withNotifier?: boolean; extraPlugins?: ExtraPlugin[]; extraExamples?: string[] } = {}) {
 	const dir = mkdtempSync(path.join(tmpdir(), 'mill-plugins-e2e-'))
 	// The plugins dir is a per-test COPY of examples/plugins (the exact
 	// artifact a user copies from) -- never the repo folder itself, so
@@ -35,6 +38,7 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-index'), path.join(pluginsDir, 'mill-index'), { recursive: true })
 	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-request-tester'), path.join(pluginsDir, 'mill-request-tester'), { recursive: true })
 	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-markmap'), path.join(pluginsDir, 'mill-markmap'), { recursive: true })
+	for (const id of opts.extraExamples ?? []) cpSync(path.join(EXAMPLES_PLUGINS_DIR, id), path.join(pluginsDir, id), { recursive: true })
 	if (opts.withBroken) {
 		mkdirSync(path.join(pluginsDir, 'broken-one'))
 		writeFileSync(path.join(pluginsDir, 'broken-one', 'manifest.json'), '{not json')

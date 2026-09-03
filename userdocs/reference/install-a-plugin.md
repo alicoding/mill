@@ -351,7 +351,7 @@ api.registerCanvasObject({
 
 ## The example plugins
 
-Mill's repository ships five working examples: **Bookmark**
+Mill's repository ships six working examples: **Bookmark**
 (`examples/plugins/mill-bookmark`) — a web address pinned to the
 board, edited in place, opened through a guarded ask, with two
 declared settings — **Scribble** (`examples/plugins/mill-scribble`) —
@@ -365,7 +365,12 @@ history, and a declared setting — and **Mind map**
 (`examples/plugins/mill-markmap`), a view over a note's headings that
 follows the note as it changes, its rendering engine vendored as one
 committed bundle (`scripts/vendor-markmap.sh`) so it never loads
-anything from the network. Copy any folder into your plugins
+anything from the network — and **Web clipper**
+(`examples/plugins/mill-clipper`), which fetches a page through the
+guarded network door, extracts the article with Mozilla's Readability
+(vendored the same way), converts it through the SDK's convert door
+(`api.convert.htmlToMarkdown`), and saves it as a note through the
+guarded content door. Copy any folder into your plugins
 folder to try it, or use it as the starting point for your own.
 
 ## Checking a plugin

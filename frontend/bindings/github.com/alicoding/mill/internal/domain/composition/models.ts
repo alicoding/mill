@@ -152,6 +152,14 @@ export interface Issue {
 }
 
 /**
+ * ListSyncResult is what the wired sync reports back.
+ */
+export interface ListSyncResult {
+    "Synced": number;
+    "Expired": number;
+}
+
+/**
  * MapEntry is one row of Mill's composition capability map -- real Go
  * data mirroring docs/SPEC.md §3.3's table, the same "authoritative
  * machine-read projection, SPEC.md's own tags stay human-readable
