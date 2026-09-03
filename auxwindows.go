@@ -166,6 +166,12 @@ func wireAuxWindows(app *application.App, settingsService *settingssvc.SettingsS
 	settingsService.SetPanelWindow(windowing.WrapWindow(newQuickPanelWindow(app)))
 	settingsService.SetApprovalPromptWindow(windowing.WrapWindow(newApprovalPromptWindow(app)))
 	settingsService.SetRunMonitorWindow(windowing.WrapWindow(newRunMonitorWindow(app)))
+	// Resume may re-show any of these after a relaunch (docs/goals/
+	// 0301); the app starts with all of them hidden, whatever the OS
+	// remembers.
+	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
+		settingsService.HideAuxWindows()
+	})
 }
 
 func setupTray(app *application.App, settingsService *settingssvc.SettingsService) {
