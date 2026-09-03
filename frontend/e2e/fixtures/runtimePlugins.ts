@@ -34,7 +34,7 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-scribble'), path.join(pluginsDir, 'mill-scribble'), { recursive: true })
 	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-index'), path.join(pluginsDir, 'mill-index'), { recursive: true })
 	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-request-tester'), path.join(pluginsDir, 'mill-request-tester'), { recursive: true })
-	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-request-tester'), path.join(pluginsDir, 'mill-request-tester'), { recursive: true })
+	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-markmap'), path.join(pluginsDir, 'mill-markmap'), { recursive: true })
 	if (opts.withBroken) {
 		mkdirSync(path.join(pluginsDir, 'broken-one'))
 		writeFileSync(path.join(pluginsDir, 'broken-one', 'manifest.json'), '{not json')

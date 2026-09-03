@@ -351,7 +351,7 @@ api.registerCanvasObject({
 
 ## The example plugins
 
-Mill's repository ships four working examples: **Bookmark**
+Mill's repository ships five working examples: **Bookmark**
 (`examples/plugins/mill-bookmark`) — a web address pinned to the
 board, edited in place, opened through a guarded ask, with two
 declared settings — **Scribble** (`examples/plugins/mill-scribble`) —
@@ -361,7 +361,11 @@ and live preview above — and **Board index**
 `api.query` and `api.on` — and **Request tester**
 (`examples/plugins/mill-request-tester`), a real tool on nothing but
 the doors: a work tab, any-host guarded fetch, a storage-backed
-history, and a declared setting. Copy any folder into your plugins
+history, and a declared setting — and **Mind map**
+(`examples/plugins/mill-markmap`), a view over a note's headings that
+follows the note as it changes, its rendering engine vendored as one
+committed bundle (`scripts/vendor-markmap.sh`) so it never loads
+anything from the network. Copy any folder into your plugins
 folder to try it, or use it as the starting point for your own.
 
 ## Writing one
