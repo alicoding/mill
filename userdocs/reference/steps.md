@@ -404,6 +404,19 @@ Scrubs any known secret value out of the payload, then adds what's left to Clipb
 - Takes: text — Produces: its input, unchanged
 - Effect: changes something on this machine
 
+### Sync rows into a list
+
+Turns a JSON payload's array of items into rows of a Configure-authored List, one row per item, matched by "Key column": an existing row with the same key is updated in the mapped columns, a new key appends a row, and with "Expire missing rows" on, rows whose key is absent from this result are marked expired (never deleted). One-way: nothing is written back to the source, and a later sync overwrites the mapped columns of a row edited by hand.
+
+- Takes: JSON or text or anything — Produces: its input, unchanged
+- Effect: changes something on this machine
+- Settings:
+  - **List** — The Configure-authored List that mirrors the source. (references a List)
+  - **Items path** — Dotted path to the array of items inside the JSON payload, e.g. issues. Blank when the payload itself is the array.
+  - **Key column** — The List column that identifies an item -- must be named in the field map.
+  - **Field map** — JSON object mapping List column keys to a dotted path inside each item, e.g. {"key":"key","summary":"fields.summary","status":"fields.status.name"}. A value with {{path}} placeholders is a template, e.g. "https://jira.example.com/browse/{{key}}".
+  - **Expire missing rows** — Mark rows whose key is absent from this result as expired.
+
 ### Update Atlas card
 
 Writes field values onto an existing Atlas card, resolved by "Card" (a literal card id or attr:<name> -- e.g. attr:cardId from a trigger-atlas-card event, or an earlier Atlas: find cards result). Only the fields named in "Field values" change; everything else on the card is untouched.
