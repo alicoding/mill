@@ -59,6 +59,16 @@ export function MilkdownEditor({ value, onChange, ariaLabel, placeholder, testId
   // React buttons render into its body-level element via portal.
   const [toolbar, setToolbar] = useState<SelectionToolbarHandle | null>(null)
   const [toolbarState, setToolbarState] = useState<SelectionToolbarState>({ bold: false, italic: false, strikethrough: false, code: false })
+  // The engine's root exists (and is contenteditable) from the moment
+  // the view is built, but create() finishes async -- plugins load,
+  // then the initial document is applied. A keystroke that lands in
+  // between is replaced by that document: the first characters typed
+  // vanish and the tail survives (goal 0296 S2b's residual, reproduced
+  // under CPU throttle). The mount stays inert until create() settles,
+  // so nothing can focus or type into it early; callers that hold
+  // focus for the user (the sticky's own loop) simply land once it
+  // lifts.
+  const [ready, setReady] = useState(false)
   // The doc's own draft, updated on every keystroke (markdownUpdated)
   // and read directly by the caller's own commit -- never round-
   // tripped through React state first (testing.md). Refreshed via an
@@ -149,11 +159,13 @@ export function MilkdownEditor({ value, onChange, ariaLabel, placeholder, testId
         // alone would also match.
         const root = containerRef.current?.querySelector<HTMLElement>('[contenteditable="true"]')
         root?.setAttribute('aria-label', ariaLabel)
+        setReady(true)
         onReadyRef.current?.(() => crepe.getMarkdown())
       })
     })
     return () => {
       destroyed = true
+      setReady(false)
       onReadyRef.current?.(undefined)
       setToolbar(null)
       if (!creating) return
@@ -184,7 +196,7 @@ export function MilkdownEditor({ value, onChange, ariaLabel, placeholder, testId
           onChange={onChange ? (e) => onChange(e.target.value) : undefined}
         />
       ) : (
-        <div ref={containerRef} className={styles.mount} />
+        <div ref={containerRef} className={styles.mount} inert={!ready} />
       )}
       {toolbar && createPortal(<SelectionToolbarButtons toolbar={toolbar} state={toolbarState} />, toolbar.contentEl)}
     </div>

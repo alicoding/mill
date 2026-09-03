@@ -45,7 +45,11 @@ test('Contents lists the seeded cards under Card, a placed note under Note by it
   // E2E_CPU_THROTTLE=4 with no focus change and no doc shrink caught at
   // the engine's updateState; the residual mechanism is the goal's
   // open item, and this line is its marker.
-  await page.keyboard.insertText('Contents probe note\nsecond line')
+  // Per keystroke on purpose: the note's first characters are exactly
+  // what goal 0296 S2b protects.
+  await page.keyboard.type('Contents probe note')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('second line')
   const bb = await board.boundingBox()
   if (!bb) throw new Error('board has no bounding box')
   const blur = await findEmptyBoardRect(page, board, 120, 80)
