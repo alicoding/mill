@@ -8,6 +8,7 @@ import { launchWithPlugins } from './fixtures/runtimePlugins'
 import { clickCanvasNode } from './fixtures/canvasNode'
 import { activePanel, dragPaletteItemToCanvas } from './fixtures/canvas'
 import { stepOutput, tryStep } from './fixtures/stepTest'
+import { openInspectorTab } from './fixtures/inspectorTabs'
 
 test('a plugin step appears in the palette with its declared config and runs through steps.js', async () => {
 	const { page, close } = await launchWithPlugins(52, { extraExamples: ['mill-textcase'] })
@@ -29,6 +30,8 @@ test('a plugin step appears in the palette with its declared config and runs thr
 		await expect(mode).toHaveValue('upper')
 		const section = await tryStep(page, panel, 'hello mill')
 		await expect(await stepOutput(section)).toContainText('HELLO MILL')
+		// Try this step leaves the Test tab open; the Mode field lives on Parameters.
+		await openInspectorTab(panel, 'parameters')
 		await mode.selectOption('title')
 		const again = await tryStep(page, panel, 'hello mill')
 		await expect(await stepOutput(again)).toContainText('Hello Mill')
