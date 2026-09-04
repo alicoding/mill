@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import type { Icon } from '@primer/octicons-react'
-import type { ContextMenuItem, ContextMenuState } from './ContextMenu'
+import type { CommandContext } from './commandContext'
+import { commandAvailable, commandLabel, findCommand, runCommand } from './commands'
+import type { ContextMenuItem, ContextMenuState } from './contextMenuItem'
 
 // The inventory row's data contract, split out of InventoryList.tsx so
 // the row component and the list surface can both import it without a
@@ -14,8 +16,15 @@ export interface InventoryItemIcon {
 }
 
 export interface InventoryMenuAction {
-  label: string
-  onClick: () => void
+  // A registry command id plus the row's own target (goal 0343): the
+  // action's label, its enablement and its effect all come from the
+  // command, so a row supplies WHICH entity and nothing else. label/
+  // onClick remain for the actions whose effect is not yet a
+  // registered command.
+  commandId?: string
+  ctx?: CommandContext
+  label?: string
+  onClick?: () => void
   danger?: boolean
   // Opt-in confirmation (Button-semantics rule (b), .claude/rules/
   // frontend.md): when set, selecting this action shows ConfirmDialog
@@ -74,13 +83,44 @@ export type ContextMenuOpener = (state: ContextMenuState) => void
 // always shows ConfirmDialog regardless of which opener fired it.
 export function runMenuAction(action: InventoryMenuAction, requestConfirm: (a: InventoryMenuAction) => void) {
   if (action.confirm) requestConfirm(action)
-  else action.onClick()
+  else performMenuAction(action)
+}
+
+// The unconfirmed effect, also called by ConfirmDialog's own onConfirm
+// once the user has said yes.
+export function performMenuAction(action: InventoryMenuAction) {
+  // The row's own closure wins when it has one -- an action pairing a
+  // commandId with onClick names the command only for its label.
+  if (action.onClick) action.onClick()
+  else if (action.commandId) void runCommand(action.commandId, action.ctx)
+}
+
+// The row's own label for an action: its literal, else the command's
+// (a locale KEY resolved through commandLabel, goal 0341).
+export function menuActionLabel(action: InventoryMenuAction): string {
+  if (action.label) return action.label
+  const command = action.commandId ? findCommand(action.commandId) : undefined
+  return command ? commandLabel(command) : (action.commandId ?? '')
+}
+
+// Unavailable means ABSENT (goal 0343) -- the kebab and the right-click
+// menu both drop an action whose command can't act on this row, the
+// same rule the palette and ContextMenu follow.
+export function menuActionAvailable(action: InventoryMenuAction): boolean {
+  if (action.onClick) return true
+  if (!action.commandId) return true
+  const command = findCommand(action.commandId)
+  return Boolean(command) && commandAvailable(command!, action.ctx)
+}
+
+export function visibleMenuActions(actions: InventoryMenuAction[]): InventoryMenuAction[] {
+  return actions.filter(menuActionAvailable)
 }
 
 export function menuActionsToContextMenuItems(actions: InventoryMenuAction[], requestConfirm: (a: InventoryMenuAction) => void): ContextMenuItem[] {
-  return actions.map((action, i) => ({
-    id: `${action.label}-${i}`,
-    label: action.label,
+  return visibleMenuActions(actions).map((action, i) => ({
+    id: `${menuActionLabel(action)}-${i}`,
+    label: menuActionLabel(action),
     danger: action.danger,
     run: () => runMenuAction(action, requestConfirm),
   }))

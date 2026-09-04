@@ -32,6 +32,11 @@ describe('commandsDeclaration.json (goal 0231: the commands reference page)', ()
         binding: c.defaultBinding ? formatCombo(c.defaultBinding.mods, c.defaultBinding.key) : null,
         surface: c.surface ?? null,
         enabled: Boolean(c.enabled),
+        // The target kind a command REQUIRES (goal 0343) -- null for a
+        // command acting on global state. The reference page renders a
+        // targeted command's availability from this, never as
+        // "always available".
+        needs: c.needs ?? null,
       }))
       .sort((a, b) => a.id.localeCompare(b.id))
     expect(declaredCommands).toEqual(want)

@@ -322,3 +322,11 @@ export const REVIEW_RESOLVED_HISTORY_MCP_BASE_PORT = 11420
 // like every runtime-plugin spec above.
 export const SETTINGS_EXTENSIONS_LIST_SERVER_BASE_PORT = 11440
 export const SETTINGS_EXTENSIONS_LIST_MCP_BASE_PORT = 11460
+
+// review-open-run.spec.ts's own dedicated pair (goal 0343): the
+// "Open run" door out of a pending Review item reads the GLOBAL
+// pending queue -- exactly the state testing.md's shared-vs-dedicated
+// rule keeps off the shared pool, same reasoning as every
+// GUARDRAIL_REVIEW_* pair above.
+export const REVIEW_OPEN_RUN_SERVER_BASE_PORT = 11480
+export const REVIEW_OPEN_RUN_MCP_BASE_PORT = 11500

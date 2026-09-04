@@ -11,3 +11,17 @@
         flex: 1 1 0;
     }
 }
+
+/* The pending item's workflow name as its own door into the run (goal
+   0343): a link's affordance without a link's blue-on-every-row noise
+   -- the heading weight the plain Text carried, underlined on hover so
+   it reads as clickable before it is clicked. */
+.workflowLink {
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-default);
+  text-align: left;
+}
+
+.workflowLink:hover {
+  color: var(--fgColor-accent);
+}

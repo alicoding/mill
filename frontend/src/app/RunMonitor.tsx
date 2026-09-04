@@ -5,7 +5,7 @@ import { Events } from '@wailsio/runtime'
 import { SettingsService } from '../shared/bindings'
 import { refreshNodeTypes, refreshWorkflows, useAppStore } from '../shared/store'
 import CompositionCanvas from '../composition/CompositionCanvas'
-import { workflowTarget } from './navigateTarget'
+import { workflowTarget } from '../shared/navigateTarget'
 import styles from './RunMonitor.module.css'
 import { background } from '../shared/background'
 

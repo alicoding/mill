@@ -391,7 +391,7 @@ export function QuickPanel() {
   // The rows the shortcuts can target, in list order (the hook falls
   // back to the first when the list has no active row yet).
   const visibleWorkflowIds = withCapture.filter((e) => e.groupId === 'workflows').map((e) => e.id.slice('run:'.length))
-  const rowActions = useQuickPanelWorkflowActions({ workflows, visibleWorkflowIds, pinnedWorkflowIds, togglePinnedWorkflow, runWorkflow: runWorkflowRow, lastRun, t })
+  const rowActions = useQuickPanelWorkflowActions({ workflows, visibleWorkflowIds, pinnedWorkflowIds, runWorkflow: runWorkflowRow, lastRun, t })
   const items = withCapture.map((entry) => ({
     key: entry.id,
     id: entry.id,

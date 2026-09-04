@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ExecutionService, RunKind, SettingsService } from '../shared/bindings'
 import { generateSamplePayload } from '../shared/configSchema'
-import { workflowTarget } from './navigateTarget'
+import { commandLabel, findCommand, runCommand } from '../shared/commands'
+import type { CommandContext } from '../shared/commandContext'
 import { background } from '../shared/background'
 
 // A workflow row's actions in the Quick Panel (goal 0294), shaped on
@@ -14,11 +15,33 @@ import { background } from '../shared/background'
 // Run no longer hides the panel on completion: the outcome (done in
 // Ns / failed: why / waiting for approval) stays in the footer until
 // Escape, and ⌘Enter then opens that exact run on the canvas.
+// A row action names a registry command and the row it acts on (goal
+// 0343) -- the panel supplies WHICH workflow and which key reaches it,
+// never what the action does. `run` stays only on the Enter row, whose
+// effect is inseparable from the panel-footer status it writes (see
+// useQuickPanelRun below); every other action is the command alone.
 export interface RowAction {
   id: 'run' | 'run-watch' | 'open' | 'pin'
   label: string
   shortcut: string
-  run: () => void
+  commandId?: string
+  ctx?: CommandContext
+  run?: () => void
+}
+
+// runRowAction is the one execution door for a row action: a registry
+// command with this row's target, or the Enter row's own closure.
+export function runRowAction(action: RowAction) {
+  if (action.commandId) void runCommand(action.commandId, action.ctx)
+  else action.run?.()
+}
+
+// A command's own label when it has one, so a row never restates what
+// the registry already says; the panel's existing string is the
+// fallback for a command id that has somehow gone missing.
+function labelFor(commandId: string, fallback: string): string {
+  const command = findCommand(commandId)
+  return command ? commandLabel(command) : fallback
 }
 
 interface WorkflowLike {
@@ -92,46 +115,49 @@ interface Params {
   // Workflow ids of the rows currently listed, in list order.
   visibleWorkflowIds: string[]
   pinnedWorkflowIds: string[]
-  togglePinnedWorkflow: (id: string) => void
   runWorkflow: (wf: WorkflowLike) => void
   lastRun: LastRun | null
   t: Translate
 }
 
-export function useQuickPanelWorkflowActions({ workflows, visibleWorkflowIds, pinnedWorkflowIds, togglePinnedWorkflow, runWorkflow, lastRun, t }: Params) {
+export function useQuickPanelWorkflowActions({ workflows, visibleWorkflowIds, pinnedWorkflowIds, runWorkflow, lastRun, t }: Params) {
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null)
   const [actionsOpen, setActionsOpen] = useState(false)
 
   const activeWorkflowId = resolveActiveWorkflowId(activeEntryId, visibleWorkflowIds)
   const activeWorkflow = activeWorkflowId ? (workflows?.find((w) => w.ID === activeWorkflowId) ?? null) : null
 
-  // Fire the run, then point the run monitor (its own floating window,
-  // goal 0294 S2) at the workflow's newest run: the run record exists
-  // before the monitor finishes rendering, so it adopts this run
-  // whether it is still stepping or already finished. The panel steps
-  // aside; the monitor is the surface now.
-  const runAndWatch = (wf: WorkflowLike) => {
-    void background(ExecutionService.RunWorkflow(wf.ID, RunKind.RunKindTest, valuesFor(wf)), 'quickPanelWorkflowActions.runWorkflow')
-    void background(SettingsService.ShowRunMonitor(wf.ID, 'latest'), 'quickPanelWorkflowActions.showRunMonitor')
-    void background(SettingsService.DismissPanel(), 'quickPanelWorkflowActions.dismissPanel')
-  }
-
-  const openWorkflow = (wf: WorkflowLike) => {
+  // ⌘↩ opens the run this panel just started when there is one, and the
+  // workflow itself otherwise -- two commands, and the row's label says
+  // which one it will do.
+  const openAction = (wf: WorkflowLike): { commandId: string; ctx: CommandContext } => {
     const runId = lastRun?.workflowId === wf.ID ? lastRun.runId : undefined
-    openMain(workflowTarget(wf.ID, runId))
+    return runId
+      ? { commandId: 'run.open', ctx: { kind: 'run', runId, workflowId: wf.ID } }
+      : { commandId: 'workflow.open', ctx: { kind: 'workflow', workflowId: wf.ID } }
   }
 
-  const actionsFor = (wf: WorkflowLike): RowAction[] => [
-    { id: 'run', label: t('quickPanel.actions.run'), shortcut: '↩', run: () => runWorkflow(wf) },
-    { id: 'run-watch', label: t('quickPanel.actions.runAndWatch'), shortcut: '⌘⇧↩', run: () => runAndWatch(wf) },
-    { id: 'open', label: t('quickPanel.actions.openWorkflow'), shortcut: '⌘↩', run: () => openWorkflow(wf) },
-    {
-      id: 'pin',
-      label: pinnedWorkflowIds.includes(wf.ID) ? t('quickPanel.actions.unpin') : t('quickPanel.actions.pin'),
-      shortcut: '⌘⇧P',
-      run: () => togglePinnedWorkflow(wf.ID),
-    },
-  ]
+  const actionsFor = (wf: WorkflowLike): RowAction[] => {
+    const workflowCtx: CommandContext = { kind: 'workflow', workflowId: wf.ID }
+    const open = openAction(wf)
+    const pinned = pinnedWorkflowIds.includes(wf.ID)
+    return [
+      // Enter's Run keeps its own closure: the outcome it writes into
+      // the panel footer (done in Ns / failed: why / waiting for
+      // approval) is panel-local presentation a Command's run() has no
+      // channel for.
+      { id: 'run', label: t('quickPanel.actions.run'), shortcut: '↩', run: () => runWorkflow(wf) },
+      { id: 'run-watch', label: t('quickPanel.actions.runAndWatch'), shortcut: '⌘⇧↩', commandId: 'workflow.runAndWatch', ctx: workflowCtx },
+      { id: 'open', label: labelFor(open.commandId, t('quickPanel.actions.openWorkflow')), shortcut: '⌘↩', ...open },
+      {
+        id: 'pin',
+        label: pinned ? t('quickPanel.actions.unpin') : t('quickPanel.actions.pin'),
+        shortcut: '⌘⇧P',
+        commandId: pinned ? 'workflow.unpin' : 'workflow.pin',
+        ctx: workflowCtx,
+      },
+    ]
+  }
 
   const actions = activeWorkflow ? actionsFor(activeWorkflow) : []
 
@@ -171,7 +197,8 @@ export function useQuickPanelWorkflowActions({ workflows, visibleWorkflowIds, pi
       if (!activeWorkflow) return
       const fire = (id: RowAction['id']) => {
         setActionsOpen(false)
-        actionsFor(activeWorkflow).find((a) => a.id === id)?.run()
+        const action = actionsFor(activeWorkflow).find((a) => a.id === id)
+        if (action) runRowAction(action)
       }
       if (e.key === 'Enter' && e.shiftKey) fire('run-watch')
       else if (e.key === 'Enter') fire('open')

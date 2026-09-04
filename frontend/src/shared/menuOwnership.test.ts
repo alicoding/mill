@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { COMMANDS, dispatchCommandForEvent, findCommand } from './commands'
+import { COMMANDS, findCommand } from './commands'
+import { dispatchCommandForEvent } from './commandDispatch'
 import { comboKey } from './keybinding'
 import { isMenuOwnedCombo, setMenuOwnedCombos } from './menuOwnership'
 import { useAppStore } from './store'

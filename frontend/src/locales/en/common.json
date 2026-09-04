@@ -121,7 +121,11 @@
       "save": "Save workflow",
       "run": "Run workflow",
       "publish": "Publish current draft",
-      "edit": "Edit workflow"
+      "edit": "Edit workflow",
+      "open": "Open workflow",
+      "runAndWatch": "Run and watch",
+      "pin": "Pin",
+      "unpin": "Unpin"
     },
     "palette": {
       "open": "Open command palette"
@@ -206,7 +210,10 @@
     "clipboard": {
       "history": {
         "open": "Clipboard history"
-      }
+      },
+      "pin": "Pin",
+      "unpin": "Unpin",
+      "delete": "Delete"
     },
     "codingLoop": {
       "run": "Run from clipboard…"
@@ -276,6 +283,11 @@
     },
     "plugin": {
       "remove": "Remove {{name}}"
+    },
+    "run": {
+      "open": "Open run",
+      "monitor": "Show run steps",
+      "stop": "Stop run"
     }
   },
   "menu": {

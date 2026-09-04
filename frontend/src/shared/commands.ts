@@ -1,11 +1,9 @@
 import type { KeyCombo } from './keybinding'
-import { comboFromEvent, comboKey } from './keybinding'
 import { useAppStore } from './store'
 import type { View } from './store'
 import { useUISignalStore } from './uiSignalStore'
 import { pluginRegistryCommands } from './pluginHostCommands'
 import { lazyArray } from './lazySnapshot'
-import { isMenuOwnedCombo } from './menuOwnership'
 import { CONFIGURE_CREATE_COMMANDS } from './configureCreateCommands'
 import { ATLAS_BOARD_COMMANDS } from './atlasBoardCommands'
 import { SETTINGS_COMMANDS } from './settingsCommands'
@@ -19,12 +17,15 @@ import { REVIEW_COMMANDS } from './reviewCommands'
 import { ATLAS_CREATE_COMMANDS } from './atlasCreateCommands'
 import { ATLAS_NAV_COMMANDS } from './atlasNavCommands'
 import { HELP_COMMANDS } from './helpCommands'
+import { ROW_COMMANDS } from './rowCommands'
 import { TAB_COMMANDS } from './tabCommands'
 import { withMenuGroup } from './menuGroup'
 import type { MenuPlacement } from './menuSpec'
 import { pushNotice } from './noticeStore'
 import { appTranslate, messageFor } from './userError'
 import { copy } from './copy'
+import type { CommandContext, CommandContextKind } from './commandContext'
+import { contextSatisfies } from './commandContext'
 
 // The command registry (docs/goals/0016-keymap-system.md): named
 // commands with a default binding, dispatched by one window keydown
@@ -66,7 +67,7 @@ export interface Command {
   // (views/KeyboardShortcutsSection.tsx) edits `defaultBinding` only
   // (via keybindingOverrides, same as before); extras render as
   // read-only secondary KeyComboChips there and are never looked up in
-  // keybindingOverrides by dispatchCommandForEvent below -- a real
+  // keybindingOverrides by the keydown dispatcher (shared/commandDispatch.ts) -- a real
   // "edit an alias" feature (its own override storage keyed by
   // command+index, its own Go-side persistence) is more than this
   // item's scope covers, named as a future extension rather than half-
@@ -82,7 +83,7 @@ export interface Command {
   // see (Delete/G over the atlas selection tray), or a native browser
   // shortcut the same combo also means inside an editable field
   // (Cmd+A). defaultBinding/extraBindings still drive HotkeyHint/the
-  // Shortcuts Help overlay; dispatchCommandForEvent below skips it, and
+  // Shortcuts Help overlay; shared/commandDispatch.ts skips it, and
   // KeyboardShortcutsSection excludes it from the rebind list.
   hintOnly?: boolean
   // Excludes this command from the palette (app/CommandPalette.tsx) --
@@ -99,9 +100,19 @@ export interface Command {
   // State-aware enablement (goal 0222 S1, VSCode's "when" clause): omit
   // for an always-valid command. Replaces guarding inline inside run()
   // and returning silently. CommandPalette.tsx omits a disabled command
-  // entirely (unavailable means absent, not dimmed); dispatchCommandForEvent
-  // below skips its binding -- run() stays free of the check.
-  enabled?: () => boolean
+  // entirely (unavailable means absent, not dimmed); the keydown
+  // dispatcher (shared/commandDispatch.ts) skips its binding -- run()
+  // stays free of the check. Receives
+  // the SAME context run() will (goal 0343), so "can this act on that
+  // target" is answered once, by the command, for every surface.
+  enabled?: (ctx?: CommandContext) => boolean
+  // The target kind this command REQUIRES (goal 0343). A command with
+  // `needs` and no matching context cannot run: runCommand returns
+  // false without running and without a notice (nothing was asked of a
+  // target), every menu omits it, and the palette shows it only when
+  // ambientContext() happens to resolve that kind. Omit for a command
+  // that acts on global state.
+  needs?: CommandContextKind
   // Quick Panel opt-in (goal 0222 S2): also renders as a row in the
   // panel's own window (app/quickPanelActionEntries.tsx) -- a run()
   // assuming the MAIN window (setView) is overridden there instead.
@@ -118,7 +129,11 @@ export interface Command {
   // `Promise<unknown>` (not `<void>`) so a run() that returns a bound
   // service call's own result (e.g. `() => BackupService.BackupNow(0)`)
   // needs no `.then(() => {})` wrapper just to fit the shape.
-  run: () => void | Promise<unknown>
+  // ctx is the target the INVOKER supplies (goal 0343) -- a row hands
+  // its own row's context, the keymap and palette hand
+  // ambientContext(). A command acting on global state ignores the
+  // parameter entirely.
+  run: (ctx?: CommandContext) => void | Promise<unknown>
 }
 
 // commandLabel resolves a command's label key to the string a surface
@@ -259,8 +274,9 @@ export const COMMANDS: Command[] = lazyArray(() => [
   },
   {
     // ⌘K reconciliation (goal 0071): atlas.jump and palette.open now
-    // share the SAME default combo, legal because dispatchCommandForEvent's
-    // two-pass surface precedence (below) always tries every
+    // share the SAME default combo, legal because the keydown
+    // dispatcher's two-pass surface precedence (shared/commandDispatch.ts)
+    // always tries every
     // atlas-surfaced command before any surface-less global -- ⌘K opens
     // the jump dialog while on Atlas, the palette everywhere else.
     // AtlasJumpDialog itself is now purely controlled off this signal
@@ -352,6 +368,11 @@ export const COMMANDS: Command[] = lazyArray(() => [
   // docs.search -- split out to shared/docsSearchCommands.ts.
   ...withMenuGroup('help', 0, DOCS_SEARCH_COMMANDS),
   ...HELP_COMMANDS,
+  // Commands that act on a target the invoker supplies (goal 0343) --
+  // shared/rowCommands.ts. None has a menu seat: a menu bar has no row
+  // to point at, and each declares `needs`, so the palette offers one
+  // only when ambientContext() resolves that kind.
+  ...ROW_COMMANDS,
   // Every plugin-related command (docs/goals/0249, goal 0321) -- what
   // plugins contributed plus the host's own per-plugin actions.
   ...pluginRegistryCommands(),
@@ -359,6 +380,16 @@ export const COMMANDS: Command[] = lazyArray(() => [
 
 export function findCommand(id: string): Command | undefined {
   return COMMANDS.find((c) => c.id === id)
+}
+
+// commandAvailable is the ONE availability test every surface shares
+// (goal 0343): the palette, each context/kebab menu, the keymap
+// dispatcher and runCommand itself. A command whose `needs` the given
+// context doesn't satisfy is unavailable exactly like a failing
+// enabled() -- and unavailable means ABSENT everywhere, never dimmed.
+export function commandAvailable(command: Command, ctx?: CommandContext): boolean {
+  if (!contextSatisfies(command.needs, ctx)) return false
+  return !command.enabled || command.enabled(ctx)
 }
 
 // runCommand is the ONE door every invoker (palette, menu, keymap,
@@ -370,14 +401,14 @@ export function findCommand(id: string): Command | undefined {
 // nothing to do. A thrown/rejected run() posts one error notice
 // (shared/noticeStore.ts's footer pill) naming the command and the
 // error, and resolves false. Bare command.run() is legal ONLY inside
-// this function and dispatchCommandForEvent's own tryRun below (which
-// itself now routes through here).
-export async function runCommand(id: string): Promise<boolean> {
+// this function -- shared/commandDispatch.ts's own tryRun routes
+// through here rather than calling run() itself.
+export async function runCommand(id: string, ctx?: CommandContext): Promise<boolean> {
   const command = findCommand(id)
   if (!command) return false
-  if (command.enabled && !command.enabled()) return false
+  if (!commandAvailable(command, ctx)) return false
   try {
-    await command.run()
+    await command.run(ctx)
     return true
   } catch (err) {
     pushNotice({
@@ -394,8 +425,9 @@ export async function runCommand(id: string): Promise<boolean> {
 
 // A command's EFFECTIVE binding: its settings-store override if one
 // exists, else its own default. The one place this merge happens --
-// both the dispatcher below and the Settings UI (KeyboardShortcutsSection)
-// call this rather than each re-deriving it.
+// both the keydown dispatcher (shared/commandDispatch.ts) and the
+// Settings UI (KeyboardShortcutsSection) call this rather than each
+// re-deriving it.
 export function effectiveBinding(command: Command, overrides: Record<string, KeyCombo>): KeyCombo | null {
   return overrides[command.id] ?? command.defaultBinding
 }
@@ -406,66 +438,9 @@ export function effectiveBinding(command: Command, overrides: Record<string, Key
 // including whichever specific one(s) the other command is scoped to.
 // Two commands scoped to different, disjoint surfaces never collide --
 // they can never both be the active view at once, so sharing a combo
-// between them is legal (dispatchCommandForEvent's own two-pass surface
-// precedence below is what makes that legal at dispatch time too).
+// between them is legal (shared/commandDispatch.ts's own two-pass
+// surface precedence is what makes that legal at dispatch time too).
 export function surfacesIntersect(a: View['kind'][] | undefined, b: View['kind'][] | undefined): boolean {
   if (!a || !b) return true
   return a.some((kind) => b.includes(kind))
-}
-
-// dispatchCommandForEvent resolves a keydown against every command's
-// current effective binding (its primary, override-aware) PLUS every
-// extraBindings entry (docs/goals/BACKLOG.md Standing #6 -- always-on,
-// never override-checked, see Command.extraBindings' own doc comment)
-// and runs the first match -- called from App.tsx's one window keydown
-// listener, folding in what used to be a separate, hardcoded Cmd+1-4/
-// Cmd+, handler (view.*/settings.open are now just ordinary commands
-// in COMMANDS above, same dispatch path). Returns whether a command
-// actually ran, so the caller knows whether to preventDefault (never
-// swallow an unbound combo -- native editing shortcuts, browser
-// devtools, etc. must keep working).
-//
-// Two passes, not one array scan (goal 0071's registry surface-
-// precedence): every command scoped to the ACTIVE surface is tried
-// first, then every surface-less global. This is what makes the same
-// combo legal on two different commands as long as at most one of them
-// is surface-less (surfacesIntersect's own rule) -- atlas.jump and
-// palette.open both default to ⌘K, and the surface pass always wins on
-// Atlas, the global pass everywhere else, regardless of which order
-// they happen to appear in COMMANDS. A command scoped to a DIFFERENT
-// surface than the active one is skipped in both passes -- it cannot
-// run there.
-export function dispatchCommandForEvent(e: KeyboardEvent, overrides: Record<string, KeyCombo>): boolean {
-  const pressed = comboFromEvent(e)
-  if (!pressed) return false
-  const want = comboKey(pressed.mods, pressed.key)
-  // The native menu bar owns this combo and already had first refusal
-  // on the keypress (shared/menuOwnership.ts) -- reaching here at all
-  // means the menu declined it (its item is disabled), so acting on it
-  // now would run a command the menu just refused.
-  if (isMenuOwnedCombo(want)) return false
-  const activeKind = useAppStore.getState().view.kind
-
-  const tryRun = (command: Command): boolean => {
-    if (command.hintOnly) return false
-    if (command.enabled && !command.enabled()) return false
-    const binding = effectiveBinding(command, overrides)
-    const bindings = binding ? [binding, ...(command.extraBindings ?? [])] : (command.extraBindings ?? [])
-    if (!bindings.some((b) => comboKey(b.mods, b.key) === want)) return false
-    // Fire-and-forget from the dispatcher's own point of view: this
-    // function's contract is synchronous (did a binding match, so the
-    // caller knows whether to preventDefault), never whether the
-    // command's own run() settled -- runCommand still owns catching
-    // and reporting that.
-    void runCommand(command.id)
-    return true
-  }
-
-  for (const command of COMMANDS) {
-    if (command.surface?.includes(activeKind) && tryRun(command)) return true
-  }
-  for (const command of COMMANDS) {
-    if (!command.surface && tryRun(command)) return true
-  }
-  return false
 }

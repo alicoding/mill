@@ -13,11 +13,10 @@ import styles from '../shared/ListCard.module.css'
 // pagination at 25. Renders nothing when there is no history at all --
 // same as the section it replaces, never a Blankslate under a heading
 // that already only shows up once something has resolved.
-export function ReviewResolvedHistory({ resolved, resolvedWrites, workflowFilter, onOpenRun }: {
+export function ReviewResolvedHistory({ resolved, resolvedWrites, workflowFilter }: {
   resolved: RunSummary[]
   resolvedWrites: MCPWriteResolved[]
   workflowFilter: string
-  onOpenRun: (run: RunSummary) => void
 }) {
   const { t } = useTranslation('views')
   const entries = useMemo(
@@ -25,8 +24,8 @@ export function ReviewResolvedHistory({ resolved, resolvedWrites, workflowFilter
     [resolved, resolvedWrites, workflowFilter],
   )
   const items = useMemo(
-    () => entries.map((entry) => resolvedEntryToInventoryItem(entry, { onOpenRun, t })),
-    [entries, onOpenRun, t],
+    () => entries.map((entry) => resolvedEntryToInventoryItem(entry, { t })),
+    [entries, t],
   )
   if (items.length === 0) return null
   return (

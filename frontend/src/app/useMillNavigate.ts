@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Events } from '@wailsio/runtime'
 import { useAppStore } from '../shared/store'
 import type { View } from '../shared/store'
-import { parseNavigateTarget } from './navigateTarget'
+import { parseNavigateTarget } from '../shared/navigateTarget'
 
 // docs/adr/0033: the Quick Panel's (and ApprovalPrompt's) "Open in
 // Mill"/jump rows live in separate Wails windows with their own React

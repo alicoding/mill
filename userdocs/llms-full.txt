@@ -1344,7 +1344,10 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `canvas.zoomIn` | Zoom in | `⌘+` | composition | Always available |
 | `canvas.zoomOut` | Zoom out | `⌘-` | composition | Always available |
 | `capture.note` | Capture a note | — | Global | Always available |
+| `clipboard.delete` | Delete | — | Global | Acts on the selected clipboard entry |
 | `clipboard.history.open` | Clipboard history | — | Global | Always available |
+| `clipboard.pin` | Pin | — | Global | Acts on the selected clipboard entry |
+| `clipboard.unpin` | Unpin | — | Global | Acts on the selected clipboard entry |
 | `codingLoop.run` | Run from clipboard… | — | Global | Always available |
 | `configure.new.aiproviders` | New AI provider | — | Global | Always available |
 | `configure.new.conversionprofiles` | New conversion profile | — | Global | Always available |
@@ -1368,6 +1371,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `panel.open` | Open Quick Panel | — | Global | Conditional — available only in a matching state |
 | `panel.openMill` | Open Mill | — | Global | Always available |
 | `review.rules` | Guardrail rules | — | review | Always available |
+| `run.monitor` | Show run steps | — | Global | Acts on the selected run |
+| `run.open` | Open run | — | Global | Acts on the selected run |
+| `run.stop` | Stop run | — | Global | Acts on the selected run |
 | `runMonitor.open` | Run monitor | — | Global | Conditional — available only in a matching state |
 | `secrets.lockVault` | Lock vault | — | Global | Conditional — available only in a matching state |
 | `secrets.resetVault` | Start a new vault | — | Global | Conditional — available only in a matching state |
@@ -1401,9 +1407,13 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `view.secrets` | Go to Secrets | `⌘6` | Global | Always available |
 | `workflow.edit` | Edit workflow | — | Global | Conditional — available only in a matching state |
 | `workflow.new` | New workflow | `⌘N` | Global | Conditional — available only in a matching state |
+| `workflow.open` | Open workflow | — | Global | Acts on the selected workflow |
+| `workflow.pin` | Pin | — | Global | Acts on the selected workflow |
 | `workflow.publish` | Publish current draft | — | composition | Conditional — available only in a matching state |
 | `workflow.run` | Run workflow | `⌘↩` | Global | Conditional — available only in a matching state |
+| `workflow.runAndWatch` | Run and watch | — | Global | Acts on the selected workflow |
 | `workflow.save` | Save workflow | `⌘S` | Global | Conditional — available only in a matching state |
+| `workflow.unpin` | Unpin | — | Global | Acts on the selected workflow |
 
 <!-- END GENERATED -->
 
