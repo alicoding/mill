@@ -22,14 +22,14 @@ import (
 
 // testRequestArgs mirrors ConfigureService.TestHTTPRequestInput's
 // draft-testing surface, plus requestId-only convenience: naming an
-// existing Integration fills its stored base URL/auth/headers/spec
-// (and keychain secret) so an agent can test a CONFIGURED integration
+// existing Integration fills its stored base URL/auth/headers/spec and
+// its secret references so an agent can test a CONFIGURED integration
 // without re-supplying its definition.
 type testRequestArgs struct {
-	RequestID   string            `json:"requestId,omitempty" jsonschema:"an existing Integration's id -- its stored base URL/auth/headers/spec (and keychain secret) fill any field left empty below"`
+	RequestID   string            `json:"requestId,omitempty" jsonschema:"an existing Integration's id -- its stored base URL/auth/headers/spec and secret references fill any field left empty below"`
 	BaseURL     string            `json:"baseUrl,omitempty" jsonschema:"draft mode: the request URL (may embed path templates)"`
 	AuthType    string            `json:"authType,omitempty" jsonschema:"draft mode: none|apikey|bearer|hmac|oauth1|oauth2|queryparam|mtls (empty = none)"`
-	Secret      string            `json:"secret,omitempty" jsonschema:"used for this call only, never stored"`
+	SecretRef   string            `json:"secretRef,omitempty" jsonschema:"names an entry in the secret store; the value itself is never accepted here"`
 	Headers     map[string]string `json:"headers,omitempty"`
 	OpenAPISpec string            `json:"openApiSpec,omitempty" jsonschema:"the operation catalogue to test against; filled from the stored Integration when requestId is set"`
 	Path        string            `json:"path" jsonschema:"the operation's path from the spec (e.g. '/')"`
@@ -40,7 +40,7 @@ type testRequestArgs struct {
 func (m *MillMCPService) resolveTestRequestInput(in testRequestArgs) (configuresvc.TestHTTPRequestInput, error) {
 	out := configuresvc.TestHTTPRequestInput{
 		RequestID: in.RequestID, BaseURL: in.BaseURL,
-		AuthType: httprequest.AuthType(in.AuthType), Secret: in.Secret,
+		AuthType: httprequest.AuthType(in.AuthType), SecretRef: in.SecretRef,
 		Headers: in.Headers, OpenAPISpec: in.OpenAPISpec,
 		Path: in.Path, Method: in.Method, Values: in.Values,
 	}
@@ -66,6 +66,13 @@ func (m *MillMCPService) resolveTestRequestInput(in testRequestArgs) (configures
 		if out.Auth == nil {
 			out.Auth = r.Auth
 		}
+		if out.SecretRef == "" {
+			out.SecretRef = r.SecretRef
+		}
+		if out.JOSE == nil {
+			out.JOSE = r.JOSE
+		}
+		out.Label = r.Label
 		return out, nil
 	}
 	return out, fmt.Errorf("no integration with id %q", in.RequestID)

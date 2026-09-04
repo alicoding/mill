@@ -29,16 +29,13 @@ import (
 // existing Update* method.
 //
 // Secrets are excluded from every one of these by construction, not by
-// a field-stripping step this file has to remember to apply:
-// httprequest.HTTPRequest carries no secret field at all (ADR-0007 --
-// "the secret itself never lives on an HTTPRequest value"), and
-// AuthConfig/JOSEConfig's own doc comments confirm every field on them
-// is genuinely non-secret (verified directly against
-// internal/domain/httprequest/httprequest.go before relying on it, not
-// assumed) -- ClientSecret/signing keys/ConsumerSecret/TokenSecret/
-// Mill's own JOSE private key all live in the OS keychain exclusively,
-// never on the Go struct this file marshals. List and MCPServer never
-// had a secret-shaped field to begin with.
+// a field-stripping step this file has to remember to apply: no
+// exported entity has ever carried a secret VALUE. Since goal 0306
+// every secret-shaped field holds a reference instead -- a name, not a
+// credential -- so a reference travels with the export exactly as a
+// "vault:" header value always has. An import whose references name
+// entries this device's store does not hold is a request with its
+// secrets not yet chosen, which the request form says plainly.
 
 // --- HTTPRequest ---
 
@@ -51,6 +48,7 @@ type exportedHTTPRequest struct {
 	Method      string                  `json:"method"`
 	Body        string                  `json:"body"`
 	AuthType    httprequest.AuthType    `json:"authType"`
+	SecretRef   string                  `json:"secretRef,omitempty"`
 	Headers     map[string]string       `json:"headers"`
 	OpenAPISpec string                  `json:"openAPISpec"`
 	Auth        *httprequest.AuthConfig `json:"auth,omitempty"`
@@ -82,6 +80,7 @@ func (c *ConfigureService) ExportHTTPRequest(id string) (string, error) {
 		Method:      req.Method,
 		Body:        req.Body,
 		AuthType:    req.AuthType,
+		SecretRef:   req.SecretRef,
 		Headers:     req.Headers,
 		OpenAPISpec: req.OpenAPISpec,
 		Auth:        req.Auth,
@@ -115,11 +114,11 @@ func (c *ConfigureService) ImportHTTPRequest(jsonData string) (httprequest.HTTPR
 		found := c.requestExistsLocked(in.ID)
 		c.mu.Unlock()
 		if found {
-			return c.UpdateHTTPRequest(in.ID, in.Label, in.BaseURL, in.Method, in.Body, in.AuthType, in.Headers, in.OpenAPISpec, in.Auth, in.JOSE, in.Description)
+			return c.UpdateHTTPRequest(in.ID, in.Label, in.BaseURL, in.Method, in.Body, in.AuthType, in.SecretRef, in.Headers, in.OpenAPISpec, in.Auth, in.JOSE, in.Description)
 		}
-		return c.createHTTPRequestWithID(in.ID, in.Label, in.BaseURL, in.Method, in.Body, in.AuthType, in.Headers, in.OpenAPISpec, in.Auth, in.JOSE, in.Description)
+		return c.createHTTPRequestWithID(in.ID, in.Label, in.BaseURL, in.Method, in.Body, in.AuthType, in.SecretRef, in.Headers, in.OpenAPISpec, in.Auth, in.JOSE, in.Description)
 	}
-	return c.CreateHTTPRequest(in.Label, in.BaseURL, in.Method, in.Body, in.AuthType, in.Headers, in.OpenAPISpec, in.Auth, in.JOSE, in.Description)
+	return c.CreateHTTPRequest(in.Label, in.BaseURL, in.Method, in.Body, in.AuthType, in.SecretRef, in.Headers, in.OpenAPISpec, in.Auth, in.JOSE, in.Description)
 }
 
 // --- List ---
@@ -366,9 +365,8 @@ func (c *ConfigureService) ImportDecision(jsonData string) (decision.Decision, e
 // --- AIProvider ---
 
 // exportedAIProvider omits any secret by construction, same as every
-// other exported*/Export* shape in this file -- AIProvider carries no
-// secret field at all (aiprovider.AIProvider's own doc comment), so
-// there's nothing to strip.
+// other exported*/Export* shape in this file: KeyRef names an entry in
+// the secret store (goal 0306), it is not the key.
 type exportedAIProvider struct {
 	Schema  string          `json:"schema"`
 	ID      string          `json:"id,omitempty"`
@@ -376,6 +374,7 @@ type exportedAIProvider struct {
 	Kind    aiprovider.Kind `json:"kind"`
 	BaseURL string          `json:"baseURL"`
 	Model   string          `json:"model"`
+	KeyRef  string          `json:"keyRef,omitempty"`
 }
 
 func (c *ConfigureService) ExportAIProvider(id string) (string, error) {
@@ -394,7 +393,7 @@ func (c *ConfigureService) ExportAIProvider(id string) (string, error) {
 		return "", fmt.Errorf("no AI provider with id %q", id)
 	}
 
-	data, err := json.MarshalIndent(exportedAIProvider{Schema: contract.SchemaID("aiprovider"), ID: p.ID, Label: p.Label, Kind: p.Kind, BaseURL: p.BaseURL, Model: p.Model}, "", "  ")
+	data, err := json.MarshalIndent(exportedAIProvider{Schema: contract.SchemaID("aiprovider"), ID: p.ID, Label: p.Label, Kind: p.Kind, BaseURL: p.BaseURL, Model: p.Model, KeyRef: p.KeyRef}, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("export AI provider: %w", err)
 	}

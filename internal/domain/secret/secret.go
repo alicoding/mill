@@ -22,13 +22,24 @@ import (
 // List/Summary views never carry it, so a reveal is always a distinct,
 // auditable read rather than incidental to browsing.
 type Entry struct {
-	ID        string
-	Title     string
-	Username  string
-	Password  string
-	URL       string
-	Notes     string
-	Tags      string
+	ID       string
+	Title    string
+	Username string
+	Password string
+	URL      string
+	Notes    string
+	Tags     string
+	// Kind classifies what this entry holds (goal 0306) -- what a
+	// kind-filtered picker offers and what control the editor shows.
+	// Empty decodes as KindText.
+	Kind Kind
+	// SourceRef, when set, makes this a source-backed entry: the value
+	// is not held here at all but read from a configured secret source
+	// at the moment of use, through the same provider grammar every
+	// referencing field uses ("env:<source-id>/<KEY>",
+	// internal/domain/vaultref). Password is empty for such an entry,
+	// and a source's value is never copied into the vault.
+	SourceRef string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -43,6 +54,8 @@ type Summary struct {
 	Username  string
 	URL       string
 	Tags      string
+	Kind      Kind
+	SourceRef string
 	UpdatedAt time.Time
 }
 
@@ -53,6 +66,9 @@ func Validate(e Entry) error {
 	if strings.TrimSpace(e.Title) == "" {
 		return fmt.Errorf("a vault entry needs a title")
 	}
+	if e.SourceRef != "" && strings.TrimSpace(e.Password) != "" {
+		return fmt.Errorf("a source-backed entry holds no value of its own")
+	}
 	return nil
 }
 
@@ -60,5 +76,5 @@ func Validate(e Entry) error {
 // call site shares, so "what a summary omits" has exactly one
 // definition.
 func (e Entry) ToSummary() Summary {
-	return Summary{ID: e.ID, Title: e.Title, Username: e.Username, URL: e.URL, Tags: e.Tags, UpdatedAt: e.UpdatedAt}
+	return Summary{ID: e.ID, Title: e.Title, Username: e.Username, URL: e.URL, Tags: e.Tags, Kind: NormalizeKind(string(e.Kind)), SourceRef: e.SourceRef, UpdatedAt: e.UpdatedAt}
 }

@@ -64,20 +64,20 @@ var builtInSecrets = map[string]string{
 // server's own side, not just self-consistent with Mill's own tests.
 const builtInOAuth1ConsumerSecret = `D+EdQ-gs$-%@2Nu7` //nolint:gosec // Postman's own published, intentionally public test credential -- not a real secret (see doc comment above)
 
-// seedBuiltInSecrets writes each seeded example's demo secret into the
-// OS keychain -- called only from ConfigureService.restore() on a
-// genuinely fresh install (see restore()'s own comment for the lazy-
-// seed-until-first-real-mutation reasoning, mirrored from
-// CompositionService's identical pattern for Workflows). Best-effort,
-// same as every other c.credentials.Set call site in this codebase: a
-// keychain write can fail (headless/sandboxed CI, a locked keychain),
-// and a failed *demo* secret write should degrade to "this one example
-// needs the user to fill in their own secret," not crash startup.
-func (c *ConfigureService) seedBuiltInSecrets() {
-	for id, secret := range builtInSecrets {
-		_ = c.credentials.Set(id, secret)
+// builtInOAuth1SecretFor returns the demo OAuth 1.0a credential for a
+// seeded example, in the same single-slot encoding every stored OAuth
+// 1.0a credential used, so the adoption pass decodes it through one
+// decoder rather than special-casing where a value came from. Empty for
+// any request that is not that example.
+//
+// Nothing here is written to the OS keychain any more (goal 0306): a
+// seeded example's demo credential becomes a store entry on the first
+// unlock, so there is exactly one place a credential is ever created.
+func builtInOAuth1SecretFor(id string) string {
+	if id != httprequest.ExampleOAuth1ID {
+		return ""
 	}
-	_ = c.credentials.Set(httprequest.ExampleOAuth1ID, composition.EncodeOAuth1Secret(builtInOAuth1ConsumerSecret, ""))
+	return composition.EncodeOAuth1Secret(builtInOAuth1ConsumerSecret, "")
 }
 
 // reconcileBuiltInRequests replaces the old insert-only
@@ -102,17 +102,12 @@ func (c *ConfigureService) reconcileBuiltInRequests() {
 	if err := c.persistHTTPRequests(); err != nil {
 		slog.Error("failed to reconcile built-in HTTPRequests", "error", err)
 	}
-	// Seed demo secrets only for newly-inserted examples -- never
-	// re-Set an already-present example's secret, which the user may
-	// have replaced with their own.
-	for _, r := range seededSecretsFor {
-		if secret, ok := builtInSecrets[r.ID]; ok {
-			_ = c.credentials.Set(r.ID, secret)
-		}
-		if r.ID == httprequest.ExampleOAuth1ID {
-			_ = c.credentials.Set(r.ID, composition.EncodeOAuth1Secret(builtInOAuth1ConsumerSecret, ""))
-		}
-	}
+	// A newly-inserted example's demo credential is not created here:
+	// the store may well be locked at startup, and creating a
+	// credential anywhere but the store is exactly what goal 0306 ends.
+	// AdoptSecretsIntoStore gives the example its entry on the next
+	// unlock, and only while the example still names none.
+	_ = seededSecretsFor
 }
 
 // upgradeRequestToGolden replaces existing's content with golden's,

@@ -1,8 +1,8 @@
 package configuresvc
 
 import (
-	"errors"
 	"fmt"
+	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/aiprovider"
@@ -12,7 +12,6 @@ import (
 	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/entitystore"
 	"github.com/alicoding/mill/internal/services/seeding"
-	"github.com/zalando/go-keyring"
 )
 
 // aiProviderDescriptor is AIProvider's entitystore.Descriptor (goal
@@ -75,22 +74,14 @@ func (c *ConfigureService) resolveAIProvider(id string) (composition.ResolvedAIP
 		return composition.ResolvedAIProvider{}, fmt.Errorf("no AI provider with id %q", id)
 	}
 
-	// A secret is optional (local Ollama needs none) -- credentials.Get
-	// returning keyring.ErrNotFound just means "no secret configured,"
-	// not a resolution failure; any other error (a locked/unavailable
-	// keychain) still surfaces, same distinction resolveHTTPRequest's
-	// own AuthType-gated c.credentials.Get call doesn't need to make
-	// (AuthNone skips the call entirely there) but this entity does,
-	// since it has no AuthType field to gate on.
-	var apiKey string
-	secret, err := c.credentials.Get(id)
-	switch {
-	case err == nil:
-		apiKey = secret
-	case errors.Is(err, keyring.ErrNotFound):
-		// no secret configured -- fine, e.g. local Ollama
-	default:
-		return composition.ResolvedAIProvider{}, fmt.Errorf("AI provider %q: %w", id, err)
+	// A key is optional (a local endpoint needs none), so an unset
+	// reference resolves to an empty key with no error and no audit
+	// line -- this entity has no AuthType field to gate on the way
+	// resolveHTTPRequest does.
+	actx := secretaudit.AccessContext{Context: secretaudit.ContextAIProvider}
+	apiKey, err := c.resolveOptionalSecretRef(p.Label, fieldAIProviderKey, p.KeyRef, actx)
+	if err != nil {
+		return composition.ResolvedAIProvider{}, err
 	}
 
 	baseURL := p.BaseURL
@@ -132,17 +123,17 @@ func (c *ConfigureService) aiProviderExistsLocked(id string) bool {
 	return false
 }
 
-func (c *ConfigureService) CreateAIProvider(label string, kind aiprovider.Kind, baseURL, model string) (aiprovider.AIProvider, error) {
-	return c.createAIProviderWithID(seeding.NewSlugID(label, "aiprovider"), label, kind, baseURL, model)
+func (c *ConfigureService) CreateAIProvider(label string, kind aiprovider.Kind, baseURL, model, keyRef string) (aiprovider.AIProvider, error) {
+	return c.createAIProviderWithID(seeding.NewSlugID(label, "aiprovider"), label, kind, baseURL, model, keyRef)
 }
 
 // createAIProviderWithID is CreateAIProvider's own logic, parameterized
 // on the new provider's id -- the seam ImportAIProvider uses to
 // preserve a caller-supplied id (ADR-0036 decision 3).
-func (c *ConfigureService) createAIProviderWithID(id, label string, kind aiprovider.Kind, baseURL, model string) (aiprovider.AIProvider, error) {
+func (c *ConfigureService) createAIProviderWithID(id, label string, kind aiprovider.Kind, baseURL, model, keyRef string) (aiprovider.AIProvider, error) {
 	now := time.Now()
 	p := aiprovider.AIProvider{
-		ID: id, Label: label, Kind: kind, BaseURL: baseURL, Model: model,
+		ID: id, Label: label, Kind: kind, BaseURL: baseURL, Model: model, KeyRef: keyRef,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := aiprovider.Validate(p); err != nil {
@@ -156,8 +147,8 @@ func (c *ConfigureService) createAIProviderWithID(id, label string, kind aiprovi
 	return p, nil
 }
 
-func (c *ConfigureService) UpdateAIProvider(id, label string, kind aiprovider.Kind, baseURL, model string) (aiprovider.AIProvider, error) {
-	p := aiprovider.AIProvider{ID: id, Label: label, Kind: kind, BaseURL: baseURL, Model: model}
+func (c *ConfigureService) UpdateAIProvider(id, label string, kind aiprovider.Kind, baseURL, model, keyRef string) (aiprovider.AIProvider, error) {
+	p := aiprovider.AIProvider{ID: id, Label: label, Kind: kind, BaseURL: baseURL, Model: model, KeyRef: keyRef}
 	if err := aiprovider.Validate(p); err != nil {
 		return aiprovider.AIProvider{}, err
 	}
@@ -191,36 +182,8 @@ func (c *ConfigureService) DeleteAIProvider(id string) error {
 		return err
 	}
 	c.undo.remember("aiprovider", id, restore)
-	_ = c.credentials.Delete(id)
 	dataevent.Emit("aiprovider", id) // goal 0017: live-sync every open surface
 	return nil
-}
-
-// SetAIProviderSecret writes id's secret (an API key, or Anthropic's
-// x-api-key) to the OS keychain. Write-only by design (docs/SPEC.md
-// §3.5): no GetSecret binding exists on this service -- the frontend
-// can set a secret but never read one back.
-func (c *ConfigureService) SetAIProviderSecret(id, secret string) error {
-	c.mu.Lock()
-	exists := false
-	for _, p := range c.aiProviders {
-		if p.ID == id {
-			exists = true
-			break
-		}
-	}
-	c.mu.Unlock()
-	if !exists {
-		return fmt.Errorf("no AI provider with id %q", id)
-	}
-	return c.credentials.Set(id, secret)
-}
-
-// DeleteAIProviderSecret clears id's secret without deleting the
-// provider itself -- e.g. switching a BYO endpoint back to no
-// credential.
-func (c *ConfigureService) DeleteAIProviderSecret(id string) error {
-	return c.credentials.Delete(id)
 }
 
 // --- persistence ---

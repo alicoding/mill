@@ -56,7 +56,7 @@ func (s *SecretService) ListProviderSecrets() ([]secret.Summary, error) {
 				continue // the source's own row states the problem (SourceProblems)
 			}
 			for _, e := range entries {
-				out = append(out, secret.Summary{ID: vaultref.Ref(providerOf(src), src.ID+"/"+e.ID), Title: e.Title + " — " + src.Label, UpdatedAt: src.UpdatedAt})
+				out = append(out, secret.Summary{ID: vaultref.Ref(providerOf(src), src.ID+"/"+e.ID), Title: e.Title + " — " + src.Label, Kind: secret.KindText, UpdatedAt: src.UpdatedAt})
 			}
 			continue
 		}
@@ -65,6 +65,7 @@ func (s *SecretService) ListProviderSecrets() ([]secret.Summary, error) {
 			out = append(out, secret.Summary{
 				ID:        vaultref.Ref(provider, src.ID+"/"+k),
 				Title:     k + " — " + label,
+				Kind:      secret.KindText,
 				UpdatedAt: src.UpdatedAt,
 			})
 		}

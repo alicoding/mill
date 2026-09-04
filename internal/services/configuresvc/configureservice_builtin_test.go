@@ -43,32 +43,23 @@ func TestConfigureService_FreshInstall_SeedsBuiltInRequests(t *testing.T) {
 	}
 }
 
-// The OAuth1 example's demo secret (Postman's own published test
-// credential) must actually be resolvable end-to-end -- the same path
-// a real workflow run would take -- not just present in BuiltIn()'s
-// config.
-func TestConfigureService_FreshInstall_SeedsOAuth1DemoSecret(t *testing.T) {
-	store := servicetest.NewFakeStore()
-	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+// A seeded example's demo credential is created in the secret store on
+// the first unlock, never at seed time (goal 0306) -- and the example
+// then NAMES it, so the same resolution a real workflow run takes hands
+// the value back. Nothing was ever written to the OS keychain.
+func TestAdoptSecretsIntoStore_GivesSeededExamplesTheirDemoCredentials(t *testing.T) {
+	cfg, _ := newTestConfigureServiceWithSeeds(t)
+	secrets := secretStoreOf(t, cfg)
 
-	rc, err := cfg.resolveHTTPRequest(httprequest.ExampleOAuth1ID, composition.SecretAccessRun{})
-	if err != nil {
-		t.Fatalf("resolveHTTPRequest(%q) returned error: %v", httprequest.ExampleOAuth1ID, err)
+	// Before the store is open, an example that needs a credential
+	// names none, which is the honest state and a stated error.
+	if _, err := cfg.resolveHTTPRequest(httprequest.ExampleBearerID, composition.SecretAccessRun{}); err == nil {
+		t.Error("a seeded example resolved a secret before the store was ever opened")
 	}
-	if rc.Secret == "" {
-		t.Error("seeded OAuth1 example's resolved Secret is empty, want Postman's published test credential (encoded)")
-	}
-}
 
-// APIKey/Bearer/HMAC/QueryParam's demo secrets are arbitrary
-// placeholders (builtInSecrets, configureservice_builtin.go) -- confirm
-// each actually landed in the keychain and resolves, not just that the
-// map declares them.
-func TestConfigureService_FreshInstall_SeedsPlaceholderDemoSecrets(t *testing.T) {
-	store := servicetest.NewFakeStore()
-	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+	if _, err := cfg.AdoptSecretsIntoStore(); err != nil {
+		t.Fatalf("AdoptSecretsIntoStore returned error: %v", err)
+	}
 
 	for id, want := range builtInSecrets {
 		rc, err := cfg.resolveHTTPRequest(id, composition.SecretAccessRun{})
@@ -80,22 +71,34 @@ func TestConfigureService_FreshInstall_SeedsPlaceholderDemoSecrets(t *testing.T)
 			t.Errorf("resolveHTTPRequest(%q) Secret = %q, want %q", id, rc.Secret, want)
 		}
 	}
-}
 
-// The OAuth2 example deliberately has no keychain secret seeded --
-// resolveHTTPRequest must still succeed (AuthOAuth2 != AuthNone, but
-// there's genuinely no secret to fetch since none was ever Set) rather
-// than erroring, since a missing-but-never-set secret and a
-// missing-but-expected one need to be distinguishable in principle --
-// here we only assert the resolved Secret is empty, matching
-// "credential.Get on an id nothing was ever Set for" behavior.
-func TestConfigureService_FreshInstall_OAuth2Example_HasNoSecretSeeded(t *testing.T) {
-	store := servicetest.NewFakeStore()
-	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+	// The OAuth 1.0a example's two secrets are named separately and
+	// rejoined for the strategy (Postman's own published test
+	// credential, with no token secret).
+	rc, err := cfg.resolveHTTPRequest(httprequest.ExampleOAuth1ID, composition.SecretAccessRun{})
+	if err != nil {
+		t.Fatalf("resolveHTTPRequest(%q) returned error: %v", httprequest.ExampleOAuth1ID, err)
+	}
+	if want := composition.EncodeOAuth1Secret(builtInOAuth1ConsumerSecret, ""); rc.Secret != want {
+		t.Errorf("seeded OAuth 1.0a example Secret = %q, want %q", rc.Secret, want)
+	}
 
+	// The OAuth 2.0 example deliberately ships no credential: Mill's
+	// own repo will never carry a real client secret, so it still names
+	// nothing and still says so.
 	if _, err := cfg.resolveHTTPRequest(httprequest.ExampleOAuth2ID, composition.SecretAccessRun{}); err == nil {
-		t.Error("resolveHTTPRequest for the credential-less OAuth2 example returned nil error, want an error (no secret was ever seeded for it, matching a real not-yet-configured request)")
+		t.Error("the OAuth 2.0 example resolved a secret, want it to still name none")
+	}
+
+	// Running again adopts nothing: adoption is defined by what is
+	// still unadopted.
+	before := secrets.Len()
+	adopted, err := cfg.AdoptSecretsIntoStore()
+	if err != nil {
+		t.Fatalf("second AdoptSecretsIntoStore returned error: %v", err)
+	}
+	if adopted != 0 || secrets.Len() != before {
+		t.Errorf("second adoption created %d entries (store went %d -> %d), want none", adopted, before, secrets.Len())
 	}
 }
 
@@ -161,7 +164,7 @@ func TestUpdateHTTPRequest_PreservesBuiltInFlag_AndUpdatesDescription(t *testing
 	}
 
 	updated, err := cfg.UpdateHTTPRequest(
-		original.ID, original.Label, original.BaseURL, original.Method, original.Body, original.AuthType,
+		original.ID, original.Label, original.BaseURL, original.Method, original.Body, original.AuthType, original.SecretRef,
 		original.Headers, original.OpenAPISpec, original.Auth, original.JOSE, "my own notes",
 	)
 	if err != nil {
@@ -177,7 +180,7 @@ func TestUpdateHTTPRequest_PreservesBuiltInFlag_AndUpdatesDescription(t *testing
 
 func TestCreateHTTPRequest_DescriptionPersists(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, nil, "", nil, nil, "a helpful note")
+	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, "", nil, "", nil, nil, "a helpful note")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}

@@ -21,7 +21,7 @@ func TestCreateHTTPRequest_StampsBothTimestamps(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 
 	before := time.Now()
-	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, nil, "", nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, "", nil, "", nil, nil, "")
 	after := time.Now()
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
@@ -41,7 +41,7 @@ func TestCreateHTTPRequest_StampsBothTimestamps(t *testing.T) {
 func TestUpdateHTTPRequest_PreservesCreatedAt_AdvancesUpdatedAt(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 
-	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, nil, "", nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, "", nil, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestUpdateHTTPRequest_PreservesCreatedAt_AdvancesUpdatedAt(t *testing.T) {
 
 	time.Sleep(2 * time.Millisecond)
 
-	updated, err := cfg.UpdateHTTPRequest(req.ID, "My API (edited)", "https://example.com", "", "", httprequest.AuthNone, nil, "", nil, nil, "")
+	updated, err := cfg.UpdateHTTPRequest(req.ID, "My API (edited)", "https://example.com", "", "", httprequest.AuthNone, "", nil, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("UpdateHTTPRequest: %v", err)
 	}
