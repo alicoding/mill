@@ -581,8 +581,8 @@ export function QuitApp(): $CancellablePromise<void> {
  * in later is a NEW install and asks to be allowed again, which is the
  * whole point of the install-time review.
  * 
- * Contributions the plugin registered this session stay registered
- * until the next load -- the same "plugins load at app start" contract
+ * Contributions the plugin registered at load stay registered until
+ * the next load -- the same "plugins load at app start" contract
  * disabling one already follows; objects it created keep rendering
  * through the unknown-kind fallback face.
  */
