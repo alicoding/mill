@@ -100,6 +100,30 @@ func openDrawioEditor(c mcpCaller, dialogSel string) error {
 	return nil
 }
 
+// closeDrawioEditor dismisses the modal this check opened. The editor
+// is a full-window dialog: leaving it up makes every later check's
+// pointer event land on the editor iframe instead of the board, which
+// reads as an engine divergence rather than the state leak it is. The
+// Dialog's own Close control is the affordance (DrawioEditorDialog
+// wires it to the same handleExit the engine's own Exit button
+// reaches).
+//
+// Addressed by data-component, not by aria-label: Primer's IconButton
+// moves the accessible name onto its tooltip via aria-labelledby
+// whenever it renders one, leaving the button element itself with no
+// aria-label attribute at all. data-component is the stable handle.
+func closeDrawioEditor(c mcpCaller, dialogSel string) error {
+	if _, err := c.call("mouse_click", withWindow(map[string]any{
+		"selector": dialogSel + ` [data-component="Dialog.CloseButton"]`,
+	})); err != nil {
+		return fmt.Errorf("editor did not close: no Close control to click: %w", err)
+	}
+	if err := pollJSEval(c, `return !document.querySelector('[data-testid="drawio-editor-frame"]');`, 10*time.Second); err != nil {
+		return fmt.Errorf("editor did not close: the editor frame is still on the page: %w", err)
+	}
+	return nil
+}
+
 func checkDrawioEditorLayout(c mcpCaller) (string, error) {
 	if err := landTwoPageDiagram(c); err != nil {
 		return "", err
@@ -168,5 +192,8 @@ func checkDrawioEditorLayout(c mcpCaller) (string, error) {
 	if len(verdict) < 2 || verdict[:2] != "ok" {
 		return "", fmt.Errorf("editor layout broken in the real engine: %s", verdict)
 	}
-	return "board face selectable via band with full resize handles; editor dialog, iframe, and the two-page tab bar all inside the real window (" + verdict + ")", nil
+	if err := closeDrawioEditor(c, dialogSel); err != nil {
+		return "", err
+	}
+	return "board face selectable via band with full resize handles; editor dialog, iframe, and the two-page tab bar all inside the real window, editor closed (" + verdict + ")", nil
 }

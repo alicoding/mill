@@ -82,22 +82,44 @@ func checkPdfFindInViewer(c mcpCaller) (string, error) {
 		return !!(app && app.pdfDocument);`, pdfViewerIframeSel), 30*time.Second); err != nil {
 		return "", fmt.Errorf("pdf.js never loaded the document in the real webview: %w", err)
 	}
+	// The find controller's own text extraction runs alongside the
+	// query here purely so a failure can say WHY nothing matched: an
+	// extraction that throws (the engine-gap shape) is a different
+	// defect from a query that extracts fine and still misses.
 	if _, err := c.call("js_eval", withWindow(map[string]any{
 		"js": fmt.Sprintf(`const f = document.querySelector(%q);
 			const app = f.contentWindow.PDFViewerApplication;
 			window.__millSmokeFindTotal = -1;
+			window.__millSmokeFindStates = [];
+			window.__millSmokeText = 'pending';
 			app.eventBus.on('updatefindmatchescount', (e) => { window.__millSmokeFindTotal = e.matchesCount.total; });
+			app.eventBus.on('updatefindcontrolstate', (e) => { window.__millSmokeFindStates.push(e.state); });
+			app.pdfDocument.getPage(1)
+				.then((p) => p.getTextContent())
+				.then((t) => { window.__millSmokeText = 'ok ' + t.items.length + ' items'; })
+				.catch((e) => { window.__millSmokeText = 'ERR ' + e; });
 			app.eventBus.dispatch('find', { source: null, type: '', query: 'smokealpha', caseSensitive: false, entireWord: false, highlightAll: true, findPrevious: false });
 			return "dispatched";`, pdfViewerIframeSel),
 	})); err != nil {
 		return "", err
 	}
 	if err := pollJSEval(c, `return window.__millSmokeFindTotal === 2;`, 15*time.Second); err != nil {
-		total, readErr := c.call("js_eval", withWindow(map[string]any{"js": `return String(window.__millSmokeFindTotal);`}))
-		if readErr != nil {
-			total = "unreadable"
-		}
-		return "", fmt.Errorf("find never reported 2 matches (last total: %s): %w", total, err)
+		return "", fmt.Errorf("find never reported 2 matches (%s): %w", pdfFindDiagnostics(c), err)
 	}
 	return "pdf.js find matched 2/2 in the real WKWebView", nil
+}
+
+// pdfFindDiagnostics reads the find pipeline's own trail for a failure
+// message -- best-effort, so its own eval error never masks the real
+// failure it is attached to.
+func pdfFindDiagnostics(c mcpCaller) string {
+	diag, err := c.call("js_eval", withWindow(map[string]any{
+		"js": `return 'lastTotal=' + window.__millSmokeFindTotal
+			+ ' states=[' + (window.__millSmokeFindStates || []).join(',') + ']'
+			+ ' textExtraction=' + window.__millSmokeText;`,
+	}))
+	if err != nil {
+		return "diagnostics unreadable"
+	}
+	return diag
 }

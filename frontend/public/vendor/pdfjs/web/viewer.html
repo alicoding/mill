@@ -32,6 +32,12 @@ See https://github.com/adobe-type-tools/cmap-resources
       content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' blob: data:; media-src blob:; font-src 'self' data:; connect-src * blob: data:; base-uri 'none'; form-action 'none';"
     />
 
+<!-- Mill patch (goal 0271): WebKit has no ReadableStream async
+     iteration, which pdf.js's text extraction needs. A classic script
+     here runs before the module scripts below, so the polyfill is in
+     place before pdf.mjs evaluates. -->
+<script src="mill-readablestream-asynciterator.js"></script>
+
 <!-- This snippet is used in production (included from viewer.html) -->
 <link rel="resource" type="application/l10n" href="locale/locale.json" />
 <script src="../build/pdf.mjs" type="module"></script>
