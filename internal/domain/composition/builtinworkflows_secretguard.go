@@ -55,7 +55,11 @@ func builtInSecretGuardWorkflows() []Workflow {
 				{ID: "example-secret-guard-e0", Source: secretGuardTriggerID, Target: ExampleSecretGuardStepID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(3),
+			// Revision 4 (goal 0345): code-execution gained a
+			// workingDirectory ConfigField, whose default-filled "" now
+			// lands in this seed's own persisted Config too
+			// (ResolveNodeDefaults fills every declared field).
+			Seed: seedorigin.Stamp(4),
 		},
 	}
 }

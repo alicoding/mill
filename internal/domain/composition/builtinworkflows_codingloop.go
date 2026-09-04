@@ -45,7 +45,11 @@ func codingLoopBuiltInWorkflow() []Workflow {
 				{ID: "coding-loop-e2", Source: applyID, Target: notifyID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(4),
+			// Revision 5 (goal 0345): process-shell-command gained a
+			// workingDirectory ConfigField, whose default-filled "" now
+			// lands in this seed's own persisted Config too
+			// (ResolveNodeDefaults fills every declared field).
+			Seed: seedorigin.Stamp(5),
 		},
 	}
 }

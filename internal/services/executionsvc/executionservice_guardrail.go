@@ -253,12 +253,21 @@ func (e *ExecutionService) parkForApproval(ctx execution.Context, node compositi
 	for _, nt := range composition.NodeTypes() {
 		typeLabels[nt.ID] = nt.Label
 	}
+	payload := ec.Payload
+	// goal 0345: a shell/code step's own workingDirectory field is
+	// previewed ahead of its own command text -- an approver sees WHERE
+	// a step runs before deciding, not just what. PreviewWorkingDirectory
+	// reports ok=false for every step with the field unset, so this is a
+	// no-op for every other node type and every pre-goal-0345 step.
+	if dir, ok := composition.PreviewWorkingDirectory(node, ec); ok {
+		payload = "Working directory: " + dir + "\n\n" + payload
+	}
 	pending := PendingApproval{
 		NodeID:          node.ID,
 		NodeTypeID:      node.NodeTypeID,
 		NodeTypeLabel:   typeLabels[node.NodeTypeID],
 		Config:          node.Config,
-		Payload:         ec.Payload,
+		Payload:         payload,
 		RuleLabel:       ruleLabel,
 		InputAttributes: parseCSVKeys(node.Config["inputAttributes"]),
 		Source:          source,

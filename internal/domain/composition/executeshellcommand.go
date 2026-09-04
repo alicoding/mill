@@ -65,10 +65,19 @@ type ResolvedShellCommandTarget struct {
 // uses -- shell flags via shellArgv, a per-BLOCK materialized dir via
 // resolveDir (one temp dir for the whole block, so its sub-commands
 // see each other's files), and the environment's explicit Env with
-// codeexec.go's same minimal-PATH default when it declares none.
-func resolveShellCommandRunTarget(envID string, run SecretAccessRun) (ResolvedShellCommandTarget, error) {
+// codeexec.go's same minimal-PATH default when it declares none. A
+// non-empty workingDirectory (goal 0345) overrides either posture's own
+// dir through the same resolveWorkingDirectory codeexec.go's
+// code-execution step uses -- one override behavior for both process
+// types.
+func resolveShellCommandRunTarget(envID, workingDirectory string, attrs map[string]any, run SecretAccessRun) (ResolvedShellCommandTarget, error) {
 	if strings.TrimSpace(envID) == "" {
 		t := ResolveShellCommandTarget()
+		dir, err := resolveWorkingDirectory(workingDirectory, t.Dir, attrs)
+		if err != nil {
+			return ResolvedShellCommandTarget{}, err
+		}
+		t.Dir = dir
 		t.argvFor = func(script string) []string { return []string{t.Shell, "-c", script} }
 		return t, nil
 	}
@@ -79,6 +88,10 @@ func resolveShellCommandRunTarget(envID string, run SecretAccessRun) (ResolvedSh
 	dir, err := resolveDir(re.Dir)
 	if err != nil {
 		return ResolvedShellCommandTarget{}, fmt.Errorf("process-shell-command: %w", err)
+	}
+	dir, err = resolveWorkingDirectory(workingDirectory, dir, attrs)
+	if err != nil {
+		return ResolvedShellCommandTarget{}, err
 	}
 	env := re.Env
 	if len(env) == 0 {
@@ -376,7 +389,7 @@ func runShellStep(node Node, step ParsedCommandStep, total int, target ResolvedS
 // states. steps is always non-empty (the init() closure below rejects
 // an empty parse before calling this).
 func runShellCommandBlock(node Node, ctx ExecContext, steps []ParsedCommandStep) (ExecContext, error) {
-	target, err := resolveShellCommandRunTarget(node.Config["envId"], secretAccessRunFromCtx(ctx))
+	target, err := resolveShellCommandRunTarget(node.Config["envId"], node.Config["workingDirectory"], ctx.Attributes, secretAccessRunFromCtx(ctx))
 	if err != nil {
 		return ctx, err
 	}
@@ -441,6 +454,11 @@ func init() {
 				Key: "runWithAdmin", Label: "Run with admin rights", Type: FieldBoolean,
 				Description: "Runs each command with administrator rights. macOS asks you to approve every run — Touch ID when it's set up for sudo, your password otherwise.",
 				Default:     "false",
+			},
+			{
+				Key: "workingDirectory", Label: "Working directory",
+				Description: "Overrides the environment's directory. Use {param} for a value from this run.",
+				Default:     "", Type: FieldText,
 			},
 		},
 	}, func(node Node, ctx ExecContext) (ExecContext, error) {

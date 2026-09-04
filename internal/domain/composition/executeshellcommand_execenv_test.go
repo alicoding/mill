@@ -26,7 +26,7 @@ func TestResolveShellCommandRunTarget_EnvSet_UsesExecEnvMachinery(t *testing.T) 
 		Env: []string{"FOO=bar"}, Label: "Safe sandbox",
 	})
 
-	target, err := resolveShellCommandRunTarget("some-env", SecretAccessRun{})
+	target, err := resolveShellCommandRunTarget("some-env", "", nil, SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveShellCommandRunTarget: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestResolveShellCommandRunTarget_EnvWithEmptyEnv_GetsMinimalPATH(t *testing
 	dir := t.TempDir()
 	withExecEnvLookup(t, ResolvedExecEnv{Shell: "zsh", ProfileMode: "login", Dir: dir, Label: "L"})
 
-	target, err := resolveShellCommandRunTarget("some-env", SecretAccessRun{})
+	target, err := resolveShellCommandRunTarget("some-env", "", nil, SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveShellCommandRunTarget: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestResolveShellCommandRunTarget_EnvWithEmptyEnv_GetsMinimalPATH(t *testing
 }
 
 func TestResolveShellCommandRunTarget_EmptyEnvID_KeepsDefaultPosture(t *testing.T) {
-	target, err := resolveShellCommandRunTarget("", SecretAccessRun{})
+	target, err := resolveShellCommandRunTarget("", "", nil, SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveShellCommandRunTarget: %v", err)
 	}
@@ -92,5 +92,22 @@ func TestResolveShellSecretEnv_ExplicitBaseStaysExplicit(t *testing.T) {
 	}
 	if !reflect.DeepEqual(redact, []string{"resolved-value"}) {
 		t.Errorf("redact = %v, want the resolved value", redact)
+	}
+}
+
+// TestResolveShellCommandRunTarget_WorkingDirectory_OverridesExecEnvDir
+// proves goal 0345 for the ExecEnv-routed posture: a templated
+// workingDirectory field overrides the environment's own Dir.
+func TestResolveShellCommandRunTarget_WorkingDirectory_OverridesExecEnvDir(t *testing.T) {
+	envDir := t.TempDir()
+	override := t.TempDir()
+	withExecEnvLookup(t, ResolvedExecEnv{Shell: "sh", ProfileMode: "clean", Dir: envDir, Label: "Safe sandbox"})
+
+	target, err := resolveShellCommandRunTarget("some-env", "{folder}", map[string]any{"folder": override}, SecretAccessRun{})
+	if err != nil {
+		t.Fatalf("resolveShellCommandRunTarget: %v", err)
+	}
+	if target.Dir != override {
+		t.Errorf("Dir = %q, want the overridden directory %q, not the environment's own %q", target.Dir, override, envDir)
 	}
 }

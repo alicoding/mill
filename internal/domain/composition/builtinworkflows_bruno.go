@@ -67,6 +67,10 @@ func builtInBrunoWorkflows() []Workflow {
 			{ID: "example-bruno-e2", Source: captureID, Target: syncID},
 		},
 		BuiltIn: true,
-		Seed:    seedorigin.Stamp(1),
+		// Revision 2 (goal 0345): code-execution gained a
+		// workingDirectory ConfigField, whose default-filled "" now
+		// lands in this seed's own persisted Config too
+		// (ResolveNodeDefaults fills every declared field).
+		Seed: seedorigin.Stamp(2),
 	}}
 }

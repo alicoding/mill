@@ -302,3 +302,49 @@ func TestAppendShellArgs_DollarZeroPlaceholder(t *testing.T) {
 		t.Fatalf("appendShellArgs with no args = %v, want argv unchanged", out)
 	}
 }
+
+// TestCodeExecution_WorkingDirectory_OverridesTheEnvironmentsDir proves
+// goal 0345 end to end: a templated workingDirectory field, expanded
+// against the run's Attributes, becomes the actual process cwd instead
+// of the environment's own Dir.
+func TestCodeExecution_WorkingDirectory_OverridesTheEnvironmentsDir(t *testing.T) {
+	swapExecEnvLookupForTest(t, func(id string) (ResolvedExecEnv, error) { return testExecEnv(t), nil })
+	override := t.TempDir()
+
+	entry, ok := nodeTypeRegistry["code-execution"]
+	if !ok {
+		t.Fatal(`node type "code-execution" is not registered`)
+	}
+	out, err := entry.exec(Node{ID: "n1", Config: map[string]string{
+		"envId": "e1", "source": "literal", "script": `pwd`, "timeoutSeconds": "10",
+		"workingDirectory": "{folder}",
+	}}, ExecContext{Attributes: map[string]any{"folder": override}})
+	if err != nil {
+		t.Fatalf("exec: %v", err)
+	}
+	if got := strings.TrimSpace(out.Payload); !sameDirectory(t, got, override) {
+		t.Errorf("Payload (pwd) = %q, want the overridden directory %q", got, override)
+	}
+}
+
+// TestCodeExecution_WorkingDirectory_MissingFails pins the fail-safe:
+// a workingDirectory naming a path that doesn't exist fails the step
+// with the documented usererror rather than running anywhere else.
+func TestCodeExecution_WorkingDirectory_MissingFails(t *testing.T) {
+	swapExecEnvLookupForTest(t, func(id string) (ResolvedExecEnv, error) { return testExecEnv(t), nil })
+
+	entry, ok := nodeTypeRegistry["code-execution"]
+	if !ok {
+		t.Fatal(`node type "code-execution" is not registered`)
+	}
+	_, err := entry.exec(Node{ID: "n1", Config: map[string]string{
+		"envId": "e1", "source": "literal", "script": `pwd`, "timeoutSeconds": "10",
+		"workingDirectory": "/no/such/mill-test-directory-ever",
+	}}, ExecContext{})
+	if err == nil {
+		t.Fatal("exec = nil error, want one for a missing working directory")
+	}
+	if err.Error() != "The working directory /no/such/mill-test-directory-ever doesn't exist." {
+		t.Errorf("err = %q, want the clean usererror sentence", err.Error())
+	}
+}

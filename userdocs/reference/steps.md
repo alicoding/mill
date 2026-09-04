@@ -255,6 +255,7 @@ Runs the captured payload exactly as written, in your real login shell by defaul
 - Settings:
   - **Execution environment** — Runs the block inside a Configure-authored environment. Empty runs your real login shell. (references an Execution environment)
   - **Run with admin rights** — Runs each command with administrator rights. macOS asks you to approve every run — Touch ID when it's set up for sudo, your password otherwise.
+  - **Working directory** — Overrides the environment's directory. Use {param} for a value from this run.
 
 ### Run a command
 
@@ -268,6 +269,7 @@ Runs one command locally, inside a configured execution environment (pinned shel
   - **Script** — The command to run when "Command source" is literal. Ignored when source is payload.
   - **Pass input** — How a literal script receives the upstream payload: piped to stdin, or one argument per line ($1, $2, …).
   - **Timeout (seconds)** — Kills the command if it hasn't finished within this many seconds.
+  - **Working directory** — Overrides the environment's directory. Use {param} for a value from this run.
 
 ### Run another workflow
 
