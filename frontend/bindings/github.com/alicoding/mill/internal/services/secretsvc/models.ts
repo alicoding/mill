@@ -57,13 +57,14 @@ export type SourcesLister = any;
 /**
  * Status is VaultStatus's return shape -- the one read the frontend
  * needs to decide which of "set up," "unlock," or "browse" to show.
- * PresenceProtected is a plain credential.Store read (never a prompt),
- * safe on every build including server mode -- goal 0204's status line
- * depends on it working even where the presence-gated read itself
- * cannot.
+ * RequireAuth is the persisted setting; AuthAvailable reports whether
+ * this Mac can authenticate at all, which decides whether the
+ * requirement can be offered. Both are prompt-free reads, safe on every
+ * build including server mode, where AuthAvailable is always false.
  */
 export interface Status {
     "Exists": boolean;
     "Unlocked": boolean;
-    "PresenceProtected": boolean;
+    "RequireAuth": boolean;
+    "AuthAvailable": boolean;
 }

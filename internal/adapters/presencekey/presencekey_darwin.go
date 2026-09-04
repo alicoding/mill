@@ -21,39 +21,6 @@ package presencekey
 // entitlement and is what credential.Store's go-keyring already targets
 // for every other secret, so this stays consistent with it.
 
-// millAddPresenceItem creates a NEW generic-password keychain item
-// under service/account holding value, protected by a
-// kSecAccessControlUserPresence access-control object (Touch ID/Apple
-// Watch/the device password). SecItemAdd itself never prompts -- only
-// later reading the protected value does (goal 0204).
-static OSStatus millAddPresenceItem(const char *service, const char *account, const void *value, int valueLen) {
-	@autoreleasepool {
-		CFErrorRef cfErr = NULL;
-		SecAccessControlRef access = SecAccessControlCreateWithFlags(
-			kCFAllocatorDefault,
-			kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-			kSecAccessControlUserPresence,
-			&cfErr);
-		if (access == NULL) {
-			OSStatus status = cfErr ? (OSStatus)CFErrorGetCode(cfErr) : errSecParam;
-			if (cfErr) CFRelease(cfErr);
-			return status;
-		}
-		NSData *data = [NSData dataWithBytes:value length:valueLen];
-		NSDictionary *attrs = @{
-			(__bridge id)kSecClass: (__bridge id)kSecClassGenericPassword,
-			(__bridge id)kSecAttrService: [NSString stringWithUTF8String:service],
-			(__bridge id)kSecAttrAccount: [NSString stringWithUTF8String:account],
-			(__bridge id)kSecValueData: data,
-			(__bridge id)kSecAttrAccessControl: (__bridge id)access,
-			(__bridge id)kSecUseDataProtectionKeychain: @NO,
-		};
-		OSStatus status = SecItemAdd((__bridge CFDictionaryRef)attrs, NULL);
-		CFRelease(access);
-		return status;
-	}
-}
-
 // millDeleteItem removes service/account's item by attribute match only
 // -- it never requests kSecReturnData, so it never touches the
 // protected value and never prompts, even for a presence-gated item.
@@ -131,36 +98,8 @@ import (
 )
 
 func init() {
-	wrapImpl = cgoWrap
 	readImpl = cgoRead
 	removeImpl = cgoRemove
-}
-
-// cgoWrap adds service/account's presence-gated item. On a duplicate
-// (an orphaned item from a previously interrupted enable/disable --
-// secretsvc's own migration ordering never re-adds over a live one it
-// still needs), it deletes the stale item and retries once rather than
-// failing outright.
-func cgoWrap(service, account string, value []byte) error {
-	cService := C.CString(service)
-	defer C.free(unsafe.Pointer(cService))
-	cAccount := C.CString(account)
-	defer C.free(unsafe.Pointer(cAccount))
-
-	var cValue unsafe.Pointer
-	if len(value) > 0 {
-		cValue = C.CBytes(value)
-		defer C.free(cValue)
-	}
-
-	status := C.millAddPresenceItem(cService, cAccount, cValue, C.int(len(value)))
-	if status == C.errSecDuplicateItem {
-		if err := cgoRemove(service, account); err != nil {
-			return err
-		}
-		status = C.millAddPresenceItem(cService, cAccount, cValue, C.int(len(value)))
-	}
-	return statusToErr(status)
 }
 
 // cgoRemove deletes service/account's item; a not-found result is not
@@ -206,8 +145,6 @@ func statusToErr(status C.OSStatus) error {
 	switch status {
 	case C.errSecSuccess:
 		return nil
-	case C.errSecUserCanceled:
-		return ErrCanceled
 	case C.errSecItemNotFound:
 		return ErrNotFound
 	}

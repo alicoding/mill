@@ -9,6 +9,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/adapters/secretauditstore"
 	"github.com/alicoding/mill/internal/adapters/secretvault"
+	"github.com/alicoding/mill/internal/services/servicetest"
 )
 
 // Goal 0203 S3: every secret read leaves an audit line. newAuditedTestService
@@ -19,7 +20,7 @@ import (
 func newAuditedTestService(t *testing.T) *SecretService {
 	t.Helper()
 	dir := t.TempDir()
-	s := NewSecretService(secretvault.New(filepath.Join(dir, "secrets.kdbx")), credential.NewInMemory())
+	s := NewSecretService(secretvault.New(filepath.Join(dir, "secrets.kdbx")), credential.NewInMemory(), servicetest.NewFakeStore())
 	t.Cleanup(s.StopAutoLock)
 	if err := s.OpenAudit(filepath.Join(dir, "execution.db"), nil); err != nil {
 		t.Fatalf("OpenAudit: %v", err)

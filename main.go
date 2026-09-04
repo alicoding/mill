@@ -138,7 +138,7 @@ func main() {
 	}
 	configureService := configuresvc.NewConfigureService(settingsStore, compositionService, credentialStore)
 	// MILL_SECRETS_PATH overrides for e2e isolation, same convention as MILL_SETTINGS_PATH above (WireSecrets' own doc comment covers the rest of what this wires).
-	secretService := wiring.WireSecrets(windowing.ConfigDirOrEnv("MILL_SECRETS_PATH", "secrets.kdbx"), credentialStore, configureService)
+	secretService := wiring.WireSecrets(windowing.ConfigDirOrEnv("MILL_SECRETS_PATH", "secrets.kdbx"), credentialStore, settingsStore, configureService)
 	wiring.WireSecretRedaction(secretService) // goal 0185 S4
 	// docs/adr/0038: Atlas's storage/CRUD layer (cross-surface wiring
 	// arrives below via injected seams, never direct imports).

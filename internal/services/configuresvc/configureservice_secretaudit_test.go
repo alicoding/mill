@@ -12,6 +12,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/services/secretsvc"
+	"github.com/alicoding/mill/internal/services/servicetest"
 )
 
 // Goal 0203 S3: service-level proof that each instrumented vault-
@@ -30,7 +31,7 @@ import (
 func newAuditedSecretService(t *testing.T, cfg *ConfigureService) (*secretsvc.SecretService, *secretauditstore.Store) {
 	t.Helper()
 	dir := t.TempDir()
-	secretService := secretsvc.NewSecretService(secretvault.New(filepath.Join(dir, "secrets.kdbx")), credential.NewInMemory())
+	secretService := secretsvc.NewSecretService(secretvault.New(filepath.Join(dir, "secrets.kdbx")), credential.NewInMemory(), servicetest.NewFakeStore())
 	t.Cleanup(secretService.StopAutoLock)
 	if err := secretService.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)

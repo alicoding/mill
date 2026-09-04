@@ -37,7 +37,7 @@ func TestCreate_ThenReadBack_InMemory(t *testing.T) {
 	if v.Exists() {
 		t.Fatal("Exists true before Create")
 	}
-	if err := v.Create(key); err != nil {
+	if _, err := v.Create(key); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	if !v.Exists() {
@@ -75,7 +75,7 @@ func TestPersistThenReopen(t *testing.T) {
 	key := testKey(t)
 
 	v := New(path)
-	if err := v.Create(key); err != nil {
+	if _, err := v.Create(key); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	first, err := v.Upsert(secret.Entry{Title: "First", Password: fixtureValueA}) //nolint:gosec // fixture value, not a real credential (G101 false positive)
@@ -115,7 +115,7 @@ func TestPersistThenReopen(t *testing.T) {
 func TestUnlock_WrongKey(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "secrets.kdbx")
 	v := New(path)
-	if err := v.Create(testKey(t)); err != nil {
+	if _, err := v.Create(testKey(t)); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	v2 := New(path)
@@ -127,7 +127,7 @@ func TestUnlock_WrongKey(t *testing.T) {
 func TestLock_ThenOperationsFail(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "secrets.kdbx")
 	v := New(path)
-	if err := v.Create(testKey(t)); err != nil {
+	if _, err := v.Create(testKey(t)); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	v.Lock()
@@ -145,10 +145,10 @@ func TestLock_ThenOperationsFail(t *testing.T) {
 func TestCreate_AlreadyExists(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "secrets.kdbx")
 	v := New(path)
-	if err := v.Create(testKey(t)); err != nil {
+	if _, err := v.Create(testKey(t)); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	if err := New(path).Create(testKey(t)); err != ErrAlreadyExists {
+	if _, err := New(path).Create(testKey(t)); err != ErrAlreadyExists {
 		t.Fatalf("second Create = %v, want ErrAlreadyExists", err)
 	}
 }
@@ -156,7 +156,7 @@ func TestCreate_AlreadyExists(t *testing.T) {
 func TestUpsert_UpdatePushesHistory(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "secrets.kdbx")
 	v := New(path)
-	if err := v.Create(testKey(t)); err != nil {
+	if _, err := v.Create(testKey(t)); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	created, err := v.Upsert(secret.Entry{Title: "Site", Password: fixtureValueC}) //nolint:gosec // fixture value, not a real credential (G101 false positive)
@@ -202,7 +202,7 @@ func TestUpsert_UpdatePushesHistory(t *testing.T) {
 func TestDelete(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "secrets.kdbx")
 	v := New(path)
-	if err := v.Create(testKey(t)); err != nil {
+	if _, err := v.Create(testKey(t)); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	created, err := v.Upsert(secret.Entry{Title: "Gone"})
@@ -220,7 +220,7 @@ func TestDelete(t *testing.T) {
 func TestList_SortedByTitle(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "secrets.kdbx")
 	v := New(path)
-	if err := v.Create(testKey(t)); err != nil {
+	if _, err := v.Create(testKey(t)); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	for _, title := range []string{"Zebra", "Apple", "Mango"} {

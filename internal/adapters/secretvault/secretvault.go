@@ -12,19 +12,19 @@
 // history, and its ACL boundary is the login session, not per-item
 // authentication).
 //
-// A biometry-gated (Touch ID/Apple Watch) keychain item for the master
-// key was the goal's preferred design, but no maintained Go keyring
-// library exposes SecAccessControl/LocalAuthentication (verified against
-// keybase/go-keychain and 99designs/keyring source: zero matching
-// symbols in either), and the thread-affinity contract a cgo
-// LocalAuthentication shim would need is not established with
-// confidence against Apple's own documentation -- see
-// docs/goals/0185-secrets-as-references.md's "Unlock: system
-// authentication" section for the deferral. This adapter therefore
-// stores the master key as a plain (non-biometry-gated) keychain item,
-// same ACL boundary Finding C already documented for every other secret
-// credential.Store protects today -- an explicit, named interim, not a
-// silent downgrade.
+// The master key is a plain (non-ACL-gated) login-keychain item: an
+// ACL built from kSecAttrAccessControl is enforced only in macOS's
+// data-protection keychain, which requires an application-identifier /
+// keychain-access-groups entitlement -- unavailable to a self-signed
+// build (goal 0330). Requiring authentication before an unlock is
+// therefore a LocalAuthentication gate in front of that plain item
+// (internal/adapters/localauth), never a property of the item itself.
+//
+// Each vault file carries its own identity in its plaintext header
+// (secretvault_id.go) and its key is stored under an account derived
+// from that identity, so two vaults on one machine never overwrite
+// each other's key and a key that cannot open a file is reported as
+// such instead of surfacing as a decode failure.
 package secretvault
 
 import (
@@ -75,8 +75,21 @@ type Vault interface {
 	// Create makes a brand-new, empty vault file at Path, encrypted with
 	// masterKey, and leaves it unlocked (ready to use immediately --
 	// matches every other manager's own "create = you're now in it"
-	// behavior). Fails with ErrAlreadyExists if a vault is already there.
-	Create(masterKey []byte) error
+	// behavior). Returns the vault's newly minted identity, which the
+	// caller stores its key under. Fails with ErrAlreadyExists if a
+	// vault is already there.
+	Create(masterKey []byte) (string, error)
+	// ID returns the vault file's identity, read from its plaintext
+	// header without the master key. "" means the file predates the
+	// identity header (secretvault_id.go).
+	ID() (string, error)
+	// AssignID stamps an identity into an unlocked vault that has none
+	// and writes the file immediately, returning the id now in force.
+	AssignID() (string, error)
+	// Backup renames the vault file to a timestamped ".bak" sibling and
+	// locks the vault, returning the archived path. Leaves the file
+	// alone on failure.
+	Backup() (string, error)
 	// Unlock opens the existing vault file and decrypts it into memory
 	// with masterKey. A wrong key or corrupt file returns
 	// gokeepasslib.ErrInvalidDatabaseOrCredentials (wrapped).
@@ -141,19 +154,19 @@ func (v *fileVault) Unlocked() bool {
 	return v.db != nil
 }
 
-func (v *fileVault) Create(masterKey []byte) error {
+func (v *fileVault) Create(masterKey []byte) (string, error) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	if _, err := os.Stat(v.path); err == nil {
-		return ErrAlreadyExists
+		return "", ErrAlreadyExists
 	}
 	if err := os.MkdirAll(filepath.Dir(v.path), 0o700); err != nil {
-		return fmt.Errorf("secretvault: creating vault directory: %w", err)
+		return "", fmt.Errorf("secretvault: creating vault directory: %w", err)
 	}
 
 	creds, err := gokeepasslib.NewKeyDataCredentials(masterKey)
 	if err != nil {
-		return fmt.Errorf("secretvault: deriving vault credentials: %w", err)
+		return "", fmt.Errorf("secretvault: deriving vault credentials: %w", err)
 	}
 
 	db := gokeepasslib.NewDatabase(gokeepasslib.WithDatabaseKDBXVersion41())
@@ -163,12 +176,15 @@ func (v *fileVault) Create(masterKey []byte) error {
 	root.Name = rootGroupName
 	db.Content.Root = &gokeepasslib.RootData{Groups: []gokeepasslib.Group{root}}
 
+	id := NewVaultID()
+	setVaultIDHeader(db, id)
+
 	v.db = db
 	if err := v.persistLocked(); err != nil {
 		v.db = nil
-		return err
+		return "", err
 	}
-	return nil
+	return id, nil
 }
 
 func (v *fileVault) Unlock(masterKey []byte) error {

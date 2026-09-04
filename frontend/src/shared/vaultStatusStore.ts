@@ -11,14 +11,23 @@ import type { VaultStatus } from './bindings'
 // more fields on store.ts" placement configureEntityStore.ts already
 // established (CLAUDE.md's 500-line convention -- store.ts is already
 // near it).
+// vaultError carries the LAST lock/unlock outcome (goal 0330): a
+// command's run() returns void, so the surface that renders the failure
+// cannot await it. Before this, secretsCommands.ts swallowed the
+// rejection into console.error and the Unlock button looked inert.
+// Empty string means "no outstanding failure".
 interface VaultStatusState {
   vaultStatus: VaultStatus | null
+  vaultError: string
   setVaultStatus: (vaultStatus: VaultStatus) => void
+  setVaultError: (vaultError: string) => void
 }
 
 export const useVaultStatusStore = create<VaultStatusState>()((set) => ({
   vaultStatus: null,
+  vaultError: '',
   setVaultStatus: (vaultStatus) => set({ vaultStatus }),
+  setVaultError: (vaultError) => set({ vaultError }),
 }))
 
 // Mirrors store.ts's refreshWorkflows/refreshRequests shape: the one

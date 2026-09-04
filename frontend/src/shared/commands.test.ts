@@ -223,17 +223,17 @@ describe('Command.enabled (goal 0222 S1)', () => {
   })
 
   it('secrets.lockVault/unlockVault mirror the vault-lock state door (shared/vaultStatusStore.ts) exclusively -- exactly one is ever enabled', () => {
-    useVaultStatusStore.getState().setVaultStatus({ Exists: true, Unlocked: true, PresenceProtected: false })
+    useVaultStatusStore.getState().setVaultStatus({ Exists: true, Unlocked: true, RequireAuth: false, AuthAvailable: false })
     expect(findCommand('secrets.lockVault')?.enabled?.()).toBe(true)
     expect(findCommand('secrets.unlockVault')?.enabled?.()).toBe(false)
 
-    useVaultStatusStore.getState().setVaultStatus({ Exists: true, Unlocked: false, PresenceProtected: false })
+    useVaultStatusStore.getState().setVaultStatus({ Exists: true, Unlocked: false, RequireAuth: false, AuthAvailable: false })
     expect(findCommand('secrets.lockVault')?.enabled?.()).toBe(false)
     expect(findCommand('secrets.unlockVault')?.enabled?.()).toBe(true)
   })
 
   it('secrets.lockVault/unlockVault are both disabled before a vault exists at all', () => {
-    useVaultStatusStore.getState().setVaultStatus({ Exists: false, Unlocked: false, PresenceProtected: false })
+    useVaultStatusStore.getState().setVaultStatus({ Exists: false, Unlocked: false, RequireAuth: false, AuthAvailable: false })
     expect(findCommand('secrets.lockVault')?.enabled?.()).toBe(false)
     expect(findCommand('secrets.unlockVault')?.enabled?.()).toBe(false)
   })

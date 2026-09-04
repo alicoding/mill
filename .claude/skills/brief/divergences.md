@@ -26,6 +26,12 @@ this file is the record, a brief is a projection of it.
 - Obvious: a Settings toggle may implement a feature. Here: Settings
   configures the kernel only; side effects arrive as composition
   (ADR-0035).
+- Obvious: `kSecAttrAccessControl` gates a keychain item behind Touch
+  ID. Here: only in the data-protection keychain, which needs a Team ID
+  entitlement; Mill is self-signed, so Touch ID is a LocalAuthentication
+  gate in FRONT of a plain login-keychain item, and the key stays
+  readable by any process running as the user (goal 0330; SPEC `OPEN`
+  item for the Team ID).
 - Obvious: file-backed content gets bespoke wiring per type. Here:
   `fileBacked: true` in the noun registry + one shared watch +
   `object.openInDefaultApp` (goal 0232) — one declaration, no new

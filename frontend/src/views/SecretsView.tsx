@@ -8,6 +8,8 @@ import { SecretService } from '../shared/bindings'
 import type { SecretSummary } from '../shared/bindings'
 import { findCommand } from '../shared/commands'
 import { refreshVaultStatus, useVaultStatusStore } from '../shared/vaultStatusStore'
+import { vaultErrorKind } from '../shared/secretsCommands'
+import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
@@ -33,6 +35,11 @@ export default function SecretsView() {
   // own enabled() predicates can read the identical truth synchronously
   // from the palette/keyboard, not just from this view.
   const status = useVaultStatusStore((s) => s.vaultStatus)
+  // The last lock/unlock outcome (goal 0330). Lives in the store, not
+  // local state, because the buttons here run registry commands whose
+  // run() returns void -- the failure has to reach this view some other
+  // way than a returned promise.
+  const vaultError = useVaultStatusStore((s) => s.vaultError)
   const [list, setList] = useState<SecretSummary[] | null>(null)
   const [busy, setBusy] = useState(false)
   const [presenceBusy, setPresenceBusy] = useState(false)
@@ -43,6 +50,7 @@ export default function SecretsView() {
   const [historyID, setHistoryID] = useState<string | null>(null)
   const [accessHistoryID, setAccessHistoryID] = useState<string | null>(null)
   const [showAccessHistory, setShowAccessHistory] = useState(false)
+  const [confirmReset, setConfirmReset] = useState(false)
 
   const refresh = () => {
     refreshVaultStatus().then(() => {
@@ -123,9 +131,23 @@ export default function SecretsView() {
     )
   }
 
-  const protectionStatus = status.PresenceProtected ? t('touchId.protectedStatus') : t('touchId.keychainStatus')
+  const protectionStatus = status.RequireAuth ? t('touchId.requiredStatus') : t('touchId.keychainStatus')
 
   if (!status.Unlocked) {
+    // One line, in this view's own words, for each way an unlock ends
+    // badly. Anything the tokens don't name falls through to the error
+    // itself rather than being hidden.
+    const kind = vaultErrorKind(vaultError)
+    const lockedMessage = {
+      keyMismatch: t('locked.keyMismatch'),
+      noKey: t('locked.noKey'),
+      cancelled: t('locked.cancelled'),
+      authUnavailable: t('locked.authUnavailable'),
+      other: vaultError,
+      none: '',
+    }[kind]
+    const resetCommand = findCommand('secrets.resetVault')
+
     return (
       <PageContainer variant="wide" data-testid="secrets-view">
         {firstRunIntro}
@@ -134,16 +156,36 @@ export default function SecretsView() {
           <Blankslate.Heading>{t('locked.heading')}</Blankslate.Heading>
           <Blankslate.Description>{t('locked.description')}</Blankslate.Description>
           <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-protection-status">{protectionStatus}</Text>
-          <Button
-            variant="primary"
-            onClick={() => { setError(''); findCommand('secrets.unlockVault')?.run() }}
-            disabled={busy}
-            data-testid="secrets-unlock-cta"
-          >
-            {t('locked.cta')}
-          </Button>
-          {error && <Text as="p" size="small" className={styles.error} data-testid="secrets-unlock-error">{error}</Text>}
+          <Stack direction="horizontal" gap="condensed" align="center" justify="center">
+            <Button
+              variant="primary"
+              onClick={() => findCommand('secrets.unlockVault')?.run()}
+              disabled={busy}
+              data-testid="secrets-unlock-cta"
+            >
+              {t('locked.cta')}
+            </Button>
+            {resetCommand?.enabled?.() && (
+              <Button onClick={() => setConfirmReset(true)} data-testid="secrets-reset-cta">
+                {t('reset.cta')}
+              </Button>
+            )}
+          </Stack>
+          {lockedMessage && <Text as="p" size="small" className={styles.error} data-testid="secrets-unlock-error">{lockedMessage}</Text>}
         </Blankslate>
+        {confirmReset && (
+          <ConfirmDialog
+            title={t('reset.confirmTitle')}
+            body={t('reset.confirmBody')}
+            confirmLabel={t('reset.confirmCta')}
+            cancelLabel={t('reset.cancel')}
+            onCancel={() => setConfirmReset(false)}
+            onConfirm={() => {
+              setConfirmReset(false)
+              findCommand('secrets.resetVault')?.run()
+            }}
+          />
+        )}
       </PageContainer>
     )
   }
@@ -203,15 +245,17 @@ export default function SecretsView() {
       </Stack>
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.protectionRow}>
         <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-protection-status">{protectionStatus}</Text>
-        <FormControl>
+        <FormControl disabled={!status.AuthAvailable}>
           <Checkbox
-            checked={status.PresenceProtected}
-            disabled={presenceBusy}
+            checked={status.RequireAuth}
+            disabled={presenceBusy || !status.AuthAvailable}
             onChange={(e) => toggleTouchID(e.target.checked)}
             data-testid="secrets-touchid-toggle"
           />
           <FormControl.Label>{t('touchId.toggleLabel')}</FormControl.Label>
-          <FormControl.Caption>{t('touchId.toggleCaption')}</FormControl.Caption>
+          <FormControl.Caption>
+            {status.AuthAvailable ? t('touchId.toggleCaption') : t('touchId.unavailableCaption')}
+          </FormControl.Caption>
         </FormControl>
       </Stack>
       {error && <Text as="p" size="small" className={styles.error} data-testid="secrets-touchid-error">{error}</Text>}

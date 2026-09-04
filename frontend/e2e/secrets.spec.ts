@@ -1,5 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { SECRETS_MCP_BASE_PORT, SECRETS_SERVER_BASE_PORT, spawnMillServer, type SpawnedServer } from './fixtures/server'
@@ -63,25 +63,17 @@ test('secret manager: create vault, store/reveal/copy/edit/history/delete a pass
     const list = page.getByTestId('secrets-view')
     await expect(list.getByText('Example Login', { exact: true })).toBeVisible()
 
-    // --- Touch ID protection status/toggle (goal 0204): this spec runs
+    // --- The unlock requirement's toggle (goal 0330): this spec runs
     // against a real server-mode binary (task build:server, -tags
-    // server), which structurally never compiles presencekey's darwin
-    // code -- the exact fail-closed state item 4's build contract
-    // requires, exercised here for real rather than assumed. Default
-    // status is the plain keychain path, and attempting to turn Touch
-    // ID on surfaces the honest "not available in this mode" error
-    // instead of hanging or a raw keychain/cgo error string. ---
+    // server), which never compiles the LocalAuthentication adapter's
+    // darwin code, so this Mac-shaped requirement cannot be honoured
+    // here at all. The surface says so and refuses to offer it, rather
+    // than accepting a setting it could never enforce. ---
     await expect(page.getByTestId('secrets-protection-status')).toHaveText('Protected by your login keychain')
     const touchIDToggle = page.getByTestId('secrets-touchid-toggle')
     await expect(touchIDToggle).not.toBeChecked()
-    await touchIDToggle.click()
-    // Wails wraps a bound method's returned Go error as "RuntimeError: <message>"
-    // on the JS side -- the substring match below asserts the actual
-    // Go sentinel text (secretsvc.ErrPresenceUnsupported) without
-    // depending on that wrapper's exact prefix.
-    await expect(page.getByTestId('secrets-touchid-error')).toContainText("Touch ID protection isn't available in this mode")
-    await expect(touchIDToggle).not.toBeChecked()
-    await expect(page.getByTestId('secrets-protection-status')).toHaveText('Protected by your login keychain')
+    await expect(touchIDToggle).toBeDisabled()
+    await expect(page.getByText("Touch ID or a password isn't set up on this Mac.")).toBeVisible()
 
     // --- Create a new secret ---
     await page.getByTestId('secrets-new').click()
@@ -205,14 +197,76 @@ test('secret manager: create vault, store/reveal/copy/edit/history/delete a pass
     await expect(paletteDialog(page)).toHaveCount(0)
     await expect(list.getByText('Example Login', { exact: true })).toBeVisible()
 
-    // Regression: a Touch ID toggle error from the unlocked view must
-    // not survive a Lock -- it's a stale message about a DIFFERENT
-    // action, not the locked blankslate's own state.
-    await page.getByTestId('secrets-touchid-toggle').click()
-    await expect(page.getByTestId('secrets-touchid-error')).toBeVisible()
+    // A vault this device CAN open shows no failure line, and never
+    // offers to replace itself.
     await page.getByTestId('secrets-lock').click()
     await expect(page.getByText('Vault is locked')).toBeVisible()
-    await expect(page.getByText("Touch ID protection isn't available in this mode")).toHaveCount(0)
+    await expect(page.getByTestId('secrets-unlock-error')).toHaveCount(0)
+    await expect(page.getByTestId('secrets-reset-cta')).toHaveCount(0)
+  } finally {
+    await browser.close()
+    if (server) await server.stop()
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+// Goal 0330: a vault file whose key this device does not hold. The
+// server's keyring is process-local (MILL_TEST_KEYRING=memory), so a
+// second server over the SAME vault file reproduces exactly that -- the
+// file is there, the key is not. The locked state has to SAY so and
+// offer the one door out, and taking it must keep the unreadable file
+// rather than deleting it. Dedicated server pair (own
+// MILL_SECRETS_PATH) for the same reason the spec above has one.
+// eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
+test('secret manager: a vault with no key on this device says so, and Start a new vault keeps the old file', async ({}, testInfo) => {
+  const idx = testInfo.parallelIndex
+  const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-secrets-nokey-${idx}-`))
+  const settingsPath = path.join(dir, 'settings.json')
+  const executionDbPath = path.join(dir, 'execution.db')
+  const backupDir = path.join(dir, 'backups')
+  const port = SECRETS_SERVER_BASE_PORT + idx
+  const mcpPort = SECRETS_MCP_BASE_PORT + idx
+
+  let server: SpawnedServer | undefined
+  const browser = await chromium.launch()
+  try {
+    // --- First run: create the vault. Its key lands in THIS process's
+    // in-memory keyring and nowhere else. ---
+    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
+    let page = await browser.newPage()
+    await page.goto(`${server.baseURL}/`)
+    await page.getByRole('link', { name: 'Secrets' }).click()
+    await page.getByRole('button', { name: 'Got it' }).click()
+    await page.getByTestId('secrets-setup-cta').click()
+    await expect(page.getByTestId('secrets-view').getByText('Example Login', { exact: true })).toBeVisible()
+    await page.close()
+    await server.stop()
+
+    // --- Second run: same vault file, empty keyring. ---
+    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
+    page = await browser.newPage()
+    await page.goto(`${server.baseURL}/`)
+    await page.getByRole('link', { name: 'Secrets' }).click()
+    await expect(page.getByText('Vault is locked')).toBeVisible()
+
+    // Unlock ANSWERS: this button used to reject into the console, so
+    // nothing on screen changed at all.
+    await page.getByTestId('secrets-unlock-cta').click()
+    await expect(page.getByTestId('secrets-unlock-error')).toHaveText("There's no key for this vault on this device.")
+
+    // --- The one door out, confirmed by name ---
+    await page.getByTestId('secrets-reset-cta').click()
+    const confirm = page.getByRole('alertdialog', { name: 'Start a new vault?' })
+    await expect(confirm).toBeVisible()
+    await expect(confirm.getByText('The current file is kept as a backup.', { exact: false })).toBeVisible()
+    await confirm.getByRole('button', { name: 'Start new vault' }).click()
+
+    // A working, unlocked vault with its own seeded example.
+    await expect(page.getByTestId('secrets-view').getByText('Example Login', { exact: true })).toBeVisible()
+
+    // The unreadable file is kept beside the new one, never deleted.
+    const backups = readdirSync(dir).filter((f) => f.startsWith('secrets.kdbx.') && f.endsWith('.bak'))
+    expect(backups).toHaveLength(1)
   } finally {
     await browser.close()
     if (server) await server.stop()

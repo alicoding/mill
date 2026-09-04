@@ -13,6 +13,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/adapters/secretvault"
 	"github.com/alicoding/mill/internal/domain/secretsource"
+	"github.com/alicoding/mill/internal/services/servicetest"
 )
 
 func envSourceService(t *testing.T) *SecretService {
@@ -23,7 +24,7 @@ func envSourceService(t *testing.T) *SecretService {
 		t.Fatal(err)
 	}
 	src := secretsource.Source{ID: "proj-env", Label: "Project .env", Kind: secretsource.KindEnv, Path: envPath, UpdatedAt: time.Now()}
-	s := NewSecretService(secretvault.New(filepath.Join(dir, "secrets.kdbx")), credential.NewInMemory())
+	s := NewSecretService(secretvault.New(filepath.Join(dir, "secrets.kdbx")), credential.NewInMemory(), servicetest.NewFakeStore())
 	t.Cleanup(s.stopAutoLock)
 	s.SetSourcesLister(func() []secretsource.Source { return []secretsource.Source{src} })
 	return s
@@ -81,7 +82,7 @@ func brunoSourceService(t *testing.T) (*SecretService, string) {
 	must(".env", "API_TOKEN=tok-bruno\n")
 	must("environments/dev.bru", "vars:secret [ API_TOKEN, SIGNING_KEY ]\n")
 	src := secretsource.Source{ID: "gazette", Label: "Gazette collection", Kind: secretsource.KindBruno, Path: dir, UpdatedAt: time.Now()}
-	s := NewSecretService(secretvault.New(filepath.Join(dir, "secrets.kdbx")), credential.NewInMemory())
+	s := NewSecretService(secretvault.New(filepath.Join(dir, "secrets.kdbx")), credential.NewInMemory(), servicetest.NewFakeStore())
 	t.Cleanup(s.stopAutoLock)
 	s.SetSourcesLister(func() []secretsource.Source { return []secretsource.Source{src} })
 	return s, dir
@@ -119,7 +120,7 @@ func TestCLISources_ListResolveAndProblems(t *testing.T) {
 	dir := t.TempDir()
 	op := secretsource.Source{ID: "work-op", Label: "Work 1Password", Kind: secretsource.KindOnePassword, Path: "Work", UpdatedAt: time.Now()}
 	bw := secretsource.Source{ID: "my-bw", Label: "Bitwarden", Kind: secretsource.KindBitwarden, UpdatedAt: time.Now()}
-	s := NewSecretService(secretvault.New(filepath.Join(dir, "secrets.kdbx")), credential.NewInMemory())
+	s := NewSecretService(secretvault.New(filepath.Join(dir, "secrets.kdbx")), credential.NewInMemory(), servicetest.NewFakeStore())
 	t.Cleanup(s.stopAutoLock)
 	s.SetSourcesLister(func() []secretsource.Source { return []secretsource.Source{op, bw} })
 	prevEntries, prevResolve := cliEntries, cliResolve
