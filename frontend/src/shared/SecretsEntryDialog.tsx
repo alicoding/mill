@@ -45,6 +45,7 @@ export function SecretsEntryDialog({ editID, defaultTitle, defaultKind, onClose,
   const [tags, setTags] = useState('')
   const [kind, setKind] = useState<Kind>(defaultKind ?? Kind.KindText)
   const [sourceRef, setSourceRef] = useState('')
+  const [fromSource, setFromSource] = useState(false)
   const [sourceKeys, setSourceKeys] = useState<{ ID: string; Title: string }[]>([])
   const [revealed, setRevealed] = useState(editID === null) // a brand-new entry starts revealed -- nothing to hide yet
   const [error, setError] = useState('')
@@ -61,7 +62,7 @@ export function SecretsEntryDialog({ editID, defaultTitle, defaultKind, onClose,
     SecretService.RevealSecret(editID).then((e) => {
       setTitle(e.Title); setUsername(e.Username); setPassword(e.Password)
       setURL(e.URL); setNotes(e.Notes); setTags(e.Tags)
-      setKind(e.Kind || Kind.KindText); setSourceRef(e.SourceRef ?? '')
+      setKind(e.Kind || Kind.KindText); setSourceRef(e.SourceRef ?? ''); setFromSource((e.SourceRef ?? '') !== '')
       setLoaded(true)
     }).catch((err) => { setError(String(err)); setLoaded(true) })
   }, [editID])
@@ -77,16 +78,17 @@ export function SecretsEntryDialog({ editID, defaultTitle, defaultKind, onClose,
       setError(t('titleRequired'))
       return
     }
-    if (sourceRef !== '' && sourceKeys.length === 0) {
+    if (fromSource && sourceRef === '') {
       setError(t('noSourcesConfigured'))
       return
     }
     setSaving(true)
     setError('')
     try {
+      const stored = fromSource ? sourceRef : ''
       const saved = editID
-        ? await SecretService.UpdateSecret(editID, title, username, password, url, notes, tags, kind, sourceRef)
-        : await SecretService.CreateSecret(title, username, password, url, notes, tags, kind, sourceRef)
+        ? await SecretService.UpdateSecret(editID, title, username, password, url, notes, tags, kind, stored)
+        : await SecretService.CreateSecret(title, username, password, url, notes, tags, kind, stored)
       await refreshSecretTitles()
       onSaved(saved.ID)
     } catch (err) {
@@ -96,7 +98,6 @@ export function SecretsEntryDialog({ editID, defaultTitle, defaultKind, onClose,
     }
   }
 
-  const fromSource = sourceRef !== ''
 
   return (
     <Dialog
@@ -121,10 +122,10 @@ export function SecretsEntryDialog({ editID, defaultTitle, defaultKind, onClose,
           </FormControl>
 
           <SegmentedControl aria-label={t('fields.storage')} data-testid="secret-storage-mode">
-            <SegmentedControl.Button selected={!fromSource} onClick={() => setSourceRef('')} data-testid="secret-storage-here">
+            <SegmentedControl.Button selected={!fromSource} onClick={() => setFromSource(false)} data-testid="secret-storage-here">
               {t('storage.here')}
             </SegmentedControl.Button>
-            <SegmentedControl.Button selected={fromSource} onClick={() => setSourceRef(sourceKeys[0]?.ID ?? '')} data-testid="secret-storage-source">
+            <SegmentedControl.Button selected={fromSource} onClick={() => { setFromSource(true); setSourceRef((r) => r || (sourceKeys[0]?.ID ?? '')) }} data-testid="secret-storage-source">
               {t('storage.fromASource')}
             </SegmentedControl.Button>
           </SegmentedControl>
@@ -178,9 +179,13 @@ function SourceKeyField({ sourceRef, setSourceRef, sourceKeys }: {
     <FormControl>
       <FormControl.Label>{t('fields.sourceKey')}</FormControl.Label>
       <FormControl.Caption>{t('fields.sourceKeyCaption')}</FormControl.Caption>
-      <Select value={sourceRef} onChange={(e) => setSourceRef(e.target.value)} data-testid="secret-source-select">
-        {sourceKeys.map((e) => <Select.Option key={e.ID} value={e.ID}>{e.Title}</Select.Option>)}
-      </Select>
+      {sourceKeys.length === 0 ? (
+        <Text as="p" size="small" data-testid="secret-no-sources">{t('noSourcesConfigured')}</Text>
+      ) : (
+        <Select value={sourceRef} onChange={(e) => setSourceRef(e.target.value)} data-testid="secret-source-select">
+          {sourceKeys.map((e) => <Select.Option key={e.ID} value={e.ID}>{e.Title}</Select.Option>)}
+        </Select>
+      )}
     </FormControl>
   )
 }
@@ -198,10 +203,13 @@ function ValueField({ kind, password, setPassword, revealed, setRevealed, genera
   generate: () => void
 }) {
   const { t } = useTranslation('secrets')
+  // A key, certificate or file is a value, not a password: calling it
+  // one would be Mill's vocabulary, not the reader's.
+  const multiline = MULTILINE_KINDS.includes(kind)
   return (
     <FormControl>
-      <FormControl.Label>{t('fields.password')}</FormControl.Label>
-      {MULTILINE_KINDS.includes(kind) ? (
+      <FormControl.Label>{multiline ? t('fields.value') : t('fields.password')}</FormControl.Label>
+      {multiline ? (
         <Textarea
           value={password}
           onChange={(e) => setPassword(e.target.value)}

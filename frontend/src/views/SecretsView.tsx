@@ -59,8 +59,6 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   const [showAccessHistory, setShowAccessHistory] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
 
-  // sectionSwitch is rendered by every branch below -- locked, unset
-  // and unlocked -- so Sources stays one click away in each of them.
   const sectionSwitch = (
     <SegmentedControl aria-label={t('sections.ariaLabel')} className={styles.sections} data-testid="secrets-sections">
       <SegmentedControl.Button selected={section === 'vault'} onClick={() => setSection('vault')} data-testid="secrets-section-vault">
@@ -70,6 +68,22 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
         {t('sections.sources')}
       </SegmentedControl.Button>
     </SegmentedControl>
+  )
+
+  // pageHeader is rendered by every branch below -- locked, unset and
+  // unlocked, vault and sources -- so this page is titled the same way
+  // in each of them, and Sources stays one click away. The subtitle is
+  // the one part that differs: it says what THIS section is.
+  const pageHeader = (
+    <>
+      <Stack direction="vertical" gap="none" className={styles.pageHeader}>
+        <Heading as="h1" id="secrets-heading">{t('heading')}</Heading>
+        <Text as="p" size="small" className={styles.subtitle}>
+          {section === 'sources' ? t('sections.sourcesSubtitle') : t('subtitle')}
+        </Text>
+      </Stack>
+      {sectionSwitch}
+    </>
   )
 
   const refresh = () => {
@@ -138,7 +152,7 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
     return (
       <PageContainer variant="wide" data-testid="secrets-view">
         {firstRunIntro}
-        {sectionSwitch}
+        {pageHeader}
         <ConfigureSecretSources />
       </PageContainer>
     )
@@ -148,7 +162,7 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
     return (
       <PageContainer variant="wide" data-testid="secrets-view">
         {firstRunIntro}
-        {sectionSwitch}
+        {pageHeader}
         <Blankslate>
           <Blankslate.Visual><KeyIcon size={32} /></Blankslate.Visual>
           <Blankslate.Heading>{t('setup.heading')}</Blankslate.Heading>
@@ -182,7 +196,7 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
     return (
       <PageContainer variant="wide" data-testid="secrets-view">
         {firstRunIntro}
-        {sectionSwitch}
+        {pageHeader}
         <Blankslate>
           <Blankslate.Visual><LockIcon size={32} /></Blankslate.Visual>
           <Blankslate.Heading>{t('locked.heading')}</Blankslate.Heading>
@@ -247,12 +261,8 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   return (
     <PageContainer variant="wide" data-testid="secrets-view">
       {firstRunIntro}
-      {sectionSwitch}
-      <Stack direction="horizontal" justify="space-between" align="center" className={styles.header}>
-        <Stack direction="vertical" gap="none">
-          <Heading as="h1" id="secrets-heading">{t('heading')}</Heading>
-          <Text as="p" size="small" className={styles.subtitle}>{t('subtitle')}</Text>
-        </Stack>
+      {pageHeader}
+      <Stack direction="horizontal" justify="end" align="center" className={styles.header}>
         <Stack direction="horizontal" gap="condensed" align="center">
           <IconButton
             icon={HistoryIcon}

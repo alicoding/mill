@@ -1,14 +1,16 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { createSecret, deleteSecret } from './fixtures/secretStore'
 
 // Exercises ADR-0015 Phase 3 (JOSE/JWE) through the real UI/backend --
 // the actual encryption round trip is already proven by the Go tests
 // (internal/domain/composition/jose_test.go, real RSA keypairs against
-// go-jose/v4 directly); this proves the Configure form's toggle/fields
-// persist correctly through Create -> persist -> restore -> Edit, and
-// that the private key never comes back pre-filled (write-only,
-// docs/SPEC.md §3.5). Cleans up what it creates, per
-// .claude/rules/testing.md.
+// go-jose/v4 directly); this proves the Configure form's toggle and its
+// two key PICKERS persist correctly through Create -> persist ->
+// restore -> Edit. Since goal 0306 a key is named, not typed: both
+// fields pick an entry from the secret store, and reopening Edit shows
+// the same entry still named rather than a blank box. Cleans up what it
+// creates, per .claude/rules/testing.md.
 
 function requestRow(page: import('@playwright/test').Page, label: string) {
   return page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(label, { exact: true }) })
@@ -25,6 +27,11 @@ const fakePrivateKeyPEM = '-----BEGIN PRIVATE KEY-----\nfake-test-key-not-real-c
 
 test('JOSE encryption toggle, recipient public key, and decrypt-response persist through Save and reload into Edit', async ({ page }) => {
   await page.goto('/')
+  // A key is named, not typed (goal 0306): both entries exist in the
+  // store before the form can point at them, and both are kind "key",
+  // so the pickers offer them at all.
+  const publicRef = await createSecret(page, 'ZzE2eJosePublicKey', fakePublicKeyPEM, 'key')
+  const privateRef = await createSecret(page, 'ZzE2eJosePrivateKey', fakePrivateKeyPEM, 'key')
   await page.getByRole('link', { name: 'Configure' }).click()
 
   await page.getByTestId('new-integration').click()
@@ -41,13 +48,13 @@ test('JOSE encryption toggle, recipient public key, and decrypt-response persist
   await page.getByTestId('jose-enabled-checkbox').click()
   await expect(page.getByTestId('jose-recipient-public-key')).toBeVisible()
 
-  await page.getByTestId('jose-recipient-public-key').fill(fakePublicKeyPEM)
+  await page.getByTestId('jose-recipient-public-key').selectOption({ label: 'ZzE2eJosePublicKey' })
 
   // The private-key field is further gated behind "Decrypt response".
   await expect(page.getByTestId('jose-private-key')).toHaveCount(0)
   await page.getByTestId('jose-decrypt-response-checkbox').click()
   await expect(page.getByTestId('jose-private-key')).toBeVisible()
-  await page.getByTestId('jose-private-key').fill(fakePrivateKeyPEM)
+  await page.getByTestId('jose-private-key').selectOption({ label: 'ZzE2eJosePrivateKey' })
 
   await page.getByRole('button', { name: 'Save integration' }).click()
 
@@ -58,14 +65,20 @@ test('JOSE encryption toggle, recipient public key, and decrypt-response persist
   await expect(page.getByTestId('request-summary')).toBeVisible()
   await expect(page.getByText('Enabled (decrypts responses)')).toBeVisible()
 
-  // Reopening Edit reloads the non-secret config -- the private key
-  // itself stays blank (write-only), never pre-filled.
+  // Reopening Edit shows both keys still NAMED -- the reference is the
+  // request's own field, so an edit cannot silently unname a key the
+  // way a blanked write-only box could.
   await page.getByTestId('summary-edit').click()
-  await expect(page.getByTestId('jose-recipient-public-key')).toHaveValue(fakePublicKeyPEM)
-  await expect(page.getByTestId('jose-private-key')).toHaveValue('')
+  await page.getByTestId('request-advanced-summary').click()
+  await expect(page.getByTestId('jose-recipient-public-key')).toHaveValue(publicRef.replace('vault:', ''))
+  await expect(page.getByTestId('jose-private-key')).toHaveValue(privateRef.replace('vault:', ''))
+  // The value itself is nowhere on the page: a picker shows titles.
+  await expect(page.locator('body')).not.toContainText('fake-test-key-not-real-crypto')
 
   await page.getByRole('button', { name: 'Cancel' }).click()
   await deleteRequest(page, 'JOSE Request')
+  await deleteSecret(page, publicRef)
+  await deleteSecret(page, privateRef)
 })
 
 test('JOSE encryption is disabled by default, and toggling it off after enabling hides its fields again', async ({ page }) => {

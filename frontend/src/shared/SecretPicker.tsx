@@ -38,9 +38,12 @@ export function SecretPicker({ value, onChange, kinds, newEntryTitle, testID }: 
   const { t } = useTranslation('views')
   const { titles, kinds: entryKinds, error, loaded } = useSecretTitles()
   const [adding, setAdding] = useState<Kind | null>(null)
+  // Refreshed on every mount, not just the first: an entry added in
+  // the Secrets view, or by another field's own Add, has to be on
+  // offer here without a reload.
   useEffect(() => {
-    if (!loaded) void refreshSecretTitles()
-  }, [loaded])
+    void refreshSecretTitles()
+  }, [])
 
   const selected = toEntryID(value)
   const accepts = (id: string) => kinds === undefined || kinds.includes(entryKinds[id] ?? Kind.KindText)
