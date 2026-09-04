@@ -122,7 +122,7 @@ func init() {
 		Complexity:  ComplexityAdvanced,      // authors a JSON-shaped output-field schema, not a plain value
 		Consumes:    []PayloadKind{PayloadText},
 		Produces:    PayloadProduce{Passthrough: true},
-		Output:      "unchanged payload -- the extracted typed result is written into the named Attributes below",
+		Output:      "unchanged payload; the extracted typed result is written into the named Attributes below",
 		Label:       "Extract fields with AI",
 		Description: "Sends a prompt plus the payload to a configured AI provider, requests a structured response, and writes each declared output field into this workflow's Attributes by the same key. Every declared field is required; one the provider omits is written empty rather than dropped.",
 		ConfigFields: []ConfigField{
@@ -144,7 +144,7 @@ func init() {
 				// other structured, non-generic config shapes.
 				Key: "outputFields", Multiline: true,
 				Label:       "Output fields",
-				Description: "The typed fields this step extracts -- each becomes an Attribute of the same key, authored via the field editor below (not raw JSON).",
+				Description: "The typed fields this step extracts. Each becomes an Attribute of the same key, authored via the field editor below (not raw JSON).",
 				Default:     "", Type: FieldText,
 			},
 		},

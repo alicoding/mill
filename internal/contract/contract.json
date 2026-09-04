@@ -1381,7 +1381,7 @@
           "SystemManaged": false
         }
       ],
-      "Output": "the changed card's id -- also seeds cardId/kindId/cardTitle/changeType as typed Attributes when this workflow declares them",
+      "Output": "the changed card's id; also seeds cardId/kindId/cardTitle/changeType as typed Attributes when this workflow declares them",
       "Consumes": [
         "none"
       ],
@@ -1397,7 +1397,7 @@
       "ID": "trigger-callable",
       "Kind": "trigger",
       "Label": "Called by another workflow",
-      "Description": "Fires only when another workflow invokes this one with its Child Workflow step -- never by an outside event. A workflow starting here declares itself callable: it appears in the Child Workflow step's picker and nowhere else.",
+      "Description": "Fires only when another workflow invokes this one with its Child Workflow step, never by an outside event. A workflow starting here declares itself callable: it appears in the Child Workflow step's picker and nowhere else.",
       "ConfigFields": null,
       "Output": "the caller's typed input",
       "Consumes": [
@@ -1415,7 +1415,7 @@
       "ID": "trigger-clipboard-change",
       "Kind": "trigger",
       "Label": "Clipboard captured",
-      "Description": "Fires when you copy something new -- skips content marked confidential by the app you copied it from, and skips text Mill itself just wrote back to the clipboard.",
+      "Description": "Fires when you copy something new. It skips content marked confidential by the app you copied it from, and skips text Mill itself just wrote back to the clipboard.",
       "ConfigFields": null,
       "Output": "the clipboard text that changed, already screened for confidential content and Mill's own writes",
       "Consumes": [
@@ -1473,7 +1473,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "A glob like *.md or report-*.csv -- only files whose name matches fire the trigger. Leave empty to fire on any change.",
+          "Description": "A glob like *.md or report-*.csv. Only files whose name matches fire the trigger. Leave empty to fire on any change.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -1498,7 +1498,7 @@
       "ID": "trigger-hotkey",
       "Kind": "trigger",
       "Label": "Hotkey pressed",
-      "Description": "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.",
+      "Description": "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here.",
       "ConfigFields": null,
       "Output": "empty payload — the run starts here",
       "Consumes": [
@@ -1567,7 +1567,7 @@
       "ID": "trigger-system-event",
       "Kind": "trigger",
       "Label": "System event",
-      "Description": "Fires when Mill's own engine emits an internal event -- a run finishing, failing, or parking for approval -- so a workflow can react to the platform itself, like forwarding pending approvals to another device.",
+      "Description": "Fires when Mill's own engine emits an internal event (a run finishing, failing, or parking for approval), so a workflow can react to the platform itself, like forwarding pending approvals to another device.",
       "ConfigFields": [
         {
           "Key": "event",
@@ -1604,7 +1604,7 @@
           "SystemManaged": false
         }
       ],
-      "Output": "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp, version?, channel?} -- the run/decision that caused this event. nodeId is only set for decision-parked (the parked step's ID); version/channel only for update-available.",
+      "Output": "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp, version?, channel?}, the run/decision that caused this event. nodeId is only set for decision-parked (the parked step's ID); version/channel only for update-available.",
       "Consumes": [
         "none"
       ],
@@ -1620,7 +1620,7 @@
       "ID": "capture-attribute",
       "Kind": "capture",
       "Label": "Read attribute",
-      "Description": "Replaces the payload with the value of one of this workflow's declared Attributes -- e.g. a callable workflow's typed input, or a value a Decision already routed on.",
+      "Description": "Replaces the payload with the value of one of this workflow's declared Attributes, e.g. a callable workflow's typed input, or a value a Decision already routed on.",
       "ConfigFields": [
         {
           "Key": "attribute",
@@ -1671,7 +1671,7 @@
       "ID": "capture-clipboard-info",
       "Kind": "capture",
       "Label": "Inspect clipboard",
-      "Description": "Reads the clipboard's own format report -- which flavors (HTML, plain text, images) are present and their sizes -- and summarizes whether HTML and plain text are available, followed by the raw report. A diagnostic for pastes that look right but convert wrong: see directly whether HTML was actually on the clipboard.",
+      "Description": "Reads the clipboard's own format report, listing which flavors (HTML, plain text, images) are present and their sizes, and summarizes whether HTML and plain text are available, followed by the raw report. A diagnostic for pastes that look right but convert wrong: see directly whether HTML was actually on the clipboard.",
       "ConfigFields": null,
       "Output": "a summary of the clipboard's flavors",
       "Consumes": [
@@ -1689,7 +1689,7 @@
       "ID": "capture-clipboard-text",
       "Kind": "capture",
       "Label": "Read clipboard text",
-      "Description": "Reads the clipboard's plain text only, never its HTML -- for ids, tokens, and anything copied as-is.",
+      "Description": "Reads the clipboard's plain text only, never its HTML. Use it for ids, tokens, and anything copied as-is.",
       "ConfigFields": null,
       "Output": "plain text from the clipboard",
       "Consumes": [
@@ -1707,7 +1707,7 @@
       "ID": "capture-file",
       "Kind": "capture",
       "Label": "Read file",
-      "Description": "Reads a local file into the payload. \"payload\" source treats the current payload as the file path -- what a File changed trigger supplies; \"literal\" reads a fixed path instead.",
+      "Description": "Reads a local file into the payload. \"payload\" source treats the current payload as the file path, which a File changed trigger supplies; \"literal\" reads a fixed path instead.",
       "ConfigFields": [
         {
           "Key": "source",
@@ -1758,7 +1758,7 @@
       "ID": "child-workflow",
       "Kind": "process",
       "Label": "Run another workflow",
-      "Description": "Runs another of your workflows as a step and uses its result as this workflow's payload. The other workflow must start with the \"Called by another workflow\" trigger -- that marks it safe to invoke from here rather than by a hotkey or schedule of its own.",
+      "Description": "Runs another of your workflows as a step and uses its result as this workflow's payload. The other workflow must start with the \"Called by another workflow\" trigger.",
       "ConfigFields": [
         {
           "Key": "workflowId",
@@ -1766,7 +1766,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "Which workflow to run. Only workflows whose trigger is \"callable by another workflow\" appear here -- if the list is empty, create a workflow and drag that trigger onto its canvas first.",
+          "Description": "Which workflow to run. Only workflows whose trigger is \"callable by another workflow\" appear here. If the list is empty, create a workflow and drag that trigger onto its canvas first.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -1780,7 +1780,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "Leave empty to run fresh every time (the normal case). To make repeated runs with the same input reuse the first run's recorded result instead of running again, put a value here that identifies the input -- a literal, or attr:\u003cname\u003e to use one of this workflow's attributes.",
+          "Description": "Leave empty to run fresh every time (the normal case). To make repeated runs with the same input reuse the first run's recorded result instead of running again, put a value here that identifies the input: a literal, or attr:\u003cname\u003e to use one of this workflow's attributes.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -1833,7 +1833,7 @@
       "ID": "code-execution",
       "Kind": "process",
       "Label": "Run a command",
-      "Description": "Runs one command locally, inside a configured execution environment (pinned shell, directory, and environment). External effect -- the run asks for approval by default. Source \"payload\" runs the upstream payload as the command; \"literal\" runs a fixed script instead. A running command can be stopped from this workflow's Runs tab.",
+      "Description": "Runs one command locally, inside a configured execution environment (pinned shell, directory, and environment). External effect: the run asks for approval by default. Source \"payload\" runs the upstream payload as the command; \"literal\" runs a fixed script instead. A running command can be stopped from this workflow's Runs tab.",
       "ConfigFields": [
         {
           "Key": "envId",
@@ -1929,7 +1929,7 @@
       "ID": "human-review",
       "Kind": "process",
       "Label": "Ask for review",
-      "Description": "Pauses the run for a person: the item lands in the Review queue (and this workflow's Runs tab), where a reviewer can approve, deny, and fill in values for this workflow's declared Attributes -- their input flows into the resumed run. Denying (or 24 hours of silence) stops the run. A deliberate, visible checkpoint you drew into the flow -- the ambient guardrail rules (Configure \u003e Guardrails) never skip it.",
+      "Description": "Pauses the run for a person: the item lands in the Review queue (and this workflow's Runs tab), where a reviewer can approve, deny, and fill in values for this workflow's declared Attributes. Their input flows into the resumed run. Denying (or 24 hours of silence) stops the run. A deliberate, visible checkpoint you drew into the flow: the ambient guardrail rules (Configure \u003e Guardrails) never skip it.",
       "ConfigFields": [
         {
           "Key": "message",
@@ -1976,7 +1976,7 @@
       "ID": "integration-http",
       "Kind": "process",
       "Label": "Call an API",
-      "Description": "Calls a Configure-authored integration's API and replaces the payload with the response body. The step only picks WHICH integration and binds data -- method, endpoint path, and body all live on the integration itself (Configure \u003e Integration): transport configuration belongs on the integration, not the workflow step. Legacy steps saved with their own path/method/bodyTemplate config keep working (those keys still win when present); they're just no longer authorable here.",
+      "Description": "Calls a Configure-authored integration's API and replaces the payload with the response body. The step only picks WHICH integration and binds data. Method, endpoint path, and body all live on the integration itself (Configure \u003e Integration). Legacy steps saved with their own path/method/bodyTemplate config keep working (those keys still win when present); they're just no longer authorable here.",
       "ConfigFields": [
         {
           "Key": "requestId",
@@ -2116,7 +2116,7 @@
       "ID": "list-search",
       "Kind": "process",
       "Label": "Search list rows",
-      "Description": "Searches a Configure-authored List's rows against one or more match parameters (exact or fuzzy, per-column, AND'd together) and writes the result into Attributes. Supersedes list-lookup for anything beyond a single exact key match -- list-lookup keeps working unchanged for existing workflows. Expired rows are excluded by default; \"Include expired rows\" opts in.",
+      "Description": "Searches a Configure-authored List's rows against one or more match parameters (exact or fuzzy, per-column, AND'd together) and writes the result into Attributes. Supersedes list-lookup for anything beyond a single exact key match. list-lookup keeps working unchanged for existing workflows. Expired rows are excluded by default; \"Include expired rows\" opts in.",
       "ConfigFields": [
         {
           "Key": "listId",
@@ -2152,7 +2152,7 @@
           "Type": "boolean",
           "Required": false,
           "Default": "false",
-          "Description": "Off by default -- Expired rows never match unless explicitly included.",
+          "Description": "Off by default. Expired rows never match unless explicitly included.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -2166,7 +2166,7 @@
           "Type": "boolean",
           "Required": false,
           "Default": "false",
-          "Description": "Stops scanning after the first match. The output shape stays the same typed Object either way -- results just has at most one entry -- so turning this on or off never changes what a downstream Decision/binding can reference.",
+          "Description": "Stops scanning after the first match. The output shape stays the same typed Object either way (results just has at most one entry), so turning this on or off never changes what a downstream Decision/binding can reference.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -2316,7 +2316,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "One category per line -- the AI picks exactly one of these.",
+          "Description": "One category per line. The AI picks exactly one of these.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -2339,7 +2339,7 @@
           "SystemManaged": false
         }
       ],
-      "Output": "unchanged payload -- the chosen category is written into the named Attribute below",
+      "Output": "unchanged payload; the chosen category is written into the named Attribute below",
       "Consumes": [
         "text"
       ],
@@ -2355,7 +2355,7 @@
       "ID": "process-ai-completion",
       "Kind": "process",
       "Label": "Generate with AI",
-      "Description": "Sends a prompt plus the payload to a configured AI provider -- local Ollama, or your own OpenAI-compatible or Anthropic endpoint -- and replaces the payload with the completion. The system prompt is this step's System prompt field; the user message is the Prompt followed by the payload when one exists. One call per run, never a loop.",
+      "Description": "Sends a prompt plus the payload to a configured AI provider (local Ollama, or your own OpenAI-compatible or Anthropic endpoint) and replaces the payload with the completion. The system prompt is this step's System prompt field; the user message is the Prompt followed by the payload when one exists. One call per run, never a loop.",
       "ConfigFields": [
         {
           "Key": "aiproviderId",
@@ -2453,7 +2453,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "The typed fields this step extracts -- each becomes an Attribute of the same key, authored via the field editor below (not raw JSON).",
+          "Description": "The typed fields this step extracts. Each becomes an Attribute of the same key, authored via the field editor below (not raw JSON).",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -2462,7 +2462,7 @@
           "SystemManaged": false
         }
       ],
-      "Output": "unchanged payload -- the extracted typed result is written into the named Attributes below",
+      "Output": "unchanged payload; the extracted typed result is written into the named Attributes below",
       "Consumes": [
         "text"
       ],
@@ -2553,7 +2553,7 @@
       "ID": "process-extract-html",
       "Kind": "process",
       "Label": "Extract HTML section",
-      "Description": "Extracts one element (by CSS selector) out of the payload's HTML, dropping everything else -- e.g. a saved page's main-content region, stripping nav/header/footer chrome before converting to Markdown. Fails the step if nothing matches (fail-safe: never silently passes the whole, unfiltered document through).",
+      "Description": "Extracts one element (by CSS selector) out of the payload's HTML, dropping everything else, e.g. a saved page's main-content region, stripping nav/header/footer chrome before converting to Markdown. Fails the step if nothing matches (fail-safe: never silently passes the whole, unfiltered document through).",
       "ConfigFields": [
         {
           "Key": "selector",
@@ -2561,7 +2561,7 @@
           "Type": "text",
           "Required": false,
           "Default": "#main-content, main, article",
-          "Description": "A CSS selector, optionally comma-separated (e.g. \"#main-content, main, article\") -- the first matching element (in document order) is kept.",
+          "Description": "A CSS selector, optionally comma-separated (e.g. \"#main-content, main, article\"). The first matching element (in document order) is kept.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -2620,7 +2620,7 @@
       "ID": "process-inject-text",
       "Kind": "process",
       "Label": "Add text",
-      "Description": "Prepends or appends configured static text to the payload -- e.g. a fixed hint or instruction pasted alongside a workflow's real output.",
+      "Description": "Prepends or appends configured static text to the payload, e.g. a fixed hint or instruction pasted alongside a workflow's real output.",
       "ConfigFields": [
         {
           "Key": "text",
@@ -2671,7 +2671,7 @@
       "ID": "process-run-receipt",
       "Kind": "process",
       "Label": "Create run receipt",
-      "Description": "Renders this run's own recorded evidence -- its steps so far, their guardrail verdicts, and which Mill build ran them -- as a JSON receipt, replacing the payload. Only covers steps that ran BEFORE this one, since the run is still in flight when this step executes. Compose it with an Apply step (clipboard/file write) to hand the receipt to an external agent -- there is no separate send path.",
+      "Description": "Renders this run's own recorded evidence (its steps so far, their guardrail verdicts, and which Mill build ran them) as a JSON receipt, replacing the payload. Only covers steps that ran BEFORE this one, since the run is still in flight when this step executes. Compose it with an Apply step (clipboard/file write) to hand the receipt to an external agent; there is no separate send path.",
       "ConfigFields": null,
       "Output": "a JSON receipt of this run's steps so far",
       "Consumes": [
@@ -2689,7 +2689,7 @@
       "ID": "process-shell-command",
       "Kind": "process",
       "Label": "Run a captured command",
-      "Description": "Runs the captured payload exactly as written -- in your real login shell by default, or inside a Configure-authored execution environment (its shell, directory, and variables) when one is chosen. A piped command stays one step; commands separated by a new line or \u0026\u0026 show as separate steps. External effect -- the run asks for your approval by default.",
+      "Description": "Runs the captured payload exactly as written, in your real login shell by default, or inside a Configure-authored execution environment (its shell, directory, and variables) when one is chosen. A piped command stays one step; commands separated by a new line or \u0026\u0026 show as separate steps. External effect: the run asks for your approval by default.",
       "ConfigFields": [
         {
           "Key": "envId",
@@ -2812,7 +2812,7 @@
       "ID": "process-transform-text",
       "Kind": "process",
       "Label": "Transform text",
-      "Description": "Hashes or encodes the payload -- SHA-256, base64, URL encoding and more. Hashes are one-way; decoding applies to base64, URL, and hex.",
+      "Description": "Hashes or encodes the payload: SHA-256, base64, URL encoding and more. Hashes are one-way; decoding applies to base64, URL, and hex.",
       "ConfigFields": [
         {
           "Key": "operation",
@@ -2860,7 +2860,7 @@
       "ID": "ruleset",
       "Kind": "process",
       "Label": "Validate with rules",
-      "Description": "Validates the data flowing through this step against a set of named rules (business/data validation -- e.g. \"amount below limit\", \"country allowed\"). Every rule must pass for the payload to continue unchanged; any failing rule fails the run, naming exactly which rules failed. A rule that cannot evaluate counts as failed (fail-safe). Distinct from Decision (which routes) and from guardrail rules (which govern whether a step may execute at all).",
+      "Description": "Validates the data flowing through this step against a set of named rules (business/data validation, e.g. \"amount below limit\", \"country allowed\"). Every rule must pass for the payload to continue unchanged; any failing rule fails the run, naming exactly which rules failed. A rule that cannot evaluate counts as failed (fail-safe). Distinct from Decision (which routes) and from guardrail rules (which govern whether a step may execute at all).",
       "ConfigFields": null,
       "Output": "payload unchanged, if all rules pass",
       "Consumes": [
@@ -2900,7 +2900,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "The new card's title -- a literal or attr:\u003cname\u003e.",
+          "Description": "The new card's title: a literal or attr:\u003cname\u003e.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -2961,7 +2961,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "The relation's source card -- a literal card id, or attr:\u003cname\u003e.",
+          "Description": "The relation's source card: a literal card id, or attr:\u003cname\u003e.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -2975,7 +2975,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "The relation's target card -- a literal card id, or attr:\u003cname\u003e.",
+          "Description": "The relation's target card: a literal card id, or attr:\u003cname\u003e.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -3028,7 +3028,7 @@
       "ID": "apply-atlas-card-update",
       "Kind": "apply",
       "Label": "Update Atlas card",
-      "Description": "Writes field values onto an existing Atlas card, resolved by \"Card\" (a literal card id or attr:\u003cname\u003e -- e.g. attr:cardId from a trigger-atlas-card event, or an earlier Atlas: find cards result). Only the fields named in \"Field values\" change; everything else on the card is untouched.",
+      "Description": "Writes field values onto an existing Atlas card, resolved by \"Card\" (a literal card id or attr:\u003cname\u003e, e.g. attr:cardId from a trigger-atlas-card event, or an earlier Atlas: find cards result). Only the fields named in \"Field values\" change; everything else on the card is untouched.",
       "ConfigFields": [
         {
           "Key": "kindId",
@@ -3036,7 +3036,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "The card's own Kind -- names which field keys \"Field values\" may bind.",
+          "Description": "The card's own Kind. It names which field keys \"Field values\" may bind.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -3050,7 +3050,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "Which card to update -- a literal card id, or attr:\u003cname\u003e.",
+          "Description": "Which card to update: a literal card id, or attr:\u003cname\u003e.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -3239,7 +3239,7 @@
       "ID": "apply-atlas-ledger-sync",
       "Kind": "apply",
       "Label": "Mirror delivery ledger from a docs folder",
-      "Description": "Mirrors every frontmattered markdown file in a folder as a Delivered feature card: a file already mirrored keeps its card and only its mirror-owned fields (goal, shipped date, PRs, proof) refresh -- your sign-off, verified date, and notes are never touched. A new file becomes a new card, pending-verify by default.",
+      "Description": "Mirrors every frontmattered markdown file in a folder as a Delivered feature card: a file already mirrored keeps its card and only its mirror-owned fields (goal, shipped date, PRs, proof) refresh. Your sign-off, verified date, and notes are never touched. A new file becomes a new card, pending-verify by default.",
       "ConfigFields": [
         {
           "Key": "folderPath",
@@ -3308,7 +3308,7 @@
           "Type": "number",
           "Required": false,
           "Default": "10",
-          "Description": "How many recent backups to keep -- older ones are deleted automatically.",
+          "Description": "How many recent backups to keep. Older ones are deleted automatically.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -3333,7 +3333,7 @@
       "ID": "apply-clipboard-history-store",
       "Kind": "apply",
       "Label": "Save to clipboard history",
-      "Description": "Scrubs any known secret value out of the payload, then adds what's left to Clipboard history. Confidential-marked content and Mill's own clipboard writes never reach this step -- the trigger above already filtered them.",
+      "Description": "Scrubs any known secret value out of the payload, then adds what's left to Clipboard history. Confidential-marked content and Mill's own clipboard writes never reach this step.",
       "ConfigFields": null,
       "Output": "the text it stored",
       "Consumes": [
@@ -3562,7 +3562,7 @@
       "ID": "apply-list-row",
       "Kind": "apply",
       "Label": "Save list row",
-      "Description": "Creates or updates a row in a Configure-authored List: if an existing row's \"Key column\" value matches, only the fields named in \"Field values\" change (everything else on that row is untouched); otherwise a new row is appended. \"Field values\" binds the List's own declared column keys, each a literal or attr:\u003cname\u003e -- the same shape apply-atlas-card-create/update use.",
+      "Description": "Creates or updates a row in a Configure-authored List: if an existing row's \"Key column\" value matches, only the fields named in \"Field values\" change (everything else on that row is untouched); otherwise a new row is appended. \"Field values\" binds the List's own declared column keys, each a literal or attr:\u003cname\u003e.",
       "ConfigFields": [
         {
           "Key": "listId",
@@ -3584,7 +3584,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "Which column identifies a row -- an existing row whose value in this column matches gets updated; no match appends a new row.",
+          "Description": "Which column identifies a row. An existing row whose value in this column matches gets updated; no match appends a new row.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -3673,7 +3673,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "The List column that identifies an item -- must be named in the field map.",
+          "Description": "The List column that identifies an item. It must be named in the field map.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -3728,7 +3728,7 @@
       "ID": "apply-notify",
       "Kind": "apply",
       "Label": "Notify me",
-      "Description": "Shows a notification when the workflow reaches this step -- the way a hotkey-triggered workflow tells you it finished while you're in another app. \"Body attribute\" swaps the fixed message for an Attributes value.",
+      "Description": "Shows a notification when the workflow reaches this step. \"Body attribute\" swaps the fixed message for an Attributes value.",
       "ConfigFields": [
         {
           "Key": "title",
@@ -3789,7 +3789,7 @@
       "ID": "decision-route",
       "Kind": "decision",
       "Label": "Branch",
-      "Description": "Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point -- its conditions live on its outgoing edges, not here.",
+      "Description": "Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point. Its conditions live on its outgoing edges, not here.",
       "ConfigFields": null,
       "Output": "payload and Attributes unchanged; routes to the matching outgoing edge",
       "Consumes": [
@@ -3807,7 +3807,7 @@
       "ID": "decision-outcome",
       "Kind": "terminal",
       "Label": "Record decision",
-      "Description": "Ends the workflow with a typed, configured outcome: an outcome category (approve/deny/manual-review/action-needed/uncategorized) plus this Decision's own typed result fields. A manual-review outcome parks the run in Review first -- approve continues to the outcome, deny or timeout stops the run. A Decision with a configured webhook fires it on completion.",
+      "Description": "Ends the workflow with a typed, configured outcome: an outcome category (approve/deny/manual-review/action-needed/uncategorized) plus this Decision's own typed result fields. A manual-review outcome parks the run in Review first. Approve continues to the outcome; deny or timeout stops the run. A Decision with a configured webhook fires it on completion.",
       "ConfigFields": [
         {
           "Key": "decisionId",
@@ -3873,7 +3873,7 @@
           "SystemManaged": false
         }
       ],
-      "Output": "the changed card's id -- also seeds cardId/kindId/cardTitle/changeType as typed Attributes when this workflow declares them",
+      "Output": "the changed card's id; also seeds cardId/kindId/cardTitle/changeType as typed Attributes when this workflow declares them",
       "Consumes": [
         "none"
       ],
@@ -3889,7 +3889,7 @@
       "ID": "trigger-callable",
       "Kind": "trigger",
       "Label": "Called by another workflow",
-      "Description": "Fires only when another workflow invokes this one with its Child Workflow step -- never by an outside event. A workflow starting here declares itself callable: it appears in the Child Workflow step's picker and nowhere else.",
+      "Description": "Fires only when another workflow invokes this one with its Child Workflow step, never by an outside event. A workflow starting here declares itself callable: it appears in the Child Workflow step's picker and nowhere else.",
       "ConfigFields": null,
       "Output": "the caller's typed input",
       "Consumes": [
@@ -3907,7 +3907,7 @@
       "ID": "trigger-clipboard-change",
       "Kind": "trigger",
       "Label": "Clipboard captured",
-      "Description": "Fires when you copy something new -- skips content marked confidential by the app you copied it from, and skips text Mill itself just wrote back to the clipboard.",
+      "Description": "Fires when you copy something new. It skips content marked confidential by the app you copied it from, and skips text Mill itself just wrote back to the clipboard.",
       "ConfigFields": null,
       "Output": "the clipboard text that changed, already screened for confidential content and Mill's own writes",
       "Consumes": [
@@ -3965,7 +3965,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "A glob like *.md or report-*.csv -- only files whose name matches fire the trigger. Leave empty to fire on any change.",
+          "Description": "A glob like *.md or report-*.csv. Only files whose name matches fire the trigger. Leave empty to fire on any change.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -3990,7 +3990,7 @@
       "ID": "trigger-hotkey",
       "Kind": "trigger",
       "Label": "Hotkey pressed",
-      "Description": "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.",
+      "Description": "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here.",
       "ConfigFields": null,
       "Output": "empty payload — the run starts here",
       "Consumes": [
@@ -4059,7 +4059,7 @@
       "ID": "trigger-system-event",
       "Kind": "trigger",
       "Label": "System event",
-      "Description": "Fires when Mill's own engine emits an internal event -- a run finishing, failing, or parking for approval -- so a workflow can react to the platform itself, like forwarding pending approvals to another device.",
+      "Description": "Fires when Mill's own engine emits an internal event (a run finishing, failing, or parking for approval), so a workflow can react to the platform itself, like forwarding pending approvals to another device.",
       "ConfigFields": [
         {
           "Key": "event",
@@ -4096,7 +4096,7 @@
           "SystemManaged": false
         }
       ],
-      "Output": "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp, version?, channel?} -- the run/decision that caused this event. nodeId is only set for decision-parked (the parked step's ID); version/channel only for update-available.",
+      "Output": "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp, version?, channel?}, the run/decision that caused this event. nodeId is only set for decision-parked (the parked step's ID); version/channel only for update-available.",
       "Consumes": [
         "none"
       ],
@@ -4112,7 +4112,7 @@
       "ID": "capture-attribute",
       "Kind": "capture",
       "Label": "Read attribute",
-      "Description": "Replaces the payload with the value of one of this workflow's declared Attributes -- e.g. a callable workflow's typed input, or a value a Decision already routed on.",
+      "Description": "Replaces the payload with the value of one of this workflow's declared Attributes, e.g. a callable workflow's typed input, or a value a Decision already routed on.",
       "ConfigFields": [
         {
           "Key": "attribute",
@@ -4163,7 +4163,7 @@
       "ID": "capture-clipboard-info",
       "Kind": "capture",
       "Label": "Inspect clipboard",
-      "Description": "Reads the clipboard's own format report -- which flavors (HTML, plain text, images) are present and their sizes -- and summarizes whether HTML and plain text are available, followed by the raw report. A diagnostic for pastes that look right but convert wrong: see directly whether HTML was actually on the clipboard.",
+      "Description": "Reads the clipboard's own format report, listing which flavors (HTML, plain text, images) are present and their sizes, and summarizes whether HTML and plain text are available, followed by the raw report. A diagnostic for pastes that look right but convert wrong: see directly whether HTML was actually on the clipboard.",
       "ConfigFields": null,
       "Output": "a summary of the clipboard's flavors",
       "Consumes": [
@@ -4181,7 +4181,7 @@
       "ID": "capture-clipboard-text",
       "Kind": "capture",
       "Label": "Read clipboard text",
-      "Description": "Reads the clipboard's plain text only, never its HTML -- for ids, tokens, and anything copied as-is.",
+      "Description": "Reads the clipboard's plain text only, never its HTML. Use it for ids, tokens, and anything copied as-is.",
       "ConfigFields": null,
       "Output": "plain text from the clipboard",
       "Consumes": [
@@ -4199,7 +4199,7 @@
       "ID": "capture-file",
       "Kind": "capture",
       "Label": "Read file",
-      "Description": "Reads a local file into the payload. \"payload\" source treats the current payload as the file path -- what a File changed trigger supplies; \"literal\" reads a fixed path instead.",
+      "Description": "Reads a local file into the payload. \"payload\" source treats the current payload as the file path, which a File changed trigger supplies; \"literal\" reads a fixed path instead.",
       "ConfigFields": [
         {
           "Key": "source",
@@ -4250,7 +4250,7 @@
       "ID": "child-workflow",
       "Kind": "process",
       "Label": "Run another workflow",
-      "Description": "Runs another of your workflows as a step and uses its result as this workflow's payload. The other workflow must start with the \"Called by another workflow\" trigger -- that marks it safe to invoke from here rather than by a hotkey or schedule of its own.",
+      "Description": "Runs another of your workflows as a step and uses its result as this workflow's payload. The other workflow must start with the \"Called by another workflow\" trigger.",
       "ConfigFields": [
         {
           "Key": "workflowId",
@@ -4258,7 +4258,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "Which workflow to run. Only workflows whose trigger is \"callable by another workflow\" appear here -- if the list is empty, create a workflow and drag that trigger onto its canvas first.",
+          "Description": "Which workflow to run. Only workflows whose trigger is \"callable by another workflow\" appear here. If the list is empty, create a workflow and drag that trigger onto its canvas first.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -4272,7 +4272,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "Leave empty to run fresh every time (the normal case). To make repeated runs with the same input reuse the first run's recorded result instead of running again, put a value here that identifies the input -- a literal, or attr:\u003cname\u003e to use one of this workflow's attributes.",
+          "Description": "Leave empty to run fresh every time (the normal case). To make repeated runs with the same input reuse the first run's recorded result instead of running again, put a value here that identifies the input: a literal, or attr:\u003cname\u003e to use one of this workflow's attributes.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -4325,7 +4325,7 @@
       "ID": "code-execution",
       "Kind": "process",
       "Label": "Run a command",
-      "Description": "Runs one command locally, inside a configured execution environment (pinned shell, directory, and environment). External effect -- the run asks for approval by default. Source \"payload\" runs the upstream payload as the command; \"literal\" runs a fixed script instead. A running command can be stopped from this workflow's Runs tab.",
+      "Description": "Runs one command locally, inside a configured execution environment (pinned shell, directory, and environment). External effect: the run asks for approval by default. Source \"payload\" runs the upstream payload as the command; \"literal\" runs a fixed script instead. A running command can be stopped from this workflow's Runs tab.",
       "ConfigFields": [
         {
           "Key": "envId",
@@ -4421,7 +4421,7 @@
       "ID": "human-review",
       "Kind": "process",
       "Label": "Ask for review",
-      "Description": "Pauses the run for a person: the item lands in the Review queue (and this workflow's Runs tab), where a reviewer can approve, deny, and fill in values for this workflow's declared Attributes -- their input flows into the resumed run. Denying (or 24 hours of silence) stops the run. A deliberate, visible checkpoint you drew into the flow -- the ambient guardrail rules (Configure \u003e Guardrails) never skip it.",
+      "Description": "Pauses the run for a person: the item lands in the Review queue (and this workflow's Runs tab), where a reviewer can approve, deny, and fill in values for this workflow's declared Attributes. Their input flows into the resumed run. Denying (or 24 hours of silence) stops the run. A deliberate, visible checkpoint you drew into the flow: the ambient guardrail rules (Configure \u003e Guardrails) never skip it.",
       "ConfigFields": [
         {
           "Key": "message",
@@ -4468,7 +4468,7 @@
       "ID": "integration-http",
       "Kind": "process",
       "Label": "Call an API",
-      "Description": "Calls a Configure-authored integration's API and replaces the payload with the response body. The step only picks WHICH integration and binds data -- method, endpoint path, and body all live on the integration itself (Configure \u003e Integration): transport configuration belongs on the integration, not the workflow step. Legacy steps saved with their own path/method/bodyTemplate config keep working (those keys still win when present); they're just no longer authorable here.",
+      "Description": "Calls a Configure-authored integration's API and replaces the payload with the response body. The step only picks WHICH integration and binds data. Method, endpoint path, and body all live on the integration itself (Configure \u003e Integration). Legacy steps saved with their own path/method/bodyTemplate config keep working (those keys still win when present); they're just no longer authorable here.",
       "ConfigFields": [
         {
           "Key": "requestId",
@@ -4608,7 +4608,7 @@
       "ID": "list-search",
       "Kind": "process",
       "Label": "Search list rows",
-      "Description": "Searches a Configure-authored List's rows against one or more match parameters (exact or fuzzy, per-column, AND'd together) and writes the result into Attributes. Supersedes list-lookup for anything beyond a single exact key match -- list-lookup keeps working unchanged for existing workflows. Expired rows are excluded by default; \"Include expired rows\" opts in.",
+      "Description": "Searches a Configure-authored List's rows against one or more match parameters (exact or fuzzy, per-column, AND'd together) and writes the result into Attributes. Supersedes list-lookup for anything beyond a single exact key match. list-lookup keeps working unchanged for existing workflows. Expired rows are excluded by default; \"Include expired rows\" opts in.",
       "ConfigFields": [
         {
           "Key": "listId",
@@ -4644,7 +4644,7 @@
           "Type": "boolean",
           "Required": false,
           "Default": "false",
-          "Description": "Off by default -- Expired rows never match unless explicitly included.",
+          "Description": "Off by default. Expired rows never match unless explicitly included.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -4658,7 +4658,7 @@
           "Type": "boolean",
           "Required": false,
           "Default": "false",
-          "Description": "Stops scanning after the first match. The output shape stays the same typed Object either way -- results just has at most one entry -- so turning this on or off never changes what a downstream Decision/binding can reference.",
+          "Description": "Stops scanning after the first match. The output shape stays the same typed Object either way (results just has at most one entry), so turning this on or off never changes what a downstream Decision/binding can reference.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -4808,7 +4808,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "One category per line -- the AI picks exactly one of these.",
+          "Description": "One category per line. The AI picks exactly one of these.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -4831,7 +4831,7 @@
           "SystemManaged": false
         }
       ],
-      "Output": "unchanged payload -- the chosen category is written into the named Attribute below",
+      "Output": "unchanged payload; the chosen category is written into the named Attribute below",
       "Consumes": [
         "text"
       ],
@@ -4847,7 +4847,7 @@
       "ID": "process-ai-completion",
       "Kind": "process",
       "Label": "Generate with AI",
-      "Description": "Sends a prompt plus the payload to a configured AI provider -- local Ollama, or your own OpenAI-compatible or Anthropic endpoint -- and replaces the payload with the completion. The system prompt is this step's System prompt field; the user message is the Prompt followed by the payload when one exists. One call per run, never a loop.",
+      "Description": "Sends a prompt plus the payload to a configured AI provider (local Ollama, or your own OpenAI-compatible or Anthropic endpoint) and replaces the payload with the completion. The system prompt is this step's System prompt field; the user message is the Prompt followed by the payload when one exists. One call per run, never a loop.",
       "ConfigFields": [
         {
           "Key": "aiproviderId",
@@ -4945,7 +4945,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "The typed fields this step extracts -- each becomes an Attribute of the same key, authored via the field editor below (not raw JSON).",
+          "Description": "The typed fields this step extracts. Each becomes an Attribute of the same key, authored via the field editor below (not raw JSON).",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -4954,7 +4954,7 @@
           "SystemManaged": false
         }
       ],
-      "Output": "unchanged payload -- the extracted typed result is written into the named Attributes below",
+      "Output": "unchanged payload; the extracted typed result is written into the named Attributes below",
       "Consumes": [
         "text"
       ],
@@ -5045,7 +5045,7 @@
       "ID": "process-extract-html",
       "Kind": "process",
       "Label": "Extract HTML section",
-      "Description": "Extracts one element (by CSS selector) out of the payload's HTML, dropping everything else -- e.g. a saved page's main-content region, stripping nav/header/footer chrome before converting to Markdown. Fails the step if nothing matches (fail-safe: never silently passes the whole, unfiltered document through).",
+      "Description": "Extracts one element (by CSS selector) out of the payload's HTML, dropping everything else, e.g. a saved page's main-content region, stripping nav/header/footer chrome before converting to Markdown. Fails the step if nothing matches (fail-safe: never silently passes the whole, unfiltered document through).",
       "ConfigFields": [
         {
           "Key": "selector",
@@ -5053,7 +5053,7 @@
           "Type": "text",
           "Required": false,
           "Default": "#main-content, main, article",
-          "Description": "A CSS selector, optionally comma-separated (e.g. \"#main-content, main, article\") -- the first matching element (in document order) is kept.",
+          "Description": "A CSS selector, optionally comma-separated (e.g. \"#main-content, main, article\"). The first matching element (in document order) is kept.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -5112,7 +5112,7 @@
       "ID": "process-inject-text",
       "Kind": "process",
       "Label": "Add text",
-      "Description": "Prepends or appends configured static text to the payload -- e.g. a fixed hint or instruction pasted alongside a workflow's real output.",
+      "Description": "Prepends or appends configured static text to the payload, e.g. a fixed hint or instruction pasted alongside a workflow's real output.",
       "ConfigFields": [
         {
           "Key": "text",
@@ -5163,7 +5163,7 @@
       "ID": "process-run-receipt",
       "Kind": "process",
       "Label": "Create run receipt",
-      "Description": "Renders this run's own recorded evidence -- its steps so far, their guardrail verdicts, and which Mill build ran them -- as a JSON receipt, replacing the payload. Only covers steps that ran BEFORE this one, since the run is still in flight when this step executes. Compose it with an Apply step (clipboard/file write) to hand the receipt to an external agent -- there is no separate send path.",
+      "Description": "Renders this run's own recorded evidence (its steps so far, their guardrail verdicts, and which Mill build ran them) as a JSON receipt, replacing the payload. Only covers steps that ran BEFORE this one, since the run is still in flight when this step executes. Compose it with an Apply step (clipboard/file write) to hand the receipt to an external agent; there is no separate send path.",
       "ConfigFields": null,
       "Output": "a JSON receipt of this run's steps so far",
       "Consumes": [
@@ -5181,7 +5181,7 @@
       "ID": "process-shell-command",
       "Kind": "process",
       "Label": "Run a captured command",
-      "Description": "Runs the captured payload exactly as written -- in your real login shell by default, or inside a Configure-authored execution environment (its shell, directory, and variables) when one is chosen. A piped command stays one step; commands separated by a new line or \u0026\u0026 show as separate steps. External effect -- the run asks for your approval by default.",
+      "Description": "Runs the captured payload exactly as written, in your real login shell by default, or inside a Configure-authored execution environment (its shell, directory, and variables) when one is chosen. A piped command stays one step; commands separated by a new line or \u0026\u0026 show as separate steps. External effect: the run asks for your approval by default.",
       "ConfigFields": [
         {
           "Key": "envId",
@@ -5304,7 +5304,7 @@
       "ID": "process-transform-text",
       "Kind": "process",
       "Label": "Transform text",
-      "Description": "Hashes or encodes the payload -- SHA-256, base64, URL encoding and more. Hashes are one-way; decoding applies to base64, URL, and hex.",
+      "Description": "Hashes or encodes the payload: SHA-256, base64, URL encoding and more. Hashes are one-way; decoding applies to base64, URL, and hex.",
       "ConfigFields": [
         {
           "Key": "operation",
@@ -5352,7 +5352,7 @@
       "ID": "ruleset",
       "Kind": "process",
       "Label": "Validate with rules",
-      "Description": "Validates the data flowing through this step against a set of named rules (business/data validation -- e.g. \"amount below limit\", \"country allowed\"). Every rule must pass for the payload to continue unchanged; any failing rule fails the run, naming exactly which rules failed. A rule that cannot evaluate counts as failed (fail-safe). Distinct from Decision (which routes) and from guardrail rules (which govern whether a step may execute at all).",
+      "Description": "Validates the data flowing through this step against a set of named rules (business/data validation, e.g. \"amount below limit\", \"country allowed\"). Every rule must pass for the payload to continue unchanged; any failing rule fails the run, naming exactly which rules failed. A rule that cannot evaluate counts as failed (fail-safe). Distinct from Decision (which routes) and from guardrail rules (which govern whether a step may execute at all).",
       "ConfigFields": null,
       "Output": "payload unchanged, if all rules pass",
       "Consumes": [
@@ -5392,7 +5392,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "The new card's title -- a literal or attr:\u003cname\u003e.",
+          "Description": "The new card's title: a literal or attr:\u003cname\u003e.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -5453,7 +5453,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "The relation's source card -- a literal card id, or attr:\u003cname\u003e.",
+          "Description": "The relation's source card: a literal card id, or attr:\u003cname\u003e.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -5467,7 +5467,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "The relation's target card -- a literal card id, or attr:\u003cname\u003e.",
+          "Description": "The relation's target card: a literal card id, or attr:\u003cname\u003e.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -5520,7 +5520,7 @@
       "ID": "apply-atlas-card-update",
       "Kind": "apply",
       "Label": "Update Atlas card",
-      "Description": "Writes field values onto an existing Atlas card, resolved by \"Card\" (a literal card id or attr:\u003cname\u003e -- e.g. attr:cardId from a trigger-atlas-card event, or an earlier Atlas: find cards result). Only the fields named in \"Field values\" change; everything else on the card is untouched.",
+      "Description": "Writes field values onto an existing Atlas card, resolved by \"Card\" (a literal card id or attr:\u003cname\u003e, e.g. attr:cardId from a trigger-atlas-card event, or an earlier Atlas: find cards result). Only the fields named in \"Field values\" change; everything else on the card is untouched.",
       "ConfigFields": [
         {
           "Key": "kindId",
@@ -5528,7 +5528,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "The card's own Kind -- names which field keys \"Field values\" may bind.",
+          "Description": "The card's own Kind. It names which field keys \"Field values\" may bind.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -5542,7 +5542,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "Which card to update -- a literal card id, or attr:\u003cname\u003e.",
+          "Description": "Which card to update: a literal card id, or attr:\u003cname\u003e.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -5731,7 +5731,7 @@
       "ID": "apply-atlas-ledger-sync",
       "Kind": "apply",
       "Label": "Mirror delivery ledger from a docs folder",
-      "Description": "Mirrors every frontmattered markdown file in a folder as a Delivered feature card: a file already mirrored keeps its card and only its mirror-owned fields (goal, shipped date, PRs, proof) refresh -- your sign-off, verified date, and notes are never touched. A new file becomes a new card, pending-verify by default.",
+      "Description": "Mirrors every frontmattered markdown file in a folder as a Delivered feature card: a file already mirrored keeps its card and only its mirror-owned fields (goal, shipped date, PRs, proof) refresh. Your sign-off, verified date, and notes are never touched. A new file becomes a new card, pending-verify by default.",
       "ConfigFields": [
         {
           "Key": "folderPath",
@@ -5800,7 +5800,7 @@
           "Type": "number",
           "Required": false,
           "Default": "10",
-          "Description": "How many recent backups to keep -- older ones are deleted automatically.",
+          "Description": "How many recent backups to keep. Older ones are deleted automatically.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -5825,7 +5825,7 @@
       "ID": "apply-clipboard-history-store",
       "Kind": "apply",
       "Label": "Save to clipboard history",
-      "Description": "Scrubs any known secret value out of the payload, then adds what's left to Clipboard history. Confidential-marked content and Mill's own clipboard writes never reach this step -- the trigger above already filtered them.",
+      "Description": "Scrubs any known secret value out of the payload, then adds what's left to Clipboard history. Confidential-marked content and Mill's own clipboard writes never reach this step.",
       "ConfigFields": null,
       "Output": "the text it stored",
       "Consumes": [
@@ -6054,7 +6054,7 @@
       "ID": "apply-list-row",
       "Kind": "apply",
       "Label": "Save list row",
-      "Description": "Creates or updates a row in a Configure-authored List: if an existing row's \"Key column\" value matches, only the fields named in \"Field values\" change (everything else on that row is untouched); otherwise a new row is appended. \"Field values\" binds the List's own declared column keys, each a literal or attr:\u003cname\u003e -- the same shape apply-atlas-card-create/update use.",
+      "Description": "Creates or updates a row in a Configure-authored List: if an existing row's \"Key column\" value matches, only the fields named in \"Field values\" change (everything else on that row is untouched); otherwise a new row is appended. \"Field values\" binds the List's own declared column keys, each a literal or attr:\u003cname\u003e.",
       "ConfigFields": [
         {
           "Key": "listId",
@@ -6076,7 +6076,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "Which column identifies a row -- an existing row whose value in this column matches gets updated; no match appends a new row.",
+          "Description": "Which column identifies a row. An existing row whose value in this column matches gets updated; no match appends a new row.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -6165,7 +6165,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "The List column that identifies an item -- must be named in the field map.",
+          "Description": "The List column that identifies an item. It must be named in the field map.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -6220,7 +6220,7 @@
       "ID": "apply-notify",
       "Kind": "apply",
       "Label": "Notify me",
-      "Description": "Shows a notification when the workflow reaches this step -- the way a hotkey-triggered workflow tells you it finished while you're in another app. \"Body attribute\" swaps the fixed message for an Attributes value.",
+      "Description": "Shows a notification when the workflow reaches this step. \"Body attribute\" swaps the fixed message for an Attributes value.",
       "ConfigFields": [
         {
           "Key": "title",
@@ -6281,7 +6281,7 @@
       "ID": "decision-route",
       "Kind": "decision",
       "Label": "Branch",
-      "Description": "Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point -- its conditions live on its outgoing edges, not here.",
+      "Description": "Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point. Its conditions live on its outgoing edges, not here.",
       "ConfigFields": null,
       "Output": "payload and Attributes unchanged; routes to the matching outgoing edge",
       "Consumes": [
@@ -6299,7 +6299,7 @@
       "ID": "decision-outcome",
       "Kind": "terminal",
       "Label": "Record decision",
-      "Description": "Ends the workflow with a typed, configured outcome: an outcome category (approve/deny/manual-review/action-needed/uncategorized) plus this Decision's own typed result fields. A manual-review outcome parks the run in Review first -- approve continues to the outcome, deny or timeout stops the run. A Decision with a configured webhook fires it on completion.",
+      "Description": "Ends the workflow with a typed, configured outcome: an outcome category (approve/deny/manual-review/action-needed/uncategorized) plus this Decision's own typed result fields. A manual-review outcome parks the run in Review first. Approve continues to the outcome; deny or timeout stops the run. A Decision with a configured webhook fires it on completion.",
       "ConfigFields": [
         {
           "Key": "decisionId",

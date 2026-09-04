@@ -34,7 +34,7 @@ func runReceiptWorkflow() Workflow {
 	return Workflow{
 		ID:          "example-run-receipt-workflow",
 		Label:       "Example: Run receipt",
-		Description: "Injects a fixed line, then renders this run's own recorded evidence -- its steps so far, their guardrail verdicts, and which Mill build ran them -- as a JSON receipt, written to the clipboard. The portable proof of a run an external agent can read.",
+		Description: "Injects a fixed line, then renders this run's own recorded evidence (its steps so far, their guardrail verdicts, and which Mill build ran them) as a JSON receipt, written to the clipboard. The portable proof of a run an external agent can read.",
 		Nodes:       nodes,
 		Edges: []Edge{
 			{ID: "example-runreceipt-e0", Source: triggerID, Target: injectID},
@@ -42,7 +42,7 @@ func runReceiptWorkflow() Workflow {
 			{ID: "example-runreceipt-e2", Source: receiptID, Target: applyID},
 		},
 		BuiltIn: true,
-		Seed:    seedorigin.Stamp(1),
+		Seed:    seedorigin.Stamp(2),
 	}
 }
 

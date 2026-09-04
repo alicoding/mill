@@ -17,6 +17,6 @@ import (
 // per docs/SPEC.md §4.1's research) is real future work.
 func init() {
 	RegisterAuthStrategy(httprequest.AuthMTLS, func(_ ResolvedHTTPRequest, _, _ string, _ map[string]string, _ url.Values, _ string) error {
-		return fmt.Errorf("mTLS is not yet implemented (docs/adr/0015) -- deliberately deferred, not a bug")
+		return fmt.Errorf("mTLS is not yet implemented (docs/adr/0015)")
 	})
 }

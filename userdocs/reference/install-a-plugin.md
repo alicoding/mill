@@ -555,7 +555,7 @@ Bruno (an API client) as the worked example:
 1. **Find the tool's own seams.** Bruno keeps a collection as a folder
    of `.bru` files with a `bruno.json`, and its CLI runs one with
    `bru run --reporter-json`. Files and a CLI are exactly what Mill
-   integrates through -- a file-backed object kind and a shell step.
+   integrates through — a file-backed object kind and a shell step.
 2. **Place the artifact as an object.** The Bruno collection example
    (`examples/plugins/mill-bruno`) registers a file-backed kind over
    `bruno.json`: the face names the collection, lists its requests
@@ -564,7 +564,7 @@ Bruno (an API client) as the worked example:
 3. **Run it as a workflow.** The seeded "Example: Run a Bruno
    collection" runs the CLI on an execution environment, reads the JSON
    report it wrote, and lands the results as rows of the seeded "Bruno
-   results" List -- guarded and audited like every command Mill runs.
+   results" List — guarded and audited like every command Mill runs.
 4. **Keep secrets in the tool's own store.** Bruno reads a `.env` at
    the collection root; point Configure > Secret sources at that file
    and the keys appear in every secret picker without a copy.

@@ -30,7 +30,7 @@ func clipboardBuiltInWorkflows() []Workflow {
 		{ID: processID, NodeTypeID: "process-html-to-markdown", Position: Position{X: 0, Y: 200}},
 		{ID: applyID, NodeTypeID: "apply-clipboard-write-text", Position: Position{X: 0, Y: 300}},
 		{ID: notifyID, NodeTypeID: "apply-notify", Position: Position{X: 0, Y: 400},
-			Config: map[string]string{"title": "Clipboard → Markdown", "body": "Markdown is on your clipboard — paste away."}},
+			Config: map[string]string{"title": "Clipboard → Markdown", "body": "Markdown is on your clipboard. Paste away."}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
@@ -51,7 +51,7 @@ func clipboardBuiltInWorkflows() []Workflow {
 		{
 			ID:          "clipboard-html-to-markdown-workflow",
 			Label:       "Clipboard → Markdown",
-			Description: "Capture the clipboard's HTML, convert it to Markdown, write it back, then say so -- the notification is how a hotkey run tells you it finished while you're in another app.",
+			Description: "Capture the clipboard's HTML, convert it to Markdown, write it back, then say so.",
 			Nodes:       clipboardToMarkdown,
 			Edges: []Edge{
 				{ID: "clipboard-to-markdown-e0", Source: triggerID, Target: captureID},
@@ -62,7 +62,7 @@ func clipboardBuiltInWorkflows() []Workflow {
 			BuiltIn: true,
 			// Rev 2 (goal 0114): the completion notification joined the
 			// pipeline.
-			Seed: seedorigin.Stamp(2),
+			Seed: seedorigin.Stamp(3),
 		},
 	}
 }

@@ -13,6 +13,6 @@ func BuiltInDemo() Entry {
 		Username: "demo@example.com",
 		Password: "correct horse battery staple",
 		URL:      "https://example.com",
-		Notes:    "A starter entry -- delete it once you've added your own.",
+		Notes:    "A starter entry. Delete it once you've added your own.",
 	}
 }

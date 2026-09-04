@@ -31,13 +31,13 @@ func clipboardInspectorWorkflow() Workflow {
 	return Workflow{
 		ID:          "example-clipboard-inspector-workflow",
 		Label:       "Example: Clipboard inspector",
-		Description: "Reads macOS's own \"clipboard info\" report and summarizes which flavors -- HTML, plain text -- are actually on the clipboard right now, made directly inspectable. Ends at a Capture step with nowhere to deliver its result -- fine for a click-to-run diagnostic; its output lives in this workflow's own Runs tab.",
+		Description: "Reads macOS's own \"clipboard info\" report and summarizes which flavors (HTML, plain text) are actually on the clipboard right now, made directly inspectable. Ends at a Capture step with nowhere to deliver its result; its output lives in this workflow's own Runs tab.",
 		Nodes:       nodes,
 		Edges: []Edge{
 			{ID: "example-clipinfo-e0", Source: triggerID, Target: captureID},
 		},
 		BuiltIn: true,
-		Seed:    seedorigin.Stamp(2),
+		Seed:    seedorigin.Stamp(3),
 	}
 }
 
@@ -76,7 +76,7 @@ func savedPageToMarkdownWorkflow() Workflow {
 	return Workflow{
 		ID:          "example-saved-page-to-markdown-workflow",
 		Label:       "Example: Saved page → Markdown",
-		Description: "Watches a folder for a saved HTML page, reads it, extracts the main-content subtree (dropping nav/header/footer chrome), converts it to Markdown, and writes the result to the clipboard. Ships DISABLED with a placeholder watch path (~/Mill Captures) -- point its trigger at a real directory (the canvas Inspector), publish, and enable it to see it fire when a page lands there.",
+		Description: "Watches a folder for a saved HTML page, reads it, extracts the main-content subtree (dropping nav/header/footer chrome), converts it to Markdown, and writes the result to the clipboard. Ships DISABLED with a placeholder watch path (~/Mill Captures). Point its trigger at a real directory (the canvas Inspector), publish, and enable it to see it fire when a page lands there.",
 		Nodes:       nodes,
 		Edges: []Edge{
 			{ID: "example-savedpage-e0", Source: triggerID, Target: captureID},
@@ -85,7 +85,7 @@ func savedPageToMarkdownWorkflow() Workflow {
 			{ID: "example-savedpage-e3", Source: markdownID, Target: applyID},
 		},
 		BuiltIn:  true,
-		Seed:     seedorigin.Stamp(2),
+		Seed:     seedorigin.Stamp(3),
 		Disabled: true,
 	}
 }
@@ -116,7 +116,7 @@ func scratchCaptureWorkflow() Workflow {
 	return Workflow{
 		ID:          "example-scratch-capture-workflow",
 		Label:       "Example: Scratch capture",
-		Description: "Grabs whatever's on the clipboard and appends it to a scratch file, each entry stamped with the date and time -- run it whenever you copy something worth keeping, and sort it out later.",
+		Description: "Grabs whatever's on the clipboard and appends it to a scratch file, each entry stamped with the date and time. Run it whenever you copy something worth keeping, and sort it out later.",
 		Nodes:       nodes,
 		Edges: []Edge{
 			{ID: "example-scratchcapture-e0", Source: triggerID, Target: captureID},
@@ -133,6 +133,6 @@ func scratchCaptureWorkflow() Workflow {
 			Color:    NoteColorYellow,
 		}},
 		BuiltIn: true,
-		Seed:    seedorigin.Stamp(2),
+		Seed:    seedorigin.Stamp(3),
 	}
 }

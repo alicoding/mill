@@ -49,13 +49,13 @@ func builtInSecretGuardWorkflows() []Workflow {
 		{
 			ID:          ExampleSecretGuardWorkflowID,
 			Label:       "Example: uses a stored secret",
-			Description: "Runs a command inside an execution environment configured with a stored secret (Configure > Execution Environments). A guardrail rule targets any step that uses a secret, so running this always asks for your approval first -- approve or deny it from this workflow's own Runs tab.",
+			Description: "Runs a command inside an execution environment configured with a stored secret (Configure > Execution Environments). A guardrail rule targets any step that uses a secret, so running this always asks for your approval first. Approve or deny it from this workflow's own Runs tab.",
 			Nodes:       nodes,
 			Edges: []Edge{
 				{ID: "example-secret-guard-e0", Source: secretGuardTriggerID, Target: ExampleSecretGuardStepID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(2),
+			Seed:    seedorigin.Stamp(3),
 		},
 	}
 }

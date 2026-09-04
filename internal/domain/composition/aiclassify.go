@@ -54,7 +54,7 @@ func init() {
 		Complexity:  ComplexityBasic,
 		Consumes:    []PayloadKind{PayloadText},
 		Produces:    PayloadProduce{Passthrough: true},
-		Output:      "unchanged payload -- the chosen category is written into the named Attribute below",
+		Output:      "unchanged payload; the chosen category is written into the named Attribute below",
 		Label:       "Classify with AI",
 		Description: "Sends the payload, plus an optional instruction, to a configured AI provider and asks it to pick exactly one of this step's declared categories, writing the choice into a named Attribute. Pairs with Branch to route on the result.",
 		ConfigFields: []ConfigField{
@@ -70,7 +70,7 @@ func init() {
 			},
 			{
 				Key: "categories", Label: "Categories", Multiline: true,
-				Description: "One category per line -- the AI picks exactly one of these.",
+				Description: "One category per line. The AI picks exactly one of these.",
 				Default:     "", Type: FieldText,
 			},
 			{

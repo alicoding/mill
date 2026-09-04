@@ -187,7 +187,7 @@ func init() {
 		Produces:    PayloadProduce{Kind: PayloadNone},
 		Output:      "the typed decision outcome",
 		Label:       "Record decision",
-		Description: "Ends the workflow with a typed, configured outcome: an outcome category (approve/deny/manual-review/action-needed/uncategorized) plus this Decision's own typed result fields. A manual-review outcome parks the run in Review first -- approve continues to the outcome, deny or timeout stops the run. A Decision with a configured webhook fires it on completion.",
+		Description: "Ends the workflow with a typed, configured outcome: an outcome category (approve/deny/manual-review/action-needed/uncategorized) plus this Decision's own typed result fields. A manual-review outcome parks the run in Review first. Approve continues to the outcome; deny or timeout stops the run. A Decision with a configured webhook fires it on completion.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "decisionId", Label: "Decision",
@@ -205,7 +205,7 @@ func init() {
 		},
 	}, func(node Node, ctx ExecContext) (ExecContext, error) {
 		if strings.TrimSpace(node.Config["decisionId"]) == "" {
-			return ctx, errors.New("decision-outcome: choose which Decision this step records -- its Decision field is empty")
+			return ctx, errors.New("decision-outcome: choose which Decision this step records; its Decision field is empty")
 		}
 		pinned, err := decisionPinnedVersion(node)
 		if err != nil {

@@ -57,7 +57,7 @@
       "unpinWorkflow": "Unpin \"{{label}}\""
     },
     "saveNote": "Save as note",
-    "saveNoteHint": "Lands in Scratchpad — organize later.",
+    "saveNoteHint": "Lands in Scratchpad. Organize later.",
     "newNote": "New note…",
     "newNoteHint": "Write a note in its own window and choose where it lands.",
     "newCapture": "New {{label}}…",
@@ -69,12 +69,12 @@
       "failed": "\"{{label}}\" failed: {{error}}",
       "appliedUpdated": "Updated \"{{label}}\"",
       "appliedCreated": "Created \"{{label}}\"",
-      "replyApplied": "Done — {{label}}",
-      "done": "Done — \"{{label}}\" in {{seconds}}s",
+      "replyApplied": "Done: {{label}}",
+      "done": "Done: \"{{label}}\" in {{seconds}}s",
       "parked": "\"{{label}}\" is waiting for your approval"
     },
     "clipboard": {
-      "emptyError": "Clipboard is empty -- copy a workflow export first",
+      "emptyError": "Clipboard is empty. Copy a workflow export first.",
       "readError": "Couldn't read the clipboard: {{error}}"
     },
     "searchPlaceholder": "Search workflows or jump into Mill…",
@@ -91,10 +91,10 @@
     "update": {
       "checking": "Checking for updates…",
       "failed": "Couldn't check for updates.",
-      "upToDate": "You're up to date — Mill {{version}}",
-      "available": "Mill {{version}} is available — run \"Download the update and install\"",
+      "upToDate": "You're up to date on Mill {{version}}",
+      "available": "Mill {{version}} is available. Run \"Download the update and install\".",
       "downloading": "Downloading Mill {{version}}…",
-      "ready": "Mill {{version}} is downloaded — run \"Restart to finish updating\""
+      "ready": "Mill {{version}} is downloaded. Run \"Restart to finish updating\"."
     },
     "saveTask": "Save as task",
     "saveTaskHint": "Lands in the Task tracker, scheduled for today.",
@@ -122,11 +122,11 @@
   "quickPanelClipboardApply": {
     "unrecognizedTitle": "Couldn't read that as a Mill export",
     "back": "Back",
-    "summaryUpdate": "This will UPDATE \"{{label}}\" — replacing the current draft (the published version stays untouched until you publish).",
+    "summaryUpdate": "This will UPDATE \"{{label}}\", replacing the current draft. The published version stays untouched until you publish.",
     "summaryCreate": "This will CREATE \"{{label}}\" ({{nodeCount}} step{{plural}}).",
     "unresolvedTitle": "{{count}} reference{{plural}} won't resolve here",
     "unresolvedItemPrefix": "step",
-    "unresolvedItemSuffix": "references \"{{value}}\", which doesn't exist here — point it at one before running",
+    "unresolvedItemSuffix": "references \"{{value}}\", which doesn't exist here. Point it at one before running",
     "applyFailedTitle": "Apply failed",
     "cancel": "Cancel",
     "applying": "Applying…",
@@ -149,11 +149,11 @@
     "settingsLabel": "Settings"
   },
   "buildIdentityBadge": {
-    "goStaleTooltip": "Go changes not yet in this binary — restart task dev",
+    "goStaleTooltip": "Go changes not yet in this binary. Restart task dev.",
     "devGoStale": "DEV · go-stale",
     "devLive": "DEV · live",
-    "staleBuildClickToClose": "STALE BUILD · app {{binaryHead}} ≠ repo {{repoHead}} — click to close this stale window",
-    "staleBuildRestart": "STALE BUILD · app {{binaryHead}} ≠ repo {{repoHead}} — restart task dev",
+    "staleBuildClickToClose": "STALE BUILD · app {{binaryHead}} ≠ repo {{repoHead}} · click to close this stale window",
+    "staleBuildRestart": "STALE BUILD · app {{binaryHead}} ≠ repo {{repoHead}} · restart task dev",
     "installed": "INSTALLED",
     "server": "SERVER"
   },
@@ -216,7 +216,7 @@
     "closeOtherTabs": "Close other tabs",
     "closeAllTabs": "Close all tabs",
     "restoredTitle": "Unsaved changes restored",
-    "restoredDescription": "This workflow had unsaved edits from before Mill last closed or reloaded — they're back, not yet saved."
+    "restoredDescription": "This workflow had unsaved edits from before Mill last closed or reloaded. They're back, not yet saved."
   },
   "closeTabDialog": {
     "title": "Save changes to \"{{label}}\"?",
@@ -238,8 +238,8 @@
     "invalidFallback": "The reply could not be validated.",
     "emptyTitle": "Didn't find anything to add.",
     "copyCorrection": "Copy corrected context",
-    "correctionCopied": "Copied — paste it back to the AI",
-    "collision": "Already exists as {{kind}} — unchecked so nothing is overwritten",
+    "correctionCopied": "Copied. Paste it back to the AI.",
+    "collision": "Already exists as {{kind}}. Unchecked so nothing is overwritten.",
     "collisionGenericKind": "a card",
     "confirmCards": "Create {{count}} cards",
     "confirmCards_one": "Create 1 card",
@@ -254,14 +254,14 @@
     "reload": "Reload"
   },
   "noticePill": {
-    "updateReady": "Update ready — Relaunch",
-    "updateAvailable": "Update available — download",
+    "updateReady": "Update ready: relaunch",
+    "updateAvailable": "Update available: download",
     "updateDownloading": "Downloading update…",
     "dismissAriaLabel": "Dismiss this update notice",
     "whatsNew": "What's new",
     "checking": "Checking for updates…",
     "upToDate": "You're up to date.",
-    "checkFailed": "Couldn't check for updates — open Settings for details"
+    "checkFailed": "Couldn't check for updates. Open Settings for details."
   },
   "whatsNew": {
     "title": "What's new",
@@ -302,7 +302,7 @@
       "secretPlaceholderDescription": "One or more steps name a secret. Env-style placeholders are resolved below; anything else runs as typed.",
       "secrets": {
         "heading": "Secrets this needs",
-        "fromVault": "From your vault — {{label}}",
+        "fromVault": "From your vault: {{label}}",
         "fromEnv": "From your shell environment",
         "typePlaceholder": "Type the value",
         "typedHint": "Used for this run only. Never saved.",
@@ -332,7 +332,7 @@
         "skipped": "Skipped"
       },
       "elapsed": "Running for {{elapsed}}",
-      "stuckFor": "Stuck for {{seconds}}s — no output yet",
+      "stuckFor": "Stuck for {{seconds}}s with no output yet",
       "approvalFailedTitle": "Couldn't start the run",
       "cancel": "Cancel"
     },
@@ -341,7 +341,7 @@
       "succeededTitle": "Finished",
       "failedTitle": "Failed",
       "noOutput": "(no output)",
-      "saved": "Saved to Activity — browse it there anytime.",
+      "saved": "Saved to Activity. Browse it there anytime.",
       "copyFailedTitle": "Couldn't copy the result",
       "copy": "Copy result",
       "copied": "Copied"
@@ -359,8 +359,8 @@
     "nothingRunning": "Nothing running.",
     "stop": "Stop",
     "quit": "Quit Mill…",
-    "quitContract_one": "Quitting stops {{count}} automatic workflow — schedules, hotkeys and watchers stop until Mill runs again.",
-    "quitContract_other": "Quitting stops {{count}} automatic workflows — schedules, hotkeys and watchers stop until Mill runs again.",
+    "quitContract_one": "Quitting stops {{count}} automatic workflow. Schedules, hotkeys and watchers stop until Mill runs again.",
+    "quitContract_other": "Quitting stops {{count}} automatic workflows. Schedules, hotkeys and watchers stop until Mill runs again.",
     "quitContractNone": "Nothing automatic is scheduled right now.",
     "quitConfirm": "Quit",
     "keepRunning": "Keep running",

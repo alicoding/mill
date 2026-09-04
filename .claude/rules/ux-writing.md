@@ -19,8 +19,9 @@ convention (Material Design, Apple HIG, Nielsen Norman Group microcopy):
 - **Never explain by naming other products** — describe what the feature
   does instead of comparing it to a competitor. Review-checked, not
   grep-gated.
-- **No spec-asides.** Em-dash clauses that justify the design are
-  documentation — state the rule the user experiences, drop the defense.
+- **No spec-asides.** A dash clause justifying the design is
+  documentation — state the rule the user experiences (gated:
+  `check-ui-copy.sh`).
 - **Present tense, sentence case, second person implied.** "Runs every
   minute", not "This workflow will be run every minute".
 - **An empty state offers the action it names** — ship the button/

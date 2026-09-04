@@ -41,7 +41,7 @@
     "renameColumnTitle": "Click to rename this column",
     "insertColumnAriaLabel": "Insert a column here",
     "insertRowAriaLabel": "Insert a row here",
-    "noColumns": "No columns yet — add one to start.",
+    "noColumns": "No columns yet. Add one to start.",
     "addRow": "+ Row",
     "addColumn": "+ Column",
     "columnSettingsAriaLabel": "Settings for {{column}}",

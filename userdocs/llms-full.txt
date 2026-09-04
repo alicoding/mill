@@ -777,14 +777,14 @@ Fires when a card of the chosen kind is created or updated in Atlas. A run start
 
 ### Called by another workflow
 
-Fires only when another workflow invokes this one with its Child Workflow step -- never by an outside event. A workflow starting here declares itself callable: it appears in the Child Workflow step's picker and nowhere else.
+Fires only when another workflow invokes this one with its Child Workflow step, never by an outside event. A workflow starting here declares itself callable: it appears in the Child Workflow step's picker and nowhere else.
 
 - Takes: nothing — Produces: anything
 - Effect: none — pure computation
 
 ### Clipboard captured
 
-Fires when you copy something new -- skips content marked confidential by the app you copied it from, and skips text Mill itself just wrote back to the clipboard.
+Fires when you copy something new. It skips content marked confidential by the app you copied it from, and skips text Mill itself just wrote back to the clipboard.
 
 - Takes: nothing — Produces: text
 - Effect: none — pure computation
@@ -804,11 +804,11 @@ Fires when a file or folder under the configured path is added, changed, or dele
 - Effect: none — pure computation
 - Settings:
   - **Path to watch** — Absolute path to a file or directory.
-  - **Filename pattern (optional)** — A glob like *.md or report-*.csv -- only files whose name matches fire the trigger. Leave empty to fire on any change.
+  - **Filename pattern (optional)** — A glob like *.md or report-*.csv. Only files whose name matches fire the trigger. Leave empty to fire on any change.
 
 ### Hotkey pressed
 
-Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.
+Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here.
 
 - Takes: nothing — Produces: an empty start
 - Effect: none — pure computation
@@ -831,7 +831,7 @@ Fires on a cron schedule.
 
 ### System event
 
-Fires when Mill's own engine emits an internal event -- a run finishing, failing, or parking for approval -- so a workflow can react to the platform itself, like forwarding pending approvals to another device.
+Fires when Mill's own engine emits an internal event (a run finishing, failing, or parking for approval), so a workflow can react to the platform itself, like forwarding pending approvals to another device.
 
 - Takes: nothing — Produces: JSON
 - Effect: none — pure computation
@@ -843,14 +843,14 @@ Fires when Mill's own engine emits an internal event -- a run finishing, failing
 
 ### Inspect clipboard
 
-Reads the clipboard's own format report -- which flavors (HTML, plain text, images) are present and their sizes -- and summarizes whether HTML and plain text are available, followed by the raw report. A diagnostic for pastes that look right but convert wrong: see directly whether HTML was actually on the clipboard.
+Reads the clipboard's own format report, listing which flavors (HTML, plain text, images) are present and their sizes, and summarizes whether HTML and plain text are available, followed by the raw report. A diagnostic for pastes that look right but convert wrong: see directly whether HTML was actually on the clipboard.
 
 - Takes: nothing — Produces: text
 - Effect: reads local state
 
 ### Read attribute
 
-Replaces the payload with the value of one of this workflow's declared Attributes -- e.g. a callable workflow's typed input, or a value a Decision already routed on.
+Replaces the payload with the value of one of this workflow's declared Attributes, e.g. a callable workflow's typed input, or a value a Decision already routed on.
 
 - Takes: nothing — Produces: text
 - Effect: none — pure computation
@@ -866,14 +866,14 @@ Reads the clipboard's HTML. If there's no HTML flavor (many apps only put plain 
 
 ### Read clipboard text
 
-Reads the clipboard's plain text only, never its HTML -- for ids, tokens, and anything copied as-is.
+Reads the clipboard's plain text only, never its HTML. Use it for ids, tokens, and anything copied as-is.
 
 - Takes: nothing — Produces: text
 - Effect: reads local state
 
 ### Read file
 
-Reads a local file into the payload. "payload" source treats the current payload as the file path -- what a File changed trigger supplies; "literal" reads a fixed path instead.
+Reads a local file into the payload. "payload" source treats the current payload as the file path, which a File changed trigger supplies; "literal" reads a fixed path instead.
 
 - Takes: text (optional) — Produces: anything
 - Effect: reads local state
@@ -885,7 +885,7 @@ Reads a local file into the payload. "payload" source treats the current payload
 
 ### Add text
 
-Prepends or appends configured static text to the payload -- e.g. a fixed hint or instruction pasted alongside a workflow's real output.
+Prepends or appends configured static text to the payload, e.g. a fixed hint or instruction pasted alongside a workflow's real output.
 
 - Takes: text (optional) — Produces: text
 - Effect: none — pure computation
@@ -895,7 +895,7 @@ Prepends or appends configured static text to the payload -- e.g. a fixed hint o
 
 ### Ask for review
 
-Pauses the run for a person: the item lands in the Review queue (and this workflow's Runs tab), where a reviewer can approve, deny, and fill in values for this workflow's declared Attributes -- their input flows into the resumed run. Denying (or 24 hours of silence) stops the run. A deliberate, visible checkpoint you drew into the flow -- the ambient guardrail rules (Configure > Guardrails) never skip it.
+Pauses the run for a person: the item lands in the Review queue (and this workflow's Runs tab), where a reviewer can approve, deny, and fill in values for this workflow's declared Attributes. Their input flows into the resumed run. Denying (or 24 hours of silence) stops the run. A deliberate, visible checkpoint you drew into the flow: the ambient guardrail rules (Configure > Guardrails) never skip it.
 
 - Takes: anything — Produces: its input, unchanged
 - Effect: none — pure computation
@@ -905,7 +905,7 @@ Pauses the run for a person: the item lands in the Review queue (and this workfl
 
 ### Call an API
 
-Calls a Configure-authored integration's API and replaces the payload with the response body. The step only picks WHICH integration and binds data -- method, endpoint path, and body all live on the integration itself (Configure > Integration): transport configuration belongs on the integration, not the workflow step. Legacy steps saved with their own path/method/bodyTemplate config keep working (those keys still win when present); they're just no longer authorable here.
+Calls a Configure-authored integration's API and replaces the payload with the response body. The step only picks WHICH integration and binds data. Method, endpoint path, and body all live on the integration itself (Configure > Integration). Legacy steps saved with their own path/method/bodyTemplate config keep working (those keys still win when present); they're just no longer authorable here.
 
 - Takes: anything — Produces: anything
 - Effect: external — parks for approval by default
@@ -932,7 +932,7 @@ Sends the payload, plus an optional instruction, to a configured AI provider and
 - Settings:
   - **AI provider** — Which Configure-authored AI provider (local Ollama or a BYO endpoint) this step calls.
   - **Instruction** — Optional guidance sent as the user message, followed by the current payload. Leave empty to classify the payload with no extra instruction.
-  - **Categories** — One category per line -- the AI picks exactly one of these.
+  - **Categories** — One category per line. The AI picks exactly one of these.
   - **Write category to** — The declared Attribute key the chosen category is written into.
 
 ### Convert HTML to Markdown
@@ -946,19 +946,19 @@ Converts HTML into Markdown, preserving structure (headings, bold, lists).
 
 ### Create run receipt
 
-Renders this run's own recorded evidence -- its steps so far, their guardrail verdicts, and which Mill build ran them -- as a JSON receipt, replacing the payload. Only covers steps that ran BEFORE this one, since the run is still in flight when this step executes. Compose it with an Apply step (clipboard/file write) to hand the receipt to an external agent -- there is no separate send path.
+Renders this run's own recorded evidence (its steps so far, their guardrail verdicts, and which Mill build ran them) as a JSON receipt, replacing the payload. Only covers steps that ran BEFORE this one, since the run is still in flight when this step executes. Compose it with an Apply step (clipboard/file write) to hand the receipt to an external agent; there is no separate send path.
 
 - Takes: nothing — Produces: JSON
 - Effect: reads local state
 
 ### Extract HTML section
 
-Extracts one element (by CSS selector) out of the payload's HTML, dropping everything else -- e.g. a saved page's main-content region, stripping nav/header/footer chrome before converting to Markdown. Fails the step if nothing matches (fail-safe: never silently passes the whole, unfiltered document through).
+Extracts one element (by CSS selector) out of the payload's HTML, dropping everything else, e.g. a saved page's main-content region, stripping nav/header/footer chrome before converting to Markdown. Fails the step if nothing matches (fail-safe: never silently passes the whole, unfiltered document through).
 
 - Takes: HTML — Produces: HTML
 - Effect: none — pure computation
 - Settings:
-  - **CSS selector** — A CSS selector, optionally comma-separated (e.g. "#main-content, main, article") -- the first matching element (in document order) is kept.
+  - **CSS selector** — A CSS selector, optionally comma-separated (e.g. "#main-content, main, article"). The first matching element (in document order) is kept.
 
 ### Extract fields with AI
 
@@ -969,7 +969,7 @@ Sends a prompt plus the payload to a configured AI provider, requests a structur
 - Settings:
   - **AI provider** — Which Configure-authored AI provider (local Ollama or a BYO endpoint) this step calls.
   - **Prompt** — The extraction instruction sent as the user message, followed by the current payload (if any).
-  - **Output fields** — The typed fields this step extracts -- each becomes an Attribute of the same key, authored via the field editor below (not raw JSON).
+  - **Output fields** — The typed fields this step extracts. Each becomes an Attribute of the same key, authored via the field editor below (not raw JSON).
 
 ### Find Atlas cards
 
@@ -985,7 +985,7 @@ Searches a Kind's cards in Atlas against one or more match parameters (exact or 
 
 ### Generate with AI
 
-Sends a prompt plus the payload to a configured AI provider -- local Ollama, or your own OpenAI-compatible or Anthropic endpoint -- and replaces the payload with the completion. The system prompt is this step's System prompt field; the user message is the Prompt followed by the payload when one exists. One call per run, never a loop.
+Sends a prompt plus the payload to a configured AI provider (local Ollama, or your own OpenAI-compatible or Anthropic endpoint) and replaces the payload with the completion. The system prompt is this step's System prompt field; the user message is the Prompt followed by the payload when one exists. One call per run, never a loop.
 
 - Takes: text (optional) — Produces: text
 - Effect: external — parks for approval by default
@@ -1010,7 +1010,7 @@ Looks up an Attributes value in a configured List and writes the matched entry b
 
 ### Run a captured command
 
-Runs the captured payload exactly as written -- in your real login shell by default, or inside a Configure-authored execution environment (its shell, directory, and variables) when one is chosen. A piped command stays one step; commands separated by a new line or && show as separate steps. External effect -- the run asks for your approval by default.
+Runs the captured payload exactly as written, in your real login shell by default, or inside a Configure-authored execution environment (its shell, directory, and variables) when one is chosen. A piped command stays one step; commands separated by a new line or && show as separate steps. External effect: the run asks for your approval by default.
 
 - Takes: text — Produces: text
 - Effect: external — parks for approval by default
@@ -1020,7 +1020,7 @@ Runs the captured payload exactly as written -- in your real login shell by defa
 
 ### Run a command
 
-Runs one command locally, inside a configured execution environment (pinned shell, directory, and environment). External effect -- the run asks for approval by default. Source "payload" runs the upstream payload as the command; "literal" runs a fixed script instead. A running command can be stopped from this workflow's Runs tab.
+Runs one command locally, inside a configured execution environment (pinned shell, directory, and environment). External effect: the run asks for approval by default. Source "payload" runs the upstream payload as the command; "literal" runs a fixed script instead. A running command can be stopped from this workflow's Runs tab.
 
 - Takes: text (optional) — Produces: text
 - Effect: external — parks for approval by default
@@ -1033,13 +1033,13 @@ Runs one command locally, inside a configured execution environment (pinned shel
 
 ### Run another workflow
 
-Runs another of your workflows as a step and uses its result as this workflow's payload. The other workflow must start with the "Called by another workflow" trigger -- that marks it safe to invoke from here rather than by a hotkey or schedule of its own.
+Runs another of your workflows as a step and uses its result as this workflow's payload. The other workflow must start with the "Called by another workflow" trigger.
 
 - Takes: anything — Produces: anything
 - Effect: none — pure computation
 - Settings:
-  - **Workflow** — Which workflow to run. Only workflows whose trigger is "callable by another workflow" appear here -- if the list is empty, create a workflow and drag that trigger onto its canvas first. (references a callable Workflow)
-  - **Skip duplicate runs (optional)** — Leave empty to run fresh every time (the normal case). To make repeated runs with the same input reuse the first run's recorded result instead of running again, put a value here that identifies the input -- a literal, or attr:<name> to use one of this workflow's attributes.
+  - **Workflow** — Which workflow to run. Only workflows whose trigger is "callable by another workflow" appear here. If the list is empty, create a workflow and drag that trigger onto its canvas first. (references a callable Workflow)
+  - **Skip duplicate runs (optional)** — Leave empty to run fresh every time (the normal case). To make repeated runs with the same input reuse the first run's recorded result instead of running again, put a value here that identifies the input: a literal, or attr:<name> to use one of this workflow's attributes.
   - **Pin to version (optional)** — Leave empty to always call the child's published version. Enter a version number to pin this step to that exact snapshot, unaffected by later publishes.
   - **Store result in attribute (optional)** — Also write the child workflow's result into this workflow's named Attribute, so later steps (a Decision condition, another binding) can reference it as attr:<name>.
 
@@ -1057,21 +1057,21 @@ Walks a folder and lists every TODO-style marker it finds as a table: one row pe
 
 ### Search list rows
 
-Searches a Configure-authored List's rows against one or more match parameters (exact or fuzzy, per-column, AND'd together) and writes the result into Attributes. Supersedes list-lookup for anything beyond a single exact key match -- list-lookup keeps working unchanged for existing workflows. Expired rows are excluded by default; "Include expired rows" opts in.
+Searches a Configure-authored List's rows against one or more match parameters (exact or fuzzy, per-column, AND'd together) and writes the result into Attributes. Supersedes list-lookup for anything beyond a single exact key match. list-lookup keeps working unchanged for existing workflows. Expired rows are excluded by default; "Include expired rows" opts in.
 
 - Takes: nothing — Produces: its input, unchanged
 - Effect: reads local state
 - Settings:
   - **List** — The Configure-authored List to search. (references a List)
   - **Match parameters** — JSON array of match criteria, ALL must match (AND): [{"column":"code","value":"attr:code","matchType":"exact"},{"column":"name","value":"Untied States","matchType":"fuzzy","threshold":0.7}]. value is a literal or "attr:<name>". Authored via the Inspector's match-parameter rows; the raw JSON stays available for agent authoring.
-  - **Include expired rows** — Off by default -- Expired rows never match unless explicitly included.
-  - **Stop at first match** — Stops scanning after the first match. The output shape stays the same typed Object either way -- results just has at most one entry -- so turning this on or off never changes what a downstream Decision/binding can reference.
+  - **Include expired rows** — Off by default. Expired rows never match unless explicitly included.
+  - **Stop at first match** — Stops scanning after the first match. The output shape stays the same typed Object either way (results just has at most one entry), so turning this on or off never changes what a downstream Decision/binding can reference.
   - **Output attribute** — Which Attributes field receives the typed search-result object.
   - **Pin to version (optional)** — Leave empty to always resolve this List's current rows. Enter a version number to pin this step to that exact published snapshot, unaffected by later row edits.
 
 ### Transform text
 
-Hashes or encodes the payload -- SHA-256, base64, URL encoding and more. Hashes are one-way; decoding applies to base64, URL, and hex.
+Hashes or encodes the payload: SHA-256, base64, URL encoding and more. Hashes are one-way; decoding applies to base64, URL, and hex.
 
 - Takes: text or HTML — Produces: text
 - Effect: none — pure computation
@@ -1080,7 +1080,7 @@ Hashes or encodes the payload -- SHA-256, base64, URL encoding and more. Hashes 
 
 ### Validate with rules
 
-Validates the data flowing through this step against a set of named rules (business/data validation -- e.g. "amount below limit", "country allowed"). Every rule must pass for the payload to continue unchanged; any failing rule fails the run, naming exactly which rules failed. A rule that cannot evaluate counts as failed (fail-safe). Distinct from Decision (which routes) and from guardrail rules (which govern whether a step may execute at all).
+Validates the data flowing through this step against a set of named rules (business/data validation, e.g. "amount below limit", "country allowed"). Every rule must pass for the payload to continue unchanged; any failing rule fails the run, naming exactly which rules failed. A rule that cannot evaluate counts as failed (fail-safe). Distinct from Decision (which routes) and from guardrail rules (which govern whether a step may execute at all).
 
 - Takes: anything — Produces: its input, unchanged
 - Effect: none — pure computation
@@ -1094,7 +1094,7 @@ Takes a safe snapshot of your workflow history and settings, deleting older snap
 - Takes: anything — Produces: its input, unchanged
 - Effect: changes something on this machine
 - Settings:
-  - **Snapshots to keep** — How many recent backups to keep -- older ones are deleted automatically.
+  - **Snapshots to keep** — How many recent backups to keep. Older ones are deleted automatically.
 
 ### Create Atlas card
 
@@ -1104,7 +1104,7 @@ Creates a new card in Atlas of the chosen Kind. "Field values" binds the Kind's 
 - Effect: changes something on this machine
 - Settings:
   - **Kind** — Which Atlas card kind to create.
-  - **Title** — The new card's title -- a literal or attr:<name>.
+  - **Title** — The new card's title: a literal or attr:<name>.
   - **Field values** — JSON object mapping the Kind's field keys to a literal or attr:<name>, e.g. {"status":"New","owner":"attr:currentUser"}.
   - **Output attribute (optional)** — Which Attributes field receives the new card's id, so a later step can reference it (e.g. to link it or update it further).
 
@@ -1126,14 +1126,14 @@ Creates a typed relation between two existing Atlas cards. "From"/"To" are each 
 - Takes: nothing — Produces: its input, unchanged
 - Effect: changes something on this machine
 - Settings:
-  - **From** — The relation's source card -- a literal card id, or attr:<name>.
-  - **To** — The relation's target card -- a literal card id, or attr:<name>.
+  - **From** — The relation's source card: a literal card id, or attr:<name>.
+  - **To** — The relation's target card: a literal card id, or attr:<name>.
   - **Relation** — Which kind of relation this is.
   - **Label (optional)** — An optional note describing this specific relation.
 
 ### Mirror delivery ledger from a docs folder
 
-Mirrors every frontmattered markdown file in a folder as a Delivered feature card: a file already mirrored keeps its card and only its mirror-owned fields (goal, shipped date, PRs, proof) refresh -- your sign-off, verified date, and notes are never touched. A new file becomes a new card, pending-verify by default.
+Mirrors every frontmattered markdown file in a folder as a Delivered feature card: a file already mirrored keeps its card and only its mirror-owned fields (goal, shipped date, PRs, proof) refresh. Your sign-off, verified date, and notes are never touched. A new file becomes a new card, pending-verify by default.
 
 - Takes: nothing — Produces: its input, unchanged
 - Effect: changes something on this machine
@@ -1168,7 +1168,7 @@ Moves or renames a local file to a new location.
 
 ### Notify me
 
-Shows a notification when the workflow reaches this step -- the way a hotkey-triggered workflow tells you it finished while you're in another app. "Body attribute" swaps the fixed message for an Attributes value.
+Shows a notification when the workflow reaches this step. "Body attribute" swaps the fixed message for an Attributes value.
 
 - Takes: nothing — Produces: its input, unchanged
 - Effect: changes something on this machine
@@ -1179,19 +1179,19 @@ Shows a notification when the workflow reaches this step -- the way a hotkey-tri
 
 ### Save list row
 
-Creates or updates a row in a Configure-authored List: if an existing row's "Key column" value matches, only the fields named in "Field values" change (everything else on that row is untouched); otherwise a new row is appended. "Field values" binds the List's own declared column keys, each a literal or attr:<name> -- the same shape apply-atlas-card-create/update use.
+Creates or updates a row in a Configure-authored List: if an existing row's "Key column" value matches, only the fields named in "Field values" change (everything else on that row is untouched); otherwise a new row is appended. "Field values" binds the List's own declared column keys, each a literal or attr:<name>.
 
 - Takes: nothing — Produces: its input, unchanged
 - Effect: changes something on this machine
 - Settings:
   - **List** — The Configure-authored List to write to. (references a List)
-  - **Key column** — Which column identifies a row -- an existing row whose value in this column matches gets updated; no match appends a new row.
+  - **Key column** — Which column identifies a row. An existing row whose value in this column matches gets updated; no match appends a new row.
   - **Field values** — JSON object mapping the List's column keys to a literal or attr:<name>, e.g. {"task":"attr:taskName","status":"Done"}. Must include a value for the key column.
   - **Output attribute (optional)** — Which Attributes field receives the row's id.
 
 ### Save to clipboard history
 
-Scrubs any known secret value out of the payload, then adds what's left to Clipboard history. Confidential-marked content and Mill's own clipboard writes never reach this step -- the trigger above already filtered them.
+Scrubs any known secret value out of the payload, then adds what's left to Clipboard history. Confidential-marked content and Mill's own clipboard writes never reach this step.
 
 - Takes: text — Produces: its input, unchanged
 - Effect: changes something on this machine
@@ -1205,19 +1205,19 @@ Turns a JSON payload's array of items into rows of a Configure-authored List, on
 - Settings:
   - **List** — The Configure-authored List that mirrors the source. (references a List)
   - **Items path** — Dotted path to the array of items inside the JSON payload, e.g. issues. Blank when the payload itself is the array.
-  - **Key column** — The List column that identifies an item -- must be named in the field map.
+  - **Key column** — The List column that identifies an item. It must be named in the field map.
   - **Field map** — JSON object mapping List column keys to a dotted path inside each item, e.g. {"key":"key","summary":"fields.summary","status":"fields.status.name"}. A value with {{path}} placeholders is a template, e.g. "https://jira.example.com/browse/{{key}}".
   - **Expire missing rows** — Mark rows whose key is absent from this result as expired.
 
 ### Update Atlas card
 
-Writes field values onto an existing Atlas card, resolved by "Card" (a literal card id or attr:<name> -- e.g. attr:cardId from a trigger-atlas-card event, or an earlier Atlas: find cards result). Only the fields named in "Field values" change; everything else on the card is untouched.
+Writes field values onto an existing Atlas card, resolved by "Card" (a literal card id or attr:<name>, e.g. attr:cardId from a trigger-atlas-card event, or an earlier Atlas: find cards result). Only the fields named in "Field values" change; everything else on the card is untouched.
 
 - Takes: nothing — Produces: its input, unchanged
 - Effect: changes something on this machine
 - Settings:
-  - **Kind** — The card's own Kind -- names which field keys "Field values" may bind.
-  - **Card** — Which card to update -- a literal card id, or attr:<name>.
+  - **Kind** — The card's own Kind. It names which field keys "Field values" may bind.
+  - **Card** — Which card to update: a literal card id, or attr:<name>.
   - **Field values** — JSON object mapping the Kind's field keys to a literal or attr:<name>, e.g. {"status":"Processed"}.
   - **Output attribute (optional)** — Which Attributes field receives the updated card's id.
 
@@ -1253,7 +1253,7 @@ Writes the workflow's current payload to the clipboard as plain text.
 
 ### Branch
 
-Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point -- its conditions live on its outgoing edges, not here.
+Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point. Its conditions live on its outgoing edges, not here.
 
 - Takes: anything — Produces: its input, unchanged
 - Effect: none — pure computation
@@ -1262,7 +1262,7 @@ Routes to one of several next steps based on a rule evaluated against this workf
 
 ### Record decision
 
-Ends the workflow with a typed, configured outcome: an outcome category (approve/deny/manual-review/action-needed/uncategorized) plus this Decision's own typed result fields. A manual-review outcome parks the run in Review first -- approve continues to the outcome, deny or timeout stops the run. A Decision with a configured webhook fires it on completion.
+Ends the workflow with a typed, configured outcome: an outcome category (approve/deny/manual-review/action-needed/uncategorized) plus this Decision's own typed result fields. A manual-review outcome parks the run in Review first. Approve continues to the outcome; deny or timeout stops the run. A Decision with a configured webhook fires it on completion.
 
 - Takes: anything — Produces: nothing
 - Effect: changes something on this machine
@@ -1869,26 +1869,26 @@ are never omissions.
 |---|---|---|
 | `id` | one of the ids declared in shared/atlasToolIdentity.ts's ATLAS_TOOL_IDENTITIES array | the noun's stable identity. registerNoun() throws at module-eval time on a duplicate; assertRegistryAgreesWithIdentity() fails the build if an identity has no matching descriptor, or a descriptor has no matching identity. |
 | `icon` | any icon component from @primer/octicons-react, typed as Icon | the glyph rendered on this noun's tray/palette button. |
-| `label` | a string | the button/command text. By convention every in-tree noun sources this from identityOf(id).commandLabel rather than restating it, but the field itself accepts any string. NEVER read as this noun's row title in Settings > Extensions -- see nounName below. |
+| `label` | a string | the button/command text. By convention every in-tree noun sources this from identityOf(id).commandLabel rather than restating it, but the field itself accepts any string. NEVER read as this noun's row title in Settings > Extensions — see nounName below. |
 | `nounName` | a string | the bare noun a user would call this thing ("Card", "Pencil"), read only by Settings > Extensions' row title. Kept separate from label because label is a command verb phrase ("Add a card") and a row title needs the noun, not the verb. |
 | `description` | a string, or omitted entirely | a one-sentence, user-vocabulary summary of what this noun does. Read by Settings > Extensions' per-row disclosure; a noun that omits it falls back to its own label there. |
 | `shortcutKey` | a single-character string, or null | the bare keypress that arms this tool from the board. null for a tool with no bare-key shortcut. |
 | `tray` | 'quick' or 'palette' | which tray surface renders this tool's button. |
-| `group` | 'knowledge', 'file', or 'annotate' -- REQUIRED, never optional | which tray cluster this noun's own button renders in. AtlasCreationTray.tsx's TRAY_GROUP_ORDER renders 'knowledge' and 'file' flat, primary-first; 'annotate' tools collapse into the tray's one expandable Annotate group instead of rendering flat. |
-| `settings` | an array of {type, key, label, description, defaultValue} setting declarations -- type is boolean | string (optional placeholder) | number (optional min/max/step) | enum (options: [{value, label}]) -- or omitted entirely | the noun's own user settings (goal 0258): declared here, rendered generically inside its Settings > Extensions row, persisted centrally per extension id + key. defaultValue applies whenever the user has never touched the control; a stored value of the wrong type, or an enum value no longer among the options, falls back to it. Omitted means the row shows no settings block. A runtime plugin declares the same shape as manifest contributes.settings and reads it back through api.settings. |
-| `interaction` | 'arm-then-click', 'pick-then-place', 'drag-to-draw', 'drag-to-erase', 'ephemeral-drag', or 'paste-or-drop' | the authoring gesture that places this noun. Must equal the same field on this id's own shared/atlasToolIdentity.ts entry -- the registry's own agreement check cross-validates the two so they can never silently drift apart. |
-| `styleDefaults` | a record of style-field key to value, or omitted entirely | session-only seed values for a freshly placed instance's style state (colour, size, ...). Never persisted document data -- omit this field for a noun with no style surface rather than declaring an empty object. |
-| `styleFields` | a readonly array of AtlasStyleField entries (atlasStyleVocabulary.ts's closed union: color, color-or-none, stroke-width, or shape-kind) -- REQUIRED, never optional | this noun's own declared styleable properties. An empty array is the honest answer for a noun with no style surface at all. A non-empty array makes AtlasStylePanel.tsx render this tool's style picker automatically -- no other file needs to name this noun's id. |
-| `lockable` | boolean -- REQUIRED, never optional | does re-clicking this tool's own already-armed tray button lock it for repeated placement, instead of disarming on the second click? Only meaningful for an arm-then-click tool; every other tool still declares it, always false. |
-| `resizable` | boolean -- REQUIRED, never optional | can a placed instance be dragged to a new size via the shared NodeResizer? A container that auto-fits its own children, or a tool that never persists a placed instance, both legitimately declare false. The conformance suite checks that a true answer is backed by a real `<NodeResizer>` in the renderer boardNodeType names. |
+| `group` | 'knowledge', 'file', or 'annotate' — REQUIRED, never optional | which tray cluster this noun's own button renders in. AtlasCreationTray.tsx's TRAY_GROUP_ORDER renders 'knowledge' and 'file' flat, primary-first; 'annotate' tools collapse into the tray's one expandable Annotate group instead of rendering flat. |
+| `settings` | an array of {type, key, label, description, defaultValue} setting declarations — type is boolean | string (optional placeholder) | number (optional min/max/step) | enum (options: [{value, label}]) — or omitted entirely | the noun's own user settings (goal 0258): declared here, rendered generically inside its Settings > Extensions row, persisted centrally per extension id + key. defaultValue applies whenever the user has never touched the control; a stored value of the wrong type, or an enum value no longer among the options, falls back to it. Omitted means the row shows no settings block. A runtime plugin declares the same shape as manifest contributes.settings and reads it back through api.settings. |
+| `interaction` | 'arm-then-click', 'pick-then-place', 'drag-to-draw', 'drag-to-erase', 'ephemeral-drag', or 'paste-or-drop' | the authoring gesture that places this noun. Must equal the same field on this id's own shared/atlasToolIdentity.ts entry — the registry's own agreement check cross-validates the two so they can never silently drift apart. |
+| `styleDefaults` | a record of style-field key to value, or omitted entirely | session-only seed values for a freshly placed instance's style state (colour, size, ...). Never persisted document data — omit this field for a noun with no style surface rather than declaring an empty object. |
+| `styleFields` | a readonly array of AtlasStyleField entries (atlasStyleVocabulary.ts's closed union: color, color-or-none, stroke-width, or shape-kind) — REQUIRED, never optional | this noun's own declared styleable properties. An empty array is the honest answer for a noun with no style surface at all. A non-empty array makes AtlasStylePanel.tsx render this tool's style picker automatically — no other file needs to name this noun's id. |
+| `lockable` | boolean — REQUIRED, never optional | does re-clicking this tool's own already-armed tray button lock it for repeated placement, instead of disarming on the second click? Only meaningful for an arm-then-click tool; every other tool still declares it, always false. |
+| `resizable` | boolean — REQUIRED, never optional | can a placed instance be dragged to a new size via the shared NodeResizer? A container that auto-fits its own children, or a tool that never persists a placed instance, both legitimately declare false. The conformance suite checks that a true answer is backed by a real `<NodeResizer>` in the renderer boardNodeType names. |
 | `boardNodeType` | 'atlas-note', 'atlas-sticky', 'atlas-group', 'atlas-object', or null | which shared React Flow node component renders this noun's placed instance. null for a tool whose gesture never persists a renderable instance (eraser, laser). |
-| `dragBand` | boolean -- REQUIRED, never optional | only load-bearing when boardNodeType is 'atlas-object': does this noun's own content capture pointer events (a grid, a vendored pan/zoom viewer), so the shared renderer needs to add its own chrome band as the drag surface? A noun whose whole body already drags declares false, not omitted. |
-| `boardObjectKind` | 'shape', 'image', 'ink', 'table', 'diagram', 'sheet', or null | the persisted BoardObject.Kind this noun's own placed instance carries, or null for a tool that never routes through the shared 'atlas-object' renderer. Not always equal to id -- pencil's own placed instance is Kind 'ink' -- so content resolution below keys off this field, read from object.Kind, never off id. |
-| `content` | an object with Component (a React component accepting { object, mirrorVersion }), ariaLabelKey (a string), and role ('img' or undefined), plus the optional members source, editRoute, clickShield, wheelContained and extension -- or null | this noun's own placed-instance content contribution. registerNoun() feeds it into the board-object content registry (atlasNounRegistry.ts's registerBoardObjectContent) whenever boardObjectKind is non-null, killing AtlasBoardObjectNode.tsx's former per-Kind hand branch. A tool-less noun (diagram, sheet) calls registerBoardObjectContent directly instead of declaring this field at all, since it has no AtlasToolShape to satisfy -- it instead sets this same content shape's own optional `extension` member (icon, label, description, disableScopeNote, group) so Settings > Extensions can still render an honest, correctly-sectioned row for it. mirrorVersion bumps on a live disk change to a fileBacked Kind's own mirrored file (see fileBacked below) -- a non-file-backed Component simply ignores it. clickShield (a face that owns its own pointer model: an embedded viewer, or a grid that would otherwise read a bare click as a cell click) shields the face until the object is selected, so the first click always selects the object; wheelContained keeps the board from panning while such a face is live and consuming the wheel itself. |
+| `dragBand` | boolean — REQUIRED, never optional | only load-bearing when boardNodeType is 'atlas-object': does this noun's own content capture pointer events (a grid, a vendored pan/zoom viewer), so the shared renderer needs to add its own chrome band as the drag surface? A noun whose whole body already drags declares false, not omitted. |
+| `boardObjectKind` | 'shape', 'image', 'ink', 'table', 'diagram', 'sheet', or null | the persisted BoardObject.Kind this noun's own placed instance carries, or null for a tool that never routes through the shared 'atlas-object' renderer. Not always equal to id — pencil's own placed instance is Kind 'ink' — so content resolution below keys off this field, read from object.Kind, never off id. |
+| `content` | an object with Component (a React component accepting { object, mirrorVersion }), ariaLabelKey (a string), and role ('img' or undefined), plus the optional members source, editRoute, clickShield, wheelContained and extension — or null | this noun's own placed-instance content contribution. registerNoun() feeds it into the board-object content registry (atlasNounRegistry.ts's registerBoardObjectContent) whenever boardObjectKind is non-null, killing AtlasBoardObjectNode.tsx's former per-Kind hand branch. A tool-less noun (diagram, sheet) calls registerBoardObjectContent directly instead of declaring this field at all, since it has no AtlasToolShape to satisfy — it instead sets this same content shape's own optional `extension` member (icon, label, description, disableScopeNote, group) so Settings > Extensions can still render an honest, correctly-sectioned row for it. mirrorVersion bumps on a live disk change to a fileBacked Kind's own mirrored file (see fileBacked below) — a non-file-backed Component simply ignores it. clickShield (a face that owns its own pointer model: an embedded viewer, or a grid that would otherwise read a bare click as a cell click) shields the face until the object is selected, so the first click always selects the object; wheelContained keeps the board from panning while such a face is live and consuming the wheel itself. |
 | `capabilities` | a readonly array of strings, or omitted entirely | the external reach this noun's own manifest declares. No current noun sets it. Settings > Extensions' reach line reads this field directly, so a future noun's declared capabilities show up there with no other code change. |
-| `fileBacked` | boolean -- REQUIRED, never optional | does this noun's own placed instance read Payload.mirrorPath as a real external file (goal 0232's file-backed preview/open/watch contract)? true gets the shared live-watch subscription (its own content Component sees mirrorVersion bump) and the object.openInDefaultApp context-menu command uniformly, with no extra wiring of either. A noun with no boardObjectKind at all still declares it, always false. |
-| `sticky` | boolean -- REQUIRED, never optional | does this tool stay armed after a completed gesture (pencil/eraser/laser -- repeated strokes/passes are the point), or disarm after one? useAtlasToolGesture.ts reads this to decide whether a gesture's own onEnd may call ctx.disarm/disarmUnlessLocked at all -- a sticky tool gets no-ops for both. A non-drag tool still declares it, always false. |
-| `gesture` | an object with onEnd (a function), plus optional onPoint/preview/fadeMs -- or null | a drag-shaped tool's own pure behavior contribution to the ONE platform gesture engine (useAtlasToolGesture.ts): onEnd commits (or no-ops); onPoint accumulates live per-point state (eraser's own hit-testing); preview is a component rendered generically in one overlay slot; fadeMs makes an ephemeral tool's own points age out on a timer instead of clearing at pointerup. null for every tool whose interaction never drags. |
+| `fileBacked` | boolean — REQUIRED, never optional | does this noun's own placed instance read Payload.mirrorPath as a real external file (goal 0232's file-backed preview/open/watch contract)? true gets the shared live-watch subscription (its own content Component sees mirrorVersion bump) and the object.openInDefaultApp context-menu command uniformly, with no extra wiring of either. A noun with no boardObjectKind at all still declares it, always false. |
+| `sticky` | boolean — REQUIRED, never optional | does this tool stay armed after a completed gesture (pencil/eraser/laser — repeated strokes/passes are the point), or disarm after one? useAtlasToolGesture.ts reads this to decide whether a gesture's own onEnd may call ctx.disarm/disarmUnlessLocked at all — a sticky tool gets no-ops for both. A non-drag tool still declares it, always false. |
+| `gesture` | an object with onEnd (a function), plus optional onPoint/preview/fadeMs — or null | a drag-shaped tool's own pure behavior contribution to the ONE platform gesture engine (useAtlasToolGesture.ts): onEnd commits (or no-ops); onPoint accumulates live per-point state (eraser's own hit-testing); preview is a component rendered generically in one overlay slot; fadeMs makes an ephemeral tool's own points age out on a timer instead of clearing at pointerup. null for every tool whose interaction never drags. |
 
 <!-- END GENERATED -->
 

@@ -66,7 +66,7 @@ func BuiltInWorkflows() []Workflow {
 		{ID: childCaptureID, NodeTypeID: "capture-attribute", Position: Position{X: 0, Y: 100},
 			Config: map[string]string{"attribute": "message"}},
 		{ID: childInjectID, NodeTypeID: "process-inject-text", Position: Position{X: 0, Y: 200},
-			Config: map[string]string{"text": "(child DRAFT -- publish to make this live)", "placement": "append"}},
+			Config: map[string]string{"text": "(child DRAFT, publish to make this live)", "placement": "append"}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
@@ -128,7 +128,7 @@ func BuiltInWorkflows() []Workflow {
 		{ID: disabledTriggerID, NodeTypeID: "trigger-schedule", Position: Position{X: 0, Y: 0},
 			Config: map[string]string{"cron": "* * * * *"}},
 		{ID: disabledInjectID, NodeTypeID: "process-inject-text", Position: Position{X: 0, Y: 100},
-			Config: map[string]string{"text": "the disabled example fired -- you enabled it", "placement": "append"}},
+			Config: map[string]string{"text": "the disabled example fired after you enabled it", "placement": "append"}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
@@ -266,7 +266,7 @@ func BuiltInWorkflows() []Workflow {
 		{
 			ID:          ExampleChildWorkflowID,
 			Label:       "Example: Echo message (callable child)",
-			Description: "Only runnable by another workflow (its trigger is \"callable by another workflow\"). Takes a typed input -- its declared 'message' Attribute -- reads it into the payload, and appends a marker. Ships with v1 PUBLISHED and a deliberately different DRAFT: callers see v1; the draft's changed text only goes live when you publish it.",
+			Description: "Only runnable by another workflow (its trigger is \"callable by another workflow\"). Takes a typed input (its declared 'message' Attribute), reads it into the payload, and appends a marker. Ships with v1 PUBLISHED and a deliberately different DRAFT: callers see v1; the draft's changed text only goes live when you publish it.",
 			Nodes:       childDraftNodes,
 			Attributes:  []AttributeDef{{Key: "message", Label: "Message", Type: FieldText}},
 			Edges: []Edge{
@@ -274,12 +274,12 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-child-e1", Source: childCaptureID, Target: childInjectID},
 			},
 			BuiltIn:          true,
-			Seed:             seedorigin.Stamp(2),
+			Seed:             seedorigin.Stamp(3),
 			PublishedVersion: 1,
 			Versions: []WorkflowVersion{{
 				Version:     1,
 				Label:       "Example: Echo message (callable child)",
-				Description: "v1 -- the published snapshot pinned by the parent example.",
+				Description: "v1: the published snapshot pinned by the parent example.",
 				Nodes:       childV1Nodes,
 				Attributes:  []AttributeDef{{Key: "message", Label: "Message", Type: FieldText}},
 				Edges: []Edge{
@@ -291,30 +291,30 @@ func BuiltInWorkflows() []Workflow {
 		{
 			ID:          "example-parent-workflow",
 			Label:       "Example: Parent → child call",
-			Description: "Invokes the callable child with a typed input bound to its 'message' Attribute, PINNED to the child's v1 -- the child's newer draft says something different on purpose, and running this proves the pin holds. The child's result becomes this workflow's payload and is also stored into its 'childResult' Attribute (typed output).",
+			Description: "Invokes the callable child with a typed input bound to its 'message' Attribute, PINNED to the child's v1. The child's newer draft says something different on purpose, and running this proves the pin holds. The child's result becomes this workflow's payload and is also stored into its 'childResult' Attribute (typed output).",
 			Nodes:       parentNodes,
 			Attributes:  []AttributeDef{{Key: "childResult", Label: "Child result", Type: FieldText}},
 			Edges: []Edge{
 				{ID: "example-parent-e0", Source: parentTriggerID, Target: parentChildID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(2),
+			Seed:    seedorigin.Stamp(3),
 		},
 		{
 			ID:          "example-guarded-http-workflow",
 			Label:       "Example: Approval-gated HTTP call",
-			Description: "Calls the seeded no-auth httpbin.org integration -- an EXTERNAL-effect step, so running it parks awaiting your approval by default. Approve or deny it from this workflow's own Runs tab. To skip the ask for trusted steps, add an allow rule under Configure > Guardrails -- and dry-run the rule there before relying on it.",
+			Description: "Calls the seeded no-auth httpbin.org integration. It is an EXTERNAL-effect step, so running it parks awaiting your approval by default. Approve or deny it from this workflow's own Runs tab. To skip the ask for trusted steps, add an allow rule under Configure > Guardrails. Dry-run the rule there before relying on it.",
 			Nodes:       guardedNodes,
 			Edges: []Edge{
 				{ID: "example-guarded-e0", Source: guardedTriggerID, Target: guardedHTTPID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(2),
+			Seed:    seedorigin.Stamp(3),
 		},
 		{
 			ID:          "example-review-workflow",
 			Label:       "Example: Human review with input",
-			Description: "Pauses in the Review queue (sidebar > Review) for a person: type a note there, approve, and the run resumes with your note as its data -- read into the payload and validated by a ruleset (\"note provided\" must pass). Deny to stop it instead. Human-in-the-loop and ruleset validation demonstrated end to end.",
+			Description: "Pauses in the Review queue (sidebar > Review) for a person: type a note there, approve, and the run resumes with your note as its data. The note is read into the payload and validated by a ruleset (\"note provided\" must pass). Deny to stop it instead. Human-in-the-loop and ruleset validation demonstrated end to end.",
 			Nodes:       reviewNodes,
 			Attributes:  []AttributeDef{{Key: "note", Label: "Note", Type: FieldText}},
 			Edges: []Edge{
@@ -323,24 +323,24 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-review-e2", Source: reviewCaptureID, Target: reviewRulesetID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(2),
+			Seed:    seedorigin.Stamp(3),
 		},
 		{
 			ID:          "example-disabled-schedule-workflow",
 			Label:       "Example: Disabled schedule",
-			Description: "An every-minute schedule that never fires -- it ships DISABLED, so its trigger doesn't even arm. Enable it (the workflow's own toggle) and watch it start appearing in Activity each minute; disable it again to pause production without deleting anything. Test runs work even while disabled.",
+			Description: "An every-minute schedule that never fires. It ships DISABLED, so its trigger doesn't even arm. Enable it (the workflow's own toggle) and watch it start appearing in Activity each minute; disable it again to pause production without deleting anything. Test runs work even while disabled.",
 			Nodes:       disabledNodes,
 			Edges: []Edge{
 				{ID: "example-disabled-e0", Source: disabledTriggerID, Target: disabledInjectID},
 			},
 			BuiltIn:  true,
-			Seed:     seedorigin.Stamp(2),
+			Seed:     seedorigin.Stamp(3),
 			Disabled: true,
 		},
 		{
 			ID:          "example-branch-to-decision-workflow",
 			Label:       "Example: Branch to a decision",
-			Description: "Captures a typed 'amount' Attribute, branches on it (amount > 100), and ends at one of two Configure-authored Decisions -- Approve or Deny -- each a real TERMINAL outcome, not just the end of the step chain. The branch's condition is a Branch step (renamed from routing-only \"Decision\" -- see Configure > Decisions for the terminal outcomes themselves); the captured amount flows typed into the reached Decision's own 'score' output via outputBindings, proving the outcome JSON carries real data, not a hardcoded literal. The Approve arm is PINNED to that Decision's published v1, unaffected by later edits to it -- the Deny arm stays live, always resolving that Decision's current definition; run history shows each arm's own \"v1\"/\"live@N\" stamp.",
+			Description: "Captures a typed 'amount' Attribute, branches on it (amount > 100), and ends at one of two Configure-authored Decisions (Approve or Deny), each a real TERMINAL outcome, not just the end of the step chain. The branch's condition is a Branch step, renamed from routing-only \"Decision\" (see Configure > Decisions for the terminal outcomes themselves). The captured amount flows typed into the reached Decision's own 'score' output via outputBindings, proving the outcome JSON carries real data, not a hardcoded literal. The Approve arm is PINNED to that Decision's published v1, unaffected by later edits to it. The Deny arm stays live, always resolving that Decision's current definition; run history shows each arm's own \"v1\"/\"live@N\" stamp.",
 			Nodes:       branchNodes,
 			Attributes:  []AttributeDef{{Key: "amount", Label: "Amount", Type: FieldNumber}},
 			Edges: []Edge{
@@ -350,29 +350,29 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-branch-e3", Source: branchRouteID, SourceHandle: otherwiseHandle, Target: branchDenyID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(3),
+			Seed:    seedorigin.Stamp(4),
 		},
 		{
 			ID:          "example-decision-with-review-workflow",
 			Label:       "Example: Decision with review",
-			Description: "Runs straight into the seeded \"Manual review (example)\" Decision -- a manual-review-category terminal outcome parks the run in the Review queue (sidebar > Review) before it terminalizes, the exact same durable park human-review already uses. Approve there to reach the typed outcome; deny to fail the run closed.",
+			Description: "Runs straight into the seeded \"Manual review (example)\" Decision. A manual-review-category terminal outcome parks the run in the Review queue (sidebar > Review) before it terminalizes, the exact same durable park human-review already uses. Approve there to reach the typed outcome; deny to fail the run closed.",
 			Nodes:       decisionReviewNodes,
 			Edges: []Edge{
 				{ID: "example-decision-review-e0", Source: decisionReviewTriggerID, Target: decisionReviewOutcomeID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(3),
+			Seed:    seedorigin.Stamp(4),
 		},
 		{
 			ID:          "example-mcp-echo-workflow",
 			Label:       "Example: MCP echo call",
-			Description: "Calls the seeded \"Example: Reference server (npx)\" MCP Server's echo tool -- {\"message\":\"hello from mill\"} -> \"Echo: hello from mill\", the real round trip already verified live against the official MCP reference server. Needs Node/npx installed locally to actually run; the committed test suite proves this step's own logic without spawning it.",
+			Description: "Calls the seeded \"Example: Reference server (npx)\" MCP Server's echo tool. It sends {\"message\":\"hello from mill\"} and gets back \"Echo: hello from mill\". Needs Node/npx installed locally to actually run; the committed test suite proves this step's own logic without spawning it.",
 			Nodes:       mcpNodes,
 			Edges: []Edge{
 				{ID: "example-mcp-e0", Source: mcpTriggerID, Target: mcpCallID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(3),
+			Seed:    seedorigin.Stamp(4),
 		},
 		{
 			ID:          "example-codeexec-workflow",
@@ -392,13 +392,13 @@ func BuiltInWorkflows() []Workflow {
 		{
 			ID:          "example-disabled-filesystem-watch-workflow",
 			Label:       "Example: Disabled filesystem watch",
-			Description: "Fires when a file under a watched path is added, changed, or deleted -- ships DISABLED with no path configured (same as \"Example: Disabled schedule\"), so it never watches anything on your machine as shipped. Point its trigger at a real directory (the canvas Inspector), publish, and enable it to see it fire in Activity.",
+			Description: "Fires when a file under a watched path is added, changed, or deleted. Ships DISABLED with no path configured (same as \"Example: Disabled schedule\"), so it never watches anything on your machine as shipped. Point its trigger at a real directory (the canvas Inspector), publish, and enable it to see it fire in Activity.",
 			Nodes:       fsNodes,
 			Edges: []Edge{
 				{ID: "example-fswatch-e0", Source: fsTriggerID, Target: fsInjectID},
 			},
 			BuiltIn:  true,
-			Seed:     seedorigin.Stamp(2),
+			Seed:     seedorigin.Stamp(3),
 			Disabled: true,
 		},
 	}...)

@@ -77,8 +77,8 @@ func builtInAtlassianWorkflows() []Workflow {
 			ID:    "example-jira-issues-sync-workflow",
 			Label: "Example: Jira issues → List",
 			Description: "Every 15 minutes, runs the Example: Jira search (PAT) integration and mirrors the " +
-				"issues it returns into the Example: Jira issues List, one row per issue matched by key -- " +
-				"one-way, nothing is written back to Jira. Configure the integration's base URL and token, " +
+				"issues it returns into the Example: Jira issues List, one row per issue matched by key. " +
+				"The sync is one-way; nothing is written back to Jira. Configure the integration's base URL and token, " +
 				"set the url column's base in the sync step, then enable this workflow.",
 			Nodes: jiraSyncNodes,
 			Edges: []Edge{
@@ -86,7 +86,7 @@ func builtInAtlassianWorkflows() []Workflow {
 				{ID: "atlassian-jira-sync-e1", Source: jiraSyncHTTPID, Target: jiraSyncApplyID},
 			},
 			BuiltIn:  true,
-			Seed:     seedorigin.Stamp(1),
+			Seed:     seedorigin.Stamp(2),
 			Disabled: true,
 		},
 		{

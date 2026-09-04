@@ -41,7 +41,7 @@ export type RuleScopeChoice =
 export function ruleScopeSentence(scope: RuleScopeChoice): string {
   switch (scope.kind) {
     case 'step':
-      return `Only this step — ${scope.nodeTypeLabel} in ${scope.workflowLabel}`
+      return `Only this step: ${scope.nodeTypeLabel} in ${scope.workflowLabel}`
     case 'workflow':
       return `Any step in ${scope.workflowLabel}`
     case 'nodeType':

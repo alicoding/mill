@@ -50,7 +50,7 @@ test('the Quick Panel shows "Download the update and install" only once CheckFor
     // QuickPanel.tsx) re-derives its rows with no reload, same as the
     // pill's own live subscription. The footer says what happened and
     // names the next row (goal 0295).
-    await expect(page.getByTestId('quick-panel-status')).toHaveText('Mill 9.9.9 is available — run "Download the update and install"', { timeout: 10_000 })
+    await expect(page.getByTestId('quick-panel-status')).toHaveText('Mill 9.9.9 is available. Run "Download the update and install".', { timeout: 10_000 })
     // One update door at a time: the check row yields to the download row.
     await search.fill('update')
     await expect(page.getByRole('option').first()).toHaveText(/Download the update and install/)

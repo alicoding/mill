@@ -124,7 +124,7 @@ test('a run started from the Quick Panel shows under Recent as done', async ({},
     await search.fill(label)
     await expect(page.getByRole('option', { name: label })).toBeVisible()
     await page.keyboard.press('Enter')
-    await expect(page.getByTestId('quick-panel-status')).toContainText(`Done — "${label}"`)
+    await expect(page.getByTestId('quick-panel-status')).toContainText(`Done: "${label}"`)
 
     // A run that parks for approval says so, instead of "Done" (the RPC
     // returns while the run is still pending).

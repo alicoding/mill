@@ -78,7 +78,7 @@ func BuiltIn() []List {
 			Label: "Example: Jira issues",
 			Description: "A one-way mirror of a Jira search: \"Example: Jira issues → List\" refreshes these " +
 				"rows on a schedule once its Jira integration is configured, matching each issue by key. " +
-				"Mill never writes back to Jira -- an issue's own door is its link in the url column, and " +
+				"Mill never writes back to Jira. An issue's own door is its link in the url column, and " +
 				"the next sync overwrites what you change here.",
 			Columns: []typedfield.Field{
 				{Key: "key", Label: "Key", Type: typedfield.TypeText, Required: true},
@@ -91,15 +91,13 @@ func BuiltIn() []List {
 				{Key: "url", Label: "Link", Type: typedfield.TypeText},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(1),
+			Seed:    seedorigin.Stamp(2),
 		},
 		{
 			ID:    ExampleCountryCodesID,
 			Label: "Example: Country codes",
-			Description: "A typed lookup dataset (code -> country name) -- the seeded proof for " +
-				"both list-lookup (legacy, via the derived key/value view over its first two columns) and " +
-				"list-search (typed exact/fuzzy matching). Includes one deliberately Expired row (a defunct " +
-				"code) demonstrating the exclude-by-default rule live.",
+			Description: "A typed lookup dataset (code -> country name). Includes one deliberately " +
+				"Expired row (a defunct code) demonstrating the exclude-by-default rule live.",
 			Columns: []typedfield.Field{
 				{Key: "code", Label: "Code", Type: typedfield.TypeText, Required: true},
 				{Key: "name", Label: "Name", Type: typedfield.TypeText, Required: true},
@@ -118,7 +116,7 @@ func BuiltIn() []List {
 				expiredRow("row-su", "SU", "Soviet Union"),
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(4),
+			Seed:    seedorigin.Stamp(5),
 		},
 		{
 			ID:    ExampleTaskTrackerID,

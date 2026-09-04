@@ -61,7 +61,7 @@ func init() {
 			},
 			{
 				Key: "keyColumn", Label: "Key column", Type: FieldText,
-				Description: "The List column that identifies an item -- must be named in the field map.",
+				Description: "The List column that identifies an item. It must be named in the field map.",
 			},
 			{
 				Key: "fieldMap", Label: "Field map", Type: FieldText, Multiline: true,

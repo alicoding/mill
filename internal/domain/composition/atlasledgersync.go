@@ -42,7 +42,7 @@ func init() {
 		Output:     "payload unchanged; a sync-summary JSON -> the output attribute, if named",
 		Description: "Mirrors every frontmattered markdown file in a folder as a Delivered feature card: a " +
 			"file already mirrored keeps its card and only its mirror-owned fields (goal, shipped date, PRs, " +
-			"proof) refresh -- your sign-off, verified date, and notes are never touched. A new file becomes " +
+			"proof) refresh. Your sign-off, verified date, and notes are never touched. A new file becomes " +
 			"a new card, pending-verify by default.",
 		ConfigFields: []ConfigField{
 			{

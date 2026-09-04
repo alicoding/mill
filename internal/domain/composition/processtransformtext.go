@@ -32,7 +32,7 @@ func init() {
 		Consumes:    []PayloadKind{PayloadText, PayloadHTML},
 		Produces:    PayloadProduce{Kind: PayloadText},
 		Output:      "the transformed text",
-		Description: "Hashes or encodes the payload -- SHA-256, base64, URL encoding and more. Hashes are one-way; decoding applies to base64, URL, and hex.",
+		Description: "Hashes or encodes the payload: SHA-256, base64, URL encoding and more. Hashes are one-way; decoding applies to base64, URL, and hex.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "operation", Label: "Operation",

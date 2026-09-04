@@ -96,7 +96,7 @@ func builtInListWorkflows() []Workflow {
 		{
 			ID:          "example-list-search-workflow",
 			Label:       "Example: Country lookup (search)",
-			Description: "Captures a typed 'code' Attribute and searches the seeded \"Example: Country codes\" List (Configure > Lists) via list-search -- an exact match on its 'code' column, writing a typed Object result ({results, matched, first_match, match_count, list_id}) into 'searchResult'. Unlike list-lookup's plain scalar output, this demonstrates the richer typed result a downstream step (e.g. a Branch condition on searchResult.matched) could reference. Run it with code = US, CA, MX, or FR to see a match -- SU is a deliberately Expired seed row, excluded from matching by default.",
+			Description: "Captures a typed 'code' Attribute and searches the seeded \"Example: Country codes\" List (Configure > Lists) via list-search. It does an exact match on its 'code' column, writing a typed Object result ({results, matched, first_match, match_count, list_id}) into 'searchResult'. Unlike list-lookup's plain scalar output, this demonstrates the richer typed result a downstream step (e.g. a Branch condition on searchResult.matched) could reference. Run it with code = US, CA, MX, or FR to see a match. SU is a deliberately Expired seed row, excluded from matching by default.",
 			Nodes:       listSearchNodes,
 			Attributes: []AttributeDef{
 				{Key: "code", Label: "Code", Type: FieldText},
@@ -107,7 +107,7 @@ func builtInListWorkflows() []Workflow {
 				{ID: "example-list-search-e1", Source: listSearchCaptureID, Target: listSearchStepID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(2),
+			Seed:    seedorigin.Stamp(3),
 		},
 	}
 }

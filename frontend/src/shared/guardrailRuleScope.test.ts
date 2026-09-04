@@ -36,7 +36,7 @@ const SCOPES: Record<'step' | 'workflow' | 'nodeType' | 'request', RuleScopeChoi
 
 describe('ruleScopeSentence', () => {
   it('describes a step scope', () => {
-    expect(ruleScopeSentence(SCOPES.step)).toBe('Only this step — HTTP request in Invoice sync')
+    expect(ruleScopeSentence(SCOPES.step)).toBe('Only this step: HTTP request in Invoice sync')
   })
   it('describes a workflow scope', () => {
     expect(ruleScopeSentence(SCOPES.workflow)).toBe('Any step in Invoice sync')
