@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nextDrawioActions } from './drawioEmbedProtocol'
+import { externalChangeActions, nextDrawioActions } from './drawioEmbedProtocol'
 
 // The fake-engine contract test (goal 0237 S1, no-catch-up-tax rule 3):
 // every case below is a plain JS object shaped exactly like a message
@@ -53,5 +53,21 @@ describe('nextDrawioActions', () => {
 
   it('ignores a message with no event field at all (a non-protocol postMessage sharing the window)', () => {
     expect(nextDrawioActions({}, '<mxfile>seed</mxfile>')).toEqual([])
+  })
+})
+
+describe('externalChangeActions', () => {
+  it('merges an external mirror change into the open editor, never reloads it', () => {
+    expect(externalChangeActions('<mxfile>new</mxfile>', '<mxfile>old</mxfile>')).toEqual([
+      { type: 'sendToEditor', message: { action: 'merge', xml: '<mxfile>new</mxfile>' } },
+    ])
+  })
+
+  it('ignores the watch observing this editor\'s own autosave', () => {
+    expect(externalChangeActions('<mxfile>same</mxfile>', '<mxfile>same</mxfile>')).toEqual([])
+  })
+
+  it('ignores an empty read', () => {
+    expect(externalChangeActions('', '<mxfile>old</mxfile>')).toEqual([])
   })
 })

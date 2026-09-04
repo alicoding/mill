@@ -43,6 +43,19 @@ export type DrawioEmbedAction =
 //   - 'exit' (the user closed the editor's own UI) -> close. No
 //     defensive re-write here: autosave:1 above means every prior edit
 //     already landed on disk before 'exit' could ever fire.
+// externalChangeActions maps a change Mill observed on the mirror FILE
+// (the fsnotify watch, goal 0194 -- never a protocol message) onto the
+// documented 'merge' action: draw.io merges the incoming file into the
+// open diagram, keeping the editor's own in-progress state, where
+// 'load' would replace the whole document and discard it. A change
+// whose bytes are the ones this editor itself last autosaved is the
+// watch observing our own write -- merging it back would fight the
+// person's typing, so it produces no action at all.
+export function externalChangeActions(xml: string, lastWrittenXML: string): DrawioEmbedAction[] {
+  if (xml === '' || xml === lastWrittenXML) return []
+  return [{ type: 'sendToEditor', message: { action: 'merge', xml } }]
+}
+
 export function nextDrawioActions(message: DrawioEmbedMessage, initialXML: string): DrawioEmbedAction[] {
   switch (message.event) {
     case 'init':
