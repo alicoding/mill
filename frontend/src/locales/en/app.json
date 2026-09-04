@@ -137,6 +137,7 @@
     "moreWaiting": "+{{count}} more waiting",
     "openInMill": "Open in Mill",
     "setRule": "Set a rule…",
+    "close": "Close",
     "empty": "No pending approvals."
   },
   "appSidebar": {

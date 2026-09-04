@@ -4,6 +4,7 @@
    frameless window. */
 
 .prompt {
+  position: relative;
   display: flex;
   align-items: center;
   height: 100vh;
@@ -23,4 +24,13 @@
 .error {
   color: var(--fgColor-danger);
   margin: 0;
+}
+
+/* The frameless window has no native close control, so the prompt
+   carries its own -- pinned to the corner rather than placed in the
+   flow, so the centred single-item layout stays unchanged. */
+.close {
+  position: absolute;
+  top: var(--base-size-4, 4px);
+  right: var(--base-size-4, 4px);
 }
