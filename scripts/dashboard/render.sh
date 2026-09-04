@@ -195,6 +195,46 @@ census_html = (
 )
 substitute("census", census_html)
 
+# --- turns per goal (efficiency.turnsPerGoal.perGoal: the last 20
+# shipped goals by date, plus every open goal with session data --
+# every row in per_goal already has >=1 session, "with data" is by
+# construction) ---
+efficiency = data.get("efficiency") or {}
+turns_per_goal = (efficiency.get("turnsPerGoal") or {}).get("perGoal") or []
+goal_dates = {g["id"]: g.get("date") or "" for g in goals}
+
+shipped_turns = [r for r in turns_per_goal if r.get("status") == "shipped"]
+shipped_turns.sort(key=lambda r: goal_dates.get(r["goal"], ""), reverse=True)
+open_turns = [r for r in turns_per_goal if r.get("status") != "shipped"]
+turns_display = shipped_turns[:20] + open_turns
+turns_display.sort(key=lambda r: r.get("toolCalls", 0), reverse=True)
+
+if turns_display:
+    rows = []
+    for r in turns_display:
+        prs = r.get("prs") or []
+        pr_text = " ".join("#%s" % p for p in prs) if prs else "&mdash;"
+        status_chip = "good" if r.get("status") == "shipped" else "warn"
+        turns_total = r.get("assistantTurns", 0) + r.get("userTurns", 0)
+        rows.append(
+            '    <tr><td>%s</td><td><span class="chip %s">%s</span></td><td>%s</td>'
+            '<td class="num">%s</td><td class="num">%s</td><td class="num">%s</td></tr>'
+            % (esc(r["goal"]), status_chip, esc(r.get("status")), pr_text,
+               r.get("sessions", 0), r.get("toolCalls", 0), turns_total)
+        )
+    rows_html = "\n".join(rows)
+    note = "Turns = assistant + user turns combined. A session counts toward every goal it mentions."
+else:
+    rows_html = '    <tr><td colspan="6">No transcript data derived yet.</td></tr>'
+    note = "No local transcript history found for this checkout."
+turns_html = (
+    '\n  <div class="card"><table>\n'
+    "    <tr><th>goal</th><th>status</th><th>PRs</th><th>sessions</th><th>tool calls</th><th>turns</th></tr>\n"
+    "%s\n  </table></div>\n"
+    '  <div class="note">%s</div>\n  ' % (rows_html, note)
+)
+substitute("turns-per-goal", turns_html)
+
 with open(out_path, "w") as fh:
     fh.write(html)
 PY

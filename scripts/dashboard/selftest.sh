@@ -66,3 +66,40 @@ assert rendered_rows >= row_count, (
 print(f"OK: dispatch block has {rendered_rows} rows (ledger: {row_count})")
 PY
 fi
+
+# invariant 5: turns-per-goal.sh's counting logic against the committed
+# synthetic fixtures (fixtures/turns/session-{a,b}.jsonl -- no real
+# transcript text, see turns-per-goal.sh's own no-storage discipline)
+tmp_turns="$(mktemp -t dashboard-selftest-turns-XXXXXX.json)"
+trap 'rm -f "$tmp_out" "$tmp_html" "$tmp_turns"' EXIT
+"$repo_root/scripts/dashboard/turns-per-goal.sh" \
+  "$repo_root/scripts/dashboard/fixtures/turns" "$tmp_turns" >/dev/null
+
+python3 - "$tmp_turns" <<'PY'
+import json, sys
+
+path = sys.argv[1]
+with open(path) as fh:
+    data = json.load(fh)
+
+sessions = {s["id"]: s for s in data["sessions"]}
+assert set(sessions) == {"session-a", "session-b"}, sessions.keys()
+
+a, b = sessions["session-a"], sessions["session-b"]
+assert a["toolCalls"] == 3 and a["assistantTurns"] == 2 and a["userTurns"] == 1, a
+assert a["goals"] == ["0210"], a  # the fake 0000 mention has no goal file, dropped
+assert b["toolCalls"] == 1 and b["assistantTurns"] == 1 and b["userTurns"] == 2, b
+assert b["goals"] == ["0210"], b  # the sidechain tool_use never counts
+
+per_goal = {r["goal"]: r for r in data["perGoal"]}
+assert set(per_goal) == {"0210"}, per_goal.keys()
+row = per_goal["0210"]
+assert row["sessions"] == 2, row
+assert row["toolCalls"] == 4, row  # 3 (session-a) + 1 (session-b)
+assert row["assistantTurns"] == 3, row  # 2 + 1
+assert row["userTurns"] == 3, row  # 1 + 2
+assert row["status"] in ("shipped", "open"), row
+
+print("OK: turns-per-goal fixture counts match (sessions, tool calls, "
+      "turns, cross-session goal rollup, invalid-id filtering)")
+PY
