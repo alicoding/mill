@@ -120,9 +120,13 @@ test('The list groups into sections; every row title is a noun, and the drawing 
   // The drawing tools surface as the bundled Drawing plugin's ONE row.
   const drawingPlugin = pluginRow(page, 'mill-drawing')
   await expect(drawingPlugin).toBeVisible()
-  // Where it came from reads in its detail pane, not on the row.
+  // Where it came from reads in its detail pane, not on the row -- and
+  // exactly once: a bundled plugin says so on the header's meta line,
+  // so it gets no second provenance line under it.
   const drawingDetail = await openExtensionDetail(page, drawingPlugin, 'mill-drawing')
-  await expect(drawingDetail.getByTestId('extensions-detail-provenance')).toHaveText('Built into Mill')
+  await expect(drawingDetail.getByTestId('extensions-detail-meta')).toContainText('Built into Mill')
+  await expect(drawingDetail.getByTestId('extensions-detail-provenance')).toHaveCount(0)
+  await expect(drawingDetail.getByText('Built into Mill')).toHaveCount(1)
   await page.keyboard.press('Escape')
 
   // Every row's own title is the bare noun, one word.

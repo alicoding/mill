@@ -43,8 +43,10 @@ export interface ExtensionDetail {
   // pasted links -- stated beside the reach line so both declarations
   // read together.
   claims?: string[]
-  // "Ships with Mill v1.2.0" or "From /Users/…/plugins/acme".
-  provenance: string
+  // "Ships with Mill v1.2.0" or "From /Users/…/plugins/acme". Omitted
+  // when the header's own meta line already says where this came from
+  // -- a bundled plugin would otherwise read "Built into Mill" twice.
+  provenance?: string
   // Whatever the row's own state needs said in full: an error, a
   // policy block, the awaiting-review strip with its Allow button.
   status?: ReactNode
@@ -181,7 +183,9 @@ export function ExtensionDetailPane({ detail, showBackLink, onClose }: {
       {detail.claims?.map((claim) => (
         <Text as="p" size="small" className={listStyles.muted} key={claim} data-testid="extensions-detail-claim">{claim}</Text>
       ))}
-      <Text as="p" size="small" className={listStyles.muted} data-testid="extensions-detail-provenance">{detail.provenance}</Text>
+      {detail.provenance && (
+        <Text as="p" size="small" className={listStyles.muted} data-testid="extensions-detail-provenance">{detail.provenance}</Text>
+      )}
       <Link
         href="#"
         onClick={(e) => {

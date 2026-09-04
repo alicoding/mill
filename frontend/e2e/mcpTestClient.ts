@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { MCP_BASE_PORT, expect } from './fixtures/server'
+import { openSettings } from './fixtures/settingsNav'
 
 // Shared e2e helpers for driving Mill's real MCP server over HTTP
 // (docs/adr/0025/0032) -- factored out of mcp-write-approval.spec.ts so
@@ -90,7 +91,10 @@ export function stripExportedID(exported: string): string {
 // "unattended" helper which deliberately relaxes approval.
 export async function enableMCPWritesWithApprovalRequired(page: Page): Promise<void> {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  // The MCP gate lives on Settings' Connections pane (goal 0321), and
+  // Settings renders one pane at a time -- the sidebar link alone
+  // lands on whichever pane this device last read.
+  await openSettings(page, 'connections')
   const writeCheckbox = page.getByTestId('mcp-write-enabled-checkbox')
   await expect(writeCheckbox).toBeEnabled()
   if (!(await writeCheckbox.isChecked())) {
@@ -110,7 +114,7 @@ export async function enableMCPWritesWithApprovalRequired(page: Page): Promise<v
 // approval required stays on either way.
 export async function restoreMCPWriteDefaults(page: Page): Promise<void> {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'connections')
   const writeCheckbox = page.getByTestId('mcp-write-enabled-checkbox')
   if (await writeCheckbox.isChecked()) {
     await writeCheckbox.click()
