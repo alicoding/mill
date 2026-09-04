@@ -12,7 +12,10 @@
     "lint": "eslint .",
     "test": "vitest run --coverage",
     "boundaries": "depcruise -c .dependency-cruiser.cjs src",
-    "plugin:conform": "vitest run src/plugins/conformance.test.ts"
+    "plugin:conform": "vitest run src/plugins/conformance.test.ts",
+    "plugin:typecheck": "tsc -p tsconfig.plugins.json",
+    "sdk:build": "tsc -p tsconfig.sdk.json && mv plugin-sdk/sdk.d.ts plugin-sdk/index.d.ts",
+    "docs:sdk": "typedoc"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",
@@ -79,6 +82,8 @@
     "eslint-plugin-react-refresh": "^0.5.5",
     "eslint-plugin-sonarjs": "^4.2.0",
     "globals": "^17.11.0",
+    "typedoc": "^0.28.20",
+    "typedoc-plugin-markdown": "^4.13.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.69.0",
     "vite": "^8.2.2",

@@ -13,6 +13,11 @@ import { RUNTIME_PLUGINS_SERVER_BASE_PORT, RUNTIME_PLUGINS_MCP_BASE_PORT } from 
 // examples/plugins -- the exact artifact a user copies from -- plus
 // optional fixture plugins. Callers pick disjoint port OFFSETS: the
 // original spec uses 0-8, the doors spec 10+.
+//
+// Picking an offset: the two bases are 20 apart, so offset o's SERVER
+// port is offset o-20's MCP port. A new offset o is safe only when
+// o, o-20 and o+20 are all unclaimed, and its own two ports fall
+// outside every other family's base in serverPorts.ts.
 export const EXAMPLES_PLUGINS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'examples', 'plugins')
 
 // ExtraPlugin -- a fixture plugin a test writes into the copied
@@ -86,11 +91,16 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 
 // runFromPalette -- the one way these tests fire a plugin command: the
 // palette's own binding, the command by its registered label.
+//
+// exact: accessible-name matching is substring by default, and the
+// palette holds commands whose labels CONTAIN a plugin's label (each
+// plugin's own "Reload <name>", goal 0319) -- without it the click
+// hits a strict-mode violation instead of the intended row.
 export async function runFromPalette(page: Page, label: string) {
 	await page.keyboard.press('Meta+/')
 	const dialog = page.getByRole('dialog', { name: 'Command palette' })
 	await expect(dialog).toBeVisible()
 	await dialog.getByRole('combobox').fill(label)
-	await dialog.getByRole('option', { name: label }).click()
+	await dialog.getByRole('option', { name: label, exact: true }).click()
 }
 

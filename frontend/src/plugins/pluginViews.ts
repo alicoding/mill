@@ -29,3 +29,12 @@ export function collectPluginView(view: PluginView): void {
 export function getPluginView(pluginId: string, viewId: string): PluginView | undefined {
 	return views.get(pluginViewKey(pluginId, viewId))
 }
+
+// unregisterPluginViews drops one plugin's registered views ahead of
+// its re-activation (goal 0319's per-plugin reload); an open tab
+// re-renders from the fresh module's render.
+export function unregisterPluginViews(pluginId: string): void {
+	for (const [key, view] of views) {
+		if (view.pluginId === pluginId) views.delete(key)
+	}
+}

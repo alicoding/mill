@@ -1,3 +1,6 @@
+// @ts-check
+/// <reference path="../../../frontend/plugin-sdk/index.d.ts" />
+
 // Bookmark -- Mill's reference runtime plugin (docs/goals/0249).
 // Plain ESM, no build step: copy this folder into the app's plugins
 // directory (Settings > Extensions > Open plugins folder) and reload.
@@ -15,6 +18,7 @@
 // (api.settings.onChange) -- renderFace itself re-runs on object data
 // changes only.
 
+/** @param {import('../../../frontend/plugin-sdk').MillPluginAPI} api */
 export function activate(api) {
 	// Live faces, so a settings change can redraw them.
 	const faces = new Map()

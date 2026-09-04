@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text } from '@primer/react'
 import { getPluginView } from '../plugins/pluginViews'
+import { usePluginReloadVersion } from '../plugins/pluginReloadSignal'
 import listStyles from '../shared/ListCard.module.css'
 
 // PluginViewHost -- the work-tab panel a plugin draws into (docs/goals/
@@ -15,16 +16,21 @@ import listStyles from '../shared/ListCard.module.css'
 export function PluginViewHost({ pluginId, viewId }: { pluginId: string; viewId: string }) {
   const { t } = useTranslation('app')
   const ref = useRef<HTMLDivElement>(null)
+  // A reload replaces the plugin's registered render, so an open tab
+  // redraws from the fresh module rather than holding the previous
+  // one's callback until the tab is closed and reopened (goal 0319).
+  const reloadVersion = usePluginReloadVersion()
   const view = getPluginView(pluginId, viewId)
   useEffect(() => {
     const el = ref.current
     if (!el || !view) return
     try {
+      el.replaceChildren()
       view.render(el, { pluginId, viewId })
     } catch (err) {
       console.error(`plugin ${pluginId}: view "${viewId}" failed to render`, err)
     }
-  }, [view, pluginId, viewId])
+  }, [view, pluginId, viewId, reloadVersion])
   if (!view) {
     return <Text as="p" size="small" className={listStyles.muted} data-testid="plugin-view-missing">{t('pluginView.missing')}</Text>
   }

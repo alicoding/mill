@@ -1,0 +1,16 @@
+{
+  "/* purpose */": "Emits the plugin SDK's committed type package (frontend/plugin-sdk/index.d.ts) from the one SDK source file. Kept separate from tsconfig.json because that project is noEmit and spans the whole app; this one compiles exactly src/plugins/sdk.ts, whose own rule is that it imports nothing from the kernel.",
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "src/plugins",
+    "declarationDir": "plugin-sdk"
+  },
+  "include": ["src/plugins/sdk.ts"]
+}

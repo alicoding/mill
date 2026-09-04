@@ -195,6 +195,14 @@ export function registerBoardObjectContent(kind: string, content: AtlasBoardObje
   boardObjectContentRegistry.set(kind, resolved)
 }
 
+// unregisterBoardObjectContent removes a Kind's renderer so the same
+// Kind can be registered again (goal 0319's per-plugin reload). Only a
+// third-party Kind is ever unregistered: a compiled-in noun registers
+// once at module eval and never leaves.
+export function unregisterBoardObjectContent(kind: string): void {
+  boardObjectContentRegistry.delete(kind)
+}
+
 // boardObjectContentFor -- the ONE lookup AtlasBoardObjectNode.tsx uses
 // to resolve a placed object's own content/ariaLabel/role/dragBand,
 // replacing its former per-Kind hand branch. Accepts a plain string

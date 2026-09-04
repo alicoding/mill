@@ -26,3 +26,11 @@ export function collectPluginCapture(capture: PluginCapture): void {
 export function getPluginCapture(pluginId: string, captureId: string): PluginCapture | undefined {
 	return captures.get(pluginCaptureKey(pluginId, captureId))
 }
+
+// unregisterPluginCaptures -- the capture half of the same per-plugin
+// reload sweep pluginViews.ts carries (goal 0319).
+export function unregisterPluginCaptures(pluginId: string): void {
+	for (const [key, capture] of captures) {
+		if (capture.pluginId === pluginId) captures.delete(key)
+	}
+}

@@ -10,10 +10,14 @@ limit=500
 # Generated bindings (Wails codegen, not hand-written), the gomobile-
 # toolchain scaffold under build/ios and build/android (vendored, not
 # Mill's own code -- same carve-out ci.yml's build-go job already applies),
-# and frontend/dist/node_modules are all out of scope: this convention is
-# about keeping *Mill's own hand-written source* reviewable as a single
-# unit, not about code nobody here maintains the shape of.
-exclude_regex='^(frontend/bindings/|build/ios/|build/android/|frontend/dist/|frontend/node_modules/)'
+# the plugin SDK's committed declarations (emitted by tsc from
+# frontend/src/plugins/sdk.ts via `npm run sdk:build`, which IS under the
+# limit -- the emitter owns this file's shape, and check-sdk-freshness.sh
+# is what keeps it honest), and frontend/dist/node_modules are all out of
+# scope: this convention is about keeping *Mill's own hand-written
+# source* reviewable as a single unit, not about code nobody here
+# maintains the shape of.
+exclude_regex='^(frontend/bindings/|frontend/plugin-sdk/|build/ios/|build/android/|frontend/dist/|frontend/node_modules/)'
 
 violations=0
 while IFS= read -r -d '' file; do

@@ -191,7 +191,7 @@ test('the palette offers the plugin tool as a create command on the atlas surfac
 		await dialog.getByRole('combobox').fill('Bookmark')
 		// The plugin's atlas.create.<kind> command -- the same palette
 		// parity every built-in tool's create command has.
-		await expect(dialog.getByRole('option', { name: 'Bookmark' })).toBeVisible()
+		await expect(dialog.getByRole('option', { name: 'Bookmark', exact: true })).toBeVisible()
 	} finally {
 		await close()
 	}

@@ -1,3 +1,6 @@
+// @ts-check
+/// <reference path="../../../frontend/plugin-sdk/index.d.ts" />
+
 // Scribble -- the reference DRAG-SHAPED runtime plugin (goal 0252 S1),
 // proving the three plugin doors built-in drawing tools use: the
 // gesture engine (interaction: drag-to-draw), the style picker
@@ -29,6 +32,7 @@ function polylineSvg(el, points, color, width, viewW, viewH) {
 	el.replaceChildren(svg)
 }
 
+/** @param {import('../../../frontend/plugin-sdk').MillPluginAPI} api */
 export function activate(api) {
 	// renderPreview has no ctx of its own -- capture the current style
 	// from onPoint's ctx (fired per accumulated point) so the live

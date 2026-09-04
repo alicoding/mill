@@ -144,6 +144,7 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			collectPluginCommand({
 				id: `atlas.create.${decl.kind}`,
 				label: decl.label,
+				pluginId,
 				surface: ['atlas'],
 				// The arm signal's type is the built-in literal union; the
 				// runtime gate already accepts any registered third-party
@@ -165,6 +166,7 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			collectPluginCommand({
 				id: `view.open.${pluginId}.${decl.id}`,
 				label: declared.title,
+				pluginId,
 				run: () => {
 					void import('../shared/store').then((m) => m.useAppStore.getState().openWorkTab({ kind: 'plugin-view', pluginId, viewId: decl.id }))
 				},
@@ -181,11 +183,12 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			collectPluginCommand({
 				id: `capture.${pluginId}.${decl.id}`,
 				label: declared.label,
+				pluginId,
 				run: () => { void SettingsService.ShowCapture(pluginId, decl.id) },
 			})
 		},
 		registerCommand: (decl) => {
-			collectPluginCommand({ id: `plugin.${pluginId}.${decl.id}`, label: decl.label, enabled: decl.enabled, run: decl.run })
+			collectPluginCommand({ id: `plugin.${pluginId}.${decl.id}`, label: decl.label, pluginId, enabled: decl.enabled, run: decl.run })
 		},
 		requestGuardedAction,
 	})

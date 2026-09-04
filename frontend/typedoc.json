@@ -1,0 +1,17 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "Mill plugin API",
+  "entryPoints": ["src/plugins/sdk.ts"],
+  "tsconfig": "tsconfig.sdk.json",
+  "plugin": ["typedoc-plugin-markdown"],
+  "out": "../userdocs/reference/plugin-api",
+  "readme": "none",
+  "githubPages": false,
+  "hideGenerator": true,
+  "disableSources": true,
+  "excludeInternal": true,
+  "sort": ["alphabetical"],
+  "entryFileName": "index.md",
+  "mergeReadme": false,
+  "useCodeBlocks": true
+}

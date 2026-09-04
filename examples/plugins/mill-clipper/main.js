@@ -1,3 +1,6 @@
+// @ts-check
+/// <reference path="../../../frontend/plugin-sdk/index.d.ts" />
+
 // Web clipper -- a page becomes a note (docs/goals/0282), on the public
 // doors alone: api.fetch (guarded; the any-host declaration means
 // Review asks every time), the vendored Readability for the article,
@@ -6,6 +9,7 @@
 // object holds the address and the outcome; the note is the artifact.
 import { Readability } from './vendor/readability.js'
 
+/** @param {import('../../../frontend/plugin-sdk').MillPluginAPI} api */
 export function activate(api) {
 	// In-flight status per object: the host re-renders a face whenever
 	// the object's data changes (its first measured size lands while a

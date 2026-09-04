@@ -191,26 +191,6 @@ func New(dir string, guardrail *guardrailsvc.GuardrailService, appVersion string
 	return &PluginService{dir: dir, guardrail: guardrail, openURL: osopen.Open, appVersion: appVersion}
 }
 
-// PluginsDir returns the directory plugins are installed into --
-// the Extensions page's install story shows and reveals it. The
-// directory is created on first ask so "open the folder" never lands
-// on a missing path.
-func (p *PluginService) PluginsDir() (string, error) {
-	if err := os.MkdirAll(p.dir, 0o750); err != nil {
-		return "", fmt.Errorf("create plugins directory: %w", err)
-	}
-	return p.dir, nil
-}
-
-// RevealPluginsDir opens the plugins directory in the OS file manager.
-func (p *PluginService) RevealPluginsDir() error {
-	dir, err := p.PluginsDir()
-	if err != nil {
-		return err
-	}
-	return p.openInOS("file://" + dir)
-}
-
 func (p *PluginService) openInOS(url string) error {
 	if p.openURL == nil {
 		return fmt.Errorf("no URL opener available in this mode")
