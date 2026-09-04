@@ -8,6 +8,7 @@ import {
   spawnMillServer,
   type SpawnedServer,
 } from './fixtures/server'
+import { openInspectorTab } from './fixtures/inspectorTabs'
 
 // The guardrail execution gate end-to-end in the live app (docs/SPEC.md
 // §8, ADR-0019/0022), driven through the seeded "Example:
@@ -110,6 +111,7 @@ test('Nothing hidden: the canvas badges the guarded step and the Inspector shows
     // Selecting the step shows the read-only verdict -- authoring points
     // at Configure, never inline (corrected by direct discussion).
     await page.locator('[data-id="example-guarded-http"]').click()
+    await openInspectorTab(page.getByTestId('composition-inspector'), 'settings')
     await expect(page.getByTestId('node-guardrail-verdict')).toHaveText('ask')
     await expect(page.getByTestId('node-guardrail-section')).toContainText('Approvals happen in Review')
   } finally {

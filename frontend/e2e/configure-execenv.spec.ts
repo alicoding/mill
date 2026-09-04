@@ -36,6 +36,8 @@ test('Env variables edit as key/value rows and round-trip through save', async (
   await page.getByTestId('new-execenv').click()
 
   await page.getByLabel('Label').fill('E2E kv env')
+  // A fresh environment has no variables, so its rows sit behind the closed Advanced disclosure.
+  await page.getByTestId('execenv-advanced-summary').click()
   await page.getByTestId('execenv-env-key').first().fill('MILL_E2E_FLAG')
   await page.getByTestId('execenv-env-value').first().fill('on=really')
   await page.getByRole('button', { name: 'Save environment' }).click()

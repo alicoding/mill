@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { envToRows, rowsToEnv } from './execEnvRows'
+import { envToRows, execEnvAdvancedIsSet, rowsToEnv } from './execEnvRows'
 
 describe('envToRows', () => {
   it('splits at the first = only, preserving = inside values', () => {
@@ -33,3 +33,26 @@ describe('rowsToEnv', () => {
     expect(rowsToEnv([{ key: 'EMPTY', value: '' }])).toEqual(['EMPTY='])
   })
 })
+
+describe('execEnvAdvancedIsSet', () => {
+  const DEFAULT_DIR = '<mill-temp>'
+
+  it('stays closed for an environment that is only a label and a shell', () => {
+    expect(execEnvAdvancedIsSet('', [{ key: '', value: '' }], DEFAULT_DIR)).toBe(false)
+    expect(execEnvAdvancedIsSet('   ', [], DEFAULT_DIR)).toBe(false)
+  })
+
+  it('stays closed for the untouched default working directory', () => {
+    expect(execEnvAdvancedIsSet(DEFAULT_DIR, [], DEFAULT_DIR)).toBe(false)
+  })
+
+  it('opens when a working directory was actually chosen', () => {
+    expect(execEnvAdvancedIsSet('/tmp/work', [], DEFAULT_DIR)).toBe(true)
+  })
+
+  it('opens when any variable row carries a name, blank rows aside', () => {
+    expect(execEnvAdvancedIsSet('', [{ key: '', value: '' }, { key: 'PATH', value: '/bin' }], DEFAULT_DIR)).toBe(true)
+    expect(execEnvAdvancedIsSet('', [{ key: '  ', value: 'orphan' }], DEFAULT_DIR)).toBe(false)
+  })
+})
+

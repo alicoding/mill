@@ -81,7 +81,7 @@ test('the Inspector states the selected step\'s I/O contract in full', async ({ 
 
   const panel = activePanel(page)
   await clickCanvasNode(page, panel, 'Convert HTML to Markdown')
-  await expect(panel.getByTestId('inspector-io-contract')).toHaveText('Takes: HTML — Produces: Markdown')
+  await expect(panel.getByTestId('inspector-io-contract')).toHaveText('Takes HTML · Produces Markdown')
 })
 
 // The step-test surface (ADR-0051 §5, generalizing goal 0115's
@@ -102,7 +102,8 @@ test('the converter step\'s Inspector runs the step alone on pasted HTML; the tr
   await expect(section.getByTestId('try-engine-note')).toContainText('built-in converter')
 
   // The starter trigger node (dropped first, so index 0) has nothing
-  // to try -- the section must not render for it.
+  // to try -- it gets no Test tab at all (goal 0327).
   await panel.locator('.react-flow__node').first().click()
-  await expect(panel.getByTestId('step-test-section')).not.toBeVisible()
+  await expect(panel.getByTestId('inspector-tab-test')).toHaveCount(0)
+  await expect(panel.getByTestId('step-test-section')).toHaveCount(0)
 })
