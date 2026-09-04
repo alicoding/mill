@@ -10,3 +10,28 @@
     border: 1px solid var(--borderColor-default);
     border-radius: var(--borderRadius-medium);
 }
+
+/* The board-object face's fixed viewport (goal 0340): the drawing moves
+   inside this box rather than the box growing to the drawing.
+   `overflow` carries !important deliberately -- GraphViewer's own resize
+   handler writes `style.overflow = "auto"` inline whenever the drawing
+   is wider than its host, and a native scrollbar would compete with the
+   viewer-translate panning this frame uses. */
+.diagramFrame {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden !important;
+}
+
+/* The box that viewport fills. A board object with no persisted Size
+   still needs a real footprint, and a windowed viewer's natural size is
+   its window, not its drawing; a persisted resize replaces both values
+   through the inline style the face applies. */
+.diagramObjectBox {
+    width: 420px;
+    height: 320px;
+    min-width: 0;
+    min-height: 0;
+}

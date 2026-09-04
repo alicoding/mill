@@ -71,6 +71,10 @@
     "seedRevision": 1,
     "fingerprint": "5efd2d4f46ceb01ae229e997102fe11191367b9ee46ac03939ffe278d4dec379"
   },
+  "atlasobject:atlas-object-example-diagram": {
+    "seedRevision": 1,
+    "fingerprint": "a8ddc5a4268d1277a8884b3baeb8e608d7362a814abbe2ef2e926b3a2bf1495d"
+  },
   "atlasobject:atlas-object-example-image": {
     "seedRevision": 1,
     "fingerprint": "f6aa10d47c45ee74a1a84d058ebd306b2bb3adb2cb747056419e17ab9d369775"

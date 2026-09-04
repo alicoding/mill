@@ -15,3 +15,18 @@ export async function wheelAt(page: Page, locator: Locator, deltaX: number, delt
   }
   await page.mouse.wheel(deltaX, deltaY)
 }
+
+// Pinch-zoom over a locator. A trackpad pinch reaches the page as a
+// wheel event carrying ctrlKey, and the keyboard modifier is the only
+// way to produce that pairing from Playwright's input stack -- so this
+// is the same checked gesture wheelAt performs, with Control held
+// across it. Keeping it here rather than inline in a spec is what
+// keeps the raw page.mouse call inside a fixture (goal 0184).
+export async function zoomWheelAt(page: Page, locator: Locator, deltaY: number, position?: { x: number; y: number }): Promise<void> {
+  await page.keyboard.down('Control')
+  try {
+    await wheelAt(page, locator, 0, deltaY, position)
+  } finally {
+    await page.keyboard.up('Control')
+  }
+}

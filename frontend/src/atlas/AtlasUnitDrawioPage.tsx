@@ -6,6 +6,7 @@ import type { MirrorContent } from '../../bindings/github.com/alicoding/mill/int
 import { AtlasService } from '../shared/bindings'
 import runbookStyles from '../shared/ListCard.module.css'
 import { useDrawioRendering } from './useDrawioRendering'
+import type { DrawioOverflowReporter } from './drawioInteraction'
 import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
 import { AtlasMirrorMissingState } from './AtlasMirrorMissingState'
 import type { UnitRenderProps } from './unitRegistry'
@@ -21,10 +22,16 @@ function formatMirrorSize(bytes: number): string {
 // the page heading above it. Exported: AtlasDiagramObjectContent.tsx
 // (goal 0179 S2) reuses this exact host for a "diagram" board object's
 // own board face, rather than a second drawio-viewer wiring.
-export function DrawioDiagramHost({ source }: { source: string }) {
+// `interactive` (goal 0340) makes the host a fixed viewport the drawing
+// pans and zooms inside instead of a container the viewer grows to the
+// whole drawing: the board-object face is a box on a canvas and has
+// nowhere to grow to, while the card page's own bounded window keeps
+// the viewer's default sizing. `onOverflow` rides along with it -- only
+// a fixed frame can be exceeded.
+export function DrawioDiagramHost({ source, interactive, onOverflow }: { source: string; interactive?: boolean; onOverflow?: DrawioOverflowReporter }) {
   const { t } = useTranslation('atlas')
   const hostRef = useRef<HTMLDivElement | null>(null)
-  const renderError = useDrawioRendering(hostRef, source)
+  const renderError = useDrawioRendering(hostRef, source, { interactive, onOverflow })
 
   if (renderError) {
     return (
@@ -33,7 +40,7 @@ export function DrawioDiagramHost({ source }: { source: string }) {
       </Text>
     )
   }
-  return <div ref={hostRef} className={styles.diagramHost} data-testid="atlas-drawio-page-body" />
+  return <div ref={hostRef} className={interactive ? `${styles.diagramHost} ${styles.diagramFrame}` : styles.diagramHost} data-testid="atlas-drawio-page-body" />
 }
 
 // The standalone drawio unit's card-page presentation (ADR-0043, goal

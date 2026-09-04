@@ -1,4 +1,4 @@
-import { memo, Suspense, useRef, useState } from 'react'
+import { memo, Suspense, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NodeResizer, useReactFlow } from '@xyflow/react'
 import type { NodeProps, Node as RFNode } from '@xyflow/react'
@@ -7,6 +7,7 @@ import { AtlasService } from '../shared/bindings'
 import { boardObjectContentFor } from './atlasNounRegistry'
 import { usePluginReloadVersion } from '../plugins/pluginReloadSignal'
 import { unknownKindContent, viewerOwnsWheel } from './atlasBoardObjectContent'
+import type { AtlasBoardObjectContent } from './atlasBoardObjectContent'
 import { AtlasShapeRotateHandle } from './AtlasShapeRotateHandle'
 import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
 import { useAtlasObjectMirrorRead } from './useAtlasObjectMirrorRead'
@@ -34,6 +35,14 @@ export interface AtlasBoardObjectData extends Record<string, unknown> {
 }
 
 export type AtlasBoardObjectRFNode = RFNode<AtlasBoardObjectData>
+
+// What a Kind declaring overflowChip reports about itself: whether its
+// content currently needs more room than the object's box gives it, and
+// the action that fits it back inside (goal 0340).
+interface ObjectOverflow {
+  exceeds: boolean
+  fit: () => void
+}
 
 // A board-local canvas object (goal 0179/0180's own correction: a
 // canvas object is a thing in space, never a document) -- every Kind
@@ -67,6 +76,30 @@ function objectNodeCaps(object: BoardObject, preview: boolean): { isShape: boole
 
 function objectBoxClassName(wheelOptOut: boolean): string {
   return wheelOptOut ? `${styles.object} nowheel` : styles.object
+}
+
+// The content box's own class set. `nodrag` rides the same liveness
+// window as `nowheel` (goal 0340, viewerOwnsWheel's own contract
+// comment): while the face owns the pointer, a drag inside it must
+// reach only the face -- the chrome band stays the object's drag
+// surface.
+function objectContentClassName(dragOptOut: boolean): string {
+  return dragOptOut ? `${styles.content} nodrag` : styles.content
+}
+
+// Whether the chrome band shows its overflow escape hatch right now
+// (goal 0340): the Kind declared one, this is a real object rather than
+// a frame's inert tile, and its face currently reports that what it
+// renders needs more room than the box gives it.
+function showsFitChip(facts: Pick<AtlasBoardObjectContent, 'overflowChip'>, preview: boolean, overflow: ObjectOverflow | null): boolean {
+  return !!facts.overflowChip && !preview && !!overflow?.exceeds
+}
+
+// The band's own tooltip. A shielded, not-yet-selected face reads as
+// inert, so the band says what the first click buys before it is spent;
+// once selected the band is back to being the object's drag handle.
+function bandTitleKey(clickShield: boolean, selected: boolean): string {
+  return clickShield && !selected ? 'boardObject.shieldedBandTitle' : 'boardObject.dragHandleTitle'
 }
 
 // The shield's own class set (goal 0273): a Kind that also declares a
@@ -130,6 +163,19 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
   // chrome (drag band, padding) outside the face -- see
   // viewerOwnsWheel's own contract comment.
   const wheelOptOut = viewerOwnsWheel(resolvedFacts, preview, !!selected)
+  // The Fit chip's own state (goal 0340): only the face can know
+  // whether what it renders currently needs more room than this box
+  // gives it, and only the face can fit it -- both arrive through the
+  // one onOverflowChange call a Kind declaring overflowChip makes.
+  const [overflow, setOverflow] = useState<ObjectOverflow | null>(null)
+  // The ref is what the resizer reads: onResizeEnd runs from React
+  // Flow's own handler, which closes over the render that installed it.
+  const overflowRef = useRef<ObjectOverflow | null>(null)
+  const onOverflowChange = useCallback((exceeds: boolean, fit: () => void) => {
+    overflowRef.current = { exceeds, fit }
+    setOverflow({ exceeds, fit })
+  }, [])
+  const showFitChip = showsFitChip(resolvedFacts, preview, overflow)
   // ADR-0046 (goal 0244 S1): double-click dispatches through the
   // object's own DECLARED edit route (resolved per-object, since a Kind
   // like diagram opens different doors for different mirror
@@ -190,6 +236,14 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
           minHeight={40}
           onResizeEnd={(_e, params) => {
             void AtlasService.SetBoardObjectSize(object.ID, { W: params.width, H: params.height })
+            // Refit an overflowing face to the box the user just chose
+            // (goal 0340), on the next frame so the new size is laid
+            // out before the face measures against it. This is the ONE
+            // refit trigger: the face's own resize observer also fires
+            // for a mount settling, which must never silently shrink a
+            // drawing that has just appeared.
+            const fit = overflowRef.current?.fit
+            if (fit) requestAnimationFrame(fit)
           }}
         />
       )}
@@ -204,7 +258,27 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
           band there rendered as a floating strip with nothing behind
           it -- gating on dragBand removes it from those Kinds entirely
           rather than leaving inert chrome. */}
-      {dragBand && !preview && <div className={styles.frame} data-testid="atlas-board-object-frame" title={t('boardObject.dragHandleTitle')} />}
+      {dragBand && !preview && (
+        <div className={styles.frame} data-testid="atlas-board-object-frame" title={t(bandTitleKey(!!clickShield, !!selected))}>
+          {/* The overflow escape hatch (goal 0340): shown at rest and
+              while selected, never hover-gated -- "this is bigger than
+              what you can see" is a fact about the object, not a
+              hover affordance. `nodrag` plus a swallowed pointerdown
+              keep the click off the band's own drag. */}
+          {showFitChip && (
+            <button
+              type="button"
+              className={`${styles.fitChip} nodrag`}
+              data-testid="atlas-board-object-fit"
+              title={t('boardObject.fitChipTitle')}
+              onPointerDown={(e) => { e.stopPropagation() }}
+              onClick={(e) => { e.stopPropagation(); overflow?.fit() }}
+            >
+              {t('boardObject.fitChip')}
+            </button>
+          )}
+        </div>
+      )}
       {/* See clickShield's own contract comment (atlasBoardObjectContent.ts):
           an unselected shielded face selects/drags/right-clicks like a
           body; selecting lifts the shield and the face goes live. The
@@ -229,7 +303,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
           node, shift/meta adds to the selection, and a click on an
           already-selected node changes nothing. */}
       <div
-        className={styles.content}
+        className={objectContentClassName(wheelOptOut)}
         onPointerDownCapture={dragBand ? (e) => {
           // Primary button only: a right-click must reach the context
           // menu with the CURRENT selection intact (a multi-select
@@ -255,6 +329,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
             preview={preview}
             fetchListProjection={AtlasService.ObjectListProjection}
             repickMirror={(path) => AtlasService.RepickObjectMirror(object.ID, path)}
+            onOverflowChange={onOverflowChange}
           />
         </Suspense>
       </div>

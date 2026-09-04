@@ -36,6 +36,11 @@ registerBoardObjectContent('diagram', {
   // the node opts the board out.
   clickShield: true,
   wheelContained: true,
+  // overflowChip (goal 0340): a drawing is routinely larger than the
+  // box it sits in, and the face can fit it -- so the shared chrome
+  // band carries a "Fit" chip whenever the viewer reports it currently
+  // overflows.
+  overflowChip: true,
   // Payload.mirrorPath names the real drawio/mermaid file this content
   // renders (goal 0232 S1) -- AtlasBoardObjectNode.tsx's own shared
   // watch subscription and useAtlasObjectMenu.ts's "Open in default

@@ -134,15 +134,13 @@ const (
 	// (e.g. every "shape"-kind board object it creates itself) can
 	// exclude these by name rather than accidentally counting/selecting
 	// them -- see e.g. atlas-shape-tool.spec.ts's own shapeObjects()
-	// helper. A 'diagram' golden is deliberately NOT seeded here: it
-	// wedged every e2e worker's server at boot (goal 0223's own
-	// investigation); atlas-seeded-board-objects.spec.ts creates its
-	// diagram example live via CreateBoardObject instead.
-	objectShapeExampleID = "atlas-object-example-shape"
-	objectInkExampleID   = "atlas-object-example-ink"
-	objectImageExampleID = "atlas-object-example-image"
-	objectSheetExampleID = "atlas-object-example-sheet"
-	objectPdfExampleID   = "atlas-object-example-pdf"
+	// helper.
+	objectShapeExampleID   = "atlas-object-example-shape"
+	objectInkExampleID     = "atlas-object-example-ink"
+	objectImageExampleID   = "atlas-object-example-image"
+	objectSheetExampleID   = "atlas-object-example-sheet"
+	objectPdfExampleID     = "atlas-object-example-pdf"
+	objectDiagramExampleID = "atlas-object-example-diagram"
 )
 
 // BuiltInKinds returns the seeded example card types -- pure config,

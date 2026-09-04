@@ -1,5 +1,7 @@
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text } from '@primer/react'
+import { FlowchartIcon } from '@primer/octicons-react'
 import { MirrorKind } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { BoardObject } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { MirrorReadState } from '../useAtlasObjectMirrorRead'
@@ -7,7 +9,10 @@ import { extensionOf } from '../unitRegistry'
 import { DrawioDiagramHost } from '../AtlasUnitDrawioPage'
 import { MermaidDiagramHost } from '../AtlasUnitMermaidPage'
 import { AtlasMirrorMissingState } from '../AtlasMirrorMissingState'
+import type { DrawioOverflowReporter } from '../drawioInteraction'
 import runbookStyles from '../../shared/ListCard.module.css'
+import nodeStyles from '../AtlasBoardObjectNode.module.css'
+import drawioStyles from '../AtlasUnitDrawio.module.css'
 
 const MERMAID_EXTENSIONS = new Set(['.mmd', '.mermaid'])
 
@@ -41,11 +46,28 @@ function formatMirrorSize(bytes: number): string {
 // mirrorContent it's handed: a version bump refetches WITHOUT resetting
 // content first, so an external edit swaps the rendered diagram in
 // place with no loading flash, exactly as before relocation.
-export function AtlasDiagramObjectContent({ object, mirrorContent, repickMirror }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState; repickMirror?: (path: string) => Promise<unknown> }) {
+export function AtlasDiagramObjectContent({ object, mirrorContent, repickMirror, preview, onOverflowChange }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState; repickMirror?: (path: string) => Promise<unknown>; preview?: boolean; onOverflowChange?: DrawioOverflowReporter }) {
   const { t } = useTranslation('atlas')
+  // Stable across renders: useDrawioRendering takes it as an effect
+  // dependency, and a fresh identity every render would tear the viewer
+  // down and rebuild it on every parent update.
+  const onOverflow = useCallback<DrawioOverflowReporter>((exceeds, fit) => { onOverflowChange?.(exceeds, fit) }, [onOverflowChange])
   const content = mirrorContent?.content
   const error = mirrorContent?.error
   const mirrorPath = object.Payload?.mirrorPath ?? ''
+
+  // A frame's preview tile never boots a diagram engine -- the same
+  // call the pdf face makes for its own viewer iframe (goal 0267): the
+  // vendored drawio viewer is a multi-megabyte script, nothing in a
+  // capped tile is interactable, and a seeded diagram on the landing
+  // board would otherwise pull that script into every app boot.
+  if (preview) {
+    return (
+      <div className={nodeStyles.placeholder} data-testid="atlas-object-diagram-preview-tile">
+        <FlowchartIcon size={24} />
+      </div>
+    )
+  }
 
   if (error) {
     return <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-object-diagram-error">{error}</Text>
@@ -70,8 +92,15 @@ export function AtlasDiagramObjectContent({ object, mirrorContent, repickMirror 
   }
 
   const source = content.Kind === MirrorKind.MirrorKindText ? content.Content : ''
-  const host = MERMAID_EXTENSIONS.has(extensionOf(mirrorPath))
-    ? <MermaidDiagramHost source={source} />
-    : <DrawioDiagramHost source={source} />
-  return object.Size ? <div style={{ width: '100%', height: '100%' }}>{host}</div> : host
+  if (MERMAID_EXTENSIONS.has(extensionOf(mirrorPath))) {
+    const mermaid = <MermaidDiagramHost source={source} />
+    return object.Size ? <div style={{ width: '100%', height: '100%' }}>{mermaid}</div> : mermaid
+  }
+  // The drawio face is always a FIXED frame (goal 0340) -- unsized it
+  // takes the module's own default box, sized it takes the object's.
+  return (
+    <div className={drawioStyles.diagramObjectBox} style={object.Size ? { width: '100%', height: '100%' } : undefined}>
+      <DrawioDiagramHost source={source} interactive onOverflow={onOverflow} />
+    </div>
+  )
 }
