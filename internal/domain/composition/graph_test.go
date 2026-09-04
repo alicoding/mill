@@ -307,3 +307,92 @@ func TestValidateGraph_CredentialGap_WillFailNamingTheIntegration(t *testing.T) 
 		}
 	}
 }
+
+// Goal 0347: a declared Default applies to attributesEnv's env only
+// when the run supplies nothing at all for that key -- an explicit
+// value (including "") always wins, and an undeclared Default (the Go
+// zero value "") behaves exactly like today, seeding the type's zero
+// value.
+func TestAttributesEnv_DefaultAppliesWhenAbsent(t *testing.T) {
+	attrs := []AttributeDef{
+		{Key: "folder", Type: FieldText, Default: "/tmp"},
+		{Key: "count", Type: FieldNumber, Default: "3"},
+		{Key: "flag", Type: FieldBoolean, Default: "true"},
+	}
+
+	env := attributesEnv(attrs, nil)
+	if env["folder"] != "/tmp" {
+		t.Errorf("folder = %v, want the declared default /tmp", env["folder"])
+	}
+	if env["count"] != 3.0 {
+		t.Errorf("count = %v, want the declared default 3", env["count"])
+	}
+	if env["flag"] != true {
+		t.Errorf("flag = %v, want the declared default true", env["flag"])
+	}
+}
+
+func TestAttributesEnv_ExplicitValueWinsOverDefault(t *testing.T) {
+	attrs := []AttributeDef{{Key: "folder", Type: FieldText, Default: "/tmp"}}
+	env := attributesEnv(attrs, map[string]string{"folder": "/var/log"})
+	if env["folder"] != "/var/log" {
+		t.Errorf("folder = %v, want the explicit run value /var/log", env["folder"])
+	}
+}
+
+func TestAttributesEnv_ExplicitEmptyStringIsAValue_DefaultNotApplied(t *testing.T) {
+	attrs := []AttributeDef{{Key: "folder", Type: FieldText, Default: "/tmp"}}
+	env := attributesEnv(attrs, map[string]string{"folder": ""})
+	if env["folder"] != "" {
+		t.Errorf("folder = %q, want the explicit empty string preserved, default not applied", env["folder"])
+	}
+}
+
+// No Default declared (the Go zero value "") behaves exactly like
+// before this fallback existed: the type's own zero value, for every
+// FieldType.
+func TestAttributesEnv_NoDeclaredDefault_FallsBackToTypeZeroValue(t *testing.T) {
+	attrs := []AttributeDef{
+		{Key: "folder", Type: FieldText},
+		{Key: "count", Type: FieldNumber},
+		{Key: "flag", Type: FieldBoolean},
+	}
+	env := attributesEnv(attrs, nil)
+	if env["folder"] != "" {
+		t.Errorf("folder = %v, want the text zero value \"\"", env["folder"])
+	}
+	if env["count"] != 0.0 {
+		t.Errorf("count = %v, want the number zero value 0", env["count"])
+	}
+	if env["flag"] != false {
+		t.Errorf("flag = %v, want the boolean zero value false", env["flag"])
+	}
+}
+
+// A default that fails to parse for its declared Type (an authoring
+// mistake) falls back to the zero value, same as an unparseable
+// explicit run value always has.
+func TestAttributesEnv_UnparseableDefault_FallsBackToTypeZeroValue(t *testing.T) {
+	attrs := []AttributeDef{{Key: "count", Type: FieldNumber, Default: "not-a-number"}}
+	env := attributesEnv(attrs, nil)
+	if env["count"] != 0.0 {
+		t.Errorf("count = %v, want the number zero value 0 for an unparseable default", env["count"])
+	}
+}
+
+// A capture/trigger node writing ctx.Attributes at runtime (after
+// ExecuteWorkflow's own initial attributesEnv call already seeded
+// defaults) overwrites whatever default was seeded -- the precedence
+// this goal establishes: explicit run value, then a run-time write,
+// then the declared default.
+func TestExecuteWorkflow_CaptureWrittenAttributeOverridesDeclaredDefault(t *testing.T) {
+	attrs := []AttributeDef{{Key: "folder", Type: FieldText, Default: "/tmp"}}
+	ctx := ExecContext{Attributes: attributesEnv(attrs, nil)}
+	if ctx.Attributes["folder"] != "/tmp" {
+		t.Fatalf("folder = %v, want the seeded default /tmp before any run-time write", ctx.Attributes["folder"])
+	}
+	ctx.Attributes["folder"] = "/captured/path"
+	if ctx.Attributes["folder"] != "/captured/path" {
+		t.Errorf("folder = %v, want the run-time write to override the seeded default", ctx.Attributes["folder"])
+	}
+}

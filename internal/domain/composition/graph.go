@@ -80,19 +80,25 @@ func findRoot(nodes []Node, outgoingEdges map[string][]Edge, hasIncoming map[str
 	return root, nil
 }
 
-// attributesEnv builds a realistic-zero-valued map[string]any from a
-// workflow's Attributes schema -- used as expr.Compile's type-checking
-// environment, so a Decision edge referencing a field with the wrong
-// operator (e.g. comparing a text field with ">") is caught at save
-// time, not just whenever that branch first actually runs.
-// attributesEnv seeds the Attributes bag a run starts with. values is a
-// caller-supplied override (docs/adr/0008's test-input form; nil for
-// every other caller, e.g. ValidateGraph's save-time compile-check,
-// which has no real values to offer and only needs the schema's shape)
-// -- a value present and parseable for its declared Type wins, anything
-// missing or unparseable falls back to the same zero value this always
-// used, so a nil/empty values map behaves identically to before this
-// parameter existed.
+// attributesEnv builds the Attributes map[string]any a run starts from
+// -- also doubles as expr.Compile's type-checking environment, so a
+// Decision edge referencing a field with the wrong operator (e.g.
+// comparing a text field with ">") is caught at save time, not just
+// whenever that branch first actually runs. values is a caller-supplied
+// override (docs/adr/0008's test-input form; nil for every other
+// caller, e.g. ValidateGraph's save-time compile-check, which has no
+// real values to offer and only needs the schema's shape) -- a value
+// present (key exists in values, even "") and parseable for its
+// declared Type wins over everything else. Absent from values (goal
+// 0347: an author's declared Default is otherwise a dead-end
+// instruction, GitHub Actions/n8n/Zapier's converged precedent), the
+// attribute's own Default is used instead, parsed the same way; an
+// unparseable or (for text) simply unset Default falls back to the
+// type's zero value, so a workflow with no Default declared behaves
+// identically to before this fallback existed. A capture/trigger node
+// that later writes ctx.Attributes[key] during the run overrides
+// whatever this seeded, since that write happens after this map is
+// built.
 // AttributesEnv builds the zero-value-seeded, override-applied
 // Attributes environment a run starts from -- exported for the
 // guardrail dry-run tester (guardrailservice.go), which must evaluate
@@ -143,6 +149,12 @@ func attributesEnv(attrs []AttributeDef, values map[string]string) map[string]an
 	env := make(map[string]any, len(attrs))
 	for _, a := range attrs {
 		raw, has := values[a.Key]
+		if !has {
+			// No explicit value at all for this run -- fall back to the
+			// declared Default (an explicit "" in values IS a value and
+			// skips this, per the doc comment above).
+			raw, has = a.Default, a.Default != ""
+		}
 		switch a.Type {
 		case FieldNumber:
 			if has {
