@@ -77,10 +77,19 @@ type toolSchema struct {
 	Properties map[string]json.RawMessage `json:"properties"`
 }
 
-func validateCommands(commands []CommandContribution) string {
+// commandVerbPattern is a command id's part after its plugin's own
+// "<id>." prefix (standard rule 17): a lowercase-led camelCase verb, so
+// the id a tool names is unambiguous about which plugin owns it. The
+// LOADER accepts either this namespaced shape or the older bare slug
+// (pluginIDPattern) so an existing plugin keeps loading; ConformDir's
+// conformCommandNamespace is what actually holds a plugin to the
+// namespaced shape the standard requires.
+var commandVerbPattern = regexp.MustCompile(`^[a-z][a-zA-Z0-9]*$`)
+
+func validateCommands(pluginID string, commands []CommandContribution) string {
 	seen := map[string]bool{}
 	for _, c := range commands {
-		if !pluginIDPattern.MatchString(c.ID) {
+		if !pluginIDPattern.MatchString(c.ID) && !namespacedCommandID(pluginID, c.ID) {
 			return fmt.Sprintf("contributed command id %q must be lowercase letters, digits, and hyphens", c.ID)
 		}
 		if seen[c.ID] {
@@ -92,6 +101,15 @@ func validateCommands(commands []CommandContribution) string {
 		}
 	}
 	return ""
+}
+
+// namespacedCommandID reports whether id is pluginID's own "." prefix
+// followed by a lowercase-led camelCase verb -- the standard's shape
+// (rule 17), checked strictly at the loader only for an id that would
+// otherwise fail the older bare-slug check.
+func namespacedCommandID(pluginID, id string) bool {
+	verb, hasPrefix := strings.CutPrefix(id, pluginID+".")
+	return hasPrefix && commandVerbPattern.MatchString(verb)
 }
 
 func validateTools(c ManifestContributes) string {

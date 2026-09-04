@@ -15,6 +15,7 @@ var assetExtensions = map[string]string{
 	".js":   "text/javascript; charset=utf-8",
 	".css":  "text/css; charset=utf-8",
 	".json": "application/json; charset=utf-8",
+	".png":  "image/png",
 }
 
 // AssetMiddleware serves GET /plugins/<id>/<file> from the scanned

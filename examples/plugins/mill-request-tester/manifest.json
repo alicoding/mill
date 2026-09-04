@@ -5,6 +5,7 @@
   "description": "Send an HTTP request to any host you approve, and read the response in a tab.",
   "author": "Mill examples",
   "minMillVersion": "0.9.0",
+  "icon": "icon.png",
   "capabilities": [
     "fetch"
   ],

@@ -7,8 +7,8 @@
 # Interface: CanvasGesturePoint
 
 One accumulated point of an in-flight drag, in wrapper-local client
-space, with its capture timestamp (an ephemeral tool ages points out
-by `t`; every other tool can ignore it).
+space, with its capture timestamp (only an 'ephemeral-drag' tool
+needs `t`, to age points out; every other tool can ignore it).
 
 ## Properties
 

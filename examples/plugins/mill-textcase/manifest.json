@@ -5,6 +5,7 @@
   "description": "A workflow step that changes the text's case: upper, lower, or title.",
   "author": "Mill examples",
   "minMillVersion": "0.14.1",
+  "icon": "icon.png",
   "capabilities": [],
   "contributes": {
     "steps": [

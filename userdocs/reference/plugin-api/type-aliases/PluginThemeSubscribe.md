@@ -10,8 +10,9 @@
 type PluginThemeSubscribe = (cb) => () => void;
 ```
 
-PluginThemeSubscribe registers cb for every later appearance
-change and returns the unsubscribe.
+Subscribes cb to every later appearance change (a user switching
+light/dark, or the OS following sunset) and returns the function
+that unsubscribes it.
 
 ## Parameters
 

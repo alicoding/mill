@@ -134,6 +134,9 @@ export function activate(api) {
 		}
 		if (serial === paintSerial && svg.isConnected) {
 			svg.setAttribute('viewBox', `0 0 ${width} ${height}`)
+			// drawing is this same paint's own vendored-engine SVG output,
+			// never external or user-supplied markup.
+			// eslint-disable-next-line no-restricted-syntax
 			svg.innerHTML = drawing
 		}
 	}

@@ -25,7 +25,7 @@ export function activate(api) {
 	// Declared in the manifest (contributes.commands) and named by the
 	// manifest's own tool, so the same refresh a person runs from the
 	// palette is what an agent calls over MCP -- one action, two doors.
-	api.registerCommand({ id: 'refresh', label: 'Refresh the board index', run: redrawAll })
+	api.registerCommand({ id: 'mill-index.refresh', label: 'Refresh the board index', run: redrawAll })
 
 	api.registerCanvasObject({
 		kind: 'index',

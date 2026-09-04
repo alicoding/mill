@@ -6,13 +6,6 @@
 
 # Interface: PluginNoticeInput
 
-PluginNoticeInput (goal 0277): a one-call transient message Mill
-renders in its own notice surface (the footer pill), labelled with
-the plugin's name. level defaults to 'info'; info/success leave on
-their own after a few seconds, warning/error stay until dismissed.
-action names one of THIS plugin's own registered commands (the id
-given to registerCommand) as a secondary link.
-
 ## Properties
 
 ### action?
@@ -20,6 +13,9 @@ given to registerCommand) as a secondary link.
 ```ts
 optional action?: object;
 ```
+
+Names one of this plugin's OWN registered commands (the id given
+to registerCommand) as a secondary link on the notice.
 
 #### commandId
 
@@ -40,6 +36,9 @@ label: string;
 ```ts
 optional level?: "info" | "success" | "warning" | "error";
 ```
+
+Defaults to 'info'. info/success dismiss themselves after a few
+seconds; warning/error stay until the person dismisses them.
 
 ***
 

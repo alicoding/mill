@@ -3,11 +3,12 @@
 // of the one binary, never a separate CLI: main.go routes `plugin`
 // here and exits with what Run returns.
 //
-// The scaffold writes exactly the two files every shipped example has
-// -- manifest.json and main.js. Nothing else: a plugin folder may hold
-// only files the asset route serves (.js, .css, .json), so a README
-// inside the folder would fail the conformance the folder must pass
-// (pluginsvc.ConformDir).
+// The scaffold writes what every shipped example has: manifest.json,
+// main.js, and a starting icon.png inside the folder -- the asset
+// route's own allowlist, nothing else -- plus a README BESIDE the
+// folder (the standard's own rule: a plugin folder may hold only
+// files the asset route serves, so a README inside it would fail the
+// conformance the folder must pass, pluginsvc.ConformDir).
 package pluginscaffold
 
 import (
@@ -68,7 +69,7 @@ func Run(args []string, pluginsDir, millVersion string, out, errOut io.Writer) i
 		_, _ = fmt.Fprintf(errOut, "%s already exists\n", target)
 		return exitExists
 	}
-	if err := write(target, id, TitleLabel(name), millVersion); err != nil {
+	if err := write(dir, target, id, TitleLabel(name), millVersion); err != nil {
 		_, _ = fmt.Fprintf(errOut, "%v\n", err)
 		return exitUsage
 	}
@@ -146,7 +147,12 @@ type templateData struct {
 	MinMillVersion string
 }
 
-func write(target, id, label, millVersion string) error {
+// write lays down the folder's own two served files plus its
+// standard-conformant starting icon, and -- BESIDE the folder, in dir
+// -- the README (userdocs/reference/plugin-standard.md rule 14: a
+// plugin folder may only hold files the asset route serves, so the
+// README can never sit inside it).
+func write(dir, target, id, label, millVersion string) error {
 	if err := os.MkdirAll(target, 0o750); err != nil {
 		return fmt.Errorf("create %s: %w", target, err)
 	}
@@ -159,6 +165,16 @@ func write(target, id, label, millVersion string) error {
 		if err := os.WriteFile(filepath.Join(target, file), rendered, 0o600); err != nil {
 			return fmt.Errorf("write %s: %w", file, err)
 		}
+	}
+	if err := os.WriteFile(filepath.Join(target, "icon.png"), RenderIcon(id), 0o600); err != nil {
+		return fmt.Errorf("write icon.png: %w", err)
+	}
+	readme, err := render("README.md.tmpl", data)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(dir, id+".md"), readme, 0o600); err != nil {
+		return fmt.Errorf("write %s.md: %w", id, err)
 	}
 	return nil
 }

@@ -2181,6 +2181,9 @@ you turn them on.
 
 # What plugins expose to agents
 
+See [the plugin standard](../reference/plugin-standard.md) for how a
+tool-declaring plugin is expected to behave.
+
 A plugin extends what you can do in Mill. Declaring a tool is what
 extends what an **agent** can do — the same action, reached from the
 other side. Nothing a plugin builds is automatically callable: the

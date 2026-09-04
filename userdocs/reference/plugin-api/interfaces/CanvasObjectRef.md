@@ -6,7 +6,7 @@
 
 # Interface: CanvasObjectRef
 
-CanvasObjectRef: the object an edit-route resolver sees.
+The object an edit-route resolver function receives.
 
 ## Properties
 

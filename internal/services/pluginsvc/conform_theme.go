@@ -44,6 +44,9 @@ var ThemeVariables = map[string]bool{
 	"--bgColor-accent-emphasis":     true,
 	"--fgColor-onEmphasis":          true,
 	"--borderColor-accent-emphasis": true,
+	"--fgColor-danger":              true,
+	"--fgColor-attention":           true,
+	"--fgColor-success":             true,
 }
 
 var (

@@ -69,9 +69,9 @@ module.exports = {
     {
       name: 'plugin-sdk-imports-nothing',
       severity: 'error',
-      comment: 'ADR-0047 / goal 0249: src/plugins/sdk.ts describes exactly what an out-of-tree plugin sees, and a plugin receives capabilities only through the api object handed to activate() -- never through an import. The SDK module therefore imports NOTHING (kernel, bindings, or otherwise); host-side plumbing lives in src/plugins/{hostApi,loader,PluginFaceContent} which legitimately reach the kernel.',
-      from: { path: '^src/plugins/sdk\\.ts$' },
-      to: {},
+      comment: 'ADR-0047 / goal 0249: src/plugins/sdk.ts and its src/plugins/sdk/* contribution-kind files describe exactly what an out-of-tree plugin sees, and a plugin receives capabilities only through the api object handed to activate() -- never through an import. The SDK module tree therefore imports NOTHING outside itself (kernel, bindings, or otherwise) -- only from one another; host-side plumbing lives in src/plugins/{hostApi,loader,PluginFaceContent} which legitimately reach the kernel.',
+      from: { path: '^src/plugins/sdk(\\.ts$|/)' },
+      to: { pathNot: '^src/plugins/sdk(\\.ts$|/)' },
     },
   ],
   options: {
