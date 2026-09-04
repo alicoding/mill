@@ -112,3 +112,58 @@ func TestImportInto_RejectsAnUnknownMode(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestImportInto_AddRehomesAnOrphanAndCarriesLabelWrappers(t *testing.T) {
+	d, _ := ParseDocument(samplePage)
+	// An <object>-wrapped cell parented to a layer the target page does
+	// not have: it must land on the page's own default layer, not
+	// vanish into a parent that isn't there.
+	incoming := `<mxGraphModel><root><mxCell id="0"/><mxCell id="9" parent="0" value="Other layer"/>` +
+		`<object label="Wrapped" custom="keep" id="w1"><mxCell style="s=1;" vertex="1" parent="9">` +
+		`<mxGeometry x="3" y="4" width="5" height="6" as="geometry"/></mxCell></object></root></mxGraphModel>`
+	res, err := ImportInto(d, "", incoming, ImportAdd, "")
+	if err != nil {
+		t.Fatalf("import: %v", err)
+	}
+	if res.Added != 1 {
+		t.Fatalf("added = %d", res.Added)
+	}
+	page, _ := d.Page("")
+	_, cells, err := ReadPage(page)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	var wrapped *CellOut
+	for i := range cells {
+		if cells[i].ID == "w1" {
+			wrapped = &cells[i]
+		}
+	}
+	if wrapped == nil {
+		t.Fatalf("the wrapped cell did not land: %+v", cells)
+	}
+	if wrapped.Parent != RootLayerID {
+		t.Errorf("orphan parent = %q, want the default layer", wrapped.Parent)
+	}
+	if wrapped.Label != "Wrapped" || wrapped.Style != "s=1;" || *wrapped.Geometry.W != 5 {
+		t.Errorf("wrapper lost fidelity: %+v", wrapped)
+	}
+	if out, _ := d.Marshal(); !strings.Contains(out, `custom="keep"`) {
+		t.Errorf("the wrapper's own attributes were dropped: %s", out)
+	}
+}
+
+func TestEditCells_GeometryMergeKeepsEveryUnnamedCoordinate(t *testing.T) {
+	_, p := samplePageDoc(t)
+	for _, patch := range []GeometryOut{{X: ptr(1)}, {Y: ptr(2)}, {W: ptr(3)}, {H: ptr(4)}} {
+		g := patch
+		if _, err := EditCells(p, []CellPatch{{ID: "2", Geometry: &g}}); err != nil {
+			t.Fatalf("edit: %v", err)
+		}
+	}
+	_, cells, _ := ReadPage(p)
+	got := cells[0].Geometry
+	if *got.X != 1 || *got.Y != 2 || *got.W != 3 || *got.H != 4 {
+		t.Errorf("geometry = %+v, want every coordinate to have survived its own patch", got)
+	}
+}

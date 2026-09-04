@@ -328,3 +328,114 @@ func assertToolError(t *testing.T, h *atlasMCPHarness, name string, args map[str
 		t.Errorf("%s: error = %q, want one naming %q", name, text, want)
 	}
 }
+
+func TestDiagramMCP_ImportReplaceAndItsRefusals(t *testing.T) {
+	f := newDiagramMCPFixture(t, "127.0.0.1:18147")
+	f.enableUnattendedWrites(t)
+
+	replacement := `<mxfile host="mill"><diagram id="r" name="Replaced"><mxGraphModel><root>` +
+		`<mxCell id="0"/><mxCell id="1" parent="0"/>` +
+		`<mxCell id="only" value="Whole new file" vertex="1" parent="1">` +
+		`<mxGeometry x="0" y="0" width="10" height="10" as="geometry"/></mxCell></root></mxGraphModel></diagram></mxfile>`
+	var out drawio.ImportResult
+	if err := json.Unmarshal([]byte(f.h.call(t, "atlas_diagram_import", map[string]any{
+		"objectId": f.objectID, "content": replacement, "mode": "replace",
+	})), &out); err != nil {
+		t.Fatalf("decode import replace: %v", err)
+	}
+	if out.Mode != "replace" {
+		t.Fatalf("mode = %q", out.Mode)
+	}
+	after := f.read(t)
+	if len(after.Pages) != 1 || after.Pages[0].Name != "Replaced" || len(after.Cells) != 1 {
+		t.Errorf("after replace = %+v", after)
+	}
+
+	assertToolError(t, f.h, "atlas_diagram_import", map[string]any{
+		"objectId": f.objectID, "content": replacement, "mode": "merge",
+	}, "import mode must be")
+	assertToolError(t, f.h, "atlas_diagram_import", map[string]any{
+		"objectId": f.objectID, "content": "", "mode": "replace",
+	}, "name the diagram content to import")
+	assertToolError(t, f.h, "atlas_diagram_import", map[string]any{
+		"objectId": f.objectID, "content": "just some prose", "mode": "replace",
+	}, "not a draw.io diagram")
+}
+
+func TestDiagramMCP_ApprovalPromptsReadInThePersonsWords(t *testing.T) {
+	f := newDiagramMCPFixture(t, "127.0.0.1:18148")
+	f.enableUnattendedWrites(t)
+
+	for _, tc := range []struct {
+		name string
+		in   atlasDiagramAddArgs
+		want string
+	}{
+		{"one shape", atlasDiagramAddArgs{Cells: []drawio.CellSpec{{Kind: drawio.KindVertex}}}, "Add 1 shape to Architecture"},
+		{"two shapes", atlasDiagramAddArgs{Cells: []drawio.CellSpec{{Kind: drawio.KindVertex}, {Kind: drawio.KindVertex}}}, "Add 2 shapes to Architecture"},
+		{"connectors only", atlasDiagramAddArgs{Cells: []drawio.CellSpec{{Kind: drawio.KindEdge}, {Kind: drawio.KindEdge}}}, "Add 2 connectors to Architecture"},
+		{"both", atlasDiagramAddArgs{Cells: []drawio.CellSpec{{Kind: drawio.KindVertex}, {Kind: drawio.KindEdge}}}, "Add 1 shape and 1 connector to Architecture"},
+	} {
+		if got := addCellsDescription(tc.in.Cells, "Architecture"); got != tc.want {
+			t.Errorf("%s: %q, want %q", tc.name, got, tc.want)
+		}
+	}
+	if got := pluralCells(1); got != "1 cell" {
+		t.Errorf("pluralCells(1) = %q", got)
+	}
+	if got := pluralCells(4); got != "4 cells" {
+		t.Errorf("pluralCells(4) = %q", got)
+	}
+	for _, tc := range []struct{ mode, pageName, want string }{
+		{"replace", "", "Replace everything in D with an imported diagram"},
+		{"add", "", "Merge an imported diagram into D"},
+		{"new-page", "", "Add a page to D from an imported diagram"},
+		{"new-page", "Appendix", `Add a page "Appendix" to D from an imported diagram`},
+		{"nonsense", "", "Import a diagram into D"},
+	} {
+		if got := importDescription(tc.mode, "D", tc.pageName); got != tc.want {
+			t.Errorf("importDescription(%q, %q) = %q, want %q", tc.mode, tc.pageName, got, tc.want)
+		}
+	}
+}
+
+func TestDiagramMCP_CreateBoardObjectOnACardAndItsTitleFallback(t *testing.T) {
+	f := newDiagramMCPFixture(t, "127.0.0.1:18149")
+	f.enableUnattendedWrites(t)
+	f.h.atlas.SetCapturesDir(t.TempDir())
+
+	kindID := f.h.kindIDByLabel(t, "Topic")
+	parent, err := f.h.atlas.CreateCard(kindID, "Agent objects", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard: %v", err)
+	}
+
+	var created atlasBoardObjectSummary
+	if err := json.Unmarshal([]byte(f.h.call(t, "atlas_create_board_object", map[string]any{
+		"kind": "sheet", "content": "Item,Qty\nBeans,2\n", "parentId": parent.ID,
+	})), &created); err != nil {
+		t.Fatalf("decode create: %v", err)
+	}
+	if created.ParentID != parent.ID || !strings.HasSuffix(created.Source.MirrorPath, ".csv") {
+		t.Fatalf("created = %+v", created)
+	}
+	// No title given: the kind plus the moment, never an empty name.
+	o, err := f.h.svc.findBoardObject(created.ID)
+	if err != nil {
+		t.Fatalf("findBoardObject: %v", err)
+	}
+	if !strings.HasPrefix(o.Payload["title"], "sheet-") {
+		t.Errorf("title = %q", o.Payload["title"])
+	}
+	// Position defaults to the board's own near-origin point.
+	if created.Position.X != defaultBoardObjectPosition.X || created.Position.Y != defaultBoardObjectPosition.Y {
+		t.Errorf("position = %+v", created.Position)
+	}
+
+	assertToolError(t, f.h, "atlas_create_board_object", map[string]any{
+		"kind": "diagram", "content": diagramMCPSource, "parentId": "no-such-card",
+	}, `no card with id "no-such-card"`)
+	assertToolError(t, f.h, "atlas_create_board_object", map[string]any{
+		"kind": "shape", "content": "whatever",
+	}, "content is accepted for: diagram, sheet")
+}
