@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { AtlasService } from '../shared/bindings'
 import type { BoardObject, Card, Kind, Link, LinkKind, Note, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { background } from '../shared/background'
 
 // The Atlas surface's own "one fetch, many consumers" store (mirrors
 // shared/configureEntityStore.ts's shape) -- kept inside atlas/ rather
@@ -53,45 +54,38 @@ export const useAtlasStore = create<AtlasState>()((set) => ({
 }))
 
 export function refreshAtlasKinds(): Promise<void> {
-  return AtlasService.Kinds()
-    .then((list) => useAtlasStore.getState().setKinds(list ?? []))
-    .catch(console.error)
+  return background(AtlasService.Kinds()
+    .then((list) => useAtlasStore.getState().setKinds(list ?? [])), 'atlas.kinds')
 }
 
 export function refreshAtlasLinkKinds(): Promise<void> {
-  return AtlasService.LinkKinds()
-    .then((list) => useAtlasStore.getState().setLinkKinds(list ?? []))
-    .catch(console.error)
+  return background(AtlasService.LinkKinds()
+    .then((list) => useAtlasStore.getState().setLinkKinds(list ?? [])), 'atlas.linkKinds')
 }
 
 export function refreshAtlasCards(): Promise<void> {
-  return AtlasService.Cards()
-    .then((list) => useAtlasStore.getState().setCards(list ?? []))
-    .catch(console.error)
+  return background(AtlasService.Cards()
+    .then((list) => useAtlasStore.getState().setCards(list ?? [])), 'atlas.cards')
 }
 
 export function refreshAtlasLinks(): Promise<void> {
-  return AtlasService.Links()
-    .then((list) => useAtlasStore.getState().setLinks(list ?? []))
-    .catch(console.error)
+  return background(AtlasService.Links()
+    .then((list) => useAtlasStore.getState().setLinks(list ?? [])), 'atlas.links')
 }
 
 export function refreshAtlasNotes(): Promise<void> {
-  return AtlasService.Notes()
-    .then((list) => useAtlasStore.getState().setNotes(list ?? []))
-    .catch(console.error)
+  return background(AtlasService.Notes()
+    .then((list) => useAtlasStore.getState().setNotes(list ?? [])), 'atlas.notes')
 }
 
 export function refreshAtlasObjects(): Promise<void> {
-  return AtlasService.Objects()
-    .then((list) => useAtlasStore.getState().setObjects(list ?? []))
-    .catch(console.error)
+  return background(AtlasService.Objects()
+    .then((list) => useAtlasStore.getState().setObjects(list ?? [])), 'atlas.objects')
 }
 
 export function refreshAtlasPerspectives(): Promise<void> {
-  return AtlasService.Perspectives()
-    .then((list) => useAtlasStore.getState().setPerspectives(list ?? []))
-    .catch(console.error)
+  return background(AtlasService.Perspectives()
+    .then((list) => useAtlasStore.getState().setPerspectives(list ?? [])), 'atlas.perspectives')
 }
 
 // The one call site every mounter of the Atlas surface (AtlasView on

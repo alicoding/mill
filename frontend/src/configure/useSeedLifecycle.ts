@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ConfigureService } from '../shared/bindings'
+import { background } from '../shared/background'
 
 // Seed lifecycle (docs/goals/0037): every seeded-example Configure
 // entity page tracks the shipped SeedRevisions map plus its own
@@ -12,8 +13,8 @@ export function useSeedLifecycle<T>(fetchRestorable: () => Promise<T[] | null | 
   const [restorable, setRestorable] = useState<T[]>([])
 
   const refresh = () => {
-    ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})).catch(console.error)
-    fetchRestorable().then((r) => setRestorable(r ?? [])).catch(console.error)
+    void background(ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})), 'seedLifecycle.seedRevisions')
+    void background(fetchRestorable().then((r) => setRestorable(r ?? [])), 'seedLifecycle.restorable')
   }
 
   return { seedRevisions, restorable, refresh }

@@ -62,7 +62,7 @@ export const SETTINGS_COMMANDS: Command[] = [
     // section's own call (views/DataStewardshipSection.tsx) -- 0 keeps
     // whatever retention count is already configured there, never
     // resets it.
-    run: () => { BackupService.BackupNow(0).catch(console.error) },
+    run: () => BackupService.BackupNow(0),
   },
   {
     id: 'capture.note',
@@ -70,7 +70,7 @@ export const SETTINGS_COMMANDS: Command[] = [
     // The capture window (goal 0309): a note written away from the
     // canvas lands where the user chose.
     defaultBinding: null,
-    run: () => { SettingsService.ShowCapture('', 'note').catch(console.error) },
+    run: () => SettingsService.ShowCapture('', 'note'),
   },
   {
     id: 'extensions.exportAudit',
@@ -80,11 +80,9 @@ export const SETTINGS_COMMANDS: Command[] = [
     // within the guardrail window, and every plugin secret read -- saved
     // through the same download door every other export uses.
     defaultBinding: null,
-    run: () => {
+    run: () =>
       PluginService.ExportPluginAudit()
-        .then((json) => downloadBlob(`mill-plugin-audit-${new Date().toISOString().slice(0, 10)}.json`, new Blob([json], { type: 'application/json' })))
-        .catch(console.error)
-    },
+        .then((json) => downloadBlob(`mill-plugin-audit-${new Date().toISOString().slice(0, 10)}.json`, new Blob([json], { type: 'application/json' }))),
   },
   {
     id: 'backup.export',
@@ -141,7 +139,7 @@ export const SETTINGS_COMMANDS: Command[] = [
     keywords: ['update', 'install', 'download', 'upgrade'],
     enabled: () => useUpdateNoticeStore.getState().updateNoticeState === UpdateState.UpdateStateAvailable,
     quickPanel: true,
-    run: () => { SettingsService.DownloadAndInstallUpdate().catch(console.error) },
+    run: () => SettingsService.DownloadAndInstallUpdate(),
   },
   {
     id: 'update.relaunch',
@@ -150,7 +148,7 @@ export const SETTINGS_COMMANDS: Command[] = [
     keywords: ['relaunch', 'restart', 'update', 'finish updating'],
     enabled: () => useUpdateNoticeStore.getState().updateNoticeState === UpdateState.UpdateStateReady,
     quickPanel: true,
-    run: () => { SettingsService.RestartApp().catch(console.error) },
+    run: () => SettingsService.RestartApp(),
   },
   {
     // "What's new" (goal 0220 S2): opens app/WhatsNewDialog.tsx, the

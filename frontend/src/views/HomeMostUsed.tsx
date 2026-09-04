@@ -10,6 +10,7 @@ import { useAppStore } from '../shared/store'
 import { formatUpdated } from '../shared/inventorySort'
 import { formatDuration, formatMinutes } from './homeFormat'
 import listStyles from '../shared/ListCard.module.css'
+import { background } from '../shared/background'
 
 // The Layer-2 "usage mirror" (docs/goals/0014): every run in range
 // counts here regardless of Kind or outcome (WorkflowUsage's own doc
@@ -44,9 +45,8 @@ function MinutesSavedEditor({ workflowId, minutes, onSaved }: {
     }
     if (parsed === minutes) return
     setSaving(true)
-    SettingsService.SetWorkflowMinutesSaved(workflowId, parsed)
-      .then(() => onSaved(parsed))
-      .catch(console.error)
+    void background(SettingsService.SetWorkflowMinutesSaved(workflowId, parsed)
+      .then(() => onSaved(parsed)), 'homeMostUsed.setWorkflowMinutesSaved')
       .finally(() => setSaving(false))
   }
 

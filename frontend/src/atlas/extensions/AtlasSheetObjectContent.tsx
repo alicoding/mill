@@ -9,6 +9,7 @@ import { MirrorKind } from '../../../bindings/github.com/alicoding/mill/internal
 import type { BoardObject, MirrorContent } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { boardObjectContentFor } from '../atlasNounRegistry'
 import { dispatchObjectEdit, writeObjectMirror } from '../objectSeams'
+import { background } from '../../shared/background'
 import type { MirrorReadState } from '../useAtlasObjectMirrorRead'
 import type { CsvEditModel } from '../atlasCsvQuickEdit'
 import { SHEET_MAX_COLS, SHEET_MAX_ROWS, sheetTruncationNote, truncateSheetRows } from '../atlasSheetTruncate'
@@ -152,11 +153,10 @@ export function AtlasSheetObjectContent({ object, mirrorContent }: { object: Boa
   const openInDefaultApp = () => {
     const editRoute = boardObjectContentFor(object.Kind)?.editRoute
     if (!editRoute) return
-    dispatchObjectEdit(object, editRoute).catch(() => {
-      // The context menu's own "Open in default app" item surfaces the
-      // same failure via its onError toast -- this button is a second
-      // entry point to the identical RPC, not a second error surface.
-    })
+    // The context menu's own "Open in default app" item surfaces the
+    // same failure via its onError toast -- this button is a second
+    // entry point to the identical RPC, not a second error surface.
+    void background(dispatchObjectEdit(object, editRoute), 'atlasSheetObjectContent.openInDefaultApp')
   }
 
   const cancelEdit = () => {

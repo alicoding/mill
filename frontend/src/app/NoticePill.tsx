@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
-import { findCommand } from '../shared/commands'
+import { runCommand } from '../shared/commands'
 import type { Notice } from '../shared/noticeStore'
 import { useNoticeStore } from '../shared/noticeStore'
 import { updateNotices } from '../shared/updateNotices'
@@ -52,14 +52,14 @@ function NoticeView({ notice, dismissLabel }: { notice: Notice; dismissLabel: st
     <span className={`${styles.pill} ${LEVEL_CLASS[notice.level]}`} data-testid={`notice-${notice.id}`} data-notice-level={notice.level}>
       {notice.source && <span className={styles.source} data-testid="notice-source">{notice.source}</span>}
       {notice.primaryCommandId ? (
-        <button type="button" className={styles.pillAction} onClick={() => findCommand(notice.primaryCommandId ?? '')?.run()}>
+        <button type="button" className={styles.pillAction} onClick={() => void runCommand(notice.primaryCommandId ?? '')}>
           {notice.text}
         </button>
       ) : (
         <span className={styles.text}>{notice.text}</span>
       )}
       {notice.actions?.map((a) => (
-        <button key={a.commandId} type="button" className={styles.secondaryAction} onClick={() => findCommand(a.commandId)?.run()} data-testid={a.id ? `notice-${a.id}` : 'notice-action'}>
+        <button key={a.commandId} type="button" className={styles.secondaryAction} onClick={() => void runCommand(a.commandId)} data-testid={a.id ? `notice-${a.id}` : 'notice-action'}>
           {a.label}
         </button>
       ))}

@@ -7,6 +7,7 @@ import { setSaveMode, useSaveMode } from '../shared/saveMode'
 import { setCanvasNavigationMode, useCanvasNavigationMode } from '../shared/canvasNavigation'
 import { SettingsRow } from './SettingsRow'
 import listStyles from '../shared/ListCard.module.css'
+import { background } from '../shared/background'
 
 // Deep-links straight to the Login Items pane -- same undocumented-but-
 // stable x-apple.systempreferences scheme ACCESSIBILITY_SETTINGS_URL
@@ -98,7 +99,7 @@ export default function SettingsGeneralPane() {
         control={() => (
           <SegmentedControl
             aria-label={t('settings.general.saveModeLabel')}
-            onChange={(i) => { void setSaveMode(i === 1 ? 'explicit' : 'automatic').catch(console.error) }}
+            onChange={(i) => { void background(setSaveMode(i === 1 ? 'explicit' : 'automatic'), 'settingsGeneralPane.setSaveMode') }}
             data-testid="save-mode-control"
           >
             <SegmentedControl.Button selected={saveMode === 'automatic'}>

@@ -4,6 +4,7 @@ import { Button, Stack, Text, TextInput } from '@primer/react'
 import { SettingsService } from '../shared/bindings'
 import { SettingsRow } from './SettingsRow'
 import styles from '../shared/ListCard.module.css'
+import { background } from '../shared/background'
 
 // Settings > Connections' MCP address row. Precedence lives in
 // settingsservice_mcpaddr.go's ResolveMCPAddr: MILL_MCP_ADDR always
@@ -20,12 +21,11 @@ function McpAddressField() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    SettingsService.MCPAccessAddressInfo()
+    void background(SettingsService.MCPAccessAddressInfo()
       .then((info) => {
         setAddress(info.address)
         setEnvOverride(info.envOverride)
-      })
-      .catch(console.error)
+      }), 'mcpAddress.addressInfo')
   }, [])
 
   const save = () => {

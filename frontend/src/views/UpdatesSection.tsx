@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Browser } from '@wailsio/runtime'
 import { Button, Checkbox, FormControl, Link as PrimerLink, Select, Stack, Text, TextInput } from '@primer/react'
 import { SettingsService, UpdateState, type UpdateNotice } from '../shared/bindings'
-import { findCommand } from '../shared/commands'
+import { runCommand } from '../shared/commands'
 import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import { formatUpdated } from '../shared/inventorySort'
 import { TrustDisclosure } from './TrustDisclosure'
@@ -17,6 +17,7 @@ import { TrustDisclosure } from './TrustDisclosure'
 const RELEASES_URL = 'https://github.com/alicoding/mill/releases'
 import styles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
+import { background } from '../shared/background'
 
 // Keeps a rendered error to one humane line (goal 0127's rider: GitHub's
 // own HTML error page, base64 image included, once rendered whole here)
@@ -109,13 +110,13 @@ function primaryActionFor(
     return { label: t('settings.updates.downloading'), disabled: true, onClick: () => {} }
   }
   if (state === UpdateState.UpdateStateReady) {
-    return { label: t('settings.updates.primaryRestart'), disabled: false, onClick: () => findCommand('update.relaunch')?.run() }
+    return { label: t('settings.updates.primaryRestart'), disabled: false, onClick: () => void runCommand('update.relaunch') }
   }
   if (canInstall && pendingVersion) {
     return {
       label: t('settings.updates.primaryDownload', { version: pendingVersion }),
       disabled: false,
-      onClick: () => findCommand('update.downloadAndInstall')?.run(),
+      onClick: () => void runCommand('update.downloadAndInstall'),
     }
   }
   return { label: t('settings.updates.checkButton'), disabled: false, onClick: checkForUpdates }
@@ -205,9 +206,8 @@ function UpdatesSection() {
   // update-notice event, so navigating away and back, or a background
   // auto-download finishing while Settings isn't open, is never missed.
   useEffect(() => {
-    const sync = () => void SettingsService.UpdateNoticeState()
-      .then((n) => applyUpdateNotice(n, setState, setStateReason, setStateReasonStage, setUpdateResult, setLastCheckAt, setLastCheckOutcome, setLastCheckError))
-      .catch(console.error)
+    const sync = () => void background(SettingsService.UpdateNoticeState()
+      .then((n) => applyUpdateNotice(n, setState, setStateReason, setStateReasonStage, setUpdateResult, setLastCheckAt, setLastCheckOutcome, setLastCheckError)), 'updates.updateNoticeState')
     sync()
     return Events.On('mill-data-changed', (evt) => {
       if ((evt.data as { entity?: string })?.entity === 'update-notice') sync()
@@ -215,20 +215,19 @@ function UpdatesSection() {
   }, [])
 
   useEffect(() => {
-    SettingsService.AppVersion().then(setAppVersion).catch(console.error)
-    SettingsService.UpdateChannel().then((c) => setChannel(c as Channel)).catch(console.error)
-    SettingsService.UpdateChannelPreference().then(setChannelPref).catch(console.error)
-    SettingsService.AutoUpdateCheck().then(setAutoCheck).catch(console.error)
-    SettingsService.UpdateCheckInterval().then(setCheckInterval).catch(console.error)
-    SettingsService.OutboundProxyURL()
+    void background(SettingsService.AppVersion().then(setAppVersion), 'updates.appVersion')
+    void background(SettingsService.UpdateChannel().then((c) => setChannel(c as Channel)), 'updates.updateChannel')
+    void background(SettingsService.UpdateChannelPreference().then(setChannelPref), 'updates.updateChannelPreference')
+    void background(SettingsService.AutoUpdateCheck().then(setAutoCheck), 'updates.autoUpdateCheck')
+    void background(SettingsService.UpdateCheckInterval().then(setCheckInterval), 'updates.updateCheckInterval')
+    void background(SettingsService.OutboundProxyURL()
       .then((v) => {
         if (v === 'off') setProxyMode('off')
         else if (v !== '') {
           setProxyMode('manual')
           setProxyUrl(v)
         }
-      })
-      .catch(console.error)
+      }), 'updates.outboundProxyURL')
   }, [])
 
   // useCallback (not a plain closure) so the auto-check-on-open effect
@@ -239,13 +238,12 @@ function UpdatesSection() {
   // button's "available" branch.
   const checkForUpdates = useCallback(() => {
     setUpdateResult(null)
-    SettingsService.CheckForUpdates()
+    void background(SettingsService.CheckForUpdates()
       .then((result) => {
         if (result.updateAvailable) {
           setUpdateResult({ version: result.version })
         }
-      })
-      .catch(console.error)
+      }), 'updates.checkForUpdates')
   }, [])
 
   // Opening the section must never read a stale cached outcome as
@@ -259,9 +257,8 @@ function UpdatesSection() {
   const saveChannelPref = (pref: string) => {
     setChannelPref(pref)
     setChannelSaved(false)
-    SettingsService.SetUpdateChannelPreference(pref)
-      .then(() => setChannelSaved(true))
-      .catch(console.error)
+    void background(SettingsService.SetUpdateChannelPreference(pref)
+      .then(() => setChannelSaved(true)), 'updates.setUpdateChannelPreference')
   }
 
   const persistProxy = (value: string) => {
@@ -281,7 +278,7 @@ function UpdatesSection() {
 
   const changeCheckInterval = (value: string) => {
     setCheckInterval(value)
-    SettingsService.SetUpdateCheckInterval(value).catch(console.error)
+    void background(SettingsService.SetUpdateCheckInterval(value), 'updates.setUpdateCheckInterval')
   }
 
   const channelLabel =
@@ -315,7 +312,7 @@ function UpdatesSection() {
         <PrimerLink
           as="button"
           type="button"
-          onClick={() => findCommand('update.whatsNew')?.run()}
+          onClick={() => void runCommand('update.whatsNew')}
           data-testid="open-whats-new"
         >
           {t('settings.updates.whatsNew')}
@@ -386,7 +383,7 @@ function UpdatesSection() {
           onChange={(e) => {
             const on = e.target.checked
             setAutoCheck(on)
-            SettingsService.SetAutoUpdateCheck(on).catch(console.error)
+            void background(SettingsService.SetAutoUpdateCheck(on), 'updates.setAutoUpdateCheck')
           }}
           data-testid="auto-update-check"
         />

@@ -3,6 +3,7 @@ import { Events } from '@wailsio/runtime'
 import { ExecutionService, RunKind } from '../shared/bindings'
 import { useApprovalResolution } from '../shared/approvalResolution'
 import type { PendingApproval, RunDetail } from '../shared/bindings'
+import { background } from '../shared/background'
 
 // Live run state on the authoring canvas (docs/SPEC.md §3.8's recorded
 // prototype element #2): DONE/ACTIVE/PENDING per node card, a CURRENT
@@ -123,12 +124,11 @@ export function useLiveRun(workflowId: string | undefined, requestedRunId?: stri
       return
     }
     let cancelled = false
-    ExecutionService.ListRunsForWorkflow(workflowId)
+    void background(ExecutionService.ListRunsForWorkflow(workflowId)
       .then((runs) => {
         const newest = (runs ?? [])[0]
         if (!cancelled && newest) setActiveRunId(newest.runID)
-      })
-      .catch(() => {})
+      }), 'liveRunState.adoptRequestedLatest')
     return () => {
       cancelled = true
     }
@@ -148,15 +148,14 @@ export function useLiveRun(workflowId: string | undefined, requestedRunId?: stri
   useEffect(() => {
     if (!workflowId) return
     let cancelled = false
-    ExecutionService.ListRunsForWorkflow(workflowId)
+    void background(ExecutionService.ListRunsForWorkflow(workflowId)
       .then((runs) => {
         if (cancelled) return
         const newest = (runs ?? [])[0]
         if (newest && (isInFlightStatus(newest.status) || newest.pending != null)) {
           setActiveRunId(newest.runID)
         }
-      })
-      .catch(() => {})
+      }), 'liveRunState.adoptOnMount')
     return () => {
       cancelled = true
     }
@@ -177,14 +176,13 @@ export function useLiveRun(workflowId: string | undefined, requestedRunId?: stri
     return Events.On('mill-data-changed', (evt) => {
       const data = evt.data as { entity?: string }
       if (data?.entity !== 'run') return
-      ExecutionService.ListRunsForWorkflow(workflowId)
+      void background(ExecutionService.ListRunsForWorkflow(workflowId)
         .then((runs) => {
           const newest = (runs ?? [])[0]
           if (newest && (isInFlightStatus(newest.status) || newest.pending != null)) {
             setActiveRunId(newest.runID)
           }
-        })
-        .catch(() => {})
+        }), 'liveRunState.adoptExternalRun')
     })
     // Keyed on detail?.status/detail?.pending, not the whole `detail`
     // object -- same reasoning as the in-flight poll effect below (only
@@ -200,7 +198,7 @@ export function useLiveRun(workflowId: string | undefined, requestedRunId?: stri
       setDetail(null)
       return
     }
-    ExecutionService.GetRun(activeRunId).then(setDetail).catch(() => {})
+    void background(ExecutionService.GetRun(activeRunId).then(setDetail), 'liveRunState.getRun')
   }, [activeRunId])
 
   // While the displayed run is still in flight (running, or parked
@@ -212,7 +210,7 @@ export function useLiveRun(workflowId: string | undefined, requestedRunId?: stri
     const inFlight = isInFlightStatus(detail.status) || detail.pending != null
     if (!inFlight) return
     const timer = setInterval(() => {
-      ExecutionService.GetRun(activeRunId).then(setDetail).catch(() => {})
+      void background(ExecutionService.GetRun(activeRunId).then(setDetail), 'liveRunState.getRun')
     }, 1000)
     return () => clearInterval(timer)
     // Deliberately keyed on detail?.status/detail?.pending, not the
@@ -250,7 +248,7 @@ export function useLiveRun(workflowId: string | undefined, requestedRunId?: stri
     void resolveApproval({ runID: activeRunId, nodeID, approve, values, continueRun }).then((delivered) => {
       // A refused decision means the bar is showing something stale --
       // refetch so it stops offering what it just failed to do.
-      if (!delivered) ExecutionService.GetRun(activeRunId).then(setDetail).catch(() => {})
+      if (!delivered) void background(ExecutionService.GetRun(activeRunId).then(setDetail), 'liveRunState.getRun')
     })
     // The in-flight poll above picks up the resumed/failed transition.
   }

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Stack, Text } from '@primer/react'
-import { findCommand } from '../shared/commands'
+import { runCommand } from '../shared/commands'
 import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import { useUpdateNoticeStore } from '../shared/updateNoticeStore'
 import styles from '../shared/ListCard.module.css'
@@ -50,7 +50,7 @@ export function TrustDisclosure() {
           <Button
             size="small"
             disabled={status === 'busy'}
-            onClick={() => findCommand('update.trustSigning')?.run()}
+            onClick={() => void runCommand('update.trustSigning')}
             data-testid="trust-signing-button"
           >
             {status === 'busy' ? t('settings.updates.trustSigningBusy') : t('settings.updates.trustSigningButton')}

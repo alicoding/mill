@@ -2,6 +2,7 @@ import { SettingsService } from '../shared/bindings'
 import type { ClipbridgeReplyPreview } from '../shared/bindings'
 import { QuickPanelReplyReview } from './QuickPanelReplyReview'
 import styles from './QuickPanel.module.css'
+import { background } from '../shared/background'
 
 interface Props {
   preview: ClipbridgeReplyPreview
@@ -23,7 +24,7 @@ export function QuickPanelReplyReviewDoor({ preview, t, onCancel, onApplied }: P
         onCancel={onCancel}
         onApplied={(label) => {
           onApplied(t('quickPanel.status.replyApplied', { label }))
-          window.setTimeout(() => { void SettingsService.DismissPanel().catch(() => {}) }, 600)
+          window.setTimeout(() => { void background(SettingsService.DismissPanel(), 'quickPanelReplyReview.dismissPanel') }, 600)
         }}
       />
     </div>

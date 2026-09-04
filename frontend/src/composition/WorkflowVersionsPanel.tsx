@@ -6,7 +6,7 @@ import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { CompositionService } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
-import { findCommand } from '../shared/commands'
+import { runCommand } from '../shared/commands'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import styles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
@@ -82,7 +82,7 @@ export function WorkflowVersionsPanel({ workflow, onChanged, tabKey }: {
           <Button
             size="small"
             variant="primary"
-            onClick={() => findCommand('workflow.publish')?.run()}
+            onClick={() => void runCommand('workflow.publish')}
             data-testid="publish-workflow"
           >
             {t('workflowVersionsPanel.publishCurrentDraft')}

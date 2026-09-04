@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, IconButton, Stack, Text } from '@primer/react'
 import { CheckIcon, CopyIcon, PinIcon, PinSlashIcon, TrashIcon } from '@primer/octicons-react'
 import { ClipboardHistoryService, type ClipboardHistoryEntry } from '../shared/bindings'
+import { background } from '../shared/background'
 import { looksLikeCode } from './looksLikeCode'
 import styles from './ClipboardHistoryDialog.module.css'
 
@@ -35,11 +36,14 @@ export function ClipboardHistoryDetail({ entry, onChanged }: { entry: ClipboardH
       // takes (SecretsDetailDialog.tsx's secret-detail-error testid).
       .catch((err: unknown) => setCopyError(String(err)))
   }
+  // Pin/delete have no registry command to route through runCommand
+  // (goal 0313; tracked for goal 0335) -- background() until one
+  // exists, rather than the silent catch(console.error) this replaces.
   const doPin = () => {
-    ClipboardHistoryService.SetClipboardHistoryPinned(entry.ID, !entry.Pinned).then(onChanged).catch(console.error)
+    void background(ClipboardHistoryService.SetClipboardHistoryPinned(entry.ID, !entry.Pinned).then(onChanged), 'clipboardHistory.pin')
   }
   const doDelete = () => {
-    ClipboardHistoryService.DeleteClipboardHistoryEntry(entry.ID).then(onChanged).catch(console.error)
+    void background(ClipboardHistoryService.DeleteClipboardHistoryEntry(entry.ID).then(onChanged), 'clipboardHistory.delete')
   }
 
   const copied = copiedId === entry.ID

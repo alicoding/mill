@@ -29,6 +29,7 @@ import { QuickPanelFooter } from './QuickPanelFooter'
 import { useQuickPanelUpdateStatus } from './useQuickPanelUpdateStatus'
 import styles from './QuickPanel.module.css'
 import { searchInputTextAssistOff } from '../shared/searchInputProps'
+import { background } from '../shared/background'
 
 // docs/adr/0033-quick-panel-second-window.md: the search+run surface
 // hosted in the Quick Panel's own dedicated Wails window, toggled by
@@ -143,21 +144,20 @@ export function QuickPanel() {
   // invoke these in later callbacks, but the rule wants the lexical
   // declaration to precede any reference.
   const refreshFrecency = () => {
-    ExecutionService.HomeMetrics(FRECENCY_FROM_ISO, new Date().toISOString(), true)
+    void background(ExecutionService.HomeMetrics(FRECENCY_FROM_ISO, new Date().toISOString(), true)
       .then((metrics) => {
         const rank: Record<string, number> = {}
         for (const usage of metrics.mostUsed ?? []) rank[usage.workflowID] = usage.runCount
         setMostUsedRank(rank)
-      })
-      .catch(() => {})
+      }), 'quick.homeMetrics')
   }
 
   const refreshHotkeyCombos = () => {
-    TriggerService.ListHotkeys().then((combos) => setHotkeyCombos(combos ?? {})).catch(() => {})
+    void background(TriggerService.ListHotkeys().then((combos) => setHotkeyCombos(combos ?? {})), 'quick.listHotkeys')
   }
 
   const openMain = (view: string) => {
-    void SettingsService.OpenMainWindow(view).catch(() => {})
+    void background(SettingsService.OpenMainWindow(view), 'quick.openMainWindow')
   }
 
   // Every show of this window is a fresh session, not a continuation --
@@ -254,7 +254,7 @@ export function QuickPanel() {
   // one.
   useEffect(() => {
     const refresh = () => {
-      Promise.all([
+      void Promise.all([
         ExecutionService.ListRuns().then((runs) => (runs ?? []).filter((r) => r.pending)).catch(() => []),
         SettingsService.PendingMCPWrites().then((p) => p ?? []).catch(() => []),
       ]).then(([guardrailPending, mcpPending]) => {

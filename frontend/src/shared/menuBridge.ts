@@ -13,6 +13,7 @@ import type { MenuEntry, MenuNode, MenuSpec, MenuSpecContext } from './menuSpec'
 import { useAppStore } from './store'
 import { useUISignalStore } from './uiSignalStore'
 import { useUpdateNoticeStore } from './updateNoticeStore'
+import { background } from './background'
 
 // The page's half of the native menu bar (goal 0332): project the
 // command registry, hand the projection to Go, then keep every item's
@@ -83,7 +84,7 @@ export function pushMenuEnablement(): void {
   const diff = changedEntries(next)
   lastVector = next
   if (Object.keys(diff).length === 0) return
-  MenuService.SetEnabled(diff).catch(console.error)
+  void background(MenuService.SetEnabled(diff), 'menu.setEnabled')
 }
 
 function scheduleEnablementPush(): void {
@@ -100,13 +101,13 @@ function scheduleEnablementPush(): void {
 // command's item must show (and take) the combo now in force.
 export function startNativeMenu(): () => void {
   let overrides = useAppStore.getState().keybindingOverrides
-  void installNativeMenu().catch(console.error)
+  void background(installNativeMenu(), 'menu.installInitial')
   const unsubscribers = [
     useAppStore.subscribe(() => {
       const next = useAppStore.getState().keybindingOverrides
       if (next !== overrides) {
         overrides = next
-        void installNativeMenu().catch(console.error)
+        void background(installNativeMenu(), 'menu.installOnRebind')
         return
       }
       scheduleEnablementPush()

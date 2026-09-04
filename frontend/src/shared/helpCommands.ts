@@ -15,7 +15,7 @@ export const HELP_COMMANDS: Command[] = [
     defaultBinding: null,
     keywords: ['bug', 'issue', 'feedback', 'report'],
     menu: { path: 'help', group: 1, order: 0 },
-    run: () => { SettingsService.ReportIssue().catch(console.error) },
+    run: () => SettingsService.ReportIssue(),
   },
   {
     id: 'help.openDataFolder',
@@ -23,6 +23,6 @@ export const HELP_COMMANDS: Command[] = [
     defaultBinding: null,
     keywords: ['data', 'folder', 'files', 'storage', 'library'],
     menu: { path: 'help', group: 1, order: 1 },
-    run: () => { SettingsService.OpenDataFolder().catch(console.error) },
+    run: () => SettingsService.OpenDataFolder(),
   },
 ]

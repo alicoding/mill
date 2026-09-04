@@ -4,6 +4,7 @@ import { BaseStyles } from '@primer/react'
 import { SettingsService } from '../shared/bindings'
 import { applyDensity, type DisplayDensity } from '../shared/density'
 import { applyAccent } from '../shared/accentScale'
+import { background } from '../shared/background'
 import {
   applyAppearance,
   getAppearance,
@@ -82,9 +83,8 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
   // window that opened later starts from.
   useEffect(() => {
     setRemoteDensityHandler((d: DisplayDensity) => applyDensity(d))
-    SettingsService.GetDisplayDensity()
-      .then((d) => applyDensity(d === 'compact' ? 'compact' : 'comfortable'))
-      .catch(console.error)
+    void background(SettingsService.GetDisplayDensity()
+      .then((d) => applyDensity(d === 'compact' ? 'compact' : 'comfortable')), 'appearance.getDisplayDensity')
     return () => setRemoteDensityHandler(null)
   }, [])
 
@@ -92,7 +92,7 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
   // Mill never stores or offers to change it, and "" keeps the built-in
   // accent (shared/accentScale.ts).
   useEffect(() => {
-    SettingsService.GetSystemAccent().then((raw) => applyAccent(raw ?? '')).catch(console.error)
+    void background(SettingsService.GetSystemAccent().then((raw) => applyAccent(raw ?? '')), 'appearance.getSystemAccent')
   }, [])
 
   return (

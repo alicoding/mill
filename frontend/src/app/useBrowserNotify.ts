@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { getNotificationPermission, raiseNotification } from '../shared/browserNotify'
 import { NotificationService } from '../shared/bindings'
+import { background } from '../shared/background'
 
 export interface BrowserNotifyRequest {
   // Identifies the thing being notified about (a run id, a pending
@@ -28,13 +29,13 @@ export interface BrowserNotifyRequest {
 export function useBrowserNotify() {
   return useCallback((req: BrowserNotifyRequest) => {
     if (getNotificationPermission() !== 'granted') return
-    NotificationService.Publish({
+    void background(NotificationService.Publish({
       type: 'guardrail', title: req.title, body: req.body,
       dedupeKey: req.dedupeKey, sourceRef: req.dedupeKey, focused: document.hasFocus(),
     }).then((result) => {
       if (result.delivered?.includes('browser-tab')) {
         raiseNotification(req.title, req.body, req.onClick)
       }
-    }).catch(() => {})
+    }), 'browserNotify.publish')
   }, [])
 }

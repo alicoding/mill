@@ -7,6 +7,7 @@ import type { ContentEntry } from '../../bindings/github.com/alicoding/mill/inte
 import { AtlasService } from '../shared/bindings'
 import { groupContents, kindLabelFor } from './atlasContentsIndex'
 import runbookStyles from '../shared/ListCard.module.css'
+import { background } from '../shared/background'
 
 // The Contents dialog (docs/goals/0279): everything on the board,
 // listed by kind with the names a person sees -- the user half of
@@ -40,7 +41,7 @@ export function AtlasContentsView({ open, onClose, kinds, onOpenCard, onFocusIte
   useEffect(() => {
     if (!open) return
     setFilter('')
-    const refetch = () => { AtlasService.ListContents('', '').then((e) => setEntries(e ?? [])).catch(console.error) }
+    const refetch = () => { void background(AtlasService.ListContents('', '').then((e) => setEntries(e ?? [])), 'atlasContents.listContents') }
     refetch()
     return Events.On('mill-data-changed', (evt) => {
       const data = evt.data as { entity?: string } | undefined

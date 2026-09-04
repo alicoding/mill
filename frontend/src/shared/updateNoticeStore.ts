@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { SettingsService, UpdateState } from './bindings'
+import { background } from './background'
 
 // The update-notice state door (goal 0222 S1): app/NoticePill.tsx used
 // to hold SettingsService.UpdateNoticeState()'s result in its own local
@@ -110,11 +111,10 @@ export const useUpdateNoticeStore = create<UpdateNoticeState>()((set, get) => ({
 // rather than each re-deriving it, so pill/palette/keyboard read the
 // exact same value.
 export function refreshUpdateNoticeState(): Promise<void> {
-  return SettingsService.UpdateNoticeState()
+  return background(SettingsService.UpdateNoticeState()
     .then((n) => {
       useUpdateNoticeStore.getState().setUpdateNoticeState(n.state)
       useUpdateNoticeStore.getState().setNotes(n.notesVersion, n.notesHTML)
       if (n.availableVersion) useUpdateNoticeStore.setState({ availableVersion: n.availableVersion })
-    })
-    .catch(console.error)
+    }), 'updateNotice.updateNoticeState')
 }

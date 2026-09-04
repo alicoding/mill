@@ -7,6 +7,7 @@ import { SettingsService } from '../shared/bindings'
 import type { MCPWriteRequest } from '../shared/bindings'
 import { StalenessBadge } from '../shared/StalenessBadge'
 import styles from './App.module.css'
+import { background } from '../shared/background'
 
 // The per-write MCP approval surface (docs/adr/0032's park-and-poll
 // lifecycle, superseding ADR-0017/0022's old bounded-blocking-wait
@@ -22,7 +23,7 @@ export function MCPWriteApprovals() {
   const [error, setError] = useState('')
 
   const refresh = () => {
-    SettingsService.PendingMCPWrites().then((p) => setPending(p ?? [])).catch(() => {})
+    void background(SettingsService.PendingMCPWrites().then((p) => setPending(p ?? [])), 'mcpWriteApprovals.pendingWrites')
   }
 
   useEffect(() => {

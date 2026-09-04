@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { dispatchCommandForEvent, findCommand, isWorkflowEditorTabActive } from '../shared/commands'
+import { dispatchCommandForEvent, findCommand, isWorkflowEditorTabActive, runCommand } from '../shared/commands'
 import { comboFromEvent, comboKey, isEditableTarget } from '../shared/keybinding'
 import { useAppStore } from '../shared/store'
 import { useUISignalStore } from '../shared/uiSignalStore'
@@ -101,7 +101,7 @@ export function useKeymapDispatch(): void {
       // rather than a second, silent no-op inside run().
       if (!command || (command.enabled && !command.enabled())) return
       e.preventDefault()
-      command.run()
+      void runCommand(command.id)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -129,12 +129,12 @@ export function useKeymapDispatch(): void {
       if (e.shiftKey) {
         if (!useUISignalStore.getState().atlasRedoAvailable) return
         e.preventDefault()
-        findCommand('atlas.redo')?.run()
+        void runCommand('atlas.redo')
         return
       }
       if (!useUISignalStore.getState().atlasUndoAvailable) return
       e.preventDefault()
-      findCommand('atlas.undo')?.run()
+      void runCommand('atlas.undo')
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -154,7 +154,7 @@ export function useKeymapDispatch(): void {
       if (isEditableTarget(e.target)) return
       if (document.querySelector('[role="dialog"]')) return
       e.preventDefault()
-      findCommand('atlas.selectAll')?.run()
+      void runCommand('atlas.selectAll')
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -185,7 +185,7 @@ export function useKeymapDispatch(): void {
         const binding = command?.defaultBinding
         if (binding && comboKey(binding.mods, binding.key) === want) {
           e.preventDefault()
-          command.run()
+          void runCommand(id)
           return
         }
       }

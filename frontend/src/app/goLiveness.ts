@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { background } from '../shared/background'
 
 // Goal 0029 -- dev-liveness honesty. BuildIdentityBadge's DEV·live
 // state answers "is the FRONTEND live" (vite HMR, true by
@@ -64,12 +65,12 @@ export function useGoSourceStale(builtAtMs: number | undefined): boolean {
     if (!isDevBuild || !builtAtMs) return
     let cancelled = false
     const check = () => {
-      fetch('/__mill/go-source-mtime')
+      // dev middleware unreachable -- leave the last known state.
+      void background(fetch('/__mill/go-source-mtime')
         .then((r) => r.json())
         .then((body: { mtimeMs: number }) => {
           if (!cancelled) setStale(isGoSourceStale(body.mtimeMs, builtAtMs))
-        })
-        .catch(() => { /* dev middleware unreachable -- leave the last known state */ })
+        }), 'goLiveness.checkSourceMtime')
     }
     check()
     const id = setInterval(check, GO_LIVENESS_POLL_MS)

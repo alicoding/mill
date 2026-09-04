@@ -4,6 +4,7 @@ import type { Card } from '../../bindings/github.com/alicoding/mill/internal/dom
 import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
 import { freeChildPosition } from './atlasContainmentPlacement'
+import { background } from '../shared/background'
 
 export interface FrameBox { id: string; x: number; y: number; width: number; height: number; isFrame: boolean }
 interface DraggedNode { id: string; type?: string; parentId?: string; position: { x: number; y: number }; width?: number | null; height?: number | null }
@@ -76,18 +77,16 @@ export function useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperR
 
   const reparentNote = useCallback((id: string, newParentID: string) => {
     const position = freeChildPosition(allCardsRef.current, newParentID)
-    void AtlasService.MoveNote(id, newParentID)
+    void background(AtlasService.MoveNote(id, newParentID)
       .then(() => AtlasService.SetNotePosition(id, position))
-      .then(() => refreshAtlas())
-      .catch(console.error)
+      .then(() => refreshAtlas()), 'atlasDragFiling.setNotePosition')
   }, [])
 
   const reparentCard = useCallback((id: string, newParentID: string) => {
     const position = freeChildPosition(allCardsRef.current, newParentID)
-    void AtlasService.MoveCard(id, newParentID)
+    void background(AtlasService.MoveCard(id, newParentID)
       .then(() => AtlasService.SetPosition(id, position))
-      .then(() => refreshAtlas())
-      .catch(console.error)
+      .then(() => refreshAtlas()), 'atlasDragFiling.setPosition')
   }, [])
 
   // Board objects (goal 0179/0180) share the exact same drag-filing
@@ -95,10 +94,9 @@ export function useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperR
   // same way in the entityKindOf dispatch below.
   const reparentObject = useCallback((id: string, newParentID: string) => {
     const position = freeChildPosition(allCardsRef.current, newParentID)
-    void AtlasService.MoveBoardObject(id, newParentID)
+    void background(AtlasService.MoveBoardObject(id, newParentID)
       .then(() => AtlasService.SetBoardObjectPosition(id, position))
-      .then(() => refreshAtlas())
-      .catch(console.error)
+      .then(() => refreshAtlas()), 'atlasDragFiling.setBoardObjectPosition')
   }, [])
 
   // React Flow's own onNodeDragStop hands back the raw browser event
@@ -130,7 +128,7 @@ export function useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperR
       : entityKind === 'object'
         ? AtlasService.MoveBoardObject(node.id, level).then(() => AtlasService.SetBoardObjectPosition(node.id, pos)).then(() => undefined)
         : AtlasService.MoveCard(node.id, level).then(() => AtlasService.SetPosition(node.id, pos)).then(() => undefined)
-    void chain.then(() => refreshAtlas()).catch(console.error)
+    void background(chain.then(() => refreshAtlas()), 'atlasDragFiling.reparent')
   }, [absNode, frameUnder])
 
   const onNodeDragStop = useCallback((e: MouseEvent | TouchEvent, node: DraggedNode) => {
@@ -164,9 +162,9 @@ export function useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperR
     }
 
     const pos = { X: node.position.x, Y: node.position.y }
-    if (entityKind === 'note') void AtlasService.SetNotePosition(node.id, pos).catch(console.error)
-    else if (entityKind === 'object') void AtlasService.SetBoardObjectPosition(node.id, pos).catch(console.error)
-    else void AtlasService.SetPosition(node.id, pos).catch(console.error)
+    if (entityKind === 'note') void background(AtlasService.SetNotePosition(node.id, pos), 'atlasDragFiling.setNotePosition')
+    else if (entityKind === 'object') void background(AtlasService.SetBoardObjectPosition(node.id, pos), 'atlasDragFiling.setBoardObjectPosition')
+    else void background(AtlasService.SetPosition(node.id, pos), 'atlasDragFiling.setPosition')
   }, [frameUnder, reparentNote, reparentCard, reparentObject, wrapperRef, dragChildOut])
 
   return { hoveredFrameID, onNodeDrag, onNodeDragStop }

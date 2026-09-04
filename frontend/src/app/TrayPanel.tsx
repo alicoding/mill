@@ -6,6 +6,7 @@ import { ExecutionService, SettingsService, CompositionService } from '../shared
 import { GuardrailService } from '../../bindings/github.com/alicoding/mill/internal/services/guardrailsvc'
 import type { RunSummary } from '../../bindings/github.com/alicoding/mill/internal/services/executionsvc/models'
 import { recentRuns, runningRuns, settledRunKind } from './trayPanelRuns'
+import { background } from '../shared/background'
 import styles from './TrayPanel.module.css'
 
 // The menu-bar status panel (docs/goals/0189): the surface the tray
@@ -40,12 +41,17 @@ export function TrayPanel() {
   const [automaticCount, setAutomaticCount] = useState(0)
   const [confirmingQuit, setConfirmingQuit] = useState(false)
 
+  // Tray-window actions with no registry command to route through
+  // runCommand (goal 0313; tracked for goal 0335): the tray is its own
+  // small window, outside the main window's command registry, so a
+  // failure here has nowhere but background()'s failure counter to go
+  // until this window grows its own notice surface.
   const openMain = (view: string) => {
-    void SettingsService.OpenMainWindow(view).catch(() => {})
+    void background(SettingsService.OpenMainWindow(view), 'trayPanel.openMain')
   }
 
   const refresh = () => {
-    Promise.all([
+    void Promise.all([
       ExecutionService.ListRuns().then((r) => r ?? []).catch(() => [] as RunSummary[]),
       SettingsService.PendingMCPWrites().then((p) => p ?? []).catch(() => []),
       GuardrailService.PendingGuardedActions().then((a) => a ?? []).catch(() => []),
@@ -74,14 +80,13 @@ export function TrayPanel() {
     // The quit contract's honest count: workflows carrying a
     // non-manual trigger node -- the schedules, hotkeys and watchers
     // that genuinely stop when Mill quits.
-    CompositionService.Workflows()
+    void background(CompositionService.Workflows()
       .then((wfs) => {
         const automatic = (wfs ?? []).filter((wf) =>
           (wf.Nodes ?? []).some((n) => n.NodeTypeID.startsWith('trigger-') && n.NodeTypeID !== 'trigger-manual'),
         )
         setAutomaticCount(automatic.length)
-      })
-      .catch(() => {})
+      }), 'tray.workflows')
   }
 
   // Same display-only refresh pattern the Quick Panel's review count
@@ -103,8 +108,12 @@ export function TrayPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Owner-reported "Stop does nothing" pattern this goal exists to fix
+  // (goal 0313): the tray has no registry command for cancelling a run
+  // (tracked for goal 0335), so this stays a background() call for now
+  // rather than a silent catch.
   const stopRun = (runID: string) => {
-    ExecutionService.CancelRun(runID).then(refresh).catch(() => {})
+    void background(ExecutionService.CancelRun(runID).then(refresh), 'trayPanel.stopRun')
   }
 
   return (
@@ -175,7 +184,7 @@ export function TrayPanel() {
         {recent.map((r) => {
           const kind = settledRunKind(r.status)
           return (
-            <button key={r.runID} type="button" className={styles.row} onClick={() => void SettingsService.ShowRunMonitor(r.workflowID, r.runID).catch(() => {})} data-testid="tray-recent-row" data-run-kind={kind}>
+            <button key={r.runID} type="button" className={styles.row} onClick={() => background(SettingsService.ShowRunMonitor(r.workflowID, r.runID), 'trayPanel.showRunMonitor')} data-testid="tray-recent-row" data-run-kind={kind}>
               <span className={styles.rowTitle}>{r.workflowLabel || r.workflowID}</span>
               <span className={styles.rowDetail}>
                 {t(kind === 'done' ? 'trayPanel.runDone' : kind === 'failed' ? 'trayPanel.runFailed' : 'trayPanel.runStopped')} · {startedAgo(String(r.completedAt || r.startedAt))}

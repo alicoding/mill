@@ -35,6 +35,7 @@ import { ApprovalPromptApp } from './ApprovalPromptApp'
 import { TrayPanelApp } from './TrayPanelApp'
 import { RunMonitorApp } from './RunMonitorApp'
 import { AppearanceProvider } from './AppearanceProvider'
+import { background } from '../shared/background'
 
 // docs/adr/0033-quick-panel-second-window.md: the Quick Panel is a
 // second Wails window loading this SAME compiled bundle, at a hash
@@ -75,7 +76,7 @@ const isCrashProbe = window.location.hash === '#/millcrashprobe'
 // and the Vite dev server.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    void navigator.serviceWorker.register('/service-worker.js').catch(() => {})
+    void background(navigator.serviceWorker.register('/service-worker.js'), 'main.registerServiceWorker')
   })
 }
 

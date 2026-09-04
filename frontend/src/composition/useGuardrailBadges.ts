@@ -2,6 +2,7 @@ import { useCallback, useEffect } from 'react'
 import { Events } from '@wailsio/runtime'
 import { GuardrailService } from '../shared/bindings'
 import type { CanvasNode, CanvasState } from './canvasStore'
+import { background } from '../shared/background'
 
 // Nothing-hidden guardrail badges (docs/adr/0022's Update): fetch the
 // saved workflow's per-step verdicts so a step that will ask or deny is
@@ -28,9 +29,8 @@ export function useGuardrailBadges(workflowId: string | undefined, nodes: Canvas
 
   const refresh = useCallback(() => {
     if (!workflowId) return
-    GuardrailService.WorkflowVerdicts(workflowId)
-      .then((v) => setGuardrailVerdicts((v ?? {}) as Record<string, { effect: string; ruleLabel: string; source?: string }>))
-      .catch(() => {})
+    void background(GuardrailService.WorkflowVerdicts(workflowId)
+      .then((v) => setGuardrailVerdicts((v ?? {}) as Record<string, { effect: string; ruleLabel: string; source?: string }>)), 'guardrailBadges.workflowVerdicts')
   }, [workflowId, setGuardrailVerdicts])
 
   useEffect(() => {

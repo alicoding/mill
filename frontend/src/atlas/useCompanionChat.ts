@@ -35,7 +35,7 @@ export function useCompanionChat(viewedID: string) {
   const pendingRetry = useRef<PendingTurn | null>(null)
 
   useEffect(() => {
-    ConfigureService.AIProviders().then((list) => {
+    void ConfigureService.AIProviders().then((list) => {
       const found = list ?? []
       setProviders(found)
       setProviderID((current) => current || found[0]?.ID || '')

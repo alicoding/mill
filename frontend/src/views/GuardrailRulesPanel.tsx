@@ -14,6 +14,7 @@ import { ContextMenu } from '../shared/ContextMenu'
 import type { ContextMenuItem, ContextMenuState } from '../shared/ContextMenu'
 import { resolveScopeChoice, ruleScopeKind, ruleScopeSentence, RULE_SCOPE_EVERYWHERE_SENTENCE } from '../shared/guardrailRuleScope'
 import listStyles from '../shared/ListCard.module.css'
+import { background } from '../shared/background'
 
 function effectVariant(effect: string): StatusStampVariant {
   return effect === 'deny' ? 'danger' : effect === 'ask' ? 'caution' : 'success'
@@ -101,7 +102,7 @@ export function GuardrailRulesPanel() {
   const { requestDelete, dialog: confirmDialog } = useConfirmDelete<GuardrailRule>({
     entityType: 'rule',
     labelOf: (r) => r.Label,
-    onConfirm: (r) => { GuardrailService.DeleteRule(r.ID).then(refresh).catch(() => {}) },
+    onConfirm: (r) => { void background(GuardrailService.DeleteRule(r.ID).then(refresh), 'guardrailRules.deleteRule') },
   })
 
   if (rules === null) return null

@@ -4,6 +4,7 @@ import { Text, TextInput } from '@primer/react'
 import { SettingsService } from '../shared/bindings'
 import { SettingsRow } from './SettingsRow'
 import listStyles from '../shared/ListCard.module.css'
+import { background } from '../shared/background'
 
 // Where the rest of the trimmed away/alert captions lives (goal 0321).
 const SETTINGS_DOCS_PAGE = 'reference/settings.md'
@@ -30,10 +31,9 @@ export default function SettingsNotificationsPane() {
   // mirrored client-side by simply refetching.
   const commitIdleThreshold = (raw: string) => {
     const n = parseInt(raw, 10)
-    SettingsService.SetAttentionIdleThreshold(Number.isFinite(n) ? n : 0)
+    void background(SettingsService.SetAttentionIdleThreshold(Number.isFinite(n) ? n : 0)
       .then(() => SettingsService.GetAttentionIdleThreshold())
-      .then(setIdleThresholdState)
-      .catch(console.error)
+      .then(setIdleThresholdState), 'settingsNotificationsPane.getAttentionIdleThreshold')
   }
 
   return (

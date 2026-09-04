@@ -23,6 +23,7 @@ import { ConfigureEntityPage } from './ConfigureEntityPage'
 import { useSeedLifecycle } from './useSeedLifecycle'
 import { useEntityImportExport } from './useEntityImportExport'
 import styles from '../shared/ListCard.module.css'
+import { background } from '../shared/background'
 
 function argsToRows(args: string[] | null | undefined): string[] {
   return args && args.length > 0 ? args : ['']
@@ -81,7 +82,7 @@ export function ConfigureMCPServers() {
   useEffect(() => {
     refetch()
     seedLifecycle.refresh()
-    ConfigureService.MCPServerFields().then((f) => setFields(f ?? [])).catch(console.error)
+    void background(ConfigureService.MCPServerFields().then((f) => setFields(f ?? [])), 'configureMCPServers.serverFields')
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only fetch, same reasoning every sibling Configure page's identical effect documents
   }, [])
 

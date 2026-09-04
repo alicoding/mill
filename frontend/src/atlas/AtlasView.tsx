@@ -42,6 +42,7 @@ import { useAtlasQuietToast } from './useAtlasQuietToast'
 import { AtlasQuietToast } from './AtlasQuietToast'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasView.module.css'
+import { background } from '../shared/background'
 
 // The Atlas surface's top-level page (docs/adr/0038, docs/goals/0061):
 // space rendering (canvas/shelves per the viewed card's
@@ -342,7 +343,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     // toggle UI retired with the old Lens popover (consumed by nothing,
     // per docs/SPEC.md's own recorded seam); this is the value's only
     // remaining writer, and it never changes it.
-    void AtlasService.SetLens(viewedID, hidden, peek).catch(console.error)
+    void background(AtlasService.SetLens(viewedID, hidden, peek), 'atlas.setLens')
   }
 
   const { exportAtlas, exportBoardDrawio, importFile, importConfirmDialog } = useAtlasShareIO({ allKinds, allLinkKinds, allCards, allLinks, viewedID, t, onError: setImportError, onSummary: quietToast.show })

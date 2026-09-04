@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Events } from '@wailsio/runtime'
-import { findCommand } from '../shared/commands'
+import { runCommand } from '../shared/commands'
 import { startNativeMenu } from '../shared/menuBridge'
 
 // The native menu bar's one entry point into the app (goal 0332).
@@ -19,11 +19,11 @@ export function useNativeMenu(): void {
     const off = Events.On('menu:command', (event) => {
       const id = (event.data as { ID?: string } | undefined)?.ID
       if (!id) return
-      const command = findCommand(id)
       // A disabled item is inert natively, so reaching here means the
       // menu believed the action was available; re-checking would only
-      // race the state the menu was last told about.
-      command?.run()
+      // race the state the menu was last told about -- runCommand
+      // rechecks anyway and no-ops if it lost that race.
+      void runCommand(id)
     })
     const stop = startNativeMenu()
     return () => {

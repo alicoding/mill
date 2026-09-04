@@ -5,7 +5,7 @@ import { ChecklistIcon, DownloadIcon, ProjectRoadmapIcon,
   ListUnorderedIcon, TableIcon, UploadIcon, TagIcon, SparkleFillIcon, ShareIcon } from '@primer/octicons-react'
 import type { Card, Kind, Link, LinkKind, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
-import { findCommand } from '../shared/commands'
+import { runCommand } from '../shared/commands'
 import { AtlasBreadcrumb } from './AtlasBreadcrumb'
 import { AtlasPerspectiveSwitcher } from './AtlasPerspectiveSwitcher'
 import { AtlasFolderImport } from './AtlasFolderImport'
@@ -194,7 +194,7 @@ export function AtlasToolbar({
             {t('toolbar.roadmap')}
           </ActionBar.Button>
           <ActionBar.IconButton icon={TagIcon} aria-label={t('toolbar.kinds')} data-testid="atlas-open-kinds" onClick={onOpenKinds} />
-          <ActionBar.IconButton icon={SparkleFillIcon} aria-label={t('companionPanel.toggleButton')} data-testid="atlas-open-companion" onClick={() => findCommand('atlas.companion.toggle')?.run()} />
+          <ActionBar.IconButton icon={SparkleFillIcon} aria-label={t('companionPanel.toggleButton')} data-testid="atlas-open-companion" onClick={() => void runCommand('atlas.companion.toggle')} />
         </ActionBar>
         <AtlasSpaceShareMenu spaceID={viewedID} onError={onShareError} anchorRef={shareAnchorRef} open={shareOpen} onOpenChange={setShareOpen} />
         <AtlasPerspectiveSwitcher

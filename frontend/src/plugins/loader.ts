@@ -144,7 +144,11 @@ export function collectReloadCommand(info: PluginInfo): void {
 			const status = loadStates.get(id)?.status
 			return status !== undefined && status !== 'blocked' && status !== 'unsigned'
 		},
-		run: () => { void import('./pluginReload').then((m) => m.reloadPluginWithNotice(id, info.Manifest.name || id)).catch(console.error) },
+		// reloadPluginWithNotice itself never rejects (it reports the
+		// reload's own outcome as a notice) -- what CAN still reject is
+		// the dynamic import() failing to load the module at all, which
+		// runCommand (shared/commands.ts) now catches and reports.
+		run: () => import('./pluginReload').then((m) => m.reloadPluginWithNotice(id, info.Manifest.name || id)),
 	})
 }
 

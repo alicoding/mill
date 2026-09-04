@@ -129,6 +129,16 @@ test('Release-channel build offers to download, and a failed install surfaces th
     await expect(card.getByTestId('update-error-copy')).toBeVisible()
     await expect(primary).toHaveText('Download v9.9.9 and install')
 
+    // goal 0313: the button IS update.downloadAndInstall
+    // (views/UpdatesSection.tsx's primaryActionFor), whose run() no
+    // longer swallows the rejection into console.error -- runCommand
+    // (shared/commands.ts) catches it and posts the SAME failure a
+    // second time, as the footer's own error pill, independent of this
+    // page's own local card state above.
+    const errorPill = page.locator('[data-notice-level="error"]').filter({ hasText: 'Download the update and install' })
+    await expect(errorPill).toBeVisible()
+    await expect(errorPill).toContainText('no release asset in test mode')
+
     await page.close()
   } finally {
     await server?.stop()

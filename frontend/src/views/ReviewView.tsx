@@ -21,6 +21,7 @@ import styles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
 import mobileStyles from './ReviewView.module.css'
 import PageContainer from '../shared/PageContainer'
+import { background } from '../shared/background'
 
 type ReviewTab = 'queue' | 'rules'
 // The parked run + effect a door-1 "Always…" click is currently
@@ -125,7 +126,7 @@ function ReviewView() {
   // shared source's revision instead of on a second set of event
   // subscriptions.
   useEffect(() => {
-    SettingsService.ResolvedMCPWrites().then((p) => setResolvedWrites(p ?? [])).catch(() => {})
+    void background(SettingsService.ResolvedMCPWrites().then((p) => setResolvedWrites(p ?? [])), 'review.resolvedMCPWrites')
   }, [revision])
 
   const resolveWrite = (id: string, approve: boolean) => {
@@ -149,7 +150,7 @@ function ReviewView() {
         // A refused decision means this row is stale -- refetch straight
         // away so it stops offering what it just failed to do.
         if (delivered) setTimeout(refresh, 700)
-        else refresh()
+        else void refresh()
       })
   }
 
