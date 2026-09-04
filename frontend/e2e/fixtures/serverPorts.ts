@@ -297,3 +297,12 @@ export const RUNTIME_PLUGIN_RELOAD_MCP_BASE_PORT = 11300
 // same shape as RUNTIME_PLUGIN_RELOAD_* above.
 export const RUNTIME_PLUGIN_MCP_SERVER_BASE_PORT = 11320
 export const RUNTIME_PLUGIN_MCP_MCP_BASE_PORT = 11340
+
+// guardrail-review.spec.ts's stop-from-the-run-detail badge case (goal
+// 0329): GUARDRAIL_REVIEW_*'s own offsets are nearly exhausted -- its
+// MCP base (10300) plus another 10-offset lands inside the
+// ATLAS_PERSPECTIVES_*/UPDATES_CHANNEL_PREF_* ranges above. A pair of
+// its own, clear of every family, rather than more offset arithmetic
+// (the same reasoning RUNTIME_PLUGIN_RELOAD_* records).
+export const GUARDRAIL_REVIEW_CANCEL_SERVER_BASE_PORT = 11360
+export const GUARDRAIL_REVIEW_CANCEL_MCP_BASE_PORT = 11380

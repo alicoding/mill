@@ -4,13 +4,14 @@ import { ActionList, ActionMenu, Button, Heading, SegmentedControl, Select, Spin
 import { StatusStamp } from '../shared/StatusStamp'
 import { Blankslate } from '@primer/react/experimental'
 import { BugIcon, InboxIcon, PersonIcon, PlugIcon, ShieldIcon } from '@primer/octicons-react'
-import { Events } from '@wailsio/runtime'
-import { ExecutionService, SettingsService } from '../shared/bindings'
-import type { MCPWriteRequest, MCPWriteResolved, RunSummary } from '../shared/bindings'
+import { SettingsService } from '../shared/bindings'
+import type { MCPWriteResolved, RunSummary } from '../shared/bindings'
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
 import { useAppStore } from '../shared/store'
 import { useUISignalStore } from '../shared/uiSignalStore'
-import { formatRunStartedAt } from '../shared/runTime'
+import { formatRunStartedAt, runStatusLabel } from '../shared/runTime'
+import { useApprovalResolution } from '../shared/approvalResolution'
+import { usePendingReview } from '../review/usePendingReview'
 import { StalenessBadge } from '../shared/StalenessBadge'
 import { ReviewGuardedActions } from './ReviewGuardedActions'
 import { formatLastChecked } from '../shared/staleness'
@@ -68,16 +69,24 @@ function kindLabelsFor(t: (key: string) => string): Record<Exclude<KindFilterVal
 // Camunda/Pega line, not crossed).
 function ReviewView() {
   const { t } = useTranslation('views')
+  // The refusal copy lives in the `common` namespace -- the canvas bar
+  // and the Runs panel's own parked bar render exactly the same
+  // strings (shared/approvalResolution.ts).
+  const { t: tc } = useTranslation('common')
+  // The shared answer-a-parked-run seam, one call site vocabulary for
+  // all three surfaces that render controls on a park.
+  const { errorKeyFor, resolveApproval } = useApprovalResolution()
   const KIND_LABELS = kindLabelsFor(t)
   const workflows = useAppStore((s) => s.workflows)
   const requestOpenWorkflow = useAppStore((s) => s.requestOpenWorkflow)
-  const [pending, setPending] = useState<RunSummary[] | null>(null)
-  const [resolved, setResolved] = useState<RunSummary[]>([])
-  // Pending MCP writes (docs/adr/0032 §2): the SAME durable pending
-  // store MCPWriteApprovals.tsx's banner reads, surfaced here too as
-  // actionable rows -- one store, multiple surfaces, never a second
-  // competing pending list (goal 0005).
-  const [pendingWrites, setPendingWrites] = useState<MCPWriteRequest[]>([])
+  // The queue's own data comes from the one shared source the sidebar
+  // badge and the launch notice also read (review/usePendingReview.ts):
+  // parked runs, their resolutions, and the SAME durable pending-write
+  // store MCPWriteApprovals.tsx's banner reads -- one store, multiple
+  // surfaces, never a second competing pending list (goal 0005), and
+  // never a poll standing in for a missed event (goal 0329).
+  const { pending: pendingRuns, resolved, pendingWrites, loaded: reviewLoaded, revision, refresh } = usePendingReview()
+  const pending = reviewLoaded ? pendingRuns : null
   // Resolved MCP writes (docs/goals/0026 item 6) -- the durable 24h
   // outcome records (approved/denied/cancelled/expired), merged into
   // Recently-resolved alongside run resolutions rather than living in a
@@ -111,36 +120,13 @@ function ReviewView() {
     setTab('rules')
   }, [reviewRulesRequest])
 
-  const refresh = () => {
-    ExecutionService.ListRuns()
-      .then((runs) => {
-        setPending((runs ?? []).filter((r) => r.pending))
-        // Recently resolved: runs that once parked, newest first --
-        // the queue's after-the-fact visibility (goal 0002), same
-        // event the park wrote, read after resolution.
-        setResolved((runs ?? []).filter((r) => r.resolution))
-      })
-      .catch((err) => setError(String(err)))
-    SettingsService.PendingMCPWrites().then((p) => setPendingWrites(p ?? [])).catch(() => {})
-    SettingsService.ResolvedMCPWrites().then((p) => setResolvedWrites(p ?? [])).catch(() => {})
-  }
-
+  // Resolved MCP writes are this view's own extra data -- not part of
+  // what the badge or the launch notice show -- so they refetch on the
+  // shared source's revision instead of on a second set of event
+  // subscriptions.
   useEffect(() => {
-    refresh()
-    // goal 0017 P2: guardrail-pending-changed (executionsvc, already
-    // emitted on every park/resolve -- App.tsx's own pending-badge
-    // effect already consumes it) gets the queue refreshing on the SAME
-    // event that already exists, instead of waiting up to 2s for the
-    // poll below. The poll itself stays: it's the documented fallback
-    // for anything that changes queue state without a dedicated event
-    // (a park racing this subscription's mount, a clock-based staleness
-    // badge aging past its threshold with nothing else to trigger a
-    // re-render).
-    const timer = setInterval(refresh, 2000)
-    const offMCP = Events.On('mcp-write-approval', refresh)
-    const offGuardrail = Events.On('guardrail-pending-changed', refresh)
-    return () => { clearInterval(timer); offMCP(); offGuardrail() }
-  }, [])
+    SettingsService.ResolvedMCPWrites().then((p) => setResolvedWrites(p ?? [])).catch(() => {})
+  }, [revision])
 
   const resolveWrite = (id: string, approve: boolean) => {
     setError('')
@@ -158,9 +144,13 @@ function ReviewView() {
   const resolve = (run: RunSummary, approve: boolean) => {
     if (!run.pending) return
     setError('')
-    ExecutionService.ResolveApproval(run.runID, run.pending.nodeID, approve, approve ? (inputs[run.runID] ?? {}) : {}, false)
-      .then(() => setTimeout(refresh, 700))
-      .catch((err) => setError(String(err)))
+    void resolveApproval({ runID: run.runID, nodeID: run.pending.nodeID, approve, values: inputs[run.runID] })
+      .then((delivered) => {
+        // A refused decision means this row is stale -- refetch straight
+        // away so it stops offering what it just failed to do.
+        if (delivered) setTimeout(refresh, 700)
+        else refresh()
+      })
   }
 
   // Row drill-down (docs/goals/0002-review-queue-maturation.md item 5):
@@ -361,6 +351,9 @@ function ReviewView() {
                 <Button size="small" variant="danger" data-testid="review-deny" onClick={() => resolve(run, false)}>
                   {isDebugPark(run) ? t('reviewView.stop') : t('reviewView.deny')}
                 </Button>
+                {errorKeyFor(run.runID) && (
+                  <Text as="p" className={styles.error} data-testid="review-resolve-error">{tc(errorKeyFor(run.runID))}</Text>
+                )}
                 {/* Door 1, primary authoring door (goal 0078): only a
                     guardrail policy ask carries a scope a rule can name --
                     a Human review checkpoint always parks by construction
@@ -403,7 +396,7 @@ function ReviewView() {
                   <Stack direction="horizontal" gap="condensed" align="center">
                     <Text weight="semibold">{entry.run.workflowLabel}</Text>
                     <StatusStamp
-                      variant={entry.run.resolution === 'approved' ? 'success' : 'danger'}
+                      variant={entry.run.interrupted ? 'neutral' : entry.run.resolution === 'approved' ? 'success' : 'danger'}
                       data-testid="review-resolution"
                     >
                       {entry.run.resolution}
@@ -420,7 +413,7 @@ function ReviewView() {
                       variant={entry.run.status === 'SUCCESS' ? 'success' : entry.run.status === 'ERROR' ? 'danger' : 'caution'}
                       data-testid="review-resolved-status"
                     >
-                      {entry.run.status}
+                      {runStatusLabel(entry.run, t)}
                     </StatusStamp>
                   </Stack>
                   <Text size="small" className={`${styles.muted} ${monoStyles.mono}`}>{formatRunStartedAt(entry.run.startedAt)}</Text>

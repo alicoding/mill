@@ -3,6 +3,8 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import {
+  GUARDRAIL_REVIEW_CANCEL_MCP_BASE_PORT,
+  GUARDRAIL_REVIEW_CANCEL_SERVER_BASE_PORT,
   GUARDRAIL_REVIEW_MCP_BASE_PORT,
   GUARDRAIL_REVIEW_SERVER_BASE_PORT,
   spawnMillServer,
@@ -37,10 +39,13 @@ interface SpawnedPage {
   dir: string
 }
 
-async function openDedicatedServer(namePrefix: string, offset: number, idx: number): Promise<SpawnedPage> {
+// bases lets one test opt into its own disjoint port pair instead of a
+// further offset inside GUARDRAIL_REVIEW_* -- see
+// GUARDRAIL_REVIEW_CANCEL_* in fixtures/serverPorts.ts.
+async function openDedicatedServer(namePrefix: string, offset: number, idx: number, bases?: { server: number; mcp: number }): Promise<SpawnedPage> {
   const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-${namePrefix}-${idx}-`))
-  const port = GUARDRAIL_REVIEW_SERVER_BASE_PORT + offset + idx
-  const mcpPort = GUARDRAIL_REVIEW_MCP_BASE_PORT + offset + idx
+  const port = (bases?.server ?? GUARDRAIL_REVIEW_SERVER_BASE_PORT) + offset + idx
+  const mcpPort = (bases?.mcp ?? GUARDRAIL_REVIEW_MCP_BASE_PORT) + offset + idx
   const browser = await chromium.launch()
   const server = await spawnMillServer({
     port, mcpPort,
@@ -423,6 +428,52 @@ test('Review kind filter narrows pending rows by kind, and the Blankslate empty 
       await expect(mcpSourceRow).toHaveCount(remaining)
     }
     await restoreMCPWriteDefaults(page)
+  } finally {
+    await closeDedicatedServer(s)
+  }
+})
+
+// Stopping a parked run from its run detail (CancelRun) is a different
+// door from answering it (ResolveApproval), and it announces through
+// the shared mill-data-changed event rather than
+// guardrail-pending-changed. The Review badge listened only to the
+// latter, so a stopped run left the badge counting a review nobody
+// could answer until the next reload; the queue only looked right
+// because it polled every 2 seconds. Both surfaces now read one shared
+// source (review/pendingReviewStore.ts) routed from the app's single
+// mill-data-changed router, so a missed event fails here instead of
+// hiding behind a timer.
+// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
+test('Sidebar Review badge drops when the parked run is stopped from its run detail, without a reload', async ({}, testInfo) => {
+  const s = await openDedicatedServer('guardrail-review-cancel-badge', 0, testInfo.parallelIndex,
+    { server: GUARDRAIL_REVIEW_CANCEL_SERVER_BASE_PORT, mcp: GUARDRAIL_REVIEW_CANCEL_MCP_BASE_PORT })
+  try {
+    const { page } = s
+    await page.goto(`${s.server.baseURL}/`)
+    await page.getByRole('link', { name: 'Workflows' }).click()
+    await expect(page.getByTestId('review-pending-count')).toHaveCount(0)
+
+    const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(GUARDED, { exact: true }) })
+    await row.getByRole('button', { name: 'Run' }).click()
+
+    const badge = page.getByTestId('review-pending-count')
+    await expect(badge).toBeVisible({ timeout: 10_000 })
+    await expect(badge).toHaveText('1')
+
+    // Drill into the parked run from Review, then use the run detail's
+    // own top-right Stop -- the CancelRun door, not Approve/Deny.
+    await page.getByRole('link', { name: 'Review' }).click()
+    const item = page.getByTestId('review-item').filter({ hasText: GUARDED }).first()
+    await expect(item).toBeVisible({ timeout: 10_000 })
+    await item.getByText(GUARDED, { exact: true }).click()
+    await expect(page.getByTestId('run-detail')).toBeVisible()
+    await page.getByTestId('cancel-run').click()
+
+    await expect(page.getByTestId('review-pending-count')).toHaveCount(0, { timeout: 10_000 })
+
+    // And the queue itself agrees, without a reload of its own.
+    await page.getByRole('link', { name: 'Review' }).click()
+    await expect(page.getByTestId('review-item').filter({ hasText: GUARDED })).toHaveCount(0, { timeout: 10_000 })
   } finally {
     await closeDedicatedServer(s)
   }

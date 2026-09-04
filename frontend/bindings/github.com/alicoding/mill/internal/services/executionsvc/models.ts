@@ -184,6 +184,15 @@ export interface RunDetail {
     "resolution"?: string;
 
     /**
+     * Interrupted marks a run that was parked on an approval when Mill
+     * relaunched under a different WorkflowCodeVersion and so could not
+     * be recovered -- ReconcileInterrupted cancelled it at startup
+     * (executionservice_reconcile.go). Distinct from a person stopping
+     * a run: nobody answered, the answer became unanswerable.
+     */
+    "interrupted"?: boolean;
+
+    /**
      * Values are the attribute values this run was invoked with
      * (runInput.Values -- a test form's input, or a parent's resolved
      * child bindings). The data behind Activity's per-attribute columns
@@ -320,6 +329,15 @@ export interface RunSummary {
      * Review queue's recently-resolved section (goal 0002).
      */
     "resolution"?: string;
+
+    /**
+     * Interrupted marks a run that was parked on an approval when Mill
+     * relaunched under a different WorkflowCodeVersion and so could not
+     * be recovered -- ReconcileInterrupted cancelled it at startup
+     * (executionservice_reconcile.go). Distinct from a person stopping
+     * a run: nobody answered, the answer became unanswerable.
+     */
+    "interrupted"?: boolean;
 
     /**
      * Values are the attribute values this run was invoked with

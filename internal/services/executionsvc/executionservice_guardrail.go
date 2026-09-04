@@ -3,6 +3,7 @@ package executionsvc
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -267,6 +268,13 @@ func (e *ExecutionService) parkForApproval(ctx execution.Context, node compositi
 	if err := execution.SetEvent(ctx, guardrailPendingEventKey, pending); err != nil {
 		return nil, false, fmt.Errorf("guardrail: publish pending approval: %w", err)
 	}
+	// The listener half of the park, recorded before Recv and cleared on
+	// every path out of it: a Send is accepted by the database whenever
+	// the run's row exists, listener or not, so this registry is the
+	// only thing that can tell ResolveApproval whether anyone is
+	// actually waiting (goal 0329).
+	e.parkedRuns.Store(runID, node.ID)
+	defer e.parkedRuns.Delete(runID)
 	emitGuardrailPendingChanged(runID, node.ID, false)
 	// docs/adr/0035: the decision-parked half of trigger-system-event --
 	// only the park is a system event (not the resolve below), matching
@@ -330,6 +338,9 @@ func (e *ExecutionService) approvalWaiter(runCtx any, node composition.Node, ec 
 // per-node breakpoints still honored). Send works from outside a
 // workflow (verified against the installed DBOS source).
 func (e *ExecutionService) ResolveApproval(runID, nodeID string, approve bool, values map[string]string, continueRun bool) error {
+	if _, listening := e.parkedRuns.Load(runID); !listening {
+		return e.resolveUnlistened(runID, approve)
+	}
 	err := execution.Send(e.ctx, runID, approvalDecision{NodeID: nodeID, Approve: approve, Values: values, Continue: continueRun}, guardrailApprovalTopic)
 	if err == nil {
 		// The parked run's user-visible state (pending -> resolved)
@@ -342,6 +353,56 @@ func (e *ExecutionService) ResolveApproval(runID, nodeID string, approve bool, v
 		dataevent.Emit("run", runID)
 	}
 	return err
+}
+
+// resolveUnlistened answers a decision aimed at a run that nothing in
+// this process is parked on. execution.Send would succeed anyway (it
+// only checks that the row exists) and the decision would sit in the
+// notifications table unread, which is exactly the reported symptom:
+// Resume and Stop did nothing and the paused marker never cleared.
+// Three honest answers instead, all of which emit the same
+// data-changed event the canvas poll and Review listen to, so the
+// caller's next fetch shows the truth:
+//   - the run really is coming back (its row is still live and was
+//     written by this workflow-code version, so DBOS recovery will
+//     re-park it in a moment) -- ask for a retry;
+//   - approving something no longer waiting -- say so;
+//   - denying something no longer waiting -- stop the run, which is
+//     what "Stop" means whether or not anyone was listening.
+//
+// The "executionsvc: run-recovering"/"executionsvc: run-not-waiting"
+// prefixes are stable codes the frontend matches on, not prose.
+func (e *ExecutionService) resolveUnlistened(runID string, approve bool) error {
+	if e.recoverable(runID) {
+		dataevent.Emit("run", runID)
+		return fmt.Errorf("executionsvc: run-recovering: run %s is being picked back up", runID)
+	}
+	if !approve {
+		err := e.CancelRun(runID)
+		if err != nil {
+			slog.Error("execution: stop unlistened run", "run", runID, "error", err)
+		}
+		return nil
+	}
+	dataevent.Emit("run", runID)
+	return fmt.Errorf("executionsvc: run-not-waiting: run %s is not waiting on a decision", runID)
+}
+
+// recoverable reports whether runID's row is still live (PENDING or
+// ENQUEUED) AND was written by this workflow-code version -- the one
+// case where nobody listening is a transient state rather than a
+// permanent one, because DBOS's own launch recovery re-executes exactly
+// those rows.
+func (e *ExecutionService) recoverable(runID string) bool {
+	statuses, err := execution.ListWorkflows(e.ctx, execution.WithFilterWorkflowIDs(runID))
+	if err != nil || len(statuses) == 0 {
+		return false
+	}
+	st := statuses[0]
+	if st.ApplicationVersion != e.appVersion {
+		return false
+	}
+	return st.Status == execution.WorkflowStatusPending || st.Status == execution.WorkflowStatusEnqueued
 }
 
 // pendingApprovalFor polls a run's advertised pending approval (zero

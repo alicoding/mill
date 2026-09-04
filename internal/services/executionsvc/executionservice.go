@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/execution"
@@ -167,6 +168,12 @@ type RunSummary struct {
 	// "denied"/"timed out"), empty when the run never parked -- the
 	// Review queue's recently-resolved section (goal 0002).
 	Resolution string `json:"resolution,omitempty"`
+	// Interrupted marks a run that was parked on an approval when Mill
+	// relaunched under a different WorkflowCodeVersion and so could not
+	// be recovered -- ReconcileInterrupted cancelled it at startup
+	// (executionservice_reconcile.go). Distinct from a person stopping
+	// a run: nobody answered, the answer became unanswerable.
+	Interrupted bool `json:"interrupted,omitempty"`
 	// Values are the attribute values this run was invoked with
 	// (runInput.Values -- a test form's input, or a parent's resolved
 	// child bindings). The data behind Activity's per-attribute columns
@@ -196,6 +203,13 @@ type ExecutionService struct {
 	// rather than a named field since callers never reach through it
 	// directly, only via CancelRun/registerProcess.
 	cancelState
+	// parkedRuns is the live-park registry: runID -> nodeID for every
+	// run parked on Recv inside THIS process. A run whose row says
+	// PENDING but which is absent here has no listener, so a Send would
+	// be accepted by the database and never received -- ResolveApproval
+	// answers instead of silently doing nothing
+	// (executionservice_guardrail.go).
+	parkedRuns sync.Map
 	// minutesSavedLookup resolves a workflow's current "minutes saved
 	// per run" estimate -- SettingsService's own persisted preference
 	// (docs/SPEC.md §3.7), wired in from main.go via
@@ -228,48 +242,13 @@ type ExecutionService struct {
 	// standalone test that builds ExecutionService directly, same as
 	// minutesSavedLookup/systemEventSink above.
 	version string
-}
-
-// NewExecutionService builds and launches the durable-execution runtime
-// backed by databaseURL (a DBOS-native DSN -- see execution.New's own
-// doc comment for the sqlite-by-default, Postgres-by-config reasoning).
-// Registration happens inside execution.New, before Launch, per that
-// function's own doc comment.
-func NewExecutionService(databaseURL string, comp *compositionsvc.CompositionService, guard *guardrailsvc.GuardrailService) (*ExecutionService, error) {
-	e := &ExecutionService{comp: comp, guard: guard, cancelState: newCancelState()}
-	ctx, err := execution.New("mill", databaseURL, func(ctx execution.Context) {
-		execution.RegisterWorkflow(ctx, e.runWorkflow, execution.WithWorkflowName(millRunWorkflowName))
-	})
-	if err != nil {
-		return nil, err
-	}
-	e.ctx = ctx
-	// The guardrail gate (docs/adr/0022) hooks composition's walk here
-	// -- the one place holding both the rules and the durable context.
-	composition.SetGuardrailGate(e.guardrailGate)
-	composition.SetApprovalWaiter(e.approvalWaiter)
-	// docs/adr/0026: a running code-execution step publishes its live
-	// procexec.Handle here so CancelRun can reach it from outside the
-	// run (executionservice_cancel.go).
-	composition.SetProcessRegistrar(e.registerProcess)
-	// docs/goals/0240 S1: a running process-shell-command sub-command
-	// streams its live progress here (executionservice_codingloop.go),
-	// since DBOS itself only checkpoints the step on completion.
-	composition.SetShellStepProgressEmitter(e.emitShellStepProgress)
-	// goal 0052 slice 3, ADR-0036: a process-run-receipt node reads this
-	// run's own recorded evidence-so-far through this seam
-	// (executionservice_receipt.go).
-	composition.SetRunEvidenceLookup(e.runEvidenceLookup)
-	composition.SetCurrentRunIDLookup(e.CurrentRunID) // goal 0066
-	return e, nil
-}
-
-// Shutdown stops the durable-execution runtime -- called from main.go on
-// application shutdown so in-flight step checkpoints flush cleanly.
-//
-//wails:ignore
-func (e *ExecutionService) Shutdown(timeout time.Duration) error {
-	return execution.Shutdown(e.ctx, timeout)
+	// appVersion is the durable runtime's own application version --
+	// WorkflowCodeVersion in production, a test-supplied value via
+	// NewExecutionServiceWithVersion. Every "was this row written by
+	// this code?" comparison reads this, never the const directly, so a
+	// test relaunching one database under two versions gets honest
+	// answers from both services.
+	appVersion string
 }
 
 // runWorkflow is the one DBOS-registered durable workflow function --

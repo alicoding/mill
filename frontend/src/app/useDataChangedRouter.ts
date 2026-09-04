@@ -5,6 +5,7 @@ import { refreshAIProviders, refreshDeclaredStepTypes, refreshDecisions, refresh
 import { refreshVaultStatus } from '../shared/vaultStatusStore'
 import { refreshDisabledExtensions } from '../shared/extensionEnablementStore'
 import { refreshExtensionSettings } from '../shared/extensionSettingsStore'
+import { refreshPendingReview } from '../review/pendingReviewStore'
 
 // The one mill-data-changed router (docs/adr/0025 + goal 0017), split
 // out of App.tsx (CLAUDE.md's 500-line convention) -- zero behavior
@@ -27,6 +28,11 @@ export function useDataChangedRouter(): void {
     return Events.On('mill-data-changed', (evt) => {
       const entity = (evt.data as { entity?: string })?.entity
       if (entity === 'workflow' || entity === 'run') void refreshWorkflows()
+      // Stopping a run (CancelRun) and answering one (ResolveApproval)
+      // both announce through this door and nothing else -- routed here
+      // so the Review badge/queue stop needing a poll of their own
+      // (review/pendingReviewStore.ts).
+      if (entity === 'run') void refreshPendingReview()
       if (entity === 'request') void refreshRequests()
       if (entity === 'list') void refreshLists()
       if (entity === 'mcpserver') void refreshMCPServers()

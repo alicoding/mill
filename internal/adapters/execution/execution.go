@@ -31,10 +31,20 @@ import (
 // finding #5) and only activates if ConductorAPIKey/DBOS__CLOUD is
 // set -- Config below never sets either, which is the whole guard; DBOS
 // itself exposes no separate flag to assert this at runtime.
-func New(appName, databaseURL string, register func(Context)) (Context, error) {
+//
+// appVersion pins dbos.Config.ApplicationVersion. It must be supplied:
+// left empty, DBOS derives a version from a hash of the running
+// binary's own bytes (computeApplicationVersion), so every rebuilt or
+// updated binary gets a different one -- and launch recovery
+// (ReenqueueForRecovery) and queue dequeue both filter on an exact
+// application_version match, which strands every PENDING run written by
+// any earlier build. Callers pass a value that changes only when a
+// parked run's checkpoints could not replay under the new code.
+func New(appName, appVersion, databaseURL string, register func(Context)) (Context, error) {
 	ctx, err := dbos.NewContext(context.Background(), dbos.Config{
-		AppName:     appName,
-		DatabaseURL: databaseURL,
+		AppName:            appName,
+		ApplicationVersion: appVersion,
+		DatabaseURL:        databaseURL,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("execution: new context: %w", err)

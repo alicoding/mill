@@ -75,9 +75,17 @@ func (e *ExecutionService) summaryFromStatus(st execution.WorkflowStatus) RunSum
 	}
 	// Only a still-running run can be parked on an approval -- skip the
 	// event poll for terminal runs (the common case in any list).
-	if summary.Status == "PENDING" || summary.Status == "RUNNING" || summary.Status == "ENQUEUED" {
+	switch {
+	case summary.Status == "PENDING" || summary.Status == "RUNNING" || summary.Status == "ENQUEUED":
 		summary.Pending = e.pendingApprovalFor(st.ID)
-	} else {
+	case e.interruptedRun(st):
+		// A relaunch under a different WorkflowCodeVersion left this
+		// park unanswerable, and ReconcileInterrupted cancelled the run
+		// (executionservice_reconcile.go). Pending stays nil: there is
+		// nothing left to approve, so no surface may offer to.
+		summary.Interrupted = true
+		summary.Resolution = ResolutionInterrupted
+	default:
 		summary.Resolution = e.approvalResolutionFor(st.ID)
 	}
 	return summary

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { Events } from '@wailsio/runtime'
 import { ExecutionService, RunKind } from '../shared/bindings'
+import { useApprovalResolution } from '../shared/approvalResolution'
 import type { PendingApproval, RunDetail } from '../shared/bindings'
 
 // Live run state on the authoring canvas (docs/SPEC.md §3.8's recorded
@@ -47,6 +48,25 @@ export function shouldAdoptExternalRun(hasActiveRun: boolean, activeRunInFlight:
   return !hasActiveRun || !activeRunInFlight
 }
 
+// Which bar the canvas shows for the run currently displayed. Pure and
+// exported for testing, same reasoning as shouldAdoptExternalRun above:
+// the ordering carries a real decision -- an interrupted run is checked
+// BEFORE pending, because a run reconciled at startup still has the
+// durable pending event its park wrote, and offering Resume on it is
+// exactly the dead button this ordering removes.
+export function barStateFor(detail: RunDetail | null, startRefusal: string): BarState | null {
+  if (startRefusal) return { mode: 'finished', status: 'REFUSED', error: startRefusal }
+  if (!detail) return null
+  if (detail.interrupted) return { mode: 'interrupted' }
+  if (detail.pending) return { mode: 'parked', pending: detail.pending }
+  if (isInFlightStatus(detail.status)) {
+    const steps = detail.steps ?? []
+    const active = steps.find((s) => s.status === 'pending')
+    return { mode: 'in-flight', activeStepLabel: active ? active.nodeTypeLabel || active.nodeTypeID : 'Running…' }
+  }
+  return { mode: 'finished', status: detail.status, error: detail.error }
+}
+
 export function truncate(s: string, max: number): string {
   return s.length > max ? `${s.slice(0, max)}…` : s
 }
@@ -54,7 +74,13 @@ export function truncate(s: string, max: number): string {
 export type BarState =
   | { mode: 'in-flight'; activeStepLabel: string }
   | { mode: 'parked'; pending: PendingApproval }
+  // A run that was waiting on a person when Mill relaunched under a
+  // different workflow-code version: the engine can never pick it back
+  // up, so the bar states that and offers only Dismiss -- never Resume
+  // or Stop, which would answer nothing (goal 0329).
+  | { mode: 'interrupted' }
   | { mode: 'finished'; status: string; error: string }
+
 
 export interface UseLiveRunResult {
   detail: RunDetail | null
@@ -71,6 +97,9 @@ export interface UseLiveRunResult {
   // plain breakpoint or policy ask. values is the edit-and-resume typed
   // input (item 4), discarded on a deny/stop.
   resolve: (nodeID: string, approve: boolean, continueRun?: boolean, values?: Record<string, string>) => void
+  // The i18n key for the last resolve refusal, empty when the last
+  // decision landed. Rendered inline in the parked bar.
+  resolveErrorKey: string
   dismiss: () => void
 }
 
@@ -108,6 +137,9 @@ export function useLiveRun(workflowId: string | undefined, requestedRunId?: stri
   // A rejected START (pre-flight refusal) -- distinct from a run that
   // ran and failed; rendered through the same finished bar.
   const [startRefusal, setStartRefusal] = useState('')
+  // The shared answer-a-parked-run seam (shared/approvalResolution.ts),
+  // the same one the Runs panel and the Review queue use.
+  const { errorKeyFor, clearError, resolveApproval } = useApprovalResolution()
 
   // On mount (a workflow editor opening), adopt whatever's already in
   // flight for this workflow -- a run parked by a headless trigger fire
@@ -197,6 +229,7 @@ export function useLiveRun(workflowId: string | undefined, requestedRunId?: stri
     // there's a real (if usually short) window with nothing to show yet.
     setDetail(null)
     setStartRefusal('')
+    clearError()
     // payload substitutes what the workflow's trigger would have
     // delivered (triggerPayload.ts) -- threaded to both run variants,
     // since a stepped debug run of a trigger-fed workflow needs its
@@ -214,7 +247,11 @@ export function useLiveRun(workflowId: string | undefined, requestedRunId?: stri
 
   const resolve = (nodeID: string, approve: boolean, continueRun?: boolean, values?: Record<string, string>) => {
     if (!activeRunId) return
-    ExecutionService.ResolveApproval(activeRunId, nodeID, approve, approve ? (values ?? {}) : {}, continueRun ?? false).catch((err) => console.error(err))
+    void resolveApproval({ runID: activeRunId, nodeID, approve, values, continueRun }).then((delivered) => {
+      // A refused decision means the bar is showing something stale --
+      // refetch so it stops offering what it just failed to do.
+      if (!delivered) ExecutionService.GetRun(activeRunId).then(setDetail).catch(() => {})
+    })
     // The in-flight poll above picks up the resumed/failed transition.
   }
 
@@ -222,6 +259,7 @@ export function useLiveRun(workflowId: string | undefined, requestedRunId?: stri
     setActiveRunId(null)
     setDetail(null)
     setStartRefusal('')
+    clearError()
   }
 
   // DBOS checkpoints a step only once it completes, so there's no
@@ -261,19 +299,9 @@ export function useLiveRun(workflowId: string | undefined, requestedRunId?: stri
     return result
   }, [detail])
 
-  const barState = useMemo<BarState | null>(() => {
-    if (startRefusal) return { mode: 'finished', status: 'REFUSED', error: startRefusal }
-    if (!detail) return null
-    if (detail.pending) return { mode: 'parked', pending: detail.pending }
-    if (isInFlightStatus(detail.status)) {
-      const steps = detail.steps ?? []
-      const active = steps.find((s) => s.status === 'pending')
-      return { mode: 'in-flight', activeStepLabel: active ? active.nodeTypeLabel || active.nodeTypeID : 'Running…' }
-    }
-    return { mode: 'finished', status: detail.status, error: detail.error }
-  }, [detail, startRefusal])
+  const barState = useMemo<BarState | null>(() => barStateFor(detail, startRefusal), [detail, startRefusal])
 
-  return { detail, statusByNodeId, barState, startRun, resolve, dismiss }
+  return { detail, statusByNodeId, barState, startRun, resolve, resolveErrorKey: activeRunId ? errorKeyFor(activeRunId) : '', dismiss }
 }
 
 // Convenience hook so CanvasNodeView only needs one import.

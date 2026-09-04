@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Panel } from '@xyflow/react'
 import { Button, IconButton, Stack, Text } from '@primer/react'
 import { StatusStamp, type StatusStampVariant } from '../shared/StatusStamp'
-import { BugIcon, PlayIcon, ShieldIcon, SkipIcon, XIcon } from '@primer/octicons-react'
+import { AlertIcon, BugIcon, PlayIcon, ShieldIcon, SkipIcon, XIcon } from '@primer/octicons-react'
 import type { AttributeDef, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import type { RunDetail } from '../shared/bindings'
 import { generateSamplePayload } from '../shared/configSchema'
@@ -35,7 +35,7 @@ const FINISHED_VARIANT: Record<string, StatusStampVariant> = {
 // queue use), or the finished outcome, dismissible. Renders nothing
 // when no run is displayed.
 export function CurrentStepBar({
-  barState, attrs, runDetail, onResolve, onDismiss,
+  barState, attrs, runDetail, resolveErrorKey, onResolve, onDismiss,
 }: {
   barState: BarState | null
   // The owning workflow's declared Attributes -- what a debug park's
@@ -45,10 +45,18 @@ export function CurrentStepBar({
   // diagnosis context -- null for a pre-flight REFUSED start (no run
   // was ever created) and for every other bar mode.
   runDetail: RunDetail | null
+  // The i18n key for a refused decision (liveRunState.ts's
+  // resolveErrorKey), empty when the last decision landed -- rendered
+  // inline under the parked bar's controls.
+  resolveErrorKey: string
   onResolve: (nodeID: string, approve: boolean, continueRun?: boolean, values?: Record<string, string>) => void
   onDismiss: () => void
 }) {
   const { t } = useTranslation('composition')
+  // The interrupted caption, Dismiss and the refusal copy live in the
+  // `common` namespace: the Runs panel's own parked bar renders exactly
+  // the same strings (shared/approvalResolution.ts).
+  const { t: tc } = useTranslation('common')
   const parkedNodeID = barState?.mode === 'parked' ? barState.pending.nodeID : null
   const [editValues, setEditValues] = useState<Record<string, string>>({})
   // A fresh park (a different node, or the same node on a later run)
@@ -144,9 +152,25 @@ export function CurrentStepBar({
                   {isDebug ? t('stop') : t('deny')}
                 </Button>
               </Stack>
+              {resolveErrorKey && (
+                <Text as="p" className={runbookStyles.error} data-testid="canvas-resolve-error">{tc(resolveErrorKey)}</Text>
+              )}
             </Stack>
           )
         })()}
+        {barState.mode === 'interrupted' && (
+          <Stack direction="horizontal" gap="condensed" align="center">
+            <AlertIcon size={16} fill="var(--fgColor-attention)" />
+            <Text size="small" data-testid="current-step-bar-interrupted">{tc('interruptedRun.caption')}</Text>
+            <Button
+              size="small"
+              data-testid="dismiss-interrupted-run"
+              onClick={onDismiss}
+            >
+              {tc('interruptedRun.dismiss')}
+            </Button>
+          </Stack>
+        )}
         {barState.mode === 'finished' && (
           <Stack direction="horizontal" gap="condensed" align="center">
             <StatusStamp variant={FINISHED_VARIANT[barState.status] ?? 'neutral'}>{barState.status}</StatusStamp>

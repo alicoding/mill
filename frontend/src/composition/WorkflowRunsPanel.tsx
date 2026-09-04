@@ -4,16 +4,17 @@ import { Events } from '@wailsio/runtime'
 import { Button, IconButton, Select, Stack, Text } from '@primer/react'
 import { DataTable, type Column } from '@primer/react/experimental'
 import { Blankslate } from '@primer/react/experimental'
-import { BugIcon, XIcon, ShieldIcon, StopIcon, HistoryIcon } from '@primer/octicons-react'
+import { AlertIcon, BugIcon, XIcon, ShieldIcon, StopIcon, HistoryIcon } from '@primer/octicons-react'
 import { ExecutionService } from '../shared/bindings'
 import { RunKind, type RunDetail, type RunSummary } from '../shared/bindings'
 import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
 import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import { RunStepRow } from './RunStepRow'
-import { formatRunStartedAt, runStatusVariant } from '../shared/runTime'
+import { formatRunStartedAt, runStatusLabel, runStatusVariant } from '../shared/runTime'
 import { StalenessBadge } from '../shared/StalenessBadge'
 import { StatusStamp, type StatusStampVariant } from '../shared/StatusStamp'
+import { useApprovalResolution } from '../shared/approvalResolution'
 import { ENQUEUED_STALE_THRESHOLD_MS, isStuckEnqueued } from '../shared/enqueuedStale'
 import styles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
@@ -75,6 +76,10 @@ interface WorkflowRunsPanelProps {
 // and unchanged by this.
 function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsumed, onSwitchToCanvas }: WorkflowRunsPanelProps) {
   const { t } = useTranslation('composition')
+  // The interrupted caption, Dismiss and the refusal copy live in the
+  // `common` namespace -- the canvas's own parked bar renders exactly
+  // the same strings.
+  const { t: tc } = useTranslation('common')
   const KIND_LABEL = kindLabelFor(t)
   const [runs, setRuns] = useState<RunSummary[] | null>(null)
   const [selectedRunID, setSelectedRunID] = useState<string | null>(null)
@@ -86,6 +91,9 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
   const [detail, setDetail] = useState<RunDetail | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // The shared answer-a-parked-run seam, same one the canvas bar and
+  // the Review queue use (shared/approvalResolution.ts).
+  const { errorKeyFor, resolveApproval: resolve } = useApprovalResolution()
   const [kindFilter, setKindFilter] = useState<'all' | RunKind>('all')
   // Edit-and-resume input (docs/adr/0031 item 4) -- keyed by run ID like
   // ReviewView's own `inputs` state, so switching between parked runs
@@ -173,9 +181,13 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
     if (!selectedRunID) return
     setBusy(true)
     setError('')
-    ExecutionService.ResolveApproval(selectedRunID, nodeID, approve, approve ? (resumeValues[selectedRunID] ?? {}) : {}, continueRun)
-      .then(() => setBusy(false))
-      .catch((err) => { setError(String(err)); setBusy(false) })
+    void resolve({ runID: selectedRunID, nodeID, approve, values: resumeValues[selectedRunID], continueRun })
+      .then((delivered) => {
+        setBusy(false)
+        // A refused decision means this banner is stale -- refetch so it
+        // stops offering what it just failed to do.
+        if (!delivered) ExecutionService.GetRun(selectedRunID).then(setDetail).catch(() => {})
+      })
     // The in-flight poll below picks up the resumed/failed state.
   }
 
@@ -232,7 +244,7 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
             {run.pending ? (
               <StatusStamp variant="caution" data-testid="run-awaiting-approval">{t('workflowRunsPanel.awaitingApproval')}</StatusStamp>
             ) : (
-              <StatusStamp variant={runStatusVariant(run.status)}>{run.status}</StatusStamp>
+              <StatusStamp variant={runStatusVariant(run.status)}>{runStatusLabel(run, t)}</StatusStamp>
             )}
             {/* Stuck-ENQUEUED presentation (docs/goals/0026 item 8): a
                 run that queued forever without ever starting reads as
@@ -327,7 +339,7 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
         <div ref={detailRef} className={styles.card} data-testid="run-detail" style={{ marginTop: 'var(--base-size-16)' }}>
           <Stack direction="horizontal" justify="space-between" align="center">
             <Stack direction="horizontal" gap="condensed" align="center">
-              <StatusStamp variant={runStatusVariant(detail.status)}>{detail.status}</StatusStamp>
+              <StatusStamp variant={runStatusVariant(detail.status)}>{runStatusLabel(detail, t)}</StatusStamp>
               {isStuckEnqueued(detail) && (
                 <StalenessBadge
                   createdAt={detail.startedAt}
@@ -370,6 +382,20 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
                 }}
                 testId="run-detail-copy-diagnosis"
               />
+            </Stack>
+          )}
+
+          {/* A run reconciled at startup after a relaunch (goal 0329):
+              nothing is waiting, so this run detail says so and offers
+              only the close-the-detail path the X already owns -- never
+              Step/Continue/Stop, which would answer nothing. */}
+          {detail.interrupted && (
+            <Stack direction="horizontal" gap="condensed" align="center" data-testid="run-detail-interrupted" style={{ marginTop: 'var(--base-size-12)' }}>
+              <AlertIcon size={16} fill="var(--fgColor-attention)" />
+              <Text size="small">{tc('interruptedRun.caption')}</Text>
+              <Button size="small" data-testid="dismiss-interrupted-run-detail" onClick={() => setSelectedRunID(null)}>
+                {tc('interruptedRun.dismiss')}
+              </Button>
             </Stack>
           )}
 
@@ -429,6 +455,9 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
                       {isDebug ? t('stop') : t('deny')}
                     </Button>
                   </Stack>
+                  {selectedRunID && errorKeyFor(selectedRunID) && (
+                    <Text as="p" className={styles.error} data-testid="run-detail-resolve-error">{tc(errorKeyFor(selectedRunID))}</Text>
+                  )}
                 </Stack>
               </div>
             )
