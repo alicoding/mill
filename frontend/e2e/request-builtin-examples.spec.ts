@@ -53,7 +53,7 @@ test('A seeded example opens its real summary view with a built-in badge and hon
   const summary = page.getByTestId('request-summary')
   await expect(summary).toBeVisible()
   await expect(summary.getByText('built-in', { exact: true })).toBeVisible()
-  await expect(summary.getByText(/independently confirmed live/)).toBeVisible()
+  await expect(summary.getByText(/signature-verifying endpoint/)).toBeVisible()
   await expect(summary.getByText('OAuth 1.0a (HMAC-SHA1)')).toBeVisible()
 })
 

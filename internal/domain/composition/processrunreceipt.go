@@ -96,7 +96,7 @@ func init() {
 		Produces:    PayloadProduce{Kind: PayloadJSON},
 		Output:      "a JSON receipt of this run's steps so far",
 		Label:       "Create run receipt",
-		Description: "Renders this run's own recorded evidence -- its steps so far, their guardrail verdicts, and which Mill build ran them -- as a JSON receipt, replacing the payload. Only covers steps that ran BEFORE this one, since the run is still in flight when this step executes. Compose it with an Apply step (clipboard/file write) to hand the receipt to an external agent -- there is no separate send path.",
+		Description: "Renders this run's own recorded evidence (its steps so far, their guardrail verdicts, and which Mill build ran them) as a JSON receipt, replacing the payload. Only covers steps that ran BEFORE this one, since the run is still in flight when this step executes. Compose it with an Apply step (clipboard/file write) to hand the receipt to an external agent; there is no separate send path.",
 	}, func(_ Node, ctx ExecContext) (ExecContext, error) {
 		evidence, err := lookupRunEvidenceFn(ctx.RunContext)
 		if err != nil {

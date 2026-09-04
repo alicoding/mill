@@ -50,11 +50,11 @@ func init() {
 		Consumes:    []PayloadKind{PayloadAny},
 		Produces:    PayloadProduce{Kind: PayloadAny},
 		Output:      "the child workflow's result",
-		Description: "Runs another of your workflows as a step and uses its result as this workflow's payload. The other workflow must start with the \"Called by another workflow\" trigger -- that marks it safe to invoke from here rather than by a hotkey or schedule of its own.",
+		Description: "Runs another of your workflows as a step and uses its result as this workflow's payload. The other workflow must start with the \"Called by another workflow\" trigger.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "workflowId", Label: "Workflow",
-				Description: "Which workflow to run. Only workflows whose trigger is \"callable by another workflow\" appear here -- if the list is empty, create a workflow and drag that trigger onto its canvas first.",
+				Description: "Which workflow to run. Only workflows whose trigger is \"callable by another workflow\" appear here. If the list is empty, create a workflow and drag that trigger onto its canvas first.",
 				Default:     "", Type: FieldText, RefKind: "workflow",
 			},
 			{
@@ -63,7 +63,7 @@ func init() {
 				// copy (reported directly from live use); the mechanism is
 				// unchanged, only how it's explained.
 				Key: "idempotencyKey", Label: "Skip duplicate runs (optional)",
-				Description: "Leave empty to run fresh every time (the normal case). To make repeated runs with the same input reuse the first run's recorded result instead of running again, put a value here that identifies the input -- a literal, or attr:<name> to use one of this workflow's attributes.",
+				Description: "Leave empty to run fresh every time (the normal case). To make repeated runs with the same input reuse the first run's recorded result instead of running again, put a value here that identifies the input: a literal, or attr:<name> to use one of this workflow's attributes.",
 				Default:     "", Type: FieldText,
 			},
 			{

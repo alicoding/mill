@@ -220,6 +220,9 @@ export function ConfigureExecEnv() {
       icon: ENTITY_ICON.execenv,
       label: e.Label,
       updatedLabel: formatUpdated(e.UpdatedAt),
+      builtIn: e.BuiltIn,
+      updatedAt: e.UpdatedAt,
+      createdAt: e.CreatedAt,
       // No !e.BuiltIn guard on Delete -- same "ordinary, fully editable/
       // deletable from the moment it exists" reasoning as
       // ConfigureRequests.tsx/ConfigureLists.tsx's identical badge.
@@ -378,6 +381,7 @@ export function ConfigureExecEnv() {
       showRows={envs !== null && viewMode === 'rows' && !(formOpen && envs.length === 0)}
       rowsContent={(
         <InventoryList
+          listId="configure.execenv"
           items={envItems}
           searchPlaceholder={t('configureExecEnv.searchPlaceholder')}
           emptyState={{

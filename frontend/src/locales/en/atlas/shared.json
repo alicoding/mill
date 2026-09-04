@@ -27,14 +27,14 @@
     "linksChip_other": "{{count}} links",
     "moreTile": "+ {{count}} more",
     "slotDragDisabledTitle": "No cards here can accept a link from this one.",
-    "linkRefusalHint": "Not linked — {{sourceKindLabel}} and {{targetKindLabel}} can't be linked here.",
+    "linkRefusalHint": "Not linked: {{sourceKindLabel}} and {{targetKindLabel}} can't be linked here.",
     "selectionTrayAriaLabel": "Selection actions",
     "selectionCount_one": "{{count}} selected",
     "selectionCount_other": "{{count}} selected",
     "selectionGroup": "Group",
     "selectionDelete": "Delete",
     "selectionClearHint": "clear",
-    "dropDuplicateNotice": "Already on the map as “{{title}}” — added again.",
+    "dropDuplicateNotice": "Already on the map as “{{title}}”. Added again.",
     "minimapToggleAriaLabel": "Toggle minimap",
     "deletedToast": "Deleted {{count}}",
     "linksHiddenToast_one": "· {{count}} link hidden",
@@ -85,10 +85,10 @@
     "noteTooltip": "Add a note (N)",
     "areaTooltip": "Draw an area (A)",
     "tableLabel": "Table",
-    "tableTooltip": "New table — sweep the grid to size it",
+    "tableTooltip": "New table: sweep the grid to size it",
     "tableFromList": "From a List…",
     "imageLabel": "Image",
-    "imageTooltip": "Add an image — paste one, or enter a path",
+    "imageTooltip": "Add an image: paste one, or enter a path",
     "pencilLabel": "Pencil",
     "pencilTooltip": "Draw on the board (P)",
     "eraserLabel": "Eraser",
@@ -98,7 +98,7 @@
     "shapeLabel": "Shape",
     "shapeTooltip": "Draw a shape (S)",
     "annotateLabel": "Annotate",
-    "annotateTooltip": "Annotate — shape, pencil, eraser, laser",
+    "annotateTooltip": "Annotate: shape, pencil, eraser, laser",
     "lockedTooltip": "{{tool}} stays on until you click it again or press Escape"
   },
   "placement": {
@@ -133,7 +133,7 @@
   "create": {
     "addTable": "Table from a List",
     "listLabel": "List",
-    "listCaption": "The card shows this List live, read-only — edits go through its own guarded paths.",
+    "listCaption": "The card shows this List live, read-only.",
     "kindLabel": "Kind",
     "titleLabel": "Title",
     "createButton": "Create"
@@ -261,7 +261,7 @@
     "copyForAI": "Copy for AI"
   },
   "offers": {
-    "heading": "From this card's source — {{label}}",
+    "heading": "From this card's source: {{label}}",
     "hint": "Running one attaches it to this card."
   },
   "unitFallback": {
@@ -451,14 +451,14 @@
     "toggleButton": "AI",
     "providerLabel": "AI provider",
     "providerEmptyHeading": "Add an AI provider in Configure to start",
-    "providerEmptyDescription": "Chat about this board with a local model — replies can propose cards to add.",
+    "providerEmptyDescription": "Chat about this board with a local model. Replies can propose cards to add.",
     "providerEmptyAction": "Open Configure",
     "composerPlaceholder": "Ask about this space…",
     "send": "Send",
     "emptyTranscript": "Ask a question, or describe what you want organized.",
     "notActions": "Mill couldn't read this as actions.",
     "nothingToAdd": "Didn't find anything to add.",
-    "collision": "Already exists as {{kind}} — unchecked so nothing is overwritten",
+    "collision": "Already exists as {{kind}}. Unchecked so nothing is overwritten.",
     "collisionGenericKind": "a card",
     "confirmCards": "Create {{count}} cards",
     "confirmCards_one": "Create 1 card",

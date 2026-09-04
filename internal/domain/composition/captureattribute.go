@@ -18,7 +18,7 @@ func init() {
 		Consumes:    []PayloadKind{PayloadNone},
 		Produces:    PayloadProduce{Kind: PayloadText},
 		Output:      "the attribute's value",
-		Description: "Replaces the payload with the value of one of this workflow's declared Attributes -- e.g. a callable workflow's typed input, or a value a Decision already routed on.",
+		Description: "Replaces the payload with the value of one of this workflow's declared Attributes, e.g. a callable workflow's typed input, or a value a Decision already routed on.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "attribute", Label: "Attribute",

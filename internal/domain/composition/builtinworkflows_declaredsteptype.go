@@ -44,7 +44,7 @@ func builtInDeclaredStepTypeWorkflows() []Workflow {
 		{
 			ID:          "example-declared-step-workflow",
 			Label:       "Example: Declared step type",
-			Description: "Runs the seeded \"Check httpbin\" step -- a named palette step bound to the seeded no-auth httpbin.org integration, promoted from a plain Integration: HTTP call step the same way the step designer promotes any HTTPRequest/MCP tool/child workflow. Its behavior is identical to that underlying step; only the palette presentation differs.",
+			Description: "Runs the seeded \"Check httpbin\" step, a named palette step bound to the seeded no-auth httpbin.org integration. It is promoted from a plain Integration: HTTP call step the same way the step designer promotes any HTTPRequest/MCP tool/child workflow. Its behavior is identical to that underlying step; only the palette presentation differs.",
 			Nodes:       nodes,
 			Edges: []Edge{
 				{ID: "example-declared-step-e0", Source: triggerID, Target: stepID},

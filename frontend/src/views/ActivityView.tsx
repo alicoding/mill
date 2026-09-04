@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Heading, IconButton, Label, type LabelProps, Select, Stack, Text, TextInput } from '@primer/react'
-import { DataTable, type Column } from '@primer/react/experimental'
+import { Heading, IconButton, Label, type LabelProps, Select, Stack, Text } from '@primer/react'
+import { DataTable, Table, type Column } from '@primer/react/experimental'
 import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, WorkflowIcon, XCircleIcon, XIcon } from '@primer/octicons-react'
 import { useAppStore, type ActivityEntry, type ActivitySource } from '../shared/store'
 import { WorkflowHoverPreview } from '../composition/WorkflowHoverPreview'
 import { ActivityRunsExplorer } from './ActivityRunsExplorer'
 import { ActivityStepFailures } from './ActivityStepFailures'
 import { ActivityMCPCalls } from './ActivityMCPCalls'
+import { ListToolbar } from '../shared/ListToolbar'
+import { LIST_PAGE_SIZE, clampPage, listCountLabel, pageCountFor, pageItems } from '../shared/listStandard'
+import { useListState } from '../shared/useListState'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -79,6 +82,9 @@ function ActivityView() {
   // (ActivityRunsExplorer). 'all' keeps the live cross-workflow feed.
   const workflows = useAppStore((s) => s.workflows)
   const [sourceWorkflow, setSourceWorkflow] = useState('all')
+  // The session feed wears the same list standard as every inventory
+  // (docs/goals/0337): one toolbar above it, a fixed page size below.
+  const { state: listState, setPage: setFeedPage, resetPage: resetFeedPage } = useListState('activity')
   const selectedWorkflow = sourceWorkflow === 'all' ? null : (workflows ?? []).find((w) => w.ID === sourceWorkflow) ?? null
 
   const toggle = (id: string) => {
@@ -98,8 +104,24 @@ function ActivityView() {
     if (query !== '' && !entry.label.toLowerCase().includes(query) && !entry.result.toLowerCase().includes(query)) return false
     return true
   })
-  const filtersActive = sourceFilter !== 'all' || outcomeFilter !== 'all' || query !== ''
   const selectedEntries = filtered.filter((entry) => selectedIds.has(entry.id) && entry.result !== '')
+
+  const feedPageCount = pageCountFor(filtered.length)
+  const feedPage = clampPage(listState.page, feedPageCount)
+  const feedRows = pageItems(filtered, feedPage)
+  const feedFirst = (feedPage - 1) * LIST_PAGE_SIZE + 1
+  const feedCount = listCountLabel({
+    total: activity.length,
+    shown: filtered.length,
+    ...(feedPageCount > 1 ? { from: feedFirst, to: feedFirst + feedRows.length - 1 } : {}),
+  })
+  // Table.Pagination owns its page index internally, so a narrowing
+  // filter has to remount it to land back on page one; the key is what
+  // does that, and mountFilterKey is what still lets the persisted page
+  // be restored on the first render.
+  const filterKey = `${sourceFilter}|${outcomeFilter}|${query}`
+  const [mountFilterKey] = useState(filterKey)
+  const [restorePageIndex] = useState(() => Math.max(0, listState.page - 1))
 
   const columns: Column<ActivityEntry>[] = [
     {
@@ -213,26 +235,29 @@ function ActivityView() {
       )}
 
       {!selectedWorkflow && activity.length > 0 && (
-        <Stack direction="horizontal" gap="condensed" className={styles.filterRow}>
-          <Select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value as 'all' | ActivitySource)} aria-label={t('activityView.filterBySourceAriaLabel')}>
-            <Select.Option value="all">{t('activityView.allSources')}</Select.Option>
-            <Select.Option value="trigger">{t('activityView.sourceLabel.trigger')}</Select.Option>
-            <Select.Option value="composition">{t('activityView.sourceLabel.composition')}</Select.Option>
-            <Select.Option value="mcp-write">{t('activityView.sourceLabel.mcp-write')}</Select.Option>
-          </Select>
-          <Select value={outcomeFilter} onChange={(e) => setOutcomeFilter(e.target.value as OutcomeFilter)} aria-label={t('activityView.filterByOutcomeAriaLabel')}>
-            <Select.Option value="all">{t('activityView.allOutcomes')}</Select.Option>
-            <Select.Option value="success">{t('activityView.success')}</Select.Option>
-            <Select.Option value="failed">{t('activityView.failed')}</Select.Option>
-          </Select>
-          <TextInput
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('activityView.searchPlaceholder')}
-            aria-label={t('activityView.searchAriaLabel')}
-            data-testid="activity-search"
-          />
-        </Stack>
+        <ListToolbar
+          query={search}
+          onQueryChange={(next) => { setSearch(next); resetFeedPage() }}
+          searchPlaceholder={t('activityView.searchPlaceholder')}
+          searchAriaLabel={t('activityView.searchAriaLabel')}
+          searchTestId="activity-search"
+          count={feedCount}
+          filters={
+            <>
+              <Select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value as 'all' | ActivitySource); resetFeedPage() }} aria-label={t('activityView.filterBySourceAriaLabel')}>
+                <Select.Option value="all">{t('activityView.allSources')}</Select.Option>
+                <Select.Option value="trigger">{t('activityView.sourceLabel.trigger')}</Select.Option>
+                <Select.Option value="composition">{t('activityView.sourceLabel.composition')}</Select.Option>
+                <Select.Option value="mcp-write">{t('activityView.sourceLabel.mcp-write')}</Select.Option>
+              </Select>
+              <Select value={outcomeFilter} onChange={(e) => { setOutcomeFilter(e.target.value as OutcomeFilter); resetFeedPage() }} aria-label={t('activityView.filterByOutcomeAriaLabel')}>
+                <Select.Option value="all">{t('activityView.allOutcomes')}</Select.Option>
+                <Select.Option value="success">{t('activityView.success')}</Select.Option>
+                <Select.Option value="failed">{t('activityView.failed')}</Select.Option>
+              </Select>
+            </>
+          }
+        />
       )}
 
       {!selectedWorkflow && activity.length > 0 && filtered.length === 0 && (
@@ -248,7 +273,20 @@ function ActivityView() {
         // section has data, so tests need a way to address this feed's
         // rows specifically.
         <div data-testid="activity-feed">
-          <DataTable data={filtered} columns={columns} cellPadding="condensed" getRowId={(entry) => entry.id} />
+          {/* No Table.Container around the pair: it constrains the
+              table into Primer's own ScrollableRegion, which the
+              layout-fitness rule reads as an undeclared scroller. */}
+          <DataTable data={feedRows} columns={columns} cellPadding="condensed" getRowId={(entry) => entry.id} />
+          {feedPageCount > 1 && (
+            <Table.Pagination
+              key={filterKey}
+              aria-label={t('activityView.sessionEventsHeading')}
+              pageSize={LIST_PAGE_SIZE}
+              totalCount={filtered.length}
+              defaultPageIndex={filterKey === mountFilterKey ? restorePageIndex : 0}
+              onChange={({ pageIndex }) => setFeedPage(pageIndex + 1)}
+            />
+          )}
         </div>
       )}
 
@@ -261,12 +299,6 @@ function ActivityView() {
           <pre className={styles.result}>{entry.result}</pre>
         </div>
       ))}
-
-      {filtersActive && filtered.length > 0 && (
-        <Text as="p" size="small" className={styles.muted}>
-          {t('activityView.showingCount', { shown: filtered.length, total: activity.length })}
-        </Text>
-      )}
 
       {/* Durable, cross-workflow run history (goal 0051 item 3) --
           unlike the session-only feed above, this survives a restart

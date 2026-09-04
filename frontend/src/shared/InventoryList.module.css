@@ -62,3 +62,13 @@
         min-width: 44px;
     }
 }
+
+/* The Examples group's heading (docs/goals/0337) carries the disclosure
+   button as its only content, so the heading itself contributes no
+   extra type scale or padding on top of Primer's own GroupHeadingWrap. */
+.examplesHeading {
+    font-size: inherit;
+    font-weight: inherit;
+    margin: 0;
+    padding: 0;
+}

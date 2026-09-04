@@ -229,7 +229,7 @@ test('An installed update shows the relaunch pill AND the matching Settings prim
     }))
     const page = await browser.newPage()
     await page.goto(`${server.baseURL}/`)
-    await expect(page.getByTestId('notice-update-ready')).toContainText('Relaunch')
+    await expect(page.getByTestId('notice-update-ready')).toContainText('relaunch')
 
     await openSettings(page, 'updates')
     await expect(page.getByTestId('update-primary-action')).toHaveText('Restart to update')

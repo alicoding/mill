@@ -23,7 +23,7 @@ func init() {
 		Produces:    PayloadProduce{Kind: PayloadAny},
 		Output:      "the file's contents",
 		Label:       "Read file",
-		Description: "Reads a local file into the payload. \"payload\" source treats the current payload as the file path -- what a File changed trigger supplies; \"literal\" reads a fixed path instead.",
+		Description: "Reads a local file into the payload. \"payload\" source treats the current payload as the file path, which a File changed trigger supplies; \"literal\" reads a fixed path instead.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "source", Label: "Path source", Type: FieldOptions,
@@ -45,8 +45,8 @@ func init() {
 			// (docs/SPEC.md §1's thesis): a manual test run starts with an
 			// empty payload unless one is supplied, so payload-as-path has
 			// nothing to read.
-			return ctx, fmt.Errorf("capture-file: the payload is empty, so there is no file path to read -- " +
-				"this step expects an upstream trigger (e.g. filesystem watch) to supply the path; " +
+			return ctx, fmt.Errorf("capture-file: the payload is empty, so there is no file path to read. " +
+				"This step expects an upstream trigger (e.g. filesystem watch) to supply the path; " +
 				"on a manual test run, fill in the Run dialog's Initial payload with a file path, " +
 				"or set this step's Path source to \"literal\" with a fixed path")
 		}

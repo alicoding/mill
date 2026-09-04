@@ -50,7 +50,7 @@ func init() {
 			},
 			{
 				Key: "title", Label: "Title", Type: FieldText,
-				Description: "The new card's title -- a literal or attr:<name>.",
+				Description: "The new card's title: a literal or attr:<name>.",
 			},
 			{
 				Key: "fieldBindings", Label: "Field values", Type: FieldText, Multiline: true,

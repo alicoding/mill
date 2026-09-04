@@ -28,7 +28,7 @@ func builtInTransformWorkflows() []Workflow {
 	return []Workflow{{
 		ID:          ExampleSha256ClipboardWorkflowID,
 		Label:       "Example: SHA-256 the clipboard",
-		Description: "Copy an id, press the hotkey, paste its SHA-256 -- the hash replaces the clipboard text. Ships with no hotkey assigned, so it never fires until you choose a combo on the Hotkey pressed step; the Quick Panel runs it too.",
+		Description: "Copy an id, press the hotkey, paste its SHA-256. The hash replaces the clipboard text. Ships with no hotkey assigned, so it never fires until you choose a combo on the Hotkey pressed step; the Quick Panel runs it too.",
 		Nodes:       nodes,
 		Edges: []Edge{
 			{ID: "example-sha256-e0", Source: triggerID, Target: captureID},
@@ -36,6 +36,6 @@ func builtInTransformWorkflows() []Workflow {
 			{ID: "example-sha256-e2", Source: hashID, Target: applyID},
 		},
 		BuiltIn: true,
-		Seed:    seedorigin.Stamp(1),
+		Seed:    seedorigin.Stamp(2),
 	}}
 }

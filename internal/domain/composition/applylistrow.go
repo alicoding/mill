@@ -43,8 +43,7 @@ func init() {
 		Description: "Creates or updates a row in a Configure-authored List: if an existing row's \"Key " +
 			"column\" value matches, only the fields named in \"Field values\" change (everything else on " +
 			"that row is untouched); otherwise a new row is appended. \"Field values\" binds the List's own " +
-			"declared column keys, each a literal or attr:<name> -- the same shape apply-atlas-card-create/" +
-			"update use.",
+			"declared column keys, each a literal or attr:<name>.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "listId", Label: "List", Type: FieldText, RefKind: "list",
@@ -52,7 +51,7 @@ func init() {
 			},
 			{
 				Key: "keyColumn", Label: "Key column", Type: FieldText,
-				Description: "Which column identifies a row -- an existing row whose value in this column matches gets updated; no match appends a new row.",
+				Description: "Which column identifies a row. An existing row whose value in this column matches gets updated; no match appends a new row.",
 			},
 			{
 				Key: "fieldBindings", Label: "Field values", Type: FieldText, Multiline: true,

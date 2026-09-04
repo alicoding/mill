@@ -55,7 +55,7 @@ func init() {
 			"({results, matched, first_match, match_count, list_id})",
 		Description: "Searches a Configure-authored List's rows against one or more match parameters " +
 			"(exact or fuzzy, per-column, AND'd together) and writes the result into Attributes. " +
-			"Supersedes list-lookup for anything beyond a single exact key match -- list-lookup keeps " +
+			"Supersedes list-lookup for anything beyond a single exact key match. list-lookup keeps " +
 			"working unchanged for existing workflows. Expired rows are excluded by default; " +
 			"\"Include expired rows\" opts in.",
 		ConfigFields: []ConfigField{
@@ -73,13 +73,13 @@ func init() {
 			},
 			{
 				Key: "includeExpired", Label: "Include expired rows", Type: FieldBoolean, Default: "false",
-				Description: "Off by default -- Expired rows never match unless explicitly included.",
+				Description: "Off by default. Expired rows never match unless explicitly included.",
 			},
 			{
 				Key: "firstMatchOnly", Label: "Stop at first match", Type: FieldBoolean, Default: "false",
 				Description: "Stops scanning after the first match. The output shape stays the same " +
-					"typed Object either way -- results just has at most one entry -- so turning this on " +
-					"or off never changes what a downstream Decision/binding can reference.",
+					"typed Object either way (results just has at most one entry), so turning " +
+					"this on or off never changes what a downstream Decision/binding can reference.",
 			},
 			{
 				Key: "outputAttribute", Label: "Output attribute", Type: FieldText,

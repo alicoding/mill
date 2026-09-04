@@ -27,13 +27,29 @@ func newConfigureHarness(t *testing.T) (*ConfigureService, *servicetest.FakeStor
 	return NewConfigureService(store, comp, credential.New()), store
 }
 
+// shippedRequestRevision reports the SeedRevision the built-in request
+// id currently ships at. The assertions below compare against this
+// rather than a literal, so a legitimate golden content bump stays a
+// one-line constructor change instead of also editing every test that
+// happens to name a revision.
+func shippedRequestRevision(t *testing.T, id string) int {
+	t.Helper()
+	for _, r := range httprequest.BuiltIn() {
+		if r.ID == id {
+			return r.Seed.SeedRevision
+		}
+	}
+	t.Fatalf("no built-in request %q", id)
+	return 0
+}
+
 func TestFreshInstall_RequestsHaveUnmodifiedSeedOrigin(t *testing.T) {
 	cfg, _ := newConfigureHarness(t)
 	id := httprequest.ExampleNoneID
 	for _, r := range cfg.HTTPRequests() {
 		if r.ID == id {
-			if r.Seed.SeedRevision != 1 || r.Seed.Modified {
-				t.Fatalf("fresh-install golden %q Seed = %+v, want {1 false}", id, r.Seed)
+			if r.Seed.SeedRevision != shippedRequestRevision(t, id) || r.Seed.Modified {
+				t.Fatalf("fresh-install golden %q Seed = %+v, want the shipped revision, unmodified", id, r.Seed)
 			}
 			return
 		}
@@ -91,8 +107,8 @@ func TestReconcileBuiltInRequests_MigratesPreGoal0037Entry(t *testing.T) {
 	id := httprequest.ExampleNoneID
 	for _, r := range cfg.HTTPRequests() {
 		if r.ID == id {
-			if r.Seed.SeedRevision != 1 || !r.Seed.Modified {
-				t.Fatalf("migration stamp = %+v, want {1 true}", r.Seed)
+			if r.Seed.SeedRevision != shippedRequestRevision(t, id) || !r.Seed.Modified {
+				t.Fatalf("migration stamp = %+v, want the shipped revision, modified", r.Seed)
 			}
 			return
 		}
@@ -156,8 +172,8 @@ func TestRestoreHTTPRequest_TombstoneRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RestoreHTTPRequest: %v", err)
 	}
-	if restored.ID != id || restored.Seed.Modified || restored.Seed.SeedRevision != 1 {
-		t.Fatalf("RestoreHTTPRequest result = %+v, want present/unmodified/rev 1", restored)
+	if restored.ID != id || restored.Seed.Modified || restored.Seed.SeedRevision != shippedRequestRevision(t, id) {
+		t.Fatalf("RestoreHTTPRequest result = %+v, want present/unmodified at the shipped revision", restored)
 	}
 	for _, r := range cfg.RestorableHTTPRequests() {
 		if r.ID == id {

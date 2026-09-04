@@ -81,9 +81,8 @@ func builtInAtlasCardWorkflows() []Workflow {
 			ID:    "example-card-intake-workflow",
 			Label: "Example: Card intake",
 			Description: "Fires whenever an Intake card is created or updated in Atlas, then stamps that " +
-				"same card's status to \"Processed\" -- the round trip proving trigger-atlas-card, " +
-				"apply-atlas-card-update, and the cycle guard together: this update writes to the exact " +
-				"card that started the run, and does not re-fire itself.",
+				"same card's status to \"Processed\". The update writes to the exact card that started " +
+				"the run, and does not re-fire itself.",
 			Nodes: intakeNodes,
 			Attributes: []AttributeDef{
 				{Key: "cardId", Label: "Card ID", Type: FieldText},
@@ -95,14 +94,13 @@ func builtInAtlasCardWorkflows() []Workflow {
 				{ID: "example-card-intake-e0", Source: intakeTriggerID, Target: intakeUpdateID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(1),
+			Seed:    seedorigin.Stamp(2),
 		},
 		{
 			ID:    "example-card-create-link-workflow",
 			Label: "Example: Create and link Atlas cards",
 			Description: "Creates two Intake cards, finds every open (\"New\") Intake card, then links the " +
-				"two new cards together -- one run through apply-atlas-card-create, process-atlas-card-find, " +
-				"and apply-atlas-card-link. Manual-triggered: running it again creates two more cards, same " +
+				"two new cards together. Manual-triggered: running it again creates two more cards, same " +
 				"as any other example that writes real data.",
 			Nodes: createNodes,
 			Edges: []Edge{
@@ -112,7 +110,7 @@ func builtInAtlasCardWorkflows() []Workflow {
 				{ID: "example-card-create-e3", Source: createFindID, Target: createLinkID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(1),
+			Seed:    seedorigin.Stamp(2),
 		},
 	}
 }

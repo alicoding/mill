@@ -76,7 +76,7 @@ test('step designer: create over the seeded integration reaches an already-open 
     // Engine defaults to "An HTTP request" -- bind it to the seeded
     // no-auth httpbin request (Slice A's own seeded proof, ADR-0037).
     await configPage.getByTestId('entity-ref-field').selectOption({ label: 'Example: No auth (httpbin.org)' })
-    await expect(configPage.getByText("Nothing to pin for this binding -- every field it needs is set above.")).toBeVisible()
+    await expect(configPage.getByText("Nothing to pin for this binding.")).toBeVisible()
     await configPage.getByTestId('save-steptype').click()
 
     const row = configPage.locator('[data-testid="inventory-row"][data-entity="steptype"]').filter({ has: configPage.getByText(LABEL, { exact: true }) })

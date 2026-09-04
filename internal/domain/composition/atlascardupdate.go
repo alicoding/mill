@@ -32,17 +32,17 @@ func init() {
 		Produces:   PayloadProduce{Passthrough: true},
 		Output:     "payload unchanged; the updated card's id -> the output attribute, if named",
 		Description: "Writes field values onto an existing Atlas card, resolved by \"Card\" (a literal card " +
-			"id or attr:<name> -- e.g. attr:cardId from a trigger-atlas-card event, or an earlier " +
+			"id or attr:<name>, e.g. attr:cardId from a trigger-atlas-card event, or an earlier " +
 			"Atlas: find cards result). Only the fields named in \"Field values\" change; everything else " +
 			"on the card is untouched.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "kindId", Label: "Kind", Type: FieldText, RefKind: "atlas-kind",
-				Description: "The card's own Kind -- names which field keys \"Field values\" may bind.",
+				Description: "The card's own Kind. It names which field keys \"Field values\" may bind.",
 			},
 			{
 				Key: "cardId", Label: "Card", Type: FieldText,
-				Description: "Which card to update -- a literal card id, or attr:<name>.",
+				Description: "Which card to update: a literal card id, or attr:<name>.",
 			},
 			{
 				Key: "fieldBindings", Label: "Field values", Type: FieldText, Multiline: true,

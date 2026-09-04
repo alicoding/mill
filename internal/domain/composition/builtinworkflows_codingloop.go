@@ -27,7 +27,7 @@ func codingLoopBuiltInWorkflow() []Workflow {
 		{ID: CodingLoopShellStepID, NodeTypeID: "process-shell-command", Position: Position{X: 0, Y: 100}},
 		{ID: applyID, NodeTypeID: "apply-clipboard-write-text", Position: Position{X: 0, Y: 200}},
 		{ID: notifyID, NodeTypeID: "apply-notify", Position: Position{X: 0, Y: 300},
-			Config: map[string]string{"title": "Run from clipboard", "body": "Result copied -- open Mill to review the run."}},
+			Config: map[string]string{"title": "Run from clipboard", "body": "Result copied. Open Mill to review the run."}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
@@ -45,7 +45,7 @@ func codingLoopBuiltInWorkflow() []Workflow {
 				{ID: "coding-loop-e2", Source: applyID, Target: notifyID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(3),
+			Seed:    seedorigin.Stamp(4),
 		},
 	}
 }

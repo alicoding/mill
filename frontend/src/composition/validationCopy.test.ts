@@ -24,7 +24,7 @@ describe('formatIssuesForCopy', () => {
       issue({ Severity: Severity.SeverityWarning, EdgeID: 'e7', Message: 'dangling edge' }),
     ])
     expect(out).toBe(
-      'Mill workflow "Load sample HTML" (id: load-sample-html-workflow) — validation issues (1 error · 1 warning):\n' +
+      'Mill workflow "Load sample HTML" (id: load-sample-html-workflow), validation issues (1 error · 1 warning):\n' +
       '- [error] step n1: a workflow must start with a Trigger step\n' +
       '- [warning] edge e7: dangling edge',
     )

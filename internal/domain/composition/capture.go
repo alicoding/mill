@@ -49,7 +49,7 @@ func init() {
 		Produces:    PayloadProduce{Kind: PayloadText},
 		Output:      "plain text from the clipboard",
 		Label:       "Read clipboard text",
-		Description: "Reads the clipboard's plain text only, never its HTML -- for ids, tokens, and anything copied as-is.",
+		Description: "Reads the clipboard's plain text only, never its HTML. Use it for ids, tokens, and anything copied as-is.",
 	}, func(_ Node, ctx ExecContext) (ExecContext, error) {
 		text, err := readClipboardText()
 		if err != nil {

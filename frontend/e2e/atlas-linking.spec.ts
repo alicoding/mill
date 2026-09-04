@@ -145,7 +145,7 @@ test('atlas linking: drop-anywhere targeting, hover chip, refusal hint, anchored
       { x: anchorBox.x + anchorBox.width / 2, y: anchorBox.y + anchorBox.height / 2 },
       { x: noteBox.x + noteBox.width / 2, y: noteBox.y + noteBox.height / 2 })
     await expect(refusalHint).toBeVisible()
-    await expect(refusalHint).toHaveText("Not linked — Topic and Note can't be linked here.")
+    await expect(refusalHint).toHaveText("Not linked: Topic and Note can't be linked here.")
     await expect(page.locator('.react-flow__edge')).toHaveCount(seededEdgeCount) // no link created
 
     // --- Handle honesty: the source handle stays in the DOM but

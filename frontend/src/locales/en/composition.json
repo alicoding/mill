@@ -1,5 +1,5 @@
 {
-  "pausedStepMode": "Paused — step mode",
+  "pausedStepMode": "Paused in step mode",
   "pausedAtBreakpoint": "Paused at breakpoint",
   "editBeforeResuming": "Edit before resuming (optional)",
   "step": "Step",
@@ -39,12 +39,12 @@
       "denied": "DENIED"
     },
     "outputTitle": "Output: {{output}}",
-    "guardrailDeniedTitle": "Denied by guardrail rule{{ruleSuffix}} — this step will not run",
+    "guardrailDeniedTitle": "Denied by guardrail rule{{ruleSuffix}}. This step will not run.",
     "guardrailRuleSuffix": " \"{{rule}}\"",
     "guardrailAskTitle": "Asks for approval before running{{ruleSuffix}}",
-    "guardrailAskRuleSuffix": " — {{rule}}",
+    "guardrailAskRuleSuffix": " ({{rule}})",
     "breakpointSaveFirst": "Save this workflow before setting breakpoints.",
-    "breakpointSetTitle": "Breakpoint set — click to remove (pauses here for inspection before this step runs)",
+    "breakpointSetTitle": "Breakpoint set. Click to remove (pauses here for inspection before this step runs).",
     "breakpointUnsetTitle": "Click to pause here for inspection before this step runs"
   },
   "canvasNoteView": {
@@ -79,7 +79,7 @@
   },
   "rulesetEditor": {
     "heading": "Rules",
-    "description": "Every rule must pass for the data to continue — a failing rule fails the run, named. Build a condition against this workflow's Attributes, or type an expression directly.",
+    "description": "Every rule must pass for the data to continue. A failing rule fails the run and is named in the result. Build a condition against this workflow's Attributes, or type an expression directly.",
     "ruleN": "Rule {{n}}",
     "deleteRuleAriaLabel": "Delete rule {{n}}",
     "name": "Name",
@@ -108,7 +108,7 @@
   "listSearchParamsEditor": {
     "matchParameters": "Match parameters",
     "pickListFirst": "Pick a List above first.",
-    "noColumnsYet": "That List has no declared columns yet -- add some in Configure > Lists.",
+    "noColumnsYet": "That List has no declared columns yet. Add some in Configure > Lists.",
     "column": "Column",
     "pickColumn": "(pick a column)",
     "matchType": "Match type",
@@ -136,7 +136,7 @@
   },
   "decisionOutcomeBindingsEditor": {
     "heading": "Decision outputs",
-    "description": "{{label}} ({{category}}) -- values written into this Decision's typed result when reached.",
+    "description": "{{label}} ({{category}}) writes these values into its typed result when reached.",
     "deprecatedFieldName": "{{name}} (deprecated)",
     "versionLabel": "Version",
     "versionCaption": "Live always resolves the current definition. Pin to a published version to keep this step unaffected by later edits.",
@@ -171,7 +171,7 @@
   },
   "decisionRulesPanel": {
     "heading": "Rules",
-    "helper": "Checked in order — the first match wins.",
+    "helper": "Checked in order. The first match wins.",
     "addRule": "Add rule",
     "otherwiseLabel": "Otherwise",
     "otherwiseHelper": "Runs when no rule above matches.",
@@ -206,8 +206,8 @@
       "deny": "is denied and will not run"
     },
     "stepEffect": "This step {{effectText}}{{suffix}}",
-    "ruleSuffix": " — rule \"{{rule}}\".",
-    "externalSuffix": " — external steps ask by default. Approvals happen in Review.",
+    "ruleSuffix": " (rule \"{{rule}}\").",
+    "externalSuffix": " (external steps ask by default). Approvals happen in Review.",
     "plainSuffix": ".",
     "breakpointSet": "Breakpoint set",
     "noBreakpoint": "No breakpoint",
@@ -226,7 +226,7 @@
     "openAccessibilitySettings": "Open Accessibility Settings",
     "noConfiguration": "This step needs no setup.",
     "generateTestPayload": "Generate test payload",
-    "hoverToPreviewChild": "Hover to preview the child — click Open to edit it",
+    "hoverToPreviewChild": "Hover to preview the child. Click Open to edit it.",
     "defaultOption": "(default)",
     "openStepDetail": "Open step detail",
     "ioContract": "Takes {{consumes}} · Produces {{produced}}",
@@ -255,7 +255,7 @@
     "useClipboard": "Use clipboard",
     "output": "Output",
     "outputAriaLabel": "Step output",
-    "engineNote": "Converted by Mill's built-in converter — the same one every run of this step uses, with no settings to drift.",
+    "engineNote": "Converted by Mill's built-in converter.",
     "refusedAsk": "This step asks for approval before it runs. Run the workflow to approve it.",
     "refusedAskRule": "This step asks for approval before it runs ({{rule}}). Run the workflow to approve it.",
     "refusedDeny": "This step is not allowed to run.",
@@ -273,8 +273,8 @@
     "viewToggleAriaLabel": "{{pane}} view"
   },
   "hotkeyCapture": {
-    "reservedByMacOS": "{{combo}} is reserved by macOS ({{reason}}) — pick another combo",
-    "clashWithCommand": "this combo is already bound to command \"{{label}}\" -- pick another, or reset it there first"
+    "reservedByMacOS": "{{combo}} is reserved by macOS ({{reason}}). Pick another combo.",
+    "clashWithCommand": "This combo is already bound to command \"{{label}}\". Pick another, or reset it there first."
   },
   "draftWorkflowSchema": {
     "needsLabel": "A workflow needs a label",
@@ -293,7 +293,7 @@
     "copyIssues": "Copy issues"
   },
   "validationCopy": {
-    "header": "Mill workflow \"{{label}}\" (id: {{id}}) — validation issues ({{counts}}):",
+    "header": "Mill workflow \"{{label}}\" (id: {{id}}), validation issues ({{counts}}):",
     "nodeLocation": " step {{id}}",
     "edgeLocation": " edge {{id}}"
   },
@@ -304,7 +304,7 @@
     "versions": "Versions"
   },
   "testRunDialog": {
-    "title": "Test run — {{label}}",
+    "title": "Test run: {{label}}",
     "cancel": "Cancel",
     "run": "Run",
     "initialPayload": "Initial payload"
@@ -357,11 +357,11 @@
     "resizeInspector": "Resize the inspector",
     "expandInspector": "Expand the inspector",
     "shrinkInspector": "Shrink the inspector",
-    "connectionRefusalHint": "Not connected — {{reason}}"
+    "connectionRefusalHint": "Not connected: {{reason}}"
   },
   "compositionView": {
     "heading": "Workflows",
-    "subtitle": "Build a workflow by connecting trigger, capture, process, and apply steps on a canvas — every workflow, including the examples below, is fully editable and deletable.",
+    "subtitle": "Build a workflow by connecting trigger, capture, process, and apply steps on a canvas. Every workflow, including the examples below, is fully editable and deletable.",
     "savedWorkflowsHeading": "Saved workflows",
     "import": "Import",
     "newWorkflow": "New workflow",
@@ -369,7 +369,7 @@
     "draft": "draft",
     "testAriaLabel": "Test {{label}}",
     "runAriaLabel": "Run {{label}}",
-    "runTitleDrifted": "Test run of the draft — differs from the published version.",
+    "runTitleDrifted": "Test run of the draft, which differs from the published version.",
     "runTitle": "Test run of the draft.",
     "test": "Test",
     "run": "Run",
@@ -398,7 +398,7 @@
       "steps": "Steps"
     },
     "draft": "draft",
-    "runTitleDrifted": "Test run of the draft — differs from the published version.",
+    "runTitleDrifted": "Test run of the draft, which differs from the published version.",
     "runTitle": "Test run of the draft.",
     "testAriaLabel": "Test {{label}}",
     "runAriaLabel": "Run {{label}}",
@@ -415,7 +415,7 @@
     "disable": "Disable",
     "publishCurrentDraft": "Publish current draft",
     "description": "The canvas edits the draft. Triggers and child-workflow calls always run the published version; a test run exercises the draft without publishing. Disabling a version pauses its triggers and child calls, but test runs keep working.",
-    "noVersionsYet": "No versions yet — publish the draft to create v1.",
+    "noVersionsYet": "No versions yet. Publish the draft to create v1.",
     "columns": {
       "version": "Version",
       "saved": "Saved",
@@ -473,6 +473,6 @@
     "copied_other": "Copied {{count}} items",
     "pasted_one": "Pasted {{count}} item",
     "pasted_other": "Pasted {{count}} items",
-    "triggerRefusal": "The trigger step can't be copied — a workflow has exactly one."
+    "triggerRefusal": "The trigger step can't be copied. A workflow has exactly one."
   }
 }

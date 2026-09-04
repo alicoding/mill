@@ -44,7 +44,7 @@ func builtInClipbridgeWorkflows() []Workflow {
 			Label: "Clipboard reply: create cards",
 			Description: "Creates the Atlas cards a reviewed clipboard reply proposes, landing them in the " +
 				"space you were viewing when you accepted. Runs from the Quick Panel or the AI companion " +
-				"after you accept the preview -- the accepted items arrive in the \"items\" input. Edit " +
+				"after you accept the preview. The accepted items arrive in the \"items\" input. Edit " +
 				"this workflow to change where accepted cards go or what happens after they land.",
 			Nodes: cardsNodes,
 			Attributes: []AttributeDef{
@@ -55,7 +55,7 @@ func builtInClipbridgeWorkflows() []Workflow {
 				{ID: "clipbridge-reply-cards-e0", Source: cardsTriggerID, Target: cardsApplyID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(2),
+			Seed:    seedorigin.Stamp(3),
 		},
 		{
 			ID:    ReplyNoteWorkflowID,

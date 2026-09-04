@@ -48,7 +48,7 @@ func builtInSystemEventWorkflows() []Workflow {
 		{ID: updateTriggerID, NodeTypeID: "trigger-system-event", Position: Position{X: 0, Y: 0},
 			Config: map[string]string{"event": "update-available", "workflowScope": ""}},
 		{ID: updateNotifyID, NodeTypeID: "apply-notify", Position: Position{X: 0, Y: 100},
-			Config: map[string]string{"title": "Mill update", "body": "A new Mill version is ready — open Settings → Updates to install."}},
+			Config: map[string]string{"title": "Mill update", "body": "A new Mill version is ready. Open Settings → Updates to install."}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
@@ -58,24 +58,24 @@ func builtInSystemEventWorkflows() []Workflow {
 		{
 			ID:          "update-available-notify-workflow",
 			Label:       "Notify when an update is available",
-			Description: "Fires when an update check finds a newer Mill release on your channel and shows a notification. Edit it like any workflow — change the message, add conditions, or forward to another device through an integration; disable it if the footer badge is enough.",
+			Description: "Fires when an update check finds a newer Mill release on your channel and shows a notification. Edit it like any workflow: change the message, add conditions, or forward to another device through an integration; disable it if the footer badge is enough.",
 			Nodes:       updateNodes,
 			Edges: []Edge{
 				{ID: "update-available-notify-e0", Source: updateTriggerID, Target: updateNotifyID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(1),
+			Seed:    seedorigin.Stamp(2),
 		},
 		{
 			ID:          "example-forward-approvals-workflow",
 			Label:       "Example: Forward pending approvals",
-			Description: "Fires whenever ANY workflow parks awaiting approval and POSTs the event -- {event, runId, workflowId, workflowLabel, nodeId, timestamp} -- to the integration below. Re-point \"Integration\" (canvas Inspector) at your real notification endpoint (ntfy/Telegram/a webhook receiver you configure under Configure > Integrations), then enable this workflow -- it ships DISABLED so it never calls out anywhere until you do. Replaces the old Settings > Forward pending approvals toggle: this workflow IS the forward now, visible and editable like any other, instead of a private code path.",
+			Description: "Fires whenever ANY workflow parks awaiting approval and POSTs the event ({event, runId, workflowId, workflowLabel, nodeId, timestamp}) to the integration below. Re-point \"Integration\" (canvas Inspector) at your real notification endpoint (ntfy/Telegram/a webhook receiver you configure under Configure > Integrations), then enable this workflow. It ships DISABLED so it never calls out anywhere until you do. Replaces the old Settings > Forward pending approvals toggle: this workflow IS the forward now, visible and editable like any other, instead of a private code path.",
 			Nodes:       forwardNodes,
 			Edges: []Edge{
 				{ID: "example-forward-approvals-e0", Source: forwardTriggerID, Target: forwardHTTPID},
 			},
 			BuiltIn:  true,
-			Seed:     seedorigin.Stamp(2),
+			Seed:     seedorigin.Stamp(3),
 			Disabled: true,
 		},
 	}

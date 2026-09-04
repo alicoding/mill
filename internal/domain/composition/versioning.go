@@ -82,7 +82,7 @@ func ResolveRunnable(wf Workflow, draft bool, pinned int) (nodes []Node, edges [
 			return nil, nil, nil, 0, fmt.Errorf("workflow %q has no version %d to pin to", wf.Label, pinned)
 		}
 		if wf.Disabled {
-			return nil, nil, nil, 0, fmt.Errorf("workflow %q is disabled -- enable it before invoking it", wf.Label)
+			return nil, nil, nil, 0, fmt.Errorf("workflow %q is disabled; enable it before invoking it", wf.Label)
 		}
 		return v.Nodes, v.Edges, v.Attributes, v.Version, nil
 	}
@@ -90,10 +90,10 @@ func ResolveRunnable(wf Workflow, draft bool, pinned int) (nodes []Node, edges [
 		return wf.Nodes, wf.Edges, wf.Attributes, 0, nil
 	}
 	if wf.Disabled {
-		return nil, nil, nil, 0, fmt.Errorf("workflow %q is disabled -- enable it before invoking it", wf.Label)
+		return nil, nil, nil, 0, fmt.Errorf("workflow %q is disabled; enable it before invoking it", wf.Label)
 	}
 	if wf.PublishedVersion == 0 {
-		return nil, nil, nil, 0, fmt.Errorf("workflow %q has no published version -- publish it first (a test run exercises the draft without publishing)", wf.Label)
+		return nil, nil, nil, 0, fmt.Errorf("workflow %q has no published version; publish it first (a test run exercises the draft without publishing)", wf.Label)
 	}
 	v, ok := VersionByNumber(wf, wf.PublishedVersion)
 	if !ok {

@@ -76,7 +76,7 @@ func openAPISpecFor(title string) string {
 // (ADR-0011's nested-response extraction, demonstrated on real data).
 const typedEchoSpec = `{"openapi":"3.0.3","info":{"title":"httpbin typed echo","version":"1.0.0"},"paths":{"/":{"get":{` +
 	`"summary":"Echo query with typed response",` +
-	`"parameters":[{"name":"q","in":"query","required":false,"schema":{"type":"string","description":"Any value -- httpbin echoes it back in args.q"}}],` +
+	`"parameters":[{"name":"q","in":"query","required":false,"schema":{"type":"string","description":"Any value; httpbin echoes it back in args.q"}}],` +
 	`"responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"type":"object","properties":{` +
 	`"url":{"type":"string","description":"The full URL httpbin received"},` +
 	`"origin":{"type":"string","description":"Caller's public IP as httpbin saw it"},` +
@@ -132,83 +132,79 @@ func BuiltIn() []HTTPRequest {
 		{
 			ID: ExampleNoneID, Label: "Example: No auth (httpbin.org)",
 			Description: "Demonstrates AuthType none against a real, stable public test service " +
-				"(httpbin.org) -- no credentials involved, always works.",
+				"(httpbin.org). No credentials involved, always works.",
 			BaseURL: "https://httpbin.org/get", AuthType: AuthNone, Method: "GET",
 			OpenAPISpec: typedEchoSpec,
 			BuiltIn:     true,
-			Seed:        seedorigin.Stamp(1),
+			Seed:        seedorigin.Stamp(2),
 		},
 		{
 			ID: ExampleAPIKeyID, Label: "Example: API key header (httpbin.org)",
 			Description: "Sends X-Api-Key as a header. httpbin.org/headers reliably echoes back " +
-				"whatever it received, so you can see the header arrived correctly -- it does not " +
+				"whatever it received, so you can see the header arrived correctly. It does not " +
 				"validate the key's value (httpbin has no concept of a 'correct' key), so this is a " +
 				"self-consistency check, not third-party-verified auth.",
 			BaseURL: "https://httpbin.org/headers", AuthType: AuthAPIKey, Method: "GET",
 			OpenAPISpec: openAPISpecFor("httpbin headers echo"),
 			BuiltIn:     true,
-			Seed:        seedorigin.Stamp(1),
+			Seed:        seedorigin.Stamp(2),
 		},
 		{
 			ID: ExampleBearerID, Label: "Example: Bearer token (httpbin.org)",
 			Description: "Sends Authorization: Bearer <token> against httpbin.org/bearer, which " +
 				"genuinely validates the request server-side: 401 with no token, 200 + " +
-				"{\"authenticated\":true} with one -- real, independently-verified round trip, " +
-				"confirmed live before this was seeded.",
+				"{\"authenticated\":true} with one.",
 			BaseURL: "https://httpbin.org/bearer", AuthType: AuthBearer, Method: "GET",
 			OpenAPISpec: typedBearerSpec,
 			BuiltIn:     true,
-			Seed:        seedorigin.Stamp(1),
+			Seed:        seedorigin.Stamp(2),
 		},
 		{
 			ID: ExampleHMACID, Label: "Example: HMAC signature (httpbin.org)",
 			Description: "Signs method+path+timestamp+body with HMAC-SHA256, sent as " +
-				"X-Signature/X-Timestamp headers (Mill's own stated default -- no " +
-				"universal HMAC convention exists to validate against). httpbin.org/headers echoes " +
-				"the signed headers back so you can see them, but doesn't verify the signature -- " +
-				"self-consistency check only, same caveat as the API-key example above.",
+				"X-Signature/X-Timestamp headers (Mill's own stated default). httpbin.org/headers " +
+				"echoes the signed headers back so you can see them, but doesn't verify the " +
+				"signature. This is a self-consistency check only, same caveat as the API-key " +
+				"example above.",
 			BaseURL: "https://httpbin.org/headers", AuthType: AuthHMAC, Method: "GET",
 			OpenAPISpec: openAPISpecFor("httpbin headers echo (HMAC)"),
 			BuiltIn:     true,
-			Seed:        seedorigin.Stamp(2),
+			Seed:        seedorigin.Stamp(3),
 		},
 		{
 			ID: ExampleOAuth1ID, Label: "Example: OAuth 1.0a (postman-echo.com)",
 			Description: "Real RFC 5849 HMAC-SHA1 request signing, using Postman's own published " +
 				"test credentials against their own signature-verifying endpoint " +
-				"(postman-echo.com/oauth1) -- independently confirmed live: the server itself " +
-				"returned {\"status\":\"pass\",\"message\":\"OAuth-1.0a signature verification was " +
-				"successful\"} before this was seeded, not just self-consistent with Mill's own tests.",
+				"(postman-echo.com/oauth1).",
 			BaseURL: "https://postman-echo.com/oauth1", AuthType: AuthOAuth1, Method: "GET",
 			Auth:        &AuthConfig{OAuth1: &OAuth1Config{ConsumerKey: "RKCGzna7bv9YD57c"}},
 			OpenAPISpec: openAPISpecFor("Postman Echo OAuth1"),
 			BuiltIn:     true,
-			Seed:        seedorigin.Stamp(1),
+			Seed:        seedorigin.Stamp(2),
 		},
 		{
 			ID: ExampleOAuth2ID, Label: "Example: OAuth 2.0 client credentials (Spotify Web API)",
-			Description: "Shows the real client_credentials shape -- a genuine, currently-documented " +
-				"token URL (accounts.spotify.com/api/token) -- but ships with no Client ID/Secret: " +
-				"OAuth 2.0 fundamentally can't be demonstrated without a registered app, and Mill's " +
-				"own repo will never carry a real client secret. Register a free Spotify developer " +
-				"app and fill in the Client ID/Secret yourself to make this one actually run.",
+			Description: "Shows the real client_credentials shape against a genuine, currently-documented " +
+				"token URL (accounts.spotify.com/api/token), but ships with no Client ID/Secret. " +
+				"Register a free Spotify developer app and fill in the Client ID/Secret yourself to " +
+				"make this one actually run.",
 			BaseURL: "https://api.spotify.com/v1/browse/new-releases", AuthType: AuthOAuth2, Method: "GET",
 			Auth: &AuthConfig{OAuth2: &OAuth2Config{ //nolint:gosec // TokenURL below is a public token endpoint URL, not a credential (G101 false positive) -- this seed ships with no Client ID/Secret, see Description above
 				GrantType: "client_credentials", TokenURL: "https://accounts.spotify.com/api/token",
 			}},
 			OpenAPISpec: openAPISpecFor("Spotify Web API (bring your own app)"),
 			BuiltIn:     true,
-			Seed:        seedorigin.Stamp(1),
+			Seed:        seedorigin.Stamp(2),
 		},
 		{
 			ID: ExampleQueryParamID, Label: "Example: Query-param API key (httpbin.org)",
 			Description: "Sends ?apikey=<secret> in the URL's query string against httpbin.org/get, " +
-				"which echoes back the query it received -- same self-consistency-only caveat as the " +
+				"which echoes back the query it received. Same self-consistency-only caveat as the " +
 				"header-based API-key example (httpbin doesn't validate the value).",
 			BaseURL: "https://httpbin.org/get", AuthType: AuthQueryParam, Method: "GET",
 			OpenAPISpec: openAPISpecFor("httpbin query echo"),
 			BuiltIn:     true,
-			Seed:        seedorigin.Stamp(1),
+			Seed:        seedorigin.Stamp(2),
 		},
 		{
 			ID: ExampleConfluencePageReadID, Label: "Example: Confluence page (PAT)",
