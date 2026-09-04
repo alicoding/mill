@@ -190,6 +190,12 @@ Every non-trivial change follows this order, no exceptions:
    **Research → Adopt → Compose** (`.claude/rules/architecture.md` has
    the full statement; `.claude/rules/adopt-converged-patterns.md` has
    the product-level law the Precedent part serves).
+   **A confirmed gap is built now.** Once the Precedent is researched
+   and confirmed and Today is not the same or better, the Gap is
+   closed in THIS goal, right away — it is never a follow-up, a
+   "later slice", or a register entry, and no agent may defer it
+   (owner-set 2026-09-04). The only legal narrowing is the owner's
+   own, in the session, recorded in the goal file.
 2. **Plan** — the proper pattern, derived from the Gap: state the
    approach and its tradeoffs before editing files.
    For any design choice with more than one defensible answer (schema

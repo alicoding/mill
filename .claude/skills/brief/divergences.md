@@ -31,6 +31,11 @@ this file is the record, a brief is a projection of it.
   `object.openInDefaultApp` (goal 0232) — one declaration, no new
   watch or command code.
 
+- Obvious: a nice-to-have found mid-build goes to a follow-up. Here:
+  a gap against a CONFIRMED precedent is never deferred by an agent —
+  it is reported back and built in the same goal (CLAUDE.md Research
+  step); "follow-up" is not a word an agent's report may use for it.
+
 ## Testing harness
 
 - Obvious: import test/expect from @playwright/test. Here: shared-
