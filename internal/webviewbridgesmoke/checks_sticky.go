@@ -61,31 +61,37 @@ func checkStickyBorderColorFlip(c mcpCaller) (string, error) {
 		return "", fmt.Errorf("sticky already selected before the check ran -- board state isn't clean")
 	}
 
-	// Full-gesture retry (checkNoteCardCommit's own converged pattern):
-	// a slow-runner fitView hitch through the stability sampler can
-	// still land the shift-click before React Flow's own selection
-	// handling is ready for it.
-	var lastErr error
-	for attempt := 0; attempt < 3; attempt++ {
-		if _, err := c.call("mouse_click", withWindow(map[string]any{
-			"selector":  selector,
-			"modifiers": []string{"shift"},
-		})); err != nil {
-			return "", err
-		}
-		if err := pollJSEval(c, fmt.Sprintf(`const el = document.querySelector('%s');
-			return !!el && !!el.closest('.react-flow__node.selected');`, selector), 3*time.Second); err != nil {
-			lastErr = fmt.Errorf("shift-click never selected the sticky: %w", err)
-			if werr := waitForNodeStable(c, selector); werr != nil {
-				lastErr = werr
-			}
-			continue
-		}
-		lastErr = nil
-		break
+	// Precondition, not a retry: hit-test the sticky's own centre
+	// before the gesture. Anything a previous check left on top of the
+	// board -- a modal, an overlay -- swallows every pointer event
+	// silently, and a retry loop then reports the miss as an engine
+	// divergence instead of the state leak it is. Name the covering
+	// element and fail immediately.
+	cover, err := c.call("js_eval", withWindow(map[string]any{
+		"js": fmt.Sprintf(`const el = document.querySelector('%s');
+			if (!el) return 'the sticky is gone';
+			const r = el.getBoundingClientRect();
+			const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+			if (!top) return 'nothing at all';
+			if (top.closest('%s')) return 'clear';
+			return top.getAttribute('data-testid') || top.getAttribute('data-component') || top.tagName.toLowerCase();`, selector, selector),
+	}))
+	if err != nil {
+		return "", err
 	}
-	if lastErr != nil {
-		return "", fmt.Errorf("after 3 attempts: %w", lastErr)
+	if cover != "clear" {
+		return "", fmt.Errorf("the sticky's own centre is covered by %s -- no click can reach it", cover)
+	}
+
+	if _, err := c.call("mouse_click", withWindow(map[string]any{
+		"selector":  selector,
+		"modifiers": []string{"shift"},
+	})); err != nil {
+		return "", err
+	}
+	if err := pollJSEval(c, fmt.Sprintf(`const el = document.querySelector('%s');
+		return !!el && !!el.closest('.react-flow__node.selected');`, selector), 3*time.Second); err != nil {
+		return "", fmt.Errorf("shift-click never selected the sticky: %w", err)
 	}
 
 	after, err := readStickyStyle(c, selector)

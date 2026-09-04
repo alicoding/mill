@@ -112,7 +112,7 @@ var registry = []check{
 	},
 	{
 		name:   "app-info-window-sane",
-		reason: "the real Wails process reports the app's true window set on darwin (main + quickpanel + approvalprompt + traypanel + runmonitor, ADR-0033 + goals 0189 and 0294) -- proves a genuine desktop process booted with its real window set, not just that a binary exists.",
+		reason: "the real Wails process reports the app's true window set on darwin (main + quickpanel + approvalprompt + traypanel + runmonitor + capture, ADR-0033 + goals 0189, 0294 and 0309) -- proves a genuine desktop process booted with its real window set, not just that a binary exists.",
 		run:    checkAppInfo,
 	},
 	{
@@ -177,11 +177,12 @@ func checkAppInfo(c mcpCaller) (string, error) {
 		return "", fmt.Errorf("expected os darwin, got %q", info.OS)
 	}
 	// The app's real window set (ADR-0033, plus the menu-bar panel's
-	// own attachable window -- goal 0189's SystemTray.AttachWindow):
-	// the named main window plus the three auxiliary windows. Asserted
-	// by name, not count, so a missing or unexpected window is named
-	// in the failure.
-	want := map[string]bool{mainWindowName: false, "quickpanel": false, "approvalprompt": false, "traypanel": false, "runmonitor": false}
+	// own attachable window -- goal 0189's SystemTray.AttachWindow --
+	// the run monitor's, goal 0294, and quick capture's, goal 0309):
+	// the named main window plus every auxiliary window auxwindows.go
+	// constructs. Asserted by name, not count, so a missing or
+	// unexpected window is named in the failure.
+	want := map[string]bool{mainWindowName: false, "quickpanel": false, "approvalprompt": false, "traypanel": false, "runmonitor": false, "capture": false}
 	mainVisible := false
 	for _, w := range info.Windows {
 		seen, expected := want[w.Name]
@@ -204,7 +205,7 @@ func checkAppInfo(c mcpCaller) (string, error) {
 	if !mainVisible {
 		return "", fmt.Errorf("main window reported not visible")
 	}
-	return fmt.Sprintf("os=%s windows=main+quickpanel+approvalprompt+traypanel, main visible", info.OS), nil
+	return fmt.Sprintf("os=%s windows=main+quickpanel+approvalprompt+traypanel+runmonitor+capture, main visible", info.OS), nil
 }
 
 // pollJSEval retries a boolean-returning js_eval snippet until it's

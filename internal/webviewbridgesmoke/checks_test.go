@@ -126,14 +126,15 @@ func TestCheckIsolatedDataBadge(t *testing.T) {
 }
 
 // realWindows is the app's true window shape (ADR-0033 plus the
-// menu-bar panel's attachable window, goal 0189) as app_info reports
-// it.
+// menu-bar panel's attachable window, goal 0189, the run monitor's,
+// goal 0294, and quick capture's, goal 0309) as app_info reports it.
 func realWindows() []map[string]any {
 	return []map[string]any{
 		{"name": "main", "visible": true},
 		{"name": "quickpanel", "visible": false},
 		{"name": "approvalprompt", "visible": false},
 		{"name": "traypanel", "visible": false}, {"name": "runmonitor", "visible": false},
+		{"name": "capture", "visible": false},
 	}
 }
 

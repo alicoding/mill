@@ -18,6 +18,7 @@ func TestCheckStickyBorderColorFlip(t *testing.T) {
 		f.onJSON("js_eval", true)                                                      // pollJSEval: sticky rendered
 		f.onJSON("js_eval", true)                                                      // waitForNodeStable: settled before the click
 		f.onJSON("js_eval", stickySnapshot{BorderColor: "rgb(1,1,1)", BoxShadow: "none", Selected: false})
+		f.on("js_eval", func(map[string]any) (string, error) { return "clear", nil }) // hit-test: nothing covers the sticky
 		f.on("mouse_click", func(map[string]any) (string, error) { return "ok", nil })
 		f.onJSON("js_eval", true) // poll: shift-click selected the sticky
 		f.onJSON("js_eval", stickySnapshot{BorderColor: "rgb(9,9,9)", BoxShadow: "0 0 0 3px accent", Selected: true})
@@ -72,11 +73,40 @@ func TestCheckStickyBorderColorFlip(t *testing.T) {
 		f.onJSON("js_eval", true)                                                      // pollJSEval: sticky rendered
 		f.onJSON("js_eval", true)                                                      // waitForNodeStable: settled before the click
 		f.onJSON("js_eval", stickySnapshot{BorderColor: "rgb(1,1,1)", BoxShadow: "none", Selected: false})
+		f.on("js_eval", func(map[string]any) (string, error) { return "clear", nil }) // hit-test: nothing covers the sticky
 		f.on("mouse_click", func(map[string]any) (string, error) { return "ok", nil })
 		f.onJSON("js_eval", true) // poll: shift-click selected the sticky
 		f.onJSON("js_eval", stickySnapshot{BorderColor: "rgb(1,1,1)", BoxShadow: "0 0 0 3px accent", Selected: true})
 		if _, err := checkStickyBorderColorFlip(f); err == nil {
 			t.Fatal("expected an error when border-color doesn't change")
+		}
+	})
+
+	// Regression (goal 0263): an overlay left open by an earlier check
+	// swallowed every pointer event, and the retry loop reported it as
+	// a WebKit shift-click divergence. The hit-test must name the
+	// covering element and refuse to click.
+	t.Run("a covered sticky fails naming its coverer, never clicks", func(t *testing.T) {
+		f := newFakeCaller()
+		f.onJSON("call_bound_method", seedCards)
+		f.on("js_eval", func(map[string]any) (string, error) { return "chained", nil })
+		f.onJSON("call_bound_method", map[string]any{"ID": "note-1"})
+		f.on("js_eval", func(map[string]any) (string, error) { return "intact", nil })
+		f.onJSON("js_eval", true) // pollJSEval: sticky rendered
+		f.onJSON("js_eval", true) // waitForNodeStable: settled
+		f.onJSON("js_eval", stickySnapshot{BorderColor: "rgb(1,1,1)", BoxShadow: "none", Selected: false})
+		f.on("js_eval", func(map[string]any) (string, error) { return "drawio-editor-frame", nil })
+		_, err := checkStickyBorderColorFlip(f)
+		if err == nil {
+			t.Fatal("expected an error when something covers the sticky")
+		}
+		if !strings.Contains(err.Error(), "drawio-editor-frame") {
+			t.Errorf("the failure must name the covering element, got %q", err)
+		}
+		for _, c := range f.calls {
+			if c.tool == "mouse_click" {
+				t.Fatal("must not click a sticky nothing can reach")
+			}
 		}
 	})
 
