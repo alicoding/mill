@@ -15,9 +15,11 @@ import styles from './NoticePill.module.css'
 // primary action RUNS the matching registry command, so pill and
 // Settings page can never disagree) and anything pushed through
 // shared/noticeStore.ts (a plugin's api.notify). One look per level,
-// one shape per notice: optional source label, the text (a button
-// when a primary command exists), lighter secondary links, and a
-// dismiss × when the notice is dismissible.
+// one shape per notice: the text (a button when a primary command
+// exists), lighter secondary links, and a dismiss × when the notice is
+// dismissible. A notice's source is a machine tag on the store, never
+// rendered -- a command id is not a word anyone reads (goal 0339); a
+// notice whose origin matters names it in its own text.
 export function NoticePill() {
   const { t } = useTranslation('app')
   const state = useUpdateNoticeStore((s) => s.updateNoticeState)
@@ -50,7 +52,6 @@ const LEVEL_CLASS: Record<Notice['level'], string> = {
 function NoticeView({ notice, dismissLabel }: { notice: Notice; dismissLabel: string }) {
   return (
     <span className={`${styles.pill} ${LEVEL_CLASS[notice.level]}`} data-testid={`notice-${notice.id}`} data-notice-level={notice.level}>
-      {notice.source && <span className={styles.source} data-testid="notice-source">{notice.source}</span>}
       {notice.primaryCommandId ? (
         <button type="button" className={styles.pillAction} onClick={() => void runCommand(notice.primaryCommandId ?? '')}>
           {notice.text}

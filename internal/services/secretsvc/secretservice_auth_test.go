@@ -2,7 +2,6 @@ package secretsvc
 
 import (
 	"errors"
-	"strings"
 	"sync"
 	"testing"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/presencekey"
 	"github.com/alicoding/mill/internal/adapters/secretvault"
 	"github.com/alicoding/mill/internal/domain/secret"
+	"github.com/alicoding/mill/internal/domain/usererror"
 	"github.com/alicoding/mill/internal/services/servicetest"
 )
 
@@ -168,8 +168,8 @@ func TestUnlockCancelledLeavesTheVaultLocked(t *testing.T) {
 	}
 
 	err := s.UnlockVault()
-	if !errors.Is(err, ErrUnlockCancelled) || !strings.Contains(err.Error(), "unlock-cancelled") {
-		t.Fatalf("UnlockVault = %v, want ErrUnlockCancelled carrying unlock-cancelled", err)
+	if code, ok := usererror.Of(err); !errors.Is(err, ErrUnlockCancelled) || !ok || code.Code != "unlock-cancelled" {
+		t.Fatalf("UnlockVault = %v, want ErrUnlockCancelled carrying the unlock-cancelled code", err)
 	}
 	if fake.Unlocked() {
 		t.Fatal("vault unlocked after a cancelled authentication")
@@ -186,8 +186,8 @@ func TestUnlockFailsClosedWhenAuthenticationIsUnavailable(t *testing.T) {
 	}
 
 	err := s.UnlockVault()
-	if !errors.Is(err, ErrAuthUnavailable) || !strings.Contains(err.Error(), "auth-unavailable") {
-		t.Fatalf("UnlockVault = %v, want ErrAuthUnavailable carrying auth-unavailable", err)
+	if code, ok := usererror.Of(err); !errors.Is(err, ErrAuthUnavailable) || !ok || code.Code != "auth-unavailable" {
+		t.Fatalf("UnlockVault = %v, want ErrAuthUnavailable carrying the auth-unavailable code", err)
 	}
 	if fake.Unlocked() {
 		t.Fatal("vault unlocked with the requirement on and no way to honour it")

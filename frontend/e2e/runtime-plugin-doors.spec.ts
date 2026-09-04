@@ -87,7 +87,9 @@ test('a plugin notice renders in the app notice pill with the plugin named, and 
 		const notice = page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Hello from the probe.' })
 		await expect(notice).toBeVisible()
 		await expect(notice).toHaveAttribute('data-notice-level', 'warning')
-		await expect(notice.getByTestId('notice-source')).toHaveText('Notify probe')
+		// goal 0339: the plugin names itself IN the notice text -- a
+		// notice's source is a machine tag the pill never renders.
+		await expect(notice).toContainText('Notify probe: Hello from the probe.')
 		await notice.getByTestId('notice-dismiss').click()
 		await expect(notice).toHaveCount(0)
 	} finally {

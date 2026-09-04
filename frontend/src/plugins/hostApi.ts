@@ -96,15 +96,16 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		},
 		onChange: (key: string, fn: (value: boolean | string | number) => void) => subscribeExtensionSetting(pluginId, declFor(key), fn),
 	})
-	// The notice door (goal 0277): the plugin's display name is the
-	// notice's source; an action must be one of the plugin's OWN
-	// registered commands, namespaced exactly as registerCommand did.
+	// The notice door (goal 0277): the plugin's display name opens the
+	// notice's own text, so the reader recognizes the origin before
+	// reading it; an action must be one of the plugin's OWN registered
+	// commands, namespaced exactly as registerCommand did.
 	const notify = (input: { text: string; level?: 'info' | 'success' | 'warning' | 'error'; action?: { label: string; commandId: string } }) => {
 		if (typeof input?.text !== 'string' || input.text.trim() === '') throw new Error(`plugin ${pluginId}: notify needs a non-empty text`)
 		return pushNotice({
-			text: input.text,
+			text: `${manifest.name || pluginId}: ${input.text}`,
 			level: input.level,
-			source: manifest.name || pluginId,
+			source: pluginId,
 			actions: input.action ? [{ label: input.action.label, commandId: `plugin.${pluginId}.${input.action.commandId}` }] : undefined,
 		})
 	}

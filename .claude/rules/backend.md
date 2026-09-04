@@ -29,6 +29,13 @@ it with an injected function var or a small interface (see
 a direct import of the owning service — keeps the domain package
 testable standalone and free of Wails-binding concerns.
 
+**A bound method's error the user can act on is an
+`internal/domain/usererror.Error`** (a stable code plus one sentence,
+built with `New`/`Wrap`). Anything else reaches the user as the generic
+sentence and the log as the full chain — a `%w` chain is never UI copy
+(goal 0339, `.claude/rules/ux-writing.md`). The frontend branches on the
+code, never on error text; the cause stays wrapped for `errors.Is`/`As`.
+
 See `docs/SPEC.md` §1.4's Logical/Component-view diagram for the full
 layering this rule maintains (`Bindings` → `Domain` → `Adapters`), and
 `.claude/rules/architecture.md` for the broader SOLID/DRY/DDD reuse

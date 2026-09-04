@@ -20,10 +20,9 @@ export interface Notice {
   id: string
   level: NoticeLevel
   text: string
-  // source names where the notice came from when that is not Mill
-  // itself (a plugin's display name) -- rendered ahead of the text so
-  // the reader recognizes the origin before reading (recognition, not
-  // confirmation).
+  // source is a machine tag naming what pushed the notice (a command
+  // id, a plugin id). It is never rendered: a notice whose origin the
+  // reader needs carries that word in its own text instead.
   source?: string
   // primaryCommandId turns the text itself into the notice's one
   // primary action (the update pill's download/relaunch shape).
