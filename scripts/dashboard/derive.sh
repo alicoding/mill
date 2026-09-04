@@ -97,6 +97,18 @@ if command -v gh >/dev/null 2>&1; then
   fi
 fi
 
+# --- efficiency: turns/tool-calls per session, rolled up per goal, from
+# the owner's own local Claude Code transcripts (goal 0325 S2,
+# turns-per-goal.sh). Best-effort -- a machine with no local transcript
+# history (a fresh clone, CI) degrades to an empty series rather than
+# failing the whole derive.
+turns_file="$tmp_dir/turns-per-goal.json"
+if "$repo_root/scripts/dashboard/turns-per-goal.sh" "" "$turns_file" >/dev/null 2>&1; then
+  turns_json="$(cat "$turns_file")"
+else
+  turns_json='{"sessions":[],"perGoal":[]}'
+fi
+
 generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # --- assemble: every piece above is already valid JSON text, so the
@@ -108,6 +120,7 @@ generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   printf '  "queue": %s,\n' "$(cat "$queue_file")"
   printf '  "census": %s,\n' "$(cat "$census_file")"
   printf '  "dispatch": %s,\n' "$dispatch_json"
+  printf '  "efficiency": {"turnsPerGoal": %s},\n' "$turns_json"
   printf '  "repo": {"main_sha": "%s", "open_prs": %s, "gh_unavailable": %s}\n' \
     "$main_sha" "$prs_json" "$gh_unavailable"
   printf '}\n'
