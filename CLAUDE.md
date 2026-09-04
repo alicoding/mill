@@ -8,44 +8,61 @@ update it as decisions land. Do not treat this CLAUDE.md as a substitute for
 it. (Backticked pointer, not an `@`-import: an `@`-import eagerly loads the
 whole file into every session's context — see SPEC §9.1.)
 
-## The orchestrator owns the app; delegation must earn its keep
+## The orchestrator decides the app; agents execute the decided design; the orchestrator verifies
 
-Owner-ratified 2026-08-29, superseding the earlier economics-first
-framing ("expensive models orchestrate, cheap models toil"): too many
-app decisions had drifted to subagents, and the felt quality showed it
-— agent-built surfaces repeatedly needed orchestrator eyes-on-code to
-find the layers a report never surfaces (goal 0248's trail is the
-worked case: the core surgery was right, and the dead typography, the
-async focus strip, and the shared-board test leak underneath were all
-found only by reading the diff and probing the live build). The
-operational law:
+Owner-ratified 2026-09-04, superseding the 2026-08-29 "orchestrator
+owns the app" framing. That framing diagnosed the right defect
+(agents were DECIDING the app, and the felt quality showed it) and
+prescribed the wrong cure (the orchestrator authoring felt surfaces
+itself). The measured cost: the reasoning model's weekly budget at
+70% while all models sat at 38%, burned on file reading, mechanical
+edits, and git babysitting that re-send a long context on every
+call. The precedent is the orchestrator-workers pattern as Anthropic
+documents it (Building effective agents, 2024-12; How we built our
+multi-agent research system, 2025-06): a lead model plans, decides,
+and writes each worker a complete task — objective, output format,
+boundaries, sources — and workers execute without re-deciding; the
+lead synthesizes and verifies. The operational law:
 
-1. **Anything the user feels, the orchestrator authors or line-reviews
-   itself** — interaction behavior, CSS/typography, UX states, copy,
-   component structure. Review means reading the diff, running it
-   live, and probing it — never accepting an agent's report as the
-   evidence.
-2. **Agents get only machine-verifiable mechanical scope** — regens,
-   bounded migrations from a written spec, test runs, read-only
-   research volume. If correctness can't be checked by a gate or a
-   diff the orchestrator reads, it isn't delegated.
-3. **No agent-authored user-facing change merges without the
-   orchestrator's eyes-on-diff plus a live hands-on pass.** The
-   design contract stays in the brief as before; this adds the
-   back half — the contract is verified by the contract's author.
-4. **The economics tradeoff inverts for the app**: decision quality
-   outranks orchestrator-token economy. Delegation is the exception
-   that must earn its keep, not the default that must be argued out
-   of.
+1. **The orchestrator's own work is reasoning**: research verdicts,
+   decisions, design contracts, rules and standards, briefs, and
+   verification. A design contract is COMPLETE before dispatch:
+   every state, label, keystroke, transition, the file touch-set,
+   and the objective gates. If the contract cannot be written that
+   completely, the decision is not made yet — make it, do not code
+   around it.
+2. **Everything with a complete written design is executed by a
+   builder agent, never by the orchestrator** — user-facing surfaces
+   included. The August 29 evidence was about agents deciding, not
+   agents typing; with the decision fully written, execution is
+   mechanical. The orchestrator writes code only when the change is
+   smaller than the brief that would describe it (a known one-line
+   fix), and even then states why.
+3. **A design question surfacing mid-build is reported, never
+   decided by the agent**; the orchestrator decides and amends the
+   brief. Agents cannot reason about the product in the moment; the
+   brief is the whole product vision they get.
+4. **Verification stays the orchestrator's**: eyes on the diff, the
+   live build probed, the screenshot pass — the quality guard the
+   August 29 rule found is real, and it is cheaper than authoring.
+   Never accept an agent's report as the evidence.
+5. **Token accounting is a design constraint**: the orchestrator's
+   context is re-sent on every tool call, so file spelunking, log
+   reading, and commit/rebase babysitting belong to agents (explorer,
+   test-investigator, pr-shepherd) with the conclusion returned, not
+   the dump. One brief beats fifteen reads.
 
-Model picks when delegation IS warranted: **Haiku** for read-only
-volume (codebase exploration, log/grep sweeps, doc lookups —
-`explorer` in `.claude/agents/`), **Sonnet** for the mechanical scope
-above (`test-investigator`, bounded refactors/migrations from a
-written plan). Every `Agent` delegation states its model explicitly —
-never rely on inheritance. The delegated task must be *fixed and
-bounded* (a written brief with objective gates); if it can't be
-specified that tightly, it's the orchestrator's own work.
+Model picks: **Haiku** for read-only volume (codebase exploration,
+grep sweeps, doc lookups — `explorer`), **Sonnet** for bounded
+mechanical execution from a written spec (regens, migrations, test
+runs, small features with a complete contract), **Opus** for
+execution that needs local judgment inside the contract (a multi-file
+UI implementation from a design document, a root-cause with a written
+decision procedure, a library adoption). Every `Agent` delegation
+states its model explicitly — never rely on inheritance. The
+delegated task is *fixed and bounded* (a written brief with objective
+gates, per `.claude/skills/brief`); if it can't be specified that
+tightly, the missing piece is a decision the orchestrator still owes.
 
 **Every dispatched BUILD agent works in its own git worktree; the main
 checkout belongs to the orchestrator.** State it in the brief. Before ANY
