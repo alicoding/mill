@@ -7,6 +7,31 @@
   "minMillVersion": "0.9.0",
   "capabilities": [],
   "contributes": {
-    "canvasObjects": [{ "kind": "index" }]
+    "canvasObjects": [
+      {
+        "kind": "index"
+      }
+    ],
+    "commands": [
+      {
+        "id": "refresh",
+        "label": "Refresh the board index"
+      }
+    ],
+    "tools": [
+      {
+        "name": "refresh_board_index",
+        "description": "Lists the board again in every board index on the canvas.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "effect": "read",
+        "run": {
+          "kind": "command",
+          "commandId": "refresh"
+        }
+      }
+    ]
   }
 }

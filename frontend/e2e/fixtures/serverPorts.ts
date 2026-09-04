@@ -289,3 +289,11 @@ export const UPDATES_USERCHECK_FAIL_MCP_BASE_PORT = 11260
 // clear of every family above, ends that arithmetic for this spec.
 export const RUNTIME_PLUGIN_RELOAD_SERVER_BASE_PORT = 11280
 export const RUNTIME_PLUGIN_RELOAD_MCP_BASE_PORT = 11300
+
+// runtime-plugin-mcp.spec.ts's own dedicated pair (goal 0324): it
+// drives the real MCP transport against a server whose plugins dir is
+// its own copy, and its assertions read the GLOBAL tool list -- which
+// every other spec's plugins would change. Offsets 0/2/4 within it,
+// same shape as RUNTIME_PLUGIN_RELOAD_* above.
+export const RUNTIME_PLUGIN_MCP_SERVER_BASE_PORT = 11320
+export const RUNTIME_PLUGIN_MCP_MCP_BASE_PORT = 11340

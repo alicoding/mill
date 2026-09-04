@@ -35,6 +35,9 @@ user in Settings, never shipped by the plugin.
 id: string;
 ```
 
+id is this command's slug. Declaring the SAME id in the manifest's
+`contributes.commands` is what lets a manifest tool name it.
+
 ***
 
 ### label

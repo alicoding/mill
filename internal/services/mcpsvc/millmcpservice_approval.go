@@ -163,11 +163,16 @@ func (m *MillMCPService) registerWriteExecutor(toolName string, fn mcpWriteExecu
 // execute dispatches toolName's registered executor. m.executors is
 // populated once at construction and never mutated afterward (see
 // registerWriteExecutor's doc comment), so this is safe to call without
-// a lock.
+// a lock; a plugin's write tool is the one kind that comes and goes at
+// runtime, so it is looked up second, behind its own lock. A write
+// parked before a restart still resolves by name afterwards, because
+// the plugin sync re-registers the same executor under the same name.
 func (m *MillMCPService) execute(toolName, argsJSON string) (string, error) {
 	fn, ok := m.executors[toolName]
 	if !ok {
-		return "", fmt.Errorf("no registered executor for MCP write tool %q", toolName)
+		if fn, ok = m.pluginExecutor(toolName); !ok {
+			return "", fmt.Errorf("no registered executor for MCP write tool %q", toolName)
+		}
 	}
 	return fn(argsJSON)
 }

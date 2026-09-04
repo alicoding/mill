@@ -78,3 +78,16 @@ func TestConformDir_EveryShippedPluginConforms(t *testing.T) {
 		}
 	}
 }
+
+// The conformance checker an author runs before shipping reports a
+// tool's declare-first problems in the author's own words, not a
+// generic "invalid manifest".
+func TestConformDir_ReportsAToolNamingAnUndeclaredCommand(t *testing.T) {
+	manifest := `{"id":"toolish","name":"Toolish","version":"1.0.0","contributes":{"tools":[` +
+		`{"name":"refresh_index","description":"Lists again.","inputSchema":{"type":"object","properties":{}},"effect":"read","run":{"kind":"command","commandId":"refresh"}}]}}`
+	dir := writeConformPlugin(t, t.TempDir(), "toolish", manifest, map[string]string{"main.js": "export function activate() {}"})
+	problems := ConformDir(dir, "")
+	if len(problems) != 1 || !strings.Contains(problems[0], `names command "refresh", which contributes.commands does not declare`) {
+		t.Fatalf("want the undeclared-command rule stated, got %v", problems)
+	}
+}

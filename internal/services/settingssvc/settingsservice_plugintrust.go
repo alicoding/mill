@@ -90,6 +90,7 @@ func (s *SettingsService) SetPluginAllowed(id string, allowed bool) error {
 		return err
 	}
 	dataevent.Emit("extension", id)
+	s.notifyPluginPolicyChanged()
 	return nil
 }
 

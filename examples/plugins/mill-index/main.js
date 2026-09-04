@@ -14,12 +14,18 @@
 /** @param {import('../../../frontend/plugin-sdk').MillPluginAPI} api */
 export function activate(api) {
 	const faces = new Set()
-	api.on('contents:changed', () => {
+	const redrawAll = () => {
 		for (const el of faces) {
 			if (!el.isConnected) { faces.delete(el); continue }
 			void render(el)
 		}
-	})
+	}
+	api.on('contents:changed', redrawAll)
+
+	// Declared in the manifest (contributes.commands) and named by the
+	// manifest's own tool, so the same refresh a person runs from the
+	// palette is what an agent calls over MCP -- one action, two doors.
+	api.registerCommand({ id: 'refresh', label: 'Refresh the board index', run: redrawAll })
 
 	api.registerCanvasObject({
 		kind: 'index',

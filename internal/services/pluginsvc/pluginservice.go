@@ -72,6 +72,14 @@ type ManifestContributes struct {
 	// so the Extensions row can state them before the plugin runs and
 	// so activate-time registerView is checked against a declaration.
 	Views []ViewContribution `json:"views"`
+	// Commands (docs/goals/0324): the palette commands the plugin
+	// registers at activate() time. Declaring one is what lets a tool
+	// name it; an undeclared registerCommand still works.
+	Commands []CommandContribution `json:"commands"`
+	// Tools (docs/goals/0324): the automation-reachable surface --
+	// which of this plugin's commands, steps and reads an agent may
+	// call over MCP, each with its own typed input contract.
+	Tools []ToolContribution `json:"tools"`
 }
 
 // ViewContribution declares one plugin-owned work tab: a slug id
@@ -181,6 +189,10 @@ type PluginService struct {
 	// signingKeys is the signed tier's policy source
 	// (pluginservice_signing.go), nil until wired.
 	signingKeys func() []string
+	// runCommand is the command-tool bridge to the webview
+	// (pluginservice_toolrun.go), injected so a test never needs a live
+	// window.
+	runCommand func(pluginID, commandID string) (string, error)
 }
 
 func New(dir string, guardrail *guardrailsvc.GuardrailService, appVersion string) *PluginService {
@@ -188,7 +200,7 @@ func New(dir string, guardrail *guardrailsvc.GuardrailService, appVersion string
 	// is a documented no-op (ErrUnsupportedInServerMode), so an approved
 	// open-url in server mode -- every e2e run of the plugin spec --
 	// never reaches the machine's real browser. The runtime opener did.
-	return &PluginService{dir: dir, guardrail: guardrail, openURL: osopen.Open, appVersion: appVersion}
+	return &PluginService{dir: dir, guardrail: guardrail, openURL: osopen.Open, appVersion: appVersion, runCommand: invokeCommandInWebview}
 }
 
 func (p *PluginService) openInOS(url string) error {
@@ -371,6 +383,12 @@ func validateContributes(c ManifestContributes) string {
 		return problem
 	}
 	if problem := validateViews(c.Views); problem != "" {
+		return problem
+	}
+	if problem := validateCommands(c.Commands); problem != "" {
+		return problem
+	}
+	if problem := validateTools(c); problem != "" {
 		return problem
 	}
 	seen := map[string]bool{}

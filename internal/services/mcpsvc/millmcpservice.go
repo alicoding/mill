@@ -16,6 +16,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/mcpaudit"
@@ -106,6 +107,18 @@ type MillMCPService struct {
 	// gateWrite falls through to its unconditional-ask park, exactly the
 	// pre-rebase behavior).
 	guard *guardrailsvc.GuardrailService
+	// plugins is the plugin plane (millmcpservice_plugins.go, goal
+	// 0324), late-bound via SetPluginCatalog; nil until wired, in which
+	// case list_plugins answers empty and no plugin tool exists.
+	plugins PluginCatalog
+	// pluginToolNames / pluginExecutors are the currently-registered
+	// plugin tools. Unlike every compiled-in tool these come and go
+	// while the server runs (a plugin turned off, reloaded), so they
+	// carry their own lock rather than riding executors' construct-once
+	// guarantee.
+	pluginMu        sync.RWMutex
+	pluginToolNames map[string]bool
+	pluginExecutors map[string]mcpWriteExecutor
 }
 
 // pendingActionStore is the durable park mcpsvc's gated-write lifecycle
@@ -165,7 +178,12 @@ func (m *MillMCPService) SetGuardrailService(g *guardrailsvc.GuardrailService) {
 // mcpauditsvc.ServerMiddleware) -- optional, so a test server with
 // nothing to observe passes none.
 func NewMillMCPService(version string, comp *compositionsvc.CompositionService, cfg *configuresvc.ConfigureService, store settings.Store, userdocs fs.FS, middleware ...mcp.Middleware) *MillMCPService {
-	m := &MillMCPService{comp: comp, cfg: cfg, version: version, store: store, executors: map[string]mcpWriteExecutor{}, userdocs: userdocs}
+	m := &MillMCPService{
+		comp: comp, cfg: cfg, version: version, store: store, userdocs: userdocs,
+		executors:       map[string]mcpWriteExecutor{},
+		pluginToolNames: map[string]bool{},
+		pluginExecutors: map[string]mcpWriteExecutor{},
+	}
 	m.server = mcpserving.New("mill", version, serverInstructions, middleware...)
 	m.registerTools()
 	m.registerContractResources()

@@ -196,6 +196,7 @@ func PageIndex() []DocPage {
 		{"reference/register-a-command.md", "Register a command", "walks a new Command registry entry end to end, quoting a real registered command"},
 		{"agents/connect-mcp.md", "Automate with agents", "connecting over MCP and what agents can do"},
 		{"agents/diagrams.md", "Edit a diagram with an agent", "reading a diagram's shapes by id and adding, changing, deleting and importing them in place"},
+		{"agents/plugins.md", "What plugins expose to agents", "listing installed plugins, calling a plugin's declared tools, and how a plugin write parks"},
 		{"trust/data-and-safety.md", "Trust, data, and safety", "no phone-home, local data, honest limits"},
 	}
 }

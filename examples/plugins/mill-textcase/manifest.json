@@ -18,10 +18,47 @@
             "label": "Mode",
             "description": "Which case the text becomes.",
             "type": "options",
-            "options": ["upper", "lower", "title"],
+            "options": [
+              "upper",
+              "lower",
+              "title"
+            ],
             "default": "upper"
           }
         ]
+      }
+    ],
+    "tools": [
+      {
+        "name": "change_text_case",
+        "description": "Changes the case of text: upper, lower or title.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "The text to change."
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "upper",
+                "lower",
+                "title"
+              ],
+              "description": "Which case the text becomes."
+            }
+          },
+          "required": [
+            "text",
+            "mode"
+          ]
+        },
+        "effect": "read",
+        "run": {
+          "kind": "step",
+          "stepId": "text-case"
+        }
       }
     ]
   }

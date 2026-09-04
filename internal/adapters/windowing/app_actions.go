@@ -110,3 +110,47 @@ func WaitForAnyEvent(timeout time.Duration, names ...string) (name string, data 
 		return "", nil, false
 	}
 }
+
+// RequestReply emits requestEvent carrying payload and blocks until a
+// replyEvent arrives that accept judges to be this request's own
+// answer, or the timeout passes. The subscription is installed BEFORE
+// the emit, so a page that answers immediately is never missed; accept
+// is what makes several in-flight requests safe on one event name.
+// Never call on the main thread -- bound-method calls and MCP tool
+// handlers already run on their own goroutine.
+func RequestReply(requestEvent string, payload any, replyEvent string, timeout time.Duration, accept func(data any) bool) (any, bool) {
+	app := application.Get()
+	if app == nil {
+		return nil, false
+	}
+	done := make(chan any, 1)
+	off := app.Event.On(replyEvent, func(ev *application.CustomEvent) {
+		if !accept(ev.Data) {
+			return
+		}
+		select {
+		case done <- ev.Data:
+		default:
+		}
+	})
+	defer off()
+	app.Event.Emit(requestEvent, payload)
+	select {
+	case d := <-done:
+		return d, true
+	case <-time.After(timeout):
+		return nil, false
+	}
+}
+
+// Subscribe installs a listener for a custom event the page emits and
+// returns the unsubscribe function; it reports nil with no live app
+// (headless test, server build before the app exists), so a caller can
+// wire it unconditionally.
+func Subscribe(name string, fn func(data any)) func() {
+	app := application.Get()
+	if app == nil {
+		return func() {}
+	}
+	return app.Event.On(name, func(ev *application.CustomEvent) { fn(ev.Data) })
+}

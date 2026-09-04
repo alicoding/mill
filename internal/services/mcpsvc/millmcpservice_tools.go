@@ -94,6 +94,7 @@ func (m *MillMCPService) registerTools() {
 	m.registerAuthoringTools()
 	m.registerDebugTools()
 	m.registerAtlasTools()
+	m.registerPluginTools()
 
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "export_workflow",

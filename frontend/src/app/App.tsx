@@ -35,6 +35,7 @@ import { SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
 import { pageIconFor, pageLabelFor } from './pageMeta'
 import { useMillNavigate } from './useMillNavigate'
 import { useBeforeQuitFlush } from './useBeforeQuitFlush'
+import { usePluginToolBridge } from './usePluginToolBridge'
 import { UnsavedChangesDialog } from './UnsavedChangesDialog'
 import { useReviewDeepLink } from './useReviewDeepLink'
 import { useKeymapDispatch } from './useKeymapDispatch'
@@ -198,6 +199,7 @@ function App() {
 
   useMillNavigate(setView);
   useBeforeQuitFlush();
+  usePluginToolBridge();
   useReviewDeepLink(setView);
 
   const notifyBrowserTab = useBrowserNotify();

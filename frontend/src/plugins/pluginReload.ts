@@ -1,4 +1,5 @@
 import i18n from 'i18next'
+import { Events } from '@wailsio/runtime'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { SettingsService } from '../shared/bindings'
@@ -107,6 +108,10 @@ export async function reloadPlugin(pluginId: string): Promise<void> {
 	} finally {
 		resetLazyArrays()
 		notifyPluginReloaded()
+		// A reload happens entirely in the page, so the page is what
+		// tells the host its manifest was re-read -- the enable/disable
+		// path is a bound call and re-syncs itself (goal 0324).
+		void Events.Emit('plugin-contributions-changed', pluginId)
 	}
 }
 

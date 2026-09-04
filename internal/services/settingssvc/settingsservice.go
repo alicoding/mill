@@ -54,7 +54,13 @@ type SettingsService struct {
 	// pluginHasher is the plugin lock's hash source
 	// (settingsservice_pluginlock.go), nil until wired.
 	pluginHasher PluginHasher
-	window       *windowing.Window
+	// pluginPolicyChanged runs after a change to which plugins may run
+	// (turned on/off, consent granted/withdrawn), so host-side
+	// consumers of the plugin catalog re-read it -- the MCP plane's
+	// plugin tools appear and disappear with the toggle, never only
+	// after a restart. nil until wired.
+	pluginPolicyChanged func()
+	window              *windowing.Window
 	// leave is the quit gate's state (settingsservice_flush.go).
 	leave leaveGate
 	// panel is the Quick Panel window (docs/adr/0033) -- a second,

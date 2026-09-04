@@ -439,3 +439,37 @@ func TestDiagramMCP_CreateBoardObjectOnACardAndItsTitleFallback(t *testing.T) {
 		"kind": "shape", "content": "whatever",
 	}, "content is accepted for: diagram, sheet")
 }
+
+// clearLabel is how an agent removes a cell's text: an empty label
+// still means unchanged, so erasing needs its own flag.
+func TestDiagramMCP_ClearLabelErasesACellsText(t *testing.T) {
+	f := newDiagramMCPFixture(t, "127.0.0.1:18168")
+	f.enableUnattendedWrites(t)
+
+	f.h.call(t, "atlas_diagram_edit_cells", map[string]any{
+		"objectId": f.objectID,
+		"patches":  []map[string]any{{"id": "a", "label": ""}},
+	})
+	if label := f.labelOf(t, "a"); label != "Start" {
+		t.Fatalf("an empty label changed the cell's text to %q, want Start left alone", label)
+	}
+
+	f.h.call(t, "atlas_diagram_edit_cells", map[string]any{
+		"objectId": f.objectID,
+		"patches":  []map[string]any{{"id": "a", "clearLabel": true}},
+	})
+	if label := f.labelOf(t, "a"); label != "" {
+		t.Fatalf("clearLabel left the text %q behind", label)
+	}
+}
+
+func (f *diagramMCPFixture) labelOf(t *testing.T, cellID string) string {
+	t.Helper()
+	for _, c := range f.read(t).Cells {
+		if c.ID == cellID {
+			return c.Label
+		}
+	}
+	t.Fatalf("no cell %q in the diagram", cellID)
+	return ""
+}
