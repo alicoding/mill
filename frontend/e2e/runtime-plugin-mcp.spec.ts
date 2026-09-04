@@ -52,7 +52,7 @@ test('list_plugins reports the installed plugins and their declared tools become
 
 test('turning a plugin off in Settings removes its tool from the MCP tool list, with no restart', async () => {
 	const { page, close } = await launchWithPlugins(2, { ports: PORTS, extraExamples: ['mill-textcase'] })
-	const client = await connectMCPClient(0, PORTS.mcp)
+	const client = await connectMCPClient(0, PORTS.mcp + 2)
 	try {
 		await page.goto('/')
 		expect(await toolNames(client)).toContain('plugin_mill-textcase_change_text_case')
@@ -63,8 +63,10 @@ test('turning a plugin off in Settings removes its tool from the MCP tool list, 
 		await row.locator('[data-testid="extensions-plugin-toggle"]').click()
 
 		await expect.poll(() => toolNames(client)).not.toContain('plugin_mill-textcase_change_text_case')
-		const refused = await client.callTool({ name: 'plugin_mill-textcase_change_text_case', arguments: { text: 'x', mode: 'upper' } })
-		expect(refused.isError, 'a turned-off plugin\'s tool no longer runs').toBe(true)
+		// Gone from the server entirely, not merely refused: calling it
+		// now is calling a tool that does not exist.
+		await expect(client.callTool({ name: 'plugin_mill-textcase_change_text_case', arguments: { text: 'x', mode: 'upper' } }))
+			.rejects.toThrow(/unknown tool/)
 	} finally {
 		await client.close()
 		await close()
@@ -73,7 +75,7 @@ test('turning a plugin off in Settings removes its tool from the MCP tool list, 
 
 test('a command-kind tool runs the plugin\'s own registered command in the open window', async () => {
 	const { page, close } = await launchWithPlugins(4, { ports: PORTS })
-	const client = await connectMCPClient(0, PORTS.mcp)
+	const client = await connectMCPClient(0, PORTS.mcp + 4)
 	try {
 		// The bridge only answers from a loaded main window -- that is
 		// the point of a command tool: it runs what the person's own
