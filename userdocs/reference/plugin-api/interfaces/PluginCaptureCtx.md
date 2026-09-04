@@ -51,3 +51,23 @@ done: () => void;
 #### Returns
 
 `void`
+
+***
+
+### onThemeChange
+
+```ts
+onThemeChange: PluginThemeSubscribe;
+```
+
+onThemeChange registers cb for every later appearance change.
+
+***
+
+### theme
+
+```ts
+theme: PluginTheme;
+```
+
+The appearance this capture is rendering under.

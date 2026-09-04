@@ -113,6 +113,16 @@ user first resizes it (the wire shape's own convention).
 
 ***
 
+### onThemeChange
+
+```ts
+onThemeChange: PluginThemeSubscribe;
+```
+
+onThemeChange registers cb for every later appearance change.
+
+***
+
 ### requestGuardedAction
 
 ```ts
@@ -141,6 +151,16 @@ owner's guardrail rules and may require live approval.
 #### Returns
 
 `Promise`\<[`GuardedActionResult`](GuardedActionResult.md)\>
+
+***
+
+### theme
+
+```ts
+theme: PluginTheme;
+```
+
+The appearance this face is rendering under.
 
 ***
 

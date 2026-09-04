@@ -34,6 +34,7 @@
 - [PluginNoticeInput](interfaces/PluginNoticeInput.md)
 - [PluginSettingsAPI](interfaces/PluginSettingsAPI.md)
 - [PluginStorageAPI](interfaces/PluginStorageAPI.md)
+- [PluginTheme](interfaces/PluginTheme.md)
 - [PluginViewCtx](interfaces/PluginViewCtx.md)
 - [PluginViewDecl](interfaces/PluginViewDecl.md)
 - [PluginWriteResult](interfaces/PluginWriteResult.md)
@@ -42,3 +43,4 @@
 
 - [CanvasEditRoute](type-aliases/CanvasEditRoute.md)
 - [CanvasStyleFieldDecl](type-aliases/CanvasStyleFieldDecl.md)
+- [PluginThemeSubscribe](type-aliases/PluginThemeSubscribe.md)

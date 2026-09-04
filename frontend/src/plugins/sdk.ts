@@ -187,13 +187,10 @@ export interface CanvasObjectMenuItem {
   enabled?: (ctx: CanvasObjectFaceCtx) => boolean
 }
 
-/** PluginTheme -- the resolved appearance a plugin's face, view or
- * capture is rendering under. `mode` is the settled light/dark answer
- * (never "auto"); `scheme` is the exact color scheme, e.g. "dark_dimmed"
- * or "light_high_contrast". The same pair is on the mount root as
+/** PluginTheme -- the resolved appearance a face, view or capture is
+ * rendering under. The same pair rides the mount root as
  * data-mill-theme/data-mill-scheme, so plain CSS can branch on it
- * without reading this. The plugin theming reference documents the
- * variables a plugin may rely on. */
+ * without reading this. */
 export interface PluginTheme {
   /** The settled light/dark answer -- never "auto". */
   mode: 'light' | 'dark'
@@ -201,9 +198,8 @@ export interface PluginTheme {
   scheme: string
 }
 
-/** PluginThemeSubscribe registers cb for every later appearance change
- * and returns the unsubscribe. cb receives the new theme; the mount
- * root's attributes are already updated when it runs. */
+/** PluginThemeSubscribe registers cb for every later appearance
+ * change and returns the unsubscribe. */
 export type PluginThemeSubscribe = (cb: (theme: PluginTheme) => void) => () => void
 
 export interface CanvasObjectFaceCtx {
