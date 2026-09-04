@@ -538,77 +538,56 @@
   },
   {
     "id": "settings.open.appearance",
-    "label": "Open Settings → Appearance",
+    "label": "Settings › Appearance",
     "binding": null,
     "surface": null,
     "enabled": false
   },
   {
     "id": "settings.open.backups",
-    "label": "Open Settings → Backups",
+    "label": "Settings › Backups",
     "binding": null,
     "surface": null,
     "enabled": false
   },
   {
-    "id": "settings.open.contract",
-    "label": "Open Settings → Contract",
+    "id": "settings.open.connections",
+    "label": "Settings › Connections",
     "binding": null,
     "surface": null,
     "enabled": false
   },
   {
     "id": "settings.open.extensions",
-    "label": "Open Settings → Extensions",
+    "label": "Settings › Extensions",
     "binding": null,
     "surface": null,
     "enabled": false
   },
   {
     "id": "settings.open.general",
-    "label": "Open Settings → General",
-    "binding": null,
-    "surface": null,
-    "enabled": false
-  },
-  {
-    "id": "settings.open.global-hotkey",
-    "label": "Open Settings → Global hotkey",
-    "binding": null,
-    "surface": null,
-    "enabled": false
-  },
-  {
-    "id": "settings.open.keyboard-shortcuts",
-    "label": "Open Settings → Keyboard Shortcuts",
-    "binding": null,
-    "surface": null,
-    "enabled": false
-  },
-  {
-    "id": "settings.open.mcp-access",
-    "label": "Open Settings → MCP access",
+    "label": "Settings › General",
     "binding": null,
     "surface": null,
     "enabled": false
   },
   {
     "id": "settings.open.notifications",
-    "label": "Open Settings → Notifications",
+    "label": "Settings › Notifications",
     "binding": null,
     "surface": null,
     "enabled": false
   },
   {
-    "id": "settings.open.remote-access",
-    "label": "Open Settings → Remote access",
+    "id": "settings.open.shortcuts",
+    "label": "Settings › Shortcuts",
     "binding": null,
     "surface": null,
     "enabled": false
   },
   {
     "id": "settings.open.updates",
-    "label": "Open Settings → Updates",
+    "label": "Settings › Updates",
     "binding": null,
     "surface": null,
     "enabled": false

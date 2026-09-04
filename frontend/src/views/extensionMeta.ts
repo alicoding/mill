@@ -1,4 +1,5 @@
 import type { Icon } from '@primer/octicons-react'
+import type { DisplayDensity } from '../shared/density'
 import type { EditRouteDecl, ObjectSource } from '../atlas/objectSeams'
 import type { AtlasToolShape } from '../atlas/atlasTools'
 import type { AtlasNounGroup, ExtensionSettingDecl, ToolLessNounExtension } from '../atlas/atlasNounRegistry'
@@ -27,6 +28,11 @@ export interface ExtensionRowSource {
   id: string
   icon: Icon
   label: string
+  // The tray/palette verb phrase ("Add an image"), kept alongside the
+  // noun title so the detail pane's "What it adds" can name the
+  // command this noun contributes. Absent for a tool-less noun, which
+  // has no creation command at all.
+  commandLabel?: string
   description?: string
   group: AtlasNounGroup
   source?: ObjectSource
@@ -49,6 +55,7 @@ export function toolRowSource(tool: AtlasToolShape): ExtensionRowSource {
     id: tool.id,
     icon: tool.icon,
     label: tool.nounName,
+    commandLabel: tool.label,
     description: tool.description,
     group: tool.group,
     source: tool.content?.source,
@@ -161,4 +168,26 @@ export function reachLabel(capabilities: readonly string[] | undefined): string 
 // own build version rather than a per-extension one.
 export function versionLabel(appVersion: string): string {
   return `Ships with Mill v${appVersion}`
+}
+
+// Row geometry (goal 0321): the Extensions list is a scan surface, so
+// its rows follow display density directly rather than through the
+// shared card padding. Driven from JS (an inline padding) rather than
+// a CSS var so the mapping has ONE source a unit test can pin --
+// the same props-not-styles shape the adopted table grid already uses
+// for its own row heights.
+//
+// ROW_CONTENT_HEIGHT is the 14px title line's own box; the floor keeps
+// a Compact row tall enough for the 16px leading icon it carries,
+// which the raw Compact token (2px) is not.
+const ROW_CONTENT_HEIGHT = 20
+const COMPACT_PAD_Y = 6
+const COMFORTABLE_PAD_Y = 12
+
+export function extensionRowPadY(density: DisplayDensity): number {
+  return density === 'compact' ? COMPACT_PAD_Y : COMFORTABLE_PAD_Y
+}
+
+export function extensionRowHeight(density: DisplayDensity): number {
+  return extensionRowPadY(density) * 2 + ROW_CONTENT_HEIGHT
 }

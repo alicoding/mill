@@ -1,7 +1,7 @@
 import type { Command } from './commands'
 import { useAppStore } from './store'
 import { BackupService, SettingsService, UpdateState } from './bindings'
-import { SETTINGS_SECTIONS, resolveSectionTitle } from './settingsSections'
+import { SETTINGS_GROUPS, resolveGroupTitle } from './settingsGroups'
 import { useUpdateNoticeStore } from './updateNoticeStore'
 import { useUISignalStore } from './uiSignalStore'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
@@ -96,16 +96,18 @@ export const SETTINGS_COMMANDS: Command[] = [
     defaultBinding: null,
     run: () => useAppStore.getState().setView({ kind: 'settings', section: 'backups' }),
   },
-  // One palette-only deep-link command per registered Settings section
-  // (goal 0077, shared/settingsSections.ts) -- always unbound
+  // One palette-only deep-link command per registered Settings GROUP
+  // (goal 0321, shared/settingsGroups.ts) -- always unbound
   // (defaultBinding: null), discoverable only by searching the palette,
   // same "reserve the id without a combo" shape panel.applyClipboard
-  // above already uses.
-  ...SETTINGS_SECTIONS.map((section): Command => ({
-    id: `settings.open.${section.id}`,
-    label: `Open Settings → ${resolveSectionTitle(section)}`,
+  // above already uses. The group argument is carried by the id, the
+  // id-per-command convention every other parameterized command here
+  // follows (atlas.create.<kind>, plugin.reload.<id>).
+  ...SETTINGS_GROUPS.map((group): Command => ({
+    id: `settings.open.${group.id}`,
+    label: `Settings › ${resolveGroupTitle(group)}`,
     defaultBinding: null,
-    run: () => useAppStore.getState().setView({ kind: 'settings', section: section.id }),
+    run: () => useAppStore.getState().setView({ kind: 'settings', section: group.id }),
   })),
   // The one update state machine's own commands (goal 0220 S1) -- the
   // pill and the Settings primary button both call these, never their

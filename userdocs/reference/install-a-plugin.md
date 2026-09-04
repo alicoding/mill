@@ -11,10 +11,11 @@ installing one is copying that folder into Mill's plugins folder.
 2. Copy the plugin's folder in — the folder name must match the
    plugin's id.
 3. Press **Reload all**. The plugin's tool appears in the canvas tray,
-   and its row appears under **Installed plugins** with its name,
-   version, author, and what it can request.
+   and its row appears under **Installed** with its name and one line
+   about it. Click the row to open its page: version, author, what it
+   adds, what it can request, and which hosts it can reach.
 
-A plugin that can't load shows exactly why on its row — a missing
+A plugin that can't load shows exactly why on its page — a missing
 file, invalid manifest, or a capability Mill doesn't recognize —
 instead of silently doing nothing. A plugin whose manifest sets
 `minMillVersion` to a version newer than your Mill is refused the
@@ -48,43 +49,52 @@ loads the same plain file either way. Every type is listed in the
 
 ## Reloading one plugin while you work
 
-Each installed plugin's row has a **Reload** button, and the command
+Each installed plugin's page has a **Reload** button, and the command
 palette carries the same action as "Reload <plugin>". It re-reads that
 plugin's `main.js` and re-registers everything it contributes — its
 tools, views, captures, and commands — without restarting Mill.
 Objects already on your boards stay where they are.
 
 Editing a plugin's files changes what you allowed it to run, so the
-reload asks you to allow it again on its row first. **Reload all** at
-the top of the section is the other half: it restarts Mill's plugin
+reload asks you to allow it again on its page first. **Reload all** at
+the top of the list is the other half: it restarts Mill's plugin
 loading entirely, which is how a folder you just copied in is noticed.
 
 ## Turning a plugin off
 
 Each installed plugin has the same switch every built-in extension
-has. Turning it off removes its tool from the tray and palette;
-objects it already placed stay on your boards untouched.
+has, on its row. Turning it off removes its tool from the tray and
+palette; objects it already placed stay on your boards untouched.
+
+## Removing a plugin
+
+On the plugin's page, open the **…** menu and choose **Remove…**. Mill
+asks first, then moves the plugin's folder to the Trash — nothing is
+deleted, so you can put it back. Objects it created stay on the board
+as unknown kinds until it is installed again, and a folder you restore
+asks to be allowed again, the way any newly installed plugin does.
+Plugins that ship inside Mill have no Remove.
 
 ## Before a plugin runs
 
 A plugin you install after Mill first ran with this check waits for
-your review: Settings > Extensions lists it with what it can request,
-which hosts it can reach, and what it catches, and nothing of it runs
-until you click **Allow** and reload. A notice in the footer tells you
+your review: its page in Settings > Extensions states what it can
+request, which hosts it can reach, and what it catches, and nothing of
+it runs until you click **Allow** there and reload. A notice in the footer tells you
 when one is waiting. Plugins that were already installed when the
 check arrived keep running; only new arrivals wait.
 
 Mill remembers what you allowed: the plugin's files are fingerprinted
 at that moment, and if they change later — an update you copied in,
 or an edit — the plugin stops until you look again and allow it once
-more. The row says "Its files changed since you allowed it."
+more. Its page says "Its files changed since you allowed it."
 
 An administrator can pin which plugins may run at all by writing an
 allow-list into Mill's settings file — the key
 `settings-plugin-allowlist`, a JSON array of plugin ids, placed the
 way device-management tooling places any managed setting. When it is
 set, Settings > Extensions reports it and every plugin off the list
-shows as blocked, with no way to turn it on from the app. The Drawing
+shows as blocked on its page, with no switch on its row. The Drawing
 plugin built into Mill is exempt.
 
 An administrator can also require signatures: the key
@@ -120,8 +130,8 @@ by Mill itself, never by the plugin's own code.
 
 A plugin can claim the two ways outside content lands on the board:
 a file dragged in from your file manager, and content pasted from
-another app. Claims are declared in the manifest, so the Extensions
-row shows what a plugin catches before it ever runs:
+another app. Claims are declared in the manifest, so a plugin's
+Extensions page shows what it catches before it ever runs:
 
 ```json
 "contributes": {
@@ -156,7 +166,7 @@ A plugin isn't limited to click-to-place objects: it can register a
 DRAG tool that rides the same gesture engine, style picker, and
 live-preview overlay Mill's own drawing tools use — in fact Mill's
 own pencil, shape, eraser, and laser ARE such a plugin (**Drawing**,
-built into the app; its row sits under Installed plugins, and a
+built into the app; its row sits under Installed, and a
 folder named `mill-drawing` in your plugins folder replaces it). The
 declaration fields that open this up:
 
@@ -203,8 +213,8 @@ declaration fields that open this up:
 ## Settings
 
 A plugin declares its own settings in the manifest, and Mill does the
-rest: the controls render inside the plugin's row under Installed
-plugins, the values are stored centrally, and the plugin reads them
+rest: the controls render on the plugin's page under Installed, the
+values are stored centrally, and the plugin reads them
 back through `api.settings`. A plugin never builds a settings screen.
 
 ```json
@@ -229,8 +239,8 @@ Five types: `boolean` (a checkbox), `string` (a text field),
 vault's entries — see below). `default` is the value in effect until
 the user changes the control; a mistyped manifest — a default of the
 wrong type, an enum default missing from its options, a default on a
-`secretRef` — blocks the plugin from loading and names the key in its
-row.
+`secretRef` — blocks the plugin from loading and names the key on its
+page.
 
 A `secretRef` setting names a credential without ever holding it:
 
@@ -244,7 +254,7 @@ stored value is a reference, and `api.settings.get('auth')` answers
 the entry's title (or an empty string when nothing is picked). The
 value itself only ever travels inside `api.fetch` — see Reaching the
 network. A picked entry that is later deleted shows "This secret no
-longer exists. Pick another." in the row, and a request naming it is
+longer exists. Pick another." on its page, and a request naming it is
 refused with the same words.
 
 ```js

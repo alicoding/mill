@@ -5,6 +5,7 @@ import { launchWithPlugins, runFromPalette } from './fixtures/runtimePlugins'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { clickAtlasTrayTool } from './fixtures/atlasTray'
 import { contextMenu } from './fixtures/contextMenu'
+import { openPluginDetail } from './fixtures/settingsNav'
 
 
 // The platform DOORS a runtime plugin gets beyond rendering its own
@@ -41,11 +42,10 @@ test('a plugin declares settings in its manifest; Mill renders them, stores them
 		await face.locator('[data-testid="bookmark-url-input"]').press('Enter')
 		await expect(title).toHaveText('example.com')
 
-		// Settings: the row renders both declared controls.
-		await page.getByRole('link', { name: 'Settings' }).click()
-		const row = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-bookmark"]')
-		await row.scrollIntoViewIfNeeded()
-		const settings = row.locator('[data-testid="extensions-plugin-settings"]')
+		// Settings: the plugin's DETAIL pane renders both declared
+		// controls (goal 0321 -- a row is identity only).
+		const detail = await openPluginDetail(page, 'mill-bookmark')
+		const settings = detail.getByTestId('extensions-detail-settings')
 		await expect(settings).toBeVisible()
 		const styleSelect = settings.locator('[data-testid="extension-setting-mill-bookmark-titleStyle"] select')
 		await expect(styleSelect).toHaveValue('hostname')
@@ -317,10 +317,8 @@ export function activate(api) {
 	})
 	try {
 		await page.goto('/')
-		await page.getByRole('link', { name: 'Settings' }).click()
-		const row = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="view-probe"]')
-		await row.scrollIntoViewIfNeeded()
-		await expect(row.getByTestId('extensions-plugin-views')).toHaveText('Adds views: Probe issues')
+		const detail = await openPluginDetail(page, 'view-probe')
+		await expect(detail.getByTestId('extensions-detail-adds')).toContainText('Views: Probe issues')
 
 		await page.getByRole('link', { name: 'Atlas' }).click()
 		await expect(page.getByTestId('atlas-board')).toBeVisible()

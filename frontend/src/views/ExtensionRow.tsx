@@ -1,115 +1,72 @@
-import { ChevronRightIcon } from '@primer/octicons-react'
-import { useTranslation } from 'react-i18next'
-import { Label, Link, Stack, Text, ToggleSwitch } from '@primer/react'
-import { useAppStore } from '../shared/store'
-import { ExtensionSettingControl } from './ExtensionSettingControl'
-import { descriptionLabel, editRouteLabel, groupLabel, reachLabel, sourceLabel, versionLabel, type ExtensionRowSource } from './extensionMeta'
-import listStyles from '../shared/ListCard.module.css'
+import type { Icon } from '@primer/octicons-react'
+import { Label, Text, ToggleSwitch } from '@primer/react'
+import { useDisplayDensity } from '../shared/density'
+import { extensionRowPadY } from './extensionMeta'
 import styles from './ExtensionsSection.module.css'
 
-// Every canvas tool is an Atlas object -- one Docs link fits every row
-// (goal 0211's plugin-manager UX slice: "one link, not per-row bespoke
-// URLs"), never a per-tool URL guess.
-const ATLAS_CONCEPTS_DOCS_PAGE = 'concepts/atlas.md'
-
-// ExtensionRow -- one row of Settings > Extensions, collapsed to
-// icon/noun-title/meta by default, expanding (native <details>, see
-// ExtensionsSection.module.css's own header comment) into a registry-
-// derived detail panel: description, meta chips (including the group,
-// dropped from the collapsed meta line since the section heading above
-// already states it once), an optional disable-scope note, the honest
-// reach line, the app's own build version, and the shared Docs link.
-// The row's own title is the noun (`row.label`, sourced from nounName
-// for a tray tool -- goal 0237 S3's review rider), never the command
-// verb phrase ("Add a note") that surfaces elsewhere (tray tooltips,
-// the command palette). Every value here is READ off the noun's own
-// registered descriptor, normalized into ExtensionRowSource by
-// extensionMeta.ts's toolRowSource/toolLessRowSource -- nothing here is
-// hand-curated per extension, and this component never itself branches
-// on whether the row came from a tray tool or a tool-less noun.
-export function ExtensionRow({ row, builtIn, enabled, appVersion, onToggle }: {
-  row: ExtensionRowSource
-  builtIn: boolean
+// One Extensions row -- the SAME component for a built-in noun and an
+// installed plugin (goal 0321). A row is identity only: icon, name,
+// one line of description, and the control that turns it on. Nothing
+// expands here: everything a row used to unfold inline (chips, the
+// declared settings controls, reach, version, a docs link) lives in
+// the detail pane the row opens, which is what stopped the list from
+// being scannable.
+//
+// The row title region is a button and the toggle is its flex SIBLING,
+// never a descendant: nesting a switch inside the row's own activation
+// target makes one click mean two things, and puts an interactive
+// element inside an interactive element.
+export function ExtensionRow({ id, icon: RowIcon, name, description, control, enabled, selected, builtInLabel, toggleTestId = 'extensions-row-toggle', onSelect, onToggle }: {
+  id: string
+  icon: Icon
+  name: string
+  description?: string
+  // 'switch' renders the enable toggle; 'built-in' renders the label a
+  // kernel object carries instead; 'none' is a plugin the user cannot
+  // turn on from here (blocked by policy, or waiting to be allowed).
+  control: 'switch' | 'built-in' | 'none'
   enabled: boolean
-  appVersion: string
+  selected: boolean
+  builtInLabel: string
+  // The installed-plugin list keeps its own toggle hook so the plugin
+  // specs address a plugin's switch without matching a built-in's.
+  toggleTestId?: string
+  onSelect: () => void
   onToggle: (enabled: boolean) => void
 }) {
-  const { t } = useTranslation('views')
-  const Icon = row.icon
-  const labelId = `extension-row-label-${row.id}`
-  // The collapsed row's own meta line never repeats the group word
-  // (goal 0237 S3's review rider) -- the section heading above every
-  // row already says it once; source/editRoute are the only per-row
-  // facts left. The expanded view's own chip list is a different
-  // reading context (scanned one row at a time, the heading scrolled
-  // out of view by then) and keeps the group chip.
-  const summaryMeta = [sourceLabel(row.source), editRouteLabel(row.editRoute)]
-    .filter((m): m is string => m !== null)
-  const chips = [groupLabel(row.group), sourceLabel(row.source), editRouteLabel(row.editRoute)]
-    .filter((m): m is string => m !== null)
-
+  const density = useDisplayDensity()
+  const labelId = `extension-row-label-${id}`
   return (
-    <div className={styles.row} data-testid="extensions-row" data-extension-id={row.id}>
-      <details className={styles.details}>
-        <summary className={styles.summary}>
-          <ChevronRightIcon className={styles.chevron} size={16} />
-          <Icon size={16} />
-          <Stack direction="vertical" gap="none">
-            <Text id={labelId} size="small" weight="semibold" data-testid="extensions-row-title">{row.label}</Text>
-            {summaryMeta.length > 0 && (
-              <Text size="small" className={listStyles.muted} data-testid="extensions-row-meta">{summaryMeta.join(' · ')}</Text>
-            )}
-          </Stack>
-        </summary>
-        <div className={styles.expanded} data-testid="extensions-row-expanded">
-          <Text as="p" size="small" data-testid="extensions-row-description">{descriptionLabel(row)}</Text>
-          {chips.length > 0 && (
-            <Stack direction="horizontal" gap="condensed" className={styles.chips}>
-              {chips.map((chip) => <Label key={chip}>{chip}</Label>)}
-            </Stack>
-          )}
-          {row.disableScopeNote && (
-            <Text as="p" size="small" className={listStyles.muted} data-testid="extensions-row-disable-scope">
-              {row.disableScopeNote}
-            </Text>
-          )}
-          {row.settings && row.settings.length > 0 && (
-            <Stack direction="vertical" gap="condensed" data-testid="extensions-row-settings">
-              {row.settings.map((setting) => (
-                <ExtensionSettingControl key={setting.key} extensionId={row.id} setting={setting} />
-              ))}
-            </Stack>
-          )}
-          <Text as="p" size="small" className={listStyles.muted} data-testid="extensions-row-reach">
-            {reachLabel(row.capabilities)}
-          </Text>
-          {appVersion && (
-            <Text as="p" size="small" className={listStyles.muted} data-testid="extensions-row-version">
-              {versionLabel(appVersion)}
-            </Text>
-          )}
-          <Link
-            href="#"
-            onClick={(e) => {
-              e.preventDefault()
-              useAppStore.getState().setView({ kind: 'docs', page: ATLAS_CONCEPTS_DOCS_PAGE })
-            }}
-          >
-            {t('settings.extensions.docsLink')}
-          </Link>
-        </div>
-      </details>
+    <div
+      className={styles.row}
+      style={{ paddingBlock: extensionRowPadY(density) }}
+      data-testid="extensions-row"
+      data-extension-id={id}
+      data-selected={selected ? 'true' : undefined}
+    >
+      <button
+        type="button"
+        className={styles.rowButton}
+        aria-current={selected ? 'true' : undefined}
+        onClick={onSelect}
+        data-testid="extensions-row-open"
+      >
+        <RowIcon size={16} className={styles.rowIcon} />
+        <Text id={labelId} size="small" weight="semibold" className={styles.rowName} data-testid="extensions-row-title">{name}</Text>
+        {description && (
+          <Text size="small" className={styles.rowDescription} data-testid="extensions-row-description">{description}</Text>
+        )}
+      </button>
       <div className={styles.rowAction}>
-        {builtIn ? (
-          <Label data-testid="extensions-row-built-in">{t('settings.extensions.builtIn')}</Label>
-        ) : (
+        {control === 'built-in' && <Label data-testid="extensions-row-built-in">{builtInLabel}</Label>}
+        {control === 'switch' && (
           <ToggleSwitch
             aria-labelledby={labelId}
             checked={enabled}
             onChange={onToggle}
             size="small"
             className={styles.toggle}
-            data-testid="extensions-row-toggle"
+            data-testid={toggleTestId}
           />
         )}
       </div>

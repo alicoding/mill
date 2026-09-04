@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { openSettings } from './fixtures/settingsNav'
 
 // docs/goals/0096-display-density.md: Comfortable/Compact, a
 // Settings-driven app root attribute (data-density) that tightens
@@ -17,7 +18,7 @@ async function firstWorkflowRow(page: import('@playwright/test').Page) {
 }
 
 async function setDensity(page: import('@playwright/test').Page, label: 'Comfortable' | 'Compact') {
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'appearance')
   await expect(page.getByTestId('settings-view')).toBeVisible()
   await page.getByTestId('density-control').getByRole('button', { name: label }).click()
 }
@@ -53,7 +54,7 @@ test('Density select reflects the persisted preference on a fresh Settings visit
   await setDensity(page, 'Compact')
 
   await page.reload()
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'appearance')
   await expect(page.getByTestId('density-control').getByRole('button', { name: 'Compact' })).toHaveAttribute('aria-pressed', 'true')
 
   // Cleanup, same reasoning as the test above.
@@ -66,7 +67,7 @@ test.describe('mobile viewport', () => {
   test('Compact keeps a 44px workflow row touch target at the companion breakpoint', async ({ page }) => {
     await page.goto('/')
     await page.getByTestId('mobile-nav-toggle').click()
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'appearance')
     await expect(page.getByTestId('settings-view')).toBeVisible()
     await page.getByTestId('density-control').getByRole('button', { name: 'Compact' }).click()
 
@@ -77,7 +78,7 @@ test.describe('mobile viewport', () => {
 
     // Cleanup, same reasoning as the tests above.
     await page.getByTestId('mobile-nav-toggle').click()
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'appearance')
     await page.getByTestId('density-control').getByRole('button', { name: 'Comfortable' }).click()
   })
 })
@@ -86,7 +87,8 @@ test.describe('mobile viewport', () => {
 // list rows -- canvas card faces (face padding), the grid's cell
 // rows, and Settings' own stacks (Primer Stack gap tokens). Computed
 // styles, not screenshots: each surface consumes the compact token
-// family with its comfortable value as the var() fallback.
+// family with its comfortable value as the var() fallback. Settings'
+// own surface is the two-column setting row (goal 0321).
 test('Compact reads on canvas cards, the list grid, and Settings stacks', async ({ page }) => {
   await page.goto('/')
 
@@ -110,21 +112,25 @@ test('Compact reads on canvas cards, the list grid, and Settings stacks', async 
     await page.getByRole('button', { name: 'Close' }).click()
     return rowHeight
   }
-  const settingsGap = async () => {
-    await page.getByRole('link', { name: 'Settings' }).click()
-    const stack = page.getByTestId('density-control').locator('..')
-    return stack.evaluate((el) => getComputedStyle(el).rowGap)
+  // Settings' own rows (goal 0321): the two-column setting row reads
+  // the density token as its vertical padding, which is what makes a
+  // pane of settings tighten as a whole.
+  const settingsRowPad = async () => {
+    await openSettings(page, 'appearance')
+    const row = page.getByTestId('settings-row').first()
+    await expect(row).toBeVisible()
+    return row.evaluate((el) => getComputedStyle(el).paddingTop)
   }
 
   expect(await cardPad()).toBe('7px')
   expect(await gridPad()).toBe('28')
-  const comfortableGap = await settingsGap()
+  const comfortablePad = await settingsRowPad()
 
   await setDensity(page, 'Compact')
   expect(await cardPad()).toBe('4px')
   expect(await gridPad()).toBe('24')
-  const compactGap = await settingsGap()
-  expect(parseFloat(compactGap)).toBeLessThan(parseFloat(comfortableGap))
+  const compactPad = await settingsRowPad()
+  expect(parseFloat(compactPad)).toBeLessThan(parseFloat(comfortablePad))
 
   // Cleanup, same reasoning as the tests above.
   await setDensity(page, 'Comfortable')

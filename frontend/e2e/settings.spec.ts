@@ -1,5 +1,6 @@
 import { test, expect, MCP_BASE_PORT } from './fixtures/server'
 import { existsSync, readdirSync } from 'node:fs'
+import { openSettings } from './fixtures/settingsNav'
 
 // Exercises docs/SPEC.md §3.7's two new global settings (launch at
 // login, global summon hotkey) over real Go bindings (Wails3 server
@@ -11,16 +12,18 @@ import { existsSync, readdirSync } from 'node:fs'
 // stubs out real OS registration entirely (hotkey_server.go) -- both
 // deterministic, real error paths, not skipped/mocked.
 
-test('Settings page shows Launch at login and Global hotkey sections', async ({ page }) => {
+test('Settings opens on a group pane, and Shortcuts carries the global hotkey', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
-  await expect(page.getByTestId('settings-view')).toBeVisible()
+  await openSettings(page, 'general')
+  await expect(page.getByRole('heading', { name: 'General', level: 1 })).toBeVisible()
   await expect(page.getByText('Launch Mill at login')).toBeVisible()
-  // Exact + heading role: goal 0077 added a TOC item and a palette
-  // deep-link command that both also contain the substring "Global
-  // hotkey" (getByText's default partial match), so a plain
-  // getByText('Global hotkey') is no longer unique on this page.
-  await expect(page.getByRole('heading', { name: 'Global hotkey', exact: true })).toBeVisible()
+  // One pane at a time (goal 0321): the global hotkey is NOT on
+  // General, it is a row of the Shortcuts pane.
+  await expect(page.getByTestId('set-summon-hotkey')).toHaveCount(0)
+
+  await openSettings(page, 'shortcuts')
+  await expect(page.getByRole('heading', { name: 'Shortcuts', level: 1 })).toBeVisible()
+  await expect(page.getByTestId('set-summon-hotkey')).toBeVisible()
 })
 
 // docs/adr/0035: the forward-refactor proof's Settings half --
@@ -31,7 +34,7 @@ test('Settings page shows Launch at login and Global hotkey sections', async ({ 
 // section must actually be GONE, not just unused.
 test('Settings no longer shows the Forward pending approvals section', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'general')
   await expect(page.getByTestId('settings-view')).toBeVisible()
   await expect(page.getByText('Forward pending approvals')).toHaveCount(0)
   await expect(page.getByTestId('forward-approvals-enabled-checkbox')).toHaveCount(0)
@@ -39,7 +42,7 @@ test('Settings no longer shows the Forward pending approvals section', async ({ 
 
 test('Launch at login checkbox reflects the real server-mode error', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'general')
 
   const checkbox = page.getByTestId('launch-at-login-checkbox')
   await expect(checkbox).toBeVisible()
@@ -47,14 +50,16 @@ test('Launch at login checkbox reflects the real server-mode error', async ({ pa
   // (launchatlogin_server.go) stubs out every function with
   // ErrUnsupportedInServerMode -- a real, deterministic error in the
   // e2e environment (server mode), distinct from the desktop dev-binary
-  // case (ErrNotAppBundle) SettingsView.tsx also handles.
-  await checkbox.click()
+  // case (ErrNotAppBundle) the pane also handles. The switch cannot
+  // reflect a state Mill could not read, so it stays disabled and the
+  // line beneath it says which case this is.
   await expect(page.getByText(/not available in server mode/i)).toBeVisible()
+  await expect(checkbox).toBeDisabled()
 })
 
 test('Setting a global summon hotkey shows the recording state', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'shortcuts')
 
   await page.getByTestId('set-summon-hotkey').click()
   await expect(page.getByText(/press a combo/i)).toBeVisible()
@@ -68,7 +73,7 @@ test('Setting a global summon hotkey shows the recording state', async ({ page }
 
 test('Check for updates produces a visible status, found or error', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'updates')
 
   // A real call to the GitHub Releases provider (alicoding/mill has no
   // releases yet) -- deterministic either way in this environment
@@ -93,7 +98,7 @@ test('Check for updates produces a visible status, found or error', async ({ pag
 // .claude/rules/testing.md's manual-only registry instead.
 test('MCP access address field shows the active environment override read-only', async ({ page }, testInfo) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'connections')
 
   const input = page.getByTestId('mcp-access-address-input')
   await expect(input).toBeVisible()
@@ -105,7 +110,7 @@ test('MCP access address field shows the active environment override read-only',
 
 test('MCP write gate toggles from Settings and persists across a reload', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'connections')
 
   const checkbox = page.getByTestId('mcp-write-enabled-checkbox')
   await expect(checkbox).toBeEnabled()
@@ -123,7 +128,7 @@ test('MCP write gate toggles from Settings and persists across a reload', async 
   await expect(checkbox).toBeChecked()
 
   await page.reload()
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'connections')
   const afterReload = page.getByTestId('mcp-write-enabled-checkbox')
   await expect(afterReload).toBeChecked()
 
@@ -138,7 +143,7 @@ test('MCP write gate toggles from Settings and persists across a reload', async 
 // the preview/confirm bar before anything is applied.
 test('Back up now takes a snapshot and updates the last-backup time', async ({ page, workerServer }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'backups')
 
   const button = page.getByTestId('backup-now')
   await expect(button).toBeVisible()
@@ -159,7 +164,7 @@ test('Back up now takes a snapshot and updates the last-backup time', async ({ p
 // without ever touching that button.
 test('Back up now from the command palette takes a real snapshot, live-updating an open Settings page', async ({ page, workerServer }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'backups')
   await expect(page.getByTestId('backup-now')).toBeVisible()
 
   const before = existsSync(workerServer.backupDir) ? readdirSync(workerServer.backupDir).length : 0
@@ -179,7 +184,7 @@ test('Back up now from the command palette takes a real snapshot, live-updating 
 // directly -- the flow needs its own confirm/download UI there
 // (DataStewardshipSection.tsx), same reasoning every settings.open.*
 // deep-link command already follows.
-test('Export everything from the command palette lands on the Backups settings section', async ({ page }) => {
+test('Export everything from the command palette lands on the Backups pane', async ({ page }) => {
   await page.goto('/')
   // The shell paints after a short async boot (plugins load first --
   // docs/goals/0249); a keypress before anything is visible is not a
@@ -192,12 +197,13 @@ test('Export everything from the command palette lands on the Backups settings s
   await page.getByRole('option', { name: 'Export everything' }).click()
 
   await expect(page.getByTestId('settings-view')).toBeVisible()
+  await expect(page.getByTestId('settings-pane-backups')).toBeVisible()
   await expect(page.getByTestId('export-everything')).toBeVisible()
 })
 
 test('Export everything downloads a genuine zip archive', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'backups')
 
   const downloadPromise = page.waitForEvent('download')
   await page.getByTestId('export-everything').click()
@@ -216,7 +222,7 @@ test('Export everything downloads a genuine zip archive', async ({ page }) => {
 
 test('Importing an export-everything archive shows a preview before applying', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'backups')
 
   const downloadPromise = page.waitForEvent('download')
   await page.getByTestId('export-everything').click()
@@ -243,80 +249,63 @@ test('Importing an export-everything archive shows a preview before applying', a
   await expect(page.getByText('Import this backup?')).not.toBeVisible()
 })
 
-// goal 0077: the settings-organization TOC/filter/deep-link contract.
-// Default Playwright viewport (1280x720) is well above the narrow
-// breakpoint (useNarrowViewport.ts's own 767px), so the TOC renders
-// with no extra viewport setup.
+// goal 0321: the group-list / one-pane-at-a-time contract. Default
+// Playwright viewport (1280x720) is well above the narrow breakpoint
+// (useNarrowViewport.ts's own 767px), so the group list renders with
+// no extra viewport setup.
 
-test('Settings TOC navigates to a section and marks it active', async ({ page }) => {
+test('The group list shows exactly one pane, marks it, and routes to it', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Settings' }).click()
+  await expect(page.getByTestId('settings-view')).toBeVisible()
 
-  const toc = page.getByTestId('settings-toc')
-  await expect(toc).toBeVisible()
+  const nav = page.getByTestId('settings-group-nav')
+  await expect(nav).toBeVisible()
+  // The filter box is gone: with one pane showing there is nothing on
+  // screen for a filter to narrow.
+  await expect(page.getByTestId('settings-filter')).toHaveCount(0)
 
-  const backupsItem = page.getByTestId('settings-toc-item-backups')
-  await backupsItem.click()
+  await page.getByTestId('settings-group-item-appearance').click()
+  await expect(page.getByTestId('settings-pane-appearance')).toBeVisible()
+  await expect(page.getByTestId('settings-group-item-appearance')).toHaveAttribute('aria-current', 'page')
+  await expect(page).toHaveURL(/#\/settings\/appearance$/)
 
-  const backupsHeading = page.getByTestId('settings-section-backups')
-  await expect(backupsHeading).toBeVisible()
-  await expect(async () => {
-    const box = await backupsHeading.boundingBox()
-    expect(box?.y).toBeLessThan(250)
-  }).toPass({ timeout: 5_000 })
-  await expect(backupsItem).toHaveAttribute('aria-current', 'location')
+  // ONLY Appearance renders -- every other pane's own controls are
+  // unmounted, not merely scrolled away.
+  await expect(page.getByTestId('light-scheme-select')).toBeVisible()
+  await expect(page.getByTestId('launch-at-login-checkbox')).toHaveCount(0)
+  await expect(page.getByTestId('backup-now')).toHaveCount(0)
+  await expect(page.getByTestId('settings-pane-general')).toHaveCount(0)
 
-  // Regression: scrolling back up must re-activate the section at the
-  // top -- the old IntersectionObserver sync only saw state CHANGES,
-  // so the departing section's exit delivered an empty visible set and
-  // the stale active id stuck.
-  await page.getByTestId('settings-section-appearance').evaluate((el) => el.scrollIntoView({ block: 'start' }))
-  await expect(page.getByTestId('settings-toc-item-appearance')).toHaveAttribute('aria-current', 'location')
-  await expect(backupsItem).not.toHaveAttribute('aria-current', 'location')
+  // The two scheme rows are named apart -- they used to share one
+  // label, which read as the same setting listed twice.
+  await expect(page.getByText('Light appearance')).toBeVisible()
+  await expect(page.getByText('Dark appearance')).toBeVisible()
 
-  // Regression: a short final section can never cross the reading
-  // line, so resting at the scroll bottom must activate it anyway.
-  // The walk to find the real scroll container mirrors
-  // frontend/src/shared/scrollContainer.ts's isScrollContainer, used by
-  // useSettingsSectionSync.ts's own walk -- see that hook's comment for
-  // why a height-only check (scrollHeight > clientHeight alone) stops
-  // one level too early, on Primer's own non-scrolling
-  // PageLayout.Content wrapper, instead of the real scroller
-  // (`.view-pane`). Kept as an inline copy rather than an import:
-  // Playwright's page.evaluate serializes the callback's own source for
-  // in-page execution, so a real module import can't cross into it.
-  await page.getByTestId('settings-section-updates').evaluate((el) => {
-    const isRealScroller = (e: Element) => {
-      const overflowY = getComputedStyle(e).overflowY
-      return (overflowY === 'auto' || overflowY === 'scroll') && e.scrollHeight > e.clientHeight
-    }
-    let scroller = el.parentElement
-    while (scroller && !isRealScroller(scroller)) scroller = scroller.parentElement
-    if (scroller) scroller.scrollTop = scroller.scrollHeight
-  })
-  await expect(page.getByTestId('settings-toc-item-updates')).toHaveAttribute('aria-current', 'location')
+  await page.getByTestId('settings-group-item-backups').click()
+  await expect(page.getByTestId('settings-pane-backups')).toBeVisible()
+  await expect(page.getByTestId('settings-group-item-appearance')).not.toHaveAttribute('aria-current', 'page')
+  await expect(page.getByTestId('light-scheme-select')).toHaveCount(0)
 })
 
-test('Settings filter narrows to matching sections and restores on clear', async ({ page }) => {
+test('Connections gathers MCP access, Remote access and Contract in reach order', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'connections')
 
-  const filter = page.getByTestId('settings-filter')
-  const backupsSection = page.getByTestId('settings-section-backups')
-  const appearanceSection = page.getByTestId('settings-section-appearance')
-
-  await filter.fill('backup')
-  await expect(backupsSection).not.toHaveAttribute('data-filtered-out', 'true')
-  await expect(page.getByTestId('backup-now')).toBeVisible()
-  await expect(appearanceSection).toHaveAttribute('data-filtered-out', 'true')
-  await expect(appearanceSection.getByRole('button', { name: 'Light theme' })).toHaveCount(0)
-
-  await filter.fill('')
-  await expect(appearanceSection).not.toHaveAttribute('data-filtered-out', 'true')
-  await expect(appearanceSection.getByRole('button', { name: 'Light theme' })).toBeVisible()
+  const headings = page.getByTestId('settings-pane-connections').getByTestId('settings-section-heading')
+  await expect(headings).toHaveText(['MCP access', 'Remote access', 'Contract'])
+  await expect(page.getByTestId('mcp-access-address-input')).toBeVisible()
+  await expect(page.getByTestId('export-contract')).toBeVisible()
 })
 
-test('Palette "Open Settings -> Backups" deep-links straight to the section', async ({ page }) => {
+test('A #/settings/<group> address lands on that pane on a fresh load', async ({ page }) => {
+  await page.goto('/#/settings/notifications')
+  await expect(page.getByTestId('settings-view')).toBeVisible()
+  await expect(page.getByTestId('settings-pane-notifications')).toBeVisible()
+  await expect(page.getByTestId('attention-idle-threshold-input')).toBeVisible()
+})
+
+test('Palette "Settings > Backups" deep-links straight to the pane', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
@@ -325,16 +314,12 @@ test('Palette "Open Settings -> Backups" deep-links straight to the section', as
   await expect(dialog).toBeVisible()
   await dialog.getByRole('combobox').fill('Backups')
 
-  const option = dialog.getByRole('option', { name: /Open Settings → Backups/ })
+  const option = dialog.getByRole('option', { name: /Settings › Backups/ })
   await expect(option).toBeVisible()
   await option.click()
   await expect(dialog).toHaveCount(0)
 
   await expect(page.getByTestId('settings-view')).toBeVisible()
-  const backupsHeading = page.getByTestId('settings-section-backups')
-  await expect(backupsHeading).toBeVisible()
-  await expect(async () => {
-    const box = await backupsHeading.boundingBox()
-    expect(box?.y).toBeLessThan(250)
-  }).toPass({ timeout: 5_000 })
+  await expect(page.getByTestId('settings-pane-backups')).toBeVisible()
+  await expect(page.getByTestId('backup-now')).toBeVisible()
 })

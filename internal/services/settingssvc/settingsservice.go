@@ -60,7 +60,11 @@ type SettingsService struct {
 	// plugin tools appear and disappear with the toggle, never only
 	// after a restart. nil until wired.
 	pluginPolicyChanged func()
-	window              *windowing.Window
+	// pluginLocator answers where an installed plugin's folder is --
+	// set by the composition root, nil on a build with no plugin
+	// service (settingsservice_pluginremove.go).
+	pluginLocator PluginLocator
+	window        *windowing.Window
 	// leave is the quit gate's state (settingsservice_flush.go).
 	leave leaveGate
 	// panel is the Quick Panel window (docs/adr/0033) -- a second,

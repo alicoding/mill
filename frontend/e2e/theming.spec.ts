@@ -2,6 +2,7 @@ import { expect as baseExpect, test as pluginTest } from '@playwright/test'
 import { test, expect } from './fixtures/server'
 import { launchWithPlugins, runFromPalette } from './fixtures/runtimePlugins'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
+import { openSettings } from './fixtures/settingsNav'
 
 // Theming (goal 0320): the color scheme per mode, one theme across
 // every window, and the plugin theme contract.
@@ -20,7 +21,7 @@ const bgDefault = (page: import('@playwright/test').Page) =>
 
 test('Settings offers a color scheme per mode, and picking Dimmed repaints', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'appearance')
   await expect(page.getByTestId('settings-view')).toBeVisible()
 
   const light = page.getByTestId('light-scheme-select')
@@ -54,7 +55,7 @@ test('a theme change reaches an already-open second window without a reload', as
   await panel.goto('/#/quickpanel')
   await expect.poll(() => htmlAttr(panel, 'data-color-mode')).toBe('auto')
 
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'appearance')
   await expect(page.getByTestId('settings-view')).toBeVisible()
   await page.getByRole('button', { name: 'Dark theme' }).click()
 
@@ -90,7 +91,7 @@ pluginTest('a plugin face and view carry the resolved theme, and it flips with t
     // re-rendered fresh by a navigation.
     const settings = await page.context().newPage()
     await settings.goto('/')
-    await settings.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(settings, 'appearance')
     await settings.getByRole('button', { name: 'Dark theme' }).click()
     await settings.getByTestId('dark-scheme-select').selectOption('dark_dimmed')
 

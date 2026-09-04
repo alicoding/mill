@@ -8,15 +8,14 @@ import { launchWithPlugins } from './fixtures/runtimePlugins'
 import { clickCanvasNode } from './fixtures/canvasNode'
 import { activePanel, dragPaletteItemToCanvas } from './fixtures/canvas'
 import { stepOutput, tryStep } from './fixtures/stepTest'
+import { openPluginDetail } from './fixtures/settingsNav'
 
 test('a plugin step appears in the palette with its declared config and runs through steps.js', async () => {
 	const { page, close } = await launchWithPlugins(52, { extraExamples: ['mill-textcase'] })
 	try {
 		await page.goto('/')
-		await page.getByRole('link', { name: 'Settings' }).click()
-		const row = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-textcase"]')
-		await row.scrollIntoViewIfNeeded()
-		await expect(row.getByTestId('extensions-plugin-steps')).toHaveText('Adds workflow steps: Text case')
+		const detail = await openPluginDetail(page, 'mill-textcase')
+		await expect(detail.getByTestId('extensions-detail-adds')).toContainText('Workflow steps: Text case')
 
 		await page.getByRole('link', { name: 'Workflows' }).click()
 		await page.getByTestId('new-workflow').click()

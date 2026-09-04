@@ -3,7 +3,7 @@ import { ATLAS_TOOLS } from '../atlas/atlasTools'
 import { toolLessNounExtensions } from '../atlas/atlasNounRegistry'
 import {
   descriptionLabel, editRouteLabel, groupLabel, groupSectionLabel, reachLabel, sourceLabel, versionLabel,
-  toolLessRowSource, toolRowSource,
+  toolLessRowSource, toolRowSource, extensionRowPadY, extensionRowHeight,
 } from './extensionMeta'
 
 describe('groupLabel', () => {
@@ -90,6 +90,7 @@ describe('toolRowSource (goal 0237 S3 rider)', () => {
       id: 'image',
       icon: image.icon,
       label: image.nounName,
+      commandLabel: image.label,
       description: image.description,
       group: image.group,
       source: image.content?.source,
@@ -97,6 +98,9 @@ describe('toolRowSource (goal 0237 S3 rider)', () => {
       capabilities: image.capabilities,
     })
     expect(row.label).toBe('Image')
+    // The verb phrase stays available for the detail pane's "What it
+    // adds" -- it is just never the row title.
+    expect(row.commandLabel).toBe('Add an image')
   })
 })
 
@@ -116,5 +120,22 @@ describe('toolLessRowSource (goal 0237 S3 rider)', () => {
       disableScopeNote: diagram.extension.disableScopeNote,
     })
     expect(row.group).toBe('file')
+  })
+})
+
+// Row geometry (goal 0321): the Extensions list follows display
+// density directly. The mapping lives in JS so it has ONE source; this
+// pins both ends of it, including the Compact floor -- the raw Compact
+// token (2px) leaves a row shorter than the 16px icon it carries.
+describe('extension row density (goal 0321)', () => {
+  it('maps each density to its own padding and row height', () => {
+    expect(extensionRowPadY('comfortable')).toBe(12)
+    expect(extensionRowPadY('compact')).toBe(6)
+    expect(extensionRowHeight('comfortable')).toBe(44)
+    expect(extensionRowHeight('compact')).toBe(32)
+  })
+
+  it('always leaves a Compact row shorter than a Comfortable one', () => {
+    expect(extensionRowHeight('compact')).toBeLessThan(extensionRowHeight('comfortable'))
   })
 })

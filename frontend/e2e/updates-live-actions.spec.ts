@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { openSettings } from './fixtures/settingsNav'
 import { rmSync } from 'node:fs'
 import {
   spawnUpdatesServer,
@@ -44,7 +45,7 @@ test('Enabling auto-download starts a background download live, with no click on
     }))
     const page = await browser.newPage()
     await page.goto(`${server.baseURL}/`)
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'updates')
 
     // The mount-time check (goal 0205 S4) already found the update, but
     // the opt-in is still off -- no download must start from it.
@@ -91,7 +92,7 @@ test("Clicking the pill's available notice starts the download directly, never n
     // Settings' own mount-time check (goal 0205 S4) is what actually
     // populates server state -- the pill itself never initiates a
     // check, it only ever renders whatever UpdateNoticeState reports.
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'updates')
     await expect(page.getByTestId('update-available-card')).toBeVisible()
 
     const pillAvailable = page.getByTestId('notice-update-available')

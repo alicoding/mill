@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { openSettings } from './fixtures/settingsNav'
 import { rmSync } from 'node:fs'
 import {
   spawnUpdatesServer,
@@ -57,7 +58,7 @@ test('Source-channel build never offers to download, and shows the pull-and-rebu
     }))
     const page = await browser.newPage()
     await page.goto(`${server.baseURL}/`)
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'updates')
 
     await expect(page.getByTestId('current-app-version')).toContainText('built from source')
 
@@ -103,7 +104,7 @@ test('Release-channel build offers to download, and a failed install surfaces th
     }))
     const page = await browser.newPage()
     await page.goto(`${server.baseURL}/`)
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'updates')
 
     await expect(page.getByTestId('current-app-version')).toContainText('installed from a release')
 
@@ -149,7 +150,7 @@ test('Beta-channel build offers to download, dismissing the pill leaves the acti
     }))
     const page = await browser.newPage()
     await page.goto(`${server.baseURL}/`)
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'updates')
 
     await expect(page.getByTestId('current-app-version')).toContainText('installed from the beta channel')
 
@@ -167,7 +168,7 @@ test('Beta-channel build offers to download, dismissing the pill leaves the acti
     await page.getByTestId('notice-dismiss').click()
     await expect(page.getByTestId('notice-update-available')).toHaveCount(0)
     await page.reload()
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'updates')
 
     // Dismissing the pill must never also hide the action from Settings
     // (goal 0220 S1 item 3) -- the auto-check-on-open finds the same
@@ -185,7 +186,7 @@ test('Beta-channel build offers to download, dismissing the pill leaves the acti
     await auto.check()
     await expect(page.getByTestId('update-check-interval-select')).toHaveValue('hourly')
     await page.reload()
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'updates')
     await expect(page.getByTestId('auto-update-check')).toBeChecked()
     await expect(page.getByTestId('update-check-interval-select')).toHaveValue('hourly')
 
@@ -215,7 +216,7 @@ test('An installed update shows the relaunch pill AND the matching Settings prim
     await page.goto(`${server.baseURL}/`)
     await expect(page.getByTestId('notice-update-ready')).toContainText('Relaunch')
 
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'updates')
     await expect(page.getByTestId('update-primary-action')).toHaveText('Restart to update')
 
     await page.close()
@@ -242,7 +243,7 @@ test('Update-channel preference saves, explains the restart, and survives a relo
     ;({ server, dir } = await spawnUpdatesServer(idx, UPDATES_CHANNEL_PREF_SERVER_BASE_PORT, UPDATES_CHANNEL_PREF_MCP_BASE_PORT, {}))
     const page = await browser.newPage()
     await page.goto(`${server.baseURL}/`)
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'updates')
 
     // Outbound proxy (goal 0123): Auto is the default with no URL
     // field; Manual reveals it (invalid URL surfaces the validation
@@ -266,7 +267,7 @@ test('Update-channel preference saves, explains the restart, and survives a relo
     await expect(page.getByTestId('update-channel-saved')).toContainText('Restart Mill')
 
     await page.reload()
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'updates')
     await expect(page.getByTestId('update-channel-select')).toHaveValue('beta')
     await expect(page.getByTestId('proxy-mode-select')).toHaveValue('manual')
     await expect(page.getByTestId('proxy-url-input')).toHaveValue('http://proxy.example.com:8080')
@@ -294,7 +295,7 @@ test('Opening the Updates section checks automatically, with no click required',
     }))
     const page = await browser.newPage()
     await page.goto(`${server.baseURL}/`)
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'updates')
 
     // No click on the primary action anywhere in this test -- the card
     // and the fresh-outcome line must appear from the mount-time check
@@ -336,7 +337,7 @@ test('The primary action shows a checking state while the automatic check is in 
     }))
     const page = await browser.newPage()
     await page.goto(`${server.baseURL}/`)
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'updates')
 
     const primary = page.getByTestId('update-primary-action')
     await expect(primary).toHaveText('Checking…')
@@ -374,7 +375,7 @@ test('A failed automatic check renders honestly, never as up to date', async ({}
     }))
     const page = await browser.newPage()
     await page.goto(`${server.baseURL}/`)
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'updates')
 
     await expect(page.getByTestId('update-check-error')).toBeVisible()
     await expect(page.getByTestId('update-check-error-copy')).toBeVisible()

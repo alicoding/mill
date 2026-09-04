@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { workflowRow, activePanel } from './fixtures/canvas'
+import { openSettings } from './fixtures/settingsNav'
 
 // Design-wave-1 fix #3: three dark-mode bugs caught in the full-app
 // design audit (screenshots: canvas-*-dark.png showed a light-hardcoded
@@ -11,7 +12,7 @@ import { workflowRow, activePanel } from './fixtures/canvas'
 // so clicking it is the same real path a user takes, not a stand-in.
 
 async function switchToDarkTheme(page: import('@playwright/test').Page) {
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'appearance')
   await expect(page.getByTestId('settings-view')).toBeVisible()
   await page.getByRole('button', { name: 'Dark theme' }).click()
   // Primer's ThemeProvider mirrors the resolved mode onto <html data-color-mode>
@@ -22,6 +23,9 @@ async function switchToDarkTheme(page: import('@playwright/test').Page) {
 test('Settings "Away after" number input is themed in dark mode, not a white box', async ({ page }) => {
   await page.goto('/')
   await switchToDarkTheme(page)
+  // The field lives on the Notifications pane (goal 0321); the theme
+  // control that puts the page in dark mode lives on Appearance.
+  await openSettings(page, 'notifications')
 
   const input = page.getByTestId('attention-idle-threshold-input')
   await expect(input).toBeVisible()
