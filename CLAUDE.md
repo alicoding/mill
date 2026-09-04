@@ -195,7 +195,11 @@ Every non-trivial change follows this order, no exceptions:
    closed in THIS goal, right away — it is never a follow-up, a
    "later slice", or a register entry, and no agent may defer it
    (owner-set 2026-09-04). The only legal narrowing is the owner's
-   own, in the session, recorded in the goal file.
+   own, in the session, recorded in the goal file. The same holds for
+   ANY review — a code review, an audit, a live probe, a screenshot
+   pass: anything found not following its precedent gets a proper fix
+   planned then and there (a goal with the Gap recorded, queued, and
+   built), never a note. That is the tax; it is always paid.
 2. **Plan** — the proper pattern, derived from the Gap: state the
    approach and its tradeoffs before editing files.
    For any design choice with more than one defensible answer (schema
