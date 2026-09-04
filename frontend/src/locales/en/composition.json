@@ -27,14 +27,7 @@
     "runButtonTooltip": "Runs the saved draft (test run).",
     "run": "Run",
     "runInStepModeAriaLabel": "Run in step mode",
-    "runInStepModeTooltip": "Pauses before every step so you can inspect and edit its data.",
-    "interrupted": "Mill relaunched before you answered, so this run stopped.",
-    "dismiss": "Dismiss",
-    "resolveError": {
-      "notWaiting": "This run is no longer waiting.",
-      "recovering": "Mill is still picking this run back up. Try again in a moment.",
-      "generic": "Couldn't deliver that. Try again."
-    }
+    "runInStepModeTooltip": "Pauses before every step so you can inspect and edit its data."
   },
   "canvasNodeView": {
     "runStatus": {

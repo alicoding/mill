@@ -53,6 +53,10 @@ export function CurrentStepBar({
   onDismiss: () => void
 }) {
   const { t } = useTranslation('composition')
+  // The interrupted caption, Dismiss and the refusal copy live in the
+  // `common` namespace: the Runs panel's own parked bar renders exactly
+  // the same strings (shared/approvalResolution.ts).
+  const { t: tc } = useTranslation('common')
   const parkedNodeID = barState?.mode === 'parked' ? barState.pending.nodeID : null
   const [editValues, setEditValues] = useState<Record<string, string>>({})
   // A fresh park (a different node, or the same node on a later run)
@@ -149,7 +153,7 @@ export function CurrentStepBar({
                 </Button>
               </Stack>
               {resolveErrorKey && (
-                <Text as="p" className={runbookStyles.error} data-testid="canvas-resolve-error">{t(resolveErrorKey)}</Text>
+                <Text as="p" className={runbookStyles.error} data-testid="canvas-resolve-error">{tc(resolveErrorKey)}</Text>
               )}
             </Stack>
           )
@@ -157,13 +161,13 @@ export function CurrentStepBar({
         {barState.mode === 'interrupted' && (
           <Stack direction="horizontal" gap="condensed" align="center">
             <AlertIcon size={16} fill="var(--fgColor-attention)" />
-            <Text size="small" data-testid="current-step-bar-interrupted">{t('liveRunControls.interrupted')}</Text>
+            <Text size="small" data-testid="current-step-bar-interrupted">{tc('interruptedRun.caption')}</Text>
             <Button
               size="small"
               data-testid="dismiss-interrupted-run"
               onClick={onDismiss}
             >
-              {t('liveRunControls.dismiss')}
+              {tc('interruptedRun.dismiss')}
             </Button>
           </Stack>
         )}

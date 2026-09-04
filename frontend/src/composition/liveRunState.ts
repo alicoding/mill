@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { Events } from '@wailsio/runtime'
 import { ExecutionService, RunKind } from '../shared/bindings'
+import { useApprovalResolution } from '../shared/approvalResolution'
 import type { PendingApproval, RunDetail } from '../shared/bindings'
 
 // Live run state on the authoring canvas (docs/SPEC.md §3.8's recorded
@@ -80,18 +81,6 @@ export type BarState =
   | { mode: 'interrupted' }
   | { mode: 'finished'; status: string; error: string }
 
-// The stable error codes ResolveApproval returns when nothing in the
-// backend is listening for a decision (executionservice_guardrail.go's
-// resolveUnlistened) mapped to the i18n key the parked bar renders.
-// Pure and exported so the mapping is testable without a live run --
-// a silent console.error here is exactly what made the reported bug
-// look like a dead button.
-export function resolveErrorKey(err: unknown): string {
-  const message = String(err)
-  if (message.includes('run-not-waiting')) return 'liveRunControls.resolveError.notWaiting'
-  if (message.includes('run-recovering')) return 'liveRunControls.resolveError.recovering'
-  return 'liveRunControls.resolveError.generic'
-}
 
 export interface UseLiveRunResult {
   detail: RunDetail | null
@@ -148,7 +137,9 @@ export function useLiveRun(workflowId: string | undefined, requestedRunId?: stri
   // A rejected START (pre-flight refusal) -- distinct from a run that
   // ran and failed; rendered through the same finished bar.
   const [startRefusal, setStartRefusal] = useState('')
-  const [resolveError, setResolveError] = useState('')
+  // The shared answer-a-parked-run seam (shared/approvalResolution.ts),
+  // the same one the Runs panel and the Review queue use.
+  const { errorKeyFor, clearError, resolveApproval } = useApprovalResolution()
 
   // On mount (a workflow editor opening), adopt whatever's already in
   // flight for this workflow -- a run parked by a headless trigger fire
@@ -238,7 +229,7 @@ export function useLiveRun(workflowId: string | undefined, requestedRunId?: stri
     // there's a real (if usually short) window with nothing to show yet.
     setDetail(null)
     setStartRefusal('')
-    setResolveError('')
+    clearError()
     // payload substitutes what the workflow's trigger would have
     // delivered (triggerPayload.ts) -- threaded to both run variants,
     // since a stepped debug run of a trigger-fed workflow needs its
@@ -256,15 +247,11 @@ export function useLiveRun(workflowId: string | undefined, requestedRunId?: stri
 
   const resolve = (nodeID: string, approve: boolean, continueRun?: boolean, values?: Record<string, string>) => {
     if (!activeRunId) return
-    setResolveError('')
-    ExecutionService.ResolveApproval(activeRunId, nodeID, approve, approve ? (values ?? {}) : {}, continueRun ?? false)
-      .catch((err) => {
-        // A refused decision is user-facing state, never console noise:
-        // the run either isn't waiting any more or is still being
-        // recovered, and both change what the bar should say.
-        setResolveError(resolveErrorKey(err))
-        ExecutionService.GetRun(activeRunId).then(setDetail).catch(() => {})
-      })
+    void resolveApproval({ runID: activeRunId, nodeID, approve, values, continueRun }).then((delivered) => {
+      // A refused decision means the bar is showing something stale --
+      // refetch so it stops offering what it just failed to do.
+      if (!delivered) ExecutionService.GetRun(activeRunId).then(setDetail).catch(() => {})
+    })
     // The in-flight poll above picks up the resumed/failed transition.
   }
 
@@ -272,7 +259,7 @@ export function useLiveRun(workflowId: string | undefined, requestedRunId?: stri
     setActiveRunId(null)
     setDetail(null)
     setStartRefusal('')
-    setResolveError('')
+    clearError()
   }
 
   // DBOS checkpoints a step only once it completes, so there's no
@@ -314,7 +301,7 @@ export function useLiveRun(workflowId: string | undefined, requestedRunId?: stri
 
   const barState = useMemo<BarState | null>(() => barStateFor(detail, startRefusal), [detail, startRefusal])
 
-  return { detail, statusByNodeId, barState, startRun, resolve, resolveErrorKey: resolveError, dismiss }
+  return { detail, statusByNodeId, barState, startRun, resolve, resolveErrorKey: activeRunId ? errorKeyFor(activeRunId) : '', dismiss }
 }
 
 // Convenience hook so CanvasNodeView only needs one import.

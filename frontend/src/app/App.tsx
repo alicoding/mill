@@ -13,7 +13,7 @@ import { AtlasView } from "../atlas/AtlasView";
 import SettingsView from "../views/SettingsView";
 import SecretsView from "../views/SecretsView";
 import PlaceholderView from "../views/PlaceholderView";
-import { CapabilitiesService, ExecutionService, SettingsService } from '../shared/bindings'
+import { CapabilitiesService, SettingsService } from '../shared/bindings'
 import type { BuildInfo } from '../shared/bindings'
 import { useAppStore } from "../shared/store";
 import { useBootRefresh } from "./useBootRefresh";
@@ -38,6 +38,7 @@ import { useBeforeQuitFlush } from './useBeforeQuitFlush'
 import { usePluginToolBridge } from './usePluginToolBridge'
 import { UnsavedChangesDialog } from './UnsavedChangesDialog'
 import { useReviewDeepLink } from './useReviewDeepLink'
+import { usePendingReview } from '../review/usePendingReview'
 import { useKeymapDispatch } from './useKeymapDispatch'
 import { useBrowserNotify } from './useBrowserNotify'
 import { usePluginReviewNotice } from './usePluginReviewNotice'
@@ -288,40 +289,32 @@ function App() {
   // decision-parked system event now reaches the seeded "Example: Forward
   // pending approvals" workflow through TriggerService, not a call from
   // here -- ForwardPendingApproval's own private send path is deleted.
-  const [reviewPendingCount, setReviewPendingCount] = useState(0);
+  // The queue itself comes from the one shared source every Review
+  // surface reads (review/usePendingReview.ts) -- this effect only turns
+  // it into the dock badge and the once-per-item notification.
+  const { pending: guardrailPending, pendingWrites: mcpPending, count: reviewPendingCount, loaded: reviewLoaded } = usePendingReview();
   const notifiedIds = useRef<Set<string>>(new Set());
   useEffect(() => {
-    const refresh = () => {
-      Promise.all([
-        ExecutionService.ListRuns().then((runs) => (runs ?? []).filter((r) => r.pending)).catch(() => []),
-        SettingsService.PendingMCPWrites().then((p) => p ?? []).catch(() => []),
-      ]).then(([guardrailPending, mcpPending]) => {
-        setReviewPendingCount(guardrailPending.length + mcpPending.length);
-        void SettingsService.SetPendingBadge(guardrailPending.length + mcpPending.length).catch(() => {});
+    if (!reviewLoaded) return;
+    void SettingsService.SetPendingBadge(reviewPendingCount).catch(() => {});
 
-        const items: { key: string; id: string; description: string; kind: string }[] = [
-          ...guardrailPending.map((r) => ({
-            key: `guardrail:${r.runID}`,
-            id: r.runID,
-            description: t('pendingApprovalDescription', { workflowLabel: r.workflowLabel, step: r.pending?.nodeTypeLabel || r.pending?.nodeTypeID || t('pendingApprovalStepFallback') }),
-            kind: 'guardrail',
-          })),
-          ...mcpPending.map((w) => ({ key: `mcp-write:${w.id}`, id: w.id, description: w.description, kind: 'mcp-write' })),
-        ];
+    const items: { key: string; id: string; description: string; kind: string }[] = [
+      ...guardrailPending.map((r) => ({
+        key: `guardrail:${r.runID}`,
+        id: r.runID,
+        description: t('pendingApprovalDescription', { workflowLabel: r.workflowLabel, step: r.pending?.nodeTypeLabel || r.pending?.nodeTypeID || t('pendingApprovalStepFallback') }),
+        kind: 'guardrail',
+      })),
+      ...mcpPending.map((w) => ({ key: `mcp-write:${w.id}`, id: w.id, description: w.description, kind: 'mcp-write' })),
+    ];
 
-        for (const item of items) {
-          if (notifiedIds.current.has(item.key)) continue;
-          notifiedIds.current.add(item.key);
-          void SettingsService.NotifyPendingApproval(item.id, item.description, item.kind, document.hasFocus()).catch(() => {});
-          if (item.kind === 'guardrail') notifyBrowserTab({ dedupeKey: item.id, title: t('browserNotificationTitle'), body: item.description, onClick: () => setView({ kind: 'review' }) });
-        }
-      });
-    };
-    refresh();
-    const offGuardrail = Events.On('guardrail-pending-changed', refresh);
-    const offMCP = Events.On('mcp-write-approval', refresh);
-    return () => { offGuardrail(); offMCP(); };
-  }, [t, notifyBrowserTab, setView]);
+    for (const item of items) {
+      if (notifiedIds.current.has(item.key)) continue;
+      notifiedIds.current.add(item.key);
+      void SettingsService.NotifyPendingApproval(item.id, item.description, item.kind, document.hasFocus()).catch(() => {});
+      if (item.kind === 'guardrail') notifyBrowserTab({ dedupeKey: item.id, title: t('browserNotificationTitle'), body: item.description, onClick: () => setView({ kind: 'review' }) });
+    }
+  }, [guardrailPending, mcpPending, reviewPendingCount, reviewLoaded, t, notifyBrowserTab, setView]);
 
   return (
     <div className="app-shell" data-sidebar-open={sidebarOpen} data-view={view.kind}>

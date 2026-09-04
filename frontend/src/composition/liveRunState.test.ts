@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { barStateFor, resolveErrorKey, shouldAdoptExternalRun } from './liveRunState'
+import { barStateFor, shouldAdoptExternalRun } from './liveRunState'
 import type { RunDetail } from '../shared/bindings'
 
 // GAP A of the live-canvas-sync work: an externally-started run (a
@@ -63,25 +63,5 @@ describe('barStateFor', () => {
 
   it('a rejected start outranks every run state', () => {
     expect(barStateFor(parked, 'workflow not found')?.mode).toBe('finished')
-  })
-})
-
-// A refused decision reaches the user as copy, never a console line --
-// the reported bug was a button that looked dead because the refusal
-// was swallowed.
-describe('resolveErrorKey', () => {
-  it('maps run-not-waiting to the no-longer-waiting copy', () => {
-    expect(resolveErrorKey(new Error('executionsvc: run-not-waiting: run abc is not waiting on a decision')))
-      .toBe('liveRunControls.resolveError.notWaiting')
-  })
-
-  it('maps run-recovering to the try-again copy', () => {
-    expect(resolveErrorKey(new Error('executionsvc: run-recovering: run abc is being picked back up')))
-      .toBe('liveRunControls.resolveError.recovering')
-  })
-
-  it('falls back to the generic copy for anything else', () => {
-    expect(resolveErrorKey(new Error('connection lost'))).toBe('liveRunControls.resolveError.generic')
-    expect(resolveErrorKey('some string')).toBe('liveRunControls.resolveError.generic')
   })
 })
