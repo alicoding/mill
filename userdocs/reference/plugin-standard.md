@@ -17,7 +17,10 @@ your plugin feels like part of Mill.
 
 4. Every action is a command declared in the manifest
    (`contributes.commands`) and registered with the same id; tools
-   reference declared commands. (checked)
+   reference declared commands. (checked) A command may also seat
+   itself in Mill's menu bar with `menu: { path, group?, order? }` --
+   `path` is `"workflow"`, `"atlas"` or `"help"` only, never one of
+   Mill's own menus. (checked)
 5. Ship no default hotkey; people bind their own in Settings ›
    Shortcuts. (checked: the SDK has no hotkey field; this rule
    documents why)

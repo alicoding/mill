@@ -9,10 +9,14 @@ import type { Command } from './commands'
 import { comboKey } from './keybinding'
 import { setMenuOwnedCombos } from './menuOwnership'
 import { commandMenuEnabled, menuOwnedAccelerators, menuSpecFor } from './menuSpec'
-import type { MenuEntry, MenuNode, MenuSpec, MenuSpecContext } from './menuSpec'
+import type { MenuEntry, MenuNode, MenuSpec, MenuSpecContext, SeatOverride } from './menuSpec'
 import { useAppStore } from './store'
 import { useUISignalStore } from './uiSignalStore'
 import { useUpdateNoticeStore } from './updateNoticeStore'
+import { useVaultStatusStore } from './vaultStatusStore'
+import { useBuildInfoStore } from './buildInfoStore'
+import { updateSeatFor } from './updateSeat'
+import { vaultSeatFor } from './vaultSeat'
 import { background } from './background'
 
 // The page's half of the native menu bar (goal 0332): project the
@@ -28,9 +32,21 @@ const ENABLEMENT_DEBOUNCE_MS = 50
 let lastVector: Record<string, boolean> = {}
 let pending: ReturnType<typeof setTimeout> | undefined
 
+// The state-following seats (goal 0335): computed fresh on every call
+// from the two stores each seat's own pure function reads, keyed by
+// the anchor command id shared/menuSpec.ts's commandEntry looks them
+// up by.
+function seatOverrides(): Record<string, SeatOverride> {
+  const update = useUpdateNoticeStore.getState()
+  return {
+    'update.check': updateSeatFor(update.updateNoticeState, update.availableVersion),
+    'secrets.lockVault': vaultSeatFor(useVaultStatusStore.getState().vaultStatus),
+  }
+}
+
 export function menuContext(): MenuSpecContext {
   const state = useAppStore.getState()
-  return { surface: state.view.kind, overrides: state.keybindingOverrides }
+  return { surface: state.view.kind, overrides: state.keybindingOverrides, seatOverrides: seatOverrides() }
 }
 
 // The combos the native menu bar takes over, in the keydown
@@ -52,9 +68,22 @@ function menuPlaced(): Command[] {
   return COMMANDS.filter((c) => c.menu !== undefined)
 }
 
+// Keyed by the id actually INSTALLED at each seat, which for an
+// overridden seat is the override's target, not the anchor -- Go's
+// SetEnabled indexes the tree it was last given (menuinstall_desktop.go's
+// commandItems), so a vector keyed by the anchor's own id would target
+// nothing once a reinstall has swapped that seat's item to a different
+// command.
 function enablementVector(ctx: MenuSpecContext): Record<string, boolean> {
   const out: Record<string, boolean> = {}
-  for (const command of menuPlaced()) out[command.id] = commandMenuEnabled(command, ctx.surface)
+  for (const command of menuPlaced()) {
+    const seat = ctx.seatOverrides?.[command.id]
+    if (seat) {
+      out[seat.commandId] = seat.enabled
+      continue
+    }
+    out[command.id] = commandMenuEnabled(command, ctx.surface)
+  }
   return out
 }
 
@@ -95,12 +124,27 @@ function scheduleEnablementPush(): void {
   }, ENABLEMENT_DEBOUNCE_MS)
 }
 
+// The state-following seats' own signature: changes here mean a
+// DIFFERENT command now occupies a seat (or its label changed), which
+// an enablement push cannot express -- SetEnabled only flips a
+// boolean on an already-installed id, it cannot swap which id is
+// there. A reinstall is the only way to move update.check's seat over
+// to update.relaunch, or secrets.lockVault's over to unlockVault.
+function seatSignature(): string {
+  const update = useUpdateNoticeStore.getState()
+  const vault = useVaultStatusStore.getState().vaultStatus
+  return `${update.updateNoticeState}|${update.availableVersion}|${vault?.Unlocked ?? ''}|${vault?.Exists ?? ''}`
+}
+
 // startNativeMenu installs the menu and keeps it current: enablement
-// follows every store that a command's own enabled() can read, and the
-// tree is rebuilt when the user's keybindings change, since a rebound
-// command's item must show (and take) the combo now in force.
+// follows every store that a command's own enabled() can read, the
+// state-following seats (goal 0335) reinstall on their own signature
+// change, and the tree is rebuilt when the user's keybindings change,
+// since a rebound command's item must show (and take) the combo now
+// in force.
 export function startNativeMenu(): () => void {
   let overrides = useAppStore.getState().keybindingOverrides
+  let seats = seatSignature()
   void background(installNativeMenu(), 'menu.installInitial')
   const unsubscribers = [
     useAppStore.subscribe(() => {
@@ -113,7 +157,25 @@ export function startNativeMenu(): () => void {
       scheduleEnablementPush()
     }),
     useUISignalStore.subscribe(scheduleEnablementPush),
-    useUpdateNoticeStore.subscribe(scheduleEnablementPush),
+    useUpdateNoticeStore.subscribe(() => {
+      const next = seatSignature()
+      if (next !== seats) {
+        seats = next
+        void background(installNativeMenu(), 'menu.installOnUpdateSeat')
+        return
+      }
+      scheduleEnablementPush()
+    }),
+    useVaultStatusStore.subscribe(() => {
+      const next = seatSignature()
+      if (next !== seats) {
+        seats = next
+        void background(installNativeMenu(), 'menu.installOnVaultSeat')
+      }
+      // vaultError alone (no Unlocked/Exists change) carries nothing
+      // the menu bar renders -- no enablement push needed either.
+    }),
+    useBuildInfoStore.subscribe(scheduleEnablementPush),
   ]
   return () => {
     if (pending !== undefined) clearTimeout(pending)

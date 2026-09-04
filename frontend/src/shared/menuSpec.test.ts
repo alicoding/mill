@@ -45,18 +45,26 @@ describe('menuSpecFor (the native menu bar as a projection of the command regist
     expect(spec.menus.map((m) => m.label)).toEqual(['Mill', 'File', 'Edit', 'View', 'Workflow', 'Atlas', 'Window', 'Help'])
   })
 
-  it('opens the app menu with About and closes it with Quit, Settings in its own band', () => {
+  it('opens the app menu with About and closes it with Quit, Settings and Back up now each in their own band', () => {
     expect(shapeOf(menu(spec, 'Mill'))).toEqual([
       'role:about', 'Check for updates…',
       '-', 'Settings…',
+      '-', 'Back up now',
       '-', 'role:services',
       '-', 'role:hide', 'role:hideOthers', 'role:showAll',
       '-', 'role:quit',
     ])
   })
 
-  it('groups File into new, close and save bands', () => {
-    expect(shapeOf(menu(spec, 'File'))).toEqual(['New workflow', '-', 'Close tab', 'Close other tabs', 'Close all tabs', '-', 'Save'])
+  it('groups File into new, the New… submenu, close, save, export and vault bands', () => {
+    expect(shapeOf(menu(spec, 'File'))).toEqual([
+      'New workflow', 'New note',
+      '-', 'submenu:New…',
+      '-', 'Close tab', 'Close other tabs', 'Close all tabs',
+      '-', 'Save',
+      '-', 'Export everything', 'Export plugin audit',
+      '-', 'Lock vault',
+    ])
   })
 
   it('leaves Edit entirely to the platform', () => {
@@ -65,17 +73,17 @@ describe('menuSpecFor (the native menu bar as a projection of the command regist
 
   it('puts the views, the palette and tab cycling in View, and the zoom roles last', () => {
     expect(shapeOf(menu(spec, 'View'))).toEqual([
-      'Home', 'Workflows', 'Configure', 'Atlas', 'Activity', 'Review', 'Secrets', 'Docs',
+      'Home', 'Workflows', 'Configure', 'Atlas', 'Activity', 'Review', 'Review rules', 'Secrets', 'Docs',
       '-', 'Command palette',
       '-', 'Next tab', 'Previous tab',
+      '-', 'Clipboard history',
       '-', 'role:resetZoom', 'role:zoomIn', 'role:zoomOut', 'role:toggleFullscreen',
     ])
   })
 
-  it('opens Workflow with Run, then the save band, then the canvas band', () => {
+  it('opens Workflow with Run and Run from clipboard, then the save band, then the canvas band', () => {
     const shape = shapeOf(menu(spec, 'Workflow'))
-    expect(shape[0]).toBe('Run workflow')
-    expect(shape.slice(1, 5)).toEqual(['-', 'Save', 'Save all changes', '-'])
+    expect(shape.slice(0, 5)).toEqual(['Run workflow', 'Run from clipboard…', '-', 'Save', 'Save all changes'])
     expect(shape).toContain('Fit view')
   })
 
@@ -88,17 +96,19 @@ describe('menuSpecFor (the native menu bar as a projection of the command regist
     expect(shape).toContain('Auto-arrange')
   })
 
-  it('renders no separator for a band no command claimed', () => {
-    // Nothing is placed in Window's middle band today, so Minimize/Zoom
-    // and Bring All to Front must still read as exactly two bands.
-    expect(shapeOf(menu(spec, 'Window'))).toEqual(['role:minimise', 'role:zoom', '-', 'role:bringAllToFront'])
+  it('seats Quick panel and Run monitor in Window’s middle band', () => {
+    expect(shapeOf(menu(spec, 'Window'))).toEqual([
+      'role:minimise', 'role:zoom',
+      '-', 'Quick panel', 'Run monitor',
+      '-', 'role:bringAllToFront',
+    ])
   })
 
   it('keeps the developer roles out of View and behind a Help submenu', () => {
     expect(shapeOf(menu(spec, 'View'))).not.toContain('role:reload')
     const help = menu(spec, 'Help')
     expect(shapeOf(help)).toEqual([
-      'Mill help', 'Search docs', 'Keyboard shortcuts',
+      'Mill help', 'Search docs', 'Keyboard shortcuts', "What's new",
       '-', 'Report an issue…', 'Open data folder',
       '-', 'submenu:Developer',
     ])
@@ -129,9 +139,13 @@ describe('menuSpecFor (the native menu bar as a projection of the command regist
   it('leaves the command families with no menu home out of the bar', () => {
     const placed = new Set(commandEntries(spec).map((e) => e.id))
     for (const id of [
-      'configure.new.integration', 'secrets.lockVault', 'clipboard.history.open',
-      'codingLoop.run', 'review.rules', 'backup.now', 'panel.applyClipboard',
-      'update.downloadAndInstall', 'capture.note',
+      // panel.applyClipboard/update.downloadAndInstall/update.relaunch
+      // are palette/state-seat-only by design; secrets.unlockVault/
+      // resetVault are the vault seat's OTHER states -- only the
+      // anchor (secrets.lockVault) carries `menu`, the seat's actual
+      // occupant comes from shared/vaultSeat.ts's seatOverride.
+      'panel.applyClipboard', 'update.downloadAndInstall', 'update.relaunch',
+      'secrets.unlockVault', 'secrets.resetVault',
     ]) {
       expect(placed.has(id)).toBe(false)
     }
@@ -189,5 +203,32 @@ describe('menuSpecFor (the native menu bar as a projection of the command regist
     const onHome = commandEntries(menuSpecFor(COMMANDS, { surface: 'home' }))
     expect(onAtlas.find((e) => e.id === 'atlas.up')?.enabled).toBe(true)
     expect(onHome.find((e) => e.id === 'atlas.up')?.enabled).toBe(false)
+  })
+
+  // The state-following seats (goal 0335): seatOverrides swaps which
+  // command a seat's item actually fires, and its label/enabled,
+  // while the seat's own band/position (declared on the anchor,
+  // update.check / secrets.lockVault) never moves.
+  it('swaps the update seat to whichever command the override names', () => {
+    const overridden = menuSpecFor(COMMANDS, {
+      seatOverrides: { 'update.check': { commandId: 'update.relaunch', label: 'Relaunch to update', enabled: true } },
+    })
+    const entry = commandEntries(overridden).find((e) => e.label === 'Relaunch to update')
+    expect(entry).toEqual({ id: 'update.relaunch', label: 'Relaunch to update', accelerator: null, enabled: true })
+    // The anchor's own id no longer appears -- one seat, one item.
+    expect(commandEntries(overridden).some((e) => e.id === 'update.check')).toBe(false)
+  })
+
+  it('swaps the vault seat to whichever command the override names, respecting the override’s own enabled', () => {
+    const overridden = menuSpecFor(COMMANDS, {
+      seatOverrides: { 'secrets.lockVault': { commandId: 'secrets.unlockVault', label: 'Unlock vault', enabled: false } },
+    })
+    const entry = commandEntries(overridden).find((e) => e.label === 'Unlock vault')
+    expect(entry).toEqual({ id: 'secrets.unlockVault', label: 'Unlock vault', accelerator: null, enabled: false })
+  })
+
+  it('leaves a seat at its own static command and label with no seatOverrides', () => {
+    const entry = commandEntries(spec).find((e) => e.id === 'update.check')
+    expect(entry?.label).toBe('Check for updates…')
   })
 })

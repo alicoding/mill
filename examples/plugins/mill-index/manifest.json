@@ -16,7 +16,12 @@
     "commands": [
       {
         "id": "mill-index.refresh",
-        "label": "Refresh the board index"
+        "label": "Refresh the board index",
+        "menu": {
+          "path": "help",
+          "group": 1,
+          "order": 2
+        }
       }
     ],
     "tools": [

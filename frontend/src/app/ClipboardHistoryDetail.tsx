@@ -36,9 +36,10 @@ export function ClipboardHistoryDetail({ entry, onChanged }: { entry: ClipboardH
       // takes (SecretsDetailDialog.tsx's secret-detail-error testid).
       .catch((err: unknown) => setCopyError(String(err)))
   }
-  // Pin/delete have no registry command to route through runCommand
-  // (goal 0313; tracked for goal 0335) -- background() until one
-  // exists, rather than the silent catch(console.error) this replaces.
+  // Pin/delete stay background() calls: goal 0335 confirmed neither
+  // has a static registry command to route through -- both act on
+  // this specific entry.ID, and the Command shape (shared/commands.ts)
+  // carries no argument for run() to receive it through.
   const doPin = () => {
     void background(ClipboardHistoryService.SetClipboardHistoryPinned(entry.ID, !entry.Pinned).then(onChanged), 'clipboardHistory.pin')
   }

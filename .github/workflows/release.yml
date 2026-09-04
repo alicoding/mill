@@ -107,10 +107,25 @@ jobs:
       # of Mill (task dev, a local `task package`, `task install:app`)
       # leaves it unset and keeps the "source" default, since only this
       # published GitHub Releases asset may ever binary-swap itself.
+      # MILL_VERSION: read straight off the pushed tag (preflight above
+      # already proved it equals main.go's own millVersion) -- the
+      # bundle's own create:app:bundle task (build/darwin/Taskfile.yml,
+      # goal 0335) stamps it into Info.plist's CFBundleShortVersionString/
+      # CFBundleVersion, so About shows the same version the binary
+      # itself reports rather than the plist's committed 0.0.1 default.
+      - name: Compute release version
+        run: echo "MILL_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
       - run: task package
         env:
           MILL_SKIP_BINDINGS: "1"
           MILL_CHANNEL: release
+      - name: Verify the bundle's About version matches the release
+        run: |
+          ACTUAL=$(defaults read "$PWD/bin/mill.app/Contents/Info.plist" CFBundleShortVersionString)
+          if [ "$ACTUAL" != "$MILL_VERSION" ]; then
+            echo "::error::Info.plist CFBundleShortVersionString is '$ACTUAL', expected '$MILL_VERSION'"
+            exit 1
+          fi
       # scripts/package-macos-zip.sh: the shared asset-naming contract
       # goal 0100's beta-release job (ci.yml) also calls -- one
       # definition, so a beta and a real release can never drift in

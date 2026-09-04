@@ -514,6 +514,13 @@
     "enabled": false
   },
   {
+    "id": "panel.open",
+    "label": "Open Quick Panel",
+    "binding": null,
+    "surface": null,
+    "enabled": true
+  },
+  {
     "id": "panel.openMill",
     "label": "Open Mill",
     "binding": null,
@@ -528,6 +535,13 @@
       "review"
     ],
     "enabled": false
+  },
+  {
+    "id": "runMonitor.open",
+    "label": "Run monitor",
+    "binding": null,
+    "surface": null,
+    "enabled": true
   },
   {
     "id": "secrets.lockVault",

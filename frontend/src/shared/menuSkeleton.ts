@@ -10,7 +10,7 @@
 // own menus sit between View and Window; developer affordances stay out
 // of View.
 
-export type MenuPath = 'app' | 'file' | 'view' | 'workflow' | 'atlas' | 'window' | 'help' | 'help.developer'
+export type MenuPath = 'app' | 'file' | 'file.new' | 'view' | 'workflow' | 'atlas' | 'window' | 'help' | 'help.developer'
 
 // A standard item the platform supplies and localises itself -- Mill
 // never gives these a label or a handler.
@@ -60,6 +60,8 @@ export const MENU_SKELETON: readonly MenuSkeletonEntry[] = [
     groups: [
       [{ role: 'about' }, { commandGroup: 0 }],
       [{ commandGroup: 1 }],
+      // Back up now (goal 0335): its own band, directly under Settings.
+      [{ commandGroup: 2 }],
       [{ role: 'services' }],
       [{ role: 'hide' }, { role: 'hideOthers' }, { role: 'showAll' }],
       [{ role: 'quit' }],
@@ -68,7 +70,20 @@ export const MENU_SKELETON: readonly MenuSkeletonEntry[] = [
   {
     label: 'File',
     path: 'file',
-    groups: [[{ commandGroup: 0 }], [{ commandGroup: 1 }], [{ commandGroup: 2 }]],
+    groups: [
+      [{ commandGroup: 0 }],
+      // New… (goal 0335): the per-Configure-tab create commands, in
+      // their own submenu rather than crowding File's top band.
+      [{ submenu: { label: 'New…', path: 'file.new', groups: [[{ commandGroup: 0 }]] } }],
+      [{ commandGroup: 1 }],
+      [{ commandGroup: 2 }],
+      // Export band (goal 0335).
+      [{ commandGroup: 3 }],
+      // The vault seat (goal 0335): one item, its command and label
+      // following vaultStatusStore's own state (shared/menuSpec.ts's
+      // seatOverrides).
+      [{ commandGroup: 4 }],
+    ],
   },
   // The platform's own text-editing menu, contents included: Undo, Cut,
   // Copy, Paste, Select All and Speech all act on whatever view is
@@ -81,6 +96,8 @@ export const MENU_SKELETON: readonly MenuSkeletonEntry[] = [
       [{ commandGroup: 0 }],
       [{ commandGroup: 1 }],
       [{ commandGroup: 2 }],
+      // Clipboard history (goal 0335): its own band.
+      [{ commandGroup: 3 }],
       [
         // ⌘0/⌘+/⌘- are Mill's own: Go to Home, and the canvas zoom the
         // editor's listener drives off a live selection. The zoom

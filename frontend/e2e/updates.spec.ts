@@ -142,6 +142,9 @@ test('Release-channel build offers to download, and a failed install surfaces th
     const errorPill = page.locator('[data-notice-level="error"]').filter({ hasText: 'Download the update and install' })
     await expect(errorPill).toBeVisible()
     await expect(errorPill).toHaveText('Download the update and install: Something went wrong. Try again.×')
+    // The whole sentence is visible, not clipped by the pill's width.
+    const clipped = await errorPill.getByTestId('notice-text').evaluate((el) => el.scrollWidth > el.clientWidth)
+    expect(clipped).toBe(false)
     await expect(errorPill).not.toContainText('no release asset')
 
     await page.close()

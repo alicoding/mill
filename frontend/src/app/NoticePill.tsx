@@ -57,7 +57,7 @@ function NoticeView({ notice, dismissLabel }: { notice: Notice; dismissLabel: st
           {notice.text}
         </button>
       ) : (
-        <span className={styles.text}>{notice.text}</span>
+        <span className={styles.text} title={notice.text} data-testid="notice-text">{notice.text}</span>
       )}
       {notice.actions?.map((a) => (
         <button key={a.commandId} type="button" className={styles.secondaryAction} onClick={() => void runCommand(a.commandId)} data-testid={a.id ? `notice-${a.id}` : 'notice-action'}>

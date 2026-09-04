@@ -11,6 +11,7 @@ export const REVIEW_COMMANDS: Command[] = [
     // mounted, switching its own local tab state to "Rules" via the
     // uiSignalStore counter it watches.
     id: 'review.rules',
+    menu: { path: 'view', group: 0, order: 6, label: 'Review rules' },
     label: 'Guardrail rules',
     defaultBinding: null,
     surface: ['review'],

@@ -29,6 +29,7 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | About Mill | — | Provided by macOS |
 | Check for updates… | — | `update.check` |
 | Settings… | ⌘, | `settings.open` |
+| Back up now | — | `backup.now` |
 | Services | — | Provided by macOS |
 | Hide Mill | — | Provided by macOS |
 | Hide Others | — | Provided by macOS |
@@ -40,10 +41,32 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Item | Shortcut | Command |
 |---|---|---|
 | New workflow | ⌘N | `workflow.new` |
+| New note | — | `capture.note` |
+
+### File > New…
+
+| Item | Shortcut | Command |
+|---|---|---|
+| New integration | — | `configure.new.integration` |
+| New list | — | `configure.new.lists` |
+| New MCP server | — | `configure.new.mcpservers` |
+| New decision | — | `configure.new.decisions` |
+| New environment | — | `configure.new.execenvs` |
+| New AI provider | — | `configure.new.aiproviders` |
+| New conversion profile | — | `configure.new.conversionprofiles` |
+| New step type | — | `configure.new.steptypes` |
+
+### File
+
+| Item | Shortcut | Command |
+|---|---|---|
 | Close tab | ⌘W | `tab.close` |
 | Close other tabs | ⌘⌥W | `tab.closeOthers` |
 | Close all tabs | ⌘⇧W | `tab.closeAll` |
 | Save | ⌘S | `workflow.save` |
+| Export everything | — | `backup.export` |
+| Export plugin audit | — | `extensions.exportAudit` |
+| Lock vault | — | `secrets.lockVault` |
 
 ### Edit
 
@@ -61,11 +84,13 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Atlas | ⌘3 | `view.atlas` |
 | Activity | ⌘4 | `view.activity` |
 | Review | ⌘5 | `view.review` |
+| Review rules | — | `review.rules` |
 | Secrets | ⌘6 | `view.secrets` |
 | Docs | — | `view.docs` |
 | Command palette | ⌘K | `palette.open` |
 | Next tab | ⌃TAB | `tab.next` |
 | Previous tab | ⌃⇧TAB | `tab.prev` |
+| Clipboard history | — | `clipboard.history.open` |
 | Actual Size | — | Provided by macOS |
 | Zoom In | — | Provided by macOS |
 | Zoom Out | — | Provided by macOS |
@@ -76,6 +101,7 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Item | Shortcut | Command |
 |---|---|---|
 | Run workflow | ⌘↩ | `workflow.run` |
+| Run from clipboard… | — | `codingLoop.run` |
 | Save | ⌘S | `edit.save` |
 | Save all changes | — | `edit.saveAll` |
 | Undo | ⌘Z | `canvas.undo` |
@@ -122,6 +148,8 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 |---|---|---|
 | Minimize | — | Provided by macOS |
 | Zoom | — | Provided by macOS |
+| Quick panel | — | `panel.open` |
+| Run monitor | — | `runMonitor.open` |
 | Bring All to Front | — | Provided by macOS |
 
 ### Help
@@ -131,6 +159,7 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Mill help | — | `view.docs` |
 | Search docs | — | `docs.search` |
 | Keyboard shortcuts | — | `help.shortcuts` |
+| What's new | — | `update.whatsNew` |
 | Report an issue… | — | `help.reportIssue` |
 | Open data folder | — | `help.openDataFolder` |
 

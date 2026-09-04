@@ -57,7 +57,10 @@
 
 .text,
 .pillAction {
-  max-width: 44ch;
+  /* One sentence must stay readable: a label plus "Something went
+     wrong. Try again." runs past 44ch (goal 0339); the full text is
+     the element's title for anything longer. */
+  max-width: 72ch;
   overflow: hidden;
   text-overflow: ellipsis;
 }

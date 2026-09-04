@@ -26,7 +26,12 @@ function record(promise: Promise<unknown>): void {
 
 export const SECRETS_COMMANDS: Command[] = [
   {
+    // The vault seat's anchor (goal 0335): its own `menu` fixes the
+    // seat's File-menu position, but shared/menuSpec.ts's seatOverrides
+    // (shared/vaultSeat.ts) decide which of lockVault/unlockVault
+    // actually shows there and with what label/enablement.
     id: 'secrets.lockVault',
+    menu: { path: 'file', group: 4, order: 0 },
     label: 'Lock vault',
     defaultBinding: null,
     enabled: () => useVaultStatusStore.getState().vaultStatus?.Unlocked === true,

@@ -41,6 +41,27 @@ export interface CaptureContribution {
 export interface CommandContribution {
     "id": string;
     "label": string;
+
+    /**
+     * Menu seats this command in the native menu bar (goal 0335): the
+     * host cross-references this declaration by id when the plugin
+     * actually registers the command, since the manifest carries no
+     * run() to seat directly. Restricted to the three menus a plugin's
+     * own contributions can plausibly belong to -- never "app" or
+     * "file", which stay Mill's own.
+     */
+    "menu"?: CommandMenuContribution | null;
+}
+
+/**
+ * CommandMenuContribution is a plugin-contributed command's menu seat.
+ * Group/Order default to 0 when omitted -- a single-command plugin
+ * never needs to think about band position.
+ */
+export interface CommandMenuContribution {
+    "path": string;
+    "group": number;
+    "order": number;
 }
 
 /**

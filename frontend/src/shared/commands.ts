@@ -333,7 +333,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
   },
   {
     id: 'view.secrets',
-    menu: { path: 'view', group: 0, order: 6, label: 'Secrets' },
+    menu: { path: 'view', group: 0, order: 7, label: 'Secrets' },
     label: 'Go to Secrets',
     defaultBinding: { mods: ['cmd'], key: '6' },
     run: () => setView({ kind: 'secrets' }),
@@ -343,7 +343,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
     // reachable on demand, never a standing tab) -- the palette and the
     // footer link are its entry points.
     id: 'view.docs',
-    menu: { path: 'view', group: 0, order: 7, label: 'Docs' },
+    menu: { path: 'view', group: 0, order: 8, label: 'Docs' },
     label: 'Open docs',
     defaultBinding: null,
     run: () => setView({ kind: 'docs' }),
@@ -355,8 +355,9 @@ export const COMMANDS: Command[] = lazyArray(() => [
   // Per-Configure-tab create commands (goal 0071 G6) -- split out to
   // shared/configureCreateCommands.ts (CLAUDE.md's 500-line convention);
   // see that file's own header for what each one does and why
-  // Attributes has none.
-  ...CONFIGURE_CREATE_COMMANDS,
+  // Attributes has none. Seated as one band in File > New… (goal 0335),
+  // in the file's own declared order.
+  ...withMenuGroup('file.new', 0, CONFIGURE_CREATE_COMMANDS),
   // panel.applyClipboard, backup.now/export, and the per-Settings-
   // section deep links -- split out to shared/settingsCommands.ts
   // (CLAUDE.md's 500-line convention).

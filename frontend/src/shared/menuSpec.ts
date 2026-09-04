@@ -38,6 +38,20 @@ export interface MenuSpec {
   menus: MenuNode[]
 }
 
+// A menu seat whose command, label and enablement follow application
+// state rather than the registry's own static placement (goal 0335):
+// the update seat shows update.check/downloadAndInstall/relaunch by
+// turn, the vault seat shows secrets.lockVault/unlockVault by turn.
+// Keyed in MenuSpecContext.seatOverrides by the ANCHOR command id --
+// the one that actually declares `menu` (its path/group/order is the
+// seat's fixed position) -- so its physical slot never moves while
+// what occupies it does.
+export interface SeatOverride {
+  commandId: string
+  label: string
+  enabled: boolean
+}
+
 // What the projection needs beyond the registry itself. `surface` is
 // the view the user is looking at, which decides whether a
 // surface-scoped command's item is live; `overrides` is the user's own
@@ -46,6 +60,7 @@ export interface MenuSpec {
 export interface MenuSpecContext {
   surface?: View['kind']
   overrides?: Record<string, KeyCombo>
+  seatOverrides?: Record<string, SeatOverride>
 }
 
 // Whether a command's menu item is live right now. Folds in the surface
@@ -59,9 +74,16 @@ export function commandMenuEnabled(command: Command, activeSurface?: View['kind'
   return command.enabled ? command.enabled() : true
 }
 
-// The combos the native menu bar takes ownership of. A combo claimed by
-// MORE than one menu-placed command is deliberately left out: macOS
-// resolves a duplicate key equivalent by menu order alone, which cannot
+// The combos the native menu bar takes ownership of. Computed off each
+// seat's ANCHOR command, never a seatOverride's target -- every command
+// a seatOverride can name (update.check/downloadAndInstall/relaunch,
+// secrets.lockVault/unlockVault) ships with defaultBinding: null, so
+// there is never an accelerator to reassign when the seat's occupant
+// changes; commandEntry above still reads the live target's own
+// accelerator, this map just never needs to know about the swap. A
+// combo claimed by MORE than one menu-placed command is deliberately
+// left out: macOS resolves a duplicate key equivalent by menu order
+// alone, which cannot
 // express the surface precedence the keydown dispatcher already
 // implements (⌘K is the Atlas jump dialog on Atlas and the palette
 // everywhere else), so both commands keep their existing in-window
@@ -85,7 +107,7 @@ export function menuOwnedAccelerators(commands: Command[], overrides: Record<str
 // every other item is a command that asked for a place. Pure -- the
 // caller owns pushing the result at the platform.
 export function menuSpecFor(commands: Command[], ctx: MenuSpecContext = {}): MenuSpec {
-  const { surface: activeSurface, overrides = {} } = ctx
+  const { surface: activeSurface, overrides = {}, seatOverrides = {} } = ctx
   const owned = menuOwnedAccelerators(commands, overrides)
   const byPath = new Map<MenuPath, Command[]>()
   for (const command of menuPlacedCommands(commands)) {
@@ -96,7 +118,7 @@ export function menuSpecFor(commands: Command[], ctx: MenuSpecContext = {}): Men
 
   const expand = (path: MenuPath, groups: MenuSlot[][]): MenuEntry[][] =>
     groups
-      .map((slots) => slots.flatMap((slot) => expandSlot(path, slot, byPath, byId, owned, activeSurface, overrides)))
+      .map((slots) => slots.flatMap((slot) => expandSlot(path, slot, byPath, byId, owned, activeSurface, overrides, seatOverrides)))
       .filter((entries) => entries.length > 0)
 
   return {
@@ -116,22 +138,23 @@ function expandSlot(
   owned: Map<string, string>,
   activeSurface: View['kind'] | undefined,
   overrides: Record<string, KeyCombo>,
+  seatOverrides: Record<string, SeatOverride>,
 ): MenuEntry[] {
   if ('role' in slot) return [{ kind: 'role', role: slot.role, releaseAccelerator: slot.releaseAccelerator ?? false }]
   if ('submenu' in slot) {
     const groups = slot.submenu.groups
-      .map((slots) => slots.flatMap((s) => expandSlot(slot.submenu.path, s, byPath, byId, owned, activeSurface, overrides)))
+      .map((slots) => slots.flatMap((s) => expandSlot(slot.submenu.path, s, byPath, byId, owned, activeSurface, overrides, seatOverrides)))
       .filter((entries) => entries.length > 0)
     return groups.length === 0 ? [] : [{ kind: 'submenu', label: slot.submenu.label, groups }]
   }
   if ('commandRef' in slot) {
     const command = byId.get(slot.commandRef)
-    return command && !command.paletteHidden ? [commandEntry(command, owned, activeSurface, overrides, slot.label)] : []
+    return command && !command.paletteHidden ? [commandEntry(command, owned, activeSurface, overrides, byId, seatOverrides[command.id], slot.label)] : []
   }
   return (byPath.get(path) ?? [])
     .filter((command) => placementOf(command)!.group === slot.commandGroup)
     .sort((a, b) => placementOf(a)!.order - placementOf(b)!.order)
-    .map((command) => commandEntry(command, owned, activeSurface, overrides))
+    .map((command) => commandEntry(command, owned, activeSurface, overrides, byId, seatOverrides[command.id]))
 }
 
 function commandEntry(
@@ -139,15 +162,23 @@ function commandEntry(
   owned: Map<string, string>,
   activeSurface: View['kind'] | undefined,
   overrides: Record<string, KeyCombo>,
+  byId: Map<string, Command>,
+  seatOverride: SeatOverride | undefined,
   labelOverride?: string,
 ): MenuEntry {
-  const accelerator = acceleratorFor(command, overrides)
+  // A seatOverride swaps which command actually occupies the anchor's
+  // seat: the id the item fires, its accelerator (if any), and the
+  // whole entry's label/enabled come from the override, never the
+  // anchor's own -- the anchor's `menu` only ever fixes the seat's
+  // position.
+  const target = seatOverride ? (byId.get(seatOverride.commandId) ?? command) : command
+  const accelerator = acceleratorFor(target, overrides)
   return {
     kind: 'command',
-    id: command.id,
-    label: labelOverride ?? placementOf(command)?.label ?? command.label,
-    accelerator: accelerator && owned.get(accelerator) === command.id ? accelerator : null,
-    enabled: commandMenuEnabled(command, activeSurface),
+    id: target.id,
+    label: seatOverride?.label ?? labelOverride ?? placementOf(command)?.label ?? command.label,
+    accelerator: accelerator && owned.get(accelerator) === target.id ? accelerator : null,
+    enabled: seatOverride ? seatOverride.enabled : commandMenuEnabled(command, activeSurface),
   }
 }
 
