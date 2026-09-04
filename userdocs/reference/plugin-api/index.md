@@ -35,6 +35,7 @@
 - [PluginSettingsAPI](interfaces/PluginSettingsAPI.md)
 - [PluginStorageAPI](interfaces/PluginStorageAPI.md)
 - [PluginTheme](interfaces/PluginTheme.md)
+- [PluginThemeDecl](interfaces/PluginThemeDecl.md)
 - [PluginViewCtx](interfaces/PluginViewCtx.md)
 - [PluginViewDecl](interfaces/PluginViewDecl.md)
 - [PluginWriteResult](interfaces/PluginWriteResult.md)

@@ -1,0 +1,57 @@
+/* The theme list (goal 0342). The list is the control itself, sitting
+   in the settings row where a dropdown used to, so it carries the same
+   bordered, scrollable box a menu would. */
+
+.list {
+  max-width: 320px;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background-color: var(--bgColor-default);
+}
+
+/* Three squares in a row: page, text, accent. Bordered because a
+   theme's own background can equal the row's, and an unbordered chip
+   would then read as missing rather than as pale. */
+.swatch {
+  display: inline-flex;
+  gap: 1px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.chip {
+  display: block;
+  width: 8px;
+  height: 16px;
+}
+
+/* The probe the swatch colors are read off: painted, so the cascade
+   resolves, but never laid out or seen. */
+.probe {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* The preview announcement: read by a screen reader, never seen. */
+.announce {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The control the settings row lays out: the list plus its
+   announcement, which the row must treat as one box. */
+.wrap {
+  position: relative;
+  display: block;
+}

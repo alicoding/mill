@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SegmentedControl, Select } from '@primer/react'
+import { Flash, SegmentedControl } from '@primer/react'
 import { SunIcon, MoonIcon, DeviceDesktopIcon } from '@primer/octicons-react'
 import { SettingsService } from '../shared/bindings'
 import { applyDensity, type DisplayDensity } from '../shared/density'
 import { SettingsRow } from './SettingsRow'
+import { ThemePicker, useThemeOptions } from './ThemePicker'
 import { background } from '../shared/background'
+import { pluginThemeRejections, subscribePluginThemes, type PluginThemeRejection } from '../shared/appearanceThemes'
 import {
   DARK_SCHEMES,
   LIGHT_SCHEMES,
@@ -13,20 +15,24 @@ import {
   setAppearance,
   subscribeAppearance,
   type ColorMode,
-  type DarkScheme,
-  type LightScheme,
 } from '../shared/appearance'
 
-// Settings > Appearance (goal 0320, re-shaped by goal 0321): color
-// theme, then the scheme used in each appearance, then density -- four
-// two-column rows. The two scheme rows carry DISTINCT names ("Light
-// appearance" / "Dark appearance"): they used to share one label,
-// which read as the same setting listed twice.
+// Settings > Appearance (goal 0320, re-shaped by 0321 and 0342): the
+// color mode, the theme used in whichever appearance the mode names,
+// then density.
 //
-// Every control writes through the door that reaches EVERY open window
+// The pickers FOLLOW THE MODE. Under a fixed Light or Dark there is
+// one list, of that family's themes; under Match system there are two,
+// one per family, each captioned with when it applies. Showing both
+// lists under a fixed mode is what made a change look like it did
+// nothing: half the control on screen could not affect the window in
+// front of you.
+//
+// Every commit writes through the door that reaches EVERY open window
 // -- setAppearance for the theme, SetDisplayDensity plus the same
 // broadcast for density -- so a change made here lands in the Quick
-// Panel, the tray panel and the run monitor without a reload.
+// Panel, the tray panel and the run monitor without a reload. A
+// PREVIEW deliberately does not: it never leaves this window.
 
 const COLOR_MODES = ['light', 'dark', 'auto'] as const
 const DENSITIES = ['comfortable', 'compact'] as const
@@ -72,11 +78,31 @@ export default function AppearanceSection() {
   }
 
   const setMode = (mode: ColorMode) => setAppearance({ ...appearance, mode })
+  const labelOf = useCallback((id: string) => t(`settings.appearance.schemes.${SCHEME_LABEL_KEY[id]}`), [t])
+  const lightOptions = useThemeOptions('light', LIGHT_SCHEMES, labelOf)
+  const darkOptions = useThemeOptions('dark', DARK_SCHEMES, labelOf)
+  const rejections = useSyncExternalStore(subscribePluginThemes, pluginThemeRejections, noRejections)
 
-  const schemeOptions = (schemes: readonly string[]) =>
-    schemes.map((id) => (
-      <Select.Option key={id} value={id}>{t(`settings.appearance.schemes.${SCHEME_LABEL_KEY[id]}`)}</Select.Option>
-    ))
+  const lightPicker = (labelId: string) => (
+    <ThemePicker
+      family="light"
+      options={lightOptions}
+      value={appearance.lightScheme}
+      labelId={labelId}
+      testId="light-scheme-select"
+      onCommit={(scheme) => setAppearance({ ...appearance, lightScheme: scheme })}
+    />
+  )
+  const darkPicker = (labelId: string) => (
+    <ThemePicker
+      family="dark"
+      options={darkOptions}
+      value={appearance.darkScheme}
+      labelId={labelId}
+      testId="dark-scheme-select"
+      onCommit={(scheme) => setAppearance({ ...appearance, darkScheme: scheme })}
+    />
+  )
 
   return (
     <>
@@ -90,34 +116,19 @@ export default function AppearanceSection() {
           </SegmentedControl>
         )}
       />
-      <SettingsRow
-        label={t('settings.appearance.lightAppearanceLabel')}
-        caption={t('settings.appearance.lightSchemeCaption')}
-        control={(labelId) => (
-          <Select
-            aria-labelledby={labelId}
-            value={appearance.lightScheme}
-            onChange={(e) => setAppearance({ ...appearance, lightScheme: e.target.value as LightScheme })}
-            data-testid="light-scheme-select"
-          >
-            {schemeOptions(LIGHT_SCHEMES)}
-          </Select>
-        )}
-      />
-      <SettingsRow
-        label={t('settings.appearance.darkAppearanceLabel')}
-        caption={t('settings.appearance.darkSchemeCaption')}
-        control={(labelId) => (
-          <Select
-            aria-labelledby={labelId}
-            value={appearance.darkScheme}
-            onChange={(e) => setAppearance({ ...appearance, darkScheme: e.target.value as DarkScheme })}
-            data-testid="dark-scheme-select"
-          >
-            {schemeOptions(DARK_SCHEMES)}
-          </Select>
-        )}
-      />
+      {appearance.mode === 'light' && <SettingsRow label={t('settings.theme.label')} control={lightPicker} />}
+      {appearance.mode === 'dark' && <SettingsRow label={t('settings.theme.label')} control={darkPicker} />}
+      {appearance.mode === 'auto' && (
+        <>
+          <SettingsRow label={t('settings.theme.lightLabel')} caption={t('settings.theme.lightCaption')} control={lightPicker} />
+          <SettingsRow label={t('settings.theme.darkLabel')} caption={t('settings.theme.darkCaption')} control={darkPicker} />
+        </>
+      )}
+      {rejections.map((r) => (
+        <Flash key={r.schemeId} variant="warning" data-testid="theme-rejected">
+          {t('settings.theme.rejected', { line: r.line })}
+        </Flash>
+      ))}
       <SettingsRow
         label={t('settings.appearance.densityLabel')}
         control={() => (
@@ -137,4 +148,9 @@ export default function AppearanceSection() {
       />
     </>
   )
+}
+
+const NONE: PluginThemeRejection[] = []
+function noRejections(): PluginThemeRejection[] {
+  return NONE
 }

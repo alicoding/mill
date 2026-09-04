@@ -52,6 +52,11 @@ your plugin feels like part of Mill.
 18. SDK comments and your README describe behaviour for plugin
     authors: no repository vocabulary (goal ids, internal file
     names). (checked over the generated reference)
+20. A theme you contribute is a CSS file of nothing but
+    `--token: value;` declarations, every token drawn from the
+    documented theme variables: no selector, no at-rule, no `url()`.
+    Mill layers it over the built-in palette of the family you name,
+    so declare only what you change. (checked)
 
 ## Quality gates
 

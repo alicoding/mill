@@ -10,6 +10,7 @@
 // @primer/primitives functional theme file per id below.
 
 import type { DisplayDensity } from './density'
+import { isKnownScheme } from './appearanceThemes'
 
 // The persisted keys. COLOR_MODE_STORAGE_KEY has always been the color
 // mode's door; the two scheme keys sit beside it.
@@ -47,10 +48,15 @@ export type DarkScheme = (typeof DARK_SCHEMES)[number]
 export const LIGHT_SCHEME_STORAGE_KEY = 'mill-light-scheme'
 export const DARK_SCHEME_STORAGE_KEY = 'mill-dark-scheme'
 
+// The two scheme fields are plain strings, not the built-in unions: a
+// plugin may contribute a theme, and its scheme id ("<pluginId>.<id>",
+// shared/appearanceThemes.ts) is as valid a choice as Primer's own
+// (goal 0342). resolveSchemes is where an id with no stylesheet behind
+// it falls back.
 export interface Appearance {
   mode: ColorMode
-  lightScheme: LightScheme
-  darkScheme: DarkScheme
+  lightScheme: string
+  darkScheme: string
 }
 
 // Every scheme's high-contrast counterpart, used only when the OS
@@ -78,12 +84,28 @@ export function highContrastPair(scheme: string): string {
 // scoped to. The contrast upgrade applies under Match system only: an
 // explicit Light/Dark pick is the user naming the exact scheme, and
 // silently repainting it would make their choice a lie.
-export function resolveSchemes(a: Appearance, prefersMoreContrast: boolean): { lightTheme: string; darkTheme: string } {
+export function resolveSchemes(
+  a: Appearance,
+  prefersMoreContrast: boolean,
+  contributed?: readonly string[],
+): { lightTheme: string; darkTheme: string } {
   const upgrade = a.mode === 'auto' && prefersMoreContrast
+  const light = knownOr(a.lightScheme, LIGHT_SCHEMES, 'light', contributed)
+  const dark = knownOr(a.darkScheme, DARK_SCHEMES, 'dark', contributed)
   return {
-    lightTheme: upgrade ? highContrastPair(a.lightScheme) : a.lightScheme,
-    darkTheme: upgrade ? highContrastPair(a.darkScheme) : a.darkScheme,
+    lightTheme: upgrade ? highContrastPair(light) : light,
+    darkTheme: upgrade ? highContrastPair(dark) : dark,
   }
+}
+
+// knownOr sends a family back to its built-in default when the stored
+// choice has no stylesheet behind it any more, which is what happens
+// the moment the plugin that contributed a theme is turned off or
+// removed. The stored value is left alone: turning the plugin back on
+// restores the choice.
+function knownOr(scheme: string, builtIn: readonly string[], fallback: string, contributed?: readonly string[]): string {
+  const known = contributed ? builtIn.includes(scheme) || contributed.includes(scheme) : isKnownScheme(scheme, builtIn)
+  return known ? scheme : fallback
 }
 
 // normalizeMode collapses Primer's four-value color mode vocabulary
@@ -99,6 +121,13 @@ function isLightScheme(v: unknown): v is LightScheme {
 
 function isDarkScheme(v: unknown): v is DarkScheme {
   return typeof v === 'string' && (DARK_SCHEMES as readonly string[]).includes(v)
+}
+
+// A contributed scheme id is "<pluginId>.<themeId>", the one shape a
+// built-in id never takes. Storage keeps it even while its plugin is
+// off, so the choice survives a reload.
+function isPluginSchemeID(v: unknown): v is string {
+  return typeof v === 'string' && /^[a-z0-9][a-z0-9-]*\.[a-z0-9][a-z0-9-]*$/.test(v)
 }
 
 // readAppearance reads the persisted choice. Storage is the same door
@@ -119,8 +148,8 @@ export function readAppearance(): Appearance {
   const dark = raw(DARK_SCHEME_STORAGE_KEY)
   return {
     mode: mode === 'light' || mode === 'dark' ? mode : 'auto',
-    lightScheme: isLightScheme(light) ? light : 'light',
-    darkScheme: isDarkScheme(dark) ? dark : 'dark',
+    lightScheme: isLightScheme(light) || isPluginSchemeID(light) ? light : 'light',
+    darkScheme: isDarkScheme(dark) || isPluginSchemeID(dark) ? dark : 'dark',
   }
 }
 

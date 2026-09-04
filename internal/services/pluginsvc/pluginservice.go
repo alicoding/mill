@@ -82,6 +82,10 @@ type ManifestContributes struct {
 	// registers at activate() time. Declaring one is what lets a tool
 	// name it; an undeclared registerCommand still works.
 	Commands []CommandContribution `json:"commands"`
+	// Themes (docs/goals/0342): color themes the plugin ships as CSS
+	// data files. Declared here because the picker lists them before
+	// any plugin code runs, and a theme needs no code at all.
+	Themes []ThemeContribution `json:"themes"`
 	// Tools (docs/goals/0324): the automation-reachable surface --
 	// which of this plugin's commands, steps and reads an agent may
 	// call over MCP, each with its own typed input contract.

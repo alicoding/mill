@@ -1,0 +1,16 @@
+/* Slate: a cool, low-saturation dark theme. Only documented theme
+   variables appear here; every token this file leaves alone keeps
+   Mill's own dark value. */
+--bgColor-default: #182029;
+--bgColor-muted: #1f2934;
+--fgColor-default: #d5dce6;
+--fgColor-muted: #8b97a6;
+--borderColor-default: #33404f;
+--fgColor-accent: #7fb3d5;
+--bgColor-accent-emphasis: #2f6d99;
+--fgColor-onEmphasis: #f2f6fa;
+--borderColor-accent-emphasis: #3d80ad;
+--mill-accent-fg: #7fb3d5;
+--mill-accent-emphasis: #2f6d99;
+--mill-accent-muted: #222d3a;
+--mill-accent-border-muted: #33404f;

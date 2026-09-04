@@ -110,3 +110,38 @@ go run ./internal/pluginconform path/to/my-plugin
 A folder named `vendor/` is skipped: a bundled third-party engine
 brings its own palette and its own variable names, and neither is your
 plugin's chrome.
+
+## Shipping a theme of your own
+
+A plugin can contribute whole color themes, and a theme is data rather
+than code: a CSS file holding nothing but declarations, listed in your
+manifest.
+
+```json
+"contributes": {
+  "themes": [
+    { "id": "sepia", "label": "Sepia", "family": "light", "file": "themes/sepia.css" }
+  ]
+}
+```
+
+```css
+/* themes/sepia.css */
+--bgColor-default: #f6efe2;
+--fgColor-default: #3a3026;
+--fgColor-accent: #8a5a1f;
+```
+
+`family` says which appearance the theme belongs to, `light` or `dark`.
+Mill layers your file over that family's built-in palette, so you
+declare only the tokens you change and every other token keeps a value
+that already works.
+
+The file may contain only `--token: value;` declarations of the
+variables listed above, plus comments. A selector, an at-rule, a
+`url()`, or a variable outside the list is refused, and the check names
+the line. Your theme then appears in Settings > Appearance under its
+family, with your plugin's name beneath its label.
+
+Turning your plugin off or removing it takes its themes with it, and
+the appearance falls back to Mill's own.
