@@ -3,6 +3,9 @@
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as json$0 from "../../../../../../encoding/json/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as atlas$0 from "../../domain/atlas/models.js";
 
 /**
@@ -27,6 +30,17 @@ export interface CaptureContribution {
     "id": string;
     "label": string;
     "description": string;
+}
+
+/**
+ * CommandContribution declares one palette command the plugin
+ * registers at activate() time. Declaring it is what lets a tool name
+ * it; api.registerCommand still works for an undeclared id (the host
+ * warns once), so this is required only for automation reach.
+ */
+export interface CommandContribution {
+    "id": string;
+    "label": string;
 }
 
 /**
@@ -113,6 +127,20 @@ export interface ManifestContributes {
      * so activate-time registerView is checked against a declaration.
      */
     "views": ViewContribution[] | null;
+
+    /**
+     * Commands (docs/goals/0324): the palette commands the plugin
+     * registers at activate() time. Declaring one is what lets a tool
+     * name it; an undeclared registerCommand still works.
+     */
+    "commands": CommandContribution[] | null;
+
+    /**
+     * Tools (docs/goals/0324): the automation-reachable surface --
+     * which of this plugin's commands, steps and reads an agent may
+     * call over MCP, each with its own typed input contract.
+     */
+    "tools": ToolContribution[] | null;
 }
 
 /**
@@ -333,6 +361,34 @@ export interface StepContribution {
     "label": string;
     "description": string;
     "config": StepConfigContribution[] | null;
+}
+
+/**
+ * ToolContribution declares one agent-reachable tool. InputSchema is
+ * the tool's own JSON Schema, carried verbatim to the MCP tool list --
+ * the plugin author writes the contract the agent reads. Effect is the
+ * consent layer's input, not the schema's: "write" routes through the
+ * write gate and the approval park, "read" answers directly.
+ */
+export interface ToolContribution {
+    "name": string;
+    "description": string;
+    "inputSchema": json$0.RawMessage;
+    "effect": string;
+    "run": ToolRun;
+}
+
+/**
+ * ToolRun says WHAT a tool runs. Kind "command" runs a declared
+ * palette command in the webview (argument-less: Command.run takes
+ * none); "step" runs one of the plugin's own declared workflow steps;
+ * "query" reads the board's contents through the host's own content
+ * index.
+ */
+export interface ToolRun {
+    "kind": string;
+    "commandId"?: string;
+    "stepId"?: string;
 }
 
 /**

@@ -39,6 +39,20 @@ async function writeContent(pluginId: string, req: Partial<ContentWriteWire>) {
 	return { approved: r.approved, effect: r.effect, ruleLabel: r.ruleLabel, id: r.id }
 }
 
+// warnedCommands keeps the declare-first nudge to once per command id:
+// a command registered without a contributes.commands entry still
+// works (declaring is required only for a command a manifest tool
+// names), so this must not become noise on every reload.
+const warnedCommands = new Set<string>()
+
+function warnUndeclaredCommand(manifest: Manifest, commandId: string): void {
+	if ((manifest.contributes?.commands ?? []).some((c) => c.id === commandId)) return
+	const key = `${manifest.id}.${commandId}`
+	if (warnedCommands.has(key)) return
+	warnedCommands.add(key)
+	console.warn(`plugin ${manifest.id}: command "${commandId}" is not declared in the manifest's contributes.commands -- declare it to make it reachable by an agent`)
+}
+
 export function buildPluginAPI(manifest: Manifest, millVersion: string, storageSnapshot: Record<string, string> = {}): MillPluginAPI {
 	const pluginId = manifest.id
 	const requestGuardedAction = async (kind: string, attributes: Record<string, string>, description: string) => {
@@ -188,6 +202,7 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			})
 		},
 		registerCommand: (decl) => {
+			warnUndeclaredCommand(manifest, decl.id)
 			collectPluginCommand({ id: `plugin.${pluginId}.${decl.id}`, label: decl.label, pluginId, enabled: decl.enabled, run: decl.run })
 		},
 		requestGuardedAction,

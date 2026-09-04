@@ -18,13 +18,12 @@ import (
 // the SAME AtlasService.CreateBoardObject the frontend's own tools
 // call, gated by the SAME park every other write here goes through.
 //
-// Kinds are validated against atlas.BuiltInBoardObjectKinds -- the
-// nouns Mill itself ships. A plugin's own contributed kind
-// (contributes.canvasObjects) is NOT reachable from this package: the
-// plugin registry lives in pluginsvc, which mcpsvc has no dependency
-// on, and CreateBoardObject accepts any non-empty kind, so validating
-// plugin kinds here needs a registry seam this service does not have.
-// Goal 0324 owns that seam.
+// Kinds are validated against the nouns Mill itself ships plus every
+// kind a turned-on plugin contributes (goal 0324's PluginCatalog
+// seam): CreateBoardObject accepts any non-empty kind, so this check
+// is what keeps an agent from placing an object nothing can render.
+// A plugin the user turned off contributes no kind, so an object of
+// its kind cannot be created while it is off.
 
 // contentKindExtensions are the kinds whose whole artifact is text an
 // agent can honestly author in one call, and the file extension each
@@ -56,7 +55,7 @@ type atlasCreateBoardObjectPosition struct {
 }
 
 type atlasCreateBoardObjectArgs struct {
-	Kind     string                          `json:"kind" jsonschema:"the canvas noun to create: diagram, image, ink, pdf, shape, sheet or table"`
+	Kind     string                          `json:"kind" jsonschema:"the canvas noun to create: diagram, image, ink, pdf, shape, sheet, table, or a kind a plugin contributes (atlas_list_kinds)"`
 	Payload  map[string]string               `json:"payload,omitempty" jsonschema:"the object's own fields -- title for any kind, mirrorPath to point a file-backed kind at an existing file, listID for a table, shapeType for a shape"`
 	Position *atlasCreateBoardObjectPosition `json:"position,omitempty" jsonschema:"optional: where on the board to place it. Defaults to the top-left of the board area."`
 	ParentID string                          `json:"parentId,omitempty" jsonschema:"optional: the card whose canvas this belongs on; omit for the top-level board"`
@@ -80,9 +79,9 @@ func (m *MillMCPService) checkCreateBoardObject(in atlasCreateBoardObjectArgs) e
 	if err := m.requireAtlas(); err != nil {
 		return err
 	}
-	if !atlas.IsBuiltInBoardObjectKind(in.Kind) {
+	if !m.creatableBoardObjectKind(in.Kind) {
 		return fmt.Errorf("%q is not a canvas object Mill knows -- pick one of: %s",
-			in.Kind, strings.Join(atlas.BuiltInBoardObjectKinds(), ", "))
+			in.Kind, strings.Join(m.creatableBoardObjectKinds(), ", "))
 	}
 	if in.Content != "" && contentKindExtensions[in.Kind] == "" {
 		return fmt.Errorf("a %s's content is not text Mill can write -- create it with payload.mirrorPath pointing at an existing file (content is accepted for: diagram, sheet)", in.Kind)
@@ -99,6 +98,28 @@ func (m *MillMCPService) checkCreateBoardObject(in atlasCreateBoardObjectArgs) e
 		}
 	}
 	return nil
+}
+
+// creatableBoardObjectKinds is every kind this tool accepts right now,
+// in the order atlas_list_kinds reports them.
+func (m *MillMCPService) creatableBoardObjectKinds() []string {
+	kinds := m.boardObjectKinds()
+	out := make([]string, 0, len(kinds))
+	for _, k := range kinds {
+		out = append(out, k.Kind)
+	}
+	return out
+}
+
+func (m *MillMCPService) creatableBoardObjectKind(kind string) bool {
+	if atlas.IsBuiltInBoardObjectKind(kind) {
+		return true
+	}
+	if m.plugins == nil {
+		return false
+	}
+	_, ok := m.plugins.CanvasKinds()[kind]
+	return ok
 }
 
 func (m *MillMCPService) findCardByID(cardID string) (atlas.Card, error) {
@@ -155,7 +176,8 @@ func (m *MillMCPService) registerAtlasCreateObjectTool() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name: "atlas_create_board_object",
 		Description: "Put a new canvas object on the Atlas: a diagram, image, ink, pdf, shape, sheet or " +
-			"table. A diagram or sheet can carry its content inline -- Mill writes the file and points the " +
+			"table, or any kind a turned-on plugin contributes (atlas_list_kinds lists them all). " +
+			"A diagram or sheet can carry its content inline -- Mill writes the file and points the " +
 			"object at it; every other file-backed kind names a file that already exists through " +
 			"payload.mirrorPath. Place it on one card's canvas with parentId, or leave it off for the " +
 			"top-level board. " + approvalPollNote,

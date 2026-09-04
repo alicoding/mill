@@ -294,6 +294,7 @@ func main() {
 	millMCPAddr, _ := settingssvc.ResolveMCPAddr(os.Getenv("MILL_MCP_ADDR"), settingsService.MCPAccessAddress())
 	millMCPService := mcpsvc.NewMillMCPService(millVersion, compositionService, configureService, settingsStore, userdocsFS, mcpAuditService.ServerMiddleware())
 	wiring.WireMillMCPService(millMCPService, settingsService, executionService, atlasService, mcpAuditService, guardrailService, millMCPAddr, logger)
+	wiring.WireMCPPluginCatalog(millMCPService, pluginService, settingsService) // plugin contributions over MCP (docs/goals/0324)
 
 	agentLoopService := agentloopsvc.NewAgentLoopService(millMCPService) // an MCP client of it, ADR-0035
 
@@ -370,6 +371,7 @@ func main() {
 	// from here, for one uniform startup path.
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
 		triggerService.Sync(compositionService.Workflows())
+		wiring.SubscribeMCPPluginReload(millMCPService) // needs the running event bus (docs/goals/0324)
 		settingsService.RestoreSummonHotkey()
 		// docs/goals/0016-keymap-system.md: releases the native File >
 		// Close (⌘W) menu accelerator so that keypress falls through to

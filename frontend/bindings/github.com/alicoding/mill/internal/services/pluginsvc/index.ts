@@ -9,6 +9,7 @@ export {
 export type {
     CanvasObjectContribution,
     CaptureContribution,
+    CommandContribution,
     ContentWriter,
     GuardedActionDecision,
     Manifest,
@@ -28,5 +29,7 @@ export type {
     SettingOption,
     StepConfigContribution,
     StepContribution,
+    ToolContribution,
+    ToolRun,
     ViewContribution
 } from "./models.js";

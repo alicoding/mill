@@ -300,6 +300,8 @@ export interface GuardedActionResult {
     performed: boolean;
 }
 export interface PluginCommandDecl {
+    /** id is this command's slug. Declaring the SAME id in the manifest's
+     * `contributes.commands` is what lets a manifest tool name it. */
     id: string;
     label: string;
     run: () => void;

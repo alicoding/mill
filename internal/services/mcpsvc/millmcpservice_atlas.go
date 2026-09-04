@@ -84,6 +84,17 @@ type atlasKindOut struct {
 type atlasListKindsResult struct {
 	Kinds     []atlasKindOut     `json:"kinds"`
 	LinkKinds []atlasLinkKindOut `json:"linkKinds"`
+	// BoardObjectKinds (goal 0324) are the canvas nouns
+	// atlas_create_board_object accepts -- Mill's own, plus every kind
+	// a turned-on plugin contributes, each saying where it came from.
+	BoardObjectKinds []atlasBoardKindOut `json:"boardObjectKinds"`
+}
+
+// atlasBoardKindOut is one creatable canvas noun. Source is empty for
+// Mill's own kinds and "plugin:<pluginId>" for a contributed one.
+type atlasBoardKindOut struct {
+	Kind   string `json:"kind"`
+	Source string `json:"source,omitempty"`
 }
 
 type atlasSearchMatch struct {
@@ -188,7 +199,7 @@ func (m *MillMCPService) readAtlasCardsIndex(_ context.Context, req *mcp.ReadRes
 func (m *MillMCPService) registerAtlasTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "atlas_list_kinds",
-		Description: "The Atlas's declared card types and link types: every Kind's ID/name/description/declared fields (key/label/type), and every LinkKind's ID/name. Read this before atlas_propose_card_write -- a card's KindID and its Fields keys must match a declared Kind exactly. Read-only.",
+		Description: "The Atlas's declared card types and link types: every Kind's ID/name/description/declared fields (key/label/type), and every LinkKind's ID/name -- plus boardObjectKinds, every canvas noun atlas_create_board_object accepts, with source \"plugin:<pluginId>\" on the ones a plugin contributes. Read this before atlas_propose_card_write -- a card's KindID and its Fields keys must match a declared Kind exactly. Read-only.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
 		if err := m.requireAtlas(); err != nil {
 			return nil, nil, err
@@ -260,6 +271,30 @@ func (m *MillMCPService) listAtlasKinds() atlasListKindsResult {
 	}
 	for _, lk := range m.atlas.LinkKinds() {
 		out.LinkKinds = append(out.LinkKinds, atlasLinkKindOut{ID: lk.ID, Name: lk.Label})
+	}
+	out.BoardObjectKinds = m.boardObjectKinds()
+	return out
+}
+
+// boardObjectKinds is every kind atlas_create_board_object will accept
+// right now: Mill's own nouns, then each turned-on plugin's, sorted
+// within each group so the list reads the same on every call.
+func (m *MillMCPService) boardObjectKinds() []atlasBoardKindOut {
+	out := []atlasBoardKindOut{}
+	for _, k := range atlas.BuiltInBoardObjectKinds() {
+		out = append(out, atlasBoardKindOut{Kind: k})
+	}
+	if m.plugins == nil {
+		return out
+	}
+	contributed := m.plugins.CanvasKinds()
+	kinds := make([]string, 0, len(contributed))
+	for k := range contributed {
+		kinds = append(kinds, k)
+	}
+	sort.Strings(kinds)
+	for _, k := range kinds {
+		out = append(out, atlasBoardKindOut{Kind: k, Source: pluginSourceLabel(contributed[k])})
 	}
 	return out
 }

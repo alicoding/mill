@@ -63,5 +63,18 @@ func (s *SettingsService) SetExtensionEnabled(id string, enabled bool) error {
 		return err
 	}
 	dataevent.Emit("extension", id)
+	s.notifyPluginPolicyChanged()
 	return nil
+}
+
+// SetPluginPolicyChanged installs the one hook that runs after a
+// change to which plugins may run (composition root only).
+//
+//wails:ignore
+func (s *SettingsService) SetPluginPolicyChanged(fn func()) { s.pluginPolicyChanged = fn }
+
+func (s *SettingsService) notifyPluginPolicyChanged() {
+	if s.pluginPolicyChanged != nil {
+		s.pluginPolicyChanged()
+	}
 }

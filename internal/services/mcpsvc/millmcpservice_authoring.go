@@ -191,12 +191,12 @@ func (m *MillMCPService) registerAuthoringTools() {
 		if err != nil {
 			return nil, nil, err
 		}
-		res, err := jsonResult(filtered)
+		res, err := jsonResult(m.attributeStepTypes(filtered))
 		return res, nil, err
 	}
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "list_step_types",
-		Description: "The step-type catalog an authored workflow composes from: ID, kind, label, description, effect class (none/read/local/external -- external steps require human approval by default), and each config field's key/type/options/reference kind. Optional kind filters to one kind (trigger/capture/process/apply/decision); omit for the full catalog. Read this before authoring; step type IDs and config keys must match it exactly.",
+		Description: "The step-type catalog an authored workflow composes from: ID, kind, label, description, effect class (none/read/local/external -- external steps require human approval by default), and each config field's key/type/options/reference kind. A step a plugin contributes carries source \"plugin:<pluginId>\" (see list_plugins); Mill's own steps carry no source. Optional kind filters to one kind (trigger/capture/process/apply/decision); omit for the full catalog. Read this before authoring; step type IDs and config keys must match it exactly.",
 	}, listStepTypes)
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "list_node_types",

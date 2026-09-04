@@ -885,6 +885,10 @@ export function SaveImageBytes(base64Data: string, ext: string, title: string): 
     return $Call.ByID(74333231, base64Data, ext, title);
 }
 
+export function SaveMirrorText(content: string, ext: string, title: string): $CancellablePromise<string> {
+    return $Call.ByID(2283998067, content, ext, title);
+}
+
 /**
  * ScanFolder performs the bounded, heuristic scan goal 0067 describes:
  * depth/count-capped, hidden entries and symlinks skipped

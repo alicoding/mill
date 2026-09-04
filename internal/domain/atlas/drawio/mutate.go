@@ -44,13 +44,26 @@ type CellSpec struct {
 // omitted (or empty) field leaves that part of the cell alone -- the
 // same additive-update contract atlas_propose_card_write already has.
 type CellPatch struct {
-	ID       string       `json:"id" jsonschema:"the cell's id (from atlas_read_diagram)"`
-	Label    string       `json:"label,omitempty" jsonschema:"new text for the cell; omit to leave it unchanged"`
-	Style    string       `json:"style,omitempty" jsonschema:"new draw.io style string; omit to leave it unchanged"`
-	Parent   string       `json:"parent,omitempty" jsonschema:"move the cell into this layer or container cell; omit to leave it where it is"`
-	Source   string       `json:"source,omitempty" jsonschema:"reconnect an edge's start to this cell id; omit to leave it unchanged"`
-	Target   string       `json:"target,omitempty" jsonschema:"reconnect an edge's end to this cell id; omit to leave it unchanged"`
-	Geometry *GeometryOut `json:"geometry,omitempty" jsonschema:"move or resize the cell -- only the coordinates you name change"`
+	ID    string `json:"id" jsonschema:"the cell's id (from atlas_read_diagram)"`
+	Label string `json:"label,omitempty" jsonschema:"new text for the cell; omit to leave it unchanged"`
+	// ClearLabel is how a label is REMOVED: an empty Label string is
+	// indistinguishable from an omitted one on the wire, so erasing
+	// text needs its own flag rather than a sentinel value.
+	ClearLabel bool         `json:"clearLabel,omitempty" jsonschema:"set the cell's text to nothing; an empty label alone means unchanged"`
+	Style      string       `json:"style,omitempty" jsonschema:"new draw.io style string; omit to leave it unchanged"`
+	Parent     string       `json:"parent,omitempty" jsonschema:"move the cell into this layer or container cell; omit to leave it where it is"`
+	Source     string       `json:"source,omitempty" jsonschema:"reconnect an edge's start to this cell id; omit to leave it unchanged"`
+	Target     string       `json:"target,omitempty" jsonschema:"reconnect an edge's end to this cell id; omit to leave it unchanged"`
+	Geometry   *GeometryOut `json:"geometry,omitempty" jsonschema:"move or resize the cell -- only the coordinates you name change"`
+}
+
+// newLabel is the text a patch writes: ClearLabel wins, so a call
+// that names both erases rather than writes.
+func (p CellPatch) newLabel() string {
+	if p.ClearLabel {
+		return ""
+	}
+	return p.Label
 }
 
 // MintCellID makes an id no draw.io author would ever type by hand, so
@@ -209,13 +222,13 @@ func EditCells(p *Page, patches []CellPatch) (int, error) {
 
 func applyPatch(n *xmlNode, patch CellPatch) error {
 	if !n.isWrapper() {
-		if patch.Label != "" {
-			setAttr(&n.Attrs, "value", patch.Label)
+		if patch.Label != "" || patch.ClearLabel {
+			setAttr(&n.Attrs, "value", patch.newLabel())
 		}
 		return patchCell(n, patch)
 	}
-	if patch.Label != "" {
-		setAttr(&n.Attrs, "label", patch.Label)
+	if patch.Label != "" || patch.ClearLabel {
+		setAttr(&n.Attrs, "label", patch.newLabel())
 	}
 	inner, ok := n.innerCell()
 	if !ok {

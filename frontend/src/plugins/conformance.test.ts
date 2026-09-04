@@ -18,7 +18,14 @@ const EXAMPLES = path.resolve(__dirname, '../../../examples/plugins')
 interface Manifest {
   id: string
   capabilities?: string[]
-  contributes?: { canvasObjects?: { kind: string }[]; views?: { id: string }[]; settings?: { key: string }[]; captures?: { id: string }[] }
+  contributes?: {
+    canvasObjects?: { kind: string }[]
+    views?: { id: string }[]
+    settings?: { key: string }[]
+    captures?: { id: string }[]
+    commands?: { id: string }[]
+    tools?: { name: string; run?: { kind?: string; commandId?: string } }[]
+  }
 }
 
 function recordingAPI(manifest: Manifest, touched: Set<string>): MillPluginAPI {
@@ -51,7 +58,7 @@ describe('every shipped example plugin conforms to the platform contract', () =>
   it.each(examples)('%s registers only what its manifest declares', async (id) => {
     const dir = path.join(EXAMPLES, id)
     const manifest = JSON.parse(readFileSync(path.join(dir, 'manifest.json'), 'utf8')) as Manifest
-    const registered = { objects: [] as string[], views: [] as string[], captures: [] as string[] }
+    const registered = { objects: [] as string[], views: [] as string[], captures: [] as string[], commands: [] as string[] }
     const touched = new Set<string>()
     const api = recordingAPI(manifest, touched)
     const spy = {
@@ -59,6 +66,7 @@ describe('every shipped example plugin conforms to the platform contract', () =>
       registerCanvasObject: (decl: { kind: string }) => { registered.objects.push(decl.kind); touched.add('registerCanvasObject') },
       registerView: (decl: { id: string }) => { registered.views.push(decl.id); touched.add('registerView') },
       registerCapture: (decl: { id: string }) => { registered.captures.push(decl.id); touched.add('registerCapture') },
+      registerCommand: (decl: { id: string }) => { registered.commands.push(decl.id); touched.add('registerCommand') },
     }
     const mod = (await import(/* @vite-ignore */ pathToFileURL(path.join(dir, 'main.js')).href)) as PluginModule
     const activate = mod.activate ?? (typeof mod.default === 'function' ? mod.default : mod.default?.activate)
@@ -71,6 +79,18 @@ describe('every shipped example plugin conforms to the platform contract', () =>
     for (const view of registered.views) expect(declaredViews, `view "${view}" is declared`).toContain(view)
     const declaredCaptures = (manifest.contributes?.captures ?? []).map((c) => c.id)
     for (const capture of registered.captures) expect(declaredCaptures, `capture "${capture}" is declared`).toContain(capture)
+    // A tool that runs a command is only reachable if the plugin
+    // actually registers that command -- the half only a JS host can
+    // check, since the manifest alone cannot say what activate() did.
+    const declaredCommands = (manifest.contributes?.commands ?? []).map((c) => c.id)
+    for (const command of registered.commands) {
+      if (declaredCommands.length > 0) expect(declaredCommands, `command "${command}" is declared`).toContain(command)
+    }
+    for (const tool of manifest.contributes?.tools ?? []) {
+      if (tool.run?.kind !== 'command') continue
+      expect(registered.commands, `tool "${tool.name}" runs a command main.js registers`).toContain(tool.run.commandId)
+    }
+
     const declaredSettings = (manifest.contributes?.settings ?? []).map((s) => s.key)
     for (const door of touched) {
       const m = /^settings\.(get|onChange):(.+)$/.exec(door)

@@ -196,3 +196,44 @@ func TestEditCells_KeepsALabelWrapperObjectIntact(t *testing.T) {
 		t.Errorf("wrapper edit lost fidelity: %s", out)
 	}
 }
+
+// A label is removed with clearLabel, never with an empty string: an
+// empty Label is indistinguishable from an omitted one on the wire, so
+// it must mean "unchanged" on both a plain cell and a label wrapper.
+func TestEditCells_ClearLabelErasesWhereEmptyLabelLeavesAlone(t *testing.T) {
+	source := `<mxfile><diagram name="p"><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>` +
+		`<mxCell id="c1" value="Plain" vertex="1" parent="1"/>` +
+		`<object label="Rich" id="o1"><mxCell style="s=1;" vertex="1" parent="1"/></object></root></mxGraphModel></diagram></mxfile>`
+
+	d, err := ParseDocument(source)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	p, _ := d.Page("")
+	if _, err := EditCells(p, []CellPatch{{ID: "c1", Label: ""}, {ID: "o1", Label: ""}}); err != nil {
+		t.Fatalf("edit: %v", err)
+	}
+	out, _ := d.Marshal()
+	if !strings.Contains(out, `value="Plain"`) || !strings.Contains(out, `label="Rich"`) {
+		t.Fatalf("an empty label must leave the text alone: %s", out)
+	}
+
+	d2, err := ParseDocument(source)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	p2, _ := d2.Page("")
+	if _, err := EditCells(p2, []CellPatch{{ID: "c1", ClearLabel: true}, {ID: "o1", ClearLabel: true}}); err != nil {
+		t.Fatalf("edit: %v", err)
+	}
+	out2, _ := d2.Marshal()
+	if strings.Contains(out2, `value="Plain"`) || strings.Contains(out2, `label="Rich"`) {
+		t.Fatalf("clearLabel must erase the text: %s", out2)
+	}
+	if !strings.Contains(out2, `value=""`) || !strings.Contains(out2, `label=""`) {
+		t.Fatalf("clearLabel must leave an empty label behind, not drop the attribute: %s", out2)
+	}
+	if !strings.Contains(out2, `style="s=1;"`) {
+		t.Errorf("clearing a wrapper's label lost the rest of the cell: %s", out2)
+	}
+}

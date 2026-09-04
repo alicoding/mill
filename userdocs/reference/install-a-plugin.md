@@ -609,6 +609,65 @@ copy the finished drawing into `el`, then call the detach it returned.
 The Mind map example does exactly this on every repaint, and Mill
 detaches anything you left mounted when the object leaves the board.
 
+## Tools: make it reachable by an agent
+
+Anything your plugin already built can be declared as a tool, and an
+agent connected over MCP can then call it. Declare it in
+`manifest.json` under `contributes.tools`:
+
+```json
+"tools": [
+  {
+    "name": "change_text_case",
+    "description": "Changes the case of text: upper, lower or title.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "mode": { "type": "string", "enum": ["upper", "lower", "title"] }
+      },
+      "required": ["text", "mode"]
+    },
+    "effect": "read",
+    "run": { "kind": "step", "stepId": "text-case" }
+  }
+]
+```
+
+- **`name`** is `verb_noun` in lowercase. The agent sees it as
+  `plugin_<your-plugin-id>_<name>`.
+- **`description`** is one sentence, 200 characters or fewer. An agent
+  reads every description before choosing, so keep it about what the
+  tool does.
+- **`inputSchema`** is your own JSON Schema, passed to the agent
+  untouched.
+- **`effect`** is `read` (answers straight away) or `write` (needs the
+  Settings toggle and parks for the person's approval).
+- **`run`** says what it runs:
+  - `{"kind": "step", "stepId": "..."}` runs one of your declared
+    steps. Its `text` argument is the step's input; every other
+    argument names one of that step's config fields.
+  - `{"kind": "command", "commandId": "..."}` runs one of your
+    registered commands. A command takes no arguments, so a
+    command-kind tool declares none.
+  - `{"kind": "query"}` lists the board's contents, filtered by the
+    optional `kind` and `parentId` arguments.
+
+A command a tool names must also be declared:
+
+```json
+"commands": [{ "id": "refresh", "label": "Refresh the board index" }]
+```
+
+`api.registerCommand` still works for a command you never declared —
+declaring is what makes it reachable by an agent, and Mill logs one
+warning for an undeclared id.
+
+A tool contributes nothing while your plugin is turned off, and a
+write-effect tool never skips the person's approval. See
+[What plugins expose to agents](../agents/plugins.md) for the agent's
+side of this.
+
 ## Scheduled and background work
 
 There is no timer or alarm API. Work that should happen on a schedule,
