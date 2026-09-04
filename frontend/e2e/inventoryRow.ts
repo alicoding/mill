@@ -21,11 +21,17 @@ import type { Locator, Page } from '@playwright/test'
 // stays unchanged; the confirm click is handled here once rather than
 // at each of the ~40 call sites.
 export async function clickRowAction(page: Page, row: Locator, actionLabel: string | RegExp) {
+  // Read the row's own entity kind before Delete can act on it -- a
+  // Configure entity deletes at once (goal 0270), removing this exact
+  // row from the DOM as soon as the backend call resolves, so reading
+  // the attribute AFTER clicking Delete races that removal (the read
+  // finds no row left to read, and the locator never comes back).
+  const entityKind = actionLabel === 'Delete' ? await row.getAttribute('data-entity') : null
   await row.getByTestId('inventory-row-menu').click()
   await page.getByRole('menuitem', { name: actionLabel }).click()
   // A workflow's Delete still confirms first; a Configure entity's
   // deletes at once and offers Undo (goal 0270).
-  if (actionLabel === 'Delete' && (await row.getAttribute('data-entity')) === 'workflow') {
+  if (actionLabel === 'Delete' && entityKind === 'workflow') {
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
   }
 }
