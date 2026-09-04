@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/domain/usererror"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/servicetest"
@@ -160,8 +161,11 @@ func TestResolveApproval_NotListening_AnswersInsteadOfSilence(t *testing.T) {
 	t.Cleanup(func() { _ = execB.Shutdown(2 * time.Second) })
 
 	err := execB.ResolveApproval(approveRun, "n1", true, nil, false)
-	if err == nil || !strings.Contains(err.Error(), "run-not-waiting") {
-		t.Fatalf("approve on an unlistened run: err = %v, want one containing run-not-waiting", err)
+	if code, ok := usererror.Of(err); !ok || code.Code != "run-not-waiting" {
+		t.Fatalf("approve on an unlistened run: err = %v, want the run-not-waiting code", err)
+	}
+	if strings.Contains(err.Error(), ":") {
+		t.Fatalf("the refusal reaches the UI as %q; a chain is never user copy", err)
 	}
 
 	if err := execB.ResolveApproval(denyRun, "n1", false, nil, false); err != nil {

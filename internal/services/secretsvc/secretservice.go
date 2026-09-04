@@ -20,6 +20,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/secretvault"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/secret"
+	"github.com/alicoding/mill/internal/domain/usererror"
 	"github.com/alicoding/mill/internal/services/dataevent"
 )
 
@@ -60,18 +61,16 @@ var ErrNoVault = errors.New("no secret vault has been set up on this device yet"
 // distinct from ErrNoVault so the frontend can tell "never set up" from
 // "set up somewhere else" and word the empty state accordingly.
 //
-// The leading token is the stable handle the frontend matches on:
-// Wails delivers a bound method's error to JavaScript as text, so the
-// UI's own wording is chosen by matching a token that never changes
-// rather than by matching a sentence that will.
-var ErrNoVaultKey = errors.New("no-vault-key: no key for this vault is stored on this device")
+// The code is the stable handle the frontend keys its own wording on;
+// the sentence is what the reader sees when nothing else translates it.
+var ErrNoVaultKey = usererror.New("no-vault-key", "There's no key for this vault on this device.")
 
 // ErrKeyMismatch is returned by Unlock when a key IS stored for this
 // vault but does not open the file -- the file was replaced, or the key
 // belongs to a different vault. Never deletes or overwrites anything:
 // the stored key may still be the right key for some other copy of the
 // file the user has.
-var ErrKeyMismatch = errors.New("key-mismatch: the stored key does not open this vault file")
+var ErrKeyMismatch = usererror.New("key-mismatch", "The key on this device doesn't open this vault file.")
 
 // Status is VaultStatus's return shape -- the one read the frontend
 // needs to decide which of "set up," "unlock," or "browse" to show.
@@ -229,10 +228,10 @@ func (s *SecretService) UnlockVault() error {
 	}
 	key, err := secretvault.DecodeMasterKey(encoded)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrKeyMismatch, err)
+		return usererror.Wrap(ErrKeyMismatch.Code, ErrKeyMismatch.Message, err)
 	}
 	if err := s.vault.Unlock(key); err != nil {
-		return fmt.Errorf("%w: %v", ErrKeyMismatch, err)
+		return usererror.Wrap(ErrKeyMismatch.Code, ErrKeyMismatch.Message, err)
 	}
 	if vaultID == "" {
 		s.bindLegacyKeyLocked(encoded)

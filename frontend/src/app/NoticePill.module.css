@@ -55,14 +55,6 @@
   padding: 2px 4px 2px 10px;
 }
 
-/* A notice's origin (a plugin's name), set apart from the text it
-   precedes. */
-.source {
-  font-weight: 600;
-  opacity: 0.8;
-  padding-right: 6px;
-}
-
 .text,
 .pillAction {
   max-width: 44ch;

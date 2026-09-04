@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { ExecutionService } from './bindings'
+import { userErrorFrom } from './userError'
 
 // One home for "the human answered a parked run" (goal 0329). Three
 // surfaces render controls on the same park -- the canvas bar, the run
@@ -16,11 +17,13 @@ import { ExecutionService } from './bindings'
 // (executionservice_guardrail.go's resolveUnlistened), mapped to the
 // i18n key the answering surface renders. Pure and exported so the
 // mapping is testable without a live run.
+const KEY_FOR_CODE: Record<string, string> = {
+  'run-not-waiting': 'resolveError.notWaiting',
+  'run-recovering': 'resolveError.recovering',
+}
+
 export function resolveErrorKey(err: unknown): string {
-  const message = String(err)
-  if (message.includes('run-not-waiting')) return 'resolveError.notWaiting'
-  if (message.includes('run-recovering')) return 'resolveError.recovering'
-  return 'resolveError.generic'
+  return KEY_FOR_CODE[userErrorFrom(err).code] ?? 'resolveError.generic'
 }
 
 export interface ResolveApprovalInput {

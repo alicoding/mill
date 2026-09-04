@@ -11,6 +11,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/guardrail"
+	"github.com/alicoding/mill/internal/domain/usererror"
 	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 )
@@ -370,12 +371,15 @@ func (e *ExecutionService) ResolveApproval(runID, nodeID string, approve bool, v
 //   - denying something no longer waiting -- stop the run, which is
 //     what "Stop" means whether or not anyone was listening.
 //
-// The "executionsvc: run-recovering"/"executionsvc: run-not-waiting"
-// prefixes are stable codes the frontend matches on, not prose.
+// The "run-recovering"/"run-not-waiting" codes are the stable handles
+// the answering surface keys its own wording on; the sentence carried
+// alongside them is what the reader sees, and the run id stays in the
+// wrapped cause, which reaches the log and never the UI.
 func (e *ExecutionService) resolveUnlistened(runID string, approve bool) error {
 	if e.recoverable(runID) {
 		dataevent.Emit("run", runID)
-		return fmt.Errorf("executionsvc: run-recovering: run %s is being picked back up", runID)
+		return usererror.Wrap("run-recovering", "Mill is still picking this run back up. Try again in a moment.",
+			fmt.Errorf("run %s is being picked back up", runID))
 	}
 	if !approve {
 		err := e.CancelRun(runID)
@@ -385,7 +389,8 @@ func (e *ExecutionService) resolveUnlistened(runID string, approve bool) error {
 		return nil
 	}
 	dataevent.Emit("run", runID)
-	return fmt.Errorf("executionsvc: run-not-waiting: run %s is not waiting on a decision", runID)
+	return usererror.Wrap("run-not-waiting", "This run is no longer waiting.",
+		fmt.Errorf("run %s is not waiting on a decision", runID))
 }
 
 // recoverable reports whether runID's row is still live (PENDING or

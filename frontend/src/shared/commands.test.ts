@@ -366,6 +366,22 @@ describe('runCommand (goal 0313)', () => {
     )
   })
 
+  it('a bound-method rejection shows the failure\'s own sentence, never the Go chain (goal 0339)', async () => {
+    const rejection = new Error('github: download: no release asset in test mode')
+    ;(rejection as { cause?: unknown }).cause = { code: 'download-failed', message: 'The update could not be downloaded.' }
+    await withTestCommand(
+      { id: 'test.bound', label: 'Download the update and install', defaultBinding: null, run: () => Promise.reject(rejection) },
+      async () => {
+        await expect(runCommand('test.bound')).resolves.toBe(false)
+        const text = useNoticeStore.getState().notices[0]?.text ?? ''
+        expect(text).toBe('Download the update and install: The update could not be downloaded.')
+        expect(text).not.toContain('github')
+        // One separator only: the label's own, never a wrapped chain's.
+        expect(text.split(': ')).toHaveLength(2)
+      },
+    )
+  })
+
   it('a THROWING synchronous run() is caught the same way a rejection is', async () => {
     await withTestCommand(
       {

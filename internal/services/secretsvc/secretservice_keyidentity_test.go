@@ -9,6 +9,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/secretvault"
+	"github.com/alicoding/mill/internal/domain/usererror"
 	"github.com/alicoding/mill/internal/services/servicetest"
 )
 
@@ -125,8 +126,8 @@ func TestUnlockLegacyVaultWithWrongKeyReportsMismatch(t *testing.T) {
 	if !errors.Is(err, ErrKeyMismatch) {
 		t.Fatalf("UnlockVault = %v, want ErrKeyMismatch", err)
 	}
-	if !strings.Contains(err.Error(), "key-mismatch") {
-		t.Fatalf("error text %q carries no key-mismatch token", err)
+	if code, ok := usererror.Of(err); !ok || code.Code != "key-mismatch" {
+		t.Fatalf("UnlockVault = %v, want the key-mismatch code", err)
 	}
 	if fake.Unlocked() {
 		t.Fatal("vault unlocked despite a mismatched key")
@@ -158,8 +159,8 @@ func TestUnlockWithNoStoredKeyReportsNoVaultKey(t *testing.T) {
 		t.Fatalf("Delete: %v", err)
 	}
 	err = s.UnlockVault()
-	if !errors.Is(err, ErrNoVaultKey) || !strings.Contains(err.Error(), "no-vault-key") {
-		t.Fatalf("UnlockVault = %v, want ErrNoVaultKey carrying no-vault-key", err)
+	if code, ok := usererror.Of(err); !errors.Is(err, ErrNoVaultKey) || !ok || code.Code != "no-vault-key" {
+		t.Fatalf("UnlockVault = %v, want ErrNoVaultKey carrying the no-vault-key code", err)
 	}
 }
 

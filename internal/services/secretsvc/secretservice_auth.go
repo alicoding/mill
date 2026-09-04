@@ -7,6 +7,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/localauth"
 	"github.com/alicoding/mill/internal/adapters/presencekey"
 	"github.com/alicoding/mill/internal/adapters/secretvault"
+	"github.com/alicoding/mill/internal/domain/usererror"
 	"github.com/alicoding/mill/internal/services/dataevent"
 )
 
@@ -23,9 +24,9 @@ const requireAuthKey = "secrets.requireAuthToUnlock"
 const unlockReason = "Unlock the Mill vault"
 
 // ErrUnlockCancelled is returned when the person dismisses the system
-// authentication sheet, or steps out of it. The leading token is the
-// stable handle the frontend matches on (see ErrNoVaultKey).
-var ErrUnlockCancelled = errors.New("unlock-cancelled: authentication was not completed")
+// authentication sheet, or steps out of it. The code is the stable
+// handle the frontend keys its wording on (see ErrNoVaultKey).
+var ErrUnlockCancelled = usererror.New("unlock-cancelled", "Unlock cancelled.")
 
 // ErrAuthUnavailable is returned wherever the requirement cannot be
 // honoured: no biometry enrolled and no password set, or a build with
@@ -33,7 +34,7 @@ var ErrUnlockCancelled = errors.New("unlock-cancelled: authentication was not co
 // Turning the requirement ON is refused for the same reason. Fails
 // closed -- a vault whose owner asked for a gate never opens without
 // one.
-var ErrAuthUnavailable = errors.New("auth-unavailable: no Touch ID or password authentication is set up on this Mac")
+var ErrAuthUnavailable = usererror.New("auth-unavailable", "Touch ID or a password isn't set up on this Mac.")
 
 // localAuthAvailableFn/localAuthAuthenticateFn are localauth's own
 // swappable seams -- same test-pinning shape idleTimeFn/
@@ -75,9 +76,9 @@ func (s *SecretService) gateUnlockLocked() error {
 		errors.Is(err, localauth.ErrNotInteractive):
 		return ErrAuthUnavailable
 	case errors.Is(err, localauth.ErrLockout):
-		return errors.New("Too many failed attempts. Unlock this Mac with your password, then try again.") //nolint:staticcheck // ST1005: reaches the user as a complete sentence, never wrapped
+		return usererror.Wrap("auth-lockout", "Too many failed attempts. Unlock this Mac with your password, then try again.", err)
 	case errors.Is(err, localauth.ErrFailed):
-		return errors.New("Mill couldn't confirm it's you.") //nolint:staticcheck // ST1005: reaches the user as a complete sentence, never wrapped
+		return usererror.Wrap("auth-failed", "Mill couldn't confirm it's you.", err)
 	default:
 		return fmt.Errorf("confirming it's you: %w", err)
 	}
