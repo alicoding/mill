@@ -57,12 +57,11 @@ dash_message() {
 }
 
 # Locale values: every line in these files is either a key or a string
-# the app renders, so a whole-line match is exact enough. A clause dash
-# always has whitespace in front of it; an unspaced en dash is a RANGE
-# ("Name A-Z", "3-20 of 40"), which is correct typography and not an
-# aside, so the pattern requires the leading space.
+# the app renders, so a whole-line match is exact enough.
 while IFS= read -r -d '' file; do
-  hits="$(grep -nE ' -- | —| –' "$file" || true)"
+  # An en dash is a clause only when spaced; unspaced between two tokens
+  # it is a range ("A–Z", "1–25 of 40"), the one legitimate dash in copy.
+  hits="$(grep -nE ' -- |—| – ' "$file" || true)"
   if [[ -n "$hits" ]]; then
     while IFS= read -r hit; do report "$file:$hit -- $(dash_message)"; done <<< "$hits"
   fi
