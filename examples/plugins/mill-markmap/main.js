@@ -87,7 +87,7 @@ export function activate(api) {
 			// real footprint until the user resizes it (then the host's box
 			// is the size, and 100% fills it).
 			el.className = 'mill-markmap-face'
-			el.style.cssText = 'position:relative;height:100%;min-width:360px;min-height:240px;overflow:hidden;background:#fff;color:#1f2328;border-radius:inherit'
+			el.style.cssText = 'position:relative;height:100%;min-width:360px;min-height:240px;overflow:hidden;background:var(--bgColor-default);color:var(--fgColor-default);border-radius:inherit'
 			const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
 			svg.setAttribute('data-testid', 'mindmap-svg')
 			svg.setAttribute('class', 'markmap')
@@ -143,11 +143,11 @@ export function activate(api) {
 		face.noteId = null
 		el.replaceChildren()
 		el.className = ''
-		el.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:12px;font:12px system-ui;height:100%;min-width:280px;min-height:96px;box-sizing:border-box;background:#fff;border-radius:inherit'
+		el.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:12px;font:12px system-ui;height:100%;min-width:280px;min-height:96px;box-sizing:border-box;background:var(--bgColor-default);border-radius:inherit'
 		if (notice) {
 			const p = document.createElement('div')
 			p.setAttribute('data-testid', 'mindmap-notice')
-			p.style.cssText = 'color:#9a6700'
+			p.style.cssText = 'color:var(--fgColor-muted)'
 			p.textContent = notice
 			el.append(p)
 		}
@@ -157,7 +157,7 @@ export function activate(api) {
 		const select = document.createElement('select')
 		select.setAttribute('data-testid', 'mindmap-note-picker')
 		select.className = 'nodrag'
-		select.style.cssText = 'font:12px system-ui;padding:4px 6px;border:1px solid #d0d7de;border-radius:6px;font-weight:400;max-width:100%'
+		select.style.cssText = 'font:12px system-ui;padding:4px 6px;border:1px solid var(--borderColor-default);border-radius:6px;font-weight:400;max-width:100%'
 		const first = document.createElement('option')
 		first.value = ''
 		first.textContent = list.length ? 'Choose a note…' : 'Add a note to the board first'

@@ -1,9 +1,13 @@
 <!DOCTYPE html>
-<html lang="en" data-light-theme="light" data-dark-theme="dark" data-color-mode="auto">
+<!-- The theme attributes are seeded statically so the FIRST PAINT
+     already carries a full palette; shared/appearance.ts rewrites all five
+     from the stored choice once React mounts. -->
+<html lang="en" data-light-theme="light" data-dark-theme="dark" data-color-mode="auto" data-mill-theme="light" data-mill-scheme="light">
   <head>
     <!-- Theme before first paint: the persisted choice, else the system's
-         (the same key App.tsx writes). Without this the page painted dark
-         until React mounted, seconds later behind plugin loading. -->
+         (the same keys shared/appearance.ts writes). Without this the page
+         painted dark until React mounted, seconds later behind plugin
+         loading. -->
     <script src="/color-mode-boot.js"></script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/mill.svg" />

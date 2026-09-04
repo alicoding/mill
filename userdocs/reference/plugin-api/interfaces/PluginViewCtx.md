@@ -17,11 +17,31 @@ from the plugin's own commands.
 
 ## Properties
 
+### onThemeChange
+
+```ts
+onThemeChange: PluginThemeSubscribe;
+```
+
+onThemeChange registers cb for every later appearance change.
+
+***
+
 ### pluginId
 
 ```ts
 pluginId: string;
 ```
+
+***
+
+### theme
+
+```ts
+theme: PluginTheme;
+```
+
+The appearance this view is rendering under.
 
 ***
 

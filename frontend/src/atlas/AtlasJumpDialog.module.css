@@ -7,7 +7,7 @@
     width: 14px;
     height: 14px;
     border-radius: 4px;
-    color: #fff;
+    color: var(--fgColor-onEmphasis);
     font-size: 9px;
     font-weight: 650;
     display: flex;

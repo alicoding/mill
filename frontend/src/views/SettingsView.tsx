@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Browser } from '@wailsio/runtime'
-import { Button, Checkbox, FormControl, Heading, SegmentedControl, Stack, Text, TextInput, useTheme } from '@primer/react'
-import { SunIcon, MoonIcon, DeviceDesktopIcon, KeyIcon, SearchIcon } from '@primer/octicons-react'
+import { Button, Checkbox, FormControl, Heading, Stack, Text, TextInput } from '@primer/react'
+import { KeyIcon, SearchIcon } from '@primer/octicons-react'
 import { KeyComboChip } from '../shared/KeyComboChip'
 import { SettingsService } from '../shared/bindings'
 import { describeCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from '../shared/keybinding'
@@ -11,10 +11,9 @@ import { isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from '../composition
 import { useIsNarrowViewport } from '../shared/useNarrowViewport'
 import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'
 import { SETTINGS_SECTIONS, sectionMatchesQuery } from '../shared/settingsSections'
-import { applyDensity } from '../shared/density'
+import AppearanceSection from './AppearanceSection'
 import { CanvasNavigationControl } from './CanvasNavigationControl'
 import { SaveModeControl } from './SaveModeControl'
-import type { DisplayDensity } from '../shared/density'
 import KeyboardShortcutsSection from './KeyboardShortcutsSection'
 import ExtensionsSection from './ExtensionsSection'
 import ContractSection from './ContractSection'
@@ -28,8 +27,6 @@ import styles from '../shared/ListCard.module.css'
 import settingsStyles from './SettingsView.module.css'
 import PageContainer from '../shared/PageContainer'
 
-const COLOR_MODES = ['light', 'dark', 'auto'] as const
-const DENSITIES = ['comfortable', 'compact'] as const
 
 // Deep-links straight to the Login Items pane -- same undocumented-but-
 // stable x-apple.systempreferences scheme ACCESSIBILITY_SETTINGS_URL
@@ -75,11 +72,10 @@ function SettingsSectionBlock({ id, filtered, registerRef, heading, children }: 
 // which the theme control previously shared with the version/clock/docs
 // link -- giving Settings a real page instead of a cramped footer
 // control also leaves room to grow (more app-level preferences land
-// here, not back in the footer). Persisting the choice and mirroring it
-// onto <html> stays in App.tsx (global app-shell behavior that must run
-// regardless of whether this page is even mounted), not duplicated here
-// -- this component only renders the control, via Primer's own shared
-// useTheme() context (same ThemeProvider ancestor App.tsx reads from).
+// here, not back in the footer). The controls themselves live in
+// AppearanceSection; persisting a choice and applying it to every open
+// window is shared/appearance.ts's job, which runs whether or not this
+// page is mounted.
 //
 // "Launch at login" and "Global hotkey" (docs/SPEC.md §3.7's research,
 // now implemented) are the first two genuinely global, non-workflow,
@@ -98,7 +94,6 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
   // prefix reaches the shared common.json namespace explicitly
   // (docs/goals/archive/0032-copy-management.md's proof-of-pattern slice).
   const { t } = useTranslation('views')
-  const { colorMode, setColorMode } = useTheme()
   const isNarrowViewport = useIsNarrowViewport()
   const reducedMotion = usePrefersReducedMotion()
 
@@ -113,12 +108,6 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
 
   const [mcpWriteEnabled, setMCPWriteEnabledState] = useState<boolean | null>(null)
 
-  // Display density (docs/goals/0096): null until the mount fetch
-  // resolves, same "disabled until loaded" shape as launchAtLogin/
-  // mcpWriteEnabled below -- the SegmentedControl has no real "unset"
-  // rendering, so this stays null only for the one render before the
-  // fetch below resolves.
-  const [density, setDensityState] = useState<DisplayDensity | null>(null)
   const [mcpApprovalRequired, setMCPApprovalRequiredState] = useState<boolean | null>(null)
 
   // Attention/notifications (docs/goals/0023-attention-escalation.md item
@@ -165,9 +154,6 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
       .catch((err) => { console.error(err); setSettingsLoadError(true) })
     SettingsService.GetAttentionIdleThreshold()
       .then(setIdleThresholdState)
-      .catch((err) => { console.error(err); setSettingsLoadError(true) })
-    SettingsService.GetDisplayDensity()
-      .then((d) => setDensityState(d === 'compact' ? 'compact' : 'comfortable'))
       .catch((err) => { console.error(err); setSettingsLoadError(true) })
   }, [])
 
@@ -236,18 +222,6 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
       .catch((err) => setLaunchAtLoginError(String(err)))
   }
 
-  // Applies to the DOM immediately (ahead of the persist RPC resolving,
-  // docs/goals/0096's "applies live, no reload" acceptance bar) --
-  // never reverted on a failed SetDisplayDensity, unlike
-  // toggleLaunchAtLogin above, which never sets optimistic state at all
-  // (a failed or pending-approval launch-at-login write has a real
-  // OS-level consequence a silently-wrong checkbox would hide).
-  const setDensity = (value: DisplayDensity) => {
-    applyDensity(value)
-    setDensityState(value)
-    SettingsService.SetDisplayDensity(value).catch(console.error)
-  }
-
   const clearSummonHotkey = () => {
     setSummonError('')
     SettingsService.UnassignSummonHotkey().then(() => setSummonBinding(null)).catch(console.error)
@@ -266,30 +240,7 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
   }
 
   const SECTION_CONTENT: Record<string, ReactNode> = {
-    appearance: (
-      <>
-        <SegmentedControl aria-label={t('settings.appearance.themeLabel')} onChange={(i) => setColorMode(COLOR_MODES[i])}>
-          <SegmentedControl.IconButton icon={SunIcon} aria-label={t('settings.appearance.lightLabel')} selected={colorMode === 'light'} />
-          <SegmentedControl.IconButton icon={MoonIcon} aria-label={t('settings.appearance.darkLabel')} selected={colorMode === 'dark'} />
-          <SegmentedControl.IconButton icon={DeviceDesktopIcon} aria-label={t('settings.appearance.systemLabel')} selected={!colorMode || colorMode === 'auto'} />
-        </SegmentedControl>
-        <Stack direction="vertical" gap="condensed" style={{ marginTop: 'var(--base-size-16)' }}>
-          <Text as="p" size="small" weight="semibold">{t('settings.appearance.densityLabel')}</Text>
-          <SegmentedControl
-            aria-label={t('settings.appearance.densityLabel')}
-            onChange={(i) => setDensity(DENSITIES[i])}
-            data-testid="density-control"
-          >
-            <SegmentedControl.Button selected={(density ?? 'comfortable') === 'comfortable'}>
-              {t('settings.appearance.comfortableOption')}
-            </SegmentedControl.Button>
-            <SegmentedControl.Button selected={density === 'compact'}>
-              {t('settings.appearance.compactOption')}
-            </SegmentedControl.Button>
-          </SegmentedControl>
-        </Stack>
-      </>
-    ),
+    appearance: <AppearanceSection />,
     general: (
       <>
         <FormControl>

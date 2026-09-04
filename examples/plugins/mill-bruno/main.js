@@ -30,7 +30,7 @@ export function activate(api) {
 		title.setAttribute('data-testid', 'bruno-title')
 		const meta = document.createElement('div')
 		meta.setAttribute('data-testid', 'bruno-meta')
-		meta.style.cssText = 'color:#57606a'
+		meta.style.cssText = 'color:var(--fgColor-muted)'
 
 		const manifest = readManifest(ctx)
 		if (!ctx.object.Payload.mirrorPath) {
@@ -53,7 +53,7 @@ export function activate(api) {
 		input.value = ctx.object.Payload.mirrorPath || ''
 		input.setAttribute('data-testid', 'bruno-path-input')
 		input.className = 'nodrag'
-		input.style.cssText = 'font:11px ui-monospace,monospace;padding:4px 6px;border:1px solid #d0d7de;border-radius:6px;width:100%;box-sizing:border-box'
+		input.style.cssText = 'font:11px ui-monospace,monospace;padding:4px 6px;border:1px solid var(--borderColor-default);border-radius:6px;width:100%;box-sizing:border-box'
 		const commit = () => {
 			const next = input.value.trim()
 			if (next === (ctx.object.Payload.mirrorPath || '')) return
@@ -80,7 +80,7 @@ export function activate(api) {
 			open.setAttribute('data-testid', 'bruno-open')
 			const status = document.createElement('span')
 			status.setAttribute('data-testid', 'bruno-open-status')
-			status.style.cssText = 'color:#57606a'
+			status.style.cssText = 'color:var(--fgColor-muted)'
 			open.addEventListener('click', () => {
 				status.textContent = 'Asking…'
 				ctx.requestGuardedAction('open-app', { app: 'Bruno', path: folder }, 'Open the collection in Bruno')
@@ -90,7 +90,7 @@ export function activate(api) {
 			actions.append(open, status)
 			const list = document.createElement('ul')
 			list.setAttribute('data-testid', 'bruno-requests')
-			list.style.cssText = 'margin:0;padding-left:16px;color:#1f2328;max-height:140px;overflow:auto'
+			list.style.cssText = 'margin:0;padding-left:16px;color:var(--fgColor-default);max-height:140px;overflow:auto'
 			api.files.list(folder).then((r) => {
 				if (!r.approved) { list.textContent = 'Requests not listed' + (r.ruleLabel ? ' (' + r.ruleLabel + ')' : '') + '.'; return }
 				const requests = r.entries.filter((e) => !e.isDir && e.name.endsWith('.bru'))

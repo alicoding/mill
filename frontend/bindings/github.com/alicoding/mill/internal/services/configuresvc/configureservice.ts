@@ -741,7 +741,7 @@ export function TestHTTPRequestOperation(req: $models.TestHTTPRequestInput): $Ca
 }
 
 /**
- * UndoDelete restores an entity deleted earlier in this session. entity
+ * UndoDelete restores an entity deleted while the app has been running. entity
  * is the family's data-event name ("list", "request", "decision", ...),
  * id the deleted entity's id. Credential material purged by the delete
  * is not restored: the entity comes back with its secret unset, which

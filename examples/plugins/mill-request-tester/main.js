@@ -38,12 +38,12 @@ export function activate(api) {
 		url.type = 'text'
 		url.placeholder = 'https://…'
 		url.setAttribute('data-testid', 'tester-url')
-		url.style.cssText = 'flex:1;font:12px ui-monospace,monospace;padding:6px 8px;border:1px solid #d0d7de;border-radius:6px'
+		url.style.cssText = 'flex:1;font:12px ui-monospace,monospace;padding:6px 8px;border:1px solid var(--borderColor-default);border-radius:6px'
 		const send = document.createElement('button')
 		send.type = 'button'
 		send.textContent = 'Send'
 		send.setAttribute('data-testid', 'tester-send')
-		send.style.cssText = 'font:12px system-ui;padding:6px 12px;border:1px solid #d0d7de;border-radius:6px;background:#f6f8fa;cursor:pointer'
+		send.style.cssText = 'font:12px system-ui;padding:6px 12px;border:1px solid var(--borderColor-default);border-radius:6px;background:var(--bgColor-muted);cursor:pointer'
 		row.append(method, url, send)
 
 		// The picked secret's title, or nothing: api.settings.get on a
@@ -51,21 +51,21 @@ export function activate(api) {
 		const authTitle = String(api.settings.get('auth') || '')
 		const auth = document.createElement('div')
 		auth.setAttribute('data-testid', 'tester-auth')
-		auth.style.cssText = 'color:#57606a;font-size:12px'
+		auth.style.cssText = 'color:var(--fgColor-muted);font-size:12px'
 		auth.textContent = authTitle ? 'Sends ‘' + authTitle + '’ as a bearer token. Change it in Settings → Extensions.' : 'No authorization. Pick a vault entry in Settings → Extensions to send one.'
 
 		const body = document.createElement('textarea')
 		body.placeholder = 'Request body (optional)'
 		body.setAttribute('data-testid', 'tester-body')
-		body.style.cssText = 'font:12px ui-monospace,monospace;min-height:60px;padding:6px 8px;border:1px solid #d0d7de;border-radius:6px'
+		body.style.cssText = 'font:12px ui-monospace,monospace;min-height:60px;padding:6px 8px;border:1px solid var(--borderColor-default);border-radius:6px'
 
 		const status = document.createElement('div')
 		status.setAttribute('data-testid', 'tester-status')
-		status.style.cssText = 'color:#57606a'
+		status.style.cssText = 'color:var(--fgColor-muted)'
 
 		const response = document.createElement('pre')
 		response.setAttribute('data-testid', 'tester-response')
-		response.style.cssText = 'font:12px ui-monospace,monospace;white-space:pre-wrap;word-break:break-word;background:#f6f8fa;border:1px solid #d0d7de;border-radius:6px;padding:8px;min-height:80px;margin:0'
+		response.style.cssText = 'font:12px ui-monospace,monospace;white-space:pre-wrap;word-break:break-word;background:var(--bgColor-muted);border:1px solid var(--borderColor-default);border-radius:6px;padding:8px;min-height:80px;margin:0'
 
 		const historyTitle = document.createElement('div')
 		historyTitle.textContent = 'Recent requests'
@@ -77,13 +77,13 @@ export function activate(api) {
 		const renderHistory = () => {
 			history.replaceChildren()
 			const items = /** @type {SentRequest[]} */ (api.storage.get(HISTORY_KEY) || [])
-			if (items.length === 0) { const p = document.createElement('div'); p.textContent = 'Nothing sent yet.'; p.style.color = '#57606a'; history.append(p); return }
+			if (items.length === 0) { const p = document.createElement('div'); p.textContent = 'Nothing sent yet.'; p.style.color = 'var(--fgColor-muted)'; history.append(p); return }
 			for (const item of items) {
 				const b = document.createElement('button')
 				b.type = 'button'
 				b.setAttribute('data-testid', 'tester-history-item')
 				b.textContent = item.method + ' ' + item.url + (item.status ? ' → ' + item.status : '')
-				b.style.cssText = 'text-align:left;font:12px ui-monospace,monospace;padding:4px 8px;border:1px solid #d0d7de;border-radius:6px;background:#fff;cursor:pointer'
+				b.style.cssText = 'text-align:left;font:12px ui-monospace,monospace;padding:4px 8px;border:1px solid var(--borderColor-default);border-radius:6px;background:var(--bgColor-default);cursor:pointer'
 				b.addEventListener('click', () => { method.value = item.method; url.value = item.url; body.value = item.body || '' })
 				history.append(b)
 			}

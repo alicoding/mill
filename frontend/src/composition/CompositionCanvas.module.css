@@ -524,7 +524,7 @@
     border-radius: var(--borderRadius-medium);
     padding: var(--base-size-8) var(--base-size-12);
     max-width: 520px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-resting-small, 0 1px 3px rgba(0, 0, 0, 0.12));
 }
 .currentStepBarLabel {
     text-transform: uppercase;

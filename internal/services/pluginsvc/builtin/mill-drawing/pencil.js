@@ -103,7 +103,7 @@ export function registerPencil(api) {
 			if (ctx.mirror && ctx.mirror.failed) {
 				const err = document.createElement('span')
 				err.textContent = "Couldn't load this file."
-				err.style.cssText = 'font-size:11px;color:var(--fgColor-danger)'
+				err.style.cssText = 'font-size:11px;color:var(--fgColor-muted)'
 				el.replaceChildren(err)
 				return
 			}

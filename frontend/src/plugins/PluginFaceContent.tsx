@@ -4,6 +4,7 @@ import { AtlasService } from '../shared/bindings'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import type { MirrorReadState } from '../atlas/useAtlasObjectMirrorRead'
 import type { CanvasObjectDecl, CanvasObjectFaceCtx, GuardedActionResult } from './sdk'
+import { currentPluginTheme, onPluginThemeChange, pluginThemeAttrs, usePluginTheme } from './pluginTheme'
 
 // pluginFaceComponent adapts a plugin's framework-agnostic
 // renderFace(el, ctx) callback into the one React component shape the
@@ -54,6 +55,8 @@ export function pluginObjectCtx(pluginId: string, object: BoardObject, stages: S
 			return { approved: d.Approved, effect: d.Effect, ruleLabel: d.RuleLabel, performed: d.Performed }
 		},
 		mountOffBoard: (el, size) => mountOffBoardStage(el, size, stages),
+		theme: currentPluginTheme(),
+		onThemeChange: onPluginThemeChange,
 	}
 }
 
@@ -83,6 +86,10 @@ export function pluginFaceComponent(pluginId: string, decl: CanvasObjectDecl & {
 				: null
 		const mirrorFailed = !!mirrorContent?.error || (!!content && !mirrorDataUrl)
 		const sizeJSON = object.Size ? JSON.stringify(object.Size) : ''
+		// The resolved appearance rides the face's own root (goal 0320)
+		// so a plugin stylesheet can branch on it with no JavaScript, and
+		// re-runs renderFace so a canvas-drawing face repaints.
+		const theme = usePluginTheme()
 		useEffect(() => {
 			const el = elRef.current
 			if (!el) return
@@ -97,8 +104,8 @@ export function pluginFaceComponent(pluginId: string, decl: CanvasObjectDecl & {
 				console.error(`plugin ${pluginId} renderFace failed`, err)
 			}
 			// eslint-disable-next-line react-hooks/exhaustive-deps -- payloadJSON/sizeJSON stand in for object.Payload/Size value identity (see above)
-		}, [object.ID, payloadJSON, sizeJSON, mirrorVersion, mirrorDataUrl, mirrorFailed])
-		return <div ref={elRef} style={{ width: '100%', height: '100%', overflow: 'hidden' }} data-testid={`plugin-face-${decl.kind}`} />
+		}, [object.ID, payloadJSON, sizeJSON, mirrorVersion, mirrorDataUrl, mirrorFailed, theme])
+		return <div ref={elRef} style={{ width: '100%', height: '100%', overflow: 'hidden' }} data-testid={`plugin-face-${decl.kind}`} {...pluginThemeAttrs(theme)} />
 	})
 	return Face
 }

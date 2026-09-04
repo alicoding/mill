@@ -6,7 +6,17 @@ restart say so.
 
 ## Appearance
 
-- **Theme** — light, dark, or follow the system.
+- **Theme** — light, dark, or follow the system. Every open Mill window
+  follows the change at once, including the Quick Panel, the menu-bar
+  panel, and the run monitor.
+- **Color scheme** — one per appearance: Default, High contrast,
+  Colorblind, Colorblind high contrast, Tritanopia, and Tritanopia high
+  contrast, plus Dimmed for the dark appearance. When the theme follows
+  the system and the system asks for more contrast, Mill switches to the
+  high-contrast version of the scheme you picked.
+- **Accent** — Mill uses your system accent color when the platform
+  reports one, and its own teal when it doesn't. There is no accent
+  picker.
 - **Density** — Comfortable or Compact. Compact tightens rows and
   spacing across the app: list and palette rows, the Quick Panel,
   tables, canvas card faces, and Settings itself. On a phone-sized

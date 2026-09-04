@@ -25,14 +25,18 @@ func main() {
 	failed := 0
 	for _, dir := range dirs {
 		problems := pluginsvc.ConformDir(dir, "")
+		warnings := pluginsvc.ConformThemeWarnings(dir)
 		if len(problems) == 0 {
 			fmt.Printf("PASS  %s\n", dir)
-			continue
+		} else {
+			failed++
+			fmt.Printf("FAIL  %s\n", dir)
+			for _, p := range problems {
+				fmt.Printf("      - %s\n", p)
+			}
 		}
-		failed++
-		fmt.Printf("FAIL  %s\n", dir)
-		for _, p := range problems {
-			fmt.Printf("      - %s\n", p)
+		for _, w := range warnings {
+			fmt.Printf("      ! %s\n", w)
 		}
 	}
 	if failed > 0 {

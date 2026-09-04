@@ -3,33 +3,38 @@ import ReactDOM from 'react-dom/client'
 import './i18n'
 import './index.css'
 import '@primer/primitives/dist/css/primitives.css'
+// All fourteen functional themes @primer/primitives ships: the two
+// defaults plus the accessible variants Settings offers as a color
+// scheme per mode (goal 0320). dark-dimmed-high-contrast is imported
+// though Settings never lists it -- it is Dimmed's high-contrast pair,
+// reached when the OS asks for more contrast under Match system.
 import '@primer/primitives/dist/css/functional/themes/light.css'
+import '@primer/primitives/dist/css/functional/themes/light-high-contrast.css'
+import '@primer/primitives/dist/css/functional/themes/light-colorblind.css'
+import '@primer/primitives/dist/css/functional/themes/light-colorblind-high-contrast.css'
+import '@primer/primitives/dist/css/functional/themes/light-tritanopia.css'
+import '@primer/primitives/dist/css/functional/themes/light-tritanopia-high-contrast.css'
 import '@primer/primitives/dist/css/functional/themes/dark.css'
+import '@primer/primitives/dist/css/functional/themes/dark-dimmed.css'
+import '@primer/primitives/dist/css/functional/themes/dark-dimmed-high-contrast.css'
+import '@primer/primitives/dist/css/functional/themes/dark-high-contrast.css'
+import '@primer/primitives/dist/css/functional/themes/dark-colorblind.css'
+import '@primer/primitives/dist/css/functional/themes/dark-colorblind-high-contrast.css'
+import '@primer/primitives/dist/css/functional/themes/dark-tritanopia.css'
+import '@primer/primitives/dist/css/functional/themes/dark-tritanopia-high-contrast.css'
 // AFTER Primer's own theme CSS, deliberately -- mill-tokens.css's own
 // header comment has the full reasoning (a same-specificity override
 // needs to win the cascade tie by load order here, not just win on
 // paper via a selector-specificity trick that turned out to target
 // the wrong element).
 import './mill-tokens.css'
-import { ThemeProvider, BaseStyles } from '@primer/react'
 import App from './App'
 import { AppErrorBoundary, CrashProbe } from './AppErrorBoundary'
 import { QuickPanelApp } from './QuickPanelApp'
 import { ApprovalPromptApp } from './ApprovalPromptApp'
 import { TrayPanelApp } from './TrayPanelApp'
 import { RunMonitorApp } from './RunMonitorApp'
-import { COLOR_MODE_STORAGE_KEY } from './theme'
-
-// Read once, synchronously, before the first render, to seed
-// ThemeProvider's initial colorMode -- not the ongoing value. App.tsx's
-// theme switcher changes it afterward via Primer's own useTheme() hook;
-// this constant never changes across re-renders (it's read once, here,
-// at module load), so it only ever acts as an initial value and never
-// fights the user's later choice. Confirmed directly against
-// ThemeProvider's own implementation: it seeds a useSyncedState from
-// this prop and only re-syncs when the *prop itself* changes between
-// renders, which it never does here.
-const initialColorMode = (localStorage.getItem(COLOR_MODE_STORAGE_KEY) as 'light' | 'dark' | 'auto' | null) ?? 'auto'
+import { AppearanceProvider } from './AppearanceProvider'
 
 // docs/adr/0033-quick-panel-second-window.md: the Quick Panel is a
 // second Wails window loading this SAME compiled bundle, at a hash
@@ -38,9 +43,9 @@ const initialColorMode = (localStorage.getItem(COLOR_MODE_STORAGE_KEY) as 'light
 // real installed build; a hash route never leaves the one
 // already-served index.html. Branched once here, before the first
 // render, rather than pulled into a router dependency neither window
-// otherwise needs. QuickPanelApp owns its own ThemeProvider/BaseStyles
-// (it's a separate, minimal shell, not a view inside <App/>'s tree) --
-// so the branch happens above that wrapper, not inside a shared one.
+// otherwise needs. Every shell -- this one and each auxiliary window --
+// mounts AppearanceProvider itself (it is the theming shell, not a view
+// inside <App/>'s tree), so the branch happens above that wrapper.
 //
 // The floating approval prompt (docs/goals/0023-attention-escalation.md
 // item 1) reuses the exact same mechanism, a second hash route loading
@@ -108,11 +113,9 @@ async function bootstrap() {
   root.render(
     <React.StrictMode>
       <AppErrorBoundary>
-        <ThemeProvider colorMode={initialColorMode}>
-          <BaseStyles>
-            <App />
-          </BaseStyles>
-        </ThemeProvider>
+        <AppearanceProvider>
+          <App />
+        </AppearanceProvider>
       </AppErrorBoundary>
     </React.StrictMode>,
   )
