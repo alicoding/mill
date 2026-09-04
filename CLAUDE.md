@@ -169,13 +169,29 @@ when the owner calls v1.
 
 Every non-trivial change follows this order, no exceptions:
 
-1. **Research** — before writing code for a new capability, check whether
-   something already solves it: an existing library, a standard protocol, a
-   pattern already named in `docs/SPEC.md`. **Research → Adopt → Compose**
-   (`.claude/rules/architecture.md` has the full statement). A claim of
-   "nothing exists for X" must be backed by an actual search (WebSearch,
-   package registry, docs), not an assumption.
-2. **Plan** — state the approach and its tradeoffs before editing files.
+1. **Research** — three ordered parts, each recorded in the goal file
+   under its own heading BEFORE the Plan is written (owner-restated
+   2026-09-03 after goals kept skipping straight to Plan):
+   - **Precedent** — the best-in-class tools people actually use for
+     this job (two or three, named, from a real search of their docs or
+     product) and how each one does it: the interaction, the labels, the
+     states, the data shape. A library search is part of this, never
+     the whole of it — a capability is a product pattern first, a
+     dependency second. A claim of "nothing exists for X" must be
+     backed by an actual search (WebSearch, package registry, docs),
+     not an assumption.
+   - **Today** — what Mill does for it right now, read from the code
+     and probed live: the files, the states (the full state matrix for
+     a felt surface), and "nothing" when that is the honest answer.
+   - **Gap** — precedent against today, line by line: what is missing,
+     what is a forced pattern that must become the converged one, what
+     already matches and stays. The gap is the Plan's input; a Plan
+     without one is a guess.
+   **Research → Adopt → Compose** (`.claude/rules/architecture.md` has
+   the full statement; `.claude/rules/adopt-converged-patterns.md` has
+   the product-level law the Precedent part serves).
+2. **Plan** — the proper pattern, derived from the Gap: state the
+   approach and its tradeoffs before editing files.
    For any design choice with more than one defensible answer (schema
    shape, module boundary, protocol), write it up before committing to it,
    and record the decision in `docs/SPEC.md` under the relevant section.

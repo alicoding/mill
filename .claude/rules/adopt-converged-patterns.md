@@ -40,6 +40,10 @@ so correctness is structural — it's the contract, the spec, the schema.
 1. **Research, never infer.** Get the converged pattern from an actual
    search of the tools people use — never inferred from a request's
    phrasing. A claim of "nothing exists" needs a real search behind it.
+   This is CLAUDE.md's **Precedent** heading; it is followed by
+   **Today** (Mill's current state, audited) and **Gap** before any
+   Plan — the forced-pattern diagnosis above is exactly what the Gap
+   line surfaces when it is written down.
 2. **Adopt the whole API, not the four calls the first feature needs.**
    Partial adoption is how a forced pattern sneaks back — you take half
    of the converged model and invent the other half. This is the
