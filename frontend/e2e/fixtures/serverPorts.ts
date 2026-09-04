@@ -306,3 +306,19 @@ export const RUNTIME_PLUGIN_MCP_MCP_BASE_PORT = 11340
 // (the same reasoning RUNTIME_PLUGIN_RELOAD_* records).
 export const GUARDRAIL_REVIEW_CANCEL_SERVER_BASE_PORT = 11360
 export const GUARDRAIL_REVIEW_CANCEL_MCP_BASE_PORT = 11380
+
+// review-resolved-history.spec.ts's own dedicated pair (goal 0337 S2):
+// proves the resolved-history section's own toolbar/count/pagination
+// against a queue of resolved runs it seeds itself -- global Review
+// state (testing.md's shared-vs-dedicated rule), same reasoning as
+// every GUARDRAIL_REVIEW_* pair above.
+export const REVIEW_RESOLVED_HISTORY_SERVER_BASE_PORT = 11400
+export const REVIEW_RESOLVED_HISTORY_MCP_BASE_PORT = 11420
+
+// settings-extensions-list.spec.ts's own dedicated pair (goal 0337
+// S2): the installed-plugins list reads the GLOBAL PluginService.
+// ListPlugins() response, and this spec boots with its own
+// MILL_PLUGINS_DIR copy (fixtures/runtimePlugins.ts's launchWithPlugins)
+// like every runtime-plugin spec above.
+export const SETTINGS_EXTENSIONS_LIST_SERVER_BASE_PORT = 11440
+export const SETTINGS_EXTENSIONS_LIST_MCP_BASE_PORT = 11460

@@ -129,9 +129,9 @@ test('badge count drops on deny without any other event (phantom-1 repro)', asyn
     // own Recently-resolved section (the durable 24h outcome record),
     // not just session-only Activity -- distinct PlugIcon identity, not
     // clickable like a run row.
-    const resolved = page.getByTestId('review-resolved-mcp-write-item').first()
+    const resolved = page.locator('[data-testid="inventory-row"][data-entity="mcpwrite"]').first()
     await expect(resolved).toBeVisible({ timeout: 10_000 })
-    await expect(resolved.getByTestId('review-resolved-mcp-write-status')).toHaveText('denied')
+    await expect(resolved.getByTestId('inventory-row-description')).toHaveText('denied')
 
     const out = await importResultPromise
     expect(out.isError).toBeTruthy()

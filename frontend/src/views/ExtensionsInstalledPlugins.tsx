@@ -1,25 +1,38 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Stack, Text } from '@primer/react'
+import { Button, Pagination, Stack, Text } from '@primer/react'
 import { PlugIcon } from '@primer/octicons-react'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { SettingsService } from '../shared/bindings'
 import { pluginLoadStates } from '../plugins/loader'
+import { ExamplesSection } from '../shared/ExamplesSection'
 import { ExtensionRow } from './ExtensionRow'
 import { ExtensionsLinkPasteControl } from './ExtensionsLinkPasteControl'
 import { ExtensionsTrustBar } from './ExtensionsTrustBar'
 import { refreshDisabledExtensions, useExtensionEnablementStore } from '../shared/extensionEnablementStore'
+import { LIST_PAGE_SIZE, clampPage, listCountLabel, pageCountFor, pageItems } from '../shared/listStandard'
+import { useListState } from '../shared/useListState'
+import { ListToolbar } from '../shared/ListToolbar'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './ExtensionsSection.module.css'
 import { background } from '../shared/background'
 
-// The Installed half of Settings > Extensions (goal 0321, re-shaping
-// goal 0249's section): every folder in the plugins directory as ONE
-// row apiece, in the SAME row component the built-in list uses -- the
-// two lists used to be differently-shaped blocks on one page, which is
-// what made the section read as two features rather than one
-// inventory. What each plugin contributes, what it can reach, and why
-// it is not running now live in the detail pane a row opens.
+// The Installed half of Settings > Extensions (goal 0321, re-shaped
+// goal 0249's section, put on the one list standard by goal 0337 S2):
+// every folder in the plugins directory as ONE row apiece, in the SAME
+// row component the built-in tools list uses -- the two lists used to
+// be differently-shaped blocks on one page, which is what made the
+// section read as two features rather than one inventory. What each
+// plugin contributes, what it can reach, and why it is not running now
+// live in the detail pane a row opens.
+//
+// PluginInfo.Builtin (pluginservice_builtin.go) splits this SAME
+// PluginService.ListPlugins() response into two groups the standard
+// already has a shape for: a plugin the user installed is an "own"
+// item, one embedded in the binary (mill-drawing) is an "example" --
+// the standard's own Built-in disclosure section, never paginated, no
+// sort menu since a manifest carries no timestamp to sort by.
 //
 // The install story stays here, beside the list it explains: the
 // folder is one click away, and a fresh install takes effect on
@@ -39,14 +52,72 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
   onSelect: (id: string) => void
 }) {
   const { t } = useTranslation('views')
+  const { t: tc } = useTranslation('common')
   const disabledIds = useExtensionEnablementStore((s) => s.disabledExtensionIds)
   const states = pluginLoadStates()
+  const [query, setQuery] = useState('')
+  const { state, setPage, resetPage, setExamplesExpanded } = useListState('extensions-installed')
 
   const toggle = (id: string, enabled: boolean) => {
     void background(SettingsService.SetExtensionEnabled(id, enabled).then(refreshDisabledExtensions), 'extensionsInstalledPlugins.setExtensionEnabled')
   }
   const openFolder = () => {
     void background(PluginService.RevealPluginsDir(), 'extensionsInstalledPlugins.revealPluginsDir')
+  }
+
+  const own = (plugins ?? []).filter((p) => !p.Builtin)
+  const builtIns = (plugins ?? []).filter((p) => p.Builtin)
+  const q = query.trim().toLowerCase()
+  const matches = (p: PluginInfo) =>
+    q === '' || (p.Manifest.name || p.Manifest.id).toLowerCase().includes(q) || (p.Manifest.description ?? '').toLowerCase().includes(q)
+  const ownFiltered = own.filter(matches)
+  const builtInFiltered = builtIns.filter(matches)
+
+  const pageCount = pageCountFor(ownFiltered.length)
+  const page = clampPage(state.page, pageCount)
+  const ownPage = pageItems(ownFiltered, page)
+  const firstOnPage = (page - 1) * LIST_PAGE_SIZE + 1
+  // The count is the user's OWN plugins -- the Built-in section carries
+  // its own number in its own heading (goal 0337).
+  const count = own.length === 0 ? undefined : listCountLabel({
+    total: own.length,
+    shown: ownFiltered.length,
+    ...(pageCount > 1 ? { from: firstOnPage, to: firstOnPage + ownPage.length - 1 } : {}),
+  })
+
+  // Collapsed once the user has installed anything, expanded on a
+  // fresh install where the built-ins are all there is to see -- and
+  // always expanded while a live query matches one, so a search can
+  // never appear to have found nothing.
+  const expanded = state.examplesExpanded ?? own.length === 0
+  const showBuiltIns = expanded || (q !== '' && builtInFiltered.length > 0)
+
+  const changeQuery = (next: string) => {
+    setQuery(next)
+    resetPage()
+  }
+
+  const rowFor = (p: PluginInfo) => {
+    const id = p.Manifest.id
+    const runtime = states.get(id)
+    const error = p.Error || (runtime?.status === 'error' ? runtime.error : '')
+    return (
+      <li key={id} data-testid="extensions-plugin-row" data-plugin-id={id}>
+        <ExtensionRow
+          id={id}
+          icon={PlugIcon}
+          name={p.Manifest.name || id}
+          description={p.Manifest.description}
+          control={rowControl(runtime?.status, error)}
+          enabled={!disabledIds.includes(id)}
+          selected={selectedId === id}
+          builtInLabel={t('settings.extensions.pluginBuiltIn')}
+          toggleTestId="extensions-plugin-toggle"
+          onSelect={() => onSelect(id)}
+          onToggle={(enabled) => toggle(id, enabled)}
+        />
+      </li>
+    )
   }
 
   return (
@@ -75,30 +146,52 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
         </Text>
       )}
       {plugins !== null && plugins.length > 0 && (
-        <ul className={styles.rows} aria-label={t('settings.extensions.installedTitle')}>
-          {plugins.map((p) => {
-            const id = p.Manifest.id
-            const runtime = states.get(id)
-            const error = p.Error || (runtime?.status === 'error' ? runtime.error : '')
-            return (
-              <li key={id} data-testid="extensions-plugin-row" data-plugin-id={id}>
-                <ExtensionRow
-                  id={id}
-                  icon={PlugIcon}
-                  name={p.Manifest.name || id}
-                  description={p.Manifest.description}
-                  control={rowControl(runtime?.status, error)}
-                  enabled={!disabledIds.includes(id)}
-                  selected={selectedId === id}
-                  builtInLabel={t('settings.extensions.pluginBuiltIn')}
-                  toggleTestId="extensions-plugin-toggle"
-                  onSelect={() => onSelect(id)}
-                  onToggle={(enabled) => toggle(id, enabled)}
+        <>
+          <ListToolbar
+            query={query}
+            onQueryChange={changeQuery}
+            searchAriaLabel={t('settings.extensions.installedTitle')}
+            count={count}
+          />
+          {ownFiltered.length === 0 && builtInFiltered.length === 0 ? (
+            <Text as="p" size="small" className={listStyles.muted}>{tc('inventoryList.noMatchesFor', { query })}</Text>
+          ) : (
+            <>
+              {ownPage.length > 0 && (
+                <ul className={styles.rows} aria-label={t('settings.extensions.installedTitle')}>
+                  {ownPage.map(rowFor)}
+                </ul>
+              )}
+              {pageCount > 1 && (
+                <Pagination
+                  pageCount={pageCount}
+                  currentPage={page}
+                  showPages
+                  onPageChange={(e, n) => {
+                    // Primer's page controls are anchors with a default
+                    // '#' href -- without this the click also navigates.
+                    e.preventDefault()
+                    setPage(n)
+                  }}
                 />
-              </li>
-            )
-          })}
-        </ul>
+              )}
+              <ExamplesSection
+                count={builtInFiltered.length}
+                expanded={showBuiltIns}
+                onToggle={setExamplesExpanded}
+                heading={t('settings.extensions.builtInCount', { count: builtInFiltered.length })}
+                showLabel={t('settings.extensions.showBuiltIn')}
+                hideLabel={t('settings.extensions.hideBuiltIn')}
+                testId="extensions-built-in-plugins"
+                toggleTestId="extensions-built-in-toggle"
+              >
+                <ul className={styles.rows} aria-label={t('settings.extensions.builtInCount', { count: builtInFiltered.length })}>
+                  {builtInFiltered.map(rowFor)}
+                </ul>
+              </ExamplesSection>
+            </>
+          )}
+        </>
       )}
     </Stack>
   )

@@ -1,9 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionList, Button, Heading, Pagination, Stack, Text } from '@primer/react'
+import { ActionList, Pagination, Stack, Text } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import { ChevronDownIcon, ChevronRightIcon } from '@primer/octicons-react'
 import { ContextMenu, type ContextMenuState } from './ContextMenu'
+import { ExamplesSection } from './ExamplesSection'
 import { InventoryRow } from './InventoryRow'
 import { ListToolbar } from './ListToolbar'
 import { useListState } from './useListState'
@@ -25,19 +25,11 @@ export type {
 // of it by passing a listId -- a page cannot opt into a different page
 // size, sort model or grouping.
 //
-// Primer's ActionList.Group has no expand/collapse API of its own
-// (checked directly against the installed version's compiled Group.js,
-// which exposes only variant/title/auxiliaryText/selectionVariant), and
-// ActionList.GroupHeading.TrailingAction is gated behind an off-by-
-// default feature flag there. Group is also not usable here at all:
-// inside an ActionList carrying role="list" -- which InventoryRow
-// depends on, so its Items render as divs rather than nested buttons --
-// Group emits a role="none" wrapper around an h3 and a role="group"
-// list, which axe rejects (aria-required-children / listitem), and
-// e2e/wcag-audit.spec.ts fails on it. The Examples section is therefore
-// a disclosure button over its OWN ActionList. Collapsed means the rows
-// are not rendered at all -- not hidden -- so nothing collapsed is
-// reachable by a stale locator or the tab order.
+// The Examples group renders through the shared ExamplesSection.tsx
+// disclosure (its own header comment carries the ActionList.Group
+// rejection reasoning) over its OWN ActionList -- role="list" on the
+// owning ActionList is what makes InventoryRow's Items render as divs
+// rather than nested buttons, same as the own-items list below.
 export function InventoryList({ items, emptyState, searchPlaceholder, listId, filters }: {
   items: InventoryItem[]
   emptyState: InventoryEmptyState
@@ -131,30 +123,22 @@ export function InventoryList({ items, emptyState, searchPlaceholder, listId, fi
               }}
             />
           )}
-          {examplesFiltered.length > 0 && (
-            <div data-testid="inventory-examples">
-              <Heading as="h3" className={styles.examplesHeading}>
-                <Button
-                  variant="invisible"
-                  size="small"
-                  leadingVisual={showExamples ? ChevronDownIcon : ChevronRightIcon}
-                  aria-expanded={showExamples}
-                  onClick={() => setExamplesExpanded(!showExamples)}
-                  title={showExamples ? t('list.hideExamples') : t('list.showExamples')}
-                  data-testid="inventory-examples-toggle"
-                >
-                  {t('list.examples', { count: examplesFiltered.length })}
-                </Button>
-              </Heading>
-              {showExamples && (
-                <ActionList role="list" showDividers className={styles.list}>
-                  {examplesFiltered.map((item) => (
-                    <InventoryRow key={item.id} item={item} onOpenMenu={setRowMenu} />
-                  ))}
-                </ActionList>
-              )}
-            </div>
-          )}
+          <ExamplesSection
+            count={examplesFiltered.length}
+            expanded={showExamples}
+            onToggle={setExamplesExpanded}
+            heading={t('list.examples', { count: examplesFiltered.length })}
+            showLabel={t('list.showExamples')}
+            hideLabel={t('list.hideExamples')}
+            testId="inventory-examples"
+            toggleTestId="inventory-examples-toggle"
+          >
+            <ActionList role="list" showDividers className={styles.list}>
+              {examplesFiltered.map((item) => (
+                <InventoryRow key={item.id} item={item} onOpenMenu={setRowMenu} />
+              ))}
+            </ActionList>
+          </ExamplesSection>
         </>
       )}
       <ContextMenu state={rowMenu} onClose={() => setRowMenu(null)} />

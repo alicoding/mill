@@ -73,6 +73,10 @@ test('A built-in plugin offers no Remove at all', async () => {
 	try {
 		await page.goto('/')
 		await openSettings(page, 'extensions')
+		// mill-drawing sits behind the shared Built-in disclosure --
+		// launchWithPlugins seeds own plugins too, so it starts collapsed
+		// (goal 0337 S2).
+		await page.getByTestId('extensions-built-in-toggle').click()
 		const detail = await openExtensionDetail(page, pluginRow(page, 'mill-drawing'), 'mill-drawing')
 		await expect(detail.getByTestId('extensions-detail-menu')).toHaveCount(0)
 	} finally {
