@@ -128,3 +128,15 @@ describe('applyAppearance', () => {
     expect(root.dataset.millScheme).toBe('light_high_contrast')
   })
 })
+
+describe('a contributed scheme whose plugin is gone', () => {
+  it('is stored as chosen but resolves to the family default', () => {
+    const stored = { mode: 'auto' as const, lightScheme: 'p.sepia', darkScheme: 'p.slate' }
+    expect(resolveSchemes(stored, false, [])).toEqual({ lightTheme: 'light', darkTheme: 'dark' })
+  })
+
+  it('resolves to itself while its plugin is installed', () => {
+    const stored = { mode: 'auto' as const, lightScheme: 'p.sepia', darkScheme: 'p.slate' }
+    expect(resolveSchemes(stored, false, ['p.sepia', 'p.slate'])).toEqual({ lightTheme: 'p.sepia', darkTheme: 'p.slate' })
+  })
+})

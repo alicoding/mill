@@ -6,14 +6,20 @@ import { applyDensity, type DisplayDensity } from '../shared/density'
 import { applyAccent } from '../shared/accentScale'
 import { background } from '../shared/background'
 import {
+  DARK_SCHEMES,
+  LIGHT_SCHEMES,
   applyAppearance,
   getAppearance,
+  setAppearance,
   normalizeMode,
   resolveSchemes,
   setRemoteDensityHandler,
   subscribeAppearance,
   type ResolvedMode,
 } from '../shared/appearance'
+import { getThemePreview, previewedSchemes, subscribeThemePreview } from '../shared/appearancePreview'
+import { isKnownScheme, pluginThemes, subscribePluginThemes, type PluginThemeEntry } from '../shared/appearanceThemes'
+import { installPluginThemes } from '../plugins/pluginTheme'
 
 // AppearanceProvider is the one theming shell every Mill window mounts
 // -- the main window and each auxiliary one (goal 0320). It replaced
@@ -58,8 +64,15 @@ export function useResolvedAppearance(): Resolved {
   const appearance = useSyncExternalStore(subscribeAppearance, getAppearance, getAppearance)
   const moreContrast = useMediaFlag('(prefers-contrast: more)')
   const systemDark = useMediaFlag('(prefers-color-scheme: dark)')
+  // A plugin theme arriving or leaving changes what resolveSchemes
+  // accepts, so the resolved pair has to be recomputed on it too.
+  const themes = useSyncExternalStore(subscribePluginThemes, pluginThemes, noThemes)
+  // The preview overrides the resolved pair without touching the
+  // store, so nothing is persisted and no other window follows.
+  const preview = useSyncExternalStore(subscribeThemePreview, getThemePreview, nullPreview)
   return useMemo(() => {
-    const { lightTheme, darkTheme } = resolveSchemes(appearance, moreContrast)
+    const contributed = themes.map((t) => t.schemeId)
+    const { lightTheme, darkTheme } = previewedSchemes(resolveSchemes(appearance, moreContrast, contributed), preview)
     const resolvedMode = appearance.mode === 'auto' ? (systemDark ? 'dark' : 'light') : normalizeMode(appearance.mode)
     return {
       mode: appearance.mode,
@@ -68,7 +81,16 @@ export function useResolvedAppearance(): Resolved {
       resolvedMode,
       scheme: resolvedMode === 'dark' ? darkTheme : lightTheme,
     }
-  }, [appearance, moreContrast, systemDark])
+  }, [appearance, moreContrast, systemDark, preview, themes])
+}
+
+const NO_THEMES: PluginThemeEntry[] = []
+function noThemes(): PluginThemeEntry[] {
+  return NO_THEMES
+}
+
+function nullPreview(): null {
+  return null
 }
 
 export function AppearanceProvider({ children }: PropsWithChildren) {
@@ -86,6 +108,21 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
     void background(SettingsService.GetDisplayDensity()
       .then((d) => applyDensity(d === 'compact' ? 'compact' : 'comfortable')), 'appearance.getDisplayDensity')
     return () => setRemoteDensityHandler(null)
+  }, [])
+
+  // Contributed themes are installed per WINDOW, not per plugin load:
+  // the Quick Panel and the tray panel run no plugin code and still
+  // have to paint in the theme the user chose. A choice whose plugin
+  // is gone or turned off is dropped once the pass has actually run,
+  // never on a failed read.
+  useEffect(() => {
+    void background(installPluginThemes().then((read) => {
+      if (!read) return
+      const a = getAppearance()
+      const light = isKnownScheme(a.lightScheme, LIGHT_SCHEMES) ? a.lightScheme : 'light'
+      const dark = isKnownScheme(a.darkScheme, DARK_SCHEMES) ? a.darkScheme : 'dark'
+      if (light !== a.lightScheme || dark !== a.darkScheme) setAppearance({ ...a, lightScheme: light, darkScheme: dark })
+    }), 'appearance.installPluginThemes')
   }, [])
 
   // The system accent is read once per window: the platform reports it,

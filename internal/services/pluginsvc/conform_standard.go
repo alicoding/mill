@@ -34,6 +34,7 @@ func conformStandard(dir string, m Manifest) []string {
 	problems = append(problems, conformCommandNamespace(m)...)
 	problems = append(problems, conformRemoteCode(scripts)...)
 	problems = append(problems, conformLabelCase(m, scripts)...)
+	problems = append(problems, conformThemes(dir, m)...)
 	sort.Strings(problems)
 	return problems
 }

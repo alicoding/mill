@@ -30,6 +30,7 @@ export type {
     SettingOption,
     StepConfigContribution,
     StepContribution,
+    ThemeContribution,
     ToolContribution,
     ToolRun,
     ViewContribution

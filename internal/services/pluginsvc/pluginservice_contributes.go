@@ -40,6 +40,9 @@ func validateContributes(pluginID string, c ManifestContributes) string {
 	if problem := validateTools(c); problem != "" {
 		return problem
 	}
+	if problem := validateThemes(c.Themes); problem != "" {
+		return problem
+	}
 	return validateSettingContributions(c.Settings)
 }
 

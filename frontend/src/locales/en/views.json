@@ -36,6 +36,16 @@
       "comfortableOption": "Comfortable",
       "compactOption": "Compact"
     },
+    "theme": {
+      "label": "Theme",
+      "lightLabel": "Light theme",
+      "darkLabel": "Dark theme",
+      "lightCaption": "Used when the system is in light mode.",
+      "darkCaption": "Used when the system is in dark mode.",
+      "fromPlugin": "From {{plugin}}",
+      "rejected": "This theme's file has a line the host cannot accept: line {{line}}.",
+      "previewLabel": "Preview"
+    },
     "general": {
       "launchAtLoginLabel": "Launch Mill at login",
       "launchAtLoginCaption": "Starts Mill automatically when you log in.",

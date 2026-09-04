@@ -12,6 +12,20 @@
       {
         "kind": "scribble"
       }
+    ],
+    "themes": [
+      {
+        "id": "sepia",
+        "label": "Sepia",
+        "family": "light",
+        "file": "themes/sepia.css"
+      },
+      {
+        "id": "slate",
+        "label": "Slate",
+        "family": "dark",
+        "file": "themes/slate.css"
+      }
     ]
   }
 }

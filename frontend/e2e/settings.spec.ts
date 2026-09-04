@@ -277,10 +277,10 @@ test('The group list shows exactly one pane, marks it, and routes to it', async 
   await expect(page.getByTestId('backup-now')).toHaveCount(0)
   await expect(page.getByTestId('settings-pane-general')).toHaveCount(0)
 
-  // The two scheme rows are named apart -- they used to share one
-  // label, which read as the same setting listed twice.
-  await expect(page.getByText('Light appearance')).toBeVisible()
-  await expect(page.getByText('Dark appearance')).toBeVisible()
+  // Match system is the default mode, so both families are listed and
+  // each list is NAMED for the appearance it is for.
+  await expect(page.getByRole('listbox', { name: 'Light theme' })).toBeVisible()
+  await expect(page.getByRole('listbox', { name: 'Dark theme' })).toBeVisible()
 
   await page.getByTestId('settings-group-item-backups').click()
   await expect(page.getByTestId('settings-pane-backups')).toBeVisible()

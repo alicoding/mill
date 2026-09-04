@@ -166,6 +166,13 @@ export interface ManifestContributes {
     "commands": CommandContribution[] | null;
 
     /**
+     * Themes (docs/goals/0342): color themes the plugin ships as CSS
+     * data files. Declared here because the picker lists them before
+     * any plugin code runs, and a theme needs no code at all.
+     */
+    "themes": ThemeContribution[] | null;
+
+    /**
      * Tools (docs/goals/0324): the automation-reachable surface --
      * which of this plugin's commands, steps and reads an agent may
      * call over MCP, each with its own typed input contract.
@@ -391,6 +398,18 @@ export interface StepContribution {
     "label": string;
     "description": string;
     "config": StepConfigContribution[] | null;
+}
+
+/**
+ * ThemeContribution declares one color theme: an id unique within the
+ * plugin, the label the picker lists, which appearance family it
+ * belongs to, and the CSS file relative to the plugin's own folder.
+ */
+export interface ThemeContribution {
+    "id": string;
+    "label": string;
+    "family": string;
+    "file": string;
 }
 
 /**
