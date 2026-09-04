@@ -69,9 +69,12 @@ export function InventoryList({ items, emptyState, searchPlaceholder, listId, fi
   const page = clampPage(state.page, pageCount)
   const ownPage = pageItems(ownFiltered, page)
   const firstOnPage = (page - 1) * LIST_PAGE_SIZE + 1
-  const count = listCountLabel({
-    total: items.length,
-    shown: ownFiltered.length + examplesFiltered.length,
+  // The count is the user's OWN items: the Examples section carries its
+  // own number, so a total that summed both would name a set no row list
+  // shows (goal 0337). A list that is all examples shows no count.
+  const count = own.length === 0 ? undefined : listCountLabel({
+    total: own.length,
+    shown: ownFiltered.length,
     ...(pageCount > 1 ? { from: firstOnPage, to: firstOnPage + ownPage.length - 1 } : {}),
   })
 

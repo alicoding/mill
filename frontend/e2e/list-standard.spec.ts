@@ -118,14 +118,15 @@ test('Configure: an inventory under the page size wears the same toolbar and cou
   await expect(panel.getByTestId('list-toolbar')).toBeVisible()
   await expect(panel.getByTestId('inventory-search')).toBeVisible()
   await expect(panel.getByTestId('list-sort')).toBeVisible()
-  await expect(panel.getByTestId('list-count')).toHaveText(/^\d+$/)
+  // A list that is all examples carries no count: the Examples header
+  // holds that number, and the count names the user's own items only.
+  await expect(panel.getByTestId('list-count')).toHaveCount(0)
   await expect(panel.getByRole('navigation', { name: 'Pagination' })).toHaveCount(0)
+  await expect(panel.getByRole('button', { name: /^Examples \(\d+\)$/ })).toBeVisible()
 
-  // Narrowing swaps the bare total for shown-of-total.
   await panel.getByTestId('inventory-search').fill('zzz-no-such-integration')
-  await expect(panel.getByTestId('list-count')).toHaveText(/^0 of \d+$/)
+  await expect(panel.getByTestId('list-count')).toHaveCount(0)
   await panel.getByTestId('inventory-search').fill('')
-  await expect(panel.getByTestId('list-count')).toHaveText(/^\d+$/)
 })
 
 test('Activity: the session feed wears the same toolbar, with its own filters as the chips', async ({ page }) => {

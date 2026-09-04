@@ -28,7 +28,7 @@ export interface ListToolbarProps {
   onSortChange?: (sort: ListSort) => void
   // Page-owned filter controls (Activity's source and outcome pickers).
   filters?: ReactNode
-  count: ListCount
+  count?: ListCount
 }
 
 export function ListToolbar({
@@ -74,9 +74,9 @@ export function ListToolbar({
         </ActionMenu>
       )}
       {filters}
-      <Text size="small" className={styles.count} data-testid="list-count">
+      {count && <Text size="small" className={styles.count} data-testid="list-count">
         {t(count.key, count.params)}
-      </Text>
+      </Text>}
     </Stack>
   )
 }
