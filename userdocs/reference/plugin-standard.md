@@ -55,7 +55,7 @@ your plugin feels like part of Mill.
 18. SDK comments and your README describe behaviour for plugin
     authors: no repository vocabulary (goal ids, internal file
     names). (checked over the generated reference)
-20. A theme you contribute is a CSS file of nothing but
+19. A theme you contribute is a CSS file of nothing but
     `--token: value;` declarations, every token drawn from the
     documented theme variables: no selector, no at-rule, no `url()`.
     Mill layers it over the built-in palette of the family you name,
@@ -63,7 +63,7 @@ your plugin feels like part of Mill.
 
 ## Quality gates
 
-19. `go run ./internal/pluginconform <folder>` passes; `npm run
+20. `go run ./internal/pluginconform <folder>` passes; `npm run
     plugin:typecheck` and `npm run plugin:lint` pass. (checked)
 
 ## Checking your own plugin

@@ -100,11 +100,11 @@ func conformThemes(dir string, m Manifest) []string {
 		}
 		raw, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(t.File))) // #nosec G304 -- File is Clean, relative and extension-checked above, under the caller's own plugin folder
 		if err != nil {
-			problems = append(problems, fmt.Sprintf("standard rule 20: theme %q names %q, which is missing or unreadable", t.ID, t.File))
+			problems = append(problems, fmt.Sprintf("standard rule 19: theme %q names %q, which is missing or unreadable", t.ID, t.File))
 			continue
 		}
 		if line, problem := ValidateThemeCSS(string(raw)); problem != "" {
-			problems = append(problems, fmt.Sprintf("standard rule 20: theme %q, %s line %d: %s", t.ID, t.File, line, problem))
+			problems = append(problems, fmt.Sprintf("standard rule 19: theme %q, %s line %d: %s", t.ID, t.File, line, problem))
 		}
 	}
 	sort.Strings(problems)
