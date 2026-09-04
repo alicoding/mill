@@ -6,10 +6,10 @@
 
 # Interface: PluginConvertAPI
 
-PluginConvertAPI (goal 0282): pure transforms Mill already owns,
-offered to a plugin as-is. htmlToMarkdown is the same conversion
-every workflow convert step and every paste uses. No capability --
-a transform reaches nothing outside its own input.
+Pure transforms Mill already implements, offered to a plugin as-is.
+htmlToMarkdown is the exact conversion every paste and every
+workflow convert step uses. No capability required -- a transform
+reaches nothing outside the input you pass it.
 
 ## Properties
 

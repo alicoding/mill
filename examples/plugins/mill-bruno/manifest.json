@@ -5,8 +5,16 @@
   "description": "Keeps a Bruno API collection on the board and shows what it is; the seeded workflow runs it and lands the results in a List.",
   "author": "Mill examples",
   "minMillVersion": "0.14.1",
-  "capabilities": ["open-app", "list-files"],
+  "icon": "icon.png",
+  "capabilities": [
+    "open-app",
+    "list-files"
+  ],
   "contributes": {
-    "canvasObjects": [{ "kind": "bruno-collection" }]
+    "canvasObjects": [
+      {
+        "kind": "bruno-collection"
+      }
+    ]
   }
 }

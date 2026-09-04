@@ -6,12 +6,6 @@
 
 # Interface: CanvasObjectDecl
 
-ObjectSource/EditRoute restated here as plain strings rather than
-imported from atlas/objectSeams.ts: the SDK's compile-time
-independence from the kernel is the point of this file, and the
-host's registration path (hostApi.ts) narrows/validates them against
-the kernel's own unions at registration time.
-
 ## Properties
 
 ### defaultPayload?
@@ -20,7 +14,7 @@ the kernel's own unions at registration time.
 optional defaultPayload?: Record<string, string>;
 ```
 
-Payload a fresh placement starts with.
+The payload a fresh placement starts with.
 
 ***
 
@@ -38,10 +32,9 @@ optional description?: string;
 optional dragBand?: boolean;
 ```
 
-dragBand (goal 0252 S2): whether the placed object needs the
-shared chrome band as its drag surface (default true). Declare
-false when the object's whole body already drags -- content that
-doesn't capture pointer events itself.
+dragBand: whether a placed object needs the shared chrome band as
+its drag surface (default true). Set false when the object's whole
+body already captures pointer events for dragging on its own.
 
 ***
 
@@ -53,11 +46,11 @@ editRoute:
   | ((object) => CanvasEditRoute);
 ```
 
-Which door edits it: 'inline' (the face itself is the editor) |
-'external-app' | 'none' -- one static route, or a resolver called
-per object when the door depends on the object's own artifact
-(goal 0310: a file-backed kind whose editor exists for some
-extensions and not others).
+Which door edits the object: 'inline' (the face itself is the
+editor), 'external-app', or 'none' -- one fixed value, or a
+resolver called per object when the answer depends on that
+object's own data (some file extensions are editable in place and
+some are not, say).
 
 ***
 
@@ -67,8 +60,9 @@ extensions and not others).
 optional gesture?: CanvasGestureDecl;
 ```
 
-The drag behavior for a 'drag-to-draw' / 'ephemeral-drag'
-interaction. Required there, forbidden for 'arm-then-click'.
+The drag behavior for a 'drag-to-draw' or 'ephemeral-drag'
+interaction. Required there, and not accepted for
+'arm-then-click'.
 
 ***
 
@@ -78,10 +72,10 @@ interaction. Required there, forbidden for 'arm-then-click'.
 optional group?: "knowledge" | "file" | "annotate";
 ```
 
-group (goal 0252 S2): which tray cluster the button renders in --
-'knowledge' (default for board-local/url tools), 'file' (default
-for file-backed tools), or 'annotate' (the collapsed freehand-
-marking drawer).
+group: which tray cluster the button renders in -- 'knowledge'
+(default for board-local or url-backed tools), 'file' (default for
+file-backed tools), or 'annotate' (the collapsed freehand-marking
+drawer).
 
 ***
 
@@ -92,9 +86,9 @@ icon: string;
 ```
 
 icon is one emoji, or the name of a glyph from Mill's named icon
-set (goal 0252 S2 -- 'pencil', 'zap', 'trash', 'diamond',
-'square', 'circle', 'arrow-up-right') so a no-build plugin gets a
-real toolbar icon; an unrecognized name is a registration error
+set ('pencil', 'zap', 'trash', 'diamond', 'square', 'circle',
+'arrow-up-right') so the tool gets a real toolbar icon with no
+image asset required. An unrecognized name fails registration,
 naming the known set.
 
 ***
@@ -105,12 +99,12 @@ naming the known set.
 optional interaction?: "arm-then-click" | "drag-to-draw" | "ephemeral-drag";
 ```
 
-The authoring gesture (goal 0252 S1). 'arm-then-click' (the
-default): the armed click places one object with defaultPayload.
-'drag-to-draw': the armed pointer drag feeds `gesture`, whose own
-onEnd decides what to create. 'ephemeral-drag': the drag renders
-only the live preview and never creates anything (a laser-pointer
-shape) -- renderFace, source, and editRoute are unused there.
+The authoring gesture. 'arm-then-click' (the default): the armed
+click places one object with defaultPayload. 'drag-to-draw': the
+armed pointer drag feeds `gesture`, whose own onEnd decides what to
+create. 'ephemeral-drag': the drag renders only a live preview and
+never creates anything (a laser pointer); source, editRoute and
+renderFace go unused for it.
 
 ***
 
@@ -121,8 +115,9 @@ kind: string;
 ```
 
 kind is the tool's tray/palette id and, unless objectKind says
-otherwise, the persisted BoardObject.Kind -- lowercase slug, must
-be unique against built-ins and other plugins.
+otherwise, the kind every placed instance is stored under --
+lowercase slug, must be unique against Mill's own tools and every
+other plugin.
 
 ***
 
@@ -132,8 +127,8 @@ be unique against built-ins and other plugins.
 label: string;
 ```
 
-label/description are user-facing (tray tooltip, the Extensions
-row).
+label/description are user-facing: the tray tooltip and the
+plugin's row in Settings.
 
 ***
 
@@ -143,9 +138,9 @@ row).
 optional lockable?: boolean;
 ```
 
-lockable (goal 0252 S2): for a NON-sticky drag tool only --
-re-clicking the armed button locks it for deliberate repetition
-instead of disarming (the discrete-shape convention).
+lockable: for a non-sticky drag tool only -- re-clicking the
+armed button locks it for deliberate repeated use instead of
+disarming.
 
 ***
 
@@ -155,13 +150,11 @@ instead of disarming (the discrete-shape convention).
 optional menuItems?: readonly CanvasObjectMenuItem[];
 ```
 
-menuItems (goal 0280): this object kind's own context-menu items,
-rendered on the right-click menu of the plugin's OWN objects only,
-between the built-in items and Delete. Object-scoped by nature
-(they act on the object that was right-clicked), so they carry a
-handler rather than a registry command: run receives the same ctx
-renderFace does. An item whose enabled predicate answers false is
-left out of the menu entirely, never shown dimmed.
+menuItems: this object kind's own context-menu items, rendered on
+the right-click menu of the plugin's OWN objects only, between
+Mill's built-in items and Delete. An item whose enabled predicate
+returns false is left out of the menu entirely rather than shown
+disabled.
 
 ***
 
@@ -171,11 +164,10 @@ left out of the menu entirely, never shown dimmed.
 optional objectKind?: string;
 ```
 
-objectKind (goal 0252 S2): the persisted BoardObject.Kind this
-tool's placements carry, when it differs from the tool id (the
-same id-vs-Kind split built-in tools always had -- a pencil tool
-placing 'ink' objects). Defaults to `kind`; must be unique among
-registered object kinds like any other.
+objectKind: the stored kind this tool's placements carry, when it
+differs from the tool id (useful when one tool id should place
+several visually distinct kinds). Defaults to `kind`; must be
+unique among every registered object kind like any other.
 
 ***
 
@@ -185,13 +177,12 @@ registered object kinds like any other.
 optional renderFace?: (el, ctx) => void;
 ```
 
-renderFace draws the object's board face into el (a host-owned
-div, already sized to the object's box). Called on mount and again
-whenever the object's data changes -- el's contents are the
-plugin's own to manage between calls (checking ctx.object for
-what changed). Framework-agnostic on purpose: plain DOM, no
-renderer library coupling, no build step required of a plugin.
-Optional ONLY for 'ephemeral-drag' (nothing is ever placed).
+renderFace draws the object's board face into el (an element
+already sized to the object's box). Called on mount and again
+whenever the object's own data changes -- el's contents are yours
+to manage between calls. Deliberately plain DOM: no renderer
+library coupling, no build step required to write a plugin.
+Optional only for 'ephemeral-drag' (nothing is ever placed).
 
 #### Parameters
 
@@ -215,9 +206,9 @@ Optional ONLY for 'ephemeral-drag' (nothing is ever placed).
 optional shortcutKey?: string;
 ```
 
-shortcutKey (goal 0252 S2): a single A-Z key that arms this tool
-on the board (shown as the tray button's key chip). A key already
-taken by another tool is a registration error.
+shortcutKey: a single A-Z key that arms this tool on the board,
+shown as the tray button's key chip. A key another tool already
+uses fails registration.
 
 ***
 
@@ -227,8 +218,9 @@ taken by another tool is a registration error.
 source: "file" | "board-local" | "url";
 ```
 
-Where the object's artifact lives (ADR-0046 vocabulary):
-'board-local' | 'url' | 'file'.
+Where the object's own artifact lives: a value only this board
+knows ('board-local'), a web address ('url'), or a file on disk
+('file').
 
 ***
 
@@ -238,9 +230,9 @@ Where the object's artifact lives (ADR-0046 vocabulary):
 optional sticky?: boolean;
 ```
 
-Does the tool stay armed after a completed drag (repeated strokes
-are the point), or disarm after one? Only meaningful for a drag
-interaction; defaults to true there (the drawing-tool convention).
+Whether the tool stays armed after a completed drag (for repeated
+strokes) or disarms after one. Only meaningful for a drag
+interaction; defaults to true there.
 
 ***
 
@@ -250,8 +242,8 @@ interaction; defaults to true there (the drawing-tool convention).
 optional styleFields?: readonly CanvasStyleFieldDecl[];
 ```
 
-The tool's styleable properties, from Mill's closed style
-vocabulary. Declaring any makes the style picker render next to
-the armed tool automatically; current values arrive on the
-gesture ctx keyed by each field's own `key`, starting at its
+The tool's styleable properties, from Mill's own closed style
+vocabulary. Declaring any makes a style picker render next to the
+armed tool automatically; the picker's current values arrive on
+the gesture ctx keyed by each field's own `key`, starting at its
 `default`.

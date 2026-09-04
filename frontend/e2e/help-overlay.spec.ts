@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { gotoAppReady } from './fixtures/appReady'
 
 // The bare-?/⌘? shortcuts-help overlay (goal 0071, app/ShortcutsHelpDialog.tsx):
 // context-first ("On this page" bindings ahead of "Everywhere"),
@@ -44,7 +45,7 @@ test('typing ? inside the atlas jump dialog\'s own search input does not also op
 })
 
 test('Cmd+Shift+/ (⌘?) opens the help overlay, not the palette; Cmd+/ still opens the palette', async ({ page }) => {
-  await page.goto('/')
+  await gotoAppReady(page)
   const paletteDialog = page.getByRole('dialog', { name: 'Command palette' })
 
   await page.keyboard.press('Meta+Shift+/')

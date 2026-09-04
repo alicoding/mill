@@ -5,6 +5,11 @@
   "description": "What this plugin does, in one sentence.",
   "author": "",
   "minMillVersion": "{{.MinMillVersion}}",
+  "icon": "icon.png",
   "capabilities": [],
-  "contributes": {}
+  "contributes": {
+    "commands": [
+      { "id": "{{.ID}}.hello", "label": "{{.Label}}: say hello" }
+    ]
+  }
 }

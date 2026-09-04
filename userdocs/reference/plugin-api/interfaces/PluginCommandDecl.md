@@ -14,14 +14,13 @@
 optional enabled?: () => boolean;
 ```
 
-enabled (goal 0258 slice 1, the same "when" clause built-in
-commands carry): omit for an always-valid command; provide a
-predicate when the command only makes sense in a state -- the
-palette omits a disabled command entirely rather than showing
+enabled: omit for an always-valid command; provide a predicate
+when the command only makes sense in a particular state -- the
+palette leaves a disabled command out entirely rather than showing
 something that does nothing. Never guard inside run() and return
-silently. A default keybinding is deliberately NOT part of this
-declaration: a shortcut for third-party code is assigned by the
-user in Settings, never shipped by the plugin.
+silently instead. A default keybinding is deliberately NOT part of
+this declaration: a shortcut for a command is assigned by the user
+in Settings, never shipped by the plugin itself.
 
 #### Returns
 
@@ -35,8 +34,7 @@ user in Settings, never shipped by the plugin.
 id: string;
 ```
 
-id is this command's slug. Declaring the SAME id in the manifest's
-`contributes.commands` is what lets a manifest tool name it.
+id is this command's slug: "<your plugin id>.<verb>".
 
 ***
 

@@ -6,10 +6,11 @@
 
 # Interface: PluginEventMap
 
-PluginEventMap (goal 0278): the events a plugin can subscribe to.
+The events a plugin can subscribe to through api.on.
 'contents:changed' fires whenever anything on the board is created,
-edited, moved, or deleted, with the changed entry's id. A closed
-map, so a new event is a type addition here, never a convention.
+edited, moved, or deleted, carrying the changed entry's id. A closed
+map: a new event arrives here as a type addition, never a loose
+convention.
 
 ## Properties
 

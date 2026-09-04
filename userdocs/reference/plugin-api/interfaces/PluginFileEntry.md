@@ -6,10 +6,7 @@
 
 # Interface: PluginFileEntry
 
-PluginFilesAPI (goal 0310): list a folder on this machine through
-Mill under the "list-files" capability -- a read-class action a rule
-may deny or park; entries arrive only when approved. Hidden entries
-and dependency folders never appear.
+One entry api.files.list returns.
 
 ## Properties
 

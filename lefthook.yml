@@ -29,11 +29,26 @@ pre-commit:
       run: go test ./internal/docsgen/
     - name: sdk-freshness
       # The plugin SDK's committed type package and its generated API
-      # reference both derive from frontend/src/plugins/sdk.ts (goal
-      # 0319) -- same commit-and-verify shape as docsgen-freshness just
-      # above, one script CI's own sdk-freshness job also calls.
-      glob: "{frontend/src/plugins/sdk.ts,frontend/plugin-sdk/**,frontend/typedoc.json,userdocs/reference/plugin-api/**}"
+      # reference both derive from frontend/src/plugins/sdk.ts and its
+      # sdk/ contribution-kind files -- same commit-and-verify shape as
+      # docsgen-freshness just above, one script CI's own sdk-freshness
+      # job also calls.
+      glob: "{frontend/src/plugins/sdk.ts,frontend/src/plugins/sdk/**,frontend/plugin-sdk/**,frontend/typedoc.json,userdocs/reference/plugin-api/**}"
       run: ./scripts/check-sdk-freshness.sh
+    - name: sdk-comments
+      # The generated SDK types/reference must read as author-facing
+      # documentation, never repository internals -- one script CI's
+      # own sdk-comments job also calls.
+      glob: "{frontend/src/plugins/sdk.ts,frontend/src/plugins/sdk/**,frontend/plugin-sdk/**,userdocs/reference/plugin-api/**}"
+      run: ./scripts/check-sdk-comments.sh
+    - name: plugin-typecheck
+      root: "frontend/"
+      glob: "{frontend/plugin-sdk/**,examples/plugins/**/*.js}"
+      run: npm run plugin:typecheck
+    - name: plugin-lint
+      root: "frontend/"
+      glob: "examples/plugins/**/*.js"
+      run: npm run plugin:lint
     - name: doc-paths
       # docs/ is a private nested checkout (absent on public clones):
       # skip silently when missing; mill-docs' own CI is the enforcing
@@ -51,6 +66,14 @@ pre-commit:
       # supports it, Mill doesn't use it yet).
       glob: ".claude/rules/*.md"
       run: ./scripts/check-rules-frontmatter.sh
+    - name: standing-context
+      # No glob, deliberately: CLAUDE.md and every unconditional rule
+      # file load into EVERY session regardless of which files a commit
+      # touches, so a budget breach from prose alone (no code change)
+      # must still be caught. check-standing-context.sh is fast (wc -l/
+      # wc -w only), so unconditional is cheap, same shape as
+      # root-file-naming just below.
+      run: ./scripts/check-standing-context.sh
     - name: root-file-naming
       # No glob, deliberately: .ls-lint.yml now covers every file type
       # at the repo root (its `.*` catch-all), not just .go, so this

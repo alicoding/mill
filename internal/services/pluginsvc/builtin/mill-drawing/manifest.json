@@ -5,6 +5,7 @@
   "description": "Freehand drawing tools for the board: pencil, shape, eraser, and laser pointer.",
   "author": "Mill",
   "minMillVersion": "0.14.1",
+  "icon": "icon.png",
   "capabilities": ["erase-board-items"],
   "contributes": {
     "canvasObjects": [

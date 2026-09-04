@@ -1,0 +1,5 @@
+{"type":"user","isMeta":false,"message":{"role":"user","content":"Second synthetic session, referencing 0210 and a made-up 0000 id."}}
+{"type":"assistant","isSidechain":false,"message":{"role":"assistant","content":[{"type":"text","text":"Noted 0210 and 0000."},{"type":"tool_use","id":"a1","name":"Grep","input":{}}]}}
+{"type":"user","isMeta":false,"message":{"role":"user","content":[{"type":"text","text":"Here is a synthetic screenshot"},{"type":"image","source":{}}]}}
+{"type":"assistant","isSidechain":true,"message":{"role":"assistant","content":[{"type":"tool_use","id":"side1","name":"Task","input":{}}]}}
+{"type":"user","isMeta":false,"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"a1","content":"result"}]}}

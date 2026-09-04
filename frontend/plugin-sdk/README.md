@@ -34,7 +34,7 @@ Add two lines to the top of `main.js` and annotate `activate`:
 
 /** @param {import('@alicoding/mill-plugin-sdk').MillPluginAPI} api */
 export function activate(api) {
-	api.registerCommand({ id: 'hello', label: 'Say hello', run: () => api.notify({ text: 'Hello.' }) })
+	api.registerCommand({ id: 'my-plugin.hello', label: 'Say hello', run: () => api.notify({ text: 'Hello.' }) })
 }
 ```
 
@@ -64,5 +64,5 @@ reach hangs off it: `registerCommand`, `registerCanvasObject`,
 `requestGuardedAction`. Capabilities arrive through that object; a
 plugin never imports one.
 
-The prose reference for each type is generated from the same source at
-`userdocs/reference/plugin-api/`.
+A prose reference for every type, generated from these same
+definitions, is published alongside Mill's other documentation.

@@ -5,9 +5,22 @@
   "description": "Clips a web page's article into a note, with its source address kept.",
   "author": "Mill examples",
   "minMillVersion": "0.14.1",
-  "capabilities": ["fetch", "write-content"],
+  "icon": "icon.png",
+  "capabilities": [
+    "fetch",
+    "write-content"
+  ],
   "contributes": {
-    "canvasObjects": [{ "kind": "clip", "pastesURLs": true }],
-    "network": [{ "host": "*" }]
+    "canvasObjects": [
+      {
+        "kind": "clip",
+        "pastesURLs": true
+      }
+    ],
+    "network": [
+      {
+        "host": "*"
+      }
+    ]
   }
 }

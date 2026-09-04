@@ -6,10 +6,10 @@
 
 # Interface: PluginTheme
 
-PluginTheme -- the resolved appearance a face, view or capture is
-rendering under. The same pair rides the mount root as
-data-mill-theme/data-mill-scheme, so plain CSS can branch on it
-without reading this.
+The resolved light/dark appearance a face, view, or capture is
+rendering under. The same mode/scheme pair is set as
+data-mill-theme/data-mill-scheme on the element you are drawing
+into, so plain CSS can branch on it without reading this object.
 
 ## Properties
 
@@ -29,4 +29,4 @@ The settled light/dark answer -- never "auto".
 scheme: string;
 ```
 
-The exact color scheme, e.g. "dark_dimmed".
+The exact color scheme in effect, e.g. "dark_dimmed".

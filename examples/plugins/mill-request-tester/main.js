@@ -93,7 +93,10 @@ export function activate(api) {
 		const remember = async (entry) => {
 			const items = /** @type {SentRequest[]} */ (api.storage.get(HISTORY_KEY) || []).filter((h) => !(h.method === entry.method && h.url === entry.url))
 			items.unshift(entry)
-			await api.storage.set(HISTORY_KEY, items.slice(0, MAX_HISTORY)).catch(console.error)
+			await api.storage.set(HISTORY_KEY, items.slice(0, MAX_HISTORY)).catch((err) => {
+				api.notify({ level: 'error', text: 'Could not save this request to history.' })
+				console.error(err)
+			})
 			renderHistory()
 		}
 

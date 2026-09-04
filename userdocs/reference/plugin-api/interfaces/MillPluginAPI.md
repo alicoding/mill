@@ -30,8 +30,8 @@ convert: PluginConvertAPI;
 fetch: (url, init?) => Promise<PluginFetchResult>;
 ```
 
-fetch performs a guarded HTTP request (goal 0288); see
-PluginFetchInit for the contract.
+Performs a guarded HTTP request; see PluginFetchInit for the full
+contract.
 
 #### Parameters
 
@@ -71,7 +71,7 @@ millVersion: string;
 notify: (input) => () => void;
 ```
 
-notify shows a notice and returns its dismiss function.
+Shows a notice and returns its dismiss function.
 
 #### Parameters
 
@@ -91,7 +91,7 @@ notify shows a notice and returns its dismiss function.
 on: <K>(event, handler) => () => void;
 ```
 
-on subscribes to a host event and returns the unsubscribe function.
+Subscribes to a host event and returns the unsubscribe function.
 
 #### Type Parameters
 
@@ -129,8 +129,8 @@ pluginId: string;
 query: (q?) => Promise<ContentEntry[]>;
 ```
 
-query lists the board's contents (goal 0278); always the current
-state, never a cache.
+Lists the board's contents -- always the current state, never a
+cache.
 
 #### Parameters
 
@@ -221,6 +221,10 @@ registerView: (decl) => void;
 ```ts
 requestGuardedAction: (kind, attributes, description) => Promise<GuardedActionResult>;
 ```
+
+Asks Mill to perform an action the plugin cannot perform itself.
+See CanvasObjectFaceCtx's own requestGuardedAction for the full
+contract -- this is the same door, callable outside a face.
 
 #### Parameters
 

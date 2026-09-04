@@ -26,11 +26,10 @@ optional commitErase?: () => void;
 createObject: (payload, flowPos, opts?) => Promise<void>;
 ```
 
-Creates one instance of THIS plugin's object at a board position
--- files into the frame under the point, syncs, and participates
-in undo exactly like a click placement. opts.size sets the
-placed object's persisted size in board units; opts.select
-selects it after placement (the discrete-shape convention).
+Creates one instance of THIS plugin's object at a board position,
+participating in undo exactly like a click placement. opts.size
+sets the placed object's persisted size in board units; opts.select
+selects it right after placement.
 
 #### Parameters
 
@@ -81,13 +80,12 @@ selects it after placement (the discrete-shape convention).
 optional eraseHitTest?: (pt) => void;
 ```
 
-The erase door (goal 0252 S2), present ONLY when the plugin's
-manifest declares the "erase-board-items" capability. eraseHitTest
-accumulates whatever board item sits under the point (top-level
-leaves only -- containers are never swept); commitErase erases the
-whole accumulated set through the same undoable quick-delete door
-a user's own Delete key uses, one undo step per pass. Item
-identities stay host-side throughout.
+eraseHitTest/commitErase are present ONLY when the plugin's
+manifest declares the "erase-board-items" capability.
+eraseHitTest accumulates whatever board item sits under the point
+(top-level items only, never a container's children);
+commitErase erases the whole accumulated set through the same
+undoable delete a person's own Delete key uses, as one undo step.
 
 #### Parameters
 
@@ -113,9 +111,9 @@ identities stay host-side throughout.
 itemsInRect: (rect) => CanvasItemsInRect;
 ```
 
-The spatial-query door (goal 0310): the ids of the board's top-
-level cards, notes and objects whose CENTER falls inside a board-
-space rect -- the same enclosure rule the built-in Area tool uses.
+The ids of the board's top-level cards, notes and objects whose
+CENTER falls inside a board-space rect -- the same enclosure rule
+Mill's own Area tool uses.
 
 #### Parameters
 
@@ -135,10 +133,11 @@ space rect -- the same enclosure rule the built-in Area tool uses.
 saveImageBytes: (base64, ext, title) => Promise<string>;
 ```
 
-Bakes bytes into Mill's own mirror store and returns the stored
-file's path for a file-backed object's payload (goal 0252 S2 --
-the pencil convention: draw, bake to SVG, place with mirrorPath).
-base64 is the file's content; ext is a lowercase ".ext".
+Saves bytes into Mill's own file store and resolves with the
+stored file's path, ready to use as a file-backed object's payload
+(draw, save as SVG, place with the returned path is the shape of
+a drawing tool). base64 is the file's content; ext is a lowercase
+".ext".
 
 #### Parameters
 
@@ -166,8 +165,7 @@ base64 is the file's content; ext is a lowercase ".ext".
 screenToFlowPosition: (p) => object;
 ```
 
-Converts a gesture point's client position into board (flow)
-coordinates.
+Converts a gesture point's client position into board coordinates.
 
 #### Parameters
 
@@ -206,4 +204,4 @@ styleValues: Record<string, string | number>;
 ```
 
 The tool's current style-picker values, keyed by each declared
-field's own `key`, falling back to each field's default.
+field's own `key`, falling back to that field's default.

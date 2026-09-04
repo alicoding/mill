@@ -21,7 +21,7 @@
 
 export function activate(api) {
 	api.registerCommand({
-		id: 'hello',
+		id: '{{.ID}}.hello',
 		label: '{{.Label}}: say hello',
 		run: () => {
 			api.notify({ text: 'Hello from {{.Label}}.' })

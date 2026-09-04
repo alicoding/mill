@@ -6,14 +6,6 @@
 
 # Interface: PluginStorageAPI
 
-PluginStorageAPI (goal 0277): the plugin's own key-value store,
-persisted centrally under the plugin id -- VS Code's globalState /
-Obsidian's saveData shape. Values are any JSON-serialisable value
-(a non-serialisable one throws at the door). get/keys are
-synchronous over a cache loaded before activate(); set/delete
-persist through the host and resolve when written. Storage is
-plugin-private: nothing else in Mill reads it.
-
 ## Properties
 
 ### delete
@@ -39,6 +31,8 @@ delete: (key) => Promise<void>;
 ```ts
 get: (key) => unknown;
 ```
+
+Synchronous: reads from a cache loaded before activate() ran.
 
 #### Parameters
 
@@ -69,6 +63,9 @@ keys: () => string[];
 ```ts
 set: (key, value) => Promise<void>;
 ```
+
+Any JSON-serialisable value; a value that is not throws at the
+call. Resolves once the write is durably stored.
 
 #### Parameters
 

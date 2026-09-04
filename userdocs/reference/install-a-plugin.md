@@ -1,5 +1,7 @@
 # Install a plugin
 
+Read the [plugin standard](plugin-standard.md) first.
+
 A plugin adds a new object type to the canvas without rebuilding Mill.
 It is a folder holding two files — `manifest.json` (name, version, and
 what the plugin is allowed to ask for) and `main.js` (its code) — and
@@ -663,10 +665,11 @@ agent connected over MCP can then call it. Declare it in
   - `{"kind": "query"}` lists the board's contents, filtered by the
     optional `kind` and `parentId` arguments.
 
-A command a tool names must also be declared:
+A command a tool names must also be declared, its id namespaced
+`<your plugin id>.<verb>`:
 
 ```json
-"commands": [{ "id": "refresh", "label": "Refresh the board index" }]
+"commands": [{ "id": "board-index.refresh", "label": "Refresh the board index" }]
 ```
 
 `api.registerCommand` still works for a command you never declared —

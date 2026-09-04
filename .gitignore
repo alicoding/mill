@@ -37,3 +37,4 @@ build/android/gen/
 # diff noise that goes stale the moment anything else in the repo changes.
 /scripts/dashboard/dashboard-data.json
 /scripts/dashboard/mill-control-room.html
+/scripts/dashboard/turns-per-goal.json

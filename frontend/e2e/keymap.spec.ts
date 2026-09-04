@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel } from './fixtures/canvas'
 import { openSettings } from './fixtures/settingsNav'
+import { gotoAppReady } from './fixtures/appReady'
 
 // Exercises docs/goals/0016-keymap-system.md's command registry +
 // in-window keybinding dispatch (shared/commands.ts, App.tsx's one
@@ -203,7 +204,7 @@ test('Settings: rebinding a command persists, the new combo works, and a conflic
 // moved off palette.open onto help.shortcuts (goal 0071) -- covered by
 // e2e/help-overlay.spec.ts instead.
 test('Cmd+/ (palette.open\'s extra binding) opens the command palette, same as Cmd+K', async ({ page }) => {
-  await page.goto('/')
+  await gotoAppReady(page)
   const paletteDialog = page.getByRole('dialog', { name: 'Command palette' })
 
   await page.keyboard.press('Meta+/')
