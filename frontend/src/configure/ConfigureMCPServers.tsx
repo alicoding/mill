@@ -186,6 +186,9 @@ export function ConfigureMCPServers() {
       icon: ENTITY_ICON.mcpserver,
       label: s.Label,
       updatedLabel: formatUpdated(s.UpdatedAt),
+      builtIn: s.BuiltIn,
+      updatedAt: s.UpdatedAt,
+      createdAt: s.CreatedAt,
       // No !s.BuiltIn guard on Delete -- same "ordinary, fully editable/
       // deletable from the moment it exists" reasoning as
       // ConfigureRequests.tsx/ConfigureLists.tsx's identical badge.
@@ -337,6 +340,7 @@ export function ConfigureMCPServers() {
       showRows={servers !== null && viewMode === 'rows' && !(formOpen && servers.length === 0)}
       rowsContent={(
         <InventoryList
+          listId="configure.mcpservers"
           items={serverItems}
           searchPlaceholder={t('configureMCPServers.searchPlaceholder')}
           emptyState={{

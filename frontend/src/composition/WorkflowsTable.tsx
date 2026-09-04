@@ -1,7 +1,13 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, IconButton, Link, Stack } from '@primer/react'
 import { DownloadIcon, PencilIcon, TrashIcon } from '@primer/octicons-react'
-import { DataTable } from '@primer/react/experimental'
+import { DataTable, Table } from '@primer/react/experimental'
+import { ListToolbar } from '../shared/ListToolbar'
+import {
+  LIST_PAGE_SIZE, availableSorts, clampPage, listCountLabel, pageCountFor, pageItems, sortItems,
+} from '../shared/listStandard'
+import { useListState } from '../shared/useListState'
 import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
@@ -15,6 +21,13 @@ import { hasDraftDrift } from './draftDrift'
 // DataTable, extracted as its own component so CompositionView.tsx
 // stays under the 500-line limit. Same actions, same handlers as the
 // card view; only the presentation differs.
+//
+// It wears the same list standard as the row view (docs/goals/0337):
+// the shared toolbar above, the same fixed page size below, its own
+// persisted sort/page so switching view modes doesn't drag one view's
+// page position onto the other. Seeded examples are NOT split out here
+// -- a table's rows are read as one ordered grid, and the built-in
+// badge already marks them in the Name column.
 export function WorkflowsTable({
   workflows, runningId, editDisabled, armedWorkflows, publishingId,
   onRun, onOpenView, onEdit, onExport, onDelete, onPublish, onHotkeyChanged,
@@ -53,11 +66,46 @@ export function WorkflowsTable({
     labelOf: (wf) => wf.Label,
     onConfirm: (wf) => onDelete(wf.ID),
   })
+  const { state, setSort, setPage, resetPage } = useListState('workflows.table')
+  const [query, setQuery] = useState('')
+
+  const sortable = workflows.map((wf) => ({ wf, label: wf.Label, updatedAt: wf.UpdatedAt, createdAt: wf.CreatedAt }))
+  const sortOptions = availableSorts(sortable)
+  const sort = sortOptions.includes(state.sort) ? state.sort : 'updated'
+  const q = query.trim().toLowerCase()
+  const filtered = sortItems(sortable, sort)
+    .map((entry) => entry.wf)
+    .filter((wf) => q === '' || wf.Label.toLowerCase().includes(q) || (wf.Description ?? '').toLowerCase().includes(q))
+
+  const pageCount = pageCountFor(filtered.length)
+  const page = clampPage(state.page, pageCount)
+  const rows = pageItems(filtered, page)
+  const first = (page - 1) * LIST_PAGE_SIZE + 1
+  const count = listCountLabel({
+    total: workflows.length,
+    shown: filtered.length,
+    ...(pageCount > 1 ? { from: first, to: first + rows.length - 1 } : {}),
+  })
+  // Table.Pagination keeps its page index internally, so remounting it
+  // is what returns to page one when the search narrows the table.
+  const [mountQuery] = useState(q)
+  const [restorePageIndex] = useState(() => Math.max(0, state.page - 1))
+
   return (
+    <>
+    <ListToolbar
+      query={query}
+      onQueryChange={(next) => { setQuery(next); resetPage() }}
+      searchPlaceholder={t('compositionView.searchPlaceholder')}
+      sort={sort}
+      sortOptions={sortOptions}
+      onSortChange={setSort}
+      count={count}
+    />
     <ResizableTableContainer storageKey="mill-cols-workflows">
       <DataTable
         aria-labelledby="workflows-heading"
-        data={workflows.map((wf) => ({ ...wf, id: wf.ID }))}
+        data={rows.map((wf) => ({ ...wf, id: wf.ID }))}
         columns={[
           {
             // rowHeader stays true (the accessible name for the row);
@@ -148,7 +196,18 @@ export function WorkflowsTable({
           },
         ]}
       />
+      {pageCount > 1 && (
+        <Table.Pagination
+          key={q}
+          aria-label={t('compositionView.savedWorkflowsHeading')}
+          pageSize={LIST_PAGE_SIZE}
+          totalCount={filtered.length}
+          defaultPageIndex={q === mountQuery ? restorePageIndex : 0}
+          onChange={({ pageIndex }) => setPage(pageIndex + 1)}
+        />
+      )}
       {confirmDialog}
     </ResizableTableContainer>
+    </>
   )
 }

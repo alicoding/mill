@@ -1,0 +1,21 @@
+/* ListToolbar.tsx's own layout only -- every control inside it is a
+   Primer component (.claude/rules/frontend.md). The search input takes
+   the free space so the sort menu, the page's filters and the count
+   keep their intrinsic widths; the count is pushed to the far right by
+   its own auto margin rather than a spacer element. */
+.toolbar {
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.search {
+    flex: 1 1 200px;
+    min-width: 160px;
+}
+
+.count {
+    margin-inline-start: auto;
+    flex: 0 0 auto;
+    color: var(--fgColor-muted);
+    white-space: nowrap;
+}

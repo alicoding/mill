@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 
 // Shared e2e helper for InventoryList.tsx's row anatomy
 // (docs/goals/0007-resource-inventory-redesign.md): Edit/Export/Delete/
@@ -34,4 +34,18 @@ export async function clickRowAction(page: Page, row: Locator, actionLabel: stri
   if (actionLabel === 'Delete' && entityKind === 'workflow') {
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
   }
+}
+
+// The seeded examples sit in their own collapsible section at the
+// bottom of every inventory (docs/goals/0337), collapsed as soon as the
+// user owns anything in that list -- so a spec reaching for a SEEDED
+// row after creating one of its own has to open the section first.
+// No-op when the list has no examples section, or it is already open.
+export async function expandExamples(page: Page, scope: Locator | Page = page) {
+  await expect(page.getByTestId('list-toolbar').first()).toBeVisible()
+  const toggle = scope.getByTestId('inventory-examples-toggle')
+  if ((await toggle.count()) === 0) return
+  if ((await toggle.first().getAttribute('aria-expanded')) === 'true') return
+  await toggle.first().click()
+  await expect(toggle.first()).toHaveAttribute('aria-expanded', 'true')
 }

@@ -153,6 +153,9 @@ export function ConfigureRequests() {
       icon: ENTITY_ICON.request,
       label: r.Label,
       updatedLabel: formatUpdated(r.UpdatedAt),
+      builtIn: r.BuiltIn,
+      updatedAt: r.UpdatedAt,
+      createdAt: r.CreatedAt,
       labelBadges: (
         <Stack direction="horizontal" gap="condensed" align="center">
           <Label variant="secondary" size="small">{AUTH_LABEL_MAP[r.AuthType] ?? r.AuthType}</Label>
@@ -246,6 +249,7 @@ export function ConfigureRequests() {
       )}
       {requests !== null && viewMode === 'rows' && (
         <InventoryList
+          listId="configure.requests"
           items={requestItems}
           searchPlaceholder={t('configureRequests.searchPlaceholder')}
           emptyState={{

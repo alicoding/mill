@@ -263,6 +263,9 @@ export function ConfigureDecisions() {
       icon: ENTITY_ICON.decision,
       label: d.Label,
       updatedLabel: formatUpdated(d.UpdatedAt),
+      builtIn: d.BuiltIn,
+      updatedAt: d.UpdatedAt,
+      createdAt: d.CreatedAt,
       labelBadges: <Label variant="secondary" size="small">{CATEGORY_LABEL[d.Category] ?? d.Category}</Label>,
       description: t('configureDecisions.outputsSummary', { keys: (d.Outputs ?? []).map((o) => o.Key).join(', ') || t('configureDecisions.none') }),
       onOpen: () => startEdit(d),
@@ -446,6 +449,7 @@ export function ConfigureDecisions() {
       )}
       {decisions !== null && viewMode === 'rows' && !(formOpen && decisions.length === 0) && (
         <InventoryList
+          listId="configure.decisions"
           items={decisionItems}
           searchPlaceholder={t('configureDecisions.searchPlaceholder')}
           emptyState={{

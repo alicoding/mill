@@ -89,6 +89,9 @@ export function ConfigureAttributes() {
       entity: 'workflow',
       icon: ENTITY_ICON.workflow,
       label: wf.Label,
+      builtIn: wf.BuiltIn,
+      updatedAt: wf.UpdatedAt,
+      createdAt: wf.CreatedAt,
       labelBadges: wf.BuiltIn ? <StatusStamp variant="identity">{t('builtIn')}</StatusStamp> : undefined,
       description: t('configureAttributes.attributeCountSummary', { count, plural: count === 1 ? '' : 's' }),
       onOpen: () => selectWorkflow(wf),
@@ -110,6 +113,7 @@ export function ConfigureAttributes() {
       {workflows === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
       {workflows !== null && (
         <InventoryList
+          listId="configure.attributes"
           items={items}
           searchPlaceholder={t('configureAttributes.searchPlaceholder')}
           emptyState={{

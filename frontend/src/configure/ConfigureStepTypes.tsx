@@ -166,6 +166,9 @@ export function ConfigureStepTypes() {
     icon: ENTITY_ICON.steptype,
     label: d.Label,
     updatedLabel: formatUpdated(d.UpdatedAt),
+    builtIn: d.BuiltIn,
+    updatedAt: d.UpdatedAt,
+    createdAt: d.CreatedAt,
     description: `${ENGINE_LABEL[d.Engine] ?? d.Engine} · ${PALETTE_GROUP_LABEL[d.PaletteGroup as keyof typeof PALETTE_GROUP_LABEL] ?? d.PaletteGroup}`,
     onOpen: () => startEdit(d),
     menuActions: [
@@ -307,6 +310,7 @@ export function ConfigureStepTypes() {
       )}
       {stepTypes !== null && viewMode === 'rows' && !(formOpen && stepTypes.length === 0) && (
         <InventoryList
+          listId="configure.steptypes"
           items={stepTypeItems}
           searchPlaceholder={t('configureStepTypes.searchPlaceholder')}
           emptyState={{

@@ -172,6 +172,9 @@ export function ConfigureAIProviders() {
       icon: ENTITY_ICON.aiprovider,
       label: p.Label,
       updatedLabel: formatUpdated(p.UpdatedAt),
+      builtIn: p.BuiltIn,
+      updatedAt: p.UpdatedAt,
+      createdAt: p.CreatedAt,
       labelBadges: p.BuiltIn ? <StatusStamp variant="identity">{t('builtIn')}</StatusStamp> : undefined,
       description: `${KIND_LABEL[p.Kind] ?? p.Kind} – ${p.Model}${p.BaseURL ? ` – ${p.BaseURL}` : ''}`,
       onOpen: () => startEdit(p),
@@ -264,6 +267,7 @@ export function ConfigureAIProviders() {
       showRows={providers !== null && viewMode === 'rows' && !(formOpen && providers.length === 0)}
       rowsContent={(
         <InventoryList
+          listId="configure.aiproviders"
           items={providerItems}
           searchPlaceholder={t('configureAIProviders.searchPlaceholder')}
           emptyState={{
