@@ -361,7 +361,7 @@ describe('runCommand (goal 0313)', () => {
         expect(notices).toHaveLength(1)
         expect(notices[0].level).toBe('error')
         expect(notices[0].text).toBe('Fails test: boom')
-        expect(notices[0].source).toBe('test.fails')
+        expect(notices[0].source).toBeUndefined()
       },
     )
   })

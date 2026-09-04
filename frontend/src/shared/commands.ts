@@ -407,11 +407,11 @@ export async function runCommand(id: string): Promise<boolean> {
   } catch (err) {
     pushNotice({
       level: 'error',
-      // The command's own label, then the ONE sentence the failure
-      // carries (shared/userError.ts) -- never the rejection's own
-      // message, which for a bound-method call is the Go error chain.
+      // The command's own label names it, then the ONE sentence the
+      // failure carries (shared/userError.ts) -- never the rejection's
+      // own message, which for a bound-method call is the Go error
+      // chain, and never the command id, which is internal vocabulary.
       text: `${command.label}: ${messageFor(err, appTranslate)}`,
-      source: id,
     })
     return false
   }
