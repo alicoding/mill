@@ -2,6 +2,7 @@ import type { TFunction } from 'i18next'
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { AtlasService } from '../shared/bindings'
+import { useUISignalStore } from '../shared/uiSignalStore'
 import { refreshAtlas } from './atlasStore'
 import { boardObjectContentFor } from './atlasNounRegistry'
 import { dispatchObjectEdit, resolveEditRoute } from './objectSeams'
@@ -39,9 +40,21 @@ export function useAtlasObjectMenu({
   const openObjectMenu = (objectID: string, pos: { x: number; y: number }) => {
     const object = allObjects.find((o) => o.ID === objectID)
     if (!object) return
-    const items: ContextMenuItem[] = [
-      { id: 'promote', label: t('contextMenu.promoteToCard'), run: () => requestPromoteObject(object.ID, pos) },
-    ]
+    const items: ContextMenuItem[] = []
+    // Rename leads for a table (goal 0273): a table is the one board
+    // object that carries its own name on the board, so renaming is
+    // its primary action. Honest enablement, the same shape "Open in
+    // default app" below already takes -- the item exists only for the
+    // Kind that has a name to change, never dimmed on one that doesn't.
+    if (object.Kind === 'table') {
+      items.push({
+        id: 'rename',
+        label: t('contextMenu.rename'),
+        commandId: 'object.rename',
+        run: () => useUISignalStore.getState().requestAtlasTableRename(object.ID),
+      })
+    }
+    items.push({ id: 'promote', label: t('contextMenu.promoteToCard'), run: () => requestPromoteObject(object.ID, pos) })
     // Honest enablement (goal 0232 S1): only a fileBacked Kind with an
     // actual mirrorPath ever gets this item -- never a disabled entry
     // that does nothing on click.

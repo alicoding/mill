@@ -128,6 +128,23 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     run: () => {},
   },
   {
+    // "Rename" (goal 0273): a table board object's own registry
+    // command -- mouse-only by construction for the same reason
+    // object.openInDefaultApp above is (its target is whichever object
+    // was right-clicked, which the palette/keyboard dispatch path has
+    // no way to supply), so paletteHidden per that field's own doc
+    // comment. The real per-object run() and its honest Kind-based
+    // enablement live in atlas/useAtlasObjectMenu.ts, which shares this
+    // commandId so the menu item's label/HotkeyHint resolve from here.
+    id: 'object.rename',
+    label: 'Rename',
+    defaultBinding: null,
+    hintOnly: true,
+    paletteHidden: true,
+    surface: ['atlas'],
+    run: () => {},
+  },
+  {
     // The Sparkle companion-panel toggle (goal 0101 slice 1,
     // AtlasToolbar.tsx) -- the button now calls this command instead of
     // toggleCompanion directly, same "button runs the command" shape

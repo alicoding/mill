@@ -70,6 +70,29 @@ export interface AtlasNounContent {
   }>
   ariaLabelKey: string
   role: 'img' | undefined
+  // clickShield / wheelContained live HERE, on the content shape, so a
+  // tool-bearing noun declares them the way a tool-less noun declares
+  // them directly (registerNoun folds a tool's own `content` into the
+  // board-object content registry, so both routes reach
+  // AtlasBoardObjectNode.tsx as one record).
+  // clickShield (goal 0267, widened to grid-hosting faces by goal
+  // 0273): the face owns its own pointer model -- an IFRAME (a hard
+  // event boundary clicks inside never escape), or a grid that reads a
+  // bare click as a CELL click -- so while the object is NOT selected a
+  // transparent shield sits over the content: first click selects (or
+  // drags/right-clicks) like any body, and only a selected object's
+  // face is live. The converged canvas rule the shield encodes: object
+  // first, content second.
+  clickShield?: boolean
+  // wheelContained (goal 0271): the face hosts a viewer that consumes
+  // wheel for its own scroll/pan/zoom (pdf.js, the drawio host), so
+  // while that viewer is LIVE the board must never also pan from the
+  // same gesture -- the node's whole box carries the canvas kit's
+  // `nowheel` class then. A shielded (unselected) clickShield Kind is
+  // inert, so the class is withheld and the board pans as over any
+  // body. The sheet face's own scroll div predates this flag and keeps
+  // its local class.
+  wheelContained?: boolean
   // source / editRoute (ADR-0046, goal 0244): the two seams this Kind
   // declares about its own artifact -- where it lives, and which door
   // edits it. Optional (unlike Component/ariaLabelKey/role above)
@@ -144,22 +167,6 @@ export interface ExtensionRowMeta {
 // required.
 export interface AtlasBoardObjectContent extends AtlasNounContent {
   dragBand: boolean
-  // clickShield (goal 0267): the face hosts an IFRAME (a hard event
-  // boundary -- clicks inside never reach the board at all, unlike an
-  // in-page viewer's), so while the object is NOT selected a
-  // transparent shield sits over the content: first click selects (or
-  // drags/right-clicks) like any body, and only a selected object's
-  // embed is live -- the converged click-to-activate embed pattern.
-  clickShield?: boolean
-  // wheelContained (goal 0271): the face hosts a viewer that consumes
-  // wheel for its own scroll/pan/zoom (pdf.js, the drawio host), so
-  // while that viewer is LIVE the board must never also pan from the
-  // same gesture -- the node's whole box carries the canvas kit's
-  // `nowheel` class then. A shielded (unselected) clickShield Kind is
-  // inert, so the class is withheld and the board pans as over any
-  // body. The sheet face's own scroll div predates this flag and keeps
-  // its local class.
-  wheelContained?: boolean
   fileBacked: boolean
 }
 

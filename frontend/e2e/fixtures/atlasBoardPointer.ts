@@ -117,6 +117,17 @@ export async function clickBoardPoint(page: Page, point: { x: number; y: number 
   await board.click({ ...opts, position: { x: point.x - box.x, y: point.y - box.y } })
 }
 
+// The hover twin of clickBoardPoint: moves the pointer to an absolute
+// page point through the board's own actionability check, for the
+// pointer-following affordances (the table placement ghost) that need
+// a real move before the click that commits them.
+export async function hoverBoardPoint(page: Page, point: { x: number; y: number }): Promise<void> {
+  const board = page.getByTestId('atlas-board')
+  const box = await board.boundingBox()
+  if (!box) throw new Error('board has no bounding box')
+  await board.hover({ position: { x: point.x - box.x, y: point.y - box.y } })
+}
+
 // Drags a NodeResizer handle by a fixed pixel delta -- the shape every
 // per-object resize test in this suite shares (image/note/table
 // object/table card). Promoted once a fourth copy of the identical

@@ -60,7 +60,10 @@ export function AtlasTableObjectContent({ object, fetchListProjection }: { objec
   if (!fetchListProjection) return null
   return (
     <div style={style}>
-      <AtlasCardProjectionTable scopeID={object.ID} fetchProjection={fetchListProjection} onColumnCount={setColumnCount} />
+      {/* titleRow (goal 0273): the object's own name above its grid --
+          a board object carries no card title, so this is the only
+          place a table on the board is named. */}
+      <AtlasCardProjectionTable scopeID={object.ID} fetchProjection={fetchListProjection} onColumnCount={setColumnCount} titleRow={{ objectID: object.ID }} />
     </div>
   )
 }

@@ -68,6 +68,14 @@ function objectBoxClassName(wheelOptOut: boolean): string {
   return wheelOptOut ? `${styles.object} nowheel` : styles.object
 }
 
+// The shield's own class set (goal 0273): a Kind that also declares a
+// drag band keeps that band uncovered -- the band is that Kind's only
+// drag and right-click surface, so shielding it would leave a shielded
+// object with nothing to grab.
+function clickShieldClassName(dragBand: boolean): string {
+  return dragBand ? `${styles.clickShield} ${styles.clickShieldBelowBand}` : styles.clickShield
+}
+
 function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardObjectRFNode>) {
   const { t } = useTranslation('atlas')
   const { object, soleSelected } = data
@@ -192,9 +200,11 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
           rather than leaving inert chrome. */}
       {dragBand && !preview && <div className={styles.frame} data-testid="atlas-board-object-frame" title={t('boardObject.dragHandleTitle')} />}
       {/* See clickShield's own contract comment (atlasBoardObjectContent.ts):
-          unselected iframe-hosting faces select/drag/right-click like a
-          body; selecting lifts the shield and the embed goes live. */}
-      {clickShield && !preview && !selected && <div className={styles.clickShield} data-testid="atlas-object-click-shield" />}
+          an unselected shielded face selects/drags/right-clicks like a
+          body; selecting lifts the shield and the face goes live. The
+          band above stays uncovered where a Kind declares one -- it is
+          that Kind's only drag surface. */}
+      {clickShield && !preview && !selected && <div className={clickShieldClassName(dragBand)} data-testid="atlas-object-click-shield" />}
       {/* Suspense boundary for every Kind uniformly, a no-op for a
           synchronously-imported Component (shape/image/ink) and the
           real code-split boundary for a lazy one (table/diagram, whose
