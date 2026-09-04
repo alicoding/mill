@@ -98,7 +98,7 @@ test('step designer: create over the seeded integration reaches an already-open 
     await clickCanvasNode(page, panel, LABEL)
     const inspector = panel.getByTestId('composition-inspector')
     await expect(inspector).toBeVisible()
-    await expect(inspector.getByText('No configuration')).toBeVisible()
+    await expect(inspector.getByText('needs no setup')).toBeVisible()
 
     // Editing the label reaches the open palette live too.
     await row.click()

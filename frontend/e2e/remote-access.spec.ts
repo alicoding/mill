@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
+import { openSettings } from './fixtures/settingsNav'
 
 // seedTestDevice populates a paired device directly through
 // RemoteAuthService.SeedTestDevice (methodID 341728691 in
@@ -52,11 +53,11 @@ test('the desktop (loopback) path never sees the pairing page', async ({ page })
 
 test('Remote access section discloses reachability and pairs a device on demand', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'connections')
   await expect(page.getByTestId('settings-view')).toBeVisible()
 
   const section = page.getByTestId('settings-section-remote-access')
-  await section.evaluate((el) => el.scrollIntoView({ block: 'start' }))
+  await section.scrollIntoViewIfNeeded()
   await expect(page.getByText('Mill is reachable from any device on your network.')).toBeVisible()
   await expect(page.getByText('This Mac always has access.')).toBeVisible()
 
@@ -86,7 +87,7 @@ test.describe('browser notification opt-in control', () => {
       Object.defineProperty(window.Notification, 'permission', { value: 'default', configurable: true })
     })
     await page.goto('/')
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'connections')
     const control = page.getByTestId('browser-notify-control')
     await control.scrollIntoViewIfNeeded()
     await expect(page.getByTestId('browser-notify-enable')).toBeVisible()
@@ -100,7 +101,7 @@ test.describe('browser notification opt-in control', () => {
       Object.defineProperty(window.Notification, 'permission', { value: 'granted', configurable: true })
     })
     await page.goto('/')
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'connections')
     const control = page.getByTestId('browser-notify-control')
     await control.scrollIntoViewIfNeeded()
     await expect(page.getByTestId('browser-notify-granted')).toBeVisible()
@@ -112,7 +113,7 @@ test.describe('browser notification opt-in control', () => {
       Object.defineProperty(window.Notification, 'permission', { value: 'denied', configurable: true })
     })
     await page.goto('/')
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'connections')
     const control = page.getByTestId('browser-notify-control')
     await control.scrollIntoViewIfNeeded()
     await expect(page.getByTestId('browser-notify-denied')).toBeVisible()
@@ -131,7 +132,7 @@ test.describe('browser notification opt-in control', () => {
       window.Notification.requestPermission = () => Promise.resolve('granted')
     })
     await page.goto('/')
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'connections')
     const control = page.getByTestId('browser-notify-control')
     await control.scrollIntoViewIfNeeded()
     await page.getByTestId('browser-notify-enable').click()
@@ -152,7 +153,7 @@ test('renaming a paired device updates its row and survives a reload', async ({ 
   const device = await seedTestDevice(page, 'Old Phone Name')
 
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'connections')
   const row = page.locator(`[data-testid="paired-device-row"][data-device-id="${device.id}"]`)
   await row.scrollIntoViewIfNeeded()
   await expect(row).toContainText('Old Phone Name')
@@ -165,7 +166,7 @@ test('renaming a paired device updates its row and survives a reload', async ({ 
   await expect(row).not.toContainText('Old Phone Name')
 
   await page.reload()
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'connections')
   const rowAfterReload = page.locator(`[data-testid="paired-device-row"][data-device-id="${device.id}"]`)
   await expect(rowAfterReload).toContainText('Ali\'s iPhone')
 
@@ -178,7 +179,7 @@ test('a paired device row shows when it was paired and when it was last seen', a
   const device = await seedTestDevice(page, 'Freshly Paired Device')
 
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'connections')
   const row = page.locator(`[data-testid="paired-device-row"][data-device-id="${device.id}"]`)
   await row.scrollIntoViewIfNeeded()
 
@@ -200,13 +201,13 @@ test('a device with a known base address shows its copyable phone-channel subscr
   expect(device.subscribeUrl).toMatch(/^http:\/\/phone-test\.local:9000\/[0-9a-f]{32}\/json$/)
 
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'connections')
   const row = page.locator(`[data-testid="paired-device-row"][data-device-id="${device.id}"]`)
   await row.scrollIntoViewIfNeeded()
 
   const subscribeRow = row.getByTestId('device-subscribe-row')
   await expect(subscribeRow.getByTestId('device-subscribe-url')).toHaveText(device.subscribeUrl!)
-  await expect(subscribeRow).toContainText('Install the ntfy Android app')
+  await expect(subscribeRow).toContainText('ntfy Android app')
   await expect(subscribeRow).toContainText('Keep this address private')
 
   // A real clipboard write, same real-OS-pasteboard contention risk
@@ -231,7 +232,7 @@ test('a device with no known base address shows no subscribe row', async ({ page
   expect(device.subscribeUrl ?? '').toBe('')
 
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'connections')
   const row = page.locator(`[data-testid="paired-device-row"][data-device-id="${device.id}"]`)
   await row.scrollIntoViewIfNeeded()
   await expect(row.getByTestId('device-subscribe-row')).toHaveCount(0)

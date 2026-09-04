@@ -34,3 +34,15 @@ export function rowsToEnv(rows: EnvRow[]): string[] {
     .filter((r) => r.key.trim() !== '')
     .map((r) => `${r.key.trim()}=${r.value}`)
 }
+
+// Whether the form's Advanced disclosure opens on load (goal 0327):
+// where commands run and what they inherit are the rare half of an
+// execution environment -- most are just a label and a shell -- so
+// they sit behind one disclosure that opens whenever the record being
+// edited actually uses them. `defaultDir` is the form's own untouched
+// working-directory value (the temp-dir sentinel), which every new
+// environment carries and no user chose.
+export function execEnvAdvancedIsSet(dir: string, rows: EnvRow[], defaultDir: string): boolean {
+  const chosenDir = dir.trim() !== '' && dir.trim() !== defaultDir
+  return chosenDir || rows.some((r) => r.key.trim() !== '')
+}

@@ -1,21 +1,17 @@
 {
   "settings": {
     "title": "Settings",
-    "subtitle": "App-level preferences, stored locally on this machine — not workflow or Configure data.",
     "loadError": "Couldn't load some settings -- the app may need a restart.",
-    "filterPlaceholder": "Search settings",
-    "sections": {
-      "appearance": "Appearance",
+    "learnMore": "Learn more",
+    "groups": {
       "general": "General",
+      "appearance": "Appearance",
+      "shortcuts": "Shortcuts",
       "extensions": "Extensions",
-      "keyboardShortcuts": "Keyboard Shortcuts",
-      "globalHotkey": "Global hotkey",
-      "mcpAccess": "MCP access",
-      "remoteAccess": "Remote access",
-      "contract": "Contract",
+      "connections": "Connections",
       "notifications": "Notifications",
-      "updates": "Updates",
-      "dataStewardship": "Backups"
+      "backups": "Backups",
+      "updates": "Updates"
     },
     "appearance": {
       "themeLabel": "Color theme",
@@ -23,8 +19,10 @@
       "darkLabel": "Dark theme",
       "systemLabel": "Match system theme",
       "colorSchemeLabel": "Color scheme",
-      "lightSchemeCaption": "Applies to the light appearance.",
-      "darkSchemeCaption": "Applies to the dark appearance.",
+      "lightAppearanceLabel": "Light appearance",
+      "darkAppearanceLabel": "Dark appearance",
+      "lightSchemeCaption": "Used whenever Mill is showing its light theme.",
+      "darkSchemeCaption": "Used whenever Mill is showing its dark theme.",
       "schemes": {
         "default": "Default",
         "dimmed": "Dimmed",
@@ -58,15 +56,34 @@
     },
     "extensions": {
       "subtitle": "Turn canvas tools on or off. Objects you already created keep working.",
-      "installStory": "These extensions ship with Mill. Install more under Installed plugins below.",
       "builtIn": "Built-in",
       "turnAllOff": "Turn all off",
       "turnAllOn": "Turn all on",
       "docsLink": "See how canvas objects work",
-      "pluginsTitle": "Installed plugins",
+      "docs": "Docs",
+      "builtInTitle": "Built in",
+      "installedTitle": "Installed",
+      "backToList": "Extensions",
+      "detailAriaLabel": "{{name}} details",
+      "moreActions": "More actions for {{name}}",
+      "whatItAdds": "What it adds",
+      "addsCommands": "Commands: {{list}}",
+      "addsObjects": "Canvas objects: {{list}}",
+      "addsSteps": "Workflow steps: {{list}}",
+      "addsViews": "Views: {{list}}",
+      "addsCaptures": "Captures: {{list}}",
+      "addsNothing": "Adds a canvas object.",
+      "remove": "Remove…",
+      "removeConfirmTitle": "Remove {{name}}?",
+      "removeConfirmBody": "Its folder moves to the Trash. Objects it created stay on the board as unknown kinds until it is installed again.",
+      "removeConfirmButton": "Remove",
+      "removed": "Removed {{name}}.",
+      "removedLocation": "Its folder moved to {{path}}.",
+      "removeFailed": "Couldn't remove {{name}}: {{error}}",
+      "pluginSource": "From {{path}}",
       "openPluginsFolder": "Open plugins folder",
       "reload": "Reload all",
-      "installHint": "Copy a plugin's folder here, then reload.",
+      "installHint": "Copy a plugin folder here, then reload it.",
       "noPlugins": "No plugins installed yet.",
       "pluginBuiltIn": "Built into Mill",
       "pluginReload": "Reload",
@@ -105,25 +122,32 @@
       "secretRefGroupSources": "Secret sources"
     },
     "keyboardShortcuts": {
-      "description": "Every in-window command Mill dispatches. Rebind one by clicking its combo and pressing a new one — the same recorder used for a workflow's own trigger hotkey below."
+      "label": "Keyboard shortcuts",
+      "description": "Every command Mill dispatches in its own window. Click a combo to rebind it."
     },
     "globalHotkey": {
-      "description": "Opens Mill's Quick Panel from anywhere, even when Mill is in the background — search and run a workflow, or jump into Mill itself. Press again to dismiss it. Distinct from a workflow's own trigger hotkey, set per-workflow on its canvas.",
+      "label": "Global hotkey",
+      "description": "Opens the Quick Panel from anywhere, even while another app is in front.",
       "recording": "Press a combo… (Esc to cancel)",
       "setShortcut": "Set shortcut",
       "reservedError": "{{combo}} is reserved by macOS ({{reason}}) — pick another combo",
       "openAccessibilitySettings": "Open Accessibility Settings"
     },
+    "connections": {
+      "mcpTitle": "MCP access",
+      "remoteTitle": "Remote access",
+      "contractTitle": "Contract"
+    },
     "mcp": {
       "addressLabel": "Address",
-      "addressCaption": "Where MCP clients connect to Mill. Loopback (127.0.0.1) reaches this Mac only; a non-loopback address also accepts other devices on your network. Saved changes apply after you restart Mill.",
+      "addressCaption": "Where MCP clients connect to Mill.",
       "addressSave": "Save",
       "addressSaved": "Saved. Restart Mill to use the new address.",
       "addressEnvOverrideCaption": "The MILL_MCP_ADDR environment variable sets this address, overriding anything saved here.",
       "allowImportLabel": "Allow MCP clients to import data",
-      "allowImportCaption": "When on, MCP clients connected to Mill can create workflows, integrations, lists, and MCP-server entries via the import tools. Reading and exporting are always allowed and never include secrets. Off by default; changes apply immediately, no restart needed.",
+      "allowImportCaption": "Lets a connected client create workflows, integrations, lists and servers.",
       "askBeforeImportLabel": "Ask me before each MCP import",
-      "askBeforeImportCaption": "Each import parks until you approve it in Mill, or times out after 2 minutes and is denied. Turning this off lets an enabled MCP client import without a per-write approval. On by default."
+      "askBeforeImportCaption": "Each import waits for your approval, then times out after 2 minutes."
     },
     "remoteAccess": {
       "description": "Mill is reachable from any device on your network. Pairing is what keeps it yours.",
@@ -148,25 +172,25 @@
         "unsupported": "Notifications aren't available over this connection. It needs to be secure (https)."
       },
       "phone": {
-        "caption": "Install the ntfy Android app, then add this address as a subscription to get notified there, even when Mill isn't open.",
+        "caption": "Add this address in the ntfy Android app to get notified on your phone.",
         "secretNote": "Keep this address private — anyone who has it can read your notifications.",
         "copyAriaLabel": "Copy subscribe address",
         "copiedAriaLabel": "Copied"
       }
     },
     "contract": {
-      "description": "The full step catalog, every data schema, and this app's version in one file — hand it to an agent that can't reach Mill directly.",
+      "description": "The full step catalog, every data schema, and this app's version in one file.",
       "exportButton": "Export contract",
       "exportError": "Couldn't export the contract — try again.",
-      "exportSkillDescription": "How to work with Mill — which tool fits which job, how approvals behave — for an agent that can't read mill://skill directly.",
+      "exportSkillDescription": "How to work with Mill, for an agent that can't read it over MCP.",
       "exportSkillButton": "Export skill doc",
       "exportSkillError": "Couldn't export the skill doc — try again."
     },
     "notifications": {
-      "description": "A parked guardrail ask or MCP write notifies you with a floating approval prompt once you're away — idle past the threshold below, or your window loses focus entirely. An actively-used Mill window is never notified twice.",
       "awayAfterLabel": "Away after (seconds)",
-      "awayAfterCaption": "How long the Mac sits idle (no keyboard, mouse, or trackpad input) while Mill is focused before you're treated as away. Defaults to 300 seconds (5 minutes). Losing focus entirely always counts as away, regardless of this setting.",
-      "alertPermissionNote": "To alert instead of appearing quietly in Notification Center, allow it in System Settings → Notifications → Mill → Alerts. Mill requests notification permission on first launch, but macOS still defaults new apps to Banners, which auto-dismiss."
+      "awayAfterCaption": "How long this Mac sits idle before a parked decision follows you.",
+      "alertPermissionLabel": "Alerts that stay on screen",
+      "alertPermissionNote": "Allow alerts in System Settings > Notifications > Mill to keep them on screen."
     },
     "updates": {
       "checkButton": "Check for updates",
@@ -227,7 +251,7 @@
       "checkIntervalManual": "Only when I check"
     },
     "dataStewardship": {
-      "description": "Mill snapshots your workflow history and settings automatically, and can bundle everything into one file to move to another machine.",
+      "description": "Mill snapshots your workflow history and settings automatically.",
       "unavailable": "Backups aren't available -- this instance uses a custom execution database.",
       "locationLabel": "Backup location",
       "revealFolder": "Show in Finder",
@@ -242,7 +266,7 @@
       "importConfirmButton": "Import",
       "importConfirmEmpty": "This file has nothing new to import.",
       "familyCount": "{{name}}: {{created}} new, {{updated}} updated",
-      "mirrorFilesNote": "The export covers Mill's own data. Files mirrored from folders on disk are referenced by path, not copied in — back those folders up separately."
+      "mirrorFilesNote": "Files mirrored from folders on disk are referenced by path, never copied in."
     }
   },
   "keyboardShortcutsSection": {

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FormControl, SegmentedControl, Select, Stack, Text } from '@primer/react'
+import { SegmentedControl, Select } from '@primer/react'
 import { SunIcon, MoonIcon, DeviceDesktopIcon } from '@primer/octicons-react'
 import { SettingsService } from '../shared/bindings'
 import { applyDensity, type DisplayDensity } from '../shared/density'
+import { SettingsRow } from './SettingsRow'
 import {
   DARK_SCHEMES,
   LIGHT_SCHEMES,
@@ -15,10 +16,11 @@ import {
   type LightScheme,
 } from '../shared/appearance'
 
-// Settings > Appearance (goal 0320): color mode, a color scheme per
-// mode, and density. Its own file because SettingsView.tsx sits at
-// architecture.md's 500-line cap, the same reason
-// CanvasNavigationControl and SaveModeControl already live apart.
+// Settings > Appearance (goal 0320, re-shaped by goal 0321): color
+// theme, then the scheme used in each appearance, then density -- four
+// two-column rows. The two scheme rows carry DISTINCT names ("Light
+// appearance" / "Dark appearance"): they used to share one label,
+// which read as the same setting listed twice.
 //
 // Every control writes through the door that reaches EVERY open window
 // -- setAppearance for the theme, SetDisplayDensity plus the same
@@ -78,52 +80,61 @@ export default function AppearanceSection() {
 
   return (
     <>
-      <SegmentedControl aria-label={t('settings.appearance.themeLabel')} onChange={(i) => setMode(COLOR_MODES[i])}>
-        <SegmentedControl.IconButton icon={SunIcon} aria-label={t('settings.appearance.lightLabel')} selected={appearance.mode === 'light'} />
-        <SegmentedControl.IconButton icon={MoonIcon} aria-label={t('settings.appearance.darkLabel')} selected={appearance.mode === 'dark'} />
-        <SegmentedControl.IconButton icon={DeviceDesktopIcon} aria-label={t('settings.appearance.systemLabel')} selected={appearance.mode === 'auto'} />
-      </SegmentedControl>
-
-      <Stack direction="vertical" gap="condensed" style={{ marginTop: 'var(--base-size-16)' }}>
-        <FormControl>
-          <FormControl.Label>{t('settings.appearance.colorSchemeLabel')}</FormControl.Label>
+      <SettingsRow
+        label={t('settings.appearance.themeLabel')}
+        control={() => (
+          <SegmentedControl aria-label={t('settings.appearance.themeLabel')} onChange={(i) => setMode(COLOR_MODES[i])}>
+            <SegmentedControl.IconButton icon={SunIcon} aria-label={t('settings.appearance.lightLabel')} selected={appearance.mode === 'light'} />
+            <SegmentedControl.IconButton icon={MoonIcon} aria-label={t('settings.appearance.darkLabel')} selected={appearance.mode === 'dark'} />
+            <SegmentedControl.IconButton icon={DeviceDesktopIcon} aria-label={t('settings.appearance.systemLabel')} selected={appearance.mode === 'auto'} />
+          </SegmentedControl>
+        )}
+      />
+      <SettingsRow
+        label={t('settings.appearance.lightAppearanceLabel')}
+        caption={t('settings.appearance.lightSchemeCaption')}
+        control={(labelId) => (
           <Select
+            aria-labelledby={labelId}
             value={appearance.lightScheme}
             onChange={(e) => setAppearance({ ...appearance, lightScheme: e.target.value as LightScheme })}
             data-testid="light-scheme-select"
           >
             {schemeOptions(LIGHT_SCHEMES)}
           </Select>
-          <FormControl.Caption>{t('settings.appearance.lightSchemeCaption')}</FormControl.Caption>
-        </FormControl>
-        <FormControl>
-          <FormControl.Label>{t('settings.appearance.colorSchemeLabel')}</FormControl.Label>
+        )}
+      />
+      <SettingsRow
+        label={t('settings.appearance.darkAppearanceLabel')}
+        caption={t('settings.appearance.darkSchemeCaption')}
+        control={(labelId) => (
           <Select
+            aria-labelledby={labelId}
             value={appearance.darkScheme}
             onChange={(e) => setAppearance({ ...appearance, darkScheme: e.target.value as DarkScheme })}
             data-testid="dark-scheme-select"
           >
             {schemeOptions(DARK_SCHEMES)}
           </Select>
-          <FormControl.Caption>{t('settings.appearance.darkSchemeCaption')}</FormControl.Caption>
-        </FormControl>
-      </Stack>
-
-      <Stack direction="vertical" gap="condensed" style={{ marginTop: 'var(--base-size-16)' }}>
-        <Text as="p" size="small" weight="semibold">{t('settings.appearance.densityLabel')}</Text>
-        <SegmentedControl
-          aria-label={t('settings.appearance.densityLabel')}
-          onChange={(i) => setDensity(DENSITIES[i])}
-          data-testid="density-control"
-        >
-          <SegmentedControl.Button selected={(density ?? 'comfortable') === 'comfortable'}>
-            {t('settings.appearance.comfortableOption')}
-          </SegmentedControl.Button>
-          <SegmentedControl.Button selected={density === 'compact'}>
-            {t('settings.appearance.compactOption')}
-          </SegmentedControl.Button>
-        </SegmentedControl>
-      </Stack>
+        )}
+      />
+      <SettingsRow
+        label={t('settings.appearance.densityLabel')}
+        control={() => (
+          <SegmentedControl
+            aria-label={t('settings.appearance.densityLabel')}
+            onChange={(i) => setDensity(DENSITIES[i])}
+            data-testid="density-control"
+          >
+            <SegmentedControl.Button selected={(density ?? 'comfortable') === 'comfortable'}>
+              {t('settings.appearance.comfortableOption')}
+            </SegmentedControl.Button>
+            <SegmentedControl.Button selected={density === 'compact'}>
+              {t('settings.appearance.compactOption')}
+            </SegmentedControl.Button>
+          </SegmentedControl>
+        )}
+      />
     </>
   )
 }

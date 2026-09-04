@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel } from './fixtures/canvas'
+import { openSettings } from './fixtures/settingsNav'
 import { gotoAppReady } from './fixtures/appReady'
 
 // Exercises docs/goals/0016-keymap-system.md's command registry +
@@ -132,7 +133,7 @@ test('Cmd+W closes the active work tab via the JS-level command dispatch (native
 
 test('Settings: rebinding a command persists, the new combo works, and a conflicting rebind is rejected', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'shortcuts')
 
   const saveRow = page.locator('[data-testid="keymap-row"][data-command-id="workflow.save"]')
   await expect(saveRow).toBeVisible()
@@ -160,7 +161,7 @@ test('Settings: rebinding a command persists, the new combo works, and a conflic
   // Persists across a reload (SettingsService.SetKeybinding, a real
   // settings-store write, not just local component state).
   await page.reload()
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'shortcuts')
   const reloadedRow = page.locator('[data-testid="keymap-row"][data-command-id="workflow.save"]')
   await expect(reloadedRow.getByTestId('keymap-row-combo')).toHaveText('⌘⇧S')
 
@@ -180,7 +181,7 @@ test('Settings: rebinding a command persists, the new combo works, and a conflic
   // naming the conflicting command -- the frontend-side half of the
   // conflict check (composition/hotkeyCapture.ts's useCommandKeybindingCapture),
   // since only shared/commands.ts knows every command's default.
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'shortcuts')
   const saveRowAgain = page.locator('[data-testid="keymap-row"][data-command-id="workflow.save"]')
   await saveRowAgain.getByTestId('keymap-row-combo').click()
   await page.keyboard.press('Meta+n')
@@ -218,7 +219,7 @@ test('Cmd+/ (palette.open\'s extra binding) opens the command palette, same as C
 // click-to-rebind target.
 test('Settings shows palette.open\'s extra binding as a read-only secondary chip', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'shortcuts')
 
   const paletteRow = page.locator('[data-testid="keymap-row"][data-command-id="palette.open"]')
   await expect(paletteRow.getByTestId('keymap-row-combo')).toHaveText('⌘K')

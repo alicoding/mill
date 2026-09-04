@@ -523,7 +523,6 @@
     "viewRawOpenapi": "View raw OpenAPI",
     "saveRequest": "Save integration",
     "cancel": "Cancel",
-    "advanced": "Advanced",
     "fallbackBody": "Fallback body",
     "fallbackBodyCaption": "Sent as-is when the schema declares no body fields.",
     "joseEncryption": "JOSE encryption",
@@ -624,5 +623,8 @@
       "kind": "Kind",
       "path": "Path"
     }
+  },
+  "advancedDisclosure": {
+    "summary": "Advanced"
   }
 }

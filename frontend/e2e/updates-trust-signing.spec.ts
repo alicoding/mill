@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { openSettings } from './fixtures/settingsNav'
 
 // Trust Mill's signing certificate (goal 0220 S3, hidden-once-trusted
 // refinement). Shared worker pool, not a dedicated server (testing.md)
@@ -23,7 +24,7 @@ import { test, expect } from './fixtures/server'
 // shared/updateNoticeStore.test.ts instead.
 test("Settings hides the 'How updates stay trusted' section on a platform with no signing concept", async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'updates')
   await expect(page.getByTestId('settings-view')).toBeVisible()
 
   await expect(page.getByTestId('trust-disclosure')).toHaveCount(0)

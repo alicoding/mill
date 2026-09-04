@@ -24,10 +24,10 @@ export function ExtensionsTrustBar() {
 	].filter(Boolean).join(' ')
 	return (
 		<Stack direction="horizontal" justify="space-between" align="center" gap="condensed" data-testid="extensions-trust-bar">
-			<Text size="small" className={styles.muted} data-testid="extensions-allowlist">
+			<Text as="p" size="small" className={styles.muted} data-testid="extensions-allowlist">
 				{policyText || t('settings.extensions.reviewHint')}
 			</Text>
-			<Button size="small" onClick={() => findCommand('extensions.exportAudit')?.run()} data-testid="extensions-export-audit">
+			<Button size="small" className={styles.nowrapAction} onClick={() => findCommand('extensions.exportAudit')?.run()} data-testid="extensions-export-audit">
 				{t('settings.extensions.exportAudit')}
 			</Button>
 		</Stack>

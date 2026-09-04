@@ -1,86 +1,158 @@
-/* Settings > Extensions' per-row disclosure (goal 0211's plugin-manager
-   UX slice) -- a native <details>/<summary> pair (Primer's own
-   Details/Details.Summary wrapper, .claude/rules/frontend.md's
-   "adopted overlay/disclosure machinery" rule), never a hand-rolled
-   collapse. .row keeps the enable/disable control OUTSIDE <summary> as
-   a flex sibling rather than nesting it inside the native toggle
-   trigger -- a click on the ToggleSwitch would otherwise also fire the
-   browser's own details-open toggle, since that activation behavior is
-   scoped to any click landing inside <summary> regardless of the
-   descendant's own React event handling. */
+/* Settings > Extensions (goal 0321): a list beside a detail pane.
+   Below the two-pane breakpoint the caller renders the detail INSTEAD
+   of the list, so this grid only ever exists at the wide layout. */
+.split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: var(--s-4);
+    align-items: start;
+}
+
+/* One group's rows. A plain semantic list rather than Primer's
+   ActionList: the row's own height is the point of this surface (it
+   follows display density directly, extensionMeta.ts's
+   extensionRowPadY), and ActionList's own item padding sits on top of
+   it, making every row half again as tall as the density asks for. A
+   labelled <ul> of <li> rows is the same list semantics ActionList was
+   here for, with the height back under this file's control. */
+.rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.rows > li {
+    border-bottom: 1px solid var(--borderColor-muted);
+}
+
+.rows > li:last-child {
+    border-bottom: none;
+}
+
+/* One row: icon, name, one line of description, and the control.
+   padding-block is set inline from display density
+   (extensionMeta.ts's extensionRowPadY) so the mapping has one source
+   -- the same props-not-styles shape the adopted table grid uses for
+   its own row heights. */
 /* contain: paint scopes every descendant's own painted output --
    including the ToggleSwitch's absolutely-positioned, transform-
-   transitioning knob in .rowAction below -- to this row's own border
-   box, and makes the row the containing block for any descendant that
-   paints as its own compositor layer. Without it, the knob's own
-   layer painted OUTSIDE the row entirely once the settings pane was
-   scrolled with a row's <details> open (reproduced live: the knob
-   rendered over the sticky search bar several rows above, hit-tested
-   via document.elementFromPoint at the search bar's own coordinates).
-   position: relative is required for contain: paint's containing-block
-   effect to apply as expected across engines. */
+   transitioning knob -- to this row's own border box. Without it the
+   knob's compositor layer has painted OUTSIDE the row entirely once
+   the settings pane was scrolled. position: relative is required for
+   contain: paint's containing-block effect to apply across engines. */
 .row {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: var(--base-size-8);
     width: 100%;
     position: relative;
     contain: paint;
 }
-.details {
+
+/* The row's own activation target. A bare button so the whole
+   identity region opens the detail by click OR keyboard, with the
+   toggle as its flex SIBLING -- never a descendant, which would make
+   one click mean two things. */
+.rowButton {
     flex: 1;
     min-width: 0;
-}
-.summary {
     display: flex;
     align-items: center;
     gap: var(--base-size-8);
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    text-align: left;
     cursor: pointer;
-    list-style: none;
 }
-.summary::-webkit-details-marker {
-    display: none;
+
+.rowButton:hover .rowName {
+    color: var(--fgColor-accent);
 }
-.chevron {
+
+.rowIcon {
     flex-shrink: 0;
     color: var(--fgColor-muted);
-    transition: transform 0.1s ease;
 }
-.details[open] .chevron {
-    transform: rotate(90deg);
+
+.rowName {
+    flex-shrink: 0;
+    white-space: nowrap;
 }
+
+/* The description is the row's flexible half: it takes what is left
+   and ellipsizes, so a long one never wraps the row to two lines. */
+.rowDescription {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--fgColor-muted);
+}
+
 .rowAction {
     flex-shrink: 0;
-    padding-top: 2px;
 }
+
+/* The selected row keeps its marker while the pane beside it is read. */
+.row[data-selected='true'] .rowName {
+    color: var(--fgColor-accent);
+}
+
 /* ToggleSwitch renders its own visible "On"/"Off" text next to the
-   switch by default (Primer's own buttonLabelOn/buttonLabelOff,
-   defaulting to those two words) -- but that span always carries
-   aria-hidden="true" in Primer's own markup, so it never reaches a
-   screen reader in the first place; the switch's real accessible
-   label/state comes from aria-labelledby (this row's own title) plus
-   the native button's aria-pressed. Hiding it here is a pure visual
-   change -- bare switches, state carried by the switch itself -- with
-   no accessible-name loss. Targets the aria-hidden attribute directly
-   rather than one of Primer's own hashed CSS-module class names, so it
-   keeps working across a @primer/react version bump. */
+   switch by default -- but that span always carries aria-hidden="true"
+   in Primer's own markup, so it never reaches a screen reader; the
+   switch's real accessible label/state comes from aria-labelledby plus
+   the native button's aria-pressed. Hiding it is a pure visual change.
+   Targets the aria-hidden attribute rather than one of Primer's hashed
+   CSS-module class names, so it survives a @primer/react bump. */
 .toggle > span[aria-hidden='true'] {
     display: none;
 }
-/* Indent + a subtle left rule (mirrors Primer's own TreeView indent
-   guide, TreeViewItemLevelLine's border-right convention) keeps the
-   expanded disclosure reading as part of its own row rather than a
-   free-floating block, even mid-scroll with several other rows above
-   and below it. */
-.expanded {
-    margin: var(--base-size-8) 0 0 24px;
-    padding-left: var(--base-size-8);
-    border-left: 2px solid var(--borderColor-muted);
+
+/* The page header's own docs link never wraps -- at a narrow pane it
+   broke across three lines beside the subtitle. */
+.headerLink {
+    white-space: nowrap;
+}
+
+/* The detail pane. Its own scroll at the wide layout so a long
+   contribution list never scrolls the row list out from under the
+   pointer; sticky so it stays level with the row that opened it. */
+.detail {
     display: flex;
     flex-direction: column;
-    gap: var(--base-size-4);
+    gap: var(--base-size-8);
+    padding: var(--base-size-12);
+    border: 1px solid var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+    background: var(--bgColor-muted);
+    position: sticky;
+    top: 0;
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
 }
+
+/* The pane's own paragraphs are list lines, not prose: the browser's
+   default paragraph margin doubles the gap the flex column already
+   sets. */
+.detail p {
+    margin: 0;
+}
+
+/* Focus lands here on open (it is what the click produced), so the
+   ring is suppressed -- the pane's border and heading already say
+   where you are, and a focus ring on a whole panel reads as an error. */
+.detail:focus {
+    outline: none;
+}
+
 .chips {
+    display: flex;
     flex-wrap: wrap;
+    gap: var(--base-size-4);
 }

@@ -1,53 +1,113 @@
-/* Two-column layout on wide viewports (goal 0077): a 184px TOC rail
-   (SettingsToc.module.css) beside the content column. Narrow viewports
-   render .content alone, no grid -- SettingsView only mounts
-   SettingsToc when useIsNarrowViewport() is false. */
+/* Settings' two-pane shell (goal 0321): a 200px group list beside the
+   ONE pane that renders at a time. Below the narrow breakpoint the
+   nav collapses above the pane instead (SettingsView mounts the same
+   NavList, this grid just stacks). */
 .layout {
     display: grid;
-    grid-template-columns: 184px 1fr;
+    grid-template-columns: 200px minmax(0, 1fr);
     gap: var(--s-4);
     align-items: start;
 }
 
-/* padding-bottom is real, not cosmetic: without trailing space below
-   the last section (Updates), a section near the bottom of the page
-   (Backups, second-to-last) has nowhere left to scroll TO -- the
-   scrolling container's own max scrollTop caps out before
-   scrollIntoView({block:'start'}) can bring it flush with the top,
-   regardless of scroll-margin. VS Code's own settings page carries the
-   same trailing padding for the identical reason. */
-.content {
-    min-width: 0;
-    padding-bottom: 60vh;
+.layoutNarrow {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
 }
 
-/* Sticky filter box at the top of the content column. Rendered height
-   (padding 8+16 around a ~32px default TextInput = ~56px) is the
-   number SettingsToc.module.css's own .rail top-offset is coupled to --
-   the two must change together. background covers section content
-   scrolling underneath once stuck. */
-.filterRow {
+/* The group list stays with the pane while it scrolls -- eight items
+   never need their own scroll. */
+.rail {
     position: sticky;
     top: 0;
-    z-index: 1;
-    background: var(--bgColor-default);
-    padding: var(--base-size-8) 0 var(--base-size-16);
+    align-self: start;
+    width: 200px;
+    font-size: 13px;
+    flex-shrink: 0;
 }
 
-/* Every section root carries this, independent of filtered state:
-   scroll-margin-top (not the container's scroll-padding, since
-   .view-pane -- the real overflow:auto ancestor, app/index.css -- is a
-   shared class every other page also scrolls through) is what keeps a
-   TOC click or deep-link's scrollIntoView({block:'start'}) from
-   landing a section's heading directly underneath the sticky
-   .filterRow above -- same 56px .filterRow/.rail are coupled to. */
-.sectionAnchor {
-    scroll-margin-top: 64px;
+/* !important on font-weight only: ActionList's own item-label styling
+   (NavList.Item renders through it) carries a more specific rule this
+   className alone doesn't outrank. */
+.railItemActive {
+    font-weight: 650 !important;
 }
 
-/* A filtered-out section keeps its heading visible (so the user can
-   see what got excluded) at reduced opacity, with every control below
-   it unmounted -- not just hidden -- per the design contract. */
-.sectionFilteredOut {
-    opacity: 0.45;
+/* One pane's own column. 720px is the readable measure the row layout
+   below is tuned for -- wide enough for a label/caption pair beside a
+   real control, narrow enough that a caption never runs long. */
+.pane {
+    min-width: 0;
+    max-width: 720px;
+    padding-bottom: var(--s-4);
+}
+
+/* The pane title. Replaces the old page subtitle entirely: the group
+   list already names where you are, so the heading is the group. */
+.paneTitle {
+    margin: 0 0 var(--s-3);
+}
+
+/* Extensions is the one pane that is a LIST beside a DETAIL rather
+   than a column of settings rows, so it takes the whole content
+   column instead of the reading measure above. */
+.paneWide {
+    max-width: none;
+}
+
+/* A sub-heading inside a pane that genuinely holds more than one
+   subject (Connections: MCP access / Remote access / Contract). */
+.paneSectionHeading {
+    margin: var(--s-4) 0 var(--base-size-8);
+}
+
+/* The macOS two-column settings row: label + caption left, control
+   right, aligned on their first line. Density moves only the vertical
+   padding, the same single-axis rule every other density-aware
+   surface follows. */
+.row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--base-size-16);
+    padding-block: var(--mill-density-row-pad-y, var(--base-size-12));
+    border-bottom: 1px solid var(--borderColor-muted);
+}
+
+.row:last-child {
+    border-bottom: none;
+}
+
+.rowText {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--base-size-4);
+}
+
+.rowLabel {
+    font-size: var(--text-body-size-medium, 14px);
+    line-height: var(--text-body-lineHeight-medium, 1.4285);
+}
+
+.rowCaption {
+    margin: 0;
+    color: var(--fgColor-muted);
+}
+
+/* The control column never shrinks below its natural width -- a
+   segmented control or a select keeps its shape and the caption wraps
+   instead. */
+.rowControl {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--base-size-8);
+}
+
+/* A block that is a panel rather than one setting (the shortcuts
+   table, Remote access, Backups, Updates, Extensions) spans the pane
+   instead of sitting in the control column. */
+.panel {
+    padding-block: var(--mill-density-row-pad-y, var(--base-size-12));
 }

@@ -3,7 +3,7 @@ import { comboFromEvent, comboKey } from './keybinding'
 import { useAppStore } from './store'
 import type { View } from './store'
 import { useUISignalStore } from './uiSignalStore'
-import { drainedPluginCommands } from '../plugins/pluginCommands'
+import { pluginRegistryCommands } from './pluginHostCommands'
 import { lazyArray } from './lazySnapshot'
 import { CONFIGURE_CREATE_COMMANDS } from './configureCreateCommands'
 import { ATLAS_BOARD_COMMANDS } from './atlasBoardCommands'
@@ -415,13 +415,9 @@ export const COMMANDS: Command[] = lazyArray(() => [
   ...CODING_LOOP_COMMANDS,
   // docs.search -- split out to shared/docsSearchCommands.ts.
   ...DOCS_SEARCH_COMMANDS,
-  // Runtime plugin commands (docs/goals/0249): drained from the
-  // plugins/pluginCommands.ts collector, which activation filled
-  // BEFORE this module evaluated (main.tsx's boot order). Never
-  // default-bound -- a plugin command is palette-reachable; a
-  // keybinding for third-party code is assigned in Settings, never
-  // shipped by the plugin.
-  ...drainedPluginCommands().map((c) => ({ id: c.id, label: c.label, defaultBinding: null, surface: c.surface, enabled: c.enabled, run: c.run })),
+  // Every plugin-related command (docs/goals/0249, goal 0321) -- what
+  // plugins contributed plus the host's own per-plugin actions.
+  ...pluginRegistryCommands(),
 ])
 
 export function findCommand(id: string): Command | undefined {

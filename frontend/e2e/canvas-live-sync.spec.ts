@@ -4,6 +4,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { MCP_BASE_PORT, test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel } from './fixtures/canvas'
+import { openSettings } from './fixtures/settingsNav'
 
 // Live canvas sync for external (MCP) activity (docs/SPEC.md §1's
 // realtime lock, applied to authoring): an open workflow editor must
@@ -77,7 +78,7 @@ function twoNodeDefinition(label: string, marker: string): string {
 // through, not park in the MCPWriteApprovals UI.
 async function enableUnattendedMCPWrites(page: Page): Promise<void> {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'connections')
   const writeCheckbox = page.getByTestId('mcp-write-enabled-checkbox')
   await expect(writeCheckbox).toBeEnabled()
   if (!(await writeCheckbox.isChecked())) {
@@ -98,7 +99,7 @@ async function enableUnattendedMCPWrites(page: Page): Promise<void> {
 // worker never inherits an unattended-MCP-writes instance.
 async function restoreMCPWriteDefaults(page: Page): Promise<void> {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'connections')
   const approvalCheckbox = page.getByTestId('mcp-write-approval-checkbox')
   if (await approvalCheckbox.count()) {
     if (!(await approvalCheckbox.isChecked())) {

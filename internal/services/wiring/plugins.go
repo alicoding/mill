@@ -148,6 +148,22 @@ func WirePluginTrust(plugins *pluginsvc.PluginService, settings *settingssvc.Set
 	// steps join the catalog and the executor, read fresh per lookup.
 	plugins.SetRunPolicy(trust.mayRun)
 	composition.SetExternalNodeTypeLookup(plugins.StepNodeTypes)
+	// Uninstall (goal 0321) belongs to the same consent lifecycle the
+	// settings service already owns, so it holds the removal and this
+	// hands it only the folder lookup -- settingssvc never depends on
+	// pluginsvc.
+	settings.WirePluginRemoval(func(id string) (string, bool, bool) {
+		infos, err := plugins.ListPlugins()
+		if err != nil {
+			return "", false, false
+		}
+		for _, info := range infos {
+			if info.Manifest.ID == id {
+				return info.Dir, info.Builtin, true
+			}
+		}
+		return "", false, false
+	})
 }
 
 func grandfatherInstalledPlugins(plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService) {

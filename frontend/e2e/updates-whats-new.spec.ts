@@ -9,6 +9,7 @@ import {
   UPDATES_WHATSNEW_NOTES_SERVER_BASE_PORT,
 } from './fixtures/server'
 import { paletteDialog } from './fixtures/palette'
+import { openSettings } from './fixtures/settingsNav'
 
 // The What's-new changelog surface (goal 0220 S2), split from
 // updates.spec.ts along its own dedicated port pairs. updates.spec.ts's
@@ -86,7 +87,7 @@ test("The pill's secondary link and Settings' own link both open What's new, ren
     // Settings' own auto-check-on-open (goal 0205 S4) is what actually
     // runs the fake check here -- the same path the updates.spec.ts
     // family relies on to light the pill.
-    await page.getByRole('link', { name: 'Settings' }).click()
+    await openSettings(page, 'updates')
     await expect(page.getByTestId('update-available-card')).toBeVisible()
 
     await page.getByTestId('notice-whats-new').click()

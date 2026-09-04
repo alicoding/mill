@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { workflowRow, activePanel } from './fixtures/canvas'
+import { openInspectorTab } from './fixtures/inspectorTabs'
 
 // Workflow breakpoints end to end in the live app (docs/adr/0031, goal
 // 0020, moved onto the node card by goal 0022 -- docs/goals/
@@ -48,13 +49,16 @@ test('Toggling a breakpoint from the node card round-trips in VIEW mode, shows t
   await toggle.click()
   await expect(toggle).toHaveAttribute('data-set', 'true', { timeout: 10_000 })
 
-  // Selecting the node afterward shows the SAME state on the read-only
-  // Inspector status line -- no interactive toggle there anymore (goal
-  // 0022 moved it off the Inspector entirely).
+  // Selecting the node afterward shows the SAME state on the Inspector's
+  // Settings tab -- tier 2, never between the step's parameters (goal
+  // 0327). The card's dot stays the primary control; the tab's own
+  // toggle runs the same context call.
   await captureNode(page).click()
+  const inspector = page.getByTestId('composition-inspector')
+  await expect(inspector.getByTestId('breakpoint-badge')).toHaveCount(0)
+  await openInspectorTab(inspector, 'settings')
   await expect(page.getByTestId('breakpoint-badge')).toBeVisible()
   await expect(page.getByTestId('breakpoint-status')).toContainText('Breakpoint set')
-  await expect(page.getByTestId('toggle-breakpoint')).toHaveCount(0)
 
   // The guardrail shield is suppressed while the breakpoint IS the
   // winning verdict (docs/adr/0031: "recognition, not confirmation" --

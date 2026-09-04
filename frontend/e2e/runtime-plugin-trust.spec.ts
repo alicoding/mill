@@ -7,6 +7,7 @@ import { expect, test } from '@playwright/test'
 import { launchWithPlugins } from './fixtures/runtimePlugins'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
+import { openExtensionDetail, openSettings, pluginRow } from './fixtures/settingsNav'
 
 const LATE_PLUGIN = `export function activate(api) {
 	api.registerCanvasObject({ kind: 'late', label: 'Late arrival', icon: '🕰️', source: 'board-local', editRoute: 'none', defaultPayload: {}, renderFace(el) { el.textContent = 'late' } })
@@ -38,15 +39,17 @@ test('a plugin installed after boot waits for review: the boot notice names it, 
 		await expect(page.locator('[data-testid^="notice-pushed-"]').first()).toContainText('1 new plugin is waiting for you to allow it')
 		await review.click()
 
-		const row = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="late-arrival"]')
+		const row = pluginRow(page, 'late-arrival')
 		await expect(row).toBeVisible()
-		// The reach summary is on the row before anything runs.
-		await expect(row).toContainText('Can request: open-url')
-		await expect(row.locator('[data-testid="extensions-plugin-network"]')).toContainText('example.com')
-		await expect(row.getByTestId('extensions-plugin-review')).toContainText('Not running yet')
 		await expect(row.getByTestId('extensions-plugin-toggle')).toHaveCount(0)
-		await row.getByTestId('extensions-plugin-allow').click()
-		await expect(row.getByTestId('extensions-plugin-review')).toContainText('Allowed. Reload to load it.')
+		// The reach summary reads before anything runs (goal 0321: in
+		// the detail pane the row opens).
+		const detail = await openExtensionDetail(page, row, 'late-arrival')
+		await expect(detail).toContainText('Can request: open-url')
+		await expect(detail.getByTestId('extensions-detail-reach')).toContainText('example.com')
+		await expect(detail.getByTestId('extensions-plugin-review')).toContainText('Not running yet')
+		await detail.getByTestId('extensions-plugin-allow').click()
+		await expect(detail.getByTestId('extensions-plugin-review')).toContainText('Allowed. Reload to load it.')
 
 		await page.reload()
 		await page.getByRole('link', { name: 'Atlas' }).click()
@@ -66,18 +69,22 @@ test('an administrator allow-list in the settings file blocks every plugin off i
 		await expect(tray.locator('button[aria-label="Bookmark"]')).toBeVisible()
 		await expect(tray.locator('button[aria-label="Scribble"]')).toHaveCount(0)
 
-		await page.getByRole('link', { name: 'Settings' }).click()
+		await openSettings(page, 'extensions')
 		const section = page.locator('[data-testid="extensions-installed-plugins"]')
 		await section.scrollIntoViewIfNeeded()
 		await expect(section.getByTestId('extensions-allowlist')).toContainText("Only plugins on this Mill's allow-list can run: mill-bookmark")
-		const scribble = section.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-scribble"]')
-		await expect(scribble.getByTestId('extensions-plugin-blocked')).toContainText('Not on this Mill')
+		// A blocked plugin's row offers no switch at all; the reason
+		// reads in its detail pane (goal 0321).
+		const scribble = pluginRow(page, 'mill-scribble')
 		await expect(scribble.getByTestId('extensions-plugin-toggle')).toHaveCount(0)
-		await expect(scribble.getByTestId('extensions-plugin-allow')).toHaveCount(0)
+		const scribbleDetail = await openExtensionDetail(page, scribble, 'mill-scribble')
+		await expect(scribbleDetail.getByTestId('extensions-plugin-blocked')).toContainText('Not on this Mill')
+		await expect(scribbleDetail.getByTestId('extensions-plugin-allow')).toHaveCount(0)
 		// The built-in Drawing plugin is exempt from the list.
-		const drawing = section.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-drawing"]')
-		await expect(drawing.getByTestId('extensions-plugin-blocked')).toHaveCount(0)
+		const drawing = pluginRow(page, 'mill-drawing')
 		await expect(drawing.getByTestId('extensions-plugin-toggle')).toBeVisible()
+		const drawingDetail = await openExtensionDetail(page, drawing, 'mill-drawing')
+		await expect(drawingDetail.getByTestId('extensions-plugin-blocked')).toHaveCount(0)
 	} finally {
 		await close()
 	}
@@ -87,7 +94,7 @@ test('Export plugin audit saves one JSON document naming every plugin, its reach
 	const { page, close } = await launchWithPlugins(46)
 	try {
 		await page.goto('/')
-		await page.getByRole('link', { name: 'Settings' }).click()
+		await openSettings(page, 'extensions')
 		const section = page.locator('[data-testid="extensions-installed-plugins"]')
 		await section.scrollIntoViewIfNeeded()
 		const download = page.waitForEvent('download')
@@ -129,13 +136,13 @@ test('a plugin whose files change after it was allowed stops running until allow
 		await expect(page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Scribble"]')).toBeVisible()
 		await expect(bookmark).toHaveCount(0)
 
-		await page.getByRole('link', { name: 'Settings' }).click()
-		const row = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-bookmark"]')
-		await row.scrollIntoViewIfNeeded()
-		await expect(row.getByTestId('extensions-plugin-review')).toContainText('Its files changed since you allowed it')
+		await openSettings(page, 'extensions')
+		const row = pluginRow(page, 'mill-bookmark')
 		await expect(row.getByTestId('extensions-plugin-toggle')).toHaveCount(0)
-		await row.getByTestId('extensions-plugin-allow').click()
-		await expect(row.getByTestId('extensions-plugin-review')).toContainText('Allowed. Reload to load it.')
+		const detail = await openExtensionDetail(page, row, 'mill-bookmark')
+		await expect(detail.getByTestId('extensions-plugin-review')).toContainText('Its files changed since you allowed it')
+		await detail.getByTestId('extensions-plugin-allow').click()
+		await expect(detail.getByTestId('extensions-plugin-review')).toContainText('Allowed. Reload to load it.')
 
 		await page.reload()
 		await page.getByRole('link', { name: 'Atlas' }).click()
@@ -156,15 +163,16 @@ test('with signing keys pinned, an unsigned plugin cannot run and the bar says s
 		const tray = page.locator('[data-testid="atlas-creation-tray"]')
 		await expect(tray).toBeVisible()
 		await expect(tray.locator('button[aria-label="Bookmark"]')).toHaveCount(0)
-		await page.getByRole('link', { name: 'Settings' }).click()
+		await openSettings(page, 'extensions')
 		const section = page.locator('[data-testid="extensions-installed-plugins"]')
 		await section.scrollIntoViewIfNeeded()
 		await expect(section.getByTestId('extensions-allowlist')).toContainText('Only plugins signed by the 1 key this Mill trusts can run.')
-		const row = section.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-bookmark"]')
-		await expect(row.getByTestId('extensions-plugin-unsigned')).toContainText('Not signed by a key this Mill trusts')
+		const row = pluginRow(page, 'mill-bookmark')
 		await expect(row.getByTestId('extensions-plugin-toggle')).toHaveCount(0)
+		const detail = await openExtensionDetail(page, row, 'mill-bookmark')
+		await expect(detail.getByTestId('extensions-plugin-unsigned')).toContainText('Not signed by a key this Mill trusts')
 		// The built-in Drawing plugin is exempt from the signing policy.
-		await expect(section.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-drawing"]').getByTestId('extensions-plugin-toggle')).toBeVisible()
+		await expect(pluginRow(page, 'mill-drawing').getByTestId('extensions-plugin-toggle')).toBeVisible()
 	} finally {
 		await close()
 	}

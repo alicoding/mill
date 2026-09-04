@@ -20,3 +20,22 @@ export function useIsNarrowViewport(): boolean {
   }, [])
   return narrow
 }
+
+// The two-pane threshold (goal 0321): at 1024px and up a list surface
+// can hold a detail pane BESIDE it; below that the detail replaces the
+// list and a back link returns. 1024 is the converged tablet-landscape
+// breakpoint the same surfaces switch on elsewhere -- kept here beside
+// NARROW_QUERY so the app has one file naming its breakpoints.
+const TWO_PANE_QUERY = '(min-width: 1024px)'
+
+export function useHasSidePane(): boolean {
+  const [wide, setWide] = useState(() => window.matchMedia(TWO_PANE_QUERY).matches)
+  useEffect(() => {
+    const mql = window.matchMedia(TWO_PANE_QUERY)
+    const onChange = () => setWide(mql.matches)
+    onChange()
+    mql.addEventListener('change', onChange)
+    return () => mql.removeEventListener('change', onChange)
+  }, [])
+  return wide
+}

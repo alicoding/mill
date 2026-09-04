@@ -4,6 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { launchWithPlugins, runFromPalette } from './fixtures/runtimePlugins'
 import { RUNTIME_PLUGIN_RELOAD_SERVER_BASE_PORT, RUNTIME_PLUGIN_RELOAD_MCP_BASE_PORT } from './fixtures/serverPorts'
+import { openExtensionDetail, openPluginDetail, pluginRow } from './fixtures/settingsNav'
 
 const PORTS = { server: RUNTIME_PLUGIN_RELOAD_SERVER_BASE_PORT, mcp: RUNTIME_PLUGIN_RELOAD_MCP_BASE_PORT }
 // The already-built server binary IS the one binary, so the scaffold
@@ -25,17 +26,14 @@ async function markPage(page: import('@playwright/test').Page) {
 	await page.evaluate(() => { (window as unknown as Record<string, string>).__millReloadMarker = 'alive' })
 }
 
-test('reloading one plugin from its Extensions row re-registers what it contributes, with no app reload', async () => {
+test('reloading one plugin from its Extensions detail pane re-registers what it contributes, with no app reload', async () => {
 	const { page, close } = await launchWithPlugins(0, { withNotifier: true, ports: PORTS })
 	try {
 		await page.goto('/')
-		await page.getByRole('link', { name: 'Settings' }).click()
-		const row = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="notify-probe"]')
-		await row.scrollIntoViewIfNeeded()
-		await expect(row).toBeVisible()
+		const detail = await openPluginDetail(page, 'notify-probe')
 		await markPage(page)
 
-		await row.getByTestId('extensions-plugin-reload').click()
+		await detail.getByTestId('extensions-plugin-reload').click()
 
 		await expect(page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Reloaded Notify probe' })).toBeVisible()
 		expect(await page.evaluate(MARKER)).toBe('alive')
@@ -48,9 +46,8 @@ test('reloading one plugin from its Extensions row re-registers what it contribu
 
 		// A canvas object's registration survives the same sweep: the
 		// bookmark plugin's tool is back in the tray after ITS reload.
-		const bookmarkRow = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-bookmark"]')
-		await bookmarkRow.scrollIntoViewIfNeeded()
-		await bookmarkRow.getByTestId('extensions-plugin-reload').click()
+		const bookmarkDetail = await openExtensionDetail(page, pluginRow(page, 'mill-bookmark'), 'mill-bookmark')
+		await bookmarkDetail.getByTestId('extensions-plugin-reload').click()
 		await expect(page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Reloaded Bookmark' })).toBeVisible()
 		await page.getByRole('link', { name: 'Atlas' }).click()
 		await expect(page.getByTestId('atlas-board')).toBeVisible()
@@ -85,19 +82,17 @@ test('the same reload is one registry command, reachable from the palette', asyn
 // scaffold lands after boot, so the folder arrives the way any copied-
 // in plugin does: awaiting review, then allowed, then loaded by ITS
 // OWN row's reload rather than an app restart.
-test('a folder written by `mill plugin new` loads, allowed then reloaded from its own row', async () => {
+test('a folder written by `mill plugin new` loads, allowed then reloaded from its own detail pane', async () => {
 	const { page, pluginsDir, close } = await launchWithPlugins(4, { ports: PORTS })
 	try {
 		await page.goto('/')
 		execFileSync(MILL_BIN, ['plugin', 'new', 'Scaffold probe', '--dir', pluginsDir], { stdio: 'pipe' })
 		await page.reload()
-		await page.getByRole('link', { name: 'Settings' }).click()
-		const row = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="scaffold-probe"]')
-		await row.scrollIntoViewIfNeeded()
-		await expect(row.getByTestId('extensions-plugin-review')).toBeVisible()
+		const detail = await openPluginDetail(page, 'scaffold-probe')
+		await expect(detail.getByTestId('extensions-plugin-review')).toBeVisible()
 
-		await row.getByTestId('extensions-plugin-allow').click()
-		await row.getByTestId('extensions-plugin-reload').click()
+		await detail.getByTestId('extensions-plugin-allow').click()
+		await detail.getByTestId('extensions-plugin-reload').click()
 		await expect(page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Reloaded Scaffold Probe' })).toBeVisible()
 
 		// The command the scaffolded main.js registers runs.

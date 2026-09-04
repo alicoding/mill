@@ -575,6 +575,22 @@ export function QuitApp(): $CancellablePromise<void> {
 }
 
 /**
+ * RemovePlugin moves one installed plugin's folder to the Trash and
+ * returns where it landed, so the caller can say exactly where to look
+ * for it. Consent is withdrawn in the same step: a folder copied back
+ * in later is a NEW install and asks to be allowed again, which is the
+ * whole point of the install-time review.
+ * 
+ * Contributions the plugin registered at load stay registered until
+ * the next load -- the same "plugins load at app start" contract
+ * disabling one already follows; objects it created keep rendering
+ * through the unknown-kind fallback face.
+ */
+export function RemovePlugin(id: string): $CancellablePromise<string> {
+    return $Call.ByID(3977466011, id);
+}
+
+/**
  * ResolveMCPWrite delivers the human's decision to a parked MCP write.
  */
 export function ResolveMCPWrite(id: string, approve: boolean): $CancellablePromise<void> {

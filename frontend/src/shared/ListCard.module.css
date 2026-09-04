@@ -108,3 +108,8 @@
     background-color: var(--bgColor-default);
     color: var(--fgColor-default);
 }
+
+/* A trailing action beside a flexible text block: the text wraps, the
+   button keeps its own width instead of being squeezed to one word per
+   line (Settings > Extensions' trust strip). */
+.nowrapAction { flex-shrink: 0; }

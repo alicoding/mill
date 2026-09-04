@@ -4,6 +4,7 @@ import { clickAtlasTrayTool } from './fixtures/atlasTray'
 import { placeNoteClear } from './fixtures/atlasEmptyRegion'
 import { deleteViaContextMenu, shapeDrawPoints, shapeObjects } from './fixtures/atlasShapeTool'
 import { paletteDialog } from './fixtures/palette'
+import { builtInRows, extensionRow, openExtensionDetail, openSettings, pluginRow } from './fixtures/settingsNav'
 
 // Settings > Extensions (goal 0237 S2/S3, re-shaped by goal 0252): a
 // registry-derived list of every registered compiled-in NOUN -- tray
@@ -27,49 +28,69 @@ import { paletteDialog } from './fixtures/palette'
 // narrower scope.
 
 async function openExtensionsSection(page: import('@playwright/test').Page) {
-  await page.getByRole('link', { name: 'Settings' }).click()
-  await expect(page.getByTestId('settings-view')).toBeVisible()
-  // Every section renders in the DOM at once (SettingsView.tsx's own
-  // one-page-plus-synced-TOC shape) -- no TOC click needed to reach it.
+  await openSettings(page, 'extensions')
   await expect(page.getByTestId('extensions-list')).toBeVisible()
 }
 
-test('The section explains where extensions come from today', async ({ page }) => {
-  await page.goto('/')
-  await openExtensionsSection(page)
-  await expect(page.getByTestId('extensions-install-story')).toHaveText(
-    'These extensions ship with Mill. Install more under Installed plugins below.',
-  )
-})
-
-test('A row expands to show its description, an honest reach line, and the app version', async ({ page }) => {
+test('A row carries no settings; clicking it opens the detail pane, and Escape returns focus to the row', async ({ page }) => {
   await page.goto('/')
   await openExtensionsSection(page)
 
-  const imageRow = page.locator('[data-testid="extensions-row"][data-extension-id="image"]')
+  const imageRow = extensionRow(page, 'image')
   // The row's own title is the bare noun, never the tray/palette's own
   // command-verb phrase ("Add an image").
   await expect(imageRow.getByTestId('extensions-row-title')).toHaveText('Image')
-  const expanded = imageRow.getByTestId('extensions-row-expanded')
-  await expect(expanded).toBeHidden()
+  // Identity only: nothing unfolds inside a row any more.
+  await expect(page.getByTestId('extensions-detail')).toHaveCount(0)
+  await expect(imageRow.getByTestId('extensions-row-expanded')).toHaveCount(0)
 
-  // Native <details>/<summary> (goal 0211's plugin-manager UX slice):
-  // clicking the summary text opens the disclosure without touching the
-  // enable/disable toggle, which lives outside the summary specifically
-  // so it never double-fires the native expand/collapse.
-  await imageRow.locator('summary').click()
-  await expect(expanded).toBeVisible()
-  await expect(imageRow.getByTestId('extensions-row-description')).toHaveText('Adds an image from your files or the clipboard.')
-  await expect(imageRow.getByTestId('extensions-row-reach')).toHaveText('Reaches nothing outside Mill.')
-  await expect(imageRow.getByTestId('extensions-row-version')).toHaveText(/^Ships with Mill v/)
-  // The group chip survives in the expanded view even though the
-  // collapsed meta line below no longer repeats it (the per-row chip
-  // stays singular where the section heading is plural).
-  await expect(expanded.getByText('File', { exact: true })).toBeVisible()
+  const detail = await openExtensionDetail(page, imageRow, 'image')
+  await expect(detail.getByTestId('extensions-detail-description')).toHaveText('Adds an image from your files or the clipboard.')
+  await expect(detail.getByTestId('extensions-detail-reach')).toHaveText('Reaches nothing outside Mill.')
+  await expect(detail.getByTestId('extensions-detail-provenance')).toHaveText(/^Ships with Mill v/)
+  await expect(detail.getByText('File', { exact: true })).toBeVisible()
+  await expect(detail.getByTestId('extensions-detail-adds')).toContainText('Commands: Add an image')
+  await expect(detail.getByTestId('extensions-detail-adds')).toContainText('Canvas objects: Image')
 
-  // Collapses again on a second click of the same summary.
-  await imageRow.locator('summary').click()
-  await expect(expanded).toBeHidden()
+  // Escape closes the pane and puts focus back on the row that opened
+  // it -- a keyboard user is never left behind in the list.
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('extensions-detail')).toHaveCount(0)
+  await expect(imageRow.getByTestId('extensions-row-open')).toBeFocused()
+})
+
+test('The Sheet row opens a detail pane carrying its declared setting', async ({ page }) => {
+  await page.goto('/')
+  await openExtensionsSection(page)
+
+  const detail = await openExtensionDetail(page, extensionRow(page, 'sheet'), 'sheet')
+  const control = detail.getByTestId('extension-setting-sheet-previewRows')
+  await expect(control).toBeVisible()
+  await expect(control).toContainText('Preview rows')
+  // And it is NOT on the row -- the whole point of the pane.
+  await expect(extensionRow(page, 'sheet').getByTestId('extension-setting-sheet-previewRows')).toHaveCount(0)
+
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('extensions-detail')).toHaveCount(0)
+})
+
+test('Compact density makes every Extensions row shorter', async ({ page }) => {
+  await page.goto('/')
+  await openExtensionsSection(page)
+  const row = extensionRow(page, 'note')
+  const heightOf = () => row.evaluate((el) => el.getBoundingClientRect().height)
+
+  const comfortable = await heightOf()
+  await openSettings(page, 'appearance')
+  await page.getByTestId('density-control').getByRole('button', { name: 'Compact' }).click()
+  await openExtensionsSection(page)
+  await expect.poll(heightOf).toBeLessThan(comfortable)
+
+  // Restore -- shared-pool cleanup discipline (density is a global flag).
+  await openSettings(page, 'appearance')
+  await page.getByTestId('density-control').getByRole('button', { name: 'Comfortable' }).click()
+  await openExtensionsSection(page)
+  await expect.poll(heightOf).toBe(comfortable)
 })
 
 test('The list groups into sections; every row title is a noun, and the drawing tools live in the plugin row instead', async ({ page }) => {
@@ -83,8 +104,8 @@ test('The list groups into sections; every row title is a noun, and the drawing 
   // a heading over nothing.
   const knowledge = page.getByTestId('extensions-group-knowledge')
   const files = page.getByTestId('extensions-group-file')
-  await expect(knowledge.getByRole('heading', { name: 'Knowledge' })).toBeVisible()
-  await expect(files.getByRole('heading', { name: 'Files' })).toBeVisible()
+  await expect(knowledge.getByText('Knowledge', { exact: true })).toBeVisible()
+  await expect(files.getByText('Files', { exact: true })).toBeVisible()
   await expect(page.getByTestId('extensions-group-annotate')).toHaveCount(0)
 
   // card/note/area/table land in Knowledge; image/diagram/sheet in
@@ -97,9 +118,16 @@ test('The list groups into sections; every row title is a noun, and the drawing 
   }
 
   // The drawing tools surface as the bundled Drawing plugin's ONE row.
-  const drawingPlugin = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-drawing"]')
+  const drawingPlugin = pluginRow(page, 'mill-drawing')
   await expect(drawingPlugin).toBeVisible()
-  await expect(drawingPlugin.getByText('Built into Mill')).toBeVisible()
+  // Where it came from reads in its detail pane, not on the row -- and
+  // exactly once: a bundled plugin says so on the header's meta line,
+  // so it gets no second provenance line under it.
+  const drawingDetail = await openExtensionDetail(page, drawingPlugin, 'mill-drawing')
+  await expect(drawingDetail.getByTestId('extensions-detail-meta')).toContainText('Built into Mill')
+  await expect(drawingDetail.getByTestId('extensions-detail-provenance')).toHaveCount(0)
+  await expect(drawingDetail.getByText('Built into Mill')).toHaveCount(1)
+  await page.keyboard.press('Escape')
 
   // Every row's own title is the bare noun, one word.
   const expectedTitles: Record<string, string> = {
@@ -111,60 +139,45 @@ test('The list groups into sections; every row title is a noun, and the drawing 
     await expect(row.getByTestId('extensions-row-title')).toHaveText(title)
   }
 
-  // The collapsed meta line states source/edit-route facts, never the
-  // group word its own section heading already carries.
-  const imageMeta = page.locator('[data-testid="extensions-row"][data-extension-id="image"]').getByTestId('extensions-row-meta')
-  await expect(imageMeta).toHaveText('Backed by a file · Opens in your default app')
-  const tableMeta = page.locator('[data-testid="extensions-row"][data-extension-id="table"]').getByTestId('extensions-row-meta')
-  await expect(tableMeta).toHaveText('Live view of a List · Edits in place')
+  // A row's second half is ONE line of description (goal 0321) -- the
+  // source/edit-route facts moved into the detail pane.
+  await expect(extensionRow(page, 'image').getByTestId('extensions-row-description'))
+    .toHaveText('Adds an image from your files or the clipboard.')
+  await expect(extensionRow(page, 'image').getByTestId('extensions-row-meta')).toHaveCount(0)
 })
 
-test('The collapsed meta line stays single-line at 1000px viewport width', async ({ page }) => {
+test('A row stays one line at 1000px viewport width, however long its description', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 660 })
   await page.goto('/')
   await openExtensionsSection(page)
 
-  // diagram's own meta line is the longest in the list (a file source
-  // plus its per-object edit-route resolver's own generic phrase) --
-  // the stress case for wrapping.
-  const diagramMeta = page.locator('[data-testid="extensions-row"][data-extension-id="diagram"]').getByTestId('extensions-row-meta')
-  await expect(diagramMeta).toBeVisible()
-  const box = await diagramMeta.boundingBox()
-  if (!box) throw new Error('extensions-row-meta has no bounding box')
-  // A single line of this small-text token is well under 24px tall;
-  // two wrapped lines would roughly double it.
-  expect(box.height).toBeLessThan(24)
+  // diagram's description is the longest in the list -- the stress
+  // case for wrapping. It ellipsizes rather than wrapping the row.
+  const row = extensionRow(page, 'diagram')
+  await expect(row).toBeVisible()
+  const box = await row.boundingBox()
+  if (!box) throw new Error('the diagram row has no bounding box')
+  // A Comfortable row is 44px by construction (extensionMeta.ts's
+  // extensionRowHeight); two wrapped lines would exceed 60.
+  expect(box.height).toBeLessThan(60)
 })
 
-test('The toggle knob stays contained within its own row, even scrolled with a disclosure open (regression: it painted over the sticky search bar)', async ({ page }) => {
+test('The toggle knob stays contained within its own row, even scrolled far down the list', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 660 })
   await page.goto('/')
   await openExtensionsSection(page)
 
-  // Scrolling to a row well below the fold pins the sticky search bar
-  // (.filterRow, SettingsView.module.css) to the top of the scroll
-  // pane -- the exact live condition the bug needed.
-  const sheetRow = page.locator('[data-testid="extensions-row"][data-extension-id="sheet"]')
+  // Regression: a ToggleSwitch knob's own compositor layer painted
+  // OUTSIDE its row entirely once the settings pane was scrolled, and
+  // hit-tested over whatever sat at the top of the pane.
+  const sheetRow = extensionRow(page, 'sheet')
   await sheetRow.scrollIntoViewIfNeeded()
-  await sheetRow.locator('summary').click()
-  await expect(sheetRow.getByTestId('extensions-row-expanded')).toBeVisible()
-
-  const searchBar = page.getByTestId('settings-filter')
-  await expect(searchBar).toBeVisible()
-  const box = await searchBar.boundingBox()
-  if (!box) throw new Error('settings-filter has no bounding box')
-  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
-
-  const hit = await page.evaluate(({ x, y }) => {
-    const el = document.elementFromPoint(x, y)
-    return {
-      isSearchBar: el?.closest('[data-testid="settings-filter"]') !== null,
-      isToggleKnob: el?.className?.toString().includes('ToggleKnob') ?? false,
-    }
-  }, point)
-
-  expect(hit.isToggleKnob).toBe(false)
-  expect(hit.isSearchBar).toBe(true)
+  const knob = sheetRow.getByTestId('extensions-row-toggle')
+  const rowBox = await sheetRow.boundingBox()
+  const knobBox = await knob.boundingBox()
+  if (!rowBox || !knobBox) throw new Error('the sheet row or its toggle has no bounding box')
+  expect(knobBox.y).toBeGreaterThanOrEqual(rowBox.y - 1)
+  expect(knobBox.y + knobBox.height).toBeLessThanOrEqual(rowBox.y + rowBox.height + 1)
 })
 
 test('Turn all off empties the tray of every non-built-in tool; turn all on restores them', async ({ page }) => {
@@ -218,7 +231,7 @@ test('Extensions section lists every registered canvas tool; the built-in card r
   // exactly one row -- card, note, area, table, image, diagram,
   // sheet, pdf. The drawing tools are the Drawing plugin's row, not
   // four rows here (goal 0252).
-  await expect(page.getByTestId('extensions-row')).toHaveCount(8)
+  await expect(builtInRows(page)).toHaveCount(8)
 
   const cardRow = page.locator('[data-testid="extensions-row"][data-extension-id="card"]')
   await expect(cardRow).toBeVisible()
@@ -235,34 +248,31 @@ test('A tool-less noun (diagram, sheet) gets a row with a toggle and states its 
   await page.goto('/')
   await openExtensionsSection(page)
 
-  const diagramRow = page.locator('[data-testid="extensions-row"][data-extension-id="diagram"]')
-  await expect(diagramRow).toBeVisible()
+  const diagramRow = extensionRow(page, 'diagram')
   await expect(diagramRow.getByTestId('extensions-row-toggle').getByRole('button')).toHaveAttribute('data-checked', 'true')
-  await diagramRow.locator('summary').click()
-  await expect(diagramRow.getByTestId('extensions-row-description')).toHaveText(
+  const diagram = await openExtensionDetail(page, diagramRow, 'diagram')
+  await expect(diagram.getByTestId('extensions-detail-description')).toHaveText(
     'View and edit diagrams — draw.io files open in the real editor.',
   )
-  await expect(diagramRow.getByTestId('extensions-row-disable-scope')).toHaveText(
+  await expect(diagram.getByTestId('extensions-detail-disable-scope')).toHaveText(
     'Turning this off stops new diagrams from landing on drop and closes the built-in editor. Diagrams already on the board keep working.',
   )
 
-  const sheetRow = page.locator('[data-testid="extensions-row"][data-extension-id="sheet"]')
-  await expect(sheetRow).toBeVisible()
+  const sheetRow = extensionRow(page, 'sheet')
   await expect(sheetRow.getByTestId('extensions-row-toggle').getByRole('button')).toHaveAttribute('data-checked', 'true')
-  await sheetRow.locator('summary').click()
-  await expect(sheetRow.getByTestId('extensions-row-description')).toHaveText(
+  const sheet = await openExtensionDetail(page, sheetRow, 'sheet')
+  await expect(sheet.getByTestId('extensions-detail-description')).toHaveText(
     'Preview spreadsheets and CSV files dropped onto the board.',
   )
-  await expect(sheetRow.getByTestId('extensions-row-disable-scope')).toHaveText(
+  await expect(sheet.getByTestId('extensions-detail-disable-scope')).toHaveText(
     'Turning this off stops new sheets from landing on drop. Sheets already on the board keep working, including opening in your default app.',
   )
 
-  // A tray tool's row never shows a disable-scope note -- its toggle's
-  // scope (tray button + palette command) is already the standing
-  // default every row implicitly shares.
-  const tableRow = page.locator('[data-testid="extensions-row"][data-extension-id="table"]')
-  await tableRow.locator('summary').click()
-  await expect(tableRow.getByTestId('extensions-row-disable-scope')).toHaveCount(0)
+  // A tray tool's pane never shows a disable-scope note -- its
+  // toggle's scope (tray button + palette command) is already the
+  // standing default every extension implicitly shares.
+  const table = await openExtensionDetail(page, extensionRow(page, 'table'), 'table')
+  await expect(table.getByTestId('extensions-detail-disable-scope')).toHaveCount(0)
 })
 
 test('Disabling the Drawing plugin removes its tray tools and palette commands after reload, keeps existing objects on the board, and re-enabling restores everything', async ({ page }) => {
@@ -283,7 +293,7 @@ test('Disabling the Drawing plugin removes its tray tools and palette commands a
 
   // Disable the Drawing plugin from its own installed-plugins row.
   await openExtensionsSection(page)
-  const drawingRow = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-drawing"]')
+  const drawingRow = pluginRow(page, 'mill-drawing')
   const drawingToggle = drawingRow.getByTestId('extensions-plugin-toggle').getByRole('button')
   await expect(drawingToggle).toHaveAttribute('data-checked', 'true')
   await drawingToggle.click()
@@ -316,7 +326,7 @@ test('Disabling the Drawing plugin removes its tray tools and palette commands a
 
   // Cleanup: re-enable the plugin, reload, delete the object.
   await openExtensionsSection(page)
-  const toggleAfter = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-drawing"]').getByTestId('extensions-plugin-toggle').getByRole('button')
+  const toggleAfter = pluginRow(page, 'mill-drawing').getByTestId('extensions-plugin-toggle').getByRole('button')
   await expect(toggleAfter).toHaveAttribute('data-checked', 'false')
   await toggleAfter.click()
   await expect(toggleAfter).toHaveAttribute('data-checked', 'true')
@@ -330,17 +340,16 @@ test('Disabling the Drawing plugin removes its tray tools and palette commands a
   await expect(shapeObjects(page)).toHaveCount(0)
 })
 
-// A declared extension setting (goal 0258 S1): the note row's expanded
-// panel renders its declared "Rich code blocks" control generically,
-// the value persists through the central settings blob, and the note
+// A declared extension setting (goal 0258 S1): the note's DETAIL pane
+// renders its declared "Rich code blocks" control generically, the
+// value persists through the central settings blob, and the note
 // editor honors it -- a code fence renders the engine's CodeMirror
 // block only while the setting is on. Cleanup restores the default
 // (off) before the file ends, per this spec's own global-flag rule.
-test('The note row offers its declared Rich code blocks setting, and the note editor honors it', async ({ page }) => {
+test('The note pane offers its declared Rich code blocks setting, and the note editor honors it', async ({ page }) => {
   await page.goto('/')
   await openExtensionsSection(page)
-  const noteRow = page.locator('[data-testid="extensions-row"][data-extension-id="note"]')
-  await noteRow.locator('summary').click()
+  await openExtensionDetail(page, extensionRow(page, 'note'), 'note')
   const settingControl = page.getByTestId('extension-setting-note-richCodeBlocks')
   await expect(settingControl).toBeVisible()
   await expect(settingControl).toContainText('Rich code blocks')
@@ -389,7 +398,7 @@ test('The note row offers its declared Rich code blocks setting, and the note ed
 
   // Turn the setting back off; a FRESH edit session drops CodeMirror.
   await openExtensionsSection(page)
-  await noteRow.locator('summary').click()
+  await openExtensionDetail(page, extensionRow(page, 'note'), 'note')
   await checkbox.uncheck()
   await expect(checkbox).not.toBeChecked()
   await page.getByRole('link', { name: 'Atlas' }).click()

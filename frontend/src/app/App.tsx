@@ -38,6 +38,7 @@ import { useBeforeQuitFlush } from './useBeforeQuitFlush'
 import { usePluginToolBridge } from './usePluginToolBridge'
 import { UnsavedChangesDialog } from './UnsavedChangesDialog'
 import { useReviewDeepLink } from './useReviewDeepLink'
+import { useSettingsRouteLanding } from './useSettingsRouteLanding'
 import { usePendingReview } from '../review/usePendingReview'
 import { useKeymapDispatch } from './useKeymapDispatch'
 import { useBrowserNotify } from './useBrowserNotify'
@@ -213,6 +214,7 @@ function App() {
   useBeforeQuitFlush();
   usePluginToolBridge();
   useReviewDeepLink(setView);
+  useSettingsRouteLanding(setView);
 
   const notifyBrowserTab = useBrowserNotify();
 

@@ -10,13 +10,14 @@ import { ConfigureService } from '../shared/bindings'
 import type { ExecEnv } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
 import { Shell, ProfileMode } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
 import { refreshExecEnvs, useConfigureEntityStore } from '../shared/configureEntityStore'
-import { envToRows, rowsToEnv, type EnvRow } from './execEnvRows'
+import { envToRows, execEnvAdvancedIsSet, rowsToEnv, type EnvRow } from './execEnvRows'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { useUISignalStore } from '../shared/uiSignalStore'
+import { AdvancedDisclosure } from './AdvancedDisclosure'
 import { ConfigureEntityPage } from './ConfigureEntityPage'
 import { useSeedLifecycle } from './useSeedLifecycle'
 import { useEntityImportExport } from './useEntityImportExport'
@@ -287,6 +288,7 @@ export function ConfigureExecEnv() {
               ))}
             </Select>
           </FormControl>
+          <AdvancedDisclosure open={execEnvAdvancedIsSet(dir, envRows, TEMP_DIR_SENTINEL)} testId="execenv-advanced">
           <FormControl>
             <FormControl.Label>{t('configureExecEnv.workingDirectory')}</FormControl.Label>
             <FormControl.Caption>{t('configureExecEnv.workingDirectoryCaption', { sentinel: TEMP_DIR_SENTINEL })}</FormControl.Caption>
@@ -339,6 +341,7 @@ export function ConfigureExecEnv() {
               {t('configureExecEnv.capturePathFromShell')}
             </Button>
           </Stack>
+          </AdvancedDisclosure>
           {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
           <Stack direction="horizontal" gap="condensed">
             <Button variant="primary" size="small" onClick={save}>{t('configureExecEnv.saveEnvironment')}</Button>

@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { wheelAt } from './fixtures/pointer'
+import { openSettings } from './fixtures/settingsNav'
 
 // docs/goals/0015-summon-quick-invoke.md's inline-hotkey-hint remainder:
 // the tab-overflow dropdown (app/WorkTabShell.tsx) now shows each
@@ -82,7 +83,7 @@ test('Settings: rebinding Close other tabs updates the SAME inline hint the tab-
   // Rebind tab.closeOthers off its ⌘⌥W default onto Ctrl+Shift+O (no
   // collision with any other command's default or a RESERVED_COMBOS
   // entry, shared/keybinding.ts).
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'shortcuts')
   const row = page.locator('[data-testid="keymap-row"][data-command-id="tab.closeOthers"]')
   await expect(row.getByTestId('keymap-row-combo')).toHaveText('⌘⌥W')
   await row.getByTestId('keymap-row-combo').click()
@@ -113,7 +114,7 @@ test('Settings: rebinding Close other tabs updates the SAME inline hint the tab-
   // Cleanup: reset the override and close the remaining tab, so this
   // doesn't leak into any other spec sharing this worker's settings file
   // (.claude/rules/testing.md's within-file/within-worker discipline).
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'shortcuts')
   const rowAgain = page.locator('[data-testid="keymap-row"][data-command-id="tab.closeOthers"]')
   await rowAgain.getByTestId('keymap-row-reset').click()
   await expect(rowAgain.getByTestId('keymap-row-combo')).toHaveText('⌘⌥W')
@@ -126,17 +127,18 @@ test('Settings: rebinding Close other tabs updates the SAME inline hint the tab-
 // Regression: a real mouse wheel over Settings never moved the page.
 // WorkTabShell's own pagePanel (the PAGE_TAB TabPanel every view
 // shares) was both height-clamped AND overflow-hidden, so a flow
-// page's real content height (Settings runs well past one screen)
+// page's real content height (Settings' Shortcuts pane runs well past
+// one screen)
 // got trapped inside that clamped box instead of propagating up to
 // `.view-pane` (index.css), the intended scroller -- `.view-pane`'s
 // own scrollHeight stayed equal to its clientHeight (nothing to
 // wheel-scroll) while pagePanel silently held the overflow, reachable
 // only via a PROGRAMMATIC scrollIntoView (a `hidden` box still honors
-// one), which is exactly why every existing TOC-click/deep-link test
+// one), which is exactly why every existing group-nav/deep-link test
 // kept passing and never caught this.
 test('Settings: a real mouse wheel actually scrolls the page', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'shortcuts')
   const viewPane = page.locator('.view-pane')
   await expect(viewPane).toBeVisible()
   // Wheel events target whatever's under the pointer, not the last-
