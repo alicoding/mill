@@ -107,9 +107,14 @@ func openDrawioEditor(c mcpCaller, dialogSel string) error {
 // Dialog's own Close control is the affordance (DrawioEditorDialog
 // wires it to the same handleExit the engine's own Exit button
 // reaches).
+//
+// Addressed by data-component, not by aria-label: Primer's IconButton
+// moves the accessible name onto its tooltip via aria-labelledby
+// whenever it renders one, leaving the button element itself with no
+// aria-label attribute at all. data-component is the stable handle.
 func closeDrawioEditor(c mcpCaller, dialogSel string) error {
 	if _, err := c.call("mouse_click", withWindow(map[string]any{
-		"selector": dialogSel + ` button[aria-label="Close"]`,
+		"selector": dialogSel + ` [data-component="Dialog.CloseButton"]`,
 	})); err != nil {
 		return fmt.Errorf("editor did not close: no Close control to click: %w", err)
 	}
