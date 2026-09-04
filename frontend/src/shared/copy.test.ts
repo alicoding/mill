@@ -146,6 +146,19 @@ describe('every noun\'s own display fields are keys too', () => {
   })
 })
 
+describe('the reload-refusal vocabulary reads as sentences', () => {
+  it('states each refusal without a dash clause', () => {
+    const keys = ['disabled', 'blocked', 'unallowed', 'unsigned', 'changed']
+    for (const k of keys) {
+      const text = copy(`views:settings.extensions.reloadRefusal.${k}`)
+      expect(text).not.toContain(' -- ')
+      expect(text).not.toContain('reloadRefusal')
+    }
+    expect(copy('views:settings.extensions.reloadRefusal.changed'))
+      .toBe('its files changed since you allowed it. Allow it again on its row')
+  })
+})
+
 describe('commandLabel', () => {
   it('is the one resolver every command surface reads through', () => {
     const newWorkflow = COMMANDS.find((c) => c.id === 'workflow.new')!
