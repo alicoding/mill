@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Stack, Text } from '@primer/react'
-import { ShieldIcon } from '@primer/octicons-react'
+import { Button, IconButton, Stack, Text } from '@primer/react'
+import { ShieldIcon, XIcon } from '@primer/octicons-react'
 import { Events } from '@wailsio/runtime'
 import { ExecutionService, SettingsService } from '../shared/bindings'
 import type { RunSummary, MCPWriteRequest } from '../shared/bindings'
@@ -40,6 +40,15 @@ export function ApprovalPrompt() {
   const [mcpWrites, setMcpWrites] = useState<MCPWriteRequest[]>([])
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState('')
+
+  // The one dismiss path this window has, shared by the close control,
+  // the empty-state fallback and "Open in Mill". The window is
+  // frameless with no native close control, so a visible one is the
+  // only way out that does not depend on the window having keyboard
+  // focus (docs/goals/0344).
+  const dismiss = useCallback(() => {
+    void background(SettingsService.DismissApprovalPrompt(), 'approvalPrompt.dismissApprovalPrompt')
+  }, [])
 
   const refresh = () => {
     void Promise.all([
@@ -99,9 +108,9 @@ export function ApprovalPrompt() {
   // real item still in flight over the wire.
   useEffect(() => {
     if (loaded && items.length === 0) {
-      void background(SettingsService.DismissApprovalPrompt(), 'approvalPrompt.dismissApprovalPrompt')
+      dismiss()
     }
-  }, [loaded, items.length])
+  }, [loaded, items.length, dismiss])
 
   const resolveWrite = (id: string, approve: boolean) => {
     setError('')
@@ -110,11 +119,20 @@ export function ApprovalPrompt() {
 
   const openInMill = () => {
     void background(SettingsService.OpenMainWindow('review'), 'approvalPrompt.openMainWindow')
-    void background(SettingsService.DismissApprovalPrompt(), 'approvalPrompt.dismissApprovalPrompt')
+    dismiss()
   }
 
   return (
     <div className={styles.prompt} data-testid="approval-prompt">
+      <IconButton
+        icon={XIcon}
+        aria-label={t('approvalPrompt.close')}
+        size="small"
+        variant="invisible"
+        className={styles.close}
+        onClick={dismiss}
+        data-testid="approval-prompt-close"
+      />
       {oldest && (
         <Stack direction="vertical" gap="condensed">
           <Stack direction="horizontal" gap="condensed" align="center">

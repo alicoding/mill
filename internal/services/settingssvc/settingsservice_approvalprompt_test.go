@@ -10,7 +10,24 @@ import "testing"
 
 func TestShowApprovalPrompt_NilWindow_DoesNotPanic(t *testing.T) {
 	s := newTestSettingsService(t)
-	s.showApprovalPrompt() // SetApprovalPromptWindow was never called -- must not panic.
+	s.showApprovalPrompt("pending-1") // SetApprovalPromptWindow was never called -- must not panic.
+}
+
+// Regression: an empty prompt is a frameless window with no chrome and
+// no dismiss, so nothing may show it without an item to present
+// (docs/goals/0344).
+func TestShouldShowApprovalPrompt_RequiresAnItem(t *testing.T) {
+	if shouldShowApprovalPrompt("") {
+		t.Error("no pending item still showed the prompt")
+	}
+	if !shouldShowApprovalPrompt("pending-1") {
+		t.Error("a pending item did not show the prompt")
+	}
+}
+
+func TestShowApprovalPrompt_NoItem_DoesNotPanic(t *testing.T) {
+	s := newTestSettingsService(t)
+	s.showApprovalPrompt("")
 }
 
 func TestDismissApprovalPrompt_NilWindow_DoesNotPanic(t *testing.T) {

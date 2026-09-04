@@ -50,7 +50,10 @@ func (s *SettingsService) SetApprovalPromptWindow(w *windowing.Window) {
 // decision point (settingsservice_attention.go) -- never independently,
 // so "notify" and "show the prompt" always agree about whether the
 // user is away.
-func (s *SettingsService) showApprovalPrompt() {
+func (s *SettingsService) showApprovalPrompt(itemID string) {
+	if !shouldShowApprovalPrompt(itemID) {
+		return
+	}
 	s.mu.Lock()
 	p := s.approvalPrompt
 	s.mu.Unlock()
@@ -60,6 +63,15 @@ func (s *SettingsService) showApprovalPrompt() {
 	windowing.ShowApp()
 	p.Show()
 }
+
+// shouldShowApprovalPrompt reports whether there is an item worth
+// putting the prompt on screen for. An empty prompt is a frameless
+// window with no chrome and no dismiss sitting on top of whatever the
+// user is doing (docs/goals/0344), so nothing may show it without an
+// item to present. The frontend keeps its own dismiss-when-empty
+// fallback for the item that resolves elsewhere between the show and
+// the window's first fetch.
+func shouldShowApprovalPrompt(itemID string) bool { return itemID != "" }
 
 // DismissApprovalPrompt hides the floating approval prompt and applies
 // the same focus-yield mitigation DismissPanel already uses -- called

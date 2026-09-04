@@ -14,6 +14,9 @@ import (
 // straight through with no extra dispatch.
 type Window struct {
 	w *application.WebviewWindow
+	// auxiliary marks a window in ADR-0033's second-window family, the
+	// ones kept out of macOS window restoration -- see WrapAuxWindow.
+	auxiliary bool
 }
 
 // WrapWindow adapts a live *application.WebviewWindow -- called only
@@ -23,7 +26,66 @@ func WrapWindow(w *application.WebviewWindow) *Window {
 	return &Window{w: w}
 }
 
-func (win *Window) Show()                     { win.w.Show() }
+// WrapAuxWindow adapts an auxiliary window -- ADR-0033's second-window
+// family (the Quick Panel, the approval prompt, the run monitor, the
+// capture window, the tray panel) -- and keeps it out of macOS window
+// restoration. AppKit re-opens every restorable window that was on
+// screen when the process ended, so a relaunch could put four floating
+// windows on screen at once (docs/goals/0344); a panel that survives a
+// relaunch is the pattern no desktop app follows. The main window is
+// wrapped with WrapWindow instead and stays restorable.
+//
+// The native NSWindow does not exist until Wails runs the window
+// (NativeWindow() is nil until then), so the flag is applied at three
+// points, each idempotent and each a no-op without a handle: here, on
+// every native show, and on this port's own Show(). What matters is
+// only that it lands before the next quit, since that is when AppKit
+// records state -- and a window never shown was never on screen for
+// AppKit to record.
+func WrapAuxWindow(w *application.WebviewWindow) *Window {
+	win := &Window{w: w, auxiliary: true}
+	// Registering before the native window exists is safe: the darwin
+	// backend replays every registered listener when it runs the
+	// window (confirmed against the pinned SDK source,
+	// webview_window_darwin.go's (*macosWebviewWindow).run).
+	w.OnWindowEvent(events.Common.WindowShow, func(*application.WindowEvent) {
+		win.markNonRestorable()
+	})
+	win.markNonRestorable()
+	return win
+}
+
+// markNonRestorable applies the non-restorable flag to the wrapped
+// window's live native handle. Reading the handle needs no marshal (it
+// is a pointer field read), the AppKit call does -- so only the call
+// is dispatched, through this package's one dispatch point.
+func (win *Window) markNonRestorable() {
+	if !win.auxiliary {
+		return
+	}
+	handle := win.w.NativeWindow()
+	if handle == nil {
+		return
+	}
+	runMainThreadAction("windowing.Window.markNonRestorable", func() {
+		setNonRestorableFn(handle)
+	})
+}
+
+// setNonRestorableFn is markNonRestorable's seam to the real AppKit
+// call -- a package var so a headless test can observe whether the
+// guards above decided to reach the native layer at all.
+var setNonRestorableFn = setNativeNonRestorable
+
+// Show orders the window in. For an auxiliary window this is also the
+// point where the native handle is guaranteed to exist (Wails runs a
+// pending window on the way), so the non-restorable flag is re-applied
+// here rather than depending on a native show notification alone.
+func (win *Window) Show() {
+	win.w.Show()
+	win.markNonRestorable()
+}
+
 func (win *Window) Hide()                     { win.w.Hide() }
 func (win *Window) Restore()                  { win.w.Restore() }
 func (win *Window) Focus()                    { win.w.Focus() }

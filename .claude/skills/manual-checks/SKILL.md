@@ -75,6 +75,17 @@ installed build can catch, and exactly how to verify it there.
   intact, no empty "No pending approvals." window appearing); then
   Quit from the tray and confirm the process actually exits, and ⌘Q
   likewise.
+- **Reopening Mill shows the main window only** (goal 0344,
+  `windowing.WrapAuxWindow` + `wireDockReopen`) -- AppKit window
+  restoration and the dock-icon reopen are both native round trips no
+  harness reaches; the prompt's own content and close control are
+  e2e-proven at /#/approvalprompt (approval-prompt.spec.ts). Verify on
+  an installed build: open the Quick Panel, the run monitor and the
+  capture window, quit Mill with all three on screen, then click the
+  dock icon -- only the main window comes back, no floating panel and
+  no frameless "No pending approvals." window; click the dock icon
+  again with Mill running and every window hidden and the main window
+  is the only thing that appears.
 - **App archetype: closing the last window must NOT quit Mill**
   (goal 0188) — `Mac.ActivationPolicy` is Regular and
   `ApplicationShouldTerminateAfterLastWindowClosed` is false, which no

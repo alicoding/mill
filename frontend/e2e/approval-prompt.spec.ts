@@ -32,6 +32,21 @@ test('the approval prompt route renders standalone and shows nothing pending', a
   await expect(page.getByRole('link', { name: 'Workflows' })).toHaveCount(0)
 })
 
+test('the approval prompt carries a visible close control', async ({ page }) => {
+  await page.goto('/#/approvalprompt')
+
+  // The window is frameless with no native close control, so the
+  // prompt's own is the one way out that does not depend on the window
+  // holding keyboard focus (docs/goals/0344).
+  const close = page.getByRole('button', { name: 'Close' })
+  await expect(close).toBeVisible()
+  await close.click()
+
+  // Dismiss hides the native window; in server mode there is none, so
+  // the route stays rendered and the click must not have errored.
+  await expect(page.getByTestId('approval-prompt')).toBeVisible()
+})
+
 test('a parked MCP write shows in the approval prompt, and Approve resolves it', async ({ page }, testInfo) => {
   await enableMCPWritesWithApprovalRequired(page)
 

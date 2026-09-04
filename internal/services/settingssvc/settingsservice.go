@@ -82,11 +82,15 @@ type SettingsService struct {
 	approvalPrompt *windowing.Window
 	runMonitor     *windowing.Window
 	// capture is the quick-capture window (settingsservice_capture.go).
-	capture  *windowing.Window
-	trig     *triggersvc.TriggerService
-	summon   *hotkey.Binding
-	summonHK triggersvc.PersistedHotkey // zero value (nil Mods) means unassigned
-	updater  *updater.Updater
+	capture *windowing.Window
+	// trayPanel is the menu-bar status panel (docs/goals/0189) --
+	// registered here so the aux-window family has one complete list
+	// (settingsservice_auxwindows.go); the tray owns showing it.
+	trayPanel *windowing.Window
+	trig      *triggersvc.TriggerService
+	summon    *hotkey.Binding
+	summonHK  triggersvc.PersistedHotkey // zero value (nil Mods) means unassigned
+	updater   *updater.Updater
 	// backupRunner is the pre-update-snapshot seam DownloadAndInstallUpdate
 	// calls before any bundle swap (goal 0100) -- an injected closure,
 	// never a direct backupsvc import (backend.md), same shape as
