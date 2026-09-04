@@ -87,17 +87,14 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `secrets.lockVault` | Lock vault | — | Global | Conditional — available only in a matching state |
 | `secrets.unlockVault` | Unlock vault | — | Global | Conditional — available only in a matching state |
 | `settings.open` | Open Settings | `⌘,` | Global | Always available |
-| `settings.open.appearance` | Open Settings → Appearance | — | Global | Always available |
-| `settings.open.backups` | Open Settings → Backups | — | Global | Always available |
-| `settings.open.contract` | Open Settings → Contract | — | Global | Always available |
-| `settings.open.extensions` | Open Settings → Extensions | — | Global | Always available |
-| `settings.open.general` | Open Settings → General | — | Global | Always available |
-| `settings.open.global-hotkey` | Open Settings → Global hotkey | — | Global | Always available |
-| `settings.open.keyboard-shortcuts` | Open Settings → Keyboard Shortcuts | — | Global | Always available |
-| `settings.open.mcp-access` | Open Settings → MCP access | — | Global | Always available |
-| `settings.open.notifications` | Open Settings → Notifications | — | Global | Always available |
-| `settings.open.remote-access` | Open Settings → Remote access | — | Global | Always available |
-| `settings.open.updates` | Open Settings → Updates | — | Global | Always available |
+| `settings.open.appearance` | Settings › Appearance | — | Global | Always available |
+| `settings.open.backups` | Settings › Backups | — | Global | Always available |
+| `settings.open.connections` | Settings › Connections | — | Global | Always available |
+| `settings.open.extensions` | Settings › Extensions | — | Global | Always available |
+| `settings.open.general` | Settings › General | — | Global | Always available |
+| `settings.open.notifications` | Settings › Notifications | — | Global | Always available |
+| `settings.open.shortcuts` | Settings › Shortcuts | — | Global | Always available |
+| `settings.open.updates` | Settings › Updates | — | Global | Always available |
 | `tab.close` | Close tab | `⌘W` | Global | Conditional — available only in a matching state |
 | `tab.closeAll` | Close all tabs | `⌘⇧W` | Global | Always available |
 | `tab.closeOthers` | Close other tabs | `⌘⌥W` | Global | Conditional — available only in a matching state |

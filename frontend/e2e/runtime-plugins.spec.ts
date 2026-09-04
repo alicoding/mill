@@ -7,6 +7,7 @@ import { RUNTIME_PLUGINS_SERVER_BASE_PORT, RUNTIME_PLUGINS_MCP_BASE_PORT } from 
 import { launchWithPlugins, EXAMPLES_PLUGINS_DIR } from './fixtures/runtimePlugins'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { clickBoardPoint, dragBetween } from './fixtures/atlasBoard'
+import { openExtensionDetail, openSettings, pluginRow } from './fixtures/settingsNav'
 
 // The runtime plugin platform, proven against a REAL out-of-tree
 // plugin (docs/goals/0249): the server boots with MILL_PLUGINS_DIR
@@ -116,25 +117,31 @@ test('the Extensions page tells the install story: plugin row with manifest meta
 	const { page, close } = await launchWithPlugins(4, { withBroken: true })
 	try {
 		await page.goto('/')
-		await page.getByRole('link', { name: 'Settings' }).click()
+		await openSettings(page, 'extensions')
 		const section = page.locator('[data-testid="extensions-installed-plugins"]')
 		await section.scrollIntoViewIfNeeded()
 		await expect(section).toBeVisible()
 
-		const bookmarkRow = section.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-bookmark"]')
+		// The row is identity only (goal 0321): name, one line, switch.
+		const bookmarkRow = pluginRow(page, 'mill-bookmark')
 		await expect(bookmarkRow).toContainText('Bookmark')
-		await expect(bookmarkRow).toContainText('1.0.0')
-		await expect(bookmarkRow).toContainText('open-url')
-		// Ingestion claims render declare-first (goal 0251): the row
-		// states what the plugin catches before it ever runs.
-		await expect(bookmarkRow.locator('[data-testid="extensions-plugin-catches"]')).toContainText('web links pasted')
 		await expect(bookmarkRow.locator('[data-testid="extensions-plugin-toggle"]')).toBeVisible()
+
+		// Version, capabilities and the ingestion claims (goal 0251)
+		// read in its detail pane -- declare-first: what the plugin
+		// catches is visible before it ever runs.
+		const bookmarkDetail = await openExtensionDetail(page, bookmarkRow, 'mill-bookmark')
+		await expect(bookmarkDetail).toContainText('1.0.0')
+		await expect(bookmarkDetail).toContainText('open-url')
+		await expect(bookmarkDetail.locator('[data-testid="extensions-detail-claim"]').first()).toBeVisible()
+		await expect(bookmarkDetail).toContainText('web links pasted')
 
 		// A broken folder is a visible row naming its exact problem --
 		// never silently skipped, never a switch pretending it could run.
-		const brokenRow = section.locator('[data-testid="extensions-plugin-row"][data-plugin-id="broken-one"]')
-		await expect(brokenRow.locator('[data-testid="extensions-plugin-error"]')).toContainText('not valid JSON')
+		const brokenRow = pluginRow(page, 'broken-one')
 		await expect(brokenRow.locator('[data-testid="extensions-plugin-toggle"]')).toHaveCount(0)
+		const brokenDetail = await openExtensionDetail(page, brokenRow, 'broken-one')
+		await expect(brokenDetail.locator('[data-testid="extensions-plugin-error"]')).toContainText('not valid JSON')
 
 		// The plugin never gets a second compiled-in-style row.
 		await expect(page.locator('[data-testid="extensions-row"][data-extension-id="bookmark"]')).toHaveCount(0)

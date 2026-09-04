@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test'
 import { waitForViewportStable } from './fixtures/animation'
 import { workflowRow } from './fixtures/canvas'
 import { wheelAt } from './fixtures/pointer'
+import { openSettings } from './fixtures/settingsNav'
 
 // Canvas navigation mode (goal 0257): the scroll gesture's meaning is a
 // per-device setting -- trackpad (default: scroll pans, ⌘-scroll zooms)
@@ -50,7 +51,7 @@ test('default trackpad mode: scroll pans the board and ⌘-scroll zooms', async 
 
 test('switching to Mouse in Settings makes scroll zoom the board', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'general')
   const control = page.getByTestId('canvas-navigation-control')
   await expect(control).toBeVisible()
   await control.getByText('Mouse', { exact: true }).click()

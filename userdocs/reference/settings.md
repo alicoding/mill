@@ -4,23 +4,14 @@ Preferences about Mill itself, not any one workflow — most apply the
 moment you change them and persist across restarts; the few that need a
 restart say so.
 
-## Appearance
-
-- **Theme** — light, dark, or follow the system. Every open Mill window
-  follows the change at once, including the Quick Panel, the menu-bar
-  panel, and the run monitor.
-- **Color scheme** — one per appearance: Default, High contrast,
-  Colorblind, Colorblind high contrast, Tritanopia, and Tritanopia high
-  contrast, plus Dimmed for the dark appearance. When the theme follows
-  the system and the system asks for more contrast, Mill switches to the
-  high-contrast version of the scheme you picked.
-- **Accent** — Mill uses your system accent color when the platform
-  reports one, and its own teal when it doesn't. There is no accent
-  picker.
-- **Density** — Comfortable or Compact. Compact tightens rows and
-  spacing across the app: list and palette rows, the Quick Panel,
-  tables, canvas card faces, and Settings itself. On a phone-sized
-  window, touch targets keep their full size either way.
+Settings is a list of groups on the left and one group's page on the
+right: General, Appearance, Shortcuts, Extensions, Connections,
+Notifications, Backups, Updates. Only the group you pick is on screen,
+and Mill reopens Settings on the group you read last. Each setting is
+one row: its name and a short line about it on the left, its control on
+the right, with **Learn more** wherever the full story lives in these
+pages. Every group is also one command away — search "Settings" in the
+command palette (⌘K) to jump straight to a group.
 
 ## General
 
@@ -34,37 +25,80 @@ restart say so.
   workflow canvas. Trackpad: scrolling pans, pinch or ⌘-scroll zooms.
   Mouse: scrolling zooms, drag pans. Stored per device, so each
   computer keeps its own choice.
-- **Summon hotkey** — a global shortcut that opens the Quick Panel
-  from any app. Recording a combo captures it even if a menu
-  shortcut already uses it; Escape cancels recording. The panel's own
-  actions — Open Mill, Open Settings, Review, Apply from clipboard,
-  and any update action currently available — match the command
-  palette exactly, since both read from the same list.
+
+## Appearance
+
+- **Color theme** — light, dark, or follow the system. Every open Mill
+  window follows the change at once, including the Quick Panel, the
+  menu-bar panel, and the run monitor.
+- **Light appearance** and **Dark appearance** — the color scheme used
+  in each: Default, High contrast, Colorblind, Colorblind high
+  contrast, Tritanopia, and Tritanopia high contrast, plus Dimmed for
+  the dark appearance. When the theme follows the system and the system
+  asks for more contrast, Mill switches to the high-contrast version of
+  the scheme you picked.
+- **Accent** — Mill uses your system accent color when the platform
+  reports one, and its own teal when it doesn't. There is no accent
+  picker.
+- **Density** — Comfortable or Compact. Compact tightens rows and
+  spacing across the app: list and palette rows, the Quick Panel,
+  tables, canvas card faces, and Settings itself. On a phone-sized
+  window, touch targets keep their full size either way.
+
+## Shortcuts
+
+- **Global hotkey** — a shortcut that opens the Quick Panel from any
+  app. Recording a combo captures it even if a menu shortcut already
+  uses it; Escape cancels recording. The panel's own actions — Open
+  Mill, Open Settings, Review, Apply from clipboard, and any update
+  action currently available — match the command palette exactly,
+  since both read from the same list.
+- **Keyboard shortcuts** — every command Mill dispatches in its own
+  window, searchable, with editable bindings. Click a combo to record
+  a new one; Reset returns the default.
 
 ## Extensions
 
-Every canvas object type is listed here with a toggle; turning one
-off hides its tray button (or, for file-backed types like Diagram and
-Sheet, stops new ones landing on drop). Some extensions offer their
-own settings inside the row — expand the row to find them. The Note
-offers **Rich code blocks**: turn it on and code fences in notes get
-syntax coloring and the full code editor, starting the next time a
-note opens for editing. The Sheet offers **Preview rows** and
+One list of everything that can put an object on the canvas: **Built
+in** (grouped into Knowledge, Files and Drawing) and **Installed** —
+the plugins in your plugins folder. Each row is the extension's icon,
+its name, one line about it, and the switch that turns it on. Turning
+one off hides its tray button (or, for file-backed types like Diagram
+and Sheet, stops new ones landing on drop); objects already on the
+board keep working. **Turn all off** flips every built-in at once.
+
+Click a row to open its page beside the list. That page carries
+everything else: the full description, what it adds (its commands,
+canvas objects, workflow steps, views and captures), what it can reach
+outside Mill, where it came from, and any settings it declares.
+
+The Note offers **Rich code blocks**: turn it on and code fences in
+notes get syntax coloring and the full code editor, starting the next
+time a note opens for editing. The Sheet offers **Preview rows** and
 **Preview columns**: how much of a spreadsheet shows on the board
 before the "showing the first…" note. The Table offers **New grid
 (experimental)**: tables render with the adopted spreadsheet grid
 (keyboard navigation, range selection, copy and paste); column
-editing stays in the current grid for now. Text and number settings save
-when you press Enter or leave the field. Installed plugins appear
-below the built-in list with their own rows, including any settings
-they declare.
+editing stays in the current grid for now. Text and number settings
+save when you press Enter or leave the field.
 
-## Keyboard shortcuts
+An installed plugin's page adds **Reload** — pick up an edit without
+restarting Mill — and a **…** menu holding **Remove…**. Removing asks
+first, then moves the plugin's folder to the Trash; objects it created
+stay on the board as unknown kinds until it is installed again. Nothing
+is deleted, so putting the folder back restores the plugin — it asks
+to be allowed again, the way any newly installed plugin does. Plugins
+that ship inside Mill have no Remove.
 
-Every command Mill exposes, searchable, with editable bindings.
-Click a row to record a new combo; Reset returns the default.
+Above the list: **Open plugins folder** and **Reload all**. Copy a
+plugin folder there, then reload it.
 
-## MCP access
+## Connections
+
+Everything that reaches Mill from outside: MCP access, Remote access,
+and the Contract export, in that order.
+
+### MCP access
 
 Lets connected agents read Mill's catalog and, if you turn on
 imports, create workflows and Configure entries. Reading never
@@ -72,7 +106,7 @@ includes secrets. Set the address here to accept connections from
 other devices, not just this Mac — changes take effect after you
 restart Mill. See "Automate with agents" for the full picture.
 
-## Remote access
+### Remote access
 
 Mill is reachable from any device on your network. Pairing is what
 keeps it yours. This Mac always has access — other devices pair once,
@@ -113,6 +147,20 @@ time. Notifications only appear while that tab isn't in view, and
 clicking one brings you straight to the item waiting for you. If
 notifications are blocked, turn them back on in your browser's site
 settings — Mill can't ask again automatically.
+
+### Contract
+
+Export the full step catalog, every data schema, and this app's
+version as one file, or the skill doc that explains how to work with
+Mill — for an agent that can't reach Mill over MCP.
+
+## Notifications
+
+- **Away after (seconds)** — how long this Mac sits idle before a
+  parked decision follows you with a floating approval prompt. Losing
+  focus entirely always counts as away.
+- To get alerts that stay on screen rather than banners that
+  auto-dismiss, allow them in System Settings > Notifications > Mill.
 
 ## Backups
 

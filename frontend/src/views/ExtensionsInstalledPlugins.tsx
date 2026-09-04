@@ -1,207 +1,104 @@
-import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionList, Button, Stack, Text, ToggleSwitch } from '@primer/react'
-import { AlertIcon } from '@primer/octicons-react'
+import { Button, Stack, Text } from '@primer/react'
+import { PlugIcon } from '@primer/octicons-react'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { SettingsService } from '../shared/bindings'
 import { pluginLoadStates } from '../plugins/loader'
-import { usePluginReloadVersion } from '../plugins/pluginReloadSignal'
-import { findCommand } from '../shared/commands'
-import { settingDeclsFromManifest } from '../plugins/pluginSettings'
-import { ExtensionSettingControl } from './ExtensionSettingControl'
+import { ExtensionRow } from './ExtensionRow'
 import { ExtensionsLinkPasteControl } from './ExtensionsLinkPasteControl'
 import { ExtensionsTrustBar } from './ExtensionsTrustBar'
 import { refreshDisabledExtensions, useExtensionEnablementStore } from '../shared/extensionEnablementStore'
-import styles from '../shared/ListCard.module.css'
+import listStyles from '../shared/ListCard.module.css'
+import styles from './ExtensionsSection.module.css'
 
-// The installed-plugins section of Settings > Extensions (docs/goals/
-// 0249): every folder in the plugins directory, with its manifest
-// metadata and what actually happened to it this boot -- loaded,
-// disabled, or visibly broken with the exact reason. The install
-// story lives here too: the folder is one click away, and a fresh
-// install takes effect on reload (plugins load at app start).
-// The row states a plugin's ingestion claims (docs/goals/0251) so
-// what a plugin catches is visible before it ever runs -- the same
-// declare-first posture the capabilities line carries.
-function claimedExtensions(p: PluginInfo): string[] {
-	return (p.Manifest.contributes?.canvasObjects ?? []).flatMap((c) => c.fileExtensions ?? [])
+// The Installed half of Settings > Extensions (goal 0321, re-shaping
+// goal 0249's section): every folder in the plugins directory as ONE
+// row apiece, in the SAME row component the built-in list uses -- the
+// two lists used to be differently-shaped blocks on one page, which is
+// what made the section read as two features rather than one
+// inventory. What each plugin contributes, what it can reach, and why
+// it is not running now live in the detail pane a row opens.
+//
+// The install story stays here, beside the list it explains: the
+// folder is one click away, and a fresh install takes effect on
+// reload (plugins load at app start).
+
+// A plugin the user cannot simply switch on from the row -- policy or
+// a pending review answers first, in the detail pane.
+function rowControl(status: string | undefined, error: string | undefined): 'switch' | 'none' {
+  if (error) return 'none'
+  if (status === 'blocked' || status === 'unallowed' || status === 'changed' || status === 'unsigned') return 'none'
+  return 'switch'
 }
 
-function claimsURLPastes(p: PluginInfo): boolean {
-	return (p.Manifest.contributes?.canvasObjects ?? []).some((c) => c.pastesURLs)
-}
+export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
+  plugins: PluginInfo[] | null
+  selectedId: string | null
+  onSelect: (id: string) => void
+}) {
+  const { t } = useTranslation('views')
+  const disabledIds = useExtensionEnablementStore((s) => s.disabledExtensionIds)
+  const states = pluginLoadStates()
 
-export function ExtensionsInstalledPlugins() {
-	const { t } = useTranslation('views')
-	const disabledIds = useExtensionEnablementStore((s) => s.disabledExtensionIds)
-	const [plugins, setPlugins] = useState<PluginInfo[] | null>(null)
+  const toggle = (id: string, enabled: boolean) => {
+    SettingsService.SetExtensionEnabled(id, enabled).then(refreshDisabledExtensions).catch(console.error)
+  }
+  const openFolder = () => {
+    PluginService.RevealPluginsDir().catch(console.error)
+  }
 
-	useEffect(() => {
-		PluginService.ListPlugins().then((p) => setPlugins(p ?? [])).catch(() => setPlugins([]))
-	}, [])
-
-	const toggle = (id: string, enabled: boolean) => {
-		SettingsService.SetExtensionEnabled(id, enabled).then(refreshDisabledExtensions).catch(console.error)
-	}
-	const allow = (id: string) => {
-		SettingsService.SetPluginAllowed(id, true).then(() => setAllowedNow((prev) => [...prev, id])).catch(console.error)
-	}
-	const [allowedNow, setAllowedNow] = useState<string[]>([])
-	// Re-renders this list after a reload, so a row's status (and the
-	// Reload command's own enablement) reflects what just happened.
-	usePluginReloadVersion()
-	// Per-plugin reload (goal 0319) renders the registry command, never
-	// a second code path: the palette entry and this button are the
-	// same command, and its enabled() is the one truth about whether
-	// reloading this plugin could do anything.
-	const reloadCommand = (id: string) => findCommand(`plugin.reload.${id}`)
-	const openFolder = () => {
-		PluginService.RevealPluginsDir().catch(console.error)
-	}
-	const states = pluginLoadStates()
-
-	return (
-		<Stack direction="vertical" gap="condensed" data-testid="extensions-installed-plugins">
-			<Stack direction="horizontal" justify="space-between" align="center" gap="condensed">
-				<Text as="h3" size="small" weight="semibold" className={styles.muted}>
-					{t('settings.extensions.pluginsTitle')}
-				</Text>
-				<Stack direction="horizontal" gap="condensed">
-					<Button size="small" onClick={openFolder} data-testid="extensions-open-plugins-folder">
-						{t('settings.extensions.openPluginsFolder')}
-					</Button>
-					<Button size="small" onClick={() => window.location.reload()} data-testid="extensions-reload">
-						{t('settings.extensions.reload')}
-					</Button>
-				</Stack>
-			</Stack>
-			<Text as="p" size="small" className={styles.muted}>
-				{t('settings.extensions.installHint')}
-			</Text>
-			{plugins !== null && plugins.length === 0 && (
-				<Text size="small" className={styles.muted} data-testid="extensions-no-plugins">
-					{t('settings.extensions.noPlugins')}
-				</Text>
-			)}
-			<ExtensionsTrustBar />
-			{plugins !== null && <ExtensionsLinkPasteControl plugins={plugins} disabledIds={disabledIds} />}
-			{plugins !== null && plugins.length > 0 && (
-				<ActionList role="list" showDividers>
-					{plugins.map((p) => {
-						const id = p.Manifest.id
-						const runtime = states.get(id)
-						const error = p.Error || (runtime?.status === 'error' ? runtime.error : '')
-						const enabled = !disabledIds.includes(id)
-						return (
-							<ActionList.Item key={id} data-testid="extensions-plugin-row" data-plugin-id={id}>
-								<Stack direction="horizontal" justify="space-between" align="center" gap="condensed">
-									<Stack direction="vertical" gap="none">
-										<Stack direction="horizontal" gap="condensed" align="center">
-											<Text weight="semibold" id={`plugin-name-${id}`}>{p.Manifest.name || id}</Text>
-											<Text size="small" className={styles.muted}>
-												{p.Manifest.version}
-												{p.Manifest.author ? ` · ${p.Manifest.author}` : ''}
-												{p.Builtin ? ` · ${t('settings.extensions.pluginBuiltIn')}` : ''}
-											</Text>
-										</Stack>
-										{p.Manifest.description && <Text size="small">{p.Manifest.description}</Text>}
-										{(p.Manifest.capabilities?.length ?? 0) > 0 && (
-											<Text size="small" className={styles.muted}>
-												{t('settings.extensions.pluginCapabilities', { list: (p.Manifest.capabilities ?? []).join(', ') })}
-											</Text>
-										)}
-										{claimedExtensions(p).length > 0 && (
-											<Text size="small" className={styles.muted} data-testid="extensions-plugin-catches">
-												{t('settings.extensions.pluginCatchesFiles', { list: claimedExtensions(p).join(', ') })}
-											</Text>
-										)}
-										{(p.Manifest.contributes?.network?.length ?? 0) > 0 && (
-											<Text size="small" className={styles.muted} data-testid="extensions-plugin-network">
-												{(p.Manifest.contributes?.network ?? []).some((n) => n.host === '*')
-													? t('settings.extensions.pluginReachesAnyHost')
-													: t('settings.extensions.pluginReachesHosts', { list: (p.Manifest.contributes?.network ?? []).map((n) => n.host).join(', ') })}
-											</Text>
-										)}
-										{(p.Manifest.contributes?.views?.length ?? 0) > 0 && (
-											<Text size="small" className={styles.muted} data-testid="extensions-plugin-views">
-												{t('settings.extensions.pluginViews', { list: (p.Manifest.contributes?.views ?? []).map((v) => v.title).join(', ') })}
-											</Text>
-										)}
-										{(p.Manifest.contributes?.steps?.length ?? 0) > 0 && (
-											<Text size="small" className={styles.muted} data-testid="extensions-plugin-steps">
-												{t('settings.extensions.pluginSteps', { list: (p.Manifest.contributes?.steps ?? []).map((s) => s.label).join(', ') })}
-											</Text>
-										)}
-										{claimsURLPastes(p) && (
-											<Text size="small" className={styles.muted} data-testid="extensions-plugin-catches">
-												{t('settings.extensions.pluginCatchesLinks')}
-											</Text>
-										)}
-										{error && (
-											<Stack direction="horizontal" gap="condensed" align="center">
-												<AlertIcon size={14} />
-												<Text size="small" data-testid="extensions-plugin-error">{error}</Text>
-											</Stack>
-										)}
-										{!error && runtime?.status === 'disabled' && (
-											<Text size="small" className={styles.muted}>{t('settings.extensions.pluginDisabledNote')}</Text>
-										)}
-										{!error && runtime?.status === 'blocked' && (
-											<Text size="small" className={styles.muted} data-testid="extensions-plugin-blocked">{t('settings.extensions.pluginBlockedNote')}</Text>
-										)}
-										{!error && runtime?.status === 'unsigned' && (
-											<Text size="small" className={styles.muted} data-testid="extensions-plugin-unsigned">{t('settings.extensions.pluginUnsignedNote')}</Text>
-										)}
-										{!error && (runtime?.status === 'unallowed' || runtime?.status === 'changed') && (
-											<Stack direction="horizontal" gap="condensed" align="center" data-testid="extensions-plugin-review">
-												<Text size="small" weight="semibold">
-													{allowedNow.includes(id)
-														? t('settings.extensions.pluginAllowedNote')
-														: runtime.status === 'changed' ? t('settings.extensions.pluginChangedNote') : t('settings.extensions.pluginAwaitingNote')}
-												</Text>
-												{!allowedNow.includes(id) && (
-													<Button size="small" variant="primary" onClick={() => allow(id)} data-testid="extensions-plugin-allow">
-														{t('settings.extensions.pluginAllow')}
-													</Button>
-												)}
-											</Stack>
-										)}
-										{!error && settingDeclsFromManifest(p.Manifest).length > 0 && (
-											<Stack direction="vertical" gap="condensed" data-testid="extensions-plugin-settings">
-												{settingDeclsFromManifest(p.Manifest).map((setting) => (
-													<ExtensionSettingControl key={setting.key} extensionId={id} setting={setting} />
-												))}
-											</Stack>
-										)}
-									</Stack>
-									<Stack direction="horizontal" gap="condensed" align="center">
-										{reloadCommand(id)?.enabled?.() && (
-											<Button
-												size="small"
-												onClick={() => reloadCommand(id)?.run()}
-												aria-label={t('settings.extensions.pluginReloadAria', { name: p.Manifest.name || id })}
-												data-testid="extensions-plugin-reload"
-											>
-												{t('settings.extensions.pluginReload')}
-											</Button>
-										)}
-										{!error && runtime?.status !== 'blocked' && runtime?.status !== 'unallowed' && runtime?.status !== 'changed' && runtime?.status !== 'unsigned' && (
-											<ToggleSwitch
-												size="small"
-												checked={enabled}
-												onChange={(on) => toggle(id, on)}
-												aria-labelledby={`plugin-name-${id}`}
-												data-testid="extensions-plugin-toggle"
-											/>
-										)}
-									</Stack>
-								</Stack>
-							</ActionList.Item>
-						)
-					})}
-				</ActionList>
-			)}
-		</Stack>
-	)
+  return (
+    <Stack direction="vertical" gap="condensed" data-testid="extensions-installed-plugins">
+      <Stack direction="horizontal" justify="space-between" align="center" gap="condensed">
+        <Text as="h3" size="small" weight="semibold" className={listStyles.muted}>
+          {t('settings.extensions.installedTitle')}
+        </Text>
+        <Stack direction="horizontal" gap="condensed">
+          <Button size="small" onClick={openFolder} data-testid="extensions-open-plugins-folder">
+            {t('settings.extensions.openPluginsFolder')}
+          </Button>
+          <Button size="small" onClick={() => window.location.reload()} data-testid="extensions-reload">
+            {t('settings.extensions.reload')}
+          </Button>
+        </Stack>
+      </Stack>
+      <Text as="p" size="small" className={listStyles.muted}>
+        {t('settings.extensions.installHint')}
+      </Text>
+      <ExtensionsTrustBar />
+      {plugins !== null && <ExtensionsLinkPasteControl plugins={plugins} disabledIds={disabledIds} />}
+      {plugins !== null && plugins.length === 0 && (
+        <Text size="small" className={listStyles.muted} data-testid="extensions-no-plugins">
+          {t('settings.extensions.noPlugins')}
+        </Text>
+      )}
+      {plugins !== null && plugins.length > 0 && (
+        <ul className={styles.rows} aria-label={t('settings.extensions.installedTitle')}>
+          {plugins.map((p) => {
+            const id = p.Manifest.id
+            const runtime = states.get(id)
+            const error = p.Error || (runtime?.status === 'error' ? runtime.error : '')
+            return (
+              <li key={id} data-testid="extensions-plugin-row" data-plugin-id={id}>
+                <ExtensionRow
+                  id={id}
+                  icon={PlugIcon}
+                  name={p.Manifest.name || id}
+                  description={p.Manifest.description}
+                  control={rowControl(runtime?.status, error)}
+                  enabled={!disabledIds.includes(id)}
+                  selected={selectedId === id}
+                  builtInLabel={t('settings.extensions.pluginBuiltIn')}
+                  toggleTestId="extensions-plugin-toggle"
+                  onSelect={() => onSelect(id)}
+                  onToggle={(enabled) => toggle(id, enabled)}
+                />
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </Stack>
+  )
 }

@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test'
 import { findEmptyBoardPoint, placeNoteClear } from './fixtures/atlasEmptyRegion'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { clickBoardPoint, deleteSticky } from './fixtures/atlasBoard'
+import { openSettings } from './fixtures/settingsNav'
 
 // Explicit save mode (goal 0295 S2b): Settings > General "Save changes:
 // when I choose" makes a note's click-away HOLD its text (dirty
@@ -78,7 +79,7 @@ test.afterEach(async ({ page }) => {
 
 test('Settings > General offers the save mode and the caption follows the choice', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'general')
   const control = page.getByTestId('save-mode-control')
   await expect(control).toBeVisible()
   await expect(page.getByTestId('save-mode-caption')).toHaveText('Edits save as you make them.')

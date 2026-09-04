@@ -3,6 +3,7 @@ import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { launchWithPlugins, runFromPalette } from './fixtures/runtimePlugins'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
+import { openPluginDetail } from './fixtures/settingsNav'
 
 // The Request tester example plugin (goal 0291) and its secretRef
 // door (goal 0281, ADR-0048), split from runtime-plugin-doors.spec.ts
@@ -19,10 +20,8 @@ test('the Request tester sends to a host you approve in Review, shows the respon
 	const { page, close } = await launchWithPlugins(24)
 	try {
 		await page.goto('/')
-		await page.getByRole('link', { name: 'Settings' }).click()
-		const row = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-request-tester"]')
-		await row.scrollIntoViewIfNeeded()
-		await expect(row.getByTestId('extensions-plugin-network')).toHaveText('Can reach any host you approve, one request at a time')
+		const detail = await openPluginDetail(page, 'mill-request-tester')
+		await expect(detail.getByTestId('extensions-detail-reach')).toHaveText('Can reach any host you approve, one request at a time')
 
 		await page.getByRole('link', { name: 'Atlas' }).click()
 		await expect(page.getByTestId('atlas-board')).toBeVisible()
@@ -82,10 +81,8 @@ test('a secretRef setting picks a vault entry; the request parks naming it, send
 
 		// The picker lists the vault by title and stores only the id.
 		await page.reload()
-		await page.getByRole('link', { name: 'Settings' }).click()
-		const row = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="mill-request-tester"]')
-		await row.scrollIntoViewIfNeeded()
-		const picker = row.getByTestId('extension-setting-mill-request-tester-auth').getByTestId('secret-ref-picker')
+		const detail = await openPluginDetail(page, 'mill-request-tester')
+		const picker = detail.getByTestId('extension-setting-mill-request-tester-auth').getByTestId('secret-ref-picker')
 		await expect(picker).toBeVisible()
 		await picker.selectOption({ label: 'E2E API token' })
 		await expect(picker.locator('option:checked')).toHaveText('E2E API token')

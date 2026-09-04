@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures/server'
 import { connectMCPClient } from './mcpTestClient'
 import { clickRowAction } from './inventoryRow'
+import { openSettings } from './fixtures/settingsNav'
 
 // Goal 0017's flagship scenario, direct from the audit's own root
 // cause: before this goal, ONLY mcpsvc emitted mill-data-changed --
@@ -21,7 +22,7 @@ import { clickRowAction } from './inventoryRow'
 // for specs that want to exercise the approval banner instead).
 async function enableUnattendedMCPWrites(page: Page): Promise<void> {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'connections')
   const writeCheckbox = page.getByTestId('mcp-write-enabled-checkbox')
   await expect(writeCheckbox).toBeEnabled()
   if (!(await writeCheckbox.isChecked())) {
@@ -38,7 +39,7 @@ async function enableUnattendedMCPWrites(page: Page): Promise<void> {
 
 async function restoreMCPWriteDefaults(page: Page): Promise<void> {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Settings' }).click()
+  await openSettings(page, 'connections')
   const approvalCheckbox = page.getByTestId('mcp-write-approval-checkbox')
   if (await approvalCheckbox.count() && !(await approvalCheckbox.isChecked())) {
     await approvalCheckbox.click()
