@@ -371,6 +371,7 @@ func main() {
 	// from here, for one uniform startup path.
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
 		triggerService.Sync(compositionService.Workflows())
+		wiring.SubscribeMCPPluginReload(millMCPService) // needs the running event bus (docs/goals/0324)
 		settingsService.RestoreSummonHotkey()
 		// docs/goals/0016-keymap-system.md: releases the native File >
 		// Close (⌘W) menu accelerator so that keypress falls through to

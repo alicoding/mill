@@ -74,11 +74,19 @@ func (c mcpPluginCatalog) RunCommand(pluginID, commandID string) (string, error)
 }
 
 // WireMCPPluginCatalog makes every runnable plugin's declared
-// contributions reachable over MCP, and keeps the tool list current:
-// turning a plugin on or off runs through SettingsService, and a
-// per-plugin reload announces itself from the page.
+// contributions reachable over MCP and keeps the tool list current
+// through the enable/disable path, which is a bound call into
+// SettingsService. Called at the composition root, before the
+// application exists.
 func WireMCPPluginCatalog(mill *mcpsvc.MillMCPService, plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService) {
 	mill.SetPluginCatalog(mcpPluginCatalog{plugins: plugins})
 	settings.SetPluginPolicyChanged(mill.SyncPluginTools)
+}
+
+// SubscribeMCPPluginReload listens for the page's reload announcement.
+// It must run from ApplicationStarted, never at wiring time: the event
+// bus does not exist until the application does, and subscribing early
+// silently succeeds while receiving nothing.
+func SubscribeMCPPluginReload(mill *mcpsvc.MillMCPService) {
 	windowing.Subscribe(contributionsChangedEvent, func(any) { mill.SyncPluginTools() })
 }
