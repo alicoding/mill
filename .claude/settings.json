@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"Reminder: if this is new/ad-hoc work, name where it lands vs docs/goals/BACKLOG.md before implementing.\"}}'"
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"Reminder: if this is new/ad-hoc work, name where it lands vs docs/goals/BACKLOG.md before implementing. A goal enters Plan only with Precedent / Today / Gap filled in its goal file (CLAUDE.md Research step).\"}}'"
           }
         ]
       }

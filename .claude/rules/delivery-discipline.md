@@ -7,7 +7,11 @@ repo already runs, consolidated here so an agent checks ONE list, not
 four documents.
 
 ## Definition of Ready — before a BACKLOG.md item enters a session
-- Precedent checked, not assumed (CLAUDE.md Research→Plan→Implement).
+- The goal file carries the three Research headings, filled, before
+  its Plan: **Precedent** (the best-in-class tools for this job and how
+  each does it, from a real search), **Today** (what Mill does now, read
+  and probed), **Gap** (the delta the Plan answers) — CLAUDE.md
+  Research→Plan→Implement. A Plan with no Gap above it is not Ready.
 - A capability map exists for any schema/adopt-vs-build call with more
   than one real future use (CLAUDE.md Plan step, SPEC §3.3's worked
   example).
