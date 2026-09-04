@@ -24,7 +24,11 @@
    a lone text field or checkbox row at full window width reads as
    mostly-empty, and 960px is wide enough that ManualSchemaEditor's
    multi-input Parameters/Output table rows don't wrap. */
+/* width: 100% -- a flex item with auto side margins shrink-wraps; the
+   definite width keeps every narrow page the same size so nothing inside
+   it moves between panes -- goal 0336. */
 .narrow {
+    width: 100%;
     max-width: 960px;
     margin: 0 auto;
     padding: var(--s-3) var(--s-4) var(--s-5);
