@@ -14,6 +14,9 @@ pre-commit:
     - name: comment-hygiene
       glob: "*.{go,ts,tsx}"
       run: ./scripts/check-comment-hygiene.sh
+    - name: framework-api-first
+      glob: "*.go"
+      run: ./scripts/check-framework-api-first.sh
     - name: ui-copy
       glob: "frontend/src/locales/**/*.json"
       run: ./scripts/check-ui-copy.sh

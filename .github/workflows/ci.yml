@@ -120,6 +120,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-comment-hygiene.sh
 
+  # Mirrors lefthook.yml's own framework-api-first job -- same script
+  # (.claude/rules/architecture.md's "reading its whole API" paragraph is
+  # the standard it enforces). Grep-only against go.mod, so like
+  # comment-hygiene it needs no build setup.
+  framework-api-first:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-framework-api-first.sh
+
   # Mirrors lefthook.yml's own ui-copy job -- same script
   # (.claude/rules/ux-writing.md is the standard it enforces).
   ui-copy:
@@ -610,6 +621,7 @@ jobs:
       - file-loc-limit
       - workflow-lint
       - comment-hygiene
+      - framework-api-first
       - sdk-comments
       - ui-copy
       - toolbar-action-testids
