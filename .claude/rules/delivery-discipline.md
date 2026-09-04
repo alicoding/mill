@@ -146,7 +146,14 @@ A BACKLOG.md entry with the same DoR/DoD as any goal — never a second
 register, never a bare TODO as the record (a comment may point at a
 goal/ADR id, never stand alone).
 
-## Deferrals need a home (goal 0128)
+## Deferrals need a home (goal 0128) — and a confirmed precedent gap has none
+A gap between a researched, confirmed best-in-class precedent and what
+Mill has today is NOT deferrable: it is built in the goal that found
+it (CLAUDE.md's Research step, owner-set 2026-09-04). An agent that
+would defer it reports it instead; the orchestrator builds it or the
+owner narrows it in the session. Everything else below governs the
+deferrals that remain legal.
+
 A deferral is only legal when the SAME sentence names its tracking home:
 a goal number, a BACKLOG line, a SPEC `OPEN` item, or an explicit revisit
 trigger ("revisit when X"). "Out of scope" / "not built" / "future work"
