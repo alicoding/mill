@@ -8,6 +8,7 @@ import { test, expect } from './fixtures/server'
 import { clickCanvasNode } from './fixtures/canvasNode'
 import { activePanel, dragPaletteItemToCanvas } from './fixtures/canvas'
 import { stepOutput, tryStep } from './fixtures/stepTest'
+import { openInspectorTab } from './fixtures/inspectorTabs'
 
 async function openPaletteOnNewWorkflow(page: Page): Promise<void> {
   await page.goto('/')
@@ -22,6 +23,7 @@ test('a pure step runs alone on typed input and shows its output in place', asyn
   const panel = activePanel(page)
   await clickCanvasNode(page, panel, 'Transform text')
   // No run has reached this draft's step: the replay fill is off.
+  await openInspectorTab(panel, 'test')
   await expect(panel.getByTestId('step-test-use-last-run')).toBeDisabled()
   const section = await tryStep(page, panel, 'abc')
   // The step's default operation is SHA-256.

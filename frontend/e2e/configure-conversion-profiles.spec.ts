@@ -11,6 +11,7 @@ import { fillCodeEditor } from './fixtures/codeEditor'
 import { clickCanvasNode } from './fixtures/canvasNode'
 import { activePanel, dragPaletteItemToCanvas } from './fixtures/canvas'
 import { stepOutput, tryStep } from './fixtures/stepTest'
+import { openInspectorTab } from './fixtures/inspectorTabs'
 import { clickRowAction } from './inventoryRow'
 
 const rows = (page: import('@playwright/test').Page) => page.locator('[data-testid="inventory-row"][data-entity="conversionprofile"]')
@@ -71,7 +72,9 @@ test('the converter step offers a Conversion profile and Try this step honors th
   // become task marks.
   const withEvery = await tryStep(page, panel, WORD_HTML)
   await expect(await stepOutput(withEvery)).toContainText('- [x] Tag the build')
-  // Pick the plain profile: the glyph letter survives raw.
+  // Pick the plain profile: the glyph letter survives raw. Back on
+  // Parameters first -- tryStep left the inspector on its Test tab.
+  await openInspectorTab(panel, 'parameters')
   await panel.getByTestId('entity-ref-field').selectOption({ label: 'Example: Plain HTML' })
   const withPlain = await tryStep(page, panel, WORD_HTML)
   await expect(await stepOutput(withPlain)).toContainText('þ Tag the build')

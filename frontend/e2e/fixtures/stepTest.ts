@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 import { fillCodeEditor } from './codeEditor'
+import { openInspectorTab } from './inspectorTabs'
 
 // The step-test door as an e2e fixture (ADR-0051 §5): drive the
 // selected step's "Try this step" section in the given inspector panel
@@ -8,6 +9,7 @@ import { fillCodeEditor } from './codeEditor'
 // from the converter-only Try it (step-io-contract.spec.ts) once every
 // step gained the surface.
 export async function tryStep(page: Page, panel: Locator, input: string): Promise<Locator> {
+	await openInspectorTab(panel, 'test')
 	const section = panel.getByTestId('step-test-section')
 	await expect(section).toBeVisible()
 	await fillCodeEditor(page, 'step-test-input', input)

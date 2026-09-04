@@ -70,7 +70,6 @@ export function StepDetailOverlay({ node, workflowId, attrs, nodeType, sameKindN
         <div className={styles.pane}>
           <NodeConfigFields
             node={node}
-            workflowId={workflowId}
             attrs={attrs}
             nodeType={nodeType}
             sameKindNodeTypes={sameKindNodeTypes}
