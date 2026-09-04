@@ -5,8 +5,13 @@
   "description": "A freehand drawing tool: drag on the board to draw a stroke that lands as its own object.",
   "author": "Mill examples",
   "minMillVersion": "0.14.1",
+  "icon": "icon.png",
   "capabilities": [],
   "contributes": {
-    "canvasObjects": [{ "kind": "scribble" }]
+    "canvasObjects": [
+      {
+        "kind": "scribble"
+      }
+    ]
   }
 }

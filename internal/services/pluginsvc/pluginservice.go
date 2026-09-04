@@ -34,14 +34,20 @@ import (
 // exception (docs/goals/0251) -- both ingestion chains must consult
 // them without running plugin code, so they live in Contributes.
 type Manifest struct {
-	ID             string              `json:"id"`
-	Name           string              `json:"name"`
-	Version        string              `json:"version"`
-	Description    string              `json:"description"`
-	Author         string              `json:"author"`
-	MinMillVersion string              `json:"minMillVersion"`
-	Capabilities   []string            `json:"capabilities"`
-	Contributes    ManifestContributes `json:"contributes"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Version        string `json:"version"`
+	Description    string `json:"description"`
+	Author         string `json:"author"`
+	MinMillVersion string `json:"minMillVersion"`
+	// Icon names this plugin's 128x128 icon file, relative to its own
+	// folder (the standard's identity rule -- pluginsvc/conform_standard.go
+	// checks it decodes to exactly that size). A sibling file with
+	// "@dark" inserted before the extension, when present, is the
+	// dark-appearance variant.
+	Icon         string              `json:"icon"`
+	Capabilities []string            `json:"capabilities"`
+	Contributes  ManifestContributes `json:"contributes"`
 }
 
 // ManifestContributes is the manifest's declarative contribution
@@ -318,7 +324,7 @@ func manifestProblem(m Manifest, folder string, mainJSExists bool, appVersion st
 			return fmt.Sprintf("unknown capability %q", c)
 		}
 	}
-	if problem := validateContributes(m.Contributes); problem != "" {
+	if problem := validateContributes(m.ID, m.Contributes); problem != "" {
 		return problem
 	}
 	return checkMinMillVersion(m.MinMillVersion, appVersion)
@@ -350,56 +356,6 @@ func checkMinMillVersion(minVersion, appVersion string) string {
 	appV = strings.TrimSuffix(appV, semver.Prerelease(appV))
 	if semver.Compare(appV, minV) < 0 {
 		return fmt.Sprintf("needs Mill %s or newer -- this is Mill %s", minVersion, appVersion)
-	}
-	return ""
-}
-
-// fileExtensionPattern pins a contributed extension claim to the
-// ".ext" shape the drop router compares against (unitRegistry's own
-// extensionOf yields a lowercased dot-prefixed extension).
-var fileExtensionPattern = regexp.MustCompile(`^\.[a-z0-9]+$`)
-
-// validateContributes fail-closes ingestion claims the same way an
-// unknown capability does: a malformed claim blocks the load with a
-// human-readable reason, never routes half-right.
-func validateContributes(c ManifestContributes) string {
-	for _, obj := range c.CanvasObjects {
-		if !pluginIDPattern.MatchString(obj.Kind) {
-			return fmt.Sprintf("contributed canvas object kind %q must be lowercase letters, digits, and hyphens", obj.Kind)
-		}
-		for _, ext := range obj.FileExtensions {
-			if !fileExtensionPattern.MatchString(ext) {
-				return fmt.Sprintf("contributed file extension %q must look like \".ext\" in lowercase", ext)
-			}
-		}
-	}
-	if problem := validateNetwork(c.Network); problem != "" {
-		return problem
-	}
-	if problem := validateSteps(c.Steps); problem != "" {
-		return problem
-	}
-	if problem := validateCaptures(c.Captures); problem != "" {
-		return problem
-	}
-	if problem := validateViews(c.Views); problem != "" {
-		return problem
-	}
-	if problem := validateCommands(c.Commands); problem != "" {
-		return problem
-	}
-	if problem := validateTools(c); problem != "" {
-		return problem
-	}
-	seen := map[string]bool{}
-	for _, st := range c.Settings {
-		if problem := validateSettingContribution(st); problem != "" {
-			return problem
-		}
-		if seen[st.Key] {
-			return fmt.Sprintf("contributed setting %q is declared twice", st.Key)
-		}
-		seen[st.Key] = true
 	}
 	return ""
 }

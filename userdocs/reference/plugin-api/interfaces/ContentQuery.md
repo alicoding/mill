@@ -14,7 +14,7 @@
 optional kind?: string;
 ```
 
-kind narrows to 'card', 'note', or one object kind; omitted lists
+Narrows to 'card', 'note', or one object kind; omitted lists
 everything.
 
 ***
@@ -25,4 +25,4 @@ everything.
 optional parentId?: string;
 ```
 
-parentId narrows to one card's direct children.
+Narrows to one card's direct children.

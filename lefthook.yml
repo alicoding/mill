@@ -29,11 +29,26 @@ pre-commit:
       run: go test ./internal/docsgen/
     - name: sdk-freshness
       # The plugin SDK's committed type package and its generated API
-      # reference both derive from frontend/src/plugins/sdk.ts (goal
-      # 0319) -- same commit-and-verify shape as docsgen-freshness just
-      # above, one script CI's own sdk-freshness job also calls.
-      glob: "{frontend/src/plugins/sdk.ts,frontend/plugin-sdk/**,frontend/typedoc.json,userdocs/reference/plugin-api/**}"
+      # reference both derive from frontend/src/plugins/sdk.ts and its
+      # sdk/ contribution-kind files -- same commit-and-verify shape as
+      # docsgen-freshness just above, one script CI's own sdk-freshness
+      # job also calls.
+      glob: "{frontend/src/plugins/sdk.ts,frontend/src/plugins/sdk/**,frontend/plugin-sdk/**,frontend/typedoc.json,userdocs/reference/plugin-api/**}"
       run: ./scripts/check-sdk-freshness.sh
+    - name: sdk-comments
+      # The generated SDK types/reference must read as author-facing
+      # documentation, never repository internals -- one script CI's
+      # own sdk-comments job also calls.
+      glob: "{frontend/src/plugins/sdk.ts,frontend/src/plugins/sdk/**,frontend/plugin-sdk/**,userdocs/reference/plugin-api/**}"
+      run: ./scripts/check-sdk-comments.sh
+    - name: plugin-typecheck
+      root: "frontend/"
+      glob: "{frontend/plugin-sdk/**,examples/plugins/**/*.js}"
+      run: npm run plugin:typecheck
+    - name: plugin-lint
+      root: "frontend/"
+      glob: "examples/plugins/**/*.js"
+      run: npm run plugin:lint
     - name: doc-paths
       # docs/ is a private nested checkout (absent on public clones):
       # skip silently when missing; mill-docs' own CI is the enforcing

@@ -14,13 +14,13 @@
 optional mirror?: object;
 ```
 
-For a file-source object: the mirrored file's current bytes as a
+For a file-backed object: the mirrored file's current bytes as a
 data: URL once loaded (null while loading), and whether the read
-failed. Binary files (images, sheets, pdf) are base64 data: URLs
-with their MIME type; text files (markdown source, json, csv,
-.env) are text/plain data: URLs, percent-encoded. renderFace
-re-runs when either changes. Absent for board-local and url
-objects.
+failed. Binary files (images, sheets, pdf) arrive as base64 data:
+URLs with their MIME type; text files (markdown, json, csv, .env)
+arrive as percent-encoded text/plain data: URLs. renderFace re-runs
+whenever either changes. Absent for a board-local or url-backed
+object.
 
 #### dataUrl
 
@@ -42,14 +42,15 @@ failed: boolean;
 mountOffBoard: (el, size) => () => void;
 ```
 
-mountOffBoard attaches el to the document OFF the board, at exactly
-`size` CSS pixels and unscaled by the board's zoom, and returns the
-detach. The face's own el is CSS-scaled with the canvas, so an
-engine that measures and fits its layout from screen rectangles
-(a mind-map or graph layout, a text-measuring chart) lays out wrong
-in place -- render it on this stage at the face's size, copy the
-finished drawing into el, detach. Anything still mounted when the
-face unmounts is detached by the host.
+Attaches el to the page OFF the board, at exactly `size` CSS
+pixels and unscaled by the board's zoom, and returns the function
+that detaches it. A face is CSS-scaled with the canvas, so an
+engine that measures its own layout from screen rectangles (a
+mind-map or graph layout, a text-measuring chart) lays out wrong
+rendered directly in place -- render it on this offscreen stage at
+the face's real size, then copy the finished drawing into el.
+Anything still mounted when the face unmounts is detached
+automatically.
 
 #### Parameters
 
@@ -109,7 +110,7 @@ Size:
 ```
 
 The object's persisted size in board units, or null until the
-user first resizes it (the wire shape's own convention).
+user first resizes it.
 
 ***
 
@@ -119,7 +120,7 @@ user first resizes it (the wire shape's own convention).
 onThemeChange: PluginThemeSubscribe;
 ```
 
-onThemeChange registers cb for every later appearance change.
+Subscribes to every later appearance change.
 
 ***
 
@@ -129,10 +130,10 @@ onThemeChange registers cb for every later appearance change.
 requestGuardedAction: (kind, attributes, description) => Promise<GuardedActionResult>;
 ```
 
-requestGuardedAction asks Mill to perform an action the plugin
-cannot perform itself. The action kind must be declared in the
-plugin's manifest capabilities; each use is evaluated by the
-owner's guardrail rules and may require live approval.
+Asks Mill to perform an action the plugin cannot perform itself.
+The action's kind must be one this plugin's manifest declares as a
+capability; each use is evaluated by the person's own guardrail
+rules and may require their live approval.
 
 #### Parameters
 
@@ -170,9 +171,9 @@ The appearance this face is rendering under.
 updatePayload: (patch) => Promise<void>;
 ```
 
-updatePayload merges patch into this object's payload through the
-host (an empty string deletes a key). The write persists, syncs,
-and participates in undo like any built-in edit.
+Merges patch into this object's payload (an empty string value
+deletes that key). The write persists, syncs, and participates in
+undo like any built-in edit.
 
 #### Parameters
 

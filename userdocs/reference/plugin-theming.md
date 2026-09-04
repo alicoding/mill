@@ -87,6 +87,9 @@ From the design system Mill's own interface is built on:
 | `--bgColor-accent-emphasis` | a strong accent fill |
 | `--fgColor-onEmphasis` | text and icons painted on any emphasis fill |
 | `--borderColor-accent-emphasis` | the border of an accent fill |
+| `--fgColor-danger` | an error message or a destructive action |
+| `--fgColor-attention` | a warning message |
+| `--fgColor-success` | a success message |
 
 ## What the check enforces
 
