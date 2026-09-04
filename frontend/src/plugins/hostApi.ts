@@ -17,6 +17,7 @@ import { buildPluginStorage } from './pluginStorage'
 import { pushNotice } from '../shared/noticeStore'
 import { resolveExtensionSetting, subscribeExtensionSetting } from '../shared/extensionSettingsStore'
 import type { CanvasObjectDecl, ContentQuery, MillPluginAPI, PluginFetchInit } from './sdk'
+import type { MenuPath } from '../shared/menuSkeleton'
 
 // buildPluginAPI constructs the ONE object a plugin ever holds
 // (docs/adr/0047 §2: capabilities arrive as api calls the host
@@ -203,7 +204,23 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		},
 		registerCommand: (decl) => {
 			warnUndeclaredCommand(manifest, decl.id)
-			collectPluginCommand({ id: `plugin.${pluginId}.${decl.id}`, label: decl.label, pluginId, enabled: decl.enabled, run: decl.run })
+			// The manifest's own contributes.commands[].menu (goal 0335) is
+			// the seat's declaration; registerCommand's decl carries no menu
+			// field of its own (the SDK's PluginCommandDecl, sdk/commands.ts)
+			// -- joined here by matching id, since this is the first point a
+			// declared command's id AND its live run() are both in hand.
+			const declaredMenu = manifest.contributes?.commands?.find((c) => c.id === decl.id)?.menu
+			collectPluginCommand({
+				id: `plugin.${pluginId}.${decl.id}`,
+				label: decl.label,
+				pluginId,
+				enabled: decl.enabled,
+				run: decl.run,
+				// declaredMenu.path is loose string on the wire; pluginsvc's
+				// validateCommands already fail-closed it to "workflow" |
+				// "atlas" | "help" before this manifest could ever load.
+				menu: declaredMenu ? { path: declaredMenu.path as MenuPath, group: declaredMenu.group, order: declaredMenu.order } : undefined,
+			})
 		},
 		requestGuardedAction,
 	})

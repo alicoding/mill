@@ -113,6 +113,33 @@ func TestBuildMenu_RendersBandsSeparatorsAndRoles(t *testing.T) {
 	}
 }
 
+// A submenu carrying actual command items, not just roles (goal 0335's
+// File > New… seat) -- Help > Developer above only ever nests roles,
+// so this pins that a nested command still gets a real click handler
+// and a slot in the returned items index, the same as a top-level one.
+func TestBuildMenu_SubmenuWithCommandItems(t *testing.T) {
+	spec := MenuSpec{Menus: []MenuNode{{Kind: menuKindMenu, Label: "File", Groups: [][]MenuEntry{
+		{{Kind: menuKindSubmenu, Label: "New…", Groups: [][]MenuEntry{
+			{
+				{Kind: menuKindCommand, ID: "configure.new.lists", Label: "New list", Enabled: true},
+				{Kind: menuKindCommand, ID: "configure.new.mcpservers", Label: "New MCP server", Enabled: false},
+			},
+		}}},
+	}}}}
+	menu, items := BuildMenu(spec, func(string) {})
+
+	newMenu := submenuNamed(t, submenuNamed(t, menu, "File"), "New…")
+	if got, want := labelsOf(newMenu), []string{"New list", "New MCP server"}; !equalStrings(got, want) {
+		t.Fatalf("File > New… = %v, want %v", got, want)
+	}
+	if items["configure.new.lists"] == nil || items["configure.new.mcpservers"] == nil {
+		t.Fatal("nested command items not indexed by id")
+	}
+	if !items["configure.new.lists"].Enabled() || items["configure.new.mcpservers"].Enabled() {
+		t.Error("nested command items did not carry their own Enabled through")
+	}
+}
+
 func TestBuildMenu_DisabledCommandItem(t *testing.T) {
 	spec := MenuSpec{Menus: []MenuNode{{Kind: menuKindMenu, Label: "File", Groups: [][]MenuEntry{
 		{{Kind: menuKindCommand, ID: "tab.close", Label: "Close tab", Enabled: false}},

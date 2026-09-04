@@ -179,6 +179,23 @@ tasks:
         fi
       - cp "{{.BIN_DIR}}/{{.APP_NAME}}" "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/MacOS"
       - cp build/darwin/Info.plist "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents"
+      # Stamps the bundle's own About-panel version with the SAME value
+      # the binary reports (goal 0335): MILL_VERSION for a real release
+      # (release.yml computes it from the pushed tag), else
+      # MILL_UPDATE_VERSION for a beta (already the ldflags value
+      # above's own source, ci.yml's beta job) -- unset for a plain
+      # local `task package`, which leaves the committed plist default
+      # untouched rather than writing a version nobody asked for.
+      # PlistBuddy is macOS-only, guarded the same way codesign below
+      # already is for a cross-compiled darwin bundle built from a
+      # non-mac host.
+      - |
+        V="${MILL_VERSION:-${MILL_UPDATE_VERSION:-}}"
+        if [ -n "$V" ] && [ "{{OS}}" = "darwin" ]; then
+          PLIST="{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $V" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $V" "$PLIST"
+        fi
       - task: '{{if eq OS "darwin"}}codesign:adhoc{{else}}codesign:skip{{end}}'
 
   codesign:adhoc:

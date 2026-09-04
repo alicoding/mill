@@ -7,6 +7,7 @@ import { GuardrailService } from '../../bindings/github.com/alicoding/mill/inter
 import type { RunSummary } from '../../bindings/github.com/alicoding/mill/internal/services/executionsvc/models'
 import { recentRuns, runningRuns, settledRunKind } from './trayPanelRuns'
 import { background } from '../shared/background'
+import { runCommand } from '../shared/commands'
 import styles from './TrayPanel.module.css'
 
 // The menu-bar status panel (docs/goals/0189): the surface the tray
@@ -41,11 +42,13 @@ export function TrayPanel() {
   const [automaticCount, setAutomaticCount] = useState(0)
   const [confirmingQuit, setConfirmingQuit] = useState(false)
 
-  // Tray-window actions with no registry command to route through
-  // runCommand (goal 0313; tracked for goal 0335): the tray is its own
-  // small window, outside the main window's command registry, so a
-  // failure here has nowhere but background()'s failure counter to go
-  // until this window grows its own notice surface.
+  // The needs-you rows and recent-row's own "bring the main window to
+  // THIS view" jumps stay background() calls (goal 0313; goal 0335
+  // audited the rest of this window): each carries a live target (a
+  // run id, a workflow id) the Command shape has no field for, so
+  // there is no static registry command to route through -- a failure
+  // here has nowhere but background()'s failure counter to go until
+  // this window grows its own notice surface.
   const openMain = (view: string) => {
     void background(SettingsService.OpenMainWindow(view), 'trayPanel.openMain')
   }
@@ -108,10 +111,13 @@ export function TrayPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Owner-reported "Stop does nothing" pattern this goal exists to fix
-  // (goal 0313): the tray has no registry command for cancelling a run
-  // (tracked for goal 0335), so this stays a background() call for now
-  // rather than a silent catch.
+  // Owner-reported "Stop does nothing" pattern goal 0313 fixed
+  // everywhere else (background() instead of a swallowed rejection).
+  // Goal 0335 confirmed there is still no registry command here: the
+  // Command shape (shared/commands.ts) carries no argument, and
+  // cancelling always names a specific run id -- inventing a
+  // parameterised command shape was explicitly out of that goal's
+  // scope, so this stays a background() call.
   const stopRun = (runID: string) => {
     void background(ExecutionService.CancelRun(runID).then(refresh), 'trayPanel.stopRun')
   }
@@ -124,7 +130,9 @@ export function TrayPanel() {
         <Text weight="semibold">Mill</Text>
         <Text size="small" className={styles.muted}>{t('trayPanel.running')}</Text>
         <div className={styles.spacer} />
-        <Button size="small" variant="invisible" onClick={() => openMain('')} data-testid="tray-open-mill">
+        {/* The exact action panel.openMill already registers (shared/settingsCommands.ts) -- routed through
+            runCommand rather than a second direct SettingsService.OpenMainWindow('') call (goal 0335). */}
+        <Button size="small" variant="invisible" onClick={() => { void runCommand('panel.openMill') }} data-testid="tray-open-mill">
           {t('trayPanel.openMill')}
         </Button>
       </div>

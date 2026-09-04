@@ -10,6 +10,7 @@ export type {
     CanvasObjectContribution,
     CaptureContribution,
     CommandContribution,
+    CommandMenuContribution,
     ContentWriter,
     GuardedActionDecision,
     Manifest,
