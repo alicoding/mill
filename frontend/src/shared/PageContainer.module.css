@@ -14,7 +14,6 @@
    textual content -- SpecView.module.css's own .spec class already does
    that correctly, untouched by this change. */
 .wide {
-    --wails-draggable: no-drag;
     padding: var(--s-3) var(--s-4) var(--s-5);
     color: var(--fgColor-default);
 }
@@ -26,7 +25,6 @@
    mostly-empty, and 960px is wide enough that ManualSchemaEditor's
    multi-input Parameters/Output table rows don't wrap. */
 .narrow {
-    --wails-draggable: no-drag;
     max-width: 960px;
     margin: 0 auto;
     padding: var(--s-3) var(--s-4) var(--s-5);

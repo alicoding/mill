@@ -108,9 +108,14 @@ body {
        Spec view opts back in for its own content. */
     -webkit-user-select: none;
     user-select: none;
-    /* Drag the window by its background. Interactive controls opt out with
-       --wails-draggable: no-drag (the property inherits). */
-    --wails-draggable: drag;
+    /* Drag regions are opt-in, not opt-out (goal 0333): the window
+       drags only where a surface deliberately sets
+       --wails-draggable: drag, never by default. Only the titlebar
+       band (App.module.css's .titlebar) and the Run Monitor header
+       (RunMonitor.module.css's .header) may set it; every other
+       surface stays no-drag by inheriting this default. Enforced by
+       scripts/check-drag-regions.sh. */
+    --wails-draggable: no-drag;
 }
 
 /* Primer's ThemeProvider/BaseStyles wrap #root in their own plain <div>s

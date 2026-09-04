@@ -142,14 +142,6 @@ export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: stri
         try {
           GraphViewer.createViewerForElement(host, (instance) => {
             viewer = instance
-            // body defaults --wails-draggable:drag (drag the native window
-            // by its background) and the runtime reads that property off
-            // the EVENT TARGET's computed style (@wailsio/runtime drag.js).
-            // The toolbar lives under body, so the host's own no-drag
-            // never reaches it and holding a zoom/page button dragged
-            // the whole app window (goal 0292). Opt the element out
-            // directly; the custom property inherits to its buttons.
-            instance.toolbar?.style.setProperty('--wails-draggable', 'no-drag')
             // The viewer sizes the toolbar from the host's offsetWidth --
             // its LAYOUT width -- while positioning it in screen space.
             // On the board the host sits inside the canvas kit's zoom

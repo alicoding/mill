@@ -140,6 +140,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-ui-copy.sh
 
+  # Mirrors lefthook.yml's own drag-regions job -- same script (goal
+  # 0333: drag regions are opt-in). Grep-only, so like comment-hygiene
+  # it needs no build setup and no changes gate.
+  drag-regions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-drag-regions.sh
+
   # Mirrors lefthook.yml's own sdk-comments job -- same script (the
   # plugin standard's rule 18). Grep-only over the committed generated
   # outputs, so like comment-hygiene it needs no build setup.
@@ -624,6 +634,7 @@ jobs:
       - framework-api-first
       - sdk-comments
       - ui-copy
+      - drag-regions
       - toolbar-action-testids
       - rules-frontmatter
       - standing-context

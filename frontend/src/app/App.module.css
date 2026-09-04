@@ -29,13 +29,13 @@
 
    --wails-draggable:drag makes the band's own empty flex space (after
    the last tab, or wherever the portaled TabList doesn't cover) drag
-   the native window -- inherited by default from body (index.css) but
-   set explicitly here since this element IS the titlebar now, the same
-   "be explicit at the element that matters" convention every other
-   --wails-draggable rule in this file already follows. Individual tab
-   buttons/close controls/the overflow menu/the sidebar toggle opt back
-   out to no-drag so clicking them still works. Harmless no-op in server
-   mode (no Wails runtime listening). */
+   the native window. Drag regions are opt-in (goal 0333): the rest of
+   the app defaults to no-drag (index.css), so this is one of exactly
+   two rules in frontend/src allowed to set drag
+   (scripts/check-drag-regions.sh enforces it; RunMonitor.module.css's
+   .header is the other). Individual tab buttons/close controls/the
+   overflow menu opt back out to no-drag so clicking them still works.
+   Harmless no-op in server mode (no Wails runtime listening). */
 .titlebar {
     flex: 0 0 auto;
     height: 38px;
@@ -283,7 +283,6 @@
     font-size: 12.5px;
 }
 .version {
-    --wails-draggable: no-drag;
     justify-self: start;
     display: inline-flex;
     align-items: center;
@@ -298,7 +297,6 @@
 }
 .time svg { width: 19px; height: 19px; opacity: 0.85; }
 .rightControls {
-    --wails-draggable: no-drag;
     justify-self: end;
     display: inline-flex;
     align-items: center;
@@ -432,7 +430,6 @@
    build pointed at an isolated e2e-style settings path), so they must
    not compete for the same spot. */
 .isolatedDataRibbon {
-    --wails-draggable: no-drag;
     position: fixed;
     /* BELOW the titlebar band (38px), not inside it: at top:8px this
        ribbon sat exactly over the band's sidebar-collapse toggle and
@@ -452,7 +449,6 @@
    plain, unsized display:block divs with nothing to resolve against).
    Confirmed by the same dummy-content stress test used for that fix. */
 .appBody {
-    --wails-draggable: no-drag;
     flex: 1 1 auto;
     min-height: 0;
 }
