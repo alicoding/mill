@@ -281,3 +281,11 @@ export const UPDATES_USERCHECK_UPTODATE_SERVER_BASE_PORT = 11200
 export const UPDATES_USERCHECK_UPTODATE_MCP_BASE_PORT = 11220
 export const UPDATES_USERCHECK_FAIL_SERVER_BASE_PORT = 11240
 export const UPDATES_USERCHECK_FAIL_MCP_BASE_PORT = 11260
+
+// runtime-plugin-reload.spec.ts's own dedicated pair (goal 0319): the
+// runtime-plugins offsets are 20 apart, so offset o's server port is
+// offset o-20's MCP port -- that space is nearly full and every new
+// offset has to be checked against both directions. A pair of its own,
+// clear of every family above, ends that arithmetic for this spec.
+export const RUNTIME_PLUGIN_RELOAD_SERVER_BASE_PORT = 11280
+export const RUNTIME_PLUGIN_RELOAD_MCP_BASE_PORT = 11300

@@ -34,7 +34,10 @@ export interface ExtraPlugin {
 // settings pre-seeds Mill's settings file before boot (the store is one
 // JSON object of key -> JSON-encoded string), the way policy tooling
 // writes an administrator's plugin allow-list.
-export async function launchWithPlugins(offset: number, opts: { withBroken?: boolean; withNotifier?: boolean; extraPlugins?: ExtraPlugin[]; extraExamples?: string[]; settings?: Record<string, string> } = {}) {
+// ports overrides the shared runtime-plugins bases with a spec's own
+// dedicated pair (offset still applies within it), for a spec that
+// wants out of the offset arithmetic above.
+export async function launchWithPlugins(offset: number, opts: { withBroken?: boolean; withNotifier?: boolean; extraPlugins?: ExtraPlugin[]; extraExamples?: string[]; settings?: Record<string, string>; ports?: { server: number; mcp: number } } = {}) {
 	const dir = mkdtempSync(path.join(tmpdir(), 'mill-plugins-e2e-'))
 	// The plugins dir is a per-test COPY of examples/plugins (the exact
 	// artifact a user copies from) -- never the repo folder itself, so
@@ -67,16 +70,17 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 `)
 	}
 	if (opts.settings) writeFileSync(path.join(dir, 'settings.json'), JSON.stringify(opts.settings))
+	const serverPort = (opts.ports?.server ?? RUNTIME_PLUGINS_SERVER_BASE_PORT) + offset
 	const server: SpawnedServer = await spawnMillServer({
-		port: RUNTIME_PLUGINS_SERVER_BASE_PORT + offset,
-		mcpPort: RUNTIME_PLUGINS_MCP_BASE_PORT + offset,
+		port: serverPort,
+		mcpPort: (opts.ports?.mcp ?? RUNTIME_PLUGINS_MCP_BASE_PORT) + offset,
 		settingsPath: path.join(dir, 'settings.json'),
 		executionDbPath: path.join(dir, 'exec.db'),
 		backupDir: path.join(dir, 'backups'),
 		extraEnv: { MILL_PLUGINS_DIR: pluginsDir },
 	})
 	const browser = await chromium.launch()
-	const context = await browser.newContext({ baseURL: `http://127.0.0.1:${RUNTIME_PLUGINS_SERVER_BASE_PORT + offset}` })
+	const context = await browser.newContext({ baseURL: `http://127.0.0.1:${serverPort}` })
 	const page = await context.newPage()
 	return {
 		page,
