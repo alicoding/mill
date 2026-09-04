@@ -5,6 +5,7 @@ import type { ListProjection } from '../../bindings/github.com/alicoding/mill/in
 import type { EditRouteDecl, ObjectSource } from './objectSeams'
 import type { MirrorReadState } from './useAtlasObjectMirrorRead'
 import type { AtlasNounGroup, ExtensionSettingDecl } from './atlasNounRegistry'
+import type { DrawioOverflowReporter } from './drawioInteraction'
 import { AtlasUnknownKindContent } from './AtlasUnknownKindContent'
 
 // The board-object CONTENT registry -- split out of atlasNounRegistry.ts
@@ -67,6 +68,12 @@ export interface AtlasNounContent {
     // heavyweight (pdf's viewer iframe) renders a light static face
     // instead; most Kinds ignore it.
     preview?: boolean
+    // overflowChip's own reporting channel (goal 0340): a Kind that
+    // declares overflowChip below calls this whenever its own content
+    // starts or stops needing more room than the frame gives it,
+    // handing back the action that fits it. Only the face can know
+    // either; only the frame owns the chrome band the chip sits on.
+    onOverflowChange?: DrawioOverflowReporter
   }>
   ariaLabelKey: string
   role: 'img' | undefined
@@ -93,6 +100,13 @@ export interface AtlasNounContent {
   // body. The sheet face's own scroll div predates this flag and keeps
   // its local class.
   wheelContained?: boolean
+  // overflowChip (goal 0340): this Kind's face renders content that can
+  // be LARGER than the object's box and offers a way back -- so the
+  // shared chrome band carries a "Fit" chip whenever the face reports
+  // it currently overflows. Declared rather than inferred, because a
+  // Kind whose face simply clips (image) has nothing to fit to and must
+  // not grow a chip that does nothing.
+  overflowChip?: boolean
   // source / editRoute (ADR-0046, goal 0244): the two seams this Kind
   // declares about its own artifact -- where it lives, and which door
   // edits it. Optional (unlike Component/ariaLabelKey/role above)
@@ -174,8 +188,14 @@ export interface AtlasBoardObjectContent extends AtlasNounContent {
 // the canvas kit's `nowheel` class right now -- true exactly while a
 // wheelContained Kind's viewer is LIVE (shieldless Kinds always,
 // clickShield Kinds only once selected; never for a frame's preview
-// tile). Pure and exported for its unit test; AtlasBoardObjectNode is
-// the one caller.
+// tile). The SAME window also decides `nodrag` on the content box (goal
+// 0340): a face that consumes the wheel for its own pan consumes the
+// drag for it too, and mxGraph's own pan consume() calls preventDefault
+// WITHOUT stopping propagation -- so without that opt-out one drag both
+// pans the drawing and moves the object. Every wheelContained Kind also
+// declares dragBand, so the band stays the object's drag surface. Pure
+// and exported for its unit test; AtlasBoardObjectNode is the one
+// caller.
 export function viewerOwnsWheel(facts: Pick<AtlasBoardObjectContent, 'wheelContained' | 'clickShield'>, preview: boolean, selected: boolean): boolean {
   return !!facts.wheelContained && !preview && (!facts.clickShield || selected)
 }

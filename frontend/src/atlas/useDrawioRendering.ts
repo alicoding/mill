@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { RefObject } from 'react'
+import { attachDrawioInteraction } from './drawioInteraction'
+import type { DrawioGraph, DrawioOverflowReporter } from './drawioInteraction'
 
 // Renders a .drawio card's own XML through drawio's own vendored viewer
 // (ADR-0043, goal 0133 slice 3: adopt drawio's viewer rather than
@@ -29,12 +31,28 @@ interface DrawioViewerInstance {
   toolbar?: HTMLElement
   // Width floor the viewer computes for its toolbar (34px per button).
   minToolbarWidth?: number
+  // The real mxGraph the viewer built (GraphViewer.init's own
+  // `this.graph = new Graph(container)`). drawioInteraction.ts drives
+  // it; goal 0340's in-frame pan/zoom is the whole reason it is read.
+  graph?: DrawioGraph
 }
 
 declare global {
   interface Window {
     GraphViewer?: DrawioGraphViewer
   }
+}
+
+// Per-surface rendering options (goal 0340). `interactive` converts the
+// host into a fixed viewport the drawing pans and zooms inside;
+// `onOverflow` reports whether the drawing currently needs more room
+// than the frame gives it, together with the action that fits it.
+// onOverflow must be stable across renders (useCallback) -- it is an
+// effect dependency, and a fresh identity each render would tear the
+// viewer down and rebuild it.
+export interface DrawioRenderingOptions {
+  interactive?: boolean
+  onOverflow?: DrawioOverflowReporter
 }
 
 const VIEWER_SCRIPT_URL = '/vendor/drawio/viewer.min.js'
@@ -120,8 +138,10 @@ function loadDrawioViewer(): Promise<DrawioGraphViewer> {
 // boundary is needed here). Returns an error message once rendering
 // has failed, empty otherwise -- editable/lightbox stay off: Mill
 // views .drawio, it never opens drawio's own editor.
-export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: string | null): string {
+export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: string | null, options?: DrawioRenderingOptions): string {
   const [error, setError] = useState('')
+  const interactive = options?.interactive ?? false
+  const onOverflow = options?.onOverflow
 
   useEffect(() => {
     setError('')
@@ -134,8 +154,10 @@ export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: stri
     // it renders ahead of the zoom cluster only when the file has more
     // than one page (the viewer hides it otherwise), so a multi-page
     // diagram's pages are reachable right on the rendered face without
-    // opening the editor.
-    host.setAttribute('data-mxgraph', JSON.stringify({ xml, resize: true, toolbar: 'pages zoom', editable: false, lightbox: false }))
+    // opening the editor. 'layers' (goal 0340) adds the viewer's own
+    // layer toggle, so a file that carries layers is readable one layer
+    // at a time without opening the editor either.
+    host.setAttribute('data-mxgraph', JSON.stringify({ xml, resize: true, toolbar: 'pages zoom layers', editable: false, lightbox: false }))
     loadDrawioViewer()
       .then((GraphViewer) => {
         if (cancelled) return
@@ -158,9 +180,17 @@ export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: stri
             host.addEventListener('mouseenter', fitToolbar)
             const observer = new ResizeObserver(fitToolbar)
             observer.observe(host)
+            // In-frame pan/zoom (goal 0340), opt-in per surface: a
+            // board object is a fixed frame the drawing has to move
+            // inside, while the card page's own bounded window still
+            // takes the viewer's default content-sized host.
+            const detachInteraction = instance.graph && interactive
+              ? attachDrawioInteraction(instance.graph, onOverflow)
+              : null
             detachFit = () => {
               host.removeEventListener('mouseenter', fitToolbar)
               observer.disconnect()
+              detachInteraction?.()
             }
           })
         } catch (err) {
@@ -180,7 +210,7 @@ export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: stri
       host.innerHTML = ''
       host.removeAttribute('data-mxgraph')
     }
-  }, [ref, xml])
+  }, [ref, xml, interactive, onOverflow])
 
   return error
 }

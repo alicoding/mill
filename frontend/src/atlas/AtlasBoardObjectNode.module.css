@@ -40,6 +40,8 @@
    behind it. */
 .frame {
     flex: 0 0 auto;
+    /* Positioning context for the Fit chip (goal 0340). */
+    position: relative;
     height: var(--mill-object-band-height);
     display: flex;
     align-items: center;
@@ -194,4 +196,42 @@
    would leave a shielded object with nothing to grab. */
 .clickShieldBelowBand {
     top: var(--mill-object-band-height);
+}
+
+/* Hover on a shielded face (goal 0340). While the shield is up the face
+   is inert: nothing under the pointer reacts, so the OBJECT has to say
+   it is interactive before the click is spent. Same ring the selection
+   state draws, one step quieter, plus the band lifting to its own hover
+   tone; `:has()` scopes it to exactly the Kinds that render a shield,
+   so an image/ink/shape body is untouched. */
+.object:has(> .clickShield):hover {
+    border-radius: var(--mill-ring-radius, var(--borderRadius-medium));
+    box-shadow: 0 0 0 var(--mill-ring-inner, 2px) var(--borderColor-accent-muted);
+}
+
+.object:has(> .clickShield):hover .frame {
+    background: var(--bgColor-accent-muted);
+}
+
+/* The overflow escape hatch on the chrome band (goal 0340): a quiet
+   chip at the band's trailing end, sized to the band's own height so it
+   never makes the band taller. */
+.fitChip {
+    position: absolute;
+    right: 2px;
+    top: 0;
+    height: var(--mill-object-band-height);
+    padding: 0 5px;
+    border: 0;
+    border-radius: var(--borderRadius-small);
+    background: var(--bgColor-accent-emphasis);
+    color: var(--fgColor-onEmphasis);
+    font-size: 9px;
+    line-height: var(--mill-object-band-height);
+    cursor: pointer;
+}
+
+.fitChip:hover {
+    background: var(--bgColor-accent-muted);
+    color: var(--fgColor-accent);
 }

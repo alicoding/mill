@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { createBoardObjectViaRPC, ATLAS_DEFAULT_SPACE_ID } from './fixtures/atlasNativeDropEscapeHatch'
+import { nonSeededBoardObjects } from './fixtures/atlasBoard'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -14,13 +15,14 @@ import { wheelAt } from './fixtures/pointer'
 // install and every e2e worker auto-enter "The engagement" by
 // default, so a board object sitting there widens that board's own
 // fitView content extent for every OTHER spec, not just this one).
-// A seeded 'diagram' golden wedged every e2e worker's server at boot
-// (goal 0223's own investigation, root cause not yet fixed), so a
-// diagram example is NOT seeded -- this test creates its own via the
-// same CreateBoardObject RPC atlas-diagram-object.spec.ts uses,
-// nested in the same "Board gallery" card, so the render path still
-// gets a live proof. Everything else here reads the seed, so this
-// stays on the shared worker pool despite the one test-owned write.
+// The gallery holds TWO diagram objects: the seeded .drawio golden
+// (goal 0340, deliberately taller than its own box, so the in-frame
+// pan/zoom contract has a permanent live subject) and a .mmd one this
+// test creates for itself, since the mermaid host has no seeded
+// example of its own. Every diagram locator below is therefore scoped
+// to one or the other, never left ambiguous. Everything else here
+// reads the seed, so this stays on the shared worker pool despite the
+// one test-owned write.
 test('the seeded "Board gallery" board demonstrates every seeded board-object kind', async ({ page }) => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mill-e2e-atlas-seeded-board-objects-'))
   try {
@@ -69,14 +71,29 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     await expect(sheet).toBeVisible()
     await expect(sheet.getByTestId('atlas-object-sheet-grid').locator('thead th').first()).toHaveText('Item')
 
-    // Diagram: renders through the vendored mermaid host -- an honest
-    // absence of the loading/error fallback states is the same "did it
-    // actually render" signal AtlasDiagramObjectContent.tsx's own
-    // testids expose elsewhere in this suite.
-    const diagram = page.locator('[data-testid="atlas-board-object"][data-object-kind="diagram"]')
+    // Diagram, test-created: renders through the vendored mermaid host
+    // -- an honest absence of the loading/error fallback states is the
+    // same "did it actually render" signal
+    // AtlasDiagramObjectContent.tsx's own testids expose elsewhere in
+    // this suite.
+    const diagram = nonSeededBoardObjects(page, 'diagram')
     await expect(diagram).toBeVisible()
     await expect(page.getByTestId('atlas-object-diagram-error')).toHaveCount(0)
     await expect(page.getByTestId('atlas-object-diagram-loading')).toHaveCount(0)
+
+    // Diagram, seeded (goal 0340): the .drawio golden paints through
+    // the vendored viewer, and because the drawing is taller than the
+    // 320px box it sits in, the chrome band carries the Fit chip
+    // WITHOUT anything being selected first -- the at-rest signal that
+    // there is more here than the frame shows.
+    const seededDiagram = page.locator('.react-flow__node[data-id="atlas-object-example-diagram"]')
+    await expect(seededDiagram.locator('[data-testid="atlas-drawio-page-body"] svg')).toBeVisible()
+    const fitChip = seededDiagram.getByTestId('atlas-board-object-fit')
+    await expect(fitChip).toBeVisible()
+    // Fit scales the whole drawing into the box, so nothing overflows
+    // any more and the chip has nothing left to offer.
+    await fitChip.click()
+    await expect(fitChip).toHaveCount(0)
 
     // Pdf (goal 0267): the vendored pdf.js viewer renders the seeded
     // two-page document -- page 1's real canvas paints inside the

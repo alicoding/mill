@@ -89,6 +89,21 @@ func BuiltInBoardObjects() []BoardObject {
 			BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
 		{
+			// File-backed drawio (goal 0340): a drawing DELIBERATELY
+			// taller than the box it sits in, so the in-frame contract
+			// has a permanent live subject. Selected, the wheel pans it,
+			// ctrl/pinch zooms it and a drag moves it inside the frame;
+			// the chrome band's "Fit" chip is what says it is larger
+			// than the frame at rest.
+			ID: objectDiagramExampleID, Kind: "diagram",
+			Payload:   map[string]string{"title": "Tall diagram", BoardObjectSeedAssetKey: "diagram"},
+			Position:  Position{X: 520, Y: 240},
+			Size:      &Dimensions{W: 420, H: 320},
+			ParentID:  cardSketchesID,
+			CreatedAt: now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
+		{
 			// File-backed csv (goal 0239 S2): proof that a 'sheet'
 			// BoardObject renders the mirrored-file preview AND that a
 			// csv cell quick-edits in place -- double-click a cell of
@@ -118,6 +133,8 @@ func BuiltInBoardObjectAsset(key string) (content, ext string, ok bool) {
 		return seedSampleSheetCSV, ".csv", true
 	case "pdf":
 		return seedSamplePDF, ".pdf", true
+	case "diagram":
+		return seedTallDiagramDrawio, ".drawio", true
 	}
 	return "", "", false
 }
@@ -183,4 +200,10 @@ startxref
 635
 %%EOF
 `
+
+	// seedTallDiagramDrawio is a ten-step vertical pipeline: about 2000
+	// drawing units tall against a 320px frame, so the seeded object is
+	// permanently larger than its box (goal 0340). Plain, uncompressed
+	// mxfile XML, the same form GraphViewer decodes on the read path.
+	seedTallDiagramDrawio = `<mxfile host="mill"><diagram id="tall" name="Pipeline"><mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="n0" value="Capture" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="40" width="240" height="80" as="geometry"/></mxCell><mxCell id="n1" value="Queue" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="240" width="240" height="80" as="geometry"/></mxCell><mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n0" target="n1"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="n2" value="Guardrail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="440" width="240" height="80" as="geometry"/></mxCell><mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n1" target="n2"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="n3" value="Review" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="640" width="240" height="80" as="geometry"/></mxCell><mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n2" target="n3"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="n4" value="Approve" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="840" width="240" height="80" as="geometry"/></mxCell><mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n3" target="n4"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="n5" value="Apply" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="1040" width="240" height="80" as="geometry"/></mxCell><mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n4" target="n5"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="n6" value="Record" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="1240" width="240" height="80" as="geometry"/></mxCell><mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n5" target="n6"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="n7" value="Notify" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="1440" width="240" height="80" as="geometry"/></mxCell><mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n6" target="n7"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="n8" value="Verify" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="1640" width="240" height="80" as="geometry"/></mxCell><mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n7" target="n8"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="n9" value="Archive" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="1840" width="240" height="80" as="geometry"/></mxCell><mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n8" target="n9"><mxGeometry relative="1" as="geometry"/></mxCell></root></mxGraphModel></diagram></mxfile>`
 )
