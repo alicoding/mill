@@ -4,7 +4,7 @@ import { Button, FormControl, Heading, IconButton, Select, Stack, Text, TextInpu
 import { PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../shared/bindings'
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
-import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
+
 import { ManualSchemaEditor } from './ManualSchemaEditor'
 import { SchemaIntake, type IntakeResult } from './SchemaIntake'
 import { RequestAuthSections } from './RequestAuthSections'
@@ -67,7 +67,6 @@ export function RequestForm({
   })
   const [headerRows, setHeaderRows] = useState<HeaderRow[]>(() => headersToRows(seed?.Headers))
   const [error, setError] = useState('')
-  const isEditing = editingRequest !== null
 
   // The manual editor is the one always-visible schema representation
   // (the previous Paste-OpenAPI/Manual mode switch is gone) -- seeded
@@ -155,43 +154,20 @@ export function RequestForm({
   const handleSave = async () => {
     const finalDraft = { ...draft, openAPISpec: effectiveSpec }
     setError('')
-    let saved: HTTPRequest
     try {
       const headers = rowsToHeaders(headerRows)
       const auth = authConfigFrom(finalDraft)
       const jose = joseConfigFrom(finalDraft)
-      saved = editingRequest
-        ? await ConfigureService.UpdateHTTPRequest(editingRequest.ID, finalDraft.label, finalDraft.baseURL, finalDraft.method, finalDraft.body, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
-        : await ConfigureService.CreateHTTPRequest(finalDraft.label, finalDraft.baseURL, finalDraft.method, finalDraft.body, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
+      await (editingRequest
+        ? ConfigureService.UpdateHTTPRequest(editingRequest.ID, finalDraft.label, finalDraft.baseURL, finalDraft.method, finalDraft.body, finalDraft.authType, finalDraft.secretRef, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
+        : ConfigureService.CreateHTTPRequest(finalDraft.label, finalDraft.baseURL, finalDraft.method, finalDraft.body, finalDraft.authType, finalDraft.secretRef, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description))
     } catch (err) {
       setError(String(err))
       return
     }
-    // From here the base entity is saved regardless of what happens
-    // below -- a secret write is a separate, write-only side channel
-    // to the OS keychain (docs/SPEC.md §3.5: HTTPRequest itself carries
-    // no secret field at all), and a keychain failure (e.g. no OS
-    // Secret Service available -- a real gap on a headless Linux
-    // deployment/CI runner with no desktop session) must not trap the
-    // user on a dead-end create form for a request that already exists
-    // server-side. Logged, not surfaced in the form's own error banner
-    // -- there's no existing UI signal for "was the secret actually
-    // stored" either way (it's never read back once set), so this
-    // matches that same write-only, fire-and-forget shape.
-    try {
-      if (finalDraft.authType === AuthType.AuthOAuth1) {
-        if (finalDraft.oauth1ConsumerSecret || finalDraft.oauth1TokenSecret) {
-          await ConfigureService.SetHTTPRequestOAuth1Secret(saved.ID, finalDraft.oauth1ConsumerSecret, finalDraft.oauth1TokenSecret)
-        }
-      } else if (finalDraft.secret) {
-        await ConfigureService.SetHTTPRequestSecret(saved.ID, finalDraft.secret)
-      }
-      if (finalDraft.joseEnabled && finalDraft.joseDecryptResponse && finalDraft.josePrivateKeyPEM) {
-        await ConfigureService.SetHTTPRequestJOSEPrivateKey(saved.ID, finalDraft.josePrivateKeyPEM)
-      }
-    } catch (err) {
-      console.error('request secret write failed (base request was still saved):', err)
-    }
+    // Nothing follows the save: every secret this request uses is a
+    // reference it already carries (goal 0306), so there is no second,
+    // write-only channel that could half-succeed behind a saved entity.
     onSaved()
   }
 
@@ -243,7 +219,7 @@ export function RequestForm({
           </Stack>
         </section>
 
-        <RequestAuthSections draft={draft} setDraft={setDraft} isEditing={isEditing} />
+        <RequestAuthSections draft={draft} setDraft={setDraft} />
 
         <section>
           <Heading as="h3" variant="small" className={styles.sectionHeading}>{t('requestForm.headers')}</Heading>
@@ -297,7 +273,7 @@ export function RequestForm({
           </Stack>
         </section>
 
-        <RequestAdvancedSection draft={draft} setDraft={setDraft} isEditing={isEditing} />
+        <RequestAdvancedSection draft={draft} setDraft={setDraft} />
       </Stack>
 
       {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}

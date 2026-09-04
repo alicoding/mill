@@ -19,6 +19,7 @@ import {
   type WorkTabCloseRequest,
   type WorkTabSpec,
 } from './workTabs'
+import { redirectRetiredView } from './viewRedirects'
 
 // Re-exported so every existing `from '../shared/store'` import of
 // WorkTab/WorkTabSpec (app/WorkTabShell.tsx, composition/
@@ -81,7 +82,10 @@ export type View =
   | { kind: 'settings'; section?: string }
   // page: which docs page is open (rel path from the docs index).
   | { kind: 'docs'; page?: string }
-  | { kind: 'secrets' }
+  // tab: which Secrets section to land on -- 'vault' (the entries) or
+  // 'sources' (the stores Mill reads entries from). Undefined lands on
+  // the vault.
+  | { kind: 'secrets'; tab?: string }
   | { kind: 'placeholder'; capabilityId: string }
 
 // Single mapping from a capability's Go-declared View to the frontend's
@@ -334,7 +338,7 @@ export const useAppStore = create<AppState>()(
       // Navigating sections deliberately deactivates the active work
       // tab (it stays open in the strip): clicking a sidebar item or
       // pressing a view hotkey means "show me that page."
-      setView: (view) => set({ view, activeWorkTabKey: null }),
+      setView: (view) => set({ view: redirectRetiredView(view), activeWorkTabKey: null }),
       workTabs: [],
       activeWorkTabKey: null,
       openWorkTab: (tab) =>

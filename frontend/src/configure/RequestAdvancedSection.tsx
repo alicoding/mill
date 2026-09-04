@@ -1,6 +1,9 @@
 import { useTranslation } from 'react-i18next'
 import { Checkbox, FormControl, Stack, Text, Textarea } from '@primer/react'
 import type { RequestDraft } from './requestDraft'
+import { SecretPicker } from '../shared/SecretPicker'
+import { secretTitleFor } from './secretTitleFor'
+import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
 import { AdvancedDisclosure } from './AdvancedDisclosure'
 import styles from '../shared/ListCard.module.css'
 
@@ -13,10 +16,9 @@ export function requestAdvancedIsSet(draft: RequestDraft): boolean {
   return draft.joseEnabled || draft.body.trim() !== ''
 }
 
-export function RequestAdvancedSection({ draft, setDraft, isEditing }: {
+export function RequestAdvancedSection({ draft, setDraft }: {
   draft: RequestDraft
   setDraft: (d: RequestDraft) => void
-  isEditing: boolean
 }) {
   const { t } = useTranslation('configure')
   return (
@@ -35,12 +37,12 @@ export function RequestAdvancedSection({ draft, setDraft, isEditing }: {
           <FormControl>
             <FormControl.Label>{t('requestForm.recipientPublicKey')}</FormControl.Label>
             <FormControl.Caption>{t('requestForm.recipientPublicKeyCaption')}</FormControl.Caption>
-            <Textarea
-              value={draft.joseRecipientPublicKeyPEM}
-              onChange={(e) => setDraft({ ...draft, joseRecipientPublicKeyPEM: e.target.value })}
-              rows={4}
-              block
-              data-testid="jose-recipient-public-key"
+            <SecretPicker
+              value={draft.joseRecipientPublicKeyRef}
+              onChange={(ref) => setDraft({ ...draft, joseRecipientPublicKeyRef: ref })}
+              kinds={[Kind.KindKey, Kind.KindText]}
+              newEntryTitle={secretTitleFor(draft.label, t('requestForm.recipientPublicKey'))}
+              testID="jose-recipient-public-key"
             />
           </FormControl>
           <Stack direction="horizontal" gap="condensed" align="center">
@@ -55,16 +57,13 @@ export function RequestAdvancedSection({ draft, setDraft, isEditing }: {
           {draft.joseDecryptResponse && (
             <FormControl>
               <FormControl.Label>{t('requestForm.millsPrivateKey')}</FormControl.Label>
-              <FormControl.Caption>
-                {t('requestForm.millsPrivateKeyCaption')}
-                {isEditing && t('requestForm.leaveBlankToKeepKey')}
-              </FormControl.Caption>
-              <Textarea
-                value={draft.josePrivateKeyPEM}
-                onChange={(e) => setDraft({ ...draft, josePrivateKeyPEM: e.target.value })}
-                rows={4}
-                block
-                data-testid="jose-private-key"
+              <FormControl.Caption>{t('requestForm.millsPrivateKeyCaption')}</FormControl.Caption>
+              <SecretPicker
+                value={draft.josePrivateKeyRef}
+                onChange={(ref) => setDraft({ ...draft, josePrivateKeyRef: ref })}
+                kinds={[Kind.KindKey]}
+                newEntryTitle={secretTitleFor(draft.label, t('requestForm.millsPrivateKey'))}
+                testID="jose-private-key"
               />
             </FormControl>
           )}

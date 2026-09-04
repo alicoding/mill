@@ -4,6 +4,9 @@ import { StatusStamp } from '../shared/StatusStamp'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import { authLabelFor, AUTH_UNIMPLEMENTED } from './authTypeLabels'
 import type { RequestDraft } from './requestDraft'
+import { SecretPicker } from '../shared/SecretPicker'
+import { secretTitleFor } from './secretTitleFor'
+import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
 import styles from '../shared/ListCard.module.css'
 
 // The Auth and JOSE sections of the request form -- split out of
@@ -12,10 +15,9 @@ import styles from '../shared/ListCard.module.css'
 // file past the 500-line limit. Pure presentation over the shared
 // draft: all state stays owned by RequestForm.
 
-export function RequestAuthSections({ draft, setDraft, isEditing }: {
+export function RequestAuthSections({ draft, setDraft }: {
   draft: RequestDraft
   setDraft: (d: RequestDraft) => void
-  isEditing: boolean
 }) {
   const { t } = useTranslation('configure')
   const AUTH_LABEL_MAP = authLabelFor(t)
@@ -86,26 +88,38 @@ export function RequestAuthSections({ draft, setDraft, isEditing }: {
             <>
               <FormControl>
                 <FormControl.Label>{t('requestAuthSections.consumerSecret')}</FormControl.Label>
-                <FormControl.Caption>
-                  {t('requestAuthSections.secretCaption')}
-                  {isEditing && t('requestAuthSections.leaveBlankToKeepSecret')}
-                </FormControl.Caption>
-                <TextInput type="password" value={draft.oauth1ConsumerSecret} onChange={(e) => setDraft({ ...draft, oauth1ConsumerSecret: e.target.value })} block />
+                <FormControl.Caption>{t('requestAuthSections.secretCaption')}</FormControl.Caption>
+                <SecretPicker
+                  value={draft.oauth1ConsumerSecretRef}
+                  onChange={(ref) => setDraft({ ...draft, oauth1ConsumerSecretRef: ref })}
+                  kinds={[Kind.KindText]}
+                  newEntryTitle={secretTitleFor(draft.label, t('requestAuthSections.consumerSecret'))}
+                  testID="request-consumer-secret-picker"
+                />
               </FormControl>
               <FormControl>
                 <FormControl.Label>{t('requestAuthSections.tokenSecret')}</FormControl.Label>
                 <FormControl.Caption>{t('requestAuthSections.tokenSecretCaption')}</FormControl.Caption>
-                <TextInput type="password" value={draft.oauth1TokenSecret} onChange={(e) => setDraft({ ...draft, oauth1TokenSecret: e.target.value })} block />
+                <SecretPicker
+                  value={draft.oauth1TokenSecretRef}
+                  onChange={(ref) => setDraft({ ...draft, oauth1TokenSecretRef: ref })}
+                  kinds={[Kind.KindText]}
+                  newEntryTitle={secretTitleFor(draft.label, t('requestAuthSections.tokenSecret'))}
+                  testID="request-token-secret-picker"
+                />
               </FormControl>
             </>
           ) : draft.authType !== AuthType.AuthNone && (
             <FormControl>
               <FormControl.Label>{draft.authType === AuthType.AuthOAuth2 ? t('requestAuthSections.clientSecret') : t('requestAuthSections.secret')}</FormControl.Label>
-              <FormControl.Caption>
-                {t('requestAuthSections.secretCaption')}
-                {isEditing && t('requestAuthSections.leaveBlankToKeepSecret')}
-              </FormControl.Caption>
-              <TextInput type="password" value={draft.secret} onChange={(e) => setDraft({ ...draft, secret: e.target.value })} block />
+              <FormControl.Caption>{t('requestAuthSections.secretCaption')}</FormControl.Caption>
+              <SecretPicker
+                value={draft.secretRef}
+                onChange={(ref) => setDraft({ ...draft, secretRef: ref })}
+                kinds={[Kind.KindText]}
+                newEntryTitle={secretTitleFor(draft.label, t('requestAuthSections.secret'))}
+                testID="request-secret-picker"
+              />
             </FormControl>
           )}
         </Stack>

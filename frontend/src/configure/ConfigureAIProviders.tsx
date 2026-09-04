@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
-import { Button, FormControl, IconButton, Stack, Text, TextInput } from '@primer/react'
+import { Button, FormControl, IconButton, Stack, Text } from '@primer/react'
 import { DownloadIcon, PencilIcon, PlusIcon, SparkleFillIcon, TrashIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { StatusStamp } from '../shared/StatusStamp'
@@ -19,6 +19,9 @@ import { describeSeedReset } from '../shared/seedLifecycle'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { EntityConfigFields } from './EntityConfigFields'
 import { ConfigureEntityPage } from './ConfigureEntityPage'
+import { SecretPicker } from '../shared/SecretPicker'
+import { secretTitleFor } from './secretTitleFor'
+import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
 import { useSeedLifecycle } from './useSeedLifecycle'
 import { useEntityImportExport } from './useEntityImportExport'
 import styles from '../shared/ListCard.module.css'
@@ -56,7 +59,7 @@ export function ConfigureAIProviders() {
   const [fields, setFields] = useState<Field[]>([])
   const [editingID, setEditingID] = useState<string | null>(null)
   const [values, setValues] = useState<Record<string, string>>(emptyValues)
-  const [secret, setSecret] = useState('')
+  const [keyRef, setKeyRef] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
   const [viewMode, setViewMode] = useViewMode('mill-aiproviders-view-mode')
@@ -85,7 +88,7 @@ export function ConfigureAIProviders() {
   const startCreate = () => {
     setEditingID(null)
     setValues(emptyValues)
-    setSecret('')
+    setKeyRef('')
     setFormOpen(true)
     setError('')
   }
@@ -105,7 +108,8 @@ export function ConfigureAIProviders() {
   const startEdit = (p: AIProvider) => {
     setEditingID(p.ID)
     setValues({ label: p.Label, kind: p.Kind, baseURL: p.BaseURL, model: p.Model })
-    setSecret('') // write-only -- never pre-fills
+    setKeyRef(p.KeyRef ?? '')
+    setKeyRef('') // write-only -- never pre-fills
     setFormOpen(true)
     setError('')
   }
@@ -127,21 +131,14 @@ export function ConfigureAIProviders() {
     setError('')
     try {
       const kind = values.kind as AIProviderKind
-      const saved = editingID
-        ? await ConfigureService.UpdateAIProvider(editingID, values.label, kind, values.baseURL, values.model)
-        : await ConfigureService.CreateAIProvider(values.label, kind, values.baseURL, values.model)
-      if (secret) {
-        try {
-          await ConfigureService.SetAIProviderSecret(saved.ID, secret)
-        } catch (err) {
-          // Same best-effort posture RequestForm.tsx's own secret write
-          // already documents -- the provider itself is saved; only the
-          // credential write failed (e.g. no OS keychain available).
-          console.error('AI provider secret write failed (provider was still saved):', err)
-        }
-      }
+      // The key is a reference the provider carries (goal 0306), so it
+      // is saved with everything else -- no second, write-only channel
+      // that could half-succeed behind a saved provider.
+      await (editingID
+        ? ConfigureService.UpdateAIProvider(editingID, values.label, kind, values.baseURL, values.model, keyRef)
+        : ConfigureService.CreateAIProvider(values.label, kind, values.baseURL, values.model, keyRef))
       setFormOpen(false)
-      setSecret('')
+      setKeyRef('')
       refetch()
     } catch (err) {
       setError(String(err))
@@ -231,7 +228,13 @@ export function ConfigureAIProviders() {
           <FormControl>
             <FormControl.Label>{t('configureAIProviders.secretApiKey')}</FormControl.Label>
             <FormControl.Caption>{t('configureAIProviders.secretCaption')}</FormControl.Caption>
-            <TextInput type="password" value={secret} onChange={(e) => setSecret(e.target.value)} block />
+            <SecretPicker
+              value={keyRef}
+              onChange={setKeyRef}
+              kinds={[Kind.KindText]}
+              newEntryTitle={secretTitleFor(values.label ?? '', t('configureAIProviders.secretApiKey'))}
+              testID="aiprovider-key-picker"
+            />
           </FormControl>
           {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
           <Stack direction="horizontal" gap="condensed">
