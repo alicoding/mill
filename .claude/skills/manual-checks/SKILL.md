@@ -33,6 +33,25 @@ installed build can catch, and exactly how to verify it there.
   pressing ⌘⇧W / ⌘W / ⌘Q (each must be captured as a combo, never
   close/quit), then Escape/blur out and confirming accelerators work
   again.
+- **The native menu bar** (goal 0332, `menusvc.MenuService.Install`
+  + `windowing.BuildMenu`) -- server mode has no menu bar at all
+  (`InstallMenu` is a build-tagged no-op there), so the projection,
+  the accelerator translation and the enablement diff are
+  Vitest-pinned and the tree builder is Go-tested headless, but no
+  harness can open a real NSMenu. Verify on an installed build:
+  every menu renders in bar order (Mill, File, Edit, View, Workflow,
+  Atlas, Window, Help) and the app menu is titled "Mill"; About Mill
+  opens the standard panel showing Mill and the running version;
+  pick View > Configure and the app navigates, proving a menu click
+  runs its command; on Home the whole Atlas menu is dimmed and on
+  Atlas it is live; press ⌘W once and exactly ONE tab closes (never
+  the window); press ⌘0 and it goes Home rather than resetting
+  webview zoom, and ⌘+/⌘- still zoom the workflow canvas; Help >
+  Report an issue... opens the issue tracker in the browser and Help
+  > Open data folder opens Mill's data directory in Finder; finally
+  arm a hotkey recorder (Settings > General > summon hotkey) and
+  press ⌘W and ⌘Q -- each must be captured as a combo, including
+  while the nested Help > Developer submenu exists.
 - **Dev-loop timing** (`BuildIdentityBadge`'s amber `DEV · go-stale`
   state, `isGoSourceStale`) — CI has no live file watcher; verify via
   `.claude/skills/run-mill` by wedging a `wails3 dev` rebuild and

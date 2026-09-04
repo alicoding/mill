@@ -5,6 +5,7 @@ import type { View } from './store'
 import { useUISignalStore } from './uiSignalStore'
 import { pluginRegistryCommands } from './pluginHostCommands'
 import { lazyArray } from './lazySnapshot'
+import { isMenuOwnedCombo } from './menuOwnership'
 import { CONFIGURE_CREATE_COMMANDS } from './configureCreateCommands'
 import { ATLAS_BOARD_COMMANDS } from './atlasBoardCommands'
 import { SETTINGS_COMMANDS } from './settingsCommands'
@@ -16,6 +17,10 @@ import { CODING_LOOP_COMMANDS } from './codingLoopCommands'
 import { DOCS_SEARCH_COMMANDS } from './docsSearchCommands'
 import { REVIEW_COMMANDS } from './reviewCommands'
 import { ATLAS_CREATE_COMMANDS } from './atlasCreateCommands'
+import { HELP_COMMANDS } from './helpCommands'
+import { TAB_COMMANDS } from './tabCommands'
+import { withMenuGroup } from './menuGroup'
+import type { MenuPlacement } from './menuSpec'
 
 // The command registry (docs/goals/0016-keymap-system.md): named
 // commands with a default binding, dispatched by one window keydown
@@ -91,6 +96,12 @@ export interface Command {
   // panel's own window (app/quickPanelActionEntries.tsx) -- a run()
   // assuming the MAIN window (setView) is overridden there instead.
   quickPanel?: boolean
+  // Native menu bar placement (goal 0332): the menu bar is a projection
+  // of this registry, so a command that belongs in a menu says so here
+  // rather than being listed again somewhere else. Omit and the command
+  // simply has no menu item. shared/menuSpec.ts's own doc has the band/
+  // order semantics.
+  menu?: MenuPlacement
   run: () => void
 }
 
@@ -117,91 +128,14 @@ function isWorkflowsArea(): boolean {
   return useAppStore.getState().view.kind === 'composition' || isWorkflowEditorTabActive()
 }
 
-// tab.next/tab.prev cycle a ring of [pinned page tab, ...workTabs] --
-// the same set the tab strip itself renders (app/WorkTabShell.tsx),
-// with `null` standing in for the pinned page tab's own activeWorkTabKey
-// value. A no-op when no work tabs are open (nothing to cycle to).
-function cycleWorkTab(direction: 1 | -1): void {
-  const { workTabs, activeWorkTabKey, activateWorkTab } = useAppStore.getState()
-  if (workTabs.length === 0) return
-  const keys: (string | null)[] = [null, ...workTabs.map((t) => t.key)]
-  const from = keys.indexOf(activeWorkTabKey)
-  const next = ((from === -1 ? 0 : from) + direction + keys.length) % keys.length
-  activateWorkTab(keys[next])
-}
-
 // LAZY snapshot (shared/lazySnapshot.ts, docs/goals/0249): plugin
 // commands are collected during activation, which lands between this
 // module's eval and the first read (always render- or event-time).
 export const COMMANDS: Command[] = lazyArray(() => [
-  {
-    id: 'tab.close',
-    label: 'Close tab',
-    defaultBinding: { mods: ['cmd'], key: 'W' },
-    // No active work tab means we're already on the pinned page --
-    // nothing to close (the window-only-when-none-remain case is
-    // native-menu-only, SettingsService.ReleaseMenuAccelerators).
-    enabled: () => useAppStore.getState().activeWorkTabKey !== null,
-    run: () => {
-      const { activeWorkTabKey, requestWorkTabClose } = useAppStore.getState()
-      if (!activeWorkTabKey) return
-      // Routes through the close-guard signal (docs/goals/0048) rather
-      // than calling closeWorkTab directly -- app/useWorkTabCloseGuard.ts
-      // decides whether the tab is dirty and prompts before it closes.
-      requestWorkTabClose({ kind: 'one', key: activeWorkTabKey })
-    },
-  },
-  {
-    id: 'tab.next',
-    label: 'Next tab',
-    defaultBinding: { mods: ['ctrl'], key: 'Tab' },
-    // ⌘⇧] -- the browser convention (Safari/Chrome "Show Next Tab")
-    // for the identical action, alongside Ctrl+Tab the same way
-    // palette.open carries its ⌘//⌘? aliases. Checked against
-    // RESERVED_COMBOS (shared/keybinding.ts), every other command's
-    // bindings here, and the native menu (no bracket accelerators):
-    // no collision.
-    extraBindings: [{ mods: ['cmd', 'shift'], key: ']' }],
-    run: () => cycleWorkTab(1),
-  },
-  {
-    id: 'tab.prev',
-    label: 'Previous tab',
-    defaultBinding: { mods: ['ctrl', 'shift'], key: 'Tab' },
-    // ⌘⇧[ -- same browser convention as tab.next's ⌘⇧] above.
-    extraBindings: [{ mods: ['cmd', 'shift'], key: '[' }],
-    run: () => cycleWorkTab(-1),
-  },
-  {
-    id: 'tab.closeOthers',
-    label: 'Close other tabs',
-    // Safari's own convention for the identical action (Option+Cmd+W is
-    // literally "Close Other Tabs" there) -- picked over an arbitrary
-    // combo since Mill's tab strip already models the same browser-tab
-    // affordances (goal 0018). Checked against RESERVED_COMBOS
-    // (shared/keybinding.ts, none of which use W) and every other
-    // command's default above: no collision.
-    defaultBinding: { mods: ['cmd', 'option'], key: 'W' },
-    // Nothing to keep relative to on the pinned page tab.
-    enabled: () => useAppStore.getState().activeWorkTabKey !== null,
-    run: () => {
-      const { activeWorkTabKey, requestWorkTabClose } = useAppStore.getState()
-      if (!activeWorkTabKey) return
-      requestWorkTabClose({ kind: 'others', keepKey: activeWorkTabKey })
-    },
-  },
-  {
-    id: 'tab.closeAll',
-    label: 'Close all tabs',
-    // Safari's "Close Window" combo (Shift+Cmd+W) repurposed the same
-    // way tab.close above already repurposed plain Cmd+W -- Mill has no
-    // multi-window tab groups, so "close every open work tab" is the
-    // closest real equivalent action in this app.
-    defaultBinding: { mods: ['cmd', 'shift'], key: 'W' },
-    run: () => useAppStore.getState().requestWorkTabClose({ kind: 'all' }),
-  },
+  ...TAB_COMMANDS,
   {
     id: 'workflow.new',
+    menu: { path: 'file', group: 0, order: 0 },
     label: 'New workflow',
     defaultBinding: { mods: ['cmd'], key: 'N' },
     enabled: isWorkflowsArea,
@@ -209,6 +143,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
   },
   {
     id: 'workflow.save',
+    menu: { path: 'file', group: 2, order: 0, label: 'Save' },
     label: 'Save workflow',
     defaultBinding: { mods: ['cmd'], key: 'S' },
     enabled: isWorkflowEditorTabActive,
@@ -216,6 +151,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
   },
   {
     id: 'workflow.run',
+    menu: { path: 'workflow', group: 0, order: 0 },
     label: 'Run workflow',
     // ⌘↩ (Cmd+Enter), not ⌘R: ⌘R stays the native browser/dev View > Reload (⌘⇧R too, the developer's own debug escape hatch), so
     // SettingsService.ReleaseMenuAccelerators no longer touches it (settingsservice_menu.go). Cmd+Enter is the editor/chat
@@ -227,6 +163,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
   },
   {
     id: 'palette.open',
+    menu: { path: 'view', group: 1, order: 0, label: 'Command palette' },
     label: 'Open command palette',
     // goal 0015: app/CommandPalette.tsx renders off the store's
     // paletteOpen flag (a plain toggle, not open-only, matching most
@@ -257,6 +194,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
     // ⌘⇧/ is this command's own registry-dispatched alias, the same
     // macOS Help-menu convention `?` itself follows.
     id: 'help.shortcuts',
+    menu: { path: 'help', group: 0, order: 1, label: 'Keyboard shortcuts' },
     label: 'Keyboard shortcuts help',
     defaultBinding: null,
     extraBindings: [{ mods: ['cmd', 'shift'], key: '/' }],
@@ -264,18 +202,21 @@ export const COMMANDS: Command[] = lazyArray(() => [
   },
   {
     id: 'view.home',
+    menu: { path: 'view', group: 0, order: 0, label: 'Home' },
     label: 'Go to Home',
     defaultBinding: { mods: ['cmd'], key: '0' },
     run: () => setView({ kind: 'home' }),
   },
   {
     id: 'view.composition',
+    menu: { path: 'view', group: 0, order: 1, label: 'Workflows' },
     label: 'Go to Workflows',
     defaultBinding: { mods: ['cmd'], key: '1' },
     run: () => setView({ kind: 'composition' }),
   },
   {
     id: 'view.configure',
+    menu: { path: 'view', group: 0, order: 2, label: 'Configure' },
     label: 'Go to Configure',
     defaultBinding: { mods: ['cmd'], key: '2' },
     run: () => setView({ kind: 'configure' }),
@@ -286,6 +227,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
     // navigation itself lives in AtlasView (it owns viewedID) --
     // same store-signal seam canvasCommandRequest documents above.
     id: 'atlas.up',
+    menu: { path: 'atlas', group: 0, order: 0 },
     label: 'Go up one level',
     defaultBinding: { mods: ['cmd'], key: 'ArrowUp' },
     surface: ['atlas'],
@@ -300,18 +242,20 @@ export const COMMANDS: Command[] = lazyArray(() => [
     // AtlasJumpDialog itself is now purely controlled off this signal
     // (its own former capture-phase window listener is retired).
     id: 'atlas.jump',
+    menu: { path: 'atlas', group: 0, order: 1 },
     label: 'Jump to a card or object',
     defaultBinding: { mods: ['cmd'], key: 'K' },
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasJump(),
   },
   // atlas.create.<id> (bare C/N/A/T/I/P/E/L/S) -- own file, atlasCreateCommands.ts, same reason every other feature-specific cluster below already is.
-  ...ATLAS_CREATE_COMMANDS,
+  ...withMenuGroup('atlas', 2, ATLAS_CREATE_COMMANDS),
   // The board's ⌘Z/⇧⌘Z (goal 0219 S2, ADR-0044): null binding -- ⌘Z is
   // ALSO native text-undo, dispatched by useKeymapDispatch.ts's own
   // listener instead; these exist for palette/HotkeyHint discovery only.
   {
     id: 'atlas.undo',
+    menu: { path: 'atlas', group: 0, order: 2 },
     label: 'Undo',
     defaultBinding: null,
     surface: ['atlas'],
@@ -319,6 +263,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
   },
   {
     id: 'atlas.redo',
+    menu: { path: 'atlas', group: 0, order: 3 },
     label: 'Redo',
     defaultBinding: null,
     surface: ['atlas'],
@@ -326,6 +271,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
   },
   {
     id: 'atlas.matrix',
+    menu: { path: 'atlas', group: 0, order: 4 },
     label: 'Open traceability matrix',
     defaultBinding: null,
     surface: ['atlas'],
@@ -333,6 +279,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
   },
   {
     id: 'atlas.coverage',
+    menu: { path: 'atlas', group: 0, order: 5 },
     label: 'Open coverage',
     defaultBinding: null,
     surface: ['atlas'],
@@ -340,6 +287,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
   },
   {
     id: 'atlas.roadmap',
+    menu: { path: 'atlas', group: 0, order: 6 },
     label: 'Open roadmap',
     defaultBinding: null,
     surface: ['atlas'],
@@ -347,24 +295,27 @@ export const COMMANDS: Command[] = lazyArray(() => [
   },
   // The rest of the Atlas toolbar/board's own commands -- split out to
   // shared/atlasBoardCommands.ts (CLAUDE.md's 500-line convention).
-  ...ATLAS_BOARD_COMMANDS,
+  ...withMenuGroup('atlas', 1, ATLAS_BOARD_COMMANDS),
   {
     // ⌘0..⌘5 mirror the sidebar's own top-to-bottom order -- Atlas
     // sits between Configure and Activity there, so it takes ⌘3 and
     // the two below shift down one.
     id: 'view.atlas',
+    menu: { path: 'view', group: 0, order: 3, label: 'Atlas' },
     label: 'Go to Atlas',
     defaultBinding: { mods: ['cmd'], key: '3' },
     run: () => setView({ kind: 'atlas' }),
   },
   {
     id: 'view.activity',
+    menu: { path: 'view', group: 0, order: 4, label: 'Activity' },
     label: 'Go to Activity',
     defaultBinding: { mods: ['cmd'], key: '4' },
     run: () => setView({ kind: 'activity' }),
   },
   {
     id: 'view.review',
+    menu: { path: 'view', group: 0, order: 5, label: 'Review' },
     label: 'Go to Review',
     defaultBinding: { mods: ['cmd'], key: '5' },
     // Quick Panel's "Review" row reuses this id (its pending-count badge
@@ -374,6 +325,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
   },
   {
     id: 'view.secrets',
+    menu: { path: 'view', group: 0, order: 6, label: 'Secrets' },
     label: 'Go to Secrets',
     defaultBinding: { mods: ['cmd'], key: '6' },
     run: () => setView({ kind: 'secrets' }),
@@ -383,6 +335,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
     // reachable on demand, never a standing tab) -- the palette and the
     // footer link are its entry points.
     id: 'view.docs',
+    menu: { path: 'view', group: 0, order: 7, label: 'Docs' },
     label: 'Open docs',
     defaultBinding: null,
     run: () => setView({ kind: 'docs' }),
@@ -403,10 +356,10 @@ export const COMMANDS: Command[] = lazyArray(() => [
   // Canvas undo/redo/delete/zoom -- split out to shared/canvasCommands.ts
   // (CLAUDE.md's 500-line convention); see that file's own header for
   // why every entry is hintOnly.
-  ...CANVAS_COMMANDS,
+  ...withMenuGroup('workflow', 2, CANVAS_COMMANDS),
   // edit.save / edit.saveAll over the flush registry (goal 0295 S2b) --
   // split out to shared/saveCommands.ts.
-  ...SAVE_COMMANDS,
+  ...withMenuGroup('workflow', 1, SAVE_COMMANDS),
   // Vault lock/unlock -- split out to shared/secretsCommands.ts.
   ...SECRETS_COMMANDS,
   // clipboard.history.open -- split out to shared/clipboardHistoryCommands.ts.
@@ -414,7 +367,8 @@ export const COMMANDS: Command[] = lazyArray(() => [
   // codingLoop.run -- split out to shared/codingLoopCommands.ts.
   ...CODING_LOOP_COMMANDS,
   // docs.search -- split out to shared/docsSearchCommands.ts.
-  ...DOCS_SEARCH_COMMANDS,
+  ...withMenuGroup('help', 0, DOCS_SEARCH_COMMANDS),
+  ...HELP_COMMANDS,
   // Every plugin-related command (docs/goals/0249, goal 0321) -- what
   // plugins contributed plus the host's own per-plugin actions.
   ...pluginRegistryCommands(),
@@ -471,6 +425,11 @@ export function dispatchCommandForEvent(e: KeyboardEvent, overrides: Record<stri
   const pressed = comboFromEvent(e)
   if (!pressed) return false
   const want = comboKey(pressed.mods, pressed.key)
+  // The native menu bar owns this combo and already had first refusal
+  // on the keypress (shared/menuOwnership.ts) -- reaching here at all
+  // means the menu declined it (its item is disabled), so acting on it
+  // now would run a command the menu just refused.
+  if (isMenuOwnedCombo(want)) return false
   const activeKind = useAppStore.getState().view.kind
 
   const tryRun = (command: Command): boolean => {

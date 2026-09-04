@@ -524,6 +524,15 @@ export function NotifyPendingApproval(id: string, description: string, kind: str
 }
 
 /**
+ * OpenDataFolder opens the directory Mill keeps its settings, database,
+ * backups and vault in, in the OS file manager -- the same directory
+ * every default data path is resolved against.
+ */
+export function OpenDataFolder(): $CancellablePromise<void> {
+    return $Call.ByID(2805097572);
+}
+
+/**
  * OpenMainWindow shows/restores/focuses Mill's main window (ShowWindow's
  * existing sequence) and, when view is non-empty, emits 'mill-navigate'
  * so App.tsx switches to that view -- the Quick Panel's "Open Mill" and
@@ -588,6 +597,13 @@ export function QuitApp(): $CancellablePromise<void> {
  */
 export function RemovePlugin(id: string): $CancellablePromise<string> {
     return $Call.ByID(3977466011, id);
+}
+
+/**
+ * ReportIssue opens the issue tracker in the user's default browser.
+ */
+export function ReportIssue(): $CancellablePromise<void> {
+    return $Call.ByID(956761945);
 }
 
 /**

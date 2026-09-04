@@ -26,6 +26,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	if err := regenerateMenuTable(root); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	if err := regenerateGuideQuotes(root); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -134,6 +138,30 @@ func regenerateGuideQuotes(docsRoot string) error {
 		if err := os.WriteFile(q.pagePath, []byte(updated), 0o600); err != nil { // #nosec G703 -- same fixed path as the read above
 			return fmt.Errorf("write %s: %w", q.pagePath, err)
 		}
+	}
+	return nil
+}
+
+// regenerateMenuTable splices the freshly generated menu-bar tables into
+// menu-bar.md's one marked region, leaving the rest of the hand-authored
+// page untouched -- same shape as regenerateCommandTable above.
+func regenerateMenuTable(docsRoot string) error {
+	pagePath := filepath.Join(docsRoot, "reference", "menu-bar.md")
+	existing, err := os.ReadFile(pagePath) // #nosec G304 -- fixed path under this repo's own userdocs tree
+	if err != nil {
+		return fmt.Errorf("read menu-bar.md: %w", err)
+	}
+	frontendSharedDir := filepath.Join("..", "..", "frontend", "src", "shared")
+	table, err := docsgen.GenerateMenuTable(frontendSharedDir)
+	if err != nil {
+		return fmt.Errorf("generate menu table: %w", err)
+	}
+	updated, err := docsgen.ReplaceMarkedRegion(string(existing), docsgen.MenuTableBeginMarker, docsgen.MenuTableEndMarker, table)
+	if err != nil {
+		return fmt.Errorf("splice menu table into menu-bar.md: %w", err)
+	}
+	if err := os.WriteFile(pagePath, []byte(updated), 0o600); err != nil { // #nosec G703 -- same fixed path as the read above
+		return fmt.Errorf("write menu-bar.md: %w", err)
 	}
 	return nil
 }

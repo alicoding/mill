@@ -77,6 +77,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
 | `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
+| `help.openDataFolder` | Open data folder | — | Global | Always available |
+| `help.reportIssue` | Report an issue… | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `object.rename` | Rename | — | atlas | Always available |

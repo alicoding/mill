@@ -41,6 +41,7 @@ import { useReviewDeepLink } from './useReviewDeepLink'
 import { useSettingsRouteLanding } from './useSettingsRouteLanding'
 import { usePendingReview } from '../review/usePendingReview'
 import { useKeymapDispatch } from './useKeymapDispatch'
+import { useNativeMenu } from './useNativeMenu'
 import { useBrowserNotify } from './useBrowserNotify'
 import { usePluginReviewNotice } from './usePluginReviewNotice'
 import styles from "./App.module.css";
@@ -121,6 +122,11 @@ function App() {
   // convention); see useKeymapDispatch.ts's own header for both
   // listeners' full reasoning.
   useKeymapDispatch();
+
+  // The native menu bar (goal 0332), projected from the same command
+  // registry the dispatcher above resolves keypresses against -- see
+  // useNativeMenu.ts for why the routing lives beside it.
+  useNativeMenu();
 
   // Marks the moment the app's own window-level keydown listeners
   // (useKeymapDispatch, above) are attached, not just when React has
