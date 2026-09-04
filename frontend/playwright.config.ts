@@ -77,6 +77,10 @@ export default defineConfig({
   // load ran several long Atlas tests to exactly 60s; the cap must
   // clear the slow-but-correct case.
   timeout: 90_000,
+  // A click on an element that never appears fails here, with the locator
+  // in the message, instead of silently spending the whole test timeout
+  // (goal 0337 S2: two dedicated-server specs hung 90 s with no diagnostic).
+  actionTimeout: 15_000,
   // Playwright's own default reporter (list locally, dot in CI) never
   // writes a report to disk -- ci.yml's e2e job already expects one at
   // frontend/playwright-report on failure (its own upload-artifact

@@ -80,7 +80,10 @@ test('an administrator allow-list in the settings file blocks every plugin off i
 		const scribbleDetail = await openExtensionDetail(page, scribble, 'mill-scribble')
 		await expect(scribbleDetail.getByTestId('extensions-plugin-blocked')).toContainText('Not on this Mill')
 		await expect(scribbleDetail.getByTestId('extensions-plugin-allow')).toHaveCount(0)
-		// The built-in Drawing plugin is exempt from the list.
+		// The built-in Drawing plugin is exempt from the list -- behind
+		// the shared Built-in disclosure now that an own plugin
+		// (mill-bookmark) exists to collapse it (goal 0337 S2).
+		await page.getByTestId('extensions-built-in-toggle').click()
 		const drawing = pluginRow(page, 'mill-drawing')
 		await expect(drawing.getByTestId('extensions-plugin-toggle')).toBeVisible()
 		const drawingDetail = await openExtensionDetail(page, drawing, 'mill-drawing')
@@ -183,7 +186,10 @@ test('with signing keys pinned, an unsigned plugin cannot run and the bar says s
 		await expect(row.getByTestId('extensions-plugin-toggle')).toHaveCount(0)
 		const detail = await openExtensionDetail(page, row, 'mill-bookmark')
 		await expect(detail.getByTestId('extensions-plugin-unsigned')).toContainText('Not signed by a key this Mill trusts')
-		// The built-in Drawing plugin is exempt from the signing policy.
+		// The built-in Drawing plugin is exempt from the signing policy --
+		// behind the shared Built-in disclosure now that an own plugin
+		// (mill-bookmark) exists to collapse it (goal 0337 S2).
+		await page.getByTestId('extensions-built-in-toggle').click()
 		await expect(pluginRow(page, 'mill-drawing').getByTestId('extensions-plugin-toggle')).toBeVisible()
 	} finally {
 		await close()

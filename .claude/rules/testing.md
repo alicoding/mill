@@ -12,8 +12,7 @@ when you confirm the fix:
   unless the bug is fundamentally about layout.
 - Go bug → a `_test.go` case in the same package.
 
-Doesn't apply if never reproduced live (review, a type error, a lint
-rule).
+Not for bugs never reproduced live (review, type error, lint).
 
 **E2e isolation is per-worker and per-run** (goal 0009): each Playwright
 worker spawns its own `bin/mill-server` on fresh `mkdtemp` files, torn
@@ -34,7 +33,7 @@ fires should pass it directly, not round-trip through state
 (`setState` isn't synchronous).
 
 **Every capability ships with a seeded example that exercises it — the
-seed IS the proof.** Add or extend one, prove it live, and test it. Seeding is top-up with delete-tombstones
+seed IS the proof.** Seeding is top-up with delete-tombstones
 (`reconcileBuiltIns`) — never fresh-install-only. Changing a golden's
 content bumps its `SeedRevision`, or
 `TestSeedFingerprints_MatchCommittedRecord` fails the build.
@@ -65,7 +64,7 @@ resort carrying a same-line comment naming why.
   scoped to `src/`; thresholds in `vite.config.ts` are INTEGER floors
   raised with real coverage. Go: `scripts/check-go-coverage.sh`.
 - **Diagnostics**: `trace: 'on-first-retry'`, screenshot on failure; CI
-  retries 2/local 1 — read the first flake's trace.zip.
+  retries 2/local 1; read the first flake's trace.zip.
 - **CI-only flakes are chased locally under CPU throttle, never by
   rerunning CI**: `E2E_CPU_THROTTLE=4 npx playwright test <spec>
   --retries=0 --repeat-each=3` — reproduces → a load race, else
@@ -84,15 +83,16 @@ resort carrying a same-line comment naming why.
   never bare `page.goto`: the app mounts after an async plugin-load gate
   (main.tsx's `bootstrap()`), so `goto` resolving is not mount.
 - **Seeded-content on the landing board**: "Board gallery" is the
-  PERMANENT home for seeded example objects — never new root cards.
+  permanent home for seeded objects, never new root cards.
   Scope locators via `nonSeededBoardObjectWrapper`; no fixed-pixel
   placements.
 - **Never pass a needle carrying its own `.react-flow__node:not(...)`
   ancestor clause into `filter({has})`**: Playwright re-queries the
-  needle inside each candidate and the failure is a silent zero-match.
+  needle per candidate; the failure is a silent zero-match.
 - **Assertion style**: web-first retrying `expect(...)` over one-shot
-  `boundingBox()` after anything animated; new `waitForTimeout` needs a
-  same-line justifying comment.
+  `boundingBox()` after anything animated; a new `waitForTimeout` needs a
+  same-line reason; actions time out at 15 s (`actionTimeout`): a
+  missing element fails with its locator, not the 90 s budget.
 
 ## Quality gates: duplication + cognitive complexity (goal 0109)
 

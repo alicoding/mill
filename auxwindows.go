@@ -191,15 +191,49 @@ func newCaptureWindow(app *application.App) *application.WebviewWindow {
 // wireAuxWindows creates the auxiliary windows and hands each to the
 // settings service, which owns their show/hide choreography.
 func wireAuxWindows(app *application.App, settingsService *settingssvc.SettingsService) {
-	settingsService.SetPanelWindow(windowing.WrapWindow(newQuickPanelWindow(app)))
-	settingsService.SetApprovalPromptWindow(windowing.WrapWindow(newApprovalPromptWindow(app)))
-	settingsService.SetRunMonitorWindow(windowing.WrapWindow(newRunMonitorWindow(app)))
-	settingsService.SetCaptureWindow(windowing.WrapWindow(newCaptureWindow(app)))
-	// Resume may re-show any of these after a relaunch (docs/goals/
-	// 0301); the app starts with all of them hidden, whatever the OS
+	// WrapAuxWindow, not WrapWindow: every window in this family opts
+	// out of macOS window restoration (docs/goals/0344). Only the main
+	// window, wired in main.go, stays restorable.
+	settingsService.SetPanelWindow(windowing.WrapAuxWindow(newQuickPanelWindow(app)))
+	settingsService.SetApprovalPromptWindow(windowing.WrapAuxWindow(newApprovalPromptWindow(app)))
+	settingsService.SetRunMonitorWindow(windowing.WrapAuxWindow(newRunMonitorWindow(app)))
+	settingsService.SetCaptureWindow(windowing.WrapAuxWindow(newCaptureWindow(app)))
+	// The OS may still re-show one of these after a relaunch (docs/
+	// goals/0301); the app starts with all of them hidden, whatever it
 	// remembers.
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
 		settingsService.HideAuxWindows()
+	})
+	wireDockReopen(app, settingsService)
+}
+
+// wireDockReopen answers a dock-icon click on a running Mill with no
+// visible windows the conventional way: the main window comes back,
+// nothing else.
+//
+// framework-api-audit: wails/v3@v3.0.0-beta.12 lacks an option to
+// choose what reopen shows -- MacOptions (pkg/application/
+// application_options.go) carries only ActivationPolicy and
+// ApplicationShouldTerminateAfterLastWindowClosed, and the SDK's own
+// reopen listener (pkg/application/events_common_darwin.go) shows
+// EVERY hidden window, which is how the Quick Panel, run monitor,
+// capture window and approval prompt all arrived at once (docs/goals/
+// 0344). An application event hook is the framework's own override
+// seam: hooks run before listeners and a cancelled event skips them
+// entirely (pkg/application/event_manager.go's handleApplicationEvent),
+// so cancelling here replaces that answer rather than racing it. The
+// native delegate returns the same value regardless of what Go does
+// (application_darwin_delegate.m's applicationShouldHandleReopen:
+// always returns TRUE), so cancelling changes no AppKit behaviour.
+// Hooks run on the event-dispatch goroutine, never the main thread, so
+// the marshaling inside ShowWindow is safe here.
+func wireDockReopen(app *application.App, settingsService *settingssvc.SettingsService) {
+	app.Event.RegisterApplicationEventHook(events.Mac.ApplicationShouldHandleReopen, func(e *application.ApplicationEvent) {
+		e.Cancel()
+		if e.Context().HasVisibleWindows() {
+			return
+		}
+		settingsService.ShowWindow()
 	})
 }
 
@@ -219,7 +253,12 @@ func setupTray(app *application.App, settingsService *settingssvc.SettingsServic
 	trayIcon := app.SystemTray.New()
 	trayIcon.SetTemplateIcon(trayIconPNG)
 	trayIcon.SetTooltip("Mill")
-	trayIcon.AttachWindow(newTrayPanelWindow(app)).WindowOffset(6)
+	// The panel is registered with the settings service as well as
+	// attached to the tray: the tray owns showing it, the service owns
+	// the one aux-window list every hide walks (docs/goals/0344).
+	trayPanel := newTrayPanelWindow(app)
+	settingsService.SetTrayPanelWindow(windowing.WrapAuxWindow(trayPanel))
+	trayIcon.AttachWindow(trayPanel).WindowOffset(6)
 	settingsService.SetTrayCount(func(count int) {
 		if count > 0 {
 			trayIcon.SetLabel(strconv.Itoa(count))

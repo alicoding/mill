@@ -1,6 +1,6 @@
 import {
   ArrowSwitchIcon,
-  AppsIcon, CheckCircleIcon, KeyIcon, ListUnorderedIcon, PackageIcon, PlugIcon, ServerIcon, SparkleFillIcon, TerminalIcon, WorkflowIcon, type Icon, LockIcon } from '@primer/octicons-react'
+  AppsIcon, CheckCircleIcon, HistoryIcon, KeyIcon, ListUnorderedIcon, PackageIcon, PlugIcon, ServerIcon, SparkleFillIcon, TerminalIcon, WorkflowIcon, type Icon, LockIcon } from '@primer/octicons-react'
 
 // Per-entity leading-visual identity for InventoryList.tsx rows
 // (docs/goals/0007-resource-inventory-redesign.md): the ambient
@@ -51,4 +51,8 @@ export const ENTITY_ICON: Record<string, EntityIcon> = {
   conversionprofile: { Icon: ArrowSwitchIcon, bg: 'var(--bgColor-accent-muted)', fg: 'var(--fgColor-accent)' },
   // plugin (docs/goals/0290): a plugin-owned work tab's visual.
   plugin: { Icon: AppsIcon, bg: 'var(--bgColor-neutral-muted)', fg: 'var(--fgColor-muted)' },
+  // run (goal 0337 S2): a resolved run in Review's recently-resolved history.
+  run: { Icon: HistoryIcon, bg: 'var(--bgColor-done-muted)', fg: 'var(--fgColor-done)' },
+  // mcpwrite (goal 0337 S2): a resolved MCP write outcome in the same history.
+  mcpwrite: { Icon: PlugIcon, bg: 'var(--bgColor-accent-muted)', fg: 'var(--fgColor-accent)' },
 }

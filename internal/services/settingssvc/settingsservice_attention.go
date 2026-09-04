@@ -199,7 +199,7 @@ func (s *SettingsService) NotifyPendingApproval(id, description, kind string, fo
 	// notification for notification-center persistence (delivered
 	// above via Publish's channel fan-out), the floating prompt for
 	// on-screen visibility -- neither replaces the other.
-	s.showApprovalPrompt()
+	s.showApprovalPrompt(id)
 	return nil
 }
 

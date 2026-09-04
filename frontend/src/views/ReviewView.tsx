@@ -7,18 +7,18 @@ import { BugIcon, InboxIcon, PersonIcon, PlugIcon, ShieldIcon } from '@primer/oc
 import { SettingsService } from '../shared/bindings'
 import type { MCPWriteResolved, RunSummary } from '../shared/bindings'
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
+import { ListToolbar } from '../shared/ListToolbar'
 import { useAppStore } from '../shared/store'
 import { useUISignalStore } from '../shared/uiSignalStore'
-import { formatRunStartedAt, runStatusLabel } from '../shared/runTime'
 import { useApprovalResolution } from '../shared/approvalResolution'
 import { usePendingReview } from '../review/usePendingReview'
 import { StalenessBadge } from '../shared/StalenessBadge'
 import { ReviewGuardedActions } from './ReviewGuardedActions'
+import { ReviewResolvedHistory } from './ReviewResolvedHistory'
 import { formatLastChecked } from '../shared/staleness'
 import { ReviewAlwaysRuleDialog } from './ReviewAlwaysRuleDialog'
 import { GuardrailRulesPanel } from './GuardrailRulesPanel'
 import styles from '../shared/ListCard.module.css'
-import monoStyles from '../shared/monoText.module.css'
 import mobileStyles from './ReviewView.module.css'
 import PageContainer from '../shared/PageContainer'
 import { background } from '../shared/background'
@@ -101,6 +101,11 @@ function ReviewView() {
   const [guardedCount, setGuardedCount] = useState(0)
   const [workflowFilter, setWorkflowFilter] = useState('')
   const [kindFilter, setKindFilter] = useState<KindFilterValue>('')
+  // The queue toolbar's own search (goal 0337 S2's list standard) --
+  // narrows pending runs and pending MCP writes by their own visible
+  // text, on top of the workflow/kind Selects. Not persisted: a stale
+  // query silently hiding a new park is the failure mode worth avoiding.
+  const [pendingQuery, setPendingQuery] = useState('')
   const [error, setError] = useState('')
   // The Queue|Rules split (goal 0078, door 3): Queue is every field
   // above, unchanged; Rules renders GuardrailRulesPanel instead.
@@ -186,22 +191,11 @@ function ReviewView() {
   const showKindFilter = presentKinds.size >= 2
   const kindMatches = (run: RunSummary) => !kindFilter || kindFilter === pendingKind(run)
   const showPendingWrites = kindFilter === '' || kindFilter === 'mcp-write'
-
-  // Recently-resolved is a merged, newest-first list of run resolutions
-  // AND resolved MCP writes (docs/goals/0026 item 6) -- one section, not
-  // two adjacent lists, same "recognition, not confirmation" discipline
-  // the pending rows already use (PlugIcon distinguishes a write row).
-  // MCP writes aren't scoped to a workflow, so they're excluded whenever
-  // a workflow filter is active (nothing for them to match).
-  type ResolvedEntry =
-    | { kind: 'run'; key: string; time: number; run: RunSummary }
-    | { kind: 'mcp-write'; key: string; time: number; write: MCPWriteResolved }
-  const resolvedEntries: ResolvedEntry[] = [
-    ...resolved
-      .filter((r) => !workflowFilter || r.workflowID === workflowFilter)
-      .map((run): ResolvedEntry => ({ kind: 'run', key: run.runID, time: Date.parse(run.completedAt || run.startedAt), run })),
-    ...(workflowFilter ? [] : resolvedWrites.map((w): ResolvedEntry => ({ kind: 'mcp-write', key: w.id, time: Date.parse(w.resolvedAt), write: w }))),
-  ].sort((a, b) => b.time - a.time)
+  // The toolbar's own search matches what each row already shows: a
+  // pending run's workflow name, a pending write's description.
+  const q = pendingQuery.trim().toLowerCase()
+  const queryMatchesRun = (run: RunSummary) => q === '' || run.workflowLabel.toLowerCase().includes(q)
+  const queryMatchesWrite = (w: { description: string }) => q === '' || w.description.toLowerCase().includes(q)
 
   // Loading: the first ListRuns() round trip hasn't resolved yet --
   // Home.tsx's own centered-Spinner-under-the-Heading treatment is the
@@ -235,29 +229,37 @@ function ReviewView() {
 
       {tab === 'queue' && (<>
       {(pending.length > 0 || resolved.length > 0) && (
-        <Stack direction="horizontal" gap="condensed" align="center">
-          <Select value={workflowFilter} onChange={(e) => setWorkflowFilter(e.target.value)} aria-label={t('reviewView.filterByWorkflowAriaLabel')}>
-            <Select.Option value="">{t('reviewView.allWorkflows')}</Select.Option>
-            {[...new Set([...pending, ...resolved].map((r) => r.workflowID))].map((id) => (
-              <Select.Option key={id} value={id}>
-                {workflows?.find((w) => w.ID === id)?.Label ?? id}
-              </Select.Option>
-            ))}
-          </Select>
-          {showKindFilter && (
-            <Select
-              value={kindFilter}
-              onChange={(e) => setKindFilter(e.target.value as KindFilterValue)}
-              aria-label={t('reviewView.filterByKindAriaLabel')}
-              data-testid="review-kind-filter"
-            >
-              <Select.Option value="">{t('reviewView.allKinds')}</Select.Option>
-              {KIND_ORDER.filter((k) => presentKinds.has(k)).map((k) => (
-                <Select.Option key={k} value={k}>{KIND_LABELS[k]}</Select.Option>
-              ))}
-            </Select>
-          )}
-        </Stack>
+        <ListToolbar
+          query={pendingQuery}
+          onQueryChange={setPendingQuery}
+          searchTestId="review-queue-search"
+          searchAriaLabel={t('reviewView.subtitle')}
+          filters={
+            <Stack direction="horizontal" gap="condensed" align="center">
+              <Select value={workflowFilter} onChange={(e) => setWorkflowFilter(e.target.value)} aria-label={t('reviewView.filterByWorkflowAriaLabel')}>
+                <Select.Option value="">{t('reviewView.allWorkflows')}</Select.Option>
+                {[...new Set([...pending, ...resolved].map((r) => r.workflowID))].map((id) => (
+                  <Select.Option key={id} value={id}>
+                    {workflows?.find((w) => w.ID === id)?.Label ?? id}
+                  </Select.Option>
+                ))}
+              </Select>
+              {showKindFilter && (
+                <Select
+                  value={kindFilter}
+                  onChange={(e) => setKindFilter(e.target.value as KindFilterValue)}
+                  aria-label={t('reviewView.filterByKindAriaLabel')}
+                  data-testid="review-kind-filter"
+                >
+                  <Select.Option value="">{t('reviewView.allKinds')}</Select.Option>
+                  {KIND_ORDER.filter((k) => presentKinds.has(k)).map((k) => (
+                    <Select.Option key={k} value={k}>{KIND_LABELS[k]}</Select.Option>
+                  ))}
+                </Select>
+              )}
+            </Stack>
+          }
+        />
       )}
 
       {pending.length === 0 && pendingWrites.length === 0 && guardedCount === 0 && (
@@ -277,7 +279,7 @@ function ReviewView() {
           filterable by workflow (they aren't scoped to one), but the
           kind filter does hide them like any other kind. */}
       <Stack direction="vertical" gap="normal">
-        {showPendingWrites && pendingWrites.map((w) => {
+        {showPendingWrites && pendingWrites.filter(queryMatchesWrite).map((w) => {
           const lastChecked = formatLastChecked(w.lastPolledAt)
           return (
             <div key={w.id} className={styles.card} data-testid="review-mcp-write-item" data-mcp-write-id={w.id}>
@@ -313,7 +315,7 @@ function ReviewView() {
       <ReviewGuardedActions visible={kindFilter === '' || kindFilter === 'guarded-action'} onCount={setGuardedCount} />
 
       <Stack direction="vertical" gap="normal">
-        {pending.filter((r) => (!workflowFilter || r.workflowID === workflowFilter) && kindMatches(r)).map((run) => (
+        {pending.filter((r) => (!workflowFilter || r.workflowID === workflowFilter) && kindMatches(r) && queryMatchesRun(r)).map((run) => (
           <div
             key={run.runID}
             className={`${styles.card} ${styles.activityRowClickable}`}
@@ -382,70 +384,12 @@ function ReviewView() {
           </div>
         ))}
       </Stack>
-      {resolvedEntries.length > 0 && (
-        <>
-          <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('reviewView.recentlyResolved')}</Heading>
-          <Stack direction="vertical" gap="condensed">
-            {resolvedEntries.slice(0, 10).map((entry) => entry.kind === 'run' ? (
-              <div
-                key={entry.key}
-                className={`${styles.card} ${styles.activityRowClickable}`}
-                data-testid="review-resolved-item"
-                onClick={() => openRun(entry.run)}
-              >
-                <Stack direction="horizontal" gap="condensed" align="center" justify="space-between">
-                  <Stack direction="horizontal" gap="condensed" align="center">
-                    <Text weight="semibold">{entry.run.workflowLabel}</Text>
-                    <StatusStamp
-                      variant={entry.run.interrupted ? 'neutral' : entry.run.resolution === 'approved' ? 'success' : 'danger'}
-                      data-testid="review-resolution"
-                    >
-                      {entry.run.resolution}
-                    </StatusStamp>
-                    {/* Design-wave-1 fix #4: ERROR/failed pills were
-                        falling through to 'secondary' (gray), the same
-                        neutral tone as any other non-SUCCESS status --
-                        losing the failure semantics the 'denied'
-                        resolution pill right next to it already has in
-                        danger. Same three-way mapping
-                        ActivityRunsExplorer.tsx's own run-status pill
-                        already uses correctly. */}
-                    <StatusStamp
-                      variant={entry.run.status === 'SUCCESS' ? 'success' : entry.run.status === 'ERROR' ? 'danger' : 'caution'}
-                      data-testid="review-resolved-status"
-                    >
-                      {runStatusLabel(entry.run, t)}
-                    </StatusStamp>
-                  </Stack>
-                  <Text size="small" className={`${styles.muted} ${monoStyles.mono}`}>{formatRunStartedAt(entry.run.startedAt)}</Text>
-                </Stack>
-              </div>
-            ) : (
-              // A resolved MCP write (docs/goals/0026 item 6) -- the same
-              // durable 24h outcome record check_write_status reads,
-              // surfaced here so it isn't only visible via session-only
-              // Activity (gone on restart). PlugIcon matches the pending
-              // row's own identity cue ("recognition, not confirmation");
-              // not clickable -- there's no run to drill into.
-              <div key={entry.key} className={styles.card} data-testid="review-resolved-mcp-write-item">
-                <Stack direction="horizontal" gap="condensed" align="center" justify="space-between">
-                  <Stack direction="horizontal" gap="condensed" align="center">
-                    <PlugIcon size={16} />
-                    <Text weight="semibold">{entry.write.description}</Text>
-                    <StatusStamp
-                      variant={entry.write.status === 'approved' ? 'success' : 'danger'}
-                      data-testid="review-resolved-mcp-write-status"
-                    >
-                      {entry.write.status}
-                    </StatusStamp>
-                  </Stack>
-                  <Text size="small" className={`${styles.muted} ${monoStyles.mono}`}>{formatRunStartedAt(entry.write.resolvedAt)}</Text>
-                </Stack>
-              </div>
-            ))}
-          </Stack>
-        </>
-      )}
+      <ReviewResolvedHistory
+        resolved={resolved}
+        resolvedWrites={resolvedWrites}
+        workflowFilter={workflowFilter}
+        onOpenRun={openRun}
+      />
       </>)}
 
       {alwaysRule && (
