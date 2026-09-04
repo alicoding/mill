@@ -211,7 +211,8 @@
     "workflow": "Workflow",
     "integration": "Integration",
     "newWorkflow": "New workflow",
-    "newIntegration": "New integration"
+    "newIntegration": "New integration",
+    "output": "Output"
   },
   "workTabShell": {
     "openWorkAriaLabel": "Open work",

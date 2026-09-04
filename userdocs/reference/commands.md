@@ -85,6 +85,10 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `object.rename` | Rename | — | atlas | Always available |
+| `output.copy` | Copy output | — | Global | Conditional — available only in a matching state |
+| `output.find` | Find in output | `⌘F` | Global | Conditional — available only in a matching state |
+| `output.openFull` | Open output in full | — | Global | Conditional — available only in a matching state |
+| `output.toggleWrap` | Wrap output lines | — | Global | Conditional — available only in a matching state |
 | `palette.open` | Open command palette | `⌘K` | Global | Always available |
 | `panel.applyClipboard` | Apply from clipboard | — | Global | Always available |
 | `panel.open` | Open Quick Panel | — | Global | Conditional — available only in a matching state |
