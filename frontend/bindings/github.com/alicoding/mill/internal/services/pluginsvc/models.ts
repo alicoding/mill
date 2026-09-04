@@ -78,6 +78,15 @@ export interface Manifest {
     "description": string;
     "author": string;
     "minMillVersion": string;
+
+    /**
+     * Icon names this plugin's 128x128 icon file, relative to its own
+     * folder (the standard's identity rule -- pluginsvc/conform_standard.go
+     * checks it decodes to exactly that size). A sibling file with
+     * "@dark" inserted before the extension, when present, is the
+     * dark-appearance variant.
+     */
+    "icon": string;
     "capabilities": string[] | null;
     "contributes": ManifestContributes;
 }
