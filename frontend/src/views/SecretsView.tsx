@@ -9,6 +9,7 @@ import type { SecretSummary } from '../shared/bindings'
 import { findCommand, runCommand } from '../shared/commands'
 import { refreshVaultStatus, useVaultStatusStore } from '../shared/vaultStatusStore'
 import { vaultErrorKind } from '../shared/secretsCommands'
+import { messageOf } from '../shared/userError'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
@@ -143,7 +144,7 @@ export default function SecretsView() {
       noKey: t('locked.noKey'),
       cancelled: t('locked.cancelled'),
       authUnavailable: t('locked.authUnavailable'),
-      other: vaultError,
+      other: messageOf(vaultError ?? { code: 'unexpected', message: '' }, t),
       none: '',
     }[kind]
     const resetCommand = findCommand('secrets.resetVault')

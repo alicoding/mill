@@ -87,5 +87,16 @@
   "interruptedRun": {
     "caption": "Mill relaunched before you answered, so this run stopped.",
     "dismiss": "Dismiss"
+  },
+  "errors": {
+    "unexpected": "Something went wrong. Try again.",
+    "run-recovering": "Mill is still picking this run back up. Try again in a moment.",
+    "run-not-waiting": "This run is no longer waiting.",
+    "key-mismatch": "The key on this device doesn't open this vault file.",
+    "no-vault-key": "There's no key for this vault on this device.",
+    "unlock-cancelled": "Unlock cancelled.",
+    "auth-unavailable": "Touch ID or a password isn't set up on this Mac.",
+    "auth-lockout": "Too many failed attempts. Unlock this Mac with your password, then try again.",
+    "auth-failed": "Mill couldn't confirm it's you."
   }
 }

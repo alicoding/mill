@@ -2167,6 +2167,8 @@ such satellite file, quoted whole:
 import type { Command } from './commands'
 import { SecretService } from './bindings'
 import { refreshVaultStatus, useVaultStatusStore } from './vaultStatusStore'
+import type { UserError } from './userError'
+import { userErrorFrom } from './userError'
 
 // The vault lock/unlock/reset actions (goal 0222 S1's own state door,
 // vaultStatusStore.ts) -- split out of shared/commands.ts (CLAUDE.md's
@@ -2182,10 +2184,10 @@ import { refreshVaultStatus, useVaultStatusStore } from './vaultStatusStore'
 // not open the vault file.
 function record(promise: Promise<unknown>): void {
   const { setVaultError } = useVaultStatusStore.getState()
-  setVaultError('')
+  setVaultError(null)
   promise
     .then(refreshVaultStatus)
-    .catch((err) => { setVaultError(String(err)) })
+    .catch((err) => { setVaultError(userErrorFrom(err)) })
 }
 
 export const SECRETS_COMMANDS: Command[] = [
@@ -2225,20 +2227,22 @@ export const SECRETS_COMMANDS: Command[] = [
   },
 ]
 
-// vaultErrorKind classifies a lock/unlock failure by the stable token
-// the Go error carries. Wails delivers a bound method's error to
-// JavaScript as text, so matching a token that never changes is what
-// keeps the wording on this side, where it can be translated, instead
-// of pinning the UI to a Go sentence.
+// vaultErrorKind classifies a lock/unlock failure by the stable code
+// the Go error declares (secretsvc's ErrKeyMismatch and friends). The
+// code is what never changes; the wording stays on this side, where it
+// can be translated, instead of being pinned to a Go sentence.
 export type VaultErrorKind = 'keyMismatch' | 'noKey' | 'cancelled' | 'authUnavailable' | 'other' | 'none'
 
-export function vaultErrorKind(error: string): VaultErrorKind {
+const KIND_FOR_CODE: Record<string, VaultErrorKind> = {
+  'key-mismatch': 'keyMismatch',
+  'no-vault-key': 'noKey',
+  'unlock-cancelled': 'cancelled',
+  'auth-unavailable': 'authUnavailable',
+}
+
+export function vaultErrorKind(error: UserError | null): VaultErrorKind {
   if (!error) return 'none'
-  if (error.includes('key-mismatch')) return 'keyMismatch'
-  if (error.includes('no-vault-key')) return 'noKey'
-  if (error.includes('unlock-cancelled')) return 'cancelled'
-  if (error.includes('auth-unavailable')) return 'authUnavailable'
-  return 'other'
+  return KIND_FOR_CODE[error.code] ?? 'other'
 }
 
 ```

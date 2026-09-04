@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { SecretService } from './bindings'
 import type { VaultStatus } from './bindings'
 import { background } from './background'
+import type { UserError } from './userError'
 
 // The vault-lock state door (goal 0222 S1): before this, whether the
 // secrets vault was locked/unlocked existed only as local useState
@@ -16,17 +17,20 @@ import { background } from './background'
 // command's run() returns void, so the surface that renders the failure
 // cannot await it. Before this, secretsCommands.ts swallowed the
 // rejection into console.error and the Unlock button looked inert.
-// Empty string means "no outstanding failure".
+// It holds the failure's code and sentence rather than its text (goal
+// 0339): the code is what the view branches on, and the sentence is the
+// only part of a rejection that may reach the screen. null means "no
+// outstanding failure".
 interface VaultStatusState {
   vaultStatus: VaultStatus | null
-  vaultError: string
+  vaultError: UserError | null
   setVaultStatus: (vaultStatus: VaultStatus) => void
-  setVaultError: (vaultError: string) => void
+  setVaultError: (vaultError: UserError | null) => void
 }
 
 export const useVaultStatusStore = create<VaultStatusState>()((set) => ({
   vaultStatus: null,
-  vaultError: '',
+  vaultError: null,
   setVaultStatus: (vaultStatus) => set({ vaultStatus }),
   setVaultError: (vaultError) => set({ vaultError }),
 }))

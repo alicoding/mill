@@ -135,9 +135,14 @@ test('Release-channel build offers to download, and a failed install surfaces th
     // (shared/commands.ts) catches it and posts the SAME failure a
     // second time, as the footer's own error pill, independent of this
     // page's own local card state above.
+    // goal 0339: the pill carries the command's label and ONE sentence.
+    // The Go `%w` chain behind the failure ("github: download: no
+    // release asset in test mode") reaches the log and the card's own
+    // copyable diagnosis above, never the pill.
     const errorPill = page.locator('[data-notice-level="error"]').filter({ hasText: 'Download the update and install' })
     await expect(errorPill).toBeVisible()
-    await expect(errorPill).toContainText('no release asset in test mode')
+    await expect(errorPill).toHaveText('Download the update and install: Something went wrong. Try again.×')
+    await expect(errorPill).not.toContainText('no release asset')
 
     await page.close()
   } finally {

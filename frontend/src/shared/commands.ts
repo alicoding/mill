@@ -22,6 +22,7 @@ import { TAB_COMMANDS } from './tabCommands'
 import { withMenuGroup } from './menuGroup'
 import type { MenuPlacement } from './menuSpec'
 import { pushNotice } from './noticeStore'
+import { appTranslate, messageFor } from './userError'
 
 // The command registry (docs/goals/0016-keymap-system.md): named
 // commands with a default binding, dispatched by one window keydown
@@ -406,7 +407,10 @@ export async function runCommand(id: string): Promise<boolean> {
   } catch (err) {
     pushNotice({
       level: 'error',
-      text: `${command.label}: ${err instanceof Error ? err.message : String(err)}`,
+      // The command's own label, then the ONE sentence the failure
+      // carries (shared/userError.ts) -- never the rejection's own
+      // message, which for a bound-method call is the Go error chain.
+      text: `${command.label}: ${messageFor(err, appTranslate)}`,
       source: id,
     })
     return false

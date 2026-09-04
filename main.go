@@ -16,6 +16,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/launchatlogin"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/adapters/windowing"
+	"github.com/alicoding/mill/internal/domain/usererror"
 	"github.com/alicoding/mill/internal/pluginscaffold"
 	"github.com/alicoding/mill/internal/services/agentloopsvc"
 	"github.com/alicoding/mill/internal/services/atlassvc"
@@ -305,34 +306,42 @@ func main() {
 	// second launch, long after mainWindow is set.
 	var mainWindow *application.WebviewWindow
 
+	// Every bound service marshals its errors through the same door: a
+	// declared usererror crosses as its code and one sentence, anything
+	// else is logged with its chain and reaches the UI as the generic
+	// sentence (.claude/rules/ux-writing.md). It is set PER SERVICE
+	// because Options.MarshalError never reaches a bound call in this
+	// Wails version -- see usererror.MarshalForWails.
+	boundErrors := application.ServiceOptions{MarshalError: usererror.MarshalForWails(logger)}
+
 	app := application.New(application.Options{
 		Name:        "mill",
 		Description: "Guardrailed agentic-workflow automation",
 		Logger:      logger,
 		Services: []application.Service{
-			application.NewService(&capabilitysvc.CapabilitiesService{}),
-			application.NewService(compositionService),
-			application.NewService(triggerService),
-			application.NewService(configureService),
-			application.NewService(secretService),
-			application.NewService(atlasService),
-			application.NewService(companionService),
-			application.NewService(agentLoopService),
-			application.NewService(guardrailService),
-			application.NewService(pluginService),
-			application.NewService(clipboardHistoryService),
-			application.NewService(codeLoopService),
-			application.NewService(executionService),
-			application.NewService(settingsService),
-			application.NewService(backupService),
-			application.NewService(docssvc.New(userdocsFS)),
-			application.NewService(mcpAuditService),
-			application.NewService(remoteAuthService),
-			application.NewService(notificationService),
+			application.NewServiceWithOptions(&capabilitysvc.CapabilitiesService{}, boundErrors),
+			application.NewServiceWithOptions(compositionService, boundErrors),
+			application.NewServiceWithOptions(triggerService, boundErrors),
+			application.NewServiceWithOptions(configureService, boundErrors),
+			application.NewServiceWithOptions(secretService, boundErrors),
+			application.NewServiceWithOptions(atlasService, boundErrors),
+			application.NewServiceWithOptions(companionService, boundErrors),
+			application.NewServiceWithOptions(agentLoopService, boundErrors),
+			application.NewServiceWithOptions(guardrailService, boundErrors),
+			application.NewServiceWithOptions(pluginService, boundErrors),
+			application.NewServiceWithOptions(clipboardHistoryService, boundErrors),
+			application.NewServiceWithOptions(codeLoopService, boundErrors),
+			application.NewServiceWithOptions(executionService, boundErrors),
+			application.NewServiceWithOptions(settingsService, boundErrors),
+			application.NewServiceWithOptions(backupService, boundErrors),
+			application.NewServiceWithOptions(docssvc.New(userdocsFS), boundErrors),
+			application.NewServiceWithOptions(mcpAuditService, boundErrors),
+			application.NewServiceWithOptions(remoteAuthService, boundErrors),
+			application.NewServiceWithOptions(notificationService, boundErrors),
 			// The native menu bar, projected from the frontend command
 			// registry (docs/goals/0332) -- stateless, so it is constructed
 			// inline like CapabilitiesService above.
-			application.NewService(menusvc.New()),
+			application.NewServiceWithOptions(menusvc.New(), boundErrors),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
