@@ -380,6 +380,16 @@ at:
     and the monitor stay hidden until summoned; also relaunch with
     "Close windows when quitting an application" OFF in System
     Settings > Desktop & Dock (the default) and confirm the same.
+  - **The system accent colour** (goal 0320,
+    `internal/adapters/systemaccent`) -- `NSColor.controlAccentColor`
+    reaches AppKit through the toolkit's own `EnvironmentManager`, which
+    returns "" in server mode, so e2e only exercises the keep-the-teal
+    branch; the derivation is Vitest-pinned. Verify on an installed
+    build: set System Settings > Appearance > Accent colour to Purple,
+    relaunch Mill, confirm the selected sidebar row, a primary button and
+    a focused field's ring follow it in light and dark; set it back and
+    relaunch. The accent is read per window at mount, so a change made
+    while Mill runs appears on the next launch.
   - **File-promise drops: the post-screenshot floating thumbnail**
     (goal 0256, `MillFilePromiseDropView` /
     `AttachFilePromiseReceiver`) — a promise drag needs a real AppKit
