@@ -21,14 +21,14 @@ test('Profile-mode caption follows the selected mode', async ({ page }) => {
   await page.getByTestId('new-execenv').click()
 
   const caption = page.getByTestId('execenv-profile-caption')
-  await expect(caption).toContainText('no shell startup files are sourced')
+  await expect(caption).toContainText('Fail-safe default')
 
   await page.getByLabel('Profile mode').selectOption('login')
   await expect(caption).toContainText('login startup files')
-  await expect(caption).not.toContainText('no shell startup files are sourced')
+  await expect(caption).not.toContainText('Fail-safe default')
 
   await page.getByLabel('Profile mode').selectOption('clean')
-  await expect(caption).toContainText('no shell startup files are sourced')
+  await expect(caption).toContainText('Fail-safe default')
 })
 
 test('Env variables edit as key/value rows and round-trip through save', async ({ page }) => {

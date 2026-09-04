@@ -17,7 +17,7 @@ test('a missing integration credential surfaces at validation and refuses the ru
   await expect(panel.getByText(/warning/)).toBeVisible()
   await panel.getByText(/warning/).click()
   await expect(page.getByText(/no credential saved on this device/)).toBeVisible()
-  await expect(page.getByText(/open it in Configure/)).toBeVisible()
+  await expect(page.getByText(/Open it in Configure/)).toBeVisible()
 
   // Run refuses up front with the same copy -- never a mid-run
   // keychain error.

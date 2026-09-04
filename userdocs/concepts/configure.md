@@ -46,7 +46,10 @@ The entities:
   resolve by reference.
 - **Execution environments** — a pinned shell, directory, and
   environment for Run a command. This is reproducibility, not a
-  sandbox: the script runs with your full user account.
+  sandbox: the script runs with your full user account. Clean profile
+  mode sources no shell startup files, so a step sees only the
+  variables you declare; Login mode sources your shell's login files
+  as well.
 - **Conversion profiles** — which source-specific rules an HTML to
   Markdown conversion applies (Confluence, Office and Word). The
   converter step picks one; leave it empty and every rule applies.
