@@ -84,8 +84,10 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `object.rename` | Rename | — | atlas | Always available |
 | `palette.open` | Open command palette | `⌘K` | Global | Always available |
 | `panel.applyClipboard` | Apply from clipboard | — | Global | Always available |
+| `panel.open` | Open Quick Panel | — | Global | Conditional — available only in a matching state |
 | `panel.openMill` | Open Mill | — | Global | Always available |
 | `review.rules` | Guardrail rules | — | review | Always available |
+| `runMonitor.open` | Run monitor | — | Global | Conditional — available only in a matching state |
 | `secrets.lockVault` | Lock vault | — | Global | Conditional — available only in a matching state |
 | `secrets.resetVault` | Start a new vault | — | Global | Conditional — available only in a matching state |
 | `secrets.unlockVault` | Unlock vault | — | Global | Conditional — available only in a matching state |

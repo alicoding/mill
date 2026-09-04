@@ -23,6 +23,12 @@ export interface RuntimeCommandDecl {
   // command's own "when" clause, honored by the palette and dispatch
   // exactly like a built-in's.
   enabled?: () => boolean
+  // menu mirrors Command.menu (goal 0335), read off the manifest's own
+  // contributes.commands[].menu declaration by hostApi.ts's
+  // registerCommand -- a plugin has no Command.run() at manifest-parse
+  // time for the host to seat directly, so the seat is declared
+  // separately and joined here by matching id.
+  menu?: import('../shared/commands').Command['menu']
 }
 
 const collected: RuntimeCommandDecl[] = []

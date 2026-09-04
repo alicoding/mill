@@ -49,7 +49,7 @@ export function removePluginNow(id: string, name: string): void {
 // assigned in Settings, never shipped by the plugin.
 export function pluginRegistryCommands(): Command[] {
   return [
-    ...drainedPluginCommands().map((c): Command => ({ id: c.id, label: c.label, defaultBinding: null, surface: c.surface, enabled: c.enabled, run: c.run })),
+    ...drainedPluginCommands().map((c): Command => ({ id: c.id, label: c.label, defaultBinding: null, surface: c.surface, enabled: c.enabled, menu: c.menu, run: c.run })),
     ...pluginRemoveCommands(),
   ]
 }

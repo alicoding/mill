@@ -24,7 +24,28 @@ import (
 type CommandContribution struct {
 	ID    string `json:"id"`
 	Label string `json:"label"`
+	// Menu seats this command in the native menu bar (goal 0335): the
+	// host cross-references this declaration by id when the plugin
+	// actually registers the command, since the manifest carries no
+	// run() to seat directly. Restricted to the three menus a plugin's
+	// own contributions can plausibly belong to -- never "app" or
+	// "file", which stay Mill's own.
+	Menu *CommandMenuContribution `json:"menu,omitempty"`
 }
+
+// CommandMenuContribution is a plugin-contributed command's menu seat.
+// Group/Order default to 0 when omitted -- a single-command plugin
+// never needs to think about band position.
+type CommandMenuContribution struct {
+	Path  string `json:"path"`
+	Group int    `json:"group"`
+	Order int    `json:"order"`
+}
+
+// pluginMenuPaths is the menu-bar seats a plugin-contributed command
+// may ask for -- Mill's own menus (app, file, window, help.developer)
+// never take a third-party item.
+var pluginMenuPaths = map[string]bool{"workflow": true, "atlas": true, "help": true}
 
 // ToolRun says WHAT a tool runs. Kind "command" runs a declared
 // palette command in the webview (argument-less: Command.run takes
@@ -98,6 +119,9 @@ func validateCommands(pluginID string, commands []CommandContribution) string {
 		seen[c.ID] = true
 		if strings.TrimSpace(c.Label) == "" {
 			return fmt.Sprintf("contributed command %q needs a label", c.ID)
+		}
+		if c.Menu != nil && !pluginMenuPaths[c.Menu.Path] {
+			return fmt.Sprintf("contributed command %q declares menu path %q, must be \"workflow\", \"atlas\" or \"help\"", c.ID, c.Menu.Path)
 		}
 	}
 	return ""

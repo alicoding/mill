@@ -168,6 +168,15 @@ func TestValidateContributes_ToolsAndCommands(t *testing.T) {
 			contribute: ManifestContributes{Commands: []CommandContribution{{ID: "refresh", Label: " "}}},
 			want:       `contributed command "refresh" needs a label`,
 		},
+		{
+			name:       "a command seated in the help menu passes",
+			contribute: ManifestContributes{Commands: []CommandContribution{{ID: "refresh", Label: "Refresh", Menu: &CommandMenuContribution{Path: "help"}}}},
+		},
+		{
+			name:       "a command seated in a menu path outside workflow/atlas/help is refused",
+			contribute: ManifestContributes{Commands: []CommandContribution{{ID: "refresh", Label: "Refresh", Menu: &CommandMenuContribution{Path: "app"}}}},
+			want:       `declares menu path "app", must be "workflow", "atlas" or "help"`,
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

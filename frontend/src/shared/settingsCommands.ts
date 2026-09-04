@@ -4,6 +4,7 @@ import { BackupService, SettingsService, UpdateState } from './bindings'
 import { SETTINGS_GROUPS, resolveGroupTitle } from './settingsGroups'
 import { useUpdateNoticeStore } from './updateNoticeStore'
 import { useUISignalStore } from './uiSignalStore'
+import { useBuildInfoStore } from './buildInfoStore'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import { downloadBlob } from './downloadBlob'
 
@@ -25,9 +26,12 @@ export const SETTINGS_COMMANDS: Command[] = [
     run: () => useAppStore.getState().setView({ kind: 'settings' }),
   },
   {
-    // Quick-Panel-only (ADR-0033): brings the MAIN window forward.
-    // paletteHidden -- running this from the main palette would just
-    // refocus the window you're already in.
+    // Brings the MAIN window forward -- the Quick Panel's own row
+    // (ADR-0033) and the tray's "Open Mill" button (app/TrayPanel.tsx,
+    // goal 0335) both fire this rather than each holding a separate
+    // SettingsService.OpenMainWindow('') call. paletteHidden -- running
+    // this from the main palette would just refocus the window you're
+    // already in.
     id: 'panel.openMill',
     label: 'Open Mill',
     defaultBinding: null,
@@ -56,6 +60,7 @@ export const SETTINGS_COMMANDS: Command[] = [
   },
   {
     id: 'backup.now',
+    menu: { path: 'app', group: 2, order: 0, label: 'Back up now' },
     label: 'Back up now',
     defaultBinding: null,
     // BackupService.BackupNow(0) matches the Settings Data stewardship
@@ -66,6 +71,7 @@ export const SETTINGS_COMMANDS: Command[] = [
   },
   {
     id: 'capture.note',
+    menu: { path: 'file', group: 0, order: 1, label: 'New note' },
     label: 'Capture a note',
     // The capture window (goal 0309): a note written away from the
     // canvas lands where the user chose.
@@ -74,6 +80,7 @@ export const SETTINGS_COMMANDS: Command[] = [
   },
   {
     id: 'extensions.exportAudit',
+    menu: { path: 'file', group: 3, order: 1 },
     label: 'Export plugin audit',
     // The plugin audit document (ADR-0051 §4): every installed plugin's
     // reach and trust state, the guarded actions plugins asked for
@@ -86,6 +93,7 @@ export const SETTINGS_COMMANDS: Command[] = [
   },
   {
     id: 'backup.export',
+    menu: { path: 'file', group: 3, order: 0 },
     label: 'Export everything',
     // Deep-links to Settings rather than calling
     // BackupService.ExportEverything() directly -- the export flow has
@@ -94,6 +102,34 @@ export const SETTINGS_COMMANDS: Command[] = [
     // settings.open.* deep-link command below already follows.
     defaultBinding: null,
     run: () => useAppStore.getState().setView({ kind: 'settings', section: 'backups' }),
+  },
+  {
+    // Brings the Quick Panel (ADR-0033's second Wails window) forward,
+    // the same way panel.applyClipboard already does -- ShowPanel, not
+    // TogglePanel: that one stays Go-internal (`//wails:ignore`, its
+    // own doc comment), reserved for the summon hotkey's dismiss-if-
+    // already-visible behavior, which a menu/palette invocation never
+    // needs (goal 0335).
+    id: 'panel.open',
+    menu: { path: 'window', group: 0, order: 0, label: 'Quick panel' },
+    label: 'Open Quick Panel',
+    defaultBinding: null,
+    enabled: () => useBuildInfoStore.getState().isDesktop,
+    run: () => SettingsService.ShowPanel(),
+  },
+  {
+    // Brings the run monitor window forward showing whatever it last
+    // had (or its own empty state if it never has) -- ShowRunMonitor's
+    // own contract only replaces the shown run when workflowID is
+    // non-empty (app/RunMonitor.tsx's Events.On handler), so calling it
+    // with none is exactly "reveal the window" and never clears a run
+    // already on screen.
+    id: 'runMonitor.open',
+    menu: { path: 'window', group: 0, order: 1, label: 'Run monitor' },
+    label: 'Run monitor',
+    defaultBinding: null,
+    enabled: () => useBuildInfoStore.getState().isDesktop,
+    run: () => SettingsService.ShowRunMonitor('', ''),
   },
   // One palette-only deep-link command per registered Settings GROUP
   // (goal 0321, shared/settingsGroups.ts) -- always unbound
@@ -156,6 +192,7 @@ export const SETTINGS_COMMANDS: Command[] = [
     // run() -- always enabled, since opening with no notes known yet
     // is exactly the dialog's own empty state, not an invalid command.
     id: 'update.whatsNew',
+    menu: { path: 'help', group: 0, order: 2, label: "What's new" },
     label: "What's new",
     defaultBinding: null,
     run: () => useUISignalStore.getState().openWhatsNew(),

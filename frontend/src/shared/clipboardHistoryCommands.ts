@@ -11,6 +11,7 @@ import { useUISignalStore } from './uiSignalStore'
 export const CLIPBOARD_HISTORY_COMMANDS: Command[] = [
   {
     id: 'clipboard.history.open',
+    menu: { path: 'view', group: 3, order: 0 },
     label: 'Clipboard history',
     defaultBinding: null,
     run: () => useUISignalStore.getState().openClipboardHistory(),

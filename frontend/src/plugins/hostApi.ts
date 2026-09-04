@@ -17,6 +17,8 @@ import { buildPluginStorage } from './pluginStorage'
 import { pushNotice } from '../shared/noticeStore'
 import { resolveExtensionSetting, subscribeExtensionSetting } from '../shared/extensionSettingsStore'
 import type { CanvasObjectDecl, ContentQuery, MillPluginAPI, PluginFetchInit } from './sdk'
+import type { MenuPath } from '../shared/menuSkeleton'
+import type { Command } from '../shared/commands'
 
 // buildPluginAPI constructs the ONE object a plugin ever holds
 // (docs/adr/0047 §2: capabilities arrive as api calls the host
@@ -51,6 +53,23 @@ function warnUndeclaredCommand(manifest: Manifest, commandId: string): void {
 	if (warnedCommands.has(key)) return
 	warnedCommands.add(key)
 	console.warn(`plugin ${manifest.id}: command "${commandId}" is not declared in the manifest's contributes.commands -- declare it to make it reachable by an agent`)
+}
+
+// The manifest's own contributes.commands[].menu (goal 0335) is the
+// seat's declaration; registerCommand's own decl (MillPluginAPI's
+// registerCommand parameter, sdk/commands.ts's PluginCommandDecl)
+// carries no menu field -- a manifest tool statically reads
+// contributes.commands before any plugin code runs, so the seat lives
+// there, joined onto the live command here by matching id. Exported
+// as its own pure function so the join is testable without the rest
+// of buildPluginAPI's side-effecting door set.
+export function menuForDeclaredCommand(manifest: Manifest, commandId: string): Command['menu'] {
+	const declaredMenu = manifest.contributes?.commands?.find((c) => c.id === commandId)?.menu
+	if (!declaredMenu) return undefined
+	// declaredMenu.path is a loose string on the wire; pluginsvc's
+	// validateCommands already fail-closed it to "workflow" | "atlas" |
+	// "help" before this manifest could ever load.
+	return { path: declaredMenu.path as MenuPath, group: declaredMenu.group, order: declaredMenu.order }
 }
 
 export function buildPluginAPI(manifest: Manifest, millVersion: string, storageSnapshot: Record<string, string> = {}): MillPluginAPI {
@@ -204,7 +223,15 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		},
 		registerCommand: (decl) => {
 			warnUndeclaredCommand(manifest, decl.id)
-			collectPluginCommand({ id: `plugin.${pluginId}.${decl.id}`, label: decl.label, pluginId, enabled: decl.enabled, run: decl.run })
+			const declaredMenu = menuForDeclaredCommand(manifest, decl.id)
+			collectPluginCommand({
+				id: `plugin.${pluginId}.${decl.id}`,
+				label: decl.label,
+				pluginId,
+				enabled: decl.enabled,
+				run: decl.run,
+				menu: declaredMenu,
+			})
 		},
 		requestGuardedAction,
 	})

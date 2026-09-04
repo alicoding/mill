@@ -19,6 +19,12 @@
   },
   {
     "menu": "Mill",
+    "item": "Back up now",
+    "shortcut": "",
+    "command": "backup.now"
+  },
+  {
+    "menu": "Mill",
     "item": "Services",
     "shortcut": "",
     "command": ""
@@ -55,6 +61,60 @@
   },
   {
     "menu": "File",
+    "item": "New note",
+    "shortcut": "",
+    "command": "capture.note"
+  },
+  {
+    "menu": "File > New…",
+    "item": "New integration",
+    "shortcut": "",
+    "command": "configure.new.integration"
+  },
+  {
+    "menu": "File > New…",
+    "item": "New list",
+    "shortcut": "",
+    "command": "configure.new.lists"
+  },
+  {
+    "menu": "File > New…",
+    "item": "New MCP server",
+    "shortcut": "",
+    "command": "configure.new.mcpservers"
+  },
+  {
+    "menu": "File > New…",
+    "item": "New decision",
+    "shortcut": "",
+    "command": "configure.new.decisions"
+  },
+  {
+    "menu": "File > New…",
+    "item": "New environment",
+    "shortcut": "",
+    "command": "configure.new.execenvs"
+  },
+  {
+    "menu": "File > New…",
+    "item": "New AI provider",
+    "shortcut": "",
+    "command": "configure.new.aiproviders"
+  },
+  {
+    "menu": "File > New…",
+    "item": "New conversion profile",
+    "shortcut": "",
+    "command": "configure.new.conversionprofiles"
+  },
+  {
+    "menu": "File > New…",
+    "item": "New step type",
+    "shortcut": "",
+    "command": "configure.new.steptypes"
+  },
+  {
+    "menu": "File",
     "item": "Close tab",
     "shortcut": "⌘W",
     "command": "tab.close"
@@ -76,6 +136,24 @@
     "item": "Save",
     "shortcut": "⌘S",
     "command": "workflow.save"
+  },
+  {
+    "menu": "File",
+    "item": "Export everything",
+    "shortcut": "",
+    "command": "backup.export"
+  },
+  {
+    "menu": "File",
+    "item": "Export plugin audit",
+    "shortcut": "",
+    "command": "extensions.exportAudit"
+  },
+  {
+    "menu": "File",
+    "item": "Lock vault",
+    "shortcut": "",
+    "command": "secrets.lockVault"
   },
   {
     "menu": "Edit",
@@ -121,6 +199,12 @@
   },
   {
     "menu": "View",
+    "item": "Review rules",
+    "shortcut": "",
+    "command": "review.rules"
+  },
+  {
+    "menu": "View",
     "item": "Secrets",
     "shortcut": "⌘6",
     "command": "view.secrets"
@@ -151,6 +235,12 @@
   },
   {
     "menu": "View",
+    "item": "Clipboard history",
+    "shortcut": "",
+    "command": "clipboard.history.open"
+  },
+  {
+    "menu": "View",
     "item": "Actual Size",
     "shortcut": "",
     "command": ""
@@ -178,6 +268,12 @@
     "item": "Run workflow",
     "shortcut": "⌘↩",
     "command": "workflow.run"
+  },
+  {
+    "menu": "Workflow",
+    "item": "Run from clipboard…",
+    "shortcut": "",
+    "command": "codingLoop.run"
   },
   {
     "menu": "Workflow",
@@ -397,6 +493,18 @@
   },
   {
     "menu": "Window",
+    "item": "Quick panel",
+    "shortcut": "",
+    "command": "panel.open"
+  },
+  {
+    "menu": "Window",
+    "item": "Run monitor",
+    "shortcut": "",
+    "command": "runMonitor.open"
+  },
+  {
+    "menu": "Window",
     "item": "Bring All to Front",
     "shortcut": "",
     "command": ""
@@ -418,6 +526,12 @@
     "item": "Keyboard shortcuts",
     "shortcut": "",
     "command": "help.shortcuts"
+  },
+  {
+    "menu": "Help",
+    "item": "What's new",
+    "shortcut": "",
+    "command": "update.whatsNew"
   },
   {
     "menu": "Help",
