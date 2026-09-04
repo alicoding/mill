@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { UndoDeleteToast } from '../shared/UndoDeleteToast'
 import { useTranslation } from 'react-i18next'
 import {Events, WML} from "@wailsio/runtime";
-import {PageLayout, useTheme} from "@primer/react";
+import {PageLayout} from "@primer/react";
 import { StatusStamp } from '../shared/StatusStamp'
 import HomeView from "../views/HomeView";
 import ActivityView from "../views/ActivityView";
@@ -31,8 +31,7 @@ import { DocsSearchDialog } from "./DocsSearchDialog";
 import { BuildIdentityBadge } from "./BuildIdentityBadge";
 import { NoticePill } from "./NoticePill";
 import DocsView from "../views/DocsView";
-import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
-import { applyDensity } from "../shared/density";
+import { SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
 import { pageIconFor, pageLabelFor } from './pageMeta'
 import { useMillNavigate } from './useMillNavigate'
 import { useBeforeQuitFlush } from './useBeforeQuitFlush'
@@ -151,38 +150,6 @@ function App() {
   // (the desktop rail collapse), session-only: always starts closed.
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  // colorMode/setColorMode/resolvedColorMode come from Primer's own
-  // useTheme() -- light/dark/auto(=system) is a built-in ThemeProvider
-  // capability (colorMode="auto" already tracks prefers-color-scheme
-  // reactively, confirmed directly against its source), not something
-  // to hand-roll a media-query listener for.
-  const { colorMode, resolvedColorMode } = useTheme();
-  useEffect(() => {
-    localStorage.setItem(COLOR_MODE_STORAGE_KEY, colorMode ?? 'auto');
-    // Primer's own data-color-mode/data-light-theme/data-dark-theme
-    // attributes (which its generated CSS custom properties are scoped
-    // to -- e.g. [data-color-mode="dark"][data-dark-theme="dark"], not
-    // :root) land on a wrapper <div> ThemeProvider renders *inside*
-    // <body>, confirmed directly against the live DOM -- so html/body
-    // themselves (above/outside that div) can't see those tokens. This
-    // mirrors the same three attributes onto <html> so the couple of
-    // truly-global rules in index.css (page background, base text
-    // color) can use Primer's real tokens too, instead of a second,
-    // hardcoded color source that silently stops matching the theme the
-    // moment light mode is real. Primer's own dayScheme/nightScheme
-    // defaults ('light'/'dark', unchanged here) are what data-light-
-    // theme/data-dark-theme need to match.
-    const root = document.documentElement;
-    root.dataset.colorMode = colorMode ?? 'auto';
-    root.dataset.lightTheme = 'light';
-    root.dataset.darkTheme = 'dark';
-    // color-scheme is native browser chrome (scrollbars, form control
-    // rendering) -- Primer's tokens don't drive this, so it's set here
-    // from the *resolved* mode (light/dark, with 'auto' already settled
-    // by Primer's own system-preference detection), not the raw
-    // colorMode which can itself be 'auto'.
-    if (resolvedColorMode) root.style.colorScheme = resolvedColorMode;
-  }, [colorMode, resolvedColorMode]);
 
   useEffect(() => {
     // Unsubscribe returned like every other Events.On in this file --
@@ -212,15 +179,6 @@ function App() {
     SettingsService.IsIsolatedData().then(setIsIsolatedData).catch(console.error);
   }, []);
   usePluginReviewNotice()
-
-  // Display density (docs/goals/0096): applied once here, on mount, so
-  // a Compact preference holds from first paint even when Settings is
-  // never opened -- SettingsView applies its own change instantly
-  // (ahead of this fetch) when the control is used, this covers every
-  // other launch.
-  useEffect(() => {
-    SettingsService.GetDisplayDensity().then((d) => applyDensity(d === 'compact' ? 'compact' : 'comfortable')).catch(console.error);
-  }, []);
 
   useEffect(() => {
     SettingsService.GetBuildInfo().then(setBuildInfo).catch(console.error);

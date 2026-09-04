@@ -43,7 +43,7 @@ export function activate(api) {
 		input.value = ctx.object.Payload.url || ''
 		input.setAttribute('data-testid', 'clip-url-input')
 		input.className = 'nodrag'
-		input.style.cssText = 'font:11px ui-monospace,monospace;padding:4px 6px;border:1px solid #d0d7de;border-radius:6px;width:100%;box-sizing:border-box'
+		input.style.cssText = 'font:11px ui-monospace,monospace;padding:4px 6px;border:1px solid var(--borderColor-default);border-radius:6px;width:100%;box-sizing:border-box'
 		const commit = () => {
 			const next = input.value.trim()
 			if (next === (ctx.object.Payload.url || '')) return
@@ -62,10 +62,10 @@ export function activate(api) {
 		clip.textContent = ctx.object.Payload.clipped ? 'Clip again' : 'Clip to a note'
 		clip.setAttribute('data-testid', 'clip-run')
 		clip.className = 'nodrag'
-		clip.style.cssText = 'font:11px system-ui;padding:3px 10px;border:1px solid #d0d7de;border-radius:6px;background:#f6f8fa;cursor:pointer'
+		clip.style.cssText = 'font:11px system-ui;padding:3px 10px;border:1px solid var(--borderColor-default);border-radius:6px;background:var(--bgColor-muted);cursor:pointer'
 		const status = document.createElement('span')
 		status.setAttribute('data-testid', 'clip-status')
-		status.style.cssText = 'font:11px system-ui;color:#57606a'
+		status.style.cssText = 'font:11px system-ui;color:var(--fgColor-muted)'
 		status.textContent = statusByID.get(ctx.object.ID) || (ctx.object.Payload.clipped ? 'Clipped → ' + ctx.object.Payload.clipped : '')
 		// Write through the face's LIVE status element: the host rebuilds
 		// the face on any data change (its first measured size lands

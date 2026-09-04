@@ -14,7 +14,8 @@ and a `main.js`, copied into the app's plugins folder, no rebuild —
 is the out-of-tree door, and [Install a plugin](install-a-plugin.md)
 covers it end to end, including the `activate(api)` contract, drag
 tools with style pickers and live previews, and the
-guarded-capability model. This page is the OTHER door: a compiled-in
+guarded-capability model; [Plugin theming](plugin-theming.md) is how
+whatever you draw follows the reader's color scheme. This page is the OTHER door: a compiled-in
 tool built by editing Mill's own tree, the same way adding a workflow
 step type does — fuller reach (custom React rendering, and any
 platform hook the plugin surface doesn't carry yet) at the price of a

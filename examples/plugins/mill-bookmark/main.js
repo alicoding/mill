@@ -96,7 +96,7 @@ export function activate(api) {
 		input.placeholder = 'https://…'
 		input.value = ctx.object.Payload.url || ''
 		input.setAttribute('data-testid', 'bookmark-url-input')
-		input.style.cssText = 'font:11px ui-monospace,monospace;padding:4px 6px;border:1px solid #d0d7de;border-radius:6px;width:100%;box-sizing:border-box'
+		input.style.cssText = 'font:11px ui-monospace,monospace;padding:4px 6px;border:1px solid var(--borderColor-default);border-radius:6px;width:100%;box-sizing:border-box'
 		// Commit on Enter/blur, not per keystroke -- each payload
 		// write re-renders this face, which would rebuild the input
 		// under the caret mid-word.
@@ -121,10 +121,10 @@ export function activate(api) {
 		open.type = 'button'
 		open.textContent = 'Open'
 		open.setAttribute('data-testid', 'bookmark-open')
-		open.style.cssText = 'font:11px system-ui;padding:3px 10px;border:1px solid #d0d7de;border-radius:6px;background:#f6f8fa;cursor:pointer'
+		open.style.cssText = 'font:11px system-ui;padding:3px 10px;border:1px solid var(--borderColor-default);border-radius:6px;background:var(--bgColor-muted);cursor:pointer'
 		const status = document.createElement('span')
 		status.setAttribute('data-testid', 'bookmark-status')
-		status.style.cssText = 'font:11px system-ui;color:#57606a'
+		status.style.cssText = 'font:11px system-ui;color:var(--fgColor-muted)'
 		open.addEventListener('click', () => { void openGuarded(ctx, (text) => { status.textContent = text }) })
 		row.append(open, status)
 

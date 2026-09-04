@@ -6,6 +6,7 @@ import { AtlasService, SettingsService } from '../shared/bindings'
 import type { Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { MilkdownEditor } from '../shared/MilkdownEditor'
 import { getPluginCapture, type PluginCapture } from '../plugins/pluginCaptures'
+import { currentPluginTheme, onPluginThemeChange } from '../plugins/pluginTheme'
 import { SEEDED_SCRATCHPAD_CARD_ID, cascadeNotePosition } from './quickPanelCapture'
 import styles from './Capture.module.css'
 
@@ -165,7 +166,7 @@ function usePluginFace(faceRef: React.RefObject<HTMLDivElement | null>, pluginCa
     if (!el || !pluginCapture || destination === null) return
     el.replaceChildren()
     try {
-      pluginCapture.render(el, { destinationId: destination, done: close, cancel: close })
+      pluginCapture.render(el, { destinationId: destination, done: close, cancel: close, theme: currentPluginTheme(), onThemeChange: onPluginThemeChange })
     } catch (err) {
       console.error(`plugin ${pluginCapture.pluginId} capture render failed`, err)
     }

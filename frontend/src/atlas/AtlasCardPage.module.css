@@ -18,7 +18,7 @@
     width: 24px;
     height: 24px;
     border-radius: 6px;
-    color: #fff;
+    color: var(--fgColor-onEmphasis);
     font-size: 12px;
     font-weight: 650;
     display: flex;

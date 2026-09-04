@@ -187,6 +187,25 @@ export interface CanvasObjectMenuItem {
   enabled?: (ctx: CanvasObjectFaceCtx) => boolean
 }
 
+/** PluginTheme -- the resolved appearance a plugin's face, view or
+ * capture is rendering under. `mode` is the settled light/dark answer
+ * (never "auto"); `scheme` is the exact color scheme, e.g. "dark_dimmed"
+ * or "light_high_contrast". The same pair is on the mount root as
+ * data-mill-theme/data-mill-scheme, so plain CSS can branch on it
+ * without reading this. The plugin theming reference documents the
+ * variables a plugin may rely on. */
+export interface PluginTheme {
+  /** The settled light/dark answer -- never "auto". */
+  mode: 'light' | 'dark'
+  /** The exact color scheme, e.g. "dark_dimmed". */
+  scheme: string
+}
+
+/** PluginThemeSubscribe registers cb for every later appearance change
+ * and returns the unsubscribe. cb receives the new theme; the mount
+ * root's attributes are already updated when it runs. */
+export type PluginThemeSubscribe = (cb: (theme: PluginTheme) => void) => () => void
+
 export interface CanvasObjectFaceCtx {
   object: {
     ID: string
@@ -213,6 +232,10 @@ export interface CanvasObjectFaceCtx {
    * plugin's manifest capabilities; each use is evaluated by the
    * owner's guardrail rules and may require live approval. */
   requestGuardedAction: (kind: string, attributes: Record<string, string>, description: string) => Promise<GuardedActionResult>
+  /** The appearance this face is rendering under. */
+  theme: PluginTheme
+  /** onThemeChange registers cb for every later appearance change. */
+  onThemeChange: PluginThemeSubscribe
   /** mountOffBoard attaches el to the document OFF the board, at exactly
    * `size` CSS pixels and unscaled by the board's zoom, and returns the
    * detach. The face's own el is CSS-scaled with the canvas, so an
@@ -408,6 +431,10 @@ export interface PluginConvertAPI {
 export interface PluginViewCtx {
   pluginId: string
   viewId: string
+  /** The appearance this view is rendering under. */
+  theme: PluginTheme
+  /** onThemeChange registers cb for every later appearance change. */
+  onThemeChange: PluginThemeSubscribe
 }
 
 export interface PluginViewDecl {
@@ -431,6 +458,10 @@ export interface PluginCaptureCtx {
   destinationId: string
   done: () => void
   cancel: () => void
+  /** The appearance this capture is rendering under. */
+  theme: PluginTheme
+  /** onThemeChange registers cb for every later appearance change. */
+  onThemeChange: PluginThemeSubscribe
 }
 
 export interface PluginCaptureDecl {

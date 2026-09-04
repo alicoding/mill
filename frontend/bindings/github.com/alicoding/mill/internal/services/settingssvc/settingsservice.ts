@@ -373,6 +373,15 @@ export function GetSummonHotkey(): $CancellablePromise<string> {
 }
 
 /**
+ * GetSystemAccent returns the platform's accent color as the platform
+ * reports it ("rgb(r,g,b)" on macOS), or "" when there is none -- the
+ * frontend's signal to keep Mill's built-in accent (shared/accentScale.ts).
+ */
+export function GetSystemAccent(): $CancellablePromise<string> {
+    return $Call.ByID(3270963127);
+}
+
+/**
  * GetWorkflowMinutesSaved returns workflowID's current minutes-saved
  * estimate: its explicit override if SetWorkflowMinutesSaved was ever
  * called for it, else defaultWorkflowMinutesSaved. This is the function

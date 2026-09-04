@@ -22,6 +22,18 @@
       "lightLabel": "Light theme",
       "darkLabel": "Dark theme",
       "systemLabel": "Match system theme",
+      "colorSchemeLabel": "Color scheme",
+      "lightSchemeCaption": "Applies to the light appearance.",
+      "darkSchemeCaption": "Applies to the dark appearance.",
+      "schemes": {
+        "default": "Default",
+        "dimmed": "Dimmed",
+        "highContrast": "High contrast",
+        "colorblind": "Colorblind",
+        "colorblindHighContrast": "Colorblind high contrast",
+        "tritanopia": "Tritanopia",
+        "tritanopiaHighContrast": "Tritanopia high contrast"
+      },
       "densityLabel": "Density",
       "comfortableOption": "Comfortable",
       "compactOption": "Compact"

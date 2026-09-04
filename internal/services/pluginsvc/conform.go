@@ -38,8 +38,18 @@ func ConformDir(dir, appVersion string) []string {
 	}
 	problems = append(problems, conformStepPack(dir, m)...)
 	problems = append(problems, conformFiles(dir)...)
+	themeProblems, _ := conformTheme(dir)
+	problems = append(problems, themeProblems...)
 	sort.Strings(problems)
 	return problems
+}
+
+// ConformThemeWarnings returns the theme advice for a folder -- separate
+// from ConformDir because a warning is the author's call, not a
+// failure, and only the command-line checker surfaces it.
+func ConformThemeWarnings(dir string) []string {
+	_, warnings := conformTheme(dir)
+	return warnings
 }
 
 // conformFiles walks the folder: every file must carry an allowlisted

@@ -1,30 +1,31 @@
 /* Mill's own accent scale + node-kind identity colors + mono stack
    (design wave 2, goal 0001). A separate file from index.css,
-   imported from main.tsx AFTER @primer/primitives' light.css/dark.css
-   -- deliberately, and load-bearing, not a style preference:
+   imported from main.tsx AFTER @primer/primitives' theme files.
 
-   Primer's light.css sets --bgColor-accent-emphasis (and friends) on
-   THREE selectors, not one -- a bare `:root` fallback, PLUS an
-   explicit `[data-color-mode="light"][data-light-theme="light"],
-   [data-color-mode="auto"][data-light-theme="light"]` pair (2
-   attribute selectors, specificity 0,2,0). Mill's default colorMode
-   is "auto" (main.tsx), so that second, higher-specificity rule is
-   what's actually live in the common case, not the bare `:root`
-   fallback. A same-specificity override loses ties to whichever rule
-   loads LAST in the compiled bundle, so this file matches Primer's
-   own selector shape exactly (not a boosted one -- an earlier attempt
-   at `html[data-color-mode=...]` for extra specificity turned out to
-   target the wrong element: Primer's rule ALSO directly matches its
-   own ThemeProvider wrapper <div> inside <body>, which is what all of
-   Mill's real components actually inherit these tokens FROM, not
-   <html> -- a directly-matched declaration on that div always beats
-   whatever <html> resolves to, regardless of specificity, since a
-   value declared directly on an element always wins over one merely
-   inherited from an ancestor) and instead wins by loading later in
-   the cascade. Caught by this file's own e2e proof
-   (e2e/dark-mode.spec.ts's accent-token test) failing against the
-   REAL compiled page after the specificity-only version looked
-   correct on paper -- not assumed correct from reading the CSS.
+   The blocks below key on `data-mill-theme`, Mill's own resolved
+   light/dark answer (shared/appearance.ts's applyAppearance writes it on
+   the document root, and AppearanceProvider puts the same pair on the
+   BaseStyles element). Keying on the RESOLVED answer, rather than on
+   the three Primer attributes a reader would have to combine, is what
+   lets one rule per mode cover all thirteen color schemes (goal 0320)
+   instead of one selector per scheme.
+
+   Those attributes are also why these overrides win, and BOTH of them
+   are load-bearing. Primer's theme rules match its ThemeProvider
+   wrapper <div> DIRECTLY, and a value declared directly on an element
+   always beats one merely inherited from an ancestor -- so an override
+   anchored on <html> alone loses to it, whatever its specificity.
+   AppearanceProvider therefore carries the pair on the BaseStyles
+   element, a DESCENDANT of that wrapper, and every component in the
+   tree resolves these values here instead. On <html> itself, where
+   Primer's rules also match, the contest IS specificity: Primer's
+   selectors carry two attributes, so a single-attribute override loses
+   outright -- hence the pair here, which ties at two attributes and
+   settles the tie by loading later. Both halves were proven against
+   the real compiled page (e2e/dark-mode.spec.ts's accent-token test),
+   never from reading the CSS: a single-attribute version and an
+   earlier `html[data-color-mode=...]` version each looked correct on
+   paper and failed live.
 
    Primer's own structure is "muted" (subtle bg tint) + "emphasis"
    (strong fill) + a separate fgColor for text/links; matched here
@@ -40,11 +41,14 @@
    it) into two different shades, same reason Primer's own dark theme
    does (#1f6feb fill vs #4493f8 text) -- a single bright value can't
    satisfy both roles at once (the bright anchor alone under white
-   text is only 3.02:1, a real AA fail). */
+   text is only 3.02:1, a real AA fail).
+
+   shared/accentScale.ts overrides the four --mill-accent-* values
+   here, on these same two selectors, when the operating system
+   reports an accent color of its own. */
 
 :root,
-[data-color-mode="light"][data-light-theme="light"],
-[data-color-mode="auto"][data-light-theme="light"] {
+[data-mill-theme="light"][data-mill-scheme] {
     --mill-accent-emphasis: #1F6F6B;
     --mill-accent-fg: #1F6F6B;
     --mill-accent-muted: #DAF3F1;
@@ -90,8 +94,7 @@
     --mill-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
 
-[data-color-mode="dark"][data-dark-theme="dark"],
-[data-color-mode="auto"][data-light-theme="dark"] {
+[data-mill-theme="dark"][data-mill-scheme] {
     --mill-accent-emphasis: #2B7D77;
     --mill-accent-fg: #3FA39E;
     --mill-accent-muted: #3FA39E1a;
