@@ -52,6 +52,7 @@ import { FILE_DROP_CONTEXT_BOARD } from './atlasFileDropShared'
 import { canvasNavigationProps, useCanvasNavigationMode } from '../shared/canvasNavigation'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasBoard.module.css'
+import { background } from '../shared/background'
 
 // The one board every level renders through (goal 0072 slice A,
 // retiring the old canvas/shelves split): Auto-arrange positions
@@ -175,7 +176,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   // Slot-drag = instant typed link (goal 0081 A4): see useAtlasSlotDrag.ts.
   const slotDrag = useAtlasSlotDrag({
     topLevelBoxes, noteBoxes, allCards, allNotes, allObjects, kinds, screenToFlowPosition,
-    onLink: (fromCardID, toCardID, linkKindID) => void AtlasService.CreateLink(fromCardID, toCardID, linkKindID, '').catch(console.error),
+    onLink: (fromCardID, toCardID, linkKindID) => void background(AtlasService.CreateLink(fromCardID, toCardID, linkKindID, ''), 'atlasBoard.createLink'),
     onGuidedCreate: creation.openSlotLinkedCreate,
   })
 

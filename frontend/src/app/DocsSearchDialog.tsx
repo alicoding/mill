@@ -9,6 +9,7 @@ import { dirOf, sectionTitleKey } from '../views/docsGroups'
 import { searchDocs } from '../views/docsSearch'
 import styles from './DocsSearchDialog.module.css'
 import { searchInputTextAssistOff } from '../shared/searchInputProps'
+import { background } from '../shared/background'
 
 // DocsSearchDialog (goal 0235 S2): the `docs.search` command's palette-
 // style picker, same FilteredActionList + Dialog shape as
@@ -28,9 +29,8 @@ export function DocsSearchDialog() {
 
   useEffect(() => {
     if (open && entries === null) {
-      DocsService.DocsSearchIndex()
-        .then((result) => setEntries(result ?? []))
-        .catch(console.error)
+      void background(DocsService.DocsSearchIndex()
+        .then((result) => setEntries(result ?? [])), 'docsSearch.docsSearchIndex')
     }
     if (!open) setQuery('')
   }, [open, entries])

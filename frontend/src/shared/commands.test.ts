@@ -1,11 +1,12 @@
-import { describe, expect, it } from 'vitest'
-import { COMMANDS, dispatchCommandForEvent, findCommand, surfacesIntersect } from './commands'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { COMMANDS, dispatchCommandForEvent, findCommand, runCommand, surfacesIntersect } from './commands'
 import type { Command } from './commands'
 import { useAppStore } from './store'
 import { useUISignalStore } from './uiSignalStore'
 import { UpdateState } from './bindings'
 import { useUpdateNoticeStore } from './updateNoticeStore'
 import { useVaultStatusStore } from './vaultStatusStore'
+import { useNoticeStore } from './noticeStore'
 
 // docs/goals/BACKLOG.md Standing #6 (⌘?/⌘/ palette aliases): a
 // Command's optional extraBindings (shared/commands.ts) must dispatch
@@ -291,5 +292,94 @@ describe('Command.quickPanel opt-in (goal 0222 S2)', () => {
 
   it('an ordinary command with no reason to appear in the panel stays opted out', () => {
     expect(findCommand('tab.close')?.quickPanel).toBeFalsy()
+  })
+})
+
+// goal 0313: runCommand is the ONE door every invoker (palette, menu,
+// keymap, notice pill, a plain button) uses instead of a bare run() --
+// this pins its four outcomes (unknown id, disabled, sync success,
+// rejection) against the footer notice channel it reports failure
+// through.
+describe('runCommand (goal 0313)', () => {
+  afterEach(() => {
+    useNoticeStore.setState({ notices: [] })
+  })
+
+  const withTestCommand = (command: Command, fn: () => Promise<void> | void) => {
+    COMMANDS.push(command)
+    return Promise.resolve(fn()).finally(() => {
+      const idx = COMMANDS.indexOf(command)
+      if (idx >= 0) COMMANDS.splice(idx, 1)
+    })
+  }
+
+  it('an unknown id resolves false and posts no notice', async () => {
+    await expect(runCommand('no.such.command')).resolves.toBe(false)
+    expect(useNoticeStore.getState().notices).toEqual([])
+  })
+
+  it('a disabled command resolves false, run() never called, no notice', async () => {
+    const run = vi.fn()
+    await withTestCommand(
+      { id: 'test.disabled', label: 'Disabled test', defaultBinding: null, enabled: () => false, run },
+      async () => {
+        await expect(runCommand('test.disabled')).resolves.toBe(false)
+        expect(run).not.toHaveBeenCalled()
+        expect(useNoticeStore.getState().notices).toEqual([])
+      },
+    )
+  })
+
+  it('a synchronous run() resolves true, no notice', async () => {
+    const run = vi.fn()
+    await withTestCommand(
+      { id: 'test.sync', label: 'Sync test', defaultBinding: null, run },
+      async () => {
+        await expect(runCommand('test.sync')).resolves.toBe(true)
+        expect(run).toHaveBeenCalledTimes(1)
+        expect(useNoticeStore.getState().notices).toEqual([])
+      },
+    )
+  })
+
+  it('an async run() that resolves settles true, no notice', async () => {
+    await withTestCommand(
+      { id: 'test.asyncOk', label: 'Async ok test', defaultBinding: null, run: () => Promise.resolve() },
+      async () => {
+        await expect(runCommand('test.asyncOk')).resolves.toBe(true)
+        expect(useNoticeStore.getState().notices).toEqual([])
+      },
+    )
+  })
+
+  it('a rejecting run() resolves false and posts exactly one error notice naming the label and the message', async () => {
+    await withTestCommand(
+      { id: 'test.fails', label: 'Fails test', defaultBinding: null, run: () => Promise.reject(new Error('boom')) },
+      async () => {
+        await expect(runCommand('test.fails')).resolves.toBe(false)
+        const notices = useNoticeStore.getState().notices
+        expect(notices).toHaveLength(1)
+        expect(notices[0].level).toBe('error')
+        expect(notices[0].text).toBe('Fails test: boom')
+        expect(notices[0].source).toBe('test.fails')
+      },
+    )
+  })
+
+  it('a THROWING synchronous run() is caught the same way a rejection is', async () => {
+    await withTestCommand(
+      {
+        id: 'test.throws',
+        label: 'Throws test',
+        defaultBinding: null,
+        run: () => {
+          throw new Error('sync boom')
+        },
+      },
+      async () => {
+        await expect(runCommand('test.throws')).resolves.toBe(false)
+        expect(useNoticeStore.getState().notices[0]?.text).toBe('Throws test: sync boom')
+      },
+    )
   })
 })

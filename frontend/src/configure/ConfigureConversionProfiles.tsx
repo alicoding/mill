@@ -17,6 +17,7 @@ import { useUISignalStore } from '../shared/uiSignalStore'
 import { ConfigureEntityPage } from './ConfigureEntityPage'
 import { ConversionSamplePreview } from './ConversionSamplePreview'
 import styles from '../shared/ListCard.module.css'
+import { background } from '../shared/background'
 
 // Conversion profiles (goal 0305 slice 6): which source-specific rule
 // sets an HTML-to-Markdown conversion applies -- a named option set,
@@ -38,7 +39,7 @@ export function ConfigureConversionProfiles() {
   const refetch = () => { void refreshConversionProfiles() }
   useEffect(() => {
     refetch()
-    CompositionService.ConversionRuleSets().then((r) => setRuleSets(r ?? [])).catch(console.error)
+    void background(CompositionService.ConversionRuleSets().then((r) => setRuleSets(r ?? [])), 'configureConversionProfiles.conversionRuleSets')
   }, [])
 
   const startCreate = () => {

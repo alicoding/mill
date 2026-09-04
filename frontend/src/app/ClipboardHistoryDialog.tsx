@@ -9,6 +9,7 @@ import { useUISignalStore } from '../shared/uiSignalStore'
 import { ClipboardHistoryDetail } from './ClipboardHistoryDetail'
 import styles from './ClipboardHistoryDialog.module.css'
 import { searchInputTextAssistOff } from '../shared/searchInputProps'
+import { background } from '../shared/background'
 
 const PREVIEW_LINE_CAP = 80
 
@@ -47,13 +48,12 @@ export function ClipboardHistoryDialog() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const refresh = () => {
-    ClipboardHistoryService.ListClipboardHistory()
+    void background(ClipboardHistoryService.ListClipboardHistory()
       .then((result) => {
         const list = result ?? []
         setEntries(list)
         setSelectedId((current) => (current && list.some((e) => e.ID === current) ? current : (list[0]?.ID ?? null)))
-      })
-      .catch(console.error)
+      }), 'clipboardHistory.listClipboardHistory')
   }
 
   useEffect(() => {

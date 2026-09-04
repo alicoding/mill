@@ -89,6 +89,52 @@ export default tseslint.config(
     },
   },
   {
+    // Goal 0313's own gate, the `.catch(console.error)` class: a
+    // rejected promise a user-initiated command started has exactly
+    // ONE legal door (shared/commands.ts's runCommand, which posts the
+    // footer notice), and everything else has exactly one other
+    // (shared/background.ts's background(), which tags and counts it).
+    // These three selectors ban the shapes that used to bypass both --
+    // an empty arrow, console.error/console.warn passed straight to
+    // .catch, and a bare `noop`.
+    //
+    // no-floating-promises (type-aware) is ALSO on, at ignoreVoid: true
+    // rather than the stricter false: a full sweep at ignoreVoid: false
+    // found 386 pre-existing violations repo-wide (goal 0313's own
+    // measurement) -- almost all the codebase's own established `void
+    // fn()` idiom for "started, not awaited", not a new dropped-
+    // rejection class this goal exists to close. Ratcheting that whole
+    // set to `false` is real, separately-scoped follow-up work, not a
+    // one-line flip; `true` still catches a BARE floating call (no
+    // void, no await, no .catch) -- the actual gap this goal closes.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.ts', '**/*.test.tsx'],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.property.name='catch'][arguments.0.type='ArrowFunctionExpression'][arguments.0.body.type='BlockStatement'][arguments.0.body.body.length=0]",
+          message: 'A dropped rejection is a silent failure: route it through runCommand or background(p, source) (goal 0313)',
+        },
+        {
+          selector: "CallExpression[callee.property.name='catch'][arguments.0.object.name='console']",
+          message: 'A dropped rejection is a silent failure: route it through runCommand or background(p, source) (goal 0313)',
+        },
+        {
+          selector: "CallExpression[callee.property.name='catch'][arguments.0.name='noop']",
+          message: 'A dropped rejection is a silent failure: route it through runCommand or background(p, source) (goal 0313)',
+        },
+      ],
+    },
+  },
+  {
     // Goal 0184 RESEARCH VERDICT: `page.mouse.*` dispatches raw CDP
     // input with NONE of Playwright's actionability checks (no
     // hit-target retargeting, no Visible/Stable/Receives-Events wait) --

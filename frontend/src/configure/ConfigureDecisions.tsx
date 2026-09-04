@@ -26,6 +26,7 @@ import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
+import { background } from '../shared/background'
 
 const TYPE_OPTIONS = ['text', 'number', 'boolean', 'options']
 
@@ -83,8 +84,8 @@ export function ConfigureDecisions() {
   const [restorable, setRestorable] = useState<Decision[]>([])
 
   const refreshSeedLifecycle = () => {
-    ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})).catch(console.error)
-    ConfigureService.RestorableDecisions().then((r) => setRestorable(r ?? [])).catch(console.error)
+    void background(ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})), 'configureDecisions.seedRevisions')
+    void background(ConfigureService.RestorableDecisions().then((r) => setRestorable(r ?? [])), 'configureDecisions.restorableDecisions')
   }
 
   const refetch = () => {

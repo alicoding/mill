@@ -1,7 +1,7 @@
 import { Dialog, Text } from '@primer/react'
 import { useTranslation } from 'react-i18next'
 import { discardAll, usePendingFlushCount } from '../shared/flushRegistry'
-import { findCommand } from '../shared/commands'
+import { runCommand } from '../shared/commands'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { answerLeave } from './useBeforeQuitFlush'
 
@@ -43,8 +43,7 @@ export function UnsavedChangesDialog() {
           onClick: () => {
             // The command's flush is bounded; the answer follows it so a
             // hung surface can never hold the quit past that bound.
-            const run = findCommand('edit.saveAll')?.run()
-            void Promise.resolve(run).finally(() => answerLeave(true))
+            void runCommand('edit.saveAll').finally(() => answerLeave(true))
           },
         },
       ]}

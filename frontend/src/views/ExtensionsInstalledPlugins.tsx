@@ -11,6 +11,7 @@ import { ExtensionsTrustBar } from './ExtensionsTrustBar'
 import { refreshDisabledExtensions, useExtensionEnablementStore } from '../shared/extensionEnablementStore'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './ExtensionsSection.module.css'
+import { background } from '../shared/background'
 
 // The Installed half of Settings > Extensions (goal 0321, re-shaping
 // goal 0249's section): every folder in the plugins directory as ONE
@@ -42,10 +43,10 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
   const states = pluginLoadStates()
 
   const toggle = (id: string, enabled: boolean) => {
-    SettingsService.SetExtensionEnabled(id, enabled).then(refreshDisabledExtensions).catch(console.error)
+    void background(SettingsService.SetExtensionEnabled(id, enabled).then(refreshDisabledExtensions), 'extensionsInstalledPlugins.setExtensionEnabled')
   }
   const openFolder = () => {
-    PluginService.RevealPluginsDir().catch(console.error)
+    void background(PluginService.RevealPluginsDir(), 'extensionsInstalledPlugins.revealPluginsDir')
   }
 
   return (

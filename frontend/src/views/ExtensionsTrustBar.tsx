@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Stack, Text } from '@primer/react'
 import { SettingsService } from '../shared/bindings'
-import { findCommand } from '../shared/commands'
+import { runCommand } from '../shared/commands'
 import styles from '../shared/ListCard.module.css'
 
 // The trust posture strip above the installed-plugins list (ADR-0051
@@ -27,7 +27,7 @@ export function ExtensionsTrustBar() {
 			<Text as="p" size="small" className={styles.muted} data-testid="extensions-allowlist">
 				{policyText || t('settings.extensions.reviewHint')}
 			</Text>
-			<Button size="small" className={styles.nowrapAction} onClick={() => findCommand('extensions.exportAudit')?.run()} data-testid="extensions-export-audit">
+			<Button size="small" className={styles.nowrapAction} onClick={() => void runCommand('extensions.exportAudit')} data-testid="extensions-export-audit">
 				{t('settings.extensions.exportAudit')}
 			</Button>
 		</Stack>

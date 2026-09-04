@@ -7,6 +7,7 @@ import type { PluginCapture } from '../../bindings/github.com/alicoding/mill/int
 import { useAtlasStore } from '../atlas/atlasStore'
 import type { PanelEntry } from './quickPanelActionEntries'
 import { cascadeNotePosition, resolveNoteParentID } from './quickPanelCapture'
+import { background } from '../shared/background'
 
 // The Quick Panel's capture doors: a typed query with no intent to
 // search becomes a NOTE (docs/goals/0090) or a TASK ROW (docs/goals/
@@ -56,7 +57,7 @@ export function useQuickPanelCaptureDoors({ t, setQuery, setStatus }: {
 
   const dismiss = () => {
     setQuery('')
-    void SettingsService.DismissPanel().catch(() => {})
+    void background(SettingsService.DismissPanel(), 'quickPanelCapture.dismissPanel')
   }
 
   const createNoteFromQuery = (text: string) => {

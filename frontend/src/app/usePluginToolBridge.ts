@@ -45,7 +45,7 @@ export function runPluginCommand(req: InvokeRequest): void {
     return
   }
   try {
-    command.run()
+    void command.run()
     reply(req.requestId, true, `ran "${command.label}"`, '')
   } catch (err) {
     reply(req.requestId, false, '', err instanceof Error ? err.message : String(err))

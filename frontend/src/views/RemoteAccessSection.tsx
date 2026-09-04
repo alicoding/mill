@@ -12,6 +12,7 @@ import type { BrowserNotifyPermission } from '../shared/browserNotify'
 import { writeClipboardText } from '../shared/clipboardWrite'
 import listStyles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
+import { background } from '../shared/background'
 
 // docs/goals/0132-remote-access.md SLICE 1: Settings' own door into
 // the auth gate every non-loopback request is now behind
@@ -40,11 +41,11 @@ function RemoteAccessSection() {
   const [notifyPermission, setNotifyPermission] = useState<BrowserNotifyPermission>(() => getNotificationPermission())
 
   useEffect(() => {
-    SettingsService.GetBuildInfo().then((info) => setIsServerMode(info?.Server === true)).catch(() => {})
+    void background(SettingsService.GetBuildInfo().then((info) => setIsServerMode(info?.Server === true)), 'remoteAccess.getBuildInfo')
   }, [])
 
   const enableNotify = () => {
-    requestNotificationPermission().then(setNotifyPermission).catch(() => {})
+    void background(requestNotificationPermission().then(setNotifyPermission), 'remoteAccess.requestNotifyPermission')
   }
 
   const refresh = () => {

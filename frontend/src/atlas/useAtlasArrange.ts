@@ -6,6 +6,7 @@ import { refreshAtlas } from './atlasStore'
 import { computeAutoArrangeLayout, computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH, OBJECT_FALLBACK_EXTENT, type ArrangeObjectTile } from './atlasBoardLayout'
 import { resolveFreeOverlaps } from './atlasOverlapResolution'
 import type { resolveBoardEdges } from './atlasLinkResolution'
+import { background } from '../shared/background'
 
 // Position-less cards (a nil Position -- the wire's null; a stored
 // (0,0) is a REAL position, e.g. the arrange button's own first seat,
@@ -143,7 +144,7 @@ export function useAtlasArrange({ cards, allCards, arteries, boardWidth, arrange
     const tiles = objectArrangeTiles(objects, measuredBoxes)
     const layout = computeAutoArrangeLayout(cards, allCards, arrangeAdjacency, boardWidth - 48, allNotes, tiles, allObjects).boxes
     const measuredByID = new Map(measuredBoxes.map((b) => [b.id, b]))
-    void Promise.all([
+    void background(Promise.all([
       ...cards.map((c) => {
         const seat = layout.get(c.ID)
         return seat ? AtlasService.SetPosition(c.ID, { X: seat.x, Y: seat.y }) : Promise.resolve(null)
@@ -159,7 +160,7 @@ export function useAtlasArrange({ cards, allCards, arteries, boardWidth, arrange
         const dy = m ? o.Position.Y - m.y : 0
         return AtlasService.SetBoardObjectPosition(o.ID, { X: seat.x + dx, Y: seat.y + dy })
       }),
-    ]).then(() => refreshAtlas()).catch(console.error)
+    ]).then(() => refreshAtlas()), 'atlasArrange.setBoardObjectPosition')
   }, [arrangeRequest, cards, allCards, arrangeAdjacency, boardWidth, objects, allNotes, allObjects, objectBoxesRef])
 
   return { freeMoves }

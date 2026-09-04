@@ -1,6 +1,7 @@
 import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
 import { thirdPartyNounFor } from './atlasNounRegistry'
+import { background } from '../shared/background'
 
 // placeThirdPartyObject -- the ONE generic placement for every
 // runtime-registered noun (docs/goals/0249): the armed click creates a
@@ -15,8 +16,7 @@ export function placeThirdPartyObject(toolId: string, flowPos: { x: number; y: n
   // branches must not proceed for a third-party tool) but place
   // nothing, matching how a built-in drag tool's stray click no-ops.
   if (noun.interaction !== 'arm-then-click') return true
-  void AtlasService.CreateBoardObject(noun.boardObjectKind, { ...noun.defaultPayload }, { X: flowPos.x, Y: flowPos.y }, parentID)
-    .then(() => refreshAtlas())
-    .catch(console.error)
+  void background(AtlasService.CreateBoardObject(noun.boardObjectKind, { ...noun.defaultPayload }, { X: flowPos.x, Y: flowPos.y }, parentID)
+    .then(() => refreshAtlas()), 'atlasThirdParty.createBoardObject')
   return true
 }

@@ -13,6 +13,7 @@ import { placeThirdPartyObject } from './atlasThirdPartyPlacement'
 import { cardTool } from './tools/cardTool'
 import { noteTool } from './tools/noteTool'
 import { areaTool } from './tools/areaTool'
+import { background } from '../shared/background'
 
 export interface AtlasPlacementPopoverState {
   mode: 'create' | 'promote' | 'area'
@@ -232,12 +233,11 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
       const artifact = cardTool.commit({ kinds: kindsRef.current })
       const targetParentID = parentIDOverride ?? parentID
       const position = parentIDOverride ? freeChildPosition(allCardsRef.current, parentIDOverride) : { X: flowPos.x, Y: flowPos.y }
-      void AtlasService.CreateCard(artifact.kindID, artifact.title, artifact.note, {}, targetParentID, position, ViewMode.$zero, '', '', '')
+      void background(AtlasService.CreateCard(artifact.kindID, artifact.title, artifact.note, {}, targetParentID, position, ViewMode.$zero, '', '', '')
         .then((card) => {
           setEditingTitleCardID(card.ID)
           return refreshAtlas()
-        })
-        .catch(console.error)
+        }), 'atlasCreation.createCard')
     } else {
       setDraftNoteFlowPos(flowPos)
       setDraftNoteParentOverride(parentIDOverride ?? null)
@@ -304,34 +304,29 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
         // so the map never shows a card with a missing link or a link
         // to nothing.
         const position = pending.flowPos ? { X: pending.flowPos.x, Y: pending.flowPos.y } : null
-        void AtlasService.CreateCardLinkedFrom(pending.slotLinkFromCardID, pending.slotLinkKindID, kindID, title, parentID, position)
-          .then(() => refreshAtlas())
-          .catch(console.error)
+        void background(AtlasService.CreateCardLinkedFrom(pending.slotLinkFromCardID, pending.slotLinkKindID, kindID, title, parentID, position)
+          .then(() => refreshAtlas()), 'atlasCreation.createCardLinkedFrom')
       } else if (pending.mode === 'create' && pending.addLinkedFromCardID) {
         // "Add linked card…" (goal 0081 slice A4): AddLinkedCard
         // resolves the generic relates-to kind and the new card's own
         // parent server-side.
         const position = pending.flowPos ? { X: pending.flowPos.x, Y: pending.flowPos.y } : null
-        void AtlasService.AddLinkedCard(pending.addLinkedFromCardID, kindID, title, position)
-          .then(() => refreshAtlas())
-          .catch(console.error)
+        void background(AtlasService.AddLinkedCard(pending.addLinkedFromCardID, kindID, title, position)
+          .then(() => refreshAtlas()), 'atlasCreation.addLinkedCard')
       } else if (pending.mode === 'create') {
         const artifact = cardTool.commit({ kinds: kindsRef.current, kindID, title })
         const targetParentID = pending.parentIDOverride ?? parentID
         const position = pending.parentIDOverride
           ? freeChildPosition(allCardsRef.current, pending.parentIDOverride)
           : (pending.flowPos ? { X: pending.flowPos.x, Y: pending.flowPos.y } : null)
-        void AtlasService.CreateCard(artifact.kindID, artifact.title, artifact.note, {}, targetParentID, position, ViewMode.$zero, '', '', '')
-          .then(() => refreshAtlas())
-          .catch(console.error)
+        void background(AtlasService.CreateCard(artifact.kindID, artifact.title, artifact.note, {}, targetParentID, position, ViewMode.$zero, '', '', '')
+          .then(() => refreshAtlas()), 'atlasCreation.createCard')
       } else if (pending.mode === 'promote' && pending.noteID) {
-        void AtlasService.PromoteNote(pending.noteID, kindID, title)
-          .then(() => refreshAtlas())
-          .catch(console.error)
+        void background(AtlasService.PromoteNote(pending.noteID, kindID, title)
+          .then(() => refreshAtlas()), 'atlasCreation.promoteNote')
       } else if (pending.mode === 'promote' && pending.objectID) {
-        void AtlasService.PromoteBoardObject(pending.objectID, kindID, title)
-          .then(() => refreshAtlas())
-          .catch(console.error)
+        void background(AtlasService.PromoteBoardObject(pending.objectID, kindID, title)
+          .then(() => refreshAtlas()), 'atlasCreation.promoteBoardObject')
       } else if (pending.mode === 'area') {
         const artifact = areaTool.commit({ kindID, title, enclosedCardIDs: pending.enclosedCardIDs ?? [], enclosedNoteIDs: pending.enclosedNoteIDs ?? [], enclosedObjectIDs: pending.enclosedObjectIDs ?? [] })
         const position = pending.flowPos ? { X: pending.flowPos.x, Y: pending.flowPos.y } : null
@@ -341,14 +336,13 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
         // opened into Shelves by default would make its own creator
         // immediately unable to keep filing cards into it after
         // drilling in.
-        void AtlasService.CreateCard(artifact.kindID, artifact.title, '', {}, parentID, position, ViewMode.ViewModeCanvas, '', '', '')
+        void background(AtlasService.CreateCard(artifact.kindID, artifact.title, '', {}, parentID, position, ViewMode.ViewModeCanvas, '', '', '')
           .then((created) => Promise.all([
             ...artifact.enclosedCardIDs.map((id) => AtlasService.MoveCard(id, created.ID)),
             ...artifact.enclosedNoteIDs.map((id) => AtlasService.MoveNote(id, created.ID)),
             ...artifact.enclosedObjectIDs.map((id) => AtlasService.MoveBoardObject(id, created.ID)),
           ]))
-          .then(() => refreshAtlas())
-          .catch(console.error)
+          .then(() => refreshAtlas()), 'atlasCreation.moveBoardObject')
       }
     }
   }, [popover, parentID])
@@ -365,9 +359,8 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
         const artifact = noteTool.commit({ text })
         const targetParentID = override ?? parentID
         const position = override ? freeChildPosition(allCardsRef.current, override) : { X: pos.x, Y: pos.y }
-        void AtlasService.CreateNote(artifact.text, position, targetParentID)
-          .then(() => refreshAtlas())
-          .catch(console.error)
+        void background(AtlasService.CreateNote(artifact.text, position, targetParentID)
+          .then(() => refreshAtlas()), 'atlasCreation.createNote')
       }
     }
   }, [parentID, draftNoteFlowPos, draftNoteParentOverride])
@@ -382,9 +375,8 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
     if (!trimmed) return
     const card = allCardsRef.current.find((c) => c.ID === cardID)
     if (!card) return
-    void AtlasService.UpdateCard(cardID, trimmed, card.Note, card.Fields ?? {}, card.Source, card.MirrorPath, card.RefreshWorkflowID)
-      .then(() => refreshAtlas())
-      .catch(console.error)
+    void background(AtlasService.UpdateCard(cardID, trimmed, card.Note, card.Fields ?? {}, card.Source, card.MirrorPath, card.RefreshWorkflowID)
+      .then(() => refreshAtlas()), 'atlasCreation.updateCard')
   }, [])
   const cancelCardTitle = useCallback(() => setEditingTitleCardID(null), [])
 
@@ -396,9 +388,8 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
     setEditingNoteID(null)
     const toPersist = resolveNoteCommitText(text)
     if (toPersist === null) return
-    void AtlasService.UpdateNoteText(noteID, toPersist)
-      .then(() => refreshAtlas())
-      .catch(console.error)
+    void background(AtlasService.UpdateNoteText(noteID, toPersist)
+      .then(() => refreshAtlas()), 'atlasCreation.updateNoteText')
   }, [])
 
   // Esc's own single entry point (AtlasBoard's window listener calls

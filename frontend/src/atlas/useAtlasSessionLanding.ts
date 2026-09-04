@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { singleRootCard } from './atlasGrouping'
+import { background } from '../shared/background'
 
 // Session restore + the egocentric-root auto-entry (ADR-0038,
 // docs/goals/0091/0183/0221), split from AtlasView at the 500-line
@@ -60,7 +61,7 @@ export function useAtlasSessionLanding({
     // A deep link owns the landing -- restore yields entirely (but
     // saves still arm, so the deep-linked position persists next).
     if (initialCardID) { setSessionRestored(true); return }
-    AtlasService.AtlasSession()
+    void AtlasService.AtlasSession()
       .then((session) => {
         if (session?.viewedID) setViewedID(session.viewedID)
         else if (session?.atRootExplicit) setSuppressAutoEntry(true)
@@ -76,10 +77,10 @@ export function useAtlasSessionLanding({
     // atRootExplicit rides along only while genuinely at root -- the
     // one bit that lets a FUTURE restore tell a deliberate "All spaces"
     // landing apart from a session that was never saved.
-    void AtlasService.SetAtlasSession({
+    void background(AtlasService.SetAtlasSession({
       viewedID, openCardID: overlayCardID ?? '', activePerspectiveID,
       atRootExplicit: viewedID === '' && suppressAutoEntry,
-    }).catch(() => {})
+    }), 'atlasSessionLanding.setAtlasSession')
   }, [sessionRestored, viewedID, overlayCardID, activePerspectiveID, suppressAutoEntry])
 
   useEffect(() => {

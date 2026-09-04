@@ -27,6 +27,7 @@ import { TriggerRowLabel } from './TriggerRowLabel'
 import { findRootNode } from './triggerRowInfo'
 import { hasDraftDrift } from './draftDrift'
 import { newLocalID } from '../shared/localId'
+import { background } from '../shared/background'
 
 // The Workflows list page (SPEC.md §3 / ADR-0005). Editor tabs no
 // longer live here: opening/editing a workflow goes through the store's
@@ -79,14 +80,13 @@ function CompositionView() {
   const [restorable, setRestorable] = useState<Workflow[]>([])
 
   const refreshSeedLifecycle = useCallback(() => {
-    CompositionService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})).catch(console.error)
-    CompositionService.RestorableWorkflows().then((r) => setRestorable(r ?? [])).catch(console.error)
+    void background(CompositionService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})), 'composition.seedRevisions')
+    void background(CompositionService.RestorableWorkflows().then((r) => setRestorable(r ?? [])), 'composition.restorableWorkflows')
   }, [])
 
   const refreshArmed = useCallback(() => {
-    TriggerService.ArmedWorkflows()
-      .then((m) => setArmedWorkflows(m ?? {}))
-      .catch(console.error)
+    void background(TriggerService.ArmedWorkflows()
+      .then((m) => setArmedWorkflows(m ?? {})), 'composition.armedWorkflows')
   }, [])
 
   useEffect(() => {

@@ -2,6 +2,7 @@ import { SettingsService } from '../shared/bindings'
 import type { ClipboardApplyPreview } from '../shared/bindings'
 import { QuickPanelClipboardApply } from './QuickPanelClipboardApply'
 import styles from './QuickPanel.module.css'
+import { background } from '../shared/background'
 
 interface Props {
   json: string
@@ -26,7 +27,7 @@ export function QuickPanelClipboardApplyDoor({ json, preview, t, onCancel, onApp
         onCancel={onCancel}
         onApplied={(label, isUpdate) => {
           onApplied(isUpdate ? t('quickPanel.status.appliedUpdated', { label }) : t('quickPanel.status.appliedCreated', { label }))
-          window.setTimeout(() => { void SettingsService.DismissPanel().catch(() => {}) }, 600)
+          window.setTimeout(() => { void background(SettingsService.DismissPanel(), 'quickPanelClipboardApply.dismissPanel') }, 600)
         }}
       />
     </div>

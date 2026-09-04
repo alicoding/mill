@@ -6,7 +6,7 @@ import { FilteredActionList } from '@primer/react/experimental'
 import { CommandPaletteIcon, PencilIcon, PlayIcon, TabIcon, XIcon } from '@primer/octicons-react'
 import { Events } from '@wailsio/runtime'
 import { ExecutionService, RunKind, TriggerService } from '../shared/bindings'
-import { COMMANDS } from '../shared/commands'
+import { COMMANDS, runCommand } from '../shared/commands'
 import { generateSamplePayload } from '../shared/configSchema'
 import { useAppStore } from '../shared/store'
 import { useVaultStatusStore } from '../shared/vaultStatusStore'
@@ -26,6 +26,7 @@ import { FacetChipRow } from '../shared/FacetChipRow'
 import styles from './CommandPalette.module.css'
 import { newLocalID } from '../shared/localId'
 import { searchInputTextAssistOff } from '../shared/searchInputProps'
+import { background } from '../shared/background'
 
 // The ⌘K command palette (docs/goals/0015-summon-quick-invoke.md): the
 // "what can I do, and what's the shortcut for it next time" surface --
@@ -182,14 +183,13 @@ export function CommandPalette() {
   // same substrate app/QuickPanel.tsx's own refreshFrecency reads.
   useEffect(() => {
     if (!paletteOpen) return
-    ExecutionService.HomeMetrics(FRECENCY_FROM_ISO, new Date().toISOString(), true)
+    void background(ExecutionService.HomeMetrics(FRECENCY_FROM_ISO, new Date().toISOString(), true)
       .then((metrics) => {
         const rank: Record<string, number> = {}
         for (const usage of metrics.mostUsed ?? []) rank[usage.workflowID] = usage.runCount
         setMostUsedRank(rank)
-      })
-      .catch(() => {})
-    TriggerService.ListHotkeys().then((combos) => setHotkeyCombos(combos ?? {})).catch(() => {})
+      }), 'commandPalette.homeMetrics')
+    void background(TriggerService.ListHotkeys().then((combos) => setHotkeyCombos(combos ?? {})), 'commandPalette.listHotkeys')
   }, [paletteOpen])
 
   // Live sync while the palette stays open: a hotkey assigned/cleared
@@ -199,7 +199,7 @@ export function CommandPalette() {
   useEffect(() => {
     return Events.On('mill-data-changed', (evt) => {
       const entity = (evt.data as { entity?: string })?.entity
-      if (entity === 'hotkey') TriggerService.ListHotkeys().then((combos) => setHotkeyCombos(combos ?? {})).catch(() => {})
+      if (entity === 'hotkey') void background(TriggerService.ListHotkeys().then((combos) => setHotkeyCombos(combos ?? {})), 'commandPalette.listHotkeys')
     })
   }, [])
 
@@ -269,7 +269,7 @@ export function CommandPalette() {
     // (docs/goals/0015), replacing this file's own former local
     // ShortcutHint + effectiveBinding computation.
     trailingVisual: <HotkeyHint commandId={command.id} />,
-    run: command.run,
+    run: () => { void runCommand(command.id) },
   })
 
   const workflowEntries = (wf: NonNullable<typeof workflows>[number]): PaletteEntry[] => {

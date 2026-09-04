@@ -12,6 +12,7 @@ import { HomeMostUsed } from './HomeMostUsed'
 import { formatDuration, formatMinutes } from './homeFormat'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './HomeView.module.css'
+import { background } from '../shared/background'
 
 // Home -- the value mirror (docs/goals/0014-home-dashboard.md,
 // docs/SPEC.md §3.2.3): the reason to open Mill, not a monitoring
@@ -49,7 +50,7 @@ export default function HomeView() {
 
   const refresh = useCallback(() => {
     const { from, to } = rangeToISO(rangeDays)
-    ExecutionService.HomeMetrics(from, to, includeTest).then(setMetrics).catch(console.error)
+    void background(ExecutionService.HomeMetrics(from, to, includeTest).then(setMetrics), 'home.homeMetrics')
   }, [rangeDays, includeTest])
 
   useEffect(() => { refresh() }, [refresh])
@@ -72,9 +73,8 @@ export default function HomeView() {
     // optional index signature, mirroring Go's map[string]int, which
     // never actually carries an explicit-undefined entry) -- cast back
     // to the plain Record every value here is guaranteed to be.
-    SettingsService.ListWorkflowMinutesSaved()
-      .then((m) => setMinutesByWorkflow((m ?? {}) as Record<string, number>))
-      .catch(console.error)
+    void background(SettingsService.ListWorkflowMinutesSaved()
+      .then((m) => setMinutesByWorkflow((m ?? {}) as Record<string, number>)), 'home.listWorkflowMinutesSaved')
   }, [])
 
   const handleMinutesChanged = useCallback((workflowId: string, minutes: number) => {

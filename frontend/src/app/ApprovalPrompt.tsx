@@ -7,6 +7,7 @@ import { ExecutionService, SettingsService } from '../shared/bindings'
 import type { RunSummary, MCPWriteRequest } from '../shared/bindings'
 import { StalenessBadge } from '../shared/StalenessBadge'
 import styles from './ApprovalPrompt.module.css'
+import { background } from '../shared/background'
 
 // docs/goals/0023-attention-escalation.md item 1: the floating
 // approval-prompt window's own content -- the incoming-call/askpass
@@ -41,7 +42,7 @@ export function ApprovalPrompt() {
   const [error, setError] = useState('')
 
   const refresh = () => {
-    Promise.all([
+    void Promise.all([
       ExecutionService.ListRuns().then((runs) => (runs ?? []).filter((r) => r.pending)).catch(() => []),
       SettingsService.PendingMCPWrites().then((p) => p ?? []).catch(() => []),
     ]).then(([g, m]) => {
@@ -98,7 +99,7 @@ export function ApprovalPrompt() {
   // real item still in flight over the wire.
   useEffect(() => {
     if (loaded && items.length === 0) {
-      void SettingsService.DismissApprovalPrompt().catch(() => {})
+      void background(SettingsService.DismissApprovalPrompt(), 'approvalPrompt.dismissApprovalPrompt')
     }
   }, [loaded, items.length])
 
@@ -108,8 +109,8 @@ export function ApprovalPrompt() {
   }
 
   const openInMill = () => {
-    void SettingsService.OpenMainWindow('review').catch(() => {})
-    void SettingsService.DismissApprovalPrompt().catch(() => {})
+    void background(SettingsService.OpenMainWindow('review'), 'approvalPrompt.openMainWindow')
+    void background(SettingsService.DismissApprovalPrompt(), 'approvalPrompt.dismissApprovalPrompt')
   }
 
   return (

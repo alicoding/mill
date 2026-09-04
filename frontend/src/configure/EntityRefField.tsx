@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dialog, FormControl, Link, Select, Text, TextInput } from '@primer/react'
-import { findCommand } from '../shared/commands'
+import { findCommand, runCommand } from '../shared/commands'
 import { ReferencePeek } from './ReferencePeek'
 import { AtlasService, CompositionService, ConfigureService } from '../shared/bindings'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
@@ -345,7 +345,7 @@ function ReadOnlyReference({ refKind, value, entities, noun }: { refKind: string
       {canEdit && (
         <>
           {' · '}
-          <Link href="#" onClick={(e) => { e.preventDefault(); editCommand?.run() }} data-testid="entity-ref-edit">{t('entityRefField.edit')}</Link>
+          <Link href="#" onClick={(e) => { e.preventDefault(); void runCommand('workflow.edit') }} data-testid="entity-ref-edit">{t('entityRefField.edit')}</Link>
         </>
       )}
       <ReferencePeek refKind={refKind} id={value} noun={noun} />
