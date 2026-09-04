@@ -151,8 +151,11 @@ A gap between a researched, confirmed best-in-class precedent and what
 Mill has today is NOT deferrable: it is built in the goal that found
 it (CLAUDE.md's Research step, owner-set 2026-09-04). An agent that
 would defer it reports it instead; the orchestrator builds it or the
-owner narrows it in the session. Everything else below governs the
-deferrals that remain legal.
+owner narrows it in the session. This includes gaps found by ANY
+review (code review, audit, live probe, screenshot pass): each one
+gets a goal with its Gap recorded and a queue position — the tax is
+always paid. Everything else below governs the deferrals that remain
+legal.
 
 A deferral is only legal when the SAME sentence names its tracking home:
 a goal number, a BACKLOG line, a SPEC `OPEN` item, or an explicit revisit
