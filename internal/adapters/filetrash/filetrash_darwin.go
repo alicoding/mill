@@ -2,6 +2,8 @@
 
 package filetrash
 
+// framework-api-audit: wails/v3@v3.0.0-beta.12 lacks any file-to-Trash API -- no NSFileManager trashItem wrapper exists on any platform in pkg/application.
+
 /*
 #cgo CFLAGS: -x objective-c
 #cgo LDFLAGS: -framework Foundation

@@ -24,13 +24,14 @@ backoff, queues) becomes unbounded maintenance once hand-rolled. A
 with no single named library — check the kit first
 (`.claude/rules/frontend.md`).
 
-**Adopting a dependency means reading its whole API, not just what day
-one needs.** Before building ANY capability inside a domain an adopted
-dependency already owns (windows, tray/menu, dialogs, notifications,
-storage, updates) — enumerate its API from its own vendored source and
-state what you found in the goal/brief, including "nothing here." One
-grep of `~/go/pkg/mod`/`node_modules`. Confirmed instances: goal 0190;
-`internal/adapters/dockbadge` is the counter-example.
+**Adopting a dependency means reading its whole API, not what day one
+needs.** Before building ANY capability inside a domain an adopted
+dependency owns (windows, tray/menu, dialogs, storage) — enumerate its
+API from its vendored source and state what you found, including
+"nothing," via one grep of `~/go/pkg/mod`/`node_modules`. Confirmed:
+goal 0190; `internal/adapters/dockbadge` is the counter-example. Every
+cgo file carries a `framework-api-audit` line pinned to Wails' version
+(`scripts/check-framework-api-first.sh`).
 
 **The core/composition boundary.** Before building ANY new capability:
 node, trigger, connector, or true kernel change?

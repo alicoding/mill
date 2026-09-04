@@ -2,6 +2,8 @@
 
 package windowing
 
+// framework-api-audit: wails/v3@v3.0.0-beta.12 lacks any drag-OUT file-promise API -- webview_window_darwin_drag.m only registerForDraggedTypes to receive drops; no NSFilePromiseProvider/NSDraggingSource wrapper exists on any platform.
+
 /*
 #cgo CFLAGS: -mmacosx-version-min=10.13 -x objective-c
 #cgo LDFLAGS: -framework Foundation -framework AppKit

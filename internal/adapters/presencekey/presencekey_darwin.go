@@ -2,6 +2,8 @@
 
 package presencekey
 
+// framework-api-audit: wails/v3@v3.0.0-beta.12 lacks any macOS Security-framework/keychain API -- SecureSet/SecureGet/SecureDelete (pkg/application/mobile_features_ios.go) are gated `//go:build ios` only, no desktop equivalent exists.
+
 /*
 #cgo CFLAGS: -mmacosx-version-min=10.15 -x objective-c -Wno-unguarded-availability-new
 #cgo LDFLAGS: -framework Foundation -framework Security
