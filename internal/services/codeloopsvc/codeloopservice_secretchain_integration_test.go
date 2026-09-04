@@ -64,7 +64,7 @@ func newWiredStack(t *testing.T) (*executionsvc.ExecutionService, *codeloopsvc.C
 		composition.SetNotifier(func(string, string) error { return fmt.Errorf("no notifier registered (yet)") })
 	})
 
-	secretService := secretsvc.NewSecretService(secretvault.New(filepath.Join(t.TempDir(), "secrets.kdbx")), credential.NewInMemory())
+	secretService := secretsvc.NewSecretService(secretvault.New(filepath.Join(t.TempDir(), "secrets.kdbx")), credential.NewInMemory(), servicetest.NewFakeStore())
 	t.Cleanup(secretService.StopAutoLock)
 	auditPath := filepath.Join(t.TempDir(), "audit.db")
 	if err := secretService.OpenAudit(auditPath, nil); err != nil {

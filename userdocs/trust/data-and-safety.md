@@ -14,11 +14,22 @@ store, run history in SQLite, both on your machine. Settings →
 Backups snapshots them on a schedule, exports everything to one
 file, and imports it on another machine. Passwords and keys live in
 their own encrypted vault file on your device, deliberately excluded
-from every export. The vault's key sits in your OS keychain by
-default, or optionally behind Touch ID or your Mac password for an
-extra prompt every time you unlock. Lock and unlock the vault from the
-command palette (⌘K) too — search "vault" and only the action that
-currently applies shows up.
+from every export. The vault's key sits in your OS keychain, stored
+against that specific vault file — a second vault, or a vault restored
+from a backup, gets its own key rather than replacing the first one's.
+
+Turn on "Require Touch ID to unlock" and Mill asks for Touch ID or your
+Mac password before the vault opens. Be clear about what that buys you:
+it proves who is at the keyboard, and it does not stop another program
+running as you from reading the key out of the keychain. Lock and
+unlock the vault from the command palette (⌘K) too — search "vault"
+and only the action that currently applies shows up.
+
+If Mill can't open your vault file — the key for it isn't on this
+device, or the key it has doesn't fit — the locked screen says which,
+and offers to start a new vault. That keeps the current file beside it
+as a dated backup and creates an empty one; the backup's entries stay
+unreadable until the key that opens them turns up.
 
 Secrets you already keep elsewhere need no copy. Configure > Secret
 sources points Mill at a dotenv file — a project's `.env` — or at a

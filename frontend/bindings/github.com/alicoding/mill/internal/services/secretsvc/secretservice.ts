@@ -119,6 +119,18 @@ export function RedactKnownSecrets(text: string): $CancellablePromise<string> {
 }
 
 /**
+ * ResetVault archives the current vault file beside itself as a
+ * timestamped ".bak" and creates a fresh one in its place. The archived
+ * file's own key, if this device still holds one, is left exactly where
+ * it is: restoring the backup must still work. Only reachable from the
+ * locked state where the stored key can't open the file -- the one
+ * situation where the entries are unreadable anyway.
+ */
+export function ResetVault(): $CancellablePromise<void> {
+    return $Call.ByID(2341448377);
+}
+
+/**
  * RevealSecret returns one entry in full, password included -- a
  * distinct, explicit call from ListSecrets (never incidental to
  * browsing), matching SetHTTPRequestSecret's own write-only-elsewhere
@@ -145,11 +157,11 @@ export function SetSourcesLister(fn: $models.SourcesLister): $CancellablePromise
 }
 
 /**
- * SetTouchIDProtection turns Touch ID protection on or off for the
- * vault's master key (goal 0204's BUILD CONTRACT). The vault must
- * already be unlocked -- this manages where the KEY is stored, not the
- * in-memory decrypted vault, but toggling protection for a vault you
- * can't currently see would be a confusing surface to expose.
+ * SetTouchIDProtection turns the unlock requirement on or off. The
+ * vault must already be unlocked: changing how a vault opens while you
+ * can't see inside it is a surface with no honest read-back. Turning it
+ * on is refused where this Mac cannot authenticate at all, so the
+ * requirement never lands in a state that would lock the vault shut.
  */
 export function SetTouchIDProtection(enabled: boolean): $CancellablePromise<void> {
     return $Call.ByID(556293705, enabled);
@@ -157,12 +169,13 @@ export function SetTouchIDProtection(enabled: boolean): $CancellablePromise<void
 
 /**
  * SetupVault creates a brand-new vault: mints a random master key,
- * stores it in the OS keychain under masterKeyID, creates the KDBX file,
- * and seeds one obviously-fake demo entry (secret.BuiltInDemo) so the
- * browse surface is never empty on a fresh vault
- * (.claude/rules/testing.md's "every capability ships a seeded
- * example"). Fails if a vault already exists -- SetupVault is one-time,
- * never an implicit reset.
+ * creates the KDBX file (which mints the vault's own identity), stores
+ * the key under that identity's slot in the OS keychain, and seeds one
+ * obviously-fake demo entry (secret.BuiltInDemo) so the browse surface
+ * is never empty on a fresh vault (.claude/rules/testing.md's "every
+ * capability ships a seeded example"). Fails if a vault already exists
+ * -- SetupVault is one-time, never an implicit reset; ResetVault is the
+ * explicit door.
  */
 export function SetupVault(): $CancellablePromise<void> {
     return $Call.ByID(1816045847);
@@ -178,11 +191,10 @@ export function SourceProblems(): $CancellablePromise<{ [_ in string]?: string }
 }
 
 /**
- * UnlockVault fetches the master key -- from the keychain directly, or
- * (goal 0204) via the presence-gated read when Touch ID protection is
- * on, which blocks through the system authentication prompt -- and
- * unlocks the vault, holding the decrypted database in memory for this
- * app session (goal file: "unlock once per app session, hold the vault
+ * UnlockVault authenticates the person at the keyboard when the unlock
+ * requirement is on (secretservice_auth.go), fetches the key stored for
+ * THIS vault file, and holds the decrypted database in memory for this
+ * app session (goal 0185: "unlock once per app session, hold the vault
  * key in memory, auto-lock on idle").
  */
 export function UnlockVault(): $CancellablePromise<void> {

@@ -170,30 +170,34 @@ installed build can catch, and exactly how to verify it there.
   Settings to finish turning this on." notice and its button, then
   approve it in System Settings and confirm the notice clears on the
   next Settings visit.
-- **The real Touch ID authentication sheet** (goal 0204,
-  `internal/adapters/presencekey`) — `SecItemCopyMatching`'s system
-  prompt is out-of-process UI (LocalAuthentication's own XPC UI
-  service) that no headless build can trigger or dismiss; the e2e
-  suite only reaches the server-mode "not available in this mode"
-  fail-closed path (`secrets.spec.ts`), never the real sheet. Verify
-  on an installed build: in Secrets, unlock the vault, turn on
-  "Require Touch ID to unlock", confirm the sheet appears and the
-  status line reads "Protected by Touch ID" once you authenticate;
-  turn it off and confirm the sheet appears again before it turns off
-  (the anti-downgrade property — cancel it once and confirm the
-  toggle stays on); lock the vault and unlock it again, confirming the
-  same sheet gates the unlock itself.
-- **Finding C's cross-process probe, re-run after Touch ID protection
-  is on** (goal 0204) — 0185's own Finding C probe (write/read a
-  throwaway keychain item exactly the way the vault master key's slot
-  does, from a second process) originally read back silently, no
-  prompt. Verify on an installed build with Touch ID protection
-  enabled: from a second process/terminal, run the same
-  `security find-generic-password` probe against the vault's presence-
-  gated item (`mill-secret-vault-presence` service, goal 0204) and
-  confirm it now REQUIRES the authentication prompt to return data
-  instead of returning it silently — the regression test for the
-  finding this goal exists to close.
+- **The real system authentication sheet gating an unlock** (goal
+  0330, `internal/adapters/localauth`) — `evaluatePolicy` raises
+  out-of-process UI (LocalAuthentication's own XPC UI service) that no
+  headless build can trigger or dismiss, and the e2e suite runs a
+  server build where the framework is not compiled in at all, so it
+  only reaches the "not set up on this Mac" disabled-toggle path
+  (`secrets.spec.ts`). Verify on an installed build: in Secrets, unlock
+  the vault, turn on "Require Touch ID to unlock" and confirm the
+  toggle sticks; lock the vault, press Unlock, and confirm the system
+  sheet appears BEFORE the vault opens; cancel it once and confirm the
+  vault stays locked with "Unlock cancelled." on screen; authenticate
+  and confirm it opens. On a Mac with no Touch ID enrolled and no
+  password set, confirm the toggle is disabled with "Touch ID or a
+  password isn't set up on this Mac."
+- **A vault whose key is missing shows the mismatch line, and Start a
+  new vault keeps a `.bak`** (goal 0330) — the failure only happens
+  against a REAL OS keychain whose contents differ from the vault file
+  beside it, which no test may touch (the keychain is machine-global;
+  e2e servers run on an in-memory keyring instead). Verify on an
+  installed build: quit Mill, move `~/Library/Application
+  Support/mill/secrets.kdbx` aside and restore an older copy (or delete
+  the `mill-secret-vault-key.<id>` item in Keychain Access), relaunch,
+  open Secrets and press Unlock. Confirm the line reads "The key on
+  this device doesn't open this vault file." (or "There's no key for
+  this vault on this device.") and that "Start a new vault" appears
+  beside Unlock; take it, confirm the dialog, and confirm a
+  `secrets.kdbx.<timestamp>.bak` sits beside the new vault file with
+  the old one's bytes intact.
 - **The real sudo askpass / Touch ID escalation prompt** (goal 0240
   S5, `wrapArgvForAdmin`/`materializeAskpass`) — sudo's PAM
   conversation (pam_tid's Touch ID sheet, or the osascript

@@ -10,6 +10,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/adapters/secretvault"
+	"github.com/alicoding/mill/internal/services/servicetest"
 )
 
 // fakeClipboard backs clipboardWriteFn/clipboardReadFn in tests --
@@ -49,7 +50,7 @@ func (f *fakeClipboard) set(v string) {
 func newTestService(t *testing.T) *SecretService {
 	t.Helper()
 	path := t.TempDir() + "/secrets.kdbx"
-	s := NewSecretService(secretvault.New(path), credential.NewInMemory())
+	s := NewSecretService(secretvault.New(path), credential.NewInMemory(), servicetest.NewFakeStore())
 	t.Cleanup(s.StopAutoLock)
 	return s
 }
@@ -105,13 +106,17 @@ func TestUnlockVault_NoVaultYet(t *testing.T) {
 func TestUnlockVault_KeyMissingFromKeychain(t *testing.T) {
 	path := t.TempDir() + "/secrets.kdbx"
 	creds := credential.NewInMemory()
-	s := NewSecretService(secretvault.New(path), creds)
+	s := NewSecretService(secretvault.New(path), creds, servicetest.NewFakeStore())
 	t.Cleanup(s.StopAutoLock)
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)
 	}
 	s.LockVault()
-	if err := creds.Delete(masterKeyID); err != nil {
+	vaultID, err := s.vault.ID()
+	if err != nil {
+		t.Fatalf("ID: %v", err)
+	}
+	if err := creds.Delete(masterKeyIDFor(vaultID)); err != nil {
 		t.Fatalf("Delete master key: %v", err)
 	}
 	if err := s.UnlockVault(); !errors.Is(err, ErrNoVaultKey) {
@@ -238,7 +243,7 @@ func TestGeneratePassword(t *testing.T) {
 // bug would produce (loop never actually calling Lock).
 func TestAutoLock_FiresPastThreshold(t *testing.T) {
 	path := t.TempDir() + "/secrets.kdbx"
-	s := NewSecretService(secretvault.New(path), credential.NewInMemory())
+	s := NewSecretService(secretvault.New(path), credential.NewInMemory(), servicetest.NewFakeStore())
 	s.StopAutoLock() // replace the real-idletime loop below
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)
@@ -266,7 +271,7 @@ func TestAutoLock_FiresPastThreshold(t *testing.T) {
 // mode's ErrUnsupportedInServerMode) must never lock the vault.
 func TestAutoLock_ServerModeErrorNeverLocks(t *testing.T) {
 	path := t.TempDir() + "/secrets.kdbx"
-	s := NewSecretService(secretvault.New(path), credential.NewInMemory())
+	s := NewSecretService(secretvault.New(path), credential.NewInMemory(), servicetest.NewFakeStore())
 	s.StopAutoLock()
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)

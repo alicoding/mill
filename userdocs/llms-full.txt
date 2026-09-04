@@ -1359,6 +1359,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `panel.openMill` | Open Mill | — | Global | Always available |
 | `review.rules` | Guardrail rules | — | review | Always available |
 | `secrets.lockVault` | Lock vault | — | Global | Conditional — available only in a matching state |
+| `secrets.resetVault` | Start a new vault | — | Global | Conditional — available only in a matching state |
 | `secrets.unlockVault` | Unlock vault | — | Global | Conditional — available only in a matching state |
 | `settings.open` | Open Settings | `⌘,` | Global | Always available |
 | `settings.open.appearance` | Settings › Appearance | — | Global | Always available |
@@ -2017,24 +2018,33 @@ import type { Command } from './commands'
 import { SecretService } from './bindings'
 import { refreshVaultStatus, useVaultStatusStore } from './vaultStatusStore'
 
-// The vault lock/unlock actions (goal 0222 S1's own new state door,
+// The vault lock/unlock/reset actions (goal 0222 S1's own state door,
 // vaultStatusStore.ts) -- split out of shared/commands.ts (CLAUDE.md's
-// 500-line convention), spread into its COMMANDS array. Both were
-// SecretsView.tsx-only onClick handlers before this; the view's own
-// Lock/Unlock buttons now call these directly (findCommand(id)?.run())
-// instead of their own SecretService calls, so a future palette/
-// keyboard invocation performs the exact same action. Neither call
-// needs input (UnlockVault/LockVault take no arguments -- any
-// passphrase-equivalent lives behind Touch ID/keychain, not a typed
-// field), so a direct service call is the whole implementation, same
-// shape backup.now/panel.applyClipboard already use.
+// 500-line convention), spread into its COMMANDS array. The view's own
+// buttons call these (findCommand(id)?.run()) instead of their own
+// SecretService calls, so a palette or keyboard invocation performs the
+// exact same action. None needs input: any passphrase-equivalent lives
+// behind the system authentication sheet, not a typed field.
+//
+// Every run() records its outcome in the store (goal 0330). A rejected
+// unlock used to end in console.error, which left the Unlock button
+// looking like it did nothing at all on a device whose stored key does
+// not open the vault file.
+function record(promise: Promise<unknown>): void {
+  const { setVaultError } = useVaultStatusStore.getState()
+  setVaultError('')
+  promise
+    .then(refreshVaultStatus)
+    .catch((err) => { setVaultError(String(err)) })
+}
+
 export const SECRETS_COMMANDS: Command[] = [
   {
     id: 'secrets.lockVault',
     label: 'Lock vault',
     defaultBinding: null,
     enabled: () => useVaultStatusStore.getState().vaultStatus?.Unlocked === true,
-    run: () => { SecretService.LockVault().then(refreshVaultStatus).catch(console.error) },
+    run: () => { record(SecretService.LockVault()) },
   },
   {
     id: 'secrets.unlockVault',
@@ -2044,9 +2054,42 @@ export const SECRETS_COMMANDS: Command[] = [
       const status = useVaultStatusStore.getState().vaultStatus
       return status !== null && status.Exists && !status.Unlocked
     },
-    run: () => { SecretService.UnlockVault().then(refreshVaultStatus).catch(console.error) },
+    run: () => { record(SecretService.UnlockVault()) },
+  },
+  {
+    id: 'secrets.resetVault',
+    label: 'Start a new vault',
+    defaultBinding: null,
+    // Only offered where the current file cannot be opened at all --
+    // the stored key does not fit it, or there is no key for it here.
+    // Anywhere else this would discard a readable vault.
+    enabled: () => {
+      const { vaultStatus, vaultError } = useVaultStatusStore.getState()
+      if (vaultStatus === null || !vaultStatus.Exists || vaultStatus.Unlocked) return false
+      return vaultErrorKind(vaultError) === 'keyMismatch' || vaultErrorKind(vaultError) === 'noKey'
+    },
+    // Destructive, and only meaningful with the locked view's own
+    // failure on screen to explain what it replaces.
+    paletteHidden: true,
+    run: () => { record(SecretService.ResetVault()) },
   },
 ]
+
+// vaultErrorKind classifies a lock/unlock failure by the stable token
+// the Go error carries. Wails delivers a bound method's error to
+// JavaScript as text, so matching a token that never changes is what
+// keeps the wording on this side, where it can be translated, instead
+// of pinning the UI to a Go sentence.
+export type VaultErrorKind = 'keyMismatch' | 'noKey' | 'cancelled' | 'authUnavailable' | 'other' | 'none'
+
+export function vaultErrorKind(error: string): VaultErrorKind {
+  if (!error) return 'none'
+  if (error.includes('key-mismatch')) return 'keyMismatch'
+  if (error.includes('no-vault-key')) return 'noKey'
+  if (error.includes('unlock-cancelled')) return 'cancelled'
+  if (error.includes('auth-unavailable')) return 'authUnavailable'
+  return 'other'
+}
 
 ```
 
@@ -2337,11 +2380,22 @@ store, run history in SQLite, both on your machine. Settings →
 Backups snapshots them on a schedule, exports everything to one
 file, and imports it on another machine. Passwords and keys live in
 their own encrypted vault file on your device, deliberately excluded
-from every export. The vault's key sits in your OS keychain by
-default, or optionally behind Touch ID or your Mac password for an
-extra prompt every time you unlock. Lock and unlock the vault from the
-command palette (⌘K) too — search "vault" and only the action that
-currently applies shows up.
+from every export. The vault's key sits in your OS keychain, stored
+against that specific vault file — a second vault, or a vault restored
+from a backup, gets its own key rather than replacing the first one's.
+
+Turn on "Require Touch ID to unlock" and Mill asks for Touch ID or your
+Mac password before the vault opens. Be clear about what that buys you:
+it proves who is at the keyboard, and it does not stop another program
+running as you from reading the key out of the keychain. Lock and
+unlock the vault from the command palette (⌘K) too — search "vault"
+and only the action that currently applies shows up.
+
+If Mill can't open your vault file — the key for it isn't on this
+device, or the key it has doesn't fit — the locked screen says which,
+and offers to start a new vault. That keeps the current file beside it
+as a dated backup and creates an empty one; the backup's entries stay
+unreadable until the key that opens them turns up.
 
 Secrets you already keep elsewhere need no copy. Configure > Secret
 sources points Mill at a dotenv file — a project's `.env` — or at a

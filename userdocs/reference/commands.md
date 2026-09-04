@@ -85,6 +85,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `panel.openMill` | Open Mill | — | Global | Always available |
 | `review.rules` | Guardrail rules | — | review | Always available |
 | `secrets.lockVault` | Lock vault | — | Global | Conditional — available only in a matching state |
+| `secrets.resetVault` | Start a new vault | — | Global | Conditional — available only in a matching state |
 | `secrets.unlockVault` | Unlock vault | — | Global | Conditional — available only in a matching state |
 | `settings.open` | Open Settings | `⌘,` | Global | Always available |
 | `settings.open.appearance` | Settings › Appearance | — | Global | Always available |

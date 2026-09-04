@@ -523,6 +523,13 @@
     "enabled": true
   },
   {
+    "id": "secrets.resetVault",
+    "label": "Start a new vault",
+    "binding": null,
+    "surface": null,
+    "enabled": true
+  },
+  {
     "id": "secrets.unlockVault",
     "label": "Unlock vault",
     "binding": null,
