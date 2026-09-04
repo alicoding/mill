@@ -20,13 +20,13 @@ export interface MillPluginAPI {
   registerCommand: (decl: PluginCommandDecl) => void
   /** Asks Mill to perform an action the plugin cannot perform itself.
    * See CanvasObjectFaceCtx's own requestGuardedAction for the full
-   * contract -- this is the same door, callable outside a face. */
+   * contract — this is the same door, callable outside a face. */
   requestGuardedAction: (kind: string, attributes: Record<string, string>, description: string) => Promise<GuardedActionResult>
   settings: PluginSettingsAPI
   /** Shows a notice and returns its dismiss function. */
   notify: (input: PluginNoticeInput) => () => void
   storage: PluginStorageAPI
-  /** Lists the board's contents -- always the current state, never a
+  /** Lists the board's contents — always the current state, never a
    * cache. */
   query: (q?: ContentQuery) => Promise<ContentEntry[]>
   /** Subscribes to a host event and returns the unsubscribe function. */

@@ -62,30 +62,72 @@ export default tseslint.config(
     },
   },
   {
-    // The regression guard docs/goals/0032-copy-management.md's own
-    // Plan step deliberately deferred until the four migration slices
-    // closed the gap (app/composition/configure/views -- all now
-    // t()-driven, checked empirically clean against this exact rule
-    // before it was ever turned on, not assumed). Scoped to src/ only
-    // (not e2e/ fixtures, not config files) and to jsx-text-only mode
-    // (the plugin's own default): checked directly against this
-    // codebase first -- 'jsx-only' (attribute values too) produced ~290
-    // warnings dominated by Primer/DataTable prop names (`stackId`,
-    // `dataKey`, `weight`, `testId`, `entity`, ...) sitting on custom
-    // (non-native-DOM) JSX elements deep inside object-literal props,
-    // not real copy; taming that would need a large, brittle
-    // Primer-specific attribute allowlist for a marginal catch (new
-    // hardcoded aria-label/title/placeholder attributes) this
-    // conservative mode doesn't cover. jsx-text-only -- JSX text
-    // children only -- gave a small, accurate signal instead (5 real
-    // leftovers found and fixed in shared/, composition/, configure/
-    // the same session this rule landed), so it's the honest default,
-    // not a static config the plugin ships defensively.
+    // Every user-facing string is a locale key (goal 0341,
+    // .claude/rules/ux-writing.md). This is the gate: mode 'all'
+    // (not the plugin's jsx-text-only default) validates every string
+    // literal AND every template quasi in src/, so an attribute
+    // (aria-label, title, placeholder), an object-literal registry
+    // entry and a `${a} - ${b}` join are all covered -- the three
+    // places hardcoded English survived goal 0338's locale-JSON sweep.
+    //
+    // words.include is what makes mode 'all' usable instead of
+    // thousands of hits on ids, css classes, testids and enum values:
+    // ONLY a copy-SHAPED literal is validated -- one that starts with
+    // a capital and contains a space (a sentence or a label), or one
+    // that carries a dash clause in any position (the template-join
+    // shape, which is a sentence's second half). Everything else is a
+    // token, and a token is not copy. An `include` list means the rule
+    // never has to enumerate what to ignore.
+    //
+    // KNOWN HOLE, covered elsewhere: the rule's own VariableDeclarator
+    // visitor skips the entire initializer of any SCREAMING_CASE const,
+    // so `export const COMMANDS = [...]` and every other module-scope
+    // registry is invisible to it. shared/copy.test.ts pins those
+    // instead, asserting each registry's label resolves to a real
+    // bundle entry rather than falling through as its own key.
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['**/*.test.ts', '**/*.test.tsx'],
     plugins: { i18next },
     rules: {
-      'i18next/no-literal-string': ['error', { mode: 'jsx-text-only' }],
+      'i18next/no-literal-string': ['error', {
+        mode: 'all',
+        'should-validate-template': true,
+        words: {
+          // RegExps, not the plugin's string form: a string pattern is
+          // anchored (^...$) before matching, and a template literal's
+          // quasi is TRIMMED before it reaches here, so a dash-clause
+          // fragment (" — welcome back") could never be expressed as an
+          // anchored whole-string pattern.
+          include: [
+            // A sentence or a label: capital first, at least one space.
+            /^[A-Z][^\n]*\s[^\n]*$/,
+            // A dash CLAUSE: a spaced double hyphen, em dash or en
+            // dash with content on at least one side -- the shape
+            // scripts/check-ui-copy.sh bans in copy, whether it sits
+            // inside one string or straddles a template join (where the
+            // dash lands at a trimmed fragment's edge). An UNSPACED
+            // dash is not a clause: `var(--fgColor-muted)` is a CSS
+            // custom property and "1\u201325 of 40" is a range, the one
+            // legitimate dash in copy. A dash ALONE ("\u2014" as an
+            // empty-cell placeholder) is typography, not a sentence.
+            /\S\s(--|[\u2014\u2013])(\s|$)/,
+            /(^|\s)(--|[\u2014\u2013])\s\S/,
+          ],
+        },
+        callees: {
+          // The plugin's own defaults (t, i18n, require, DOM event
+          // names, ...) plus: copy()/copyText(), which TAKE a key;
+          // console.*, which writes to devtools and never to the
+          // screen; and Error, whose message is a developer diagnostic
+          // unless a surface deliberately renders it (those call copy()
+          // for the text, so they are covered by the copy() arm).
+          exclude: [
+            'i18n(ext)?', 't', 'copy', 'copyText', 'require', 'console\\.\\w+', 'Error',
+            'addEventListener', 'removeEventListener', 'postMessage', 'getElementById',
+            'dispatch', 'commit', 'includes', 'indexOf', 'endsWith', 'startsWith',
+          ],
+        },
+      }],
     },
   },
   {

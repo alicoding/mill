@@ -42,7 +42,7 @@ export function useRenderStormGuard(componentName: string): void {
   useEffect(() => {
     if (stormTick(stateRef.current, Date.now())) {
       throw new Error(
-        `render storm: ${componentName} rendered ${stateRef.current.count} times in ${STORM_WINDOW_MS / 1000}s -- ` +
+        `render storm: ${componentName} rendered ${stateRef.current.count} times in ${STORM_WINDOW_MS / 1000}s. ` +
           'an update loop is re-rendering without settling. Copy these details and report them.',
       )
     }

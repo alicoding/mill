@@ -429,7 +429,7 @@ function App() {
       <hr className={styles.divider}/>
       <footer className={styles.footer}>
         <span className={styles.version}>
-          <span>{appVersion ? `Mill v${appVersion}` : 'Mill'}</span>
+          <span>{appVersion ? t('shell.version', { version: appVersion }) : t('shell.versionUnknown')}</span>
           {buildInfo?.Revision && (
             <span title={buildInfo.Modified ? t('shell.buildModifiedTooltip') : t('shell.buildRevisionTooltip')}>
               · {buildInfo.Revision.slice(0, 7)}{buildInfo.Modified && '*'}

@@ -53,7 +53,7 @@ export function ConfigureSecretSources() {
   }
   const needsPath = kind === Kind.KindEnv || kind === Kind.KindBruno
   const pathCaption = kind === Kind.KindBruno ? t('configureSecretSources.pathCaptionBruno') : kind === Kind.KindOnePassword ? t('configureSecretSources.pathCaptionOnePassword') : kind === Kind.KindBitwarden ? t('configureSecretSources.pathCaptionBitwarden') : t('configureSecretSources.pathCaption')
-  const pathPlaceholder = kind === Kind.KindBruno ? '/path/to/collection' : kind === Kind.KindOnePassword ? 'Vault name (optional)' : kind === Kind.KindBitwarden ? '' : '/path/to/project/.env'
+  const pathPlaceholder = kind === Kind.KindBruno ? t('configureSecretSources.pathPlaceholderBruno') : kind === Kind.KindOnePassword ? t('configureSecretSources.pathPlaceholderOnePassword') : kind === Kind.KindBitwarden ? '' : t('configureSecretSources.pathPlaceholderDotenv')
   useEffect(() => { refetch() }, [])
 
   const startCreate = () => {

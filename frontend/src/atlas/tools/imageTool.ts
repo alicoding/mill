@@ -32,8 +32,8 @@ export const imageTool = {
   id: imageIdentity.id,
   icon: ImageIcon,
   label: imageIdentity.commandLabel,
-  nounName: 'Image',
-  description: 'Adds an image from your files or the clipboard.',
+  nounName: 'atlas:imageNoun.name',
+  description: 'atlas:imageNoun.description',
   shortcutKey: imageIdentity.shortcutKey,
   tray: 'quick',
   // File-backed visual material (goal 0224's disposition table) --

@@ -1,4 +1,5 @@
 import type { SeatOverride } from './menuSpec'
+import { copy } from './copy'
 import { UpdateState } from './bindings'
 
 // The update seat's own state -> {command, label, enabled} table (goal
@@ -11,17 +12,17 @@ import { UpdateState } from './bindings'
 export function updateSeatFor(state: UpdateState, version: string): SeatOverride {
   switch (state) {
     case UpdateState.UpdateStateChecking:
-      return { commandId: 'update.check', label: 'Checking for updates…', enabled: false }
+      return { commandId: 'update.check', label: 'seats.update.checking', enabled: false }
     case UpdateState.UpdateStateAvailable:
-      return { commandId: 'update.downloadAndInstall', label: `Download and install v${version}…`, enabled: true }
+      return { commandId: 'update.downloadAndInstall', label: copy('seats.update.available', { version }), enabled: true }
     case UpdateState.UpdateStateDownloading:
-      return { commandId: 'update.downloadAndInstall', label: `Downloading v${version}…`, enabled: false }
+      return { commandId: 'update.downloadAndInstall', label: copy('seats.update.downloading', { version }), enabled: false }
     case UpdateState.UpdateStateReady:
-      return { commandId: 'update.relaunch', label: 'Relaunch to update', enabled: true }
+      return { commandId: 'update.relaunch', label: 'seats.update.ready', enabled: true }
     // Idle, error, and the Go zero value all read the same as "nothing
     // known yet, offer to look" -- the failure itself stays in the
     // footer pill/Settings, never repeated in the menu bar.
     default:
-      return { commandId: 'update.check', label: 'Check for updates…', enabled: true }
+      return { commandId: 'update.check', label: 'seats.update.check', enabled: true }
   }
 }

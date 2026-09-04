@@ -19,7 +19,7 @@ into, so plain CSS can branch on it without reading this object.
 mode: "light" | "dark";
 ```
 
-The settled light/dark answer -- never "auto".
+The settled light/dark answer — never "auto".
 
 ***
 

@@ -9,25 +9,25 @@ function status(partial: Partial<VaultStatus>): VaultStatus {
 describe('vaultSeatFor (the vault menu seat, goal 0335)', () => {
   it('offers to lock once the vault is unlocked', () => {
     expect(vaultSeatFor(status({ Unlocked: true }))).toEqual({
-      commandId: 'secrets.lockVault', label: 'Lock vault', enabled: true,
+      commandId: 'secrets.lockVault', label: 'seats.vault.lock', enabled: true,
     })
   })
 
   it('offers to unlock an existing, locked vault', () => {
     expect(vaultSeatFor(status({ Unlocked: false, Exists: true }))).toEqual({
-      commandId: 'secrets.unlockVault', label: 'Unlock vault', enabled: true,
+      commandId: 'secrets.unlockVault', label: 'seats.vault.unlock', enabled: true,
     })
   })
 
   it('disables Unlock vault when there is no vault file yet', () => {
     expect(vaultSeatFor(status({ Unlocked: false, Exists: false }))).toEqual({
-      commandId: 'secrets.unlockVault', label: 'Unlock vault', enabled: false,
+      commandId: 'secrets.unlockVault', label: 'seats.vault.unlock', enabled: false,
     })
   })
 
   it('disables Unlock vault before the status is known at all', () => {
     expect(vaultSeatFor(null)).toEqual({
-      commandId: 'secrets.unlockVault', label: 'Unlock vault', enabled: false,
+      commandId: 'secrets.unlockVault', label: 'seats.vault.unlock', enabled: false,
     })
   })
 })

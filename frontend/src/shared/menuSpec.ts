@@ -1,4 +1,5 @@
 import type { Command } from './commands'
+import { copy } from './copy'
 import type { KeyCombo } from './keybinding'
 import type { View } from './store'
 import { toWailsAccelerator } from './menuAccelerator'
@@ -124,8 +125,8 @@ export function menuSpecFor(commands: Command[], ctx: MenuSpecContext = {}): Men
   return {
     menus: MENU_SKELETON.map((menu): MenuNode =>
       menu.role
-        ? { kind: 'roleMenu', label: menu.label, role: menu.role }
-        : { kind: 'menu', label: menu.label, groups: expand(menu.path, menu.groups ?? []) },
+        ? { kind: 'roleMenu', label: copy(menu.label), role: menu.role }
+        : { kind: 'menu', label: copy(menu.label), groups: expand(menu.path, menu.groups ?? []) },
     ),
   }
 }
@@ -145,7 +146,7 @@ function expandSlot(
     const groups = slot.submenu.groups
       .map((slots) => slots.flatMap((s) => expandSlot(slot.submenu.path, s, byPath, byId, owned, activeSurface, overrides, seatOverrides)))
       .filter((entries) => entries.length > 0)
-    return groups.length === 0 ? [] : [{ kind: 'submenu', label: slot.submenu.label, groups }]
+    return groups.length === 0 ? [] : [{ kind: 'submenu', label: copy(slot.submenu.label), groups }]
   }
   if ('commandRef' in slot) {
     const command = byId.get(slot.commandRef)
@@ -176,7 +177,7 @@ function commandEntry(
   return {
     kind: 'command',
     id: target.id,
-    label: seatOverride?.label ?? labelOverride ?? placementOf(command)?.label ?? command.label,
+    label: copy(seatOverride?.label ?? labelOverride ?? placementOf(command)?.label ?? command.label),
     accelerator: accelerator && owned.get(accelerator) === target.id ? accelerator : null,
     enabled: seatOverride ? seatOverride.enabled : commandMenuEnabled(command, activeSurface),
   }

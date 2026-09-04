@@ -126,7 +126,7 @@ export function TrayPanel() {
     <div className={styles.panel} data-testid="tray-panel">
       <div className={styles.header}>
         <span className={styles.presenceDot} aria-hidden />
-        {/* eslint-disable-next-line i18next/no-literal-string -- the product's own name, never translated */}
+        {/* The product's own name, never translated. */}
         <Text weight="semibold">Mill</Text>
         <Text size="small" className={styles.muted}>{t('trayPanel.running')}</Text>
         <div className={styles.spacer} />

@@ -6,7 +6,7 @@ import { FilteredActionList } from '@primer/react/experimental'
 import { CommandPaletteIcon, PencilIcon, PlayIcon, TabIcon, XIcon } from '@primer/octicons-react'
 import { Events } from '@wailsio/runtime'
 import { ExecutionService, RunKind, TriggerService } from '../shared/bindings'
-import { COMMANDS, runCommand } from '../shared/commands'
+import { COMMANDS, commandLabel, runCommand } from '../shared/commands'
 import { generateSamplePayload } from '../shared/configSchema'
 import { useAppStore } from '../shared/store'
 import { useVaultStatusStore } from '../shared/vaultStatusStore'
@@ -258,8 +258,8 @@ export function CommandPalette() {
   const commandEntry = (command: (typeof COMMANDS)[number]): PaletteEntry => ({
     id: `cmd:${command.id}`,
     groupId: command.surface ? 'surface' : 'commands',
-    text: command.label,
-    searchText: `${command.label} ${command.id}`.toLowerCase(),
+    text: commandLabel(command),
+    searchText: `${commandLabel(command)} ${command.id}`.toLowerCase(),
     keywords: command.keywords,
     leadingVisual: CommandPaletteIcon,
     // HotkeyHint (app/HotkeyHint.tsx) resolves the command's live

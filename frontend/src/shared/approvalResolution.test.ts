@@ -16,12 +16,12 @@ function rejection(code: string, message: string, chain: string): Error {
 describe('resolveErrorKey', () => {
   it('maps run-not-waiting to the no-longer-waiting copy', () => {
     expect(resolveErrorKey(rejection('run-not-waiting', 'This run is no longer waiting.', 'run abc is not waiting on a decision')))
-      .toBe('resolveError.notWaiting')
+      .toBe('errors.run-not-waiting')
   })
 
   it('maps run-recovering to the try-again copy', () => {
     expect(resolveErrorKey(rejection('run-recovering', 'Mill is still picking this run back up. Try again in a moment.', 'run abc is being picked back up')))
-      .toBe('resolveError.recovering')
+      .toBe('errors.run-recovering')
   })
 
   it('falls back to the generic copy for anything else', () => {

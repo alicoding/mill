@@ -140,7 +140,7 @@ export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
                     title={
                       disabled
                         ? t('nodePalette.onlyOneTriggerTitle')
-                        : `${nt.Label} — ${contractLine(nt)}`
+                        : t('nodePalette.itemTitle', { label: nt.Label, contract: contractLine(nt) })
                     }
                     data-testid="palette-item"
                     data-node-type-id={nt.ID}

@@ -14,7 +14,7 @@ import { openSettings } from './fixtures/settingsNav'
 async function switchToDarkTheme(page: import('@playwright/test').Page) {
   await openSettings(page, 'appearance')
   await expect(page.getByTestId('settings-view')).toBeVisible()
-  await page.getByRole('button', { name: 'Dark theme' }).click()
+  await page.getByRole('button', { name: 'Dark', exact: true }).click()
   // Primer's ThemeProvider mirrors the resolved mode onto <html data-color-mode>
   // (App.tsx) -- wait for that instead of an arbitrary timeout.
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.colorMode)).toBe('dark')

@@ -1,4 +1,5 @@
 import i18n from 'i18next'
+import { copy } from './copy'
 import type { Command } from './commands'
 import { SettingsService } from './bindings'
 import { pushNotice } from './noticeStore'
@@ -61,7 +62,7 @@ function pluginRemoveCommands(): Command[] {
     const name = state.info.Manifest.name || id
     out.push({
       id: `plugin.remove.${id}`,
-      label: `Remove ${name}`,
+      label: copy('commands.plugin.remove', { name }),
       defaultBinding: null,
       enabled: () => pluginLoadStates().has(id) && !pluginLoadStates().get(id)?.info.Builtin,
       run: () => removePluginNow(id, name),

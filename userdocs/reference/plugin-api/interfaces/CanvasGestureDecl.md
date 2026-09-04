@@ -25,7 +25,7 @@ many milliseconds instead of clearing at pointer-up.
 onEnd: (points, ctx) => void;
 ```
 
-Called once at pointer-up with the FULL point list -- a stray
+Called once at pointer-up with the FULL point list — a stray
 click included, so deciding what counts as a real gesture (a
 distance threshold, a point count) is your own call.
 
@@ -76,7 +76,7 @@ optional renderPreview?: (el, points, now) => void;
 ```
 
 Draws the live in-drag preview into el (an overlay element
-spanning the board) -- called on every point and, for an
+spanning the board) — called on every point and, for an
 ephemeral-drag tool, on every fade frame. el's contents are yours
 to manage between calls.
 

@@ -318,7 +318,8 @@
     "showAdvancedSteps": "Show advanced steps ({{count}})",
     "advancedCaption": "Advanced steps need code, JSON, or an external system's own docs.",
     "advancedBadge": "Advanced",
-    "examplesHeading": "Examples"
+    "examplesHeading": "Examples",
+    "itemTitle": "{{label}}: {{contract}}"
   },
   "externalChangeBanner": {
     "title": "This workflow was changed outside this editor",

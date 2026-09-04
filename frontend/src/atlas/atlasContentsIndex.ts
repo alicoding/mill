@@ -1,4 +1,5 @@
 import type { Icon } from '@primer/octicons-react'
+import { copy } from '../shared/copy'
 import { FileIcon } from '@primer/octicons-react'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { ContentEntry } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
@@ -34,7 +35,7 @@ export function kindPresentation(kind: string): KindPresentation {
   const tool = orderedRegisteredTools().find((t) => t.id === kind || t.boardObjectKind === kind)
   // A plugin tool declares a command label ("Draw with the pencil"),
   // not a noun; its object kind title-cased is the honest heading.
-  if (tool) return { label: 'thirdParty' in tool && tool.thirdParty ? titleCase(kind) : tool.nounName, Icon: tool.icon }
+  if (tool) return { label: 'thirdParty' in tool && tool.thirdParty ? titleCase(kind) : copy(tool.nounName), Icon: tool.icon }
   const toolLess = toolLessNounExtensions().find((e) => e.kind === kind)
   if (toolLess) return { label: toolLess.extension.label, Icon: toolLess.extension.icon }
   return { label: titleCase(kind), Icon: FileIcon }

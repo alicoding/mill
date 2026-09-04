@@ -68,7 +68,8 @@
     "insertColumnRight": "Insert column right",
     "columnSettings": "Type and choices…",
     "insertRowBelow": "Insert row below",
-    "addRowHint": "New row"
+    "addRowHint": "New row",
+    "chooseValueAriaLabel": "Choose a value"
   },
   "formattingToolbar": {
     "bold": "Bold",
@@ -80,8 +81,6 @@
     "interrupted": "Interrupted"
   },
   "resolveError": {
-    "notWaiting": "This run is no longer waiting.",
-    "recovering": "Mill is still picking this run back up. Try again in a moment.",
     "generic": "Couldn't deliver that. Try again."
   },
   "interruptedRun": {
@@ -97,7 +96,8 @@
     "unlock-cancelled": "Unlock cancelled.",
     "auth-unavailable": "Touch ID or a password isn't set up on this Mac.",
     "auth-lockout": "Too many failed attempts. Unlock this Mac with your password, then try again.",
-    "auth-failed": "Mill couldn't confirm it's you."
+    "auth-failed": "Mill couldn't confirm it's you.",
+    "copy-blocked": "Copy failed: the browser blocked clipboard access"
   },
   "list": {
     "sort": "Sort",
@@ -112,5 +112,239 @@
     "countRange": "{{from}}–{{to}} of {{total}}",
     "countNarrowed": "{{shown}} of {{total}}",
     "countTotal": "{{total}}"
+  },
+  "commands": {
+    "workflow": {
+      "new": "New workflow",
+      "save": "Save workflow",
+      "run": "Run workflow",
+      "publish": "Publish current draft",
+      "edit": "Edit workflow"
+    },
+    "palette": {
+      "open": "Open command palette"
+    },
+    "help": {
+      "shortcuts": "Keyboard shortcuts help",
+      "reportIssue": "Report an issue…",
+      "openDataFolder": "Open data folder"
+    },
+    "view": {
+      "home": "Go to Home",
+      "composition": "Go to Workflows",
+      "configure": "Go to Configure",
+      "atlas": "Go to Atlas",
+      "activity": "Go to Activity",
+      "review": "Go to Review",
+      "secrets": "Go to Secrets",
+      "docs": "Open docs"
+    },
+    "atlas": {
+      "up": "Go up one level",
+      "jump": "Jump to a card or object",
+      "undo": "Undo",
+      "redo": "Redo",
+      "matrix": "Open traceability matrix",
+      "coverage": "Open coverage",
+      "roadmap": "Open roadmap",
+      "arrange": "Auto-arrange",
+      "contents": {
+        "open": "Contents"
+      },
+      "import": "Import atlas",
+      "export": "Export atlas",
+      "addFromFolder": "Add cards from a folder",
+      "share": {
+        "copyContext": "Copy space as context",
+        "copyLinks": "Copy space links"
+      },
+      "perspective": "Open perspective switcher",
+      "selectAll": "Select all",
+      "delete": {
+        "selection": "Delete selection"
+      },
+      "group": {
+        "selection": "Group into a new area"
+      },
+      "companion": {
+        "toggle": "Toggle companion panel"
+      },
+      "minimap": {
+        "toggle": "Toggle minimap"
+      },
+      "card": {
+        "exportAs": "Export card as…"
+      },
+      "focusNext": "Focus next card",
+      "focusPrevious": "Focus previous card",
+      "focusDirection": "Focus the nearest card in a direction",
+      "openFocused": "Open or zoom the focused card",
+      "nudgeSelection": "Move the selected card",
+      "escapeLadder": "Clear selection or go up a level",
+      "create": {
+        "card": "Add a card",
+        "note": "Add a note",
+        "area": "Draw an area",
+        "table": "New table",
+        "image": "Add an image"
+      }
+    },
+    "object": {
+      "openInDefaultApp": "Open in default app",
+      "rename": "Rename"
+    },
+    "canvas": {
+      "undo": "Undo",
+      "redo": "Redo",
+      "delete": "Delete selected",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "fitView": "Fit view"
+    },
+    "clipboard": {
+      "history": {
+        "open": "Clipboard history"
+      }
+    },
+    "codingLoop": {
+      "run": "Run from clipboard…"
+    },
+    "configure": {
+      "new": {
+        "integration": "New integration",
+        "lists": "New list",
+        "mcpservers": "New MCP server",
+        "decisions": "New decision",
+        "execenvs": "New environment",
+        "aiproviders": "New AI provider",
+        "conversionprofiles": "New conversion profile",
+        "steptypes": "New step type"
+      }
+    },
+    "docs": {
+      "search": "Search docs"
+    },
+    "review": {
+      "rules": "Guardrail rules"
+    },
+    "edit": {
+      "save": "Save",
+      "saveAll": "Save all changes"
+    },
+    "secrets": {
+      "lockVault": "Lock vault",
+      "unlockVault": "Unlock vault",
+      "resetVault": "Start a new vault"
+    },
+    "settings": {
+      "open": "Open Settings",
+      "openGroup": "Settings › {{title}}"
+    },
+    "panel": {
+      "openMill": "Open Mill",
+      "applyClipboard": "Apply from clipboard",
+      "open": "Open Quick Panel"
+    },
+    "backup": {
+      "now": "Back up now",
+      "export": "Export everything"
+    },
+    "capture": {
+      "note": "Capture a note"
+    },
+    "extensions": {
+      "exportAudit": "Export plugin audit"
+    },
+    "runMonitor": {
+      "open": "Run monitor"
+    },
+    "update": {
+      "check": "Check for updates",
+      "downloadAndInstall": "Download the update and install",
+      "relaunch": "Restart to finish updating",
+      "whatsNew": "What's new",
+      "trustSigning": "Trust Mill's signing"
+    },
+    "tab": {
+      "close": "Close tab",
+      "next": "Next tab",
+      "prev": "Previous tab",
+      "closeOthers": "Close other tabs",
+      "closeAll": "Close all tabs"
+    },
+    "plugin": {
+      "remove": "Remove {{name}}"
+    }
+  },
+  "menu": {
+    "menus": {
+      "mill": "Mill",
+      "file": "File",
+      "edit": "Edit",
+      "view": "View",
+      "workflow": "Workflow",
+      "atlas": "Atlas",
+      "window": "Window",
+      "help": "Help"
+    },
+    "submenus": {
+      "fileNew": "New…",
+      "helpDeveloper": "Developer"
+    },
+    "items": {
+      "save": "Save",
+      "commandPalette": "Command palette",
+      "keyboardShortcuts": "Keyboard shortcuts",
+      "home": "Home",
+      "workflows": "Workflows",
+      "configure": "Configure",
+      "atlas": "Atlas",
+      "activity": "Activity",
+      "review": "Review",
+      "reviewRules": "Review rules",
+      "secrets": "Secrets",
+      "docs": "Docs",
+      "settings": "Settings…",
+      "backUpNow": "Back up now",
+      "newNote": "New note",
+      "quickPanel": "Quick panel",
+      "runMonitor": "Run monitor",
+      "checkForUpdates": "Check for updates…",
+      "millHelp": "Mill help",
+      "whatsNew": "What's new"
+    }
+  },
+  "seats": {
+    "update": {
+      "checking": "Checking for updates…",
+      "available": "Download and install v{{version}}…",
+      "downloading": "Downloading v{{version}}…",
+      "ready": "Relaunch to update",
+      "check": "Check for updates…"
+    },
+    "vault": {
+      "lock": "Lock vault",
+      "unlock": "Unlock vault"
+    }
+  },
+  "seedReset": {
+    "upToDate": "Up to date with shipped example",
+    "reset": "Reset to shipped example v{{revision}}"
+  },
+  "tabs": {
+    "closeTab": "Close tab"
+  },
+  "viewMode": {
+    "groupAriaLabel": "View mode",
+    "rowAriaLabel": "Row view",
+    "tableAriaLabel": "Table view"
+  },
+  "confirmDelete": {
+    "title": "Delete {{entityType}}?",
+    "body": "This permanently deletes \"{{label}}\". This cannot be undone."
+  },
+  "approvalValues": {
+    "label": "Your input (optional)",
+    "placeholder": "leave empty to keep the current value"
   }
 }

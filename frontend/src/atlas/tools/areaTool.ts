@@ -12,8 +12,8 @@ export const areaTool = {
   id: areaIdentity.id,
   icon: SquareIcon,
   label: areaIdentity.commandLabel,
-  nounName: 'Area',
-  description: 'Draws an area to group nearby cards and notes into a labeled frame.',
+  nounName: 'atlas:areaNoun.name',
+  description: 'atlas:areaNoun.description',
   shortcutKey: areaIdentity.shortcutKey,
   tray: 'quick',
   // Spatial organization of knowledge, not drawing (goal 0224's

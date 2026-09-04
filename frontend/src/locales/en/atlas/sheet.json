@@ -5,5 +5,20 @@
     "truncatedRowsOnly": "Showing the first {{shownRows}} of {{totalRows}} rows.",
     "truncatedColsOnly": "Showing the first {{shownCols}} of {{totalCols}} columns.",
     "truncatedBoth": "Showing the first {{shownRows}} of {{totalRows}} rows and the first {{shownCols}} of {{totalCols}} columns."
+  },
+  "sheetNoun": {
+    "name": "Sheet",
+    "description": "Preview spreadsheets and CSV files dropped onto the board.",
+    "disableScopeNote": "Turning this off stops new sheets from landing on drop. Sheets already on the board keep working, including opening in your default app.",
+    "settings": {
+      "previewRows": {
+        "label": "Preview rows",
+        "description": "How many rows a sheet shows on the board. Larger sheets say how many rows were left out."
+      },
+      "previewCols": {
+        "label": "Preview columns",
+        "description": "How many columns a sheet shows on the board."
+      }
+    }
   }
 }

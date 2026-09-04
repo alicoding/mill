@@ -112,7 +112,7 @@ itemsInRect: (rect) => CanvasItemsInRect;
 ```
 
 The ids of the board's top-level cards, notes and objects whose
-CENTER falls inside a board-space rect -- the same enclosure rule
+CENTER falls inside a board-space rect — the same enclosure rule
 Mill's own Area tool uses.
 
 #### Parameters

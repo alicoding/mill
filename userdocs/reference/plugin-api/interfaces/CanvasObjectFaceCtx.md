@@ -47,7 +47,7 @@ pixels and unscaled by the board's zoom, and returns the function
 that detaches it. A face is CSS-scaled with the canvas, so an
 engine that measures its own layout from screen rectangles (a
 mind-map or graph layout, a text-measuring chart) lays out wrong
-rendered directly in place -- render it on this offscreen stage at
+rendered directly in place — render it on this offscreen stage at
 the face's real size, then copy the finished drawing into el.
 Anything still mounted when the face unmounts is detached
 automatically.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import declaredCommands from './commandsDeclaration.json'
-import { COMMANDS } from './commands'
+import { COMMANDS, commandLabel } from './commands'
 import { formatCombo } from './keybinding'
 
 // This IS goal 0231's freshness mechanism for
@@ -23,7 +23,12 @@ describe('commandsDeclaration.json (goal 0231: the commands reference page)', ()
     const want = [...COMMANDS]
       .map((c) => ({
         id: c.id,
-        label: c.label,
+        // The RESOLVED English, not the key the registry holds (goal
+        // 0341): internal/docsgen reads this JSON straight into
+        // userdocs/reference/commands.md, which is prose a reader
+        // scans, never a table of key paths. copy() resolves against
+        // the same statically-bundled en bundle i18next loads at boot.
+        label: commandLabel(c),
         binding: c.defaultBinding ? formatCombo(c.defaultBinding.mods, c.defaultBinding.key) : null,
         surface: c.surface ?? null,
         enabled: Boolean(c.enabled),

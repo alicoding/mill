@@ -1,5 +1,5 @@
 // The atlas creation tools' cross-layer identity: id, bare shortcut
-// key, command-palette label, which uiSignalStore request a bare
+// key, command-palette label KEY (shared/copy.ts resolves it), which uiSignalStore request a bare
 // keypress fires, and the authoring gesture shape (interaction). Lives
 // here rather than in atlas/tools/*.ts (each noun's own self-registered
 // descriptor -- goal 0180 S1's registry, mirroring
@@ -57,11 +57,11 @@ export type AtlasToolIdentity =
   | { id: 'image'; shortcutKey: string; commandLabel: string; requestKind: 'popover'; interaction: 'paste-or-drop' }
 
 export const ATLAS_TOOL_IDENTITIES: AtlasToolIdentity[] = [
-  { id: 'card', shortcutKey: 'C', commandLabel: 'Add a card', requestKind: 'arm', interaction: 'arm-then-click' },
-  { id: 'note', shortcutKey: 'N', commandLabel: 'Add a note', requestKind: 'arm', interaction: 'arm-then-click' },
-  { id: 'area', shortcutKey: 'A', commandLabel: 'Draw an area', requestKind: 'arm', interaction: 'drag-to-draw' },
-  { id: 'table', shortcutKey: 'T', commandLabel: 'New table', requestKind: 'picker', interaction: 'pick-then-place' },
-  { id: 'image', shortcutKey: 'I', commandLabel: 'Add an image', requestKind: 'popover', interaction: 'paste-or-drop' },
+  { id: 'card', shortcutKey: 'C', commandLabel: 'commands.atlas.create.card', requestKind: 'arm', interaction: 'arm-then-click' },
+  { id: 'note', shortcutKey: 'N', commandLabel: 'commands.atlas.create.note', requestKind: 'arm', interaction: 'arm-then-click' },
+  { id: 'area', shortcutKey: 'A', commandLabel: 'commands.atlas.create.area', requestKind: 'arm', interaction: 'drag-to-draw' },
+  { id: 'table', shortcutKey: 'T', commandLabel: 'commands.atlas.create.table', requestKind: 'picker', interaction: 'pick-then-place' },
+  { id: 'image', shortcutKey: 'I', commandLabel: 'commands.atlas.create.image', requestKind: 'popover', interaction: 'paste-or-drop' },
 ]
 
 // Every identity whose bare key ARMS a placement (as opposed to

@@ -24,7 +24,7 @@ export const TAB_COMMANDS: Command[] = [
   {
     id: 'tab.close',
     menu: { path: 'file', group: 1, order: 0 },
-    label: 'Close tab',
+    label: 'commands.tab.close',
     defaultBinding: { mods: ['cmd'], key: 'W' },
     // No active work tab means we're already on the pinned page --
     // nothing to close (the window-only-when-none-remain case is
@@ -42,7 +42,7 @@ export const TAB_COMMANDS: Command[] = [
   {
     id: 'tab.next',
     menu: { path: 'view', group: 2, order: 0 },
-    label: 'Next tab',
+    label: 'commands.tab.next',
     defaultBinding: { mods: ['ctrl'], key: 'Tab' },
     // ⌘⇧] -- the browser convention (Safari/Chrome "Show Next Tab")
     // for the identical action, alongside Ctrl+Tab the same way
@@ -56,7 +56,7 @@ export const TAB_COMMANDS: Command[] = [
   {
     id: 'tab.prev',
     menu: { path: 'view', group: 2, order: 1 },
-    label: 'Previous tab',
+    label: 'commands.tab.prev',
     defaultBinding: { mods: ['ctrl', 'shift'], key: 'Tab' },
     // ⌘⇧[ -- same browser convention as tab.next's ⌘⇧] above.
     extraBindings: [{ mods: ['cmd', 'shift'], key: '[' }],
@@ -65,7 +65,7 @@ export const TAB_COMMANDS: Command[] = [
   {
     id: 'tab.closeOthers',
     menu: { path: 'file', group: 1, order: 1 },
-    label: 'Close other tabs',
+    label: 'commands.tab.closeOthers',
     // Safari's own convention for the identical action (Option+Cmd+W is
     // literally "Close Other Tabs" there) -- picked over an arbitrary
     // combo since Mill's tab strip already models the same browser-tab
@@ -84,7 +84,7 @@ export const TAB_COMMANDS: Command[] = [
   {
     id: 'tab.closeAll',
     menu: { path: 'file', group: 1, order: 2 },
-    label: 'Close all tabs',
+    label: 'commands.tab.closeAll',
     // Safari's "Close Window" combo (Shift+Cmd+W) repurposed the same
     // way tab.close above already repurposed plain Cmd+W -- Mill has no
     // multi-window tab groups, so "close every open work tab" is the

@@ -252,7 +252,7 @@ test('A tool-less noun (diagram, sheet) gets a row with a toggle and states its 
   await expect(diagramRow.getByTestId('extensions-row-toggle').getByRole('button')).toHaveAttribute('data-checked', 'true')
   const diagram = await openExtensionDetail(page, diagramRow, 'diagram')
   await expect(diagram.getByTestId('extensions-detail-description')).toHaveText(
-    'View and edit diagrams — draw.io files open in the real editor.',
+    'View and edit diagrams. draw.io files open in the real editor.',
   )
   await expect(diagram.getByTestId('extensions-detail-disable-scope')).toHaveText(
     'Turning this off stops new diagrams from landing on drop and closes the built-in editor. Diagrams already on the board keep working.',

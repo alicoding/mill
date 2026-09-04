@@ -1,4 +1,5 @@
 import { createRef, Fragment, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { copy } from '../shared/copy'
 import type { RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnchoredOverlay, Button } from '@primer/react'
@@ -182,8 +183,8 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
             data-testid={`atlas-tray-${tool.id}`}
             data-armed={tableArmed}
             aria-pressed={tableArmed}
-            title={t(`creationTray.${tool.id}Tooltip`, { defaultValue: tool.description ?? tool.label })}
-            aria-label={t(`creationTray.${tool.id}Label`, { defaultValue: tool.label })}
+            title={t(`creationTray.${tool.id}Tooltip`, { defaultValue: copy(tool.description ?? tool.label) })}
+            aria-label={t(`creationTray.${tool.id}Label`, { defaultValue: copy(tool.label) })}
             onClick={() => onTableToggle(!tableArmed)}
           >
             <Icon size={14} />
@@ -231,8 +232,8 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
             data-armed={dragArmed}
             data-locked={isLocked}
             aria-pressed={dragArmed}
-            title={isLocked ? t('creationTray.lockedTooltip', { tool: t(`creationTray.${tool.id}Label`, { defaultValue: tool.label }) }) : t(`creationTray.${tool.id}Tooltip`, { defaultValue: tool.description ?? tool.label })}
-            aria-label={t(`creationTray.${tool.id}Label`, { defaultValue: tool.label })}
+            title={isLocked ? t('creationTray.lockedTooltip', { tool: t(`creationTray.${tool.id}Label`, { defaultValue: copy(tool.label) }) }) : t(`creationTray.${tool.id}Tooltip`, { defaultValue: copy(tool.description ?? tool.label) })}
+            aria-label={t(`creationTray.${tool.id}Label`, { defaultValue: copy(tool.label) })}
             onClick={() => onToggle(tool.id)}
           >
             {isLocked ? <LockIcon size={14} /> : <Icon size={14} />}
@@ -271,8 +272,8 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
             data-testid={`atlas-tray-${tool.id}`}
             data-armed={imagePopoverOpen}
             aria-pressed={imagePopoverOpen}
-            title={t(`creationTray.${tool.id}Tooltip`, { defaultValue: tool.description ?? tool.label })}
-            aria-label={t(`creationTray.${tool.id}Label`, { defaultValue: tool.label })}
+            title={t(`creationTray.${tool.id}Tooltip`, { defaultValue: copy(tool.description ?? tool.label) })}
+            aria-label={t(`creationTray.${tool.id}Label`, { defaultValue: copy(tool.label) })}
             onClick={() => onImageToggle(!imagePopoverOpen)}
           >
             <Icon size={14} />
@@ -307,8 +308,8 @@ export function AtlasCreationTray({ armedTool, locked, onToggle, tablePickerOpen
         data-testid={`atlas-tray-${tool.id}`}
         data-armed={armed}
         aria-pressed={armed}
-        title={t(`creationTray.${tool.id}Tooltip`, { defaultValue: tool.description ?? tool.label })}
-        aria-label={t(`creationTray.${tool.id}Label`, { defaultValue: tool.label })}
+        title={t(`creationTray.${tool.id}Tooltip`, { defaultValue: copy(tool.description ?? tool.label) })}
+        aria-label={t(`creationTray.${tool.id}Label`, { defaultValue: copy(tool.label) })}
         draggable={draggable}
         onDragStart={
           draggable

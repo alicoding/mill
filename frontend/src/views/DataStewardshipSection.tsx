@@ -53,7 +53,7 @@ function DataStewardshipSection() {
   }
 
   const refresh = () => {
-    BackupService.GetBackupStatus().then(setStatus).catch((err) => fail('Refresh status', err))
+    BackupService.GetBackupStatus().then(setStatus).catch((err) => fail(t('settings.dataStewardshipOps.refreshStatus'), err))
   }
 
   useEffect(() => {
@@ -70,12 +70,12 @@ function DataStewardshipSection() {
     setBackingUp(true)
     BackupService.BackupNow(0)
       .then(setStatus)
-      .catch((err) => fail('Back up now', err))
+      .catch((err) => fail(t('settings.dataStewardshipOps.backUpNow'), err))
       .finally(() => setBackingUp(false))
   }
 
   const revealFolder = () => {
-    BackupService.RevealBackupFolder().catch((err) => fail('Reveal backup folder', err))
+    BackupService.RevealBackupFolder().catch((err) => fail(t('settings.dataStewardshipOps.revealBackupFolder'), err))
   }
 
   const exportEverything = () => {
@@ -83,7 +83,7 @@ function DataStewardshipSection() {
     setExporting(true)
     BackupService.ExportEverything()
       .then((data) => downloadBlob(`mill-backup-${new Date().toISOString().slice(0, 10)}.zip`, base64ToBlob(data, 'application/zip')))
-      .catch((err) => fail('Export everything', err))
+      .catch((err) => fail(t('settings.dataStewardshipOps.exportEverything'), err))
       .finally(() => setExporting(false))
   }
 
@@ -98,7 +98,7 @@ function DataStewardshipSection() {
     if (!file) return
     fileToBase64(file)
       .then((data) => BackupService.PreviewImportEverything(data).then((summary) => setPendingArchive({ data, summary })))
-      .catch((err) => fail('Import everything', err))
+      .catch((err) => fail(t('settings.dataStewardshipOps.importEverything'), err))
   }
 
   const confirmImport = () => {
@@ -107,7 +107,7 @@ function DataStewardshipSection() {
     setPendingArchive(null)
     BackupService.ImportEverything(data)
       .then(setImportResult)
-      .catch((err) => fail('Import everything', err))
+      .catch((err) => fail(t('settings.dataStewardshipOps.importEverything'), err))
   }
 
   return (

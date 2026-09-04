@@ -1,4 +1,5 @@
 import { FormControl, Stack, Text, TextInput } from '@primer/react'
+import { copy } from './copy'
 import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 
 // The typed Attributes edit form a parked run's approver fills before
@@ -22,14 +23,14 @@ export function ApprovalValuesForm({
   if (attrs.length === 0) return null
   return (
     <Stack direction="vertical" gap="condensed" onClick={(e) => e.stopPropagation()}>
-      <Text size="small" weight="semibold">{label ?? 'Your input (optional — flows into the resumed run)'}</Text>
+      <Text size="small" weight="semibold">{label ?? copy('approvalValues.label')}</Text>
       {attrs.map((a) => (
         <FormControl key={a.Key}>
           <FormControl.Label>{a.Label || a.Key}</FormControl.Label>
           <TextInput
             size="small"
             value={values[a.Key] ?? ''}
-            placeholder="leave empty to keep the current value"
+            placeholder={copy('approvalValues.placeholder')}
             onChange={(e) => onChange(a.Key, e.target.value)}
           />
         </FormControl>

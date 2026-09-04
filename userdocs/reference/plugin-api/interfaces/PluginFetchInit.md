@@ -7,7 +7,7 @@
 # Interface: PluginFetchInit
 
 The request api.fetch sends. A plugin never opens a connection
-itself -- api.fetch asks Mill, whose rules allow, park for approval,
+itself — api.fetch asks Mill, whose rules allow, park for approval,
 or deny the request; on approval Mill performs it and hands back the
 response. A host or method the manifest's contributes.network does
 not declare, or a non-http(s) URL, rejects the promise before any

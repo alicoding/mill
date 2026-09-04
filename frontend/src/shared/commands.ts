@@ -17,12 +17,14 @@ import { CODING_LOOP_COMMANDS } from './codingLoopCommands'
 import { DOCS_SEARCH_COMMANDS } from './docsSearchCommands'
 import { REVIEW_COMMANDS } from './reviewCommands'
 import { ATLAS_CREATE_COMMANDS } from './atlasCreateCommands'
+import { ATLAS_NAV_COMMANDS } from './atlasNavCommands'
 import { HELP_COMMANDS } from './helpCommands'
 import { TAB_COMMANDS } from './tabCommands'
 import { withMenuGroup } from './menuGroup'
 import type { MenuPlacement } from './menuSpec'
 import { pushNotice } from './noticeStore'
 import { appTranslate, messageFor } from './userError'
+import { copy } from './copy'
 
 // The command registry (docs/goals/0016-keymap-system.md): named
 // commands with a default binding, dispatched by one window keydown
@@ -45,6 +47,12 @@ import { appTranslate, messageFor } from './userError'
 // does, no composition/ import required either.
 export interface Command {
   id: string
+  // A locale key, not a sentence (goal 0341): this registry is
+  // module-scope, so it has no React tree to resolve through and
+  // holds the key instead. commandLabel() below is the one resolver
+  // every renderer and projection calls. A plugin-contributed command
+  // supplies plain author-written English here; copy() returns an
+  // unresolvable key verbatim, so both flow through the same call.
   label: string
   // null only for a command that's genuinely never bound by default
   // (none exist yet) -- every command below has one, including
@@ -113,6 +121,14 @@ export interface Command {
   run: () => void | Promise<unknown>
 }
 
+// commandLabel resolves a command's label key to the string a surface
+// shows -- the palette, the Shortcuts overlay, Settings' rebind list,
+// the Quick Panel, the menu-bar projection and runCommand's own
+// failure notice all go through here rather than reading `label`.
+export function commandLabel(command: Pick<Command, 'label'>): string {
+  return copy(command.label)
+}
+
 function setView(view: View) {
   useAppStore.getState().setView(view)
 }
@@ -144,15 +160,15 @@ export const COMMANDS: Command[] = lazyArray(() => [
   {
     id: 'workflow.new',
     menu: { path: 'file', group: 0, order: 0 },
-    label: 'New workflow',
+    label: 'commands.workflow.new',
     defaultBinding: { mods: ['cmd'], key: 'N' },
     enabled: isWorkflowsArea,
     run: () => useAppStore.getState().openWorkTab({ kind: 'workflow-new' }),
   },
   {
     id: 'workflow.save',
-    menu: { path: 'file', group: 2, order: 0, label: 'Save' },
-    label: 'Save workflow',
+    menu: { path: 'file', group: 2, order: 0, label: 'menu.items.save' },
+    label: 'commands.workflow.save',
     defaultBinding: { mods: ['cmd'], key: 'S' },
     enabled: isWorkflowEditorTabActive,
     run: () => useAppStore.getState().requestCanvasCommand('save'),
@@ -160,7 +176,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
   {
     id: 'workflow.run',
     menu: { path: 'workflow', group: 0, order: 0 },
-    label: 'Run workflow',
+    label: 'commands.workflow.run',
     // ⌘↩ (Cmd+Enter), not ⌘R: ⌘R stays the native browser/dev View > Reload (⌘⇧R too, the developer's own debug escape hatch), so
     // SettingsService.ReleaseMenuAccelerators no longer touches it (settingsservice_menu.go). Cmd+Enter is the editor/chat
     // "run/submit the current thing" convention (Slack send, ChatGPT/Claude submit, IDE "run configuration") and has no
@@ -171,8 +187,8 @@ export const COMMANDS: Command[] = lazyArray(() => [
   },
   {
     id: 'palette.open',
-    menu: { path: 'view', group: 1, order: 0, label: 'Command palette' },
-    label: 'Open command palette',
+    menu: { path: 'view', group: 1, order: 0, label: 'menu.items.commandPalette' },
+    label: 'commands.palette.open',
     // goal 0015: app/CommandPalette.tsx renders off the store's
     // paletteOpen flag (a plain toggle, not open-only, matching most
     // command-palette conventions -- pressing ⌘K again closes it
@@ -202,30 +218,30 @@ export const COMMANDS: Command[] = lazyArray(() => [
     // ⌘⇧/ is this command's own registry-dispatched alias, the same
     // macOS Help-menu convention `?` itself follows.
     id: 'help.shortcuts',
-    menu: { path: 'help', group: 0, order: 1, label: 'Keyboard shortcuts' },
-    label: 'Keyboard shortcuts help',
+    menu: { path: 'help', group: 0, order: 1, label: 'menu.items.keyboardShortcuts' },
+    label: 'commands.help.shortcuts',
     defaultBinding: null,
     extraBindings: [{ mods: ['cmd', 'shift'], key: '/' }],
     run: () => useUISignalStore.getState().openHelp(),
   },
   {
     id: 'view.home',
-    menu: { path: 'view', group: 0, order: 0, label: 'Home' },
-    label: 'Go to Home',
+    menu: { path: 'view', group: 0, order: 0, label: 'menu.items.home' },
+    label: 'commands.view.home',
     defaultBinding: { mods: ['cmd'], key: '0' },
     run: () => setView({ kind: 'home' }),
   },
   {
     id: 'view.composition',
-    menu: { path: 'view', group: 0, order: 1, label: 'Workflows' },
-    label: 'Go to Workflows',
+    menu: { path: 'view', group: 0, order: 1, label: 'menu.items.workflows' },
+    label: 'commands.view.composition',
     defaultBinding: { mods: ['cmd'], key: '1' },
     run: () => setView({ kind: 'composition' }),
   },
   {
     id: 'view.configure',
-    menu: { path: 'view', group: 0, order: 2, label: 'Configure' },
-    label: 'Go to Configure',
+    menu: { path: 'view', group: 0, order: 2, label: 'menu.items.configure' },
+    label: 'commands.view.configure',
     defaultBinding: { mods: ['cmd'], key: '2' },
     run: () => setView({ kind: 'configure' }),
   },
@@ -236,7 +252,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
     // same store-signal seam canvasCommandRequest documents above.
     id: 'atlas.up',
     menu: { path: 'atlas', group: 0, order: 0 },
-    label: 'Go up one level',
+    label: 'commands.atlas.up',
     defaultBinding: { mods: ['cmd'], key: 'ArrowUp' },
     surface: ['atlas'],
     run: () => useAppStore.getState().requestAtlasUp(),
@@ -251,56 +267,14 @@ export const COMMANDS: Command[] = lazyArray(() => [
     // (its own former capture-phase window listener is retired).
     id: 'atlas.jump',
     menu: { path: 'atlas', group: 0, order: 1 },
-    label: 'Jump to a card or object',
+    label: 'commands.atlas.jump',
     defaultBinding: { mods: ['cmd'], key: 'K' },
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasJump(),
   },
   // atlas.create.<id> (bare C/N/A/T/I/P/E/L/S) -- own file, atlasCreateCommands.ts, same reason every other feature-specific cluster below already is.
   ...withMenuGroup('atlas', 2, ATLAS_CREATE_COMMANDS),
-  // The board's ⌘Z/⇧⌘Z (goal 0219 S2, ADR-0044): null binding -- ⌘Z is
-  // ALSO native text-undo, dispatched by useKeymapDispatch.ts's own
-  // listener instead; these exist for palette/HotkeyHint discovery only.
-  {
-    id: 'atlas.undo',
-    menu: { path: 'atlas', group: 0, order: 2 },
-    label: 'Undo',
-    defaultBinding: null,
-    surface: ['atlas'],
-    run: () => useUISignalStore.getState().requestAtlasUndo(),
-  },
-  {
-    id: 'atlas.redo',
-    menu: { path: 'atlas', group: 0, order: 3 },
-    label: 'Redo',
-    defaultBinding: null,
-    surface: ['atlas'],
-    run: () => useUISignalStore.getState().requestAtlasRedo(),
-  },
-  {
-    id: 'atlas.matrix',
-    menu: { path: 'atlas', group: 0, order: 4 },
-    label: 'Open traceability matrix',
-    defaultBinding: null,
-    surface: ['atlas'],
-    run: () => useUISignalStore.getState().requestAtlasMatrixOpen(),
-  },
-  {
-    id: 'atlas.coverage',
-    menu: { path: 'atlas', group: 0, order: 5 },
-    label: 'Open coverage',
-    defaultBinding: null,
-    surface: ['atlas'],
-    run: () => useUISignalStore.getState().requestAtlasCoverageOpen(),
-  },
-  {
-    id: 'atlas.roadmap',
-    menu: { path: 'atlas', group: 0, order: 6 },
-    label: 'Open roadmap',
-    defaultBinding: null,
-    surface: ['atlas'],
-    run: () => useUISignalStore.getState().requestAtlasRoadmapOpen(),
-  },
+  ...ATLAS_NAV_COMMANDS,
   // The rest of the Atlas toolbar/board's own commands -- split out to
   // shared/atlasBoardCommands.ts (CLAUDE.md's 500-line convention).
   ...withMenuGroup('atlas', 1, ATLAS_BOARD_COMMANDS),
@@ -309,22 +283,22 @@ export const COMMANDS: Command[] = lazyArray(() => [
     // sits between Configure and Activity there, so it takes ⌘3 and
     // the two below shift down one.
     id: 'view.atlas',
-    menu: { path: 'view', group: 0, order: 3, label: 'Atlas' },
-    label: 'Go to Atlas',
+    menu: { path: 'view', group: 0, order: 3, label: 'menu.items.atlas' },
+    label: 'commands.view.atlas',
     defaultBinding: { mods: ['cmd'], key: '3' },
     run: () => setView({ kind: 'atlas' }),
   },
   {
     id: 'view.activity',
-    menu: { path: 'view', group: 0, order: 4, label: 'Activity' },
-    label: 'Go to Activity',
+    menu: { path: 'view', group: 0, order: 4, label: 'menu.items.activity' },
+    label: 'commands.view.activity',
     defaultBinding: { mods: ['cmd'], key: '4' },
     run: () => setView({ kind: 'activity' }),
   },
   {
     id: 'view.review',
-    menu: { path: 'view', group: 0, order: 5, label: 'Review' },
-    label: 'Go to Review',
+    menu: { path: 'view', group: 0, order: 5, label: 'menu.items.review' },
+    label: 'commands.view.review',
     defaultBinding: { mods: ['cmd'], key: '5' },
     // Quick Panel's "Review" row reuses this id (its pending-count badge
     // is panel-local presentation, quickPanelActionEntries.tsx).
@@ -333,8 +307,8 @@ export const COMMANDS: Command[] = lazyArray(() => [
   },
   {
     id: 'view.secrets',
-    menu: { path: 'view', group: 0, order: 7, label: 'Secrets' },
-    label: 'Go to Secrets',
+    menu: { path: 'view', group: 0, order: 7, label: 'menu.items.secrets' },
+    label: 'commands.view.secrets',
     defaultBinding: { mods: ['cmd'], key: '6' },
     run: () => setView({ kind: 'secrets' }),
   },
@@ -343,8 +317,8 @@ export const COMMANDS: Command[] = lazyArray(() => [
     // reachable on demand, never a standing tab) -- the palette and the
     // footer link are its entry points.
     id: 'view.docs',
-    menu: { path: 'view', group: 0, order: 8, label: 'Docs' },
-    label: 'Open docs',
+    menu: { path: 'view', group: 0, order: 8, label: 'menu.items.docs' },
+    label: 'commands.view.docs',
     defaultBinding: null,
     run: () => setView({ kind: 'docs' }),
   },
@@ -412,7 +386,7 @@ export async function runCommand(id: string): Promise<boolean> {
       // failure carries (shared/userError.ts) -- never the rejection's
       // own message, which for a bound-method call is the Go error
       // chain, and never the command id, which is internal vocabulary.
-      text: `${command.label}: ${messageFor(err, appTranslate)}`,
+      text: `${commandLabel(command)}: ${messageFor(err, appTranslate)}`,
     })
     return false
   }

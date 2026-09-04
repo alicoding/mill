@@ -31,7 +31,7 @@ function requestCanvas(command: 'undo' | 'redo' | 'delete' | 'zoomIn' | 'zoomOut
 export const CANVAS_COMMANDS: Command[] = [
   {
     id: 'canvas.undo',
-    label: 'Undo',
+    label: 'commands.canvas.undo',
     defaultBinding: { mods: ['cmd'], key: 'Z' },
     hintOnly: true,
     surface: ['composition'],
@@ -39,7 +39,7 @@ export const CANVAS_COMMANDS: Command[] = [
   },
   {
     id: 'canvas.redo',
-    label: 'Redo',
+    label: 'commands.canvas.redo',
     defaultBinding: { mods: ['cmd', 'shift'], key: 'Z' },
     hintOnly: true,
     surface: ['composition'],
@@ -56,7 +56,7 @@ export const CANVAS_COMMANDS: Command[] = [
     // targets. This entry exists for HotkeyHint/Shortcuts-Help/palette
     // discoverability of that existing binding.
     id: 'canvas.delete',
-    label: 'Delete selected',
+    label: 'commands.canvas.delete',
     defaultBinding: { mods: [], key: 'Delete' },
     hintOnly: true,
     surface: ['composition'],
@@ -64,7 +64,7 @@ export const CANVAS_COMMANDS: Command[] = [
   },
   {
     id: 'canvas.zoomIn',
-    label: 'Zoom in',
+    label: 'commands.canvas.zoomIn',
     defaultBinding: { mods: ['cmd'], key: '+' },
     hintOnly: true,
     surface: ['composition'],
@@ -72,7 +72,7 @@ export const CANVAS_COMMANDS: Command[] = [
   },
   {
     id: 'canvas.zoomOut',
-    label: 'Zoom out',
+    label: 'commands.canvas.zoomOut',
     defaultBinding: { mods: ['cmd'], key: '-' },
     hintOnly: true,
     surface: ['composition'],
@@ -89,7 +89,7 @@ export const CANVAS_COMMANDS: Command[] = [
     // (React Flow's own Controls) and the palette stay its entry
     // points.
     id: 'canvas.fitView',
-    label: 'Fit view',
+    label: 'commands.canvas.fitView',
     defaultBinding: null,
     surface: ['composition'],
     run: () => requestCanvas('fitView'),
@@ -105,7 +105,7 @@ export const CANVAS_COMMANDS: Command[] = [
     // 'workflow-edit' tab specifically (carries workflowId), never a
     // not-yet-saved 'workflow-new' one.
     id: 'workflow.publish',
-    label: 'Publish current draft',
+    label: 'commands.workflow.publish',
     defaultBinding: null,
     surface: ['composition'],
     enabled: () => {
@@ -116,7 +116,7 @@ export const CANVAS_COMMANDS: Command[] = [
   },
   {
     id: 'workflow.edit',
-    label: 'Edit workflow',
+    label: 'commands.workflow.edit',
     defaultBinding: null,
     // The active work tab is a workflow open read-only (goal 0297): the
     // header's Edit button and every read-only reference field's Edit

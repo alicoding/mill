@@ -55,7 +55,7 @@ export type MenuSkeletonEntry =
 
 export const MENU_SKELETON: readonly MenuSkeletonEntry[] = [
   {
-    label: 'Mill',
+    label: 'menu.menus.mill',
     path: 'app',
     groups: [
       [{ role: 'about' }, { commandGroup: 0 }],
@@ -68,13 +68,13 @@ export const MENU_SKELETON: readonly MenuSkeletonEntry[] = [
     ],
   },
   {
-    label: 'File',
+    label: 'menu.menus.file',
     path: 'file',
     groups: [
       [{ commandGroup: 0 }],
       // New… (goal 0335): the per-Configure-tab create commands, in
       // their own submenu rather than crowding File's top band.
-      [{ submenu: { label: 'New…', path: 'file.new', groups: [[{ commandGroup: 0 }]] } }],
+      [{ submenu: { label: 'menu.submenus.fileNew', path: 'file.new', groups: [[{ commandGroup: 0 }]] } }],
       [{ commandGroup: 1 }],
       [{ commandGroup: 2 }],
       // Export band (goal 0335).
@@ -88,9 +88,9 @@ export const MENU_SKELETON: readonly MenuSkeletonEntry[] = [
   // The platform's own text-editing menu, contents included: Undo, Cut,
   // Copy, Paste, Select All and Speech all act on whatever view is
   // first responder, which is the webview.
-  { label: 'Edit', role: 'edit' },
+  { label: 'menu.menus.edit', role: 'edit' },
   {
-    label: 'View',
+    label: 'menu.menus.view',
     path: 'view',
     groups: [
       [{ commandGroup: 0 }],
@@ -110,30 +110,30 @@ export const MENU_SKELETON: readonly MenuSkeletonEntry[] = [
     ],
   },
   {
-    label: 'Workflow',
+    label: 'menu.menus.workflow',
     path: 'workflow',
     groups: [[{ commandGroup: 0 }], [{ commandGroup: 1 }], [{ commandGroup: 2 }]],
   },
   {
-    label: 'Atlas',
+    label: 'menu.menus.atlas',
     path: 'atlas',
     groups: [[{ commandGroup: 0 }], [{ commandGroup: 1 }], [{ commandGroup: 2 }]],
   },
   {
-    label: 'Window',
+    label: 'menu.menus.window',
     path: 'window',
     groups: [[{ role: 'minimise' }, { role: 'zoom' }], [{ commandGroup: 0 }], [{ role: 'bringAllToFront' }]],
   },
   {
-    label: 'Help',
+    label: 'menu.menus.help',
     path: 'help',
     groups: [
-      [{ commandRef: 'view.docs', label: 'Mill help' }, { commandGroup: 0 }],
+      [{ commandRef: 'view.docs', label: 'menu.items.millHelp' }, { commandGroup: 0 }],
       [{ commandGroup: 1 }],
       [
         {
           submenu: {
-            label: 'Developer',
+            label: 'menu.submenus.helpDeveloper',
             path: 'help.developer',
             groups: [[{ role: 'reload' }, { role: 'forceReload' }, { role: 'openDevTools' }], [{ commandGroup: 0 }]],
           },

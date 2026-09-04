@@ -8,5 +8,11 @@
     "editor": {
       "untitledDiagram": "Untitled diagram"
     }
+  },
+  "diagramNoun": {
+    "name": "Diagram",
+    "description": "View and edit diagrams. draw.io files open in the real editor.",
+    "disableScopeNote": "Turning this off stops new diagrams from landing on drop and closes the built-in editor. Diagrams already on the board keep working.",
+    "shieldHint": "Click to select, then drag to pan"
   }
 }

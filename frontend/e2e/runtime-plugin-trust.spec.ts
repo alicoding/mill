@@ -144,6 +144,18 @@ test('a plugin whose files change after it was allowed stops running until allow
 		await expect(row.getByTestId('extensions-plugin-toggle')).toHaveCount(0)
 		const detail = await openExtensionDetail(page, row, 'mill-bookmark')
 		await expect(detail.getByTestId('extensions-plugin-review')).toContainText('Its files changed since you allowed it')
+
+		// The reload button is offered exactly here -- an edit after
+		// consent is when it is reached for -- and it refuses through the
+		// same lock, in one readable sentence (goal 0341: this notice
+		// used to render a literal double hyphen).
+		await detail.getByTestId('extensions-plugin-reload').click()
+		const refusal = page.locator('[data-testid^="notice-pushed-"]', {
+			hasText: 'its files changed since you allowed it. Allow it again on its row',
+		})
+		await expect(refusal).toBeVisible()
+		await expect(page.locator('[data-testid^="notice-pushed-"]')).not.toContainText(' -- ')
+
 		await detail.getByTestId('extensions-plugin-allow').click()
 		await expect(detail.getByTestId('extensions-plugin-review')).toContainText('Allowed. Reload to load it.')
 

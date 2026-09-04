@@ -1,4 +1,5 @@
 import type { Icon } from '@primer/octicons-react'
+import { copy } from '../shared/copy'
 import type { DisplayDensity } from '../shared/density'
 import type { EditRouteDecl, ObjectSource } from '../atlas/objectSeams'
 import type { AtlasToolShape } from '../atlas/atlasTools'
@@ -54,9 +55,9 @@ export function toolRowSource(tool: AtlasToolShape): ExtensionRowSource {
   return {
     id: tool.id,
     icon: tool.icon,
-    label: tool.nounName,
-    commandLabel: tool.label,
-    description: tool.description,
+    label: copy(tool.nounName),
+    commandLabel: copy(tool.label),
+    description: tool.description === undefined ? undefined : copy(tool.description),
     group: tool.group,
     source: tool.content?.source,
     editRoute: tool.content?.editRoute,
@@ -75,13 +76,13 @@ export function toolLessRowSource({ kind, content, extension }: ToolLessNounExte
   return {
     id: kind,
     icon: extension.icon,
-    label: extension.label,
-    description: extension.description,
+    label: copy(extension.label),
+    description: copy(extension.description),
     group: extension.group,
     source: content.source,
     editRoute: content.editRoute,
     capabilities: extension.capabilities,
-    disableScopeNote: extension.disableScopeNote,
+    disableScopeNote: copy(extension.disableScopeNote),
     settings: extension.settings,
   }
 }
@@ -95,9 +96,9 @@ export function toolLessRowSource({ kind, content, extension }: ToolLessNounExte
 // repeating it a second time on every row read as noise).
 export function groupLabel(group: AtlasNounGroup): string {
   switch (group) {
-    case 'knowledge': return 'Knowledge'
-    case 'file': return 'File'
-    case 'annotate': return 'Drawing'
+    case 'knowledge': return copy('views:settings.extensions.meta.groupKnowledge')
+    case 'file': return copy('views:settings.extensions.meta.groupFile')
+    case 'annotate': return copy('views:settings.extensions.meta.groupAnnotate')
   }
 }
 
@@ -108,9 +109,9 @@ export function groupLabel(group: AtlasNounGroup): string {
 // names one row's own attribute.
 export function groupSectionLabel(group: AtlasNounGroup): string {
   switch (group) {
-    case 'knowledge': return 'Knowledge'
-    case 'file': return 'Files'
-    case 'annotate': return 'Drawing'
+    case 'knowledge': return copy('views:settings.extensions.meta.sectionKnowledge')
+    case 'file': return copy('views:settings.extensions.meta.sectionFile')
+    case 'annotate': return copy('views:settings.extensions.meta.sectionAnnotate')
   }
 }
 
@@ -120,10 +121,10 @@ export function groupSectionLabel(group: AtlasNounGroup): string {
 export function sourceLabel(source: ObjectSource | undefined): string | null {
   if (!source) return null
   switch (source.kind) {
-    case 'board-local': return 'Stored on the board'
-    case 'file': return 'Backed by a file'
-    case 'url': return 'Points at a web address'
-    case 'provider': return 'Live view of a List'
+    case 'board-local': return copy('views:settings.extensions.meta.sourceBoardLocal')
+    case 'file': return copy('views:settings.extensions.meta.sourceFile')
+    case 'url': return copy('views:settings.extensions.meta.sourceUrl')
+    case 'provider': return copy('views:settings.extensions.meta.sourceProvider')
   }
 }
 
@@ -135,11 +136,11 @@ export function sourceLabel(source: ObjectSource | undefined): string | null {
 // than guessing a specific engine.
 export function editRouteLabel(decl: EditRouteDecl | undefined): string | null {
   if (!decl) return null
-  if (typeof decl === 'function') return 'Edit method depends on the file'
+  if (typeof decl === 'function') return copy('views:settings.extensions.meta.editResolved')
   switch (decl.kind) {
-    case 'external-app': return 'Opens in your default app'
-    case 'embedded-engine': return `Edits in ${decl.engine}`
-    case 'inline': return 'Edits in place'
+    case 'external-app': return copy('views:settings.extensions.meta.editExternalApp')
+    case 'embedded-engine': return copy('views:settings.extensions.meta.editEmbedded', { engine: decl.engine })
+    case 'inline': return copy('views:settings.extensions.meta.editInline')
     case 'none': return null
   }
 }
@@ -150,7 +151,7 @@ export function editRouteLabel(decl: EditRouteDecl | undefined): string | null {
 // Extensions section's disclosure always shows something rather than an
 // empty line.
 export function descriptionLabel(tool: { description?: string; label: string }): string {
-  return tool.description ?? tool.label
+  return copy(tool.description ?? tool.label)
 }
 
 // reachLabel -- ADR-0047's declared-capability set, rendered honestly:
@@ -159,15 +160,15 @@ export function descriptionLabel(tool: { description?: string; label: string }):
 // declares real capabilities, this lists them verbatim -- the line
 // derives from the registry, it is never hardcoded per tool.
 export function reachLabel(capabilities: readonly string[] | undefined): string {
-  if (!capabilities || capabilities.length === 0) return 'Reaches nothing outside Mill.'
-  return `Reaches ${capabilities.join(', ')}.`
+  if (!capabilities || capabilities.length === 0) return copy('views:settings.extensions.meta.reachNothing')
+  return copy('views:settings.extensions.meta.reachList', { list: capabilities.join(', ') })
 }
 
 // versionLabel -- every extension today is compiled into Mill itself
 // (goal 0211's tier model), so its own "version" is simply the app's
 // own build version rather than a per-extension one.
 export function versionLabel(appVersion: string): string {
-  return `Ships with Mill v${appVersion}`
+  return copy('views:settings.extensions.meta.version', { version: appVersion })
 }
 
 // Row geometry (goal 0321): the Extensions list is a scan surface, so

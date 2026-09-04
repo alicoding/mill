@@ -7,7 +7,11 @@
 #    inside the app.
 # 2. Dash clauses: a sentence whose second half hangs off a dash is a
 #    spec-aside justifying the design, not copy the reader can act on.
-#    It also renders as a literal double hyphen in the app.
+#    It also renders as a literal double hyphen in the app. Checked in
+#    the locale JSON, the Go seeds, the user docs, and (goal 0341) the
+#    TypeScript string literals -- copy that never reached a locale
+#    file is still copy, and a `${a} -- ${b}` join is a dash clause
+#    split across two quasis.
 #
 # Run by lefthook (pre-commit) and CI's ui-copy job -- one script both
 # call, same non-drift shape as check-loc.sh.
@@ -105,8 +109,10 @@ done < <(seed_go_files)
 # only the literal double hyphen is wrong. A dash inside a fenced block
 # or an inline code span is code, not prose, and stays.
 # userdocs/reference/plugin-api/** is TypeDoc output from the plugin
-# SDK's own doc comments (frontend/src/plugins/sdk.ts): fix it at that
-# source, not in the generated tree check-sdk-freshness.sh overwrites.
+# SDK's own doc comments (frontend/src/plugins/sdk.ts) -- gated like
+# every other page since goal 0341 rewrote that source, so a new
+# double hyphen in an SDK doc comment fails here and is fixed there,
+# never in the generated tree check-sdk-freshness.sh overwrites.
 docs_prose_scanner='
 FNR == 1 { fence = 0; fm = ($0 == "---") }
 fm { if (FNR > 1 && $0 == "---") fm = 0; next }
@@ -122,12 +128,65 @@ fence { next }
   if (out ~ / -- /) printf "%s:%s: %s\n", FILENAME, FNR, $0
 }'
 while IFS= read -r -d '' file; do
-  case "$file" in userdocs/reference/plugin-api/*) continue ;; esac
   hits="$(awk "$docs_prose_scanner" "$file" || true)"
   if [[ -n "$hits" ]]; then
     while IFS= read -r hit; do report "$hit -- $(dash_message)"; done <<< "$hits"
   fi
 done < <(git ls-files -z -- 'userdocs/*.md')
+
+# TypeScript/TSX: the same literals-only discipline the Go scanner
+# above applies, so a dash inside a // or /* */ comment (where design
+# notes legitimately live) is never mistaken for copy. Template
+# literals count: a `${a} -- ${b}` join renders the dash exactly as a
+# whole-string one does. Tests and e2e specs are excluded -- they
+# assert against copy rather than being it.
+#
+# A dash is a CLAUSE only with content on at least one side and a space
+# beside it: `var(--fgColor-muted)` is a CSS custom property, "1-25 of
+# 40" (en dash) is a range, and a lone em dash is an empty-cell
+# placeholder. Same three carve-outs frontend/eslint.config.js's own
+# no-literal-string patterns make, kept in step by hand.
+ts_literal_scanner='
+FNR == 1 { blockcomment = 0 }
+{
+  line = $0; out = ""; n = length(line); i = 1
+  # String state is per line; BLOCK-comment state is not -- a JSX
+  # comment ({/* ... */}) routinely spans lines, and an apostrophe in
+  # its prose would otherwise read as an opening quote on the
+  # continuation line.
+  state = blockcomment ? 4 : 0
+  while (i <= n) {
+    c = substr(line, i, 1)
+    if (state == 0) {
+      if (c == "/" && substr(line, i + 1, 1) == "/") break
+      else if (c == "/" && substr(line, i + 1, 1) == "*") { state = 4; i += 2; continue }
+      else if (c == "\"") state = 1
+      else if (c == "\x27") state = 3
+      else if (c == "`") state = 2
+    } else if (state == 4) {
+      if (c == "*" && substr(line, i + 1, 1) == "/") { state = 0; i += 2; continue }
+    } else if (state == 1) {
+      if (c == "\\") { i += 2; continue }
+      if (c == "\"") state = 0; else out = out c
+    } else if (state == 2) {
+      if (c == "\\") { i += 2; continue }
+      if (c == "`") state = 0; else out = out c
+    } else {
+      if (c == "\\") { i += 2; continue }
+      if (c == "\x27") state = 0; else out = out c
+    }
+    i++
+  }
+  blockcomment = (state == 4)
+  if (out ~ /[^ ] (--|—|–)( |$)/ || out ~ /(^| )(--|—|–) [^ ]/) printf "%s:%s: %s\n", FILENAME, FNR, out
+}'
+while IFS= read -r -d '' file; do
+  hits="$(awk "$ts_literal_scanner" "$file" || true)"
+  if [[ -n "$hits" ]]; then
+    while IFS= read -r hit; do report "$hit -- $(dash_message)"; done <<< "$hits"
+  fi
+done < <(git ls-files -z -- 'frontend/src/*.ts' 'frontend/src/*.tsx' |
+  grep -zv '\.test\.tsx\?$' || true)
 
 if [[ "$violations" -gt 0 ]]; then
   echo

@@ -1,4 +1,5 @@
 import { SegmentedControl } from '@primer/react'
+import { copy } from './copy'
 import { RowsIcon, TableIcon } from '@primer/octicons-react'
 import type { ViewMode } from './viewMode'
 
@@ -11,9 +12,9 @@ import type { ViewMode } from './viewMode'
 
 export function ViewModeToggle({ mode, onChange }: { mode: ViewMode; onChange: (m: ViewMode) => void }) {
   return (
-    <SegmentedControl aria-label="View mode" size="small" onChange={(i) => onChange(i === 0 ? 'rows' : 'table')}>
-      <SegmentedControl.IconButton icon={RowsIcon} aria-label="Row view" selected={mode === 'rows'} />
-      <SegmentedControl.IconButton icon={TableIcon} aria-label="Table view" selected={mode === 'table'} />
+    <SegmentedControl aria-label={copy('viewMode.groupAriaLabel')} size="small" onChange={(i) => onChange(i === 0 ? 'rows' : 'table')}>
+      <SegmentedControl.IconButton icon={RowsIcon} aria-label={copy('viewMode.rowAriaLabel')} selected={mode === 'rows'} />
+      <SegmentedControl.IconButton icon={TableIcon} aria-label={copy('viewMode.tableAriaLabel')} selected={mode === 'table'} />
     </SegmentedControl>
   )
 }

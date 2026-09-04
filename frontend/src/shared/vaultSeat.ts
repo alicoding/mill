@@ -7,6 +7,6 @@ import type { VaultStatus } from './bindings'
 // vault" once it's closed, never both at once. Pure -- shared/
 // menuBridge.ts is the one caller.
 export function vaultSeatFor(status: VaultStatus | null): SeatOverride {
-  if (status?.Unlocked) return { commandId: 'secrets.lockVault', label: 'Lock vault', enabled: true }
-  return { commandId: 'secrets.unlockVault', label: 'Unlock vault', enabled: status !== null && status.Exists }
+  if (status?.Unlocked) return { commandId: 'secrets.lockVault', label: 'seats.vault.lock', enabled: true }
+  return { commandId: 'secrets.unlockVault', label: 'seats.vault.unlock', enabled: status !== null && status.Exists }
 }

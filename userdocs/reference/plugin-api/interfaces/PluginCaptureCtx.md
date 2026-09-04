@@ -29,7 +29,7 @@ destinationId: string;
 ```
 
 The card the user chose to land the capture in ("" for the top
-level) -- pass it as parentId to a content door.
+level) — pass it as parentId to a content door.
 
 ***
 

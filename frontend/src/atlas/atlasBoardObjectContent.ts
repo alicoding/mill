@@ -91,6 +91,14 @@ export interface AtlasNounContent {
   // face is live. The converged canvas rule the shield encodes: object
   // first, content second.
   clickShield?: boolean
+  // shieldHintKey (goal 0341): what the chrome band's tooltip says
+  // while this Kind's face is shielded -- the first click always
+  // selects, but what it buys differs per noun (a diagram starts
+  // panning, a PDF starts scrolling, a table starts cell editing), so
+  // the noun states it rather than one generic sentence standing in
+  // for all three. Omit and the band falls back to the generic
+  // shielded wording.
+  shieldHintKey?: string
   // wheelContained (goal 0271): the face hosts a viewer that consumes
   // wheel for its own scroll/pan/zoom (pdf.js, the drawio host), so
   // while that viewer is LIVE the board must never also pan from the
@@ -211,7 +219,7 @@ const boardObjectContentRegistry = new Map<string, AtlasBoardObjectContent>()
 // content.
 export function registerBoardObjectContent(kind: string, content: AtlasBoardObjectContent): void {
   if (boardObjectContentRegistry.has(kind)) {
-    throw new Error(`atlas board-object kind "${kind}" already has a registered content renderer -- check frontend/src/atlas/tools/`)
+    throw new Error(`atlas board-object kind "${kind}" already has a registered content renderer. Check frontend/src/atlas/tools/`)
   }
   // fileBacked derivation (ADR-0046, goal 0244 S0): once a Kind
   // declares `source`, that union is the single source of truth for

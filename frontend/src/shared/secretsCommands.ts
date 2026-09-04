@@ -32,14 +32,14 @@ export const SECRETS_COMMANDS: Command[] = [
     // actually shows there and with what label/enablement.
     id: 'secrets.lockVault',
     menu: { path: 'file', group: 4, order: 0 },
-    label: 'Lock vault',
+    label: 'commands.secrets.lockVault',
     defaultBinding: null,
     enabled: () => useVaultStatusStore.getState().vaultStatus?.Unlocked === true,
     run: () => { record(SecretService.LockVault()) },
   },
   {
     id: 'secrets.unlockVault',
-    label: 'Unlock vault',
+    label: 'commands.secrets.unlockVault',
     defaultBinding: null,
     enabled: () => {
       const status = useVaultStatusStore.getState().vaultStatus
@@ -49,7 +49,7 @@ export const SECRETS_COMMANDS: Command[] = [
   },
   {
     id: 'secrets.resetVault',
-    label: 'Start a new vault',
+    label: 'commands.secrets.resetVault',
     defaultBinding: null,
     // Only offered where the current file cannot be opened at all --
     // the stored key does not fit it, or there is no key for it here.

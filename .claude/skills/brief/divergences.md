@@ -72,6 +72,10 @@ this file is the record, a brief is a projection of it.
 
 ## Operations (the standing block for every builder brief)
 
+- **Poll in place: background-run completion notifications are LOST.
+  Never end a turn waiting on one — poll the run's own output with a
+  bounded loop inside ONE Bash call, then deliver in the same turn.**
+  (Two builders in one day still stopped to wait for a notification.)
 - Your worktree is your world: never write outside it; `cd` does not
   persist across Bash calls — use absolute paths (a stray file has
   landed in the main checkout twice this way).
@@ -84,10 +88,6 @@ this file is the record, a brief is a projection of it.
   `ps -eo command | grep -E "chrome-headless-shell|e2e/.build/mill-server" | grep -v grep`
   must be empty. Never match "playwright test" (it matches wait
   loops — caused a livelock).
-- Poll in place: background-run completion notifications are LOST.
-  Never stop a turn to "wait for the monitor" — poll the run's own
-  output with a bounded loop inside one Bash call, then deliver in
-  the same turn.
 - The nested `docs/` repo: shared physical path, orchestrator-
   committed — and for worktree-isolated agents it is now HARD-BLOCKED
   entirely (the sandbox refuses even plain-file writes outside the
@@ -96,6 +96,9 @@ this file is the record, a brief is a projection of it.
   frontmatter/record, BACKLOG line) VERBATIM in its final report,
   each labeled with the target path, and the orchestrator applies
   them at close. Briefs must ask for drafts, never for writes.
+- Obvious: `git stash` to set work aside during a conflicted merge.
+  Here: never — stash drops `MERGE_HEAD`; commit first, resolve in
+  place (goal 0339's builder lost a merge this way).
 - PR truth: after `gh pr create`, verify with
   `gh pr view <n> --json number,state` and report that output — one
   agent reported a PR that was never created.

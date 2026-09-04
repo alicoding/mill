@@ -10,7 +10,7 @@ the tutorial.
 
 Every tool needs an id already declared in
 `frontend/src/shared/atlasToolIdentity.ts`'s `ATLAS_TOOL_IDENTITIES`
-array — this is where the id, its command label, its bare-key shortcut
+array — this is where the id, its command label key, its bare-key shortcut
 (if any), and its authoring gesture (`interaction`) live, shared by both
 the tool file and the identity-agreement check that fails the build if
 the two ever disagree.
@@ -44,8 +44,8 @@ export const cardTool = {
   id: cardIdentity.id,
   icon: FileIcon,
   label: cardIdentity.commandLabel,
-  nounName: 'Card',
-  description: 'Adds a typed card of knowledge you can link, tag, and search.',
+  nounName: 'atlas:cardNoun.name',
+  description: 'atlas:cardNoun.description',
   shortcutKey: cardIdentity.shortcutKey,
   tray: 'quick',
   // The atom -- typed, linked, filed, searchable knowledge (goal 0224's

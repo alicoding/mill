@@ -14,7 +14,9 @@
     "buildRevisionTooltip": "Commit this build was built from",
     "testDataBadge": "TEST DATA",
     "docsLinkAriaLabel": "Mill on GitHub",
-    "docsLinkText": "Docs"
+    "docsLinkText": "Docs",
+    "version": "Mill v{{version}}",
+    "versionUnknown": "Mill"
   },
   "quickPanel": {
     "groups": {
@@ -98,7 +100,8 @@
     },
     "saveTask": "Save as task",
     "saveTaskHint": "Lands in the Task tracker, scheduled for today.",
-    "saveTaskError": "Couldn't save the task."
+    "saveTaskError": "Couldn't save the task.",
+    "captureTaskStatus": "In progress"
   },
   "shortcutsHelp": {
     "title": "Keyboard shortcuts",
@@ -286,7 +289,8 @@
   },
   "docsSearch": {
     "title": "Search docs",
-    "searchPlaceholder": "Search docs"
+    "searchPlaceholder": "Search docs",
+    "resultDescription": "{{section}} · {{snippet}}"
   },
   "codingLoop": {
     "dialogTitle": "Run from clipboard",

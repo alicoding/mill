@@ -18,8 +18,8 @@ import { userErrorFrom } from './userError'
 // i18n key the answering surface renders. Pure and exported so the
 // mapping is testable without a live run.
 const KEY_FOR_CODE: Record<string, string> = {
-  'run-not-waiting': 'resolveError.notWaiting',
-  'run-recovering': 'resolveError.recovering',
+  'run-not-waiting': 'errors.run-not-waiting',
+  'run-recovering': 'errors.run-recovering',
 }
 
 export function resolveErrorKey(err: unknown): string {
