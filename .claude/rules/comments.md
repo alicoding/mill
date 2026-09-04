@@ -9,22 +9,17 @@ regression test pins down. It never carries decision provenance** — who
 decided something, when, in which session, or a quote of the product
 owner. Phrases like "direct user decision", "owner-directed", "caught
 live", "this session", and calendar dates are history, not constraints;
-history lives in `docs/SPEC.md`, `docs/adr/`, and `docs/goals/`. A
-comment may cite one of those by id or section, and that pointer is
-where a reader goes for the why. The test: delete the sentence — if the
-next maintainer loses nothing they'd need to safely change the code, it
-was narrative.
+history lives in `docs/SPEC.md`, `docs/adr/`, and `docs/goals/`, cited
+by id/section. The test: delete the sentence — if the next maintainer
+loses nothing they'd need to safely change the code, it was narrative.
 
-For regression tests specifically: name the failure property, not the
-discovery story. "Regression: the preview's nested canvas captured page
-scroll" says what must keep passing; a discovery-story sentence says
-nothing a maintainer can use.
+For regression tests: name the failure property, not the discovery
+story. "Regression: the preview's nested canvas captured page scroll"
+says what must keep passing; a discovery-story sentence doesn't.
 
-Enforced by `scripts/check-comment-hygiene.sh`, run by lefthook
-(pre-commit) and CI's `comment-hygiene` job. It deny-lists the known
-provenance phrases everywhere in hand-written `.go`/`.ts`/`.tsx` files,
-and calendar dates on comment lines only (dates inside code/string
-literals — test fixtures — are legitimate). A genuine false positive (a
-real domain concept named "owner", say) may carry
-`comment-hygiene:allow` on the same line; never use the marker to
-smuggle actual provenance past the gate.
+Enforced by `scripts/check-comment-hygiene.sh` (lefthook + CI's
+`comment-hygiene` job): deny-lists known provenance phrases in
+hand-written `.go`/`.ts`/`.tsx` files, and calendar dates on comment
+lines only (dates inside code/string literals are legitimate). A false
+positive may carry `comment-hygiene:allow` on the same line; never use
+it to smuggle real provenance past the gate.
