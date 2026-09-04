@@ -117,8 +117,8 @@ export async function loadPluginStorage(): Promise<Record<string, Record<string,
 }
 
 // collectReloadCommand registers the host's own per-plugin reload
-// (goal 0319) as an ordinary registry command, one per loaded plugin
-// the way every id-bearing command in this codebase is shaped
+// (goal 0319) as an ordinary registry command, one per scanned plugin,
+// shaped the way every id-bearing command in this codebase is
 // (atlas.create.<kind>, view.open.<plugin>.<view>) -- Command.run takes
 // no arguments, so the id IS the argument. It rides the plugin's own
 // collector, which means the reload sweep drops it with everything

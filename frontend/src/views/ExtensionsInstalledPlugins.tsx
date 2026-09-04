@@ -54,7 +54,7 @@ export function ExtensionsInstalledPlugins() {
 	// Per-plugin reload (goal 0319) renders the registry command, never
 	// a second code path: the palette entry and this button are the
 	// same command, and its enabled() is the one truth about whether
-	// the plugin is currently loaded.
+	// reloading this plugin could do anything.
 	const reloadCommand = (id: string) => findCommand(`plugin.reload.${id}`)
 	const openFolder = () => {
 		PluginService.RevealPluginsDir().catch(console.error)
