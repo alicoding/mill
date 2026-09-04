@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { dispatchCommandForEvent, findCommand, isWorkflowEditorTabActive, runCommand } from '../shared/commands'
+import { findCommand, isWorkflowEditorTabActive, runCommand } from '../shared/commands'
+import { dispatchCommandForEvent } from '../shared/commandDispatch'
 import { comboFromEvent, comboKey, isEditableTarget } from '../shared/keybinding'
 import { useAppStore } from '../shared/store'
 import { useUISignalStore } from '../shared/uiSignalStore'

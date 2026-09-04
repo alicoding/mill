@@ -25,6 +25,11 @@ type commandDeclaration struct {
 	Binding *string  `json:"binding"`
 	Surface []string `json:"surface"`
 	Enabled bool     `json:"enabled"`
+	// The target kind a command requires (goal 0343): a command with
+	// one never runs without a row/selection to act on, so its
+	// enablement column says what it needs rather than claiming the
+	// command is always available.
+	Needs string `json:"needs"`
 }
 
 // Markers bounding the one generated region inside the otherwise
@@ -58,7 +63,7 @@ func GenerateCommandTable(frontendSharedDir string) (string, error) {
 	b.WriteString("|---|---|---|---|---|\n")
 	for _, c := range commands {
 		fmt.Fprintf(&b, "| `%s` | %s | %s | %s | %s |\n",
-			c.ID, c.Label, describeBinding(c.Binding), describeSurface(c.Surface), describeEnablement(c.Enabled))
+			c.ID, c.Label, describeBinding(c.Binding), describeSurface(c.Surface), describeEnablement(c.Enabled, c.Needs))
 	}
 	return b.String(), nil
 }
@@ -77,7 +82,23 @@ func describeSurface(surface []string) string {
 	return strings.Join(surface, ", ")
 }
 
-func describeEnablement(enabled bool) string {
+// The noun a targeted command needs, in the reader's vocabulary --
+// never the context kind's own identifier.
+var targetNouns = map[string]string{
+	"workflow": "workflow",
+	"run":      "run",
+	"entry":    "clipboard entry",
+	"card":     "card",
+}
+
+func describeEnablement(enabled bool, needs string) string {
+	if needs != "" {
+		noun, ok := targetNouns[needs]
+		if !ok {
+			noun = needs
+		}
+		return fmt.Sprintf("Acts on the selected %s", noun)
+	}
 	if enabled {
 		return "Conditional — available only in a matching state"
 	}

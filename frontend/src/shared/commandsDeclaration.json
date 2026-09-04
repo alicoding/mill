@@ -6,7 +6,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.arrange",
@@ -15,7 +16,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.card.exportAs",
@@ -24,7 +26,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.companion.toggle",
@@ -33,7 +36,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.contents.open",
@@ -42,7 +46,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.coverage",
@@ -51,7 +56,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.create.area",
@@ -60,7 +66,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "atlas.create.card",
@@ -69,7 +76,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "atlas.create.image",
@@ -78,7 +86,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "atlas.create.note",
@@ -87,7 +96,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "atlas.create.table",
@@ -96,7 +106,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "atlas.delete.selection",
@@ -105,7 +116,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.escapeLadder",
@@ -114,7 +126,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.export",
@@ -123,7 +136,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.focusDirection",
@@ -132,7 +146,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.focusNext",
@@ -141,7 +156,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.focusPrevious",
@@ -150,7 +166,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.group.selection",
@@ -159,7 +176,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.import",
@@ -168,7 +186,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.jump",
@@ -177,7 +196,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.matrix",
@@ -186,7 +206,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.minimap.toggle",
@@ -195,7 +216,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.nudgeSelection",
@@ -204,7 +226,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.openFocused",
@@ -213,7 +236,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.perspective",
@@ -222,7 +246,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.redo",
@@ -231,7 +256,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.roadmap",
@@ -240,7 +266,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.selectAll",
@@ -249,7 +276,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.share.copyContext",
@@ -258,7 +286,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.share.copyLinks",
@@ -267,7 +296,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.undo",
@@ -276,7 +306,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "atlas.up",
@@ -285,21 +316,24 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "backup.export",
     "label": "Export everything",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "backup.now",
     "label": "Back up now",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "canvas.delete",
@@ -308,7 +342,8 @@
     "surface": [
       "composition"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "canvas.fitView",
@@ -317,7 +352,8 @@
     "surface": [
       "composition"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "canvas.redo",
@@ -326,7 +362,8 @@
     "surface": [
       "composition"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "canvas.undo",
@@ -335,7 +372,8 @@
     "surface": [
       "composition"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "canvas.zoomIn",
@@ -344,7 +382,8 @@
     "surface": [
       "composition"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "canvas.zoomOut",
@@ -353,133 +392,176 @@
     "surface": [
       "composition"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "capture.note",
     "label": "Capture a note",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "clipboard.delete",
+    "label": "Delete",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": "entry"
   },
   {
     "id": "clipboard.history.open",
     "label": "Clipboard history",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "clipboard.pin",
+    "label": "Pin",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entry"
+  },
+  {
+    "id": "clipboard.unpin",
+    "label": "Unpin",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entry"
   },
   {
     "id": "codingLoop.run",
     "label": "Run from clipboard…",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "configure.new.aiproviders",
     "label": "New AI provider",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "configure.new.conversionprofiles",
     "label": "New conversion profile",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "configure.new.decisions",
     "label": "New decision",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "configure.new.execenvs",
     "label": "New environment",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "configure.new.integration",
     "label": "New integration",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "configure.new.lists",
     "label": "New list",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "configure.new.mcpservers",
     "label": "New MCP server",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "configure.new.steptypes",
     "label": "New step type",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "docs.search",
     "label": "Search docs",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "edit.save",
     "label": "Save",
     "binding": "⌘S",
     "surface": null,
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "edit.saveAll",
     "label": "Save all changes",
     "binding": null,
     "surface": null,
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "extensions.exportAudit",
     "label": "Export plugin audit",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "help.openDataFolder",
     "label": "Open data folder",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "help.reportIssue",
     "label": "Report an issue…",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "help.shortcuts",
     "label": "Keyboard shortcuts help",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "object.openInDefaultApp",
@@ -488,7 +570,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "object.rename",
@@ -497,35 +580,40 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "palette.open",
     "label": "Open command palette",
     "binding": "⌘K",
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "panel.applyClipboard",
     "label": "Apply from clipboard",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "panel.open",
     "label": "Open Quick Panel",
     "binding": null,
     "surface": null,
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "panel.openMill",
     "label": "Open Mill",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "review.rules",
@@ -534,238 +622,312 @@
     "surface": [
       "review"
     ],
-    "enabled": false
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "run.monitor",
+    "label": "Show run steps",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "run"
+  },
+  {
+    "id": "run.open",
+    "label": "Open run",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "run"
+  },
+  {
+    "id": "run.stop",
+    "label": "Stop run",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": "run"
   },
   {
     "id": "runMonitor.open",
     "label": "Run monitor",
     "binding": null,
     "surface": null,
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "secrets.lockVault",
     "label": "Lock vault",
     "binding": null,
     "surface": null,
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "secrets.resetVault",
     "label": "Start a new vault",
     "binding": null,
     "surface": null,
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "secrets.unlockVault",
     "label": "Unlock vault",
     "binding": null,
     "surface": null,
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "settings.open",
     "label": "Open Settings",
     "binding": "⌘,",
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "settings.open.appearance",
     "label": "Settings › Appearance",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "settings.open.backups",
     "label": "Settings › Backups",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "settings.open.connections",
     "label": "Settings › Connections",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "settings.open.extensions",
     "label": "Settings › Extensions",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "settings.open.general",
     "label": "Settings › General",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "settings.open.notifications",
     "label": "Settings › Notifications",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "settings.open.shortcuts",
     "label": "Settings › Shortcuts",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "settings.open.updates",
     "label": "Settings › Updates",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "tab.close",
     "label": "Close tab",
     "binding": "⌘W",
     "surface": null,
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "tab.closeAll",
     "label": "Close all tabs",
     "binding": "⌘⇧W",
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "tab.closeOthers",
     "label": "Close other tabs",
     "binding": "⌘⌥W",
     "surface": null,
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "tab.next",
     "label": "Next tab",
     "binding": "⌃TAB",
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "tab.prev",
     "label": "Previous tab",
     "binding": "⌃⇧TAB",
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "update.check",
     "label": "Check for updates",
     "binding": null,
     "surface": null,
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "update.downloadAndInstall",
     "label": "Download the update and install",
     "binding": null,
     "surface": null,
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "update.relaunch",
     "label": "Restart to finish updating",
     "binding": null,
     "surface": null,
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "update.trustSigning",
     "label": "Trust Mill's signing",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "update.whatsNew",
     "label": "What's new",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "view.activity",
     "label": "Go to Activity",
     "binding": "⌘4",
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "view.atlas",
     "label": "Go to Atlas",
     "binding": "⌘3",
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "view.composition",
     "label": "Go to Workflows",
     "binding": "⌘1",
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "view.configure",
     "label": "Go to Configure",
     "binding": "⌘2",
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "view.docs",
     "label": "Open docs",
     "binding": null,
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "view.home",
     "label": "Go to Home",
     "binding": "⌘0",
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "view.review",
     "label": "Go to Review",
     "binding": "⌘5",
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "view.secrets",
     "label": "Go to Secrets",
     "binding": "⌘6",
     "surface": null,
-    "enabled": false
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "workflow.edit",
     "label": "Edit workflow",
     "binding": null,
     "surface": null,
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "workflow.new",
     "label": "New workflow",
     "binding": "⌘N",
     "surface": null,
-    "enabled": true
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "workflow.open",
+    "label": "Open workflow",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": "workflow"
+  },
+  {
+    "id": "workflow.pin",
+    "label": "Pin",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "workflow"
   },
   {
     "id": "workflow.publish",
@@ -774,20 +936,39 @@
     "surface": [
       "composition"
     ],
-    "enabled": true
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "workflow.run",
     "label": "Run workflow",
     "binding": "⌘↩",
     "surface": null,
-    "enabled": true
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "workflow.runAndWatch",
+    "label": "Run and watch",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": "workflow"
   },
   {
     "id": "workflow.save",
     "label": "Save workflow",
     "binding": "⌘S",
     "surface": null,
-    "enabled": true
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "workflow.unpin",
+    "label": "Unpin",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "workflow"
   }
 ]

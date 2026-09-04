@@ -1,5 +1,5 @@
-import type { View } from '../shared/store'
-import type { WorkTabSpec } from '../shared/workTabs'
+import type { View } from './store'
+import type { WorkTabSpec } from './workTabs'
 
 // The main window's navigation targets, as the Quick Panel / tray
 // panel hand them to SettingsService.OpenMainWindow (Go re-emits the

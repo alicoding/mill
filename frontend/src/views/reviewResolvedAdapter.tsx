@@ -1,4 +1,5 @@
 import type { MCPWriteResolved, RunSummary } from '../shared/bindings'
+import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import type { InventoryItem } from '../shared/inventoryItem'
 import { formatRunStartedAt, runStatusLabel } from '../shared/runTime'
@@ -38,12 +39,14 @@ function runStatusVariant(run: RunSummary): StatusStampVariant {
 type TFunctionLike = (key: string, options?: Record<string, unknown>) => string
 
 // resolvedEntryToInventoryItem keeps every resolved row's own click
-// behavior: a run row opens its run (docs/goals/0002 item 5's row
-// drill-down); an MCP write has no run to drill into, so its onOpen is
-// inert, the same as the non-interactive card it replaces.
+// behavior: a run row opens its run through the run.open command with
+// that row as its target (goal 0343 -- the same door the pending items
+// and the tray use, docs/goals/0002 item 5's row drill-down); an MCP
+// write has no run to drill into, so its onOpen is inert, the same as
+// the non-interactive card it replaces.
 export function resolvedEntryToInventoryItem(
   entry: ResolvedEntry,
-  opts: { onOpenRun: (run: RunSummary) => void; t: TFunctionLike },
+  opts: { t: TFunctionLike },
 ): InventoryItem {
   if (entry.kind === 'run') {
     const { run } = entry
@@ -61,7 +64,9 @@ export function resolvedEntryToInventoryItem(
       updatedAt: run.startedAt,
       createdAt: run.startedAt,
       updatedLabel: formatRunStartedAt(run.startedAt),
-      onOpen: () => opts.onOpenRun(run),
+      onOpen: () => { void runCommand('run.open', { kind: 'run', runId: run.runID, workflowId: run.workflowID }) },
+      // Opening the run is the row's own click; the kebab would only
+      // repeat it.
       menuActions: [],
     }
   }

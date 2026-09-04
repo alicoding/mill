@@ -21,9 +21,9 @@ export function buildPaneContextMenuItems(
 
 // The canvas edge's right-click items (goal 0075's audit G4): Select
 // connection always surfaces the edge inspector (where Branch
-// conditions already live); Delete connection stays visible-but-
-// disabled in view mode, real in edit mode -- the same honesty
-// buildStepContextMenuItems' own Delete step already applies.
+// conditions already live); Delete connection is OMITTED in view mode
+// (goal 0343's one rule for every menu), real in edit mode -- the same
+// treatment buildStepContextMenuItems' own Delete step applies.
 export function buildEdgeContextMenuItems(
   t: TFunction<'composition'>,
   readOnly: boolean,
@@ -32,7 +32,9 @@ export function buildEdgeContextMenuItems(
 ): ContextMenuItem[] {
   return [
     { id: 'select', label: t('canvas.contextMenu.selectConnection'), run: () => actions.selectEdge(edgeId) },
-    { id: 'd1', divider: true },
-    { id: 'delete', label: t('canvas.contextMenu.deleteConnection'), danger: true, disabled: readOnly, run: () => actions.removeEdge(edgeId) },
+    ...(readOnly ? [] : [
+      { id: 'd1', divider: true },
+      { id: 'delete', label: t('canvas.contextMenu.deleteConnection'), danger: true, run: () => actions.removeEdge(edgeId) },
+    ] satisfies ContextMenuItem[]),
   ]
 }

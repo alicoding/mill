@@ -3,8 +3,9 @@ import type { ContextMenuItem } from '../shared/ContextMenu'
 
 // The step node's right-click items (goal 0075), split from
 // CompositionCanvas at the 500-line convention: Open details mirrors
-// double-click; Delete step stays visible-but-disabled in view mode
-// (the toolbar's own honesty) and real in edit mode.
+// double-click; Delete step is OMITTED in view mode (goal 0343 --
+// unavailable means absent in every menu, never dimmed), real in edit
+// mode.
 export function buildStepContextMenuItems(
   t: TFunction<'composition'>,
   readOnly: boolean,
@@ -13,7 +14,9 @@ export function buildStepContextMenuItems(
 ): ContextMenuItem[] {
   return [
     { id: 'details', label: t('canvas.contextMenu.openDetails'), run: actions.openDetails },
-    { id: 'd1', divider: true },
-    { id: 'delete', label: t('canvas.contextMenu.deleteStep'), danger: true, disabled: readOnly, run: () => actions.removeNode(nodeId) },
+    ...(readOnly ? [] : [
+      { id: 'd1', divider: true },
+      { id: 'delete', label: t('canvas.contextMenu.deleteStep'), danger: true, run: () => actions.removeNode(nodeId) },
+    ] satisfies ContextMenuItem[]),
   ]
 }

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, IconButton, Stack, Text } from '@primer/react'
 import { CheckIcon, CopyIcon, PinIcon, PinSlashIcon, TrashIcon } from '@primer/octicons-react'
 import { ClipboardHistoryService, type ClipboardHistoryEntry } from '../shared/bindings'
-import { background } from '../shared/background'
+import { runCommand } from '../shared/commands'
 import { looksLikeCode } from './looksLikeCode'
 import styles from './ClipboardHistoryDialog.module.css'
 
@@ -36,15 +36,16 @@ export function ClipboardHistoryDetail({ entry, onChanged }: { entry: ClipboardH
       // takes (SecretsDetailDialog.tsx's secret-detail-error testid).
       .catch((err: unknown) => setCopyError(String(err)))
   }
-  // Pin/delete stay background() calls: goal 0335 confirmed neither
-  // has a static registry command to route through -- both act on
-  // this specific entry.ID, and the Command shape (shared/commands.ts)
-  // carries no argument for run() to receive it through.
+  // Pin/unpin/delete are registry commands with this entry as their
+  // target (goal 0343). Pin and Unpin are separate commands whose
+  // enablement reads the context's own `pinned`, so the button renders
+  // whichever one can actually run.
+  const ctx = { kind: 'entry' as const, entryId: entry.ID, pinned: entry.Pinned }
   const doPin = () => {
-    void background(ClipboardHistoryService.SetClipboardHistoryPinned(entry.ID, !entry.Pinned).then(onChanged), 'clipboardHistory.pin')
+    void runCommand(entry.Pinned ? 'clipboard.unpin' : 'clipboard.pin', ctx).then(onChanged)
   }
   const doDelete = () => {
-    void background(ClipboardHistoryService.DeleteClipboardHistoryEntry(entry.ID).then(onChanged), 'clipboardHistory.delete')
+    void runCommand('clipboard.delete', ctx).then(onChanged)
   }
 
   const copied = copiedId === entry.ID

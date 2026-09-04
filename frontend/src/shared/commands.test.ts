@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { COMMANDS, dispatchCommandForEvent, findCommand, runCommand, surfacesIntersect } from './commands'
+import { COMMANDS, findCommand, runCommand, surfacesIntersect } from './commands'
+import { dispatchCommandForEvent } from './commandDispatch'
 import type { Command } from './commands'
 import { useAppStore } from './store'
 import { useUISignalStore } from './uiSignalStore'

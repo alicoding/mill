@@ -8,6 +8,7 @@ import type { RunSummary } from '../../bindings/github.com/alicoding/mill/intern
 import { recentRuns, runningRuns, settledRunKind } from './trayPanelRuns'
 import { background } from '../shared/background'
 import { runCommand } from '../shared/commands'
+import type { CommandContext } from '../shared/commandContext'
 import styles from './TrayPanel.module.css'
 
 // The menu-bar status panel (docs/goals/0189): the surface the tray
@@ -21,6 +22,9 @@ interface NeedsYouRow {
   key: string
   title: string
   detail: string
+  // The run behind this row, when there is one (goal 0343) -- clicking
+  // the row then opens that run rather than the queue it sits in.
+  ctx?: CommandContext
 }
 
 const MAX_NEEDS_ROWS = 5
@@ -42,13 +46,11 @@ export function TrayPanel() {
   const [automaticCount, setAutomaticCount] = useState(0)
   const [confirmingQuit, setConfirmingQuit] = useState(false)
 
-  // The needs-you rows and recent-row's own "bring the main window to
-  // THIS view" jumps stay background() calls (goal 0313; goal 0335
-  // audited the rest of this window): each carries a live target (a
-  // run id, a workflow id) the Command shape has no field for, so
-  // there is no static registry command to route through -- a failure
-  // here has nowhere but background()'s failure counter to go until
-  // this window grows its own notice surface.
+  // The needs-you rows jump to a VIEW, not a row: their three sources
+  // (parked runs, agent write requests, guarded actions) share no
+  // single target, so the row opens the Review queue rather than one
+  // record. Still a background() call -- there is no view-jump command
+  // for an auxiliary window beyond panel.openMill's bare focus.
   const openMain = (view: string) => {
     void background(SettingsService.OpenMainWindow(view), 'trayPanel.openMain')
   }
@@ -64,6 +66,10 @@ export function TrayPanel() {
           key: `run-${r.runID}`,
           title: r.workflowLabel || r.workflowID,
           detail: t('trayPanel.waitingApproval'),
+          // A parked run has a run to open; an agent write request and
+          // a guarded action have none, so those rows keep the queue
+          // as their destination.
+          ctx: { kind: 'run' as const, runId: r.runID, workflowId: r.workflowID },
         })),
         ...writes.map((w) => ({
           key: `write-${w.id}`,
@@ -111,15 +117,12 @@ export function TrayPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Owner-reported "Stop does nothing" pattern goal 0313 fixed
-  // everywhere else (background() instead of a swallowed rejection).
-  // Goal 0335 confirmed there is still no registry command here: the
-  // Command shape (shared/commands.ts) carries no argument, and
-  // cancelling always names a specific run id -- inventing a
-  // parameterised command shape was explicitly out of that goal's
-  // scope, so this stays a background() call.
-  const stopRun = (runID: string) => {
-    void background(ExecutionService.CancelRun(runID).then(refresh), 'trayPanel.stopRun')
+  // Stop and the recent rows are registry commands with this row's own
+  // run as their target (goal 0343) -- the label, the effect and the
+  // failure reporting all live in shared/rowCommands.ts, and this
+  // window supplies only WHICH run.
+  const stopRun = (run: RunSummary) => {
+    void runCommand('run.stop', { kind: 'run', runId: run.runID, workflowId: run.workflowID }).then(refresh)
   }
 
   return (
@@ -141,7 +144,13 @@ export function TrayPanel() {
         <div className={styles.section} data-testid="tray-needs-you">
           <Text size="small" weight="semibold" className={styles.sectionTitle}>{t('trayPanel.needsYou')}</Text>
           {needsYou.slice(0, MAX_NEEDS_ROWS).map((row) => (
-            <button key={row.key} type="button" className={styles.row} onClick={() => openMain('review')} data-testid="tray-needs-row">
+            <button
+              key={row.key}
+              type="button"
+              className={styles.row}
+              onClick={() => { if (row.ctx) void runCommand('run.open', row.ctx); else openMain('review') }}
+              data-testid="tray-needs-row"
+            >
               <span className={styles.rowTitle}>{row.title}</span>
               <span className={styles.rowDetail}>{row.detail}</span>
             </button>
@@ -172,7 +181,7 @@ export function TrayPanel() {
               <span className={styles.rowTitle}>{r.workflowLabel || r.workflowID}</span>
               <span className={styles.rowDetail}>{startedAgo(String(r.startedAt))}</span>
             </div>
-            <Button size="small" variant="invisible" className={styles.stopButton} onClick={() => stopRun(r.runID)} data-testid="tray-stop-run">
+            <Button size="small" variant="invisible" className={styles.stopButton} onClick={() => stopRun(r)} data-testid="tray-stop-run">
               {t('trayPanel.stop')}
             </Button>
           </div>
@@ -192,7 +201,7 @@ export function TrayPanel() {
         {recent.map((r) => {
           const kind = settledRunKind(r.status)
           return (
-            <button key={r.runID} type="button" className={styles.row} onClick={() => background(SettingsService.ShowRunMonitor(r.workflowID, r.runID), 'trayPanel.showRunMonitor')} data-testid="tray-recent-row" data-run-kind={kind}>
+            <button key={r.runID} type="button" className={styles.row} onClick={() => { void runCommand('run.monitor', { kind: 'run', runId: r.runID, workflowId: r.workflowID }) }} data-testid="tray-recent-row" data-run-kind={kind}>
               <span className={styles.rowTitle}>{r.workflowLabel || r.workflowID}</span>
               <span className={styles.rowDetail}>
                 {t(kind === 'done' ? 'trayPanel.runDone' : kind === 'failed' ? 'trayPanel.runFailed' : 'trayPanel.runStopped')} · {startedAgo(String(r.completedAt || r.startedAt))}

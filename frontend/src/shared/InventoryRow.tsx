@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ActionList, ActionMenu, IconButton, Stack, Text } from '@primer/react'
 import { KebabHorizontalIcon } from '@primer/octicons-react'
 import { ConfirmDialog } from './ConfirmDialog'
-import { menuActionsToContextMenuItems, runMenuAction, type ContextMenuOpener, type InventoryItem, type InventoryMenuAction } from './inventoryItem'
+import { menuActionLabel, menuActionsToContextMenuItems, performMenuAction, runMenuAction, visibleMenuActions, type ContextMenuOpener, type InventoryItem, type InventoryMenuAction } from './inventoryItem'
 import styles from './InventoryList.module.css'
 
 // One dense, identity-differentiated row for every resource inventory
@@ -24,6 +24,9 @@ import styles from './InventoryList.module.css'
 export function InventoryRow({ item, onOpenMenu }: { item: InventoryItem; onOpenMenu: ContextMenuOpener }) {
   const { t } = useTranslation('common')
   const [pendingConfirm, setPendingConfirm] = useState<InventoryMenuAction | null>(null)
+  // Unavailable means ABSENT (goal 0343): an action whose registry
+  // command can't act on this row never renders, in either opener.
+  const actions = visibleMenuActions(item.menuActions)
   return (
     <>
     <ActionList.Item
@@ -31,9 +34,9 @@ export function InventoryRow({ item, onOpenMenu }: { item: InventoryItem; onOpen
       data-testid="inventory-row"
       data-entity={item.entity}
       onContextMenu={(e) => {
-        if (item.menuActions.length === 0) return
+        if (actions.length === 0) return
         e.preventDefault()
-        onOpenMenu({ x: e.clientX, y: e.clientY, items: menuActionsToContextMenuItems(item.menuActions, setPendingConfirm) })
+        onOpenMenu({ x: e.clientX, y: e.clientY, items: menuActionsToContextMenuItems(actions, setPendingConfirm) })
       }}
     >
       <ActionList.LeadingVisual>
@@ -90,7 +93,7 @@ export function InventoryRow({ item, onOpenMenu }: { item: InventoryItem; onOpen
           )}
           {item.meta}
           {item.primaryAction}
-          {item.menuActions.length > 0 && (
+          {actions.length > 0 && (
             <ActionMenu>
               <ActionMenu.Anchor>
                 <IconButton
@@ -103,13 +106,13 @@ export function InventoryRow({ item, onOpenMenu }: { item: InventoryItem; onOpen
               </ActionMenu.Anchor>
               <ActionMenu.Overlay>
                 <ActionList>
-                  {item.menuActions.map((action) => (
+                  {actions.map((action, i) => (
                     <ActionList.Item
-                      key={action.label}
+                      key={`${menuActionLabel(action)}-${i}`}
                       variant={action.danger ? 'danger' : 'default'}
                       onSelect={() => runMenuAction(action, setPendingConfirm)}
                     >
-                      {action.label}
+                      {menuActionLabel(action)}
                     </ActionList.Item>
                   ))}
                 </ActionList>
@@ -125,7 +128,7 @@ export function InventoryRow({ item, onOpenMenu }: { item: InventoryItem; onOpen
         body={pendingConfirm.confirm.body}
         onCancel={() => setPendingConfirm(null)}
         onConfirm={() => {
-          pendingConfirm.onClick()
+          performMenuAction(pendingConfirm)
           setPendingConfirm(null)
         }}
       />

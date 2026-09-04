@@ -6,7 +6,8 @@ import { FilteredActionList } from '@primer/react/experimental'
 import { CommandPaletteIcon, PencilIcon, PlayIcon, TabIcon, XIcon } from '@primer/octicons-react'
 import { Events } from '@wailsio/runtime'
 import { ExecutionService, RunKind, TriggerService } from '../shared/bindings'
-import { COMMANDS, commandLabel, runCommand } from '../shared/commands'
+import { COMMANDS, commandAvailable, commandLabel, runCommand } from '../shared/commands'
+import { ambientContext } from '../shared/ambientContext'
 import { generateSamplePayload } from '../shared/configSchema'
 import { useAppStore } from '../shared/store'
 import { useVaultStatusStore } from '../shared/vaultStatusStore'
@@ -269,7 +270,7 @@ export function CommandPalette() {
     // (docs/goals/0015), replacing this file's own former local
     // ShortcutHint + effectiveBinding computation.
     trailingVisual: <HotkeyHint commandId={command.id} />,
-    run: () => { void runCommand(command.id) },
+    run: () => { void runCommand(command.id, ctx) },
   })
 
   const workflowEntries = (wf: NonNullable<typeof workflows>[number]): PaletteEntry[] => {
@@ -348,7 +349,13 @@ export function CommandPalette() {
   // own palette convention: a command failing its `when` clause simply
   // doesn't appear in results) -- checked last since it's the only
   // predicate that can call into live app state.
-  const isCommandAvailable = (c: (typeof COMMANDS)[number]) => !c.paletteHidden && (!c.enabled || c.enabled())
+  // The palette has no row to point at, so it offers a targeted
+  // command (Command.needs, goal 0343) only when ambientContext()
+  // resolves that kind -- the active workflow editor tab, or the Atlas
+  // card being viewed. Everything else it omits, exactly as it already
+  // omits a command whose enabled() is false.
+  const ctx = ambientContext()
+  const isCommandAvailable = (c: (typeof COMMANDS)[number]) => !c.paletteHidden && commandAvailable(c, ctx)
 
   const allEntries = useMemo<PaletteEntry[]>(() => {
     if (restState) {

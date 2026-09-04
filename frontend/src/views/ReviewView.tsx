@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionList, ActionMenu, Button, Heading, SegmentedControl, Select, Spinner, Stack, Text } from '@primer/react'
+import { ActionList, ActionMenu, Button, Heading, Link, SegmentedControl, Select, Spinner, Stack, Text } from '@primer/react'
 import { StatusStamp } from '../shared/StatusStamp'
 import { Blankslate } from '@primer/react/experimental'
 import { BugIcon, InboxIcon, PersonIcon, PlugIcon, ShieldIcon } from '@primer/octicons-react'
@@ -9,6 +9,8 @@ import type { MCPWriteResolved, RunSummary } from '../shared/bindings'
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
 import { ListToolbar } from '../shared/ListToolbar'
 import { useAppStore } from '../shared/store'
+import { commandLabel, findCommand, runCommand } from '../shared/commands'
+import type { CommandContext } from '../shared/commandContext'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { useApprovalResolution } from '../shared/approvalResolution'
 import { usePendingReview } from '../review/usePendingReview'
@@ -79,7 +81,6 @@ function ReviewView() {
   const { errorKeyFor, resolveApproval } = useApprovalResolution()
   const KIND_LABELS = kindLabelsFor(t)
   const workflows = useAppStore((s) => s.workflows)
-  const requestOpenWorkflow = useAppStore((s) => s.requestOpenWorkflow)
   // The queue's own data comes from the one shared source the sidebar
   // badge and the launch notice also read (review/usePendingReview.ts):
   // parked runs, their resolutions, and the SAME durable pending-write
@@ -163,8 +164,11 @@ function ReviewView() {
   // every Review row -- pending or resolved -- opens its run in the
   // app-wide work-tab shell at the workflow's Runs inner tab, with that
   // run's own detail already open. ONE run-detail viewer (docs/SPEC.md
-  // §7's lock) -- Review itself never renders run detail.
-  const openRun = (run: RunSummary) => requestOpenWorkflow(run.workflowID, run.runID)
+  // §7's lock) -- Review itself never renders run detail. The run.open
+  // command is that door for every surface now (goal 0343); this view
+  // supplies which run.
+  const runCtx = (run: RunSummary): CommandContext => ({ kind: 'run', runId: run.runID, workflowId: run.workflowID })
+  const openRun = (run: RunSummary) => { void runCommand('run.open', runCtx(run)) }
 
   const attrsFor = (run: RunSummary) => attrsForPending(workflows?.find((w) => w.ID === run.workflowID)?.Attributes ?? [], run.pending?.inputAttributes)
 
@@ -325,7 +329,18 @@ function ReviewView() {
             <Stack direction="vertical" gap="condensed">
               <Stack direction="horizontal" gap="condensed" align="center">
                 {isDebugPark(run) ? <BugIcon size={16} /> : isHumanReview(run) ? <PersonIcon size={16} /> : <ShieldIcon size={16} />}
-                <Text weight="semibold">{run.workflowLabel}</Text>
+                {/* The workflow's name IS the door into its run (goal
+                    0343) -- the same run.open command the Open run
+                    button below fires, so the two can never drift. */}
+                <Link
+                  as="button"
+                  type="button"
+                  className={mobileStyles.workflowLink}
+                  onClick={(e) => { e.stopPropagation(); openRun(run) }}
+                  data-testid="review-item-workflow"
+                >
+                  {run.workflowLabel}
+                </Link>
                 <StatusStamp variant={isDebugPark(run) ? 'identity' : 'caution'} data-testid={isDebugPark(run) ? 'review-debug-badge' : undefined}>
                   {isDebugPark(run) ? (run.pending?.stepped ? t('reviewView.pausedStepModeLower') : t('reviewView.pausedAtBreakpointLower')) : t('reviewView.awaitingApprovalLower')}
                 </StatusStamp>
@@ -353,6 +368,12 @@ function ReviewView() {
                 </Button>
                 <Button size="small" variant="danger" data-testid="review-deny" onClick={() => resolve(run, false)}>
                   {isDebugPark(run) ? t('reviewView.stop') : t('reviewView.deny')}
+                </Button>
+                {/* The door into the run behind this request, beside the
+                    decision it asks for (goal 0343): a reviewer can see
+                    what actually ran before approving it. */}
+                <Button size="small" variant="invisible" data-testid="review-open-run" onClick={() => openRun(run)}>
+                  {commandLabel(findCommand('run.open')!)}
                 </Button>
                 {errorKeyFor(run.runID) && (
                   <Text as="p" className={styles.error} data-testid="review-resolve-error">{tc(errorKeyFor(run.runID))}</Text>
@@ -388,7 +409,6 @@ function ReviewView() {
         resolved={resolved}
         resolvedWrites={resolvedWrites}
         workflowFilter={workflowFilter}
-        onOpenRun={openRun}
       />
       </>)}
 

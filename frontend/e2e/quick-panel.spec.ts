@@ -141,7 +141,10 @@ test('a seeded workflow is listed and Enter runs it, showing the outcome in the 
   await expect(page.getByTestId('quick-panel-action-run')).toContainText('Run')
   await expect(page.getByTestId('quick-panel-action-run-watch')).toContainText('Run and watch')
   await expect(page.getByTestId('quick-panel-action-run-watch-shortcut')).toHaveText('⌘⇧↩')
-  await expect(page.getByTestId('quick-panel-action-open')).toContainText('Open workflow')
+  // ⌘↩ names the run this panel just started, not the workflow (goal
+  // 0343): the row's action IS the run.open command with that run as
+  // its target, so the label says what it will actually open.
+  await expect(page.getByTestId('quick-panel-action-open')).toContainText('Open run')
   await expect(page.getByTestId('quick-panel-action-open-shortcut')).toHaveText('⌘↩')
   await expect(page.getByTestId('quick-panel-action-pin')).toContainText('Pin')
   await page.keyboard.press('Escape')

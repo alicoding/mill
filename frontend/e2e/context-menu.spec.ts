@@ -47,7 +47,7 @@ test('right-click on an Atlas card offers Open, the share trio, and Delete; a fr
   await expect(overlay).not.toBeVisible()
 })
 
-test('right-click on a canvas step offers Open details everywhere; Delete step is disabled in view mode, real in edit mode', async ({ page }) => {
+test('right-click on a canvas step offers Open details everywhere; Delete step is absent in view mode, real in edit mode', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
   // Row click opens VIEW mode (docs/goals/0022, InventoryList's onOpen).
@@ -60,8 +60,11 @@ test('right-click on a canvas step offers Open details everywhere; Delete step i
   const menu = contextMenu(page)
   await expect(menu).toBeVisible()
   await expect(menu.getByText('Open details')).toBeVisible()
-  // View mode: visible but honest -- disabled, same as the toolbar.
-  await expect(menu.locator('[aria-disabled="true"]', { hasText: 'Delete step' })).toBeVisible()
+  // View mode: absent, not dimmed -- goal 0343's one rule for every
+  // menu, the same rule the palette already followed. The divider that
+  // preceded it goes with it, so the menu is Open details alone.
+  await expect(menu.getByText('Delete step')).toHaveCount(0)
+  await expect(menu.locator('[aria-disabled="true"]')).toHaveCount(0)
   await page.keyboard.press('Escape')
   await expect(menu).not.toBeVisible()
 

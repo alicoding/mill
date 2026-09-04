@@ -1,6 +1,6 @@
 import { ActionList, ActionMenu, Button, Text } from '@primer/react'
 import { KeyComboChip } from '../shared/KeyComboChip'
-import type { RowAction } from './useQuickPanelWorkflowActions'
+import { runRowAction, type RowAction } from './useQuickPanelWorkflowActions'
 import styles from './QuickPanel.module.css'
 
 // The panel's footer (goal 0294): the run outcome on the left, the
@@ -35,7 +35,7 @@ export function QuickPanelFooter({ status, hasWorkflowRow, actions, open, onOpen
           <ActionMenu.Overlay align="end" side="outside-top">
             <ActionList>
               {actions.map((action) => (
-                <ActionList.Item key={action.id} onSelect={action.run} data-testid={`quick-panel-action-${action.id}`}>
+                <ActionList.Item key={action.id} onSelect={() => runRowAction(action)} data-testid={`quick-panel-action-${action.id}`}>
                   {action.label}
                   <ActionList.TrailingVisual>
                     <KeyComboChip label={action.shortcut} data-testid={`quick-panel-action-${action.id}-shortcut`} />
