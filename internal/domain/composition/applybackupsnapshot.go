@@ -45,7 +45,7 @@ func init() {
 		ConfigFields: []ConfigField{
 			{
 				Key: "keepN", Label: "Snapshots to keep", Type: FieldNumber,
-				Description: "How many recent backups to keep -- older ones are deleted automatically.",
+				Description: "How many recent backups to keep. Older ones are deleted automatically.",
 				Default:     strconv.Itoa(defaultBackupKeepN),
 			},
 		},

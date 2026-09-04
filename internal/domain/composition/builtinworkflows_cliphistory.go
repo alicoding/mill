@@ -29,11 +29,11 @@ func clipboardHistoryBuiltInWorkflow() Workflow {
 	return Workflow{
 		ID:          "clipboard-history-workflow",
 		Label:       "Clipboard history",
-		Description: "Watches the clipboard and saves each new copy to Clipboard history -- skips anything marked confidential by the app you copied it from, and skips writes Mill makes to the clipboard itself. Turn this on to start building history; turn it off to stop watching.",
+		Description: "Watches the clipboard and saves each new copy to Clipboard history. It skips anything marked confidential by the app you copied it from, and skips writes Mill makes to the clipboard itself. Turn this on to start building history; turn it off to stop watching.",
 		Nodes:       nodes,
 		Edges:       edges,
 		BuiltIn:     true,
-		Seed:        seedorigin.Stamp(1),
+		Seed:        seedorigin.Stamp(2),
 		Disabled:    true,
 		// Published so enabling this workflow is a single click -- no
 		// separate Publish step (unlike the re-point-then-publish

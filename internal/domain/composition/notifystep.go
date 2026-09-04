@@ -32,8 +32,7 @@ func init() {
 		Consumes:   []PayloadKind{PayloadNone},
 		Produces:   PayloadProduce{Passthrough: true},
 		Output:     "payload unchanged; a notification appears on this machine",
-		Description: "Shows a notification when the workflow reaches this step -- the way a " +
-			"hotkey-triggered workflow tells you it finished while you're in another app. " +
+		Description: "Shows a notification when the workflow reaches this step. " +
 			"\"Body attribute\" swaps the fixed message for an Attributes value.",
 		ConfigFields: []ConfigField{
 			{

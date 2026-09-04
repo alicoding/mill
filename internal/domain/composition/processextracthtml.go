@@ -17,11 +17,11 @@ func init() {
 		Consumes:    []PayloadKind{PayloadHTML},
 		Produces:    PayloadProduce{Kind: PayloadHTML},
 		Output:      "the matched element's outer HTML",
-		Description: "Extracts one element (by CSS selector) out of the payload's HTML, dropping everything else -- e.g. a saved page's main-content region, stripping nav/header/footer chrome before converting to Markdown. Fails the step if nothing matches (fail-safe: never silently passes the whole, unfiltered document through).",
+		Description: "Extracts one element (by CSS selector) out of the payload's HTML, dropping everything else, e.g. a saved page's main-content region, stripping nav/header/footer chrome before converting to Markdown. Fails the step if nothing matches (fail-safe: never silently passes the whole, unfiltered document through).",
 		ConfigFields: []ConfigField{
 			{
 				Key: "selector", Label: "CSS selector",
-				Description: "A CSS selector, optionally comma-separated (e.g. \"#main-content, main, article\") -- the first matching element (in document order) is kept.",
+				Description: "A CSS selector, optionally comma-separated (e.g. \"#main-content, main, article\"). The first matching element (in document order) is kept.",
 				Default:     defaultExtractSelector, Type: FieldText,
 			},
 		},

@@ -18,6 +18,6 @@ func init() {
 		Consumes:    []PayloadKind{PayloadAny},
 		Produces:    PayloadProduce{Passthrough: true},
 		Output:      "payload and Attributes unchanged; routes to the matching outgoing edge",
-		Description: "Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point -- its conditions live on its outgoing edges, not here.",
+		Description: "Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point. Its conditions live on its outgoing edges, not here.",
 	}, nil)
 }

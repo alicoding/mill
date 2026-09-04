@@ -396,7 +396,7 @@ func runShellCommandBlock(node Node, ctx ExecContext, steps []ParsedCommandStep)
 			emitShellStepProgressFn(ctx.RunContext, ShellStepProgress{
 				NodeID: node.ID, StepIndex: step.Index, TotalSteps: len(steps), Command: step.Text, Status: "skipped",
 			})
-			fmt.Fprintf(&combined, "$ %s\n(skipped -- a previous && step failed)\n\n", step.Text)
+			fmt.Fprintf(&combined, "$ %s\n(skipped: a previous && step failed)\n\n", step.Text)
 			continue
 		}
 
@@ -416,7 +416,7 @@ func runShellCommandBlock(node Node, ctx ExecContext, steps []ParsedCommandStep)
 
 	ctx.Payload = combined.String()
 	if anyFailed {
-		return ctx, fmt.Errorf("process-shell-command: a step failed -- see the run's output for which one")
+		return ctx, fmt.Errorf("process-shell-command: a step failed. See the run's output for which one")
 	}
 	return ctx, nil
 }
@@ -430,7 +430,7 @@ func init() {
 		Produces:    PayloadProduce{Kind: PayloadText},
 		Output:      "combined stdout+stderr from every sub-command that ran",
 		Label:       "Run a captured command",
-		Description: "Runs the captured payload exactly as written -- in your real login shell by default, or inside a Configure-authored execution environment (its shell, directory, and variables) when one is chosen. A piped command stays one step; commands separated by a new line or && show as separate steps. External effect -- the run asks for your approval by default.",
+		Description: "Runs the captured payload exactly as written, in your real login shell by default, or inside a Configure-authored execution environment (its shell, directory, and variables) when one is chosen. A piped command stays one step; commands separated by a new line or && show as separate steps. External effect: the run asks for your approval by default.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "envId", Label: "Execution environment",

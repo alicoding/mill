@@ -70,7 +70,7 @@ func findRoot(nodes []Node, outgoingEdges map[string][]Edge, hasIncoming map[str
 	}
 	if rootCount == 0 {
 		if cycle := findAnyCycle(nodes, outgoingEdges); len(cycle) > 0 {
-			return "", fmt.Errorf("a workflow must have exactly one starting step (found none -- every step has an incoming edge because these steps form a cycle: %s)", strings.Join(cycle, " -> "))
+			return "", fmt.Errorf("a workflow must have exactly one starting step (found none; every step has an incoming edge because these steps form a cycle: %s)", strings.Join(cycle, " -> "))
 		}
 		return "", fmt.Errorf("a workflow must have exactly one starting step")
 	}

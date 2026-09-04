@@ -27,7 +27,7 @@ func validateLeaves(nodes []Node, outgoingEdges map[string][]Edge) []Issue {
 			continue
 		}
 		issues = append(issues, warningIssue(n.ID, "",
-			fmt.Sprintf("step %s: this step's result isn't delivered anywhere -- fine for a test run; add an Apply or Decision step to act on it", stepName(n))))
+			fmt.Sprintf("step %s: this step's result isn't delivered anywhere. Fine for a test run; add an Apply or Decision step to act on it", stepName(n))))
 	}
 	return issues
 }
@@ -60,7 +60,7 @@ func validateRequiredRefs(nodes []Node) []Issue {
 				continue
 			}
 			issues = append(issues, willFailIssue(n.ID,
-				fmt.Sprintf("step %s: %s isn't set -- this step isn't configured yet and will fail at run time", stepName(n), field.Label)))
+				fmt.Sprintf("step %s: %s isn't set. This step isn't configured yet and will fail at run time", stepName(n), field.Label)))
 		}
 	}
 	return issues
@@ -116,7 +116,7 @@ func nodeCredentialGaps(n Node) []Issue {
 		}
 		if missing, label := credentialGapFn(id); missing {
 			issues = append(issues, willFailIssue(n.ID,
-				fmt.Sprintf("step %s: the integration %q has no credential saved on this device -- open it in Configure and enter its token or secret", stepName(n), label)))
+				fmt.Sprintf("step %s: the integration %q has no credential saved on this device. Open it in Configure and enter its token or secret", stepName(n), label)))
 		}
 	}
 	return issues

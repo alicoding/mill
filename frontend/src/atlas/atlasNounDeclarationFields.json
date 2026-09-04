@@ -12,7 +12,7 @@
   {
     "field": "label",
     "legalValues": "a string",
-    "meaning": "the button/command text. By convention every in-tree noun sources this from identityOf(id).commandLabel rather than restating it, but the field itself accepts any string. NEVER read as this noun's row title in Settings > Extensions -- see nounName below."
+    "meaning": "the button/command text. By convention every in-tree noun sources this from identityOf(id).commandLabel rather than restating it, but the field itself accepts any string. NEVER read as this noun's row title in Settings > Extensions — see nounName below."
   },
   {
     "field": "nounName",
@@ -36,37 +36,37 @@
   },
   {
     "field": "group",
-    "legalValues": "'knowledge', 'file', or 'annotate' -- REQUIRED, never optional",
+    "legalValues": "'knowledge', 'file', or 'annotate' — REQUIRED, never optional",
     "meaning": "which tray cluster this noun's own button renders in. AtlasCreationTray.tsx's TRAY_GROUP_ORDER renders 'knowledge' and 'file' flat, primary-first; 'annotate' tools collapse into the tray's one expandable Annotate group instead of rendering flat."
   },
   {
     "field": "settings",
-    "legalValues": "an array of {type, key, label, description, defaultValue} setting declarations -- type is boolean | string (optional placeholder) | number (optional min/max/step) | enum (options: [{value, label}]) -- or omitted entirely",
+    "legalValues": "an array of {type, key, label, description, defaultValue} setting declarations — type is boolean | string (optional placeholder) | number (optional min/max/step) | enum (options: [{value, label}]) — or omitted entirely",
     "meaning": "the noun's own user settings (goal 0258): declared here, rendered generically inside its Settings > Extensions row, persisted centrally per extension id + key. defaultValue applies whenever the user has never touched the control; a stored value of the wrong type, or an enum value no longer among the options, falls back to it. Omitted means the row shows no settings block. A runtime plugin declares the same shape as manifest contributes.settings and reads it back through api.settings."
   },
   {
     "field": "interaction",
     "legalValues": "'arm-then-click', 'pick-then-place', 'drag-to-draw', 'drag-to-erase', 'ephemeral-drag', or 'paste-or-drop'",
-    "meaning": "the authoring gesture that places this noun. Must equal the same field on this id's own shared/atlasToolIdentity.ts entry -- the registry's own agreement check cross-validates the two so they can never silently drift apart."
+    "meaning": "the authoring gesture that places this noun. Must equal the same field on this id's own shared/atlasToolIdentity.ts entry — the registry's own agreement check cross-validates the two so they can never silently drift apart."
   },
   {
     "field": "styleDefaults",
     "legalValues": "a record of style-field key to value, or omitted entirely",
-    "meaning": "session-only seed values for a freshly placed instance's style state (colour, size, ...). Never persisted document data -- omit this field for a noun with no style surface rather than declaring an empty object."
+    "meaning": "session-only seed values for a freshly placed instance's style state (colour, size, ...). Never persisted document data — omit this field for a noun with no style surface rather than declaring an empty object."
   },
   {
     "field": "styleFields",
-    "legalValues": "a readonly array of AtlasStyleField entries (atlasStyleVocabulary.ts's closed union: color, color-or-none, stroke-width, or shape-kind) -- REQUIRED, never optional",
-    "meaning": "this noun's own declared styleable properties. An empty array is the honest answer for a noun with no style surface at all. A non-empty array makes AtlasStylePanel.tsx render this tool's style picker automatically -- no other file needs to name this noun's id."
+    "legalValues": "a readonly array of AtlasStyleField entries (atlasStyleVocabulary.ts's closed union: color, color-or-none, stroke-width, or shape-kind) — REQUIRED, never optional",
+    "meaning": "this noun's own declared styleable properties. An empty array is the honest answer for a noun with no style surface at all. A non-empty array makes AtlasStylePanel.tsx render this tool's style picker automatically — no other file needs to name this noun's id."
   },
   {
     "field": "lockable",
-    "legalValues": "boolean -- REQUIRED, never optional",
+    "legalValues": "boolean — REQUIRED, never optional",
     "meaning": "does re-clicking this tool's own already-armed tray button lock it for repeated placement, instead of disarming on the second click? Only meaningful for an arm-then-click tool; every other tool still declares it, always false."
   },
   {
     "field": "resizable",
-    "legalValues": "boolean -- REQUIRED, never optional",
+    "legalValues": "boolean — REQUIRED, never optional",
     "meaning": "can a placed instance be dragged to a new size via the shared NodeResizer? A container that auto-fits its own children, or a tool that never persists a placed instance, both legitimately declare false. The conformance suite checks that a true answer is backed by a real `<NodeResizer>` in the renderer boardNodeType names."
   },
   {
@@ -76,18 +76,18 @@
   },
   {
     "field": "dragBand",
-    "legalValues": "boolean -- REQUIRED, never optional",
+    "legalValues": "boolean — REQUIRED, never optional",
     "meaning": "only load-bearing when boardNodeType is 'atlas-object': does this noun's own content capture pointer events (a grid, a vendored pan/zoom viewer), so the shared renderer needs to add its own chrome band as the drag surface? A noun whose whole body already drags declares false, not omitted."
   },
   {
     "field": "boardObjectKind",
     "legalValues": "'shape', 'image', 'ink', 'table', 'diagram', 'sheet', or null",
-    "meaning": "the persisted BoardObject.Kind this noun's own placed instance carries, or null for a tool that never routes through the shared 'atlas-object' renderer. Not always equal to id -- pencil's own placed instance is Kind 'ink' -- so content resolution below keys off this field, read from object.Kind, never off id."
+    "meaning": "the persisted BoardObject.Kind this noun's own placed instance carries, or null for a tool that never routes through the shared 'atlas-object' renderer. Not always equal to id — pencil's own placed instance is Kind 'ink' — so content resolution below keys off this field, read from object.Kind, never off id."
   },
   {
     "field": "content",
-    "legalValues": "an object with Component (a React component accepting { object, mirrorVersion }), ariaLabelKey (a string), and role ('img' or undefined), plus the optional members source, editRoute, clickShield, wheelContained and extension -- or null",
-    "meaning": "this noun's own placed-instance content contribution. registerNoun() feeds it into the board-object content registry (atlasNounRegistry.ts's registerBoardObjectContent) whenever boardObjectKind is non-null, killing AtlasBoardObjectNode.tsx's former per-Kind hand branch. A tool-less noun (diagram, sheet) calls registerBoardObjectContent directly instead of declaring this field at all, since it has no AtlasToolShape to satisfy -- it instead sets this same content shape's own optional `extension` member (icon, label, description, disableScopeNote, group) so Settings > Extensions can still render an honest, correctly-sectioned row for it. mirrorVersion bumps on a live disk change to a fileBacked Kind's own mirrored file (see fileBacked below) -- a non-file-backed Component simply ignores it. clickShield (a face that owns its own pointer model: an embedded viewer, or a grid that would otherwise read a bare click as a cell click) shields the face until the object is selected, so the first click always selects the object; wheelContained keeps the board from panning while such a face is live and consuming the wheel itself."
+    "legalValues": "an object with Component (a React component accepting { object, mirrorVersion }), ariaLabelKey (a string), and role ('img' or undefined), plus the optional members source, editRoute, clickShield, wheelContained and extension — or null",
+    "meaning": "this noun's own placed-instance content contribution. registerNoun() feeds it into the board-object content registry (atlasNounRegistry.ts's registerBoardObjectContent) whenever boardObjectKind is non-null, killing AtlasBoardObjectNode.tsx's former per-Kind hand branch. A tool-less noun (diagram, sheet) calls registerBoardObjectContent directly instead of declaring this field at all, since it has no AtlasToolShape to satisfy — it instead sets this same content shape's own optional `extension` member (icon, label, description, disableScopeNote, group) so Settings > Extensions can still render an honest, correctly-sectioned row for it. mirrorVersion bumps on a live disk change to a fileBacked Kind's own mirrored file (see fileBacked below) — a non-file-backed Component simply ignores it. clickShield (a face that owns its own pointer model: an embedded viewer, or a grid that would otherwise read a bare click as a cell click) shields the face until the object is selected, so the first click always selects the object; wheelContained keeps the board from panning while such a face is live and consuming the wheel itself."
   },
   {
     "field": "capabilities",
@@ -96,22 +96,22 @@
   },
   {
     "field": "fileBacked",
-    "legalValues": "boolean -- REQUIRED, never optional",
+    "legalValues": "boolean — REQUIRED, never optional",
     "meaning": "does this noun's own placed instance read Payload.mirrorPath as a real external file (goal 0232's file-backed preview/open/watch contract)? true gets the shared live-watch subscription (its own content Component sees mirrorVersion bump) and the object.openInDefaultApp context-menu command uniformly, with no extra wiring of either. A noun with no boardObjectKind at all still declares it, always false."
   },
   {
     "field": "commit",
-    "legalValues": "a function -- see 'How it loads' for why this is the one member that is runtime code, not declaration",
+    "legalValues": "a function — see 'How it loads' for why this is the one member that is runtime code, not declaration",
     "meaning": "shapes this noun's own placement input into the artifact CreateBoardObject/CreateCard persists. Each noun's own signature differs; the registry's element type only has to accept every one of them, never call through it generically."
   },
   {
     "field": "sticky",
-    "legalValues": "boolean -- REQUIRED, never optional",
-    "meaning": "does this tool stay armed after a completed gesture (pencil/eraser/laser -- repeated strokes/passes are the point), or disarm after one? useAtlasToolGesture.ts reads this to decide whether a gesture's own onEnd may call ctx.disarm/disarmUnlessLocked at all -- a sticky tool gets no-ops for both. A non-drag tool still declares it, always false."
+    "legalValues": "boolean — REQUIRED, never optional",
+    "meaning": "does this tool stay armed after a completed gesture (pencil/eraser/laser — repeated strokes/passes are the point), or disarm after one? useAtlasToolGesture.ts reads this to decide whether a gesture's own onEnd may call ctx.disarm/disarmUnlessLocked at all — a sticky tool gets no-ops for both. A non-drag tool still declares it, always false."
   },
   {
     "field": "gesture",
-    "legalValues": "an object with onEnd (a function), plus optional onPoint/preview/fadeMs -- or null",
+    "legalValues": "an object with onEnd (a function), plus optional onPoint/preview/fadeMs — or null",
     "meaning": "a drag-shaped tool's own pure behavior contribution to the ONE platform gesture engine (useAtlasToolGesture.ts): onEnd commits (or no-ops); onPoint accumulates live per-point state (eraser's own hit-testing); preview is a component rendered generically in one overlay slot; fadeMs makes an ephemeral tool's own points age out on a timer instead of clearing at pointerup. null for every tool whose interaction never drags."
   }
 ]

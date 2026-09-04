@@ -35,13 +35,13 @@ func builtInStepFailureWorkflows() []Workflow {
 		{
 			ID:          "example-step-failure-workflow",
 			Label:       "Example: Step failure",
-			Description: "Fails on purpose every time it runs -- looks up a list that was never configured, so this step always errors. Run it to see a failure show up in Activity's failure breakdown by step type.",
+			Description: "Fails on purpose every time it runs. It looks up a list that was never configured, so this step always errors. Run it to see a failure show up in Activity's failure breakdown by step type.",
 			Nodes:       nodes,
 			Edges: []Edge{
 				{ID: "example-step-failure-e0", Source: triggerID, Target: lookupID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(1),
+			Seed:    seedorigin.Stamp(2),
 		},
 	}
 }

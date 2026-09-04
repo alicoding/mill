@@ -21,6 +21,6 @@ import (
 // file, whether or not that type's own behavior is fully built yet.
 func init() {
 	RegisterAuthStrategy(httprequest.AuthOAuth1Vendor, func(_ ResolvedHTTPRequest, _, _ string, _ map[string]string, _ url.Values, _ string) error {
-		return fmt.Errorf("the vendor-specific OAuth 1.0a variant is not yet implemented -- its exact signing convention was never confirmed (docs/adr/0015); use AuthOAuth1 (standard RFC 5849) if that fits, or file the real requirement")
+		return fmt.Errorf("the vendor-specific OAuth 1.0a variant is not yet implemented; use AuthOAuth1 (standard RFC 5849) if that fits, or file the real requirement")
 	})
 }

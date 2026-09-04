@@ -29,7 +29,7 @@ test('Configure > Decisions: create shows the immutability caption, edit disable
   await page.getByTestId('new-decision').click()
   // The create-time category control is a live Select with a caption
   // naming the immutability rule up front, not a surprise at edit time.
-  await expect(page.getByText('Cannot be changed after creation', { exact: false })).toBeVisible()
+  await expect(page.getByText('Fixed once created', { exact: false })).toBeVisible()
   const categorySelect = page.getByTestId('decision-category')
   await expect(categorySelect).toBeEnabled()
 
@@ -47,7 +47,7 @@ test('Configure > Decisions: create shows the immutability caption, edit disable
   // caption visible.
   await row.click()
   await expect(page.getByTestId('decision-category')).toBeDisabled()
-  await expect(page.getByText('Cannot be changed after creation', { exact: false })).toBeVisible()
+  await expect(page.getByText('Fixed once created', { exact: false })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel' }).click()
 
   await clickRowAction(page, row, 'Delete')

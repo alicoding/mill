@@ -37,11 +37,11 @@ func init() {
 		ConfigFields: []ConfigField{
 			{
 				Key: "fromCardId", Label: "From", Type: FieldText,
-				Description: "The relation's source card -- a literal card id, or attr:<name>.",
+				Description: "The relation's source card: a literal card id, or attr:<name>.",
 			},
 			{
 				Key: "toCardId", Label: "To", Type: FieldText,
-				Description: "The relation's target card -- a literal card id, or attr:<name>.",
+				Description: "The relation's target card: a literal card id, or attr:<name>.",
 			},
 			{
 				Key: "linkKindId", Label: "Relation", Type: FieldText, RefKind: "atlas-linkkind",

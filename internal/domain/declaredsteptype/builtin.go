@@ -28,7 +28,7 @@ func BuiltIn() []DeclaredStepType {
 		{
 			ID:           ExampleCheckHTTPBinID,
 			Label:        "Check httpbin",
-			Description:  "Calls the seeded no-auth httpbin.org integration and replaces the payload with its response -- a named palette step bound to one fixed Integration, not a step you configure per use.",
+			Description:  "Calls the seeded no-auth httpbin.org integration and replaces the payload with its response. It is a named palette step bound to one fixed Integration, not a step you configure per use.",
 			PaletteGroup: GroupActions,
 			Engine:       EngineHTTP,
 			RequestID:    httprequest.ExampleNoneID,

@@ -131,7 +131,7 @@ test('a seeded workflow is listed and Enter runs it, showing the outcome in the 
   await page.keyboard.press('Enter')
   // Outcome stays put (goal 0294): no auto-dismiss, the footer says
   // whether it worked and how long it took.
-  await expect(page.getByTestId('quick-panel-status')).toContainText(`Done — "${label}" in`)
+  await expect(page.getByTestId('quick-panel-status')).toContainText(`Done: "${label}" in`)
   await expect(page.getByTestId('quick-panel-status')).toContainText('s')
 
   // ⌘K opens the row's actions, each with its own shortcut.
@@ -275,7 +275,7 @@ test('a workflow run from the panel a few times sorts above one that was never r
     await search.fill(frequentLabel)
     await expect(page.getByRole('option', { name: frequentLabel })).toBeVisible()
     await page.keyboard.press('Enter')
-    await expect(page.getByTestId('quick-panel-status')).toContainText(`Done — "${frequentLabel}"`)
+    await expect(page.getByTestId('quick-panel-status')).toContainText(`Done: "${frequentLabel}"`)
     await search.fill('')
   }
 
@@ -386,7 +386,7 @@ test('pinning a workflow from the panel row sorts it above frecency, unpinning r
     await search.fill(frequentLabel)
     await expect(page.getByRole('option', { name: frequentLabel })).toBeVisible()
     await page.keyboard.press('Enter')
-    await expect(page.getByTestId('quick-panel-status')).toContainText(`Done — "${frequentLabel}"`)
+    await expect(page.getByTestId('quick-panel-status')).toContainText(`Done: "${frequentLabel}"`)
     await search.fill('')
   }
 

@@ -41,7 +41,7 @@ func init() {
 		ID: "trigger-hotkey", Kind: KindTrigger,
 		Label:       "Hotkey pressed",
 		Output:      "empty payload — the run starts here",
-		Description: "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.",
+		Description: "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here.",
 		Complexity:  ComplexityBasic,
 		Consumes:    []PayloadKind{PayloadNone},
 		Produces:    PayloadProduce{Kind: PayloadNone},
@@ -75,7 +75,7 @@ func init() {
 		ID: "trigger-clipboard-change", Kind: KindTrigger,
 		Label:       "Clipboard captured",
 		Output:      "the clipboard text that changed, already screened for confidential content and Mill's own writes",
-		Description: "Fires when you copy something new -- skips content marked confidential by the app you copied it from, and skips text Mill itself just wrote back to the clipboard.",
+		Description: "Fires when you copy something new. It skips content marked confidential by the app you copied it from, and skips text Mill itself just wrote back to the clipboard.",
 		Complexity:  ComplexityBasic,
 		Consumes:    []PayloadKind{PayloadNone},
 		Produces:    PayloadProduce{Kind: PayloadText},
@@ -96,7 +96,7 @@ func init() {
 			},
 			{
 				Key: "pattern", Label: "Filename pattern (optional)",
-				Description: "A glob like *.md or report-*.csv -- only files whose name matches fire the trigger. Leave empty to fire on any change.",
+				Description: "A glob like *.md or report-*.csv. Only files whose name matches fire the trigger. Leave empty to fire on any change.",
 				Default:     "", Type: FieldText,
 			},
 		},
@@ -105,7 +105,7 @@ func init() {
 		ID: "trigger-callable", Kind: KindTrigger,
 		Label:       "Called by another workflow",
 		Output:      "the caller's typed input",
-		Description: "Fires only when another workflow invokes this one with its Child Workflow step -- never by an outside event. A workflow starting here declares itself callable: it appears in the Child Workflow step's picker and nowhere else.",
+		Description: "Fires only when another workflow invokes this one with its Child Workflow step, never by an outside event. A workflow starting here declares itself callable: it appears in the Child Workflow step's picker and nowhere else.",
 		Complexity:  ComplexityBasic,
 		Consumes:    []PayloadKind{PayloadNone},
 		Produces:    PayloadProduce{Kind: PayloadAny},
@@ -116,10 +116,10 @@ func init() {
 		Consumes:   []PayloadKind{PayloadNone},
 		Produces:   PayloadProduce{Kind: PayloadJSON},
 		Label:      "System event",
-		Output: "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp, version?, channel?} -- " +
+		Output: "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp, version?, channel?}, " +
 			"the run/decision that caused this event. nodeId is only set for decision-parked (the " +
 			"parked step's ID); version/channel only for update-available.",
-		Description: "Fires when Mill's own engine emits an internal event -- a run finishing, failing, or parking for approval -- so a workflow can react to the platform itself, like forwarding pending approvals to another device.",
+		Description: "Fires when Mill's own engine emits an internal event (a run finishing, failing, or parking for approval), so a workflow can react to the platform itself, like forwarding pending approvals to another device.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "event", Label: "Event",
@@ -140,7 +140,7 @@ func init() {
 		Consumes:   []PayloadKind{PayloadNone},
 		Produces:   PayloadProduce{Kind: PayloadText},
 		Label:      "Atlas card changed",
-		Output: "the changed card's id -- also seeds cardId/kindId/cardTitle/changeType as typed " +
+		Output: "the changed card's id; also seeds cardId/kindId/cardTitle/changeType as typed " +
 			"Attributes when this workflow declares them",
 		Description: "Fires when a card of the chosen kind is created or updated in Atlas. A run started by this trigger never re-fires itself from a write it makes to its own source card, so a workflow that both reacts to and updates a card can't loop.",
 		ConfigFields: []ConfigField{

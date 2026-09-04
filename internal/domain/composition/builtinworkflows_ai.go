@@ -75,9 +75,9 @@ func builtInAIWorkflows() []Workflow {
 			}},
 		{ID: classifyRouteID, NodeTypeID: "decision-route", Position: Position{X: 0, Y: 300}},
 		{ID: classifyUrgentID, NodeTypeID: "process-inject-text", Position: Position{X: -120, Y: 400},
-			Config: map[string]string{"text": "-- routed as URGENT", "placement": "append"}},
+			Config: map[string]string{"text": "(routed as URGENT)", "placement": "append"}},
 		{ID: classifyNormalID, NodeTypeID: "process-inject-text", Position: Position{X: 120, Y: 400},
-			Config: map[string]string{"text": "-- routed as NORMAL", "placement": "append"}},
+			Config: map[string]string{"text": "(routed as NORMAL)", "placement": "append"}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
@@ -87,21 +87,21 @@ func builtInAIWorkflows() []Workflow {
 		{
 			ID:          "example-ai-summarize-workflow",
 			Label:       "Example: Summarize with local AI",
-			Description: "Reads this workflow's declared \"text\" Attribute and sends it to a local Ollama endpoint (Configure > AI Providers > \"Local Ollama (localhost:11434)\") for a two-sentence summary. Ships DISABLED and requires a real Ollama install (https://ollama.com) running the seeded provider's model locally -- enable this workflow once Ollama is running, or point the AI provider at your own BYO endpoint instead. Demonstrates process-ai-completion's own prompt+payload composition: the system prompt sets tone, the user message is this step's Prompt followed by the captured text.",
+			Description: "Reads this workflow's declared \"text\" Attribute and sends it to a local Ollama endpoint (Configure > AI Providers > \"Local Ollama (localhost:11434)\") for a two-sentence summary. Ships DISABLED and requires a real Ollama install (https://ollama.com) running the seeded provider's model locally. Enable this workflow once Ollama is running, or point the AI provider at your own BYO endpoint instead. Demonstrates process-ai-completion's own prompt+payload composition: the system prompt sets tone, the user message is this step's Prompt followed by the captured text.",
 			Nodes:       summarizeNodes,
 			Edges: []Edge{
 				{ID: "example-ai-summarize-e0", Source: summarizeTriggerID, Target: summarizeCaptureID},
 				{ID: "example-ai-summarize-e1", Source: summarizeCaptureID, Target: summarizeStepID},
 			},
-			Attributes: []AttributeDef{{Key: "text", Label: "Text to summarize", Type: FieldText, Description: "The text this workflow summarizes -- bind a real value via a test run, or wire an upstream step to set it."}},
+			Attributes: []AttributeDef{{Key: "text", Label: "Text to summarize", Type: FieldText, Description: "The text this workflow summarizes. Bind a real value via a test run, or wire an upstream step to set it."}},
 			BuiltIn:    true,
-			Seed:       seedorigin.Stamp(2),
+			Seed:       seedorigin.Stamp(3),
 			Disabled:   true,
 		},
 		{
 			ID:          "example-ai-classify-branch-workflow",
 			Label:       "Example: AI classify -> branch",
-			Description: "Reads this workflow's declared \"text\" Attribute, asks a local Ollama endpoint to classify it as urgent or normal (Configure > AI Providers > \"Local Ollama (localhost:11434)\"), then Branches on the written \"category\" Attribute -- the AI step family's own decisioning composition: AI writes a typed classification, Branch acts on it, no new mechanism invented. Ships DISABLED and requires a real Ollama install (https://ollama.com) -- enable once Ollama is running, or point the AI provider at your own BYO endpoint instead.",
+			Description: "Reads this workflow's declared \"text\" Attribute, asks a local Ollama endpoint to classify it as urgent or normal (Configure > AI Providers > \"Local Ollama (localhost:11434)\"), then Branches on the written \"category\" Attribute. Ships DISABLED and requires a real Ollama install (https://ollama.com). Enable once Ollama is running, or point the AI provider at your own BYO endpoint instead.",
 			Nodes:       classifyNodes,
 			Edges: []Edge{
 				{ID: "example-ai-classify-e0", Source: classifyTriggerID, Target: classifyCaptureID},
@@ -111,11 +111,11 @@ func builtInAIWorkflows() []Workflow {
 				{ID: "example-ai-classify-e4", Source: classifyRouteID, SourceHandle: otherwiseHandle, Target: classifyNormalID},
 			},
 			Attributes: []AttributeDef{
-				{Key: "text", Label: "Text to classify", Type: FieldText, Description: "The support message this workflow classifies -- bind a real value via a test run, or wire an upstream step to set it."},
-				{Key: "category", Label: "Category (written by AI: Classify)", Type: FieldText, Description: "The chosen category -- written by the AI: Classify step, read by the Branch below."},
+				{Key: "text", Label: "Text to classify", Type: FieldText, Description: "The support message this workflow classifies. Bind a real value via a test run, or wire an upstream step to set it."},
+				{Key: "category", Label: "Category (written by AI: Classify)", Type: FieldText, Description: "The chosen category, written by the AI: Classify step and read by the Branch below."},
 			},
 			BuiltIn:  true,
-			Seed:     seedorigin.Stamp(2),
+			Seed:     seedorigin.Stamp(3),
 			Disabled: true,
 		},
 	}

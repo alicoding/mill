@@ -97,7 +97,7 @@ test("Clicking the pill's available notice starts the download directly, never n
 
     const pillAvailable = page.getByTestId('notice-update-available')
     await expect(pillAvailable).toBeVisible()
-    await pillAvailable.getByText('Update available — download').click()
+    await pillAvailable.getByText('Update available: download').click()
 
     // Acting, not navigating: the view never changes (still on
     // Settings, where this test already was), and the pill itself

@@ -117,14 +117,14 @@ test('Step mode pauses before every node; Step advances one, Continue finishes t
   // First park: the capture node -- no breakpoint rule needed at all in
   // step mode, proving the gate is consulted for every node regardless
   // of its effect class (the ADR's own flagged open question).
-  await expect(bar).toContainText('Paused — step mode', { timeout: 15_000 })
+  await expect(bar).toContainText('Paused in step mode', { timeout: 15_000 })
   await expect(bar).toContainText('Read attribute')
   await expect(bar.getByTestId('canvas-step')).toBeVisible()
 
   await bar.getByTestId('canvas-step').click()
   // Parks again at the next node (the reached Decision) -- still in
   // step mode.
-  await expect(bar).toContainText('Paused — step mode', { timeout: 15_000 })
+  await expect(bar).toContainText('Paused in step mode', { timeout: 15_000 })
   await expect(bar.getByTestId('canvas-resume-step')).toHaveText('Continue')
 
   await bar.getByTestId('canvas-resume-step').click()

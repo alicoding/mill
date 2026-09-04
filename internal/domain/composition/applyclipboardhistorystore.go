@@ -31,7 +31,7 @@ func init() {
 		Produces:    PayloadProduce{Passthrough: true},
 		Output:      "the text it stored",
 		Label:       "Save to clipboard history",
-		Description: "Scrubs any known secret value out of the payload, then adds what's left to Clipboard history. Confidential-marked content and Mill's own clipboard writes never reach this step -- the trigger above already filtered them.",
+		Description: "Scrubs any known secret value out of the payload, then adds what's left to Clipboard history. Confidential-marked content and Mill's own clipboard writes never reach this step.",
 	}, func(_ Node, ctx ExecContext) (ExecContext, error) {
 		redacted := redactSecretsFn(ctx.Payload)
 		if err := appendClipboardHistoryFn(redacted); err != nil {
