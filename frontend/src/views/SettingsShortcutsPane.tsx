@@ -11,6 +11,7 @@ import KeyboardShortcutsSection from './KeyboardShortcutsSection'
 import { SettingsRow } from './SettingsRow'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './SettingsView.module.css'
+import { background } from '../shared/background'
 
 // Where the rest of the two trimmed captions lives (goal 0321): the
 // commands reference names every command and how rebinding works.
@@ -47,7 +48,7 @@ export default function SettingsShortcutsPane() {
   useEffect(() => {
     if (!summonRecording) return
 
-    SettingsService.SuspendMenuAccelerators().catch(console.error)
+    void background(SettingsService.SuspendMenuAccelerators(), 'settingsShortcutsPane.suspendMenuAccelerators')
 
     const onKeydown = (e: KeyboardEvent) => {
       e.preventDefault()
@@ -80,13 +81,13 @@ export default function SettingsShortcutsPane() {
     return () => {
       window.removeEventListener('keydown', onKeydown, true)
       window.removeEventListener('blur', onBlur)
-      SettingsService.RestoreMenuAccelerators().catch(console.error)
+      void background(SettingsService.RestoreMenuAccelerators(), 'settingsShortcutsPane.restoreMenuAccelerators')
     }
   }, [summonRecording, t])
 
   const clearSummonHotkey = () => {
     setSummonError('')
-    SettingsService.UnassignSummonHotkey().then(() => setSummonBinding(null)).catch(console.error)
+    void background(SettingsService.UnassignSummonHotkey().then(() => setSummonBinding(null)), 'settingsShortcutsPane.unassignSummonHotkey')
   }
 
   return (

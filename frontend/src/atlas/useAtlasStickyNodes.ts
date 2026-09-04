@@ -7,6 +7,7 @@ import { resolveNoteCommitText } from './atlasCreateHelpers'
 import { refreshAtlas } from './atlasStore'
 import { buildStickyNodes } from './atlasStickyNodes'
 import type { AtlasStickyRFNode } from './AtlasStickyNode'
+import { background } from '../shared/background'
 
 // The board's sticky-note nodes plus explicit save mode's held edits
 // (goal 0295 S2b). In automatic mode a click-away commits a note
@@ -97,7 +98,7 @@ export function useAtlasStickyNodes({
   // definition no longer held.
   const onSaveEdit = useCallback((id: string, text: string) => {
     dropHeld(id)
-    saveNote(id, text).catch(console.error)
+    void background(saveNote(id, text), 'atlasStickyNodes.saveEdit')
   }, [saveNote, dropHeld])
 
   const commit = saveMode === 'explicit' ? holdEdit : onCommitEdit

@@ -46,6 +46,7 @@ import { useBrowserNotify } from './useBrowserNotify'
 import { usePluginReviewNotice } from './usePluginReviewNotice'
 import styles from "./App.module.css";
 import { newLocalID } from '../shared/localId'
+import { background } from '../shared/background'
 
 
 // True only inside the Wails native webview (the runtime injects
@@ -192,17 +193,17 @@ function App() {
   useBootRefresh();
 
   useEffect(() => {
-    CapabilitiesService.List().then((list) => setCapabilities(list ?? [])).catch(console.error);
+    void background(CapabilitiesService.List().then((list) => setCapabilities(list ?? [])), 'app.capabilitiesList');
   }, [setCapabilities]);
 
   useEffect(() => {
-    SettingsService.IsIsolatedData().then(setIsIsolatedData).catch(console.error);
+    void background(SettingsService.IsIsolatedData().then(setIsIsolatedData), 'app.isIsolatedData');
   }, []);
   usePluginReviewNotice()
 
   useEffect(() => {
-    SettingsService.GetBuildInfo().then(setBuildInfo).catch(console.error);
-    SettingsService.AppVersion().then(setAppVersion).catch(console.error);
+    void background(SettingsService.GetBuildInfo().then(setBuildInfo), 'app.getBuildInfo');
+    void background(SettingsService.AppVersion().then(setAppVersion), 'app.appVersion');
   }, []);
 
   // Only the trigger source pushes activity via this Go-emitted event
@@ -304,7 +305,7 @@ function App() {
   const notifiedIds = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!reviewLoaded) return;
-    void SettingsService.SetPendingBadge(reviewPendingCount).catch(() => {});
+    void background(SettingsService.SetPendingBadge(reviewPendingCount), 'app.setPendingBadge');
 
     const items: { key: string; id: string; description: string; kind: string }[] = [
       ...guardrailPending.map((r) => ({
@@ -319,7 +320,7 @@ function App() {
     for (const item of items) {
       if (notifiedIds.current.has(item.key)) continue;
       notifiedIds.current.add(item.key);
-      void SettingsService.NotifyPendingApproval(item.id, item.description, item.kind, document.hasFocus()).catch(() => {});
+      void background(SettingsService.NotifyPendingApproval(item.id, item.description, item.kind, document.hasFocus()), 'app.notifyPendingApproval');
       if (item.kind === 'guardrail') notifyBrowserTab({ dedupeKey: item.id, title: t('browserNotificationTitle'), body: item.description, onClick: () => setView({ kind: 'review' }) });
     }
   }, [guardrailPending, mcpPending, reviewPendingCount, reviewLoaded, t, notifyBrowserTab, setView]);

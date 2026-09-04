@@ -8,6 +8,7 @@ import ContractSection from './ContractSection'
 import { SettingsRow } from './SettingsRow'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './SettingsView.module.css'
+import { background } from '../shared/background'
 
 // Where the rest of the two trimmed MCP captions lives (goal 0321).
 const MCP_DOCS_PAGE = 'agents/connect-mcp.md'
@@ -57,7 +58,7 @@ export default function SettingsConnectionsPane() {
               disabled={mcpWriteEnabled === null}
               onChange={(e) => {
                 const enabled = e.target.checked
-                SettingsService.SetMCPWriteEnabled(enabled).then(() => setMCPWriteEnabledState(enabled)).catch(console.error)
+                void background(SettingsService.SetMCPWriteEnabled(enabled).then(() => setMCPWriteEnabledState(enabled)), 'settingsConnectionsPane.setMCPWriteEnabled')
               }}
               data-testid="mcp-write-enabled-checkbox"
             />
@@ -75,7 +76,7 @@ export default function SettingsConnectionsPane() {
                 disabled={mcpApprovalRequired === null}
                 onChange={(e) => {
                   const required = e.target.checked
-                  SettingsService.SetMCPWriteApprovalRequired(required).then(() => setMCPApprovalRequiredState(required)).catch(console.error)
+                  void background(SettingsService.SetMCPWriteApprovalRequired(required).then(() => setMCPApprovalRequiredState(required)), 'settingsConnectionsPane.setMCPWriteApprovalRequired')
                 }}
                 data-testid="mcp-write-approval-checkbox"
               />

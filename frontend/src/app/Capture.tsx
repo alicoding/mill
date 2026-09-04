@@ -9,6 +9,7 @@ import { getPluginCapture, type PluginCapture } from '../plugins/pluginCaptures'
 import { currentPluginTheme, onPluginThemeChange } from '../plugins/pluginTheme'
 import { SEEDED_SCRATCHPAD_CARD_ID, cascadeNotePosition } from './quickPanelCapture'
 import styles from './Capture.module.css'
+import { background } from '../shared/background'
 
 // The capture window's content (goal 0309): one capture face -- Mill's
 // own note, or a plugin's registered face -- with the destination
@@ -89,10 +90,10 @@ export function Capture() {
   }, [target])
 
   const options = useMemo(() => destinationOptions(cards), [cards])
-  const close = () => { void SettingsService.HideCapture().catch(() => {}) }
+  const close = () => { void background(SettingsService.HideCapture(), 'capture.hideCapture') }
   const rememberDestination = (id: string) => {
     setDestination(id)
-    if (target) void SettingsService.SetCaptureDestination(destinationKey(target), id).catch(() => {})
+    if (target) void background(SettingsService.SetCaptureDestination(destinationKey(target), id), 'capture.setCaptureDestination')
   }
 
   const saveNote = async () => {

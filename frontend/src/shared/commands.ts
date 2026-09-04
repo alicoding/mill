@@ -21,6 +21,7 @@ import { HELP_COMMANDS } from './helpCommands'
 import { TAB_COMMANDS } from './tabCommands'
 import { withMenuGroup } from './menuGroup'
 import type { MenuPlacement } from './menuSpec'
+import { pushNotice } from './noticeStore'
 
 // The command registry (docs/goals/0016-keymap-system.md): named
 // commands with a default binding, dispatched by one window keydown
@@ -102,7 +103,13 @@ export interface Command {
   // simply has no menu item. shared/menuSpec.ts's own doc has the band/
   // order semantics.
   menu?: MenuPlacement
-  run: () => void
+  // A rejection is never the caller's problem to catch -- runCommand
+  // below is the one place that awaits and reports it. A synchronous
+  // run() (the common case) needs no change to satisfy this;
+  // `Promise<unknown>` (not `<void>`) so a run() that returns a bound
+  // service call's own result (e.g. `() => BackupService.BackupNow(0)`)
+  // needs no `.then(() => {})` wrapper just to fit the shape.
+  run: () => void | Promise<unknown>
 }
 
 function setView(view: View) {
@@ -378,6 +385,35 @@ export function findCommand(id: string): Command | undefined {
   return COMMANDS.find((c) => c.id === id)
 }
 
+// runCommand is the ONE door every invoker (palette, menu, keymap,
+// notice pill, a plain button) calls instead of a bare run() (goal
+// 0313, the `.catch(console.error)` class: a rejected run() used to
+// vanish into the console while the surface that fired it looked like
+// it did nothing). Unknown id or a failing enabled() both resolve
+// false with no notice -- neither is a user-visible failure, just
+// nothing to do. A thrown/rejected run() posts one error notice
+// (shared/noticeStore.ts's footer pill) naming the command and the
+// error, and resolves false. Bare command.run() is legal ONLY inside
+// this function and dispatchCommandForEvent's own tryRun below (which
+// itself now routes through here).
+export async function runCommand(id: string): Promise<boolean> {
+  const command = findCommand(id)
+  if (!command) return false
+  if (command.enabled && !command.enabled()) return false
+  try {
+    await command.run()
+    return true
+  } catch (err) {
+    pushNotice({
+      level: 'error',
+      // The label already names the command; the id is internal vocabulary
+      // and the pill renders `source` as text (goal 0339).
+      text: `${command.label}: ${err instanceof Error ? err.message : String(err)}`,
+    })
+    return false
+  }
+}
+
 // A command's EFFECTIVE binding: its settings-store override if one
 // exists, else its own default. The one place this merge happens --
 // both the dispatcher below and the Settings UI (KeyboardShortcutsSection)
@@ -438,7 +474,12 @@ export function dispatchCommandForEvent(e: KeyboardEvent, overrides: Record<stri
     const binding = effectiveBinding(command, overrides)
     const bindings = binding ? [binding, ...(command.extraBindings ?? [])] : (command.extraBindings ?? [])
     if (!bindings.some((b) => comboKey(b.mods, b.key) === want)) return false
-    command.run()
+    // Fire-and-forget from the dispatcher's own point of view: this
+    // function's contract is synchronous (did a binding match, so the
+    // caller knows whether to preventDefault), never whether the
+    // command's own run() settled -- runCommand still owns catching
+    // and reporting that.
+    void runCommand(command.id)
     return true
   }
 

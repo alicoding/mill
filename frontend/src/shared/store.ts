@@ -7,6 +7,7 @@ import { ViewKind } from '../../bindings/github.com/alicoding/mill/internal/doma
 import type { Capability } from '../../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 import type { KeyCombo } from './keybinding'
 import { newLocalID } from './localId'
+import { background } from './background'
 import {
   activeKeyIfPresent,
   isRestorable,
@@ -273,21 +274,18 @@ interface AppState {
 // surface (a page's mount, a work tab's onSaved) without prop
 // threading; writes land in the store for every consumer at once.
 export function refreshWorkflows(): Promise<void> {
-  return CompositionService.Workflows()
-    .then((list) => useAppStore.getState().setWorkflows(list ?? []))
-    .catch(console.error)
+  return background(CompositionService.Workflows()
+    .then((list) => useAppStore.getState().setWorkflows(list ?? [])), 'store.workflows')
 }
 
 export function refreshRequests(): Promise<void> {
-  return ConfigureService.HTTPRequests()
-    .then((list) => useAppStore.getState().setRequests(list ?? []))
-    .catch(console.error)
+  return background(ConfigureService.HTTPRequests()
+    .then((list) => useAppStore.getState().setRequests(list ?? [])), 'store.httpRequests')
 }
 
 export function refreshNodeTypes(): Promise<void> {
-  return CompositionService.NodeTypes()
-    .then((list) => useAppStore.getState().setNodeTypes(list ?? []))
-    .catch(console.error)
+  return background(CompositionService.NodeTypes()
+    .then((list) => useAppStore.getState().setNodeTypes(list ?? [])), 'store.nodeTypes')
 }
 
 // refreshKeybindings (docs/goals/0016-keymap-system.md) mirrors the
@@ -300,7 +298,7 @@ export function refreshNodeTypes(): Promise<void> {
 // json tags, unlike trigger.HotkeyBinding's Mods/Key -- checked
 // directly against the regenerated frontend/bindings, not assumed).
 export function refreshKeybindings(): Promise<void> {
-  return SettingsService.ListKeybindings()
+  return background(SettingsService.ListKeybindings()
     .then((map) => {
       const overrides: Record<string, KeyCombo> = {}
       for (const [id, hk] of Object.entries(map ?? {})) {
@@ -308,8 +306,7 @@ export function refreshKeybindings(): Promise<void> {
         overrides[id] = { mods: hk.mods ?? [], key: hk.key }
       }
       useAppStore.getState().setKeybindingOverrides(overrides)
-    })
-    .catch(console.error)
+    }), 'store.listKeybindings')
 }
 
 export const useAppStore = create<AppState>()(

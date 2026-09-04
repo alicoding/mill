@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dialog, Text } from '@primer/react'
 import { SettingsService } from './bindings'
+import { background } from './background'
 
 // The first-run intro surface (goal 0202): a NAMED reusable overlay
 // for a capability whose landing screen alone can't carry its own
@@ -49,7 +50,7 @@ export function FirstRunIntro({ id, title, body, testId }: {
 
   const dismiss = () => {
     setSeen(true)
-    SettingsService.MarkFirstRunIntroSeen(id).catch(console.error)
+    void background(SettingsService.MarkFirstRunIntroSeen(id), 'firstRunIntro.markFirstRunIntroSeen')
   }
 
   return (

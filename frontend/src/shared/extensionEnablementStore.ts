@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { SettingsService } from './bindings'
+import { background } from './background'
 
 // Which canvas extensions (atlas/atlasTools.ts's own registry) the user
 // has turned off (Settings > Extensions) -- lifted into its own store,
@@ -34,7 +35,6 @@ export function isExtensionEnabled(id: string): boolean {
 // surface (App.tsx's boot effect, the mill-data-changed router, the
 // Extensions section's own toggle handler) without prop threading.
 export function refreshDisabledExtensions(): Promise<void> {
-  return SettingsService.GetDisabledExtensions()
-    .then((ids) => useExtensionEnablementStore.getState().setDisabledExtensionIds(ids ?? []))
-    .catch(console.error)
+  return background(SettingsService.GetDisabledExtensions()
+    .then((ids) => useExtensionEnablementStore.getState().setDisabledExtensionIds(ids ?? [])), 'extensionEnablement.getDisabledExtensions')
 }

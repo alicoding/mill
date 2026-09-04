@@ -6,7 +6,7 @@ import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal
 import { CompositionService } from '../shared/bindings'
 import { EntityRefField } from '../configure/EntityRefField'
 import { RunButton, type RunButtonHandle } from './LiveRunControls'
-import { findCommand } from '../shared/commands'
+import { findCommand, runCommand } from '../shared/commands'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from '../shared/ListCard.module.css'
 
@@ -102,7 +102,7 @@ export function CanvasMetaHeader({
             <Label variant="secondary" size="small" data-testid="view-mode-chip">
               <EyeIcon size={12} /> {t('canvasMetaHeader.viewing')}
             </Label>
-            <Button size="small" leadingVisual={PencilIcon} onClick={() => { const cmd = findCommand('workflow.edit'); if (cmd?.enabled?.()) cmd.run(); else onSwitchToEdit?.() }} data-testid="edit-workflow">
+            <Button size="small" leadingVisual={PencilIcon} onClick={() => { const cmd = findCommand('workflow.edit'); if (cmd?.enabled?.()) void runCommand('workflow.edit'); else onSwitchToEdit?.() }} data-testid="edit-workflow">
               {t('canvasMetaHeader.edit')}
             </Button>
           </>

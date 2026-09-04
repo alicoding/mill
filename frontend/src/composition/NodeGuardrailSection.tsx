@@ -9,6 +9,7 @@ import type { StatusStampVariant } from '../shared/StatusStamp'
 import { GuardrailRuleDialog } from '../shared/GuardrailRuleDialog'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
 import styles from '../shared/ListCard.module.css'
+import { background } from '../shared/background'
 
 // Read-only guardrail visibility for the selected step (docs/adr/0022's
 // Update): shows the step's LIVE verdict -- the same evaluation the
@@ -53,7 +54,7 @@ export function NodeGuardrailSection({ verdict, rules, onRulesChanged }: {
   const { requestDelete, dialog: confirmDialog } = useConfirmDelete<GuardrailRule>({
     entityType: 'rule',
     labelOf: (r) => r.Label,
-    onConfirm: (r) => { GuardrailService.DeleteRule(r.ID).then(onRulesChanged).catch(() => {}) },
+    onConfirm: (r) => { void background(GuardrailService.DeleteRule(r.ID).then(onRulesChanged), 'nodeGuardrail.deleteRule') },
   })
 
   return (

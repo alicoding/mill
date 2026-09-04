@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { SecretService } from './bindings'
 import type { VaultStatus } from './bindings'
+import { background } from './background'
 
 // The vault-lock state door (goal 0222 S1): before this, whether the
 // secrets vault was locked/unlocked existed only as local useState
@@ -35,7 +36,6 @@ export const useVaultStatusStore = create<VaultStatusState>()((set) => ({
 // mill-data-changed router, SecretsView's own mount/event refresh,
 // secrets.lockVault/unlockVault's own run()) without prop threading.
 export function refreshVaultStatus(): Promise<void> {
-  return SecretService.VaultStatus()
-    .then((status) => useVaultStatusStore.getState().setVaultStatus(status))
-    .catch(console.error)
+  return background(SecretService.VaultStatus()
+    .then((status) => useVaultStatusStore.getState().setVaultStatus(status)), 'vaultStatus.vaultStatus')
 }

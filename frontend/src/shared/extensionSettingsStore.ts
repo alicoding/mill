@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ExtensionSettingDecl, ExtensionSettingValue } from './extensionSettingDecl'
 import { SettingsService } from './bindings'
+import { background } from './background'
 
 // Per-extension declared-setting VALUES (goal 0258) -- the stored
 // overrides only; defaults live on each extension's own declaration
@@ -100,7 +101,7 @@ function decodeLiteral(literal: string): ExtensionSettingValue | undefined {
 // callable from App's boot effect, the mill-data-changed router, the
 // plugin loader (before activation), and every control's own write.
 export function refreshExtensionSettings(): Promise<void> {
-  return SettingsService.GetExtensionSettings()
+  return background(SettingsService.GetExtensionSettings()
     .then((values) => {
       // The generated binding types every nested map value as
       // possibly-absent; normalize to the store's dense, decoded shape.
@@ -114,6 +115,5 @@ export function refreshExtensionSettings(): Promise<void> {
         }
       }
       useExtensionSettingsStore.getState().setValues(dense)
-    })
-    .catch(console.error)
+    }), 'extensionSettings.getExtensionSettings')
 }

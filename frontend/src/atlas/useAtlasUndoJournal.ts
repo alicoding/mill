@@ -3,6 +3,7 @@ import { Events } from '@wailsio/runtime'
 import { AtlasService } from '../shared/bindings'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { refreshAtlas } from './atlasStore'
+import { background } from '../shared/background'
 
 // Owns the actor-scoped undo journal's frontend half (goal 0219 S2,
 // ADR-0044): keeps uiSignalStore's atlasUndoAvailable/atlasRedoAvailable
@@ -24,9 +25,8 @@ import { refreshAtlas } from './atlasStore'
 // rule useAtlasQuietToast's own header already documents.
 export function useAtlasUndoJournal({ onSkip }: { onSkip: (message: string) => void }) {
   const refreshState = () => {
-    AtlasService.UndoState()
-      .then((s) => useUISignalStore.getState().setAtlasUndoRedoAvailable({ hasUndo: s.HasUndo, hasRedo: s.HasRedo }))
-      .catch(console.error)
+    void background(AtlasService.UndoState()
+      .then((s) => useUISignalStore.getState().setAtlasUndoRedoAvailable({ hasUndo: s.HasUndo, hasRedo: s.HasRedo })), 'atlasUndoJournal.undoState')
   }
 
   useEffect(() => {
@@ -38,7 +38,7 @@ export function useAtlasUndoJournal({ onSkip }: { onSkip: (message: string) => v
   }, [])
 
   const apply = (call: () => Promise<{ Applied: boolean; Skipped: boolean; Message: string }>) => {
-    call()
+    void background(call()
       .then((res) => {
         if (res.Applied) {
           useUISignalStore.getState().bumpAtlasUndoApplied()
@@ -46,8 +46,7 @@ export function useAtlasUndoJournal({ onSkip }: { onSkip: (message: string) => v
         }
         if (res.Skipped) onSkip(res.Message)
         refreshState()
-      })
-      .catch(console.error)
+      }), 'atlasUndoJournal.apply')
   }
 
   const undoRequest = useUISignalStore((s) => s.atlasUndoRequest)

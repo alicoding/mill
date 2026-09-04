@@ -20,6 +20,7 @@ import { descriptionLabel, groupSectionLabel, toolLessRowSource, toolRowSource, 
 import type { AtlasNounGroup } from '../atlas/atlasNounRegistry'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './ExtensionsSection.module.css'
+import { background } from '../shared/background'
 
 // Every canvas tool is an Atlas object -- ONE docs link for the whole
 // page, never a per-row URL guess.
@@ -74,7 +75,7 @@ export default function ExtensionsSection() {
 
   useEffect(() => {
     void refreshDisabledExtensions()
-    SettingsService.AppVersion().then(setAppVersion).catch(console.error)
+    void background(SettingsService.AppVersion().then(setAppVersion), 'extensions.appVersion')
   }, [])
 
   useEffect(() => {
@@ -88,7 +89,7 @@ export default function ExtensionsSection() {
   }, [plugins, selection])
 
   const toggle = (id: string, enabled: boolean) => {
-    SettingsService.SetExtensionEnabled(id, enabled).then(refreshDisabledExtensions).catch(console.error)
+    void background(SettingsService.SetExtensionEnabled(id, enabled).then(refreshDisabledExtensions), 'extensions.setExtensionEnabled')
   }
 
   // Escape closes the pane and focus returns to the row that opened
@@ -111,7 +112,7 @@ export default function ExtensionsSection() {
   const allOff = NON_BUILT_IN_IDS.length > 0 && NON_BUILT_IN_IDS.every((id) => disabledIds.includes(id))
   const toggleAll = async () => {
     for (const id of NON_BUILT_IN_IDS) {
-      await SettingsService.SetExtensionEnabled(id, allOff).catch(console.error)
+      await background(SettingsService.SetExtensionEnabled(id, allOff), 'extensions.setExtensionEnabled')
     }
     await refreshDisabledExtensions()
   }
@@ -127,7 +128,7 @@ export default function ExtensionsSection() {
           allowed={allowedNow.includes(selectedPlugin.Manifest.id)}
           onAllow={() => {
             const id = selectedPlugin.Manifest.id
-            SettingsService.SetPluginAllowed(id, true).then(() => setAllowedNow((prev) => [...prev, id])).catch(console.error)
+            void background(SettingsService.SetPluginAllowed(id, true).then(() => setAllowedNow((prev) => [...prev, id])), 'extensions.setPluginAllowed')
           }}
           showBackLink={!hasSidePane}
           onClose={closeDetail}

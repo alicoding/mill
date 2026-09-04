@@ -5,6 +5,7 @@ import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/intern
 import { linkPasteClaimants } from './linkPasteClaimants'
 import { SettingsService } from '../shared/bindings'
 import styles from '../shared/ListCard.module.css'
+import { background } from '../shared/background'
 
 // Settings > Extensions' "Pasted links become" choice (ADR-0051 slice
 // 2): which claimant a bare link pasted on the board lands as when more
@@ -23,7 +24,7 @@ export function ExtensionsLinkPasteControl({ plugins, disabledIds }: { plugins: 
 	const current = claimants.some((c) => c.kind === preferred) ? preferred : claimants[0]!.kind
 	const persist = (kind: string) => {
 		setPreferred(kind)
-		SettingsService.SetPreferredLinkPasteKind(kind).catch(console.error)
+		void background(SettingsService.SetPreferredLinkPasteKind(kind), 'extensionsLinkPasteControl.setPreferredLinkPasteKind')
 	}
 	return (
 		<Stack direction="vertical" gap="none" data-testid="extensions-link-paste">

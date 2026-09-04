@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { ExecutionService, RunKind, SettingsService } from '../shared/bindings'
 import { generateSamplePayload } from '../shared/configSchema'
 import { workflowTarget } from './navigateTarget'
+import { background } from '../shared/background'
 
 // A workflow row's actions in the Quick Panel (goal 0294), shaped on
 // the launcher convention every user of one already knows: Enter is
@@ -38,7 +39,7 @@ function runSeconds(startedAt: unknown, completedAt: unknown): string {
 }
 
 const openMain = (view: string) => {
-  void SettingsService.OpenMainWindow(view).catch(() => {})
+  void background(SettingsService.OpenMainWindow(view), 'quickPanelWorkflowActions.openMainWindow')
 }
 
 const valuesFor = (wf: WorkflowLike) => {
@@ -110,9 +111,9 @@ export function useQuickPanelWorkflowActions({ workflows, visibleWorkflowIds, pi
   // whether it is still stepping or already finished. The panel steps
   // aside; the monitor is the surface now.
   const runAndWatch = (wf: WorkflowLike) => {
-    ExecutionService.RunWorkflow(wf.ID, RunKind.RunKindTest, valuesFor(wf)).catch(() => {})
-    void SettingsService.ShowRunMonitor(wf.ID, 'latest').catch(() => {})
-    void SettingsService.DismissPanel().catch(() => {})
+    void background(ExecutionService.RunWorkflow(wf.ID, RunKind.RunKindTest, valuesFor(wf)), 'quickPanelWorkflowActions.runWorkflow')
+    void background(SettingsService.ShowRunMonitor(wf.ID, 'latest'), 'quickPanelWorkflowActions.showRunMonitor')
+    void background(SettingsService.DismissPanel(), 'quickPanelWorkflowActions.dismissPanel')
   }
 
   const openWorkflow = (wf: WorkflowLike) => {

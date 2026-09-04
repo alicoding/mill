@@ -7,6 +7,7 @@ import { refreshNodeTypes, refreshWorkflows, useAppStore } from '../shared/store
 import CompositionCanvas from '../composition/CompositionCanvas'
 import { workflowTarget } from './navigateTarget'
 import styles from './RunMonitor.module.css'
+import { background } from '../shared/background'
 
 // One workflow's canvas, read-only, showing one run's steps (goal 0294
 // S2): the "watch it step" surface that is NOT the full app. Reached
@@ -51,8 +52,8 @@ export function RunMonitor() {
 
   const openInMill = () => {
     if (!target) return
-    void SettingsService.HideRunMonitor().catch(() => {})
-    void SettingsService.OpenMainWindow(workflowTarget(target.workflowID, target.runID)).catch(() => {})
+    void background(SettingsService.HideRunMonitor(), 'runMonitor.hideRunMonitor')
+    void background(SettingsService.OpenMainWindow(workflowTarget(target.workflowID, target.runID)), 'runMonitor.openMainWindow')
   }
 
   return (
@@ -81,7 +82,7 @@ export function RunMonitor() {
             readOnly
             viewer
             requestedRunId={target.runID}
-            onBack={() => { void SettingsService.HideRunMonitor().catch(() => {}) }}
+            onBack={() => { void background(SettingsService.HideRunMonitor(), 'runMonitor.hideRunMonitor') }}
             onSaved={() => {}}
           />
         </div>

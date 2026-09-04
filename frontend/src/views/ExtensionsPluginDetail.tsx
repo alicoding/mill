@@ -5,7 +5,7 @@ import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/intern
 import { drainedPluginCommands } from '../plugins/pluginCommands'
 import { pluginLoadStates } from '../plugins/loader'
 import { settingDeclsFromManifest } from '../plugins/pluginSettings'
-import { findCommand } from '../shared/commands'
+import { findCommand, runCommand } from '../shared/commands'
 import { ExtensionDetailPane, type ExtensionDetail } from './ExtensionDetailPane'
 import { reachLabel } from './extensionMeta'
 import listStyles from '../shared/ListCard.module.css'
@@ -64,14 +64,14 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
     actions: reloadCommand?.enabled?.() ? (
       <Button
         size="small"
-        onClick={() => reloadCommand.run()}
+        onClick={() => void runCommand(reloadCommand.id)}
         aria-label={t('settings.extensions.pluginReloadAria', { name })}
         data-testid="extensions-plugin-reload"
       >
         {t('settings.extensions.pluginReload')}
       </Button>
     ) : undefined,
-    onRemove: removeCommand?.enabled?.() ? () => removeCommand.run() : undefined,
+    onRemove: removeCommand?.enabled?.() ? () => void runCommand(removeCommand.id) : undefined,
   }
   return <ExtensionDetailPane detail={detail} showBackLink={showBackLink} onClose={onClose} />
 }

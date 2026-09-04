@@ -5,6 +5,7 @@ import { SettingsService, TriggerService } from '../shared/bindings'
 import { comboKey, describeCombo, formatCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from '../shared/keybinding'
 import { refreshKeybindings, useAppStore } from '../shared/store'
 import { COMMANDS, effectiveBinding, findCommand, surfacesIntersect } from '../shared/commands'
+import { background } from '../shared/background'
 
 // SPEC.md §2.2's "Permissions UX pattern" -- deep-link straight into the
 // exact System Settings pane instead of telling the user to go find it
@@ -57,7 +58,7 @@ function useComboCapture(enabled: boolean, adapter: ComboCaptureAdapter, onChang
       setBinding(null)
       return
     }
-    adapter.currentBinding().then(setBinding).catch(console.error)
+    void background(adapter.currentBinding().then(setBinding), 'hotkeyCapture.loadBinding')
     // adapter is a fresh object identity per render from both wrappers
     // below (a useMemo keyed on the real id, not enabled/onChanged) --
     // depending on it directly would refetch on every unrelated
@@ -75,7 +76,7 @@ function useComboCapture(enabled: boolean, adapter: ComboCaptureAdapter, onChang
     if (!enabled) return
     return Events.On('mill-data-changed', (evt) => {
       const changed = (evt.data as { entity?: string })?.entity
-      if (changed === adapter.entity) adapter.currentBinding().then(setBinding).catch(console.error)
+      if (changed === adapter.entity) void background(adapter.currentBinding().then(setBinding), 'hotkeyCapture.syncBinding')
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled])
@@ -101,7 +102,7 @@ function useComboCapture(enabled: boolean, adapter: ComboCaptureAdapter, onChang
   useEffect(() => {
     if (!recording || !enabled) return
 
-    SettingsService.SuspendMenuAccelerators().catch(console.error)
+    void background(SettingsService.SuspendMenuAccelerators(), 'hotkeyCapture.suspendMenuAccelerators')
 
     const onKeydown = (e: KeyboardEvent) => {
       e.preventDefault()
@@ -138,14 +139,14 @@ function useComboCapture(enabled: boolean, adapter: ComboCaptureAdapter, onChang
     return () => {
       window.removeEventListener('keydown', onKeydown, true)
       window.removeEventListener('blur', onBlur)
-      SettingsService.RestoreMenuAccelerators().catch(console.error)
+      void background(SettingsService.RestoreMenuAccelerators(), 'hotkeyCapture.restoreMenuAccelerators')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recording, enabled, onChanged])
 
   const clear = () => {
     if (!enabled) return
-    adapter.unassign().then(() => { setBinding(null); onChanged?.() })
+    void adapter.unassign().then(() => { setBinding(null); onChanged?.() })
   }
 
   return {

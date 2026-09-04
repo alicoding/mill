@@ -6,7 +6,7 @@ import { Button, Checkbox, FormControl, Heading, IconButton, Stack, Text } from 
 import { HistoryIcon, KeyIcon, LockIcon, PlusIcon } from '@primer/octicons-react'
 import { SecretService } from '../shared/bindings'
 import type { SecretSummary } from '../shared/bindings'
-import { findCommand } from '../shared/commands'
+import { findCommand, runCommand } from '../shared/commands'
 import { refreshVaultStatus, useVaultStatusStore } from '../shared/vaultStatusStore'
 import { vaultErrorKind } from '../shared/secretsCommands'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
@@ -53,7 +53,7 @@ export default function SecretsView() {
   const [confirmReset, setConfirmReset] = useState(false)
 
   const refresh = () => {
-    refreshVaultStatus().then(() => {
+    void refreshVaultStatus().then(() => {
       const s = useVaultStatusStore.getState().vaultStatus
       if (s?.Unlocked) {
         SecretService.ListSecrets().then(setList).catch((err) => setError(String(err)))
@@ -159,7 +159,7 @@ export default function SecretsView() {
           <Stack direction="horizontal" gap="condensed" align="center" justify="center">
             <Button
               variant="primary"
-              onClick={() => findCommand('secrets.unlockVault')?.run()}
+              onClick={() => void runCommand('secrets.unlockVault')}
               disabled={busy}
               data-testid="secrets-unlock-cta"
             >
@@ -182,7 +182,7 @@ export default function SecretsView() {
             onCancel={() => setConfirmReset(false)}
             onConfirm={() => {
               setConfirmReset(false)
-              findCommand('secrets.resetVault')?.run()
+              void runCommand('secrets.resetVault')
             }}
           />
         )}
@@ -235,7 +235,7 @@ export default function SecretsView() {
             // before locking -- the locked Blankslate below renders this
             // same `error` state, and a message about a DIFFERENT prior
             // action must not survive into it.
-            onClick={() => { setError(''); findCommand('secrets.lockVault')?.run() }}
+            onClick={() => { setError(''); void runCommand('secrets.lockVault') }}
             data-testid="secrets-lock"
           />
           <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate} data-testid="secrets-new">

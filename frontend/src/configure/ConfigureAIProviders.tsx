@@ -22,6 +22,7 @@ import { ConfigureEntityPage } from './ConfigureEntityPage'
 import { useSeedLifecycle } from './useSeedLifecycle'
 import { useEntityImportExport } from './useEntityImportExport'
 import styles from '../shared/ListCard.module.css'
+import { background } from '../shared/background'
 
 function kindLabelFor(t: (key: string) => string): Record<string, string> {
   return {
@@ -77,7 +78,7 @@ export function ConfigureAIProviders() {
   useEffect(() => {
     refetch()
     seedLifecycle.refresh()
-    ConfigureService.AIProviderFields().then((f) => setFields(f ?? [])).catch(console.error)
+    void background(ConfigureService.AIProviderFields().then((f) => setFields(f ?? [])), 'configureAIProviders.providerFields')
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only fetch, same reasoning every sibling Configure page's identical effect documents
   }, [])
 

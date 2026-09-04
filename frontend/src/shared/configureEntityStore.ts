@@ -8,6 +8,7 @@ import type { Source as SecretSource } from '../../bindings/github.com/alicoding
 import type { Profile as ConversionProfile } from '../../bindings/github.com/alicoding/mill/internal/domain/conversionprofile/models'
 import type { AIProvider } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 import type { DeclaredStepType } from '../../bindings/github.com/alicoding/mill/internal/domain/declaredsteptype/models'
+import { background } from './background'
 
 // The other half of store.ts's "one fetch, many consumers" server-data
 // pattern (workflows/nodeTypes/requests) for Configure's remaining
@@ -67,49 +68,41 @@ export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => (
 // mount, a form's onSaved, App.tsx's mill-data-changed router) without
 // prop threading.
 export function refreshLists(): Promise<void> {
-  return ConfigureService.Lists()
-    .then((list) => useConfigureEntityStore.getState().setLists(list ?? []))
-    .catch(console.error)
+  return background(ConfigureService.Lists()
+    .then((list) => useConfigureEntityStore.getState().setLists(list ?? [])), 'configureEntity.lists')
 }
 
 export function refreshDecisions(): Promise<void> {
-  return ConfigureService.Decisions()
-    .then((list) => useConfigureEntityStore.getState().setDecisions(list ?? []))
-    .catch(console.error)
+  return background(ConfigureService.Decisions()
+    .then((list) => useConfigureEntityStore.getState().setDecisions(list ?? [])), 'configureEntity.decisions')
 }
 
 export function refreshMCPServers(): Promise<void> {
-  return ConfigureService.MCPServers()
-    .then((list) => useConfigureEntityStore.getState().setMCPServers(list ?? []))
-    .catch(console.error)
+  return background(ConfigureService.MCPServers()
+    .then((list) => useConfigureEntityStore.getState().setMCPServers(list ?? [])), 'configureEntity.mcpServers')
 }
 
 export function refreshExecEnvs(): Promise<void> {
-  return ConfigureService.ExecEnvs()
-    .then((list) => useConfigureEntityStore.getState().setExecEnvs(list ?? []))
-    .catch(console.error)
+  return background(ConfigureService.ExecEnvs()
+    .then((list) => useConfigureEntityStore.getState().setExecEnvs(list ?? [])), 'configureEntity.execEnvs')
 }
 
 export function refreshConversionProfiles(): Promise<void> {
-  return ConfigureService.ConversionProfiles()
-    .then((list) => useConfigureEntityStore.getState().setConversionProfiles(list ?? []))
-    .catch(console.error)
+  return background(ConfigureService.ConversionProfiles()
+    .then((list) => useConfigureEntityStore.getState().setConversionProfiles(list ?? [])), 'configureEntity.conversionProfiles')
 }
 
 export function refreshSecretSources(): Promise<void> {
-  return ConfigureService.SecretSources()
-    .then((list) => useConfigureEntityStore.getState().setSecretSources(list ?? []))
-    .catch(console.error)
+  return background(ConfigureService.SecretSources()
+    .then((list) => useConfigureEntityStore.getState().setSecretSources(list ?? [])), 'configureEntity.secretSources')
 }
 
 export function refreshAIProviders(): Promise<void> {
-  return ConfigureService.AIProviders()
-    .then((list) => useConfigureEntityStore.getState().setAIProviders(list ?? []))
-    .catch(console.error)
+  return background(ConfigureService.AIProviders()
+    .then((list) => useConfigureEntityStore.getState().setAIProviders(list ?? [])), 'configureEntity.aiProviders')
 }
 
 export function refreshDeclaredStepTypes(): Promise<void> {
-  return ConfigureService.DeclaredStepTypes()
-    .then((list) => useConfigureEntityStore.getState().setDeclaredStepTypes(list ?? []))
-    .catch(console.error)
+  return background(ConfigureService.DeclaredStepTypes()
+    .then((list) => useConfigureEntityStore.getState().setDeclaredStepTypes(list ?? [])), 'configureEntity.declaredStepTypes')
 }

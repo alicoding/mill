@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Browser } from '@wailsio/runtime'
 import { Button, Dialog, Stack, Text } from '@primer/react'
-import { findCommand } from '../shared/commands'
+import { runCommand } from '../shared/commands'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { useUpdateNoticeStore } from '../shared/updateNoticeStore'
 import mirrorStyles from '../atlas/AtlasCardMirrorPreview.module.css'
@@ -65,7 +65,7 @@ export function WhatsNewDialog() {
       ) : (
         <Stack direction="horizontal" gap="condensed" align="center" data-testid="whats-new-empty">
           <Text size="small">{t('whatsNew.empty')}</Text>
-          <Button size="small" onClick={() => findCommand('update.check')?.run()} data-testid="whats-new-check">
+          <Button size="small" onClick={() => void runCommand('update.check')} data-testid="whats-new-check">
             {t('whatsNew.checkButton')}
           </Button>
         </Stack>

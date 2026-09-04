@@ -19,6 +19,7 @@ import { ENQUEUED_STALE_THRESHOLD_MS, isStuckEnqueued } from '../shared/enqueued
 import styles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
 import PageContainer from '../shared/PageContainer'
+import { background } from '../shared/background'
 
 function kindLabelFor(t: (key: string) => string): Record<RunKind, string> {
   return {
@@ -166,7 +167,7 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
     const inFlight = detail.status === 'PENDING' || detail.status === 'RUNNING' || detail.status === 'ENQUEUED'
     if (!inFlight) return
     const timer = setInterval(() => {
-      ExecutionService.GetRun(selectedRunID).then(setDetail).catch(() => {})
+      void background(ExecutionService.GetRun(selectedRunID).then(setDetail), 'workflowRuns.getRun')
       refreshRuns()
     }, 1000)
     return () => clearInterval(timer)
@@ -186,7 +187,7 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
         setBusy(false)
         // A refused decision means this banner is stale -- refetch so it
         // stops offering what it just failed to do.
-        if (!delivered) ExecutionService.GetRun(selectedRunID).then(setDetail).catch(() => {})
+        if (!delivered) void background(ExecutionService.GetRun(selectedRunID).then(setDetail), 'workflowRuns.getRun')
       })
     // The in-flight poll below picks up the resumed/failed state.
   }

@@ -8,6 +8,7 @@ import type { PendingGuardedAction } from '../../bindings/github.com/alicoding/m
 import { StatusStamp } from '../shared/StatusStamp'
 import { StalenessBadge } from '../shared/StalenessBadge'
 import styles from './ReviewView.module.css'
+import { background } from '../shared/background'
 
 // Pending guarded actions in the Review queue (docs/goals/0249,
 // closing docs/adr/0047 §5's render-alongside half): a non-workflow
@@ -26,7 +27,7 @@ export function ReviewGuardedActions({ visible, onCount }: { visible: boolean; o
 	useEffect(() => { onCount?.(actions.length) }, [actions.length, onCount])
 
 	const refresh = () => {
-		GuardrailService.PendingGuardedActions().then((a) => setActions(a ?? [])).catch(() => {})
+		void background(GuardrailService.PendingGuardedActions().then((a) => setActions(a ?? [])), 'reviewGuardedActions.pendingGuardedActions')
 	}
 	useEffect(() => {
 		refresh()
@@ -39,7 +40,7 @@ export function ReviewGuardedActions({ visible, onCount }: { visible: boolean; o
 	}, [])
 
 	const resolve = (id: string, approve: boolean) => {
-		GuardrailService.ResolveGuardedAction(id, approve).then(refresh).catch(() => {})
+		void background(GuardrailService.ResolveGuardedAction(id, approve).then(refresh), 'reviewGuardedActions.resolveGuardedAction')
 	}
 
 	if (!visible || actions.length === 0) return null

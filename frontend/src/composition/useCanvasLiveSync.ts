@@ -5,6 +5,7 @@ import { CompositionService } from '../shared/bindings'
 import type { CanvasStore } from './canvasStore'
 import { toCanvasNodes, toCanvasNotes, toRFEdges } from './canvasConversion'
 import { buildScratchDraft, draftsEqual, type ScratchDraft } from './canvasScratch'
+import { background } from '../shared/background'
 
 // GAP B of the live-canvas-sync work (docs/SPEC.md §1's realtime lock,
 // applied to authoring): an open workflow editor reacting to an
@@ -143,7 +144,7 @@ export function useCanvasLiveSync(args: UseCanvasLiveSyncArgs): UseCanvasLiveSyn
       const data = evt.data as { entity?: string; id?: string }
       if (data?.entity !== 'workflow' || data?.id !== workflowId) return
       const seq = ++requestSeqRef.current
-      CompositionService.Workflows()
+      void background(CompositionService.Workflows()
         .then((all) => {
           // A newer mill-data-changed event for this same workflow has
           // already arrived and dispatched its own fetch since this one
@@ -163,8 +164,7 @@ export function useCanvasLiveSync(args: UseCanvasLiveSyncArgs): UseCanvasLiveSyn
           } else {
             setPendingExternalChange({ workflow: fresh })
           }
-        })
-        .catch(() => {})
+        }), 'canvasLiveSync.workflows')
     })
   }, [workflowId, nodeTypes, useCanvasStore, setBaseline, setDraftLabel, setDraftDescription])
 

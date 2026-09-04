@@ -26,6 +26,7 @@ import { describeSeedReset } from '../shared/seedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
+import { background } from '../shared/background'
 
 // Configure's Lists section (docs/SPEC.md §3.5): CRUD over
 // ConfigureService's typed Lists. Schema AND data edit in the ONE
@@ -55,8 +56,8 @@ export function ConfigureLists() {
   const [restorable, setRestorable] = useState<List[]>([])
 
   const refreshSeedLifecycle = () => {
-    ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})).catch(console.error)
-    ConfigureService.RestorableLists().then((r) => setRestorable(r ?? [])).catch(console.error)
+    void background(ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})), 'configureLists.seedRevisions')
+    void background(ConfigureService.RestorableLists().then((r) => setRestorable(r ?? [])), 'configureLists.restorableLists')
   }
 
   const refetch = () => {

@@ -21,6 +21,7 @@ import { describeSeedReset } from '../shared/seedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
+import { background } from '../shared/background'
 
 // Configure's Integration section (docs/SPEC.md §3.5): the Integrations
 // inventory. Viewing/editing no longer opens tabs here -- open work
@@ -51,8 +52,8 @@ export function ConfigureRequests() {
   const [restorable, setRestorable] = useState<HTTPRequest[]>([])
 
   const refreshSeedLifecycle = () => {
-    ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})).catch(console.error)
-    ConfigureService.RestorableHTTPRequests().then((r) => setRestorable(r ?? [])).catch(console.error)
+    void background(ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})), 'configureRequests.seedRevisions')
+    void background(ConfigureService.RestorableHTTPRequests().then((r) => setRestorable(r ?? [])), 'configureRequests.restorableHTTPRequests')
   }
 
   useEffect(() => {

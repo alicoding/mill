@@ -20,6 +20,7 @@ import { HotkeyHint } from '../shared/HotkeyHint'
 import { useWorkTabCloseGuard } from './useWorkTabCloseGuard'
 import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
 import styles from './WorkTabShell.module.css'
+import { background } from '../shared/background'
 
 // The ONE app-wide work-tab strip (docs/SPEC.md §3.8, direct user
 // decision: two per-page strips isolating open work between pages was
@@ -161,9 +162,8 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
             onEdit={() => openWorkTab({ kind: 'request-edit', requestId: request.ID })}
             onDuplicate={() => openWorkTab({ kind: 'request-new', duplicateFromId: request.ID })}
             onDelete={() => {
-              ConfigureService.DeleteHTTPRequest(request.ID)
-                .then(() => refreshRequests()) // prune closes this tab once the list lands
-                .catch(console.error)
+              void background(ConfigureService.DeleteHTTPRequest(request.ID)
+                .then(() => refreshRequests()), 'workTabShell.deleteHTTPRequest')
             }}
           />
         )

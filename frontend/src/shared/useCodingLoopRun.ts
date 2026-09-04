@@ -5,6 +5,7 @@ import type { CommandBlockPreview, RunDetail } from './bindings'
 import type { CodingLoopStepProgressEvent } from './codingLoopTypes'
 import { CODING_LOOP_POLL_INTERVAL_MS, CODING_LOOP_PROGRESS_EVENT } from './codingLoopConstants'
 import { writeClipboardText } from './clipboardWrite'
+import { background } from './background'
 
 // The coding loop's own state machine (docs/goals/0240 S1): Confirm ->
 // Running -> Result, driven entirely through ExecutionService's
@@ -85,7 +86,7 @@ export function useCodingLoopRun(clipboardText: string): UseCodingLoopRunResult 
       .then((p) => {
         if (!mounted.current) return
         setPreview(p)
-        ExecutionService.ListRunsForWorkflow(p.workflowID)
+        void background(ExecutionService.ListRunsForWorkflow(p.workflowID)
           .then((runs) => {
             if (!mounted.current) return
             const newest = (runs ?? [])[0]
@@ -94,8 +95,7 @@ export function useCodingLoopRun(clipboardText: string): UseCodingLoopRunResult 
               setPhase('running')
               setLastProgressAt(Date.now())
             }
-          })
-          .catch(() => {})
+          }), 'codingLoopRun.listRunsForWorkflow')
       })
       .catch((err) => {
         if (mounted.current) setPreviewError(String(err))
@@ -132,7 +132,7 @@ export function useCodingLoopRun(clipboardText: string): UseCodingLoopRunResult 
   useEffect(() => {
     if (phase !== 'running' || !runID) return
     const tick = () => {
-      ExecutionService.GetRun(runID)
+      void background(ExecutionService.GetRun(runID)
         .then((d) => {
           if (!mounted.current) return
           setDetail(d)
@@ -152,8 +152,7 @@ export function useCodingLoopRun(clipboardText: string): UseCodingLoopRunResult 
             return
           }
           if (!isInFlightStatus(d.status)) setPhase('result')
-        })
-        .catch(() => {})
+        }), 'codingLoopRun.resolveApproval')
     }
     tick()
     const timer = setInterval(tick, CODING_LOOP_POLL_INTERVAL_MS)
@@ -187,7 +186,7 @@ export function useCodingLoopRun(clipboardText: string): UseCodingLoopRunResult 
   }
 
   const cancel = () => {
-    if (runID) ExecutionService.CancelRun(runID).catch(() => {})
+    if (runID) void background(ExecutionService.CancelRun(runID), 'codingLoopRun.cancelRun')
   }
 
   const copyResult = () => {

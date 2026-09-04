@@ -7,6 +7,7 @@ import { AtlasService } from '../shared/bindings'
 import { isFocusInsideBoard, readSelectedNodeIDs } from './atlasFocusContainment'
 import { nearestInDirection, readingOrder } from './atlasKeyboardNavGeometry'
 import type { NavBox, NavDirection } from './atlasKeyboardNavGeometry'
+import { background } from '../shared/background'
 
 const NUDGE_STEP = 1
 const NUDGE_STEP_SHIFT = 10
@@ -67,8 +68,8 @@ export function useAtlasKeyboardNav<TNode extends RFNode>({
   useEffect(() => {
     const flushNudge = () => {
       for (const [id, pos] of pendingNudgeRef.current) {
-        if (pos.isNote) void AtlasService.SetNotePosition(id, { X: pos.x, Y: pos.y }).catch(console.error)
-        else void AtlasService.SetPosition(id, { X: pos.x, Y: pos.y }).catch(console.error)
+        if (pos.isNote) void background(AtlasService.SetNotePosition(id, { X: pos.x, Y: pos.y }), 'atlasKeyboardNav.setNotePosition')
+        else void background(AtlasService.SetPosition(id, { X: pos.x, Y: pos.y }), 'atlasKeyboardNav.setPosition')
       }
       pendingNudgeRef.current = new Map()
     }

@@ -7,6 +7,7 @@ import type { MirrorReadState } from '../useAtlasObjectMirrorRead'
 import { boardObjectContentFor } from '../atlasNounRegistry'
 import { dispatchObjectEdit, openExternalUrl } from '../objectSeams'
 import { applyTextAssistOff } from '../../shared/searchInputProps'
+import { background } from '../../shared/background'
 import nodeStyles from '../AtlasBoardObjectNode.module.css'
 import styles from './AtlasPdfObjectContent.module.css'
 
@@ -54,10 +55,10 @@ export function AtlasPdfObjectContent({ object, mirrorContent, preview }: { obje
   const openInDefaultApp = () => {
     const editRoute = boardObjectContentFor(object.Kind)?.editRoute
     if (!editRoute) return
-    dispatchObjectEdit(object, editRoute).catch(() => {
-      // The context menu's own "Open in default app" item surfaces the
-      // same failure via its onError toast.
-    })
+    // The context menu's own "Open in default app" item surfaces the
+    // same failure via its onError toast -- this button is a second
+    // entry point to the identical RPC, not a second error surface.
+    void background(dispatchObjectEdit(object, editRoute), 'atlasPdfObjectContent.openInDefaultApp')
   }
 
   if (content?.TooLarge) {

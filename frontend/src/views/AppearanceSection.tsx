@@ -5,6 +5,7 @@ import { SunIcon, MoonIcon, DeviceDesktopIcon } from '@primer/octicons-react'
 import { SettingsService } from '../shared/bindings'
 import { applyDensity, type DisplayDensity } from '../shared/density'
 import { SettingsRow } from './SettingsRow'
+import { background } from '../shared/background'
 import {
   DARK_SCHEMES,
   LIGHT_SCHEMES,
@@ -56,9 +57,8 @@ export default function AppearanceSection() {
   // the SegmentedControl has no real "unset" rendering.
   const [density, setDensityState] = useState<DisplayDensity | null>(null)
   useEffect(() => {
-    SettingsService.GetDisplayDensity()
-      .then((d) => setDensityState(d === 'compact' ? 'compact' : 'comfortable'))
-      .catch(console.error)
+    void background(SettingsService.GetDisplayDensity()
+      .then((d) => setDensityState(d === 'compact' ? 'compact' : 'comfortable')), 'appearance.getDisplayDensity')
   }, [])
 
   // Density applies instantly, ahead of the persist RPC resolving, and
@@ -68,7 +68,7 @@ export default function AppearanceSection() {
     applyDensity(value)
     setDensityState(value)
     setAppearance(appearance, value)
-    SettingsService.SetDisplayDensity(value).catch(console.error)
+    void background(SettingsService.SetDisplayDensity(value), 'appearance.setDisplayDensity')
   }
 
   const setMode = (mode: ColorMode) => setAppearance({ ...appearance, mode })
