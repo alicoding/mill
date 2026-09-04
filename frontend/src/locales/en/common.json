@@ -87,5 +87,19 @@
   "interruptedRun": {
     "caption": "Mill relaunched before you answered, so this run stopped.",
     "dismiss": "Dismiss"
+  },
+  "list": {
+    "sort": "Sort",
+    "sortOption": {
+      "updated": "Last updated",
+      "name": "Name A–Z",
+      "created": "Created"
+    },
+    "examples": "Examples ({{count}})",
+    "showExamples": "Show examples",
+    "hideExamples": "Hide examples",
+    "countRange": "{{from}}–{{to}} of {{total}}",
+    "countNarrowed": "{{shown}} of {{total}}",
+    "countTotal": "{{total}}"
   }
 }

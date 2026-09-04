@@ -103,6 +103,9 @@ export function ConfigureSecretSources() {
     icon: ENTITY_ICON.secretsource,
     label: s.Label,
     updatedLabel: formatUpdated(s.UpdatedAt),
+    builtIn: s.BuiltIn,
+    updatedAt: s.UpdatedAt,
+    createdAt: s.CreatedAt,
     description: [kindLabel(s.Kind), s.Path, problems[s.ID] ? `⚠ ${problems[s.ID]}` : ''].filter(Boolean).join(' · '),
     onOpen: () => startEdit(s),
     menuActions: [
@@ -179,6 +182,7 @@ export function ConfigureSecretSources() {
       showRows={sources !== null && viewMode === 'rows' && !(formOpen && sources.length === 0)}
       rowsContent={(
         <InventoryList
+          listId="configure.secretsources"
           items={items}
           searchPlaceholder={t('configureSecretSources.searchPlaceholder')}
           emptyState={{

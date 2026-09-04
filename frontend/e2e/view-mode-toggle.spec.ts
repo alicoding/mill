@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { clickRowAction } from './inventoryRow'
+import { clickRowAction, expandExamples } from './inventoryRow'
 
 // Exercises the shared rows/table view switch (ViewModeToggle + Primer
 // DataTable, docs/goals/0007-resource-inventory-redesign.md) on two
@@ -115,6 +115,10 @@ test('The inventory search box filters rows by label', async ({ page }) => {
   await page.getByRole('link', { name: 'Workflows' }).click()
 
   const search = page.getByTestId('inventory-search')
+  // Every row this test reads is a seeded example, which sits in the
+  // collapsible Examples section whenever the worker's server already
+  // carries a user-owned workflow (docs/goals/0337).
+  await expandExamples(page)
   await expect(page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ hasText: 'Clipboard → Markdown' })).toBeVisible()
   // The full label, not a bare "Markdown" -- "Example: Saved page →
   // Markdown" (the docs/adr/0030 capture-floor seed) matches a

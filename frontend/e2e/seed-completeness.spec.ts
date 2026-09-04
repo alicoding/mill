@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { workflowRow, activePanel } from './fixtures/canvas'
+import { expandExamples } from './inventoryRow'
 
 // docs/goals/0010: proves the new seeded artifacts (a List, an MCP
 // Server, and their workflows) are actually reachable and correct
@@ -56,6 +57,7 @@ test('Example: Country code lookup runs a real match through the seeded List', a
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
+  await expandExamples(page)
   const row = workflowRow(page, 'Example: Country code lookup')
   await expect(row).toBeVisible()
   await row.click()

@@ -198,6 +198,7 @@ export default function SecretsView() {
     label: s.Title,
     description: s.Username || s.URL || undefined,
     updatedLabel: formatUpdated(s.UpdatedAt),
+    updatedAt: s.UpdatedAt,
     onOpen: () => setDetailID(s.ID),
     menuActions: [
       { label: t('editButton'), onClick: () => startEdit(s.ID) },
@@ -260,6 +261,7 @@ export default function SecretsView() {
       </Stack>
       {error && <Text as="p" size="small" className={styles.error} data-testid="secrets-touchid-error">{error}</Text>}
       <InventoryList
+        listId="secrets"
         items={items}
         searchPlaceholder={t('searchPlaceholder')}
         emptyState={{

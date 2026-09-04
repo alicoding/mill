@@ -112,6 +112,7 @@ export function HomeMostUsed({ usage, minutesByWorkflow, onMinutesChanged }: {
 
   return (
     <InventoryList
+      listId="home.mostUsed"
       searchPlaceholder={t('home.mostUsed.searchPlaceholder')}
       emptyState={{
         icon: GraphIcon,

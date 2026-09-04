@@ -283,6 +283,9 @@ function CompositionView() {
       icon: ENTITY_ICON.workflow,
       label: wf.Label,
       updatedLabel: formatUpdated(wf.UpdatedAt),
+      builtIn: wf.BuiltIn,
+      updatedAt: wf.UpdatedAt,
+      createdAt: wf.CreatedAt,
       labelBadges: (
         <Stack direction="horizontal" gap="condensed" align="center">
           {wf.BuiltIn && <StatusStamp variant="identity">{t('compositionView.builtIn')}</StatusStamp>}
@@ -431,6 +434,7 @@ function CompositionView() {
       )}
       {workflows !== null && viewMode === 'rows' && (
         <InventoryList
+          listId="workflows"
           items={workflowItems}
           searchPlaceholder={t('compositionView.searchPlaceholder')}
           emptyState={{

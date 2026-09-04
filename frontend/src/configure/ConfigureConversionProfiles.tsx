@@ -101,8 +101,10 @@ export function ConfigureConversionProfiles() {
     entity: 'conversionprofile',
     icon: ENTITY_ICON.conversionprofile,
     label: p.Label,
-    builtIn: p.BuiltIn,
     updatedLabel: formatUpdated(p.UpdatedAt),
+    builtIn: p.BuiltIn,
+    updatedAt: p.UpdatedAt,
+    createdAt: p.CreatedAt,
     description: rulesText(p),
     onOpen: () => startEdit(p),
     menuActions: [
@@ -177,6 +179,7 @@ export function ConfigureConversionProfiles() {
       rowsContent={(
         <Stack direction="vertical" gap="normal">
           <InventoryList
+            listId="configure.conversionprofiles"
             items={items}
             searchPlaceholder={t('configureConversionProfiles.searchPlaceholder')}
             emptyState={{

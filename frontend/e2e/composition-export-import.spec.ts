@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { clickRowAction } from './inventoryRow'
+import { clickRowAction, expandExamples } from './inventoryRow'
 import { workflowRow } from './fixtures/canvas'
 
 // Real Go bindings over HTTP (Wails3 server mode), not mocks -- same
@@ -69,6 +69,9 @@ test('Importing a workflow file adds a new, independent workflow without touchin
   await expect(importedRow.getByText('Imported by an e2e test')).toBeVisible()
   // The original this could theoretically have come from is untouched --
   // proves import always creates independently, never updates in place.
+  // The import made this list's first user-owned workflow, which
+  // collapses the seeded Examples section (docs/goals/0337).
+  await expandExamples(page)
   await expect(workflowRow(page, 'Load sample HTML')).toHaveCount(before)
 
   await clickRowAction(page, importedRow, 'Delete')

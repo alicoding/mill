@@ -196,6 +196,9 @@ export function ConfigureLists() {
       icon: ENTITY_ICON.list,
       label: l.Label,
       updatedLabel: formatUpdated(l.UpdatedAt),
+      builtIn: l.BuiltIn,
+      updatedAt: l.UpdatedAt,
+      createdAt: l.CreatedAt,
       // No !l.BuiltIn guard on Delete -- a seeded example is ordinary and
       // fully editable/deletable (docs/SPEC.md §2.2's Update note), same
       // as ConfigureRequests.tsx's identical badge.
@@ -330,6 +333,7 @@ export function ConfigureLists() {
       )}
       {lists !== null && viewMode === 'rows' && !(formOpen && lists.length === 0) && (
         <InventoryList
+          listId="configure.lists"
           items={listItems}
           searchPlaceholder={t('configureLists.searchPlaceholder')}
           emptyState={{
