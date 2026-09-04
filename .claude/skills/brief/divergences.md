@@ -17,6 +17,11 @@ this file is the record, a brief is a projection of it.
 - Obvious: undo is per-widget/component state. Here: ONE actor-scoped
   undo journal behind every board mutation door (ADR-0044); tools
   never own undo.
+- Obvious: a durable-execution engine recovers every parked run on
+  restart. Here: recovery is gated on the engine's application version,
+  which Mill pins to `executionsvc.WorkflowCodeVersion`; a run stamped
+  with any other version is reconciled to Interrupted at startup, never
+  recovered (goal 0329).
 - Obvious: buttons own onClick handlers. Here: the command is the
   atom — buttons run `findCommand(id)?.run()`; enablement lives in
   `Command.enabled`, never as a silent inline guard (goal 0222).
@@ -64,6 +69,11 @@ this file is the record, a brief is a projection of it.
 - Your worktree is your world: never write outside it; `cd` does not
   persist across Bash calls — use absolute paths (a stray file has
   landed in the main checkout twice this way).
+- Obvious: revert the live tree to take a "before" screenshot. Here: a
+  "before" comes from a THROWAWAY worktree at the explicit base commit;
+  `git checkout <ref> -- <path>` in a builder's working tree is banned
+  — worktrees share one `.git`, so it resolves against the CURRENT ref
+  and overwrites tracked edits (goal 0327's near-miss).
 - E2e slot: before ANY Playwright run,
   `ps -eo command | grep -E "chrome-headless-shell|e2e/.build/mill-server" | grep -v grep`
   must be empty. Never match "playwright test" (it matches wait

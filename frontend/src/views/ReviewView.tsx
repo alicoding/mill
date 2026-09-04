@@ -10,7 +10,7 @@ import type { MCPWriteRequest, MCPWriteResolved, RunSummary } from '../shared/bi
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
 import { useAppStore } from '../shared/store'
 import { useUISignalStore } from '../shared/uiSignalStore'
-import { formatRunStartedAt } from '../shared/runTime'
+import { formatRunStartedAt, runStatusLabel } from '../shared/runTime'
 import { StalenessBadge } from '../shared/StalenessBadge'
 import { ReviewGuardedActions } from './ReviewGuardedActions'
 import { formatLastChecked } from '../shared/staleness'
@@ -403,7 +403,7 @@ function ReviewView() {
                   <Stack direction="horizontal" gap="condensed" align="center">
                     <Text weight="semibold">{entry.run.workflowLabel}</Text>
                     <StatusStamp
-                      variant={entry.run.resolution === 'approved' ? 'success' : 'danger'}
+                      variant={entry.run.interrupted ? 'neutral' : entry.run.resolution === 'approved' ? 'success' : 'danger'}
                       data-testid="review-resolution"
                     >
                       {entry.run.resolution}
@@ -420,7 +420,7 @@ function ReviewView() {
                       variant={entry.run.status === 'SUCCESS' ? 'success' : entry.run.status === 'ERROR' ? 'danger' : 'caution'}
                       data-testid="review-resolved-status"
                     >
-                      {entry.run.status}
+                      {runStatusLabel(entry.run, t)}
                     </StatusStamp>
                   </Stack>
                   <Text size="small" className={`${styles.muted} ${monoStyles.mono}`}>{formatRunStartedAt(entry.run.startedAt)}</Text>

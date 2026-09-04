@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { shouldAdoptExternalRun } from './liveRunState'
+import { barStateFor, resolveErrorKey, shouldAdoptExternalRun } from './liveRunState'
+import type { RunDetail } from '../shared/bindings'
 
 // GAP A of the live-canvas-sync work: an externally-started run (a
 // headless trigger fire, or an MCP run_workflow/debug tool call) must
@@ -25,5 +26,62 @@ describe('shouldAdoptExternalRun', () => {
     // "in flight" flag with no active run at all) -- shouldAdoptExternalRun
     // still resolves it the safe way (adopt) rather than getting stuck.
     expect(shouldAdoptExternalRun(false, true)).toBe(true)
+  })
+})
+
+// A run that was waiting on a person when Mill relaunched under a
+// different workflow-code version: the engine will never pick it back
+// up, so the canvas must stop offering Resume/Stop and say so. The
+// ordering matters -- the run still carries the durable pending event
+// its park wrote, so a naive "pending first" check keeps the dead
+// buttons on screen.
+describe('barStateFor', () => {
+  const parked = {
+    status: 'PENDING',
+    pending: { nodeID: 'n1', nodeTypeLabel: 'Send email' },
+    steps: [],
+    error: '',
+  } as unknown as RunDetail
+
+  it('shows nothing when no run is displayed', () => {
+    expect(barStateFor(null, '')).toBeNull()
+  })
+
+  it('shows the parked bar for a run genuinely awaiting a decision', () => {
+    expect(barStateFor(parked, '')?.mode).toBe('parked')
+  })
+
+  it('shows the interrupted bar, not the parked one, once the run is interrupted', () => {
+    const interrupted = { ...parked, status: 'CANCELLED', interrupted: true } as unknown as RunDetail
+    expect(barStateFor(interrupted, '')?.mode).toBe('interrupted')
+  })
+
+  it('shows the finished bar for a run that ended without a park', () => {
+    const done = { status: 'SUCCESS', steps: [], error: '' } as unknown as RunDetail
+    expect(barStateFor(done, '')).toEqual({ mode: 'finished', status: 'SUCCESS', error: '' })
+  })
+
+  it('a rejected start outranks every run state', () => {
+    expect(barStateFor(parked, 'workflow not found')?.mode).toBe('finished')
+  })
+})
+
+// A refused decision reaches the user as copy, never a console line --
+// the reported bug was a button that looked dead because the refusal
+// was swallowed.
+describe('resolveErrorKey', () => {
+  it('maps run-not-waiting to the no-longer-waiting copy', () => {
+    expect(resolveErrorKey(new Error('executionsvc: run-not-waiting: run abc is not waiting on a decision')))
+      .toBe('liveRunControls.resolveError.notWaiting')
+  })
+
+  it('maps run-recovering to the try-again copy', () => {
+    expect(resolveErrorKey(new Error('executionsvc: run-recovering: run abc is being picked back up')))
+      .toBe('liveRunControls.resolveError.recovering')
+  })
+
+  it('falls back to the generic copy for anything else', () => {
+    expect(resolveErrorKey(new Error('connection lost'))).toBe('liveRunControls.resolveError.generic')
+    expect(resolveErrorKey('some string')).toBe('liveRunControls.resolveError.generic')
   })
 })

@@ -11,7 +11,7 @@ import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/inte
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
 import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import { RunStepRow } from './RunStepRow'
-import { formatRunStartedAt, runStatusVariant } from '../shared/runTime'
+import { formatRunStartedAt, runStatusLabel, runStatusVariant } from '../shared/runTime'
 import { StalenessBadge } from '../shared/StalenessBadge'
 import { StatusStamp, type StatusStampVariant } from '../shared/StatusStamp'
 import { ENQUEUED_STALE_THRESHOLD_MS, isStuckEnqueued } from '../shared/enqueuedStale'
@@ -232,7 +232,7 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
             {run.pending ? (
               <StatusStamp variant="caution" data-testid="run-awaiting-approval">{t('workflowRunsPanel.awaitingApproval')}</StatusStamp>
             ) : (
-              <StatusStamp variant={runStatusVariant(run.status)}>{run.status}</StatusStamp>
+              <StatusStamp variant={runStatusVariant(run.status)}>{runStatusLabel(run, t)}</StatusStamp>
             )}
             {/* Stuck-ENQUEUED presentation (docs/goals/0026 item 8): a
                 run that queued forever without ever starting reads as
@@ -327,7 +327,7 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
         <div ref={detailRef} className={styles.card} data-testid="run-detail" style={{ marginTop: 'var(--base-size-16)' }}>
           <Stack direction="horizontal" justify="space-between" align="center">
             <Stack direction="horizontal" gap="condensed" align="center">
-              <StatusStamp variant={runStatusVariant(detail.status)}>{detail.status}</StatusStamp>
+              <StatusStamp variant={runStatusVariant(detail.status)}>{runStatusLabel(detail, t)}</StatusStamp>
               {isStuckEnqueued(detail) && (
                 <StalenessBadge
                   createdAt={detail.startedAt}

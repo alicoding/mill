@@ -20,6 +20,17 @@ Each entry shows exactly what will happen and how old the ask is.
 When you're away, Mill escalates: an actionable notification, a dock
 badge, and a floating approval prompt.
 
+## When Mill relaunches during a paused run
+
+A run paused for your approval survives an ordinary restart: Mill picks
+it back up and it waits for you again, with its 24-hour window
+restarting from the relaunch. Right after a restart there is a brief
+moment where the run is still being picked back up — answering then
+tells you to try again in a moment. An update that changes how workflows
+run can't resume a paused run safely, so Mill stops it instead and the
+run reads **Interrupted**: nobody answered, and nothing was applied. Run
+it again when you're ready.
+
 ## Debugging a workflow
 
 - **Test runs** from the editor execute the draft without counting

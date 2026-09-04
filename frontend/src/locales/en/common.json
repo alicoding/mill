@@ -75,5 +75,8 @@
     "italic": "Italic",
     "strikethrough": "Strikethrough",
     "code": "Code"
+  },
+  "runStatus": {
+    "interrupted": "Interrupted"
   }
 }

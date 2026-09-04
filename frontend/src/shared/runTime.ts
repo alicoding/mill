@@ -38,3 +38,18 @@ const RUN_STATUS_VARIANT: Record<string, StatusStampVariant> = {
 export function runStatusVariant(status: string): StatusStampVariant {
   return RUN_STATUS_VARIANT[status] ?? 'neutral'
 }
+
+// One run-status label for every surface that shows one. A run the
+// engine could never pick back up after a relaunch reads as its own
+// state rather than the bare CANCELLED it shares with a run a person
+// stopped -- "was stopped" and "nobody could answer" are different
+// facts (goal 0329). Every other status keeps rendering DBOS's own
+// token, which is what these surfaces have always shown. The `common`
+// namespace so the three callers (runs list, Activity, Review) each
+// pass their own `t` without three copies of the string.
+export function runStatusLabel(
+  run: { status: string; interrupted?: boolean },
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  return run.interrupted ? t('runStatus.interrupted', { ns: 'common' }) : run.status
+}

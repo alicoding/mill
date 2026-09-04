@@ -10,7 +10,7 @@ import { ExecutionService } from '../shared/bindings'
 import type { RunSummary } from '../shared/bindings'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { useAppStore } from '../shared/store'
-import { formatRunStartedAt } from '../shared/runTime'
+import { formatRunStartedAt, runStatusLabel } from '../shared/runTime'
 import { StalenessBadge } from '../shared/StalenessBadge'
 import { StatusStamp } from '../shared/StatusStamp'
 import { ENQUEUED_STALE_THRESHOLD_MS, isStuckEnqueued } from '../shared/enqueuedStale'
@@ -122,7 +122,7 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow | null }
       renderCell: (run) => (
         <Stack direction="horizontal" gap="condensed" align="center">
           <StatusStamp variant={run.status === 'SUCCESS' ? 'success' : run.status === 'ERROR' ? 'danger' : 'caution'}>
-            {run.status}
+            {runStatusLabel(run, t)}
           </StatusStamp>
           {/* Stuck-ENQUEUED presentation (docs/goals/0026 item 8) --
               same age-tier language as item 2's pending-approval

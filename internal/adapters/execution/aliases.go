@@ -37,6 +37,10 @@ type (
 	// input/output. Returned by ListWorkflows.
 	WorkflowStatus = dbos.WorkflowStatus
 
+	// WorkflowStatusType is one run's lifecycle state -- the vocabulary
+	// WithFilterStatus filters on and WorkflowStatus.Status carries.
+	WorkflowStatusType = dbos.WorkflowStatusType
+
 	// StepInfo describes one recorded step of a run, as returned by
 	// GetWorkflowSteps -- StepID/StepName/Output/Error map directly onto
 	// a Mill graph Node by ID (executionservice.go names each step after
@@ -211,6 +215,16 @@ var (
 	// registered name.
 	WithFilterName = dbos.WithFilterName
 
+	// WithFilterStatus scopes ListWorkflows to the given lifecycle
+	// states.
+	WithFilterStatus = dbos.WithFilterStatus
+
+	// WithFilterAppVersion scopes ListWorkflows to specific application
+	// versions. DBOS offers no "every version EXCEPT" filter, so a
+	// caller looking for rows written by any OTHER build lists by status
+	// and compares WorkflowStatus.ApplicationVersion itself.
+	WithFilterAppVersion = dbos.WithFilterAppVersion
+
 	// WithFilterLimit caps how many runs ListWorkflows returns.
 	WithFilterLimit = dbos.WithFilterLimit
 
@@ -237,4 +251,15 @@ var (
 	// fetching a fixed page and hoping it covers the range.
 	WithFilterCreatedAfter  = dbos.WithFilterCreatedAfter
 	WithFilterCreatedBefore = dbos.WithFilterCreatedBefore
+)
+
+// The run lifecycle states Mill reasons about by name. PENDING covers
+// both "running right now" and "was running when the process died";
+// ENQUEUED is claimed by a queue but not yet dequeued. Both are the
+// states an application-version change strands, since launch recovery
+// and queue dequeue each match on an exact version.
+const (
+	WorkflowStatusPending   = dbos.WorkflowStatusPending
+	WorkflowStatusEnqueued  = dbos.WorkflowStatusEnqueued
+	WorkflowStatusCancelled = dbos.WorkflowStatusCancelled
 )

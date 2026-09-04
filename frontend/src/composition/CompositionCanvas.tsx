@@ -158,7 +158,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
   // from the Run button below or already in flight when this editor
   // opened. Never touches useCanvasStore (zundo-wrapped undo history,
   // §3.3) -- see liveRunState.ts's own header comment.
-  const { detail: liveRunDetail, statusByNodeId: liveStepStatusByNodeId, barState, startRun, resolve: resolveApprovalStep, dismiss: dismissRunState } = useLiveRun(workflow?.ID, requestedRunId)
+  const { detail: liveRunDetail, statusByNodeId: liveStepStatusByNodeId, barState, startRun, resolve: resolveApprovalStep, resolveErrorKey, dismiss: dismissRunState } = useLiveRun(workflow?.ID, requestedRunId)
 
   // GetRun's steps only ever cover Capture/Process/Apply/Decision-
   // adjacent nodes -- a Trigger node never checkpoints its own step, so
@@ -429,7 +429,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
               workflowId={workflow?.ID ?? ''}
               onSelectIssue={selectIssue}
             />
-            <CurrentStepBar barState={barState} attrs={workflow?.Attributes ?? []} runDetail={liveRunDetail} onResolve={resolveApprovalStep} onDismiss={dismissRunState} />
+            <CurrentStepBar barState={barState} attrs={workflow?.Attributes ?? []} runDetail={liveRunDetail} resolveErrorKey={resolveErrorKey} onResolve={resolveApprovalStep} onDismiss={dismissRunState} />
           </ReactFlow>
         </div>
         } inspector={(headerActions) => (

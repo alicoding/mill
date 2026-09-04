@@ -51,7 +51,7 @@ func TestResumeAfterFailure_DoesNotReExecuteCheckpointedStep(t *testing.T) {
 		return a + "+" + b, nil
 	}
 
-	runtime, err := New("mill-execution-test", "sqlite:"+dbPath, func(ctx Context) {
+	runtime, err := New("mill-execution-test", "1", "sqlite:"+dbPath, func(ctx Context) {
 		RegisterWorkflow(ctx, workflow)
 	})
 	if err != nil {
@@ -125,7 +125,7 @@ func TestResumeAfterFailure_DoesNotReExecuteCheckpointedStep(t *testing.T) {
 // document that reasoning as executable, not to probe DBOS's internals.
 func TestNew_NeverConfiguresConductor(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "phonehome.db")
-	runtime, err := New("mill-phonehome-test", "sqlite:"+dbPath, func(Context) {})
+	runtime, err := New("mill-phonehome-test", "1", "sqlite:"+dbPath, func(Context) {})
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
