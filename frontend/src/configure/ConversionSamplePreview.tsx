@@ -4,6 +4,7 @@ import { Button, Stack, Text } from '@primer/react'
 import { CompositionService } from '../shared/bindings'
 import type { Profile } from '../../bindings/github.com/alicoding/mill/internal/domain/conversionprofile/models'
 import { CodeEditor } from '../shared/CodeEditor'
+import { OutputViewer } from '../shared/OutputViewer'
 import styles from '../shared/ListCard.module.css'
 
 // The sample preview (goal 0305 slice 6): paste one HTML sample, see
@@ -48,8 +49,8 @@ export function ConversionSamplePreview({ profiles }: { profiles: Profile[] }) {
             <Stack key={r.id} direction="vertical" gap="none" data-testid="conversion-sample-result" data-profile-id={r.id}>
               <Text size="small" weight="semibold">{r.label}</Text>
               {r.error
-                ? <Text as="p" size="small" className={styles.error}>{r.error}</Text>
-                : <pre className={styles.result} data-testid="conversion-sample-output">{r.markdown}</pre>}
+                ? <OutputViewer value={r.error} shape="error" site="conversion-sample-error" testId="conversion-sample-error" />
+                : <OutputViewer value={r.markdown} shape="markdown" defaultView="source" title={r.label} site="conversion-sample" testId="conversion-sample-output" />}
             </Stack>
           ))}
         </Stack>

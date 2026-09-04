@@ -6,7 +6,7 @@ import { ArrowDownIcon, ArrowUpIcon, PulseIcon, ChevronLeftIcon, ChevronRightIco
 import { MCPAuditService } from '../shared/bindings'
 import type { MCPCallRecord } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
-import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
+import { OutputViewer } from '../shared/OutputViewer'
 import styles from '../shared/ListCard.module.css'
 
 // The MCP calls section (goal 0159 slice 1): every call Mill's own MCP
@@ -68,6 +68,11 @@ export function ActivityMCPCalls() {
   const [direction, setDirection] = useState<DirectionFilter>('all')
   const [tool, setTool] = useState('')
   const [offset, setOffset] = useState(0)
+  // Which call's detail is open. A record carries its failure text and
+  // nothing else of the exchange -- the audit row records that a call
+  // happened, its outcome and its argument SIZE, never the argument or
+  // result bodies -- so this expands the one piece of output there is.
+  const [expanded, setExpanded] = useState<number | null>(null)
 
   const refresh = useCallback(() => {
     MCPAuditService.ListMCPCalls({
@@ -161,7 +166,13 @@ export function ActivityMCPCalls() {
         <>
           <ActionList showDividers aria-label={t('activityView.mcpCalls.heading')}>
             {records.map((r) => (
-              <ActionList.Item key={r.id} role="listitem" data-testid="mcp-call-row">
+              <ActionList.Item
+                key={r.id}
+                role="listitem"
+                data-testid="mcp-call-row"
+                active={expanded === r.id}
+                onSelect={r.errorText ? () => setExpanded((current) => (current === r.id ? null : r.id)) : undefined}
+              >
                 <ActionList.LeadingVisual>
                   {r.direction === 'server' ? (
                     <ArrowDownIcon size={16} aria-label={t('activityView.mcpCalls.receivedAriaLabel')} />
@@ -177,18 +188,24 @@ export function ActivityMCPCalls() {
                   <Stack direction="horizontal" gap="condensed" align="center">
                     <Label variant={outcomeVariant(r.outcome)} size="small">{outcomeLabel(r.outcome)}</Label>
                     <Text size="small" className={styles.muted}>{t('activityView.mcpCalls.durationMs', { ms: r.durationMs })}</Text>
-                    {r.errorText && (
-                      <CopyDiagnosisButton
-                        error={r.errorText}
-                        context={{ tool: r.toolName || r.methodName, direction: r.direction, caller: r.callerIdentity }}
-                        testId="mcp-call-copy-diagnosis"
-                      />
-                    )}
+
                   </Stack>
                 </ActionList.TrailingVisual>
               </ActionList.Item>
             ))}
           </ActionList>
+          {records.filter((r) => r.id === expanded && r.errorText).map((r) => (
+            <div key={r.id} data-testid="mcp-call-detail">
+              <OutputViewer
+                value={r.errorText}
+                shape="error"
+                title={r.toolName || r.methodName}
+                site="mcp-call-error"
+                testId="mcp-call-error"
+                context={{ tool: r.toolName || r.methodName, direction: r.direction, caller: r.callerIdentity }}
+              />
+            </div>
+          ))}
           <Stack direction="horizontal" justify="space-between" align="center" className={styles.filterRow}>
             <Text size="small" className={styles.muted}>
               {t('activityView.mcpCalls.showingRange', { start: rangeStart, end: rangeEnd, total })}

@@ -57,6 +57,13 @@ export interface OutputViewerProps {
   // Extra lines a copied failure carries (goal 0127's diagnosis
   // composer). Error shape only.
   context?: DiagnosisContext
+  // Which view this surface opens on, when its job differs from the
+  // shape's own default: a converter's test panel is READING the
+  // markdown it just produced, so Source is the answer there and
+  // Rendered is the alternate. The shape's default still applies
+  // everywhere this is omitted, and the reader's own choice, once made,
+  // outranks both for the session.
+  defaultView?: OutputView
   // Set by the full-view work tab, which has nothing bigger to open
   // into.
   full?: boolean
@@ -73,7 +80,7 @@ const RAW_LANGUAGE: Record<OutputShape, CodeEditorLanguage> = {
   binary: 'text',
 }
 
-export function OutputViewer({ value, shape, mime, title, site, context, full, testId }: OutputViewerProps) {
+export function OutputViewer({ value, shape, mime, title, site, context, defaultView, full, testId }: OutputViewerProps) {
   const { t } = useTranslation('common')
   const viewerId = useId()
   const openWorkTab = useAppStore((s) => s.openWorkTab)
@@ -83,7 +90,8 @@ export function OutputViewer({ value, shape, mime, title, site, context, full, t
   const resolved = useMemo(() => resolveShape({ value, shape, mime }), [value, shape, mime])
   const text = useMemo(() => outputText(value), [value])
   const [showAll, setShowAll] = useState(false)
-  const [view, setView] = useState<OutputView>(() => readStoredView(site, resolved.views) ?? resolved.views[0])
+  const initialView = defaultView && resolved.views.includes(defaultView) ? defaultView : resolved.views[0]
+  const [view, setView] = useState<OutputView>(() => readStoredView(site, resolved.views) ?? initialView)
   const [findOpen, setFindOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [wrap, setWrap] = useState(true)
@@ -93,8 +101,8 @@ export function OutputViewer({ value, shape, mime, title, site, context, full, t
   // A viewer handed a different value can land on a view its new shape
   // does not offer (a JSON response replaced by a plain-text one).
   useEffect(() => {
-    setView((current) => (resolved.views.includes(current) ? current : resolved.views[0]))
-  }, [resolved.views])
+    setView((current) => (resolved.views.includes(current) ? current : initialView))
+  }, [resolved.views, initialView])
 
   const table = useMemo(() => (view === 'table' ? tableFrom(resolved.parsed, showAll ? Number.MAX_SAFE_INTEGER : CAP_ROWS) : null), [view, resolved.parsed, showAll])
   const capped = useMemo(() => (showAll ? { text, truncated: false, total: text.length } : capText(text, CAP_BYTES)), [text, showAll])

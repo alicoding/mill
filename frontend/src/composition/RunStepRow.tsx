@@ -3,7 +3,9 @@ import { Button, Stack, Text } from '@primer/react'
 import { BugIcon, CheckCircleIcon, ClockIcon, ShieldIcon, ShieldXIcon, StopIcon, XCircleIcon } from '@primer/octicons-react'
 import type { RunDetail, RunStep } from '../shared/bindings'
 import { StatusStamp } from '../shared/StatusStamp'
-import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
+import { OutputViewer } from '../shared/OutputViewer'
+import { shapeForNodeType } from '../shared/payloadShape'
+import { useAppStore } from '../shared/store'
 import styles from '../shared/ListCard.module.css'
 
 const STEP_ICON: Record<string, React.ReactNode> = {
@@ -29,6 +31,9 @@ export function RunStepRow({ step, detail, busy, onRetry }: {
   onRetry: (nodeID: string) => void
 }) {
   const { t } = useTranslation('composition')
+  // The step's own declared produce kind (ADR-0042) is what the viewer
+  // renders by; nothing here guesses at the payload's bytes.
+  const nodeTypes = useAppStore((s) => s.nodeTypes)
   return (
     <Stack direction="horizontal" justify="space-between" align="start" gap="condensed"
       data-testid="run-step" data-node-type-id={step.nodeTypeID}>
@@ -51,25 +56,33 @@ export function RunStepRow({ step, detail, busy, onRetry }: {
               {t('workflowRunsPanel.guardrailLabel', { effect: step.guardrailEffect, ruleSuffix: step.guardrailRule ? t('workflowRunsPanel.ruleSuffix', { rule: step.guardrailRule }) : '' })}
             </Text>
           )}
-          {step.output && <pre className={styles.result}>{step.output}</pre>}
+          {step.output && (
+            <OutputViewer
+              value={step.output}
+              shape={shapeForNodeType(nodeTypes, step.nodeTypeID)}
+              title={step.nodeTypeLabel || step.nodeTypeID}
+              site="run-step"
+              testId="run-step-output"
+            />
+          )}
           {step.error && (
-            <Stack direction="horizontal" gap="condensed" align="center">
-              <Text as="p" size="small" className={styles.error}>{step.error}</Text>
-              <CopyDiagnosisButton
-                error={step.error}
-                context={{
-                  Workflow: detail.workflowLabel,
-                  'Workflow ID': detail.workflowID,
-                  'Run ID': detail.runID,
-                  Step: step.nodeTypeLabel || step.nodeTypeID,
-                  'Node type': step.nodeTypeID,
-                  Status: detail.status,
-                  Started: detail.startedAt,
-                  Finished: detail.completedAt,
-                }}
-                testId="run-step-copy-diagnosis"
-              />
-            </Stack>
+            <OutputViewer
+              value={step.error}
+              shape="error"
+              title={step.nodeTypeLabel || step.nodeTypeID}
+              site="run-step-error"
+              testId="run-step-error"
+              context={{
+                Workflow: detail.workflowLabel,
+                'Workflow ID': detail.workflowID,
+                'Run ID': detail.runID,
+                Step: step.nodeTypeLabel || step.nodeTypeID,
+                'Node type': step.nodeTypeID,
+                Status: detail.status,
+                Started: detail.startedAt,
+                Finished: detail.completedAt,
+              }}
+            />
           )}
         </div>
       </Stack>

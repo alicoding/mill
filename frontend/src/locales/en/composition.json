@@ -267,10 +267,7 @@
     "input": "Input",
     "output": "Output",
     "emptyData": "Run this workflow to see real data here.",
-    "attributes": "Attributes",
-    "textView": "Text",
-    "jsonView": "JSON",
-    "viewToggleAriaLabel": "{{pane}} view"
+    "attributes": "Attributes"
   },
   "hotkeyCapture": {
     "reservedByMacOS": "{{combo}} is reserved by macOS ({{reason}}). Pick another combo.",

@@ -15,6 +15,7 @@ import { useUISignalStore } from '../shared/uiSignalStore'
 import { useApprovalResolution } from '../shared/approvalResolution'
 import { usePendingReview } from '../review/usePendingReview'
 import { StalenessBadge } from '../shared/StalenessBadge'
+import { OutputViewer } from '../shared/OutputViewer'
 import { ReviewGuardedActions } from './ReviewGuardedActions'
 import { ReviewResolvedHistory } from './ReviewResolvedHistory'
 import { formatLastChecked } from '../shared/staleness'
@@ -350,7 +351,11 @@ function ReviewView() {
                 {t('reviewView.stepPrefix')} <Text weight="semibold">{run.pending?.nodeTypeLabel || run.pending?.nodeTypeID}</Text>
                 {run.pending?.ruleLabel ? t('reviewView.ruleSuffix', { rule: run.pending.ruleLabel }) : t('reviewView.externalStepsDefault')}
               </Text>
-              {run.pending?.payload && <pre className={styles.result}>{run.pending.payload}</pre>}
+              {/* Undeclared: a parked payload is the step's own input,
+                  and a shell or code step's carries a working-directory
+                  line ahead of it, so its shape is inferred and named
+                  rather than claimed. */}
+              {run.pending?.payload && <OutputViewer value={run.pending.payload} site="review-parked-payload" testId="review-parked-payload" />}
 
               {/* stopPropagation on this whole interactive block: the
                   card itself now opens the run (row drill-down, goal

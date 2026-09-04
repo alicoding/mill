@@ -6,6 +6,8 @@ import { CopyIcon, PlayIcon, SyncIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../shared/bindings'
 import { writeClipboardText } from '../shared/clipboardWrite'
 import { composeDiagnosis } from '../shared/diagnosis'
+import { OutputViewer } from '../shared/OutputViewer'
+import { contentTypeOf } from '../shared/payloadShape'
 import type { AuthConfig, AuthType, JOSEConfig } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import type { TestHTTPRequestResult } from '../shared/bindings'
 import type { ManualOperation } from './openapiSynth'
@@ -265,9 +267,23 @@ export function RequestTestPanel({
                 />
               </Stack>
               {entry.Error ? (
-                <Text as="p" size="small" className={styles.error}>{entry.Error}</Text>
+                <OutputViewer
+                  value={entry.Error}
+                  shape="error"
+                  site="request-test-error"
+                  testId="request-test-error"
+                  context={{ Method: entry.method, Path: entry.path, Status: entry.StatusCode, 'Duration (ms)': entry.DurationMs }}
+                />
               ) : (
-                <Text as="p" size="small" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{entry.Body}</Text>
+                // The response says what it is: Content-Type picks the
+                // view, exactly as an API client does.
+                <OutputViewer
+                  value={entry.Body}
+                  mime={contentTypeOf(entry.Headers)}
+                  title={`${entry.method} ${entry.path}`}
+                  site="request-test-response"
+                  testId="request-test-response"
+                />
               )}
             </div>
           ))}
