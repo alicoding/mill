@@ -51,6 +51,14 @@ pre-commit:
       # supports it, Mill doesn't use it yet).
       glob: ".claude/rules/*.md"
       run: ./scripts/check-rules-frontmatter.sh
+    - name: standing-context
+      # No glob, deliberately: CLAUDE.md and every unconditional rule
+      # file load into EVERY session regardless of which files a commit
+      # touches, so a budget breach from prose alone (no code change)
+      # must still be caught. check-standing-context.sh is fast (wc -l/
+      # wc -w only), so unconditional is cheap, same shape as
+      # root-file-naming just below.
+      run: ./scripts/check-standing-context.sh
     - name: root-file-naming
       # No glob, deliberately: .ls-lint.yml now covers every file type
       # at the repo root (its `.*` catch-all), not just .go, so this

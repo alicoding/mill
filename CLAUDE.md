@@ -1,332 +1,192 @@
 # Mill
 
-Wails3 desktop app: Go backend + React/TypeScript/Vite frontend, compiled to a
-single binary. Will become a guardrailed agentic-workflow/automation tool.
-Full context, positioning, and open architecture questions live in
-`docs/SPEC.md` — read the relevant sections before any design decision, and
-update it as decisions land. Do not treat this CLAUDE.md as a substitute for
-it. (Backticked pointer, not an `@`-import: an `@`-import eagerly loads the
-whole file into every session's context — see SPEC §9.1.)
+Wails3 desktop app: Go backend + React/TypeScript/Vite frontend, compiled to a single
+binary; will become a guardrailed agentic-workflow/automation tool. Full context lives in
+`docs/SPEC.md` — read the relevant sections before any design decision, and update it as
+decisions land; this file isn't a substitute (backtick-pointed, not `@`-imported, since
+`@`-import eagerly loads the whole file every session — SPEC §9.1).
+
+**Standing-context budget** (goal 0325): this file ≤200 lines, the unconditional
+`.claude/rules/*.md` files (no `paths:` key) ≤3,000 words total, enforced by
+`scripts/check-standing-context.sh`. History and precedent for this and the orchestration
+model below: ADR-0050.
 
 ## The orchestrator decides the app; agents execute the decided design; the orchestrator verifies
 
-Owner-ratified 2026-09-04, superseding the 2026-08-29 "orchestrator
-owns the app" framing. That framing diagnosed the right defect
-(agents were DECIDING the app, and the felt quality showed it) and
-prescribed the wrong cure (the orchestrator authoring felt surfaces
-itself). The measured cost: the reasoning model's weekly budget at
-70% while all models sat at 38%, burned on file reading, mechanical
-edits, and git babysitting that re-send a long context on every
-call. The precedent is the orchestrator-workers pattern as Anthropic
-documents it (Building effective agents, 2024-12; How we built our
-multi-agent research system, 2025-06): a lead model plans, decides,
-and writes each worker a complete task — objective, output format,
-boundaries, sources — and workers execute without re-deciding; the
-lead synthesizes and verifies. The operational law:
+1. **The orchestrator's own work is reasoning**: research verdicts, decisions, design
+   contracts, rules and standards, briefs, verification. A design contract is COMPLETE
+   before dispatch: every state, label, keystroke, transition, the touch-set, the
+   objective gates. If it can't be written that completely, the decision isn't made yet
+   — make it, don't code around it.
+2. **Everything with a complete written design is executed by a builder agent, never by
+   the orchestrator** — user-facing surfaces included. The orchestrator writes code only
+   when the change is smaller than the brief that would describe it, and states why.
+3. **A design question surfacing mid-build is reported, never decided by the agent**; the
+   orchestrator decides and amends the brief.
+4. **Verification stays the orchestrator's**: eyes on the diff, the live build probed,
+   the screenshot pass. Never accept an agent's report as the evidence.
+5. **Token accounting is a design constraint**: file spelunking, log reading,
+   commit/rebase babysitting belong to agents (explorer, test-investigator,
+   pr-shepherd), conclusion returned, not the dump.
 
-1. **The orchestrator's own work is reasoning**: research verdicts,
-   decisions, design contracts, rules and standards, briefs, and
-   verification. A design contract is COMPLETE before dispatch:
-   every state, label, keystroke, transition, the file touch-set,
-   and the objective gates. If the contract cannot be written that
-   completely, the decision is not made yet — make it, do not code
-   around it.
-2. **Everything with a complete written design is executed by a
-   builder agent, never by the orchestrator** — user-facing surfaces
-   included. The August 29 evidence was about agents deciding, not
-   agents typing; with the decision fully written, execution is
-   mechanical. The orchestrator writes code only when the change is
-   smaller than the brief that would describe it (a known one-line
-   fix), and even then states why.
-3. **A design question surfacing mid-build is reported, never
-   decided by the agent**; the orchestrator decides and amends the
-   brief. Agents cannot reason about the product in the moment; the
-   brief is the whole product vision they get.
-4. **Verification stays the orchestrator's**: eyes on the diff, the
-   live build probed, the screenshot pass — the quality guard the
-   August 29 rule found is real, and it is cheaper than authoring.
-   Never accept an agent's report as the evidence.
-5. **Token accounting is a design constraint**: the orchestrator's
-   context is re-sent on every tool call, so file spelunking, log
-   reading, and commit/rebase babysitting belong to agents (explorer,
-   test-investigator, pr-shepherd) with the conclusion returned, not
-   the dump. One brief beats fifteen reads.
+Model picks: **Haiku** for read-only volume (`explorer`), **Sonnet** for bounded
+mechanical execution from a written spec (regens, migrations, test runs, small features
+with a complete contract), **Opus** for execution needing local judgment inside the
+contract (multi-file UI from a design doc, a root-cause with a written procedure, a
+library adoption). Every `Agent` delegation states its model explicitly; the task is
+*fixed and bounded* (a written brief with objective gates, per `.claude/skills/brief`) or
+the missing piece is still the orchestrator's.
 
-Model picks: **Haiku** for read-only volume (codebase exploration,
-grep sweeps, doc lookups — `explorer`), **Sonnet** for bounded
-mechanical execution from a written spec (regens, migrations, test
-runs, small features with a complete contract), **Opus** for
-execution that needs local judgment inside the contract (a multi-file
-UI implementation from a design document, a root-cause with a written
-decision procedure, a library adoption). Every `Agent` delegation
-states its model explicitly — never rely on inheritance. The
-delegated task is *fixed and bounded* (a written brief with objective
-gates, per `.claude/skills/brief`); if it can't be specified that
-tightly, the missing piece is a decision the orchestrator still owes.
+**Every dispatched BUILD agent works in its own git worktree; the main checkout belongs
+to the orchestrator.** State it in the brief. Before ANY git write or build in the main
+checkout, check `git branch --show-current` and `git status` — if it is not main or the
+tree is dirty, an agent owns it; deploy instead from a throwaway worktree at
+origin/main.
 
-**Every dispatched BUILD agent works in its own git worktree; the main
-checkout belongs to the orchestrator.** State it in the brief. Before ANY
-git write or build in the main checkout, check `git branch --show-current`
-and `git status` — if it is not main or the tree is dirty, an agent owns it;
-deploy instead by building from a throwaway worktree at origin/main.
+**Concurrent dispatch is the default; serialization must earn its keep.**
+- **Touch-sets, not turns.** Dispatch concurrently whenever the brief's predicted
+  touch-sets are disjoint outside known hub files (generated `frontend/bindings/**`,
+  shared Atlas chrome). Dependent slices of one arc sequence as dependencies, not policy.
+- **Hub files get a merge strategy, not a mutex.** Bindings conflicts resolve by
+  regenerating on rebase (`wails3 generate bindings`), never hand-merged; the
+  pr-shepherd handles single-file brushes.
+- **A verification lock, not a build lock.** Agents author in parallel; heavy gates
+  (Playwright e2e, `go test -race`) run ONE suite at a time on this 16GB machine. Cap
+  2–3 concurrent build agents; pause under ~2GB free.
+- **The nested docs repo stays effectively single-writer**: it lives at one physical
+  path every concurrently-running agent shares, so stage only the files you changed
+  there — never `git add -A`, never `git add -f` anything under `goals/`. Commit docs
+  promptly rather than leaving them uncommitted across a long build.
 
-**Concurrent dispatch is the default; serialization must earn its keep
-(goal 0200).** Claude Code's own docs make worktree-isolated parallel
-sessions the standard workflow and file-ownership partitioning the
-conflict strategy; they are silent on machine resources, so that cap is
-Mill's own. Three constraints, three rules — never one blanket
-serialization:
-- **Touch-sets, not turns.** The brief's design contract already
-  predicts each build's touch-set; dispatch concurrently whenever
-  predicted sets are disjoint outside the known hub files (generated
-  `frontend/bindings/**`, shared Atlas chrome). Dependent slices of one
-  arc sequence as dependencies, not policy. Measured on the 7-PR arc
-  #392–#404: 15 of 21 pairs disjoint outside hubs; 5 of the 6 overlaps
-  were same-arc dependent slices.
-- **Hub files get a merge strategy, not a mutex.** Bindings conflicts
-  resolve by regenerating on rebase (`wails3 generate bindings`), never
-  hand-merged; 0180's per-noun registration removed the other fixable
-  hub. Single-file brushes are rebase-trivial — the pr-shepherd handles
-  them.
-- **A verification lock, not a build lock.** Agents author in parallel;
-  heavy gates (Playwright e2e, `go test -race`) run ONE suite at a time
-  on this 16GB machine — the documented freeze was stacked gate suites,
-  never parallel authoring. Cap 2–3 concurrent build agents; pause
-  dispatches under ~2GB free.
-- **The nested docs repo stays effectively single-writer** — the
-  staging rule below governs it.
-Merge ordering stays auto-merge + shepherd rebase. GitHub's merge queue
-is available (public repo) but not adopted — revisit if two
-individually-green PRs ever combine red on main.
-
-**In the nested docs repo, stage only the files you changed — never
-`git add -A` there, and never `git add -f` anything under `goals/`.** Worktrees isolate the mill checkout but not the nested
-`docs/` repo: it lives at one physical path every concurrently-running agent
-shares, so a blanket stage sweeps in other agents' in-flight edits. Commit
-docs promptly after writing them rather than leaving them uncommitted across
-a long build.
-
-**Design/UX/spec contracts are the orchestrator's own work-product — never
-delegated.** Before dispatching any user-facing surface, the orchestrator
-writes the design contract INTO the brief: what renders where and in what
-hierarchy, what each click/keystroke does, every label/empty-state's copy,
-and what changes visibly on each state transition. The agent's discretion is
-implementation (code structure, test mechanics) — never what the user sees.
-A design question surfacing mid-build gets reported back, not decided by the
-agent.
+**Design/UX/spec contracts are the orchestrator's own work-product — never delegated.**
+Before dispatching a user-facing surface, the orchestrator writes the design contract
+INTO the brief: what renders where, what each click/keystroke does, every
+label/empty-state's copy, what changes on each state transition. The agent's discretion
+is implementation only.
 
 ## Upgrade the ground before building on it
 
-Before a feature goal enters a session, ask what its subsystem costs to
-EXTEND today. If the answer is "a lot," the upgrade goal goes in front of it
-in the queue — as the first slice of the feature's own arc, not a separate
-initiative. Measure it (goals 0163, 0169 have the repeatable shape): count
-the files/lines the newest similar addition actually cost, and how many
-separate hand-maintained places had to learn the new thing exists. Test:
-would the next three additions each pay this cost again? If yes, upgrade
-first, and prove it by migrating the EXISTING items onto it before any new
-one is added (old tests must pass unmodified). If no, build the feature
-directly and record why the upgrade wasn't needed.
+Before a feature goal enters a session, ask what its subsystem costs to EXTEND today. If
+"a lot," the upgrade goal goes in front of it in the queue — the feature arc's first
+slice, not a separate initiative. Measure it (repeatable shape: goals 0163, 0169): the
+files/lines the newest similar addition cost, and how many hand-maintained places had to
+learn the new thing exists. Test: would the next three additions each pay this cost
+again? If yes, upgrade first and prove it by migrating EXISTING items onto it (old tests
+pass unmodified) before any new one. If no, build the feature directly and record why the
+upgrade wasn't needed.
 
 ## Goal backlog: `docs/goals/BACKLOG.md` is the delivery queue
 
-Requirements live in `docs/SPEC.md`; the committed, hand-reorderable
-priority queue of goals lives in `docs/goals/BACKLOG.md` (top item = next;
-UX/frontend-first is the standing tiebreak). Starting a session without an
-explicit goal: take the top unchecked goal, read its goal file, follow
-Research → Plan → Implement. Work discovered mid-session that outlives the
-session gets a goal file and a queue position before the session ends — an
-ephemeral session task list is working memory, never the record.
+Requirements live in `docs/SPEC.md`; the committed, hand-reorderable priority queue lives
+in `docs/goals/BACKLOG.md` (top = next; UX/frontend-first is the standing tiebreak). No
+explicit goal: take the top unchecked item, read its goal file, follow Research → Plan →
+Implement. Work discovered mid-session that outlives the session gets a goal file and a
+queue position before the session ends.
 
-**Mirror the active queue into the session task list** — the terminal's
-task panel is the owner's live window into an autonomous session;
-scrollback is not visibility. TaskCreate one task per in-flight/queued
-backlog item, blocker-chained in queue order. Status contract:
-- `in_progress` — being actively worked THIS turn, by the session or a
-  dispatched agent. Nothing else.
-- `pending` — queued, OR blocked on the owner. When blocked, the subject
-  SAYS SO ("BLOCKED ON OWNER: ...") so the board distinguishes waiting from
-  queued at a glance.
-- `completed` — shipped or closed, with the OUTCOME in the subject, not the
-  intention. A task closed with a stale subject is a lie that outlives the
-  work.
+**Mirror the active queue into the session task list**: one task per in-flight/queued
+item, blocker-chained in queue order. `in_progress` — worked THIS turn, nothing else.
+`pending` — queued, or blocked on the owner (subject SAYS SO). `completed` — the OUTCOME
+in the subject, not the intention. BACKLOG.md stays the truth; the task list is visibility.
 
-The task list is visibility, never the record: `docs/goals/BACKLOG.md`
-stays the truth.
+**Before an ad-hoc request that isn't the queue's top item, name in one sentence where it
+lands against BACKLOG.md**: supersedes/reorders, merges into an existing goal, becomes a
+new goal, or rides the next PR below goal-granularity — the sentence in the response IS
+the record.
 
-**Before starting an ad-hoc request that isn't the queue's current top
-item, name in one sentence where it lands against `docs/goals/BACKLOG.md`**:
-it supersedes/reorders the queue, merges into an existing goal, becomes a
-new goal, or is a below-goal-granularity fix riding the next PR with no
-goal file. No separate triage step or log — the sentence in the response IS
-the record. (A `UserPromptSubmit` hook in `.claude/settings.json`
-resurfaces this just-in-time.)
+**With a ratified queue, sessions self-drive** — finish a goal, pull the next, continue;
+never idle awaiting a go-ahead the queue already gave. Stop for the owner ONLY when: it
+costs money, it's irreversible, it's a SPEC `OPEN` item, or a pure taste/product call with
+no defensible precedent to research against. Never granted: force-push, history
+rewrites. A delivered goal's file moves to `docs/goals/archive/` on completion. **Goal
+files and BACKLOG.md are a LOCAL-ONLY record** — `docs/goals/` is git-ignored in the
+nested docs repo and never committed, on this machine's disk only; everything else in
+`docs/` commits as before.
 
-**With a ratified queue, sessions self-drive.** Finish a goal (or hit a
-real block), pull the next queue item, work it under the orchestrator-owns-the-app
-rules above, continue — never idle awaiting a go-ahead the queue already gave.
-Stop for the owner ONLY when: it costs money, it is irreversible, it is
-a SPEC `OPEN` item, or it is a pure taste/product call with no
-defensible industry precedent to research against. Everything else
-proceeds — including publishing, which is no longer a gate
-(owner-granted 2026-08-23: "ask only when it costs money"). Still never
-granted: force-push and history rewrites. Owner check-ins are progress
-reports, not permission gates. A delivered goal's file moves to
-`docs/goals/archive/` the moment the goal completes.
-
-**Goal files and BACKLOG.md are a LOCAL-ONLY record (owner-decided
-2026-09-04).** `docs/goals/` is git-ignored in the nested docs repo and
-is never committed — the files carry the owner's verbatim words and
-work context, and the private repo was judged not enough. They live on
-this machine's disk only (their backup is the machine's); the earlier
-history is purged by the owner, never by a session. Everything else in
-`docs/` (SPEC.md, ADRs) commits as before.
-
-**Releases are held until v1** (owner-decided 2026-08-23). Beta builds
-publish on every merge and in-app updates work from them, so nothing in
-development needs a tagged release; the stable channel only matters once
-someone other than the owner downloads Mill. Leave release-please's PR
-open and unmerged — it keeps updating itself into a live changelog
-draft, which is useful, and closing it only invites recreation. Revisit
-when the owner calls v1.
+**Releases are held until v1.** Beta builds publish on every merge and in-app updates work
+from them, so nothing needs a tagged release yet; leave release-please's PR open and
+unmerged. Revisit at v1.
 
 ## Working method: Research → Plan → Implement
 
-Every non-trivial change follows this order, no exceptions:
-
-1. **Research** — three ordered parts, each recorded in the goal file
-   under its own heading BEFORE the Plan is written (owner-restated
-   2026-09-03 after goals kept skipping straight to Plan):
-   - **Precedent** — the best-in-class tools people actually use for
-     this job (two or three, named, from a real search of their docs or
-     product) and how each one does it: the interaction, the labels, the
-     states, the data shape. A library search is part of this, never
-     the whole of it — a capability is a product pattern first, a
-     dependency second. A claim of "nothing exists for X" must be
-     backed by an actual search (WebSearch, package registry, docs),
-     not an assumption.
-   - **Today** — what Mill does for it right now, read from the code
-     and probed live: the files, the states (the full state matrix for
-     a felt surface), and "nothing" when that is the honest answer.
-   - **Gap** — precedent against today, line by line: what is missing,
-     what is a forced pattern that must become the converged one, what
-     already matches and stays. The gap is the Plan's input; a Plan
-     without one is a guess.
-   **Research → Adopt → Compose** (`.claude/rules/architecture.md` has
-   the full statement; `.claude/rules/adopt-converged-patterns.md` has
-   the product-level law the Precedent part serves).
-   **A confirmed gap is built now.** Once the Precedent is researched
-   and confirmed and Today is not the same or better, the Gap is
-   closed in THIS goal, right away — it is never a follow-up, a
-   "later slice", or a register entry, and no agent may defer it
-   (owner-set 2026-09-04). The only legal narrowing is the owner's
-   own, in the session, recorded in the goal file. The same holds for
-   ANY review — a code review, an audit, a live probe, a screenshot
-   pass: anything found not following its precedent gets a proper fix
-   planned then and there (a goal with the Gap recorded, queued, and
-   built), never a note. That is the tax; it is always paid.
-2. **Plan** — the proper pattern, derived from the Gap: state the
-   approach and its tradeoffs before editing files.
-   For any design choice with more than one defensible answer (schema
-   shape, module boundary, protocol), write it up before committing to it,
-   and record the decision in `docs/SPEC.md` under the relevant section.
-   When the decision is a data schema or an adopt-vs-build call for a
-   capability with more than one real future use, build an explicit
-   capability map first: every known future use, whether it's something to
-   adopt or something that must stay Mill's own, and its current status.
-   See `docs/SPEC.md` §3.3 for the worked example.
+1. **Research** — three parts, each its own heading in the goal file BEFORE Plan:
+   - **Precedent** — the best-in-class tools people actually use (two or three, named,
+     from a real search) and how each does it: interaction, labels, states, data shape.
+     "Nothing exists for X" needs a real search behind it, not an assumption.
+   - **Today** — what Mill does now, read from the code and probed live: the files, the
+     states, "nothing" when honest.
+   - **Gap** — precedent against today, line by line: what's missing, what's a forced
+     pattern to converge, what already matches.
+   **Research → Adopt → Compose** (`.claude/rules/architecture.md`,
+   `.claude/rules/adopt-converged-patterns.md`). **A confirmed gap is built now** — in
+   THIS goal, never a follow-up; no agent may defer it (only the owner may narrow it,
+   in-session, recorded in the goal file). Any review finding a precedent violation gets
+   the same treatment: a proper fix planned then and there.
+2. **Plan** — derived from the Gap: state the approach and tradeoffs before editing
+   files. A design choice with more than one defensible answer is written up and
+   recorded in `docs/SPEC.md`. A schema or adopt-vs-build call with more than one real
+   future use gets a capability map first (`docs/SPEC.md` §3.3).
 3. **Implement** — only after 1 and 2. Small, reviewable steps.
 
-**Commit every verified change, always — don't wait to be asked.** Once a
-change passes the full local check suite (lint/vet/test/build), commit it;
-never leave the working tree dirty or a completed, verified change sitting
-staged-but-uncommitted at the end of a turn. Write a real commit message
-(not a placeholder), double-check staged content doesn't include anything
-secret-shaped, and never force-push, amend a previous commit, or rewrite
-history without being explicitly asked. (Force-push and
-filter-branch/filter-repo are hook-denied outright —
-`scripts/hook-command-guard.sh`, which also denies `pkill -f`/`killall`;
-amend/rebase stay judgement since "explicitly asked" is legal.)
+**Commit every verified change, always.** Once a change passes the full local check
+suite, commit it; never leave the tree dirty. Real commit message, no secret-shaped
+staged content, never force-push, amend, or rewrite history unless explicitly asked.
+(Force-push and filter-branch/filter-repo are hook-denied outright —
+`scripts/hook-command-guard.sh`, which also denies `pkill -f`/`killall`.)
 
-**Deliver through short-lived branches + a PR per goal; push at least once
-per session — never let unpushed work accumulate**
-([ADR-0034](docs/adr/0034-git-ci-operating-model.md)). `main` is
-ruleset-protected: direct pushes are blocked (even for the owner), CI
-checks are required, and a green PR self-merges without waiting on anyone.
-A goal's work lands as ONE self-merged PR when its scope completes (quick
-out-of-goal fixes ride the next goal's PR or a small dedicated one);
-worktree/agent branches live only as long as their one task, then merge
-and delete.
+**Deliver through short-lived branches + a PR per goal; push at least once per session**
+([ADR-0034](docs/adr/0034-git-ci-operating-model.md)). `main` is ruleset-protected: CI
+checks required, a green PR self-merges. One goal = one self-merged PR; worktree/agent
+branches live only as long as their one task.
 
-If `docs/SPEC.md` marks something `OPEN`, do not silently resolve it by
-implementing one option — surface the choice.
+A SPEC.md `OPEN` item is never silently resolved by implementing one option — surface
+the choice.
 
-**Goal-driven sessions finish their bounded scope, then hand off — never
-defer scope that was already in-goal.** Re-priming a fresh session with
-this project's full context has a real, repeated cost — pushing
-already-scoped, bounded work to "a future session" multiplies that cost for
-no reason. If a goal turns out to be too large for one session, say so and
-ask before starting, not after ending partially done.
+**Goal-driven sessions finish their bounded scope, then hand off.** If a goal is too
+large for one session, say so and ask before starting, not after ending partially done.
 
 ## Hard constraints (non-negotiable — see `docs/SPEC.md` §1.1 for the why)
 
-Product-level, always in effect regardless of what file is being touched.
-Coding conventions live in `.claude/rules/` instead (see `docs/SPEC.md`
-§9.1 for that split's rationale).
+Product-level, always in effect. Coding conventions live in
+`.claude/rules/` instead.
 
 - **No Rust** anywhere in the toolchain or dependency tree.
-- **No AI API calls from Mill itself, and no phone-home telemetry of any
-  kind.** Mill mediates/guards actions initiated by other systems — it is
-  not an LLM client. Zero outbound network calls that aren't explicitly
-  initiated by the user via a user-configured connector.
-- **Single binary, no separate CLI/backend split.** Wails3 already
-  satisfies this — don't introduce a second deployable.
-- **Install story is `git clone` + documented local build.** No
+- **No AI API calls from Mill itself, no phone-home telemetry** — Mill
+  mediates/guards actions other systems initiate, it is not an LLM
+  client. Zero outbound calls not explicitly user-initiated via a
+  user-configured connector.
+- **Single binary, no separate CLI/backend split** — Wails3 satisfies this.
+- **Install story is `git clone` + documented local build** — no
   hosted-service dependency for the core loop.
-- **CI/CD from day one**, not bolted on later. Every capability that lands
-  needs its checks wired in the same change.
-- **SPEC.md tracks every capability from day one, not bolted on later.**
-  Every capability/feature that lands gets a corresponding `docs/SPEC.md`
-  entry in the same change — a new bullet or a status update
-  (`LOCKED`/`OPEN`/`PARKED`, plus `UX: PROTOTYPE`/`FINAL` where a UI
-  exists) — not a follow-up. Skip only for pure mechanical changes
-  (refactors, dependency bumps, behavior-neutral bug fixes). If it isn't in
-  SPEC.md, treat it as undocumented, not done.
+- **CI/CD from day one** — every capability lands with its checks wired
+  in the same change.
+- **SPEC.md tracks every capability from day one** — an entry in the
+  same change (`LOCKED`/`OPEN`/`PARKED`, `UX: PROTOTYPE`/`FINAL` where a
+  UI exists), mechanical changes exempted. Not in SPEC.md = undocumented.
 
 ## Build / dev commands
 
-- **`task dev`** — THE way to run and iterate. Hot reload: start it once
-  and leave it running. Frontend edits (`frontend/src/**`) are instant Vite
-  HMR — no rebuild, no reinstall. Only a Go change restarts the app, and
-  only a change to a *bound Go method signature* re-pays the ~20s `wails3
-  generate bindings`. Confirm you're on the live build by the green `DEV ·
-  live` badge (top-left); anything else is NOT the live build. PATH note:
-  `wails3` (and `ls_lint`, used by the pre-commit hook) live in `~/go/bin`.
-- **`task install:app`** — build + install the real `.app` to
-  `/Applications`. Use ONLY when you need the installed app specifically:
-  Accessibility-gated hotkeys, the native menu, launch/Spotlight behaviour.
-  NOT for normal iteration — that's `task dev`. Never run it while `task
-  dev` is running (two Mill processes would share the same data files).
-- `task setup:hooks` — run once after cloning: installs Lefthook's
-  pre-commit hooks (lint/vet/build, mirrors CI). Requires `brew install
-  lefthook golangci-lint` and `go install
-  github.com/loeffel-io/ls-lint/v2/cmd/ls_lint@v2.3.1` first.
+- **`task dev`** — THE way to run and iterate; start once, leave running.
+  Frontend edits (`frontend/src/**`) are instant Vite HMR. Only a Go
+  change restarts the app; only a *bound Go method signature* change
+  re-pays `wails3 generate bindings` (~20s). Confirm the green `DEV ·
+  live` badge. `wails3`/`ls_lint` live in `~/go/bin`.
+- **`task install:app`** — build + install the real `.app`; use ONLY for
+  Accessibility-gated hotkeys, the native menu, launch/Spotlight
+  behaviour. Never while `task dev` is running.
+- `task setup:hooks` — once after cloning: installs Lefthook's hooks
+  (`brew install lefthook golangci-lint`, `go install
+  github.com/loeffel-io/ls-lint/v2/cmd/ls_lint@v2.3.1` first).
 - `task build` / `task package` — production binary / `.app` bundle to
-  `bin/` (both `clean` first). `task clean` clears `bin/`.
-- `wails3 dev` / `wails3 build` — the underlying Wails3 CLI these targets
-  wrap; see `Taskfile.yml` and `build/Taskfile.yml`.
+  `bin/`. `wails3 dev` / `wails3 build` — the underlying CLI these wrap
+  (`Taskfile.yml`, `build/Taskfile.yml`).
 
 ## Project layout
 
 - `main.go` — the only root Go file: embeds, window/tray setup, service
-  construction + wiring. Wails-bound services live in per-bounded-context
-  packages under `internal/services/<ctx>svc`, with shared helpers in
-  `internal/services/{seeding,servicetest}`.
+  wiring. Wails-bound services live under `internal/services/<ctx>svc`,
+  shared helpers in `internal/services/{seeding,servicetest}`.
 - `frontend/` — React + TypeScript + Vite UI.
-- `docs/SPEC.md` — living concept doc, rendered inside the app itself (Spec
-  view). Source of truth for positioning and architecture status
-  (`LOCKED` / `OPEN` / `PARKED`).
-- `.claude/rules/` — coding conventions, split by topic/language
-  (`frontend.md`, `backend.md`, `architecture.md`) rather than piled into
-  this file; skills and agent profiles as they get added (see
-  `docs/SPEC.md` §9 for the current roadmap).
+- `docs/SPEC.md` — living concept doc, rendered inside the app (Spec
+  view); source of truth for positioning and architecture status.
+- `.claude/rules/` — coding conventions, split by topic/language rather
+  than piled into this file (see `docs/SPEC.md` §9 for the roadmap).

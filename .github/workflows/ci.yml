@@ -153,6 +153,19 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-rules-frontmatter.sh
 
+  # Mirrors lefthook.yml's own standing-context job -- same script
+  # (goal 0325's standing-context budget: CLAUDE.md and every
+  # unconditional .claude/rules/*.md file load into EVERY session, so
+  # their size is a per-turn tax). Grep/wc-only, so like comment-hygiene
+  # it needs no build setup and no changes gate -- a docs-only PR can
+  # breach the budget with prose alone.
+  standing-context:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-standing-context.sh
+
   # Enforces the root-layout rule (exactly one root Go file, main.go;
   # services live under internal/services/<ctx>svc) via ls-lint
   # (adopted, not hand-rolled -- unlike file-loc-limit, a real commodity
@@ -588,6 +601,7 @@ jobs:
       - ui-copy
       - toolbar-action-testids
       - rules-frontmatter
+      - standing-context
       - root-file-naming
       - sdk-freshness
       - frontend
