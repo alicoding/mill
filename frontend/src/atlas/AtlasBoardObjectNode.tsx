@@ -5,6 +5,7 @@ import type { NodeProps, Node as RFNode } from '@xyflow/react'
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { boardObjectContentFor } from './atlasNounRegistry'
+import { usePluginReloadVersion } from '../plugins/pluginReloadSignal'
 import { unknownKindContent, viewerOwnsWheel } from './atlasBoardObjectContent'
 import { AtlasShapeRotateHandle } from './AtlasShapeRotateHandle'
 import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
@@ -93,6 +94,11 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
   const liveRotation = useAtlasShapeRotateLive(object.ID)
   const rotationDeg = rotatable ? (liveRotation ?? (Number(object.Payload?.rotation) || 0)) : 0
   const boxRef = useRef<HTMLDivElement>(null)
+  // A plugin reload re-registers this Kind's face component; reading
+  // the signal re-renders the node so the lookup below resolves the
+  // fresh one (goal 0319). Built-in Kinds never change and simply
+  // re-render identically.
+  usePluginReloadVersion()
   const facts = boardObjectContentFor(object.Kind)
   // The ONE shared watch subscription every fileBacked Kind inherits
   // (goal 0232 S1) -- called unconditionally (rules-of-hooks: `facts`

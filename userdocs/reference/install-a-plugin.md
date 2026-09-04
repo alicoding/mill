@@ -10,15 +10,54 @@ installing one is copying that folder into Mill's plugins folder.
 1. Open **Settings → Extensions** and press **Open plugins folder**.
 2. Copy the plugin's folder in — the folder name must match the
    plugin's id.
-3. Press **Reload**. The plugin's tool appears in the canvas tray, and
-   its row appears under **Installed plugins** with its name, version,
-   author, and what it can request.
+3. Press **Reload all**. The plugin's tool appears in the canvas tray,
+   and its row appears under **Installed plugins** with its name,
+   version, author, and what it can request.
 
 A plugin that can't load shows exactly why on its row — a missing
 file, invalid manifest, or a capability Mill doesn't recognize —
 instead of silently doing nothing. A plugin whose manifest sets
 `minMillVersion` to a version newer than your Mill is refused the
 same visible way: update Mill, then reload.
+
+## Starting a plugin
+
+`mill plugin new <name>` writes a folder holding `manifest.json` and
+`main.js`, already named and valid, and prints where to copy it. Add
+`--dir <path>` to create it somewhere other than the current folder.
+
+For autocomplete while you write it, install the types:
+
+```
+npm i -D github:alicoding/mill#path:frontend/plugin-sdk
+```
+
+Then put two lines at the top of `main.js` and annotate `activate`:
+
+```js
+// @ts-check
+/// <reference types="@alicoding/mill-plugin-sdk" />
+
+/** @param {import('@alicoding/mill-plugin-sdk').MillPluginAPI} api */
+export function activate(api) {}
+```
+
+Nothing is compiled — the types are read by your editor, and Mill
+loads the same plain file either way. Every type is listed in the
+[plugin API reference](plugin-api/index.md).
+
+## Reloading one plugin while you work
+
+Each installed plugin's row has a **Reload** button, and the command
+palette carries the same action as "Reload <plugin>". It re-reads that
+plugin's `main.js` and re-registers everything it contributes — its
+tools, views, captures, and commands — without restarting Mill.
+Objects already on your boards stay where they are.
+
+Editing a plugin's files changes what you allowed it to run, so the
+reload asks you to allow it again on its row first. **Reload all** at
+the top of the section is the other half: it restarts Mill's plugin
+loading entirely, which is how a folder you just copied in is noticed.
 
 ## Turning a plugin off
 
@@ -579,4 +618,5 @@ approval, and shows in Activity like anything a user builds. Your
 plugin can open or reference it, and a user can edit it.
 
 The full contract — every field, every capability, and what stays
-stable between versions — is in [Extending the canvas](extending-the-canvas.md).
+stable between versions — is in [Extending the canvas](extending-the-canvas.md),
+and every type is listed in the [plugin API reference](plugin-api/index.md).

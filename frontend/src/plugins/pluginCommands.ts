@@ -8,6 +8,11 @@
 export interface RuntimeCommandDecl {
   id: string
   label: string
+  // pluginId owns the entry: a per-plugin reload (goal 0319) drops
+  // exactly what one plugin contributed and re-collects it from the
+  // fresh module. Not derivable from `id` -- a plugin's canvas tool
+  // registers as atlas.create.<kind>, which carries no plugin name.
+  pluginId: string
   run: () => void
   // surface scopes the command to a view the way Command.surface does
   // (docs/goals/0251 audit rider: a plugin object's own create
@@ -31,4 +36,13 @@ export function collectPluginCommand(decl: RuntimeCommandDecl): void {
 
 export function drainedPluginCommands(): RuntimeCommandDecl[] {
   return [...collected]
+}
+
+// unregisterPluginCommands drops every command one plugin contributed,
+// so its next activation can re-collect them without colliding with
+// its own previous registration (goal 0319's per-plugin reload).
+export function unregisterPluginCommands(pluginId: string): void {
+  for (let i = collected.length - 1; i >= 0; i--) {
+    if (collected[i].pluginId === pluginId) collected.splice(i, 1)
+  }
 }

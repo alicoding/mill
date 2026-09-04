@@ -1,3 +1,6 @@
+// @ts-check
+/// <reference path="../../../frontend/plugin-sdk/index.d.ts" />
+
 // Mind map -- a VIEW over one note's headings (docs/goals/0283). The
 // note stays the only document: this object holds a reference to it
 // (payload.noteId) and redraws from api.query whenever the board's
@@ -11,6 +14,7 @@ import { Transformer, Markmap, globalCSS } from './vendor/markmap.js'
 
 const CSS_ID = 'mill-markmap-css'
 
+/** @param {import('../../../frontend/plugin-sdk').MillPluginAPI} api */
 export function activate(api) {
 	const transformer = new Transformer()
 	// Live faces: el -> { ctx, noteId, svg, mm, ro }, so a change event

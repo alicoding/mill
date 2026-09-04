@@ -5,7 +5,8 @@ import { refreshExtensionSettings } from '../shared/extensionSettingsStore'
 import { refreshSecretTitles } from '../shared/secretTitleCache'
 import { buildPluginAPI } from './hostApi'
 import type { MillPluginAPI, PluginModule } from './sdk'
-import { pluginRunState } from './pluginTrust'
+import { pluginRunState, type PluginRunPolicy } from './pluginTrust'
+import { collectPluginCommand } from './pluginCommands'
 
 // The runtime plugin loader (docs/goals/0249). Runs BEFORE the app
 // module graph evaluates (main.tsx awaits it and only then
@@ -64,6 +65,22 @@ async function readLock(): Promise<Record<string, string>> {
 	}
 }
 
+// readPluginPolicy reads the four trust inputs pluginRunState judges.
+// An unreadable disabled set loads everything -- matching how built-in
+// extensions already behave when the same read fails; an unreadable
+// allowed set or allow-list fails the same open way (the row then says
+// what it could not read, never a silent block). A reload re-reads it
+// rather than trusting the boot-time answer: consent granted since
+// boot must count, and consent revoked since boot must bite.
+export async function readPluginPolicy(): Promise<PluginRunPolicy> {
+	return {
+		disabled: await readIDs(() => SettingsService.GetDisabledExtensions()),
+		allowed: await readIDs(() => SettingsService.GetAllowedPlugins()),
+		allowlist: await readIDs(() => SettingsService.GetPluginAllowlist()),
+		lock: await readLock(),
+	}
+}
+
 async function readIDs(read: () => Promise<string[] | null | undefined>): Promise<string[]> {
 	try {
 		return (await read()) ?? []
@@ -72,7 +89,7 @@ async function readIDs(read: () => Promise<string[] | null | undefined>): Promis
 	}
 }
 
-function resolveActivate(mod: PluginModule): ((api: MillPluginAPI) => void | Promise<void>) | null {
+export function resolveActivate(mod: PluginModule): ((api: MillPluginAPI) => void | Promise<void>) | null {
 	if (typeof mod.activate === 'function') return mod.activate
 	if (typeof mod.default === 'function') return mod.default
 	if (mod.default && typeof mod.default.activate === 'function') return mod.default.activate.bind(mod.default)
@@ -84,7 +101,7 @@ function resolveActivate(mod: PluginModule): ((api: MillPluginAPI) => void | Pro
 // synchronous and honest from the first call. An unreadable blob means
 // every plugin starts empty. The generated binding types every nested
 // value as possibly-absent; this densifies it.
-async function loadPluginStorage(): Promise<Record<string, Record<string, string>>> {
+export async function loadPluginStorage(): Promise<Record<string, Record<string, string>>> {
 	const storage: Record<string, Record<string, string>> = {}
 	try {
 		const raw = (await SettingsService.GetPluginStorage()) ?? {}
@@ -97,6 +114,38 @@ async function loadPluginStorage(): Promise<Record<string, Record<string, string
 		return {}
 	}
 	return storage
+}
+
+// collectReloadCommand registers the host's own per-plugin reload
+// (goal 0319) as an ordinary registry command, one per scanned plugin,
+// shaped the way every id-bearing command in this codebase is
+// (atlas.create.<kind>, view.open.<plugin>.<view>) -- Command.run takes
+// no arguments, so the id IS the argument. It rides the plugin's own
+// collector, which means the reload sweep drops it with everything
+// else and this call puts it back.
+//
+// The module is imported lazily inside run() for the loader's own
+// import discipline: reloading pulls in the whole activation path, and
+// nothing here may widen this module's static graph.
+export function collectReloadCommand(info: PluginInfo): void {
+	const id = info.Manifest.id
+	collectPluginCommand({
+		id: `plugin.reload.${id}`,
+		label: `Reload ${info.Manifest.name || id}`,
+		pluginId: id,
+		// Enabled wherever a reload could actually change something: a
+		// loaded plugin (the author's dev loop), one that failed (the
+		// retry after fixing the file that broke it), and one the row
+		// is asking the user to act on -- "Allowed. Reload to load
+		// it." and "Turned off. Turn on and reload to load it." both
+		// name this button. Blocked/unsigned are the administrator's
+		// answer, which no reload can move.
+		enabled: () => {
+			const status = loadStates.get(id)?.status
+			return status !== undefined && status !== 'blocked' && status !== 'unsigned'
+		},
+		run: () => { void import('./pluginReload').then((m) => m.reloadPluginWithNotice(id, info.Manifest.name || id)).catch(console.error) },
+	})
 }
 
 // loadPlugins scans, filters to enabled+valid, and activates each
@@ -117,16 +166,7 @@ export async function loadPlugins(): Promise<void> {
 		console.error('plugin scan failed', err)
 		return
 	}
-	// An unreadable disabled set loads everything -- matching how
-	// built-in extensions already behave when the same read fails; an
-	// unreadable allowed set or allow-list fails the same open way (the
-	// row then says what it could not read, never a silent block).
-	const policy = {
-		disabled: await readIDs(() => SettingsService.GetDisabledExtensions()),
-		allowed: await readIDs(() => SettingsService.GetAllowedPlugins()),
-		allowlist: await readIDs(() => SettingsService.GetPluginAllowlist()),
-		lock: await readLock(),
-	}
+	const policy = await readPluginPolicy()
 	// Stored setting values load BEFORE any activate() runs, so a plugin
 	// reading api.settings.get() at activation sees the user's value,
 	// not the default (the store's own refresh path; App's boot effect
@@ -142,6 +182,11 @@ export async function loadPlugins(): Promise<void> {
 			loadStates.set(id, { status: 'error', error: info.Error, info })
 			continue
 		}
+		// Registered for every plugin whose manifest parsed, not only the
+		// ones that run: the row's reload button is how a user acts on
+		// "Allowed. Reload to load it." A folder whose manifest is
+		// unreadable never gets here -- it has no id to name.
+		collectReloadCommand(info)
 		const state = pluginRunState(id, !!info.Builtin, policy, { contentHash: info.ContentHash ?? '', signingPolicy: !!info.SigningPolicy, signed: !!info.Signed })
 		if (state !== 'run') {
 			loadStates.set(id, { status: state, info })

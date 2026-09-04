@@ -5,7 +5,7 @@ import type { Icon } from '@primer/octicons-react'
 import { ATLAS_TOOL_IDENTITIES, type AtlasToolIdentity, type AtlasToolInteraction } from '../shared/atlasToolIdentity'
 import type { AtlasStyleField } from './atlasStyleVocabulary'
 import type { FrameBox } from './useAtlasDragFiling'
-import { registerBoardObjectContent, type AtlasBoardObjectKind, type AtlasNounContent } from './atlasBoardObjectContent'
+import { registerBoardObjectContent, unregisterBoardObjectContent, type AtlasBoardObjectKind, type AtlasNounContent } from './atlasBoardObjectContent'
 
 // The board-object CONTENT registry (AtlasNounContent, ExtensionRowMeta,
 // registerBoardObjectContent, toolLessNounExtensions, ...) lives in its
@@ -419,6 +419,21 @@ export function registerThirdPartyNoun(shape: ThirdPartyNounShape): void {
   thirdPartyRegistry.set(shape.id, shape)
   if (shape.content) {
     registerBoardObjectContent(shape.boardObjectKind, { ...shape.content, dragBand: shape.dragBand, fileBacked: shape.fileBacked })
+  }
+}
+
+// unregisterThirdPartyNouns drops every noun one plugin registered --
+// the tool AND the board-object content renderer it registered
+// alongside -- so the plugin's re-activation registers them again
+// against an empty slot (goal 0319's per-plugin reload). Placed
+// objects of the kind stay on the board: between the two calls their
+// Kind resolves to unknownKindContent, which is exactly the
+// uninstalled-plugin rendering this registry already promises.
+export function unregisterThirdPartyNouns(pluginId: string): void {
+  for (const [id, noun] of thirdPartyRegistry) {
+    if (noun.pluginId !== pluginId) continue
+    thirdPartyRegistry.delete(id)
+    if (noun.content) unregisterBoardObjectContent(noun.boardObjectKind)
   }
 }
 

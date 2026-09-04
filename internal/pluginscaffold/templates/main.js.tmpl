@@ -1,0 +1,30 @@
+// @ts-check
+
+// {{.Label}} -- a Mill plugin. Plain ESM, no build step: Mill imports
+// this file and calls activate(api) once, at start.
+//
+// api is the only thing this plugin ever holds: registerCommand,
+// registerCanvasObject, registerView, registerCapture, settings,
+// storage, notify, query, on, fetch, content, files, convert, and
+// requestGuardedAction. Anything that reaches outside Mill goes
+// through a door the guardrails evaluate -- there is no other way out.
+//
+// Autocomplete: install the types with
+//   npm i -D github:alicoding/mill#path:frontend/plugin-sdk
+// then add, above activate:
+//   /// <reference types="@alicoding/mill-plugin-sdk" />
+//   /** @param {import('@alicoding/mill-plugin-sdk').MillPluginAPI} api */
+//
+// Anything this plugin contributes -- a command, a canvas object, a
+// view, a setting -- is declared in manifest.json first, then
+// registered here.
+
+export function activate(api) {
+	api.registerCommand({
+		id: 'hello',
+		label: '{{.Label}}: say hello',
+		run: () => {
+			api.notify({ text: 'Hello from {{.Label}}.' })
+		},
+	})
+}

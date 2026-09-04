@@ -1,0 +1,17 @@
+{
+  "name": "@alicoding/mill-plugin-sdk",
+  "version": "0.5.0",
+  "description": "Types for the Mill plugin API: every type a Mill plugin's activate(api) sees.",
+  "license": "Apache-2.0",
+  "types": "index.d.ts",
+  "private": false,
+  "files": [
+    "index.d.ts",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alicoding/mill.git",
+    "directory": "frontend/plugin-sdk"
+  }
+}

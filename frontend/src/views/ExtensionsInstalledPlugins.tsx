@@ -6,6 +6,8 @@ import { PluginService } from '../../bindings/github.com/alicoding/mill/internal
 import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { SettingsService } from '../shared/bindings'
 import { pluginLoadStates } from '../plugins/loader'
+import { usePluginReloadVersion } from '../plugins/pluginReloadSignal'
+import { findCommand } from '../shared/commands'
 import { settingDeclsFromManifest } from '../plugins/pluginSettings'
 import { ExtensionSettingControl } from './ExtensionSettingControl'
 import { ExtensionsLinkPasteControl } from './ExtensionsLinkPasteControl'
@@ -46,6 +48,14 @@ export function ExtensionsInstalledPlugins() {
 		SettingsService.SetPluginAllowed(id, true).then(() => setAllowedNow((prev) => [...prev, id])).catch(console.error)
 	}
 	const [allowedNow, setAllowedNow] = useState<string[]>([])
+	// Re-renders this list after a reload, so a row's status (and the
+	// Reload command's own enablement) reflects what just happened.
+	usePluginReloadVersion()
+	// Per-plugin reload (goal 0319) renders the registry command, never
+	// a second code path: the palette entry and this button are the
+	// same command, and its enabled() is the one truth about whether
+	// reloading this plugin could do anything.
+	const reloadCommand = (id: string) => findCommand(`plugin.reload.${id}`)
 	const openFolder = () => {
 		PluginService.RevealPluginsDir().catch(console.error)
 	}
@@ -165,15 +175,27 @@ export function ExtensionsInstalledPlugins() {
 											</Stack>
 										)}
 									</Stack>
-									{!error && runtime?.status !== 'blocked' && runtime?.status !== 'unallowed' && runtime?.status !== 'changed' && runtime?.status !== 'unsigned' && (
-										<ToggleSwitch
-											size="small"
-											checked={enabled}
-											onChange={(on) => toggle(id, on)}
-											aria-labelledby={`plugin-name-${id}`}
-											data-testid="extensions-plugin-toggle"
-										/>
-									)}
+									<Stack direction="horizontal" gap="condensed" align="center">
+										{reloadCommand(id)?.enabled?.() && (
+											<Button
+												size="small"
+												onClick={() => reloadCommand(id)?.run()}
+												aria-label={t('settings.extensions.pluginReloadAria', { name: p.Manifest.name || id })}
+												data-testid="extensions-plugin-reload"
+											>
+												{t('settings.extensions.pluginReload')}
+											</Button>
+										)}
+										{!error && runtime?.status !== 'blocked' && runtime?.status !== 'unallowed' && runtime?.status !== 'changed' && runtime?.status !== 'unsigned' && (
+											<ToggleSwitch
+												size="small"
+												checked={enabled}
+												onChange={(on) => toggle(id, on)}
+												aria-labelledby={`plugin-name-${id}`}
+												data-testid="extensions-plugin-toggle"
+											/>
+										)}
+									</Stack>
 								</Stack>
 							</ActionList.Item>
 						)

@@ -16,6 +16,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/launchatlogin"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/adapters/windowing"
+	"github.com/alicoding/mill/internal/pluginscaffold"
 	"github.com/alicoding/mill/internal/services/agentloopsvc"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/backupsvc"
@@ -31,6 +32,7 @@ import (
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/mcpsvc"
 	"github.com/alicoding/mill/internal/services/notificationsvc"
+	"github.com/alicoding/mill/internal/services/pluginsvc"
 	"github.com/alicoding/mill/internal/services/settingssvc"
 	"github.com/alicoding/mill/internal/services/triggersvc"
 	"github.com/alicoding/mill/internal/services/wiring"
@@ -56,11 +58,6 @@ var millChannel = "source"
 const millVersion = "0.5.0"
 
 var millUpdateVersion = millVersion
-
-// Wails uses Go's `embed` package to embed the frontend files into the binary.
-// Any files in the frontend/dist folder will be embedded into the binary and
-// made available to the frontend.
-// See https://pkg.go.dev/embed for more information.
 
 //go:embed all:frontend/dist
 var assets embed.FS
@@ -95,12 +92,6 @@ func init() {
 // main initializes the application, creates the window, and wires every
 // bounded-context service together.
 func main() {
-
-	// Create a new Wails application by providing the necessary options.
-	// Variables 'Name' and 'Description' are for application metadata.
-	// 'Assets' configures the asset server with the 'FS' variable pointing to the frontend files.
-	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
-	// 'Mac' options tailor the application when running an macOS.
 	// Reuses Wails3's own default logger (colorized to stderr in dev mode via isatty detection, silently discarded in
 	// production builds — see application.DefaultLogger's per-build-tag implementations) instead of wiring up a second,
 	// parallel slog handler. Passed to both Mill's own services and application.Options.Logger so app-level events (a
@@ -120,6 +111,12 @@ func main() {
 	settingsPath := os.Getenv("MILL_SETTINGS_PATH")
 	if settingsPath == "" {
 		settingsPath = defaultSettingsPath
+	}
+	// `mill plugin new <name>` (goal 0319): the scaffold is a subcommand
+	// of this one binary, routed here before any app state is opened so
+	// it never touches the settings store it only names.
+	if len(os.Args) > 1 && os.Args[1] == "plugin" {
+		os.Exit(pluginscaffold.Run(os.Args[2:], pluginsvc.ResolveDir(settingsPath), millVersion, os.Stdout, os.Stderr))
 	}
 	settingsStore, err := settings.New(settingsPath)
 	if err != nil {

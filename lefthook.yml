@@ -27,6 +27,13 @@ pre-commit:
       # ./internal/docsgen` away, not a failed PR round trip.
       glob: "{userdocs/**,internal/docsgen/**}"
       run: go test ./internal/docsgen/
+    - name: sdk-freshness
+      # The plugin SDK's committed type package and its generated API
+      # reference both derive from frontend/src/plugins/sdk.ts (goal
+      # 0319) -- same commit-and-verify shape as docsgen-freshness just
+      # above, one script CI's own sdk-freshness job also calls.
+      glob: "{frontend/src/plugins/sdk.ts,frontend/plugin-sdk/**,frontend/typedoc.json,userdocs/reference/plugin-api/**}"
+      run: ./scripts/check-sdk-freshness.sh
     - name: doc-paths
       # docs/ is a private nested checkout (absent on public clones):
       # skip silently when missing; mill-docs' own CI is the enforcing

@@ -1,0 +1,15 @@
+{
+  "/* purpose */": "Type-checks the shipped example plugins against the committed SDK types, the same way an out-of-tree author's editor does. Each example opts in with its own // @ts-check line, which is what keeps the vendored bundles they import out of the check. Examples reference the committed types by relative path, so this passes on a fresh clone with nothing installed.",
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "strict": false,
+    "skipLibCheck": true
+  },
+  "include": ["../examples/plugins/*/main.js"]
+}

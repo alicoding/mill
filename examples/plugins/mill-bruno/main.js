@@ -1,3 +1,6 @@
+// @ts-check
+/// <reference path="../../../frontend/plugin-sdk/index.d.ts" />
+
 // Bruno collection -- the real tool stays the authoring plane (docs/
 // goals/0308, ADR-0051): a collection is a folder of .bru files with a
 // bruno.json at its root, edited and run in Bruno. This object keeps
@@ -5,6 +8,7 @@
 // file -- Mill reads the file, the face shows what it says) and names
 // the seeded workflow that runs it. No capability: nothing here
 // reaches past the mirrored file.
+/** @param {import('../../../frontend/plugin-sdk').MillPluginAPI} api */
 export function activate(api) {
 	api.registerCanvasObject({
 		kind: 'bruno-collection',

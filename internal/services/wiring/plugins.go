@@ -3,8 +3,6 @@ package wiring
 import (
 	"log/slog"
 	"net/http"
-	"os"
-	"path/filepath"
 
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
 
@@ -25,10 +23,7 @@ import (
 // plugins for free; MILL_PLUGINS_DIR overrides independently for
 // fixture-driven tests.
 func NewPluginService(settingsPath string, guardrail *guardrailsvc.GuardrailService, channel, appVersion string) *pluginsvc.PluginService {
-	dir := os.Getenv("MILL_PLUGINS_DIR")
-	if dir == "" {
-		dir = filepath.Join(filepath.Dir(settingsPath), "plugins")
-	}
+	dir := pluginsvc.ResolveDir(settingsPath)
 	// A source build's version constant is the LAST release, not this
 	// build's real lineage (main.go's build-stamp trio: only beta/
 	// stable builds get stamped) -- enforcing minMillVersion against

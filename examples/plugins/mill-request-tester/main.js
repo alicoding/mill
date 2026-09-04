@@ -1,3 +1,6 @@
+// @ts-check
+/// <reference path="../../../frontend/plugin-sdk/index.d.ts" />
+
 // Request tester -- Mill's example of a USEFUL extension built only on
 // the plugin doors (docs/goals/0291): a work tab (registerView), the
 // guarded network (api.fetch over an any-host declaration, so every
@@ -11,6 +14,10 @@
 // Extensions, this code only ever learns its title, and Mill attaches
 // the value host-side after approval -- the Review row names it.
 
+/** @typedef {import('../../../frontend/plugin-sdk').PluginFetchInit['method']} HttpMethod */
+/** @typedef {{ method: HttpMethod, url: string, body?: string, status?: number, at: number }} SentRequest */
+
+/** @param {import('../../../frontend/plugin-sdk').MillPluginAPI} api */
 export function activate(api) {
 	const HISTORY_KEY = 'history'
 	const MAX_HISTORY = 10
@@ -69,7 +76,7 @@ export function activate(api) {
 
 		const renderHistory = () => {
 			history.replaceChildren()
-			const items = api.storage.get(HISTORY_KEY) || []
+			const items = /** @type {SentRequest[]} */ (api.storage.get(HISTORY_KEY) || [])
 			if (items.length === 0) { const p = document.createElement('div'); p.textContent = 'Nothing sent yet.'; p.style.color = '#57606a'; history.append(p); return }
 			for (const item of items) {
 				const b = document.createElement('button')
@@ -82,8 +89,9 @@ export function activate(api) {
 			}
 		}
 
+		/** @param {SentRequest} entry */
 		const remember = async (entry) => {
-			const items = (api.storage.get(HISTORY_KEY) || []).filter((h) => !(h.method === entry.method && h.url === entry.url))
+			const items = /** @type {SentRequest[]} */ (api.storage.get(HISTORY_KEY) || []).filter((h) => !(h.method === entry.method && h.url === entry.url))
 			items.unshift(entry)
 			await api.storage.set(HISTORY_KEY, items.slice(0, MAX_HISTORY)).catch(console.error)
 			renderHistory()
@@ -95,11 +103,12 @@ export function activate(api) {
 			status.textContent = 'Asking… (this request needs your approval in Review)'
 			response.textContent = ''
 			try {
-				const r = await api.fetch(target, { method: method.value, body: body.value || undefined, secret: authTitle ? { settingKey: 'auth' } : undefined })
+				const chosen = /** @type {HttpMethod} */ (method.value)
+				const r = await api.fetch(target, { method: chosen, body: body.value || undefined, secret: authTitle ? { settingKey: 'auth' } : undefined })
 				if (!r.approved) { status.textContent = 'Not allowed' + (r.ruleLabel ? ' (' + r.ruleLabel + ')' : '') + '.'; return }
 				status.textContent = r.status + ' · ' + Object.keys(r.headers).length + ' headers'
 				response.textContent = r.body
-				await remember({ method: method.value, url: target, body: body.value, status: r.status, at: Date.now() })
+				await remember({ method: chosen, url: target, body: body.value, status: r.status, at: Date.now() })
 			} catch (err) {
 				status.textContent = String(err && err.message ? err.message : err)
 			}

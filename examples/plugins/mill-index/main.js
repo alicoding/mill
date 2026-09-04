@@ -1,3 +1,6 @@
+// @ts-check
+/// <reference path="../../../frontend/plugin-sdk/index.d.ts" />
+
 // Board index -- Mill's example of the two read doors a plugin has
 // onto the board's contents (docs/goals/0278): api.query lists cards,
 // notes, and objects with the names a person sees them by, and
@@ -8,12 +11,13 @@
 // The face re-renders itself on every change -- renderFace only
 // re-runs on the object's OWN data, so the change event is the door.
 
+/** @param {import('../../../frontend/plugin-sdk').MillPluginAPI} api */
 export function activate(api) {
-	const faces = new Map()
+	const faces = new Set()
 	api.on('contents:changed', () => {
-		for (const [el, ctx] of faces) {
+		for (const el of faces) {
 			if (!el.isConnected) { faces.delete(el); continue }
-			void render(el, ctx)
+			void render(el)
 		}
 	})
 
@@ -25,9 +29,9 @@ export function activate(api) {
 		source: 'board-local',
 		editRoute: 'none',
 		defaultPayload: {},
-		renderFace(el, ctx) {
-			faces.set(el, ctx)
-			void render(el, ctx)
+		renderFace(el) {
+			faces.add(el)
+			void render(el)
 		},
 	})
 
