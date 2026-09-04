@@ -92,6 +92,7 @@ var exemptDoors = map[string]string{
 	"RepickObjectMirror":       "mirror-path repick, not in ADR-0044's v1 door list",
 	"RunCardAction":            "triggers a workflow run, not a board-content mutation",
 	"SaveImageBytes":           "writes an image file to disk; the resulting board entity lands via a separate, already-journaled create door",
+	"SaveMirrorText":           "writes a text-backed mirror file to disk; the resulting board entity lands via a separate, already-journaled create door (same split as SaveImageBytes)",
 	"SetAtlasSession":          "navigation/viewport state, not board content",
 	"SetCapturesDir":           "wails:ignore, app-level config, not board content",
 	"SetCardActions":           "wails:ignore, workflow-attachment config, not board content",

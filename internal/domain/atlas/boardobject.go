@@ -74,3 +74,25 @@ func ValidateBoardObject(o BoardObject) error {
 	}
 	return nil
 }
+
+// BuiltInBoardObjectKinds are the canvas nouns Mill itself ships --
+// the Kind values its own frontend tools create through
+// CreateBoardObject (frontend/src/atlas/tools/). ValidateBoardObject
+// deliberately accepts any non-empty Kind, because a plugin
+// contributes its own through the manifest's canvasObjects; this list
+// is what a caller with no plugin registry in reach (the MCP plane,
+// goal 0323) can validate against on its own.
+func BuiltInBoardObjectKinds() []string {
+	return []string{"diagram", "image", "ink", "pdf", "shape", "sheet", "table"}
+}
+
+// IsBuiltInBoardObjectKind reports whether kind is one of the nouns
+// above.
+func IsBuiltInBoardObjectKind(kind string) bool {
+	for _, k := range BuiltInBoardObjectKinds() {
+		if k == kind {
+			return true
+		}
+	}
+	return false
+}

@@ -1,6 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
+import { MirrorKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
-import { nextDrawioActions, type DrawioEmbedMessage } from './drawioEmbedProtocol'
+import { externalChangeActions, nextDrawioActions, type DrawioEmbedAction, type DrawioEmbedMessage } from './drawioEmbedProtocol'
+import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
 
 // The vendored full editor webapp, same-origin, never a remote host
 // (goal 0237 S0 verdict: the locked-down-environment requirement forces
@@ -35,6 +37,10 @@ export function DrawioEditorMount({ objectID, initialXML, onExit, onError }: {
   // instead.
   const onExitRef = useRef(onExit)
   const onErrorRef = useRef(onError)
+  // The bytes this editor itself last wrote to the mirror -- the one
+  // thing that tells our own autosave apart from someone else's write
+  // when the file watch fires (externalChangeActions' own contract).
+  const lastWrittenRef = useRef(initialXML)
   // Ref writes belong in an effect, never directly in the render body
   // (React's own react-hooks/refs rule) -- this one has no dependency
   // array so it re-runs after every render, keeping both refs current.
@@ -42,6 +48,32 @@ export function DrawioEditorMount({ objectID, initialXML, onExit, onError }: {
     onExitRef.current = onExit
     onErrorRef.current = onError
   })
+
+  const runActions = useCallback((actions: DrawioEmbedAction[]) => {
+    for (const action of actions) {
+      if (action.type === 'sendToEditor') {
+        iframeRef.current?.contentWindow?.postMessage(JSON.stringify(action.message), window.location.origin)
+      } else if (action.type === 'writeMirror') {
+        lastWrittenRef.current = action.xml
+        AtlasService.WriteObjectMirror(objectID, action.xml).catch((err) => onErrorRef.current(String(err)))
+      } else if (action.type === 'close') {
+        onExitRef.current()
+      }
+    }
+  }, [objectID])
+
+  // An edit that reached the file from anywhere else -- an agent's
+  // guarded write over MCP (goal 0323), another app saving over the
+  // same path -- lands in the open editor instead of being invisible
+  // until it is reopened.
+  useAtlasMirrorChanged(objectID, useCallback(() => {
+    AtlasService.ObjectMirrorContent(objectID)
+      .then((content) => {
+        if (content.Missing || content.Kind !== MirrorKind.MirrorKindText) return
+        runActions(externalChangeActions(content.Content, lastWrittenRef.current))
+      })
+      .catch((err) => onErrorRef.current(String(err)))
+  }, [objectID, runActions]))
 
   useEffect(() => {
     const handleMessage = (ev: MessageEvent) => {
@@ -58,19 +90,11 @@ export function DrawioEditorMount({ objectID, initialXML, onExit, onError }: {
       } catch {
         return
       }
-      for (const action of nextDrawioActions(message, initialXMLRef.current)) {
-        if (action.type === 'sendToEditor') {
-          iframeRef.current?.contentWindow?.postMessage(JSON.stringify(action.message), window.location.origin)
-        } else if (action.type === 'writeMirror') {
-          AtlasService.WriteObjectMirror(objectID, action.xml).catch((err) => onErrorRef.current(String(err)))
-        } else if (action.type === 'close') {
-          onExitRef.current()
-        }
-      }
+      runActions(nextDrawioActions(message, initialXMLRef.current))
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [objectID])
+  }, [objectID, runActions])
 
   return (
     <iframe
