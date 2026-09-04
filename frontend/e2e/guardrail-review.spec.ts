@@ -145,9 +145,9 @@ test('Review queue shows the resolved outcome after a deny, filterable by workfl
     await item.getByTestId('review-deny').click()
 
     // The denial moves to Recently resolved with its outcome labeled.
-    const resolvedItem = page.getByTestId('review-resolved-item').filter({ hasText: GUARDED }).first()
+    const resolvedItem = page.locator('[data-testid="inventory-row"][data-entity="run"]').filter({ hasText: GUARDED }).first()
     await expect(resolvedItem).toBeVisible({ timeout: 10_000 })
-    await expect(resolvedItem.getByTestId('review-resolution')).toHaveText('denied')
+    await expect(resolvedItem.getByTestId('inventory-row-description')).toHaveText('denied')
 
     // Design-wave-1 fix #4: a denied run's status pill reads ERROR and
     // must carry the same failure semantics (Primer's danger variant) as
@@ -177,7 +177,7 @@ test('Review queue shows the resolved outcome after a deny, filterable by workfl
 
     // The workflow filter narrows both sections.
     await page.getByLabel('Filter by workflow').selectOption({ label: reviewSeed })
-    await expect(page.getByTestId('review-resolved-item').filter({ hasText: GUARDED })).toHaveCount(0)
+    await expect(page.locator('[data-testid="inventory-row"][data-entity="run"]').filter({ hasText: GUARDED })).toHaveCount(0)
   } finally {
     await closeDedicatedServer(s)
   }
@@ -205,7 +205,7 @@ test('Review row drill-down: a resolved row opens its run on the Runs tab with d
     await expect(item).toBeVisible({ timeout: 10_000 })
     await item.getByTestId('review-deny').click()
 
-    const resolvedItem = page.getByTestId('review-resolved-item').filter({ hasText: GUARDED }).first()
+    const resolvedItem = page.locator('[data-testid="inventory-row"][data-entity="run"]').filter({ hasText: GUARDED }).first()
     await expect(resolvedItem).toBeVisible({ timeout: 10_000 })
 
     // The zero-time regression's exact repro string never renders, and

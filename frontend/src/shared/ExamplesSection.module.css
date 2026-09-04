@@ -1,0 +1,9 @@
+/* The disclosure section's heading (docs/goals/0337) carries the
+   toggle button as its only content, so the heading itself contributes
+   no extra type scale or padding on top of Primer's own button. */
+.heading {
+    font-size: inherit;
+    font-weight: inherit;
+    margin: 0;
+    padding: 0;
+}
