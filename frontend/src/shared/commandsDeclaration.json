@@ -477,6 +477,15 @@
     "enabled": false
   },
   {
+    "id": "object.rename",
+    "label": "Rename",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false
+  },
+  {
     "id": "palette.open",
     "label": "Open command palette",
     "binding": "⌘K",

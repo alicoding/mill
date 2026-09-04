@@ -195,19 +195,30 @@ brought into view.
 
 - **Tables are projections.** Start one from nothing with "New
   table" (the toolbar at the bottom of the board, next to Card,
-  Note, and Area): sweep the size grid to the shape
-  you want, then click the spot on the board where it should live —
-  the table lands right there (inside an area if that's where you
-  point), backing List and card together, ready to rename columns
-  in place. Escape cancels an armed size. Or pick "Table
-  from a List" to project a List you already have.
-  Either way the List stays the single source of truth, so the table
-  is never stale and every board showing it agrees. Edit right on
-  the table: click a cell to change it, click a column header to
-  rename it, and hover a header or row for the ⊕ that inserts a
-  column or row exactly there. Drag the card's corner while it's
-  selected to give a table more room — the size sticks. Workflows
-  write the same List through their own guarded steps.
+  Note, and Area): sweep the size grid to the shape you want, then
+  move the pointer over the board — a dashed outline carrying the
+  new table's name follows it, so you see where the table lands
+  before you commit. Click to place it there (inside an area if
+  that's where you point), backing List and name together. Escape
+  cancels an armed size. Or pick "Table from a List" to project a
+  List you already have. Either way the List stays the single source
+  of truth, so the table is never stale and every board showing it
+  agrees.
+- **Name a table on the board.** Every table carries its name in a
+  row above its grid. Double-click the name to rename it in place,
+  or right-click the table and pick Rename. Enter keeps the new
+  name, Escape leaves the old one, and a blank name changes nothing.
+  The name belongs to the backing List, so it changes everywhere
+  that List is shown.
+- **Click once to pick a table up, again to edit it.** The first
+  click on a table selects the whole object: drag its band to move
+  it, drag a corner while it is selected to give it more room — the
+  size sticks. Once it is selected, clicks reach the cells: click a
+  cell to change it, click a column header to rename it, and hover a
+  header or row for the ⊕ that inserts a column or row exactly
+  there. Escape leaves the grid with the table still selected, so
+  Delete removes the whole table. Workflows write the same List
+  through their own guarded steps.
 - **Ask the AI companion.** Click the sparkle icon in the toolbar to
   open a chat panel beside the board. Pick a configured AI provider,
   then ask about or describe what you want organized — the reply

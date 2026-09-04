@@ -1,0 +1,46 @@
+/* The table's name, above its grid: one quiet line separated from the
+   sheet by a hairline, never a title bar (the object's own chrome band
+   above it is the drag surface). */
+.titleRow {
+    flex: 0 0 auto;
+    /* Above the object's click shield: the name stays reachable on an
+       unselected table (a single click still selects the object, since
+       nothing here stops the node's own pointerdown -- a double-click
+       is what renames), and the caret the context menu's Rename places
+       here can be clicked into. */
+    position: relative;
+    z-index: 2;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--borderColor-muted);
+    color: var(--fgColor-default);
+    min-width: 0;
+}
+
+.label {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* The in-place editor keeps the title's own typography, so the row does
+   not shift when it enters edit. */
+.input {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: var(--text-body-size-small);
+    font-weight: var(--base-text-weight-semibold);
+}
+
+.error {
+    margin: 0;
+    padding: 4px 8px;
+    font-size: var(--text-body-size-small);
+    color: var(--fgColor-danger);
+}

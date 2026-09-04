@@ -321,6 +321,7 @@
     "addNoteHere": "Add note",
     "addCardTo": "Add card to {{title}}",
     "addNoteInside": "Add note here",
+    "rename": "Rename",
     "promoteToCard": "Promote to card…",
     "openInDefaultApp": "Open in default app",
     "editDiagram": "Edit diagram…",

@@ -17,6 +17,10 @@
    filled shape stays consistent with every other board object rather
    than becoming a special case. */
 .object {
+    /* One source for the chrome band's height: .frame draws the band,
+       .clickShieldBelowBand offsets by exactly it, so a shielded
+       object's declared drag/right-click surface is never covered. */
+    --mill-object-band-height: 14px;
     display: flex;
     flex-direction: column;
     cursor: pointer;
@@ -36,7 +40,7 @@
    behind it. */
 .frame {
     flex: 0 0 auto;
-    height: 14px;
+    height: var(--mill-object-band-height);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -176,11 +180,18 @@
     pointer-events: none;
 }
 
-/* Click-to-activate shield for iframe-hosting faces (clickShield fact):
-   transparent, over the content, below the drag band -- present only
+/* Click-to-activate shield for faces that own their own pointer model
+   (clickShield fact): transparent, over the content -- present only
    while unselected. */
 .clickShield {
     position: absolute;
     inset: 0;
     z-index: 1;
+}
+
+/* A Kind that also declares a drag band keeps that band uncovered: the
+   band IS the object's drag and right-click surface, so shielding it
+   would leave a shielded object with nothing to grab. */
+.clickShieldBelowBand {
+    top: var(--mill-object-band-height);
 }

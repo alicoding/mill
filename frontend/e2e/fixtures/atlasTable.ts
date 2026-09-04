@@ -48,7 +48,16 @@ export async function createTableFromList(page: Page, listLabel: string, revealT
   const object = page.locator('[data-testid="atlas-board-object"][data-object-kind="table"]').filter({ hasText: revealText })
   await expect(object).toBeVisible()
   await revealBoardObject(page, object)
+  await selectTableObject(object)
   return object
+}
+
+// Object first, cell second (goal 0273): a table's grid is shielded
+// until the object is selected, so every caller that goes on to drive
+// the grid selects the object first -- exactly the click a user makes.
+export async function selectTableObject(object: Locator): Promise<void> {
+  await object.click()
+  await expect(object.getByTestId('atlas-object-click-shield')).toHaveCount(0)
 }
 
 // panToEmptyBoard scrolls the board (two-finger scroll, zoom
@@ -74,5 +83,6 @@ export async function placeSizedTable(page: Page, size: '2x2' | '3x3' | '4x4' | 
   await clickBoardPoint(page, { x: spot.x + 12, y: spot.y + 12 })
   const object = page.locator('[data-testid="atlas-board-object"][data-object-kind="table"]').filter({ hasText: 'Column 1' })
   await expect(object).toBeVisible()
+  await selectTableObject(object)
   return object
 }

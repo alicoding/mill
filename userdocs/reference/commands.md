@@ -79,6 +79,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
+| `object.rename` | Rename | — | atlas | Always available |
 | `palette.open` | Open command palette | `⌘K` | Global | Always available |
 | `panel.applyClipboard` | Apply from clipboard | — | Global | Always available |
 | `panel.openMill` | Open Mill | — | Global | Always available |

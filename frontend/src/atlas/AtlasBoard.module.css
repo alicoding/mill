@@ -208,3 +208,24 @@
 .board :global(.atlas-link-chip[data-visible='true'] button) {
     pointer-events: auto;
 }
+
+/* The table placement ghost (goal 0273): the footprint the next click
+   will land, following the pointer at the board's current zoom. Inert
+   by construction -- it must never intercept the very click it is
+   previewing. */
+.tableGhost {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 5;
+    pointer-events: none;
+    border: 1.5px dashed var(--borderColor-accent-emphasis);
+    background: color-mix(in srgb, var(--bgColor-accent-muted) 40%, transparent);
+    border-radius: 6px;
+}
+
+.tableGhostLabel {
+    display: block;
+    padding: 4px 6px;
+    color: var(--fgColor-accent);
+}

@@ -17,6 +17,16 @@ const tableIdentity = identityOf('table')
 
 export interface AtlasTableArtifact { kind: 'table'; title: string; listID: string }
 
+// nextTableTitle -- the name a new table is minted with: "Table", then
+// "Table 2"… against the titles already on the board. Exported because
+// the placement ghost (goal 0273) shows the pending name BEFORE the
+// commit below runs, and two copies of a naming rule drift apart.
+export function nextTableTitle(existingTitles: Set<string>): string {
+  let title = 'Table'
+  for (let n = 2; existingTitles.has(title); n++) title = `Table ${n}`
+  return title
+}
+
 // Table's own artifact is the backing List it mints (goal 0169's seam
 // with 0133): the projection card that actually lands on the board is
 // the placement path's job, minting the List behind it is this tool's.
@@ -56,6 +66,11 @@ export const tableTool = {
     Component: AtlasTableObjectContent,
     ariaLabelKey: 'boardObject.tableAriaLabel',
     role: undefined,
+    // Object first, cell second (goal 0273 rule 2, the converged
+    // canvas-table model): an unselected table's first click selects
+    // the OBJECT -- the grid only goes live once the object is
+    // selected, so a bare click can never land straight in a cell.
+    clickShield: true,
     // ADR-0046 (goal 0244 S0): Payload.listID names the backing
     // Configure List this Kind projects -- a provider source, not a
     // file.
@@ -82,8 +97,7 @@ export const tableTool = {
   sticky: false,
   gesture: null,
   commit: async (input: { cols: number; rowCount: number; existingTitles: Set<string> }): Promise<AtlasTableArtifact> => {
-    let title = 'Table'
-    for (let n = 2; input.existingTitles.has(title); n++) title = `Table ${n}`
+    const title = nextTableTitle(input.existingTitles)
     const columns: Field[] = Array.from({ length: input.cols }, (_, i): Field => ({
       Key: `column-${i + 1}`, Label: `Column ${i + 1}`, Type: FieldType.TypeText,
       Required: false, Default: '', Description: '', Options: null,

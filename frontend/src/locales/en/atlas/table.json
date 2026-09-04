@@ -1,4 +1,7 @@
 {
+  "table": {
+    "titleAriaLabel": "Table name"
+  },
   "tableSize": {
     "hint": "Sweep to size, click to create",
     "dimensions": "{{cols}} × {{rows}}",

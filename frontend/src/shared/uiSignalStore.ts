@@ -77,6 +77,12 @@ interface UISignalState {
   // The tray's table tool (goal 0139) -- opens the size picker.
   atlasTablePickerRequest: number
   requestAtlasTablePicker: () => void
+  // Rename a table board object (goal 0273): what the context menu's
+  // Rename item raises. Token-carrying rather than a bare counter --
+  // every table on the board watches this one field, so the request
+  // must name WHICH object's own title row enters edit.
+  atlasTableRenameRequest: { id: string; seq: number } | null
+  requestAtlasTableRename: (objectID: string) => void
   // The tray's image tool (goal 0169 slice 2, the paste-or-drop
   // interaction) -- opens its own path/paste popover. A counter, not a
   // per-tool payload, since only one popover-style tool exists so far;
@@ -214,6 +220,8 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasArmTool: (tool) => set((s) => ({ atlasArmToolRequest: { tool, token: (s.atlasArmToolRequest?.token ?? 0) + 1 } })),
   atlasTablePickerRequest: 0,
   requestAtlasTablePicker: () => set((s) => ({ atlasTablePickerRequest: s.atlasTablePickerRequest + 1 })),
+  atlasTableRenameRequest: null,
+  requestAtlasTableRename: (objectID) => set((s) => ({ atlasTableRenameRequest: { id: objectID, seq: (s.atlasTableRenameRequest?.seq ?? 0) + 1 } })),
   atlasImagePopoverRequest: 0,
   requestAtlasImagePopover: () => set((s) => ({ atlasImagePopoverRequest: s.atlasImagePopoverRequest + 1 })),
   atlasUndoAvailable: false,

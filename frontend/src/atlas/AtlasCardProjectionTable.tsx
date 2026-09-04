@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
 import type { ListProjection } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { ListGridGlide } from '../shared/ListGridGlide'
+import { AtlasTableTitleRow } from './AtlasTableTitleRow'
 import styles from './AtlasCardProjectionTable.module.css'
 
 // The projected List on a card OR a board object (goal 0105, widened by
@@ -18,8 +19,13 @@ import styles from './AtlasCardProjectionTable.module.css'
 // for a board object) -- the ONE piece that differs between the two
 // entities a projection can ride on; scopeID is whichever id that
 // resolver takes, used only as this effect's own dependency/cache key.
-export function AtlasCardProjectionTable({ scopeID, density, fetchProjection, onColumnCount, editorPortal }: {
+export function AtlasCardProjectionTable({ scopeID, density, fetchProjection, onColumnCount, editorPortal, titleRow }: {
   editorPortal?: 'body' | 'host'
+  // titleRow (goal 0273): a table BOARD OBJECT names itself above its
+  // own grid, since nothing else on the board names it. A table CARD
+  // passes nothing -- the card's own title already is that name, and a
+  // second one inside the body would only repeat it.
+  titleRow?: { objectID: string }
   scopeID: string
   density?: string
   fetchProjection: (id: string) => Promise<ListProjection>
@@ -65,6 +71,17 @@ export function AtlasCardProjectionTable({ scopeID, density, fetchProjection, on
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchProjection is one of the two stable AtlasService bound methods, never a fresh closure per render
   }, [scopeID])
 
+  // Escape in the grid hands the keyboard back to the OBJECT (goal
+  // 0273): its own canvas node takes focus, so it stays selected while
+  // the board's key path (Delete/Backspace over the selection) reaches
+  // it again. Only a board object supplies this -- a card page's grid
+  // has no canvas node to hand anything back to.
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const releaseKeyboard = useCallback(() => {
+    const node = wrapRef.current?.closest('.react-flow__node')
+    if (node instanceof HTMLElement) node.focus()
+  }, [])
+
   const columnCount = proj?.Columns?.length ?? 0
   useEffect(() => { onColumnCount?.(columnCount) }, [columnCount, onColumnCount])
 
@@ -90,15 +107,18 @@ export function AtlasCardProjectionTable({ scopeID, density, fetchProjection, on
     // edit (the spreadsheet-node convention: the frame moves/opens the
     // card, the grid edits the grid).
     <div
+      ref={wrapRef}
       className={`${styles.wrap} nowheel nodrag nopan`}
       onClick={(e) => e.stopPropagation()}
     >
+      {titleRow && <AtlasTableTitleRow objectID={titleRow.objectID} listID={proj.ListID} label={proj.Label} />}
       <ListGridGlide
         listID={proj.ListID}
         columns={proj.Columns ?? []}
         rows={(proj.Rows ?? []).filter((r) => r !== null)}
         density={density}
         editorPortal={editorPortal}
+        onReleaseKeyboard={titleRow ? releaseKeyboard : undefined}
       />
     </div>
   )
