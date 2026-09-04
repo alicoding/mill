@@ -450,7 +450,10 @@ user primitive can reach the state.
   used by 2+ spec files MUST be promoted. Standing helpers: the
   per-worker server, `withClipboardLock`, `clickCanvasNode`,
   `atlasCards`/`atlasPage`, `waitForViewportStable` + percentage-position
-  clicks.
+  clicks, `gotoAppReady`/`waitForAppReady` (below).
+- **A shortcut-first test calls `gotoAppReady`** (`fixtures/appReady.ts`),
+  never bare `page.goto`: the app mounts after an async plugin-load gate
+  (main.tsx's `bootstrap()`), so `goto` resolving is not mount.
 - **Seeded-content rules on the landing board (goal 0223's nine
   findings)**: "Board gallery" is the PERMANENT single home for every
   seeded example board object — future seeds land as its children,

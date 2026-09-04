@@ -120,6 +120,17 @@ function App() {
   // listeners' full reasoning.
   useKeymapDispatch();
 
+  // Marks the moment the app's own window-level keydown listeners
+  // (useKeymapDispatch, above) are attached, not just when React has
+  // committed the shell -- main.tsx's bootstrap() renders this
+  // component only after an async plugin-load-gated chain, so a test
+  // driving a keyboard shortcut as its FIRST action after page.goto()
+  // can race ahead of listener attachment. Effects commit in
+  // declaration order, so this fires after useKeymapDispatch's own.
+  useEffect(() => {
+    document.documentElement.dataset.appReady = 'true';
+  }, []);
+
   // Icon-rail collapse (narrow persistent strip, not full hide/show) is a
   // well-established pattern -- but Primer genuinely ships none of its
   // mechanics. Checked exhaustively, not assumed: grepped @primer/react's

@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test'
 import { expect, test } from './fixtures/server'
 import { paletteDialog } from './fixtures/palette'
 import { withClipboardLock } from './fixtures/clipboardLock'
+import { waitForAppReady } from './fixtures/appReady'
 
 // Shared worker pool: reads only the embedded docs tree, no app state
 // touched. The in-app Docs surface (goal 0125 phase 1): reachable on
@@ -13,6 +14,7 @@ import { withClipboardLock } from './fixtures/clipboardLock'
 // from WHATEVER view the caller is currently on, proving the command
 // is reachable from anywhere, not just from inside the Docs surface.
 async function openDocsSearch(page: Page) {
+  await waitForAppReady(page)
   await page.keyboard.press('Meta+K')
   await expect(paletteDialog(page)).toBeVisible()
   await paletteDialog(page).getByRole('combobox').fill('search docs')
