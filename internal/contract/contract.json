@@ -1910,6 +1910,20 @@
           "RefKind": "",
           "Multiline": false,
           "SystemManaged": false
+        },
+        {
+          "Key": "workingDirectory",
+          "Label": "Working directory",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Overrides the environment's directory. Use {param} for a value from this run.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
         }
       ],
       "Output": "combined stdout+stderr from the executed command",
@@ -2713,6 +2727,20 @@
           "Required": false,
           "Default": "false",
           "Description": "Runs each command with administrator rights. macOS asks you to approve every run — Touch ID when it's set up for sudo, your password otherwise.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "workingDirectory",
+          "Label": "Working directory",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Overrides the environment's directory. Use {param} for a value from this run.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -4402,6 +4430,20 @@
           "RefKind": "",
           "Multiline": false,
           "SystemManaged": false
+        },
+        {
+          "Key": "workingDirectory",
+          "Label": "Working directory",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Overrides the environment's directory. Use {param} for a value from this run.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
         }
       ],
       "Output": "combined stdout+stderr from the executed command",
@@ -5205,6 +5247,20 @@
           "Required": false,
           "Default": "false",
           "Description": "Runs each command with administrator rights. macOS asks you to approve every run — Touch ID when it's set up for sudo, your password otherwise.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "workingDirectory",
+          "Label": "Working directory",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Overrides the environment's directory. Use {param} for a value from this run.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,

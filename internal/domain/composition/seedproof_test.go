@@ -237,6 +237,11 @@ var workflowProofRegistry = map[string]seedProof{
 		"composition.TestTodoScanNode_ResolvesThroughExecuteWorkflow",
 		"e2e: todo-scan.spec.ts",
 	),
+	"example-run-in-captured-folder-workflow": proven(
+		"composition.TestResolveWorkingDirectory_Template_ExpandsAgainstAttributes",
+		"composition.TestSeededRunInCapturedFolder_UsesTheFolderAttributeAsCwd",
+		"executionsvc.TestGuardrail_ShellStepWorkingDirectory_PreviewedInPendingPayload",
+	),
 }
 
 // httpRequestProofRegistry: every httprequest.BuiltIn() ID.

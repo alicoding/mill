@@ -232,8 +232,8 @@
     "fingerprint": "cbd789a974956ceea36271f5240de1d118b6966e4a7c9637fb00467f07f03d00"
   },
   "workflow:coding-loop-run-copied-command-workflow": {
-    "seedRevision": 4,
-    "fingerprint": "3c449f03f2d1733789952a4defa7108e8e2429bebcabb71d16a46c5210632d2a"
+    "seedRevision": 5,
+    "fingerprint": "3db033434e995a94204c567c88f81a756871d664ce00774f8847683a0d933902"
   },
   "workflow:example-ai-classify-branch-workflow": {
     "seedRevision": 3,
@@ -248,8 +248,8 @@
     "fingerprint": "e163c79e8849abc8af8031e2006a098d60474ca2f1ef996dc10cb7dac2428120"
   },
   "workflow:example-bruno-run-workflow": {
-    "seedRevision": 1,
-    "fingerprint": "fda4bc0cdd289206124540d6c872622b142ba1c12194e286b780cc754ed6e67d"
+    "seedRevision": 2,
+    "fingerprint": "429e7a442b62f984e914c25be4d541c49e5a431a853156c3d739c95c5226d393"
   },
   "workflow:example-card-create-link-workflow": {
     "seedRevision": 2,
@@ -268,8 +268,8 @@
     "fingerprint": "74ec883100c31b9f14aa307db65aa99fd9b440a77d4fb2b3385721199f9ba8d0"
   },
   "workflow:example-codeexec-workflow": {
-    "seedRevision": 2,
-    "fingerprint": "224be4f17aca05b95354151cf5f718c0902c6a193dcd288a79065bee7ce1da8a"
+    "seedRevision": 3,
+    "fingerprint": "f461eddacf6fd21d00e7294f5b67a4821032a6a9267c95f5eba467846bb3beca"
   },
   "workflow:example-confluence-to-markdown-workflow": {
     "seedRevision": 2,
@@ -343,6 +343,10 @@
     "seedRevision": 3,
     "fingerprint": "3be6d9ac5d17e0664679c8876e9be152f67654786d8ae5ba7e4a7d663ae02cd5"
   },
+  "workflow:example-run-in-captured-folder-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "c040db53a1f5ff9c1b41b22c68679a2a613090d1ea2ff6bf0f88d7a7a0797d91"
+  },
   "workflow:example-run-receipt-workflow": {
     "seedRevision": 2,
     "fingerprint": "da1ac837a47e51b37dd85358d7e969dbbe3fd2bd85a7f4aed2286461042ed1d1"
@@ -356,8 +360,8 @@
     "fingerprint": "a4fbe2c4c003ef6fde3cc3af39d5d25cddbb48830268ef74d321a93e9548f007"
   },
   "workflow:example-secret-guard-workflow": {
-    "seedRevision": 3,
-    "fingerprint": "f906b6d55c2eb073073baa1b35483ee7b82def2e76c007b21ac3168c43403fbb"
+    "seedRevision": 4,
+    "fingerprint": "e93e39c37e0f8beb202cae1d639b1c6e39fbdccb64bda5ffa38642f00f69634b"
   },
   "workflow:example-sha256-clipboard-workflow": {
     "seedRevision": 2,

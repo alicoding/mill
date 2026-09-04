@@ -384,11 +384,16 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-codeexec-e1", Source: codeExecStepID, Target: codeExecApplyID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(2),
+			// Revision 3 (goal 0345): code-execution gained a
+			// workingDirectory ConfigField, whose default-filled "" now
+			// lands in this seed's own persisted Config too
+			// (ResolveNodeDefaults fills every declared field).
+			Seed: seedorigin.Stamp(3),
 		},
 		clipboardInspectorWorkflow(),
 		savedPageToMarkdownWorkflow(),
 		scratchCaptureWorkflow(),
+		runInCapturedFolderWorkflow(),
 		{
 			ID:          "example-disabled-filesystem-watch-workflow",
 			Label:       "Example: Disabled filesystem watch",

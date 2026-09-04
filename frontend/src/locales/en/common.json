@@ -97,7 +97,9 @@
     "auth-unavailable": "Touch ID or a password isn't set up on this Mac.",
     "auth-lockout": "Too many failed attempts. Unlock this Mac with your password, then try again.",
     "auth-failed": "Mill couldn't confirm it's you.",
-    "copy-blocked": "Copy failed: the browser blocked clipboard access"
+    "copy-blocked": "Copy failed: the browser blocked clipboard access",
+    "working-directory-missing": "The working directory {{path}} doesn't exist.",
+    "working-directory-relative": "The working directory must be an absolute path."
   },
   "list": {
     "sort": "Sort",

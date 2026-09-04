@@ -211,3 +211,46 @@ func TestProcessShellCommand_AdminWithSecrets_RefusedHonestly(t *testing.T) {
 		t.Fatalf("err = %v, want the honest secrets-with-admin refusal", err)
 	}
 }
+
+// TestProcessShellCommandExec_WorkingDirectory_OverridesTheDefaultPosture
+// proves goal 0345 for the shell step's default (real login shell)
+// posture: a templated workingDirectory field becomes the actual
+// process cwd instead of the caller's own home-directory default.
+func TestProcessShellCommandExec_WorkingDirectory_OverridesTheDefaultPosture(t *testing.T) {
+	override := t.TempDir()
+	entry, ok := nodeTypeRegistry["process-shell-command"]
+	if !ok {
+		t.Fatal(`node type "process-shell-command" is not registered`)
+	}
+	out, err := entry.exec(Node{ID: "n1", Config: map[string]string{"workingDirectory": "{folder}"}},
+		ExecContext{Payload: "pwd", Attributes: map[string]any{"folder": override}})
+	if err != nil {
+		t.Fatalf("exec: %v", err)
+	}
+	// The transcript is "$ pwd\n<dir>\n\n\n" (runShellCommandBlock's own
+	// "$ %s\n%s\n\n" join) -- the second non-empty line is pwd's own
+	// output.
+	lines := strings.Split(strings.TrimSpace(out.Payload), "\n")
+	got := strings.TrimSpace(lines[len(lines)-1])
+	if !sameDirectory(t, got, override) {
+		t.Errorf("Payload = %q, want it to contain the overridden directory %q", out.Payload, override)
+	}
+}
+
+// TestProcessShellCommandExec_WorkingDirectory_MissingFails pins the
+// fail-safe for the shell step's own workingDirectory field.
+func TestProcessShellCommandExec_WorkingDirectory_MissingFails(t *testing.T) {
+	entry, ok := nodeTypeRegistry["process-shell-command"]
+	if !ok {
+		t.Fatal(`node type "process-shell-command" is not registered`)
+	}
+	_, err := entry.exec(Node{ID: "n1", Config: map[string]string{
+		"workingDirectory": "/no/such/mill-test-directory-ever",
+	}}, ExecContext{Payload: "pwd", Attributes: map[string]any{}})
+	if err == nil {
+		t.Fatal("exec = nil error, want one for a missing working directory")
+	}
+	if err.Error() != "The working directory /no/such/mill-test-directory-ever doesn't exist." {
+		t.Errorf("err = %q, want the clean usererror sentence", err.Error())
+	}
+}

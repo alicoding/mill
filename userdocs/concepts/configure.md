@@ -49,7 +49,9 @@ The entities:
   sandbox: the script runs with your full user account. Clean profile
   mode sources no shell startup files, so a step sees only the
   variables you declare; Login mode sources your shell's login files
-  as well.
+  as well. A step's own Working directory field overrides the
+  environment's directory for that run, with a value from a captured
+  Attribute.
 - **Conversion profiles** — which source-specific rules an HTML to
   Markdown conversion applies (Confluence, Office and Word). The
   converter step picks one; leave it empty and every rule applies.

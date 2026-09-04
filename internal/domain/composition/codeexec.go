@@ -12,6 +12,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/procexec"
 	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/guardrail"
+	"github.com/alicoding/mill/internal/domain/usererror"
 )
 
 // The code-execution node (docs/adr/0026, goal 0004b): SPEC §2.1's core
@@ -230,6 +231,63 @@ func resolveDir(dir string) (string, error) {
 	return tmp, nil
 }
 
+// expandAttributeTemplate replaces every {name} token in s with the
+// stringified value of attrs[name] -- the same brace-token
+// substitution sendHTTPRequest applies to a resolved request's path
+// parameters (httpsend.go), applied directly against a run's
+// Attributes here since a node-local field has no declared-parameter
+// list to route the substitution through. A token naming no Attribute
+// is left as literal text, the same permissive-fallback stance
+// resolveBindingValue (attributebinding.go) already takes for a
+// missing reference.
+func expandAttributeTemplate(s string, attrs map[string]any) string {
+	for name, v := range attrs {
+		s = strings.ReplaceAll(s, "{"+name+"}", fmt.Sprintf("%v", v))
+	}
+	return s
+}
+
+// resolveWorkingDirectory resolves a step's optional workingDirectory
+// override (goal 0345): empty keeps defaultDir unchanged (an ExecEnv's
+// own Dir/temp sentinel, or the shell step's login-shell default). A
+// non-empty value is expanded against attrs, then must name an
+// existing absolute directory -- a relative result or a missing path
+// fails the step with a usererror (goal 0339's one-sentence-plus-code
+// shape) rather than silently falling back to defaultDir, since a step
+// authored to run somewhere specific running somewhere else unannounced
+// is exactly the assumed-vs-real gap Mill exists to close.
+func resolveWorkingDirectory(raw, defaultDir string, attrs map[string]any) (string, error) {
+	if strings.TrimSpace(raw) == "" {
+		return defaultDir, nil
+	}
+	expanded := expandAttributeTemplate(raw, attrs)
+	if !filepath.IsAbs(expanded) {
+		return "", usererror.New("working-directory-relative", "The working directory must be an absolute path.")
+	}
+	info, err := os.Stat(expanded)
+	if err != nil || !info.IsDir() {
+		return "", usererror.New("working-directory-missing", fmt.Sprintf("The working directory %s doesn't exist.", expanded))
+	}
+	return expanded, nil
+}
+
+// PreviewWorkingDirectory reports the step's workingDirectory field
+// expanded against ctx.Attributes, for the guardrail approval prompt's
+// payload preview (executionsvc's parkForApproval) -- ok is false when
+// the step declares no override, so a step with no field set leaves
+// the preview exactly what it showed before this field existed.
+// Template expansion only, no existence check: the same value
+// resolveWorkingDirectory expands at run time, shown before it's
+// validated so the ask reflects the step's actual configured choice
+// rather than only its pass/fail outcome.
+func PreviewWorkingDirectory(node Node, ctx ExecContext) (string, bool) {
+	raw := node.Config["workingDirectory"]
+	if strings.TrimSpace(raw) == "" {
+		return "", false
+	}
+	return expandAttributeTemplate(raw, ctx.Attributes), true
+}
+
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "code-execution", Kind: KindProcess,
@@ -266,6 +324,11 @@ func init() {
 				Description: "Kills the command if it hasn't finished within this many seconds.",
 				Default:     strconv.Itoa(defaultTimeoutSeconds),
 			},
+			{
+				Key: "workingDirectory", Label: "Working directory",
+				Description: "Overrides the environment's directory. Use {param} for a value from this run.",
+				Default:     "", Type: FieldText,
+			},
 		},
 	}, func(node Node, ctx ExecContext) (ExecContext, error) {
 		re, err := lookupExecEnvFn(node.Config["envId"], secretAccessRunFromCtx(ctx))
@@ -293,7 +356,11 @@ func init() {
 			return ctx, fmt.Errorf("code-execution: nothing to run (empty command)")
 		}
 
-		dir, err := resolveDir(re.Dir)
+		envDir, err := resolveWorkingDirectory(node.Config["workingDirectory"], re.Dir, ctx.Attributes)
+		if err != nil {
+			return ctx, err
+		}
+		dir, err := resolveDir(envDir)
 		if err != nil {
 			return ctx, fmt.Errorf("code-execution: %w", err)
 		}
