@@ -461,6 +461,20 @@
     "enabled": false
   },
   {
+    "id": "help.openDataFolder",
+    "label": "Open data folder",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
+    "id": "help.reportIssue",
+    "label": "Report an issue…",
+    "binding": null,
+    "surface": null,
+    "enabled": false
+  },
+  {
     "id": "help.shortcuts",
     "label": "Keyboard shortcuts help",
     "binding": null,

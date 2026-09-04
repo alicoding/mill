@@ -190,6 +190,7 @@ func PageIndex() []DocPage {
 		{"concepts/coding-loop.md", "The coding loop", "copy a command, confirm the parsed steps, watch it run, copy the result back"},
 		{"reference/steps.md", "Step reference", "every step's contract, generated from the registry"},
 		{"reference/commands.md", "Commands", "every registered command's id, label, default binding, surface, and enablement, generated from the registry"},
+		{"reference/menu-bar.md", "Menu bar", "every menu and item in the macOS menu bar, its shortcut, and the command behind it, generated from the registry"},
 		{"reference/settings.md", "Settings", "app preferences: appearance, hotkeys, shortcuts, MCP access, remote access, backups, updates"},
 		{"reference/extending-the-canvas.md", "Extending the canvas", "how a canvas noun loads, what its declaration requires, and what platform APIs it may and may not reach"},
 		{"reference/register-a-canvas-tool.md", "Register a canvas tool", "walks a new AtlasToolShape declaration end to end, quoting a real registered tool"},

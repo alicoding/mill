@@ -14,6 +14,7 @@ import { downloadBlob } from './downloadBlob'
 export const SETTINGS_COMMANDS: Command[] = [
   {
     id: 'settings.open',
+    menu: { path: 'app', group: 1, order: 0, label: 'Settings…' },
     label: 'Open Settings',
     // Moved from shared/commands.ts (goal 0222 S2) to sit beside its own
     // Quick Panel row -- quickPanelActionEntries.tsx overrides run() to
@@ -120,6 +121,7 @@ export const SETTINGS_COMMANDS: Command[] = [
   // action against whatever state the server is actually in.
   {
     id: 'update.check',
+    menu: { path: 'app', group: 0, order: 0, label: 'Check for updates…' },
     label: 'Check for updates',
     defaultBinding: null,
     keywords: ['update', 'updates', 'upgrade', 'version', 'new version'],

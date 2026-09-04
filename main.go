@@ -31,6 +31,7 @@ import (
 	"github.com/alicoding/mill/internal/services/executionsvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/mcpsvc"
+	"github.com/alicoding/mill/internal/services/menusvc"
 	"github.com/alicoding/mill/internal/services/notificationsvc"
 	"github.com/alicoding/mill/internal/services/pluginsvc"
 	"github.com/alicoding/mill/internal/services/settingssvc"
@@ -328,6 +329,10 @@ func main() {
 			application.NewService(mcpAuditService),
 			application.NewService(remoteAuthService),
 			application.NewService(notificationService),
+			// The native menu bar, projected from the frontend command
+			// registry (docs/goals/0332) -- stateless, so it is constructed
+			// inline like CapabilitiesService above.
+			application.NewService(menusvc.New()),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -364,31 +369,10 @@ func main() {
 	// preference.
 	settingsService.StartAutoUpdateChecks()
 
-	// Global hotkey registration needs the native run loop already
-	// spinning (docs/SPEC.md §2.2) -- ServiceStartup runs before the
-	// loop starts, so this waits for ApplicationStarted instead.
-	// TriggerService.Sync also registers the non-hotkey trigger types
-	// from here, for one uniform startup path.
+	// Everything that must wait for the native run loop (hotkeys, trigger
+	// sync, the menu-accelerator release) lives in wiring.
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
-		triggerService.Sync(compositionService.Workflows())
-		wiring.SubscribeMCPPluginReload(millMCPService) // needs the running event bus (docs/goals/0324)
-		settingsService.RestoreSummonHotkey()
-		// docs/goals/0016-keymap-system.md: releases the native File >
-		// Close (⌘W) menu accelerator so that keypress falls through to
-		// the keymap's own command dispatch (tab.close) instead of being
-		// intercepted by NSMenu first -- must run before any hotkey
-		// recorder could ever call SuspendMenuAccelerators (see
-		// ReleaseMenuAccelerators's own doc comment for why the ordering
-		// matters). View > Reload (⌘R/⌘⇧R) is deliberately left alone --
-		// workflow.run's default is ⌘↩, not ⌘R (owner decision: ⌘R stays
-		// the native browser/dev reload).
-		settingsService.ReleaseMenuAccelerators()
-		// docs/adr/0032 §3: the away-user attention layer's OS-
-		// notification half. A failure here (a bare dev binary with no
-		// real bundle ID, or server mode) is logged, never fatal.
-		if err := settingsService.SetupAwayAttention(); err != nil {
-			logger.Warn("away-attention notifications setup", "error", err)
-		}
+		wiring.ApplicationStarted(triggerService, compositionService, settingsService, millMCPService, logger)
 	})
 
 	// Create a new window with the necessary options.

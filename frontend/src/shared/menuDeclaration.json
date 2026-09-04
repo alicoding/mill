@@ -1,0 +1,452 @@
+[
+  {
+    "menu": "Mill",
+    "item": "About Mill",
+    "shortcut": "",
+    "command": ""
+  },
+  {
+    "menu": "Mill",
+    "item": "Check for updates…",
+    "shortcut": "",
+    "command": "update.check"
+  },
+  {
+    "menu": "Mill",
+    "item": "Settings…",
+    "shortcut": "⌘,",
+    "command": "settings.open"
+  },
+  {
+    "menu": "Mill",
+    "item": "Services",
+    "shortcut": "",
+    "command": ""
+  },
+  {
+    "menu": "Mill",
+    "item": "Hide Mill",
+    "shortcut": "",
+    "command": ""
+  },
+  {
+    "menu": "Mill",
+    "item": "Hide Others",
+    "shortcut": "",
+    "command": ""
+  },
+  {
+    "menu": "Mill",
+    "item": "Show All",
+    "shortcut": "",
+    "command": ""
+  },
+  {
+    "menu": "Mill",
+    "item": "Quit Mill",
+    "shortcut": "",
+    "command": ""
+  },
+  {
+    "menu": "File",
+    "item": "New workflow",
+    "shortcut": "⌘N",
+    "command": "workflow.new"
+  },
+  {
+    "menu": "File",
+    "item": "Close tab",
+    "shortcut": "⌘W",
+    "command": "tab.close"
+  },
+  {
+    "menu": "File",
+    "item": "Close other tabs",
+    "shortcut": "⌘⌥W",
+    "command": "tab.closeOthers"
+  },
+  {
+    "menu": "File",
+    "item": "Close all tabs",
+    "shortcut": "⌘⇧W",
+    "command": "tab.closeAll"
+  },
+  {
+    "menu": "File",
+    "item": "Save",
+    "shortcut": "⌘S",
+    "command": "workflow.save"
+  },
+  {
+    "menu": "Edit",
+    "item": "Undo, Redo, Cut, Copy, Paste, Select All, Speech",
+    "shortcut": "",
+    "command": ""
+  },
+  {
+    "menu": "View",
+    "item": "Home",
+    "shortcut": "⌘0",
+    "command": "view.home"
+  },
+  {
+    "menu": "View",
+    "item": "Workflows",
+    "shortcut": "⌘1",
+    "command": "view.composition"
+  },
+  {
+    "menu": "View",
+    "item": "Configure",
+    "shortcut": "⌘2",
+    "command": "view.configure"
+  },
+  {
+    "menu": "View",
+    "item": "Atlas",
+    "shortcut": "⌘3",
+    "command": "view.atlas"
+  },
+  {
+    "menu": "View",
+    "item": "Activity",
+    "shortcut": "⌘4",
+    "command": "view.activity"
+  },
+  {
+    "menu": "View",
+    "item": "Review",
+    "shortcut": "⌘5",
+    "command": "view.review"
+  },
+  {
+    "menu": "View",
+    "item": "Secrets",
+    "shortcut": "⌘6",
+    "command": "view.secrets"
+  },
+  {
+    "menu": "View",
+    "item": "Docs",
+    "shortcut": "",
+    "command": "view.docs"
+  },
+  {
+    "menu": "View",
+    "item": "Command palette",
+    "shortcut": "⌘K",
+    "command": "palette.open"
+  },
+  {
+    "menu": "View",
+    "item": "Next tab",
+    "shortcut": "⌃TAB",
+    "command": "tab.next"
+  },
+  {
+    "menu": "View",
+    "item": "Previous tab",
+    "shortcut": "⌃⇧TAB",
+    "command": "tab.prev"
+  },
+  {
+    "menu": "View",
+    "item": "Actual Size",
+    "shortcut": "",
+    "command": ""
+  },
+  {
+    "menu": "View",
+    "item": "Zoom In",
+    "shortcut": "",
+    "command": ""
+  },
+  {
+    "menu": "View",
+    "item": "Zoom Out",
+    "shortcut": "",
+    "command": ""
+  },
+  {
+    "menu": "View",
+    "item": "Enter Full Screen",
+    "shortcut": "",
+    "command": ""
+  },
+  {
+    "menu": "Workflow",
+    "item": "Run workflow",
+    "shortcut": "⌘↩",
+    "command": "workflow.run"
+  },
+  {
+    "menu": "Workflow",
+    "item": "Save",
+    "shortcut": "⌘S",
+    "command": "edit.save"
+  },
+  {
+    "menu": "Workflow",
+    "item": "Save all changes",
+    "shortcut": "",
+    "command": "edit.saveAll"
+  },
+  {
+    "menu": "Workflow",
+    "item": "Undo",
+    "shortcut": "⌘Z",
+    "command": "canvas.undo"
+  },
+  {
+    "menu": "Workflow",
+    "item": "Redo",
+    "shortcut": "⌘⇧Z",
+    "command": "canvas.redo"
+  },
+  {
+    "menu": "Workflow",
+    "item": "Delete selected",
+    "shortcut": "⌫",
+    "command": "canvas.delete"
+  },
+  {
+    "menu": "Workflow",
+    "item": "Zoom in",
+    "shortcut": "⌘+",
+    "command": "canvas.zoomIn"
+  },
+  {
+    "menu": "Workflow",
+    "item": "Zoom out",
+    "shortcut": "⌘-",
+    "command": "canvas.zoomOut"
+  },
+  {
+    "menu": "Workflow",
+    "item": "Fit view",
+    "shortcut": "",
+    "command": "canvas.fitView"
+  },
+  {
+    "menu": "Workflow",
+    "item": "Publish current draft",
+    "shortcut": "",
+    "command": "workflow.publish"
+  },
+  {
+    "menu": "Workflow",
+    "item": "Edit workflow",
+    "shortcut": "",
+    "command": "workflow.edit"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Go up one level",
+    "shortcut": "⌘↑",
+    "command": "atlas.up"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Jump to a card or object",
+    "shortcut": "⌘K",
+    "command": "atlas.jump"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Undo",
+    "shortcut": "",
+    "command": "atlas.undo"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Redo",
+    "shortcut": "",
+    "command": "atlas.redo"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Open traceability matrix",
+    "shortcut": "",
+    "command": "atlas.matrix"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Open coverage",
+    "shortcut": "",
+    "command": "atlas.coverage"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Open roadmap",
+    "shortcut": "",
+    "command": "atlas.roadmap"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Auto-arrange",
+    "shortcut": "",
+    "command": "atlas.arrange"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Contents",
+    "shortcut": "",
+    "command": "atlas.contents.open"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Import atlas",
+    "shortcut": "",
+    "command": "atlas.import"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Export atlas",
+    "shortcut": "",
+    "command": "atlas.export"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Add cards from a folder",
+    "shortcut": "",
+    "command": "atlas.addFromFolder"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Copy space as context",
+    "shortcut": "",
+    "command": "atlas.share.copyContext"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Copy space links",
+    "shortcut": "",
+    "command": "atlas.share.copyLinks"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Open perspective switcher",
+    "shortcut": "",
+    "command": "atlas.perspective"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Select all",
+    "shortcut": "⌘A",
+    "command": "atlas.selectAll"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Toggle companion panel",
+    "shortcut": "",
+    "command": "atlas.companion.toggle"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Toggle minimap",
+    "shortcut": "",
+    "command": "atlas.minimap.toggle"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Export card as…",
+    "shortcut": "",
+    "command": "atlas.card.exportAs"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Add a card",
+    "shortcut": "",
+    "command": "atlas.create.card"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Add a note",
+    "shortcut": "",
+    "command": "atlas.create.note"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Draw an area",
+    "shortcut": "",
+    "command": "atlas.create.area"
+  },
+  {
+    "menu": "Atlas",
+    "item": "New table",
+    "shortcut": "",
+    "command": "atlas.create.table"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Add an image",
+    "shortcut": "",
+    "command": "atlas.create.image"
+  },
+  {
+    "menu": "Window",
+    "item": "Minimize",
+    "shortcut": "",
+    "command": ""
+  },
+  {
+    "menu": "Window",
+    "item": "Zoom",
+    "shortcut": "",
+    "command": ""
+  },
+  {
+    "menu": "Window",
+    "item": "Bring All to Front",
+    "shortcut": "",
+    "command": ""
+  },
+  {
+    "menu": "Help",
+    "item": "Mill help",
+    "shortcut": "",
+    "command": "view.docs"
+  },
+  {
+    "menu": "Help",
+    "item": "Search docs",
+    "shortcut": "",
+    "command": "docs.search"
+  },
+  {
+    "menu": "Help",
+    "item": "Keyboard shortcuts",
+    "shortcut": "",
+    "command": "help.shortcuts"
+  },
+  {
+    "menu": "Help",
+    "item": "Report an issue…",
+    "shortcut": "",
+    "command": "help.reportIssue"
+  },
+  {
+    "menu": "Help",
+    "item": "Open data folder",
+    "shortcut": "",
+    "command": "help.openDataFolder"
+  },
+  {
+    "menu": "Help > Developer",
+    "item": "Reload",
+    "shortcut": "",
+    "command": ""
+  },
+  {
+    "menu": "Help > Developer",
+    "item": "Force Reload",
+    "shortcut": "",
+    "command": ""
+  },
+  {
+    "menu": "Help > Developer",
+    "item": "Open Developer Tools",
+    "shortcut": "",
+    "command": ""
+  }
+]

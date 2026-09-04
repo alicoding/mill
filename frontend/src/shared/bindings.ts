@@ -28,6 +28,7 @@ export { ClipboardHistoryService } from '../../bindings/github.com/alicoding/mil
 export type { Entry as ClipboardHistoryEntry } from '../../bindings/github.com/alicoding/mill/internal/domain/clipboardhistory/models'
 export { CodeLoopService } from '../../bindings/github.com/alicoding/mill/internal/services/codeloopsvc'
 export type { CommandBlockPreview, CommandBlockPreviewStep } from '../../bindings/github.com/alicoding/mill/internal/services/codeloopsvc'
+export { MenuService } from '../../bindings/github.com/alicoding/mill/internal/services/menusvc'
 export { DocsService } from '../../bindings/github.com/alicoding/mill/internal/services/docssvc'
 export type { DocSearchEntry } from '../../bindings/github.com/alicoding/mill/internal/services/docssvc'
 export { CompanionService } from '../../bindings/github.com/alicoding/mill/internal/services/companionsvc'
