@@ -15,9 +15,9 @@
     },
     "appearance": {
       "themeLabel": "Color theme",
-      "lightLabel": "Light theme",
-      "darkLabel": "Dark theme",
-      "systemLabel": "Match system theme",
+      "lightLabel": "Light",
+      "darkLabel": "Dark",
+      "systemLabel": "System",
       "colorSchemeLabel": "Color scheme",
       "lightAppearanceLabel": "Light appearance",
       "darkAppearanceLabel": "Dark appearance",
@@ -129,7 +129,33 @@
       "secretRefGone": "This secret no longer exists. Pick another.",
       "secretRefUnavailable": "Unlock the vault in Secrets to pick one.",
       "secretRefGroupVault": "Vault",
-      "secretRefGroupSources": "Secret sources"
+      "secretRefGroupSources": "Secret sources",
+      "meta": {
+        "groupKnowledge": "Knowledge",
+        "groupFile": "File",
+        "groupAnnotate": "Drawing",
+        "sectionKnowledge": "Knowledge",
+        "sectionFile": "Files",
+        "sectionAnnotate": "Drawing",
+        "sourceBoardLocal": "Stored on the board",
+        "sourceFile": "Backed by a file",
+        "sourceUrl": "Points at a web address",
+        "sourceProvider": "Live view of a List",
+        "editResolved": "Edit method depends on the file",
+        "editExternalApp": "Opens in your default app",
+        "editEmbedded": "Edits in {{engine}}",
+        "editInline": "Edits in place",
+        "reachNothing": "Reaches nothing outside Mill.",
+        "reachList": "Reaches {{list}}.",
+        "version": "Ships with Mill v{{version}}"
+      },
+      "reloadRefusal": {
+        "disabled": "it is turned off",
+        "blocked": "an administrator blocked it",
+        "unallowed": "it has not been allowed to run yet",
+        "unsigned": "its signature did not verify",
+        "changed": "its files changed since you allowed it. Allow it again on its row"
+      }
     },
     "keyboardShortcuts": {
       "label": "Keyboard shortcuts",
@@ -277,6 +303,14 @@
       "importConfirmEmpty": "This file has nothing new to import.",
       "familyCount": "{{name}}: {{created}} new, {{updated}} updated",
       "mirrorFilesNote": "Files mirrored from folders on disk are referenced by path, never copied in."
+    },
+    "backups": {},
+    "dataStewardshipOps": {
+      "refreshStatus": "Refresh status",
+      "backUpNow": "Back up now",
+      "revealBackupFolder": "Reveal backup folder",
+      "exportEverything": "Export everything",
+      "importEverything": "Import everything"
     }
   },
   "keyboardShortcutsSection": {
@@ -395,7 +429,6 @@
     "noActivityMatchesFilter": "No activity matches this filter.",
     "previewAriaLabel": "Preview {{label}}",
     "closeAriaLabel": "Close",
-    "showingCount": "Showing {{shown}} of {{total}}.",
     "columns": {
       "time": "Time",
       "source": "Source",
@@ -535,5 +568,11 @@
   },
   "firstRunIntro": {
     "gotIt": "Got it"
+  },
+  "guardrailRuleScope": {
+    "step": "Only this step: {{nodeType}} in {{workflow}}",
+    "workflow": "Any step in {{workflow}}",
+    "nodeType": "Every {{nodeType}} step, in any workflow",
+    "request": "Any step calling {{request}}"
   }
 }

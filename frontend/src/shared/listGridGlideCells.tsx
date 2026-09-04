@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { copy as copyText } from './copy'
 import { GridCellKind, type CustomCell, type CustomRenderer, type EditableGridCell, type GridCell } from '@glideapps/glide-data-grid'
 import { type OptionColor, optionColor } from './projectionColors'
 import type { GridColumn, GridRow } from './listGridTypes'
@@ -74,7 +75,7 @@ function OptionsEditor({ value, onChange, onFinishedEditing }: {
       ref={ref}
       value={value.data.value}
       data-testid="atlas-projection-cell-select"
-      aria-label="Choose a value"
+      aria-label={copyText('listGrid.chooseValueAriaLabel')}
       style={{ font: 'inherit', minWidth: 120, padding: '4px 6px' }}
       onChange={(e) => pick(e.target.value)}
       onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); onFinishedEditing() } }}

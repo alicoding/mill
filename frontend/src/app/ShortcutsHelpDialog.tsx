@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionList, Dialog, Link as PrimerLink, Stack } from '@primer/react'
-import { COMMANDS, effectiveBinding } from '../shared/commands'
+import { COMMANDS, commandLabel, effectiveBinding } from '../shared/commands'
 import type { Command } from '../shared/commands'
 import type { KeyCombo } from '../shared/keybinding'
 import { formatCombo } from '../shared/keybinding'
@@ -33,7 +33,7 @@ function ShortcutRow({ command, overrides }: { command: Command; overrides: Reco
   return (
     <ActionList.Item data-testid="shortcuts-help-row" data-command-id={command.id}>
       <Stack direction="horizontal" justify="space-between" align="center" style={{ width: '100%' }}>
-        <span>{command.label}</span>
+        <span>{commandLabel(command)}</span>
         <Stack direction="horizontal" gap="condensed">
           {chipLabelsFor(command, overrides).map((label) => (
             <KeyComboChip key={label} label={label} />

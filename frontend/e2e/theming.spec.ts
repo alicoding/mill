@@ -37,7 +37,7 @@ test('the theme pickers follow the mode, and picking Dimmed repaints', async ({ 
     'Default', 'High contrast', 'Colorblind', 'Colorblind high contrast', 'Tritanopia', 'Tritanopia high contrast',
   ])
 
-  await page.getByRole('button', { name: 'Dark theme' }).click()
+  await page.getByRole('button', { name: 'Dark', exact: true }).click()
   await expect.poll(() => htmlAttr(page, 'data-color-mode')).toBe('dark')
   // Under a fixed mode only that family's list remains: the other one
   // could not affect this window, so it is not on screen.
@@ -60,7 +60,7 @@ test('the theme pickers follow the mode, and picking Dimmed repaints', async ({ 
 test('pointing at a theme previews it, and leaving the list puts the old one back', async ({ page }) => {
   await page.goto('/')
   await openSettings(page, 'appearance')
-  await page.getByRole('button', { name: 'Dark theme' }).click()
+  await page.getByRole('button', { name: 'Dark', exact: true }).click()
   await expect.poll(() => htmlAttr(page, 'data-color-mode')).toBe('dark')
   const committed = await bgDefault(page)
 
@@ -100,7 +100,7 @@ test('a light theme picked while the window is dark applies when the mode turns 
   // Nothing repaints yet: the choice is for the other appearance.
   expect(await bgDefault(page)).toBe(whileDark)
 
-  await page.getByRole('button', { name: 'Light theme' }).click()
+  await page.getByRole('button', { name: 'Light', exact: true }).click()
   await expect.poll(() => htmlAttr(page, 'data-mill-scheme')).toBe('light_high_contrast')
   await expect.poll(() => bgDefault(page)).not.toBe(whileDark)
 })
@@ -113,7 +113,7 @@ test('a theme change reaches an already-open second window without a reload', as
 
   await openSettings(page, 'appearance')
   await expect(page.getByTestId('settings-view')).toBeVisible()
-  await page.getByRole('button', { name: 'Dark theme' }).click()
+  await page.getByRole('button', { name: 'Dark', exact: true }).click()
 
   // The Quick Panel window follows -- never reloaded here, so a stale
   // first-paint seed would fail this.
@@ -148,7 +148,7 @@ pluginTest('a plugin face and view carry the resolved theme, and it flips with t
     const settings = await page.context().newPage()
     await settings.goto('/')
     await openSettings(settings, 'appearance')
-    await settings.getByRole('button', { name: 'Dark theme' }).click()
+    await settings.getByRole('button', { name: 'Dark', exact: true }).click()
     await settings.getByTestId('dark-scheme-select-option-dark_dimmed').click()
 
     await baseExpect(face).toHaveAttribute('data-mill-theme', 'dark')
@@ -165,7 +165,7 @@ pluginTest('a plugin face and view carry the resolved theme, and it flips with t
     // A theme the Scribble example contributes: listed under its own
     // family with the plugin that shipped it, and painting the real
     // page once chosen.
-    await settings.getByRole('button', { name: 'Light theme' }).click()
+    await settings.getByRole('button', { name: 'Light', exact: true }).click()
     const sepia = settings.getByTestId('light-scheme-select-option-mill-scribble.sepia')
     await baseExpect(sepia).toBeVisible()
     await baseExpect(sepia).toContainText('Sepia')

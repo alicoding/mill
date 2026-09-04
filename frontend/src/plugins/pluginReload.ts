@@ -1,4 +1,5 @@
 import i18n from 'i18next'
+import { copy } from '../shared/copy'
 import { Events } from '@wailsio/runtime'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
@@ -33,12 +34,12 @@ import type { PluginModule } from './sdk'
 // between unregister and re-register, which is the same rendering an
 // uninstalled plugin's objects already get).
 
-const REFUSAL: Record<string, string> = {
-	disabled: 'it is turned off',
-	blocked: 'an administrator blocked it',
-	unallowed: 'it has not been allowed to run yet',
-	unsigned: 'its signature did not verify',
-	changed: 'its files changed since you allowed it -- allow it again on its row',
+const REFUSAL_KEY: Record<string, string> = {
+	disabled: 'views:settings.extensions.reloadRefusal.disabled',
+	blocked: 'views:settings.extensions.reloadRefusal.blocked',
+	unallowed: 'views:settings.extensions.reloadRefusal.unallowed',
+	unsigned: 'views:settings.extensions.reloadRefusal.unsigned',
+	changed: 'views:settings.extensions.reloadRefusal.changed',
 }
 
 function unregisterContributions(pluginId: string): void {
@@ -70,7 +71,7 @@ export async function reloadPlugin(pluginId: string): Promise<void> {
 		signingPolicy: !!info.SigningPolicy,
 		signed: !!info.Signed,
 	})
-	if (state !== 'run') throw new Error(REFUSAL[state] ?? state)
+	if (state !== 'run') throw new Error(REFUSAL_KEY[state] ? copy(REFUSAL_KEY[state]) : state)
 	let millVersion = ''
 	try {
 		millVersion = await SettingsService.AppVersion()

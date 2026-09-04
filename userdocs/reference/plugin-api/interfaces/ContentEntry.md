@@ -6,7 +6,7 @@
 
 # Interface: ContentEntry
 
-One thing on the board, as api.query lists it -- a card (kind
+One thing on the board, as api.query lists it — a card (kind
 'card', subkind names its own kind of card), a note (kind 'note',
 payload.text holds its text), or a board object (its own kind, its
 own payload). title is the name a person sees: a card's title, a

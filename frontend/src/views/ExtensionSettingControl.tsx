@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { copy } from '../shared/copy'
 import { Checkbox, FormControl, Select, TextInput } from '@primer/react'
 import type { ExtensionSettingDecl } from '../atlas/atlasNounRegistry'
 import { persistExtensionSetting, resolveExtensionSetting, useExtensionSettingsStore } from '../shared/extensionSettingsStore'
@@ -64,8 +65,8 @@ export function ExtensionSettingControl({ extensionId, setting }: {
             }}
           />
         )}
-        <FormControl.Label>{setting.label}</FormControl.Label>
-        <FormControl.Caption>{setting.description}</FormControl.Caption>
+        <FormControl.Label>{copy(setting.label)}</FormControl.Label>
+        <FormControl.Caption>{copy(setting.description)}</FormControl.Caption>
       </FormControl>
     </div>
   )

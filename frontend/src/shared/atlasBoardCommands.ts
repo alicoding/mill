@@ -12,7 +12,7 @@ import { useUISignalStore } from './uiSignalStore'
 export const ATLAS_BOARD_COMMANDS: Command[] = [
   {
     id: 'atlas.arrange',
-    label: 'Auto-arrange',
+    label: 'commands.atlas.arrange',
     defaultBinding: null,
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasArrange(),
@@ -21,49 +21,49 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     // The board's Contents dialog (docs/goals/0279): every card, note,
     // and object listed by kind with display names.
     id: 'atlas.contents.open',
-    label: 'Contents',
+    label: 'commands.atlas.contents.open',
     defaultBinding: null,
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasContents(),
   },
   {
     id: 'atlas.import',
-    label: 'Import atlas',
+    label: 'commands.atlas.import',
     defaultBinding: null,
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasImport(),
   },
   {
     id: 'atlas.export',
-    label: 'Export atlas',
+    label: 'commands.atlas.export',
     defaultBinding: null,
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasExport(),
   },
   {
     id: 'atlas.addFromFolder',
-    label: 'Add cards from a folder',
+    label: 'commands.atlas.addFromFolder',
     defaultBinding: null,
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasAddFromFolder(),
   },
   {
     id: 'atlas.share.copyContext',
-    label: 'Copy space as context',
+    label: 'commands.atlas.share.copyContext',
     defaultBinding: null,
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasShareCopyContext(),
   },
   {
     id: 'atlas.share.copyLinks',
-    label: 'Copy space links',
+    label: 'commands.atlas.share.copyLinks',
     defaultBinding: null,
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasShareCopyLinks(),
   },
   {
     id: 'atlas.perspective',
-    label: 'Open perspective switcher',
+    label: 'commands.atlas.perspective',
     defaultBinding: null,
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasPerspectiveSwitcherOpen(),
@@ -76,7 +76,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     // Atlas input. defaultBinding still drives HotkeyHint/the Shortcuts
     // Help overlay's display.
     id: 'atlas.selectAll',
-    label: 'Select all',
+    label: 'commands.atlas.selectAll',
     defaultBinding: { mods: ['cmd'], key: 'A' },
     hintOnly: true,
     surface: ['atlas'],
@@ -90,7 +90,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     // useAtlasSelectionTray.ts's own onDelete/AtlasBoard's Delete/
     // Backspace listener.
     id: 'atlas.delete.selection',
-    label: 'Delete selection',
+    label: 'commands.atlas.delete.selection',
     defaultBinding: { mods: [], key: 'Delete' },
     hintOnly: true,
     paletteHidden: true,
@@ -102,7 +102,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     // above -- the real action lives in useAtlasSelectionTray.ts's own
     // triggerGroup/groupFromKeyboard.
     id: 'atlas.group.selection',
-    label: 'Group into a new area',
+    label: 'commands.atlas.group.selection',
     defaultBinding: { mods: [], key: 'G' },
     hintOnly: true,
     paletteHidden: true,
@@ -120,7 +120,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     // live in useAtlasObjectMenu.ts, which shares this commandId so the
     // menu item's label/HotkeyHint resolve from here.
     id: 'object.openInDefaultApp',
-    label: 'Open in default app',
+    label: 'commands.object.openInDefaultApp',
     defaultBinding: null,
     hintOnly: true,
     paletteHidden: true,
@@ -137,7 +137,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     // enablement live in atlas/useAtlasObjectMenu.ts, which shares this
     // commandId so the menu item's label/HotkeyHint resolve from here.
     id: 'object.rename',
-    label: 'Rename',
+    label: 'commands.object.rename',
     defaultBinding: null,
     hintOnly: true,
     paletteHidden: true,
@@ -152,14 +152,14 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     // while on the atlas surface -- opening/closing has no invalid
     // state, so no `enabled` predicate is needed here.
     id: 'atlas.companion.toggle',
-    label: 'Toggle companion panel',
+    label: 'commands.atlas.companion.toggle',
     defaultBinding: null,
     surface: ['atlas'],
     run: () => useUISignalStore.getState().toggleCompanion(),
   },
   {
     id: 'atlas.minimap.toggle',
-    label: 'Toggle minimap',
+    label: 'commands.atlas.minimap.toggle',
     defaultBinding: null,
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasMinimapToggle(),
@@ -172,7 +172,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     // Consumed by whichever card page is currently open
     // (AtlasCardOverlay.tsx); a harmless no-op with no card page open.
     id: 'atlas.card.exportAs',
-    label: 'Export card as…',
+    label: 'commands.atlas.card.exportAs',
     defaultBinding: null,
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasCardExportAs(),
@@ -189,7 +189,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
   // useAtlasKeyboardNav.ts's own window keydown listener.
   {
     id: 'atlas.focusNext',
-    label: 'Focus next card',
+    label: 'commands.atlas.focusNext',
     defaultBinding: { mods: [], key: 'Tab' },
     hintOnly: true,
     paletteHidden: true,
@@ -198,7 +198,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
   },
   {
     id: 'atlas.focusPrevious',
-    label: 'Focus previous card',
+    label: 'commands.atlas.focusPrevious',
     defaultBinding: { mods: ['shift'], key: 'Tab' },
     hintOnly: true,
     paletteHidden: true,
@@ -207,7 +207,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
   },
   {
     id: 'atlas.focusDirection',
-    label: 'Focus the nearest card in a direction',
+    label: 'commands.atlas.focusDirection',
     defaultBinding: { mods: ['option'], key: 'ArrowRight' },
     hintOnly: true,
     paletteHidden: true,
@@ -216,7 +216,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
   },
   {
     id: 'atlas.openFocused',
-    label: 'Open or zoom the focused card',
+    label: 'commands.atlas.openFocused',
     defaultBinding: { mods: [], key: 'Enter' },
     hintOnly: true,
     paletteHidden: true,
@@ -225,7 +225,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
   },
   {
     id: 'atlas.nudgeSelection',
-    label: 'Move the selected card',
+    label: 'commands.atlas.nudgeSelection',
     defaultBinding: { mods: [], key: 'ArrowRight' },
     hintOnly: true,
     paletteHidden: true,
@@ -234,7 +234,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
   },
   {
     id: 'atlas.escapeLadder',
-    label: 'Clear selection or go up a level',
+    label: 'commands.atlas.escapeLadder',
     defaultBinding: { mods: [], key: 'Escape' },
     hintOnly: true,
     paletteHidden: true,

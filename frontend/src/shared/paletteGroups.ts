@@ -179,7 +179,7 @@ export function paletteGroupFor(nt: { ID: string; Kind: string; PaletteGroup?: s
   }
   const known = NODE_TYPE_GROUP[nt.ID]
   if (known) return known
-  console.warn(`[NodePalette] NodeType "${nt.ID}" (Kind "${nt.Kind}") has no palette display-group mapping -- add it to NODE_TYPE_GROUP in composition/paletteGroups.ts. Falling back to its Kind's nearest group.`)
+  console.warn(`[NodePalette] NodeType "${nt.ID}" (Kind "${nt.Kind}") has no palette display-group mapping. Add it to NODE_TYPE_GROUP in composition/paletteGroups.ts. Falling back to its Kind's nearest group.`)
   return KIND_FALLBACK_GROUP[nt.Kind] ?? 'actions'
 }
 

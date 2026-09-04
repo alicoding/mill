@@ -26,8 +26,8 @@ export const noteTool = {
   id: noteIdentity.id,
   icon: NoteIcon,
   label: noteIdentity.commandLabel,
-  nounName: 'Note',
-  description: 'Adds a quick sticky note for jotting text on the board.',
+  nounName: 'atlas:noteNoun.name',
+  description: 'atlas:noteNoun.description',
   shortcutKey: noteIdentity.shortcutKey,
   tray: 'quick',
   // Quick text on the board (goal 0224's disposition table), tray-primary.
@@ -42,8 +42,8 @@ export const noteTool = {
     {
       type: 'boolean',
       key: 'richCodeBlocks',
-      label: 'Rich code blocks',
-      description: 'Code fences get syntax coloring and the full code editor. Applies the next time a note opens for editing.',
+      label: 'atlas:noteNoun.settings.richCodeBlocks.label',
+      description: 'atlas:noteNoun.settings.richCodeBlocks.description',
       defaultValue: false,
     },
   ],

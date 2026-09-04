@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { copy } from '../shared/copy'
 import { Events } from '@wailsio/runtime'
 import { AtlasService, CompanionService, ConfigureService, ExecutionService, RunKind } from '../shared/bindings'
 import type { ClipbridgeReplyPreview } from '../shared/bindings'
@@ -130,7 +131,7 @@ export function useCompanionChat(viewedID: string) {
       // looking, not always at the board root.
       const summary = await ExecutionService.RunWorkflow(preview.RouteWorkflowID, RunKind.RunKindTest, { items: JSON.stringify(items), parentId: viewedID })
       if (summary.status !== 'SUCCESS') {
-        setError(`The workflow run ended with status ${summary.status}.`)
+        setError(copy('atlas:companionPanel.runFailed', { status: summary.status }))
         return
       }
       setEntries((cur) => cur.map((e) => (e.id === entryID ? { ...e, accepted: true } : e)))

@@ -423,7 +423,8 @@
     "pluginObjects_one": "{{count}} object",
     "pluginObjects_other": "{{count}} objects",
     "pagesSkipped_one": "{{count}} page couldn't be read: {{pages}}",
-    "pagesSkipped_other": "{{count}} pages couldn't be read: {{pages}}"
+    "pagesSkipped_other": "{{count}} pages couldn't be read: {{pages}}",
+    "imageTitle": "Pasted image"
   },
   "boardExport": {
     "converted": "Exported as {{what}}",
@@ -469,7 +470,8 @@
     "accepted": "Added to the map",
     "errorTitle": "That didn't work",
     "retry": "Retry",
-    "close": "Close AI panel"
+    "close": "Close AI panel",
+    "runFailed": "The workflow run ended with status {{status}}."
   },
   "unknownKind": {
     "note": "Its extension isn't running. Turn it on in Settings to bring it back.",

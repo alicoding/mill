@@ -1,3 +1,5 @@
+import { copy } from './copy'
+
 // Shared reset-to-shipped-example affordance logic (docs/goals/0037
 // item 4), used by every resource-inventory page's row menu (Workflows,
 // Integrations, Decisions, Lists, MCP Servers, Environments) --
@@ -35,7 +37,7 @@ export interface SeedResetDescription {
 export function describeSeedReset(seed: SeedLike, currentRevision: number): SeedResetDescription {
   const upToDate = !seed.Modified && seed.SeedRevision >= currentRevision
   if (upToDate) {
-    return { label: 'Up to date with shipped example', disabled: true }
+    return { label: copy('seedReset.upToDate'), disabled: true }
   }
-  return { label: `Reset to shipped example v${currentRevision}`, disabled: false }
+  return { label: copy('seedReset.reset', { revision: currentRevision }), disabled: false }
 }

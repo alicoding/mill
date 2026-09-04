@@ -11,7 +11,7 @@ import { SettingsService } from './bindings'
 export const HELP_COMMANDS: Command[] = [
   {
     id: 'help.reportIssue',
-    label: 'Report an issue…',
+    label: 'commands.help.reportIssue',
     defaultBinding: null,
     keywords: ['bug', 'issue', 'feedback', 'report'],
     menu: { path: 'help', group: 1, order: 0 },
@@ -19,7 +19,7 @@ export const HELP_COMMANDS: Command[] = [
   },
   {
     id: 'help.openDataFolder',
-    label: 'Open data folder',
+    label: 'commands.help.openDataFolder',
     defaultBinding: null,
     keywords: ['data', 'folder', 'files', 'storage', 'library'],
     menu: { path: 'help', group: 1, order: 1 },

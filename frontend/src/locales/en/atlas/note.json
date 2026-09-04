@@ -5,5 +5,15 @@
   },
   "noteOverlay": {
     "title": "Note"
+  },
+  "noteNoun": {
+    "name": "Note",
+    "description": "Adds a quick sticky note for jotting text on the board.",
+    "settings": {
+      "richCodeBlocks": {
+        "label": "Rich code blocks",
+        "description": "Code fences get syntax coloring and the full code editor. Applies the next time a note opens for editing."
+      }
+    }
   }
 }

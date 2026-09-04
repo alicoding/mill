@@ -1,0 +1,8 @@
+{
+  "pdfNoun": {
+    "name": "PDF",
+    "description": "View PDF documents dropped onto the board, pages and all.",
+    "disableScopeNote": "Turning this off stops new PDFs from landing on drop. PDFs already on the board keep working, including opening in your default app.",
+    "shieldHint": "Click to select, then scroll to read"
+  }
+}

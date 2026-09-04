@@ -12,7 +12,7 @@ import { useUISignalStore } from './uiSignalStore'
 export const DOCS_SEARCH_COMMANDS: Command[] = [
   {
     id: 'docs.search',
-    label: 'Search docs',
+    label: 'commands.docs.search',
     defaultBinding: null,
     run: () => useUISignalStore.getState().openDocsSearch(),
   },

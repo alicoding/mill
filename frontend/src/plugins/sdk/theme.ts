@@ -7,7 +7,7 @@
  * data-mill-theme/data-mill-scheme on the element you are drawing
  * into, so plain CSS can branch on it without reading this object. */
 export interface PluginTheme {
-  /** The settled light/dark answer -- never "auto". */
+  /** The settled light/dark answer — never "auto". */
   mode: 'light' | 'dark'
   /** The exact color scheme in effect, e.g. "dark_dimmed". */
   scheme: string

@@ -47,7 +47,7 @@ editRoute:
 ```
 
 Which door edits the object: 'inline' (the face itself is the
-editor), 'external-app', or 'none' -- one fixed value, or a
+editor), 'external-app', or 'none' — one fixed value, or a
 resolver called per object when the answer depends on that
 object's own data (some file extensions are editable in place and
 some are not, say).
@@ -72,7 +72,7 @@ interaction. Required there, and not accepted for
 optional group?: "knowledge" | "file" | "annotate";
 ```
 
-group: which tray cluster the button renders in -- 'knowledge'
+group: which tray cluster the button renders in — 'knowledge'
 (default for board-local or url-backed tools), 'file' (default for
 file-backed tools), or 'annotate' (the collapsed freehand-marking
 drawer).
@@ -138,7 +138,7 @@ plugin's row in Settings.
 optional lockable?: boolean;
 ```
 
-lockable: for a non-sticky drag tool only -- re-clicking the
+lockable: for a non-sticky drag tool only — re-clicking the
 armed button locks it for deliberate repeated use instead of
 disarming.
 
@@ -179,7 +179,7 @@ optional renderFace?: (el, ctx) => void;
 
 renderFace draws the object's board face into el (an element
 already sized to the object's box). Called on mount and again
-whenever the object's own data changes -- el's contents are yours
+whenever the object's own data changes — el's contents are yours
 to manage between calls. Deliberately plain DOM: no renderer
 library coupling, no build step required to write a plugin.
 Optional only for 'ephemeral-drag' (nothing is ever placed).

@@ -1,7 +1,7 @@
 import type { ElementType, ReactNode } from 'react'
 import { CounterLabel } from '@primer/react'
 import { CommandPaletteIcon, CopyIcon, GearIcon, HomeIcon, PlayIcon } from '@primer/octicons-react'
-import { findCommand, runCommand } from '../shared/commands'
+import { commandLabel, findCommand, runCommand } from '../shared/commands'
 import { quickPanelRowIds } from '../shared/quickPanelCommands'
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
@@ -288,8 +288,8 @@ function buildActionRows(params: {
     rows.push({
       id: `cmd:${command.id}`,
       groupId: 'actions',
-      text: command.label,
-      searchText: command.label.toLowerCase(),
+      text: commandLabel(command),
+      searchText: commandLabel(command).toLowerCase(),
       keywords: command.keywords,
       leadingVisual: CommandPaletteIcon,
       trailingVisual: <HotkeyHint commandId={command.id} />,

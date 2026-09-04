@@ -18,7 +18,7 @@ import { useUISignalStore } from './uiSignalStore'
 export const CONFIGURE_CREATE_COMMANDS: Command[] = [
   {
     id: 'configure.new.integration',
-    label: 'New integration',
+    label: 'commands.configure.new.integration',
     defaultBinding: null,
     run: () => {
       useAppStore.getState().setView({ kind: 'configure', tab: 'integration' })
@@ -27,7 +27,7 @@ export const CONFIGURE_CREATE_COMMANDS: Command[] = [
   },
   {
     id: 'configure.new.lists',
-    label: 'New list',
+    label: 'commands.configure.new.lists',
     defaultBinding: null,
     run: () => {
       useAppStore.getState().setView({ kind: 'configure', tab: 'lists' })
@@ -36,7 +36,7 @@ export const CONFIGURE_CREATE_COMMANDS: Command[] = [
   },
   {
     id: 'configure.new.mcpservers',
-    label: 'New MCP server',
+    label: 'commands.configure.new.mcpservers',
     defaultBinding: null,
     run: () => {
       useAppStore.getState().setView({ kind: 'configure', tab: 'mcpservers' })
@@ -45,7 +45,7 @@ export const CONFIGURE_CREATE_COMMANDS: Command[] = [
   },
   {
     id: 'configure.new.decisions',
-    label: 'New decision',
+    label: 'commands.configure.new.decisions',
     defaultBinding: null,
     run: () => {
       useAppStore.getState().setView({ kind: 'configure', tab: 'decisions' })
@@ -54,7 +54,7 @@ export const CONFIGURE_CREATE_COMMANDS: Command[] = [
   },
   {
     id: 'configure.new.execenvs',
-    label: 'New environment',
+    label: 'commands.configure.new.execenvs',
     defaultBinding: null,
     run: () => {
       useAppStore.getState().setView({ kind: 'configure', tab: 'execenvs' })
@@ -63,7 +63,7 @@ export const CONFIGURE_CREATE_COMMANDS: Command[] = [
   },
   {
     id: 'configure.new.aiproviders',
-    label: 'New AI provider',
+    label: 'commands.configure.new.aiproviders',
     defaultBinding: null,
     run: () => {
       useAppStore.getState().setView({ kind: 'configure', tab: 'aiproviders' })
@@ -72,7 +72,7 @@ export const CONFIGURE_CREATE_COMMANDS: Command[] = [
   },
   {
     id: 'configure.new.conversionprofiles',
-    label: 'New conversion profile',
+    label: 'commands.configure.new.conversionprofiles',
     defaultBinding: null,
     run: () => {
       useAppStore.getState().setView({ kind: 'configure', tab: 'conversionprofiles' })
@@ -81,7 +81,7 @@ export const CONFIGURE_CREATE_COMMANDS: Command[] = [
   },
   {
     id: 'configure.new.steptypes',
-    label: 'New step type',
+    label: 'commands.configure.new.steptypes',
     defaultBinding: null,
     run: () => {
       useAppStore.getState().setView({ kind: 'configure', tab: 'steptypes' })

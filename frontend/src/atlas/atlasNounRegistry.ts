@@ -312,7 +312,7 @@ const registry = new Map<string, AtlasToolShape>()
 // (diagramNoun.ts) calls directly, never a second mechanism.
 export function registerNoun(descriptor: AtlasToolShape): void {
   if (registry.has(descriptor.id)) {
-    throw new Error(`atlas noun "${descriptor.id}" registered twice -- check frontend/src/atlas/tools/`)
+    throw new Error(`atlas noun "${descriptor.id}" registered twice. Check frontend/src/atlas/tools/`)
   }
   registry.set(descriptor.id, descriptor)
   if (descriptor.boardObjectKind) {
@@ -344,7 +344,7 @@ export function assertRegistryAgreesWithIdentity(): void {
   const identityIDs = ATLAS_TOOL_IDENTITIES.map((i) => i.id)
   for (const id of identityIDs) {
     if (!registry.has(id)) {
-      throw new Error(`atlas noun "${id}" has an identity (shared/atlasToolIdentity.ts) but no registered descriptor -- add frontend/src/atlas/tools/${id}Tool.ts calling registerNoun()`)
+      throw new Error(`atlas noun "${id}" has an identity (shared/atlasToolIdentity.ts) but no registered descriptor. Add frontend/src/atlas/tools/${id}Tool.ts calling registerNoun()`)
     }
   }
   for (const id of registry.keys()) {

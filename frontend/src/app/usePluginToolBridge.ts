@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Events } from '@wailsio/runtime'
-import { findCommand } from '../shared/commands'
+import { commandLabel, findCommand } from '../shared/commands'
 
 // The command half of a plugin's automation surface (goal 0324): an
 // agent calls plugin_<pluginId>_<toolName>, Mill's host emits
@@ -41,12 +41,12 @@ export function runPluginCommand(req: InvokeRequest): void {
     return
   }
   if (command.enabled && !command.enabled()) {
-    reply(req.requestId, false, '', `"${command.label}" is not available right now`)
+    reply(req.requestId, false, '', `"${commandLabel(command)}" is not available right now`)
     return
   }
   try {
     void command.run()
-    reply(req.requestId, true, `ran "${command.label}"`, '')
+    reply(req.requestId, true, `ran "${commandLabel(command)}"`, '')
   } catch (err) {
     reply(req.requestId, false, '', err instanceof Error ? err.message : String(err))
   }

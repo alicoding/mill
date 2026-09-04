@@ -57,7 +57,6 @@ export function DecisionConditionEditor({ attrs, condition, onApply, errorMessag
           {/* expr-lang code syntax, not natural-language copy --
               deliberately untranslated (docs/goals/0032's guard
               rule allowlist). */}
-          {/* eslint-disable-next-line i18next/no-literal-string */}
           {t('decisionEdgeInspector.expressionCaptionPrefix')} <code>count &gt; 5 &amp;&amp; status == "active"</code>{t('decisionEdgeInspector.expressionCaptionSuffix')}
         </FormControl.Caption>
         <TextInput

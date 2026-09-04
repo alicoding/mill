@@ -52,7 +52,7 @@ function warnUndeclaredCommand(manifest: Manifest, commandId: string): void {
 	const key = `${manifest.id}.${commandId}`
 	if (warnedCommands.has(key)) return
 	warnedCommands.add(key)
-	console.warn(`plugin ${manifest.id}: command "${commandId}" is not declared in the manifest's contributes.commands -- declare it to make it reachable by an agent`)
+	console.warn(`plugin ${manifest.id}: command "${commandId}" is not declared in the manifest's contributes.commands. Declare it to make it reachable by an agent`)
 }
 
 // The manifest's own contributes.commands[].menu (goal 0335) is the

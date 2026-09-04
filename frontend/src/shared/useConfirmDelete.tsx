@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { copy } from './copy'
 import { ConfirmDialog } from './ConfirmDialog'
 
 // Small state-glue wrapper around ConfirmDialog for the "table-view
@@ -20,8 +21,8 @@ export function useConfirmDelete<T>({ entityType, labelOf, onConfirm }: {
 
   const dialog = pending !== null && (
     <ConfirmDialog
-      title={`Delete ${entityType}?`}
-      body={`This permanently deletes "${labelOf(pending)}". This cannot be undone.`}
+      title={copy('confirmDelete.title', { entityType })}
+      body={copy('confirmDelete.body', { label: labelOf(pending) })}
       onCancel={() => setPending(null)}
       onConfirm={() => {
         onConfirm(pending)

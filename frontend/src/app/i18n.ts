@@ -1,25 +1,7 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
-import common from '../locales/en/common.json'
-import app from '../locales/en/app.json'
-import composition from '../locales/en/composition.json'
-import configure from '../locales/en/configure.json'
-import secrets from '../locales/en/secrets.json'
-import views from '../locales/en/views.json'
-import { mergeAtlasLocaleModules } from './atlasLocaleMerge'
-
-// Atlas's own namespace is assembled from one file PER NOUN
-// (locales/en/atlas/*.json, goal 0180 slice 2) rather than the single
-// 477-line atlas.json that used to be Atlas's worst merge-collision
-// file (5 of 7 PRs in one arc touched it) -- import.meta.glob discovers
-// every file eagerly, same static-bundled/zero-network-call shape as
-// the plain imports below, and mergeAtlasLocaleModules refuses a
-// top-level key collision between two files rather than silently
-// clobbering one file's subtree with another's (see its own header).
-// The NAMESPACE stays singular ('atlas', useTranslation('atlas')) --
-// every t('...') call site and every e2e string match stays untouched.
-const atlasLocaleModules = import.meta.glob('../locales/en/atlas/*.json', { eager: true, import: 'default' }) as Record<string, Record<string, unknown>>
-const atlas = mergeAtlasLocaleModules(atlasLocaleModules)
+import { DEFAULT_NAMESPACE, EN_RESOURCES, LOCALE_NAMESPACES } from '../shared/localeBundle'
+import { installCopyResolver } from '../shared/copy'
 
 // docs/goals/archive/0032-copy-management.md's locked research verdict:
 // react-i18next + i18next, namespace-per-bounded-context JSON --
@@ -45,13 +27,11 @@ const atlas = mergeAtlasLocaleModules(atlasLocaleModules)
 // other folder just calls useTranslation() from the 'react-i18next'
 // package).
 void i18n.use(initReactI18next).init({
-  resources: {
-    en: { common, app, atlas, composition, configure, secrets, views },
-  },
+  resources: { en: EN_RESOURCES },
   lng: 'en',
   fallbackLng: 'en',
-  defaultNS: 'common',
-  ns: ['common', 'app', 'atlas', 'composition', 'configure', 'secrets', 'views'],
+  defaultNS: DEFAULT_NAMESPACE,
+  ns: [...LOCALE_NAMESPACES],
   interpolation: {
     // React already escapes interpolated values when rendering JSX --
     // i18next's own default (HTML-escaping) would double-escape them.
@@ -59,5 +39,10 @@ void i18n.use(initReactI18next).init({
   },
   returnNull: false,
 })
+
+// Everything outside a React tree resolves through shared/copy.ts;
+// installing i18next's own t() here is what routes those calls at the
+// same instance the hooks read, once it exists.
+installCopyResolver((key, params) => i18n.t(key, params))
 
 export default i18n

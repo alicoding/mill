@@ -4,7 +4,13 @@ const emit = vi.fn()
 vi.mock('@wailsio/runtime', () => ({ Events: { Emit: (...args: unknown[]) => emit(...args), On: () => () => undefined } }))
 
 const findCommand = vi.fn()
-vi.mock('../shared/commands', () => ({ findCommand: (id: string) => findCommand(id) }))
+// commandLabel is the real one (it resolves a label key through
+// shared/copy.ts, and a plugin's plain-English label passes straight
+// through) -- only the registry lookup is mocked here.
+vi.mock('../shared/commands', async (orig) => ({
+  ...(await orig<typeof import('../shared/commands')>()),
+  findCommand: (id: string) => findCommand(id),
+}))
 
 const { runPluginCommand } = await import('./usePluginToolBridge')
 

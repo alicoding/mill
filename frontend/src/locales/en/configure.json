@@ -308,7 +308,9 @@
     "deleteAriaLabel": "Delete {{label}}",
     "searchPlaceholder": "Search AI providers…",
     "emptyHeading": "No AI providers yet",
-    "emptyDescription": "A reusable connection to local Ollama, or a BYO OpenAI-compatible or Anthropic endpoint, that an AI workflow step resolves by ID."
+    "emptyDescription": "A reusable connection to local Ollama, or a BYO OpenAI-compatible or Anthropic endpoint, that an AI workflow step resolves by ID.",
+    "rowSummary": "{{kind}} · {{model}}",
+    "rowSummaryWithBaseURL": "{{kind}} · {{model}} · {{baseURL}}"
   },
   "configureStepTypes": {
     "heading": "Step types",
@@ -622,7 +624,10 @@
       "label": "Label",
       "kind": "Kind",
       "path": "Path"
-    }
+    },
+    "pathPlaceholderBruno": "/path/to/collection",
+    "pathPlaceholderOnePassword": "Vault name (optional)",
+    "pathPlaceholderDotenv": "/path/to/project/.env"
   },
   "advancedDisclosure": {
     "summary": "Advanced"

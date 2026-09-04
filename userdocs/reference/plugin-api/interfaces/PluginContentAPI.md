@@ -7,8 +7,8 @@
 # Interface: PluginContentAPI
 
 Writes to the board through the same guarded door an agent's own
-writes take -- create a note, a card, update a card, append a row to
-a list -- each evaluated by the person's own guardrail rules (allow,
+writes take — create a note, a card, update a card, append a row to
+a list — each evaluated by the person's own guardrail rules (allow,
 park for approval, or deny) with the plugin named as the source, and
 recorded under the plugin's own place in undo history. Needs the
 "write-content" capability; without it every call rejects before any

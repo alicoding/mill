@@ -52,7 +52,7 @@ export function DocsSearchDialog() {
   const items = results.map((r) => ({
     id: r.rel,
     text: r.title,
-    description: r.snippet ? `${sectionLabel(r.rel)} — ${r.snippet}` : sectionLabel(r.rel),
+    description: r.snippet ? t('docsSearch.resultDescription', { section: sectionLabel(r.rel), snippet: r.snippet }) : sectionLabel(r.rel),
     descriptionVariant: 'block' as const,
     onAction: () => {
       close()

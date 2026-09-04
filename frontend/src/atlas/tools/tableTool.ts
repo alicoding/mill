@@ -34,8 +34,8 @@ export const tableTool = {
   id: tableIdentity.id,
   icon: TableIcon,
   label: tableIdentity.commandLabel,
-  nounName: 'Table',
-  description: 'Adds a live table backed by a Configure List.',
+  nounName: 'atlas:tableNoun.name',
+  description: 'atlas:tableNoun.description',
   shortcutKey: tableIdentity.shortcutKey,
   tray: 'quick',
   // A live view of List data -- typed, queryable (goal 0224's
@@ -71,6 +71,7 @@ export const tableTool = {
     // the OBJECT -- the grid only goes live once the object is
     // selected, so a bare click can never land straight in a cell.
     clickShield: true,
+    shieldHintKey: 'atlas:tableNoun.shieldHint',
     // ADR-0046 (goal 0244 S0): Payload.listID names the backing
     // Configure List this Kind projects -- a provider source, not a
     // file.

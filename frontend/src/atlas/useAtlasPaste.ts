@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { copy } from '../shared/copy'
 import { AtlasService } from '../shared/bindings'
 import type { PasteResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { refreshAtlas } from './atlasStore'
@@ -93,7 +94,7 @@ export function useAtlasPaste({ topLevelBoxes, screenToFlowPosition, viewedID, o
             const pos = toFlow(filesAnchor)
             const parent = frameContainingPoint(boxes, pos) ?? viewed
             return imageTool
-              .commit({ file: imageFile, title: 'Pasted image' })
+              .commit({ file: imageFile, title: copy('atlas:paste.imageTitle') })
               .then((artifact) => AtlasService.CreateBoardObject('image', { mirrorPath: artifact.mirrorPath, title: artifact.title }, { X: pos.x, Y: pos.y }, parent))
               .then(() => refreshAtlas())
           })

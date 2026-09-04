@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { copy } from '../shared/copy'
 import { CheckIcon, NoteIcon, PlusIcon } from '@primer/octicons-react'
 import type { TFunction } from 'i18next'
 import { AtlasService, ConfigureService, SettingsService } from '../shared/bindings'
@@ -36,7 +37,7 @@ export function todayISODate(now = new Date()): string {
 // as the scheduled date, not done -- the fields the converged task
 // record fills on capture; everything else waits for the tracker.
 export function taskRowForCapture(text: string, today: string): Record<string, string> {
-  return { task: text, status: 'In progress', scheduled: today, done: 'false' }
+  return { task: text, status: copy('app:quickPanel.captureTaskStatus'), scheduled: today, done: 'false' }
 }
 
 export function useQuickPanelCaptureDoors({ t, setQuery, setStatus }: {

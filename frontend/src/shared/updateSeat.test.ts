@@ -5,13 +5,13 @@ import { UpdateState } from './bindings'
 describe('updateSeatFor (the update menu seat, goal 0335)', () => {
   it('offers to check for updates when idle', () => {
     expect(updateSeatFor(UpdateState.UpdateStateIdle, '')).toEqual({
-      commandId: 'update.check', label: 'Check for updates…', enabled: true,
+      commandId: 'update.check', label: 'seats.update.check', enabled: true,
     })
   })
 
   it('disables checking while a check is in flight', () => {
     expect(updateSeatFor(UpdateState.UpdateStateChecking, '')).toEqual({
-      commandId: 'update.check', label: 'Checking for updates…', enabled: false,
+      commandId: 'update.check', label: 'seats.update.checking', enabled: false,
     })
   })
 
@@ -29,13 +29,13 @@ describe('updateSeatFor (the update menu seat, goal 0335)', () => {
 
   it('offers to relaunch once ready', () => {
     expect(updateSeatFor(UpdateState.UpdateStateReady, '1.2.3')).toEqual({
-      commandId: 'update.relaunch', label: 'Relaunch to update', enabled: true,
+      commandId: 'update.relaunch', label: 'seats.update.ready', enabled: true,
     })
   })
 
   it('falls back to checking again on a failed check, never repeating the failure in the seat', () => {
     expect(updateSeatFor(UpdateState.UpdateStateError, '')).toEqual({
-      commandId: 'update.check', label: 'Check for updates…', enabled: true,
+      commandId: 'update.check', label: 'seats.update.check', enabled: true,
     })
   })
 })

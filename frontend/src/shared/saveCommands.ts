@@ -13,7 +13,7 @@ const SAVE_BOUND_MS = 1500
 export const SAVE_COMMANDS: Command[] = [
   {
     id: 'edit.save',
-    label: 'Save',
+    label: 'commands.edit.save',
     keywords: ['save'],
     defaultBinding: { mods: ['cmd'], key: 'S' },
     enabled: () => !isWorkflowEditorTabActive() && pendingFlushCount() > 0,
@@ -21,7 +21,7 @@ export const SAVE_COMMANDS: Command[] = [
   },
   {
     id: 'edit.saveAll',
-    label: 'Save all changes',
+    label: 'commands.edit.saveAll',
     keywords: ['save all', 'unsaved'],
     defaultBinding: null,
     enabled: () => pendingFlushCount() > 0,

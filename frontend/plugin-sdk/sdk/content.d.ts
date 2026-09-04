@@ -1,4 +1,4 @@
-/** One thing on the board, as api.query lists it -- a card (kind
+/** One thing on the board, as api.query lists it — a card (kind
  * 'card', subkind names its own kind of card), a note (kind 'note',
  * payload.text holds its text), or a board object (its own kind, its
  * own payload). title is the name a person sees: a card's title, a
@@ -37,7 +37,7 @@ export interface PluginEventMap {
     };
 }
 /** The request api.fetch sends. A plugin never opens a connection
- * itself -- api.fetch asks Mill, whose rules allow, park for approval,
+ * itself — api.fetch asks Mill, whose rules allow, park for approval,
  * or deny the request; on approval Mill performs it and hands back the
  * response. A host or method the manifest's contributes.network does
  * not declare, or a non-http(s) URL, rejects the promise before any
@@ -76,8 +76,8 @@ export interface PluginWriteResult {
     id: string;
 }
 /** Writes to the board through the same guarded door an agent's own
- * writes take -- create a note, a card, update a card, append a row to
- * a list -- each evaluated by the person's own guardrail rules (allow,
+ * writes take — create a note, a card, update a card, append a row to
+ * a list — each evaluated by the person's own guardrail rules (allow,
  * park for approval, or deny) with the plugin named as the source, and
  * recorded under the plugin's own place in undo history. Needs the
  * "write-content" capability; without it every call rejects before any
@@ -134,7 +134,7 @@ export interface PluginListDirResult {
     entries: PluginFileEntry[];
 }
 /** Lists a folder on this machine through Mill, under the "list-files"
- * capability -- a read action a rule may deny or park for approval;
+ * capability — a read action a rule may deny or park for approval;
  * entries arrive only once approved. Hidden entries and dependency
  * folders are never included. */
 export interface PluginFilesAPI {
@@ -142,7 +142,7 @@ export interface PluginFilesAPI {
 }
 /** Pure transforms Mill already implements, offered to a plugin as-is.
  * htmlToMarkdown is the exact conversion every paste and every
- * workflow convert step uses. No capability required -- a transform
+ * workflow convert step uses. No capability required — a transform
  * reaches nothing outside the input you pass it. */
 export interface PluginConvertAPI {
     htmlToMarkdown: (html: string) => Promise<string>;

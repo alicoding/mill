@@ -31,12 +31,12 @@ export interface CanvasObjectDecl {
    * shown as the tray button's key chip. A key another tool already
    * uses fails registration. */
   shortcutKey?: string
-  /** group: which tray cluster the button renders in -- 'knowledge'
+  /** group: which tray cluster the button renders in — 'knowledge'
    * (default for board-local or url-backed tools), 'file' (default for
    * file-backed tools), or 'annotate' (the collapsed freehand-marking
    * drawer). */
   group?: 'knowledge' | 'file' | 'annotate'
-  /** lockable: for a non-sticky drag tool only -- re-clicking the
+  /** lockable: for a non-sticky drag tool only — re-clicking the
    * armed button locks it for deliberate repeated use instead of
    * disarming. */
   lockable?: boolean
@@ -49,7 +49,7 @@ export interface CanvasObjectDecl {
    * ('file'). */
   source: 'board-local' | 'url' | 'file'
   /** Which door edits the object: 'inline' (the face itself is the
-   * editor), 'external-app', or 'none' -- one fixed value, or a
+   * editor), 'external-app', or 'none' — one fixed value, or a
    * resolver called per object when the answer depends on that
    * object's own data (some file extensions are editable in place and
    * some are not, say). */
@@ -85,7 +85,7 @@ export interface CanvasObjectDecl {
   menuItems?: readonly CanvasObjectMenuItem[]
   /** renderFace draws the object's board face into el (an element
    * already sized to the object's box). Called on mount and again
-   * whenever the object's own data changes -- el's contents are yours
+   * whenever the object's own data changes — el's contents are yours
    * to manage between calls. Deliberately plain DOM: no renderer
    * library coupling, no build step required to write a plugin.
    * Optional only for 'ephemeral-drag' (nothing is ever placed). */
@@ -134,7 +134,7 @@ export interface CanvasGestureCtx {
    * ".ext". */
   saveImageBytes: (base64: string, ext: string, title: string) => Promise<string>
   /** The ids of the board's top-level cards, notes and objects whose
-   * CENTER falls inside a board-space rect -- the same enclosure rule
+   * CENTER falls inside a board-space rect — the same enclosure rule
    * Mill's own Area tool uses. */
   itemsInRect: (rect: CanvasRect) => CanvasItemsInRect
   /** eraseHitTest/commitErase are present ONLY when the plugin's
@@ -150,12 +150,12 @@ export interface CanvasGestureCtx {
 export interface CanvasGestureDecl {
   /** Called for each accumulated point while the drag is live. */
   onPoint?: (pt: CanvasGesturePoint, ctx: CanvasGestureCtx) => void
-  /** Called once at pointer-up with the FULL point list -- a stray
+  /** Called once at pointer-up with the FULL point list — a stray
    * click included, so deciding what counts as a real gesture (a
    * distance threshold, a point count) is your own call. */
   onEnd: (points: CanvasGesturePoint[], ctx: CanvasGestureCtx) => void
   /** Draws the live in-drag preview into el (an overlay element
-   * spanning the board) -- called on every point and, for an
+   * spanning the board) — called on every point and, for an
    * ephemeral-drag tool, on every fade frame. el's contents are yours
    * to manage between calls. */
   renderPreview?: (el: HTMLElement, points: CanvasGesturePoint[], now: number) => void
@@ -206,7 +206,7 @@ export interface CanvasObjectFaceCtx {
    * that detaches it. A face is CSS-scaled with the canvas, so an
    * engine that measures its own layout from screen rectangles (a
    * mind-map or graph layout, a text-measuring chart) lays out wrong
-   * rendered directly in place -- render it on this offscreen stage at
+   * rendered directly in place — render it on this offscreen stage at
    * the face's real size, then copy the finished drawing into el.
    * Anything still mounted when the face unmounts is detached
    * automatically. */

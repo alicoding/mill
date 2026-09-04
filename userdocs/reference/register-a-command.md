@@ -51,14 +51,14 @@ export const SECRETS_COMMANDS: Command[] = [
     // actually shows there and with what label/enablement.
     id: 'secrets.lockVault',
     menu: { path: 'file', group: 4, order: 0 },
-    label: 'Lock vault',
+    label: 'commands.secrets.lockVault',
     defaultBinding: null,
     enabled: () => useVaultStatusStore.getState().vaultStatus?.Unlocked === true,
     run: () => { record(SecretService.LockVault()) },
   },
   {
     id: 'secrets.unlockVault',
-    label: 'Unlock vault',
+    label: 'commands.secrets.unlockVault',
     defaultBinding: null,
     enabled: () => {
       const status = useVaultStatusStore.getState().vaultStatus
@@ -68,7 +68,7 @@ export const SECRETS_COMMANDS: Command[] = [
   },
   {
     id: 'secrets.resetVault',
-    label: 'Start a new vault',
+    label: 'commands.secrets.resetVault',
     defaultBinding: null,
     // Only offered where the current file cannot be opened at all --
     // the stored key does not fit it, or there is no key for it here.
@@ -112,7 +112,10 @@ export function vaultErrorKind(error: UserError | null): VaultErrorKind {
 - `id` — a stable, namespaced string (`secrets.lockVault`, not
   `lockVault`) — namespacing by the area it belongs to is the
   convention every existing command follows.
-- `label` — what the palette and Settings show.
+- `label` — the locale key for what the palette and Settings show, not
+  the sentence itself. Add the English under `commands.` in
+  `frontend/src/locales/en/common.json`; `commandLabel()` resolves it
+  wherever a surface renders the command.
 - `defaultBinding` — a `KeyCombo`, or `null` for a command with no
   keyboard shortcut by default.
 - `enabled` — omit for a command that's always valid. Provide a

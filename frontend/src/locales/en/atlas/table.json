@@ -25,5 +25,10 @@
     "insertRowAriaLabel": "Insert row here",
     "pillsTag": "pills",
     "densityToggleTitle": "Switch between grid and status-pill views"
+  },
+  "tableNoun": {
+    "name": "Table",
+    "description": "Adds a live table backed by a Configure List.",
+    "shieldHint": "Click to select, then click a cell to edit"
   }
 }

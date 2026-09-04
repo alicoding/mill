@@ -129,7 +129,7 @@ pluginId: string;
 query: (q?) => Promise<ContentEntry[]>;
 ```
 
-Lists the board's contents -- always the current state, never a
+Lists the board's contents — always the current state, never a
 cache.
 
 #### Parameters
@@ -224,7 +224,7 @@ requestGuardedAction: (kind, attributes, description) => Promise<GuardedActionRe
 
 Asks Mill to perform an action the plugin cannot perform itself.
 See CanvasObjectFaceCtx's own requestGuardedAction for the full
-contract -- this is the same door, callable outside a face.
+contract — this is the same door, callable outside a face.
 
 #### Parameters
 

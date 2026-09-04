@@ -35,6 +35,7 @@ registerBoardObjectContent('diagram', {
   // viewer owns the wheel (scroll pans it, ctrl/pinch zooms it) and
   // the node opts the board out.
   clickShield: true,
+  shieldHintKey: 'atlas:diagramNoun.shieldHint',
   wheelContained: true,
   // overflowChip (goal 0340): a drawing is routinely larger than the
   // box it sits in, and the face can fit it -- so the shared chrome
@@ -67,9 +68,9 @@ registerBoardObjectContent('diagram', {
   // embedded-engine arm (objectSeams.ts, already keyed off object.Kind).
   extension: {
     icon: FlowchartIcon,
-    label: 'Diagram',
-    description: 'View and edit diagrams — draw.io files open in the real editor.',
-    disableScopeNote: 'Turning this off stops new diagrams from landing on drop and closes the built-in editor. Diagrams already on the board keep working.',
+    label: 'atlas:diagramNoun.name',
+    description: 'atlas:diagramNoun.description',
+    disableScopeNote: 'atlas:diagramNoun.disableScopeNote',
     // File-drop-only, the same family Image's own 'file' group already
     // names (atlasNounRegistry.ts's AtlasNounGroup).
     group: 'file',

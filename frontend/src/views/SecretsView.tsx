@@ -140,10 +140,10 @@ export default function SecretsView() {
     // itself rather than being hidden.
     const kind = vaultErrorKind(vaultError)
     const lockedMessage = {
-      keyMismatch: t('locked.keyMismatch'),
-      noKey: t('locked.noKey'),
-      cancelled: t('locked.cancelled'),
-      authUnavailable: t('locked.authUnavailable'),
+      keyMismatch: t('common:errors.key-mismatch'),
+      noKey: t('common:errors.no-vault-key'),
+      cancelled: t('common:errors.unlock-cancelled'),
+      authUnavailable: t('common:errors.auth-unavailable'),
       other: messageOf(vaultError ?? { code: 'unexpected', message: '' }, t),
       none: '',
     }[kind]

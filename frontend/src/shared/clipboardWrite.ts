@@ -1,4 +1,5 @@
 import copy from 'copy-to-clipboard'
+import { copy as copyText } from './copy'
 
 // The one clipboard-write door for every copy action. navigator.clipboard
 // exists only in secure contexts (https or localhost) -- a Mill server
@@ -18,6 +19,6 @@ export async function writeClipboardText(text: string): Promise<void> {
     }
   }
   if (!copy(text)) {
-    throw new Error('Copy failed: the browser blocked clipboard access')
+    throw new Error(copyText('errors.copy-blocked'))
   }
 }

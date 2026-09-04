@@ -28,7 +28,7 @@ export function mergeAtlasLocaleModules(modules: Record<string, Record<string, u
     for (const [key, value] of Object.entries(contents)) {
       const existingOwner = ownerOf.get(key)
       if (existingOwner !== undefined) {
-        throw new Error(`atlas locale key "${key}" is declared in both ${existingOwner} and ${path} -- each locales/en/atlas/*.json file must own disjoint top-level keys`)
+        throw new Error(`atlas locale key "${key}" is declared in both ${existingOwner} and ${path}: each locales/en/atlas/*.json file must own disjoint top-level keys`)
       }
       ownerOf.set(key, path)
       merged[key] = value

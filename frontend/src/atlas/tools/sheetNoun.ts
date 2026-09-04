@@ -50,9 +50,9 @@ registerBoardObjectContent('sheet', {
   // useAtlasNativeFileDrop.ts's own routing.
   extension: {
     icon: ColumnsIcon,
-    label: 'Sheet',
-    description: 'Preview spreadsheets and CSV files dropped onto the board.',
-    disableScopeNote: 'Turning this off stops new sheets from landing on drop. Sheets already on the board keep working, including opening in your default app.',
+    label: 'atlas:sheetNoun.name',
+    description: 'atlas:sheetNoun.description',
+    disableScopeNote: 'atlas:sheetNoun.disableScopeNote',
     // File-drop-only, the same family Image's own 'file' group already
     // names (atlasNounRegistry.ts's AtlasNounGroup).
     group: 'file',
@@ -64,8 +64,8 @@ registerBoardObjectContent('sheet', {
       {
         type: 'number',
         key: 'previewRows',
-        label: 'Preview rows',
-        description: 'How many rows a sheet shows on the board. Larger sheets say how many rows were left out.',
+        label: 'atlas:sheetNoun.settings.previewRows.label',
+        description: 'atlas:sheetNoun.settings.previewRows.description',
         defaultValue: SHEET_MAX_ROWS,
         min: 1,
         max: 500,
@@ -73,8 +73,8 @@ registerBoardObjectContent('sheet', {
       {
         type: 'number',
         key: 'previewCols',
-        label: 'Preview columns',
-        description: 'How many columns a sheet shows on the board.',
+        label: 'atlas:sheetNoun.settings.previewCols.label',
+        description: 'atlas:sheetNoun.settings.previewCols.description',
         defaultValue: SHEET_MAX_COLS,
         min: 1,
         max: 100,

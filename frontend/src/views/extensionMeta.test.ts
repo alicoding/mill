@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { copy } from '../shared/copy'
 import { ATLAS_TOOLS } from '../atlas/atlasTools'
 import { toolLessNounExtensions } from '../atlas/atlasNounRegistry'
 import {
@@ -89,9 +90,9 @@ describe('toolRowSource (goal 0237 S3 rider)', () => {
     expect(row).toEqual({
       id: 'image',
       icon: image.icon,
-      label: image.nounName,
-      commandLabel: image.label,
-      description: image.description,
+      label: copy(image.nounName),
+      commandLabel: copy(image.label),
+      description: copy(image.description!),
       group: image.group,
       source: image.content?.source,
       editRoute: image.content?.editRoute,
@@ -111,13 +112,14 @@ describe('toolLessRowSource (goal 0237 S3 rider)', () => {
     expect(row).toEqual({
       id: 'diagram',
       icon: diagram.extension.icon,
-      label: diagram.extension.label,
-      description: diagram.extension.description,
+      label: copy(diagram.extension.label),
+      description: copy(diagram.extension.description),
       group: diagram.extension.group,
       source: diagram.content.source,
       editRoute: diagram.content.editRoute,
       capabilities: diagram.extension.capabilities,
-      disableScopeNote: diagram.extension.disableScopeNote,
+      disableScopeNote: copy(diagram.extension.disableScopeNote),
+      settings: diagram.extension.settings,
     })
     expect(row.group).toBe('file')
   })

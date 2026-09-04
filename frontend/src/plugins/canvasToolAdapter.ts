@@ -43,7 +43,7 @@ const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/
 
 function iconDeclError(value: string, field: string): string | null {
 	if (GLYPH_NAME_PATTERN.test(value) && !NAMED_GLYPHS[value]) {
-		return `${field} "${value}" is not a known glyph (known: ${Object.keys(NAMED_GLYPHS).join(', ')}) -- use one of those or an emoji`
+		return `${field} "${value}" is not a known glyph (known: ${Object.keys(NAMED_GLYPHS).join(', ')}). Use one of those or an emoji`
 	}
 	return null
 }

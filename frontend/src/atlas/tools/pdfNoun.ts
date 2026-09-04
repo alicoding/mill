@@ -26,6 +26,7 @@ registerBoardObjectContent('pdf', {
   // table/diagram/sheet.
   dragBand: true,
   clickShield: true,
+  shieldHintKey: 'atlas:pdfNoun.shieldHint',
   wheelContained: true,
   // Payload.mirrorPath names the real .pdf file (goal 0232 S1's
   // contract): shared watch + "Open in default app" enablement.
@@ -34,9 +35,9 @@ registerBoardObjectContent('pdf', {
   editRoute: { kind: 'external-app' },
   extension: {
     icon: FileIcon,
-    label: 'PDF',
-    description: 'View PDF documents dropped onto the board, pages and all.',
-    disableScopeNote: 'Turning this off stops new PDFs from landing on drop. PDFs already on the board keep working, including opening in your default app.',
+    label: 'atlas:pdfNoun.name',
+    description: 'atlas:pdfNoun.description',
+    disableScopeNote: 'atlas:pdfNoun.disableScopeNote',
     group: 'file',
   },
 })

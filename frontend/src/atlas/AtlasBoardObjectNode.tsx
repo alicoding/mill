@@ -98,8 +98,9 @@ function showsFitChip(facts: Pick<AtlasBoardObjectContent, 'overflowChip'>, prev
 // The band's own tooltip. A shielded, not-yet-selected face reads as
 // inert, so the band says what the first click buys before it is spent;
 // once selected the band is back to being the object's drag handle.
-function bandTitleKey(clickShield: boolean, selected: boolean): string {
-  return clickShield && !selected ? 'boardObject.shieldedBandTitle' : 'boardObject.dragHandleTitle'
+function bandTitleKey(clickShield: boolean, selected: boolean, shieldHintKey: string | undefined): string {
+  if (!clickShield || selected) return 'boardObject.dragHandleTitle'
+  return shieldHintKey ?? 'boardObject.shieldedBandTitle'
 }
 
 // The shield's own class set (goal 0273): a Kind that also declares a
@@ -157,7 +158,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
   // registry/data mismatch becomes VISIBLE on the board instead of an
   // invisible node only a console reader could diagnose.
   const resolvedFacts = facts ?? unknownKindContent
-  const { Component, ariaLabelKey, role, dragBand, clickShield } = resolvedFacts
+  const { Component, ariaLabelKey, role, dragBand, clickShield, shieldHintKey } = resolvedFacts
   // Node-level rather than face-level because the kit resolves
   // `nowheel` by event-target ancestry and a wheel can land on node
   // chrome (drag band, padding) outside the face -- see
@@ -259,7 +260,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
           it -- gating on dragBand removes it from those Kinds entirely
           rather than leaving inert chrome. */}
       {dragBand && !preview && (
-        <div className={styles.frame} data-testid="atlas-board-object-frame" title={t(bandTitleKey(!!clickShield, !!selected))}>
+        <div className={styles.frame} data-testid="atlas-board-object-frame" title={t(bandTitleKey(!!clickShield, !!selected, shieldHintKey))}>
           {/* The overflow escape hatch (goal 0340): shown at rest and
               while selected, never hover-gated -- "this is bigger than
               what you can see" is a fact about the object, not a

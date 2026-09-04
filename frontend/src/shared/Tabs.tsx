@@ -1,4 +1,5 @@
 import type { KeyboardEvent, MouseEvent, ReactNode, Ref } from 'react'
+import { copy } from './copy'
 import { useTab, useTabList, useTabPanel } from '@primer/react/experimental'
 import { XIcon } from '@primer/octicons-react'
 import styles from './Tabs.module.css'
@@ -70,7 +71,7 @@ export function TabItem({ value, children, kicker, leadingVisual, onClose, onCon
         <span
           role="button"
           tabIndex={0}
-          aria-label="Close tab"
+          aria-label={copy('tabs.closeTab')}
           className={styles.tabClose}
           onClick={(e) => {
             e.stopPropagation()

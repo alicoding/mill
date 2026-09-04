@@ -1,4 +1,5 @@
 import type { GuardrailRule } from './bindings'
+import { copy } from './copy'
 import type { NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 
@@ -41,13 +42,13 @@ export type RuleScopeChoice =
 export function ruleScopeSentence(scope: RuleScopeChoice): string {
   switch (scope.kind) {
     case 'step':
-      return `Only this step: ${scope.nodeTypeLabel} in ${scope.workflowLabel}`
+      return copy('views:guardrailRuleScope.step', { nodeType: scope.nodeTypeLabel, workflow: scope.workflowLabel })
     case 'workflow':
-      return `Any step in ${scope.workflowLabel}`
+      return copy('views:guardrailRuleScope.workflow', { workflow: scope.workflowLabel })
     case 'nodeType':
-      return `Every ${scope.nodeTypeLabel} step, in any workflow`
+      return copy('views:guardrailRuleScope.nodeType', { nodeType: scope.nodeTypeLabel })
     case 'request':
-      return `Any step calling ${scope.requestLabel}`
+      return copy('views:guardrailRuleScope.request', { request: scope.requestLabel })
   }
 }
 

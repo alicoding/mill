@@ -12,17 +12,17 @@
   {
     "field": "label",
     "legalValues": "a string",
-    "meaning": "the button/command text. By convention every in-tree noun sources this from identityOf(id).commandLabel rather than restating it, but the field itself accepts any string. NEVER read as this noun's row title in Settings > Extensions — see nounName below."
+    "meaning": "the button/command text, as a LOCALE KEY (shared/copy.ts resolves it wherever a surface renders it). By convention every in-tree noun sources this from identityOf(id).commandLabel rather than restating it; a third-party noun may pass plain English, which copy() returns unchanged. NEVER read as this noun's row title in Settings > Extensions — see nounName below."
   },
   {
     "field": "nounName",
     "legalValues": "a string",
-    "meaning": "the bare noun a user would call this thing (\"Card\", \"Pencil\"), read only by Settings > Extensions' row title. Kept separate from label because label is a command verb phrase (\"Add a card\") and a row title needs the noun, not the verb."
+    "meaning": "the locale key for the bare noun a user would call this thing (\"Card\", \"Pencil\"), read only by Settings > Extensions' row title. Kept separate from label because label is a command verb phrase (\"Add a card\") and a row title needs the noun, not the verb."
   },
   {
     "field": "description",
     "legalValues": "a string, or omitted entirely",
-    "meaning": "a one-sentence, user-vocabulary summary of what this noun does. Read by Settings > Extensions' per-row disclosure; a noun that omits it falls back to its own label there."
+    "meaning": "the locale key for a one-sentence, user-vocabulary summary of what this noun does. Read by Settings > Extensions' per-row disclosure; a noun that omits it falls back to its own label there."
   },
   {
     "field": "shortcutKey",
@@ -87,7 +87,7 @@
   {
     "field": "content",
     "legalValues": "an object with Component (a React component accepting { object, mirrorVersion }), ariaLabelKey (a string), and role ('img' or undefined), plus the optional members source, editRoute, clickShield, wheelContained, overflowChip and extension — or null",
-    "meaning": "this noun's own placed-instance content contribution. registerNoun() feeds it into the board-object content registry (atlasNounRegistry.ts's registerBoardObjectContent) whenever boardObjectKind is non-null, killing AtlasBoardObjectNode.tsx's former per-Kind hand branch. A tool-less noun (diagram, sheet) calls registerBoardObjectContent directly instead of declaring this field at all, since it has no AtlasToolShape to satisfy — it instead sets this same content shape's own optional `extension` member (icon, label, description, disableScopeNote, group) so Settings > Extensions can still render an honest, correctly-sectioned row for it. mirrorVersion bumps on a live disk change to a fileBacked Kind's own mirrored file (see fileBacked below) — a non-file-backed Component simply ignores it. clickShield (a face that owns its own pointer model: an embedded viewer, or a grid that would otherwise read a bare click as a cell click) shields the face until the object is selected, so the first click always selects the object; wheelContained keeps the board from panning (and the object from being dragged) while such a face is live and consuming the pointer itself; overflowChip lets the shared chrome band carry a “Fit” chip whenever the face reports its content is larger than the object's box."
+    "meaning": "this noun's own placed-instance content contribution. registerNoun() feeds it into the board-object content registry (atlasNounRegistry.ts's registerBoardObjectContent) whenever boardObjectKind is non-null, killing AtlasBoardObjectNode.tsx's former per-Kind hand branch. A tool-less noun (diagram, sheet) calls registerBoardObjectContent directly instead of declaring this field at all, since it has no AtlasToolShape to satisfy — it instead sets this same content shape's own optional `extension` member (icon, label, description, disableScopeNote, group) so Settings > Extensions can still render an honest, correctly-sectioned row for it. mirrorVersion bumps on a live disk change to a fileBacked Kind's own mirrored file (see fileBacked below) — a non-file-backed Component simply ignores it. clickShield (a face that owns its own pointer model: an embedded viewer, or a grid that would otherwise read a bare click as a cell click) shields the face until the object is selected, so the first click always selects the object, and shieldHintKey is the locale key for what the chrome band's tooltip says while it is shielded (what that first click buys differs per noun: a diagram starts panning, a PDF starts scrolling, a table starts cell editing); wheelContained keeps the board from panning (and the object from being dragged) while such a face is live and consuming the pointer itself; overflowChip lets the shared chrome band carry a “Fit” chip whenever the face reports its content is larger than the object's box."
   },
   {
     "field": "capabilities",

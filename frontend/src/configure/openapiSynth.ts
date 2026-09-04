@@ -131,6 +131,7 @@ export function synthesizeOpenAPISpec(operations: ManualOperation[]): string {
       },
     }
   }
+  // eslint-disable-next-line i18next/no-literal-string -- the OpenAPI document's own `info.title`, a field of the generated spec artifact, not a string any Mill surface renders
   return JSON.stringify({ openapi: '3.0.3', info: { title: 'Mill request', version: '1.0.0' }, paths }, null, 2)
 }
 

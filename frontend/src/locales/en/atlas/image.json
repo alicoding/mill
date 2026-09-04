@@ -4,5 +4,9 @@
     "pasteHint": "Or paste an image or its file path (⌘V)",
     "invalidExtension": "Choose an image file.",
     "addFailed": "Couldn't add that image."
+  },
+  "imageNoun": {
+    "name": "Image",
+    "description": "Adds an image from your files or the clipboard."
   }
 }

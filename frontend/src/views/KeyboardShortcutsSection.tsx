@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionList, Button, Stack, Text, TextInput } from '@primer/react'
 import { KeyIcon, SearchIcon } from '@primer/octicons-react'
-import { COMMANDS, effectiveBinding } from '../shared/commands'
+import { COMMANDS, commandLabel, effectiveBinding } from '../shared/commands'
 import type { KeyCombo } from '../shared/keybinding'
 import { formatCombo } from '../shared/keybinding'
 import { useAppStore } from '../shared/store'
@@ -41,7 +41,7 @@ export default function KeyboardShortcutsSection() {
   const q = query.trim().toLowerCase()
   const filtered = q === ''
     ? rebindable
-    : rebindable.filter((c) => c.label.toLowerCase().includes(q) || c.id.toLowerCase().includes(q))
+    : rebindable.filter((c) => commandLabel(c).toLowerCase().includes(q) || c.id.toLowerCase().includes(q))
 
   return (
     <Stack direction="vertical" gap="condensed">
@@ -63,7 +63,7 @@ export default function KeyboardShortcutsSection() {
             <ActionList.Item key={command.id} data-testid="keymap-row" data-command-id={command.id}>
               <KeymapRow
                 commandId={command.id}
-                label={command.label}
+                label={commandLabel(command)}
                 binding={effectiveBinding(command, keybindingOverrides)}
                 isOverridden={command.id in keybindingOverrides}
                 extraBindings={command.extraBindings}

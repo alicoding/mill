@@ -176,7 +176,9 @@ export function ConfigureAIProviders() {
       updatedAt: p.UpdatedAt,
       createdAt: p.CreatedAt,
       labelBadges: p.BuiltIn ? <StatusStamp variant="identity">{t('builtIn')}</StatusStamp> : undefined,
-      description: `${KIND_LABEL[p.Kind] ?? p.Kind} – ${p.Model}${p.BaseURL ? ` – ${p.BaseURL}` : ''}`,
+      description: p.BaseURL
+        ? t('configureAIProviders.rowSummaryWithBaseURL', { kind: KIND_LABEL[p.Kind] ?? p.Kind, model: p.Model, baseURL: p.BaseURL })
+        : t('configureAIProviders.rowSummary', { kind: KIND_LABEL[p.Kind] ?? p.Kind, model: p.Model }),
       onOpen: () => startEdit(p),
       menuActions: [
         { label: t('export'), onClick: () => importExport.exportItem(p.ID, p.Label) },

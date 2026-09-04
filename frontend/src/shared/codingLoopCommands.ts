@@ -16,7 +16,7 @@ export const CODING_LOOP_COMMANDS: Command[] = [
   {
     id: 'codingLoop.run',
     menu: { path: 'workflow', group: 0, order: 1 },
-    label: 'Run from clipboard…',
+    label: 'commands.codingLoop.run',
     defaultBinding: null,
     quickPanel: true,
     run: () => useUISignalStore.getState().openCodingLoop(),

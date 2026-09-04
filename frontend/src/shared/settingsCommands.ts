@@ -1,4 +1,5 @@
 import type { Command } from './commands'
+import { copy } from './copy'
 import { useAppStore } from './store'
 import { BackupService, SettingsService, UpdateState } from './bindings'
 import { SETTINGS_GROUPS, resolveGroupTitle } from './settingsGroups'
@@ -15,8 +16,8 @@ import { downloadBlob } from './downloadBlob'
 export const SETTINGS_COMMANDS: Command[] = [
   {
     id: 'settings.open',
-    menu: { path: 'app', group: 1, order: 0, label: 'Settings…' },
-    label: 'Open Settings',
+    menu: { path: 'app', group: 1, order: 0, label: 'menu.items.settings' },
+    label: 'commands.settings.open',
     // Moved from shared/commands.ts (goal 0222 S2) to sit beside its own
     // Quick Panel row -- quickPanelActionEntries.tsx overrides run() to
     // open the MAIN window's Settings instead of this setView call,
@@ -33,7 +34,7 @@ export const SETTINGS_COMMANDS: Command[] = [
     // this from the main palette would just refocus the window you're
     // already in.
     id: 'panel.openMill',
-    label: 'Open Mill',
+    label: 'commands.panel.openMill',
     defaultBinding: null,
     paletteHidden: true,
     quickPanel: true,
@@ -41,7 +42,7 @@ export const SETTINGS_COMMANDS: Command[] = [
   },
   {
     id: 'panel.applyClipboard',
-    label: 'Apply from clipboard',
+    label: 'commands.panel.applyClipboard',
     // docs/goals/0039: no default binding, same "reserve the id ahead
     // of the binding" precedent palette.open set before goal 0015 built
     // the palette -- bindable via Settings like every other command.
@@ -60,8 +61,8 @@ export const SETTINGS_COMMANDS: Command[] = [
   },
   {
     id: 'backup.now',
-    menu: { path: 'app', group: 2, order: 0, label: 'Back up now' },
-    label: 'Back up now',
+    menu: { path: 'app', group: 2, order: 0, label: 'menu.items.backUpNow' },
+    label: 'commands.backup.now',
     defaultBinding: null,
     // BackupService.BackupNow(0) matches the Settings Data stewardship
     // section's own call (views/DataStewardshipSection.tsx) -- 0 keeps
@@ -71,8 +72,8 @@ export const SETTINGS_COMMANDS: Command[] = [
   },
   {
     id: 'capture.note',
-    menu: { path: 'file', group: 0, order: 1, label: 'New note' },
-    label: 'Capture a note',
+    menu: { path: 'file', group: 0, order: 1, label: 'menu.items.newNote' },
+    label: 'commands.capture.note',
     // The capture window (goal 0309): a note written away from the
     // canvas lands where the user chose.
     defaultBinding: null,
@@ -81,7 +82,7 @@ export const SETTINGS_COMMANDS: Command[] = [
   {
     id: 'extensions.exportAudit',
     menu: { path: 'file', group: 3, order: 1 },
-    label: 'Export plugin audit',
+    label: 'commands.extensions.exportAudit',
     // The plugin audit document (ADR-0051 §4): every installed plugin's
     // reach and trust state, the guarded actions plugins asked for
     // within the guardrail window, and every plugin secret read -- saved
@@ -94,7 +95,7 @@ export const SETTINGS_COMMANDS: Command[] = [
   {
     id: 'backup.export',
     menu: { path: 'file', group: 3, order: 0 },
-    label: 'Export everything',
+    label: 'commands.backup.export',
     // Deep-links to Settings rather than calling
     // BackupService.ExportEverything() directly -- the export flow has
     // its own confirm/download UI there (views/DataStewardshipSection.tsx),
@@ -111,8 +112,8 @@ export const SETTINGS_COMMANDS: Command[] = [
     // already-visible behavior, which a menu/palette invocation never
     // needs (goal 0335).
     id: 'panel.open',
-    menu: { path: 'window', group: 0, order: 0, label: 'Quick panel' },
-    label: 'Open Quick Panel',
+    menu: { path: 'window', group: 0, order: 0, label: 'menu.items.quickPanel' },
+    label: 'commands.panel.open',
     defaultBinding: null,
     enabled: () => useBuildInfoStore.getState().isDesktop,
     run: () => SettingsService.ShowPanel(),
@@ -125,8 +126,8 @@ export const SETTINGS_COMMANDS: Command[] = [
     // with none is exactly "reveal the window" and never clears a run
     // already on screen.
     id: 'runMonitor.open',
-    menu: { path: 'window', group: 0, order: 1, label: 'Run monitor' },
-    label: 'Run monitor',
+    menu: { path: 'window', group: 0, order: 1, label: 'menu.items.runMonitor' },
+    label: 'commands.runMonitor.open',
     defaultBinding: null,
     enabled: () => useBuildInfoStore.getState().isDesktop,
     run: () => SettingsService.ShowRunMonitor('', ''),
@@ -140,7 +141,7 @@ export const SETTINGS_COMMANDS: Command[] = [
   // follows (atlas.create.<kind>, plugin.reload.<id>).
   ...SETTINGS_GROUPS.map((group): Command => ({
     id: `settings.open.${group.id}`,
-    label: `Settings › ${resolveGroupTitle(group)}`,
+    label: copy('commands.settings.openGroup', { title: resolveGroupTitle(group) }),
     defaultBinding: null,
     run: () => useAppStore.getState().setView({ kind: 'settings', section: group.id }),
   })),
@@ -155,8 +156,8 @@ export const SETTINGS_COMMANDS: Command[] = [
   // action against whatever state the server is actually in.
   {
     id: 'update.check',
-    menu: { path: 'app', group: 0, order: 0, label: 'Check for updates…' },
-    label: 'Check for updates',
+    menu: { path: 'app', group: 0, order: 0, label: 'menu.items.checkForUpdates' },
+    label: 'commands.update.check',
     defaultBinding: null,
     keywords: ['update', 'updates', 'upgrade', 'version', 'new version'],
     // One update door at a time (goal 0295): once an update is in hand
@@ -170,7 +171,7 @@ export const SETTINGS_COMMANDS: Command[] = [
   },
   {
     id: 'update.downloadAndInstall',
-    label: 'Download the update and install',
+    label: 'commands.update.downloadAndInstall',
     defaultBinding: null,
     keywords: ['update', 'install', 'download', 'upgrade'],
     enabled: () => useUpdateNoticeStore.getState().updateNoticeState === UpdateState.UpdateStateAvailable,
@@ -179,7 +180,7 @@ export const SETTINGS_COMMANDS: Command[] = [
   },
   {
     id: 'update.relaunch',
-    label: 'Restart to finish updating',
+    label: 'commands.update.relaunch',
     defaultBinding: null,
     keywords: ['relaunch', 'restart', 'update', 'finish updating'],
     enabled: () => useUpdateNoticeStore.getState().updateNoticeState === UpdateState.UpdateStateReady,
@@ -192,8 +193,8 @@ export const SETTINGS_COMMANDS: Command[] = [
     // run() -- always enabled, since opening with no notes known yet
     // is exactly the dialog's own empty state, not an invalid command.
     id: 'update.whatsNew',
-    menu: { path: 'help', group: 0, order: 2, label: "What's new" },
-    label: "What's new",
+    menu: { path: 'help', group: 0, order: 2, label: 'menu.items.whatsNew' },
+    label: 'commands.update.whatsNew',
     defaultBinding: null,
     run: () => useUISignalStore.getState().openWhatsNew(),
   },
@@ -206,7 +207,7 @@ export const SETTINGS_COMMANDS: Command[] = [
     // trustDisclosureVisible), and the underlying write is idempotent
     // and safe to re-run regardless of prior state.
     id: 'update.trustSigning',
-    label: "Trust Mill's signing",
+    label: 'commands.update.trustSigning',
     defaultBinding: null,
     run: () => useUpdateNoticeStore.getState().runTrustSigning(),
   },
