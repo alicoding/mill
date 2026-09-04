@@ -100,7 +100,7 @@ is available (public repo) but not adopted — revisit if two
 individually-green PRs ever combine red on main.
 
 **In the nested docs repo, stage only the files you changed — never
-`git add -A` there.** Worktrees isolate the mill checkout but not the nested
+`git add -A` there, and never `git add -f` anything under `goals/`.** Worktrees isolate the mill checkout but not the nested
 `docs/` repo: it lives at one physical path every concurrently-running agent
 shares, so a blanket stage sweeps in other agents' in-flight edits. Commit
 docs promptly after writing them rather than leaving them uncommitted across
@@ -172,7 +172,15 @@ proceeds — including publishing, which is no longer a gate
 (owner-granted 2026-08-23: "ask only when it costs money"). Still never
 granted: force-push and history rewrites. Owner check-ins are progress
 reports, not permission gates. A delivered goal's file moves to
-`docs/goals/archive/` in the same commit that completes it.
+`docs/goals/archive/` the moment the goal completes.
+
+**Goal files and BACKLOG.md are a LOCAL-ONLY record (owner-decided
+2026-09-04).** `docs/goals/` is git-ignored in the nested docs repo and
+is never committed — the files carry the owner's verbatim words and
+work context, and the private repo was judged not enough. They live on
+this machine's disk only (their backup is the machine's); the earlier
+history is purged by the owner, never by a session. Everything else in
+`docs/` (SPEC.md, ADRs) commits as before.
 
 **Releases are held until v1** (owner-decided 2026-08-23). Beta builds
 publish on every merge and in-app updates work from them, so nothing in
