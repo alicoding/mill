@@ -17,6 +17,9 @@ pre-commit:
     - name: ui-copy
       glob: "frontend/src/locales/**/*.json"
       run: ./scripts/check-ui-copy.sh
+    - name: drag-regions
+      glob: "frontend/src/**/*.{css,ts,tsx}"
+      run: ./scripts/check-drag-regions.sh
     - name: toolbar-action-testids
       glob: "{frontend/src/atlas/AtlasToolbar.tsx,frontend/src/atlas/AtlasFolderImport.tsx,frontend/e2e/*.spec.ts,frontend/e2e/fixtures/toolbarActions.ts}"
       run: ./scripts/check-toolbar-action-testids.sh

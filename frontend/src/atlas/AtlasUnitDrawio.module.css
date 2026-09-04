@@ -9,11 +9,4 @@
     overflow: auto;
     border: 1px solid var(--borderColor-default);
     border-radius: var(--borderRadius-medium);
-    /* Body defaults --wails-draggable:drag (drag the window by its
-       background); everything the viewer draws inside the host (the
-       SVG graph) is content, never window chrome. This does NOT reach
-       the viewer's hover toolbar -- it is appended to document.body,
-       and useDrawioRendering.ts opts that element out itself (goal
-       0292). */
-    --wails-draggable: no-drag;
 }

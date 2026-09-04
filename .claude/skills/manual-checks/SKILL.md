@@ -318,3 +318,11 @@ installed build can catch, and exactly how to verify it there.
   still lands exactly as before (the promise view sits BELOW the
   toolkit's own drag view precisely so filename-carrying drags
   never reroute).
+- **Drag regions are opt-in** (goal 0333, `frontend/src/app/index.css`'s
+  `--wails-draggable: no-drag` default, enforced statically by
+  `scripts/check-drag-regions.sh`) — whether a pointer press actually
+  moves the NATIVE window is a real AppKit drag session; server-mode
+  Playwright has no native window to move. Verify on an installed
+  build: dragging on an empty pane area (Home, a canvas, Configure)
+  neither moves nor resizes the window; dragging the tab band moves
+  it.
