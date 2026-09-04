@@ -406,8 +406,9 @@ export async function runCommand(id: string): Promise<boolean> {
   } catch (err) {
     pushNotice({
       level: 'error',
+      // The label already names the command; the id is internal vocabulary
+      // and the pill renders `source` as text (goal 0339).
       text: `${command.label}: ${err instanceof Error ? err.message : String(err)}`,
-      source: id,
     })
     return false
   }
