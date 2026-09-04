@@ -180,3 +180,15 @@ offered the action. The console is never the only place. Rider of
 goal 0261, owner-raised on the 0258 toggle; the sweep of existing
 sites is goal 0313. A new handler that swallows a user action's
 failure into the console needs the reason stated at the call site.
+
+## Inspectors and forms disclose in three tiers
+
+Every inspector or entity form has exactly three tiers and at most two
+disclosure levels. Tier 1, open by default: what the thing is and does
+-- its own parameters. Tier 2, one click: how it behaves -- error
+handling, retries, approval and guardrail rules, breakpoints, notes --
+in a tab or one disclosure. Tier 3: metadata and docs -- a footer line
+or a link out, never above tier 1. Debugging state is never a field
+between parameters. Optional fields not yet set hide behind an
+"Add ..." affordance. A collapsed tier shows a count or dot when
+something inside is set.

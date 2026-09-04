@@ -190,7 +190,20 @@ Data flows two ways through a run:
 
 ## Configuring a step
 
-Click a step to open its inspector. Drag the inspector's edge to make it wider, double-click the edge to reset it, or use the Expand button to give a long value the whole side of the canvas; the width you choose is remembered on this device. Fields are typed — pickers for
+Click a step to open its inspector. It opens on **Parameters** — the
+step's own setup and nothing else. **Settings** is one click away and
+holds how the step behaves: whether it runs, asks or is denied, the
+rules that apply to it, and its breakpoint. **Test** runs the step
+alone on an input you supply, and shows the selected run's data for
+it. Settings carries a count when rules apply and a mark when a
+breakpoint is set; Test carries a count when a run recorded data.
+Under every tab, one line states what the step takes and produces,
+beside a link to the step reference.
+
+Drag the inspector's edge to make it wider, double-click the edge to
+reset it, or use the Expand button to give a long value the whole side
+of the canvas; the width you choose is remembered on this device.
+Fields are typed — pickers for
 Configure entities, code editors with highlighting for scripts and
 JSON, plain inputs for plain values. A field that names *which
 external thing* to talk to (an API, a model, a list) always points at

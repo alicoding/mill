@@ -9,6 +9,7 @@ import {
   spawnMillServer,
   type SpawnedServer,
 } from './fixtures/server'
+import { openInspectorTab } from './fixtures/inspectorTabs'
 
 // The full guardrail rule-authoring loop across all three doors (goal
 // 0078), driven through the seeded "Example: Run copied code" workflow
@@ -94,6 +95,7 @@ test('Rule-from-park unsticks the workflow, edit-in-context and the audit view s
       // control, including the rule kebab below, until Edit is clicked.
       await page.getByTestId('edit-workflow').click()
       await page.locator('[data-id="example-codeexec-step"]').click()
+      await openInspectorTab(page.getByTestId('composition-inspector'), 'settings')
       const stepRuleRow = page.getByTestId('node-guardrail-rule-row').filter({ hasText: 'Allow Run a command in Example: Run copied code' })
       await expect(stepRuleRow).toBeVisible()
       await expect(stepRuleRow).toContainText('allow')
@@ -172,6 +174,7 @@ test('Door 2: selecting a step with no matching rule shows the "nothing applies"
     const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(SEED, { exact: true }) })
     await row.click()
     await page.locator('[data-id="example-codeexec-step"]').click()
+    await openInspectorTab(page.getByTestId('composition-inspector'), 'settings')
     await expect(page.getByTestId('node-guardrail-no-rules')).toBeVisible()
     await expect(page.getByTestId('node-guardrail-no-rules')).toHaveText('No rules apply to this step. Its defaults decide.')
   } finally {

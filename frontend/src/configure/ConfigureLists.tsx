@@ -271,12 +271,6 @@ export function ConfigureLists() {
           </div>
 
           {editingID && editingList && (
-            <div className={styles.card}>
-              <ListVersionsSection list={editingList} onPublished={refetch} />
-            </div>
-          )}
-
-          {editingID && editingList && (
             <div className={styles.card} data-testid="list-rows-editor">
               <Stack direction="vertical" gap="condensed">
                 {(editingList.Columns ?? []).length > 0 && (
@@ -294,6 +288,15 @@ export function ConfigureLists() {
                   rows={(editingList.Rows ?? []).map((r): GridRow => ({ ID: r.ID, Status: r.Status, Values: r.Values }))}
                 />
               </Stack>
+            </div>
+          )}
+
+          {/* Publishing history sits under the list's own rows, never
+              between what the list IS and what it holds (goal 0327's
+              tiers). */}
+          {editingID && editingList && (
+            <div className={styles.card}>
+              <ListVersionsSection list={editingList} onPublished={refetch} />
             </div>
           )}
         </PageContainer>

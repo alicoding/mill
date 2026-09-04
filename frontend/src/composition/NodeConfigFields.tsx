@@ -18,7 +18,6 @@ import { ListSearchParamsEditor } from './ListSearchParamsEditor'
 import { AtlasFieldBindingsEditor } from './AtlasFieldBindingsEditor'
 import { AtlasCardMatchParamsEditor } from './AtlasCardMatchParamsEditor'
 import { WorkflowHoverPreview } from './WorkflowHoverPreview'
-import { NodeGuardrailSection } from './NodeGuardrailSection'
 import { RulesetEditor } from './RulesetEditor'
 import { AIExtractFieldsEditor } from './AIExtractFieldsEditor'
 import { CodeConfigField } from './CodeConfigField'
@@ -28,11 +27,6 @@ import runbookStyles from '../shared/ListCard.module.css'
 
 export interface NodeConfigFieldsProps {
   node: CanvasNode
-  // The owning workflow's ID ('' for a not-yet-saved workflow) -- the
-  // Guardrail section needs it for instance-scoped rules and the live
-  // dry-run verdict (docs/adr/0019: workflow-level rules stay inline
-  // in the Inspector; node-type/integration rules live in Configure).
-  workflowId: string
   // The owning workflow's declared Attributes -- what integration-http's
   // binding editor offers as bindable fields (same source
   // DecisionEdgeInspector's rule builder already reads via
@@ -65,7 +59,7 @@ export interface NodeConfigFieldsProps {
 // forking a second copy. Originally the whole body of NodeInspector.tsx
 // before it crossed the 500-line convention (CLAUDE.md) -- this file is
 // that same code, unchanged in kind, just under its own name.
-export function NodeConfigFields({ node, workflowId, attrs, nodeType, sameKindNodeTypes, hasWorkflow, hotkeyCapture, readOnly, onChangeType, onConfigChange }: NodeConfigFieldsProps) {
+export function NodeConfigFields({ node, attrs, nodeType, sameKindNodeTypes, hasWorkflow, hotkeyCapture, readOnly, onChangeType, onConfigChange }: NodeConfigFieldsProps) {
   const { t } = useTranslation('composition')
   const [payloadNonce, setPayloadNonce] = useState(0)
 
@@ -332,10 +326,6 @@ export function NodeConfigFields({ node, workflowId, attrs, nodeType, sameKindNo
           )}
         </FormControl>
       ))}
-
-      {workflowId && node.data.kind !== 'trigger' && node.data.kind !== 'decision' && (
-        <NodeGuardrailSection workflowId={workflowId} nodeId={node.id} />
-      )}
 
       {node.data.nodeTypeID === 'trigger-schedule' && (
         <SchedulePreview cron={node.data.config.cron ?? ''} />

@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/server'
 import { activePanel, dragPaletteItemToCanvas } from './fixtures/canvas'
 import { clickCanvasNode } from './fixtures/canvasNode'
 import { fillCodeEditor } from './fixtures/codeEditor'
+import { openInspectorTab } from './fixtures/inspectorTabs'
 
 // Cross-cutting CodeEditor behavior (goal 0120) verified against real
 // call sites, rather than a synthetic host -- shared/CodeEditor.tsx has
@@ -52,6 +53,7 @@ test('the step-test output stays readonly', async ({ page }) => {
   const panel = activePanel(page)
   await clickCanvasNode(page, panel, 'Convert HTML to Markdown')
 
+  await openInspectorTab(panel, 'test')
   await fillCodeEditor(page, 'step-test-input', '<p>hello</p>')
   await panel.getByTestId('step-test-run').click()
 
