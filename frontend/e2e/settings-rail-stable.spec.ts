@@ -57,3 +57,27 @@ for (const viewport of [{ width: 1700, height: 900 }, { width: 1100, height: 800
     }
   })
 }
+
+// Regression: PageContainer's "narrow" variant centered the whole
+// rail+pane block, leaving a floating gutter between the app sidebar
+// and the group list. The rail must sit at the content area's left
+// edge -- flush against the app sidebar's right edge -- not centered
+// with empty space on either side.
+test('the group rail sits at the content area\'s left edge, not in a centered block', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 900 })
+  await gotoAppReady(page)
+  await openSettings(page, 'general')
+
+  const sidebar = page.getByTestId('sidebar-nav')
+  const rail = page.getByTestId('settings-group-nav')
+  const sidebarBox = await sidebar.boundingBox()
+  if (!sidebarBox) throw new Error('expected the app sidebar to be measurable')
+  const contentLeftEdge = sidebarBox.x + sidebarBox.width
+
+  await expect
+    .poll(async () => {
+      const box = await rail.boundingBox()
+      return box ? box.x - contentLeftEdge : Infinity
+    }, { timeout: 5_000 })
+    .toBeLessThanOrEqual(48)
+})
