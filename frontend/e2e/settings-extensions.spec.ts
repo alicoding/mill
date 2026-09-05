@@ -4,7 +4,7 @@ import { clickAtlasTrayTool } from './fixtures/atlasTray'
 import { placeNoteClear } from './fixtures/atlasEmptyRegion'
 import { deleteViaContextMenu, shapeDrawPoints, shapeObjects } from './fixtures/atlasShapeTool'
 import { paletteDialog } from './fixtures/palette'
-import { builtInRows, extensionRow, openExtensionDetail, openSettings, pluginRow } from './fixtures/settingsNav'
+import { builtInRows, extensionRow, openExtensionDetail, openExtensions, openSettings, pluginRow } from './fixtures/settingsNav'
 
 // Settings > Extensions (goal 0237 S2/S3, re-shaped by goal 0252): a
 // registry-derived list of every registered compiled-in NOUN -- tray
@@ -28,7 +28,7 @@ import { builtInRows, extensionRow, openExtensionDetail, openSettings, pluginRow
 // narrower scope.
 
 async function openExtensionsSection(page: import('@playwright/test').Page) {
-  await openSettings(page, 'extensions')
+  await openExtensions(page)
   await expect(page.getByTestId('extensions-list')).toBeVisible()
 }
 

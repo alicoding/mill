@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/alicoding/mill/internal/adapters/osopen"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -140,6 +141,12 @@ type PluginInfo struct {
 	// (pluginservice_signing.go). Both false with no policy.
 	SigningPolicy bool
 	Signed        bool
+	// Tier is the install trust tier (trust.go, docs/goals/0349): what
+	// actually checked these bytes when they landed. "" for a built-in.
+	Tier string
+	// Marketplace names the index this folder was installed from, ""
+	// when it arrived some other way.
+	Marketplace string
 }
 
 // knownCapabilities is the enumerated capability vocabulary
@@ -221,6 +228,14 @@ type PluginService struct {
 	// (pluginservice_toolrun.go), injected so a test never needs a live
 	// window.
 	runCommand func(pluginID, commandID string) (string, error)
+	// examples is the embedded example tree the bundled "mill"
+	// marketplace offers (marketplace_examples.go), injected because
+	// go:embed paths are package-relative.
+	examples fs.FS
+	// download is the user-initiated HTTP seam every marketplace and
+	// install fetch goes through (marketplace_store.go), nil for the
+	// real client -- a test never reaches a host.
+	download func(url string, limit int64) ([]byte, error)
 }
 
 func New(dir string, guardrail *guardrailsvc.GuardrailService, appVersion string) *PluginService {
@@ -326,6 +341,10 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 	if keys := p.signingKeySet(); len(keys) > 0 {
 		info.SigningPolicy = true
 		info.Signed = SignatureVerified(dir, info.ContentHash, keys)
+	}
+	info.Tier = InstalledTier(dir, false)
+	if rec, ok := ReadInstallRecord(dir); ok {
+		info.Marketplace = rec.Marketplace
 	}
 	return info
 }

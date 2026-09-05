@@ -8,7 +8,7 @@
 import { expect, test } from '@playwright/test'
 import { launchWithPlugins } from './fixtures/runtimePlugins'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
-import { openSettings } from './fixtures/settingsNav'
+import { openExtensions } from './fixtures/settingsNav'
 
 async function pasteLink(page: import('@playwright/test').Page, url: string) {
 	const board = page.getByTestId('atlas-board')
@@ -61,7 +61,7 @@ test('Settings > Extensions chooses which claimant pasted links become', async (
 	const { page, close } = await launchWithPlugins(38, { extraExamples: ['mill-clipper'] })
 	try {
 		await page.goto('/')
-		await openSettings(page, 'extensions')
+		await openExtensions(page)
 		const section = page.locator('[data-testid="extensions-installed-plugins"]')
 		await section.scrollIntoViewIfNeeded()
 		const select = section.getByTestId('extensions-link-paste-select')
@@ -84,7 +84,7 @@ test('Settings > Extensions chooses which claimant pasted links become', async (
 		// The preference survives a reload (it lives in Mill's settings,
 		// not the page).
 		await page.reload()
-		await openSettings(page, 'extensions')
+		await openExtensions(page)
 		await expect(page.getByTestId('extensions-link-paste-select')).toHaveValue('clip')
 	} finally {
 		await close()

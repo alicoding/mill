@@ -347,7 +347,9 @@
       "note": "Capture a note"
     },
     "extensions": {
-      "exportAudit": "Export plugin audit"
+      "exportAudit": "Export plugin audit",
+      "open": "Extensions",
+      "sources": "Extensions: marketplace sources"
     },
     "runMonitor": {
       "open": "Run monitor"
@@ -381,6 +383,13 @@
       "find": "Find in output",
       "toggleWrap": "Wrap output lines",
       "openFull": "Open output in full"
+    },
+    "extension": {
+      "enable": "Turn on",
+      "disable": "Turn off",
+      "reveal": "Reveal folder",
+      "remove": "Remove",
+      "refreshSources": "Extensions: refresh sources"
     },
     "listGrid": {
       "search": "Find in this list",
@@ -436,7 +445,8 @@
       "runMonitor": "Run monitor",
       "checkForUpdates": "Check for updates…",
       "millHelp": "Mill help",
-      "whatsNew": "What's new"
+      "whatsNew": "What's new",
+      "extensions": "Extensions"
     }
   },
   "seats": {

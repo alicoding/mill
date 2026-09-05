@@ -117,7 +117,14 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `docs.search` | Search docs | — | Global | Always available |
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
+| `extension.disable` | Turn off | — | Global | Acts on the selected entity |
+| `extension.enable` | Turn on | — | Global | Acts on the selected entity |
+| `extension.refreshSources` | Extensions: refresh sources | — | Global | Always available |
+| `extension.remove` | Remove | — | Global | Acts on the selected entity |
+| `extension.reveal` | Reveal folder | — | Global | Acts on the selected entity |
 | `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
+| `extensions.open` | Extensions | `⌘⇧X` | Global | Always available |
+| `extensions.sources` | Extensions: marketplace sources | — | Global | Always available |
 | `help.openDataFolder` | Open data folder | — | Global | Always available |
 | `help.reportIssue` | Report an issue… | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
@@ -153,7 +160,6 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `settings.open.appearance` | Settings › Appearance | — | Global | Always available |
 | `settings.open.backups` | Settings › Backups | — | Global | Always available |
 | `settings.open.connections` | Settings › Connections | — | Global | Always available |
-| `settings.open.extensions` | Settings › Extensions | — | Global | Always available |
 | `settings.open.general` | Settings › General | — | Global | Always available |
 | `settings.open.notifications` | Settings › Notifications | — | Global | Always available |
 | `settings.open.shortcuts` | Settings › Shortcuts | — | Global | Always available |
