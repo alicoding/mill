@@ -30,12 +30,14 @@ const clipboardHistoryKey = "clipboard-history"
 
 // writeClipboardTextFn is a package-level function var (same
 // testability pattern as composition/applytext.go's own
-// writeClipboardText), not a direct clipboard.WriteText call.
-var writeClipboardTextFn = clipboard.WriteText
+// writeClipboardText), not a direct clipboard.Port.WriteText call.
+// clipboard.New() resolves to the in-memory Port inside a go test
+// binary (goal 0356) -- never the real pasteboard by default.
+var writeClipboardTextFn = clipboard.New().WriteText
 
 // writeClipboardPNGFn is writeClipboardTextFn's twin for the image
 // flavor, same package-level-var testability seam.
-var writeClipboardPNGFn = clipboard.WritePNG
+var writeClipboardPNGFn = clipboard.New().WritePNG
 
 // recordCopyAuditFn defaults to a no-op so a copy works before
 // SetAuditRecorder is wired (or a headless `go test`) -- audit is
@@ -146,11 +148,11 @@ func previewLabel(text string) string {
 	return line
 }
 
-// CopyClipboardHistoryEntry writes id's text back to the real
-// clipboard and records one audit line (goal 0234, reusing 0203 S3's
-// audit plane). clipboard.WriteText also marks this write as Mill's
-// own, so the trigger-clipboard-change poller skips re-capturing it as
-// a new entry on the very next cycle.
+// CopyClipboardHistoryEntry writes id's text back to the clipboard and
+// records one audit line (goal 0234, reusing 0203 S3's audit plane).
+// clipboard.Port.WriteText also marks this write as Mill's own, so the
+// trigger-clipboard-change poller skips re-capturing it as a new entry
+// on the very next cycle.
 func (s *ClipboardHistoryService) CopyClipboardHistoryEntry(id string) error {
 	s.mu.Lock()
 	entry, ok := findEntry(s.entries, id)

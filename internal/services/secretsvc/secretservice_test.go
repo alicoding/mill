@@ -9,6 +9,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
+	"github.com/alicoding/mill/internal/domain/secret"
 	"github.com/alicoding/mill/internal/adapters/secretvault"
 	"github.com/alicoding/mill/internal/services/servicetest"
 )
@@ -355,5 +356,23 @@ func TestCopySecretToClipboard_DoesNotClobberNewerCopy(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	if got := fake.get(); got != "something-else-the-user-copied" {
 		t.Fatalf("auto-clear clobbered a newer clipboard value: %q", got)
+	}
+}
+
+// A locked vault's resolution error is the one sentinel the run
+// executor parks on (secret.ErrVaultLocked), through every wrap.
+func TestResolveSecretValue_Locked_IsVaultLocked(t *testing.T) {
+	s := newTestService(t)
+	if err := s.SetupVault(); err != nil {
+		t.Fatalf("SetupVault: %v", err)
+	}
+	created, err := s.CreateSecret("API", "", "resolve-pw-fake", "", "", nil, "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateSecret: %v", err)
+	}
+	s.LockVault()
+	_, err = s.ResolveSecretValue(created.ID, secretaudit.AccessContext{Context: secretaudit.ContextHTTPHeader})
+	if !errors.Is(err, secret.ErrVaultLocked) || !secret.IsVaultLocked(err) {
+		t.Fatalf("ResolveSecretValue on a locked vault = %v, want secret.ErrVaultLocked", err)
 	}
 }

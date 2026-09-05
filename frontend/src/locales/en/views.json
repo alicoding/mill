@@ -418,7 +418,7 @@
   "activityRunsExplorer": {
     "noEnvironment": "None",
     "columns": {
-        "environment": "Environment",
+      "environment": "Environment",
       "started": "Started",
       "kind": "Kind",
       "version": "Version",
@@ -508,7 +508,8 @@
       "ask": "Awaiting approval",
       "human-review": "Ask for review",
       "mcp-write": "MCP write request",
-      "guarded-action": "Guarded actions"
+      "guarded-action": "Guarded actions",
+      "vault-wait": "Waiting for vault"
     },
     "heading": "Review",
     "subtitle": "Everything waiting for a human: guardrail approvals, review checkpoints, and MCP write requests. Approve to proceed, deny to stop it.",

@@ -6,9 +6,11 @@ import (
 )
 
 // Package-level function vars, not direct calls -- same testability
-// pattern as internal/domain/runbook.
-var readClipboardHTML = clipboard.ReadHTML
-var readClipboardText = clipboard.ReadText
+// pattern as internal/domain/runbook. clipboard.New() resolves to the
+// in-memory Port inside a go test binary (goal 0356) -- never the real
+// pasteboard by default.
+var readClipboardHTML = clipboard.New().ReadHTML
+var readClipboardText = clipboard.New().ReadText
 
 func init() {
 	RegisterNodeType(NodeType{

@@ -2,6 +2,7 @@ package credential
 
 import (
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/zalando/go-keyring"
@@ -12,7 +13,11 @@ func TestMain(m *testing.M) {
 	// isn't CI-testable (no headless macOS Keychain session, same class
 	// of gap docs/SPEC.md §1.3 already notes for internal/adapters/
 	// clipboard), but unlike clipboard this adapter ships its own mock,
-	// so the round-trip below is real test coverage, not a skip.
+	// so the round-trip below is real test coverage, not a skip. Every
+	// New() call in this file is therefore the one deliberate opt-in
+	// this package's own guard exists for (goal 0356): go-keyring's
+	// underlying calls never reach the real OS keychain once mocked.
+	_ = os.Setenv("MILL_ALLOW_HOST_KEYCHAIN_IN_TESTS", "1")
 	keyring.MockInit()
 	m.Run()
 }
@@ -54,6 +59,21 @@ func TestGet_NotFound(t *testing.T) {
 	if !errors.Is(err, keyring.ErrNotFound) {
 		t.Errorf("Get(unknown connector) error = %v, want keyring.ErrNotFound", err)
 	}
+}
+
+// TestNew_PanicsInsideATestBinaryWithoutTheOptIn pins goal 0356's safety
+// net directly: New must refuse to construct at all from a `go test`
+// binary unless the caller has explicitly opted in via
+// MILL_ALLOW_HOST_KEYCHAIN_IN_TESTS -- overriding TestMain's own
+// package-wide opt-in for just this one test.
+func TestNew_PanicsInsideATestBinaryWithoutTheOptIn(t *testing.T) {
+	t.Setenv("MILL_ALLOW_HOST_KEYCHAIN_IN_TESTS", "")
+	defer func() {
+		if recover() == nil {
+			t.Fatal("New() inside a go test binary with MILL_ALLOW_HOST_KEYCHAIN_IN_TESTS unset: want a panic, got none")
+		}
+	}()
+	New()
 }
 
 func TestDelete_RemovesSecret(t *testing.T) {

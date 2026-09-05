@@ -379,13 +379,55 @@ export const RUNTIME_PLUGIN_FRAME_MCP_BASE_PORT = 11700
 export const BROWSER_BRIDGE_SERVER_BASE_PORT = 11720
 export const BROWSER_BRIDGE_MCP_BASE_PORT = 11740
 
+// clipboard-bridge.spec.ts's own dedicated pair (goal 0356): every test
+// in this file writes to the real OS pasteboard (fixtures/
+// hostClipboard.ts's pbcopy door) and reads it back through
+// CompositionService.ReadHostClipboardText, so the file needs
+// MILL_CLIPBOARD=host -- the standard per-worker pool defaults to the
+// in-memory adapter and can't be overridden per-spec.
+export const CLIPBOARD_BRIDGE_SERVER_BASE_PORT = 11760
+export const CLIPBOARD_BRIDGE_MCP_BASE_PORT = 11780
+
+// coding-loop.spec.ts's own dedicated pair (goal 0356): same
+// MILL_CLIPBOARD=host reasoning as CLIPBOARD_BRIDGE_* above -- every
+// test seeds a captured command via the real pasteboard.
+export const CODING_LOOP_SERVER_BASE_PORT = 11800
+export const CODING_LOOP_MCP_BASE_PORT = 11820
+
+// quick-panel-clipboard-apply.spec.ts's own dedicated pair (goal 0356):
+// same MILL_CLIPBOARD=host reasoning as CLIPBOARD_BRIDGE_* above --
+// every test applies a real pasteboard payload via the Quick Panel.
+export const QUICK_PANEL_CLIPBOARD_APPLY_SERVER_BASE_PORT = 11840
+export const QUICK_PANEL_CLIPBOARD_APPLY_MCP_BASE_PORT = 11860
+
+// atlas-image-tool-host-paste.spec.ts's own dedicated pair (goal 0356):
+// split out of atlas-image-tool.spec.ts, whose other tests stay on the
+// shared pool -- only its screenshot-bitmap-fallback case needs
+// MILL_CLIPBOARD=host, to prove the window paste door's real host
+// file-url read (not the in-memory adapter's always-empty one).
+export const ATLAS_IMAGE_TOOL_HOST_PASTE_SERVER_BASE_PORT = 11880
+export const ATLAS_IMAGE_TOOL_HOST_PASTE_MCP_BASE_PORT = 11900
+
+// atlas-image-export-host-copy.spec.ts's own dedicated pair (goal
+// 0356): split out of atlas-image-export.spec.ts, whose other tests
+// stay on the shared pool -- only its "copying says what landed on the
+// clipboard" case needs MILL_CLIPBOARD=host, since its assertion
+// branches on real host-pasteboard availability (WritePNG must fail on
+// a runner with no real pasteboard, which the in-memory adapter never
+// does).
+export const ATLAS_IMAGE_EXPORT_HOST_COPY_SERVER_BASE_PORT = 11920
+export const ATLAS_IMAGE_EXPORT_HOST_COPY_MCP_BASE_PORT = 11940
+
 // browser-replay.spec.ts's own dedicated pair (goal 0350 S2): it pairs
 // a browser and edits the SEEDED "Replay a browser flow" workflow, both
 // global app state (testing.md's shared-vs-dedicated rule), and its own
 // pair rather than a BROWSER_BRIDGE_* offset so the two browser specs
-// can never contend for one bridge listener.
-export const BROWSER_REPLAY_SERVER_BASE_PORT = 11760
-export const BROWSER_REPLAY_MCP_BASE_PORT = 11780
+// can never contend for one bridge listener. Placed past every pair
+// above (clear of the EXTENSIONS_*/SECRETS_RUN_WAIT_* pairs further
+// down this file too) rather than reusing 11760/11780, which main's
+// own CLIPBOARD_BRIDGE_*/EXTENSIONS_STORE_* pairs already occupy.
+export const BROWSER_REPLAY_SERVER_BASE_PORT = 11960
+export const BROWSER_REPLAY_MCP_BASE_PORT = 11980
 
 // Every spawned server binds a browser-bridge listener too, derived
 // from its own server port by this offset rather than declared per
@@ -415,3 +457,9 @@ export const EXTENSIONS_INSTALL_MCP_BASE_PORT = 11820
 // folder, the same global state the store spec's pair isolates.
 export const EXTENSIONS_UPDATES_SERVER_BASE_PORT = 11840
 export const EXTENSIONS_UPDATES_MCP_BASE_PORT = 11860
+
+// secrets-run-wait.spec.ts's own dedicated pair (goal 0360 S2): the
+// vault's lock state and the global Review queue are both read, the
+// same shared-vs-dedicated reasoning as secrets.spec.ts's pair.
+export const SECRETS_RUN_WAIT_SERVER_BASE_PORT = 11880
+export const SECRETS_RUN_WAIT_MCP_BASE_PORT = 11900

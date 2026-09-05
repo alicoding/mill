@@ -6,8 +6,10 @@ import (
 )
 
 // Package-level function var, not a direct call -- same testability
-// pattern as internal/domain/runbook.
-var writeClipboardHTML = clipboard.WriteHTML
+// pattern as internal/domain/runbook. clipboard.New() resolves to the
+// in-memory Port inside a go test binary (goal 0356) -- never the real
+// pasteboard by default.
+var writeClipboardHTML = clipboard.New().WriteHTML
 
 // sampleHTML is the default value for apply-clipboard-write-html's
 // "html" field -- a demo fixture, not a fact anything else depends on.

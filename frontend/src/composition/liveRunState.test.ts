@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { barStateFor, shouldAdoptExternalRun } from './liveRunState'
+import { barStateFor, parkControls, shouldAdoptExternalRun } from './liveRunState'
 import type { RunDetail } from '../shared/bindings'
 
 // GAP A of the live-canvas-sync work: an externally-started run (a
@@ -63,5 +63,16 @@ describe('barStateFor', () => {
 
   it('a rejected start outranks every run state', () => {
     expect(barStateFor(parked, 'workflow not found')?.mode).toBe('finished')
+  })
+})
+
+describe('parkControls for a vault wait', () => {
+  it('offers the unlock and the stop, never a decision, whatever the source', () => {
+    expect(parkControls('', false, 'vault-locked')).toEqual(['unlock', 'stop'])
+    expect(parkControls('debug', true, 'vault-locked')).toEqual(['unlock', 'stop'])
+  })
+  it('leaves every other park unchanged', () => {
+    expect(parkControls('', false, '')).toEqual(['approve', 'deny'])
+    expect(parkControls('debug', false)).toEqual(['continue', 'stop'])
   })
 })

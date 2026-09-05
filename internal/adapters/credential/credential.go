@@ -9,7 +9,9 @@
 package credential
 
 import (
+	"os"
 	"sync"
+	"testing"
 
 	"github.com/zalando/go-keyring"
 )
@@ -54,7 +56,17 @@ type keyringStore struct{}
 // package-function-based with no client/handle to hold -- New exists so
 // callers depend on the Store interface, not this package's functions
 // directly, matching settings.New's own shape.
+//
+// Panics if called from inside a `go test` binary (testing.Testing())
+// unless MILL_ALLOW_HOST_KEYCHAIN_IN_TESTS=1 is set -- goal 0356's same
+// guard shape as internal/adapters/clipboard.NewHost: the real OS
+// keychain is one host-wide resource every install shares, so a test
+// must use NewInMemory instead of ever writing/overwriting a real
+// keychain entry under this process's login session.
 func New() Store {
+	if testing.Testing() && os.Getenv("MILL_ALLOW_HOST_KEYCHAIN_IN_TESTS") != "1" {
+		panic("credential: refusing to construct the real OS keychain adapter inside a go test binary; use credential.NewInMemory() instead")
+	}
 	return keyringStore{}
 }
 
