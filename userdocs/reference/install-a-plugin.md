@@ -1,3 +1,7 @@
+---
+kind: how-to
+---
+
 # Install a plugin
 
 Read the [plugin standard](plugin-standard.md) first.

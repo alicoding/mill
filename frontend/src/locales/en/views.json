@@ -583,11 +583,12 @@
     "navAriaLabel": "Documentation pages",
     "sections": {
       "startHere": "Start here",
+      "howTo": "How-to",
       "concepts": "Concepts",
       "reference": "Reference",
-      "agents": "Agents",
-      "trust": "Trust"
+      "agents": "For agents"
     },
+    "releases": "Releases",
     "previous": "Previous",
     "next": "Next",
     "tocAriaLabel": "On this page",

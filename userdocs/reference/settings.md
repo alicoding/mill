@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # Settings
 
 Preferences about Mill itself, not any one workflow — most apply the

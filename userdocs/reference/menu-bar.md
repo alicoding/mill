@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # Menu bar
 
 Every menu in Mill's menu bar is built from the same list of actions

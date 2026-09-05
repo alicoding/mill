@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # Plugin API maturity
 
 3 of 10 contribution families are stable; 0 ready to promote; 0 regressed.

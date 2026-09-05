@@ -1,3 +1,7 @@
+---
+kind: explanation
+---
+
 # Workflows and steps
 
 Copy something from a web page and the seeded Clipboard → Markdown

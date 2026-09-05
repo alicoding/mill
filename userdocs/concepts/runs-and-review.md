@@ -1,3 +1,7 @@
+---
+kind: explanation
+---
+
 # Runs, review, and debugging
 
 Mill crashes or restarts mid-workflow, and the run picks up where it

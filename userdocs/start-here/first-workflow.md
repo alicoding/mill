@@ -1,3 +1,7 @@
+---
+kind: tutorial
+---
+
 # Your first workflow
 
 Mill ships with working examples, and the fastest way to understand it

@@ -6,77 +6,97 @@
   <img alt="Mill — guardrailed agentic workflows, on your desktop" src=".github/assets/banner-light.svg" width="720">
 </picture>
 
+</div>
+
+![An Atlas board in Mill: a diagram, a table, and cards side by side, with the sidebar's Workflows, Configure, Atlas, Activity, Review, Secrets, and Extensions pages](.github/assets/readme-hero.png)
+
+# Mill
+
+A guardrailed desktop workbench for automations, a knowledge board and connectors — what you see is what your AI sees.
+
 [![CI](https://github.com/alicoding/mill/actions/workflows/ci.yml/badge.svg)](https://github.com/alicoding/mill/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/alicoding/mill/badge)](https://scorecard.dev/viewer/?uri=github.com/alicoding/mill)
 [![License](https://img.shields.io/github/license/alicoding/mill)](LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.25%2B-00ADD8?logo=go&logoColor=white)](go.mod)
-[![Platform](https://img.shields.io/badge/platform-macOS-111111?logo=apple)](#install)
+[![Platform](https://img.shields.io/badge/platform-macOS-111111?logo=apple)](#quick-start)
 
-</div>
+An AI acting on a system it can't verify has to guess at the real state,
+and the gap between the guess and reality is where hallucination and
+silent failure live. Mill closes that gap: the human and the agent work
+from the same verified view, and every action that reaches outside your
+machine is previewed and gated before it happens. Mill is one binary,
+keeps your data in local files, never calls an AI API of its own, and
+never phones home.
 
-Mill is a guardrailed, agentic-workflow desktop app: it lets an AI agent (or
-a human) compose and run automations — capturing data, processing it,
-applying an action — while keeping every step reviewable and reversible.
-The core idea is *what-you-see-is-what-I-see*: an AI acting on a system it
-can't verify has to guess at the real state (what's actually on the
-clipboard, what a command will really do, what a setting is really set to),
-and that gap between the guess and reality is exactly where hallucination
-and silent failure live. Mill closes that gap by giving both the human and
-the AI the same verified, structured view of state — and a guardrail that
-previews an action before it happens, instead of trusting a text
-description of it. Mill isn't a novel category: it composes existing
-primitives (a workflow authoring layer with guardrails) the way a generic
-credential manager or a generic workflow-automation tool would, applied to
-agent-guarded local actions instead.
+## What Mill does today
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screenshot-canvas-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset=".github/assets/screenshot-canvas-light.png">
-  <img alt="A seeded example workflow open in Mill's read-only canvas view: a manual trigger captures a typed amount, a Branch node routes on amount > 100, and each path ends at a typed Decision terminal" src=".github/assets/screenshot-canvas-light.png">
-</picture>
+<!-- mill:inventory:start -->
 
-*One of Mill's built-in seeded examples on the canvas: capture a typed
-value, branch on it, land at a typed Decision outcome — every example
-ships runnable and fully editable.*
+- **Home** — What ran, what is waiting for your approval, and the workflows you use most.
+- **[Workflows](userdocs/concepts/workflows-and-steps.md)** — Copy something from a web page and the seeded Clipboard → Markdown workflow reads it, converts the HTML, writes the Markdown back to your clipboard, and notifies you — one trigger, three steps, connected in order on a canvas.
+- **[Configure](userdocs/concepts/configure.md)** — Point two workflows at one Integration entry instead of pasting the base URL and auth into each step, and changing the endpoint later is a single edit that both workflows pick up.
+- **[Atlas](userdocs/concepts/atlas.md)** — Drop a folder of markdown files onto the board and every file becomes a card — edit one outside Mill and the card updates itself, no re-import.
+- **Activity** — Every run, guardrail decision, and agent call in one searchable log.
+- **[Review](userdocs/concepts/runs-and-review.md)** — Mill crashes or restarts mid-workflow, and the run picks up where it left off instead of vanishing.
+- **[Secrets](userdocs/concepts/secrets.md)** — Every field in Mill that needs a password, a token, or a key takes a pick from Secrets, never a typed value — a workflow carries the name of a secret, and Mill fills in the value only at the moment a step runs.
+- **[Extensions](userdocs/concepts/extensions.md)** — An extension adds what Mill can do — a board object, a workflow step, a command, a secret source, a view — as a folder of two files you install, and it runs only with your say-so.
 
-## Status
+50 step types · 7 board object kinds · 10 extension contribution families · 40 MCP tools
 
-Mill is under active development, pre-1.0. Several UX surfaces are
-explicitly prototype-quality while the underlying capability is real and
-exercised end-to-end. Expect rough edges in presentation before you expect
-them in behavior — and expect both to keep changing release to release.
+- **[Automate with agents](userdocs/agents/connect-mcp.md)** — Connecting over MCP and what agents can do.
+- **[The browser extension](userdocs/reference/browser-extension.md)** — Pairing a browser so Mill can replay recorded steps in your own signed-in session.
 
-## Install
+<!-- mill:inventory:end -->
 
-Mill ships as a single Go binary with the frontend compiled in (no
-separate CLI/backend, no hosted-service dependency) — `git clone` plus a
-local build is the whole install story. You'll need Go 1.25+, Node 22+,
-the [Task](https://taskfile.dev) CLI, and the Wails3 CLI first:
+Everything above is reachable by a human in the app and by an agent
+over MCP, under the same guardrails.
+
+## Quick start
+
+Mill installs by cloning and building — no hosted service, no account.
+You need Go, Node, the [Task](https://taskfile.dev) CLI, and the Wails
+v3 CLI (`go install github.com/wailsapp/wails/v3/cmd/wails3@latest`).
 
 ```sh
-brew install go node go-task lefthook golangci-lint
-go install github.com/loeffel-io/ls-lint/v2/cmd/ls_lint@v2.3.1
-go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.4
-# make sure $(go env GOPATH)/bin (usually ~/go/bin) is on your PATH
-
 git clone https://github.com/alicoding/mill.git
 cd mill
-task setup:hooks   # installs Lefthook's pre-commit hooks (mirrors CI)
-
-# Run it
-task dev           # starts Mill with hot reload — leave it running
+task setup:hooks    # once: installs the pre-commit hooks that mirror CI
+task install:app    # builds Mill and installs it in /Applications
 ```
 
-`task dev` is the way to iterate: frontend edits hot-reload instantly, and
-only a Go change triggers a restart. See `CLAUDE.md` for the full set of
-build/dev commands (`task install:app`, `task build`, `task package`, ...).
+`task dev` runs a hot-reloading development copy instead of installing.
+Prebuilt macOS releases are on the
+[releases page](https://github.com/alicoding/mill/releases); the
+[Install](userdocs/start-here/install.md) page covers both routes and
+where your data lives.
+
+Then, in ten minutes:
+
+1. Run the seeded example workflow and rebuild it yourself —
+   [Your first workflow](userdocs/start-here/first-workflow.md).
+2. Put a card, a table, and a diagram on a board —
+   [Your first board](userdocs/start-here/first-board.md).
+3. Point an agent at Mill over MCP —
+   [Automate with agents](userdocs/agents/connect-mcp.md).
 
 ## Documentation
 
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — how to propose a change.
-- [`SECURITY.md`](SECURITY.md) — how to report a vulnerability and what's
-  in scope.
+The same documentation is in three places: the **Docs** view inside the
+app (the footer link, or "Open docs" in the command palette),
+[`userdocs/`](userdocs/) here on GitHub, and
+[`userdocs/llms.txt`](userdocs/llms.txt) for agents, with
+[`userdocs/llms-full.txt`](userdocs/llms-full.txt) carrying every page in
+one file.
+
+## Contributing
+
+File bugs and feature requests as
+[issues](https://github.com/alicoding/mill/issues); the bug template asks
+for the build badge the app shows, which tells us exactly which build you
+ran. Pull requests are welcome through the process in
+[CONTRIBUTING.md](CONTRIBUTING.md). Report a vulnerability privately, as
+[SECURITY.md](SECURITY.md) describes, never as a public issue.
 
 ## License
 
-[Apache-2.0](LICENSE).
+Apache License 2.0 (`Apache-2.0`) — see [LICENSE](LICENSE).
