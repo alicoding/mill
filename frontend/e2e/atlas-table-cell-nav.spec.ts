@@ -2,6 +2,12 @@ import { test, expect } from './fixtures/server'
 import { deleteListNamed, deleteTableViaMenu, openAtlas, placeSizedTable, tableAuditShot } from './fixtures/atlasTable'
 import { clickGlideCell, editGlideCell, glideCellText, glideTextEditor } from './fixtures/glideGrid'
 
+async function commitEditor(page: import('@playwright/test').Page, text: string): Promise<void> {
+  const editor = glideTextEditor(page).first()
+  await expect(editor).toBeVisible()
+  await editor.fill(text)
+}
+
 // The table grid's own keyboard-navigation states in the goal 0273
 // state-matrix audit: arrow keys move the selected cell, Tab/Enter
 // commit an open editor AND move it (the adopted grid's own
@@ -43,29 +49,32 @@ test('Tab commits and moves right; Enter commits and moves down', async ({ page 
   const object = await placeSizedTable(page, '2x2')
   const glide = object.getByTestId('atlas-projection-glide')
 
-  await editGlideCell(page, glide, 0, 0, 'A')
-  await expect(glideCellText(glide, 0, 0)).toHaveText('A')
-  await tableAuditShot(page, '09-tab-enter-committed-00')
-
-  // Tab from the just-committed cell's own selection opens the NEXT
-  // cell to the right -- the adopted grid's own default, never a
-  // custom keymap here.
+  // (0,0), explicitly selected -- editGlideCell's own Enter-commit
+  // already moves DOWN a row (this test's own next assertion proves
+  // that convention), so every cell here is addressed by coordinate,
+  // never assumed from a prior step's leftover selection.
+  await clickGlideCell(page, glide, 0, 0)
   await page.keyboard.press('Enter')
-  await expect(glideTextEditor(page).first()).toBeVisible()
-  await glideTextEditor(page).first().fill('B')
+  await commitEditor(page, 'A')
   await page.keyboard.press('Tab')
-  await expect(glideCellText(glide, 0, 0)).toHaveText('B')
+  await expect(glideCellText(glide, 0, 0)).toHaveText('A')
   await expect(glideTextEditor(page)).toHaveCount(0)
+  await tableAuditShot(page, '09-tab-committed')
 
-  // The selection landed one column right (0,1) -- typing again there
-  // and committing with Enter proves it, and moves DOWN a row per the
-  // same convention.
+  // Tab left the selection one column right, at (0,1) -- Enter there
+  // opens ITS editor with no extra click, proving Tab moved it.
   await page.keyboard.press('Enter')
-  await expect(glideTextEditor(page).first()).toBeVisible()
-  await glideTextEditor(page).first().fill('C')
+  await commitEditor(page, 'B')
   await page.keyboard.press('Enter')
-  await expect(glideCellText(glide, 0, 1)).toHaveText('C')
-  await tableAuditShot(page, '09-tab-enter-committed-01')
+  await expect(glideCellText(glide, 0, 1)).toHaveText('B')
+  await tableAuditShot(page, '09-enter-committed')
+
+  // Enter's own commit-and-move-DOWN landed the selection at (1,1) --
+  // Enter there opens IT, proving the down-move.
+  await page.keyboard.press('Enter')
+  await commitEditor(page, 'C')
+  await page.keyboard.press('Enter')
+  await expect(glideCellText(glide, 1, 1)).toHaveText('C')
 
   await deleteTableViaMenu(object)
   await deleteListNamed(page, 'Table')
