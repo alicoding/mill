@@ -402,8 +402,14 @@ export const EXTENSIONS_STORE_MCP_BASE_PORT = 11780
 export const EXTENSIONS_INSTALL_SERVER_BASE_PORT = 11800
 export const EXTENSIONS_INSTALL_MCP_BASE_PORT = 11820
 
+// extensions-updates.spec.ts's own pair (goal 0349 S5, part 2): a
+// check re-reads every marketplace and an update rewrites a plugin
+// folder, the same global state the store spec's pair isolates.
+export const EXTENSIONS_UPDATES_SERVER_BASE_PORT = 11840
+export const EXTENSIONS_UPDATES_MCP_BASE_PORT = 11860
+
 // secrets-run-wait.spec.ts's own dedicated pair (goal 0360 S2): the
 // vault's lock state and the global Review queue are both read, the
 // same shared-vs-dedicated reasoning as secrets.spec.ts's pair.
-export const SECRETS_RUN_WAIT_SERVER_BASE_PORT = 11840
-export const SECRETS_RUN_WAIT_MCP_BASE_PORT = 11860
+export const SECRETS_RUN_WAIT_SERVER_BASE_PORT = 11880
+export const SECRETS_RUN_WAIT_MCP_BASE_PORT = 11900

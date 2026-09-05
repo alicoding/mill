@@ -97,6 +97,9 @@ type ManifestContributes struct {
 	// which of this plugin's commands, steps and reads an agent may
 	// call over MCP, each with its own typed input contract.
 	Tools []ToolContribution `json:"tools"`
+	// MCPServers (docs/goals/0349 S5, pluginservice_mcpservers.go): MCP
+	// server definitions the plugin ships for "Add to Configure".
+	MCPServers []MCPServerContribution `json:"mcpServers"`
 }
 
 // ViewContribution declares one plugin-owned work tab: a slug id

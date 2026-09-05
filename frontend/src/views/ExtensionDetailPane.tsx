@@ -53,6 +53,9 @@ export interface ExtensionDetail {
   status?: ReactNode
   // Row-specific actions in the header (an installed plugin's Reload).
   actions?: ReactNode
+  // A contribution block with controls of its own (the MCP servers a
+  // plugin ships), rendered after "What it adds".
+  extra?: ReactNode
   // Present only for a removable plugin; the pane renders it behind
   // the … menu, never as a bare button beside the toggle.
   onRemove?: () => void
@@ -194,6 +197,8 @@ export function ExtensionDetailPane({ detail, showBackLink, onClose, tabStrip, b
           ))
         )}
       </Stack>
+
+      {detail.extra}
 
       <Text as="p" size="small" className={listStyles.muted} data-testid="extensions-detail-reach">{detail.reach}</Text>
       {detail.claims?.map((claim) => (

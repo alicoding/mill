@@ -16,6 +16,7 @@ import {
   type ExtensionDetailTab,
 } from './ExtensionsDetailTabs'
 import { tierLabelKey, tierVariant } from './extensionTrust'
+import { ExtensionsMCPServers } from './ExtensionsMCPServers'
 import { reachLabel } from './extensionMeta'
 import listStyles from '../shared/ListCard.module.css'
 
@@ -70,6 +71,9 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
     // A bundled plugin's header meta line already says "Built into
     // Mill"; only an installed one has a folder worth naming.
     provenance: plugin.Builtin ? undefined : t('settings.extensions.pluginSource', { path: plugin.Dir }),
+    extra: (contributes?.mcpServers ?? []).length > 0
+      ? <ExtensionsMCPServers pluginId={id} servers={contributes?.mcpServers ?? []} />
+      : undefined,
     status: <PluginStatusNote error={error} status={runtime?.status} allowed={allowed} onAllow={onAllow} />,
     actions: reloadCommand?.enabled?.() ? (
       <Button
