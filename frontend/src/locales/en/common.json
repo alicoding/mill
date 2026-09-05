@@ -234,7 +234,9 @@
       "rename": "Rename"
     },
     "diagram": {
-      "fit": "Fit diagram"
+      "fit": "Fit diagram",
+      "previousPage": "Previous page",
+      "nextPage": "Next page"
     },
     "canvas": {
       "undo": "Undo",
