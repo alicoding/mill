@@ -89,7 +89,7 @@ export const tableTool = {
     // a bare click can never land straight in a cell. Selected, the
     // grid owns the wheel over its own scroll area, which is how a
     // table wider than its box scrolls sideways at all (goal 0354).
-    content: 'interactive',
+    input: 'interactive',
     shieldHintKey: 'atlas:tableNoun.shieldHint',
     // ADR-0046 (goal 0244 S0): Payload.listID names the backing
     // Configure List this Kind projects -- a provider source, not a

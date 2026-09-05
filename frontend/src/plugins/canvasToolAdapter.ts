@@ -253,7 +253,7 @@ function faceContent(pluginId: string, decl: CanvasObjectDecl, ephemeral: boolea
 		// Input over the face (goal 0354): 'static' unless the plugin
 		// says otherwise, so a face that draws a picture keeps the whole
 		// canvas gesture set working over it exactly as before.
-		content: decl.content === 'interactive' ? 'interactive' : 'static',
+		input: decl.content === 'interactive' ? 'interactive' : 'static',
 		source: decl.source === 'file' ? { kind: 'file', pathKey: 'mirrorPath' } : decl.source === 'url' ? { kind: 'url', urlKey: 'url' } : { kind: 'board-local' },
 		editRoute: adaptEditRoute(decl.editRoute),
 	}
