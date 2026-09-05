@@ -64,7 +64,7 @@ func TestBootstrapPairingCode_ServerModeZeroDevices_LogsUsableCode(t *testing.T)
 // device pairs.
 func TestBootstrapPairingCode_OnePairedDevice_LogsNothing(t *testing.T) {
 	s, buf := newTestServiceWithLog(t)
-	if _, err := s.mintDevice("Existing Device", ""); err != nil {
+	if _, err := s.mintDevice("Existing Device", "", KindDevice); err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
 
@@ -155,7 +155,7 @@ func TestBootstrapPairingCode_LoggedCodeIsSingleUse(t *testing.T) {
 // from Settings must not have that code land in the log either.
 func TestGeneratePairingCode_NoLogOnceADeviceIsPaired(t *testing.T) {
 	s, buf := newTestServiceWithLog(t)
-	if _, err := s.mintDevice("Existing Device", ""); err != nil {
+	if _, err := s.mintDevice("Existing Device", "", KindDevice); err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
 

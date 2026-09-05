@@ -11,6 +11,13 @@
 export interface DeviceInfo {
     "id": string;
     "label": string;
+
+    /**
+     * Kind is KindDevice for a phone or another computer, KindBrowser
+     * for a paired browser extension -- Settings lists the two in
+     * separate sections and never mixes them in one list.
+     */
+    "kind": string;
     "createdAt": string;
     "lastSeenAt": string;
 
