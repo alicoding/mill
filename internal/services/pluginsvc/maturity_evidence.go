@@ -2,10 +2,12 @@ package pluginsvc
 
 import (
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 // conformanceFuncByFamily names the one build-time conformance-pass
@@ -41,9 +43,9 @@ var mcpByFamily = map[string]string{
 	"commands":      "yes",
 	"steps":         "yes",
 	"tools":         "yes",
-	"canvasObjects": "no",
-	"captures":      "no",
-	"views":         "no",
+	"canvasObjects": "yes",
+	"captures":      "n/a",
+	"views":         "n/a",
 }
 
 func mcpFor(family string) string {
@@ -131,32 +133,108 @@ func hasExample(repoRoot, family string) bool {
 	return false
 }
 
-// hasE2E reports whether any frontend/e2e/*.spec.ts either is named
-// runtime-plugin-<family>.spec.ts or contains the family key as a
-// whole word.
+// e2eRegisterTokenByFamily names the one SDK registration call that,
+// found anywhere in an e2e spec, proves a family's runtime path ran
+// for real -- never a bare English word a spec's prose could also
+// contain (goal 0348 follow-up: "themes" and "steps" both matched
+// unrelated comments under the old whole-word rule). A family absent
+// here has no registration call of its own (settings/network/themes
+// are declarative, per maturity.go's doc-comment table) and proves
+// e2e coverage only through the contributes.<family> or fixture-
+// manifest routes below.
+var e2eRegisterTokenByFamily = map[string]string{
+	"canvasObjects": "registerCanvasObject",
+	"commands":      "registerCommand",
+	"views":         "registerView",
+	"captures":      "registerCapture",
+}
+
+// camelToKebab renders a Go-style camelCase family name (canvasObjects)
+// as its kebab-case spec-filename form (canvas-objects); a family with
+// no upper-case letter (commands, themes, ...) round-trips unchanged.
+func camelToKebab(family string) string {
+	var b strings.Builder
+	for i, r := range family {
+		if i > 0 && unicode.IsUpper(r) {
+			b.WriteByte('-')
+		}
+		b.WriteRune(unicode.ToLower(r))
+	}
+	return b.String()
+}
+
+// hasE2E reports whether family has e2e evidence under any of three
+// routes, per maturity.go's doc-comment table: a spec file named for
+// the family, a spec file exercising its SDK registration call or
+// literal contributes.<family> reference, or a fixture plugin
+// declaring the contribution. Never a bare whole-word match on the
+// family name -- English words like "steps", "views" and "themes"
+// match unrelated prose, not the plugin door.
 func hasE2E(repoRoot, family string) bool {
 	dir := filepath.Join(repoRoot, "frontend", "e2e")
-	if _, err := os.Stat(filepath.Join(dir, "runtime-plugin-"+family+".spec.ts")); err == nil {
-		return true
-	}
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return false
-	}
-	re := regexp.MustCompile(`\b` + regexp.QuoteMeta(family) + `\b`)
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".spec.ts") {
-			continue
-		}
-		raw, err := os.ReadFile(filepath.Join(dir, entry.Name())) // #nosec G304 -- entry came from this same directory's own listing
-		if err != nil {
-			continue
-		}
-		if re.Match(raw) {
+	for _, base := range []string{family, camelToKebab(family)} {
+		matches, err := filepath.Glob(filepath.Join(dir, "runtime-plugin-"+base+"*.spec.ts"))
+		if err == nil && len(matches) > 0 {
 			return true
 		}
 	}
-	return false
+
+	tokens := []string{"contributes." + family}
+	if tok, ok := e2eRegisterTokenByFamily[family]; ok {
+		tokens = append(tokens, tok)
+	}
+	entries, err := os.ReadDir(dir)
+	if err == nil {
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".spec.ts") {
+				continue
+			}
+			raw, err := os.ReadFile(filepath.Join(dir, entry.Name())) // #nosec G304 -- entry came from this same directory's own listing
+			if err != nil {
+				continue
+			}
+			for _, tok := range tokens {
+				if strings.Contains(string(raw), tok) {
+					return true
+				}
+			}
+		}
+	}
+
+	return hasFixtureManifestContribution(filepath.Join(repoRoot, "frontend", "e2e", "fixtures"), family)
+}
+
+// hasFixtureManifestContribution reports whether any manifest.json
+// under fixturesDir (an e2e fixture plugin written to disk for a
+// test, never examples/plugins -- that's the Example cell's own
+// evidence) declares a non-empty contributes.<family>.
+func hasFixtureManifestContribution(fixturesDir, family string) bool {
+	found := false
+	_ = filepath.WalkDir(fixturesDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || found || d.IsDir() || d.Name() != "manifest.json" {
+			return nil
+		}
+		raw, readErr := os.ReadFile(path) // #nosec G304 G122 -- path came from this same walk under the repo's own fixtures tree, read-only evidence gathering never a privileged operation
+		if readErr != nil {
+			return nil
+		}
+		var doc struct {
+			Contributes map[string]json.RawMessage `json:"contributes"`
+		}
+		if json.Unmarshal(raw, &doc) != nil {
+			return nil
+		}
+		raw, ok := doc.Contributes[family]
+		if !ok {
+			return nil
+		}
+		var arr []json.RawMessage
+		if json.Unmarshal(raw, &arr) == nil && len(arr) > 0 {
+			found = true
+		}
+		return nil
+	})
+	return found
 }
 
 // maturityPageBasename is excluded from Docs evidence -- the generated
