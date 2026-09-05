@@ -1,3 +1,13 @@
+/* The viewer's own positioning context (goal 0201 follow-up): the
+   capture placeholder AtlasBoard.module.css renders while capturing is
+   an absolutely-positioned overlay anchored to THIS box, not the
+   iframe (an iframe can't host a CSS pseudo-element). */
+.viewerWrap {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
 /* The vendored viewer fills whatever box the node gives it; the node's
    own clamp/size contract (AtlasBoardObjectNode.module.css) decides
    the box. border: none -- the node's own frame is the border. */
