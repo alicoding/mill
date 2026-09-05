@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/server'
 import type { Page } from '@playwright/test'
-import { deleteListNamed, deleteTableViaMenu, openAtlas, panToEmptyBoard, placeSizedTable, tableAuditShot, tableObjects } from './fixtures/atlasTable'
+import { deleteListNamed, deleteTableViaMenu, escapeGridToObject, openAtlas, panToEmptyBoard, placeSizedTable, tableAuditShot, tableObjects } from './fixtures/atlasTable'
 import { clickBoardPoint, hoverBoardPoint, nonSeededBoardObjects } from './fixtures/atlasBoard'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { waitForViewportStable } from './fixtures/animation'
@@ -198,7 +198,7 @@ test('Escape in the grid hands the keyboard back, so Delete removes the table', 
   const glide = object.getByTestId('atlas-projection-glide')
 
   await clickGlideCell(page, glide, 0, 0)
-  await page.keyboard.press('Escape')
+  await escapeGridToObject(page, object)
   await tableAuditShot(page, '10-escape-grid-to-object')
   await page.keyboard.press('Backspace')
   await expect(object).toHaveCount(0)
