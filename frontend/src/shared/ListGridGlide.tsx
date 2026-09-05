@@ -97,7 +97,7 @@ function narrowedKeys(filters: GridColumnFilters): string {
 // required inside a focus-trapping dialog (the card page): a trap
 // pulls focus back from anything outside its subtree, so a body-level
 // editor never receives keystrokes and every commit is lost.
-export function ListGridGlide({ listID, columns, rows, density, schemaEditing = true, editorPortal = 'body', onReleaseKeyboard }: { listID: string; columns: GridColumn[]; rows: GridRow[]; density?: string; schemaEditing?: boolean; editorPortal?: 'body' | 'host'; onReleaseKeyboard?: () => void }) {
+export function ListGridGlide({ listID, columns, rows, density, schemaEditing = true, editorPortal = 'body', onEditingChange }: { listID: string; columns: GridColumn[]; rows: GridRow[]; density?: string; schemaEditing?: boolean; editorPortal?: 'body' | 'host'; onEditingChange?: (editing: boolean) => void }) {
   const { t } = useTranslation('common')
   const [host, setHost] = useState<HTMLDivElement | null>(null)
   const gridRef = useRef<DataEditorRef>(null)
@@ -226,29 +226,13 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
     return () => window.clearTimeout(id)
   }, [columns, openRename])
 
-  // Escape hands the keyboard BACK (goal 0273): with no overlay editor
-  // open, Escape leaves the grid rather than staying inside it, so the
-  // host (a board object) gets its keys back. A CAPTURE listener on
-  // this host, not the React onKeyDown below: the library stops
-  // propagation on every key it handles, so a bubble-phase handler
-  // never sees Escape at all -- and taking the key here also keeps the
-  // library from restoring focus into its own accessibility DOM behind
-  // us. An open editor owns its own Escape (cancel the edit): it mounts
-  // in the body-level #portal, or on a focus-trapping page in this
-  // grid's own portal box, so its keys never reach this element.
-  useEffect(() => {
-    if (!host) return
-    const onEscapeCapture = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      const target = e.target instanceof Element ? e.target : null
-      if (target?.closest('#portal') || (target && portalRef.current?.contains(target))) return
-      e.stopPropagation()
-      if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
-      onReleaseKeyboard?.()
-    }
-    host.addEventListener('keydown', onEscapeCapture, true)
-    return () => host.removeEventListener('keydown', onEscapeCapture, true)
-  }, [host, onReleaseKeyboard])
+  // The overlay cell editor's own open/close, reported to the host
+  // (goal 0354): the library activates a cell (its second-click model,
+  // Enter, or a double-click) and mounts the editor, then fires
+  // onFinishedEditing when it closes, whether the edit committed or was
+  // cancelled. A board object turns that into its `editing` activation
+  // state; every other consumer passes nothing and pays nothing.
+  const reportEditing = useCallback((editing: boolean) => { onEditingChange?.(editing) }, [onEditingChange])
 
   // A paste that lands IN the grid is the grid's, never the surface
   // under it: on a board, the same event would otherwise ALSO land a
@@ -372,6 +356,8 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
             fillHandle
             gridSelection={selection}
             onGridSelectionChange={setSelection}
+            onCellActivated={() => reportEditing(true)}
+            onFinishedEditing={() => reportEditing(false)}
             onHeaderClicked={cycleSort}
             smoothScrollX
             smoothScrollY
