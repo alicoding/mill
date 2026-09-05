@@ -63,43 +63,33 @@ func ExtractZip(data []byte, dest string) error {
 }
 
 // extractZipEntry writes one entry, refusing anything that would land
-// outside dest. A directory entry writes no bytes.
+// outside root. A directory entry writes no bytes.
 //
-// The join-then-prefix-check guard is repeated here inline (on top of
-// safeJoin's own check below) rather than left to the helper alone:
-// static analysis for zip-slip looks for this exact shape in the same
-// function as the filesystem write that follows it.
-func extractZipEntry(f *zip.File, prefix, dest string, budget int64) (int64, error) {
+// dest is computed once, guarded immediately against the join, and is
+// the ONLY path used in every filesystem call below (including the
+// directory-entry MkdirAll) -- static analysis for zip-slip requires
+// the sanitized value itself, not a re-derivation of the raw entry
+// name, to reach the write.
+func extractZipEntry(f *zip.File, prefix, root string, budget int64) (int64, error) {
 	name := strings.TrimPrefix(filepath.ToSlash(f.Name), prefix)
 	if name == "" {
 		return 0, nil
 	}
-	if filepath.IsAbs(filepath.FromSlash(name)) {
-		return 0, errOutsideFolder
-	}
-	cleanDest := filepath.Clean(dest)
-	joined := filepath.Join(cleanDest, filepath.FromSlash(name))
-	if joined != cleanDest && !strings.HasPrefix(joined, cleanDest+string(os.PathSeparator)) {
+	cleanRoot := filepath.Clean(root)
+	dest := filepath.Join(cleanRoot, filepath.FromSlash(name))
+	if dest != cleanRoot && !strings.HasPrefix(dest, cleanRoot+string(os.PathSeparator)) {
 		return 0, errOutsideFolder
 	}
 	if f.Mode()&os.ModeSymlink != 0 {
 		return 0, fmt.Errorf("that archive contains a symbolic link, so Mill won't install it")
 	}
 	if strings.HasSuffix(name, "/") {
-		target, err := safeJoin(dest, strings.TrimSuffix(name, "/"))
-		if err != nil {
-			return 0, err
-		}
-		return 0, os.MkdirAll(target, 0o750)
+		return 0, os.MkdirAll(dest, 0o750)
 	}
-	target, err := safeJoin(dest, name)
-	if err != nil {
+	if err := os.MkdirAll(filepath.Dir(dest), 0o750); err != nil {
 		return 0, err
 	}
-	if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil {
-		return 0, err
-	}
-	return copyZipEntry(f, target, budget)
+	return copyZipEntry(f, dest, budget)
 }
 
 func copyZipEntry(f *zip.File, target string, budget int64) (int64, error) {
