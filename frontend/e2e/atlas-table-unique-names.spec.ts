@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/server'
 import type { Locator, Page } from '@playwright/test'
-import { deleteListNamed, deleteTableViaMenu, openAtlas, panToEmptyBoard, placeSizedTable, tableAuditShot } from './fixtures/atlasTable'
+import { deleteListNamed, deleteTableViaMenu, openAtlas, panToEmptyBoard, placeSizedTable, selectTableObject, tableAuditShot } from './fixtures/atlasTable'
 import { clickBoardPoint } from './fixtures/atlasBoard'
 
 // A table's minted/renamed name is unique among table objects on the
@@ -55,6 +55,9 @@ test('a rename colliding with another table on this board is refused inline, and
   const second = await tableObjectByTitle(page, 'Table 2')
   await expect(second).toBeVisible()
 
+  // Object first, cell second (goal 0354): a freshly placed object is
+  // not the board's selection, so its face is inert until it is.
+  await selectTableObject(second)
   const title = second.getByTestId('atlas-table-title')
   await title.dblclick()
   const input = second.getByTestId('atlas-table-title-input')

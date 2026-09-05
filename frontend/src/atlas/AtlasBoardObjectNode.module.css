@@ -182,9 +182,16 @@
     pointer-events: none;
 }
 
-/* Click-to-activate shield for faces that own their own pointer model
-   (clickShield fact): transparent, over the content -- present only
-   while unselected. */
+/* An idle interactive face is inert (goal 0354): nothing under the
+   shield receives a pointer event, so a face that captures its own
+   clicks can never swallow the one that selects the object. The shield
+   below still draws the hover ring and takes the click. */
+.contentInert {
+    pointer-events: none;
+}
+
+/* Click-to-activate shield for an interactive face: transparent, over
+   the content -- present only while the object is idle. */
 .clickShield {
     position: absolute;
     inset: 0;
