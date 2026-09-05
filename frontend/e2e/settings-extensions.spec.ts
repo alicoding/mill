@@ -234,10 +234,10 @@ test('Extensions section lists every registered canvas tool; the built-in card r
   // vanished, which is the thing a reader needs.
   //
   // Every compiled-in ATLAS_TOOLS member plus every tool-less noun
-  // (diagram, sheet, pdf -- goal 0267) gets exactly one row. The
-  // drawing tools are the Drawing plugin's row, not four rows here
-  // (goal 0252).
-  const BUILT_IN_EXTENSION_IDS = ['card', 'note', 'area', 'table', 'image', 'diagram', 'sheet', 'pdf']
+  // (diagram, sheet, pdf, json -- goals 0267, 0269) gets exactly one
+  // row. The drawing tools are the Drawing plugin's row, not four rows
+  // here (goal 0252).
+  const BUILT_IN_EXTENSION_IDS = ['card', 'note', 'area', 'table', 'image', 'diagram', 'sheet', 'pdf', 'json']
   await expect(builtInRows(page)).toHaveCount(BUILT_IN_EXTENSION_IDS.length)
   const renderedIDs = await builtInRows(page).evaluateAll((rows) => rows.map((r) => r.getAttribute('data-extension-id')))
   expect(renderedIDs.slice().sort()).toEqual(BUILT_IN_EXTENSION_IDS.slice().sort())

@@ -1,0 +1,23 @@
+{
+  "json": {
+    "empty": "This file is empty.",
+    "unreadable": {
+      "json": "Can't read this file as JSON.",
+      "yaml": "Can't read this file as YAML."
+    },
+    "filterLabel": "Filter keys and values",
+    "expandAll": "Expand all",
+    "expandAllRefused": "Too many rows to expand at once",
+    "collapseAll": "Collapse all",
+    "matches_one": "{{count}} match",
+    "matches_other": "{{count}} matches",
+    "noMatches": "No matches",
+    "documentLabel": "Document {{number}}"
+  },
+  "jsonNoun": {
+    "name": "JSON and YAML",
+    "description": "Read JSON and YAML files dropped onto the board as a collapsible tree.",
+    "disableScopeNote": "Turning this off stops new JSON and YAML files from landing on drop. Files already on the board keep working, including opening in your default app.",
+    "shieldHint": "Click to select, then expand and scroll"
+  }
+}

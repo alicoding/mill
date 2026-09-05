@@ -62,6 +62,7 @@
     "react-responsive-carousel": "^3.2.23",
     "read-excel-file": "^9.3.10",
     "recharts": "^3.10.1",
+    "yaml": "^2.9.0",
     "zod": "^4.5.4",
     "zod-schema-faker": "^2.1.1",
     "zundo": "^2.3.0",
