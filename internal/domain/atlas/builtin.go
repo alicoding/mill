@@ -141,6 +141,8 @@ const (
 	objectSheetExampleID   = "atlas-object-example-sheet"
 	objectPdfExampleID     = "atlas-object-example-pdf"
 	objectDiagramExampleID = "atlas-object-example-diagram"
+	objectJSONExampleID    = "atlas-object-example-json"
+	objectYAMLExampleID    = "atlas-object-example-yaml"
 )
 
 // BuiltInKinds returns the seeded example card types -- pure config,
