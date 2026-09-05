@@ -9,12 +9,20 @@ import { extensionOf } from '../unitRegistry'
 import { DrawioDiagramHost } from '../AtlasUnitDrawioPage'
 import { MermaidDiagramHost } from '../AtlasUnitMermaidPage'
 import { AtlasMirrorMissingState } from '../AtlasMirrorMissingState'
-import type { DrawioOverflowReporter } from '../drawioInteraction'
+import type { DrawioOverflowReporter, DrawioPagerReporter } from '../drawioInteraction'
 import runbookStyles from '../../shared/ListCard.module.css'
 import nodeStyles from '../AtlasBoardObjectNode.module.css'
 import drawioStyles from '../AtlasUnitDrawio.module.css'
 
 const MERMAID_EXTENSIONS = new Set(['.mmd', '.mermaid'])
+
+// Where each object was left in its own multi-page file, for this
+// session only (goal 0354). Module-level rather than persisted: which
+// page you were reading is a view state, not document data -- it must
+// not travel to another device or survive a restart, and it must not
+// write to the board on every page turn. Keyed by object id, so two
+// objects on the same file keep their own place.
+const sessionPage = new Map<string, number>()
 
 function formatMirrorSize(bytes: number): string {
   if (bytes < 1000) return `${bytes} B`
@@ -46,12 +54,20 @@ function formatMirrorSize(bytes: number): string {
 // mirrorContent it's handed: a version bump refetches WITHOUT resetting
 // content first, so an external edit swaps the rendered diagram in
 // place with no loading flash, exactly as before relocation.
-export function AtlasDiagramObjectContent({ object, mirrorContent, repickMirror, preview, onOverflowChange }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState; repickMirror?: (path: string) => Promise<unknown>; preview?: boolean; onOverflowChange?: DrawioOverflowReporter }) {
+export function AtlasDiagramObjectContent({ object, mirrorContent, repickMirror, preview, onOverflowChange, onPagerChange }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState; repickMirror?: (path: string) => Promise<unknown>; preview?: boolean; onOverflowChange?: DrawioOverflowReporter; onPagerChange?: (cursor: Parameters<DrawioPagerReporter>[0]) => void }) {
   const { t } = useTranslation('atlas')
   // Stable across renders: useDrawioRendering takes it as an effect
   // dependency, and a fresh identity every render would tear the viewer
   // down and rebuild it on every parent update.
   const onOverflow = useCallback<DrawioOverflowReporter>((exceeds, fit) => { onOverflowChange?.(exceeds, fit) }, [onOverflowChange])
+  // The page cursor, remembered for this object before it is reported:
+  // the viewer is rebuilt whenever the file's bytes change, and this is
+  // what puts it back on the page that was being read.
+  const objectID = object.ID
+  const onPager = useCallback<DrawioPagerReporter>((cursor) => {
+    sessionPage.set(objectID, cursor.index)
+    onPagerChange?.(cursor)
+  }, [objectID, onPagerChange])
   const content = mirrorContent?.content
   const error = mirrorContent?.error
   const mirrorPath = object.Payload?.mirrorPath ?? ''
@@ -100,7 +116,7 @@ export function AtlasDiagramObjectContent({ object, mirrorContent, repickMirror,
   // takes the module's own default box, sized it takes the object's.
   return (
     <div className={drawioStyles.diagramObjectBox} style={object.Size ? { width: '100%', height: '100%' } : undefined}>
-      <DrawioDiagramHost source={source} interactive onOverflow={onOverflow} />
+      <DrawioDiagramHost source={source} interactive onOverflow={onOverflow} onPager={onPager} initialPage={sessionPage.get(objectID)} />
     </div>
   )
 }
