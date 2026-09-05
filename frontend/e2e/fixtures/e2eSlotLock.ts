@@ -23,6 +23,8 @@ export interface SlotLockOptions {
   lockDir?: string
   /** Override the poll cadence -- production never sets this; tests use a short interval. */
   pollIntervalMs?: number
+  /** Override the CI/env bypass -- production never sets this; tests force the real lock path. */
+  bypass?: boolean
 }
 
 // CI shards each run on its own runner, so the lock would only ever
@@ -88,7 +90,7 @@ function tryAcquire(dir: string): SlotOwner | undefined {
  * 45 min) elapses first. A no-op under CI or MILL_E2E_NO_SLOT_LOCK=1.
  */
 export async function acquireE2ESlot(timeoutMs = DEFAULT_TIMEOUT_MS, opts: SlotLockOptions = {}): Promise<void> {
-  if (isBypassed()) return
+  if (opts.bypass ?? isBypassed()) return
   const dir = opts.lockDir ?? DEFAULT_LOCK_DIR
   const pollIntervalMs = opts.pollIntervalMs ?? POLL_INTERVAL_MS
   const deadline = Date.now() + timeoutMs
@@ -118,7 +120,7 @@ export async function acquireE2ESlot(timeoutMs = DEFAULT_TIMEOUT_MS, opts: SlotL
  * this a no-op release destroy someone else's slot.
  */
 export function releaseE2ESlot(opts: SlotLockOptions = {}): void {
-  if (isBypassed()) return
+  if (opts.bypass ?? isBypassed()) return
   const dir = opts.lockDir ?? DEFAULT_LOCK_DIR
   const owner = readOwner(dir)
   if (owner && owner.pid !== process.pid) return

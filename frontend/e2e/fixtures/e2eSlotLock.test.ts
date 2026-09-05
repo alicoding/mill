@@ -31,18 +31,18 @@ function deadPid(): number {
 describe('acquireE2ESlot / releaseE2ESlot', () => {
   it('acquires an unheld lock immediately', async () => {
     const dir = freshLockDir()
-    await acquireE2ESlot(1_000, { lockDir: dir })
+    await acquireE2ESlot(1_000, { lockDir: dir, bypass: false })
     expect(existsSync(dir)).toBe(true)
-    releaseE2ESlot({ lockDir: dir })
+    releaseE2ESlot({ lockDir: dir, bypass: false })
     expect(existsSync(dir)).toBe(false)
   })
 
   it('a second acquire waits for the first release, then succeeds', async () => {
     const dir = freshLockDir()
-    await acquireE2ESlot(1_000, { lockDir: dir })
+    await acquireE2ESlot(1_000, { lockDir: dir, bypass: false })
 
     let secondAcquired = false
-    const second = acquireE2ESlot(5_000, { lockDir: dir, pollIntervalMs: 20 }).then(() => {
+    const second = acquireE2ESlot(5_000, { lockDir: dir, pollIntervalMs: 20, bypass: false }).then(() => {
       secondAcquired = true
     })
 
@@ -51,7 +51,7 @@ describe('acquireE2ESlot / releaseE2ESlot', () => {
     await new Promise((resolve) => setTimeout(resolve, 60))
     expect(secondAcquired).toBe(false)
 
-    releaseE2ESlot({ lockDir: dir })
+    releaseE2ESlot({ lockDir: dir, bypass: false })
     await second
     expect(secondAcquired).toBe(true)
   })
@@ -62,7 +62,7 @@ describe('acquireE2ESlot / releaseE2ESlot', () => {
     mkdirSync(dir)
     writeFileSync(path.join(dir, 'owner.json'), JSON.stringify({ pid, cwd: '/nowhere', startedAt: new Date().toISOString() }))
 
-    await acquireE2ESlot(1_000, { lockDir: dir, pollIntervalMs: 20 })
+    await acquireE2ESlot(1_000, { lockDir: dir, pollIntervalMs: 20, bypass: false })
     expect(existsSync(path.join(dir, 'owner.json'))).toBe(true)
   })
 
@@ -71,7 +71,7 @@ describe('acquireE2ESlot / releaseE2ESlot', () => {
     mkdirSync(dir)
     writeFileSync(path.join(dir, 'owner.json'), JSON.stringify({ pid: process.pid, cwd: '/held-by-me', startedAt: new Date().toISOString() }))
 
-    await expect(acquireE2ESlot(50, { lockDir: dir, pollIntervalMs: 20 })).rejects.toThrow(
+    await expect(acquireE2ESlot(50, { lockDir: dir, pollIntervalMs: 20, bypass: false })).rejects.toThrow(
       new RegExp(`pid ${process.pid}.*\\/held-by-me`),
     )
   })
@@ -81,7 +81,7 @@ describe('acquireE2ESlot / releaseE2ESlot', () => {
     mkdirSync(dir)
     writeFileSync(path.join(dir, 'owner.json'), JSON.stringify({ pid: process.pid + 1, cwd: '/other', startedAt: new Date().toISOString() }))
 
-    releaseE2ESlot({ lockDir: dir })
+    releaseE2ESlot({ lockDir: dir, bypass: false })
     expect(existsSync(dir)).toBe(true)
   })
 })
