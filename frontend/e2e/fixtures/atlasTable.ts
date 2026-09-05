@@ -85,7 +85,13 @@ export async function revealBoardObject(page: Page, object: Locator): Promise<vo
 export async function createTableFromList(page: Page, listLabel: string, revealText: string): Promise<Locator> {
   await page.getByTestId('atlas-tray-table').click()
   await page.getByTestId('atlas-table-from-list').click()
-  await page.getByTestId('entity-ref-field').selectOption({ label: listLabel })
+  const picker = page.getByTestId('entity-ref-field')
+  // The picker's options come from an async Lists() fetch fired on
+  // mount (EntityRefField.tsx) -- selectOption doesn't wait for an
+  // option to exist, so a slow/throttled runner can still be showing
+  // "Loading…" when it fires. Wait for the real option first.
+  await expect(picker.locator('option', { hasText: listLabel })).toHaveCount(1)
+  await picker.selectOption({ label: listLabel })
   const create = page.getByRole('button', { name: 'Create' })
   await create.click()
   await expect(create).toHaveCount(0)

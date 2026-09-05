@@ -16,7 +16,7 @@ import { contextMenu } from './fixtures/contextMenu'
 
 test('creating a table from a List: (Meta+z) removes the object, (Meta+Shift+z) restores it', async ({ page }) => {
   await openAtlas(page)
-  const object = await createTableFromList(page, 'Example: Country codes', 'US')
+  const object = await createTableFromList(page, 'Country codes', 'US')
   await expect(object).toHaveCount(1)
   await tableAuditShot(page, '01-create-from-list')
 
