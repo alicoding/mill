@@ -32,13 +32,13 @@ export type CommandContext =
   // the grid rather than re-derived, for the same reason `pinned` is:
   // the selection is that mount's own state, unreachable from here.
   | { kind: 'listGrid'; listID: string; rowIDs: string[]; columnKey?: string; text?: string }
-  // A Configure inventory row (goal 0346): `entity` is the family slug
-  // every surface already spells the same way -- InventoryItem.entity,
-  // ENTITY_ICON's keys, deleteWithUndo's data-event name -- and `id` is
-  // that row's entity id. One kind for every family, because a row
-  // action differs by FAMILY, not by kind of target: the command's own
-  // id carries the family, and entityContext(ctx, family) below is what
-  // refuses a context from a different one.
+  // A row in an entity inventory (goal 0346): `entity` is the family
+  // slug every surface already spells the same way -- InventoryItem.
+  // entity, ENTITY_ICON's keys, deleteWithUndo's data-event name -- and
+  // `id` is that row's entity id. One kind for every family, because a
+  // row action differs by FAMILY, not by kind of target: the command's
+  // own id carries the family, and entityContext(ctx, family) below is
+  // what refuses a context from a different one.
   | { kind: 'entity'; entity: string; id: string }
   // One row of a JSON/YAML tree on the board (goal 0269). The row's
   // path, its key and the text a copy would write are all STATED by

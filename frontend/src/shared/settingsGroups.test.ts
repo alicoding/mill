@@ -9,23 +9,27 @@ import { groupFromHash, hashForGroup, isSettingsHash } from '../views/settingsRo
 // rename is a breaking change a test should force someone to make on
 // purpose.
 describe('SETTINGS_GROUPS', () => {
-  it('is the eight groups, in reading order', () => {
+  it('is the seven groups, in reading order', () => {
     expect(SETTINGS_GROUPS.map((g) => g.id)).toEqual([
-      'general', 'appearance', 'shortcuts', 'extensions',
+      'general', 'appearance', 'shortcuts',
       'connections', 'notifications', 'backups', 'updates',
     ])
   })
 
   it('resolves every title from the shipped copy, never falling back to the id', () => {
     expect(SETTINGS_GROUPS.map(resolveGroupTitle)).toEqual([
-      'General', 'Appearance', 'Shortcuts', 'Extensions',
+      'General', 'Appearance', 'Shortcuts',
       'Connections', 'Notifications', 'Backups', 'Updates',
     ])
   })
 
   it('defaults to General and recognizes only real ids', () => {
     expect(DEFAULT_SETTINGS_GROUP).toBe('general')
-    expect(isSettingsGroup('extensions')).toBe(true)
+    expect(isSettingsGroup('shortcuts')).toBe(true)
+    // Extensions is a destination of its own now (goal 0349), so its
+    // old id is not a group -- shared/viewRedirects.ts sends the old
+    // address to the real page rather than to General.
+    expect(isSettingsGroup('extensions')).toBe(false)
     expect(isSettingsGroup('nonsense')).toBe(false)
     expect(isSettingsGroup(undefined)).toBe(false)
   })

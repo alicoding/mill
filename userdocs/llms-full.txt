@@ -409,7 +409,7 @@ connected by links, grouped into areas you can drill into.
   strikethrough, and code; type `[]` or `[x]` at the start of a line
   for a to-do, and Enter continues the list unchecked; at rest the
   note shows the rendered result, and clicking it brings the source
-  back. With Rich code blocks turned on (Settings → Extensions →
+  back. With Rich code blocks turned on (Extensions →
   Note), press Shift-Option-F inside a code block to format it —
   JSON, JavaScript, TypeScript, CSS, HTML, YAML, and Markdown. A long sticky note scrolls in place, and grows while you
   edit it — and any note opens big: ⌘-click it (or right-click →
@@ -1417,7 +1417,14 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `docs.search` | Search docs | — | Global | Always available |
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
+| `extension.disable` | Turn off | — | Global | Acts on the selected entity |
+| `extension.enable` | Turn on | — | Global | Acts on the selected entity |
+| `extension.refreshSources` | Extensions: refresh sources | — | Global | Always available |
+| `extension.remove` | Remove | — | Global | Acts on the selected entity |
+| `extension.reveal` | Reveal folder | — | Global | Acts on the selected entity |
 | `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
+| `extensions.open` | Extensions | `⌘⇧X` | Global | Always available |
+| `extensions.sources` | Extensions: marketplace sources | — | Global | Always available |
 | `help.openDataFolder` | Open data folder | — | Global | Always available |
 | `help.reportIssue` | Report an issue… | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
@@ -1452,7 +1459,6 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `settings.open.appearance` | Settings › Appearance | — | Global | Always available |
 | `settings.open.backups` | Settings › Backups | — | Global | Always available |
 | `settings.open.connections` | Settings › Connections | — | Global | Always available |
-| `settings.open.extensions` | Settings › Extensions | — | Global | Always available |
 | `settings.open.general` | Settings › General | — | Global | Always available |
 | `settings.open.notifications` | Settings › Notifications | — | Global | Always available |
 | `settings.open.shortcuts` | Settings › Shortcuts | — | Global | Always available |
@@ -1588,6 +1594,7 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Review | ⌘5 | `view.review` |
 | Review rules | — | `review.rules` |
 | Secrets | ⌘6 | `view.secrets` |
+| Extensions | ⌘⇧X | `extensions.open` |
 | Docs | — | `view.docs` |
 | Command palette | ⌘K | `palette.open` |
 | Next tab | ⌃TAB | `tab.next` |

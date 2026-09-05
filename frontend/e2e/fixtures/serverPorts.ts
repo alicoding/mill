@@ -387,3 +387,17 @@ export const BROWSER_BRIDGE_MCP_BASE_PORT = 11740
 // enough to clear the whole declared range above with room to spare, so
 // no derived bridge port can land on another spec's declared listener.
 export const BRIDGE_PORT_OFFSET = 20000
+
+// The Extensions store's own dedicated pair (goal 0349): browsing,
+// adding a marketplace source and installing all change GLOBAL plugin
+// state -- what the plugins directory holds and which marketplaces
+// this Mill reads -- exactly the cross-spec state testing.md's
+// shared-vs-dedicated rule keeps off the shared pool.
+export const EXTENSIONS_STORE_SERVER_BASE_PORT = 11760
+export const EXTENSIONS_STORE_MCP_BASE_PORT = 11780
+
+// extensions-install.spec.ts's own pair (goal 0349): the archive
+// install path writes into the plugins directory, the same global
+// state the store spec's pair isolates.
+export const EXTENSIONS_INSTALL_SERVER_BASE_PORT = 11800
+export const EXTENSIONS_INSTALL_MCP_BASE_PORT = 11820
