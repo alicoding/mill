@@ -401,3 +401,9 @@ export const EXTENSIONS_STORE_MCP_BASE_PORT = 11780
 // state the store spec's pair isolates.
 export const EXTENSIONS_INSTALL_SERVER_BASE_PORT = 11800
 export const EXTENSIONS_INSTALL_MCP_BASE_PORT = 11820
+
+// secrets-run-wait.spec.ts's own dedicated pair (goal 0360 S2): the
+// vault's lock state and the global Review queue are both read, the
+// same shared-vs-dedicated reasoning as secrets.spec.ts's pair.
+export const SECRETS_RUN_WAIT_SERVER_BASE_PORT = 11840
+export const SECRETS_RUN_WAIT_MCP_BASE_PORT = 11860

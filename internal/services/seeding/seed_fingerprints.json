@@ -371,6 +371,10 @@
     "seedRevision": 4,
     "fingerprint": "231e29623450d0f26d46c439937e11844fbe9095f2b97cf7327d4e92d3ecb89b"
   },
+  "workflow:example-scheduled-secret-read-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "cedab78c02638f666810403e0d5ab0225037fce47eb27d132da97a34f5cf6e34"
+  },
   "workflow:example-scratch-capture-workflow": {
     "seedRevision": 4,
     "fingerprint": "36d4113c0ce217af1be0cf743d3b754b879f174e69a4cf38f0325754c11687f3"

@@ -37,7 +37,9 @@ working in another app keeps the vault open. Three checkboxes close it
 regardless of idle time: when this Mac sleeps or the screen locks, when
 you switch users, and when Mill's window is minimized. The first two
 start on. The Secrets page states both halves in one line: what it
-takes to unlock, and how long it stays open.
+takes to unlock, and how long it stays open. A workflow run that needs
+a secret while the vault is locked doesn't fail: it waits in Review
+until you unlock the vault, then continues from the step that stopped.
 
 If Mill can't open your vault file — the key for it isn't on this
 device, or the key it has doesn't fit — the locked screen says which,
