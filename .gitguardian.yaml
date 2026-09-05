@@ -1,0 +1,13 @@
+version: 2
+
+secret:
+  # The parser tests for goal 0306 S4 (password-export import) fixture
+  # csv files that pair a username column with a password column -- the
+  # exact shape a password-export format contract requires, and the
+  # exact shape GitGuardian's detectors flag. Every value in these
+  # files is an obviously fake fixture ("example-user-N",
+  # "not-a-real-secret-N"), scoped to the two directories that hold
+  # them rather than exempting *_test.go wholesale.
+  ignored_paths:
+    - "internal/adapters/secretimport/testdata/*"
+    - "frontend/e2e/fixtures/password-export-sample.csv"

@@ -71,6 +71,13 @@ var assets embed.FS
 //go:embed all:userdocs
 var userdocsFS embed.FS
 
+// The bundled "mill" marketplace's offerings (docs/goals/0349),
+// injected below because go:embed paths are package-relative and these
+// live at the repository root -- userdocsFS's own shape.
+//
+//go:embed all:examples/plugins
+var examplePluginsFS embed.FS
+
 //go:embed build/appicon.png
 var trayIconPNG []byte
 
@@ -190,6 +197,7 @@ func main() {
 	}
 	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
 	pluginService := wiring.NewPluginService(settingsPath, guardrailService, millChannel, millUpdateVersion)
+	pluginService.SetExampleMarketplace(examplePluginsFS)
 	// docs/goals/0240 S1: the coding loop's Confirm-screen preview --
 	// read-only over guardrailService.Rules(). Its ExecutionService
 	// dependency (goal 0240 S2, RunCommandBlock's own doc comment) is
@@ -225,26 +233,13 @@ func main() {
 	// run executed in; the labels live in Configure.
 	executionService.SetEnvironmentLabelLookup(configureService.EnvironmentLabel)
 
-	// docs/adr/0038 decision 4, goal 0061 slice C: "Update now" runs a
-	// card's referenced workflow through the normal guardrail-gated
+	// docs/adr/0038 decision 4, goal 0061 slice C / goal 0084: "Update
+	// now" and card actions both run through the normal guardrail-gated
 	// path -- same late-bound-setter shape as WireChildWorkflowRunner
-	// above, atlassvc never imports executionsvc directly. Kind is
-	// RunKindTriggered (production semantics: a disabled or
-	// never-published refresh workflow is rejected, same requirement
-	// child-workflow nodes already hold their callable target to).
-	atlassvc.SetWorkflowRunner(func(workflowID string) (string, bool, bool, error) {
-		summary, err := executionService.RunWorkflow(workflowID, executionsvc.RunKindTriggered, nil)
-		if err != nil {
-			return "", false, false, err
-		}
-		pending := summary.Pending != nil
-		return summary.RunID, !pending && summary.Status == "SUCCESS", pending, nil
-	})
-	// Card actions (goal 0084): source-card-recording entry, so the cycle guard covers action runs.
-	atlassvc.SetCardActionRunner(func(workflowID, sourceCardID string, values map[string]string, payload string) error {
-		_, err := executionService.RunWorkflowForAtlasCard(workflowID, sourceCardID, values, payload)
-		return err
-	})
+	// above, atlassvc never imports executionsvc directly. Split into
+	// the wiring package at the 500-line limit, same as the seam
+	// adapters below.
+	wiring.WireAtlasWorkflowRunners(executionService)
 	executionService.SetRunCompletionSink(atlasService.NotifyRunCompleted)
 	atlasService.WireCompositionSeams(triggerService.DispatchAtlasCardChange) // goal 0066
 	// Cross-service seam adapters (recognition, List projection) live in the wiring package -- composition-root code split out of this file at the 500-line limit.
@@ -469,6 +464,7 @@ func main() {
 	settingsService.SetWindow(windowing.WrapWindow(mainWindow))
 	settingsService.WatchWindowGeometry()
 	atlasService.WireFileDropWindow(windowing.WrapWindow(mainWindow))
+	secretService.WireLockTriggers(windowing.WrapWindow(mainWindow))
 	launchatlogin.SetAutostartManager(app.Autostart)
 
 	// ADR-0033 second-window family, built in auxwindows.go.

@@ -7,14 +7,18 @@ export {
 };
 
 export type {
+    BrowseEntry,
     CanvasObjectContribution,
     CaptureContribution,
     CommandContribution,
     CommandMenuContribution,
     ContentWriter,
     GuardedActionDecision,
+    InstallPreview,
+    InstallRecord,
     Manifest,
     ManifestContributes,
+    MarketplaceSource,
     NetworkContribution,
     PluginCapture,
     PluginContentWrite,
@@ -26,6 +30,7 @@ export type {
     PluginInfo,
     PluginListColumn,
     PluginListDirResult,
+    PluginSource,
     SecretSourceContribution,
     SecretSourceKindInfo,
     SecretSourcePathContribution,

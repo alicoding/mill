@@ -34,6 +34,10 @@ export function activate(api) {
 		icon: '🗂️',
 		source: 'board-local',
 		editRoute: 'none',
+		// The listing scrolls past the object's box, so the face takes
+		// the wheel and the keys once the object is selected; idle, the
+		// board keeps them.
+		content: 'interactive',
 		defaultPayload: {},
 		renderFace(el) {
 			faces.add(el)

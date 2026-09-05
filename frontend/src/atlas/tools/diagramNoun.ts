@@ -28,15 +28,13 @@ registerBoardObjectContent('diagram', {
   // A diagram's own vendored pan/zoom viewer captures pointer events --
   // the shared chrome band is its only drag surface, same as table's.
   dragBand: true,
-  // Click-to-activate, the same contract the pdf face carries (goal
-  // 0302 closed the gap 0271 left): unselected, a transparent shield
-  // takes the first click and every wheel goes to the board (pan,
-  // pinch and ⌘-scroll zoom, like over any object); selected, the
-  // viewer owns the wheel (scroll pans it, ctrl/pinch zooms it) and
-  // the node opts the board out.
-  clickShield: true,
+  // The vendored viewer pans and zooms on its own (goal 0354): idle, a
+  // transparent shield takes the first click and every wheel goes to
+  // the board (pan, pinch and ⌘-scroll zoom, like over any object);
+  // selected, the viewer owns the wheel and the frame opts the board
+  // out.
+  content: 'interactive',
   shieldHintKey: 'atlas:diagramNoun.shieldHint',
-  wheelContained: true,
   // overflowChip (goal 0340): a drawing is routinely larger than the
   // box it sits in, and the face can fit it -- so the shared chrome
   // band carries a "Fit" chip whenever the viewer reports it currently

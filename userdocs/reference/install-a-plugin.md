@@ -9,19 +9,71 @@ installing one is copying that folder into Mill's plugins folder.
 
 ## Installing
 
-1. Open **Settings → Extensions** and press **Open plugins folder**.
-2. Copy the plugin's folder in — the folder name must match the
-   plugin's id.
-3. Press **Reload all**. The plugin's tool appears in the canvas tray,
-   and its row appears under **Installed** with its name and one line
-   about it. Click the row to open its page: version, author, what it
-   adds, what it can request, and which hosts it can reach.
+**Extensions** is its own page — press ⇧⌘X, or pick it in the sidebar.
+It has three tabs: **Installed**, **Browse**, and **Updates**.
+
+Browse lists everything your marketplaces offer that you have not
+installed yet, starting with the examples Mill ships. Press **Install**
+on a row. Mill shows what the extension can do — the hosts it reaches,
+whether it writes to your boards, what it adds — and installs it only
+after you confirm. The new extension appears under **Installed**;
+reload to load it.
+
+### Installing from a link or a folder
+
+Not everything lives in a marketplace. Mill also installs from:
+
+- a repository, as `owner/repo` or `owner/repo@v1.2.0`
+- a direct address of a `.zip` archive
+- a folder on this Mac, for a plugin you are writing yourself
+
+The folder name must match the plugin's id, and a folder you point
+Mill at is copied, not linked.
+
+### How much Mill checked
+
+Every installed extension wears one badge, and it says exactly what
+was checked:
+
+| Badge | What it means |
+| --- | --- |
+| **Verified** | Its files match the hash the marketplace published, and a key this Mill trusts signed them. |
+| **Hash-pinned** | Its files match the hash the marketplace published. |
+| **Unverified** | Nothing checked these files. Mill asks you to acknowledge that before installing. |
+| **Dev** | You installed it from a folder on this Mac. |
+
+The badge is on the row, on the extension's page, and on its
+**Verification** tab, which also lists what the extension can do — the
+same list you saw before installing.
+
+### Marketplaces
+
+A marketplace is any repository or folder with a `.mill/marketplace.json`
+file at its root, listing the plugins it offers. Press **Sources** in
+the Browse tab to add one: `owner/repo`, a repository address, a direct
+address of a `marketplace.json` file, or a folder path.
+
+Mill reads a marketplace only when you add it, refresh it, install
+from it, or check for updates. It never reaches out on its own.
+
+### Installing by hand
+
+Copying a folder into the plugins folder still works. Open
+**Extensions → Installed → Open plugins folder**, copy the folder in,
+and press **Reload all**.
 
 A plugin that can't load shows exactly why on its page — a missing
 file, invalid manifest, or a capability Mill doesn't recognize —
 instead of silently doing nothing. A plugin whose manifest sets
 `minMillVersion` to a version newer than your Mill is refused the
 same visible way: update Mill, then reload.
+
+### What an extension's page shows
+
+Click a row to open it. **Overview** is the plugin's own README;
+**Contributions** is what it adds, what it can reach, and what it
+catches; **Changelog** is its CHANGELOG; **Verification** is what
+checked it and what it can do; **Settings** is whatever it declares.
 
 ## Starting a plugin
 

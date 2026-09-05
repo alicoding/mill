@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Blankslate } from '@primer/react/experimental'
-import { Button, Checkbox, FormControl, Heading, IconButton, Label, SegmentedControl, Stack, Text } from '@primer/react'
+import { Button, Heading, IconButton, Label, SegmentedControl, Stack, Text } from '@primer/react'
 import { DownloadIcon, HistoryIcon, KeyIcon, LockIcon, PlusIcon } from '@primer/octicons-react'
 import { BackupService, SecretService } from '../shared/bindings'
 import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
@@ -11,6 +11,8 @@ import { findCommand, runCommand } from '../shared/commands'
 import { refreshVaultStatus, useVaultStatusStore } from '../shared/vaultStatusStore'
 import { vaultErrorKind } from '../shared/secretsCommands'
 import { messageOf } from '../shared/userError'
+import { humanizeLockAfter, unlockStatusKey } from '../shared/vaultLockCopy'
+import type { TFunction } from 'i18next'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { entityRowContext } from '../shared/entityRowCommands'
@@ -26,7 +28,36 @@ import { SecretsDetailDialog } from './SecretsDetailDialog'
 import { SecretsHistoryDialog } from './SecretsHistoryDialog'
 import { SecretsAccessHistoryDialog } from './SecretsAccessHistoryDialog'
 import { SecretsImportDialog } from './SecretsImportDialog'
+import SecretsLockingSettings from './SecretsLockingSettings'
 import styles from './SecretsView.module.css'
+
+type SecretsSection = 'vault' | 'sources' | 'locking'
+
+// The page's three sections, and the deep-link tab values that land on
+// each. An unrecognized tab lands on the entries, which is the section
+// the page is named for.
+function sectionFromTab(tab: string | undefined): SecretsSection {
+  return tab === 'sources' || tab === 'locking' ? tab : 'vault'
+}
+
+const SECTION_SUBTITLE_KEY: Record<SecretsSection, string> = {
+  vault: 'subtitle',
+  sources: 'sections.sourcesSubtitle',
+  locking: 'sections.lockingSubtitle',
+}
+
+// The status line is two sentences composed from state: what it takes
+// to open the vault, then how long it stays open. Never a fixed
+// string -- both halves are settings the reader can change one section
+// away, and the first names only what this Mac can actually ask for.
+function protectionSentences(t: TFunction<'secrets'>, requireAuth: boolean, capability: string, lockAfterSeconds: number): string {
+  const unlock = requireAuth ? t(unlockStatusKey(capability)) : t('touchId.keychainStatus')
+  const timeout = humanizeLockAfter(lockAfterSeconds)
+  const idle = timeout === null
+    ? t('locking.neverLocks')
+    : t('locking.locksAfter', { duration: t(timeout.key, { count: timeout.count }) })
+  return `${unlock} ${idle}`
+}
 
 // The secret manager's human-facing surface (goal 0185 S2): browse,
 // reveal/hide, copy with auto-clear, add/edit/delete, history --
@@ -39,7 +70,7 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   // Two sections, one page (goal 0306): the entries themselves, and the
   // stores Mill reads entries from. Sources are reachable while the
   // vault is locked -- they are configuration, not vault content.
-  const [section, setSection] = useState<'vault' | 'sources'>(initialTab === 'sources' ? 'sources' : 'vault')
+  const [section, setSection] = useState<SecretsSection>(() => sectionFromTab(initialTab))
   // The vault-lock state door (goal 0222 S1, shared/vaultStatusStore.ts)
   // -- lifted out of local useState so secrets.lockVault/unlockVault's
   // own enabled() predicates can read the identical truth synchronously
@@ -69,6 +100,12 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   // fetched only while that state is showing, since it's the one state
   // that names a recovery copy's age.
   const [vaultBackupTime, setVaultBackupTime] = useState<Date | null>(null)
+  // What this Mac would actually ask for when the unlock requirement is
+  // on, and how long it stays open -- the two halves of the status line
+  // below. Read from the service rather than assumed, so the sentence
+  // never promises hardware this Mac does not have.
+  const [capability, setCapability] = useState('none')
+  const [lockAfterSeconds, setLockAfterSeconds] = useState(0)
 
   const sectionSwitch = (
     <SegmentedControl aria-label={t('sections.ariaLabel')} className={styles.sections} data-testid="secrets-sections">
@@ -77,6 +114,9 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
       </SegmentedControl.Button>
       <SegmentedControl.Button selected={section === 'sources'} onClick={() => setSection('sources')} data-testid="secrets-section-sources">
         {t('sections.sources')}
+      </SegmentedControl.Button>
+      <SegmentedControl.Button selected={section === 'locking'} onClick={() => setSection('locking')} data-testid="secrets-section-locking">
+        {t('sections.locking')}
       </SegmentedControl.Button>
     </SegmentedControl>
   )
@@ -90,7 +130,7 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
       <Stack direction="vertical" gap="none" className={styles.pageHeader}>
         <Heading as="h1" id="secrets-heading">{t('heading')}</Heading>
         <Text as="p" size="small" className={styles.subtitle}>
-          {section === 'sources' ? t('sections.sourcesSubtitle') : t('subtitle')}
+          {t(SECTION_SUBTITLE_KEY[section])}
         </Text>
       </Stack>
       {sectionSwitch}
@@ -98,6 +138,7 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   )
 
   const refresh = () => {
+    SecretService.VaultLockPolicy().then((p) => setLockAfterSeconds(p.LockAfterSeconds)).catch(() => undefined)
     void refreshVaultStatus().then(() => {
       const s = useVaultStatusStore.getState().vaultStatus
       if (s?.Unlocked) {
@@ -107,6 +148,10 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
       }
     })
   }
+
+  useEffect(() => {
+    SecretService.UnlockCapability().then(setCapability).catch(() => setCapability('none'))
+  }, [])
 
   useEffect(() => {
     refresh()
@@ -224,7 +269,7 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
     )
   }
 
-  const protectionStatus = status.RequireAuth ? t('touchId.requiredStatus') : t('touchId.keychainStatus')
+  const protectionStatus = protectionSentences(t, status.RequireAuth, capability, lockAfterSeconds)
 
   if (!status.Unlocked) {
     // One line, in this view's own words, for each way an unlock ends
@@ -289,6 +334,28 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
             }}
           />
         )}
+      </PageContainer>
+    )
+  }
+
+  // Locking sits behind the same unlocked gate the entries do: the
+  // unlock requirement can only be changed on a vault you can see
+  // inside (SetTouchIDProtection refuses otherwise), so a locked vault
+  // lands on the Unlock state above and the section's own controls
+  // never render half-usable.
+  if (section === 'locking') {
+    return (
+      <PageContainer variant="wide" data-testid="secrets-view">
+        {firstRunIntro}
+        {pageHeader}
+        <SecretsLockingSettings
+          capability={capability}
+          requireAuth={status.RequireAuth}
+          authAvailable={status.AuthAvailable}
+          unlockBusy={presenceBusy}
+          onToggleUnlockRequirement={toggleTouchID}
+        />
+        {error && <Text as="p" size="small" className={styles.error} data-testid="secrets-touchid-error">{error}</Text>}
       </PageContainer>
     )
   }
@@ -368,18 +435,6 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
       </Stack>
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.protectionRow}>
         <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-protection-status">{protectionStatus}</Text>
-        <FormControl disabled={!status.AuthAvailable}>
-          <Checkbox
-            checked={status.RequireAuth}
-            disabled={presenceBusy || !status.AuthAvailable}
-            onChange={(e) => toggleTouchID(e.target.checked)}
-            data-testid="secrets-touchid-toggle"
-          />
-          <FormControl.Label>{t('touchId.toggleLabel')}</FormControl.Label>
-          <FormControl.Caption>
-            {status.AuthAvailable ? t('touchId.toggleCaption') : t('touchId.unavailableCaption')}
-          </FormControl.Caption>
-        </FormControl>
       </Stack>
       {error && <Text as="p" size="small" className={styles.error} data-testid="secrets-touchid-error">{error}</Text>}
       <InventoryList

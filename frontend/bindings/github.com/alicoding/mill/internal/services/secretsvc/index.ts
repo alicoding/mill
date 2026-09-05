@@ -11,6 +11,7 @@ export type {
     ImportPreview,
     ListSecretAccessRequest,
     ListSecretAccessResponse,
+    LockPolicy,
     SecretAccessRecord,
     SourcesLister,
     Status

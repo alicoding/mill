@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { waitForViewportStable } from './fixtures/animation'
 import { wheelAt } from './fixtures/pointer'
+import { pdfBytes } from './fixtures/pdfBytes'
 
 // Goal 0223: the live-app proof that the seeded board-object examples
 // (shape/ink/image, plus a diagram this test creates for itself --
@@ -116,9 +117,9 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     // same adopt-the-viewer's-controls choice the drawio face made).
     const pdf = page.locator('[data-testid="atlas-board-object"][data-object-kind="pdf"]')
     await expect(pdf).toBeVisible()
-    // Wheel routing, shield up (goal 0271): an UNSELECTED clickShield
-    // Kind is inert, so the wheelContained fact withholds nowheel and
-    // a scroll over it pans the board like any body. The reverse wheel
+    // Wheel routing, idle (goal 0354): an idle interactive face is
+    // inert, so the frame withholds nowheel and a scroll over it pans
+    // the board like any body. The reverse wheel
     // restores the viewport exactly (panOnScroll is a 1:1 delta, no
     // zoom), keeping later geometry in this test intact.
     await expect(pdf).not.toHaveClass(/nowheel/)
@@ -129,7 +130,7 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     await expect.poll(viewportTransform).not.toBe(shieldUpTransform)
     await wheelAt(page, pdf, 0, -80)
     await expect.poll(viewportTransform).toBe(shieldUpTransform)
-    // Click-to-activate (the clickShield contract): the first click on
+    // Click-to-activate (the activation contract): the first click on
     // the face selects the object -- only then is the embedded viewer
     // live. A frameLocator could technically pierce the shield, but
     // the test drives what a user must actually do.
@@ -144,10 +145,9 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     await expect(viewer.locator('#findInput')).toHaveAttribute('autocorrect', 'off')
     await expect(viewer.locator('#findInput')).toHaveAttribute('autocomplete', 'off')
     await expect(viewer.locator('#findInput')).toHaveAttribute('spellcheck', 'false')
-    // Wheel routing, live viewer (goal 0271): with the shield lifted
-    // the registry's wheelContained fact puts nowheel on the whole
-    // node box -- a scroll aimed into the viewer must never ALSO pan
-    // the board.
+    // Wheel routing, live viewer (goal 0354): with the shield lifted
+    // the selected state puts nowheel on the whole node box -- a scroll
+    // aimed into the viewer must never ALSO pan the board.
     await expect(pdf).toHaveClass(/nowheel/)
     await waitForViewportStable(page.getByTestId('atlas-board'))
     const liveTransform = await viewportTransform()
@@ -186,32 +186,6 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
 // never renders where this test looks for it.
 const ATLAS_BOARD_GALLERY_ID = 'atlas-card-session-sketches'
 
-// linkPdfBytes builds a minimal single-page PDF carrying one URI link
-// annotation, with a correct xref (never pdf.js's lenient recovery
-// path) -- the TS twin of internal/webviewbridgesmoke's smokePdfBytes.
-function linkPdfBytes(url: string): string {
-  const content = 'BT /F1 24 Tf 72 690 Td (Link here) Tj ET'
-  const objects = [
-    '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> /Annots [6 0 R] >>',
-    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-    `<< /Type /Annot /Subtype /Link /Rect [60 660 320 730] /Border [0 0 0] /A << /S /URI /URI (${url}) >> >>`,
-  ]
-  let out = '%PDF-1.4\n'
-  const offsets: number[] = []
-  objects.forEach((obj, i) => {
-    offsets.push(out.length)
-    out += `${i + 1} 0 obj\n${obj}\nendobj\n`
-  })
-  const xrefAt = out.length
-  out += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`
-  for (const off of offsets) out += `${String(off).padStart(10, '0')} 00000 n \n`
-  out += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`
-  return out
-}
-
 // goal 0271: an external link clicked inside the live viewer opens
 // through the system-browser door, and the app NEVER navigates away
 // (the raw default replaced Mill's whole webview with the link's site,
@@ -221,7 +195,7 @@ test('a link annotation in a live pdf opens externally and never navigates the a
   const dir = mkdtempSync(path.join(tmpdir(), 'mill-e2e-pdf-link-'))
   try {
     const pdfFile = path.join(dir, 'ZzE2eLinkDoc.pdf')
-    writeFileSync(pdfFile, linkPdfBytes('https://example.com/mill-e2e-pdf-link'))
+    writeFileSync(pdfFile, pdfBytes({ link: 'https://example.com/mill-e2e-pdf-link' }))
 
     // Best-effort suppression of the runtime's Browser.OpenURL HTTP
     // call so the worker host never actually opens a browser tab. Not
