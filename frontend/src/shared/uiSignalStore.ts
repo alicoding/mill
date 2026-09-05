@@ -109,6 +109,13 @@ interface UISignalState {
   // must name WHICH object's own title row enters edit.
   atlasTableRenameRequest: { id: string; seq: number } | null
   requestAtlasTableRename: (objectID: string) => void
+  // "Fit diagram" (goal 0354): the board object's own fit control, now
+  // that its face shows no vendored toolbar. Token-carrying with the
+  // target's id, the same shape requestAtlasTableRename above takes --
+  // the frame that holds the live viewer's fit action watches for its
+  // OWN id, so a board with several diagrams stays unambiguous.
+  atlasDiagramFitRequest: { id: string; seq: number } | null
+  requestAtlasDiagramFit: (objectID: string) => void
   // The tray's image tool (goal 0169 slice 2, the paste-or-drop
   // interaction) -- opens its own path/paste popover. A counter, not a
   // per-tool payload, since only one popover-style tool exists so far;
@@ -264,6 +271,8 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasTablePicker: () => set((s) => ({ atlasTablePickerRequest: s.atlasTablePickerRequest + 1 })),
   atlasTableRenameRequest: null,
   requestAtlasTableRename: (objectID) => set((s) => ({ atlasTableRenameRequest: { id: objectID, seq: (s.atlasTableRenameRequest?.seq ?? 0) + 1 } })),
+  atlasDiagramFitRequest: null,
+  requestAtlasDiagramFit: (objectID) => set((s) => ({ atlasDiagramFitRequest: { id: objectID, seq: (s.atlasDiagramFitRequest?.seq ?? 0) + 1 } })),
   atlasImagePopoverRequest: 0,
   requestAtlasImagePopover: () => set((s) => ({ atlasImagePopoverRequest: s.atlasImagePopoverRequest + 1 })),
   atlasUndoAvailable: false,

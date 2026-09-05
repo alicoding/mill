@@ -329,6 +329,7 @@
     "promoteToCard": "Promote to card…",
     "openInDefaultApp": "Open in default app",
     "editDiagram": "Edit diagram…",
+    "fitDiagram": "Fit diagram",
     "deleteNote": "Delete note",
     "openCard": "Open {{title}}",
     "groupIntoArea": "Group into new area",

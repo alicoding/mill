@@ -22,6 +22,17 @@ function atlasBoardHasContent(): boolean {
 // shared/uiSignalStore.ts counter the owning atlas/ component already
 // watches, the same store-signal seam every other cross-bounded-
 // context command in commands.ts uses.
+// The board's currently selected DIAGRAM object, read from the live
+// canvas the same way atlasBoardHasContent above reads it -- the node's
+// own data-id IS the object id (atlasBuildBoardObjectNodes.ts). Null
+// when the selection is anything else, which is diagram.fit's honest
+// enablement: fitting a drawing needs a drawing to fit.
+function selectedDiagramObjectID(): string | null {
+  if (typeof document === 'undefined') return null
+  const face = document.querySelector('.react-flow__node.selected [data-object-kind="diagram"]')
+  return face?.closest('.react-flow__node')?.getAttribute('data-id') ?? null
+}
+
 export const ATLAS_BOARD_COMMANDS: Command[] = [
   {
     id: 'atlas.arrange',
@@ -149,6 +160,23 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     paletteHidden: true,
     surface: ['atlas'],
     run: () => {},
+  },
+  {
+    // "Fit diagram" (goal 0354): a diagram board object shows no
+    // vendored toolbar, so its zoom-to-fit is the object's own action --
+    // on the palette, and on the object's menu beside the full-editor
+    // door. The run bumps the signal the frame holding that object's
+    // live viewer watches, which calls the viewer's own graph.fit()
+    // (atlas/drawioInteraction.ts) rather than a second geometry.
+    id: 'diagram.fit',
+    label: 'commands.diagram.fit',
+    defaultBinding: null,
+    surface: ['atlas'],
+    enabled: () => selectedDiagramObjectID() !== null,
+    run: () => {
+      const id = selectedDiagramObjectID()
+      if (id) useUISignalStore.getState().requestAtlasDiagramFit(id)
+    },
   },
   {
     // "Open in default app" (goal 0232 S1): a file-backed board

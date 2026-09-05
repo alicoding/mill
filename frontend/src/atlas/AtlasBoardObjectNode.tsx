@@ -16,6 +16,7 @@ import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
 import { useAtlasObjectMirrorRead } from './useAtlasObjectMirrorRead'
 import { useAtlasShapeRotateLive } from './atlasShapeRotateLiveStore'
 import { dispatchObjectEdit, resolveEditRoute } from './objectSeams'
+import { useUISignalStore } from '../shared/uiSignalStore'
 import styles from './AtlasBoardObjectNode.module.css'
 
 export interface AtlasBoardObjectData extends Record<string, unknown> {
@@ -206,6 +207,15 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
     overflowRef.current = { exceeds, fit }
     setOverflow({ exceeds, fit })
   }, [])
+  // "Fit diagram" from the object's own menu or the palette (goal
+  // 0354): the command names the target and this frame holds the live
+  // viewer's fit action, so it answers only for its OWN object. The
+  // same action the Fit chip runs -- one fit, two doors.
+  const fitRequest = useUISignalStore((st) => st.atlasDiagramFitRequest)
+  useEffect(() => {
+    if (!fitRequest || fitRequest.id !== object.ID) return
+    overflowRef.current?.fit()
+  }, [fitRequest, object.ID])
   const showFitChip = showsFitChip(resolvedFacts, preview, overflow)
   const { route: editRoute, editable } = editDoor(object, facts, preview)
 
