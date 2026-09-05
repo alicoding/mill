@@ -65,6 +65,18 @@
         "label": "Authorization",
         "description": "A vault entry sent as a bearer token with every request."
       }
+    ],
+    "mcpServers": [
+      {
+        "id": "reference",
+        "label": "Reference server",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-everything"
+        ],
+        "env": {}
+      }
     ]
   }
 }

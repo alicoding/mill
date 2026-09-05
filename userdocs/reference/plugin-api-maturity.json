@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-09-05",
-  "headline": "3 of 10 contribution families are stable; 0 ready to promote; 0 regressed.",
+  "headline": "3 of 11 contribution families are stable; 0 ready to promote; 0 regressed.",
   "rows": [
     {
       "family": "canvasObjects",
@@ -12,7 +12,7 @@
       "sdkTypes": true,
       "mcp": "yes",
       "codeChangedAt": "2026-09-05",
-      "docsChangedAt": "2026-09-05",
+      "docsChangedAt": "2026-09-04",
       "daysBehindCode": 0,
       "flags": []
     },
@@ -139,6 +139,19 @@
       "mcp": "yes",
       "codeChangedAt": "2026-09-05",
       "docsChangedAt": "2026-09-05",
+      "daysBehindCode": 0,
+      "flags": []
+    },
+    {
+      "family": "mcpServers",
+      "level": "experimental",
+      "conformance": false,
+      "example": true,
+      "e2e": false,
+      "docs": true,
+      "sdkTypes": false,
+      "mcp": "no",
+      "codeChangedAt": "2026-09-05",
       "daysBehindCode": 0,
       "flags": []
     }
