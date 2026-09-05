@@ -17,6 +17,14 @@ pre-commit:
     - name: framework-api-first
       glob: "*.go"
       run: ./scripts/check-framework-api-first.sh
+    - name: e2e-seed-literals
+      glob: "frontend/e2e/**/*.ts"
+      # An e2e count of a set the APP owns (registered step types,
+      # built-in Extensions rows, the seeded objects filed in one
+      # place) must be read back through the surface's own door, never
+      # hand-kept: a literal goes stale on the next member and fails
+      # the PR that added it. Grep-only, same shape as comment-hygiene.
+      run: ./scripts/check-e2e-seed-literals.sh
     - name: ui-copy
       glob: "frontend/src/locales/**/*.json"
       run: ./scripts/check-ui-copy.sh
