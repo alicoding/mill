@@ -31,8 +31,8 @@ func SQLiteDBPath(databaseURL string) string {
 // WireCompositionRunner) -- extracted to keep main.go's own wiring
 // terse (the same keep-main.go-under-its-line-count reasoning
 // InitUpdater's own extraction already documents).
-func Wire(dbPath, settingsPath, dir, millVersion string, comp *compositionsvc.CompositionService, cfg *configuresvc.ConfigureService, atlasSvc *atlassvc.AtlasService) *BackupService {
-	b := New(dbPath, settingsPath, dir, millVersion)
+func Wire(dbPath, settingsPath, vaultPath, dir, millVersion string, comp *compositionsvc.CompositionService, cfg *configuresvc.ConfigureService, atlasSvc *atlassvc.AtlasService) *BackupService {
+	b := New(dbPath, settingsPath, vaultPath, dir, millVersion)
 	b.SetFamilies(BuildFamilies(comp, cfg))
 	b.SetAtlasBundle(WireAtlasBundle(atlasSvc))
 	WireCompositionRunner(b)

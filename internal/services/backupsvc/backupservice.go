@@ -46,19 +46,25 @@ type BackupService struct {
 	mu           sync.Mutex
 	dbPath       string
 	settingsPath string
-	dir          string
-	millVersion  string
+	// vaultPath is the secret vault's own KDBX file (main.go's
+	// MILL_SECRETS_PATH-resolved path) -- "" only when the caller never
+	// wires one (e.g. a test construction that doesn't need it), never a
+	// real deployment: every backup carries the encrypted vault file
+	// alongside execution.db/settings.json (goal 0359), never its key.
+	vaultPath   string
+	dir         string
+	millVersion string
 
 	families []FamilyBundle
 	atlas    atlasBundle
 }
 
 // New constructs a BackupService against dbPath (a plain sqlite file
-// path, or "" for a non-sqlite deployment)/settingsPath/dir (the
-// backup root directory)/millVersion (stamped into export-everything's
-// manifest) -- called once from main.go.
-func New(dbPath, settingsPath, dir, millVersion string) *BackupService {
-	return &BackupService{dbPath: dbPath, settingsPath: settingsPath, dir: dir, millVersion: millVersion}
+// path, or "" for a non-sqlite deployment)/settingsPath/vaultPath/dir
+// (the backup root directory)/millVersion (stamped into
+// export-everything's manifest) -- called once from main.go.
+func New(dbPath, settingsPath, vaultPath, dir, millVersion string) *BackupService {
+	return &BackupService{dbPath: dbPath, settingsPath: settingsPath, vaultPath: vaultPath, dir: dir, millVersion: millVersion}
 }
 
 // BackupStatus is GetBackupStatus's Wails-bound shape.
@@ -92,6 +98,36 @@ func (b *BackupService) GetBackupStatus() (BackupStatus, error) {
 	return status, nil
 }
 
+// VaultBackupTime is LatestVaultBackupTime's own Wails-bound shape --
+// the same {value, Has*} pairing BackupStatus already uses for a time
+// that might not exist yet, since a zero time.Time on its own can't
+// distinguish "no backup carries a vault" from a genuinely zero
+// timestamp.
+type VaultBackupTime struct {
+	Time    time.Time `json:"time"`
+	Present bool      `json:"present"`
+}
+
+// LatestVaultBackupTime reports the newest kept backup that carries a
+// copy of the vault file -- the Secrets view's key-mismatch state reads
+// this to name how current a recovery copy is (goal 0359). Present is
+// false when no kept backup carries one (never set up before the
+// oldest kept backup, or pruned past keepN since).
+func (b *BackupService) LatestVaultBackupTime() (VaultBackupTime, error) {
+	b.mu.Lock()
+	dir := b.dir
+	b.mu.Unlock()
+
+	t, err := backup.LatestWithVault(dir)
+	if err != nil {
+		return VaultBackupTime{}, fmt.Errorf("latest vault backup time: %w", err)
+	}
+	if t.IsZero() {
+		return VaultBackupTime{}, nil
+	}
+	return VaultBackupTime{Time: t, Present: true}, nil
+}
+
 // BackupNow takes an immediate snapshot with the given retention
 // (keepN <= 0 uses DefaultKeepN), the "Back up now" Settings button's
 // own RPC. Emits dataevent's live-sync signal on success so every open
@@ -102,13 +138,13 @@ func (b *BackupService) BackupNow(keepN int) (BackupStatus, error) {
 		keepN = DefaultKeepN
 	}
 	b.mu.Lock()
-	dbPath, settingsPath, dir := b.dbPath, b.settingsPath, b.dir
+	dbPath, settingsPath, vaultPath, dir := b.dbPath, b.settingsPath, b.vaultPath, b.dir
 	b.mu.Unlock()
 
 	if dbPath == "" {
 		return BackupStatus{}, fmt.Errorf("backup: not available -- this instance is configured against a non-sqlite execution database")
 	}
-	if _, err := backup.Snapshot(dbPath, settingsPath, dir, keepN); err != nil {
+	if _, err := backup.Snapshot(dbPath, settingsPath, vaultPath, dir, keepN); err != nil {
 		return BackupStatus{}, fmt.Errorf("backup now: %w", err)
 	}
 	dataevent.Emit("backup", "")
@@ -120,7 +156,7 @@ func (b *BackupService) BackupNow(keepN int) (BackupStatus, error) {
 // composition.SetBackupRunner's own wiring in main.go.
 func (b *BackupService) runBackupPrimitive(keepN int) (string, error) {
 	b.mu.Lock()
-	dbPath, settingsPath, dir := b.dbPath, b.settingsPath, b.dir
+	dbPath, settingsPath, vaultPath, dir := b.dbPath, b.settingsPath, b.vaultPath, b.dir
 	b.mu.Unlock()
 	if dbPath == "" {
 		return "", fmt.Errorf("backup: not available -- this instance is configured against a non-sqlite execution database")
@@ -128,7 +164,7 @@ func (b *BackupService) runBackupPrimitive(keepN int) (string, error) {
 	if keepN <= 0 {
 		keepN = DefaultKeepN
 	}
-	result, err := backup.Snapshot(dbPath, settingsPath, dir, keepN)
+	result, err := backup.Snapshot(dbPath, settingsPath, vaultPath, dir, keepN)
 	if err != nil {
 		return "", err
 	}

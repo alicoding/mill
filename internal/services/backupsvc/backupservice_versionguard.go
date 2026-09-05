@@ -36,13 +36,13 @@ const lastSeenVersionKey = "settings-last-seen-version"
 // nothing for VACUUM INTO to copy; the version stamp still advances so
 // a non-sqlite deployment isn't stuck re-attempting an unavailable
 // snapshot on every single launch.
-func SnapshotOnVersionChange(store settings.Store, dbPath, settingsPath, dir, currentVersion string) (didBackup bool, err error) {
+func SnapshotOnVersionChange(store settings.Store, dbPath, settingsPath, vaultPath, dir, currentVersion string) (didBackup bool, err error) {
 	stamp, _ := store.Get(lastSeenVersionKey).(string)
 	if stamp == currentVersion {
 		return false, nil
 	}
 	if stamp != "" && dbPath != "" {
-		if _, err := backup.Snapshot(dbPath, settingsPath, dir, DefaultKeepN); err != nil {
+		if _, err := backup.Snapshot(dbPath, settingsPath, vaultPath, dir, DefaultKeepN); err != nil {
 			return false, fmt.Errorf("version-change snapshot (%s -> %s): %w", stamp, currentVersion, err)
 		}
 		didBackup = true
@@ -59,8 +59,8 @@ func SnapshotOnVersionChange(store settings.Store, dbPath, settingsPath, dir, cu
 // extraction already documents). Best-effort, matching
 // BackupOnCleanShutdown's own non-fatal posture: a failed snapshot
 // here is logged, never fatal -- it must never make Mill unbootable.
-func GuardVersionChange(logger *slog.Logger, store settings.Store, dbPath, settingsPath, dir, currentVersion string) {
-	didBackup, err := SnapshotOnVersionChange(store, dbPath, settingsPath, dir, currentVersion)
+func GuardVersionChange(logger *slog.Logger, store settings.Store, dbPath, settingsPath, vaultPath, dir, currentVersion string) {
+	didBackup, err := SnapshotOnVersionChange(store, dbPath, settingsPath, vaultPath, dir, currentVersion)
 	if err != nil {
 		logger.Error("version-change snapshot", "error", err)
 		return
