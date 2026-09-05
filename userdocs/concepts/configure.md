@@ -29,7 +29,9 @@ The entities:
   column, inserts one to either side, and opens its type, choices,
   deprecation, and removal; a right-click on a row inserts a row
   below it, marks it expired or active, or deletes it. A column's type
-  can change until it holds data. Commits happen as you go. Bring data in from a CSV or JSON file: "Import rows…" on a
+  can change until it holds data. Commits happen as you go, and ⌘Z
+  takes the last one back — an edited cell returns to what it held, a
+  deleted row comes back whole, and ⇧⌘Z re-applies it. Bring data in from a CSV or JSON file: "Import rows…" on a
   list maps file columns to its fields, and "New from file…" on the
   Lists page proposes a whole typed schema from your sample — edit
   the proposed names and types, then create the list with every row

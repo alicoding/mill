@@ -1,6 +1,6 @@
 import type { Command } from './commands'
 import { listGridContext } from './commandContext'
-import { ConfigureService } from './bindings'
+import { AtlasService, ConfigureService } from './bindings'
 import { writeClipboardText } from './clipboardWrite'
 
 // The grid's bulk actions (goal 0349 S4). A row-marker checkbox
@@ -11,10 +11,18 @@ import { writeClipboardText } from './clipboardWrite'
 
 // Deleting rows is sequential, never concurrent: each DeleteListRow
 // rewrites the record it re-read, so parallel calls would race each
-// other's read-modify-write and lose deletions.
+// other's read-modify-write and lose deletions. One gesture is one ⌘Z
+// step: every delete made between BeginUndoMark and EndUndoMark joins
+// a single mark (ADR-0044), so a bulk delete undoes as a bulk restore
+// rather than one row per press (goal 0352).
 async function deleteRows(listID: string, rowIDs: string[]): Promise<void> {
-  for (const rowID of rowIDs) {
-    await ConfigureService.DeleteListRow(listID, rowID)
+  await AtlasService.BeginUndoMark()
+  try {
+    for (const rowID of rowIDs) {
+      await ConfigureService.DeleteListRow(listID, rowID)
+    }
+  } finally {
+    await AtlasService.EndUndoMark()
   }
 }
 

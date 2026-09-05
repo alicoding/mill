@@ -142,12 +142,23 @@ func WirePasteConversion(atlas *atlassvc.AtlasService, cfg *configuresvc.Configu
 	)
 }
 
-// WireConfigureSeams bundles the two seams that need both Atlas and
-// Configure: the board's paste-understanding List writes and the
-// plugin content-write door -- one line at the composition root.
+// WireConfigureSeams bundles the seams that need both Atlas and
+// Configure: the board's paste-understanding List writes, the plugin
+// content-write door, and the List row doors' undo journal -- one line
+// at the composition root.
 func WireConfigureSeams(atlas *atlassvc.AtlasService, cfg *configuresvc.ConfigureService, plugins *pluginsvc.PluginService) {
 	WirePasteConversion(atlas, cfg)
 	WirePluginContentWrites(plugins, atlas, cfg)
+	WireListUndoJournal(atlas, cfg)
+}
+
+// WireListUndoJournal points Configure's List row doors at the app's
+// ONE actor-scoped undo journal (ADR-0044, goal 0352): a cell edit
+// made in a board table or on the List page lands on the same history,
+// in order, as the board mutation before it -- so ⌘Z undoes the cell
+// edit rather than reaching past it to the table's own create.
+func WireListUndoJournal(atlas *atlassvc.AtlasService, cfg *configuresvc.ConfigureService) {
+	cfg.WireUndoJournal(atlas.RecordExternalUndo)
 }
 
 // WirePluginContentWrites connects pluginsvc's guarded content-write

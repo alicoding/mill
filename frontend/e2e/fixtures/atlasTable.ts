@@ -136,3 +136,15 @@ export async function placeSizedTable(page: Page, size: '2x2' | '3x3' | '4x4' | 
   await selectTableObject(object)
   return object
 }
+
+// escapeGridToObject hands the keyboard back from a table's grid to the
+// object under it (ListGridGlide's own release path): with no overlay
+// editor open, Escape blurs the grid and focuses the object's canvas
+// node. A board-level shortcut -- Delete, ⌘Z -- only reaches the canvas
+// once it has.
+export async function escapeGridToObject(page: Page, object: Locator): Promise<void> {
+  await page.keyboard.press('Escape')
+  await expect
+    .poll(() => object.evaluate((el) => el.closest('.react-flow__node') === document.activeElement))
+    .toBe(true)
+}

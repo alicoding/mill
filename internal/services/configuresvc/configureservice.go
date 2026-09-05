@@ -121,6 +121,11 @@ type ConfigureService struct {
 	// that can't currently see a title must still answer SOMETHING,
 	// never error, for a workflow that isn't even running yet.
 	secretLabelsLister func() ([]secret.Summary, error)
+	// recordListUndo journals a List row edit into the app's one
+	// actor-scoped undo journal (ADR-0044, goal 0352 --
+	// configurelistundo.go), wired late via WireUndoJournal. Nil until
+	// wired, which leaves every row door recording nothing.
+	recordListUndo listUndoRecorder
 }
 
 // SetSecretResolver wires ConfigureService's own vault-reference
@@ -198,9 +203,11 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	return c
 }
 
-// resolveList/Lists/CreateList/UpdateList/AddListRow/UpdateListRow/
-// DeleteListRow/DeleteList/persistLists/migrateLegacyLists live in
-// configurelist.go (goal 0017 split, see that file's header comment).
+// resolveList/Lists/CreateList/UpdateList/DeleteList/persistLists/
+// migrateLegacyLists live in configurelist.go (goal 0017 split, see
+// that file's header comment); the row doors (AddListRow/AddListRowAt/
+// UpdateListRow/DeleteListRow) live in configurelistrow.go beside
+// their undo recording.
 
 // --- Attributes (delegates to CompositionService -- see SPEC.md §3.5's
 // "Configure-authored but workflow-scoped" cardinality note) ---

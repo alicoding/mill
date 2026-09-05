@@ -108,24 +108,29 @@ export function useKeymapDispatch(): void {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  // Listener 4, the Atlas board's own ⌘Z/⇧⌘Z (goal 0219 S2, ADR-0044):
-  // generalizes goal 0093's delete-only listener to the full undo
-  // journal -- deliberately its own dedicated listener rather than a
-  // normal dispatchCommandForEvent match, since ⌘Z is ALSO the native
-  // text-undo combo and dispatchCommandForEvent's tryRun preventDefaults
-  // unconditionally on any binding match, which would swallow native
-  // undo inside a title/note/field input the moment atlas.undo had a
-  // real default binding. Only intercepts (and only preventDefaults)
-  // while the journal actually has something to undo/redo
-  // (atlasUndoAvailable/atlasRedoAvailable, kept in sync by
-  // atlas/useAtlasUndoJournal), on the atlas surface, and the target
-  // isn't editable -- every other ⌘Z/⇧⌘Z falls through untouched, same
-  // as if this listener didn't exist.
+  // Listener 4, the app's ⌘Z/⇧⌘Z over the one actor-scoped undo journal
+  // (goal 0219 S2, ADR-0044): generalizes goal 0093's delete-only
+  // listener to the full journal -- deliberately its own dedicated
+  // listener rather than a normal dispatchCommandForEvent match, since
+  // ⌘Z is ALSO the native text-undo combo and dispatchCommandForEvent's
+  // tryRun preventDefaults unconditionally on any binding match, which
+  // would swallow native undo inside a title/note/field input the
+  // moment atlas.undo had a real default binding. Only intercepts (and
+  // only preventDefaults) while the journal actually has something to
+  // undo/redo (atlasUndoAvailable/atlasRedoAvailable, kept in sync by
+  // shared/useUndoJournal), on a surface that mounts the journal, and
+  // while the target isn't editable -- every other ⌘Z/⇧⌘Z falls
+  // through untouched, same as if this listener didn't exist.
+  //
+  // Two surfaces mount it: the board, and Configure -- a List's rows
+  // are the same content a board table shows, edited through the same
+  // journaled door (goal 0352), so ⌘Z means the same thing on both.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (!e.metaKey || e.ctrlKey || e.altKey) return
       if (e.key.toUpperCase() !== 'Z') return
-      if (useAppStore.getState().view.kind !== 'atlas') return
+      const surface = useAppStore.getState().view.kind
+      if (surface !== 'atlas' && surface !== 'configure') return
       if (isEditableTarget(e.target)) return
       if (e.shiftKey) {
         if (!useUISignalStore.getState().atlasRedoAvailable) return
