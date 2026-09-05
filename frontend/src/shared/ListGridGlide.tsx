@@ -313,7 +313,19 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
       }}
       onContextMenu={(e) => e.stopPropagation()}
     >
-      <div className={`${styles.scroll} nowheel nodrag nopan`} style={{ minHeight: 120, maxHeight: 420 }}>
+      <div
+        className={`${styles.scroll} nowheel nodrag nopan`}
+        style={{ minHeight: 120, maxHeight: 420 }}
+        // The library's own click-to-focus (data-editor.js's internal
+        // focus() helper) defers to a requestAnimationFrame, so a
+        // keystroke landing immediately after a click can beat it there
+        // and find nothing in this subtree focused yet. gridRef.current
+        // .focus() is the library's OWN documented imperative handle
+        // (DataEditorRef) and resolves synchronously -- calling it here,
+        // on the same pointerdown the library itself reacts to, removes
+        // the race rather than papering over it with a wait.
+        onPointerDown={() => gridRef.current?.focus()}
+      >
         {columns.length === 0 ? (
           <p className={styles.empty} data-testid="atlas-projection-empty">{t('listGrid.noColumns')}</p>
         ) : (
