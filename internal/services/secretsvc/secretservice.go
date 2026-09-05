@@ -103,6 +103,11 @@ type SecretService struct {
 	// sources lists the user's enabled secret sources (ADR-0050); nil
 	// until wired, when only the vault resolves.
 	sources SourcesLister
+	// pluginSources answers the sources an installed extension
+	// contributes (goal 0306 S4); nil until the composition root wires
+	// it, which makes every plugin-backed source report its extension
+	// as missing rather than resolve.
+	pluginSources PluginSourceBridge
 	// settings holds the app-level unlock requirement
 	// (secretservice_auth.go). Never holds a key or a secret.
 	settings settings.Store
