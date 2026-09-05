@@ -1,6 +1,6 @@
 # Plugin API maturity
 
-3 of 10 contribution families are stable; 0 ready to promote; 1 regressed.
+3 of 10 contribution families are stable; 0 ready to promote; 0 regressed.
 
 | Family | Level | Conformance | Example | E2E | Docs | SDK types | MCP | Docs behind code (days) | Flags |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -11,7 +11,7 @@
 | network | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
 | views | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
 | commands | stable | yes | yes | yes | yes | yes | yes | 0 | — |
-| themes | stable | yes | yes | no | yes | yes | n/a | 0 | regressed |
+| themes | stable | yes | yes | yes | yes | yes | n/a | 0 | — |
 | secretSources | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
 | tools | experimental | no | yes | no | yes | no | yes | 0 | — |
 
