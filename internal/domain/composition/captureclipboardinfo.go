@@ -10,7 +10,9 @@ import (
 
 // Package-level function var, not a direct call -- same testability
 // pattern as capture.go's readClipboardHTML/readClipboardText.
-var clipboardInfoFn = clipboard.Info
+// clipboard.New() resolves to the in-memory Port inside a go test
+// binary (goal 0356) -- never the real pasteboard by default.
+var clipboardInfoFn = clipboard.New().Info
 
 // formatClipboardInfo turns macOS's raw "clipboard info" report (a
 // comma-separated list of alternating «class XXXX», byte-size pairs)

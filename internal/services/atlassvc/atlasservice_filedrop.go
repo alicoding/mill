@@ -331,7 +331,9 @@ func (a *AtlasService) ConvertHTMLToMarkdown(html string) (string, error) {
 // error at all is an empty list -- the paste gesture then falls back
 // to the pasted bytes or a no-op, never an error the user sees.
 func (a *AtlasService) ReadPasteboardFilePaths() []string {
-	paths, err := clipboard.ReadFileURLs()
+	// clipboard.New() resolves to the in-memory Port inside a go test
+	// binary (goal 0356) -- never the real pasteboard by default.
+	paths, err := clipboard.New().ReadFileURLs()
 	if err != nil {
 		return nil
 	}
