@@ -196,7 +196,7 @@ func TestDecisionOutcome_NoWebhook_NeverAsks_WebhookPresent_AsksAndFiresOnApprov
 	if err != nil {
 		t.Fatalf("CreateDecision(plain): %v", err)
 	}
-	webhookReq, err := cfg.CreateHTTPRequest("E2E webhook target", srv.URL, http.MethodPost, "", httprequest.AuthNone, nil, "", nil, nil, "")
+	webhookReq, err := cfg.CreateHTTPRequest("E2E webhook target", srv.URL, http.MethodPost, "", httprequest.AuthNone, "", nil, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
 	}

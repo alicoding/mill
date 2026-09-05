@@ -566,7 +566,7 @@ Bruno (an API client) as the worked example:
    report it wrote, and lands the results as rows of the seeded "Bruno
    results" List — guarded and audited like every command Mill runs.
 4. **Keep secrets in the tool's own store.** Bruno reads a `.env` at
-   the collection root; point Configure > Secret sources at that file
+   the collection root; point Secrets > Sources at that file
    and the keys appear in every secret picker without a copy.
 
 Nothing here is Bruno-specific in the platform: the same four moves

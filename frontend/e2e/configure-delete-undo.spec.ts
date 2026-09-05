@@ -1,5 +1,6 @@
 import { expect, test } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { openSecretSources } from './fixtures/secretStore'
 
 // Configure's delete undo across families (goal 0270). Shared pool:
 // every entity here is created and deleted by this file. The List case
@@ -8,8 +9,7 @@ import { clickRowAction } from './inventoryRow'
 
 test('deleting a secret source offers Undo, and undo brings it back with its kind', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Secret sources', exact: true }).click()
+  await openSecretSources(page)
   await page.getByTestId('new-secretsource').click()
   await page.getByTestId('secretsource-label').fill('ZzE2eUndoSource')
   await page.getByTestId('secretsource-kind').selectOption('bw')

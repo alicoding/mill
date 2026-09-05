@@ -35,23 +35,27 @@ interface LogEntry extends TestHTTPRequestResult {
 // discipline handleSave already uses for the identical stale-state risk
 // (see RequestForm.tsx's own comment on that bug).
 export function RequestTestPanel({
-  operations, effectiveSpec, baseURL, authType, auth, jose, josePrivateKeyPEM, headers, secret, requestID,
+  operations, effectiveSpec, label, baseURL, authType, auth, jose, headers, secretRef, requestID,
 }: {
   operations: ManualOperation[]
   effectiveSpec: string
+  label: string
   baseURL: string
   authType: AuthType
   // ADR-0015's non-secret Auth config (OAuth2/HMAC/OAuth1) -- passed
   // through to TestHTTPRequestOperation unchanged, same "test the draft
   // exactly as it would run" principle ADR-0013 already established for
-  // BaseURL/Headers/Secret.
+  // BaseURL/Headers and the secret references.
   auth: AuthConfig | null
   // Phase 3 (JOSE) -- same "test the draft exactly as it would run"
   // principle, extended to the encryption layer.
   jose: JOSEConfig | null
-  josePrivateKeyPEM: string
   headers: Record<string, string> | null
-  secret: string
+  // The draft's own secret reference (goal 0306): a test resolves the
+  // same reference a real run would, so what a test proves is what
+  // will happen. OAuth 1.0a's two references and JOSE's keys travel on
+  // auth/jose, exactly as they do on a saved request.
+  secretRef: string
   requestID: string | null
 }) {
   const { t } = useTranslation('configure')
@@ -126,13 +130,13 @@ export function RequestTestPanel({
     try {
       const result = await ConfigureService.TestHTTPRequestOperation({
         RequestID: requestID ?? '',
+        Label: label,
         BaseURL: baseURL,
         AuthType: authType,
         Auth: auth,
         JOSE: jose,
-        JOSEPrivateKeyPEM: josePrivateKeyPEM,
         Headers: headers,
-        Secret: secret,
+        SecretRef: secretRef,
         OpenAPISpec: effectiveSpec,
         Path: selected.path,
         Method: selected.method,

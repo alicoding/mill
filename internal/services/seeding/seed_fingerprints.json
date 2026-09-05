@@ -1,7 +1,7 @@
 {
   "aiprovider:example-local-ollama": {
     "seedRevision": 1,
-    "fingerprint": "75218e8e0727e6cbf04afd8ff25f8a461ccfea9c77fdccfb06ac824333fe4100"
+    "fingerprint": "95563ac124ec183f805287e58940c90ef70b86a5945bdb3f844751b46c8ae497"
   },
   "atlascard:atlas-card-example-area": {
     "seedRevision": 6,
@@ -177,39 +177,39 @@
   },
   "request:example-apikey-httpbin": {
     "seedRevision": 2,
-    "fingerprint": "7a9d34aa7831ce3b3ad46f6690287dbadcf0be89e013c89e7f3a6e6114c234ae"
+    "fingerprint": "b1000b24ca3cd91633f2795cd35bd30eea58aaa53a5e795f4a523129baef3050"
   },
   "request:example-bearer-httpbin": {
     "seedRevision": 2,
-    "fingerprint": "6fcb26395d6e0a941e7ff5a1fac2d67a2bc6c7ae23aca6d3871509f04e81e244"
+    "fingerprint": "0ea98235cab7882055830b08cb721e3202d9bc17bebf9e80d10fb7bac41e1296"
   },
   "request:example-confluence-page-read": {
     "seedRevision": 1,
-    "fingerprint": "79c8db7681bf4406d7855cd19bed9ea7efb75480b8e8b28ec3c239178867a558"
+    "fingerprint": "92ad186c5de0e3e01158eaa5378b014a22be34264095a209786bd116d341de6a"
   },
   "request:example-hmac-httpbin": {
     "seedRevision": 3,
-    "fingerprint": "9ae298b4f5d1df5cb5746292dfc5d07bcb02276b886a8a90ceba19bf896d5823"
+    "fingerprint": "c54fc6542eac04dc81cd78ca35f142273ceba4040f3c63f2d45f0f877a394083"
   },
   "request:example-jira-search": {
     "seedRevision": 1,
-    "fingerprint": "b689bb9c2bd22e6f84cae26859f9583373af4c1f4e7a9d08468945ee2960d3c0"
+    "fingerprint": "4459687fded6c1cc97e2831d50ce3b63cdea74aa0ffe85f70ee1b2dbae7a3c19"
   },
   "request:example-none-httpbin": {
     "seedRevision": 2,
-    "fingerprint": "30d860e1bf93b99f2ac227ecefd10337bad75d754aaab6677314e1057e63de10"
+    "fingerprint": "cd37e4cb775999ddb5ac457fa6e09d4b16f76e3b1a298e732c69510294728ec2"
   },
   "request:example-oauth1-postman-echo": {
     "seedRevision": 2,
-    "fingerprint": "760b39042ebd73d5a47359ed1c55bf89c2f66b0739bcda6d5cee189d5d8bf878"
+    "fingerprint": "2f7aeb6153b8fb3a81527d47370873acabd8b48a90fcc32dc16a96f75be09f15"
   },
   "request:example-oauth2-spotify": {
     "seedRevision": 2,
-    "fingerprint": "d1d934704fa95515a06fe7bd02613bd30d86935932b026946883c45500994b0e"
+    "fingerprint": "901102e260c52ff98674a114918d5e68925a253ca0cc985a745338ee89d9504b"
   },
   "request:example-queryparam-httpbin": {
     "seedRevision": 2,
-    "fingerprint": "c8c0e337368f7d9166548b61550377df61315ed84128b298384000cceb23cd79"
+    "fingerprint": "093d33cbd3cdd9ec2a1f105f07ae8d111e75d9e5c7e66e98f24ffa10278c682d"
   },
   "workflow:backup-mill-data-workflow": {
     "seedRevision": 1,

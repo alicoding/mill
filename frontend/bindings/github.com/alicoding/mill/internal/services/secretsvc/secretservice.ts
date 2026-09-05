@@ -35,10 +35,13 @@ export function CopySecretToClipboard(id: string): $CancellablePromise<void> {
 }
 
 /**
- * CreateSecret validates and inserts a new entry.
+ * CreateSecret validates and inserts a new entry. kind classifies what
+ * it holds (secret.NormalizeKind); a non-empty sourceRef makes it
+ * source-backed, in which case password is ignored -- the value stays
+ * in the source and is read at use time.
  */
-export function CreateSecret(title: string, username: string, password: string, url: string, notes: string, tags: string): $CancellablePromise<secret$0.Entry> {
-    return $Call.ByID(2352687000, title, username, password, url, notes, tags);
+export function CreateSecret(title: string, username: string, password: string, url: string, notes: string, tags: string, kind: string, sourceRef: string): $CancellablePromise<secret$0.Entry> {
+    return $Call.ByID(2352687000, title, username, password, url, notes, tags, kind, sourceRef);
 }
 
 /**
@@ -206,8 +209,8 @@ export function UnlockVault(): $CancellablePromise<void> {
  * PREVIOUS values onto its history (secretvault.Vault.Upsert's own
  * contract).
  */
-export function UpdateSecret(id: string, title: string, username: string, password: string, url: string, notes: string, tags: string): $CancellablePromise<secret$0.Entry> {
-    return $Call.ByID(2518896629, id, title, username, password, url, notes, tags);
+export function UpdateSecret(id: string, title: string, username: string, password: string, url: string, notes: string, tags: string, kind: string, sourceRef: string): $CancellablePromise<secret$0.Entry> {
+    return $Call.ByID(2518896629, id, title, username, password, url, notes, tags, kind, sourceRef);
 }
 
 /**
