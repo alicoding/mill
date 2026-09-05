@@ -8,6 +8,7 @@ import { boardObjectContentFor } from './atlasNounRegistry'
 import { usePluginReloadVersion } from '../plugins/pluginReloadSignal'
 import { unknownKindContent } from './atlasBoardObjectContent'
 import type { AtlasBoardObjectContent } from './atlasBoardObjectContent'
+import type { DrawioPageCursor } from './drawioInteraction'
 import { activation, boxOptsOutOfCanvasWheel, contentOptsOutOfCanvasDrag, shieldUp } from './atlasActivation'
 import type { AtlasActivation, AtlasInputMode } from './atlasActivation'
 import { useAtlasObjectInputBoundary } from './useAtlasObjectInputBoundary'
@@ -17,6 +18,7 @@ import { useAtlasObjectMirrorRead } from './useAtlasObjectMirrorRead'
 import { useAtlasShapeRotateLive } from './atlasShapeRotateLiveStore'
 import { dispatchObjectEdit, resolveEditRoute } from './objectSeams'
 import { useUISignalStore } from '../shared/uiSignalStore'
+import { findCommand } from '../shared/commands'
 import styles from './AtlasBoardObjectNode.module.css'
 
 export interface AtlasBoardObjectData extends Record<string, unknown> {
@@ -116,6 +118,14 @@ function showsFitChip(facts: Pick<AtlasBoardObjectContent, 'overflowChip'>, prev
   return !!facts.overflowChip && !preview && !!overflow?.exceeds
 }
 
+// Whether the chrome band shows its page control right now (goal
+// 0354): the Kind declared a pager, this is a real object rather than
+// a frame's inert tile, and the face currently reports more than one
+// page. A single-page file leaves the band exactly as it was.
+function showsPager(facts: Pick<AtlasBoardObjectContent, 'pager'>, preview: boolean, cursor: DrawioPageCursor | null): boolean {
+  return !!facts.pager && !preview && (cursor?.count ?? 0) > 1
+}
+
 // The band's own tooltip. A shielded, not-yet-selected face reads as
 // inert, so the band says what the first click buys before it is spent;
 // once selected the band is back to being the object's drag handle.
@@ -140,6 +150,80 @@ function bandTitleKey(state: AtlasActivation, input: AtlasInputMode, shieldHintK
 // object with nothing to grab.
 function clickShieldClassName(dragBand: boolean): string {
   return dragBand ? `${styles.clickShield} ${styles.clickShieldBelowBand}` : styles.clickShield
+}
+
+// The face's own page cursor, and the step the paging commands send
+// (goal 0354): only the face can know where it is in a multi-page
+// artifact, only the frame owns the band the control sits on -- the
+// same split the Fit chip already makes. The command carries -1/+1 and
+// names its target, so this frame answers only for its OWN object.
+function useObjectPaging(objectID: string): { pageCursor: DrawioPageCursor | null; onPagerChange: (cursor: DrawioPageCursor) => void } {
+  const [pageCursor, setPageCursor] = useState<DrawioPageCursor | null>(null)
+  const pagerRef = useRef<DrawioPageCursor | null>(null)
+  const onPagerChange = useCallback((cursor: DrawioPageCursor) => {
+    pagerRef.current = cursor
+    setPageCursor(cursor)
+  }, [])
+  const pageRequest = useUISignalStore((st) => st.atlasDiagramPageRequest)
+  useEffect(() => {
+    const cursor = pagerRef.current
+    if (!pageRequest || pageRequest.id !== objectID || !cursor) return
+    cursor.select(cursor.index + pageRequest.delta)
+  }, [pageRequest, objectID])
+  return { pageCursor, onPagerChange }
+}
+
+// What the band's page control publishes on the object's box: the
+// commands' own enablement reads it back from the live canvas, so a
+// single-page file (no control, no attributes) makes both paging
+// commands honestly unavailable rather than dimmed.
+function pagerDataAttrs(cursor: DrawioPageCursor | null): Record<string, string | undefined> {
+  return { 'data-page-index': cursor ? String(cursor.index) : undefined, 'data-page-count': cursor ? String(cursor.count) : undefined }
+}
+
+// The band's own page control (goal 0354), a component of its own so
+// the node's render function stays inside the complexity gate. Each
+// arrow runs the SAME registry command the palette, the menu bar and
+// the object's menu run -- never an inline page step of its own -- and
+// stops at the file's ends rather than wrapping the way the vendored
+// viewer's own buttons did. `nodrag` plus a swallowed pointerdown keep
+// the clicks off the band's drag -- so the press selects the object
+// itself instead, which is both what a click on an object's own chrome
+// means and what makes the commands' "the selected diagram" target
+// resolve to this one.
+function ObjectBandPager({ cursor, onActivate }: { cursor: DrawioPageCursor; onActivate: () => void }) {
+  const { t } = useTranslation('atlas')
+  return (
+    <div className={`${styles.pager} nodrag`} data-testid="atlas-board-object-pager">
+      <button
+        type="button"
+        className={styles.pagerStep}
+        data-testid="atlas-board-object-page-prev"
+        title={t('boardObject.previousPage')}
+        aria-label={t('boardObject.previousPage')}
+        disabled={cursor.index <= 0}
+        onPointerDown={(e) => { e.stopPropagation(); onActivate() }}
+        onClick={(e) => { e.stopPropagation(); void findCommand('diagram.previousPage')?.run() }}
+      >
+        {'\u2039'}
+      </button>
+      <span className={styles.pagerLabel} data-testid="atlas-board-object-page-label">
+        {t('boardObject.pageOf', { index: cursor.index + 1, count: cursor.count })}
+      </span>
+      <button
+        type="button"
+        className={styles.pagerStep}
+        data-testid="atlas-board-object-page-next"
+        title={t('boardObject.nextPage')}
+        aria-label={t('boardObject.nextPage')}
+        disabled={cursor.index >= cursor.count - 1}
+        onPointerDown={(e) => { e.stopPropagation(); onActivate() }}
+        onClick={(e) => { e.stopPropagation(); void findCommand('diagram.nextPage')?.run() }}
+      >
+        {'\u203a'}
+      </button>
+    </div>
+  )
 }
 
 function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardObjectRFNode>) {
@@ -216,6 +300,11 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
     if (!fitRequest || fitRequest.id !== object.ID) return
     overflowRef.current?.fit()
   }, [fitRequest, object.ID])
+  const { pageCursor, onPagerChange } = useObjectPaging(object.ID)
+  const selectThisNode = useCallback(() => {
+    setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, selected: true } : { ...n, selected: false })))
+  }, [id, setNodes])
+  const showPager = showsPager(resolvedFacts, preview, pageCursor)
   const showFitChip = showsFitChip(resolvedFacts, preview, overflow)
   const { route: editRoute, editable } = editDoor(object, facts, preview)
 
@@ -233,6 +322,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
       data-pulse={data.pulsed ? 'true' : undefined}
       data-preview={preview ? 'true' : undefined}
       data-activation={state}
+      {...pagerDataAttrs(showPager ? pageCursor : null)}
       role={role}
       // aria-label is PROHIBITED on a role-less (generic) element
       // (WCAG aria-prohibited-attr) -- only Kinds that declare a role
@@ -292,15 +382,24 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
           rather than leaving inert chrome. */}
       {dragBand && !preview && (
         <div className={styles.frame} data-testid="atlas-board-object-frame" title={t(bandTitleKey(state, resolvedFacts.input, shieldHintKey))}>
-          {/* The overflow escape hatch (goal 0340): shown at rest and
-              while selected, never hover-gated -- "this is bigger than
-              what you can see" is a fact about the object, not a
-              hover affordance. `nodrag` plus a swallowed pointerdown
-              keep the click off the band's own drag. */}
-          {showFitChip && (
-            <button
-              type="button"
-              className={`${styles.fitChip} nodrag`}
+          {/* One trailing cluster for the band's own controls: the
+              page control, then the overflow escape hatch. Both are
+              shown at rest and while selected, never hover-gated --
+              "this has more to it than you can see" is a fact about
+              the object, not a hover affordance. */}
+          <div className={styles.bandActions}>
+          {/* The page control (goal 0354): the object's own chrome for a
+              multi-page artifact, since a board object shows no vendored
+              toolbar. Right-aligned with the Fit chip; each arrow runs
+              the same registry command the palette and the object's menu
+              run, and stops at the file's own ends rather than wrapping.
+              `nodrag` plus a swallowed pointerdown keep the clicks off
+              the band's own drag. */}
+            {showPager && pageCursor && <ObjectBandPager cursor={pageCursor} onActivate={selectThisNode} />}
+            {showFitChip && (
+              <button
+                type="button"
+                className={`${styles.fitChip} nodrag`}
               data-testid="atlas-board-object-fit"
               title={t('boardObject.fitChipTitle')}
               onPointerDown={(e) => { e.stopPropagation() }}
@@ -309,6 +408,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
               {t('boardObject.fitChip')}
             </button>
           )}
+          </div>
         </div>
       )}
       {/* Object first, content second (atlasActivation.ts's own
@@ -363,6 +463,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
             repickMirror={(path) => AtlasService.RepickObjectMirror(object.ID, path)}
             onOverflowChange={onOverflowChange}
             onEditingChange={onEditingChange}
+            onPagerChange={onPagerChange}
           />
         </Suspense>
       </div>
