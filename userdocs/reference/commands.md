@@ -94,8 +94,10 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `panel.open` | Open Quick Panel | — | Global | Conditional — available only in a matching state |
 | `panel.openMill` | Open Mill | — | Global | Always available |
 | `review.rules` | Guardrail rules | — | review | Always available |
+| `run.continue` | Continue | — | Global | Acts on the selected run |
 | `run.monitor` | Show run steps | — | Global | Acts on the selected run |
 | `run.open` | Open run | — | Global | Acts on the selected run |
+| `run.step` | Step | — | Global | Acts on the selected run |
 | `run.stop` | Stop run | — | Global | Acts on the selected run |
 | `runMonitor.open` | Run monitor | — | Global | Conditional — available only in a matching state |
 | `secrets.lockVault` | Lock vault | — | Global | Conditional — available only in a matching state |
@@ -135,8 +137,10 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `workflow.publish` | Publish current draft | — | composition | Conditional — available only in a matching state |
 | `workflow.run` | Run workflow | `⌘↩` | Global | Conditional — available only in a matching state |
 | `workflow.runAndWatch` | Run and watch | — | Global | Acts on the selected workflow |
+| `workflow.runStepped` | Run step by step | — | Global | Conditional — available only in a matching state |
 | `workflow.save` | Save workflow | `⌘S` | Global | Conditional — available only in a matching state |
 | `workflow.unpin` | Unpin | — | Global | Acts on the selected workflow |
+| `workflow.view` | View workflow | — | Global | Conditional — available only in a matching state |
 
 <!-- END GENERATED -->
 

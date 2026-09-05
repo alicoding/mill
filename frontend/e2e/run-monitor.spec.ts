@@ -21,7 +21,7 @@ test('the run monitor route shows a workflow canvas with its latest run and an O
   await expect(page.locator('.react-flow__node').first()).toBeVisible()
   expect(await page.locator('.react-flow__node').count()).toBeGreaterThanOrEqual(2)
   // ...and the run it was opened on: the finished bar is up.
-  await expect(page.getByTestId('current-step-bar')).toBeVisible()
+  await expect(page.getByTestId('run-state-dock')).toBeVisible()
 })
 
 test('the run monitor route with no target explains how to get a run here', async ({ page }) => {

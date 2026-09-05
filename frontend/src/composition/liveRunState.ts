@@ -29,9 +29,14 @@ export type NodeRunStatus = 'done' | 'active' | 'pending' | 'failed' | 'awaiting
 
 export interface RunStateContextValue {
   statusByNodeId: Record<string, NodeRunStatus>
+  // The node the displayed run is parked on right now, empty when it is
+  // not parked. The status map alone cannot answer this: a run can carry
+  // several awaiting-approval steps across its history, and only one of
+  // them is where the run is actually stopped (goal 0328).
+  pausedNodeId: string
 }
 
-export const RunStateContext = createContext<RunStateContextValue>({ statusByNodeId: {} })
+export const RunStateContext = createContext<RunStateContextValue>({ statusByNodeId: {}, pausedNodeId: '' })
 
 function isInFlightStatus(status: string): boolean {
   return status === 'PENDING' || status === 'RUNNING' || status === 'ENQUEUED'
@@ -68,6 +73,18 @@ export function barStateFor(detail: RunDetail | null, startRefusal: string): Bar
   return { mode: 'finished', status: detail.status, error: detail.error }
 }
 
+// Which controls a park offers. A stepped run can advance one node at a
+// time OR run straight to the end; a plain breakpoint has nowhere to
+// step to, so it offers the single resume action only. Pure and
+// exported: the ordering and the omission are the decision worth
+// pinning down, and both are invisible in a rendered tree.
+export type ParkControl = 'continue' | 'step' | 'stop' | 'approve' | 'deny'
+
+export function parkControls(source: string, stepped: boolean): ParkControl[] {
+  if (source !== 'debug') return ['approve', 'deny']
+  return stepped ? ['continue', 'step', 'stop'] : ['continue', 'stop']
+}
+
 export function truncate(s: string, max: number): string {
   return s.length > max ? `${s.slice(0, max)}…` : s
 }
@@ -86,6 +103,8 @@ export type BarState =
 export interface UseLiveRunResult {
   detail: RunDetail | null
   statusByNodeId: Record<string, NodeRunStatus>
+  // The parked node, empty when the displayed run is not parked.
+  pausedNodeId: string
   barState: BarState | null
   // stepped starts a debug "step mode" run (docs/adr/0031 §5) instead
   // of a plain test run -- it parks before every node, not just
@@ -299,10 +318,16 @@ export function useLiveRun(workflowId: string | undefined, requestedRunId?: stri
 
   const barState = useMemo<BarState | null>(() => barStateFor(detail, startRefusal), [detail, startRefusal])
 
-  return { detail, statusByNodeId, barState, startRun, resolve, resolveErrorKey: activeRunId ? errorKeyFor(activeRunId) : '', dismiss }
+  return { detail, statusByNodeId, pausedNodeId: detail?.pending?.nodeID ?? '', barState, startRun, resolve, resolveErrorKey: activeRunId ? errorKeyFor(activeRunId) : '', dismiss }
 }
 
 // Convenience hook so CanvasNodeView only needs one import.
 export function useNodeRunStatus(nodeId: string): NodeRunStatus | undefined {
   return useContext(RunStateContext).statusByNodeId[nodeId]
+}
+
+// Whether the displayed run is parked on THIS node -- what the canvas
+// card draws its accent ring from.
+export function useNodePaused(nodeId: string): boolean {
+  return useContext(RunStateContext).pausedNodeId === nodeId
 }

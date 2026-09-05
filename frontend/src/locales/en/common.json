@@ -78,7 +78,8 @@
     "code": "Code"
   },
   "runStatus": {
-    "interrupted": "Interrupted"
+    "interrupted": "Interrupted",
+    "paused": "Paused"
   },
   "resolveError": {
     "generic": "Couldn't deliver that. Try again."
@@ -125,7 +126,9 @@
       "open": "Open workflow",
       "runAndWatch": "Run and watch",
       "pin": "Pin",
-      "unpin": "Unpin"
+      "unpin": "Unpin",
+      "runStepped": "Run step by step",
+      "view": "View workflow"
     },
     "palette": {
       "open": "Open command palette"
@@ -287,7 +290,9 @@
     "run": {
       "open": "Open run",
       "monitor": "Show run steps",
-      "stop": "Stop run"
+      "stop": "Stop run",
+      "continue": "Continue",
+      "step": "Step"
     },
     "output": {
       "copy": "Copy output",
@@ -394,5 +399,11 @@
     "showingRows": "Showing {{shown}} of {{total}} rows",
     "showAll": "Show all",
     "parseFallback": "Couldn't parse as JSON. Showing raw."
+  },
+  "stopPausedRun": {
+    "body": "Paused at {{step}}",
+    "stop": "Stop run",
+    "keep": "Keep it paused",
+    "cancel": "Cancel"
   }
 }

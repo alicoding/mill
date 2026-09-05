@@ -6,7 +6,7 @@ import { AlertFillIcon, BugIcon, ShieldIcon } from '@primer/octicons-react'
 import type { CanvasNode } from './canvasStore'
 import { KIND_ICON, KIND_ICON_BG, KIND_LABEL } from './nodeKind'
 import { WorkflowHoverPreview } from './WorkflowHoverPreview'
-import { useNodeRunStatus, type NodeRunStatus } from './liveRunState'
+import { useNodePaused, useNodeRunStatus, type NodeRunStatus } from './liveRunState'
 import { useNodeBreakpoint } from './breakpoints'
 import styles from './CompositionCanvas.module.css'
 
@@ -50,6 +50,7 @@ export function CanvasNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
   const RUN_STATUS_LABEL = runStatusLabelFor(t)
   const Icon = KIND_ICON[data.kind]
   const runStatus = useNodeRunStatus(id)
+  const paused = useNodePaused(id)
   const breakpoint = useNodeBreakpoint(id)
   // Trigger nodes have no target handle -- nothing should connect into
   // them, same as n8n's own trigger nodes having no input pin (they're
@@ -83,6 +84,7 @@ export function CanvasNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
     <div
       className={`${styles.canvasNode} ${selected ? styles.canvasNodeSelected : ''}`}
       data-run-status={runStatus}
+      data-run-paused={paused ? 'true' : undefined}
       title={data.output ? t('canvasNodeView.outputTitle', { output: data.output }) : undefined}
     >
       {!isTrigger && <Handle type="target" position={RFPosition.Top} />}

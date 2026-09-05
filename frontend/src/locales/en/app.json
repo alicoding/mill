@@ -393,5 +393,8 @@
   },
   "unsaved": {
     "marker": "Unsaved changes"
+  },
+  "stopPausedRunDialog": {
+    "leaveTitle": "Stop the paused run?"
   }
 }

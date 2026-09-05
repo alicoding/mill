@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Required checks run on the queued merge commit, not just the PR head
+  # (ADR-0034 amendment): two PRs can each be green on their own base yet
+  # combine into a red main -- the merge queue re-runs every required
+  # check against the actual merge result before it lands.
+  merge_group:
 
 # Least-privilege default (goal 0024): every job gets read-only contents
 # access unless it explicitly needs more (the `changes` job overrides for
@@ -606,7 +611,10 @@ jobs:
   # (go.sum/package-lock.json diff), rather than only after the fact via
   # govulncheck's advisory scan of what's already merged.
   dependency-review:
-    if: github.event_name == 'pull_request'
+    # ci-gate's own needs list includes this job (below), so it must also
+    # run -- not just skip green -- on merge_group: a queued merge is
+    # exactly where a newly-introduced dependency should still be caught.
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

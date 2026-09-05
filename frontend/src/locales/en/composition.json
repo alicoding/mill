@@ -26,8 +26,9 @@
     "dismissRunStateAriaLabel": "Dismiss run state",
     "runButtonTooltip": "Runs the saved draft (test run).",
     "run": "Run",
-    "runInStepModeAriaLabel": "Run in step mode",
-    "runInStepModeTooltip": "Pauses before every step so you can inspect and edit its data."
+    "runStepByStep": "Run step by step",
+    "runStepByStepTooltip": "Pauses before every step so you can inspect its data.",
+    "runOptionsAriaLabel": "Run options"
   },
   "canvasNodeView": {
     "runStatus": {
@@ -329,15 +330,15 @@
     "labelPlaceholder": "My workflow",
     "hideDetails": "Hide details",
     "addDetails": "Add details",
-    "offerLabel": "Offer on cards from",
-    "offerCaption": "Cards with a Source on this integration offer this workflow as an action.",
+    "offerLabel": "Show as an action on cards from",
     "viewing": "Viewing",
-    "edit": "Edit",
     "saving": "Saving…",
     "saveChanges": "Save changes",
     "saveWorkflow": "Save workflow",
     "description": "Description",
-    "noDescription": "No description"
+    "noDescription": "No description",
+    "editing": "Editing",
+    "modeAriaLabel": "Workflow mode"
   },
   "canvasToolbar": {
     "backAriaLabel": "Back to workflows",
@@ -472,5 +473,18 @@
     "pasted_one": "Pasted {{count}} item",
     "pasted_other": "Pasted {{count}} items",
     "triggerRefusal": "The trigger step can't be copied. A workflow has exactly one."
+  },
+  "runStateDock": {
+    "pausedAt": "Paused at {{step}}",
+    "pausedAtBreakpoint": "Paused at breakpoint: {{step}}"
+  },
+  "workflowOffer": {
+    "nowhere": "Nowhere",
+    "nowhereDescription": "Run it from Workflows only",
+    "optionDescription": "cards created from {{label}}",
+    "noun": "integration"
+  },
+  "steppedRunGuard": {
+    "title": "Stop the run already paused?"
   }
 }

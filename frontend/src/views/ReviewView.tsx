@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ActionList, ActionMenu, Button, Heading, Link, SegmentedControl, Select, Spinner, Stack, Text } from '@primer/react'
 import { StatusStamp } from '../shared/StatusStamp'
 import { Blankslate } from '@primer/react/experimental'
-import { BugIcon, InboxIcon, PersonIcon, PlugIcon, ShieldIcon } from '@primer/octicons-react'
+import { InboxIcon, PersonIcon, PlugIcon, ShieldIcon } from '@primer/octicons-react'
 import { SettingsService } from '../shared/bindings'
 import type { MCPWriteResolved, RunSummary } from '../shared/bindings'
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
@@ -31,31 +31,30 @@ type ReviewTab = 'queue' | 'rules'
 // authoring a rule for -- null means no ReviewAlwaysRuleDialog is open.
 interface AlwaysRuleRequest { run: RunSummary; effect: 'allow' | 'deny' }
 
-// The four kinds a Review row can be (goal 0002 item 4) -- discriminated
-// off the SAME fields the row's own icon/badge already key on
-// (isDebugPark below, PendingApproval.nodeTypeID), never a new field.
-// 'mcp-write' isn't a RunSummary at all (docs/adr/0032's own pending
-// store) -- it's counted separately and only ever shown when present.
-type PendingKind = 'ask' | 'human-review' | 'debug'
+// The kinds a Review row can be (goal 0002 item 4) -- discriminated off
+// the SAME field the row's own icon already keys on
+// (PendingApproval.nodeTypeID), never a new field. 'mcp-write' isn't a
+// RunSummary at all (docs/adr/0032's own pending store) -- it's counted
+// separately and only ever shown when present. A step-mode or breakpoint
+// pause is NOT a kind here (goal 0328): nobody is being asked to decide
+// it, so it never reaches this queue at all (review/pendingReviewStore.ts's
+// isReviewablePark) and lives on Activity's runs list instead.
+type PendingKind = 'ask' | 'human-review'
 type KindFilterValue = '' | PendingKind | 'mcp-write' | 'guarded-action'
 
 // Order the kind Select's options render in when 2+ are present --
 // fixed, not Set-insertion-order, so the list doesn't reshuffle as
 // different kinds come and go.
-const KIND_ORDER: Array<Exclude<KindFilterValue, ''>> = ['ask', 'human-review', 'debug', 'mcp-write', 'guarded-action']
+const KIND_ORDER: Array<Exclude<KindFilterValue, ''>> = ['ask', 'human-review', 'mcp-write', 'guarded-action']
 
-// Wording reused verbatim from what the row itself already renders
-// (isDebugPark's Label text, the pendingWrites card's "MCP write
-// request" heading, the nodeTypeLabel "Ask for review" the Step line
-// already shows) -- the filter must never invent new prose the row
-// doesn't already carry. Debug park has two row variants (breakpoint /
-// step mode); "Paused at breakpoint" is the base-case wording, since one
-// filter bucket covers both.
+// Wording reused verbatim from what the row itself already renders (the
+// pendingWrites card's "MCP write request" heading, the nodeTypeLabel
+// "Ask for review" the Step line already shows) -- the filter must never
+// invent new prose the row doesn't already carry.
 function kindLabelsFor(t: (key: string) => string): Record<Exclude<KindFilterValue, ''>, string> {
   return {
     ask: t('reviewView.kindLabels.ask'),
     'human-review': t('reviewView.kindLabels.human-review'),
-    debug: t('reviewView.kindLabels.debug'),
     'mcp-write': t('reviewView.kindLabels.mcp-write'),
     'guarded-action': t('reviewView.kindLabels.guarded-action'),
   }
@@ -173,20 +172,12 @@ function ReviewView() {
 
   const attrsFor = (run: RunSummary) => attrsForPending(workflows?.find((w) => w.ID === run.workflowID)?.Attributes ?? [], run.pending?.inputAttributes)
 
-  // A breakpoint/step-mode debug park (docs/adr/0031) reads distinctly
-  // here too -- never the same badge/wording as a policy ask ("recognition,
-  // not confirmation").
-  const isDebugPark = (run: RunSummary) => run.pending?.source === 'debug'
   // A Human review checkpoint (internal/domain/composition/humanreview.go)
   // is its own kind, distinct from an ambient guardrail policy ask, even
   // though both currently share the "awaiting approval" badge text -- the
   // leading icon (PersonIcon vs ShieldIcon) is the recognition cue.
   const isHumanReview = (run: RunSummary) => run.pending?.nodeTypeID === 'human-review'
-  const pendingKind = (run: RunSummary): PendingKind => {
-    if (isDebugPark(run)) return 'debug'
-    if (isHumanReview(run)) return 'human-review'
-    return 'ask'
-  }
+  const pendingKind = (run: RunSummary): PendingKind => (isHumanReview(run) ? 'human-review' : 'ask')
 
   // Kinds actually present right now, across both pending runs and
   // pending MCP writes -- the Select only renders once 2+ are present
@@ -329,7 +320,7 @@ function ReviewView() {
           >
             <Stack direction="vertical" gap="condensed">
               <Stack direction="horizontal" gap="condensed" align="center">
-                {isDebugPark(run) ? <BugIcon size={16} /> : isHumanReview(run) ? <PersonIcon size={16} /> : <ShieldIcon size={16} />}
+                {isHumanReview(run) ? <PersonIcon size={16} /> : <ShieldIcon size={16} />}
                 {/* The workflow's name IS the door into its run (goal
                     0343) -- the same run.open command the Open run
                     button below fires, so the two can never drift. */}
@@ -342,9 +333,7 @@ function ReviewView() {
                 >
                   {run.workflowLabel}
                 </Link>
-                <StatusStamp variant={isDebugPark(run) ? 'identity' : 'caution'} data-testid={isDebugPark(run) ? 'review-debug-badge' : undefined}>
-                  {isDebugPark(run) ? (run.pending?.stepped ? t('reviewView.pausedStepModeLower') : t('reviewView.pausedAtBreakpointLower')) : t('reviewView.awaitingApprovalLower')}
-                </StatusStamp>
+                <StatusStamp variant="caution">{t('reviewView.awaitingApprovalLower')}</StatusStamp>
                 <StalenessBadge createdAt={run.startedAt} testId="review-item-age" />
               </Stack>
               <Text size="small">
@@ -369,10 +358,10 @@ function ReviewView() {
 
               <Stack direction="horizontal" gap="condensed" className={mobileStyles.approvalActions} onClick={(e) => e.stopPropagation()}>
                 <Button size="small" variant="primary" data-testid="review-approve" onClick={() => resolve(run, true)}>
-                  {isDebugPark(run) ? t('reviewView.resume') : t('reviewView.approveAndResume')}
+                  {t('reviewView.approveAndResume')}
                 </Button>
                 <Button size="small" variant="danger" data-testid="review-deny" onClick={() => resolve(run, false)}>
-                  {isDebugPark(run) ? t('reviewView.stop') : t('reviewView.deny')}
+                  {t('reviewView.deny')}
                 </Button>
                 {/* The door into the run behind this request, beside the
                     decision it asks for (goal 0343): a reviewer can see
@@ -386,8 +375,7 @@ function ReviewView() {
                 {/* Door 1, primary authoring door (goal 0078): only a
                     guardrail policy ask carries a scope a rule can name --
                     a Human review checkpoint always parks by construction
-                    (no rule vouches it away) and a debug park is step-mode
-                    plumbing, not policy, so neither offers this. */}
+                    (no rule vouches it away), so it does not offer this. */}
                 {pendingKind(run) === 'ask' && (
                   <ActionMenu>
                     <ActionMenu.Button size="small" variant="invisible" data-testid="review-always-menu">

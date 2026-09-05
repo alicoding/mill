@@ -87,9 +87,10 @@ test('A breakpoint pauses a run with edit-and-resume; Resume continues it with t
   await dialog.getByLabel('Amount').fill('50')
   await dialog.getByRole('button', { name: 'Run' }).click()
 
-  const bar = activePanel(page).getByTestId('current-step-bar')
-  await expect(bar).toContainText('Paused at breakpoint', { timeout: 15_000 })
-  await expect(bar).toContainText('Read attribute')
+  const bar = activePanel(page).getByTestId('run-state-dock')
+  await expect(bar).toContainText('Paused at breakpoint: Read attribute', { timeout: 15_000 })
+  // A breakpoint has nowhere to step to, so it offers Resume and Stop only.
+  await expect(bar.getByRole('button')).toHaveText(['Resume', 'Stop'])
 
   // Edit-and-resume (item 4): override amount to a HIGH value before
   // resuming -- the Branch node reads it fresh, after this park.
@@ -108,23 +109,30 @@ test('A breakpoint pauses a run with edit-and-resume; Resume continues it with t
 test('Step mode pauses before every node; Step advances one, Continue finishes the rest', async ({ page }) => {
   await openSeed(page)
 
-  await activePanel(page).getByTestId('canvas-run-stepped').click()
+  await activePanel(page).getByTestId('canvas-run-menu').click()
+  await page.getByTestId('canvas-run-stepped').click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Amount').fill('150')
   await dialog.getByRole('button', { name: 'Run' }).click()
 
-  const bar = activePanel(page).getByTestId('current-step-bar')
+  const bar = activePanel(page).getByTestId('run-state-dock')
   // First park: the capture node -- no breakpoint rule needed at all in
   // step mode, proving the gate is consulted for every node regardless
   // of its effect class (the ADR's own flagged open question).
-  await expect(bar).toContainText('Paused in step mode', { timeout: 15_000 })
-  await expect(bar).toContainText('Read attribute')
+  await expect(bar).toContainText('Paused at Read attribute', { timeout: 15_000 })
   await expect(bar.getByTestId('canvas-step')).toBeVisible()
+  // Continue comes first, Step second, Stop last -- the debugger order
+  // (goal 0328), so the button under the pointer never depends on how
+  // the run happened to stop.
+  await expect(bar.getByRole('button')).toHaveText(['Continue', 'Step', 'Stop'])
+  // The paused node wears the accent ring, not just its status tag.
+  await expect(captureNode(page).locator('[data-run-paused="true"]')).toHaveCount(1)
 
   await bar.getByTestId('canvas-step').click()
   // Parks again at the next node (the reached Decision) -- still in
   // step mode.
-  await expect(bar).toContainText('Paused in step mode', { timeout: 15_000 })
+  await expect(bar).toContainText('Paused at ', { timeout: 15_000 })
+  await expect(bar).not.toContainText('Read attribute')
   await expect(bar.getByTestId('canvas-resume-step')).toHaveText('Continue')
 
   await bar.getByTestId('canvas-resume-step').click()

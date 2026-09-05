@@ -104,12 +104,12 @@ test('Happy path: node cards reach done, the bar shows the finished run, and dis
   await expect(injectStatus).toHaveAttribute('data-status', 'done', { timeout: 10_000 })
   await expect(triggerStatus).toHaveAttribute('data-status', 'done', { timeout: 10_000 })
 
-  const bar = activePanel(page).getByTestId('current-step-bar')
+  const bar = activePanel(page).getByTestId('run-state-dock')
   await expect(bar).toBeVisible()
   await expect(bar).toContainText('SUCCESS')
 
   await activePanel(page).getByTestId('dismiss-run-state').click()
-  await expect(activePanel(page).getByTestId('current-step-bar')).toHaveCount(0)
+  await expect(activePanel(page).getByTestId('run-state-dock')).toHaveCount(0)
   await expect(activePanel(page).getByTestId('node-run-status')).toHaveCount(0)
 
   await activePanel(page).getByRole('button', { name: 'Back to workflows' }).click()
@@ -148,7 +148,7 @@ test('Park then deny: the checkpoint node shows awaiting-approval, the bar offer
   const reviewStatus = activePanel(page).locator('.react-flow__node').filter({ hasText: 'Ask for review' }).getByTestId('node-run-status')
   await expect(reviewStatus).toHaveAttribute('data-status', 'awaiting-approval', { timeout: 10_000 })
 
-  const bar = activePanel(page).getByTestId('current-step-bar')
+  const bar = activePanel(page).getByTestId('run-state-dock')
   await expect(bar).toContainText('Awaiting approval')
   await expect(activePanel(page).getByTestId('canvas-deny-step')).toBeVisible()
 

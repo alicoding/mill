@@ -475,6 +475,14 @@
 .canvasNode[data-run-status='awaiting-approval'] {
     box-shadow: inset 3px 0 0 var(--borderColor-attention-emphasis);
 }
+/* Where the run is actually stopped (goal 0328): the SAME ring the
+   canvas draws around a selected node, so "this is the one" reads
+   without a second visual vocabulary. Declared after every
+   data-run-status rule above -- one box-shadow property wins, and the
+   ring has to survive alongside the status stripe it composes with. */
+.canvasNode[data-run-paused='true'] {
+    box-shadow: var(--xy-node-boxshadow-selected), inset 3px 0 0 var(--borderColor-attention-emphasis);
+}
 
 .runStatusTag {
     position: absolute;
