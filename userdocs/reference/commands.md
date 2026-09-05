@@ -114,6 +114,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.secretsource.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.steptype.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.steptype.export` | Export | — | Global | Acts on the selected entity |
+| `diagram.fit` | Fit diagram | — | atlas | Conditional — available only in a matching state |
 | `docs.search` | Search docs | — | Global | Always available |
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
