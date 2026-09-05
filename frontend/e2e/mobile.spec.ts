@@ -69,7 +69,7 @@ test('Mobile job 1/2/5 -- run a workflow, capture its note, approve the parked r
   await page.goto('/')
   await openDrawerAndNavigate(page, 'Workflows')
 
-  const seed = 'Example: Human review with input'
+  const seed = 'Sign off a deliverable'
   const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(seed, { exact: true }) })
   await expect(row).toBeVisible()
   await row.getByRole('button', { name: 'Run' }).click()

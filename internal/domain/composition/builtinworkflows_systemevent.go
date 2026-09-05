@@ -12,10 +12,10 @@ import (
 // convention -- see that function's own call site comment for the seam
 // this follows.
 func builtInSystemEventWorkflows() []Workflow {
-	// "Example: Forward pending approvals" (docs/adr/0035 item 5, the
+	// "Forward approvals to the sponsor" (docs/adr/0035 item 5, the
 	// forward refactor's own proof): trigger-system-event(decision-parked)
 	// -> integration-http against the same seeded no-auth HTTPRequest the
-	// "Example: Approval-gated HTTP call" workflow already uses -- a
+	// "Post an update to the client portal" workflow already uses -- a
 	// working placeholder a user re-points at their real notification
 	// endpoint (ntfy/Telegram/a webhook receiver), not a dead stub.
 	// integration-http's own body resolution (integration.go) forwards
@@ -68,14 +68,14 @@ func builtInSystemEventWorkflows() []Workflow {
 		},
 		{
 			ID:          "example-forward-approvals-workflow",
-			Label:       "Example: Forward pending approvals",
-			Description: "Fires whenever ANY workflow parks awaiting approval and POSTs the event ({event, runId, workflowId, workflowLabel, nodeId, timestamp}) to the integration below. Re-point \"Integration\" (canvas Inspector) at your real notification endpoint (ntfy/Telegram/a webhook receiver you configure under Configure > Integrations), then enable this workflow. It ships DISABLED so it never calls out anywhere until you do. Replaces the old Settings > Forward pending approvals toggle: this workflow IS the forward now, visible and editable like any other, instead of a private code path.",
+			Label:       "Forward approvals to the sponsor",
+			Description: "Posts each pending approval's details for the client sponsor.",
 			Nodes:       forwardNodes,
 			Edges: []Edge{
 				{ID: "example-forward-approvals-e0", Source: forwardTriggerID, Target: forwardHTTPID},
 			},
 			BuiltIn:  true,
-			Seed:     seedorigin.Stamp(3),
+			Seed:     seedorigin.Stamp(4),
 			Disabled: true,
 		},
 	}

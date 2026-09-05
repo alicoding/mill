@@ -52,7 +52,7 @@ func runSeededAIClassifyBranch(t *testing.T, classification string) RunSummary {
 	})
 	defer orig()
 
-	wfID := findBuiltInWorkflowID(t, comp, "Example: AI classify -> branch")
+	wfID := findBuiltInWorkflowID(t, comp, "Triage a client email")
 
 	summary, err := exec.RunWorkflow(wfID, RunKindTest, map[string]string{
 		"text": "The server is down and customers can't check out.",

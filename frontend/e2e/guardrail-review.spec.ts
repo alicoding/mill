@@ -21,7 +21,7 @@ import {
 // split out of guardrail.spec.ts once that file crossed the 500-line
 // limit converting to this pattern. Same seed-is-the-proof discipline
 // (.claude/rules/testing.md), driven through the seeded "Example:
-// Approval-gated HTTP call" and "Example: Human review with input"
+// Approval-gated HTTP call" and "Sign off a deliverable"
 // workflows.
 //
 // Runs on its own dedicated server (fixtures/server.ts's
@@ -30,7 +30,7 @@ import {
 // counts, which must never be contaminated by another spec cohabiting
 // a shared worker's one server.
 
-const GUARDED = 'Example: Approval-gated HTTP call'
+const GUARDED = 'Post an update to the client portal'
 
 interface SpawnedPage {
   server: SpawnedServer
@@ -74,7 +74,7 @@ test('Review queue: a parked human-review run accepts typed input and resumes wi
     const { page } = s
     await page.goto(`${s.server.baseURL}/`)
     await page.getByRole('link', { name: 'Workflows' }).click()
-    const seed = 'Example: Human review with input'
+    const seed = 'Sign off a deliverable'
     const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(seed, { exact: true }) })
     await expect(row).toBeVisible()
     await row.getByRole('button', { name: 'Run' }).click()
@@ -162,7 +162,7 @@ test('Review queue shows the resolved outcome after a deny, filterable by workfl
     // test's own dedicated, otherwise-empty server that means a second
     // workflow's item has to exist here too, for the filter to have
     // anything to narrow away from.
-    const reviewSeed = 'Example: Human review with input'
+    const reviewSeed = 'Sign off a deliverable'
     await page.getByRole('link', { name: 'Workflows' }).click()
     const reviewRow = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(reviewSeed, { exact: true }) })
     await reviewRow.getByRole('button', { name: 'Run' }).click()
@@ -343,7 +343,7 @@ test('Review kind filter narrows pending rows by kind, and the Blankslate empty 
     await askRow.getByRole('button', { name: 'Run' }).click()
 
     // Kind 2: a human-review checkpoint.
-    const reviewSeed = 'Example: Human review with input'
+    const reviewSeed = 'Sign off a deliverable'
     const reviewRow = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(reviewSeed, { exact: true }) })
     await reviewRow.getByRole('button', { name: 'Run' }).click()
     const dialog = page.getByRole('dialog')

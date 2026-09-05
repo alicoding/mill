@@ -355,16 +355,33 @@ export const REVIEW_PARKED_PAYLOAD_MCP_BASE_PORT = 11580
 export const SECRET_SOURCE_PLUGIN_SERVER_BASE_PORT = 11600
 export const SECRET_SOURCE_PLUGIN_MCP_BASE_PORT = 11620
 
+// runtime-plugin-themes.spec.ts (goal 0348 follow-up): installs and
+// allows a fixture plugin at runtime, which writes into MILL_PLUGINS_DIR
+// and the plugin trust allow-list -- both process-wide/global state
+// testing.md's shared-vs-dedicated rule keeps off the shared pool, the
+// same reasoning every other runtime-plugin-*.spec.ts pair above
+// records.
+export const RUNTIME_PLUGIN_THEMES_SERVER_BASE_PORT = 11640
+export const RUNTIME_PLUGIN_THEMES_MCP_BASE_PORT = 11660
+
+// runtime-plugin-view-frame.spec.ts's own dedicated pair (goal 0349):
+// it boots with its own MILL_PLUGINS_DIR copy like every runtime-plugin
+// spec, and its notice-pill assertions read the GLOBAL notice list --
+// its own pair rather than more RUNTIME_PLUGINS_* offset arithmetic
+// (the reasoning RUNTIME_PLUGIN_RELOAD_* records).
+export const RUNTIME_PLUGIN_FRAME_SERVER_BASE_PORT = 11680
+export const RUNTIME_PLUGIN_FRAME_MCP_BASE_PORT = 11700
+
 // The Extensions store's own dedicated pair (goal 0349): browsing,
 // adding a marketplace source and installing all change GLOBAL plugin
 // state -- what the plugins directory holds and which marketplaces
 // this Mill reads -- exactly the cross-spec state testing.md's
 // shared-vs-dedicated rule keeps off the shared pool.
-export const EXTENSIONS_STORE_SERVER_BASE_PORT = 11680
-export const EXTENSIONS_STORE_MCP_BASE_PORT = 11700
+export const EXTENSIONS_STORE_SERVER_BASE_PORT = 11760
+export const EXTENSIONS_STORE_MCP_BASE_PORT = 11780
 
 // extensions-install.spec.ts's own pair (goal 0349): the archive
 // install path writes into the plugins directory, the same global
 // state the store spec's pair isolates.
-export const EXTENSIONS_INSTALL_SERVER_BASE_PORT = 11720
-export const EXTENSIONS_INSTALL_MCP_BASE_PORT = 11740
+export const EXTENSIONS_INSTALL_SERVER_BASE_PORT = 11800
+export const EXTENSIONS_INSTALL_MCP_BASE_PORT = 11820

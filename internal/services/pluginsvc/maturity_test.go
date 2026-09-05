@@ -1,6 +1,8 @@
 package pluginsvc
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -80,5 +82,82 @@ func TestMaturity_Flags(t *testing.T) {
 				t.Errorf("Flags(%v, %+v) = %v, want %v", c.level, c.e, got, c.want)
 			}
 		})
+	}
+}
+
+// writeE2ESpec writes repoRoot/frontend/e2e/<name> with body, creating
+// the directory tree the first time a test calls it.
+func writeE2ESpec(t *testing.T, repoRoot, name, body string) {
+	t.Helper()
+	dir := filepath.Join(repoRoot, "frontend", "e2e")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestHasE2E_BareWholeWordNoLongerMatches pins the goal 0348 follow-up
+// regression: a spec whose only mention of a family name is unrelated
+// prose (the shape that made "themes" and "steps" false positives
+// under the old whole-word rule) must not count as evidence.
+func TestHasE2E_BareWholeWordNoLongerMatches(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeE2ESpec(t, repoRoot, "dark-mode.spec.ts", "// this test also exercises the app's color themes and tools menu\n")
+	if hasE2E(repoRoot, "themes") {
+		t.Error(`hasE2E(repoRoot, "themes") = true, want false: only a bare-word match exists`)
+	}
+	if hasE2E(repoRoot, "tools") {
+		t.Error(`hasE2E(repoRoot, "tools") = true, want false: only a bare-word match exists`)
+	}
+}
+
+// TestHasE2E_FilenameConvention covers the runtime-plugin-<family>*
+// naming route, family name and kebab-case form alike.
+func TestHasE2E_FilenameConvention(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeE2ESpec(t, repoRoot, "runtime-plugin-steps.spec.ts", "test('steps run', () => {})\n")
+	writeE2ESpec(t, repoRoot, "runtime-plugin-canvas-objects-extra.spec.ts", "test('canvas objects', () => {})\n")
+	if !hasE2E(repoRoot, "steps") {
+		t.Error(`hasE2E(repoRoot, "steps") = false, want true: runtime-plugin-steps.spec.ts exists`)
+	}
+	if !hasE2E(repoRoot, "canvasObjects") {
+		t.Error(`hasE2E(repoRoot, "canvasObjects") = false, want true: kebab-case runtime-plugin-canvas-objects-extra.spec.ts exists`)
+	}
+}
+
+// TestHasE2E_RegistrationCallAndContributesLiteral covers the second
+// route: a family's own SDK registration call, or the literal
+// contributes.<family> text, inside any spec file regardless of name.
+func TestHasE2E_RegistrationCallAndContributesLiteral(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeE2ESpec(t, repoRoot, "some-spec.spec.ts", "api.registerCapture({ id: 'thought' })\n")
+	if !hasE2E(repoRoot, "captures") {
+		t.Error(`hasE2E(repoRoot, "captures") = false, want true: registerCapture appears in a spec`)
+	}
+	writeE2ESpec(t, repoRoot, "another-spec.spec.ts", "expect(refused).toContainText('contributes.network')\n")
+	if !hasE2E(repoRoot, "network") {
+		t.Error(`hasE2E(repoRoot, "network") = false, want true: literal contributes.network appears in a spec`)
+	}
+}
+
+// TestHasE2E_FixtureManifest covers the third route: an e2e fixture
+// plugin's own manifest.json declaring a non-empty contributes.<family>.
+func TestHasE2E_FixtureManifest(t *testing.T) {
+	repoRoot := t.TempDir()
+	dir := filepath.Join(repoRoot, "frontend", "e2e", "fixtures", "sample-plugin")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	manifest := `{"id":"sample-plugin","contributes":{"views":[{"id":"issues","title":"Issues"}]}}`
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), []byte(manifest), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if !hasE2E(repoRoot, "views") {
+		t.Error(`hasE2E(repoRoot, "views") = false, want true: fixture manifest declares contributes.views`)
+	}
+	if hasE2E(repoRoot, "commands") {
+		t.Error(`hasE2E(repoRoot, "commands") = true, want false: fixture manifest never declares contributes.commands`)
 	}
 }

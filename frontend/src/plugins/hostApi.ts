@@ -3,8 +3,8 @@ import { Events } from '@wailsio/runtime'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import { AtlasService } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc'
 import { contentEntryFromWire } from './pluginQuery'
-import { collectPluginView } from './pluginViews'
-import { collectPluginCapture } from './pluginCaptures'
+import { attachPluginViewMessages, collectPluginView, getPluginView } from './pluginViews'
+import { attachPluginCaptureMessages, collectPluginCapture, getPluginCapture } from './pluginCaptures'
 import { SettingsService } from '../shared/bindings'
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
@@ -109,7 +109,7 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			actions: input.action ? [{ label: input.action.label, commandId: `plugin.${pluginId}.${input.action.commandId}` }] : undefined,
 		})
 	}
-	return Object.freeze({
+	const api = Object.freeze({
 		millVersion,
 		pluginId,
 		settings,
@@ -195,16 +195,19 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		registerView: (decl) => {
 			const declared = (manifest.contributes?.views ?? []).find((v) => v.id === decl.id)
 			if (!declared) throw new Error(`plugin ${pluginId}: view "${decl.id}" is not declared in the manifest's contributes.views`)
-			if (typeof decl.render !== 'function') throw new Error(`plugin ${pluginId}: view "${decl.id}" needs a render function`)
-			collectPluginView({ pluginId, pluginName: manifest.name || pluginId, viewId: decl.id, title: declared.title, render: decl.render })
-			collectPluginCommand({
-				id: `view.open.${pluginId}.${decl.id}`,
-				label: declared.title,
-				pluginId,
-				run: () => {
-					void import('../shared/store').then((m) => m.useAppStore.getState().openWorkTab({ kind: 'plugin-view', pluginId, viewId: decl.id }))
-				},
-			})
+			// A view whose manifest names an entry page is already
+			// collected from the manifest (collectFrameSurfaces, run
+			// before activation), so registering it is how the plugin
+			// opts into the page's message relay, never a second
+			// collection.
+			if (declared.entry) {
+				attachPluginViewMessages(pluginId, decl.id, decl.onMessage)
+			} else {
+				if (typeof decl.render !== 'function') throw new Error(`plugin ${pluginId}: view "${decl.id}" needs a render function, or an entry page in the manifest`)
+				collectPluginView({ pluginId, pluginName: manifest.name || pluginId, viewId: decl.id, title: declared.title, version: manifest.version, render: decl.render, onMessage: decl.onMessage })
+				collectOpenViewCommand(pluginId, decl.id, declared.title)
+			}
+			return { postMessage: (message: unknown) => getPluginView(pluginId, decl.id)?.post?.(message) }
 		},
 		// registerCapture (goal 0309): declare-first like views; the face
 		// is kept here for the capture window, and a palette command
@@ -212,14 +215,14 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		registerCapture: (decl) => {
 			const declared = (manifest.contributes?.captures ?? []).find((c) => c.id === decl.id)
 			if (!declared) throw new Error(`plugin ${pluginId}: capture "${decl.id}" is not declared in the manifest's contributes.captures`)
-			if (typeof decl.render !== 'function') throw new Error(`plugin ${pluginId}: capture "${decl.id}" needs a render function`)
-			collectPluginCapture({ pluginId, pluginName: manifest.name || pluginId, captureId: decl.id, label: declared.label, render: decl.render })
-			collectPluginCommand({
-				id: `capture.${pluginId}.${decl.id}`,
-				label: declared.label,
-				pluginId,
-				run: () => { void SettingsService.ShowCapture(pluginId, decl.id) },
-			})
+			if (declared.entry) {
+				attachPluginCaptureMessages(pluginId, decl.id, decl.onMessage)
+			} else {
+				if (typeof decl.render !== 'function') throw new Error(`plugin ${pluginId}: capture "${decl.id}" needs a render function, or an entry page in the manifest`)
+				collectPluginCapture({ pluginId, pluginName: manifest.name || pluginId, captureId: decl.id, label: declared.label, version: manifest.version, render: decl.render, onMessage: decl.onMessage })
+				collectShowCaptureCommand(pluginId, decl.id, declared.label)
+			}
+			return { postMessage: (message: unknown) => getPluginCapture(pluginId, decl.id)?.post?.(message) }
 		},
 		registerCommand: (decl) => {
 			warnUndeclaredCommand(manifest, decl.id)
@@ -248,4 +251,60 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			},
 		}),
 	})
+	// The api object is kept, not just handed to activate(): a framed
+	// view or capture reaches Mill through a message bridge, and the
+	// bridge routes its whitelisted calls onto this very object, so the
+	// frame is held to exactly the same guards the plugin's own code is.
+	pluginAPIs.set(pluginId, api)
+	return api
+}
+
+// pluginAPIFor answers the api object one loaded plugin holds, or
+// undefined for a plugin that never activated.
+export function pluginAPIFor(pluginId: string): MillPluginAPI | undefined {
+	return pluginAPIs.get(pluginId)
+}
+
+const pluginAPIs = new Map<string, MillPluginAPI>()
+
+function collectOpenViewCommand(pluginId: string, viewId: string, title: string): void {
+	collectPluginCommand({
+		id: `view.open.${pluginId}.${viewId}`,
+		label: title,
+		pluginId,
+		// The store is imported lazily inside run(): at activation time
+		// the app module graph must not be pulled forward (the loader's
+		// own import discipline).
+		run: () => {
+			void import('../shared/store').then((m) => m.useAppStore.getState().openWorkTab({ kind: 'plugin-view', pluginId, viewId }))
+		},
+	})
+}
+
+function collectShowCaptureCommand(pluginId: string, captureId: string, label: string): void {
+	collectPluginCommand({
+		id: `capture.${pluginId}.${captureId}`,
+		label,
+		pluginId,
+		run: () => { void SettingsService.ShowCapture(pluginId, captureId) },
+	})
+}
+
+// collectFrameSurfaces registers every view and capture the MANIFEST
+// declares with an entry page, before any plugin code runs: such a
+// surface is a page Mill mounts in its own frame, so it opens from the
+// palette whether or not the plugin ever calls registerView.
+export function collectFrameSurfaces(manifest: Manifest): void {
+	const pluginId = manifest.id
+	const pluginName = manifest.name || pluginId
+	for (const view of manifest.contributes?.views ?? []) {
+		if (!view.entry) continue
+		collectPluginView({ pluginId, pluginName, viewId: view.id, title: view.title, version: manifest.version, entry: view.entry })
+		collectOpenViewCommand(pluginId, view.id, view.title)
+	}
+	for (const capture of manifest.contributes?.captures ?? []) {
+		if (!capture.entry) continue
+		collectPluginCapture({ pluginId, pluginName, captureId: capture.id, label: capture.label, version: manifest.version, entry: capture.entry })
+		collectShowCaptureCommand(pluginId, capture.id, capture.label)
+	}
 }

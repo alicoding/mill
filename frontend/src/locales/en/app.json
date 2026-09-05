@@ -205,7 +205,8 @@
     "extensions": "Extensions"
   },
   "pluginView": {
-    "missing": "This view's plugin is not loaded."
+    "missing": "This view's plugin is not loaded.",
+    "entryFailed": "This view's page could not be loaded."
   },
   "workTabLabel": {
     "pluginView": "Plugin view",

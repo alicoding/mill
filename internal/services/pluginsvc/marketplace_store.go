@@ -358,3 +358,10 @@ func (p *PluginService) sourceFor(marketplace string) (MarketplaceSource, bool) 
 	}
 	return MarketplaceSource{}, false
 }
+
+// SetDownloader replaces the user-initiated download seam.
+//
+//wails:ignore
+func (p *PluginService) SetDownloader(fn func(url string, limit int64) ([]byte, error)) {
+	p.download = fn
+}

@@ -102,8 +102,8 @@ test('Save as task lands the typed line as a tracker row scheduled for today', a
 
     await mainPage.getByRole('link', { name: 'Configure' }).click()
     await mainPage.getByRole('tab', { name: 'Lists' }).click()
-    const trackerRow = mainPage.locator('[data-testid="inventory-row"][data-entity="list"]', { has: mainPage.getByText('Example: Task tracker', { exact: true }) })
-    await trackerRow.getByText('Example: Task tracker', { exact: true }).click()
+    const trackerRow = mainPage.locator('[data-testid="inventory-row"][data-entity="list"]', { has: mainPage.getByText('Engagement tasks', { exact: true }) })
+    await trackerRow.getByText('Engagement tasks', { exact: true }).click()
     const glide = mainPage.getByTestId('atlas-projection-glide')
     const row = glide.locator('[role="grid"] [role="row"]').filter({ hasText: captureText })
     await expect(row).toHaveCount(1)

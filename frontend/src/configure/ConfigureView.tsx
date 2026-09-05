@@ -4,6 +4,7 @@ import PageContainer from '../shared/PageContainer'
 import { Tabs } from '@primer/react/experimental'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import { ConfigureRequests } from './ConfigureRequests'
+import { ConfigureClientCerts } from './ConfigureClientCerts'
 import { ConfigureLists } from './ConfigureLists'
 import { ConfigureAttributes } from './ConfigureAttributes'
 import { ConfigureMCPServers } from './ConfigureMCPServers'
@@ -60,6 +61,7 @@ function ConfigureView({ initialTab }: { initialTab?: string }) {
           rule reads it as deliberate. */}
       <TabList aria-label={t('configureView.ariaLabel')} scrollRegion="configure-tabs">
         <TabItem value="integration">{t('configureView.integration')}</TabItem>
+        <TabItem value="certificates">{t('configureView.certificates')}</TabItem>
         <TabItem value="lists">{t('configureView.lists')}</TabItem>
         <TabItem value="attributes">{t('configureView.attributes')}</TabItem>
         <TabItem value="mcpservers">{t('configureView.mcpServers')}</TabItem>
@@ -70,6 +72,7 @@ function ConfigureView({ initialTab }: { initialTab?: string }) {
         <TabItem value="steptypes">{t('configureView.stepTypes')}</TabItem>
       </TabList>
       <TabPanel value="integration"><ConfigureRequests /></TabPanel>
+      <TabPanel value="certificates"><ConfigureClientCerts /></TabPanel>
       <TabPanel value="lists"><ConfigureLists /></TabPanel>
       <TabPanel value="attributes"><ConfigureAttributes /></TabPanel>
       <TabPanel value="mcpservers"><ConfigureMCPServers /></TabPanel>

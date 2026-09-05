@@ -7,7 +7,21 @@ import (
 	"strings"
 
 	"github.com/alicoding/mill/internal/adapters/httpconnector"
+	"github.com/alicoding/mill/internal/domain/clientcert"
 )
+
+// hostOf is the authority a client-certificate failure names. An
+// unparseable URL never reaches here (httpconnector would have failed
+// first), so an empty answer is only ever the degenerate case.
+// HostOf is exported for the request-test path, which assembles the
+// same URL and needs the same authority in its own failure sentence.
+func HostOf(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	return parsed.Host
+}
 
 // defaultMethodAndPath resolves an HTTPRequest's transport method/path,
 // same precedence integration-http's exec has always used: an explicit
@@ -73,7 +87,7 @@ func sendHTTPRequest(rc ResolvedHTTPRequest, method, urlPath, body string, heade
 		Body:    body,
 	})
 	if err != nil {
-		return "", err
+		return "", clientcert.DescribeTransportFailure(err, HostOf(fullURL))
 	}
 	// A header carrying a vault-resolved value (goal 0203 S1) could be
 	// echoed back by the server -- both the response body and the

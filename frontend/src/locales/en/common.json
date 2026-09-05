@@ -69,7 +69,23 @@
     "columnSettings": "Type and choices…",
     "insertRowBelow": "Insert row below",
     "addRowHint": "New row",
-    "chooseValueAriaLabel": "Choose a value"
+    "chooseValueAriaLabel": "Choose a value",
+    "sortAscending": "Sort ascending",
+    "sortDescending": "Sort descending",
+    "clearSort": "Clear sort",
+    "filterColumn": "Filter…",
+    "filterContains": "Contains",
+    "filterMin": "From",
+    "filterMax": "To",
+    "filterApply": "Apply",
+    "filterClear": "Clear",
+    "clearNarrowing": "Clear sort and filters",
+    "copyRows_one": "Copy {{count}} row",
+    "copyRows_other": "Copy {{count}} rows",
+    "deleteRows_one": "Delete {{count}} row",
+    "deleteRows_other": "Delete {{count}} rows",
+    "deleteColumnAction": "Delete “{{column}}”",
+    "pastedRowsDropped": "Pasted rows past the end were dropped."
   },
   "formattingToolbar": {
     "bold": "Bold",
@@ -128,7 +144,13 @@
       "pin": "Pin",
       "unpin": "Unpin",
       "runStepped": "Run step by step",
-      "view": "View workflow"
+      "view": "View workflow",
+      "row": {
+        "edit": "Edit",
+        "export": "Export",
+        "reset": "Reset to shipped example",
+        "delete": "Delete"
+      }
     },
     "palette": {
       "open": "Open command palette"
@@ -234,7 +256,51 @@
         "execenvs": "New environment",
         "aiproviders": "New AI provider",
         "conversionprofiles": "New conversion profile",
-        "steptypes": "New step type"
+        "steptypes": "New step type",
+        "certificates": "New client certificate"
+      },
+      "request": {
+        "delete": "Delete",
+        "edit": "Edit",
+        "export": "Export",
+        "reset": "Reset to shipped example"
+      },
+      "list": {
+        "delete": "Delete",
+        "export": "Export",
+        "reset": "Reset to shipped example"
+      },
+      "mcpserver": {
+        "delete": "Delete",
+        "export": "Export",
+        "listTools": "List tools",
+        "reset": "Reset to shipped example"
+      },
+      "decision": {
+        "delete": "Delete",
+        "duplicate": "Duplicate",
+        "export": "Export",
+        "reset": "Reset to shipped example"
+      },
+      "execenv": {
+        "delete": "Delete",
+        "export": "Export",
+        "reset": "Reset to shipped example"
+      },
+      "aiprovider": {
+        "delete": "Delete",
+        "export": "Export",
+        "reset": "Reset to shipped example"
+      },
+      "steptype": {
+        "delete": "Delete",
+        "export": "Export"
+      },
+      "conversionprofile": {
+        "delete": "Delete"
+      },
+      "secretsource": {
+        "delete": "Delete"
       }
     },
     "docs": {
@@ -312,6 +378,23 @@
       "reveal": "Reveal folder",
       "remove": "Remove",
       "refreshSources": "Extensions: refresh sources"
+    },
+    "listGrid": {
+      "deleteRows": "Delete selected rows",
+      "copyRows": "Copy selected rows",
+      "deleteColumn": "Delete selected column"
+    },
+    "clientcert": {
+      "edit": "Edit certificate",
+      "duplicate": "Duplicate certificate",
+      "delete": "Delete certificate"
+    },
+    "secret": {
+      "row": {
+        "edit": "Edit",
+        "history": "History",
+        "delete": "Delete"
+      }
     }
   },
   "menu": {

@@ -100,10 +100,16 @@ type ManifestContributes struct {
 }
 
 // ViewContribution declares one plugin-owned work tab: a slug id
-// unique within the plugin and the tab's title.
+// unique within the plugin and the tab's title. Entry names an .html
+// page inside the plugin's own folder (docs/goals/0349): a view that
+// declares one is mounted in its own sandboxed frame and needs no
+// plugin code at all; a view that leaves it empty is the legacy
+// same-DOM form, rendered by the render callback registered at
+// activate().
 type ViewContribution struct {
 	ID    string `json:"id"`
 	Title string `json:"title"`
+	Entry string `json:"entry"`
 }
 
 // NetworkContribution names one host (lowercase, optional :port) and
@@ -232,13 +238,6 @@ type PluginService struct {
 	download func(url string, limit int64) ([]byte, error)
 }
 
-// SetDownloader replaces the user-initiated download seam.
-//
-//wails:ignore
-func (p *PluginService) SetDownloader(fn func(url string, limit int64) ([]byte, error)) {
-	p.download = fn
-}
-
 func New(dir string, guardrail *guardrailsvc.GuardrailService, appVersion string) *PluginService {
 	// osopen, not the runtime's Browser API: the adapter's server build
 	// is a documented no-op (ErrUnsupportedInServerMode), so an approved
@@ -327,6 +326,12 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 	}
 	if info.Error == "" {
 		info.Error = secretsFileProblem(dir, m)
+	}
+	if info.Error == "" {
+		info.Error = entryFileProblem(m, func(rel string) bool {
+			_, statErr := os.Stat(filepath.Join(dir, filepath.FromSlash(rel))) // #nosec G703 -- rel passed entryPathProblem (no traversal, no absolute path)
+			return statErr == nil
+		})
 	}
 	if info.Error == "" {
 		if h, err := ContentHash(dir); err == nil {
