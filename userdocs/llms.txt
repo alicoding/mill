@@ -16,6 +16,7 @@
 - [Step reference](reference/steps.md): every step's contract, generated from the registry
 - [Commands](reference/commands.md): every registered command's id, label, default binding, surface, and enablement, generated from the registry
 - [Menu bar](reference/menu-bar.md): every menu and item in the macOS menu bar, its shortcut, and the command behind it, generated from the registry
+- [Client certificates](reference/client-certificates.md): presenting a client certificate per host: formats, matching, expiry status, and the Test action
 - [Settings](reference/settings.md): app preferences: appearance, hotkeys, shortcuts, MCP access, remote access, backups, updates
 - [Extending the canvas](reference/extending-the-canvas.md): how a canvas noun loads, what its declaration requires, and what platform APIs it may and may not reach
 - [Register a canvas tool](reference/register-a-canvas-tool.md): walks a new AtlasToolShape declaration end to end, quoting a real registered tool

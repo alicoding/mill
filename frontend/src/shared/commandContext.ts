@@ -26,6 +26,13 @@ export type CommandContext =
   | { kind: 'run'; runId: string; workflowId?: string; nodeId?: string; values?: Record<string, string> }
   | { kind: 'entry'; entryId: string; pinned?: boolean }
   | { kind: 'card'; cardId: string }
+  // A row of a Configure inventory (goal 0306 S1): `entity` is the
+  // family's own data-event name ("clientcert"), `id` the row. One
+  // kind for every family rather than one per family -- the commands
+  // acting on a row (edit, duplicate, delete) are the same three
+  // everywhere, and a per-family kind would multiply the discriminant
+  // without changing a single call site's shape.
+  | { kind: 'entity'; entity: string; id: string }
 
 export type CommandContextKind = CommandContext['kind']
 
@@ -45,6 +52,10 @@ export function workflowContext(ctx: CommandContext | undefined): { workflowId: 
 
 export function runContext(ctx: CommandContext | undefined): { runId: string; workflowId?: string; nodeId?: string; values?: Record<string, string> } | null {
   return ctx?.kind === 'run' ? { runId: ctx.runId, workflowId: ctx.workflowId, nodeId: ctx.nodeId, values: ctx.values } : null
+}
+
+export function entityContext(ctx: CommandContext | undefined): { entity: string; id: string } | null {
+  return ctx?.kind === 'entity' ? { entity: ctx.entity, id: ctx.id } : null
 }
 
 export function entryContext(ctx: CommandContext | undefined): { entryId: string; pinned?: boolean } | null {

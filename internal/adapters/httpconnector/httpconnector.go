@@ -106,9 +106,15 @@ func Execute(req Request) (Response, error) {
 		httpReq.Header.Set(k, v)
 	}
 
-	resp, err := client.Do(httpReq)
+	// A host Mill holds a client certificate for goes out on its own
+	// transport (tlsclient.go); every other host keeps the shared one.
+	call, err := clientForRequest(httpReq.Context(), req.URL)
 	if err != nil {
 		return Response{}, err
+	}
+	resp, err := call.Do(httpReq)
+	if err != nil {
+		return Response{}, classifyTLSError(err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -145,5 +151,13 @@ func ExecuteStream(req Request) (*http.Response, error) {
 		httpReq.Header.Set(k, v)
 	}
 
-	return client.Do(httpReq)
+	call, err := clientForRequest(httpReq.Context(), req.URL)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := call.Do(httpReq)
+	if err != nil {
+		return nil, classifyTLSError(err)
+	}
+	return resp, nil
 }

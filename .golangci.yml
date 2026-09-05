@@ -65,7 +65,7 @@ linters:
       # accessors in the same order. Two such literals read as a clone
       # to dupl's tokenizer; folding them behind more accessor
       # indirection would hide the wiring, not remove duplication.
-      - path: internal/services/configuresvc/configure(secretsource|conversionprofile)\.go
+      - path: internal/services/configuresvc/(configure(secretsource|conversionprofile)|clientcert)\.go
         linters: [dupl]
 
   settings:
