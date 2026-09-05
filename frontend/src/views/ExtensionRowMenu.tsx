@@ -12,7 +12,7 @@ import { ConfirmDialog } from '../shared/ConfirmDialog'
 // about whether an action applies, it asks the command's enabled().
 // Removing a folder is the one item that confirms first: the folder
 // leaves the plugins directory, and the confirm names which one.
-const MENU_COMMANDS = ['extension.enable', 'extension.disable', 'extension.reveal'] as const
+const MENU_COMMANDS = ['extension.update', 'extension.checkUpdates', 'extension.enable', 'extension.disable', 'extension.reveal'] as const
 
 export function ExtensionRowMenu({ id, name }: { id: string; name: string }) {
   const { t } = useTranslation('views')

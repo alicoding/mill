@@ -7,6 +7,8 @@ import { notifyPluginRemoved } from '../shared/pluginRemoveSignal'
 import ExtensionsSection from './ExtensionsSection'
 import { ExtensionsBrowseTab } from './ExtensionsBrowseTab'
 import { ExtensionsUpdatesTab } from './ExtensionsUpdatesTab'
+import { ExtensionsUpdateDialogHost } from './ExtensionsUpdateDialogHost'
+import { refreshUpdates, useExtensionUpdatesStore } from '../shared/extensionUpdatesStore'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './ExtensionsSection.module.css'
 
@@ -45,7 +47,10 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
     setTab('installed')
   }, [])
 
-  const updateCount = 0
+  // The badge counts the LAST check's candidates; opening the page
+  // reads that record and never fetches.
+  const updateCount = useExtensionUpdatesStore((s) => s.candidates.length)
+  useEffect(() => { void refreshUpdates() }, [])
 
   return (
     <PageContainer variant="wide" data-testid="extensions-view">
@@ -70,6 +75,7 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
       {tab === 'installed' && <ExtensionsSection />}
       {tab === 'browse' && <ExtensionsBrowseTab sourcesRequest={sourcesRequest} onInstalled={onInstalled} />}
       {tab === 'updates' && <ExtensionsUpdatesTab />}
+      <ExtensionsUpdateDialogHost />
     </PageContainer>
   )
 }

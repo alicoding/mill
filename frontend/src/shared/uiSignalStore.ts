@@ -23,6 +23,12 @@ interface UISignalState {
   // page's Sources dialog from the palette.
   extensionSourcesRequest: number
   requestExtensionSources: () => void
+  // extension.update (goal 0349 S5): which extension's update to
+  // confirm. Set-then-consume, like configureCreateRequest: the
+  // Extensions page's dialog host previews it and shows the prompt.
+  extensionUpdateRequest: string | null
+  requestExtensionUpdate: (id: string) => void
+  consumeExtensionUpdate: () => void
   // atlas.matrix / atlas.coverage / atlas.roadmap: same counter shape,
   // opening AtlasView's own local matrixOpen/coverageOpen/roadmapOpen
   // dialog state (useAtlasProjectionViews).
@@ -263,6 +269,9 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   secretPanelRequest: null,
   requestSecretPanel: (panel, id) => set({ secretPanelRequest: { panel, id } }),
   consumeSecretPanel: () => set({ secretPanelRequest: null }),
+  extensionUpdateRequest: null,
+  requestExtensionUpdate: (id) => set({ extensionUpdateRequest: id }),
+  consumeExtensionUpdate: () => set({ extensionUpdateRequest: null }),
   reviewRulesRequest: 0,
   requestReviewRules: () => set((s) => ({ reviewRulesRequest: s.reviewRulesRequest + 1 })),
   atlasArmToolRequest: null,
