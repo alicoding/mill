@@ -31,6 +31,21 @@ export async function deleteTableViaMenu(object: Locator): Promise<void> {
   await expect(object).toHaveCount(0)
 }
 
+// Escape hands the keyboard back from a table's grid to the OBJECT
+// (AtlasCardProjectionTable.tsx's releaseKeyboard, goal 0273): the
+// object's own canvas node takes focus, and only then does a
+// board-level shortcut -- Delete/Backspace over the selection, ⌘Z over
+// the journal -- reach the canvas at all. The handback is a real focus
+// move one render after the keystroke, so a board shortcut sent on the
+// next tick still lands in the grid; wait on the focus itself, never on
+// a delay. The wait is scoped to the caller's own object via its
+// ancestor node wrapper, so a board holding more than one table object
+// stays unambiguous.
+export async function escapeGridToObject(page: Page, object: Locator): Promise<void> {
+  await page.keyboard.press('Escape')
+  await expect(object.locator('xpath=ancestor::*[contains(@class, "react-flow__node")][1]')).toBeFocused()
+}
+
 export async function deleteListNamed(page: Page, label: string): Promise<void> {
   await page.getByRole('link', { name: 'Configure' }).click()
   await page.getByRole('tab', { name: 'Lists' }).click()
