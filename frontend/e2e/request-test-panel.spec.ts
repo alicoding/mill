@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { createSecret, deleteSecret } from './fixtures/secretStore'
 
 // Exercises docs/adr/0013's request draft testing over real Go
 // bindings (Wails3 server mode), not mocks. Deliberately doesn't assert
@@ -74,7 +75,7 @@ test('Running a test against an unreachable address logs a deterministic error',
   await deleteRequest(page, 'Test Panel Request')
 })
 
-test('Duplicating a request pre-fills a new form without carrying over the secret', async ({ page }) => {
+test('Duplicating a request pre-fills a new form naming the same secret, never the secret itself', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
@@ -83,7 +84,8 @@ test('Duplicating a request pre-fills a new form without carrying over the secre
   await page.getByLabel('Label').fill('Original Request')
   await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
   await page.getByLabel('Auth type').selectOption('bearer')
-  await page.getByLabel('Secret', { exact: true }).fill('shh-original-secret')
+  const secretRef = await createSecret(page, 'ZzE2eDuplicateToken', 'shh-original-secret')
+  await page.getByLabel('Secret', { exact: true }).selectOption(secretRef.replace('vault:', ''))
   await page.getByRole('button', { name: 'Save integration' }).click()
   await expect(requestRow(page, 'Original Request')).toBeVisible()
 
@@ -96,14 +98,17 @@ test('Duplicating a request pre-fills a new form without carrying over the secre
   await expect(page.getByLabel('Label')).toHaveValue('Original Request copy')
   await expect(page.getByLabel('URL', { exact: true })).toHaveValue('https://api.example.com')
   await expect(page.getByLabel('Auth type')).toHaveValue('bearer')
-  // Secret must come across empty -- it was never readable back through
-  // Mill in the first place (write-only design, docs/SPEC.md §3.5).
-  await expect(page.getByLabel('Secret', { exact: true })).toHaveValue('')
-  await page.getByLabel('Secret', { exact: true }).fill('shh-copy-secret')
+  // The copy NAMES the same entry (goal 0306): a duplicate of an
+  // integration reaching the same API almost always wants the same
+  // credential, and a name is safe to copy where a value would not be.
+  // The value itself is nowhere on the page.
+  await expect(page.getByLabel('Secret', { exact: true })).toHaveValue(secretRef.replace('vault:', ''))
+  await expect(page.locator('body')).not.toContainText('shh-original-secret')
 
   await page.getByRole('button', { name: 'Save integration' }).click()
   await expect(requestRow(page, 'Original Request copy')).toBeVisible()
 
   await deleteRequest(page, 'Original Request')
   await deleteRequest(page, 'Original Request copy')
+  await deleteSecret(page, secretRef)
 })
