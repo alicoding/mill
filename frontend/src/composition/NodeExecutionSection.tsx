@@ -24,7 +24,7 @@ export function NodeExecutionSection({ step }: { step: RunStep | undefined }) {
       {(step.input || hasInputAttrs) && (
         <Stack direction="vertical" gap="condensed">
           <Text size="small" className={styles.muted}>{t('nodeExecutionSection.input')}</Text>
-          {step.input && <OutputViewer value={step.input} site="node-execution-input" testId="node-execution-input" />}
+          {step.input && <OutputViewer value={step.input} defaultView="source" site="node-execution-input" testId="node-execution-input" />}
           {hasInputAttrs && (
             <OutputViewer value={step.inputAttributes} shape="json" site="node-execution-input-attrs" testId="node-execution-input-attrs" />
           )}
@@ -34,7 +34,7 @@ export function NodeExecutionSection({ step }: { step: RunStep | undefined }) {
         <Stack direction="vertical" gap="condensed">
           <Text size="small" className={styles.muted}>{t('nodeExecutionSection.output')}</Text>
           {step.output && (
-            <OutputViewer value={step.output} shape={shapeForNodeType(nodeTypes, step.nodeTypeID)} site="node-execution-output" testId="node-execution-output" />
+            <OutputViewer value={step.output} shape={shapeForNodeType(nodeTypes, step.nodeTypeID)} defaultView="source" site="node-execution-output" testId="node-execution-output" />
           )}
           {hasOutputAttrs && (
             <OutputViewer value={step.outputAttributes} shape="json" site="node-execution-output-attrs" testId="node-execution-output-attrs" />

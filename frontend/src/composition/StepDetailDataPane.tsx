@@ -26,6 +26,11 @@ interface StepDetailDataPaneProps {
 // render budget, so this pane no longer carries a toggle of its own.
 // INPUT and OUTPUT both render through this same component; the
 // difference is only which side of the RunStep they're handed.
+//
+// A recorded payload opens on its SOURCE, never a rendering of it: this
+// pane exists to show the data that actually flows between steps, and
+// markup shown as a rendered document hides exactly what a reader came
+// here to check. Rendered stays one click away.
 export function StepDetailDataPane({ heading, payload, attributes, emptyMessage, testId, shape }: StepDetailDataPaneProps) {
   const { t } = useTranslation('composition')
   const hasAttrs = !!attributes && Object.keys(attributes).length > 0
@@ -44,7 +49,7 @@ export function StepDetailDataPane({ heading, payload, attributes, emptyMessage,
     <Stack direction="vertical" gap="condensed" data-testid={testId}>
       <Text size="small" weight="semibold">{heading}</Text>
       {hasPayload && (
-        <OutputViewer value={payload} shape={shape} title={heading} site={`${testId}-payload`} testId={`${testId}-payload`} />
+        <OutputViewer value={payload} shape={shape} defaultView="source" title={heading} site={`${testId}-payload`} testId={`${testId}-payload`} />
       )}
       {hasAttrs && (
         <>

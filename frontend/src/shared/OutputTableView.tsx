@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { DataTable, type Column } from '@primer/react/experimental'
 import { OutputHighlight } from './OutputHighlight'
-import { primitiveLabel } from './jsonTreeModel'
+import { cellText } from './outputTable'
 import type { TableData } from './outputShape'
 import styles from './OutputViewer.module.css'
 
@@ -14,29 +14,6 @@ import styles from './OutputViewer.module.css'
 interface Row {
   id: string
   values: Record<string, unknown>
-}
-
-// A nested object inside a cell stays JSON: the Tree view is where a
-// reader opens it, and a table cell that silently flattened it would
-// hide what is there.
-export function cellText(value: unknown): string {
-  if (value === null || value === undefined) return ''
-  if (typeof value === 'object') {
-    try {
-      return JSON.stringify(value)
-    } catch {
-      return String(value)
-    }
-  }
-  return typeof value === 'string' ? value : primitiveLabel(value)
-}
-
-// Tab-separated, header row first: what every spreadsheet pastes
-// straight into cells.
-export function tableTsv(data: TableData): string {
-  const header = data.columns.join('\t')
-  const body = data.rows.map((row) => data.columns.map((c) => cellText(row[c]).replace(/\t/g, ' ').replace(/\n/g, ' ')).join('\t'))
-  return [header, ...body].join('\n')
 }
 
 export function OutputTableView({ data, query = '', ariaLabel, testId }: { data: TableData; query?: string; ariaLabel: string; testId?: string }) {

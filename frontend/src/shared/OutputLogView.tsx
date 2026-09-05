@@ -22,9 +22,13 @@ function chunksOf(line: string): Chunk[] {
   const entries = Anser.ansiToJson(line, { json: true, use_classes: true, remove_empty: true })
   return entries.map((entry) => ({
     content: entry.content,
-    className: [entry.fg ? `ansi-${entry.fg}` : '', entry.bg ? `ansi-${entry.bg}-bg` : '', ...(entry.decorations ?? []).map((d) => `ansi-${d}`)]
-      .filter(Boolean)
-      .join(' '),
+    // anser's use_classes mode already answers a class name
+    // ("ansi-green"), not a colour, so the foreground is used verbatim;
+    // only the decorations arrive as bare words. A background colour is
+    // deliberately dropped: a terminal paints its own ground, and a
+    // block of it inside a themed panel reads as damage rather than as
+    // emphasis.
+    className: [entry.fg ?? '', ...(entry.decorations ?? []).map((d) => `ansi-${d}`)].filter(Boolean).join(' '),
   }))
 }
 

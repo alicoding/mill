@@ -60,6 +60,7 @@ export function RunStepRow({ step, detail, busy, onRetry }: {
             <OutputViewer
               value={step.output}
               shape={shapeForNodeType(nodeTypes, step.nodeTypeID)}
+              defaultView="source"
               title={step.nodeTypeLabel || step.nodeTypeID}
               site="run-step"
               testId="run-step-output"

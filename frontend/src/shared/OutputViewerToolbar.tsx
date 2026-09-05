@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { IconButton, SegmentedControl, Stack, TextInput, Tooltip } from '@primer/react'
+import { IconButton, SegmentedControl, Stack, TextInput } from '@primer/react'
 import { ChevronDownIcon, ChevronRightIcon, CopyIcon, DownloadIcon, ScreenFullIcon, SearchIcon, WrapIcon } from '@primer/octicons-react'
 import { VIEW_LABEL_KEY, type OutputView } from './outputShape'
 import styles from './OutputViewer.module.css'
@@ -45,14 +45,23 @@ export function OutputViewerToolbar(props: OutputToolbarProps) {
         <SegmentedControl aria-label={t('output.viewAriaLabel')} size="small" onChange={(index) => props.onViewChange(props.views[index])}>
           {props.views.map((view, index) => {
             const label = t(VIEW_LABEL_KEY[view])
-            const button = (
-              <SegmentedControl.Button key={view} selected={index === selectedIndex} data-testid={`output-view-${view}`}>
+            // The detected item names itself as detected, through the
+            // button's own title/aria-description rather than a Tooltip
+            // wrapper: SegmentedControl injects each item's selection
+            // and click handling by cloning its DIRECT children, so a
+            // wrapper element silently swallows both.
+            const detected = view === props.detectedView ? t('output.detectedAs', { view: label }) : undefined
+            return (
+              <SegmentedControl.Button
+                key={view}
+                selected={index === selectedIndex}
+                title={detected}
+                aria-description={detected}
+                data-testid={`output-view-${view}`}
+              >
                 {label}
               </SegmentedControl.Button>
             )
-            return view === props.detectedView
-              ? <Tooltip key={view} text={t('output.detectedAs', { view: label })}>{button}</Tooltip>
-              : button
           })}
         </SegmentedControl>
       )}
