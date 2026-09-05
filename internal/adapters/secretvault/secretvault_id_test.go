@@ -128,8 +128,8 @@ func TestBackupArchivesTheFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Backup: %v", err)
 	}
-	if !strings.HasSuffix(archived, ".bak") || filepath.Dir(archived) != dir {
-		t.Fatalf("archived at %q, want a .bak sibling in %q", archived, dir)
+	if !strings.HasSuffix(archived, ".bak.kdbx") || filepath.Dir(archived) != dir {
+		t.Fatalf("archived at %q, want a .bak.kdbx sibling in %q", archived, dir)
 	}
 	if _, err := os.Stat(archived); err != nil {
 		t.Fatalf("archived file missing: %v", err)

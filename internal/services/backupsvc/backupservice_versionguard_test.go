@@ -13,7 +13,7 @@ func TestSnapshotOnVersionChange_FreshInstall_NoBackupJustStampsVersion(t *testi
 	store := servicetest.NewFakeStore()
 	dir := t.TempDir()
 
-	didBackup, err := SnapshotOnVersionChange(store, "", "", dir, "0.4.0")
+	didBackup, err := SnapshotOnVersionChange(store, "", "", "", dir, "0.4.0")
 	if err != nil {
 		t.Fatalf("SnapshotOnVersionChange: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestSnapshotOnVersionChange_SameVersion_NoBackup(t *testing.T) {
 	// dbPath left empty on purpose: if this incorrectly attempted a
 	// snapshot, VACUUM INTO against an empty path would error and this
 	// test would fail loudly rather than silently passing either way.
-	didBackup, err := SnapshotOnVersionChange(store, "", "", dir, "0.4.0")
+	didBackup, err := SnapshotOnVersionChange(store, "", "", "", dir, "0.4.0")
 	if err != nil {
 		t.Fatalf("SnapshotOnVersionChange: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestSnapshotOnVersionChange_DifferentVersion_BackupFiresOnceThenStampUpdate
 	}
 	dir := t.TempDir()
 
-	didBackup, err := SnapshotOnVersionChange(store, dbPath, "", dir, "0.4.0")
+	didBackup, err := SnapshotOnVersionChange(store, dbPath, "", "", dir, "0.4.0")
 	if err != nil {
 		t.Fatalf("SnapshotOnVersionChange: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestSnapshotOnVersionChange_DifferentVersion_BackupFiresOnceThenStampUpdate
 		t.Errorf("stamp after snapshot = %q, want %q", got, "0.4.0")
 	}
 
-	svc := New(dbPath, "", dir, "test")
+	svc := New(dbPath, "", "", dir, "test")
 	status, err := svc.GetBackupStatus()
 	if err != nil {
 		t.Fatalf("GetBackupStatus: %v", err)
@@ -82,7 +82,7 @@ func TestSnapshotOnVersionChange_DifferentVersion_BackupFiresOnceThenStampUpdate
 
 	// A second call at the same (now current) version must not fire
 	// another snapshot -- confirms the stamp update above actually took.
-	didBackup2, err := SnapshotOnVersionChange(store, dbPath, "", dir, "0.4.0")
+	didBackup2, err := SnapshotOnVersionChange(store, dbPath, "", "", dir, "0.4.0")
 	if err != nil {
 		t.Fatalf("SnapshotOnVersionChange (second call): %v", err)
 	}
@@ -102,7 +102,7 @@ func TestSnapshotOnVersionChange_NonSqliteDeployment_StampsWithoutError(t *testi
 		t.Fatalf("seed stamp: %v", err)
 	}
 
-	didBackup, err := SnapshotOnVersionChange(store, "", "", t.TempDir(), "0.4.0")
+	didBackup, err := SnapshotOnVersionChange(store, "", "", "", t.TempDir(), "0.4.0")
 	if err != nil {
 		t.Fatalf("SnapshotOnVersionChange: %v", err)
 	}
