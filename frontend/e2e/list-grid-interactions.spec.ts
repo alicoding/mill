@@ -239,3 +239,32 @@ test('the grid re-reads its palette when the color scheme changes', async ({ pag
   await expect(glide).toHaveAttribute('data-cell-bg', light!)
   await cleanup(page, id)
 })
+
+// 9. The grid's own search (goal 0349 S4 gap): ⌘F opens it while a
+// cell holds focus, typing highlights a match, and Escape closes it --
+// the library's own controlled-search UI (ListGridGlide.tsx), never a
+// second, hand-rolled search box.
+test('⌘F opens the grid’s own search while a cell holds focus, and Escape closes it', async ({ page }) => {
+  const { id, glide } = await seedAndOpen(page, 'E2E grid search', FOUR_ROWS)
+  await clickGlideCell(page, glide, 0, 0)
+  await page.keyboard.press('ControlOrMeta+f')
+  const search = glide.getByTestId('search-input')
+  await expect(search).toBeVisible()
+  await search.fill('Anvil') // fill: a form control (goal 0296)
+  await expect(glide.getByTestId('search-result-area')).toHaveText('1 result')
+  await page.keyboard.press('Escape')
+  await expect(search).toBeHidden()
+  await cleanup(page, id)
+})
+
+// ⌘F is scoped to whichever surface holds focus (goal 0326's own
+// convention, applied here): the List's own Label field sits on the
+// same page, above the grid, and pressing ⌘F there must never reach
+// into the grid it did not focus.
+test('⌘F does not open the grid search when focus is outside the grid', async ({ page }) => {
+  const { id, glide } = await seedAndOpen(page, 'E2E grid search scope', FOUR_ROWS)
+  await page.getByTestId('list-label').focus()
+  await page.keyboard.press('ControlOrMeta+f')
+  await expect(glide.getByTestId('search-input')).toBeHidden()
+  await cleanup(page, id)
+})
