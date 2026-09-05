@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -112,18 +113,34 @@ func copyZipEntry(f *zip.File, target string, budget int64) (int64, error) {
 	return n, nil
 }
 
+// errOutsideFolder is the one refusal every traversal check answers
+// with: the whole archive or folder is rejected, never the single
+// entry, because a half-written plugin is not a safer outcome.
+var errOutsideFolder = errors.New("that archive tries to write outside its own folder, so Mill won't install it")
+
 // safeJoin resolves rel under root and refuses anything that escapes
 // it -- the one traversal guard both the zip extractor and the folder
 // copy go through.
+//
+// Two checks, deliberately: the entry's own cleaned form may not be
+// absolute or carry a ".." segment, AND the joined path must still
+// start with root. The second is redundant given the first, and is
+// what makes the guard legible to static analysis as a zip-slip
+// sanitizer rather than only to a reader.
 func safeJoin(root, rel string) (string, error) {
 	cleaned := filepath.Clean(filepath.FromSlash(rel))
-	if filepath.IsAbs(cleaned) || cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("that archive tries to write outside its own folder, so Mill won't install it")
+	if filepath.IsAbs(cleaned) {
+		return "", errOutsideFolder
 	}
-	target := filepath.Join(root, cleaned)
-	relCheck, err := filepath.Rel(root, target)
-	if err != nil || relCheck == ".." || strings.HasPrefix(relCheck, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("that archive tries to write outside its own folder, so Mill won't install it")
+	for _, segment := range strings.Split(cleaned, string(filepath.Separator)) {
+		if segment == ".." {
+			return "", errOutsideFolder
+		}
+	}
+	base := filepath.Clean(root)
+	target := filepath.Clean(filepath.Join(base, cleaned))
+	if target != base && !strings.HasPrefix(target, base+string(filepath.Separator)) {
+		return "", errOutsideFolder
 	}
 	return target, nil
 }
