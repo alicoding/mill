@@ -2,7 +2,7 @@
 
 package localauth
 
-// framework-api-audit: wails/v3@v3.0.0-beta.12 lacks any macOS LocalAuthentication/LAContext API -- its only authentication surface, MobileManager.BiometricAuthenticate, is a desktop no-op stub (pkg/application/mobile_stub.go) that returns no result.
+// framework-api-audit: wails/v3@v3.0.0-beta.15 lacks any macOS LocalAuthentication/LAContext API -- its only authentication surface, MobileManager.BiometricAuthenticate, is a desktop no-op stub (pkg/application/mobile_stub.go) that returns no result.
 
 /*
 #cgo CFLAGS: -mmacosx-version-min=10.15 -x objective-c -Wno-unguarded-availability-new

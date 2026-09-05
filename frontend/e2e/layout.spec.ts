@@ -123,14 +123,24 @@ test('a wide-variant list page (Workflows) is not capped to the old 1400px width
   expect(box!.width).toBeGreaterThan(1400)
 })
 
-test('a narrow-variant form page (Settings) still keeps its readable width cap', async ({ page }) => {
+test('Settings renders through the wide container, not a centered 960px block, but its pane keeps a readable width cap', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Settings' }).click()
   const container = page.getByTestId('settings-view')
   await expect(container).toBeVisible()
-  const box = await container.boundingBox()
-  expect(box).not.toBeNull()
-  expect(box!.width).toBeLessThanOrEqual(960)
+  const containerBox = await container.boundingBox()
+  expect(containerBox).not.toBeNull()
+  // Viewport is 1800px minus the sidebar -- comfortably over the old
+  // 960px "narrow" cap this page used to render through (goal 0336
+  // addendum: that cap centered the whole rail+pane block, leaving a
+  // floating gutter between the sidebar and the group list).
+  expect(containerBox!.width).toBeGreaterThan(960)
+
+  const pane = page.getByTestId('settings-pane-general')
+  await expect(pane).toBeVisible()
+  const paneBox = await pane.boundingBox()
+  expect(paneBox).not.toBeNull()
+  expect(paneBox!.width).toBeLessThanOrEqual(720)
 })
 
 test('the editor inner tab bar keeps its natural height, never growing to eat vertical space', async ({ page }) => {
