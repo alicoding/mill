@@ -37,3 +37,15 @@ export interface ImportEverythingSummary {
     "snapshotPresent": boolean;
     "snapshotTakenAt": string;
 }
+
+/**
+ * VaultBackupTime is LatestVaultBackupTime's own Wails-bound shape --
+ * the same {value, Has*} pairing BackupStatus already uses for a time
+ * that might not exist yet, since a zero time.Time on its own can't
+ * distinguish "no backup carries a vault" from a genuinely zero
+ * timestamp.
+ */
+export interface VaultBackupTime {
+    "time": string;
+    "present": boolean;
+}
