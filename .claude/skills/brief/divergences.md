@@ -73,9 +73,11 @@ this file is the record, a brief is a projection of it.
 ## Operations (the standing block for every builder brief)
 
 - **Poll in place: background-run completion notifications are LOST.
-  Never end a turn waiting on one — poll the run's own output with a
-  bounded loop inside ONE Bash call, then deliver in the same turn.**
-  (Two builders in one day still stopped to wait for a notification.)
+  Never run a command with `run_in_background`; never end a turn waiting
+  on one — run it in the foreground (timeout up to 600000) and, if it
+  outlives one call, poll its output with a bounded `sleep 30` loop in
+  the NEXT foreground call, repeating in the same turn until done.**
+  (Five builders in one day still stopped to wait for a notification.)
 - Your worktree is your world: never write outside it; `cd` does not
   persist across Bash calls — use absolute paths (a stray file has
   landed in the main checkout twice this way).

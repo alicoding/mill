@@ -300,6 +300,10 @@ func conformLabelCase(m Manifest, scripts map[string]string) []string {
 	for _, cp := range m.Contributes.Captures {
 		check(fmt.Sprintf("capture %q label", cp.ID), cp.Label)
 	}
+	for _, src := range m.Contributes.SecretSources {
+		check(fmt.Sprintf("secret source %q label", src.ID), src.Label)
+		check(fmt.Sprintf("secret source %q path label", src.ID), src.Path.Label)
+	}
 	for rel, src := range scripts {
 		for _, match := range jsLabelRe.FindAllStringSubmatch(src, -1) {
 			check(rel+": a registered label", jsLabelValue(match))
@@ -367,6 +371,7 @@ var capabilityUsageMarkers = map[string][]string{
 	"erase-board-items": {"eraseHitTest(", "commitErase("},
 	"fetch":             {"api.fetch("},
 	"write-content":     {"api.content."},
+	"read-file":         {"ctx.readFile(", "ctx.listFiles("},
 }
 
 // conformUnusedCapabilities is standard rule 3: a capability the

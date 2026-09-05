@@ -347,10 +347,18 @@ export const PAUSED_RUNS_MCP_BASE_PORT = 11540
 export const REVIEW_PARKED_PAYLOAD_SERVER_BASE_PORT = 11560
 export const REVIEW_PARKED_PAYLOAD_MCP_BASE_PORT = 11580
 
+// secret-source-plugins.spec.ts (goal 0306 S4): a dedicated server whose
+// plugins dir carries the Netrc example, so the Sources page can offer
+// an extension-contributed kind. Its own base pair rather than an
+// offset into the runtime-plugins family, whose offsets are dense
+// enough that a new one would collide with another's MCP port.
+export const SECRET_SOURCE_PLUGIN_SERVER_BASE_PORT = 11600
+export const SECRET_SOURCE_PLUGIN_MCP_BASE_PORT = 11620
+
 // runtime-plugin-view-frame.spec.ts's own dedicated pair (goal 0349):
 // it boots with its own MILL_PLUGINS_DIR copy like every runtime-plugin
 // spec, and its notice-pill assertions read the GLOBAL notice list --
 // its own pair rather than more RUNTIME_PLUGINS_* offset arithmetic
 // (the reasoning RUNTIME_PLUGIN_RELOAD_* records).
-export const RUNTIME_PLUGIN_FRAME_SERVER_BASE_PORT = 11600
-export const RUNTIME_PLUGIN_FRAME_MCP_BASE_PORT = 11620
+export const RUNTIME_PLUGIN_FRAME_SERVER_BASE_PORT = 11640
+export const RUNTIME_PLUGIN_FRAME_MCP_BASE_PORT = 11660

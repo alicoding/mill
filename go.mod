@@ -6,13 +6,13 @@ require (
 	aead.dev/minisign v0.3.0
 	github.com/JohannesKaufmann/dom v0.3.1
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2
-	github.com/PuerkitoBio/goquery v1.12.0
+	github.com/PuerkitoBio/goquery v1.13.0
 	github.com/andybalholm/cascadia v1.3.4
 	github.com/dbos-inc/dbos-transact-golang v1.2.0
 	github.com/dop251/goja v0.0.0-20260901132549-43234fa61381
 	github.com/expr-lang/expr v1.17.8
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/getkin/kin-openapi v0.147.0
+	github.com/getkin/kin-openapi v0.149.0
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
@@ -24,13 +24,13 @@ require (
 	github.com/rapid7/go-get-proxied v1.4.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/tobischo/gokeepasslib/v3 v3.7.0
-	github.com/wailsapp/wails/v3 v3.0.0-beta.12
+	github.com/wailsapp/wails/v3 v3.0.0-beta.15
 	github.com/xuri/excelize/v2 v2.11.0
 	github.com/yuin/goldmark v1.8.5
 	github.com/zalando/go-keyring v0.2.8
 	golang.design/x/hotkey v0.6.1
 	golang.org/x/image v0.43.0
-	golang.org/x/mod v0.38.0
+	golang.org/x/mod v0.40.0
 	golang.org/x/net v0.58.0
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/text v0.41.0

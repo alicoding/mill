@@ -44,6 +44,9 @@
 - [PluginViewDecl](interfaces/PluginViewDecl.md)
 - [PluginViewHandle](interfaces/PluginViewHandle.md)
 - [PluginWriteResult](interfaces/PluginWriteResult.md)
+- [SecretSourceContribution](interfaces/SecretSourceContribution.md)
+- [SecretSourceCtx](interfaces/SecretSourceCtx.md)
+- [SecretSourceDecl](interfaces/SecretSourceDecl.md)
 
 ## Type Aliases
 
@@ -52,3 +55,4 @@
 - [MillFrameEvent](type-aliases/MillFrameEvent.md)
 - [PluginOutputShape](type-aliases/PluginOutputShape.md)
 - [PluginThemeSubscribe](type-aliases/PluginThemeSubscribe.md)
+- [SecretSourcePathKind](type-aliases/SecretSourcePathKind.md)

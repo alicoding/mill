@@ -105,6 +105,8 @@ function pluginAdds(id: string, contributes: Contributes): ExtensionDetail['adds
   if (views.length > 0) adds.push({ kind: 'views', items: views })
   const captures = (contributes?.captures ?? []).map((c) => c.label)
   if (captures.length > 0) adds.push({ kind: 'captures', items: captures })
+  const secretSources = (contributes?.secretSources ?? []).map((s) => s.label)
+  if (secretSources.length > 0) adds.push({ kind: 'secretSources', items: secretSources })
   return adds
 }
 

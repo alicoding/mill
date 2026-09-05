@@ -25,15 +25,17 @@ const markupInjectionSelectors = [
 
 export default [
   {
-    files: ['examples/plugins/*/main.js', 'examples/plugins/*/steps.js', 'examples/plugins/*/view.js', 'examples/plugins/*/capture.js'],
+    files: ['examples/plugins/*/main.js', 'examples/plugins/*/steps.js', 'examples/plugins/*/secrets.js', 'examples/plugins/*/view.js', 'examples/plugins/*/capture.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
       globals: {
         ...globals.browser,
-        // steps.js runs inside Mill's own workflow executor, which
-        // calls registerStep as a global rather than an import.
+        // steps.js runs inside Mill's own workflow executor and
+        // secrets.js inside its secret-source runtime; both call their
+        // register function as a global rather than an import.
         registerStep: 'readonly',
+        registerSource: 'readonly',
       },
     },
     rules: {

@@ -177,6 +177,15 @@ export interface ManifestContributes {
     "themes": ThemeContribution[] | null;
 
     /**
+     * SecretSources (goal 0306 S4, pluginservice_secretsources.go): the
+     * stores this plugin can read secrets out of, implemented in
+     * secrets.js. Declared here because the Sources page's Kind picker
+     * lists them, and their path fields render, before any plugin code
+     * runs.
+     */
+    "secretSources": SecretSourceContribution[] | null;
+
+    /**
      * Tools (docs/goals/0324): the automation-reachable surface --
      * which of this plugin's commands, steps and reads an agent may
      * call over MCP, each with its own typed input contract.
@@ -347,6 +356,56 @@ export interface PluginListDirResult {
     "effect": string;
     "ruleLabel": string;
     "entries": PluginFileEntry[] | null;
+}
+
+/**
+ * SecretSourceContribution is one declared store: the id secrets.js
+ * registers, the label the Sources picker offers it under, how its
+ * path field renders, and which of the four functions it implements.
+ */
+export interface SecretSourceContribution {
+    "id": string;
+    "label": string;
+    "path": SecretSourcePathContribution;
+
+    /**
+     * Capabilities names what secrets.js implements for this source:
+     * "list" and "resolve" are mandatory, "discover" and "import"
+     * optional. Declared rather than inferred so the Sources page can
+     * offer a store's own discovery before any plugin code runs.
+     */
+    "capabilities": string[] | null;
+}
+
+/**
+ * SecretSourceKindInfo is one plugin-contributed kind as the Sources
+ * page's Kind picker renders it: the kind string a source stores, the
+ * option's label and the plugin name beneath it, and how the path
+ * field renders.
+ */
+export interface SecretSourceKindInfo {
+    "Kind": string;
+    "Label": string;
+    "PluginID": string;
+    "PluginName": string;
+    "PathKind": string;
+    "PathLabel": string;
+    "PathPlaceholder": string;
+    "PathDefault": string;
+    "CanDiscover": boolean;
+    "CanImport": boolean;
+}
+
+/**
+ * SecretSourcePathContribution declares the source's path field: a
+ * file to read, a folder to read under, or none at all -- with the
+ * label, placeholder and default the field renders with.
+ */
+export interface SecretSourcePathContribution {
+    "kind": string;
+    "label": string;
+    "placeholder": string;
+    "default": string;
 }
 
 /**

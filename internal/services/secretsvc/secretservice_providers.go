@@ -50,6 +50,12 @@ func (s *SecretService) sourcesSnapshot() []secretsource.Source {
 func (s *SecretService) ListProviderSecrets() ([]secret.Summary, error) {
 	var out []secret.Summary
 	for _, src := range s.sourcesSnapshot() {
+		if src.Kind.IsPlugin() {
+			for _, k := range s.pluginSourceKeys(src) {
+				out = append(out, secret.Summary{ID: vaultref.Ref(vaultref.ProviderPlugin, src.ID+"/"+k), Title: k + " — " + src.Label, Kind: secret.KindText, UpdatedAt: src.UpdatedAt})
+			}
+			continue
+		}
 		if isCLIKind(src.Kind) {
 			entries, err := cliEntries(src)
 			if err != nil {
@@ -99,6 +105,10 @@ func (s *SecretService) resolveProvider(id string, actx secretaudit.AccessContex
 		s.recordAccess(id, "", actx, secretaudit.OutcomeError, err.Error())
 		return "", true, err
 	}
+	if src.Kind.IsPlugin() {
+		v, perr := s.resolvePluginSource(id, *src, key, actx)
+		return v, true, perr
+	}
 	if isCLIKind(src.Kind) {
 		v, cerr := cliResolve(*src, key)
 		if cerr != nil {
@@ -125,6 +135,9 @@ func (s *SecretService) resolveProvider(id string, actx secretaudit.AccessContex
 
 // providerOf names the reference provider a source answers to.
 func providerOf(src secretsource.Source) string {
+	if src.Kind.IsPlugin() {
+		return vaultref.ProviderPlugin
+	}
 	switch src.Kind {
 	case secretsource.KindBruno:
 		return vaultref.ProviderBruno
@@ -164,6 +177,11 @@ func (s *SecretService) SourceProblems() map[string]string {
 	for _, src := range s.sourcesSnapshot() {
 		var err error
 		switch {
+		case src.Kind.IsPlugin():
+			if problem := s.pluginSourceProblem(src); problem != "" {
+				out[src.ID] = problem
+			}
+			continue
 		case isCLIKind(src.Kind):
 			_, err = cliEntries(src)
 		case src.Kind == secretsource.KindBruno:
