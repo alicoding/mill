@@ -36,7 +36,7 @@ const (
 	kindDocumentID = "atlas-kind-document"
 	// kindIntakeID (goal 0066, ADR-0035/0038's composed integration
 	// example) is a dedicated seeded example kind so the seeded
-	// "Example: Card intake" workflow (internal/domain/composition/
+	// "Client request intake" workflow (internal/domain/composition/
 	// builtinworkflows_atlascard.go) has a real card-type to watch
 	// without retrofitting automated behavior onto the unrelated Topic
 	// example above.

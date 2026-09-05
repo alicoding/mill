@@ -44,9 +44,9 @@ type listSearchResultPayload struct {
 // is docs/goals/0070's List-versioning regression (docs/adr/0040
 // decisions 4-5, extended to List): a version-pinned list-search node
 // keeps resolving the PINNED v1 snapshot after apply-list-row appends a
-// new row to the live "Example: Task tracker" List -- proven on the
-// exact seeded workflows that ship this pin ("Example: Task tracker
-// (pinned to v1)" searching for the row "Example: Track in a list"
+// new row to the live "Engagement tasks" List -- proven on the
+// exact seeded workflows that ship this pin ("Engagement tasks
+// (pinned to v1)" searching for the row "Track an engagement task"
 // creates), through a real ExecutionService run, mirroring
 // TestSeededBranchToDecisionExample_PinnedApproveArm_ResolvesFrozenV1AfterLiveEdit.
 func TestSeededTaskTrackerExample_PinnedSearch_ResolvesFrozenV1AfterLiveWrite(t *testing.T) {
@@ -65,7 +65,7 @@ func TestSeededTaskTrackerExample_PinnedSearch_ResolvesFrozenV1AfterLiveWrite(t 
 		t.Fatalf("seeded Task tracker List PublishedVersion = %d, want 1", tracker.PublishedVersion)
 	}
 
-	pinnedWfID := findBuiltInWorkflowID(t, exec.comp, "Example: Task tracker (pinned to v1)")
+	pinnedWfID := findBuiltInWorkflowID(t, exec.comp, "Engagement tasks (pinned to v1)")
 	runPinnedSearch := func() listSearchResultPayload {
 		t.Helper()
 		summary, err := exec.RunWorkflow(pinnedWfID, RunKindTest, nil)
@@ -111,7 +111,7 @@ func TestSeededTaskTrackerExample_PinnedSearch_ResolvesFrozenV1AfterLiveWrite(t 
 
 	// Live write: the write-path workflow appends "Ship goal 0070" to
 	// the LIVE draft, past v1's frozen row set.
-	writeWfID := findBuiltInWorkflowID(t, exec.comp, "Example: Track in a list")
+	writeWfID := findBuiltInWorkflowID(t, exec.comp, "Track an engagement task")
 	writeSummary, err := exec.RunWorkflow(writeWfID, RunKindTest, nil)
 	if err != nil {
 		t.Fatalf("RunWorkflow (write path): %v", err)

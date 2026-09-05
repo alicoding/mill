@@ -85,7 +85,7 @@ test('a parked run surfaces as a Needs-you row naming its workflow', async ({}, 
     // guardrail-review spec's own pattern).
     await page.goto(`${s.server.baseURL}/`)
     await page.getByRole('link', { name: 'Workflows' }).click()
-    const seed = 'Example: Human review with input'
+    const seed = 'Sign off a deliverable'
     const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(seed, { exact: true }) })
     await expect(row).toBeVisible()
     await row.getByRole('button', { name: 'Run' }).click()
@@ -128,7 +128,7 @@ test('a run started from the Quick Panel shows under Recent as done', async ({},
 
     // A run that parks for approval says so, instead of "Done" (the RPC
     // returns while the run is still pending).
-    const parkedLabel = 'Example: Human review with input'
+    const parkedLabel = 'Sign off a deliverable'
     await search.fill(parkedLabel)
     await expect(page.getByRole('option', { name: parkedLabel })).toBeVisible()
     await page.keyboard.press('Enter')

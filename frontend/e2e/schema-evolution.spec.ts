@@ -13,7 +13,7 @@ import { clickCanvasNode } from './fixtures/canvasNode'
 // field delete confirms and preserves data; a still-referenced entity
 // delete is blocked, naming the workflow).
 //
-// The seeded "Example: Country codes" List carries a real Deprecated
+// The seeded "Country codes" List carries a real Deprecated
 // column (legacyRegion, internal/domain/list/builtin.go) and is
 // referenced by two seeded workflows -- both properties this spec
 // exercises live rather than through a purpose-built fixture, per
@@ -27,8 +27,8 @@ test('Deprecated column: de-emphasized in the List editor and excluded from a ne
   await page.getByRole('link', { name: 'Configure' }).click()
   await page.getByRole('tab', { name: 'Lists' }).click()
 
-  const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Example: Country codes', { exact: true }) })
-  await listRow.getByText('Example: Country codes', { exact: true }).click()
+  const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Country codes', { exact: true }) })
+  await listRow.getByText('Country codes', { exact: true }).click()
 
   // The grid publishes which columns are deprecated (the header paint
   // is the library's; the muted header theme was screenshot-reviewed).
@@ -61,7 +61,7 @@ test('Deprecated column: de-emphasized in the List editor and excluded from a ne
 
   await clickCanvasNode(page, panel, 'Search list rows')
   const inspector = panel.getByTestId('composition-inspector')
-  await inspector.getByTestId('entity-ref-field').selectOption({ label: 'Example: Country codes' })
+  await inspector.getByTestId('entity-ref-field').selectOption({ label: 'Country codes' })
 
   const editor = inspector.getByTestId('list-search-params-editor')
   await editor.getByTestId('add-list-search-param').click()
@@ -81,7 +81,7 @@ test('Deleting a still-referenced List is blocked, naming the workflows', async 
   await page.getByRole('link', { name: 'Configure' }).click()
   await page.getByRole('tab', { name: 'Lists' }).click()
 
-  const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Example: Country codes', { exact: true }) })
+  const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Country codes', { exact: true }) })
   await expect(listRow).toBeVisible()
 
   await clickRowAction(page, listRow, 'Delete')
@@ -89,7 +89,7 @@ test('Deleting a still-referenced List is blocked, naming the workflows', async 
   const error = page.getByTestId('import-list-error')
   await expect(error).toBeVisible()
   await expect(error).toContainText('still referenced by workflow')
-  await expect(error).toContainText('Example: Country code lookup')
+  await expect(error).toContainText('Look up a client country')
 
   // Blocked, not deleted -- the row is still there for every other
   // spec sharing this worker's server.

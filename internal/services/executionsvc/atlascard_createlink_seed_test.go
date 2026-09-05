@@ -13,7 +13,7 @@ import (
 )
 
 // TestSeededCardCreateLinkExample_CreatesFindsAndLinksCards runs the
-// real seeded "Example: Create and link Atlas cards" workflow
+// real seeded "Log a client request and its decision" workflow
 // (composition.builtInAtlasCardWorkflows) end to end against a real
 // AtlasService -- goal 0066's seeded proof for apply-atlas-card-create,
 // process-atlas-card-find, and apply-atlas-card-link together.
@@ -35,12 +35,12 @@ func TestSeededCardCreateLinkExample_CreatesFindsAndLinksCards(t *testing.T) {
 
 	var seed composition.Workflow
 	for _, wf := range comp.Workflows() {
-		if wf.Label == "Example: Create and link Atlas cards" {
+		if wf.Label == "Log a client request and its decision" {
 			seed = wf
 		}
 	}
 	if seed.ID == "" {
-		t.Fatal(`no built-in workflow labeled "Example: Create and link Atlas cards"`)
+		t.Fatal(`no built-in workflow labeled "Log a client request and its decision"`)
 	}
 
 	baselineLinks := len(atlasSvc.Links())

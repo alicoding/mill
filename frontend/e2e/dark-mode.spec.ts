@@ -44,7 +44,7 @@ test('the canvas minimap is themed in dark mode, not React Flow\'s light default
   await page.getByRole('link', { name: 'Workflows' }).click()
   // Same deterministic, clipboard-free seed workflow-view-mode.spec.ts's
   // own "Run works from view mode" test already opens.
-  await workflowRow(page, 'Example: Branch to a decision').click()
+  await workflowRow(page, 'Route an expense by amount').click()
 
   const minimap = activePanel(page).locator('.react-flow__minimap')
   await expect(minimap).toBeVisible()
