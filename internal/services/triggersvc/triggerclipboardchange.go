@@ -46,8 +46,13 @@ func shouldCaptureClipboardChange(text string, consumeSelfWrite func(string) boo
 // here -- see that file's doc comment.
 func init() {
 	RegisterTrigger("trigger-clipboard-change", func(s *TriggerService, workflowID string, _ map[string]string) (*activeListener, error) {
-		stop := clipboard.WatchChanges(clipboardHistoryPollInterval, func(text string) {
-			if !shouldCaptureClipboardChange(text, clipboard.ConsumeSelfWrite, clipboard.IsConcealed) {
+		// clipboard.New() resolves to the in-memory Port inside a go
+		// test binary (goal 0356) -- never the real pasteboard by
+		// default. Resolved once so WatchChanges/ConsumeSelfWrite/
+		// IsConcealed below all observe the SAME Port.
+		port := clipboard.New()
+		stop := port.WatchChanges(clipboardHistoryPollInterval, func(text string) {
+			if !shouldCaptureClipboardChange(text, port.ConsumeSelfWrite, port.IsConcealed) {
 				return
 			}
 			s.fire(workflowID, "", text)

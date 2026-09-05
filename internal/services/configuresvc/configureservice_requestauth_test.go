@@ -244,7 +244,7 @@ func TestResolveHTTPRequest_AuthBearer_ResolvesSecret(t *testing.T) {
 func TestCreateHTTPRequest_AuthConfig_PersistsAndSurvivesRestore(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+	cfg := NewConfigureService(store, comp, credential.NewInMemory())
 	// Starts from an empty request list, not the seeded built-in
 	// examples -- see newTestConfigureService's own doc comment
 	// (configureservice_test.go) for why.
@@ -263,7 +263,7 @@ func TestCreateHTTPRequest_AuthConfig_PersistsAndSurvivesRestore(t *testing.T) {
 	}
 	storeRequestSecret(t, cfg, req.ID, "client-secret")
 
-	restarted := NewConfigureService(store, comp, credential.New())
+	restarted := NewConfigureService(store, comp, credential.NewInMemory())
 	restarted.SetSecretResolver(secrets.Resolve)
 	// Find by ID -- top-up seeding appends built-in examples alongside
 	// user data, so list-shape assertions no longer hold.
@@ -366,7 +366,7 @@ func TestResolveHTTPRequest_OAuth1_TokenSecretIsOptional(t *testing.T) {
 func TestCreateHTTPRequest_JOSEConfig_PersistsAndSurvivesRestore(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+	cfg := NewConfigureService(store, comp, credential.NewInMemory())
 	// Starts from an empty request list, not the seeded built-in
 	// examples -- see newTestConfigureService's own doc comment
 	// (configureservice_test.go) for why.
@@ -382,7 +382,7 @@ func TestCreateHTTPRequest_JOSEConfig_PersistsAndSurvivesRestore(t *testing.T) {
 		t.Fatalf("CreateHTTPRequest returned JOSE = %+v, want the JOSEConfig passed in", req.JOSE)
 	}
 
-	restarted := NewConfigureService(store, comp, credential.New())
+	restarted := NewConfigureService(store, comp, credential.NewInMemory())
 	restarted.SetSecretResolver(secrets.Resolve)
 	restored, found := findRequestByID(restarted.HTTPRequests(), req.ID)
 	if !found || restored.JOSE == nil || !restored.JOSE.Enabled {

@@ -89,12 +89,11 @@ test('Clipboard history: empty state, then search/preview/copy/pin/delete a real
     await expect(detailText).toHaveText('buy milk on the way home')
     await expect(detailText).not.toHaveCSS('font-family', /mono/i)
 
-    // --- Copy touches the real OS pasteboard (clipboard.WriteText),
-    // one shared resource across every worker (fixtures/clipboardLock.ts)
-    // -- outcome asserted success-or-error, not pinned to success:
-    // pbcopy doesn't exist on a headless Linux CI runner, same
-    // environment-independent pattern secrets.spec.ts's own copy
-    // assertion already uses. ---
+    // --- Copy goes through clipboard.Port.WriteText; this server runs
+    // the in-memory adapter by default (goal 0356), never the real OS
+    // pasteboard. Outcome still asserted success-or-error, not pinned
+    // to success -- same environment-independent pattern secrets.
+    // spec.ts's own copy assertion uses. ---
     await withClipboardLock(async () => {
       await page.getByTestId('clipboard-history-copy').click()
       const copiedState = page.getByTestId('clipboard-history-copy').getByText('Copied', { exact: true })

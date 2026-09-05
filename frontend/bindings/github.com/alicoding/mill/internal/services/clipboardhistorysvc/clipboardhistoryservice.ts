@@ -18,11 +18,11 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 import * as clipboardhistory$0 from "../../domain/clipboardhistory/models.js";
 
 /**
- * CopyClipboardHistoryEntry writes id's text back to the real
- * clipboard and records one audit line (goal 0234, reusing 0203 S3's
- * audit plane). clipboard.WriteText also marks this write as Mill's
- * own, so the trigger-clipboard-change poller skips re-capturing it as
- * a new entry on the very next cycle.
+ * CopyClipboardHistoryEntry writes id's text back to the clipboard and
+ * records one audit line (goal 0234, reusing 0203 S3's audit plane).
+ * clipboard.Port.WriteText also marks this write as Mill's own, so the
+ * trigger-clipboard-change poller skips re-capturing it as a new entry
+ * on the very next cycle.
  */
 export function CopyClipboardHistoryEntry(id: string): $CancellablePromise<void> {
     return $Call.ByID(2401224501, id);
