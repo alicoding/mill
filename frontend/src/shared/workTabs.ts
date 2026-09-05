@@ -66,6 +66,27 @@ export function isRestorable(tab: WorkTab): boolean {
   return tab.kind === 'workflow-edit' || tab.kind === 'request-view' || tab.kind === 'workflow-new' || tab.kind === 'plugin-view'
 }
 
+// The active work tab's owning sidebar section (goal 0353): store.ts's
+// setView/openWorkTab never change `view` when a tab opens -- only
+// `activeWorkTabKey` -- so the sidebar highlight must follow the
+// active tab's section, not `view` alone, or it keeps highlighting
+// whichever page the tab was opened from. Lives here (not store.ts,
+// already at CLAUDE.md's 500-line limit -- the same split seam that
+// moved WorkTab/WorkTabSpec here originally), re-exported by store.ts
+// so every `from '../shared/store'` import of `activeSection` still
+// works. Generic over the caller's own view-kind union rather than
+// importing store.ts's View type, which would be a circular import
+// back into store.ts; 'composition'/'configure' are already members of
+// that union, so the return type collapses to exactly ViewKind.
+export function activeSection<ViewKind extends string>(
+  state: { view: { kind: ViewKind }; workTabs: WorkTab[]; activeWorkTabKey: string | null },
+): ViewKind | 'composition' | 'configure' {
+  const tab = state.workTabs.find((t) => t.key === state.activeWorkTabKey)
+  if (tab?.kind === 'workflow-edit' || tab?.kind === 'workflow-new') return 'composition'
+  if (tab?.kind === 'request-view' || tab?.kind === 'request-edit' || tab?.kind === 'request-new') return 'configure'
+  return state.view.kind
+}
+
 // Raw localStorage existence check for a canvas tab's hot-exit scratch
 // (composition/canvasScratch.ts's own SCRATCH_PREFIX, inlined rather
 // than imported: shared/ is a dependency-cruiser leaf and cannot import

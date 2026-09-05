@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text } from '@primer/react'
 import { CompactSelection, DataEditor, type DataEditorRef, type GridSelection, type Rectangle } from '@glideapps/glide-data-grid'
@@ -13,6 +13,9 @@ import { anchorFromBounds, type Anchor } from './ListGridGlideMenus'
 import { GlideOverlays, menuProps, schemaEditorProps, useGlideCellEdits, useGlideColumns, useRowTint, type GlideMenuState } from './ListGridGlideOverlays'
 import { ListGridGlideToolbar } from './ListGridGlideToolbar'
 import { filterGridRows, nextSortDirection, sortGridRows, type GridColumnFilter, type GridColumnFilters, type GridColumnSort, type GridSortDirection } from './listStandard'
+import { findCommand, runCommand } from './commands'
+import { comboFromEvent, comboKey } from './keybinding'
+import { useListGridSearchFocusStore } from './listGridSearchFocus'
 import styles from './ListGrid.module.css'
 
 // The adopted grid (ADR-0049, goals 0287 / 0349 S4): Glide Data Grid as
@@ -21,15 +24,45 @@ import styles from './ListGrid.module.css'
 // or shift-click extends the range, a second click / Enter / typing
 // edits, Enter commits down, Tab commits right, Escape cancels, copy
 // and paste move the range through the clipboard, the fill handle
-// fills it, Delete clears it, the grid's own search opens on its own
-// hotkey, headers resize and reorder by drag. The content plane stays
-// Mill's: every commit -- typed, pasted, filled or cleared -- arrives
-// as onCellsEdited and leaves as one UpdateListRow per row, through the
-// same hook every mount uses (useListSchemaEdits). What the library
-// leaves to the integrator by design is composed ON the grid rather
-// than re-implemented inside it: the schema menus, the per-column sort
-// and filter (listStandard.ts), the bulk actions
+// fills it, Delete clears it, ⌘F opens the grid's own search while it
+// holds focus, headers resize and reorder by drag. The content plane
+// stays Mill's: every commit -- typed, pasted, filled or cleared --
+// arrives as onCellsEdited and leaves as one UpdateListRow per row,
+// through the same hook every mount uses (useListSchemaEdits). What
+// the library leaves to the integrator by design is composed ON the
+// grid rather than re-implemented inside it: the schema menus, the
+// per-column sort and filter (listStandard.ts), the bulk actions
 // (ListGridGlideToolbar.tsx), and the per-device column widths.
+
+// Keybindings review (goal 0349 S4 gap): every entry DataEditor's own
+// ConfigurableKeybinds type declares (data-editor-keybindings.ts),
+// confirmed against the vendored source. Mill passes NO `keybindings`
+// prop below -- every realized default stays exactly as the library
+// ships it.
+//
+// | Keybind (default state)                                    | Realized combo                              |
+// |-------------------------------------------------------------|----------------------------------------------|
+// | copy / cut / paste (on)                                     | the platform's native copy/cut/paste keys     |
+// | clear / closeOverlay (on)                                    | any+Escape                                    |
+// | acceptOverlayDown / Up / Left / Right (on)                   | Enter / shift+Enter / shift+Tab / Tab         |
+// | activateCell (on)                                            | Enter / shift+Enter                           |
+// | delete (on)                                                  | Backspace or Delete (macOS), Delete elsewhere |
+// | scrollToSelectedCell (on)                                    | primary+Enter                                 |
+// | goToFirst/LastCell/Column/Row, goToNext/PreviousPage (on)    | Home/End/PageUp/PageDown family               |
+// | goUp/Down/Left/RightCell, +RetainSelection variants (on)     | Arrow keys, +alt for the retain-selection set |
+// | selectToFirst/LastCell/Column/Row (on)                       | primary+shift+Home/End/Arrow family           |
+// | selectGrowUp/Down/Left/Right (on)                            | shift+Arrow                                   |
+// | selectAll / selectRow / selectColumn (on)                    | primary+a / shift+Space / ctrl+Space          |
+// | downFill / rightFill (OFF)                                   | no combo -- Mill never binds these            |
+// | search (OFF)                                                 | no combo -- see listGrid.search instead       |
+//
+// `search` ships OFF: enabling it would hand ⌘F to the library's own
+// UNCONTROLLED show/hide state, which this component cannot then also
+// drive from the registry command (listGridCommands.ts's
+// listGrid.search). Mill instead controls `showSearch`/`onSearchClose`
+// itself (the library's own documented controlled-search shape) and
+// detects ⌘F locally -- the one addition to the table above, not a
+// keybindings override.
 
 // Column widths are per-device UI state (the schema has no width),
 // keyed by list. Column ORDER is not: a header drag rewrites the List's
@@ -80,6 +113,36 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
   const [selection, setSelection] = useState<GridSelection>(EMPTY_SELECTION)
   const [droppedRows, setDroppedRows] = useState(0)
   const toAnchor = useCallback((bounds: Rectangle) => anchorFromBounds(host, bounds), [host])
+
+  // The grid's own search (goal 0349 S4 gap): showSearch/onSearchClose
+  // controlled the way the library's own built-in-search example wires
+  // them, so listGrid.search's run() -- which cannot reach a specific
+  // mount's state directly -- has a handle to call through.
+  //
+  // ⌘F is read off a keydown TARGETED inside this host (onKeyDown
+  // below), so a click must leave DOM focus in here before the next
+  // keystroke. The library's own click-to-focus defers to a
+  // requestAnimationFrame, which a loaded machine can push past the
+  // keystroke -- so the click takes focus through the library's own
+  // imperative handle (DataEditorRef.focus) as well, on POINTERUP.
+  //
+  // Never on pointerdown: the library's onCanvasFocused auto-selects
+  // the first cell when the canvas gains focus with no selection,
+  // suppressed only while a mouse button is already down. Pointerdown
+  // precedes the library's own mousedown, so focusing there beats
+  // that suppression, pre-selects the clicked cell, and turns the
+  // user's FIRST click into the library's second-click activation --
+  // an overlay editor instead of a selected cell. By pointerup the
+  // library's mousedown has both armed the suppression and set the
+  // selection, so neither can happen.
+  const [showSearch, setShowSearch] = useState(false)
+  const searchHandleID = useId()
+  const setSearchFocused = useListGridSearchFocusStore((s) => s.setFocused)
+  const clearSearchFocused = useListGridSearchFocusStore((s) => s.clearFocused)
+  const publishSearchHandle = useCallback(() => {
+    setSearchFocused({ id: searchHandleID, toggleSearch: () => setShowSearch((v) => !v) })
+  }, [setSearchFocused, searchHandleID])
+  useEffect(() => () => clearSearchFocused(searchHandleID), [clearSearchFocused, searchHandleID])
 
   // What the grid SHOWS: the stored rows narrowed, then ordered. Every
   // index the grid reports -- a selection, a menu, an edit -- is a
@@ -231,16 +294,51 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
       data-cell-bg={palette.theme.bgCell}
       data-header-height={headerHeight}
       data-row-height={rowHeight}
+      data-search-open={showSearch ? 'true' : undefined}
+      // The focus handle every listGrid.search invocation acts through
+      // (listGridSearchFocus.ts): published whenever focus lands
+      // anywhere in this grid, cleared only if it's still this mount's
+      // own handle (focus can leave and a different mount can claim it
+      // in either order).
+      onFocus={publishSearchHandle}
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) clearSearchFocused(searchHandleID) }}
       // Arrow keys and typing inside the grid belong to the grid --
       // never to the board's node keyboard handling (which would move
       // the object) nor the canvas's own shortcuts; a right-click is
       // the grid's header / row menu, never the object's own menu.
       // Escape is the one key handed back -- see the capture listener
-      // above.
-      onKeyDown={(e) => e.stopPropagation()}
+      // above. ⌘F is the one keystroke this component itself dispatches
+      // through the registry (listGridCommands.ts's listGrid.search):
+      // every keydown in here is stopped from ever reaching the
+      // window's own keymap dispatcher (app/useKeymapDispatch.ts), so
+      // that dispatcher can never see this combo either -- the combo
+      // compared against is listGrid.search's own defaultBinding, read
+      // fresh, rather than a second hardcoded copy of it. Only while
+      // search is CLOSED: once open, the library's own search input
+      // closes on ⌘F/Escape itself (its onSearchClose, wired below), so
+      // this never double-toggles.
+      onKeyDown={(e) => {
+        if (!showSearch) {
+          const pressed = comboFromEvent(e.nativeEvent)
+          const binding = findCommand('listGrid.search')?.defaultBinding
+          if (pressed && binding && comboKey(pressed.mods, pressed.key) === comboKey(binding.mods, binding.key)) {
+            e.preventDefault()
+            void runCommand('listGrid.search', { kind: 'listGrid', listID, rowIDs: [] })
+          }
+        }
+        e.stopPropagation()
+      }}
       onContextMenu={(e) => e.stopPropagation()}
     >
-      <div className={`${styles.scroll} nowheel nodrag nopan`} style={{ minHeight: 120, maxHeight: 420 }}>
+      <div
+        className={`${styles.scroll} nowheel nodrag nopan`}
+        style={{ minHeight: 120, maxHeight: 420 }}
+        // See the search block above for why this is pointerUP, and why
+        // it must never move to pointerdown. Skipped when focus is
+        // already in here, so it can never pull it off an open overlay
+        // editor that mounts inside this host.
+        onPointerUp={() => { if (!host?.contains(document.activeElement)) gridRef.current?.focus() }}
+      >
         {columns.length === 0 ? (
           <p className={styles.empty} data-testid="atlas-projection-empty">{t('listGrid.noColumns')}</p>
         ) : (
@@ -258,6 +356,8 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
             height={Math.min(420, height)}
             rowHeight={rowHeight}
             headerHeight={headerHeight}
+            showSearch={showSearch}
+            onSearchClose={() => setShowSearch(false)}
             // "both": a row's number, revealing its checkbox on hover
             // -- the marker column that makes a multi-row selection,
             // and the bulk actions it enables, reachable by mouse.
