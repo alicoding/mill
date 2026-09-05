@@ -74,9 +74,9 @@ test('Double-clicking a step with a recorded run opens the overlay with real inp
   await withClipboardLock(async () => {
     await page.goto('/')
     await page.getByRole('link', { name: 'Workflows' }).click()
-    const row = workflowRow(page, 'Example: Saved page → Markdown')
+    const row = workflowRow(page, 'Saved client page → Markdown')
     await expect(row).toBeVisible()
-    await row.getByRole('button', { name: 'Run Example: Saved page → Markdown', exact: true }).click()
+    await row.getByRole('button', { name: 'Run Saved client page → Markdown', exact: true }).click()
 
     const payloadField = page.getByTestId('test-run-payload')
     await expect(payloadField).toBeVisible()

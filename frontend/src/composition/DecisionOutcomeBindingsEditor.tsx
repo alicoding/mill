@@ -12,7 +12,7 @@ import { LiteralOrAttributeField } from '../shared/LiteralOrAttributeField'
 // what each row's literal-or-attribute picker offers, same shape as
 // ChildWorkflowBindingsEditor.tsx (shared LiteralOrAttributeField).
 // Renders nothing if the referenced Decision has no declared outputs --
-// nothing to bind (e.g. the seeded "Manual review (example)" only has
+// nothing to bind (e.g. the seeded "Manual review" only has
 // one field, still renders one row).
 function parseJSON(raw: string): Record<string, string> {
   if (!raw) return {}

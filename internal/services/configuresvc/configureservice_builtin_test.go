@@ -115,7 +115,7 @@ func TestConfigureService_DeletingABuiltIn_DoesNotReturnOnRestart(t *testing.T) 
 	if err == nil {
 		t.Fatal("DeleteHTTPRequest on a still-referenced request returned nil error, want it blocked")
 	}
-	if !strings.Contains(err.Error(), "Example: Approval-gated HTTP call") || !strings.Contains(err.Error(), "Example: Forward pending approvals") {
+	if !strings.Contains(err.Error(), "Post an update to the client portal") || !strings.Contains(err.Error(), "Forward approvals to the sponsor") {
 		t.Errorf("DeleteHTTPRequest blocked-error = %q, want it to name both referencing workflows", err.Error())
 	}
 	for _, wfID := range []string{"example-guarded-http-workflow", "example-forward-approvals-workflow"} {
@@ -349,7 +349,7 @@ func TestConfigureService_DeletingABuiltInList_DoesNotReturnOnRestart(t *testing
 	if err == nil {
 		t.Fatal("DeleteList on a still-referenced list returned nil error, want it blocked")
 	}
-	if !strings.Contains(err.Error(), "Example: Country code lookup") || !strings.Contains(err.Error(), "Example: Country lookup (search)") {
+	if !strings.Contains(err.Error(), "Look up a client country") || !strings.Contains(err.Error(), "Search client countries") {
 		t.Errorf("DeleteList blocked-error = %q, want it to name both referencing workflows", err.Error())
 	}
 	for _, wfID := range []string{"example-list-lookup-workflow", "example-list-search-workflow"} {

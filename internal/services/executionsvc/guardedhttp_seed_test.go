@@ -51,7 +51,7 @@ func TestSeededGuardedHTTPWorkflow_DenyFailsClosed_NoHTTPCall(t *testing.T) {
 	})
 	defer orig()
 
-	wfID := findBuiltInWorkflowID(t, comp, "Example: Approval-gated HTTP call")
+	wfID := findBuiltInWorkflowID(t, comp, "Post an update to the client portal")
 
 	summary, err := exec.RunWorkflow(wfID, RunKindTest, nil)
 	if err != nil {
@@ -124,7 +124,7 @@ func TestSeededGuardedHTTPWorkflow_ApproveFiresRealHTTPCall(t *testing.T) {
 	})
 	defer orig()
 
-	wfID := findBuiltInWorkflowID(t, comp, "Example: Approval-gated HTTP call")
+	wfID := findBuiltInWorkflowID(t, comp, "Post an update to the client portal")
 
 	summary, err := exec.RunWorkflow(wfID, RunKindTest, nil)
 	if err != nil {

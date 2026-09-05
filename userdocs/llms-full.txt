@@ -700,7 +700,7 @@ the footer shows what the highlighted row can do:
 
 Anything you type that isn't a workflow's name can be kept: **Save as
 note** files it into the Scratchpad card on the board, **Save as
-task** adds it as a row to the Example: Task tracker list, scheduled
+task** adds it as a row to the Engagement tasks list, scheduled
 for today. Both close the panel the moment they land.
 
 The same panel is the fastest way to update Mill: type "update" and

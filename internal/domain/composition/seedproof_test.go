@@ -101,7 +101,7 @@ var workflowProofRegistry = map[string]seedProof{
 		"executionsvc.TestSeededListSearchExample_Match_WritesTypedResult",
 		"executionsvc.TestSeededListSearchExample_NoMatch_WritesUnmatchedResult",
 		"executionsvc.TestSeededListSearchExample_ExpiredRow_ExcludedByDefault",
-		"e2e: seed-completeness.spec.ts > Example: Country lookup (search) runs a real exact match through list-search",
+		"e2e: seed-completeness.spec.ts > Search client countries runs a real exact match through list-search",
 	),
 	"example-mcp-echo-workflow": proven(
 		"composition.TestSeededMCPExample_EchoToolCall_RunsEndToEnd",
@@ -162,12 +162,12 @@ var workflowProofRegistry = map[string]seedProof{
 		"triggersvc.TestSeededCardIntakeExample_TriggerUpdatesOwnCardAndDoesNotLoop",
 		"triggersvc.TestSeededCardIntakeKindID_MatchesAtlasSeed",
 		"executionsvc.TestGuardrail_AtlasCardCreateParks_ApproveCreatesCard",
-		"e2e: seed-completeness.spec.ts > Example: Card intake workflow is present with the real trigger-atlas-card + Atlas: update card nodes on canvas",
+		"e2e: seed-completeness.spec.ts > Client request intake workflow is present with the real trigger-atlas-card + Atlas: update card nodes on canvas",
 		"e2e: entity-ref-picker.spec.ts > Selecting the Atlas: update card node offers a live Kind picker and the Kind-driven field editor",
 	),
 	"example-card-create-link-workflow": proven(
 		"executionsvc.TestSeededCardCreateLinkExample_CreatesFindsAndLinksCards",
-		"e2e: seed-completeness.spec.ts > Example: Create and link Atlas cards runs end to end through the real live app",
+		"e2e: seed-completeness.spec.ts > Log a client request and its decision runs end to end through the real live app",
 	),
 	"clipbridge-reply-cards-workflow": proven(
 		"executionsvc.TestSeededClipbridgeCardsRoute_CreatesAcceptedCards",

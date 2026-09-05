@@ -29,7 +29,7 @@ test('Settings opens on a group pane, and Shortcuts carries the global hotkey', 
 // docs/adr/0035: the forward-refactor proof's Settings half --
 // ForwardPendingApproval's private send path and its own Settings
 // section (checkbox + request picker) are deleted, replaced by the
-// seeded "Example: Forward pending approvals" workflow (proven in
+// seeded "Forward approvals to the sponsor" workflow (proven in
 // seed-completeness.spec.ts). This is the negative half: the old
 // section must actually be GONE, not just unused.
 test('Settings no longer shows the Forward pending approvals section', async ({ page }) => {

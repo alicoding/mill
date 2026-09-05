@@ -16,7 +16,7 @@ import (
 
 // docs/goals/0010 item 4: Lists had zero seeded example and zero
 // seeded workflow using list-lookup before this. These two tests run
-// the REAL "Example: Country code lookup" seed against a real DBOS
+// the REAL "Look up a client country" seed against a real DBOS
 // runtime, covering both halves of list-lookup's own "onMiss" config
 // (composition/listlookup.go): a match, and a miss (which fails the
 // run under the seed's default "fail" onMiss setting).
@@ -69,7 +69,7 @@ func newListLookupSeedHarness(t *testing.T) (*ExecutionService, string) {
 		})
 	})
 
-	wfID := findBuiltInWorkflowID(t, comp, "Example: Country code lookup")
+	wfID := findBuiltInWorkflowID(t, comp, "Look up a client country")
 	return exec, wfID
 }
 

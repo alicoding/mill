@@ -53,7 +53,7 @@ type decisionOutcomePayload struct {
 // typed into the reached Decision's own 'score' output.
 func TestSeededBranchToDecisionExample_HighAmount_ApproveOutcome(t *testing.T) {
 	_, exec := newDecisionExecHarness(t)
-	wfID := findBuiltInWorkflowID(t, exec.comp, "Example: Branch to a decision")
+	wfID := findBuiltInWorkflowID(t, exec.comp, "Route an expense by amount")
 
 	summary, err := exec.RunWorkflow(wfID, RunKindTest, map[string]string{"amount": "150"})
 	if err != nil {
@@ -76,7 +76,7 @@ func TestSeededBranchToDecisionExample_HighAmount_ApproveOutcome(t *testing.T) {
 
 func TestSeededBranchToDecisionExample_LowAmount_DenyOutcome(t *testing.T) {
 	_, exec := newDecisionExecHarness(t)
-	wfID := findBuiltInWorkflowID(t, exec.comp, "Example: Branch to a decision")
+	wfID := findBuiltInWorkflowID(t, exec.comp, "Route an expense by amount")
 
 	summary, err := exec.RunWorkflow(wfID, RunKindTest, map[string]string{"amount": "50"})
 	if err != nil {
@@ -103,7 +103,7 @@ func TestSeededBranchToDecisionExample_LowAmount_DenyOutcome(t *testing.T) {
 // resumes to the typed outcome.
 func TestSeededDecisionWithReviewExample_Approve_Terminalizes(t *testing.T) {
 	_, exec := newDecisionExecHarness(t)
-	wfID := findBuiltInWorkflowID(t, exec.comp, "Example: Decision with review")
+	wfID := findBuiltInWorkflowID(t, exec.comp, "Escalate to manual review")
 
 	summary, err := exec.RunWorkflow(wfID, RunKindTest, nil)
 	if err != nil {
@@ -119,7 +119,7 @@ func TestSeededDecisionWithReviewExample_Approve_Terminalizes(t *testing.T) {
 	if pending.NodeTypeID != "decision-outcome" {
 		t.Fatalf("pending.NodeTypeID = %q, want decision-outcome", pending.NodeTypeID)
 	}
-	if !strings.Contains(pending.RuleLabel, "Manual review (example)") {
+	if !strings.Contains(pending.RuleLabel, "Manual review") {
 		t.Fatalf("pending.RuleLabel = %q, want it to name the reached Decision", pending.RuleLabel)
 	}
 
@@ -146,7 +146,7 @@ func TestSeededDecisionWithReviewExample_Approve_Terminalizes(t *testing.T) {
 // fail-safe shape every other guardrail/review park already has.
 func TestSeededDecisionWithReviewExample_Deny_FailsClosed(t *testing.T) {
 	_, exec := newDecisionExecHarness(t)
-	wfID := findBuiltInWorkflowID(t, exec.comp, "Example: Decision with review")
+	wfID := findBuiltInWorkflowID(t, exec.comp, "Escalate to manual review")
 
 	summary, err := exec.RunWorkflow(wfID, RunKindTest, nil)
 	if err != nil {
@@ -277,11 +277,11 @@ func TestDecisionOutcome_NoWebhook_NeverAsks_WebhookPresent_AsksAndFiresOnApprov
 // 4-5): a version-pinned decision-outcome node keeps resolving the
 // PINNED snapshot after the live Decision's draft changes -- proven on
 // the exact seeded workflow that ships this pin (the Approve arm of
-// "Example: Branch to a decision"), through a real ExecutionService
+// "Route an expense by amount"), through a real ExecutionService
 // run, not just the pure domain-layer unit test.
 func TestSeededBranchToDecisionExample_PinnedApproveArm_ResolvesFrozenV1AfterLiveEdit(t *testing.T) {
 	cfg, exec := newDecisionExecHarness(t)
-	wfID := findBuiltInWorkflowID(t, exec.comp, "Example: Branch to a decision")
+	wfID := findBuiltInWorkflowID(t, exec.comp, "Route an expense by amount")
 
 	var approve decision.Decision
 	for _, d := range cfg.Decisions() {
@@ -344,7 +344,7 @@ func TestSeededBranchToDecisionExample_PinnedApproveArm_ResolvesFrozenV1AfterLiv
 // recorded outcome JSON (StepDetail's Output pane), not re-derived.
 func TestSeededBranchToDecisionExample_RunStamp_PinnedVsLive(t *testing.T) {
 	_, exec := newDecisionExecHarness(t)
-	wfID := findBuiltInWorkflowID(t, exec.comp, "Example: Branch to a decision")
+	wfID := findBuiltInWorkflowID(t, exec.comp, "Route an expense by amount")
 
 	approveSummary, err := exec.RunWorkflow(wfID, RunKindTest, map[string]string{"amount": "150"})
 	if err != nil {

@@ -143,10 +143,10 @@ test('Branch to a decision: the pinned approve arm ignores a later live edit; ru
   await page.goto('/')
   await openDecisionsTab(page)
 
-  // Edit the live "Approve (example)" Decision -- an additive output
+  // Edit the live "Approve" Decision -- an additive output
   // field, allowed in place (docs/adr/0040 decision 1). The seeded
   // workflow's approve arm is pinned to v1, published before this edit.
-  const approveRow = decisionRow(page, 'Approve (example)')
+  const approveRow = decisionRow(page, 'Approve')
   await expect(approveRow).toBeVisible()
   await approveRow.click()
   await expect(page.getByTestId('decision-published-badge')).toContainText('Published v1')
@@ -157,7 +157,7 @@ test('Branch to a decision: the pinned approve arm ignores a later live edit; ru
   await page.getByTestId('save-decision').click()
 
   await page.getByRole('link', { name: 'Workflows' }).click()
-  const wfRow = workflowRow(page, 'Example: Branch to a decision')
+  const wfRow = workflowRow(page, 'Route an expense by amount')
   await expect(wfRow).toBeVisible()
   await wfRow.click()
   const panel = activePanel(page)
@@ -188,7 +188,7 @@ test('Branch to a decision: the pinned approve arm ignores a later live edit; ru
   // cleanup discipline) so later tests in this file/worker see the
   // Approve Decision exactly as shipped.
   await openDecisionsTab(page)
-  const approveRowAgain = decisionRow(page, 'Approve (example)')
+  const approveRowAgain = decisionRow(page, 'Approve')
   await clickRowAction(page, approveRowAgain, /Reset to shipped example/)
 })
 
@@ -196,7 +196,7 @@ test('Branch to a decision: the approve path terminalizes with a typed outcome, 
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
-  const seed = 'Example: Branch to a decision'
+  const seed = 'Route an expense by amount'
   const row = workflowRow(page, seed)
   await expect(row).toBeVisible()
   await row.click()
@@ -225,7 +225,7 @@ test('Decision with review: a manual-review outcome parks in the Review queue; d
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
-  const seed = 'Example: Decision with review'
+  const seed = 'Escalate to manual review'
   const row = workflowRow(page, seed)
   await expect(row).toBeVisible()
   await row.getByRole('button', { name: 'Run' }).click()
@@ -233,7 +233,7 @@ test('Decision with review: a manual-review outcome parks in the Review queue; d
   await page.getByRole('link', { name: 'Review' }).click()
   const item = page.getByTestId('review-item').filter({ hasText: seed }).first()
   await expect(item).toBeVisible({ timeout: 10_000 })
-  await expect(item).toContainText('Manual review (example)')
+  await expect(item).toContainText('Manual review')
 
   await item.getByTestId('review-deny').click()
   await expect(page.getByTestId('review-item').filter({ hasText: seed })).toHaveCount(0, { timeout: 10_000 })

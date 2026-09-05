@@ -23,12 +23,12 @@ import { expandExamples } from './inventoryRow'
 // up (same reasoning request-builtin-examples.spec.ts's own header
 // comment already gives).
 
-test('Seeded List "Example: Country codes" is present, built-in-badged, with its real entries', async ({ page }) => {
+test('Seeded List "Country codes" is present, built-in-badged, with its real entries', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
   await page.getByRole('tab', { name: 'Lists' }).click()
 
-  const row = page.locator('[data-testid="inventory-row"][data-entity="list"]').filter({ has: page.getByText('Example: Country codes', { exact: true }) })
+  const row = page.locator('[data-testid="inventory-row"][data-entity="list"]').filter({ has: page.getByText('Country codes', { exact: true }) })
   await expect(row).toBeVisible()
   await expect(row.getByText('built-in', { exact: true })).toBeVisible()
   // docs/goals/0011-lists-maturation.md: the seed grew typed
@@ -53,12 +53,12 @@ test('Seeded MCP Server "Example: Reference server (npx)" is present, built-in-b
   await expect(row).toContainText('npx -y @modelcontextprotocol/server-everything')
 })
 
-test('Example: Country code lookup runs a real match through the seeded List', async ({ page }) => {
+test('Look up a client country runs a real match through the seeded List', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
   await expandExamples(page)
-  const row = workflowRow(page, 'Example: Country code lookup')
+  const row = workflowRow(page, 'Look up a client country')
   await expect(row).toBeVisible()
   await row.click()
   await expect(activePanel(page).locator('.react-flow__node').first()).toBeVisible()
@@ -76,11 +76,11 @@ test('Example: Country code lookup runs a real match through the seeded List', a
   await expect(bar).toContainText('SUCCESS', { timeout: 15_000 })
 })
 
-test('Example: Country lookup (search) runs a real exact match through list-search', async ({ page }) => {
+test('Search client countries runs a real exact match through list-search', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
-  const row = workflowRow(page, 'Example: Country lookup (search)')
+  const row = workflowRow(page, 'Search client countries')
   await expect(row).toBeVisible()
   await row.click()
   await expect(activePanel(page).locator('.react-flow__node').first()).toBeVisible()
@@ -144,11 +144,11 @@ test('Seeded AI provider "Local Ollama (localhost:11434)" is present, built-in-b
   await expect(row).toContainText('http://localhost:11434')
 })
 
-test('Example: Summarize with local AI workflow is present with the real process-ai-completion node, ships disabled', async ({ page }) => {
+test('Summarize a client email workflow is present with the real process-ai-completion node, ships disabled', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
-  const row = workflowRow(page, 'Example: Summarize with local AI')
+  const row = workflowRow(page, 'Summarize a client email')
   await expect(row).toBeVisible()
   await expect(row.getByText('disabled', { exact: true })).toBeVisible()
   await row.click()
@@ -183,7 +183,7 @@ test('Example: Saved page to Markdown workflow is present and ships disabled', a
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
-  const row = workflowRow(page, 'Example: Saved page → Markdown')
+  const row = workflowRow(page, 'Saved client page → Markdown')
   await expect(row).toBeVisible()
   await expect(row.getByText('disabled', { exact: true })).toBeVisible()
 })
@@ -195,11 +195,11 @@ test('Example: Saved page to Markdown workflow is present and ships disabled', a
 // this confirms the seed is actually reachable through the live app and
 // shows its real trigger-system-event label, same presence-only bar
 // every other real-event-driven seed above already sets.
-test('Example: Forward pending approvals workflow is present, disabled, with the real trigger-system-event node on canvas', async ({ page }) => {
+test('Forward approvals to the sponsor workflow is present, disabled, with the real trigger-system-event node on canvas', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
-  const row = workflowRow(page, 'Example: Forward pending approvals')
+  const row = workflowRow(page, 'Forward approvals to the sponsor')
   await expect(row).toBeVisible()
   await expect(row.getByText('disabled', { exact: true })).toBeVisible()
   await row.click()
@@ -216,11 +216,11 @@ test('Example: Forward pending approvals workflow is present, disabled, with the
 // (executionsvc.TestSeededAIClassifyBranchExample_UrgentRoutesToUrgentBranch/
 // _NormalRoutesToNormalBranch) runs both branch outcomes end to end
 // against an httptest fixture.
-test('Example: AI classify -> branch workflow is present with the real process-ai-classify + Branch nodes, ships disabled', async ({ page }) => {
+test('Triage a client email workflow is present with the real process-ai-classify + Branch nodes, ships disabled', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
-  const row = workflowRow(page, 'Example: AI classify -> branch')
+  const row = workflowRow(page, 'Triage a client email')
   await expect(row).toBeVisible()
   await expect(row.getByText('disabled', { exact: true })).toBeVisible()
   await row.click()
@@ -237,11 +237,11 @@ test('Example: AI classify -> branch workflow is present with the real process-a
 // other real-event-driven seed above; the trigger's own fire + cycle
 // guard are proven end to end at the Go layer
 // (triggersvc.TestSeededCardIntakeExample_TriggerUpdatesOwnCardAndDoesNotLoop).
-test('Example: Card intake workflow is present with the real trigger-atlas-card + Update Atlas card nodes on canvas', async ({ page }) => {
+test('Client request intake workflow is present with the real trigger-atlas-card + Update Atlas card nodes on canvas', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
-  const row = workflowRow(page, 'Example: Card intake')
+  const row = workflowRow(page, 'Client request intake')
   await expect(row).toBeVisible()
   await row.click()
 
@@ -255,11 +255,11 @@ test('Example: Card intake workflow is present with the real trigger-atlas-card 
 // unlike the clipboard/AI/MCP seeds above, this one is safe to actually
 // run here: proves the create -> find -> link chain through the real
 // live app, not just presence.
-test('Example: Create and link Atlas cards runs end to end through the real live app', async ({ page }) => {
+test('Log a client request and its decision runs end to end through the real live app', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
-  const row = workflowRow(page, 'Example: Create and link Atlas cards')
+  const row = workflowRow(page, 'Log a client request and its decision')
   await expect(row).toBeVisible()
   await row.click()
   await expect(activePanel(page).locator('.react-flow__node').first()).toBeVisible()
