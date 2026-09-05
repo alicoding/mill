@@ -157,8 +157,16 @@ func (a *AtlasService) SetBoardObjectPayload(id string, patch map[string]string)
 // SetBoardObjectSize persists a user-driven resize -- nil until the
 // object's own natural/intrinsic render size is first overridden (S2+;
 // S1 never calls this, but the door exists so a future resize handle
-// costs a frontend call, not a schema change).
+// costs a frontend call, not a schema change). The floor matches the
+// frontend resize handle's own minWidth/minHeight (AtlasBoardObjectNode's
+// NodeResizer, goal 0199 part B) -- a resize below it is refused here
+// too, never persisted as a degenerate box.
+//
+//nolint:dupl // same lock/mutate/persist/emit/recordScalar shape as SetNoteSize -- a shared generic setter is a larger refactor than this slice's scope
 func (a *AtlasService) SetBoardObjectSize(id string, size atlas.Dimensions) (atlas.BoardObject, error) {
+	if size.W < 40 || size.H < 40 {
+		return atlas.BoardObject{}, fmt.Errorf("board object size %.0fx%.0f is too small", size.W, size.H)
+	}
 	a.mu.Lock()
 	idx := a.findObjectLocked(id)
 	if idx == -1 {
@@ -180,9 +188,49 @@ func (a *AtlasService) SetBoardObjectSize(id string, size atlas.Dimensions) (atl
 	}
 	dataevent.Emit("atlas", o.ID)
 	recordScalar(a, actorUI, "object", id, o.Kind,
-		func(a *AtlasService, sz atlas.Dimensions) error { _, err := a.SetBoardObjectSize(id, sz); return err },
-		derefSize(previous.Size), size,
+		func(a *AtlasService, sz *atlas.Dimensions) error {
+			if sz == nil {
+				_, err := a.clearBoardObjectSize(id)
+				return err
+			}
+			_, err := a.SetBoardObjectSize(id, *sz)
+			return err
+		},
+		previous.Size, &size,
 	)
+	return o, nil
+}
+
+// clearBoardObjectSize resets a board object's Size to nil (its
+// natural/intrinsic render size) -- the undo-only door a first-ever
+// resize's undo entry replays through, since SetBoardObjectSize's own
+// minimum-size guard would otherwise refuse the return to "unsized"
+// the same way it refuses an illegal undersized resize. Never called
+// directly by a mutation door's public surface, only from
+// recordScalar's own apply closure above, so it carries no recordUndo
+// call of its own (ADR-0044's suppressRecording already covers the
+// replay).
+func (a *AtlasService) clearBoardObjectSize(id string) (atlas.BoardObject, error) {
+	a.mu.Lock()
+	idx := a.findObjectLocked(id)
+	if idx == -1 {
+		a.mu.Unlock()
+		return atlas.BoardObject{}, fmt.Errorf("no board object with id %q", id)
+	}
+	previous := a.objects[idx]
+	o := previous
+	o.Size = nil
+	o.UpdatedAt = time.Now()
+	a.objects[idx] = o
+	perr := a.persistLocked()
+	if perr != nil {
+		a.objects[idx] = previous
+	}
+	a.mu.Unlock()
+	if perr != nil {
+		return atlas.BoardObject{}, fmt.Errorf("save board object size: %w", perr)
+	}
+	dataevent.Emit("atlas", o.ID)
 	return o, nil
 }
 
