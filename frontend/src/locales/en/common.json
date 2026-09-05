@@ -258,7 +258,8 @@
         "lists": "New list",
         "mcpservers": "New MCP server",
         "decisions": "New decision",
-        "execenvs": "New environment",
+        "environments": "New environment",
+        "execenvs": "New execution environment",
         "aiproviders": "New AI provider",
         "conversionprofiles": "New conversion profile",
         "steptypes": "New step type",
@@ -289,6 +290,12 @@
       },
       "execenv": {
         "delete": "Delete",
+        "export": "Export",
+        "reset": "Reset to shipped example"
+      },
+      "environment": {
+        "delete": "Delete",
+        "duplicate": "Duplicate",
         "export": "Export",
         "reset": "Reset to shipped example"
       },

@@ -26,7 +26,6 @@ import (
 // 1/2).
 var errFakeMCPPersist = errors.New("fake persist failure")
 
-
 // mcpApprovalHarness spins up a real MillMCPService + real MCP client
 // over real HTTP, with a workflow ready to export/import -- the shared
 // setup every park-and-poll test below (docs/adr/0032) needs.

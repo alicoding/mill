@@ -16,6 +16,7 @@
 - [Step reference](reference/steps.md): every step's contract, generated from the registry
 - [Commands](reference/commands.md): every registered command's id, label, default binding, surface, and enablement, generated from the registry
 - [Menu bar](reference/menu-bar.md): every menu and item in the macOS menu bar, its shortcut, and the command behind it, generated from the registry
+- [Environments](reference/environments.md): named sets of plain and secret variables, {{var}} in a request, and which one a run selects
 - [Client certificates](reference/client-certificates.md): presenting a client certificate per host: formats, matching, expiry status, and the Test action
 - [The browser extension](reference/browser-extension.md): pairing a browser so Mill can replay recorded steps in your own signed-in session
 - [Settings](reference/settings.md): app preferences: appearance, hotkeys, shortcuts, MCP access, remote access, backups, updates
