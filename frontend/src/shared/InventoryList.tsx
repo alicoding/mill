@@ -30,17 +30,22 @@ export type {
 // rejection reasoning) over its OWN ActionList -- role="list" on the
 // owning ActionList is what makes InventoryRow's Items render as divs
 // rather than nested buttons, same as the own-items list below.
-export function InventoryList({ items, emptyState, searchPlaceholder, listId, filters }: {
+export function InventoryList({ items, emptyState, searchPlaceholder, listId, filters, searchQuery, onSearchQueryChange }: {
   items: InventoryItem[]
   emptyState: InventoryEmptyState
   searchPlaceholder?: string
+  // A caller that drives the search itself (a chip in a row setting the
+  // query) passes both; otherwise the list owns its own search box.
+  searchQuery?: string
+  onSearchQueryChange?: (next: string) => void
   // Identifies this list's persisted sort/page/examples state. Required
   // -- an unnamed list would silently share another one's state.
   listId: string
   filters?: ReactNode
 }) {
   const { t } = useTranslation('common')
-  const [query, setQuery] = useState('')
+  const [ownQuery, setOwnQuery] = useState('')
+  const query = searchQuery ?? ownQuery
   // One right-click menu for the whole list (goal 0075's audit G1):
   // opening another row's closes whichever was open, since this is a
   // single piece of state shared by every row rather than one per row.
@@ -53,7 +58,8 @@ export function InventoryList({ items, emptyState, searchPlaceholder, listId, fi
 
   const q = query.trim().toLowerCase()
   const matches = (item: InventoryItem) =>
-    q === '' || item.label.toLowerCase().includes(q) || (item.description ?? '').toLowerCase().includes(q)
+    q === '' || item.label.toLowerCase().includes(q) || (item.description ?? '').toLowerCase().includes(q) ||
+    (item.searchTerms ?? []).some((term) => term.toLowerCase().includes(q))
   const ownFiltered = own.filter(matches)
   const examplesFiltered = examples.filter(matches)
 
@@ -77,7 +83,8 @@ export function InventoryList({ items, emptyState, searchPlaceholder, listId, fi
   const showExamples = expanded || (q !== '' && examplesFiltered.length > 0)
 
   const changeQuery = (next: string) => {
-    setQuery(next)
+    if (onSearchQueryChange) onSearchQueryChange(next)
+    else setOwnQuery(next)
     resetPage()
   }
 
