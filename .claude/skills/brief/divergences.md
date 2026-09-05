@@ -65,6 +65,16 @@ this file is the record, a brief is a projection of it.
   landing board changes fitView extent and breaks fixed-pixel specs
   wholesale (goal 0223's park record); scope locators via
   `nonSeededBoardObjects`; do not add landing-board seeds casually.
+- Obvious: press `ControlOrMeta+<key>` for a shortcut. Here: a MILL
+  shortcut is pressed as `Meta+<key>` — Playwright resolves
+  `ControlOrMeta` on the browser's platform, so the Linux CI runner sends
+  Ctrl and Mill's keymap (`shared/keybinding.ts`) never matches; only the
+  browser's own copy/paste/select-all are platform-relative (#699).
+- Obvious: a click focuses the grid. Here: never force focus on
+  `pointerdown` in `ListGridGlide` — the library's own mousedown arms the
+  auto-select suppression; forcing focus first pre-selects a cell and a
+  first click opens an editor (#699). Focus on pointerup, skipped when
+  focus is already inside the host.
 - Obvious: the native drop gesture is testable. Here: it is not
   (server-mode Playwright is not a WebviewWindow) — route decisions
   are Vitest-tested; results land via the CreateBoardObject RPC
