@@ -39,8 +39,18 @@ export function GeneratePairingCode(): $CancellablePromise<$models.PairingCodeIn
 }
 
 /**
- * ListDevices returns every currently paired device, oldest first, so
- * Settings renders a stable order across renders.
+ * ListBrowsers returns every paired browser extension, same order and
+ * read model as ListDevices.
+ */
+export function ListBrowsers(): $CancellablePromise<$models.DeviceInfo[] | null> {
+    return $Call.ByID(3867557993);
+}
+
+/**
+ * ListDevices returns every currently paired phone or computer, oldest
+ * first, so Settings renders a stable order across renders. Paired
+ * browsers are deliberately absent -- they have their own section and
+ * their own list (ListBrowsers).
  */
 export function ListDevices(): $CancellablePromise<$models.DeviceInfo[] | null> {
     return $Call.ByID(1365707411);

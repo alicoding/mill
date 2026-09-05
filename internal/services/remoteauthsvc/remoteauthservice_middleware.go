@@ -130,7 +130,8 @@ func (s *RemoteAuthService) tokenIsValid(r *http.Request) bool {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.validateToken(cookie.Value, baseURLFor(r), time.Now())
+	_, ok := s.validateToken(cookie.Value, baseURLFor(r), KindDevice, time.Now())
+	return ok
 }
 
 // handlePairSubmit processes a pairing-code form submission: rate
@@ -161,7 +162,7 @@ func (s *RemoteAuthService) handlePairSubmit(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	s.recordPairingSuccess(source)
-	token, err := s.mintDevice(deviceLabelFor(r), baseURLFor(r))
+	token, err := s.mintDevice(deviceLabelFor(r), baseURLFor(r), KindDevice)
 	s.mu.Unlock()
 	if err != nil {
 		s.logger.Error("remote access: minting device token", "error", err)
