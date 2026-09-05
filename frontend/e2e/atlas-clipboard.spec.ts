@@ -136,9 +136,9 @@ test('copy/paste clones a card at the cursor; a frame paste offers its items', a
     await page.keyboard.press(`${mod}+v`)
     // Shallow by default: the offer names the two items inside.
     const offer = page.getByTestId('atlas-quiet-toast-action')
-    await expect(offer).toContainText('Also copy the 2 items inside')
+    await expect(offer).toContainText('Also copy the 2 items inside') // count: fixture-owned -- the two objects this test filed into its own frame.
     await offer.click()
-    await expect(toast).toContainText('Copied 2 items inside')
+    await expect(toast).toContainText('Copied 2 items inside') // count: fixture-owned -- same two objects.
     const frames = groupCard(page, 'ZzClipFrame')
     await expect(frames).toHaveCount(2)
     await expect(frames.nth(1).getByTestId('atlas-group-header')).toContainText('2 items')
