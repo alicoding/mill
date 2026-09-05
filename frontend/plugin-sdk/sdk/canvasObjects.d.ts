@@ -42,6 +42,17 @@ export interface CanvasObjectDecl {
      * its drag surface (default true). Set false when the object's whole
      * body already captures pointer events for dragging on its own. */
     dragBand?: boolean;
+    /** content: what happens to input over the object's face.
+     * 'static' (the default) means the canvas owns every gesture over it
+     * — the face is a picture. 'interactive' means the face scrolls,
+     * selects text, or edits in place, so the object goes through three
+     * states: idle (a click shield takes the first click, and the canvas
+     * keeps the wheel, the drag and the keys), selected (the face
+     * receives pointer events and keys, and a wheel over anything in it
+     * that really scrolls stays inside it), and editing (the face has an
+     * editor open and the board's shortcuts stand down). Declare
+     * 'interactive' before calling ctx.setEditing. */
+    content?: 'static' | 'interactive';
     /** Where the object's own artifact lives: a value only this board
      * knows ('board-local'), a web address ('url'), or a file on disk
      * ('file'). */
@@ -257,6 +268,11 @@ export interface CanvasObjectFaceCtx {
     theme: PluginTheme;
     /** Subscribes to every later appearance change. */
     onThemeChange: PluginThemeSubscribe;
+    /** Tells Mill an editor is open in this face, or has just closed.
+     * While it is open the object is in its editing state and Mill's own
+     * board shortcuts stand down, so typing goes to your editor. Present
+     * only for a face whose declaration says content: 'interactive'. */
+    setEditing?: (editing: boolean) => void;
     /** Attaches el to the page OFF the board, at exactly `size` CSS
      * pixels and unscaled by the board's zoom, and returns the function
      * that detaches it. A face is CSS-scaled with the canvas, so an

@@ -1,0 +1,4 @@
+name,url,username,password,note
+Real,https://a.example,example-user-5,not-a-real-secret-5,
+,,,,
+Titled but empty,,,,

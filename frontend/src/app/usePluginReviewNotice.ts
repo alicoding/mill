@@ -17,7 +17,7 @@ export function usePluginReviewNotice() {
 			level: 'info',
 			ttlMs: 0,
 			text: t('settings.extensions.awaitingReviewNotice', { count }),
-			actions: [{ id: 'review-plugins', label: t('settings.extensions.awaitingReviewAction'), commandId: 'settings.open.extensions' }],
+			actions: [{ id: 'review-plugins', label: t('settings.extensions.awaitingReviewAction'), commandId: 'extensions.open' }],
 		})
 	}, [t])
 }

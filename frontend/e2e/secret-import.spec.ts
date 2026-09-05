@@ -6,14 +6,16 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { test, expect } from './fixtures/server'
 import { openSecrets, ensureVault, deleteSecret } from './fixtures/secretStore'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
 
 const SECRETS = 'github.com/alicoding/mill/internal/services/secretsvc.SecretService.'
-const EXPORT = 'name,url,username,password,note\n' +
-	'ZzE2eImportedOne,https://one.example,example-user-1,not-a-real-secret-1,\n' +
-	'ZzE2eImportedTwo,https://two.example,example-user-2,not-a-real-secret-2,\n'
+const EXPORT = fs.readFileSync(
+	path.join(fileURLToPath(new URL('.', import.meta.url)), 'fixtures', 'password-export-sample.csv'),
+	'utf8',
+)
 
 test('a password export imports as entries and the file is deleted', async ({ page }) => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mill-e2e-import-'))

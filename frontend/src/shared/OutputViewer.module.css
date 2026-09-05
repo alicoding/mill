@@ -69,13 +69,28 @@
     min-width: 0;
 }
 
+/* Type by rendering, no badges (goal 0269 rule 7): the key is the
+   plain foreground, and each primitive kind carries its own tone, so a
+   number, a numeric string and a null never read alike. */
 .treeKey {
-    color: var(--fgColor-accent);
+    color: var(--fgColor-default);
 }
 
 .treeValue {
     color: var(--fgColor-default);
     word-break: break-word;
+}
+
+.treeValueString {
+    color: var(--fgColor-success);
+}
+
+.treeValueNumber {
+    color: var(--fgColor-accent);
+}
+
+.treeValueLiteral {
+    color: var(--fgColor-done);
 }
 
 .treeCount {

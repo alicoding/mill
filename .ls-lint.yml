@@ -71,7 +71,9 @@ ls:
   # release PR, so without it here EVERY release PR fails this gate and
   # can never merge -- the release branch is the one branch that cannot
   # simply move the file elsewhere.
-  .*: regex:(README|SECURITY|CONTRIBUTING|CLAUDE|AGENTS|RELEASING|CHANGELOG|Taskfile|lefthook|go|\.golangci|\.ls-lint)
+  # .gitguardian.yaml (goal 0358 S5): the secret scanner reads its
+  # paths-ignore config only from the repo root -- it cannot be moved.
+  .*: regex:(README|SECURITY|CONTRIBUTING|CLAUDE|AGENTS|RELEASING|CHANGELOG|Taskfile|lefthook|go|\.golangci|\.ls-lint|\.gitguardian)
 
 ignore:
   # userdocs/ + skills/ (goal 0125, ADR-0001 extension): user-facing

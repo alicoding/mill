@@ -2,6 +2,7 @@ import type { Command } from './commands'
 import { listGridContext } from './commandContext'
 import { ConfigureService } from './bindings'
 import { writeClipboardText } from './clipboardWrite'
+import { focusedListGridSearch } from './listGridSearchFocus'
 
 // The grid's bulk actions (goal 0349 S4). A row-marker checkbox
 // selection or a selected column header is a live target the registry
@@ -19,6 +20,27 @@ async function deleteRows(listID: string, rowIDs: string[]): Promise<void> {
 }
 
 export const LIST_GRID_COMMANDS: Command[] = [
+  {
+    // The grid's own search (goal 0349 S4 gap): opens/closes on ⌘F
+    // while a grid holds focus, alongside the list's own toolbar
+    // search box (which filters rows) rather than replacing it -- this
+    // one highlights matches within the shown rows without narrowing
+    // them. hintOnly: the real ⌘F detection lives in ListGridGlide's
+    // own keydown handler, never dispatchCommandForEvent -- every
+    // keystroke in the grid is stopped from ever reaching the window
+    // dispatcher (same reason the other three commands here are
+    // invoked directly, with an explicit context, rather than reached
+    // by a binding). defaultBinding still drives HotkeyHint/Shortcuts
+    // Help; ListGridGlide's own handler is what actually calls
+    // runCommand.
+    id: 'listGrid.search',
+    label: 'commands.listGrid.search',
+    defaultBinding: { mods: ['cmd'], key: 'F' },
+    hintOnly: true,
+    needs: 'listGrid',
+    enabled: (ctx) => listGridContext(ctx) !== null && focusedListGridSearch() !== null,
+    run: () => focusedListGridSearch()?.toggleSearch(),
+  },
   {
     id: 'listGrid.deleteRows',
     label: 'commands.listGrid.deleteRows',

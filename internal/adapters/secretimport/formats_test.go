@@ -1,13 +1,26 @@
 package secretimport
 
 import (
+	"bytes"
+	"os"
 	"strings"
 	"testing"
 )
 
-func read(t *testing.T, body string) ([]Row, string) {
+// readTestdata parses a fixture under testdata/, prepending a
+// byte-order mark first when bom is true.
+func readTestdata(t *testing.T, path string, bom bool) ([]Row, string) {
 	t.Helper()
-	rows, name, err := ReadCSV(strings.NewReader(body))
+	body, err := os.ReadFile(path) //nolint:gosec // path is always a literal testdata/*.csv passed by a call site in this file
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	var buf bytes.Buffer
+	if bom {
+		buf.WriteString("\ufeff")
+	}
+	buf.Write(body)
+	rows, name, err := ReadCSV(&buf)
 	if err != nil {
 		t.Fatalf("ReadCSV: %v", err)
 	}
@@ -15,7 +28,7 @@ func read(t *testing.T, body string) ([]Row, string) {
 }
 
 func TestReadCSV_ChromiumExport(t *testing.T) {
-	rows, name := read(t, "name,url,username,password,note\nExample,https://example.com,example-user-1,not-a-real-secret-1,hello\n")
+	rows, name := readTestdata(t, "testdata/chromium.csv", false)
 	if name != "chromium-csv" || len(rows) != 1 {
 		t.Fatalf("%s %+v", name, rows)
 	}
@@ -25,23 +38,21 @@ func TestReadCSV_ChromiumExport(t *testing.T) {
 }
 
 func TestReadCSV_ApplePasswordsExport(t *testing.T) {
-	rows, name := read(t, "Title,URL,Username,Password,Notes,OTPAuth\nBank,https://bank.example,example-user-2,not-a-real-secret-2,,otpauth://x\n")
+	rows, name := readTestdata(t, "testdata/apple-passwords.csv", false)
 	if name != "apple-passwords-csv" || len(rows) != 1 || rows[0].Title != "Bank" || rows[0].Password != "not-a-real-secret-2" {
 		t.Fatalf("%s %+v", name, rows)
 	}
 }
 
 func TestReadCSV_OnePasswordExport(t *testing.T) {
-	rows, name := read(t, "Title,Username,Password,Notes,Type\nMail,example-user-3,not-a-real-secret-3,note,Login\n")
+	rows, name := readTestdata(t, "testdata/onepassword.csv", false)
 	if name != "onepassword-csv" || len(rows) != 1 || rows[0].Username != "example-user-3" || rows[0].Notes != "note" {
 		t.Fatalf("%s %+v", name, rows)
 	}
 }
 
 func TestReadCSV_BitwardenExport(t *testing.T) {
-	body := "folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp\n" +
-		",,login,Store,a note,,0,https://store.example,example-user-4,not-a-real-secret-4,\n"
-	rows, name := read(t, body)
+	rows, name := readTestdata(t, "testdata/bitwarden.csv", false)
 	if name != "bitwarden-csv" || len(rows) != 1 || rows[0].URL != "https://store.example" || rows[0].Username != "example-user-4" {
 		t.Fatalf("%s %+v", name, rows)
 	}
@@ -60,7 +71,7 @@ func TestReadCSV_RefusesAnUnknownHeader(t *testing.T) {
 // Rows that are not entries -- a blank trailer, a section marker --
 // are dropped rather than stored as empty records.
 func TestReadCSV_SkipsRowsThatAreNotEntries(t *testing.T) {
-	rows, _ := read(t, "name,url,username,password,note\nReal,https://a.example,example-user-5,not-a-real-secret-5,\n,,,,\nTitled but empty,,,,\n")
+	rows, _ := readTestdata(t, "testdata/skip-rows.csv", false)
 	if len(rows) != 1 || rows[0].Title != "Real" {
 		t.Fatalf("rows = %+v", rows)
 	}
@@ -69,7 +80,7 @@ func TestReadCSV_SkipsRowsThatAreNotEntries(t *testing.T) {
 // A leading byte-order mark is what a spreadsheet writes; it must not
 // hide the first column's name.
 func TestReadCSV_ToleratesAByteOrderMark(t *testing.T) {
-	rows, name := read(t, "\ufeffname,url,username,password,note\nExample,https://e.example,example-user-6,not-a-real-secret-6,\n")
+	rows, name := readTestdata(t, "testdata/chromium.csv", true)
 	if name != "chromium-csv" || len(rows) != 1 {
 		t.Fatalf("%s %+v", name, rows)
 	}

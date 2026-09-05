@@ -43,6 +43,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.focusPrevious` | Focus previous card | `⇧TAB` | atlas | Always available |
 | `atlas.group.selection` | Group into a new area | `G` | atlas | Always available |
 | `atlas.import` | Import atlas | — | atlas | Always available |
+| `atlas.json.copyKey` | Copy key | — | atlas | Acts on the selected tree row |
+| `atlas.json.copyPath` | Copy path | — | atlas | Acts on the selected tree row |
+| `atlas.json.copyValue` | Copy value | `⌘C` | atlas | Acts on the selected tree row |
 | `atlas.jump` | Jump to a card or object | `⌘K` | atlas | Always available |
 | `atlas.kinds.open` | Kinds | — | atlas | Always available |
 | `atlas.matrix` | Open traceability matrix | — | atlas | Always available |
@@ -117,16 +120,25 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.secretsource.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.steptype.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.steptype.export` | Export | — | Global | Acts on the selected entity |
+| `diagram.fit` | Fit diagram | — | atlas | Conditional — available only in a matching state |
 | `docs.search` | Search docs | — | Global | Always available |
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
+| `extension.disable` | Turn off | — | Global | Acts on the selected entity |
+| `extension.enable` | Turn on | — | Global | Acts on the selected entity |
+| `extension.refreshSources` | Extensions: refresh sources | — | Global | Always available |
+| `extension.remove` | Remove | — | Global | Acts on the selected entity |
+| `extension.reveal` | Reveal folder | — | Global | Acts on the selected entity |
 | `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
+| `extensions.open` | Extensions | `⌘⇧X` | Global | Always available |
+| `extensions.sources` | Extensions: marketplace sources | — | Global | Always available |
 | `help.openDataFolder` | Open data folder | — | Global | Always available |
 | `help.reportIssue` | Report an issue… | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
-| `listGrid.copyRows` | Copy selected rows | — | Global | Acts on the selected listGrid |
-| `listGrid.deleteColumn` | Delete selected column | — | Global | Acts on the selected listGrid |
-| `listGrid.deleteRows` | Delete selected rows | — | Global | Acts on the selected listGrid |
+| `listGrid.copyRows` | Copy selected rows | — | Global | Acts on the selected table rows |
+| `listGrid.deleteColumn` | Delete selected column | — | Global | Acts on the selected table rows |
+| `listGrid.deleteRows` | Delete selected rows | — | Global | Acts on the selected table rows |
+| `listGrid.search` | Find in this list | `⌘F` | Global | Acts on the selected table rows |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `object.rename` | Rename | — | atlas | Always available |
 | `output.copy` | Copy output | — | Global | Conditional — available only in a matching state |
@@ -154,9 +166,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `settings.open.appearance` | Settings › Appearance | — | Global | Always available |
 | `settings.open.backups` | Settings › Backups | — | Global | Always available |
 | `settings.open.connections` | Settings › Connections | — | Global | Always available |
-| `settings.open.extensions` | Settings › Extensions | — | Global | Always available |
 | `settings.open.general` | Settings › General | — | Global | Always available |
 | `settings.open.notifications` | Settings › Notifications | — | Global | Always available |
+| `settings.open.security` | Settings › Security | — | Global | Always available |
 | `settings.open.shortcuts` | Settings › Shortcuts | — | Global | Always available |
 | `settings.open.updates` | Settings › Updates | — | Global | Always available |
 | `tab.close` | Close tab | `⌘W` | Global | Conditional — available only in a matching state |

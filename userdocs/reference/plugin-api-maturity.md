@@ -7,7 +7,7 @@
 | canvasObjects | experimental | no | yes | yes | yes | yes | yes | 0 | — |
 | steps | experimental | no | yes | yes | yes | no | yes | 0 | — |
 | captures | experimental | no | no | yes | yes | yes | n/a | 0 | — |
-| settings | stable | yes | yes | yes | yes | yes | n/a | 0 | — |
+| settings | stable | yes | yes | yes | yes | yes | n/a | 1 | — |
 | network | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
 | views | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
 | commands | stable | yes | yes | yes | yes | yes | yes | 0 | — |

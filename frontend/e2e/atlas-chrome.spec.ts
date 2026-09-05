@@ -23,8 +23,14 @@ const DOCK_BUTTONS = [
 
 async function openAtlas(page: Page) {
   await gotoAppReady(page)
-  const mobileToggle = page.getByTestId('mobile-nav-toggle')
-  if (await mobileToggle.isVisible()) await mobileToggle.click()
+  // Branch on the test's own known viewport, not a DOM isVisible()
+  // probe (the shell's nav collapses below 767px, App.module.css): a
+  // non-waiting probe can race the app's mount and read the toggle as
+  // absent before it renders.
+  const viewport = page.viewportSize()
+  if (viewport && viewport.width < 767) {
+    await page.getByTestId('mobile-nav-toggle').click()
+  }
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-creation-tray')).toBeVisible()
 }

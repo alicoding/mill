@@ -134,6 +134,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-framework-api-first.sh
 
+  # Mirrors lefthook.yml's own e2e-seed-literals job -- same script
+  # (goal 0358 S7: an e2e count of a registry- or seed-owned set is
+  # read through that surface's door, never hand-kept). Grep-only, so
+  # like comment-hygiene it needs no build setup.
+  e2e-seed-literals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-e2e-seed-literals.sh
+
   # Mirrors lefthook.yml's own ui-copy job -- same script
   # (.claude/rules/ux-writing.md is the standard it enforces).
   ui-copy:
@@ -199,6 +210,16 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-standing-context.sh
+
+  # Mirrors lefthook.yml's hook-command-guard job: the PreToolUse Bash
+  # guard is probed with sample inputs so its never-list and its
+  # foreground-only rule for gate commands stay asserted, not assumed.
+  hook-command-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-hook-command-guard.sh
 
   # Enforces the root-layout rule (exactly one root Go file, main.go;
   # services live under internal/services/<ctx>svc) via ls-lint
@@ -638,12 +659,14 @@ jobs:
       - workflow-lint
       - comment-hygiene
       - framework-api-first
+      - e2e-seed-literals
       - sdk-comments
       - ui-copy
       - drag-regions
       - toolbar-action-testids
       - rules-frontmatter
       - standing-context
+      - hook-command-guard
       - root-file-naming
       - sdk-freshness
       - frontend

@@ -5,13 +5,14 @@ moment you change them and persist across restarts; the few that need a
 restart say so.
 
 Settings is a list of groups on the left and one group's page on the
-right: General, Appearance, Shortcuts, Extensions, Connections,
-Notifications, Backups, Updates. Only the group you pick is on screen,
-and Mill reopens Settings on the group you read last. Each setting is
-one row: its name and a short line about it on the left, its control on
-the right, with **Learn more** wherever the full story lives in these
-pages. Every group is also one command away — search "Settings" in the
-command palette (⌘K) to jump straight to a group.
+right: General, Appearance, Security, Shortcuts, Extensions,
+Connections, Notifications, Backups, Updates. Only the group you pick
+is on screen, and Mill reopens Settings on the group you read last.
+Each setting is one row: its name and a short line about it on the
+left, its control on the right, with **Learn more** wherever the full
+story lives in these pages. Every group is also one command away —
+search "Settings" in the command palette (⌘K) to jump straight to a
+group.
 
 ## General
 
@@ -44,6 +45,24 @@ command palette (⌘K) to jump straight to a group.
   spacing across the app: list and palette rows, the Quick Panel,
   tables, canvas card faces, and Settings itself. On a phone-sized
   window, touch targets keep their full size either way.
+
+## Security
+
+- **Lock the vault after** — how long the vault may sit idle before it
+  locks itself: one minute to eight hours, a custom number of minutes,
+  or never. Counts time since you last used this Mac, so working in
+  another app keeps the vault open.
+- **Lock when this Mac sleeps or the screen locks**, **when switching
+  users**, and **when Mill's window is minimized** — three checkboxes
+  that close the vault regardless of idle time. The first two start on.
+- **Ask for Touch ID, an Apple Watch, or your password before
+  unlocking** — turn this on and Mill asks before the vault opens,
+  naming only what this Mac can actually offer. Changeable only while
+  the vault is unlocked.
+
+The Secrets page's own status line states both halves in one
+sentence — what it takes to unlock, and how long it stays open — and
+links back here to change either one.
 
 ## Shortcuts
 
@@ -164,14 +183,14 @@ Mill — for an agent that can't reach Mill over MCP.
 
 ## Backups
 
-Mill snapshots your workflow history and settings automatically —
-on clean shutdown, on version change, and daily via the built-in
-"Backup Mill data" workflow, keeping the most recent ten. "Back up
-now" adds one on demand. "Export everything" bundles your data into
-one file for moving machines; "Import everything" merges it back.
-The export covers Mill's own data — files mirrored from folders on
-disk are referenced by path, not copied in, so back those folders
-up separately.
+Mill snapshots your workflow history, settings, and your secrets
+vault automatically — on clean shutdown, on version change, and daily
+via the built-in "Backup Mill data" workflow, keeping the most recent
+ten. "Back up now" adds one on demand. "Export everything" bundles
+your data into one file for moving machines, excluding the vault;
+"Import everything" merges it back. The export covers Mill's own
+data — files mirrored from folders on disk are referenced by path,
+not copied in, so back those folders up separately.
 
 ## Updates
 

@@ -12,7 +12,18 @@ import { describe, expect, it } from 'vitest'
 // concept" analyzer, and a match inside an unrelated string (a comment
 // that happens to say "the document says...") would be a false
 // positive worth reading before assuming a real violation.
+//
+// Matched on WORD BOUNDARIES, not as a bare substring: an adopted
+// library's own API name legitimately embeds one of these words
+// (`parseAllDocuments`, the yaml package's entry point), and failing on
+// that would be a tripwire about spelling rather than about a hardcoded
+// concept. A concept name standing on its own -- which is the only way
+// one ever reaches a user -- still fails.
 const SEEDED_CONCEPT_NAMES = ['Topic', 'Contact', 'Document', 'relates to', 'The engagement']
+
+function mentions(content: string, name: string): boolean {
+  return new RegExp(`\\b${name}\\b`).test(content)
+}
 
 const ATLAS_DIR = join(__dirname)
 
@@ -27,7 +38,7 @@ describe('Atlas frontend source carries no hardcoded seeded concept', () => {
     for (const path of nonTestSourceFiles()) {
       const content = readFileSync(path, 'utf-8')
       for (const name of SEEDED_CONCEPT_NAMES) {
-        expect(content.includes(name), `${path} contains seeded concept name "${name}" -- ADR-0038 Decision 2 requires every card-kind/link-kind name to live only in a seed file`).toBe(false)
+        expect(mentions(content, name), `${path} contains seeded concept name "${name}" -- ADR-0038 Decision 2 requires every card-kind/link-kind name to live only in a seed file`).toBe(false)
       }
     }
   })

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -144,23 +145,31 @@ func (v *fileVault) AssignID() (string, error) {
 }
 
 // Backup renames the vault file out of the way, leaving a timestamped
-// ".bak" sibling, and locks whatever was open. The caller is expected
-// to Create a replacement immediately; a failure here leaves the
-// original file exactly where it was. Returns the archived path.
+// ".bak" sibling that keeps the original ".kdbx" extension (so it's
+// still recognized and directly openable by a KDBX-aware file manager
+// or KeePassXC, goal 0359's own precedent), and locks whatever was
+// open. The caller is expected to Create a replacement immediately; a
+// failure here leaves the original file exactly where it was. Returns
+// the archived path.
 func (v *fileVault) Backup() (string, error) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	if _, err := os.Stat(v.path); err != nil {
 		return "", fmt.Errorf("secretvault: no vault to archive: %w", err)
 	}
-	dest := v.path + "." + time.Now().Format(backupTimestampLayout) + ".bak"
+	ext := filepath.Ext(v.path)
+	base := strings.TrimSuffix(v.path, ext)
+	// UTC, not local time: the timestamp is a stable sort/identify key
+	// across backups taken in different timezones (e.g. synced from a
+	// laptop that travelled), never a wall-clock convenience.
+	dest := base + "." + time.Now().UTC().Format(backupTimestampLayout) + ".bak" + ext
 	// A second archive within the same second would otherwise silently
 	// overwrite the first; suffix until the name is free.
 	for i := 2; ; i++ {
 		if _, err := os.Stat(dest); err != nil {
 			break
 		}
-		dest = fmt.Sprintf("%s.%s-%d.bak", v.path, time.Now().Format(backupTimestampLayout), i)
+		dest = fmt.Sprintf("%s.%s-%d.bak%s", base, time.Now().UTC().Format(backupTimestampLayout), i, ext)
 	}
 	if err := os.MkdirAll(filepath.Dir(dest), 0o700); err != nil {
 		return "", fmt.Errorf("secretvault: preparing archive directory: %w", err)

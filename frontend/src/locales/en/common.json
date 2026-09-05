@@ -227,11 +227,19 @@
         "area": "Draw an area",
         "table": "New table",
         "image": "Add an image"
+      },
+      "json": {
+        "copyValue": "Copy value",
+        "copyPath": "Copy path",
+        "copyKey": "Copy key"
       }
     },
     "object": {
       "openInDefaultApp": "Open in default app",
       "rename": "Rename"
+    },
+    "diagram": {
+      "fit": "Fit diagram"
     },
     "canvas": {
       "undo": "Undo",
@@ -351,7 +359,9 @@
       "note": "Capture a note"
     },
     "extensions": {
-      "exportAudit": "Export plugin audit"
+      "exportAudit": "Export plugin audit",
+      "open": "Extensions",
+      "sources": "Extensions: marketplace sources"
     },
     "runMonitor": {
       "open": "Run monitor"
@@ -386,7 +396,15 @@
       "toggleWrap": "Wrap output lines",
       "openFull": "Open output in full"
     },
+    "extension": {
+      "enable": "Turn on",
+      "disable": "Turn off",
+      "reveal": "Reveal folder",
+      "remove": "Remove",
+      "refreshSources": "Extensions: refresh sources"
+    },
     "listGrid": {
+      "search": "Find in this list",
       "deleteRows": "Delete selected rows",
       "copyRows": "Copy selected rows",
       "deleteColumn": "Delete selected column"
@@ -439,7 +457,8 @@
       "runMonitor": "Run monitor",
       "checkForUpdates": "Check for updates…",
       "millHelp": "Mill help",
-      "whatsNew": "What's new"
+      "whatsNew": "What's new",
+      "extensions": "Extensions"
     }
   },
   "seats": {

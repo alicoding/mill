@@ -210,6 +210,36 @@
     "needs": null
   },
   {
+    "id": "atlas.json.copyKey",
+    "label": "Copy key",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "jsonNode"
+  },
+  {
+    "id": "atlas.json.copyPath",
+    "label": "Copy path",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "jsonNode"
+  },
+  {
+    "id": "atlas.json.copyValue",
+    "label": "Copy value",
+    "binding": "⌘C",
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "jsonNode"
+  },
+  {
     "id": "atlas.jump",
     "label": "Jump to a card or object",
     "binding": "⌘K",
@@ -846,6 +876,16 @@
     "needs": "entity"
   },
   {
+    "id": "diagram.fit",
+    "label": "Fit diagram",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "docs.search",
     "label": "Search docs",
     "binding": null,
@@ -870,8 +910,64 @@
     "needs": null
   },
   {
+    "id": "extension.disable",
+    "label": "Turn off",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "extension.enable",
+    "label": "Turn on",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "extension.refreshSources",
+    "label": "Extensions: refresh sources",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "extension.remove",
+    "label": "Remove",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "extension.reveal",
+    "label": "Reveal folder",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
     "id": "extensions.exportAudit",
     "label": "Export plugin audit",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "extensions.open",
+    "label": "Extensions",
+    "binding": "⌘⇧X",
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "extensions.sources",
+    "label": "Extensions: marketplace sources",
     "binding": null,
     "surface": null,
     "enabled": false,
@@ -921,6 +1017,14 @@
     "id": "listGrid.deleteRows",
     "label": "Delete selected rows",
     "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "listGrid"
+  },
+  {
+    "id": "listGrid.search",
+    "label": "Find in this list",
+    "binding": "⌘F",
     "surface": null,
     "enabled": true,
     "needs": "listGrid"
@@ -1148,14 +1252,6 @@
     "needs": null
   },
   {
-    "id": "settings.open.extensions",
-    "label": "Settings › Extensions",
-    "binding": null,
-    "surface": null,
-    "enabled": false,
-    "needs": null
-  },
-  {
     "id": "settings.open.general",
     "label": "Settings › General",
     "binding": null,
@@ -1166,6 +1262,14 @@
   {
     "id": "settings.open.notifications",
     "label": "Settings › Notifications",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.open.security",
+    "label": "Settings › Security",
     "binding": null,
     "surface": null,
     "enabled": false,

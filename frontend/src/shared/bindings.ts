@@ -22,6 +22,7 @@ export type {
   BackupStatus,
   FamilySummary,
   ImportEverythingSummary,
+  VaultBackupTime,
 } from '../../bindings/github.com/alicoding/mill/internal/services/backupsvc'
 export { BridgeService } from '../../bindings/github.com/alicoding/mill/internal/services/bridgesvc'
 export type {
@@ -100,6 +101,7 @@ export { SecretService } from '../../bindings/github.com/alicoding/mill/internal
 export type {
   ListSecretAccessRequest,
   ListSecretAccessResponse,
+  LockPolicy,
   SecretAccessRecord,
   Status as VaultStatus,
 } from '../../bindings/github.com/alicoding/mill/internal/services/secretsvc/models'

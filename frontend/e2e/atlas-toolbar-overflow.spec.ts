@@ -28,11 +28,18 @@ const PINNED_ACTIONS = ['atlas-perspective-switcher-open']
 
 async function openAtlas(page: Page) {
   await gotoAppReady(page)
-  // Below the app shell's own sidebar breakpoint the nav collapses into
-  // a drawer behind a toggle (mobile.spec.ts's own pattern) -- the
-  // narrow-width case below runs under that breakpoint.
-  const mobileToggle = page.getByTestId('mobile-nav-toggle')
-  if (await mobileToggle.isVisible()) await mobileToggle.click()
+  // Below the app shell's own sidebar breakpoint (767px,
+  // App.module.css) the nav collapses into a drawer behind a toggle
+  // (mobile.spec.ts's own pattern) -- the narrow-width case below runs
+  // under that breakpoint. Branch on the test's own known viewport,
+  // not a DOM isVisible() probe: a non-waiting isVisible() check can
+  // race the app's mount and read the toggle as absent before it
+  // renders. mobile-nav-toggle's own .click() below still auto-waits
+  // for it, same as mobile.spec.ts.
+  const viewport = page.viewportSize()
+  if (viewport && viewport.width < 767) {
+    await page.getByTestId('mobile-nav-toggle').click()
+  }
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-toolbar')).toBeVisible()
 }

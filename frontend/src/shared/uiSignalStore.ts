@@ -19,6 +19,10 @@ interface UISignalState {
   // window capture-phase listener of its own).
   atlasJumpRequest: number
   requestAtlasJump: () => void
+  // extensions.sources: the same counter shape, opening the Extensions
+  // page's Sources dialog from the palette.
+  extensionSourcesRequest: number
+  requestExtensionSources: () => void
   // atlas.matrix / atlas.coverage / atlas.roadmap: same counter shape,
   // opening AtlasView's own local matrixOpen/coverageOpen/roadmapOpen
   // dialog state (useAtlasProjectionViews).
@@ -105,6 +109,13 @@ interface UISignalState {
   // must name WHICH object's own title row enters edit.
   atlasTableRenameRequest: { id: string; seq: number } | null
   requestAtlasTableRename: (objectID: string) => void
+  // "Fit diagram" (goal 0354): the board object's own fit control, now
+  // that its face shows no vendored toolbar. Token-carrying with the
+  // target's id, the same shape requestAtlasTableRename above takes --
+  // the frame that holds the live viewer's fit action watches for its
+  // OWN id, so a board with several diagrams stays unambiguous.
+  atlasDiagramFitRequest: { id: string; seq: number } | null
+  requestAtlasDiagramFit: (objectID: string) => void
   // The tray's image tool (goal 0169 slice 2, the paste-or-drop
   // interaction) -- opens its own path/paste popover. A counter, not a
   // per-tool payload, since only one popover-style tool exists so far;
@@ -236,7 +247,9 @@ interface UISignalState {
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
   atlasJumpRequest: 0,
+  extensionSourcesRequest: 0,
   requestAtlasJump: () => set((s) => ({ atlasJumpRequest: s.atlasJumpRequest + 1 })),
+  requestExtensionSources: () => set((s) => ({ extensionSourcesRequest: s.extensionSourcesRequest + 1 })),
   atlasMatrixRequest: 0,
   requestAtlasMatrixOpen: () => set((s) => ({ atlasMatrixRequest: s.atlasMatrixRequest + 1 })),
   atlasCoverageRequest: 0,
@@ -268,6 +281,8 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasTablePicker: () => set((s) => ({ atlasTablePickerRequest: s.atlasTablePickerRequest + 1 })),
   atlasTableRenameRequest: null,
   requestAtlasTableRename: (objectID) => set((s) => ({ atlasTableRenameRequest: { id: objectID, seq: (s.atlasTableRenameRequest?.seq ?? 0) + 1 } })),
+  atlasDiagramFitRequest: null,
+  requestAtlasDiagramFit: (objectID) => set((s) => ({ atlasDiagramFitRequest: { id: objectID, seq: (s.atlasDiagramFitRequest?.seq ?? 0) + 1 } })),
   atlasImagePopoverRequest: 0,
   requestAtlasImagePopover: () => set((s) => ({ atlasImagePopoverRequest: s.atlasImagePopoverRequest + 1 })),
   atlasUndoAvailable: false,

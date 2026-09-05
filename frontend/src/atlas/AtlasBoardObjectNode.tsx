@@ -1,4 +1,4 @@
-import { memo, Suspense, useCallback, useRef, useState } from 'react'
+import { memo, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NodeResizer, useReactFlow } from '@xyflow/react'
 import type { NodeProps, Node as RFNode } from '@xyflow/react'
@@ -6,13 +6,17 @@ import type { BoardObject } from '../../bindings/github.com/alicoding/mill/inter
 import { AtlasService } from '../shared/bindings'
 import { boardObjectContentFor } from './atlasNounRegistry'
 import { usePluginReloadVersion } from '../plugins/pluginReloadSignal'
-import { unknownKindContent, viewerOwnsWheel } from './atlasBoardObjectContent'
+import { unknownKindContent } from './atlasBoardObjectContent'
 import type { AtlasBoardObjectContent } from './atlasBoardObjectContent'
+import { activation, boxOptsOutOfCanvasWheel, contentOptsOutOfCanvasDrag, shieldUp } from './atlasActivation'
+import type { AtlasActivation, AtlasInputMode } from './atlasActivation'
+import { useAtlasObjectInputBoundary } from './useAtlasObjectInputBoundary'
 import { AtlasShapeRotateHandle } from './AtlasShapeRotateHandle'
 import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
 import { useAtlasObjectMirrorRead } from './useAtlasObjectMirrorRead'
 import { useAtlasShapeRotateLive } from './atlasShapeRotateLiveStore'
 import { dispatchObjectEdit, resolveEditRoute } from './objectSeams'
+import { useUISignalStore } from '../shared/uiSignalStore'
 import styles from './AtlasBoardObjectNode.module.css'
 
 export interface AtlasBoardObjectData extends Record<string, unknown> {
@@ -74,17 +78,34 @@ function objectNodeCaps(object: BoardObject, preview: boolean): { isShape: boole
   }
 }
 
-function objectBoxClassName(wheelOptOut: boolean): string {
-  return wheelOptOut ? `${styles.object} nowheel` : styles.object
+// The node box's own class set. `nowheel` rides the activation state,
+// never a per-noun flag (goal 0354, atlasActivation.ts): the kit
+// resolves the class by event-target ancestry and a wheel can land on
+// node chrome outside the face, so it belongs on the whole box.
+function objectBoxClassName(state: AtlasActivation): string {
+  return boxOptsOutOfCanvasWheel(state) ? `${styles.object} nowheel` : styles.object
 }
 
-// The content box's own class set. `nodrag` rides the same liveness
-// window as `nowheel` (goal 0340, viewerOwnsWheel's own contract
-// comment): while the face owns the pointer, a drag inside it must
-// reach only the face -- the chrome band stays the object's drag
-// surface.
-function objectContentClassName(dragOptOut: boolean): string {
-  return dragOptOut ? `${styles.content} nodrag` : styles.content
+// The content box's own class set. `nodrag`/`nopan` ride the same
+// activation window as `nowheel`: while the face owns the pointer, a
+// drag inside it must reach only the face -- the chrome band stays the
+// object's drag surface. An idle interactive face is inert instead, so
+// nothing under the shield can swallow the click that selects.
+function objectContentClassName(state: AtlasActivation, input: AtlasInputMode): string {
+  if (contentOptsOutOfCanvasDrag(state)) return `${styles.content} nodrag nopan`
+  return input === 'interactive' ? `${styles.content} ${styles.contentInert}` : styles.content
+}
+
+// useObjectActivation resolves this object's one input state and hands
+// back the channel its face reports an open editor through (goal 0354).
+// A deselect drops the report: an idle face has no editor the user can
+// still be typing in, whatever it last said.
+function useObjectActivation(input: AtlasInputMode, live: boolean): { state: AtlasActivation; onEditingChange: (editing: boolean) => void } {
+  const [faceEditing, setFaceEditing] = useState(false)
+  const state = activation(live, faceEditing, input)
+  useEffect(() => { if (state === 'idle') setFaceEditing(false) }, [state])
+  const onEditingChange = useCallback((editing: boolean) => { setFaceEditing(editing) }, [])
+  return { state, onEditingChange }
 }
 
 // Whether the chrome band shows its overflow escape hatch right now
@@ -98,8 +119,18 @@ function showsFitChip(facts: Pick<AtlasBoardObjectContent, 'overflowChip'>, prev
 // The band's own tooltip. A shielded, not-yet-selected face reads as
 // inert, so the band says what the first click buys before it is spent;
 // once selected the band is back to being the object's drag handle.
-function bandTitleKey(clickShield: boolean, selected: boolean, shieldHintKey: string | undefined): string {
-  if (!clickShield || selected) return 'boardObject.dragHandleTitle'
+// The object's own edit door (ADR-0046, goal 0244 S1): the route its
+// Kind DECLARES, resolved per object, plus whether a double-click may
+// open it. Only an embedded-engine route gets that door -- an
+// external-app one stays behind the context menu, so an accidental
+// double-click never launches another app.
+function editDoor(object: BoardObject, facts: AtlasBoardObjectContent | undefined, preview: boolean) {
+  const route = facts?.editRoute ? resolveEditRoute(object, facts.editRoute) : undefined
+  return { route, editable: !preview && route?.kind === 'embedded-engine' }
+}
+
+function bandTitleKey(state: AtlasActivation, input: AtlasInputMode, shieldHintKey: string | undefined): string {
+  if (input !== 'interactive' || state !== 'idle') return 'boardObject.dragHandleTitle'
   return shieldHintKey ?? 'boardObject.shieldedBandTitle'
 }
 
@@ -158,12 +189,12 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
   // registry/data mismatch becomes VISIBLE on the board instead of an
   // invisible node only a console reader could diagnose.
   const resolvedFacts = facts ?? unknownKindContent
-  const { Component, ariaLabelKey, role, dragBand, clickShield, shieldHintKey } = resolvedFacts
-  // Node-level rather than face-level because the kit resolves
-  // `nowheel` by event-target ancestry and a wheel can land on node
-  // chrome (drag band, padding) outside the face -- see
-  // viewerOwnsWheel's own contract comment.
-  const wheelOptOut = viewerOwnsWheel(resolvedFacts, preview, !!selected)
+  const { Component, ariaLabelKey, role, dragBand, shieldHintKey } = resolvedFacts
+  // The activation state (goal 0354): one contract for every noun and
+  // every plugin face, derived from the noun's declared content mode
+  // plus this object's own live state -- never a per-noun input flag.
+  const { state, onEditingChange } = useObjectActivation(resolvedFacts.input, !!selected && !preview)
+  useAtlasObjectInputBoundary(boxRef, state)
   // The Fit chip's own state (goal 0340): only the face can know
   // whether what it renders currently needs more room than this box
   // gives it, and only the face can fit it -- both arrive through the
@@ -176,23 +207,22 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
     overflowRef.current = { exceeds, fit }
     setOverflow({ exceeds, fit })
   }, [])
+  // "Fit diagram" from the object's own menu or the palette (goal
+  // 0354): the command names the target and this frame holds the live
+  // viewer's fit action, so it answers only for its OWN object. The
+  // same action the Fit chip runs -- one fit, two doors.
+  const fitRequest = useUISignalStore((st) => st.atlasDiagramFitRequest)
+  useEffect(() => {
+    if (!fitRequest || fitRequest.id !== object.ID) return
+    overflowRef.current?.fit()
+  }, [fitRequest, object.ID])
   const showFitChip = showsFitChip(resolvedFacts, preview, overflow)
-  // ADR-0046 (goal 0244 S1): double-click dispatches through the
-  // object's own DECLARED edit route (resolved per-object, since a Kind
-  // like diagram opens different doors for different mirror
-  // extensions), never a hardcoded "if diagram, open drawio" check.
-  // Only an embedded-engine route gets a double-click door -- an
-  // external-app route (image/ink/sheet, and diagram's own mermaid
-  // case) stays reachable via the context menu / an explicit button
-  // only, matching every other file-backed Kind's convention of never
-  // launching another app on an accidental double-click.
-  const editRoute = facts?.editRoute ? resolveEditRoute(object, facts.editRoute) : undefined
-  const editable = !preview && editRoute?.kind === 'embedded-engine'
+  const { route: editRoute, editable } = editDoor(object, facts, preview)
 
   return (
     <div
       ref={boxRef}
-      className={objectBoxClassName(wheelOptOut)}
+      className={objectBoxClassName(state)}
       style={{
         ...(hasSize ? { width: '100%', height: '100%' } : null),
         ...(rotationDeg ? { transform: `rotate(${rotationDeg}deg)`, transformOrigin: '50% 50%' } : null),
@@ -202,6 +232,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
       data-shape-type={shapeType}
       data-pulse={data.pulsed ? 'true' : undefined}
       data-preview={preview ? 'true' : undefined}
+      data-activation={state}
       role={role}
       // aria-label is PROHIBITED on a role-less (generic) element
       // (WCAG aria-prohibited-attr) -- only Kinds that declare a role
@@ -260,7 +291,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
           it -- gating on dragBand removes it from those Kinds entirely
           rather than leaving inert chrome. */}
       {dragBand && !preview && (
-        <div className={styles.frame} data-testid="atlas-board-object-frame" title={t(bandTitleKey(!!clickShield, !!selected, shieldHintKey))}>
+        <div className={styles.frame} data-testid="atlas-board-object-frame" title={t(bandTitleKey(state, resolvedFacts.input, shieldHintKey))}>
           {/* The overflow escape hatch (goal 0340): shown at rest and
               while selected, never hover-gated -- "this is bigger than
               what you can see" is a fact about the object, not a
@@ -280,12 +311,12 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
           )}
         </div>
       )}
-      {/* See clickShield's own contract comment (atlasBoardObjectContent.ts):
-          an unselected shielded face selects/drags/right-clicks like a
-          body; selecting lifts the shield and the face goes live. The
-          band above stays uncovered where a Kind declares one -- it is
-          that Kind's only drag surface. */}
-      {clickShield && !preview && !selected && <div className={clickShieldClassName(dragBand)} data-testid="atlas-object-click-shield" />}
+      {/* Object first, content second (atlasActivation.ts's own
+          contract): an idle interactive face selects/drags/right-clicks
+          like a body; selecting lifts the shield and the face goes
+          live. The band above stays uncovered where a Kind declares one
+          -- it is that Kind's only drag surface. */}
+      {shieldUp(resolvedFacts.input, state, preview) && <div className={clickShieldClassName(dragBand)} data-testid="atlas-object-click-shield" />}
       {/* Suspense boundary for every Kind uniformly, a no-op for a
           synchronously-imported Component (shape/image/ink) and the
           real code-split boundary for a lazy one (table/diagram, whose
@@ -304,7 +335,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
           node, shift/meta adds to the selection, and a click on an
           already-selected node changes nothing. */}
       <div
-        className={objectContentClassName(wheelOptOut)}
+        className={objectContentClassName(state, resolvedFacts.input)}
         onPointerDownCapture={dragBand ? (e) => {
           // Primary button only: a right-click must reach the context
           // menu with the CURRENT selection intact (a multi-select
@@ -331,6 +362,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
             fetchListProjection={AtlasService.ObjectListProjection}
             repickMirror={(path) => AtlasService.RepickObjectMirror(object.ID, path)}
             onOverflowChange={onOverflowChange}
+            onEditingChange={onEditingChange}
           />
         </Suspense>
       </div>

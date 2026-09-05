@@ -8,7 +8,7 @@ import { launchWithPlugins, EXAMPLES_PLUGINS_DIR } from './fixtures/runtimePlugi
 import { armToolFromMorePanel } from './fixtures/atlasTray'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { clickBoardPoint, dragBetween } from './fixtures/atlasBoard'
-import { openExtensionDetail, openSettings, pluginRow } from './fixtures/settingsNav'
+import { openExtensionDetail, openExtensionDetailTab, openExtensions, pluginRow } from './fixtures/settingsNav'
 
 // The runtime plugin platform, proven against a REAL out-of-tree
 // plugin (docs/goals/0249): the server boots with MILL_PLUGINS_DIR
@@ -119,7 +119,7 @@ test('the Extensions page tells the install story: plugin row with manifest meta
 	const { page, close } = await launchWithPlugins(4, { withBroken: true })
 	try {
 		await page.goto('/')
-		await openSettings(page, 'extensions')
+		await openExtensions(page)
 		const section = page.locator('[data-testid="extensions-installed-plugins"]')
 		await section.scrollIntoViewIfNeeded()
 		await expect(section).toBeVisible()
@@ -133,6 +133,7 @@ test('the Extensions page tells the install story: plugin row with manifest meta
 		// read in its detail pane -- declare-first: what the plugin
 		// catches is visible before it ever runs.
 		const bookmarkDetail = await openExtensionDetail(page, bookmarkRow, 'mill-bookmark')
+		await openExtensionDetailTab(bookmarkDetail, 'contributions')
 		await expect(bookmarkDetail).toContainText('1.0.0')
 		await expect(bookmarkDetail).toContainText('open-url')
 		await expect(bookmarkDetail.locator('[data-testid="extensions-detail-claim"]').first()).toBeVisible()

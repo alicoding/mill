@@ -1,5 +1,5 @@
 import type { BoardObject, Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import { computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH, STICKY_HEIGHT, STICKY_WIDTH } from './atlasBoardLayout'
+import { computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH, STICKY_HEIGHT, STICKY_WIDTH, TABLE_HEIGHT, TABLE_WIDTH } from './atlasBoardLayout'
 import { rotatedAABB } from './atlasRotation'
 import type { FrameBox } from './useAtlasDragFiling'
 
@@ -20,7 +20,19 @@ export function computeTopLevelBoxes(
   return cards.map((card) => {
     const move = moveByID.get(card.ID)
     const frame = isGroupCard(allCards, card, allNotes, allObjects)
-    const size = frame ? computeGroupFrameLayout(allCards, card.ID, allNotes, allObjects).size : { width: NOTE_WIDTH, height: NOTE_HEIGHT }
+    // The same three branches atlasBuildBoardNodes renders and
+    // computeAutoArrangeLayout packs at, so a box here always matches
+    // the face on screen: a frame at its laid-out size, a List
+    // projection at its table face, everything else at the note face
+    // -- each with a persisted resize (Card.Size) winning over the
+    // default. A box that disagrees with the rendered face mis-aims
+    // every consumer of it: the drop-target test, the "you'd file into
+    // me" highlight, and alignment peers.
+    const size = frame
+      ? computeGroupFrameLayout(allCards, card.ID, allNotes, allObjects).size
+      : card.ProjectionListID
+        ? { width: card.Size?.W ?? TABLE_WIDTH, height: card.Size?.H ?? TABLE_HEIGHT }
+        : { width: card.Size?.W ?? NOTE_WIDTH, height: card.Size?.H ?? NOTE_HEIGHT }
     return {
       id: card.ID,
       x: move?.x ?? card.Position?.X ?? 0,
@@ -44,8 +56,18 @@ export function computeNoteBoxes(notes: Note[]): { id: string; x: number; y: num
 // identity box for every Kind with no `rotation` payload key at all,
 // so this stays exact for them too. Split out of AtlasBoard.tsx at the
 // 500-line seam, mirroring computeTopLevelBoxes/computeNoteBoxes above.
-export function computeObjectBoxes(nodes: { id: string; position: { x: number; y: number }; measured?: { width?: number; height?: number }; data: unknown }[]): { id: string; x: number; y: number; width: number; height: number }[] {
-  return nodes.map((n) => {
+// Objects FILED into a region frame are excluded: React Flow positions
+// a parented node relative to its parent, so a filed object's node
+// position is not a board coordinate at all, and a box built from it
+// names a rectangle that is nowhere on screen. Those previews are inert
+// by construction (atlasBuildBoardNodes gives them `preview: true` and
+// `draggable: false`), so every consumer of this list -- free
+// placement, marker-box enclosure, the eraser/laser hit tests and
+// alignment peers -- wants the level's own objects and not them. Drill
+// into the frame and its children become top-level nodes, appearing
+// here in real board coordinates.
+export function computeObjectBoxes(nodes: { id: string; position: { x: number; y: number }; parentId?: string; measured?: { width?: number; height?: number }; data: unknown }[]): { id: string; x: number; y: number; width: number; height: number }[] {
+  return nodes.filter((n) => !n.parentId).map((n) => {
     const object = (n.data as { object?: { Payload?: Record<string, string> } }).object
     const rotation = Number(object?.Payload?.rotation) || 0
     const box = rotatedAABB(n.position.x, n.position.y, n.measured?.width ?? 0, n.measured?.height ?? 0, rotation)

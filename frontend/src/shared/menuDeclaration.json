@@ -223,6 +223,12 @@
   },
   {
     "menu": "View",
+    "item": "Extensions",
+    "shortcut": "⌘⇧X",
+    "command": "extensions.open"
+  },
+  {
+    "menu": "View",
     "item": "Docs",
     "shortcut": "",
     "command": "view.docs"
@@ -484,6 +490,12 @@
     "item": "Select all",
     "shortcut": "⌘A",
     "command": "atlas.selectAll"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Fit diagram",
+    "shortcut": "",
+    "command": "diagram.fit"
   },
   {
     "menu": "Atlas",

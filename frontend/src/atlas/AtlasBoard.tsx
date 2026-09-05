@@ -175,7 +175,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     return ids
   }, [cards, allCards, allNotes, allObjects, objects])
 
-  const dragFiling = useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperRef })
+  const dragFiling = useAtlasDragFiling({ allCards, parentID, topLevelBoxes, noteBoxes, objectBoxesRef, wrapperRef })
 
   // Slot-drag = instant typed link (goal 0081 A4): see useAtlasSlotDrag.ts.
   const slotDrag = useAtlasSlotDrag({

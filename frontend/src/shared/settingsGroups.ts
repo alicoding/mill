@@ -4,6 +4,10 @@ import views from '../locales/en/views.json'
 // rendered at a time. Replaces the eleven-section single-scroll
 // registry -- the converged desktop-settings shape at this size is a
 // group list beside one pane, not a long page with a filter box.
+// Extensions left this list in goal 0349: browsing, installing and
+// updating extensions is a destination of its own, and Settings holds
+// kernel configuration only. shared/viewRedirects.ts keeps the old
+// `#/settings/extensions` address landing on that page.
 //
 // id is kebab-case and is the whole route: `#/settings/<id>`, the
 // View.section deep-link value (shared/store.ts), the group list's own
@@ -19,8 +23,8 @@ import views from '../locales/en/views.json'
 export type SettingsGroupID =
   | 'general'
   | 'appearance'
+  | 'security'
   | 'shortcuts'
-  | 'extensions'
   | 'connections'
   | 'notifications'
   | 'backups'
@@ -34,8 +38,8 @@ export interface SettingsGroup {
 export const SETTINGS_GROUPS: SettingsGroup[] = [
   { id: 'general', titleKey: 'settings.groups.general' },
   { id: 'appearance', titleKey: 'settings.groups.appearance' },
+  { id: 'security', titleKey: 'settings.groups.security' },
   { id: 'shortcuts', titleKey: 'settings.groups.shortcuts' },
-  { id: 'extensions', titleKey: 'settings.groups.extensions' },
   { id: 'connections', titleKey: 'settings.groups.connections' },
   { id: 'notifications', titleKey: 'settings.groups.notifications' },
   { id: 'backups', titleKey: 'settings.groups.backups' },

@@ -4,7 +4,7 @@ import { clickAtlasTrayTool } from './fixtures/atlasTray'
 import { placeNoteClear } from './fixtures/atlasEmptyRegion'
 import { deleteViaContextMenu, shapeDrawPoints, shapeObjects } from './fixtures/atlasShapeTool'
 import { paletteDialog } from './fixtures/palette'
-import { builtInRows, extensionRow, openExtensionDetail, openSettings, pluginRow } from './fixtures/settingsNav'
+import { builtInRows, extensionRow, openExtensionDetail, openExtensions, openSettings, pluginRow } from './fixtures/settingsNav'
 
 // Settings > Extensions (goal 0237 S2/S3, re-shaped by goal 0252): a
 // registry-derived list of every registered compiled-in NOUN -- tray
@@ -28,7 +28,7 @@ import { builtInRows, extensionRow, openExtensionDetail, openSettings, pluginRow
 // narrower scope.
 
 async function openExtensionsSection(page: import('@playwright/test').Page) {
-  await openSettings(page, 'extensions')
+  await openExtensions(page)
   await expect(page.getByTestId('extensions-list')).toBeVisible()
 }
 
@@ -227,12 +227,21 @@ test('Extensions section lists every registered canvas tool; the built-in card r
   await page.goto('/')
   await openExtensionsSection(page)
 
-  // Every compiled-in ATLAS_TOOLS member (atlas/atlasTools.ts) plus
-  // every tool-less noun (diagram, sheet, pdf -- goal 0267) gets
-  // exactly one row -- card, note, area, table, image, diagram,
-  // sheet, pdf. The drawing tools are the Drawing plugin's row, not
-  // four rows here (goal 0252).
-  await expect(builtInRows(page)).toHaveCount(8)
+  // The inventory is asserted as a SET of ids, not as a number: the
+  // registry behind it (atlas/atlasTools.ts) is built with Vite's
+  // import.meta.glob, so a spec running in Node has no door to read it
+  // back through, and a bare count would drift into a mystery number
+  // on the next noun. Named ids fail with the noun that appeared or
+  // vanished, which is the thing a reader needs.
+  //
+  // Every compiled-in ATLAS_TOOLS member plus every tool-less noun
+  // (diagram, sheet, pdf, json -- goals 0267, 0269) gets exactly one
+  // row. The drawing tools are the Drawing plugin's row, not four rows
+  // here (goal 0252).
+  const BUILT_IN_EXTENSION_IDS = ['card', 'note', 'area', 'table', 'image', 'diagram', 'sheet', 'pdf', 'json']
+  await expect(builtInRows(page)).toHaveCount(BUILT_IN_EXTENSION_IDS.length)
+  const renderedIDs = await builtInRows(page).evaluateAll((rows) => rows.map((r) => r.getAttribute('data-extension-id')))
+  expect(renderedIDs.slice().sort()).toEqual(BUILT_IN_EXTENSION_IDS.slice().sort())
 
   const cardRow = page.locator('[data-testid="extensions-row"][data-extension-id="card"]')
   await expect(cardRow).toBeVisible()

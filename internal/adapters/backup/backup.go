@@ -34,10 +34,18 @@ import (
 // otherwise mint the identical directory name and collide.
 const TimestampLayout = "20060102-150405.000"
 
+// vaultBackupName is the vault's own filename inside every backup
+// subdirectory -- unrelated to secretvault's own ".bak.kdbx" archive
+// naming (a per-reset history beside the live file); this is one
+// snapshot's own copy, rotated by the same keepN prune as
+// execution.db/settings.json.
+const vaultBackupName = "secrets.kdbx"
+
 // Result is one completed Snapshot call's outcome.
 type Result struct {
 	// Dir is the backup's own subdirectory (dir/<timestamp>), holding
-	// execution.db and, when settingsPath was non-empty, settings.json.
+	// execution.db and, when settingsPath/vaultPath were non-empty,
+	// settings.json/secrets.kdbx.
 	Dir     string
 	TakenAt time.Time
 	// Pruned lists the older backup subdirectory names removed to
@@ -49,15 +57,22 @@ type Result struct {
 // a "sqlite:"-prefixed DSN -- callers strip that themselves, the same
 // scheme-is-the-caller's-decision layering internal/adapters/execution
 // already documents) into a freshly timestamped subdirectory of dir: a
-// VACUUM INTO copy, integrity-checked, plus a settingsPath copy
-// alongside it. Prunes dir back down to its keepN most-recent backups
-// afterward (keepN <= 0 disables pruning -- never silently unbounded).
+// VACUUM INTO copy, integrity-checked, plus a settingsPath copy and a
+// vaultPath copy alongside it. The vault copy is the encrypted KDBX
+// file only -- its master key lives solely in the OS keychain (goal
+// 0330) and is never backed up, matching KeePassXC's own "back up the
+// file, never the key" precedent. Prunes dir back down to its keepN
+// most-recent backups afterward (keepN <= 0 disables pruning -- never
+// silently unbounded).
 //
 // Safe to call while dbPath has concurrent readers/writers: VACUUM
 // INTO reads its source inside one read transaction (sqlite.org's own
 // documented guarantee), so it neither blocks nor is blocked by an
-// ordinary writer beyond a single commit's duration.
-func Snapshot(dbPath, settingsPath, dir string, keepN int) (Result, error) {
+// ordinary writer beyond a single commit's duration. settingsPath/
+// vaultPath are plain file copies, safe for the same reason
+// copyFile's own doc comment gives: neither is a live SQLite file held
+// open mid-write.
+func Snapshot(dbPath, settingsPath, vaultPath, dir string, keepN int) (Result, error) {
 	now := time.Now()
 	backupDir := filepath.Join(dir, now.Format(TimestampLayout))
 	if err := os.MkdirAll(backupDir, 0o750); err != nil {
@@ -72,7 +87,12 @@ func Snapshot(dbPath, settingsPath, dir string, keepN int) (Result, error) {
 		return Result{}, err
 	}
 	if settingsPath != "" {
-		if err := copySettings(settingsPath, filepath.Join(backupDir, "settings.json")); err != nil {
+		if err := copyFile(settingsPath, filepath.Join(backupDir, "settings.json")); err != nil {
+			return Result{}, err
+		}
+	}
+	if vaultPath != "" {
+		if err := copyFile(vaultPath, filepath.Join(backupDir, vaultBackupName)); err != nil {
 			return Result{}, err
 		}
 	}
@@ -149,32 +169,63 @@ func verifyIntegrity(snapshotPath string) error {
 	return nil
 }
 
-// copySettings copies src to dst byte-for-byte -- a plain copy is safe
-// here (unlike the live execution database above): settings.json is a
-// single-writer, atomically-rewritten KV file
-// (internal/adapters/settings), never held open mid-write across a
-// scheduler tick. A missing src (no settings file yet on a genuinely
-// fresh install) is not an error -- the backup still proceeds with
-// just the database snapshot.
-func copySettings(src, dst string) error {
-	in, err := os.Open(src) //nolint:gosec // Mill-owned settings path, wired by main.go, not external input
+// copyFile copies src to dst byte-for-byte -- a plain copy is safe for
+// both of this package's callers (unlike the live execution database
+// above): settings.json is a single-writer, atomically-rewritten KV
+// file (internal/adapters/settings), and the vault KDBX file is
+// rewritten whole on each save (gokeepasslib's own encoder, never an
+// in-place mutation) -- neither is ever held open mid-write across a
+// scheduler tick. A missing src (no settings file, or no vault, yet on
+// a genuinely fresh install) is not an error -- the backup still
+// proceeds with whatever else it has.
+func copyFile(src, dst string) error {
+	in, err := os.Open(src) //nolint:gosec // Mill-owned source path, wired by main.go, not external input
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
-		return fmt.Errorf("backup: open settings file: %w", err)
+		return fmt.Errorf("backup: open %s: %w", src, err)
 	}
 	defer func() { _ = in.Close() }()
 
 	out, err := os.Create(dst) //nolint:gosec // Mill-owned backup path, wired by main.go, not external input
 	if err != nil {
-		return fmt.Errorf("backup: create settings copy: %w", err)
+		return fmt.Errorf("backup: create copy of %s: %w", src, err)
 	}
 	if _, err := io.Copy(out, in); err != nil {
 		_ = out.Close()
-		return fmt.Errorf("backup: copy settings file: %w", err)
+		return fmt.Errorf("backup: copy %s: %w", src, err)
 	}
 	return out.Close()
+}
+
+// RestoreVault copies backupDir's own vault copy (written by Snapshot
+// when a vault existed at backup time) to targetPath, but ONLY when
+// targetPath has nothing there yet: restoring over a live vault file is
+// never implicit -- the key that opens targetPath's CURRENT file, if
+// any, is not guaranteed to open the restored one, so that has to be a
+// separate, deliberate action. Returns whether a restore actually
+// happened; (false, nil) means targetPath already had a file, left
+// untouched. A source backup carrying no vault (taken before this
+// device ever had one, or since pruned past keepN) is a real error, not
+// a silent no-op.
+func RestoreVault(backupDir, targetPath string) (bool, error) {
+	src := filepath.Join(backupDir, vaultBackupName)
+	if _, err := os.Stat(src); err != nil {
+		return false, fmt.Errorf("backup: restore vault: no vault in this backup: %w", err)
+	}
+	if _, err := os.Stat(targetPath); err == nil {
+		return false, nil
+	} else if !os.IsNotExist(err) {
+		return false, fmt.Errorf("backup: restore vault: checking target: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0o700); err != nil {
+		return false, fmt.Errorf("backup: restore vault: preparing target directory: %w", err)
+	}
+	if err := copyFile(src, targetPath); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // backupDirNames lists dir's own backup subdirectories (each named per
@@ -242,4 +293,29 @@ func Latest(dir string) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("backup: parse latest backup name %q: %w", latest, err)
 	}
 	return t, nil
+}
+
+// LatestWithVault returns the newest backup's own time whose
+// subdirectory carries a copy of the vault file, or the zero time if
+// none does -- distinct from Latest, which answers about ANY backup
+// regardless of what it carries: a vault set up after the oldest kept
+// backups already rotated off leaves those without one. Walks newest
+// to oldest and stops at the first hit, so this costs one stat per
+// backup back to the answer, never a full directory scan.
+func LatestWithVault(dir string) (time.Time, error) {
+	names, err := backupDirNames(dir)
+	if err != nil {
+		return time.Time{}, err
+	}
+	for i := len(names) - 1; i >= 0; i-- {
+		if _, err := os.Stat(filepath.Join(dir, names[i], vaultBackupName)); err != nil {
+			continue
+		}
+		t, err := time.ParseInLocation(TimestampLayout, names[i], time.Local)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("backup: parse backup name %q: %w", names[i], err)
+		}
+		return t, nil
+	}
+	return time.Time{}, nil
 }

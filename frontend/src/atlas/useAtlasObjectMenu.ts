@@ -83,6 +83,19 @@ export function useAtlasObjectMenu({
         run: () => { void dispatchObjectEdit(object, editRoute!) },
       })
     }
+    // "Fit diagram" (goal 0354): the object's own zoom-to-fit, beside
+    // the editor door. Honest enablement, the same absence-not-dimming
+    // rule every item here follows -- only a Kind whose face can report
+    // its own overflow has anything to fit, and the run goes through
+    // the registry command so the menu and the palette drive one action.
+    if (boardObjectContentFor(object.Kind)?.overflowChip) {
+      items.push({
+        id: 'fit-diagram',
+        label: t('contextMenu.fitDiagram'),
+        commandId: 'diagram.fit',
+        run: () => useUISignalStore.getState().requestAtlasDiagramFit(object.ID),
+      })
+    }
     // A plugin's own items (goal 0280): only on objects of its kind,
     // between the built-in items and Delete; an item whose enabled
     // predicate answers false is left out, never shown dimmed.

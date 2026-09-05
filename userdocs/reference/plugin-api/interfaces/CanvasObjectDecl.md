@@ -8,6 +8,25 @@
 
 ## Properties
 
+### content?
+
+```ts
+optional content?: "static" | "interactive";
+```
+
+content: what happens to input over the object's face.
+'static' (the default) means the canvas owns every gesture over it
+— the face is a picture. 'interactive' means the face scrolls,
+selects text, or edits in place, so the object goes through three
+states: idle (a click shield takes the first click, and the canvas
+keeps the wheel, the drag and the keys), selected (the face
+receives pointer events and keys, and a wheel over anything in it
+that really scrolls stays inside it), and editing (the face has an
+editor open and the board's shortcuts stand down). Declare
+'interactive' before calling ctx.setEditing.
+
+***
+
 ### defaultPayload?
 
 ```ts

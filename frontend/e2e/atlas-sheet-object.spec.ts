@@ -2,7 +2,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test, expect } from './fixtures/server'
 import { createBoardObjectViaRPC, ATLAS_DEFAULT_SPACE_ID } from './fixtures/atlasNativeDropEscapeHatch'
-import { extensionRow, openExtensionDetail, openSettings } from './fixtures/settingsNav'
+import { extensionRow, openExtensionDetail, openExtensions } from './fixtures/settingsNav'
 
 // The "sheet" board object (goal 0232 S2): dropping a .xlsx/.csv file
 // lands a board-local, read-only spreadsheet preview -- never a
@@ -98,6 +98,15 @@ async function landSheetObject(page: import('@playwright/test').Page, mirrorPath
   return sheetObjects(page)
 }
 
+// Object first, cell second (goal 0354): a sheet's preview is an
+// interactive face, so it stays inert behind a click shield until the
+// object itself is selected -- exactly the click a user spends before
+// reaching a cell.
+async function selectSheetObject(object: import('@playwright/test').Locator): Promise<void> {
+  await object.click()
+  await expect(object.getByTestId('atlas-object-click-shield')).toHaveCount(0)
+}
+
 async function deleteViaContextMenu(page: import('@playwright/test').Page, target: import('@playwright/test').Locator) {
   // Re-settle before every right-click, not just the first: closing an
   // earlier menu/interaction can itself trigger a further layout
@@ -175,7 +184,7 @@ test('the sheet preview row cap is a declared number setting the sheet honors li
   const setPreviewRows = async (draft: string) => {
     // A declared setting lives in the extension's DETAIL pane (goal
     // 0321), never on its row.
-    await openSettings(page, 'extensions')
+    await openExtensions(page)
     await openExtensionDetail(page, extensionRow(page, 'sheet'), 'sheet')
     const field = page.getByTestId('extension-setting-sheet-previewRows').locator('input')
     await field.fill(draft)
@@ -256,6 +265,9 @@ test('a corrupt .xlsx shows "Can\'t read this file." with an Open in default app
   const unreadable = sheetObject.getByTestId('atlas-object-sheet-unreadable')
   await expect(unreadable).toBeVisible()
   await expect(unreadable).toContainText("Can't read this file.")
+  // Object first (goal 0354): the unreadable state's own door sits
+  // inside an interactive face, so the object takes the first click.
+  await selectSheetObject(sheetObject)
   const openDoor = sheetObject.getByTestId('atlas-object-sheet-open-in-default-app')
   await expect(openDoor).toBeVisible()
   await openDoor.click()
@@ -295,6 +307,7 @@ test('double-clicking a csv cell edits it in place: Enter commits to the grid an
 
   const ageCell = grid.locator('tbody tr').first().locator('td').nth(1)
   await expect(ageCell).toHaveText('36')
+  await selectSheetObject(sheetObject)
   await ageCell.dblclick()
   const input = sheetObject.getByTestId('atlas-object-sheet-cell-input')
   await expect(input).toBeVisible()
@@ -321,6 +334,7 @@ test('Escape cancels a cell edit, leaving the grid and the file untouched', asyn
   const sheetObject = await landSheetObject(page, file)
   const grid = sheetObject.getByTestId('atlas-object-sheet-grid')
   const ageCell = grid.locator('tbody tr').first().locator('td').nth(1)
+  await selectSheetObject(sheetObject)
   await ageCell.dblclick()
   const input = sheetObject.getByTestId('atlas-object-sheet-cell-input')
   await expect(input).toBeFocused()
@@ -339,6 +353,7 @@ test('an xlsx cell never opens an editor on double-click (read-only by design)',
   const sheetObject = await landSheetObject(page, XLSX_FIXTURE)
   const grid = sheetObject.getByTestId('atlas-object-sheet-grid')
   await expect(grid).toBeVisible()
+  await selectSheetObject(sheetObject)
   await grid.locator('tbody tr').first().locator('td').first().dblclick()
   await expect(sheetObject.getByTestId('atlas-object-sheet-cell-input')).toHaveCount(0)
 
@@ -365,6 +380,7 @@ test('in explicit save mode Enter holds a cell and ⌘S writes every held cell a
     await expect(grid).toBeVisible()
     const firstRow = grid.locator('tbody tr').first()
 
+    await selectSheetObject(object)
     await firstRow.locator('td').nth(1).dblclick()
     const input = object.getByTestId('atlas-object-sheet-cell-input')
     await expect(input).toBeFocused()

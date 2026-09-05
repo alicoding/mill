@@ -6,10 +6,10 @@ import { useIsNarrowViewport } from '../shared/useNarrowViewport'
 import { SETTINGS_GROUPS, resolveSettingsGroup, type SettingsGroupID } from '../shared/settingsGroups'
 import AppearanceSection from './AppearanceSection'
 import SettingsGeneralPane from './SettingsGeneralPane'
+import SettingsSecurityPane from './SettingsSecurityPane'
 import SettingsShortcutsPane from './SettingsShortcutsPane'
 import SettingsConnectionsPane from './SettingsConnectionsPane'
 import SettingsNotificationsPane from './SettingsNotificationsPane'
-import ExtensionsSection from './ExtensionsSection'
 import DataStewardshipSection from './DataStewardshipSection'
 import UpdatesSection from './UpdatesSection'
 import SettingsGroupNav from './SettingsGroupNav'
@@ -66,8 +66,8 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
   const PANES: Record<SettingsGroupID, ReactNode> = {
     general: <SettingsGeneralPane />,
     appearance: <AppearanceSection />,
+    security: <SettingsSecurityPane />,
     shortcuts: <SettingsShortcutsPane />,
-    extensions: <ExtensionsSection />,
     connections: <SettingsConnectionsPane />,
     notifications: <SettingsNotificationsPane />,
     backups: <DataStewardshipSection />,
@@ -80,7 +80,7 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
       <div className={isNarrowViewport ? styles.layoutNarrow : styles.layout}>
         <SettingsGroupNav activeId={group} onSelect={select} />
         <div
-          className={group === 'extensions' ? `${styles.pane} ${styles.paneWide}` : styles.pane}
+          className={styles.pane}
           data-testid={`settings-pane-${group}`}
         >
           <Heading as="h1" variant="medium" className={styles.paneTitle}>{title}</Heading>

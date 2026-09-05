@@ -88,6 +88,7 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Review | ⌘5 | `view.review` |
 | Review rules | — | `review.rules` |
 | Secrets | ⌘6 | `view.secrets` |
+| Extensions | ⌘⇧X | `extensions.open` |
 | Docs | — | `view.docs` |
 | Command palette | ⌘K | `palette.open` |
 | Next tab | ⌃TAB | `tab.next` |
@@ -142,6 +143,7 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Copy space links | — | `atlas.share.copyLinks` |
 | Open perspective switcher | — | `atlas.perspective` |
 | Select all | ⌘A | `atlas.selectAll` |
+| Fit diagram | — | `diagram.fit` |
 | Toggle companion panel | — | `atlas.companion.toggle` |
 | Toggle minimap | — | `atlas.minimap.toggle` |
 | Export card as… | — | `atlas.card.exportAs` |

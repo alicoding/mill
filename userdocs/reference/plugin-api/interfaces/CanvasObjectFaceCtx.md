@@ -155,6 +155,29 @@ rules and may require their live approval.
 
 ***
 
+### setEditing?
+
+```ts
+optional setEditing?: (editing) => void;
+```
+
+Tells Mill an editor is open in this face, or has just closed.
+While it is open the object is in its editing state and Mill's own
+board shortcuts stand down, so typing goes to your editor. Present
+only for a face whose declaration says content: 'interactive'.
+
+#### Parameters
+
+##### editing
+
+`boolean`
+
+#### Returns
+
+`void`
+
+***
+
 ### theme
 
 ```ts

@@ -136,6 +136,11 @@ func IsImageExtension(ext string) bool {
 var diagramMirrorExtensions = map[string]bool{
 	".drawio": true, ".mmd": true, ".mermaid": true,
 	".xlsx": true, ".csv": true,
+	// The structured-document extensions (goal 0269): the board's json
+	// object renders a live tree over these bytes, so an edit made in
+	// the owning app has to reach it the same way an edit to a diagram
+	// or a sheet does.
+	".json": true, ".yaml": true, ".yml": true,
 }
 
 // IsDiagramMirrorExtension reports whether ext (including its leading
