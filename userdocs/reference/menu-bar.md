@@ -140,6 +140,7 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Copy space links | — | `atlas.share.copyLinks` |
 | Open perspective switcher | — | `atlas.perspective` |
 | Select all | ⌘A | `atlas.selectAll` |
+| Fit diagram | — | `diagram.fit` |
 | Toggle companion panel | — | `atlas.companion.toggle` |
 | Toggle minimap | — | `atlas.minimap.toggle` |
 | Export card as… | — | `atlas.card.exportAs` |

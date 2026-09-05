@@ -233,6 +233,9 @@
       "openInDefaultApp": "Open in default app",
       "rename": "Rename"
     },
+    "diagram": {
+      "fit": "Fit diagram"
+    },
     "canvas": {
       "undo": "Undo",
       "redo": "Redo",

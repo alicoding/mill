@@ -846,6 +846,16 @@
     "needs": "entity"
   },
   {
+    "id": "diagram.fit",
+    "label": "Fit diagram",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "docs.search",
     "label": "Search docs",
     "binding": null,
