@@ -6,6 +6,6 @@
    drag frame, not styling. */
 .guide {
   position: absolute;
-  background: var(--atlas-guide-color);
+  background: var(--mill-guide-color);
   pointer-events: none;
 }

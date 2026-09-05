@@ -83,7 +83,7 @@
        practice keeps the two apart -- the guide is the one warm mark on
        an otherwise cool canvas. Consumed only by
        atlas/AtlasAlignmentGuides.module.css. */
-    --atlas-guide-color: #f24822;
+    --mill-guide-color: #f24822;
 
     --mill-kind-trigger: #8250DF;
     --mill-kind-capture: #0969DA;
@@ -115,7 +115,7 @@
     --bgColor-accent-muted: var(--mill-accent-muted);
     --borderColor-accent-muted: var(--mill-accent-border-muted);
 
-    --atlas-guide-color: #ff6b57;
+    --mill-guide-color: #ff6b57;
 
     --mill-kind-trigger: #8957E5;
     --mill-kind-capture: #1F6FEB;
