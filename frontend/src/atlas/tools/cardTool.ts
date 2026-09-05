@@ -20,9 +20,10 @@ export const cardTool = {
   description: 'atlas:cardNoun.description',
   shortcutKey: cardIdentity.shortcutKey,
   tray: 'quick',
-  // The atom -- typed, linked, filed, searchable knowledge (goal 0224's
-  // disposition table), tray-primary.
-  group: 'knowledge',
+  // The atom a board is made of -- typed, linked, filed, searchable --
+  // and so one of the four fixed object slots on the creation dock
+  // (goal 0355).
+  group: 'objects',
   interaction: cardIdentity.interaction,
   // Instant placement (goal 0144) always disarms after the one click --
   // never reads a lock flag at all, so this stays false rather than N/A.

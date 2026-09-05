@@ -25,11 +25,15 @@ export interface CanvasObjectDecl {
      * shown as the tray button's key chip. A key another tool already
      * uses fails registration. */
     shortcutKey?: string;
-    /** group: which tray cluster the button renders in — 'knowledge'
-     * (default for board-local or url-backed tools), 'file' (default for
-     * file-backed tools), or 'annotate' (the collapsed freehand-marking
-     * drawer). */
-    group?: 'knowledge' | 'file' | 'annotate';
+    /** group: which cluster of the board's creation dock this tool joins
+     * — 'objects' (the things a board is made of), 'media' (the Media
+     * flyout, shared with images and dropped files), 'annotate' (the
+     * freehand-marking flyout), or 'embed' (the default): reachable by
+     * name from the dock's More panel, which searches every registered
+     * tool. The dock's own visible buttons are fixed, so a tool joining a
+     * full cluster is found through More rather than pushing a button
+     * off the dock. */
+    group?: 'objects' | 'media' | 'annotate' | 'embed';
     /** lockable: for a non-sticky drag tool only — re-clicking the
      * armed button locks it for deliberate repeated use instead of
      * disarming. */

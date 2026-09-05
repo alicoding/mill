@@ -160,14 +160,14 @@ export interface ExtensionRowMeta {
   // AtlasToolShapeBase.settings carries for a tray tool -- see that
   // field's own comment for the declare/render/store split.
   settings?: readonly ExtensionSettingDecl[]
-  // group (goal 0237 S3's Extensions-list review rider): the same tray
+  // group (goal 0237 S3's Extensions-list review rider): the same
   // cluster AtlasToolShapeBase.group declares, REQUIRED for the same
-  // reason -- Settings > Extensions groups every row into one of three
-  // sections regardless of whether it has a tray button, and a
-  // tool-less noun that omitted this would silently vanish from every
-  // section instead of landing in an honest one. Both of today's
-  // tool-less nouns (diagram, sheet) are file-drop-only artifacts, the
-  // same family Image's own 'file' group already names.
+  // reason -- Settings > Extensions groups every row into a section
+  // regardless of whether it has a dock button, and a tool-less noun
+  // that omitted this would silently vanish from every section instead
+  // of landing in an honest one. Every tool-less noun today
+  // (diagram, sheet, pdf) is a file-drop-only artifact, the same Media
+  // family Image's own group names.
   group: AtlasNounGroup
 }
 

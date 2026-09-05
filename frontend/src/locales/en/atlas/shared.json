@@ -76,6 +76,41 @@
     "noChanges": "No changes between these perspectives.",
     "linkRow": "{{from}} → {{to}} ({{kind}})"
   },
+  "boardMenu": {
+    "button": "Board",
+    "ariaLabel": "Board actions",
+    "arrange": "Arrange",
+    "add": "Add",
+    "export": "Export",
+    "structure": "Structure",
+    "import": "Import\u2026",
+    "addFromFolder": "Add from folder\u2026",
+    "exportJSON": "Export as JSON",
+    "exportDrawio": "Export as .drawio"
+  },
+  "viewSwitcher": {
+    "ariaLabel": "Board view",
+    "board": "Board",
+    "list": "List",
+    "matrix": "Matrix",
+    "coverage": "Coverage",
+    "roadmap": "Roadmap"
+  },
+  "morePanel": {
+    "trigger": "More tools",
+    "searchLabel": "Find a tool",
+    "categoryLabel": "Filter tools by category",
+    "searchPlaceholder": "Find a tool",
+    "categoryAll": "All",
+    "categoryObjects": "Objects",
+    "categoryMedia": "Media",
+    "categoryAnnotate": "Annotate",
+    "categoryEmbed": "Extensions",
+    "recents": "Recents",
+    "fromPlugin": "From {{plugin}}",
+    "empty": "No tool matches that name.",
+    "listLabel": "Every tool"
+  },
   "creationTray": {
     "ariaLabel": "Creation tools",
     "cardLabel": "Card",
@@ -99,6 +134,9 @@
     "shapeTooltip": "Draw a shape (S)",
     "annotateLabel": "Annotate",
     "annotateTooltip": "Annotate: shape, pencil, eraser, laser",
+    "mediaLabel": "Media",
+    "mediaTooltip": "Add an image or a file (I)",
+    "fromFile": "From file\u2026",
     "lockedTooltip": "{{tool}} stays on until you click it again or press Escape"
   },
   "placement": {
@@ -132,7 +170,8 @@
     "rotateHandleTitle": "Drag to rotate"
   },
   "capture": {
-    "dropError": "Couldn't read the dropped file."
+    "dropError": "Couldn't read the dropped file.",
+    "pickError": "Couldn't add that file to the board."
   },
   "create": {
     "addTable": "Table from a List",
@@ -155,8 +194,7 @@
     "roadmap": "Roadmap",
     "contents": "Contents",
     "kinds": "Kinds",
-    "dataActionsLabel": "Arrange, import, export, and folder actions",
-    "shareViewActionsLabel": "Share and view actions"
+    "shareViewActionsLabel": "Share and companion actions"
   },
   "folderImport": {
     "addButton": "Add from folder…",

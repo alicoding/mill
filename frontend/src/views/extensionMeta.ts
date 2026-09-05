@@ -87,31 +87,32 @@ export function toolLessRowSource({ kind, content, extension }: ToolLessNounExte
   }
 }
 
-// groupLabel -- AtlasNounGroup's own three clusters, restated as short
-// chip text a user would recognize (never the tray's own internal
-// cluster name). Used only by the expanded row's own chip list
+// groupLabel -- AtlasNounGroup's own clusters, restated as short chip
+// text a user would recognize (never the dock's own internal cluster
+// name). Used only by the expanded row's own chip list
 // (ExtensionRow.tsx) -- the collapsed row's meta line reads
 // groupSectionLabel below instead, since the section heading above
 // every row already says this once (goal 0237 S3's review rider:
 // repeating it a second time on every row read as noise).
 export function groupLabel(group: AtlasNounGroup): string {
   switch (group) {
-    case 'knowledge': return copy('views:settings.extensions.meta.groupKnowledge')
-    case 'file': return copy('views:settings.extensions.meta.groupFile')
+    case 'objects': return copy('views:settings.extensions.meta.groupObjects')
+    case 'media': return copy('views:settings.extensions.meta.groupMedia')
     case 'annotate': return copy('views:settings.extensions.meta.groupAnnotate')
+    case 'embed': return copy('views:settings.extensions.meta.groupEmbed')
   }
 }
 
-// groupSectionLabel -- the same three clusters, restated as the
-// SECTION heading text (goal 0237 S3's review rider: "Knowledge",
-// "Files", "Drawing") -- plural where groupLabel's per-row chip stays
-// singular ("File"), since a heading names a collection and a chip
-// names one row's own attribute.
+// groupSectionLabel -- the same clusters, restated as the SECTION
+// heading text -- plural where groupLabel's per-row chip stays singular
+// ("Object"), since a heading names a collection and a chip names one
+// row's own attribute.
 export function groupSectionLabel(group: AtlasNounGroup): string {
   switch (group) {
-    case 'knowledge': return copy('views:settings.extensions.meta.sectionKnowledge')
-    case 'file': return copy('views:settings.extensions.meta.sectionFile')
+    case 'objects': return copy('views:settings.extensions.meta.sectionObjects')
+    case 'media': return copy('views:settings.extensions.meta.sectionMedia')
     case 'annotate': return copy('views:settings.extensions.meta.sectionAnnotate')
+    case 'embed': return copy('views:settings.extensions.meta.sectionEmbed')
   }
 }
 

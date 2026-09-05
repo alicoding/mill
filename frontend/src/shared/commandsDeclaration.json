@@ -1,5 +1,15 @@
 [
   {
+    "id": "atlas.addFile",
+    "label": "Add a file to the board",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false,
+    "needs": null
+  },
+  {
     "id": "atlas.addFromFolder",
     "label": "Add cards from a folder",
     "binding": null,
@@ -16,7 +26,7 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false,
+    "enabled": true,
     "needs": null
   },
   {
@@ -140,6 +150,16 @@
     "needs": null
   },
   {
+    "id": "atlas.export.drawio",
+    "label": "Export board as .drawio",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false,
+    "needs": null
+  },
+  {
     "id": "atlas.focusDirection",
     "label": "Focus the nearest card in a direction",
     "binding": "⌥→",
@@ -223,6 +243,16 @@
     "id": "atlas.jump",
     "label": "Jump to a card or object",
     "binding": "⌘K",
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "atlas.kinds.open",
+    "label": "Kinds",
+    "binding": null,
     "surface": [
       "atlas"
     ],

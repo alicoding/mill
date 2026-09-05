@@ -88,13 +88,17 @@ interaction. Required there, and not accepted for
 ### group?
 
 ```ts
-optional group?: "knowledge" | "file" | "annotate";
+optional group?: "objects" | "media" | "annotate" | "embed";
 ```
 
-group: which tray cluster the button renders in — 'knowledge'
-(default for board-local or url-backed tools), 'file' (default for
-file-backed tools), or 'annotate' (the collapsed freehand-marking
-drawer).
+group: which cluster of the board's creation dock this tool joins
+— 'objects' (the things a board is made of), 'media' (the Media
+flyout, shared with images and dropped files), 'annotate' (the
+freehand-marking flyout), or 'embed' (the default): reachable by
+name from the dock's More panel, which searches every registered
+tool. The dock's own visible buttons are fixed, so a tool joining a
+full cluster is found through More rather than pushing a button
+off the dock.
 
 ***
 
@@ -234,7 +238,7 @@ uses fails registration.
 ### source
 
 ```ts
-source: "file" | "board-local" | "url";
+source: "board-local" | "url" | "file";
 ```
 
 Where the object's own artifact lives: a value only this board

@@ -182,8 +182,13 @@
       "contents": {
         "open": "Contents"
       },
+      "kinds": {
+        "open": "Kinds"
+      },
       "import": "Import atlas",
       "export": "Export atlas",
+      "exportDrawio": "Export board as .drawio",
+      "addFile": "Add a file to the board",
       "selection": {
         "copyAsImage": "Copy as image",
         "exportAsImage": "Export as image…"

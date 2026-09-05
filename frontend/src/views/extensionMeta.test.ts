@@ -9,17 +9,19 @@ import {
 
 describe('groupLabel', () => {
   it('maps every declared group to user-facing text', () => {
-    expect(groupLabel('knowledge')).toBe('Knowledge')
-    expect(groupLabel('file')).toBe('File')
+    expect(groupLabel('objects')).toBe('Object')
+    expect(groupLabel('media')).toBe('Media')
     expect(groupLabel('annotate')).toBe('Drawing')
+    expect(groupLabel('embed')).toBe('Extension')
   })
 })
 
 describe('groupSectionLabel', () => {
   it('maps every declared group to its section-heading text, plural where the chip is singular', () => {
-    expect(groupSectionLabel('knowledge')).toBe('Knowledge')
-    expect(groupSectionLabel('file')).toBe('Files')
+    expect(groupSectionLabel('objects')).toBe('Objects')
+    expect(groupSectionLabel('media')).toBe('Media')
     expect(groupSectionLabel('annotate')).toBe('Drawing')
+    expect(groupSectionLabel('embed')).toBe('Extensions')
   })
 })
 
@@ -121,7 +123,7 @@ describe('toolLessRowSource (goal 0237 S3 rider)', () => {
       disableScopeNote: copy(diagram.extension.disableScopeNote),
       settings: diagram.extension.settings,
     })
-    expect(row.group).toBe('file')
+    expect(row.group).toBe('media')
   })
 })
 
