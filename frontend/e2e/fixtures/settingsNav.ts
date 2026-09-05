@@ -5,7 +5,7 @@ import type { Locator, Page } from '@playwright/test'
 // a time, so reaching a control means naming its group -- the sidebar
 // link alone lands on whichever pane this device last read.
 export type SettingsGroup =
-  | 'general' | 'appearance' | 'shortcuts'
+  | 'general' | 'appearance' | 'security' | 'shortcuts'
   | 'connections' | 'notifications' | 'backups' | 'updates'
 
 // Extensions left Settings in goal 0349: it is its own destination,

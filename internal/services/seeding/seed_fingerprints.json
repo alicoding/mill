@@ -83,6 +83,10 @@
     "seedRevision": 1,
     "fingerprint": "2c19aa57810f5a47d25587fb4931161ca1996bc515ecb6e1eea7332f39432bcb"
   },
+  "atlasobject:atlas-object-example-json": {
+    "seedRevision": 1,
+    "fingerprint": "82a9e92cc6666d08d618e5f1b558bf2123c58474310f2efb226ded0a70e78f22"
+  },
   "atlasobject:atlas-object-example-pdf": {
     "seedRevision": 1,
     "fingerprint": "3868528ce5f6cf899ff276ae508f4002ec81aa5c0ae7ed02da25ec1b8473a807"
@@ -94,6 +98,10 @@
   "atlasobject:atlas-object-example-sheet": {
     "seedRevision": 1,
     "fingerprint": "1e55d1591c9b7a0f98a7cd22d2de9940b4d3fa2a8094a8fd9496870e500b549a"
+  },
+  "atlasobject:atlas-object-example-yaml": {
+    "seedRevision": 1,
+    "fingerprint": "0e728bb7741d0e1d18aa6fa3df09c5a3e2d80472ed9fbc3518f69d71b7ffca49"
   },
   "clientcert:clientcert-example": {
     "seedRevision": 1,

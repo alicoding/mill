@@ -1,6 +1,6 @@
 import views from '../locales/en/views.json'
 
-// The Settings group registry (goal 0321): seven groups, one pane
+// The Settings group registry (goal 0321): eight groups, one pane
 // rendered at a time. Replaces the eleven-section single-scroll
 // registry -- the converged desktop-settings shape at this size is a
 // group list beside one pane, not a long page with a filter box.
@@ -23,6 +23,7 @@ import views from '../locales/en/views.json'
 export type SettingsGroupID =
   | 'general'
   | 'appearance'
+  | 'security'
   | 'shortcuts'
   | 'connections'
   | 'notifications'
@@ -37,6 +38,7 @@ export interface SettingsGroup {
 export const SETTINGS_GROUPS: SettingsGroup[] = [
   { id: 'general', titleKey: 'settings.groups.general' },
   { id: 'appearance', titleKey: 'settings.groups.appearance' },
+  { id: 'security', titleKey: 'settings.groups.security' },
   { id: 'shortcuts', titleKey: 'settings.groups.shortcuts' },
   { id: 'connections', titleKey: 'settings.groups.connections' },
   { id: 'notifications', titleKey: 'settings.groups.notifications' },

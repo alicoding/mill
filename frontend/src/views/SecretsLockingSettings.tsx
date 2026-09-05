@@ -23,12 +23,18 @@ import styles from './SecretsView.module.css'
 // The whole policy is submitted on every edit (SetVaultLockPolicy takes
 // all four fields), so a half-written policy is not a state that can
 // exist; the control that changed just contributes its new value.
-export default function SecretsLockingSettings({ capability, requireAuth, authAvailable, onToggleUnlockRequirement, unlockBusy }: {
+export default function SecretsLockingSettings({ capability, requireAuth, authAvailable, onToggleUnlockRequirement, unlockBusy, locked }: {
   capability: string
   requireAuth: boolean
   authAvailable: boolean
   onToggleUnlockRequirement: (enabled: boolean) => void
   unlockBusy: boolean
+  // Settings > Security renders this component regardless of vault
+  // state (goal 0360 S1 follow-up) -- SetTouchIDProtection itself
+  // requires an open vault, so only the unlock-requirement toggle
+  // reacts to `locked`; the rest of the policy needs no open vault
+  // (secretservice_lockpolicy.go's own SetVaultLockPolicy doc comment).
+  locked: boolean
 }) {
   const { t } = useTranslation('secrets')
   const [policy, setPolicy] = useState<LockPolicy | null>(null)
@@ -138,16 +144,16 @@ export default function SecretsLockingSettings({ capability, requireAuth, authAv
         />
         <FormControl.Label>{t('locking.onMinimizeLabel')}</FormControl.Label>
       </FormControl>
-      <FormControl disabled={!authAvailable}>
+      <FormControl disabled={!authAvailable || locked}>
         <Checkbox
           checked={requireAuth}
-          disabled={unlockBusy || !authAvailable}
+          disabled={unlockBusy || !authAvailable || locked}
           onChange={(e) => onToggleUnlockRequirement(e.target.checked)}
           data-testid="secrets-touchid-toggle"
         />
         <FormControl.Label>{t(unlockToggleLabelKey(capability))}</FormControl.Label>
         <FormControl.Caption>
-          {authAvailable ? t('touchId.toggleCaption') : t('touchId.unavailableCaption')}
+          {t(unlockCaptionKey(locked, authAvailable))}
         </FormControl.Caption>
       </FormControl>
       {error && <span className={styles.error} data-testid="secrets-locking-error">{error}</span>}
@@ -161,4 +167,12 @@ export default function SecretsLockingSettings({ capability, requireAuth, authAv
 function presetLabel(t: TFunction<'secrets'>, seconds: number): string {
   const humanized = humanizeLockAfter(seconds)
   return humanized === null ? t('locking.presetNever') : t(humanized.key, { count: humanized.count })
+}
+
+// The unlock-requirement toggle's caption: what changing it takes,
+// ranked by what stops the reader from doing it right now -- an open
+// vault is required before hardware availability even matters.
+function unlockCaptionKey(locked: boolean, authAvailable: boolean): string {
+  if (locked) return 'locking.unlockToChangeCaption'
+  return authAvailable ? 'touchId.toggleCaption' : 'touchId.unavailableCaption'
 }

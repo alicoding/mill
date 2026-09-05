@@ -476,10 +476,14 @@ brought into view.
   thing.** A table copied from a spreadsheet or a document app becomes
   a table on the board, ready to browse and edit like any other list.
   A pasted file path lands what dropping the file would: a document
-  becomes a card, a diagram, spreadsheet, or PDF file its own board
-  object (a PDF shows its pages right on the board — click it once to
-  select it, then search, zoom, and page through it in place; while
-  you scroll inside it the board holds still),
+  becomes a card, a diagram, spreadsheet, PDF, JSON or YAML file its own
+  board object (a PDF shows its pages right on the board — click it once
+  to select it, then search, zoom, and page through it in place; while
+  you scroll inside it the board holds still. A JSON or YAML file opens
+  as a collapsible tree: each key on its own row, a collapsed section
+  showing how many entries it holds, a box to filter keys and values,
+  and a right-click on any row to copy that row's value, its path, or
+  its key. Edit the file in your own editor and the tree follows),
   a folder path opens the folder import. Everything else lands as a
   sticky note at your pointer, already selected — nothing else to
   fill in. Multiple tables in one paste each land as their own table,
@@ -1337,6 +1341,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.focusPrevious` | Focus previous card | `⇧TAB` | atlas | Always available |
 | `atlas.group.selection` | Group into a new area | `G` | atlas | Always available |
 | `atlas.import` | Import atlas | — | atlas | Always available |
+| `atlas.json.copyKey` | Copy key | — | atlas | Acts on the selected tree row |
+| `atlas.json.copyPath` | Copy path | — | atlas | Acts on the selected tree row |
+| `atlas.json.copyValue` | Copy value | `⌘C` | atlas | Acts on the selected tree row |
 | `atlas.jump` | Jump to a card or object | `⌘K` | atlas | Always available |
 | `atlas.matrix` | Open traceability matrix | — | atlas | Always available |
 | `atlas.minimap.toggle` | Toggle minimap | — | atlas | Always available |
@@ -1410,6 +1417,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.secretsource.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.steptype.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.steptype.export` | Export | — | Global | Acts on the selected entity |
+| `diagram.fit` | Fit diagram | — | atlas | Conditional — available only in a matching state |
 | `docs.search` | Search docs | — | Global | Always available |
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
@@ -1424,10 +1432,10 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `help.openDataFolder` | Open data folder | — | Global | Always available |
 | `help.reportIssue` | Report an issue… | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
-| `listGrid.copyRows` | Copy selected rows | — | Global | Acts on the selected listGrid |
-| `listGrid.deleteColumn` | Delete selected column | — | Global | Acts on the selected listGrid |
-| `listGrid.deleteRows` | Delete selected rows | — | Global | Acts on the selected listGrid |
-| `listGrid.search` | Find in this list | `⌘F` | Global | Acts on the selected listGrid |
+| `listGrid.copyRows` | Copy selected rows | — | Global | Acts on the selected table rows |
+| `listGrid.deleteColumn` | Delete selected column | — | Global | Acts on the selected table rows |
+| `listGrid.deleteRows` | Delete selected rows | — | Global | Acts on the selected table rows |
+| `listGrid.search` | Find in this list | `⌘F` | Global | Acts on the selected table rows |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `object.rename` | Rename | — | atlas | Always available |
 | `output.copy` | Copy output | — | Global | Conditional — available only in a matching state |
@@ -1457,6 +1465,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `settings.open.connections` | Settings › Connections | — | Global | Always available |
 | `settings.open.general` | Settings › General | — | Global | Always available |
 | `settings.open.notifications` | Settings › Notifications | — | Global | Always available |
+| `settings.open.security` | Settings › Security | — | Global | Always available |
 | `settings.open.shortcuts` | Settings › Shortcuts | — | Global | Always available |
 | `settings.open.updates` | Settings › Updates | — | Global | Always available |
 | `tab.close` | Close tab | `⌘W` | Global | Conditional — available only in a matching state |
@@ -1642,6 +1651,7 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Copy space links | — | `atlas.share.copyLinks` |
 | Open perspective switcher | — | `atlas.perspective` |
 | Select all | ⌘A | `atlas.selectAll` |
+| Fit diagram | — | `diagram.fit` |
 | Toggle companion panel | — | `atlas.companion.toggle` |
 | Toggle minimap | — | `atlas.minimap.toggle` |
 | Export card as… | — | `atlas.card.exportAs` |
@@ -1944,13 +1954,14 @@ moment you change them and persist across restarts; the few that need a
 restart say so.
 
 Settings is a list of groups on the left and one group's page on the
-right: General, Appearance, Shortcuts, Extensions, Connections,
-Notifications, Backups, Updates. Only the group you pick is on screen,
-and Mill reopens Settings on the group you read last. Each setting is
-one row: its name and a short line about it on the left, its control on
-the right, with **Learn more** wherever the full story lives in these
-pages. Every group is also one command away — search "Settings" in the
-command palette (⌘K) to jump straight to a group.
+right: General, Appearance, Security, Shortcuts, Extensions,
+Connections, Notifications, Backups, Updates. Only the group you pick
+is on screen, and Mill reopens Settings on the group you read last.
+Each setting is one row: its name and a short line about it on the
+left, its control on the right, with **Learn more** wherever the full
+story lives in these pages. Every group is also one command away —
+search "Settings" in the command palette (⌘K) to jump straight to a
+group.
 
 ## General
 
@@ -1983,6 +1994,24 @@ command palette (⌘K) to jump straight to a group.
   spacing across the app: list and palette rows, the Quick Panel,
   tables, canvas card faces, and Settings itself. On a phone-sized
   window, touch targets keep their full size either way.
+
+## Security
+
+- **Lock the vault after** — how long the vault may sit idle before it
+  locks itself: one minute to eight hours, a custom number of minutes,
+  or never. Counts time since you last used this Mac, so working in
+  another app keeps the vault open.
+- **Lock when this Mac sleeps or the screen locks**, **when switching
+  users**, and **when Mill's window is minimized** — three checkboxes
+  that close the vault regardless of idle time. The first two start on.
+- **Ask for Touch ID, an Apple Watch, or your password before
+  unlocking** — turn this on and Mill asks before the vault opens,
+  naming only what this Mac can actually offer. Changeable only while
+  the vault is unlocked.
+
+The Secrets page's own status line states both halves in one
+sentence — what it takes to unlock, and how long it stays open — and
+links back here to change either one.
 
 ## Shortcuts
 
@@ -2270,7 +2299,7 @@ are never omissions.
 | `boardNodeType` | 'atlas-note', 'atlas-sticky', 'atlas-group', 'atlas-object', or null | which shared React Flow node component renders this noun's placed instance. null for a tool whose gesture never persists a renderable instance (eraser, laser). |
 | `dragBand` | boolean — REQUIRED, never optional | only load-bearing when boardNodeType is 'atlas-object': does this noun's own content capture pointer events (a grid, a vendored pan/zoom viewer), so the shared renderer needs to add its own chrome band as the drag surface? A noun whose whole body already drags declares false, not omitted. |
 | `boardObjectKind` | 'shape', 'image', 'ink', 'table', 'diagram', 'sheet', or null | the persisted BoardObject.Kind this noun's own placed instance carries, or null for a tool that never routes through the shared 'atlas-object' renderer. Not always equal to id — pencil's own placed instance is Kind 'ink' — so content resolution below keys off this field, read from object.Kind, never off id. |
-| `content` | an object with Component (a React component accepting { object, mirrorVersion }), ariaLabelKey (a string), role ('img' or undefined) and content ('static' or 'interactive'), plus the optional members source, editRoute, shieldHintKey, overflowChip and extension — or null | this noun's own placed-instance content contribution. registerNoun() feeds it into the board-object content registry (atlasNounRegistry.ts's registerBoardObjectContent) whenever boardObjectKind is non-null, killing AtlasBoardObjectNode.tsx's former per-Kind hand branch. A tool-less noun (diagram, sheet, pdf) calls registerBoardObjectContent directly instead of declaring this field at all, since it has no AtlasToolShape to satisfy — it instead sets this same content shape's own optional `extension` member (icon, label, description, disableScopeNote, group) so Settings > Extensions can still render an honest, correctly-sectioned row for it. mirrorVersion bumps on a live disk change to a fileBacked Kind's own mirrored file (see fileBacked below) — a non-file-backed Component simply ignores it. The nested `content` member is the ONE input fact a noun declares about its face: 'static' means the canvas owns every gesture over it (a shape, an image), 'interactive' means the face scrolls, selects text or edits in place (a grid, an embedded viewer). Every canvas opt-out — the click shield, the wheel and drag opt-outs, the keyboard boundary — is derived from it plus the object's own state, across three states: idle (the canvas owns the wheel, the drag and the keys, and a shield takes the first click), selected (the face receives pointer events and keys, and a wheel over anything in it that really scrolls stays inside it), and editing (the face reports an open editor through onEditingChange and the board's shortcuts stand down). shieldHintKey is the locale key for what the chrome band's tooltip says while the face is idle (what that first click buys differs per noun: a diagram starts panning, a PDF starts scrolling, a table starts cell editing); overflowChip lets the shared chrome band carry a “Fit” chip whenever the face reports its content is larger than the object's box. |
+| `content` | an object with Component (a React component accepting { object, mirrorVersion }), ariaLabelKey (a string), role ('img' or undefined) and input ('static' or 'interactive'), plus the optional members source, editRoute, shieldHintKey, overflowChip and extension — or null | this noun's own placed-instance content contribution. registerNoun() feeds it into the board-object content registry (atlasNounRegistry.ts's registerBoardObjectContent) whenever boardObjectKind is non-null, killing AtlasBoardObjectNode.tsx's former per-Kind hand branch. A tool-less noun (diagram, sheet, pdf) calls registerBoardObjectContent directly instead of declaring this field at all, since it has no AtlasToolShape to satisfy — it instead sets this same content shape's own optional `extension` member (icon, label, description, disableScopeNote, group) so Settings > Extensions can still render an honest, correctly-sectioned row for it. mirrorVersion bumps on a live disk change to a fileBacked Kind's own mirrored file (see fileBacked below) — a non-file-backed Component simply ignores it. The nested `input` member is the ONE input fact a noun declares about its face: 'static' means the canvas owns every gesture over it (a shape, an image), 'interactive' means the face scrolls, selects text or edits in place (a grid, an embedded viewer). Every canvas opt-out — the click shield, the wheel and drag opt-outs, the keyboard boundary — is derived from it plus the object's own state, across three states: idle (the canvas owns the wheel, the drag and the keys, and a shield takes the first click), selected (the face receives pointer events and keys, and a wheel over anything in it that really scrolls stays inside it), and editing (the face reports an open editor through onEditingChange and the board's shortcuts stand down). shieldHintKey is the locale key for what the chrome band's tooltip says while the face is idle (what that first click buys differs per noun: a diagram starts panning, a PDF starts scrolling, a table starts cell editing); overflowChip lets the shared chrome band carry a “Fit” chip whenever the face reports its content is larger than the object's box. |
 | `capabilities` | a readonly array of strings, or omitted entirely | the external reach this noun's own manifest declares. No current noun sets it. Settings > Extensions' reach line reads this field directly, so a future noun's declared capabilities show up there with no other code change. |
 | `fileBacked` | boolean — REQUIRED, never optional | does this noun's own placed instance read Payload.mirrorPath as a real external file (goal 0232's file-backed preview/open/watch contract)? true gets the shared live-watch subscription (its own content Component sees mirrorVersion bump) and the object.openInDefaultApp context-menu command uniformly, with no extra wiring of either. A noun with no boardObjectKind at all still declares it, always false. |
 | `sticky` | boolean — REQUIRED, never optional | does this tool stay armed after a completed gesture (pencil/eraser/laser — repeated strokes/passes are the point), or disarm after one? useAtlasToolGesture.ts reads this to decide whether a gesture's own onEnd may call ctx.disarm/disarmUnlessLocked at all — a sticky tool gets no-ops for both. A non-drag tool still declares it, always false. |
@@ -2337,8 +2366,8 @@ free" below), may call:
   test), it goes through `ConfigureService` the way `tableTool.ts`
   mints its backing List via `ConfigureService.CreateList` /
   `AddListRow`.
-- **Input over the face — declared, not written.** A noun's `content`
-  declaration (`'static'` or `'interactive'`) is the whole contract for
+- **Input over the face — declared, not written.** A noun's `input`
+  declaration (`'static'` or `'interactive'`, inside `content`) is the whole contract for
   what a wheel, a drag and a keystroke over the object do. Three states
   follow from it, and the shared renderer applies every one of them:
 
@@ -2965,7 +2994,7 @@ reading the key out of the keychain. Lock and unlock the vault from the
 command palette (⌘K) too — search "vault" and only the action that
 currently applies shows up.
 
-Secrets > Locking decides when the vault closes itself. Choose how long
+Settings > Security decides when the vault closes itself. Choose how long
 it may sit idle, from one minute to eight hours, a custom number of
 minutes, or never; the count is time since you last used this Mac, so
 working in another app keeps the vault open. Three checkboxes close it

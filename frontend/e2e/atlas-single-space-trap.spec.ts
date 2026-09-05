@@ -115,7 +115,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     await emptyPaneClick()
     await expect(menu).toBeVisible()
     await menu.getByText('Delete space', { exact: true }).click()
-    await expect(page.getByText('4 items inside move up a level. You can undo right after.')).toBeVisible()
+    await expect(page.getByText('4 items inside move up a level. You can undo right after.')).toBeVisible() // count: seed-shape -- "The engagement"'s own four children, named above.
     await page.getByRole('button', { name: 'Delete', exact: true }).click()
 
     // Lands on "All spaces" -- not a dead end -- showing what remains:
@@ -139,20 +139,25 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     }
 
     // "Board gallery" nests board objects, never cards -- a region
-    // frame under goal 0266's law. Deleting it promotes its 6 seeded
-    // objects (goal 0233's EffectiveParentID seam) out to THIS root
-    // level; they must land visibly placed, clear of "Client records",
-    // never stacked on top of it the way their stale pre-promotion
-    // X/Y used to.
+    // frame under goal 0266's law. Deleting it promotes its 8 seeded
+    // objects (goal 0233's EffectiveParentID seam, joined by the json/
+    // yaml twins of goal 0269) out to THIS root level; they must land
+    // visibly placed, clear of "Client records", never stacked on top
+    // of it the way their stale pre-promotion X/Y used to.
     const clientRecords = groupCard(page, 'Client records')
     await expect(clientRecords).toBeVisible()
 
     // A frame under the 0266 law: delete via its header menu, and the
-    // container-delete gate now counts the 6 filed objects it promotes.
+    // container-delete gate now counts the 8 filed objects it promotes.
     await groupCard(page, 'Board gallery').getByTestId('atlas-group-header').click({ button: 'right' })
     await expect(menu).toBeVisible()
     await menu.getByText('Delete', { exact: true }).click()
-    await expect(page.getByText('6 items inside move up a level. You can undo right after.')).toBeVisible()
+    // "Board gallery" is the permanent home for seeded board objects
+    // (testing.md), so adding one moves this number. No door reads a
+    // FRAME's child count back: React Flow renders no parent link in
+    // the DOM, and no binding lists a container's contents. Tracked
+    // under goal 0358 S7.
+    await expect(page.getByText('8 items inside move up a level. You can undo right after.')).toBeVisible() // count: seed-owned -- Board gallery's seeded objects.
     // The confirm dialog's own Delete button (deletePromoteConfirm),
     // scoped to the dialog so the frame menu's identical label can't
     // double-match.
@@ -171,11 +176,11 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
 
     const promotedObjects = page.locator('[data-testid="atlas-board-object"]')
-    await expect(promotedObjects).toHaveCount(6)
+    await expect(promotedObjects).toHaveCount(8)
     const clientRecordsBox = await clientRecords.boundingBox()
     if (!clientRecordsBox) throw new Error('Client records has no bounding box')
     const promotedBoxes = []
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 8; i++) {
       const box = await promotedObjects.nth(i).boundingBox()
       if (!box) throw new Error('promoted board object has no bounding box')
       expect(rectsOverlap(box, clientRecordsBox), 'a promoted board object must not overlap the sibling card').toBe(false)
@@ -221,7 +226,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     await expect(menu).toBeVisible()
     await expect(menu.getByText('Delete space', { exact: true })).toBeVisible()
     await menu.getByText('Delete space', { exact: true }).click()
-    await expect(page.getByText('2 items inside move up a level. You can undo right after.')).toBeVisible()
+    await expect(page.getByText('2 items inside move up a level. You can undo right after.')).toBeVisible() // count: seed-shape -- "Client records"'s own two children.
     await page.getByRole('button', { name: 'Delete', exact: true }).click()
 
     // Two roots left (Jordan Reyes, Statement of work) -- auto-entry

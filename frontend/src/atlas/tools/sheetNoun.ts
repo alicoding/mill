@@ -36,7 +36,7 @@ registerBoardObjectContent('sheet', {
   // reachable -- object first, cell second, the same rule the table
   // grid follows. No shieldHintKey: the generic wording is exactly
   // what this face's first click buys.
-  content: 'interactive',
+  input: 'interactive',
   // Payload.mirrorPath names the real .xlsx/.csv file this content
   // renders (goal 0232 S1's contract) -- the shared watch subscription
   // and "Open in default app" enablement both key off this flag.
