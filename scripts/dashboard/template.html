@@ -94,6 +94,7 @@ h2.hl + .card.fade, h2.hl + pre.mermaid.fade{outline-color:transparent}
     <button role="tab" aria-selected="false" data-v="roadmap">Roadmap</button>
     <button role="tab" aria-selected="false" data-v="arch">Architecture</button>
     <button role="tab" aria-selected="false" data-v="cap">Capability Map</button>
+    <button role="tab" aria-selected="false" data-v="maturity">Maturity</button>
     <button role="tab" aria-selected="false" data-v="replace">Replace</button>
     <button role="tab" aria-selected="false" data-v="health">Health</button>
     <button role="tab" aria-selected="false" data-v="eff">Efficiency</button>
@@ -385,6 +386,13 @@ flowchart LR
     <tr><td colspan="4"><b>Unjustified hand-rolls: 0.</b> Last one found (updater dwell policy) was deleted tonight in favor of the adopted package's own semantics. The one INNER-PLATFORM near-miss on record: templating chat wire-shapes through the HTTP entity — rejected at design time, dedicated adapters built instead (SPEC §3.3).</td></tr>
   </table></div>
   <div class="note">Maintain? adopt: no · build: yes, deliberately · shim: smallest, with exit.</div>
+</section>
+
+<section id="maturity">
+  <h2 id="maturity-ledger">Plugin API maturity <small>— goal 0348: per-family level, evidence and docs currency, regenerated from the repository on every build</small></h2>
+  <!-- DERIVED:maturity:START — userdocs/reference/plugin-api-maturity.json, filled by render.sh -->
+  <div class="note">Not generated yet — run <span class="mono">go generate ./internal/docsgen</span>.</div>
+  <!-- DERIVED:maturity:END -->
 </section>
 
 <!-- AUTHORED — hand-maintained until 0217's derivation slice teaches
