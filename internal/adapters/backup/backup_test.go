@@ -40,7 +40,7 @@ func TestSnapshot_ProducesAnIntegrityCheckedCopy(t *testing.T) {
 	dbPath := newTestDB(t)
 	backupDir := t.TempDir()
 
-	result, err := Snapshot(dbPath, "", backupDir, 10)
+	result, err := Snapshot(dbPath, "", "", backupDir, 10)
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestSnapshot_CopiesSettingsAlongside(t *testing.T) {
 		t.Fatalf("write settings fixture: %v", err)
 	}
 
-	result, err := Snapshot(dbPath, settingsPath, backupDir, 10)
+	result, err := Snapshot(dbPath, settingsPath, "", backupDir, 10)
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestSnapshot_MissingSettingsFileIsNotAnError(t *testing.T) {
 	dbPath := newTestDB(t)
 	backupDir := t.TempDir()
 
-	_, err := Snapshot(dbPath, filepath.Join(t.TempDir(), "does-not-exist.json"), backupDir, 10)
+	_, err := Snapshot(dbPath, filepath.Join(t.TempDir(), "does-not-exist.json"), "", backupDir, 10)
 	if err != nil {
 		t.Fatalf("Snapshot with no settings file yet = %v, want success (a fresh install has none)", err)
 	}
@@ -148,7 +148,7 @@ func TestSnapshot_SafeWhileConcurrentWritesRun(t *testing.T) {
 		}
 	}()
 
-	result, snapErr := Snapshot(dbPath, "", backupDir, 10)
+	result, snapErr := Snapshot(dbPath, "", "", backupDir, 10)
 	close(stop)
 	wg.Wait()
 
@@ -169,7 +169,7 @@ func TestSnapshot_PrunesToKeepN(t *testing.T) {
 
 	var lastResult Result
 	for i := 0; i < 5; i++ {
-		result, err := Snapshot(dbPath, "", backupDir, 3)
+		result, err := Snapshot(dbPath, "", "", backupDir, 3)
 		if err != nil {
 			t.Fatalf("Snapshot #%d: %v", i, err)
 		}
@@ -197,7 +197,7 @@ func TestSnapshot_KeepNZeroDisablesPruning(t *testing.T) {
 	backupDir := t.TempDir()
 
 	for i := 0; i < 3; i++ {
-		if _, err := Snapshot(dbPath, "", backupDir, 0); err != nil {
+		if _, err := Snapshot(dbPath, "", "", backupDir, 0); err != nil {
 			t.Fatalf("Snapshot #%d: %v", i, err)
 		}
 		time.Sleep(2 * time.Millisecond)
@@ -226,12 +226,12 @@ func TestLatest_ReturnsMostRecentBackupTime(t *testing.T) {
 	dbPath := newTestDB(t)
 	backupDir := t.TempDir()
 
-	first, err := Snapshot(dbPath, "", backupDir, 10)
+	first, err := Snapshot(dbPath, "", "", backupDir, 10)
 	if err != nil {
 		t.Fatalf("first Snapshot: %v", err)
 	}
 	time.Sleep(2 * time.Millisecond)
-	second, err := Snapshot(dbPath, "", backupDir, 10)
+	second, err := Snapshot(dbPath, "", "", backupDir, 10)
 	if err != nil {
 		t.Fatalf("second Snapshot: %v", err)
 	}
@@ -242,5 +242,161 @@ func TestLatest_ReturnsMostRecentBackupTime(t *testing.T) {
 	}
 	if got.Before(first.TakenAt) || got.Before(second.TakenAt.Add(-time.Second)) {
 		t.Errorf("Latest() = %v, want at/after the second snapshot's own time %v", got, second.TakenAt)
+	}
+}
+
+// goal 0359: the vault file joins the backup set alongside execution.db
+// and settings.json, as a plain copy -- never its key, which lives only
+// in the OS keychain.
+
+func TestSnapshot_CopiesVaultAlongside(t *testing.T) {
+	dbPath := newTestDB(t)
+	backupDir := t.TempDir()
+	vaultPath := filepath.Join(t.TempDir(), "secrets.kdbx")
+	if err := os.WriteFile(vaultPath, []byte("fake-kdbx-bytes"), 0o600); err != nil {
+		t.Fatalf("write vault fixture: %v", err)
+	}
+
+	result, err := Snapshot(dbPath, "", vaultPath, backupDir, 10)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(result.Dir, "secrets.kdbx")) //nolint:gosec // t.TempDir()-scoped test fixture path
+	if err != nil {
+		t.Fatalf("read copied vault: %v", err)
+	}
+	if string(got) != "fake-kdbx-bytes" {
+		t.Errorf("copied vault content = %q, want the exact source content", got)
+	}
+}
+
+func TestSnapshot_MissingVaultFileIsNotAnError(t *testing.T) {
+	dbPath := newTestDB(t)
+	backupDir := t.TempDir()
+
+	_, err := Snapshot(dbPath, "", filepath.Join(t.TempDir(), "secrets.kdbx"), backupDir, 10)
+	if err != nil {
+		t.Fatalf("Snapshot with no vault set up yet = %v, want success", err)
+	}
+}
+
+func TestRestoreVault_IntoEmptyTargetBringsItBack(t *testing.T) {
+	dbPath := newTestDB(t)
+	backupDir := t.TempDir()
+	vaultPath := filepath.Join(t.TempDir(), "secrets.kdbx")
+	if err := os.WriteFile(vaultPath, []byte("fake-kdbx-bytes"), 0o600); err != nil {
+		t.Fatalf("write vault fixture: %v", err)
+	}
+	result, err := Snapshot(dbPath, "", vaultPath, backupDir, 10)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	target := filepath.Join(t.TempDir(), "restored", "secrets.kdbx")
+	restored, err := RestoreVault(result.Dir, target)
+	if err != nil {
+		t.Fatalf("RestoreVault: %v", err)
+	}
+	if !restored {
+		t.Fatal("RestoreVault into an empty target reported no restore")
+	}
+	got, err := os.ReadFile(target) //nolint:gosec // t.TempDir()-scoped test fixture path
+	if err != nil {
+		t.Fatalf("read restored vault: %v", err)
+	}
+	if string(got) != "fake-kdbx-bytes" {
+		t.Errorf("restored vault content = %q, want the exact backed-up content", got)
+	}
+}
+
+func TestRestoreVault_OverExistingVaultLeavesItUntouched(t *testing.T) {
+	dbPath := newTestDB(t)
+	backupDir := t.TempDir()
+	vaultPath := filepath.Join(t.TempDir(), "secrets.kdbx")
+	if err := os.WriteFile(vaultPath, []byte("backed-up-bytes"), 0o600); err != nil {
+		t.Fatalf("write vault fixture: %v", err)
+	}
+	result, err := Snapshot(dbPath, "", vaultPath, backupDir, 10)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	target := filepath.Join(t.TempDir(), "secrets.kdbx")
+	if err := os.WriteFile(target, []byte("live-vault-bytes"), 0o600); err != nil {
+		t.Fatalf("write live vault fixture: %v", err)
+	}
+
+	restored, err := RestoreVault(result.Dir, target)
+	if err != nil {
+		t.Fatalf("RestoreVault: %v", err)
+	}
+	if restored {
+		t.Fatal("RestoreVault over an existing vault reported a restore")
+	}
+	got, err := os.ReadFile(target) //nolint:gosec // t.TempDir()-scoped test fixture path
+	if err != nil {
+		t.Fatalf("read target vault: %v", err)
+	}
+	if string(got) != "live-vault-bytes" {
+		t.Errorf("target vault content = %q, want the live content left untouched", got)
+	}
+}
+
+func TestRestoreVault_NoVaultInBackupIsAnError(t *testing.T) {
+	dbPath := newTestDB(t)
+	backupDir := t.TempDir()
+
+	result, err := Snapshot(dbPath, "", "", backupDir, 10)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	if _, err := RestoreVault(result.Dir, filepath.Join(t.TempDir(), "secrets.kdbx")); err == nil {
+		t.Fatal("RestoreVault from a backup with no vault = nil error, want one")
+	}
+}
+
+func TestLatestWithVault_SkipsBackupsWithoutOne(t *testing.T) {
+	dbPath := newTestDB(t)
+	backupDir := t.TempDir()
+
+	if _, err := Snapshot(dbPath, "", "", backupDir, 10); err != nil {
+		t.Fatalf("first Snapshot (no vault): %v", err)
+	}
+	time.Sleep(2 * time.Millisecond)
+
+	vaultPath := filepath.Join(t.TempDir(), "secrets.kdbx")
+	if err := os.WriteFile(vaultPath, []byte("fake-kdbx-bytes"), 0o600); err != nil {
+		t.Fatalf("write vault fixture: %v", err)
+	}
+	withVault, err := Snapshot(dbPath, "", vaultPath, backupDir, 10)
+	if err != nil {
+		t.Fatalf("second Snapshot (with vault): %v", err)
+	}
+
+	got, err := LatestWithVault(backupDir)
+	if err != nil {
+		t.Fatalf("LatestWithVault: %v", err)
+	}
+	if got.Before(withVault.TakenAt.Add(-time.Second)) {
+		t.Errorf("LatestWithVault() = %v, want at/after the vault-carrying snapshot's own time %v", got, withVault.TakenAt)
+	}
+}
+
+func TestLatestWithVault_NoBackupHasOne(t *testing.T) {
+	dbPath := newTestDB(t)
+	backupDir := t.TempDir()
+
+	if _, err := Snapshot(dbPath, "", "", backupDir, 10); err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	got, err := LatestWithVault(backupDir)
+	if err != nil {
+		t.Fatalf("LatestWithVault: %v", err)
+	}
+	if !got.IsZero() {
+		t.Errorf("LatestWithVault() = %v, want zero time when no backup carries one", got)
 	}
 }

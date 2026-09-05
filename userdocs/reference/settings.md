@@ -164,14 +164,14 @@ Mill — for an agent that can't reach Mill over MCP.
 
 ## Backups
 
-Mill snapshots your workflow history and settings automatically —
-on clean shutdown, on version change, and daily via the built-in
-"Backup Mill data" workflow, keeping the most recent ten. "Back up
-now" adds one on demand. "Export everything" bundles your data into
-one file for moving machines; "Import everything" merges it back.
-The export covers Mill's own data — files mirrored from folders on
-disk are referenced by path, not copied in, so back those folders
-up separately.
+Mill snapshots your workflow history, settings, and your secrets
+vault automatically — on clean shutdown, on version change, and daily
+via the built-in "Backup Mill data" workflow, keeping the most recent
+ten. "Back up now" adds one on demand. "Export everything" bundles
+your data into one file for moving machines, excluding the vault;
+"Import everything" merges it back. The export covers Mill's own
+data — files mirrored from folders on disk are referenced by path,
+not copied in, so back those folders up separately.
 
 ## Updates
 

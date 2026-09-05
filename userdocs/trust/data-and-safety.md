@@ -13,10 +13,13 @@ you configured.
 store, run history in SQLite, both on your machine. Settings →
 Backups snapshots them on a schedule, exports everything to one
 file, and imports it on another machine. Passwords and keys live in
-their own encrypted vault file on your device, deliberately excluded
-from every export. The vault's key sits in your OS keychain, stored
-against that specific vault file — a second vault, or a vault restored
-from a backup, gets its own key rather than replacing the first one's.
+their own encrypted vault file on your device. Every local backup
+carries a copy of that file too — never its key, which stays in your
+OS keychain — but "Export everything" leaves it out, since that
+archive is the one meant to move to another machine or another
+person. The vault's key sits in your OS keychain, stored against that
+specific vault file — a second vault, or a vault restored from a
+backup, gets its own key rather than replacing the first one's.
 
 Turn on "Require Touch ID to unlock" and Mill asks for Touch ID or your
 Mac password before the vault opens. Be clear about what that buys you:
