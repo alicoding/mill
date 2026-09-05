@@ -95,6 +95,10 @@
     "seedRevision": 1,
     "fingerprint": "1e55d1591c9b7a0f98a7cd22d2de9940b4d3fa2a8094a8fd9496870e500b549a"
   },
+  "clientcert:clientcert-example": {
+    "seedRevision": 1,
+    "fingerprint": "e2ab337a08d0d152db2e95315ca3c080eba1f24fd9ea595923e0be5d890cc470"
+  },
   "conversionprofile:conversionprofile-confluence": {
     "seedRevision": 1,
     "fingerprint": "355b494d5bef930d6d9abd6d902a8273cb625c6b0aa55898737dd5c99e06d359"

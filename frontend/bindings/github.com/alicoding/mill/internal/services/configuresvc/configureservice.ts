@@ -31,6 +31,9 @@ import * as openapispec$0 from "../../adapters/openapispec/models.js";
 import * as aiprovider$0 from "../../domain/aiprovider/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as clientcert$0 from "../../domain/clientcert/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as composition$0 from "../../domain/composition/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -128,12 +131,29 @@ export function CaptureShellPath(): $CancellablePromise<string> {
     return $Call.ByID(759717731);
 }
 
+/**
+ * ClientCertificateStatuses answers one status per configured
+ * certificate. It returns the certificate's identity and validity
+ * window only, never the material.
+ */
+export function ClientCertificateStatuses(): $CancellablePromise<clientcert$0.Status[] | null> {
+    return $Call.ByID(3084260004);
+}
+
+export function ClientCertificates(): $CancellablePromise<clientcert$0.ClientCertificate[] | null> {
+    return $Call.ByID(3430562167);
+}
+
 export function ConversionProfiles(): $CancellablePromise<conversionprofile$0.Profile[] | null> {
     return $Call.ByID(1251097066);
 }
 
 export function CreateAIProvider(label: string, kind: aiprovider$0.Kind, baseURL: string, model: string, keyRef: string): $CancellablePromise<aiprovider$0.AIProvider> {
     return $Call.ByID(427493887, label, kind, baseURL, model, keyRef);
+}
+
+export function CreateClientCertificate(label: string, host: string, certRef: string, keyRef: string, passphraseRef: string, caRef: string, notes: string): $CancellablePromise<clientcert$0.ClientCertificate> {
+    return $Call.ByID(656621746, label, host, certRef, keyRef, passphraseRef, caRef, notes);
 }
 
 export function CreateConversionProfile(label: string, description: string, ruleSets: string[] | null): $CancellablePromise<conversionprofile$0.Profile> {
@@ -204,6 +224,10 @@ export function DeleteAIProvider(id: string): $CancellablePromise<void> {
     return $Call.ByID(2537752540, id);
 }
 
+export function DeleteClientCertificate(id: string): $CancellablePromise<void> {
+    return $Call.ByID(2356464611, id);
+}
+
 export function DeleteConversionProfile(id: string): $CancellablePromise<void> {
     return $Call.ByID(3998413764, id);
 }
@@ -266,6 +290,15 @@ export function DeriveSecretLabels(nodeTypeID: string, config: { [_ in string]?:
  */
 export function DescribeReference(kind: string, id: string): $CancellablePromise<$models.ReferenceSummary> {
     return $Call.ByID(3538022950, kind, id);
+}
+
+/**
+ * DuplicateClientCertificate copies one entity's fields onto a new one,
+ * so a second host reusing the same material is one action rather than
+ * a re-pick of every reference.
+ */
+export function DuplicateClientCertificate(id: string): $CancellablePromise<clientcert$0.ClientCertificate> {
+    return $Call.ByID(2719279045, id);
 }
 
 export function ExecEnvs(): $CancellablePromise<execenv$0.ExecEnv[] | null> {
@@ -433,6 +466,14 @@ export function MCPServerFields(): $CancellablePromise<typedfield$0.Field[] | nu
 
 export function MCPServers(): $CancellablePromise<mcpserver$0.MCPServer[] | null> {
     return $Call.ByID(4060206780);
+}
+
+/**
+ * MatchClientCertificate answers which certificate a URL's host would
+ * use. An unparseable or host-less URL matches nothing.
+ */
+export function MatchClientCertificate(rawURL: string): $CancellablePromise<[$models.ClientCertificateMatch, boolean]> {
+    return $Call.ByID(3491633573, rawURL);
 }
 
 /**
@@ -656,6 +697,17 @@ export function SyncListRows(listID: string, keyColumn: string, rows: ({ [_ in s
 }
 
 /**
+ * TestClientCertificate opens a TLS connection to the entity's host
+ * and closes it, sending nothing. User-initiated, so it is the person
+ * asking Mill to reach that host, never Mill reaching out on its own.
+ * A nil error is a completed handshake; the sentence reporting it is
+ * the caller's, so this returns no copy of its own.
+ */
+export function TestClientCertificate(id: string): $CancellablePromise<void> {
+    return $Call.ByID(165922770, id);
+}
+
+/**
  * TestHTTPRequestOperation executes one real HTTP call against a
  * request draft's current configuration -- docs/adr/0013's
  * test-before-save flow. Runs server-side (not a browser fetch) so it
@@ -681,6 +733,10 @@ export function UndoDelete(entity: string, id: string): $CancellablePromise<void
 
 export function UpdateAIProvider(id: string, label: string, kind: aiprovider$0.Kind, baseURL: string, model: string, keyRef: string): $CancellablePromise<aiprovider$0.AIProvider> {
     return $Call.ByID(3997420794, id, label, kind, baseURL, model, keyRef);
+}
+
+export function UpdateClientCertificate(id: string, label: string, host: string, certRef: string, keyRef: string, passphraseRef: string, caRef: string, notes: string): $CancellablePromise<clientcert$0.ClientCertificate> {
+    return $Call.ByID(2004917573, id, label, host, certRef, keyRef, passphraseRef, caRef, notes);
 }
 
 export function UpdateConversionProfile(id: string, label: string, description: string, ruleSets: string[] | null): $CancellablePromise<conversionprofile$0.Profile> {
