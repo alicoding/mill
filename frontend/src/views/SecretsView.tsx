@@ -4,11 +4,11 @@ import { Events } from '@wailsio/runtime'
 import { Blankslate } from '@primer/react/experimental'
 import { Button, Heading, IconButton, Label, Link, SegmentedControl, Stack, Text } from '@primer/react'
 import { DownloadIcon, HistoryIcon, KeyIcon, LockIcon, PlusIcon } from '@primer/octicons-react'
-import { BackupService, SecretService } from '../shared/bindings'
+import { SecretService } from '../shared/bindings'
 import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
 import type { SecretSummary } from '../shared/bindings'
 import { findCommand, runCommand } from '../shared/commands'
-import { refreshVaultStatus, useVaultStatusStore } from '../shared/vaultStatusStore'
+import { refreshVaultBackupTime, refreshVaultStatus, useVaultStatusStore } from '../shared/vaultStatusStore'
 import { vaultErrorKind } from '../shared/secretsCommands'
 import { messageOf } from '../shared/userError'
 import { humanizeLockAfter, unlockStatusKey } from '../shared/vaultLockCopy'
@@ -96,10 +96,10 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   const [accessHistoryID, setAccessHistoryID] = useState<string | null>(null)
   const [showAccessHistory, setShowAccessHistory] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
-  // The key-mismatch state's own "Last backup" caption (goal 0359):
-  // fetched only while that state is showing, since it's the one state
-  // that names a recovery copy's age.
-  const [vaultBackupTime, setVaultBackupTime] = useState<Date | null>(null)
+  // The key-mismatch state's own "Last backup" fact (goal 0359) lives
+  // in the shared vault store, not local state: secrets.restoreVaultFromBackup's
+  // own enabled() predicate needs to read it synchronously too.
+  const vaultBackupTime = useVaultStatusStore((s) => s.vaultBackupTime)
   // What this Mac would actually ask for when the unlock requirement is
   // on, and how long it stays open -- the two halves of the status line
   // below. Read from the service rather than assumed, so the sentence
@@ -211,18 +211,15 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
     if (detailID && list !== null && !list.some((s) => s.ID === detailID)) setDetailID(null)
   }, [list, detailID])
 
-  // The key-mismatch caption (goal 0359): only fetched while that exact
-  // state is showing, cleared otherwise.
+  // The key-mismatch caption + secrets.restoreVaultFromBackup's own
+  // enablement (goal 0359): only fetched while that exact state is
+  // showing, cleared otherwise.
   useEffect(() => {
     if (!status || status.Unlocked || vaultErrorKind(vaultError) !== 'keyMismatch') {
-      setVaultBackupTime(null)
+      useVaultStatusStore.getState().setVaultBackupTime(null)
       return
     }
-    let cancelled = false
-    BackupService.LatestVaultBackupTime()
-      .then((r) => { if (!cancelled) setVaultBackupTime(r.present ? new Date(r.time) : null) })
-      .catch(() => { if (!cancelled) setVaultBackupTime(null) })
-    return () => { cancelled = true }
+    void refreshVaultBackupTime()
   }, [status, vaultError])
 
   const remove = (id: string) => {
@@ -293,6 +290,7 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
       none: '',
     }[kind]
     const resetCommand = findCommand('secrets.resetVault')
+    const restoreCommand = findCommand('secrets.restoreVaultFromBackup')
 
     return (
       <PageContainer variant="wide" data-testid="secrets-view">
@@ -320,11 +318,21 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
                 {t('reset.cta')}
               </Button>
             )}
+            {restoreCommand?.enabled?.() && (
+              <Button onClick={() => void runCommand('secrets.restoreVaultFromBackup')} data-testid="secrets-restore-backup-cta">
+                {t('locked.restoreBackupCta')}
+              </Button>
+            )}
           </Stack>
           {lockedMessage && <Text as="p" size="small" className={styles.error} data-testid="secrets-unlock-error">{lockedMessage}</Text>}
-          {isKeyMismatch && vaultBackupTime && (
+          {isKeyMismatch && vaultBackupTime?.present && (
             <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-vault-backup-caption">
-              {t('locked.lastBackup', { time: vaultBackupTime.toLocaleString() })}
+              {t('locked.lastBackup', { time: new Date(vaultBackupTime.time).toLocaleString() })}
+            </Text>
+          )}
+          {restoreCommand?.enabled?.() && (
+            <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-restore-backup-caption">
+              {t('locked.restoreBackupCaption')}
             </Text>
           )}
         </Blankslate>

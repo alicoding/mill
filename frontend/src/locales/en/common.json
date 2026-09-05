@@ -338,7 +338,8 @@
     "secrets": {
       "lockVault": "Lock vault",
       "unlockVault": "Unlock vault",
-      "resetVault": "Start a new vault"
+      "resetVault": "Start a new vault",
+      "restoreVaultFromBackup": "Restore the last backup"
     },
     "settings": {
       "open": "Open Settings",
