@@ -28,7 +28,18 @@ type Entry struct {
 	Password string
 	URL      string
 	Notes    string
-	Tags     string
+	// Tags are the reader's own words for finding this entry again.
+	Tags []string
+	// Origin records where this entry came from when it was not typed
+	// by hand: "import:<file name>" for one read out of an export or a
+	// dotenv file. It is provenance only -- it never affects how the
+	// value resolves, which is what keeps it distinct from SourceRef.
+	Origin string
+	// Fields are the entry's own custom fields (goal 0306 S4) -- what
+	// makes the entry the record rather than five fixed columns. A
+	// protected field's value is hidden until asked for, exactly as the
+	// password is.
+	Fields []Field
 	// Kind classifies what this entry holds (goal 0306) -- what a
 	// kind-filtered picker offers and what control the editor shows.
 	// Empty decodes as KindText.
@@ -49,14 +60,18 @@ type Entry struct {
 // construction (no value to accidentally echo), not by a frontend
 // convention a future call site could forget.
 type Summary struct {
-	ID        string
-	Title     string
-	Username  string
-	URL       string
-	Tags      string
-	Kind      Kind
-	SourceRef string
-	UpdatedAt time.Time
+	ID       string
+	Title    string
+	Username string
+	URL      string
+	Tags     []string
+	// FieldNames carries the entry's custom field NAMES and no values,
+	// so the browse surface can match a search against them without a
+	// reveal.
+	FieldNames []string
+	Kind       Kind
+	SourceRef  string
+	UpdatedAt  time.Time
 }
 
 // Validate checks an Entry is well-formed before it's persisted -- same
@@ -69,6 +84,27 @@ func Validate(e Entry) error {
 	if e.SourceRef != "" && strings.TrimSpace(e.Password) != "" {
 		return fmt.Errorf("a source-backed entry holds no value of its own")
 	}
+	return validateFields(e.Fields)
+}
+
+// validateFields refuses a field that has no name, takes one of the
+// entry's own column names, or repeats another field -- each would
+// silently overwrite something on the way to storage.
+func validateFields(fields []Field) error {
+	seen := map[string]bool{}
+	for _, f := range fields {
+		name := strings.TrimSpace(f.Name)
+		if name == "" {
+			return fmt.Errorf("a field needs a name")
+		}
+		if IsReservedField(name) {
+			return fmt.Errorf("%q is already one of this entry's own fields", name)
+		}
+		if seen[strings.ToLower(name)] {
+			return fmt.Errorf("the field %q is listed twice", name)
+		}
+		seen[strings.ToLower(name)] = true
+	}
 	return nil
 }
 
@@ -76,5 +112,5 @@ func Validate(e Entry) error {
 // call site shares, so "what a summary omits" has exactly one
 // definition.
 func (e Entry) ToSummary() Summary {
-	return Summary{ID: e.ID, Title: e.Title, Username: e.Username, URL: e.URL, Tags: e.Tags, Kind: NormalizeKind(string(e.Kind)), SourceRef: e.SourceRef, UpdatedAt: e.UpdatedAt}
+	return Summary{ID: e.ID, Title: e.Title, Username: e.Username, URL: e.URL, Tags: NormalizeTags(e.Tags), FieldNames: FieldNames(e.Fields), Kind: NormalizeKind(string(e.Kind)), SourceRef: e.SourceRef, UpdatedAt: e.UpdatedAt}
 }

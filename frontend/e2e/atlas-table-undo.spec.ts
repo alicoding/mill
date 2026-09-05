@@ -106,6 +106,11 @@ test('dragging a table object: (Meta+z) returns it to where it started', async (
 // so the first ⌘Z restores the cell and the table -- created BEFORE it
 // -- stays put. Before the cell write was journaled, this same ⌘Z
 // reached past the edit to the table's own create and deleted it.
+//
+// Every step below is a web-first retrying assertion because ⌘Z is a
+// round trip (the request, the journal's inverse, the refetch): a
+// one-shot read taken right after the keystroke still sees the pre-undo
+// board (goal 0273).
 test('a cell edit: (Meta+z) restores the cell and leaves the table in place', async ({ page }) => {
   await openAtlas(page)
   const object = await placeSizedTable(page, '2x2')

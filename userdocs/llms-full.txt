@@ -2879,6 +2879,26 @@ so a field only offers the entries it can actually use. An entry can
 also point at a key in one of your sources instead of holding a value,
 in which case Mill reads that key when something uses it.
 
+An entry is the whole record, not five fixed boxes. Add fields of your
+own — a serial number, a recovery code, an account id — and hide any
+field whose value should stay masked until you ask for it. Add tags and
+the list finds an entry by them; clicking a tag on a row narrows the
+list to everything carrying it. A search matches titles, tags and field
+names, never a value. Every entry says where it came from: added by
+hand, from a source, or imported from a file.
+
+Two ways to bring in what you already have. **Secrets > Sources > Find
+.env files** scans one folder you choose — never your whole home
+directory, never more than a few levels down, and never inside
+dependency or build folders — lists the dotenv files it found with how
+many keys each holds, and adds the ones you tick as sources or imports
+their keys as entries. **Secrets > Import** reads a password export you
+made yourself from the tool you already use, shows how many entries it
+holds before anything is stored, and offers to delete the file straight
+after, because an export holds every password in plain text. Mill never
+reads another application's own credential store — you export, Mill
+reads what you exported.
+
 The first time you unlock after updating, any credential an earlier
 version had saved outside the vault moves in: Mill creates an entry,
 reads it back to check it arrived intact, points the integration at it,
