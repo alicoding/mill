@@ -259,3 +259,11 @@ settings: PluginSettingsAPI;
 ```ts
 storage: PluginStorageAPI;
 ```
+
+***
+
+### ui
+
+```ts
+ui: PluginUIAPI;
+```
