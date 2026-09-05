@@ -34,13 +34,11 @@ func stripIDField(t *testing.T, doc string) string {
 // Request doesn't), so the existing secret survives the round trip.
 func TestExportImportHTTPRequest_KnownID_UpdatesInPlace(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	created, err := cfg.CreateHTTPRequest("My request", "https://example.com", "QUERY", "", httprequest.AuthAPIKey, nil, "", nil, nil, "a description")
+	created, err := cfg.CreateHTTPRequest("My request", "https://example.com", "QUERY", "", httprequest.AuthAPIKey, "", nil, "", nil, nil, "a description")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
 	}
-	if err := cfg.SetHTTPRequestSecret(created.ID, "super-secret-value"); err != nil {
-		t.Fatalf("SetHTTPRequestSecret: %v", err)
-	}
+	storeRequestSecret(t, cfg, created.ID, "super-secret-value")
 
 	exported, err := cfg.ExportHTTPRequest(created.ID)
 	if err != nil {
@@ -73,8 +71,11 @@ func TestExportImportHTTPRequest_KnownID_UpdatesInPlace(t *testing.T) {
 	if imported.Method != "QUERY" {
 		t.Errorf("imported.Method = %q, want QUERY", imported.Method)
 	}
-	if _, err := cfg.credentials.Get(imported.ID); err != nil {
-		t.Errorf("updated HTTPRequest lost its keychain secret: %v", err)
+	// The reference survives the round trip: an export carries which
+	// entry a request names, never the credential itself (goal 0306).
+	stored, found := findRequestByID(cfg.HTTPRequests(), created.ID)
+	if !found || imported.SecretRef == "" || imported.SecretRef != stored.SecretRef {
+		t.Errorf("imported.SecretRef = %q, want the request's own %q", imported.SecretRef, stored.SecretRef)
 	}
 }
 
@@ -85,13 +86,11 @@ func TestExportImportHTTPRequest_KnownID_UpdatesInPlace(t *testing.T) {
 // wire in the first place.
 func TestExportImportHTTPRequest_NoID_CreatesFreshWithoutASecret(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	created, err := cfg.CreateHTTPRequest("My request", "https://example.com", "GET", "", httprequest.AuthAPIKey, nil, "", nil, nil, "a description")
+	created, err := cfg.CreateHTTPRequest("My request", "https://example.com", "GET", "", httprequest.AuthAPIKey, "", nil, "", nil, nil, "a description")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
 	}
-	if err := cfg.SetHTTPRequestSecret(created.ID, "super-secret-value"); err != nil {
-		t.Fatalf("SetHTTPRequestSecret: %v", err)
-	}
+	storeRequestSecret(t, cfg, created.ID, "super-secret-value")
 	exported, err := cfg.ExportHTTPRequest(created.ID)
 	if err != nil {
 		t.Fatalf("ExportHTTPRequest: %v", err)

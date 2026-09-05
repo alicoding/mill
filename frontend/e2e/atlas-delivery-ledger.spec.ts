@@ -96,7 +96,10 @@ spec_refs: ["1.1"]
     await ledgerRow.getByRole('button', { name: 'Run' }).click()
     const result = page.locator('[data-testid="workflow-run-result"]').filter({ has: page.getByText('Example: Delivery ledger', { exact: true }) })
     await expect(result).toBeVisible()
-    await expect(result.locator('pre')).toBeVisible()
+    // The run reported a result. This workflow's own payload is empty,
+    // so the viewer says so rather than drawing an empty frame (goal
+    // 0326) -- either way the block is a presented surface.
+    await expect(result.getByTestId(/^workflow-run-output(-empty)?$/)).toBeVisible()
 
     // The mirrored card renders in Atlas, filed under "Delivered features"
     // -- a ROOT-level space (parentID "", same as docssync's own "Synced

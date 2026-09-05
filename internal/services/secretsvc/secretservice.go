@@ -106,6 +106,12 @@ type SecretService struct {
 	// settings holds the app-level unlock requirement
 	// (secretservice_auth.go). Never holds a key or a secret.
 	settings settings.Store
+	// afterUnlock runs once the vault is open, outside s.mu: it is what
+	// lets work that needs an OPEN store happen at the only moment one
+	// is available (goal 0306's adoption pass). Callbacks read and write
+	// the vault through this service, so holding the lock across them
+	// would deadlock.
+	afterUnlock []func()
 }
 
 // NewSecretService constructs the service and starts the auto-lock poll
@@ -203,6 +209,32 @@ func (s *SecretService) createVaultLocked() error {
 // app session (goal 0185: "unlock once per app session, hold the vault
 // key in memory, auto-lock on idle").
 func (s *SecretService) UnlockVault() error {
+	if err := s.unlockLocked(); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	hooks := append([]func(){}, s.afterUnlock...)
+	s.mu.Unlock()
+	for _, hook := range hooks {
+		hook()
+	}
+	dataevent.Emit("secret", "")
+	return nil
+}
+
+// OnUnlock registers a callback to run after every successful unlock,
+// outside this service's own lock. Exported for wiring only, never a
+// frontend RPC.
+//
+//wails:ignore
+func (s *SecretService) OnUnlock(fn func()) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.afterUnlock = append(s.afterUnlock, fn)
+}
+
+// unlockLocked is UnlockVault's own body, holding s.mu throughout.
+func (s *SecretService) unlockLocked() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if !s.vault.Exists() {
@@ -236,7 +268,6 @@ func (s *SecretService) UnlockVault() error {
 	if vaultID == "" {
 		s.bindLegacyKeyLocked(encoded)
 	}
-	dataevent.Emit("secret", "")
 	return nil
 }
 

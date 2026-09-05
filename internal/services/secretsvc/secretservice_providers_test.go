@@ -12,6 +12,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/adapters/secretvault"
+	"github.com/alicoding/mill/internal/domain/secret"
 	"github.com/alicoding/mill/internal/domain/secretsource"
 	"github.com/alicoding/mill/internal/services/servicetest"
 )
@@ -151,5 +152,47 @@ func TestCLISources_ListResolveAndProblems(t *testing.T) {
 	problems := s.SourceProblems()
 	if problems["my-bw"] == "" || !strings.Contains(problems["my-bw"], "locked") || problems["work-op"] != "" {
 		t.Fatalf("problems = %v", problems)
+	}
+}
+
+// A source-backed vault entry (goal 0306) holds no value: resolving it
+// reads the source at that moment through the provider port, and the
+// audit line names the source that answered, not the entry.
+func TestResolveSecretValue_SourceBackedEntry_ReadsTheSourceAtUseTime(t *testing.T) {
+	s := envSourceService(t)
+	if err := s.SetupVault(); err != nil {
+		t.Fatalf("SetupVault: %v", err)
+	}
+	created, err := s.CreateSecret("Project API token", "", "", "", "", "", string(secret.KindText), "env:proj-env/API_TOKEN")
+	if err != nil {
+		t.Fatalf("CreateSecret: %v", err)
+	}
+	if created.Password != "" {
+		t.Errorf("source-backed entry stored a value (%q), want the value left in the source", created.Password)
+	}
+
+	actx := secretaudit.AccessContext{Context: secretaudit.ContextIntegrationAuth}
+	got, err := s.ResolveSecretValue(created.ID, actx)
+	if err != nil {
+		t.Fatalf("ResolveSecretValue: %v", err)
+	}
+	if got != "tok-123" {
+		t.Errorf("resolved %q, want the source's current value", got)
+	}
+}
+
+// A source-backed entry whose source no longer holds the key reports
+// the problem rather than resolving to nothing.
+func TestResolveSecretValue_SourceBackedEntry_MissingKeyReports(t *testing.T) {
+	s := envSourceService(t)
+	if err := s.SetupVault(); err != nil {
+		t.Fatalf("SetupVault: %v", err)
+	}
+	created, err := s.CreateSecret("Gone", "", "", "", "", "", string(secret.KindText), "env:proj-env/NOT_THERE")
+	if err != nil {
+		t.Fatalf("CreateSecret: %v", err)
+	}
+	if _, err := s.ResolveSecretValue(created.ID, secretaudit.AccessContext{Context: secretaudit.ContextIntegrationAuth}); err == nil {
+		t.Fatal("resolving a source-backed entry whose key is gone returned nil error")
 	}
 }

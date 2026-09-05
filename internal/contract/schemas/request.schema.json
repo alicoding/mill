@@ -45,11 +45,17 @@
         "ContentEncryption": {
           "type": "string"
         },
-        "RecipientPublicKeyPEM": {
+        "RecipientPublicKeyRef": {
           "type": "string"
         },
         "DecryptResponse": {
           "type": "boolean"
+        },
+        "PrivateKeyRef": {
+          "type": "string"
+        },
+        "RecipientPublicKeyPEM": {
+          "type": "string"
         }
       },
       "additionalProperties": false,
@@ -58,8 +64,9 @@
         "Enabled",
         "Algorithm",
         "ContentEncryption",
-        "RecipientPublicKeyPEM",
-        "DecryptResponse"
+        "RecipientPublicKeyRef",
+        "DecryptResponse",
+        "PrivateKeyRef"
       ]
     },
     "OAuth1Config": {
@@ -69,13 +76,21 @@
         },
         "Token": {
           "type": "string"
+        },
+        "ConsumerSecretRef": {
+          "type": "string"
+        },
+        "TokenSecretRef": {
+          "type": "string"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
         "ConsumerKey",
-        "Token"
+        "Token",
+        "ConsumerSecretRef",
+        "TokenSecretRef"
       ]
     },
     "OAuth2Config": {
@@ -130,6 +145,9 @@
       "type": "string"
     },
     "authType": {
+      "type": "string"
+    },
+    "secretRef": {
       "type": "string"
     },
     "headers": {

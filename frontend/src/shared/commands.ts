@@ -20,6 +20,7 @@ import { ATLAS_NAV_COMMANDS } from './atlasNavCommands'
 import { HELP_COMMANDS } from './helpCommands'
 import { ROW_COMMANDS } from './rowCommands'
 import { TAB_COMMANDS } from './tabCommands'
+import { OUTPUT_COMMANDS } from './outputCommands'
 import { withMenuGroup } from './menuGroup'
 import type { MenuPlacement } from './menuSpec'
 import { pushNotice } from './noticeStore'
@@ -173,6 +174,7 @@ function isWorkflowsArea(): boolean {
 // module's eval and the first read (always render- or event-time).
 export const COMMANDS: Command[] = lazyArray(() => [
   ...TAB_COMMANDS,
+  ...OUTPUT_COMMANDS,
   {
     id: 'workflow.new',
     menu: { path: 'file', group: 0, order: 0 },

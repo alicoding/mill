@@ -18,7 +18,7 @@ import { markdownLivePreview } from './markdownLivePreview'
 // the door component never imports @codemirror itself.
 export { EditorState, EditorView }
 
-export type CodeEditorLanguage = 'shell' | 'json' | 'html' | 'markdown'
+export type CodeEditorLanguage = 'shell' | 'json' | 'html' | 'markdown' | 'text'
 
 // Pure language -> extension mapping, unit-tested directly (this
 // module has no DOM dependency until an EditorView actually mounts).
@@ -32,6 +32,10 @@ export function languageExtension(language: CodeEditorLanguage): Extension {
       return markdown()
     case 'shell':
       return StreamLanguage.define(shell)
+    case 'text':
+      // Plain text has no grammar: an unstructured payload highlighted
+      // as if it were a shell script reads as noise, not as syntax.
+      return []
   }
 }
 
@@ -103,6 +107,11 @@ export interface BuildExtensionsOptions {
   // uses the UI font, and (for markdown) layers the live-preview
   // decorations so formatting renders in place while editing.
   prose?: boolean
+  // Soft wrap. Defaults ON, which is what every editing surface here
+  // needs (see EditorView.lineWrapping below). A read-only OUTPUT
+  // surface (goal 0326's Raw view) lets the reader turn it off, so a
+  // fixed-column payload keeps its columns.
+  wrap?: boolean
 }
 
 // Assembles one editor instance's full extension set. Editing niceties
@@ -122,7 +131,7 @@ export function buildExtensions(opts: BuildExtensionsOptions): Extension[] {
     // scroller), hiding the start of shorter lines above/below it once
     // the cursor scrolls past the panel's width. Wrapping keeps every
     // line visible at the narrow widths CodeEditor renders at.
-    EditorView.lineWrapping,
+    ...(opts.wrap === false ? [] : [EditorView.lineWrapping]),
     languageExtension(opts.language),
     syntaxHighlighting(highlightStyle),
     editorTheme(opts.minHeightRows),

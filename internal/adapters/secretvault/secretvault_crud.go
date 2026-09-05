@@ -23,6 +23,13 @@ const (
 	fieldURL      = "URL"
 	fieldNotes    = "Notes"
 	fieldTags     = "Tags" // Mill's own convenience field, stored as a plain (non-protected) value; Entry.Tags (the KDBX 4.1 attribute) is left unused so this vault stays readable by KDBX 4.0 tooling too.
+	// fieldKind/fieldSourceRef are Mill's own custom string fields
+	// (goal 0306), stored unprotected so foreign KDBX tooling shows
+	// them as ordinary custom attributes. Absent on any entry written
+	// before they existed or by KeePassXC, which decodes as KindText
+	// with no source (entryToDomain).
+	fieldKind      = "Mill-Kind"
+	fieldSourceRef = "Mill-Source"
 )
 
 func (v *fileVault) List() ([]secret.Summary, error) {
@@ -188,6 +195,8 @@ func applyValues(entry *gokeepasslib.Entry, e secret.Entry) {
 	setValue(entry, fieldURL, e.URL, false)
 	setValue(entry, fieldNotes, e.Notes, false)
 	setValue(entry, fieldTags, e.Tags, false)
+	setValue(entry, fieldKind, string(secret.NormalizeKind(string(e.Kind))), false)
+	setValue(entry, fieldSourceRef, e.SourceRef, false)
 }
 
 func setValue(entry *gokeepasslib.Entry, key, content string, protected bool) {
@@ -204,13 +213,15 @@ func setValue(entry *gokeepasslib.Entry, key, content string, protected bool) {
 
 func entryToDomain(e gokeepasslib.Entry) secret.Entry {
 	out := secret.Entry{
-		ID:       encodeUUID(e.UUID),
-		Title:    e.GetContent(fieldTitle),
-		Username: e.GetContent(fieldUsername),
-		Password: e.GetContent(fieldPassword),
-		URL:      e.GetContent(fieldURL),
-		Notes:    e.GetContent(fieldNotes),
-		Tags:     e.GetContent(fieldTags),
+		ID:        encodeUUID(e.UUID),
+		Title:     e.GetContent(fieldTitle),
+		Username:  e.GetContent(fieldUsername),
+		Password:  e.GetContent(fieldPassword),
+		URL:       e.GetContent(fieldURL),
+		Notes:     e.GetContent(fieldNotes),
+		Tags:      e.GetContent(fieldTags),
+		Kind:      secret.NormalizeKind(e.GetContent(fieldKind)),
+		SourceRef: e.GetContent(fieldSourceRef),
 	}
 	if e.Times.CreationTime != nil {
 		out.CreatedAt = e.Times.CreationTime.Time

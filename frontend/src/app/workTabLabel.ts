@@ -1,4 +1,5 @@
 import { getPluginView } from '../plugins/pluginViews'
+import { readStashedOutput } from '../shared/outputTabStore'
 import type { WorkTab } from '../shared/store'
 
 // The display label for an open work tab -- shared by app/WorkTabShell.tsx
@@ -28,6 +29,8 @@ export function tabKindLabel(tab: WorkTab, t: (key: string) => string): string {
       // The kicker names the PLUGIN (recognition before reading); the
       // label below it is the view's own title.
       return getPluginView(tab.pluginId, tab.viewId)?.pluginName ?? t('workTabLabel.pluginView')
+    case 'output':
+      return t('workTabLabel.output')
   }
 }
 
@@ -44,5 +47,7 @@ export function tabLabel(tab: WorkTab, workflowLabel: (id: string) => string | u
       return t('workTabLabel.newIntegration')
     case 'plugin-view':
       return getPluginView(tab.pluginId, tab.viewId)?.title ?? t('workTabLabel.pluginView')
+    case 'output':
+      return readStashedOutput(tab.outputId)?.title ?? t('workTabLabel.output')
   }
 }

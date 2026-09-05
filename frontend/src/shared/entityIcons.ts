@@ -1,6 +1,6 @@
 import {
   ArrowSwitchIcon,
-  AppsIcon, CheckCircleIcon, HistoryIcon, KeyIcon, ListUnorderedIcon, PackageIcon, PlugIcon, ServerIcon, SparkleFillIcon, TerminalIcon, WorkflowIcon, type Icon, LockIcon } from '@primer/octicons-react'
+  AppsIcon, CheckCircleIcon, FileCodeIcon, HistoryIcon, KeyIcon, ListUnorderedIcon, PackageIcon, PlugIcon, ServerIcon, SparkleFillIcon, TerminalIcon, WorkflowIcon, type Icon, LockIcon } from '@primer/octicons-react'
 
 // Per-entity leading-visual identity for InventoryList.tsx rows
 // (docs/goals/0007-resource-inventory-redesign.md): the ambient
@@ -55,4 +55,6 @@ export const ENTITY_ICON: Record<string, EntityIcon> = {
   run: { Icon: HistoryIcon, bg: 'var(--bgColor-done-muted)', fg: 'var(--fgColor-done)' },
   // mcpwrite (goal 0337 S2): a resolved MCP write outcome in the same history.
   mcpwrite: { Icon: PlugIcon, bg: 'var(--bgColor-accent-muted)', fg: 'var(--fgColor-accent)' },
+  // output (goal 0326): one run's answer, opened full in its own tab.
+  output: { Icon: FileCodeIcon, bg: 'var(--bgColor-neutral-muted)', fg: 'var(--fgColor-muted)' },
 }

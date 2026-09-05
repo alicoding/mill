@@ -6,6 +6,7 @@ import { useHotkeyCapture } from './hotkeyCapture'
 import { useLatestRunDetail } from './useLatestRunStep'
 import { NodeConfigFields } from './NodeConfigFields'
 import { StepDetailDataPane } from './StepDetailDataPane'
+import { shapeForPayloadKind } from '../shared/payloadShape'
 import styles from './StepDetailOverlay.module.css'
 
 interface StepDetailOverlayProps {
@@ -87,6 +88,7 @@ export function StepDetailOverlay({ node, workflowId, attrs, nodeType, sameKindN
             attributes={step?.outputAttributes}
             emptyMessage={emptyMessage}
             testId="step-detail-output"
+            shape={shapeForPayloadKind(nodeType?.Produces?.kind, nodeType?.Produces?.passthrough)}
           />
         </div>
       </div>

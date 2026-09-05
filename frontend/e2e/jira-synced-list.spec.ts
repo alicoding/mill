@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/server'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
+import { createSecret } from './fixtures/secretStore'
 
 // The synced List (goal 0299): the seeded "Example: Jira issues → List"
 // workflow, pointed at a fake Jira answering the JQL search endpoint,
@@ -19,7 +20,7 @@ const REQUEST_ID = 'example-jira-search'
 const WORKFLOW_ID = 'example-jira-issues-sync-workflow'
 const LIST_ID = 'example-jira-issues-list'
 
-type HTTPRequestRecord = { ID: string; Label: string; BaseURL: string; Method: string; Body: string; AuthType: string; Headers: Record<string, string> | null; OpenAPISpec: string; Auth: unknown; JOSE: unknown; Description: string }
+type HTTPRequestRecord = { ID: string; Label: string; BaseURL: string; Method: string; Body: string; AuthType: string; SecretRef: string; Headers: Record<string, string> | null; OpenAPISpec: string; Auth: unknown; JOSE: unknown; Description: string }
 
 test('the seeded Jira sync mirrors a fake search into the List by key, updates in place on the next run, and never writes back', async ({ page }) => {
   let status = 'In Progress'
@@ -39,8 +40,11 @@ test('the seeded Jira sync mirrors a fake search into the List by key, updates i
   const requests = await callBindingViaRPC<HTTPRequestRecord[]>(page, `${CONFIGURE}.HTTPRequests`, [])
   const seeded = requests.find((r) => r.ID === REQUEST_ID)
   if (!seeded) throw new Error('the seeded Jira search request is missing')
-  const update = (baseURL: string) => callBindingViaRPC(page, `${CONFIGURE}.UpdateHTTPRequest`, [
-    seeded.ID, seeded.Label, baseURL, seeded.Method, seeded.Body, seeded.AuthType, seeded.Headers ?? {}, seeded.OpenAPISpec, seeded.Auth ?? null, seeded.JOSE ?? null, seeded.Description,
+  // The request NAMES its secret (goal 0306): the update carries the
+  // reference this test stores below, so the seeded Jira request has a
+  // credential to resolve at run time.
+  const update = (baseURL: string, secretRef: string) => callBindingViaRPC(page, `${CONFIGURE}.UpdateHTTPRequest`, [
+    seeded.ID, seeded.Label, baseURL, seeded.Method, seeded.Body, seeded.AuthType, secretRef, seeded.Headers ?? {}, seeded.OpenAPISpec, seeded.Auth ?? null, seeded.JOSE ?? null, seeded.Description,
   ])
   // The HTTP step is an external effect: it parks for approval like
   // any other, and the test approves it the way Review does.
@@ -61,8 +65,8 @@ test('the seeded Jira sync mirrors a fake search into the List by key, updates i
     return list.Rows ?? []
   }
   try {
-    await update(`http://127.0.0.1:${port}`)
-    await callBindingViaRPC(page, `${CONFIGURE}.SetHTTPRequestSecret`, [REQUEST_ID, 'fake-pat'])
+    const secretRef = await createSecret(page, 'ZzE2eJiraPat', 'fake-pat')
+    await update(`http://127.0.0.1:${port}`, secretRef)
     await callBindingViaRPC(page, `${COMPOSITION}.SetWorkflowDisabled`, [WORKFLOW_ID, false])
 
     await runAndWait()
@@ -90,7 +94,7 @@ test('the seeded Jira sync mirrors a fake search into the List by key, updates i
     await expect(page.getByTestId('list-rows-editor')).toContainText('Ship the sync')
   } finally {
     await callBindingViaRPC(page, `${COMPOSITION}.SetWorkflowDisabled`, [WORKFLOW_ID, true]).catch(() => undefined)
-    await update(seeded.BaseURL).catch(() => undefined)
+    await update(seeded.BaseURL, seeded.SecretRef ?? '').catch(() => undefined)
     for (const r of await rows().catch(() => [])) {
       await callBindingViaRPC(page, `${CONFIGURE}.DeleteListRow`, [LIST_ID, r.ID]).catch(() => undefined)
     }
