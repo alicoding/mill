@@ -1,6 +1,6 @@
 import { ImageIcon } from '@primer/octicons-react'
 import { AtlasService } from '../../shared/bindings'
-import { fileToBase64 } from '../../shared/base64Blob'
+import { blobToBase64 } from '../../shared/base64Blob'
 import { identityOf, registerNoun, type AtlasToolShape } from '../atlasNounRegistry'
 import { normalizeLocalPathInput, titleFromFilename } from '../atlasCreateHelpers'
 import { makeMirrorImageContent } from '../extensions/AtlasMirrorImageContent'
@@ -82,7 +82,7 @@ export const imageTool = {
     if ('file' in input) {
       const ext = IMAGE_MIME_EXTENSIONS[input.file.type]
       if (!ext) throw new Error(`unsupported pasted image type: ${input.file.type}`)
-      const base64 = await fileToBase64(input.file)
+      const base64 = await blobToBase64(input.file)
       const mirrorPath = await AtlasService.SaveImageBytes(base64, ext, input.title)
       return { kind: 'image', title: input.title, mirrorPath }
     }

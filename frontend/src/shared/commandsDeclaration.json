@@ -280,6 +280,26 @@
     "needs": null
   },
   {
+    "id": "atlas.selection.copyAsImage",
+    "label": "Copy as image",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "atlas.selection.exportAsImage",
+    "label": "Export as image…",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "atlas.share.copyContext",
     "label": "Copy space as context",
     "binding": null,

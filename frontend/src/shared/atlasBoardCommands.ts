@@ -41,6 +41,35 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     run: () => useUISignalStore.getState().requestAtlasExport(),
   },
   {
+    // "Copy as image" / "Export as image..." (docs/goals/0201): both
+    // picture the LIVE selection, and with nothing selected both widen
+    // to the whole board rather than refusing -- so the only state
+    // that can make them invalid is an empty board, which is what
+    // atlasBoardNodeCount answers.
+    //
+    // Unbound by construction, not by preference. The converged key for
+    // this action is a bare Shift+Option+C, and comboFromEvent requires
+    // Cmd or Ctrl specifically (shared/keybinding.ts's own doc comment):
+    // a modifier set without one of those two never becomes a KeyCombo,
+    // so no binding here could dispatch. Freely assignable in
+    // Settings > Keyboard Shortcuts, same as every other
+    // defaultBinding: null command.
+    id: 'atlas.selection.copyAsImage',
+    label: 'commands.atlas.selection.copyAsImage',
+    defaultBinding: null,
+    surface: ['atlas'],
+    enabled: () => useUISignalStore.getState().atlasBoardNodeCount > 0,
+    run: () => useUISignalStore.getState().requestAtlasCopyImage(),
+  },
+  {
+    id: 'atlas.selection.exportAsImage',
+    label: 'commands.atlas.selection.exportAsImage',
+    defaultBinding: null,
+    surface: ['atlas'],
+    enabled: () => useUISignalStore.getState().atlasBoardNodeCount > 0,
+    run: () => useUISignalStore.getState().requestAtlasExportImage(),
+  },
+  {
     id: 'atlas.addFromFolder',
     label: 'commands.atlas.addFromFolder',
     defaultBinding: null,

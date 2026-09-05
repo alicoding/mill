@@ -235,3 +235,10 @@
     background: var(--bgColor-accent-muted);
     color: var(--fgColor-accent);
 }
+
+/* The rotated shape's own ring, suppressed for a capture the same way
+   the default one is (goal 0201) -- it sits on `.object`, so
+   AtlasBoard.module.css's rule cannot reach it. */
+:global(.react-flow__viewport[data-capturing='true'] .react-flow__node.selected) .object[data-shape-type] {
+    box-shadow: none;
+}

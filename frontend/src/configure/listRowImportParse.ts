@@ -2,7 +2,7 @@ import Papa from 'papaparse'
 import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { ConfigureService, type ParsedXlsxFile } from '../shared/bindings'
-import { fileToBase64 } from '../shared/base64Blob'
+import { blobToBase64 } from '../shared/base64Blob'
 
 // docs/goals/0070's CSV/JSON row import: parsing lives here, pure and
 // framework-free, so the mapping/validation logic is unit-testable
@@ -96,7 +96,7 @@ function normalizeParsedXlsxFile(raw: ParsedXlsxFile): ParsedFile {
 // inferListSchema) never learns xlsx exists.
 export async function parseUploadedFile(file: File): Promise<ParsedFile> {
   if (file.name.toLowerCase().endsWith('.xlsx')) {
-    const base64 = await fileToBase64(file)
+    const base64 = await blobToBase64(file)
     const raw = await ConfigureService.ParseXlsxFile(base64)
     return normalizeParsedXlsxFile(raw)
   }
