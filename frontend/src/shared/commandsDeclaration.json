@@ -280,6 +280,26 @@
     "needs": null
   },
   {
+    "id": "atlas.selection.copyAsImage",
+    "label": "Copy as image",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "atlas.selection.exportAsImage",
+    "label": "Export as image…",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "atlas.share.copyContext",
     "label": "Copy space as context",
     "binding": null,
@@ -404,6 +424,30 @@
     "needs": null
   },
   {
+    "id": "clientcert.delete",
+    "label": "Delete certificate",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "clientcert.duplicate",
+    "label": "Duplicate certificate",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "clientcert.edit",
+    "label": "Edit certificate",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
     "id": "clipboard.delete",
     "label": "Delete",
     "binding": null,
@@ -444,8 +488,160 @@
     "needs": null
   },
   {
+    "id": "configure.aiprovider.delete",
+    "label": "Delete",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.aiprovider.export",
+    "label": "Export",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.aiprovider.reset",
+    "label": "Reset to shipped example",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.conversionprofile.delete",
+    "label": "Delete",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.decision.delete",
+    "label": "Delete",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.decision.duplicate",
+    "label": "Duplicate",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.decision.export",
+    "label": "Export",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.decision.reset",
+    "label": "Reset to shipped example",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.execenv.delete",
+    "label": "Delete",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.execenv.export",
+    "label": "Export",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.execenv.reset",
+    "label": "Reset to shipped example",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.list.delete",
+    "label": "Delete",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.list.export",
+    "label": "Export",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.list.reset",
+    "label": "Reset to shipped example",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.mcpserver.delete",
+    "label": "Delete",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.mcpserver.export",
+    "label": "Export",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.mcpserver.listTools",
+    "label": "List tools",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.mcpserver.reset",
+    "label": "Reset to shipped example",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
     "id": "configure.new.aiproviders",
     "label": "New AI provider",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.new.certificates",
+    "label": "New client certificate",
     "binding": null,
     "surface": null,
     "enabled": false,
@@ -506,6 +702,62 @@
     "surface": null,
     "enabled": false,
     "needs": null
+  },
+  {
+    "id": "configure.request.delete",
+    "label": "Delete",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.request.edit",
+    "label": "Edit",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.request.export",
+    "label": "Export",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.request.reset",
+    "label": "Reset to shipped example",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.secretsource.delete",
+    "label": "Delete",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.steptype.delete",
+    "label": "Delete",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.steptype.export",
+    "label": "Export",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
   },
   {
     "id": "docs.search",
@@ -704,6 +956,30 @@
     "surface": null,
     "enabled": true,
     "needs": null
+  },
+  {
+    "id": "secret.row.delete",
+    "label": "Delete",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "secret.row.edit",
+    "label": "Edit",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "secret.row.history",
+    "label": "History",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
   },
   {
     "id": "secrets.lockVault",
@@ -986,6 +1262,38 @@
     ],
     "enabled": true,
     "needs": null
+  },
+  {
+    "id": "workflow.row.delete",
+    "label": "Delete",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "workflow.row.edit",
+    "label": "Edit",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "workflow.row.export",
+    "label": "Export",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "workflow.row.reset",
+    "label": "Reset to shipped example",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
   },
   {
     "id": "workflow.run",

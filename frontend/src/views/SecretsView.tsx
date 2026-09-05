@@ -13,6 +13,8 @@ import { vaultErrorKind } from '../shared/secretsCommands'
 import { messageOf } from '../shared/userError'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
+import { entityRowContext } from '../shared/entityRowCommands'
+import { useUISignalStore } from '../shared/uiSignalStore'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
@@ -110,6 +112,7 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
     })
   }, [])
 
+
   const setupVault = () => {
     setBusy(true)
     setError('')
@@ -132,6 +135,28 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
     setEditingID(id)
     setFormOpen(true)
   }
+
+  // secret.row.edit / secret.row.history (goal 0346): the row's actions
+  // are registry commands, which cannot reach this view's own panels --
+  // they name the row through a signal, consumed the same set-then-
+  // consume way Configure's edit jump already is.
+  const secretPanelRequest = useUISignalStore((s) => s.secretPanelRequest)
+  const consumeSecretPanel = useUISignalStore((s) => s.consumeSecretPanel)
+  useEffect(() => {
+    if (!secretPanelRequest) return
+    const { panel, id } = secretPanelRequest
+    consumeSecretPanel()
+    if (panel === 'edit') startEdit(id)
+    else setHistoryID(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- startEdit/consumeSecretPanel deliberately excluded, the same set-then-consume shape ConfigureLists.tsx's own signal effect documents
+  }, [secretPanelRequest])
+
+  // A deleted secret's detail panel has nothing left to show; the row
+  // command that deleted it cannot reach this state, so the list it
+  // re-read is what closes the panel.
+  useEffect(() => {
+    if (detailID && list !== null && !list.some((s) => s.ID === detailID)) setDetailID(null)
+  }, [list, detailID])
 
   const remove = (id: string) => {
     SecretService.DeleteSecret(id).then(() => { setDetailID(null); refresh() }).catch((err) => setError(String(err)))
@@ -271,11 +296,11 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
     updatedAt: s.UpdatedAt,
     onOpen: () => setDetailID(s.ID),
     menuActions: [
-      { label: t('editButton'), onClick: () => startEdit(s.ID) },
-      { label: t('historyButton'), onClick: () => setHistoryID(s.ID) },
+      { commandId: 'secret.row.edit', ctx: entityRowContext('secret', s.ID) },
+      { commandId: 'secret.row.history', ctx: entityRowContext('secret', s.ID) },
       {
-        label: t('deleteButton'),
-        onClick: () => remove(s.ID),
+        commandId: 'secret.row.delete',
+        ctx: entityRowContext('secret', s.ID),
         danger: true,
         confirm: { title: t('deleteConfirmTitle'), body: t('deleteConfirmBody', { label: s.Title }) },
       },

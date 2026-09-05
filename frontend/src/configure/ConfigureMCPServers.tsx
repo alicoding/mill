@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { Button, IconButton, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, PencilIcon, PlusIcon, ServerIcon, TrashIcon } from '@primer/octicons-react'
@@ -15,10 +14,14 @@ import type { Field } from '../../bindings/github.com/alicoding/mill/internal/do
 import { refreshMCPServers, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
+import { entityRowContext } from '../shared/entityRowCommands'
+import { useEntityActionError } from '../shared/entityActionErrorStore'
+import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { useUISignalStore } from '../shared/uiSignalStore'
+import { useMCPToolsStore } from '../shared/mcpToolsStore'
 import { EntityConfigFields } from './EntityConfigFields'
 import { ConfigureEntityPage } from './ConfigureEntityPage'
 import { useSeedLifecycle } from './useSeedLifecycle'
@@ -49,6 +52,9 @@ function argsToRows(args: string[] | null | undefined): string[] {
 // are this entity's own.
 export function ConfigureMCPServers() {
   const { t } = useTranslation('configure')
+  // A row action's refusal, recorded by the command that met it
+  // (shared/entityActionErrorStore.ts, goal 0346).
+  const rowActionError = useEntityActionError('mcpserver')
   // Store-shared (refreshMCPServers, shared/configureEntityStore.ts) --
   // see ConfigureLists.tsx's identical comment (goal 0017 P1-1).
   const servers = useConfigureEntityStore((s) => s.mcpServers)
@@ -63,10 +69,12 @@ export function ConfigureMCPServers() {
   const [env, setEnv] = useState<string[] | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
-  const [toolsByServer, setToolsByServer] = useState<Record<string, Tool[] | string>>({})
+  // "List tools" is a registry command now (goal 0346), so its answer
+  // lives where both the command and this page can see it.
+  const toolsByServer = useMCPToolsStore((s) => s.byServer)
   const [viewMode, setViewMode] = useViewMode('mill-mcpservers-view-mode')
 
-  const seedLifecycle = useSeedLifecycle<MCPServer>(() => ConfigureService.RestorableMCPServers())
+  const seedLifecycle = useSeedLifecycle<MCPServer>(() => ConfigureService.RestorableMCPServers(), servers)
 
   const refetch = () => {
     void refreshMCPServers()
@@ -146,31 +154,9 @@ export function ConfigureMCPServers() {
     }
   }
 
-  const remove = (id: string, label: string) => {
-    void deleteWithUndo({ entity: 'mcpserver', id, label, remove: () => ConfigureService.DeleteMCPServer(id), refetch: () => {
-      refetch()
-      seedLifecycle.refresh()
-    }, onError: (err) => importExport.setImportError(String(err)) })
-  }
-
-  // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037
-  // items 4/5).
-  const resetToSeed = (id: string) => {
-    ConfigureService.ResetMCPServerToSeed(id).then(() => {
-      refetch()
-      seedLifecycle.refresh()
-    }).catch((err) => importExport.setImportError(String(err)))
-  }
-
   // Table-view direct-wiring half of the Button-semantics convention
   // (.claude/rules/frontend.md) -- see ConfigureRequests.tsx's
   // identical comment.
-  const listTools = (id: string) => {
-    ConfigureService.ListMCPServerTools(id)
-      .then((tools) => setToolsByServer((prev) => ({ ...prev, [id]: tools ?? [] })))
-      .catch((err) => setToolsByServer((prev) => ({ ...prev, [id]: String(err) })))
-  }
-
   const updateArgRow = (i: number, value: string) => {
     setArgRows((prev) => prev.map((a, idx) => (idx === i ? value : a)))
   }
@@ -197,17 +183,13 @@ export function ConfigureMCPServers() {
       description: `${s.Command} ${(s.Args ?? []).join(' ')}`.trim(),
       onOpen: () => startEdit(s),
       menuActions: [
-        { label: t('configureMCPServers.listTools'), onClick: () => listTools(s.ID) },
-        { label: t('export'), onClick: () => importExport.exportItem(s.ID, s.Label) },
-        // Reset-to-shipped-example (docs/goals/0037 item 4) -- hidden
-        // (not shown-disabled) when already current, same reasoning
-        // CompositionView.tsx's identical wiring documents.
-        ...(s.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(s.ID) }] : []),
-        {
-          label: t('delete'),
-          onClick: () => remove(s.ID, s.Label),
-          danger: true,
-        },
+        { commandId: 'configure.mcpserver.listTools', ctx: entityRowContext('mcpserver', s.ID) },
+        { commandId: 'configure.mcpserver.export', ctx: entityRowContext('mcpserver', s.ID) },
+        // Reset-to-shipped-example (docs/goals/0037 item 4): the command's
+        // own enabled() hides it once the row matches the shipped golden,
+        // so the row only names the revision it would restore.
+        { commandId: 'configure.mcpserver.reset', ctx: entityRowContext('mcpserver', s.ID), label: seedReset.label },
+        { commandId: 'configure.mcpserver.delete', ctx: entityRowContext('mcpserver', s.ID), danger: true },
       ],
     }
   })
@@ -260,10 +242,10 @@ export function ConfigureMCPServers() {
       importTestId="import-mcpserver"
       onImportFile={importExport.handleImportFile}
       onImportClick={importExport.openImportPicker}
-      importErrorNode={importExport.importError && (
+      importErrorNode={(importExport.importError ?? rowActionError) && (
         <Stack direction="horizontal" gap="condensed" align="center">
-          <Text as="p" size="small" className={styles.error} data-testid="import-mcpserver-error">{importExport.importError}</Text>
-          <CopyDiagnosisButton error={importExport.importError} testId="import-mcpserver-copy-diagnosis" />
+          <Text as="p" size="small" className={styles.error} data-testid="import-mcpserver-error">{importExport.importError ?? rowActionError}</Text>
+          <CopyDiagnosisButton error={(importExport.importError ?? rowActionError)!} testId="import-mcpserver-copy-diagnosis" />
         </Stack>
       )}
       restorable={seedLifecycle.restorable}
@@ -327,10 +309,10 @@ export function ConfigureMCPServers() {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (s) => (
                   <Stack direction="horizontal" gap="condensed">
-                    <Button size="small" variant="invisible" onClick={() => listTools(s.ID)}>{t('configureMCPServers.listTools')}</Button>
+                    <Button size="small" variant="invisible" onClick={() => void runCommand('configure.mcpserver.listTools', entityRowContext('mcpserver', s.ID))}>{t('configureMCPServers.listTools')}</Button>
                     <IconButton icon={PencilIcon} aria-label={t('configureMCPServers.editAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => startEdit(s)} />
-                    <IconButton icon={DownloadIcon} aria-label={t('configureMCPServers.exportAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => importExport.exportItem(s.ID, s.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={t('configureMCPServers.deleteAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => remove(s.ID, s.Label)} />
+                    <IconButton icon={DownloadIcon} aria-label={t('configureMCPServers.exportAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.mcpserver.export', entityRowContext('mcpserver', s.ID))} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureMCPServers.deleteAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.mcpserver.delete', entityRowContext('mcpserver', s.ID))} />
                   </Stack>
                 ),
               },

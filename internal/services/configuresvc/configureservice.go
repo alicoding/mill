@@ -15,10 +15,12 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
+	"github.com/alicoding/mill/internal/adapters/httpconnector"
 	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/aiprovider"
+	"github.com/alicoding/mill/internal/domain/clientcert"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/conversionprofile"
 	"github.com/alicoding/mill/internal/domain/decision"
@@ -88,6 +90,11 @@ type ConfigureService struct {
 	execEnvs           []execenv.ExecEnv
 	secretSources      []secretsource.Source
 	conversionProfiles []conversionprofile.Profile
+	clientCerts        []clientcert.ClientCertificate
+	// clientCertStatuses caches one decoded status per entity revision
+	// (clientcert_resolve.go): the list reads a status per row, and a
+	// decode per render would re-read the vault every time.
+	clientCertStatuses clientCertStatusCache
 	aiProviders        []aiprovider.AIProvider
 	declaredStepTypes  []declaredsteptype.DeclaredStepType
 	composition        *compositionsvc.CompositionService
@@ -152,6 +159,7 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.restoreExecEnvs()
 	c.restoreSecretSources()
 	c.restoreConversionProfiles()
+	c.restoreClientCertificates()
 	c.restoreAIProviders()
 	c.restoreDeclaredStepTypes()
 	// reconcileBuiltIn* (configureservice_builtin.go, docs/goals/0037)
@@ -163,7 +171,14 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.reconcileBuiltInExecEnvs()
 	c.reconcileBuiltInAIProviders()
 	c.reconcileBuiltInConversionProfiles()
+	c.reconcileBuiltInClientCertificates()
 	c.reconcileBuiltInDeclaredStepTypes()
+	// Client certificates reach the transport through this one seam
+	// (goal 0306 S1): httpconnector asks per request, this service
+	// answers from the vault. Wired here rather than in main.go for the
+	// same reason every lookup above is -- httpconnector must not know
+	// this package exists.
+	httpconnector.SetClientTLS(c)
 	composition.SetConversionProfileLookup(c.resolveConversionProfile)
 	composition.SetHTTPRequestLookup(c.resolveHTTPRequest)
 	composition.SetListLookup(c.resolveList)

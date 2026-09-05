@@ -177,7 +177,7 @@ test('typing a few chars and picking a Configure entity jumps the main window to
     await expect(search).toBeFocused()
     await search.fill('country')
 
-    const option = page.getByRole('option', { name: 'Example: Country codes' })
+    const option = page.getByRole('option', { name: 'Country codes' })
     await expect(option).toBeVisible()
     await option.click()
 
@@ -188,7 +188,7 @@ test('typing a few chars and picking a Configure entity jumps the main window to
     await expect(mainPage.getByTestId('configure-lists')).toBeVisible({ timeout: 10_000 })
     await expect(
       mainPage.locator('[data-testid="inventory-row"][data-entity="list"]', {
-        has: mainPage.getByText('Example: Country codes', { exact: true }),
+        has: mainPage.getByText('Country codes', { exact: true }),
       }),
     ).toBeVisible()
   } finally {
@@ -200,7 +200,7 @@ test('typing a few chars and picking a Configure entity jumps the main window to
 // extended to Decisions and AI Providers -- two of the four Configure
 // entity kinds added alongside the original three (Integration/Lists/
 // MCP Servers). Reuses seeded builtins (internal/domain/decision/
-// builtin.go's "Approve (example)", internal/domain/aiprovider/
+// builtin.go's "Approve", internal/domain/aiprovider/
 // builtin.go's "Local Ollama") rather than creating throwaway entities.
 test('Quick Panel jump rows exist for Decisions and AI Providers (goal 0071 parity sweep)', async ({ page }) => {
   const mainPage = await page.context().newPage()
@@ -212,8 +212,8 @@ test('Quick Panel jump rows exist for Decisions and AI Providers (goal 0071 pari
     await expect(search).toBeFocused()
 
     await search.fill('Approve')
-    await expect(page.getByRole('option', { name: 'Approve (example)' })).toBeVisible()
-    await page.getByRole('option', { name: 'Approve (example)' }).click()
+    await expect(page.getByRole('option', { name: 'Approve' })).toBeVisible()
+    await page.getByRole('option', { name: 'Approve' }).click()
     await expect(mainPage.getByTestId('configure-decisions')).toBeVisible({ timeout: 10_000 })
 
     await search.fill('')

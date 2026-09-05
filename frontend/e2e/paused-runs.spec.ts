@@ -22,7 +22,7 @@ import { activePanel, workflowRow } from './fixtures/canvas'
 // list -- which another spec cohabiting one worker's server would
 // contaminate (.claude/rules/testing.md's shared-vs-dedicated rule).
 
-const SEED = 'Example: Branch to a decision'
+const SEED = 'Route an expense by amount'
 
 interface SpawnedPage {
   server: SpawnedServer

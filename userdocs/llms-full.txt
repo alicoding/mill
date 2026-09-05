@@ -520,6 +520,16 @@ brought into view.
   own colour, stroke, and rotation come along; a freeform arrow, a
   sketch, or an image doesn't have a faithful box to become yet, so
   it's named rather than silently left out.
+- **Take a picture of what you're looking at.** Right-click a
+  selection, or open the Atlas menu, for "Copy as image" and "Export as
+  image…". Copy puts a sharp PNG straight on your clipboard, ready to
+  paste into a document, a deck, or a chat. Export opens a small dialog
+  where you pick the scale and whether the background comes along, then
+  saves the file. Both picture whatever is selected; with nothing
+  selected, both widen to the whole board. Selection outlines, drag
+  handles and resize frames never appear in the picture. Working in a
+  browser against a Mill running elsewhere, the copy lands on that
+  machine's clipboard, and the confirmation says so.
 
 ## Keeping Atlas in sync
 
@@ -700,7 +710,7 @@ the footer shows what the highlighted row can do:
 
 Anything you type that isn't a workflow's name can be kept: **Save as
 note** files it into the Scratchpad card on the board, **Save as
-task** adds it as a row to the Example: Task tracker list, scheduled
+task** adds it as a row to the Engagement tasks list, scheduled
 for today. Both close the panel the moment they land.
 
 The same panel is the fastest way to update Mill: type "update" and
@@ -1333,6 +1343,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.redo` | Redo | — | atlas | Always available |
 | `atlas.roadmap` | Open roadmap | — | atlas | Always available |
 | `atlas.selectAll` | Select all | `⌘A` | atlas | Always available |
+| `atlas.selection.copyAsImage` | Copy as image | — | atlas | Conditional — available only in a matching state |
+| `atlas.selection.exportAsImage` | Export as image… | — | atlas | Conditional — available only in a matching state |
 | `atlas.share.copyContext` | Copy space as context | — | atlas | Always available |
 | `atlas.share.copyLinks` | Copy space links | — | atlas | Always available |
 | `atlas.undo` | Undo | — | atlas | Always available |
@@ -1346,12 +1358,34 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `canvas.zoomIn` | Zoom in | `⌘+` | composition | Always available |
 | `canvas.zoomOut` | Zoom out | `⌘-` | composition | Always available |
 | `capture.note` | Capture a note | — | Global | Always available |
+| `clientcert.delete` | Delete certificate | — | Global | Acts on the selected entity |
+| `clientcert.duplicate` | Duplicate certificate | — | Global | Acts on the selected entity |
+| `clientcert.edit` | Edit certificate | — | Global | Acts on the selected entity |
 | `clipboard.delete` | Delete | — | Global | Acts on the selected clipboard entry |
 | `clipboard.history.open` | Clipboard history | — | Global | Always available |
 | `clipboard.pin` | Pin | — | Global | Acts on the selected clipboard entry |
 | `clipboard.unpin` | Unpin | — | Global | Acts on the selected clipboard entry |
 | `codingLoop.run` | Run from clipboard… | — | Global | Always available |
+| `configure.aiprovider.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.aiprovider.export` | Export | — | Global | Acts on the selected entity |
+| `configure.aiprovider.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.conversionprofile.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.decision.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.decision.duplicate` | Duplicate | — | Global | Acts on the selected entity |
+| `configure.decision.export` | Export | — | Global | Acts on the selected entity |
+| `configure.decision.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.execenv.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.execenv.export` | Export | — | Global | Acts on the selected entity |
+| `configure.execenv.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.list.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.list.export` | Export | — | Global | Acts on the selected entity |
+| `configure.list.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.mcpserver.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.mcpserver.export` | Export | — | Global | Acts on the selected entity |
+| `configure.mcpserver.listTools` | List tools | — | Global | Acts on the selected entity |
+| `configure.mcpserver.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
 | `configure.new.aiproviders` | New AI provider | — | Global | Always available |
+| `configure.new.certificates` | New client certificate | — | Global | Always available |
 | `configure.new.conversionprofiles` | New conversion profile | — | Global | Always available |
 | `configure.new.decisions` | New decision | — | Global | Always available |
 | `configure.new.execenvs` | New environment | — | Global | Always available |
@@ -1359,6 +1393,13 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.new.lists` | New list | — | Global | Always available |
 | `configure.new.mcpservers` | New MCP server | — | Global | Always available |
 | `configure.new.steptypes` | New step type | — | Global | Always available |
+| `configure.request.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.request.edit` | Edit | — | Global | Acts on the selected entity |
+| `configure.request.export` | Export | — | Global | Acts on the selected entity |
+| `configure.request.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.secretsource.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.steptype.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.steptype.export` | Export | — | Global | Acts on the selected entity |
 | `docs.search` | Search docs | — | Global | Always available |
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
@@ -1383,6 +1424,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `run.step` | Step | — | Global | Acts on the selected run |
 | `run.stop` | Stop run | — | Global | Acts on the selected run |
 | `runMonitor.open` | Run monitor | — | Global | Conditional — available only in a matching state |
+| `secret.row.delete` | Delete | — | Global | Acts on the selected entity |
+| `secret.row.edit` | Edit | — | Global | Acts on the selected entity |
+| `secret.row.history` | History | — | Global | Acts on the selected entity |
 | `secrets.lockVault` | Lock vault | — | Global | Conditional — available only in a matching state |
 | `secrets.resetVault` | Start a new vault | — | Global | Conditional — available only in a matching state |
 | `secrets.unlockVault` | Unlock vault | — | Global | Conditional — available only in a matching state |
@@ -1418,6 +1462,10 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `workflow.open` | Open workflow | — | Global | Acts on the selected workflow |
 | `workflow.pin` | Pin | — | Global | Acts on the selected workflow |
 | `workflow.publish` | Publish current draft | — | composition | Conditional — available only in a matching state |
+| `workflow.row.delete` | Delete | — | Global | Acts on the selected entity |
+| `workflow.row.edit` | Edit | — | Global | Acts on the selected entity |
+| `workflow.row.export` | Export | — | Global | Acts on the selected entity |
+| `workflow.row.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
 | `workflow.run` | Run workflow | `⌘↩` | Global | Conditional — available only in a matching state |
 | `workflow.runAndWatch` | Run and watch | — | Global | Acts on the selected workflow |
 | `workflow.runStepped` | Run step by step | — | Global | Conditional — available only in a matching state |
@@ -1487,6 +1535,7 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | New decision | — | `configure.new.decisions` |
 | New environment | — | `configure.new.execenvs` |
 | New AI provider | — | `configure.new.aiproviders` |
+| New client certificate | — | `configure.new.certificates` |
 | New conversion profile | — | `configure.new.conversionprofiles` |
 | New step type | — | `configure.new.steptypes` |
 
@@ -1564,6 +1613,8 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Contents | — | `atlas.contents.open` |
 | Import atlas | — | `atlas.import` |
 | Export atlas | — | `atlas.export` |
+| Copy as image | — | `atlas.selection.copyAsImage` |
+| Export as image… | — | `atlas.selection.exportAsImage` |
 | Add cards from a folder | — | `atlas.addFromFolder` |
 | Copy space as context | — | `atlas.share.copyContext` |
 | Copy space links | — | `atlas.share.copyLinks` |
@@ -1608,6 +1659,97 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Open Developer Tools | — | Provided by macOS |
 
 <!-- END GENERATED -->
+
+---
+
+# Client certificates
+
+Some servers ask the caller to prove who it is with a certificate, not
+just a token. Mill holds those certificates in **Configure ›
+Certificates**, one per host, and presents the right one automatically
+on every request it makes to that host.
+
+Nothing about a client certificate lives on an individual request. You
+name a host once; every integration, every workflow step and every
+agent-driven call to that host uses it.
+
+## Add one
+
+1. Open **Configure › Certificates** and choose **New certificate**.
+2. Give it a **Label** you will recognise in a list.
+3. Set the **Host**. Either an exact host, `api.example.com`, or a
+   wildcard covering one level of subdomain, `*.example.com`. Add a
+   port when the server uses a non-standard one: `api.example.com:8443`.
+4. Pick the **Certificate**, and the **Private key** beside it.
+
+Both fields are pickers over your secret store, not file paths. If the
+certificate is not stored yet, **Add** beside the picker opens the
+store's own entry form without leaving the page.
+
+Under **Advanced** there are two more fields, both optional: a
+**Passphrase** for an encrypted key or bundle, and a **CA certificate**
+for a server that presents a private root. The CA you add here is used
+*alongside* the authorities your computer already trusts, never instead
+of them.
+
+## Which certificate a request uses
+
+Mill picks the most specific host that matches:
+
+- An exact host beats a wildcard.
+- A longer wildcard suffix beats a shorter one, so `*.pay.example.com`
+  wins over `*.example.com`.
+- An entry naming a port only matches that port.
+
+If nothing matches, the request goes out with no client certificate. A
+server that wanted one then refuses the connection, and Mill says which
+host had no match.
+
+## Formats Mill reads
+
+- A **PEM** certificate (or a chain, leaf first) beside a **PEM key**.
+  The key may be PKCS#8, PKCS#1 or SEC 1, encrypted or not.
+- A **PKCS#12 / PFX bundle**, which carries its own key. Pick it in the
+  Certificate field and the Private key field disappears: the bundle
+  already has one. Put the bundle's passphrase in the Passphrase field.
+
+One format is refused on purpose: a PEM key encrypted the old way, with
+a `Proc-Type: 4,ENCRYPTED` header. Its protection is not sound, and Mill
+tells you to export the key as PKCS#8 or PKCS#12 instead. From OpenSSL,
+`openssl pkcs8 -topk8 -in old.key -out new.key` does it.
+
+## Reading the list
+
+Each row shows its host and a status:
+
+- **Ready** — the certificate works and is not near its end.
+- **Expires in N days** — inside the last 30 days of validity.
+- **Expired** — past its end date, or not yet started. Requests to that
+  host fail until you replace it.
+- **Needs a certificate and key** — you have not finished setting it up.
+- **Can't read the certificate** — the material is named but cannot be
+  opened. Unlock your secret store first; if it stays, the passphrase
+  or the entry is wrong.
+
+Only the certificate's subject, issuer and dates are read to build this.
+The certificate and key themselves are never shown, copied or logged,
+and each time Mill reads one it records the read in the secret audit
+trail.
+
+## Test a host
+
+Open a certificate and choose **Test**. Mill opens a TLS connection to
+the host, completes the handshake, and closes it without sending a
+request. It reports either that the handshake succeeded or what stopped
+it. A wildcard host names a family rather than one machine, so Test is
+unavailable there.
+
+## On a request
+
+An integration's **Auth** section says which certificate its base URL's
+host already has, or that the host has none and offers **Add one**,
+which starts a new certificate with the host filled in. It is a
+statement about the host, not a setting on the request.
 
 ---
 

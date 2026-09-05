@@ -103,6 +103,12 @@
   },
   {
     "menu": "File > New…",
+    "item": "New client certificate",
+    "shortcut": "",
+    "command": "configure.new.certificates"
+  },
+  {
+    "menu": "File > New…",
     "item": "New conversion profile",
     "shortcut": "",
     "command": "configure.new.conversionprofiles"
@@ -412,6 +418,18 @@
     "item": "Export atlas",
     "shortcut": "",
     "command": "atlas.export"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Copy as image",
+    "shortcut": "",
+    "command": "atlas.selection.copyAsImage"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Export as image…",
+    "shortcut": "",
+    "command": "atlas.selection.exportAsImage"
   },
   {
     "menu": "Atlas",

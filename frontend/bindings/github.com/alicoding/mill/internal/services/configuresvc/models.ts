@@ -6,6 +6,16 @@
 import * as httprequest$0 from "../../domain/httprequest/models.js";
 
 /**
+ * ClientCertificateMatch is what the request form shows: the entity
+ * that would present a certificate to a URL's host, if any.
+ */
+export interface ClientCertificateMatch {
+    "id": string;
+    "label": string;
+    "host": string;
+}
+
+/**
  * ParsedXlsxFile mirrors listRowImportParse.ts's own ParsedFile shape
  * (frontend/src/configure/listRowImportParse.ts) field-for-field, so
  * xlsx rows feed the identical mapping/inference pipeline the CSV/JSON

@@ -7,6 +7,7 @@ import type { RequestDraft } from './requestDraft'
 import { SecretPicker } from '../shared/SecretPicker'
 import { secretTitleFor } from './secretTitleFor'
 import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
+import { ClientCertMatchLine } from './ClientCertMatchLine'
 import styles from '../shared/ListCard.module.css'
 
 // The Auth and JOSE sections of the request form -- split out of
@@ -125,6 +126,11 @@ export function RequestAuthSections({ draft, setDraft }: {
               />
             </FormControl>
           )}
+
+          {/* Client certificates are per host, not per request (goal
+              0306 S1): this states which one this request's host
+              already uses, and never stores anything itself. */}
+          <ClientCertMatchLine baseURL={draft.baseURL} />
         </Stack>
       </section>
     </>

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { Button, FormControl, IconButton, Select, Stack, Text, TextInput } from '@primer/react'
 import { LockIcon, PencilIcon, PlusIcon, SearchIcon, TrashIcon } from '@primer/octicons-react'
@@ -14,6 +13,9 @@ import { refreshSecretSources, useConfigureEntityStore } from '../shared/configu
 import { refreshSecretTitles } from '../shared/secretTitleCache'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
+import { entityRowContext } from '../shared/entityRowCommands'
+import { useEntityActionError } from '../shared/entityActionErrorStore'
+import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useUISignalStore } from '../shared/uiSignalStore'
@@ -31,6 +33,9 @@ import styles from '../shared/ListCard.module.css'
 // page renders without those controls.
 export function ConfigureSecretSources() {
   const { t } = useTranslation('configure')
+  // A row action's refusal, recorded by the command that met it
+  // (shared/entityActionErrorStore.ts, goal 0346).
+  const rowActionError = useEntityActionError('secretsource')
   const sources = useConfigureEntityStore((s) => s.secretSources)
   const [viewMode, setViewMode] = useViewMode('mill-view-secretsources')
   const [formOpen, setFormOpen] = useState(false)
@@ -109,9 +114,6 @@ export function ConfigureSecretSources() {
     }
   }
 
-  const remove = (id: string, label: string) => {
-    void deleteWithUndo({ entity: 'secretsource', id, label, remove: () => ConfigureService.DeleteSecretSource(id), refetch: refetch, onError: (err) => setError(String(err)) })
-  }
   const sorted = useMemo(() => sortByUpdatedDesc(sources ?? [], (s) => s.UpdatedAt), [sources])
   const items: InventoryItem[] = sorted.map((s) => ({
     id: s.ID,
@@ -125,11 +127,7 @@ export function ConfigureSecretSources() {
     description: [kindLabel(s.Kind), s.Path, problems[s.ID] ? `⚠ ${problemText(problems[s.ID], t)}` : ''].filter(Boolean).join(' · '),
     onOpen: () => startEdit(s),
     menuActions: [
-      {
-        label: t('delete'),
-        onClick: () => remove(s.ID, s.Label),
-        danger: true,
-      },
+      { commandId: 'configure.secretsource.delete', ctx: entityRowContext('secretsource', s.ID), danger: true },
     ],
   }))
 
@@ -148,6 +146,9 @@ export function ConfigureSecretSources() {
       trailingContent={scanOpen ? (
         <SecretsDotenvScanDialog onClose={() => setScanOpen(false)} onChanged={() => { setScanOpen(false); refetch() }} />
       ) : undefined}
+      importErrorNode={rowActionError && (
+        <Text as="p" size="small" className={styles.error} data-testid="secretsource-row-error">{rowActionError}</Text>
+      )}
       primaryLabel={t('configureSecretSources.newSource')}
       primaryTestId="new-secretsource"
       onPrimary={startCreate}
@@ -199,7 +200,7 @@ export function ConfigureSecretSources() {
                 renderCell: (s) => (
                   <Stack direction="horizontal" gap="condensed">
                     <IconButton icon={PencilIcon} aria-label={t('configureSecretSources.editAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => startEdit(s)} />
-                    <IconButton icon={TrashIcon} aria-label={t('configureSecretSources.deleteAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => remove(s.ID, s.Label)} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureSecretSources.deleteAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.secretsource.delete', entityRowContext('secretsource', s.ID))} />
                   </Stack>
                 ),
               },

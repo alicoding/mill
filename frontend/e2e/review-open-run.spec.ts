@@ -16,7 +16,7 @@ import { REVIEW_OPEN_RUN_MCP_BASE_PORT, REVIEW_OPEN_RUN_SERVER_BASE_PORT } from 
 // shared-vs-dedicated rule), the same reasoning guardrail-review.spec.ts
 // records for its own pair.
 
-const GUARDED = 'Example: Approval-gated HTTP call'
+const GUARDED = 'Post an update to the client portal'
 
 interface SpawnedPage {
   server: SpawnedServer

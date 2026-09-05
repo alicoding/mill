@@ -44,6 +44,7 @@ import { useAtlasImagePopoverSignal } from './useAtlasImagePopoverSignal'
 import { useAtlasImageCreate } from './useAtlasImageCreate'
 import { useAtlasPaneClick } from './useAtlasPaneClick'
 import { AtlasSelectionTray } from './AtlasSelectionTray'
+import { AtlasImageExportHost } from './AtlasImageExportHost'
 import { AtlasPlacementPopover } from './AtlasPlacementPopover'
 import { useAtlasNativeFileDrop } from './useAtlasNativeFileDrop'
 import { useAtlasPaste } from './useAtlasPaste'
@@ -467,6 +468,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
           moment a size is picked until the click places it or Escape
           disarms the tool. */}
       {tablePicker.pendingSize && <AtlasTablePlacementGhost size={tablePicker.pendingSize} wrapperRef={wrapperRef} title={nextTableTitle(new Set(allCards.map((c) => c.Title)))} />}
+      <AtlasImageExportHost wrapperRef={wrapperRef} viewedID={viewedID} allCards={allCards} />
       {fileDrop.dropError && <div className={`${styles.dropError} ${runbookStyles.error}`} data-testid="atlas-file-drop-error">{fileDrop.dropError}</div>}
       {fileDrop.dropDuplicateNotice && <div className={styles.dropNotice} data-testid="atlas-file-drop-duplicate-notice">{fileDrop.dropDuplicateNotice}</div>}
       {!readOnly && (haveSelection

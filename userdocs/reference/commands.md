@@ -50,6 +50,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.redo` | Redo | — | atlas | Always available |
 | `atlas.roadmap` | Open roadmap | — | atlas | Always available |
 | `atlas.selectAll` | Select all | `⌘A` | atlas | Always available |
+| `atlas.selection.copyAsImage` | Copy as image | — | atlas | Conditional — available only in a matching state |
+| `atlas.selection.exportAsImage` | Export as image… | — | atlas | Conditional — available only in a matching state |
 | `atlas.share.copyContext` | Copy space as context | — | atlas | Always available |
 | `atlas.share.copyLinks` | Copy space links | — | atlas | Always available |
 | `atlas.undo` | Undo | — | atlas | Always available |
@@ -63,12 +65,34 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `canvas.zoomIn` | Zoom in | `⌘+` | composition | Always available |
 | `canvas.zoomOut` | Zoom out | `⌘-` | composition | Always available |
 | `capture.note` | Capture a note | — | Global | Always available |
+| `clientcert.delete` | Delete certificate | — | Global | Acts on the selected entity |
+| `clientcert.duplicate` | Duplicate certificate | — | Global | Acts on the selected entity |
+| `clientcert.edit` | Edit certificate | — | Global | Acts on the selected entity |
 | `clipboard.delete` | Delete | — | Global | Acts on the selected clipboard entry |
 | `clipboard.history.open` | Clipboard history | — | Global | Always available |
 | `clipboard.pin` | Pin | — | Global | Acts on the selected clipboard entry |
 | `clipboard.unpin` | Unpin | — | Global | Acts on the selected clipboard entry |
 | `codingLoop.run` | Run from clipboard… | — | Global | Always available |
+| `configure.aiprovider.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.aiprovider.export` | Export | — | Global | Acts on the selected entity |
+| `configure.aiprovider.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.conversionprofile.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.decision.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.decision.duplicate` | Duplicate | — | Global | Acts on the selected entity |
+| `configure.decision.export` | Export | — | Global | Acts on the selected entity |
+| `configure.decision.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.execenv.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.execenv.export` | Export | — | Global | Acts on the selected entity |
+| `configure.execenv.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.list.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.list.export` | Export | — | Global | Acts on the selected entity |
+| `configure.list.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.mcpserver.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.mcpserver.export` | Export | — | Global | Acts on the selected entity |
+| `configure.mcpserver.listTools` | List tools | — | Global | Acts on the selected entity |
+| `configure.mcpserver.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
 | `configure.new.aiproviders` | New AI provider | — | Global | Always available |
+| `configure.new.certificates` | New client certificate | — | Global | Always available |
 | `configure.new.conversionprofiles` | New conversion profile | — | Global | Always available |
 | `configure.new.decisions` | New decision | — | Global | Always available |
 | `configure.new.execenvs` | New environment | — | Global | Always available |
@@ -76,6 +100,13 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.new.lists` | New list | — | Global | Always available |
 | `configure.new.mcpservers` | New MCP server | — | Global | Always available |
 | `configure.new.steptypes` | New step type | — | Global | Always available |
+| `configure.request.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.request.edit` | Edit | — | Global | Acts on the selected entity |
+| `configure.request.export` | Export | — | Global | Acts on the selected entity |
+| `configure.request.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.secretsource.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.steptype.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.steptype.export` | Export | — | Global | Acts on the selected entity |
 | `docs.search` | Search docs | — | Global | Always available |
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
@@ -100,6 +131,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `run.step` | Step | — | Global | Acts on the selected run |
 | `run.stop` | Stop run | — | Global | Acts on the selected run |
 | `runMonitor.open` | Run monitor | — | Global | Conditional — available only in a matching state |
+| `secret.row.delete` | Delete | — | Global | Acts on the selected entity |
+| `secret.row.edit` | Edit | — | Global | Acts on the selected entity |
+| `secret.row.history` | History | — | Global | Acts on the selected entity |
 | `secrets.lockVault` | Lock vault | — | Global | Conditional — available only in a matching state |
 | `secrets.resetVault` | Start a new vault | — | Global | Conditional — available only in a matching state |
 | `secrets.unlockVault` | Unlock vault | — | Global | Conditional — available only in a matching state |
@@ -135,6 +169,10 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `workflow.open` | Open workflow | — | Global | Acts on the selected workflow |
 | `workflow.pin` | Pin | — | Global | Acts on the selected workflow |
 | `workflow.publish` | Publish current draft | — | composition | Conditional — available only in a matching state |
+| `workflow.row.delete` | Delete | — | Global | Acts on the selected entity |
+| `workflow.row.edit` | Edit | — | Global | Acts on the selected entity |
+| `workflow.row.export` | Export | — | Global | Acts on the selected entity |
+| `workflow.row.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
 | `workflow.run` | Run workflow | `⌘↩` | Global | Conditional — available only in a matching state |
 | `workflow.runAndWatch` | Run and watch | — | Global | Acts on the selected workflow |
 | `workflow.runStepped` | Run step by step | — | Global | Conditional — available only in a matching state |

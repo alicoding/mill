@@ -1,9 +1,12 @@
 package clipboardhistorysvc
 
 import (
+	"bytes"
+	"encoding/base64"
 	"errors"
 	"testing"
 
+	"github.com/alicoding/mill/internal/domain/usererror"
 	"github.com/alicoding/mill/internal/services/servicetest"
 )
 
@@ -152,5 +155,58 @@ func TestPreviewLabel_TruncatesAndTakesFirstLine(t *testing.T) {
 	got = previewLabel(long)
 	if len([]rune(got)) != previewLabelCap+1 { // +1 for the ellipsis rune
 		t.Errorf("previewLabel(long) length = %d, want %d (cap + ellipsis)", len([]rune(got)), previewLabelCap+1)
+	}
+}
+
+// A 1x1 PNG, standard base64 -- the smallest payload that carries a
+// real PNG signature.
+const onePixelPNGBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
+func TestCopyImagePNG_WritesTheDecodedBytes(t *testing.T) {
+	orig := writeClipboardPNGFn
+	t.Cleanup(func() { writeClipboardPNGFn = orig })
+	var got []byte
+	writeClipboardPNGFn = func(data []byte) error {
+		got = data
+		return nil
+	}
+
+	s := NewClipboardHistoryService(servicetest.NewFakeStore())
+	if err := s.CopyImagePNG(onePixelPNGBase64); err != nil {
+		t.Fatalf("CopyImagePNG() error: %v", err)
+	}
+	if !bytes.HasPrefix(got, pngSignature) {
+		t.Errorf("the adapter received %d bytes with no PNG signature", len(got))
+	}
+	if len(s.ListClipboardHistory()) != 0 {
+		t.Error("an image copy must not record a clipboard-history entry")
+	}
+}
+
+func TestCopyImagePNG_RejectsNonPNGPayloads(t *testing.T) {
+	orig := writeClipboardPNGFn
+	t.Cleanup(func() { writeClipboardPNGFn = orig })
+	called := false
+	writeClipboardPNGFn = func([]byte) error {
+		called = true
+		return nil
+	}
+
+	s := NewClipboardHistoryService(servicetest.NewFakeStore())
+	for name, payload := range map[string]string{
+		"not base64":  "!!!!not base64!!!!",
+		"not a png":   base64.StdEncoding.EncodeToString([]byte("GIF89a and then some")),
+		"empty input": "",
+	} {
+		err := s.CopyImagePNG(payload)
+		if err == nil {
+			t.Errorf("CopyImagePNG(%s) = nil, want a refusal", name)
+		}
+		if code, ok := usererror.Of(err); !ok || code.Code != ErrClipboardImage.Code {
+			t.Errorf("CopyImagePNG(%s) error = %v, want the %q user error", name, err, ErrClipboardImage.Code)
+		}
+	}
+	if called {
+		t.Error("a rejected payload must never reach the clipboard adapter")
 	}
 }
