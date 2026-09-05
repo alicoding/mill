@@ -115,6 +115,32 @@ func BuiltInBoardObjects() []BoardObject {
 			CreatedAt: now, UpdatedAt: now,
 			BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
+		{
+			// File-backed json (goal 0269): the same engagement record
+			// in both structured formats, side by side, so the tree
+			// face has a permanent live subject for every value kind it
+			// paints -- nested objects, an array of records, numbers, a
+			// null and two booleans.
+			ID: objectJSONExampleID, Kind: "json",
+			Payload:   map[string]string{"title": "Engagement record", BoardObjectSeedAssetKey: "json"},
+			Position:  Position{X: 80, Y: 620},
+			Size:      &Dimensions{W: 380, H: 320},
+			ParentID:  cardSketchesID,
+			CreatedAt: now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
+		{
+			// The YAML twin of the record above: one anchor, one alias
+			// and a comment, so the seed itself proves anchors resolve
+			// to their values and comments never reach the tree.
+			ID: objectYAMLExampleID, Kind: "json",
+			Payload:   map[string]string{"title": "Engagement record (YAML)", BoardObjectSeedAssetKey: "yaml"},
+			Position:  Position{X: 520, Y: 620},
+			Size:      &Dimensions{W: 380, H: 320},
+			ParentID:  cardSketchesID,
+			CreatedAt: now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
 	}
 }
 
@@ -135,6 +161,10 @@ func BuiltInBoardObjectAsset(key string) (content, ext string, ok bool) {
 		return seedSamplePDF, ".pdf", true
 	case "diagram":
 		return seedTallDiagramDrawio, ".drawio", true
+	case "json":
+		return seedEngagementJSON, ".json", true
+	case "yaml":
+		return seedEngagementYAML, ".yaml", true
 	}
 	return "", "", false
 }
@@ -206,4 +236,64 @@ startxref
 	// permanently larger than its box (goal 0340). Plain, uncompressed
 	// mxfile XML, the same form GraphViewer decodes on the read path.
 	seedTallDiagramDrawio = `<mxfile host="mill"><diagram id="tall" name="Pipeline"><mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="n0" value="Capture" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="40" width="240" height="80" as="geometry"/></mxCell><mxCell id="n1" value="Queue" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="240" width="240" height="80" as="geometry"/></mxCell><mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n0" target="n1"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="n2" value="Guardrail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="440" width="240" height="80" as="geometry"/></mxCell><mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n1" target="n2"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="n3" value="Review" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="640" width="240" height="80" as="geometry"/></mxCell><mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n2" target="n3"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="n4" value="Approve" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="840" width="240" height="80" as="geometry"/></mxCell><mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n3" target="n4"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="n5" value="Apply" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="1040" width="240" height="80" as="geometry"/></mxCell><mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n4" target="n5"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="n6" value="Record" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="1240" width="240" height="80" as="geometry"/></mxCell><mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n5" target="n6"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="n7" value="Notify" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="1440" width="240" height="80" as="geometry"/></mxCell><mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n6" target="n7"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="n8" value="Verify" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="1640" width="240" height="80" as="geometry"/></mxCell><mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n7" target="n8"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="n9" value="Archive" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="1840" width="240" height="80" as="geometry"/></mxCell><mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n8" target="n9"><mxGeometry relative="1" as="geometry"/></mxCell></root></mxGraphModel></diagram></mxfile>`
+	// seedEngagementJSON is the engagement record every value kind the
+	// tree paints appears in: nested objects, an array of records,
+	// numbers, a null and two booleans -- proof that a 'json'
+	// BoardObject reads a real file as a collapsible tree.
+	seedEngagementJSON = `{
+  "client": "Northwind Trading",
+  "sponsor": "Jordan Reyes",
+  "active": true,
+  "archived": false,
+  "closedOn": null,
+  "workstreams": [
+    { "name": "Discovery", "owner": "Priya Nair", "status": "done", "due": "2026-03-14" },
+    { "name": "Migration", "owner": "Sam Okafor", "status": "in progress", "due": "2026-06-30" },
+    { "name": "Handover", "owner": "Lena Fischer", "status": "not started", "due": "2026-09-15" }
+  ],
+  "deliverables": ["Current-state map", "Target architecture", "Runbook"],
+  "budget": {
+    "currency": "GBP",
+    "approved": 480000,
+    "spent": 213500,
+    "contingency": { "approved": 48000, "spent": 0 }
+  }
+}
+`
+	// seedEngagementYAML is the same record in YAML, carrying one
+	// anchor, one alias and a comment -- proof that anchors resolve to
+	// their values and comments never reach the tree.
+	seedEngagementYAML = `# The engagement, as YAML.
+client: Northwind Trading
+sponsor: Jordan Reyes
+active: true
+archived: false
+closedOn: null
+defaults: &defaults
+  status: not started
+  owner: Unassigned
+workstreams:
+  - name: Discovery
+    owner: Priya Nair
+    status: done
+    due: 2026-03-14
+  - name: Migration
+    owner: Sam Okafor
+    status: in progress
+    due: 2026-06-30
+  - name: Handover
+    <<: *defaults
+    due: 2026-09-15
+deliverables:
+  - Current-state map
+  - Target architecture
+  - Runbook
+budget:
+  currency: GBP
+  approved: 480000
+  spent: 213500
+  contingency:
+    approved: 48000
+    spent: 0
+`
 )

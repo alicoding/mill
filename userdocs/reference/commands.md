@@ -41,6 +41,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.focusPrevious` | Focus previous card | `⇧TAB` | atlas | Always available |
 | `atlas.group.selection` | Group into a new area | `G` | atlas | Always available |
 | `atlas.import` | Import atlas | — | atlas | Always available |
+| `atlas.json.copyKey` | Copy key | — | atlas | Acts on the selected tree row |
+| `atlas.json.copyPath` | Copy path | — | atlas | Acts on the selected tree row |
+| `atlas.json.copyValue` | Copy value | `⌘C` | atlas | Acts on the selected tree row |
 | `atlas.jump` | Jump to a card or object | `⌘K` | atlas | Always available |
 | `atlas.matrix` | Open traceability matrix | — | atlas | Always available |
 | `atlas.minimap.toggle` | Toggle minimap | — | atlas | Always available |
@@ -131,10 +134,10 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `help.openDataFolder` | Open data folder | — | Global | Always available |
 | `help.reportIssue` | Report an issue… | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
-| `listGrid.copyRows` | Copy selected rows | — | Global | Acts on the selected listGrid |
-| `listGrid.deleteColumn` | Delete selected column | — | Global | Acts on the selected listGrid |
-| `listGrid.deleteRows` | Delete selected rows | — | Global | Acts on the selected listGrid |
-| `listGrid.search` | Find in this list | `⌘F` | Global | Acts on the selected listGrid |
+| `listGrid.copyRows` | Copy selected rows | — | Global | Acts on the selected table rows |
+| `listGrid.deleteColumn` | Delete selected column | — | Global | Acts on the selected table rows |
+| `listGrid.deleteRows` | Delete selected rows | — | Global | Acts on the selected table rows |
+| `listGrid.search` | Find in this list | `⌘F` | Global | Acts on the selected table rows |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `object.rename` | Rename | — | atlas | Always available |
 | `output.copy` | Copy output | — | Global | Conditional — available only in a matching state |
