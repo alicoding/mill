@@ -68,8 +68,9 @@ func ExtractZip(data []byte, dest string) error {
 // dest is computed once, guarded immediately against the join, and is
 // the ONLY path used in every filesystem call below (including the
 // directory-entry MkdirAll) -- static analysis for zip-slip requires
-// the sanitized value itself, not a re-derivation of the raw entry
-// name, to reach the write.
+// this exact shape (a bare `!strings.HasPrefix(dest, ...)` guard, no
+// compound condition) to credit the check as a sanitizer at all, same
+// pattern for every downstream write reached through dest.
 func extractZipEntry(f *zip.File, prefix, root string, budget int64) (int64, error) {
 	name := strings.TrimPrefix(filepath.ToSlash(f.Name), prefix)
 	if name == "" {
@@ -77,7 +78,7 @@ func extractZipEntry(f *zip.File, prefix, root string, budget int64) (int64, err
 	}
 	cleanRoot := filepath.Clean(root)
 	dest := filepath.Join(cleanRoot, filepath.FromSlash(name))
-	if dest != cleanRoot && !strings.HasPrefix(dest, cleanRoot+string(os.PathSeparator)) {
+	if !strings.HasPrefix(dest, cleanRoot+string(os.PathSeparator)) {
 		return 0, errOutsideFolder
 	}
 	if f.Mode()&os.ModeSymlink != 0 {
