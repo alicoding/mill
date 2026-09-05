@@ -180,7 +180,7 @@ func TestValidateContributes_ToolsAndCommands(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := validateContributes("demo", tc.contribute)
+			got := validateContributes("demo", nil, tc.contribute)
 			if tc.want == "" {
 				if got != "" {
 					t.Fatalf("validateContributes = %q, want no problem", got)

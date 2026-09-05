@@ -58,11 +58,25 @@ type Output struct {
 type Pack struct {
 	source  string
 	timeout time.Duration
-	mu      sync.Mutex
-	vm      *goja.Runtime
-	steps   map[string]goja.Callable
-	decls   []StepDecl
+	// kind selects which registration global the pack's source file
+	// gets and which registry Load requires to be non-empty: the two
+	// pack files a plugin may ship are separate sandboxes, so a steps
+	// file can never register a secret source nor the reverse.
+	kind        packKind
+	mu          sync.Mutex
+	vm          *goja.Runtime
+	steps       map[string]goja.Callable
+	decls       []StepDecl
+	sources     map[string]*goja.Object
+	sourceDecls []SourceDecl
 }
+
+type packKind int
+
+const (
+	packSteps packKind = iota
+	packSources
+)
 
 // Load evaluates source once and collects its registered steps. A
 // pack that registers nothing, registers a duplicate id, or registers
@@ -71,7 +85,7 @@ func Load(source string, timeout time.Duration) (*Pack, error) {
 	if timeout <= 0 {
 		timeout = DefaultTimeout
 	}
-	p := &Pack{source: source, timeout: timeout}
+	p := &Pack{source: source, timeout: timeout, kind: packSteps}
 	if err := p.boot(); err != nil {
 		return nil, err
 	}
@@ -81,7 +95,29 @@ func Load(source string, timeout time.Duration) (*Pack, error) {
 	return p, nil
 }
 
+// LoadSources evaluates a secrets.js pack: the same engine, timeout and
+// sandbox Load gives a steps pack, with registerSource in place of
+// registerStep. The pack reaches nothing on its own -- a source's
+// functions receive their file access as host functions on the ctx
+// object built per call (SourceCtx).
+func LoadSources(source string, timeout time.Duration) (*Pack, error) {
+	if timeout <= 0 {
+		timeout = DefaultTimeout
+	}
+	p := &Pack{source: source, timeout: timeout, kind: packSources}
+	if err := p.boot(); err != nil {
+		return nil, err
+	}
+	if len(p.sourceDecls) == 0 {
+		return nil, errors.New("secrets.js registers no sources (call registerSource(id, { list, resolve }))")
+	}
+	return p, nil
+}
+
 func (p *Pack) boot() error {
+	if p.kind == packSources {
+		return p.bootSources()
+	}
 	vm := goja.New()
 	steps := map[string]goja.Callable{}
 	var decls []StepDecl
