@@ -24,8 +24,13 @@ function extensionName(id: string): string {
   return pluginLoadStates().get(id)?.info.Manifest.name || id
 }
 
-function installed(id: string): boolean {
-  return pluginLoadStates().has(id)
+// A plugin Mill knows is not a plugin Mill LOADED: a folder installed
+// after boot has a row and a receipt but no load state until the next
+// load. Enablement therefore asks the one question that is true of
+// every row -- is this one of Mill's own bundled plugins, which cannot
+// be turned off or removed -- and leaves the rest to the service.
+function builtIn(id: string): boolean {
+  return pluginLoadStates().get(id)?.info.Builtin === true
 }
 
 export const EXTENSIONS_COMMANDS: Command[] = [
@@ -57,7 +62,7 @@ export const EXTENSIONS_COMMANDS: Command[] = [
     paletteHidden: true,
     enabled: (ctx) => {
       const target = entityContext(ctx, EXTENSION_ENTITY)
-      return !!target && installed(target.id) && useExtensionEnablementStore.getState().disabledExtensionIds.includes(target.id)
+      return !!target && !builtIn(target.id) && useExtensionEnablementStore.getState().disabledExtensionIds.includes(target.id)
     },
     run: (ctx) => {
       const target = entityContext(ctx, EXTENSION_ENTITY)
@@ -73,7 +78,7 @@ export const EXTENSIONS_COMMANDS: Command[] = [
     paletteHidden: true,
     enabled: (ctx) => {
       const target = entityContext(ctx, EXTENSION_ENTITY)
-      return !!target && installed(target.id) && !useExtensionEnablementStore.getState().disabledExtensionIds.includes(target.id)
+      return !!target && !builtIn(target.id) && !useExtensionEnablementStore.getState().disabledExtensionIds.includes(target.id)
     },
     run: (ctx) => {
       const target = entityContext(ctx, EXTENSION_ENTITY)
@@ -90,7 +95,7 @@ export const EXTENSIONS_COMMANDS: Command[] = [
     // A built-in lives in the binary, so there is no folder to reveal.
     enabled: (ctx) => {
       const target = entityContext(ctx, EXTENSION_ENTITY)
-      return !!target && installed(target.id) && !pluginLoadStates().get(target.id)?.info.Builtin
+      return !!target && !builtIn(target.id)
     },
     run: () => { void background(PluginService.RevealPluginsDir(), 'extension.reveal') },
   },
@@ -102,7 +107,7 @@ export const EXTENSIONS_COMMANDS: Command[] = [
     paletteHidden: true,
     enabled: (ctx) => {
       const target = entityContext(ctx, EXTENSION_ENTITY)
-      return !!target && installed(target.id) && !pluginLoadStates().get(target.id)?.info.Builtin
+      return !!target && !builtIn(target.id)
     },
     run: (ctx) => {
       const target = entityContext(ctx, EXTENSION_ENTITY)

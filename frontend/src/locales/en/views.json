@@ -610,8 +610,14 @@
       "openApp": "Open files in another app after you approve",
       "eraseBoardItems": "Erase board items you draw over",
       "useSecrets": "Read secrets you point it at, by reference",
-      "adds": "Add {{kind}}",
-      "nothing": "Nothing beyond drawing on the board"
+      "nothing": "Nothing beyond drawing on the board",
+      "addsCanvasObjects": "Add object kinds you can place on a board",
+      "addsSteps": "Add steps you can use in a workflow",
+      "addsCaptures": "Add a surface to the capture window",
+      "addsViews": "Add tabs you can open",
+      "addsCommands": "Add commands to the palette",
+      "addsThemes": "Add color themes you can pick",
+      "addsTools": "Add tools an agent can call"
     },
     "kind": {
       "canvasObjects": "Canvas objects",
@@ -672,7 +678,5 @@
       "empty": "Everything is up to date."
     }
   },
-  "pageMeta": {
-    "extensions": "Extensions"
-  }
+  "pageMeta": {}
 }

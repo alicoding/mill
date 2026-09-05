@@ -43,7 +43,7 @@ describe('permissionLines', () => {
       'extensions.can.reachHosts',
       'extensions.can.writeContent',
       'extensions.can.openUrl',
-      'extensions.can.adds',
+      'extensions.can.addsSteps',
     ])
     expect(lines[0].params).toEqual({ list: 'api.example.test' })
   })

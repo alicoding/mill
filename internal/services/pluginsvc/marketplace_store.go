@@ -297,12 +297,18 @@ func (p *PluginService) BrowseMarketplaces() ([]BrowseEntry, error) {
 }
 
 // entryTier is what a browse row PROMISES, before anything is
-// downloaded: Mill's own bundled examples install from the binary
-// itself and are verified by definition; anything else is pinned only
-// if its index declared a hash.
+// downloaded -- and it must agree with what the install actually
+// records, or the prompt would ask for an acknowledgment the install
+// never needed. Mill's own bundled examples come out of the binary and
+// are verified by definition; a folder entry is copied off this Mac,
+// which is dev; anything downloaded is pinned only if its index
+// declared a hash.
 func entryTier(marketplace string, e MarketplaceEntry) string {
 	if marketplace == ReservedMarketplaceName {
 		return TierVerified
+	}
+	if e.Source.Kind == "path" {
+		return TierDev
 	}
 	if strings.TrimSpace(declaredHash(e)) != "" {
 		return TierHashPinned

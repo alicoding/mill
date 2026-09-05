@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { existsSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import { launchWithPlugins } from './fixtures/runtimePlugins'
-import { openExtensionDetail, openExtensions, pluginRow } from './fixtures/settingsNav'
+import { openExtensionDetail, openExtensionDetailTab, openExtensions, pluginRow } from './fixtures/settingsNav'
 
 // Uninstalling a plugin (goal 0321): the action lives behind the
 // detail pane's … menu, never beside the enable toggle, and it is
@@ -27,6 +27,9 @@ test('The detail pane offers Reload and, behind its menu, a confirmed Remove tha
 
 		const detail = await openExtensionDetail(page, row, 'mill-bookmark')
 		await expect(detail.getByTestId('extensions-plugin-reload')).toBeVisible()
+		// An installed extension's pane opens on Overview; what it adds
+		// reads on Contributions.
+		await openExtensionDetailTab(detail, 'contributions')
 		// What it adds, read from the manifest and the live registry.
 		const adds = detail.getByTestId('extensions-detail-adds')
 		await expect(adds).toContainText('Canvas objects: bookmark')

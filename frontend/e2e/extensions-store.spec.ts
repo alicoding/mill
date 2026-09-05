@@ -106,7 +106,7 @@ test('Installing states what the extension can do, and the installed row wears i
 	await expect(dialog).toBeVisible()
 	// The declared host is named, in the user's words, before install.
 	await expect(dialog.getByTestId('extensions-install-permissions')).toContainText('notes.example.test')
-	await dialog.getByRole('button', { name: 'Install', exact: true }).click()
+	await page.getByRole('dialog').getByRole('button', { name: 'Install', exact: true }).click()
 	await expect(dialog).toHaveCount(0)
 
 	await openExtensions(page, 'installed')
@@ -123,10 +123,14 @@ test('An installed extension reads its overview, its changelog and its verificat
 	await row.getByTestId('extensions-row-open').click()
 	const detail = page.locator('[data-testid="extensions-detail"][data-extension-id="fixture-notes"]')
 	await expect(detail).toBeVisible()
-	await expect(detail).toContainText('The overview an Extensions spec reads')
+	// The overview renders as markdown inside the output surface's own
+	// sandboxed frame, so the assertion reads through the frame.
+	await expect(detail.frameLocator('[data-testid="extension-overview-fixture-notes-output-rendered"]').locator('body'))
+		.toContainText('The overview an Extensions spec reads')
 
 	await detail.getByTestId('extensions-detail-tab-changelog').click()
-	await expect(detail).toContainText('First version.')
+	await expect(detail.frameLocator('[data-testid="extension-changelog-fixture-notes-output-rendered"]').locator('body'))
+		.toContainText('First version.')
 
 	await detail.getByTestId('extensions-detail-tab-verification').click()
 	await expect(detail.getByTestId('extensions-verification-sentence'))

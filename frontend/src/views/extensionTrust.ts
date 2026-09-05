@@ -78,7 +78,8 @@ export function permissionLines(preview: InstallPreview | null): PermissionLine[
   }
   if (preview.UsesSecrets) lines.push({ key: 'extensions.can.useSecrets' })
   for (const kind of preview.Kinds ?? []) {
-    lines.push({ key: 'extensions.can.adds', params: { kind } })
+    const key = ADDS_LINE[kind]
+    if (key) lines.push({ key })
   }
   if (lines.length === 0) lines.push({ key: 'extensions.can.nothing' })
   return lines
@@ -101,4 +102,18 @@ const KIND_LABEL: Record<string, string> = {
 
 export function kindLabelKey(kind: string): string | null {
   return KIND_LABEL[kind] ?? null
+}
+
+// What a contribution family means as a permission line. `network` and
+// `settings` are deliberately absent: the reach line above already says
+// which hosts, and a declared setting is the user's own configuration,
+// not something the extension gains.
+const ADDS_LINE: Record<string, string> = {
+  canvasObjects: 'extensions.can.addsCanvasObjects',
+  steps: 'extensions.can.addsSteps',
+  captures: 'extensions.can.addsCaptures',
+  views: 'extensions.can.addsViews',
+  commands: 'extensions.can.addsCommands',
+  themes: 'extensions.can.addsThemes',
+  tools: 'extensions.can.addsTools',
 }

@@ -127,10 +127,10 @@ test('An unverified install waits for the acknowledgment, then lands wearing its
 
 	const dialog = page.getByTestId('extensions-install-dialog')
 	await expect(dialog).toBeVisible()
-	await expect(dialog).toContainText('Install unreviewed code?')
+	await expect(page.getByRole('dialog')).toContainText('Install unreviewed code?')
 	await expect(dialog.getByTestId('extensions-install-unreviewed-body')).toBeVisible()
 
-	const install = dialog.getByRole('button', { name: 'Install', exact: true })
+	const install = page.getByRole('dialog').getByRole('button', { name: 'Install', exact: true })
 	await expect(install).toBeDisabled()
 	await dialog.getByTestId('extensions-install-acknowledge').check()
 	await expect(install).toBeEnabled()

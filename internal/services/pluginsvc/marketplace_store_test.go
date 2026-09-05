@@ -202,6 +202,31 @@ func TestInstallFromMarketplace_EarnsHashPinnedWhenTheHashMatches(t *testing.T) 
 
 // The install prompt must be able to state what an extension can do
 // before anything downloads.
+// The prompt's tier and the install's recorded tier must agree, or the
+// prompt asks for an acknowledgment the install never needed.
+func TestBrowseMarketplaces_PromisesTheTierTheInstallWillRecord(t *testing.T) {
+	svc, _ := newStoreService(t)
+	if _, err := svc.AddMarketplaceSource(writeFixtureMarketplace(t)); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := svc.BrowseMarketplaces()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if e.Marketplace == "fixture" && e.Tier != TierDev {
+			t.Fatalf("browse tier = %q, want %q for a folder entry", e.Tier, TierDev)
+		}
+	}
+	rec, err := svc.InstallFromMarketplace("fixture", "fixture-notes")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.Tier != TierDev {
+		t.Errorf("installed tier = %q, want %q", rec.Tier, TierDev)
+	}
+}
+
 func TestPreviewInstall_ReportsWhatTheExtensionCanDo(t *testing.T) {
 	svc, _ := newStoreService(t, "mill-alpha")
 	pv, err := svc.PreviewInstall(ReservedMarketplaceName, "mill-alpha")

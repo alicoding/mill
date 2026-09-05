@@ -28,7 +28,6 @@ export function ExtensionsInstallDialog({ preview, busy, onCancel, onInstall }: 
     <Dialog
       title={t(unverified ? 'extensions.install.unreviewedTitle' : 'extensions.install.title', { name })}
       onClose={onCancel}
-      data-testid="extensions-install-dialog"
       footerButtons={[
         { content: t('extensions.install.cancel'), onClick: onCancel, autoFocus: true },
         {
@@ -39,7 +38,7 @@ export function ExtensionsInstallDialog({ preview, busy, onCancel, onInstall }: 
         },
       ]}
     >
-      <Stack direction="vertical" gap="condensed">
+      <Stack direction="vertical" gap="condensed" data-testid="extensions-install-dialog">
         <Stack direction="horizontal" gap="condensed" align="center">
           <Text size="small" weight="semibold">{name}</Text>
           {preview.Version && <Text size="small" className={listStyles.muted}>{t('extensions.versionLabel', { version: preview.Version })}</Text>}

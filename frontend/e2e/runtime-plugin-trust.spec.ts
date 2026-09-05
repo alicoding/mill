@@ -7,7 +7,7 @@ import { expect, test } from '@playwright/test'
 import { launchWithPlugins } from './fixtures/runtimePlugins'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { openExtensionDetail, openExtensions, pluginRow } from './fixtures/settingsNav'
+import { openExtensionDetail, openExtensionDetailTab, openExtensions, pluginRow } from './fixtures/settingsNav'
 
 const LATE_PLUGIN = `export function activate(api) {
 	api.registerCanvasObject({ kind: 'late', label: 'Late arrival', icon: '🕰️', source: 'board-local', editRoute: 'none', defaultPayload: {}, renderFace(el) { el.textContent = 'late' } })
@@ -45,6 +45,7 @@ test('a plugin installed after boot waits for review: the boot notice names it, 
 		// The reach summary reads before anything runs (goal 0321: in
 		// the detail pane the row opens).
 		const detail = await openExtensionDetail(page, row, 'late-arrival')
+		await openExtensionDetailTab(detail, 'contributions')
 		await expect(detail).toContainText('Can request: open-url')
 		await expect(detail.getByTestId('extensions-detail-reach')).toContainText('example.com')
 		await expect(detail.getByTestId('extensions-plugin-review')).toContainText('Not running yet')

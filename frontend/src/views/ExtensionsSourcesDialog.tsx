@@ -63,8 +63,8 @@ export function ExtensionsSourcesDialog({ onClose, onChanged }: {
   }
 
   return (
-    <Dialog title={t('extensions.sources.title')} onClose={onClose} data-testid="extensions-sources-dialog">
-      <Stack direction="vertical" gap="condensed">
+    <Dialog title={t('extensions.sources.title')} onClose={onClose}>
+      <Stack direction="vertical" gap="condensed" data-testid="extensions-sources-dialog">
         <Stack direction="horizontal" justify="space-between" align="center" gap="condensed">
           <Text as="p" size="small" className={listStyles.muted}>{t('extensions.sources.subtitle')}</Text>
           <Button size="small" leadingVisual={SyncIcon} onClick={refresh} data-testid="extensions-sources-refresh">
