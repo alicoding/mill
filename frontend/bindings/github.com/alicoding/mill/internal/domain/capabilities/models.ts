@@ -67,5 +67,12 @@ export enum ViewKind {
     ViewAtlas = "atlas",
     ViewDocs = "docs",
     ViewSecrets = "secrets",
+
+    /**
+     * ViewExtensions is the extensions surface (docs/goals/0349): its
+     * own top-level page, not a Settings pane -- Settings holds kernel
+     * configuration only (ADR-0035).
+     */
+    ViewExtensions = "extensions",
     ViewPlaceholder = "placeholder",
 };

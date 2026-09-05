@@ -44,7 +44,7 @@ test('a plugin declares settings in its manifest; Mill renders them, stores them
 
 		// Settings: the plugin's DETAIL pane renders both declared
 		// controls (goal 0321 -- a row is identity only).
-		const detail = await openPluginDetail(page, 'mill-bookmark')
+		const detail = await openPluginDetail(page, 'mill-bookmark', 'settings')
 		const settings = detail.getByTestId('extensions-detail-settings')
 		await expect(settings).toBeVisible()
 		const styleSelect = settings.locator('[data-testid="extension-setting-mill-bookmark-titleStyle"] select')

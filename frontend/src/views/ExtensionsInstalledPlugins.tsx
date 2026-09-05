@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Pagination, Stack, Text } from '@primer/react'
+import { Button, Label, Pagination, Stack, Text } from '@primer/react'
 import { PlugIcon } from '@primer/octicons-react'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
@@ -10,6 +10,9 @@ import { ExamplesSection } from '../shared/ExamplesSection'
 import { ExtensionRow } from './ExtensionRow'
 import { ExtensionsLinkPasteControl } from './ExtensionsLinkPasteControl'
 import { ExtensionsTrustBar } from './ExtensionsTrustBar'
+import { ExtensionRowMenu } from './ExtensionRowMenu'
+import { ExtensionsKindChips } from './ExtensionsKindChips'
+import { tierLabelKey, tierVariant } from './extensionTrust'
 import { refreshDisabledExtensions, useExtensionEnablementStore } from '../shared/extensionEnablementStore'
 import { LIST_PAGE_SIZE, clampPage, listCountLabel, pageCountFor, pageItems } from '../shared/listStandard'
 import { useListState } from '../shared/useListState'
@@ -56,6 +59,7 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
   const disabledIds = useExtensionEnablementStore((s) => s.disabledExtensionIds)
   const states = pluginLoadStates()
   const [query, setQuery] = useState('')
+  const [kinds, setKinds] = useState<string[]>([])
   const { state, setPage, resetPage, setExamplesExpanded } = useListState('extensions-installed')
 
   const toggle = (id: string, enabled: boolean) => {
@@ -68,8 +72,15 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
   const own = (plugins ?? []).filter((p) => !p.Builtin)
   const builtIns = (plugins ?? []).filter((p) => p.Builtin)
   const q = query.trim().toLowerCase()
-  const matches = (p: PluginInfo) =>
-    q === '' || (p.Manifest.name || p.Manifest.id).toLowerCase().includes(q) || (p.Manifest.description ?? '').toLowerCase().includes(q)
+  const contributedKinds = (p: PluginInfo): string[] =>
+    Object.entries((p.Manifest.contributes ?? {}) as unknown as Record<string, unknown>)
+      .filter(([, value]) => Array.isArray(value) && value.length > 0)
+      .map(([key]) => key)
+  const matches = (p: PluginInfo) => {
+    const text = q === '' || (p.Manifest.name || p.Manifest.id).toLowerCase().includes(q) || (p.Manifest.description ?? '').toLowerCase().includes(q)
+    const kind = kinds.length === 0 || kinds.some((k) => contributedKinds(p).includes(k))
+    return text && kind
+  }
   const ownFiltered = own.filter(matches)
   const builtInFiltered = builtIns.filter(matches)
 
@@ -99,15 +110,25 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
 
   const rowFor = (p: PluginInfo) => {
     const id = p.Manifest.id
+    const name = p.Manifest.name || id
     const runtime = states.get(id)
     const error = p.Error || (runtime?.status === 'error' ? runtime.error : '')
+    const badgeKey = tierLabelKey(p.Tier ?? '')
     return (
       <li key={id} data-testid="extensions-plugin-row" data-plugin-id={id}>
         <ExtensionRow
           id={id}
           icon={PlugIcon}
-          name={p.Manifest.name || id}
+          name={name}
           description={p.Manifest.description}
+          meta={(
+            <>
+              {p.Manifest.author && <Text size="small" className={listStyles.muted}>{p.Manifest.author}</Text>}
+              {p.Manifest.version && <Text size="small" className={listStyles.muted}>{t('extensions.versionLabel', { version: p.Manifest.version })}</Text>}
+              {badgeKey && <Label variant={tierVariant(p.Tier ?? '')} data-testid="extensions-row-tier">{t(badgeKey)}</Label>}
+            </>
+          )}
+          actions={p.Builtin ? undefined : <ExtensionRowMenu id={id} name={name} />}
           control={rowControl(runtime?.status, error)}
           enabled={!disabledIds.includes(id)}
           selected={selectedId === id}
@@ -153,6 +174,7 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
             searchAriaLabel={t('settings.extensions.installedTitle')}
             count={count}
           />
+          <ExtensionsKindChips selected={kinds} onChange={(next) => { setKinds(next); resetPage() }} />
           {ownFiltered.length === 0 && builtInFiltered.length === 0 ? (
             <Text as="p" size="small" className={listStyles.muted}>{tc('inventoryList.noMatchesFor', { query })}</Text>
           ) : (
