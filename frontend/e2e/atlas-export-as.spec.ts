@@ -204,7 +204,7 @@ test('a mermaid card offers Original file + .mmd via the page kebab menu\'s subm
 // by downloading a real csv (header + a real seeded row) and a real
 // xlsx (a genuine zip, its own binary magic bytes) through the exact
 // same buildExportMenuChoice/runCardExport path E1 already proved for
-// the file-backed units. Reads the seeded "Example: Country codes"
+// the file-backed units. Reads the seeded "Country codes"
 // List (never written), same shared-pool posture
 // atlas-table-projection.spec.ts's own read-only tests already use.
 // Export-as is a card-only affordance (goal 0179 S2): the table lands
@@ -216,7 +216,7 @@ test('a table-projection card offers all four declared formats (no Original file
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await createTableFromList(page, 'Example: Country codes', 'US')
+  await createTableFromList(page, 'Country codes', 'US')
 
   const tableObject = page.locator('[data-testid="atlas-board-object"][data-object-kind="table"]').filter({ hasText: 'US' })
   await expect(tableObject).toBeVisible()
@@ -251,7 +251,7 @@ test('a table-projection card offers all four declared formats (no Original file
   const xlsxDownload = page.waitForEvent('download')
   await menu.getByText('Excel', { exact: true }).click()
   const download = await xlsxDownload
-  expect(download.suggestedFilename()).toBe('Example-Country-codes.xlsx')
+  expect(download.suggestedFilename()).toBe('Country-codes.xlsx')
   const xlsx = await readDownload(download)
   // A real xlsx is a zip archive -- its own binary signature, not a
   // stub or an error page mistakenly downloaded as bytes.

@@ -14,7 +14,7 @@ import { openInspectorTab } from './fixtures/inspectorTabs'
 // stay in view mode throughout, since a breakpoint is a debug act, not
 // an authoring edit (setting one must work without ever clicking Edit).
 
-const SEED = 'Example: Branch to a decision'
+const SEED = 'Route an expense by amount'
 const CAPTURE_NODE = 'example-branch-capture'
 
 function captureNode(page: import('@playwright/test').Page) {
