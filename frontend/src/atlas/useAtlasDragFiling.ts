@@ -9,6 +9,9 @@ import { background } from '../shared/background'
 import { computeGuides, createGuideChannel, guideThreshold, type Box, type GuideChannel } from './alignmentGuides'
 
 export interface FrameBox { id: string; x: number; y: number; width: number; height: number; isFrame: boolean }
+// A box that can be aligned against but never filed into: notes and
+// board objects hold no children, so they carry no isFrame flag.
+export interface PeerBox { id: string; x: number; y: number; width: number; height: number }
 interface DraggedNode { id: string; type?: string; parentId?: string; position: { x: number; y: number }; width?: number | null; height?: number | null; measured?: { width?: number; height?: number } | null }
 
 interface Snap { dx: number; dy: number }
@@ -59,10 +62,15 @@ function entityKindOf(node: DraggedNode): 'note' | 'object' | 'card' {
 // renders no boundary of its own once you're drilled inside it, so
 // "the level you're currently in" is represented by the wrapper's own
 // visible extent, not a rectangle on the canvas.
-export function useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperRef }: {
+export function useAtlasDragFiling({ allCards, parentID, topLevelBoxes, noteBoxes, objectBoxesRef, wrapperRef }: {
   allCards: Card[]
   parentID: string
   topLevelBoxes: FrameBox[]
+  noteBoxes: PeerBox[]
+  // A ref, not a prop: an object's box derives from React Flow's own
+  // measured nodes, which AtlasBoard writes back into this ref after
+  // every measure pass.
+  objectBoxesRef: RefObject<PeerBox[]>
   wrapperRef: RefObject<HTMLDivElement | null>
 }) {
   const [hoveredFrameID, setHoveredFrameID] = useState<string | null>(null)
@@ -71,13 +79,15 @@ export function useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperR
   // useCallback-wrapped with an empty/stable dependency list so its
   // own identity never churns the RF prop it's passed as.
   const boxesRef = useRef(topLevelBoxes)
+  const noteBoxesRef = useRef(noteBoxes)
   const allCardsRef = useRef(allCards)
   const parentIDRef = useRef(parentID)
   useEffect(() => {
     boxesRef.current = topLevelBoxes
+    noteBoxesRef.current = noteBoxes
     allCardsRef.current = allCards
     parentIDRef.current = parentID
-  }, [topLevelBoxes, allCards, parentID])
+  }, [topLevelBoxes, noteBoxes, allCards, parentID])
 
   const { updateNode, getZoom } = useReactFlow()
   // The overlay's own channel (goal 0161 slice 2): guides never live
@@ -85,22 +95,33 @@ export function useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperR
   const [guideChannel] = useState<GuideChannel>(createGuideChannel)
   const snapRef = useRef<{ id: string; dx: number; dy: number } | null>(null)
 
-  // ONE walk of the top-level boxes serves BOTH the drag's release
-  // target and its alignment peers (goal 0161 slice 2) -- the guide
-  // comparison must never cost a second pass over the same list.
-  // `excludeIDs` names every node moving with this drag (the whole
-  // selection on a multi-drag); a node can never align against itself.
+  // ONE walk of the board's boxes serves BOTH the drag's release target
+  // and its alignment peers (goal 0161 slice 2) -- the guide comparison
+  // must never cost a second pass over the same list. `excludeIDs`
+  // names every node moving with this drag (the whole selection on a
+  // multi-drag); a node can never align against itself.
+  //
+  // EVERY top-level box is a peer -- cards, notes and board objects
+  // alike -- so a card lines up against a sticky note or a shape the
+  // same way it lines up against another card. Only cards can be a
+  // release TARGET, since only a card can become a region frame, so
+  // the frame test runs over the card list alone.
   const scanBoxes = useCallback((node: DraggedNode, excludeIDs?: Set<string>) => {
     const cx = node.position.x + (node.width ?? 0) / 2
     const cy = node.position.y + (node.height ?? 0) / 2
     let target: FrameBox | null = null
     const peers: Box[] = []
-    for (const b of boxesRef.current) {
-      if (target === null && b.isFrame && b.id !== node.id && cx >= b.x && cx <= b.x + b.width && cy >= b.y && cy <= b.y + b.height) target = b
+    const asPeer = (b: PeerBox) => {
       if (excludeIDs && !excludeIDs.has(b.id)) peers.push({ id: b.id, x: b.x, y: b.y, w: b.width, h: b.height })
     }
+    for (const b of boxesRef.current) {
+      if (target === null && b.isFrame && b.id !== node.id && cx >= b.x && cx <= b.x + b.width && cy >= b.y && cy <= b.y + b.height) target = b
+      asPeer(b)
+    }
+    for (const b of noteBoxesRef.current) asPeer(b)
+    for (const b of objectBoxesRef.current) asPeer(b)
     return { target, peers }
-  }, [])
+  }, [objectBoxesRef])
 
   const frameUnder = useCallback((node: DraggedNode) => scanBoxes(node).target, [scanBoxes])
 
