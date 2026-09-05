@@ -273,6 +273,12 @@ var httpRequestProofRegistry = map[string]seedProof{
 	httprequest.ExampleOAuth2ID: proven(
 		"configuresvc.TestConfigureService_FreshInstall_OAuth2Example_HasNoSecretSeeded",
 	),
+	httprequest.ExampleEnvironmentID: proven(
+		"composition.TestInterpolate_SubstitutesWhitespaceToleratesAndEscapes",
+		"configuresvc.TestEnvironmentVarGap_SeededRequestResolvesOnlyInSandbox",
+		"executionsvc.TestSeededGuardedHTTPWorkflow_ApproveFiresRealHTTPCall (via example-guarded-http-workflow)",
+		"e2e: configure-environments.spec.ts",
+	),
 	httprequest.ExampleQueryParamID: proven(
 		"configuresvc.TestSeededHTTPRequests_LiveEndpointsRespond (liveness, advisory)",
 	),

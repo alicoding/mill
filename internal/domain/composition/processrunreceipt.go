@@ -25,9 +25,13 @@ type RunEvidence struct {
 	WorkflowLabel string `json:"workflowLabel,omitempty"`
 	// Version is the run's own definition-snapshot version (docs/adr/0021)
 	// -- 0 means the draft head (a test run).
-	Version   int       `json:"version"`
-	Kind      string    `json:"kind"`
-	StartedAt time.Time `json:"startedAt"`
+	Version int    `json:"version"`
+	Kind    string `json:"kind"`
+	// EnvironmentLabel names the Environment this run executed in (goal
+	// 0306 S5), omitted when the run selected none -- a receipt has to
+	// say which stage it is evidence of.
+	EnvironmentLabel string    `json:"environmentLabel,omitempty"`
+	StartedAt        time.Time `json:"startedAt"`
 	// Steps is every step this run recorded before this receipt node
 	// ran. A step's GuardrailEffect/GuardrailRule/GuardrailSource ARE
 	// its approval resolution where one applies -- a step that reached

@@ -199,6 +199,15 @@ export interface RunDetail {
      * and attribute search (docs/SPEC.md §3.2's analytics pattern).
      */
     "values": { [_ in string]?: string } | null;
+
+    /**
+     * EnvironmentID/EnvironmentLabel name the Environment this run
+     * executed in (goal 0306 S5) -- the label is what Activity shows,
+     * the id is what a redrive or a filter matches on. Both empty for a
+     * run that selected no environment.
+     */
+    "environmentID"?: string;
+    "environmentLabel"?: string;
     "steps": RunStep[] | null;
 }
 
@@ -346,6 +355,15 @@ export interface RunSummary {
      * and attribute search (docs/SPEC.md §3.2's analytics pattern).
      */
     "values": { [_ in string]?: string } | null;
+
+    /**
+     * EnvironmentID/EnvironmentLabel name the Environment this run
+     * executed in (goal 0306 S5) -- the label is what Activity shows,
+     * the id is what a redrive or a filter matches on. Both empty for a
+     * run that selected no environment.
+     */
+    "environmentID"?: string;
+    "environmentLabel"?: string;
 }
 
 /**

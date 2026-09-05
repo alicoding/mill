@@ -234,6 +234,19 @@ export function SeedRevisions(): $CancellablePromise<{ [_ in string]?: number } 
 }
 
 /**
+ * SetWorkflowDefaultEnvironment declares (or clears, with
+ * environmentID "") the Environment this workflow's runs use unless a
+ * run picks another (goal 0306 S5, Workflow.DefaultEnvironmentID's own
+ * doc comment). A dedicated setter rather than a wider UpdateWorkflow
+ * signature, for the same reason SetWorkflowOffer is one: this is
+ * workflow metadata edited independently of the graph, routed through
+ * the mutateWorkflow choke point.
+ */
+export function SetWorkflowDefaultEnvironment(workflowID: string, environmentID: string): $CancellablePromise<composition$0.Workflow> {
+    return $Call.ByID(598845571, workflowID, environmentID);
+}
+
+/**
  * SetWorkflowDisabled flips the inactive state (ADR-0021: disabling
  * pauses production -- triggers and child calls -- while test runs
  * stay allowed, n8n's own semantics).

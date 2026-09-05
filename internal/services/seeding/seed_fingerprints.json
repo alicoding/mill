@@ -123,6 +123,14 @@
     "seedRevision": 4,
     "fingerprint": "5563a788f642e2fa32d947c70797608c5165d19d3cd34f39bf0a53136c774fb4"
   },
+  "environment:example-production-environment": {
+    "seedRevision": 1,
+    "fingerprint": "18ee8579d55ef3f47563a33ebc05c45aec5aa910a2e0c14e9acaeaa5200b2d8d"
+  },
+  "environment:example-sandbox-environment": {
+    "seedRevision": 1,
+    "fingerprint": "dde76ca445ecc0f826b7579838e3b977ac69030d3a7df814d350621ac707b9d3"
+  },
   "execenv:example-safe-sandbox-execenv": {
     "seedRevision": 1,
     "fingerprint": "aa9a964c09faafbd8e7ebbeff3e75aa438878bdb9e1207c4dcd5c0bbba8de0bc"
@@ -190,6 +198,10 @@
   "request:example-confluence-page-read": {
     "seedRevision": 1,
     "fingerprint": "92ad186c5de0e3e01158eaa5378b014a22be34264095a209786bd116d341de6a"
+  },
+  "request:example-environment-httpbin": {
+    "seedRevision": 1,
+    "fingerprint": "34c519e43054753612e7479acc3b08a85d8d26ed2864971cdf3005b44be2e370"
   },
   "request:example-hmac-httpbin": {
     "seedRevision": 3,
@@ -308,8 +320,8 @@
     "fingerprint": "c410df7f05c18b4232ef032d07ffecb501ef825d1c0c2faaec13b758fd24a246"
   },
   "workflow:example-guarded-http-workflow": {
-    "seedRevision": 4,
-    "fingerprint": "18ea64b313bbdfcd6af5146988c97bab5c1c77e5277ce78d9f025a604125eab6"
+    "seedRevision": 5,
+    "fingerprint": "3cc6320942bd552551e63ccb1d7a76c8580f67db5a92f1583a7e7ce6de851c93"
   },
   "workflow:example-jira-issues-sync-workflow": {
     "seedRevision": 2,

@@ -31,6 +31,16 @@ func (e *ExecutionService) SetVersion(version string) {
 	e.version = version
 }
 
+// SetEnvironmentLabelLookup wires the Environment id -> label read a
+// run summary and receipt need (goal 0306 S5) -- late-bound the same
+// way SetVersion is, since ConfigureService is constructed after this
+// service.
+//
+//wails:ignore
+func (e *ExecutionService) SetEnvironmentLabelLookup(fn func(environmentID string) string) {
+	e.environmentLabelLookup = fn
+}
+
 // runEvidenceLookup implements composition.SetRunEvidenceLookup: runCtx
 // is only ever a real execution.Context in production (ADR-0008's
 // single execution path) -- the same "resolve the opaque RunContext on
@@ -76,14 +86,15 @@ func (e *ExecutionService) runEvidenceFor(runID string) (composition.RunEvidence
 
 	build := buildinfo.Read()
 	return composition.RunEvidence{
-		Schema:        contract.SchemaID("receipt"),
-		RunID:         detail.RunID,
-		WorkflowID:    detail.WorkflowID,
-		WorkflowLabel: detail.WorkflowLabel,
-		Version:       detail.Version,
-		Kind:          string(detail.Kind),
-		StartedAt:     detail.StartedAt,
-		Steps:         steps,
+		Schema:           contract.SchemaID("receipt"),
+		RunID:            detail.RunID,
+		WorkflowID:       detail.WorkflowID,
+		WorkflowLabel:    detail.WorkflowLabel,
+		Version:          detail.Version,
+		Kind:             string(detail.Kind),
+		EnvironmentLabel: detail.EnvironmentLabel,
+		StartedAt:        detail.StartedAt,
+		Steps:            steps,
 		Build: composition.RunEvidenceBuild{
 			Version: e.version, Commit: build.Revision, Modified: build.Modified,
 		},

@@ -7,15 +7,61 @@ import (
 	"github.com/alicoding/mill/internal/domain/composition"
 )
 
+// This file owns the run ENTRY surface: the options a caller may
+// supply, the pre-flight refusal every entry point shares, and the
+// exported RPCs themselves. Split from executionservice.go at the
+// 500-line convention (.claude/rules/architecture.md).
+
+// RunOptions bundles runWorkflowStart's optional inputs (goal 0306 S5)
+// -- the same "one struct once two independent optionals exist" move
+// composition.ExecuteOptions already made, applied here before an
+// eighth positional argument made the call sites unreadable.
+type RunOptions struct {
+	// Values overrides the run's starting Attribute values, keyed by
+	// AttributeDef.Key (docs/adr/0008's test-input form).
+	Values map[string]string
+	// Payload seeds the run's starting ExecContext.Payload.
+	Payload string
+	// Stepped starts the run in debug step mode (docs/adr/0031 §5).
+	Stepped bool
+	// AtlasSourceCardID names the card whose write started this run.
+	AtlasSourceCardID string
+	// SecretsToken correlates this run to codeloopsvc's typed-secrets
+	// stash (goal 0240 S2).
+	SecretsToken string
+	// EnvironmentID picks this run's Environment. EnvironmentSet is
+	// what tells "the caller chose none" apart from "the caller did not
+	// choose": only the first may override a workflow's own default,
+	// and every entry point that has nobody to ask (a schedule, a
+	// trigger, a child call) leaves both zero and inherits the default.
+	EnvironmentID  string
+	EnvironmentSet bool
+}
+
+// environmentFor resolves which Environment a run executes in: the
+// caller's explicit choice when it made one, the workflow's own
+// default otherwise.
+func (o RunOptions) environmentFor(wf composition.Workflow) string {
+	if o.EnvironmentSet {
+		return o.EnvironmentID
+	}
+	return wf.DefaultEnvironmentID
+}
+
 // preflightRefusal refuses to start a run validation already knows
 // will fail: error-severity issues, or a warning marked WillFail (an
 // unset required reference). Refusing here with the issue's own
 // message beats letting the run start and fail mid-flight with a step
 // error (goal 0127). Saving such a draft stays legal (ADR-0028's
 // warn-don't-block); only running is refused.
-func preflightRefusal(nodes []composition.Node, edges []composition.Edge, attrs []composition.AttributeDef) error {
+func preflightRefusal(nodes []composition.Node, edges []composition.Edge, attrs []composition.AttributeDef, environmentID string) error {
 	var blocking []string
-	for _, issue := range composition.ValidateGraph(nodes, edges, attrs) {
+	issues := composition.ValidateGraph(nodes, edges, attrs)
+	// Environment-dependent (goal 0306 S5): which {{var}} a step can
+	// resolve depends on the environment THIS run picked, which
+	// ValidateGraph deliberately does not know.
+	issues = append(issues, composition.ValidateEnvironmentVars(nodes, environmentID)...)
+	for _, issue := range issues {
 		if issue.Severity == composition.SeverityError || issue.WillFail {
 			blocking = append(blocking, issue.Message)
 		}
@@ -47,7 +93,7 @@ func preflightRefusal(nodes []composition.Node, edges []composition.Edge, attrs 
 // button, the MCP authoring loop's run_workflow tool) behaves exactly
 // as before this field existed.
 func (e *ExecutionService) RunWorkflow(workflowID string, kind RunKind, values map[string]string) (RunSummary, error) {
-	return e.runWorkflowStart(workflowID, kind, values, "", false, "", "")
+	return e.runWorkflowStart(workflowID, kind, RunOptions{Values: values})
 }
 
 // RunWorkflowWithPayload is RunWorkflow plus a starting payload for the
@@ -57,7 +103,7 @@ func (e *ExecutionService) RunWorkflow(workflowID string, kind RunKind, values m
 // filesystem-watch trigger's changed file path) into the run instead of
 // starting from "".
 func (e *ExecutionService) RunWorkflowWithPayload(workflowID string, kind RunKind, values map[string]string, payload string) (RunSummary, error) {
-	return e.runWorkflowStart(workflowID, kind, values, payload, false, "", "")
+	return e.runWorkflowStart(workflowID, kind, RunOptions{Values: values, Payload: payload})
 }
 
 // RunWorkflowWithSecretsToken is RunWorkflowWithPayload plus a
@@ -72,7 +118,15 @@ func (e *ExecutionService) RunWorkflowWithPayload(workflowID string, kind RunKin
 //
 //wails:ignore
 func (e *ExecutionService) RunWorkflowWithSecretsToken(workflowID string, kind RunKind, values map[string]string, payload, secretsToken string) (RunSummary, error) {
-	return e.runWorkflowStart(workflowID, kind, values, payload, false, "", secretsToken)
+	return e.runWorkflowStart(workflowID, kind, RunOptions{Values: values, Payload: payload, SecretsToken: secretsToken})
+}
+
+// RunWorkflowInEnvironment is RunWorkflowWithPayload plus an explicit
+// Environment for this one run (goal 0306 S5), overriding the
+// workflow's own default -- the Run dialog's own entry point, and the
+// only one that can say "none" and mean it rather than "no opinion."
+func (e *ExecutionService) RunWorkflowInEnvironment(workflowID string, kind RunKind, values map[string]string, payload, environmentID string) (RunSummary, error) {
+	return e.runWorkflowStart(workflowID, kind, RunOptions{Values: values, Payload: payload, EnvironmentID: environmentID, EnvironmentSet: true})
 }
 
 // RunWorkflowStepped starts a workflow run in debug "step mode"
@@ -88,5 +142,5 @@ func (e *ExecutionService) RunWorkflowWithSecretsToken(workflowID string, kind R
 // trigger normally supplies the input (a filesystem-watch path) needs
 // the same substitute input a plain test run does.
 func (e *ExecutionService) RunWorkflowStepped(workflowID string, values map[string]string, payload string) (RunSummary, error) {
-	return e.runWorkflowStart(workflowID, RunKindTest, values, payload, true, "", "")
+	return e.runWorkflowStart(workflowID, RunKindTest, RunOptions{Values: values, Payload: payload, Stepped: true})
 }
