@@ -12,8 +12,8 @@ import { callBindingViaRPC } from './fixtures/wailsRpc'
 
 const SECRETS = 'github.com/alicoding/mill/internal/services/secretsvc.SecretService.'
 const EXPORT = 'name,url,username,password,note\n' +
-	'ZzE2eImportedOne,https://one.example,alice,pw-import-fake-1,\n' +
-	'ZzE2eImportedTwo,https://two.example,bob,pw-import-fake-2,\n'
+	'ZzE2eImportedOne,https://one.example,example-user-1,not-a-real-secret-1,\n' +
+	'ZzE2eImportedTwo,https://two.example,example-user-2,not-a-real-secret-2,\n'
 
 test('a password export imports as entries and the file is deleted', async ({ page }) => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mill-e2e-import-'))
