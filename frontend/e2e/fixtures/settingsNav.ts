@@ -5,8 +5,19 @@ import type { Locator, Page } from '@playwright/test'
 // a time, so reaching a control means naming its group -- the sidebar
 // link alone lands on whichever pane this device last read.
 export type SettingsGroup =
-  | 'general' | 'appearance' | 'shortcuts' | 'extensions'
+  | 'general' | 'appearance' | 'shortcuts'
   | 'connections' | 'notifications' | 'backups' | 'updates'
+
+// Extensions left Settings in goal 0349: it is its own destination,
+// with its own tabs. Everything below still addresses the SAME row and
+// detail components -- only the way in changed.
+export type ExtensionsTab = 'installed' | 'browse' | 'updates'
+
+export async function openExtensions(page: Page, tab: ExtensionsTab = 'installed'): Promise<void> {
+  await page.getByRole('link', { name: 'Extensions' }).click()
+  await expect(page.getByTestId('extensions-view')).toBeVisible()
+  await page.getByTestId(`extensions-tab-${tab}`).click()
+}
 
 export async function openSettings(page: Page, group: SettingsGroup = 'general'): Promise<void> {
   await page.getByRole('link', { name: 'Settings' }).click()
@@ -42,9 +53,20 @@ export async function openExtensionDetail(page: Page, row: Locator, id: string):
   return detail
 }
 
-// Opens Extensions and lands on one plugin's detail pane -- the two
-// steps every runtime-plugin spec takes to read a manifest claim.
-export async function openPluginDetail(page: Page, id: string): Promise<Locator> {
-  await openSettings(page, 'extensions')
-  return openExtensionDetail(page, pluginRow(page, id), id)
+// One tab of an installed extension's detail (goal 0349). A built-in
+// noun's pane has no strip at all, so this is a plugin-only step.
+export type ExtensionDetailTab = 'overview' | 'contributions' | 'changelog' | 'verification' | 'settings'
+
+export async function openExtensionDetailTab(detail: Locator, tab: ExtensionDetailTab): Promise<void> {
+  await detail.getByTestId(`extensions-detail-tab-${tab}`).click()
+}
+
+// Opens Extensions and lands on one plugin's detail pane. Contributions
+// is the default tab here because it is what a manifest claim reads
+// from -- the pane itself opens on Overview.
+export async function openPluginDetail(page: Page, id: string, tab: ExtensionDetailTab = 'contributions'): Promise<Locator> {
+  await openExtensions(page)
+  const detail = await openExtensionDetail(page, pluginRow(page, id), id)
+  await openExtensionDetailTab(detail, tab)
+  return detail
 }

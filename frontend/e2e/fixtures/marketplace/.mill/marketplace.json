@@ -1,0 +1,15 @@
+{
+  "name": "fixture",
+  "owner": { "name": "Fixture publisher" },
+  "plugins": [
+    {
+      "id": "fixture-notes",
+      "name": "Fixture notes",
+      "description": "A marketplace entry the Extensions specs install.",
+      "version": "1.0.0",
+      "author": "Fixture publisher",
+      "kinds": ["network", "commands"],
+      "source": { "kind": "path", "path": "fixture-notes" }
+    }
+  ]
+}

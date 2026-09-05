@@ -49,7 +49,7 @@ connected by links, grouped into areas you can drill into.
   strikethrough, and code; type `[]` or `[x]` at the start of a line
   for a to-do, and Enter continues the list unchecked; at rest the
   note shows the rendered result, and clicking it brings the source
-  back. With Rich code blocks turned on (Settings → Extensions →
+  back. With Rich code blocks turned on (Extensions →
   Note), press Shift-Option-F inside a code block to format it —
   JSON, JavaScript, TypeScript, CSS, HTML, YAML, and Markdown. A long sticky note scrolls in place, and grows while you
   edit it — and any note opens big: ⌘-click it (or right-click →

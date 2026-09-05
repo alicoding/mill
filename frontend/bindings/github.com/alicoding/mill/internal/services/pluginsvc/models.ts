@@ -9,6 +9,30 @@ import * as json$0 from "../../../../../../encoding/json/models.js";
 import * as atlas$0 from "../../domain/atlas/models.js";
 
 /**
+ * BrowseEntry is one offering in the Browse tab: the index's own
+ * description of a plugin, plus which marketplace it came from and
+ * whether it is already installed.
+ */
+export interface BrowseEntry {
+    "Marketplace": string;
+    "Owner": string;
+    "ID": string;
+    "Name": string;
+    "Description": string;
+    "Version": string;
+    "Author": string;
+    "Kinds": string[] | null;
+    "Installed": boolean;
+
+    /**
+     * Tier is what installing this entry would earn, before any
+     * download -- "hash-pinned" when the index declares a hash,
+     * "unverified" when it does not.
+     */
+    "Tier": string;
+}
+
+/**
  * CanvasObjectContribution claims the ingestion doors for one canvas
  * object kind: which dropped-file extensions and which clipboard
  * shapes land as this plugin's object. Payload shape is not declared
@@ -86,6 +110,67 @@ export interface GuardedActionDecision {
      * (the plugin never receives the primitive).
      */
     "Performed": boolean;
+}
+
+/**
+ * InstallPreview is what the user is shown BEFORE anything downloads:
+ * who the extension is, what installing it would earn for trust, and
+ * what it can do once it runs. Every permission-shaped fact a manifest
+ * declares is here, so the prompt never has to re-derive one.
+ */
+export interface InstallPreview {
+    "ID": string;
+    "Name": string;
+    "Version": string;
+    "Author": string;
+    "Description": string;
+    "Marketplace": string;
+    "Tier": string;
+
+    /**
+     * Capabilities are the manifest's declared capability ids
+     * (pluginservice.go's vocabulary), rendered as sentences by the
+     * surface that shows them.
+     */
+    "Capabilities": string[] | null;
+
+    /**
+     * NetworkHosts are the hosts contributes.network declares; AnyHost
+     * is true when it declares "*".
+     */
+    "NetworkHosts": string[] | null;
+    "AnyHost": boolean;
+
+    /**
+     * Kinds are the contribution families the manifest fills.
+     */
+    "Kinds": string[] | null;
+
+    /**
+     * UsesSecrets is true when the manifest declares a setting that
+     * holds a secret reference -- the plugin never sees the secret, it
+     * names one.
+     */
+    "UsesSecrets": boolean;
+
+    /**
+     * AlreadyInstalled reports an existing folder with this id, so the
+     * prompt can say "reinstall" rather than "install".
+     */
+    "AlreadyInstalled": boolean;
+}
+
+/**
+ * InstallRecord is that receipt: where the folder came from, what it
+ * hashed to when it landed, and which tier that earned.
+ */
+export interface InstallRecord {
+    "source": PluginSource;
+    "marketplace": string;
+    "version": string;
+    "contentHash": string;
+    "tier": string;
+    "installedAt": string;
 }
 
 /**
@@ -191,6 +276,20 @@ export interface ManifestContributes {
      * call over MCP, each with its own typed input contract.
      */
     "tools": ToolContribution[] | null;
+}
+
+/**
+ * MarketplaceSource is one place Mill reads an index from, as the user
+ * added it. Kind is "github" (owner/repo[@ref]), "git" (a repository
+ * URL), "url" (a direct index address) or "path" (a folder on this
+ * Mac). Name is filled in from the index the first time it parses.
+ */
+export interface MarketplaceSource {
+    "name": string;
+    "kind": string;
+    "locator": string;
+    "ref": string;
+    "addedAt": string;
 }
 
 /**
@@ -335,6 +434,18 @@ export interface PluginInfo {
      */
     "SigningPolicy": boolean;
     "Signed": boolean;
+
+    /**
+     * Tier is the install trust tier (trust.go, docs/goals/0349): what
+     * actually checked these bytes when they landed. "" for a built-in.
+     */
+    "Tier": string;
+
+    /**
+     * Marketplace names the index this folder was installed from, ""
+     * when it arrived some other way.
+     */
+    "Marketplace": string;
 }
 
 /**
@@ -356,6 +467,23 @@ export interface PluginListDirResult {
     "effect": string;
     "ruleLabel": string;
     "entries": PluginFileEntry[] | null;
+}
+
+/**
+ * PluginSource is where one marketplace entry's files come from. Kind
+ * is "path" (a folder relative to the index), "github" (a repository's
+ * releases) or "archive" (a direct zip URL). SHA256 is the bare hex
+ * digest of the downloaded archive when the publisher declares one --
+ * declaring it is what earns the hash-pinned tier.
+ */
+export interface PluginSource {
+    "kind": string;
+    "path": string;
+    "repo": string;
+    "ref": string;
+    "sha": string;
+    "url": string;
+    "sha256": string;
 }
 
 /**
