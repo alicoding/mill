@@ -122,10 +122,12 @@ test('the Board index plugin lists notes by first line and stays current through
 
 		// The one activation contract reaches a plugin face too (goal
 		// 0354): this one declares content: 'interactive' because its
-		// listing scrolls, so a freshly placed -- and therefore selected
-		// -- object is live and opts the canvas out of the wheel, and
-		// handing the selection back leaves it inert behind the shield.
+		// listing scrolls, so it sits idle behind a click shield until
+		// the object takes a click, and only then owns the wheel.
 		const indexObject = page.locator('[data-testid="atlas-board-object"][data-object-kind="index"]')
+		await expect(indexObject).toHaveAttribute('data-activation', 'idle')
+		await expect(indexObject).not.toHaveClass(/nowheel/)
+		await indexObject.getByTestId('atlas-object-click-shield').click()
 		await expect(indexObject).toHaveAttribute('data-activation', 'selected')
 		await expect(indexObject).toHaveClass(/nowheel/)
 
