@@ -167,3 +167,61 @@ func Authenticate(reason string) error { return authenticateImpl(reason) }
 // collide with an LAError code. Treated as a plain authentication
 // failure -- fail closed, never as a cancel.
 const codeForeignErrorDomain = 1
+
+// Capability names what this Mac can actually ask for when Mill gates
+// the vault -- the honest wording for an unlock prompt, since a Mac
+// with no Touch ID hardware will only ever ask for a password and a
+// label promising Touch ID would be a lie on it.
+type Capability string
+
+const (
+	// CapabilityNone -- nothing is set up: no biometry enrolled, no
+	// device password, or a build without the framework. The unlock
+	// requirement cannot be honoured at all.
+	CapabilityNone Capability = "none"
+	// CapabilityPassword -- the device password is the only method.
+	CapabilityPassword Capability = "password"
+	// CapabilityTouchID -- Touch ID is enrolled and usable, with the
+	// device password behind it.
+	CapabilityTouchID Capability = "touchID"
+	// CapabilityTouchIDAndWatch -- Touch ID and a paired Apple Watch are
+	// both usable, with the device password behind them.
+	CapabilityTouchIDAndWatch Capability = "touchIDAndWatch"
+	// CapabilityWatch -- a paired Apple Watch is usable but there is no
+	// Touch ID hardware, with the device password behind it.
+	CapabilityWatch Capability = "watch"
+)
+
+// capabilityFor maps the three prompt-free framework reads onto a
+// Capability. Pure, so the mapping is provable without a Mac in a
+// particular hardware state.
+//
+// deviceOwner gates everything: LAPolicyDeviceOwnerAuthentication is
+// the policy Authenticate evaluates, so a Mac that cannot evaluate it
+// can offer no method regardless of what the narrower policies say.
+func capabilityFor(deviceOwner, touchID, watch bool) Capability {
+	switch {
+	case !deviceOwner:
+		return CapabilityNone
+	case touchID && watch:
+		return CapabilityTouchIDAndWatch
+	case touchID:
+		return CapabilityTouchID
+	case watch:
+		return CapabilityWatch
+	default:
+		return CapabilityPassword
+	}
+}
+
+// capabilityImpl is swapped at package-init time by
+// localauth_darwin.go, and left at this default on every other build
+// -- same seam shape availableImpl/authenticateImpl establish above.
+var capabilityImpl = func() Capability { return CapabilityNone }
+
+// Describe reports which methods the authentication sheet would offer
+// on this Mac right now. Prompt-free and cheap, like Available, and
+// read at the moment it is shown rather than cached: enrolment, a
+// paired watch's proximity, and the device password can all change
+// while Mill runs.
+func Describe() Capability { return capabilityImpl() }

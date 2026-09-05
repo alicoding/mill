@@ -68,6 +68,22 @@ export interface ListSecretAccessResponse {
 }
 
 /**
+ * LockPolicy is when the vault locks itself: one idle timeout plus the
+ * events that lock it regardless of idle time.
+ * 
+ * LockAfterSeconds counts SYSTEM idle -- time since this Mac last saw
+ * keyboard or pointer input, not time since Mill was last used -- so
+ * working in another app keeps the vault open. 0 means it never locks
+ * on idle.
+ */
+export interface LockPolicy {
+    "LockAfterSeconds": number;
+    "LockOnSleep": boolean;
+    "LockOnUserSwitch": boolean;
+    "LockOnMinimize": boolean;
+}
+
+/**
  * SecretAccessRecord is the frontend-facing JSON shape for one audit
  * row -- mirrors secretaudit.Record with JSON tags added, same
  * "adapter type stays free of a frontend-JSON concern" reasoning
