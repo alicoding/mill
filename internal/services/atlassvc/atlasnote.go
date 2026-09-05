@@ -122,7 +122,7 @@ func (a *AtlasService) SetNotePosition(id string, pos atlas.Position) (atlas.Not
 // against a degenerate drag: a note's own default face (STICKY_WIDTH/
 // STICKY_HEIGHT) is smaller than a card's, so the floor is lower too.
 //
-//nolint:dupl // same lock/mutate/persist/emit/recordScalar shape as SetBoardObjectSize -- a shared generic setter is a larger refactor than this slice's scope
+//nolint:dupl // same lock/mutate/persist/emit/recordSizeChange shape as SetBoardObjectSize -- a shared generic setter is a larger refactor than this slice's scope
 func (a *AtlasService) SetNoteSize(id string, size atlas.Dimensions) (atlas.Note, error) {
 	if size.W < 100 || size.H < 70 {
 		return atlas.Note{}, fmt.Errorf("note size %.0fx%.0f is too small", size.W, size.H)
@@ -147,16 +147,9 @@ func (a *AtlasService) SetNoteSize(id string, size atlas.Dimensions) (atlas.Note
 		return atlas.Note{}, fmt.Errorf("save note size: %w", perr)
 	}
 	dataevent.Emit("atlas", n.ID)
-	recordScalar(a, actorUI, "note", id, n.Text,
-		func(a *AtlasService, sz *atlas.Dimensions) error {
-			if sz == nil {
-				_, err := a.clearNoteSize(id)
-				return err
-			}
-			_, err := a.SetNoteSize(id, *sz)
-			return err
-		},
-		previous.Size, &size,
+	recordSizeChange(a, "note", id, n.Text, previous.Size, &size,
+		func(a *AtlasService, sz atlas.Dimensions) error { _, err := a.SetNoteSize(id, sz); return err },
+		func(a *AtlasService) error { _, err := a.clearNoteSize(id); return err },
 	)
 	return n, nil
 }
@@ -166,9 +159,9 @@ func (a *AtlasService) SetNoteSize(id string, size atlas.Dimensions) (atlas.Note
 // replays through, since SetNoteSize's own minimum-size guard would
 // otherwise refuse the return to "unsized" the same way it refuses an
 // illegal undersized resize. Never called directly by a mutation
-// door's public surface, only from recordScalar's own apply closure
-// above, so it carries no recordUndo call of its own (ADR-0044's
-// suppressRecording already covers the replay).
+// door's public surface, only from recordSizeChange's own apply
+// closure above, so it carries no recordUndo call of its own
+// (ADR-0044's suppressRecording already covers the replay).
 func (a *AtlasService) clearNoteSize(id string) (atlas.Note, error) {
 	a.mu.Lock()
 	idx := a.findNoteLocked(id)
@@ -191,16 +184,6 @@ func (a *AtlasService) clearNoteSize(id string) (atlas.Note, error) {
 	}
 	dataevent.Emit("atlas", n.ID)
 	return n, nil
-}
-
-// derefSize returns the zero Dimensions for a nil *Dimensions -- kept
-// for SetCardSize's own recording (atlasprojection.go), whose entry
-// type is a concrete Dimensions rather than a pointer.
-func derefSize(d *atlas.Dimensions) atlas.Dimensions {
-	if d == nil {
-		return atlas.Dimensions{}
-	}
-	return *d
 }
 
 // MoveNote reparents a note (drag filing into/out of an area frame,
