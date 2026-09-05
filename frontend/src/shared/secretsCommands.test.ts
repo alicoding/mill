@@ -60,3 +60,44 @@ describe('secrets.resetVault enablement', () => {
     expect(findCommand('secrets.resetVault')?.paletteHidden).toBe(true)
   })
 })
+
+describe('secrets.restoreVaultFromBackup enablement', () => {
+  beforeEach(() => {
+    useVaultStatusStore.getState().setVaultError(null)
+    useVaultStatusStore.getState().setVaultBackupTime(null)
+  })
+
+  const enabled = () => findCommand('secrets.restoreVaultFromBackup')?.enabled?.() ?? false
+
+  it('is offered only for a key-mismatch lock with a backup that carries a vault', () => {
+    useVaultStatusStore.getState().setVaultStatus({ Exists: true, Unlocked: false, RequireAuth: false, AuthAvailable: false })
+    useVaultStatusStore.getState().setVaultError({ code: 'key-mismatch', message: "The key on this device doesn't open this vault file." })
+    useVaultStatusStore.getState().setVaultBackupTime({ time: '2026-09-04T10:00:00Z', present: true })
+    expect(enabled()).toBe(true)
+  })
+
+  it('is not offered when no backup carries a vault', () => {
+    useVaultStatusStore.getState().setVaultStatus({ Exists: true, Unlocked: false, RequireAuth: false, AuthAvailable: false })
+    useVaultStatusStore.getState().setVaultError({ code: 'key-mismatch', message: "The key on this device doesn't open this vault file." })
+    useVaultStatusStore.getState().setVaultBackupTime({ time: '', present: false })
+    expect(enabled()).toBe(false)
+  })
+
+  it('is not offered for a no-vault-key lock, even with a backup available -- that door is a fresh empty vault, not a swap', () => {
+    useVaultStatusStore.getState().setVaultStatus({ Exists: true, Unlocked: false, RequireAuth: false, AuthAvailable: false })
+    useVaultStatusStore.getState().setVaultError({ code: 'no-vault-key', message: "There's no key for this vault on this device." })
+    useVaultStatusStore.getState().setVaultBackupTime({ time: '2026-09-04T10:00:00Z', present: true })
+    expect(enabled()).toBe(false)
+  })
+
+  it('is never offered once the vault is open', () => {
+    useVaultStatusStore.getState().setVaultStatus({ Exists: true, Unlocked: true, RequireAuth: false, AuthAvailable: false })
+    useVaultStatusStore.getState().setVaultError({ code: 'key-mismatch', message: "The key on this device doesn't open this vault file." })
+    useVaultStatusStore.getState().setVaultBackupTime({ time: '2026-09-04T10:00:00Z', present: true })
+    expect(enabled()).toBe(false)
+  })
+
+  it('is offered in the palette', () => {
+    expect(findCommand('secrets.restoreVaultFromBackup')?.paletteHidden).toBeFalsy()
+  })
+})
