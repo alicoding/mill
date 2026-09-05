@@ -173,6 +173,20 @@ export default tseslint.config(
           selector: "CallExpression[callee.property.name='catch'][arguments.0.name='noop']",
           message: 'A dropped rejection is a silent failure: route it through runCommand or background(p, source) (goal 0313)',
         },
+        {
+          // Goal 0346: an inventory row's actions are registry commands
+          // with the row's own context, never closures authored inline
+          // on the row -- a closure there exists nowhere but that
+          // render, so the action is unreachable from the palette,
+          // unbindable, and its label duplicated per surface.
+          // InventoryMenuAction no longer HAS an onClick, so TypeScript
+          // already refuses one written directly in an
+          // `menuActions: [...]` literal; this catches the same
+          // property arriving through a helper or a spread, where
+          // excess-property checking does not reach.
+          selector: "Property[key.name='menuActions'] ArrayExpression > ObjectExpression > Property[key.name='onClick']",
+          message: 'A row action is a registry command plus the row context ({ commandId, ctx }), never an inline closure -- add the action to its family descriptor in shared/configureRowCommands.ts (goal 0346).',
+        },
       ],
     },
   },
