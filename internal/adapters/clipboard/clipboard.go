@@ -2,177 +2,177 @@
 // swapping the underlying mechanism (osascript today) never touches domain
 // logic — the CLAUDE.md ports/adapters rule applied to this one commodity
 // concern.
+//
+// Every caller reaches the clipboard through Port, never through Host
+// directly: New selects Host (the real pasteboard, host.go) or Memory
+// (an in-memory stand-in, memory.go) by the MILL_CLIPBOARD environment
+// variable, defaulting to Memory inside a `go test` binary — goal 0356,
+// closing a class of bug where a seeded workflow test's own
+// apply-clipboard-write step landed on the machine running the test,
+// not a fixture. A `go test` binary that deliberately needs the real
+// pasteboard (this package's own round-trip tests) opts back in with
+// MILL_CLIPBOARD_HOST_OK=1; see NewHost's own doc comment.
 package clipboard
 
 import (
-	"context"
-	"encoding/hex"
-	"encoding/json"
-	"fmt"
-	"os/exec"
-	"strings"
+	"os"
 	"sync"
+	"testing"
 	"time"
 )
 
-// cmdTimeout bounds every osascript/pbcopy/pbpaste invocation below --
-// same fail-safe reasoning as mcpclient's own timeout const (docs/SPEC.md
-// §8): a hung clipboard subprocess must not hang its caller indefinitely.
-const cmdTimeout = 5 * time.Second
-
-// ReadHTML asks macOS for the HTML flavor of the current clipboard
-// contents. AppleScript returns raw AppleEvent data as a hex-encoded
-// "«data HTMLxxxx»" literal, so it needs unwrapping before it's usable HTML.
-func ReadHTML() (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-	defer cancel()
-	out, err := exec.CommandContext(ctx, "osascript", "-e", "the clipboard as «class HTML»").Output()
-	if err != nil {
-		return "", fmt.Errorf("no HTML on clipboard: %w", err)
-	}
-
-	raw := strings.TrimSpace(string(out))
-	raw = strings.TrimPrefix(raw, "«data HTML")
-	raw = strings.TrimSuffix(raw, "»")
-
-	decoded, err := hex.DecodeString(raw)
-	if err != nil {
-		return "", fmt.Errorf("could not decode clipboard HTML: %w", err)
-	}
-	return string(decoded), nil
+// Port is every clipboard operation a service or a composition node
+// depends on — Host and Memory both implement it in full, so a caller
+// never knows or cares which one it holds.
+type Port interface {
+	ReadText() (string, error)
+	WriteText(text string) error
+	ReadHTML() (string, error)
+	WriteHTML(html string) error
+	WritePNG(data []byte) error
+	Info() (string, error)
+	Types() ([]string, error)
+	ReadFileURLs() ([]string, error)
+	IsConcealed() (bool, error)
+	// ConsumeSelfWrite reports whether text matches this Port's own most
+	// recent WriteText call, clearing the marker on a match — goal
+	// 0234's self-echo guard; see selfWriteTracker's own doc comment.
+	ConsumeSelfWrite(text string) bool
+	// WatchChanges polls the clipboard's plain-text flavor on the given
+	// interval and calls fn with the new text whenever it differs from
+	// the last-seen value. Returns a stop func.
+	WatchChanges(interval time.Duration, fn func(text string)) (stop func())
 }
 
-// WriteHTML is the inverse of ReadHTML: AppleScript sets the clipboard's
-// HTML flavor from a hex-encoded "«data HTMLxxxx»" literal, the same
-// encoding it hands back when reading.
-func WriteHTML(html string) error {
-	// script is built entirely from a hex encoding of html, which by
-	// construction contains only [0-9a-f] -- there is no AppleScript
-	// metacharacter (a literal «, », or quote) html's raw bytes could
-	// ever inject into the assembled script.
-	script := "set the clipboard to «data HTML" + hex.EncodeToString([]byte(html)) + "»"
-	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-	defer cancel()
-	if err := exec.CommandContext(ctx, "osascript", "-e", script).Run(); err != nil { //nolint:gosec // script is hex-encoded (see above), no injectable characters possible
-		return fmt.Errorf("osascript set-clipboard failed: %w", err)
-	}
-	return nil
-}
-
-// WriteText sets the clipboard's plain-text flavor via pbcopy, and
-// records text as Mill's own most recent programmatic write (see
-// ConsumeSelfWrite) -- goal 0234's self-echo guard: a clipboard-history
-// trigger polling right after this call must be able to tell "the
-// content changed because Mill just wrote it" from "the user copied
-// something new."
-func WriteText(text string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, "pbcopy")
-	cmd.Stdin = strings.NewReader(text)
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	markSelfWrite(text)
-	return nil
-}
-
-// selfWriteMu/selfWriteText track the most recent WriteText call's own
-// content -- a plain package var, not per-caller state, since the
-// clipboard itself is one shared, singular resource on the machine.
 var (
-	selfWriteMu   sync.Mutex
-	selfWriteText string
+	hostOnce sync.Once
+	hostInst *Host
+
+	memOnce sync.Once
+	memInst *Memory
 )
 
-func markSelfWrite(text string) {
-	selfWriteMu.Lock()
-	selfWriteText = text
-	selfWriteMu.Unlock()
+// New returns the Port the current process should use: MILL_CLIPBOARD
+// picks explicitly ("host" or "memory"); left unset, a `go test` binary
+// gets Memory (testing.Testing() is a link-time flag, true from the
+// first line any test binary runs, including a package-level var
+// initializer) and every other binary — the real app, or an e2e spec's
+// spawned bin/mill-server, which is a normal build, not a test binary —
+// gets Host. e2e servers must set MILL_CLIPBOARD=memory explicitly
+// (frontend/e2e/fixtures/server.ts), since testing.Testing() can't see
+// them. New always returns the SAME instance within one process: every
+// caller must observe the same clipboard, exactly as every caller of
+// the real Host already shares the one OS-wide pasteboard.
+func New() Port {
+	switch os.Getenv("MILL_CLIPBOARD") {
+	case "memory":
+		return ForTests()
+	case "host":
+		return sharedHost()
+	default:
+		if testing.Testing() {
+			return ForTests()
+		}
+		return sharedHost()
+	}
 }
 
-// ConsumeSelfWrite reports whether text matches Mill's own most recent
-// WriteText call, clearing the marker on a match. One-shot by design:
-// only the poll cycle immediately following a self-write is treated as
-// an echo -- a later, separate user copy of identical text is recorded
-// normally rather than permanently blacklisted.
-func ConsumeSelfWrite(text string) bool {
-	selfWriteMu.Lock()
-	defer selfWriteMu.Unlock()
-	if selfWriteText != "" && selfWriteText == text {
-		selfWriteText = ""
+// ForTests returns the process-wide in-memory Port, regardless of
+// MILL_CLIPBOARD — the explicit seam for a test (or a future
+// constructor taking Port by injection) that wants Memory without
+// depending on New's own environment-driven default.
+func ForTests() Port {
+	memOnce.Do(func() { memInst = NewMemory() })
+	return memInst
+}
+
+func sharedHost() Port {
+	hostOnce.Do(func() { hostInst = NewHost() })
+	return hostInst
+}
+
+// concealedTypes are the nspasteboard.org convention's own markers
+// (https://nspasteboard.org) a password manager or transient-content
+// source sets on the pasteboard to declare "don't record this in a
+// clipboard history" — the same three types Maccy itself checks
+// (goal 0234's own research). Shared between Host.IsConcealed and
+// Memory.IsConcealed.
+var concealedTypes = []string{
+	"org.nspasteboard.ConcealedType",
+	"org.nspasteboard.TransientType",
+	"org.nspasteboard.AutoGeneratedType",
+}
+
+// isConcealedIn reports whether types carries one of concealedTypes'
+// UTIs — the pure check both Host.IsConcealed (against the real
+// pasteboard's Types()) and Memory.IsConcealed (against its own
+// in-memory type set) apply identically.
+func isConcealedIn(types []string) bool {
+	for _, t := range types {
+		for _, c := range concealedTypes {
+			if t == c {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// selfWriteTracker is WriteText's self-echo marker, embedded in both
+// Host and Memory so each Port implementation tracks its OWN most
+// recent write independently — goal 0234: a clipboard-history poll
+// cycle immediately following Mill's own write must not re-capture that
+// write as a new history entry.
+type selfWriteTracker struct {
+	mu   sync.Mutex
+	text string
+}
+
+func (t *selfWriteTracker) markSelfWrite(text string) {
+	t.mu.Lock()
+	t.text = text
+	t.mu.Unlock()
+}
+
+// ConsumeSelfWrite reports whether text matches the tracker's marker,
+// clearing it on a match. One-shot by design: only the poll cycle
+// immediately following a self-write is treated as an echo — a later,
+// separate user copy of identical text is recorded normally rather than
+// permanently blacklisted.
+func (t *selfWriteTracker) ConsumeSelfWrite(text string) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.text != "" && t.text == text {
+		t.text = ""
 		return true
 	}
 	return false
 }
 
-// ReadText reads the clipboard's plain-text flavor via pbpaste.
-func ReadText() (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-	defer cancel()
-	out, err := exec.CommandContext(ctx, "pbpaste").Output()
-	if err != nil {
-		return "", fmt.Errorf("pbpaste failed: %w", err)
-	}
-	return string(out), nil
-}
-
-// Info returns macOS's own raw "clipboard info" report -- a
-// comma-separated list of alternating «class XXXX», byte-size pairs
-// naming every flavor currently on the pasteboard (e.g. "«class
-// utf8», 12, «class HTML», 14"). Unlike ReadHTML/ReadText, which each
-// commit to one flavor and fail if it's absent, this is a diagnostic:
-// "what's actually on the clipboard right now, and in what shapes" --
-// the same «class HTML»/plain-text presence question §5's capture
-// fallback order already has to answer implicitly, made directly
-// inspectable.
-func Info() (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-	defer cancel()
-	out, err := exec.CommandContext(ctx, "osascript", "-e", "clipboard info").Output()
-	if err != nil {
-		return "", fmt.Errorf("clipboard info failed: %w", err)
-	}
-	return strings.TrimSpace(string(out)), nil
-}
-
-// WatchChanges polls the clipboard's plain-text flavor on the given
-// interval and calls fn with the new text whenever it differs from the
-// last-seen value. Build, not adopt -- confirmed no clipboard-changed
-// event exists via osascript (docs/SPEC.md §3.4), so this is the same
-// poll-loop shape every clipboard manager uses under the hood (goal
-// 0234's own research: changeCount polling is the converged mechanism,
-// and unlike a content read it triggers no macOS pasteboard-privacy
-// prompt on any shipping release). Plain text, not HTML: the HTML
-// flavor is frequently absent (e.g. copying a filename or plain text
-// produces none, and ReadHTML errors in that case), so watching it
-// would miss most real clipboard activity -- text is the one flavor
-// almost everything copyable sets.
-func WatchChanges(interval time.Duration, fn func(text string)) (stop func()) {
+// watchChanges is WatchChanges' shared poll loop, parameterized by
+// readText so Host (real pbpaste) and Memory (its own stored text) run
+// the identical polling/dedup/empty-transition logic — goal 0356: the
+// clipboard-history trigger must see the same watcher behavior
+// regardless of which Port is selected. Build, not adopt — confirmed no
+// clipboard-changed event exists via osascript (docs/SPEC.md §3.4), so
+// this is the same poll-loop shape every clipboard manager uses under
+// the hood (goal 0234's own research: changeCount polling is the
+// converged mechanism, and unlike a content read it triggers no macOS
+// pasteboard-privacy prompt on any shipping release). Plain text, not
+// HTML: the HTML flavor is frequently absent (e.g. copying a filename
+// or plain text produces none), so watching it would miss most real
+// clipboard activity — text is the one flavor almost everything
+// copyable sets.
+func watchChanges(interval time.Duration, fn func(text string), readText func() (string, error)) (stop func()) {
 	done := make(chan struct{})
 	go func() {
-		last, _ := ReadText() // baseline; ignore error (nothing on clipboard yet)
+		last, _ := readText() // baseline; ignore error (nothing on clipboard yet)
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
-				text, err := ReadText()
-				if err != nil {
-					continue
-				}
-				if text != last {
-					last = text
-					// A transition to EMPTY never fires: pbcopy's own
-					// clear-then-set exposes a transient empty pasteboard
-					// to a concurrent poll (measured live: baseline ->
-					// "" -> new value at a 20ms interval), and a
-					// non-text clipboard (an image copy) also reads as
-					// empty -- neither is a text change worth capturing.
-					if text != "" {
-						fn(text)
-					}
-				}
+				last = pollOnce(readText, last, fn)
 			case <-done:
 				return
 			}
@@ -181,86 +181,21 @@ func WatchChanges(interval time.Duration, fn func(text string)) (stop func()) {
 	return func() { close(done) }
 }
 
-// Types returns every registered pasteboard type's UTI string, via a
-// JXA (osascript -l JavaScript) bridge directly into NSPasteboard --
-// AppleScript's own "clipboard info" command (Info, above) only reports
-// coarse four-char AppleScript classes, not arbitrary UTIs like
-// org.nspasteboard.ConcealedType, so checking for those needs Cocoa's
-// own types array instead.
-func Types() ([]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-	defer cancel()
-	const script = `ObjC.import('AppKit'); JSON.stringify(ObjC.deepUnwrap($.NSPasteboard.generalPasteboard.types))`
-	out, err := exec.CommandContext(ctx, "osascript", "-l", "JavaScript", "-e", script).Output()
-	if err != nil {
-		return nil, fmt.Errorf("osascript pasteboard types failed: %w", err)
+// pollOnce reads the current text via readText and, if it differs from
+// last, calls fn -- except for a transition TO empty, which never fires:
+// pbcopy's own clear-then-set exposes a transient empty pasteboard to a
+// concurrent poll (measured live: baseline -> "" -> new value at a 20ms
+// interval), and a non-text clipboard (an image copy) also reads as
+// empty -- neither is a text change worth capturing. Returns the value
+// the next poll should compare against. A read error leaves last
+// unchanged, retried on the next tick.
+func pollOnce(readText func() (string, error), last string, fn func(string)) string {
+	text, err := readText()
+	if err != nil || text == last {
+		return last
 	}
-	var types []string
-	if err := json.Unmarshal(out, &types); err != nil {
-		return nil, fmt.Errorf("decode pasteboard types: %w", err)
+	if text != "" {
+		fn(text)
 	}
-	return types, nil
-}
-
-// ReadFileURLs returns the absolute filesystem paths of any files on
-// the pasteboard (a Finder ⌘C), via the same JXA/NSPasteboard bridge
-// Types uses -- the web Clipboard API exposes a pasted file's BYTES
-// but never its real path, so the board's paste door has to ask the
-// host for the paths a file drop would have delivered. Empty (with the
-// error) wherever osascript is absent or no file flavor exists --
-// callers treat any error as "no files", never a user-facing failure.
-func ReadFileURLs() ([]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
-	defer cancel()
-	const script = `ObjC.import('AppKit');
-const pb = $.NSPasteboard.generalPasteboard;
-const out = [];
-const items = pb.pasteboardItems;
-for (let i = 0; i < items.count; i++) {
-  const s = items.objectAtIndex(i).stringForType('public.file-url');
-  if (!s.isNil()) {
-    const u = $.NSURL.URLWithString(s);
-    if (!u.isNil() && !u.path.isNil()) out.push(ObjC.unwrap(u.path));
-  }
-}
-JSON.stringify(out)`
-	out, err := exec.CommandContext(ctx, "osascript", "-l", "JavaScript", "-e", script).Output()
-	if err != nil {
-		return nil, fmt.Errorf("osascript pasteboard file urls failed: %w", err)
-	}
-	var paths []string
-	if err := json.Unmarshal(out, &paths); err != nil {
-		return nil, fmt.Errorf("decode pasteboard file urls: %w", err)
-	}
-	return paths, nil
-}
-
-// concealedTypes are the nspasteboard.org convention's own markers
-// (https://nspasteboard.org) a password manager or transient-content
-// source sets on the pasteboard to declare "don't record this in a
-// clipboard history" -- the same three types Maccy itself checks
-// (goal 0234's own research).
-var concealedTypes = []string{
-	"org.nspasteboard.ConcealedType",
-	"org.nspasteboard.TransientType",
-	"org.nspasteboard.AutoGeneratedType",
-}
-
-// IsConcealed reports whether the clipboard's current content carries
-// one of concealedTypes' UTIs -- checked before any content read
-// reaches a capture, so concealed content never enters clipboard
-// history at all.
-func IsConcealed() (bool, error) {
-	types, err := Types()
-	if err != nil {
-		return false, err
-	}
-	for _, t := range types {
-		for _, c := range concealedTypes {
-			if t == c {
-				return true, nil
-			}
-		}
-	}
-	return false, nil
+	return text
 }

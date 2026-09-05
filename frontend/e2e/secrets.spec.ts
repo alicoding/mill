@@ -140,13 +140,13 @@ test('secret manager: create vault, store/reveal/copy/edit/history/delete a pass
     // The real pbcopy round-trip is already proven at the Go adapter
     // layer (internal/adapters/clipboard's own TestWriteText) -- this
     // only proves the button is wired end to end (RPC fires, some
-    // visible result renders). withClipboardLock still guards it: the
-    // RPC really does touch the one shared OS pasteboard other workers
-    // use. The outcome is asserted success-or-error, not pinned to
-    // success: clipboard.WriteText shells out to pbcopy, which doesn't
-    // exist on a headless Linux CI runner (docs/SPEC.md §1.3) -- same
-    // environment-independent pattern composition-seeded-runs.spec.ts/
-    // codeexec.spec.ts already use for every other real-clipboard RPC.
+    // visible result renders). This server runs the in-memory clipboard
+    // adapter by default (goal 0356), never the real OS pasteboard, so
+    // withClipboardLock here is a no-cost guard against a future config
+    // change rather than real cross-worker contention. The outcome is
+    // still asserted success-or-error, not pinned to success -- the
+    // same environment-independent pattern composition-seeded-runs.
+    // spec.ts/codeexec.spec.ts use for every other clipboard RPC.
     await withClipboardLock(async () => {
       await page.getByTestId('secret-detail-copy').click()
       await expect(page.getByTestId('secret-detail-copied').or(page.getByTestId('secret-detail-error'))).toBeVisible()
