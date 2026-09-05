@@ -114,6 +114,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `help.openDataFolder` | Open data folder | — | Global | Always available |
 | `help.reportIssue` | Report an issue… | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
+| `listGrid.copyRows` | Copy selected rows | — | Global | Acts on the selected listGrid |
+| `listGrid.deleteColumn` | Delete selected column | — | Global | Acts on the selected listGrid |
+| `listGrid.deleteRows` | Delete selected rows | — | Global | Acts on the selected listGrid |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `object.rename` | Rename | — | atlas | Always available |
 | `output.copy` | Copy output | — | Global | Conditional — available only in a matching state |
