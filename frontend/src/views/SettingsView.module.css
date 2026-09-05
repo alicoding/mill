@@ -1,7 +1,15 @@
 /* Settings' two-pane shell (goal 0321): a 200px group list beside the
    ONE pane that renders at a time. Below the narrow breakpoint the
    nav collapses above the pane instead (SettingsView mounts the same
-   NavList, this grid just stacks). */
+   NavList, this grid just stacks).
+
+   The page renders through PageContainer's "wide" variant (fluid,
+   edge padding only) rather than "narrow" (a centered, capped block):
+   the rail belongs at the content area's left edge, not floating
+   after a centered gutter. "wide" gives every pane the same box width,
+   so the goal-0336 stability invariant -- the rail's position doesn't
+   move when switching panes -- still holds; only .pane's own max-width
+   varies per group. */
 .layout {
     display: grid;
     grid-template-columns: 200px minmax(0, 1fr);

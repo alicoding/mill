@@ -235,6 +235,64 @@ turns_html = (
 )
 substitute("turns-per-goal", turns_html)
 
+# --- maturity (goal 0348: userdocs/reference/plugin-api-maturity.json,
+# read straight through -- derive.sh already degrades a missing file to
+# {"generated": false}, no ledger fields to fall back on) ---
+def maturity_level_chip(level):
+    return {"stable": "good", "deprecated": "warn"}.get(level, "plain")
+
+
+def maturity_flag_chip(flag):
+    return "crit" if flag == "regressed" else "good"
+
+
+maturity = data.get("maturity") or {}
+maturity_rows = maturity.get("rows") or []
+if maturity_rows:
+    rows = []
+    for r in maturity_rows:
+        flags = r.get("flags") or []
+        flags_html = (
+            " ".join(
+                '<span class="chip %s">%s</span>' % (maturity_flag_chip(f), esc(f))
+                for f in flags
+            )
+            if flags
+            else "&mdash;"
+        )
+        rows.append(
+            "    <tr><td>%s</td><td><span class=\"chip %s\">%s</span></td>"
+            "<td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td>"
+            '<td class="num">%s</td><td>%s</td></tr>'
+            % (
+                esc(r.get("family")),
+                maturity_level_chip(r.get("level")),
+                esc(r.get("level")),
+                "yes" if r.get("conformance") else "no",
+                "yes" if r.get("example") else "no",
+                "yes" if r.get("e2e") else "no",
+                "yes" if r.get("docs") else "no",
+                "yes" if r.get("sdkTypes") else "no",
+                esc(r.get("mcp")),
+                r.get("daysBehindCode", 0),
+                flags_html,
+            )
+        )
+    rows_html = "\n".join(rows)
+    note = esc(maturity.get("headline") or "")
+else:
+    rows_html = '    <tr><td colspan="10">Not generated yet.</td></tr>'
+    note = "Run `go generate ./internal/docsgen` to derive the ledger, then re-run refresh.sh."
+maturity_html = (
+    '\n  <div class="card"><table>\n'
+    "    <tr><th>family</th><th>level</th><th>conformance</th><th>example</th>"
+    "<th>e2e</th><th>docs</th><th>SDK types</th><th>MCP</th>"
+    '<th class="num">days behind</th><th>flags</th></tr>\n'
+    "%s\n  </table></div>\n"
+    '  <div class="note">%s</div>\n  ' % (rows_html, note)
+)
+substitute("maturity", maturity_html)
+
 with open(out_path, "w") as fh:
     fh.write(html)
 PY
