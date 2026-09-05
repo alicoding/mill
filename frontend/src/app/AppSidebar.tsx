@@ -15,7 +15,7 @@ import { useIsNarrowViewport } from '../shared/useNarrowViewport'
 // sidebar), capability nav, and the settings footer. Extracted from
 // App.tsx along this seam when the identity-anchor work pushed it over
 // the 500-line limit (.claude/rules/architecture.md).
-export function AppSidebar({ sidebarOpen, setSidebarOpen, mobileNavOpen, setMobileNavOpen, view, setView, capabilities, reviewPendingCount }: {
+export function AppSidebar({ sidebarOpen, setSidebarOpen, mobileNavOpen, setMobileNavOpen, view, currentSection, setView, capabilities, reviewPendingCount }: {
   sidebarOpen: boolean
   setSidebarOpen: (open: boolean) => void
   // The narrow-viewport drawer's own open/closed flag (goal 0068) --
@@ -26,6 +26,12 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, mobileNavOpen, setMobi
   mobileNavOpen: boolean
   setMobileNavOpen: (open: boolean) => void
   view: View
+  // The active work tab's owning section, or `view.kind` when no tab
+  // is active (shared/store.ts's activeSection, goal 0353) -- the
+  // sidebar highlight follows this, never `view` alone, so it tracks
+  // the tab a user is actually working in rather than the page it was
+  // opened from.
+  currentSection: View['kind']
   setView: (v: View) => void
   capabilities: Capability[]
   reviewPendingCount: number
@@ -34,6 +40,14 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, mobileNavOpen, setMobi
   // Closes the mobile drawer on any nav action -- a no-op at regular/
   // wide widths where the sidebar is never hidden by mobileNavOpen.
   const navigateAndClose = (target: View) => { setView(target); setMobileNavOpen(false) }
+  // Whether `target` is the section the sidebar should highlight. When
+  // no work tab overrides the page (currentSection === view.kind),
+  // this is exactly the pre-existing viewsEqual check (placeholder rows
+  // still disambiguate by capabilityId); a tab override compares
+  // section kind only -- every kind it can produce (composition,
+  // configure) has exactly one nav row, so no id-level check applies.
+  const isCurrentSection = (target: View): boolean =>
+    currentSection === view.kind ? viewsEqual(view, target) : target.kind === currentSection
   // Below the drawer breakpoint the sidebar renders as a FULLSCREEN
   // drawer, where sidebarOpen's icon-rail collapse has no meaning: a
   // rail exists to reclaim horizontal space beside content, and the
@@ -125,7 +139,7 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, mobileNavOpen, setMobi
                   <NavList.Item
                     key={c.ID}
                     href="#"
-                    aria-current={viewsEqual(view, target) ? 'page' : undefined}
+                    aria-current={isCurrentSection(target) ? 'page' : undefined}
                     aria-label={railExpanded ? undefined : label}
                     title={railExpanded ? undefined : label}
                     onClick={(e) => { e.preventDefault(); navigateAndClose(target) }}
@@ -172,7 +186,7 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, mobileNavOpen, setMobi
             <NavList>
               <NavList.Item
                 href="#"
-                aria-current={view.kind === 'settings' ? 'page' : undefined}
+                aria-current={isCurrentSection({ kind: 'settings' }) ? 'page' : undefined}
                 aria-label={railExpanded ? undefined : t('appSidebar.settingsAriaLabel')}
                 title={railExpanded ? undefined : t('appSidebar.settingsAriaLabel')}
                 onClick={(e) => { e.preventDefault(); navigateAndClose({ kind: 'settings' }) }}
