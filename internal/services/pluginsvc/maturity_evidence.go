@@ -31,6 +31,7 @@ var sdkTypeByFamily = map[string]string{
 	"themes":        "PluginThemeDecl",
 	"settings":      "PluginSettingsAPI",
 	"network":       "PluginFetchInit",
+	"secretSources": "SecretSourceDecl",
 }
 
 // mcpByFamily names each family's MCP reachability, per maturity.go's
@@ -40,6 +41,7 @@ var mcpByFamily = map[string]string{
 	"settings":      "n/a",
 	"network":       "n/a",
 	"themes":        "n/a",
+	"secretSources": "n/a",
 	"commands":      "yes",
 	"steps":         "yes",
 	"tools":         "yes",
