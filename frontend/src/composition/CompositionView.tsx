@@ -12,6 +12,8 @@ import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { describeSeedReset } from '../shared/seedLifecycle'
+import { entityRowContext } from '../shared/entityRowCommands'
+import { refreshSeedRevisions, useSeedRevisionStore } from '../shared/seedRevisionStore'
 import { downloadJSON } from '../shared/downloadJSON'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import { useImportConfirm } from '../shared/useImportConfirm'
@@ -77,11 +79,13 @@ function CompositionView() {
   // example…" button, hidden entirely when empty). Page-local state,
   // same as armedWorkflows above -- rarely changes, only this page
   // needs it.
-  const [seedRevisions, setSeedRevisions] = useState<Record<string, number | undefined>>({})
+  // The shipped-revision map is app-wide (shared/seedRevisionStore.ts,
+  // goal 0346) so the reset command answers its own enablement.
+  const seedRevisions = useSeedRevisionStore((s) => s.workflow)
   const [restorable, setRestorable] = useState<Workflow[]>([])
 
   const refreshSeedLifecycle = useCallback(() => {
-    void background(CompositionService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})), 'composition.seedRevisions')
+    void refreshSeedRevisions('workflow')
     void background(CompositionService.RestorableWorkflows().then((r) => setRestorable(r ?? [])), 'composition.restorableWorkflows')
   }, [])
 
@@ -94,8 +98,15 @@ function CompositionView() {
     void refreshWorkflows()
     void refreshNodeTypes()
     refreshArmed()
+  }, [refreshArmed])
+
+  // A row's delete and reset are registry commands now (goal 0346),
+  // which cannot call this page's own refresh -- the workflow list IS
+  // the signal: it changed, so what is tombstoned-and-restorable may
+  // have too.
+  useEffect(() => {
     refreshSeedLifecycle()
-  }, [refreshArmed, refreshSeedLifecycle])
+  }, [workflows, refreshSeedLifecycle])
 
   // goal 0017 P2: a Publish/disable/delete elsewhere (another tab, an
   // MCP author) can arm or disarm a workflow's trigger listener --
@@ -200,17 +211,6 @@ function CompositionView() {
       void refreshWorkflows()
       refreshSeedLifecycle() // a deleted built-in becomes restorable
     }).catch((err) => setImportError(String(err)))
-  }
-
-  // Reset-to-shipped-example (docs/goals/0037 item 4): non-destructive
-  // for a workflow -- appends the golden's content as a new published
-  // version, prior history untouched, reachable via the existing
-  // Versions UI.
-  const resetToSeed = (id: string) => {
-    CompositionService.ResetWorkflowToSeed(id).then(() => {
-      void refreshWorkflows()
-      refreshSeedLifecycle()
-    }).catch((err) => setPublishError(String(err)))
   }
 
   // Restore-deleted-example (docs/goals/0037 item 5).
@@ -344,18 +344,16 @@ function CompositionView() {
         // ConfigureRequests.tsx precedent, a plain menu item rather than
         // a dedicated pencil icon in the row-view (WorkflowsTable's own
         // table-view row already has a pencil for the same target).
-        { label: t('compositionView.menu.edit'), onClick: () => openEditor(wf.ID, 'edit') },
-        { label: t('compositionView.menu.export'), onClick: () => exportWorkflow(wf.ID, wf.Label) },
+        { commandId: 'workflow.row.edit', ctx: entityRowContext('workflow', wf.ID) },
+        { commandId: 'workflow.row.export', ctx: entityRowContext('workflow', wf.ID) },
         // Reset-to-shipped-example (docs/goals/0037 item 4): on-demand
-        // disclosure only, built-in-origin rows only. InventoryMenuAction
-        // has no `disabled` concept, so an already-current seed's item is
-        // HIDDEN rather than shown-disabled (the Primer disabled-
-        // affordance rule's own "disabled OR hidden" allowance) -- only
-        // a genuinely actionable reset ever appears in the menu.
-        ...(wf.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(wf.ID) }] : []),
+        // disclosure only. Unavailable means absent, so the command's own
+        // enabled() drops it once the row matches the shipped golden --
+        // only a genuinely actionable reset ever appears in the menu.
+        { commandId: 'workflow.row.reset', ctx: entityRowContext('workflow', wf.ID), label: seedReset.label },
         {
-          label: t('compositionView.menu.delete'),
-          onClick: () => removeWorkflow(wf.ID),
+          commandId: 'workflow.row.delete',
+          ctx: entityRowContext('workflow', wf.ID),
           danger: true,
           confirm: { title: t('compositionView.deleteConfirmTitle'), body: t('compositionView.deleteConfirmBody', { label: wf.Label }) },
         },

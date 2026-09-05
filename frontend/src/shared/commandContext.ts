@@ -26,6 +26,14 @@ export type CommandContext =
   | { kind: 'run'; runId: string; workflowId?: string; nodeId?: string; values?: Record<string, string> }
   | { kind: 'entry'; entryId: string; pinned?: boolean }
   | { kind: 'card'; cardId: string }
+  // A Configure inventory row (goal 0346): `entity` is the family slug
+  // every surface already spells the same way -- InventoryItem.entity,
+  // ENTITY_ICON's keys, deleteWithUndo's data-event name -- and `id` is
+  // that row's entity id. One kind for every family, because a row
+  // action differs by FAMILY, not by kind of target: the command's own
+  // id carries the family, and entityContext(ctx, family) below is what
+  // refuses a context from a different one.
+  | { kind: 'entity'; entity: string; id: string }
 
 export type CommandContextKind = CommandContext['kind']
 
@@ -45,6 +53,15 @@ export function workflowContext(ctx: CommandContext | undefined): { workflowId: 
 
 export function runContext(ctx: CommandContext | undefined): { runId: string; workflowId?: string; nodeId?: string; values?: Record<string, string> } | null {
   return ctx?.kind === 'run' ? { runId: ctx.runId, workflowId: ctx.workflowId, nodeId: ctx.nodeId, values: ctx.values } : null
+}
+
+// entityContext narrows to ONE family: contextSatisfies only compares
+// the discriminant, so `configure.list.delete` handed a request's
+// context would otherwise pass its `needs` check. Every command the
+// row-command factory mints answers through this, so a family's
+// command can never act on another family's row.
+export function entityContext(ctx: CommandContext | undefined, entity: string): { id: string } | null {
+  return ctx?.kind === 'entity' && ctx.entity === entity ? { id: ctx.id } : null
 }
 
 export function entryContext(ctx: CommandContext | undefined): { entryId: string; pinned?: boolean } | null {

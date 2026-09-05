@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, FormControl, IconButton, Stack, Text, TextInput } from '@primer/react'
 import { PencilIcon, PlusIcon, TrashIcon, ArrowSwitchIcon } from '@primer/octicons-react'
@@ -11,6 +10,9 @@ import type { RuleSet } from '../../bindings/github.com/alicoding/mill/internal/
 import { refreshConversionProfiles, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
+import { entityRowContext } from '../shared/entityRowCommands'
+import { useEntityActionError } from '../shared/entityActionErrorStore'
+import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useUISignalStore } from '../shared/uiSignalStore'
@@ -26,6 +28,9 @@ import { background } from '../shared/background'
 // difference is visible before a step is configured.
 export function ConfigureConversionProfiles() {
   const { t } = useTranslation('configure')
+  // A row action's refusal, recorded by the command that met it
+  // (shared/entityActionErrorStore.ts, goal 0346).
+  const rowActionError = useEntityActionError('conversionprofile')
   const profiles = useConfigureEntityStore((s) => s.conversionProfiles)
   const [ruleSets, setRuleSets] = useState<RuleSet[]>([])
   const [viewMode, setViewMode] = useViewMode('mill-view-conversionprofiles')
@@ -90,9 +95,6 @@ export function ConfigureConversionProfiles() {
       setError(String(err))
     }
   }
-  const remove = (id: string, label: string) => {
-    void deleteWithUndo({ entity: 'conversionprofile', id, label, remove: () => ConfigureService.DeleteConversionProfile(id), refetch: refetch, onError: (err) => setError(String(err)) })
-  }
   const ruleLabel = (id: string) => ruleSets.find((r) => r.id === id)?.label ?? id
   const rulesText = (p: Profile) => ((p.RuleSets ?? []).length > 0 ? (p.RuleSets ?? []).map(ruleLabel).join(', ') : t('configureConversionProfiles.noRules'))
   const sorted = useMemo(() => sortByUpdatedDesc(profiles ?? [], (p) => p.UpdatedAt), [profiles])
@@ -108,11 +110,7 @@ export function ConfigureConversionProfiles() {
     description: rulesText(p),
     onOpen: () => startEdit(p),
     menuActions: [
-      {
-        label: t('delete'),
-        onClick: () => remove(p.ID, p.Label),
-        danger: true,
-      },
+      { commandId: 'configure.conversionprofile.delete', ctx: entityRowContext('conversionprofile', p.ID), danger: true },
     ],
   }))
 
@@ -123,6 +121,9 @@ export function ConfigureConversionProfiles() {
       headingText={t('configureConversionProfiles.heading')}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
+      importErrorNode={rowActionError && (
+        <Text as="p" size="small" className={styles.error} data-testid="conversionprofile-row-error">{rowActionError}</Text>
+      )}
       primaryLabel={t('configureConversionProfiles.newProfile')}
       primaryTestId="new-conversionprofile"
       onPrimary={startCreate}
@@ -167,7 +168,7 @@ export function ConfigureConversionProfiles() {
                 renderCell: (p) => (
                   <Stack direction="horizontal" gap="condensed">
                     <IconButton icon={PencilIcon} aria-label={t('configureConversionProfiles.editAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => startEdit(p)} />
-                    <IconButton icon={TrashIcon} aria-label={t('configureConversionProfiles.deleteAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => remove(p.ID, p.Label)} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureConversionProfiles.deleteAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.conversionprofile.delete', entityRowContext('conversionprofile', p.ID))} />
                   </Stack>
                 ),
               },
