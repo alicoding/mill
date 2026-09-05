@@ -91,9 +91,15 @@
   },
   {
     "menu": "File > New…",
-    "item": "New environment",
+    "item": "New execution environment",
     "shortcut": "",
     "command": "configure.new.execenvs"
+  },
+  {
+    "menu": "File > New…",
+    "item": "New environment",
+    "shortcut": "",
+    "command": "configure.new.environments"
   },
   {
     "menu": "File > New…",

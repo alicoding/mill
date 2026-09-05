@@ -228,6 +228,9 @@ func main() {
 	wiring.WireSystemEventNotifications(executionService, triggerService, notificationService)
 	// goal 0052 slice 3: the version a run receipt's Build field stamps.
 	executionService.SetVersion(millVersion)
+	// goal 0306 S5: a run summary and receipt name the Environment the
+	// run executed in; the labels live in Configure.
+	executionService.SetEnvironmentLabelLookup(configureService.EnvironmentLabel)
 
 	// docs/adr/0038 decision 4, goal 0061 slice C / goal 0084: "Update
 	// now" and card actions both run through the normal guardrail-gated

@@ -265,6 +265,7 @@ func NewMillMCPService(version string, comp *compositionsvc.CompositionService, 
 	}, m.readExecEnv)
 
 	m.registerClientCertResources()
+	m.registerEnvironmentResources()
 
 	m.server.AddResource(&mcp.Resource{
 		URI: "mill://aiproviders", Name: "aiproviders", MIMEType: "application/json",

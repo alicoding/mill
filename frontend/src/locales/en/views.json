@@ -412,7 +412,9 @@
     "ambientBreakdown": "{{triggered}} ran on their own (hotkey, schedule, watch) · {{manual}} you ran by hand."
   },
   "activityRunsExplorer": {
+    "noEnvironment": "None",
     "columns": {
+        "environment": "Environment",
       "started": "Started",
       "kind": "Kind",
       "version": "Version",

@@ -62,6 +62,15 @@ export const CONFIGURE_CREATE_COMMANDS: Command[] = [
     },
   },
   {
+    id: 'configure.new.environments',
+    label: 'commands.configure.new.environments',
+    defaultBinding: null,
+    run: () => {
+      useAppStore.getState().setView({ kind: 'configure', tab: 'environments' })
+      useUISignalStore.getState().requestConfigureCreate('environments')
+    },
+  },
+  {
     id: 'configure.new.aiproviders',
     label: 'commands.configure.new.aiproviders',
     defaultBinding: null,

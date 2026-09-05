@@ -51,7 +51,8 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | New list | — | `configure.new.lists` |
 | New MCP server | — | `configure.new.mcpservers` |
 | New decision | — | `configure.new.decisions` |
-| New environment | — | `configure.new.execenvs` |
+| New execution environment | — | `configure.new.execenvs` |
+| New environment | — | `configure.new.environments` |
 | New AI provider | — | `configure.new.aiproviders` |
 | New client certificate | — | `configure.new.certificates` |
 | New conversion profile | — | `configure.new.conversionprofiles` |
