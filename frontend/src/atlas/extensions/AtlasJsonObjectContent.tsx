@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, IconButton, Stack, Text, TextInput } from '@primer/react'
-import { FoldIcon, SearchIcon, UnfoldIcon } from '@primer/octicons-react'
+import { FileCodeIcon, FoldIcon, SearchIcon, UnfoldIcon } from '@primer/octicons-react'
 import type { BoardObject } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { boardObjectContentFor } from '../atlasNounRegistry'
 import { dispatchObjectEdit } from '../objectSeams'
@@ -15,6 +15,7 @@ import type { MirrorReadState } from '../useAtlasObjectMirrorRead'
 import { isParseError, jsonFormatFor, parseJsonDocument, type JsonDocFormat, type JsonParseError } from '../jsonTree'
 import { TABLE_WIDTH, TABLE_HEIGHT } from '../atlasBoardLayout'
 import runbookStyles from '../../shared/ListCard.module.css'
+import nodeStyles from '../AtlasBoardObjectNode.module.css'
 import styles from './AtlasJsonObjectContent.module.css'
 
 // A "json" object's own persisted render (goal 0269): a dropped
@@ -44,6 +45,66 @@ function formatMirrorSize(bytes: number): string {
   return `${(bytes / (1000 * 1000)).toFixed(1)} MB`
 }
 
+// The non-tree states this face can land in before there is a parsed
+// document to show a row of -- pulled out of the component so adding
+// the preview short-circuit above it doesn't also grow ITS cognitive
+// complexity (scripts/check-go-coverage.sh's frontend twin, the
+// sonarjs gate, caps this at 15).
+function emptyStateFor(args: {
+  fetchError: string
+  content: MirrorReadState['content'] | undefined
+  isEmpty: boolean
+  parsed: FaceState | null
+  format: JsonDocFormat
+  t: (key: string, opts?: Record<string, unknown>) => string
+  openDoor: ReactNode
+}): ReactNode | null {
+  const { fetchError, content, isEmpty, parsed, format, t, openDoor } = args
+  if (fetchError) return <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-object-json-error">{fetchError}</Text>
+  if (!content) return <Text as="p" size="small" className={runbookStyles.muted} data-testid="atlas-object-json-loading">{t('overlay.mirrorLoading')}</Text>
+  if (content.Missing) {
+    return (
+      <Stack direction="vertical" gap="condensed" data-testid="atlas-object-json-unreadable">
+        <Text as="p" size="small" className={runbookStyles.error}>{t(`json.unreadable.${format}`)}</Text>
+        {openDoor}
+      </Stack>
+    )
+  }
+  if (content.TooLarge) {
+    // Past the server's own preview cap the bytes never reach the
+    // browser at all, so there is no tree to build -- the file's own
+    // app is the only door left, and the state says so rather than
+    // sitting on a spinner.
+    return (
+      <Stack direction="vertical" gap="condensed" data-testid="atlas-object-json-too-large">
+        <Text as="p" size="small" className={runbookStyles.muted}>{t('overlay.mirrorTooLarge', { size: formatMirrorSize(content.Size) })}</Text>
+        {openDoor}
+      </Stack>
+    )
+  }
+  if (isEmpty) {
+    return (
+      <Stack direction="vertical" gap="condensed" data-testid="atlas-object-json-empty">
+        <Text as="p" size="small" className={runbookStyles.muted}>{t('json.empty')}</Text>
+        {openDoor}
+      </Stack>
+    )
+  }
+  if (parsed?.error) {
+    return (
+      <Stack direction="vertical" gap="condensed" data-testid="atlas-object-json-parse-error">
+        <Text as="p" size="small" className={runbookStyles.error}>{t(`json.unreadable.${format}`)}</Text>
+        <Text as="p" size="small" className={runbookStyles.muted} data-testid="atlas-object-json-parse-detail">
+          {parseDetail(parsed.error)}
+        </Text>
+        {openDoor}
+      </Stack>
+    )
+  }
+  if (!parsed) return <Text as="p" size="small" className={runbookStyles.muted} data-testid="atlas-object-json-loading">{t('overlay.mirrorLoading')}</Text>
+  return null
+}
+
 function frameStyle(hasSize: boolean) {
   const base = { display: 'flex', flexDirection: 'column' as const, gap: 4 }
   // A persisted Size wins forever once a resize happens (goal 0193);
@@ -53,7 +114,7 @@ function frameStyle(hasSize: boolean) {
   return hasSize ? { ...base, width: '100%', height: '100%' } : { ...base, width: TABLE_WIDTH, height: 'auto', maxHeight: TABLE_HEIGHT }
 }
 
-export function AtlasJsonObjectContent({ object, mirrorContent }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState }) {
+export function AtlasJsonObjectContent({ object, mirrorContent, preview }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState; preview?: boolean }) {
   const { t } = useTranslation('atlas')
   const content = mirrorContent?.content
   const fetchError = mirrorContent?.error ?? ''
@@ -82,6 +143,19 @@ export function AtlasJsonObjectContent({ object, mirrorContent }: { object: Boar
     return () => { stale = true }
   }, [content, text, format])
 
+  // A frame's preview tile never renders the tree -- the same call
+  // diagram/pdf make for their own engines (goal 0267): the tile is
+  // capped and nothing in it is interactable, so the filter input,
+  // expand/collapse buttons, and treeitem rows this face renders below
+  // would otherwise sit focusable inside an aria-hidden preview.
+  if (preview) {
+    return (
+      <div className={nodeStyles.placeholder} data-testid="atlas-object-json-preview-tile">
+        <FileCodeIcon size={24} />
+      </div>
+    )
+  }
+
   // ADR-0046 (goal 0244 S0): the button declares no editor of its own
   // -- it reads this Kind's registered editRoute back and hands it to
   // the host's dispatchObjectEdit, the one place that calls the
@@ -106,49 +180,11 @@ export function AtlasJsonObjectContent({ object, mirrorContent }: { object: Boar
     { id: 'copy-key', commandId: 'atlas.json.copyKey', ctx: rowContext(node) },
   ]
 
+  const emptyState = emptyStateFor({ fetchError, content, isEmpty, parsed, format, t, openDoor })
   let inner: ReactNode
-  if (fetchError) {
-    inner = <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-object-json-error">{fetchError}</Text>
-  } else if (!content) {
-    inner = <Text as="p" size="small" className={runbookStyles.muted} data-testid="atlas-object-json-loading">{t('overlay.mirrorLoading')}</Text>
-  } else if (content.Missing) {
-    inner = (
-      <Stack direction="vertical" gap="condensed" data-testid="atlas-object-json-unreadable">
-        <Text as="p" size="small" className={runbookStyles.error}>{t(`json.unreadable.${format}`)}</Text>
-        {openDoor}
-      </Stack>
-    )
-  } else if (content.TooLarge) {
-    // Past the server's own preview cap the bytes never reach the
-    // browser at all, so there is no tree to build -- the file's own
-    // app is the only door left, and the state says so rather than
-    // sitting on a spinner.
-    inner = (
-      <Stack direction="vertical" gap="condensed" data-testid="atlas-object-json-too-large">
-        <Text as="p" size="small" className={runbookStyles.muted}>{t('overlay.mirrorTooLarge', { size: formatMirrorSize(content.Size) })}</Text>
-        {openDoor}
-      </Stack>
-    )
-  } else if (isEmpty) {
-    inner = (
-      <Stack direction="vertical" gap="condensed" data-testid="atlas-object-json-empty">
-        <Text as="p" size="small" className={runbookStyles.muted}>{t('json.empty')}</Text>
-        {openDoor}
-      </Stack>
-    )
-  } else if (parsed?.error) {
-    inner = (
-      <Stack direction="vertical" gap="condensed" data-testid="atlas-object-json-parse-error">
-        <Text as="p" size="small" className={runbookStyles.error}>{t(`json.unreadable.${format}`)}</Text>
-        <Text as="p" size="small" className={runbookStyles.muted} data-testid="atlas-object-json-parse-detail">
-          {parseDetail(parsed.error)}
-        </Text>
-        {openDoor}
-      </Stack>
-    )
-  } else if (!parsed) {
-    inner = <Text as="p" size="small" className={runbookStyles.muted} data-testid="atlas-object-json-loading">{t('overlay.mirrorLoading')}</Text>
-  } else {
+  if (emptyState) {
+    inner = emptyState
+  } else if (parsed) {
     const matches = matchCount(parsed.value, query, '')
     inner = (
       <>

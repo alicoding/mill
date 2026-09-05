@@ -227,11 +227,11 @@ test('Extensions section lists every registered canvas tool; the built-in card r
   await openExtensionsSection(page)
 
   // Every compiled-in ATLAS_TOOLS member (atlas/atlasTools.ts) plus
-  // every tool-less noun (diagram, sheet, pdf -- goal 0267) gets
-  // exactly one row -- card, note, area, table, image, diagram,
-  // sheet, pdf. The drawing tools are the Drawing plugin's row, not
-  // four rows here (goal 0252).
-  await expect(builtInRows(page)).toHaveCount(8)
+  // every tool-less noun (diagram, sheet, pdf, json -- goals 0267,
+  // 0269) gets exactly one row -- card, note, area, table, image,
+  // diagram, sheet, pdf, json. The drawing tools are the Drawing
+  // plugin's row, not four rows here (goal 0252).
+  await expect(builtInRows(page)).toHaveCount(9)
 
   const cardRow = page.locator('[data-testid="extensions-row"][data-extension-id="card"]')
   await expect(cardRow).toBeVisible()

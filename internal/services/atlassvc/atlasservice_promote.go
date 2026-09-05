@@ -23,7 +23,30 @@ const (
 	promotionGap              = 24
 	promotionObjectFootprintW = 160
 	promotionObjectFootprintH = 100
+	// promotionTableFootprintW/H mirror atlasBoardLayout.ts's own
+	// TABLE_WIDTH/TABLE_HEIGHT -- the unsized default every
+	// table-shaped face (sheet, json's tree) renders at, wider than
+	// the generic promotionObjectFootprintW/H estimate every other
+	// unsized Kind actually fits inside.
+	promotionTableFootprintW = 520
+	promotionTableFootprintH = 320
 )
+
+// promotionObjectFootprint returns the (W, H) estimate for a Kind that
+// carries no persisted Size -- most Kinds fit the generic
+// promotionObjectFootprintW/H estimate, but a table-shaped Kind
+// defaults to a visibly wider unsized render than that (its own
+// content face's own frameStyle), so the generic fallback under-
+// estimates it enough to leave the NEXT promoted object landing on
+// top of it.
+func promotionObjectFootprint(kind string) (float64, float64) {
+	switch kind {
+	case "sheet", "json", "table":
+		return promotionTableFootprintW, promotionTableFootprintH
+	default:
+		return promotionObjectFootprintW, promotionObjectFootprintH
+	}
+}
 
 // promotionState is preparePromotionLocked's own report to DeleteCard:
 // which board objects it moved and where each one was before, so the
@@ -139,7 +162,7 @@ func (a *AtlasService) occupiedMaxYFromObjectsLocked(byID map[string]atlas.Card,
 		if atlas.EffectiveParentID(byID, o.ParentID) != newParentID || !o.DeletedAt.IsZero() {
 			continue
 		}
-		h := float64(promotionObjectFootprintH)
+		_, h := promotionObjectFootprint(o.Kind)
 		if o.Size != nil {
 			h = o.Size.H
 		}
@@ -169,7 +192,7 @@ func (a *AtlasService) repositionPromotedObjectsLocked(objectIDs []string, newPa
 			continue
 		}
 		previous[id] = a.objects[idx].Position
-		w := float64(promotionObjectFootprintW)
+		w, _ := promotionObjectFootprint(a.objects[idx].Kind)
 		if a.objects[idx].Size != nil {
 			w = a.objects[idx].Size.W
 		}

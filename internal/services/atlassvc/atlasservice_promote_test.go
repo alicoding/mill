@@ -153,3 +153,35 @@ func TestRepositionPromotedObjectsLocked_ClearsMultiplePromotedSiblings(t *testi
 		t.Errorf("both promoted objects landed at the same position %+v", p1.Position)
 	}
 }
+
+// TestRepositionPromotedObjectsLocked_TableShapedKindGetsItsRealFootprint
+// pins the estimate itself, not just that two positions differ: an
+// unsized 'sheet'/'json' object renders far wider than the generic
+// promotionObjectFootprintW fallback (its own content face's own
+// frameStyle default), so the row layout must space the NEXT promoted
+// object clear of that real width -- under-estimating it left the
+// following object's row slot landing inside the wide one's own
+// rendered box.
+func TestRepositionPromotedObjectsLocked_TableShapedKindGetsItsRealFootprint(t *testing.T) {
+	a := newTestAtlasService(t)
+	k := mustKind(t, a)
+	container := mustCard(t, a, k.ID, "Container", "", nil)
+	wide, err := a.CreateBoardObject("sheet", nil, atlas.Position{X: 10, Y: 10}, container.ID)
+	if err != nil {
+		t.Fatalf("CreateBoardObject(sheet): %v", err)
+	}
+	next := mustBoardObject(t, a, atlas.Position{X: 20, Y: 20}, container.ID)
+
+	if _, err := a.DeleteCard(container.ID); err != nil {
+		t.Fatalf("DeleteCard: %v", err)
+	}
+
+	pWide, pNext := findObject(a, wide.ID), findObject(a, next.ID)
+	if pWide == nil || pNext == nil {
+		t.Fatal("a promoted object is missing from Objects()")
+	}
+	if pNext.Position.X < pWide.Position.X+promotionTableFootprintW+promotionGap {
+		t.Errorf("pNext.Position.X = %v, want >= %v (clear of the unsized sheet's own real table-shaped width)",
+			pNext.Position.X, pWide.Position.X+promotionTableFootprintW+promotionGap)
+	}
+}
