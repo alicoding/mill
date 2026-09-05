@@ -64,3 +64,13 @@
        .tab/.tabClose. */
     --wails-draggable: no-drag;
 }
+
+/* The "Open in full" tab (goal 0326): the same output viewer with the
+   whole panel to itself, so its body grows instead of scrolling inside
+   a 420px window. */
+.outputTab {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: var(--base-size-16);
+    overflow: auto;
+}

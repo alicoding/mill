@@ -2,6 +2,7 @@ package configuresvc
 
 import (
 	"fmt"
+	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"strings"
 	"time"
 
@@ -19,12 +20,11 @@ import (
 // existing one -- the RPC never reads c.requests for config, only (via
 // RequestID, below) as a secret fallback.
 type TestHTTPRequestInput struct {
-	// RequestID is optional. Set it when editing an existing request
-	// and Secret is left blank ("keep the existing secret," matching
-	// RequestForm's own Auth-tab caption) -- the RPC then falls back to
-	// this request's stored keychain secret, the same read
-	// resolveHTTPRequest already does for a real workflow run.
+	// RequestID is optional -- it names the request being edited so an
+	// error can say which one it is. Every secret this call needs comes
+	// from the references below, exactly as a real run resolves them.
 	RequestID string
+	Label     string
 	BaseURL   string
 	AuthType  httprequest.AuthType
 	// Auth is the non-secret config for AuthOAuth2/AuthHMAC/AuthOAuth1
@@ -34,19 +34,16 @@ type TestHTTPRequestInput struct {
 	// nil for a request not using it.
 	JOSE    *httprequest.JOSEConfig
 	Headers map[string]string
-	// Secret is used as typed, for this call only -- TestHTTPRequestOperation
-	// never calls c.credentials.Set, so a tested-then-abandoned draft
-	// leaves no keychain trace.
-	Secret string
-	// JOSEPrivateKeyPEM is the same "used as typed, for this call only"
-	// shape as Secret above, but for JOSE.DecryptResponse's own,
-	// separately-keychained private key (falls back to
-	// joseKeychainID(RequestID) when blank, same pattern Secret uses
-	// for the AuthType secret).
-	JOSEPrivateKeyPEM string
-	OpenAPISpec       string
-	Path              string
-	Method            string
+	// SecretRef names the draft's own auth secret in the secret store
+	// (goal 0306) -- the same reference a saved request carries, so a
+	// test run and a real run resolve identically and a
+	// tested-then-abandoned draft stores nothing anywhere. OAuth 1.0a's
+	// two references travel on Auth.OAuth1, JOSE's on JOSE, exactly as
+	// they do on a saved request.
+	SecretRef   string
+	OpenAPISpec string
+	Path        string
+	Method      string
 	// Values is a flat map of example (generated or hand-edited) field
 	// values keyed by the operation's declared Field.Key, resolved into
 	// path/query/header/body placement by openapispec.BuildRequest.
@@ -77,17 +74,25 @@ type TestHTTPRequestResult struct {
 // integration-http node already goes through, deliberately not
 // special-cased faster/slower.
 func (c *ConfigureService) TestHTTPRequestOperation(req TestHTTPRequestInput) (TestHTTPRequestResult, error) {
-	secret := req.Secret
-	if secret == "" && req.RequestID != "" {
-		if stored, err := c.credentials.Get(req.RequestID); err == nil {
-			secret = stored
-		}
+	// Resolved through the identical path a real run takes (goal 0306):
+	// the draft is shaped as the request it would be saved as, so a
+	// test that passes proves the references themselves resolve, not
+	// just that a hand-typed value works.
+	draft := httprequest.HTTPRequest{
+		ID: req.RequestID, Label: req.Label, BaseURL: req.BaseURL,
+		AuthType: req.AuthType, SecretRef: req.SecretRef, Auth: req.Auth, JOSE: req.JOSE,
 	}
-	josePrivateKey := req.JOSEPrivateKeyPEM
-	if josePrivateKey == "" && req.RequestID != "" {
-		if stored, err := c.credentials.Get(joseKeychainID(req.RequestID)); err == nil {
-			josePrivateKey = stored
-		}
+	if draft.Label == "" {
+		draft.Label = req.BaseURL
+	}
+	actx := secretaudit.AccessContext{Context: secretaudit.ContextIntegrationAuth}
+	secret, err := c.resolveHTTPRequestSecret(draft, actx)
+	if err != nil {
+		return TestHTTPRequestResult{}, err
+	}
+	josePublicKey, josePrivateKey, err := c.resolveHTTPRequestJOSEKeys(draft, actx)
+	if err != nil {
+		return TestHTTPRequestResult{}, err
 	}
 
 	doc, err := openapispec.Parse([]byte(req.OpenAPISpec))
@@ -115,7 +120,7 @@ func (c *ConfigureService) TestHTTPRequestOperation(req TestHTTPRequestInput) (T
 	// body before Auth is applied, so a signing AuthType signs exactly
 	// what's transmitted -- a test run and a real run must diverge
 	// nowhere (docs/adr/0013's own "test exactly as it would run" goal).
-	body, err = composition.ApplyJOSEEncryption(req.JOSE, body)
+	body, err = composition.ApplyJOSEEncryption(req.JOSE, josePublicKey, body)
 	if err != nil {
 		return TestHTTPRequestResult{}, fmt.Errorf("configureservice: %w", err)
 	}

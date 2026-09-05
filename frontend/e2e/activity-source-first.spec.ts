@@ -23,7 +23,7 @@ test('Selecting a source workflow shows its durable runs with attribute columns 
   // A run's result renders below the InventoryList now, not inline in
   // the row itself (docs/goals/0007's dense-row anatomy has no room for
   // a result preview).
-  const result = page.getByTestId('workflow-run-result').filter({ has: page.getByText('Example: Parent → child call', { exact: true }) }).locator('pre')
+  const result = page.getByTestId('workflow-run-result').filter({ has: page.getByText('Example: Parent → child call', { exact: true }) }).getByTestId('workflow-run-output')
   await expect(result).toContainText('processed by the child workflow', { timeout: 20000 })
 
   await page.getByRole('link', { name: 'Activity' }).click()

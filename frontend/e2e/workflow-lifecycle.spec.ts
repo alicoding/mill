@@ -64,7 +64,7 @@ test('The seeded parent pinned to the child v1 runs v1 even though the child dra
   // result renders below the InventoryList now, not inline in the row
   // (docs/goals/0007's dense-row anatomy has no room for a result
   // preview).
-  const result = page.getByTestId('workflow-run-result').filter({ has: page.getByText('Example: Parent → child call', { exact: true }) }).locator('pre')
+  const result = page.getByTestId('workflow-run-result').filter({ has: page.getByText('Example: Parent → child call', { exact: true }) }).getByTestId('workflow-run-output')
   await expect(result).toContainText('(processed by the child workflow, v1)', { timeout: 20000 })
   await expect(result).not.toContainText('DRAFT')
 })

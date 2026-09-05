@@ -156,13 +156,13 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
           <RequestTestPanel
             operations={testOperations}
             effectiveSpec={request.OpenAPISpec}
+            label={request.Label}
             baseURL={request.BaseURL}
             authType={request.AuthType}
             auth={request.Auth}
             jose={request.JOSE}
-            josePrivateKeyPEM=""
             headers={rowsToHeaders(headersToRows(request.Headers))}
-            secret=""
+            secretRef={request.SecretRef}
             requestID={request.ID}
           />
         </TabPanel>

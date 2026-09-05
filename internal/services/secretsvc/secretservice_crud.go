@@ -34,6 +34,20 @@ func (s *SecretService) ResolveSecretValue(id string, actx secretaudit.AccessCon
 		s.recordAccess(id, "", actx, secretaudit.OutcomeError, err.Error())
 		return "", err
 	}
+	// A source-backed entry (goal 0306) holds no value: the reference
+	// it carries is resolved through the provider port at this moment,
+	// so the source's value is never copied into the vault. The audit
+	// line comes from resolveProvider and names the source that
+	// answered, not this entry.
+	if e.SourceRef != "" {
+		value, handled, err := s.resolveProvider(e.SourceRef, actx)
+		if !handled {
+			err = fmt.Errorf("the entry %q names a source Mill does not recognize", e.Title)
+			s.recordAccess(id, e.Title, actx, secretaudit.OutcomeError, err.Error())
+			return "", err
+		}
+		return value, err
+	}
 	s.recordAccess(id, e.Title, actx, secretaudit.OutcomeRead, "")
 	return e.Password, nil
 }
@@ -63,9 +77,15 @@ func (s *SecretService) SecretHistory(id string) ([]secret.Entry, error) {
 	return s.vault.History(id)
 }
 
-// CreateSecret validates and inserts a new entry.
-func (s *SecretService) CreateSecret(title, username, password, url, notes, tags string) (secret.Entry, error) {
-	e := secret.Entry{Title: title, Username: username, Password: password, URL: url, Notes: notes, Tags: tags}
+// CreateSecret validates and inserts a new entry. kind classifies what
+// it holds (secret.NormalizeKind); a non-empty sourceRef makes it
+// source-backed, in which case password is ignored -- the value stays
+// in the source and is read at use time.
+func (s *SecretService) CreateSecret(title, username, password, url, notes, tags, kind, sourceRef string) (secret.Entry, error) {
+	if sourceRef != "" {
+		password = ""
+	}
+	e := secret.Entry{Title: title, Username: username, Password: password, URL: url, Notes: notes, Tags: tags, Kind: secret.NormalizeKind(kind), SourceRef: sourceRef}
 	if err := secret.Validate(e); err != nil {
 		return secret.Entry{}, err
 	}
@@ -80,11 +100,14 @@ func (s *SecretService) CreateSecret(title, username, password, url, notes, tags
 // UpdateSecret validates and overwrites id's current values, pushing the
 // PREVIOUS values onto its history (secretvault.Vault.Upsert's own
 // contract).
-func (s *SecretService) UpdateSecret(id, title, username, password, url, notes, tags string) (secret.Entry, error) {
+func (s *SecretService) UpdateSecret(id, title, username, password, url, notes, tags, kind, sourceRef string) (secret.Entry, error) {
 	if id == "" {
 		return secret.Entry{}, fmt.Errorf("no entry id given")
 	}
-	e := secret.Entry{ID: id, Title: title, Username: username, Password: password, URL: url, Notes: notes, Tags: tags}
+	if sourceRef != "" {
+		password = ""
+	}
+	e := secret.Entry{ID: id, Title: title, Username: username, Password: password, URL: url, Notes: notes, Tags: tags, Kind: secret.NormalizeKind(kind), SourceRef: sourceRef}
 	if err := secret.Validate(e); err != nil {
 		return secret.Entry{}, err
 	}
@@ -140,4 +163,25 @@ func (s *SecretService) RedactKnownSecrets(text string) string {
 // (a user can generate before the vault is even unlocked).
 func (s *SecretService) GeneratePassword(length int, upper, lower, digits, symbols bool) (string, error) {
 	return secret.Generate(secret.GenerateOptions{Length: length, Upper: upper, Lower: lower, Digits: digits, Symbols: symbols})
+}
+
+// CreateStoredSecret creates one entry and returns its id -- the create
+// door the adoption pass uses (goal 0306,
+// configuresvc.SetSecretCreator) when it moves a credential that used
+// to sit in a per-entity OS keychain item into the store. Exported for
+// wiring only, never a frontend RPC: a human creating an entry goes
+// through CreateSecret, which validates the whole record.
+//
+//wails:ignore
+func (s *SecretService) CreateStoredSecret(title, value string, kind secret.Kind) (string, error) {
+	e := secret.Entry{Title: title, Password: value, Kind: kind}
+	if err := secret.Validate(e); err != nil {
+		return "", err
+	}
+	created, err := s.vault.Upsert(e)
+	if err != nil {
+		return "", err
+	}
+	dataevent.Emit("secret", created.ID)
+	return created.ID, nil
 }

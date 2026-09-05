@@ -73,7 +73,9 @@ func TestTestHTTPRequestOperation_UsesDraftValues_NotARequestID(t *testing.T) {
 	}
 }
 
-func TestTestHTTPRequestOperation_FallsBackToKeychainSecret_WhenSecretBlank(t *testing.T) {
+// A test call resolves the SAME reference a real run would (goal
+// 0306), so what a test proves is what will happen.
+func TestTestHTTPRequestOperation_ResolvesTheReferenceItIsGiven(t *testing.T) {
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
@@ -82,19 +84,17 @@ func TestTestHTTPRequestOperation_FallsBackToKeychainSecret_WhenSecretBlank(t *t
 	defer srv.Close()
 
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("My API", srv.URL, "", "", httprequest.AuthBearer, nil, testOpenAPISpec, nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", srv.URL, "", "", httprequest.AuthBearer, "", nil, testOpenAPISpec, nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
-	if err := cfg.SetHTTPRequestSecret(req.ID, "stored-secret"); err != nil {
-		t.Fatalf("SetHTTPRequestSecret returned error: %v", err)
-	}
+	storeRequestSecret(t, cfg, req.ID, "stored-secret")
 
 	if _, err := cfg.TestHTTPRequestOperation(TestHTTPRequestInput{
 		RequestID:   req.ID,
 		BaseURL:     srv.URL,
 		AuthType:    httprequest.AuthBearer,
-		Secret:      "", // blank -- must fall back to the stored keychain secret
+		SecretRef:   requestSecretRef(t, cfg, req.ID),
 		OpenAPISpec: testOpenAPISpec,
 		Path:        "/widgets",
 		Method:      http.MethodGet,
@@ -106,7 +106,10 @@ func TestTestHTTPRequestOperation_FallsBackToKeychainSecret_WhenSecretBlank(t *t
 	}
 }
 
-func TestTestHTTPRequestOperation_ExplicitSecretOverridesKeychain(t *testing.T) {
+// A draft may point at any entry, not only the one the saved request
+// names -- which is how a user tests a replacement credential before
+// committing to it.
+func TestTestHTTPRequestOperation_ADifferentReferenceIsUsedAsGiven(t *testing.T) {
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
@@ -115,19 +118,17 @@ func TestTestHTTPRequestOperation_ExplicitSecretOverridesKeychain(t *testing.T) 
 	defer srv.Close()
 
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("My API", srv.URL, "", "", httprequest.AuthBearer, nil, testOpenAPISpec, nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", srv.URL, "", "", httprequest.AuthBearer, "", nil, testOpenAPISpec, nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
-	if err := cfg.SetHTTPRequestSecret(req.ID, "stored-secret"); err != nil {
-		t.Fatalf("SetHTTPRequestSecret returned error: %v", err)
-	}
+	storeRequestSecret(t, cfg, req.ID, "stored-secret")
 
 	if _, err := cfg.TestHTTPRequestOperation(TestHTTPRequestInput{
 		RequestID:   req.ID,
 		BaseURL:     srv.URL,
 		AuthType:    httprequest.AuthBearer,
-		Secret:      "typed-secret",
+		SecretRef:   secretStoreOf(t, cfg).Put("A replacement token", "typed-secret"),
 		OpenAPISpec: testOpenAPISpec,
 		Path:        "/widgets",
 		Method:      http.MethodGet,
@@ -135,18 +136,20 @@ func TestTestHTTPRequestOperation_ExplicitSecretOverridesKeychain(t *testing.T) 
 		t.Fatalf("TestHTTPRequestOperation returned error: %v", err)
 	}
 	if gotAuth != "Bearer typed-secret" {
-		t.Errorf("server received Authorization %q, want Bearer typed-secret (explicit Secret must win over keychain)", gotAuth)
+		t.Errorf("server received Authorization %q, want Bearer typed-secret (the draft's own reference must be the one used)", gotAuth)
 	}
 }
 
-func TestTestHTTPRequestOperation_NeverPersistsTheSecret(t *testing.T) {
+// Testing a draft never saves anything onto the request: the request
+// still names no secret afterwards.
+func TestTestHTTPRequestOperation_NeverPersistsTheReference(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
 
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("My API", srv.URL, "", "", httprequest.AuthBearer, nil, testOpenAPISpec, nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", srv.URL, "", "", httprequest.AuthBearer, "", nil, testOpenAPISpec, nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
@@ -154,7 +157,7 @@ func TestTestHTTPRequestOperation_NeverPersistsTheSecret(t *testing.T) {
 		RequestID:   req.ID,
 		BaseURL:     srv.URL,
 		AuthType:    httprequest.AuthBearer,
-		Secret:      "never-should-be-stored",
+		SecretRef:   secretStoreOf(t, cfg).Put("A draft-only token", "never-should-be-stored"),
 		OpenAPISpec: testOpenAPISpec,
 		Path:        "/widgets",
 		Method:      http.MethodGet,
@@ -162,7 +165,7 @@ func TestTestHTTPRequestOperation_NeverPersistsTheSecret(t *testing.T) {
 		t.Fatalf("TestHTTPRequestOperation returned error: %v", err)
 	}
 	if _, err := cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{}); err == nil {
-		t.Error("resolveHTTPRequest succeeded after only a test call (no SetHTTPRequestSecret) -- TestHTTPRequestOperation must not persist the secret")
+		t.Error("resolveHTTPRequest succeeded after only a test call -- TestHTTPRequestOperation must not write the draft's reference onto the request")
 	}
 }
 

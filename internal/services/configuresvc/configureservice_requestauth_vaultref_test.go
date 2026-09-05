@@ -31,7 +31,7 @@ func TestResolveHTTPRequest_HeaderVaultRefResolved(t *testing.T) {
 		return "", errors.New("unexpected id")
 	})
 
-	req, err := cfg.CreateHTTPRequest("Secured API", "https://example.com", "", "", httprequest.AuthNone,
+	req, err := cfg.CreateHTTPRequest("Secured API", "https://example.com", "", "", httprequest.AuthNone, "",
 		map[string]string{"X-Api-Key": "vault:entry-1", "Accept": "application/json"}, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
@@ -57,7 +57,7 @@ func TestResolveHTTPRequest_HeaderVaultLocked_FailsExplicitly(t *testing.T) {
 	lockedErr := errors.New("secretvault: vault is locked")
 	cfg.SetSecretResolver(func(string, secretaudit.AccessContext) (string, error) { return "", lockedErr })
 
-	req, err := cfg.CreateHTTPRequest("Secured API", "https://example.com", "", "", httprequest.AuthNone,
+	req, err := cfg.CreateHTTPRequest("Secured API", "https://example.com", "", "", httprequest.AuthNone, "",
 		map[string]string{"X-Api-Key": "vault:entry-1"}, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
@@ -77,7 +77,7 @@ func TestExportHTTPRequest_NeverCarriesResolvedHeaderSecret(t *testing.T) {
 		return "real-secret-fake", nil
 	})
 
-	req, err := cfg.CreateHTTPRequest("Secured API", "https://example.com", "", "", httprequest.AuthNone,
+	req, err := cfg.CreateHTTPRequest("Secured API", "https://example.com", "", "", httprequest.AuthNone, "",
 		map[string]string{"X-Api-Key": "vault:entry-1"}, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
@@ -106,7 +106,7 @@ func TestResolveHTTPRequest_NoHeaders_Unaffected(t *testing.T) {
 		return "", nil
 	})
 
-	req, err := cfg.CreateHTTPRequest("Public API", "https://example.com", "", "", httprequest.AuthNone, nil, "", nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("Public API", "https://example.com", "", "", httprequest.AuthNone, "", nil, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
 	}

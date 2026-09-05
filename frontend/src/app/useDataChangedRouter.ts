@@ -3,6 +3,7 @@ import { Events } from '@wailsio/runtime'
 import { refreshKeybindings, refreshNodeTypes, refreshRequests, refreshWorkflows } from '../shared/store'
 import { refreshAIProviders, refreshDeclaredStepTypes, refreshDecisions, refreshExecEnvs, refreshLists, refreshMCPServers } from '../shared/configureEntityStore'
 import { refreshVaultStatus } from '../shared/vaultStatusStore'
+import { refreshSecretTitles } from '../shared/secretTitleCache'
 import { refreshDisabledExtensions } from '../shared/extensionEnablementStore'
 import { refreshExtensionSettings } from '../shared/extensionSettingsStore'
 import { refreshPendingReview } from '../review/pendingReviewStore'
@@ -41,7 +42,13 @@ export function useDataChangedRouter(): void {
       if (entity === 'aiprovider') void refreshAIProviders()
       if (entity === 'steptype') { void refreshDeclaredStepTypes(); void refreshNodeTypes() }
       if (entity === 'keybinding') void refreshKeybindings()
-      if (entity === 'secret') void refreshVaultStatus()
+      // An entry added, edited or deleted anywhere -- this window, a
+      // headless write, another surface -- has to reach every open
+      // secret picker (goal 0306), not just the vault's lock state.
+      if (entity === 'secret') {
+        void refreshVaultStatus()
+        void refreshSecretTitles()
+      }
       if (entity === 'extension') void refreshDisabledExtensions()
       if (entity === 'extension-setting') void refreshExtensionSettings()
     })

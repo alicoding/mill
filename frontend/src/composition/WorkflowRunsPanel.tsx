@@ -11,6 +11,7 @@ import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/inte
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
 import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import { RunStepRow } from './RunStepRow'
+import { OutputViewer } from '../shared/OutputViewer'
 import { formatRunStartedAt, runStatusLabel, runStatusVariant } from '../shared/runTime'
 import { StalenessBadge } from '../shared/StalenessBadge'
 import { StatusStamp, type StatusStampVariant } from '../shared/StatusStamp'
@@ -425,7 +426,12 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
                     {pending.ruleLabel && !isDebug ? t('workflowRunsPanel.ruleSuffix', { rule: pending.ruleLabel }) : !isDebug ? t('workflowRunsPanel.externalStepsAskByDefault') : ''}.
                   </Text>
                   {pending.payload && (
-                    <pre className={styles.result}>{pending.payload}</pre>
+                    /* Undeclared on purpose: a parked payload is the
+                       step's INPUT, and a shell or code step's is
+                       prefixed with its working directory before it
+                       parks, so no producer kind describes the bytes.
+                       Inference answers, and the switch says so. */
+                    <OutputViewer value={pending.payload} site="parked-payload" testId="parked-payload" />
                   )}
                   <ApprovalValuesForm
                     attrs={attrsForPending(attrs, pending.inputAttributes)}

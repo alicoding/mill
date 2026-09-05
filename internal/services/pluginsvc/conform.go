@@ -37,6 +37,7 @@ func ConformDir(dir, appVersion string) []string {
 		problems = append(problems, p)
 	}
 	problems = append(problems, conformStepPack(dir, m)...)
+	problems = append(problems, conformSecretSourcePack(dir, m)...)
 	problems = append(problems, conformFiles(dir)...)
 	problems = append(problems, conformStandard(dir, m)...)
 	themeProblems, _ := conformTheme(dir)

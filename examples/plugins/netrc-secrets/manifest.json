@@ -1,0 +1,30 @@
+{
+  "id": "netrc-secrets",
+  "name": "Netrc file",
+  "version": "1.0.0",
+  "description": "Reads the logins and passwords a .netrc file holds as secrets.",
+  "author": "Mill examples",
+  "minMillVersion": "0.14.1",
+  "icon": "icon.png",
+  "capabilities": [
+    "read-file"
+  ],
+  "contributes": {
+    "secretSources": [
+      {
+        "id": "netrc",
+        "label": "Netrc file",
+        "path": {
+          "kind": "file",
+          "label": "File",
+          "placeholder": "~/.netrc",
+          "default": "~/.netrc"
+        },
+        "capabilities": [
+          "list",
+          "resolve"
+        ]
+      }
+    ]
+  }
+}

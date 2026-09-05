@@ -295,7 +295,7 @@
     "model": "Model",
     "modelPlaceholder": "llama3.2",
     "secretApiKey": "Secret (API key)",
-    "secretCaption": "Write-only. Leave empty for a local, unauthenticated endpoint (e.g. Ollama).",
+    "secretCaption": "Choose a secret from your secret store. Leave it unset for an endpoint that needs no key.",
     "saveAiProvider": "Save AI provider",
     "columns": {
       "label": "Label",
@@ -496,8 +496,7 @@
     "token": "Token",
     "tokenCaption": "Omit for 2-legged OAuth 1.0a (RFC 5849).",
     "consumerSecret": "Consumer secret",
-    "secretCaption": "Write-only.",
-    "leaveBlankToKeepSecret": " Leave blank to keep the existing secret.",
+    "secretCaption": "Choose a secret from your secret store.",
     "tokenSecret": "Token secret",
     "tokenSecretCaption": "Omit for 2-legged OAuth 1.0a, same as Token above.",
     "clientSecret": "Client secret",
@@ -531,12 +530,11 @@
     "joseDescription": "Encrypts what Mill sends to this integration and, if you choose, decrypts what comes back.",
     "enableJose": "Encrypt the request body (JWE)",
     "recipientPublicKey": "Recipient public key (PEM)",
-    "recipientPublicKeyCaption": "The vendor's RSA public key. Not a secret.",
+    "recipientPublicKeyCaption": "The vendor's public key, used to encrypt what Mill sends.",
     "decryptResponseAriaLabel": "Decrypt response",
     "decryptResponseLabel": "Decrypt response (this request's replies are also JWE-encrypted)",
     "millsPrivateKey": "Mill's private key (PEM)",
-    "millsPrivateKeyCaption": "Write-only.",
-    "leaveBlankToKeepKey": " Leave blank to keep the existing key."
+    "millsPrivateKeyCaption": "Mill's own private key, used to decrypt what comes back."
   },
   "openapiSynth": {
     "csvRowError": "Row {{row}}: {{message}}",
@@ -574,7 +572,6 @@
     "execEnvs": "Execution Environments",
     "aiProviders": "AI Providers",
     "stepTypes": "Step types",
-    "secretSources": "Secret sources",
     "conversionProfiles": "Conversion profiles"
   },
   "configureConversionProfiles": {
@@ -627,6 +624,10 @@
     },
     "pathPlaceholderBruno": "/path/to/collection",
     "pathPlaceholderOnePassword": "Vault name (optional)",
+    "kindExtension": "Extension source",
+    "kindFromExtension": "From {{name}}",
+    "problemPluginMissing": "The extension for this source isn't installed.",
+    "problemPluginDisabled": "The extension for this source is turned off.",
     "pathPlaceholderDotenv": "/path/to/project/.env"
   },
   "advancedDisclosure": {

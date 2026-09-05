@@ -196,4 +196,3 @@ func TestParseXlsxFile_EmptySheet_Errors(t *testing.T) {
 		t.Fatal("want error for an empty sheet (no header row), got nil")
 	}
 }
-

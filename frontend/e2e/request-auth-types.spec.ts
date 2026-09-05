@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { createSecret, deleteSecret } from './fixtures/secretStore'
 
 // Exercises ADR-0015's auth-type catalogue through the real UI/backend,
 // not just the Go unit tests (authstrategy_test.go) -- proves the
@@ -32,7 +33,8 @@ test('An OAuth 2.0 request persists its non-secret config and reloads it into Ed
   await page.getByLabel('Token URL').fill('https://auth.example.com/oauth/token')
   await page.getByLabel('Client ID').fill('client-abc')
   await page.getByLabel('Scope').fill('read write')
-  await page.getByLabel('Client secret').fill('super-secret')
+  const clientSecretRef = await createSecret(page, 'ZzE2eOAuth2ClientSecret', 'super-secret')
+  await page.getByLabel('Client secret').selectOption(clientSecretRef.replace('vault:', ''))
   await page.getByRole('button', { name: 'Save integration' }).click()
 
   const row = requestRow(page, 'OAuth2 Request')
@@ -46,16 +48,19 @@ test('An OAuth 2.0 request persists its non-secret config and reloads it into Ed
   // unscoped getByText matches the seeded OAuth2 example's row too.
   await expect(page.getByTestId('request-summary').getByText('OAuth 2.0 (client credentials)')).toBeVisible()
 
-  // Reopening Edit reloads the non-secret OAuth2 config -- the secret
-  // itself stays blank (write-only, docs/SPEC.md §3.5), never pre-filled.
+  // Reopening Edit reloads the config, the client secret included --
+  // it is a reference the request carries (goal 0306), so an edit
+  // cannot silently unname it, and the value is nowhere on the page.
   await page.getByTestId('summary-edit').click()
   await expect(page.getByLabel('Token URL')).toHaveValue('https://auth.example.com/oauth/token')
   await expect(page.getByLabel('Client ID')).toHaveValue('client-abc')
   await expect(page.getByLabel('Scope')).toHaveValue('read write')
-  await expect(page.getByLabel('Client secret')).toHaveValue('')
+  await expect(page.getByLabel('Client secret')).toHaveValue(clientSecretRef.replace('vault:', ''))
+  await expect(page.locator('body')).not.toContainText('super-secret')
 
   await page.getByRole('button', { name: 'Cancel' }).click()
   await deleteRequest(page, 'OAuth2 Request')
+  await deleteSecret(page, clientSecretRef)
 })
 
 test('An HMAC request persists a custom signature header name', async ({ page }) => {
@@ -68,7 +73,8 @@ test('An HMAC request persists a custom signature header name', async ({ page })
   await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
   await page.getByLabel('Auth type').selectOption('hmac')
   await page.getByLabel('Signature header name').fill('X-Vendor-Signature')
-  await page.getByLabel('Secret', { exact: true }).fill('signing-key')
+  const signingKeyRef = await createSecret(page, 'ZzE2eHmacSigningKey', 'signing-key')
+  await page.getByLabel('Secret', { exact: true }).selectOption(signingKeyRef.replace('vault:', ''))
   await page.getByRole('button', { name: 'Save integration' }).click()
 
   await expect(requestRow(page, 'HMAC Request')).toBeVisible()
@@ -78,6 +84,7 @@ test('An HMAC request persists a custom signature header name', async ({ page })
 
   await page.getByRole('button', { name: 'Cancel' }).click()
   await deleteRequest(page, 'HMAC Request')
+  await deleteSecret(page, signingKeyRef)
 })
 
 test('mTLS is selectable but clearly marked not yet implemented', async ({ page }) => {

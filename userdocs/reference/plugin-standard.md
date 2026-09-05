@@ -32,30 +32,36 @@ your plugin feels like part of Mill.
 9. Report a failure through `api.notify` with one actionable sentence;
    `console.error` only alongside it, never instead. (checked: a
    `console.error` with no `api.notify` in the same function warns)
-10. One narrow purpose per plugin. (review)
+10. Present output, never type it: show a result through
+    `api.ui.renderOutput`, which gives the reader the same tree,
+    table, log, rendered view, Find, Copy and Raw every other output
+    surface in Mill has. Never a `<pre>` or a text box of your own —
+    a text box says the reader can edit what they are reading.
+    (review)
+11. One narrow purpose per plugin. (review)
 
 ## Contracts
 
-11. `id` is a kebab-case slug distinct from `name`; `name` contains
+12. `id` is a kebab-case slug distinct from `name`; `name` contains
     neither "Mill" nor "plugin". (checked)
-12. `version` is semver; `minMillVersion` names the oldest Mill you
+13. `version` is semver; `minMillVersion` names the oldest Mill you
     support. (checked)
-13. `icon.png` (128×128) is present and declared as `icon`;
+14. `icon.png` (128×128) is present and declared as `icon`;
     `icon@dark.png` is optional. (checked)
-14. `README.md` sits beside the plugin folder in your repository,
+15. `README.md` sits beside the plugin folder in your repository,
     never inside it (a plugin folder holds only files Mill serves); it
     says what the plugin does, its settings and the capabilities it
     needs. (checked for the examples: `examples/plugins/<id>.md`)
-15. No remote code, no self-update, no telemetry: `fetch` only through
+16. No remote code, no self-update, no telemetry: `fetch` only through
     `api.fetch`, no `import()` of a URL, no `eval`. (checked)
-16. Labels and messages use sentence case; no emoji in labels.
+17. Labels and messages use sentence case; no emoji in labels.
     (checked)
-17. Payload keys are camelCase; command ids are `<plugin>.<verb>`;
+18. Payload keys are camelCase; command ids are `<plugin>.<verb>`;
     tool names are `verb_noun`. (checked)
-18. SDK comments and your README describe behaviour for plugin
+19. SDK comments and your README describe behaviour for plugin
     authors: no repository vocabulary (goal ids, internal file
     names). (checked over the generated reference)
-19. A theme you contribute is a CSS file of nothing but
+20. A theme you contribute is a CSS file of nothing but
     `--token: value;` declarations, every token drawn from the
     documented theme variables: no selector, no at-rule, no `url()`.
     Mill layers it over the built-in palette of the family you name,
@@ -63,7 +69,7 @@ your plugin feels like part of Mill.
 
 ## Quality gates
 
-20. `go run ./internal/pluginconform <folder>` passes; `npm run
+21. `go run ./internal/pluginconform <folder>` passes; `npm run
     plugin:typecheck` and `npm run plugin:lint` pass. (checked)
 
 ## Checking your own plugin
@@ -80,4 +86,6 @@ the check tells you why the rule exists, not just that you broke it.
 
 See [Install a plugin](install-a-plugin.md) for the full authoring
 guide and [the plugin API reference](plugin-api/index.md) for every
-type.
+type. [Plugin API maturity](plugin-api-maturity.md) lists each
+contribution family's current level and its evidence, generated fresh
+from this repository on every build.
