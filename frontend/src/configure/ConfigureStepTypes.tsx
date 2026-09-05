@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { Button, FormControl, Heading, IconButton, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
 import { DownloadIcon, InfoIcon, PackageIcon, PencilIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
@@ -9,11 +8,13 @@ import { ConfigureService } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
 import type { DeclaredStepType } from '../../bindings/github.com/alicoding/mill/internal/domain/declaredsteptype/models'
 import { Engine, PaletteGroup } from '../../bindings/github.com/alicoding/mill/internal/domain/declaredsteptype/models'
-import { downloadJSON } from '../shared/downloadJSON'
 import { refreshDeclaredStepTypes, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
+import { entityRowContext } from '../shared/entityRowCommands'
+import { useEntityActionError } from '../shared/entityActionErrorStore'
+import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useImportConfirm } from '../shared/useImportConfirm'
@@ -48,6 +49,9 @@ function engineLabelFor(t: (key: string) => string): Record<Engine, string> {
 // export/import recipe every Configure family page already follows.
 export function ConfigureStepTypes() {
   const { t } = useTranslation('configure')
+  // A row action's refusal, recorded by the command that met it
+  // (shared/entityActionErrorStore.ts, goal 0346).
+  const rowActionError = useEntityActionError('steptype')
   const ENGINE_LABEL = engineLabelFor(t)
   const stepTypes = useConfigureEntityStore((s) => s.declaredStepTypes)
   const nodeTypes = useAppStore((s) => s.nodeTypes)
@@ -67,12 +71,6 @@ export function ConfigureStepTypes() {
 
   const refetch = () => { void refreshDeclaredStepTypes() }
   useEffect(() => { refetch() }, [])
-
-  const exportStepType = (id: string, stepLabel: string) => {
-    ConfigureService.ExportDeclaredStepType(id)
-      .then((json) => downloadJSON(`${stepLabel.trim() || 'steptype'}.json`, json))
-      .catch((err) => setImportError(String(err)))
-  }
 
   const runImport = (text: string) => {
     ConfigureService.ImportDeclaredStepType(text)
@@ -139,9 +137,6 @@ export function ConfigureStepTypes() {
     }
   }
 
-  const remove = (id: string, label: string) => {
-    void deleteWithUndo({ entity: 'steptype', id, label, remove: () => ConfigureService.DeleteDeclaredStepType(id), refetch: refetch, onError: console.error })
-  }
 
   // The underlying engine's own raw ConfigFields (not the synthesized
   // declared view -- that already has PinnedConfig/HiddenFields applied,
@@ -172,12 +167,8 @@ export function ConfigureStepTypes() {
     description: `${ENGINE_LABEL[d.Engine] ?? d.Engine} · ${PALETTE_GROUP_LABEL[d.PaletteGroup as keyof typeof PALETTE_GROUP_LABEL] ?? d.PaletteGroup}`,
     onOpen: () => startEdit(d),
     menuActions: [
-      { label: t('export'), onClick: () => exportStepType(d.ID, d.Label) },
-      {
-        label: t('delete'),
-        onClick: () => remove(d.ID, d.Label),
-        danger: true,
-      },
+      { commandId: 'configure.steptype.export', ctx: entityRowContext('steptype', d.ID) },
+      { commandId: 'configure.steptype.delete', ctx: entityRowContext('steptype', d.ID), danger: true },
     ],
   }))
 
@@ -208,8 +199,8 @@ export function ConfigureStepTypes() {
       <Text as="p" size="small" className={styles.muted}>
         {t('configureStepTypes.pageDescription')}
       </Text>
-      {importError && (
-        <Text as="p" size="small" className={styles.error} data-testid="import-steptype-error">{importError}</Text>
+      {(importError ?? rowActionError) && (
+        <Text as="p" size="small" className={styles.error} data-testid="import-steptype-error">{importError ?? rowActionError}</Text>
       )}
 
       {formOpen && (
@@ -299,8 +290,8 @@ export function ConfigureStepTypes() {
                 renderCell: (d) => (
                   <Stack direction="horizontal" gap="condensed">
                     <IconButton icon={PencilIcon} aria-label={t('configureStepTypes.editAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => startEdit(d)} />
-                    <IconButton icon={DownloadIcon} aria-label={t('configureStepTypes.exportAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => exportStepType(d.ID, d.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={t('configureStepTypes.deleteAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => remove(d.ID, d.Label)} />
+                    <IconButton icon={DownloadIcon} aria-label={t('configureStepTypes.exportAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.steptype.export', entityRowContext('steptype', d.ID))} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureStepTypes.deleteAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.steptype.delete', entityRowContext('steptype', d.ID))} />
                   </Stack>
                 ),
               },
