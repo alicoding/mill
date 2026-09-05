@@ -1238,6 +1238,14 @@
     "needs": null
   },
   {
+    "id": "settings.open.security",
+    "label": "Settings › Security",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
     "id": "settings.open.shortcuts",
     "label": "Settings › Shortcuts",
     "binding": null,
