@@ -1,0 +1,242 @@
+/* The one output surface (goal 0326). Every value is a Primer token
+   (.claude/rules/frontend.md) -- the ANSI palette at the bottom is the
+   single deliberate exception, since a terminal's eight colours have no
+   design-system equivalent and are named by the producer, not by us. */
+
+.viewer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--base-size-4);
+    margin-top: var(--base-size-8);
+    min-width: 0;
+}
+
+.toolbar {
+    min-height: 28px;
+}
+
+.findField {
+    max-width: 220px;
+}
+
+/* A declared scroller (goal 0156's layout-fitness rule): the viewer
+   holds output to a readable height and scrolls it, which is a named,
+   deliberate surface rather than a trapped overflow. Declared in the
+   markup via data-scroll-region. */
+.body {
+    border-radius: var(--borderRadius-medium);
+    border: 1px solid var(--borderColor-default);
+    background: var(--bgColor-inset);
+    min-width: 0;
+    max-height: 420px;
+    overflow: auto;
+}
+
+.viewer[data-full='true'] .body {
+    max-height: none;
+}
+
+.body:focus-visible {
+    outline: 2px solid var(--borderColor-accent-emphasis);
+    outline-offset: -1px;
+}
+
+.empty,
+.notice {
+    color: var(--fgColor-muted);
+    margin: 0;
+}
+
+.capLine {
+    display: flex;
+    align-items: center;
+    gap: var(--base-size-8);
+}
+
+/* ---------------------------------------------------------- tree -- */
+
+.tree {
+    padding: var(--base-size-4) var(--base-size-8);
+    user-select: text;
+}
+
+.treeRow {
+    display: inline-flex;
+    gap: var(--base-size-8);
+    align-items: baseline;
+    font-family: var(--fontStack-monospace);
+    font-size: 12px;
+    min-width: 0;
+}
+
+.treeKey {
+    color: var(--fgColor-accent);
+}
+
+.treeValue {
+    color: var(--fgColor-default);
+    word-break: break-word;
+}
+
+.treeCount {
+    color: var(--fgColor-muted);
+}
+
+/* ----------------------------------------------------------- log -- */
+
+.log {
+    padding: var(--base-size-4) 0;
+    user-select: text;
+}
+
+.logLines {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: output-line;
+}
+
+.logLine {
+    counter-increment: output-line;
+    display: flex;
+    font-family: var(--fontStack-monospace);
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--fgColor-default);
+    padding-right: var(--base-size-8);
+    min-height: 1.5em;
+}
+
+.logLine::before {
+    content: counter(output-line);
+    flex: 0 0 auto;
+    width: 3.5em;
+    padding-right: var(--base-size-8);
+    text-align: right;
+    color: var(--fgColor-muted);
+    user-select: none;
+}
+
+.wrapOn .logLine {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.wrapOff {
+    overflow-x: auto;
+}
+
+.wrapOff .logLine {
+    white-space: pre;
+}
+
+/* --------------------------------------------------------- table -- */
+
+.table {
+    overflow-x: auto;
+}
+
+.cell {
+    font-family: var(--fontStack-monospace);
+    font-size: 12px;
+    word-break: break-word;
+}
+
+/* ------------------------------------------------------ rendered -- */
+
+.frame {
+    display: block;
+    width: 100%;
+    min-height: 220px;
+    border: 0;
+    background: var(--bgColor-default);
+}
+
+.media {
+    display: block;
+    max-width: 100%;
+    padding: var(--base-size-8);
+}
+
+.binary {
+    padding: var(--base-size-8) var(--base-size-12);
+    color: var(--fgColor-muted);
+}
+
+/* --------------------------------------------------------- error -- */
+
+.errorBlock {
+    padding: var(--base-size-8) var(--base-size-12);
+    border-left: 3px solid var(--borderColor-danger-emphasis);
+    background: var(--bgColor-danger-muted);
+    user-select: text;
+}
+
+.errorMessage {
+    margin: 0;
+    color: var(--fgColor-danger);
+}
+
+.summary {
+    cursor: pointer;
+    color: var(--fgColor-muted);
+    font-size: 12px;
+}
+
+.errorDetails {
+    margin: var(--base-size-4) 0 0;
+    font-family: var(--fontStack-monospace);
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--fgColor-default);
+}
+
+/* ---------------------------------------------------------- find -- */
+
+.hit {
+    background: var(--bgColor-attention-muted);
+    color: inherit;
+    border-radius: var(--borderRadius-small);
+}
+
+/* ---------------------------------------------------------- ANSI -- */
+/* anser emits these class names (use_classes) for the terminal
+   palette a producer chose. Deliberate literals: a shell's red is the
+   shell's, not the design system's. */
+
+.log :global(.ansi-black) { color: #4f5459; }
+.log :global(.ansi-red) { color: #cf222e; }
+.log :global(.ansi-green) { color: #116329; }
+.log :global(.ansi-yellow) { color: #9a6700; }
+.log :global(.ansi-blue) { color: #0969da; }
+.log :global(.ansi-magenta) { color: #8250df; }
+.log :global(.ansi-cyan) { color: #1b7c83; }
+.log :global(.ansi-white) { color: var(--fgColor-default); }
+.log :global(.ansi-bright-black) { color: var(--fgColor-muted); }
+.log :global(.ansi-bright-red) { color: #ff8182; }
+.log :global(.ansi-bright-green) { color: #4ac26b; }
+.log :global(.ansi-bright-yellow) { color: #d4a72c; }
+.log :global(.ansi-bright-blue) { color: #54aeff; }
+.log :global(.ansi-bright-magenta) { color: #c297ff; }
+.log :global(.ansi-bright-cyan) { color: #76e3ea; }
+.log :global(.ansi-bright-white) { color: var(--fgColor-default); }
+.log :global(.ansi-bold) { font-weight: 600; }
+.log :global(.ansi-dim) { opacity: 0.7; }
+.log :global(.ansi-italic) { font-style: italic; }
+.log :global(.ansi-underline) { text-decoration: underline; }
+.log :global(.ansi-strikethrough) { text-decoration: line-through; }
+
+/* Touch targets stay at the platform minimum on the companion
+   breakpoints (.claude/rules/frontend.md's mobile posture). */
+@media (pointer: coarse) {
+    .logLine {
+        min-height: 44px;
+        align-items: center;
+    }
+
+    .treeRow {
+        min-height: 44px;
+        align-items: center;
+    }
+}

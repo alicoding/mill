@@ -339,10 +339,18 @@ export const REVIEW_OPEN_RUN_MCP_BASE_PORT = 11500
 export const PAUSED_RUNS_SERVER_BASE_PORT = 11520
 export const PAUSED_RUNS_MCP_BASE_PORT = 11540
 
+// guardrail-review.spec.ts's parked-payload case (goal 0326): parking a
+// run puts an item in the GLOBAL Review queue, exactly the state
+// testing.md's shared-vs-dedicated rule keeps off the shared pool. Its
+// own pair rather than another GUARDRAIL_REVIEW_* offset, whose range
+// is already nearly exhausted (see GUARDRAIL_REVIEW_CANCEL_* above).
+export const REVIEW_PARKED_PAYLOAD_SERVER_BASE_PORT = 11560
+export const REVIEW_PARKED_PAYLOAD_MCP_BASE_PORT = 11580
+
 // secret-source-plugins.spec.ts (goal 0306 S4): a dedicated server whose
 // plugins dir carries the Netrc example, so the Sources page can offer
 // an extension-contributed kind. Its own base pair rather than an
 // offset into the runtime-plugins family, whose offsets are dense
 // enough that a new one would collide with another's MCP port.
-export const SECRET_SOURCE_PLUGIN_SERVER_BASE_PORT = 11560
-export const SECRET_SOURCE_PLUGIN_MCP_BASE_PORT = 11580
+export const SECRET_SOURCE_PLUGIN_SERVER_BASE_PORT = 11600
+export const SECRET_SOURCE_PLUGIN_MCP_BASE_PORT = 11620

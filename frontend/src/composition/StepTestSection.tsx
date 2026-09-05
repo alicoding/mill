@@ -5,6 +5,9 @@ import type { RunStep } from '../shared/bindings'
 import { CompositionService, ExecutionService } from '../shared/bindings'
 import type { StepTestResult } from '../../bindings/github.com/alicoding/mill/internal/services/executionsvc/models'
 import { CodeEditor } from '../shared/CodeEditor'
+import { OutputViewer } from '../shared/OutputViewer'
+import { shapeForNodeType } from '../shared/payloadShape'
+import { useAppStore } from '../shared/store'
 import type { CanvasNode } from './canvasStore'
 import styles from '../shared/ListCard.module.css'
 
@@ -23,6 +26,7 @@ export function StepTestSection({ node, workflowId, runStep }: { node: CanvasNod
   const [result, setResult] = useState<StepTestResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [running, setRunning] = useState(false)
+  const nodeTypes = useAppStore((s) => s.nodeTypes)
 
   if (node.data.kind === 'trigger' || node.data.kind === 'decision') return null
 
@@ -91,9 +95,16 @@ export function StepTestSection({ node, workflowId, runStep }: { node: CanvasNod
       {result && !result.refused && !result.error && (
         <>
           <Text size="small" className={styles.muted}>{t('stepTest.output')}</Text>
-          <CodeEditor value={result.output} language="markdown" ariaLabel={t('stepTest.outputAriaLabel')} testId="step-test-output" />
+          <OutputViewer
+            value={result.output}
+            shape={shapeForNodeType(nodeTypes, node.data.nodeTypeID)}
+            title={t('stepTest.outputAriaLabel')}
+            defaultView="source"
+            site="step-test-output"
+            testId="step-test-output"
+          />
           {hasOutputAttrs && (
-            <pre className={styles.result} data-testid="step-test-output-attrs">{JSON.stringify(result.outputAttributes, null, 2)}</pre>
+            <OutputViewer value={result.outputAttributes} shape="json" site="step-test-output-attrs" testId="step-test-output-attrs" />
           )}
           {node.data.nodeTypeID === 'process-html-to-markdown' && (
             <Text size="small" className={styles.muted} data-testid="try-engine-note">{t('stepTest.engineNote')}</Text>
@@ -101,7 +112,7 @@ export function StepTestSection({ node, workflowId, runStep }: { node: CanvasNod
         </>
       )}
       {failure && (
-        <Text as="p" size="small" className={styles.error} data-testid="step-test-error">{t('stepTest.stepFailed', { message: failure })}</Text>
+        <OutputViewer value={t('stepTest.stepFailed', { message: failure })} shape="error" site="step-test-error" testId="step-test-error" />
       )}
     </Stack>
   )
