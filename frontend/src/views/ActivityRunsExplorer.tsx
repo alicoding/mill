@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
-import { Button, Stack, Text, TextInput } from '@primer/react'
+import { Button, Select, Stack, Text, TextInput } from '@primer/react'
 import { DataTable, type Column, Blankslate } from '@primer/react/experimental'
-import { StopIcon, HistoryIcon } from '@primer/octicons-react'
+import { StopIcon, HistoryIcon, PlayIcon } from '@primer/octicons-react'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import { ExecutionService } from '../shared/bindings'
 import type { RunSummary } from '../shared/bindings'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { useAppStore } from '../shared/store'
-import { formatRunStartedAt, runStatusLabel } from '../shared/runTime'
+import { formatRunStartedAt, isPausedRun, runStatusLabel } from '../shared/runTime'
 import { StalenessBadge } from '../shared/StalenessBadge'
 import { StatusStamp } from '../shared/StatusStamp'
+import { commandLabel, findCommand, runCommand } from '../shared/commands'
+import type { CommandContext } from '../shared/commandContext'
 import { ENQUEUED_STALE_THRESHOLD_MS, isStuckEnqueued } from '../shared/enqueuedStale'
 import styles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
@@ -35,6 +37,11 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow | null }
   const [runs, setRuns] = useState<RunSummary[] | null>(null)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  // Paused runs are findable as a STATUS here (goal 0328) rather than
+  // sitting in an approvals inbox -- the same place every other run
+  // lands, filtered the way the waiting/on-hold state is filtered on any
+  // other run list.
+  const [statusFilter, setStatusFilter] = useState<'all' | 'paused'>('all')
   const [cancellingID, setCancellingID] = useState('')
 
   // A null workflow is the cross-workflow mode: every recorded run,
@@ -82,9 +89,16 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow | null }
       .finally(() => setCancellingID(''))
   }
 
+  // The target a paused row's Continue/Stop act on: the run AND the step
+  // it is parked at, since answering a park needs both.
+  const pausedCtx = (run: RunSummary): CommandContext => ({
+    kind: 'run', runId: run.runID, workflowId: run.workflowID, nodeId: run.pending?.nodeID,
+  })
+
   const attrs = workflow?.Attributes ?? []
   const query = search.trim().toLowerCase()
   const filtered = (runs ?? []).filter((run) => {
+    if (statusFilter === 'paused' && !isPausedRun(run)) return false
     if (query === '') return true
     const values = Object.values(run.values ?? {}).map((v) => String(v ?? '').toLowerCase())
     return values.some((v) => v.includes(query))
@@ -140,7 +154,27 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow | null }
     },
     {
       id: 'actions', header: '', width: 'auto',
-      renderCell: (run) => isStuckEnqueued(run) ? (
+      // A paused run is answerable from right here, through the same two
+      // commands the canvas dock fires -- a status nobody can act on
+      // would just be a dead end on a list.
+      renderCell: (run) => isPausedRun(run) ? (
+        <Stack direction="horizontal" gap="condensed" align="center">
+          <Button
+            size="small" variant="primary" leadingVisual={PlayIcon}
+            data-testid="activity-run-continue"
+            onClick={() => { void runCommand('run.continue', pausedCtx(run)).then(refresh) }}
+          >
+            {commandLabel(findCommand('run.continue')!)}
+          </Button>
+          <Button
+            size="small" variant="danger" leadingVisual={StopIcon}
+            data-testid="activity-run-stop"
+            onClick={() => { void runCommand('run.stop', pausedCtx(run)).then(refresh) }}
+          >
+            {t('activityRunsExplorer.stop')}
+          </Button>
+        </Stack>
+      ) : isStuckEnqueued(run) ? (
         <Button
           size="small" variant="danger" leadingVisual={StopIcon}
           disabled={cancellingID === run.runID}
@@ -180,6 +214,7 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow | null }
 
   return (
     <Stack direction="vertical" gap="normal" data-testid="activity-runs-explorer">
+      <Stack direction="horizontal" gap="condensed" align="center">
       <TextInput
         value={search}
         onChange={(e) => setSearch(e.target.value)}
@@ -189,6 +224,16 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow | null }
         aria-label={t('activityRunsExplorer.searchAriaLabel')}
         data-testid="runs-explorer-search"
       />
+      <Select
+        value={statusFilter}
+        onChange={(e) => setStatusFilter(e.target.value as 'all' | 'paused')}
+        aria-label={t('activityRunsExplorer.filterByStatusAriaLabel')}
+        data-testid="runs-explorer-status-filter"
+      >
+        <Select.Option value="all">{t('activityRunsExplorer.allStatuses')}</Select.Option>
+        <Select.Option value="paused">{t('activityRunsExplorer.paused')}</Select.Option>
+      </Select>
+      </Stack>
       {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
       {runs === null && !error && <Text as="p" className={styles.muted}>{t('activityRunsExplorer.loading')}</Text>}
       {/* Design-wave-1 fix #7: the "no runs yet" case (as opposed to

@@ -51,6 +51,8 @@ export function useCanvasCommandDispatch(
       void save()
     } else if (canvasCommandRequest === 'run') {
       runButtonRef.current?.trigger()
+    } else if (canvasCommandRequest === 'runStepped') {
+      runButtonRef.current?.triggerStepped()
     } else if (canvasCommandRequest === 'undo') {
       canvasActions.useCanvasStore.temporal.getState().undo()
     } else if (canvasCommandRequest === 'redo') {

@@ -626,6 +626,14 @@
     "needs": null
   },
   {
+    "id": "run.continue",
+    "label": "Continue",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "run"
+  },
+  {
     "id": "run.monitor",
     "label": "Show run steps",
     "binding": null,
@@ -636,6 +644,14 @@
   {
     "id": "run.open",
     "label": "Open run",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "run"
+  },
+  {
+    "id": "run.step",
+    "label": "Step",
     "binding": null,
     "surface": null,
     "enabled": true,
@@ -956,6 +972,14 @@
     "needs": "workflow"
   },
   {
+    "id": "workflow.runStepped",
+    "label": "Run step by step",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "workflow.save",
     "label": "Save workflow",
     "binding": "⌘S",
@@ -970,5 +994,13 @@
     "surface": null,
     "enabled": true,
     "needs": "workflow"
+  },
+  {
+    "id": "workflow.view",
+    "label": "View workflow",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
   }
 ]

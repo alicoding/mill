@@ -1,12 +1,12 @@
 import { useEffect, useState, type Ref } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, FormControl, IconButton, Label, Stack, Text, TextInput, Textarea } from '@primer/react'
+import { Button, FormControl, IconButton, SegmentedControl, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { ChevronDownIcon, ChevronUpIcon, EyeIcon, PencilIcon } from '@primer/octicons-react'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { CompositionService } from '../shared/bindings'
-import { EntityRefField } from '../configure/EntityRefField'
+import { WorkflowOfferField } from './WorkflowOfferField'
 import { RunButton, type RunButtonHandle } from './LiveRunControls'
-import { findCommand, runCommand } from '../shared/commands'
+import { runCommand } from '../shared/commands'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from '../shared/ListCard.module.css'
 
@@ -23,9 +23,9 @@ interface CanvasMetaHeaderProps {
   saveError: string
   runButtonRef: Ref<RunButtonHandle>
   onStartRun: (values: Record<string, string>, stepped?: boolean, payload?: string) => void
-  // docs/goals/0022-workflow-view-mode.md: Save hides and an Edit
-  // button takes its place; Label/Description become read-only
-  // (disabled, not hidden -- still worth seeing at a glance).
+  // Viewing renders the title, description and offer field read-only
+  // and hides Save; the mode switch beside them is present in BOTH
+  // modes, so the canvas always says which one it is in.
   readOnly: boolean
   onSwitchToEdit?: () => void
 }
@@ -88,25 +88,37 @@ export function CanvasMetaHeader({
           onClick={onToggleDesc}
           data-testid="toggle-description"
         />
-        {readOnly ? (
-          <>
-            {/* docs/goals/0036-view-mode-ux-hardening.md item 2: the
-                ambient cue that this canvas is read-only, present before
-                any interaction -- the fieldset-disabled inspector fields
-                only reveal themselves as inert once a node is selected;
-                this chip is visible the moment the tab opens. Same Label
-                family as the row-level 'v1 live'/'draft'/'disabled'
-                badges (CompositionView.tsx) and the hotkey-binding badge
-                (NodeInspector.tsx) -- one recognizable idiom, not a new
-                one just for this. */}
-            <Label variant="secondary" size="small" data-testid="view-mode-chip">
-              <EyeIcon size={12} /> {t('canvasMetaHeader.viewing')}
-            </Label>
-            <Button size="small" leadingVisual={PencilIcon} onClick={() => { const cmd = findCommand('workflow.edit'); if (cmd?.enabled?.()) void runCommand('workflow.edit'); else onSwitchToEdit?.() }} data-testid="edit-workflow">
-              {t('canvasMetaHeader.edit')}
-            </Button>
-          </>
-        ) : (
+        {/* ONE control, present in both modes: the mode a canvas is in
+            is never inferred from which buttons happen to be missing.
+            The selected segment IS the current mode, and choosing the
+            other one runs its command -- onSwitchToEdit stays the
+            fallback for a canvas mounted outside a work tab (the run
+            monitor window), where no tab exists for the command to
+            switch. Labels collapse to their icons at companion widths. */}
+        <SegmentedControl
+          aria-label={t('canvasMetaHeader.modeAriaLabel')}
+          size="small"
+          variant={{ narrow: 'hideLabels', regular: 'default', wide: 'default' }}
+          onChange={(index) => {
+            const wantView = index === 0
+            if (wantView === readOnly) return
+            void runCommand(wantView ? 'workflow.view' : 'workflow.edit').then((ran) => {
+              // A canvas mounted outside a work tab (the run monitor
+              // window) has no tab for the command to switch, so the
+              // command reports it did nothing and the prop-supplied
+              // in-place switch takes over.
+              if (!ran && !wantView) onSwitchToEdit?.()
+            })
+          }}
+        >
+          <SegmentedControl.Button selected={readOnly} leadingVisual={EyeIcon} data-testid="view-workflow">
+            {t('canvasMetaHeader.viewing')}
+          </SegmentedControl.Button>
+          <SegmentedControl.Button selected={!readOnly} leadingVisual={PencilIcon} data-testid="edit-workflow">
+            {t('canvasMetaHeader.editing')}
+          </SegmentedControl.Button>
+        </SegmentedControl>
+        {!readOnly && (
           <Button size="small" onClick={save} disabled={saving} data-testid="save-workflow">
             {saving ? t('canvasMetaHeader.saving') : workflow ? t('canvasMetaHeader.saveChanges') : t('canvasMetaHeader.saveWorkflow')}
           </Button>
@@ -141,8 +153,7 @@ export function CanvasMetaHeader({
             <fieldset disabled={readOnly} className={styles.metaOfferFieldset} data-testid="workflow-offer-field">
               <FormControl>
                 <FormControl.Label>{t('canvasMetaHeader.offerLabel')}</FormControl.Label>
-                <EntityRefField refKind="request" value={offerValue} onChange={commitOffer} readOnly={readOnly} />
-                <FormControl.Caption>{t('canvasMetaHeader.offerCaption')}</FormControl.Caption>
+                <WorkflowOfferField value={offerValue} onChange={commitOffer} readOnly={readOnly} />
               </FormControl>
               {offerError && <Text as="p" size="small" className={runbookStyles.error}>{offerError}</Text>}
             </fieldset>

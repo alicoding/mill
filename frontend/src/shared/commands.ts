@@ -8,6 +8,7 @@ import { CONFIGURE_CREATE_COMMANDS } from './configureCreateCommands'
 import { ATLAS_BOARD_COMMANDS } from './atlasBoardCommands'
 import { SETTINGS_COMMANDS } from './settingsCommands'
 import { CANVAS_COMMANDS } from './canvasCommands'
+import { WORKFLOW_MODE_COMMANDS } from './workflowModeCommands'
 import { SAVE_COMMANDS } from './saveCommands'
 import { SECRETS_COMMANDS } from './secretsCommands'
 import { CLIPBOARD_HISTORY_COMMANDS } from './clipboardHistoryCommands'
@@ -200,6 +201,19 @@ export const COMMANDS: Command[] = lazyArray(() => [
     enabled: isWorkflowEditorTabActive,
     run: () => useAppStore.getState().requestCanvasCommand('run'),
   },
+  {
+    // The debugger family's named second entry point (goal 0328): a
+    // run that parks before every step, seated beside Run rather than
+    // hidden behind an icon, because it starts a different KIND of run
+    // and the reader has to be able to tell which one they asked for.
+    id: 'workflow.runStepped',
+    menu: { path: 'workflow', group: 0, order: 1 },
+    label: 'commands.workflow.runStepped',
+    defaultBinding: null,
+    enabled: isWorkflowEditorTabActive,
+    run: () => useAppStore.getState().requestCanvasCommand('runStepped'),
+  },
+  ...WORKFLOW_MODE_COMMANDS,
   {
     id: 'palette.open',
     menu: { path: 'view', group: 1, order: 0, label: 'menu.items.commandPalette' },

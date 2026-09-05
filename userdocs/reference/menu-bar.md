@@ -101,7 +101,10 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Item | Shortcut | Command |
 |---|---|---|
 | Run workflow | ⌘↩ | `workflow.run` |
+| Run step by step | — | `workflow.runStepped` |
 | Run from clipboard… | — | `codingLoop.run` |
+| View workflow | — | `workflow.view` |
+| Edit workflow | — | `workflow.edit` |
 | Save | ⌘S | `edit.save` |
 | Save all changes | — | `edit.saveAll` |
 | Undo | ⌘Z | `canvas.undo` |
@@ -111,7 +114,6 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Zoom out | ⌘- | `canvas.zoomOut` |
 | Fit view | — | `canvas.fitView` |
 | Publish current draft | — | `workflow.publish` |
-| Edit workflow | — | `workflow.edit` |
 
 ### Atlas
 
