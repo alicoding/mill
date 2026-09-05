@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mill</title>
+<style>
+  body { font: 13px/1.5 system-ui, sans-serif; margin: 0; padding: 14px; width: 280px; }
+  h1 { font-size: 14px; margin: 0 0 10px; }
+  label { display: block; margin-top: 10px; font-weight: 600; }
+  input { width: 100%; box-sizing: border-box; font: inherit; padding: 5px 6px; margin-top: 3px; }
+  button { font: inherit; margin-top: 12px; padding: 5px 12px; }
+  #status { margin-top: 12px; }
+  #status[data-state="connected"] { color: #1a7f37; }
+  #status[data-state="error"] { color: #cf222e; }
+  .hint { color: #59636e; margin-top: 4px; }
+</style>
+</head>
+<body>
+<h1>Mill</h1>
+<label for="address">Mill address</label>
+<input id="address" type="url" spellcheck="false" autocomplete="off">
+<p class="hint">Use the address shown under Settings &rsaquo; Connections &rsaquo; Browsers.</p>
+<label for="code">Pairing code</label>
+<input id="code" type="text" maxlength="8" spellcheck="false" autocomplete="off" autocapitalize="characters">
+<button id="pair" type="button">Pair</button>
+<p id="status" data-state="idle">Not paired</p>
+<script src="popup.js"></script>
+</body>
+</html>

@@ -1351,6 +1351,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.up` | Go up one level | `⌘↑` | atlas | Always available |
 | `backup.export` | Export everything | — | Global | Always available |
 | `backup.now` | Back up now | — | Global | Always available |
+| `browser.pair` | Pair a browser | — | Global | Always available |
+| `browser.test` | Test the browser connection | — | Global | Conditional — available only in a matching state |
 | `canvas.delete` | Delete selected | `⌫` | composition | Always available |
 | `canvas.fitView` | Fit view | — | composition | Always available |
 | `canvas.redo` | Redo | `⌘⇧Z` | composition | Always available |
@@ -1753,6 +1755,86 @@ An integration's **Auth** section says which certificate its base URL's
 host already has, or that the host has none and offers **Add one**,
 which starts a new certificate with the host filled in. It is a
 statement about the host, not a setting on the request.
+
+---
+
+# The browser extension
+
+Some work only exists behind a sign-in. Mill can replay a recorded set
+of steps in **your** browser, in the session you are already signed into,
+so nothing has to be re-authenticated and no password ever reaches Mill.
+
+The browser half of that is a small extension. Mill ships it in the
+`examples/browser-extension` folder of its own source tree.
+
+## Install it
+
+1. Open `chrome://extensions` and turn on **Developer mode**.
+2. Choose **Load unpacked** and pick the `examples/browser-extension`
+   folder.
+3. Pin the Mill icon so its popup is one click away.
+
+Chrome, Edge and Opera all load the folder as-is.
+
+## Pair it
+
+A browser has to be paired before Mill will send it anything, and that
+holds even when both are on the same computer. Anything running locally
+could otherwise drive your tabs.
+
+1. Open **Settings › Connections › Browsers**. Note the **Mill address**
+   shown there.
+2. Press **Pair a browser**. An eight-character code appears, good for
+   five minutes and usable once.
+3. Open the extension's popup, check the address matches, type the code,
+   and press **Pair**.
+4. The popup shows **Connected to Mill**, and the browser appears in the
+   Browsers list.
+
+## Test it
+
+Press **Test the connection**. Mill opens a page it serves itself,
+presses a button on it, and waits for what the press reveals — the three
+things every recorded flow depends on. It then reports how many steps
+ran and how long they took.
+
+If nothing is listening, Mill says so rather than waiting: *No browser is
+connected. Pair the Mill extension first.*
+
+## Record the steps
+
+Mill replays Chrome DevTools Recorder flows exactly as exported:
+
+1. Open DevTools and go to the **Recorder** panel.
+2. Record what you do on the page.
+3. Export the recording as JSON.
+
+Every selector the Recorder writes is honoured, including its fallback
+chains — a CSS selector, an accessible name, the visible text, an XPath,
+and a path through a component's shadow root. That redundancy is what
+lets a recording survive a page whose styling changed underneath it.
+
+## What it can and cannot do
+
+It can open a tab or reuse one already on the right site, click,
+double-click, hover, type into fields, press keys, scroll, wait for an
+element or for an expression to become true, and report a file the page
+downloaded while the steps ran.
+
+It cannot resize your window, shape your network, or close tabs. Those
+steps are reported as skipped rather than performed.
+
+## Revoke it
+
+A paired browser stays paired until you revoke it. Press **Revoke** on
+its row in **Settings › Connections › Browsers**. The connection ends
+immediately, including in the middle of a run.
+
+## What leaves your machine
+
+Nothing. The extension talks only to the Mill address you entered, which
+is your own computer by default. The pairing token is held by the
+browser for this extension alone, and Mill keeps only a hash of it.
 
 ---
 
@@ -2792,6 +2874,26 @@ Each entry says what it holds — text, a key, a certificate or a file —
 so a field only offers the entries it can actually use. An entry can
 also point at a key in one of your sources instead of holding a value,
 in which case Mill reads that key when something uses it.
+
+An entry is the whole record, not five fixed boxes. Add fields of your
+own — a serial number, a recovery code, an account id — and hide any
+field whose value should stay masked until you ask for it. Add tags and
+the list finds an entry by them; clicking a tag on a row narrows the
+list to everything carrying it. A search matches titles, tags and field
+names, never a value. Every entry says where it came from: added by
+hand, from a source, or imported from a file.
+
+Two ways to bring in what you already have. **Secrets > Sources > Find
+.env files** scans one folder you choose — never your whole home
+directory, never more than a few levels down, and never inside
+dependency or build folders — lists the dotenv files it found with how
+many keys each holds, and adds the ones you tick as sources or imports
+their keys as entries. **Secrets > Import** reads a password export you
+made yourself from the tool you already use, shows how many entries it
+holds before anything is stored, and offers to delete the file straight
+after, because an export holds every password in plain text. Mill never
+reads another application's own credential store — you export, Mill
+reads what you exported.
 
 The first time you unlock after updating, any credential an earlier
 version had saved outside the vault moves in: Mill creates an entry,

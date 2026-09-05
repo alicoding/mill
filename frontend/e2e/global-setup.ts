@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { acquireE2ESlot, releaseE2ESlot } from './fixtures/e2eSlotLock'
 
 // goal 0009 (docs/goals/0009-e2e-parallel-isolation.md): builds the
 // e2e server binary exactly ONCE, before any worker starts -- each worker
@@ -41,7 +42,16 @@ const REPO_ROOT = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '..
 // misleadingly, in this harness-only case) reports a stale build. The
 // two reads only ever agree by construction when they're taken back to
 // back, so both builds now happen in the same globalSetup invocation.
-export default function globalSetup(): void {
+// Returning a function makes Playwright call it as globalTeardown --
+// its own contract for pairing setup/teardown without a second config
+// entry -- so the slot is held across every worker's whole run and
+// released exactly once, however the run ends.
+export default async function globalSetup(): Promise<() => void> {
+  // Acquired before the sweep/build steps below, not just before the
+  // workers spawn: those steps are themselves CPU/memory-heavy, so a
+  // second concurrent invocation must wait here too, not just at the
+  // point it would start a browser.
+  await acquireE2ESlot()
   // A killed Playwright run orphans its workers' servers (found days
   // old); sweep any past their TTL before spawning fresh ones (goal
   // 0293). Reports only, never fails setup.
@@ -54,4 +64,5 @@ export default function globalSetup(): void {
     cwd: REPO_ROOT,
     stdio: 'inherit',
   })
+  return releaseE2ESlot
 }

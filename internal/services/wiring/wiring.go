@@ -26,6 +26,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/backupsvc"
+	"github.com/alicoding/mill/internal/services/bridgesvc"
 	"github.com/alicoding/mill/internal/services/clipboardhistorysvc"
 	"github.com/alicoding/mill/internal/services/codeloopsvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
@@ -267,6 +268,34 @@ func WireRemoteAuth(store settings.Store, logger *slog.Logger) *remoteauthsvc.Re
 	svc.BootstrapPairingCode(buildinfo.Read().Server)
 	return svc
 }
+
+// WireBrowserBridge constructs the browser bridge and starts its own
+// loopback listener. It gets a listener of its own rather than a route
+// on the AssetServer because a desktop build has no listening socket at
+// all -- Wails serves that build's assets in-process to its own webview
+// -- so a browser extension has nothing to reach there. One listener
+// works identically in both builds.
+//
+// A bind failure is logged, not fatal. The bridge is additive; the
+// rest of Mill runs unchanged with no browser paired.
+func WireBrowserBridge(remoteAuth *remoteauthsvc.RemoteAuthService, logger *slog.Logger) *bridgesvc.BridgeService {
+	svc := bridgesvc.New(remoteAuth, logger)
+	errCh := svc.Start()
+	status := svc.BridgeStatus()
+	select {
+	case err := <-errCh:
+		logger.Error("browser bridge listener", "error", err)
+	case <-time.After(bridgeBindGrace):
+		logger.Info("browser bridge listening", "addr", status.Address)
+	}
+	return svc
+}
+
+// bridgeBindGrace is how long WireBrowserBridge waits for a bind
+// failure to surface before declaring the listener up. ListenAndServe
+// reports a taken port within microseconds; this only has to outlast
+// that, never a real startup.
+const bridgeBindGrace = 200 * time.Millisecond
 
 // WireClipboardHistory connects goal 0234's clipboard-history service to
 // its two cross-service seams: composition's apply-clipboard-history-

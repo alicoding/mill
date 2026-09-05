@@ -86,10 +86,10 @@ this file is the record, a brief is a projection of it.
   `git checkout <ref> -- <path>` in a builder's working tree is banned
   — worktrees share one `.git`, so it resolves against the CURRENT ref
   and overwrites tracked edits (goal 0327's near-miss).
-- E2e slot: before ANY Playwright run,
-  `ps -eo command | grep -E "chrome-headless-shell|e2e/.build/mill-server" | grep -v grep`
-  must be empty. Never match "playwright test" (it matches wait
-  loops — caused a livelock).
+- E2e slot: run Playwright normally — the harness serializes suites
+  with a machine-wide lock (`e2e/fixtures/e2eSlotLock.ts`); never kill
+  another suite's processes; a wait longer than 45 min is a report, not
+  a bypass.
 - The nested `docs/` repo: shared physical path, orchestrator-
   committed — and for worktree-isolated agents it is now HARD-BLOCKED
   entirely (the sandbox refuses even plain-file writes outside the

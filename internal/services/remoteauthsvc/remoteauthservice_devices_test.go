@@ -77,7 +77,7 @@ func TestMintDevice_PersistsOnlyHashNeverRawToken(t *testing.T) {
 	}
 	s := New(store, slog.New(slog.DiscardHandler))
 
-	token, err := s.mintDevice("Test Device", "")
+	token, err := s.mintDevice("Test Device", "", KindDevice)
 	if err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
@@ -108,19 +108,19 @@ func TestValidateToken_AcceptsMintedTokenOnly(t *testing.T) {
 	}
 	s := New(store, slog.New(slog.DiscardHandler))
 
-	token, err := s.mintDevice("Test Device", "")
+	token, err := s.mintDevice("Test Device", "", KindDevice)
 	if err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
 
 	now := time.Now()
-	if !s.validateToken(token, "", now) {
+	if _, ok := s.validateToken(token, "", KindDevice, now); !ok {
 		t.Errorf("validateToken(minted token) = false, want true")
 	}
-	if s.validateToken("not-the-token", "", now) {
+	if _, ok := s.validateToken("not-the-token", "", KindDevice, now); ok {
 		t.Errorf("validateToken(wrong token) = true, want false")
 	}
-	if s.validateToken("", "", now) {
+	if _, ok := s.validateToken("", "", KindDevice, now); ok {
 		t.Errorf("validateToken(empty) = true, want false")
 	}
 }
@@ -131,7 +131,7 @@ func TestListDevices_ExcludesSecrets(t *testing.T) {
 		t.Fatalf("settings.New() = %v, want nil error", err)
 	}
 	s := New(store, slog.New(slog.DiscardHandler))
-	if _, err := s.mintDevice("Phone", ""); err != nil {
+	if _, err := s.mintDevice("Phone", "", KindDevice); err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
 
@@ -159,7 +159,7 @@ func TestRenameDevice_RejectsEmptyAndWhitespace(t *testing.T) {
 		t.Fatalf("settings.New() = %v, want nil error", err)
 	}
 	s := New(store, slog.New(slog.DiscardHandler))
-	if _, err := s.mintDevice("Phone", ""); err != nil {
+	if _, err := s.mintDevice("Phone", "", KindDevice); err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
 	id := s.ListDevices()[0].ID
@@ -183,7 +183,7 @@ func TestRenameDevice_PersistsTheNewLabel(t *testing.T) {
 		t.Fatalf("settings.New() = %v, want nil error", err)
 	}
 	s1 := New(store1, slog.New(slog.DiscardHandler))
-	if _, err := s1.mintDevice("Phone", ""); err != nil {
+	if _, err := s1.mintDevice("Phone", "", KindDevice); err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
 	id := s1.ListDevices()[0].ID
@@ -228,7 +228,7 @@ func TestDevices_SurviveAcrossServiceInstances(t *testing.T) {
 		t.Fatalf("settings.New() = %v, want nil error", err)
 	}
 	s1 := New(store1, slog.New(slog.DiscardHandler))
-	token, err := s1.mintDevice("Laptop", "")
+	token, err := s1.mintDevice("Laptop", "", KindDevice)
 	if err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
@@ -238,7 +238,7 @@ func TestDevices_SurviveAcrossServiceInstances(t *testing.T) {
 		t.Fatalf("second settings.New() = %v, want nil error", err)
 	}
 	s2 := New(store2, slog.New(slog.DiscardHandler))
-	if !s2.validateToken(token, "", time.Now()) {
+	if _, ok := s2.validateToken(token, "", KindDevice, time.Now()); !ok {
 		t.Fatalf("a device paired before restart must still validate after restart")
 	}
 }

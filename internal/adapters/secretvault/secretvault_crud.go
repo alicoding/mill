@@ -30,6 +30,11 @@ const (
 	// with no source (entryToDomain).
 	fieldKind      = "Mill-Kind"
 	fieldSourceRef = "Mill-Source"
+	// fieldOrigin records where an entry came from when it was not
+	// typed by hand (goal 0306 S4). Distinct from fieldSourceRef, which
+	// is a live reference the value resolves through: an origin is
+	// provenance and resolves nothing.
+	fieldOrigin = "Mill-Origin"
 )
 
 func (v *fileVault) List() ([]secret.Summary, error) {
@@ -194,9 +199,52 @@ func applyValues(entry *gokeepasslib.Entry, e secret.Entry) {
 	setValue(entry, fieldPassword, e.Password, true)
 	setValue(entry, fieldURL, e.URL, false)
 	setValue(entry, fieldNotes, e.Notes, false)
-	setValue(entry, fieldTags, e.Tags, false)
+	setValue(entry, fieldTags, secret.FormatTags(e.Tags), false)
 	setValue(entry, fieldKind, string(secret.NormalizeKind(string(e.Kind))), false)
 	setValue(entry, fieldSourceRef, e.SourceRef, false)
+	setValue(entry, fieldOrigin, e.Origin, false)
+	applyCustomFields(entry, e.Fields)
+}
+
+// applyCustomFields writes the entry's own fields as KDBX custom
+// strings -- protected ones carrying the same flag the password does,
+// which is what a foreign KDBX editor reads to keep them hidden. A
+// field the caller dropped is REMOVED, not left behind: an edit that
+// deletes a field has to delete it from the file too, or the next read
+// would resurrect it.
+func applyCustomFields(entry *gokeepasslib.Entry, fields []secret.Field) {
+	keep := make(map[string]bool, len(fields))
+	for _, f := range fields {
+		keep[strings.TrimSpace(f.Name)] = true
+	}
+	remaining := entry.Values[:0]
+	for _, v := range entry.Values {
+		if secret.IsReservedField(v.Key) || keep[v.Key] {
+			remaining = append(remaining, v)
+		}
+	}
+	entry.Values = remaining
+	for _, f := range fields {
+		name := strings.TrimSpace(f.Name)
+		if name == "" || secret.IsReservedField(name) {
+			continue
+		}
+		setValue(entry, name, f.Value, f.Protected)
+	}
+}
+
+// customFields reads back what applyCustomFields wrote: every stored
+// value that is not one of the entry's own columns and not one of
+// Mill's internal attributes, in the file's own order.
+func customFields(e gokeepasslib.Entry) []secret.Field {
+	var out []secret.Field
+	for _, v := range e.Values {
+		if secret.IsReservedField(v.Key) {
+			continue
+		}
+		out = append(out, secret.Field{Name: v.Key, Value: v.Value.Content, Protected: v.Value.Protected.Bool})
+	}
+	return out
 }
 
 func setValue(entry *gokeepasslib.Entry, key, content string, protected bool) {
@@ -219,9 +267,11 @@ func entryToDomain(e gokeepasslib.Entry) secret.Entry {
 		Password:  e.GetContent(fieldPassword),
 		URL:       e.GetContent(fieldURL),
 		Notes:     e.GetContent(fieldNotes),
-		Tags:      e.GetContent(fieldTags),
+		Tags:      secret.ParseTags(e.GetContent(fieldTags)),
+		Fields:    customFields(e),
 		Kind:      secret.NormalizeKind(e.GetContent(fieldKind)),
 		SourceRef: e.GetContent(fieldSourceRef),
+		Origin:    e.GetContent(fieldOrigin),
 	}
 	if e.Times.CreationTime != nil {
 		out.CreatedAt = e.Times.CreationTime.Time

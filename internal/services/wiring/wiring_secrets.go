@@ -14,6 +14,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/secretvault"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/domain/secretsource"
 	"github.com/alicoding/mill/internal/services/codeloopsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
@@ -45,6 +46,13 @@ func WireSecrets(vaultPath string, credentials credential.Store, store settings.
 	secretService.MigrateLegacyPresenceProtection()
 	configureService.SetSecretResolver(secretService.ResolveSecretValue)
 	secretService.SetSourcesLister(configureService.SecretSources)
+	// Goal 0306 S4: "Add as sources" on the .env scan creates the same
+	// Configure entity the Sources page's own form does, through this
+	// one seam -- secretsvc never depends on configuresvc.
+	secretService.SetSourceCreator(func(label, kind, path string) error {
+		_, err := configureService.CreateSecretSource(label, secretsource.Kind(kind), path)
+		return err
+	})
 	configureService.SetSecretLabelsLister(secretService.ListSecrets)
 	guardrailsvc.SetSecretLabelsLookup(configureService.DeriveSecretLabels)
 	// Goal 0306: a credential can only be created in the store, and the

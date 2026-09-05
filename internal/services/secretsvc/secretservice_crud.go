@@ -81,11 +81,11 @@ func (s *SecretService) SecretHistory(id string) ([]secret.Entry, error) {
 // it holds (secret.NormalizeKind); a non-empty sourceRef makes it
 // source-backed, in which case password is ignored -- the value stays
 // in the source and is read at use time.
-func (s *SecretService) CreateSecret(title, username, password, url, notes, tags, kind, sourceRef string) (secret.Entry, error) {
+func (s *SecretService) CreateSecret(title, username, password, url, notes string, tags []string, kind, sourceRef string, fields []secret.Field) (secret.Entry, error) {
 	if sourceRef != "" {
 		password = ""
 	}
-	e := secret.Entry{Title: title, Username: username, Password: password, URL: url, Notes: notes, Tags: tags, Kind: secret.NormalizeKind(kind), SourceRef: sourceRef}
+	e := secret.Entry{Title: title, Username: username, Password: password, URL: url, Notes: notes, Tags: secret.NormalizeTags(tags), Fields: fields, Kind: secret.NormalizeKind(kind), SourceRef: sourceRef}
 	if err := secret.Validate(e); err != nil {
 		return secret.Entry{}, err
 	}
@@ -100,14 +100,14 @@ func (s *SecretService) CreateSecret(title, username, password, url, notes, tags
 // UpdateSecret validates and overwrites id's current values, pushing the
 // PREVIOUS values onto its history (secretvault.Vault.Upsert's own
 // contract).
-func (s *SecretService) UpdateSecret(id, title, username, password, url, notes, tags, kind, sourceRef string) (secret.Entry, error) {
+func (s *SecretService) UpdateSecret(id, title, username, password, url, notes string, tags []string, kind, sourceRef string, fields []secret.Field) (secret.Entry, error) {
 	if id == "" {
 		return secret.Entry{}, fmt.Errorf("no entry id given")
 	}
 	if sourceRef != "" {
 		password = ""
 	}
-	e := secret.Entry{ID: id, Title: title, Username: username, Password: password, URL: url, Notes: notes, Tags: tags, Kind: secret.NormalizeKind(kind), SourceRef: sourceRef}
+	e := secret.Entry{ID: id, Title: title, Username: username, Password: password, URL: url, Notes: notes, Tags: secret.NormalizeTags(tags), Fields: fields, Kind: secret.NormalizeKind(kind), SourceRef: sourceRef}
 	if err := secret.Validate(e); err != nil {
 		return secret.Entry{}, err
 	}
