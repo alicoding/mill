@@ -9,7 +9,7 @@ import { usePluginReloadVersion } from '../plugins/pluginReloadSignal'
 import { unknownKindContent } from './atlasBoardObjectContent'
 import type { AtlasBoardObjectContent } from './atlasBoardObjectContent'
 import { activation, boxOptsOutOfCanvasWheel, contentOptsOutOfCanvasDrag, shieldUp } from './atlasActivation'
-import type { AtlasActivation, AtlasContentMode } from './atlasActivation'
+import type { AtlasActivation, AtlasInputMode } from './atlasActivation'
 import { useAtlasObjectInputBoundary } from './useAtlasObjectInputBoundary'
 import { AtlasShapeRotateHandle } from './AtlasShapeRotateHandle'
 import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
@@ -90,18 +90,18 @@ function objectBoxClassName(state: AtlasActivation): string {
 // drag inside it must reach only the face -- the chrome band stays the
 // object's drag surface. An idle interactive face is inert instead, so
 // nothing under the shield can swallow the click that selects.
-function objectContentClassName(state: AtlasActivation, content: AtlasContentMode): string {
+function objectContentClassName(state: AtlasActivation, input: AtlasInputMode): string {
   if (contentOptsOutOfCanvasDrag(state)) return `${styles.content} nodrag nopan`
-  return content === 'interactive' ? `${styles.content} ${styles.contentInert}` : styles.content
+  return input === 'interactive' ? `${styles.content} ${styles.contentInert}` : styles.content
 }
 
 // useObjectActivation resolves this object's one input state and hands
 // back the channel its face reports an open editor through (goal 0354).
 // A deselect drops the report: an idle face has no editor the user can
 // still be typing in, whatever it last said.
-function useObjectActivation(content: AtlasContentMode, live: boolean): { state: AtlasActivation; onEditingChange: (editing: boolean) => void } {
+function useObjectActivation(input: AtlasInputMode, live: boolean): { state: AtlasActivation; onEditingChange: (editing: boolean) => void } {
   const [faceEditing, setFaceEditing] = useState(false)
-  const state = activation(live, faceEditing, content)
+  const state = activation(live, faceEditing, input)
   useEffect(() => { if (state === 'idle') setFaceEditing(false) }, [state])
   const onEditingChange = useCallback((editing: boolean) => { setFaceEditing(editing) }, [])
   return { state, onEditingChange }
@@ -128,8 +128,8 @@ function editDoor(object: BoardObject, facts: AtlasBoardObjectContent | undefine
   return { route, editable: !preview && route?.kind === 'embedded-engine' }
 }
 
-function bandTitleKey(state: AtlasActivation, content: AtlasContentMode, shieldHintKey: string | undefined): string {
-  if (content !== 'interactive' || state !== 'idle') return 'boardObject.dragHandleTitle'
+function bandTitleKey(state: AtlasActivation, input: AtlasInputMode, shieldHintKey: string | undefined): string {
+  if (input !== 'interactive' || state !== 'idle') return 'boardObject.dragHandleTitle'
   return shieldHintKey ?? 'boardObject.shieldedBandTitle'
 }
 
@@ -192,7 +192,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
   // The activation state (goal 0354): one contract for every noun and
   // every plugin face, derived from the noun's declared content mode
   // plus this object's own live state -- never a per-noun input flag.
-  const { state, onEditingChange } = useObjectActivation(resolvedFacts.content, !!selected && !preview)
+  const { state, onEditingChange } = useObjectActivation(resolvedFacts.input, !!selected && !preview)
   useAtlasObjectInputBoundary(boxRef, state)
   // The Fit chip's own state (goal 0340): only the face can know
   // whether what it renders currently needs more room than this box
@@ -281,7 +281,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
           it -- gating on dragBand removes it from those Kinds entirely
           rather than leaving inert chrome. */}
       {dragBand && !preview && (
-        <div className={styles.frame} data-testid="atlas-board-object-frame" title={t(bandTitleKey(state, resolvedFacts.content, shieldHintKey))}>
+        <div className={styles.frame} data-testid="atlas-board-object-frame" title={t(bandTitleKey(state, resolvedFacts.input, shieldHintKey))}>
           {/* The overflow escape hatch (goal 0340): shown at rest and
               while selected, never hover-gated -- "this is bigger than
               what you can see" is a fact about the object, not a
@@ -306,7 +306,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
           like a body; selecting lifts the shield and the face goes
           live. The band above stays uncovered where a Kind declares one
           -- it is that Kind's only drag surface. */}
-      {shieldUp(resolvedFacts.content, state, preview) && <div className={clickShieldClassName(dragBand)} data-testid="atlas-object-click-shield" />}
+      {shieldUp(resolvedFacts.input, state, preview) && <div className={clickShieldClassName(dragBand)} data-testid="atlas-object-click-shield" />}
       {/* Suspense boundary for every Kind uniformly, a no-op for a
           synchronously-imported Component (shape/image/ink) and the
           real code-split boundary for a lazy one (table/diagram, whose
@@ -325,7 +325,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
           node, shift/meta adds to the selection, and a click on an
           already-selected node changes nothing. */}
       <div
-        className={objectContentClassName(state, resolvedFacts.content)}
+        className={objectContentClassName(state, resolvedFacts.input)}
         onPointerDownCapture={dragBand ? (e) => {
           // Primary button only: a right-click must reach the context
           // menu with the CURRENT selection intact (a multi-select
