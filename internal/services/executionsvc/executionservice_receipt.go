@@ -78,9 +78,14 @@ func (e *ExecutionService) runEvidenceFor(runID string) (composition.RunEvidence
 		if s.Status == "pending" {
 			continue
 		}
+		var waits []composition.RunEvidenceWait
+		for _, w := range s.Waits {
+			waits = append(waits, composition.RunEvidenceWait{Parked: w.Reason, ParkedAt: w.ParkedAt, ResumedAt: w.ResumedAt})
+		}
 		steps = append(steps, composition.RunEvidenceStep{
 			StepID: s.NodeID, StepTypeID: s.NodeTypeID, Status: s.Status,
 			GuardrailEffect: s.GuardrailEffect, GuardrailRule: s.GuardrailRule, GuardrailSource: s.GuardrailSource,
+			Waits: waits,
 		})
 	}
 

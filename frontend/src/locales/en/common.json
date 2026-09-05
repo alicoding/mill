@@ -234,7 +234,9 @@
       "rename": "Rename"
     },
     "diagram": {
-      "fit": "Fit diagram"
+      "fit": "Fit diagram",
+      "previousPage": "Previous page",
+      "nextPage": "Next page"
     },
     "canvas": {
       "undo": "Undo",
@@ -527,5 +529,10 @@
     "stop": "Stop run",
     "keep": "Keep it paused",
     "cancel": "Cancel"
+  },
+  "vaultWait": {
+    "badge": "waiting for vault",
+    "title": "Waiting for the vault to unlock",
+    "body": "This run needs a secret. Unlock the vault and it continues from the step that stopped."
   }
 }

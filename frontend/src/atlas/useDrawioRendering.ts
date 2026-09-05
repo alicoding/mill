@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { RefObject } from 'react'
-import { attachDrawioInteraction } from './drawioInteraction'
-import type { DrawioGraph, DrawioOverflowReporter } from './drawioInteraction'
+import { attachDrawioInteraction, attachDrawioPaging } from './drawioInteraction'
+import type { DrawioGraph, DrawioOverflowReporter, DrawioPagerReporter, DrawioPagingViewer } from './drawioInteraction'
 
 // Renders a .drawio card's own XML through drawio's own vendored viewer
 // (ADR-0043, goal 0133 slice 3: adopt drawio's viewer rather than
@@ -27,7 +27,7 @@ interface DrawioGraphViewer {
 // toolbar-nohide, the viewer appends it to document.body on pointer
 // enter, absolutely positioned over the host, and removes it again on
 // leave (viewer.min.js, addToolbar's body-append branch).
-interface DrawioViewerInstance {
+interface DrawioViewerInstance extends DrawioPagingViewer {
   toolbar?: HTMLElement
   // Width floor the viewer computes for its toolbar (34px per button).
   minToolbarWidth?: number
@@ -53,6 +53,11 @@ declare global {
 export interface DrawioRenderingOptions {
   interactive?: boolean
   onOverflow?: DrawioOverflowReporter
+  // onPager/initialPage (goal 0354): the file's own page cursor, for
+  // the chrome that offers paging now that the vendored toolbar is not
+  // created on a board object. Same stability rule as onOverflow.
+  onPager?: DrawioPagerReporter
+  initialPage?: number
 }
 
 const VIEWER_SCRIPT_URL = '/vendor/drawio/viewer.min.js'
@@ -142,6 +147,8 @@ export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: stri
   const [error, setError] = useState('')
   const interactive = options?.interactive ?? false
   const onOverflow = options?.onOverflow
+  const onPager = options?.onPager
+  const initialPage = options?.initialPage
 
   useEffect(() => {
     setError('')
@@ -205,6 +212,10 @@ export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: stri
             const detachInteraction = instance.graph && interactive
               ? attachDrawioInteraction(instance.graph, onOverflow)
               : null
+            // Paging is reported for the same surface the in-frame
+            // interaction serves: a board object, whose own band renders
+            // the control. The card page keeps the viewer's own bar.
+            if (interactive && onPager) attachDrawioPaging(instance, onPager, initialPage)
             detachFit = () => {
               host.removeEventListener('mouseenter', fitToolbar)
               observer.disconnect()
@@ -228,7 +239,7 @@ export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: stri
       host.innerHTML = ''
       host.removeAttribute('data-mxgraph')
     }
-  }, [ref, xml, interactive, onOverflow])
+  }, [ref, xml, interactive, onOverflow, onPager, initialPage])
 
   return error
 }
