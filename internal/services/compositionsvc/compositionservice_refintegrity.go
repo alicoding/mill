@@ -35,6 +35,15 @@ func (c *CompositionService) WorkflowsReferencing(refKind, id string) []string {
 	var labels []string
 workflowLoop:
 	for _, wf := range c.Workflows() {
+		// A workflow's default Environment is a reference the graph
+		// cannot show: it lives on the workflow itself, not in any
+		// node's config, so the node scan below would never see it and
+		// the entity would look unreferenced right up to the moment a
+		// run needed it.
+		if refKind == "environment" && wf.DefaultEnvironmentID == id {
+			labels = append(labels, wf.Label)
+			continue
+		}
 		for _, n := range wf.Nodes {
 			for _, key := range keysByType[n.NodeTypeID] {
 				if n.Config[key] == id {

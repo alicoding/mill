@@ -9,6 +9,7 @@ import { ConfigureLists } from './ConfigureLists'
 import { ConfigureAttributes } from './ConfigureAttributes'
 import { ConfigureMCPServers } from './ConfigureMCPServers'
 import { ConfigureDecisions } from './ConfigureDecisions'
+import { ConfigureEnvironments } from './ConfigureEnvironments'
 import { ConfigureExecEnv } from './ConfigureExecEnv'
 import { ConfigureConversionProfiles } from './ConfigureConversionProfiles'
 import { ConfigureAIProviders } from './ConfigureAIProviders'
@@ -66,6 +67,7 @@ function ConfigureView({ initialTab }: { initialTab?: string }) {
         <TabItem value="attributes">{t('configureView.attributes')}</TabItem>
         <TabItem value="mcpservers">{t('configureView.mcpServers')}</TabItem>
         <TabItem value="decisions">{t('configureView.decisions')}</TabItem>
+        <TabItem value="environments">{t('configureView.environments')}</TabItem>
         <TabItem value="execenvs">{t('configureView.execEnvs')}</TabItem>
         <TabItem value="conversionprofiles">{t('configureView.conversionProfiles')}</TabItem>
         <TabItem value="aiproviders">{t('configureView.aiProviders')}</TabItem>
@@ -77,6 +79,7 @@ function ConfigureView({ initialTab }: { initialTab?: string }) {
       <TabPanel value="attributes"><ConfigureAttributes /></TabPanel>
       <TabPanel value="mcpservers"><ConfigureMCPServers /></TabPanel>
       <TabPanel value="decisions"><ConfigureDecisions /></TabPanel>
+      <TabPanel value="environments"><ConfigureEnvironments /></TabPanel>
       <TabPanel value="execenvs"><ConfigureExecEnv /></TabPanel>
       <TabPanel value="conversionprofiles"><ConfigureConversionProfiles /></TabPanel>
       <TabPanel value="aiproviders"><ConfigureAIProviders /></TabPanel>

@@ -15,5 +15,6 @@ func init() {
 	contract.Register("decision", exportedDecision{})
 	contract.Register("aiprovider", exportedAIProvider{})
 	contract.Register("execenv", exportedExecEnv{})
+	contract.Register("environment", exportedEnvironment{})
 	contract.Register("steptype", exportedDeclaredStepType{})
 }
