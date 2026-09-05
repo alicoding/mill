@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { createTableFromList, placeSizedTable } from './fixtures/atlasTable'
+import { createTableFromList, placeSizedTable, tableAuditShot } from './fixtures/atlasTable'
 import { dragBetween, dragResizeHandle } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
@@ -84,6 +84,7 @@ test('adding columns widens an unsized table instead of scrolling its first colu
   for (let i = 0; i < 4; i++) await addColumn()
   await expect(glide).toHaveAttribute('data-columns', '6')
   await expect.poll(async () => (await tableObject.boundingBox())?.width ?? 0).toBeGreaterThan(startBox.width + 60)
+  await tableAuditShot(page, '11-resized-columns')
   // The grid's own canvas -- where every column paints -- is still
   // inside the object's own box.
   const box = await tableObject.boundingBox()
@@ -135,6 +136,7 @@ test('a table object can be resized by its own handle, and the size persists acr
   await dragResizeHandle(page, handle, 120, -60)
 
   await expect.poll(async () => (await tableObject.boundingBox())?.width ?? 0).toBeGreaterThan(before.width + 80)
+  await tableAuditShot(page, '11-resized-frame-handle')
   await page.reload()
   await page.getByRole('link', { name: 'Atlas' }).click()
   const reloaded = tableObjects(page).filter({ hasText: 'US' })

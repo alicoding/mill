@@ -39,7 +39,7 @@ import { AtlasCreationTray, ATLAS_TOOL_DRAG_MIME } from './AtlasCreationTray'
 import type { AtlasCreationTool } from './atlasTools'
 import { useTablePickerSignal } from './useTablePickerSignal'
 import { AtlasTablePlacementGhost } from './AtlasTablePlacementGhost'
-import { nextTableTitle } from './tools/tableTool'
+import { nextTableTitle, tableTitlesOn } from './tools/tableTool'
 import { useAtlasImagePopoverSignal } from './useAtlasImagePopoverSignal'
 import { useAtlasImageCreate } from './useAtlasImageCreate'
 import { useAtlasPaneClick } from './useAtlasPaneClick'
@@ -465,8 +465,10 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       {slotDrag.dragLine && <AtlasSlotDragLine line={slotDrag.dragLine} />}
       {/* Where the picked table will land (goal 0273) -- shown from the
           moment a size is picked until the click places it or Escape
-          disarms the tool. */}
-      {tablePicker.pendingSize && <AtlasTablePlacementGhost size={tablePicker.pendingSize} wrapperRef={wrapperRef} title={nextTableTitle(new Set(allCards.map((c) => c.Title)))} />}
+          disarms the tool. Scoped to the VIEWED board, approximating a
+          frame-drop's own scope (useAtlasPaneClick.ts) before the click
+          resolves which frame, if any, it lands in. */}
+      {tablePicker.pendingSize && <AtlasTablePlacementGhost size={tablePicker.pendingSize} wrapperRef={wrapperRef} title={nextTableTitle(tableTitlesOn(allObjects, viewedID))} />}
       {fileDrop.dropError && <div className={`${styles.dropError} ${runbookStyles.error}`} data-testid="atlas-file-drop-error">{fileDrop.dropError}</div>}
       {fileDrop.dropDuplicateNotice && <div className={styles.dropNotice} data-testid="atlas-file-drop-duplicate-notice">{fileDrop.dropDuplicateNotice}</div>}
       {!readOnly && (haveSelection

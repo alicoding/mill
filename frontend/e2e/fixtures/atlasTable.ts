@@ -4,6 +4,50 @@ import { waitForViewportStable } from './animation'
 import { findEmptyBoardRect } from './atlasEmptyRegion'
 import { clickBoardPoint } from './atlasBoard'
 import { wheelAt } from './pointer'
+import { contextMenu } from './contextMenu'
+import { clickRowAction } from '../inventoryRow'
+
+// Promoted (testing.md: a helper used by 2+ spec files) out of what
+// used to be atlas-table-ux.spec.ts's own local copies -- every table
+// state-matrix spec shares these four.
+export function tableObjects(page: Page): Locator {
+  return page.locator('[data-testid="atlas-board-object"][data-object-kind="table"]')
+}
+
+export async function openAtlas(page: Page): Promise<void> {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+}
+
+// The grid claims right-click for its own row/column menus -- the
+// object's own menu opens off its chrome band instead.
+export async function deleteTableViaMenu(object: Locator): Promise<void> {
+  const page = object.page()
+  await object.getByTestId('atlas-board-object-frame').click({ button: 'right' })
+  const menu = contextMenu(page)
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+  await expect(object).toHaveCount(0)
+}
+
+export async function deleteListNamed(page: Page, label: string): Promise<void> {
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByRole('tab', { name: 'Lists' }).click()
+  const row = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText(label, { exact: true }) })
+  await clickRowAction(page, row, 'Delete')
+  await expect(row).toHaveCount(0)
+}
+
+// The state-matrix audit's own screenshot capture (goal 0273's final
+// slice) -- a no-op unless MILL_E2E_SHOT_DIR is set (the same opt-in
+// convention composition-inspector-resize.spec.ts already uses for its
+// own inspector states), so a normal CI/local run pays nothing extra;
+// the audit run sets it once to collect one file per named state.
+export async function tableAuditShot(page: Page, name: string): Promise<void> {
+  if (!process.env.MILL_E2E_SHOT_DIR) return
+  await page.screenshot({ path: `${process.env.MILL_E2E_SHOT_DIR}/${name}.png` })
+}
 
 // revealBoardObject pans the board (two-finger scroll in the default
 // Trackpad mode, the zoom untouched) until the object's box sits
