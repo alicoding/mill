@@ -16,6 +16,8 @@ export type {
     GuardedActionDecision,
     InstallPreview,
     InstallRecord,
+    MCPServerConfig,
+    MCPServerContribution,
     Manifest,
     ManifestContributes,
     MarketplaceSource,
@@ -41,5 +43,7 @@ export type {
     ThemeContribution,
     ToolContribution,
     ToolRun,
+    UpdateCandidate,
+    UpdateCheck,
     ViewContribution
 } from "./models.js";

@@ -11,9 +11,12 @@ import listStyles from '../shared/ListCard.module.css'
 // permission-prompt shape. The unverified tier adds one thing on top
 // of that list: an acknowledgment that nothing has reviewed this code,
 // which the Install button waits for.
-export function ExtensionsInstallDialog({ preview, busy, onCancel, onInstall }: {
+export function ExtensionsInstallDialog({ preview, busy, mode = 'install', onCancel, onInstall }: {
   preview: InstallPreview
   busy: boolean
+  // An update shows the same prompt with its own verbs; the unverified
+  // title stays, because it is still unreviewed code landing.
+  mode?: 'install' | 'update'
   onCancel: () => void
   onInstall: () => void
 }) {
@@ -23,15 +26,16 @@ export function ExtensionsInstallDialog({ preview, busy, onCancel, onInstall }: 
   const badgeKey = tierLabelKey(preview.Tier)
   const name = preview.Name || preview.ID
   const confirmDisabled = busy || (unverified && !acknowledged)
+  const titleKey = unverified ? 'extensions.install.unreviewedTitle' : mode === 'update' ? 'extensions.install.updateTitle' : 'extensions.install.title'
 
   return (
     <Dialog
-      title={t(unverified ? 'extensions.install.unreviewedTitle' : 'extensions.install.title', { name })}
+      title={t(titleKey, { name })}
       onClose={onCancel}
       footerButtons={[
         { content: t('extensions.install.cancel'), onClick: onCancel, autoFocus: true },
         {
-          content: t('extensions.install.confirm'),
+          content: t(mode === 'update' ? 'extensions.install.updateConfirm' : 'extensions.install.confirm'),
           buttonType: unverified ? 'danger' : 'primary',
           disabled: confirmDisabled,
           onClick: onInstall,

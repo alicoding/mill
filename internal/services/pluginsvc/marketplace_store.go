@@ -43,6 +43,8 @@ const maxDownloadBytes int64 = maxArchiveBytes
 type marketplaceState struct {
 	Sources []MarketplaceSource         `json:"sources"`
 	Indexes map[string]MarketplaceIndex `json:"indexes"`
+	// Updates is the last Check for updates outcome (updates.go).
+	Updates UpdateCheck `json:"updates"`
 }
 
 var marketplaceStateMu sync.Mutex
