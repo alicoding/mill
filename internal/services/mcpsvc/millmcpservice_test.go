@@ -3,6 +3,7 @@ package mcpsvc
 import (
 	"context"
 	"encoding/json"
+	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"strings"
 	"testing"
 	"time"
@@ -123,13 +124,13 @@ func TestMillMCPService_RequestResource_NeverLeaksSecretOverTheWire(t *testing.T
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
 
-	req, err := cfg.CreateHTTPRequest("MCP e2e request", "https://example.com", "", "", httprequest.AuthAPIKey, nil, "", nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("MCP e2e request", "https://example.com", "", "", httprequest.AuthAPIKey, "vault:secret-entry-1", nil, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
 	}
-	if err := cfg.SetHTTPRequestSecret(req.ID, "super-secret-over-the-wire"); err != nil {
-		t.Fatalf("SetHTTPRequestSecret: %v", err)
-	}
+	cfg.SetSecretResolver(func(string, secretaudit.AccessContext) (string, error) {
+		return "super-secret-over-the-wire", nil
+	})
 
 	svc := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 	const addr = "127.0.0.1:18091"

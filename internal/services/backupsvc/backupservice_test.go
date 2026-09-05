@@ -163,7 +163,7 @@ func TestExportEverything_RoundTripsEveryFamilyIntoAFreshInstance(t *testing.T) 
 	if err != nil {
 		t.Fatalf("CreateWorkflow: %v", err)
 	}
-	req, err := sourceCfg.CreateHTTPRequest("Round-trip request", "https://example.com", "GET", "", "none", nil, "", nil, nil, "")
+	req, err := sourceCfg.CreateHTTPRequest("Round-trip request", "https://example.com", "GET", "", "none", "", nil, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
 	}

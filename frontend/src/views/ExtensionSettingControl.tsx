@@ -3,7 +3,7 @@ import { copy } from '../shared/copy'
 import { Checkbox, FormControl, Select, TextInput } from '@primer/react'
 import type { ExtensionSettingDecl } from '../atlas/atlasNounRegistry'
 import { persistExtensionSetting, resolveExtensionSetting, useExtensionSettingsStore } from '../shared/extensionSettingsStore'
-import { SecretRefPicker } from './SecretRefPicker'
+import { SecretRefPicker } from '../shared/SecretPicker'
 
 // ExtensionSettingControl -- ONE declared setting rendered generically
 // (goal 0258), shared by the built-in noun row (ExtensionRow.tsx) and

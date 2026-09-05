@@ -44,14 +44,14 @@ func TestDataEvent_RequestMutations(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 
 	got := captureEmits(t)
-	req, err := cfg.CreateHTTPRequest("Emit test request", "https://example.com", "GET", "", httprequest.AuthNone, nil, "", nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("Emit test request", "https://example.com", "GET", "", httprequest.AuthNone, "", nil, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
 	}
 	assertEmitted(t, *got, "request", req.ID)
 
 	got = captureEmits(t)
-	updated, err := cfg.UpdateHTTPRequest(req.ID, "Emit test request (edited)", "https://example.com", "GET", "", httprequest.AuthNone, nil, "", nil, nil, "")
+	updated, err := cfg.UpdateHTTPRequest(req.ID, "Emit test request (edited)", "https://example.com", "GET", "", httprequest.AuthNone, "", nil, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("UpdateHTTPRequest: %v", err)
 	}
@@ -207,14 +207,14 @@ func TestDataEvent_AIProviderMutations(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 
 	got := captureEmits(t)
-	p, err := cfg.CreateAIProvider("Emit test provider", aiprovider.KindAnthropic, "", "claude")
+	p, err := cfg.CreateAIProvider("Emit test provider", aiprovider.KindAnthropic, "", "claude", "")
 	if err != nil {
 		t.Fatalf("CreateAIProvider: %v", err)
 	}
 	assertEmitted(t, *got, "aiprovider", p.ID)
 
 	got = captureEmits(t)
-	p, err = cfg.UpdateAIProvider(p.ID, "Emit test provider (edited)", aiprovider.KindAnthropic, "", "claude")
+	p, err = cfg.UpdateAIProvider(p.ID, "Emit test provider (edited)", aiprovider.KindAnthropic, "", "claude", "")
 	if err != nil {
 		t.Fatalf("UpdateAIProvider: %v", err)
 	}

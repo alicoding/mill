@@ -42,11 +42,11 @@ func generateRSAKeyPairPEM(t *testing.T) (privPEM, pubPEM string, priv *rsa.Priv
 }
 
 func TestApplyJOSEEncryption_NilOrDisabled_NoOp(t *testing.T) {
-	body, err := ApplyJOSEEncryption(nil, "plaintext")
+	body, err := ApplyJOSEEncryption(nil, "", "plaintext")
 	if err != nil || body != "plaintext" {
 		t.Errorf("ApplyJOSEEncryption(nil, ...) = (%q, %v), want (\"plaintext\", nil)", body, err)
 	}
-	body, err = ApplyJOSEEncryption(&httprequest.JOSEConfig{Enabled: false}, "plaintext")
+	body, err = ApplyJOSEEncryption(&httprequest.JOSEConfig{Enabled: false}, "", "plaintext")
 	if err != nil || body != "plaintext" {
 		t.Errorf("ApplyJOSEEncryption(disabled, ...) = (%q, %v), want (\"plaintext\", nil)", body, err)
 	}
@@ -72,8 +72,8 @@ func TestApplyJOSEEncryption_ProducesRealJWE_DecryptableIndependently(t *testing
 	privPEM, pubPEM, priv := generateRSAKeyPairPEM(t)
 	_ = privPEM
 
-	conf := &httprequest.JOSEConfig{Enabled: true, RecipientPublicKeyPEM: pubPEM}
-	jwe, err := ApplyJOSEEncryption(conf, `{"account":"12345"}`)
+	conf := &httprequest.JOSEConfig{Enabled: true}
+	jwe, err := ApplyJOSEEncryption(conf, pubPEM, `{"account":"12345"}`)
 	if err != nil {
 		t.Fatalf("applyJOSEEncryption returned error: %v", err)
 	}
@@ -192,10 +192,11 @@ func TestExecuteWorkflow_IntegrationHTTP_JOSE_EncryptsRequestAndDecryptsResponse
 
 	withHTTPRequestLookup(t, func(string) (ResolvedHTTPRequest, error) {
 		return ResolvedHTTPRequest{
-			BaseURL:           srv.URL,
-			AuthType:          httprequest.AuthNone,
-			JOSE:              &httprequest.JOSEConfig{Enabled: true, DecryptResponse: true, RecipientPublicKeyPEM: vendorPubPEM},
-			JOSEPrivateKeyPEM: millPrivPEM,
+			BaseURL:                   srv.URL,
+			AuthType:                  httprequest.AuthNone,
+			JOSE:                      &httprequest.JOSEConfig{Enabled: true, DecryptResponse: true},
+			JOSERecipientPublicKeyPEM: vendorPubPEM,
+			JOSEPrivateKeyPEM:         millPrivPEM,
 		}, nil
 	})
 

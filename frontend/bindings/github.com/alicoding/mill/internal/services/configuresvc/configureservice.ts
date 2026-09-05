@@ -132,8 +132,8 @@ export function ConversionProfiles(): $CancellablePromise<conversionprofile$0.Pr
     return $Call.ByID(1251097066);
 }
 
-export function CreateAIProvider(label: string, kind: aiprovider$0.Kind, baseURL: string, model: string): $CancellablePromise<aiprovider$0.AIProvider> {
-    return $Call.ByID(427493887, label, kind, baseURL, model);
+export function CreateAIProvider(label: string, kind: aiprovider$0.Kind, baseURL: string, model: string, keyRef: string): $CancellablePromise<aiprovider$0.AIProvider> {
+    return $Call.ByID(427493887, label, kind, baseURL, model, keyRef);
 }
 
 export function CreateConversionProfile(label: string, description: string, ruleSets: string[] | null): $CancellablePromise<conversionprofile$0.Profile> {
@@ -160,8 +160,8 @@ export function CreateExecEnv(label: string, shell: execenv$0.Shell, profileMode
  * options-struct pass at some point, but that's a separate, bigger
  * refactor than "add a field" -- not done speculatively here.
  */
-export function CreateHTTPRequest(label: string, baseURL: string, method: string, body: string, authType: httprequest$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: httprequest$0.AuthConfig | null, jose: httprequest$0.JOSEConfig | null, description: string): $CancellablePromise<httprequest$0.HTTPRequest> {
-    return $Call.ByID(2634895949, label, baseURL, method, body, authType, headers, openAPISpec, auth, jose, description);
+export function CreateHTTPRequest(label: string, baseURL: string, method: string, body: string, authType: httprequest$0.AuthType, secretRef: string, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: httprequest$0.AuthConfig | null, jose: httprequest$0.JOSEConfig | null, description: string): $CancellablePromise<httprequest$0.HTTPRequest> {
+    return $Call.ByID(2634895949, label, baseURL, method, body, authType, secretRef, headers, openAPISpec, auth, jose, description);
 }
 
 export function CreateList(label: string, description: string, columns: typedfield$0.Field[] | null): $CancellablePromise<list$0.List> {
@@ -204,15 +204,6 @@ export function DeleteAIProvider(id: string): $CancellablePromise<void> {
     return $Call.ByID(2537752540, id);
 }
 
-/**
- * DeleteAIProviderSecret clears id's secret without deleting the
- * provider itself -- e.g. switching a BYO endpoint back to no
- * credential.
- */
-export function DeleteAIProviderSecret(id: string): $CancellablePromise<void> {
-    return $Call.ByID(2178752064, id);
-}
-
 export function DeleteConversionProfile(id: string): $CancellablePromise<void> {
     return $Call.ByID(3998413764, id);
 }
@@ -230,30 +221,13 @@ export function DeleteExecEnv(id: string): $CancellablePromise<void> {
 }
 
 /**
- * DeleteHTTPRequest also removes any keychain secret for id --
- * best-effort (c.credentials.Delete on an id with no stored secret, e.g.
- * an AuthNone request, is a harmless no-op-shaped error, not
- * surfaced), so a deleted request never leaves an orphaned secret
- * behind in the OS keychain.
+ * DeleteHTTPRequest leaves the secret store untouched: a request only
+ * ever NAMED its secrets (goal 0306), and the same entry may be named
+ * by other requests or wanted again -- deleting the last thing that
+ * pointed at a credential is not consent to destroy it.
  */
 export function DeleteHTTPRequest(id: string): $CancellablePromise<void> {
     return $Call.ByID(1529049956, id);
-}
-
-/**
- * DeleteHTTPRequestJOSEPrivateKey clears id's JOSE private key without
- * touching its AuthType secret or deleting the request itself.
- */
-export function DeleteHTTPRequestJOSEPrivateKey(id: string): $CancellablePromise<void> {
-    return $Call.ByID(2323902085, id);
-}
-
-/**
- * DeleteHTTPRequestSecret clears id's secret without deleting the
- * request itself -- e.g. switching a request back to AuthNone.
- */
-export function DeleteHTTPRequestSecret(id: string): $CancellablePromise<void> {
-    return $Call.ByID(4090960168, id);
 }
 
 export function DeleteList(id: string): $CancellablePromise<void> {
@@ -353,8 +327,8 @@ export function HTTPRequests(): $CancellablePromise<httprequest$0.HTTPRequest[] 
 /**
  * ImportAIProvider applies the uniform import rule. No secret ever
  * round-trips -- exportedAIProvider never carries one; an updated
- * provider keeps its existing local secret untouched (UpdateAIProvider
- * never touches it either).
+ * provider's key reference is replaced by the imported one, like every
+ * other field: a reference is a name, never a credential.
  */
 export function ImportAIProvider(jsonData: string): $CancellablePromise<aiprovider$0.AIProvider> {
     return $Call.ByID(2109937718, jsonData);
@@ -669,52 +643,6 @@ export function SeedRevisions(): $CancellablePromise<{ [_ in string]?: number } 
 }
 
 /**
- * SetAIProviderSecret writes id's secret (an API key, or Anthropic's
- * x-api-key) to the OS keychain. Write-only by design (docs/SPEC.md
- * §3.5): no GetSecret binding exists on this service -- the frontend
- * can set a secret but never read one back.
- */
-export function SetAIProviderSecret(id: string, secret: string): $CancellablePromise<void> {
-    return $Call.ByID(970513691, id, secret);
-}
-
-/**
- * SetHTTPRequestJOSEPrivateKey writes id's JOSE private key (Phase 3)
- * to its own, separate keychain entry -- write-only, same reasoning as
- * SetHTTPRequestSecret, but namespaced (joseKeychainID) so it can
- * coexist with whatever AuthType secret the same request also stores.
- */
-export function SetHTTPRequestJOSEPrivateKey(id: string, privateKeyPEM: string): $CancellablePromise<void> {
-    return $Call.ByID(4110071984, id, privateKeyPEM);
-}
-
-/**
- * SetHTTPRequestOAuth1Secret writes id's OAuth 1.0a dual secret
- * (consumer secret + token secret) to the OS keychain. AuthOAuth1's
- * own documented storage shape (ADR-0015 §3, httprequest.OAuth1Config's
- * doc comment): both values are JSON-encoded into the request's single
- * existing keychain string via composition.EncodeOAuth1Secret rather
- * than Mill inventing a multi-secret-per-request storage model. A
- * separate method (not a third SetHTTPRequestSecret param) so the
- * plain single-secret AuthTypes (APIKey/Bearer/HMAC) keep their
- * existing, simpler call shape unchanged -- addon, not a rewrite.
- */
-export function SetHTTPRequestOAuth1Secret(id: string, consumerSecret: string, tokenSecret: string): $CancellablePromise<void> {
-    return $Call.ByID(1346266163, id, consumerSecret, tokenSecret);
-}
-
-/**
- * SetHTTPRequestSecret writes id's secret to the OS keychain.
- * Write-only by design (docs/SPEC.md §3.5): there is deliberately no
- * GetSecret binding anywhere on this service -- the frontend can set a
- * secret but can never read one back, matching 1Password's own
- * pattern.
- */
-export function SetHTTPRequestSecret(id: string, secret: string): $CancellablePromise<void> {
-    return $Call.ByID(3011440021, id, secret);
-}
-
-/**
  * SyncListRows is the apply-list-sync node's wired writer (docs/goals/
  * 0299): every incoming row goes through ApplyListRow -- the same
  * upsert-by-key, typed-validation, persist-and-emit path a single
@@ -751,8 +679,8 @@ export function UndoDelete(entity: string, id: string): $CancellablePromise<void
     return $Call.ByID(2705919001, entity, id);
 }
 
-export function UpdateAIProvider(id: string, label: string, kind: aiprovider$0.Kind, baseURL: string, model: string): $CancellablePromise<aiprovider$0.AIProvider> {
-    return $Call.ByID(3997420794, id, label, kind, baseURL, model);
+export function UpdateAIProvider(id: string, label: string, kind: aiprovider$0.Kind, baseURL: string, model: string, keyRef: string): $CancellablePromise<aiprovider$0.AIProvider> {
+    return $Call.ByID(3997420794, id, label, kind, baseURL, model, keyRef);
 }
 
 export function UpdateConversionProfile(id: string, label: string, description: string, ruleSets: string[] | null): $CancellablePromise<conversionprofile$0.Profile> {
@@ -786,8 +714,8 @@ export function UpdateExecEnv(id: string, label: string, shell: execenv$0.Shell,
     return $Call.ByID(375575575, id, label, shell, profileMode, dir, env);
 }
 
-export function UpdateHTTPRequest(id: string, label: string, baseURL: string, method: string, body: string, authType: httprequest$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: httprequest$0.AuthConfig | null, jose: httprequest$0.JOSEConfig | null, description: string): $CancellablePromise<httprequest$0.HTTPRequest> {
-    return $Call.ByID(248664070, id, label, baseURL, method, body, authType, headers, openAPISpec, auth, jose, description);
+export function UpdateHTTPRequest(id: string, label: string, baseURL: string, method: string, body: string, authType: httprequest$0.AuthType, secretRef: string, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: httprequest$0.AuthConfig | null, jose: httprequest$0.JOSEConfig | null, description: string): $CancellablePromise<httprequest$0.HTTPRequest> {
+    return $Call.ByID(248664070, id, label, baseURL, method, body, authType, secretRef, headers, openAPISpec, auth, jose, description);
 }
 
 /**

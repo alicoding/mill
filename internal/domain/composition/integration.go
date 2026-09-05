@@ -52,11 +52,16 @@ type ResolvedHTTPRequest struct {
 	// nil for a request not using it. Independent of Auth (see
 	// httprequest.JOSEConfig's own doc comment).
 	JOSE *httprequest.JOSEConfig
-	// JOSEPrivateKeyPEM is Mill's own private key, resolved from the OS
-	// keychain only when JOSE.DecryptResponse is true -- empty
+	// JOSEPrivateKeyPEM is Mill's own private key, resolved from the
+	// secret store only when JOSE.DecryptResponse is true -- empty
 	// otherwise, same "skip the fetch when there's nothing to fetch"
 	// shape AuthNone already has for the Auth secret.
 	JOSEPrivateKeyPEM string
+	// JOSERecipientPublicKeyPEM is the vendor's public key, resolved
+	// from the same store as every other key (goal 0306) -- empty when
+	// JOSE is off. The config names it; only a resolved request carries
+	// the material itself.
+	JOSERecipientPublicKeyPEM string
 }
 
 // AuthStrategy mutates an in-progress request (headers/query, both
