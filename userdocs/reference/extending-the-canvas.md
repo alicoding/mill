@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # Extending the canvas
 
 Add one file under `frontend/src/atlas/tools/` and rebuild, and Atlas

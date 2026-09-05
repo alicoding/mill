@@ -1,3 +1,7 @@
+---
+kind: explanation
+---
+
 # Guardrails and effect classes
 
 Add a step that calls an API, and Mill won't send anything until you

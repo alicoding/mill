@@ -1,3 +1,7 @@
+---
+kind: how-to
+---
+
 # Automate with agents
 
 Point an MCP-capable agent at Mill's address, and it can compose

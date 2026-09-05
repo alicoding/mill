@@ -47,7 +47,7 @@ pre-commit:
       # fails only in CI (TestUserDocs_MatchCommitted) -- run the same
       # freshness test here so the fix is one local `go generate
       # ./internal/docsgen` away, not a failed PR round trip.
-      glob: "{userdocs/**,internal/docsgen/**}"
+      glob: "{userdocs/**,internal/docsgen/**,README.md}"
       run: go test ./internal/docsgen/
     - name: sdk-freshness
       # The plugin SDK's committed type package and its generated API

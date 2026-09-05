@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # The browser extension
 
 Some work only exists behind a sign-in. Mill can replay a recorded set

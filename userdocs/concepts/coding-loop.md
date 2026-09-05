@@ -1,3 +1,7 @@
+---
+kind: explanation
+---
+
 # The coding loop
 
 Copy a shell command, hit the hotkey, and Mill shows you exactly what

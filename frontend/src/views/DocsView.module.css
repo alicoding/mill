@@ -10,6 +10,30 @@
   overflow-y: auto;
   border-right: 1px solid var(--borderColor-default);
   padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The nav's one link that leaves the app: pinned under the sections,
+   set apart by the divider and the external-arrow glyph. */
+.navFooter {
+  margin-top: auto;
+  padding: 12px 8px 4px;
+  border-top: 1px solid var(--borderColor-muted);
+}
+
+.navFooterLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-body-size-small, 12px);
+  color: var(--fgColor-muted);
+  text-decoration: none;
+}
+
+.navFooterLink:hover {
+  color: var(--fgColor-accent);
+  text-decoration: underline;
 }
 
 /* No overflow-y here (goal 0235 S2 found this the hard way): .docs's
