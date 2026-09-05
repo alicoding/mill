@@ -264,6 +264,8 @@ func NewMillMCPService(version string, comp *compositionsvc.CompositionService, 
 		Description: "One Execution Environment's full definition (same shape as its Export button's output).",
 	}, m.readExecEnv)
 
+	m.registerClientCertResources()
+
 	m.server.AddResource(&mcp.Resource{
 		URI: "mill://aiproviders", Name: "aiproviders", MIMEType: "application/json",
 		Description: "Every configured AI provider's ID, Label, and kind (openai-compatible/anthropic) -- read mill://aiproviders/{id} for its full definition (docs/goals/0031-ai-node-family.md). Never includes a secret.",

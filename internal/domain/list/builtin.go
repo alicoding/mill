@@ -39,7 +39,7 @@ const ExampleBrunoResultsID = "example-bruno-results-list"
 // Grown from a plain key/value map (docs/goals/0010) to a typed
 // "code"/"name" dataset by goal 0011 -- the seed proof for BOTH
 // list-lookup (via DeriveEntries' first-two-columns reading, so the
-// existing "Example: Country code lookup" workflow keeps working
+// existing "Look up a client country" workflow keeps working
 // completely unchanged) and list-search (typed exact/fuzzy matching
 // against real columns). Includes a deliberately Expired row (a
 // defunct country code) so the seed itself demonstrates goal 0011's
@@ -95,7 +95,7 @@ func BuiltIn() []List {
 		},
 		{
 			ID:    ExampleCountryCodesID,
-			Label: "Example: Country codes",
+			Label: "Country codes",
 			Description: "A typed lookup dataset (code -> country name). Includes one deliberately " +
 				"Expired row (a defunct code) demonstrating the exclude-by-default rule live.",
 			Columns: []typedfield.Field{
@@ -116,15 +116,12 @@ func BuiltIn() []List {
 				expiredRow("row-su", "SU", "Soviet Union"),
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(5),
+			Seed:    seedorigin.Stamp(6),
 		},
 		{
-			ID:    ExampleTaskTrackerID,
-			Label: "Example: Task tracker",
-			Description: "A tracker a workflow updates on every run: \"Example: Track in a list\" adds a row " +
-				"here by its \"task\" value, then updates that same row's status instead of duplicating it. " +
-				"Published at v1, so a step pinned to that version keeps seeing this list's original row even " +
-				"after later runs add more.",
+			ID:          ExampleTaskTrackerID,
+			Label:       "Engagement tasks",
+			Description: "The engagement's task tracker, updated by \"Track an engagement task\" on every run.",
 			Columns: []typedfield.Field{
 				{Key: "task", Label: "Task", Type: typedfield.TypeText, Required: true},
 				// Options order is the color order (projection pills,
@@ -148,9 +145,11 @@ func BuiltIn() []List {
 				taskRow("row-tracker-setup", "Set up Mill", "Done"),
 			},
 			BuiltIn: true,
-			// SeedRevision 3: the converged task fields joined the schema
-			// (goal 0300); revision 2 made status a typed Options column.
-			Seed:             seedorigin.Stamp(3),
+			// SeedRevision 4: label/description re-skinned into the story
+			// (goal 0118 slice 2); revision 3 joined the converged task
+			// fields (goal 0300); revision 2 made status a typed Options
+			// column.
+			Seed:             seedorigin.Stamp(4),
 			PublishedVersion: 1,
 			Versions: []ListVersion{
 				{

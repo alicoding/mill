@@ -68,13 +68,13 @@ test('Selecting an Integration node offers a live request picker with inline qui
 // EntityRefField.tsx), pointed at AtlasService.Kinds() -- no quick-
 // create for v1 (Atlas already has its own Kind-authoring flow, ADR-
 // 0038), unlike the request picker above. Selecting the seeded
-// "Example: Card intake" workflow's real apply-atlas-card-update node
+// "Client request intake" workflow's real apply-atlas-card-update node
 // proves both the picker AND the Kind-driven field editor
 // (AtlasFieldBindingsEditor) render from the real seeded Intake Kind.
 test('Selecting the Update Atlas card node offers a live Kind picker and the Kind-driven field editor', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
-  await workflowRow(page, 'Example: Card intake').click()
+  await workflowRow(page, 'Client request intake').click()
 
   await clickCanvasNode(page, activePanel(page), 'Update Atlas card')
   const inspector = activePanel(page).getByTestId('composition-inspector')

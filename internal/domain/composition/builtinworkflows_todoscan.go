@@ -8,7 +8,7 @@ import "github.com/alicoding/mill/internal/domain/seedorigin"
 // the existing native-file-drop path once it's dragged there (no node
 // creates the sheet object directly; see this goal's own deferral
 // note). Ships DISABLED with no folder configured, same
-// belt-and-suspenders shape "Example: File inbox to folder" already
+// belt-and-suspenders shape "File the client inbox" already
 // established -- it never scans anything on a real machine until
 // pointed at a real folder and enabled.
 func builtInTodoScanWorkflows() []Workflow {
@@ -30,18 +30,16 @@ func builtInTodoScanWorkflows() []Workflow {
 
 	return []Workflow{
 		{
-			ID:    "example-todo-scan-workflow",
-			Label: "Example: TODO scan → sheet",
-			Description: "Scans the folder you set in the first step for TODO, FIXME, HACK and XXX markers " +
-				"and writes the table to todo-scan.csv, which lands on the board as a sheet when you drop it " +
-				"there. Set the folder, then run.",
-			Nodes: nodes,
+			ID:          "example-todo-scan-workflow",
+			Label:       "Open items → sheet",
+			Description: "Scans the engagement folder for open items and writes them to a sheet.",
+			Nodes:       nodes,
 			Edges: []Edge{
 				{ID: "example-todoscan-e0", Source: todoScanTriggerID, Target: todoScanScanID},
 				{ID: "example-todoscan-e1", Source: todoScanScanID, Target: todoScanWriteID},
 			},
 			BuiltIn:  true,
-			Seed:     seedorigin.Stamp(1),
+			Seed:     seedorigin.Stamp(2),
 			Disabled: true,
 		},
 	}

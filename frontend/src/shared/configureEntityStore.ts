@@ -7,6 +7,7 @@ import type { ExecEnv } from '../../bindings/github.com/alicoding/mill/internal/
 import type { Source as SecretSource } from '../../bindings/github.com/alicoding/mill/internal/domain/secretsource/models'
 import type { Profile as ConversionProfile } from '../../bindings/github.com/alicoding/mill/internal/domain/conversionprofile/models'
 import type { AIProvider } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
+import type { ClientCertificate, Status as ClientCertStatus } from '../../bindings/github.com/alicoding/mill/internal/domain/clientcert/models'
 import type { DeclaredStepType } from '../../bindings/github.com/alicoding/mill/internal/domain/declaredsteptype/models'
 import { background } from './background'
 
@@ -32,6 +33,8 @@ interface ConfigureEntityState {
   secretSources: SecretSource[] | null
   conversionProfiles: ConversionProfile[] | null
   aiProviders: AIProvider[] | null
+  clientCerts: ClientCertificate[] | null
+  clientCertStatuses: Record<string, ClientCertStatus>
   declaredStepTypes: DeclaredStepType[] | null
   setLists: (lists: List[]) => void
   setDecisions: (decisions: Decision[]) => void
@@ -40,6 +43,7 @@ interface ConfigureEntityState {
   setSecretSources: (secretSources: SecretSource[]) => void
   setConversionProfiles: (conversionProfiles: ConversionProfile[]) => void
   setAIProviders: (aiProviders: AIProvider[]) => void
+  setClientCerts: (clientCerts: ClientCertificate[], statuses: ClientCertStatus[]) => void
   setDeclaredStepTypes: (declaredStepTypes: DeclaredStepType[]) => void
 }
 
@@ -51,6 +55,8 @@ export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => (
   secretSources: null,
   conversionProfiles: null,
   aiProviders: null,
+  clientCerts: null,
+  clientCertStatuses: {},
   declaredStepTypes: null,
   setLists: (lists) => set({ lists }),
   setDecisions: (decisions) => set({ decisions }),
@@ -59,6 +65,7 @@ export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => (
   setSecretSources: (secretSources) => set({ secretSources }),
   setConversionProfiles: (conversionProfiles) => set({ conversionProfiles }),
   setAIProviders: (aiProviders) => set({ aiProviders }),
+  setClientCerts: (clientCerts, statuses) => set({ clientCerts, clientCertStatuses: Object.fromEntries(statuses.map((s) => [s.id, s])) }),
   setDeclaredStepTypes: (declaredStepTypes) => set({ declaredStepTypes }),
 }))
 
@@ -100,6 +107,14 @@ export function refreshSecretSources(): Promise<void> {
 export function refreshAIProviders(): Promise<void> {
   return background(ConfigureService.AIProviders()
     .then((list) => useConfigureEntityStore.getState().setAIProviders(list ?? [])), 'configureEntity.aiProviders')
+}
+
+// The list and its statuses arrive together: a row shows both, and two
+// separate refreshes would render a certificate beside the previous
+// revision's status.
+export function refreshClientCerts(): Promise<void> {
+  return background(Promise.all([ConfigureService.ClientCertificates(), ConfigureService.ClientCertificateStatuses()])
+    .then(([certs, statuses]) => useConfigureEntityStore.getState().setClientCerts(certs ?? [], statuses ?? [])), 'configureEntity.clientCerts')
 }
 
 export function refreshDeclaredStepTypes(): Promise<void> {

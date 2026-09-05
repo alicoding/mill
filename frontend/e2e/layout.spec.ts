@@ -201,7 +201,7 @@ test.describe('tab strip vs build badge', () => {
     'Clipboard → Markdown',
     'Load sample HTML',
     'Example: Parent → child call',
-    'Example: Country code lookup',
+    'Look up a client country',
     'Example: MCP echo call',
   ]) {
     await page.getByRole('link', { name: 'Workflows' }).click()

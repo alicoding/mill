@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { Button, FormControl, IconButton, Select, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, PencilIcon, PlusIcon, TerminalIcon, TrashIcon } from '@primer/octicons-react'
@@ -13,6 +12,9 @@ import { refreshExecEnvs, useConfigureEntityStore } from '../shared/configureEnt
 import { envToRows, execEnvAdvancedIsSet, rowsToEnv, type EnvRow } from './execEnvRows'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
+import { entityRowContext } from '../shared/entityRowCommands'
+import { useEntityActionError } from '../shared/entityActionErrorStore'
+import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { describeSeedReset } from '../shared/seedLifecycle'
@@ -69,6 +71,9 @@ function profileCaptionFor(t: (key: string) => string): Partial<Record<ProfileMo
 // equivalent), only the list columns and this form are its own.
 export function ConfigureExecEnv() {
   const { t } = useTranslation('configure')
+  // A row action's refusal, recorded by the command that met it
+  // (shared/entityActionErrorStore.ts, goal 0346).
+  const rowActionError = useEntityActionError('execenv')
   const SHELL_LABEL = shellLabelFor(t)
   const PROFILE_LABEL = profileLabelFor(t)
   const PROFILE_CAPTION = profileCaptionFor(t)
@@ -86,7 +91,7 @@ export function ConfigureExecEnv() {
   const [error, setError] = useState('')
   const [viewMode, setViewMode] = useViewMode('mill-execenvs-view-mode')
 
-  const seedLifecycle = useSeedLifecycle<ExecEnv>(() => ConfigureService.RestorableExecEnvs())
+  const seedLifecycle = useSeedLifecycle<ExecEnv>(() => ConfigureService.RestorableExecEnvs(), envs)
 
   const refetch = () => {
     void refreshExecEnvs()
@@ -167,22 +172,6 @@ export function ConfigureExecEnv() {
     }
   }
 
-  const remove = (id: string, label: string) => {
-    void deleteWithUndo({ entity: 'execenv', id, label, remove: () => ConfigureService.DeleteExecEnv(id), refetch: () => {
-      refetch()
-      seedLifecycle.refresh()
-    }, onError: (err) => importExport.setImportError(String(err)) })
-  }
-
-  // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037
-  // items 4/5).
-  const resetToSeed = (id: string) => {
-    ConfigureService.ResetExecEnvToSeed(id).then(() => {
-      refetch()
-      seedLifecycle.refresh()
-    }).catch((err) => importExport.setImportError(String(err)))
-  }
-
   // Table-view direct-wiring half of the Button-semantics convention
   // (.claude/rules/frontend.md) -- see ConfigureRequests.tsx's
   // identical comment.
@@ -230,16 +219,12 @@ export function ConfigureExecEnv() {
       description: `${SHELL_LABEL[e.Shell] ?? e.Shell} · ${e.ProfileMode} · ${e.Dir === TEMP_DIR_SENTINEL ? t('configureExecEnv.freshTempDirPerRun') : e.Dir}`,
       onOpen: () => startEdit(e),
       menuActions: [
-        { label: t('export'), onClick: () => importExport.exportItem(e.ID, e.Label) },
-        // Reset-to-shipped-example (docs/goals/0037 item 4) -- hidden
-        // (not shown-disabled) when already current, same reasoning
-        // CompositionView.tsx's identical wiring documents.
-        ...(e.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(e.ID) }] : []),
-        {
-          label: t('delete'),
-          onClick: () => remove(e.ID, e.Label),
-          danger: true,
-        },
+        { commandId: 'configure.execenv.export', ctx: entityRowContext('execenv', e.ID) },
+        // Reset-to-shipped-example (docs/goals/0037 item 4): the command's
+        // own enabled() hides it once the row matches the shipped golden,
+        // so the row only names the revision it would restore.
+        { commandId: 'configure.execenv.reset', ctx: entityRowContext('execenv', e.ID), label: seedReset.label },
+        { commandId: 'configure.execenv.delete', ctx: entityRowContext('execenv', e.ID), danger: true },
       ],
     }
   })
@@ -256,8 +241,8 @@ export function ConfigureExecEnv() {
       importTestId="import-execenv"
       onImportFile={importExport.handleImportFile}
       onImportClick={importExport.openImportPicker}
-      importErrorNode={importExport.importError && (
-        <Text as="p" size="small" className={styles.error} data-testid="import-execenv-error">{importExport.importError}</Text>
+      importErrorNode={(importExport.importError ?? rowActionError) && (
+        <Text as="p" size="small" className={styles.error} data-testid="import-execenv-error">{importExport.importError ?? rowActionError}</Text>
       )}
       restorable={seedLifecycle.restorable}
       onRestore={(id) => ConfigureService.RestoreExecEnv(id).then(() => { refetch(); seedLifecycle.refresh() }).catch((err) => importExport.setImportError(String(err)))}
@@ -369,8 +354,8 @@ export function ConfigureExecEnv() {
                 renderCell: (e) => (
                   <Stack direction="horizontal" gap="condensed">
                     <IconButton icon={PencilIcon} aria-label={t('configureExecEnv.editAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => startEdit(e)} />
-                    <IconButton icon={DownloadIcon} aria-label={t('configureExecEnv.exportAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => importExport.exportItem(e.ID, e.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={t('configureExecEnv.deleteAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => remove(e.ID, e.Label)} />
+                    <IconButton icon={DownloadIcon} aria-label={t('configureExecEnv.exportAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.execenv.export', entityRowContext('execenv', e.ID))} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureExecEnv.deleteAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.execenv.delete', entityRowContext('execenv', e.ID))} />
                   </Stack>
                 ),
               },

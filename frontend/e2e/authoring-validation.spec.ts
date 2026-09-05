@@ -142,10 +142,10 @@ test('A Trigger -> Process-leaf workflow saves with a warning; the toolbar and n
   await expect(row).toHaveCount(0)
 })
 
-test('An existing seed ending in a Process leaf (Example: Approval-gated HTTP call) shows the same warning live, nothing else broken', async ({ page }) => {
+test('An existing seed ending in a Process leaf (Post an update to the client portal) shows the same warning live, nothing else broken', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
-  const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText('Example: Approval-gated HTTP call', { exact: true }) })
+  const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText('Post an update to the client portal', { exact: true }) })
   await expect(row).toBeVisible()
   await row.click()
 

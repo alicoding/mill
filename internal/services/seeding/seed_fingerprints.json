@@ -95,6 +95,10 @@
     "seedRevision": 1,
     "fingerprint": "1e55d1591c9b7a0f98a7cd22d2de9940b4d3fa2a8094a8fd9496870e500b549a"
   },
+  "clientcert:clientcert-example": {
+    "seedRevision": 1,
+    "fingerprint": "e2ab337a08d0d152db2e95315ca3c080eba1f24fd9ea595923e0be5d890cc470"
+  },
   "conversionprofile:conversionprofile-confluence": {
     "seedRevision": 1,
     "fingerprint": "355b494d5bef930d6d9abd6d902a8273cb625c6b0aa55898737dd5c99e06d359"
@@ -108,16 +112,16 @@
     "fingerprint": "ec28a24e27155cb779a8c34828cbbecb873dec529e333d19cc7d749562989e1e"
   },
   "decision:example-approve-decision": {
-    "seedRevision": 3,
-    "fingerprint": "b29aebfd8e13eeb833999fac0c970922830f2c61b514441c1edfa410b92b1e34"
+    "seedRevision": 4,
+    "fingerprint": "a55916eabd4082ca2c7e2249635ba85e38408f5a6ff03000992962fb8685a29d"
   },
   "decision:example-deny-decision": {
-    "seedRevision": 3,
-    "fingerprint": "aa54d1a9131fef88fa3276c604e24a845c9e3765e06dca979ecf4e5b3f24b604"
+    "seedRevision": 4,
+    "fingerprint": "869aaa1cdaa39a9fbbfda49996188a6d320e78d1a00fcd4462415c963211b8ad"
   },
   "decision:example-manual-review-decision": {
-    "seedRevision": 3,
-    "fingerprint": "3ecb2ea4b17b61db87e7ab8f636991f8ff47df30c41597837233f070f8d5ea37"
+    "seedRevision": 4,
+    "fingerprint": "5563a788f642e2fa32d947c70797608c5165d19d3cd34f39bf0a53136c774fb4"
   },
   "execenv:example-safe-sandbox-execenv": {
     "seedRevision": 1,
@@ -160,16 +164,16 @@
     "fingerprint": "2affeabaf4eaeeb1a27b498d88521a1cb50b857e8d18319136cb8db3769cb927"
   },
   "list:example-country-codes-list": {
-    "seedRevision": 5,
-    "fingerprint": "45d59c7212c45eee0345a8b290fdc555b8dfabb651737416c8e7e55a12d7d822"
+    "seedRevision": 6,
+    "fingerprint": "bf98993ed7329c755ec9b4744122efb835f4ded2ccaf296f2ade17cf38b59a78"
   },
   "list:example-jira-issues-list": {
     "seedRevision": 2,
     "fingerprint": "d7bddcab88ffb549d024aa71ad58c35b89755cc06184cb8aea00fc1406762034"
   },
   "list:example-task-tracker-list": {
-    "seedRevision": 3,
-    "fingerprint": "1ae423f8d305f6060e7e30d60d76a597b2075c0402e6484a1a74b379384f59e0"
+    "seedRevision": 4,
+    "fingerprint": "145a6b39ce02f5f72ed7b06aefa6ef1dac02930119fa6df0074dc43392da5fc4"
   },
   "mcpserver:example-reference-mcpserver": {
     "seedRevision": 1,
@@ -236,28 +240,28 @@
     "fingerprint": "3db033434e995a94204c567c88f81a756871d664ce00774f8847683a0d933902"
   },
   "workflow:example-ai-classify-branch-workflow": {
-    "seedRevision": 3,
-    "fingerprint": "32264222756fdd50f3635f216424f7a259e388c8e09b4719c14b0cabeea69cfe"
+    "seedRevision": 4,
+    "fingerprint": "61c25fc0df98f7735055a27d7821e6d907756718712190b9ce540f489106ede4"
   },
   "workflow:example-ai-summarize-workflow": {
-    "seedRevision": 3,
-    "fingerprint": "3dbc1b565fcb68b9cfef3dda9cf90a5d885ec8c2e5f010f92659001759157d36"
+    "seedRevision": 4,
+    "fingerprint": "6d2620fd13f36fca6b86bdd19f43624c9d6c762b40afa5ebe8b94b1a8de3ed8d"
   },
   "workflow:example-branch-to-decision-workflow": {
-    "seedRevision": 4,
-    "fingerprint": "e163c79e8849abc8af8031e2006a098d60474ca2f1ef996dc10cb7dac2428120"
+    "seedRevision": 5,
+    "fingerprint": "cc3e5338fab823d9ff76f94415fdd51d8f6b686f82a3f72b866edf8422173036"
   },
   "workflow:example-bruno-run-workflow": {
     "seedRevision": 2,
     "fingerprint": "429e7a442b62f984e914c25be4d541c49e5a431a853156c3d739c95c5226d393"
   },
   "workflow:example-card-create-link-workflow": {
-    "seedRevision": 2,
-    "fingerprint": "f3a216e214ffcefb6bd8043fcde34f6f5d5225693b1e319e0248ca26c65a8750"
+    "seedRevision": 3,
+    "fingerprint": "76ae12102a8d1e4e0b30fa7df1642e72fe659f87d9dc80b73591d10215978eec"
   },
   "workflow:example-card-intake-workflow": {
-    "seedRevision": 2,
-    "fingerprint": "40807caaea74c5958acce120405a4395ee1fb0c9fb83d070d8bceb7a012c7f64"
+    "seedRevision": 3,
+    "fingerprint": "8318c6d07323ee556207eec26a4c1783648e0b99282d44a0bfa09bd1eca5537e"
   },
   "workflow:example-child-echo-workflow": {
     "seedRevision": 3,
@@ -276,8 +280,8 @@
     "fingerprint": "fac7be4c91db9cdc175e81cee06f86cd58f9a27ec9608f7924df7dd789def084"
   },
   "workflow:example-decision-with-review-workflow": {
-    "seedRevision": 4,
-    "fingerprint": "34881d5bf4c2a679b6f6fa10a3945460464179bc4362500c5475ed25945b26bc"
+    "seedRevision": 5,
+    "fingerprint": "d32d1339afb53d06ab5fd8f2a557834adb6578bf0b42993fc422725004682396"
   },
   "workflow:example-disabled-filesystem-watch-workflow": {
     "seedRevision": 3,
@@ -292,16 +296,16 @@
     "fingerprint": "382444c0b7225f7f7680cecf6641be2a00d85c39f7662bc3596d1c636b57f2f6"
   },
   "workflow:example-filemove-workflow": {
-    "seedRevision": 2,
-    "fingerprint": "f160c62822222590478a550da976c94fb7d5de58c09c3ee4438dde717d48f07a"
+    "seedRevision": 3,
+    "fingerprint": "ccdd5f6c7636d16fbad90ec1e13b5baf0202f76608f9fac95b164383d97338ef"
   },
   "workflow:example-forward-approvals-workflow": {
-    "seedRevision": 3,
-    "fingerprint": "b9e8812f1ba2d2d86d4e9f50f290df67b4da91688d23f61181aa492aa6137b8a"
+    "seedRevision": 4,
+    "fingerprint": "c410df7f05c18b4232ef032d07ffecb501ef825d1c0c2faaec13b758fd24a246"
   },
   "workflow:example-guarded-http-workflow": {
-    "seedRevision": 3,
-    "fingerprint": "20ec716fbd52664552ae79c6432e9348806a1dfbb6a1f364ff193560f6b09f05"
+    "seedRevision": 4,
+    "fingerprint": "18ea64b313bbdfcd6af5146988c97bab5c1c77e5277ce78d9f025a604125eab6"
   },
   "workflow:example-jira-issues-sync-workflow": {
     "seedRevision": 2,
@@ -316,20 +320,20 @@
     "fingerprint": "a42200a8642e4720af9bd5c278cc85eb910c464c533b5b9b77e63f26ac9e45b4"
   },
   "workflow:example-list-lookup-workflow": {
-    "seedRevision": 2,
-    "fingerprint": "bf671926b7026069f6dd72158696f2d3f6ed8328984859878581beb56fede134"
+    "seedRevision": 3,
+    "fingerprint": "22fc6a4010526f69df3e929021e5cf8f7b36c311b548d86a9db1cc19503d0fa3"
   },
   "workflow:example-list-pinned-workflow": {
-    "seedRevision": 2,
-    "fingerprint": "88eb3b4e9f7cb8eb695488068f39cbfbbc40091ded63573ae59cf1c239ef5e30"
+    "seedRevision": 3,
+    "fingerprint": "70e0630d81ecac7b25a978ba4ee10ef551c06c8c54746c94e1be0ccea256137e"
   },
   "workflow:example-list-search-workflow": {
-    "seedRevision": 3,
-    "fingerprint": "8401535fd47e23ce968d8f074c5a39defa8554c9eba021776ca46a6b52878a74"
+    "seedRevision": 4,
+    "fingerprint": "a6d5971df9e4eb68a222559e0c8162f6e29fadb17e2c05716bf1e00bdcda57f7"
   },
   "workflow:example-list-write-workflow": {
-    "seedRevision": 2,
-    "fingerprint": "c2028f7264878383f0558588f8cde6c92bb3044b7befae8f3af7d7dabb5b6470"
+    "seedRevision": 3,
+    "fingerprint": "395ae2608c9679c2cd84de8f508a58300d3a82d6d8c3a4898a3a25256268a234"
   },
   "workflow:example-mcp-echo-workflow": {
     "seedRevision": 4,
@@ -340,8 +344,8 @@
     "fingerprint": "c54a9de1a0bf572b8efcbe7e5fad73111e76aa54af748d138e97de3fa47df780"
   },
   "workflow:example-review-workflow": {
-    "seedRevision": 3,
-    "fingerprint": "3be6d9ac5d17e0664679c8876e9be152f67654786d8ae5ba7e4a7d663ae02cd5"
+    "seedRevision": 4,
+    "fingerprint": "cae6a27182d454f59ed25e8037f33079d0da97e7c52ce85a363da1169eef4541"
   },
   "workflow:example-run-in-captured-folder-workflow": {
     "seedRevision": 1,
@@ -352,12 +356,12 @@
     "fingerprint": "da1ac837a47e51b37dd85358d7e969dbbe3fd2bd85a7f4aed2286461042ed1d1"
   },
   "workflow:example-saved-page-to-markdown-workflow": {
-    "seedRevision": 3,
-    "fingerprint": "110d89804d62f8146aaaee3dfc9145c5b029d860d3f9e87c09221f020144c4ca"
+    "seedRevision": 4,
+    "fingerprint": "231e29623450d0f26d46c439937e11844fbe9095f2b97cf7327d4e92d3ecb89b"
   },
   "workflow:example-scratch-capture-workflow": {
-    "seedRevision": 3,
-    "fingerprint": "a4fbe2c4c003ef6fde3cc3af39d5d25cddbb48830268ef74d321a93e9548f007"
+    "seedRevision": 4,
+    "fingerprint": "36d4113c0ce217af1be0cf743d3b754b879f174e69a4cf38f0325754c11687f3"
   },
   "workflow:example-secret-guard-workflow": {
     "seedRevision": 4,
@@ -372,8 +376,8 @@
     "fingerprint": "aa775e5fc052bc02953048fc21320f72c192e0ed72bc606db2e04f6a1ac2df09"
   },
   "workflow:example-todo-scan-workflow": {
-    "seedRevision": 1,
-    "fingerprint": "795b40612c6f8e45931126926811fa8c0ef5b0fa0a4974130a8e89ba49334832"
+    "seedRevision": 2,
+    "fingerprint": "20a0934ded9c2daa3601897163c1840b0cd1128922db1edb56d02a3fd534dbde"
   },
   "workflow:load-sample-html-workflow": {
     "seedRevision": 1,

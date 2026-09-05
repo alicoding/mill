@@ -55,12 +55,12 @@ func TestSeededSavedPageToMarkdown_FiresRealWorkflowAndExtractsMainContent(t *te
 
 	var seed composition.Workflow
 	for _, wf := range comp.Workflows() {
-		if wf.Label == "Example: Saved page → Markdown" {
+		if wf.Label == "Saved client page → Markdown" {
 			seed = wf
 		}
 	}
 	if seed.ID == "" {
-		t.Fatal(`no built-in workflow labeled "Example: Saved page → Markdown"`)
+		t.Fatal(`no built-in workflow labeled "Saved client page → Markdown"`)
 	}
 
 	// Point the seed's own graph at a real directory instead of its

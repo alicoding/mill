@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ActionList, Button, Stack, Text, TextInput } from '@primer/react'
 import { KeyIcon, SearchIcon } from '@primer/octicons-react'
 import { COMMANDS, commandLabel, effectiveBinding } from '../shared/commands'
+import { isKeyboardDispatchable } from '../shared/ambientContext'
 import type { KeyCombo } from '../shared/keybinding'
 import { formatCombo } from '../shared/keybinding'
 import { useAppStore } from '../shared/store'
@@ -35,9 +36,12 @@ export default function KeyboardShortcutsSection() {
   const keybindingOverrides = useAppStore((s) => s.keybindingOverrides)
 
   // hintOnly commands dispatch through a dedicated listener elsewhere,
-  // never this recorder -- rebinding one here would silently do
-  // nothing, so they're excluded from the list entirely.
-  const rebindable = COMMANDS.filter((c) => !c.hintOnly)
+  // and a command needing a target the keydown dispatcher cannot
+  // resolve (a Configure row's own Delete) has no keystroke that could
+  // ever reach it -- rebinding either here would silently do nothing,
+  // so both are excluded from the list entirely
+  // (shared/ambientContext.ts).
+  const rebindable = COMMANDS.filter(isKeyboardDispatchable)
   const q = query.trim().toLowerCase()
   const filtered = q === ''
     ? rebindable

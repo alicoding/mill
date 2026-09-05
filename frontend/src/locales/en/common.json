@@ -128,7 +128,13 @@
       "pin": "Pin",
       "unpin": "Unpin",
       "runStepped": "Run step by step",
-      "view": "View workflow"
+      "view": "View workflow",
+      "row": {
+        "edit": "Edit",
+        "export": "Export",
+        "reset": "Reset to shipped example",
+        "delete": "Delete"
+      }
     },
     "palette": {
       "open": "Open command palette"
@@ -234,7 +240,51 @@
         "execenvs": "New environment",
         "aiproviders": "New AI provider",
         "conversionprofiles": "New conversion profile",
-        "steptypes": "New step type"
+        "steptypes": "New step type",
+        "certificates": "New client certificate"
+      },
+      "request": {
+        "delete": "Delete",
+        "edit": "Edit",
+        "export": "Export",
+        "reset": "Reset to shipped example"
+      },
+      "list": {
+        "delete": "Delete",
+        "export": "Export",
+        "reset": "Reset to shipped example"
+      },
+      "mcpserver": {
+        "delete": "Delete",
+        "export": "Export",
+        "listTools": "List tools",
+        "reset": "Reset to shipped example"
+      },
+      "decision": {
+        "delete": "Delete",
+        "duplicate": "Duplicate",
+        "export": "Export",
+        "reset": "Reset to shipped example"
+      },
+      "execenv": {
+        "delete": "Delete",
+        "export": "Export",
+        "reset": "Reset to shipped example"
+      },
+      "aiprovider": {
+        "delete": "Delete",
+        "export": "Export",
+        "reset": "Reset to shipped example"
+      },
+      "steptype": {
+        "delete": "Delete",
+        "export": "Export"
+      },
+      "conversionprofile": {
+        "delete": "Delete"
+      },
+      "secretsource": {
+        "delete": "Delete"
       }
     },
     "docs": {
@@ -303,6 +353,18 @@
       "find": "Find in output",
       "toggleWrap": "Wrap output lines",
       "openFull": "Open output in full"
+    },
+    "clientcert": {
+      "edit": "Edit certificate",
+      "duplicate": "Duplicate certificate",
+      "delete": "Delete certificate"
+    },
+    "secret": {
+      "row": {
+        "edit": "Edit",
+        "history": "History",
+        "delete": "Delete"
+      }
     }
   },
   "menu": {

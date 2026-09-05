@@ -21,7 +21,7 @@ import (
 // client over real HTTP and a real DBOS runtime -- mirrors
 // TestMCPAuthoring_FullLoop's own harness shape. Drives a full stepped
 // debug session (run_workflow_stepped -> step_run -> step_run ->
-// resume_run) on the seeded "Example: Branch to a decision" workflow,
+// resume_run) on the seeded "Route an expense by amount" workflow,
 // and separately proves the hard-reject boundary: these tools must
 // refuse to touch a POLICY park (the seeded "Example: Approval-gated
 // HTTP call" workflow's ordinary external-effect ask), never just the
@@ -80,7 +80,7 @@ func TestMCPDebugTools_SteppedSessionFullLoop(t *testing.T) {
 	// mutation tier, checked here for the debug tier too.
 	var branchID string
 	for _, wf := range comp.Workflows() {
-		if wf.Label == "Example: Branch to a decision" {
+		if wf.Label == "Route an expense by amount" {
 			branchID = wf.ID
 		}
 	}
@@ -99,7 +99,7 @@ func TestMCPDebugTools_SteppedSessionFullLoop(t *testing.T) {
 	//     touchable by any debug tool. ---
 	var guardedID string
 	for _, wf := range comp.Workflows() {
-		if wf.Label == "Example: Approval-gated HTTP call" {
+		if wf.Label == "Post an update to the client portal" {
 			guardedID = wf.ID
 		}
 	}
