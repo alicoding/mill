@@ -149,7 +149,7 @@ type templateData struct {
 
 // write lays down the folder's own two served files plus its
 // standard-conformant starting icon, and -- BESIDE the folder, in dir
-// -- the README (userdocs/reference/plugin-standard.md rule 14: a
+// -- the README (userdocs/reference/plugin-standard.md rule 15: a
 // plugin folder may only hold files the asset route serves, so the
 // README can never sit inside it).
 func write(dir, target, id, label, millVersion string) error {

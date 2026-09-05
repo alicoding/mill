@@ -63,9 +63,15 @@ export function activate(api) {
 		status.setAttribute('data-testid', 'tester-status')
 		status.style.cssText = 'color:var(--fgColor-muted)'
 
-		const response = document.createElement('pre')
+		// The response goes through Mill's own output viewer
+		// (api.ui.renderOutput), never a <pre> of our own: the reader
+		// gets the tree, the table, Find, Copy and Raw that every other
+		// output surface in Mill has, and this plugin writes none of it.
+		const response = document.createElement('div')
 		response.setAttribute('data-testid', 'tester-response')
-		response.style.cssText = 'font:12px ui-monospace,monospace;white-space:pre-wrap;word-break:break-word;background:var(--bgColor-muted);border:1px solid var(--borderColor-default);border-radius:6px;padding:8px;min-height:80px;margin:0'
+		response.style.cssText = 'min-height:80px'
+		/** @type {(() => void) | null} */
+		let disposeResponse = null
 
 		const historyTitle = document.createElement('div')
 		historyTitle.textContent = 'Recent requests'
@@ -104,13 +110,17 @@ export function activate(api) {
 			const target = url.value.trim()
 			if (!target) { status.textContent = 'Enter an address first.'; return }
 			status.textContent = 'Asking… (this request needs your approval in Review)'
-			response.textContent = ''
+			if (disposeResponse) { disposeResponse(); disposeResponse = null }
+			response.replaceChildren()
 			try {
 				const chosen = /** @type {HttpMethod} */ (method.value)
 				const r = await api.fetch(target, { method: chosen, body: body.value || undefined, secret: authTitle ? { settingKey: 'auth' } : undefined })
 				if (!r.approved) { status.textContent = 'Not allowed' + (r.ruleLabel ? ' (' + r.ruleLabel + ')' : '') + '.'; return }
 				status.textContent = r.status + ' · ' + Object.keys(r.headers).length + ' headers'
-				response.textContent = r.body
+				// The response says what it is; the viewer picks the
+				// view from that, and the reader can switch.
+				const contentType = Object.entries(r.headers).find(([n]) => n.toLowerCase() === 'content-type')
+				disposeResponse = api.ui.renderOutput(response, r.body, { mime: contentType ? contentType[1] : undefined, title: chosen + ' ' + target })
 				await remember({ method: chosen, url: target, body: body.value, status: r.status, at: Date.now() })
 			} catch (err) {
 				status.textContent = String(err && err.message ? err.message : err)

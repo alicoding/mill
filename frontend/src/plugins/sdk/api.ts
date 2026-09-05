@@ -12,6 +12,7 @@ import type { PluginStorageAPI } from './storage'
 import type { ContentQuery, ContentEntry, PluginEventMap, PluginFetchInit, PluginFetchResult, PluginContentAPI, PluginFilesAPI, PluginConvertAPI } from './content'
 import type { PluginViewDecl } from './views'
 import type { PluginCaptureDecl } from './captures'
+import type { PluginUIAPI } from './ui'
 
 export interface MillPluginAPI {
   millVersion: string
@@ -39,6 +40,7 @@ export interface MillPluginAPI {
   files: PluginFilesAPI
   registerView: (decl: PluginViewDecl) => void
   registerCapture: (decl: PluginCaptureDecl) => void
+  ui: PluginUIAPI
 }
 
 /** A plugin's main.js default-exports (or named-exports) activate:

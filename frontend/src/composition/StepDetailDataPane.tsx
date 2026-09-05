@@ -1,7 +1,7 @@
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SegmentedControl, Stack, Text } from '@primer/react'
-import { isJsonLike, formatJson } from './stepDetailJson'
+import { Stack, Text } from '@primer/react'
+import { OutputViewer } from '../shared/OutputViewer'
+import type { OutputShape } from '../shared/outputShape'
 import styles from '../shared/ListCard.module.css'
 
 interface StepDetailDataPaneProps {
@@ -14,19 +14,27 @@ interface StepDetailDataPaneProps {
   // the latest one.
   emptyMessage: string
   testId: string
+  // The producing step's declared payload kind (ADR-0042) where the
+  // caller knows it; absent leaves the shape to the viewer's own
+  // structural inference.
+  shape?: OutputShape
 }
 
 // One side of the step-detail overlay's data columns (docs/goals/0058):
-// a recorded payload, its attributes if any, and a Text/JSON toggle
-// when the payload parses as a JSON object/array. INPUT and OUTPUT both
-// render through this same component -- the difference is only which
-// side of the RunStep they're handed.
-export function StepDetailDataPane({ heading, payload, attributes, emptyMessage, testId }: StepDetailDataPaneProps) {
+// a recorded payload and its attributes, each through the shared output
+// viewer (goal 0326) -- which owns the view switch, Find, Copy and the
+// render budget, so this pane no longer carries a toggle of its own.
+// INPUT and OUTPUT both render through this same component; the
+// difference is only which side of the RunStep they're handed.
+//
+// A recorded payload opens on its SOURCE, never a rendering of it: this
+// pane exists to show the data that actually flows between steps, and
+// markup shown as a rendered document hides exactly what a reader came
+// here to check. Rendered stays one click away.
+export function StepDetailDataPane({ heading, payload, attributes, emptyMessage, testId, shape }: StepDetailDataPaneProps) {
   const { t } = useTranslation('composition')
-  const [view, setView] = useState<'text' | 'json'>('text')
   const hasAttrs = !!attributes && Object.keys(attributes).length > 0
   const hasPayload = !!payload
-  const jsonCapable = hasPayload && isJsonLike(payload)
 
   if (!hasPayload && !hasAttrs) {
     return (
@@ -39,25 +47,14 @@ export function StepDetailDataPane({ heading, payload, attributes, emptyMessage,
 
   return (
     <Stack direction="vertical" gap="condensed" data-testid={testId}>
-      <Stack direction="horizontal" justify="space-between" align="center">
-        <Text size="small" weight="semibold">{heading}</Text>
-        {jsonCapable && (
-          <SegmentedControl aria-label={t('stepDetailOverlay.viewToggleAriaLabel', { pane: heading })} size="small"
-            onChange={(index) => setView(index === 0 ? 'text' : 'json')}>
-            <SegmentedControl.Button selected={view === 'text'}>{t('stepDetailOverlay.textView')}</SegmentedControl.Button>
-            <SegmentedControl.Button selected={view === 'json'}>{t('stepDetailOverlay.jsonView')}</SegmentedControl.Button>
-          </SegmentedControl>
-        )}
-      </Stack>
+      <Text size="small" weight="semibold">{heading}</Text>
       {hasPayload && (
-        <pre className={styles.result} data-testid={`${testId}-payload`}>
-          {view === 'json' && jsonCapable ? formatJson(payload) : payload}
-        </pre>
+        <OutputViewer value={payload} shape={shape} defaultView="source" title={heading} site={`${testId}-payload`} testId={`${testId}-payload`} />
       )}
       {hasAttrs && (
         <>
           <Text size="small" className={styles.muted}>{t('stepDetailOverlay.attributes')}</Text>
-          <pre className={styles.result} data-testid={`${testId}-attrs`}>{JSON.stringify(attributes, null, 2)}</pre>
+          <OutputViewer value={attributes} shape="json" title={t('stepDetailOverlay.attributes')} site={`${testId}-attrs`} testId={`${testId}-attrs`} />
         </>
       )}
     </Stack>

@@ -140,7 +140,7 @@ test('Activity: the session feed wears the same toolbar, with its own filters as
   const dialog = page.getByRole('dialog')
   await dialog.waitFor()
   await dialog.getByRole('button', { name: /^Run$/ }).click()
-  await expect(page.getByTestId('workflow-run-result').locator('pre').first())
+  await expect(page.getByTestId('workflow-run-result').getByTestId('workflow-run-output').first())
     .toContainText('processed by the child workflow', { timeout: 20000 })
 
   await page.getByRole('link', { name: 'Activity' }).click()
