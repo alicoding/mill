@@ -44,10 +44,12 @@ import { useAtlasImagePopoverSignal } from './useAtlasImagePopoverSignal'
 import { useAtlasImageCreate } from './useAtlasImageCreate'
 import { useAtlasPaneClick } from './useAtlasPaneClick'
 import { AtlasSelectionTray } from './AtlasSelectionTray'
+import { AtlasImageExportHost } from './AtlasImageExportHost'
 import { AtlasPlacementPopover } from './AtlasPlacementPopover'
 import { useAtlasNativeFileDrop } from './useAtlasNativeFileDrop'
 import { useAtlasPaste } from './useAtlasPaste'
 import { useAtlasClipboard } from './useAtlasClipboard'
+import { useAtlasNodeContextMenu } from './useAtlasNodeContextMenu'
 import { FILE_DROP_CONTEXT_BOARD } from './atlasFileDropShared'
 import { canvasNavigationProps, useCanvasNavigationMode } from '../shared/canvasNavigation'
 import runbookStyles from '../shared/ListCard.module.css'
@@ -319,6 +321,11 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
 
   const gesture = useAtlasToolGesture({ tool: armedToolDescriptor, readOnly, isFree, ctx: gestureCtx, wrapperRef })
 
+  const onNodeContextMenu = useAtlasNodeContextMenu({
+    tryNodeMultiMenu: selection.tryNodeMultiMenu,
+    onNoteContextMenu, onObjectContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onCardContextMenu,
+  })
+
   return (
     <div
       ref={wrapperRef}
@@ -385,33 +392,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
         autoPanOnNodeDrag={false}
         onSelectionChange={onSelectionChange}
         onSelectionContextMenu={selection.onSelectionContextMenu}
-        onNodeContextMenu={(e, node) => {
-          e.preventDefault()
-          // A right-click on a member of a live 2+ multi-selection
-          // opens the group menu (goal 0081 slice A2, LOCKED design 6d);
-          // the hook reads its pre-clear snapshot, never live state.
-          if (selection.tryNodeMultiMenu(node.id, { x: e.clientX, y: e.clientY })) return
-          if (node.type === 'atlas-sticky') {
-            onNoteContextMenu(node.id, { x: e.clientX, y: e.clientY })
-            return
-          }
-          if (node.type === 'atlas-object') {
-            onObjectContextMenu(node.id, { x: e.clientX, y: e.clientY })
-            return
-          }
-          if (node.type === 'atlas-group') {
-            // The header is the ONLY part of a frame's chrome that
-            // isn't "interior empty space" -- everywhere else on the
-            // frame's own DOM (its background, never a child node,
-            // which captures its own right-click first) routes to the
-            // frame-interior door instead of the full frame menu.
-            const onHeader = !!(e.target as HTMLElement).closest('[data-testid="atlas-group-header"]')
-            if (onHeader) onFrameContextMenu(node.id, { x: e.clientX, y: e.clientY })
-            else onFrameInteriorContextMenu(node.id, { x: e.clientX, y: e.clientY })
-            return
-          }
-          onCardContextMenu(node.id, { x: e.clientX, y: e.clientY })
-        }}
+        onNodeContextMenu={onNodeContextMenu}
         onEdgeContextMenu={(e, edge) => {
           e.preventDefault()
           const artery = arteries.find((a) => a.id === edge.id)
@@ -469,6 +450,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
           frame-drop's own scope (useAtlasPaneClick.ts) before the click
           resolves which frame, if any, it lands in. */}
       {tablePicker.pendingSize && <AtlasTablePlacementGhost size={tablePicker.pendingSize} wrapperRef={wrapperRef} title={nextTableTitle(tableTitlesOn(allObjects, viewedID))} />}
+      <AtlasImageExportHost wrapperRef={wrapperRef} viewedID={viewedID} allCards={allCards} />
       {fileDrop.dropError && <div className={`${styles.dropError} ${runbookStyles.error}`} data-testid="atlas-file-drop-error">{fileDrop.dropError}</div>}
       {fileDrop.dropDuplicateNotice && <div className={styles.dropNotice} data-testid="atlas-file-drop-duplicate-notice">{fileDrop.dropDuplicateNotice}</div>}
       {!readOnly && (haveSelection
