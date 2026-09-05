@@ -86,6 +86,18 @@ else
   dispatch_json='{"rows":[],"queued":""}'
 fi
 
+# --- maturity: the plugin API maturity ledger (goal 0348), generated
+# by `go generate ./internal/docsgen` into userdocs/reference/. Not
+# present before the first generate (or in a checkout that predates
+# this goal) -- degrades to a "not generated yet" marker, the same
+# never-fatal shape DISPATCH.md's own absence gets above.
+maturity_file="$repo_root/userdocs/reference/plugin-api-maturity.json"
+if [[ -f "$maturity_file" ]]; then
+  maturity_json="$(cat "$maturity_file")"
+else
+  maturity_json='{"generated":false}'
+fi
+
 # --- repo: current main sha + open PRs (gh optional, never fatal) ---
 main_sha="$(git -C "$repo_root" rev-parse origin/main 2>/dev/null || git -C "$repo_root" rev-parse HEAD)"
 prs_json="[]"
@@ -120,6 +132,7 @@ generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   printf '  "queue": %s,\n' "$(cat "$queue_file")"
   printf '  "census": %s,\n' "$(cat "$census_file")"
   printf '  "dispatch": %s,\n' "$dispatch_json"
+  printf '  "maturity": %s,\n' "$maturity_json"
   printf '  "efficiency": {"turnsPerGoal": %s},\n' "$turns_json"
   printf '  "repo": {"main_sha": "%s", "open_prs": %s, "gh_unavailable": %s}\n' \
     "$main_sha" "$prs_json" "$gh_unavailable"
