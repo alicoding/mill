@@ -35,6 +35,10 @@ export type WorkTabSpec =
   // plugin-view (docs/goals/0290): a plugin-owned tab, one per
   // plugin + view id, rendered by app/PluginViewHost.tsx.
   | { kind: 'plugin-view'; pluginId: string; viewId: string }
+  // output (goal 0326): "Open in full" on any output viewer -- the same
+  // viewer, alone in a tab, over a payload held in
+  // shared/outputTabStore.ts and addressed by id.
+  | { kind: 'output'; outputId: string }
 
 export type WorkTab = WorkTabSpec & { key: string }
 

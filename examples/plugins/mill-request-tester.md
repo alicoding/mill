@@ -4,6 +4,11 @@ Sends an HTTP request to any host you approve, and reads the response
 in its own work tab. Every send is a guarded request: with any host
 declared, Mill parks each one for your approval in Review.
 
+The response is drawn by Mill's own output viewer
+(`api.ui.renderOutput`): JSON opens as a tree, an array of objects as a
+table, anything else as a numbered log, with Find, Copy and Raw on the
+same toolbar.
+
 ## Settings
 
 - **Default method** -- the method a new request starts with.

@@ -338,3 +338,11 @@ export const REVIEW_OPEN_RUN_MCP_BASE_PORT = 11500
 // shared pool, same reasoning as every GUARDRAIL_REVIEW_* pair above.
 export const PAUSED_RUNS_SERVER_BASE_PORT = 11520
 export const PAUSED_RUNS_MCP_BASE_PORT = 11540
+
+// guardrail-review.spec.ts's parked-payload case (goal 0326): parking a
+// run puts an item in the GLOBAL Review queue, exactly the state
+// testing.md's shared-vs-dedicated rule keeps off the shared pool. Its
+// own pair rather than another GUARDRAIL_REVIEW_* offset, whose range
+// is already nearly exhausted (see GUARDRAIL_REVIEW_CANCEL_* above).
+export const REVIEW_PARKED_PAYLOAD_SERVER_BASE_PORT = 11560
+export const REVIEW_PARKED_PAYLOAD_MCP_BASE_PORT = 11580

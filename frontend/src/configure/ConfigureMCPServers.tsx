@@ -7,6 +7,7 @@ import { DataTable } from '@primer/react/experimental'
 import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
+import { OutputViewer } from '../shared/OutputViewer'
 import { ConfigureService } from '../shared/bindings'
 import type { MCPServer } from '../../bindings/github.com/alicoding/mill/internal/domain/mcpserver/models'
 import type { Tool } from '../../bindings/github.com/alicoding/mill/internal/adapters/mcpclient/models'
@@ -238,7 +239,7 @@ export function ConfigureMCPServers() {
               <div key={tool.Name}>
                 <Text weight="semibold" size="small">{tool.Name}</Text>
                 <Text as="p" size="small" className={styles.muted}>{tool.Description}</Text>
-                <pre className={styles.result}>{JSON.stringify(tool.InputSchema, null, 2)}</pre>
+                <OutputViewer value={tool.InputSchema} shape="json" title={tool.Name} site="mcpserver-tool-schema" testId="mcpserver-tool-schema" />
               </div>
             ))}
           </Stack>
