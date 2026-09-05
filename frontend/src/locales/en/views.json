@@ -177,7 +177,8 @@
     "connections": {
       "mcpTitle": "MCP access",
       "remoteTitle": "Remote access",
-      "contractTitle": "Contract"
+      "contractTitle": "Contract",
+      "browsersTitle": "Browsers"
     },
     "mcp": {
       "addressLabel": "Address",
@@ -218,6 +219,28 @@
         "copyAriaLabel": "Copy subscribe address",
         "copiedAriaLabel": "Copied"
       }
+    },
+    "browsers": {
+      "description": "Mill can replay a recorded flow in your own browser, signed in as you already are.",
+      "addressLabel": "Mill address",
+      "addressCaption": "Enter this address in the Mill extension's popup.",
+      "addressEnvCaption": "This address is set for this machine and can't be changed here.",
+      "addressCopyAriaLabel": "Copy the Mill address",
+      "addressCopiedAriaLabel": "Copied",
+      "pairABrowser": "Pair a browser",
+      "codeExpiry": "Enter this code in the Mill extension within 5 minutes.",
+      "emptyHeading": "No browsers paired yet",
+      "emptyDescription": "Pair a browser to let Mill replay recorded steps in your own tabs.",
+      "browserMeta": "Paired {{created}} · last seen {{lastSeen}}",
+      "connected": "Connected",
+      "waiting": "Waiting to connect",
+      "revoke": "Revoke",
+      "revokeConfirmTitle": "Revoke {{label}}?",
+      "revokeConfirmBody": "{{label}} won't be able to run steps for Mill until it's paired again.",
+      "test": "Test the connection",
+      "testing": "Testing…",
+      "testPassed": "The browser replayed {{steps}} steps in {{ms}} ms.",
+      "install": "Install the extension from the browser-extension folder in Mill's examples."
     },
     "contract": {
       "description": "The full step catalog, every data schema, and this app's version in one file.",

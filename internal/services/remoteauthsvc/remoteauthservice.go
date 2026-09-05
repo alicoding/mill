@@ -44,8 +44,16 @@ const DeviceTokenCookieName = "mill_device_token" //nolint:gosec // cookie name,
 // device (RevokeDevice) deletes its topic with it -- there is no
 // separate topic store to leak one from.
 type device struct {
-	ID         string    `json:"id"`
-	Label      string    `json:"label"`
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	// Kind separates the two things that can pair: a phone or another
+	// computer reaching Mill over the network (KindDevice, the zero
+	// value, so every record written before browsers existed keeps its
+	// meaning), and a browser extension holding a bearer token
+	// (KindBrowser). Settings lists them in separate sections and the
+	// bridge only ever accepts a KindBrowser token, so a phone's cookie
+	// can never drive somebody's tabs.
+	Kind       string    `json:"kind,omitempty"`
 	SaltB64    string    `json:"salt"`
 	HashB64    string    `json:"hash"`
 	Topic      string    `json:"topic,omitempty"`

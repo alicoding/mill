@@ -255,7 +255,8 @@ func main() {
 	wiring.WireAtlasStorageDirs(atlasService)
 	atlasService.SetGuardedDataPaths(settingsPath, backupsvc.SQLiteDBPath(executionDatabaseURL), backupDir)
 
-	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger) // docs/goals/0132-remote-access.md SLICE 1
+	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger)    // docs/goals/0132-remote-access.md SLICE 1
+	bridgeService := wiring.WireBrowserBridge(remoteAuthService, logger) // the browser bridge's own loopback listener (docs/goals/0350)
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	wiring.WireSettingsEraSeams(settingsService, notificationService, remoteAuthService, triggerService, atlasService, pluginService, secretService)
@@ -337,6 +338,7 @@ func main() {
 			application.NewServiceWithOptions(docssvc.New(userdocsFS), boundErrors),
 			application.NewServiceWithOptions(mcpAuditService, boundErrors),
 			application.NewServiceWithOptions(remoteAuthService, boundErrors),
+			application.NewServiceWithOptions(bridgeService, boundErrors),
 			application.NewServiceWithOptions(notificationService, boundErrors),
 			// The native menu bar, projected from the frontend command
 			// registry (docs/goals/0332) -- stateless, so it is constructed

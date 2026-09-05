@@ -23,6 +23,11 @@ export type {
   FamilySummary,
   ImportEverythingSummary,
 } from '../../bindings/github.com/alicoding/mill/internal/services/backupsvc'
+export { BridgeService } from '../../bindings/github.com/alicoding/mill/internal/services/bridgesvc'
+export type {
+  Status as BridgeStatusInfo,
+  TestResult as BridgeTestResult,
+} from '../../bindings/github.com/alicoding/mill/internal/services/bridgesvc/models'
 export { CapabilitiesService } from '../../bindings/github.com/alicoding/mill/internal/services/capabilitysvc'
 export { ClipboardHistoryService } from '../../bindings/github.com/alicoding/mill/internal/services/clipboardhistorysvc'
 export type { Entry as ClipboardHistoryEntry } from '../../bindings/github.com/alicoding/mill/internal/domain/clipboardhistory/models'
