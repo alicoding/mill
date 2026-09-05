@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Blankslate } from '@primer/react/experimental'
-import { Button, Heading, IconButton, Label, SegmentedControl, Stack, Text } from '@primer/react'
+import { Button, Heading, IconButton, Label, Link, SegmentedControl, Stack, Text } from '@primer/react'
 import { DownloadIcon, HistoryIcon, KeyIcon, LockIcon, PlusIcon } from '@primer/octicons-react'
 import { BackupService, SecretService } from '../shared/bindings'
 import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
@@ -28,22 +28,23 @@ import { SecretsDetailDialog } from './SecretsDetailDialog'
 import { SecretsHistoryDialog } from './SecretsHistoryDialog'
 import { SecretsAccessHistoryDialog } from './SecretsAccessHistoryDialog'
 import { SecretsImportDialog } from './SecretsImportDialog'
-import SecretsLockingSettings from './SecretsLockingSettings'
 import styles from './SecretsView.module.css'
 
-type SecretsSection = 'vault' | 'sources' | 'locking'
+type SecretsSection = 'vault' | 'sources'
 
-// The page's three sections, and the deep-link tab values that land on
+// The page's two sections, and the deep-link tab values that land on
 // each. An unrecognized tab lands on the entries, which is the section
-// the page is named for.
+// the page is named for. Lock policy moved to Settings > Security
+// (goal 0360 S1 follow-up) -- it configures the kernel, not this
+// vault's own content, the same reasoning Extensions' own move out of
+// Settings already established in reverse.
 function sectionFromTab(tab: string | undefined): SecretsSection {
-  return tab === 'sources' || tab === 'locking' ? tab : 'vault'
+  return tab === 'sources' ? tab : 'vault'
 }
 
 const SECTION_SUBTITLE_KEY: Record<SecretsSection, string> = {
   vault: 'subtitle',
   sources: 'sections.sourcesSubtitle',
-  locking: 'sections.lockingSubtitle',
 }
 
 // The status line is two sentences composed from state: what it takes
@@ -83,7 +84,6 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   const vaultError = useVaultStatusStore((s) => s.vaultError)
   const [list, setList] = useState<SecretSummary[] | null>(null)
   const [busy, setBusy] = useState(false)
-  const [presenceBusy, setPresenceBusy] = useState(false)
   const [error, setError] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editingID, setEditingID] = useState<string | null>(null)
@@ -115,10 +115,20 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
       <SegmentedControl.Button selected={section === 'sources'} onClick={() => setSection('sources')} data-testid="secrets-section-sources">
         {t('sections.sources')}
       </SegmentedControl.Button>
-      <SegmentedControl.Button selected={section === 'locking'} onClick={() => setSection('locking')} data-testid="secrets-section-locking">
-        {t('sections.locking')}
-      </SegmentedControl.Button>
     </SegmentedControl>
+  )
+
+  // The status line's trailing link (goal 0360 S1 follow-up): the lock
+  // policy it half-describes now lives at Settings > Security, one
+  // command away from wherever this line renders.
+  const changeInSettingsLink = (
+    <Link
+      href="#"
+      onClick={(e) => { e.preventDefault(); void runCommand('settings.open.security') }}
+      data-testid="secrets-protection-settings-link"
+    >
+      {t('protectionSettingsLink')}
+    </Link>
   )
 
   // pageHeader is rendered by every branch below -- locked, unset and
@@ -166,12 +176,6 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
     setBusy(true)
     setError('')
     SecretService.SetupVault().then(refresh).catch((err) => setError(String(err))).finally(() => setBusy(false))
-  }
-
-  const toggleTouchID = (enabled: boolean) => {
-    setPresenceBusy(true)
-    setError('')
-    SecretService.SetTouchIDProtection(enabled).then(refresh).catch((err) => setError(String(err))).finally(() => setPresenceBusy(false))
   }
 
   const startCreate = () => {
@@ -298,7 +302,10 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
           <Blankslate.Visual><LockIcon size={32} /></Blankslate.Visual>
           <Blankslate.Heading>{isKeyMismatch ? t('locked.keyMismatchHeading') : t('locked.heading')}</Blankslate.Heading>
           <Blankslate.Description>{isKeyMismatch ? t('locked.keyMismatchBody') : t('locked.description')}</Blankslate.Description>
-          <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-protection-status">{protectionStatus}</Text>
+          <Stack direction="horizontal" gap="condensed" align="center" justify="center">
+            <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-protection-status">{protectionStatus}</Text>
+            {changeInSettingsLink}
+          </Stack>
           <Stack direction="horizontal" gap="condensed" align="center" justify="center">
             <Button
               variant="primary"
@@ -334,28 +341,6 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
             }}
           />
         )}
-      </PageContainer>
-    )
-  }
-
-  // Locking sits behind the same unlocked gate the entries do: the
-  // unlock requirement can only be changed on a vault you can see
-  // inside (SetTouchIDProtection refuses otherwise), so a locked vault
-  // lands on the Unlock state above and the section's own controls
-  // never render half-usable.
-  if (section === 'locking') {
-    return (
-      <PageContainer variant="wide" data-testid="secrets-view">
-        {firstRunIntro}
-        {pageHeader}
-        <SecretsLockingSettings
-          capability={capability}
-          requireAuth={status.RequireAuth}
-          authAvailable={status.AuthAvailable}
-          unlockBusy={presenceBusy}
-          onToggleUnlockRequirement={toggleTouchID}
-        />
-        {error && <Text as="p" size="small" className={styles.error} data-testid="secrets-touchid-error">{error}</Text>}
       </PageContainer>
     )
   }
@@ -435,8 +420,9 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
       </Stack>
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.protectionRow}>
         <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-protection-status">{protectionStatus}</Text>
+        {changeInSettingsLink}
       </Stack>
-      {error && <Text as="p" size="small" className={styles.error} data-testid="secrets-touchid-error">{error}</Text>}
+      {error && <Text as="p" size="small" className={styles.error} data-testid="secrets-error">{error}</Text>}
       <InventoryList
         listId="secrets"
         items={items}

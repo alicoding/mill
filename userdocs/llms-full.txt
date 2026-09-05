@@ -1455,6 +1455,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `settings.open.connections` | Settings › Connections | — | Global | Always available |
 | `settings.open.general` | Settings › General | — | Global | Always available |
 | `settings.open.notifications` | Settings › Notifications | — | Global | Always available |
+| `settings.open.security` | Settings › Security | — | Global | Always available |
 | `settings.open.shortcuts` | Settings › Shortcuts | — | Global | Always available |
 | `settings.open.updates` | Settings › Updates | — | Global | Always available |
 | `tab.close` | Close tab | `⌘W` | Global | Conditional — available only in a matching state |
@@ -1943,13 +1944,14 @@ moment you change them and persist across restarts; the few that need a
 restart say so.
 
 Settings is a list of groups on the left and one group's page on the
-right: General, Appearance, Shortcuts, Extensions, Connections,
-Notifications, Backups, Updates. Only the group you pick is on screen,
-and Mill reopens Settings on the group you read last. Each setting is
-one row: its name and a short line about it on the left, its control on
-the right, with **Learn more** wherever the full story lives in these
-pages. Every group is also one command away — search "Settings" in the
-command palette (⌘K) to jump straight to a group.
+right: General, Appearance, Security, Shortcuts, Extensions,
+Connections, Notifications, Backups, Updates. Only the group you pick
+is on screen, and Mill reopens Settings on the group you read last.
+Each setting is one row: its name and a short line about it on the
+left, its control on the right, with **Learn more** wherever the full
+story lives in these pages. Every group is also one command away —
+search "Settings" in the command palette (⌘K) to jump straight to a
+group.
 
 ## General
 
@@ -1982,6 +1984,24 @@ command palette (⌘K) to jump straight to a group.
   spacing across the app: list and palette rows, the Quick Panel,
   tables, canvas card faces, and Settings itself. On a phone-sized
   window, touch targets keep their full size either way.
+
+## Security
+
+- **Lock the vault after** — how long the vault may sit idle before it
+  locks itself: one minute to eight hours, a custom number of minutes,
+  or never. Counts time since you last used this Mac, so working in
+  another app keeps the vault open.
+- **Lock when this Mac sleeps or the screen locks**, **when switching
+  users**, and **when Mill's window is minimized** — three checkboxes
+  that close the vault regardless of idle time. The first two start on.
+- **Ask for Touch ID, an Apple Watch, or your password before
+  unlocking** — turn this on and Mill asks before the vault opens,
+  naming only what this Mac can actually offer. Changeable only while
+  the vault is unlocked.
+
+The Secrets page's own status line states both halves in one
+sentence — what it takes to unlock, and how long it stays open — and
+links back here to change either one.
 
 ## Shortcuts
 
@@ -2964,7 +2984,7 @@ reading the key out of the keychain. Lock and unlock the vault from the
 command palette (⌘K) too — search "vault" and only the action that
 currently applies shows up.
 
-Secrets > Locking decides when the vault closes itself. Choose how long
+Settings > Security decides when the vault closes itself. Choose how long
 it may sit idle, from one minute to eight hours, a custom number of
 minutes, or never; the count is time since you last used this Mac, so
 working in another app keeps the vault open. Three checkboxes close it

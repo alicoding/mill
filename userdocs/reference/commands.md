@@ -162,6 +162,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `settings.open.connections` | Settings › Connections | — | Global | Always available |
 | `settings.open.general` | Settings › General | — | Global | Always available |
 | `settings.open.notifications` | Settings › Notifications | — | Global | Always available |
+| `settings.open.security` | Settings › Security | — | Global | Always available |
 | `settings.open.shortcuts` | Settings › Shortcuts | — | Global | Always available |
 | `settings.open.updates` | Settings › Updates | — | Global | Always available |
 | `tab.close` | Close tab | `⌘W` | Global | Conditional — available only in a matching state |
