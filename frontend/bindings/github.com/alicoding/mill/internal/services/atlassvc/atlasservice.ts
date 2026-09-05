@@ -972,7 +972,10 @@ export function SetBoardObjectRotation(id: string, degrees: number): $Cancellabl
  * SetBoardObjectSize persists a user-driven resize -- nil until the
  * object's own natural/intrinsic render size is first overridden (S2+;
  * S1 never calls this, but the door exists so a future resize handle
- * costs a frontend call, not a schema change).
+ * costs a frontend call, not a schema change). The floor matches the
+ * frontend resize handle's own minWidth/minHeight (AtlasBoardObjectNode's
+ * NodeResizer, goal 0199 part B) -- a resize below it is refused here
+ * too, never persisted as a degenerate box.
  */
 export function SetBoardObjectSize(id: string, size: atlas$0.Dimensions): $CancellablePromise<atlas$0.BoardObject> {
     return $Call.ByID(1403039216, id, size);

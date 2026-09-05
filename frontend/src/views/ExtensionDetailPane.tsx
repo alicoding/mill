@@ -15,13 +15,14 @@ const ATLAS_CONCEPTS_DOCS_PAGE = 'concepts/atlas.md'
 
 // The kinds of contribution an extension can declare, in the order
 // "What it adds" lists them. Each maps to one copy key.
-export type ExtensionAddKind = 'commands' | 'objects' | 'steps' | 'views' | 'captures'
+export type ExtensionAddKind = 'commands' | 'objects' | 'steps' | 'views' | 'captures' | 'secretSources'
 const ADD_COPY_KEY: Record<ExtensionAddKind, string> = {
   commands: 'settings.extensions.addsCommands',
   objects: 'settings.extensions.addsObjects',
   steps: 'settings.extensions.addsSteps',
   views: 'settings.extensions.addsViews',
   captures: 'settings.extensions.addsCaptures',
+  secretSources: 'settings.extensions.addsSecretSources',
 }
 
 // One normalized detail, built by whichever list the row came from --

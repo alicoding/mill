@@ -2625,10 +2625,14 @@ Bruno collection, whose root `.env` supplies values and whose
 environments name the secrets it expects — or at 1Password or
 Bitwarden through their own command-line tools, which Mill asks for one
 value at the moment a step runs, the way those tools' scripting docs
-recommend. The keys appear in every secret picker beside the vault's
-entries, by name only, and every read is in your access history. The value is read from the file at the
-moment a step runs, recorded in the same access history as a vault
-read, and never stored by Mill.
+recommend. An extension can add stores of its own the same way: it
+declares the store it reads, you point a source at the file or folder,
+and Mill applies whatever comes back through the same gate — the
+extension never receives another source's value, and never runs in the
+window. The keys appear in every secret picker beside the vault's
+entries, by name only, and every read is in your access history. The
+value is read from the file at the moment a step runs, recorded in the
+same access history as a vault read, and never stored by Mill.
 
 **Anything that needs a secret names one; it never holds one.** An
 integration's token, an HMAC signing key, an OAuth 1.0a consumer and

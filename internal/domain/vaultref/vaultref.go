@@ -18,9 +18,15 @@ const (
 	ProviderBruno = "bruno"
 	ProviderOP    = "op"
 	ProviderBW    = "bw"
+	// ProviderPlugin names a key of a source an installed extension
+	// reads (goal 0306 S4): "plugin:<source-id>/<KEY>", the same
+	// grammar every other provider uses -- the source id names which
+	// extension answers, so the reference shape never changes when an
+	// extension is added.
+	ProviderPlugin = "plugin"
 )
 
-var providers = map[string]bool{ProviderVault: true, ProviderEnv: true, ProviderBruno: true, ProviderOP: true, ProviderBW: true}
+var providers = map[string]bool{ProviderVault: true, ProviderEnv: true, ProviderBruno: true, ProviderOP: true, ProviderBW: true, ProviderPlugin: true}
 
 // Split separates a reference into its provider and provider-local id.
 func Split(value string) (provider, id string, ok bool) {
