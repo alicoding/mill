@@ -36,6 +36,15 @@
             "args": []
           }
         ]
+      },
+      {
+        "matcher": "Monitor",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Blocked: Monitor never wakes a subagent (its notification is lost). Poll in the foreground: a bounded `until grep -q ... ; do sleep 30; done` loop in a Bash call with timeout up to 600000, repeated in the next call if needed.' >&2; exit 2"
+          }
+        ]
       }
     ],
     "WorktreeRemove": [
