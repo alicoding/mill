@@ -164,7 +164,7 @@ func TestResolveAIProvider_UnknownID_Rejected(t *testing.T) {
 func TestSeededAIProvider_PresentOnFreshInstall(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+	cfg := NewConfigureService(store, comp, credential.NewInMemory())
 	var found bool
 	for _, p := range cfg.AIProviders() {
 		if p.ID == aiprovider.ExampleLocalOllamaID {

@@ -73,12 +73,14 @@ func (s *SecretService) autoLockTick(threshold time.Duration) {
 // test can shorten it instead of actually sleeping 10s.
 var clipboardAutoClear = 10 * time.Second
 
-// clipboardWriteFn/clipboardReadFn are clipboard.WriteText/ReadText's
-// own swappable seams -- same test-pinning reasoning as idleTimeFn
-// above; a test never wants to touch the real macOS pasteboard.
+// clipboardWriteFn/clipboardReadFn are clipboard.Port.WriteText/
+// ReadText's own swappable seams -- same test-pinning reasoning as
+// idleTimeFn above. clipboard.New() resolves to the in-memory Port
+// inside a go test binary (goal 0356) -- never the real pasteboard by
+// default.
 var (
-	clipboardWriteFn = clipboard.WriteText
-	clipboardReadFn  = clipboard.ReadText
+	clipboardWriteFn = clipboard.New().WriteText
+	clipboardReadFn  = clipboard.New().ReadText
 )
 
 // CopySecretToClipboard reveals id's password and writes it to the

@@ -151,7 +151,7 @@ func TestBackupService_RevealBackupFolder_NoAppIsANoOp(t *testing.T) {
 func TestExportEverything_RoundTripsEveryFamilyIntoAFreshInstance(t *testing.T) {
 	sourceStore := servicetest.NewFakeStore()
 	sourceComp := compositionsvc.NewCompositionService(sourceStore)
-	sourceCfg := configuresvc.NewConfigureService(sourceStore, sourceComp, credential.New())
+	sourceCfg := configuresvc.NewConfigureService(sourceStore, sourceComp, credential.NewInMemory())
 	sourceAtlas := atlassvc.NewAtlasService(sourceStore)
 
 	nodes := []composition.Node{
@@ -183,7 +183,7 @@ func TestExportEverything_RoundTripsEveryFamilyIntoAFreshInstance(t *testing.T) 
 
 	destStore := servicetest.NewFakeStore()
 	destComp := compositionsvc.NewCompositionService(destStore)
-	destCfg := configuresvc.NewConfigureService(destStore, destComp, credential.New())
+	destCfg := configuresvc.NewConfigureService(destStore, destComp, credential.NewInMemory())
 	destAtlas := atlassvc.NewAtlasService(destStore)
 
 	dest := New("", "", t.TempDir(), "test")
