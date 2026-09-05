@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-04",
-  "headline": "3 of 10 contribution families are stable; 0 ready to promote; 0 regressed.",
+  "generatedAt": "2026-09-05",
+  "headline": "3 of 10 contribution families are stable; 0 ready to promote; 1 regressed.",
   "rows": [
     {
       "family": "canvasObjects",
@@ -10,8 +10,8 @@
       "e2e": true,
       "docs": true,
       "sdkTypes": true,
-      "mcp": "no",
-      "codeChangedAt": "2026-09-04",
+      "mcp": "yes",
+      "codeChangedAt": "2026-09-05",
       "docsChangedAt": "2026-09-04",
       "daysBehindCode": 0,
       "flags": []
@@ -38,9 +38,9 @@
       "e2e": true,
       "docs": true,
       "sdkTypes": true,
-      "mcp": "no",
-      "codeChangedAt": "2026-09-04",
-      "docsChangedAt": "2026-09-04",
+      "mcp": "n/a",
+      "codeChangedAt": "2026-09-05",
+      "docsChangedAt": "2026-09-05",
       "daysBehindCode": 0,
       "flags": []
     },
@@ -53,7 +53,7 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
-      "codeChangedAt": "2026-09-04",
+      "codeChangedAt": "2026-09-05",
       "docsChangedAt": "2026-09-04",
       "daysBehindCode": 0,
       "flags": []
@@ -67,8 +67,8 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
-      "codeChangedAt": "2026-09-04",
-      "docsChangedAt": "2026-09-04",
+      "codeChangedAt": "2026-09-05",
+      "docsChangedAt": "2026-09-05",
       "daysBehindCode": 0,
       "flags": []
     },
@@ -80,9 +80,9 @@
       "e2e": true,
       "docs": true,
       "sdkTypes": true,
-      "mcp": "no",
-      "codeChangedAt": "2026-09-04",
-      "docsChangedAt": "2026-09-04",
+      "mcp": "n/a",
+      "codeChangedAt": "2026-09-05",
+      "docsChangedAt": "2026-09-05",
       "daysBehindCode": 0,
       "flags": []
     },
@@ -95,7 +95,7 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "yes",
-      "codeChangedAt": "2026-09-04",
+      "codeChangedAt": "2026-09-05",
       "docsChangedAt": "2026-09-05",
       "daysBehindCode": 0,
       "flags": []
@@ -105,14 +105,16 @@
       "level": "stable",
       "conformance": true,
       "example": true,
-      "e2e": true,
+      "e2e": false,
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
       "codeChangedAt": "2026-09-04",
       "docsChangedAt": "2026-09-04",
       "daysBehindCode": 0,
-      "flags": []
+      "flags": [
+        "regressed"
+      ]
     },
     {
       "family": "secretSources",
@@ -123,8 +125,8 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
-      "codeChangedAt": "2026-09-04",
-      "docsChangedAt": "2026-09-04",
+      "codeChangedAt": "2026-09-05",
+      "docsChangedAt": "2026-09-05",
       "daysBehindCode": 0,
       "flags": []
     },
@@ -133,12 +135,12 @@
       "level": "experimental",
       "conformance": false,
       "example": true,
-      "e2e": true,
+      "e2e": false,
       "docs": true,
       "sdkTypes": false,
       "mcp": "yes",
-      "codeChangedAt": "2026-09-04",
-      "docsChangedAt": "2026-09-04",
+      "codeChangedAt": "2026-09-05",
+      "docsChangedAt": "2026-09-05",
       "daysBehindCode": 0,
       "flags": []
     }
