@@ -53,14 +53,6 @@ async function reopen(page: Page, label: string) {
   return glide
 }
 
-// Escape hands the keyboard back from the grid (ListGridGlide's own
-// release path): with no overlay editor open it blurs the grid, so an
-// app-level shortcut like ⌘Z reaches the window's own listener.
-async function escapeGrid(page: Page): Promise<void> {
-  await page.keyboard.press('Escape')
-  await expect.poll(() => page.evaluate(() => document.activeElement?.tagName ?? '')).not.toMatch(/INPUT|TEXTAREA/)
-}
-
 async function cleanup(page: Page, id: string): Promise<void> {
   await callBindingViaRPC(page, `${CONFIGURE}.DeleteList`, [id])
 }
@@ -287,12 +279,16 @@ test('⌘F does not open the grid search when focus is outside the grid', async 
 // 10. ⌘Z here is the app's ONE journal, the same one the board's edits
 // land on (ADR-0044, goal 0352): a cell edit undoes to the value it
 // replaced, and ⇧⌘Z puts the new one back.
+//
+// Pressed with the grid still holding the keyboard, no click away
+// first -- the gesture every spreadsheet answers, and the one the grid
+// used to swallow before its keydown containment let this one combo
+// through (ListGridGlide's onKeyDown).
 test('(Meta+z) restores an edited cell and (Meta+Shift+z) re-applies it', async ({ page }) => {
   const { id, glide } = await seedAndOpen(page, 'E2E grid undo cell', FOUR_ROWS)
   await editGlideCell(page, glide, 0, 0, 'Widget')
   await expect(glideCellText(glide, 0, 0)).toHaveText('Widget')
 
-  await escapeGrid(page)
   await pressUndo(page)
   await expect(glideCellText(glide, 0, 0)).toHaveText('Bolt')
   // The row itself is untouched: an undone cell edit is a cell edit.
@@ -313,7 +309,6 @@ test('(Meta+z) puts back a deleted row, and a bulk delete undoes in one press', 
   await expect(glide).toHaveAttribute('data-stored-rows', '3')
   await expect(glideCellText(glide, 1, 0)).toHaveText('Cog')
 
-  await escapeGrid(page)
   await pressUndo(page)
   await expect(glide).toHaveAttribute('data-stored-rows', '4')
   await expect(glideCellText(glide, 1, 0)).toHaveText('Anvil')
@@ -324,7 +319,6 @@ test('(Meta+z) puts back a deleted row, and a bulk delete undoes in one press', 
   await page.getByTestId('list-grid-delete-rows').click()
   await expect(glide).toHaveAttribute('data-stored-rows', '2')
 
-  await escapeGrid(page)
   await pressUndo(page)
   await expect(glide).toHaveAttribute('data-stored-rows', '4')
   await expect(glideCellText(glide, 0, 0)).toHaveText('Bolt')

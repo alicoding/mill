@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { findCommand, isWorkflowEditorTabActive, runCommand } from '../shared/commands'
 import { dispatchCommandForEvent } from '../shared/commandDispatch'
-import { comboFromEvent, comboKey, isEditableTarget } from '../shared/keybinding'
+import { comboFromEvent, comboKey, isEditableTarget, isUndoJournalCombo } from '../shared/keybinding'
 import { useAppStore } from '../shared/store'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { ATLAS_TOOL_IDENTITIES } from '../shared/atlasToolIdentity'
@@ -127,8 +127,7 @@ export function useKeymapDispatch(): void {
   // journaled door (goal 0352), so ⌘Z means the same thing on both.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!e.metaKey || e.ctrlKey || e.altKey) return
-      if (e.key.toUpperCase() !== 'Z') return
+      if (!isUndoJournalCombo(e)) return
       const surface = useAppStore.getState().view.kind
       if (surface !== 'atlas' && surface !== 'configure') return
       if (isEditableTarget(e.target)) return

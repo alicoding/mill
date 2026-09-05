@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { createTableFromList, deleteListNamed, deleteTableViaMenu, escapeGridToObject, openAtlas, placeSizedTable, tableAuditShot, tableObjects } from './fixtures/atlasTable'
+import { createTableFromList, deleteListNamed, deleteTableViaMenu, openAtlas, placeSizedTable, tableAuditShot, tableObjects } from './fixtures/atlasTable'
 import { dragBetween, dragResizeHandle } from './fixtures/atlasBoard'
 import { editGlideCell, glideCellText } from './fixtures/glideGrid'
 import { contextMenu } from './fixtures/contextMenu'
@@ -111,6 +111,11 @@ test('dragging a table object: (Meta+z) returns it to where it started', async (
 // round trip (the request, the journal's inverse, the refetch): a
 // one-shot read taken right after the keystroke still sees the pre-undo
 // board (goal 0273).
+//
+// Every ⌘Z here is pressed with the table's grid still holding the
+// keyboard -- the gesture a user actually makes after typing in a
+// cell, and one the grid's own keydown containment must let reach the
+// journal (shared/ListGridGlide.tsx).
 test('a cell edit: (Meta+z) restores the cell and leaves the table in place', async ({ page }) => {
   await openAtlas(page)
   const object = await placeSizedTable(page, '2x2')
@@ -119,7 +124,6 @@ test('a cell edit: (Meta+z) restores the cell and leaves the table in place', as
   await editGlideCell(page, glide, 0, 0, 'Journaled')
   await expect(glideCellText(glide, 0, 0)).toHaveText('Journaled')
 
-  await escapeGridToObject(page, object)
   await pressUndo(page)
 
   await expect(glideCellText(glide, 0, 0)).toHaveText('')
