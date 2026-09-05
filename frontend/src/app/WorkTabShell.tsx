@@ -292,6 +292,11 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
     </>
   )
 
+  const panelClassName = (tab: WorkTab) => {
+    if (isCanvasTab(tab)) return editorStyles.editorPanel
+    return tab.kind === 'plugin-view' ? styles.pluginPanel : undefined
+  }
+
   return (
     <Tabs value={activeWorkTabKey ?? PAGE_TAB} onValueChange={({ value }) => activateWorkTab(value === PAGE_TAB ? null : value)}>
       {titlebarSlot && createPortal(stripContent, titlebarSlot)}
@@ -310,7 +315,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
         {children}
       </TabPanel>
       {workTabs.map((tab) => (
-        <TabPanel key={tab.key} value={tab.key} className={isCanvasTab(tab) ? editorStyles.editorPanel : undefined}>
+        <TabPanel key={tab.key} value={tab.key} className={panelClassName(tab)}>
           {/* Hot-exit "restored" banner (docs/goals/0012) -- shown only
               for a tab whose canvas was seeded from a pre-reload/quit
               scratch that differed from what's saved. Dismissing it is

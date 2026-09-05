@@ -33,9 +33,9 @@ describe('unregisterPluginCommands', () => {
 
 describe('unregisterPluginViews and unregisterPluginCaptures', () => {
 	it('drop only the named plugin\'s registrations', () => {
-		collectPluginView({ pluginId: 'a', pluginName: 'A', viewId: 'v', title: 'V', render: () => {} })
-		collectPluginView({ pluginId: 'b', pluginName: 'B', viewId: 'v', title: 'V', render: () => {} })
-		collectPluginCapture({ pluginId: 'a', pluginName: 'A', captureId: 'c', label: 'C', render: () => {} })
+		collectPluginView({ pluginId: 'a', pluginName: 'A', viewId: 'v', title: 'V', version: '1.0.0', render: () => {} })
+		collectPluginView({ pluginId: 'b', pluginName: 'B', viewId: 'v', title: 'V', version: '1.0.0', render: () => {} })
+		collectPluginCapture({ pluginId: 'a', pluginName: 'A', captureId: 'c', label: 'C', version: '1.0.0', render: () => {} })
 
 		unregisterPluginViews('a')
 		unregisterPluginCaptures('a')

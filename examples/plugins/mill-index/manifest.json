@@ -13,6 +13,13 @@
         "kind": "index"
       }
     ],
+    "views": [
+      {
+        "id": "contents",
+        "title": "Board contents",
+        "entry": "view.html"
+      }
+    ],
     "commands": [
       {
         "id": "mill-index.refresh",

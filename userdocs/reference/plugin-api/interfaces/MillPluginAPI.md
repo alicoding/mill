@@ -165,7 +165,7 @@ registerCanvasObject: (decl) => void;
 ### registerCapture
 
 ```ts
-registerCapture: (decl) => void;
+registerCapture: (decl) => PluginCaptureHandle;
 ```
 
 #### Parameters
@@ -176,7 +176,7 @@ registerCapture: (decl) => void;
 
 #### Returns
 
-`void`
+[`PluginCaptureHandle`](PluginCaptureHandle.md)
 
 ***
 
@@ -201,7 +201,7 @@ registerCommand: (decl) => void;
 ### registerView
 
 ```ts
-registerView: (decl) => void;
+registerView: (decl) => PluginViewHandle;
 ```
 
 #### Parameters
@@ -212,7 +212,7 @@ registerView: (decl) => void;
 
 #### Returns
 
-`void`
+[`PluginViewHandle`](PluginViewHandle.md)
 
 ***
 
