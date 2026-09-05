@@ -211,7 +211,7 @@ func wireAuxWindows(app *application.App, settingsService *settingssvc.SettingsS
 // visible windows the conventional way: the main window comes back,
 // nothing else.
 //
-// framework-api-audit: wails/v3@v3.0.0-beta.12 lacks an option to
+// framework-api-audit: wails/v3@v3.0.0-beta.15 lacks an option to
 // choose what reopen shows -- MacOptions (pkg/application/
 // application_options.go) carries only ActivationPolicy and
 // ApplicationShouldTerminateAfterLastWindowClosed, and the SDK's own
