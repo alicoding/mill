@@ -1,0 +1,16 @@
+{
+  "imageExport": {
+    "title": "Export as image",
+    "scaleLabel": "Scale",
+    "scaleOption": "{{factor}}×",
+    "transparentLabel": "Transparent background",
+    "transparentCaption": "Off keeps the board color.",
+    "exportButton": "Export",
+    "selectionFilename": "{{title}} selection",
+    "copiedSelection": "Copied the selection as PNG.",
+    "copiedBoard": "Copied the board as PNG.",
+    "copiedSelectionRemote": "Copied the selection as PNG to the desktop's clipboard. This device's clipboard is unchanged.",
+    "copiedBoardRemote": "Copied the board as PNG to the desktop's clipboard. This device's clipboard is unchanged.",
+    "failed": "Couldn't render the board as an image."
+  }
+}

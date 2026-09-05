@@ -1,6 +1,17 @@
 import type { Command } from './commands'
 import { useUISignalStore } from './uiSignalStore'
 
+// Whether a board with something on it is on screen right now -- read
+// from the live canvas rather than mirrored into a store: a mirror has
+// to be written by an effect, and effect ordering across a board
+// remount is exactly what a menu built mid-navigation reads wrongly
+// (observed: the two image commands vanished from a live 2-card
+// selection's own menu). Both commands are `surface: ['atlas']`, so no
+// other canvas's nodes can satisfy this for them.
+function atlasBoardHasContent(): boolean {
+  return typeof document !== 'undefined' && document.querySelector('.react-flow__node') !== null
+}
+
 // The Atlas toolbar/board actions that were only ever reachable by
 // clicking (goal 0071's discoverability trilogy extended to the rest
 // of the surface) -- split out of shared/commands.ts (CLAUDE.md's
@@ -39,6 +50,34 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     defaultBinding: null,
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasExport(),
+  },
+  {
+    // "Copy as image" / "Export as image..." (docs/goals/0201): both
+    // picture the LIVE selection, and with nothing selected both widen
+    // to the whole board rather than refusing -- so the only state
+    // that can make them invalid is an empty board.
+    //
+    // Unbound by construction, not by preference. The converged key for
+    // this action is a bare Shift+Option+C, and comboFromEvent requires
+    // Cmd or Ctrl specifically (shared/keybinding.ts's own doc comment):
+    // a modifier set without one of those two never becomes a KeyCombo,
+    // so no binding here could dispatch. Freely assignable in
+    // Settings > Keyboard Shortcuts, same as every other
+    // defaultBinding: null command.
+    id: 'atlas.selection.copyAsImage',
+    label: 'commands.atlas.selection.copyAsImage',
+    defaultBinding: null,
+    surface: ['atlas'],
+    enabled: atlasBoardHasContent,
+    run: () => useUISignalStore.getState().requestAtlasCopyImage(),
+  },
+  {
+    id: 'atlas.selection.exportAsImage',
+    label: 'commands.atlas.selection.exportAsImage',
+    defaultBinding: null,
+    surface: ['atlas'],
+    enabled: atlasBoardHasContent,
+    run: () => useUISignalStore.getState().requestAtlasExportImage(),
   },
   {
     id: 'atlas.addFromFolder',
