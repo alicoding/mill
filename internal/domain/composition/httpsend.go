@@ -50,7 +50,7 @@ func defaultMethodAndPath(rc ResolvedHTTPRequest, overrideMethod, overridePath s
 // auth strategy may add to either) -- callers pass a fresh map/Values
 // per call, never a shared one.
 func sendHTTPRequest(rc ResolvedHTTPRequest, method, urlPath, body string, headers map[string]string, query url.Values, pathParams map[string]string) (string, error) {
-	body, err := ApplyJOSEEncryption(rc.JOSE, body)
+	body, err := ApplyJOSEEncryption(rc.JOSE, rc.JOSERecipientPublicKeyPEM, body)
 	if err != nil {
 		return "", err
 	}

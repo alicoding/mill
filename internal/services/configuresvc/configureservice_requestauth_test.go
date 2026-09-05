@@ -20,7 +20,7 @@ import (
 
 func TestCreateHTTPRequest_ValidatesAndPersists(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, nil, "", nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, "", nil, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
@@ -35,27 +35,25 @@ func TestCreateHTTPRequest_ValidatesAndPersists(t *testing.T) {
 
 func TestCreateHTTPRequest_InvalidRejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if _, err := cfg.CreateHTTPRequest("", "https://example.com", "", "", httprequest.AuthNone, nil, "", nil, nil, ""); err == nil {
+	if _, err := cfg.CreateHTTPRequest("", "https://example.com", "", "", httprequest.AuthNone, "", nil, "", nil, nil, ""); err == nil {
 		t.Fatal("CreateHTTPRequest with an empty label returned nil error, want an error")
 	}
 }
 
 func TestUpdateHTTPRequest_UnknownID_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if _, err := cfg.UpdateHTTPRequest("does-not-exist", "New label", "https://example.com", "", "", httprequest.AuthNone, nil, "", nil, nil, ""); err == nil {
+	if _, err := cfg.UpdateHTTPRequest("does-not-exist", "New label", "https://example.com", "", "", httprequest.AuthNone, "", nil, "", nil, nil, ""); err == nil {
 		t.Fatal("UpdateHTTPRequest with an unknown id returned nil error, want an error")
 	}
 }
 
 func TestDeleteHTTPRequest_RemovesItAndItsSecret(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthBearer, nil, "", nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthBearer, "", nil, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
-	if err := cfg.SetHTTPRequestSecret(req.ID, "tok123"); err != nil {
-		t.Fatalf("SetHTTPRequestSecret returned error: %v", err)
-	}
+	storeRequestSecret(t, cfg, req.ID, "tok123")
 
 	if err := cfg.DeleteHTTPRequest(req.ID); err != nil {
 		t.Fatalf("DeleteHTTPRequest returned error: %v", err)
@@ -87,14 +85,14 @@ const testOpenAPISpec = `{
 
 func TestCreateHTTPRequest_RejectsInvalidOpenAPISpec(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if _, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, nil, "not an openapi spec", nil, nil, ""); err == nil {
+	if _, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, "", nil, "not an openapi spec", nil, nil, ""); err == nil {
 		t.Fatal("CreateHTTPRequest with an invalid OpenAPISpec returned nil error, want an error")
 	}
 }
 
 func TestCreateHTTPRequest_AcceptsValidOpenAPISpec(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, nil, testOpenAPISpec, nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, "", nil, testOpenAPISpec, nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest with a valid OpenAPISpec returned error: %v", err)
 	}
@@ -105,7 +103,7 @@ func TestCreateHTTPRequest_AcceptsValidOpenAPISpec(t *testing.T) {
 
 func TestListHTTPRequestOperations_ReturnsDeclaredOperations(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, nil, testOpenAPISpec, nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, "", nil, testOpenAPISpec, nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
@@ -120,7 +118,7 @@ func TestListHTTPRequestOperations_ReturnsDeclaredOperations(t *testing.T) {
 
 func TestListHTTPRequestOperations_NoSpecConfigured_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, nil, "", nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, "", nil, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
@@ -138,7 +136,7 @@ func TestListHTTPRequestOperations_UnknownHTTPRequest_Rejected(t *testing.T) {
 
 func TestHTTPRequestOperationFields_ReturnsDeclaredOperationFields(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, nil, testOpenAPISpec, nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, "", nil, testOpenAPISpec, nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
@@ -155,7 +153,7 @@ func TestHTTPRequestOperationFields_ReturnsDeclaredOperationFields(t *testing.T)
 
 func TestHTTPRequestOperationFields_UnknownOperation_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, nil, testOpenAPISpec, nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", "", httprequest.AuthNone, "", nil, testOpenAPISpec, nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
@@ -164,16 +162,36 @@ func TestHTTPRequestOperationFields_UnknownOperation_Rejected(t *testing.T) {
 	}
 }
 
-func TestSetHTTPRequestSecret_UnknownHTTPRequest_Rejected(t *testing.T) {
+// A request naming a secret nobody has stored resolves to an error the
+// reader can act on, never to an empty credential (goal 0306).
+func TestResolveHTTPRequest_ReferenceToAMissingEntry_Errors(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if err := cfg.SetHTTPRequestSecret("does-not-exist", "secret"); err == nil {
-		t.Fatal("SetHTTPRequestSecret for an unknown request returned nil error, want an error")
+	req, err := cfg.CreateHTTPRequest("Gone", "https://example.com", "", "", httprequest.AuthBearer, "vault:no-such-entry", nil, "", nil, nil, "")
+	if err != nil {
+		t.Fatalf("CreateHTTPRequest returned error: %v", err)
+	}
+	if _, err := cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{}); err == nil {
+		t.Fatal("resolveHTTPRequest with a reference to a missing entry returned nil error, want an error")
+	}
+}
+
+// A field holding a literal instead of a reference is refused rather
+// than sent as a credential -- the strict resolver's whole point.
+func TestResolveHTTPRequest_LiteralInsteadOfAReference_Refused(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	req, err := cfg.CreateHTTPRequest("Literal", "https://example.com", "", "", httprequest.AuthBearer, "raw-token-value", nil, "", nil, nil, "")
+	if err != nil {
+		t.Fatalf("CreateHTTPRequest returned error: %v", err)
+	}
+	rc, err := cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{})
+	if err == nil {
+		t.Fatalf("resolveHTTPRequest sent a literal as a credential (Secret=%q), want a refusal", rc.Secret)
 	}
 }
 
 func TestResolveHTTPRequest_AuthNone_NoSecretNeeded(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("Public API", "https://example.com", "", "", httprequest.AuthNone, map[string]string{"Accept": "application/json"}, "", nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("Public API", "https://example.com", "", "", httprequest.AuthNone, "", map[string]string{"Accept": "application/json"}, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
@@ -189,7 +207,7 @@ func TestResolveHTTPRequest_AuthNone_NoSecretNeeded(t *testing.T) {
 
 func TestResolveHTTPRequest_AuthBearer_MissingSecret_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("Secured API", "https://example.com", "", "", httprequest.AuthBearer, nil, "", nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("Secured API", "https://example.com", "", "", httprequest.AuthBearer, "", nil, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
@@ -200,13 +218,11 @@ func TestResolveHTTPRequest_AuthBearer_MissingSecret_Rejected(t *testing.T) {
 
 func TestResolveHTTPRequest_AuthBearer_ResolvesSecret(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("Secured API", "https://example.com", "", "", httprequest.AuthBearer, nil, "", nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("Secured API", "https://example.com", "", "", httprequest.AuthBearer, "", nil, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
-	if err := cfg.SetHTTPRequestSecret(req.ID, "s3cr3t"); err != nil {
-		t.Fatalf("SetHTTPRequestSecret returned error: %v", err)
-	}
+	storeRequestSecret(t, cfg, req.ID, "s3cr3t")
 
 	rc, err := cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{})
 	if err != nil {
@@ -233,22 +249,22 @@ func TestCreateHTTPRequest_AuthConfig_PersistsAndSurvivesRestore(t *testing.T) {
 	// examples -- see newTestConfigureService's own doc comment
 	// (configureservice_test.go) for why.
 	cfg.requests = nil
+	secrets := wireTestSecretStore(cfg)
 
 	auth := &httprequest.AuthConfig{OAuth2: &httprequest.OAuth2Config{ //nolint:gosec // TokenURL below is a fixture URL, not a credential (G101 false positive)
 		GrantType: "client_credentials", TokenURL: "https://auth.example.com/token", ClientID: "client-1", Scope: "read",
 	}}
-	req, err := cfg.CreateHTTPRequest("OAuth2 API", "https://example.com", "", "", httprequest.AuthOAuth2, nil, "", auth, nil, "")
+	req, err := cfg.CreateHTTPRequest("OAuth2 API", "https://example.com", "", "", httprequest.AuthOAuth2, "", nil, "", auth, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
 	if req.Auth == nil || req.Auth.OAuth2 == nil || req.Auth.OAuth2.ClientID != "client-1" {
 		t.Fatalf("CreateHTTPRequest returned Auth = %+v, want the OAuth2Config passed in", req.Auth)
 	}
-	if err := cfg.SetHTTPRequestSecret(req.ID, "client-secret"); err != nil {
-		t.Fatalf("SetHTTPRequestSecret returned error: %v", err)
-	}
+	storeRequestSecret(t, cfg, req.ID, "client-secret")
 
 	restarted := NewConfigureService(store, comp, credential.New())
+	restarted.SetSecretResolver(secrets.Resolve)
 	// Find by ID -- top-up seeding appends built-in examples alongside
 	// user data, so list-shape assertions no longer hold.
 	restored, found := findRequestByID(restarted.HTTPRequests(), req.ID)
@@ -273,12 +289,12 @@ func TestCreateHTTPRequest_AuthConfig_PersistsAndSurvivesRestore(t *testing.T) {
 // and discarded.
 func TestUpdateHTTPRequest_AuthConfig_Replaces(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("HMAC API", "https://example.com", "", "", httprequest.AuthHMAC, nil, "", &httprequest.AuthConfig{HMAC: &httprequest.HMACConfig{HeaderName: "X-Sig"}}, nil, "")
+	req, err := cfg.CreateHTTPRequest("HMAC API", "https://example.com", "", "", httprequest.AuthHMAC, "", nil, "", &httprequest.AuthConfig{HMAC: &httprequest.HMACConfig{HeaderName: "X-Sig"}}, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
 
-	updated, err := cfg.UpdateHTTPRequest(req.ID, "HMAC API", "https://example.com", "", "", httprequest.AuthHMAC, nil, "", &httprequest.AuthConfig{HMAC: &httprequest.HMACConfig{HeaderName: "X-Custom-Sig"}}, nil, "")
+	updated, err := cfg.UpdateHTTPRequest(req.ID, "HMAC API", "https://example.com", "", "", httprequest.AuthHMAC, "", nil, "", &httprequest.AuthConfig{HMAC: &httprequest.HMACConfig{HeaderName: "X-Custom-Sig"}}, nil, "")
 	if err != nil {
 		t.Fatalf("UpdateHTTPRequest returned error: %v", err)
 	}
@@ -287,20 +303,25 @@ func TestUpdateHTTPRequest_AuthConfig_Replaces(t *testing.T) {
 	}
 }
 
-// TestSetHTTPRequestOAuth1Secret_EncodesDualSecret proves the OAuth1
-// dual-secret convenience method (ADR-0015 §3) stores a value
-// resolveHTTPRequest can hand back to composition.ApplyAuth's OAuth1
-// strategy -- decoding is composition's own concern
-// (decodeOAuth1Secret, unexported), so this only checks the round trip
-// through resolveHTTPRequest's Secret field, not the decoded shape.
-func TestSetHTTPRequestOAuth1Secret_EncodesDualSecret(t *testing.T) {
+// OAuth 1.0a names its two secrets separately (goal 0306) and
+// resolveHTTPRequest joins them back into the single-slot encoding the
+// strategy consumes (composition.EncodeOAuth1Secret, ADR-0015 §3) --
+// so two independently-rotatable entries reach an unchanged strategy.
+func TestResolveHTTPRequest_OAuth1_JoinsItsTwoReferences(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("OAuth1 API", "https://example.com", "", "", httprequest.AuthOAuth1, nil, "", &httprequest.AuthConfig{OAuth1: &httprequest.OAuth1Config{ConsumerKey: "ck-1", Token: "tok-1"}}, nil, "")
+	req, err := cfg.CreateHTTPRequest("OAuth1 API", "https://example.com", "", "", httprequest.AuthOAuth1, "", nil, "", &httprequest.AuthConfig{OAuth1: &httprequest.OAuth1Config{ConsumerKey: "ck-1", Token: "tok-1"}}, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
-	if err := cfg.SetHTTPRequestOAuth1Secret(req.ID, "consumer-secret", "token-secret"); err != nil {
-		t.Fatalf("SetHTTPRequestOAuth1Secret returned error: %v", err)
+	secrets := secretStoreOf(t, cfg)
+	auth := &httprequest.AuthConfig{OAuth1: &httprequest.OAuth1Config{
+		ConsumerKey:       "ck-1",
+		Token:             "tok-1",
+		ConsumerSecretRef: secrets.Put("OAuth1 API: consumer secret", "consumer-secret"),
+		TokenSecretRef:    secrets.Put("OAuth1 API: token secret", "token-secret"),
+	}}
+	if _, err := cfg.UpdateHTTPRequest(req.ID, req.Label, req.BaseURL, req.Method, req.Body, req.AuthType, "", req.Headers, req.OpenAPISpec, auth, req.JOSE, req.Description); err != nil {
+		t.Fatalf("UpdateHTTPRequest naming the two OAuth 1.0a secrets: %v", err)
 	}
 
 	rc, err := cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{})
@@ -315,10 +336,25 @@ func TestSetHTTPRequestOAuth1Secret_EncodesDualSecret(t *testing.T) {
 	}
 }
 
-func TestSetHTTPRequestOAuth1Secret_UnknownHTTPRequest_Rejected(t *testing.T) {
+// RFC 5849's 2-legged flow has no token, so only the consumer secret
+// is required -- naming one and not the other still resolves.
+func TestResolveHTTPRequest_OAuth1_TokenSecretIsOptional(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if err := cfg.SetHTTPRequestOAuth1Secret("does-not-exist", "cs", "ts"); err == nil {
-		t.Fatal("SetHTTPRequestOAuth1Secret for an unknown request returned nil error, want an error")
+	secrets := secretStoreOf(t, cfg)
+	auth := &httprequest.AuthConfig{OAuth1: &httprequest.OAuth1Config{
+		ConsumerKey:       "ck-1",
+		ConsumerSecretRef: secrets.Put("Two-legged: consumer secret", "consumer-only"),
+	}}
+	req, err := cfg.CreateHTTPRequest("Two-legged", "https://example.com", "", "", httprequest.AuthOAuth1, "", nil, "", auth, nil, "")
+	if err != nil {
+		t.Fatalf("CreateHTTPRequest returned error: %v", err)
+	}
+	rc, err := cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{})
+	if err != nil {
+		t.Fatalf("resolveHTTPRequest returned error: %v", err)
+	}
+	if want := composition.EncodeOAuth1Secret("consumer-only", ""); rc.Secret != want {
+		t.Errorf("resolveHTTPRequest Secret = %q, want %q", rc.Secret, want)
 	}
 }
 
@@ -336,8 +372,9 @@ func TestCreateHTTPRequest_JOSEConfig_PersistsAndSurvivesRestore(t *testing.T) {
 	// (configureservice_test.go) for why.
 	cfg.requests = nil
 
-	jose := &httprequest.JOSEConfig{Enabled: true, RecipientPublicKeyPEM: "-----BEGIN PUBLIC KEY-----\nfake\n-----END PUBLIC KEY-----"}
-	req, err := cfg.CreateHTTPRequest("JOSE API", "https://example.com", "", "", httprequest.AuthNone, nil, "", nil, jose, "")
+	secrets := wireTestSecretStore(cfg)
+	jose := &httprequest.JOSEConfig{Enabled: true, RecipientPublicKeyRef: secrets.Put("JOSE API: public key", "-----BEGIN PUBLIC KEY-----\nfake\n-----END PUBLIC KEY-----")}
+	req, err := cfg.CreateHTTPRequest("JOSE API", "https://example.com", "", "", httprequest.AuthNone, "", nil, "", nil, jose, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
@@ -346,12 +383,13 @@ func TestCreateHTTPRequest_JOSEConfig_PersistsAndSurvivesRestore(t *testing.T) {
 	}
 
 	restarted := NewConfigureService(store, comp, credential.New())
+	restarted.SetSecretResolver(secrets.Resolve)
 	restored, found := findRequestByID(restarted.HTTPRequests(), req.ID)
 	if !found || restored.JOSE == nil || !restored.JOSE.Enabled {
 		t.Fatalf("request %s after restore = %+v (found=%v), want JOSE to survive persist/restore", req.ID, restored, found)
 	}
-	if restored.JOSE.RecipientPublicKeyPEM != jose.RecipientPublicKeyPEM {
-		t.Errorf("restored JOSE.RecipientPublicKeyPEM = %q, want %q", restored.JOSE.RecipientPublicKeyPEM, jose.RecipientPublicKeyPEM)
+	if restored.JOSE.RecipientPublicKeyRef != jose.RecipientPublicKeyRef {
+		t.Errorf("restored JOSE.RecipientPublicKeyRef = %q, want %q", restored.JOSE.RecipientPublicKeyRef, jose.RecipientPublicKeyRef)
 	}
 
 	rc, err := restarted.resolveHTTPRequest(req.ID, composition.SecretAccessRun{})
@@ -369,27 +407,22 @@ func TestCreateHTTPRequest_JOSEConfig_PersistsAndSurvivesRestore(t *testing.T) {
 	}
 }
 
-// TestSetHTTPRequestJOSEPrivateKey_ResolvesOnlyWhenDecryptResponseIsSet
-// proves the private-key keychain fetch is conditional on
-// JOSE.DecryptResponse, and that it's stored under a distinct keychain
-// entry from the request's own AuthType secret (ADR-0015 Phase 3
-// §"joseKeychainID") -- setting one never clobbers the other.
-func TestSetHTTPRequestJOSEPrivateKey_ResolvesOnlyWhenDecryptResponseIsSet(t *testing.T) {
+// A request's auth secret and its two JOSE keys are three independent
+// references (goal 0306): naming one never disturbs another, and each
+// resolves to its own entry.
+func TestResolveHTTPRequest_JOSEKeysAndAuthSecretAreIndependent(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
+	secrets := secretStoreOf(t, cfg)
 	req, err := cfg.CreateHTTPRequest(
-		"JOSE+Bearer API", "https://example.com", "", "", httprequest.AuthBearer, nil, "", nil,
-		&httprequest.JOSEConfig{Enabled: true, DecryptResponse: true, RecipientPublicKeyPEM: "-----BEGIN PUBLIC KEY-----\nfake\n-----END PUBLIC KEY-----"},
+		"JOSE+Bearer API", "https://example.com", "", "", httprequest.AuthBearer, "", nil, "", nil,
+		&httprequest.JOSEConfig{Enabled: true, DecryptResponse: true, RecipientPublicKeyRef: secrets.Put("JOSE+Bearer API: public key", "-----BEGIN PUBLIC KEY-----\nfake\n-----END PUBLIC KEY-----")},
 		"",
 	)
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
-	if err := cfg.SetHTTPRequestSecret(req.ID, "bearer-token"); err != nil {
-		t.Fatalf("SetHTTPRequestSecret returned error: %v", err)
-	}
-	if err := cfg.SetHTTPRequestJOSEPrivateKey(req.ID, "jose-private-key-pem"); err != nil {
-		t.Fatalf("SetHTTPRequestJOSEPrivateKey returned error: %v", err)
-	}
+	storeRequestSecret(t, cfg, req.ID, "bearer-token")
+	storeRequestJOSEKeys(t, cfg, req.ID, "", "jose-private-key-pem")
 
 	rc, err := cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{})
 	if err != nil {
@@ -401,59 +434,50 @@ func TestSetHTTPRequestJOSEPrivateKey_ResolvesOnlyWhenDecryptResponseIsSet(t *te
 	if rc.JOSEPrivateKeyPEM != "jose-private-key-pem" {
 		t.Errorf("resolveHTTPRequest JOSEPrivateKeyPEM = %q, want %q", rc.JOSEPrivateKeyPEM, "jose-private-key-pem")
 	}
-}
-
-func TestSetHTTPRequestJOSEPrivateKey_UnknownHTTPRequest_Rejected(t *testing.T) {
-	cfg, _ := newTestConfigureService(t)
-	if err := cfg.SetHTTPRequestJOSEPrivateKey("does-not-exist", "pem"); err == nil {
-		t.Fatal("SetHTTPRequestJOSEPrivateKey for an unknown request returned nil error, want an error")
+	if rc.JOSERecipientPublicKeyPEM == "" {
+		t.Error("resolveHTTPRequest JOSERecipientPublicKeyPEM is empty, want the entry the request names")
 	}
 }
 
-func TestDeleteHTTPRequest_AlsoRemovesJOSEPrivateKey(t *testing.T) {
+// Deleting a request leaves the entries it named alone (goal 0306):
+// the same entry may be named elsewhere, and deleting the last thing
+// pointing at a credential is not consent to destroy it.
+func TestDeleteHTTPRequest_LeavesTheStoredKeysAlone(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
+	secrets := secretStoreOf(t, cfg)
 	req, err := cfg.CreateHTTPRequest(
-		"JOSE API", "https://example.com", "", "", httprequest.AuthNone, nil, "", nil,
-		&httprequest.JOSEConfig{Enabled: true, DecryptResponse: true, RecipientPublicKeyPEM: "-----BEGIN PUBLIC KEY-----\nfake\n-----END PUBLIC KEY-----"},
+		"JOSE API", "https://example.com", "", "", httprequest.AuthNone, "", nil, "", nil,
+		&httprequest.JOSEConfig{Enabled: true, DecryptResponse: true, RecipientPublicKeyRef: secrets.Put("JOSE API: public key", "public-pem")},
 		"",
 	)
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
-	if err := cfg.SetHTTPRequestJOSEPrivateKey(req.ID, "jose-private-key-pem"); err != nil {
-		t.Fatalf("SetHTTPRequestJOSEPrivateKey returned error: %v", err)
-	}
+	storeRequestJOSEKeys(t, cfg, req.ID, "", "jose-private-key-pem")
+	before := secrets.Len()
 	if err := cfg.DeleteHTTPRequest(req.ID); err != nil {
 		t.Fatalf("DeleteHTTPRequest returned error: %v", err)
 	}
-	if err := cfg.SetHTTPRequestJOSEPrivateKey(req.ID, "anything"); err == nil {
-		t.Fatal("SetHTTPRequestJOSEPrivateKey on a deleted request returned nil error, want an error (request no longer exists)")
+	if secrets.Len() != before {
+		t.Errorf("secret store holds %d entries after deleting the request that named them, want %d left alone", secrets.Len(), before)
 	}
 }
 
-// notFoundCredentialStore simulates a device whose keychain has no
-// entry for any request -- the expected first-run state after an
-// import or seed, since secrets never travel with either.
-type notFoundCredentialStore struct{}
-
-func (notFoundCredentialStore) Set(string, string) error    { return nil }
-func (notFoundCredentialStore) Get(string) (string, error)  { return "", credential.ErrNotFound }
-func (notFoundCredentialStore) Delete(string) error         { return nil }
-
-// Regression: a missing keychain entry surfaced as `secret not found in
-// keyring` -- system internals. The error must name the integration by
-// label and say where to fix it.
-func TestResolveHTTPRequest_MissingCredential_ExplainsWhatToFix(t *testing.T) {
+// Regression: a request whose credential was missing surfaced `secret
+// not found in keyring` -- system internals. A request that names no
+// secret yet must say which integration it is and where to fix it.
+func TestResolveHTTPRequest_NoSecretChosen_ExplainsWhatToFix(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, notFoundCredentialStore{})
+	cfg := NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
+	wireTestSecretStore(cfg)
 
 	_, err := cfg.resolveHTTPRequest(httprequest.ExampleConfluencePageReadID, composition.SecretAccessRun{})
 	if err == nil {
-		t.Fatal("expected an error for a request whose credential is missing")
+		t.Fatal("expected an error for a request that names no secret")
 	}
 	msg := err.Error()
-	if !strings.Contains(msg, "no credential saved on this device") || !strings.Contains(msg, "Configure") {
+	if !strings.Contains(msg, "No secret is chosen") || !strings.Contains(msg, "Configure") {
 		t.Errorf("error must be user copy pointing at Configure: %v", err)
 	}
 	if strings.Contains(msg, "keyring") {

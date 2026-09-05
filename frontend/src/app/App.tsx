@@ -419,7 +419,7 @@ function App() {
             {view.kind === 'docs' && <DocsView initialPage={view.page}/>}
 
             {view.kind === 'settings' && <SettingsView initialSection={view.section}/>}
-            {view.kind === 'secrets' && <SecretsView/>}
+            {view.kind === 'secrets' && <SecretsView key={view.tab} initialTab={view.tab}/>}
 
             {view.kind === 'placeholder' && <PlaceholderView capabilityId={view.capabilityId}/>}
           </WorkTabShell>

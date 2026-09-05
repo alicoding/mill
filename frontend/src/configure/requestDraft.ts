@@ -24,11 +24,11 @@ export interface RequestDraft {
   // don't produce one -- request-level, never workflow-node-level.
   body: string
   authType: AuthType
-  // Single-secret AuthTypes (APIKey/Bearer/HMAC's signing key/OAuth2's
-  // ClientSecret) all reuse this one field -- OAuth1 is the exception
-  // (RFC 5849 needs two secrets), see oauth1ConsumerSecret/
-  // oauth1TokenSecret below.
-  secret: string
+  // Every secret-shaped field holds a REFERENCE into the secret store
+  // (goal 0306), never a value: the single-secret AuthTypes
+  // (APIKey/Bearer/HMAC's signing key/OAuth2's client secret) all reuse
+  // this one, and OAuth 1.0a names its two separately below.
+  secretRef: string
   openAPISpec: string
   // ADR-0015's non-secret per-AuthType config -- one flat set of
   // optional fields rather than a discriminated union, since only one
@@ -41,43 +41,44 @@ export interface RequestDraft {
   hmacHeaderName: string
   oauth1ConsumerKey: string
   oauth1Token: string
-  oauth1ConsumerSecret: string
-  oauth1TokenSecret: string
+  oauth1ConsumerSecretRef: string
+  oauth1TokenSecretRef: string
   // Phase 3 (JOSE) -- independent of authType (httprequest.JOSEConfig's
   // own doc comment: a request can combine JOSE with any auth scheme),
   // so these are never conditionally reset by an authType change the
   // way the oauth2*/hmac*/oauth1* fields above implicitly are (only the
   // *displayed* section changes per authType, not these).
   joseEnabled: boolean
-  joseRecipientPublicKeyPEM: string
+  // The vendor's public key is not a secret, but it travels the same
+  // door as every other key so there is one place a key is managed.
+  joseRecipientPublicKeyRef: string
   joseDecryptResponse: boolean
-  // Write-only, same shape as secret/oauth1*Secret above.
-  josePrivateKeyPEM: string
+  josePrivateKeyRef: string
 }
 
 export const EMPTY_DRAFT: RequestDraft = {
-  label: '', description: '', baseURL: '', method: 'GET', body: '', authType: AuthType.AuthNone, secret: '', openAPISpec: '',
+  label: '', description: '', baseURL: '', method: 'GET', body: '', authType: AuthType.AuthNone, secretRef: '', openAPISpec: '',
   oauth2TokenURL: '', oauth2ClientID: '', oauth2Scope: '',
   hmacHeaderName: '',
-  oauth1ConsumerKey: '', oauth1Token: '', oauth1ConsumerSecret: '', oauth1TokenSecret: '',
-  joseEnabled: false, joseRecipientPublicKeyPEM: '', joseDecryptResponse: false, josePrivateKeyPEM: '',
+  oauth1ConsumerKey: '', oauth1Token: '', oauth1ConsumerSecretRef: '', oauth1TokenSecretRef: '',
+  joseEnabled: false, joseRecipientPublicKeyRef: '', joseDecryptResponse: false, josePrivateKeyRef: '',
 }
 
 export function draftFrom(r: HTTPRequest): RequestDraft {
   return {
-    label: r.Label, description: r.Description, baseURL: r.BaseURL, method: r.Method || 'GET', body: r.Body ?? '', authType: r.AuthType, secret: '', openAPISpec: r.OpenAPISpec,
+    label: r.Label, description: r.Description, baseURL: r.BaseURL, method: r.Method || 'GET', body: r.Body ?? '', authType: r.AuthType, secretRef: r.SecretRef ?? '', openAPISpec: r.OpenAPISpec,
     oauth2TokenURL: r.Auth?.OAuth2?.TokenURL ?? '',
     oauth2ClientID: r.Auth?.OAuth2?.ClientID ?? '',
     oauth2Scope: r.Auth?.OAuth2?.Scope ?? '',
     hmacHeaderName: r.Auth?.HMAC?.HeaderName ?? '',
     oauth1ConsumerKey: r.Auth?.OAuth1?.ConsumerKey ?? '',
     oauth1Token: r.Auth?.OAuth1?.Token ?? '',
-    oauth1ConsumerSecret: '',
-    oauth1TokenSecret: '',
+    oauth1ConsumerSecretRef: r.Auth?.OAuth1?.ConsumerSecretRef ?? '',
+    oauth1TokenSecretRef: r.Auth?.OAuth1?.TokenSecretRef ?? '',
     joseEnabled: r.JOSE?.Enabled ?? false,
-    joseRecipientPublicKeyPEM: r.JOSE?.RecipientPublicKeyPEM ?? '',
+    joseRecipientPublicKeyRef: r.JOSE?.RecipientPublicKeyRef ?? '',
     joseDecryptResponse: r.JOSE?.DecryptResponse ?? false,
-    josePrivateKeyPEM: '',
+    josePrivateKeyRef: r.JOSE?.PrivateKeyRef ?? '',
   }
 }
 
@@ -93,7 +94,7 @@ export function authConfigFrom(draft: RequestDraft): AuthConfig | null {
     case AuthType.AuthHMAC:
       return { OAuth2: null, HMAC: { HeaderName: draft.hmacHeaderName }, OAuth1: null }
     case AuthType.AuthOAuth1:
-      return { OAuth2: null, HMAC: null, OAuth1: { ConsumerKey: draft.oauth1ConsumerKey, Token: draft.oauth1Token } }
+      return { OAuth2: null, HMAC: null, OAuth1: { ConsumerKey: draft.oauth1ConsumerKey, Token: draft.oauth1Token, ConsumerSecretRef: draft.oauth1ConsumerSecretRef, TokenSecretRef: draft.oauth1TokenSecretRef } }
     default:
       return null
   }
@@ -111,7 +112,8 @@ export function joseConfigFrom(draft: RequestDraft): JOSEConfig | null {
   if (!draft.joseEnabled) return null
   return {
     Enabled: true, Algorithm: '', ContentEncryption: '',
-    RecipientPublicKeyPEM: draft.joseRecipientPublicKeyPEM,
+    RecipientPublicKeyRef: draft.joseRecipientPublicKeyRef,
     DecryptResponse: draft.joseDecryptResponse,
+    PrivateKeyRef: draft.joseDecryptResponse ? draft.josePrivateKeyRef : '',
   }
 }

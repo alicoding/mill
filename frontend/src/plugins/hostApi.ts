@@ -16,7 +16,7 @@ import { secretTitleOf } from '../shared/secretTitleCache'
 import { buildPluginStorage } from './pluginStorage'
 import { pushNotice } from '../shared/noticeStore'
 import { resolveExtensionSetting, subscribeExtensionSetting } from '../shared/extensionSettingsStore'
-import type { CanvasObjectDecl, ContentQuery, MillPluginAPI, PluginFetchInit } from './sdk'
+import type { CanvasObjectDecl, ContentQuery, MillPluginAPI, PluginFetchInit, PluginOutputOptions } from './sdk'
 import type { MenuPath } from '../shared/menuSkeleton'
 import type { Command } from '../shared/commands'
 
@@ -234,5 +234,18 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			})
 		},
 		requestGuardedAction,
+		// The output door (goal 0326): Mill's own output viewer, drawn
+		// into the plugin's element. Loaded on first use so activation
+		// never pulls the app's module graph forward, and so a plugin
+		// that renders no output never pays for the viewer's chunk. The
+		// returned disposer awaits the same import, which keeps the
+		// call synchronous for the plugin while the work is not.
+		ui: Object.freeze({
+			renderOutput: (el: HTMLElement, value: unknown, options: PluginOutputOptions = {}) => {
+				const loading = import('./pluginOutputHost')
+				void loading.then((m) => m.renderOutputInto(el, value, options, pluginId))
+				return () => { void loading.then((m) => m.unmountOutput(el)) }
+			},
+		}),
 	})
 }

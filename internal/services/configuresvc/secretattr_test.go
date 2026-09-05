@@ -58,7 +58,7 @@ func TestDeriveSecretLabels_HTTPRequestHeaders_ResolvesLabel(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 	setLabels(cfg, map[string]string{"entry-3": "API key"})
 
-	r, err := cfg.CreateHTTPRequest("Request", "https://example.com", "GET", "", httprequest.AuthNone,
+	r, err := cfg.CreateHTTPRequest("Request", "https://example.com", "GET", "", httprequest.AuthNone, "",
 		map[string]string{"X-Api-Key": "vault:entry-3"}, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)

@@ -20,7 +20,7 @@ async function openPaletteOnNewWorkflow(page: Page): Promise<void> {
 
 test('an integration without its secret says so on the step, Details shows its address, and Open lands on its editor tab', async ({ page }) => {
   await page.goto('/')
-  const created = await callBindingViaRPC<{ ID: string }>(page, CONFIGURE + 'CreateHTTPRequest', ['ZzE2ePeekJira', 'https://jira.example.com', '', '', 'bearer', {}, '', null, null, ''])
+  const created = await callBindingViaRPC<{ ID: string }>(page, CONFIGURE + 'CreateHTTPRequest', ['ZzE2ePeekJira', 'https://jira.example.com', '', '', 'bearer', '', {}, '', null, null, ''])
   try {
     await openPaletteOnNewWorkflow(page)
     await dragPaletteItemToCanvas(page, 'integration-http')
@@ -29,7 +29,7 @@ test('an integration without its secret says so on the step, Details shows its a
     await panel.getByTestId('entity-ref-field').first().selectOption({ label: 'ZzE2ePeekJira' })
 
     const peek = panel.getByTestId('entity-ref-peek').first()
-    await expect(peek.getByTestId('entity-ref-problem')).toContainText('No secret is stored for this auth')
+    await expect(peek.getByTestId('entity-ref-problem')).toContainText('No secret is chosen for this auth')
     await peek.getByTestId('entity-ref-details').click()
     const summary = peek.getByTestId('entity-ref-summary')
     await expect(summary).toContainText('Address')

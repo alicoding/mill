@@ -26,23 +26,11 @@ import (
 // stay in configureservice.go. Renamed from configureservice_
 // connectorauth.go by ADR-0016 (Connector -> HTTPRequest).
 
-// joseKeychainID namespaces JOSE's own private-key secret under a
-// second, distinct keychain entry per request -- a request can combine
-// JOSE with any AuthType (httprequest.JOSEConfig's own doc comment:
-// independent, additive layers), so JOSE's private key can't share the
-// same c.credentials.Set(id, ...) slot AuthType's own secret already uses
-// without one silently overwriting the other.
-func joseKeychainID(id string) string {
-	return id + ":jose"
-}
-
 // resolveHTTPRequest implements composition.go's lookupHTTPRequestFn
-// seam: find the HTTPRequest, fetch its secret and (when configured)
-// its JOSE private key from the OS keychain, resolve any "vault:<id>"
-// reference among its own custom Headers (vaultref.go's
-// resolveVaultRefValue, goal 0203 S1 -- an HTTP connector step is a
-// non-MCP consumer of a stored credential, the goal file's own named
-// gap), and return the lot as a composition.ResolvedHTTPRequest.
+// seam: find the HTTPRequest, resolve every secret, key and header
+// reference it names through the secret store (goal 0306 -- one door,
+// one audit trail, one unlock requirement, whatever the field's shape),
+// and return the lot as a composition.ResolvedHTTPRequest.
 // Unexported, so Wails never binds it as a callable frontend method --
 // it's Go-internal wiring only, same as CompositionService's SetSyncer.
 func (c *ConfigureService) resolveHTTPRequest(id string, run composition.SecretAccessRun) (composition.ResolvedHTTPRequest, error) {
@@ -61,15 +49,15 @@ func (c *ConfigureService) resolveHTTPRequest(id string, run composition.SecretA
 		return composition.ResolvedHTTPRequest{}, fmt.Errorf("no request with id %q", id)
 	}
 
-	secret, err := c.resolveHTTPRequestSecret(id, req.AuthType, req.Label)
+	authCtx := secretaudit.AccessContext{Context: secretaudit.ContextIntegrationAuth, RunID: run.RunID, WorkflowID: run.WorkflowID}
+	secret, err := c.resolveHTTPRequestSecret(req, authCtx)
 	if err != nil {
 		return composition.ResolvedHTTPRequest{}, err
 	}
-	josePrivateKey, err := c.resolveHTTPRequestJOSEKey(id, req.JOSE, req.Label)
+	josePublicKey, josePrivateKey, err := c.resolveHTTPRequestJOSEKeys(req, authCtx)
 	if err != nil {
 		return composition.ResolvedHTTPRequest{}, err
 	}
-
 	actx := secretaudit.AccessContext{Context: secretaudit.ContextHTTPHeader, RunID: run.RunID, WorkflowID: run.WorkflowID}
 	headers, err := c.resolveVaultRefHeaders(req.Label, req.Headers, actx)
 	if err != nil {
@@ -77,16 +65,17 @@ func (c *ConfigureService) resolveHTTPRequest(id string, run composition.SecretA
 	}
 
 	return composition.ResolvedHTTPRequest{
-		BaseURL:           req.BaseURL,
-		Method:            req.Method,
-		Body:              req.Body,
-		AuthType:          req.AuthType,
-		Headers:           headers,
-		Secret:            secret,
-		OpenAPISpec:       req.OpenAPISpec,
-		Auth:              req.Auth,
-		JOSE:              req.JOSE,
-		JOSEPrivateKeyPEM: josePrivateKey,
+		BaseURL:                   req.BaseURL,
+		Method:                    req.Method,
+		Body:                      req.Body,
+		AuthType:                  req.AuthType,
+		Headers:                   headers,
+		Secret:                    secret,
+		OpenAPISpec:               req.OpenAPISpec,
+		Auth:                      req.Auth,
+		JOSE:                      req.JOSE,
+		JOSEPrivateKeyPEM:         josePrivateKey,
+		JOSERecipientPublicKeyPEM: josePublicKey,
 	}, nil
 }
 
@@ -118,18 +107,18 @@ func (c *ConfigureService) HTTPRequests() []httprequest.HTTPRequest {
 // field like Auth/JOSE is added), worth an
 // options-struct pass at some point, but that's a separate, bigger
 // refactor than "add a field" -- not done speculatively here.
-func (c *ConfigureService) CreateHTTPRequest(label, baseURL, method, body string, authType httprequest.AuthType, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {
-	return c.createHTTPRequestWithID(seeding.NewSlugID(label, "request"), label, baseURL, method, body, authType, headers, openAPISpec, auth, jose, description)
+func (c *ConfigureService) CreateHTTPRequest(label, baseURL, method, body string, authType httprequest.AuthType, secretRef string, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {
+	return c.createHTTPRequestWithID(seeding.NewSlugID(label, "request"), label, baseURL, method, body, authType, secretRef, headers, openAPISpec, auth, jose, description)
 }
 
 // createHTTPRequestWithID is CreateHTTPRequest's own logic,
 // parameterized on the new request's id -- the seam ImportHTTPRequest
 // uses to preserve a caller-supplied id (ADR-0036 decision 3).
-func (c *ConfigureService) createHTTPRequestWithID(id, label, baseURL, method, body string, authType httprequest.AuthType, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {
+func (c *ConfigureService) createHTTPRequestWithID(id, label, baseURL, method, body string, authType httprequest.AuthType, secretRef string, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {
 	now := time.Now()
 	req := httprequest.HTTPRequest{
 		ID: id, Label: label,
-		BaseURL: baseURL, Method: strings.TrimSpace(method), Body: body, AuthType: authType, Headers: headers, OpenAPISpec: openAPISpec, Auth: auth, JOSE: jose,
+		BaseURL: baseURL, Method: strings.TrimSpace(method), Body: body, AuthType: authType, SecretRef: secretRef, Headers: headers, OpenAPISpec: openAPISpec, Auth: auth, JOSE: jose,
 		Description: description,
 		CreatedAt:   now,
 		UpdatedAt:   now,
@@ -160,9 +149,9 @@ func (c *ConfigureService) createHTTPRequestWithID(id, label, baseURL, method, b
 	return req, nil
 }
 
-func (c *ConfigureService) UpdateHTTPRequest(id, label, baseURL, method, body string, authType httprequest.AuthType, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {
+func (c *ConfigureService) UpdateHTTPRequest(id, label, baseURL, method, body string, authType httprequest.AuthType, secretRef string, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {
 	req := httprequest.HTTPRequest{
-		ID: id, Label: label, BaseURL: baseURL, Method: strings.TrimSpace(method), Body: body, AuthType: authType, Headers: headers,
+		ID: id, Label: label, BaseURL: baseURL, Method: strings.TrimSpace(method), Body: body, AuthType: authType, SecretRef: secretRef, Headers: headers,
 		OpenAPISpec: openAPISpec, Auth: auth, JOSE: jose, Description: description,
 	}
 	if err := httprequest.Validate(req); err != nil {
@@ -216,11 +205,10 @@ func (c *ConfigureService) UpdateHTTPRequest(id, label, baseURL, method, body st
 	return req, nil
 }
 
-// DeleteHTTPRequest also removes any keychain secret for id --
-// best-effort (c.credentials.Delete on an id with no stored secret, e.g.
-// an AuthNone request, is a harmless no-op-shaped error, not
-// surfaced), so a deleted request never leaves an orphaned secret
-// behind in the OS keychain.
+// DeleteHTTPRequest leaves the secret store untouched: a request only
+// ever NAMED its secrets (goal 0306), and the same entry may be named
+// by other requests or wanted again -- deleting the last thing that
+// pointed at a credential is not consent to destroy it.
 func (c *ConfigureService) DeleteHTTPRequest(id string) error {
 	if err := c.refIntegrityError("request", "request", id); err != nil {
 		return err
@@ -261,8 +249,6 @@ func (c *ConfigureService) DeleteHTTPRequest(id string) error {
 		return fmt.Errorf("save request deletion: %w", err)
 	}
 	c.undo.remember("request", id, c.httpRequestRestorer(id, idx, removed, wasBuiltIn))
-	_ = c.credentials.Delete(id)
-	_ = c.credentials.Delete(joseKeychainID(id))
 	dataevent.Emit("request", id) // goal 0017: live-sync every open surface
 	return nil
 }
@@ -343,84 +329,6 @@ func (c *ConfigureService) HTTPRequestOperationFields(id, path, method string) (
 		return openapispec.Operation{}, err
 	}
 	return *op, nil
-}
-
-// SetHTTPRequestSecret writes id's secret to the OS keychain.
-// Write-only by design (docs/SPEC.md §3.5): there is deliberately no
-// GetSecret binding anywhere on this service -- the frontend can set a
-// secret but can never read one back, matching 1Password's own
-// pattern.
-func (c *ConfigureService) SetHTTPRequestSecret(id, secret string) error {
-	c.mu.Lock()
-	exists := false
-	for _, r := range c.requests {
-		if r.ID == id {
-			exists = true
-			break
-		}
-	}
-	c.mu.Unlock()
-	if !exists {
-		return fmt.Errorf("no request with id %q", id)
-	}
-	return c.credentials.Set(id, secret)
-}
-
-// DeleteHTTPRequestSecret clears id's secret without deleting the
-// request itself -- e.g. switching a request back to AuthNone.
-func (c *ConfigureService) DeleteHTTPRequestSecret(id string) error {
-	return c.credentials.Delete(id)
-}
-
-// SetHTTPRequestOAuth1Secret writes id's OAuth 1.0a dual secret
-// (consumer secret + token secret) to the OS keychain. AuthOAuth1's
-// own documented storage shape (ADR-0015 §3, httprequest.OAuth1Config's
-// doc comment): both values are JSON-encoded into the request's single
-// existing keychain string via composition.EncodeOAuth1Secret rather
-// than Mill inventing a multi-secret-per-request storage model. A
-// separate method (not a third SetHTTPRequestSecret param) so the
-// plain single-secret AuthTypes (APIKey/Bearer/HMAC) keep their
-// existing, simpler call shape unchanged -- addon, not a rewrite.
-func (c *ConfigureService) SetHTTPRequestOAuth1Secret(id, consumerSecret, tokenSecret string) error {
-	c.mu.Lock()
-	exists := false
-	for _, r := range c.requests {
-		if r.ID == id {
-			exists = true
-			break
-		}
-	}
-	c.mu.Unlock()
-	if !exists {
-		return fmt.Errorf("no request with id %q", id)
-	}
-	return c.credentials.Set(id, composition.EncodeOAuth1Secret(consumerSecret, tokenSecret))
-}
-
-// SetHTTPRequestJOSEPrivateKey writes id's JOSE private key (Phase 3)
-// to its own, separate keychain entry -- write-only, same reasoning as
-// SetHTTPRequestSecret, but namespaced (joseKeychainID) so it can
-// coexist with whatever AuthType secret the same request also stores.
-func (c *ConfigureService) SetHTTPRequestJOSEPrivateKey(id, privateKeyPEM string) error {
-	c.mu.Lock()
-	exists := false
-	for _, r := range c.requests {
-		if r.ID == id {
-			exists = true
-			break
-		}
-	}
-	c.mu.Unlock()
-	if !exists {
-		return fmt.Errorf("no request with id %q", id)
-	}
-	return c.credentials.Set(joseKeychainID(id), privateKeyPEM)
-}
-
-// DeleteHTTPRequestJOSEPrivateKey clears id's JOSE private key without
-// touching its AuthType secret or deleting the request itself.
-func (c *ConfigureService) DeleteHTTPRequestJOSEPrivateKey(id string) error {
-	return c.credentials.Delete(joseKeychainID(id))
 }
 
 func (c *ConfigureService) persistHTTPRequests() error {

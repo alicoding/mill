@@ -39,6 +39,19 @@ const (
 	// slice's job is only to make that read visible, not to gate it
 	// (goal file, S3 contract).
 	ContextConfigureToolsPreview Context = "configure-tools-preview"
+	// ContextIntegrationAuth is configureservice_requestauth.go's
+	// resolveHTTPRequest -- an integration's own auth secret and its
+	// JOSE keys, each named by a reference on the request (goal 0306).
+	// Distinct from ContextHTTPHeader, which is a custom header that
+	// happens to carry a credential.
+	ContextIntegrationAuth Context = "integration-auth"
+	// ContextAIProvider is configureaiprovider.go's resolveAIProvider
+	// -- a configured AI endpoint's API key (goal 0306).
+	ContextAIProvider Context = "ai-provider"
+	// ContextSecretAdoption is the read-back that proves a credential
+	// moved into the store intact before the copy it came from is
+	// removed (goal 0306).
+	ContextSecretAdoption Context = "secret-adoption"
 	// ContextUIReveal is SecretService.RevealSecret -- a human clicking
 	// "reveal" in the Secrets view.
 	ContextUIReveal Context = "ui-reveal"

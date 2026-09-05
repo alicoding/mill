@@ -1,15 +1,20 @@
 // Secret sources (ADR-0050, goal 0306): a dotenv file on this machine
 // becomes a source whose keys appear as secrets -- titles only, the
-// value read at use time. Shared pool: the source is created and
-// deleted here; the file lives in a temp dir this test owns.
+// value read at use time. Sources live under Secrets, beside the
+// entries they feed, not in Configure. Shared pool: the source is
+// created and deleted here; the file lives in a temp dir this test
+// owns.
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { test, expect } from './fixtures/server'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { clickRowAction } from './inventoryRow'
+import { openSecretSources } from './fixtures/secretStore'
 
 const SECRETS = 'github.com/alicoding/mill/internal/services/secretsvc.SecretService.'
+
+
 
 test('a dotenv secret source lists its keys as secrets by title, never a value, and is editable and deletable', async ({ page }) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mill-e2e-secret-source-'))
@@ -17,8 +22,7 @@ test('a dotenv secret source lists its keys as secrets by title, never a value, 
   fs.writeFileSync(envPath, 'API_TOKEN=tok-e2e-123\nOTHER_KEY=x\n')
   try {
     await page.goto('/')
-    await page.getByRole('link', { name: 'Configure' }).click()
-    await page.getByRole('tab', { name: 'Secret sources', exact: true }).click()
+    await openSecretSources(page)
     await expect(page.getByTestId('configure-secretsources')).toBeVisible()
 
     await page.getByTestId('new-secretsource').click()
@@ -61,8 +65,7 @@ test('a Bruno collection source lists the secrets its environments declare and t
   fs.writeFileSync(path.join(dir, 'environments', 'dev.bru'), 'vars:secret [ API_TOKEN, SIGNING_KEY ]\n')
   try {
     await page.goto('/')
-    await page.getByRole('link', { name: 'Configure' }).click()
-    await page.getByRole('tab', { name: 'Secret sources', exact: true }).click()
+    await openSecretSources(page)
     await page.getByTestId('new-secretsource').click()
     await page.getByTestId('secretsource-label').fill('ZzE2eBrunoSource')
     await page.getByTestId('secretsource-kind').selectOption('bruno')
@@ -87,8 +90,7 @@ test('a Bruno collection source lists the secrets its environments declare and t
 
 test('a 1Password source with no op tool on this machine lists nothing and its row says why', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Secret sources', exact: true }).click()
+  await openSecretSources(page)
   await page.getByTestId('new-secretsource').click()
   await page.getByTestId('secretsource-label').fill('ZzE2eOnePassword')
   await page.getByTestId('secretsource-kind').selectOption('op')
@@ -103,4 +105,16 @@ test('a 1Password source with no op tool on this machine lists nothing and its r
   expect((listed ?? []).some((s) => s.Title.endsWith('— ZzE2eOnePassword'))).toBe(false)
   await clickRowAction(page, row, 'Delete')
   await expect(row).toHaveCount(0)
+})
+
+
+// Sources have ONE home. A link to where they used to be redirects
+// (shared/viewRedirects.test.ts pins that mapping); what this proves is
+// that Configure no longer offers the door at all, so the two can never
+// both be true.
+test('Configure no longer offers a Secret sources tab', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await expect(page.getByRole('tab', { name: 'Integrations', exact: true })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Secret sources', exact: true })).toHaveCount(0)
 })

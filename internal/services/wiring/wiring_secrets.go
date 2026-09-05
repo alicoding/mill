@@ -6,6 +6,7 @@
 package wiring
 
 import (
+	"log/slog"
 	"os"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
@@ -46,6 +47,21 @@ func WireSecrets(vaultPath string, credentials credential.Store, store settings.
 	secretService.SetSourcesLister(configureService.SecretSources)
 	configureService.SetSecretLabelsLister(secretService.ListSecrets)
 	guardrailsvc.SetSecretLabelsLookup(configureService.DeriveSecretLabels)
+	// Goal 0306: a credential can only be created in the store, and the
+	// store only exists open. Every unlock therefore adopts whatever is
+	// still unadopted -- a value left in a per-entity keychain item by
+	// an older Mill, or a seeded example's demo credential -- and does
+	// nothing once there is nothing left to adopt.
+	configureService.SetSecretCreator(secretService.CreateStoredSecret)
+	secretService.OnUnlock(func() {
+		adopted, err := configureService.AdoptSecretsIntoStore()
+		if err != nil {
+			slog.Warn("moving saved credentials into the secret store", "error", err)
+		}
+		if adopted > 0 {
+			slog.Info("moved saved credentials into the secret store", "entries", adopted)
+		}
+	})
 	return secretService
 }
 

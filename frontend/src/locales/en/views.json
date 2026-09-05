@@ -158,7 +158,8 @@
         "unallowed": "it has not been allowed to run yet",
         "unsigned": "its signature did not verify",
         "changed": "its files changed since you allowed it. Allow it again on its row"
-      }
+      },
+      "secretRefAdd": "Add new secret"
     },
     "keyboardShortcuts": {
       "label": "Keyboard shortcuts",

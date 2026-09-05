@@ -80,7 +80,7 @@ func parseRSAPrivateKeyPEM(pemStr string) (*rsa.PrivateKey, error) {
 }
 
 // ApplyJOSEEncryption encrypts body into a JWE compact-serialized
-// string when conf enables it -- a no-op (body unchanged) for nil or
+// string with recipientPublicKeyPEM when conf enables it -- a no-op (body unchanged) for nil or
 // disabled config, so a request with no JOSE config behaves exactly
 // as before this existed (same "strict superset" framing ADR-0007
 // Phase 3 already established for Attribute-binding). Called before
@@ -91,11 +91,11 @@ func parseRSAPrivateKeyPEM(pemStr string) (*rsa.PrivateKey, error) {
 // main, ADR-0013's test-the-draft-exactly-as-it-would-run RPC) can
 // reuse the identical encryption path a real workflow run goes
 // through, not a second, driftable copy.
-func ApplyJOSEEncryption(conf *httprequest.JOSEConfig, body string) (string, error) {
+func ApplyJOSEEncryption(conf *httprequest.JOSEConfig, recipientPublicKeyPEM string, body string) (string, error) {
 	if conf == nil || !conf.Enabled {
 		return body, nil
 	}
-	pub, err := parseRSAPublicKeyPEM(conf.RecipientPublicKeyPEM)
+	pub, err := parseRSAPublicKeyPEM(recipientPublicKeyPEM)
 	if err != nil {
 		return "", fmt.Errorf("jose: recipient public key: %w", err)
 	}
