@@ -19,6 +19,9 @@ timing, and exactly where it stopped.
   the run.
 - **Agent writes** — changes an AI agent proposed over MCP, held
   until you approve.
+- **Vault waits** — a step needed a stored secret while the vault was
+  locked; the run waits here until you unlock the vault, then continues
+  from that step.
 
 Each entry shows exactly what will happen and how old the ask is.
 When you're away, Mill escalates: an actionable notification, a dock
