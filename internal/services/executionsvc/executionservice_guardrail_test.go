@@ -6,8 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicoding/mill/internal/adapters/execution"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/guardrail"
+	"github.com/alicoding/mill/internal/domain/usererror"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/servicetest"
@@ -403,4 +405,50 @@ func TestSeededHumanReviewExample_TypedInputFlowsThrough(t *testing.T) {
 	if !strings.Contains(failed.Error, "note provided") {
 		t.Fatalf("failed.Error = %q, want the failing rule named", failed.Error)
 	}
+}
+
+// Regression: a run's live-park registry entry exists by the time its
+// pending approval is observable. The published pending event is the
+// only signal any caller has that a run parked, so if the registry were
+// written after it, a resolve arriving the instant the event appears
+// would find no listener and be refused with the "run-recovering" code
+// (executionservice_guardrail.go's resolveUnlistened, goal 0329) even
+// though the run is parked and waiting.
+func TestGuardrail_PendingVisible_ResolvesWithoutRecoveringRefusal(t *testing.T) {
+	_, exec, wfID := newGuardedHarness(t)
+
+	summary, err := exec.RunWorkflow(wfID, RunKindTest, nil)
+	if err != nil {
+		t.Fatalf("RunWorkflow: %v", err)
+	}
+
+	// A blocking GetEvent, not a poll: it wakes on the park's own event
+	// notification, which is the tightest any caller can observe the
+	// park and so the narrowest the window under test can be made.
+	pending, err := execution.GetEvent[PendingApproval](exec.ctx, summary.RunID, guardrailPendingEventKey, 10*time.Second)
+	if err != nil {
+		t.Fatalf("await pending approval event: %v", err)
+	}
+	if pending.NodeID != "n1" {
+		t.Fatalf("pending = %+v, want node n1", pending)
+	}
+
+	if _, listening := exec.parkedRuns.Load(summary.RunID); !listening {
+		t.Fatal("pending approval is observable but the run is absent from the live-park registry")
+	}
+
+	if err := exec.ResolveApproval(summary.RunID, "n1", true, nil, false); err != nil {
+		if code, ok := usererror.Of(err); ok && code.Code == "run-recovering" {
+			t.Fatalf("approval resolved on a visibly parked run was refused as recovering: %v", err)
+		}
+		t.Fatalf("ResolveApproval: %v", err)
+	}
+
+	waitFor(t, "run to succeed", 10*time.Second, func() (RunSummary, bool) {
+		s, err := exec.summaryFor(summary.RunID)
+		if err != nil || s.Status != "SUCCESS" {
+			return RunSummary{}, false
+		}
+		return s, true
+	})
 }
