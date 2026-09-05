@@ -79,9 +79,18 @@ your plugin feels like part of Mill.
     inline. A surface that draws into Mill's own document instead
     still works and warns. (checked)
 
+22. A canvas object whose face reports an open editor declares
+    `content: "interactive"` on the same object. `content` says what
+    happens to input over the face: `"static"` (the default) leaves
+    every gesture to the canvas, `"interactive"` gives the selected
+    face the wheel, the drag and the keys — and `ctx.setEditing`, the
+    call that stands Mill's own board shortcuts down while your editor
+    is open, exists only there. (checked: a face script calling
+    `setEditing` without that declaration warns)
+
 ## Quality gates
 
-22. `go run ./internal/pluginconform <folder>` passes; `npm run
+23. `go run ./internal/pluginconform <folder>` passes; `npm run
     plugin:typecheck` and `npm run plugin:lint` pass. (checked)
 
 ## Checking your own plugin

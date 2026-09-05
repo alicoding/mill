@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
@@ -19,7 +19,7 @@ import styles from './AtlasCardProjectionTable.module.css'
 // for a board object) -- the ONE piece that differs between the two
 // entities a projection can ride on; scopeID is whichever id that
 // resolver takes, used only as this effect's own dependency/cache key.
-export function AtlasCardProjectionTable({ scopeID, density, fetchProjection, onColumnCount, editorPortal, titleRow }: {
+export function AtlasCardProjectionTable({ scopeID, density, fetchProjection, onColumnCount, editorPortal, titleRow, onEditingChange }: {
   editorPortal?: 'body' | 'host'
   // titleRow (goal 0273): a table BOARD OBJECT names itself above its
   // own grid, since nothing else on the board names it. A table CARD
@@ -35,6 +35,11 @@ export function AtlasCardProjectionTable({ scopeID, density, fetchProjection, on
   // sizing, which feeds back through the scrollbars into React Flow's
   // node measurement and oscillates.
   onColumnCount?: (count: number) => void
+  // onEditingChange (goal 0354): the grid's overlay cell editor opening
+  // and closing, reported to whoever hosts this grid. Only a board
+  // object supplies it -- a card page's grid has no canvas frame whose
+  // input contract depends on it.
+  onEditingChange?: (editing: boolean) => void
 }) {
   const { t } = useTranslation('atlas')
   const [proj, setProj] = useState<ListProjection | null>(null)
@@ -71,17 +76,6 @@ export function AtlasCardProjectionTable({ scopeID, density, fetchProjection, on
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchProjection is one of the two stable AtlasService bound methods, never a fresh closure per render
   }, [scopeID])
 
-  // Escape in the grid hands the keyboard back to the OBJECT (goal
-  // 0273): its own canvas node takes focus, so it stays selected while
-  // the board's key path (Delete/Backspace over the selection) reaches
-  // it again. Only a board object supplies this -- a card page's grid
-  // has no canvas node to hand anything back to.
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const releaseKeyboard = useCallback(() => {
-    const node = wrapRef.current?.closest('.react-flow__node')
-    if (node instanceof HTMLElement) node.focus()
-  }, [])
-
   const columnCount = proj?.Columns?.length ?? 0
   useEffect(() => { onColumnCount?.(columnCount) }, [columnCount, onColumnCount])
 
@@ -107,7 +101,6 @@ export function AtlasCardProjectionTable({ scopeID, density, fetchProjection, on
     // edit (the spreadsheet-node convention: the frame moves/opens the
     // card, the grid edits the grid).
     <div
-      ref={wrapRef}
       className={`${styles.wrap} nowheel nodrag nopan`}
       onClick={(e) => e.stopPropagation()}
     >
@@ -118,7 +111,7 @@ export function AtlasCardProjectionTable({ scopeID, density, fetchProjection, on
         rows={(proj.Rows ?? []).filter((r) => r !== null)}
         density={density}
         editorPortal={editorPortal}
-        onReleaseKeyboard={titleRow ? releaseKeyboard : undefined}
+        onEditingChange={onEditingChange}
       />
     </div>
   )
