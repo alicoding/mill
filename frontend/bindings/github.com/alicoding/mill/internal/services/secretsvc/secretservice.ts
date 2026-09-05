@@ -209,6 +209,23 @@ export function ResetVault(): $CancellablePromise<void> {
 }
 
 /**
+ * RestoreVaultFromLatestBackup is the key-mismatch state's own door out
+ * (goal 0359) when the current vault file is unreadable but a local
+ * backup still carries one: archives the current file exactly as
+ * ResetVault does (its own timestamped .bak.kdbx sibling, nothing
+ * deleted), copies the newest backup's vault copy into the now-empty
+ * target, and consumes that one backup's own copy so a repeated attempt
+ * (this one didn't help either) moves on to the next-older backup
+ * rather than restoring the identical file again. Never unlocks on its
+ * own -- the restored file's identity picks its own key slot, and
+ * whether THAT key is still in the keychain is exactly what the next
+ * Unlock click answers.
+ */
+export function RestoreVaultFromLatestBackup(): $CancellablePromise<void> {
+    return $Call.ByID(3591040275);
+}
+
+/**
  * RevealSecret returns one entry in full, password included -- a
  * distinct, explicit call from ListSecrets (never incidental to
  * browsing), matching SetHTTPRequestSecret's own write-only-elsewhere

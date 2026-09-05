@@ -24,6 +24,7 @@ type fakeVault struct {
 	unlocked    bool
 	opensWith   string
 	id          string
+	path        string
 	assignCalls int
 	backupCalls int
 }
@@ -38,6 +39,12 @@ func (f *fakeVault) Unlocked() bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.unlocked
+}
+
+func (f *fakeVault) Path() string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.path
 }
 
 func (f *fakeVault) Create(masterKey []byte) (string, error) {
