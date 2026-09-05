@@ -158,11 +158,18 @@ export function useAtlasContainmentMenus({
     if (cardIDs.length + noteIDs.length + objectIDs.length >= 2) {
       items.push({ id: 'group', label: t('contextMenu.groupIntoArea'), commandId: 'atlas.group.selection', run: () => requestGroup(cardIDs, noteIDs, objectIDs, pos) })
     }
+    // The picture of what's selected (docs/goals/0201): commandId with
+    // no run() of its own, so the label, the enablement and the action
+    // all come from the registry -- the selection these act on is the
+    // board's own live one, which is exactly what opened this menu.
+    if (items.length > 0) items.push({ id: 'd-image', divider: true })
+    items.push({ id: 'copy-as-image', commandId: 'atlas.selection.copyAsImage' })
+    items.push({ id: 'export-as-image', commandId: 'atlas.selection.exportAsImage' })
     // Notes never join a perspective (ADR-0041's MemberCardIDs is cards
     // only) -- only the selection's card ids are offered.
     const perspectiveItems = perspectiveMembershipMenuItems({ t, perspectives, cardIDs, pos, setMenu, onToast: onPerspectiveToast })
     if (perspectiveItems.length > 0) {
-      if (items.length > 0) items.push({ id: 'd1', divider: true })
+      items.push({ id: 'd1', divider: true })
       items.push(...perspectiveItems)
       items.push({ id: 'd2', divider: true })
     }

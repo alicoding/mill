@@ -160,6 +160,16 @@ brought into view.
   own colour, stroke, and rotation come along; a freeform arrow, a
   sketch, or an image doesn't have a faithful box to become yet, so
   it's named rather than silently left out.
+- **Take a picture of what you're looking at.** Right-click a
+  selection, or open the Atlas menu, for "Copy as image" and "Export as
+  image…". Copy puts a sharp PNG straight on your clipboard, ready to
+  paste into a document, a deck, or a chat. Export opens a small dialog
+  where you pick the scale and whether the background comes along, then
+  saves the file. Both picture whatever is selected; with nothing
+  selected, both widen to the whole board. Selection outlines, drag
+  handles and resize frames never appear in the picture. Working in a
+  browser against a Mill running elsewhere, the copy lands on that
+  machine's clipboard, and the confirmation says so.
 
 ## Keeping Atlas in sync
 

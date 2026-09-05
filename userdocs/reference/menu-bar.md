@@ -131,6 +131,8 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Contents | — | `atlas.contents.open` |
 | Import atlas | — | `atlas.import` |
 | Export atlas | — | `atlas.export` |
+| Copy as image | — | `atlas.selection.copyAsImage` |
+| Export as image… | — | `atlas.selection.exportAsImage` |
 | Add cards from a folder | — | `atlas.addFromFolder` |
 | Copy space as context | — | `atlas.share.copyContext` |
 | Copy space links | — | `atlas.share.copyLinks` |

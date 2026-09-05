@@ -50,6 +50,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.redo` | Redo | — | atlas | Always available |
 | `atlas.roadmap` | Open roadmap | — | atlas | Always available |
 | `atlas.selectAll` | Select all | `⌘A` | atlas | Always available |
+| `atlas.selection.copyAsImage` | Copy as image | — | atlas | Conditional — available only in a matching state |
+| `atlas.selection.exportAsImage` | Export as image… | — | atlas | Conditional — available only in a matching state |
 | `atlas.share.copyContext` | Copy space as context | — | atlas | Always available |
 | `atlas.share.copyLinks` | Copy space links | — | atlas | Always available |
 | `atlas.undo` | Undo | — | atlas | Always available |
