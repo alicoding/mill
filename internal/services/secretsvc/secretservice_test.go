@@ -251,9 +251,12 @@ func TestAutoLock_FiresPastThreshold(t *testing.T) {
 
 	origIdleTimeFn := idleTimeFn
 	t.Cleanup(func() { idleTimeFn = origIdleTimeFn })
-	idleTimeFn = func() (time.Duration, error) { return 20 * time.Second, nil }
+	idleTimeFn = func() (time.Duration, error) { return 90 * time.Second, nil }
 
-	stop := s.startAutoLock(10*time.Second, 5*time.Millisecond)
+	if err := s.SetVaultLockPolicy(LockPolicy{LockAfterSeconds: 60}); err != nil {
+		t.Fatalf("SetVaultLockPolicy: %v", err)
+	}
+	stop := s.startAutoLock(5 * time.Millisecond)
 	t.Cleanup(stop)
 
 	deadline := time.Now().Add(2 * time.Second)
@@ -281,7 +284,7 @@ func TestAutoLock_ServerModeErrorNeverLocks(t *testing.T) {
 	t.Cleanup(func() { idleTimeFn = origIdleTimeFn })
 	idleTimeFn = func() (time.Duration, error) { return 0, errors.New("no idle signal") }
 
-	stop := s.startAutoLock(10*time.Millisecond, 5*time.Millisecond)
+	stop := s.startAutoLock(5 * time.Millisecond)
 	t.Cleanup(stop)
 	time.Sleep(50 * time.Millisecond)
 	if !s.VaultStatus().Unlocked {
