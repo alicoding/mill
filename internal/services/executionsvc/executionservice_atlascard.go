@@ -38,7 +38,7 @@ func (e *ExecutionService) CurrentRunID(runCtx any) (string, error) {
 //
 //wails:ignore
 func (e *ExecutionService) RunWorkflowForAtlasCard(workflowID, sourceCardID string, values map[string]string, payload string) (RunSummary, error) {
-	return e.runWorkflowStart(workflowID, RunKindTriggered, values, payload, false, sourceCardID, "")
+	return e.runWorkflowStart(workflowID, RunKindTriggered, RunOptions{Values: values, Payload: payload, AtlasSourceCardID: sourceCardID})
 }
 
 // AtlasSourceCardForRun resolves runID's own recorded AtlasSourceCardID,
