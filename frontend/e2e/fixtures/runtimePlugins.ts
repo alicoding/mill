@@ -26,6 +26,9 @@ export interface ExtraPlugin {
 	id: string
 	manifest: Record<string, unknown>
 	main: string
+	// Further files the folder ships, keyed by name: a framed view's or
+	// capture's entry page and the script beside it (goal 0349).
+	files?: Record<string, string>
 }
 
 // extraExamples names further example folders to copy in (a plugin
@@ -58,6 +61,7 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 		mkdirSync(path.join(pluginsDir, extra.id))
 		writeFileSync(path.join(pluginsDir, extra.id, 'manifest.json'), JSON.stringify({ id: extra.id, version: '1.0.0', ...extra.manifest }))
 		writeFileSync(path.join(pluginsDir, extra.id, 'main.js'), extra.main)
+		for (const [name, body] of Object.entries(extra.files ?? {})) writeFileSync(path.join(pluginsDir, extra.id, name), body)
 	}
 	if (opts.withNotifier) {
 		// A minimal plugin exercising the notice door (goal 0277): one

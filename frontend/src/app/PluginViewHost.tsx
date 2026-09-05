@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text } from '@primer/react'
-import { getPluginView } from '../plugins/pluginViews'
+import { getPluginView, setPluginViewSink } from '../plugins/pluginViews'
 import { usePluginReloadVersion } from '../plugins/pluginReloadSignal'
 import { currentPluginTheme, onPluginThemeChange, pluginThemeAttrs, usePluginTheme } from '../plugins/pluginTheme'
+import { PluginFrame } from './PluginFrame'
 import listStyles from '../shared/ListCard.module.css'
 
 // PluginViewHost -- the work-tab panel a plugin draws into (docs/goals/
@@ -28,9 +29,11 @@ export function PluginViewHost({ pluginId, viewId }: { pluginId: string; viewId:
   // tab switches, and a re-render would throw away whatever the user
   // has in it. A plugin that must repaint uses ctx.onThemeChange.
   const theme = usePluginTheme()
+  const context = useMemo(() => ({ pluginId, viewId }), [pluginId, viewId])
+  const onSink = useCallback((post: ((message: unknown) => void) | undefined) => setPluginViewSink(pluginId, viewId, post), [pluginId, viewId])
   useEffect(() => {
     const el = ref.current
-    if (!el || !view) return
+    if (!el || !view || !view.render) return
     try {
       el.replaceChildren()
       view.render(el, { pluginId, viewId, theme: currentPluginTheme(), onThemeChange: onPluginThemeChange })
@@ -40,6 +43,25 @@ export function PluginViewHost({ pluginId, viewId }: { pluginId: string; viewId:
   }, [view, pluginId, viewId, reloadVersion])
   if (!view) {
     return <Text as="p" size="small" className={listStyles.muted} data-testid="plugin-view-missing">{t('pluginView.missing')}</Text>
+  }
+  // A view whose manifest named an entry page is that page, in its own
+  // frame: the plugin owns everything inside it, Mill owns the box.
+  if (view.entry) {
+    return (
+      <PluginFrame
+        key={`${pluginId}/${viewId}/${reloadVersion}`}
+        pluginId={pluginId}
+        surfaceId={viewId}
+        title={view.title}
+        entry={view.entry}
+        version={view.version}
+        stateKey={`view:${viewId}:state`}
+        context={context}
+        onSink={onSink}
+        onPageMessage={(message) => view.onMessage?.(message)}
+        testId={`plugin-view-${pluginId}-${viewId}`}
+      />
+    )
   }
   return <div ref={ref} data-testid={`plugin-view-${pluginId}-${viewId}`} style={{ height: '100%', overflow: 'auto' }} {...pluginThemeAttrs(theme)} />
 }

@@ -35,6 +35,7 @@ func conformStandard(dir string, m Manifest) []string {
 	problems = append(problems, conformRemoteCode(scripts)...)
 	problems = append(problems, conformLabelCase(m, scripts)...)
 	problems = append(problems, conformThemes(dir, m)...)
+	problems = append(problems, conformEntryPages(dir, m)...)
 	sort.Strings(problems)
 	return problems
 }
@@ -93,6 +94,7 @@ func ConformStandardWarnings(dir string) []string {
 	warnings := make([]string, 0, 4)
 	warnings = append(warnings, conformUnusedCapabilities(m, scripts)...)
 	warnings = append(warnings, conformConsoleErrorWithoutNotify(scripts)...)
+	warnings = append(warnings, conformSurfacesWithoutEntry(m)...)
 	sort.Strings(warnings)
 	return warnings
 }
@@ -433,7 +435,11 @@ func conformConsoleErrorWithoutNotify(scripts map[string]string) []string {
 func enclosingFunctionHasNotify(src string, pos int) bool {
 	start := enclosingBraceStart(src, pos)
 	end := matchingBraceEnd(src, start)
-	return strings.Contains(src[start:end], "api.notify(")
+	span := src[start:end]
+	// Two spellings of the same door: a plugin's own code holds the api
+	// object, while an entry page reaches it by name over the frame's
+	// bridge.
+	return strings.Contains(span, "api.notify(") || strings.Contains(span, "call('notify'") || strings.Contains(span, `call("notify"`)
 }
 
 func enclosingBraceStart(src string, pos int) int {

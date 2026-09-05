@@ -16,6 +16,11 @@ var assetExtensions = map[string]string{
 	".css":  "text/css; charset=utf-8",
 	".json": "application/json; charset=utf-8",
 	".png":  "image/png",
+	// A view's or capture's entry page (docs/goals/0349): fetched by
+	// the host, which mounts it in a sandboxed frame under a
+	// host-written Content-Security-Policy -- never navigated to
+	// directly by the app's own webview.
+	".html": "text/html; charset=utf-8",
 }
 
 // AssetMiddleware serves GET /plugins/<id>/<file> from the scanned

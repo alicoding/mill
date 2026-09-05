@@ -74,3 +74,18 @@
     padding: var(--base-size-16);
     overflow: auto;
 }
+
+/* A plugin view fills the tab it owns. A framed view is an iframe,
+   whose intrinsic height is 150px: a panel that shrink-wraps it would
+   hand it that, so the panel takes a definite height of its own (the
+   fill the composition editor's panel already uses) and the view
+   scrolls inside it. */
+.pluginPanel {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.pluginPanel:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+}
