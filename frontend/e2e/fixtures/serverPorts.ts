@@ -347,16 +347,24 @@ export const PAUSED_RUNS_MCP_BASE_PORT = 11540
 export const REVIEW_PARKED_PAYLOAD_SERVER_BASE_PORT = 11560
 export const REVIEW_PARKED_PAYLOAD_MCP_BASE_PORT = 11580
 
+// secret-source-plugins.spec.ts (goal 0306 S4): a dedicated server whose
+// plugins dir carries the Netrc example, so the Sources page can offer
+// an extension-contributed kind. Its own base pair rather than an
+// offset into the runtime-plugins family, whose offsets are dense
+// enough that a new one would collide with another's MCP port.
+export const SECRET_SOURCE_PLUGIN_SERVER_BASE_PORT = 11600
+export const SECRET_SOURCE_PLUGIN_MCP_BASE_PORT = 11620
+
 // The Extensions store's own dedicated pair (goal 0349): browsing,
 // adding a marketplace source and installing all change GLOBAL plugin
 // state -- what the plugins directory holds and which marketplaces
 // this Mill reads -- exactly the cross-spec state testing.md's
 // shared-vs-dedicated rule keeps off the shared pool.
-export const EXTENSIONS_STORE_SERVER_BASE_PORT = 11600
-export const EXTENSIONS_STORE_MCP_BASE_PORT = 11620
+export const EXTENSIONS_STORE_SERVER_BASE_PORT = 11680
+export const EXTENSIONS_STORE_MCP_BASE_PORT = 11700
 
 // extensions-install.spec.ts's own pair (goal 0349): the archive
 // install path writes into the plugins directory, the same global
 // state the store spec's pair isolates.
-export const EXTENSIONS_INSTALL_SERVER_BASE_PORT = 11640
-export const EXTENSIONS_INSTALL_MCP_BASE_PORT = 11660
+export const EXTENSIONS_INSTALL_SERVER_BASE_PORT = 11720
+export const EXTENSIONS_INSTALL_MCP_BASE_PORT = 11740

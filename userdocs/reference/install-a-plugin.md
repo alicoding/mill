@@ -501,6 +501,52 @@ appears in the palette under Transform as "<label>", and the
 Extensions row lists "Adds workflow steps". The **Text case** example
 (`examples/plugins/mill-textcase`) is the whole pattern in one file.
 
+## Secret sources
+
+A plugin can turn a store of credentials on your machine into secrets
+Mill offers everywhere a secret is asked for. Declare each store in the
+manifest and implement it in a `secrets.js` next to `main.js`:
+
+```json
+"capabilities": ["read-file"],
+"contributes": {
+  "secretSources": [
+    { "id": "netrc", "label": "Netrc file",
+      "path": { "kind": "file", "label": "File", "placeholder": "~/.netrc", "default": "~/.netrc" },
+      "capabilities": ["list", "resolve"] }
+  ]
+}
+```
+
+```js
+// secrets.js -- plain script, no imports or exports
+registerSource('netrc', {
+  list: function (ctx) {
+    // ctx.path: the file the user configured; ctx.readFile() its bytes
+    return namesIn(ctx.readFile())            // names only, never a value
+  },
+  resolve: function (ctx, key) {
+    return valueFor(key, ctx.readFile())      // one value, at the moment of use
+  },
+})
+```
+
+`secrets.js` runs on Mill's own side, never in the window, and a source
+reaches nothing but the file — or, for a `"folder"` path, the folder —
+the user pointed it at. `list` returns names; `resolve` returns one
+value, which Mill applies itself through the same gate and access
+history every other secret passes. The value never returns to the
+plugin, and nothing is copied into Mill's vault.
+
+Add the source under **Secrets › Sources**: its label appears in the
+Kind picker, and the path field renders with the label, placeholder and
+default the manifest declares. A source whose extension is removed or
+turned off says so in its own row instead of listing nothing. Two
+optional capabilities go alongside: `"discover"` offers stores found
+under a configured folder, and `"import"` reads several names at once.
+The **Netrc file** example (`examples/plugins/netrc-secrets`) is the
+whole pattern in one file.
+
 ## Captures
 
 A plugin can offer a quick capture: a small face that opens in its own
@@ -576,7 +622,7 @@ api.registerCanvasObject({
 
 ## The example plugins
 
-Mill's repository ships six working examples: **Bookmark**
+Mill's repository ships seven working examples: **Bookmark**
 (`examples/plugins/mill-bookmark`) — a web address pinned to the
 board, edited in place, opened through a guarded ask, with two
 declared settings — **Scribble** (`examples/plugins/mill-scribble`) —
@@ -595,8 +641,11 @@ anything from the network — and **Web clipper**
 guarded network door, extracts the article with Mozilla's Readability
 (vendored the same way), converts it through the SDK's convert door
 (`api.convert.htmlToMarkdown`), and saves it as a note through the
-guarded content door. Copy any folder into your plugins
-folder to try it, or use it as the starting point for your own.
+guarded content door — and **Netrc file**
+(`examples/plugins/netrc-secrets`), which turns the machines in a
+`.netrc` file into secrets Mill can reference. Copy any folder into
+your plugins folder to try it, or use it as the starting point for
+your own.
 
 ## Integrating a real tool
 

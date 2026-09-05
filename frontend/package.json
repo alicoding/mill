@@ -14,7 +14,7 @@
     "boundaries": "depcruise -c .dependency-cruiser.cjs src",
     "plugin:conform": "vitest run src/plugins/conformance.test.ts",
     "plugin:typecheck": "tsc -p tsconfig.plugins.json",
-    "plugin:lint": "cd .. && eslint --config frontend/eslint.plugins.config.js examples/plugins/*/main.js examples/plugins/*/steps.js",
+    "plugin:lint": "cd .. && eslint --config frontend/eslint.plugins.config.js examples/plugins/*/main.js examples/plugins/*/steps.js examples/plugins/*/secrets.js",
     "sdk:build": "tsc -p tsconfig.sdk.json && mv plugin-sdk/sdk.d.ts plugin-sdk/index.d.ts",
     "docs:sdk": "typedoc"
   },
@@ -36,7 +36,7 @@
     "@primer/octicons-react": "^19.33.0",
     "@primer/primitives": "^11.10.0",
     "@primer/react": "^38.37.0",
-    "@wailsio/runtime": "^3.0.0-beta.12",
+    "@wailsio/runtime": "^3.0.0-beta.15",
     "@xyflow/react": "^12.11.5",
     "anser": "^2.3.5",
     "copy-to-clipboard": "^4.0.2",

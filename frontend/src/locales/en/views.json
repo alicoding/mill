@@ -80,6 +80,7 @@
       "addsCommands": "Commands: {{list}}",
       "addsObjects": "Canvas objects: {{list}}",
       "addsSteps": "Workflow steps: {{list}}",
+      "addsSecretSources": "Secret sources: {{list}}",
       "addsViews": "Views: {{list}}",
       "addsCaptures": "Captures: {{list}}",
       "addsNothing": "Adds a canvas object.",

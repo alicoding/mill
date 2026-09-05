@@ -133,15 +133,6 @@ func (p *PluginService) fetchIndex(src MarketplaceSource) (MarketplaceIndex, err
 	return ParseIndex(raw)
 }
 
-func expandHome(p string) string {
-	if strings.HasPrefix(p, "~/") {
-		if home, err := os.UserHomeDir(); err == nil {
-			return filepath.Join(home, p[2:])
-		}
-	}
-	return p
-}
-
 // AddMarketplaceSource adds one source and reads its index once, so a
 // wrong address is refused while the user is still looking at the
 // field rather than silently listing nothing later.

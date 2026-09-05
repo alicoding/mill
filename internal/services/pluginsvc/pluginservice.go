@@ -87,6 +87,12 @@ type ManifestContributes struct {
 	// data files. Declared here because the picker lists them before
 	// any plugin code runs, and a theme needs no code at all.
 	Themes []ThemeContribution `json:"themes"`
+	// SecretSources (goal 0306 S4, pluginservice_secretsources.go): the
+	// stores this plugin can read secrets out of, implemented in
+	// secrets.js. Declared here because the Sources page's Kind picker
+	// lists them, and their path fields render, before any plugin code
+	// runs.
+	SecretSources []SecretSourceContribution `json:"secretSources"`
 	// Tools (docs/goals/0324): the automation-reachable surface --
 	// which of this plugin's commands, steps and reads an agent may
 	// call over MCP, each with its own typed input contract.
@@ -166,6 +172,12 @@ var knownCapabilities = map[string]bool{
 	// with confinement to the declared host on every hop; the plugin
 	// receives the response, never a socket.
 	"fetch": true,
+	// read-file (goal 0306 S4): a secret-source plugin's own
+	// secrets.js may read the file, or read and list inside the folder,
+	// the USER configured its source with -- nothing above it, nothing
+	// else on the machine, and no write. The plugin never holds a file
+	// handle; the host reads and hands back the bytes.
+	"read-file": true,
 	// write-content: create notes and cards and append List rows
 	// through the guarded content plane (docs/goals/0289) -- the same
 	// guard an agent's write takes, kind content.write.
@@ -314,6 +326,9 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 		info.Error = stepsFileProblem(dir, m)
 	}
 	if info.Error == "" {
+		info.Error = secretsFileProblem(dir, m)
+	}
+	if info.Error == "" {
 		if h, err := ContentHash(dir); err == nil {
 			info.ContentHash = h
 		}
@@ -354,7 +369,7 @@ func manifestProblem(m Manifest, folder string, mainJSExists bool, appVersion st
 			return fmt.Sprintf("unknown capability %q", c)
 		}
 	}
-	if problem := validateContributes(m.ID, m.Contributes); problem != "" {
+	if problem := validateContributes(m.ID, m.Capabilities, m.Contributes); problem != "" {
 		return problem
 	}
 	return checkMinMillVersion(m.MinMillVersion, appVersion)
