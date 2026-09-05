@@ -50,7 +50,7 @@ func TestValidate_JOSEEnabledWithoutPublicKey_Rejected(t *testing.T) {
 
 func TestValidate_JOSEEnabledWithPublicKey_Accepted(t *testing.T) {
 	r := valid()
-	r.JOSE = &JOSEConfig{Enabled: true, RecipientPublicKeyPEM: "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"}
+	r.JOSE = &JOSEConfig{Enabled: true, RecipientPublicKeyRef: "vault:public-key-entry"}
 	if err := Validate(r); err != nil {
 		t.Errorf("Validate with JOSE enabled and a recipient public key returned error: %v", err)
 	}

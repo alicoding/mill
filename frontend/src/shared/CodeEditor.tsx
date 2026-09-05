@@ -15,6 +15,9 @@ export interface CodeEditorProps {
   // Prose mode (goal 0145): no line numbers, UI font, and live-preview
   // markdown decorations -- for note-writing surfaces, not code.
   prose?: boolean
+  // Soft wrap, on unless a caller turns it off (goal 0326's Raw view
+  // owns a Wrap toggle).
+  wrap?: boolean
 }
 
 type CoreModule = typeof import('./codeEditorCore')
@@ -37,7 +40,7 @@ function loadCore() {
 // still loading -- or if it fails to load at all -- this renders a
 // plain textarea carrying the same value/onChange/aria-label, so the
 // field is never dead.
-export function CodeEditor({ value, onChange, language, ariaLabel, minHeightRows = 6, testId, placeholder, prose }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, language, ariaLabel, minHeightRows = 6, testId, placeholder, prose, wrap }: CodeEditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const viewRef = useRef<InstanceType<CoreModule['EditorView']> | null>(null)
   const syncingRef = useRef(false)
@@ -72,6 +75,7 @@ export function CodeEditor({ value, onChange, language, ariaLabel, minHeightRows
           minHeightRows,
           placeholderText: placeholder,
           prose,
+          wrap,
           onDocChange: onChange
             ? (next) => {
                 if (syncingRef.current) return
@@ -99,7 +103,7 @@ export function CodeEditor({ value, onChange, language, ariaLabel, minHeightRows
     // through the sync effect below via a targeted dispatch instead of
     // a remount (which would drop cursor/selection/undo history).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [core, language, editable, minHeightRows, placeholder, ariaLabel, prose])
+  }, [core, language, editable, minHeightRows, placeholder, ariaLabel, prose, wrap])
 
   // Controlled-component sync: an external value change (not caused by
   // the editor's own onChange) replaces the full document. Guarded by

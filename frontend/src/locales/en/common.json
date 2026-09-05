@@ -297,6 +297,12 @@
       "stop": "Stop run",
       "continue": "Continue",
       "step": "Step"
+    },
+    "output": {
+      "copy": "Copy output",
+      "find": "Find in output",
+      "toggleWrap": "Wrap output lines",
+      "openFull": "Open output in full"
     }
   },
   "menu": {
@@ -369,6 +375,34 @@
   "approvalValues": {
     "label": "Your input (optional)",
     "placeholder": "leave empty to keep the current value"
+  },
+  "output": {
+    "title": "Output",
+    "viewAriaLabel": "Output view",
+    "view": {
+      "tree": "Tree",
+      "table": "Table",
+      "raw": "Raw",
+      "log": "Log",
+      "rendered": "Rendered",
+      "source": "Source",
+      "error": "Error",
+      "media": "Media"
+    },
+    "copy": "Copy",
+    "copyPath": "Copy path",
+    "find": "Find",
+    "wrap": "Wrap",
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all",
+    "save": "Save…",
+    "openFull": "Open in full",
+    "empty": "No output.",
+    "details": "Details",
+    "detectedAs": "Detected as {{view}}",
+    "showingRows": "Showing {{shown}} of {{total}} rows",
+    "showAll": "Show all",
+    "parseFallback": "Couldn't parse as JSON. Showing raw."
   },
   "stopPausedRun": {
     "body": "Paused at {{step}}",

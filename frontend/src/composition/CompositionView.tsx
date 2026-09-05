@@ -20,6 +20,7 @@ import TestRunDialog from './TestRunDialog'
 import { workflowPayloadHint } from './triggerPayload'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
+import { OutputViewer } from '../shared/OutputViewer'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { WorkflowsTable } from './WorkflowsTable'
@@ -456,8 +457,10 @@ function CompositionView() {
             return (
               <div key={wf.ID} data-testid="workflow-run-result" data-workflow-id={wf.ID}>
                 <Text weight="semibold" size="small">{wf.Label}</Text>
-                {errors[wf.ID] && <Text as="p" size="small" className={styles.error}>{errors[wf.ID]}</Text>}
-                {results[wf.ID] !== undefined && !errors[wf.ID] && <pre className={styles.result}>{results[wf.ID]}</pre>}
+                {errors[wf.ID] && <OutputViewer value={errors[wf.ID]} shape="error" site="workflow-run-error" testId="workflow-run-error" />}
+                {results[wf.ID] !== undefined && !errors[wf.ID] && (
+                  <OutputViewer value={results[wf.ID]} title={wf.Label} site="workflow-run-result" testId="workflow-run-output" />
+                )}
               </div>
             )
           })}

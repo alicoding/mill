@@ -604,6 +604,38 @@
     "needs": null
   },
   {
+    "id": "output.copy",
+    "label": "Copy output",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "output.find",
+    "label": "Find in output",
+    "binding": "⌘F",
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "output.openFull",
+    "label": "Open output in full",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "output.toggleWrap",
+    "label": "Wrap output lines",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "palette.open",
     "label": "Open command palette",
     "binding": "⌘K",

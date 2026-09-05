@@ -11,7 +11,7 @@ import (
 
 func TestCreateAIProvider_ValidatesAndPersists(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	p, err := cfg.CreateAIProvider("My Provider", aiprovider.KindOpenAICompat, "http://localhost:11434", "llama3.2")
+	p, err := cfg.CreateAIProvider("My Provider", aiprovider.KindOpenAICompat, "http://localhost:11434", "llama3.2", "")
 	if err != nil {
 		t.Fatalf("CreateAIProvider returned error: %v", err)
 	}
@@ -32,29 +32,31 @@ func TestCreateAIProvider_ValidatesAndPersists(t *testing.T) {
 
 func TestCreateAIProvider_InvalidRejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if _, err := cfg.CreateAIProvider("", aiprovider.KindOpenAICompat, "http://localhost:11434", "llama3.2"); err == nil {
+	if _, err := cfg.CreateAIProvider("", aiprovider.KindOpenAICompat, "http://localhost:11434", "llama3.2", ""); err == nil {
 		t.Fatal("CreateAIProvider with an empty label returned nil error, want an error")
 	}
-	if _, err := cfg.CreateAIProvider("x", aiprovider.KindOpenAICompat, "", "llama3.2"); err == nil {
+	if _, err := cfg.CreateAIProvider("x", aiprovider.KindOpenAICompat, "", "llama3.2", ""); err == nil {
 		t.Fatal("CreateAIProvider (openai-compatible) with an empty base URL returned nil error, want an error")
 	}
 }
 
 func TestUpdateAIProvider_UnknownID_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if _, err := cfg.UpdateAIProvider("does-not-exist", "New label", aiprovider.KindOpenAICompat, "http://localhost:11434", "llama3.2"); err == nil {
+	if _, err := cfg.UpdateAIProvider("does-not-exist", "New label", aiprovider.KindOpenAICompat, "http://localhost:11434", "llama3.2", ""); err == nil {
 		t.Fatal("UpdateAIProvider with an unknown id returned nil error, want an error")
 	}
 }
 
-func TestDeleteAIProvider_RemovesItAndItsSecret(t *testing.T) {
+// A deleted provider takes its KEY REFERENCE with it and leaves the
+// stored entry alone (goal 0306): deleting the last thing pointing at
+// a credential is not consent to destroy the credential.
+func TestDeleteAIProvider_RemovesItAndLeavesTheStoredKey(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	p, err := cfg.CreateAIProvider("My Provider", aiprovider.KindAnthropic, "", "claude-sonnet-4-5")
+	secrets := secretStoreOf(t, cfg)
+	ref := secrets.Put("My Provider: API key", "sk-ant-test")
+	p, err := cfg.CreateAIProvider("My Provider", aiprovider.KindAnthropic, "", "claude-sonnet-4-5", ref)
 	if err != nil {
 		t.Fatalf("CreateAIProvider returned error: %v", err)
-	}
-	if err := cfg.SetAIProviderSecret(p.ID, "sk-ant-test"); err != nil {
-		t.Fatalf("SetAIProviderSecret: %v", err)
 	}
 	if err := cfg.DeleteAIProvider(p.ID); err != nil {
 		t.Fatalf("DeleteAIProvider returned error: %v", err)
@@ -67,11 +69,14 @@ func TestDeleteAIProvider_RemovesItAndItsSecret(t *testing.T) {
 	if _, err := cfg.resolveAIProvider(p.ID); err == nil {
 		t.Error("resolveAIProvider found a provider after it was deleted")
 	}
+	if secrets.Len() != 1 {
+		t.Errorf("secret store holds %d entries after deleting the provider that named one, want the entry left alone", secrets.Len())
+	}
 }
 
 func TestResolveAIProvider_NoSecretConfigured_EmptyAPIKey(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	p, err := cfg.CreateAIProvider("Local Ollama", aiprovider.KindOpenAICompat, "http://localhost:11434", "llama3.2")
+	p, err := cfg.CreateAIProvider("Local Ollama", aiprovider.KindOpenAICompat, "http://localhost:11434", "llama3.2", "")
 	if err != nil {
 		t.Fatalf("CreateAIProvider returned error: %v", err)
 	}
@@ -87,38 +92,51 @@ func TestResolveAIProvider_NoSecretConfigured_EmptyAPIKey(t *testing.T) {
 	}
 }
 
-func TestResolveAIProvider_SecretRoundTrips(t *testing.T) {
+// A provider's key is resolved from the entry it NAMES, and clearing
+// the reference stops resolving one -- the entry itself is untouched.
+func TestResolveAIProvider_KeyResolvesThroughItsReference(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	p, err := cfg.CreateAIProvider("OpenAI", aiprovider.KindOpenAICompat, "https://api.openai.com", "gpt-4o-mini")
+	ref := secretStoreOf(t, cfg).Put("OpenAI: API key", "sk-test-123")
+	p, err := cfg.CreateAIProvider("OpenAI", aiprovider.KindOpenAICompat, "https://api.openai.com", "gpt-4o-mini", ref)
 	if err != nil {
 		t.Fatalf("CreateAIProvider returned error: %v", err)
-	}
-	if err := cfg.SetAIProviderSecret(p.ID, "sk-test-123"); err != nil {
-		t.Fatalf("SetAIProviderSecret: %v", err)
 	}
 	rp, err := cfg.resolveAIProvider(p.ID)
 	if err != nil {
 		t.Fatalf("resolveAIProvider returned error: %v", err)
 	}
 	if rp.APIKey != "sk-test-123" {
-		t.Errorf("APIKey = %q, want the secret just set", rp.APIKey)
+		t.Errorf("APIKey = %q, want the value of the entry the provider names", rp.APIKey)
 	}
 
-	if err := cfg.DeleteAIProviderSecret(p.ID); err != nil {
-		t.Fatalf("DeleteAIProviderSecret: %v", err)
+	if _, err := cfg.UpdateAIProvider(p.ID, p.Label, p.Kind, p.BaseURL, p.Model, ""); err != nil {
+		t.Fatalf("UpdateAIProvider clearing the key reference: %v", err)
 	}
 	rp2, err := cfg.resolveAIProvider(p.ID)
 	if err != nil {
 		t.Fatalf("resolveAIProvider returned error: %v", err)
 	}
 	if rp2.APIKey != "" {
-		t.Errorf("APIKey = %q after DeleteAIProviderSecret, want empty", rp2.APIKey)
+		t.Errorf("APIKey = %q after clearing the reference, want empty", rp2.APIKey)
+	}
+}
+
+// A reference naming an entry the store does not hold is an error the
+// reader can act on, never a silently empty credential.
+func TestResolveAIProvider_ReferenceToAMissingEntry_Errors(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	p, err := cfg.CreateAIProvider("Gone", aiprovider.KindOpenAICompat, "https://api.example.com", "m", "vault:no-such-entry")
+	if err != nil {
+		t.Fatalf("CreateAIProvider returned error: %v", err)
+	}
+	if _, err := cfg.resolveAIProvider(p.ID); err == nil {
+		t.Fatal("resolveAIProvider with a reference to a missing entry returned nil error, want an error")
 	}
 }
 
 func TestResolveAIProvider_BlankAnthropicBaseURLDefaultsToRealHost(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	p, err := cfg.CreateAIProvider("Claude", aiprovider.KindAnthropic, "", "claude-sonnet-4-5")
+	p, err := cfg.CreateAIProvider("Claude", aiprovider.KindAnthropic, "", "claude-sonnet-4-5", "")
 	if err != nil {
 		t.Fatalf("CreateAIProvider returned error: %v", err)
 	}
@@ -160,17 +178,15 @@ func TestSeededAIProvider_PresentOnFreshInstall(t *testing.T) {
 
 // TestExportImportAIProvider_FreshImportNeverCarriesASecret covers
 // ADR-0036 decision 3's create paths (no id, and an id unknown here):
-// ExportAIProvider never puts the secret on the wire, so a newly
-// created provider -- at a fresh id or a preserved-but-locally-unknown
-// one -- never has one set either.
+// an export carries the provider's key REFERENCE, never the key, so
+// the value itself never reaches the wire even when the entry it names
+// exists locally.
 func TestExportImportAIProvider_FreshImportNeverCarriesASecret(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	p, err := cfg.CreateAIProvider("BYO endpoint", aiprovider.KindOpenAICompat, "http://localhost:1234", "custom-model")
+	ref := secretStoreOf(t, cfg).Put("BYO endpoint: API key", "should-never-export")
+	p, err := cfg.CreateAIProvider("BYO endpoint", aiprovider.KindOpenAICompat, "http://localhost:1234", "custom-model", ref)
 	if err != nil {
 		t.Fatalf("CreateAIProvider returned error: %v", err)
-	}
-	if err := cfg.SetAIProviderSecret(p.ID, "should-never-export"); err != nil {
-		t.Fatalf("SetAIProviderSecret: %v", err)
 	}
 
 	data, err := cfg.ExportAIProvider(p.ID)
@@ -197,24 +213,23 @@ func TestExportImportAIProvider_FreshImportNeverCarriesASecret(t *testing.T) {
 	if imported.Label != p.Label || imported.BaseURL != p.BaseURL || imported.Model != p.Model {
 		t.Errorf("imported provider %+v doesn't match the original's content", imported)
 	}
-	if rp, err := cfg.resolveAIProvider(imported.ID); err != nil || rp.APIKey != "" {
-		t.Errorf("imported provider has a non-empty secret (APIKey=%q, err=%v), want none set", rp.APIKey, err)
+	if rp, err := cfg.resolveAIProvider(imported.ID); err != nil || rp.APIKey != "should-never-export" {
+		t.Errorf("imported provider resolves APIKey=%q (err=%v) -- the reference travelled and resolves against this device's own store", rp.APIKey, err)
 	}
 }
 
 // TestExportImportAIProvider_UpdateInPlace_PreservesTheExistingSecret
 // covers decision 3's third case: an id matching a local provider
-// updates it through UpdateAIProvider, which never touches the
-// keychain -- re-importing a provider's config (e.g. after editing it
-// on another machine) must never silently wipe its stored credential.
+// updates it in place, and the round trip preserves which entry its
+// key comes from -- re-importing a provider's config (e.g. after
+// editing it on another machine) must never silently unname its
+// credential.
 func TestExportImportAIProvider_UpdateInPlace_PreservesTheExistingSecret(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	p, err := cfg.CreateAIProvider("BYO endpoint", aiprovider.KindOpenAICompat, "http://localhost:1234", "custom-model")
+	ref := secretStoreOf(t, cfg).Put("BYO endpoint: API key", "keep-me")
+	p, err := cfg.CreateAIProvider("BYO endpoint", aiprovider.KindOpenAICompat, "http://localhost:1234", "custom-model", ref)
 	if err != nil {
 		t.Fatalf("CreateAIProvider returned error: %v", err)
-	}
-	if err := cfg.SetAIProviderSecret(p.ID, "keep-me"); err != nil {
-		t.Fatalf("SetAIProviderSecret: %v", err)
 	}
 
 	data, err := cfg.ExportAIProvider(p.ID)

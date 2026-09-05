@@ -211,7 +211,8 @@
     "workflow": "Workflow",
     "integration": "Integration",
     "newWorkflow": "New workflow",
-    "newIntegration": "New integration"
+    "newIntegration": "New integration",
+    "output": "Output"
   },
   "workTabShell": {
     "openWorkAriaLabel": "Open work",
@@ -345,7 +346,6 @@
       "loading": "Finishing up…",
       "succeededTitle": "Finished",
       "failedTitle": "Failed",
-      "noOutput": "(no output)",
       "saved": "Saved to Activity. Browse it there anytime.",
       "copyFailedTitle": "Couldn't copy the result",
       "copy": "Copy result",

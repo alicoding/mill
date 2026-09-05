@@ -61,7 +61,7 @@ func TestUpdateHTTPRequest_SetsModifiedLatch(t *testing.T) {
 	cfg, _ := newConfigureHarness(t)
 	id := httprequest.ExampleNoneID
 
-	updated, err := cfg.UpdateHTTPRequest(id, "Edited", "https://example.com", "GET", "", httprequest.AuthNone, nil, "", nil, nil, "edited")
+	updated, err := cfg.UpdateHTTPRequest(id, "Edited", "https://example.com", "GET", "", httprequest.AuthNone, "", nil, "", nil, nil, "edited")
 	if err != nil {
 		t.Fatalf("UpdateHTTPRequest: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestReconcileBuiltInRequests_ModifiedEntryLeftAlone(t *testing.T) {
 	cfg, store := newConfigureHarness(t)
 	id := httprequest.ExampleNoneID
 
-	if _, err := cfg.UpdateHTTPRequest(id, "User's own edit", "https://example.com", "GET", "", httprequest.AuthNone, nil, "", nil, nil, ""); err != nil {
+	if _, err := cfg.UpdateHTTPRequest(id, "User's own edit", "https://example.com", "GET", "", httprequest.AuthNone, "", nil, "", nil, nil, ""); err != nil {
 		t.Fatalf("UpdateHTTPRequest: %v", err)
 	}
 
@@ -121,7 +121,7 @@ func TestResetHTTPRequestToSeed_ClearsModifiedLatch(t *testing.T) {
 	id := httprequest.ExampleNoneID
 	golden, _ := findGoldenRequest(id)
 
-	if _, err := cfg.UpdateHTTPRequest(id, "User's own edit", "https://example.com", "GET", "", httprequest.AuthNone, nil, "", nil, nil, ""); err != nil {
+	if _, err := cfg.UpdateHTTPRequest(id, "User's own edit", "https://example.com", "GET", "", httprequest.AuthNone, "", nil, "", nil, nil, ""); err != nil {
 		t.Fatalf("UpdateHTTPRequest: %v", err)
 	}
 

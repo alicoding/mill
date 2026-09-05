@@ -13,6 +13,7 @@ import { LIST_PAGE_SIZE, clampPage, listCountLabel, pageCountFor, pageItems } fr
 import { useListState } from '../shared/useListState'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
+import { OutputViewer } from '../shared/OutputViewer'
 
 function sourceLabelFor(t: (key: string) => string): Record<ActivitySource, string> {
   return {
@@ -296,7 +297,7 @@ function ActivityView() {
             <Text size="small" weight="semibold">{entry.label} — {entry.time}</Text>
             <IconButton icon={XIcon} aria-label={t('activityView.closeAriaLabel')} size="small" variant="invisible" onClick={() => toggle(entry.id)} />
           </Stack>
-          <pre className={styles.result}>{entry.result}</pre>
+          <OutputViewer value={entry.result} title={entry.label} site="activity-detail" testId="activity-detail-output" />
         </div>
       ))}
 

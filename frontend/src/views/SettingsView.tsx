@@ -76,7 +76,7 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
   const title = t(SETTINGS_GROUPS.find((g) => g.id === group)?.titleKey ?? 'settings.title')
 
   return (
-    <PageContainer variant="narrow" data-testid="settings-view">
+    <PageContainer variant="wide" data-testid="settings-view">
       <div className={isNarrowViewport ? styles.layoutNarrow : styles.layout}>
         <SettingsGroupNav activeId={group} onSelect={select} />
         <div
