@@ -21,6 +21,15 @@ import * as composition$0 from "../../domain/composition/models.js";
 import * as $models from "./models.js";
 
 /**
+ * AddMarketplaceSource adds one source and reads its index once, so a
+ * wrong address is refused while the user is still looking at the
+ * field rather than silently listing nothing later.
+ */
+export function AddMarketplaceSource(input: string): $CancellablePromise<$models.MarketplaceSource> {
+    return $Call.ByID(2765695395, input);
+}
+
+/**
  * AssetMiddleware serves GET /plugins/<id>/<file> from the scanned
  * plugins directory (built-in plugins serve from the embedded bundle
  * behind it -- the same shadowing rule resolvePlugin applies) and
@@ -28,6 +37,15 @@ import * as $models from "./models.js";
  */
 export function AssetMiddleware(): $CancellablePromise<any> {
     return $Call.ByID(3587145368);
+}
+
+/**
+ * BrowseMarketplaces lists every cached index's entries plus Mill's
+ * own bundled examples, sorted by marketplace then name. Reads only
+ * what is already on disk: opening Browse never fetches.
+ */
+export function BrowseMarketplaces(): $CancellablePromise<$models.BrowseEntry[] | null> {
+    return $Call.ByID(3648359538);
 }
 
 /**
@@ -45,6 +63,21 @@ export function Captures(): $CancellablePromise<$models.PluginCapture[] | null> 
  */
 export function ContentHashOf(id: string): $CancellablePromise<string> {
     return $Call.ByID(3013757580, id);
+}
+
+/**
+ * ContributionKindsFor answers one installed plugin's filled families,
+ * so the list can filter by them without re-deriving the rule.
+ */
+export function ContributionKindsFor(id: string): $CancellablePromise<string[] | null> {
+    return $Call.ByID(1699212088, id);
+}
+
+/**
+ * ContributionVocabulary is the bound form of ContributionKindNames.
+ */
+export function ContributionVocabulary(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(2126103322);
 }
 
 /**
@@ -77,11 +110,35 @@ export function FetchForPlugin(pluginID: string, req: $models.PluginFetchRequest
 }
 
 /**
+ * InstallFromLink installs from whatever the user pasted: a
+ * repository, an archive address, or a folder on this Mac.
+ */
+export function InstallFromLink(input: string): $CancellablePromise<$models.InstallRecord> {
+    return $Call.ByID(2627079723, input);
+}
+
+/**
+ * InstallFromMarketplace installs one index entry.
+ */
+export function InstallFromMarketplace(marketplace: string, id: string): $CancellablePromise<$models.InstallRecord> {
+    return $Call.ByID(4085175482, marketplace, id);
+}
+
+/**
  * ListDirForPlugin lists dir for pluginID under the "list-files"
  * capability.
  */
 export function ListDirForPlugin(pluginID: string, dir: string): $CancellablePromise<$models.PluginListDirResult> {
     return $Call.ByID(3623751117, pluginID, dir);
+}
+
+/**
+ * ListMarketplaceSources answers the sources the user added, oldest
+ * first. Mill's own bundled examples are not one of them -- they need
+ * no source and cannot be removed.
+ */
+export function ListMarketplaceSources(): $CancellablePromise<$models.MarketplaceSource[] | null> {
+    return $Call.ByID(416375847);
 }
 
 /**
@@ -102,6 +159,58 @@ export function ListPlugins(): $CancellablePromise<$models.PluginInfo[] | null> 
  */
 export function PluginsDir(): $CancellablePromise<string> {
     return $Call.ByID(1345088799);
+}
+
+/**
+ * PreviewInstall answers the prompt's contents for a marketplace
+ * entry. It reads only the cached index -- previewing never downloads.
+ */
+export function PreviewInstall(marketplace: string, id: string): $CancellablePromise<$models.InstallPreview> {
+    return $Call.ByID(611162871, marketplace, id);
+}
+
+/**
+ * PreviewInstalled answers the same "what it can do" list for a plugin
+ * already on disk -- the Verification tab shows exactly what the
+ * install prompt showed.
+ */
+export function PreviewInstalled(id: string): $CancellablePromise<$models.InstallPreview> {
+    return $Call.ByID(3921789238, id);
+}
+
+/**
+ * ReadMarketplaceDoc answers the overview a Browse row shows before
+ * installing. Only the bundled examples can answer it without a
+ * download; every other entry falls back to its index description.
+ */
+export function ReadMarketplaceDoc(marketplace: string, id: string): $CancellablePromise<string> {
+    return $Call.ByID(2684134419, marketplace, id);
+}
+
+/**
+ * ReadPluginDoc returns an installed plugin's overview or changelog,
+ * or "" when it ships neither -- an absent document is a normal state
+ * the tab states in words, never an error.
+ */
+export function ReadPluginDoc(id: string, name: string): $CancellablePromise<string> {
+    return $Call.ByID(947921979, id, name);
+}
+
+/**
+ * RefreshMarketplaceSources re-reads every source's index. A source
+ * that cannot be read keeps the index it had, and its reason is
+ * returned -- one unreachable host never empties the whole tab.
+ */
+export function RefreshMarketplaceSources(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(946746504);
+}
+
+/**
+ * RemoveMarketplaceSource drops one source and its cached index.
+ * Extensions already installed from it stay installed.
+ */
+export function RemoveMarketplaceSource(name: string): $CancellablePromise<void> {
+    return $Call.ByID(1307149838, name);
 }
 
 /**

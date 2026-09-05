@@ -20,6 +20,7 @@ export function pageLabelFor(view: View, capabilities: { ID: string; Label: stri
     case 'settings': return t('pageMeta.settings')
     case 'docs': return t('pageMeta.docs')
     case 'secrets': return t('pageMeta.secrets')
+    case 'extensions': return t('pageMeta.extensions')
     case 'placeholder': {
       const cap = capabilities.find((c) => c.ID === view.capabilityId)
       return cap ? (cap.NavLabel || cap.Label) : t('pageMeta.overview')
@@ -41,6 +42,7 @@ export function pageIconFor(view: View): ReactNode {
     : view.kind === 'review' ? 'capability-review'
     : view.kind === 'docs' ? 'capability-docs'
     : view.kind === 'secrets' ? 'capability-secrets'
+    : view.kind === 'extensions' ? 'capability-extensions'
     : null
   const PageIcon = key ? CAPABILITY_ICON[key] : undefined
   if (!PageIcon) return undefined
