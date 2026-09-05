@@ -12,6 +12,7 @@ import { optionColor } from '../shared/projectionColors'
 import { markdownSnippet } from './markdownSnippet'
 import { resolveUnit } from './atlasUnits'
 import { UnitRenderSlot } from './UnitRenderSlot'
+import { CAPTURE_EXCLUDE_ATTRIBUTE } from './atlasImageExport'
 import styles from './AtlasNoteCardNode.module.css'
 import slotStyles from './AtlasSlotRows.module.css'
 import type { PointerEvent as ReactPointerEvent } from 'react'
@@ -124,7 +125,10 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data, selecte
           .card's own header row. Deliberately empty of content beyond
           the "Zoom ⤢" chip -- .card's own frontHeader (glyph/kindLabel/
           file tag) stays put, since several specs locate
-          atlas-note-file-tag as a DESCENDANT of atlas-note-card. */}
+          atlas-note-file-tag as a DESCENDANT of atlas-note-card. The
+          chip itself is an affordance, not content, so it carries
+          CAPTURE_EXCLUDE_ATTRIBUTE and drops out of an exported
+          picture (goal 0201 follow-up). */}
       <div
         className={styles.drillDoor}
         role="button"
@@ -139,7 +143,7 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data, selecte
           }
         }}
       >
-        <span className={styles.zoomChip}>{t('board.zoomChip')}</span>
+        <span className={styles.zoomChip} {...{ [CAPTURE_EXCLUDE_ATTRIBUTE]: '' }}>{t('board.zoomChip')}</span>
       </div>
       <div
         className={`${styles.card}${slotDragHighlight ? ` ${slotStyles.slotTargetHighlight}` : ''}`}
