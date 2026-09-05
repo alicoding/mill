@@ -34,6 +34,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	if err := regenerateMaturityLedger(root); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	for name, gen := range map[string]func(string) (string, error){
 		"llms.txt":      docsgen.GenerateLLMSTxt,
 		"llms-full.txt": docsgen.GenerateLLMSFullTxt,
@@ -138,6 +142,27 @@ func regenerateGuideQuotes(docsRoot string) error {
 		if err := os.WriteFile(q.pagePath, []byte(updated), 0o600); err != nil { // #nosec G703 -- same fixed path as the read above
 			return fmt.Errorf("write %s: %w", q.pagePath, err)
 		}
+	}
+	return nil
+}
+
+// regenerateMaturityLedger writes the plugin API maturity ledger
+// wholesale (goal 0348) -- both the reference page and its JSON twin,
+// computed from repoRoot's own tree (not docsRoot, which only names
+// userdocs/ -- the ledger reads pluginsvc/examples/e2e/git history
+// across the whole repo).
+func regenerateMaturityLedger(docsRoot string) error {
+	repoRoot := filepath.Join(docsRoot, "..")
+	md := docsgen.GenerateMaturityMarkdown(repoRoot)
+	if err := os.WriteFile(filepath.Join(docsRoot, "reference", "plugin-api-maturity.md"), []byte(md), 0o600); err != nil {
+		return fmt.Errorf("write plugin-api-maturity.md: %w", err)
+	}
+	out, err := docsgen.GenerateMaturityJSON(repoRoot)
+	if err != nil {
+		return fmt.Errorf("generate plugin-api-maturity.json: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(docsRoot, "reference", "plugin-api-maturity.json"), []byte(out), 0o600); err != nil {
+		return fmt.Errorf("write plugin-api-maturity.json: %w", err)
 	}
 	return nil
 }
