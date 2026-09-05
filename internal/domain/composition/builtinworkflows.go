@@ -2,6 +2,7 @@ package composition
 
 import (
 	"github.com/alicoding/mill/internal/domain/decision"
+	"github.com/alicoding/mill/internal/domain/environment"
 	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
@@ -29,7 +30,7 @@ func BuiltInWorkflows() []Workflow {
 	guardedNodes, err := ResolveNodeDefaults([]Node{
 		{ID: guardedTriggerID, NodeTypeID: "trigger-manual", Position: Position{X: 0, Y: 0}},
 		{ID: guardedHTTPID, NodeTypeID: "integration-http", Position: Position{X: 0, Y: 100},
-			Config: map[string]string{"requestId": httprequest.ExampleNoneID}},
+			Config: map[string]string{"requestId": httprequest.ExampleEnvironmentID}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
@@ -303,13 +304,14 @@ func BuiltInWorkflows() []Workflow {
 		{
 			ID:          "example-guarded-http-workflow",
 			Label:       "Post an update to the client portal",
-			Description: "Parks for your approval, then posts an engagement update to the client portal.",
+			Description: "Parks for your approval, then posts an engagement update to the client portal. The address it posts to comes from the environment the run selects, not from the step.",
 			Nodes:       guardedNodes,
 			Edges: []Edge{
 				{ID: "example-guarded-e0", Source: guardedTriggerID, Target: guardedHTTPID},
 			},
-			BuiltIn: true,
-			Seed:    seedorigin.Stamp(4),
+			BuiltIn:              true,
+			DefaultEnvironmentID: environment.ExampleSandboxID,
+			Seed:                 seedorigin.Stamp(5),
 		},
 		{
 			ID:          "example-review-workflow",

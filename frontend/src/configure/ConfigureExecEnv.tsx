@@ -20,6 +20,7 @@ import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { AdvancedDisclosure } from './AdvancedDisclosure'
+import { EntityRefField } from './EntityRefField'
 import { ConfigureEntityPage } from './ConfigureEntityPage'
 import { useSeedLifecycle } from './useSeedLifecycle'
 import { useEntityImportExport } from './useEntityImportExport'
@@ -85,6 +86,7 @@ export function ConfigureExecEnv() {
   const [shell, setShell] = useState<Shell>(Shell.ShellZsh)
   const [profileMode, setProfileMode] = useState<ProfileMode>(ProfileMode.ProfileClean)
   const [dir, setDir] = useState(TEMP_DIR_SENTINEL)
+  const [environmentID, setEnvironmentID] = useState('')
   const [envRows, setEnvRows] = useState<EnvRow[]>([])
   const [formOpen, setFormOpen] = useState(false)
   const [capturing, setCapturing] = useState(false)
@@ -117,6 +119,7 @@ export function ConfigureExecEnv() {
     setShell(Shell.ShellZsh)
     setProfileMode(ProfileMode.ProfileClean)
     setDir(TEMP_DIR_SENTINEL)
+    setEnvironmentID('')
     setEnvRows([{ key: '', value: '' }])
     setFormOpen(true)
     setError('')
@@ -140,6 +143,7 @@ export function ConfigureExecEnv() {
     setShell(e.Shell)
     setProfileMode(e.ProfileMode)
     setDir(e.Dir)
+    setEnvironmentID(e.EnvironmentID ?? '')
     setEnvRows(envToRows(e.Env))
     setFormOpen(true)
     setError('')
@@ -161,9 +165,9 @@ export function ConfigureExecEnv() {
     try {
       const env = rowsToEnv(envRows)
       if (editingID) {
-        await ConfigureService.UpdateExecEnv(editingID, label, shell, profileMode, dir, env)
+        await ConfigureService.UpdateExecEnv(editingID, label, shell, profileMode, dir, env, environmentID)
       } else {
-        await ConfigureService.CreateExecEnv(label, shell, profileMode, dir, env)
+        await ConfigureService.CreateExecEnv(label, shell, profileMode, dir, env, environmentID)
       }
       setFormOpen(false)
       refetch()
@@ -281,6 +285,14 @@ export function ConfigureExecEnv() {
             <FormControl.Label>{t('configureExecEnv.workingDirectory')}</FormControl.Label>
             <FormControl.Caption>{t('configureExecEnv.workingDirectoryCaption', { sentinel: TEMP_DIR_SENTINEL })}</FormControl.Caption>
             <TextInput value={dir} onChange={(e) => setDir(e.target.value)} block />
+          </FormControl>
+          {/* goal 0306 S5: a shell can borrow a shared Environment's
+              variables instead of restating them; its own entries below
+              still win on a shared name. */}
+          <FormControl>
+            <FormControl.Label>{t('configureEnvironments.environmentFromLabel')}</FormControl.Label>
+            <FormControl.Caption>{t('configureEnvironments.environmentFromCaption')}</FormControl.Caption>
+            <EntityRefField refKind="environment" value={environmentID} onChange={setEnvironmentID} />
           </FormControl>
           <Text size="small" weight="semibold">{t('configureExecEnv.environmentVariables')}</Text>
           <FormControl.Caption>{t('configureExecEnv.environmentVariablesCaption')}</FormControl.Caption>

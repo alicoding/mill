@@ -302,6 +302,8 @@
     "versions": "Versions"
   },
   "testRunDialog": {
+    "environment": "Environment",
+    "environmentCaption": "Which stage this run targets.",
     "title": "Test run: {{label}}",
     "cancel": "Cancel",
     "run": "Run",
@@ -326,6 +328,8 @@
     "keepMyDraft": "Keep my draft"
   },
   "canvasMetaHeader": {
+    "environmentLabel": "Environment",
+    "environmentCaption": "Which stage runs target unless a run picks another.",
     "labelAriaLabel": "Label",
     "labelPlaceholder": "My workflow",
     "hideDetails": "Hide details",
@@ -477,6 +481,12 @@
   "runStateDock": {
     "pausedAt": "Paused at {{step}}",
     "pausedAtBreakpoint": "Paused at breakpoint: {{step}}"
+  },
+  "workflowEnvironment": {
+    "none": "None",
+    "noneDescription": "Runs substitute nothing, so a step that names a variable fails before it starts.",
+    "optionDescription": "Runs substitute {{label}}'s variables.",
+    "noun": "environment"
   },
   "workflowOffer": {
     "nowhere": "Nowhere",

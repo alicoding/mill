@@ -576,6 +576,38 @@
     "needs": "entity"
   },
   {
+    "id": "configure.environment.delete",
+    "label": "Delete",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.environment.duplicate",
+    "label": "Duplicate",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.environment.export",
+    "label": "Export",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.environment.reset",
+    "label": "Reset to shipped example",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
     "id": "configure.execenv.delete",
     "label": "Delete",
     "binding": null,
@@ -688,8 +720,16 @@
     "needs": null
   },
   {
-    "id": "configure.new.execenvs",
+    "id": "configure.new.environments",
     "label": "New environment",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.new.execenvs",
+    "label": "New execution environment",
     "binding": null,
     "surface": null,
     "enabled": false,

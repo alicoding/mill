@@ -508,6 +508,56 @@
         "outputs"
       ]
     },
+    "environment": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "mill://schema/environment/v1",
+      "$defs": {
+        "Variable": {
+          "properties": {
+            "Key": {
+              "type": "string"
+            },
+            "Value": {
+              "type": "string"
+            },
+            "Secret": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "Key",
+            "Value",
+            "Secret"
+          ]
+        }
+      },
+      "properties": {
+        "schema": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "vars": {
+          "items": {
+            "$ref": "#/$defs/Variable"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schema",
+        "label",
+        "vars"
+      ]
+    },
     "execenv": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "mill://schema/execenv/v1",
@@ -535,6 +585,9 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "environmentId": {
+          "type": "string"
         }
       },
       "additionalProperties": false,
@@ -847,6 +900,9 @@
           "type": "integer"
         },
         "kind": {
+          "type": "string"
+        },
+        "environmentLabel": {
           "type": "string"
         },
         "startedAt": {
@@ -6611,6 +6667,7 @@
       "mill://schema/aiprovider/v1",
       "mill://schema/atlas/v1",
       "mill://schema/decision/v1",
+      "mill://schema/environment/v1",
       "mill://schema/execenv/v1",
       "mill://schema/list/v1",
       "mill://schema/mcpserver/v1",
