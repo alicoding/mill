@@ -138,7 +138,7 @@ func newClientCertService(t *testing.T) (*ConfigureService, func(title, value, k
 	t.Cleanup(func() { httpconnector.SetClientTLS(nil) })
 	return cfg, func(title, value, kind string) string {
 		t.Helper()
-		entry, err := secrets.CreateSecret(title, "", value, "", "", "", kind, "")
+		entry, err := secrets.CreateSecret(title, "", value, "", "", nil, kind, "", nil)
 		if err != nil {
 			t.Fatalf("CreateSecret(%q): %v", title, err)
 		}
@@ -212,11 +212,11 @@ func TestClientCertificate_ResolutionRecordsOneAuditLinePerRead(t *testing.T) {
 	httpconnector.SetClientTLS(cfg)
 	t.Cleanup(func() { httpconnector.SetClientTLS(nil) })
 	_, certPEM, keyPEM := ca.issueLeaf(t, "mill-client", true, time.Now().Add(24*time.Hour))
-	certEntry, err := secrets.CreateSecret("cert", "", string(certPEM), "", "", "", "certificate", "")
+	certEntry, err := secrets.CreateSecret("cert", "", string(certPEM), "", "", nil, "certificate", "", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
-	keyEntry, err := secrets.CreateSecret("key", "", string(keyPEM), "", "", "", "key", "")
+	keyEntry, err := secrets.CreateSecret("key", "", string(keyPEM), "", "", nil, "key", "", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}

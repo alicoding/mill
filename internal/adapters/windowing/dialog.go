@@ -78,6 +78,28 @@ func PickDiagramFile(title string) (string, error) {
 	return path, nil
 }
 
+// PickCSVFile opens the native file picker filtered to comma-separated
+// files, returning the chosen path -- "" with a nil error when the user
+// cancels. Returns an error when no live app exists. Same
+// display-only-filter caveat PickImageFile carries: a caller must still
+// validate the returned extension.
+func PickCSVFile(title string) (string, error) {
+	app := application.Get()
+	if app == nil {
+		return "", fmt.Errorf("file picker unavailable outside the desktop app")
+	}
+	dialog := app.Dialog.OpenFile().
+		CanChooseFiles(true).
+		CanChooseDirectories(false).
+		SetTitle(title).
+		AddFilter("Comma-separated values", "*.csv")
+	path, err := dialog.PromptForSingleSelection()
+	if err != nil {
+		return "", fmt.Errorf("pick export file: %w", err)
+	}
+	return path, nil
+}
+
 // SaveFileDialog prompts the OS-native save dialog pre-filled with
 // suggestedName, returning the chosen path -- "" with a nil error when
 // the user cancels. Returns an error when no live app exists.

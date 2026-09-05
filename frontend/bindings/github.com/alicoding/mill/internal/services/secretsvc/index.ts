@@ -7,6 +7,8 @@ export {
 };
 
 export type {
+    DotenvFound,
+    ImportPreview,
     ListSecretAccessRequest,
     ListSecretAccessResponse,
     SecretAccessRecord,
