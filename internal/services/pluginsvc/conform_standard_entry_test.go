@@ -11,8 +11,8 @@ import (
 
 const entryPage = `<!doctype html><html><head><link rel="stylesheet" href="view.css"></head><body><script src="view.js"></script></body></html>`
 
-func viewEntryManifest(id, entry string) string {
-	return validIconManifest(id, "Entry probe", `"contributes":{"views":[{"id":"panel","title":"Panel","entry":"`+entry+`"}]}`)
+func viewEntryManifest(id string) string {
+	return validIconManifest(id, "Entry probe", `"contributes":{"views":[{"id":"panel","title":"Panel","entry":"view.html"}]}`)
 }
 
 func TestValidateViews_EntryMustBeHTML(t *testing.T) {
@@ -58,7 +58,7 @@ func TestEntryFileProblem_MissingPageBlocksTheLoad(t *testing.T) {
 
 func TestScanOne_MissingEntryPageIsALoadProblem(t *testing.T) {
 	root := t.TempDir()
-	dir := writeConformPlugin(t, root, "entryless", viewEntryManifest("entryless", "view.html"), map[string]string{"main.js": "export function activate() {}"})
+	dir := writeConformPlugin(t, root, "entryless", viewEntryManifest("entryless"), map[string]string{"main.js": "export function activate() {}"})
 	writeTestIcon(t, dir)
 	svc := &PluginService{dir: root}
 	if got := svc.scanOne("entryless").Error; got != `view "panel" entry "view.html" is missing` {
@@ -68,12 +68,12 @@ func TestScanOne_MissingEntryPageIsALoadProblem(t *testing.T) {
 
 func TestConformStandard_Rule21_EntryPageLoadsOnlyFolderFiles(t *testing.T) {
 	remote := `<!doctype html><html><head><script src="https://cdn.example.com/lib.js"></script></head><body></body></html>`
-	dir := newFixture(t, "remote-entry", viewEntryManifest("remote-entry", "view.html"), map[string]string{
+	dir := newFixture(t, "remote-entry", viewEntryManifest("remote-entry"), map[string]string{
 		"main.js": "export function activate() {}", "view.html": remote,
 	})
 	wantRule(t, dir, "standard rule 21")
 
-	clean := newFixture(t, "local-entry", viewEntryManifest("local-entry", "view.html"), map[string]string{
+	clean := newFixture(t, "local-entry", viewEntryManifest("local-entry"), map[string]string{
 		"main.js": "export function activate() {}", "view.html": entryPage,
 		"view.js": "", "view.css": "",
 	})
@@ -92,4 +92,18 @@ func TestConformStandard_Rule21_SameDOMSurfaceWarns(t *testing.T) {
 	if problems := ConformDir(dir, ""); len(problems) != 0 {
 		t.Fatalf("the legacy form still conforms, got %v", problems)
 	}
+}
+
+func TestConformStandard_Rule21_InlineScriptNeverRunsInAPage(t *testing.T) {
+	inline := `<!doctype html><html><head></head><body><script>go()</script></body></html>`
+	dir := newFixture(t, "inline-entry", viewEntryManifest("inline-entry"), map[string]string{
+		"main.js": "export function activate() {}", "view.html": inline,
+	})
+	wantRule(t, dir, "an inline <script> never runs in a plugin page")
+
+	handler := `<!doctype html><html><head></head><body><button onclick="go()">Go</button></body></html>`
+	attr := newFixture(t, "handler-entry", viewEntryManifest("handler-entry"), map[string]string{
+		"main.js": "export function activate() {}", "view.html": handler,
+	})
+	wantRule(t, attr, "an inline event attribute never runs in a plugin page")
 }

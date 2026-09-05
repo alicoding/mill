@@ -15,6 +15,15 @@ import type { PluginTheme } from '../plugins/sdk'
 // own folder URL instead, which is also exactly what the standard's
 // entry-page rule promises ("the page loads only files from the
 // plugin folder").
+//
+// A srcdoc document INHERITS the embedding document's policy, and
+// Mill's own forbids inline script (docs/platform/PLUGIN-THREAT-
+// MODEL.md, T9). So neither piece Mill injects may be inline script:
+// the bootstrap arrives as a <script src> for a file Mill serves, and
+// the page's mount data as a <meta> that file reads. The same
+// inheritance is why an entry page's own script must live in a file
+// too, which the standard's entry-page rule states and its check
+// enforces.
 
 export interface FrameInit {
   theme: PluginTheme
@@ -22,122 +31,6 @@ export interface FrameInit {
   context: Record<string, unknown>
 }
 
-// millFrameBootstrap runs INSIDE the frame. It is never called here:
-// its compiled source is stringified into the page, so it must stay
-// self-contained -- no import, no module-scope reference -- or the
-// injected copy would reference identifiers that do not exist there.
-function millFrameBootstrap(): void {
-  interface Envelope { mill?: number; id?: number; kind?: string; event?: string; method?: string; args?: unknown[]; payload?: unknown; tokens?: string; ok?: boolean; result?: unknown; error?: string }
-  const host = window as unknown as {
-    __millFrame?: { theme: { mode: string; scheme: string }; state: unknown; context: Record<string, unknown> }
-    acquireMillApi?: () => unknown
-    acquireVsCodeApi?: () => unknown
-  }
-  const init = host.__millFrame ?? { theme: { mode: 'light', scheme: 'light' }, state: undefined, context: {} }
-  const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>()
-  const messageHandlers: ((msg: unknown) => void)[] = []
-  const eventHandlers = new Map<string, ((payload: unknown) => void)[]>()
-  let seq = 0
-  let theme = init.theme
-  let context = init.context
-  let state = init.state
-  let vsCodeAcquired = false
-
-  const applyTheme = (next: { mode: string; scheme: string }, tokens?: string) => {
-    theme = next
-    const root = document.documentElement
-    root.setAttribute('data-mill-theme', next.mode)
-    root.setAttribute('data-mill-scheme', next.scheme)
-    if (typeof tokens !== 'string') return
-    let style = document.getElementById('mill-tokens')
-    if (!style) {
-      style = document.createElement('style')
-      style.id = 'mill-tokens'
-      document.head.appendChild(style)
-    }
-    style.textContent = tokens
-  }
-
-  const send = (msg: Envelope) => {
-    msg.mill = 1
-    window.parent.postMessage(msg, '*')
-  }
-
-  const subscribe = (list: ((payload: never) => void)[], fn: (payload: never) => void) => {
-    list.push(fn)
-    return () => {
-      const at = list.indexOf(fn)
-      if (at >= 0) list.splice(at, 1)
-    }
-  }
-
-  const onHostEvent = (data: Envelope) => {
-    if (data.event === 'theme:changed') applyTheme(data.payload as { mode: string; scheme: string }, data.tokens)
-    if (data.event === 'ctx') context = data.payload as Record<string, unknown>
-    for (const handler of (eventHandlers.get(data.event ?? '') ?? []).slice()) handler(data.payload)
-  }
-
-  const onReply = (data: Envelope) => {
-    const id = data.id
-    if (id === undefined) return
-    const waiting = pending.get(id)
-    if (!waiting) return
-    pending.delete(id)
-    if (data.ok) waiting.resolve(data.result)
-    else waiting.reject(new Error(data.error ?? 'the call failed'))
-  }
-
-  window.addEventListener('message', (event: MessageEvent) => {
-    if (event.source !== window.parent) return
-    const data = event.data as Envelope | null
-    if (!data || data.mill !== 1) return
-    if (data.kind === 'event') onHostEvent(data)
-    else if (data.kind === 'message') for (const handler of messageHandlers.slice()) handler(data.payload)
-    else onReply(data)
-  })
-
-  const postMessage = (msg: unknown) => { send({ kind: 'message', payload: msg }) }
-  const getState = () => state
-  const setState = (next: unknown) => {
-    state = next
-    send({ kind: 'state', payload: next })
-    return next
-  }
-
-  const api: Record<string, unknown> = {
-    postMessage,
-    getState,
-    setState,
-    onMessage: (fn: (msg: unknown) => void) => subscribe(messageHandlers as ((p: never) => void)[], fn as (p: never) => void),
-    call: (method: string, ...args: unknown[]) => new Promise((resolve, reject) => {
-      const id = ++seq
-      pending.set(id, { resolve, reject })
-      send({ id, kind: 'call', method, args })
-    }),
-    on: (event: string, fn: (payload: unknown) => void) => {
-      const list = eventHandlers.get(event) ?? []
-      eventHandlers.set(event, list)
-      return subscribe(list as ((p: never) => void)[], fn as (p: never) => void)
-    },
-  }
-  Object.defineProperty(api, 'theme', { get: () => theme, enumerable: true })
-  Object.defineProperty(api, 'context', { get: () => context, enumerable: true })
-  Object.freeze(api)
-
-  applyTheme(theme)
-  host.acquireMillApi = () => api
-  // The webview shape a widely-used editor's extension pages already
-  // speak, verbatim, so a page written for one drops in unchanged:
-  // three methods, and acquiring it twice throws.
-  host.acquireVsCodeApi = () => {
-    if (vsCodeAcquired) throw new Error('An instance of the VS Code API has already been acquired')
-    vsCodeAcquired = true
-    return Object.freeze({ postMessage, getState, setState })
-  }
-  send({ kind: 'ready' })
-}
-
-const BOOTSTRAP_SOURCE = `(${millFrameBootstrap.toString()})();`
 
 // millTokenCss reads the tokens Mill's own interface is painted with
 // off the host document's root and writes them as one declaration
@@ -163,10 +56,18 @@ export function pluginAssetBase(pluginId: string): string {
   return new URL(`/plugins/${pluginId}/`, window.location.href).href
 }
 
-function framePolicy(base: string): string {
+// FRAME_BOOTSTRAP_PATH is served from the app's own static files
+// (frontend/public), so the URL is stable and needs no build step.
+export const FRAME_BOOTSTRAP_PATH = '/plugin-frame/bootstrap.js'
+
+export function frameBootstrapUrl(): string {
+  return new URL(FRAME_BOOTSTRAP_PATH, window.location.href).href
+}
+
+function framePolicy(base: string, bootstrap: string): string {
   return [
     `default-src 'none'`,
-    `script-src ${base} 'unsafe-inline' blob:`,
+    `script-src ${base} ${bootstrap}`,
     `style-src ${base} 'unsafe-inline'`,
     `img-src ${base} data: blob:`,
     `font-src ${base} data:`,
@@ -175,22 +76,23 @@ function framePolicy(base: string): string {
   ].join('; ')
 }
 
-// escapeForScript keeps an injected JSON literal from ending the
-// <script> element that carries it.
-function escapeForScript(json: string): string {
-  return json.replace(/</g, '\\u003c')
+// escapeForAttribute keeps an injected JSON literal from ending the
+// attribute, or the element, that carries it.
+function escapeForAttribute(json: string): string {
+  return json.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 // buildFrameSrcdoc prepends Mill's four head pieces to the plugin's own
 // page. The pieces go FIRST so the policy governs every element after
 // it and the bootstrap exists before the page's own script runs; the
 // page keeps everything else it wrote, including its own <head>.
-export function buildFrameSrcdoc(base: string, html: string, init: FrameInit, tokens: string): string {
+export function buildFrameSrcdoc(base: string, bootstrap: string, html: string, init: FrameInit, tokens: string): string {
   const head = [
     `<base href="${base}">`,
-    `<meta http-equiv="Content-Security-Policy" content="${framePolicy(base)}">`,
+    `<meta http-equiv="Content-Security-Policy" content="${framePolicy(base, bootstrap)}">`,
+    `<meta name="mill-frame-init" content="${escapeForAttribute(JSON.stringify(init))}">`,
     `<style id="mill-tokens">${tokens}</style>`,
-    `<script>window.__millFrame=${escapeForScript(JSON.stringify(init))};${BOOTSTRAP_SOURCE}</script>`,
+    `<script src="${bootstrap}"></script>`,
   ].join('')
   const headOpen = /<head[^>]*>/i.exec(html)
   if (headOpen) {

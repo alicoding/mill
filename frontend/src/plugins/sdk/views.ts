@@ -11,11 +11,13 @@
 //
 // The frame is sandboxed with no same-origin access and runs under a
 // policy that loads scripts, styles, fonts and images only from your
-// own plugin folder, so ship beside the page whatever it needs. Mill
-// injects the theme it is painted with as CSS custom properties on the
-// page's root and updates them in place when the user changes theme,
-// so a page built on those variables follows the user's choice with no
-// JavaScript at all.
+// own plugin folder, so ship beside the page whatever it needs. Your
+// script goes in a `.js` file the page loads with `<script src>`: an
+// inline `<script>` and an `onclick` attribute never run. Styles may
+// stay inline. Mill injects the theme it is painted with as CSS custom
+// properties on the page's root and updates them in place when the
+// user changes theme, so a page built on those variables follows the
+// user's choice with no JavaScript at all.
 //
 // ```html
 // <!doctype html>

@@ -12,7 +12,9 @@ The page runs sandboxed with no same-origin access, under a policy
 that loads scripts, styles, fonts and images from your own plugin
 folder only, and makes no network requests of its own: use
 `call('fetch', url, init)`, which goes through the same declared
-hosts and the same approval every plugin request does.
+hosts and the same approval every plugin request does. Script must
+arrive as a file the page loads with `<script src>`; an inline
+`<script>` and an `onclick` attribute never run.
 
 The page also answers `window.acquireVsCodeApi()`, returning
 `postMessage`, `getState` and `setState` under the names a webview

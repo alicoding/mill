@@ -5,7 +5,7 @@ import { Events } from '@wailsio/runtime'
 import { pluginAPIFor } from '../plugins/hostApi'
 import { usePluginTheme } from '../plugins/pluginTheme'
 import { attachFrameBridge, sendFrameEvent, sendFrameMessage, type CaptureControls } from './pluginFrameBridge'
-import { buildFrameSrcdoc, hostTokenReader, millTokenCss, pluginAssetBase } from './pluginFrameBootstrap'
+import { buildFrameSrcdoc, frameBootstrapUrl, hostTokenReader, millTokenCss, pluginAssetBase } from './pluginFrameBootstrap'
 import listStyles from '../shared/ListCard.module.css'
 
 // PluginFrame mounts one plugin-owned page in its own sandboxed frame
@@ -63,7 +63,7 @@ export function PluginFrame(props: PluginFrameProps) {
       const html = await response.text()
       if (!live) return
       const state = api?.storage.get(stateKey)
-      setSrcdoc(buildFrameSrcdoc(pluginAssetBase(pluginId), html, { theme, state, context }, millTokenCss(hostTokenReader())))
+      setSrcdoc(buildFrameSrcdoc(pluginAssetBase(pluginId), frameBootstrapUrl(), html, { theme, state, context }, millTokenCss(hostTokenReader())))
     }
     load().catch((err: unknown) => {
       if (!live) return
@@ -133,7 +133,7 @@ export function PluginFrame(props: PluginFrameProps) {
   if (failed) {
     return <Text as="p" size="small" className={listStyles.muted} data-testid={`${testId}-failed`}>{t('pluginView.entryFailed')}</Text>
   }
-  if (srcdoc === null) return <div data-testid={`${testId}-loading`} style={{ height: '100%' }} />
+  if (srcdoc === null) return <div data-testid={`${testId}-loading`} style={{ height: '100%', flex: '1 1 auto' }} />
   return (
     <iframe
       ref={frameRef}
@@ -145,7 +145,10 @@ export function PluginFrame(props: PluginFrameProps) {
       data-testid={testId}
       data-plugin-id={pluginId}
       data-surface-id={props.surfaceId}
-      style={{ width: '100%', height: '100%', border: 0, display: 'block', colorScheme: 'normal' }}
+      // The frame fills the box its host hands it. An iframe's own
+      // intrinsic height is 150px, so the host must give it a definite
+      // one; flex is how every other filling surface here does it.
+      style={{ width: '100%', height: '100%', flex: '1 1 auto', minHeight: 0, border: 0, display: 'block', colorScheme: 'normal' }}
     />
   )
 }

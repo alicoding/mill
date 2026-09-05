@@ -37,6 +37,7 @@ func conformEntryPages(dir string, m Manifest) []string {
 		for _, ref := range entryRemoteRefs(string(raw)) {
 			problems = append(problems, fmt.Sprintf("standard rule 21: %s: %q is not a file in the plugin folder", entry.file, ref))
 		}
+		problems = append(problems, entryInlineScriptProblems(entry.file, string(raw))...)
 	}
 	return problems
 }
@@ -109,3 +110,28 @@ func entryRemoteRefs(html string) []string {
 }
 
 var schemeRe = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9+.-]*:`)
+
+var (
+	scriptElementRe = regexp.MustCompile(`(?is)<script\b([^>]*)>(.*?)</script\s*>`)
+	scriptSrcRe     = regexp.MustCompile(`(?i)\bsrc\s*=`)
+	inlineHandlerRe = regexp.MustCompile(`(?i)\son(click|change|input|submit|load|error|keydown|keyup|focus|blur|mouseover|mouseout|pointerdown|pointerup)\s*=`)
+)
+
+// entryInlineScriptProblems is rule 21's inline-script half. A framed
+// page inherits Mill's own document policy, which forbids inline
+// script outright (docs/platform/PLUGIN-THREAT-MODEL.md, T9), so an
+// inline <script> or an on... attribute is dead code at runtime with
+// nothing on screen to say why. The author is told here instead.
+func entryInlineScriptProblems(file, html string) []string {
+	var problems []string
+	for _, match := range scriptElementRe.FindAllStringSubmatch(html, -1) {
+		if scriptSrcRe.MatchString(match[1]) || strings.TrimSpace(match[2]) == "" {
+			continue
+		}
+		problems = append(problems, fmt.Sprintf("standard rule 21: %s: an inline <script> never runs in a plugin page; move it to a .js file in your folder", file))
+	}
+	if inlineHandlerRe.MatchString(html) {
+		problems = append(problems, fmt.Sprintf("standard rule 21: %s: an inline event attribute never runs in a plugin page; add the listener from your own script", file))
+	}
+	return problems
+}

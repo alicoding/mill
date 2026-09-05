@@ -10,8 +10,13 @@ import { expect, test } from '@playwright/test'
 import { launchWithPlugins, runFromPalette } from './fixtures/runtimePlugins'
 import { RUNTIME_PLUGIN_FRAME_SERVER_BASE_PORT, RUNTIME_PLUGIN_FRAME_MCP_BASE_PORT } from './fixtures/serverPorts'
 import { openSettings } from './fixtures/settingsNav'
+import { gotoAppReady, waitForAppReady } from './fixtures/appReady'
+import { callBindingViaRPC } from './fixtures/wailsRpc'
 
 const PORTS = { server: RUNTIME_PLUGIN_FRAME_SERVER_BASE_PORT, mcp: RUNTIME_PLUGIN_FRAME_MCP_BASE_PORT }
+const PLUGIN_STORAGE = 'github.com/alicoding/mill/internal/services/settingssvc.SettingsService.GetPluginStorage'
+const GUARDRAIL = 'github.com/alicoding/mill/internal/services/guardrailsvc.GuardrailService.'
+const ATLAS = 'github.com/alicoding/mill/internal/services/atlassvc.AtlasService.'
 
 const PROBE_VIEW_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><title>Frame probe</title></head>
@@ -46,6 +51,31 @@ const editor = window.acquireVsCodeApi()
 document.getElementById('vscode').addEventListener('click', () => { editor.postMessage({ from: 'editor-shim' }) })
 `
 
+const JOT_HTML = `<!doctype html>
+<html><head><meta charset="utf-8"><title>Jot</title></head>
+<body>
+  <input type="text" data-testid="jot-input">
+  <button type="button" id="keep" data-testid="jot-keep">Keep it</button>
+  <button type="button" id="drop" data-testid="jot-drop">Cancel</button>
+  <div data-testid="jot-destination"></div>
+  <script src="capture.js"></script>
+</body></html>`
+
+const JOT_JS = `const mill = window.acquireMillApi()
+const input = document.querySelector('[data-testid="jot-input"]')
+const destination = document.querySelector('[data-testid="jot-destination"]')
+
+const showDestination = () => { destination.textContent = 'lands in: ' + JSON.stringify(mill.context.destinationId) }
+showDestination()
+mill.on('ctx', showDestination)
+
+document.getElementById('keep').addEventListener('click', async () => {
+  const written = await mill.call('content.createNote', { text: 'Jot: ' + input.value, parentId: mill.context.destinationId })
+  if (written.approved) await mill.call('capture.done')
+})
+document.getElementById('drop').addEventListener('click', () => { void mill.call('capture.cancel') })
+`
+
 const THROWER_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><title>Frame thrower</title></head>
 <body><div data-testid="thrower-body">up</div><script src="throw.js"></script></body></html>`
@@ -54,11 +84,13 @@ const FRAME_PROBE = {
 	id: 'frame-probe',
 	manifest: {
 		name: 'Frame probe',
+		capabilities: ['write-content'],
 		contributes: {
 			views: [
 				{ id: 'probe', title: 'Frame probe', entry: 'view.html' },
 				{ id: 'thrower', title: 'Frame thrower', entry: 'thrower.html' },
 			],
+			captures: [{ id: 'jot', label: 'Jot', description: 'A quick line, written from its own page.', entry: 'capture.html' }],
 		},
 	},
 	main: `export function activate(api) {
@@ -71,6 +103,8 @@ const FRAME_PROBE = {
 	files: {
 		'view.html': PROBE_VIEW_HTML,
 		'view.js': PROBE_VIEW_JS,
+		'capture.html': JOT_HTML,
+		'capture.js': JOT_JS,
 		'thrower.html': THROWER_HTML,
 		'throw.js': `throw new Error('the page broke on purpose')`,
 	},
@@ -79,7 +113,7 @@ const FRAME_PROBE = {
 test('a framed plugin view runs its own page, reaches Mill only through the bridge, and keeps its state across a reload', async () => {
 	const { page, close } = await launchWithPlugins(0, { ports: PORTS, extraPlugins: [FRAME_PROBE] })
 	try {
-		await page.goto('/')
+		await gotoAppReady(page)
 		await runFromPalette(page, 'Frame probe')
 
 		// The view IS an iframe, sandboxed without same-origin access.
@@ -118,9 +152,15 @@ test('a framed plugin view runs its own page, reaches Mill only through the brid
 		await settings.close()
 
 		// setState persists through the bridge into the plugin's own
-		// storage, so a reload and a fresh mount read it back.
+		// storage, so a reload and a fresh mount read it back. The write
+		// is durable before the reload, read from the store itself.
 		await frame.getByTestId('probe-remember').click()
+		await expect.poll(async () => {
+			const stored = await callBindingViaRPC<Record<string, Record<string, string>>>(page, PLUGIN_STORAGE, [])
+			return stored?.['frame-probe']?.['view:probe:state'] ?? ''
+		}, { timeout: 8000 }).toBe('"kept"')
 		await page.reload()
+		await waitForAppReady(page)
 		await runFromPalette(page, 'Frame probe')
 		await expect(page.frameLocator('[data-testid="plugin-view-frame-probe-probe"]').getByTestId('probe-state')).toHaveText('kept')
 	} finally {
@@ -131,7 +171,7 @@ test('a framed plugin view runs its own page, reaches Mill only through the brid
 test('a page that throws takes only its own frame down; Mill stays usable', async () => {
 	const { page, close } = await launchWithPlugins(2, { ports: PORTS, extraPlugins: [FRAME_PROBE] })
 	try {
-		await page.goto('/')
+		await gotoAppReady(page)
 		await runFromPalette(page, 'Frame thrower')
 		const host = page.getByTestId('plugin-view-frame-probe-thrower')
 		await expect(host).toBeVisible()
@@ -149,7 +189,7 @@ test('a page that throws takes only its own frame down; Mill stays usable', asyn
 test('the Board index example ships its listing as an entry page, grouped or flat, with the choice remembered', async () => {
 	const { page, close } = await launchWithPlugins(4, { ports: PORTS })
 	try {
-		await page.goto('/')
+		await gotoAppReady(page)
 		await runFromPalette(page, 'Board contents')
 		const host = page.getByTestId('plugin-view-mill-index-contents')
 		await expect(host).toBeVisible()
@@ -166,8 +206,41 @@ test('the Board index example ships its listing as an entry page, grouped or fla
 		await grouping.click()
 		await expect(grouping).toHaveText('Group by kind')
 		await page.reload()
+		await waitForAppReady(page)
 		await runFromPalette(page, 'Board contents')
 		await expect(page.frameLocator('[data-testid="plugin-view-mill-index-contents"]').getByTestId('index-grouping')).toHaveText('Group by kind')
+	} finally {
+		await close()
+	}
+})
+
+// A framed CAPTURE is the identical contract in the capture window: the
+// same entry page, the same bridge, plus the two controls only a
+// capture has. The write parks like every plugin write.
+test('a framed plugin capture writes through the guarded content door and closes itself', async () => {
+	const { page, close } = await launchWithPlugins(6, { ports: PORTS, extraPlugins: [FRAME_PROBE] })
+	try {
+		await page.goto('/')
+		await page.goto('about:blank')
+		await page.goto('/#/capture?plugin=frame-probe&id=jot')
+		const host = page.getByTestId('plugin-capture-frame-probe-jot')
+		await expect(host).toBeVisible()
+		await expect(host).toHaveAttribute('sandbox', 'allow-scripts allow-forms')
+		const frame = page.frameLocator('[data-testid="plugin-capture-frame-probe-jot"]')
+
+		// The capture's context reached the page, and follows the picker.
+		await page.getByTestId('capture-destination').selectOption('')
+		await expect(frame.getByTestId('jot-destination')).toHaveText('lands in: ""')
+
+		await frame.getByTestId('jot-input').fill('framed and filed')
+		await frame.getByTestId('jot-keep').click()
+		await expect.poll(async () => (await callBindingViaRPC<{ ID: string }[]>(page, GUARDRAIL + 'PendingGuardedActions', [])).length).toBeGreaterThan(0)
+		const pending = await callBindingViaRPC<{ ID: string }[]>(page, GUARDRAIL + 'PendingGuardedActions', [])
+		await callBindingViaRPC(page, GUARDRAIL + 'ResolveGuardedAction', [pending[0].ID, true])
+		await expect.poll(async () => {
+			const notes = await callBindingViaRPC<{ Text: string; ParentID: string }[]>(page, ATLAS + 'Notes', [])
+			return notes.find((n) => n.Text === 'Jot: framed and filed')?.ParentID ?? 'missing'
+		}).toBe('')
 	} finally {
 		await close()
 	}
