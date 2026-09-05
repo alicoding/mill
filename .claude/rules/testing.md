@@ -25,10 +25,12 @@ themselves (`atlas-authoring.spec.ts`, `atlas-session-restore.spec.ts`).
 - `e2e/persistence.spec.ts` is the only spec allowed its own server pair.
 - Never spawn on the LaunchAgent's ports (8080 Tailscale, 127.0.0.1:8090)
   — worker ranges 9400+/9500+ (persistence 9600+/9650+).
+- Local Playwright runs take a machine-wide slot lock
+  (`fixtures/e2eSlotLock.ts`), waiting ≤45 min; CI bypasses it.
 
 **A UI feature isn't verified by narrow assertions alone.** Restate the
-underlying task in one sentence and check that, not just the elements
-the diff touched. A save/submit handler depending on a value computed just before it
+underlying task in one sentence and check that, not the elements the
+diff touched. A save/submit handler depending on a value computed just before it
 fires should pass it directly, not round-trip through state
 (`setState` isn't synchronous).
 
@@ -65,10 +67,10 @@ resort carrying a same-line comment naming why.
   raised with real coverage. Go: `scripts/check-go-coverage.sh`.
 - **Diagnostics**: `trace: 'on-first-retry'`, screenshot on failure; CI
   retries 2/local 1; read the first flake's trace.zip.
-- **CI-only flakes are chased locally under CPU throttle, never by
+- **CI-only flakes are chased locally under CPU throttle, not by
   rerunning CI**: `E2E_CPU_THROTTLE=4 npx playwright test <spec>
-  --retries=0 --repeat-each=3` — reproduces → a load race, else
-  look elsewhere.
+  --retries=0 --repeat-each=3` reproduces a load race, else look
+  elsewhere.
 - **CI shards run one worker each** (`fullyParallel` in CI only) — a
   file needing order declares `test.describe.configure({ mode:
   'serial' })`.
@@ -80,24 +82,23 @@ resort carrying a same-line comment naming why.
   `clickCanvasNode`, `atlasCards`/`atlasPage`, `waitForViewportStable`,
   `gotoAppReady`/`waitForAppReady`.
 - **A shortcut-first test calls `gotoAppReady`** (`fixtures/appReady.ts`),
-  never bare `page.goto`: the app mounts after an async plugin-load gate
-  (main.tsx's `bootstrap()`), so `goto` resolving is not mount.
+  never bare `page.goto`: the app mounts after an async plugin-load
+  gate, so `goto` resolving isn't mount.
 - **Seeded-content on the landing board**: "Board gallery" is the
-  permanent home for seeded objects, never new root cards.
-  Scope locators via `nonSeededBoardObjectWrapper`; no fixed-pixel
-  placements.
-- **Never pass a needle carrying its own `.react-flow__node:not(...)`
-  ancestor clause into `filter({has})`**: Playwright re-queries the
-  needle per candidate; the failure is a silent zero-match.
-- **Assertion style**: web-first retrying `expect(...)` over one-shot
-  `boundingBox()` after anything animated; a new `waitForTimeout` needs a
-  same-line reason; actions time out at 15 s (`actionTimeout`): a
-  missing element fails with its locator, not the 90 s budget.
+  permanent home for seeded objects, never new root cards. Scope
+  locators via `nonSeededBoardObjectWrapper`; no fixed-pixel placements.
+- Never pass a needle with its own `.react-flow__node:not(...)`
+  ancestor clause into `filter({has})`: it re-queries per candidate,
+  failing as a silent zero-match.
+- **Assertion style**: prefer retrying `expect(...)` over
+  `boundingBox()` after anything animated; a new `waitForTimeout` needs
+  a same-line reason; actions time out at 15 s (`actionTimeout`),
+  failing with the locator, not the 90 s budget.
 
 ## Quality gates: duplication + cognitive complexity (goal 0109)
 
-- **Duplication (`dupl` @ 150, repo-wide)**: deliberate clusters
-  excluded BY NAME (test twins, `configuresvc/`, `atlasservice_builtin.go`).
+- **Duplication (`dupl` @ 150, repo-wide)**: clusters excluded BY NAME
+  (test twins, `configuresvc/`, `atlasservice_builtin.go`).
 - **Cognitive complexity (`gocognit` @ 15, NEW/CHANGED code only)**:
   legacy offenders grandfathered (burn-down list in the goal file).
 - **eslint-plugin-sonarjs**: `cognitive-complexity` @ 15,
