@@ -56,6 +56,16 @@ if echo "$command_str" | grep -qE "${seg}git[[:space:]]+push([[:space:]]+[^;&|[:
   exit 2
 fi
 
+# Gate commands (commits through lefthook, test suites, installs) run in the
+# foreground and are polled in place: a backgrounded run's completion
+# notification does not reach a subagent, which then stops "waiting" and its
+# work is stranded until an orchestrator nudge.
+background="$(echo "$input" | jq -r '.tool_input.run_in_background // false')"
+if [ "$background" = "true" ] && echo "$command_str" | grep -qE "(^|[[:space:]&|;])(git[[:space:]]+commit|lefthook|npx[[:space:]]+playwright|playwright[[:space:]]+test|go[[:space:]]+test|vitest|npm[[:space:]]+(ci|install|test)|task[[:space:]]+(build|package|install:app))([[:space:]]|$)"; then
+  echo "Blocked: gate commands never run in the background here (the completion notification is lost to a subagent). Run it in the foreground with timeout up to 600000 and poll its output with a bounded sleep loop in the next call." >&2
+  exit 2
+fi
+
 if echo "$command_str" | grep -qE "${seg}git[[:space:]]+(filter-branch|filter-repo)([[:space:]]|$)"; then
   echo "Blocked: history rewrites are never granted in this repo (CLAUDE.md)." >&2
   exit 2
