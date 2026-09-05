@@ -36,6 +36,13 @@ const (
 	ExampleOAuth1ID     = "example-oauth1-postman-echo"
 	ExampleOAuth2ID     = "example-oauth2-spotify"
 	ExampleQueryParamID = "example-queryparam-httpbin"
+	// ExampleEnvironmentID (goal 0306 S5) is the one seeded request
+	// whose URL is written with a variable instead of a host. It is
+	// deliberately its own request rather than a change to
+	// ExampleNoneID: three seeds share that one, and only the workflow
+	// below selects an environment, so templating the shared request
+	// would make the other two unrunnable.
+	ExampleEnvironmentID = "example-environment-httpbin"
 	// ExampleConfluencePageReadID and ExampleJiraSearchID (goal 0111)
 	// demonstrate calling a self-hosted Atlassian Data Center instance
 	// over a user-supplied Personal Access Token. Both are
@@ -137,6 +144,18 @@ func BuiltIn() []HTTPRequest {
 			OpenAPISpec: typedEchoSpec,
 			BuiltIn:     true,
 			Seed:        seedorigin.Stamp(2),
+		},
+		{
+			ID: ExampleEnvironmentID, Label: "Example: Environment variable in the URL",
+			Description: "The URL names {{API_BASE}} instead of a host, so the same request " +
+				"reaches a different service depending on which environment the run selects. " +
+				"The seeded Sandbox environment sets API_BASE to a public test service; the " +
+				"seeded Production one sets it to an address that does not answer, so running " +
+				"against it is a decision rather than an accident.",
+			BaseURL: "{{API_BASE}}/get", AuthType: AuthNone, Method: "GET",
+			OpenAPISpec: openAPISpecFor("environment variable echo"),
+			BuiltIn:     true,
+			Seed:        seedorigin.Stamp(1),
 		},
 		{
 			ID: ExampleAPIKeyID, Label: "Example: API key header (httpbin.org)",

@@ -42,7 +42,7 @@ func TestDeriveSecretLabels_ExecEnvEnv_ResolvesLabel(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 	setLabels(cfg, map[string]string{"entry-2": "Deploy key"})
 
-	e, err := cfg.CreateExecEnv("Sandbox", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel, []string{"KEY=vault:entry-2"})
+	e, err := cfg.CreateExecEnv("Sandbox", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel, []string{"KEY=vault:entry-2"}, "")
 	if err != nil {
 		t.Fatalf("CreateExecEnv: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestDeriveSecretLabels_HTTPRequestHeaders_ResolvesLabel(t *testing.T) {
 func TestDeriveSecretLabels_DanglingID_YieldsPlaceholder(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 
-	e, err := cfg.CreateExecEnv("Sandbox", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel, []string{"KEY=vault:no-such-entry"})
+	e, err := cfg.CreateExecEnv("Sandbox", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel, []string{"KEY=vault:no-such-entry"}, "")
 	if err != nil {
 		t.Fatalf("CreateExecEnv: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestDeriveSecretLabels_DanglingID_YieldsPlaceholder(t *testing.T) {
 func TestDeriveSecretLabels_NoRefs_ReturnsEmptyNotNil(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 
-	e, err := cfg.CreateExecEnv("Sandbox", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel, []string{"PATH=/usr/bin"})
+	e, err := cfg.CreateExecEnv("Sandbox", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel, []string{"PATH=/usr/bin"}, "")
 	if err != nil {
 		t.Fatalf("CreateExecEnv: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestDeriveSecretLabels_DuplicateRefs_DedupedAndSorted(t *testing.T) {
 	setLabels(cfg, map[string]string{"entry-z": "Zendesk token", "entry-a": "AWS key"})
 
 	e, err := cfg.CreateExecEnv("Sandbox", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel,
-		[]string{"ONE=vault:entry-z", "TWO=vault:entry-a", "THREE=vault:entry-z"})
+		[]string{"ONE=vault:entry-z", "TWO=vault:entry-a", "THREE=vault:entry-z"}, "")
 	if err != nil {
 		t.Fatalf("CreateExecEnv: %v", err)
 	}
