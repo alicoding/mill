@@ -12,7 +12,11 @@
 // build that always errors (no file manager exists headless).
 package osopen
 
-import "os/exec"
+import (
+	"os/exec"
+
+	"github.com/alicoding/mill/internal/adapters/windowing"
+)
 
 // openCmd/revealCmd are package vars (not called directly) so a test
 // can substitute a non-side-effecting exec.Cmd -- same seam Wails3's
@@ -39,4 +43,13 @@ func start(cmd *exec.Cmd) error {
 	}
 	go cmd.Wait() //nolint:errcheck
 	return nil
+}
+
+// OpenURL opens url in the system's default browser, through Wails'
+// own Browser.OpenURL (internal/adapters/windowing.OpenURL, the sole
+// port onto pkg/application) rather than this file's own Open/Reveal
+// exec path -- the adopted runtime already owns "open a URL", the
+// highest abstraction available on desktop.
+func (h *Host) OpenURL(url string) error {
+	return windowing.OpenURL(url)
 }

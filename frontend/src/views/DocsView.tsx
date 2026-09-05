@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Browser } from '@wailsio/runtime'
 import { Text } from '@primer/react'
 import { DocsService } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
 import { writeClipboardText } from '../shared/clipboardWrite'
+import { openExternalUrl } from '../shared/openExternal'
 import { resolveDocLink } from './docLinks'
 import { adjacentPages, groupDocsIndex, sectionTitleKey, type DocsIndexEntry } from './docsGroups'
 import { CHECK_ICON_SVG, COPY_ICON_SVG, injectCodeCopyButtons } from './docsCodeCopy'
@@ -147,7 +147,7 @@ function DocsView({ initialPage }: { initialPage?: string }) {
                     return
                   }
                   const link = resolveDocLink(page, href)
-                  if (link.kind === 'external') void Browser.OpenURL(link.url)
+                  if (link.kind === 'external') void openExternalUrl(link.url)
                   if (link.kind === 'page' && index.some((e) => e.rel === link.rel)) goTo(link.rel)
                 }}
                 dangerouslySetInnerHTML={{ __html: htmlWithCopyButtons }}
