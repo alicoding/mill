@@ -8,6 +8,8 @@ import { boardObjectContentFor } from '../atlasNounRegistry'
 import { dispatchObjectEdit, openExternalUrl } from '../objectSeams'
 import { applyTextAssistOff } from '../../shared/searchInputProps'
 import { background } from '../../shared/background'
+import { objectJumpLabel } from '../atlasJumpFilter'
+import { CAPTURE_LABEL_ATTRIBUTE, CAPTURE_PLACEHOLDER_ATTRIBUTE, capturePlaceholderLabel } from '../atlasImageExport'
 import nodeStyles from '../AtlasBoardObjectNode.module.css'
 import styles from './AtlasPdfObjectContent.module.css'
 
@@ -71,63 +73,77 @@ export function AtlasPdfObjectContent({ object, mirrorContent, preview }: { obje
     )
   }
   if (blobUrl) {
+    // The viewer is an iframe -- a second document the rasterizer
+    // drops outright (atlasImageExport.ts's own IFRAME rule) -- so
+    // this wrapper carries the two capture-placeholder attributes:
+    // while capturing, AtlasBoard.module.css's generic rule fills the
+    // box with this label instead of leaving it empty (goal 0201
+    // follow-up). Any future iframe-backed noun's face wraps its own
+    // iframe the same way.
+    const captureLabel = capturePlaceholderLabel(objectJumpLabel(object), t('pdfNoun.name'))
     return (
-      <iframe
-        className={styles.viewer}
-        // #zoom=page-width: the first page fills the tile's width --
-        // the readable default at board-object sizes; every other
-        // control stays the viewer's own.
-        src={`/vendor/pdfjs/web/viewer.html?file=${encodeURIComponent(blobUrl)}#zoom=page-width`}
-        title={t('boardObject.pdfViewerTitle')}
-        data-testid="atlas-pdf-viewer"
-        // The viewer's own toolbar inputs (findbar, page number) never
-        // opt out of OS text assistance -- built for Firefox, which
-        // has none -- so WKWebView autocorrects find queries as prose
-        // (observed live: an acronym query drew the system suggestion
-        // bubble inside the findbar and matched nothing). Applied here
-        // at the seam so the vendored tree stays pristine; same-origin
-        // by construction (the viewer is served from Mill's own
-        // assets).
-        onLoad={(e) => {
-          const frame = e.currentTarget
-          const doc = frame.contentDocument
-          if (!doc) return
-          applyTextAssistOff(doc, 'input.toolbarField, input#findInput')
-          // An external link annotation clicked inside the viewer
-          // otherwise navigates the WEBVIEW to the link's site --
-          // full-screen, no back button, Mill gone until restart.
-          // Capture-phase (ahead of the viewer's own link handling):
-          // http(s) hrefs open in the system browser through the
-          // extension seam; fragment/page-destination links (the
-          // outline, internal jumps) carry no http scheme and stay
-          // the viewer's own.
-          doc.addEventListener('click', (ev) => {
-            const anchor = (ev.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null
-            if (!anchor || !/^https?:/i.test(anchor.href)) return
-            ev.preventDefault()
-            ev.stopPropagation()
-            void openExternalUrl(anchor.href)
-          }, true)
-          // Right-click inside the live viewer otherwise opens the
-          // ENGINE's own frame menu (Open Frame in New Window, Reload
-          // Frame -- dead items inside the app). Suppress it and
-          // re-dispatch on the iframe element with translated
-          // coordinates, so the canvas's own node context-menu path
-          // opens the object menu -- one right-click behavior across
-          // the whole object, shielded or live.
-          doc.addEventListener('contextmenu', (ev) => {
-            ev.preventDefault()
-            const rect = frame.getBoundingClientRect()
-            frame.dispatchEvent(new MouseEvent('contextmenu', {
-              bubbles: true,
-              cancelable: true,
-              clientX: rect.left + ev.clientX,
-              clientY: rect.top + ev.clientY,
-              button: 2,
-            }))
-          })
-        }}
-      />
+      <div
+        className={styles.viewerWrap}
+        data-testid="atlas-pdf-capture-placeholder"
+        {...{ [CAPTURE_PLACEHOLDER_ATTRIBUTE]: '', [CAPTURE_LABEL_ATTRIBUTE]: captureLabel }}
+      >
+        <iframe
+          className={styles.viewer}
+          // #zoom=page-width: the first page fills the tile's width --
+          // the readable default at board-object sizes; every other
+          // control stays the viewer's own.
+          src={`/vendor/pdfjs/web/viewer.html?file=${encodeURIComponent(blobUrl)}#zoom=page-width`}
+          title={t('boardObject.pdfViewerTitle')}
+          data-testid="atlas-pdf-viewer"
+          // The viewer's own toolbar inputs (findbar, page number) never
+          // opt out of OS text assistance -- built for Firefox, which
+          // has none -- so WKWebView autocorrects find queries as prose
+          // (observed live: an acronym query drew the system suggestion
+          // bubble inside the findbar and matched nothing). Applied here
+          // at the seam so the vendored tree stays pristine; same-origin
+          // by construction (the viewer is served from Mill's own
+          // assets).
+          onLoad={(e) => {
+            const frame = e.currentTarget
+            const doc = frame.contentDocument
+            if (!doc) return
+            applyTextAssistOff(doc, 'input.toolbarField, input#findInput')
+            // An external link annotation clicked inside the viewer
+            // otherwise navigates the WEBVIEW to the link's site --
+            // full-screen, no back button, Mill gone until restart.
+            // Capture-phase (ahead of the viewer's own link handling):
+            // http(s) hrefs open in the system browser through the
+            // extension seam; fragment/page-destination links (the
+            // outline, internal jumps) carry no http scheme and stay
+            // the viewer's own.
+            doc.addEventListener('click', (ev) => {
+              const anchor = (ev.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null
+              if (!anchor || !/^https?:/i.test(anchor.href)) return
+              ev.preventDefault()
+              ev.stopPropagation()
+              void openExternalUrl(anchor.href)
+            }, true)
+            // Right-click inside the live viewer otherwise opens the
+            // ENGINE's own frame menu (Open Frame in New Window, Reload
+            // Frame -- dead items inside the app). Suppress it and
+            // re-dispatch on the iframe element with translated
+            // coordinates, so the canvas's own node context-menu path
+            // opens the object menu -- one right-click behavior across
+            // the whole object, shielded or live.
+            doc.addEventListener('contextmenu', (ev) => {
+              ev.preventDefault()
+              const rect = frame.getBoundingClientRect()
+              frame.dispatchEvent(new MouseEvent('contextmenu', {
+                bubbles: true,
+                cancelable: true,
+                clientX: rect.left + ev.clientX,
+                clientY: rect.top + ev.clientY,
+                button: 2,
+              }))
+            })
+          }}
+        />
+      </div>
     )
   }
   const failed = !!mirrorContent?.error || !!content?.Missing

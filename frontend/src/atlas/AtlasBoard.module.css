@@ -240,3 +240,40 @@
 :global(.react-flow__viewport[data-capturing='true'] .react-flow__node.selected) {
     box-shadow: none;
 }
+
+/* An affordance that exists only to be clicked never belongs in an
+   exported picture either (goal 0201 follow-up, CAPTURE_EXCLUDE_ATTRIBUTE
+   in atlasImageExport.ts): any element carrying it is hidden for the
+   capture's duration, so the next one is one attribute here, never a
+   new selector. `visibility`, not `display`: the layout it occupies
+   stays put. */
+:global(.react-flow__viewport[data-capturing='true'] [data-capture-exclude]) {
+    visibility: hidden;
+}
+
+/* A frame-backed noun's iframe body is dropped from the capture
+   outright (atlasImageExport.ts's own IFRAME rule, since a second
+   document's markup can't be rasterized), leaving its box empty.
+   CAPTURE_PLACEHOLDER_ATTRIBUTE/CAPTURE_LABEL_ATTRIBUTE (same file)
+   name the two attributes a frame-backed noun's own root carries;
+   while capturing, this rule fills that box with the label instead, so
+   the picture names what was there rather than showing nothing. One
+   attribute pair, no new markup, for the next iframe-backed noun. */
+[data-capture-placeholder] {
+    position: relative;
+}
+:global(.react-flow__viewport[data-capturing='true'] [data-capture-placeholder])::after {
+    content: attr(data-capture-label);
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box;
+    padding: 8px;
+    outline: 1px solid var(--borderColor-default);
+    outline-offset: -1px;
+    color: var(--fgColor-muted);
+    background: var(--bgColor-default);
+}

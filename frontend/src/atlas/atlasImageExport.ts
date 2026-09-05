@@ -40,6 +40,33 @@ const MAX_CAPTURE_ZOOM = 4
 // under.
 export const CAPTURING_ATTRIBUTE = 'data-capturing'
 
+// An affordance that exists only to be clicked -- never to be looked
+// at -- carries this attribute to drop out of the exported picture
+// (goal 0201 follow-up: the note card's own "Zoom into" chip is the
+// first). CSS on the viewport (AtlasBoard.module.css, beside the ring/
+// band rules) hides anything carrying it for the capture's duration
+// only, the same `data-capturing`-keyed pattern CAPTURING_ATTRIBUTE
+// itself uses -- so the next excluded affordance costs one attribute,
+// never a new selector.
+export const CAPTURE_EXCLUDE_ATTRIBUTE = 'data-capture-exclude'
+
+// A frame-backed noun's iframe body is dropped from the capture
+// outright (shouldCapture's own IFRAME rule below, since a second
+// document's markup can't be rasterized) -- these two attributes mark
+// its own root as a placeholder and name what to show in its place.
+// CSS on the viewport renders CAPTURE_LABEL_ATTRIBUTE's value only for
+// the capture's duration, so the next iframe-backed noun needs only
+// these two attributes, no new markup of its own.
+export const CAPTURE_PLACEHOLDER_ATTRIBUTE = 'data-capture-placeholder'
+export const CAPTURE_LABEL_ATTRIBUTE = 'data-capture-label'
+
+// What a frame-backed noun's placeholder names itself: its own title
+// beside its kind, the same " · " join AtlasContentsView already uses
+// for a kind label beside a title.
+export function capturePlaceholderLabel(title: string, kindLabel: string): string {
+  return `${title} · ${kindLabel}`
+}
+
 // Which nodes and edges the image is allowed to contain. `null` means
 // "everything on the board" -- the no-selection case, which broadens
 // rather than refusing.
