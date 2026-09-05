@@ -7,5 +7,6 @@ export {
 
 export type {
     Entry,
+    Field,
     Summary
 } from "./models.js";

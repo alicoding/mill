@@ -30,7 +30,7 @@ export async function ensureVault(page: Page): Promise<void> {
 // ('text', 'key', 'certificate', 'file').
 export async function createSecret(page: Page, title: string, value: string, kind = 'text'): Promise<string> {
   await ensureVault(page)
-  const created = await callBindingViaRPC<{ ID: string }>(page, SECRETS + 'CreateSecret', [title, '', value, '', '', '', kind, ''])
+  const created = await callBindingViaRPC<{ ID: string }>(page, SECRETS + 'CreateSecret', [title, '', value, '', '', [], kind, '', []])
   return `vault:${created.ID}`
 }
 
