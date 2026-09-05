@@ -140,3 +140,20 @@ test('a multi-cell paste applies to a range on a board table', async ({ page }) 
   await expect(glideCellText(glide, 1, 1)).toHaveText('Large')
   await cleanupGlideTable(page, tableObject)
 })
+
+// ⌘F reaches the grid on the BOARD mount too, from a cell selected by
+// a real click (goal 0349 S4): the click leaves DOM focus inside the
+// grid host, which is what scopes the shortcut to this grid. Pinned
+// here as well as on the List page because the two mounts differ in
+// everything around the grid -- a canvas node with its own keyboard
+// path on one, a page on the other.
+test('⌘F opens the grid’s own search on a board table', async ({ page }) => {
+  const { tableObject, glide } = await landGlideTable(page)
+  await clickGlideCell(page, glide, 0, 0)
+  await page.keyboard.press('Meta+f')
+  const search = glide.getByTestId('search-input')
+  await expect(search).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(search).toBeHidden()
+  await cleanupGlideTable(page, tableObject)
+})
