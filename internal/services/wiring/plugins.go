@@ -148,6 +148,12 @@ func WirePluginTrust(plugins *pluginsvc.PluginService, settings *settingssvc.Set
 	// steps join the catalog and the executor, read fresh per lookup.
 	plugins.SetRunPolicy(trust.mayRun)
 	composition.SetExternalNodeTypeLookup(plugins.StepNodeTypes)
+	// The secret-source door (goal 0306 S4): a plugin-backed source
+	// lists and resolves through the plugin platform, and the secret
+	// service applies what came back through its own unchanged provider
+	// path. Behind the same run policy, so a source stops answering the
+	// moment its extension is turned off.
+	secrets.SetPluginSources(plugins)
 	// Uninstall (goal 0321) belongs to the same consent lifecycle the
 	// settings service already owns, so it holds the removal and this
 	// hands it only the folder lookup -- settingssvc never depends on
