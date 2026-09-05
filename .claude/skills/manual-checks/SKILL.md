@@ -460,3 +460,15 @@ installed build can catch, and exactly how to verify it there.
   path fills the Folder field; in Secrets, open Import… and press
   Choose — the real native file picker opens and the chosen file's
   entry count shows in the preview.
+- **A real repository install and update of an extension** (goal 0349
+  S5, `pluginsvc/{marketplace,install,updates}.go`) — server mode
+  exercises the marketplace, install and update doors against a
+  loopback publisher only; a live GitHub release is the one path CI
+  never reaches (no outbound calls in tests). Verify on an installed
+  build: in Extensions › Browse › Sources, add `owner/repo` for a
+  repository carrying `.mill/marketplace.json`, install its entry and
+  read its Verification tab; then publish a newer release tag on that
+  repository with `<id>-<version>.zip` (and `SHA256SUMS`), press
+  **Check for updates**, confirm the tab reads **Updates (1)**, press
+  **Update**, and confirm the version and tier the Verification tab
+  now shows.
