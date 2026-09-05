@@ -1,4 +1,4 @@
-// A secret source an extension contributes (goal 0306 S4): the Netrc
+// The contributes.secretSources family (goal 0306 S4): the Netrc
 // example declares a store, the Sources page offers it as a kind with
 // the path field its manifest declares, its keys become secrets by
 // name, and an entry can point at one instead of holding a value.
