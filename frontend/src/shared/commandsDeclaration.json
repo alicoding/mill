@@ -840,8 +840,64 @@
     "needs": null
   },
   {
+    "id": "extension.disable",
+    "label": "Turn off",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "extension.enable",
+    "label": "Turn on",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "extension.refreshSources",
+    "label": "Extensions: refresh sources",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "extension.remove",
+    "label": "Remove",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "extension.reveal",
+    "label": "Reveal folder",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
     "id": "extensions.exportAudit",
     "label": "Export plugin audit",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "extensions.open",
+    "label": "Extensions",
+    "binding": "⌘⇧X",
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "extensions.sources",
+    "label": "Extensions: marketplace sources",
     "binding": null,
     "surface": null,
     "enabled": false,
@@ -1128,14 +1184,6 @@
   {
     "id": "settings.open.connections",
     "label": "Settings › Connections",
-    "binding": null,
-    "surface": null,
-    "enabled": false,
-    "needs": null
-  },
-  {
-    "id": "settings.open.extensions",
-    "label": "Settings › Extensions",
     "binding": null,
     "surface": null,
     "enabled": false,

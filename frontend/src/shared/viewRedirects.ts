@@ -10,5 +10,12 @@ export function redirectRetiredView(view: View): View {
   if (view.kind === 'configure' && view.tab === 'secretsources') {
     return { kind: 'secrets', tab: 'sources' }
   }
+  // Extensions used to be a Settings group and is now its own
+  // destination (goal 0349), so a saved `settings.open.extensions`
+  // link, a bookmark, or a restored session lands on the real page
+  // rather than on General.
+  if (view.kind === 'settings' && view.section === 'extensions') {
+    return { kind: 'extensions' }
+  }
   return view
 }
