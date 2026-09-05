@@ -26,6 +26,12 @@ export type CommandContext =
   | { kind: 'run'; runId: string; workflowId?: string; nodeId?: string; values?: Record<string, string> }
   | { kind: 'entry'; entryId: string; pinned?: boolean }
   | { kind: 'card'; cardId: string }
+  // The List grid's live selection (goal 0349 S4): which rows the
+  // row-marker checkboxes hold, which column header is selected, and
+  // the tab/newline text a copy would write. All three are stated by
+  // the grid rather than re-derived, for the same reason `pinned` is:
+  // the selection is that mount's own state, unreachable from here.
+  | { kind: 'listGrid'; listID: string; rowIDs: string[]; columnKey?: string; text?: string }
 
 export type CommandContextKind = CommandContext['kind']
 
@@ -49,4 +55,8 @@ export function runContext(ctx: CommandContext | undefined): { runId: string; wo
 
 export function entryContext(ctx: CommandContext | undefined): { entryId: string; pinned?: boolean } | null {
   return ctx?.kind === 'entry' ? { entryId: ctx.entryId, pinned: ctx.pinned } : null
+}
+
+export function listGridContext(ctx: CommandContext | undefined): { listID: string; rowIDs: string[]; columnKey?: string; text?: string } | null {
+  return ctx?.kind === 'listGrid' ? { listID: ctx.listID, rowIDs: ctx.rowIDs, columnKey: ctx.columnKey, text: ctx.text } : null
 }

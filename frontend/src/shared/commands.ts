@@ -19,6 +19,7 @@ import { ATLAS_CREATE_COMMANDS } from './atlasCreateCommands'
 import { ATLAS_NAV_COMMANDS } from './atlasNavCommands'
 import { HELP_COMMANDS } from './helpCommands'
 import { ROW_COMMANDS } from './rowCommands'
+import { LIST_GRID_COMMANDS } from './listGridCommands'
 import { TAB_COMMANDS } from './tabCommands'
 import { OUTPUT_COMMANDS } from './outputCommands'
 import { withMenuGroup } from './menuGroup'
@@ -389,6 +390,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
   // to point at, and each declares `needs`, so the palette offers one
   // only when ambientContext() resolves that kind.
   ...ROW_COMMANDS,
+  ...LIST_GRID_COMMANDS,
   // Every plugin-related command (docs/goals/0249, goal 0321) -- what
   // plugins contributed plus the host's own per-plugin actions.
   ...pluginRegistryCommands(),

@@ -564,6 +564,30 @@
     "needs": null
   },
   {
+    "id": "listGrid.copyRows",
+    "label": "Copy selected rows",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "listGrid"
+  },
+  {
+    "id": "listGrid.deleteColumn",
+    "label": "Delete selected column",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "listGrid"
+  },
+  {
+    "id": "listGrid.deleteRows",
+    "label": "Delete selected rows",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "listGrid"
+  },
+  {
     "id": "object.openInDefaultApp",
     "label": "Open in default app",
     "binding": null,
