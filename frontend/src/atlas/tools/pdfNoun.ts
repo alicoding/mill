@@ -28,7 +28,7 @@ registerBoardObjectContent('pdf', {
   // The viewer scrolls, pages and selects text on its own (goal 0354):
   // idle it is inert behind the shield, selected it owns the wheel, the
   // drag and the keys inside its own document.
-  content: 'interactive',
+  input: 'interactive',
   shieldHintKey: 'atlas:pdfNoun.shieldHint',
   // Payload.mirrorPath names the real .pdf file (goal 0232 S1's
   // contract): shared watch + "Open in default app" enablement.
