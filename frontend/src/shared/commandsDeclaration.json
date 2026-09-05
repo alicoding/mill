@@ -1272,6 +1272,14 @@
     "needs": null
   },
   {
+    "id": "secrets.restoreVaultFromBackup",
+    "label": "Restore the last backup",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "secrets.unlockVault",
     "label": "Unlock vault",
     "binding": null,
