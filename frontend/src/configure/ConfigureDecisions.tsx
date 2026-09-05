@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
 import { CopyIcon, DownloadIcon, PencilIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
@@ -12,21 +11,22 @@ import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mil
 import type { FieldTombstone } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { EntityRefField, decisionCategoryLabelFor } from './EntityRefField'
 import { DecisionVersionsSection } from './DecisionVersionsSection'
-import { downloadJSON } from '../shared/downloadJSON'
 import { refreshDecisions, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
+import { entityRowContext } from '../shared/entityRowCommands'
+import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useImportConfirm } from '../shared/useImportConfirm'
 import { describeSeedReset } from '../shared/seedLifecycle'
+import { useSeedLifecycle } from './useSeedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
-import { background } from '../shared/background'
 
 const TYPE_OPTIONS = ['text', 'number', 'boolean', 'options']
 
@@ -78,15 +78,14 @@ export function ConfigureDecisions() {
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useViewMode('mill-decisions-view-mode')
-  // Seed lifecycle (docs/goals/0037) -- see CompositionView.tsx's
-  // identical state for the full reasoning.
-  const [seedRevisions, setSeedRevisions] = useState<Record<string, number | undefined>>({})
-  const [restorable, setRestorable] = useState<Decision[]>([])
-
-  const refreshSeedLifecycle = () => {
-    void background(ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})), 'configureDecisions.seedRevisions')
-    void background(ConfigureService.RestorableDecisions().then((r) => setRestorable(r ?? [])), 'configureDecisions.restorableDecisions')
-  }
+  // Seed lifecycle (docs/goals/0037): the shipped-revision map is
+  // app-wide (shared/seedRevisionStore.ts) so the reset command can
+  // answer its own enablement; only this family's restorable list is
+  // local.
+  const seedLifecycle = useSeedLifecycle<Decision>(() => ConfigureService.RestorableDecisions(), decisions)
+  const seedRevisions = seedLifecycle.seedRevisions
+  const restorable = seedLifecycle.restorable
+  const refreshSeedLifecycle = seedLifecycle.refresh
 
   const refetch = () => {
     void refreshDecisions()
@@ -95,12 +94,6 @@ export function ConfigureDecisions() {
     refetch()
     refreshSeedLifecycle()
   }, [])
-
-  const exportDecision = (id: string, decisionLabel: string) => {
-    ConfigureService.ExportDecision(id)
-      .then((json) => downloadJSON(`${decisionLabel.trim() || 'decision'}.json`, json))
-      .catch((err) => setImportError(String(err)))
-  }
 
   // A payload whose id matches a decision already here updates it in
   // place instead of creating a new one -- confirmed first via
@@ -147,6 +140,19 @@ export function ConfigureDecisions() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- startCreate/consumeConfigureCreate deliberately excluded, same reasoning useCanvasCommandDispatch.ts's own identical effect documents
   }, [configureCreateRequest])
 
+  // configure.decision.duplicate (goal 0346): the row's Duplicate is a
+  // registry command, which cannot reach this form -- it names the row
+  // through the same set-then-consume signal the create/edit jumps use.
+  const configureDuplicateRequest = useUISignalStore((s) => s.configureDuplicateRequest)
+  const consumeConfigureDuplicate = useUISignalStore((s) => s.consumeConfigureDuplicate)
+  useEffect(() => {
+    if (configureDuplicateRequest?.tab !== 'decisions' || decisions === null) return
+    const target = decisions.find((x) => x.ID === configureDuplicateRequest.id)
+    consumeConfigureDuplicate()
+    if (target) startCreate(target)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- startCreate/consumeConfigureDuplicate deliberately excluded, same reasoning as the create effect above
+  }, [configureDuplicateRequest, decisions])
+
   const startEdit = (d: Decision) => {
     setEditingID(d.ID)
     setLabel(d.Label)
@@ -185,21 +191,8 @@ export function ConfigureDecisions() {
     }
   }
 
-  const remove = (id: string, label: string) => {
-    void deleteWithUndo({ entity: 'decision', id, label, remove: () => ConfigureService.DeleteDecision(id), refetch: () => {
-      refetch()
-      refreshSeedLifecycle()
-    }, onError: (err) => setImportError(String(err)) })
-  }
-
-  // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037
-  // items 4/5).
-  const resetToSeed = (id: string) => {
-    ConfigureService.ResetDecisionToSeed(id).then(() => {
-      refetch()
-      refreshSeedLifecycle()
-    }).catch((err) => setImportError(String(err)))
-  }
+  // Restore-deleted-example (docs/goals/0037 item 5) -- a header
+  // action over the tombstoned set, not a row action.
   const restoreExample = (id: string) => {
     ConfigureService.RestoreDecision(id).then(() => {
       refetch()
@@ -270,17 +263,13 @@ export function ConfigureDecisions() {
       description: t('configureDecisions.outputsSummary', { keys: (d.Outputs ?? []).map((o) => o.Key).join(', ') || t('configureDecisions.none') }),
       onOpen: () => startEdit(d),
       menuActions: [
-        { label: t('configureDecisions.duplicate'), onClick: () => startCreate(d) },
-        { label: t('export'), onClick: () => exportDecision(d.ID, d.Label) },
-        // Reset-to-shipped-example (docs/goals/0037 item 4) -- hidden
-        // (not shown-disabled) when already current, same reasoning
-        // CompositionView.tsx's identical wiring documents.
-        ...(d.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(d.ID) }] : []),
-        {
-          label: t('delete'),
-          onClick: () => remove(d.ID, d.Label),
-          danger: true,
-        },
+        { commandId: 'configure.decision.duplicate', ctx: entityRowContext('decision', d.ID) },
+        { commandId: 'configure.decision.export', ctx: entityRowContext('decision', d.ID) },
+        // Reset-to-shipped-example (docs/goals/0037 item 4): the command's
+        // own enabled() hides it once the row matches the shipped golden,
+        // so the row only names the revision it would restore.
+        { commandId: 'configure.decision.reset', ctx: entityRowContext('decision', d.ID), label: seedReset.label },
+        { commandId: 'configure.decision.delete', ctx: entityRowContext('decision', d.ID), danger: true },
       ],
     }
   })
@@ -437,9 +426,9 @@ export function ConfigureDecisions() {
                 renderCell: (d) => (
                   <Stack direction="horizontal" gap="condensed">
                     <IconButton icon={PencilIcon} aria-label={t('configureDecisions.editAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => startEdit(d)} />
-                    <IconButton icon={CopyIcon} aria-label={t('configureDecisions.duplicateAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => startCreate(d)} />
-                    <IconButton icon={DownloadIcon} aria-label={t('configureDecisions.exportAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => exportDecision(d.ID, d.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={t('configureDecisions.deleteAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => remove(d.ID, d.Label)} />
+                    <IconButton icon={CopyIcon} aria-label={t('configureDecisions.duplicateAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.decision.duplicate', entityRowContext('decision', d.ID))} />
+                    <IconButton icon={DownloadIcon} aria-label={t('configureDecisions.exportAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.decision.export', entityRowContext('decision', d.ID))} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureDecisions.deleteAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.decision.delete', entityRowContext('decision', d.ID))} />
                   </Stack>
                 ),
               },

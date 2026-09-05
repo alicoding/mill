@@ -16,19 +16,23 @@ export interface InventoryItemIcon {
 }
 
 export interface InventoryMenuAction {
-  // A registry command id plus the row's own target (goal 0343): the
-  // action's label, its enablement and its effect all come from the
-  // command, so a row supplies WHICH entity and nothing else. label/
-  // onClick remain for the actions whose effect is not yet a
-  // registered command.
-  commandId?: string
-  ctx?: CommandContext
+  // A registry command id plus the row's own target (goals 0343/0346):
+  // the action's label, its enablement and its effect all come from the
+  // command, so a row supplies WHICH entity and nothing else. There is
+  // deliberately NO closure field -- an action authored inline on the
+  // row exists nowhere but that render, which is what put every row
+  // action outside the registry before goal 0346. A new action is a
+  // descriptor field on its family (shared/entityRowCommands.ts).
+  commandId: string
+  ctx: CommandContext
+  // Presentation-only override, for the one label a command cannot
+  // hold: a reset names the revision it would restore, which is data,
+  // not a static key (shared/seedLifecycle.ts's describeSeedReset).
   label?: string
-  onClick?: () => void
   danger?: boolean
   // Opt-in confirmation (Button-semantics rule (b), .claude/rules/
   // frontend.md): when set, selecting this action shows ConfirmDialog
-  // naming the entity before onClick fires, instead of destroying
+  // naming the entity before the command fires, instead of destroying
   // straight off the kebab click. Every current caller sets this only
   // on a Delete action.
   confirm?: { title: string; body: string }
@@ -89,39 +93,41 @@ export function runMenuAction(action: InventoryMenuAction, requestConfirm: (a: I
 // The unconfirmed effect, also called by ConfirmDialog's own onConfirm
 // once the user has said yes.
 export function performMenuAction(action: InventoryMenuAction) {
-  // The row's own closure wins when it has one -- an action pairing a
-  // commandId with onClick names the command only for its label.
-  if (action.onClick) action.onClick()
-  else if (action.commandId) void runCommand(action.commandId, action.ctx)
+  void runCommand(action.commandId, action.ctx)
 }
 
 // The row's own label for an action: its literal, else the command's
 // (a locale KEY resolved through commandLabel, goal 0341).
 export function menuActionLabel(action: InventoryMenuAction): string {
   if (action.label) return action.label
-  const command = action.commandId ? findCommand(action.commandId) : undefined
-  return command ? commandLabel(command) : (action.commandId ?? '')
+  const command = findCommand(action.commandId)
+  return command ? commandLabel(command) : action.commandId
 }
 
 // Unavailable means ABSENT (goal 0343) -- the kebab and the right-click
 // menu both drop an action whose command can't act on this row, the
 // same rule the palette and ContextMenu follow.
 export function menuActionAvailable(action: InventoryMenuAction): boolean {
-  if (action.onClick) return true
-  if (!action.commandId) return true
   const command = findCommand(action.commandId)
-  return Boolean(command) && commandAvailable(command!, action.ctx)
+  return command !== undefined && commandAvailable(command, action.ctx)
 }
 
 export function visibleMenuActions(actions: InventoryMenuAction[]): InventoryMenuAction[] {
   return actions.filter(menuActionAvailable)
 }
 
+// A right-click item carries the command itself, never a closure, so
+// ContextMenu runs it through the registry and shows its live
+// HotkeyHint. The one exception is a confirm-guarded action: the dialog
+// belongs to the ROW that offers it, so that item keeps a run() long
+// enough to raise it (the command still fires once the user says yes).
 export function menuActionsToContextMenuItems(actions: InventoryMenuAction[], requestConfirm: (a: InventoryMenuAction) => void): ContextMenuItem[] {
   return visibleMenuActions(actions).map((action, i) => ({
     id: `${menuActionLabel(action)}-${i}`,
+    commandId: action.commandId,
+    ctx: action.ctx,
     label: menuActionLabel(action),
     danger: action.danger,
-    run: () => runMenuAction(action, requestConfirm),
+    ...(action.confirm ? { run: () => requestConfirm(action) } : {}),
   }))
 }

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { ActionList, ActionMenu, Button, Heading, IconButton, Label, Stack, Text, VisuallyHidden } from '@primer/react'
 import { DownloadIcon, PencilIcon, PlugIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
@@ -12,16 +11,17 @@ import { ConfigureService } from '../shared/bindings'
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import { authLabelFor } from './authTypeLabels'
 import { refreshRequests, useAppStore } from '../shared/store'
-import { downloadJSON } from '../shared/downloadJSON'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
+import { entityRowContext } from '../shared/entityRowCommands'
+import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useImportConfirm } from '../shared/useImportConfirm'
 import { describeSeedReset } from '../shared/seedLifecycle'
+import { useSeedLifecycle } from './useSeedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
-import { background } from '../shared/background'
 
 // Configure's Integration section (docs/SPEC.md §3.5): the Integrations
 // inventory. Viewing/editing no longer opens tabs here -- open work
@@ -46,28 +46,19 @@ export function ConfigureRequests() {
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useViewMode('mill-requests-view-mode')
-  // Seed lifecycle (docs/goals/0037) -- see CompositionView.tsx's
-  // identical state for the full reasoning.
-  const [seedRevisions, setSeedRevisions] = useState<Record<string, number | undefined>>({})
-  const [restorable, setRestorable] = useState<HTTPRequest[]>([])
-
-  const refreshSeedLifecycle = () => {
-    void background(ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})), 'configureRequests.seedRevisions')
-    void background(ConfigureService.RestorableHTTPRequests().then((r) => setRestorable(r ?? [])), 'configureRequests.restorableHTTPRequests')
-  }
+  // Seed lifecycle (docs/goals/0037): the shipped-revision map is
+  // app-wide (shared/seedRevisionStore.ts) so the reset command can
+  // answer its own enablement; only this family's restorable list is
+  // local.
+  const seedLifecycle = useSeedLifecycle<HTTPRequest>(() => ConfigureService.RestorableHTTPRequests(), requests)
+  const seedRevisions = seedLifecycle.seedRevisions
+  const restorable = seedLifecycle.restorable
+  const refreshSeedLifecycle = seedLifecycle.refresh
 
   useEffect(() => {
     void refreshRequests()
     refreshSeedLifecycle()
   }, [])
-
-  // Never carries a secret -- ExportHTTPRequest's own contract
-  // (configureservice_export.go).
-  const exportRequest = (id: string, label: string) => {
-    ConfigureService.ExportHTTPRequest(id)
-      .then((json) => downloadJSON(`${label.trim() || 'request'}.json`, json))
-      .catch((err) => setImportError(String(err)))
-  }
 
   const openImportPicker = () => {
     setImportError(null)
@@ -90,21 +81,8 @@ export function ConfigureRequests() {
     file.text().then(importConfirm.requestImport).catch((err) => setImportError(String(err)))
   }
 
-  const remove = (id: string, label: string) => {
-    void deleteWithUndo({ entity: 'request', id, label, remove: () => ConfigureService.DeleteHTTPRequest(id), refetch: () => {
-      void refreshRequests()
-      refreshSeedLifecycle()
-    }, onError: (err) => setImportError(String(err)) })
-  }
-
-  // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037
-  // items 4/5).
-  const resetToSeed = (id: string) => {
-    ConfigureService.ResetHTTPRequestToSeed(id).then(() => {
-      void refreshRequests()
-      refreshSeedLifecycle()
-    }).catch((err) => setImportError(String(err)))
-  }
+  // Restore-deleted-example (docs/goals/0037 item 5) -- a header
+  // action over the tombstoned set, not a row action.
   const restoreExample = (id: string) => {
     ConfigureService.RestoreHTTPRequest(id).then(() => {
       void refreshRequests()
@@ -168,17 +146,13 @@ export function ConfigureRequests() {
       description: [r.BaseURL, r.Description].filter((s) => s && s.trim() !== '').join(' · '),
       onOpen: () => openWorkTab({ kind: 'request-view', requestId: r.ID }),
       menuActions: [
-        { label: t('edit'), onClick: () => openWorkTab({ kind: 'request-edit', requestId: r.ID }) },
-        { label: t('export'), onClick: () => exportRequest(r.ID, r.Label) },
-        // Reset-to-shipped-example (docs/goals/0037 item 4) -- hidden
-        // (not shown-disabled) when already current, same reasoning
-        // CompositionView.tsx's identical wiring documents.
-        ...(r.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(r.ID) }] : []),
-        {
-          label: t('delete'),
-          onClick: () => remove(r.ID, r.Label),
-          danger: true,
-        },
+        { commandId: 'configure.request.edit', ctx: entityRowContext('request', r.ID) },
+        { commandId: 'configure.request.export', ctx: entityRowContext('request', r.ID) },
+        // Reset-to-shipped-example (docs/goals/0037 item 4): the command's
+        // own enabled() hides it once the row matches the shipped golden,
+        // so the row only names the revision it would restore.
+        { commandId: 'configure.request.reset', ctx: entityRowContext('request', r.ID), label: seedReset.label },
+        { commandId: 'configure.request.delete', ctx: entityRowContext('request', r.ID), danger: true },
       ],
     }
   })
@@ -237,9 +211,9 @@ export function ConfigureRequests() {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (r) => (
                   <Stack direction="horizontal" gap="condensed">
-                    <IconButton icon={PencilIcon} aria-label={t('configureRequests.editAriaLabel', { label: r.Label })} size="small" variant="invisible" onClick={() => openWorkTab({ kind: 'request-edit', requestId: r.ID })} />
-                    <IconButton icon={DownloadIcon} aria-label={t('configureRequests.exportAriaLabel', { label: r.Label })} size="small" variant="invisible" onClick={() => exportRequest(r.ID, r.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={t('configureRequests.deleteAriaLabel', { label: r.Label })} size="small" variant="invisible" onClick={() => remove(r.ID, r.Label)} />
+                    <IconButton icon={PencilIcon} aria-label={t('configureRequests.editAriaLabel', { label: r.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.request.edit', entityRowContext('request', r.ID))} />
+                    <IconButton icon={DownloadIcon} aria-label={t('configureRequests.exportAriaLabel', { label: r.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.request.export', entityRowContext('request', r.ID))} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureRequests.deleteAriaLabel', { label: r.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.request.delete', entityRowContext('request', r.ID))} />
                   </Stack>
                 ),
               },

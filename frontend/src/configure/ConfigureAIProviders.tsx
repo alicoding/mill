@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { Button, FormControl, IconButton, Stack, Text } from '@primer/react'
 import { DownloadIcon, PencilIcon, PlusIcon, SparkleFillIcon, TrashIcon } from '@primer/octicons-react'
@@ -13,6 +12,8 @@ import type { Field } from '../../bindings/github.com/alicoding/mill/internal/do
 import { refreshAIProviders, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
+import { entityRowContext } from '../shared/entityRowCommands'
+import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { describeSeedReset } from '../shared/seedLifecycle'
@@ -64,7 +65,7 @@ export function ConfigureAIProviders() {
   const [error, setError] = useState('')
   const [viewMode, setViewMode] = useViewMode('mill-aiproviders-view-mode')
 
-  const seedLifecycle = useSeedLifecycle<AIProvider>(() => ConfigureService.RestorableAIProviders())
+  const seedLifecycle = useSeedLifecycle<AIProvider>(() => ConfigureService.RestorableAIProviders(), providers)
 
   const refetch = () => {
     void refreshAIProviders()
@@ -145,20 +146,6 @@ export function ConfigureAIProviders() {
     }
   }
 
-  const remove = (id: string, label: string) => {
-    void deleteWithUndo({ entity: 'aiprovider', id, label, remove: () => ConfigureService.DeleteAIProvider(id), refetch: () => {
-      refetch()
-      seedLifecycle.refresh()
-    }, onError: (err) => importExport.setImportError(String(err)) })
-  }
-
-  const resetToSeed = (id: string) => {
-    ConfigureService.ResetAIProviderToSeed(id).then(() => {
-      refetch()
-      seedLifecycle.refresh()
-    }).catch((err) => importExport.setImportError(String(err)))
-  }
-
   const sortedProviders = useMemo(() => sortByUpdatedDesc(providers ?? [], (p) => p.UpdatedAt), [providers])
 
   const providerItems: InventoryItem[] = sortedProviders.map((p) => {
@@ -178,13 +165,9 @@ export function ConfigureAIProviders() {
         : t('configureAIProviders.rowSummary', { kind: KIND_LABEL[p.Kind] ?? p.Kind, model: p.Model }),
       onOpen: () => startEdit(p),
       menuActions: [
-        { label: t('export'), onClick: () => importExport.exportItem(p.ID, p.Label) },
-        ...(p.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(p.ID) }] : []),
-        {
-          label: t('delete'),
-          onClick: () => remove(p.ID, p.Label),
-          danger: true,
-        },
+        { commandId: 'configure.aiprovider.export', ctx: entityRowContext('aiprovider', p.ID) },
+        { commandId: 'configure.aiprovider.reset', ctx: entityRowContext('aiprovider', p.ID), label: seedReset.label },
+        { commandId: 'configure.aiprovider.delete', ctx: entityRowContext('aiprovider', p.ID), danger: true },
       ],
     }
   })
@@ -261,8 +244,8 @@ export function ConfigureAIProviders() {
                 renderCell: (p) => (
                   <Stack direction="horizontal" gap="condensed">
                     <IconButton icon={PencilIcon} aria-label={t('configureAIProviders.editAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => startEdit(p)} />
-                    <IconButton icon={DownloadIcon} aria-label={t('configureAIProviders.exportAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => importExport.exportItem(p.ID, p.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={t('configureAIProviders.deleteAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => remove(p.ID, p.Label)} />
+                    <IconButton icon={DownloadIcon} aria-label={t('configureAIProviders.exportAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.aiprovider.export', entityRowContext('aiprovider', p.ID))} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureAIProviders.deleteAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.aiprovider.delete', entityRowContext('aiprovider', p.ID))} />
                   </Stack>
                 ),
               },
