@@ -275,16 +275,25 @@ func (e *ExecutionService) parkForApproval(ctx execution.Context, node compositi
 	}
 	runID, _ := ctx.GetWorkflowID()
 
-	if err := execution.SetEvent(ctx, guardrailPendingEventKey, pending); err != nil {
-		return nil, false, fmt.Errorf("guardrail: publish pending approval: %w", err)
-	}
 	// The listener half of the park, recorded before Recv and cleared on
 	// every path out of it: a Send is accepted by the database whenever
 	// the run's row exists, listener or not, so this registry is the
 	// only thing that can tell ResolveApproval whether anyone is
 	// actually waiting (goal 0329).
+	//
+	// Ordering invariant: the registry entry MUST exist before the
+	// pending event is published. That event is the only signal any
+	// caller has that this run has parked, so a resolve arriving the
+	// instant it appears would otherwise find no listener and be refused
+	// as "run-recovering" (resolveUnlistened). Recv tolerates a Send
+	// that lands before it -- StartRecvListener reports an already
+	// pending notification -- so registering early costs nothing.
 	e.parkedRuns.Store(runID, node.ID)
 	defer e.parkedRuns.Delete(runID)
+
+	if err := execution.SetEvent(ctx, guardrailPendingEventKey, pending); err != nil {
+		return nil, false, fmt.Errorf("guardrail: publish pending approval: %w", err)
+	}
 	emitGuardrailPendingChanged(runID, node.ID, false)
 	// docs/adr/0035: the decision-parked half of trigger-system-event --
 	// only the park is a system event (not the resolve below), matching
