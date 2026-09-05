@@ -69,7 +69,23 @@
     "columnSettings": "Type and choices…",
     "insertRowBelow": "Insert row below",
     "addRowHint": "New row",
-    "chooseValueAriaLabel": "Choose a value"
+    "chooseValueAriaLabel": "Choose a value",
+    "sortAscending": "Sort ascending",
+    "sortDescending": "Sort descending",
+    "clearSort": "Clear sort",
+    "filterColumn": "Filter…",
+    "filterContains": "Contains",
+    "filterMin": "From",
+    "filterMax": "To",
+    "filterApply": "Apply",
+    "filterClear": "Clear",
+    "clearNarrowing": "Clear sort and filters",
+    "copyRows_one": "Copy {{count}} row",
+    "copyRows_other": "Copy {{count}} rows",
+    "deleteRows_one": "Delete {{count}} row",
+    "deleteRows_other": "Delete {{count}} rows",
+    "deleteColumnAction": "Delete “{{column}}”",
+    "pastedRowsDropped": "Pasted rows past the end were dropped."
   },
   "formattingToolbar": {
     "bold": "Bold",
@@ -353,6 +369,11 @@
       "find": "Find in output",
       "toggleWrap": "Wrap output lines",
       "openFull": "Open output in full"
+    },
+    "listGrid": {
+      "deleteRows": "Delete selected rows",
+      "copyRows": "Copy selected rows",
+      "deleteColumn": "Delete selected column"
     },
     "clientcert": {
       "edit": "Edit certificate",
