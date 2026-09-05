@@ -864,6 +864,26 @@
     "needs": null
   },
   {
+    "id": "diagram.nextPage",
+    "label": "Next page",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "diagram.previousPage",
+    "label": "Previous page",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "docs.search",
     "label": "Search docs",
     "binding": null,
@@ -1224,6 +1244,14 @@
   {
     "id": "secrets.resetVault",
     "label": "Start a new vault",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "secrets.restoreVaultFromBackup",
+    "label": "Restore the last backup",
     "binding": null,
     "surface": null,
     "enabled": true,

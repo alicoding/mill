@@ -1,6 +1,6 @@
 import type { Command } from './commands'
 import { SecretService } from './bindings'
-import { refreshVaultStatus, useVaultStatusStore } from './vaultStatusStore'
+import { refreshVaultBackupTime, refreshVaultStatus, useVaultStatusStore } from './vaultStatusStore'
 import type { UserError } from './userError'
 import { userErrorFrom } from './userError'
 
@@ -63,6 +63,25 @@ export const SECRETS_COMMANDS: Command[] = [
     // failure on screen to explain what it replaces.
     paletteHidden: true,
     run: () => { record(SecretService.ResetVault()) },
+  },
+  {
+    id: 'secrets.restoreVaultFromBackup',
+    label: 'commands.secrets.restoreVaultFromBackup',
+    defaultBinding: null,
+    // Only offered where the key-mismatch state itself shows: a stored
+    // key that doesn't fit the current file, AND a local backup that
+    // still carries one to try instead.
+    enabled: () => {
+      const { vaultStatus, vaultError, vaultBackupTime } = useVaultStatusStore.getState()
+      if (vaultStatus === null || !vaultStatus.Exists || vaultStatus.Unlocked) return false
+      return vaultErrorKind(vaultError) === 'keyMismatch' && vaultBackupTime?.present === true
+    },
+    run: () => {
+      useVaultStatusStore.getState().setVaultError(null)
+      SecretService.RestoreVaultFromLatestBackup()
+        .then(() => Promise.all([refreshVaultStatus(), refreshVaultBackupTime()]))
+        .catch((err) => { useVaultStatusStore.getState().setVaultError(userErrorFrom(err)) })
+    },
   },
 ]
 

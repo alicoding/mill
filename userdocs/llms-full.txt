@@ -1432,6 +1432,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.steptype.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.steptype.export` | Export | — | Global | Acts on the selected entity |
 | `diagram.fit` | Fit diagram | — | atlas | Conditional — available only in a matching state |
+| `diagram.nextPage` | Next page | — | atlas | Conditional — available only in a matching state |
+| `diagram.previousPage` | Previous page | — | atlas | Conditional — available only in a matching state |
 | `docs.search` | Search docs | — | Global | Always available |
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
@@ -1477,6 +1479,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `secret.row.history` | History | — | Global | Acts on the selected entity |
 | `secrets.lockVault` | Lock vault | — | Global | Conditional — available only in a matching state |
 | `secrets.resetVault` | Start a new vault | — | Global | Conditional — available only in a matching state |
+| `secrets.restoreVaultFromBackup` | Restore the last backup | — | Global | Conditional — available only in a matching state |
 | `secrets.unlockVault` | Unlock vault | — | Global | Conditional — available only in a matching state |
 | `settings.open` | Open Settings | `⌘,` | Global | Always available |
 | `settings.open.appearance` | Settings › Appearance | — | Global | Always available |
@@ -1670,6 +1673,8 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Copy space links | — | `atlas.share.copyLinks` |
 | Open perspective switcher | — | `atlas.perspective` |
 | Select all | ⌘A | `atlas.selectAll` |
+| Previous page | — | `diagram.previousPage` |
+| Next page | — | `diagram.nextPage` |
 | Fit diagram | — | `diagram.fit` |
 | Toggle companion panel | — | `atlas.companion.toggle` |
 | Toggle minimap | — | `atlas.minimap.toggle` |
@@ -2201,7 +2206,9 @@ ten. "Back up now" adds one on demand. "Export everything" bundles
 your data into one file for moving machines, excluding the vault;
 "Import everything" merges it back. The export covers Mill's own
 data — files mirrored from folders on disk are referenced by path,
-not copied in, so back those folders up separately.
+not copied in, so back those folders up separately. Restoring brings
+back a backup's vault file; it opens if that vault's key is still on
+this device.
 
 ## Updates
 
@@ -2664,7 +2671,7 @@ such satellite file, quoted whole:
 ```ts
 import type { Command } from './commands'
 import { SecretService } from './bindings'
-import { refreshVaultStatus, useVaultStatusStore } from './vaultStatusStore'
+import { refreshVaultBackupTime, refreshVaultStatus, useVaultStatusStore } from './vaultStatusStore'
 import type { UserError } from './userError'
 import { userErrorFrom } from './userError'
 
@@ -2727,6 +2734,25 @@ export const SECRETS_COMMANDS: Command[] = [
     // failure on screen to explain what it replaces.
     paletteHidden: true,
     run: () => { record(SecretService.ResetVault()) },
+  },
+  {
+    id: 'secrets.restoreVaultFromBackup',
+    label: 'commands.secrets.restoreVaultFromBackup',
+    defaultBinding: null,
+    // Only offered where the key-mismatch state itself shows: a stored
+    // key that doesn't fit the current file, AND a local backup that
+    // still carries one to try instead.
+    enabled: () => {
+      const { vaultStatus, vaultError, vaultBackupTime } = useVaultStatusStore.getState()
+      if (vaultStatus === null || !vaultStatus.Exists || vaultStatus.Unlocked) return false
+      return vaultErrorKind(vaultError) === 'keyMismatch' && vaultBackupTime?.present === true
+    },
+    run: () => {
+      useVaultStatusStore.getState().setVaultError(null)
+      SecretService.RestoreVaultFromLatestBackup()
+        .then(() => Promise.all([refreshVaultStatus(), refreshVaultBackupTime()]))
+        .catch((err) => { useVaultStatusStore.getState().setVaultError(userErrorFrom(err)) })
+    },
   },
 ]
 

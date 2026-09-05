@@ -234,7 +234,9 @@
       "rename": "Rename"
     },
     "diagram": {
-      "fit": "Fit diagram"
+      "fit": "Fit diagram",
+      "previousPage": "Previous page",
+      "nextPage": "Next page"
     },
     "canvas": {
       "undo": "Undo",
@@ -331,7 +333,8 @@
     "secrets": {
       "lockVault": "Lock vault",
       "unlockVault": "Unlock vault",
-      "resetVault": "Start a new vault"
+      "resetVault": "Start a new vault",
+      "restoreVaultFromBackup": "Restore the last backup"
     },
     "settings": {
       "open": "Open Settings",

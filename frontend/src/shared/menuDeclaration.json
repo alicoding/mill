@@ -475,6 +475,18 @@
   },
   {
     "menu": "Atlas",
+    "item": "Previous page",
+    "shortcut": "",
+    "command": "diagram.previousPage"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Next page",
+    "shortcut": "",
+    "command": "diagram.nextPage"
+  },
+  {
+    "menu": "Atlas",
     "item": "Fit diagram",
     "shortcut": "",
     "command": "diagram.fit"
