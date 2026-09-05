@@ -665,6 +665,7 @@
     },
     "pathPlaceholderBruno": "/path/to/collection",
     "pathPlaceholderOnePassword": "Vault name (optional)",
+    "findDotenv": "Find .env files…",
     "kindExtension": "Extension source",
     "kindFromExtension": "From {{name}}",
     "problemPluginMissing": "The extension for this source isn't installed.",

@@ -69,7 +69,7 @@ func onlyRecord(t *testing.T, store *secretauditstore.Store) secretaudit.Record 
 func TestResolveMCPServer_RealRun_RecordsOneMCPServerSpawnAuditLine(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 	secretService, auditStore := newAuditedSecretService(t, cfg)
-	created, err := secretService.CreateSecret("GitHub PAT", "", "gh-token-fake", "", "", "", "", "")
+	created, err := secretService.CreateSecret("GitHub PAT", "", "gh-token-fake", "", "", nil, "", "", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestResolveMCPServer_RealRun_RecordsOneMCPServerSpawnAuditLine(t *testing.T
 func TestListMCPServerTools_PreviewResolution_RecordsConfigureToolsPreviewContext(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 	secretService, auditStore := newAuditedSecretService(t, cfg)
-	created, err := secretService.CreateSecret("GitHub PAT", "", "gh-token-fake", "", "", "", "", "")
+	created, err := secretService.CreateSecret("GitHub PAT", "", "gh-token-fake", "", "", nil, "", "", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestListMCPServerTools_PreviewResolution_RecordsConfigureToolsPreviewContex
 func TestResolveExecEnv_RealRun_RecordsOneExecEnvAuditLine(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 	secretService, auditStore := newAuditedSecretService(t, cfg)
-	created, err := secretService.CreateSecret("DB Password", "", "db-pw-fake", "", "", "", "", "")
+	created, err := secretService.CreateSecret("DB Password", "", "db-pw-fake", "", "", nil, "", "", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
@@ -158,7 +158,7 @@ func TestResolveExecEnv_RealRun_RecordsOneExecEnvAuditLine(t *testing.T) {
 func TestResolveHTTPRequest_RealRun_RecordsOneHTTPHeaderAuditLine(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 	secretService, auditStore := newAuditedSecretService(t, cfg)
-	created, err := secretService.CreateSecret("Webhook signing key", "", "sig-key-fake", "", "", "", "", "")
+	created, err := secretService.CreateSecret("Webhook signing key", "", "sig-key-fake", "", "", nil, "", "", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
