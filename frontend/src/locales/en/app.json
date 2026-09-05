@@ -201,7 +201,8 @@
     "settings": "Settings",
     "overview": "Overview",
     "docs": "Docs",
-    "secrets": "Secrets"
+    "secrets": "Secrets",
+    "extensions": "Extensions"
   },
   "pluginView": {
     "missing": "This view's plugin is not loaded.",

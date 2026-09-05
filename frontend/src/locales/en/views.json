@@ -605,5 +605,107 @@
     "workflow": "Any step in {{workflow}}",
     "nodeType": "Every {{nodeType}} step, in any workflow",
     "request": "Any step calling {{request}}"
-  }
+  },
+  "extensions": {
+    "heading": "Extensions",
+    "subtitle": "Add what Mill can do. Install from a marketplace, a repo, or a folder.",
+    "tabsAria": "Extensions sections",
+    "tabs": {
+      "installed": "Installed",
+      "browse": "Browse",
+      "updates": "Updates",
+      "updatesCount": "Updates ({{count}})"
+    },
+    "versionLabel": "v{{version}}",
+    "fromMarketplace": "From {{marketplace}}",
+    "kindFilterAria": "Filter by what an extension adds",
+    "detailTabsAria": "Extension details",
+    "detailTabs": {
+      "overview": "Overview",
+      "contributions": "Contributions",
+      "changelog": "Changelog",
+      "verification": "Verification",
+      "settings": "Settings"
+    },
+    "noOverview": "This extension has no overview.",
+    "noChangelog": "No changelog.",
+    "canHeading": "This extension can",
+    "can": {
+      "reachHosts": "Reach {{list}} over the network",
+      "reachAnyHost": "Reach any host, one request at a time, after you approve it",
+      "writeContent": "Write cards, notes and list rows",
+      "listFiles": "List files in folders you choose",
+      "openUrl": "Open links after you approve them",
+      "openApp": "Open files in another app after you approve",
+      "eraseBoardItems": "Erase board items you draw over",
+      "useSecrets": "Read secrets you point it at, by reference",
+      "nothing": "Nothing beyond drawing on the board",
+      "addsCanvasObjects": "Add object kinds you can place on a board",
+      "addsSteps": "Add steps you can use in a workflow",
+      "addsCaptures": "Add a surface to the capture window",
+      "addsViews": "Add tabs you can open",
+      "addsCommands": "Add commands to the palette",
+      "addsThemes": "Add color themes you can pick",
+      "addsTools": "Add tools an agent can call"
+    },
+    "kind": {
+      "canvasObjects": "Canvas objects",
+      "steps": "Steps",
+      "captures": "Captures",
+      "settings": "Settings",
+      "network": "Network",
+      "views": "Views",
+      "commands": "Commands",
+      "themes": "Themes",
+      "tools": "Tools"
+    },
+    "tier": {
+      "verified": "Verified",
+      "hash-pinned": "Hash-pinned",
+      "unverified": "Unverified",
+      "dev": "Dev"
+    },
+    "verification": {
+      "signed": "Signed by a key Mill trusts.",
+      "hashMatches": "Content hash matches the marketplace.",
+      "folder": "Installed from a folder on this Mac; nothing verifies it.",
+      "unchecked": "Nothing checked these files when they were installed.",
+      "changed": "Changed since it was allowed.",
+      "signaturePresent": "Its signature verified against a pinned key.",
+      "signatureMissing": "It carries no signature a pinned key verifies."
+    },
+    "install": {
+      "title": "Install {{name}}?",
+      "unreviewedTitle": "Install unreviewed code?",
+      "unreviewedBody": "Nothing has checked what this extension does. It can read what you allow it to and change your boards.",
+      "acknowledge": "I understand it runs unreviewed code",
+      "confirm": "Install",
+      "cancel": "Cancel",
+      "done": "Installed {{name}}. Reload to load it."
+    },
+    "browse": {
+      "subtitle": "Extensions your marketplaces offer that you have not installed.",
+      "searchAria": "Search extensions to install",
+      "empty": "Nothing left to install. Add a source to see more.",
+      "install": "Install",
+      "installAria": "Install {{name}}"
+    },
+    "sources": {
+      "title": "Sources",
+      "subtitle": "Mill reads these only when you add or refresh one.",
+      "empty": "No sources yet. Add one to browse more extensions.",
+      "addLabel": "Add source",
+      "addPlaceholder": "owner/repo",
+      "addCaption": "A repo or folder with a .mill/marketplace.json file.",
+      "add": "Add",
+      "refresh": "Refresh",
+      "removeAria": "Remove the {{name}} source"
+    },
+    "sourcesRefreshed": "Sources refreshed.",
+    "sourcesRefreshFailed": "Couldn't refresh: {{list}}",
+    "updates": {
+      "empty": "Everything is up to date."
+    }
+  },
+  "pageMeta": {}
 }

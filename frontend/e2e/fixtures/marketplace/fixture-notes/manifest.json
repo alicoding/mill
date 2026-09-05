@@ -1,0 +1,12 @@
+{
+  "id": "fixture-notes",
+  "name": "Fixture notes",
+  "version": "1.0.0",
+  "author": "Fixture publisher",
+  "description": "A marketplace entry the Extensions specs install.",
+  "capabilities": ["fetch"],
+  "contributes": {
+    "network": [{ "host": "notes.example.test" }],
+    "commands": [{ "id": "hello", "label": "Say hello from the fixture" }]
+  }
+}

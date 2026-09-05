@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { activePanel, dragPaletteItemToCanvas } from './fixtures/canvas'
 
-// Design wave 3 (goal 0001, audit §5): the palette's regrouping into 9
+// Design wave 3 (goal 0001, audit §5): the palette's regrouping into
 // frontend display groups (composition/paletteGroups.ts) instead of
 // the 6 domain Kinds, plus the new search box. Real Go bindings over
 // HTTP (Wails3 server mode) -- NodeTypes() is the real backend
@@ -16,14 +16,14 @@ async function openPaletteOnNewWorkflow(page: import('@playwright/test').Page) {
   await activePanel(page).getByTestId('toggle-palette').click()
 }
 
-test('the palette renders 9 groups with the expected membership', async ({ page }) => {
+test('the palette renders 10 groups with the expected membership', async ({ page }) => {
   await openPaletteOnNewWorkflow(page)
   const panel = activePanel(page)
 
   const groups = panel.getByTestId('palette-group')
-  await expect(groups).toHaveCount(9)
+  await expect(groups).toHaveCount(10)
 
-  const expectedGroupIDs = ['triggers', 'capture', 'transform', 'ai', 'data', 'actions', 'flow', 'guardrails', 'apply']
+  const expectedGroupIDs = ['triggers', 'capture', 'transform', 'ai', 'data', 'actions', 'browser', 'flow', 'guardrails', 'apply']
   for (const id of expectedGroupIDs) {
     await expect(panel.locator(`[data-testid="palette-group"][data-group-id="${id}"]`)).toBeVisible()
   }
@@ -35,6 +35,7 @@ test('the palette renders 9 groups with the expected membership', async ({ page 
     data: ['list-lookup', 'list-search'],
     guardrails: ['human-review', 'ruleset', 'decision-outcome'],
     flow: ['child-workflow', 'decision-route'],
+    browser: ['process-browser-replay'],
   }
   for (const [groupID, nodeTypeIDs] of Object.entries(membership)) {
     const group = panel.locator(`[data-testid="palette-group"][data-group-id="${groupID}"]`)
@@ -91,11 +92,11 @@ test('palette search matches the step label, case-insensitively', async ({ page 
   await expect(panel.getByTestId('palette-item')).toHaveCount(0)
   await expect(panel.getByTestId('palette-no-matches')).toBeVisible()
 
-  // Clearing the query restores the full palette (46
-  // RegisterNodeType call sites, latest process-shell-command
-  // (goal 0240 S1), + the seeded "Check httpbin" declared step type).
+  // Clearing the query restores the full palette (51
+  // RegisterNodeType call sites, latest process-browser-replay
+  // (goal 0350 S2), + the seeded "Check httpbin" declared step type).
   await search.fill('')
-  await expect(panel.getByTestId('palette-item')).toHaveCount(51)
+  await expect(panel.getByTestId('palette-item')).toHaveCount(52)
 })
 
 // Goal 0113 slice 1: typing an intent-shaped query (not a step name)
@@ -137,7 +138,7 @@ test('the advanced toggle states its count, and the badge count matches while ch
   // this worker's browser context (and its localStorage) is shared with
   // every other test in this file.
   await panel.getByTestId('palette-show-advanced').check()
-  await expect(panel.getByTestId('palette-item')).toHaveCount(51)
+  await expect(panel.getByTestId('palette-item')).toHaveCount(52)
 })
 
 // Progressive-disclosure "Show advanced steps" toggle (goal 0047): the
@@ -148,7 +149,7 @@ test('the palette shows every step by default, "Show advanced steps" checked', a
   await openPaletteOnNewWorkflow(page)
   const panel = activePanel(page)
   await expect(panel.getByTestId('palette-show-advanced')).toBeChecked()
-  await expect(panel.getByTestId('palette-item')).toHaveCount(51)
+  await expect(panel.getByTestId('palette-item')).toHaveCount(52)
 })
 
 test('unchecking "Show advanced steps" hides advanced steps, keeps basic ones, and persists across a reload', async ({ page }) => {
@@ -172,6 +173,9 @@ test('unchecking "Show advanced steps" hides advanced steps, keeps basic ones, a
     'apply-list-row',
     // goal 0099: consumes a JSON items array from an attribute.
     'apply-atlas-from-reply',
+    // goal 0350 S2: the recording comes from another tool's export, and
+    // a parameter has to name a step inside it.
+    'process-browser-replay',
   ]
   for (const id of advancedIDs) {
     await expect(panel.locator(`[data-node-type-id="${id}"]`)).toHaveCount(0)
