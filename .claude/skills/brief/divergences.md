@@ -75,6 +75,10 @@ this file is the record, a brief is a projection of it.
   auto-select suppression; forcing focus first pre-selects a cell and a
   first click opens an editor (#699). Focus on pointerup, skipped when
   focus is already inside the host.
+- Obvious: probe `isVisible()` after `page.goto` to decide a branch. Here:
+  never — `goto` resolving is not mount (the plugin-load gate); branch on
+  what the test already knows (viewport size) and let `.click()`
+  auto-wait (#691's toolbar-overflow race).
 - Obvious: the native drop gesture is testable. Here: it is not
   (server-mode Playwright is not a WebviewWindow) — route decisions
   are Vitest-tested; results land via the CreateBoardObject RPC
