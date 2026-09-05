@@ -1,0 +1,8 @@
+/* One flat accent line per aligned axis (goal 0161 slice 2). The
+   geometry stays inline on the element: it is board-space data
+   recomputed on every drag frame, not styling. */
+.guide {
+  position: absolute;
+  background: var(--fgColor-accent);
+  pointer-events: none;
+}
