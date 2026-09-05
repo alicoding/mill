@@ -18,8 +18,8 @@ export const CLIENT_CERT_TAB = 'certificates'
 // one context kind serves every family, so the family name is what
 // separates them.
 function targetIn(ctx: Parameters<NonNullable<Command['enabled']>>[0]): string | null {
-  const target = entityContext(ctx)
-  return target?.entity === 'clientcert' ? target.id : null
+  const target = entityContext(ctx, 'clientcert')
+  return target?.id ?? null
 }
 
 function certExists(id: string): boolean {

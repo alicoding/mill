@@ -62,6 +62,21 @@ interface UISignalState {
   configureEditRequest: { tab: string; id: string } | null
   requestConfigureEdit: (tab: string, id: string) => void
   consumeConfigureEdit: () => void
+  // configureDuplicateRequest (goal 0346): "start a new one prefilled
+  // from THIS row" -- the row's Duplicate command, which lives in the
+  // registry and so cannot reach the tab's own create form directly.
+  // Same set-then-consume shape as the two signals above, for the same
+  // remount reason.
+  configureDuplicateRequest: { tab: string; id: string } | null
+  requestConfigureDuplicate: (tab: string, id: string) => void
+  consumeConfigureDuplicate: () => void
+  // secretPanelRequest (goal 0346): which panel a secret row's action
+  // opens -- its editor or its access history. One signal carrying the
+  // panel rather than two, since the Secrets page shows exactly one at
+  // a time.
+  secretPanelRequest: { panel: 'edit' | 'history'; id: string } | null
+  requestSecretPanel: (panel: 'edit' | 'history', id: string) => void
+  consumeSecretPanel: () => void
   // review.rules (goal 0078): a monotonic counter, same shape as
   // atlasJumpRequest -- legal because the command is surface-scoped to
   // 'review' (shared/commands.ts), so ReviewView is always already
@@ -137,6 +152,12 @@ interface UISignalState {
   requestAtlasExport: () => void
   atlasAddFromFolderRequest: number
   requestAtlasAddFromFolder: () => void
+  // atlas.selection.copyAsImage / .exportAsImage (docs/goals/0201):
+  // the same counter shape, consumed by the board's own capture host.
+  atlasCopyImageRequest: number
+  requestAtlasCopyImage: () => void
+  atlasExportImageRequest: number
+  requestAtlasExportImage: () => void
   atlasShareCopyContextRequest: number
   requestAtlasShareCopyContext: () => void
   atlasShareCopyLinksRequest: number
@@ -223,6 +244,12 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   configureEditRequest: null,
   requestConfigureEdit: (tab, id) => set({ configureEditRequest: { tab, id } }),
   consumeConfigureEdit: () => set({ configureEditRequest: null }),
+  configureDuplicateRequest: null,
+  requestConfigureDuplicate: (tab, id) => set({ configureDuplicateRequest: { tab, id } }),
+  consumeConfigureDuplicate: () => set({ configureDuplicateRequest: null }),
+  secretPanelRequest: null,
+  requestSecretPanel: (panel, id) => set({ secretPanelRequest: { panel, id } }),
+  consumeSecretPanel: () => set({ secretPanelRequest: null }),
   reviewRulesRequest: 0,
   requestReviewRules: () => set((s) => ({ reviewRulesRequest: s.reviewRulesRequest + 1 })),
   atlasArmToolRequest: null,
@@ -252,6 +279,10 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasExport: () => set((s) => ({ atlasExportRequest: s.atlasExportRequest + 1 })),
   atlasAddFromFolderRequest: 0,
   requestAtlasAddFromFolder: () => set((s) => ({ atlasAddFromFolderRequest: s.atlasAddFromFolderRequest + 1 })),
+  atlasCopyImageRequest: 0,
+  requestAtlasCopyImage: () => set((s) => ({ atlasCopyImageRequest: s.atlasCopyImageRequest + 1 })),
+  atlasExportImageRequest: 0,
+  requestAtlasExportImage: () => set((s) => ({ atlasExportImageRequest: s.atlasExportImageRequest + 1 })),
   atlasShareCopyContextRequest: 0,
   requestAtlasShareCopyContext: () => set((s) => ({ atlasShareCopyContextRequest: s.atlasShareCopyContextRequest + 1 })),
   atlasShareCopyLinksRequest: 0,

@@ -171,11 +171,11 @@ describe('menus omit what cannot run', () => {
     const actions = visibleMenuActions([
       { commandId: 'workflow.pin', ctx },
       { commandId: 'workflow.unpin', ctx },
-      { label: 'Delete', onClick: () => {} },
-      // Its own closure, so the row keeps it whatever the command says.
-      { commandId: 'workflow.pin', ctx, onClick: () => {} },
+      // A row's own label overrides the command's, and says nothing
+      // about availability.
+      { commandId: 'workflow.unpin', ctx, label: 'Unpin this' },
     ])
-    expect(actions.map(menuActionLabel)).toEqual(['Unpin', 'Delete', 'Pin'])
-    expect(menuActionAvailable({ commandId: 'no.such.command' })).toBe(false)
+    expect(actions.map(menuActionLabel)).toEqual(['Unpin', 'Unpin this'])
+    expect(menuActionAvailable({ commandId: 'no.such.command', ctx })).toBe(false)
   })
 })

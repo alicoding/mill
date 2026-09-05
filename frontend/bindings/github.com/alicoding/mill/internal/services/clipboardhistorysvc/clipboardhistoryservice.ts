@@ -29,6 +29,21 @@ export function CopyClipboardHistoryEntry(id: string): $CancellablePromise<void>
 }
 
 /**
+ * CopyImagePNG writes a rendered PNG to the real clipboard, so a paste
+ * into any image-accepting app receives the picture. pngBase64 is the
+ * image's own bytes, standard-encoded -- the wire shape every binary
+ * binding in this repo uses.
+ * 
+ * It lives beside CopyClipboardHistoryEntry because both are the same
+ * act (put this on the machine's clipboard) through the same adapter;
+ * nothing about an image copy belongs in clipboard HISTORY, so this
+ * records no entry and leaves no audit line.
+ */
+export function CopyImagePNG(pngBase64: string): $CancellablePromise<void> {
+    return $Call.ByID(969198925, pngBase64);
+}
+
+/**
  * DeleteClipboardHistoryEntry permanently removes id -- no undo, same
  * posture SecretService.DeleteSecret already takes for its own entries.
  */

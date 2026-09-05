@@ -26,12 +26,13 @@ export type CommandContext =
   | { kind: 'run'; runId: string; workflowId?: string; nodeId?: string; values?: Record<string, string> }
   | { kind: 'entry'; entryId: string; pinned?: boolean }
   | { kind: 'card'; cardId: string }
-  // A row of a Configure inventory (goal 0306 S1): `entity` is the
-  // family's own data-event name ("clientcert"), `id` the row. One
-  // kind for every family rather than one per family -- the commands
-  // acting on a row (edit, duplicate, delete) are the same three
-  // everywhere, and a per-family kind would multiply the discriminant
-  // without changing a single call site's shape.
+  // A Configure inventory row (goal 0346): `entity` is the family slug
+  // every surface already spells the same way -- InventoryItem.entity,
+  // ENTITY_ICON's keys, deleteWithUndo's data-event name -- and `id` is
+  // that row's entity id. One kind for every family, because a row
+  // action differs by FAMILY, not by kind of target: the command's own
+  // id carries the family, and entityContext(ctx, family) below is what
+  // refuses a context from a different one.
   | { kind: 'entity'; entity: string; id: string }
 
 export type CommandContextKind = CommandContext['kind']
@@ -54,8 +55,13 @@ export function runContext(ctx: CommandContext | undefined): { runId: string; wo
   return ctx?.kind === 'run' ? { runId: ctx.runId, workflowId: ctx.workflowId, nodeId: ctx.nodeId, values: ctx.values } : null
 }
 
-export function entityContext(ctx: CommandContext | undefined): { entity: string; id: string } | null {
-  return ctx?.kind === 'entity' ? { entity: ctx.entity, id: ctx.id } : null
+// entityContext narrows to ONE family: contextSatisfies only compares
+// the discriminant, so `configure.list.delete` handed a request's
+// context would otherwise pass its `needs` check. Every command the
+// row-command factory mints answers through this, so a family's
+// command can never act on another family's row.
+export function entityContext(ctx: CommandContext | undefined, entity: string): { id: string } | null {
+  return ctx?.kind === 'entity' && ctx.entity === entity ? { id: ctx.id } : null
 }
 
 export function entryContext(ctx: CommandContext | undefined): { entryId: string; pinned?: boolean } | null {
