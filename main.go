@@ -71,6 +71,12 @@ var assets embed.FS
 //go:embed all:userdocs
 var userdocsFS embed.FS
 
+// A browser loads an unpacked extension from a FOLDER, and an installed
+// copy has no source tree to point at: bridgesvc writes this out.
+//
+//go:embed examples/browser-extension
+var browserExtensionFS embed.FS
+
 //go:embed build/appicon.png
 var trayIconPNG []byte
 
@@ -255,8 +261,8 @@ func main() {
 	wiring.WireAtlasStorageDirs(atlasService)
 	atlasService.SetGuardedDataPaths(settingsPath, backupsvc.SQLiteDBPath(executionDatabaseURL), backupDir)
 
-	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger)    // docs/goals/0132-remote-access.md SLICE 1
-	bridgeService := wiring.WireBrowserBridge(remoteAuthService, logger) // the browser bridge's own loopback listener (docs/goals/0350)
+	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger)                                                    // docs/goals/0132-remote-access.md SLICE 1
+	bridgeService := wiring.WireBrowserBridge(remoteAuthService, logger, browserExtensionFS, filepath.Dir(settingsPath)) // the browser bridge's own loopback listener (docs/goals/0350)
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	wiring.WireSettingsEraSeams(settingsService, notificationService, remoteAuthService, triggerService, atlasService, pluginService, secretService)

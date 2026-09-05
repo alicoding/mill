@@ -379,6 +379,14 @@ export const RUNTIME_PLUGIN_FRAME_MCP_BASE_PORT = 11700
 export const BROWSER_BRIDGE_SERVER_BASE_PORT = 11720
 export const BROWSER_BRIDGE_MCP_BASE_PORT = 11740
 
+// browser-replay.spec.ts's own dedicated pair (goal 0350 S2): it pairs
+// a browser and edits the SEEDED "Replay a browser flow" workflow, both
+// global app state (testing.md's shared-vs-dedicated rule), and its own
+// pair rather than a BROWSER_BRIDGE_* offset so the two browser specs
+// can never contend for one bridge listener.
+export const BROWSER_REPLAY_SERVER_BASE_PORT = 11760
+export const BROWSER_REPLAY_MCP_BASE_PORT = 11780
+
 // Every spawned server binds a browser-bridge listener too, derived
 // from its own server port by this offset rather than declared per
 // spec: a bridge port is needed by EVERY server (the service starts

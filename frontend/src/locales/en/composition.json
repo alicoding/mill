@@ -486,5 +486,32 @@
   },
   "steppedRunGuard": {
     "title": "Stop the run already paused?"
+  },
+  "browserReplayEditor": {
+    "recording": "Recording",
+    "emptyDescription": "Import a recording exported from your browser's recorder.",
+    "import": "Import a recording",
+    "replace": "Replace",
+    "summary_one": "{{count}} step · starts at {{url}}",
+    "summary_other": "{{count}} steps · starts at {{url}}",
+    "summaryNoUrl_one": "{{count}} step",
+    "summaryNoUrl_other": "{{count}} steps",
+    "stepOption": "{{number}} · {{type}} {{selector}}",
+    "parameters": "Parameters",
+    "parametersDescription": "Replace a value in the recording each time this step runs.",
+    "addParameter": "Add parameter",
+    "removeParameterAriaLabel": "Remove parameter",
+    "noBindableSteps": "This recording has no step that takes a value.",
+    "nameLabel": "Name",
+    "stepLabel": "Step",
+    "fieldLabel": "Field",
+    "sourceLabel": "Source",
+    "sourceLiteral": "A fixed value",
+    "literalLabel": "Value",
+    "extract": "Extract",
+    "extractDescription": "Read text out of the page and name it for the steps that follow.",
+    "addExtraction": "Add extraction",
+    "removeExtractionAriaLabel": "Remove extraction",
+    "noWaitSteps": "This recording has no step that waits for an element."
   }
 }

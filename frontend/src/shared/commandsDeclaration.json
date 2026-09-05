@@ -364,6 +364,14 @@
     "needs": null
   },
   {
+    "id": "browser.revealExtension",
+    "label": "Reveal the extension folder",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
     "id": "browser.test",
     "label": "Test the browser connection",
     "binding": null,

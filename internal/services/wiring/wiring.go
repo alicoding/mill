@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	atlasdomain "github.com/alicoding/mill/internal/domain/atlas"
+	"io/fs"
 	"log"
 	"log/slog"
 	"os"
@@ -21,6 +22,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/notify"
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/adapters/settings"
+	"github.com/alicoding/mill/internal/domain/browserbridge"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/notification"
 	"github.com/alicoding/mill/internal/domain/typedfield"
@@ -278,8 +280,23 @@ func WireRemoteAuth(store settings.Store, logger *slog.Logger) *remoteauthsvc.Re
 //
 // A bind failure is logged, not fatal. The bridge is additive; the
 // rest of Mill runs unchanged with no browser paired.
-func WireBrowserBridge(remoteAuth *remoteauthsvc.RemoteAuthService, logger *slog.Logger) *bridgesvc.BridgeService {
+func WireBrowserBridge(remoteAuth *remoteauthsvc.RemoteAuthService, logger *slog.Logger, extension fs.FS, extensionParentDir string) *bridgesvc.BridgeService {
 	svc := bridgesvc.New(remoteAuth, logger)
+	// The extension's files are embedded at the composition root (the
+	// only place that can embed a path outside internal/), and written
+	// to a real folder when someone asks to load it into a browser.
+	if sub, err := fs.Sub(extension, "examples/browser-extension"); err == nil {
+		svc.SetExtensionBundle(sub, extensionParentDir)
+	} else {
+		logger.Error("browser extension bundle", "error", err)
+	}
+	// The browser-replay step's seam onto the paired browser: composition
+	// owns what a step MEANS, this service owns the channel, and this is
+	// the only place the two meet.
+	composition.SetBrowserReplayer(func(flow browserbridge.UserFlow, timeout time.Duration) (composition.BrowserReplayOutcome, error) {
+		outcome, err := svc.Replay(context.Background(), flow, bridgesvc.ReplayOptions{Timeout: timeout})
+		return browserReplayOutcome(outcome), err
+	})
 	errCh := svc.Start()
 	status := svc.BridgeStatus()
 	select {
@@ -289,6 +306,20 @@ func WireBrowserBridge(remoteAuth *remoteauthsvc.RemoteAuthService, logger *slog
 		logger.Info("browser bridge listening", "addr", status.Address)
 	}
 	return svc
+}
+
+// browserReplayOutcome restates a finished replay in composition's own
+// vocabulary. A FAILED run's outcome is carried across too -- the step
+// names the failing step from it, so an error is never the only thing
+// that survives the boundary.
+func browserReplayOutcome(outcome bridgesvc.Outcome) composition.BrowserReplayOutcome {
+	steps := make([]composition.BrowserReplayStep, 0, len(outcome.Results))
+	for _, r := range outcome.Results {
+		steps = append(steps, composition.BrowserReplayStep{
+			Index: r.Index, Status: r.Status, Error: r.Error, Extracted: r.Extracted,
+		})
+	}
+	return composition.BrowserReplayOutcome{Steps: steps, Downloads: outcome.Downloads}
 }
 
 // bridgeBindGrace is how long WireBrowserBridge waits for a bind

@@ -16,10 +16,15 @@ interface BrowserBridgeState {
   test: 'idle' | 'running' | 'passed' | 'failed'
   testSteps: number
   testDurationMS: number
+  // Where the extension's files were written, once someone has asked
+  // for them. A browser's "Load unpacked" dialog needs the path typed
+  // or pasted, so it is shown as well as opened.
+  extensionPath: string
   error: string
   refresh: () => Promise<void>
   pair: () => Promise<void>
   runTest: () => Promise<void>
+  revealExtension: () => Promise<void>
   revoke: (id: string) => Promise<void>
 }
 
@@ -30,6 +35,7 @@ export const useBrowserBridgeStore = create<BrowserBridgeState>()((set, get) => 
   test: 'idle',
   testSteps: 0,
   testDurationMS: 0,
+  extensionPath: '',
   error: '',
   refresh: async () => {
     const [status, browsers] = await Promise.all([BridgeService.BridgeStatus(), RemoteAuthService.ListBrowsers()])
@@ -50,6 +56,14 @@ export const useBrowserBridgeStore = create<BrowserBridgeState>()((set, get) => 
       return
     }
     await get().refresh()
+  },
+  revealExtension: async () => {
+    set({ error: '' })
+    try {
+      set({ extensionPath: await BridgeService.RevealExtensionFolder() })
+    } catch (err) {
+      set({ error: messageFor(err, appTranslate) })
+    }
   },
   revoke: async (id: string) => {
     await RemoteAuthService.RevokeDevice(id)

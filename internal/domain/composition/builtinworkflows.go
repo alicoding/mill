@@ -465,7 +465,10 @@ func BuiltInWorkflows() []Workflow {
 	// reasoning.
 	workflows = append(workflows, builtInTodoScanWorkflows()...)
 	workflows = append(workflows, builtInTransformWorkflows()...)
-	return append(workflows, builtInBrunoWorkflows()...)
+	workflows = append(workflows, builtInBrunoWorkflows()...)
+	// goal 0350 S2: the browser-replay step's own seeded proof, same
+	// split-file reasoning.
+	return append(workflows, builtInBrowserReplayWorkflows()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any
