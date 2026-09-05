@@ -194,7 +194,9 @@ ten. "Back up now" adds one on demand. "Export everything" bundles
 your data into one file for moving machines, excluding the vault;
 "Import everything" merges it back. The export covers Mill's own
 data — files mirrored from folders on disk are referenced by path,
-not copied in, so back those folders up separately.
+not copied in, so back those folders up separately. Restoring brings
+back a backup's vault file; it opens if that vault's key is still on
+this device.
 
 ## Updates
 
