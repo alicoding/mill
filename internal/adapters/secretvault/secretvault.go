@@ -86,9 +86,10 @@ type Vault interface {
 	// AssignID stamps an identity into an unlocked vault that has none
 	// and writes the file immediately, returning the id now in force.
 	AssignID() (string, error)
-	// Backup renames the vault file to a timestamped ".bak" sibling and
-	// locks the vault, returning the archived path. Leaves the file
-	// alone on failure.
+	// Backup renames the vault file to a timestamped, still-".kdbx"-
+	// suffixed ".bak" sibling and locks the vault, returning the
+	// archived path. Every call mints its own file -- never overwrites
+	// an earlier archive. Leaves the file alone on failure.
 	Backup() (string, error)
 	// Unlock opens the existing vault file and decrypts it into memory
 	// with masterKey. A wrong key or corrupt file returns

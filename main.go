@@ -146,8 +146,9 @@ func main() {
 		credentialStore = credential.NewInMemory()
 	}
 	configureService := configuresvc.NewConfigureService(settingsStore, compositionService, credentialStore)
-	// MILL_SECRETS_PATH overrides for e2e isolation, same convention as MILL_SETTINGS_PATH above (WireSecrets' own doc comment covers the rest of what this wires).
-	secretService := wiring.WireSecrets(windowing.ConfigDirOrEnv("MILL_SECRETS_PATH", "secrets.kdbx"), credentialStore, settingsStore, configureService)
+	// MILL_SECRETS_PATH overrides for e2e isolation, same convention as MILL_SETTINGS_PATH above (WireSecrets' own doc comment covers the rest of what this wires). Captured in its own variable -- backupsvc's own wiring below needs the identical path, so every backup carries the vault file (goal 0359).
+	vaultPath := windowing.ConfigDirOrEnv("MILL_SECRETS_PATH", "secrets.kdbx")
+	secretService := wiring.WireSecrets(vaultPath, credentialStore, settingsStore, configureService)
 	wiring.WireSecretRedaction(secretService) // goal 0185 S4
 	// docs/adr/0038: Atlas's storage/CRUD layer (cross-surface wiring
 	// arrives below via injected seams, never direct imports).
@@ -179,7 +180,7 @@ func main() {
 	// MILL_BACKUP_DIR follows the same override convention as above;
 	// docs/goals/0065's backupService construction reuses this value.
 	backupDir := windowing.ConfigDirOrEnv("MILL_BACKUP_DIR", "backups")
-	backupsvc.GuardVersionChange(logger, settingsStore, backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, backupDir, millVersion)
+	backupsvc.GuardVersionChange(logger, settingsStore, backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion)
 
 	mcpAuditService := wiring.WireAuditTrails(secretService, backupsvc.SQLiteDBPath(executionDatabaseURL), logger)
 
@@ -247,7 +248,7 @@ func main() {
 	wiring.WireConfigureSeams(atlasService, configureService, pluginService) // paste conversion + plugin content writes (docs/goals/0289)
 	wiring.WireNotify()
 
-	backupService := backupsvc.Wire(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, backupDir, millVersion, compositionService, configureService, atlasService)
+	backupService := backupsvc.Wire(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion, compositionService, configureService, atlasService)
 
 	// docs/adr/0038, goal 0063/0067: the share model's mirror root, plus the image tool's captures folder (goal 0169 slice 2).
 	wiring.WireAtlasStorageDirs(atlasService)

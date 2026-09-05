@@ -79,6 +79,17 @@ export function ImportEverything(archiveData: string): $CancellablePromise<$mode
 }
 
 /**
+ * LatestVaultBackupTime reports the newest kept backup that carries a
+ * copy of the vault file -- the Secrets view's key-mismatch state reads
+ * this to name how current a recovery copy is (goal 0359). Present is
+ * false when no kept backup carries one (never set up before the
+ * oldest kept backup, or pruned past keepN since).
+ */
+export function LatestVaultBackupTime(): $CancellablePromise<$models.VaultBackupTime> {
+    return $Call.ByID(1947483334);
+}
+
+/**
  * PreviewImportEverything parses archiveData (ExportEverything's own
  * output) WITHOUT applying anything -- every FamilyBundle.IDs()/
  * atlas item count below is a read-only call, so this is safe to run

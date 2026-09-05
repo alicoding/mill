@@ -5,6 +5,7 @@ import path from 'node:path'
 import { SECRETS_MCP_BASE_PORT, SECRETS_SERVER_BASE_PORT, spawnMillServer, type SpawnedServer } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
 import { paletteDialog } from './fixtures/palette'
+import { corruptVaultKeyForTests } from './vaultKeyDebugKnob'
 
 // The secret manager's human-facing surface (goal 0185 S2): create a
 // vault, store a password, reveal/hide it, copy it to the real OS
@@ -265,8 +266,57 @@ test('secret manager: a vault with no key on this device says so, and Start a ne
     await expect(page.getByTestId('secrets-view').getByText('Example Login', { exact: true })).toBeVisible()
 
     // The unreadable file is kept beside the new one, never deleted.
-    const backups = readdirSync(dir).filter((f) => f.startsWith('secrets.kdbx.') && f.endsWith('.bak'))
+    const backups = readdirSync(dir).filter((f) => f.startsWith('secrets.') && f.endsWith('.bak.kdbx'))
     expect(backups).toHaveLength(1)
+  } finally {
+    await browser.close()
+    if (server) await server.stop()
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+// Goal 0359: a vault file whose STORED key doesn't open it (distinct
+// from the no-key case above, where nothing is stored at all) --
+// corruptVaultKeyForTests (the e2e-only debug knob) reproduces this in
+// one process by overwriting the credential store's own entry.
+// Dedicated server pair for the same reason every other test in this
+// file has one.
+// eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
+test('secret manager: a vault whose stored key no longer opens it names the cause and offers a way out', async ({}, testInfo) => {
+  const idx = testInfo.parallelIndex
+  const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-secrets-mismatch-${idx}-`))
+  const settingsPath = path.join(dir, 'settings.json')
+  const executionDbPath = path.join(dir, 'execution.db')
+  const backupDir = path.join(dir, 'backups')
+  const port = SECRETS_SERVER_BASE_PORT + idx
+  const mcpPort = SECRETS_MCP_BASE_PORT + idx
+
+  let server: SpawnedServer | undefined
+  const browser = await chromium.launch()
+  try {
+    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
+    const page = await browser.newPage()
+    await page.goto(`${server.baseURL}/`)
+    await page.getByRole('link', { name: 'Secrets' }).click()
+    await page.getByRole('button', { name: 'Got it' }).click()
+    await page.getByTestId('secrets-setup-cta').click()
+    await expect(page.getByTestId('secrets-view').getByText('Example Login', { exact: true })).toBeVisible()
+
+    // No backup has run yet -- the caption stays off rather than
+    // claiming a recovery copy that doesn't exist.
+    await page.getByTestId('secrets-lock').click()
+    await corruptVaultKeyForTests(page, server.baseURL)
+    await page.getByTestId('secrets-unlock-cta').click()
+    await expect(page.getByText("This vault's key isn't on this device")).toBeVisible()
+    await expect(page.getByText(
+      'The vault file was made with a key this device no longer has. Start a new vault to keep working; the old file stays beside it as a backup.',
+    )).toBeVisible()
+    // The generic red error line is replaced by that body, not shown
+    // alongside it.
+    await expect(page.getByTestId('secrets-unlock-error')).toHaveCount(0)
+    await expect(page.getByTestId('secrets-vault-backup-caption')).toHaveCount(0)
+    // The one door out is still there, unchanged.
+    await expect(page.getByTestId('secrets-reset-cta')).toBeVisible()
   } finally {
     await browser.close()
     if (server) await server.stop()

@@ -22,6 +22,7 @@ export type {
   BackupStatus,
   FamilySummary,
   ImportEverythingSummary,
+  VaultBackupTime,
 } from '../../bindings/github.com/alicoding/mill/internal/services/backupsvc'
 export { BridgeService } from '../../bindings/github.com/alicoding/mill/internal/services/bridgesvc'
 export type {
