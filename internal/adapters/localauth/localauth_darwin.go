@@ -70,6 +70,40 @@ static int millLocalAuthEvaluate(const char *reason) {
 		return result;
 	}
 }
+
+// millLocalAuthCapability answers the three prompt-free
+// canEvaluatePolicy reads Describe maps, packed into a bitmask so one
+// cgo call covers all of them: bit 0 the device-owner policy Mill
+// actually evaluates, bit 1 Touch ID, bit 2 a paired Apple Watch.
+//
+// biometryType is documented as meaningful only after
+// canEvaluatePolicy has been called on that context (LAContext.h), so
+// it is read from the same context, after the biometrics evaluation,
+// never from a fresh one. Only LABiometryTypeTouchID counts as Touch
+// ID here: no Mac ships any other biometry, and an unrecognised future
+// type falls back to the password wording, which under-promises rather
+// than naming hardware this Mac may not have.
+static int millLocalAuthCapability(void) {
+	@autoreleasepool {
+		int mask = 0;
+		NSError *err = nil;
+		LAContext *ctx = [[LAContext alloc] init];
+		if ([ctx canEvaluatePolicy:LAPolicyDeviceOwnerAuthentication error:&err]) {
+			mask |= 1;
+		}
+		err = nil;
+		if ([ctx canEvaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics error:&err]
+		    && ctx.biometryType == LABiometryTypeTouchID) {
+			mask |= 2;
+		}
+		err = nil;
+		if ([ctx canEvaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithWatch error:&err]) {
+			mask |= 4;
+		}
+		[ctx release];
+		return mask;
+	}
+}
 */
 import "C"
 
@@ -82,6 +116,7 @@ import (
 func init() {
 	availableImpl = cgoAvailable
 	authenticateImpl = cgoAuthenticate
+	capabilityImpl = cgoCapability
 }
 
 func cgoAvailable() bool {
@@ -104,4 +139,11 @@ func cgoAuthenticate(reason string) error {
 		return nil
 	}
 	return errorForCode(code)
+}
+
+// cgoCapability unpacks millLocalAuthCapability's bitmask into the
+// port's own Capability values.
+func cgoCapability() Capability {
+	mask := int(C.millLocalAuthCapability())
+	return capabilityFor(mask&1 != 0, mask&2 != 0, mask&4 != 0)
 }
