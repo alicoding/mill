@@ -156,7 +156,7 @@ func Available() bool { return availableImpl() }
 // semaphore rather than assuming any queue, and the caller must not be
 // the main thread, which the sheet's own UI needs. Mill satisfies that
 // structurally: every bound method reaches Go from Wails v3's HTTP
-// transport handler (wails/v3@v3.0.0-beta.12,
+// transport handler (wails/v3@v3.0.0-beta.15,
 // pkg/application/transport_http.go's HandleRuntimeCallWithIDs call),
 // i.e. on net/http's own per-request goroutine, never on the thread the
 // application's event loop runs on.
