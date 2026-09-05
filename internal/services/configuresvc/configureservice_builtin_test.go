@@ -25,7 +25,7 @@ import (
 func TestConfigureService_FreshInstall_SeedsBuiltInRequests(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+	cfg := NewConfigureService(store, comp, credential.NewInMemory())
 
 	got := cfg.HTTPRequests()
 	want := httprequest.BuiltIn()
@@ -109,7 +109,7 @@ func TestAdoptSecretsIntoStore_GivesSeededExamplesTheirDemoCredentials(t *testin
 func TestConfigureService_DeletingABuiltIn_DoesNotReturnOnRestart(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+	cfg := NewConfigureService(store, comp, credential.NewInMemory())
 
 	// docs/adr/0040 decision 3: a seeded workflow still references this
 	// request, so the delete is blocked, naming it, until the reference
@@ -128,7 +128,7 @@ func TestConfigureService_DeletingABuiltIn_DoesNotReturnOnRestart(t *testing.T) 
 		t.Fatalf("DeleteHTTPRequest(%q) returned error after unblocking: %v", httprequest.ExampleNoneID, err)
 	}
 
-	restarted := NewConfigureService(store, comp, credential.New())
+	restarted := NewConfigureService(store, comp, credential.NewInMemory())
 	for _, r := range restarted.HTTPRequests() {
 		if r.ID == httprequest.ExampleNoneID {
 			t.Fatalf("deleted built-in %q reappeared after restart, want it to stay deleted", httprequest.ExampleNoneID)
@@ -148,7 +148,7 @@ func TestConfigureService_DeletingABuiltIn_DoesNotReturnOnRestart(t *testing.T) 
 func TestUpdateHTTPRequest_PreservesBuiltInFlag_AndUpdatesDescription(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+	cfg := NewConfigureService(store, comp, credential.NewInMemory())
 
 	var original httprequest.HTTPRequest
 	for _, r := range cfg.HTTPRequests() {
@@ -320,7 +320,7 @@ func TestTopUpSeeding_AddsNewBuiltIns_ButNeverResurrectsDeletedOnes(t *testing.T
 func TestConfigureService_FreshInstall_SeedsBuiltInLists(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+	cfg := NewConfigureService(store, comp, credential.NewInMemory())
 
 	got := cfg.Lists()
 	want := list.BuiltIn()
@@ -341,7 +341,7 @@ func TestConfigureService_FreshInstall_SeedsBuiltInLists(t *testing.T) {
 func TestConfigureService_DeletingABuiltInList_DoesNotReturnOnRestart(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+	cfg := NewConfigureService(store, comp, credential.NewInMemory())
 
 	// docs/adr/0040 decision 3: two seeded workflows still reference
 	// this list, so the delete is blocked, naming both, until both
@@ -362,7 +362,7 @@ func TestConfigureService_DeletingABuiltInList_DoesNotReturnOnRestart(t *testing
 		t.Fatalf("DeleteList(%q) returned error after unblocking: %v", list.ExampleCountryCodesID, err)
 	}
 
-	restarted := NewConfigureService(store, comp, credential.New())
+	restarted := NewConfigureService(store, comp, credential.NewInMemory())
 	for _, l := range restarted.Lists() {
 		if l.ID == list.ExampleCountryCodesID {
 			t.Fatalf("deleted built-in list %q reappeared after restart, want it to stay deleted", list.ExampleCountryCodesID)
@@ -373,7 +373,7 @@ func TestConfigureService_DeletingABuiltInList_DoesNotReturnOnRestart(t *testing
 func TestConfigureService_FreshInstall_SeedsBuiltInMCPServers(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+	cfg := NewConfigureService(store, comp, credential.NewInMemory())
 
 	got := cfg.MCPServers()
 	want := mcpserver.BuiltIn()
@@ -394,7 +394,7 @@ func TestConfigureService_FreshInstall_SeedsBuiltInMCPServers(t *testing.T) {
 func TestConfigureService_DeletingABuiltInMCPServer_DoesNotReturnOnRestart(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+	cfg := NewConfigureService(store, comp, credential.NewInMemory())
 
 	// docs/adr/0040 decision 3: the seeded "Example: MCP echo call"
 	// workflow still references this server, so the delete is blocked,
@@ -413,7 +413,7 @@ func TestConfigureService_DeletingABuiltInMCPServer_DoesNotReturnOnRestart(t *te
 		t.Fatalf("DeleteMCPServer(%q) returned error after unblocking: %v", mcpserver.ExampleReferenceServerID, err)
 	}
 
-	restarted := NewConfigureService(store, comp, credential.New())
+	restarted := NewConfigureService(store, comp, credential.NewInMemory())
 	for _, s := range restarted.MCPServers() {
 		if s.ID == mcpserver.ExampleReferenceServerID {
 			t.Fatalf("deleted built-in MCP server %q reappeared after restart, want it to stay deleted", mcpserver.ExampleReferenceServerID)

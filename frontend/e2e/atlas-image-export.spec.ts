@@ -6,24 +6,24 @@ import type { Download, Page } from '@playwright/test'
 import { test, expect } from './fixtures/server'
 import { groupCard, noteCard } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
-import { withClipboardLock } from './fixtures/clipboardLock'
-import { hostClipboardAvailable } from './fixtures/hostClipboard'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { paletteDialog } from './fixtures/palette'
 import { waitForViewportStable } from './fixtures/animation'
 import { ATLAS_KIND_DOCUMENT } from './fixtures/kindPicker'
 import { IMAGE_EXPORT_PADDING } from '../src/atlas/atlasImageExport'
 
-// "Copy as image" / "Export as image..." (docs/goals/0201): a picture
-// of the current selection, widening to the whole board when nothing
-// is selected.
+// "Export as image..." (docs/goals/0201): a picture of the current
+// selection, widening to the whole board when nothing is selected.
 //
 // Shared pool. Each case builds its OWN space with its own cards and
 // deletes it again, so nothing here reads or disturbs the seeded
 // landing board: the cards have to sit far enough apart to be selected
 // and right-clicked individually, which the landing board cannot
-// promise. The copy case takes the real-pasteboard lock, since the
-// host's own Go clipboard write is what it exercises.
+// promise. "Copy as image" (the real host-pasteboard case) lives in its
+// own dedicated-server file, atlas-image-export-host-copy.spec.ts (goal
+// 0356) -- the standard per-worker pool defaults to the in-memory
+// clipboard adapter, which can't prove the real-pasteboard-absent
+// failure path that test's own contract needs.
 //
 // The exclusion RULES (handles, resize frames, out-of-scope nodes) are
 // pinned by src/atlas/atlasImageExport.test.ts against the filter
@@ -295,34 +295,6 @@ test('exports the selection at the picked scale, then widens to the whole board 
   expect((await readDownload(boardDownload)).subarray(0, 8)).toEqual(PNG_SIGNATURE)
 
   await tearDownSpace(page, spaceID, cardIDs)
-})
-
-test('copying says what landed on the clipboard, and whose clipboard it was', async ({ page }) => {
-  await withClipboardLock(async () => {
-    const { spaceID, cardIDs } = await buildSpace(page, 'ZzImgCopySpace', ['ZzImgCopyCard'])
-
-    await noteCard(page, 'ZzImgCopyCard').click()
-    await expect(page.locator('.react-flow__node.selected')).toHaveCount(1)
-
-    await runViaPalette(page, 'Copy as image')
-
-    // This suite runs in server mode, where the picture reaches the
-    // DESKTOP's clipboard: the notice says so rather than leaving it
-    // to be discovered by a paste that produces nothing. Where there is
-    // no real pasteboard at all (the Linux CI runner, same constraint
-    // hostClipboardAvailable already names for every other clipboard
-    // spec), the other half of the contract is what's provable: the
-    // host's refusal reaches the same pill as a sentence, never a
-    // silent no-op.
-    await expect(page.getByTestId('notice-text')).toHaveText(
-      hostClipboardAvailable
-        ? "Copied the selection as PNG to the desktop's clipboard. This device's clipboard is unchanged."
-        : "Mill couldn't put the image on the clipboard.",
-      { timeout: 15_000 },
-    )
-
-    await tearDownSpace(page, spaceID, cardIDs)
-  })
 })
 
 // Two defects the screenshot review found after #682 (docs/goals/0201

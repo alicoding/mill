@@ -1,12 +1,10 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { execSync } from 'node:child_process'
 import { test, expect } from './fixtures/server'
 import { dragResizeHandle, nonSeededBoardObjects, openCard } from './fixtures/atlasBoard'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { contextMenu } from './fixtures/contextMenu'
-import { withClipboardLock } from './fixtures/clipboardLock'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 
 // The image tool (goal 0169 slice 2, re-pointed by goal 0179 S1's own
@@ -20,7 +18,12 @@ import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 // "Promote to card…" action proven at the end of the first test;
 // atlas-paste-convert.spec.ts and the unit registry's own tests cover
 // the renderer, not this file. Shared pool: every entity created here
-// is deleted here.
+// is deleted here. The one case needing the real host pasteboard
+// (a window-level ⌘V of a screenshot bitmap, which must prove the door
+// asks the REAL pasteboard for file paths first) lives in its own
+// dedicated-server file, atlas-image-tool-host-paste.spec.ts (goal
+// 0356) -- the standard per-worker pool defaults to the in-memory
+// clipboard adapter and has no per-spec override.
 
 // A minimal valid 1x1 PNG, inlined rather than read from disk -- the
 // paste path never touches the filesystem until SaveImageBytes writes
@@ -224,55 +227,4 @@ test('an image object can be resized by its own handle, and the size persists ac
   await expect(menu).toBeVisible()
   await menu.getByText('Delete', { exact: true }).click()
   await expect(reloaded).toHaveCount(0)
-})
-
-// Regression (goal 0255): board-level ⌘V of a screenshot bitmap was an
-// explicit no-op -- the window paste door returned on ANY files
-// payload, recorded at the time as "real paths unreachable via the web
-// Clipboard API". The door now asks the HOST pasteboard for real file
-// paths first (Finder ⌘C gets full drop parity) and falls back to the
-// bitmap's own bytes through the image tool's commit door. This test
-// drives the bitmap fallback with NO popover open anywhere: the real
-// pasteboard is first given plain text (lock held -- the host
-// path-read touches the one real macOS pasteboard) so that read
-// honestly answers empty, then a files-carrying paste is dispatched at
-// the window.
-test('pasting a screenshot bitmap directly on the board lands an image object', async ({ page }) => {
-  await withClipboardLock(async () => {
-    if (process.platform === 'darwin') {
-      execSync('pbcopy', { input: 'goal-0255-plain-text-baseline' })
-    }
-    await page.goto('/')
-    await page.getByRole('link', { name: 'Atlas' }).click()
-    const board = page.getByTestId('atlas-board')
-    await expect(board).toBeVisible()
-    // Position gesture, not an interaction: the paste anchors at the
-    // last known pointer position (atlas-paste-convert.spec.ts's own
-    // convention -- nothing is clicked, so nothing needs actionability).
-    const bb = await board.boundingBox()
-    if (!bb) throw new Error('no board box')
-    // eslint-disable-next-line no-restricted-syntax -- pure pointer positioning, no interaction to check
-    await page.mouse.move(bb.x + bb.width * 0.55, bb.y + bb.height * 0.65)
-
-    await page.evaluate((base64) => {
-      const bin = atob(base64)
-      const bytes = new Uint8Array(bin.length)
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
-      const file = new File([bytes], 'screenshot.png', { type: 'image/png' })
-      const dt = new DataTransfer()
-      dt.items.add(file)
-      window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
-    }, ONE_PIXEL_PNG_BASE64)
-
-    const object = imageObjects(page)
-    await expect(object).toHaveCount(1)
-    await expect(object.locator('img')).toBeVisible()
-    // Nothing became a card, and no popover was involved.
-    await expect(page.getByTestId('atlas-note-card').filter({ hasText: 'Pasted image' })).toHaveCount(0)
-    await expect(page.getByTestId('atlas-image-input')).toHaveCount(0)
-
-    await object.click()
-    await page.keyboard.press('Delete')
-    await expect(object).toHaveCount(0)
-  })
 })

@@ -24,7 +24,7 @@ func newConfigureHarness(t *testing.T) (*ConfigureService, *servicetest.FakeStor
 	t.Helper()
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	return NewConfigureService(store, comp, credential.New()), store
+	return NewConfigureService(store, comp, credential.NewInMemory()), store
 }
 
 // shippedRequestRevision reports the SeedRevision the built-in request
@@ -80,7 +80,7 @@ func TestReconcileBuiltInRequests_ModifiedEntryLeftAlone(t *testing.T) {
 
 	// Simulate the next app launch reading the same persisted store.
 	comp2 := compositionsvc.NewCompositionService(store)
-	cfg2 := NewConfigureService(store, comp2, credential.New())
+	cfg2 := NewConfigureService(store, comp2, credential.NewInMemory())
 	for _, r := range cfg2.HTTPRequests() {
 		if r.ID == id {
 			if r.Label != "User's own edit" {
@@ -103,7 +103,7 @@ func TestReconcileBuiltInRequests_MigratesPreGoal0037Entry(t *testing.T) {
 	}
 	seedPreExistingRequests(t, store, pre)
 
-	cfg := NewConfigureService(store, comp, credential.New())
+	cfg := NewConfigureService(store, comp, credential.NewInMemory())
 	id := httprequest.ExampleNoneID
 	for _, r := range cfg.HTTPRequests() {
 		if r.ID == id {

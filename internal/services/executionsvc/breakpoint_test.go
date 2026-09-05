@@ -53,7 +53,7 @@ func newBreakpointHarness(t *testing.T) (*guardrailsvc.GuardrailService, *Execut
 	t.Helper()
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	_ = configuresvc.NewConfigureService(store, comp, credential.New()) // seeds decision.BuiltIn(), wires composition.SetDecisionLookup
+	_ = configuresvc.NewConfigureService(store, comp, credential.NewInMemory()) // seeds decision.BuiltIn(), wires composition.SetDecisionLookup
 	guard := guardrailsvc.NewGuardrailService(store, comp)
 	dbPath := filepath.Join(t.TempDir(), "exec.db")
 	exec, err := NewExecutionService("sqlite:"+dbPath, comp, guard)

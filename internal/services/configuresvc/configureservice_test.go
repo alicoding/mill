@@ -46,7 +46,7 @@ func newTestConfigureService(t *testing.T) (*ConfigureService, *compositionsvc.C
 	t.Helper()
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+	cfg := NewConfigureService(store, comp, credential.NewInMemory())
 	cfg.requests = nil
 	cfg.lists = nil
 	cfg.mcpServers = nil
@@ -159,7 +159,7 @@ func TestRestore_MigratesLegacyConnectorsKey(t *testing.T) {
 	_ = store.Set(legacyConnectorsKey, legacy)
 
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+	cfg := NewConfigureService(store, comp, credential.NewInMemory())
 
 	// Find by ID -- top-up seeding appends built-in examples alongside
 	// migrated data, so an exact-list assertion no longer holds; the
@@ -169,7 +169,7 @@ func TestRestore_MigratesLegacyConnectorsKey(t *testing.T) {
 		t.Fatalf("HTTPRequests() after legacy migration missing old-1 (found=%v, got=%+v)", found, migrated)
 	}
 
-	restarted := NewConfigureService(store, comp, credential.New())
+	restarted := NewConfigureService(store, comp, credential.NewInMemory())
 	if _, stillThere := findRequestByID(restarted.HTTPRequests(), "old-1"); !stillThere {
 		t.Fatalf("HTTPRequests() after restart missing old-1 -- the migrated entry must persist under the new key")
 	}
@@ -225,7 +225,7 @@ func TestDeleteList_RemovesIt(t *testing.T) {
 func TestCreateList_PersistFailure_ReturnsErrorAndDoesNotPhantomSave(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+	cfg := NewConfigureService(store, comp, credential.NewInMemory())
 	cfg.lists = nil
 
 	store.SetErr = errFakeConfigurePersist
@@ -242,7 +242,7 @@ func TestCreateList_PersistFailure_ReturnsErrorAndDoesNotPhantomSave(t *testing.
 func TestDeleteList_PersistFailure_ReturnsErrorAndRestoresIt(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+	cfg := NewConfigureService(store, comp, credential.NewInMemory())
 	cfg.lists = nil
 
 	l, err := cfg.CreateList("Should survive the failed delete", "", nil)
