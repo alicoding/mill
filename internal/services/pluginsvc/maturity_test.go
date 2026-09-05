@@ -32,27 +32,10 @@ func TestMaturity_FamiliesFollowTheManifest(t *testing.T) {
 	}
 }
 
-// e2eDetectionGap names a stable family whose E2E cell this test
-// tolerates as incomplete: real coverage exists (frontend/e2e's own
-// spec, named next to the entry below) but hasE2E's token rule cannot
-// prove it, because the family is declarative -- no SDK registration
-// call exists for it to search for, per maturity.go's promotion
-// table. The generated ledger still reports the honest "regressed"
-// flag; only this build gate skips the cell, so a real regression on
-// any OTHER cell, or on any family not listed here, still fails loud.
-// Remove an entry the moment hasE2E gains a family-specific token.
-var e2eDetectionGap = map[string]bool{
-	// themes: proven by frontend/e2e/theming.spec.ts's plugin-theme
-	// test (the Scribble example's "Sepia"/"From Scribble" contributed
-	// theme, applied across windows) -- goal 0348 follow-up.
-	"themes": true,
-}
-
 // TestMaturity_StableFamiliesKeepTheirEvidence is the build gate: a
 // family FamilyStability calls stable must keep full evidence in the
 // REAL repo, on every run. A stable family losing a cell here is a
-// silent regression -- this test is what makes it loud, except for
-// the named, tracked detection gaps above.
+// silent regression -- this test is what makes it loud.
 func TestMaturity_StableFamiliesKeepTheirEvidence(t *testing.T) {
 	repoRoot := "../../.."
 	evidence := GatherEvidence(repoRoot)
@@ -64,9 +47,6 @@ func TestMaturity_StableFamiliesKeepTheirEvidence(t *testing.T) {
 		if !ok {
 			t.Errorf("stable family %q has no evidence row -- did it leave ManifestContributes?", family)
 			continue
-		}
-		if e2eDetectionGap[family] {
-			e.E2E = true
 		}
 		if !e.complete() {
 			t.Errorf("stable family %q regressed: %+v (a stable family's evidence must stay complete; see maturity.go's promotion table)", family, e)
