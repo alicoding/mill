@@ -324,7 +324,7 @@ func TestResend_NewMintInvalidatesThePreviousCode(t *testing.T) {
 // reproduce the exact lockout this action exists to close.
 func TestResend_WorksEvenWhenADeviceIsAlreadyPaired(t *testing.T) {
 	s, buf := newTestServiceWithLog(t)
-	if _, err := s.mintDevice("Existing Device", ""); err != nil {
+	if _, err := s.mintDevice("Existing Device", "", KindDevice); err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
 	handler := s.Middleware()(appHandler())

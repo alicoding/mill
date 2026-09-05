@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { SERVER_BASE_PORT, MCP_BASE_PORT } from './serverPorts'
+import { SERVER_BASE_PORT, MCP_BASE_PORT, BRIDGE_PORT_OFFSET } from './serverPorts'
 
 // Every per-spec dedicated port pair lives in ./serverPorts.ts (split
 // out at the 500-line hand-written-file limit, .claude/rules/
@@ -72,6 +72,8 @@ export interface SpawnedServer {
 export interface SpawnServerOptions {
   port: number
   mcpPort: number
+  /** The browser bridge's bind port; derived from `port` when omitted. */
+  bridgePort?: number
   settingsPath: string
   executionDbPath: string
   backupDir: string
@@ -95,6 +97,12 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
       ...opts.extraEnv,
       WAILS_SERVER_PORT: String(opts.port),
       MILL_MCP_ADDR: `127.0.0.1:${opts.mcpPort}`,
+      // The browser bridge's own loopback listener (goal 0350): every
+      // server binds one, so it must be per-worker isolated like the
+      // MCP listener above or two concurrent workers fight for the
+      // default port. bridgePort lets a spec that talks to the bridge
+      // name the port it will connect to.
+      MILL_BRIDGE_ADDR: `127.0.0.1:${opts.bridgePort ?? opts.port + BRIDGE_PORT_OFFSET}`,
       MILL_SETTINGS_PATH: opts.settingsPath,
       MILL_EXECUTION_DB_PATH: opts.executionDbPath,
       MILL_BACKUP_DIR: opts.backupDir,

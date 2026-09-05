@@ -331,6 +331,10 @@
       "now": "Back up now",
       "export": "Export everything"
     },
+    "browser": {
+      "pair": "Pair a browser",
+      "test": "Test the browser connection"
+    },
     "capture": {
       "note": "Capture a note"
     },
