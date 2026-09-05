@@ -10,5 +10,6 @@ export * from './sdk/frame';
 export * from './sdk/views';
 export * from './sdk/captures';
 export * from './sdk/secretSources';
+export * from './sdk/mcpServers';
 export * from './sdk/ui';
 export * from './sdk/api';

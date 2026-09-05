@@ -98,6 +98,7 @@ const KIND_LABEL: Record<string, string> = {
   commands: 'extensions.kind.commands',
   themes: 'extensions.kind.themes',
   tools: 'extensions.kind.tools',
+  mcpServers: 'extensions.kind.mcpServers',
 }
 
 export function kindLabelKey(kind: string): string | null {
@@ -116,4 +117,5 @@ const ADDS_LINE: Record<string, string> = {
   commands: 'extensions.can.addsCommands',
   themes: 'extensions.can.addsThemes',
   tools: 'extensions.can.addsTools',
+  mcpServers: 'extensions.can.addsMcpServers',
 }
