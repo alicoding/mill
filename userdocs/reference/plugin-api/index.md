@@ -18,6 +18,7 @@
 - [ContentEntry](interfaces/ContentEntry.md)
 - [ContentQuery](interfaces/ContentQuery.md)
 - [GuardedActionResult](interfaces/GuardedActionResult.md)
+- [MCPServerContribution](interfaces/MCPServerContribution.md)
 - [MillFrameApi](interfaces/MillFrameApi.md)
 - [MillPluginAPI](interfaces/MillPluginAPI.md)
 - [PluginCaptureCtx](interfaces/PluginCaptureCtx.md)

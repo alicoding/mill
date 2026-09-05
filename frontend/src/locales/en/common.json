@@ -361,7 +361,9 @@
     "extensions": {
       "exportAudit": "Export plugin audit",
       "open": "Extensions",
-      "sources": "Extensions: marketplace sources"
+      "sources": "Extensions: marketplace sources",
+      "checkUpdates": "Extensions: check for updates",
+      "updateAll": "Extensions: update all"
     },
     "runMonitor": {
       "open": "Run monitor"
@@ -401,7 +403,10 @@
       "disable": "Turn off",
       "reveal": "Reveal folder",
       "remove": "Remove",
-      "refreshSources": "Extensions: refresh sources"
+      "refreshSources": "Extensions: refresh sources",
+      "update": "Update",
+      "checkUpdates": "Check for updates",
+      "addMcpServer": "Add to Configure"
     },
     "listGrid": {
       "search": "Find in this list",
