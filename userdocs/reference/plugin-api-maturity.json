@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-09-05",
-  "headline": "3 of 10 contribution families are stable; 0 ready to promote; 1 regressed.",
+  "headline": "3 of 10 contribution families are stable; 0 ready to promote; 0 regressed.",
   "rows": [
     {
       "family": "canvasObjects",
@@ -105,16 +105,14 @@
       "level": "stable",
       "conformance": true,
       "example": true,
-      "e2e": false,
+      "e2e": true,
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
       "codeChangedAt": "2026-09-05",
       "docsChangedAt": "2026-09-04",
       "daysBehindCode": 0,
-      "flags": [
-        "regressed"
-      ]
+      "flags": []
     },
     {
       "family": "secretSources",
