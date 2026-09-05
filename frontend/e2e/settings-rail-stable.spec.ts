@@ -9,10 +9,13 @@ import type { Locator, Page } from '@playwright/test'
 // left edge) resized to each pane's own max-content width and
 // `margin: 0 auto` re-centred it. Every pane now renders through the
 // same definite-width box (goal 0336), so the rail's position must be
-// identical across all seven groups. Extensions left this list in goal
+// identical across all eight groups. Extensions left this list in goal
 // 0349 -- it is its own top-level destination now, not a Settings pane.
+// count: fixture-owned -- mirrors shared/settingsGroups.ts's own
+// SETTINGS_GROUPS by hand; a group added there and not here just skips
+// this test's coverage rather than failing it.
 const GROUPS: SettingsGroup[] = [
-  'general', 'appearance', 'shortcuts',
+  'general', 'appearance', 'security', 'shortcuts',
   'connections', 'notifications', 'backups', 'updates',
 ]
 

@@ -30,7 +30,7 @@ reading the key out of the keychain. Lock and unlock the vault from the
 command palette (⌘K) too — search "vault" and only the action that
 currently applies shows up.
 
-Secrets > Locking decides when the vault closes itself. Choose how long
+Settings > Security decides when the vault closes itself. Choose how long
 it may sit idle, from one minute to eight hours, a custom number of
 minutes, or never; the count is time since you last used this Mac, so
 working in another app keeps the vault open. Three checkboxes close it
