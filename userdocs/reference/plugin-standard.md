@@ -67,9 +67,21 @@ your plugin feels like part of Mill.
     Mill layers it over the built-in palette of the family you name,
     so declare only what you change. (checked)
 
+21. A view or capture with its own UI declares an entry page:
+    `"entry": "view.html"` beside the view or capture in your
+    manifest, pointing at an `.html` file inside your plugin folder.
+    Mill mounts it in a sandboxed frame where your page owns every
+    element, and the page loads scripts, styles, fonts and images only
+    from that folder, so ship what it needs beside it. Your script
+    goes in a `.js` file the page loads with `<script src>`: an inline
+    `<script>` or an `onclick` attribute never runs. `window.
+    acquireMillApi()` is its door back to Mill. Styles may stay
+    inline. A surface that draws into Mill's own document instead
+    still works and warns. (checked)
+
 ## Quality gates
 
-21. `go run ./internal/pluginconform <folder>` passes; `npm run
+22. `go run ./internal/pluginconform <folder>` passes; `npm run
     plugin:typecheck` and `npm run plugin:lint` pass. (checked)
 
 ## Checking your own plugin

@@ -5,9 +5,10 @@ import { Button, FormControl, Select, Stack, Text } from '@primer/react'
 import { AtlasService, SettingsService } from '../shared/bindings'
 import type { Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { MilkdownEditor } from '../shared/MilkdownEditor'
-import { getPluginCapture, type PluginCapture } from '../plugins/pluginCaptures'
+import { getPluginCapture, setPluginCaptureSink, type PluginCapture } from '../plugins/pluginCaptures'
 import { currentPluginTheme, onPluginThemeChange } from '../plugins/pluginTheme'
 import { SEEDED_SCRATCHPAD_CARD_ID, cascadeNotePosition } from './quickPanelCapture'
+import { PluginFrame } from './PluginFrame'
 import styles from './Capture.module.css'
 import { background } from '../shared/background'
 
@@ -144,7 +145,24 @@ export function Capture() {
       {target.pluginID && !pluginCapture && (
         <Text as="p" size="small" className={styles.error} data-testid="capture-missing-face">{t('capture.missingFace', { plugin: target.pluginID, id: target.captureID })}</Text>
       )}
-      {pluginCapture && <div ref={faceRef} className={styles.face} data-testid="capture-plugin-face" />}
+      {pluginCapture?.entry && destination !== null && (
+        <div className={styles.face} data-testid="capture-plugin-face">
+          <PluginFrame
+            pluginId={pluginCapture.pluginId}
+            surfaceId={pluginCapture.captureId}
+            title={pluginCapture.label}
+            entry={pluginCapture.entry}
+            version={pluginCapture.version}
+            stateKey={`capture:${pluginCapture.captureId}:state`}
+            context={{ destinationId: destination }}
+            capture={{ done: close, cancel: close }}
+            onSink={(post) => setPluginCaptureSink(pluginCapture.pluginId, pluginCapture.captureId, post)}
+            onPageMessage={(message) => pluginCapture.onMessage?.(message)}
+            testId={`plugin-capture-${pluginCapture.pluginId}-${pluginCapture.captureId}`}
+          />
+        </div>
+      )}
+      {pluginCapture && !pluginCapture.entry && <div ref={faceRef} className={styles.face} data-testid="capture-plugin-face" />}
       {error && <Text as="p" size="small" className={styles.error} data-testid="capture-error">{error}</Text>}
       <Stack direction="horizontal" justify="space-between" align="center" gap="condensed">
         <Text size="small" className={styles.muted}>{isNote ? t('capture.saveHint') : ''}</Text>
@@ -164,10 +182,11 @@ export function Capture() {
 function usePluginFace(faceRef: React.RefObject<HTMLDivElement | null>, pluginCapture: PluginCapture | undefined, destination: string | null, close: () => void) {
   useEffect(() => {
     const el = faceRef.current
-    if (!el || !pluginCapture || destination === null) return
+    const render = pluginCapture?.render
+    if (!el || !pluginCapture || !render || destination === null) return
     el.replaceChildren()
     try {
-      pluginCapture.render(el, { destinationId: destination, done: close, cancel: close, theme: currentPluginTheme(), onThemeChange: onPluginThemeChange })
+      render(el, { destinationId: destination, done: close, cancel: close, theme: currentPluginTheme(), onThemeChange: onPluginThemeChange })
     } catch (err) {
       console.error(`plugin ${pluginCapture.pluginId} capture render failed`, err)
     }

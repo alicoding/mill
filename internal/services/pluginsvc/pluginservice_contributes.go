@@ -2,7 +2,9 @@ package pluginsvc
 
 import (
 	"fmt"
+	"path"
 	"regexp"
+	"strings"
 )
 
 // The manifest's contributes.* fail-closed validation, split from
@@ -73,6 +75,47 @@ func validateSettingContributions(settings []SettingContribution) string {
 			return fmt.Sprintf("contributed setting %q is declared twice", st.Key)
 		}
 		seen[st.Key] = true
+	}
+	return ""
+}
+
+// Framed views and captures (docs/goals/0349, docs/adr/0047): a view or
+// capture may declare an `entry` page instead of registering a render
+// callback. The page is served by the asset route out of the plugin's
+// own folder and mounted in a sandboxed frame, so the path must be a
+// plain relative .html file inside that folder -- never absolute,
+// never traversing out of it, never a scheme the frame would fetch
+// from somewhere Mill does not serve.
+func entryPathProblem(kind, id, entry string) string {
+	if entry == "" {
+		return ""
+	}
+	if !strings.HasSuffix(strings.ToLower(entry), ".html") {
+		return fmt.Sprintf("contributed %s %q entry %q must be an .html file", kind, id, entry)
+	}
+	clean := path.Clean(entry)
+	escapes := clean == ".." || strings.HasPrefix(clean, "../") || path.IsAbs(entry) ||
+		strings.Contains(entry, "\\") || strings.Contains(entry, "://")
+	if escapes {
+		return fmt.Sprintf("contributed %s %q entry %q must be a file inside the plugin folder", kind, id, entry)
+	}
+	return ""
+}
+
+// entryFileProblem is the load-blocking existence check for every
+// declared entry page, the twin of stepsFileProblem: exists reports
+// whether one folder-relative path is present, so the scanned-folder
+// and embedded-bundle scans share this one rule.
+func entryFileProblem(m Manifest, exists func(rel string) bool) string {
+	for _, v := range m.Contributes.Views {
+		if v.Entry != "" && !exists(v.Entry) {
+			return fmt.Sprintf("view %q entry %q is missing", v.ID, v.Entry)
+		}
+	}
+	for _, c := range m.Contributes.Captures {
+		if c.Entry != "" && !exists(c.Entry) {
+			return fmt.Sprintf("capture %q entry %q is missing", c.ID, c.Entry)
+		}
 	}
 	return ""
 }

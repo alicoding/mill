@@ -10,8 +10,8 @@ import type { PluginSettingsAPI } from './settings'
 import type { PluginNoticeInput } from './notify'
 import type { PluginStorageAPI } from './storage'
 import type { ContentQuery, ContentEntry, PluginEventMap, PluginFetchInit, PluginFetchResult, PluginContentAPI, PluginFilesAPI, PluginConvertAPI } from './content'
-import type { PluginViewDecl } from './views'
-import type { PluginCaptureDecl } from './captures'
+import type { PluginViewDecl, PluginViewHandle } from './views'
+import type { PluginCaptureDecl, PluginCaptureHandle } from './captures'
 import type { PluginUIAPI } from './ui'
 
 export interface MillPluginAPI {
@@ -38,8 +38,8 @@ export interface MillPluginAPI {
   content: PluginContentAPI
   convert: PluginConvertAPI
   files: PluginFilesAPI
-  registerView: (decl: PluginViewDecl) => void
-  registerCapture: (decl: PluginCaptureDecl) => void
+  registerView: (decl: PluginViewDecl) => PluginViewHandle
+  registerCapture: (decl: PluginCaptureDecl) => PluginCaptureHandle
   ui: PluginUIAPI
 }
 

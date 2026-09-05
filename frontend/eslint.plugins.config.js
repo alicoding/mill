@@ -25,7 +25,7 @@ const markupInjectionSelectors = [
 
 export default [
   {
-    files: ['examples/plugins/*/main.js', 'examples/plugins/*/steps.js', 'examples/plugins/*/secrets.js'],
+    files: ['examples/plugins/*/main.js', 'examples/plugins/*/steps.js', 'examples/plugins/*/secrets.js', 'examples/plugins/*/view.js', 'examples/plugins/*/capture.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
