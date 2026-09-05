@@ -162,7 +162,7 @@ func (a *AtlasService) SetBoardObjectPayload(id string, patch map[string]string)
 // NodeResizer, goal 0199 part B) -- a resize below it is refused here
 // too, never persisted as a degenerate box.
 //
-//nolint:dupl // same lock/mutate/persist/emit/recordScalar shape as SetNoteSize -- a shared generic setter is a larger refactor than this slice's scope
+//nolint:dupl // same lock/mutate/persist/emit/recordSizeChange shape as SetNoteSize -- a shared generic setter is a larger refactor than this slice's scope
 func (a *AtlasService) SetBoardObjectSize(id string, size atlas.Dimensions) (atlas.BoardObject, error) {
 	if size.W < 40 || size.H < 40 {
 		return atlas.BoardObject{}, fmt.Errorf("board object size %.0fx%.0f is too small", size.W, size.H)
@@ -187,16 +187,9 @@ func (a *AtlasService) SetBoardObjectSize(id string, size atlas.Dimensions) (atl
 		return atlas.BoardObject{}, fmt.Errorf("save board object size: %w", perr)
 	}
 	dataevent.Emit("atlas", o.ID)
-	recordScalar(a, actorUI, "object", id, o.Kind,
-		func(a *AtlasService, sz *atlas.Dimensions) error {
-			if sz == nil {
-				_, err := a.clearBoardObjectSize(id)
-				return err
-			}
-			_, err := a.SetBoardObjectSize(id, *sz)
-			return err
-		},
-		previous.Size, &size,
+	recordSizeChange(a, "object", id, o.Kind, previous.Size, &size,
+		func(a *AtlasService, sz atlas.Dimensions) error { _, err := a.SetBoardObjectSize(id, sz); return err },
+		func(a *AtlasService) error { _, err := a.clearBoardObjectSize(id); return err },
 	)
 	return o, nil
 }
@@ -207,9 +200,9 @@ func (a *AtlasService) SetBoardObjectSize(id string, size atlas.Dimensions) (atl
 // minimum-size guard would otherwise refuse the return to "unsized"
 // the same way it refuses an illegal undersized resize. Never called
 // directly by a mutation door's public surface, only from
-// recordScalar's own apply closure above, so it carries no recordUndo
-// call of its own (ADR-0044's suppressRecording already covers the
-// replay).
+// recordSizeChange's own apply closure above, so it carries no
+// recordUndo call of its own (ADR-0044's suppressRecording already
+// covers the replay).
 func (a *AtlasService) clearBoardObjectSize(id string) (atlas.BoardObject, error) {
 	a.mu.Lock()
 	idx := a.findObjectLocked(id)
