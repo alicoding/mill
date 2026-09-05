@@ -148,6 +148,9 @@ func validateViews(views []ViewContribution) string {
 		if seen[v.ID] {
 			return fmt.Sprintf("contributed view %q is declared twice", v.ID)
 		}
+		if problem := entryPathProblem("view", v.ID, v.Entry); problem != "" {
+			return problem
+		}
 		seen[v.ID] = true
 	}
 	return ""

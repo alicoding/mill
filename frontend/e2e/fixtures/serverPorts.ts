@@ -363,3 +363,11 @@ export const SECRET_SOURCE_PLUGIN_MCP_BASE_PORT = 11620
 // records.
 export const RUNTIME_PLUGIN_THEMES_SERVER_BASE_PORT = 11640
 export const RUNTIME_PLUGIN_THEMES_MCP_BASE_PORT = 11660
+
+// runtime-plugin-view-frame.spec.ts's own dedicated pair (goal 0349):
+// it boots with its own MILL_PLUGINS_DIR copy like every runtime-plugin
+// spec, and its notice-pill assertions read the GLOBAL notice list --
+// its own pair rather than more RUNTIME_PLUGINS_* offset arithmetic
+// (the reasoning RUNTIME_PLUGIN_RELOAD_* records).
+export const RUNTIME_PLUGIN_FRAME_SERVER_BASE_PORT = 11680
+export const RUNTIME_PLUGIN_FRAME_MCP_BASE_PORT = 11700

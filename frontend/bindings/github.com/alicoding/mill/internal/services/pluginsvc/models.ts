@@ -24,12 +24,16 @@ export interface CanvasObjectContribution {
 }
 
 /**
- * CaptureContribution is one declared capture.
+ * CaptureContribution is one declared capture. Entry names an .html
+ * page inside the plugin's own folder (docs/goals/0349), the same
+ * framed form ViewContribution carries; empty means the legacy
+ * same-DOM render registered at activate().
  */
 export interface CaptureContribution {
     "id": string;
     "label": string;
     "description": string;
+    "entry": string;
 }
 
 /**
@@ -501,9 +505,15 @@ export interface ToolRun {
 
 /**
  * ViewContribution declares one plugin-owned work tab: a slug id
- * unique within the plugin and the tab's title.
+ * unique within the plugin and the tab's title. Entry names an .html
+ * page inside the plugin's own folder (docs/goals/0349): a view that
+ * declares one is mounted in its own sandboxed frame and needs no
+ * plugin code at all; a view that leaves it empty is the legacy
+ * same-DOM form, rendered by the render callback registered at
+ * activate().
  */
 export interface ViewContribution {
     "id": string;
     "title": string;
+    "entry": string;
 }
