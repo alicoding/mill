@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, Text } from '@primer/react'
 import { Events } from '@wailsio/runtime'
 import { ExecutionService, SettingsService, CompositionService } from '../shared/bindings'
+import { isVaultWait } from '../shared/parkReason'
 import { GuardrailService } from '../../bindings/github.com/alicoding/mill/internal/services/guardrailsvc'
 import type { RunSummary } from '../../bindings/github.com/alicoding/mill/internal/services/executionsvc/models'
 import { recentRuns, runningRuns, settledRunKind } from './trayPanelRuns'
@@ -65,7 +66,7 @@ export function TrayPanel() {
         ...runs.filter((r) => r.pending).map((r) => ({
           key: `run-${r.runID}`,
           title: r.workflowLabel || r.workflowID,
-          detail: t('trayPanel.waitingApproval'),
+          detail: isVaultWait(r.pending) ? t('trayPanel.waitingVault') : t('trayPanel.waitingApproval'),
           // A parked run has a run to open; an agent write request and
           // a guarded action have none, so those rows keep the queue
           // as their destination.

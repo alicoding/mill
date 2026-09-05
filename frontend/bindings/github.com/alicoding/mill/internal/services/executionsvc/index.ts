@@ -21,6 +21,7 @@ export type {
     RunDetail,
     RunStep,
     RunSummary,
+    RunWait,
     StepFailureCount,
     StepTestRequest,
     StepTestResult,
