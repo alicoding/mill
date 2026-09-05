@@ -14,7 +14,7 @@ import {
 // shared-vs-dedicated rule): Review's queue is global app state, same
 // reasoning as guardrail-review.spec.ts.
 
-const GUARDED = 'Example: Approval-gated HTTP call'
+const GUARDED = 'Post an update to the client portal'
 
 interface SpawnedPage {
   server: SpawnedServer

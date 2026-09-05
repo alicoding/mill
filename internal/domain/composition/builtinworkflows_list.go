@@ -10,7 +10,7 @@ import (
 // List (docs/goals/0010 item 4, docs/goals/0011-lists-maturation.md
 // item 4): list-lookup (the original, simpler exact-key lookup) and
 // list-search (goal 0011's richer typed-Object successor), both
-// against the same seeded "Example: Country codes" List
+// against the same seeded "Country codes" List
 // (internal/domain/list.BuiltIn). Split out of builtinworkflows.go
 // once BuiltInWorkflows() crossed the 500-line convention -- see that
 // function's own call site comment for the seam this follows.
@@ -18,7 +18,7 @@ func builtInListWorkflows() []Workflow {
 	// List lookup (docs/goals/0010 item 4, docs/SPEC.md §3.3's List
 	// row): a typed 'code' Attribute is read into the payload via
 	// capture-attribute, then list-lookup resolves it against the
-	// seeded "Example: Country codes" List (Configure > Lists),
+	// seeded "Country codes" List (Configure > Lists),
 	// writing the match into a second, declared 'countryName'
 	// Attribute -- the same "typed data flows through Attributes"
 	// pattern the parent/child example already established.
@@ -42,7 +42,7 @@ func builtInListWorkflows() []Workflow {
 
 	// List search (docs/goals/0011-lists-maturation.md item 4): the
 	// richer successor to list-lookup above, against the same seeded
-	// "Example: Country codes" List (now typed, code/name columns).
+	// "Country codes" List (now typed, code/name columns).
 	// Demonstrates a typed Object result (results/matched/first_match/
 	// match_count/list_id) a downstream step could branch on, not just
 	// a single scalar Attribute -- list-lookup's own seed above stays
@@ -79,8 +79,8 @@ func builtInListWorkflows() []Workflow {
 	return []Workflow{
 		{
 			ID:          "example-list-lookup-workflow",
-			Label:       "Example: Country code lookup",
-			Description: "Captures a typed 'code' Attribute and looks it up in the seeded \"Example: Country codes\" List (Configure > Lists), writing the match into a 'countryName' Attribute. Run it with code = US, CA, or MX to see a match; any other code fails the run (the List step's own default \"If no match: fail\" behavior).",
+			Label:       "Look up a client country",
+			Description: "Looks up a typed country code in the Country codes list.",
 			Nodes:       listNodes,
 			Attributes: []AttributeDef{
 				{Key: "code", Label: "Code", Type: FieldText},
@@ -91,12 +91,12 @@ func builtInListWorkflows() []Workflow {
 				{ID: "example-list-e1", Source: listCaptureID, Target: listLookupID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(2),
+			Seed:    seedorigin.Stamp(3),
 		},
 		{
 			ID:          "example-list-search-workflow",
-			Label:       "Example: Country lookup (search)",
-			Description: "Captures a typed 'code' Attribute and searches the seeded \"Example: Country codes\" List (Configure > Lists) via list-search. It does an exact match on its 'code' column, writing a typed Object result ({results, matched, first_match, match_count, list_id}) into 'searchResult'. Unlike list-lookup's plain scalar output, this demonstrates the richer typed result a downstream step (e.g. a Branch condition on searchResult.matched) could reference. Run it with code = US, CA, MX, or FR to see a match. SU is a deliberately Expired seed row, excluded from matching by default.",
+			Label:       "Search client countries",
+			Description: "Searches the Country codes list and returns the matching record.",
 			Nodes:       listSearchNodes,
 			Attributes: []AttributeDef{
 				{Key: "code", Label: "Code", Type: FieldText},
@@ -107,7 +107,7 @@ func builtInListWorkflows() []Workflow {
 				{ID: "example-list-search-e1", Source: listSearchCaptureID, Target: listSearchStepID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(3),
+			Seed:    seedorigin.Stamp(4),
 		},
 	}
 }

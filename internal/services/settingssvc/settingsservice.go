@@ -32,7 +32,7 @@ const summonHotkeyKey = "settings-summon-hotkey"
 // legacyForwardApprovalsEnabledKey is the settings key
 // ForwardPendingApproval used to persist before docs/adr/0035's forward
 // refactor deleted that private send path in favor of the seeded
-// "Example: Forward pending approvals" workflow. Kept here, read-only,
+// "Forward approvals to the sponsor" workflow. Kept here, read-only,
 // purely so a user who had the old toggle on gets a one-line startup
 // notice instead of the feature silently vanishing -- never re-added as
 // a real Get/Set RPC.
@@ -235,7 +235,7 @@ func NewSettingsService(store settings.Store, trig *triggersvc.TriggerService, i
 	// config, since the user still has to pick/confirm their real
 	// notification endpoint either way.
 	if _, ok := store.Get(legacyForwardApprovalsEnabledKey).(string); ok {
-		slog.Info("the Settings > Forward pending approvals toggle moved: enable and re-point the seeded \"Example: Forward pending approvals\" workflow instead (docs/adr/0035)")
+		slog.Info("the Settings > Forward pending approvals toggle moved: enable and re-point the seeded \"Forward approvals to the sponsor\" workflow instead (docs/adr/0035)")
 	}
 	return s
 }

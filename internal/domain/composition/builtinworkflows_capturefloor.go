@@ -75,8 +75,8 @@ func savedPageToMarkdownWorkflow() Workflow {
 
 	return Workflow{
 		ID:          "example-saved-page-to-markdown-workflow",
-		Label:       "Example: Saved page → Markdown",
-		Description: "Watches a folder for a saved HTML page, reads it, extracts the main-content subtree (dropping nav/header/footer chrome), converts it to Markdown, and writes the result to the clipboard. Ships DISABLED with a placeholder watch path (~/Mill Captures). Point its trigger at a real directory (the canvas Inspector), publish, and enable it to see it fire when a page lands there.",
+		Label:       "Saved client page → Markdown",
+		Description: "Watches the saved-pages folder and turns each saved client page into Markdown.",
 		Nodes:       nodes,
 		Edges: []Edge{
 			{ID: "example-savedpage-e0", Source: triggerID, Target: captureID},
@@ -85,7 +85,7 @@ func savedPageToMarkdownWorkflow() Workflow {
 			{ID: "example-savedpage-e3", Source: markdownID, Target: applyID},
 		},
 		BuiltIn:  true,
-		Seed:     seedorigin.Stamp(3),
+		Seed:     seedorigin.Stamp(4),
 		Disabled: true,
 	}
 }
@@ -115,8 +115,8 @@ func scratchCaptureWorkflow() Workflow {
 
 	return Workflow{
 		ID:          "example-scratch-capture-workflow",
-		Label:       "Example: Scratch capture",
-		Description: "Grabs whatever's on the clipboard and appends it to a scratch file, each entry stamped with the date and time. Run it whenever you copy something worth keeping, and sort it out later.",
+		Label:       "Append to the engagement notes",
+		Description: "Appends what was copied to the engagement notes file with a timestamp.",
 		Nodes:       nodes,
 		Edges: []Edge{
 			{ID: "example-scratchcapture-e0", Source: triggerID, Target: captureID},
@@ -133,6 +133,6 @@ func scratchCaptureWorkflow() Workflow {
 			Color:    NoteColorYellow,
 		}},
 		BuiltIn: true,
-		Seed:    seedorigin.Stamp(3),
+		Seed:    seedorigin.Stamp(4),
 	}
 }

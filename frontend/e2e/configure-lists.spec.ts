@@ -21,7 +21,7 @@ function listRow(page: import('@playwright/test').Page, label: string) {
 // not just against the hardcoded seed (seed-completeness.spec.ts
 // already covers running the seed). Deletes the workflow it creates,
 // same shared-settings-file discipline every other spec here follows;
-// reuses the seeded "Example: Country codes" List rather than
+// reuses the seeded "Country codes" List rather than
 // creating a second one, so there's nothing List-shaped to clean up.
 
 
@@ -63,7 +63,7 @@ test('list-search node: configuring a real match parameter through the Inspector
   // test proves the list-search Inspector's own authoring/execution,
   // not clipboard I/O, and a clipboard apply step has no clipboard on
   // a headless Linux CI runner (docs/SPEC.md §1.3; the same fix
-  // applied to the seeded "Example: Country lookup (search)" workflow
+  // applied to the seeded "Search client countries" workflow
   // after a real CI failure, builtinworkflows_list.go). Ending at
   // list-search itself is an accepted, warn-only Process leaf
   // (ADR-0028).
@@ -76,7 +76,7 @@ test('list-search node: configuring a real match parameter through the Inspector
   const inspector = panel.getByTestId('composition-inspector')
 
   // Pick the seeded typed List via the live entity picker (ADR-0009).
-  await inspector.getByTestId('entity-ref-field').selectOption({ label: 'Example: Country codes' })
+  await inspector.getByTestId('entity-ref-field').selectOption({ label: 'Country codes' })
 
   const editor = inspector.getByTestId('list-search-params-editor')
   await expect(editor).toBeVisible()
@@ -200,15 +200,15 @@ test('Configure > Lists: CSV import — mapping preview, one manual remap, a mal
   await expect(row).toHaveCount(0)
 })
 
-// docs/goals/0070's write-path seed: the "Example: Track in a list"
+// docs/goals/0070's write-path seed: the "Track an engagement task"
 // workflow creates a row, then updates that same row in place --
 // apply-list-row's key-column matching proven through the real
 // guardrail gate + a real ConfigureService-backed List, not a fake.
-test('Example: Track in a list runs end to end -- creates then updates the same row by key', async ({ page }) => {
+test('Track an engagement task runs end to end -- creates then updates the same row by key', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
-  const row = workflowRow(page, 'Example: Track in a list')
+  const row = workflowRow(page, 'Track an engagement task')
   await expect(row).toBeVisible()
   await row.click()
 
@@ -218,7 +218,7 @@ test('Example: Track in a list runs end to end -- creates then updates the same 
 
   await page.getByRole('link', { name: 'Configure' }).click()
   await page.getByRole('tab', { name: 'Lists' }).click()
-  const trackerRow = listRow(page, 'Example: Task tracker')
+  const trackerRow = listRow(page, 'Engagement tasks')
   await expect(trackerRow).toBeVisible()
   await trackerRow.click()
 

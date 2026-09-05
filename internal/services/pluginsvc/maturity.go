@@ -60,11 +60,38 @@ import (
 //	commands      | yes -- a tool's run.kind == "command" targets one
 //	steps         | yes -- a tool's run.kind == "step" targets one
 //	tools         | yes -- contributes.tools IS the MCP declaration surface
-//	canvasObjects | no -- reachable only through the generic board query,
-//	              | never a declared tool naming one specific object kind
-//	captures      | no -- a floating capture window, no agent-facing door
-//	views         | no -- a work tab, no agent-facing door
+//	canvasObjects | yes -- goal 0324's list_plugins reports each plugin's
+//	              | contributed canvas-object kinds (mcpsvc's
+//	              | millmcpservice_plugins.go), and a canvas object is
+//	              | file-backed content: the generic, ungated
+//	              | atlas_read_board_object(s)/atlas_create_board_object
+//	              | tools (mcpsvc's millmcpservice_atlas_boardobjects.go,
+//	              | millmcpservice_atlas_createobject.go) already read
+//	              | and write it, the two-plane boundary's content-plane
+//	              | door (adopt-converged-patterns.md) -- never a
+//	              | per-kind declared tool, but reachable all the same
+//	captures      | n/a -- a floating capture window, a human-authoring
+//	              | surface with no content-plane file of its own to
+//	              | hand an agent; declarative for MCP purposes
+//	views         | n/a -- a work tab the plugin renders, the same
+//	              | human-authoring-only shape as captures; declarative
+//	              | for MCP purposes
 //	(new family)  | no, until a run.kind or an n/a decision names it
+//
+//	family        | e2e evidence (goal 0348 follow-up: the tightened rule)
+//	--------------|----------------------------------------------------
+//	              | Proven by ANY of: a spec file named
+//	              | runtime-plugin-<family-or-kebab-family>*.spec.ts; any
+//	              | frontend/e2e/*.spec.ts containing the family's own
+//	              | SDK registration call (registerCanvasObject,
+//	              | registerCommand, registerView, registerCapture) or
+//	              | the literal text contributes.<family>; or a fixture
+//	              | plugin under frontend/e2e/fixtures/**/manifest.json
+//	              | declaring a non-empty contributes.<family>. Never a
+//	              | bare whole-word match on the family name -- the
+//	              | prior rule matched "themes" and "tools" inside
+//	              | unrelated prose (a dark-mode comment, a JSON field
+//	              | named "contributions") with no plugin code involved.
 //
 //	family        | canonical docs page (userdocs/reference/)
 //	--------------|----------------------------------------------------

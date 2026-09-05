@@ -51,7 +51,7 @@ func TestConfigureService_DeletedBuiltInDecision_NotResurrectedByTopUp(t *testin
 	if err == nil {
 		t.Fatal("DeleteDecision on a still-referenced decision returned nil error, want it blocked")
 	}
-	if !strings.Contains(err.Error(), "Example: Branch to a decision") {
+	if !strings.Contains(err.Error(), "Route an expense by amount") {
 		t.Errorf("DeleteDecision blocked-error = %q, want it to name the referencing workflow", err.Error())
 	}
 	if err := cfg.composition.DeleteWorkflow("example-branch-to-decision-workflow"); err != nil {

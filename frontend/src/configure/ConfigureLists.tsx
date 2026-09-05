@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
 import { DownloadIcon, ListUnorderedIcon, PencilIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
@@ -13,20 +12,22 @@ import type { GridColumn, GridRow } from '../shared/listGridTypes'
 import { ListRowImport } from './ListRowImport'
 import { NewListFromFile } from './NewListFromFile'
 import { ListVersionsSection } from './ListVersionsSection'
-import { downloadJSON } from '../shared/downloadJSON'
 import { refreshLists, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
+import { entityRowContext } from '../shared/entityRowCommands'
+import { useEntityActionError } from '../shared/entityActionErrorStore'
+import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useImportConfirm } from '../shared/useImportConfirm'
 import { describeSeedReset } from '../shared/seedLifecycle'
+import { useSeedLifecycle } from './useSeedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
-import { background } from '../shared/background'
 
 // Configure's Lists section (docs/SPEC.md §3.5): CRUD over
 // ConfigureService's typed Lists. Schema AND data edit in the ONE
@@ -36,6 +37,9 @@ import { background } from '../shared/background'
 // against these same Columns/Rows.
 export function ConfigureLists() {
   const { t } = useTranslation('configure')
+  // A row action's refusal, recorded by the command that met it
+  // (shared/entityActionErrorStore.ts, goal 0346).
+  const rowActionError = useEntityActionError('list')
   // Store-shared (refreshLists, shared/configureEntityStore.ts), the
   // same one-fetch-many-consumers pattern store.ts's workflows/requests
   // already use -- so App.tsx's mill-data-changed handler pushing a
@@ -50,24 +54,17 @@ export function ConfigureLists() {
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useViewMode('mill-lists-view-mode')
-  // Seed lifecycle (docs/goals/0037) -- see CompositionView.tsx's
-  // identical state for the full reasoning.
-  const [seedRevisions, setSeedRevisions] = useState<Record<string, number | undefined>>({})
-  const [restorable, setRestorable] = useState<List[]>([])
-
-  const refreshSeedLifecycle = () => {
-    void background(ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})), 'configureLists.seedRevisions')
-    void background(ConfigureService.RestorableLists().then((r) => setRestorable(r ?? [])), 'configureLists.restorableLists')
-  }
+  // Seed lifecycle (docs/goals/0037): the shipped-revision map is
+  // app-wide (shared/seedRevisionStore.ts) so the reset command can
+  // answer its own enablement; only this family's restorable list is
+  // local.
+  const seedLifecycle = useSeedLifecycle<List>(() => ConfigureService.RestorableLists(), lists)
+  const seedRevisions = seedLifecycle.seedRevisions
+  const restorable = seedLifecycle.restorable
+  const refreshSeedLifecycle = seedLifecycle.refresh
 
   const refetch = () => {
     void refreshLists()
-  }
-
-  const exportList = (id: string, label: string) => {
-    ConfigureService.ExportList(id)
-      .then((json) => downloadJSON(`${label.trim() || 'list'}.json`, json))
-      .catch((err) => setImportError(String(err)))
   }
 
   const openImportPicker = () => {
@@ -159,21 +156,8 @@ export function ConfigureLists() {
     }
   }
 
-  const remove = (id: string, label: string) => {
-    void deleteWithUndo({ entity: 'list', id, label, remove: () => ConfigureService.DeleteList(id), refetch: () => {
-      refetch()
-      refreshSeedLifecycle()
-    }, onError: (err) => setImportError(String(err)) })
-  }
-
-  // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037
-  // items 4/5).
-  const resetToSeed = (id: string) => {
-    ConfigureService.ResetListToSeed(id).then(() => {
-      refetch()
-      refreshSeedLifecycle()
-    }).catch((err) => setImportError(String(err)))
-  }
+  // Restore-deleted-example (docs/goals/0037 item 5) -- a header
+  // action over the tombstoned set, not a row action.
   const restoreExample = (id: string) => {
     ConfigureService.RestoreList(id).then(() => {
       refetch()
@@ -206,16 +190,12 @@ export function ConfigureLists() {
       description: t('configureLists.columnsRowsSummary', { columns: (l.Columns ?? []).length, rows: (l.Rows ?? []).length }),
       onOpen: () => startEdit(l),
       menuActions: [
-        { label: t('export'), onClick: () => exportList(l.ID, l.Label) },
-        // Reset-to-shipped-example (docs/goals/0037 item 4) -- hidden
-        // (not shown-disabled) when already current, same reasoning
-        // CompositionView.tsx's identical wiring documents.
-        ...(l.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(l.ID) }] : []),
-        {
-          label: t('delete'),
-          onClick: () => remove(l.ID, l.Label),
-          danger: true,
-        },
+        { commandId: 'configure.list.export', ctx: entityRowContext('list', l.ID) },
+        // Reset-to-shipped-example (docs/goals/0037 item 4): the command's
+        // own enabled() hides it once the row matches the shipped golden,
+        // so the row only names the revision it would restore.
+        { commandId: 'configure.list.reset', ctx: entityRowContext('list', l.ID), label: seedReset.label },
+        { commandId: 'configure.list.delete', ctx: entityRowContext('list', l.ID), danger: true },
       ],
     }
   })
@@ -249,8 +229,8 @@ export function ConfigureLists() {
           </Button>
         </Stack>
       </Stack>
-      {importError && (
-        <Text as="p" size="small" className={styles.error} data-testid="import-list-error">{importError}</Text>
+      {(importError ?? rowActionError) && (
+        <Text as="p" size="small" className={styles.error} data-testid="import-list-error">{importError ?? rowActionError}</Text>
       )}
 
       {formOpen && (
@@ -322,8 +302,8 @@ export function ConfigureLists() {
                 renderCell: (l) => (
                   <Stack direction="horizontal" gap="condensed">
                     <IconButton icon={PencilIcon} aria-label={t('configureLists.editAriaLabel', { label: l.Label })} size="small" variant="invisible" onClick={() => startEdit(l)} />
-                    <IconButton icon={DownloadIcon} aria-label={t('configureLists.exportAriaLabel', { label: l.Label })} size="small" variant="invisible" onClick={() => exportList(l.ID, l.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={t('configureLists.deleteAriaLabel', { label: l.Label })} size="small" variant="invisible" onClick={() => remove(l.ID, l.Label)} />
+                    <IconButton icon={DownloadIcon} aria-label={t('configureLists.exportAriaLabel', { label: l.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.list.export', entityRowContext('list', l.ID))} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureLists.deleteAriaLabel', { label: l.Label })} size="small" variant="invisible" onClick={() => void runCommand('configure.list.delete', entityRowContext('list', l.ID))} />
                   </Stack>
                 ),
               },

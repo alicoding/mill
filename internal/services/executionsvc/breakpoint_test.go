@@ -37,7 +37,7 @@ func assertNoDBOSPseudoSteps(t *testing.T, when string, steps []RunStep) {
 }
 
 // Workflow breakpoints (docs/adr/0031, goal 0020) proven end-to-end
-// against the seeded "Example: Branch to a decision" workflow -- "the
+// against the seeded "Route an expense by amount" workflow -- "the
 // seed IS the proof" (.claude/rules/testing.md). No new seeded workflow
 // is added: a breakpoint is runtime guardrail metadata (a Source:debug
 // Rule), not part of a workflow's own Nodes/Edges, so shipping a
@@ -75,7 +75,7 @@ func newBreakpointHarness(t *testing.T) (*guardrailsvc.GuardrailService, *Execut
 // happens strictly before the Branch node reads the value.
 func TestBreakpoint_ParkEditResume_ChangesBranchTaken(t *testing.T) {
 	guard, exec := newBreakpointHarness(t)
-	wfID := findBuiltInWorkflowID(t, exec.comp, "Example: Branch to a decision")
+	wfID := findBuiltInWorkflowID(t, exec.comp, "Route an expense by amount")
 
 	rule, err := guard.CreateRule(guardrail.Rule{
 		Label: "Breakpoint", Effect: guardrail.EffectAsk, Source: guardrail.SourceDebug,
@@ -200,7 +200,7 @@ func TestBreakpoint_ParkEditResume_ChangesBranchTaken(t *testing.T) {
 // continueRun flag: Step keeps parking, Continue runs the rest through.
 func TestStepMode_ParksBeforeEveryNode_StepThenContinue(t *testing.T) {
 	_, exec := newBreakpointHarness(t)
-	wfID := findBuiltInWorkflowID(t, exec.comp, "Example: Branch to a decision")
+	wfID := findBuiltInWorkflowID(t, exec.comp, "Route an expense by amount")
 
 	summary, err := exec.RunWorkflowStepped(wfID, map[string]string{"amount": "150"}, "")
 	if err != nil {
