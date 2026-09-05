@@ -72,6 +72,11 @@ type Vault interface {
 	Exists() bool
 	// Unlocked reports whether the vault is currently open in memory.
 	Unlocked() bool
+	// Path returns the filesystem path this vault reads/writes -- the
+	// same identity a caller restoring a backup into place, or
+	// archiving the current file, needs to target explicitly rather
+	// than re-deriving it (goal 0359).
+	Path() string
 	// Create makes a brand-new, empty vault file at Path, encrypted with
 	// masterKey, and leaves it unlocked (ready to use immediately --
 	// matches every other manager's own "create = you're now in it"
@@ -153,6 +158,12 @@ func (v *fileVault) Unlocked() bool {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	return v.db != nil
+}
+
+// Path never changes for a given fileVault (immutable since New), so
+// this needs no lock.
+func (v *fileVault) Path() string {
+	return v.path
 }
 
 func (v *fileVault) Create(masterKey []byte) (string, error) {

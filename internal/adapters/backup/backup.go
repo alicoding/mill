@@ -299,23 +299,51 @@ func Latest(dir string) (time.Time, error) {
 // subdirectory carries a copy of the vault file, or the zero time if
 // none does -- distinct from Latest, which answers about ANY backup
 // regardless of what it carries: a vault set up after the oldest kept
-// backups already rotated off leaves those without one. Walks newest
+// backups already rotated off leaves those without one.
+func LatestWithVault(dir string) (time.Time, error) {
+	_, t, err := LatestVaultBackupDir(dir)
+	return t, err
+}
+
+// LatestVaultBackupDir returns the newest backup's own directory path
+// and time whose subdirectory carries a copy of the vault file, or ""
+// and the zero time if none does -- the actual directory RestoreVault's
+// own backupDir argument expects, once a caller already knows one
+// exists (goal 0359's own recovery door reads this directly rather than
+// re-deriving a path from LatestWithVault's time alone). Walks newest
 // to oldest and stops at the first hit, so this costs one stat per
 // backup back to the answer, never a full directory scan.
-func LatestWithVault(dir string) (time.Time, error) {
+func LatestVaultBackupDir(dir string) (string, time.Time, error) {
 	names, err := backupDirNames(dir)
 	if err != nil {
-		return time.Time{}, err
+		return "", time.Time{}, err
 	}
 	for i := len(names) - 1; i >= 0; i-- {
-		if _, err := os.Stat(filepath.Join(dir, names[i], vaultBackupName)); err != nil {
+		backupDir := filepath.Join(dir, names[i])
+		if _, err := os.Stat(filepath.Join(backupDir, vaultBackupName)); err != nil {
 			continue
 		}
 		t, err := time.ParseInLocation(TimestampLayout, names[i], time.Local)
 		if err != nil {
-			return time.Time{}, fmt.Errorf("backup: parse backup name %q: %w", names[i], err)
+			return "", time.Time{}, fmt.Errorf("backup: parse backup name %q: %w", names[i], err)
 		}
-		return t, nil
+		return backupDir, t, nil
 	}
-	return time.Time{}, nil
+	return "", time.Time{}, nil
+}
+
+// ConsumeVaultBackup removes ONLY the vault copy from backupDir (one
+// specific backup's own subdirectory, as returned by
+// LatestVaultBackupDir) -- everything else that backup carries
+// (execution.db/settings.json) is untouched. Called after a successful
+// RestoreVault from this same directory, so a repeated restore-from-
+// backup attempt (the key still doesn't fit) moves on to the next-older
+// backup that still carries its own vault copy, rather than restoring
+// the exact same already-tried file again. A backup with no vault copy
+// to begin with is not an error -- there is nothing to consume.
+func ConsumeVaultBackup(backupDir string) error {
+	if err := os.Remove(filepath.Join(backupDir, vaultBackupName)); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("backup: consume vault copy: %w", err)
+	}
+	return nil
 }
