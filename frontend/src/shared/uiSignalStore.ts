@@ -116,6 +116,12 @@ interface UISignalState {
   // OWN id, so a board with several diagrams stays unambiguous.
   atlasDiagramFitRequest: { id: string; seq: number } | null
   requestAtlasDiagramFit: (objectID: string) => void
+  // "Previous page" / "Next page" (goal 0354): the step, not the target
+  // page -- the frame holding the live viewer is the only place that
+  // knows where the face currently is, so the command carries -1/+1 and
+  // it does the arithmetic.
+  atlasDiagramPageRequest: { id: string; delta: number; seq: number } | null
+  requestAtlasDiagramPage: (objectID: string, delta: number) => void
   // The tray's image tool (goal 0169 slice 2, the paste-or-drop
   // interaction) -- opens its own path/paste popover. A counter, not a
   // per-tool payload, since only one popover-style tool exists so far;
@@ -273,6 +279,8 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasTableRename: (objectID) => set((s) => ({ atlasTableRenameRequest: { id: objectID, seq: (s.atlasTableRenameRequest?.seq ?? 0) + 1 } })),
   atlasDiagramFitRequest: null,
   requestAtlasDiagramFit: (objectID) => set((s) => ({ atlasDiagramFitRequest: { id: objectID, seq: (s.atlasDiagramFitRequest?.seq ?? 0) + 1 } })),
+  atlasDiagramPageRequest: null,
+  requestAtlasDiagramPage: (objectID, delta) => set((s) => ({ atlasDiagramPageRequest: { id: objectID, delta, seq: (s.atlasDiagramPageRequest?.seq ?? 0) + 1 } })),
   atlasImagePopoverRequest: 0,
   requestAtlasImagePopover: () => set((s) => ({ atlasImagePopoverRequest: s.atlasImagePopoverRequest + 1 })),
   atlasUndoAvailable: false,
