@@ -4,6 +4,7 @@ import { Checkbox, Heading, Text } from '@primer/react'
 import { SettingsService } from '../shared/bindings'
 import McpAddressField from './McpAddressField'
 import RemoteAccessSection from './RemoteAccessSection'
+import BrowsersSection from './BrowsersSection'
 import ContractSection from './ContractSection'
 import { SettingsRow } from './SettingsRow'
 import listStyles from '../shared/ListCard.module.css'
@@ -90,6 +91,13 @@ export default function SettingsConnectionsPane() {
           {t('settings.connections.remoteTitle')}
         </Heading>
         <RemoteAccessSection />
+      </div>
+
+      <div data-testid="settings-section-browsers" className={styles.panel}>
+        <Heading as="h2" variant="small" className={styles.paneSectionHeading} data-testid="settings-section-heading">
+          {t('settings.connections.browsersTitle')}
+        </Heading>
+        <BrowsersSection />
       </div>
 
       <div data-testid="settings-section-contract" className={styles.panel}>

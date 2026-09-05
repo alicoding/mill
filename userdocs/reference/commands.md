@@ -58,6 +58,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.up` | Go up one level | `⌘↑` | atlas | Always available |
 | `backup.export` | Export everything | — | Global | Always available |
 | `backup.now` | Back up now | — | Global | Always available |
+| `browser.pair` | Pair a browser | — | Global | Always available |
+| `browser.test` | Test the browser connection | — | Global | Conditional — available only in a matching state |
 | `canvas.delete` | Delete selected | `⌫` | composition | Always available |
 | `canvas.fitView` | Fit view | — | composition | Always available |
 | `canvas.redo` | Redo | `⌘⇧Z` | composition | Always available |

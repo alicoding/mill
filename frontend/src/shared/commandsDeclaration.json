@@ -356,6 +356,22 @@
     "needs": null
   },
   {
+    "id": "browser.pair",
+    "label": "Pair a browser",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "browser.test",
+    "label": "Test the browser connection",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "canvas.delete",
     "label": "Delete selected",
     "binding": "⌫",

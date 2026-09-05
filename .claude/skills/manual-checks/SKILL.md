@@ -410,3 +410,21 @@ installed build can catch, and exactly how to verify it there.
   request to that host through the request runner and confirm it
   presents the certificate; confirm the row's status reads "Expires in
   N days" matching the certificate's real `notAfter` date.
+- **The real browser extension, loaded unpacked and paired** (goal
+  0350 S1, `examples/browser-extension/`) — an MV3 extension needs a
+  real Chrome profile, a service worker whose idle teardown no harness
+  can observe, and a genuine `<all_urls>` grant; the suite proves
+  Mill's half against a wire-protocol stand-in
+  (`e2e/fixtures/fakeExtension.ts`) and the runner's own logic under a
+  DOM (`src/shared/replayRunner.test.ts`). Verify on an installed
+  build: load `examples/browser-extension` unpacked at
+  `chrome://extensions`, open **Settings › Connections › Browsers**,
+  press **Pair a browser**, enter the code and the shown address in
+  the extension popup (it reads "Connected to Mill"), then press
+  **Test the connection** — a tab opens, the button is pressed, and
+  Mill reports three steps. Then record a flow in the DevTools
+  **Recorder** panel against a real signed-in site, export it as JSON,
+  and replay it — the selector fallback chains resolve on a page whose
+  markup nobody controls. Finally revoke the browser in Settings and
+  confirm the popup drops to "Mill isn't running" within about half a
+  minute (the stream is dropped on its next keepalive).

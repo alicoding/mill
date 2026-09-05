@@ -23,7 +23,7 @@ func TestMintDevice_TopicsAreUniqueAndFullLength(t *testing.T) {
 	s := newTestService(t)
 	seen := make(map[string]bool)
 	for i := 0; i < 20; i++ {
-		if _, err := s.mintDevice("Device", ""); err != nil {
+		if _, err := s.mintDevice("Device", "", KindDevice); err != nil {
 			t.Fatalf("mintDevice() = %v, want nil error", err)
 		}
 	}
@@ -96,7 +96,7 @@ func TestNtfySubscribe_UnknownTopicGets404(t *testing.T) {
 // same 404 as a topic that never existed.
 func TestNtfySubscribe_RevokedTopicGets404(t *testing.T) {
 	s := newTestService(t)
-	if _, err := s.mintDevice("Phone", ""); err != nil {
+	if _, err := s.mintDevice("Phone", "", KindDevice); err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
 	id, topic := s.devices[0].ID, s.devices[0].Topic
@@ -168,7 +168,7 @@ func nextLine(t *testing.T, lines <-chan string) string {
 // reconnect loop keeps current in production.
 func TestPhoneChannel_StreamEmitsPublishedRecord(t *testing.T) {
 	s := newTestService(t)
-	if _, err := s.mintDevice("Phone", ""); err != nil {
+	if _, err := s.mintDevice("Phone", "", KindDevice); err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
 	topic := s.devices[0].Topic
@@ -211,7 +211,7 @@ func TestPhoneChannel_StreamEmitsPublishedRecord(t *testing.T) {
 // observe a still-unknown one is to never make that connection at all.
 func TestPhoneChannel_DeliverOmitsClickWithNoKnownBaseAddress(t *testing.T) {
 	s := newTestService(t)
-	if _, err := s.mintDevice("Phone", ""); err != nil {
+	if _, err := s.mintDevice("Phone", "", KindDevice); err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
 	topic := s.devices[0].Topic
@@ -243,7 +243,7 @@ func TestPhoneChannel_DeliverOmitsClickWithNoKnownBaseAddress(t *testing.T) {
 // reject the next reconnect.
 func TestPhoneChannel_RevokeClosesAnOpenStream(t *testing.T) {
 	s := newTestService(t)
-	if _, err := s.mintDevice("Phone", ""); err != nil {
+	if _, err := s.mintDevice("Phone", "", KindDevice); err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
 	id, topic := s.devices[0].ID, s.devices[0].Topic
@@ -282,7 +282,7 @@ func TestPhoneChannel_ShouldDeliver(t *testing.T) {
 	if ch.ShouldDeliver(notification.Event{Focused: true}) {
 		t.Fatalf("ShouldDeliver() = true with no paired devices, want false")
 	}
-	if _, err := s.mintDevice("Phone", ""); err != nil {
+	if _, err := s.mintDevice("Phone", "", KindDevice); err != nil {
 		t.Fatalf("mintDevice() = %v, want nil error", err)
 	}
 	if !ch.ShouldDeliver(notification.Event{Focused: true}) {
