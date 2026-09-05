@@ -204,6 +204,24 @@ func init() {
 		}
 		method, urlPath := defaultMethodAndPath(rc, node.Config["method"], node.Config["path"])
 
+		// The run's selected Environment (goal 0306 S5) is substituted
+		// BEFORE anything else reads the request: auth signs over the
+		// final URL and body, so a variable resolved after signing would
+		// sign one request and send another. The environment is only
+		// LOOKED UP when something actually references a variable -- a
+		// request with no {{name}} in it must not open the secret store
+		// (and so must not produce an audit line) for a value nothing
+		// asked for.
+		if len(RequestVarRefs(rc)) > 0 || len(VarRefs(body)) > 0 || len(VarRefs(urlPath)) > 0 {
+			vars, err := runEnvironmentVars(ctx)
+			if err != nil {
+				return ctx, fmt.Errorf("integration-http: %w", err)
+			}
+			rc, _ = InterpolateRequest(rc, vars)
+			body, _ = Interpolate(body, vars)
+			urlPath, _ = Interpolate(urlPath, vars)
+		}
+
 		headers := make(map[string]string, len(rc.Headers)+1)
 		for k, v := range rc.Headers {
 			headers[k] = v

@@ -111,20 +111,18 @@ func TestConfigureService_DeletingABuiltIn_DoesNotReturnOnRestart(t *testing.T) 
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := NewConfigureService(store, comp, credential.New())
 
-	// docs/adr/0040 decision 3: two seeded workflows still reference
-	// this request, so the delete is blocked, naming both, until both
-	// references are gone.
+	// docs/adr/0040 decision 3: a seeded workflow still references this
+	// request, so the delete is blocked, naming it, until the reference
+	// is gone.
 	err := cfg.DeleteHTTPRequest(httprequest.ExampleNoneID)
 	if err == nil {
 		t.Fatal("DeleteHTTPRequest on a still-referenced request returned nil error, want it blocked")
 	}
-	if !strings.Contains(err.Error(), "Post an update to the client portal") || !strings.Contains(err.Error(), "Forward approvals to the sponsor") {
-		t.Errorf("DeleteHTTPRequest blocked-error = %q, want it to name both referencing workflows", err.Error())
+	if !strings.Contains(err.Error(), "Forward approvals to the sponsor") {
+		t.Errorf("DeleteHTTPRequest blocked-error = %q, want it to name the referencing workflow", err.Error())
 	}
-	for _, wfID := range []string{"example-guarded-http-workflow", "example-forward-approvals-workflow"} {
-		if err := comp.DeleteWorkflow(wfID); err != nil {
-			t.Fatalf("DeleteWorkflow(%q) (unblocking the reference): %v", wfID, err)
-		}
+	if err := comp.DeleteWorkflow("example-forward-approvals-workflow"); err != nil {
+		t.Fatalf("DeleteWorkflow (unblocking the reference): %v", err)
 	}
 	if err := cfg.DeleteHTTPRequest(httprequest.ExampleNoneID); err != nil {
 		t.Fatalf("DeleteHTTPRequest(%q) returned error after unblocking: %v", httprequest.ExampleNoneID, err)

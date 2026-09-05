@@ -47,6 +47,8 @@ func (c *ConfigureService) DescribeReference(kind, id string) (ReferenceSummary,
 		ok = c.describeDecision(&out)
 	case "execenv":
 		ok = c.describeExecEnv(&out)
+	case "environment":
+		ok = c.describeEnvironment(&out)
 	case "aiprovider":
 		ok = c.describeAIProvider(&out)
 	case "conversionprofile":

@@ -55,6 +55,8 @@ async function fetchEntities(refKind: string): Promise<Entity[]> {
       return ((await ConfigureService.Decisions()) ?? []).map((d) => ({ ID: d.ID, Label: `${d.Label} (${d.Category})` }))
     case 'execenv':
       return (await ConfigureService.ExecEnvs()) ?? []
+    case 'environment':
+      return (await ConfigureService.Environments()) ?? []
     case 'aiprovider':
       return (await ConfigureService.AIProviders()) ?? []
     case 'conversionprofile':
@@ -72,6 +74,14 @@ async function fetchEntities(refKind: string): Promise<Entity[]> {
   }
 }
 
+// The empty option's article follows the noun it introduces: "an
+// environment", "an AI provider", "a request". One vowel check rather
+// than an article baked into every noun, which would then leak into
+// the peek and the unknown-entity line that reuse the same nouns.
+function selectEntityKeyFor(noun: string | undefined): string {
+  return noun !== undefined && /^[aeiou]/i.test(noun) ? 'entityRefField.selectEntityVowel' : 'entityRefField.selectEntity'
+}
+
 function kindNounFor(t: (key: string) => string): Record<string, string> {
   return {
     request: t('entityRefField.kindNoun.request'),
@@ -81,6 +91,7 @@ function kindNounFor(t: (key: string) => string): Record<string, string> {
     'workflow-scope': t('entityRefField.kindNoun.workflow-scope'),
     decision: t('entityRefField.kindNoun.decision'),
     execenv: t('entityRefField.kindNoun.execenv'),
+    environment: t('entityRefField.kindNoun.environment'),
     aiprovider: t('entityRefField.kindNoun.aiprovider'),
     conversionprofile: t('entityRefField.kindNoun.conversionprofile'),
     'atlas-kind': t('entityRefField.kindNoun.atlas-kind'),
@@ -141,7 +152,7 @@ export function EntityRefField({ refKind, value, onChange, readOnly }: { refKind
               ? t('entityRefField.unknownEntity', { noun: KIND_NOUN[refKind], value })
               : refKind === 'workflow-scope'
                 ? t('entityRefField.allWorkflows')
-                : t('entityRefField.selectEntity', { noun: KIND_NOUN[refKind] })}
+                : t(selectEntityKeyFor(KIND_NOUN[refKind]), { noun: KIND_NOUN[refKind] })}
         </Select.Option>
         {(entities ?? []).map((entity) => (
           <Select.Option key={entity.ID} value={entity.ID}>{entity.Label}</Select.Option>
@@ -245,7 +256,7 @@ function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; 
           // Environments is the canonical place to refine shell/dir/env
           // afterward, same "quick-create produces a usable starting
           // point" split every other kind here already has.
-          const e = await ConfigureService.CreateExecEnv(label, Shell.ShellZsh, ProfileMode.ProfileClean, '<mill-temp>', null)
+          const e = await ConfigureService.CreateExecEnv(label, Shell.ShellZsh, ProfileMode.ProfileClean, '<mill-temp>', null, '')
           id = e.ID
           break
         }

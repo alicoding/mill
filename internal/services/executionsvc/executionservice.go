@@ -104,6 +104,12 @@ type runInput struct {
 	// secrets to correlate (RunWorkflow/RunWorkflowWithPayload/
 	// RunWorkflowStepped's own zero-value delegation below).
 	SecretsToken string
+	// EnvironmentID names the Environment this run executes in (goal
+	// 0306 S5) -- already resolved (the caller's override, else the
+	// workflow's default) so a redrive or a resumed park replays the
+	// stage the run actually started in, never whatever the default has
+	// become since. "" for every run started before this field existed.
+	EnvironmentID string
 }
 
 // RunStep is one node's recorded execution within a run, for the
@@ -179,6 +185,12 @@ type RunSummary struct {
 	// child bindings). The data behind Activity's per-attribute columns
 	// and attribute search (docs/SPEC.md §3.2's analytics pattern).
 	Values map[string]string `json:"values"`
+	// EnvironmentID/EnvironmentLabel name the Environment this run
+	// executed in (goal 0306 S5) -- the label is what Activity shows,
+	// the id is what a redrive or a filter matches on. Both empty for a
+	// run that selected no environment.
+	EnvironmentID    string `json:"environmentID,omitempty"`
+	EnvironmentLabel string `json:"environmentLabel,omitempty"`
 }
 
 // RunDetail is a RunSummary plus its full per-node step breakdown.
@@ -241,7 +253,13 @@ type ExecutionService struct {
 	// main.go's millVersion const is available; empty in every
 	// standalone test that builds ExecutionService directly, same as
 	// minutesSavedLookup/systemEventSink above.
-	version string
+	// environmentLabelLookup resolves an Environment id to its label
+	// for a run summary/receipt (goal 0306 S5) -- ConfigureService owns
+	// that data, and this service must not import it directly
+	// (.claude/rules/backend.md). Nil until wired; an unwired lookup
+	// simply leaves the label empty, never an error.
+	environmentLabelLookup func(environmentID string) string
+	version                string
 	// appVersion is the durable runtime's own application version --
 	// WorkflowCodeVersion in production, a test-supplied value via
 	// NewExecutionServiceWithVersion. Every "was this row written by
@@ -267,6 +285,7 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 	output, err := composition.ExecuteWorkflowWithStepRunner(in.Nodes, in.Edges, in.Attributes, stepRunner,
 		composition.ExecuteOptions{
 			AttrValues: in.Values, RunContext: ctx, InitialPayload: in.Payload,
+			EnvironmentID: in.EnvironmentID,
 			// WorkflowID was never threaded through here before this
 			// change -- a real, previously-latent bug found while
 			// building breakpoints (docs/adr/0031): every workflow- and
@@ -324,11 +343,12 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 	return output, err
 }
 
-func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, values map[string]string, payload string, stepped bool, atlasSourceCardID string, secretsToken string) (RunSummary, error) {
+func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, opts RunOptions) (RunSummary, error) {
 	wf, ok := e.findWorkflow(workflowID)
 	if !ok {
 		return RunSummary{}, fmt.Errorf("unknown workflow: %s", workflowID)
 	}
+	environmentID := opts.environmentFor(wf)
 
 	// ADR-0021: a test or MCP run executes the draft head (the
 	// pre-publish check, RunKind.runsDraft); a triggered run executes
@@ -339,7 +359,7 @@ func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, val
 		return RunSummary{}, err
 	}
 
-	if err := preflightRefusal(nodes, edges, attrs); err != nil {
+	if err := preflightRefusal(nodes, edges, attrs, environmentID); err != nil {
 		return RunSummary{}, err
 	}
 
@@ -350,12 +370,13 @@ func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, val
 		Edges:             edges,
 		Attributes:        attrs,
 		Kind:              kind,
-		Values:            values,
+		Values:            opts.Values,
 		Version:           version,
-		Payload:           payload,
-		Stepped:           stepped,
-		AtlasSourceCardID: atlasSourceCardID,
-		SecretsToken:      secretsToken,
+		Payload:           opts.Payload,
+		Stepped:           opts.Stepped,
+		AtlasSourceCardID: opts.AtlasSourceCardID,
+		SecretsToken:      opts.SecretsToken,
+		EnvironmentID:     environmentID,
 	}, execution.WithWorkflowID(runID))
 	if err != nil {
 		return RunSummary{}, fmt.Errorf("start run: %w", err)
@@ -380,7 +401,7 @@ func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, val
 	// its very first node, docs/adr/0031): then return immediately with
 	// the run ID, so a Run click never hangs on a human decision -- the
 	// pending state surfaces via RunSummary.Pending instead.
-	if stepped || e.mayRequireApproval(wf.ID, nodes) {
+	if opts.Stepped || e.mayRequireApproval(wf.ID, nodes) {
 		return e.summaryFor(handle.GetWorkflowID())
 	}
 	if _, err := handle.GetResult(); err != nil {
