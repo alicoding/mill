@@ -888,6 +888,22 @@
     "needs": null
   },
   {
+    "id": "extension.addMcpServer",
+    "label": "Add to Configure",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "extension.checkUpdates",
+    "label": "Check for updates",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
     "id": "extension.disable",
     "label": "Turn off",
     "binding": null,
@@ -928,6 +944,22 @@
     "needs": "entity"
   },
   {
+    "id": "extension.update",
+    "label": "Update",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "extensions.checkUpdates",
+    "label": "Extensions: check for updates",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
     "id": "extensions.exportAudit",
     "label": "Export plugin audit",
     "binding": null,
@@ -949,6 +981,14 @@
     "binding": null,
     "surface": null,
     "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "extensions.updateAll",
+    "label": "Extensions: update all",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
     "needs": null
   },
   {
