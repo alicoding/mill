@@ -45,7 +45,7 @@ type FetchListProjection = ComponentProps<typeof AtlasCardProjectionTable>['fetc
 // unused -- a table projects a Configure List, never a mirrored file
 // (fileBacked: false in tools/tableTool.ts), so this Kind's own
 // version counter never actually bumps.
-export function AtlasTableObjectContent({ object, fetchListProjection }: { object: BoardObject; mirrorVersion: number; fetchListProjection?: FetchListProjection }) {
+export function AtlasTableObjectContent({ object, fetchListProjection, onEditingChange }: { object: BoardObject; mirrorVersion: number; fetchListProjection?: FetchListProjection; onEditingChange?: (editing: boolean) => void }) {
   const [columnCount, setColumnCount] = useState(0)
   const hasSize = !!object.Size
   const style: CSSProperties = hasSize
@@ -63,7 +63,7 @@ export function AtlasTableObjectContent({ object, fetchListProjection }: { objec
       {/* titleRow (goal 0273): the object's own name above its grid --
           a board object carries no card title, so this is the only
           place a table on the board is named. */}
-      <AtlasCardProjectionTable scopeID={object.ID} fetchProjection={fetchListProjection} onColumnCount={setColumnCount} titleRow={{ objectID: object.ID }} />
+      <AtlasCardProjectionTable scopeID={object.ID} fetchProjection={fetchListProjection} onColumnCount={setColumnCount} titleRow={{ objectID: object.ID }} onEditingChange={onEditingChange} />
     </div>
   )
 }

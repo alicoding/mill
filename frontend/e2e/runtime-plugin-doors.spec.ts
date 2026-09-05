@@ -120,10 +120,21 @@ test('the Board index plugin lists notes by first line and stays current through
 		await expect(face.getByTestId('index-kind-index')).toHaveText('Index · 1')
 		await expect(face.getByTestId('index-kind-note')).toHaveCount(0)
 
+		// The one activation contract reaches a plugin face too (goal
+		// 0354): this one declares content: 'interactive' because its
+		// listing scrolls, so a freshly placed -- and therefore selected
+		// -- object is live and opts the canvas out of the wheel, and
+		// handing the selection back leaves it inert behind the shield.
+		const indexObject = page.locator('[data-testid="atlas-board-object"][data-object-kind="index"]')
+		await expect(indexObject).toHaveAttribute('data-activation', 'selected')
+		await expect(indexObject).toHaveClass(/nowheel/)
+
 		// Add a note: its first line appears under Note without a reload.
 		// Deselect the index first (a selected object changes what a
 		// board click means), then arm the note tool from the tray.
 		await page.keyboard.press('Escape')
+		await expect(indexObject).toHaveAttribute('data-activation', 'idle')
+		await expect(indexObject.getByTestId('atlas-object-click-shield')).toHaveCount(1)
 		await clickAtlasTrayTool(page, 'atlas-tray-note')
 		const noteSpot = await findEmptyBoardRect(page, board, 300, 200)
 		await board.click({ position: { x: noteSpot.x - bb.x + 10, y: noteSpot.y - bb.y + 10 } })

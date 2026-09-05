@@ -155,3 +155,20 @@ func TestConformStandardWarnings_Rule9_ConsoleErrorWithoutNotify(t *testing.T) {
 		t.Fatalf("a console.error beside api.notify should carry no warning, got %v", warnings)
 	}
 }
+
+func TestConformStandardWarnings_Rule22_SetEditingWithoutInteractiveContent(t *testing.T) {
+	dir := newFixture(t, "facey", validIconManifest("facey", "Facey", ""), map[string]string{
+		"main.js": "export function activate() {}",
+		"face.js": "export function renderFace(el, ctx) { ctx.setEditing(true) }",
+	})
+	warnings := strings.Join(ConformStandardWarnings(dir), "\n")
+	if !strings.Contains(warnings, "standard rule 22") {
+		t.Fatalf("want the rule 22 warning, got %v", warnings)
+	}
+	clean := newFixture(t, "facey-ok", validIconManifest("facey-ok", "Facey ok", ""), map[string]string{
+		"main.js": "const decl = { content: 'interactive', renderFace(el, ctx) { ctx.setEditing(true) } }",
+	})
+	if warnings := ConformStandardWarnings(clean); len(warnings) != 0 {
+		t.Fatalf("a declared interactive face must not warn, got %v", warnings)
+	}
+}
