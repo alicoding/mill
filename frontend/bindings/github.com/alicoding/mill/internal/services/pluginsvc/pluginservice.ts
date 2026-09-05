@@ -57,6 +57,15 @@ export function Captures(): $CancellablePromise<$models.PluginCapture[] | null> 
 }
 
 /**
+ * CheckForUpdates refreshes every source, then resolves the latest
+ * version for each installed extension that carries an install
+ * receipt. Built-ins and hand-copied folders have no source to ask.
+ */
+export function CheckForUpdates(): $CancellablePromise<$models.UpdateCheck> {
+    return $Call.ByID(2916006759);
+}
+
+/**
  * ContentHashOf answers the current hash of an installed plugin by id
  * ("" for a built-in or an unreadable folder) -- the run policy's
  * comparison input.
@@ -152,6 +161,14 @@ export function ListPlugins(): $CancellablePromise<$models.PluginInfo[] | null> 
 }
 
 /**
+ * ListUpdates answers the last check as it was recorded -- never a
+ * fetch.
+ */
+export function ListUpdates(): $CancellablePromise<$models.UpdateCheck> {
+    return $Call.ByID(3557701958);
+}
+
+/**
  * PluginsDir returns the directory plugins are installed into --
  * the Extensions page's install story shows and reveals it. The
  * directory is created on first ask so "open the folder" never lands
@@ -176,6 +193,15 @@ export function PreviewInstall(marketplace: string, id: string): $CancellablePro
  */
 export function PreviewInstalled(id: string): $CancellablePromise<$models.InstallPreview> {
     return $Call.ByID(3921789238, id);
+}
+
+/**
+ * PreviewUpdate answers the install prompt's contents for an update:
+ * what the newer version can do, and the tier applying it would earn.
+ * Reads only what is cached -- previewing never downloads.
+ */
+export function PreviewUpdate(id: string): $CancellablePromise<$models.InstallPreview> {
+    return $Call.ByID(353136909, id);
 }
 
 /**
@@ -227,6 +253,16 @@ export function RequestGuardedAction(pluginID: string, kind: string, attributes:
 }
 
 /**
+ * ResolveMCPServer answers one declared server as a Configure entity's
+ * fields. A secretRef env entry reads the setting the user picked in
+ * the extension's Settings tab; an unpicked one refuses, naming the
+ * setting, rather than creating an entity that would fail at spawn.
+ */
+export function ResolveMCPServer(pluginID: string, serverID: string): $CancellablePromise<$models.MCPServerConfig> {
+    return $Call.ByID(1716232451, pluginID, serverID);
+}
+
+/**
  * RevealPluginsDir opens the plugins directory in the OS file manager.
  */
 export function RevealPluginsDir(): $CancellablePromise<void> {
@@ -275,6 +311,14 @@ export function StepNodeTypes(): $CancellablePromise<composition$0.ExternalNodeT
  */
 export function StepPackProblem(id: string): $CancellablePromise<string> {
     return $Call.ByID(3840929602, id);
+}
+
+/**
+ * UpdatePlugin applies one recorded candidate through the same install
+ * door the extension first came through, then drops it from the list.
+ */
+export function UpdatePlugin(id: string): $CancellablePromise<$models.InstallRecord> {
+    return $Call.ByID(1395208446, id);
 }
 
 /**

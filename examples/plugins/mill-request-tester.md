@@ -15,6 +15,12 @@ same toolbar.
 - **Authorization** -- a vault entry sent as a bearer token with every
   request; the plugin only ever learns its title, never its value.
 
+## MCP servers
+
+- **Reference server** -- the reference MCP server, started with
+  `npx`. Press **Add to Configure** on the extension's page to create
+  it as an MCP Server entity you can call from a workflow.
+
 ## Capabilities
 
 - `fetch` -- sends the request you build, on your approval.

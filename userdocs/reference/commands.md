@@ -117,14 +117,19 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `docs.search` | Search docs | — | Global | Always available |
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
+| `extension.addMcpServer` | Add to Configure | — | Global | Acts on the selected entity |
+| `extension.checkUpdates` | Check for updates | — | Global | Acts on the selected entity |
 | `extension.disable` | Turn off | — | Global | Acts on the selected entity |
 | `extension.enable` | Turn on | — | Global | Acts on the selected entity |
 | `extension.refreshSources` | Extensions: refresh sources | — | Global | Always available |
 | `extension.remove` | Remove | — | Global | Acts on the selected entity |
 | `extension.reveal` | Reveal folder | — | Global | Acts on the selected entity |
+| `extension.update` | Update | — | Global | Acts on the selected entity |
+| `extensions.checkUpdates` | Extensions: check for updates | — | Global | Always available |
 | `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
 | `extensions.open` | Extensions | `⌘⇧X` | Global | Always available |
 | `extensions.sources` | Extensions: marketplace sources | — | Global | Always available |
+| `extensions.updateAll` | Extensions: update all | — | Global | Conditional — available only in a matching state |
 | `help.openDataFolder` | Open data folder | — | Global | Always available |
 | `help.reportIssue` | Report an issue… | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
