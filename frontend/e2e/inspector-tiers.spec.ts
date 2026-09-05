@@ -111,7 +111,7 @@ test('a recorded run counts on the Test tab, which holds that run\'s step data',
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Amount').fill('150')
   await dialog.getByRole('button', { name: 'Run' }).click()
-  await expect(panel.getByTestId('current-step-bar')).toContainText('SUCCESS', { timeout: 15_000 })
+  await expect(panel.getByTestId('run-state-dock')).toContainText('SUCCESS', { timeout: 15_000 })
 
   await node(page, CAPTURE_NODE).click()
   const sidebar = inspector(page)

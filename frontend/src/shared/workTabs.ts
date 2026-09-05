@@ -221,3 +221,24 @@ export function dirtyKeysForCloseRequest(
         : workTabs
   return candidates.filter((t) => workTabDirty[t.key]).map((t) => t.key)
 }
+
+// Whether a close request would leave a run paused behind (goal 0328).
+// A paused run holds its step until somebody answers it, so leaving the
+// editor is the last moment to decide -- and the decision is asked ONCE,
+// before the unsaved-changes prompt, since stopping the run is about the
+// run rather than about the draft. Pure and exported: which tabs a
+// request closes is the part worth pinning down, and it is invisible in
+// a rendered dialog.
+export function pausedRunForCloseRequest(
+  tabs: { key: string; kind: string; workflowId?: string }[],
+  paused: { runID: string; workflowID: string; pending?: { nodeID: string; nodeTypeLabel: string; nodeTypeID: string } | null }[],
+  request: WorkTabCloseRequest,
+): { runID: string; workflowID: string; pending?: { nodeID: string; nodeTypeLabel: string; nodeTypeID: string } | null } | null {
+  const closing = tabs.filter((tab) => {
+    if (request.kind === 'one') return tab.key === request.key
+    if (request.kind === 'others') return tab.key !== request.keepKey
+    return true
+  })
+  const ids = new Set(closing.filter((t) => t.kind === 'workflow-edit' && t.workflowId).map((t) => t.workflowId))
+  return paused.find((run) => ids.has(run.workflowID)) ?? null
+}

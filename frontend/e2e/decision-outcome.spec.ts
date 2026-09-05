@@ -91,7 +91,7 @@ async function runBranch(page: import('@playwright/test').Page, panel: import('@
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Amount').fill(amount)
   await dialog.getByRole('button', { name: 'Run' }).click()
-  await expect(panel.getByTestId('current-step-bar')).toContainText('SUCCESS', { timeout: 15_000 })
+  await expect(panel.getByTestId('run-state-dock')).toContainText('SUCCESS', { timeout: 15_000 })
 }
 
 // Double-clicks the reached terminal (DONE) card at a point proven
@@ -210,7 +210,7 @@ test('Branch to a decision: the approve path terminalizes with a typed outcome, 
   await dialog.getByLabel('Amount').fill('150')
   await dialog.getByRole('button', { name: 'Run' }).click()
 
-  const bar = activePanel(page).getByTestId('current-step-bar')
+  const bar = activePanel(page).getByTestId('run-state-dock')
   await expect(bar).toContainText('SUCCESS', { timeout: 15_000 })
 
   // The reached terminal (Approve) card shows done, and -- the actual

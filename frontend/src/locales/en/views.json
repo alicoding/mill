@@ -408,7 +408,10 @@
     "openWorkflow": "Open workflow",
     "noRunsMatchSearch": "No runs match this search.",
     "runsAriaLabel": "{{label}} runs",
-    "allRunsAriaLabel": "Recent runs across all workflows"
+    "allRunsAriaLabel": "Recent runs across all workflows",
+    "allStatuses": "All statuses",
+    "paused": "Paused",
+    "filterByStatusAriaLabel": "Filter by status"
   },
   "activityView": {
     "sourceLabel": {
@@ -474,7 +477,6 @@
     "kindLabels": {
       "ask": "Awaiting approval",
       "human-review": "Ask for review",
-      "debug": "Paused at breakpoint",
       "mcp-write": "MCP write request",
       "guarded-action": "Guarded actions"
     },
@@ -490,14 +492,10 @@
     "awaitingApprovalLower": "awaiting approval",
     "approve": "Approve",
     "deny": "Deny",
-    "pausedStepModeLower": "paused in step mode",
-    "pausedAtBreakpointLower": "paused at breakpoint",
     "stepPrefix": "Step",
     "ruleSuffix": " ({{rule}})",
     "externalStepsDefault": " (external steps ask by default)",
-    "resume": "Resume",
     "approveAndResume": "Approve and resume",
-    "stop": "Stop",
     "recentlyResolved": "Recently resolved",
     "tabs": {
       "queue": "Queue",

@@ -40,7 +40,9 @@ Data flows two ways through a run:
   clipboard HTML that becomes Markdown).
 - **Attributes** — named, typed fields a workflow declares. Steps
   read and write them by name (an AI classification lands in an
-  attribute; Branch routes on one). They're the structured half.
+  attribute; Branch routes on one). They're the structured half. A
+  run uses your explicit value first, then what a trigger or capture
+  set, then the attribute's default.
 
 ## Configuring a step
 

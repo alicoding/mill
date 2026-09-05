@@ -15,7 +15,15 @@
 // the invoker states it rather than a command re-fetching it.
 export type CommandContext =
   | { kind: 'workflow'; workflowId: string }
-  | { kind: 'run'; runId: string; workflowId?: string }
+  // nodeId is the step a paused run is parked on -- present only when
+  // the surface offering the action can see the park (the canvas dock,
+  // Activity's paused row). run.continue/run.step need it to answer;
+  // run.stop/run.open do not, so it stays optional.
+  // values is the reviewer's typed edit-and-resume input, stated by the
+  // surface that collected it (the same "the invoker states it rather
+  // than a command re-fetching it" reasoning as `pinned` above) --
+  // discarded by every command that isn't resuming a park.
+  | { kind: 'run'; runId: string; workflowId?: string; nodeId?: string; values?: Record<string, string> }
   | { kind: 'entry'; entryId: string; pinned?: boolean }
   | { kind: 'card'; cardId: string }
 
@@ -35,8 +43,8 @@ export function workflowContext(ctx: CommandContext | undefined): { workflowId: 
   return ctx?.kind === 'workflow' ? { workflowId: ctx.workflowId } : null
 }
 
-export function runContext(ctx: CommandContext | undefined): { runId: string; workflowId?: string } | null {
-  return ctx?.kind === 'run' ? { runId: ctx.runId, workflowId: ctx.workflowId } : null
+export function runContext(ctx: CommandContext | undefined): { runId: string; workflowId?: string; nodeId?: string; values?: Record<string, string> } | null {
+  return ctx?.kind === 'run' ? { runId: ctx.runId, workflowId: ctx.workflowId, nodeId: ctx.nodeId, values: ctx.values } : null
 }
 
 export function entryContext(ctx: CommandContext | undefined): { entryId: string; pinned?: boolean } | null {

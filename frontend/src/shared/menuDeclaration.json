@@ -271,9 +271,27 @@
   },
   {
     "menu": "Workflow",
+    "item": "Run step by step",
+    "shortcut": "",
+    "command": "workflow.runStepped"
+  },
+  {
+    "menu": "Workflow",
     "item": "Run from clipboard…",
     "shortcut": "",
     "command": "codingLoop.run"
+  },
+  {
+    "menu": "Workflow",
+    "item": "View workflow",
+    "shortcut": "",
+    "command": "workflow.view"
+  },
+  {
+    "menu": "Workflow",
+    "item": "Edit workflow",
+    "shortcut": "",
+    "command": "workflow.edit"
   },
   {
     "menu": "Workflow",
@@ -328,12 +346,6 @@
     "item": "Publish current draft",
     "shortcut": "",
     "command": "workflow.publish"
-  },
-  {
-    "menu": "Workflow",
-    "item": "Edit workflow",
-    "shortcut": "",
-    "command": "workflow.edit"
   },
   {
     "menu": "Atlas",

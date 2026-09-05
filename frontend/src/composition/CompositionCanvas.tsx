@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react'
 import { ReactFlow, ReactFlowProvider, Background, Controls, useReactFlow } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useStore } from 'zustand'
@@ -33,9 +33,12 @@ import { ContextMenu } from '../shared/ContextMenu'
 import { useCanvasContextMenuHandlers } from './useCanvasContextMenuHandlers'
 import { useCanvasSelection } from './useCanvasSelection'
 import { useHotkeyCapture } from './hotkeyCapture'
-import { RunStateContext, useLiveRun } from './liveRunState'
+import { RunStateContext } from './liveRunState'
 import { BreakpointContext, useBreakpoints } from './breakpoints'
-import { CurrentStepBar, type RunButtonHandle } from './LiveRunControls'
+import { type RunButtonHandle } from './LiveRunControls'
+import { RunStateDock } from './RunStateDock'
+import { useCanvasRunSurface } from './useCanvasRunSurface'
+import { StopPausedRunDialog } from '../shared/StopPausedRunDialog'
 import { useCanvasCommandDispatch } from './useCanvasCommandDispatch'
 import styles from './CompositionCanvas.module.css'
 import { newLocalID } from '../shared/localId'
@@ -153,27 +156,13 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
   // duplicating it here.
   const runButtonRef = useRef<RunButtonHandle>(null)
 
-  // Live run state (docs/SPEC.md §3.8's authoring-style direction, item
-  // #2) -- the run currently displayed on this canvas, either started
-  // from the Run button below or already in flight when this editor
-  // opened. Never touches useCanvasStore (zundo-wrapped undo history,
-  // §3.3) -- see liveRunState.ts's own header comment.
-  const { detail: liveRunDetail, statusByNodeId: liveStepStatusByNodeId, barState, startRun, resolve: resolveApprovalStep, resolveErrorKey, dismiss: dismissRunState } = useLiveRun(workflow?.ID, requestedRunId)
-
-  // GetRun's steps only ever cover Capture/Process/Apply/Decision-
-  // adjacent nodes -- a Trigger node never checkpoints its own step, so
-  // it gets no signal from liveStepStatusByNodeId at all. It fired by
-  // definition the moment any run is displayed, so it's marked done here
-  // rather than left blank.
-  const statusByNodeId = useMemo(() => {
-    if (!liveRunDetail) return liveStepStatusByNodeId
-    const merged = { ...liveStepStatusByNodeId }
-    for (const n of nodes) {
-      if (n.data.kind === 'trigger') merged[n.id] = 'done'
-    }
-    return merged
-  }, [liveStepStatusByNodeId, liveRunDetail, nodes])
-  const runStateContextValue = useMemo(() => ({ statusByNodeId }), [statusByNodeId])
+  // The run currently displayed on this canvas, its per-node marks, the
+  // one-paused-stepped-run-at-a-time guard, and following a pause into
+  // view -- all of it in useCanvasRunSurface.ts.
+  const {
+    detail: liveRunDetail, barState, resolve: resolveApprovalStep, resolveErrorKey,
+    dismiss: dismissRunState, runStateContextValue, steppedGuard,
+  } = useCanvasRunSurface(workflow, requestedRunId, nodes)
 
   // Nothing-hidden guardrail badges (docs/adr/0022's Update, extended by
   // docs/adr/0031's breakpoint toggle) -- see useGuardrailBadges.ts's
@@ -315,7 +304,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
           saving={saving}
           saveError={saveError}
           runButtonRef={runButtonRef}
-          onStartRun={startRun}
+          onStartRun={steppedGuard.guardedStartRun}
           readOnly={readOnly}
           onSwitchToEdit={onSwitchToEdit}
         />
@@ -429,7 +418,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
               workflowId={workflow?.ID ?? ''}
               onSelectIssue={selectIssue}
             />
-            <CurrentStepBar barState={barState} attrs={workflow?.Attributes ?? []} runDetail={liveRunDetail} resolveErrorKey={resolveErrorKey} onResolve={resolveApprovalStep} onDismiss={dismissRunState} />
+            <RunStateDock barState={barState} attrs={workflow?.Attributes ?? []} runDetail={liveRunDetail} resolveErrorKey={resolveErrorKey} onResolve={resolveApprovalStep} onDismiss={dismissRunState} />
           </ReactFlow>
         </div>
         } inspector={(headerActions) => (
@@ -469,6 +458,15 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
           onChangeType={handleChangeNodeType}
           onConfigChange={handleNodeConfigChange}
           onClose={() => setDetailOpen(false)}
+        />
+      )}
+      {steppedGuard.pausedRun && (
+        <StopPausedRunDialog
+          title={t('steppedRunGuard.title')}
+          stepLabel={steppedGuard.pausedRun.pending?.nodeTypeLabel || steppedGuard.pausedRun.pending?.nodeTypeID || ''}
+          onStop={() => steppedGuard.answer(true)}
+          onKeep={() => steppedGuard.answer(false)}
+          onCancel={steppedGuard.cancel}
         />
       )}
       <ContextMenu state={contextMenu} onClose={() => setContextMenu(null)} />

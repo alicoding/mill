@@ -89,7 +89,7 @@ test('Run works from view mode without switching to Edit', async ({ page }) => {
   await dialog.getByLabel('Amount').fill('150')
   await dialog.getByRole('button', { name: 'Run' }).click()
 
-  const bar = panel.getByTestId('current-step-bar')
+  const bar = panel.getByTestId('run-state-dock')
   await expect(bar).toContainText('SUCCESS', { timeout: 15_000 })
   // Still read-only throughout the run -- no Save button appeared.
   await expect(page.getByTestId('save-workflow')).toHaveCount(0)
@@ -125,29 +125,47 @@ test('Table view: clicking a workflow label opens VIEW mode, not Edit', async ({
   await page.getByRole('button', { name: 'Row view' }).click()
 })
 
-// docs/goals/0036-view-mode-ux-hardening.md item 2: the ambient cue that
-// a tab is read-only, visible the moment it opens -- before a user ever
-// selects a node and discovers the Inspector is inert.
-test('View-mode chip is present in view, absent once switched to Edit', async ({ page }) => {
+// goal 0328: the mode a canvas is in is stated by ONE control present in
+// both modes -- never inferred from which buttons happen to be missing.
+test('The mode switch names both modes and marks the current one, in view and in edit', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
   await workflowRow(page, 'Load sample HTML').click()
 
-  const chip = page.getByTestId('view-mode-chip')
-  await expect(chip).toBeVisible()
-  await expect(chip).toContainText('Viewing')
+  const viewing = page.getByTestId('view-workflow')
+  const editing = page.getByTestId('edit-workflow')
+  await expect(viewing).toBeVisible()
+  await expect(editing).toBeVisible()
+  await expect(viewing).toHaveAttribute('aria-pressed', 'true')
+  // The chip and the separate Edit button the switch replaced are gone.
+  await expect(page.getByTestId('view-mode-chip')).toHaveCount(0)
 
-  // goal 0297: in view mode a reference field is its VALUE plus an Edit
-  // link, never a disabled control; the link is the way into edit mode.
+  // The offer field is its VALUE in view mode, never a live control, and
+  // it names where the workflow shows up rather than a bare "None".
   const offer = page.getByTestId('workflow-offer-field')
   if ((await offer.count()) === 0) await page.getByTestId('toggle-description').click() // details open by default only when the workflow has a description
-  await expect(offer.getByTestId('entity-ref-readonly')).toContainText('None')
-  await expect(offer.locator('select')).toHaveCount(0)
+  await expect(offer).toContainText('Show as an action on cards from')
+  await expect(offer.getByTestId('workflow-offer-value')).toContainText('Nowhere')
+  await expect(offer.getByTestId('workflow-offer-picker')).toHaveCount(0)
   await expect(page.getByTestId('workflow-description-readonly')).toBeVisible()
-  await offer.getByTestId('entity-ref-edit').click()
-  await expect(chip).toHaveCount(0)
+
+  await editing.click()
+  await expect(editing).toHaveAttribute('aria-pressed', 'true')
+  await expect(viewing).toHaveAttribute('aria-pressed', 'false')
   await expect(page.getByTestId('save-workflow')).toBeVisible()
-  await expect(offer.locator('select')).toHaveCount(1)
+
+  // The picker's rows say which cards each choice means, Nowhere first.
+  await offer.getByTestId('workflow-offer-picker').click()
+  const nowhere = page.getByTestId('workflow-offer-nowhere')
+  await expect(nowhere).toContainText('Nowhere')
+  await expect(nowhere).toContainText('Run it from Workflows only')
+  await expect(page.getByTestId('workflow-offer-option').first()).toContainText('cards created from')
+  await page.keyboard.press('Escape')
+
+  // Back to Viewing through the same control.
+  await viewing.click()
+  await expect(viewing).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('save-workflow')).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Close tab' }).last().click()
 })
