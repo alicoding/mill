@@ -22,7 +22,7 @@ export interface PendingUndo {
 // -- whether by clicking the toast's button or by ⌘Z -- is the SAME
 // journal pop every other mutation door rides (goal 0219 S2,
 // ADR-0044): the button requests it via uiSignalStore's
-// atlasUndoRequest (atlas/useAtlasUndoJournal owns the actual
+// atlasUndoRequest (shared/useUndoJournal owns the actual
 // AtlasService.Undo() call + refresh), and this hook watches
 // atlasUndoAppliedTick to dismiss the toast whenever an undo lands --
 // via the button, ⌘Z, or the palette -- without re-deriving whether

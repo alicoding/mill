@@ -245,7 +245,7 @@ func main() {
 	// Cross-service seam adapters (recognition, List projection) live in the wiring package -- composition-root code split out of this file at the 500-line limit.
 	wiring.WireAtlasProjections(atlasService, configureService, compositionService)
 	wiring.WireValidationSeams(configureService)
-	wiring.WireConfigureSeams(atlasService, configureService, pluginService) // paste conversion + plugin content writes (docs/goals/0289)
+	wiring.WireConfigureSeams(atlasService, configureService, pluginService) // paste conversion + plugin content writes (docs/goals/0289) + the List row doors' undo journal
 	wiring.WireNotify()
 
 	backupService := backupsvc.Wire(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion, compositionService, configureService, atlasService)
