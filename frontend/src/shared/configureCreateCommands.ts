@@ -71,6 +71,15 @@ export const CONFIGURE_CREATE_COMMANDS: Command[] = [
     },
   },
   {
+    id: 'configure.new.certificates',
+    label: 'commands.configure.new.certificates',
+    defaultBinding: null,
+    run: () => {
+      useAppStore.getState().setView({ kind: 'configure', tab: 'certificates' })
+      useUISignalStore.getState().requestConfigureCreate('certificates')
+    },
+  },
+  {
     id: 'configure.new.conversionprofiles',
     label: 'commands.configure.new.conversionprofiles',
     defaultBinding: null,

@@ -8,6 +8,7 @@ import (
 
 	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/atlas"
+	"github.com/alicoding/mill/internal/domain/clientcert"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/conversionprofile"
 	"github.com/alicoding/mill/internal/domain/decision"
@@ -118,6 +119,12 @@ func AllSeedFingerprints() map[string]SeedFingerprint {
 		rev := cp.Seed.SeedRevision
 		cp.ID, cp.CreatedAt, cp.UpdatedAt, cp.Seed = "", time.Time{}, time.Time{}, seedorigin.Origin{}
 		out[keyFor("conversionprofile", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(cp)}
+	}
+	for _, cc := range clientcert.BuiltIn() {
+		id := cc.ID
+		rev := cc.Seed.SeedRevision
+		cc.ID, cc.CreatedAt, cc.UpdatedAt, cc.Seed = "", time.Time{}, time.Time{}, seedorigin.Origin{}
+		out[keyFor("clientcert", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(cc)}
 	}
 	for _, p := range aiprovider.BuiltIn() {
 		id := p.ID

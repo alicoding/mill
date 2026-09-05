@@ -49,6 +49,13 @@ interface UISignalState {
   configureCreateRequest: string | null
   requestConfigureCreate: (tab: string) => void
   consumeConfigureCreate: () => void
+  // configureCreatePrefill carries the one value a create flow can be
+  // opened WITH -- the request form's "Add one" fills the host of the
+  // request it was clicked from. A separate field rather than a
+  // payload on configureCreateRequest so a page that has no prefill
+  // reads the signal exactly as before. Cleared by the same consume.
+  configureCreatePrefill: string | null
+  requestConfigureCreateWith: (tab: string, prefill: string) => void
   // configureEditRequest (goal 0312): "open THIS entity's editor" --
   // the reference field's Open in Configure jump; the tab's page
   // consumes it the same set-then-consume way as the create signal.
@@ -230,8 +237,10 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   openHelp: () => set({ helpOpen: true }),
   closeHelp: () => set({ helpOpen: false }),
   configureCreateRequest: null,
-  requestConfigureCreate: (tab) => set({ configureCreateRequest: tab }),
-  consumeConfigureCreate: () => set({ configureCreateRequest: null }),
+  configureCreatePrefill: null,
+  requestConfigureCreate: (tab) => set({ configureCreateRequest: tab, configureCreatePrefill: null }),
+  requestConfigureCreateWith: (tab, prefill) => set({ configureCreateRequest: tab, configureCreatePrefill: prefill }),
+  consumeConfigureCreate: () => set({ configureCreateRequest: null, configureCreatePrefill: null }),
   configureEditRequest: null,
   requestConfigureEdit: (tab, id) => set({ configureEditRequest: { tab, id } }),
   consumeConfigureEdit: () => set({ configureEditRequest: null }),

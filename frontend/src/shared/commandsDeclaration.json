@@ -424,6 +424,30 @@
     "needs": null
   },
   {
+    "id": "clientcert.delete",
+    "label": "Delete certificate",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "clientcert.duplicate",
+    "label": "Duplicate certificate",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "clientcert.edit",
+    "label": "Edit certificate",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
     "id": "clipboard.delete",
     "label": "Delete",
     "binding": null,
@@ -610,6 +634,14 @@
   {
     "id": "configure.new.aiproviders",
     "label": "New AI provider",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.new.certificates",
+    "label": "New client certificate",
     "binding": null,
     "surface": null,
     "enabled": false,

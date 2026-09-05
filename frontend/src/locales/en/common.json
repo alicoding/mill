@@ -240,7 +240,8 @@
         "execenvs": "New environment",
         "aiproviders": "New AI provider",
         "conversionprofiles": "New conversion profile",
-        "steptypes": "New step type"
+        "steptypes": "New step type",
+        "certificates": "New client certificate"
       },
       "request": {
         "delete": "Delete",
@@ -352,6 +353,11 @@
       "find": "Find in output",
       "toggleWrap": "Wrap output lines",
       "openFull": "Open output in full"
+    },
+    "clientcert": {
+      "edit": "Edit certificate",
+      "duplicate": "Duplicate certificate",
+      "delete": "Delete certificate"
     },
     "secret": {
       "row": {
