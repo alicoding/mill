@@ -33,8 +33,12 @@ const (
 // channel's SubscribeURL is meant to be re-copied any time, so it is
 // exposed in full here.
 type DeviceInfo struct {
-	ID         string    `json:"id"`
-	Label      string    `json:"label"`
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	// Kind is KindDevice for a phone or another computer, KindBrowser
+	// for a paired browser extension -- Settings lists the two in
+	// separate sections and never mixes them in one list.
+	Kind       string    `json:"kind"`
 	CreatedAt  time.Time `json:"createdAt"`
 	LastSeenAt time.Time `json:"lastSeenAt"`
 	// SubscribeURL is this device's ntfy phone-channel address (docs/
@@ -44,17 +48,33 @@ type DeviceInfo struct {
 	SubscribeURL string `json:"subscribeUrl,omitempty"`
 }
 
-// ListDevices returns every currently paired device, oldest first, so
-// Settings renders a stable order across renders.
+// ListDevices returns every currently paired phone or computer, oldest
+// first, so Settings renders a stable order across renders. Paired
+// browsers are deliberately absent -- they have their own section and
+// their own list (ListBrowsers).
 func (s *RemoteAuthService) ListDevices() []DeviceInfo {
+	return s.listOfKind(KindDevice)
+}
+
+// ListBrowsers returns every paired browser extension, same order and
+// read model as ListDevices.
+func (s *RemoteAuthService) ListBrowsers() []DeviceInfo {
+	return s.listOfKind(KindBrowser)
+}
+
+func (s *RemoteAuthService) listOfKind(kind string) []DeviceInfo {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	infos := make([]DeviceInfo, 0, len(s.devices))
 	for _, d := range s.devices {
+		if d.Kind != kind {
+			continue
+		}
 		infos = append(infos, DeviceInfo{
 			ID:           d.ID,
 			Label:        d.Label,
+			Kind:         d.Kind,
 			CreatedAt:    d.CreatedAt,
 			LastSeenAt:   d.LastSeenAt,
 			SubscribeURL: subscribeURL(d),
@@ -153,11 +173,11 @@ func (s *RemoteAuthService) SeedTestDevice(label, baseURL string) (DeviceInfo, e
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, err := s.mintDevice(label, baseURL); err != nil {
+	if _, err := s.mintDevice(label, baseURL, KindDevice); err != nil {
 		return DeviceInfo{}, err
 	}
 	d := s.devices[len(s.devices)-1]
-	return DeviceInfo{ID: d.ID, Label: d.Label, CreatedAt: d.CreatedAt, LastSeenAt: d.LastSeenAt, SubscribeURL: subscribeURL(d)}, nil
+	return DeviceInfo{ID: d.ID, Label: d.Label, Kind: d.Kind, CreatedAt: d.CreatedAt, LastSeenAt: d.LastSeenAt, SubscribeURL: subscribeURL(d)}, nil
 }
 
 // mintDevice pairs a new device: generates its token, stores only a
@@ -169,7 +189,7 @@ func (s *RemoteAuthService) SeedTestDevice(label, baseURL string) (DeviceInfo, e
 // scheme+host this pairing request itself arrived on, "" when
 // unknown) as the device's first known reachable address. Held under
 // mu by callers.
-func (s *RemoteAuthService) mintDevice(label, baseURL string) (token string, err error) {
+func (s *RemoteAuthService) mintDevice(label, baseURL, kind string) (token string, err error) {
 	tokenBytes, err := randomBytes(deviceTokenBytes)
 	if err != nil {
 		return "", err
@@ -192,6 +212,7 @@ func (s *RemoteAuthService) mintDevice(label, baseURL string) (token string, err
 	s.devices = append(s.devices, device{
 		ID:         hex.EncodeToString(idBytes),
 		Label:      label,
+		Kind:       kind,
 		SaltB64:    hex.EncodeToString(saltBytes),
 		HashB64:    hashToken(saltBytes, tokenBytes),
 		Topic:      hex.EncodeToString(topicBytes),
@@ -227,17 +248,20 @@ func (s *RemoteAuthService) backfillTopics() bool {
 	return changed
 }
 
-// validateToken reports whether token matches a live paired device,
-// updating that device's LastSeenAt (and BaseURL, when baseURL is
-// non-empty) on success. It always walks the full device list rather
+// validateToken reports whether token matches a live paired record OF
+// THE GIVEN KIND, updating its LastSeenAt (and BaseURL, when baseURL is
+// non-empty) on success. The kind check is what stops one credential
+// crossing into the other surface: a browser's bearer token can never
+// serve as an app-access cookie, and a phone's cookie can never drive
+// the bridge. It always walks the full device list rather
 // than short-circuiting on the first comparison, and every comparison
 // is crypto/subtle -- no early exit gives an attacker a per-device
 // timing signal, and an absent/malformed token still costs the same
 // compare loop as a wrong one. Held under mu by callers.
-func (s *RemoteAuthService) validateToken(token, baseURL string, now time.Time) bool {
+func (s *RemoteAuthService) validateToken(token, baseURL, kind string, now time.Time) (DeviceInfo, bool) {
 	tokenBytes, err := hex.DecodeString(token)
 	if err != nil {
-		return false
+		return DeviceInfo{}, false
 	}
 	matchedIndex := -1
 	for i, d := range s.devices {
@@ -246,12 +270,12 @@ func (s *RemoteAuthService) validateToken(token, baseURL string, now time.Time) 
 			continue
 		}
 		candidateHash := hashToken(saltBytes, tokenBytes)
-		if subtle.ConstantTimeCompare([]byte(candidateHash), []byte(d.HashB64)) == 1 {
+		if subtle.ConstantTimeCompare([]byte(candidateHash), []byte(d.HashB64)) == 1 && d.Kind == kind {
 			matchedIndex = i
 		}
 	}
 	if matchedIndex == -1 {
-		return false
+		return DeviceInfo{}, false
 	}
 	s.devices[matchedIndex].LastSeenAt = now
 	if baseURL != "" {
@@ -260,7 +284,8 @@ func (s *RemoteAuthService) validateToken(token, baseURL string, now time.Time) 
 	if err := s.saveDevices(); err != nil {
 		s.logger.Error("remote access: recording device last-seen", "error", err)
 	}
-	return true
+	d := s.devices[matchedIndex]
+	return DeviceInfo{ID: d.ID, Label: d.Label, Kind: d.Kind, CreatedAt: d.CreatedAt, LastSeenAt: d.LastSeenAt, SubscribeURL: subscribeURL(d)}, true
 }
 
 // hashToken is the salted SHA-256 hash persisted for a device -- the

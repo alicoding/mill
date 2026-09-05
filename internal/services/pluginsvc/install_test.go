@@ -72,6 +72,24 @@ func TestExtractZip_RefusesAnEntryOutsideTheTargetFolder(t *testing.T) {
 	}
 }
 
+// Regression: an entry naming "../evil" at the archive's own top level
+// (alongside an unrelated root, so no single-folder unwrap swallows the
+// ".." before the traversal guard ever sees it) must still be refused
+// before any directory or file is created under dest.
+func TestExtractZip_RefusesATopLevelParentEntry(t *testing.T) {
+	dest := t.TempDir()
+	data := zipOf(t, map[string]string{
+		"safe/manifest.json": `{"id":"acme"}`,
+		"../evil":             "nope",
+	})
+	if err := ExtractZip(data, dest); err == nil {
+		t.Fatal("ExtractZip() = nil error, want a traversal refusal")
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(dest), "evil")); err == nil {
+		t.Fatal("the traversal entry was written")
+	}
+}
+
 func TestExtractZip_RefusesASymbolicLink(t *testing.T) {
 	dest := t.TempDir()
 	var buf bytes.Buffer

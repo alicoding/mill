@@ -229,26 +229,13 @@ func main() {
 	// goal 0052 slice 3: the version a run receipt's Build field stamps.
 	executionService.SetVersion(millVersion)
 
-	// docs/adr/0038 decision 4, goal 0061 slice C: "Update now" runs a
-	// card's referenced workflow through the normal guardrail-gated
+	// docs/adr/0038 decision 4, goal 0061 slice C / goal 0084: "Update
+	// now" and card actions both run through the normal guardrail-gated
 	// path -- same late-bound-setter shape as WireChildWorkflowRunner
-	// above, atlassvc never imports executionsvc directly. Kind is
-	// RunKindTriggered (production semantics: a disabled or
-	// never-published refresh workflow is rejected, same requirement
-	// child-workflow nodes already hold their callable target to).
-	atlassvc.SetWorkflowRunner(func(workflowID string) (string, bool, bool, error) {
-		summary, err := executionService.RunWorkflow(workflowID, executionsvc.RunKindTriggered, nil)
-		if err != nil {
-			return "", false, false, err
-		}
-		pending := summary.Pending != nil
-		return summary.RunID, !pending && summary.Status == "SUCCESS", pending, nil
-	})
-	// Card actions (goal 0084): source-card-recording entry, so the cycle guard covers action runs.
-	atlassvc.SetCardActionRunner(func(workflowID, sourceCardID string, values map[string]string, payload string) error {
-		_, err := executionService.RunWorkflowForAtlasCard(workflowID, sourceCardID, values, payload)
-		return err
-	})
+	// above, atlassvc never imports executionsvc directly. Split into
+	// the wiring package at the 500-line limit, same as the seam
+	// adapters below.
+	wiring.WireAtlasWorkflowRunners(executionService)
 	executionService.SetRunCompletionSink(atlasService.NotifyRunCompleted)
 	atlasService.WireCompositionSeams(triggerService.DispatchAtlasCardChange) // goal 0066
 	// Cross-service seam adapters (recognition, List projection) live in the wiring package -- composition-root code split out of this file at the 500-line limit.
@@ -263,7 +250,8 @@ func main() {
 	wiring.WireAtlasStorageDirs(atlasService)
 	atlasService.SetGuardedDataPaths(settingsPath, backupsvc.SQLiteDBPath(executionDatabaseURL), backupDir)
 
-	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger) // docs/goals/0132-remote-access.md SLICE 1
+	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger)    // docs/goals/0132-remote-access.md SLICE 1
+	bridgeService := wiring.WireBrowserBridge(remoteAuthService, logger) // the browser bridge's own loopback listener (docs/goals/0350)
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	wiring.WireSettingsEraSeams(settingsService, notificationService, remoteAuthService, triggerService, atlasService, pluginService, secretService)
@@ -345,6 +333,7 @@ func main() {
 			application.NewServiceWithOptions(docssvc.New(userdocsFS), boundErrors),
 			application.NewServiceWithOptions(mcpAuditService, boundErrors),
 			application.NewServiceWithOptions(remoteAuthService, boundErrors),
+			application.NewServiceWithOptions(bridgeService, boundErrors),
 			application.NewServiceWithOptions(notificationService, boundErrors),
 			// The native menu bar, projected from the frontend command
 			// registry (docs/goals/0332) -- stateless, so it is constructed

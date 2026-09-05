@@ -372,6 +372,22 @@ export const RUNTIME_PLUGIN_THEMES_MCP_BASE_PORT = 11660
 export const RUNTIME_PLUGIN_FRAME_SERVER_BASE_PORT = 11680
 export const RUNTIME_PLUGIN_FRAME_MCP_BASE_PORT = 11700
 
+// browser-bridge.spec.ts's own dedicated pair (goal 0350 S1): the
+// paired-BROWSER list and the bridge's connected count are GLOBAL app
+// state (testing.md's shared-vs-dedicated rule), and this spec pairs
+// and revokes against them.
+export const BROWSER_BRIDGE_SERVER_BASE_PORT = 11720
+export const BROWSER_BRIDGE_MCP_BASE_PORT = 11740
+
+// Every spawned server binds a browser-bridge listener too, derived
+// from its own server port by this offset rather than declared per
+// spec: a bridge port is needed by EVERY server (the service starts
+// unconditionally), so a per-spec declaration would have to be added to
+// all of them and could never be forgotten safely. The offset is large
+// enough to clear the whole declared range above with room to spare, so
+// no derived bridge port can land on another spec's declared listener.
+export const BRIDGE_PORT_OFFSET = 20000
+
 // The Extensions store's own dedicated pair (goal 0349): browsing,
 // adding a marketplace source and installing all change GLOBAL plugin
 // state -- what the plugins directory holds and which marketplaces

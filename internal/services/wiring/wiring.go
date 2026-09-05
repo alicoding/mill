@@ -26,6 +26,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/backupsvc"
+	"github.com/alicoding/mill/internal/services/bridgesvc"
 	"github.com/alicoding/mill/internal/services/clipboardhistorysvc"
 	"github.com/alicoding/mill/internal/services/codeloopsvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
@@ -268,6 +269,34 @@ func WireRemoteAuth(store settings.Store, logger *slog.Logger) *remoteauthsvc.Re
 	return svc
 }
 
+// WireBrowserBridge constructs the browser bridge and starts its own
+// loopback listener. It gets a listener of its own rather than a route
+// on the AssetServer because a desktop build has no listening socket at
+// all -- Wails serves that build's assets in-process to its own webview
+// -- so a browser extension has nothing to reach there. One listener
+// works identically in both builds.
+//
+// A bind failure is logged, not fatal. The bridge is additive; the
+// rest of Mill runs unchanged with no browser paired.
+func WireBrowserBridge(remoteAuth *remoteauthsvc.RemoteAuthService, logger *slog.Logger) *bridgesvc.BridgeService {
+	svc := bridgesvc.New(remoteAuth, logger)
+	errCh := svc.Start()
+	status := svc.BridgeStatus()
+	select {
+	case err := <-errCh:
+		logger.Error("browser bridge listener", "error", err)
+	case <-time.After(bridgeBindGrace):
+		logger.Info("browser bridge listening", "addr", status.Address)
+	}
+	return svc
+}
+
+// bridgeBindGrace is how long WireBrowserBridge waits for a bind
+// failure to surface before declaring the listener up. ListenAndServe
+// reports a taken port within microseconds; this only has to outlast
+// that, never a real startup.
+const bridgeBindGrace = 200 * time.Millisecond
+
 // WireClipboardHistory connects goal 0234's clipboard-history service to
 // its two cross-service seams: composition's apply-clipboard-history-
 // store node persists through clipboardHistoryService.Append, and a
@@ -320,6 +349,30 @@ func WireSystemEventNotifications(exec *executionsvc.ExecutionService, triggers 
 	exec.SetSystemEventSink(func(ev executionsvc.SystemEvent) {
 		triggers.DispatchSystemEvent(ev)
 		publishSystemEventNotification(notif, ev)
+	})
+}
+
+// WireAtlasWorkflowRunners gives atlassvc's package-level runner seams
+// (docs/adr/0038 decision 4, goal 0061 slice C; card actions, goal
+// 0084) a real ExecutionService -- same late-bound-setter shape as
+// ExecutionService.WireChildWorkflowRunner, atlassvc never imports
+// executionsvc directly. Kind is RunKindTriggered for "Update now"
+// (production semantics: a disabled or never-published refresh
+// workflow is rejected, same requirement child-workflow nodes already
+// hold their callable target to); card actions carry the
+// source-card-recording entry so the cycle guard covers action runs.
+func WireAtlasWorkflowRunners(exec *executionsvc.ExecutionService) {
+	atlassvc.SetWorkflowRunner(func(workflowID string) (string, bool, bool, error) {
+		summary, err := exec.RunWorkflow(workflowID, executionsvc.RunKindTriggered, nil)
+		if err != nil {
+			return "", false, false, err
+		}
+		pending := summary.Pending != nil
+		return summary.RunID, !pending && summary.Status == "SUCCESS", pending, nil
+	})
+	atlassvc.SetCardActionRunner(func(workflowID, sourceCardID string, values map[string]string, payload string) error {
+		_, err := exec.RunWorkflowForAtlasCard(workflowID, sourceCardID, values, payload)
+		return err
 	})
 }
 

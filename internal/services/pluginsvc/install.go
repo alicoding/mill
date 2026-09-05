@@ -64,10 +64,26 @@ func ExtractZip(data []byte, dest string) error {
 
 // extractZipEntry writes one entry, refusing anything that would land
 // outside dest. A directory entry writes no bytes.
+//
+// The join-then-prefix-check guard is repeated here inline (on top of
+// safeJoin's own check below) rather than left to the helper alone:
+// static analysis for zip-slip looks for this exact shape in the same
+// function as the filesystem write that follows it.
 func extractZipEntry(f *zip.File, prefix, dest string, budget int64) (int64, error) {
 	name := strings.TrimPrefix(filepath.ToSlash(f.Name), prefix)
 	if name == "" {
 		return 0, nil
+	}
+	if filepath.IsAbs(filepath.FromSlash(name)) {
+		return 0, errOutsideFolder
+	}
+	cleanDest := filepath.Clean(dest)
+	joined := filepath.Join(cleanDest, filepath.FromSlash(name))
+	if joined != cleanDest && !strings.HasPrefix(joined, cleanDest+string(os.PathSeparator)) {
+		return 0, errOutsideFolder
+	}
+	if f.Mode()&os.ModeSymlink != 0 {
+		return 0, fmt.Errorf("that archive contains a symbolic link, so Mill won't install it")
 	}
 	if strings.HasSuffix(name, "/") {
 		target, err := safeJoin(dest, strings.TrimSuffix(name, "/"))
@@ -75,9 +91,6 @@ func extractZipEntry(f *zip.File, prefix, dest string, budget int64) (int64, err
 			return 0, err
 		}
 		return 0, os.MkdirAll(target, 0o750)
-	}
-	if f.Mode()&os.ModeSymlink != 0 {
-		return 0, fmt.Errorf("that archive contains a symbolic link, so Mill won't install it")
 	}
 	target, err := safeJoin(dest, name)
 	if err != nil {
