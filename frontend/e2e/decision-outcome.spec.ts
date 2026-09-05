@@ -1,14 +1,14 @@
 import { test, expect } from './fixtures/server'
 import { waitForViewportStable } from './fixtures/animation'
 import { clickRowAction } from './inventoryRow'
-import { workflowRow, activePanel } from './fixtures/canvas'
+import { workflowRow, activePanel, panCanvasBy } from './fixtures/canvas'
 
 // Decision as a reusable, typed TERMINAL outcome (docs/adr/0027),
 // driven through the live app: Configure > Decisions CRUD (including
 // the category-immutability UI), and the two seeded workflows that
-// prove the routing-vs-terminal split end to end -- "Example: Branch to
-// a decision" (a Branch node routes to one of two Decisions, a typed
-// value flows into the reached outcome) and "Example: Decision with
+// prove the routing-vs-terminal split end to end -- "Route an expense
+// by amount" (a Branch node routes to one of two Decisions, a typed
+// value flows into the reached outcome) and "Escalate to manual
 // review" (a manual-review Decision parks in the Review queue before
 // terminalizing). The seed IS the proof (.claude/rules/testing.md).
 
@@ -94,44 +94,27 @@ async function runBranch(page: import('@playwright/test').Page, panel: import('@
   await expect(panel.getByTestId('run-state-dock')).toContainText('SUCCESS', { timeout: 15_000 })
 }
 
-// Double-clicks the reached terminal (DONE) card at a point proven
-// (via elementFromPoint) to land inside the node's own card -- see
-// step-detail-overlay.spec.ts's identical helper for the full
-// reasoning: React Flow's fixed-position MiniMap/Controls chrome can
-// sit on top of a node's naive center point depending on the graph's
-// current pan/zoom, which a plain locator.dblclick() doesn't account
-// for.
-async function dblClickReachedTerminal(page: import('@playwright/test').Page, panel: import('@playwright/test').Locator) {
+// Selects the reached terminal (DONE) card, then opens its step-detail
+// overlay via the sidebar's own button (NodeInspector's
+// "open-step-detail", the same affordance step-detail-overlay.spec.ts's
+// "sidebar expand button" test already proves) rather than a canvas
+// double-click. The Branch workflow's right-hand terminal (Deny) sits
+// at a fixed graph position that lands directly under React Flow's own
+// fixed-position MiniMap at this canvas's default pan/zoom -- confirmed
+// directly by Playwright's own actionability check ("subtree
+// intercepts pointer events" naming the MiniMap), not assumed; Fit
+// View re-centers on the SAME node layout and lands the Deny node
+// under the exact same corner, so it doesn't clear this one. Panning
+// the canvas (fixtures/canvas.ts's panCanvasBy) moves the graph itself
+// away from that fixed corner instead.
+async function openReachedTerminalStepDetail(page: import('@playwright/test').Page, panel: import('@playwright/test').Locator) {
+  await panCanvasBy(page, panel, -280, -180)
+  await waitForViewportStable(panel)
+
   const node = panel.locator('.react-flow__node').filter({ hasText: 'Decision' }).filter({ hasText: 'DONE' }).first()
   await expect(node).toBeVisible({ timeout: 10_000 })
-  // The reached terminal is the bottom-most card, where the run bar and
-  // the minimap overlay the canvas; on a runner whose header wraps
-  // taller, every probe point can land on an overlay. Zoom out (the
-  // canvas kit's own control, cards shrink toward the center) and
-  // re-measure before giving up (goal 0296's register re-run).
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const box = await node.boundingBox()
-    if (!box) throw new Error('dblClickReachedTerminal: reached terminal card has no bounding box')
-    const candidates = [
-      { x: box.x + 10, y: box.y + 10 },
-      { x: box.x + box.width - 10, y: box.y + 10 },
-      { x: box.x + box.width / 2, y: box.y + box.height / 2 },
-      { x: box.x + 10, y: box.y + box.height - 10 },
-    ]
-    for (const point of candidates) {
-      const insideNode = await page.evaluate(({ x, y }) => {
-        const el = document.elementFromPoint(x, y)
-        return !!el?.closest('.react-flow__node')
-      }, point)
-      if (insideNode) {
-        await node.dblclick({ position: { x: point.x - box.x, y: point.y - box.y } })
-        return
-      }
-    }
-    await panel.getByRole('button', { name: 'Zoom Out' }).click()
-    await waitForViewportStable(panel)
-  }
-  throw new Error('dblClickReachedTerminal: no point resolved inside the reached terminal card')
+  await node.click()
+  await panel.getByTestId('open-step-detail').click()
 }
 
 // The regression docs/goals/0046 itself demands, driven through the
@@ -166,7 +149,7 @@ test('Branch to a decision: the pinned approve arm ignores a later live edit; ru
   // PINNED arm (amount > 100): the run must reflect v1's frozen shape,
   // never the field just added to the live draft.
   await runBranch(page, panel, '150')
-  await dblClickReachedTerminal(page, panel)
+  await openReachedTerminalStepDetail(page, panel)
   const overlay = stepDetailOverlay(page)
   await expect(overlay).toBeVisible()
   const output = overlay.getByTestId('step-detail-output-payload')
@@ -178,7 +161,7 @@ test('Branch to a decision: the pinned approve arm ignores a later live edit; ru
   // LIVE arm (amount <= 100, the Deny Decision, never published): the
   // run's stamp names it honestly as an unpinned draft resolution.
   await runBranch(page, panel, '50')
-  await dblClickReachedTerminal(page, panel)
+  await openReachedTerminalStepDetail(page, panel)
   await expect(overlay).toBeVisible()
   await expect(overlay.getByTestId('step-detail-output-payload')).toContainText('"resolvedVersion":"live@draft"')
   await page.keyboard.press('Escape')
