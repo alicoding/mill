@@ -6,6 +6,7 @@
     "groups": {
       "general": "General",
       "appearance": "Appearance",
+      "security": "Security",
       "shortcuts": "Shortcuts",
       "extensions": "Extensions",
       "connections": "Connections",

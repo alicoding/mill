@@ -824,6 +824,16 @@
     "needs": "entity"
   },
   {
+    "id": "diagram.fit",
+    "label": "Fit diagram",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "docs.search",
     "label": "Search docs",
     "binding": null,
@@ -1200,6 +1210,14 @@
   {
     "id": "settings.open.notifications",
     "label": "Settings › Notifications",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.open.security",
+    "label": "Settings › Security",
     "binding": null,
     "surface": null,
     "enabled": false,

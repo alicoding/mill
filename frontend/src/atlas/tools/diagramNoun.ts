@@ -33,7 +33,7 @@ registerBoardObjectContent('diagram', {
   // the board (pan, pinch and ⌘-scroll zoom, like over any object);
   // selected, the viewer owns the wheel and the frame opts the board
   // out.
-  content: 'interactive',
+  input: 'interactive',
   shieldHintKey: 'atlas:diagramNoun.shieldHint',
   // overflowChip (goal 0340): a drawing is routinely larger than the
   // box it sits in, and the face can fit it -- so the shared chrome
