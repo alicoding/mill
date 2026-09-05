@@ -75,6 +75,10 @@ this file is the record, a brief is a projection of it.
   auto-select suppression; forcing focus first pre-selects a cell and a
   first click opens an editor (#699). Focus on pointerup, skipped when
   focus is already inside the host.
+- Obvious: probe `isVisible()` after `page.goto` to decide a branch. Here:
+  never — `goto` resolving is not mount (the plugin-load gate); branch on
+  what the test already knows (viewport size) and let `.click()`
+  auto-wait (#691's toolbar-overflow race).
 - Obvious: the native drop gesture is testable. Here: it is not
   (server-mode Playwright is not a WebviewWindow) — route decisions
   are Vitest-tested; results land via the CreateBoardObject RPC
@@ -88,6 +92,12 @@ this file is the record, a brief is a projection of it.
   outlives one call, poll its output with a bounded `sleep 30` loop in
   the NEXT foreground call, repeating in the same turn until done.**
   (Five builders in one day still stopped to wait for a notification.)
+- A lefthook commit can outlive one foreground Bash call (the full
+  suite plus the gate-lock wait exceeds 600 s). Launch it detached
+  INSIDE a foreground call (`nohup git commit -F msg.txt > commit.log
+  2>&1 &`, never the tool's `run_in_background`), then poll
+  `commit.log`/`git log -1` in bounded `sleep 30` loops in the next
+  calls (macOS has no `setsid`).
 - Your worktree is your world: never write outside it; `cd` does not
   persist across Bash calls — use absolute paths (a stray file has
   landed in the main checkout twice this way).

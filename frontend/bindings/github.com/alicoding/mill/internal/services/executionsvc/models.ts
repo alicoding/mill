@@ -148,6 +148,16 @@ export interface PendingApproval {
      * Resume/Stop.
      */
     "stepped": boolean;
+
+    /**
+     * Reason names WHY the run parked when it is not a decision anyone
+     * is asked for: ParkReasonVaultLocked means the step needs a secret
+     * and the vault is locked -- the run waits for an unlock, not an
+     * approval (executionservice_vaultwait.go). Empty for every
+     * approval park, so every reader that never learned the field keeps
+     * treating the park as an ask.
+     */
+    "reason"?: string;
 }
 
 /**
@@ -303,6 +313,12 @@ export interface RunStep {
      * item 2), never conflated with the policy shield.
      */
     "guardrailSource"?: string;
+
+    /**
+     * Waits lists every park this step went through before it ran --
+     * today only a vault wait (executionservice_vaultwait.go's RunWait).
+     */
+    "waits"?: RunWait[] | null;
 }
 
 /**
@@ -364,6 +380,19 @@ export interface RunSummary {
      */
     "environmentID"?: string;
     "environmentLabel"?: string;
+}
+
+/**
+ * RunWait is one park a step went through before it ran -- the
+ * receipt's "parked: vault-locked" record with its timestamps, derived
+ * from the engine's own step history (a step attempt that ended in the
+ * vault-locked error, followed by the attempt that ran) rather than a
+ * second store. ResumedAt is zero while the run is still waiting.
+ */
+export interface RunWait {
+    "reason": string;
+    "parkedAt": string;
+    "resumedAt"?: string;
 }
 
 /**
