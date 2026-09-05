@@ -125,13 +125,42 @@ func (a *AtlasService) SetCardSize(cardID string, w, h float64) (atlas.Card, err
 	out := a.cards[idx]
 	a.mu.Unlock()
 	dataevent.Emit("atlas", out.ID)
-	recordScalar(a, actorUI, "card", cardID, out.Title,
+	recordSizeChange(a, "card", cardID, out.Title, previous.Size, out.Size,
 		func(a *AtlasService, sz atlas.Dimensions) error {
 			_, err := a.SetCardSize(cardID, sz.W, sz.H)
 			return err
 		},
-		derefSize(previous.Size), atlas.Dimensions{W: w, H: h},
+		func(a *AtlasService) error {
+			_, err := a.clearCardSize(cardID)
+			return err
+		},
 	)
+	return out, nil
+}
+
+// clearCardSize resets a card's Size to nil (its natural/auto
+// footprint) -- the undo-only door a first-ever resize's undo entry
+// replays through, since SetCardSize's own minimum-size guard would
+// otherwise refuse the return to "unsized" the same way it refuses an
+// illegal undersized resize. Never called directly by a mutation
+// door's public surface, only from recordSizeChange's own apply
+// closure above, so it carries no recordUndo call of its own
+// (ADR-0044's suppressRecording already covers the replay).
+func (a *AtlasService) clearCardSize(cardID string) (atlas.Card, error) {
+	a.mu.Lock()
+	idx := a.findCardLocked(cardID)
+	if idx == -1 {
+		a.mu.Unlock()
+		return atlas.Card{}, fmt.Errorf("no card with id %q", cardID)
+	}
+	a.cards[idx].Size = nil
+	if err := a.persistLocked(); err != nil {
+		a.mu.Unlock()
+		return atlas.Card{}, err
+	}
+	out := a.cards[idx]
+	a.mu.Unlock()
+	dataevent.Emit("atlas", out.ID)
 	return out, nil
 }
 
