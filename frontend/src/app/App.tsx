@@ -16,7 +16,7 @@ import ExtensionsView from "../views/ExtensionsView";
 import PlaceholderView from "../views/PlaceholderView";
 import { CapabilitiesService, SettingsService } from '../shared/bindings'
 import type { BuildInfo } from '../shared/bindings'
-import { useAppStore } from "../shared/store";
+import { activeSection, useAppStore } from "../shared/store";
 import { useBootRefresh } from "./useBootRefresh";
 import { useDataChangedRouter } from "./useDataChangedRouter";
 import { WorkTabShell } from "./WorkTabShell";
@@ -71,6 +71,11 @@ function App() {
   const { t } = useTranslation('app')
   const view = useAppStore((s) => s.view);
   const setView = useAppStore((s) => s.setView);
+  // The sidebar's own highlight (goal 0353): the ACTIVE WORK TAB's
+  // owning section when one is open, `view` otherwise -- opening a tab
+  // never changes `view`, only `activeWorkTabKey`, so `view` alone
+  // would keep highlighting whatever page the tab was opened from.
+  const currentSection = useAppStore((s) => activeSection(s));
   const [time, setTime] = useState<string>(t('shell.listeningForTime'));
   // Whether this instance is running against an isolated settings/
   // execution-db path (MILL_SETTINGS_PATH set -- every e2e run already
@@ -400,7 +405,7 @@ function App() {
           (page-scroll-oriented, wrong fit here), while .Sidebar stays a
           persistent side rail at any width -- see docs/SPEC.md. */}
       <PageLayout className={styles.appBody} containerWidth="full" padding="none" rowGap="none" columnGap="none">
-        <AppSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} mobileNavOpen={mobileNavOpen} setMobileNavOpen={setMobileNavOpen} view={view} setView={setView} capabilities={capabilities} reviewPendingCount={reviewPendingCount} />
+        <AppSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} mobileNavOpen={mobileNavOpen} setMobileNavOpen={setMobileNavOpen} view={view} currentSection={currentSection} setView={setView} capabilities={capabilities} reviewPendingCount={reviewPendingCount} />
 
         <PageLayout.Content className="view-pane" padding="none">
           {/* The app-wide work-tab strip (docs/SPEC.md §3.8): the

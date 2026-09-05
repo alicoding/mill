@@ -201,7 +201,7 @@ interface AppState {
   pinnedWorkflowIds: string[]
   togglePinnedWorkflow: (id: string) => void
 }
-
+export { activeSection } from './workTabs' // implemented there (goal 0353's split seam): switches on WorkTab kinds
 // Shared across App/ActivityView (SPEC.md §1.3): App.tsx still owns the
 // data-fetching effects (CompositionService.Workflows(),
 // CapabilitiesService.List(), the hotkey-activity event) since it's the
