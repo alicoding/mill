@@ -9,9 +9,10 @@ import type { Locator, Page } from '@playwright/test'
 // left edge) resized to each pane's own max-content width and
 // `margin: 0 auto` re-centred it. Every pane now renders through the
 // same definite-width box (goal 0336), so the rail's position must be
-// identical across all eight groups.
+// identical across all seven groups. Extensions left this list in goal
+// 0349 -- it is its own top-level destination now, not a Settings pane.
 const GROUPS: SettingsGroup[] = [
-  'general', 'appearance', 'shortcuts', 'extensions',
+  'general', 'appearance', 'shortcuts',
   'connections', 'notifications', 'backups', 'updates',
 ]
 
