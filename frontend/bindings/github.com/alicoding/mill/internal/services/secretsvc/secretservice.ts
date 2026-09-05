@@ -70,6 +70,21 @@ export function CreateSecret(title: string, username: string, password: string, 
 }
 
 /**
+ * DebugCorruptVaultKeyForTests overwrites the key stored for the
+ * vault's own identity with a freshly minted, unrelated one, so the
+ * next unlock attempt reports ErrKeyMismatch -- e2e's only way to
+ * reproduce goal 0359's own defect (a stored key that no longer opens
+ * its vault file) without a second physical device holding the real
+ * key. Gated to MILL_TEST_KEYRING=memory, the same in-memory-keyring
+ * switch main.go itself uses to pick credential.NewInMemory() over the
+ * real OS keychain: refuses outside that mode, so this can never touch
+ * a real device's keychain.
+ */
+export function DebugCorruptVaultKeyForTests(): $CancellablePromise<void> {
+    return $Call.ByID(2012501167);
+}
+
+/**
  * DeleteSecret permanently removes id (and its history) -- no undo.
  */
 export function DeleteSecret(id: string): $CancellablePromise<void> {
