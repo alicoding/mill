@@ -62,6 +62,10 @@ func TestIsDiagramMirrorExtension_CoversSpreadsheetExtensions(t *testing.T) {
 		{".XLSX", true},
 		{".csv", true},
 		{".drawio", true},
+		{".json", true},
+		{".yaml", true},
+		{".yml", true},
+		{".YAML", true},
 		{".md", false},
 		{".txt", false},
 	}

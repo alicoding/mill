@@ -190,6 +190,36 @@
     "needs": null
   },
   {
+    "id": "atlas.json.copyKey",
+    "label": "Copy key",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "jsonNode"
+  },
+  {
+    "id": "atlas.json.copyPath",
+    "label": "Copy path",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "jsonNode"
+  },
+  {
+    "id": "atlas.json.copyValue",
+    "label": "Copy value",
+    "binding": "⌘C",
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "jsonNode"
+  },
+  {
     "id": "atlas.jump",
     "label": "Jump to a card or object",
     "binding": "⌘K",
