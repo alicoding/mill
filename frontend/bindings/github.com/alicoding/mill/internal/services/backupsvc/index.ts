@@ -9,5 +9,6 @@ export {
 export type {
     BackupStatus,
     FamilySummary,
-    ImportEverythingSummary
+    ImportEverythingSummary,
+    VaultBackupTime
 } from "./models.js";

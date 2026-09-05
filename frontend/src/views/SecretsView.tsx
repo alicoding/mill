@@ -4,7 +4,7 @@ import { Events } from '@wailsio/runtime'
 import { Blankslate } from '@primer/react/experimental'
 import { Button, Checkbox, FormControl, Heading, IconButton, Label, SegmentedControl, Stack, Text } from '@primer/react'
 import { DownloadIcon, HistoryIcon, KeyIcon, LockIcon, PlusIcon } from '@primer/octicons-react'
-import { SecretService } from '../shared/bindings'
+import { BackupService, SecretService } from '../shared/bindings'
 import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
 import type { SecretSummary } from '../shared/bindings'
 import { findCommand, runCommand } from '../shared/commands'
@@ -65,6 +65,10 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   const [accessHistoryID, setAccessHistoryID] = useState<string | null>(null)
   const [showAccessHistory, setShowAccessHistory] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
+  // The key-mismatch state's own "Last backup" caption (goal 0359):
+  // fetched only while that state is showing, since it's the one state
+  // that names a recovery copy's age.
+  const [vaultBackupTime, setVaultBackupTime] = useState<Date | null>(null)
 
   const sectionSwitch = (
     <SegmentedControl aria-label={t('sections.ariaLabel')} className={styles.sections} data-testid="secrets-sections">
@@ -158,6 +162,20 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
     if (detailID && list !== null && !list.some((s) => s.ID === detailID)) setDetailID(null)
   }, [list, detailID])
 
+  // The key-mismatch caption (goal 0359): only fetched while that exact
+  // state is showing, cleared otherwise.
+  useEffect(() => {
+    if (!status || status.Unlocked || vaultErrorKind(vaultError) !== 'keyMismatch') {
+      setVaultBackupTime(null)
+      return
+    }
+    let cancelled = false
+    BackupService.LatestVaultBackupTime()
+      .then((r) => { if (!cancelled) setVaultBackupTime(r.present ? new Date(r.time) : null) })
+      .catch(() => { if (!cancelled) setVaultBackupTime(null) })
+    return () => { cancelled = true }
+  }, [status, vaultError])
+
   const remove = (id: string) => {
     SecretService.DeleteSecret(id).then(() => { setDetailID(null); refresh() }).catch((err) => setError(String(err)))
   }
@@ -213,8 +231,12 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
     // badly. Anything the tokens don't name falls through to the error
     // itself rather than being hidden.
     const kind = vaultErrorKind(vaultError)
+    const isKeyMismatch = kind === 'keyMismatch'
+    // The key-mismatch state names the cause in its own heading/body
+    // (goal 0359) rather than the generic locked copy plus a red error
+    // line -- every other unlock failure keeps today's shape.
     const lockedMessage = {
-      keyMismatch: t('common:errors.key-mismatch'),
+      keyMismatch: '',
       noKey: t('common:errors.no-vault-key'),
       cancelled: t('common:errors.unlock-cancelled'),
       authUnavailable: t('common:errors.auth-unavailable'),
@@ -229,8 +251,8 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
         {pageHeader}
         <Blankslate>
           <Blankslate.Visual><LockIcon size={32} /></Blankslate.Visual>
-          <Blankslate.Heading>{t('locked.heading')}</Blankslate.Heading>
-          <Blankslate.Description>{t('locked.description')}</Blankslate.Description>
+          <Blankslate.Heading>{isKeyMismatch ? t('locked.keyMismatchHeading') : t('locked.heading')}</Blankslate.Heading>
+          <Blankslate.Description>{isKeyMismatch ? t('locked.keyMismatchBody') : t('locked.description')}</Blankslate.Description>
           <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-protection-status">{protectionStatus}</Text>
           <Stack direction="horizontal" gap="condensed" align="center" justify="center">
             <Button
@@ -248,6 +270,11 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
             )}
           </Stack>
           {lockedMessage && <Text as="p" size="small" className={styles.error} data-testid="secrets-unlock-error">{lockedMessage}</Text>}
+          {isKeyMismatch && vaultBackupTime && (
+            <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-vault-backup-caption">
+              {t('locked.lastBackup', { time: vaultBackupTime.toLocaleString() })}
+            </Text>
+          )}
         </Blankslate>
         {confirmReset && (
           <ConfirmDialog

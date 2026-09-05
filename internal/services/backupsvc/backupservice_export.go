@@ -58,7 +58,14 @@ func (b *BackupService) ExportEverything() (string, error) {
 	}
 
 	if dbPath != "" {
-		if err := includeSnapshot(zw, dbPath, settingsPath); err != nil {
+		// vaultPath deliberately never reaches includeSnapshot: unlike a
+		// local backup directory, this archive is the thing people move
+		// to another machine or hand to someone else, so the vault stays
+		// excluded here the same way it stays excluded from every other
+		// export (docs/trust/data-and-safety.md) -- goal 0359's own
+		// backup-set inclusion is scoped to backupsvc's local snapshot
+		// rotation only.
+		if err := includeSnapshot(zw, dbPath, settingsPath, ""); err != nil {
 			return "", err
 		}
 		man.HasSnapshot = true
@@ -80,16 +87,19 @@ func (b *BackupService) ExportEverything() (string, error) {
 
 // includeSnapshot takes one throwaway VACUUM INTO snapshot (keepN=0:
 // nothing to prune, this directory is deleted right after) and writes
-// its execution.db (+ settings.json, if the copy produced one) into
-// zw under db-snapshot/.
-func includeSnapshot(zw *zip.Writer, dbPath, settingsPath string) error {
+// its execution.db (+ settings.json/secrets.kdbx, when the copy
+// produced one) into zw under db-snapshot/. The vault stays out of
+// THIS caller's own snapshot (ExportEverything passes vaultPath=""),
+// but the parameter itself is shared with backupsvc's own local
+// snapshot rotation, which does pass a real one.
+func includeSnapshot(zw *zip.Writer, dbPath, settingsPath, vaultPath string) error {
 	tmpDir, err := os.MkdirTemp("", "mill-export-snapshot-")
 	if err != nil {
 		return fmt.Errorf("export everything: snapshot temp dir: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
-	result, err := backup.Snapshot(dbPath, settingsPath, tmpDir, 0)
+	result, err := backup.Snapshot(dbPath, settingsPath, vaultPath, tmpDir, 0)
 	if err != nil {
 		return fmt.Errorf("export everything: snapshot: %w", err)
 	}
@@ -99,6 +109,11 @@ func includeSnapshot(zw *zip.Writer, dbPath, settingsPath string) error {
 	}
 	if _, err := os.Stat(filepath.Join(result.Dir, "settings.json")); err == nil {
 		if err := writeZipFileFromDisk(zw, "db-snapshot/settings.json", filepath.Join(result.Dir, "settings.json")); err != nil {
+			return err
+		}
+	}
+	if _, err := os.Stat(filepath.Join(result.Dir, "secrets.kdbx")); err == nil {
+		if err := writeZipFileFromDisk(zw, "db-snapshot/secrets.kdbx", filepath.Join(result.Dir, "secrets.kdbx")); err != nil {
 			return err
 		}
 	}
