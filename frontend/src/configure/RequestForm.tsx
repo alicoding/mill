@@ -19,6 +19,11 @@ import PageContainer from '../shared/PageContainer'
 // HeaderRow import moved to requestDraft.ts directly).
 export type { HeaderRow, RequestDraft }
 
+// The reference syntax shown in the URL field's caption -- here, not in
+// the locale file, because the braces are i18next interpolation syntax
+// rather than text.
+const VARIABLE_EXAMPLE = '{{API_BASE}}'
+
 // Same open set integration-http's own method field suggests (ADR-0016,
 // internal/domain/composition/integration.go) -- autocomplete hints
 // rendered as a Select, not a hard enum (wire stays open).
@@ -207,6 +212,11 @@ export function RequestForm({
                 <FormControl.Label>{t('requestForm.url')}</FormControl.Label>
                 <FormControl.Caption>
                   {t('requestForm.urlCaption', { brace: '{', closeBrace: '}' })}
+                  {' '}
+                  {/* goal 0306 S5: the environment substitution is
+                      invisible from this form otherwise -- the syntax
+                      lives in the caption of the field it applies to. */}
+                  <span data-testid="request-variables-hint">{t('requestForm.variablesHint', { example: VARIABLE_EXAMPLE })}</span>
                 </FormControl.Caption>
                 <TextInput value={draft.baseURL} onChange={(e) => setDraft({ ...draft, baseURL: e.target.value })} placeholder={t('requestForm.urlPlaceholder')} block />
               </FormControl>

@@ -96,6 +96,17 @@ type ExecEnv struct {
 	// written to disk in resolved form -- mirrors mcpserver.MCPServer.
 	// Env's identical convention.
 	Env []string
+	// EnvironmentID optionally names an Environment (goal 0306 S5)
+	// whose variables are added to this shell's own. The Environment's
+	// variables are materialized FIRST and this ExecEnv's own Env
+	// entries win on a shared key -- the base-plus-override shape the
+	// API clients this borrows from converged on, so one shared
+	// environment can be pointed at by several shells without any of
+	// them losing the entry it sets itself. Empty (every ExecEnv
+	// written before this field existed) means exactly today's
+	// behavior. A secret variable arrives here already resolved, the
+	// same way a "vault:" entry in Env does.
+	EnvironmentID string `json:"EnvironmentID,omitempty"`
 	// BuiltIn marks a seeded example ExecEnv (BuiltIn() below) --
 	// purely informational, same as httprequest.HTTPRequest.BuiltIn/
 	// mcpserver.MCPServer.BuiltIn/decision.Decision.BuiltIn/
