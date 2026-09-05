@@ -16,6 +16,8 @@ import editorStyles from '../composition/CompositionView.module.css'
 import { tabLabel } from './workTabLabel'
 import { PluginViewHost } from './PluginViewHost'
 import { getPluginView } from '../plugins/pluginViews'
+import { OutputViewer } from '../shared/OutputViewer'
+import { readStashedOutput } from '../shared/outputTabStore'
 import { HotkeyHint } from '../shared/HotkeyHint'
 import { useWorkTabCloseGuard } from './useWorkTabCloseGuard'
 import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
@@ -53,7 +55,7 @@ const PAGE_TAB = '__page__'
 // use) replaces the two-line kicker, which put labels at varying
 // heights inside the 38px band.
 function tabEntityVisual(tab: WorkTab): ReactNode {
-  const entity = tab.kind === 'plugin-view' ? 'plugin' : tab.kind.startsWith('workflow') ? 'workflow' : 'request'
+  const entity = tab.kind === 'plugin-view' ? 'plugin' : tab.kind === 'output' ? 'output' : tab.kind.startsWith('workflow') ? 'workflow' : 'request'
   const e = ENTITY_ICON[entity]
   if (!e) return null
   return (
@@ -121,6 +123,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
       // A plugin-view tab whose plugin is not loaded this boot is
       // pruned, never rendered empty (docs/goals/0290).
       if (tab.kind === 'plugin-view') return getPluginView(tab.pluginId, tab.viewId) !== undefined
+      if (tab.kind === 'output') return readStashedOutput(tab.outputId) !== undefined
       return true
     })
   }, [workflows, requests, pruneWorkTabs])
@@ -170,6 +173,18 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
       }
       case 'plugin-view':
         return <PluginViewHost pluginId={tab.pluginId} viewId={tab.viewId} />
+      case 'output': {
+        // The payload lives in a module map, not in the tab: an output
+        // tab restored after a relaunch points at nothing, so it is
+        // pruned rather than rendered empty.
+        const stashed = readStashedOutput(tab.outputId)
+        if (!stashed) return null
+        return (
+          <div className={styles.outputTab}>
+            <OutputViewer value={stashed.value} shape={stashed.shape} mime={stashed.mime} title={stashed.title} site={stashed.site} full testId="output-full" />
+          </div>
+        )
+      }
       case 'request-edit':
       case 'request-new': {
         const editing = tab.kind === 'request-edit' ? (requests?.find((r) => r.ID === tab.requestId) ?? null) : null

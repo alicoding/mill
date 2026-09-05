@@ -48,13 +48,12 @@ export interface SummaryLine {
  */
 export interface TestHTTPRequestInput {
     /**
-     * RequestID is optional. Set it when editing an existing request
-     * and Secret is left blank ("keep the existing secret," matching
-     * RequestForm's own Auth-tab caption) -- the RPC then falls back to
-     * this request's stored keychain secret, the same read
-     * resolveHTTPRequest already does for a real workflow run.
+     * RequestID is optional -- it names the request being edited so an
+     * error can say which one it is. Every secret this call needs comes
+     * from the references below, exactly as a real run resolves them.
      */
     "RequestID": string;
+    "Label": string;
     "BaseURL": string;
     "AuthType": httprequest$0.AuthType;
 
@@ -72,20 +71,14 @@ export interface TestHTTPRequestInput {
     "Headers": { [_ in string]?: string } | null;
 
     /**
-     * Secret is used as typed, for this call only -- TestHTTPRequestOperation
-     * never calls c.credentials.Set, so a tested-then-abandoned draft
-     * leaves no keychain trace.
+     * SecretRef names the draft's own auth secret in the secret store
+     * (goal 0306) -- the same reference a saved request carries, so a
+     * test run and a real run resolve identically and a
+     * tested-then-abandoned draft stores nothing anywhere. OAuth 1.0a's
+     * two references travel on Auth.OAuth1, JOSE's on JOSE, exactly as
+     * they do on a saved request.
      */
-    "Secret": string;
-
-    /**
-     * JOSEPrivateKeyPEM is the same "used as typed, for this call only"
-     * shape as Secret above, but for JOSE.DecryptResponse's own,
-     * separately-keychained private key (falls back to
-     * joseKeychainID(RequestID) when blank, same pattern Secret uses
-     * for the AuthType secret).
-     */
-    "JOSEPrivateKeyPEM": string;
+    "SecretRef": string;
     "OpenAPISpec": string;
     "Path": string;
     "Method": string;

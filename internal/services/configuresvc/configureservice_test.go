@@ -2,6 +2,7 @@ package configuresvc
 
 import (
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
@@ -50,7 +51,93 @@ func newTestConfigureService(t *testing.T) (*ConfigureService, *compositionsvc.C
 	cfg.lists = nil
 	cfg.mcpServers = nil
 	cfg.aiProviders = nil
+	wireTestSecretStore(cfg)
 	return cfg, comp
+}
+
+// newTestConfigureServiceWithSeeds is newTestConfigureService WITH the
+// seeded built-in examples left in place -- what a fresh install looks
+// like, which the seeding and adoption tests are about.
+func newTestConfigureServiceWithSeeds(t *testing.T) (*ConfigureService, *compositionsvc.CompositionService) {
+	t.Helper()
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	cfg := NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
+	wireTestSecretStore(cfg)
+	return cfg, comp
+}
+
+// testSecrets is the in-memory secret store every ConfigureService
+// built here resolves its references through (goal 0306), keyed by
+// service so parallel tests never share entries.
+var testSecrets sync.Map
+
+// wireTestSecretStore gives cfg a store to name secrets in. Without it
+// every reference field resolves to nothing, which is a real state
+// (nobody has chosen a secret yet) but not the one most tests want.
+func wireTestSecretStore(cfg *ConfigureService) *servicetest.FakeSecretStore {
+	secrets := servicetest.NewFakeSecretStore()
+	testSecrets.Store(cfg, secrets)
+	cfg.SetSecretResolver(secrets.Resolve)
+	cfg.SetSecretCreator(secrets.Create)
+	return secrets
+}
+
+// secretStoreOf is the store wireTestSecretStore gave cfg.
+func secretStoreOf(t *testing.T, cfg *ConfigureService) *servicetest.FakeSecretStore {
+	t.Helper()
+	v, ok := testSecrets.Load(cfg)
+	if !ok {
+		t.Fatal("this ConfigureService has no test secret store wired")
+	}
+	return v.(*servicetest.FakeSecretStore)
+}
+
+// storeRequestSecret puts value in the store and points request id's
+// own secret field at it, through the same UpdateHTTPRequest a user's
+// save goes through -- the reference model's stand-in for what used to
+// be a write into the OS keychain.
+func storeRequestSecret(t *testing.T, cfg *ConfigureService, id, value string) {
+	t.Helper()
+	r, found := findRequestByID(cfg.HTTPRequests(), id)
+	if !found {
+		t.Fatalf("no request with id %q", id)
+	}
+	ref := secretStoreOf(t, cfg).Put(r.Label+": secret", value)
+	if _, err := cfg.UpdateHTTPRequest(r.ID, r.Label, r.BaseURL, r.Method, r.Body, r.AuthType, ref, r.Headers, r.OpenAPISpec, r.Auth, r.JOSE, r.Description); err != nil {
+		t.Fatalf("UpdateHTTPRequest to name the stored secret: %v", err)
+	}
+}
+
+// requestSecretRef is the reference request id currently names.
+func requestSecretRef(t *testing.T, cfg *ConfigureService, id string) string {
+	t.Helper()
+	r, found := findRequestByID(cfg.HTTPRequests(), id)
+	if !found {
+		t.Fatalf("no request with id %q", id)
+	}
+	return r.SecretRef
+}
+
+// storeRequestJOSEKeys points request id's JOSE key fields at store
+// entries, the same way storeRequestSecret does for its auth secret.
+func storeRequestJOSEKeys(t *testing.T, cfg *ConfigureService, id, publicKeyPEM, privateKeyPEM string) {
+	t.Helper()
+	r, found := findRequestByID(cfg.HTTPRequests(), id)
+	if !found || r.JOSE == nil {
+		t.Fatalf("no request with id %q, or it has no JOSE config", id)
+	}
+	secrets := secretStoreOf(t, cfg)
+	jose := *r.JOSE
+	if publicKeyPEM != "" {
+		jose.RecipientPublicKeyRef = secrets.Put(r.Label+": public key", publicKeyPEM)
+	}
+	if privateKeyPEM != "" {
+		jose.PrivateKeyRef = secrets.Put(r.Label+": private key", privateKeyPEM)
+	}
+	if _, err := cfg.UpdateHTTPRequest(r.ID, r.Label, r.BaseURL, r.Method, r.Body, r.AuthType, r.SecretRef, r.Headers, r.OpenAPISpec, r.Auth, &jose, r.Description); err != nil {
+		t.Fatalf("UpdateHTTPRequest to name the stored keys: %v", err)
+	}
 }
 
 // HTTPRequest CRUD/auth/JOSE tests live in

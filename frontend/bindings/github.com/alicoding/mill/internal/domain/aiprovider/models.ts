@@ -7,12 +7,11 @@ import * as seedorigin$0 from "../seedorigin/models.js";
 
 /**
  * AIProvider is one reusable, named AI endpoint connection. Carries no
- * secret field of its own -- same "the secret itself never lives on
+ * secret VALUE of its own -- same "the secret itself never lives on
  * the domain value" rule httprequest.HTTPRequest/ADR-0007 already
- * established -- a BYO endpoint's API key (or Anthropic's x-api-key)
- * lives in the OS keychain exclusively, keyed by this entity's own ID
- * (configuresvc's SetAIProviderSecret/resolveAIProvider), empty for a
- * local Ollama endpoint that needs no credential at all.
+ * established. A BYO endpoint's API key (or Anthropic's x-api-key)
+ * lives in the secret store and this entity names it (KeyRef, goal
+ * 0306); empty for a local endpoint that needs no credential at all.
  */
 export interface AIProvider {
     "ID": string;
@@ -20,6 +19,14 @@ export interface AIProvider {
     "Kind": Kind;
     "BaseURL": string;
     "Model": string;
+
+    /**
+     * KeyRef names this endpoint's API key in the secret store (goal
+     * 0306) -- a reference (internal/domain/vaultref), never a value.
+     * Empty means the endpoint needs no credential, which is the whole
+     * configuration for a local one.
+     */
+    "KeyRef": string;
 
     /**
      * BuiltIn marks a seeded example AIProvider (BuiltIn() below) --

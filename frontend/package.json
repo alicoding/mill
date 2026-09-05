@@ -38,6 +38,7 @@
     "@primer/react": "^38.37.0",
     "@wailsio/runtime": "^3.0.0-beta.12",
     "@xyflow/react": "^12.11.5",
+    "anser": "^2.3.5",
     "copy-to-clipboard": "^4.0.2",
     "cronstrue": "^3.24.0",
     "elkjs": "^0.12.0",
