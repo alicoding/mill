@@ -191,6 +191,7 @@ func PageIndex() []DocPage {
 		{"reference/steps.md", "Step reference", "every step's contract, generated from the registry"},
 		{"reference/commands.md", "Commands", "every registered command's id, label, default binding, surface, and enablement, generated from the registry"},
 		{"reference/menu-bar.md", "Menu bar", "every menu and item in the macOS menu bar, its shortcut, and the command behind it, generated from the registry"},
+		{"reference/environments.md", "Environments", "named sets of plain and secret variables, {{var}} in a request, and which one a run selects"},
 		{"reference/client-certificates.md", "Client certificates", "presenting a client certificate per host: formats, matching, expiry status, and the Test action"},
 		{"reference/browser-extension.md", "The browser extension", "pairing a browser so Mill can replay recorded steps in your own signed-in session"},
 		{"reference/settings.md", "Settings", "app preferences: appearance, hotkeys, shortcuts, MCP access, remote access, backups, updates"},

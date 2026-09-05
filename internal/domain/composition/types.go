@@ -359,6 +359,16 @@ type Workflow struct {
 	// fingerprints (seeding/seed_fingerprints.json) are untouched by
 	// the field's existence.
 	OfferOnRequestID string `json:"OfferOnRequestID,omitempty"`
+	// DefaultEnvironmentID names the Environment this workflow's runs
+	// use unless a run picks another (goal 0306 S5) -- a scheduled or
+	// triggered run has no one to ask, so this is the only thing it can
+	// use. Empty = no environment, which is only a problem for a
+	// workflow that actually references {{var}} somewhere.
+	// omitempty for the same reason OfferOnRequestID carries it: a
+	// workflow without one stays byte-identical to pre-field data, so
+	// persisted stores and the committed seed fingerprints are
+	// untouched by the field's existence.
+	DefaultEnvironmentID string `json:"DefaultEnvironmentID,omitempty"`
 }
 
 // ExecContext threads through a workflow's execution. Payload is the
@@ -410,6 +420,13 @@ type ExecContext struct {
 	// that supplied no typed secrets (every existing run, every unit
 	// test).
 	SecretsToken string
+	// EnvironmentID names the Environment this run selected (goal 0306
+	// S5) -- the per-run override, else the workflow's own default,
+	// decided once by the caller and carried forward untouched by every
+	// node. Empty means no environment: a step that references {{var}}
+	// then has nothing to resolve against, which run pre-flight
+	// (ValidateEnvironmentVars) refuses before the run starts.
+	EnvironmentID string
 }
 
 // SecretAccessRun is the run/workflow identity a node's in-run

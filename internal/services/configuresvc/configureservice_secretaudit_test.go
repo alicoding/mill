@@ -137,7 +137,7 @@ func TestResolveExecEnv_RealRun_RecordsOneExecEnvAuditLine(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
-	e, err := cfg.CreateExecEnv("Sandbox", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel, []string{"DB_PW=vault:" + created.ID})
+	e, err := cfg.CreateExecEnv("Sandbox", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel, []string{"DB_PW=vault:" + created.ID}, "")
 	if err != nil {
 		t.Fatalf("CreateExecEnv: %v", err)
 	}
