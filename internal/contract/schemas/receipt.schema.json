@@ -40,6 +40,12 @@
         },
         "guardrailSource": {
           "type": "string"
+        },
+        "waits": {
+          "items": {
+            "$ref": "#/$defs/RunEvidenceWait"
+          },
+          "type": "array"
         }
       },
       "additionalProperties": false,
@@ -48,6 +54,27 @@
         "stepId",
         "stepTypeId",
         "status"
+      ]
+    },
+    "RunEvidenceWait": {
+      "properties": {
+        "parked": {
+          "type": "string"
+        },
+        "parkedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "resumedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "parked",
+        "parkedAt"
       ]
     }
   },

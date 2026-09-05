@@ -56,7 +56,7 @@ var ErrNotFound = errors.New("secretvault: entry not found")
 // file requires ("a workflow that fires during a locked window fails
 // with an explicit 'vault is locked' state, never a silent
 // wrong-credential error"), never a generic nil-pointer panic.
-var ErrLocked = errors.New("secretvault: vault is locked")
+var ErrLocked = fmt.Errorf("secretvault: %w", secret.ErrVaultLocked)
 
 // ErrAlreadyExists is returned by Create when a vault file is already
 // present at Path -- Create is a one-time operation, never an implicit

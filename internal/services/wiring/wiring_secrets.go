@@ -17,6 +17,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/secretsource"
 	"github.com/alicoding/mill/internal/services/codeloopsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
+	"github.com/alicoding/mill/internal/services/executionsvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/secretsvc"
 )
@@ -76,6 +77,21 @@ func WireSecrets(vaultPath, backupDir string, credentials credential.Store, stor
 		}
 	})
 	return secretService
+}
+
+// WireVaultWaits joins the two halves of "a run that needs a secret
+// while the vault is locked waits for it" (goal 0360 S2): the executor
+// asks the secret service whether the vault is locked before deciding
+// to block a Run click, and every successful unlock resumes the runs
+// parked on the vault -- same after-unlock hook AdoptSecretsIntoStore
+// rides, so the adoption (which may be what a waiting run's reference
+// needs) runs first.
+func WireVaultWaits(executionService *executionsvc.ExecutionService, secretService *secretsvc.SecretService) {
+	executionService.SetVaultLockedLookup(func() bool {
+		status := secretService.VaultStatus()
+		return status.Exists && !status.Unlocked
+	})
+	secretService.OnUnlock(executionService.ResumeVaultWaits)
 }
 
 // WireSecretRedaction wires composition's mcp-tool-call node error path

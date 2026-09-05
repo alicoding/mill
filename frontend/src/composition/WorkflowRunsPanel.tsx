@@ -11,6 +11,8 @@ import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/inte
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
 import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import { RunStepRow } from './RunStepRow'
+import { VaultWaitBanner } from './VaultWaitBanner'
+import { isVaultWait } from '../shared/parkReason'
 import { OutputViewer } from '../shared/OutputViewer'
 import { formatRunStartedAt, runStatusLabel, runStatusVariant } from '../shared/runTime'
 import { StalenessBadge } from '../shared/StalenessBadge'
@@ -244,7 +246,9 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
         <span data-run-id={run.runID} data-selected={selectedRunID === run.runID}>
           <Stack direction="horizontal" gap="condensed" align="center">
             {run.pending ? (
-              <StatusStamp variant="caution" data-testid="run-awaiting-approval">{t('workflowRunsPanel.awaitingApproval')}</StatusStamp>
+              isVaultWait(run.pending)
+                ? <StatusStamp variant="caution" data-testid="run-waiting-for-vault">{tc('vaultWait.badge')}</StatusStamp>
+                : <StatusStamp variant="caution" data-testid="run-awaiting-approval">{t('workflowRunsPanel.awaitingApproval')}</StatusStamp>
             ) : (
               <StatusStamp variant={runStatusVariant(run.status)}>{runStatusLabel(run, t)}</StatusStamp>
             )}
@@ -401,8 +405,11 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
             </Stack>
           )}
 
+          {detail.pending && isVaultWait(detail.pending) && (
+            <VaultWaitBanner pending={detail.pending} runID={detail.runID} workflowID={detail.workflowID} />
+          )}
           {/* eslint-disable-next-line sonarjs/cognitive-complexity -- legacy complexity grandfathered at gate adoption; pay down when touched (goal 0109 burn-down) */}
-          {detail.pending && (() => {
+          {detail.pending && !isVaultWait(detail.pending) && (() => {
             // A breakpoint or step-mode park is a DEBUG park
             // (docs/adr/0031) -- distinct icon/wording/controls, never
             // the same as a policy ask ("recognition, not
