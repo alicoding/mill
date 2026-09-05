@@ -319,6 +319,7 @@ test('secret manager: a vault whose stored key no longer opens it names the caus
     // yet, "Restore the last backup" has nothing to offer.
     await expect(page.getByTestId('secrets-reset-cta')).toBeVisible()
     await expect(page.getByTestId('secrets-restore-backup-cta')).toHaveCount(0)
+    await expect(page.getByTestId('secrets-restore-backup-caption')).toHaveCount(0)
   } finally {
     await browser.close()
     if (server) await server.stop()
@@ -377,6 +378,9 @@ test('secret manager: restoring the last backup recovers a vault whose current k
     await page.getByTestId('secrets-unlock-cta').click()
     await expect(page.getByText("This vault's key isn't on this device")).toBeVisible()
     await expect(page.getByTestId('secrets-vault-backup-caption')).toBeVisible()
+    await expect(page.getByTestId('secrets-restore-backup-caption')).toHaveText(
+      "Brings back the last backup's vault; it opens if its key is still on this device.",
+    )
 
     await page.getByTestId('secrets-restore-backup-cta').click()
 

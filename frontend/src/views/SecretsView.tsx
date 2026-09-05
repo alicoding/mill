@@ -278,6 +278,11 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
               {t('locked.lastBackup', { time: new Date(vaultBackupTime.time).toLocaleString() })}
             </Text>
           )}
+          {restoreCommand?.enabled?.() && (
+            <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-restore-backup-caption">
+              {t('locked.restoreBackupCaption')}
+            </Text>
+          )}
         </Blankslate>
         {confirmReset && (
           <ConfirmDialog
