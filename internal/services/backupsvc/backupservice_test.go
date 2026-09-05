@@ -66,7 +66,7 @@ func TestBackupService_SnapshotSafeWhileASeededWorkflowRunConcurrentlyExecutes(t
 	}
 
 	backupDir := t.TempDir()
-	svc := New(dbPath, "", backupDir, "test")
+	svc := New(dbPath, "", "", backupDir, "test")
 
 	stop := make(chan struct{})
 	var runErr error
@@ -116,14 +116,14 @@ func TestBackupService_SnapshotSafeWhileASeededWorkflowRunConcurrentlyExecutes(t
 }
 
 func TestBackupService_BackupNow_UnavailableForNonSqliteDeployment(t *testing.T) {
-	svc := New("", "", t.TempDir(), "test")
+	svc := New("", "", "", t.TempDir(), "test")
 	if _, err := svc.BackupNow(5); err == nil {
 		t.Error("BackupNow with no dbPath (a BYO-Postgres deployment) = nil error, want a clear unavailable error")
 	}
 }
 
 func TestBackupService_GetBackupStatus_ReflectsNoBackupYet(t *testing.T) {
-	svc := New("", "", t.TempDir(), "test")
+	svc := New("", "", "", t.TempDir(), "test")
 	status, err := svc.GetBackupStatus()
 	if err != nil {
 		t.Fatalf("GetBackupStatus: %v", err)
@@ -137,7 +137,7 @@ func TestBackupService_RevealBackupFolder_NoAppIsANoOp(t *testing.T) {
 	// application.Get() returns nil under `go test` (no real Wails
 	// application ever constructed) -- same defensive guard
 	// dataevent.Emit's own doc comment documents.
-	svc := New("", "", t.TempDir(), "test")
+	svc := New("", "", "", t.TempDir(), "test")
 	if err := svc.RevealBackupFolder(); err != nil {
 		t.Errorf("RevealBackupFolder() with no running application = %v, want nil (silent no-op)", err)
 	}
@@ -172,7 +172,7 @@ func TestExportEverything_RoundTripsEveryFamilyIntoAFreshInstance(t *testing.T) 
 		t.Fatalf("CreateKind: %v", err)
 	}
 
-	source := New("", "", t.TempDir(), "test")
+	source := New("", "", "", t.TempDir(), "test")
 	source.SetFamilies(BuildFamilies(sourceComp, sourceCfg))
 	source.SetAtlasBundle(WireAtlasBundle(sourceAtlas))
 
@@ -186,7 +186,7 @@ func TestExportEverything_RoundTripsEveryFamilyIntoAFreshInstance(t *testing.T) 
 	destCfg := configuresvc.NewConfigureService(destStore, destComp, credential.NewInMemory())
 	destAtlas := atlassvc.NewAtlasService(destStore)
 
-	dest := New("", "", t.TempDir(), "test")
+	dest := New("", "", "", t.TempDir(), "test")
 	dest.SetFamilies(BuildFamilies(destComp, destCfg))
 	dest.SetAtlasBundle(WireAtlasBundle(destAtlas))
 

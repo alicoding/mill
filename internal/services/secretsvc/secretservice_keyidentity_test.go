@@ -205,12 +205,12 @@ func TestResetVaultArchivesAndReplaces(t *testing.T) {
 	}
 	var backups int
 	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), "secrets.kdbx.") && strings.HasSuffix(e.Name(), ".bak") {
+		if strings.HasPrefix(e.Name(), "secrets.") && strings.HasSuffix(e.Name(), ".bak.kdbx") {
 			backups++
 		}
 	}
 	if backups != 1 {
-		t.Fatalf("found %d .bak files beside the vault, want exactly 1", backups)
+		t.Fatalf("found %d .bak.kdbx files beside the vault, want exactly 1", backups)
 	}
 
 	// A fresh vault is usable immediately: the seeded example is there.
@@ -220,5 +220,81 @@ func TestResetVaultArchivesAndReplaces(t *testing.T) {
 	}
 	if len(list) == 0 {
 		t.Fatal("the replacement vault has no seeded entry")
+	}
+}
+
+// TestResetVaultKeepsEveryArchive is goal 0359's own regression: a
+// second reset used to overwrite the first's ".bak" file. Two
+// consecutive resets must each mint their own archive, and each
+// archive must still be openable with the key that made it -- the
+// whole point of never overwriting a recovery copy.
+func TestResetVaultKeepsEveryArchive(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "secrets.kdbx")
+	creds := credential.NewInMemory()
+	s := newVaultAt(t, path, creds)
+	if err := s.SetupVault(); err != nil {
+		t.Fatalf("SetupVault: %v", err)
+	}
+	firstID, err := s.vault.ID()
+	if err != nil {
+		t.Fatalf("ID: %v", err)
+	}
+	s.LockVault()
+
+	if err := s.ResetVault(); err != nil {
+		t.Fatalf("first ResetVault: %v", err)
+	}
+	secondID, err := s.vault.ID()
+	if err != nil {
+		t.Fatalf("ID after first reset: %v", err)
+	}
+	s.LockVault()
+
+	if err := s.ResetVault(); err != nil {
+		t.Fatalf("second ResetVault: %v", err)
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("ReadDir: %v", err)
+	}
+	var archives []string
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), "secrets.") && strings.HasSuffix(e.Name(), ".bak.kdbx") {
+			archives = append(archives, e.Name())
+		}
+	}
+	if len(archives) != 2 {
+		t.Fatalf("found %d archives after two resets, want exactly 2 (one per reset): %v", len(archives), archives)
+	}
+
+	// Each archive is opened with the key its own reset stored -- the
+	// first archive's key is firstID's, the second's is secondID's,
+	// never each other's.
+	for _, id := range []string{firstID, secondID} {
+		key, err := creds.Get(masterKeyIDFor(id))
+		if err != nil {
+			t.Fatalf("key for %q missing: %v", id, err)
+		}
+		decoded, err := secretvault.DecodeMasterKey(key)
+		if err != nil {
+			t.Fatalf("decode key for %q: %v", id, err)
+		}
+		opened := false
+		for _, name := range archives {
+			v := secretvault.New(filepath.Join(dir, name))
+			if vaultID, err := v.ID(); err != nil || vaultID != id {
+				continue
+			}
+			if err := v.Unlock(decoded); err == nil {
+				opened = true
+				v.Lock()
+				break
+			}
+		}
+		if !opened {
+			t.Errorf("no archive for vault %q opened with its own stored key", id)
+		}
 	}
 }
