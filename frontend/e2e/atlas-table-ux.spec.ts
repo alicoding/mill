@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/server'
 import type { Page } from '@playwright/test'
-import { deleteListNamed, deleteTableViaMenu, escapeGridToObject, openAtlas, panToEmptyBoard, placeSizedTable, tableAuditShot, tableObjects } from './fixtures/atlasTable'
+import { deleteListNamed, deleteTableViaMenu, escapeGridToObject, openAtlas, panToEmptyBoard, placeSizedTable, selectTableObject, tableAuditShot, tableObjects } from './fixtures/atlasTable'
 import { clickBoardPoint, hoverBoardPoint, nonSeededBoardObjects } from './fixtures/atlasBoard'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { waitForViewportStable } from './fixtures/animation'
@@ -108,6 +108,10 @@ test('a table names itself above its grid, and the name is renamed in place', as
   const reloaded = nonSeededBoardObjects(page, 'table')
   await expect(reloaded.getByTestId('atlas-table-title')).toHaveText('Budget')
 
+  // Object first, cell second (goal 0354): a reload leaves nothing
+  // selected, so the face -- title row included -- is inert until the
+  // object takes a click.
+  await selectTableObject(reloaded)
   // Escape leaves the edit with the name untouched.
   await reloaded.getByTestId('atlas-table-title').dblclick()
   const reopened = reloaded.getByTestId('atlas-table-title-input')

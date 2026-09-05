@@ -6,6 +6,9 @@ import type { EditRouteDecl, ObjectSource } from './objectSeams'
 import type { MirrorReadState } from './useAtlasObjectMirrorRead'
 import type { AtlasNounGroup, ExtensionSettingDecl } from './atlasNounRegistry'
 import type { DrawioOverflowReporter } from './drawioInteraction'
+import type { AtlasContentMode } from './atlasActivation'
+
+export type { AtlasContentMode }
 import { AtlasUnknownKindContent } from './AtlasUnknownKindContent'
 
 // The board-object CONTENT registry -- split out of atlasNounRegistry.ts
@@ -74,40 +77,36 @@ export interface AtlasNounContent {
     // handing back the action that fits it. Only the face can know
     // either; only the frame owns the chrome band the chip sits on.
     onOverflowChange?: DrawioOverflowReporter
+    // The editing signal (goal 0354): a face that opens an editor in
+    // place calls this true while it is open and false when it closes.
+    // The frame turns it into the `editing` state -- one callback,
+    // replacing the per-face keyboard hand-back hooks that each
+    // reached for the canvas node themselves. A face with no in-place
+    // editor never calls it.
+    onEditingChange?: (editing: boolean) => void
   }>
   ariaLabelKey: string
   role: 'img' | undefined
-  // clickShield / wheelContained live HERE, on the content shape, so a
-  // tool-bearing noun declares them the way a tool-less noun declares
-  // them directly (registerNoun folds a tool's own `content` into the
+  // content (goal 0354): the ONE input fact a noun declares about its
+  // own face -- 'static' (the canvas owns every gesture over it: a
+  // shape, an image, an ink stroke) or 'interactive' (the face
+  // scrolls, selects text, or edits in place: a grid, an embedded
+  // viewer). Every canvas opt-out the frame applies -- the click
+  // shield, `nowheel`, `nodrag`/`nopan`, the keyboard boundary -- is
+  // DERIVED from this plus the object's live state (atlasActivation.ts),
+  // never declared per noun. Lives HERE, on the content shape, so a
+  // tool-bearing noun declares it the way a tool-less noun declares it
+  // directly (registerNoun folds a tool's own `content` into the
   // board-object content registry, so both routes reach
   // AtlasBoardObjectNode.tsx as one record).
-  // clickShield (goal 0267, widened to grid-hosting faces by goal
-  // 0273): the face owns its own pointer model -- an IFRAME (a hard
-  // event boundary clicks inside never escape), or a grid that reads a
-  // bare click as a CELL click -- so while the object is NOT selected a
-  // transparent shield sits over the content: first click selects (or
-  // drags/right-clicks) like any body, and only a selected object's
-  // face is live. The converged canvas rule the shield encodes: object
-  // first, content second.
-  clickShield?: boolean
+  content: AtlasContentMode
   // shieldHintKey (goal 0341): what the chrome band's tooltip says
-  // while this Kind's face is shielded -- the first click always
-  // selects, but what it buys differs per noun (a diagram starts
-  // panning, a PDF starts scrolling, a table starts cell editing), so
-  // the noun states it rather than one generic sentence standing in
-  // for all three. Omit and the band falls back to the generic
-  // shielded wording.
+  // while this Kind's face is idle -- the first click always selects,
+  // but what it buys differs per noun (a diagram starts panning, a PDF
+  // starts scrolling, a table starts cell editing), so the noun states
+  // it rather than one generic sentence standing in for all three.
+  // Omit and the band falls back to the generic wording.
   shieldHintKey?: string
-  // wheelContained (goal 0271): the face hosts a viewer that consumes
-  // wheel for its own scroll/pan/zoom (pdf.js, the drawio host), so
-  // while that viewer is LIVE the board must never also pan from the
-  // same gesture -- the node's whole box carries the canvas kit's
-  // `nowheel` class then. A shielded (unselected) clickShield Kind is
-  // inert, so the class is withheld and the board pans as over any
-  // body. The sheet face's own scroll div predates this flag and keeps
-  // its local class.
-  wheelContained?: boolean
   // overflowChip (goal 0340): this Kind's face renders content that can
   // be LARGER than the object's box and offers a way back -- so the
   // shared chrome band carries a "Fit" chip whenever the face reports
@@ -192,22 +191,6 @@ export interface AtlasBoardObjectContent extends AtlasNounContent {
   fileBacked: boolean
 }
 
-// viewerOwnsWheel (goal 0271): whether a node's whole box should carry
-// the canvas kit's `nowheel` class right now -- true exactly while a
-// wheelContained Kind's viewer is LIVE (shieldless Kinds always,
-// clickShield Kinds only once selected; never for a frame's preview
-// tile). The SAME window also decides `nodrag` on the content box (goal
-// 0340): a face that consumes the wheel for its own pan consumes the
-// drag for it too, and mxGraph's own pan consume() calls preventDefault
-// WITHOUT stopping propagation -- so without that opt-out one drag both
-// pans the drawing and moves the object. Every wheelContained Kind also
-// declares dragBand, so the band stays the object's drag surface. Pure
-// and exported for its unit test; AtlasBoardObjectNode is the one
-// caller.
-export function viewerOwnsWheel(facts: Pick<AtlasBoardObjectContent, 'wheelContained' | 'clickShield'>, preview: boolean, selected: boolean): boolean {
-  return !!facts.wheelContained && !preview && (!facts.clickShield || selected)
-}
-
 const boardObjectContentRegistry = new Map<string, AtlasBoardObjectContent>()
 
 // registerBoardObjectContent -- the honest home for a noun with no
@@ -258,6 +241,7 @@ export const unknownKindContent: AtlasBoardObjectContent = {
   Component: AtlasUnknownKindContent,
   ariaLabelKey: 'unknownKind.aria',
   role: undefined,
+  content: 'static',
   source: { kind: 'board-local' },
   editRoute: { kind: 'none' },
   dragBand: false,
