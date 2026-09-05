@@ -86,4 +86,6 @@ the check tells you why the rule exists, not just that you broke it.
 
 See [Install a plugin](install-a-plugin.md) for the full authoring
 guide and [the plugin API reference](plugin-api/index.md) for every
-type.
+type. [Plugin API maturity](plugin-api-maturity.md) lists each
+contribution family's current level and its evidence, generated fresh
+from this repository on every build.
