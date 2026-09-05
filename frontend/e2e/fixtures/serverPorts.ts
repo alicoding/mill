@@ -330,3 +330,11 @@ export const SETTINGS_EXTENSIONS_LIST_MCP_BASE_PORT = 11460
 // GUARDRAIL_REVIEW_* pair above.
 export const REVIEW_OPEN_RUN_SERVER_BASE_PORT = 11480
 export const REVIEW_OPEN_RUN_MCP_BASE_PORT = 11500
+
+// paused-runs.spec.ts's own dedicated pair (goal 0328): a step-mode
+// pause must be absent from the GLOBAL Review queue and its badge, and
+// present on the GLOBAL Activity runs list -- both exactly the
+// cross-spec state testing.md's shared-vs-dedicated rule keeps off the
+// shared pool, same reasoning as every GUARDRAIL_REVIEW_* pair above.
+export const PAUSED_RUNS_SERVER_BASE_PORT = 11520
+export const PAUSED_RUNS_MCP_BASE_PORT = 11540

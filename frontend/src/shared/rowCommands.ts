@@ -2,6 +2,7 @@ import type { Command } from './commands'
 import type { CommandContext } from './commandContext'
 import { entryContext, runContext, workflowContext } from './commandContext'
 import { ClipboardHistoryService, ExecutionService, RunKind, SettingsService } from './bindings'
+import { resolveApprovalCall } from './approvalResolution'
 import { generateSamplePayload } from './configSchema'
 import { workflowTarget } from './navigateTarget'
 import { useAppStore } from './store'
@@ -64,6 +65,37 @@ export const ROW_COMMANDS: Command[] = [
       const target = runContext(ctx)
       if (!target?.workflowId) return
       return SettingsService.ShowRunMonitor(target.workflowId, target.runId)
+    },
+  },
+  {
+    // Resume a paused run straight through to the end (goal 0328): the
+    // debugger family's Continue, answering the park the run is sitting
+    // on. Only a surface that can see WHICH step is parked can offer it,
+    // so the node is part of the target rather than re-fetched here.
+    id: 'run.continue',
+    label: 'commands.run.continue',
+    defaultBinding: null,
+    needs: 'run',
+    enabled: (ctx) => Boolean(runContext(ctx)?.nodeId),
+    run: (ctx) => {
+      const target = runContext(ctx)
+      if (!target?.nodeId) return
+      return resolveApprovalCall({ runID: target.runId, nodeID: target.nodeId, approve: true, values: target.values, continueRun: true })
+    },
+  },
+  {
+    // Advance one step and park again -- step mode's own control, and
+    // meaningless on a run that isn't stepping, which is why the dock
+    // omits it there rather than offering an inert button.
+    id: 'run.step',
+    label: 'commands.run.step',
+    defaultBinding: null,
+    needs: 'run',
+    enabled: (ctx) => Boolean(runContext(ctx)?.nodeId),
+    run: (ctx) => {
+      const target = runContext(ctx)
+      if (!target?.nodeId) return
+      return resolveApprovalCall({ runID: target.runId, nodeID: target.nodeId, approve: true, values: target.values, continueRun: false })
     },
   },
   {

@@ -48,8 +48,18 @@ export function runStatusVariant(status: string): StatusStampVariant {
 // namespace so the three callers (runs list, Activity, Review) each
 // pass their own `t` without three copies of the string.
 export function runStatusLabel(
-  run: { status: string; interrupted?: boolean },
+  run: { status: string; interrupted?: boolean; pending?: { source?: string } | null },
   t: (key: string, options?: Record<string, unknown>) => string,
 ): string {
-  return run.interrupted ? t('runStatus.interrupted', { ns: 'common' }) : run.status
+  if (run.interrupted) return t('runStatus.interrupted', { ns: 'common' })
+  if (isPausedRun(run)) return t('runStatus.paused', { ns: 'common' })
+  return run.status
+}
+
+// A run stopped by step mode or a breakpoint (goal 0328). DBOS reports
+// it as PENDING like any other in-flight run, so the park is the only
+// thing that distinguishes "still working" from "waiting for you to say
+// go" -- and it is a STATUS on the runs list, never an approval.
+export function isPausedRun(run: { pending?: { source?: string } | null }): boolean {
+  return run.pending?.source === 'debug'
 }

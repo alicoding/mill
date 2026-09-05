@@ -72,7 +72,7 @@ test('Example: Country code lookup runs a real match through the seeded List', a
   await dialog.getByLabel('Code').fill('US')
   await dialog.getByRole('button', { name: 'Run' }).click()
 
-  const bar = activePanel(page).getByTestId('current-step-bar')
+  const bar = activePanel(page).getByTestId('run-state-dock')
   await expect(bar).toContainText('SUCCESS', { timeout: 15_000 })
 })
 
@@ -94,7 +94,7 @@ test('Example: Country lookup (search) runs a real exact match through list-sear
   await dialog.getByLabel('Code').fill('US')
   await dialog.getByRole('button', { name: 'Run' }).click()
 
-  const bar = activePanel(page).getByTestId('current-step-bar')
+  const bar = activePanel(page).getByTestId('run-state-dock')
   await expect(bar).toContainText('SUCCESS', { timeout: 15_000 })
 })
 
@@ -266,6 +266,6 @@ test('Example: Create and link Atlas cards runs end to end through the real live
 
   await activePanel(page).getByTestId('canvas-run').click()
 
-  const bar = activePanel(page).getByTestId('current-step-bar')
+  const bar = activePanel(page).getByTestId('run-state-dock')
   await expect(bar).toContainText('SUCCESS', { timeout: 15_000 })
 })

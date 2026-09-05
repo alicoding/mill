@@ -214,8 +214,8 @@ interface AppState {
   // callback-chain shape as openWorkflowRequest above. Extended by
   // shared/canvasCommands.ts (docs/goals/0162 item 2) for undo/redo/
   // delete/zoom, same signal, same consumer.
-  canvasCommandRequest: 'save' | 'run' | 'publish' | 'undo' | 'redo' | 'delete' | 'zoomIn' | 'zoomOut' | 'fitView' | null
-  requestCanvasCommand: (command: 'save' | 'run' | 'publish' | 'undo' | 'redo' | 'delete' | 'zoomIn' | 'zoomOut' | 'fitView') => void
+  canvasCommandRequest: 'save' | 'run' | 'runStepped' | 'publish' | 'undo' | 'redo' | 'delete' | 'zoomIn' | 'zoomOut' | 'fitView' | null
+  requestCanvasCommand: (command: 'save' | 'run' | 'runStepped' | 'publish' | 'undo' | 'redo' | 'delete' | 'zoomIn' | 'zoomOut' | 'fitView') => void
   // atlas.up (shared/commands.ts) can't reach AtlasView's own
   // viewedID -- a monotonic counter signal the mounted AtlasView
   // consumes, same store-field-beats-a-callback-chain shape as

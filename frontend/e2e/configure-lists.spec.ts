@@ -99,7 +99,7 @@ test('list-search node: configuring a real match parameter through the Inspector
   // no test-input dialog (docs/adr/0008 only opens one when Attributes
   // are declared).
   await activePanel(page).getByTestId('canvas-run').click()
-  const bar = activePanel(page).getByTestId('current-step-bar')
+  const bar = activePanel(page).getByTestId('run-state-dock')
   await expect(bar).toContainText('SUCCESS', { timeout: 15_000 })
 
   // Clean up.
@@ -213,7 +213,7 @@ test('Example: Track in a list runs end to end -- creates then updates the same 
   await row.click()
 
   await activePanel(page).getByTestId('canvas-run').click()
-  const bar = activePanel(page).getByTestId('current-step-bar')
+  const bar = activePanel(page).getByTestId('run-state-dock')
   await expect(bar).toContainText('SUCCESS', { timeout: 15_000 })
 
   await page.getByRole('link', { name: 'Configure' }).click()

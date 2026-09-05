@@ -81,9 +81,12 @@ describe('menuSpecFor (the native menu bar as a projection of the command regist
     ])
   })
 
-  it('opens Workflow with Run and Run from clipboard, then the save band, then the canvas band', () => {
+  it('opens Workflow with the two run entries and the mode switch, then the save band, then the canvas band', () => {
     const shape = shapeOf(menu(spec, 'Workflow'))
-    expect(shape.slice(0, 5)).toEqual(['Run workflow', 'Run from clipboard…', '-', 'Save', 'Save all changes'])
+    expect(shape.slice(0, 7)).toEqual([
+      'Run workflow', 'Run step by step', 'Run from clipboard…', 'View workflow', 'Edit workflow',
+      '-', 'Save',
+    ])
     expect(shape).toContain('Fit view')
   })
 

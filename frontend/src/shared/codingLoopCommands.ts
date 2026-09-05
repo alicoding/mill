@@ -15,7 +15,7 @@ import { useUISignalStore } from './uiSignalStore'
 export const CODING_LOOP_COMMANDS: Command[] = [
   {
     id: 'codingLoop.run',
-    menu: { path: 'workflow', group: 0, order: 1 },
+    menu: { path: 'workflow', group: 0, order: 2 },
     label: 'commands.codingLoop.run',
     defaultBinding: null,
     quickPanel: true,

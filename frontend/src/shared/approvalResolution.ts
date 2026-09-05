@@ -50,13 +50,23 @@ export interface ApprovalResolution {
   resolveApproval: (input: ResolveApprovalInput) => Promise<boolean>
 }
 
+// The bare call, hook-free, so a registry command (shared/rowCommands.ts's
+// run.continue/run.step) answers a park through this same seam rather than
+// reaching for ExecutionService itself. A rejection propagates untouched:
+// runCommand turns it into the one error notice, whose wording comes from
+// the same `run-not-waiting`/`run-recovering` codes KEY_FOR_CODE names
+// above, resolved by shared/userError.ts.
+export function resolveApprovalCall({ runID, nodeID, approve, values, continueRun }: ResolveApprovalInput): Promise<void> {
+  return ExecutionService.ResolveApproval(runID, nodeID, approve, approve ? (values ?? {}) : {}, continueRun ?? false)
+}
+
 export function useApprovalResolution(): ApprovalResolution {
   const [refusal, setRefusal] = useState<{ runID: string; key: string } | null>(null)
   const clearError = useCallback(() => setRefusal(null), [])
-  const resolveApproval = useCallback(({ runID, nodeID, approve, values, continueRun }: ResolveApprovalInput) => {
+  const resolveApproval = useCallback((input: ResolveApprovalInput) => {
+    const { runID } = input
     setRefusal(null)
-    return ExecutionService
-      .ResolveApproval(runID, nodeID, approve, approve ? (values ?? {}) : {}, continueRun ?? false)
+    return resolveApprovalCall(input)
       .then(() => true)
       .catch((err) => {
         // A refused decision is user-facing state, never console noise:
