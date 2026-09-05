@@ -15,6 +15,7 @@ const twoByTwoPNG = "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAACZgbYnAAAAF0lEQVQIW2P
 
 func TestWritePNG_RegistersThePNGFlavor(t *testing.T) {
 	skipUnlessRealDesktop(t)
+	h := newRealHost(t)
 	if testing.Short() {
 		t.Skip("skipping the real-pasteboard PNG write under -short")
 	}
@@ -28,10 +29,10 @@ func TestWritePNG_RegistersThePNGFlavor(t *testing.T) {
 	}
 
 	clipboardtest.WithRealClipboardLock(func() {
-		if err := WritePNG(data); err != nil {
+		if err := h.WritePNG(data); err != nil {
 			t.Fatalf("WritePNG() error: %v", err)
 		}
-		types, err := Types()
+		types, err := h.Types()
 		if err != nil {
 			t.Fatalf("Types() error: %v", err)
 		}
@@ -48,7 +49,8 @@ func TestWritePNG_RegistersThePNGFlavor(t *testing.T) {
 }
 
 func TestWritePNG_RejectsEmptyData(t *testing.T) {
-	if err := WritePNG(nil); err == nil {
+	h := newRealHost(t)
+	if err := h.WritePNG(nil); err == nil {
 		t.Fatal("WritePNG(nil) = nil, want an error rather than a silently empty clipboard")
 	}
 }

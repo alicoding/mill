@@ -108,7 +108,7 @@ func TestSeededBuiltInHTTPRequests_AreStamped(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	before := time.Now()
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, credential.New())
+	cfg := NewConfigureService(store, comp, credential.NewInMemory())
 	after := time.Now()
 
 	reqs := cfg.HTTPRequests()

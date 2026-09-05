@@ -1,4 +1,13 @@
-import { test, expect } from './fixtures/server'
+import { chromium, expect, test } from '@playwright/test'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import {
+  QUICK_PANEL_CLIPBOARD_APPLY_MCP_BASE_PORT,
+  QUICK_PANEL_CLIPBOARD_APPLY_SERVER_BASE_PORT,
+  spawnMillServer,
+  type SpawnedServer,
+} from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
 import { writeHostClipboardText, hostClipboardAvailable } from './fixtures/hostClipboard'
 import { clickRowAction } from './inventoryRow'
@@ -14,9 +23,14 @@ import { waitForViewportStable } from './fixtures/animation'
 // hostClipboard.ts's pbcopy door), not navigator.clipboard (goal 0229:
 // the panel reads via CompositionService.ReadHostClipboardText, a Go
 // RPC over the same pbpaste adapter -- navigator.clipboard is no longer
-// anywhere in this flow). Every clipboard-touching section below still
-// runs inside withClipboardLock: the real macOS pasteboard is one
-// OS-wide resource shared across parallel workers (goal 0009).
+// anywhere in this flow).
+//
+// Dedicated server, MILL_CLIPBOARD=host (goal 0356): the standard
+// per-worker pool defaults to the in-memory clipboard adapter and has
+// no per-spec override, so this file needs its own server. Every
+// clipboard-touching section below still runs inside withClipboardLock:
+// the real macOS pasteboard is one OS-wide resource shared across
+// parallel workers (goal 0009).
 //
 // The tests proving a specific CREATE/UPDATE/dangling-ref outcome
 // branch on hostClipboardAvailable: CI's e2e job runs on ubuntu-latest,
@@ -32,6 +46,39 @@ import { waitForViewportStable } from './fixtures/animation'
 // park-and-poll model is for a possibly-away MCP caller; this action's
 // own invocation is the human being present) -- proving that gap is
 // itself part of what this suite covers.
+
+interface Fixture {
+  server: SpawnedServer
+  browser: import('@playwright/test').Browser
+  page: import('@playwright/test').Page
+  dir: string
+  mcpPort: number
+}
+
+async function setUp(testInfo: { parallelIndex: number }): Promise<Fixture> {
+  const idx = testInfo.parallelIndex
+  const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-quick-panel-clipboard-apply-${idx}-`))
+  const mcpPort = QUICK_PANEL_CLIPBOARD_APPLY_MCP_BASE_PORT + idx
+  const server = await spawnMillServer({
+    port: QUICK_PANEL_CLIPBOARD_APPLY_SERVER_BASE_PORT + idx,
+    mcpPort,
+    settingsPath: path.join(dir, 'settings.json'),
+    executionDbPath: path.join(dir, 'execution.db'),
+    backupDir: path.join(dir, 'backups'),
+    extraEnv: { MILL_CLIPBOARD: 'host' },
+  })
+  const browser = await chromium.launch()
+  const context = await browser.newContext({ baseURL: server.baseURL })
+  const page = await context.newPage()
+  await page.goto(`${server.baseURL}/`)
+  return { server, browser, page, dir, mcpPort }
+}
+
+async function tearDown(f: Fixture): Promise<void> {
+  await f.browser.close()
+  await f.server.stop()
+  rmSync(f.dir, { recursive: true, force: true })
+}
 
 async function deleteWorkflowIfPresent(page: import('@playwright/test').Page, label: string) {
   await page.goto('/')
@@ -105,156 +152,184 @@ async function applyFromClipboardWithPayload(page: import('@playwright/test').Pa
   await option.click()
 }
 
-test('a valid workflow export creates a new workflow, visible live with no reload', async ({ page }, testInfo) => {
-  const sourceLabel = 'ZzE2eClipboardApplySource'
-  const createdLabel = 'ZzE2eClipboardApplyCreated'
-  await createSimpleWorkflow(page, sourceLabel)
-
-  const client = await connectMCPClient(testInfo.parallelIndex)
-  let exported: string
+// eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
+test('a valid workflow export creates a new workflow, visible live with no reload', async ({}, testInfo) => {
+  const f = await setUp(testInfo)
   try {
-    const sourceId = await findWorkflowIdByLabel(client, sourceLabel)
-    exported = await exportWorkflowViaMCP(client, sourceId)
+    const { page } = f
+    const sourceLabel = 'ZzE2eClipboardApplySource'
+    const createdLabel = 'ZzE2eClipboardApplyCreated'
+    await createSimpleWorkflow(page, sourceLabel)
+
+    const client = await connectMCPClient(testInfo.parallelIndex, f.mcpPort)
+    let exported: string
+    try {
+      const sourceId = await findWorkflowIdByLabel(client, sourceLabel)
+      exported = await exportWorkflowViaMCP(client, sourceId)
+    } finally {
+      await client.close()
+    }
+    // ADR-0036: ExportWorkflow now always carries the source's real id,
+    // so it's stripped here -- this test proves the CREATE path, not the
+    // update-in-place path a real matching id would now correctly take
+    // (that path's own coverage is the "matching id updates" test below).
+    const parsedExport = JSON.parse(exported) as Record<string, unknown>
+    delete parsedExport.id
+    const payload = JSON.stringify({ ...parsedExport, label: createdLabel })
+
+    // A second, already-open surface on the Workflows list -- proves the
+    // new row appears LIVE (goal 0017's mill-data-changed infra), not
+    // just after a subsequent navigation/reload.
+    const mainPage = await page.context().newPage()
+    try {
+      await mainPage.goto('/')
+      await mainPage.getByRole('link', { name: 'Workflows' }).click()
+
+      await withClipboardLock(async () => {
+        await applyFromClipboardWithPayload(page, payload)
+      })
+
+      if (hostClipboardAvailable) {
+        await expect(page.getByTestId('quick-panel-clipboard-apply-summary')).toContainText(`CREATE "${createdLabel}"`)
+        await page.getByTestId('quick-panel-clipboard-apply-confirm').click()
+        await expect(page.getByTestId('quick-panel-status')).toContainText(`Created "${createdLabel}"`)
+
+        await expect(workflowRow(mainPage, createdLabel)).toBeVisible({ timeout: 10_000 })
+      } else {
+        await expect(page.getByTestId('quick-panel-clipboard-apply-error')).toBeVisible()
+      }
+    } finally {
+      await mainPage.close()
+    }
+
+    await deleteWorkflowIfPresent(page, sourceLabel)
+    if (hostClipboardAvailable) await deleteWorkflowIfPresent(page, createdLabel)
   } finally {
-    await client.close()
+    await tearDown(f)
   }
-  // ADR-0036: ExportWorkflow now always carries the source's real id,
-  // so it's stripped here -- this test proves the CREATE path, not the
-  // update-in-place path a real matching id would now correctly take
-  // (that path's own coverage is the "matching id updates" test below).
-  const parsedExport = JSON.parse(exported) as Record<string, unknown>
-  delete parsedExport.id
-  const payload = JSON.stringify({ ...parsedExport, label: createdLabel })
+})
 
-  // A second, already-open surface on the Workflows list -- proves the
-  // new row appears LIVE (goal 0017's mill-data-changed infra), not
-  // just after a subsequent navigation/reload.
-  const mainPage = await page.context().newPage()
+// eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
+test('an export with a matching id updates the existing workflow instead of creating a new one', async ({}, testInfo) => {
+  const f = await setUp(testInfo)
   try {
-    await mainPage.goto('/')
-    await mainPage.getByRole('link', { name: 'Workflows' }).click()
+    const { page } = f
+    const targetLabel = 'ZzE2eClipboardApplyUpdateTarget'
+    const updatedLabel = 'ZzE2eClipboardApplyUpdated'
+    await createSimpleWorkflow(page, targetLabel)
+
+    const client = await connectMCPClient(testInfo.parallelIndex, f.mcpPort)
+    let payload: string
+    let targetId: string
+    try {
+      targetId = await findWorkflowIdByLabel(client, targetLabel)
+      const exported = await exportWorkflowViaMCP(client, targetId)
+      payload = JSON.stringify({ ...JSON.parse(exported), id: targetId, label: updatedLabel })
+    } finally {
+      await client.close()
+    }
 
     await withClipboardLock(async () => {
       await applyFromClipboardWithPayload(page, payload)
     })
 
     if (hostClipboardAvailable) {
-      await expect(page.getByTestId('quick-panel-clipboard-apply-summary')).toContainText(`CREATE "${createdLabel}"`)
+      await expect(page.getByTestId('quick-panel-clipboard-apply-summary')).toContainText(`UPDATE "${updatedLabel}"`)
+      await page.getByTestId('quick-panel-clipboard-apply-confirm').click()
+      await expect(page.getByTestId('quick-panel-status')).toContainText(`Updated "${updatedLabel}"`)
+
+      // The update replaced the SAME workflow -- the old label is gone, the
+      // new one appears exactly once, never a second row alongside it.
+      await page.goto('/')
+      await page.getByRole('link', { name: 'Workflows' }).click()
+      await expect(workflowRow(page, updatedLabel)).toBeVisible({ timeout: 10_000 })
+      await expect(workflowRow(page, targetLabel)).toHaveCount(0)
+
+      await deleteWorkflowIfPresent(page, updatedLabel)
+    } else {
+      await expect(page.getByTestId('quick-panel-clipboard-apply-error')).toBeVisible()
+      // The RPC read failed before ever reaching ConfirmClipboardApply --
+      // the fixture workflow is still there under its original label.
+      await deleteWorkflowIfPresent(page, targetLabel)
+    }
+  } finally {
+    await tearDown(f)
+  }
+})
+
+// eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
+test('a malformed clipboard payload shows a readable inline error, never silently failing', async ({}, testInfo) => {
+  const f = await setUp(testInfo)
+  try {
+    const { page } = f
+    await withClipboardLock(async () => {
+      await applyFromClipboardWithPayload(page, 'this is not json at all')
+    })
+
+    await expect(page.getByTestId('quick-panel-clipboard-apply-error')).toBeVisible()
+    // Back returns to the ordinary search list without having touched
+    // anything server-side.
+    await page.getByRole('button', { name: 'Back' }).click()
+    await expect(page.getByRole('combobox', { name: 'Quick Panel search' })).toBeVisible()
+  } finally {
+    await tearDown(f)
+  }
+})
+
+// eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
+test('a dangling entity reference is listed in the preview but confirm still succeeds', async ({}, testInfo) => {
+  const f = await setUp(testInfo)
+  try {
+    const { page } = f
+    const sourceLabel = 'ZzE2eClipboardApplyDanglingSource'
+    const createdLabel = 'ZzE2eClipboardApplyDanglingCreated'
+    await createSimpleWorkflow(page, sourceLabel)
+
+    const client = await connectMCPClient(testInfo.parallelIndex, f.mcpPort)
+    let payload: string
+    try {
+      const sourceId = await findWorkflowIdByLabel(client, sourceLabel)
+      const exported = JSON.parse(await exportWorkflowViaMCP(client, sourceId))
+      // ADR-0036: strip the source's real id (proves the CREATE path, not
+      // an update-in-place of the source fixture).
+      delete exported.id
+      // Splice in an integration-http node referencing an HTTPRequest id
+      // that doesn't exist anywhere on this instance -- a real dangling
+      // reference (docs/goals/0039 item 5), not just an unset one.
+      exported.label = createdLabel
+      // Chains off the fixture's existing LEAF node (process-inject-text),
+      // never its root trigger -- ValidateGraph rejects a second outgoing
+      // edge off any non-Decision node, and the trigger already has one
+      // (to process-inject-text).
+      const leaf = exported.steps[exported.steps.length - 1]
+      exported.steps.push({ ID: 'zz-dangling-http', StepTypeID: 'integration-http', Config: { requestId: 'zz-definitely-not-a-real-request-id' } })
+      exported.edges.push({ ID: 'zz-dangling-edge', Source: leaf.ID, Target: 'zz-dangling-http' })
+      payload = JSON.stringify(exported)
+    } finally {
+      await client.close()
+    }
+
+    await withClipboardLock(async () => {
+      await applyFromClipboardWithPayload(page, payload)
+    })
+
+    if (hostClipboardAvailable) {
+      const warning = page.getByTestId('quick-panel-clipboard-apply-unresolved')
+      await expect(warning).toBeVisible()
+      await expect(warning).toContainText('zz-dangling-http')
+      await expect(warning).toContainText('requestId')
+
       await page.getByTestId('quick-panel-clipboard-apply-confirm').click()
       await expect(page.getByTestId('quick-panel-status')).toContainText(`Created "${createdLabel}"`)
-
-      await expect(workflowRow(mainPage, createdLabel)).toBeVisible({ timeout: 10_000 })
+      await deleteWorkflowIfPresent(page, createdLabel)
     } else {
       await expect(page.getByTestId('quick-panel-clipboard-apply-error')).toBeVisible()
     }
+
+    await deleteWorkflowIfPresent(page, sourceLabel)
   } finally {
-    await mainPage.close()
+    await tearDown(f)
   }
-
-  await deleteWorkflowIfPresent(page, sourceLabel)
-  if (hostClipboardAvailable) await deleteWorkflowIfPresent(page, createdLabel)
-})
-
-test('an export with a matching id updates the existing workflow instead of creating a new one', async ({ page }, testInfo) => {
-  const targetLabel = 'ZzE2eClipboardApplyUpdateTarget'
-  const updatedLabel = 'ZzE2eClipboardApplyUpdated'
-  await createSimpleWorkflow(page, targetLabel)
-
-  const client = await connectMCPClient(testInfo.parallelIndex)
-  let payload: string
-  let targetId: string
-  try {
-    targetId = await findWorkflowIdByLabel(client, targetLabel)
-    const exported = await exportWorkflowViaMCP(client, targetId)
-    payload = JSON.stringify({ ...JSON.parse(exported), id: targetId, label: updatedLabel })
-  } finally {
-    await client.close()
-  }
-
-  await withClipboardLock(async () => {
-    await applyFromClipboardWithPayload(page, payload)
-  })
-
-  if (hostClipboardAvailable) {
-    await expect(page.getByTestId('quick-panel-clipboard-apply-summary')).toContainText(`UPDATE "${updatedLabel}"`)
-    await page.getByTestId('quick-panel-clipboard-apply-confirm').click()
-    await expect(page.getByTestId('quick-panel-status')).toContainText(`Updated "${updatedLabel}"`)
-
-    // The update replaced the SAME workflow -- the old label is gone, the
-    // new one appears exactly once, never a second row alongside it.
-    await page.goto('/')
-    await page.getByRole('link', { name: 'Workflows' }).click()
-    await expect(workflowRow(page, updatedLabel)).toBeVisible({ timeout: 10_000 })
-    await expect(workflowRow(page, targetLabel)).toHaveCount(0)
-
-    await deleteWorkflowIfPresent(page, updatedLabel)
-  } else {
-    await expect(page.getByTestId('quick-panel-clipboard-apply-error')).toBeVisible()
-    // The RPC read failed before ever reaching ConfirmClipboardApply --
-    // the fixture workflow is still there under its original label.
-    await deleteWorkflowIfPresent(page, targetLabel)
-  }
-})
-
-test('a malformed clipboard payload shows a readable inline error, never silently failing', async ({ page }) => {
-  await withClipboardLock(async () => {
-    await applyFromClipboardWithPayload(page, 'this is not json at all')
-  })
-
-  await expect(page.getByTestId('quick-panel-clipboard-apply-error')).toBeVisible()
-  // Back returns to the ordinary search list without having touched
-  // anything server-side.
-  await page.getByRole('button', { name: 'Back' }).click()
-  await expect(page.getByRole('combobox', { name: 'Quick Panel search' })).toBeVisible()
-})
-
-test('a dangling entity reference is listed in the preview but confirm still succeeds', async ({ page }, testInfo) => {
-  const sourceLabel = 'ZzE2eClipboardApplyDanglingSource'
-  const createdLabel = 'ZzE2eClipboardApplyDanglingCreated'
-  await createSimpleWorkflow(page, sourceLabel)
-
-  const client = await connectMCPClient(testInfo.parallelIndex)
-  let payload: string
-  try {
-    const sourceId = await findWorkflowIdByLabel(client, sourceLabel)
-    const exported = JSON.parse(await exportWorkflowViaMCP(client, sourceId))
-    // ADR-0036: strip the source's real id (proves the CREATE path, not
-    // an update-in-place of the source fixture).
-    delete exported.id
-    // Splice in an integration-http node referencing an HTTPRequest id
-    // that doesn't exist anywhere on this instance -- a real dangling
-    // reference (docs/goals/0039 item 5), not just an unset one.
-    exported.label = createdLabel
-    // Chains off the fixture's existing LEAF node (process-inject-text),
-    // never its root trigger -- ValidateGraph rejects a second outgoing
-    // edge off any non-Decision node, and the trigger already has one
-    // (to process-inject-text).
-    const leaf = exported.steps[exported.steps.length - 1]
-    exported.steps.push({ ID: 'zz-dangling-http', StepTypeID: 'integration-http', Config: { requestId: 'zz-definitely-not-a-real-request-id' } })
-    exported.edges.push({ ID: 'zz-dangling-edge', Source: leaf.ID, Target: 'zz-dangling-http' })
-    payload = JSON.stringify(exported)
-  } finally {
-    await client.close()
-  }
-
-  await withClipboardLock(async () => {
-    await applyFromClipboardWithPayload(page, payload)
-  })
-
-  if (hostClipboardAvailable) {
-    const warning = page.getByTestId('quick-panel-clipboard-apply-unresolved')
-    await expect(warning).toBeVisible()
-    await expect(warning).toContainText('zz-dangling-http')
-    await expect(warning).toContainText('requestId')
-
-    await page.getByTestId('quick-panel-clipboard-apply-confirm').click()
-    await expect(page.getByTestId('quick-panel-status')).toContainText(`Created "${createdLabel}"`)
-    await deleteWorkflowIfPresent(page, createdLabel)
-  } else {
-    await expect(page.getByTestId('quick-panel-clipboard-apply-error')).toBeVisible()
-  }
-
-  await deleteWorkflowIfPresent(page, sourceLabel)
 })
 
 // docs/goals/0039 item 4: the MCP-writes-approval setting must NEVER
