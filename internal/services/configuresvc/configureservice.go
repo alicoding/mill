@@ -101,6 +101,10 @@ type ConfigureService struct {
 	// where the actual audit line gets written, so every call site here
 	// carries who's asking.
 	secretResolver func(id string, actx secretaudit.AccessContext) (string, error)
+	// secretCreator is the store's own create door, wired late the same
+	// way secretResolver is -- used only by the adoption pass
+	// (configureservice_secretadoption.go), nil until it is wired.
+	secretCreator SecretCreator
 	// secretLabelsLister lists every vault entry's Summary (Title, no
 	// Password) -- DeriveSecretLabels' own read (goal 0203 S2), wired
 	// late via SetSecretLabelsLister the same way secretResolver is.
@@ -137,7 +141,7 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	// flows through the presence cache (credpresence.go) -- validation
 	// asks about presence often, and only this choke point keeps the
 	// cache truthful.
-	c := &ConfigureService{store: store, composition: comp, credentials: newPresenceCachingCredentials(credentials)}
+	c := &ConfigureService{store: store, composition: comp, credentials: credentials}
 	c.secretResolver = func(id string, _ secretaudit.AccessContext) (string, error) {
 		return "", fmt.Errorf("no vault secret resolver registered (yet) for id %q", id)
 	}
@@ -229,7 +233,6 @@ func (c *ConfigureService) restore() {
 			seeded[i].CreatedAt, seeded[i].UpdatedAt = now, now
 		}
 		c.requests = seeded
-		c.seedBuiltInSecrets()
 	}
 	c.reconcileBuiltInRequests()
 	if raw, ok := c.store.Get(listsKey).(string); ok && raw != "" {

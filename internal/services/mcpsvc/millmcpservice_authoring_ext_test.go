@@ -62,7 +62,7 @@ func TestExecuteTestRequest_DraftMode_CallsAndReturnsResult(t *testing.T) {
 // the agent tests a CONFIGURED integration without re-supplying it.
 func TestResolveTestRequestInput_FillsFromStoredIntegration(t *testing.T) {
 	svc, _, cfg := newAuthoringExtHarness(t)
-	created, err := cfg.CreateHTTPRequest("Ext test", "https://api.example.test", "GET", "", httprequest.AuthNone, nil, extTestSpec, nil, nil, "")
+	created, err := cfg.CreateHTTPRequest("Ext test", "https://api.example.test", "GET", "", httprequest.AuthNone, "", nil, extTestSpec, nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
 	}

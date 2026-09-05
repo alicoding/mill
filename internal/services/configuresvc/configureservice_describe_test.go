@@ -13,7 +13,7 @@ import (
 // secret clears it.
 func TestDescribeReference_RequestNamesTheMissingSecret(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	r, err := cfg.CreateHTTPRequest("Jira", "https://jira.example.com", "", "", httprequest.AuthBearer, map[string]string{"X-Team": "ops"}, "", nil, nil, "")
+	r, err := cfg.CreateHTTPRequest("Jira", "https://jira.example.com", "", "", httprequest.AuthBearer, "", map[string]string{"X-Team": "ops"}, "", nil, nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,12 +31,10 @@ func TestDescribeReference_RequestNamesTheMissingSecret(t *testing.T) {
 	if byLabel["Address"] != "https://jira.example.com" || byLabel["Method"] != "GET" || byLabel["Auth"] != "Bearer token" || byLabel["Secret"] != "Missing" {
 		t.Fatalf("lines = %v", byLabel)
 	}
-	if len(sum.Problems) != 1 || !strings.Contains(sum.Problems[0], "No secret is stored") {
+	if len(sum.Problems) != 1 || !strings.Contains(sum.Problems[0], "No secret is chosen") {
 		t.Fatalf("problems = %v", sum.Problems)
 	}
-	if err := cfg.SetHTTPRequestSecret(r.ID, "pat-123"); err != nil {
-		t.Fatal(err)
-	}
+	storeRequestSecret(t, cfg, r.ID, "pat-123")
 	sum, _ = cfg.DescribeReference("request", r.ID)
 	if len(sum.Problems) != 0 {
 		t.Fatalf("after storing the secret, problems = %v", sum.Problems)

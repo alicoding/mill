@@ -41,9 +41,17 @@ func decodeOAuth1Secret(raw string) (consumerSecret, tokenSecret string) {
 	return raw, ""
 }
 
+// DecodeOAuth1Secret is decodeOAuth1Secret, exported so the pass that
+// lifts a legacy single-slot OAuth 1.0a credential into two separate
+// store entries (goal 0306) reads it back through the one decoder that
+// wrote it, not a second copy of the same rules.
+func DecodeOAuth1Secret(raw string) (consumerSecret, tokenSecret string) {
+	return decodeOAuth1Secret(raw)
+}
+
 // EncodeOAuth1Secret is the inverse of decodeOAuth1Secret -- exported
-// so ConfigureService can build the one stored string from an HTTPRequest
-// form's two separate secret fields before calling credential.Set.
+// so ConfigureService can join two resolved references back into the
+// one string the OAuth 1.0a strategy consumes.
 func EncodeOAuth1Secret(consumerSecret, tokenSecret string) string {
 	b, _ := json.Marshal(oauth1Secret{ConsumerSecret: consumerSecret, TokenSecret: tokenSecret})
 	return string(b)

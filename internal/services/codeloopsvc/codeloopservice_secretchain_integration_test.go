@@ -128,7 +128,7 @@ func shellStepOf(t *testing.T, detail executionsvc.RunDetail) executionsvc.RunSt
 func TestRunCommandBlock_VaultSecret_ResolvesAndLeavesAuditLine(t *testing.T) {
 	exec, codeLoop, secretService := newWiredStack(t)
 
-	entry, err := secretService.CreateSecret("Coding Loop Vault Secret Fixture", "", "vault-fixture-secret-value", "", "", "")
+	entry, err := secretService.CreateSecret("Coding Loop Vault Secret Fixture", "", "vault-fixture-secret-value", "", "", "", "", "")
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}

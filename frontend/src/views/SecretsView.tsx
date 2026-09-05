@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Blankslate } from '@primer/react/experimental'
-import { Button, Checkbox, FormControl, Heading, IconButton, Stack, Text } from '@primer/react'
+import { Button, Checkbox, FormControl, Heading, IconButton, SegmentedControl, Stack, Text } from '@primer/react'
 import { HistoryIcon, KeyIcon, LockIcon, PlusIcon } from '@primer/octicons-react'
 import { SecretService } from '../shared/bindings'
+import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
 import type { SecretSummary } from '../shared/bindings'
 import { findCommand, runCommand } from '../shared/commands'
 import { refreshVaultStatus, useVaultStatusStore } from '../shared/vaultStatusStore'
@@ -17,7 +18,8 @@ import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
 import PageContainer from '../shared/PageContainer'
 import { FirstRunIntro } from '../shared/FirstRunIntro'
-import { SecretsEntryDialog } from './SecretsEntryDialog'
+import { ConfigureSecretSources } from '../configure/ConfigureSecretSources'
+import { SecretsEntryDialog } from '../shared/SecretsEntryDialog'
 import { SecretsDetailDialog } from './SecretsDetailDialog'
 import { SecretsHistoryDialog } from './SecretsHistoryDialog'
 import { SecretsAccessHistoryDialog } from './SecretsAccessHistoryDialog'
@@ -29,8 +31,12 @@ import styles from './SecretsView.module.css'
 // of the same vault (S3), not rendered here at all. Deliberately its
 // own top-level page, not nested in Configure (the domain package's own
 // doc comment has the full reasoning).
-export default function SecretsView() {
+export default function SecretsView({ initialTab }: { initialTab?: string } = {}) {
   const { t } = useTranslation('secrets')
+  // Two sections, one page (goal 0306): the entries themselves, and the
+  // stores Mill reads entries from. Sources are reachable while the
+  // vault is locked -- they are configuration, not vault content.
+  const [section, setSection] = useState<'vault' | 'sources'>(initialTab === 'sources' ? 'sources' : 'vault')
   // The vault-lock state door (goal 0222 S1, shared/vaultStatusStore.ts)
   // -- lifted out of local useState so secrets.lockVault/unlockVault's
   // own enabled() predicates can read the identical truth synchronously
@@ -52,6 +58,33 @@ export default function SecretsView() {
   const [accessHistoryID, setAccessHistoryID] = useState<string | null>(null)
   const [showAccessHistory, setShowAccessHistory] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
+
+  const sectionSwitch = (
+    <SegmentedControl aria-label={t('sections.ariaLabel')} className={styles.sections} data-testid="secrets-sections">
+      <SegmentedControl.Button selected={section === 'vault'} onClick={() => setSection('vault')} data-testid="secrets-section-vault">
+        {t('sections.vault')}
+      </SegmentedControl.Button>
+      <SegmentedControl.Button selected={section === 'sources'} onClick={() => setSection('sources')} data-testid="secrets-section-sources">
+        {t('sections.sources')}
+      </SegmentedControl.Button>
+    </SegmentedControl>
+  )
+
+  // pageHeader is rendered by every branch below -- locked, unset and
+  // unlocked, vault and sources -- so this page is titled the same way
+  // in each of them, and Sources stays one click away. The subtitle is
+  // the one part that differs: it says what THIS section is.
+  const pageHeader = (
+    <>
+      <Stack direction="vertical" gap="none" className={styles.pageHeader}>
+        <Heading as="h1" id="secrets-heading">{t('heading')}</Heading>
+        <Text as="p" size="small" className={styles.subtitle}>
+          {section === 'sources' ? t('sections.sourcesSubtitle') : t('subtitle')}
+        </Text>
+      </Stack>
+      {sectionSwitch}
+    </>
+  )
 
   const refresh = () => {
     void refreshVaultStatus().then(() => {
@@ -115,10 +148,21 @@ export default function SecretsView() {
     <FirstRunIntro id="secrets" title={t('firstRun.title')} body={[t('firstRun.body1'), t('firstRun.body2')]} />
   )
 
+  if (section === 'sources') {
+    return (
+      <PageContainer variant="wide" data-testid="secrets-view">
+        {firstRunIntro}
+        {pageHeader}
+        <ConfigureSecretSources />
+      </PageContainer>
+    )
+  }
+
   if (!status.Exists) {
     return (
       <PageContainer variant="wide" data-testid="secrets-view">
         {firstRunIntro}
+        {pageHeader}
         <Blankslate>
           <Blankslate.Visual><KeyIcon size={32} /></Blankslate.Visual>
           <Blankslate.Heading>{t('setup.heading')}</Blankslate.Heading>
@@ -152,6 +196,7 @@ export default function SecretsView() {
     return (
       <PageContainer variant="wide" data-testid="secrets-view">
         {firstRunIntro}
+        {pageHeader}
         <Blankslate>
           <Blankslate.Visual><LockIcon size={32} /></Blankslate.Visual>
           <Blankslate.Heading>{t('locked.heading')}</Blankslate.Heading>
@@ -216,11 +261,8 @@ export default function SecretsView() {
   return (
     <PageContainer variant="wide" data-testid="secrets-view">
       {firstRunIntro}
-      <Stack direction="horizontal" justify="space-between" align="center" className={styles.header}>
-        <Stack direction="vertical" gap="none">
-          <Heading as="h1" id="secrets-heading">{t('heading')}</Heading>
-          <Text as="p" size="small" className={styles.subtitle}>{t('subtitle')}</Text>
-        </Stack>
+      {pageHeader}
+      <Stack direction="horizontal" justify="end" align="center" className={styles.header}>
         <Stack direction="horizontal" gap="condensed" align="center">
           <IconButton
             icon={HistoryIcon}
@@ -286,7 +328,7 @@ export default function SecretsView() {
           onEdit={() => startEdit(detailID)}
           onHistory={() => setHistoryID(detailID)}
           onAccessHistory={() => setAccessHistoryID(detailID)}
-          onDelete={() => requestDelete(sorted.find((s) => s.ID === detailID) ?? { ID: detailID, Title: detailID, Username: '', URL: '', Tags: '', UpdatedAt: '' })}
+          onDelete={() => requestDelete(sorted.find((s) => s.ID === detailID) ?? { ID: detailID, Title: detailID, Username: '', URL: '', Tags: '', Kind: Kind.KindText, SourceRef: '', UpdatedAt: '' })}
         />
       )}
       {historyID && <SecretsHistoryDialog id={historyID} onClose={() => setHistoryID(null)} />}

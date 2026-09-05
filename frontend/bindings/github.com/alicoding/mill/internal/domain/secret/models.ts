@@ -16,9 +16,67 @@ export interface Entry {
     "URL": string;
     "Notes": string;
     "Tags": string;
+
+    /**
+     * Kind classifies what this entry holds (goal 0306) -- what a
+     * kind-filtered picker offers and what control the editor shows.
+     * Empty decodes as KindText.
+     */
+    "Kind": Kind;
+
+    /**
+     * SourceRef, when set, makes this a source-backed entry: the value
+     * is not held here at all but read from a configured secret source
+     * at the moment of use, through the same provider grammar every
+     * referencing field uses ("env:<source-id>/<KEY>",
+     * internal/domain/vaultref). Password is empty for such an entry,
+     * and a source's value is never copied into the vault.
+     */
+    "SourceRef": string;
     "CreatedAt": string;
     "UpdatedAt": string;
 }
+
+/**
+ * Kind classifies what a vault entry holds (goal 0306): the field that
+ * lets a picker offer only the entries a field can actually use -- a
+ * client-certificate field lists certificates, a signing-key field
+ * lists keys -- and lets the entry editor offer a multi-line control
+ * for the PEM-shaped ones instead of a single-line password box.
+ * 
+ * Kind is a classification, not a storage change: every kind's value
+ * lives in the same protected Password field. An entry written before
+ * this field existed decodes as KindText (NormalizeKind), so no
+ * migration pass is needed to read an older vault.
+ */
+export enum Kind {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    /**
+     * KindText is any single-line secret: a token, an API key, a
+     * password. The default for an entry that names no kind.
+     */
+    KindText = "text",
+
+    /**
+     * KindKey is a private key, normally multi-line PEM.
+     */
+    KindKey = "key",
+
+    /**
+     * KindCertificate is an X.509 certificate, normally multi-line PEM.
+     */
+    KindCertificate = "certificate",
+
+    /**
+     * KindFile is the contents of a credential file a tool expects on
+     * disk (a service-account JSON, a keytab rendered as text).
+     */
+    KindFile = "file",
+};
 
 /**
  * Summary is an Entry with its Password/Notes omitted -- the shape the
@@ -32,5 +90,7 @@ export interface Summary {
     "Username": string;
     "URL": string;
     "Tags": string;
+    "Kind": Kind;
+    "SourceRef": string;
     "UpdatedAt": string;
 }

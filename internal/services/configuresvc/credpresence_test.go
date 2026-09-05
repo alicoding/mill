@@ -8,14 +8,15 @@ import (
 	"github.com/alicoding/mill/internal/services/servicetest"
 )
 
-// The credential-presence seam (goal 0127 slice 3): a gap only when
-// the request exists, needs a secret, and the keychain provably has
-// none; a stored secret (through the caching decorator's own Set)
-// clears it without another keychain read.
-func TestRequestCredentialGap_MissingStoredAndAuthNone(t *testing.T) {
+// The credential-presence seam (goal 0127 slice 3, goal 0306): a gap
+// only when the request exists, needs a secret, and names none. Since
+// a secret is a reference the request carries, presence is a field
+// read -- no keychain probe, so no cache to be stale.
+func TestRequestCredentialGap_UnnamedNamedAndAuthNone(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := NewConfigureService(store, comp, notFoundCredentialStore{})
+	cfg := NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
+	wireTestSecretStore(cfg)
 
 	missing, label := cfg.RequestCredentialGap(httprequest.ExampleConfluencePageReadID)
 	if !missing || label == "" {
@@ -32,14 +33,33 @@ func TestRequestCredentialGap_MissingStoredAndAuthNone(t *testing.T) {
 		t.Error("an unknown request reported a credential gap")
 	}
 
-	// Storing the secret through the service clears the gap via the
-	// decorator's own cache -- even though the INNER store still
-	// reports not-found on reads (Set is a no-op there), proving the
-	// answer came from the cache, not another keychain read.
-	if err := cfg.credentials.Set(httprequest.ExampleConfluencePageReadID, "token"); err != nil {
-		t.Fatalf("Set: %v", err)
-	}
+	// Naming an entry closes the gap.
+	storeRequestSecret(t, cfg, httprequest.ExampleConfluencePageReadID, "token")
 	if missing, _ := cfg.RequestCredentialGap(httprequest.ExampleConfluencePageReadID); missing {
-		t.Error("gap persisted after the credential was stored")
+		t.Error("gap persisted after the request named a stored secret")
+	}
+}
+
+// OAuth 1.0a gaps on its CONSUMER secret alone: RFC 5849's 2-legged
+// flow has no token, so a missing token secret is not a gap.
+func TestRequestCredentialGap_OAuth1_GapsOnTheConsumerSecretOnly(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	secrets := secretStoreOf(t, cfg)
+	req, err := cfg.CreateHTTPRequest("Two-legged", "https://example.com", "", "", httprequest.AuthOAuth1, "", nil, "", nil, nil, "")
+	if err != nil {
+		t.Fatalf("CreateHTTPRequest: %v", err)
+	}
+	if missing, _ := cfg.RequestCredentialGap(req.ID); !missing {
+		t.Error("an OAuth 1.0a request naming no consumer secret reported no gap")
+	}
+	auth := &httprequest.AuthConfig{OAuth1: &httprequest.OAuth1Config{
+		ConsumerKey:       "ck",
+		ConsumerSecretRef: secrets.Put("Two-legged: consumer secret", "cs"),
+	}}
+	if _, err := cfg.UpdateHTTPRequest(req.ID, req.Label, req.BaseURL, req.Method, req.Body, req.AuthType, "", req.Headers, req.OpenAPISpec, auth, req.JOSE, req.Description); err != nil {
+		t.Fatalf("UpdateHTTPRequest: %v", err)
+	}
+	if missing, _ := cfg.RequestCredentialGap(req.ID); missing {
+		t.Error("an OAuth 1.0a request naming its consumer secret still reported a gap")
 	}
 }

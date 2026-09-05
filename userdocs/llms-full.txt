@@ -2619,8 +2619,8 @@ and offers to start a new vault. That keeps the current file beside it
 as a dated backup and creates an empty one; the backup's entries stay
 unreadable until the key that opens them turns up.
 
-Secrets you already keep elsewhere need no copy. Configure > Secret
-sources points Mill at a dotenv file — a project's `.env` — or at a
+Secrets you already keep elsewhere need no copy. Secrets > Sources
+points Mill at a dotenv file — a project's `.env` — or at a
 Bruno collection, whose root `.env` supplies values and whose
 environments name the secrets it expects — or at 1Password or
 Bitwarden through their own command-line tools, which Mill asks for one
@@ -2629,6 +2629,28 @@ recommend. The keys appear in every secret picker beside the vault's
 entries, by name only, and every read is in your access history. The value is read from the file at the
 moment a step runs, recorded in the same access history as a vault
 read, and never stored by Mill.
+
+**Anything that needs a secret names one; it never holds one.** An
+integration's token, an HMAC signing key, an OAuth 1.0a consumer and
+token secret, a JOSE key pair, an AI endpoint's API key — each field
+picks an entry from Secrets rather than taking a typed value. That is
+what puts one set of controls in front of every credential: the unlock
+requirement, the access history, and the guardrails that can see which
+secrets a step is about to use. Exporting one of these carries the
+name of the entry, never the credential.
+
+Each entry says what it holds — text, a key, a certificate or a file —
+so a field only offers the entries it can actually use. An entry can
+also point at a key in one of your sources instead of holding a value,
+in which case Mill reads that key when something uses it.
+
+The first time you unlock after updating, any credential an earlier
+version had saved outside the vault moves in: Mill creates an entry,
+reads it back to check it arrived intact, points the integration at it,
+and only then removes the old copy. If the check fails, the old copy
+stays exactly where it was and Mill tries again next time. After that
+the only Mill item left in your operating system's keychain is the
+vault's own key.
 
 **Clipboard history is opt-in and screened.** Turning on the
 Clipboard history workflow is the only way it starts watching, and

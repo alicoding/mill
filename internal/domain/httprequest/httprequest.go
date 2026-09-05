@@ -70,9 +70,9 @@ const (
 	AuthMTLS AuthType = "mtls"
 )
 
-// OAuth2Config is AuthOAuth2's non-secret configuration -- ClientSecret
-// itself stays in the OS keychain (internal/adapters/credential), same
-// as every other AuthType's secret.
+// OAuth2Config is AuthOAuth2's non-secret configuration. The client
+// secret is a vault reference on the request itself (SecretRef), same
+// as every other single-secret AuthType.
 type OAuth2Config struct {
 	// GrantType is fixed to "client_credentials" this pass -- the only
 	// grant the reference-platform research actually specified fields
@@ -92,14 +92,19 @@ type HMACConfig struct {
 	HeaderName string
 }
 
-// OAuth1Config is AuthOAuth1's non-secret configuration (RFC 5849).
-// ConsumerSecret/TokenSecret are JSON-encoded into the request's one
-// keychain secret slot rather than Mill inventing a multi-secret-per-
-// request storage model (ADR-0015 §3) -- Token itself is optional per
-// RFC 5849 (2-legged OAuth omits it).
+// OAuth1Config is AuthOAuth1's configuration (RFC 5849). Token itself
+// is optional per RFC 5849 (2-legged OAuth omits it). The two secrets
+// this scheme needs are named, not held: each is its own reference
+// into the secret store (goal 0306), so a consumer secret shared
+// across several requests is one stored entry, not a copy per request.
 type OAuth1Config struct {
 	ConsumerKey string
 	Token       string
+	// ConsumerSecretRef/TokenSecretRef are secret references
+	// (internal/domain/vaultref). Empty means the scheme has no such
+	// secret configured yet.
+	ConsumerSecretRef string
+	TokenSecretRef    string
 }
 
 // AuthConfig bundles the non-secret config for whichever AuthType an
@@ -138,14 +143,27 @@ type JOSEConfig struct {
 	// ContentEncryption is the JWE content-encryption algorithm (e.g.
 	// "A256GCM"). Same empty-defaults-at-use-time shape as Algorithm.
 	ContentEncryption string
-	// RecipientPublicKeyPEM is the vendor's RSA public key (PEM,
-	// PKIX or PKCS1), used to encrypt the outgoing request body.
-	RecipientPublicKeyPEM string
+	// RecipientPublicKeyRef references the vendor's RSA public key (PEM,
+	// PKIX or PKCS1), used to encrypt the outgoing request body. A
+	// public key is not a secret, but it travels the same door as every
+	// other key-shaped value (goal 0306) so there is one place a key is
+	// managed, rotated and read.
+	RecipientPublicKeyRef string
 	// DecryptResponse, if true, decrypts the response body as a JWE
-	// using Mill's own private key (keychain) before it's processed as
-	// the workflow payload -- optional, matching the reference
+	// using Mill's own private key (PrivateKeyRef) before it's processed
+	// as the workflow payload -- optional, matching the reference
 	// platform's own "optionally decrypts" framing.
 	DecryptResponse bool
+	// PrivateKeyRef references Mill's own private key, needed only when
+	// DecryptResponse is true.
+	PrivateKeyRef string
+	// LegacyRecipientPublicKeyPEM holds the public key as it was stored
+	// inline before keys became references (goal 0306). Read by the
+	// adoption pass, which moves the value into the store and clears
+	// this field; never read at request time and never written by a new
+	// save. The JSON name is the old field's, so data written before
+	// the change still decodes.
+	LegacyRecipientPublicKeyPEM string `json:"RecipientPublicKeyPEM,omitempty"`
 }
 
 // HTTPRequest is one reusable, named way to reach an external API
@@ -176,7 +194,14 @@ type HTTPRequest struct {
 	// method config field wins when non-empty).
 	Method   string
 	AuthType AuthType
-	Headers  map[string]string
+	// SecretRef names the one secret the single-secret auth schemes
+	// need -- the bearer token, the API key, the HMAC signing key, the
+	// query-param key, the OAuth 2.0 client secret (goal 0306). It is a
+	// reference (internal/domain/vaultref), never a value: nothing
+	// secret is written to this entity, its export, or its backup.
+	// AuthOAuth1 names its two secrets on OAuth1Config instead.
+	SecretRef string
+	Headers   map[string]string
 	// Body is an optional raw request body sent as-is when the schema's
 	// bound body fields don't produce one -- request-level, not
 	// workflow-node-level: transport and payload
@@ -239,7 +264,7 @@ func Validate(r HTTPRequest) error {
 	default:
 		return fmt.Errorf("unsupported auth type: %q", r.AuthType)
 	}
-	if r.JOSE != nil && r.JOSE.Enabled && strings.TrimSpace(r.JOSE.RecipientPublicKeyPEM) == "" {
+	if r.JOSE != nil && r.JOSE.Enabled && strings.TrimSpace(r.JOSE.RecipientPublicKeyRef) == "" {
 		return fmt.Errorf("JOSE encryption is enabled but no recipient public key is set")
 	}
 	return nil

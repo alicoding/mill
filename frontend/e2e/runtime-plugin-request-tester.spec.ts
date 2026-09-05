@@ -83,7 +83,7 @@ test('a secretRef setting picks a vault entry; the request parks naming it, send
 		await page.goto('/')
 		const SECRETS = 'github.com/alicoding/mill/internal/services/secretsvc.SecretService'
 		await callBindingViaRPC(page, `${SECRETS}.SetupVault`, [])
-		await callBindingViaRPC(page, `${SECRETS}.CreateSecret`, ['E2E API token', 'bot', 'tok-e2e-0281-value', '', '', ''])
+		await callBindingViaRPC(page, `${SECRETS}.CreateSecret`, ['E2E API token', 'bot', 'tok-e2e-0281-value', '', '', '', 'text', ''])
 
 		// The picker lists the vault by title and stores only the id.
 		await page.reload()
