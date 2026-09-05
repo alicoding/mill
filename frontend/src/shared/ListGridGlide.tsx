@@ -118,6 +118,23 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
   // controlled the way the library's own built-in-search example wires
   // them, so listGrid.search's run() -- which cannot reach a specific
   // mount's state directly -- has a handle to call through.
+  //
+  // ⌘F is read off a keydown TARGETED inside this host (onKeyDown
+  // below), so a click must leave DOM focus in here before the next
+  // keystroke. The library's own click-to-focus defers to a
+  // requestAnimationFrame, which a loaded machine can push past the
+  // keystroke -- so the click takes focus through the library's own
+  // imperative handle (DataEditorRef.focus) as well, on POINTERUP.
+  //
+  // Never on pointerdown: the library's onCanvasFocused auto-selects
+  // the first cell when the canvas gains focus with no selection,
+  // suppressed only while a mouse button is already down. Pointerdown
+  // precedes the library's own mousedown, so focusing there beats
+  // that suppression, pre-selects the clicked cell, and turns the
+  // user's FIRST click into the library's second-click activation --
+  // an overlay editor instead of a selected cell. By pointerup the
+  // library's mousedown has both armed the suppression and set the
+  // selection, so neither can happen.
   const [showSearch, setShowSearch] = useState(false)
   const searchHandleID = useId()
   const setSearchFocused = useListGridSearchFocusStore((s) => s.setFocused)
@@ -316,15 +333,11 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
       <div
         className={`${styles.scroll} nowheel nodrag nopan`}
         style={{ minHeight: 120, maxHeight: 420 }}
-        // The library's own click-to-focus (data-editor.js's internal
-        // focus() helper) defers to a requestAnimationFrame, so a
-        // keystroke landing immediately after a click can beat it there
-        // and find nothing in this subtree focused yet. gridRef.current
-        // .focus() is the library's OWN documented imperative handle
-        // (DataEditorRef) and resolves synchronously -- calling it here,
-        // on the same pointerdown the library itself reacts to, removes
-        // the race rather than papering over it with a wait.
-        onPointerDown={() => gridRef.current?.focus()}
+        // See the search block above for why this is pointerUP, and why
+        // it must never move to pointerdown. Skipped when focus is
+        // already in here, so it can never pull it off an open overlay
+        // editor that mounts inside this host.
+        onPointerUp={() => { if (!host?.contains(document.activeElement)) gridRef.current?.focus() }}
       >
         {columns.length === 0 ? (
           <p className={styles.empty} data-testid="atlas-projection-empty">{t('listGrid.noColumns')}</p>
