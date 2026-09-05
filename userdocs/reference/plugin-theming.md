@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # Plugin theming
 
 A plugin's face, view, or capture is drawn inside Mill, so it should
