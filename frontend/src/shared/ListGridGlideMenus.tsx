@@ -5,6 +5,8 @@ import type { Field } from '../../bindings/github.com/alicoding/mill/internal/do
 import { RowStatus } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
 import type { GridColumn, GridRow } from './listGridTypes'
 import { ListGridColumnPopover } from './ListGridColumnPopover'
+import { ListGridGlideFilter } from './ListGridGlideFilter'
+import type { GridColumnFilter, GridSortDirection } from './listStandard'
 import styles from './ListGrid.module.css'
 
 // The adopted grid's schema and row menus (ADR-0049 §2: schema editing
@@ -35,43 +37,63 @@ function AnchorBox({ at, anchorRef }: { at: Anchor; anchorRef: React.RefObject<H
   return <div ref={anchorRef} style={{ position: 'absolute', left: at.x, top: at.y, width: at.width, height: at.height, pointerEvents: 'none' }} />
 }
 
-export function ColumnMenu({ column, field, at, onClose, onRename, onInsert, onChange, onRemove }: {
+export function ColumnMenu({ column, field, at, sort, filter, schemaEditing, onClose, onRename, onInsert, onChange, onRemove, onSort, onFilter }: {
   column: GridColumn
   field: Field
   at: Anchor
+  // This column's own share of the grid's narrowing (goal 0349 S4):
+  // undefined when it is not the sorted column.
+  sort: GridSortDirection | undefined
+  filter: GridColumnFilter
+  // A read-only mount still sorts and filters; only the schema items
+  // (rename, insert, type and choices) belong to an editable one.
+  schemaEditing: boolean
   onClose: () => void
   onRename: () => void
   onInsert: (side: 'left' | 'right') => void
   onChange: (next: Field) => void
   onRemove: () => void
+  onSort: (direction: GridSortDirection | undefined) => void
+  onFilter: (next: GridColumnFilter) => void
 }) {
   const { t } = useTranslation('common')
   const anchorRef = useRef<HTMLDivElement>(null)
-  const [settings, setSettings] = useState(false)
-  // Choosing the settings item closes the menu (its own onOpenChange)
-  // -- that close must hand over to the popover, not tear it all down.
+  const [panel, setPanel] = useState<'settings' | 'filter' | null>(null)
+  // Choosing an item closes the menu (its own onOpenChange) -- that
+  // close must hand over to the panel it opened, not tear it all down.
   const switching = useRef(false)
-  const openSettings = () => {
+  const openPanel = (next: 'settings' | 'filter') => {
     switching.current = true
-    setSettings(true)
+    setPanel(next)
   }
+  const pick = (run: () => void) => () => { onClose(); run() }
   return (
     <>
       <AnchorBox at={at} anchorRef={anchorRef} />
-      {!settings && (
+      {panel === null && (
         <ActionMenu open onOpenChange={(open) => { if (!open && !switching.current) onClose() }} anchorRef={anchorRef}>
           <ActionMenu.Overlay>
             <ActionList data-testid="list-grid-column-menu">
-              <ActionList.Item onSelect={onRename} data-testid="list-grid-column-rename">{t('listGrid.renameColumn')}</ActionList.Item>
-              <ActionList.Item onSelect={() => onInsert('left')} data-testid="list-grid-column-insert-left">{t('listGrid.insertColumnLeft')}</ActionList.Item>
-              <ActionList.Item onSelect={() => onInsert('right')} data-testid="atlas-projection-insert-column">{t('listGrid.insertColumnRight')}</ActionList.Item>
-              <ActionList.Item onSelect={openSettings} data-testid={`list-grid-column-settings-${column.Key}`}>{t('listGrid.columnSettings')}</ActionList.Item>
+              <ActionList.Item onSelect={pick(() => onSort('asc'))} data-testid="list-grid-column-sort-asc">{t('listGrid.sortAscending')}</ActionList.Item>
+              <ActionList.Item onSelect={pick(() => onSort('desc'))} data-testid="list-grid-column-sort-desc">{t('listGrid.sortDescending')}</ActionList.Item>
+              {sort !== undefined && (
+                <ActionList.Item onSelect={pick(() => onSort(undefined))} data-testid="list-grid-column-sort-clear">{t('listGrid.clearSort')}</ActionList.Item>
+              )}
+              <ActionList.Item onSelect={() => openPanel('filter')} data-testid="list-grid-column-filter">{t('listGrid.filterColumn')}</ActionList.Item>
+              {schemaEditing && <ActionList.Divider />}
+              {schemaEditing && <ActionList.Item onSelect={onRename} data-testid="list-grid-column-rename">{t('listGrid.renameColumn')}</ActionList.Item>}
+              {schemaEditing && <ActionList.Item onSelect={() => onInsert('left')} data-testid="list-grid-column-insert-left">{t('listGrid.insertColumnLeft')}</ActionList.Item>}
+              {schemaEditing && <ActionList.Item onSelect={() => onInsert('right')} data-testid="atlas-projection-insert-column">{t('listGrid.insertColumnRight')}</ActionList.Item>}
+              {schemaEditing && <ActionList.Item onSelect={() => openPanel('settings')} data-testid={`list-grid-column-settings-${column.Key}`}>{t('listGrid.columnSettings')}</ActionList.Item>}
             </ActionList>
           </ActionMenu.Overlay>
         </ActionMenu>
       )}
-      {settings && (
+      {panel === 'settings' && (
         <ListGridColumnPopover column={field} onCommit={onChange} onRemove={onRemove} open onClose={onClose} anchorRef={anchorRef} />
+      )}
+      {panel === 'filter' && (
+        <ListGridGlideFilter column={column} filter={filter} onApply={onFilter} onClose={onClose} anchorRef={anchorRef} />
       )}
     </>
   )
