@@ -60,14 +60,25 @@ export function pluginObjectCtx(pluginId: string, object: BoardObject, stages: S
 	}
 }
 
-export function pluginFaceComponent(pluginId: string, decl: CanvasObjectDecl & { renderFace: NonNullable<CanvasObjectDecl['renderFace']> }): ComponentType<{ object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState }> {
+export function pluginFaceComponent(pluginId: string, decl: CanvasObjectDecl & { renderFace: NonNullable<CanvasObjectDecl['renderFace']> }): ComponentType<{ object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState; onEditingChange?: (editing: boolean) => void }> {
 	const fileSource = decl.source === 'file'
-	const Face = memo(function PluginFace({ object, mirrorVersion, mirrorContent }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState }) {
+	// ctx.setEditing exists only for a face whose declaration says
+	// content: 'interactive' (goal 0354) -- the editing state is what
+	// stands the board's own shortcuts down, and a static face's canvas
+	// never leaves the canvas's own hands, so there is nothing there for
+	// the door to open.
+	const interactive = decl.content === 'interactive'
+	const Face = memo(function PluginFace({ object, mirrorVersion, mirrorContent, onEditingChange }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState; onEditingChange?: (editing: boolean) => void }) {
 		const elRef = useRef<HTMLDivElement>(null)
 		// Off-board stages this face mounted and has not detached yet;
 		// swept on unmount so a plugin's forgotten stage never outlives
 		// its object.
 		const stagesRef = useRef(new Set<() => void>())
+		// The host's own reporter, read through a ref: renderFace runs
+		// once per data change and the callback it captures must stay
+		// the live one for as long as the face keeps it.
+		const editingRef = useRef(onEditingChange)
+		useEffect(() => { editingRef.current = onEditingChange }, [onEditingChange])
 		useEffect(() => () => { for (const detach of [...stagesRef.current]) detach() }, [])
 		// Payload identity changes on every fetch; re-render on VALUE
 		// change only, or a plugin's own updatePayload would re-invoke
@@ -97,6 +108,7 @@ export function pluginFaceComponent(pluginId: string, decl: CanvasObjectDecl & {
 				decl.renderFace(el, {
 					...pluginObjectCtx(pluginId, object, stagesRef.current),
 					mirror: fileSource ? { dataUrl: mirrorDataUrl, failed: mirrorFailed } : undefined,
+					setEditing: interactive ? (editing: boolean) => editingRef.current?.(!!editing) : undefined,
 				})
 			} catch (err) {
 				// A plugin's render crash stays inside its own face --
