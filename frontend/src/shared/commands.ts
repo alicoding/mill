@@ -11,6 +11,7 @@ import { CANVAS_COMMANDS } from './canvasCommands'
 import { WORKFLOW_MODE_COMMANDS } from './workflowModeCommands'
 import { SAVE_COMMANDS } from './saveCommands'
 import { SECRETS_COMMANDS } from './secretsCommands'
+import { EXTENSIONS_COMMANDS } from './extensionsCommands'
 import { CLIPBOARD_HISTORY_COMMANDS } from './clipboardHistoryCommands'
 import { CODING_LOOP_COMMANDS } from './codingLoopCommands'
 import { DOCS_SEARCH_COMMANDS } from './docsSearchCommands'
@@ -353,13 +354,16 @@ export const COMMANDS: Command[] = lazyArray(() => [
     // reachable on demand, never a standing tab) -- the palette and the
     // footer link are its entry points.
     id: 'view.docs',
-    menu: { path: 'view', group: 0, order: 8, label: 'menu.items.docs' },
+    menu: { path: 'view', group: 0, order: 9, label: 'menu.items.docs' },
     label: 'commands.view.docs',
     defaultBinding: null,
     run: () => setView({ kind: 'docs' }),
   },
   // review.rules -- split out to shared/reviewCommands.ts.
   ...REVIEW_COMMANDS,
+  // The Extensions surface (goal 0349) -- its nav command and every
+  // row action, in shared/extensionsCommands.ts.
+  ...EXTENSIONS_COMMANDS,
   // settings.open moved to shared/settingsCommands.ts (goal 0222 S2),
   // alongside its own SettingsService import.
   // Per-Configure-tab create commands (goal 0071 G6) -- split out to
