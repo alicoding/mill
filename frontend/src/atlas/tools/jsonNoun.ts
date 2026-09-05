@@ -31,7 +31,7 @@ registerBoardObjectContent('json', {
   // any of that is reachable -- object first, row second, the same
   // rule the table and sheet grids follow. Every canvas opt-out the
   // frame applies is derived from this one fact.
-  content: 'interactive',
+  input: 'interactive',
   shieldHintKey: 'atlas:jsonNoun.shieldHint',
   // Payload.mirrorPath names the real file (goal 0232 S1's contract):
   // shared watch + "Open in default app" enablement.
