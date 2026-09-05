@@ -96,5 +96,9 @@ describe('every shipped example plugin conforms to the platform contract', () =>
       const m = /^settings\.(get|onChange):(.+)$/.exec(door)
       if (m) expect(declaredSettings, `setting "${m[2]}" is declared`).toContain(m[2])
     }
-  })
+    // A larger example's main.js (e.g. one bundling a diagram/markmap
+    // renderer) costs more to transform on first dynamic import than
+    // vitest's 5s default budgets for -- scale with example count/size,
+    // never assume the default is enough.
+  }, 20000)
 })

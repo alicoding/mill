@@ -157,7 +157,25 @@ export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: stri
     // opening the editor. 'layers' (goal 0340) adds the viewer's own
     // layer toggle, so a file that carries layers is readable one layer
     // at a time without opening the editor either.
-    host.setAttribute('data-mxgraph', JSON.stringify({ xml, resize: true, toolbar: 'pages zoom layers', editable: false, lightbox: false }))
+    // No `toolbar` key at all on a board object (goal 0354): the
+    // viewer creates its bar only when one is configured
+    // (viewer.min.js:5086, `null != this.graphConfig.toolbar ?
+    // this.addToolbar() : ...`), and the bar it creates is appended to
+    // document.body and positioned in SCREEN space -- so it escapes the
+    // object's own frame the moment the drawing inside it moves, and no
+    // z-order or anchor inside the object can hold it. An embedded
+    // canvas shows no vendor chrome: the object's own band owns the
+    // controls (the Fit chip, and the "Fit diagram" command on its
+    // menu), and wheel pan / ⌘-wheel zoom stay where goal 0340 put
+    // them. The card page is a document view, not an embed -- it keeps
+    // the viewer's own bar, pages and layers included.
+    host.setAttribute('data-mxgraph', JSON.stringify({
+      xml,
+      resize: true,
+      ...(interactive ? null : { toolbar: 'pages zoom layers' }),
+      editable: false,
+      lightbox: false,
+    }))
     loadDrawioViewer()
       .then((GraphViewer) => {
         if (cancelled) return

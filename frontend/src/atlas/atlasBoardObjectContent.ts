@@ -6,9 +6,9 @@ import type { EditRouteDecl, ObjectSource } from './objectSeams'
 import type { MirrorReadState } from './useAtlasObjectMirrorRead'
 import type { AtlasNounGroup, ExtensionSettingDecl } from './atlasNounRegistry'
 import type { DrawioOverflowReporter } from './drawioInteraction'
-import type { AtlasContentMode } from './atlasActivation'
+import type { AtlasInputMode } from './atlasActivation'
 
-export type { AtlasContentMode }
+export type { AtlasInputMode }
 import { AtlasUnknownKindContent } from './AtlasUnknownKindContent'
 
 // The board-object CONTENT registry -- split out of atlasNounRegistry.ts
@@ -87,7 +87,7 @@ export interface AtlasNounContent {
   }>
   ariaLabelKey: string
   role: 'img' | undefined
-  // content (goal 0354): the ONE input fact a noun declares about its
+  // input (goal 0354): the ONE input fact a noun declares about its
   // own face -- 'static' (the canvas owns every gesture over it: a
   // shape, an image, an ink stroke) or 'interactive' (the face
   // scrolls, selects text, or edits in place: a grid, an embedded
@@ -99,7 +99,7 @@ export interface AtlasNounContent {
   // directly (registerNoun folds a tool's own `content` into the
   // board-object content registry, so both routes reach
   // AtlasBoardObjectNode.tsx as one record).
-  content: AtlasContentMode
+  input: AtlasInputMode
   // shieldHintKey (goal 0341): what the chrome band's tooltip says
   // while this Kind's face is idle -- the first click always selects,
   // but what it buys differs per noun (a diagram starts panning, a PDF
@@ -241,7 +241,7 @@ export const unknownKindContent: AtlasBoardObjectContent = {
   Component: AtlasUnknownKindContent,
   ariaLabelKey: 'unknownKind.aria',
   role: undefined,
-  content: 'static',
+  input: 'static',
   source: { kind: 'board-local' },
   editRoute: { kind: 'none' },
   dragBand: false,
