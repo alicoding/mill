@@ -65,6 +65,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `canvas.zoomIn` | Zoom in | `⌘+` | composition | Always available |
 | `canvas.zoomOut` | Zoom out | `⌘-` | composition | Always available |
 | `capture.note` | Capture a note | — | Global | Always available |
+| `clientcert.delete` | Delete certificate | — | Global | Acts on the selected entity |
+| `clientcert.duplicate` | Duplicate certificate | — | Global | Acts on the selected entity |
+| `clientcert.edit` | Edit certificate | — | Global | Acts on the selected entity |
 | `clipboard.delete` | Delete | — | Global | Acts on the selected clipboard entry |
 | `clipboard.history.open` | Clipboard history | — | Global | Always available |
 | `clipboard.pin` | Pin | — | Global | Acts on the selected clipboard entry |
@@ -89,6 +92,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.mcpserver.listTools` | List tools | — | Global | Acts on the selected entity |
 | `configure.mcpserver.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
 | `configure.new.aiproviders` | New AI provider | — | Global | Always available |
+| `configure.new.certificates` | New client certificate | — | Global | Always available |
 | `configure.new.conversionprofiles` | New conversion profile | — | Global | Always available |
 | `configure.new.decisions` | New decision | — | Global | Always available |
 | `configure.new.execenvs` | New environment | — | Global | Always available |

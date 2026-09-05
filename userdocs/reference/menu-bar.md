@@ -53,6 +53,7 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | New decision | — | `configure.new.decisions` |
 | New environment | — | `configure.new.execenvs` |
 | New AI provider | — | `configure.new.aiproviders` |
+| New client certificate | — | `configure.new.certificates` |
 | New conversion profile | — | `configure.new.conversionprofiles` |
 | New step type | — | `configure.new.steptypes` |
 

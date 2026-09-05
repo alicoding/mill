@@ -73,6 +73,11 @@ const (
 	// WorkflowID are always populated here -- unlike the other resolver
 	// seams, this one only ever fires from inside a real coding-loop run.
 	ContextCodingLoopShell Context = "coding-loop-shell"
+	// ContextClientCertificate is configuresvc's client-certificate
+	// resolver (goal 0306 S1) -- the certificate, key, passphrase and
+	// private CA a host's entity names, read at the moment a request to
+	// that host is made.
+	ContextClientCertificate Context = "client-certificate"
 	// ContextPluginFetch is pluginsvc's host-side secret injection
 	// (ADR-0048, goal 0281): a plugin's api.fetch naming a secretRef
 	// setting, resolved after the guardrail approved the request and
