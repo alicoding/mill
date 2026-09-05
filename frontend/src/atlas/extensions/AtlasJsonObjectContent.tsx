@@ -114,13 +114,25 @@ function frameStyle(hasSize: boolean) {
   return hasSize ? { ...base, width: '100%', height: '100%' } : { ...base, width: TABLE_WIDTH, height: 'auto', maxHeight: TABLE_HEIGHT }
 }
 
-export function AtlasJsonObjectContent({ object, mirrorContent, preview }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState; preview?: boolean }) {
+export function AtlasJsonObjectContent({ object, mirrorContent, preview, onEditingChange }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState; preview?: boolean; onEditingChange?: (editing: boolean) => void }) {
   const { t } = useTranslation('atlas')
   const content = mirrorContent?.content
   const fetchError = mirrorContent?.error ?? ''
   const format: JsonDocFormat = jsonFormatFor(object.Payload?.mirrorPath ?? '')
   const [parsed, setParsed] = useState<FaceState | null>(null)
   const [query, setQuery] = useState('')
+  // The tree has no in-place VALUE editor, so the filter input is this
+  // face's whole editing state (goal 0354): while it holds focus the
+  // board's own shortcuts must stand down, or a typed key reaches the
+  // canvas instead of the field. Reported through an effect rather than
+  // straight from onFocus/onBlur so an unmount while focused (the
+  // object deselected out from under the field) still hands the frame
+  // its `false`, which a blur that never fires would not.
+  const [filterFocused, setFilterFocused] = useState(false)
+  useEffect(() => {
+    onEditingChange?.(filterFocused)
+    return () => onEditingChange?.(false)
+  }, [filterFocused, onEditingChange])
   const [expandToken, setExpandToken] = useState(0)
   const [collapseToken, setCollapseToken] = useState(0)
   const [focusedRow, setFocusedRow] = useState<JsonNode | null>(null)
@@ -197,7 +209,16 @@ export function AtlasJsonObjectContent({ object, mirrorContent, preview }: { obj
             aria-label={t('json.filterLabel')}
             placeholder={t('json.filterLabel')}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.stopPropagation()}
+            // The field owns its own keys (the board must not act on a
+            // typed character), and Escape is the way back out of it --
+            // blurring hands the frame its `editing` false, the same
+            // exit every other face's in-place editor offers.
+            onKeyDown={(e) => {
+              e.stopPropagation()
+              if (e.key === 'Escape') e.currentTarget.blur()
+            }}
+            onFocus={() => setFilterFocused(true)}
+            onBlur={() => setFilterFocused(false)}
             data-testid="atlas-object-json-filter"
           />
           <IconButton

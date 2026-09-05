@@ -12,9 +12,9 @@ const AtlasJsonObjectContent = lazy(() => import('../extensions/AtlasJsonObjectC
 // diagramNoun.ts/sheetNoun.ts/pdfNoun.ts established -- a dropped
 // .json/.yaml/.yml file lands as this object and renders as an
 // indented, collapsible TREE (the form seven of the eight researched
-// inspectors show a document in), never a node-and-edge graph. There is
-// no in-place editing anywhere in the face: "Open in default app" is
-// the editor, and the tree is structure over the same text.
+// inspectors show a document in), never a node-and-edge graph. No VALUE
+// is editable in the face: "Open in default app" is the editor, and the
+// tree is structure over the same text.
 registerBoardObjectContent('json', {
   Component: AtlasJsonObjectContent,
   ariaLabelKey: 'boardObject.jsonAriaLabel',
@@ -26,9 +26,13 @@ registerBoardObjectContent('json', {
   // consume clicks (expand, focus, the row menu) -- the shared chrome
   // band is this Kind's drag surface, same as table/diagram/sheet/pdf.
   dragBand: true,
-  clickShield: true,
+  // The tree scrolls in both axes, its rows take focus and its filter
+  // input takes typing (goal 0354), so the object is selected before
+  // any of that is reachable -- object first, row second, the same
+  // rule the table and sheet grids follow. Every canvas opt-out the
+  // frame applies is derived from this one fact.
+  content: 'interactive',
   shieldHintKey: 'atlas:jsonNoun.shieldHint',
-  wheelContained: true,
   // Payload.mirrorPath names the real file (goal 0232 S1's contract):
   // shared watch + "Open in default app" enablement.
   fileBacked: true,
