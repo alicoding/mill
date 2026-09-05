@@ -99,6 +99,12 @@ this file is the record, a brief is a projection of it.
 - Obvious: `git stash` to set work aside during a conflicted merge.
   Here: never — stash drops `MERGE_HEAD`; commit first, resolve in
   place (goal 0339's builder lost a merge this way).
+- Obvious: a green PR auto-merges on its own. Here: the main ruleset
+  requires the branch UP TO DATE (ADR-0034 amendment; the merge queue
+  is organization-only); after checks pass, `gh pr view <n> --json
+  mergeStateStatus` reading `BEHIND` means `gh pr update-branch <n>`
+  (or merge origin/main in — never rebase + force-push) and one more
+  CI run before auto-merge completes.
 - PR truth: after `gh pr create`, verify with
   `gh pr view <n> --json number,state` and report that output — one
   agent reported a PR that was never created.
