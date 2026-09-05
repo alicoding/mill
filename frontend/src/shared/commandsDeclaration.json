@@ -856,6 +856,26 @@
     "needs": null
   },
   {
+    "id": "diagram.nextPage",
+    "label": "Next page",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "diagram.previousPage",
+    "label": "Previous page",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "docs.search",
     "label": "Search docs",
     "binding": null,
