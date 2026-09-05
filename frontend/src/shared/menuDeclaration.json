@@ -415,6 +415,18 @@
   },
   {
     "menu": "Atlas",
+    "item": "Copy as image",
+    "shortcut": "",
+    "command": "atlas.selection.copyAsImage"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Export as image…",
+    "shortcut": "",
+    "command": "atlas.selection.exportAsImage"
+  },
+  {
+    "menu": "Atlas",
     "item": "Add cards from a folder",
     "shortcut": "",
     "command": "atlas.addFromFolder"
