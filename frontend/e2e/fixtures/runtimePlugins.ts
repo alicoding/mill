@@ -20,6 +20,12 @@ import { RUNTIME_PLUGINS_SERVER_BASE_PORT, RUNTIME_PLUGINS_MCP_BASE_PORT } from 
 // outside every other family's base in serverPorts.ts.
 export const EXAMPLES_PLUGINS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'examples', 'plugins')
 
+// The example plugins every caller gets. Named here rather than copied
+// line by line below so a spec asserting how many rows the Installed
+// list shows can read the number off THIS list instead of keeping its
+// own literal in step with it (the returned installedIds).
+const SHARED_EXAMPLE_PLUGIN_IDS = ['mill-bookmark', 'mill-scribble', 'mill-index', 'mill-request-tester', 'mill-markmap']
+
 // ExtraPlugin -- a fixture plugin a test writes into the copied
 // plugins dir before boot: a manifest object and a main.js source.
 export interface ExtraPlugin {
@@ -47,12 +53,8 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 	// a test can add a deliberately-broken sibling without touching it.
 	const pluginsDir = path.join(dir, 'plugins')
 	mkdirSync(pluginsDir, { recursive: true })
-	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-bookmark'), path.join(pluginsDir, 'mill-bookmark'), { recursive: true })
-	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-scribble'), path.join(pluginsDir, 'mill-scribble'), { recursive: true })
-	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-index'), path.join(pluginsDir, 'mill-index'), { recursive: true })
-	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-request-tester'), path.join(pluginsDir, 'mill-request-tester'), { recursive: true })
-	cpSync(path.join(EXAMPLES_PLUGINS_DIR, 'mill-markmap'), path.join(pluginsDir, 'mill-markmap'), { recursive: true })
-	for (const id of opts.extraExamples ?? []) cpSync(path.join(EXAMPLES_PLUGINS_DIR, id), path.join(pluginsDir, id), { recursive: true })
+	const installedIds = [...SHARED_EXAMPLE_PLUGIN_IDS, ...(opts.extraExamples ?? [])]
+	for (const id of installedIds) cpSync(path.join(EXAMPLES_PLUGINS_DIR, id), path.join(pluginsDir, id), { recursive: true })
 	if (opts.withBroken) {
 		mkdirSync(path.join(pluginsDir, 'broken-one'))
 		writeFileSync(path.join(pluginsDir, 'broken-one', 'manifest.json'), '{not json')
@@ -89,6 +91,9 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 	return {
 		page,
 		pluginsDir,
+		// What this harness put on disk, in copy order: the door a count
+		// assertion reads instead of restating the number.
+		installedIds,
 		async close() {
 			await browser.close()
 			await server.stop()

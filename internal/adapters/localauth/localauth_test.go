@@ -73,3 +73,43 @@ func TestDefaultsFailClosed(t *testing.T) {
 func TestAvailableAnswersWithoutPrompting(t *testing.T) {
 	_ = Available()
 }
+
+// TestCapabilityFor covers the whole truth table of the three
+// prompt-free framework reads: the wording an unlock prompt promises
+// must name only what the Mac in front of the reader can actually do.
+func TestCapabilityFor(t *testing.T) {
+	cases := []struct {
+		deviceOwner, touchID, watch bool
+		want                        Capability
+	}{
+		{false, false, false, CapabilityNone},
+		// A narrower policy cannot be evaluable while the policy Mill
+		// actually evaluates is not; if the framework ever says so,
+		// "none" is still the honest answer, since Authenticate would
+		// fail.
+		{false, true, false, CapabilityNone},
+		{false, false, true, CapabilityNone},
+		{false, true, true, CapabilityNone},
+		{true, false, false, CapabilityPassword},
+		{true, true, false, CapabilityTouchID},
+		{true, false, true, CapabilityWatch},
+		{true, true, true, CapabilityTouchIDAndWatch},
+	}
+	for _, tc := range cases {
+		if got := capabilityFor(tc.deviceOwner, tc.touchID, tc.watch); got != tc.want {
+			t.Errorf("capabilityFor(%v, %v, %v) = %q, want %q", tc.deviceOwner, tc.touchID, tc.watch, got, tc.want)
+		}
+	}
+}
+
+// TestDescribe_DefaultsToNoneWithoutTheFramework pins the fail-closed
+// default every build without LocalAuthentication keeps: no method is
+// claimed where none can be evaluated.
+func TestDescribe_DefaultsToNoneWithoutTheFramework(t *testing.T) {
+	orig := capabilityImpl
+	t.Cleanup(func() { capabilityImpl = orig })
+	capabilityImpl = func() Capability { return CapabilityNone }
+	if got := Describe(); got != CapabilityNone {
+		t.Fatalf("Describe() = %q, want %q", got, CapabilityNone)
+	}
+}

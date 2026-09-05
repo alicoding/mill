@@ -157,7 +157,22 @@ export function useDrawioRendering(ref: RefObject<HTMLElement | null>, xml: stri
     // opening the editor. 'layers' (goal 0340) adds the viewer's own
     // layer toggle, so a file that carries layers is readable one layer
     // at a time without opening the editor either.
-    host.setAttribute('data-mxgraph', JSON.stringify({ xml, resize: true, toolbar: 'pages zoom layers', editable: false, lightbox: false }))
+    // 'toolbar-position': 'bottom' -- the viewer's OWN config key
+    // (GraphViewer.addToolbar reads graphConfig['toolbar-position'];
+    // 'bottom' anchors the bar at the host's bottom edge instead of
+    // overlapping its top). On a board object the top edge is the
+    // shared chrome band -- the object's only drag and right-click
+    // surface -- and the bar is appended to document.body, so no
+    // z-order inside the object could ever win it back. The card
+    // page has no band and keeps the viewer's default top bar.
+    host.setAttribute('data-mxgraph', JSON.stringify({
+      xml,
+      resize: true,
+      toolbar: 'pages zoom layers',
+      ...(interactive ? { 'toolbar-position': 'bottom' } : null),
+      editable: false,
+      lightbox: false,
+    }))
     loadDrawioViewer()
       .then((GraphViewer) => {
         if (cancelled) return

@@ -207,13 +207,35 @@ installed build can catch, and exactly how to verify it there.
   server build where the framework is not compiled in at all, so it
   only reaches the "not set up on this Mac" disabled-toggle path
   (`secrets.spec.ts`). Verify on an installed build: in Secrets, unlock
-  the vault, turn on "Require Touch ID to unlock" and confirm the
-  toggle sticks; lock the vault, press Unlock, and confirm the system
+  the vault, open Secrets > Locking, turn on the unlock requirement and
+  confirm the toggle sticks; lock the vault, press Unlock, and confirm the system
   sheet appears BEFORE the vault opens; cancel it once and confirm the
   vault stays locked with "Unlock cancelled." on screen; authenticate
-  and confirm it opens. On a Mac with no Touch ID enrolled and no
+  and confirm it opens. The checkbox's own label is device-aware, so on
+  a Mac with Touch ID it must read "Ask for Touch ID or your password
+  before unlocking" and on one with only a password "Ask for your
+  password before unlocking". On a Mac with no Touch ID enrolled and no
   password set, confirm the toggle is disabled with "Touch ID or a
   password isn't set up on this Mac."
+- **The vault locking on sleep, screen lock and user switch** (goal
+  0360, `internal/adapters/windowing/locktriggers_darwin.m`) — the
+  three OS notifications behind these
+  (`NSWorkspaceWillSleepNotification` via the toolkit,
+  `com.apple.screenIsLocked` on the distributed centre, and
+  `NSWorkspaceSessionDidResignActiveNotification`) are only posted by a
+  real login session; a server build subscribes none of them, and the
+  policy that consumes them is Go-tested with synthetic triggers
+  instead. Verify on an installed build, in Secrets > Locking with
+  "Lock when this Mac sleeps or the screen locks" on: unlock the vault,
+  press Control-Command-Q to lock the screen, log back in and confirm
+  Secrets shows the locked state. Repeat with the checkbox off and
+  confirm the vault is still unlocked. Then unlock the vault, close the
+  lid (or Apple menu > Sleep), wake the Mac and confirm it locked.
+  With "Lock when switching users" on, unlock the vault, use Fast User
+  Switching to another account and switch back, and confirm it locked.
+  With "Lock when Mill's window is minimized" on, unlock the vault,
+  minimize Mill's window into the Dock, restore it and confirm it
+  locked.
 - **A vault whose key is missing shows the mismatch line, and Start a
   new vault keeps a `.bak`** (goal 0330) — the failure only happens
   against a REAL OS keychain whose contents differ from the vault file

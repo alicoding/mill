@@ -40,11 +40,6 @@ const legacyMasterKeyID = masterKeyPrefix
 // masterKeyIDFor names vaultID's own key slot.
 func masterKeyIDFor(vaultID string) string { return masterKeyPrefix + "." + vaultID }
 
-// defaultAutoLockThreshold matches KeePassXC's own shipped default
-// (goal file, "Unlock: system authentication" -- "KeePassXC's own
-// shipped default is 900s").
-const defaultAutoLockThreshold = 900 * time.Second
-
 // autoLockPollInterval bounds how stale the auto-lock check can be --
 // short enough that "idle past the threshold" is caught promptly,
 // cheap enough (idletime.Seconds shells out to ioreg on macOS) not to
@@ -128,7 +123,7 @@ type SecretService struct {
 // NewConfigureService.
 func NewSecretService(vault secretvault.Vault, credentials credential.Store, store settings.Store) *SecretService {
 	s := &SecretService{vault: vault, credentials: credentials, settings: store}
-	s.stopAutoLock = s.startAutoLock(defaultAutoLockThreshold, autoLockPollInterval)
+	s.stopAutoLock = s.startAutoLock(autoLockPollInterval)
 	return s
 }
 

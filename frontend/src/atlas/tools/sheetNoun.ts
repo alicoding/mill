@@ -31,6 +31,12 @@ registerBoardObjectContent('sheet', {
   // The grid scrolls internally past its natural size -- the shared
   // chrome band is its drag surface, same as table/diagram.
   dragBand: true,
+  // The preview grid scrolls in both axes and a CSV's cells edit in
+  // place (goal 0354), so the object is selected before any of that is
+  // reachable -- object first, cell second, the same rule the table
+  // grid follows. No shieldHintKey: the generic wording is exactly
+  // what this face's first click buys.
+  input: 'interactive',
   // Payload.mirrorPath names the real .xlsx/.csv file this content
   // renders (goal 0232 S1's contract) -- the shared watch subscription
   // and "Open in default app" enablement both key off this flag.

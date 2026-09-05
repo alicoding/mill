@@ -25,9 +25,11 @@ registerBoardObjectContent('pdf', {
   // chrome band is this Kind's only drag surface, same as
   // table/diagram/sheet.
   dragBand: true,
-  clickShield: true,
+  // The viewer scrolls, pages and selects text on its own (goal 0354):
+  // idle it is inert behind the shield, selected it owns the wheel, the
+  // drag and the keys inside its own document.
+  input: 'interactive',
   shieldHintKey: 'atlas:pdfNoun.shieldHint',
-  wheelContained: true,
   // Payload.mirrorPath names the real .pdf file (goal 0232 S1's
   // contract): shared watch + "Open in default app" enablement.
   fileBacked: true,
