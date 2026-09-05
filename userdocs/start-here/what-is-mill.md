@@ -1,3 +1,7 @@
+---
+kind: tutorial
+---
+
 # What is Mill
 
 A script writes new shapes into a `.drawio` file on disk. Drop that file

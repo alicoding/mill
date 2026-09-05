@@ -6,7 +6,7 @@ import { useAppStore } from '../shared/store'
 import { writeClipboardText } from '../shared/clipboardWrite'
 import { openExternalUrl } from '../shared/openExternal'
 import { resolveDocLink } from './docLinks'
-import { adjacentPages, groupDocsIndex, sectionTitleKey, type DocsIndexEntry } from './docsGroups'
+import { adjacentPages, groupDocsIndex, groupOf, groupTitleKey, type DocsIndexEntry } from './docsGroups'
 import { CHECK_ICON_SVG, COPY_ICON_SVG, injectCodeCopyButtons } from './docsCodeCopy'
 import { injectHeadingAnchors, parseHeadings } from './docsHeadings'
 import { useDocsScrollSpy } from './useDocsScrollSpy'
@@ -15,11 +15,6 @@ import DocsNav from './DocsNav'
 import DocsPrevNext from './DocsPrevNext'
 import DocsToc from './DocsToc'
 import styles from './DocsView.module.css'
-
-function dirOf(rel: string): string {
-  const slash = rel.indexOf('/')
-  return slash === -1 ? '' : rel.slice(0, slash)
-}
 
 // Matches CopyDiagnosisButton's own confirm window (shared/CopyDiagnosisButton.tsx)
 // -- the house pattern for "brief confirmed state" every copy action in
@@ -43,7 +38,7 @@ function DocsView({ initialPage }: { initialPage?: string }) {
   useEffect(() => {
     DocsService.DocsIndex()
       .then((entries) => {
-        const list = (entries ?? []).map((e) => ({ rel: e.rel, title: e.title, note: e.note }))
+        const list = (entries ?? []).map((e) => ({ rel: e.rel, title: e.title, note: e.note, kind: e.kind }))
         setIndex(list)
         if (!initialPage && list.length > 0) setPage(list[0].rel)
       })
@@ -74,7 +69,8 @@ function DocsView({ initialPage }: { initialPage?: string }) {
   const groups = useMemo(() => groupDocsIndex(index), [index])
   const { prev, next } = useMemo(() => adjacentPages(index, page), [index, page])
   const currentEntry = index.find((e) => e.rel === page)
-  const currentSectionKey = sectionTitleKey(dirOf(page))
+  const currentGroup = currentEntry ? groupOf(currentEntry) : ''
+  const currentSectionKey = groupTitleKey(currentGroup)
 
   const headings = useMemo(() => parseHeadings(html), [html])
   const htmlWithAnchors = useMemo(
@@ -102,7 +98,7 @@ function DocsView({ initialPage }: { initialPage?: string }) {
             {currentEntry && (
               <header className={styles.pageHeader} data-testid="docs-breadcrumb">
                 <span className={styles.pageHeaderSection}>
-                  {currentSectionKey ? t(currentSectionKey) : dirOf(page)}
+                  {currentSectionKey ? t(currentSectionKey) : currentGroup}
                 </span>
                 <h1 className={styles.pageHeaderTitle}>{currentEntry.title}</h1>
               </header>

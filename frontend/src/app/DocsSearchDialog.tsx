@@ -5,7 +5,7 @@ import { FilteredActionList } from '@primer/react/experimental'
 import { DocsService, type DocSearchEntry } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
 import { useUISignalStore } from '../shared/uiSignalStore'
-import { dirOf, sectionTitleKey } from '../views/docsGroups'
+import { groupOf, groupTitleKey } from '../views/docsGroups'
 import { searchDocs } from '../views/docsSearch'
 import styles from './DocsSearchDialog.module.css'
 import { searchInputTextAssistOff } from '../shared/searchInputProps'
@@ -45,9 +45,10 @@ export function DocsSearchDialog() {
     ? (entries ? searchDocs(entries, query) : [])
     : (entries ?? []).map((e) => ({ rel: e.rel, title: e.title, snippet: '' }))
   const sectionLabel = (rel: string) => {
-    const dir = dirOf(rel)
-    const key = sectionTitleKey(dir)
-    return key ? t(key, { ns: 'views' }) : dir
+    const entry = entries?.find((e) => e.rel === rel)
+    const group = entry ? groupOf(entry) : ''
+    const key = groupTitleKey(group)
+    return key ? t(key, { ns: 'views' }) : group
   }
   const items = results.map((r) => ({
     id: r.rel,
