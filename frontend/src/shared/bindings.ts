@@ -26,6 +26,8 @@ export type {
 } from '../../bindings/github.com/alicoding/mill/internal/services/backupsvc'
 export { BridgeService } from '../../bindings/github.com/alicoding/mill/internal/services/bridgesvc'
 export type {
+  RecordingStep as BrowserRecordingStep,
+  RecordingSummary as BrowserRecordingSummary,
   Status as BridgeStatusInfo,
   TestResult as BridgeTestResult,
 } from '../../bindings/github.com/alicoding/mill/internal/services/bridgesvc/models'

@@ -348,7 +348,8 @@
     },
     "browser": {
       "pair": "Pair a browser",
-      "test": "Test the browser connection"
+      "test": "Test the browser connection",
+      "revealExtension": "Reveal the extension folder"
     },
     "capture": {
       "note": "Capture a note"

@@ -2641,6 +2641,97 @@
       "Complexity": "advanced"
     },
     {
+      "ID": "process-browser-replay",
+      "Kind": "process",
+      "Label": "Replay in the browser",
+      "Description": "Runs a recorded browser flow in your paired browser, signed in as you are.",
+      "ConfigFields": [
+        {
+          "Key": "recording",
+          "Label": "Recording",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The flow exported as JSON from the browser's own recorder. Import it rather than typing it.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        },
+        {
+          "Key": "parameters",
+          "Label": "Parameters",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Values to replace in the recording before it runs, each naming one step and one of its fields.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        },
+        {
+          "Key": "extract",
+          "Label": "Extract",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Text to read back out of the page, each naming a step that waits for the element to read.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        },
+        {
+          "Key": "timeoutSeconds",
+          "Label": "Timeout (seconds)",
+          "Type": "number",
+          "Required": false,
+          "Default": "60",
+          "Description": "How long the whole flow may take before the run fails.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "browser",
+          "Label": "Browser",
+          "Type": "options",
+          "Required": false,
+          "Default": "Most recently connected",
+          "Description": "Which paired browser runs the flow.",
+          "Options": [
+            "Most recently connected"
+          ],
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "each step's result, the text extracted, and any downloads",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "kind": "json"
+      },
+      "Effect": "external",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "advanced"
+    },
+    {
       "ID": "process-extract-html",
       "Kind": "process",
       "Label": "Extract HTML section",
@@ -5156,6 +5247,97 @@
         "passthrough": true
       },
       "Effect": "read",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "advanced"
+    },
+    {
+      "ID": "process-browser-replay",
+      "Kind": "process",
+      "Label": "Replay in the browser",
+      "Description": "Runs a recorded browser flow in your paired browser, signed in as you are.",
+      "ConfigFields": [
+        {
+          "Key": "recording",
+          "Label": "Recording",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The flow exported as JSON from the browser's own recorder. Import it rather than typing it.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        },
+        {
+          "Key": "parameters",
+          "Label": "Parameters",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Values to replace in the recording before it runs, each naming one step and one of its fields.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        },
+        {
+          "Key": "extract",
+          "Label": "Extract",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Text to read back out of the page, each naming a step that waits for the element to read.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        },
+        {
+          "Key": "timeoutSeconds",
+          "Label": "Timeout (seconds)",
+          "Type": "number",
+          "Required": false,
+          "Default": "60",
+          "Description": "How long the whole flow may take before the run fails.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "browser",
+          "Label": "Browser",
+          "Type": "options",
+          "Required": false,
+          "Default": "Most recently connected",
+          "Description": "Which paired browser runs the flow.",
+          "Options": [
+            "Most recently connected"
+          ],
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "each step's result, the text extracted, and any downloads",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "kind": "json"
+      },
+      "Effect": "external",
       "Declared": false,
       "PaletteGroup": "",
       "Complexity": "advanced"
