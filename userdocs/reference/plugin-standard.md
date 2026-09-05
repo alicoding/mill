@@ -92,9 +92,39 @@ your plugin feels like part of Mill.
     is open, exists only there. (checked: a face script calling
     `setEditing` without that declaration warns)
 
+23. An MCP server you ship (`contributes.mcpServers`) declares a slug
+    `id`, a `label`, a `command` and its `args`; every secret it needs
+    is `"secretRef:<setting key>"` naming one of your own secretRef
+    settings, never a literal, and never a vault entry — a literal
+    under a name that looks like a credential is refused. (checked)
+
+## Publishing
+
+24. A marketplace is a repository or folder with `.mill/marketplace.json`
+    at its root: `{ "name", "owner": { "name", "url"? }, "plugins":
+    [ { "id", "name", "description", "version", "kinds"?, "sha256"?,
+    "source" } ] }`. `name` is a slug; `mill` is reserved for the
+    extensions Mill ships. A `source` is `{ "kind": "path", "path" }`
+    (a folder beside the index), `{ "kind": "github", "repo", "ref"? }`
+    or `{ "kind": "archive", "url", "sha256"? }`. Two entries may not
+    share an id. (checked when the marketplace is added)
+25. A release is a git tag equal to the version (`v1.2.0` or `1.2.0`)
+    whose assets include `<id>-<version>.zip` — the plugin folder,
+    zipped, with `manifest.json` at its root or one folder down — and
+    `SHA256SUMS`; sign the zip with minisign as `<zip>.minisig` when
+    you can. Mill fetches the asset by that name, for an install and
+    for an update.
+26. Declare the archive's `sha256` in your marketplace entry. What Mill
+    checked is the badge every installed extension wears: **Verified**
+    when the hash matches and a key the user trusts signed it,
+    **Hash-pinned** when only the hash matches, **Unverified** when
+    nothing declared a hash (a branch archive always lands here, and
+    the user must acknowledge it), **Dev** for a folder on their Mac.
+    A hash that does not match refuses the install.
+
 ## Quality gates
 
-23. `go run ./internal/pluginconform <folder>` passes; `npm run
+27. `go run ./internal/pluginconform <folder>` passes; `npm run
     plugin:typecheck` and `npm run plugin:lint` pass. (checked)
 
 ## Checking your own plugin

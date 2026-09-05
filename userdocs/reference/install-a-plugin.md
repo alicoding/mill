@@ -60,6 +60,43 @@ address of a `marketplace.json` file, or a folder path.
 Mill reads a marketplace only when you add it, refresh it, install
 from it, or check for updates. It never reaches out on its own.
 
+### Updates
+
+Mill never looks for a newer version on its own. Open **Extensions →
+Updates** and press **Check for updates**: Mill re-reads every
+marketplace you added, then asks each installed extension's own
+source what it offers now — the marketplace entry it came from, a
+repository's latest release, or the folder you installed it from.
+Only a strictly newer version is listed; a downgrade is never offered.
+
+Each row has **Update**, and **Update all** applies every row at once.
+An update goes through the same door the first install did, with the
+same badge and the same prompt: an unverified update still asks you to
+acknowledge it, so **Update all** leaves those rows for you to press
+one by one. The Updates tab shows a count until you have applied them,
+and the row's **…** menu offers the same **Update** and **Check for
+updates**.
+
+A repository publishes an update as a release whose tag is the
+version and whose asset is named `<id>-<version>.zip`; Mill fetches
+that asset by name. An extension you copied in by hand has no source
+to ask, so it never appears here.
+
+### MCP servers an extension ships
+
+An extension can ship the definition of an MCP server — the command
+that starts it and the environment it needs. Its page lists each one
+under **Contributions → MCP servers** with **Add to Configure**: one
+press creates the MCP Server entity in Configure, ready for a workflow
+to call tools on.
+
+A secret the server needs is named by one of the extension's own
+secret settings, never written into the extension. Pick the secret on
+the extension's **Settings** tab first; the entity is created with a
+reference to it, and Mill resolves the value only when the server is
+started. If no secret is picked yet, **Add to Configure** tells you
+which setting to fill in.
+
 ### Installing by hand
 
 Copying a folder into the plugins folder still works. Open

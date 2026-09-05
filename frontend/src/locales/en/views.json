@@ -645,7 +645,8 @@
       "addsViews": "Add tabs you can open",
       "addsCommands": "Add commands to the palette",
       "addsThemes": "Add color themes you can pick",
-      "addsTools": "Add tools an agent can call"
+      "addsTools": "Add tools an agent can call",
+      "addsMcpServers": "Add MCP servers you can put in Configure"
     },
     "kind": {
       "canvasObjects": "Canvas objects",
@@ -656,7 +657,8 @@
       "views": "Views",
       "commands": "Commands",
       "themes": "Themes",
-      "tools": "Tools"
+      "tools": "Tools",
+      "mcpServers": "MCP servers"
     },
     "tier": {
       "verified": "Verified",
@@ -680,7 +682,9 @@
       "acknowledge": "I understand it runs unreviewed code",
       "confirm": "Install",
       "cancel": "Cancel",
-      "done": "Installed {{name}}. Reload to load it."
+      "done": "Installed {{name}}. Reload to load it.",
+      "updateTitle": "Update {{name}}?",
+      "updateConfirm": "Update"
     },
     "browse": {
       "subtitle": "Extensions your marketplaces offer that you have not installed.",
@@ -703,7 +707,35 @@
     "sourcesRefreshed": "Sources refreshed.",
     "sourcesRefreshFailed": "Couldn't refresh: {{list}}",
     "updates": {
-      "empty": "Everything is up to date."
+      "subtitle": "Mill looks for newer versions only when you ask.",
+      "check": "Check for updates",
+      "checking": "Checking…",
+      "updateAll": "Update all",
+      "notChecked": "Check for updates to see what has a newer version.",
+      "empty": "Everything is up to date.",
+      "checkedAt": "Checked {{when}}",
+      "problems": "Couldn't read: {{list}}",
+      "update": "Update",
+      "updateAria": "Update {{name}}",
+      "versions": "v{{from}} → v{{to}}",
+      "updated": "Updated {{name}} to v{{version}}. Reload to load it.",
+      "updateFailed": "Couldn't update {{name}}: {{error}}",
+      "updatedAll_one": "Updated {{count}} extension. Reload to load it.",
+      "updatedAll_other": "Updated {{count}} extensions. Reload to load them.",
+      "heldForAcknowledgment_one": "{{count}} needs your acknowledgment; press Update on its row.",
+      "heldForAcknowledgment_other": "{{count}} need your acknowledgment; press Update on each row.",
+      "checkDoneNone": "Everything is up to date.",
+      "checkDone_one": "{{count}} update available.",
+      "checkDone_other": "{{count}} updates available.",
+      "checkFailed": "Couldn't check for updates: {{error}}"
+    },
+    "mcpServers": {
+      "heading": "MCP servers",
+      "add": "Add to Configure",
+      "addAria": "Add {{label}} to Configure",
+      "usesSecrets": "Uses {{list}} from its settings",
+      "added": "Added {{label}} to Configure.",
+      "addFailed": "Couldn't add it to Configure: {{error}}"
     }
   },
   "pageMeta": {}

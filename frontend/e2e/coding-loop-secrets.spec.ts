@@ -30,7 +30,11 @@ test('Coding loop secret chain: a vault entry resolves, a typed value resolves, 
   let server: SpawnedServer | undefined
   const browser = await chromium.launch()
   try {
-    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
+    // MILL_CLIPBOARD: 'host' -- this spec writes to the real OS
+    // pasteboard via writeHostClipboardText (fixtures/hostClipboard.ts)
+    // and needs the app's own clipboard reads to see that SAME real
+    // content, not the per-server default in-memory adapter (goal 0356).
+    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir, extraEnv: { MILL_CLIPBOARD: 'host' } })
     const page = await browser.newPage()
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
     await page.goto(`${server.baseURL}/`)

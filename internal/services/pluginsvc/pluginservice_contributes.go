@@ -48,6 +48,9 @@ func validateContributes(pluginID string, capabilities []string, c ManifestContr
 	if problem := validateSecretSources(capabilities, c.SecretSources); problem != "" {
 		return problem
 	}
+	if problem := validateMCPServers(c.Settings, c.MCPServers); problem != "" {
+		return problem
+	}
 	return validateSettingContributions(c.Settings)
 }
 

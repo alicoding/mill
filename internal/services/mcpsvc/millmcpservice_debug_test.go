@@ -29,7 +29,7 @@ import (
 func TestMCPDebugTools_SteppedSessionFullLoop(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	cfg := configuresvc.NewConfigureService(store, comp, credential.New())
+	cfg := configuresvc.NewConfigureService(store, comp, credential.NewInMemory())
 	guard := guardrailsvc.NewGuardrailService(store, comp)
 	dbPath := filepath.Join(t.TempDir(), "exec.db")
 	exec, err := executionsvc.NewExecutionService("sqlite:"+dbPath, comp, guard)

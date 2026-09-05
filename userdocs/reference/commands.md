@@ -45,6 +45,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.focusPrevious` | Focus previous card | `⇧TAB` | atlas | Always available |
 | `atlas.group.selection` | Group into a new area | `G` | atlas | Always available |
 | `atlas.import` | Import atlas | — | atlas | Always available |
+| `atlas.json.copyKey` | Copy key | — | atlas | Acts on the selected tree row |
+| `atlas.json.copyPath` | Copy path | — | atlas | Acts on the selected tree row |
+| `atlas.json.copyValue` | Copy value | `⌘C` | atlas | Acts on the selected tree row |
 | `atlas.jump` | Jump to a card or object | `⌘K` | atlas | Always available |
 | `atlas.matrix` | Open traceability matrix | — | atlas | Always available |
 | `atlas.minimap.toggle` | Toggle minimap | — | atlas | Always available |
@@ -122,21 +125,26 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `docs.search` | Search docs | — | Global | Always available |
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
+| `extension.addMcpServer` | Add to Configure | — | Global | Acts on the selected entity |
+| `extension.checkUpdates` | Check for updates | — | Global | Acts on the selected entity |
 | `extension.disable` | Turn off | — | Global | Acts on the selected entity |
 | `extension.enable` | Turn on | — | Global | Acts on the selected entity |
 | `extension.refreshSources` | Extensions: refresh sources | — | Global | Always available |
 | `extension.remove` | Remove | — | Global | Acts on the selected entity |
 | `extension.reveal` | Reveal folder | — | Global | Acts on the selected entity |
+| `extension.update` | Update | — | Global | Acts on the selected entity |
+| `extensions.checkUpdates` | Extensions: check for updates | — | Global | Always available |
 | `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
 | `extensions.open` | Extensions | `⌘⇧X` | Global | Always available |
 | `extensions.sources` | Extensions: marketplace sources | — | Global | Always available |
+| `extensions.updateAll` | Extensions: update all | — | Global | Conditional — available only in a matching state |
 | `help.openDataFolder` | Open data folder | — | Global | Always available |
 | `help.reportIssue` | Report an issue… | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
-| `listGrid.copyRows` | Copy selected rows | — | Global | Acts on the selected listGrid |
-| `listGrid.deleteColumn` | Delete selected column | — | Global | Acts on the selected listGrid |
-| `listGrid.deleteRows` | Delete selected rows | — | Global | Acts on the selected listGrid |
-| `listGrid.search` | Find in this list | `⌘F` | Global | Acts on the selected listGrid |
+| `listGrid.copyRows` | Copy selected rows | — | Global | Acts on the selected table rows |
+| `listGrid.deleteColumn` | Delete selected column | — | Global | Acts on the selected table rows |
+| `listGrid.deleteRows` | Delete selected rows | — | Global | Acts on the selected table rows |
+| `listGrid.search` | Find in this list | `⌘F` | Global | Acts on the selected table rows |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `object.rename` | Rename | — | atlas | Always available |
 | `output.copy` | Copy output | — | Global | Conditional — available only in a matching state |
