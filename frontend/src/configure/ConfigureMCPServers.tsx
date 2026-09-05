@@ -15,6 +15,7 @@ import { refreshMCPServers, useConfigureEntityStore } from '../shared/configureE
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { entityRowContext } from '../shared/entityRowCommands'
+import { useEntityActionError } from '../shared/entityActionErrorStore'
 import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
@@ -51,6 +52,9 @@ function argsToRows(args: string[] | null | undefined): string[] {
 // are this entity's own.
 export function ConfigureMCPServers() {
   const { t } = useTranslation('configure')
+  // A row action's refusal, recorded by the command that met it
+  // (shared/entityActionErrorStore.ts, goal 0346).
+  const rowActionError = useEntityActionError('mcpserver')
   // Store-shared (refreshMCPServers, shared/configureEntityStore.ts) --
   // see ConfigureLists.tsx's identical comment (goal 0017 P1-1).
   const servers = useConfigureEntityStore((s) => s.mcpServers)
@@ -238,10 +242,10 @@ export function ConfigureMCPServers() {
       importTestId="import-mcpserver"
       onImportFile={importExport.handleImportFile}
       onImportClick={importExport.openImportPicker}
-      importErrorNode={importExport.importError && (
+      importErrorNode={(importExport.importError ?? rowActionError) && (
         <Stack direction="horizontal" gap="condensed" align="center">
-          <Text as="p" size="small" className={styles.error} data-testid="import-mcpserver-error">{importExport.importError}</Text>
-          <CopyDiagnosisButton error={importExport.importError} testId="import-mcpserver-copy-diagnosis" />
+          <Text as="p" size="small" className={styles.error} data-testid="import-mcpserver-error">{importExport.importError ?? rowActionError}</Text>
+          <CopyDiagnosisButton error={(importExport.importError ?? rowActionError)!} testId="import-mcpserver-copy-diagnosis" />
         </Stack>
       )}
       restorable={seedLifecycle.restorable}

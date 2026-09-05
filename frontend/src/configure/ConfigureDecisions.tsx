@@ -16,6 +16,7 @@ import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { entityRowContext } from '../shared/entityRowCommands'
+import { useEntityActionError } from '../shared/entityActionErrorStore'
 import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
@@ -56,6 +57,9 @@ function emptyOutput(): OutputField {
 // trailing ⋯ menu.
 export function ConfigureDecisions() {
   const { t } = useTranslation('configure')
+  // A row action's refusal, recorded by the command that met it
+  // (shared/entityActionErrorStore.ts, goal 0346).
+  const rowActionError = useEntityActionError('decision')
   const CATEGORY_LABEL = decisionCategoryLabelFor(t)
   // Store-shared (refreshDecisions, shared/configureEntityStore.ts) --
   // see ConfigureLists.tsx's identical comment (goal 0017 P1-1).
@@ -310,8 +314,8 @@ export function ConfigureDecisions() {
       <Text as="p" size="small" className={styles.muted}>
         {t('configureDecisions.pageDescription')}
       </Text>
-      {importError && (
-        <Text as="p" size="small" className={styles.error} data-testid="import-decision-error">{importError}</Text>
+      {(importError ?? rowActionError) && (
+        <Text as="p" size="small" className={styles.error} data-testid="import-decision-error">{importError ?? rowActionError}</Text>
       )}
 
       {formOpen && (

@@ -13,6 +13,7 @@ import { refreshAIProviders, useConfigureEntityStore } from '../shared/configure
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { entityRowContext } from '../shared/entityRowCommands'
+import { useEntityActionError } from '../shared/entityActionErrorStore'
 import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
@@ -55,6 +56,9 @@ const emptyValues = { label: '', kind: AIProviderKind.KindOpenAICompat as string
 // list columns are this entity's own.
 export function ConfigureAIProviders() {
   const { t } = useTranslation('configure')
+  // A row action's refusal, recorded by the command that met it
+  // (shared/entityActionErrorStore.ts, goal 0346).
+  const rowActionError = useEntityActionError('aiprovider')
   const KIND_LABEL = kindLabelFor(t)
   const providers = useConfigureEntityStore((s) => s.aiProviders)
   const [fields, setFields] = useState<Field[]>([])
@@ -184,8 +188,8 @@ export function ConfigureAIProviders() {
       importTestId="import-aiprovider"
       onImportFile={importExport.handleImportFile}
       onImportClick={importExport.openImportPicker}
-      importErrorNode={importExport.importError && (
-        <Text as="p" size="small" className={styles.error} data-testid="import-aiprovider-error">{importExport.importError}</Text>
+      importErrorNode={(importExport.importError ?? rowActionError) && (
+        <Text as="p" size="small" className={styles.error} data-testid="import-aiprovider-error">{importExport.importError ?? rowActionError}</Text>
       )}
       restorable={seedLifecycle.restorable}
       onRestore={(id) => ConfigureService.RestoreAIProvider(id).then(() => { refetch(); seedLifecycle.refresh() }).catch((err) => importExport.setImportError(String(err)))}

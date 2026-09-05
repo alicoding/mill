@@ -12,6 +12,7 @@ import { refreshSecretTitles } from '../shared/secretTitleCache'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { entityRowContext } from '../shared/entityRowCommands'
+import { useEntityActionError } from '../shared/entityActionErrorStore'
 import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
@@ -27,6 +28,9 @@ import styles from '../shared/ListCard.module.css'
 // those controls.
 export function ConfigureSecretSources() {
   const { t } = useTranslation('configure')
+  // A row action's refusal, recorded by the command that met it
+  // (shared/entityActionErrorStore.ts, goal 0346).
+  const rowActionError = useEntityActionError('secretsource')
   const sources = useConfigureEntityStore((s) => s.secretSources)
   const [viewMode, setViewMode] = useViewMode('mill-view-secretsources')
   const [formOpen, setFormOpen] = useState(false)
@@ -118,6 +122,9 @@ export function ConfigureSecretSources() {
       headingText={t('configureSecretSources.heading')}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
+      importErrorNode={rowActionError && (
+        <Text as="p" size="small" className={styles.error} data-testid="secretsource-row-error">{rowActionError}</Text>
+      )}
       primaryLabel={t('configureSecretSources.newSource')}
       primaryTestId="new-secretsource"
       onPrimary={startCreate}

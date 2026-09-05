@@ -18,6 +18,7 @@ import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { entityRowContext } from '../shared/entityRowCommands'
+import { useEntityActionError } from '../shared/entityActionErrorStore'
 import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
@@ -36,6 +37,9 @@ import PageContainer from '../shared/PageContainer'
 // against these same Columns/Rows.
 export function ConfigureLists() {
   const { t } = useTranslation('configure')
+  // A row action's refusal, recorded by the command that met it
+  // (shared/entityActionErrorStore.ts, goal 0346).
+  const rowActionError = useEntityActionError('list')
   // Store-shared (refreshLists, shared/configureEntityStore.ts), the
   // same one-fetch-many-consumers pattern store.ts's workflows/requests
   // already use -- so App.tsx's mill-data-changed handler pushing a
@@ -225,8 +229,8 @@ export function ConfigureLists() {
           </Button>
         </Stack>
       </Stack>
-      {importError && (
-        <Text as="p" size="small" className={styles.error} data-testid="import-list-error">{importError}</Text>
+      {(importError ?? rowActionError) && (
+        <Text as="p" size="small" className={styles.error} data-testid="import-list-error">{importError ?? rowActionError}</Text>
       )}
 
       {formOpen && (

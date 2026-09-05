@@ -11,6 +11,7 @@ import { refreshConversionProfiles, useConfigureEntityStore } from '../shared/co
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { entityRowContext } from '../shared/entityRowCommands'
+import { useEntityActionError } from '../shared/entityActionErrorStore'
 import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
@@ -27,6 +28,9 @@ import { background } from '../shared/background'
 // difference is visible before a step is configured.
 export function ConfigureConversionProfiles() {
   const { t } = useTranslation('configure')
+  // A row action's refusal, recorded by the command that met it
+  // (shared/entityActionErrorStore.ts, goal 0346).
+  const rowActionError = useEntityActionError('conversionprofile')
   const profiles = useConfigureEntityStore((s) => s.conversionProfiles)
   const [ruleSets, setRuleSets] = useState<RuleSet[]>([])
   const [viewMode, setViewMode] = useViewMode('mill-view-conversionprofiles')
@@ -117,6 +121,9 @@ export function ConfigureConversionProfiles() {
       headingText={t('configureConversionProfiles.heading')}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
+      importErrorNode={rowActionError && (
+        <Text as="p" size="small" className={styles.error} data-testid="conversionprofile-row-error">{rowActionError}</Text>
+      )}
       primaryLabel={t('configureConversionProfiles.newProfile')}
       primaryTestId="new-conversionprofile"
       onPrimary={startCreate}

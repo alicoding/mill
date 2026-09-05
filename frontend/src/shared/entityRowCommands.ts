@@ -2,6 +2,7 @@ import type { Command } from './commands'
 import type { CommandContext } from './commandContext'
 import { entityContext } from './commandContext'
 import { deleteWithUndo } from './deleteWithUndo'
+import { useEntityActionErrorStore } from './entityActionErrorStore'
 import { downloadJSON } from './downloadJSON'
 import { describeSeedReset, type SeedLike } from './seedLifecycle'
 
@@ -105,8 +106,10 @@ export function entityRowCommands<T extends EntityRowItem>(family: EntityRowFami
 
   // Every command below shares this shape: it needs an 'entity' context,
   // and it is honestly unavailable when that context names a different
-  // family or a row this family no longer holds. A rejected RPC needs no
-  // catch here -- runCommand posts the one error notice (shared/commands.ts).
+  // family or a row this family no longer holds. A rejected RPC is
+  // recorded beside the family's own list (shared/entityActionErrorStore.ts)
+  // AND rethrown, so runCommand posts the footer's error pill too -- one
+  // refusal, the two places a reader could be looking.
   const make = (suffix: string, label: string, run: (item: T) => void | Promise<unknown>, available?: (item: T) => boolean): Command => ({
     id: `${family.namespace}.${suffix}`,
     label,
@@ -117,10 +120,17 @@ export function entityRowCommands<T extends EntityRowItem>(family: EntityRowFami
       if (!item) return false
       return available ? available(item) : true
     },
-    run: (ctx) => {
+    run: async (ctx) => {
       const item = find(ctx)
       if (!item) return
-      return run(item)
+      const errors = useEntityActionErrorStore.getState()
+      errors.clearError(family.entity)
+      try {
+        await run(item)
+      } catch (err) {
+        errors.setError(family.entity, String(err))
+        throw err
+      }
     },
   })
 

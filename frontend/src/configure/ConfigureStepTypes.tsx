@@ -13,6 +13,7 @@ import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { entityRowContext } from '../shared/entityRowCommands'
+import { useEntityActionError } from '../shared/entityActionErrorStore'
 import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
@@ -48,6 +49,9 @@ function engineLabelFor(t: (key: string) => string): Record<Engine, string> {
 // export/import recipe every Configure family page already follows.
 export function ConfigureStepTypes() {
   const { t } = useTranslation('configure')
+  // A row action's refusal, recorded by the command that met it
+  // (shared/entityActionErrorStore.ts, goal 0346).
+  const rowActionError = useEntityActionError('steptype')
   const ENGINE_LABEL = engineLabelFor(t)
   const stepTypes = useConfigureEntityStore((s) => s.declaredStepTypes)
   const nodeTypes = useAppStore((s) => s.nodeTypes)
@@ -195,8 +199,8 @@ export function ConfigureStepTypes() {
       <Text as="p" size="small" className={styles.muted}>
         {t('configureStepTypes.pageDescription')}
       </Text>
-      {importError && (
-        <Text as="p" size="small" className={styles.error} data-testid="import-steptype-error">{importError}</Text>
+      {(importError ?? rowActionError) && (
+        <Text as="p" size="small" className={styles.error} data-testid="import-steptype-error">{importError ?? rowActionError}</Text>
       )}
 
       {formOpen && (

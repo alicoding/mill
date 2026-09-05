@@ -13,6 +13,7 @@ import { authLabelFor } from './authTypeLabels'
 import { refreshRequests, useAppStore } from '../shared/store'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { entityRowContext } from '../shared/entityRowCommands'
+import { useEntityActionError } from '../shared/entityActionErrorStore'
 import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
@@ -40,6 +41,9 @@ import PageContainer from '../shared/PageContainer'
 // trailing ⋯ menu.
 export function ConfigureRequests() {
   const { t } = useTranslation('configure')
+  // A row action's refusal, recorded by the command that met it
+  // (shared/entityActionErrorStore.ts, goal 0346).
+  const rowActionError = useEntityActionError('request')
   const AUTH_LABEL_MAP = authLabelFor(t)
   const requests = useAppStore((s) => s.requests)
   const openWorkTab = useAppStore((s) => s.openWorkTab)
@@ -183,8 +187,8 @@ export function ConfigureRequests() {
           {newIntegrationMenu}
         </Stack>
       </Stack>
-      {importError && (
-        <Text as="p" size="small" className={styles.error} data-testid="import-request-error">{importError}</Text>
+      {(importError ?? rowActionError) && (
+        <Text as="p" size="small" className={styles.error} data-testid="import-request-error">{importError ?? rowActionError}</Text>
       )}
 
       {requests === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}

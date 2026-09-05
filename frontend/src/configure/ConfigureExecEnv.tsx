@@ -13,6 +13,7 @@ import { envToRows, execEnvAdvancedIsSet, rowsToEnv, type EnvRow } from './execE
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { entityRowContext } from '../shared/entityRowCommands'
+import { useEntityActionError } from '../shared/entityActionErrorStore'
 import { runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
@@ -70,6 +71,9 @@ function profileCaptionFor(t: (key: string) => string): Partial<Record<ProfileMo
 // equivalent), only the list columns and this form are its own.
 export function ConfigureExecEnv() {
   const { t } = useTranslation('configure')
+  // A row action's refusal, recorded by the command that met it
+  // (shared/entityActionErrorStore.ts, goal 0346).
+  const rowActionError = useEntityActionError('execenv')
   const SHELL_LABEL = shellLabelFor(t)
   const PROFILE_LABEL = profileLabelFor(t)
   const PROFILE_CAPTION = profileCaptionFor(t)
@@ -237,8 +241,8 @@ export function ConfigureExecEnv() {
       importTestId="import-execenv"
       onImportFile={importExport.handleImportFile}
       onImportClick={importExport.openImportPicker}
-      importErrorNode={importExport.importError && (
-        <Text as="p" size="small" className={styles.error} data-testid="import-execenv-error">{importExport.importError}</Text>
+      importErrorNode={(importExport.importError ?? rowActionError) && (
+        <Text as="p" size="small" className={styles.error} data-testid="import-execenv-error">{importExport.importError ?? rowActionError}</Text>
       )}
       restorable={seedLifecycle.restorable}
       onRestore={(id) => ConfigureService.RestoreExecEnv(id).then(() => { refetch(); seedLifecycle.refresh() }).catch((err) => importExport.setImportError(String(err)))}
