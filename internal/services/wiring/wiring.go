@@ -352,6 +352,30 @@ func WireSystemEventNotifications(exec *executionsvc.ExecutionService, triggers 
 	})
 }
 
+// WireAtlasWorkflowRunners gives atlassvc's package-level runner seams
+// (docs/adr/0038 decision 4, goal 0061 slice C; card actions, goal
+// 0084) a real ExecutionService -- same late-bound-setter shape as
+// ExecutionService.WireChildWorkflowRunner, atlassvc never imports
+// executionsvc directly. Kind is RunKindTriggered for "Update now"
+// (production semantics: a disabled or never-published refresh
+// workflow is rejected, same requirement child-workflow nodes already
+// hold their callable target to); card actions carry the
+// source-card-recording entry so the cycle guard covers action runs.
+func WireAtlasWorkflowRunners(exec *executionsvc.ExecutionService) {
+	atlassvc.SetWorkflowRunner(func(workflowID string) (string, bool, bool, error) {
+		summary, err := exec.RunWorkflow(workflowID, executionsvc.RunKindTriggered, nil)
+		if err != nil {
+			return "", false, false, err
+		}
+		pending := summary.Pending != nil
+		return summary.RunID, !pending && summary.Status == "SUCCESS", pending, nil
+	})
+	atlassvc.SetCardActionRunner(func(workflowID, sourceCardID string, values map[string]string, payload string) error {
+		_, err := exec.RunWorkflowForAtlasCard(workflowID, sourceCardID, values, payload)
+		return err
+	})
+}
+
 // publishSystemEventNotification maps one SystemEvent to the
 // notification spine's Event shape -- copy states what happened, never
 // the run's own payload (ux-writing.md: says what waits, not the data

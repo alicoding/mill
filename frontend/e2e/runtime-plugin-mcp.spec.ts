@@ -3,7 +3,7 @@ import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { launchWithPlugins } from './fixtures/runtimePlugins'
 import { connectMCPClient } from './mcpTestClient'
 import { RUNTIME_PLUGIN_MCP_SERVER_BASE_PORT, RUNTIME_PLUGIN_MCP_MCP_BASE_PORT } from './fixtures/serverPorts'
-import { openSettings, pluginRow } from './fixtures/settingsNav'
+import { openExtensions, pluginRow } from './fixtures/settingsNav'
 
 // Plugin contributions over MCP (goal 0324): what a person can reach
 // in the app, an agent can reach over the wire -- through the real MCP
@@ -58,7 +58,7 @@ test('turning a plugin off in Settings removes its tool from the MCP tool list, 
 		await page.goto('/')
 		expect(await toolNames(client)).toContain('plugin_mill-textcase_change_text_case')
 
-		await openSettings(page, 'extensions')
+		await openExtensions(page)
 		const row = pluginRow(page, 'mill-textcase')
 		await row.scrollIntoViewIfNeeded()
 		await row.locator('[data-testid="extensions-plugin-toggle"]').click()

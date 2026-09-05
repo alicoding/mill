@@ -5,6 +5,7 @@ import { assignDebugWorkflowHotkey } from './hotkeyDebugKnob'
 import { workflowRow, activePanel, dragBetweenHandles, dragPaletteItemToCanvas } from './fixtures/canvas'
 import { waitForViewportStable } from './fixtures/animation'
 import { paletteDialog } from './fixtures/palette'
+import { gotoAppReady } from './fixtures/appReady'
 
 // Exercises the ⌘K command palette (docs/goals/0015-summon-quick-invoke.md,
 // app/CommandPalette.tsx) over real Go bindings (Wails3 server mode),
@@ -133,7 +134,10 @@ test('the palette list is height-bounded with internal scroll, not the Dialog gr
 })
 
 test('Meta+K opens the palette; typing filters to a command and shows its effective shortcut', async ({ page }) => {
-  await page.goto('/')
+  // Shortcut-first: the very next action is a keypress, so the app's
+  // mount barrier is required here (gotoAppReady), not a bare goto --
+  // page.goto() resolving is navigation, not App.tsx's listener attach.
+  await gotoAppReady(page)
 
   await expect(paletteDialog(page)).toHaveCount(0)
   await page.keyboard.press('Meta+k')
