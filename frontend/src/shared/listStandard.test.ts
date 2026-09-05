@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
-  DEFAULT_LIST_VIEW_STATE, LIST_PAGE_SIZE, availableSorts, clampPage, listCountLabel, listStateKey,
-  pageCountFor, pageItems, readListState, sortItems, splitExamples, writeListState,
+  DEFAULT_LIST_VIEW_STATE, LIST_PAGE_SIZE, activeFilterCount, availableSorts, clampPage, fillSeries,
+  filterGridRows, listCountLabel, listStateKey, nextSortDirection,
+  pageCountFor, pageItems, readListState, sortGridRows, sortItems, splitExamples, writeListState,
   type ListStateStorage,
 } from './listStandard'
+import type { GridColumn, GridRow } from './listGridTypes'
 
 const item = (label: string, extra: Partial<{ updatedAt: string; createdAt: string; builtIn: boolean }> = {}) =>
   ({ label, ...extra })
@@ -149,5 +151,50 @@ describe('list view state', () => {
   it('is inert when there is no storage at all', () => {
     expect(readListState('workflows', null)).toEqual(DEFAULT_LIST_VIEW_STATE)
     expect(() => writeListState('workflows', { sort: 'name', page: 2 }, null)).not.toThrow()
+  })
+})
+
+// The grid's own sort/filter/fill composition (goal 0349 S4).
+describe('grid row sort, filter and fill series', () => {
+  const columns: GridColumn[] = [
+    { Key: 'name', Label: 'Name', Type: 'text', Options: null, OptionColors: null },
+    { Key: 'qty', Label: 'Qty', Type: 'number', Options: null, OptionColors: null },
+    { Key: 'due', Label: 'Due', Type: 'date', Options: null, OptionColors: null },
+  ]
+  const row = (id: string, name: string, qty: string, due = ''): GridRow => ({ ID: id, Status: 'active', Values: { name, qty, due } })
+  const rows = [row('a', 'Bolt', '10'), row('b', 'Anvil', '2'), row('c', '', ''), row('d', 'Cog', '30')]
+
+  it('cycles a column through ascending, descending and unsorted', () => {
+    expect(nextSortDirection(undefined)).toBe('asc')
+    expect(nextSortDirection('asc')).toBe('desc')
+    expect(nextSortDirection('desc')).toBeUndefined()
+  })
+
+  it('sorts a number column numerically and a text column case-insensitively, blanks last both ways', () => {
+    expect(sortGridRows(rows, columns, { key: 'qty', direction: 'asc' }).map((r) => r.ID)).toEqual(['b', 'a', 'd', 'c'])
+    expect(sortGridRows(rows, columns, { key: 'qty', direction: 'desc' }).map((r) => r.ID)).toEqual(['d', 'a', 'b', 'c'])
+    expect(sortGridRows(rows, columns, { key: 'name', direction: 'asc' }).map((r) => r.ID)).toEqual(['b', 'a', 'd', 'c'])
+    expect(sortGridRows(rows, columns, null)).toBe(rows)
+  })
+
+  it('filters text by substring and a number column by an inclusive range', () => {
+    expect(filterGridRows(rows, columns, { name: { contains: 'o' } }).map((r) => r.ID)).toEqual(['a', 'd'])
+    expect(filterGridRows(rows, columns, { qty: { min: '10' } }).map((r) => r.ID)).toEqual(['a', 'd'])
+    expect(filterGridRows(rows, columns, { qty: { min: '2', max: '10' } }).map((r) => r.ID)).toEqual(['a', 'b'])
+    expect(filterGridRows(rows, columns, { qty: {} })).toBe(rows)
+    expect(activeFilterCount({ qty: {}, name: { contains: 'o' } })).toBe(1)
+  })
+
+  it('intersects two columns’ filters rather than unioning them', () => {
+    expect(filterGridRows(rows, columns, { name: { contains: 'o' }, qty: { max: '10' } }).map((r) => r.ID)).toEqual(['a'])
+  })
+
+  it('continues a numeric or date progression, and refuses anything that is not one', () => {
+    expect(fillSeries(['1', '3'], 3, 'number')).toEqual(['5', '7', '9'])
+    expect(fillSeries(['2026-01-01', '2026-01-03'], 2, 'date')).toEqual(['2026-01-05', '2026-01-07'])
+    expect(fillSeries(['1'], 3, 'number')).toBeNull()
+    expect(fillSeries(['1', '2', '4'], 2, 'number')).toBeNull()
+    expect(fillSeries(['a', 'b'], 2, 'text')).toBeNull()
+    expect(fillSeries(['5', '5'], 2, 'number')).toBeNull()
   })
 })

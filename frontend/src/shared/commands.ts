@@ -19,6 +19,7 @@ import { ATLAS_CREATE_COMMANDS } from './atlasCreateCommands'
 import { ATLAS_NAV_COMMANDS } from './atlasNavCommands'
 import { HELP_COMMANDS } from './helpCommands'
 import { ROW_COMMANDS } from './rowCommands'
+import { LIST_GRID_COMMANDS } from './listGridCommands'
 import { CLIENT_CERT_COMMANDS } from './clientCertCommands'
 import { CONFIGURE_ROW_COMMANDS } from './configureRowCommands'
 import { INVENTORY_ROW_COMMANDS } from './inventoryRowCommands'
@@ -392,6 +393,7 @@ export const COMMANDS: Command[] = lazyArray(() => [
   // to point at, and each declares `needs`, so the palette offers one
   // only when ambientContext() resolves that kind.
   ...ROW_COMMANDS,
+  ...LIST_GRID_COMMANDS,
   ...CLIENT_CERT_COMMANDS,
   // Every Configure entity family's row actions, minted one family at a
   // time by shared/entityRowCommands.ts (goal 0346), plus the same

@@ -46,6 +46,22 @@ export function useListSchemaEdits(listID: string, columns: GridColumn[], rows: 
 
   const commitCell = (row: GridRow, key: string, value: string): Promise<void> => updateRowValues(row, { [key]: value })
 
+  // appendRowsWithValues creates rows at the END, in order, each with
+  // its values already set -- the door a paste that overflows the last
+  // row goes through (goal 0349 S4). Sequential, never concurrent:
+  // AddListRowAt appends to the record it re-reads, so parallel calls
+  // would race each other's read-modify-write.
+  const appendRowsWithValues = async (valueMaps: Record<string, string>[]): Promise<void> => {
+    try {
+      for (const values of valueMaps) {
+        await ConfigureService.AddListRowAt(listID, values, -1)
+      }
+      clearThen()
+    } catch (err) {
+      report(err)
+    }
+  }
+
   const insertRowAt = (index: number) => {
     ConfigureService.AddListRowAt(listID, {}, index).then(clearThen).catch(report)
   }
@@ -151,5 +167,5 @@ export function useListSchemaEdits(listID: string, columns: GridColumn[], rows: 
     deprecated: c.Deprecated ?? false,
   })
 
-  return { error, commitCell, updateRowValues, insertRowAt, setRowStatus, deleteRow, insertColumnAt, renameColumn, changeColumn, removeColumn, moveColumn, fieldFor, columns }
+  return { error, commitCell, updateRowValues, appendRowsWithValues, insertRowAt, setRowStatus, deleteRow, insertColumnAt, renameColumn, changeColumn, removeColumn, moveColumn, fieldFor, columns }
 }

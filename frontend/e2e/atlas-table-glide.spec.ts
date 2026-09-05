@@ -2,7 +2,7 @@ import { test, expect } from './fixtures/server'
 import { placeSizedTable } from './fixtures/atlasTable'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
-import { clickGlideCell, editGlideCell, glideCellText } from './fixtures/glideGrid'
+import { clickGlideCell, dragGlideFillHandle, dragGlideRange, editGlideCell, glideCellText } from './fixtures/glideGrid'
 
 // The adopted grid behind the table extension's flag (ADR-0049, goal
 // 0287 slice 0): with "New grid (experimental)" on, a table object
@@ -107,5 +107,36 @@ test('arrow keys with a selected cell never move the table object', async ({ pag
   await page.keyboard.press('ArrowRight')
   await page.keyboard.press('ArrowDown')
   await expect.poll(position).toBe(before)
+  await cleanupGlideTable(page, tableObject)
+})
+
+// Goal 0349 S4: the same fill handle and clipboard paste the List grid
+// has, on the board's own table object -- both mounts are the one
+// shared grid, so both get the library's whole API.
+test('the fill handle continues a series on a board table', async ({ page }) => {
+  const { tableObject, glide } = await landGlideTable(page)
+  await editGlideCell(page, glide, 0, 0, '2')
+  await editGlideCell(page, glide, 1, 0, '4')
+  // A third row for the series to run into.
+  await clickGlideCell(page, glide, 1, 0, { button: 'right' })
+  await page.getByTestId('atlas-projection-insert-row').click()
+  await expect(glide).toHaveAttribute('data-rows', '3')
+
+  await dragGlideRange(page, glide, { row: 0, col: 0 }, { row: 1, col: 0 })
+  await dragGlideFillHandle(page, glide, { row: 1, col: 0 }, { row: 2, col: 0 })
+  await expect(glideCellText(glide, 2, 0)).toHaveText('6')
+  await cleanupGlideTable(page, tableObject)
+})
+
+test('a multi-cell paste applies to a range on a board table', async ({ page }) => {
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  const { tableObject, glide } = await landGlideTable(page)
+  await page.evaluate(() => navigator.clipboard.writeText('Widget\tSmall\nGizmo\tLarge'))
+  await clickGlideCell(page, glide, 0, 0)
+  await page.keyboard.press('ControlOrMeta+v')
+  await expect(glideCellText(glide, 0, 0)).toHaveText('Widget')
+  await expect(glideCellText(glide, 0, 1)).toHaveText('Small')
+  await expect(glideCellText(glide, 1, 0)).toHaveText('Gizmo')
+  await expect(glideCellText(glide, 1, 1)).toHaveText('Large')
   await cleanupGlideTable(page, tableObject)
 })
