@@ -45,6 +45,10 @@ export interface InventoryItem {
   label: string
   labelBadges?: ReactNode
   description?: string
+  // Extra text the list's own search matches, beyond the label and the
+  // description: a row's tags and its field NAMES, so a search finds an
+  // entry by what it carries without any of it being rendered.
+  searchTerms?: string[]
   // A seeded example rather than something the user authored. Drives
   // the Examples group at the bottom of the list (docs/goals/0337); the
   // per-row built-in badge stays a caller-supplied labelBadge.

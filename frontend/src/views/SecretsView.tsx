@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Blankslate } from '@primer/react/experimental'
-import { Button, Checkbox, FormControl, Heading, IconButton, SegmentedControl, Stack, Text } from '@primer/react'
-import { HistoryIcon, KeyIcon, LockIcon, PlusIcon } from '@primer/octicons-react'
+import { Button, Checkbox, FormControl, Heading, IconButton, Label, SegmentedControl, Stack, Text } from '@primer/react'
+import { DownloadIcon, HistoryIcon, KeyIcon, LockIcon, PlusIcon } from '@primer/octicons-react'
 import { SecretService } from '../shared/bindings'
 import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
 import type { SecretSummary } from '../shared/bindings'
@@ -23,6 +23,7 @@ import { SecretsEntryDialog } from '../shared/SecretsEntryDialog'
 import { SecretsDetailDialog } from './SecretsDetailDialog'
 import { SecretsHistoryDialog } from './SecretsHistoryDialog'
 import { SecretsAccessHistoryDialog } from './SecretsAccessHistoryDialog'
+import { SecretsImportDialog } from './SecretsImportDialog'
 import styles from './SecretsView.module.css'
 
 // The secret manager's human-facing surface (goal 0185 S2): browse,
@@ -54,6 +55,10 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   const [formOpen, setFormOpen] = useState(false)
   const [editingID, setEditingID] = useState<string | null>(null)
   const [detailID, setDetailID] = useState<string | null>(null)
+  // The browse list's own search, held here so a tag chip in a row can
+  // set it (goal 0306 S4).
+  const [search, setSearch] = useState('')
+  const [importOpen, setImportOpen] = useState(false)
   const [historyID, setHistoryID] = useState<string | null>(null)
   const [accessHistoryID, setAccessHistoryID] = useState<string | null>(null)
   const [showAccessHistory, setShowAccessHistory] = useState(false)
@@ -242,6 +247,25 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
     entity: 'secret',
     icon: ENTITY_ICON.secret,
     label: s.Title,
+    // A tag is clickable: it narrows the list to everything carrying
+    // it, which is the whole reason to put one on an entry.
+    labelBadges: (s.Tags ?? []).length === 0 ? undefined : (
+      <>
+        {(s.Tags ?? []).map((tag) => (
+          <Label
+            key={tag}
+            as="button"
+            onClick={(e: React.MouseEvent) => { e.stopPropagation(); setSearch(`tag:${tag}`) }}
+            data-testid={`secret-tag-${tag}`}
+          >
+            {tag}
+          </Label>
+        ))}
+      </>
+    ),
+    // The list's search finds an entry by a tag or by the NAME of a
+    // field it carries -- never by a value, which is not here at all.
+    searchTerms: [...(s.Tags ?? []), ...(s.Tags ?? []).map((tag) => `tag:${tag}`), ...(s.FieldNames ?? [])],
     description: s.Username || s.URL || undefined,
     updatedLabel: formatUpdated(s.UpdatedAt),
     updatedAt: s.UpdatedAt,
@@ -282,6 +306,9 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
             onClick={() => { setError(''); void runCommand('secrets.lockVault') }}
             data-testid="secrets-lock"
           />
+          <Button leadingVisual={DownloadIcon} onClick={() => setImportOpen(true)} data-testid="secrets-import">
+            {t('import.button')}
+          </Button>
           <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate} data-testid="secrets-new">
             {t('newSecret')}
           </Button>
@@ -307,6 +334,8 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
         listId="secrets"
         items={items}
         searchPlaceholder={t('searchPlaceholder')}
+        searchQuery={search}
+        onSearchQueryChange={setSearch}
         emptyState={{
           icon: KeyIcon,
           heading: t('emptyHeading'),
@@ -328,9 +357,10 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
           onEdit={() => startEdit(detailID)}
           onHistory={() => setHistoryID(detailID)}
           onAccessHistory={() => setAccessHistoryID(detailID)}
-          onDelete={() => requestDelete(sorted.find((s) => s.ID === detailID) ?? { ID: detailID, Title: detailID, Username: '', URL: '', Tags: '', Kind: Kind.KindText, SourceRef: '', UpdatedAt: '' })}
+          onDelete={() => requestDelete(sorted.find((s) => s.ID === detailID) ?? { ID: detailID, Title: detailID, Username: '', URL: '', Tags: [], FieldNames: [], Kind: Kind.KindText, SourceRef: '', UpdatedAt: '' })}
         />
       )}
+      {importOpen && <SecretsImportDialog onClose={() => setImportOpen(false)} onImported={() => { setImportOpen(false); refresh() }} />}
       {historyID && <SecretsHistoryDialog id={historyID} onClose={() => setHistoryID(null)} />}
       {showAccessHistory && <SecretsAccessHistoryDialog onClose={() => setShowAccessHistory(false)} />}
       {accessHistoryID && (

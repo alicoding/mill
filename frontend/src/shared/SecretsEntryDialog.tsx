@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Dialog, FormControl, IconButton, SegmentedControl, Select, Stack, Text, Textarea, TextInput } from '@primer/react'
+import { Dialog, FormControl, IconButton, SegmentedControl, Select, Stack, Text, Textarea, TextInput, TextInputWithTokens } from '@primer/react'
 import { EyeClosedIcon, EyeIcon, ZapIcon } from '@primer/octicons-react'
 import { SecretService } from './bindings'
 import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
+import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
+import { SecretFieldsEditor } from './SecretFieldsEditor'
 import { refreshSecretTitles } from './secretTitleCache'
 import styles from './SecretsEntryDialog.module.css'
 
@@ -42,7 +44,9 @@ export function SecretsEntryDialog({ editID, defaultTitle, defaultKind, onClose,
   const [password, setPassword] = useState('')
   const [url, setURL] = useState('')
   const [notes, setNotes] = useState('')
-  const [tags, setTags] = useState('')
+  const [tags, setTags] = useState<string[]>([])
+  const [tagDraft, setTagDraft] = useState('')
+  const [fields, setFields] = useState<Field[]>([])
   const [kind, setKind] = useState<Kind>(defaultKind ?? Kind.KindText)
   const [sourceRef, setSourceRef] = useState('')
   const [fromSource, setFromSource] = useState(false)
@@ -61,7 +65,7 @@ export function SecretsEntryDialog({ editID, defaultTitle, defaultKind, onClose,
     if (editID === null) return
     SecretService.RevealSecret(editID).then((e) => {
       setTitle(e.Title); setUsername(e.Username); setPassword(e.Password)
-      setURL(e.URL); setNotes(e.Notes); setTags(e.Tags)
+      setURL(e.URL); setNotes(e.Notes); setTags(e.Tags ?? []); setFields(e.Fields ?? [])
       setKind(e.Kind || Kind.KindText); setSourceRef(e.SourceRef ?? ''); setFromSource((e.SourceRef ?? '') !== '')
       setLoaded(true)
     }).catch((err) => { setError(String(err)); setLoaded(true) })
@@ -72,6 +76,10 @@ export function SecretsEntryDialog({ editID, defaultTitle, defaultKind, onClose,
       .then((p) => { setPassword(p); setRevealed(true) })
       .catch((err) => setError(String(err)))
   }
+
+  // A tag the reader typed but has not committed with Enter still
+  // counts: a save must not silently drop what is on screen.
+  const allTags = () => (tagDraft.trim() === '' ? tags : [...tags, tagDraft.trim()])
 
   const save = async () => {
     if (title.trim() === '') {
@@ -87,8 +95,8 @@ export function SecretsEntryDialog({ editID, defaultTitle, defaultKind, onClose,
     try {
       const stored = fromSource ? sourceRef : ''
       const saved = editID
-        ? await SecretService.UpdateSecret(editID, title, username, password, url, notes, tags, kind, stored)
-        : await SecretService.CreateSecret(title, username, password, url, notes, tags, kind, stored)
+        ? await SecretService.UpdateSecret(editID, title, username, password, url, notes, allTags(), kind, stored, fields)
+        : await SecretService.CreateSecret(title, username, password, url, notes, allTags(), kind, stored, fields)
       await refreshSecretTitles()
       onSaved(saved.ID)
     } catch (err) {
@@ -155,9 +163,26 @@ export function SecretsEntryDialog({ editID, defaultTitle, defaultKind, onClose,
             <FormControl.Label>{t('fields.notes')}</FormControl.Label>
             <TextInput value={notes} onChange={(e) => setNotes(e.target.value)} block data-testid="secret-notes-input" />
           </FormControl>
+          <SecretFieldsEditor fields={fields} setFields={setFields} />
           <FormControl>
             <FormControl.Label>{t('fields.tags')}</FormControl.Label>
-            <TextInput value={tags} onChange={(e) => setTags(e.target.value)} block data-testid="secret-tags-input" />
+            <TextInputWithTokens
+              tokens={tags.map((tag, index) => ({ id: index, text: tag }))}
+              onTokenRemove={(id) => setTags(tags.filter((_, index) => index !== id))}
+              value={tagDraft}
+              onChange={(e) => setTagDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' && e.key !== ',') return
+                e.preventDefault()
+                const next = tagDraft.trim()
+                if (next === '' || tags.includes(next)) { setTagDraft(''); return }
+                setTags([...tags, next])
+                setTagDraft('')
+              }}
+              placeholder={t('fields.addATag')}
+              block
+              data-testid="secret-tags-input"
+            />
           </FormControl>
           {error && <Text as="p" size="small" className={styles.error} data-testid="secret-form-error">{error}</Text>}
         </Stack>

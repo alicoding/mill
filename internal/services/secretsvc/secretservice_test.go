@@ -129,11 +129,11 @@ func TestCreateUpdateDeleteSecret(t *testing.T) {
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)
 	}
-	created, err := s.CreateSecret("Bank", "alice", "pw-fake-1", "https://bank.example", "", "", "", "")
+	created, err := s.CreateSecret("Bank", "alice", "pw-fake-1", "https://bank.example", "", nil, "", "", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
-	updated, err := s.UpdateSecret(created.ID, "Bank", "alice2", "pw-fake-2", "https://bank.example", "note", "", "", "")
+	updated, err := s.UpdateSecret(created.ID, "Bank", "alice2", "pw-fake-2", "https://bank.example", "note", nil, "", "", nil)
 	if err != nil {
 		t.Fatalf("UpdateSecret: %v", err)
 	}
@@ -160,7 +160,7 @@ func TestCreateSecret_RequiresTitle(t *testing.T) {
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)
 	}
-	if _, err := s.CreateSecret("", "u", "p", "", "", "", "", ""); err == nil {
+	if _, err := s.CreateSecret("", "u", "p", "", "", nil, "", "", nil); err == nil {
 		t.Fatal("CreateSecret with no title should fail")
 	}
 }
@@ -170,7 +170,7 @@ func TestResolveSecretValue(t *testing.T) {
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)
 	}
-	created, err := s.CreateSecret("API", "", "resolve-pw-fake", "", "", "", "", "")
+	created, err := s.CreateSecret("API", "", "resolve-pw-fake", "", "", nil, "", "", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
@@ -188,7 +188,7 @@ func TestResolveSecretValue_Locked(t *testing.T) {
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)
 	}
-	created, err := s.CreateSecret("API", "", "resolve-pw-fake", "", "", "", "", "")
+	created, err := s.CreateSecret("API", "", "resolve-pw-fake", "", "", nil, "", "", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestRedactKnownSecrets(t *testing.T) {
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)
 	}
-	if _, err := s.CreateSecret("API", "", "super-secret-fake", "", "", "", "", ""); err != nil {
+	if _, err := s.CreateSecret("API", "", "super-secret-fake", "", "", nil, "", "", nil); err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
 
@@ -294,7 +294,7 @@ func TestCopySecretToClipboard_ClearsAfterDelay(t *testing.T) {
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)
 	}
-	created, err := s.CreateSecret("Site", "u", "clip-pw-fake", "", "", "", "", "")
+	created, err := s.CreateSecret("Site", "u", "clip-pw-fake", "", "", nil, "", "", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
@@ -330,7 +330,7 @@ func TestCopySecretToClipboard_DoesNotClobberNewerCopy(t *testing.T) {
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)
 	}
-	created, err := s.CreateSecret("Site", "u", "clip-pw-fake", "", "", "", "", "")
+	created, err := s.CreateSecret("Site", "u", "clip-pw-fake", "", "", nil, "", "", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}

@@ -7,7 +7,7 @@ func TestLookupVaultSecretByEnvName_MatchesNormalizedTitle(t *testing.T) {
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)
 	}
-	created, err := s.CreateSecret("GitHub Token", "", "lookup-pw-fake", "", "", "", "", "")
+	created, err := s.CreateSecret("GitHub Token", "", "lookup-pw-fake", "", "", nil, "", "", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
@@ -29,7 +29,7 @@ func TestLookupVaultSecretByEnvName_NoMatch(t *testing.T) {
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)
 	}
-	if _, err := s.CreateSecret("Unrelated Entry", "", "pw", "", "", "", "", ""); err != nil {
+	if _, err := s.CreateSecret("Unrelated Entry", "", "pw", "", "", nil, "", "", nil); err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
 

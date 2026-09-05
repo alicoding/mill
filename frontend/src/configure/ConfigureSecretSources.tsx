@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { deleteWithUndo } from './deleteWithUndo'
 import { useTranslation } from 'react-i18next'
 import { Button, FormControl, IconButton, Select, Stack, Text, TextInput } from '@primer/react'
-import { LockIcon, PencilIcon, PlusIcon, TrashIcon } from '@primer/octicons-react'
+import { LockIcon, PencilIcon, PlusIcon, SearchIcon, TrashIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { ConfigureService, SecretService } from '../shared/bindings'
@@ -18,6 +18,7 @@ import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { ConfigureEntityPage } from './ConfigureEntityPage'
+import { SecretsDotenvScanDialog } from '../shared/SecretsDotenvScanDialog'
 import { kindLabel as labelForKind, pathField, problemText } from './secretSourceFields'
 import styles from '../shared/ListCard.module.css'
 
@@ -49,6 +50,7 @@ export function ConfigureSecretSources() {
   // the row states why a source lists nothing right now.
   const [problems, setProblems] = useState<Record<string, string>>({})
   const [error, setError] = useState('')
+  const [scanOpen, setScanOpen] = useState(false)
 
   const refetch = () => {
     void refreshSecretSources()
@@ -138,6 +140,14 @@ export function ConfigureSecretSources() {
       headingText={t('configureSecretSources.heading')}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
+      extraHeaderActions={(
+        <Button leadingVisual={SearchIcon} size="small" onClick={() => setScanOpen(true)} data-testid="secretsource-scan-open">
+          {t('configureSecretSources.findDotenv')}
+        </Button>
+      )}
+      trailingContent={scanOpen ? (
+        <SecretsDotenvScanDialog onClose={() => setScanOpen(false)} onChanged={() => { setScanOpen(false); refetch() }} />
+      ) : undefined}
       primaryLabel={t('configureSecretSources.newSource')}
       primaryTestId="new-secretsource"
       onPrimary={startCreate}

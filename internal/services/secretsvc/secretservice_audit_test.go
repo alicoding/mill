@@ -38,7 +38,7 @@ func TestRevealSecret_RecordsUIRevealAuditLine(t *testing.T) {
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)
 	}
-	created, err := s.CreateSecret("API", "", "reveal-pw-fake", "", "", "", "", "")
+	created, err := s.CreateSecret("API", "", "reveal-pw-fake", "", "", nil, "", "", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestCopySecretToClipboard_RecordsUICopyAuditLine(t *testing.T) {
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)
 	}
-	created, err := s.CreateSecret("API", "", "copy-pw-fake", "", "", "", "", "")
+	created, err := s.CreateSecret("API", "", "copy-pw-fake", "", "", nil, "", "", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
@@ -138,7 +138,7 @@ func TestRedactKnownSecrets_NeverAudited(t *testing.T) {
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)
 	}
-	if _, err := s.CreateSecret("API", "", "redact-pw-fake", "", "", "", "", ""); err != nil {
+	if _, err := s.CreateSecret("API", "", "redact-pw-fake", "", "", nil, "", "", nil); err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
 
@@ -167,11 +167,11 @@ func TestListSecretAccess_GlobalAndPerEntry(t *testing.T) {
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)
 	}
-	a, err := s.CreateSecret("GitHub PAT", "", "gh-fake", "", "", "", "", "")
+	a, err := s.CreateSecret("GitHub PAT", "", "gh-fake", "", "", nil, "", "", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret a: %v", err)
 	}
-	b, err := s.CreateSecret("Bank Token", "", "bank-fake", "", "", "", "", "")
+	b, err := s.CreateSecret("Bank Token", "", "bank-fake", "", "", nil, "", "", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret b: %v", err)
 	}
