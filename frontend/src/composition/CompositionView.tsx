@@ -4,8 +4,7 @@ import { Events } from '@wailsio/runtime'
 import { Button, Heading, Stack, Text } from '@primer/react'
 import { PlusIcon, UploadIcon, WorkflowIcon } from '@primer/octicons-react'
 import { StatusStamp } from '../shared/StatusStamp'
-import { CompositionService, ExecutionService, TriggerService } from '../shared/bindings'
-import { RunKind } from '../shared/bindings'
+import { CompositionService, TriggerService } from '../shared/bindings'
 import { generateSamplePayload } from '../shared/configSchema'
 import { refreshNodeTypes, refreshWorkflows, useAppStore } from '../shared/store'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
@@ -19,6 +18,7 @@ import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import { useImportConfirm } from '../shared/useImportConfirm'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import TestRunDialog from './TestRunDialog'
+import { startWorkflowRun } from './startWorkflowRun'
 import { workflowPayloadHint } from './triggerPayload'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
@@ -61,7 +61,7 @@ function CompositionView() {
   // Test-input form (docs/adr/0008, SPEC.md §3.2's "per-record test
   // harness"): set only while the dialog for a workflow with declared
   // Attributes is open.
-  const [testRunTarget, setTestRunTarget] = useState<{ id: string; values: Record<string, string>; payload: string } | null>(null)
+  const [testRunTarget, setTestRunTarget] = useState<{ id: string; values: Record<string, string>; payload: string; environmentID: string } | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const importFileInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useViewMode('mill-workflows-view-mode')
@@ -147,16 +147,11 @@ function CompositionView() {
   // Runs through ExecutionService.RunWorkflow, tagged RunKindTest --
   // docs/adr/0008's single execution path; per ADR-0021 a test run
   // executes the draft head, publish state untouched.
-  const runWithValues = (id: string, values: Record<string, string> | null, payload?: string) => {
+  const runWithValues = (id: string, values: Record<string, string> | null, payload?: string, environmentID?: string) => {
     const label = workflows?.find((w) => w.ID === id)?.Label ?? id
     setRunningId(id)
     setErrors((prev) => ({ ...prev, [id]: '' }))
-    // payload substitutes what the workflow's trigger would have
-    // delivered (triggerPayload.ts) -- same seam the canvas Run uses.
-    const call = payload
-      ? ExecutionService.RunWorkflowWithPayload(id, RunKind.RunKindTest, values, payload)
-      : ExecutionService.RunWorkflow(id, RunKind.RunKindTest, values)
-    call
+    startWorkflowRun(id, values, payload, environmentID)
       .then((summary) => {
         if (summary.error) {
           setErrors((prev) => ({ ...prev, [id]: summary.error }))
@@ -199,11 +194,16 @@ function CompositionView() {
     // supplies the run's input (triggerPayload.ts) -- otherwise a test
     // run of e.g. the saved-page seed is dead-on-arrival with an empty
     // payload, the live failure that prompted this.
+    // A workflow that already declares its environment is not asked
+    // again: picking a stage is an ambient selection in the tools this
+    // borrows from, not a per-send prompt. The dialog carries the
+    // override whenever it opens for something else; the canvas's own
+    // Environment field is where the choice itself is changed.
     if (attrs.length === 0 && !workflowPayloadHint(wf)) {
       runWithValues(id, null)
       return
     }
-    setTestRunTarget({ id, values: generateSamplePayload(attrs), payload: '' })
+    setTestRunTarget({ id, values: generateSamplePayload(attrs), payload: '', environmentID: wf?.DefaultEnvironmentID ?? '' })
   }
 
   const removeWorkflow = (id: string) => {
@@ -474,9 +474,13 @@ function CompositionView() {
           payloadHint={workflowPayloadHint(workflows?.find((w) => w.ID === testRunTarget.id))}
           payload={testRunTarget.payload}
           onPayloadChange={(value) => setTestRunTarget((prev) => (prev ? { ...prev, payload: value } : prev))}
+          environmentID={testRunTarget.environmentID}
+          onEnvironmentChange={(environmentID) => setTestRunTarget((prev) => (prev ? { ...prev, environmentID } : prev))}
           onCancel={() => setTestRunTarget(null)}
           onRun={() => {
-            runWithValues(testRunTarget.id, testRunTarget.values, testRunTarget.payload || undefined)
+            // Read from the dialog's own target, not from state a later
+            // render would supply: setState is not synchronous.
+            runWithValues(testRunTarget.id, testRunTarget.values, testRunTarget.payload || undefined, testRunTarget.environmentID)
             setTestRunTarget(null)
           }}
         />

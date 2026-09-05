@@ -46,6 +46,9 @@ import * as decision$0 from "../../domain/decision/models.js";
 import * as declaredsteptype$0 from "../../domain/declaredsteptype/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as environment$0 from "../../domain/environment/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as execenv$0 from "../../domain/execenv/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -168,8 +171,12 @@ export function CreateDeclaredStepType(label: string, description: string, palet
     return $Call.ByID(2864826736, label, description, paletteGroup, engine, requestID, mcpServerID, toolName, workflowID, pinnedConfig, hiddenFields);
 }
 
-export function CreateExecEnv(label: string, shell: execenv$0.Shell, profileMode: execenv$0.ProfileMode, dir: string, env: string[] | null): $CancellablePromise<execenv$0.ExecEnv> {
-    return $Call.ByID(2549731420, label, shell, profileMode, dir, env);
+export function CreateEnvironment(label: string, vars: environment$0.Variable[] | null): $CancellablePromise<environment$0.Environment> {
+    return $Call.ByID(2125057365, label, vars);
+}
+
+export function CreateExecEnv(label: string, shell: execenv$0.Shell, profileMode: execenv$0.ProfileMode, dir: string, env: string[] | null, environmentID: string): $CancellablePromise<execenv$0.ExecEnv> {
+    return $Call.ByID(2549731420, label, shell, profileMode, dir, env, environmentID);
 }
 
 /**
@@ -240,6 +247,16 @@ export function DeleteDeclaredStepType(id: string): $CancellablePromise<void> {
     return $Call.ByID(3604894371, id);
 }
 
+/**
+ * DeleteEnvironment refuses while a workflow still names this
+ * environment -- as its per-run default, or through a shell that
+ * borrows its variables (compositionsvc.WorkflowsReferencing knows
+ * both, ADR-0040 decision 3).
+ */
+export function DeleteEnvironment(id: string): $CancellablePromise<void> {
+    return $Call.ByID(118824196, id);
+}
+
 export function DeleteExecEnv(id: string): $CancellablePromise<void> {
     return $Call.ByID(2790333249, id);
 }
@@ -301,6 +318,10 @@ export function DuplicateClientCertificate(id: string): $CancellablePromise<clie
     return $Call.ByID(2719279045, id);
 }
 
+export function Environments(): $CancellablePromise<environment$0.Environment[] | null> {
+    return $Call.ByID(2726528166);
+}
+
 export function ExecEnvs(): $CancellablePromise<execenv$0.ExecEnv[] | null> {
     return $Call.ByID(1392956673);
 }
@@ -315,6 +336,10 @@ export function ExportDecision(id: string): $CancellablePromise<string> {
 
 export function ExportDeclaredStepType(id: string): $CancellablePromise<string> {
     return $Call.ByID(1679238510, id);
+}
+
+export function ExportEnvironment(id: string): $CancellablePromise<string> {
+    return $Call.ByID(2995620899, id);
 }
 
 export function ExportExecEnv(id: string): $CancellablePromise<string> {
@@ -386,6 +411,10 @@ export function ImportDecision(jsonData: string): $CancellablePromise<decision$0
  */
 export function ImportDeclaredStepType(jsonData: string): $CancellablePromise<declaredsteptype$0.DeclaredStepType> {
     return $Call.ByID(4258139761, jsonData);
+}
+
+export function ImportEnvironment(jsonData: string): $CancellablePromise<environment$0.Environment> {
+    return $Call.ByID(4137668610, jsonData);
 }
 
 export function ImportExecEnv(jsonData: string): $CancellablePromise<execenv$0.ExecEnv> {
@@ -540,6 +569,14 @@ export function ResetDecisionToSeed(id: string): $CancellablePromise<decision$0.
 }
 
 /**
+ * ResetEnvironmentToSeed restores a seeded Environment's shipped
+ * content, via environmentDescriptor.
+ */
+export function ResetEnvironmentToSeed(id: string): $CancellablePromise<environment$0.Environment> {
+    return $Call.ByID(442297280, id);
+}
+
+/**
  * ResetExecEnvToSeed mirrors ResetHTTPRequestToSeed for ExecEnvs, via
  * execEnvDescriptor (configureexecenv.go, goal 0165).
  */
@@ -590,6 +627,14 @@ export function RestorableDecisions(): $CancellablePromise<decision$0.Decision[]
 }
 
 /**
+ * RestorableEnvironments lists deleted seeds this install can bring
+ * back.
+ */
+export function RestorableEnvironments(): $CancellablePromise<environment$0.Environment[] | null> {
+    return $Call.ByID(9699537);
+}
+
+/**
  * RestorableExecEnvs mirrors RestorableHTTPRequests for ExecEnvs.
  */
 export function RestorableExecEnvs(): $CancellablePromise<execenv$0.ExecEnv[] | null> {
@@ -631,6 +676,13 @@ export function RestoreAIProvider(id: string): $CancellablePromise<aiprovider$0.
  */
 export function RestoreDecision(id: string): $CancellablePromise<decision$0.Decision> {
     return $Call.ByID(490914664, id);
+}
+
+/**
+ * RestoreEnvironment brings one deleted seed back.
+ */
+export function RestoreEnvironment(id: string): $CancellablePromise<environment$0.Environment> {
+    return $Call.ByID(2787993823, id);
 }
 
 /**
@@ -766,8 +818,12 @@ export function UpdateDeclaredStepType(id: string, label: string, description: s
     return $Call.ByID(2416169229, id, label, description, paletteGroup, engine, requestID, mcpServerID, toolName, workflowID, pinnedConfig, hiddenFields);
 }
 
-export function UpdateExecEnv(id: string, label: string, shell: execenv$0.Shell, profileMode: execenv$0.ProfileMode, dir: string, env: string[] | null): $CancellablePromise<execenv$0.ExecEnv> {
-    return $Call.ByID(375575575, id, label, shell, profileMode, dir, env);
+export function UpdateEnvironment(id: string, label: string, vars: environment$0.Variable[] | null): $CancellablePromise<environment$0.Environment> {
+    return $Call.ByID(3954481542, id, label, vars);
+}
+
+export function UpdateExecEnv(id: string, label: string, shell: execenv$0.Shell, profileMode: execenv$0.ProfileMode, dir: string, env: string[] | null, environmentID: string): $CancellablePromise<execenv$0.ExecEnv> {
+    return $Call.ByID(375575575, id, label, shell, profileMode, dir, env, environmentID);
 }
 
 export function UpdateHTTPRequest(id: string, label: string, baseURL: string, method: string, body: string, authType: httprequest$0.AuthType, secretRef: string, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: httprequest$0.AuthConfig | null, jose: httprequest$0.JOSEConfig | null, description: string): $CancellablePromise<httprequest$0.HTTPRequest> {

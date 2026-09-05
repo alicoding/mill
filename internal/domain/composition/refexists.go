@@ -43,6 +43,9 @@ func RefExists(kind, id string) bool {
 	case "execenv":
 		_, err := lookupExecEnvFn(id, SecretAccessRun{})
 		return err == nil
+	case "environment":
+		_, err := lookupEnvironmentFn(id, SecretAccessRun{})
+		return err == nil
 	default:
 		// "workflow"/"workflow-scope" (childworkflow.go/triggers.go)
 		// resolve against compositionsvc's own workflow list -- no

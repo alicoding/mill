@@ -72,6 +72,10 @@ func (e *ExecutionService) summaryFromStatus(st execution.WorkflowStatus) RunSum
 		Error:         errMsg,
 		Version:       in.Version,
 		Values:        in.Values,
+		EnvironmentID: in.EnvironmentID,
+	}
+	if in.EnvironmentID != "" && e.environmentLabelLookup != nil {
+		summary.EnvironmentLabel = e.environmentLabelLookup(in.EnvironmentID)
 	}
 	// Only a still-running run can be parked on an approval -- skip the
 	// event poll for terminal runs (the common case in any list).

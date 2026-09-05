@@ -25,6 +25,9 @@
         "type": "string"
       },
       "type": "array"
+    },
+    "environmentId": {
+      "type": "string"
     }
   },
   "additionalProperties": false,

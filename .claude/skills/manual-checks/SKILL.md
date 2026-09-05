@@ -428,3 +428,13 @@ installed build can catch, and exactly how to verify it there.
   markup nobody controls. Finally revoke the browser in Settings and
   confirm the popup drops to "Mill isn't running" within about half a
   minute (the stream is dropped on its next keepalive).
+- **The Secrets page's native pickers** (goal 0306 S4,
+  `windowing.PickFolder`/`PickCSVFile`,
+  `SecretService.ChooseScanFolder`/`ChooseExportFile`) — server mode
+  falls back to a typed path, which is what the e2e suite drives
+  instead. Verify on an installed build: in Secrets › Sources, open
+  "Find .env files…" and press Choose — the real native folder picker
+  opens with directories choosable and files disabled, and the chosen
+  path fills the Folder field; in Secrets, open Import… and press
+  Choose — the real native file picker opens and the chosen file's
+  entry count shows in the preview.
