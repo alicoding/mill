@@ -89,6 +89,9 @@ var targetNouns = map[string]string{
 	"run":      "run",
 	"entry":    "clipboard entry",
 	"card":     "card",
+	"entity":   "entity",
+	"listGrid": "table rows",
+	"jsonNode": "tree row",
 }
 
 func describeEnablement(enabled bool, needs string) string {

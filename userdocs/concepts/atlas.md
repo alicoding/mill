@@ -116,10 +116,14 @@ brought into view.
   thing.** A table copied from a spreadsheet or a document app becomes
   a table on the board, ready to browse and edit like any other list.
   A pasted file path lands what dropping the file would: a document
-  becomes a card, a diagram, spreadsheet, or PDF file its own board
-  object (a PDF shows its pages right on the board — click it once to
-  select it, then search, zoom, and page through it in place; while
-  you scroll inside it the board holds still),
+  becomes a card, a diagram, spreadsheet, PDF, JSON or YAML file its own
+  board object (a PDF shows its pages right on the board — click it once
+  to select it, then search, zoom, and page through it in place; while
+  you scroll inside it the board holds still. A JSON or YAML file opens
+  as a collapsible tree: each key on its own row, a collapsed section
+  showing how many entries it holds, a box to filter keys and values,
+  and a right-click on any row to copy that row's value, its path, or
+  its key. Edit the file in your own editor and the tree follows),
   a folder path opens the folder import. Everything else lands as a
   sticky note at your pointer, already selected — nothing else to
   fill in. Multiple tables in one paste each land as their own table,

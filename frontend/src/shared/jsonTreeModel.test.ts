@@ -6,9 +6,15 @@ import {
   containerSummary,
   joinPath,
   kindOf,
+  matchCount,
   nodeCopyText,
+  nodeMatches,
+  nodesByPath,
+  pathsToDepth,
   pathsToExpandFor,
   primitiveLabel,
+  subtreeMatches,
+  valueKind,
 } from './jsonTreeModel'
 
 describe('paths', () => {
@@ -72,5 +78,75 @@ describe('expansion', () => {
   it('opens nothing for an empty query or a miss', () => {
     expect(pathsToExpandFor({ a: { b: 1 } }, '').size).toBe(0)
     expect(pathsToExpandFor({ a: { b: 1 } }, 'zzz').size).toBe(0)
+  })
+})
+
+// goal 0269's additions: the root-less path form the board face copies,
+// the arrival depth, the find summary's own number, the row lookup a
+// focused-row command resolves through, and the empty-container reading
+// that must never grow a chevron.
+describe('the board face\'s own reading (goal 0269)', () => {
+  it('drops the root token entirely when there is no root to name', () => {
+    expect(joinPath('', 'workstreams', false)).toBe('workstreams')
+    expect(joinPath('', 'odd key', false)).toBe('["odd key"]')
+    expect(joinPath('', '0', true)).toBe('[0]')
+    const [ws] = childrenOf({ workstreams: [{ owner: 'Priya' }] }, '')
+    const [first] = childrenOf(ws.value, ws.path)
+    const [owner] = childrenOf(first.value, first.path)
+    expect(owner.path).toBe('workstreams[0].owner')
+  })
+
+  it('reads an empty container as its bare brackets, with no count', () => {
+    const [arr, obj] = childrenOf({ a: [], b: {} }, '')
+    expect(containerSummary(arr)).toBe('[]')
+    expect(containerSummary(obj)).toBe('{}')
+  })
+
+  it('opens containers to the requested depth and no deeper', () => {
+    const value = { a: { b: { c: 1 } }, d: [{ e: 1 }], f: 2, g: {} }
+    expect(pathsToDepth(value, 1, '')).toEqual(['a', 'd'])
+    expect(pathsToDepth(value, 2, '')).toEqual(['a', 'a.b', 'd', 'd[0]'])
+  })
+
+  it('counts every matching row, including rows inside collapsed containers', () => {
+    const value = { owner: 'Priya', team: { owner: 'Sam' }, note: 'owner of record' }
+    expect(matchCount(value, 'owner', '')).toBe(3)
+    expect(matchCount(value, 'OWNER', '')).toBe(3)
+    expect(matchCount(value, 'nothing', '')).toBe(0)
+    expect(matchCount(value, '', '')).toBe(0)
+  })
+
+  it('resolves every row back from its own path', () => {
+    const value = { workstreams: [{ owner: 'Priya' }] }
+    const rows = nodesByPath(value, '')
+    expect([...rows.keys()]).toEqual(['workstreams', 'workstreams[0]', 'workstreams[0].owner'])
+    expect(rows.get('workstreams[0].owner')?.value).toBe('Priya')
+  })
+
+  it('names each primitive kind so the row can paint it', () => {
+    expect(valueKind('x')).toBe('string')
+    expect(valueKind(7)).toBe('number')
+    expect(valueKind(true)).toBe('boolean')
+    expect(valueKind(null)).toBe('null')
+    expect(valueKind([])).toBe('array')
+    expect(valueKind({})).toBe('object')
+  })
+})
+
+describe('filtering rows (goal 0269)', () => {
+  const value = { owner: 'Priya', team: { lead: 'Sam', size: 3 }, note: 'unrelated' }
+
+  it('answers whether anything below a row matches, so the row can be kept', () => {
+    const [, team] = childrenOf(value, '')
+    expect(subtreeMatches(team, 'lead')).toBe(true)
+    expect(subtreeMatches(team, 'Sam')).toBe(true)
+    expect(subtreeMatches(team, 'owner')).toBe(false)
+  })
+
+  it('matches keys and primitive values alike, case-insensitively', () => {
+    const [owner, , note] = childrenOf(value, '')
+    expect(nodeMatches(owner, 'OWNER')).toBe(true)
+    expect(nodeMatches(owner, 'priya')).toBe(true)
+    expect(nodeMatches(note, 'owner')).toBe(false)
   })
 })

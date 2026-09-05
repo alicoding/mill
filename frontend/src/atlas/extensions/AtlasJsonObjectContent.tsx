@@ -1,0 +1,235 @@
+import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Button, IconButton, Stack, Text, TextInput } from '@primer/react'
+import { FoldIcon, SearchIcon, UnfoldIcon } from '@primer/octicons-react'
+import type { BoardObject } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { boardObjectContentFor } from '../atlasNounRegistry'
+import { dispatchObjectEdit } from '../objectSeams'
+import { background } from '../../shared/background'
+import { JsonTree } from '../../shared/JsonTree'
+import { matchCount, nodeCopyText, type JsonNode } from '../../shared/jsonTreeModel'
+import type { ContextMenuItem } from '../../shared/ContextMenu'
+import { runCommand } from '../../shared/commands'
+import type { MirrorReadState } from '../useAtlasObjectMirrorRead'
+import { isParseError, jsonFormatFor, parseJsonDocument, type JsonDocFormat, type JsonParseError } from '../jsonTree'
+import { TABLE_WIDTH, TABLE_HEIGHT } from '../atlasBoardLayout'
+import runbookStyles from '../../shared/ListCard.module.css'
+import styles from './AtlasJsonObjectContent.module.css'
+
+// A "json" object's own persisted render (goal 0269): a dropped
+// .json/.yaml/.yml file as an indented, collapsible tree -- the form
+// seven of the eight researched inspectors show a document in. Nothing
+// here edits: "Open in default app" is the editor, and the tree is
+// structure over the same text.
+//
+// The tree itself is shared/JsonTree.tsx (Primer's TreeView, goal
+// 0326's component), reached with this surface's own root-less paths,
+// its depth-2 arrival state and its three registry copy commands --
+// one JSON tree in the app, configured per surface.
+
+// Past this size the arrival state opens one level instead of two and
+// Expand all is refused: a file this large unrolled at once is tens of
+// thousands of rows in a board-sized box.
+const LARGE_FILE_BYTES = 1_000_000
+
+interface FaceState {
+  value: unknown
+  error: JsonParseError | null
+}
+
+function formatMirrorSize(bytes: number): string {
+  if (bytes < 1000) return `${bytes} B`
+  if (bytes < 1000 * 1000) return `${(bytes / 1000).toFixed(1)} KB`
+  return `${(bytes / (1000 * 1000)).toFixed(1)} MB`
+}
+
+function frameStyle(hasSize: boolean) {
+  const base = { display: 'flex', flexDirection: 'column' as const, gap: 4 }
+  // A persisted Size wins forever once a resize happens (goal 0193);
+  // before that the box follows the same TABLE_WIDTH/TABLE_HEIGHT
+  // footprint every other grid-shaped board object lands at, so a
+  // one-key document and a deep one open at the same readable size.
+  return hasSize ? { ...base, width: '100%', height: '100%' } : { ...base, width: TABLE_WIDTH, height: 'auto', maxHeight: TABLE_HEIGHT }
+}
+
+export function AtlasJsonObjectContent({ object, mirrorContent }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState }) {
+  const { t } = useTranslation('atlas')
+  const content = mirrorContent?.content
+  const fetchError = mirrorContent?.error ?? ''
+  const format: JsonDocFormat = jsonFormatFor(object.Payload?.mirrorPath ?? '')
+  const [parsed, setParsed] = useState<FaceState | null>(null)
+  const [query, setQuery] = useState('')
+  const [expandToken, setExpandToken] = useState(0)
+  const [collapseToken, setCollapseToken] = useState(0)
+  const [focusedRow, setFocusedRow] = useState<JsonNode | null>(null)
+  const text = content?.Content ?? ''
+  const isEmpty = !!content && !content.Missing && !content.TooLarge && text.trim() === ''
+  const isLarge = (content?.Size ?? 0) > LARGE_FILE_BYTES
+
+  // A mirror change re-parses in place; JsonTree stays mounted, so
+  // every path still present keeps whatever expansion it had.
+  useEffect(() => {
+    if (!content || content.Missing || content.TooLarge || text.trim() === '') {
+      setParsed(null)
+      return undefined
+    }
+    let stale = false
+    void parseJsonDocument(text, format).then((result) => {
+      if (stale) return
+      setParsed(isParseError(result) ? { value: null, error: result.error } : { value: result.value, error: null })
+    })
+    return () => { stale = true }
+  }, [content, text, format])
+
+  // ADR-0046 (goal 0244 S0): the button declares no editor of its own
+  // -- it reads this Kind's registered editRoute back and hands it to
+  // the host's dispatchObjectEdit, the one place that calls the
+  // service.
+  const openInDefaultApp = () => {
+    const editRoute = boardObjectContentFor(object.Kind)?.editRoute
+    if (!editRoute) return
+    void background(dispatchObjectEdit(object, editRoute), 'atlasJsonObjectContent.openInDefaultApp')
+  }
+
+  const openDoor = (
+    <Button size="small" onClick={openInDefaultApp} data-testid="atlas-object-json-open-in-default-app">
+      {t('contextMenu.openInDefaultApp')}
+    </Button>
+  )
+
+  const rowContext = (node: JsonNode) => ({ kind: 'jsonNode' as const, path: node.path, key: node.key, value: nodeCopyText(node) })
+
+  const rowMenuItems = (node: JsonNode): ContextMenuItem[] => [
+    { id: 'copy-value', commandId: 'atlas.json.copyValue', ctx: rowContext(node) },
+    { id: 'copy-path', commandId: 'atlas.json.copyPath', ctx: rowContext(node) },
+    { id: 'copy-key', commandId: 'atlas.json.copyKey', ctx: rowContext(node) },
+  ]
+
+  let inner: ReactNode
+  if (fetchError) {
+    inner = <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-object-json-error">{fetchError}</Text>
+  } else if (!content) {
+    inner = <Text as="p" size="small" className={runbookStyles.muted} data-testid="atlas-object-json-loading">{t('overlay.mirrorLoading')}</Text>
+  } else if (content.Missing) {
+    inner = (
+      <Stack direction="vertical" gap="condensed" data-testid="atlas-object-json-unreadable">
+        <Text as="p" size="small" className={runbookStyles.error}>{t(`json.unreadable.${format}`)}</Text>
+        {openDoor}
+      </Stack>
+    )
+  } else if (content.TooLarge) {
+    // Past the server's own preview cap the bytes never reach the
+    // browser at all, so there is no tree to build -- the file's own
+    // app is the only door left, and the state says so rather than
+    // sitting on a spinner.
+    inner = (
+      <Stack direction="vertical" gap="condensed" data-testid="atlas-object-json-too-large">
+        <Text as="p" size="small" className={runbookStyles.muted}>{t('overlay.mirrorTooLarge', { size: formatMirrorSize(content.Size) })}</Text>
+        {openDoor}
+      </Stack>
+    )
+  } else if (isEmpty) {
+    inner = (
+      <Stack direction="vertical" gap="condensed" data-testid="atlas-object-json-empty">
+        <Text as="p" size="small" className={runbookStyles.muted}>{t('json.empty')}</Text>
+        {openDoor}
+      </Stack>
+    )
+  } else if (parsed?.error) {
+    inner = (
+      <Stack direction="vertical" gap="condensed" data-testid="atlas-object-json-parse-error">
+        <Text as="p" size="small" className={runbookStyles.error}>{t(`json.unreadable.${format}`)}</Text>
+        <Text as="p" size="small" className={runbookStyles.muted} data-testid="atlas-object-json-parse-detail">
+          {parseDetail(parsed.error)}
+        </Text>
+        {openDoor}
+      </Stack>
+    )
+  } else if (!parsed) {
+    inner = <Text as="p" size="small" className={runbookStyles.muted} data-testid="atlas-object-json-loading">{t('overlay.mirrorLoading')}</Text>
+  } else {
+    const matches = matchCount(parsed.value, query, '')
+    inner = (
+      <>
+        <Stack direction="horizontal" gap="condensed" align="center" className={styles.toolbar}>
+          <TextInput
+            className={styles.filter}
+            size="small"
+            leadingVisual={SearchIcon}
+            value={query}
+            aria-label={t('json.filterLabel')}
+            placeholder={t('json.filterLabel')}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.stopPropagation()}
+            data-testid="atlas-object-json-filter"
+          />
+          <IconButton
+            icon={UnfoldIcon}
+            aria-label={t('json.expandAll')}
+            title={isLarge ? t('json.expandAllRefused') : t('json.expandAll')}
+            size="small"
+            variant="invisible"
+            disabled={isLarge}
+            onClick={() => setExpandToken((n) => n + 1)}
+            data-testid="atlas-object-json-expand-all"
+          />
+          <IconButton
+            icon={FoldIcon}
+            aria-label={t('json.collapseAll')}
+            title={t('json.collapseAll')}
+            size="small"
+            variant="invisible"
+            onClick={() => setCollapseToken((n) => n + 1)}
+            data-testid="atlas-object-json-collapse-all"
+          />
+        </Stack>
+        {query !== '' && (
+          <Text as="p" size="small" className={runbookStyles.muted} data-testid="atlas-object-json-matches">
+            {matches === 0 ? t('json.noMatches') : t('json.matches', { count: matches })}
+          </Text>
+        )}
+        <div
+          className={`${styles.scroll} nowheel nodrag`}
+          onKeyDown={(e) => {
+            // Cmd+C copies the focused row's value, the inspector
+            // convention. The keystroke never reaches the generic
+            // dispatcher (the command needs a row only this face can
+            // name), so it runs here with the row as the target.
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c' && focusedRow) {
+              e.stopPropagation()
+              void runCommand('atlas.json.copyValue', rowContext(focusedRow))
+            }
+          }}
+        >
+          <JsonTree
+            value={parsed.value}
+            query={query}
+            expandAllToken={expandToken}
+            collapseAllToken={collapseToken}
+            rootPath=""
+            defaultExpandDepth={isLarge ? 1 : 2}
+            rowMenuItems={rowMenuItems}
+            filterRows
+            onFocusedRowChange={setFocusedRow}
+            ariaLabel={t('boardObject.jsonAriaLabel')}
+            testId="atlas-object-json-tree"
+          />
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <div className={styles.wrap} style={frameStyle(!!object.Size)}>
+      {inner}
+    </div>
+  )
+}
+
+// The parser's own sentence, with the place it failed when it knows
+// one -- what a reader takes back to the file.
+function parseDetail(error: JsonParseError): string {
+  if (error.line === undefined) return error.message
+  return `${error.line}:${error.column ?? 1} ${error.message}`
+}
