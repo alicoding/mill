@@ -229,3 +229,14 @@
     padding: 4px 6px;
     color: var(--fgColor-accent);
 }
+
+/* Nothing about being selected belongs in an exported picture (goal
+   0201). The ring is a box-shadow on the node itself, so it is
+   suppressed rather than the node removed; the rasterizer copies
+   COMPUTED styles off these live elements, which is what makes an
+   attribute flipped for the duration of the capture enough. Both
+   halves of the ring are covered: this default, and the rotated
+   shape's own override in AtlasBoardObjectNode.module.css. */
+:global(.react-flow__viewport[data-capturing='true'] .react-flow__node.selected) {
+    box-shadow: none;
+}

@@ -263,6 +263,16 @@ installed build can catch, and exactly how to verify it there.
   pointer; Finder ⌘C a .png → ⌘V lands an image object mirroring
   the REAL file path; Finder ⌘C a .md → ⌘V lands a card, same as
   dropping it.
+- **"Copy as image" landing a real, pasteable picture** (goal 0201,
+  `clipboard.WritePNG` / `ClipboardHistoryService.CopyImagePNG`) — the
+  Go side's PNG flavor registration is Go-tested against the real
+  pasteboard and the rasterizer's exclusion rules are unit-pinned, but
+  whether ANOTHER app accepts what Mill put there is OS-bound. Verify
+  on an installed build: select two cards and a shape on a board, run
+  Copy as image (Atlas menu or the selection's right-click menu), then
+  ⌘V into Preview (File > New from Clipboard) and into Keynote — both
+  must show the selection at 2x with NO selection outline, no drag
+  handles and no resize frame, on the board's own background colour.
 - **A pdf link annotation actually reaching the system browser**
   (goal 0271, `openExternalUrl` via the runtime's Browser API) —
   launching the real default browser is OS-bound; the e2e pins the
