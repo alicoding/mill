@@ -5,7 +5,7 @@ import path from 'node:path'
 import { SECRETS_MCP_BASE_PORT, SECRETS_SERVER_BASE_PORT, spawnMillServer, type SpawnedServer } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
 import { paletteDialog } from './fixtures/palette'
-import { corruptVaultKeyForTests } from './vaultKeyDebugKnob'
+import { callBoundMethod, corruptVaultKeyForTests } from './vaultKeyDebugKnob'
 
 // The secret manager's human-facing surface (goal 0185 S2): create a
 // vault, store a password, reveal/hide it, copy it to the real OS
@@ -350,7 +350,7 @@ test('secret manager: a vault whose stored key no longer opens it names the caus
     // No backup has run yet -- the caption stays off rather than
     // claiming a recovery copy that doesn't exist.
     await page.getByTestId('secrets-lock').click()
-    await corruptVaultKeyForTests(page, server.baseURL)
+    await corruptVaultKeyForTests(page)
     await page.getByTestId('secrets-unlock-cta').click()
     await expect(page.getByText("This vault's key isn't on this device")).toBeVisible()
     await expect(page.getByText(
@@ -360,8 +360,80 @@ test('secret manager: a vault whose stored key no longer opens it names the caus
     // alongside it.
     await expect(page.getByTestId('secrets-unlock-error')).toHaveCount(0)
     await expect(page.getByTestId('secrets-vault-backup-caption')).toHaveCount(0)
-    // The one door out is still there, unchanged.
+    // The one door out is still there, unchanged; with no backup taken
+    // yet, "Restore the last backup" has nothing to offer.
     await expect(page.getByTestId('secrets-reset-cta')).toBeVisible()
+    await expect(page.getByTestId('secrets-restore-backup-cta')).toHaveCount(0)
+    await expect(page.getByTestId('secrets-restore-backup-caption')).toHaveCount(0)
+  } finally {
+    await browser.close()
+    if (server) await server.stop()
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+// Goal 0359: the key-mismatch state's own recovery door. A backup taken
+// while the FIRST vault's key still works keeps that key usable even
+// after the CURRENT vault's own key breaks (a second ResetVault stands
+// in for "this device later got a different vault at the same path" --
+// the RPC escape hatch, since reaching Reset through the UI itself
+// needs an unlock failure already on screen, which isn't yet true here
+// and isn't what this test is proving). Everything from the reload
+// onward drives the real rendered UI.
+// eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
+test('secret manager: restoring the last backup recovers a vault whose current key broke', async ({}, testInfo) => {
+  const idx = testInfo.parallelIndex
+  const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-secrets-restore-${idx}-`))
+  const settingsPath = path.join(dir, 'settings.json')
+  const executionDbPath = path.join(dir, 'execution.db')
+  const backupDir = path.join(dir, 'backups')
+  const port = SECRETS_SERVER_BASE_PORT + idx
+  const mcpPort = SECRETS_MCP_BASE_PORT + idx
+
+  let server: SpawnedServer | undefined
+  const browser = await chromium.launch()
+  try {
+    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
+    const page = await browser.newPage()
+    await page.goto(`${server.baseURL}/`)
+    await page.getByRole('link', { name: 'Secrets' }).click()
+    await page.getByRole('button', { name: 'Got it' }).click()
+    await page.getByTestId('secrets-setup-cta').click()
+    await expect(page.getByTestId('secrets-view').getByText('Example Login', { exact: true })).toBeVisible()
+
+    // A real backup, taken while this (first) vault's own key is still
+    // good -- BackupService.BackupNow, the same RPC "Back up now" in
+    // Settings drives.
+    await callBoundMethod(page, 'github.com/alicoding/mill/internal/services/backupsvc.BackupService.BackupNow', [0])
+
+    // A second vault now lives at the same path, its own identity and
+    // key -- the first vault's own key is left exactly where it was
+    // (goal 0330), which is the whole point: it's what the restored
+    // backup will still be able to use. corruptVaultKeyForTests always
+    // targets whichever identity is live right now, so THIS one breaks.
+    // ResetVault leaves the vault UNLOCKED, so it's locked explicitly
+    // before reload -- otherwise the browse view, not the locked one,
+    // is what's still showing server-side.
+    await callBoundMethod(page, 'github.com/alicoding/mill/internal/services/secretsvc.SecretService.ResetVault', [])
+    await corruptVaultKeyForTests(page)
+    await callBoundMethod(page, 'github.com/alicoding/mill/internal/services/secretsvc.SecretService.LockVault', [])
+
+    await page.reload()
+    await page.getByRole('link', { name: 'Secrets' }).click()
+    await page.getByTestId('secrets-unlock-cta').click()
+    await expect(page.getByText("This vault's key isn't on this device")).toBeVisible()
+    await expect(page.getByTestId('secrets-vault-backup-caption')).toBeVisible()
+    await expect(page.getByTestId('secrets-restore-backup-caption')).toHaveText(
+      "Brings back the last backup's vault; it opens if its key is still on this device.",
+    )
+
+    await page.getByTestId('secrets-restore-backup-cta').click()
+
+    // The restored file is the FIRST vault -- its own key, never
+    // touched by the corruption above, is still in this device's
+    // keyring, so Unlock now succeeds and its seeded example is back.
+    await page.getByTestId('secrets-unlock-cta').click()
+    await expect(page.getByTestId('secrets-view').getByText('Example Login', { exact: true })).toBeVisible()
   } finally {
     await browser.close()
     if (server) await server.stop()

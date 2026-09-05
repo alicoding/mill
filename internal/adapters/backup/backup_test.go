@@ -400,3 +400,78 @@ func TestLatestWithVault_NoBackupHasOne(t *testing.T) {
 		t.Errorf("LatestWithVault() = %v, want zero time when no backup carries one", got)
 	}
 }
+
+func TestConsumeVaultBackup_RemovesOnlyTheVaultCopy(t *testing.T) {
+	dbPath := newTestDB(t)
+	backupDir := t.TempDir()
+	vaultPath := filepath.Join(t.TempDir(), "secrets.kdbx")
+	if err := os.WriteFile(vaultPath, []byte("fake-kdbx-bytes"), 0o600); err != nil {
+		t.Fatalf("write vault fixture: %v", err)
+	}
+	result, err := Snapshot(dbPath, "", vaultPath, backupDir, 10)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	if err := ConsumeVaultBackup(result.Dir); err != nil {
+		t.Fatalf("ConsumeVaultBackup: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(result.Dir, "secrets.kdbx")); !os.IsNotExist(err) {
+		t.Fatalf("vault copy still present after ConsumeVaultBackup: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(result.Dir, "execution.db")); err != nil {
+		t.Fatalf("execution.db removed alongside the vault copy: %v", err)
+	}
+}
+
+func TestConsumeVaultBackup_NoVaultCopyIsNotAnError(t *testing.T) {
+	dbPath := newTestDB(t)
+	backupDir := t.TempDir()
+
+	result, err := Snapshot(dbPath, "", "", backupDir, 10)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	if err := ConsumeVaultBackup(result.Dir); err != nil {
+		t.Fatalf("ConsumeVaultBackup on a backup with no vault copy: %v", err)
+	}
+}
+
+func TestLatestVaultBackupDir_MovesToNextOlderOnceConsumed(t *testing.T) {
+	dbPath := newTestDB(t)
+	backupDir := t.TempDir()
+	vaultPath := filepath.Join(t.TempDir(), "secrets.kdbx")
+	if err := os.WriteFile(vaultPath, []byte("older-vault-bytes"), 0o600); err != nil {
+		t.Fatalf("write vault fixture: %v", err)
+	}
+	older, err := Snapshot(dbPath, "", vaultPath, backupDir, 10)
+	if err != nil {
+		t.Fatalf("first Snapshot (with vault): %v", err)
+	}
+	time.Sleep(2 * time.Millisecond)
+	newer, err := Snapshot(dbPath, "", vaultPath, backupDir, 10)
+	if err != nil {
+		t.Fatalf("second Snapshot (with vault): %v", err)
+	}
+
+	dir, t1, err := LatestVaultBackupDir(backupDir)
+	if err != nil {
+		t.Fatalf("LatestVaultBackupDir: %v", err)
+	}
+	if dir != newer.Dir || t1.Before(newer.TakenAt.Add(-time.Second)) {
+		t.Fatalf("LatestVaultBackupDir = %q, %v; want the newer backup %q", dir, t1, newer.Dir)
+	}
+
+	if err := ConsumeVaultBackup(dir); err != nil {
+		t.Fatalf("ConsumeVaultBackup: %v", err)
+	}
+
+	dir2, _, err := LatestVaultBackupDir(backupDir)
+	if err != nil {
+		t.Fatalf("LatestVaultBackupDir (after consume): %v", err)
+	}
+	if dir2 != older.Dir {
+		t.Fatalf("LatestVaultBackupDir after consuming the newer one = %q, want the older backup %q", dir2, older.Dir)
+	}
+}

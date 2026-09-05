@@ -24,9 +24,11 @@ import (
 // WireSecrets constructs the vault (goal 0185) at vaultPath, sharing
 // credentials with configuresvc's own HTTPRequest/AIProvider secrets --
 // same OS keychain, its own well-known id. Pulled out of main.go for the
-// same 500-line reason WireRemoteAuth above is; vaultPath's own
-// MILL_SECRETS_PATH-override-or-default resolution stays in main.go
-// (depguard: this package doesn't import wails/v3/pkg/application).
+// same 500-line reason WireRemoteAuth above is; vaultPath/backupDir's
+// own MILL_SECRETS_PATH/MILL_BACKUP_DIR-override-or-default resolution
+// stays in main.go (depguard: this package doesn't import
+// wails/v3/pkg/application). backupDir feeds SecretService.SetBackupDir
+// (goal 0359's own restore-from-backup door on the key-mismatch state).
 // WireSecrets also wires configureService's own two vault-reference
 // seams onto the newly-constructed SecretService: SetSecretResolver
 // (goal 0185 S3, "vault:" env/header values) and, goal 0203 S2,
@@ -38,8 +40,11 @@ import (
 // Order-independent of GuardrailService's own construction:
 // SetSecretLabelsLookup only sets a package-level var, read lazily by
 // GuardrailStep at evaluation time, never at wiring time.
-func WireSecrets(vaultPath string, credentials credential.Store, store settings.Store, configureService *configuresvc.ConfigureService) *secretsvc.SecretService {
+func WireSecrets(vaultPath, backupDir string, credentials credential.Store, store settings.Store, configureService *configuresvc.ConfigureService) *secretsvc.SecretService {
 	secretService := secretsvc.NewSecretService(secretvault.New(vaultPath), credentials, store)
+	// goal 0359: the key-mismatch state's own restore-from-backup door
+	// needs to know where local backups live.
+	secretService.SetBackupDir(backupDir)
 	// One-time move off the inert ACL-gated keychain item onto the
 	// setting-backed unlock gate (goal 0330). No-op on every launch after
 	// the first, and on every install that never enabled the old one.
