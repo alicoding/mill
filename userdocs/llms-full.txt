@@ -520,6 +520,16 @@ brought into view.
   own colour, stroke, and rotation come along; a freeform arrow, a
   sketch, or an image doesn't have a faithful box to become yet, so
   it's named rather than silently left out.
+- **Take a picture of what you're looking at.** Right-click a
+  selection, or open the Atlas menu, for "Copy as image" and "Export as
+  image…". Copy puts a sharp PNG straight on your clipboard, ready to
+  paste into a document, a deck, or a chat. Export opens a small dialog
+  where you pick the scale and whether the background comes along, then
+  saves the file. Both picture whatever is selected; with nothing
+  selected, both widen to the whole board. Selection outlines, drag
+  handles and resize frames never appear in the picture. Working in a
+  browser against a Mill running elsewhere, the copy lands on that
+  machine's clipboard, and the confirmation says so.
 
 ## Keeping Atlas in sync
 
@@ -1333,6 +1343,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.redo` | Redo | — | atlas | Always available |
 | `atlas.roadmap` | Open roadmap | — | atlas | Always available |
 | `atlas.selectAll` | Select all | `⌘A` | atlas | Always available |
+| `atlas.selection.copyAsImage` | Copy as image | — | atlas | Conditional — available only in a matching state |
+| `atlas.selection.exportAsImage` | Export as image… | — | atlas | Conditional — available only in a matching state |
 | `atlas.share.copyContext` | Copy space as context | — | atlas | Always available |
 | `atlas.share.copyLinks` | Copy space links | — | atlas | Always available |
 | `atlas.undo` | Undo | — | atlas | Always available |
@@ -1596,6 +1608,8 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Contents | — | `atlas.contents.open` |
 | Import atlas | — | `atlas.import` |
 | Export atlas | — | `atlas.export` |
+| Copy as image | — | `atlas.selection.copyAsImage` |
+| Export as image… | — | `atlas.selection.exportAsImage` |
 | Add cards from a folder | — | `atlas.addFromFolder` |
 | Copy space as context | — | `atlas.share.copyContext` |
 | Copy space links | — | `atlas.share.copyLinks` |

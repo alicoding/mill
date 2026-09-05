@@ -168,6 +168,10 @@
       },
       "import": "Import atlas",
       "export": "Export atlas",
+      "selection": {
+        "copyAsImage": "Copy as image",
+        "exportAsImage": "Export as image…"
+      },
       "addFromFolder": "Add cards from a folder",
       "share": {
         "copyContext": "Copy space as context",
