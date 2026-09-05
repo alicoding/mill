@@ -61,3 +61,19 @@ func TestList_PlaceholderCapabilitiesHaveNoDirectView(t *testing.T) {
 		}
 	}
 }
+
+// Every sidebar capability names exactly one inventory source: the
+// concept page whose first sentence describes it, or a one-line Summary
+// when no page exists. Both, or neither, would leave the README's
+// generated block guessing.
+func TestList_InventoryLineSource(t *testing.T) {
+	for _, c := range List() {
+		if c.HiddenFromNav {
+			continue
+		}
+		hasPage, hasSummary := c.ConceptPage != "", c.Summary != ""
+		if hasPage == hasSummary {
+			t.Errorf("capability %q: want exactly one of ConceptPage/Summary, got page=%q summary=%q", c.ID, c.ConceptPage, c.Summary)
+		}
+	}
+}

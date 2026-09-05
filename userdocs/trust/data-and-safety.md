@@ -1,3 +1,7 @@
+---
+kind: explanation
+---
+
 # Trust, data, and safety
 
 Turn off your network and Mill keeps working — nothing here calls home

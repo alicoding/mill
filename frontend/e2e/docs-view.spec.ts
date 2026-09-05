@@ -90,10 +90,49 @@ test('the prev/next footer navigates the flat reading order across section bound
   await expect(page.getByTestId('docs-breadcrumb')).toContainText('Your first workflow')
   await expect(page.getByTestId('docs-prev-link')).toContainText('Install')
 
-  // "Your first workflow" is the last Start here page -- next crosses into Concepts.
   await page.getByTestId('docs-next-link').click()
-  await expect(page.getByTestId('docs-breadcrumb')).toContainText('Workflows and steps')
-  await expect(page.getByTestId('docs-prev-link')).toContainText('Your first workflow')
+  await expect(page.getByTestId('docs-breadcrumb')).toContainText('Your first board')
+
+  // "Your first board" is the last Start here page -- next crosses into How-to.
+  await page.getByTestId('docs-next-link').click()
+  await expect(page.getByTestId('docs-breadcrumb')).toContainText('How-to')
+  await expect(page.getByTestId('docs-breadcrumb')).toContainText('Store and reference a secret')
+  await expect(page.getByTestId('docs-prev-link')).toContainText('Your first board')
+})
+
+// Sections are the reader's quadrant (each page's front matter kind),
+// not the file's directory: "Install a plugin" lives under reference/
+// and sits in How-to; the agent pages keep a section of their own.
+test('the sidebar groups pages by kind, with the agent pages in their own section', async ({ page, baseURL }) => {
+  await page.goto(`${baseURL}/`)
+  await page.getByTestId('footer-docs-link').click()
+  await expect(page.getByTestId('docs-view')).toBeVisible()
+  const nav = page.getByTestId('docs-nav')
+  await expect(nav.getByText('Start here', { exact: true })).toBeVisible()
+  await expect(nav.getByText('How-to', { exact: true })).toBeVisible()
+  await expect(nav.getByText('Concepts', { exact: true })).toBeVisible()
+  await expect(nav.getByText('Reference', { exact: true })).toBeVisible()
+  await expect(nav.getByText('For agents', { exact: true })).toBeVisible()
+
+  await expandDocsSection(page, 'How-to')
+  await page.getByTestId('docs-nav-item').filter({ hasText: 'Install a plugin' }).click()
+  await expect(page.getByTestId('docs-breadcrumb')).toContainText('How-to')
+  await expect(page.getByTestId('docs-breadcrumb')).toContainText('Install a plugin')
+
+  await expandDocsSection(page, 'For agents')
+  await page.getByTestId('docs-nav-item').filter({ hasText: 'Automate with agents' }).click()
+  await expect(page.getByTestId('docs-breadcrumb')).toContainText('For agents')
+})
+
+// The nav's one link that leaves the app: the releases page, marked
+// external and never a docs page of its own.
+test('the nav footer carries an external Releases link', async ({ page, baseURL }) => {
+  await page.goto(`${baseURL}/`)
+  await page.getByTestId('footer-docs-link').click()
+  const link = page.getByTestId('docs-releases-link')
+  await expect(link).toBeVisible()
+  await expect(link).toHaveAttribute('href', 'https://github.com/alicoding/mill/releases')
+  await expect(link).toHaveText('Releases')
 })
 
 // Regression: an anchor inside a rendered page used to navigate the

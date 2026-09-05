@@ -2,17 +2,32 @@
 
 > Mill is a desktop app for guardrailed automation: workflows composed from typed steps, run by hotkey/schedule/watcher, with every external effect gated for approval — and a full MCP surface so AI agents can drive it under the same guardrails. Single binary, local data, no phone-home.
 
-## Docs
+## Start here
 
 - [What is Mill](start-here/what-is-mill.md): the product in three ideas
 - [Install](start-here/install.md): release install, source build, where data lives
 - [Your first workflow](start-here/first-workflow.md): run the seeded example, then rebuild it
+- [Your first board](start-here/first-board.md): place a card, a table and a diagram on a board, line them up, undo
+
+## How-to
+
+- [Store and reference a secret](how-to/store-and-reference-a-secret.md): put a value in the vault and pick it wherever a step needs it
+- [Install a plugin](reference/install-a-plugin.md): installing from a marketplace, a repository, or a folder, and what the badge means
+
+## Concepts
+
 - [Workflows and steps](concepts/workflows-and-steps.md): triggers, the typed step contract, payload vs attributes, versions
 - [Guardrails and effect classes](concepts/guardrails.md): what asks for approval and how rules scope it
 - [Configure entities](concepts/configure.md): integrations, lists, MCP servers, AI providers, environments
 - [Atlas](concepts/atlas.md): the knowledge board: kinds, links, areas, doc mirrors, card actions
 - [Runs, review, and debugging](concepts/runs-and-review.md): durable runs, the review queue, breakpoints
 - [The coding loop](concepts/coding-loop.md): copy a command, confirm the parsed steps, watch it run, copy the result back
+- [Secrets are references](concepts/secrets.md): the vault, references in every secret field, sources, the lock policy
+- [Extensions and trust](concepts/extensions.md): the store, sources, verification tiers, and what an extension can reach
+- [Trust, data, and safety](trust/data-and-safety.md): no phone-home, local data, honest limits
+
+## Reference
+
 - [Step reference](reference/steps.md): every step's contract, generated from the registry
 - [Commands](reference/commands.md): every registered command's id, label, default binding, surface, and enablement, generated from the registry
 - [Menu bar](reference/menu-bar.md): every menu and item in the macOS menu bar, its shortcut, and the command behind it, generated from the registry
@@ -23,7 +38,12 @@
 - [Extending the canvas](reference/extending-the-canvas.md): how a canvas noun loads, what its declaration requires, and what platform APIs it may and may not reach
 - [Register a canvas tool](reference/register-a-canvas-tool.md): walks a new AtlasToolShape declaration end to end, quoting a real registered tool
 - [Register a command](reference/register-a-command.md): walks a new Command registry entry end to end, quoting a real registered command
+- [The plugin standard](reference/plugin-standard.md): the rules a shipped plugin follows, and which ones the conformance checker enforces
+- [Plugin theming](reference/plugin-theming.md): the theme variables a plugin renders with
+- [Plugin API maturity](reference/plugin-api-maturity.md): each contribution family's level and its proof, generated from the repository
+
+## For agents
+
 - [Automate with agents](agents/connect-mcp.md): connecting over MCP and what agents can do
 - [Edit a diagram with an agent](agents/diagrams.md): reading a diagram's shapes by id and adding, changing, deleting and importing them in place
 - [What plugins expose to agents](agents/plugins.md): listing installed plugins, calling a plugin's declared tools, and how a plugin write parks
-- [Trust, data, and safety](trust/data-and-safety.md): no phone-home, local data, honest limits
