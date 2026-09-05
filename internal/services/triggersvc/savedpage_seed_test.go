@@ -27,14 +27,13 @@ import (
 // shape: re-point the seed's watch path at a real temp dir, enable +
 // publish, drop a fixture file, wait for a real triggered run.
 //
-// The seed's LAST step (apply-clipboard-write-text) writes the real
-// macOS clipboard, which internal/adapters/clipboard's own tests treat
-// as CI-hostile (GitHub's macos-latest runners are headless -- no GUI/
-// pasteboard session for osascript/pbcopy). Rather than skip this test
-// outright, it asserts on the process-html-to-markdown step's own
-// checkpointed output (via GetRun) -- DBOS records each step's result
-// independently, so this proof holds whether or not the later apply
-// step's clipboard write itself succeeds in a given environment.
+// The seed's LAST step (apply-clipboard-write-text) writes through the
+// in-memory clipboard adapter this test binary gets by default (goal
+// 0356), never the real OS pasteboard. This test still asserts on the
+// process-html-to-markdown step's own checkpointed output (via GetRun)
+// rather than the run's overall completion -- DBOS records each step's
+// result independently, and that step is what this test actually
+// proves.
 func TestSeededSavedPageToMarkdown_FiresRealWorkflowAndExtractsMainContent(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
@@ -115,14 +114,11 @@ func TestSeededSavedPageToMarkdown_FiresRealWorkflowAndExtractsMainContent(t *te
 </main>
 <footer>Site footer chrome</footer>
 </body></html>`
-	// The trigger fire through run completion below writes the real
-	// macOS clipboard (the seed's own apply-clipboard-write-text step) --
-	// held under the cross-process lock (clipboardtest) so this doesn't
-	// race internal/adapters/clipboard's own real-desktop tests when
-	// `go test ./...` runs both packages concurrently (confirmed by
-	// direct reproduction: a bare run failed
-	// TestWatchChanges_FiresOnRealChange with a value neither test
-	// itself wrote).
+	// The trigger fire through run completion below no longer touches the
+	// real pasteboard at all (see the in-memory-adapter comment above),
+	// so clipboardtest.WithRealClipboardLock costs nothing here -- kept
+	// as a no-op guard against a future config change rather than real
+	// cross-package contention.
 	clipboardtest.WithRealClipboardLock(func() {
 		if err := os.WriteFile(filepath.Join(watchDir, "saved-page.html"), []byte(fixtureHTML), 0o600); err != nil {
 			t.Fatalf("WriteFile: %v", err)

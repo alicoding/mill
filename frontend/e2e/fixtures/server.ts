@@ -90,50 +90,74 @@ export interface SpawnServerOptions {
 // by persistence.spec.ts, which needs to start/stop more than one
 // server within a single test.
 export async function spawnMillServer(opts: SpawnServerOptions): Promise<SpawnedServer> {
+  const env = {
+    ...process.env,
+    ...opts.extraEnv,
+    WAILS_SERVER_PORT: String(opts.port),
+    MILL_MCP_ADDR: `127.0.0.1:${opts.mcpPort}`,
+    // The browser bridge's own loopback listener (goal 0350): every
+    // server binds one, so it must be per-worker isolated like the
+    // MCP listener above or two concurrent workers fight for the
+    // default port. bridgePort lets a spec that talks to the bridge
+    // name the port it will connect to.
+    MILL_BRIDGE_ADDR: `127.0.0.1:${opts.bridgePort ?? opts.port + BRIDGE_PORT_OFFSET}`,
+    MILL_SETTINGS_PATH: opts.settingsPath,
+    MILL_EXECUTION_DB_PATH: opts.executionDbPath,
+    MILL_BACKUP_DIR: opts.backupDir,
+    // Derived from settingsPath's own directory (every call site's
+    // own per-worker/per-spec mkdtemp dir) rather than a new
+    // SpawnServerOptions field every one of them would otherwise need
+    // to start passing -- goal 0185: without this, a spec that ever
+    // touches the Secrets page would create/unlock the REAL user's
+    // vault file. secrets.spec.ts's own dir happens to compute the
+    // identical path, so it doesn't need an extraEnv override at all.
+    MILL_SECRETS_PATH: path.join(path.dirname(opts.settingsPath), 'secrets.kdbx'),
+    // Every e2e server uses the in-memory keyring: per-worker
+    // isolation for secrets (the real keychain is machine-global),
+    // and identical absent-means-ErrNotFound semantics on the Linux
+    // CI runner, which has no Secret Service at all.
+    MILL_TEST_KEYRING: 'memory',
+    // extraEnv is spread BEFORE this block, so a caller-supplied
+    // override (e.g. the mirror-dense spec's own folder-pick
+    // fixture) would otherwise always lose to this default.
+    MILL_TEST_FOLDER_PICK_PATH: opts.extraEnv?.MILL_TEST_FOLDER_PICK_PATH ?? FOLDER_PICK_FIXTURE,
+    // Same override-wins-by-spreading-first shape, for
+    // AtlasService.PickImageFile's own e2e bypass (goal 0206).
+    MILL_TEST_IMAGE_PICK_PATH: opts.extraEnv?.MILL_TEST_IMAGE_PICK_PATH ?? IMAGE_PICK_FIXTURE,
+    // Same shape for AtlasService.PickDiagramFile's own e2e bypass
+    // (goal 0194's live round-trip slice).
+    MILL_TEST_DIAGRAM_PICK_PATH: opts.extraEnv?.MILL_TEST_DIAGRAM_PICK_PATH ?? DIAGRAM_PICK_FIXTURE,
+    // Lets remote-access.spec.ts populate a paired device directly --
+    // pairing itself only completes over a non-loopback connection,
+    // which this isolated per-worker server never has.
+    MILL_TEST_ALLOW_DEVICE_SEED: '1',
+    // Every e2e server gets the in-memory clipboard adapter by
+    // default (goal 0356): a workflow's apply-clipboard-write-*/
+    // capture-clipboard-html step must never reach the real OS
+    // pasteboard just because a spec happened to run this file. A
+    // spec that deliberately needs the real pasteboard (verifying a
+    // Node-side pbcopy round-trip through CompositionService.
+    // ReadHostClipboardText, or a real Finder-file-url read) passes
+    // MILL_CLIPBOARD: 'host' via extraEnv, and must wrap that flow in
+    // withClipboardLock (frontend/e2e/fixtures/clipboardLock.ts) --
+    // enforced by scripts/check-test-side-effects.sh. Same
+    // override-wins-by-computing-first shape as the PICK_PATH
+    // defaults above.
+    MILL_CLIPBOARD: opts.extraEnv?.MILL_CLIPBOARD ?? 'memory',
+  }
+
+  // Fail fast in the harness itself, before ever spawning a process
+  // that could touch the real OS keychain: MILL_TEST_KEYRING is never
+  // overridable via extraEnv (spread before this block, goal 0356's
+  // same MILL_CLIPBOARD posture just above), so this can only trip if a
+  // future edit here breaks that invariant.
+  if (env.MILL_TEST_KEYRING !== 'memory') {
+    throw new Error(`spawnMillServer: MILL_TEST_KEYRING resolved to ${JSON.stringify(env.MILL_TEST_KEYRING)}, want 'memory' -- refusing to spawn a server that could touch the real OS keychain`)
+  }
+
   const proc = spawn(MILL_SERVER_BIN, [], {
     cwd: REPO_ROOT,
-    env: {
-      ...process.env,
-      ...opts.extraEnv,
-      WAILS_SERVER_PORT: String(opts.port),
-      MILL_MCP_ADDR: `127.0.0.1:${opts.mcpPort}`,
-      // The browser bridge's own loopback listener (goal 0350): every
-      // server binds one, so it must be per-worker isolated like the
-      // MCP listener above or two concurrent workers fight for the
-      // default port. bridgePort lets a spec that talks to the bridge
-      // name the port it will connect to.
-      MILL_BRIDGE_ADDR: `127.0.0.1:${opts.bridgePort ?? opts.port + BRIDGE_PORT_OFFSET}`,
-      MILL_SETTINGS_PATH: opts.settingsPath,
-      MILL_EXECUTION_DB_PATH: opts.executionDbPath,
-      MILL_BACKUP_DIR: opts.backupDir,
-      // Derived from settingsPath's own directory (every call site's
-      // own per-worker/per-spec mkdtemp dir) rather than a new
-      // SpawnServerOptions field every one of them would otherwise need
-      // to start passing -- goal 0185: without this, a spec that ever
-      // touches the Secrets page would create/unlock the REAL user's
-      // vault file. secrets.spec.ts's own dir happens to compute the
-      // identical path, so it doesn't need an extraEnv override at all.
-      MILL_SECRETS_PATH: path.join(path.dirname(opts.settingsPath), 'secrets.kdbx'),
-      // Every e2e server uses the in-memory keyring: per-worker
-      // isolation for secrets (the real keychain is machine-global),
-      // and identical absent-means-ErrNotFound semantics on the Linux
-      // CI runner, which has no Secret Service at all.
-      MILL_TEST_KEYRING: 'memory',
-      // extraEnv is spread BEFORE this block, so a caller-supplied
-      // override (e.g. the mirror-dense spec's own folder-pick
-      // fixture) would otherwise always lose to this default.
-      MILL_TEST_FOLDER_PICK_PATH: opts.extraEnv?.MILL_TEST_FOLDER_PICK_PATH ?? FOLDER_PICK_FIXTURE,
-      // Same override-wins-by-spreading-first shape, for
-      // AtlasService.PickImageFile's own e2e bypass (goal 0206).
-      MILL_TEST_IMAGE_PICK_PATH: opts.extraEnv?.MILL_TEST_IMAGE_PICK_PATH ?? IMAGE_PICK_FIXTURE,
-      // Same shape for AtlasService.PickDiagramFile's own e2e bypass
-      // (goal 0194's live round-trip slice).
-      MILL_TEST_DIAGRAM_PICK_PATH: opts.extraEnv?.MILL_TEST_DIAGRAM_PICK_PATH ?? DIAGRAM_PICK_FIXTURE,
-      // Lets remote-access.spec.ts populate a paired device directly --
-      // pairing itself only completes over a non-loopback connection,
-      // which this isolated per-worker server never has.
-      MILL_TEST_ALLOW_DEVICE_SEED: '1',
-    },
+    env,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 

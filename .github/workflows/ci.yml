@@ -134,6 +134,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-framework-api-first.sh
 
+  # Mirrors lefthook.yml's own test-side-effects job -- same script
+  # (goal 0356: tests and e2e servers never touch the host pasteboard).
+  # Grep-only, so like comment-hygiene it needs no build setup.
+  test-side-effects:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-test-side-effects.sh
+
   # Mirrors lefthook.yml's own e2e-seed-literals job -- same script
   # (goal 0358 S7: an e2e count of a registry- or seed-owned set is
   # read through that surface's door, never hand-kept). Grep-only, so
@@ -659,6 +669,7 @@ jobs:
       - workflow-lint
       - comment-hygiene
       - framework-api-first
+      - test-side-effects
       - e2e-seed-literals
       - sdk-comments
       - ui-copy

@@ -2,11 +2,13 @@ package compositionsvc
 
 import "github.com/alicoding/mill/internal/adapters/clipboard"
 
-// readHostClipboardText is clipboard.ReadText's own swappable seam, the
-// same shape internal/domain/composition/capture.go's readClipboardText
-// already establishes -- a test pins a specific pasteboard reading
-// instead of touching the real macOS clipboard.
-var readHostClipboardText = clipboard.ReadText
+// readHostClipboardText is clipboard.Port.ReadText's own swappable seam,
+// the same shape internal/domain/composition/capture.go's
+// readClipboardText already establishes -- a test pins a specific
+// pasteboard reading instead of touching the real macOS clipboard.
+// clipboard.New() resolves to the in-memory Port inside a go test
+// binary (goal 0356) -- never the real pasteboard by default.
+var readHostClipboardText = clipboard.New().ReadText
 
 // ReadHostClipboardText reads the OS pasteboard's plain-text flavor via
 // the clipboard adapter (goal 0229) -- the door the Quick Panel's "Apply

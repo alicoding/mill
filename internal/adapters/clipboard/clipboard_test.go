@@ -27,16 +27,27 @@ func skipUnlessRealDesktop(t *testing.T) {
 	}
 }
 
+// newRealHost is the one deliberate opt-in into NewHost's own test
+// guard (goal 0356): every test below sets MILL_CLIPBOARD_HOST_OK
+// itself, right before constructing, so touching the real pasteboard
+// from a test is never an accident.
+func newRealHost(t *testing.T) *Host {
+	t.Helper()
+	t.Setenv("MILL_CLIPBOARD_HOST_OK", "1")
+	return NewHost()
+}
+
 func TestWriteHTML_ReadHTML_RoundTrip(t *testing.T) {
 	skipUnlessRealDesktop(t)
+	h := newRealHost(t)
 
 	clipboardtest.WithRealClipboardLock(func() {
 		const html = `<h2>round-trip</h2><p>the <strong>bit</strong></p>`
-		if err := WriteHTML(html); err != nil {
+		if err := h.WriteHTML(html); err != nil {
 			t.Fatalf("WriteHTML() error: %v", err)
 		}
 
-		got, err := ReadHTML()
+		got, err := h.ReadHTML()
 		if err != nil {
 			t.Fatalf("ReadHTML() error: %v", err)
 		}
@@ -48,10 +59,11 @@ func TestWriteHTML_ReadHTML_RoundTrip(t *testing.T) {
 
 func TestWriteText(t *testing.T) {
 	skipUnlessRealDesktop(t)
+	h := newRealHost(t)
 
 	clipboardtest.WithRealClipboardLock(func() {
 		const text = "mill clipboard adapter test"
-		if err := WriteText(text); err != nil {
+		if err := h.WriteText(text); err != nil {
 			t.Fatalf("WriteText() error: %v", err)
 		}
 
@@ -69,14 +81,15 @@ func TestWriteText(t *testing.T) {
 
 func TestWatchChanges_FiresOnRealChange(t *testing.T) {
 	skipUnlessRealDesktop(t)
+	h := newRealHost(t)
 
 	clipboardtest.WithRealClipboardLock(func() {
-		if err := WriteText("watch-changes-baseline"); err != nil {
+		if err := h.WriteText("watch-changes-baseline"); err != nil {
 			t.Fatalf("WriteText(baseline) error: %v", err)
 		}
 
 		fired := make(chan string, 1)
-		stop := WatchChanges(20*time.Millisecond, func(text string) {
+		stop := h.WatchChanges(20*time.Millisecond, func(text string) {
 			select {
 			case fired <- text:
 			default:
@@ -89,7 +102,7 @@ func TestWatchChanges_FiresOnRealChange(t *testing.T) {
 		// and misfire on what should be the established starting value.
 		time.Sleep(50 * time.Millisecond)
 
-		if err := WriteText("watch-changes-new-value"); err != nil {
+		if err := h.WriteText("watch-changes-new-value"); err != nil {
 			t.Fatalf("WriteText(new value) error: %v", err)
 		}
 
@@ -106,12 +119,13 @@ func TestWatchChanges_FiresOnRealChange(t *testing.T) {
 
 func TestIsConcealed_FalseForPlainText(t *testing.T) {
 	skipUnlessRealDesktop(t)
+	h := newRealHost(t)
 
 	clipboardtest.WithRealClipboardLock(func() {
-		if err := WriteText("plain clipboard content"); err != nil {
+		if err := h.WriteText("plain clipboard content"); err != nil {
 			t.Fatalf("WriteText() error: %v", err)
 		}
-		concealed, err := IsConcealed()
+		concealed, err := h.IsConcealed()
 		if err != nil {
 			t.Fatalf("IsConcealed() error: %v", err)
 		}
@@ -123,6 +137,7 @@ func TestIsConcealed_FalseForPlainText(t *testing.T) {
 
 func TestIsConcealed_TrueForConcealedTypeMarker(t *testing.T) {
 	skipUnlessRealDesktop(t)
+	h := newRealHost(t)
 
 	clipboardtest.WithRealClipboardLock(func() {
 		// Sets the pasteboard directly via JXA, the same bridge Types() uses,
@@ -142,7 +157,7 @@ pb.setStringForType('1', 'org.nspasteboard.ConcealedType');
 			t.Fatalf("set concealed pasteboard item via JXA: %v", err)
 		}
 
-		concealed, err := IsConcealed()
+		concealed, err := h.IsConcealed()
 		if err != nil {
 			t.Fatalf("IsConcealed() error: %v", err)
 		}
@@ -152,24 +167,26 @@ pb.setStringForType('1', 'org.nspasteboard.ConcealedType');
 	})
 }
 
-func TestConsumeSelfWrite_OneShotMatch(t *testing.T) {
-	markSelfWrite("self-written text")
+func TestSelfWriteTracker_OneShotMatch(t *testing.T) {
+	var tr selfWriteTracker
+	tr.markSelfWrite("self-written text")
 
-	if !ConsumeSelfWrite("self-written text") {
+	if !tr.ConsumeSelfWrite("self-written text") {
 		t.Error("ConsumeSelfWrite() = false for text matching the last self-write, want true")
 	}
-	if ConsumeSelfWrite("self-written text") {
+	if tr.ConsumeSelfWrite("self-written text") {
 		t.Error("ConsumeSelfWrite() = true on a SECOND call with the same text, want false (one-shot)")
 	}
 }
 
-func TestConsumeSelfWrite_NoMatchLeavesMarkerIntact(t *testing.T) {
-	markSelfWrite("expected value")
+func TestSelfWriteTracker_NoMatchLeavesMarkerIntact(t *testing.T) {
+	var tr selfWriteTracker
+	tr.markSelfWrite("expected value")
 
-	if ConsumeSelfWrite("different value") {
+	if tr.ConsumeSelfWrite("different value") {
 		t.Error("ConsumeSelfWrite() = true for unrelated text, want false")
 	}
-	if !ConsumeSelfWrite("expected value") {
+	if !tr.ConsumeSelfWrite("expected value") {
 		t.Error("ConsumeSelfWrite() = false for the actual self-written text after a non-matching call, want true (marker must survive a non-match)")
 	}
 }
@@ -177,10 +194,15 @@ func TestConsumeSelfWrite_NoMatchLeavesMarkerIntact(t *testing.T) {
 // ReadFileURLs must fail closed where osascript is unavailable (a CI
 // runner, a stripped PATH) -- the paste door treats any error as "no
 // files on the pasteboard", so the error must actually surface rather
-// than a panic or a fabricated result.
+// than a panic or a fabricated result. Deliberately constructs its own
+// Host (opted into MILL_CLIPBOARD_HOST_OK) even though it never
+// actually reaches the pasteboard (PATH is stripped first): it
+// exercises Host's own osascript-absent failure path, the same
+// deliberate-real-pasteboard shape as every other test in this file.
 func TestReadFileURLs_FailsClosedWithoutOsascript(t *testing.T) {
+	h := newRealHost(t)
 	t.Setenv("PATH", t.TempDir())
-	paths, err := ReadFileURLs()
+	paths, err := h.ReadFileURLs()
 	if err == nil {
 		t.Fatal("ReadFileURLs() with no osascript on PATH: expected an error")
 	}

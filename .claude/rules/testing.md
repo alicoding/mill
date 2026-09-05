@@ -21,7 +21,7 @@ down at end (`e2e/fixtures/server.ts`). Shared-pool specs import
 **Specs with their own dedicated server** call `spawnMillServer`
 themselves (`atlas-authoring.spec.ts`, `atlas-session-restore.spec.ts`).
 - Within-file cleanup discipline applies — delete what you create.
-- Real-pasteboard tests take the clipboard lock (`withClipboardLock`).
+- Tests/e2e default to memory (`MILL_CLIPBOARD=memory`); a real-pasteboard test spawns `host` under the lock (`withClipboardLock`).
 - `e2e/persistence.spec.ts` is the only spec allowed its own server pair.
 - Never spawn on the LaunchAgent's ports (8080 Tailscale, 127.0.0.1:8090)
   — worker ranges 9400+/9500+ (persistence 9600+/9650+).
@@ -49,9 +49,9 @@ content bumps its `SeedRevision`, or
 - **Smoke/liveness** — app-level boot, non-blocking.
 - **Real-webview engine parity** (`scripts/webview-bridge-smoke.sh`,
   goal 0097) — catches engine divergence between real WKWebView and the
-  Chromium-based suite. Non-required, local only. DoR corollary: a
-  feature depending on engine-level semantics names at DoR whether it
-  gets a smoke-registry check.
+  Chromium-based suite. Non-required, local-only. DoR corollary: a
+  feature depending on engine-level semantics names whether it gets a
+  smoke-registry check.
 - **Manual-only registry** — OS-bound checks, listed with reasons, never
   silently absent (goal 0010); lives in the `manual-checks` skill.
 
@@ -67,10 +67,9 @@ resort carrying a same-line comment naming why.
   raised with real coverage. Go: `scripts/check-go-coverage.sh`.
 - **Diagnostics**: `trace: 'on-first-retry'`, screenshot on failure; CI
   retries 2/local 1; read the first flake's trace.zip.
-- **CI-only flakes are chased locally under CPU throttle, not by
-  rerunning CI**: `E2E_CPU_THROTTLE=4 npx playwright test <spec>
-  --retries=0 --repeat-each=3` reproduces a load race, else look
-  elsewhere.
+- **CI-only flakes are chased locally under CPU throttle**:
+  `E2E_CPU_THROTTLE=4 npx playwright test <spec> --retries=0
+  --repeat-each=3` reproduces a load race, else look elsewhere.
 - **CI shards run one worker each** (`fullyParallel` in CI only) — a
   file needing order declares `test.describe.configure({ mode:
   'serial' })`.

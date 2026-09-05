@@ -17,6 +17,14 @@ pre-commit:
     - name: framework-api-first
       glob: "*.go"
       run: ./scripts/check-framework-api-first.sh
+    - name: test-side-effects
+      # Goal 0356: a _test.go file constructing the real clipboard Host
+      # adapter without the MILL_CLIPBOARD_HOST_OK opt-in in the same
+      # file, or an e2e spec spawning MILL_CLIPBOARD=host without
+      # withClipboardLock -- grep-only, so like comment-hygiene it needs
+      # no build setup.
+      glob: "{*_test.go,frontend/e2e/*.spec.ts}"
+      run: ./scripts/check-test-side-effects.sh
     - name: e2e-seed-literals
       glob: "frontend/e2e/**/*.ts"
       # An e2e count of a set the APP owns (registered step types,

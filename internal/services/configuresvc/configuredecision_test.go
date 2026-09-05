@@ -14,7 +14,7 @@ func newDecisionHarness(t *testing.T) *ConfigureService {
 	t.Helper()
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	return NewConfigureService(store, comp, credential.New())
+	return NewConfigureService(store, comp, credential.NewInMemory())
 }
 
 // docs/adr/0027, mirroring TestConfigureService_FreshInstall_SeedsBuiltInRequests:

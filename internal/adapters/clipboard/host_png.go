@@ -54,7 +54,7 @@ JSON.stringify(pb.setDataForType(data, '` + pngPasteboardType + `'))`
 // Unlike WriteText this leaves no self-write marker: the
 // clipboard-history poller watches the TEXT flavor only, so an image
 // write is invisible to it by construction.
-func WritePNG(data []byte) error {
+func (h *Host) WritePNG(data []byte) error {
 	if len(data) == 0 {
 		return fmt.Errorf("write png to clipboard: no image data")
 	}

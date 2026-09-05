@@ -6,8 +6,10 @@ import (
 )
 
 // Package-level function var, not a direct call -- same testability
-// pattern as internal/domain/runbook.
-var writeClipboardText = clipboard.WriteText
+// pattern as internal/domain/runbook. clipboard.New() resolves to the
+// in-memory Port inside a go test binary (goal 0356) -- never the real
+// pasteboard by default.
+var writeClipboardText = clipboard.New().WriteText
 
 func init() {
 	RegisterNodeType(NodeType{

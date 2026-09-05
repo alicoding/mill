@@ -15,7 +15,7 @@ func newDeclaredStepTypeHarness(t *testing.T) *ConfigureService {
 	t.Helper()
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
-	return NewConfigureService(store, comp, credential.New())
+	return NewConfigureService(store, comp, credential.NewInMemory())
 }
 
 // TestConfigureService_FreshInstall_SeedsBuiltInDeclaredStepTypes
