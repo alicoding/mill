@@ -125,6 +125,16 @@ export function RevealPluginsDir(): $CancellablePromise<void> {
 }
 
 /**
+ * SecretSourceKinds lists every runnable installed plugin's declared
+ * secret sources, sorted by label -- what the Kind picker offers after
+ * the built-in kinds. A plugin that may not run, or whose manifest is
+ * broken, contributes nothing.
+ */
+export function SecretSourceKinds(): $CancellablePromise<$models.SecretSourceKindInfo[] | null> {
+    return $Call.ByID(3945528212);
+}
+
+/**
  * SignedOK is the run policy's question: with no policy every plugin
  * passes; with one, only a verified signature does.
  */

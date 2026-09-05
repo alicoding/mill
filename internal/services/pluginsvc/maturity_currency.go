@@ -26,6 +26,7 @@ var docPageByFamily = map[string]string{
 	"commands":      "commands.md",
 	"themes":        "plugin-theming.md",
 	"tools":         "install-a-plugin.md",
+	"secretSources": "install-a-plugin.md",
 }
 
 // gatherCurrency reads git history under repoRoot -- a shallow clone
