@@ -1,4 +1,6 @@
 import type { Command } from './commands'
+import { jsonNodeContext } from './commandContext'
+import { writeClipboardText } from './clipboardWrite'
 import { useUISignalStore } from './uiSignalStore'
 
 // Whether a board with something on it is on screen right now -- read
@@ -308,4 +310,44 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     surface: ['atlas'],
     run: () => {},
   },
+  // The three copies a row of a JSON/YAML board object offers (goal
+  // 0269), each acting on the row the FACE hands it (goal 0343's
+  // context parameter, the same shape the Configure inventory rows
+  // take): the row menu supplies the right-clicked row, the face's own
+  // Cmd+C supplies the focused one. paletteHidden because neither the
+  // palette nor the keydown dispatcher can name a tree row --
+  // ambientContext() resolves no jsonNode, so `needs` below is also
+  // what keeps a stray Cmd+C anywhere else in the app from reaching
+  // Copy value.
+  ...jsonRowCommands(),
 ]
+
+// One factory rather than three near-identical literals: the three
+// commands differ only in which field of the row they write, and
+// `dupl`/sonarjs both read three copies of the same eight lines as the
+// duplication they are.
+function jsonRowCommands(): Command[] {
+  const fields = [
+    { id: 'copyValue', field: 'value' },
+    { id: 'copyPath', field: 'path' },
+    { id: 'copyKey', field: 'key' },
+  ] as const
+  return fields.map(({ id, field }): Command => ({
+    id: `atlas.json.${id}`,
+    label: `commands.atlas.json.${id}`,
+    // Cmd+C on the focused row copies its value, the browser-inspector
+    // convention. Never dispatched generically (see the note above the
+    // call): the face runs it directly with the focused row as the
+    // target, and this binding is what the row menu's own hint shows.
+    defaultBinding: id === 'copyValue' ? { mods: ['cmd'], key: 'C' } : null,
+    paletteHidden: true,
+    surface: ['atlas'],
+    needs: 'jsonNode',
+    enabled: (ctx) => Boolean(jsonNodeContext(ctx)),
+    run: (ctx) => {
+      const row = jsonNodeContext(ctx)
+      if (!row) return
+      return writeClipboardText(row[field])
+    },
+  }))
+}

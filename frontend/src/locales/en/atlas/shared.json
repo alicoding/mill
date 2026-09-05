@@ -120,6 +120,7 @@
     "diagramAriaLabel": "Diagram",
     "sheetAriaLabel": "Sheet",
     "pdfAriaLabel": "PDF document",
+    "jsonAriaLabel": "JSON document",
     "pdfViewerTitle": "PDF viewer",
     "pdfTooLarge": "Too large to preview here.",
     "pdfOpenInApp": "Open in default app",

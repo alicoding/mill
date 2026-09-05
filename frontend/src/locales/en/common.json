@@ -222,6 +222,11 @@
         "area": "Draw an area",
         "table": "New table",
         "image": "Add an image"
+      },
+      "json": {
+        "copyValue": "Copy value",
+        "copyPath": "Copy path",
+        "copyKey": "Copy key"
       }
     },
     "object": {
