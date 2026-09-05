@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-09-04",
-  "headline": "3 of 9 contribution families are stable; 0 ready to promote; 0 regressed.",
+  "headline": "3 of 10 contribution families are stable; 0 ready to promote; 0 regressed.",
   "rows": [
     {
       "family": "canvasObjects",
@@ -40,7 +40,7 @@
       "sdkTypes": true,
       "mcp": "no",
       "codeChangedAt": "2026-09-04",
-      "docsChangedAt": "2026-09-05",
+      "docsChangedAt": "2026-09-04",
       "daysBehindCode": 0,
       "flags": []
     },
@@ -68,7 +68,7 @@
       "sdkTypes": true,
       "mcp": "n/a",
       "codeChangedAt": "2026-09-04",
-      "docsChangedAt": "2026-09-05",
+      "docsChangedAt": "2026-09-04",
       "daysBehindCode": 0,
       "flags": []
     },
@@ -82,7 +82,7 @@
       "sdkTypes": true,
       "mcp": "no",
       "codeChangedAt": "2026-09-04",
-      "docsChangedAt": "2026-09-05",
+      "docsChangedAt": "2026-09-04",
       "daysBehindCode": 0,
       "flags": []
     },
@@ -115,6 +115,20 @@
       "flags": []
     },
     {
+      "family": "secretSources",
+      "level": "experimental",
+      "conformance": false,
+      "example": true,
+      "e2e": true,
+      "docs": true,
+      "sdkTypes": true,
+      "mcp": "n/a",
+      "codeChangedAt": "2026-09-04",
+      "docsChangedAt": "2026-09-04",
+      "daysBehindCode": 0,
+      "flags": []
+    },
+    {
       "family": "tools",
       "level": "experimental",
       "conformance": false,
@@ -124,7 +138,7 @@
       "sdkTypes": false,
       "mcp": "yes",
       "codeChangedAt": "2026-09-04",
-      "docsChangedAt": "2026-09-05",
+      "docsChangedAt": "2026-09-04",
       "daysBehindCode": 0,
       "flags": []
     }

@@ -624,6 +624,10 @@
     },
     "pathPlaceholderBruno": "/path/to/collection",
     "pathPlaceholderOnePassword": "Vault name (optional)",
+    "kindExtension": "Extension source",
+    "kindFromExtension": "From {{name}}",
+    "problemPluginMissing": "The extension for this source isn't installed.",
+    "problemPluginDisabled": "The extension for this source is turned off.",
     "pathPlaceholderDotenv": "/path/to/project/.env"
   },
   "advancedDisclosure": {
