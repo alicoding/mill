@@ -223,6 +223,12 @@
   },
   {
     "menu": "View",
+    "item": "Extensions",
+    "shortcut": "⌘⇧X",
+    "command": "extensions.open"
+  },
+  {
+    "menu": "View",
     "item": "Docs",
     "shortcut": "",
     "command": "view.docs"

@@ -30,6 +30,10 @@ const (
 	ViewAtlas       ViewKind = "atlas"
 	ViewDocs        ViewKind = "docs"
 	ViewSecrets     ViewKind = "secrets"
+	// ViewExtensions is the extensions surface (docs/goals/0349): its
+	// own top-level page, not a Settings pane -- Settings holds kernel
+	// configuration only (ADR-0035).
+	ViewExtensions  ViewKind = "extensions"
 	ViewPlaceholder ViewKind = "placeholder"
 )
 
@@ -118,6 +122,14 @@ func List() []Capability {
 			// Configure (see that goal file's "owner's reframing").
 			ID: "capability-secrets", Label: "Secrets", SpecSection: "3.9",
 			Status: StatusOpen, View: ViewSecrets,
+		},
+		{
+			// Extensions (docs/goals/0349): browsing, installing,
+			// updating and removing plugins is a destination of its own,
+			// the shape every surveyed extension platform converged on --
+			// Settings configures the kernel, it does not host a store.
+			ID: "capability-extensions", Label: "Extensions", SpecSection: "3.6",
+			Status: StatusOpen, View: ViewExtensions,
 		},
 	}
 }

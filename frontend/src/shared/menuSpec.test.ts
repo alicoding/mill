@@ -73,7 +73,7 @@ describe('menuSpecFor (the native menu bar as a projection of the command regist
 
   it('puts the views, the palette and tab cycling in View, and the zoom roles last', () => {
     expect(shapeOf(menu(spec, 'View'))).toEqual([
-      'Home', 'Workflows', 'Configure', 'Atlas', 'Activity', 'Review', 'Review rules', 'Secrets', 'Docs',
+      'Home', 'Workflows', 'Configure', 'Atlas', 'Activity', 'Review', 'Review rules', 'Secrets', 'Extensions', 'Docs',
       '-', 'Command palette',
       '-', 'Next tab', 'Previous tab',
       '-', 'Clipboard history',

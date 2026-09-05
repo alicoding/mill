@@ -2,7 +2,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test, expect } from './fixtures/server'
 import { createBoardObjectViaRPC, ATLAS_DEFAULT_SPACE_ID } from './fixtures/atlasNativeDropEscapeHatch'
-import { extensionRow, openExtensionDetail, openSettings } from './fixtures/settingsNav'
+import { extensionRow, openExtensionDetail, openExtensions } from './fixtures/settingsNav'
 
 // The "sheet" board object (goal 0232 S2): dropping a .xlsx/.csv file
 // lands a board-local, read-only spreadsheet preview -- never a
@@ -175,7 +175,7 @@ test('the sheet preview row cap is a declared number setting the sheet honors li
   const setPreviewRows = async (draft: string) => {
     // A declared setting lives in the extension's DETAIL pane (goal
     // 0321), never on its row.
-    await openSettings(page, 'extensions')
+    await openExtensions(page)
     await openExtensionDetail(page, extensionRow(page, 'sheet'), 'sheet')
     const field = page.getByTestId('extension-setting-sheet-previewRows').locator('input')
     await field.fill(draft)
