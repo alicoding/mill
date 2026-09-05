@@ -14,7 +14,7 @@ import { copy } from './copy'
 
 export const CLIENT_CERT_TAB = 'certificates'
 
-// forThisFamily keeps a command inert on a row of another inventory:
+// targetIn keeps a command inert on a row of another inventory:
 // one context kind serves every family, so the family name is what
 // separates them.
 function targetIn(ctx: Parameters<NonNullable<Command['enabled']>>[0]): string | null {
