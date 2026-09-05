@@ -2,7 +2,7 @@
 
 package launchatlogin
 
-// framework-api-audit: wails/v3@v3.0.0-beta.12 lacks a way to read SMAppServiceStatusRequiresApproval -- App.Autostart (pkg/application/autostart_manager.go, backed by SMAppService on macOS 13+ per autostart_darwin_smappservice.go) covers Enable/Disable/IsEnabled/Status, but Status() collapses that one pending-approval bit away.
+// framework-api-audit: wails/v3@v3.0.0-beta.15 lacks a way to read SMAppServiceStatusRequiresApproval -- App.Autostart (pkg/application/autostart_manager.go, backed by SMAppService on macOS 13+ per autostart_darwin_smappservice.go) covers Enable/Disable/IsEnabled/Status, but Status() collapses that one pending-approval bit away.
 
 /*
 #cgo CFLAGS: -mmacosx-version-min=10.15 -x objective-c -Wno-unguarded-availability-new
