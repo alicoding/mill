@@ -84,10 +84,12 @@ export const tableTool = {
     ariaLabelKey: 'boardObject.tableAriaLabel',
     role: undefined,
     // Object first, cell second (goal 0273 rule 2, the converged
-    // canvas-table model): an unselected table's first click selects
-    // the OBJECT -- the grid only goes live once the object is
-    // selected, so a bare click can never land straight in a cell.
-    clickShield: true,
+    // canvas-table model): an idle table's first click selects the
+    // OBJECT -- the grid only goes live once the object is selected, so
+    // a bare click can never land straight in a cell. Selected, the
+    // grid owns the wheel over its own scroll area, which is how a
+    // table wider than its box scrolls sideways at all (goal 0354).
+    content: 'interactive',
     shieldHintKey: 'atlas:tableNoun.shieldHint',
     // ADR-0046 (goal 0244 S0): Payload.listID names the backing
     // Configure List this Kind projects -- a provider source, not a

@@ -64,6 +64,9 @@ export const imageTool = {
   content: {
     Component: makeMirrorImageContent(ImageIcon),
     ariaLabelKey: 'boardObject.imageAriaLabel',
+    // A rendered picture: nothing inside it scrolls, selects or edits,
+    // so the canvas owns every gesture over it (goal 0354).
+    content: 'static',
     role: 'img',
     // ADR-0046 (goal 0244 S0): Payload.mirrorPath is the real image
     // file; "Open in default app" (useAtlasObjectMenu.ts) is this

@@ -125,7 +125,7 @@
     "pdfOpenInApp": "Open in default app",
     "loadFailed": "Couldn't load this file.",
     "dragHandleTitle": "Drag to move",
-    "shieldedBandTitle": "Click to select first.",
+    "shieldedBandTitle": "Click to select, then scroll or edit.",
     "fitChip": "Fit",
     "fitChipTitle": "Larger than the frame. Fit to see it all.",
     "rotateHandleTitle": "Drag to rotate"
