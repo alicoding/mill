@@ -103,6 +103,12 @@
   },
   {
     "menu": "File > New…",
+    "item": "New client certificate",
+    "shortcut": "",
+    "command": "configure.new.certificates"
+  },
+  {
+    "menu": "File > New…",
     "item": "New conversion profile",
     "shortcut": "",
     "command": "configure.new.conversionprofiles"

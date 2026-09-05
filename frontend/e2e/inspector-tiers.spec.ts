@@ -8,13 +8,13 @@ import { openInspectorTab } from './fixtures/inspectorTabs'
 // try-it surface and the selected run's data, and a footer stating the
 // I/O contract under every tab.
 //
-// Driven through the seeded "Example: Branch to a decision" workflow --
+// Driven through the seeded "Route an expense by amount" workflow --
 // the seed IS the proof (.claude/rules/testing.md). No clipboard, no
 // network: every step is a local read or a routing decision, so this
 // runs on the SHARED worker pool and asserts only on the steps it
 // selects, cleaning up the one breakpoint it sets.
 
-const SEED = 'Example: Branch to a decision'
+const SEED = 'Route an expense by amount'
 const TRIGGER_NODE = 'example-branch-trigger'
 const CAPTURE_NODE = 'example-branch-capture'
 

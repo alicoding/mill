@@ -121,7 +121,7 @@ test('a table object can be resized by its own handle, and the size persists acr
   test.skip(!!process.env.CI, 'drag synthesis coalesces on CI -- QUARANTINE.md atlas-table-resize')
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await createTableFromList(page, 'Example: Country codes', 'US')
+  await createTableFromList(page, 'Country codes', 'US')
   const tableObject = tableObjects(page).filter({ hasText: 'US' })
   await expect(tableObject).toBeVisible()
 
@@ -153,7 +153,7 @@ test('a table object can be resized by its own handle, and the size persists acr
 test('a table object can be dragged by its own frame', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await createTableFromList(page, 'Example: Country codes', 'US')
+  await createTableFromList(page, 'Country codes', 'US')
   const tableObject = tableObjects(page).filter({ hasText: 'US' })
   await expect(tableObject).toBeVisible()
 

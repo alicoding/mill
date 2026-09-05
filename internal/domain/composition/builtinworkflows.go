@@ -302,19 +302,19 @@ func BuiltInWorkflows() []Workflow {
 		},
 		{
 			ID:          "example-guarded-http-workflow",
-			Label:       "Example: Approval-gated HTTP call",
-			Description: "Calls the seeded no-auth httpbin.org integration. It is an EXTERNAL-effect step, so running it parks awaiting your approval by default. Approve or deny it from this workflow's own Runs tab. To skip the ask for trusted steps, add an allow rule under Configure > Guardrails. Dry-run the rule there before relying on it.",
+			Label:       "Post an update to the client portal",
+			Description: "Parks for your approval, then posts an engagement update to the client portal.",
 			Nodes:       guardedNodes,
 			Edges: []Edge{
 				{ID: "example-guarded-e0", Source: guardedTriggerID, Target: guardedHTTPID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(3),
+			Seed:    seedorigin.Stamp(4),
 		},
 		{
 			ID:          "example-review-workflow",
-			Label:       "Example: Human review with input",
-			Description: "Pauses in the Review queue (sidebar > Review) for a person: type a note there, approve, and the run resumes with your note as its data. The note is read into the payload and validated by a ruleset (\"note provided\" must pass). Deny to stop it instead. Human-in-the-loop and ruleset validation demonstrated end to end.",
+			Label:       "Sign off a deliverable",
+			Description: "Pauses in Review for a sign-off note, then validates it before the run continues.",
 			Nodes:       reviewNodes,
 			Attributes:  []AttributeDef{{Key: "note", Label: "Note", Type: FieldText}},
 			Edges: []Edge{
@@ -323,7 +323,7 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-review-e2", Source: reviewCaptureID, Target: reviewRulesetID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(3),
+			Seed:    seedorigin.Stamp(4),
 		},
 		{
 			ID:          "example-disabled-schedule-workflow",
@@ -339,8 +339,8 @@ func BuiltInWorkflows() []Workflow {
 		},
 		{
 			ID:          "example-branch-to-decision-workflow",
-			Label:       "Example: Branch to a decision",
-			Description: "Captures a typed 'amount' Attribute, branches on it (amount > 100), and ends at one of two Configure-authored Decisions (Approve or Deny), each a real TERMINAL outcome, not just the end of the step chain. The branch's condition is a Branch step, renamed from routing-only \"Decision\" (see Configure > Decisions for the terminal outcomes themselves). The captured amount flows typed into the reached Decision's own 'score' output via outputBindings, proving the outcome JSON carries real data, not a hardcoded literal. The Approve arm is PINNED to that Decision's published v1, unaffected by later edits to it. The Deny arm stays live, always resolving that Decision's current definition; run history shows each arm's own \"v1\"/\"live@N\" stamp.",
+			Label:       "Route an expense by amount",
+			Description: "Routes an expense over 100 to Approve or Deny.",
 			Nodes:       branchNodes,
 			Attributes:  []AttributeDef{{Key: "amount", Label: "Amount", Type: FieldNumber}},
 			Edges: []Edge{
@@ -350,18 +350,18 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-branch-e3", Source: branchRouteID, SourceHandle: otherwiseHandle, Target: branchDenyID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(4),
+			Seed:    seedorigin.Stamp(5),
 		},
 		{
 			ID:          "example-decision-with-review-workflow",
-			Label:       "Example: Decision with review",
-			Description: "Runs straight into the seeded \"Manual review (example)\" Decision. A manual-review-category terminal outcome parks the run in the Review queue (sidebar > Review) before it terminalizes, the exact same durable park human-review already uses. Approve there to reach the typed outcome; deny to fail the run closed.",
+			Label:       "Escalate to manual review",
+			Description: "Parks the run for manual review before the final decision.",
 			Nodes:       decisionReviewNodes,
 			Edges: []Edge{
 				{ID: "example-decision-review-e0", Source: decisionReviewTriggerID, Target: decisionReviewOutcomeID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(4),
+			Seed:    seedorigin.Stamp(5),
 		},
 		{
 			ID:          "example-mcp-echo-workflow",

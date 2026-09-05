@@ -500,7 +500,10 @@
     "tokenSecret": "Token secret",
     "tokenSecretCaption": "Omit for 2-legged OAuth 1.0a, same as Token above.",
     "clientSecret": "Client secret",
-    "secret": "Secret"
+    "secret": "Secret",
+    "clientCertificateMatched": "Client certificate: {{label}}",
+    "clientCertificateNone": "No client certificate for this host.",
+    "clientCertificateAddOne": "Add one"
   },
   "requestForm": {
     "general": "General",
@@ -572,7 +575,8 @@
     "execEnvs": "Execution Environments",
     "aiProviders": "AI Providers",
     "stepTypes": "Step types",
-    "conversionProfiles": "Conversion profiles"
+    "conversionProfiles": "Conversion profiles",
+    "certificates": "Certificates"
   },
   "configureConversionProfiles": {
     "heading": "Conversion profiles",
@@ -632,5 +636,41 @@
   },
   "advancedDisclosure": {
     "summary": "Advanced"
+  },
+  "configureClientCerts": {
+    "heading": "Certificates",
+    "newClientCert": "New certificate",
+    "label": "Label",
+    "host": "Host",
+    "hostCaption": "Exact host, or *.example.com for every subdomain.",
+    "certificate": "Certificate",
+    "certificateCaption": "Choose a PEM certificate, or a PKCS#12 bundle that carries its own key.",
+    "privateKey": "Private key",
+    "privateKeyCaption": "A PKCS#12 bundle carries its own key.",
+    "passphrase": "Passphrase",
+    "passphraseCaption": "Only for an encrypted key or bundle.",
+    "caCertificate": "CA certificate",
+    "caCertificateCaption": "Add the private root this server presents, alongside the ones your machine already trusts.",
+    "notes": "Notes",
+    "saveClientCert": "Save certificate",
+    "test": "Test",
+    "handshakeSucceeded": "Handshake succeeded.",
+    "searchPlaceholder": "Search certificates…",
+    "emptyHeading": "No client certificates yet",
+    "emptyDescription": "A certificate here is presented on every request Mill makes to the host you name.",
+    "editAriaLabel": "Edit {{label}}",
+    "deleteAriaLabel": "Delete {{label}}",
+    "status": {
+      "ready": "Ready",
+      "expiring": "Expires in {{days}} days",
+      "expired": "Expired",
+      "incomplete": "Needs a certificate and key",
+      "unreadable": "Can't read the certificate"
+    },
+    "columns": {
+      "label": "Label",
+      "host": "Host",
+      "status": "Status"
+    }
   }
 }

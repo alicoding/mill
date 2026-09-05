@@ -66,7 +66,7 @@ test('a table object projects a List live on the board, and Promote to card keep
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await createTableFromList(page, 'Example: Country codes', 'US')
+  await createTableFromList(page, 'Country codes', 'US')
 
   // The board face renders the live table straight off the object --
   // no card, no kind/title question asked to get here.
@@ -76,8 +76,8 @@ test('a table object projects a List live on the board, and Promote to card keep
 
   // Promote to card: the SAME List keeps projecting, now through the
   // card page too.
-  await promoteTableObject(page, tableObject, 'Example: Country codes', ATLAS_KIND_DOCUMENT)
-  const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'Example: Country codes' })
+  await promoteTableObject(page, tableObject, 'Country codes', ATLAS_KIND_DOCUMENT)
+  const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'Country codes' })
   await expect(tableCard).toBeVisible()
   await expect(tableCard.getByTestId('atlas-projection-glide').locator('[role="grid"]')).toContainText('US')
 
@@ -101,7 +101,7 @@ test('a table object projects a List live on the board, and Promote to card keep
 test('auto-arrange keeps a promoted table card at its real footprint', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await createTableFromList(page, 'Example: Country codes', 'US')
+  await createTableFromList(page, 'Country codes', 'US')
   const tableObject = tableObjects(page).filter({ hasText: 'US' })
   await expect(tableObject).toBeVisible()
   await promoteTableObject(page, tableObject, 'ZzE2eProjectionArrangeCard', ATLAS_KIND_DOCUMENT)
@@ -199,7 +199,7 @@ test('boundary inserts, cell edits, and column rename all work in place on the c
 test('an options column renders pills and edits as a select on the board object, and the promoted card\'s pills density tints rows', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await createTableFromList(page, 'Example: Task tracker', 'Set up Mill')
+  await createTableFromList(page, 'Engagement tasks', 'Set up Mill')
 
   // Filtered by the stable seeded task text, not the edited status
   // value below -- a filter keyed on content this test itself mutates
@@ -336,11 +336,11 @@ test('resizing a promoted table card persists its footprint across reload', asyn
   test.skip(!!process.env.CI, 'drag synthesis coalesces on CI -- QUARANTINE.md atlas-table-resize')
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await createTableFromList(page, 'Example: Country codes', 'US')
+  await createTableFromList(page, 'Country codes', 'US')
   const tableObject = tableObjects(page).filter({ hasText: 'US' })
   await expect(tableObject).toBeVisible()
-  await promoteTableObject(page, tableObject, 'Example: Country codes', ATLAS_KIND_DOCUMENT)
-  const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'Example: Country codes' })
+  await promoteTableObject(page, tableObject, 'Country codes', ATLAS_KIND_DOCUMENT)
+  const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'Country codes' })
   await expect(tableCard).toBeVisible()
 
   // Layout width (flow units): a reload re-fits the viewport to a board

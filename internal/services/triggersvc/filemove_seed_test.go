@@ -15,7 +15,7 @@ import (
 )
 
 // TestSeededFileMoveExample_MovesRealFileIntoTemplatedDestination proves
-// the real seeded "Example: File inbox to folder" workflow (goal 0087)
+// the real seeded "File the client inbox" workflow (goal 0087)
 // end to end -- the watch -> classify -> file-into-place recipe --
 // mirroring TestSeededDisabledFilesystemWatch_FiresRealWorkflowOnFileCreate's
 // own harness (filesystemwatch_seed_test.go): point the trigger at a
@@ -44,12 +44,12 @@ func TestSeededFileMoveExample_MovesRealFileIntoTemplatedDestination(t *testing.
 
 	var seed composition.Workflow
 	for _, wf := range comp.Workflows() {
-		if wf.Label == "Example: File inbox to folder" {
+		if wf.Label == "File the client inbox" {
 			seed = wf
 		}
 	}
 	if seed.ID == "" {
-		t.Fatal(`no built-in workflow labeled "Example: File inbox to folder"`)
+		t.Fatal(`no built-in workflow labeled "File the client inbox"`)
 	}
 
 	// Point the seed's own graph at real directories instead of its

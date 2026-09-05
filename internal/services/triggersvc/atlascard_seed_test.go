@@ -43,7 +43,7 @@ func TestSeededCardIntakeKindID_MatchesAtlasSeed(t *testing.T) {
 }
 
 // TestSeededCardIntakeExample_TriggerUpdatesOwnCardAndDoesNotLoop runs
-// the real seeded "Example: Card intake" workflow (goal 0066, ADR-0035/
+// the real seeded "Client request intake" workflow (goal 0066, ADR-0035/
 // 0038) fully wired -- AtlasService, CompositionService, TriggerService,
 // ExecutionService -- the same cross-service shape
 // TestSeededDisabledFilesystemWatch_FiresRealWorkflowOnFileCreate
@@ -77,12 +77,12 @@ func TestSeededCardIntakeExample_TriggerUpdatesOwnCardAndDoesNotLoop(t *testing.
 
 	var seed composition.Workflow
 	for _, wf := range comp.Workflows() {
-		if wf.Label == "Example: Card intake" {
+		if wf.Label == "Client request intake" {
 			seed = wf
 		}
 	}
 	if seed.ID == "" {
-		t.Fatal(`no built-in workflow labeled "Example: Card intake"`)
+		t.Fatal(`no built-in workflow labeled "Client request intake"`)
 	}
 	if _, err := comp.PublishWorkflow(seed.ID); err != nil {
 		t.Fatalf("PublishWorkflow: %v", err)

@@ -8,6 +8,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/httpconnector"
 	"github.com/alicoding/mill/internal/adapters/openapispec"
+	"github.com/alicoding/mill/internal/domain/clientcert"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 )
@@ -158,7 +159,7 @@ func (c *ConfigureService) TestHTTPRequestOperation(req TestHTTPRequestInput) (T
 	})
 	elapsed := time.Since(start).Milliseconds()
 	if err != nil {
-		return TestHTTPRequestResult{Error: err.Error(), DurationMs: elapsed}, nil
+		return TestHTTPRequestResult{Error: clientcert.DescribeTransportFailure(err, composition.HostOf(fullURL)).Error(), DurationMs: elapsed}, nil
 	}
 	respBody := resp.Body
 	// Mirrors integration.go: only a successful response is plausibly a

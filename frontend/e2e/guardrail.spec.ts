@@ -23,7 +23,7 @@ import { openInspectorTab } from './fixtures/inspectorTabs'
 // pending/resolved queue state, which must never be contaminated by
 // another spec cohabiting a shared worker's one server.
 
-const GUARDED = 'Example: Approval-gated HTTP call'
+const GUARDED = 'Post an update to the client portal'
 
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
 test('Running the guarded seed parks awaiting approval; deny fails it closed', async ({}, testInfo) => {

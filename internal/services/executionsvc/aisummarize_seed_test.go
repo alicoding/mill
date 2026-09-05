@@ -17,7 +17,7 @@ import (
 )
 
 // TestSeededAISummarizeExample_RunsEndToEndAgainstFixtureEndpoint runs
-// the REAL seeded "Example: Summarize with local AI" workflow
+// the REAL seeded "Summarize a client email" workflow
 // (composition.BuiltInWorkflows) through the REAL process-ai-completion
 // node and the REAL internal/adapters/aiclient.Complete (no
 // SetAICompleteFn override) against a local httptest.Server speaking
@@ -62,7 +62,7 @@ func TestSeededAISummarizeExample_RunsEndToEndAgainstFixtureEndpoint(t *testing.
 	})
 	defer orig()
 
-	wfID := findBuiltInWorkflowID(t, comp, "Example: Summarize with local AI")
+	wfID := findBuiltInWorkflowID(t, comp, "Summarize a client email")
 
 	summary, err := exec.RunWorkflow(wfID, RunKindTest, map[string]string{
 		"text": "Mill is a guardrailed, local-first workflow automation tool.",

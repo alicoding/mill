@@ -16,7 +16,7 @@ import (
 // docs/goals/0011-lists-maturation.md item 4: list-search's own seeded
 // proof, run against a real DBOS runtime -- the "Example: Country
 // lookup (search)" workflow, exercising an exact match hit and a miss
-// against the SAME typed "Example: Country codes" List
+// against the SAME typed "Country codes" List
 // listlookup_seed_test.go already proves list-lookup against. Same
 // harness shape as that file (composition.SetListLookup wired to
 // list.BuiltIn(), restored via t.Cleanup).
@@ -56,7 +56,7 @@ func newListSearchSeedHarness(t *testing.T) (*ExecutionService, string) {
 		})
 	})
 
-	wfID := findBuiltInWorkflowID(t, comp, "Example: Country lookup (search)")
+	wfID := findBuiltInWorkflowID(t, comp, "Search client countries")
 	return exec, wfID
 }
 

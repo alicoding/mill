@@ -78,7 +78,7 @@ test('Run works from view mode without switching to Edit', async ({ page }) => {
   await page.getByRole('link', { name: 'Workflows' }).click()
   // Deterministic, no clipboard I/O (unlike "Load sample HTML") -- the
   // same seed breakpoints.spec.ts already relies on for this reason.
-  const seed = 'Example: Branch to a decision'
+  const seed = 'Route an expense by amount'
   await workflowRow(page, seed).click()
 
   const panel = activePanel(page)

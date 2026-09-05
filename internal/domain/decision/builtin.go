@@ -37,7 +37,7 @@ var approveV1Outputs = append([]OutputField{}, approveDenyOutputs...)
 func BuiltIn() []Decision {
 	return []Decision{
 		{
-			ID: ExampleApproveID, Label: "Approve (example)", Category: CategoryApprove,
+			ID: ExampleApproveID, Label: "Approve", Category: CategoryApprove,
 			// The live draft carries an ADDITIONAL field ("reviewNote") past
 			// what v1 (below) published (docs/adr/0040 decisions 4-5's seeded
 			// proof): the seeded parent-branch workflow's PINNED outcome node
@@ -47,19 +47,19 @@ func BuiltIn() []Decision {
 			// entity, not just declared.
 			Outputs: append(append([]OutputField{}, approveDenyOutputs...),
 				OutputField{Key: "reviewNote", Label: "Review note (live only)", Type: "text"}),
-			BuiltIn: true, Seed: seedorigin.Stamp(3),
+			BuiltIn: true, Seed: seedorigin.Stamp(4),
 			PublishedVersion: 1,
 			Versions: []DecisionVersion{{
-				Version: 1, Label: "Approve (example)", Category: CategoryApprove,
+				Version: 1, Label: "Approve", Category: CategoryApprove,
 				Outputs: approveV1Outputs,
 			}},
 		},
 		{
-			ID: ExampleDenyID, Label: "Deny (example)", Category: CategoryDeny,
-			Outputs: approveDenyOutputs, BuiltIn: true, Seed: seedorigin.Stamp(3),
+			ID: ExampleDenyID, Label: "Deny", Category: CategoryDeny,
+			Outputs: approveDenyOutputs, BuiltIn: true, Seed: seedorigin.Stamp(4),
 		},
 		{
-			ID: ExampleManualReviewID, Label: "Manual review (example)", Category: CategoryManualReview,
+			ID: ExampleManualReviewID, Label: "Manual review", Category: CategoryManualReview,
 			// legacyPriority is the seeded proof for docs/adr/0040 decision
 			// 2: a Deprecated output field, still valid on any past run's
 			// bound value, de-emphasized in this Decision's own edit form
@@ -68,7 +68,7 @@ func BuiltIn() []Decision {
 				{Key: "reviewedBy", Label: "Reviewed by", Type: "text"},
 				{Key: "legacyPriority", Label: "Priority (legacy)", Type: "text", Deprecated: true},
 			},
-			BuiltIn: true, Seed: seedorigin.Stamp(3),
+			BuiltIn: true, Seed: seedorigin.Stamp(4),
 		},
 	}
 }

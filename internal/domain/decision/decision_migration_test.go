@@ -19,7 +19,7 @@ func TestDecisionUnmarshal_MigratesLegacyEnumValues(t *testing.T) {
 	// approve/deny Decision.
 	oldShape := `{
 		"ID": "example-approve-decision",
-		"Label": "Approve (example)",
+		"Label": "Approve",
 		"Category": "approve",
 		"Outputs": [
 			{"Key": "decision", "Label": "Decision", "Type": "text", "EnumValues": ["APPROVED", "DECLINED"]},
@@ -68,7 +68,7 @@ func TestDecisionUnmarshal_MigratesLegacyEnumValues(t *testing.T) {
 func TestDecisionUnmarshal_NewShapeUnaffected(t *testing.T) {
 	newShape := `{
 		"ID": "example-deny-decision",
-		"Label": "Deny (example)",
+		"Label": "Deny",
 		"Category": "deny",
 		"Outputs": [
 			{"Key": "decision", "Label": "Decision", "Type": "text", "Options": ["APPROVED", "DECLINED"]}
