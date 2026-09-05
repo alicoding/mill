@@ -1,6 +1,10 @@
 package atlassvc
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/alicoding/mill/internal/domain/atlas"
+)
 
 // ADR-0044's actor-scoped undo journal: one in-memory journal per
 // actor, capped at maxUndoMarks marks, lost on restart (the 48h
@@ -143,6 +147,25 @@ func recordScalar[T any](a *AtlasService, actor undoActor, kind, id, label strin
 	a.recordUndo(actor, kind, id, label,
 		func(a *AtlasService) error { return apply(a, previous) },
 		func(a *AtlasService) error { return apply(a, next) },
+	)
+}
+
+// recordSizeChange is the shared undo-recording shape every
+// size-setting door uses (card/note/board object, goal 0273 defect
+// class): previous/next are *Dimensions, nil meaning "unsized" (the
+// entity's natural/intrinsic footprint), so undoing a first-ever
+// resize replays through clear -- restoring nil -- rather than
+// synthesizing a zero Dimensions{} box through the door's own
+// floor-guarded setter, which would refuse it as a degenerate size.
+func recordSizeChange(a *AtlasService, kind, id, label string, previous, next *atlas.Dimensions, set func(a *AtlasService, sz atlas.Dimensions) error, clear func(a *AtlasService) error) {
+	recordScalar(a, actorUI, kind, id, label,
+		func(a *AtlasService, sz *atlas.Dimensions) error {
+			if sz == nil {
+				return clear(a)
+			}
+			return set(a, *sz)
+		},
+		previous, next,
 	)
 }
 
