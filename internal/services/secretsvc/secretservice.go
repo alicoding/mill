@@ -108,6 +108,10 @@ type SecretService struct {
 	// it, which makes every plugin-backed source report its extension
 	// as missing rather than resolve.
 	pluginSources PluginSourceBridge
+	// createSource adds a secret source on the reader's behalf (goal
+	// 0306 S4's .env discovery); nil until the composition root wires
+	// it, which makes "Add as sources" refuse rather than half-work.
+	createSource SourceCreator
 	// settings holds the app-level unlock requirement
 	// (secretservice_auth.go). Never holds a key or a secret.
 	settings settings.Store

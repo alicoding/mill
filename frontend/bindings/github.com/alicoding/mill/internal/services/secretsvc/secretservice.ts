@@ -22,6 +22,31 @@ import * as secret$0 from "../../domain/secret/models.js";
 import * as $models from "./models.js";
 
 /**
+ * AddDotenvSources creates one dotenv source per chosen path, returning
+ * how many were added.
+ */
+export function AddDotenvSources(folder: string, paths: string[] | null): $CancellablePromise<number> {
+    return $Call.ByID(3271941789, folder, paths);
+}
+
+/**
+ * ChooseExportFile opens the machine's own file picker filtered to CSV
+ * and returns what the reader chose ("" when they cancelled).
+ */
+export function ChooseExportFile(): $CancellablePromise<string> {
+    return $Call.ByID(3588413361);
+}
+
+/**
+ * ChooseScanFolder opens the machine's own folder picker and returns
+ * what the reader chose ("" when they cancelled). Unavailable outside
+ * the desktop app, where the surface asks for a typed path instead.
+ */
+export function ChooseScanFolder(): $CancellablePromise<string> {
+    return $Call.ByID(2191331728);
+}
+
+/**
  * CopySecretToClipboard reveals id's password and writes it to the
  * clipboard, then clears the clipboard after clipboardAutoClear --
  * but ONLY if the clipboard still holds exactly that value at that
@@ -40,8 +65,8 @@ export function CopySecretToClipboard(id: string): $CancellablePromise<void> {
  * source-backed, in which case password is ignored -- the value stays
  * in the source and is read at use time.
  */
-export function CreateSecret(title: string, username: string, password: string, url: string, notes: string, tags: string, kind: string, sourceRef: string): $CancellablePromise<secret$0.Entry> {
-    return $Call.ByID(2352687000, title, username, password, url, notes, tags, kind, sourceRef);
+export function CreateSecret(title: string, username: string, password: string, url: string, notes: string, tags: string[] | null, kind: string, sourceRef: string, fields: secret$0.Field[] | null): $CancellablePromise<secret$0.Entry> {
+    return $Call.ByID(2352687000, title, username, password, url, notes, tags, kind, sourceRef, fields);
 }
 
 /**
@@ -52,12 +77,39 @@ export function DeleteSecret(id: string): $CancellablePromise<void> {
 }
 
 /**
+ * FindDotenvFiles lists the dotenv files under folder.
+ */
+export function FindDotenvFiles(folder: string): $CancellablePromise<$models.DotenvFound[] | null> {
+    return $Call.ByID(4170139972, folder);
+}
+
+/**
  * GeneratePassword returns a fresh CSPRNG password from the given
  * character-class options -- stateless, doesn't touch the vault at all
  * (a user can generate before the vault is even unlocked).
  */
 export function GeneratePassword(length: number, upper: boolean, lower: boolean, digits: boolean, symbols: boolean): $CancellablePromise<string> {
     return $Call.ByID(2111800646, length, upper, lower, digits, symbols);
+}
+
+/**
+ * ImportDotenvKeys stores every key of the chosen files as its own
+ * entry: the key's name as the title, the folder it came from as a
+ * tag, and the file it came from recorded on the entry. Returns how
+ * many entries were created.
+ */
+export function ImportDotenvKeys(folder: string, paths: string[] | null): $CancellablePromise<number> {
+    return $Call.ByID(3362783527, folder, paths);
+}
+
+/**
+ * ImportExport stores every entry the file holds, tagged so the batch
+ * stays findable, and deletes the file afterwards when asked -- an
+ * export holds every password in plain text, so leaving it on disk is
+ * the risk, not the deletion. Returns how many entries were created.
+ */
+export function ImportExport(path: string, deleteAfter: boolean): $CancellablePromise<number> {
+    return $Call.ByID(274568475, path, deleteAfter);
 }
 
 /**
@@ -99,6 +151,14 @@ export function ListSecrets(): $CancellablePromise<secret$0.Summary[] | null> {
  */
 export function LockVault(): $CancellablePromise<void> {
     return $Call.ByID(3317886945);
+}
+
+/**
+ * PreviewExport reads the file and reports how many entries it holds,
+ * storing nothing.
+ */
+export function PreviewExport(path: string): $CancellablePromise<$models.ImportPreview> {
+    return $Call.ByID(1545713570, path);
 }
 
 /**
@@ -209,8 +269,8 @@ export function UnlockVault(): $CancellablePromise<void> {
  * PREVIOUS values onto its history (secretvault.Vault.Upsert's own
  * contract).
  */
-export function UpdateSecret(id: string, title: string, username: string, password: string, url: string, notes: string, tags: string, kind: string, sourceRef: string): $CancellablePromise<secret$0.Entry> {
-    return $Call.ByID(2518896629, id, title, username, password, url, notes, tags, kind, sourceRef);
+export function UpdateSecret(id: string, title: string, username: string, password: string, url: string, notes: string, tags: string[] | null, kind: string, sourceRef: string, fields: secret$0.Field[] | null): $CancellablePromise<secret$0.Entry> {
+    return $Call.ByID(2518896629, id, title, username, password, url, notes, tags, kind, sourceRef, fields);
 }
 
 /**

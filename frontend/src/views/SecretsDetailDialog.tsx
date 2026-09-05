@@ -4,6 +4,8 @@ import { Dialog, FormControl, IconButton, Stack, Text, TextInput } from '@primer
 import { CopyIcon, EyeClosedIcon, EyeIcon } from '@primer/octicons-react'
 import { SecretService } from '../shared/bindings'
 import type { SecretEntry } from '../shared/bindings'
+import { useSecretTitles } from '../shared/secretTitleCache'
+import { SecretDetailFields, SecretDetailSource, SecretDetailTags } from './SecretsDetailFields'
 import styles from './SecretsView.module.css'
 
 // The reveal/copy surface (goal 0185 S2) -- a row click opens this,
@@ -25,6 +27,7 @@ export function SecretsDetailDialog({ id, onClose, onEdit, onHistory, onAccessHi
   const [error, setError] = useState('')
   const [revealed, setRevealed] = useState(false)
   const [copied, setCopied] = useState(false)
+  const { titles } = useSecretTitles()
 
   useEffect(() => {
     SecretService.RevealSecret(id).then(setEntry).catch((err) => setError(String(err)))
@@ -90,12 +93,13 @@ export function SecretsDetailDialog({ id, onClose, onEdit, onHistory, onAccessHi
               <Text as="p" size="small">{entry.Notes}</Text>
             </FormControl>
           )}
-          {entry.Tags && (
-            <FormControl>
-              <FormControl.Label>{t('detail.tagsLabel')}</FormControl.Label>
-              <Text as="p" size="small">{entry.Tags}</Text>
-            </FormControl>
-          )}
+          <SecretDetailFields fields={entry.Fields ?? []} />
+          <SecretDetailTags tags={entry.Tags ?? []} />
+          <SecretDetailSource
+            sourceRef={entry.SourceRef ?? ''}
+            origin={entry.Origin ?? ''}
+            sourceLabel={titles[entry.SourceRef ?? ''] ?? (entry.SourceRef ?? '')}
+          />
         </Stack>
       )}
     </Dialog>
