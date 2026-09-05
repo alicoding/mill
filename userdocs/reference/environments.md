@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # Environments
 
 An **environment** is a named set of variables a run selects. One

@@ -1,3 +1,7 @@
+---
+kind: how-to
+---
+
 # What plugins expose to agents
 
 See [the plugin standard](../reference/plugin-standard.md) for how a

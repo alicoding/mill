@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # Commands
 
 Press ⌘K and type any action's name — "lock vault", "check for

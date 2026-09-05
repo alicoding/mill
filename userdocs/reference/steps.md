@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # Step reference
 
 Generated from the live step registry — every step's contract exactly as the canvas enforces it. Do not edit by hand; `go generate ./internal/docsgen` regenerates.
