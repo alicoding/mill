@@ -6,6 +6,7 @@ import { useIsNarrowViewport } from '../shared/useNarrowViewport'
 import { SETTINGS_GROUPS, resolveSettingsGroup, type SettingsGroupID } from '../shared/settingsGroups'
 import AppearanceSection from './AppearanceSection'
 import SettingsGeneralPane from './SettingsGeneralPane'
+import SettingsSecurityPane from './SettingsSecurityPane'
 import SettingsShortcutsPane from './SettingsShortcutsPane'
 import SettingsConnectionsPane from './SettingsConnectionsPane'
 import SettingsNotificationsPane from './SettingsNotificationsPane'
@@ -65,6 +66,7 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
   const PANES: Record<SettingsGroupID, ReactNode> = {
     general: <SettingsGeneralPane />,
     appearance: <AppearanceSection />,
+    security: <SettingsSecurityPane />,
     shortcuts: <SettingsShortcutsPane />,
     connections: <SettingsConnectionsPane />,
     notifications: <SettingsNotificationsPane />,
