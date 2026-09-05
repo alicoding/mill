@@ -22,8 +22,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 
 | ID | Label | Default binding | Surface | Enablement |
 |---|---|---|---|---|
+| `atlas.addFile` | Add a file to the board | — | atlas | Always available |
 | `atlas.addFromFolder` | Add cards from a folder | — | atlas | Always available |
-| `atlas.arrange` | Auto-arrange | — | atlas | Always available |
+| `atlas.arrange` | Auto-arrange | — | atlas | Conditional — available only in a matching state |
 | `atlas.card.exportAs` | Export card as… | — | atlas | Always available |
 | `atlas.companion.toggle` | Toggle companion panel | — | atlas | Always available |
 | `atlas.contents.open` | Contents | — | atlas | Always available |
@@ -36,12 +37,14 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.delete.selection` | Delete selection | `⌫` | atlas | Always available |
 | `atlas.escapeLadder` | Clear selection or go up a level | `ESCAPE` | atlas | Always available |
 | `atlas.export` | Export atlas | — | atlas | Always available |
+| `atlas.export.drawio` | Export board as .drawio | — | atlas | Always available |
 | `atlas.focusDirection` | Focus the nearest card in a direction | `⌥→` | atlas | Always available |
 | `atlas.focusNext` | Focus next card | `TAB` | atlas | Always available |
 | `atlas.focusPrevious` | Focus previous card | `⇧TAB` | atlas | Always available |
 | `atlas.group.selection` | Group into a new area | `G` | atlas | Always available |
 | `atlas.import` | Import atlas | — | atlas | Always available |
 | `atlas.jump` | Jump to a card or object | `⌘K` | atlas | Always available |
+| `atlas.kinds.open` | Kinds | — | atlas | Always available |
 | `atlas.matrix` | Open traceability matrix | — | atlas | Always available |
 | `atlas.minimap.toggle` | Toggle minimap | — | atlas | Always available |
 | `atlas.nudgeSelection` | Move the selected card | `→` | atlas | Always available |

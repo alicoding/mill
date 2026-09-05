@@ -22,7 +22,7 @@ export function activate(api) {
 		label: 'Web clipper',
 		description: "Clips a page's article into a note.",
 		icon: '✂️',
-		group: 'knowledge',
+		group: 'objects',
 		source: 'url',
 		editRoute: 'inline',
 		defaultPayload: { url: '', clipped: '' },

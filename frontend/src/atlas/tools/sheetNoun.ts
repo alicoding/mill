@@ -53,9 +53,10 @@ registerBoardObjectContent('sheet', {
     label: 'atlas:sheetNoun.name',
     description: 'atlas:sheetNoun.description',
     disableScopeNote: 'atlas:sheetNoun.disableScopeNote',
-    // File-drop-only, the same family Image's own 'file' group already
-    // names (atlasNounRegistry.ts's AtlasNounGroup).
-    group: 'file',
+    // File-drop-only, the same Media family Image's own group names
+    // (atlasNounRegistry.ts's AtlasNounGroup) -- the dock's Media
+    // flyout reaches it through "From file…", never a button of its own.
+    group: 'media',
     // The preview caps (goal 0258 slice 1's number consumer): the
     // parameters truncateSheetRows already takes, read by
     // AtlasSheetObjectContent.tsx per render. The defaults restate

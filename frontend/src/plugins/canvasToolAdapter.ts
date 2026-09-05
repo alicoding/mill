@@ -96,7 +96,7 @@ function identityDeclError(decl: CanvasObjectDecl): string | null {
 	if (decl.shortcutKey !== undefined && !/^[A-Z]$/.test(decl.shortcutKey)) {
 		return `shortcutKey "${decl.shortcutKey}" must be a single A-Z letter`
 	}
-	if (decl.group !== undefined && !['knowledge', 'file', 'annotate'].includes(decl.group)) {
+	if (decl.group !== undefined && !['objects', 'media', 'annotate', 'embed'].includes(decl.group)) {
 		return `unknown group "${String(decl.group)}"`
 	}
 	return iconDeclError(decl.icon, 'icon')
@@ -337,7 +337,11 @@ export function buildThirdPartyNoun(pluginId: string, manifest: Manifest, decl: 
 		description: decl.description,
 		shortcutKey: decl.shortcutKey ?? null,
 		tray: 'quick',
-		group: decl.group ?? (decl.source === 'file' ? 'file' : 'knowledge'),
+		// An undeclared plugin face defaults to 'embed' (goal 0355): the
+		// dock's visible buttons are fixed, so a face that names no
+		// cluster is found through the More panel's search rather than
+		// silently taking a dock slot a built-in noun owns.
+		group: decl.group ?? 'embed',
 		styleFields: adaptStyleFields(decl.kind, decl.label, styleDecls),
 		lockable: decl.lockable ?? false,
 		resizable: !ephemeral,

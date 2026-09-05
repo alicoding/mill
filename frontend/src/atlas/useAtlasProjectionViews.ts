@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { AtlasBoardView } from './AtlasViewSwitcher'
 
 // The three projection-view open/close booleans -- Matrix, Coverage
 // (docs/goals/0064), Roadmap (docs/goals/0212) -- plus their shared "a
@@ -22,5 +23,20 @@ export function useAtlasProjectionViews({ onOpenOverlay }: { onOpenOverlay: (id:
     onOpenOverlay(id)
   }
 
-  return { matrixOpen, setMatrixOpen, coverageOpen, setCoverageOpen, roadmapOpen, setRoadmapOpen, contentsOpen, setContentsOpen, openCardFromProjection }
+  // Which of the five ways of looking at this space is on screen (goal
+  // 0355): the board itself unless a projection is open over it.
+  // DERIVED, never stored, so the view switcher can never disagree with
+  // what is actually rendered -- a dialog closed by Escape included.
+  const activeView: AtlasBoardView = contentsOpen
+    ? 'list'
+    : matrixOpen ? 'matrix' : coverageOpen ? 'coverage' : roadmapOpen ? 'roadmap' : 'board'
+
+  const closeAll = () => {
+    setContentsOpen(false)
+    setMatrixOpen(false)
+    setCoverageOpen(false)
+    setRoadmapOpen(false)
+  }
+
+  return { matrixOpen, setMatrixOpen, coverageOpen, setCoverageOpen, roadmapOpen, setRoadmapOpen, contentsOpen, setContentsOpen, openCardFromProjection, activeView, closeAll }
 }

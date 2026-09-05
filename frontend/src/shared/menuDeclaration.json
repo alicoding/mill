@@ -427,6 +427,24 @@
   },
   {
     "menu": "Atlas",
+    "item": "Export board as .drawio",
+    "shortcut": "",
+    "command": "atlas.export.drawio"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Kinds",
+    "shortcut": "",
+    "command": "atlas.kinds.open"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Add a file to the board",
+    "shortcut": "",
+    "command": "atlas.addFile"
+  },
+  {
+    "menu": "Atlas",
     "item": "Copy as image",
     "shortcut": "",
     "command": "atlas.selection.copyAsImage"

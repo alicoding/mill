@@ -71,8 +71,9 @@ registerBoardObjectContent('diagram', {
     label: 'atlas:diagramNoun.name',
     description: 'atlas:diagramNoun.description',
     disableScopeNote: 'atlas:diagramNoun.disableScopeNote',
-    // File-drop-only, the same family Image's own 'file' group already
-    // names (atlasNounRegistry.ts's AtlasNounGroup).
-    group: 'file',
+    // File-drop-only, the same Media family Image's own group names
+    // (atlasNounRegistry.ts's AtlasNounGroup) -- the dock's Media
+    // flyout reaches it through "From file…", never a button of its own.
+    group: 'media',
   },
 })

@@ -24,7 +24,7 @@ pre-commit:
       glob: "frontend/src/**/*.{css,ts,tsx}"
       run: ./scripts/check-drag-regions.sh
     - name: toolbar-action-testids
-      glob: "{frontend/src/atlas/AtlasToolbar.tsx,frontend/src/atlas/AtlasFolderImport.tsx,frontend/e2e/*.spec.ts,frontend/e2e/fixtures/toolbarActions.ts}"
+      glob: "{frontend/src/atlas/AtlasToolbar.tsx,frontend/e2e/*.spec.ts,frontend/e2e/fixtures/toolbarActions.ts}"
       run: ./scripts/check-toolbar-action-testids.sh
     - name: docsgen-freshness
       # A hand-edited userdocs page without a docsgen regeneration

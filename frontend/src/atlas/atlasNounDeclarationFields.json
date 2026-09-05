@@ -36,8 +36,8 @@
   },
   {
     "field": "group",
-    "legalValues": "'knowledge', 'file', or 'annotate' — REQUIRED, never optional",
-    "meaning": "which tray cluster this noun's own button renders in. AtlasCreationTray.tsx's TRAY_GROUP_ORDER renders 'knowledge' and 'file' flat, primary-first; 'annotate' tools collapse into the tray's one expandable Annotate group instead of rendering flat."
+    "legalValues": "'objects', 'media', 'annotate', or 'embed' — REQUIRED, never optional",
+    "meaning": "which creation-dock cluster this noun belongs to. The dock's visible buttons are fixed at seven and never grow: atlasToolPlacement.ts gives the four named object tools their own slots, collects 'media' and 'annotate' tools into their two flyouts, and leaves everything else — 'embed', and any further 'objects' tool — to be found by name in the dock's More panel."
   },
   {
     "field": "settings",

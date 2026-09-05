@@ -48,7 +48,7 @@ test('A row carries no settings; clicking it opens the detail pane, and Escape r
   await expect(detail.getByTestId('extensions-detail-description')).toHaveText('Adds an image from your files or the clipboard.')
   await expect(detail.getByTestId('extensions-detail-reach')).toHaveText('Reaches nothing outside Mill.')
   await expect(detail.getByTestId('extensions-detail-provenance')).toHaveText(/^Ships with Mill v/)
-  await expect(detail.getByText('File', { exact: true })).toBeVisible()
+  await expect(detail.getByText('Media', { exact: true })).toBeVisible()
   await expect(detail.getByTestId('extensions-detail-adds')).toContainText('Commands: Add an image')
   await expect(detail.getByTestId('extensions-detail-adds')).toContainText('Canvas objects: Image')
 
@@ -97,24 +97,25 @@ test('The list groups into sections; every row title is a noun, and the drawing 
   await page.goto('/')
   await openExtensionsSection(page)
 
-  // Two sections, registry-derived, in knowledge/files order. The
-  // Drawing section is GONE (goal 0252): with the freehand tools
-  // demoted into the Drawing plugin no compiled-in noun declares
-  // group 'annotate', and an empty group hides rather than rendering
-  // a heading over nothing.
-  const knowledge = page.getByTestId('extensions-group-knowledge')
-  const files = page.getByTestId('extensions-group-file')
-  await expect(knowledge.getByText('Knowledge', { exact: true })).toBeVisible()
-  await expect(files.getByText('Files', { exact: true })).toBeVisible()
+  // Two sections, registry-derived, in the same objects/media order the
+  // creation dock renders (goal 0355). The Drawing section is GONE
+  // (goal 0252): with the freehand tools demoted into the Drawing
+  // plugin no compiled-in noun declares group 'annotate', and an empty
+  // group hides rather than rendering a heading over nothing.
+  const objects = page.getByTestId('extensions-group-objects')
+  const media = page.getByTestId('extensions-group-media')
+  await expect(objects.getByText('Objects', { exact: true })).toBeVisible()
+  await expect(media.getByText('Media', { exact: true })).toBeVisible()
   await expect(page.getByTestId('extensions-group-annotate')).toHaveCount(0)
+  await expect(page.getByTestId('extensions-group-embed')).toHaveCount(0)
 
-  // card/note/area/table land in Knowledge; image/diagram/sheet in
-  // Files (image/diagram/sheet are the file-backed family).
+  // card/note/area/table land in Objects; image/diagram/sheet in Media
+  // (image/diagram/sheet are the file-backed family).
   for (const id of ['card', 'note', 'area', 'table']) {
-    await expect(knowledge.locator(`[data-testid="extensions-row"][data-extension-id="${id}"]`)).toBeVisible()
+    await expect(objects.locator(`[data-testid="extensions-row"][data-extension-id="${id}"]`)).toBeVisible()
   }
   for (const id of ['image', 'diagram', 'sheet']) {
-    await expect(files.locator(`[data-testid="extensions-row"][data-extension-id="${id}"]`)).toBeVisible()
+    await expect(media.locator(`[data-testid="extensions-row"][data-extension-id="${id}"]`)).toBeVisible()
   }
 
   // The drawing tools surface as the bundled Drawing plugin's ONE row.

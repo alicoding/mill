@@ -78,6 +78,28 @@ func PickDiagramFile(title string) (string, error) {
 	return path, nil
 }
 
+// PickBoardFile opens the native file picker with no extension filter,
+// returning the chosen path -- "" with a nil error when the user
+// cancels. Returns an error when no live app exists. Deliberately
+// unfiltered: the board routes a chosen file by its own extension the
+// same way a dropped file is routed, so a filter here would only hide
+// files the router already knows what to do with.
+func PickBoardFile(title string) (string, error) {
+	app := application.Get()
+	if app == nil {
+		return "", fmt.Errorf("file picker unavailable outside the desktop app")
+	}
+	dialog := app.Dialog.OpenFile().
+		CanChooseFiles(true).
+		CanChooseDirectories(false).
+		SetTitle(title)
+	path, err := dialog.PromptForSingleSelection()
+	if err != nil {
+		return "", fmt.Errorf("pick board file: %w", err)
+	}
+	return path, nil
+}
+
 // PickCSVFile opens the native file picker filtered to comma-separated
 // files, returning the chosen path -- "" with a nil error when the user
 // cancels. Returns an error when no live app exists. Same

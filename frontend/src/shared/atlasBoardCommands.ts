@@ -12,6 +12,18 @@ function atlasBoardHasContent(): boolean {
   return typeof document !== 'undefined' && document.querySelector('.react-flow__node') !== null
 }
 
+// Whether a perspective is filtering the board right now, read off the
+// toolbar's own declared attribute for the same reason
+// atlasBoardHasContent above reads the live canvas: the value lives in
+// AtlasView's own React state, and a store mirror written by an effect
+// is exactly what a menu built mid-navigation reads wrongly. A global
+// repack while filtered would scramble sibling views (ADR-0041), so
+// Auto-arrange is genuinely invalid then, not merely discouraged.
+function atlasPerspectiveActive(): boolean {
+  return typeof document !== 'undefined'
+    && document.querySelector('[data-testid="atlas-toolbar"][data-perspective-active="true"]') !== null
+}
+
 // The Atlas toolbar/board actions that were only ever reachable by
 // clicking (goal 0071's discoverability trilogy extended to the rest
 // of the surface) -- split out of shared/commands.ts (CLAUDE.md's
@@ -26,6 +38,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     label: 'commands.atlas.arrange',
     defaultBinding: null,
     surface: ['atlas'],
+    enabled: () => !atlasPerspectiveActive(),
     run: () => useUISignalStore.getState().requestAtlasArrange(),
   },
   {
@@ -50,6 +63,37 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     defaultBinding: null,
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasExport(),
+  },
+  {
+    // The viewed board as a .drawio file (goal 0194's own export
+    // slice), promoted to a registry command by goal 0355 so the Board
+    // menu's Export band seats it the same way every other item there
+    // is seated: an id, its own enablement, its own hotkey hint.
+    id: 'atlas.export.drawio',
+    label: 'commands.atlas.exportDrawio',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasExportDrawio(),
+  },
+  {
+    // The board's Kinds editor (goal 0355): a dialog, not a view --
+    // which is why it sits in the Board menu's Structure band while
+    // Contents, which IS a view, sits in the view switcher.
+    id: 'atlas.kinds.open',
+    label: 'commands.atlas.kinds.open',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasKinds(),
+  },
+  {
+    // The creation dock's "From file…" (goal 0355): opens the native
+    // file picker and lands the chosen file through the SAME routing a
+    // dropped file takes (atlas/useAtlasPickBoardFile.ts).
+    id: 'atlas.addFile',
+    label: 'commands.atlas.addFile',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasAddFile(),
   },
   {
     // "Copy as image" / "Export as image..." (docs/goals/0201): both
@@ -279,5 +323,61 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     paletteHidden: true,
     surface: ['atlas'],
     run: () => {},
+  },
+]
+
+// The board menu's own bands (goal 0355). The menu is a PROJECTION of
+// the command registry, the same way the native menu bar is (goal
+// 0332): a band names command ids, and AtlasBoardMenu.tsx resolves each
+// one's label, enablement and hotkey hint from the registry -- so an
+// item can never drift from the action it runs, and a command that
+// disappears takes its menu item with it.
+//
+// `label` overrides the command's palette label for THIS menu only, for
+// the handful of entries whose menu wording is shorter than the
+// palette's ("Import…", not "Import atlas") -- the same override
+// MenuPlacement.label already carries for the menu bar.
+export interface AtlasBoardMenuItem {
+  commandId: string
+  label?: string
+  // testid keeps an item findable under the name it has always had,
+  // for the doors that pre-date this menu (Export as JSON / .drawio).
+  // Omit and the item is found by `atlas-board-menu-<command id>`.
+  testid?: string
+  // disabledReason is the tooltip a dimmed item carries -- an item
+  // whose command can go invalid MUST say why, never just dim.
+  disabledReason?: string
+}
+
+export interface AtlasBoardMenuBand {
+  // The band heading, a locale key like every other string here.
+  label: string
+  items: AtlasBoardMenuItem[]
+}
+
+export const ATLAS_BOARD_MENU_BANDS: AtlasBoardMenuBand[] = [
+  {
+    label: 'atlas:boardMenu.arrange',
+    items: [{ commandId: 'atlas.arrange', testid: 'atlas-auto-arrange', disabledReason: 'atlas:viewMode.arrangeDisabledTooltip' }],
+  },
+  {
+    label: 'atlas:boardMenu.add',
+    items: [
+      { commandId: 'atlas.import', label: 'atlas:boardMenu.import', testid: 'atlas-import' },
+      { commandId: 'atlas.addFromFolder', label: 'atlas:boardMenu.addFromFolder', testid: 'atlas-add-from-folder' },
+    ],
+  },
+  {
+    label: 'atlas:boardMenu.export',
+    items: [
+      { commandId: 'atlas.export', label: 'atlas:boardMenu.exportJSON', testid: 'atlas-export-json' },
+      { commandId: 'atlas.export.drawio', label: 'atlas:boardMenu.exportDrawio', testid: 'atlas-export-drawio' },
+      { commandId: 'atlas.selection.copyAsImage' },
+      { commandId: 'atlas.selection.exportAsImage' },
+    ],
+  },
+  {
+    label: 'atlas:boardMenu.structure',
+    items: [{ commandId: 'atlas.kinds.open', testid: 'atlas-open-kinds' }],
   },
 ]

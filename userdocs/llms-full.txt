@@ -1315,8 +1315,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 
 | ID | Label | Default binding | Surface | Enablement |
 |---|---|---|---|---|
+| `atlas.addFile` | Add a file to the board | — | atlas | Always available |
 | `atlas.addFromFolder` | Add cards from a folder | — | atlas | Always available |
-| `atlas.arrange` | Auto-arrange | — | atlas | Always available |
+| `atlas.arrange` | Auto-arrange | — | atlas | Conditional — available only in a matching state |
 | `atlas.card.exportAs` | Export card as… | — | atlas | Always available |
 | `atlas.companion.toggle` | Toggle companion panel | — | atlas | Always available |
 | `atlas.contents.open` | Contents | — | atlas | Always available |
@@ -1329,12 +1330,14 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.delete.selection` | Delete selection | `⌫` | atlas | Always available |
 | `atlas.escapeLadder` | Clear selection or go up a level | `ESCAPE` | atlas | Always available |
 | `atlas.export` | Export atlas | — | atlas | Always available |
+| `atlas.export.drawio` | Export board as .drawio | — | atlas | Always available |
 | `atlas.focusDirection` | Focus the nearest card in a direction | `⌥→` | atlas | Always available |
 | `atlas.focusNext` | Focus next card | `TAB` | atlas | Always available |
 | `atlas.focusPrevious` | Focus previous card | `⇧TAB` | atlas | Always available |
 | `atlas.group.selection` | Group into a new area | `G` | atlas | Always available |
 | `atlas.import` | Import atlas | — | atlas | Always available |
 | `atlas.jump` | Jump to a card or object | `⌘K` | atlas | Always available |
+| `atlas.kinds.open` | Kinds | — | atlas | Always available |
 | `atlas.matrix` | Open traceability matrix | — | atlas | Always available |
 | `atlas.minimap.toggle` | Toggle minimap | — | atlas | Always available |
 | `atlas.nudgeSelection` | Move the selected card | `→` | atlas | Always available |
@@ -1624,6 +1627,9 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Contents | — | `atlas.contents.open` |
 | Import atlas | — | `atlas.import` |
 | Export atlas | — | `atlas.export` |
+| Export board as .drawio | — | `atlas.export.drawio` |
+| Kinds | — | `atlas.kinds.open` |
+| Add a file to the board | — | `atlas.addFile` |
 | Copy as image | — | `atlas.selection.copyAsImage` |
 | Export as image… | — | `atlas.selection.exportAsImage` |
 | Add cards from a folder | — | `atlas.addFromFolder` |
@@ -2229,6 +2235,16 @@ checked and documented as data, table below included:
   `commit`, which shapes this tool's own placement input into the
   artifact the board persists.
 
+## Where your tool appears
+
+The board's creation dock shows seven buttons and never grows: Card,
+Note, Area, Table, Media, Annotate, and More. A tool declaring `media`
+or `annotate` joins that flyout; anything else is found by name in the
+More panel, which searches every registered tool and lists the plugin
+each one came from. Nothing is hidden by this — a tool in the panel
+still arms exactly the way a dock button does, and still answers to its
+own shortcut key.
+
 ## What is required
 
 Every field on `AtlasToolShape` other than `commit` (documented above
@@ -2249,7 +2265,7 @@ are never omissions.
 | `description` | a string, or omitted entirely | the locale key for a one-sentence, user-vocabulary summary of what this noun does. Read by Settings > Extensions' per-row disclosure; a noun that omits it falls back to its own label there. |
 | `shortcutKey` | a single-character string, or null | the bare keypress that arms this tool from the board. null for a tool with no bare-key shortcut. |
 | `tray` | 'quick' or 'palette' | which tray surface renders this tool's button. |
-| `group` | 'knowledge', 'file', or 'annotate' — REQUIRED, never optional | which tray cluster this noun's own button renders in. AtlasCreationTray.tsx's TRAY_GROUP_ORDER renders 'knowledge' and 'file' flat, primary-first; 'annotate' tools collapse into the tray's one expandable Annotate group instead of rendering flat. |
+| `group` | 'objects', 'media', 'annotate', or 'embed' — REQUIRED, never optional | which creation-dock cluster this noun belongs to. The dock's visible buttons are fixed at seven and never grow: atlasToolPlacement.ts gives the four named object tools their own slots, collects 'media' and 'annotate' tools into their two flyouts, and leaves everything else — 'embed', and any further 'objects' tool — to be found by name in the dock's More panel. |
 | `settings` | an array of {type, key, label, description, defaultValue} setting declarations — type is boolean | string (optional placeholder) | number (optional min/max/step) | enum (options: [{value, label}]) — or omitted entirely | the noun's own user settings (goal 0258): declared here, rendered generically inside its Settings > Extensions row, persisted centrally per extension id + key. defaultValue applies whenever the user has never touched the control; a stored value of the wrong type, or an enum value no longer among the options, falls back to it. Omitted means the row shows no settings block. A runtime plugin declares the same shape as manifest contributes.settings and reads it back through api.settings. |
 | `interaction` | 'arm-then-click', 'pick-then-place', 'drag-to-draw', 'drag-to-erase', 'ephemeral-drag', or 'paste-or-drop' | the authoring gesture that places this noun. Must equal the same field on this id's own shared/atlasToolIdentity.ts entry — the registry's own agreement check cross-validates the two so they can never silently drift apart. |
 | `styleDefaults` | a record of style-field key to value, or omitted entirely | session-only seed values for a freshly placed instance's style state (colour, size, ...). Never persisted document data — omit this field for a noun with no style surface rather than declaring an empty object. |
@@ -2454,9 +2470,10 @@ export const cardTool = {
   description: 'atlas:cardNoun.description',
   shortcutKey: cardIdentity.shortcutKey,
   tray: 'quick',
-  // The atom -- typed, linked, filed, searchable knowledge (goal 0224's
-  // disposition table), tray-primary.
-  group: 'knowledge',
+  // The atom a board is made of -- typed, linked, filed, searchable --
+  // and so one of the four fixed object slots on the creation dock
+  // (goal 0355).
+  group: 'objects',
   interaction: cardIdentity.interaction,
   // Instant placement (goal 0144) always disarms after the one click --
   // never reads a lock flag at all, so this stays false rather than N/A.
