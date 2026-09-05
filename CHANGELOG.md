@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.88.1-beta.2216](https://github.com/alicoding/mill/compare/v0.88.0-beta.2216...v0.88.1-beta.2216) (2026-09-05)
+
+
+### Bug Fixes
+
+* tests and e2e servers never touch the host pasteboard -- an in-memory clipboard adapter selected by environment, a guard in tests, a gate (goal 0356) ([#717](https://github.com/alicoding/mill/issues/717)) ([7d58517](https://github.com/alicoding/mill/commit/7d5851785176a4cdb3f049c00d3f9dd02bf4b47d))
+
 ## [0.5.0](https://github.com/alicoding/mill/compare/v0.4.0...v0.5.0) (2026-08-22)
 
 
