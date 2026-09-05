@@ -76,6 +76,15 @@
        attention-amber respectively) get shifted hues here; the other
        four keep their prior look, just vendored as fixed values
        instead of borrowed semantic tokens. */
+    /* Alignment guides while dragging on a board. Deliberately NOT the
+       accent above: the dragged item already wears an accent selection
+       ring, and a guide painted in the same color reads as part of that
+       ring instead of as the line the item is snapping to. Converged
+       practice keeps the two apart -- the guide is the one warm mark on
+       an otherwise cool canvas. Consumed only by
+       atlas/AtlasAlignmentGuides.module.css. */
+    --atlas-guide-color: #f24822;
+
     --mill-kind-trigger: #8250DF;
     --mill-kind-capture: #0969DA;
     --mill-kind-process: #4B7314;
@@ -105,6 +114,8 @@
     --fgColor-accent: var(--mill-accent-fg);
     --bgColor-accent-muted: var(--mill-accent-muted);
     --borderColor-accent-muted: var(--mill-accent-border-muted);
+
+    --atlas-guide-color: #ff6b57;
 
     --mill-kind-trigger: #8957E5;
     --mill-kind-capture: #1F6FEB;

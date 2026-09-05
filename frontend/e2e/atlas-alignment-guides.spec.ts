@@ -1,6 +1,8 @@
 import { expect, test } from './fixtures/server'
 import type { Locator, Page } from '@playwright/test'
-import { createCardViaTray, deleteCardViaMenu, dragBetween, noteCard } from './fixtures/atlasBoard'
+import { createCardViaTray, deleteCardViaMenu, deleteSticky, dragBetween, noteCard } from './fixtures/atlasBoard'
+import { clickBoardPoint } from './fixtures/atlasBoardPointer'
+import { blurSticky, fillSticky, stickyEditor } from './fixtures/codeEditor'
 import { contextMenu } from './fixtures/contextMenu'
 import { findEmptyBoardRect, rectsOverlap, type Rect } from './fixtures/atlasEmptyRegion'
 
@@ -26,10 +28,11 @@ const CLEARANCE = 5
 // relaxing on a crowded board, where the post-placement re-check is the
 // backstop.
 const SETTLE_MARGINS = [28, 12, 0]
-// Where the coarse approach parks the card before the precise one:
-// clear of the eight-pixel threshold, but close enough that the precise
-// drag's own rounding stays inside a pixel or two.
-const COARSE_GAP = 16
+// How far past the aim the card is parked before the gesture that
+// matters: outside the eight-pixel threshold, so nothing is aligned
+// yet, and short enough that the final nudge loses well under a pixel
+// to React Flow's own drag threshold.
+const PARK_GAP = 12
 // Room for a card plus breathing space around it, in screen pixels at
 // the board's settled zoom -- tried in turn, since how much clear board
 // there is depends on where the seeded content has settled.
@@ -37,6 +40,10 @@ const CARD_SLOTS = [{ width: 240, height: 160 }, { width: 200, height: 140 }, { 
 
 function cardWrapper(page: Page, title: string): Locator {
   return page.locator('.react-flow__node').filter({ has: page.locator(`[aria-label="Open ${title}"]`) })
+}
+
+function stickyWrapper(page: Page, text: string): Locator {
+  return page.locator('.react-flow__node').filter({ has: page.getByTestId('atlas-sticky-note').filter({ hasText: text }) })
 }
 
 async function screenBox(target: Locator): Promise<Rect> {
@@ -48,10 +55,10 @@ async function screenBox(target: Locator): Promise<Rect> {
 // The node wrapper's own transform IS its board position: React Flow
 // writes translate(<x>px,<y>px) straight from the stored coordinate,
 // so this reads board units, never a zoom-scaled screen box.
-async function boardX(page: Page, title: string): Promise<number> {
-  const transform = await cardWrapper(page, title).evaluate((el) => (el as HTMLElement).style.transform)
+async function boardCoord(node: Locator): Promise<number> {
+  const transform = await node.evaluate((el) => (el as HTMLElement).style.transform)
   const parsed = /translate\(\s*(-?[\d.]+)px\s*,\s*(-?[\d.]+)px\s*\)/.exec(transform)
-  if (!parsed) throw new Error(`no board position on ${title}: "${transform}"`)
+  if (!parsed) throw new Error(`no board position on the node: "${transform}"`)
   return Number(parsed[1])
 }
 
@@ -164,7 +171,12 @@ async function dragCardByPointer(page: Page, title: string, dx: number, onArrive
   )
 }
 
-interface Scene { anchor: string; mover: string }
+// The anchor is a locator, not a title: alignment peers are every
+// top-level box on the board, so the thing being aligned TO can be a
+// card, a note, or a board object. The mover stays a card title --
+// dragging is what these tests vary, and one dragged family is enough
+// to exercise the comparison.
+interface Scene { anchor: Locator; mover: string; cleanup: () => Promise<void> }
 
 // Brings the scene's mover to a stop `aim` screen pixels short of the
 // line it should align to, then runs `onArrived` with the pointer still
@@ -180,38 +192,57 @@ interface Scene { anchor: string; mover: string }
 // fraction is a pixel or two, comfortably inside the threshold the
 // guide is being asked to notice.
 async function approach(page: Page, scene: Scene, viaCentre: boolean, aim: number, holdMeta: boolean, onArrived: () => Promise<void>): Promise<void> {
-  const anchorLeft = (await screenBox(cardWrapper(page, scene.anchor))).x
+  const anchorLeft = (await screenBox(scene.anchor)).x
   const moverWidth = (await screenBox(cardWrapper(page, scene.mover))).width
   const restingLeft = viaCentre ? anchorLeft - moverWidth / 2 : anchorLeft
 
   await page.keyboard.down('Meta')
   try {
-    // Repeated until the card really is parked: one gesture lands a
-    // fraction of its own length short, and that fraction is only small
-    // once the gesture itself is.
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const left = (await screenBox(cardWrapper(page, scene.mover))).x
-      const remaining = restingLeft + COARSE_GAP - left
-      if (Math.abs(remaining) < 3) break
-      await dragCardByPointer(page, scene.mover, remaining)
-    }
+    await park(page, scene.mover, restingLeft + aim + PARK_GAP)
   } finally {
     if (!holdMeta) await page.keyboard.up('Meta')
   }
 
-  const parkedLeft = (await screenBox(cardWrapper(page, scene.mover))).x
+  // One short gesture from the parked spot onto the line. Everything
+  // long was already spent under ⌘, so the fraction React Flow's drag
+  // threshold eats here is a fraction of twelve pixels.
   try {
-    await dragCardByPointer(page, scene.mover, restingLeft + aim - parkedLeft, onArrived)
+    await dragCardByPointer(page, scene.mover, -PARK_GAP, onArrived)
   } finally {
     if (holdMeta) await page.keyboard.up('Meta')
   }
 }
 
-// The board with one card to drag and one to align it against, both
-// placed clear of the board's fixed chrome: the dragged one ends its
-// travel wherever the alignment puts it, and a card resting under the
-// zoom controls or the creation tray can no longer be right-clicked.
-async function openScene(page: Page, anchor: string, mover: string): Promise<Scene> {
+// Drags the card to `left` and keeps going until it is really there.
+// React Flow begins a node drag only once the pointer has passed its
+// own threshold, so a gesture's first move positions the grab rather
+// than the card and the card always lands a fraction of the path
+// short; each repeat closes that fraction of what is left. Meant to be
+// called with ⌘ held, so no snap can move the card somewhere other
+// than where the pointer put it.
+async function park(page: Page, mover: string, left: number): Promise<void> {
+  let remaining = 0
+  for (let attempt = 0; attempt < 6; attempt++) {
+    remaining = left - (await screenBox(cardWrapper(page, mover))).x
+    if (Math.abs(remaining) < 2) return
+    await dragCardByPointer(page, mover, remaining)
+  }
+  throw new Error(`the card would not park: ${remaining}px still to go`)
+}
+
+// The board with one card to drag and one box to align it against,
+// both placed clear of the board's fixed chrome: the dragged card ends
+// its travel wherever the alignment puts it, and a node resting under
+// the zoom controls or the creation tray can no longer be
+// right-clicked for cleanup.
+//
+// `placeAnchor` decides which FAMILY plays the anchor -- it is handed
+// the spot the plan chose and returns the node it created there.
+async function openScene(
+  page: Page,
+  mover: string,
+  placeAnchor: (spot: { x: number; y: number }) => Promise<{ anchor: Locator; remove: () => Promise<void> }>,
+): Promise<Scene> {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   const board = page.getByTestId('atlas-board')
@@ -225,43 +256,73 @@ async function openScene(page: Page, anchor: string, mover: string): Promise<Sce
   const chromeBoxes = await chromeRects(chrome)
   const occupied = [...await nodeRects(page), ...chromeBoxes]
   const spot = planAnchorSpot(boardBox, moverBox, verticalLines(await nodeRects(page, [moverID])), occupied, chromeBoxes, moverBox.y)
-  await createCardViaTray(page, anchor, { at: spot })
+  const { anchor, remove } = await placeAnchor(spot)
 
-  // Re-checked against the settled board: placing a card can shift what
+  // Re-checked against the settled board: placing a node can shift what
   // was measured a moment ago.
-  const anchorLeft = (await screenBox(cardWrapper(page, anchor))).x
-  const others = await nodeRects(page, [await cardWrapper(page, anchor).getAttribute('data-id'), moverID])
+  const anchorLeft = (await screenBox(anchor)).x
+  const others = await nodeRects(page, [await anchor.getAttribute('data-id'), moverID])
   const lines = verticalLines(others)
   if (!columnIsClear(anchorLeft, moverBox.width, false, lines) || !columnIsClear(anchorLeft, moverBox.width, true, lines)) {
     throw new Error('the settled board left no clear approach to the anchor')
   }
-  return { anchor, mover }
+  return {
+    anchor,
+    mover,
+    cleanup: async () => {
+      await deleteCardViaMenu(page, contextMenu(page), mover)
+      await remove()
+    },
+  }
 }
 
-async function removeCards(page: Page, scene: Scene): Promise<void> {
-  for (const title of [scene.mover, scene.anchor]) await deleteCardViaMenu(page, contextMenu(page), title)
+function cardAnchor(page: Page, title: string) {
+  return async (spot: { x: number; y: number }) => {
+    await createCardViaTray(page, title, { at: spot })
+    return {
+      anchor: cardWrapper(page, title),
+      remove: () => deleteCardViaMenu(page, contextMenu(page), title),
+    }
+  }
+}
+
+function noteAnchor(page: Page, text: string) {
+  return async (spot: { x: number; y: number }) => {
+    await page.keyboard.press('n')
+    await clickBoardPoint(page, spot)
+    await expect(stickyEditor(page)).toBeVisible()
+    await fillSticky(page, text)
+    await blurSticky(page)
+    await expect(stickyEditor(page)).toHaveCount(0)
+    const sticky = page.getByTestId('atlas-sticky-note').filter({ hasText: text })
+    await expect(sticky).toBeVisible()
+    return {
+      anchor: stickyWrapper(page, text),
+      remove: () => deleteSticky(page, sticky),
+    }
+  }
 }
 
 test('a dragged card shows a vertical guide against a peer edge and drops exactly onto it', async ({ page }) => {
-  const scene = await openScene(page, 'ZzGuideEdgeAnchor', 'ZzGuideEdgeMover')
-  const anchorAt = await boardX(page, scene.anchor)
+  const scene = await openScene(page, 'ZzGuideEdgeMover', cardAnchor(page, 'ZzGuideEdgeAnchor'))
+  const anchorAt = await boardCoord(scene.anchor)
 
   await approach(page, scene, false, 0, false, async () => {
     const guide = page.locator(`${GUIDE}[data-axis="x"]`)
     await expect(guide).toBeVisible()
-    expect(Math.abs((await screenBox(guide)).x - (await screenBox(cardWrapper(page, scene.anchor))).x)).toBeLessThan(2)
+    expect(Math.abs((await screenBox(guide)).x - (await screenBox(scene.anchor)).x)).toBeLessThan(2)
   })
 
   await expect(page.locator(GUIDE)).toHaveCount(0)
   // Exactly, not nearly: a raw pointer drop never lands on a whole
   // board coordinate, so this equality is the snap itself.
-  await expect.poll(() => boardX(page, scene.mover)).toBeCloseTo(anchorAt, 5)
+  await expect.poll(() => boardCoord(cardWrapper(page, scene.mover))).toBeCloseTo(anchorAt, 5)
 
-  await removeCards(page, scene)
+  await scene.cleanup()
 })
 
 test('a dragged card aligns by its centre, not only by its edges', async ({ page }) => {
-  const scene = await openScene(page, 'ZzGuideCentreAnchor', 'ZzGuideCentreMover')
+  const scene = await openScene(page, 'ZzGuideCentreMover', cardAnchor(page, 'ZzGuideCentreAnchor'))
 
   await approach(page, scene, true, 0, false, async () => {
     await expect(page.locator(`${GUIDE}[data-axis="x"]`)).toBeVisible()
@@ -272,16 +333,16 @@ test('a dragged card aligns by its centre, not only by its edges', async ({ page
   await expect
     .poll(async () => {
       const mover = await screenBox(cardWrapper(page, scene.mover))
-      const anchor = await screenBox(cardWrapper(page, scene.anchor))
+      const anchor = await screenBox(scene.anchor)
       return Math.abs(mover.x + mover.width / 2 - anchor.x)
     })
     .toBeLessThan(1.5)
 
-  await removeCards(page, scene)
+  await scene.cleanup()
 })
 
 test('holding ⌘ suppresses both the guide and the snap', async ({ page }) => {
-  const scene = await openScene(page, 'ZzGuideFreeAnchor', 'ZzGuideFreeMover')
+  const scene = await openScene(page, 'ZzGuideFreeMover', cardAnchor(page, 'ZzGuideFreeAnchor'))
 
   await approach(page, scene, false, CMD_GAP, true, async () => {
     await expect(page.locator(GUIDE)).toHaveCount(0)
@@ -292,8 +353,22 @@ test('holding ⌘ suppresses both the guide and the snap', async ({ page }) => {
   // that makes these two coordinates equal, so any gap at all is the
   // proof -- and the card was aimed a few pixels short deliberately.
   await expect
-    .poll(async () => Math.abs(await boardX(page, scene.mover) - await boardX(page, scene.anchor)))
+    .poll(async () => Math.abs(await boardCoord(cardWrapper(page, scene.mover)) - await boardCoord(scene.anchor)))
     .toBeGreaterThan(1)
 
-  await removeCards(page, scene)
+  await scene.cleanup()
+})
+
+test('a card lines up against a sticky note, not only against other cards', async ({ page }) => {
+  const scene = await openScene(page, 'ZzGuideNoteMover', noteAnchor(page, 'ZzGuideNoteAnchor'))
+  const anchorAt = await boardCoord(scene.anchor)
+
+  await approach(page, scene, false, 0, false, async () => {
+    await expect(page.locator(`${GUIDE}[data-axis="x"]`)).toBeVisible()
+  })
+
+  await expect(page.locator(GUIDE)).toHaveCount(0)
+  await expect.poll(() => boardCoord(cardWrapper(page, scene.mover))).toBeCloseTo(anchorAt, 5)
+
+  await scene.cleanup()
 })
