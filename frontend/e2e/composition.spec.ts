@@ -4,7 +4,7 @@ import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel, dragPaletteItemToCanvas, connectNodes } from './fixtures/canvas'
 import { clickCanvasNode } from './fixtures/canvasNode'
 import { waitForViewportStable } from './fixtures/animation'
-import { callBindingViaRPC } from './fixtures/wailsRpc'
+import { registeredStepTypes } from './fixtures/registryCounts'
 
 // Real Go bindings over HTTP (Wails3 server mode), not mocks -- same
 // setup/limitations as runbook.spec.ts (see its header comment):
@@ -24,11 +24,6 @@ import { callBindingViaRPC } from './fixtures/wailsRpc'
 // out once this file crossed the 500-line limit (CLAUDE.md); workflow
 // export/import coverage is composition-export-import.spec.ts, split
 // out the same way earlier.
-
-// The registry the palette is built from, read through the same
-// binding the store calls, so the panel's completeness is checked
-// against the real node-type set rather than a hand-kept number.
-const NODE_TYPES = 'github.com/alicoding/mill/internal/services/compositionsvc.CompositionService.NodeTypes'
 
 // See live-run-state.spec.ts's own copy of this helper for the full
 // reasoning: Fit View alone can still leave a node's own card
@@ -69,19 +64,13 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   await page.getByTestId('new-workflow').click()
   await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(0)
   await activePanel(page).getByTestId('toggle-palette').click()
-  // Derived, never a literal: the property under test is that the
-  // palette renders EVERY registered step type and drops none, so the
-  // expected number is read back through the same door the panel is
-  // built from (store.ts's refreshNodeTypes -> CompositionService.
-  // NodeTypes). A literal had to be re-counted by hand on every new
-  // step type, and went stale as one (goal 0350 S2's own browser step).
-  // The advanced toggle is the count's premise -- unchecked, the
-  // palette legitimately shows fewer -- so it is asserted, not assumed.
+  // Derived, never a literal: the property is that the palette renders
+  // EVERY registered step type and drops none, so the number comes back
+  // through the door the panel is built from. The advanced toggle is
+  // that count's premise -- unchecked, the palette legitimately shows
+  // fewer -- so it is asserted rather than assumed.
   await expect(activePanel(page).getByTestId('palette-show-advanced')).toBeChecked()
-  const registered = await callBindingViaRPC<{ ID: string }[]>(page, NODE_TYPES, [])
-  // A door answering nothing would make the count below trivially true.
-  expect(registered.length).toBeGreaterThan(40)
-  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(registered.length)
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount((await registeredStepTypes(page)).length)
 })
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {

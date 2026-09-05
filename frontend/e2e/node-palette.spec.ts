@@ -1,5 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { activePanel, dragPaletteItemToCanvas } from './fixtures/canvas'
+import { registeredStepTypes } from './fixtures/registryCounts'
+import { PALETTE_GROUP_ORDER, paletteGroupFor } from '../src/shared/paletteGroups'
 
 // Design wave 3 (goal 0001, audit §5): the palette's regrouping into
 // frontend display groups (composition/paletteGroups.ts) instead of
@@ -16,14 +18,22 @@ async function openPaletteOnNewWorkflow(page: import('@playwright/test').Page) {
   await activePanel(page).getByTestId('toggle-palette').click()
 }
 
-test('the palette renders 10 groups with the expected membership', async ({ page }) => {
+test('the palette renders a group per populated display group, with the expected membership', async ({ page }) => {
   await openPaletteOnNewWorkflow(page)
   const panel = activePanel(page)
 
-  const groups = panel.getByTestId('palette-group')
-  await expect(groups).toHaveCount(10)
+  // Derived, never a literal: a group renders exactly when at least one
+  // registered step maps into it, so both the number of groups and
+  // which ones come from the registry through the palette's own
+  // mapping (paletteGroupFor). A hand-kept list here went stale on
+  // every new display group and blamed the feature that added one.
+  const registered = await registeredStepTypes(page)
+  const expectedGroupIDs = PALETTE_GROUP_ORDER.filter((g) => registered.some((nt) => paletteGroupFor(nt) === g))
+  expect(expectedGroupIDs.length).toBeGreaterThan(5)
 
-  const expectedGroupIDs = ['triggers', 'capture', 'transform', 'ai', 'data', 'actions', 'browser', 'flow', 'guardrails', 'apply']
+  const groups = panel.getByTestId('palette-group')
+  await expect(groups).toHaveCount(expectedGroupIDs.length)
+
   for (const id of expectedGroupIDs) {
     await expect(panel.locator(`[data-testid="palette-group"][data-group-id="${id}"]`)).toBeVisible()
   }
@@ -92,11 +102,11 @@ test('palette search matches the step label, case-insensitively', async ({ page 
   await expect(panel.getByTestId('palette-item')).toHaveCount(0)
   await expect(panel.getByTestId('palette-no-matches')).toBeVisible()
 
-  // Clearing the query restores the full palette (51
-  // RegisterNodeType call sites, latest process-browser-replay
-  // (goal 0350 S2), + the seeded "Check httpbin" declared step type).
+  // Clearing the query restores the full palette: every registered step
+  // type, read back through the palette's own door rather than counted
+  // by hand.
   await search.fill('')
-  await expect(panel.getByTestId('palette-item')).toHaveCount(52)
+  await expect(panel.getByTestId('palette-item')).toHaveCount((await registeredStepTypes(page)).length)
 })
 
 // Goal 0113 slice 1: typing an intent-shaped query (not a step name)
@@ -129,16 +139,19 @@ test('the advanced toggle states its count, and the badge count matches while ch
   expect(checkboxLabel).toBe(`Show advanced steps (${badgeCountWhileChecked})`)
   expect(badgeCountWhileChecked).toBeGreaterThan(0)
 
+  const registered = await registeredStepTypes(page)
   await panel.getByTestId('palette-show-advanced').uncheck()
   await expect(panel.getByTestId('palette-advanced-badge')).toHaveCount(0)
   const itemCountUnchecked = await panel.getByTestId('palette-item').count()
-  expect(itemCountUnchecked).toBeLessThan(46)
+  // Hiding the advanced steps must actually hide some, measured against
+  // the registry rather than a number that drifts as steps are added.
+  expect(itemCountUnchecked).toBeLessThan(registered.length)
 
   // Restore the default -- within-file cleanup discipline (testing.md):
   // this worker's browser context (and its localStorage) is shared with
   // every other test in this file.
   await panel.getByTestId('palette-show-advanced').check()
-  await expect(panel.getByTestId('palette-item')).toHaveCount(52)
+  await expect(panel.getByTestId('palette-item')).toHaveCount(registered.length)
 })
 
 // Progressive-disclosure "Show advanced steps" toggle (goal 0047): the
@@ -149,7 +162,7 @@ test('the palette shows every step by default, "Show advanced steps" checked', a
   await openPaletteOnNewWorkflow(page)
   const panel = activePanel(page)
   await expect(panel.getByTestId('palette-show-advanced')).toBeChecked()
-  await expect(panel.getByTestId('palette-item')).toHaveCount(52)
+  await expect(panel.getByTestId('palette-item')).toHaveCount((await registeredStepTypes(page)).length)
 })
 
 test('unchecking "Show advanced steps" hides advanced steps, keeps basic ones, and persists across a reload', async ({ page }) => {
