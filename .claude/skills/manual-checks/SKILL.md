@@ -383,3 +383,17 @@ installed build can catch, and exactly how to verify it there.
   press and drag inside it (the drawing pans, the object stays put),
   drag its chrome band (the object moves), and confirm the board
   itself still pans when nothing is selected.
+- **A real vendor-issued certificate against a real mTLS host** (goal
+  0306 S1, `ConfigureService.TestClientCertificate` +
+  `clientcert.StateFor`) — a real TLS handshake against a host that
+  demands a client certificate, and a real X.509 `NotAfter` to classify,
+  both need a real CA and a real server no harness can stand up; the
+  e2e suite proves the resolve/status/error paths against a
+  self-signed fixture instead. Verify on an installed build: in
+  Configure > Certificates, add an entry pointing at a real vendor-
+  issued PEM certificate + key pair (and separately, a real PKCS#12
+  export from Keychain Access or a CA portal) for a host that actually
+  requires mTLS; press Test and confirm the handshake succeeds; make a
+  request to that host through the request runner and confirm it
+  presents the certificate; confirm the row's status reads "Expires in
+  N days" matching the certificate's real `notAfter` date.
