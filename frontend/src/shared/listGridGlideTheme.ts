@@ -63,6 +63,7 @@ export function useGridPalette(el: HTMLElement | null): GridPalette {
     observer.observe(root, { attributes: true, attributeFilter: ['data-mill-scheme', 'data-mill-theme'] })
     return () => observer.disconnect()
   }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `scheme` is the whole point: paletteFromTokens reads the document's live computed values, which the rule cannot see as an input
   return useMemo(() => paletteFromTokens(el), [el, scheme])
 }
 
