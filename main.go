@@ -230,27 +230,9 @@ func main() {
 	// run executed in; the labels live in Configure.
 	executionService.SetEnvironmentLabelLookup(configureService.EnvironmentLabel)
 
-	// docs/adr/0038 decision 4, goal 0061 slice C: "Update now" runs a
-	// card's referenced workflow through the normal guardrail-gated
-	// path -- same late-bound-setter shape as WireChildWorkflowRunner
-	// above, atlassvc never imports executionsvc directly. Kind is
-	// RunKindTriggered (production semantics: a disabled or
-	// never-published refresh workflow is rejected, same requirement
-	// child-workflow nodes already hold their callable target to).
-	atlassvc.SetWorkflowRunner(func(workflowID string) (string, bool, bool, error) {
-		summary, err := executionService.RunWorkflow(workflowID, executionsvc.RunKindTriggered, nil)
-		if err != nil {
-			return "", false, false, err
-		}
-		pending := summary.Pending != nil
-		return summary.RunID, !pending && summary.Status == "SUCCESS", pending, nil
-	})
-	// Card actions (goal 0084): source-card-recording entry, so the cycle guard covers action runs.
-	atlassvc.SetCardActionRunner(func(workflowID, sourceCardID string, values map[string]string, payload string) error {
-		_, err := executionService.RunWorkflowForAtlasCard(workflowID, sourceCardID, values, payload)
-		return err
-	})
-	executionService.SetRunCompletionSink(atlasService.NotifyRunCompleted)
+	// atlassvc's own run/action/completion seams onto executionService --
+	// composition-root code split out of this file at the 500-line limit.
+	wiring.WireAtlasWorkflowRunners(executionService, atlasService)
 	atlasService.WireCompositionSeams(triggerService.DispatchAtlasCardChange) // goal 0066
 	// Cross-service seam adapters (recognition, List projection) live in the wiring package -- composition-root code split out of this file at the 500-line limit.
 	wiring.WireAtlasProjections(atlasService, configureService, compositionService)
