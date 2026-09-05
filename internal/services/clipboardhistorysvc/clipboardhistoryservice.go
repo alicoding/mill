@@ -8,6 +8,8 @@
 package clipboardhistorysvc
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -17,6 +19,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/clipboard"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/clipboardhistory"
+	"github.com/alicoding/mill/internal/domain/usererror"
 	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/google/uuid"
 )
@@ -29,6 +32,10 @@ const clipboardHistoryKey = "clipboard-history"
 // testability pattern as composition/applytext.go's own
 // writeClipboardText), not a direct clipboard.WriteText call.
 var writeClipboardTextFn = clipboard.WriteText
+
+// writeClipboardPNGFn is writeClipboardTextFn's twin for the image
+// flavor, same package-level-var testability seam.
+var writeClipboardPNGFn = clipboard.WritePNG
 
 // recordCopyAuditFn defaults to a no-op so a copy works before
 // SetAuditRecorder is wired (or a headless `go test`) -- audit is
@@ -155,6 +162,41 @@ func (s *ClipboardHistoryService) CopyClipboardHistoryEntry(id string) error {
 		return fmt.Errorf("copy clipboard history entry: %w", err)
 	}
 	recordCopyAuditFn(entry.ID, previewLabel(entry.Text))
+	return nil
+}
+
+// pngSignature is the PNG file header every valid PNG starts with,
+// checked before the bytes reach the pasteboard so a truncated or
+// wrong-format payload fails with a sentence instead of registering an
+// image flavor nothing can paste.
+var pngSignature = []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}
+
+// ErrClipboardImage is the ONE sentence every image-copy failure
+// reaches the surface as -- the pasteboard's own reasons (an
+// unreadable temp file, a refusing NSPasteboard) are not distinctions
+// a user can act on differently.
+var ErrClipboardImage = usererror.New("clipboard-image", "Mill couldn't put the image on the clipboard.")
+
+// CopyImagePNG writes a rendered PNG to the real clipboard, so a paste
+// into any image-accepting app receives the picture. pngBase64 is the
+// image's own bytes, standard-encoded -- the wire shape every binary
+// binding in this repo uses.
+//
+// It lives beside CopyClipboardHistoryEntry because both are the same
+// act (put this on the machine's clipboard) through the same adapter;
+// nothing about an image copy belongs in clipboard HISTORY, so this
+// records no entry and leaves no audit line.
+func (s *ClipboardHistoryService) CopyImagePNG(pngBase64 string) error {
+	data, err := base64.StdEncoding.DecodeString(pngBase64)
+	if err != nil {
+		return usererror.Wrap(ErrClipboardImage.Code, ErrClipboardImage.Message, fmt.Errorf("decode png: %w", err))
+	}
+	if !bytes.HasPrefix(data, pngSignature) {
+		return usererror.Wrap(ErrClipboardImage.Code, ErrClipboardImage.Message, fmt.Errorf("payload of %d bytes is not a png", len(data)))
+	}
+	if err := writeClipboardPNGFn(data); err != nil {
+		return usererror.Wrap(ErrClipboardImage.Code, ErrClipboardImage.Message, err)
+	}
 	return nil
 }
 

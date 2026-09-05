@@ -11,16 +11,17 @@ export function base64ToBlob(base64: string, type: string): Blob {
   return new Blob([bytes], { type })
 }
 
-// Reads file's raw bytes as a standard-encoding base64 string -- the
+// Reads a blob's raw bytes as a standard-encoding base64 string -- the
 // wire shape every binary-upload binding (SaveImageBytes,
-// ParseXlsxFile) expects, matching typedfield.Field's own repo-wide
-// "every value is a plain string on the wire" convention. Chunked so a
-// large file's byte array never blows the call stack
+// ParseXlsxFile, CopyImagePNG) expects, matching typedfield.Field's own
+// repo-wide "every value is a plain string on the wire" convention.
+// Chunked so a large payload's byte array never blows the call stack
 // String.fromCharCode(...bytes) would hit unchunked. Promoted here from
 // atlas/atlasTools.ts once configure/'s xlsx import needed the same
-// conversion (frontend.md's shared/-promotion rule).
-export async function fileToBase64(file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer())
+// conversion (frontend.md's shared/-promotion rule); typed Blob rather
+// than File since a rendered canvas has no filename to carry.
+export async function blobToBase64(blob: Blob): Promise<string> {
+  const bytes = new Uint8Array(await blob.arrayBuffer())
   const chunkSize = 0x8000
   let binary = ''
   for (let i = 0; i < bytes.length; i += chunkSize) {
