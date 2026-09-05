@@ -55,14 +55,6 @@ export function AtlasImageExportHost({ wrapperRef, viewedID, allCards }: {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  // The image commands' enabled() runs at module scope in shared/,
-  // which cannot see this board -- so the board reports what it has.
-  const setBoardNodeCount = useUISignalStore((s) => s.setAtlasBoardNodeCount)
-  useEffect(() => {
-    setBoardNodeCount(nodes.length)
-    return () => setBoardNodeCount(0)
-  }, [nodes.length, setBoardNodeCount])
-
   const failureText = useCallback((err: unknown) => {
     const userError = userErrorFrom(err)
     // A rejection thrown on this side carries no code, and its message

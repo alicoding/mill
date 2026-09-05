@@ -136,13 +136,6 @@ interface UISignalState {
   requestAtlasCopyImage: () => void
   atlasExportImageRequest: number
   requestAtlasExportImage: () => void
-  // How many nodes the mounted Atlas board is rendering, 0 when none is
-  // mounted -- NOT a signal, but the same seam and for the same reason:
-  // the two image commands' enabled() runs at module scope in shared/,
-  // which can never import atlas/ to ask. The board writes it; nothing
-  // subscribes to it for rendering.
-  atlasBoardNodeCount: number
-  setAtlasBoardNodeCount: (count: number) => void
   atlasShareCopyContextRequest: number
   requestAtlasShareCopyContext: () => void
   atlasShareCopyLinksRequest: number
@@ -260,8 +253,6 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasCopyImage: () => set((s) => ({ atlasCopyImageRequest: s.atlasCopyImageRequest + 1 })),
   atlasExportImageRequest: 0,
   requestAtlasExportImage: () => set((s) => ({ atlasExportImageRequest: s.atlasExportImageRequest + 1 })),
-  atlasBoardNodeCount: 0,
-  setAtlasBoardNodeCount: (count) => set({ atlasBoardNodeCount: count }),
   atlasShareCopyContextRequest: 0,
   requestAtlasShareCopyContext: () => set((s) => ({ atlasShareCopyContextRequest: s.atlasShareCopyContextRequest + 1 })),
   atlasShareCopyLinksRequest: 0,

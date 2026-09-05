@@ -1,6 +1,17 @@
 import type { Command } from './commands'
 import { useUISignalStore } from './uiSignalStore'
 
+// Whether a board with something on it is on screen right now -- read
+// from the live canvas rather than mirrored into a store: a mirror has
+// to be written by an effect, and effect ordering across a board
+// remount is exactly what a menu built mid-navigation reads wrongly
+// (observed: the two image commands vanished from a live 2-card
+// selection's own menu). Both commands are `surface: ['atlas']`, so no
+// other canvas's nodes can satisfy this for them.
+function atlasBoardHasContent(): boolean {
+  return typeof document !== 'undefined' && document.querySelector('.react-flow__node') !== null
+}
+
 // The Atlas toolbar/board actions that were only ever reachable by
 // clicking (goal 0071's discoverability trilogy extended to the rest
 // of the surface) -- split out of shared/commands.ts (CLAUDE.md's
@@ -44,8 +55,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     // "Copy as image" / "Export as image..." (docs/goals/0201): both
     // picture the LIVE selection, and with nothing selected both widen
     // to the whole board rather than refusing -- so the only state
-    // that can make them invalid is an empty board, which is what
-    // atlasBoardNodeCount answers.
+    // that can make them invalid is an empty board.
     //
     // Unbound by construction, not by preference. The converged key for
     // this action is a bare Shift+Option+C, and comboFromEvent requires
@@ -58,7 +68,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     label: 'commands.atlas.selection.copyAsImage',
     defaultBinding: null,
     surface: ['atlas'],
-    enabled: () => useUISignalStore.getState().atlasBoardNodeCount > 0,
+    enabled: atlasBoardHasContent,
     run: () => useUISignalStore.getState().requestAtlasCopyImage(),
   },
   {
@@ -66,7 +76,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     label: 'commands.atlas.selection.exportAsImage',
     defaultBinding: null,
     surface: ['atlas'],
-    enabled: () => useUISignalStore.getState().atlasBoardNodeCount > 0,
+    enabled: atlasBoardHasContent,
     run: () => useUISignalStore.getState().requestAtlasExportImage(),
   },
   {

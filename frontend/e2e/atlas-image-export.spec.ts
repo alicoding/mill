@@ -3,6 +3,7 @@ import { test, expect } from './fixtures/server'
 import { groupCard, noteCard } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { withClipboardLock } from './fixtures/clipboardLock'
+import { hostClipboardAvailable } from './fixtures/hostClipboard'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { paletteDialog } from './fixtures/palette'
 import { waitForViewportStable } from './fixtures/animation'
@@ -168,9 +169,16 @@ test('copying says what landed on the clipboard, and whose clipboard it was', as
 
     // This suite runs in server mode, where the picture reaches the
     // DESKTOP's clipboard: the notice says so rather than leaving it
-    // to be discovered by a paste that produces nothing.
+    // to be discovered by a paste that produces nothing. Where there is
+    // no real pasteboard at all (the Linux CI runner, same constraint
+    // hostClipboardAvailable already names for every other clipboard
+    // spec), the other half of the contract is what's provable: the
+    // host's refusal reaches the same pill as a sentence, never a
+    // silent no-op.
     await expect(page.getByTestId('notice-text')).toHaveText(
-      "Copied the selection as PNG to the desktop's clipboard. This device's clipboard is unchanged.",
+      hostClipboardAvailable
+        ? "Copied the selection as PNG to the desktop's clipboard. This device's clipboard is unchanged."
+        : "Mill couldn't put the image on the clipboard.",
       { timeout: 15_000 },
     )
 
