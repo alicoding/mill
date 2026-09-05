@@ -6,6 +6,7 @@ export * from './sdk/settings';
 export * from './sdk/notify';
 export * from './sdk/storage';
 export * from './sdk/content';
+export * from './sdk/frame';
 export * from './sdk/views';
 export * from './sdk/captures';
 export * from './sdk/ui';

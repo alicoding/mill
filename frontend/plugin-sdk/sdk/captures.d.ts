@@ -11,13 +11,21 @@ export interface PluginCaptureCtx {
     /** Subscribes to every later appearance change. */
     onThemeChange: PluginThemeSubscribe;
 }
+/** What registerCapture answers, the capture's twin of a view's
+ * handle. */
+export interface PluginCaptureHandle {
+    postMessage: (message: unknown) => void;
+}
 /** id and label are declared in the manifest's contributes.captures,
  * so the Quick Panel can offer the capture without running any plugin
- * code. render draws the face into an element the capture window owns;
- * write through the content doors with ctx.destinationId as the
- * parent, then call ctx.done() — or ctx.cancel() to close without
- * writing. */
+ * code, alongside the entry page when there is one. render draws the
+ * face into an element the capture window owns; write through the
+ * content doors with ctx.destinationId as the parent, then call
+ * ctx.done() — or ctx.cancel() to close without writing. */
 export interface PluginCaptureDecl {
     id: string;
-    render: (el: HTMLElement, ctx: PluginCaptureCtx) => void;
+    render?: (el: HTMLElement, ctx: PluginCaptureCtx) => void;
+    /** Receives whatever the entry page sent through its own
+     * postMessage. */
+    onMessage?: (message: unknown) => void;
 }

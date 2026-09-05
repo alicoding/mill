@@ -346,3 +346,11 @@ export const PAUSED_RUNS_MCP_BASE_PORT = 11540
 // is already nearly exhausted (see GUARDRAIL_REVIEW_CANCEL_* above).
 export const REVIEW_PARKED_PAYLOAD_SERVER_BASE_PORT = 11560
 export const REVIEW_PARKED_PAYLOAD_MCP_BASE_PORT = 11580
+
+// runtime-plugin-view-frame.spec.ts's own dedicated pair (goal 0349):
+// it boots with its own MILL_PLUGINS_DIR copy like every runtime-plugin
+// spec, and its notice-pill assertions read the GLOBAL notice list --
+// its own pair rather than more RUNTIME_PLUGINS_* offset arithmetic
+// (the reasoning RUNTIME_PLUGIN_RELOAD_* records).
+export const RUNTIME_PLUGIN_FRAME_SERVER_BASE_PORT = 11600
+export const RUNTIME_PLUGIN_FRAME_MCP_BASE_PORT = 11620

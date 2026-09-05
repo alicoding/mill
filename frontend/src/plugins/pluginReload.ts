@@ -6,7 +6,7 @@ import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/intern
 import { SettingsService } from '../shared/bindings'
 import { resetLazyArrays } from '../shared/lazySnapshot'
 import { unregisterThirdPartyNouns } from '../atlas/atlasNounRegistry'
-import { buildPluginAPI } from './hostApi'
+import { buildPluginAPI, collectFrameSurfaces } from './hostApi'
 import { collectReloadCommand, loadPluginStorage, pluginLoadStates, readPluginPolicy, resolveActivate } from './loader'
 import { unregisterPluginCaptures } from './pluginCaptures'
 import { unregisterPluginCommands } from './pluginCommands'
@@ -86,6 +86,7 @@ export async function reloadPlugin(pluginId: string): Promise<void> {
 	const sweep = () => {
 		unregisterContributions(pluginId)
 		collectReloadCommand(info)
+		collectFrameSurfaces(info.Manifest)
 	}
 	sweep()
 	try {

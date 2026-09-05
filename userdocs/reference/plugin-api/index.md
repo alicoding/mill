@@ -18,9 +18,11 @@
 - [ContentEntry](interfaces/ContentEntry.md)
 - [ContentQuery](interfaces/ContentQuery.md)
 - [GuardedActionResult](interfaces/GuardedActionResult.md)
+- [MillFrameApi](interfaces/MillFrameApi.md)
 - [MillPluginAPI](interfaces/MillPluginAPI.md)
 - [PluginCaptureCtx](interfaces/PluginCaptureCtx.md)
 - [PluginCaptureDecl](interfaces/PluginCaptureDecl.md)
+- [PluginCaptureHandle](interfaces/PluginCaptureHandle.md)
 - [PluginCommandDecl](interfaces/PluginCommandDecl.md)
 - [PluginContentAPI](interfaces/PluginContentAPI.md)
 - [PluginConvertAPI](interfaces/PluginConvertAPI.md)
@@ -40,11 +42,13 @@
 - [PluginUIAPI](interfaces/PluginUIAPI.md)
 - [PluginViewCtx](interfaces/PluginViewCtx.md)
 - [PluginViewDecl](interfaces/PluginViewDecl.md)
+- [PluginViewHandle](interfaces/PluginViewHandle.md)
 - [PluginWriteResult](interfaces/PluginWriteResult.md)
 
 ## Type Aliases
 
 - [CanvasEditRoute](type-aliases/CanvasEditRoute.md)
 - [CanvasStyleFieldDecl](type-aliases/CanvasStyleFieldDecl.md)
+- [MillFrameEvent](type-aliases/MillFrameEvent.md)
 - [PluginOutputShape](type-aliases/PluginOutputShape.md)
 - [PluginThemeSubscribe](type-aliases/PluginThemeSubscribe.md)
