@@ -32,6 +32,7 @@ import { useAtlasKeyboardNav } from './useAtlasKeyboardNav'
 import { useAtlasMinimapToggle } from './useAtlasMinimapToggle'
 import { useAtlasSlotDrag } from './useAtlasSlotDrag'
 import { AtlasSlotDragLine } from './AtlasSlotDragLine'
+import { AtlasAlignmentGuides } from './AtlasAlignmentGuides'
 import { buildBoardCardNodes } from './atlasBuildBoardNodes'
 import { useAtlasStickyNodes } from './useAtlasStickyNodes'
 import { buildBoardObjectNodes } from './atlasBuildBoardObjectNodes'
@@ -444,6 +445,10 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
           per-tool branch here. */}
       {gesture.Preview && gesture.points.length > 0 && <gesture.Preview points={gesture.points} now={gesture.now} />}
       {slotDrag.dragLine && <AtlasSlotDragLine line={slotDrag.dragLine} />}
+      {/* Alignment guides during a node drag (goal 0161 slice 2) -- it
+          portals itself into React Flow's own viewport, so its place in
+          this list carries no geometry. */}
+      <AtlasAlignmentGuides channel={dragFiling.guideChannel} />
       {/* Where the picked table will land (goal 0273) -- shown from the
           moment a size is picked until the click places it or Escape
           disarms the tool. Scoped to the VIEWED board, approximating a
