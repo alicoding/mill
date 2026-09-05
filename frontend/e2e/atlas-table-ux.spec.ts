@@ -1,12 +1,11 @@
 import { test, expect } from './fixtures/server'
-import type { Locator, Page } from '@playwright/test'
-import { panToEmptyBoard, placeSizedTable } from './fixtures/atlasTable'
+import type { Page } from '@playwright/test'
+import { deleteListNamed, deleteTableViaMenu, openAtlas, panToEmptyBoard, placeSizedTable, tableAuditShot, tableObjects } from './fixtures/atlasTable'
 import { clickBoardPoint, hoverBoardPoint, nonSeededBoardObjects } from './fixtures/atlasBoard'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { waitForViewportStable } from './fixtures/animation'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickGlideCell, glideTextEditor, openGlideCellEditor } from './fixtures/glideGrid'
-import { clickRowAction } from './inventoryRow'
 
 // The converged canvas-table interactions (goal 0273): object first
 // then cells, a name above the grid renamed in place, and a placement
@@ -19,35 +18,6 @@ import { clickRowAction } from './inventoryRow'
 const TABLE_WIDTH = 520
 const TABLE_HEIGHT = 320
 
-function tableObjects(page: Page): Locator {
-  return page.locator('[data-testid="atlas-board-object"][data-object-kind="table"]')
-}
-
-async function openAtlas(page: Page): Promise<void> {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Atlas' }).click()
-  await expect(page.getByTestId('atlas-board')).toBeVisible()
-}
-
-async function deleteTableViaMenu(object: Locator): Promise<void> {
-  const page = object.page()
-  // The grid claims right-click for its own row/column menus -- the
-  // object's own menu opens off its chrome band instead.
-  await object.getByTestId('atlas-board-object-frame').click({ button: 'right' })
-  const menu = contextMenu(page)
-  await expect(menu).toBeVisible()
-  await menu.getByText('Delete', { exact: true }).click()
-  await expect(object).toHaveCount(0)
-}
-
-async function deleteListNamed(page: Page, label: string): Promise<void> {
-  await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
-  const row = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText(label, { exact: true }) })
-  await clickRowAction(page, row, 'Delete')
-  await expect(row).toHaveCount(0)
-}
-
 // The board's live zoom, read off the canvas kit's own viewport
 // transform -- the ghost is drawn in screen pixels, so its expected
 // footprint scales with it.
@@ -58,9 +28,24 @@ async function boardZoom(page: Page): Promise<number> {
   })
 }
 
+test('hovering an unselected table shows its hover ring and its band names the first click', async ({ page }) => {
+  await openAtlas(page)
+  const object = await placeSizedTable(page, '2x2')
+  await page.keyboard.press('Escape')
+  await expect(object.getByTestId('atlas-object-click-shield')).toHaveCount(1)
+
+  await object.hover()
+  await expect(object.getByTestId('atlas-board-object-frame')).toHaveAttribute('title', 'Click to select, then click a cell to edit')
+  await tableAuditShot(page, '03-hover-unselected')
+
+  await deleteTableViaMenu(object)
+  await deleteListNamed(page, 'Table')
+})
+
 test('the first click on a table selects the object, and only then do clicks reach its cells', async ({ page }) => {
   await openAtlas(page)
   const object = await placeSizedTable(page, '2x2')
+  await tableAuditShot(page, '01-created-selected')
 
   // Back to unselected, the way a user leaves an object: Escape.
   await page.keyboard.press('Escape')
@@ -71,11 +56,17 @@ test('the first click on a table selects the object, and only then do clicks rea
   // The click selected the OBJECT -- it did not land in a cell.
   await expect(glideTextEditor(page)).toHaveCount(0)
   await expect(object.getByTestId('atlas-object-click-shield')).toHaveCount(0)
+  await tableAuditShot(page, '04-click-selects-object')
 
   // With the object selected the grid is live: a cell activates.
   const glide = object.getByTestId('atlas-projection-glide')
+  await clickGlideCell(page, glide, 0, 0)
+  await expect(glideTextEditor(page)).toHaveCount(0)
+  await tableAuditShot(page, '05-click-cell-grid-live')
   await openGlideCellEditor(page, glide, 0, 0, glideTextEditor(page).first())
+  await tableAuditShot(page, '06-doubleclick-cell-edit')
   await page.keyboard.press('Escape')
+  await tableAuditShot(page, '10-escape-editor-to-grid')
 
   await deleteTableViaMenu(object)
   await deleteListNamed(page, 'Table')
@@ -90,9 +81,19 @@ test('a table names itself above its grid, and the name is renamed in place', as
   await title.dblclick()
   const input = object.getByTestId('atlas-table-title-input')
   await expect(input).toBeFocused()
+  await tableAuditShot(page, '12-rename-dblclick-editing')
+
+  // An empty submit keeps the previous name -- a table always has one.
+  await input.fill('')
+  await page.keyboard.press('Enter')
+  await expect(title).toHaveText('Table')
+  await tableAuditShot(page, '12-rename-empty-keeps-name')
+
+  await title.dblclick()
   await input.fill('Budget')
   await page.keyboard.press('Enter')
   await expect(title).toHaveText('Budget')
+  await tableAuditShot(page, '12-rename-committed')
 
   // The List behind it is the single source -- Configure sees the same
   // name.
@@ -125,10 +126,12 @@ test('Rename on a table object opens its title for editing', async ({ page }) =>
   await object.getByTestId('atlas-board-object-frame').click({ button: 'right' })
   const menu = contextMenu(page)
   await expect(menu).toBeVisible()
+  await tableAuditShot(page, '12-rename-contextmenu-open')
   await menu.getByText('Rename', { exact: true }).click()
 
   const input = object.getByTestId('atlas-table-title-input')
   await expect(input).toBeFocused()
+  await tableAuditShot(page, '12-rename-contextmenu-editing')
   await page.keyboard.press('Escape')
   await expect(object.getByTestId('atlas-table-title')).toHaveText('Table')
 
@@ -150,6 +153,7 @@ test('a picked table size follows the pointer as a ghost, and lands where the gh
   await expect(ghost).toBeVisible()
   const pendingName = (await ghost.innerText()).trim()
   expect(pendingName).toMatch(/^Table( \d+)?$/)
+  await tableAuditShot(page, '00-create-ghost')
 
   const zoom = await boardZoom(page)
   const ghostBox = await ghost.boundingBox()
@@ -195,8 +199,10 @@ test('Escape in the grid hands the keyboard back, so Delete removes the table', 
 
   await clickGlideCell(page, glide, 0, 0)
   await page.keyboard.press('Escape')
+  await tableAuditShot(page, '10-escape-grid-to-object')
   await page.keyboard.press('Backspace')
   await expect(object).toHaveCount(0)
+  await tableAuditShot(page, '13-delete-object')
 
   await deleteListNamed(page, 'Table')
 })

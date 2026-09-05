@@ -1,5 +1,6 @@
 import { lazy } from 'react'
 import { TableIcon } from '@primer/octicons-react'
+import type { BoardObject } from '../../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { Type as FieldType, type Field } from '../../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { ConfigureService } from '../../shared/bindings'
 import { identityOf, registerNoun, type AtlasToolShape } from '../atlasNounRegistry'
@@ -25,6 +26,22 @@ export function nextTableTitle(existingTitles: Set<string>): string {
   let title = 'Table'
   for (let n = 2; existingTitles.has(title); n++) title = `Table ${n}`
   return title
+}
+
+// tableTitlesOn -- the minted-name and rename-collision uniqueness
+// scope (goal 0273 rule 2): every OTHER table object's own name
+// already on the given board, read from its mirrored Payload.title
+// (kept in sync by every table create/rename door, never the backing
+// List directly -- collision-checking against the List itself would
+// need one fetch per sibling table). Scoped by ParentID, never
+// board-wide, so two boards may each mint "Table" independently.
+export function tableTitlesOn(objects: BoardObject[], parentID: string): Set<string> {
+  return new Set(
+    objects
+      .filter((o) => o.Kind === 'table' && o.ParentID === parentID)
+      .map((o) => o.Payload?.title?.trim())
+      .filter((title): title is string => !!title),
+  )
 }
 
 // Table's own artifact is the backing List it mints (goal 0169's seam

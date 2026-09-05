@@ -1,6 +1,7 @@
 {
   "table": {
-    "titleAriaLabel": "Table name"
+    "titleAriaLabel": "Table name",
+    "renameCollision": "A table with this name already exists here."
   },
   "tableSize": {
     "hint": "Sweep to size, click to create",
