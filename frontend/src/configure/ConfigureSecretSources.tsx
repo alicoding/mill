@@ -6,7 +6,9 @@ import { LockIcon, PencilIcon, PlusIcon, TrashIcon } from '@primer/octicons-reac
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { ConfigureService, SecretService } from '../shared/bindings'
+import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import type { Source as SecretSource } from '../../bindings/github.com/alicoding/mill/internal/domain/secretsource/models'
+import type { SecretSourceKindInfo } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secretsource/models'
 import { refreshSecretSources, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { refreshSecretTitles } from '../shared/secretTitleCache'
@@ -16,14 +18,16 @@ import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { ConfigureEntityPage } from './ConfigureEntityPage'
+import { kindLabel as labelForKind, pathField, problemText } from './secretSourceFields'
 import styles from '../shared/ListCard.module.css'
 
 // Secret sources (ADR-0050): a store on this machine that Mill reads
-// secrets through -- a dotenv file today -- whose keys then appear in
-// every secret picker beside the vault's own entries. No import/export
-// (a source names a path on this machine) and no seeds (enabling a
-// source is always the user's act), so the shared page renders without
-// those controls.
+// secrets through -- a dotenv file, a password manager's command-line
+// tool, or a store an installed extension contributes (goal 0306 S4) --
+// whose keys then appear in every secret picker beside the vault's own
+// entries. No import/export (a source names a path on this machine) and
+// no seeds (enabling a source is always the user's act), so the shared
+// page renders without those controls.
 export function ConfigureSecretSources() {
   const { t } = useTranslation('configure')
   const sources = useConfigureEntityStore((s) => s.secretSources)
@@ -32,7 +36,15 @@ export function ConfigureSecretSources() {
   const [editingID, setEditingID] = useState<string | null>(null)
   const [label, setLabel] = useState('')
   const [path, setPath] = useState('')
-  const [kind, setKind] = useState<Kind>(Kind.KindEnv)
+  // A kind is a built-in enum value or an extension's contributed
+  // "plugin:<extension>/<source>" string, so the field is the wire
+  // string both shapes share.
+  const [kind, setKind] = useState<string>(Kind.KindEnv)
+  // The kinds installed extensions contribute, read once per mount and
+  // again after every save: an extension turned off stops offering its
+  // kind, and an existing source of that kind states why instead.
+  const [pluginKinds, setPluginKinds] = useState<SecretSourceKindInfo[]>([])
+  const pluginKind = useMemo(() => pluginKinds.find((k) => k.Kind === kind), [pluginKinds, kind])
   // Per-source problems (a missing or locked CLI, an unreadable file):
   // the row states why a source lists nothing right now.
   const [problems, setProblems] = useState<Record<string, string>>({})
@@ -41,19 +53,13 @@ export function ConfigureSecretSources() {
   const refetch = () => {
     void refreshSecretSources()
     void refreshSecretTitles()
+    PluginService.SecretSourceKinds().then((k) => setPluginKinds(k ?? [])).catch(() => setPluginKinds([]))
     SecretService.SourceProblems()
       .then((p) => setProblems(Object.fromEntries(Object.entries(p ?? {}).flatMap(([id, v]) => (v ? [[id, v]] : [])))))
       .catch(() => setProblems({}))
   }
-  const kindLabel = (k: Kind) => {
-    if (k === Kind.KindBruno) return t('configureSecretSources.kindBruno')
-    if (k === Kind.KindOnePassword) return t('configureSecretSources.kindOnePassword')
-    if (k === Kind.KindBitwarden) return t('configureSecretSources.kindBitwarden')
-    return t('configureSecretSources.kindDotenv')
-  }
-  const needsPath = kind === Kind.KindEnv || kind === Kind.KindBruno
-  const pathCaption = kind === Kind.KindBruno ? t('configureSecretSources.pathCaptionBruno') : kind === Kind.KindOnePassword ? t('configureSecretSources.pathCaptionOnePassword') : kind === Kind.KindBitwarden ? t('configureSecretSources.pathCaptionBitwarden') : t('configureSecretSources.pathCaption')
-  const pathPlaceholder = kind === Kind.KindBruno ? t('configureSecretSources.pathPlaceholderBruno') : kind === Kind.KindOnePassword ? t('configureSecretSources.pathPlaceholderOnePassword') : kind === Kind.KindBitwarden ? '' : t('configureSecretSources.pathPlaceholderDotenv')
+  const kindLabel = (k: string) => labelForKind(k, pluginKinds, t)
+  const field = pathField(kind, pluginKind, t)
   useEffect(() => { refetch() }, [])
 
   const startCreate = () => {
@@ -72,6 +78,14 @@ export function ConfigureSecretSources() {
     consumeConfigureCreate()
   }, [configureCreateRequest])
 
+  // Picking an extension's kind offers the path it declares a default
+  // for, so the common case is one click and Save.
+  const pickKind = (next: string) => {
+    setKind(next)
+    const declared = pluginKinds.find((k) => k.Kind === next)
+    if (declared && !path) setPath(declared.PathDefault)
+  }
+
   const startEdit = (s: SecretSource) => {
     setEditingID(s.ID)
     setLabel(s.Label)
@@ -84,8 +98,8 @@ export function ConfigureSecretSources() {
   const save = async () => {
     setError('')
     try {
-      if (editingID) await ConfigureService.UpdateSecretSource(editingID, label, kind, path)
-      else await ConfigureService.CreateSecretSource(label, kind, path)
+      if (editingID) await ConfigureService.UpdateSecretSource(editingID, label, kind as Kind, path)
+      else await ConfigureService.CreateSecretSource(label, kind as Kind, path)
       setFormOpen(false)
       refetch()
     } catch (err) {
@@ -106,7 +120,7 @@ export function ConfigureSecretSources() {
     builtIn: s.BuiltIn,
     updatedAt: s.UpdatedAt,
     createdAt: s.CreatedAt,
-    description: [kindLabel(s.Kind), s.Path, problems[s.ID] ? `⚠ ${problems[s.ID]}` : ''].filter(Boolean).join(' · '),
+    description: [kindLabel(s.Kind), s.Path, problems[s.ID] ? `⚠ ${problemText(problems[s.ID], t)}` : ''].filter(Boolean).join(' · '),
     onOpen: () => startEdit(s),
     menuActions: [
       {
@@ -136,18 +150,22 @@ export function ConfigureSecretSources() {
           </FormControl>
           <FormControl>
             <FormControl.Label>{t('configureSecretSources.kind')}</FormControl.Label>
-            <Select value={kind} onChange={(e) => setKind(e.target.value as Kind)} data-testid="secretsource-kind">
+            <Select value={kind} onChange={(e) => pickKind(e.target.value)} data-testid="secretsource-kind">
               <Select.Option value={Kind.KindEnv}>{t('configureSecretSources.kindDotenv')}</Select.Option>
               <Select.Option value={Kind.KindBruno}>{t('configureSecretSources.kindBruno')}</Select.Option>
               <Select.Option value={Kind.KindOnePassword}>{t('configureSecretSources.kindOnePassword')}</Select.Option>
               <Select.Option value={Kind.KindBitwarden}>{t('configureSecretSources.kindBitwarden')}</Select.Option>
+              {pluginKinds.map((k) => <Select.Option key={k.Kind} value={k.Kind}>{k.Label}</Select.Option>)}
             </Select>
+            {pluginKind && <FormControl.Caption>{t('configureSecretSources.kindFromExtension', { name: pluginKind.PluginName })}</FormControl.Caption>}
           </FormControl>
+          {field.shown && (
           <FormControl>
-            <FormControl.Label>{needsPath ? t('configureSecretSources.path') : t('configureSecretSources.filter')}</FormControl.Label>
-            <TextInput value={path} onChange={(e) => setPath(e.target.value)} block placeholder={pathPlaceholder} disabled={kind === Kind.KindBitwarden} data-testid="secretsource-path" />
-            <FormControl.Caption>{pathCaption}</FormControl.Caption>
+            <FormControl.Label>{field.label}</FormControl.Label>
+            <TextInput value={path} onChange={(e) => setPath(e.target.value)} block placeholder={field.placeholder} disabled={kind === Kind.KindBitwarden} data-testid="secretsource-path" />
+            {field.caption && <FormControl.Caption>{field.caption}</FormControl.Caption>}
           </FormControl>
+          )}
           {error && <Text as="p" size="small" className={styles.error} data-testid="secretsource-error">{error}</Text>}
           <Stack direction="horizontal" gap="condensed">
             <Button variant="primary" size="small" onClick={save} data-testid="save-secretsource">{t('configureSecretSources.saveSource')}</Button>

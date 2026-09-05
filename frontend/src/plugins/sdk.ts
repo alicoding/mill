@@ -6,7 +6,8 @@
 // activate(), never through an import.
 //
 // Split by contribution kind under sdk/ -- one file per manifest
-// contribution (canvas objects, commands, settings, views, captures)
+// contribution (canvas objects, commands, settings, views, captures,
+// secret sources)
 // plus the cross-cutting pieces every one of them shares (theme,
 // guarded actions, board content). This file is the one public entry
 // point every import (inside Mill and in a plugin's own JSDoc
@@ -22,4 +23,5 @@ export * from './sdk/storage'
 export * from './sdk/content'
 export * from './sdk/views'
 export * from './sdk/captures'
+export * from './sdk/secretSources'
 export * from './sdk/api'

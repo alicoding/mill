@@ -18,7 +18,7 @@ var fileExtensionPattern = regexp.MustCompile(`^\.[a-z0-9]+$`)
 // validateContributes fail-closes ingestion claims the same way an
 // unknown capability does: a malformed claim blocks the load with a
 // human-readable reason, never routes half-right.
-func validateContributes(pluginID string, c ManifestContributes) string {
+func validateContributes(pluginID string, capabilities []string, c ManifestContributes) string {
 	if problem := validateCanvasObjectContributions(c.CanvasObjects); problem != "" {
 		return problem
 	}
@@ -41,6 +41,9 @@ func validateContributes(pluginID string, c ManifestContributes) string {
 		return problem
 	}
 	if problem := validateThemes(c.Themes); problem != "" {
+		return problem
+	}
+	if problem := validateSecretSources(capabilities, c.SecretSources); problem != "" {
 		return problem
 	}
 	return validateSettingContributions(c.Settings)

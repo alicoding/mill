@@ -8,4 +8,5 @@ export * from './sdk/storage';
 export * from './sdk/content';
 export * from './sdk/views';
 export * from './sdk/captures';
+export * from './sdk/secretSources';
 export * from './sdk/api';

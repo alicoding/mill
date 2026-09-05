@@ -338,3 +338,11 @@ export const REVIEW_OPEN_RUN_MCP_BASE_PORT = 11500
 // shared pool, same reasoning as every GUARDRAIL_REVIEW_* pair above.
 export const PAUSED_RUNS_SERVER_BASE_PORT = 11520
 export const PAUSED_RUNS_MCP_BASE_PORT = 11540
+
+// secret-source-plugins.spec.ts (goal 0306 S4): a dedicated server whose
+// plugins dir carries the Netrc example, so the Sources page can offer
+// an extension-contributed kind. Its own base pair rather than an
+// offset into the runtime-plugins family, whose offsets are dense
+// enough that a new one would collide with another's MCP port.
+export const SECRET_SOURCE_PLUGIN_SERVER_BASE_PORT = 11560
+export const SECRET_SOURCE_PLUGIN_MCP_BASE_PORT = 11580
