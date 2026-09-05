@@ -3,7 +3,7 @@ import { entityRowCommands, type EntityRowFamily, type EntityRowItem } from './e
 import { ConfigureService } from './bindings'
 import { listMCPServerTools } from './mcpToolsStore'
 import {
-  refreshAIProviders, refreshConversionProfiles, refreshDecisions, refreshDeclaredStepTypes,
+  refreshAIProviders, refreshClientCerts, refreshConversionProfiles, refreshDecisions, refreshDeclaredStepTypes,
   refreshExecEnvs, refreshLists, refreshMCPServers, refreshSecretSources, useConfigureEntityStore,
 } from './configureEntityStore'
 import { refreshRequests, useAppStore } from './store'
@@ -155,7 +155,35 @@ const secretSources: EntityRowFamily<EntityRowItem> = {
   remove: (id) => ConfigureService.DeleteSecretSource(id),
 }
 
+// Certificates predates goal 0346 and kept its own command ids
+// (`clientcert.*`, not `configure.clientcert.*`) -- the namespace stays
+// as it shipped rather than renaming live command ids. Its row is
+// already the editor, but a reference field's "Open in Configure"
+// (goal 0312) can reach it from elsewhere, so edit navigates to the
+// tab before signalling. Duplicate calls the same backend copy RPC the
+// kebab always did (an immediate copy, not a prefilled create form
+// like the shared `duplicate` field above), so it arrives as an extra.
+const clientCerts: EntityRowFamily<EntityRowItem> = {
+  entity: 'clientcert',
+  namespace: 'clientcert',
+  load: () => useConfigureEntityStore.getState().clientCerts,
+  refetch: () => { void refreshClientCerts() },
+  edit: (item) => {
+    useAppStore.getState().setView({ kind: 'configure', tab: 'certificates' })
+    useUISignalStore.getState().requestConfigureEdit('certificates', item.ID)
+  },
+  extras: [{
+    suffix: 'duplicate',
+    label: 'commands.clientcert.duplicate',
+    run: async (item) => {
+      await ConfigureService.DuplicateClientCertificate(item.ID)
+      await refreshClientCerts()
+    },
+  }],
+  remove: (id) => ConfigureService.DeleteClientCertificate(id),
+}
+
 export const CONFIGURE_ROW_COMMANDS: Command[] = [
   requests, lists, mcpServers, decisions, execEnvs, aiProviders,
-  stepTypes, conversionProfiles, secretSources,
+  stepTypes, conversionProfiles, secretSources, clientCerts,
 ].flatMap((family) => entityRowCommands(family as EntityRowFamily<EntityRowItem>))
