@@ -91,7 +91,7 @@ func TestConformDir_EveryShippedPluginConforms(t *testing.T) {
 		var dirs []string
 		for _, m := range matches {
 			// examples/plugins now carries each example's README as a
-			// sibling .md file (standard rule 14) alongside its folder --
+			// sibling .md file (standard rule 15) alongside its folder --
 			// only the folders are plugins.
 			if info, err := os.Stat(m); err == nil && info.IsDir() {
 				dirs = append(dirs, m)

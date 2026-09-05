@@ -5,6 +5,7 @@ import { StopIcon } from '@primer/octicons-react'
 import type { CommandBlockPreview } from './bindings'
 import type { CodingLoopStepProgressEvent } from './codingLoopTypes'
 import { CODING_LOOP_STUCK_THRESHOLD_MS } from './codingLoopConstants'
+import { OutputViewer } from './OutputViewer'
 import styles from './CodingLoopSurface.module.css'
 
 interface Props {
@@ -55,7 +56,7 @@ export function CodingLoopRunningState({ preview, stepProgress, lastProgressAt, 
               <Label size="small" variant={statusVariant(status)}>{t(`codingLoop.running.status.${status}`)}</Label>
               <code className={styles.stepText}>{step.text}</code>
               {status === 'running' && live?.outputTail && (
-                <pre className={styles.outputTail} data-testid={`coding-loop-step-${step.index}-tail`}>{live.outputTail}</pre>
+                <OutputViewer value={live.outputTail} shape="text" site="coding-loop-tail" testId={`coding-loop-step-${step.index}-tail`} />
               )}
             </li>
           )

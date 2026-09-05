@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Banner, Button, Stack, Text } from '@primer/react'
 import { CopyIcon } from '@primer/octicons-react'
 import type { RunDetail } from './bindings'
+import { OutputViewer } from './OutputViewer'
 import styles from './CodingLoopSurface.module.css'
 
 interface Props {
@@ -40,7 +41,13 @@ export function CodingLoopResultState({ detail, copyState, onCopy }: Props) {
         data-testid="coding-loop-result-banner"
       />
 
-      <pre className={styles.resultOutput} data-testid="coding-loop-result-output">{detail.output || t('codingLoop.result.noOutput')}</pre>
+      <OutputViewer
+        value={detail.output}
+        shape="text"
+        title={t('codingLoop.result.succeededTitle')}
+        site="coding-loop-result"
+        testId="coding-loop-result-output"
+      />
 
       <Text as="p" size="small" data-testid="coding-loop-result-saved">
         {t('codingLoop.result.saved')}

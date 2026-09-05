@@ -47,7 +47,7 @@ func main() {
 }
 
 // examplePluginDirs lists every plugin FOLDER under examples/plugins --
-// each example's sibling README (rule 14) now lives right next to it
+// each example's sibling README (rule 15) now lives right next to it
 // as a .md file, which the plain glob would otherwise hand to
 // ConformDir as if it were a plugin of its own.
 func examplePluginDirs() []string {
@@ -64,7 +64,7 @@ func examplePluginDirs() []string {
 	return dirs
 }
 
-// exampleReadmeProblems is standard rule 14, checked only for a shipped
+// exampleReadmeProblems is standard rule 15, checked only for a shipped
 // example: its README lives BESIDE the plugin folder, at
 // examples/plugins/<id>.md -- a plugin folder may only hold files the
 // asset route serves, so the README can never sit inside it.
@@ -75,7 +75,7 @@ func exampleReadmeProblems(dir string) []string {
 	}
 	readme := filepath.Join(parent, id+".md")
 	if _, err := os.Stat(readme); err != nil {
-		return []string{fmt.Sprintf("standard rule 14: missing %s (a README beside the plugin folder)", readme)}
+		return []string{fmt.Sprintf("standard rule 15: missing %s (a README beside the plugin folder)", readme)}
 	}
 	return nil
 }

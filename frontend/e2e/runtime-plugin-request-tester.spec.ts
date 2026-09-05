@@ -45,7 +45,13 @@ test('the Request tester sends to a host you approve in Review, shows the respon
 		await reviewPage.close()
 
 		await expect(view.getByTestId('tester-status')).toContainText('200')
-		await expect(view.getByTestId('tester-response')).toHaveText('{"pong":true}')
+		// The plugin asked Mill to draw the response (api.ui.renderOutput,
+		// goal 0326): a JSON Content-Type opens as a tree, and Raw on the
+		// same toolbar still holds the exact body.
+		const response = view.getByTestId('tester-response')
+		await expect(response.getByTestId('json-tree-leaf').filter({ hasText: 'pong' })).toContainText('true')
+		await response.getByTestId('output-view-raw').click()
+		await expect(response.getByTestId('plugin-output-mill-request-tester-raw')).toContainText('{"pong":true}')
 		await expect(view.getByTestId('tester-history-item')).toHaveCount(1)
 
 		// History is plugin storage: it survives a reload of the restored tab.
