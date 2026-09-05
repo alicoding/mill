@@ -10,6 +10,9 @@ import { removePluginNow } from './pluginHostCommands'
 import { refreshDisabledExtensions, useExtensionEnablementStore } from './extensionEnablementStore'
 import { pluginLoadStates } from '../plugins/loader'
 import { background } from './background'
+import { ConfigureService } from './bindings'
+import { appTranslate, messageFor } from './userError'
+import { checkForUpdatesWithNotice, updateAllWithNotice, updateCandidateFor, useExtensionUpdatesStore } from './extensionUpdatesStore'
 
 // The Extensions surface's own commands (docs/goals/0349). The page
 // itself is one nav command; every ROW action is a command taking the
@@ -116,6 +119,74 @@ export const EXTENSIONS_COMMANDS: Command[] = [
     },
   },
   {
+    // Check for updates is the one user action that asks every source
+    // and every installed extension's own source for a newer version;
+    // the entity-scoped twin below is the row menu's short label.
+    id: 'extensions.checkUpdates',
+    label: 'commands.extensions.checkUpdates',
+    defaultBinding: null,
+    keywords: ['update', 'upgrade', 'extensions', 'check'],
+    run: () => checkForUpdatesWithNotice(),
+  },
+  {
+    id: 'extension.checkUpdates',
+    label: 'commands.extension.checkUpdates',
+    defaultBinding: null,
+    needs: 'entity',
+    paletteHidden: true,
+    enabled: (ctx) => {
+      const target = entityContext(ctx, EXTENSION_ENTITY)
+      return !!target && !builtIn(target.id)
+    },
+    run: () => checkForUpdatesWithNotice(),
+  },
+  {
+    id: 'extensions.updateAll',
+    label: 'commands.extensions.updateAll',
+    defaultBinding: null,
+    keywords: ['update all', 'upgrade', 'extensions'],
+    enabled: () => useExtensionUpdatesStore.getState().candidates.length > 0,
+    run: () => updateAllWithNotice(),
+  },
+  {
+    // Applying one update confirms through the Extensions page's own
+    // dialog host, which shows the same prompt the first install did.
+    id: 'extension.update',
+    label: 'commands.extension.update',
+    defaultBinding: null,
+    needs: 'entity',
+    paletteHidden: true,
+    enabled: (ctx) => {
+      const target = entityContext(ctx, EXTENSION_ENTITY)
+      return !!target && updateCandidateFor(target.id) !== undefined
+    },
+    run: (ctx) => {
+      const target = entityContext(ctx, EXTENSION_ENTITY)
+      if (!target) return
+      useUISignalStore.getState().requestExtensionUpdate(target.id)
+    },
+  },
+  {
+    // The context id is "<plugin>/<server>": one command serves every
+    // declared server, the same id-carries-the-argument shape the
+    // per-plugin reload and remove commands take.
+    id: 'extension.addMcpServer',
+    label: 'commands.extension.addMcpServer',
+    defaultBinding: null,
+    needs: 'entity',
+    paletteHidden: true,
+    enabled: (ctx) => {
+      const target = entityContext(ctx, EXTENSION_ENTITY)
+      return !!target && parseMcpServerEntityID(target.id) !== null
+    },
+    run: (ctx) => {
+      const target = entityContext(ctx, EXTENSION_ENTITY)
+      const parsed = target ? parseMcpServerEntityID(target.id) : null
+      if (!parsed) return
+      addMcpServerToConfigure(parsed.pluginId, parsed.serverId)
+    },
+  },
+  {
     id: 'extension.refreshSources',
     label: 'commands.extension.refreshSources',
     defaultBinding: null,
@@ -123,6 +194,29 @@ export const EXTENSIONS_COMMANDS: Command[] = [
     run: () => refreshSourcesWithNotice(),
   },
 ]
+
+// mcpServerEntityID / parseMcpServerEntityID carry a declared server
+// through an entity context: the plugin id and the server id, joined
+// by the one character neither slug may contain.
+export function mcpServerEntityID(pluginId: string, serverId: string): string {
+  return `${pluginId}/${serverId}`
+}
+
+export function parseMcpServerEntityID(id: string): { pluginId: string; serverId: string } | null {
+  const [pluginId, serverId, ...rest] = id.split('/')
+  if (!pluginId || !serverId || rest.length > 0) return null
+  return { pluginId, serverId }
+}
+
+// addMcpServerToConfigure resolves the declared server -- every
+// secret already a reference -- and creates the entity through
+// Configure's own create door, the same one its form uses.
+function addMcpServerToConfigure(pluginId: string, serverId: string): void {
+  PluginService.ResolveMCPServer(pluginId, serverId)
+    .then((cfg) => ConfigureService.CreateMCPServer(cfg.Label, cfg.Command, cfg.Args ?? [], cfg.Env ?? []).then(() => cfg.Label))
+    .then((label) => pushNotice({ level: 'success', text: i18n.t('views:extensions.mcpServers.added', { label }) }))
+    .catch((err) => pushNotice({ level: 'error', text: i18n.t('views:extensions.mcpServers.addFailed', { error: messageFor(err, appTranslate) }) }))
+}
 
 // refreshSourcesWithNotice re-reads every added source. The ONLY
 // automatic thing about it is that it reports its own outcome: a

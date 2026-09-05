@@ -174,6 +174,31 @@ export interface InstallRecord {
 }
 
 /**
+ * MCPServerConfig is what "Add to Configure" hands the Configure
+ * create door: the entity's label, command, args and KEY=VALUE env,
+ * with every secret already a reference and never a value.
+ */
+export interface MCPServerConfig {
+    "Label": string;
+    "Command": string;
+    "Args": string[] | null;
+    "Env": string[] | null;
+}
+
+/**
+ * MCPServerContribution declares one MCP server a plugin ships. Env
+ * maps a variable name to a literal value or to "secretRef:<setting>"
+ * naming one of this plugin's own secretRef settings.
+ */
+export interface MCPServerContribution {
+    "id": string;
+    "label": string;
+    "command": string;
+    "args": string[] | null;
+    "env": { [_ in string]?: string } | null;
+}
+
+/**
  * Manifest is the converged plugin manifest shape (docs/adr/0047 §1:
  * identity metadata + a declared capability set). Rendering
  * contributions happen at activate() time through the host API, so
@@ -276,6 +301,12 @@ export interface ManifestContributes {
      * call over MCP, each with its own typed input contract.
      */
     "tools": ToolContribution[] | null;
+
+    /**
+     * MCPServers (docs/goals/0349 S5, pluginservice_mcpservers.go): MCP
+     * server definitions the plugin ships for "Add to Configure".
+     */
+    "mcpServers": MCPServerContribution[] | null;
 }
 
 /**
@@ -629,6 +660,40 @@ export interface ToolRun {
     "kind": string;
     "commandId"?: string;
     "stepId"?: string;
+}
+
+/**
+ * UpdateCandidate is one extension a newer version is known for.
+ */
+export interface UpdateCandidate {
+    "ID": string;
+    "Name": string;
+    "Installed": string;
+    "Available": string;
+    "Marketplace": string;
+
+    /**
+     * Tier is what applying the update would earn, before any
+     * download -- the same promise a Browse row makes.
+     */
+    "Tier": string;
+    "Source": PluginSource;
+}
+
+/**
+ * UpdateCheck is the last check's outcome, persisted beside the
+ * source list so the Updates tab and its count survive a relaunch
+ * without a new fetch. CheckedAt is "" when no check has ever run.
+ */
+export interface UpdateCheck {
+    "checkedAt": string;
+    "candidates": UpdateCandidate[] | null;
+
+    /**
+     * Problems names each source or extension the check could not
+     * read, so one unreachable host never hides as "up to date".
+     */
+    "problems": string[] | null;
 }
 
 /**
