@@ -86,6 +86,7 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Review | ⌘5 | `view.review` |
 | Review rules | — | `review.rules` |
 | Secrets | ⌘6 | `view.secrets` |
+| Extensions | ⌘⇧X | `extensions.open` |
 | Docs | — | `view.docs` |
 | Command palette | ⌘K | `palette.open` |
 | Next tab | ⌃TAB | `tab.next` |

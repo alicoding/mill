@@ -26,6 +26,11 @@ export type CommandContext =
   | { kind: 'run'; runId: string; workflowId?: string; nodeId?: string; values?: Record<string, string> }
   | { kind: 'entry'; entryId: string; pinned?: boolean }
   | { kind: 'card'; cardId: string }
+  // A row in an entity inventory: which family it belongs to and its
+  // own id. One kind for every inventory rather than one per entity
+  // type -- a row action is "act on THIS row of THIS list", and the
+  // command that declares it already knows which family it serves.
+  | { kind: 'entity'; entity: string; id: string }
 
 export type CommandContextKind = CommandContext['kind']
 
@@ -49,4 +54,10 @@ export function runContext(ctx: CommandContext | undefined): { runId: string; wo
 
 export function entryContext(ctx: CommandContext | undefined): { entryId: string; pinned?: boolean } | null {
   return ctx?.kind === 'entry' ? { entryId: ctx.entryId, pinned: ctx.pinned } : null
+}
+
+// entityContext narrows to one inventory family: a command serving
+// 'plugin' rows reads nothing from a 'workflow' row's context.
+export function entityContext(ctx: CommandContext | undefined, entity: string): { id: string } | null {
+  return ctx?.kind === 'entity' && ctx.entity === entity ? { id: ctx.id } : null
 }

@@ -156,3 +156,56 @@
     flex-wrap: wrap;
     gap: var(--base-size-4);
 }
+
+/* The store's own page chrome (goal 0349). The tab strip sits under
+   the page heading, the way every other tabbed page here wears it. */
+.tabs {
+    margin-block-end: var(--base-size-8);
+}
+
+/* A permission list, a source list, a browse list: plain semantic
+   lists with no bullets, since each line is a fact rather than an
+   enumeration the reader counts. */
+.plainList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* The row's trailing cluster: version, trust badge, toggle, kebab --
+   in that order, never wrapping. */
+.rowMeta {
+    display: flex;
+    align-items: center;
+    gap: var(--base-size-8);
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* The kind chips under the toolbar. Wrap rather than scroll: the
+   vocabulary is short and a hidden filter is a filter nobody uses. */
+.kindChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--base-size-4);
+    align-items: center;
+}
+
+/* One source row in the Sources dialog. */
+.sourceRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--base-size-8);
+    padding-block: var(--base-size-8);
+    border-bottom: 1px solid var(--borderColor-muted);
+}
+
+.sourceRow:last-child {
+    border-bottom: none;
+}
+
+/* The detail's own tab strip, above the tab's body. */
+.detailTabs {
+    margin-block-end: var(--base-size-8);
+}

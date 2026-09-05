@@ -71,6 +71,13 @@ var assets embed.FS
 //go:embed all:userdocs
 var userdocsFS embed.FS
 
+// The bundled "mill" marketplace's offerings (docs/goals/0349),
+// injected below because go:embed paths are package-relative and these
+// live at the repository root -- userdocsFS's own shape.
+//
+//go:embed all:examples/plugins
+var examplePluginsFS embed.FS
+
 //go:embed build/appicon.png
 var trayIconPNG []byte
 
@@ -189,6 +196,7 @@ func main() {
 	}
 	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
 	pluginService := wiring.NewPluginService(settingsPath, guardrailService, millChannel, millUpdateVersion)
+	pluginService.SetExampleMarketplace(examplePluginsFS)
 	// docs/goals/0240 S1: the coding loop's Confirm-screen preview --
 	// read-only over guardrailService.Rules(). Its ExecutionService
 	// dependency (goal 0240 S2, RunCommandBlock's own doc comment) is

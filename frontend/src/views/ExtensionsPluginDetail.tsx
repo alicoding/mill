@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Stack, Text } from '@primer/react'
+import { Button, Label, Stack, Text } from '@primer/react'
 import { AlertIcon, PlugIcon } from '@primer/octicons-react'
 import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { drainedPluginCommands } from '../plugins/pluginCommands'
@@ -7,6 +8,14 @@ import { pluginLoadStates } from '../plugins/loader'
 import { settingDeclsFromManifest } from '../plugins/pluginSettings'
 import { findCommand, runCommand } from '../shared/commands'
 import { ExtensionDetailPane, type ExtensionDetail } from './ExtensionDetailPane'
+import {
+  ExtensionsDetailTabStrip,
+  ExtensionsDocTab,
+  ExtensionsSettingsTab,
+  ExtensionsVerificationTab,
+  type ExtensionDetailTab,
+} from './ExtensionsDetailTabs'
+import { tierLabelKey, tierVariant } from './extensionTrust'
 import { reachLabel } from './extensionMeta'
 import listStyles from '../shared/ListCard.module.css'
 
@@ -28,6 +37,7 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
   onClose: () => void
 }) {
   const { t } = useTranslation('views')
+  const [tab, setTab] = useState<ExtensionDetailTab>('overview')
   const id = plugin.Manifest.id
   const name = plugin.Manifest.name || id
   const runtime = pluginLoadStates().get(id)
@@ -73,7 +83,55 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
     ) : undefined,
     onRemove: removeCommand?.enabled?.() ? () => void runCommand(removeCommand.id) : undefined,
   }
-  return <ExtensionDetailPane detail={detail} showBackLink={showBackLink} onClose={onClose} />
+  // A built-in has nothing installed to verify and no folder to read a
+  // changelog from, so it keeps the single-pane form.
+  if (plugin.Builtin) {
+    return <ExtensionDetailPane detail={detail} showBackLink={showBackLink} onClose={onClose} />
+  }
+  const hasSettings = detail.settings.length > 0
+  const activeTab = tab === 'settings' && !hasSettings ? 'overview' : tab
+  return (
+    <ExtensionDetailPane
+      detail={detail}
+      showBackLink={showBackLink}
+      onClose={onClose}
+      tabStrip={<ExtensionsDetailTabStrip active={activeTab} onSelect={setTab} hasSettings={hasSettings} />}
+      body={activeTab === 'contributions' ? undefined : (
+        <TabBody tab={activeTab} plugin={plugin} changed={runtime?.status === 'changed'} />
+      )}
+    />
+  )
+}
+
+// One switch over the tabs whose body is not the pane's own default
+// block -- Contributions IS that default, so it passes no body at all.
+function TabBody({ tab, plugin, changed }: { tab: ExtensionDetailTab; plugin: PluginInfo; changed: boolean }) {
+  const { t } = useTranslation('views')
+  const id = plugin.Manifest.id
+  if (tab === 'overview') {
+    return (
+      <Stack direction="vertical" gap="condensed">
+        <Stack direction="horizontal" gap="condensed" align="center">
+          {tierLabelKey(plugin.Tier ?? '') && (
+            <Label variant={tierVariant(plugin.Tier ?? '')} data-testid="extensions-detail-tier">
+              {t(tierLabelKey(plugin.Tier ?? '') as string)}
+            </Label>
+          )}
+          {plugin.Marketplace && (
+            <Text size="small" className={listStyles.muted}>{t('extensions.fromMarketplace', { marketplace: plugin.Marketplace })}</Text>
+          )}
+        </Stack>
+        <ExtensionsDocTab pluginId={id} file="README.md" emptyKey="extensions.noOverview" site={`extension-overview-${id}`} />
+      </Stack>
+    )
+  }
+  if (tab === 'changelog') {
+    return <ExtensionsDocTab pluginId={id} file="CHANGELOG.md" emptyKey="extensions.noChangelog" site={`extension-changelog-${id}`} />
+  }
+  if (tab === 'verification') {
+    return <ExtensionsVerificationTab plugin={plugin} changed={changed} />
+  }
+  return <ExtensionsSettingsTab plugin={plugin} />
 }
 
 

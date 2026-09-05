@@ -19,6 +19,10 @@ interface UISignalState {
   // window capture-phase listener of its own).
   atlasJumpRequest: number
   requestAtlasJump: () => void
+  // extensions.sources: the same counter shape, opening the Extensions
+  // page's Sources dialog from the palette.
+  extensionSourcesRequest: number
+  requestExtensionSources: () => void
   // atlas.matrix / atlas.coverage / atlas.roadmap: same counter shape,
   // opening AtlasView's own local matrixOpen/coverageOpen/roadmapOpen
   // dialog state (useAtlasProjectionViews).
@@ -198,7 +202,9 @@ interface UISignalState {
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
   atlasJumpRequest: 0,
+  extensionSourcesRequest: 0,
   requestAtlasJump: () => set((s) => ({ atlasJumpRequest: s.atlasJumpRequest + 1 })),
+  requestExtensionSources: () => set((s) => ({ extensionSourcesRequest: s.extensionSourcesRequest + 1 })),
   atlasMatrixRequest: 0,
   requestAtlasMatrixOpen: () => set((s) => ({ atlasMatrixRequest: s.atlasMatrixRequest + 1 })),
   atlasCoverageRequest: 0,

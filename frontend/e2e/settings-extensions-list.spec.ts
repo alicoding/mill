@@ -5,7 +5,7 @@ import path from 'node:path'
 import { spawnMillServer } from './fixtures/server'
 import { SETTINGS_EXTENSIONS_LIST_MCP_BASE_PORT, SETTINGS_EXTENSIONS_LIST_SERVER_BASE_PORT } from './fixtures/serverPorts'
 import { launchWithPlugins } from './fixtures/runtimePlugins'
-import { openSettings, pluginRow } from './fixtures/settingsNav'
+import { openExtensions, pluginRow } from './fixtures/settingsNav'
 
 // The Installed plugins list on the one list standard (goal 0337 S2):
 // its own toolbar (search, an own-item count) and the compiled-in
@@ -22,7 +22,7 @@ test('the installed list wears the toolbar and collapses Built in once real plug
   })
   try {
     await page.goto('/')
-    await openSettings(page, 'extensions')
+    await openExtensions(page)
 
     // Five example plugins land on disk (launchWithPlugins' own copy)
     // -- the toolbar's count reads them, not the compiled-in one.
@@ -66,7 +66,7 @@ test('Built in starts expanded when nothing else is installed', async ({}, testI
   const page = await browser.newPage({ baseURL: server.baseURL })
   try {
     await page.goto('/')
-    await openSettings(page, 'extensions')
+    await openExtensions(page)
 
     // Nothing installed: the toolbar carries no own-item count, and the
     // Built-in section is already open with the compiled-in plugin in it.

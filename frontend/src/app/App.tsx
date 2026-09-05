@@ -12,6 +12,7 @@ import ConfigureView from "../configure/ConfigureView";
 import { AtlasView } from "../atlas/AtlasView";
 import SettingsView from "../views/SettingsView";
 import SecretsView from "../views/SecretsView";
+import ExtensionsView from "../views/ExtensionsView";
 import PlaceholderView from "../views/PlaceholderView";
 import { CapabilitiesService, SettingsService } from '../shared/bindings'
 import type { BuildInfo } from '../shared/bindings'
@@ -420,6 +421,7 @@ function App() {
 
             {view.kind === 'settings' && <SettingsView initialSection={view.section}/>}
             {view.kind === 'secrets' && <SecretsView key={view.tab} initialTab={view.tab}/>}
+            {view.kind === 'extensions' && <ExtensionsView key={view.tab} initialTab={view.tab}/>}
 
             {view.kind === 'placeholder' && <PlaceholderView capabilityId={view.capabilityId}/>}
           </WorkTabShell>

@@ -66,10 +66,19 @@ export interface ExtensionDetail {
 // Escape closes it and focus returns to the row that opened it: the
 // pane takes focus on mount (it is what the click produced), so a
 // keyboard user is not left behind in the list with an unread pane.
-export function ExtensionDetailPane({ detail, showBackLink, onClose }: {
+//
+// tabStrip/body are the tabbed form (goal 0349): an INSTALLED
+// extension's detail splits its content across Overview,
+// Contributions, Changelog, Verification and Settings, so the caller
+// renders the strip and the active tab's body while the header, the
+// status strip and the … menu stay put. A built-in noun passes
+// neither and gets the single-pane form unchanged.
+export function ExtensionDetailPane({ detail, showBackLink, onClose, tabStrip, body }: {
   detail: ExtensionDetail
   showBackLink: boolean
   onClose: () => void
+  tabStrip?: ReactNode
+  body?: ReactNode
 }) {
   const { t } = useTranslation('views')
   const paneRef = useRef<HTMLDivElement>(null)
@@ -140,6 +149,14 @@ export function ExtensionDetailPane({ detail, showBackLink, onClose }: {
         </Stack>
       </Stack>
 
+      {tabStrip}
+
+      {detail.status}
+
+      {body}
+
+      {body === undefined && (
+        <>
       <Text as="p" size="small" data-testid="extensions-detail-description">{detail.description}</Text>
 
       {detail.chips.length > 0 && (
@@ -149,8 +166,6 @@ export function ExtensionDetailPane({ detail, showBackLink, onClose }: {
           {detail.chips.map((chip) => <Label key={chip}>{chip}</Label>)}
         </div>
       )}
-
-      {detail.status}
 
       {detail.disableScopeNote && (
         <Text as="p" size="small" className={listStyles.muted} data-testid="extensions-detail-disable-scope">
@@ -196,6 +211,8 @@ export function ExtensionDetailPane({ detail, showBackLink, onClose }: {
       >
         {t('settings.extensions.docs')}
       </Link>
+        </>
+      )}
 
       {confirmingRemove && detail.onRemove && (
         <ConfirmDialog

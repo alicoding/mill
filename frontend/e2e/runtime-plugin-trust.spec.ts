@@ -7,7 +7,7 @@ import { expect, test } from '@playwright/test'
 import { launchWithPlugins } from './fixtures/runtimePlugins'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { openExtensionDetail, openSettings, pluginRow } from './fixtures/settingsNav'
+import { openExtensionDetail, openExtensions, pluginRow } from './fixtures/settingsNav'
 
 const LATE_PLUGIN = `export function activate(api) {
 	api.registerCanvasObject({ kind: 'late', label: 'Late arrival', icon: '🕰️', source: 'board-local', editRoute: 'none', defaultPayload: {}, renderFace(el) { el.textContent = 'late' } })
@@ -69,7 +69,7 @@ test('an administrator allow-list in the settings file blocks every plugin off i
 		await expect(tray.locator('button[aria-label="Bookmark"]')).toBeVisible()
 		await expect(tray.locator('button[aria-label="Scribble"]')).toHaveCount(0)
 
-		await openSettings(page, 'extensions')
+		await openExtensions(page)
 		const section = page.locator('[data-testid="extensions-installed-plugins"]')
 		await section.scrollIntoViewIfNeeded()
 		await expect(section.getByTestId('extensions-allowlist')).toContainText("Only plugins on this Mill's allow-list can run: mill-bookmark")
@@ -97,7 +97,7 @@ test('Export plugin audit saves one JSON document naming every plugin, its reach
 	const { page, close } = await launchWithPlugins(46)
 	try {
 		await page.goto('/')
-		await openSettings(page, 'extensions')
+		await openExtensions(page)
 		const section = page.locator('[data-testid="extensions-installed-plugins"]')
 		await section.scrollIntoViewIfNeeded()
 		const download = page.waitForEvent('download')
@@ -139,7 +139,7 @@ test('a plugin whose files change after it was allowed stops running until allow
 		await expect(page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Scribble"]')).toBeVisible()
 		await expect(bookmark).toHaveCount(0)
 
-		await openSettings(page, 'extensions')
+		await openExtensions(page)
 		const row = pluginRow(page, 'mill-bookmark')
 		await expect(row.getByTestId('extensions-plugin-toggle')).toHaveCount(0)
 		const detail = await openExtensionDetail(page, row, 'mill-bookmark')
@@ -178,7 +178,7 @@ test('with signing keys pinned, an unsigned plugin cannot run and the bar says s
 		const tray = page.locator('[data-testid="atlas-creation-tray"]')
 		await expect(tray).toBeVisible()
 		await expect(tray.locator('button[aria-label="Bookmark"]')).toHaveCount(0)
-		await openSettings(page, 'extensions')
+		await openExtensions(page)
 		const section = page.locator('[data-testid="extensions-installed-plugins"]')
 		await section.scrollIntoViewIfNeeded()
 		await expect(section.getByTestId('extensions-allowlist')).toContainText('Only plugins signed by the 1 key this Mill trusts can run.')

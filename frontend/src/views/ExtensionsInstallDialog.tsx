@@ -1,0 +1,74 @@
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Checkbox, Dialog, FormControl, Label, Stack, Text } from '@primer/react'
+import type { InstallPreview } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
+import { ExtensionsPermissions } from './ExtensionsPermissions'
+import { tierLabelKey, tierVariant } from './extensionTrust'
+import listStyles from '../shared/ListCard.module.css'
+
+// The install prompt (docs/goals/0349): every install, at every tier,
+// says what the extension can do BEFORE it lands -- the converged
+// permission-prompt shape. The unverified tier adds one thing on top
+// of that list: an acknowledgment that nothing has reviewed this code,
+// which the Install button waits for.
+export function ExtensionsInstallDialog({ preview, busy, onCancel, onInstall }: {
+  preview: InstallPreview
+  busy: boolean
+  onCancel: () => void
+  onInstall: () => void
+}) {
+  const { t } = useTranslation('views')
+  const [acknowledged, setAcknowledged] = useState(false)
+  const unverified = preview.Tier === 'unverified'
+  const badgeKey = tierLabelKey(preview.Tier)
+  const name = preview.Name || preview.ID
+  const confirmDisabled = busy || (unverified && !acknowledged)
+
+  return (
+    <Dialog
+      title={t(unverified ? 'extensions.install.unreviewedTitle' : 'extensions.install.title', { name })}
+      onClose={onCancel}
+      data-testid="extensions-install-dialog"
+      footerButtons={[
+        { content: t('extensions.install.cancel'), onClick: onCancel, autoFocus: true },
+        {
+          content: t('extensions.install.confirm'),
+          buttonType: unverified ? 'danger' : 'primary',
+          disabled: confirmDisabled,
+          onClick: onInstall,
+        },
+      ]}
+    >
+      <Stack direction="vertical" gap="condensed">
+        <Stack direction="horizontal" gap="condensed" align="center">
+          <Text size="small" weight="semibold">{name}</Text>
+          {preview.Version && <Text size="small" className={listStyles.muted}>{t('extensions.versionLabel', { version: preview.Version })}</Text>}
+          {badgeKey && (
+            <Label variant={tierVariant(preview.Tier)} data-testid="extensions-install-tier">{t(badgeKey)}</Label>
+          )}
+        </Stack>
+        {preview.Marketplace && (
+          <Text as="p" size="small" className={listStyles.muted}>
+            {t('extensions.fromMarketplace', { marketplace: preview.Marketplace })}
+          </Text>
+        )}
+        {unverified && (
+          <Text as="p" size="small" data-testid="extensions-install-unreviewed-body">
+            {t('extensions.install.unreviewedBody')}
+          </Text>
+        )}
+        <ExtensionsPermissions preview={preview} testId="extensions-install-permissions" />
+        {unverified && (
+          <FormControl>
+            <Checkbox
+              checked={acknowledged}
+              onChange={(e) => setAcknowledged(e.target.checked)}
+              data-testid="extensions-install-acknowledge"
+            />
+            <FormControl.Label>{t('extensions.install.acknowledge')}</FormControl.Label>
+          </FormControl>
+        )}
+      </Stack>
+    </Dialog>
+  )
+}

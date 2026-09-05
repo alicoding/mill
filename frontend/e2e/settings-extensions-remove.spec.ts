@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { existsSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import { launchWithPlugins } from './fixtures/runtimePlugins'
-import { openExtensionDetail, openSettings, pluginRow } from './fixtures/settingsNav'
+import { openExtensionDetail, openExtensions, pluginRow } from './fixtures/settingsNav'
 
 // Uninstalling a plugin (goal 0321): the action lives behind the
 // detail pane's … menu, never beside the enable toggle, and it is
@@ -19,7 +19,7 @@ test('The detail pane offers Reload and, behind its menu, a confirmed Remove tha
 	const { page, pluginsDir, close } = await launchWithPlugins(70)
 	try {
 		await page.goto('/')
-		await openSettings(page, 'extensions')
+		await openExtensions(page)
 
 		const row = pluginRow(page, 'mill-bookmark')
 		// Remove is NEVER on the row -- only identity and the switch.
@@ -72,7 +72,7 @@ test('A built-in plugin offers no Remove at all', async () => {
 	const { page, close } = await launchWithPlugins(72)
 	try {
 		await page.goto('/')
-		await openSettings(page, 'extensions')
+		await openExtensions(page)
 		// mill-drawing sits behind the shared Built-in disclosure --
 		// launchWithPlugins seeds own plugins too, so it starts collapsed
 		// (goal 0337 S2).
