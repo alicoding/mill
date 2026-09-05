@@ -1,19 +1,23 @@
 import type { Download, Page } from '@playwright/test'
 import { test, expect } from './fixtures/server'
-import { createCardViaTray, noteCard } from './fixtures/atlasBoard'
+import { groupCard, noteCard } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { withClipboardLock } from './fixtures/clipboardLock'
+import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { paletteDialog } from './fixtures/palette'
+import { waitForViewportStable } from './fixtures/animation'
 import { ATLAS_KIND_DOCUMENT } from './fixtures/kindPicker'
 
 // "Copy as image" / "Export as image..." (docs/goals/0201): a picture
 // of the current selection, widening to the whole board when nothing
 // is selected.
 //
-// Shared pool: every card here is created under a unique title and
-// deleted at the end, and nothing reads a global count. The copy case
-// takes the real-pasteboard lock, since the host's own Go clipboard
-// write is what it exercises.
+// Shared pool. Each case builds its OWN space with its own cards and
+// deletes it again, so nothing here reads or disturbs the seeded
+// landing board: the cards have to sit far enough apart to be selected
+// and right-clicked individually, which the landing board cannot
+// promise. The copy case takes the real-pasteboard lock, since the
+// host's own Go clipboard write is what it exercises.
 //
 // The exclusion RULES (handles, resize frames, out-of-scope nodes) are
 // pinned by src/atlas/atlasImageExport.test.ts against the filter
@@ -21,6 +25,8 @@ import { ATLAS_KIND_DOCUMENT } from './fixtures/kindPicker'
 // resize handle.
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+const CREATE_CARD = 'github.com/alicoding/mill/internal/services/atlassvc.AtlasService.CreateCard'
+const DELETE_CARD = 'github.com/alicoding/mill/internal/services/atlassvc.AtlasService.DeleteCard'
 
 async function readDownload(download: Download): Promise<Buffer> {
   const stream = await download.createReadStream()
@@ -36,19 +42,44 @@ function pngSize(bytes: Buffer): { width: number; height: number } {
   return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) }
 }
 
-async function openBoard(page: Page) {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Atlas' }).click()
-  await expect(page.getByTestId('atlas-board')).toBeVisible()
+async function createCard(page: Page, title: string, parentID: string, position: { X: number; Y: number } | null, viewMode = '') {
+  const card = await callBindingViaRPC<{ ID: string }>(page, CREATE_CARD, [
+    ATLAS_KIND_DOCUMENT, title, '', null, parentID, position, viewMode, '', '', '',
+  ])
+  return card.ID
 }
 
-async function deleteCard(page: Page, title: string) {
-  const card = noteCard(page, title)
-  await card.click({ button: 'right' })
-  const menu = contextMenu(page)
-  await expect(menu).toBeVisible()
-  await menu.getByText('Delete', { exact: true }).click()
-  await expect(card).toHaveCount(0)
+// A space of this spec's own, holding only the named cards -- built
+// through the same bound call the board's own create flow ends in,
+// since the gesture version cannot promise WHERE on a seeded board a
+// card lands. Returns what to delete afterwards.
+async function buildSpace(page: Page, spaceTitle: string, cardTitles: string[]) {
+  await page.goto('/')
+  // 'canvas' explicitly: a fresh container's own default view mode is
+  // shelves, and this spec is about the BOARD.
+  const spaceID = await createCard(page, spaceTitle, '', null, 'canvas')
+  const cardIDs: string[] = []
+  for (const [index, title] of cardTitles.entries()) {
+    cardIDs.push(await createCard(page, title, spaceID, { X: 80 + index * 460, Y: 100 }))
+  }
+
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+  await page.getByTestId('atlas-breadcrumb').getByText('All spaces', { exact: true }).click()
+  await groupCard(page, spaceTitle).getByTestId('atlas-group-header').click()
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText(spaceTitle)
+  for (const title of cardTitles) await expect(noteCard(page, title)).toBeVisible()
+  // Every click and every size assertion below reads live geometry, and
+  // the drill-in pan is a d3-zoom interpolation, not a CSS transition.
+  await waitForViewportStable(board, 20_000)
+  return { spaceID, cardIDs, board }
+}
+
+async function tearDownSpace(page: Page, spaceID: string, cardIDs: string[]) {
+  for (const id of cardIDs) await callBindingViaRPC(page, DELETE_CARD, [id])
+  await callBindingViaRPC(page, DELETE_CARD, [spaceID])
 }
 
 // The palette door: both commands act on the board's live selection,
@@ -63,10 +94,22 @@ async function runViaPalette(page: Page, label: string) {
   await expect(palette).toHaveCount(0)
 }
 
-test('exports the selection as a PNG sized to the selection plus its padding', async ({ page }) => {
-  await openBoard(page)
-  await createCardViaTray(page, 'ZzImgExportA', { kindID: ATLAS_KIND_DOCUMENT, at: { x: 400, y: 500 } })
-  await createCardViaTray(page, 'ZzImgExportB', { kindID: ATLAS_KIND_DOCUMENT, at: { x: 700, y: 300 } })
+function exportDialog(page: Page) {
+  return page.locator('[data-component="atlas-image-export-dialog"]')
+}
+
+async function exportAndRead(page: Page): Promise<Download> {
+  const dialog = exportDialog(page)
+  await expect(dialog).toBeVisible()
+  const downloadPromise = page.waitForEvent('download')
+  await dialog.getByRole('button', { name: 'Export', exact: true }).click()
+  const download = await downloadPromise
+  await expect(dialog).toHaveCount(0)
+  return download
+}
+
+test('exports the selection at the picked scale, then widens to the whole board with nothing selected', async ({ page }) => {
+  const { spaceID, cardIDs, board } = await buildSpace(page, 'ZzImgExportSpace', ['ZzImgExportA', 'ZzImgExportB'])
 
   const cardA = noteCard(page, 'ZzImgExportA')
   const cardB = noteCard(page, 'ZzImgExportB')
@@ -80,68 +123,45 @@ test('exports the selection as a PNG sized to the selection plus its padding', a
   const expected = await page.evaluate(() => {
     const boxes = [...document.querySelectorAll('.react-flow__node.selected')].map((n) => n.getBoundingClientRect())
     const zoom = new DOMMatrixReadOnly(getComputedStyle(document.querySelector('.react-flow__viewport')!).transform).a
-    const width = (Math.max(...boxes.map((b) => b.right)) - Math.min(...boxes.map((b) => b.left))) / zoom + 64
-    const height = (Math.max(...boxes.map((b) => b.bottom)) - Math.min(...boxes.map((b) => b.top))) / zoom + 64
-    return { width, height }
+    return {
+      width: (Math.max(...boxes.map((b) => b.right)) - Math.min(...boxes.map((b) => b.left))) / zoom + 64,
+      height: (Math.max(...boxes.map((b) => b.bottom)) - Math.min(...boxes.map((b) => b.top))) / zoom + 64,
+    }
   })
 
   await cardB.click({ button: 'right' })
   const menu = contextMenu(page)
   await expect(menu).toBeVisible()
   await menu.getByText('Export as image…', { exact: true }).click()
+  await expect(exportDialog(page).getByTestId('atlas-image-export-scale-2')).toHaveAttribute('aria-pressed', 'true')
 
-  const dialog = page.locator('[data-component="atlas-image-export-dialog"]')
-  await expect(dialog).toBeVisible()
-  await expect(dialog.getByTestId('atlas-image-export-scale-2')).toHaveAttribute('aria-current', 'true')
-
-  const downloadPromise = page.waitForEvent('download')
-  await dialog.getByRole('button', { name: 'Export', exact: true }).click()
-  const download = await downloadPromise
-  await expect(dialog).toHaveCount(0)
-
+  const selectionDownload = await exportAndRead(page)
   // A selection names itself in the filename, so it never reads as a
   // picture of the whole board.
-  expect(download.suggestedFilename()).toContain(' selection.png')
+  expect(selectionDownload.suggestedFilename()).toBe('ZzImgExportSpace selection.png')
 
-  const bytes = await readDownload(download)
+  const bytes = await readDownload(selectionDownload)
   expect(bytes.subarray(0, 8)).toEqual(PNG_SIGNATURE)
   const size = pngSize(bytes)
   expect(Math.abs(size.width - Math.round(expected.width) * 2)).toBeLessThanOrEqual(4)
   expect(Math.abs(size.height - Math.round(expected.height) * 2)).toBeLessThanOrEqual(4)
 
-  await deleteCard(page, 'ZzImgExportA')
-  await deleteCard(page, 'ZzImgExportB')
-})
-
-test('with nothing selected the export widens to the whole board and drops the selection suffix', async ({ page }) => {
-  await openBoard(page)
-  await createCardViaTray(page, 'ZzImgExportWhole', { kindID: ATLAS_KIND_DOCUMENT })
-
-  await page.getByTestId('atlas-board').press('Escape')
+  // Nothing selected broadens to the whole board rather than refusing.
+  await board.press('Escape')
   await expect(page.locator('.react-flow__node.selected')).toHaveCount(0)
-
   await runViaPalette(page, 'Export as image…')
-  const dialog = page.locator('[data-component="atlas-image-export-dialog"]')
-  await expect(dialog).toBeVisible()
+  const boardDownload = await exportAndRead(page)
+  expect(boardDownload.suggestedFilename()).toBe('ZzImgExportSpace.png')
+  expect((await readDownload(boardDownload)).subarray(0, 8)).toEqual(PNG_SIGNATURE)
 
-  const downloadPromise = page.waitForEvent('download')
-  await dialog.getByRole('button', { name: 'Export', exact: true }).click()
-  const download = await downloadPromise
-
-  expect(download.suggestedFilename()).not.toContain(' selection')
-  expect(download.suggestedFilename()).toMatch(/\.png$/)
-  expect((await readDownload(download)).subarray(0, 8)).toEqual(PNG_SIGNATURE)
-
-  await deleteCard(page, 'ZzImgExportWhole')
+  await tearDownSpace(page, spaceID, cardIDs)
 })
 
 test('copying says what landed on the clipboard, and whose clipboard it was', async ({ page }) => {
   await withClipboardLock(async () => {
-    await openBoard(page)
-    await createCardViaTray(page, 'ZzImgCopy', { kindID: ATLAS_KIND_DOCUMENT })
+    const { spaceID, cardIDs } = await buildSpace(page, 'ZzImgCopySpace', ['ZzImgCopyCard'])
 
-    const card = noteCard(page, 'ZzImgCopy')
-    await card.click()
+    await noteCard(page, 'ZzImgCopyCard').click()
     await expect(page.locator('.react-flow__node.selected')).toHaveCount(1)
 
     await runViaPalette(page, 'Copy as image')
@@ -154,6 +174,6 @@ test('copying says what landed on the clipboard, and whose clipboard it was', as
       { timeout: 15_000 },
     )
 
-    await deleteCard(page, 'ZzImgCopy')
+    await tearDownSpace(page, spaceID, cardIDs)
   })
 })

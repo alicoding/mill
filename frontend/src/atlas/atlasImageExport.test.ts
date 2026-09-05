@@ -11,8 +11,9 @@ import {
   type CaptureScope,
 } from './atlasImageExport'
 
-function element(classes: string[], id: string | null = null): CaptureCandidate {
+function element(classes: string[], id: string | null = null, tagName = 'DIV'): CaptureCandidate {
   return {
+    tagName,
     classList: { contains: (name: string) => classes.includes(name) },
     getAttribute: (name: string) => (name === 'data-id' ? id : null),
   }
@@ -31,6 +32,10 @@ describe('shouldCapture (goal 0201)', () => {
     const scope: CaptureScope = { nodeIDs: new Set(['a']), edgeIDs: new Set() }
     expect(shouldCapture(element(['react-flow__node'], 'a'), scope)).toBe(true)
     expect(shouldCapture(element(['react-flow__resize-control']), scope)).toBe(false)
+  })
+
+  it('drops an iframe, whose second document the rasterizer cannot reproduce', () => {
+    expect(shouldCapture(element([], null, 'IFRAME'), wholeBoard)).toBe(false)
   })
 
   it('keeps every node and edge when nothing is selected', () => {

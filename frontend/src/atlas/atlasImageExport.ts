@@ -58,6 +58,7 @@ const EXCLUDED_CLASSES = ['react-flow__handle', 'react-flow__resize-control', 'r
 // rather than `Element` so the rule is testable without a DOM: this
 // repo's Vitest runs in plain Node.
 export interface CaptureCandidate {
+  tagName: string
   classList: { contains(name: string): boolean }
   getAttribute(name: string): string | null
 }
@@ -65,6 +66,12 @@ export interface CaptureCandidate {
 // Whether one element belongs in the picture. The ONE place the
 // exclusion rules live.
 export function shouldCapture(el: CaptureCandidate, scope: CaptureScope): boolean {
+  // A frame is a SECOND document: the rasterizer inlines its markup
+  // without its stylesheets, which does not resemble what the viewer
+  // sees and pushes the surrounding layout around. The noun's own
+  // frame and title stay in the picture; the frame's interior does
+  // not (docs/goals/0201).
+  if (el.tagName === 'IFRAME') return false
   for (const className of EXCLUDED_CLASSES) {
     if (el.classList.contains(className)) return false
   }
