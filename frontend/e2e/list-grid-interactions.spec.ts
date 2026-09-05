@@ -249,7 +249,42 @@ test('the grid re-reads its palette when the color scheme changes', async ({ pag
   await cleanup(page, id)
 })
 
-// 9. ⌘Z here is the app's ONE journal, the same one the board's edits
+// 9. The grid's own search (goal 0349 S4 gap): ⌘F opens it while a
+// cell holds focus, typing highlights a match, and Escape closes it --
+// the library's own controlled-search UI (ListGridGlide.tsx), never a
+// second, hand-rolled search box.
+// Meta+f, never ControlOrMeta: this is MILL's own keymap, whose 'cmd'
+// mod matches event.metaKey specifically (shared/keybinding.ts's
+// modsFromEvent), so Ctrl+F -- what ControlOrMeta resolves to off
+// macOS -- matches no binding at all. The ControlOrMeta presses
+// earlier in this file are the browser's/library's NATIVE copy and
+// paste, which are platform-relative; a Mill shortcut is not.
+test('⌘F opens the grid’s own search while a cell holds focus, and Escape closes it', async ({ page }) => {
+  const { id, glide } = await seedAndOpen(page, 'E2E grid search', FOUR_ROWS)
+  await clickGlideCell(page, glide, 0, 0)
+  await page.keyboard.press('Meta+f')
+  const search = glide.getByTestId('search-input')
+  await expect(search).toBeVisible()
+  await search.fill('Anvil') // fill: a form control (goal 0296)
+  await expect(glide.getByTestId('search-result-area')).toHaveText('1 result')
+  await page.keyboard.press('Escape')
+  await expect(search).toBeHidden()
+  await cleanup(page, id)
+})
+
+// ⌘F is scoped to whichever surface holds focus (goal 0326's own
+// convention, applied here): the List's own Label field sits on the
+// same page, above the grid, and pressing ⌘F there must never reach
+// into the grid it did not focus.
+test('⌘F does not open the grid search when focus is outside the grid', async ({ page }) => {
+  const { id, glide } = await seedAndOpen(page, 'E2E grid search scope', FOUR_ROWS)
+  await page.getByTestId('list-label').focus()
+  await page.keyboard.press('Meta+f')
+  await expect(glide.getByTestId('search-input')).toBeHidden()
+  await cleanup(page, id)
+})
+
+// 10. ⌘Z here is the app's ONE journal, the same one the board's edits
 // land on (ADR-0044, goal 0352): a cell edit undoes to the value it
 // replaced, and ⇧⌘Z puts the new one back.
 test('(Meta+z) restores an edited cell and (Meta+Shift+z) re-applies it', async ({ page }) => {
@@ -269,7 +304,7 @@ test('(Meta+z) restores an edited cell and (Meta+Shift+z) re-applies it', async 
   await cleanup(page, id)
 })
 
-// 10. A deleted row comes back whole -- every column, at the index it
+// 11. A deleted row comes back whole -- every column, at the index it
 // sat at -- and a multi-row delete is ONE step, not one per row.
 test('(Meta+z) puts back a deleted row, and a bulk delete undoes in one press', async ({ page }) => {
   const { id, glide } = await seedAndOpen(page, 'E2E grid undo rows', FOUR_ROWS)
