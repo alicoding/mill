@@ -18,15 +18,15 @@
 //   editing  -- as selected, plus the face has an editor open, so the
 //               frame keeps the board's own keymap out of the way.
 
-export type AtlasContentMode = 'static' | 'interactive'
+export type AtlasInputMode = 'static' | 'interactive'
 export type AtlasActivation = 'idle' | 'selected' | 'editing'
 
 // activation resolves the state. A `static` face is idle for input
 // purposes whatever the selection is -- selecting a shape or an image
 // never hands it the wheel, which is exactly today's behaviour for
 // those Kinds. A frame's inert preview tile passes nodeSelected false.
-export function activation(nodeSelected: boolean, faceEditing: boolean, content: AtlasContentMode): AtlasActivation {
-  if (content !== 'interactive' || !nodeSelected) return 'idle'
+export function activation(nodeSelected: boolean, faceEditing: boolean, input: AtlasInputMode): AtlasActivation {
+  if (input !== 'interactive' || !nodeSelected) return 'idle'
   return faceEditing ? 'editing' : 'selected'
 }
 
@@ -54,8 +54,8 @@ export function contentOptsOutOfCanvasDrag(state: AtlasActivation): boolean {
 // while an interactive face is idle. Object first, content second --
 // the first click always selects the object, so a bare click can never
 // land straight in a cell or inside an embedded viewer.
-export function shieldUp(content: AtlasContentMode, state: AtlasActivation, preview: boolean): boolean {
-  return content === 'interactive' && state === 'idle' && !preview
+export function shieldUp(input: AtlasInputMode, state: AtlasActivation, preview: boolean): boolean {
+  return input === 'interactive' && state === 'idle' && !preview
 }
 
 // ScrollBox -- what wheelStaysLocal needs to know about one element on
