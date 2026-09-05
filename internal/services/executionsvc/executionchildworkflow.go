@@ -64,6 +64,10 @@ func (e *ExecutionService) runChildWorkflow(runCtx any, workflowID string, attrV
 		Kind:       RunKindTriggered,
 		Values:     attrValues,
 		Version:    version,
+		// A child call has nobody to ask which stage to run in, so it
+		// uses the CHILD's own default -- the same rule a scheduled or
+		// triggered run follows (Workflow.DefaultEnvironmentID).
+		EnvironmentID: wf.DefaultEnvironmentID,
 	}, execution.WithWorkflowID(runID))
 	if err != nil {
 		return "", fmt.Errorf("start child workflow %q: %w", wf.Label, err)

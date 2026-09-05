@@ -24,7 +24,7 @@ func TestResolveExecEnv_VaultRefResolved(t *testing.T) {
 		return "", errors.New("unexpected id")
 	})
 
-	e, err := cfg.CreateExecEnv("Sandbox", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel, []string{"API_KEY=vault:entry-1", "OTHER=plain-value"})
+	e, err := cfg.CreateExecEnv("Sandbox", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel, []string{"API_KEY=vault:entry-1", "OTHER=plain-value"}, "")
 	if err != nil {
 		t.Fatalf("CreateExecEnv: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestResolveExecEnv_VaultLocked_FailsExplicitly(t *testing.T) {
 	lockedErr := errors.New("secretvault: vault is locked")
 	cfg.SetSecretResolver(func(string, secretaudit.AccessContext) (string, error) { return "", lockedErr })
 
-	e, err := cfg.CreateExecEnv("Sandbox", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel, []string{"API_KEY=vault:entry-1"})
+	e, err := cfg.CreateExecEnv("Sandbox", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel, []string{"API_KEY=vault:entry-1"}, "")
 	if err != nil {
 		t.Fatalf("CreateExecEnv: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestExportExecEnv_NeverCarriesResolvedSecret(t *testing.T) {
 		return "real-secret-fake", nil
 	})
 
-	e, err := cfg.CreateExecEnv("Sandbox", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel, []string{"API_KEY=vault:entry-1"})
+	e, err := cfg.CreateExecEnv("Sandbox", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel, []string{"API_KEY=vault:entry-1"}, "")
 	if err != nil {
 		t.Fatalf("CreateExecEnv: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestResolveExecEnv_NoEnv_Unaffected(t *testing.T) {
 		return "", nil
 	})
 
-	e, err := cfg.CreateExecEnv("Plain env", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel, nil)
+	e, err := cfg.CreateExecEnv("Plain env", execenv.ShellSh, execenv.ProfileClean, execenv.TempDirSentinel, nil, "")
 	if err != nil {
 		t.Fatalf("CreateExecEnv: %v", err)
 	}

@@ -132,6 +132,16 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow | null }
       renderCell: (run) => (run.version > 0 ? `v${run.version}` : t('activityRunsExplorer.draft')),
     },
     {
+      // Which stage the run went to (goal 0306 S5) -- the run's own
+      // recorded environment, not whatever the workflow defaults to now.
+      id: 'environment', header: t('activityRunsExplorer.columns.environment'), width: 'auto',
+      renderCell: (run) => (
+        <Text size="small" className={styles.muted} data-testid="activity-run-environment">
+          {run.environmentLabel || run.environmentID || t('activityRunsExplorer.noEnvironment')}
+        </Text>
+      ),
+    },
+    {
       id: 'status', header: t('activityRunsExplorer.columns.status'), width: 'auto',
       renderCell: (run) => (
         <Stack direction="horizontal" gap="condensed" align="center">

@@ -152,6 +152,16 @@ export function RunWorkflow(workflowID: string, kind: $models.RunKind, values: {
 }
 
 /**
+ * RunWorkflowInEnvironment is RunWorkflowWithPayload plus an explicit
+ * Environment for this one run (goal 0306 S5), overriding the
+ * workflow's own default -- the Run dialog's own entry point, and the
+ * only one that can say "none" and mean it rather than "no opinion."
+ */
+export function RunWorkflowInEnvironment(workflowID: string, kind: $models.RunKind, values: { [_ in string]?: string } | null, payload: string, environmentID: string): $CancellablePromise<$models.RunSummary> {
+    return $Call.ByID(1248796208, workflowID, kind, values, payload, environmentID);
+}
+
+/**
  * RunWorkflowStepped starts a workflow run in debug "step mode"
  * (docs/adr/0031 §5) -- a run-scoped debug variant of the normal Run
  * action, always a test run of the draft head (matching ADR-0008's

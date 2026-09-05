@@ -180,14 +180,14 @@ func TestDataEvent_ExecEnvMutations(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 
 	got := captureEmits(t)
-	e, err := cfg.CreateExecEnv("Emit test execenv", execenv.ShellBash, execenv.ProfileClean, execenv.TempDirSentinel, nil)
+	e, err := cfg.CreateExecEnv("Emit test execenv", execenv.ShellBash, execenv.ProfileClean, execenv.TempDirSentinel, nil, "")
 	if err != nil {
 		t.Fatalf("CreateExecEnv: %v", err)
 	}
 	assertEmitted(t, *got, "execenv", e.ID)
 
 	got = captureEmits(t)
-	e, err = cfg.UpdateExecEnv(e.ID, "Emit test execenv (edited)", execenv.ShellBash, execenv.ProfileClean, execenv.TempDirSentinel, nil)
+	e, err = cfg.UpdateExecEnv(e.ID, "Emit test execenv (edited)", execenv.ShellBash, execenv.ProfileClean, execenv.TempDirSentinel, nil, "")
 	if err != nil {
 		t.Fatalf("UpdateExecEnv: %v", err)
 	}

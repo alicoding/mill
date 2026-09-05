@@ -39,6 +39,10 @@ type Format struct {
 // formats are tried in order; the first whose required columns are all
 // present wins. Ordering matters only where one layout's required set
 // is a subset of another's, so the more specific layouts come first.
+//
+// Only the CSV layouts below are read -- a 1PUX or JSON password
+// export is not recognized (goal 0306 S4). Revisit once the first
+// reader shows up wanting an import that is not CSV.
 var formats = []Format{
 	{
 		Name:     "bitwarden-csv",

@@ -78,6 +78,14 @@ const (
 	// private CA a host's entity names, read at the moment a request to
 	// that host is made.
 	ContextClientCertificate Context = "client-certificate"
+	// ContextEnvironmentVar is configureenvironment_resolve.go's
+	// resolveEnvironment (goal 0306 S5) -- a secret VARIABLE of the
+	// Environment a run selected, read at the moment the request that
+	// references it is built. Distinct from ContextHTTPHeader and
+	// ContextIntegrationAuth: the entity holding the reference is the
+	// environment, not the request, so the same secret read through two
+	// stages is two distinguishable rows.
+	ContextEnvironmentVar Context = "environment-var"
 	// ContextPluginFetch is pluginsvc's host-side secret injection
 	// (ADR-0048, goal 0281): a plugin's api.fetch naming a secretRef
 	// setting, resolved after the guardrail approved the request and
