@@ -85,7 +85,17 @@ export function groupCard(page: Page, title: string): Locator {
 // position was ever guessed.
 export async function zoomAllTheWayOut(page: Page): Promise<void> {
   const zoomOut = page.locator('.react-flow__controls-zoomout')
-  for (let i = 0; i < 8; i++) await zoomOut.click()
+  // The control disables ITSELF at minZoom (React Flow's Controls
+  // passes `disabled: minZoomReached`), and Playwright's click waits
+  // for an enabled element -- so a fixed click count hangs on the
+  // disabled button for the whole test budget whenever the board's
+  // content is wide enough that fewer than 8 steps reach the floor.
+  // Honour the control's own disabled state instead of assuming a
+  // step count.
+  for (let i = 0; i < 8; i++) {
+    if (await zoomOut.isDisabled()) return
+    await zoomOut.click()
+  }
 }
 
 // Each corner stays empty across a whole test (seeded/created content

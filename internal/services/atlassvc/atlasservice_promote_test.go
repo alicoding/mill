@@ -1,6 +1,10 @@
 package atlassvc
 
 import (
+	"os"
+	"path/filepath"
+	"regexp"
+	"strconv"
 	"testing"
 
 	"github.com/alicoding/mill/internal/domain/atlas"
@@ -156,8 +160,8 @@ func TestRepositionPromotedObjectsLocked_ClearsMultiplePromotedSiblings(t *testi
 
 // TestRepositionPromotedObjectsLocked_TableShapedKindGetsItsRealFootprint
 // pins the estimate itself, not just that two positions differ: an
-// unsized 'sheet'/'json' object renders far wider than the generic
-// promotionObjectFootprintW fallback (its own content face's own
+// unsized 'sheet'/'json' object renders wider than the generic
+// promotionObjectFootprintW clamp (its own content face's own
 // frameStyle default), so the row layout must space the NEXT promoted
 // object clear of that real width -- under-estimating it left the
 // following object's row slot landing inside the wide one's own
@@ -183,5 +187,36 @@ func TestRepositionPromotedObjectsLocked_TableShapedKindGetsItsRealFootprint(t *
 	if pNext.Position.X < pWide.Position.X+promotionTableFootprintW+promotionGap {
 		t.Errorf("pNext.Position.X = %v, want >= %v (clear of the unsized sheet's own real table-shaped width)",
 			pNext.Position.X, pWide.Position.X+promotionTableFootprintW+promotionGap)
+	}
+}
+
+// TestPromotionObjectFootprint_MatchesFrontendFallbackExtent pins the
+// generic footprint across the two languages that both encode it:
+// atlasBoardLayout.ts's OBJECT_FALLBACK_EXTENT is the frontend's own
+// name for AtlasBoardObjectNode.module.css's 480px-per-axis clamp on
+// unsized content, and promotionObjectFootprintW/H is this package's
+// estimate of that same rendered box. They are two hand-maintained
+// copies of one number with no shared source, so a change on either
+// side alone silently reintroduces the overlap the promotion row
+// layout exists to avoid -- this test reads the TypeScript constant
+// directly and fails the build when the pair diverges.
+func TestPromotionObjectFootprint_MatchesFrontendFallbackExtent(t *testing.T) {
+	const rel = "../../../frontend/src/atlas/atlasBoardLayout.ts"
+	src, err := os.ReadFile(filepath.Clean(rel))
+	if err != nil {
+		t.Fatalf("read %s: %v", rel, err)
+	}
+	m := regexp.MustCompile(`OBJECT_FALLBACK_EXTENT\s*=\s*(\d+)`).FindSubmatch(src)
+	if m == nil {
+		t.Fatalf("no `OBJECT_FALLBACK_EXTENT = <n>` declaration in %s -- if it was renamed, rename it here too", rel)
+	}
+	extent, err := strconv.Atoi(string(m[1]))
+	if err != nil {
+		t.Fatalf("OBJECT_FALLBACK_EXTENT is not an integer: %v", err)
+	}
+	w, h := promotionObjectFootprint("ink")
+	if w != float64(extent) || h != float64(extent) {
+		t.Errorf("promotionObjectFootprint(unsized kind) = (%v, %v), want (%d, %d) to match OBJECT_FALLBACK_EXTENT",
+			w, h, extent, extent)
 	}
 }
