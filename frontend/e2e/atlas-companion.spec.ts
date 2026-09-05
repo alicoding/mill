@@ -94,7 +94,7 @@ async function createProvider(page: import('@playwright/test').Page, baseURL: st
 async function deleteSeededProvider(page: import('@playwright/test').Page, baseURL: string) {
   await page.goto(`${baseURL}/`)
   await page.getByRole('link', { name: 'Workflows' }).click()
-  for (const label of ['Example: Summarize with local AI', 'Example: AI classify -> branch']) {
+  for (const label of ['Summarize a client email', 'Triage a client email']) {
     const workflowRow = page.locator('[data-testid="inventory-row"]').filter({ has: page.getByText(label, { exact: true }) })
     await clickRowAction(page, workflowRow, 'Delete')
     await expect(workflowRow).not.toBeVisible()

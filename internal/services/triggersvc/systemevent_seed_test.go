@@ -120,7 +120,7 @@ func TestSeededForwardApprovalsExample_DecisionParked_PostsRealHTTPCall(t *testi
 		return composition.ResolvedHTTPRequest{BaseURL: srv.URL, AuthType: httprequest.AuthNone}, nil
 	})
 
-	forward := findWorkflowByLabel(t, comp, "Example: Forward pending approvals")
+	forward := findWorkflowByLabel(t, comp, "Forward approvals to the sponsor")
 	if !forward.Disabled {
 		t.Fatal("the forward example should ship Disabled, matching every other real-event-driven seed")
 	}
@@ -151,7 +151,7 @@ func TestSeededForwardApprovalsExample_DecisionParked_PostsRealHTTPCall(t *testi
 		t.Fatalf("PublishWorkflow: %v", err)
 	}
 
-	guarded := findWorkflowByLabel(t, comp, "Example: Approval-gated HTTP call")
+	guarded := findWorkflowByLabel(t, comp, "Post an update to the client portal")
 	summary, err := exec.RunWorkflow(guarded.ID, executionsvc.RunKindTest, nil)
 	if err != nil {
 		t.Fatalf("RunWorkflow(guarded): %v", err)

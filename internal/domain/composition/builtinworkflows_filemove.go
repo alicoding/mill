@@ -38,15 +38,15 @@ func builtInFileMoveWorkflows() []Workflow {
 	return []Workflow{
 		{
 			ID:          "example-filemove-workflow",
-			Label:       "Example: File inbox to folder",
-			Description: "Watches a folder, checks each new file's type, then files matching files into a dated subfolder. Ships DISABLED with no watched path, so it never watches anything on your machine as shipped. Point its trigger at a real directory (the canvas Inspector), publish, and enable it to see files move automatically.",
+			Label:       "File the client inbox",
+			Description: "Watches the client inbox and files each document by type into dated folders.",
 			Nodes:       nodes,
 			Edges: []Edge{
 				{ID: "example-filemove-e0", Source: fileMoveTriggerID, Target: fileMoveRulesetID},
 				{ID: "example-filemove-e1", Source: fileMoveRulesetID, Target: fileMoveApplyID},
 			},
 			BuiltIn:  true,
-			Seed:     seedorigin.Stamp(2),
+			Seed:     seedorigin.Stamp(3),
 			Disabled: true,
 		},
 	}

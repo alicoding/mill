@@ -78,12 +78,10 @@ func builtInAtlasCardWorkflows() []Workflow {
 
 	return []Workflow{
 		{
-			ID:    "example-card-intake-workflow",
-			Label: "Example: Card intake",
-			Description: "Fires whenever an Intake card is created or updated in Atlas, then stamps that " +
-				"same card's status to \"Processed\". The update writes to the exact card that started " +
-				"the run, and does not re-fire itself.",
-			Nodes: intakeNodes,
+			ID:          "example-card-intake-workflow",
+			Label:       "Client request intake",
+			Description: "Runs when a client request card is created or updated and stamps it.",
+			Nodes:       intakeNodes,
 			Attributes: []AttributeDef{
 				{Key: "cardId", Label: "Card ID", Type: FieldText},
 				{Key: "kindId", Label: "Kind ID", Type: FieldText},
@@ -94,15 +92,13 @@ func builtInAtlasCardWorkflows() []Workflow {
 				{ID: "example-card-intake-e0", Source: intakeTriggerID, Target: intakeUpdateID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(2),
+			Seed:    seedorigin.Stamp(3),
 		},
 		{
-			ID:    "example-card-create-link-workflow",
-			Label: "Example: Create and link Atlas cards",
-			Description: "Creates two Intake cards, finds every open (\"New\") Intake card, then links the " +
-				"two new cards together. Manual-triggered: running it again creates two more cards, same " +
-				"as any other example that writes real data.",
-			Nodes: createNodes,
+			ID:          "example-card-create-link-workflow",
+			Label:       "Log a client request and its decision",
+			Description: "Creates the request card, finds the decision outcome, and links the two.",
+			Nodes:       createNodes,
 			Edges: []Edge{
 				{ID: "example-card-create-e0", Source: createTriggerID, Target: createFirstID},
 				{ID: "example-card-create-e1", Source: createFirstID, Target: createSecondID},
@@ -110,7 +106,7 @@ func builtInAtlasCardWorkflows() []Workflow {
 				{ID: "example-card-create-e3", Source: createFindID, Target: createLinkID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(2),
+			Seed:    seedorigin.Stamp(3),
 		},
 	}
 }

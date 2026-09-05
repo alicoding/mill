@@ -346,7 +346,7 @@ func TestSeededHumanReviewExample_TypedInputFlowsThrough(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = exec.Shutdown(2 * time.Second) })
 
-	wfID := findBuiltInWorkflowID(t, comp, "Example: Human review with input")
+	wfID := findBuiltInWorkflowID(t, comp, "Sign off a deliverable")
 
 	// Approve WITH input: the note becomes the payload and passes the
 	// ruleset.

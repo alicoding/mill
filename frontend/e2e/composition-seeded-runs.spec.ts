@@ -85,9 +85,9 @@ test('Saved-page seed: a manual test run substitutes the trigger payload via the
   await withClipboardLock(async () => {
     await page.goto('/')
     await page.getByRole('link', { name: 'Workflows' }).click()
-    const row = workflowRow(page, 'Example: Saved page → Markdown')
+    const row = workflowRow(page, 'Saved client page → Markdown')
     await expect(row).toBeVisible()
-    await row.getByRole('button', { name: 'Run Example: Saved page → Markdown', exact: true }).click()
+    await row.getByRole('button', { name: 'Run Saved client page → Markdown', exact: true }).click()
 
     const payloadField = page.getByTestId('test-run-payload')
     await expect(payloadField).toBeVisible()

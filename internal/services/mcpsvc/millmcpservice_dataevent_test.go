@@ -174,12 +174,12 @@ func TestMCPDebugTools_EmitRunDataEvent(t *testing.T) {
 
 	var branchID string
 	for _, wf := range comp.Workflows() {
-		if wf.Label == "Example: Branch to a decision" {
+		if wf.Label == "Route an expense by amount" {
 			branchID = wf.ID
 		}
 	}
 	if branchID == "" {
-		t.Fatal("seeded workflow \"Example: Branch to a decision\" not found")
+		t.Fatal("seeded workflow \"Route an expense by amount\" not found")
 	}
 
 	m := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)

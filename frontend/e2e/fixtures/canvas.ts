@@ -141,3 +141,31 @@ export async function dragNodeBy(page: Page, node: Locator, dx: number, dy: numb
   }
   await page.mouse.up()
 }
+
+// Pans the whole canvas by a fixed pixel delta from a point on its own
+// empty background (its center, by default) -- the real-user gesture
+// that moves the graph itself, as opposed to dragNodeBy's single-node
+// drag. Needed when a node's fixed graph position lands under React
+// Flow's own fixed-position MiniMap/Controls chrome at the canvas's
+// default pan/zoom (confirmed directly by Playwright's own
+// actionability check naming the MiniMap's subtree, not assumed) --
+// zooming out alone re-centers on the CURRENT view instead of moving
+// content away from that corner, so it doesn't reliably clear the
+// same overlap a plain retry loop keeps re-measuring. The START point
+// is actionability-checked via `pane.hover({position})` immediately
+// before mouse.down(), same contract as dragNodeBy/dragBetweenHandles
+// above.
+export async function panCanvasBy(page: Page, panel: Locator, dx: number, dy: number, opts: { position?: { x: number; y: number }; steps?: number } = {}): Promise<void> {
+  const pane = panel.locator('.react-flow__pane')
+  const box = await pane.boundingBox()
+  if (!box) throw new Error('panCanvasBy: canvas pane has no bounding box')
+  const position = opts.position ?? { x: box.width / 2, y: box.height / 2 }
+  const steps = opts.steps ?? 10
+  await pane.hover({ position })
+  await page.mouse.down()
+  const start = { x: box.x + position.x, y: box.y + position.y }
+  for (let i = 1; i <= steps; i++) {
+    await page.mouse.move(start.x + (dx * i) / steps, start.y + (dy * i) / steps)
+  }
+  await page.mouse.up()
+}
