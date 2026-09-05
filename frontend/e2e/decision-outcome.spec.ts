@@ -185,7 +185,11 @@ test('Branch to a decision: the pinned approve arm ignores a later live edit; ru
   await runBranch(page, panel, '50')
   await dblClickReachedTerminal(page, panel)
   await expect(overlay).toBeVisible()
-  await expect(overlay.getByTestId('step-detail-output-payload').getByTestId('json-tree-leaf').filter({ hasText: 'resolvedVersion' })).toContainText('"live@draft"')
+  // The reader's view choice sticks for the session (goal 0326), so
+  // this pane is still on Raw from the arm above.
+  const liveOutput = overlay.getByTestId('step-detail-output-payload')
+  await expect(liveOutput).toHaveAttribute('data-view', 'raw')
+  await expect(liveOutput.getByTestId('step-detail-output-payload-raw')).toContainText('"resolvedVersion":"live@draft"')
   await page.keyboard.press('Escape')
   await expect(overlay).toHaveCount(0)
 

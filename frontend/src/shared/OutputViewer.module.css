@@ -19,6 +19,10 @@
     max-width: 220px;
 }
 
+/* A declared scroller (goal 0156's layout-fitness rule): the viewer
+   holds output to a readable height and scrolls it, which is a named,
+   deliberate surface rather than a trapped overflow. Declared in the
+   markup via data-scroll-region. */
 .body {
     border-radius: var(--borderRadius-medium);
     border: 1px solid var(--borderColor-default);

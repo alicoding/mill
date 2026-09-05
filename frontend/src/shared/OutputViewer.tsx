@@ -201,7 +201,7 @@ export function OutputViewer({ value, shape, mime, title, site, context, default
 
       {/* tabIndex makes the viewer itself a focus target, so Find's own
           shortcut has an owner the moment a reader clicks into output. */}
-      <div className={styles.body} tabIndex={0} data-testid={`${id}-body`}>
+      <div className={styles.body} tabIndex={0} data-scroll-region="output-viewer" data-testid={`${id}-body`}>
         {view === 'tree' && (
           <JsonTree value={resolved.parsed} query={query} expandAllToken={expandToken} collapseAllToken={collapseToken} ariaLabel={title ?? t('output.title')} testId={`${id}-tree`} />
         )}
