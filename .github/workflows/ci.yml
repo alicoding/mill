@@ -200,6 +200,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-standing-context.sh
 
+  # Mirrors lefthook.yml's hook-command-guard job: the PreToolUse Bash
+  # guard is probed with sample inputs so its never-list and its
+  # foreground-only rule for gate commands stay asserted, not assumed.
+  hook-command-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-hook-command-guard.sh
+
   # Enforces the root-layout rule (exactly one root Go file, main.go;
   # services live under internal/services/<ctx>svc) via ls-lint
   # (adopted, not hand-rolled -- unlike file-loc-limit, a real commodity
@@ -644,6 +654,7 @@ jobs:
       - toolbar-action-testids
       - rules-frontmatter
       - standing-context
+      - hook-command-guard
       - root-file-naming
       - sdk-freshness
       - frontend
