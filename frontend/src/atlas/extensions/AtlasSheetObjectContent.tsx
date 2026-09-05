@@ -86,7 +86,7 @@ async function parseSheet(content: MirrorContent): Promise<ParsedSheet> {
 // the unreadable state so the empty state itself offers the action it
 // names). An xlsx keeps the read-only preview: no edit affordance at
 // all.
-export function AtlasSheetObjectContent({ object, mirrorContent }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState }) {
+export function AtlasSheetObjectContent({ object, mirrorContent, onEditingChange }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState; onEditingChange?: (editing: boolean) => void }) {
   const { t } = useTranslation('atlas')
   // The sheet noun's declared preview caps (goal 0258 slice 1) --
   // subscribed, not just read, so a cap change in Settings re-renders
@@ -100,6 +100,10 @@ export function AtlasSheetObjectContent({ object, mirrorContent }: { object: Boa
   const [parseFailed, setParseFailed] = useState(false)
   const [editing, setEditing] = useState<CellEdit | null>(null)
   const [writeError, setWriteError] = useState(false)
+  // The in-place cell editor's own open/close, reported to the frame
+  // (goal 0354) -- what turns this object's activation state into
+  // `editing` while a cell input is mounted.
+  useEffect(() => { onEditingChange?.(editing !== null) }, [editing, onEditingChange])
   const saveMode = useSaveMode()
   // Cells committed (Enter / click-away) but not yet written -- only
   // ever non-empty in explicit save mode. Rendered over the parsed
