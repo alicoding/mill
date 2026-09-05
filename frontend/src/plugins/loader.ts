@@ -3,7 +3,7 @@ import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/intern
 import { SettingsService } from '../shared/bindings'
 import { refreshExtensionSettings } from '../shared/extensionSettingsStore'
 import { refreshSecretTitles } from '../shared/secretTitleCache'
-import { buildPluginAPI } from './hostApi'
+import { buildPluginAPI, collectFrameSurfaces } from './hostApi'
 import type { MillPluginAPI, PluginModule } from './sdk'
 import { pluginRunState, type PluginRunPolicy } from './pluginTrust'
 import { collectPluginCommand } from './pluginCommands'
@@ -196,6 +196,10 @@ export async function loadPlugins(): Promise<void> {
 			loadStates.set(id, { status: state, info })
 			continue
 		}
+		// Framed views and captures are declared, not registered: they
+		// are collected before activation so a plugin whose main.js
+		// throws still opens the pages its manifest promised.
+		collectFrameSurfaces(info.Manifest)
 		try {
 			const url = `/plugins/${id}/main.js?v=${encodeURIComponent(info.Manifest.version)}`
 			const mod = (await import(/* @vite-ignore */ url)) as PluginModule

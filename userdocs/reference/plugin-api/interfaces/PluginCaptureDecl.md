@@ -8,10 +8,10 @@
 
 id and label are declared in the manifest's contributes.captures,
 so the Quick Panel can offer the capture without running any plugin
-code. render draws the face into an element the capture window owns;
-write through the content doors with ctx.destinationId as the
-parent, then call ctx.done() — or ctx.cancel() to close without
-writing.
+code, alongside the entry page when there is one. render draws the
+face into an element the capture window owns; write through the
+content doors with ctx.destinationId as the parent, then call
+ctx.done() — or ctx.cancel() to close without writing.
 
 ## Properties
 
@@ -23,10 +23,31 @@ id: string;
 
 ***
 
-### render
+### onMessage?
 
 ```ts
-render: (el, ctx) => void;
+optional onMessage?: (message) => void;
+```
+
+Receives whatever the entry page sent through its own
+postMessage.
+
+#### Parameters
+
+##### message
+
+`unknown`
+
+#### Returns
+
+`void`
+
+***
+
+### render?
+
+```ts
+optional render?: (el, ctx) => void;
 ```
 
 #### Parameters

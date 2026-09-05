@@ -12,11 +12,15 @@ import (
 // -- and registers each face at activate() in the capture window,
 // where plugins do load.
 
-// CaptureContribution is one declared capture.
+// CaptureContribution is one declared capture. Entry names an .html
+// page inside the plugin's own folder (docs/goals/0349), the same
+// framed form ViewContribution carries; empty means the legacy
+// same-DOM render registered at activate().
 type CaptureContribution struct {
 	ID          string `json:"id"`
 	Label       string `json:"label"`
 	Description string `json:"description"`
+	Entry       string `json:"entry"`
 }
 
 func validateCaptures(captures []CaptureContribution) string {
@@ -30,6 +34,9 @@ func validateCaptures(captures []CaptureContribution) string {
 		}
 		if seen[c.ID] {
 			return fmt.Sprintf("contributed capture %q is declared twice", c.ID)
+		}
+		if problem := entryPathProblem("capture", c.ID, c.Entry); problem != "" {
+			return problem
 		}
 		seen[c.ID] = true
 	}
