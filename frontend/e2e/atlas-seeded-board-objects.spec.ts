@@ -72,6 +72,20 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     await expect(sheet).toBeVisible()
     await expect(sheet.getByTestId('atlas-object-sheet-grid').locator('thead th').first()).toHaveText('Item')
 
+    // JSON and YAML (goal 0269): the same engagement record in both
+    // formats, each a real tree over its own materialized file -- the
+    // first-level keys are the "did the bytes actually load and parse"
+    // signal the ink/image <img> checks above carry for their doors.
+    // The YAML twin also proves its anchor resolved: the seeded alias
+    // is a real member, never a "*d" string.
+    const jsonSeed = page.locator('.react-flow__node[data-id="atlas-object-example-json"]')
+    await expect(jsonSeed.locator('[data-path="client"]')).toContainText('"Northwind Trading"')
+    await expect(jsonSeed.locator('[data-path="budget"]')).toBeVisible()
+
+    const yamlSeed = page.locator('.react-flow__node[data-id="atlas-object-example-yaml"]')
+    await expect(yamlSeed.locator('[data-path="sponsor"]')).toContainText('"Jordan Reyes"')
+    await expect(yamlSeed.locator('[data-path="workstreams[2].status"]')).toContainText('"not started"')
+
     // Diagram, test-created: renders through the vendored mermaid host
     // -- an honest absence of the loading/error fallback states is the
     // same "did it actually render" signal

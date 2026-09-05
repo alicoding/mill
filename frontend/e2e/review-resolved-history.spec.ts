@@ -77,8 +77,8 @@ test('Recently resolved wears the list toolbar: search, an own-item count, and t
     const resolvedSearch = page.getByTestId('inventory-search')
     await expect(resolvedSearch).toBeVisible()
     const count = page.getByTestId('list-count')
-    await expect(count).toHaveText('3')
-    await expect(page.getByTestId('inventory-row')).toHaveCount(3)
+    await expect(count).toHaveText('3') // count: fixture-owned -- the three runs this test denied.
+    await expect(page.getByTestId('inventory-row')).toHaveCount(3) // count: fixture-owned -- same three.
 
     // The toolbar's search narrows the resolved history to the matching
     // workflow, same substring match as every other list on the standard.

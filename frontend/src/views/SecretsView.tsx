@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Blankslate } from '@primer/react/experimental'
-import { Button, Checkbox, FormControl, Heading, IconButton, Label, SegmentedControl, Stack, Text } from '@primer/react'
+import { Button, Heading, IconButton, Label, Link, SegmentedControl, Stack, Text } from '@primer/react'
 import { DownloadIcon, HistoryIcon, KeyIcon, LockIcon, PlusIcon } from '@primer/octicons-react'
 import { SecretService } from '../shared/bindings'
 import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
@@ -11,6 +11,8 @@ import { findCommand, runCommand } from '../shared/commands'
 import { refreshVaultBackupTime, refreshVaultStatus, useVaultStatusStore } from '../shared/vaultStatusStore'
 import { vaultErrorKind } from '../shared/secretsCommands'
 import { messageOf } from '../shared/userError'
+import { humanizeLockAfter, unlockStatusKey } from '../shared/vaultLockCopy'
+import type { TFunction } from 'i18next'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { entityRowContext } from '../shared/entityRowCommands'
@@ -28,6 +30,36 @@ import { SecretsAccessHistoryDialog } from './SecretsAccessHistoryDialog'
 import { SecretsImportDialog } from './SecretsImportDialog'
 import styles from './SecretsView.module.css'
 
+type SecretsSection = 'vault' | 'sources'
+
+// The page's two sections, and the deep-link tab values that land on
+// each. An unrecognized tab lands on the entries, which is the section
+// the page is named for. Lock policy moved to Settings > Security
+// (goal 0360 S1 follow-up) -- it configures the kernel, not this
+// vault's own content, the same reasoning Extensions' own move out of
+// Settings already established in reverse.
+function sectionFromTab(tab: string | undefined): SecretsSection {
+  return tab === 'sources' ? tab : 'vault'
+}
+
+const SECTION_SUBTITLE_KEY: Record<SecretsSection, string> = {
+  vault: 'subtitle',
+  sources: 'sections.sourcesSubtitle',
+}
+
+// The status line is two sentences composed from state: what it takes
+// to open the vault, then how long it stays open. Never a fixed
+// string -- both halves are settings the reader can change one section
+// away, and the first names only what this Mac can actually ask for.
+function protectionSentences(t: TFunction<'secrets'>, requireAuth: boolean, capability: string, lockAfterSeconds: number): string {
+  const unlock = requireAuth ? t(unlockStatusKey(capability)) : t('touchId.keychainStatus')
+  const timeout = humanizeLockAfter(lockAfterSeconds)
+  const idle = timeout === null
+    ? t('locking.neverLocks')
+    : t('locking.locksAfter', { duration: t(timeout.key, { count: timeout.count }) })
+  return `${unlock} ${idle}`
+}
+
 // The secret manager's human-facing surface (goal 0185 S2): browse,
 // reveal/hide, copy with auto-clear, add/edit/delete, history --
 // resolution into workflows/MCP servers is a separate, later consumer
@@ -39,7 +71,7 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   // Two sections, one page (goal 0306): the entries themselves, and the
   // stores Mill reads entries from. Sources are reachable while the
   // vault is locked -- they are configuration, not vault content.
-  const [section, setSection] = useState<'vault' | 'sources'>(initialTab === 'sources' ? 'sources' : 'vault')
+  const [section, setSection] = useState<SecretsSection>(() => sectionFromTab(initialTab))
   // The vault-lock state door (goal 0222 S1, shared/vaultStatusStore.ts)
   // -- lifted out of local useState so secrets.lockVault/unlockVault's
   // own enabled() predicates can read the identical truth synchronously
@@ -52,7 +84,6 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   const vaultError = useVaultStatusStore((s) => s.vaultError)
   const [list, setList] = useState<SecretSummary[] | null>(null)
   const [busy, setBusy] = useState(false)
-  const [presenceBusy, setPresenceBusy] = useState(false)
   const [error, setError] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editingID, setEditingID] = useState<string | null>(null)
@@ -69,6 +100,12 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   // in the shared vault store, not local state: secrets.restoreVaultFromBackup's
   // own enabled() predicate needs to read it synchronously too.
   const vaultBackupTime = useVaultStatusStore((s) => s.vaultBackupTime)
+  // What this Mac would actually ask for when the unlock requirement is
+  // on, and how long it stays open -- the two halves of the status line
+  // below. Read from the service rather than assumed, so the sentence
+  // never promises hardware this Mac does not have.
+  const [capability, setCapability] = useState('none')
+  const [lockAfterSeconds, setLockAfterSeconds] = useState(0)
 
   const sectionSwitch = (
     <SegmentedControl aria-label={t('sections.ariaLabel')} className={styles.sections} data-testid="secrets-sections">
@@ -81,6 +118,19 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
     </SegmentedControl>
   )
 
+  // The status line's trailing link (goal 0360 S1 follow-up): the lock
+  // policy it half-describes now lives at Settings > Security, one
+  // command away from wherever this line renders.
+  const changeInSettingsLink = (
+    <Link
+      href="#"
+      onClick={(e) => { e.preventDefault(); void runCommand('settings.open.security') }}
+      data-testid="secrets-protection-settings-link"
+    >
+      {t('protectionSettingsLink')}
+    </Link>
+  )
+
   // pageHeader is rendered by every branch below -- locked, unset and
   // unlocked, vault and sources -- so this page is titled the same way
   // in each of them, and Sources stays one click away. The subtitle is
@@ -90,7 +140,7 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
       <Stack direction="vertical" gap="none" className={styles.pageHeader}>
         <Heading as="h1" id="secrets-heading">{t('heading')}</Heading>
         <Text as="p" size="small" className={styles.subtitle}>
-          {section === 'sources' ? t('sections.sourcesSubtitle') : t('subtitle')}
+          {t(SECTION_SUBTITLE_KEY[section])}
         </Text>
       </Stack>
       {sectionSwitch}
@@ -98,6 +148,7 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   )
 
   const refresh = () => {
+    SecretService.VaultLockPolicy().then((p) => setLockAfterSeconds(p.LockAfterSeconds)).catch(() => undefined)
     void refreshVaultStatus().then(() => {
       const s = useVaultStatusStore.getState().vaultStatus
       if (s?.Unlocked) {
@@ -107,6 +158,10 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
       }
     })
   }
+
+  useEffect(() => {
+    SecretService.UnlockCapability().then(setCapability).catch(() => setCapability('none'))
+  }, [])
 
   useEffect(() => {
     refresh()
@@ -121,12 +176,6 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
     setBusy(true)
     setError('')
     SecretService.SetupVault().then(refresh).catch((err) => setError(String(err))).finally(() => setBusy(false))
-  }
-
-  const toggleTouchID = (enabled: boolean) => {
-    setPresenceBusy(true)
-    setError('')
-    SecretService.SetTouchIDProtection(enabled).then(refresh).catch((err) => setError(String(err))).finally(() => setPresenceBusy(false))
   }
 
   const startCreate = () => {
@@ -221,7 +270,7 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
     )
   }
 
-  const protectionStatus = status.RequireAuth ? t('touchId.requiredStatus') : t('touchId.keychainStatus')
+  const protectionStatus = protectionSentences(t, status.RequireAuth, capability, lockAfterSeconds)
 
   if (!status.Unlocked) {
     // One line, in this view's own words, for each way an unlock ends
@@ -251,7 +300,10 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
           <Blankslate.Visual><LockIcon size={32} /></Blankslate.Visual>
           <Blankslate.Heading>{isKeyMismatch ? t('locked.keyMismatchHeading') : t('locked.heading')}</Blankslate.Heading>
           <Blankslate.Description>{isKeyMismatch ? t('locked.keyMismatchBody') : t('locked.description')}</Blankslate.Description>
-          <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-protection-status">{protectionStatus}</Text>
+          <Stack direction="horizontal" gap="condensed" align="center" justify="center">
+            <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-protection-status">{protectionStatus}</Text>
+            {changeInSettingsLink}
+          </Stack>
           <Stack direction="horizontal" gap="condensed" align="center" justify="center">
             <Button
               variant="primary"
@@ -376,20 +428,9 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
       </Stack>
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.protectionRow}>
         <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-protection-status">{protectionStatus}</Text>
-        <FormControl disabled={!status.AuthAvailable}>
-          <Checkbox
-            checked={status.RequireAuth}
-            disabled={presenceBusy || !status.AuthAvailable}
-            onChange={(e) => toggleTouchID(e.target.checked)}
-            data-testid="secrets-touchid-toggle"
-          />
-          <FormControl.Label>{t('touchId.toggleLabel')}</FormControl.Label>
-          <FormControl.Caption>
-            {status.AuthAvailable ? t('touchId.toggleCaption') : t('touchId.unavailableCaption')}
-          </FormControl.Caption>
-        </FormControl>
+        {changeInSettingsLink}
       </Stack>
-      {error && <Text as="p" size="small" className={styles.error} data-testid="secrets-touchid-error">{error}</Text>}
+      {error && <Text as="p" size="small" className={styles.error} data-testid="secrets-error">{error}</Text>}
       <InventoryList
         listId="secrets"
         items={items}

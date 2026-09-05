@@ -263,6 +263,17 @@ export function SetTouchIDProtection(enabled: boolean): $CancellablePromise<void
 }
 
 /**
+ * SetVaultLockPolicy persists the whole policy at once -- the surface
+ * edits one control at a time but always submits the current state of
+ * all four, so a partially-written policy is not a state that exists.
+ * Unlike the unlock requirement, this needs no open vault: it decides
+ * when the vault closes, which is answerable while it is shut.
+ */
+export function SetVaultLockPolicy(policy: $models.LockPolicy): $CancellablePromise<void> {
+    return $Call.ByID(4209836205, policy);
+}
+
+/**
  * SetupVault creates a brand-new vault: mints a random master key,
  * creates the KDBX file (which mints the vault's own identity), stores
  * the key under that identity's slot in the OS keychain, and seeds one
@@ -286,6 +297,16 @@ export function SourceProblems(): $CancellablePromise<{ [_ in string]?: string }
 }
 
 /**
+ * UnlockCapability reports what this Mac would actually ask for when
+ * the unlock requirement is on -- "none", "password", "touchID",
+ * "touchIDAndWatch" or "watch". The surface words its own label from
+ * it rather than promising Touch ID on a Mac that has none.
+ */
+export function UnlockCapability(): $CancellablePromise<string> {
+    return $Call.ByID(1201729466);
+}
+
+/**
  * UnlockVault authenticates the person at the keyboard when the unlock
  * requirement is on (secretservice_auth.go), fetches the key stored for
  * THIS vault file, and holds the decrypted database in memory for this
@@ -303,6 +324,14 @@ export function UnlockVault(): $CancellablePromise<void> {
  */
 export function UpdateSecret(id: string, title: string, username: string, password: string, url: string, notes: string, tags: string[] | null, kind: string, sourceRef: string, fields: secret$0.Field[] | null): $CancellablePromise<secret$0.Entry> {
     return $Call.ByID(2518896629, id, title, username, password, url, notes, tags, kind, sourceRef, fields);
+}
+
+/**
+ * VaultLockPolicy reports the persisted policy -- plain store reads,
+ * never a prompt, safe from any build and without holding s.mu.
+ */
+export function VaultLockPolicy(): $CancellablePromise<$models.LockPolicy> {
+    return $Call.ByID(4062530781);
 }
 
 /**

@@ -475,6 +475,12 @@
   },
   {
     "menu": "Atlas",
+    "item": "Fit diagram",
+    "shortcut": "",
+    "command": "diagram.fit"
+  },
+  {
+    "menu": "Atlas",
     "item": "Toggle companion panel",
     "shortcut": "",
     "command": "atlas.companion.toggle"

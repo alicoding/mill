@@ -64,17 +64,62 @@ test('secret manager: create vault, store/reveal/copy/edit/history/delete a pass
     const list = page.getByTestId('secrets-view')
     await expect(list.getByText('Example Login', { exact: true })).toBeVisible()
 
-    // --- The unlock requirement's toggle (goal 0330): this spec runs
-    // against a real server-mode binary (task build:server, -tags
-    // server), which never compiles the LocalAuthentication adapter's
-    // darwin code, so this Mac-shaped requirement cannot be honoured
-    // here at all. The surface says so and refuses to offer it, rather
-    // than accepting a setting it could never enforce. ---
-    await expect(page.getByTestId('secrets-protection-status')).toHaveText('Protected by your login keychain')
+    // --- The unlock requirement's toggle (goal 0330), and the lock
+    // policy (goal 0360) -- both moved to Settings > Security (goal
+    // 0360 S1 follow-up): the Secrets status line's own trailing link
+    // is the one way there. This spec runs against a real server-mode
+    // binary (task build:server, -tags server), which never compiles
+    // the LocalAuthentication adapter's darwin code, so the unlock
+    // requirement cannot be honoured here at all. The surface says so
+    // and refuses to offer it, rather than accepting a setting it could
+    // never enforce. ---
+    await expect(page.getByTestId('secrets-protection-status'))
+      .toHaveText('Protected by your login keychain. Locks after 15 minutes idle.')
+    await page.getByTestId('secrets-protection-settings-link').click()
+    await expect(page.getByTestId('settings-pane-security')).toBeVisible()
     const touchIDToggle = page.getByTestId('secrets-touchid-toggle')
     await expect(touchIDToggle).not.toBeChecked()
     await expect(touchIDToggle).toBeDisabled()
+    // The label names what THIS machine can ask for: a server-mode
+    // binary reports no biometry, so it must never promise Touch ID.
+    await expect(page.getByText('Ask for your password before unlocking')).toBeVisible()
     await expect(page.getByText("Touch ID or a password isn't set up on this Mac.")).toBeVisible()
+
+    // --- The lock policy: the shipped defaults, then two timeouts
+    // whose effect the Secrets status line has to state. ---
+    const lockAfter = page.getByTestId('secrets-lock-after')
+    await expect(lockAfter).toHaveValue('900')
+    await expect(page.getByTestId('secrets-lock-on-sleep')).toBeChecked()
+    await expect(page.getByTestId('secrets-lock-on-user-switch')).toBeChecked()
+    await expect(page.getByTestId('secrets-lock-on-minimize')).not.toBeChecked()
+
+    await lockAfter.selectOption('300')
+    await page.getByRole('link', { name: 'Secrets' }).click()
+    await expect(page.getByTestId('secrets-protection-status'))
+      .toHaveText('Protected by your login keychain. Locks after 5 minutes idle.')
+
+    await page.getByTestId('secrets-protection-settings-link').click()
+    await lockAfter.selectOption('0')
+    await page.getByRole('link', { name: 'Secrets' }).click()
+    await expect(page.getByTestId('secrets-protection-status'))
+      .toHaveText('Protected by your login keychain. Never locks by itself.')
+
+    // Custom reveals the minutes field, and a whole number of minutes
+    // inside the offered range is what the status line then reports.
+    await page.getByTestId('secrets-protection-settings-link').click()
+    await lockAfter.selectOption('custom')
+    await page.getByTestId('secrets-lock-after-custom').fill('120')
+    await page.getByRole('link', { name: 'Secrets' }).click()
+    await expect(page.getByTestId('secrets-protection-status'))
+      .toHaveText('Protected by your login keychain. Locks after 2 hours idle.')
+
+    // Back to the shipped default, so everything below sees the policy
+    // a fresh install has.
+    await page.getByTestId('secrets-protection-settings-link').click()
+    await lockAfter.selectOption('900')
+    await page.getByRole('link', { name: 'Secrets' }).click()
+    await expect(page.getByTestId('secrets-protection-status'))
+      .toHaveText('Protected by your login keychain. Locks after 15 minutes idle.')
 
     // --- Create a new secret ---
     await page.getByTestId('secrets-new').click()

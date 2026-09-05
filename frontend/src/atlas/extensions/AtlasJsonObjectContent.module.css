@@ -1,0 +1,30 @@
+/* Token-only styling (goal 0269). The tree itself is
+   shared/JsonTree.tsx and carries its own row/type look; this file owns
+   only the frame around it: the toolbar row, and the scroll box that
+   keeps a deep document inside the object's own box. */
+.wrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 0;
+    flex: 1;
+}
+
+.toolbar {
+    flex: none;
+}
+
+.filter {
+    flex: 1;
+    min-width: 0;
+}
+
+.scroll {
+    overflow: auto;
+    min-height: 0;
+    flex: 1;
+    border: 1px solid var(--borderColor-default);
+    border-radius: var(--borderRadius-small);
+    background: var(--bgColor-default);
+}

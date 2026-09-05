@@ -190,6 +190,36 @@
     "needs": null
   },
   {
+    "id": "atlas.json.copyKey",
+    "label": "Copy key",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "jsonNode"
+  },
+  {
+    "id": "atlas.json.copyPath",
+    "label": "Copy path",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "jsonNode"
+  },
+  {
+    "id": "atlas.json.copyValue",
+    "label": "Copy value",
+    "binding": "⌘C",
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "jsonNode"
+  },
+  {
     "id": "atlas.jump",
     "label": "Jump to a card or object",
     "binding": "⌘K",
@@ -816,6 +846,16 @@
     "needs": "entity"
   },
   {
+    "id": "diagram.fit",
+    "label": "Fit diagram",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "docs.search",
     "label": "Search docs",
     "binding": null,
@@ -1200,6 +1240,14 @@
   {
     "id": "settings.open.notifications",
     "label": "Settings › Notifications",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.open.security",
+    "label": "Settings › Security",
     "binding": null,
     "surface": null,
     "enabled": false,

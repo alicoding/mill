@@ -9,16 +9,16 @@ import { groupFromHash, hashForGroup, isSettingsHash } from '../views/settingsRo
 // rename is a breaking change a test should force someone to make on
 // purpose.
 describe('SETTINGS_GROUPS', () => {
-  it('is the seven groups, in reading order', () => {
+  it('is the eight groups, in reading order', () => {
     expect(SETTINGS_GROUPS.map((g) => g.id)).toEqual([
-      'general', 'appearance', 'shortcuts',
+      'general', 'appearance', 'security', 'shortcuts',
       'connections', 'notifications', 'backups', 'updates',
     ])
   })
 
   it('resolves every title from the shipped copy, never falling back to the id', () => {
     expect(SETTINGS_GROUPS.map(resolveGroupTitle)).toEqual([
-      'General', 'Appearance', 'Shortcuts',
+      'General', 'Appearance', 'Security', 'Shortcuts',
       'Connections', 'Notifications', 'Backups', 'Updates',
     ])
   })

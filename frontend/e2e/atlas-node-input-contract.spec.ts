@@ -41,12 +41,6 @@ interface InputNoun {
   // scroller (a vendored pan/zoom viewer, a viewer in its own frame):
   // the wheel must stay with it and the board must not move.
   consumesWheel: boolean
-  // Whether the object's chrome band is reachable by a real pointer in
-  // this harness. A vendored viewer that floats its own toolbar over the
-  // object covers the band, leaving no band pixel an actionability check
-  // can settle on -- the band's own contract is then proven by the specs
-  // that drive that viewer directly.
-  bandReachable: boolean
   editable: boolean
   create: (page: Page, dir: string) => Promise<Locator>
 }
@@ -89,7 +83,6 @@ async function dropNoun(page: Page, kind: string, file: string, y: number): Prom
 const NOUNS: InputNoun[] = [
   {
     kind: 'table',
-    bandReachable: true,
     hint: 'Click to select, then click a cell to edit',
     scroller: (object) => object.locator('.dvn-scroller').first(),
     scrollAxis: 'left',
@@ -106,7 +99,6 @@ const NOUNS: InputNoun[] = [
   },
   {
     kind: 'sheet',
-    bandReachable: true,
     hint: 'Click to select, then scroll or edit.',
     scroller: (object) => object.getByTestId('atlas-object-sheet-grid').locator('xpath=..'),
     scrollAxis: 'top',
@@ -120,7 +112,6 @@ const NOUNS: InputNoun[] = [
   },
   {
     kind: 'diagram',
-    bandReachable: false,
     hint: 'Click to select, then drag to pan',
     scroller: null,
     scrollAxis: 'top',
@@ -136,7 +127,6 @@ const NOUNS: InputNoun[] = [
   },
   {
     kind: 'pdf',
-    bandReachable: true,
     hint: 'Click to select, then scroll to read',
     scroller: null,
     scrollAxis: 'top',
@@ -160,9 +150,7 @@ function scrollOffsets(scroller: Locator): Promise<{ left: number; top: number }
 
 // A point on the chrome band, in the band's own SCREEN pixels: the band
 // is 14 CSS px tall and the board renders its objects scaled, so a fixed
-// offset walks off the band at anything but zoom 1. Left-of-centre on
-// purpose -- a vendored viewer appends its own chrome to the page, over
-// the middle of the object.
+// offset walks off the band at anything but zoom 1.
 async function bandPoint(band: Locator): Promise<{ x: number; y: number }> {
   const box = await band.boundingBox()
   if (!box) throw new Error('the chrome band has no bounding box')
@@ -244,30 +232,28 @@ for (const noun of NOUNS) {
       // pointer can consume it, so the frame hands it back to the
       // canvas and the board pans -- the live face never turns the
       // whole object into a dead zone.
-      if (noun.bandReachable) {
-        await wheelAt(page, band, 0, 60, await bandPoint(band))
-        await expect.poll(() => viewportTransform(page)).not.toBe(liveTransform)
-        // Bring the object back clear of the toolbar before the drag
-        // below measures against it -- panned from the BOARD's own
-        // corner, since the wheel just moved the band itself.
-        await revealBelowChrome(page, object)
-        await waitForViewportStable(board)
+      await wheelAt(page, band, 0, 60, await bandPoint(band))
+      await expect.poll(() => viewportTransform(page)).not.toBe(liveTransform)
+      // Bring the object back clear of the toolbar before the drag
+      // below measures against it -- panned from the BOARD's own
+      // corner, since the wheel just moved the band itself.
+      await revealBelowChrome(page, object)
+      await waitForViewportStable(board)
 
-        // The band drags the object; the live face does not. The drag
-        // runs ALONG the band rather than down into the face: the object
-        // travels with the pointer, so a downward path would cross into
-        // an embedded viewer's own frame, which swallows every move
-        // after the press.
-        const startX = await objectLeft(object)
-        const bandBox = await band.boundingBox()
-        if (!bandBox) throw new Error('the chrome band has no bounding box')
-        // The drag's END is a bare page point, never an element-bound
-        // one: the object itself is what moves, so nothing owns the
-        // release pixel by the time the pointer gets there
-        // (dragBetween's own endpoint contract).
-        await dragBetween(page, { locator: band, position: await bandPoint(band) }, { x: bandBox.x + 80, y: bandBox.y + bandBox.height / 2 })
-        await expect.poll(() => objectLeft(object)).not.toBe(startX)
-      }
+      // The band drags the object; the live face does not. The drag
+      // runs ALONG the band rather than down into the face: the object
+      // travels with the pointer, so a downward path would cross into
+      // an embedded viewer's own frame, which swallows every move
+      // after the press.
+      const startX = await objectLeft(object)
+      const bandBox = await band.boundingBox()
+      if (!bandBox) throw new Error('the chrome band has no bounding box')
+      // The drag's END is a bare page point, never an element-bound
+      // one: the object itself is what moves, so nothing owns the
+      // release pixel by the time the pointer gets there
+      // (dragBetween's own endpoint contract).
+      await dragBetween(page, { locator: band, position: await bandPoint(band) }, { x: bandBox.x + 80, y: bandBox.y + bandBox.height / 2 })
+      await expect.poll(() => objectLeft(object)).not.toBe(startX)
       // The live face is NOT a drag surface: a drag inside it reaches
       // only the face (a range selection, an engine's own pan).
       const movedX = await objectLeft(object)

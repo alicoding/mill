@@ -83,7 +83,7 @@ func ValidateBoardObject(o BoardObject) error {
 // is what a caller with no plugin registry in reach (the MCP plane,
 // goal 0323) can validate against on its own.
 func BuiltInBoardObjectKinds() []string {
-	return []string{"diagram", "image", "ink", "pdf", "shape", "sheet", "table"}
+	return []string{"diagram", "image", "ink", "json", "pdf", "shape", "sheet", "table"}
 }
 
 // IsBuiltInBoardObjectKind reports whether kind is one of the nouns
