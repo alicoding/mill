@@ -85,7 +85,7 @@ func (c *ConfigureService) describeRequest(out *ReferenceSummary) bool {
 	if found.AuthType != httprequest.AuthNone && strings.TrimSpace(string(found.AuthType)) != "" {
 		if missing, _ := c.RequestCredentialGap(found.ID); missing {
 			out.Lines = append(out.Lines, SummaryLine{Label: "Secret", Value: "Missing"})
-			out.Problems = append(out.Problems, "No secret is stored for this auth. Open the integration and add it.")
+			out.Problems = append(out.Problems, "No secret is chosen for this auth. Open the integration and pick one.")
 		} else {
 			out.Lines = append(out.Lines, SummaryLine{Label: "Secret", Value: "Stored"})
 		}

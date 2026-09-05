@@ -29,12 +29,17 @@ export type SecretPickerProps = {
   // newEntryTitle prefills the title when someone adds a secret from
   // this field, so an entry created here says what it is for.
   newEntryTitle?: string
+  // ariaLabel names the select for anything reading the page by label.
+  // A FormControl.Label cannot reach it on its own: this is a compound
+  // control (a select beside a button), and Primer only auto-associates
+  // a label with a single input child.
+  ariaLabel?: string
   testID?: string
 }
 
 // SecretPicker deals in REFERENCES: what it hands back is exactly what
 // an entity's field stores and the secret service resolves.
-export function SecretPicker({ value, onChange, kinds, newEntryTitle, testID }: SecretPickerProps) {
+export function SecretPicker({ value, onChange, kinds, newEntryTitle, ariaLabel, testID }: SecretPickerProps) {
   const { t } = useTranslation('views')
   const { titles, kinds: entryKinds, error, loaded } = useSecretTitles()
   const [adding, setAdding] = useState<Kind | null>(null)
@@ -58,6 +63,7 @@ export function SecretPicker({ value, onChange, kinds, newEntryTitle, testID }: 
         <Select
           value={selected}
           onChange={(e) => onChange(toReference(e.target.value))}
+          aria-label={ariaLabel}
           data-testid={testID ?? 'secret-ref-picker'}
         >
           <Select.Option value="">{t('settings.extensions.secretRefNone')}</Select.Option>

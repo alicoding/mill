@@ -233,6 +233,7 @@ export function ConfigureAIProviders() {
               onChange={setKeyRef}
               kinds={[Kind.KindText]}
               newEntryTitle={secretTitleFor(values.label ?? '', t('configureAIProviders.secretApiKey'))}
+              ariaLabel={t('configureAIProviders.secretApiKey')}
               testID="aiprovider-key-picker"
             />
           </FormControl>

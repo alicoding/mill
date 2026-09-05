@@ -42,6 +42,7 @@ export function RequestAdvancedSection({ draft, setDraft }: {
               onChange={(ref) => setDraft({ ...draft, joseRecipientPublicKeyRef: ref })}
               kinds={[Kind.KindKey, Kind.KindText]}
               newEntryTitle={secretTitleFor(draft.label, t('requestForm.recipientPublicKey'))}
+              ariaLabel={t('requestForm.recipientPublicKey')}
               testID="jose-recipient-public-key"
             />
           </FormControl>
@@ -63,6 +64,7 @@ export function RequestAdvancedSection({ draft, setDraft }: {
                 onChange={(ref) => setDraft({ ...draft, josePrivateKeyRef: ref })}
                 kinds={[Kind.KindKey]}
                 newEntryTitle={secretTitleFor(draft.label, t('requestForm.millsPrivateKey'))}
+                ariaLabel={t('requestForm.millsPrivateKey')}
                 testID="jose-private-key"
               />
             </FormControl>

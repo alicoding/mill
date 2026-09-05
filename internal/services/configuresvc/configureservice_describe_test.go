@@ -31,7 +31,7 @@ func TestDescribeReference_RequestNamesTheMissingSecret(t *testing.T) {
 	if byLabel["Address"] != "https://jira.example.com" || byLabel["Method"] != "GET" || byLabel["Auth"] != "Bearer token" || byLabel["Secret"] != "Missing" {
 		t.Fatalf("lines = %v", byLabel)
 	}
-	if len(sum.Problems) != 1 || !strings.Contains(sum.Problems[0], "No secret is stored") {
+	if len(sum.Problems) != 1 || !strings.Contains(sum.Problems[0], "No secret is chosen") {
 		t.Fatalf("problems = %v", sum.Problems)
 	}
 	storeRequestSecret(t, cfg, r.ID, "pat-123")

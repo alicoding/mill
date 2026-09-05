@@ -94,6 +94,7 @@ export function RequestAuthSections({ draft, setDraft }: {
                   onChange={(ref) => setDraft({ ...draft, oauth1ConsumerSecretRef: ref })}
                   kinds={[Kind.KindText]}
                   newEntryTitle={secretTitleFor(draft.label, t('requestAuthSections.consumerSecret'))}
+                  ariaLabel={t('requestAuthSections.consumerSecret')}
                   testID="request-consumer-secret-picker"
                 />
               </FormControl>
@@ -105,6 +106,7 @@ export function RequestAuthSections({ draft, setDraft }: {
                   onChange={(ref) => setDraft({ ...draft, oauth1TokenSecretRef: ref })}
                   kinds={[Kind.KindText]}
                   newEntryTitle={secretTitleFor(draft.label, t('requestAuthSections.tokenSecret'))}
+                  ariaLabel={t('requestAuthSections.tokenSecret')}
                   testID="request-token-secret-picker"
                 />
               </FormControl>
@@ -118,6 +120,7 @@ export function RequestAuthSections({ draft, setDraft }: {
                 onChange={(ref) => setDraft({ ...draft, secretRef: ref })}
                 kinds={[Kind.KindText]}
                 newEntryTitle={secretTitleFor(draft.label, t('requestAuthSections.secret'))}
+                ariaLabel={draft.authType === AuthType.AuthOAuth2 ? t('requestAuthSections.clientSecret') : t('requestAuthSections.secret')}
                 testID="request-secret-picker"
               />
             </FormControl>
