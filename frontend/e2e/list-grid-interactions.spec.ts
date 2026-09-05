@@ -1,6 +1,6 @@
 import { test, expect, type Page } from './fixtures/server'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
-import { clickGlideCell, clickGlideRowMarker, dragGlideColumnEdge, dragGlideFillHandle, dragGlideRange, glideCellText, glideTextEditor } from './fixtures/glideGrid'
+import { clickGlideCell, clickGlideRowMarker, dragGlideColumnEdge, dragGlideFillHandle, dragGlideRange, glideCellText, glideTextEditor, typeOverGlideCell } from './fixtures/glideGrid'
 
 // The eight converged table interactions on the List grid (goal 0349
 // S4): range select, type-to-overwrite, fill handle, clipboard both
@@ -82,10 +82,8 @@ test('a dragged range is the unit Delete clears', async ({ page }) => {
 // Enter commits and moves down, Tab commits and moves right.
 test('typing overwrites the selected cell, Enter commits down and Tab commits right', async ({ page }) => {
   const { id, glide } = await seedAndOpen(page, 'E2E grid typing', FOUR_ROWS)
-  await clickGlideCell(page, glide, 0, 0)
-  await page.keyboard.press('W')
   const editor = glideTextEditor(page).first()
-  await expect(editor).toBeVisible()
+  await typeOverGlideCell(page, glide, 0, 0, 'W', editor)
   await expect(editor).toHaveValue('W')
   await editor.fill('Widget') // fill: a form control (goal 0296)
   await page.keyboard.press('Enter')

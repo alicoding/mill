@@ -171,3 +171,20 @@ export async function dragGlideColumnEdge(page: Page, host: Locator, col: number
   const from = await endpoint(host, -1, col, 'right-edge')
   await dragBetween(page, from, { locator: from.locator, position: { x: from.position.x + dx, y: from.position.y } })
 }
+
+// Types ONE character over a selected cell -- the grid's edit-on-type
+// behaviour -- and returns once its overlay editor holds it. The click
+// that selects a cell settles the grid's own focus a frame later, so a
+// keystroke can land before anything is listening; this retries once
+// against the editor's presence rather than a fixed wait, the same
+// shape openGlideCellEditor uses for the second-click model.
+export async function typeOverGlideCell(page: Page, host: Locator, row: number, col: number, char: string, editor: Locator): Promise<void> {
+  await clickGlideCell(page, host, row, col)
+  await page.keyboard.press(char)
+  const opened = await editor.waitFor({ state: 'visible', timeout: 1000 }).then(() => true, () => false)
+  if (!opened) {
+    await clickGlideCell(page, host, row, col)
+    await page.keyboard.press(char)
+  }
+  await expect(editor).toBeVisible()
+}

@@ -1,3 +1,4 @@
+import type React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text } from '@primer/react'
@@ -48,6 +49,13 @@ const EMPTY_SELECTION: GridSelection = { columns: CompactSelection.empty(), rows
 function narrowedKeys(filters: GridColumnFilters): string {
   return Object.keys(filters).filter((k) => (filters[k].contains ?? '') !== '' || (filters[k].min ?? '') !== '' || (filters[k].max ?? '') !== '').join(',')
 }
+
+// The pin is the 6.0.4 pre-release, not the 6.0.3 stable: 6.0.3's peers
+// name react 16-18 (Mill runs 19) and marked ^4 (Mill runs 16, required
+// by the diagram renderer), so `npm ci` cannot resolve it at all, and it
+// resolves its overlay editor's mount as document.getElementById
+// ('portal') with no override -- portalElementRef below, which the
+// focus-trapped card page needs, exists only from 6.0.4.
 
 // editorPortal: where the library mounts its overlay cell editor.
 // 'body' (default) is its own body-level #portal, which keeps the
@@ -196,24 +204,6 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
     return () => window.removeEventListener('paste', claim, true)
   }, [host])
 
-  // editorPortal 'host' (goal 0349 S4): the stable release resolves its
-  // overlay editor's mount point as document.getElementById('portal')
-  // and takes no override, so the adapter moves that one element INTO
-  // this grid's own fixed, zero-size box while this mount lives, and
-  // returns it to the body on unmount. The element's identity never
-  // changes, so React's portal container stays valid across the move,
-  // and the box is position:fixed at the viewport origin -- the exact
-  // coordinate space the library positions its editor in.
-  useEffect(() => {
-    if (editorPortal !== 'host') return
-    const portal = document.getElementById('portal')
-    const box = portalRef.current
-    if (!portal || !box) return
-    const home = portal.parentElement
-    box.append(portal)
-    return () => { home?.append(portal) }
-  }, [editorPortal])
-
   const compact = useDisplayDensity() === 'compact'
   const rowHeight = compact ? GLIDE_ROW_HEIGHT_COMPACT : GLIDE_ROW_HEIGHT
   const headerHeight = compact ? GLIDE_HEADER_HEIGHT_COMPACT : GLIDE_HEADER_HEIGHT
@@ -256,6 +246,7 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
         ) : (
           <DataEditor
             ref={gridRef}
+            portalElementRef={editorPortal === 'host' ? (portalRef as React.RefObject<HTMLElement>) : undefined}
             columns={gridColumns}
             rows={viewRows.length}
             {...cellEdits}
