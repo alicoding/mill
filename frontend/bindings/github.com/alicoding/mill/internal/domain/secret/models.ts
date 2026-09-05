@@ -15,7 +15,27 @@ export interface Entry {
     "Password": string;
     "URL": string;
     "Notes": string;
-    "Tags": string;
+
+    /**
+     * Tags are the reader's own words for finding this entry again.
+     */
+    "Tags": string[] | null;
+
+    /**
+     * Origin records where this entry came from when it was not typed
+     * by hand: "import:<file name>" for one read out of an export or a
+     * dotenv file. It is provenance only -- it never affects how the
+     * value resolves, which is what keeps it distinct from SourceRef.
+     */
+    "Origin": string;
+
+    /**
+     * Fields are the entry's own custom fields (goal 0306 S4) -- what
+     * makes the entry the record rather than five fixed columns. A
+     * protected field's value is hidden until asked for, exactly as the
+     * password is.
+     */
+    "Fields": Field[] | null;
 
     /**
      * Kind classifies what this entry holds (goal 0306) -- what a
@@ -35,6 +55,17 @@ export interface Entry {
     "SourceRef": string;
     "CreatedAt": string;
     "UpdatedAt": string;
+}
+
+/**
+ * Field is one custom field on an entry. Protected marks a value that
+ * stays hidden until the reader asks for it (the KDBX protected flag,
+ * the same one the password itself carries).
+ */
+export interface Field {
+    "Name": string;
+    "Value": string;
+    "Protected": boolean;
 }
 
 /**
@@ -89,7 +120,14 @@ export interface Summary {
     "Title": string;
     "Username": string;
     "URL": string;
-    "Tags": string;
+    "Tags": string[] | null;
+
+    /**
+     * FieldNames carries the entry's custom field NAMES and no values,
+     * so the browse surface can match a search against them without a
+     * reveal.
+     */
+    "FieldNames": string[] | null;
     "Kind": Kind;
     "SourceRef": string;
     "UpdatedAt": string;
