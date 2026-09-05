@@ -7,7 +7,6 @@
 package executionsvc
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -150,6 +149,9 @@ type RunStep struct {
 	// policy) -- the Runs tab's own distinct debug badge (docs/adr/0031
 	// item 2), never conflated with the policy shield.
 	GuardrailSource string `json:"guardrailSource,omitempty"`
+	// Waits lists every park this step went through before it ran --
+	// today only a vault wait (executionservice_vaultwait.go's RunWait).
+	Waits []RunWait `json:"waits,omitempty"`
 }
 
 // RunSummary is one run's headline state -- the row shape for a
@@ -222,6 +224,13 @@ type ExecutionService struct {
 	// answers instead of silently doing nothing
 	// (executionservice_guardrail.go).
 	parkedRuns sync.Map
+	// vaultWaits is the subset of parkedRuns waiting on the vault
+	// (executionservice_vaultwait.go): runID -> vaultWait, so an unlock
+	// can resume exactly those, oldest first, and nothing else.
+	vaultWaits sync.Map
+	// vaultLocked answers whether the vault is locked right now -- wired
+	// from the secret service via SetVaultLockedLookup; nil means never.
+	vaultLocked func() bool
 	// minutesSavedLookup resolves a workflow's current "minutes saved
 	// per run" estimate -- SettingsService's own persisted preference
 	// (docs/SPEC.md §3.7), wired in from main.go via
@@ -278,9 +287,7 @@ type ExecutionService struct {
 // seam -- composition itself never imports DBOS (domain purity).
 func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (string, error) {
 	stepRunner := func(stepID string, fn func() (composition.ExecContext, error)) (composition.ExecContext, error) {
-		return execution.RunAsStep(ctx, func(context.Context) (composition.ExecContext, error) {
-			return fn()
-		}, execution.WithStepName(stepID))
+		return e.runStep(ctx, in, stepID, fn)
 	}
 	output, err := composition.ExecuteWorkflowWithStepRunner(in.Nodes, in.Edges, in.Attributes, stepRunner,
 		composition.ExecuteOptions{
@@ -397,11 +404,13 @@ func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, opt
 	// live-streaming progress view isn't required for the "see what
 	// happened" half of execution visibility this exists for.
 	// EXCEPT when the graph could park awaiting a guardrail approval
-	// (docs/adr/0022), or this is a stepped run (guaranteed to park at
-	// its very first node, docs/adr/0031): then return immediately with
-	// the run ID, so a Run click never hangs on a human decision -- the
-	// pending state surfaces via RunSummary.Pending instead.
-	if opts.Stepped || e.mayRequireApproval(wf.ID, nodes) {
+	// (docs/adr/0022), this is a stepped run (guaranteed to park at
+	// its very first node, docs/adr/0031), or a step will read a secret
+	// while the vault is locked (executionservice_vaultwait.go): then
+	// return immediately with the run ID, so a Run click never hangs on
+	// a human decision or an unlock -- the pending state surfaces via
+	// RunSummary.Pending instead.
+	if opts.Stepped || e.mayRequireApproval(wf.ID, nodes) || e.mayWaitForVault(wf.ID, nodes) {
 		return e.summaryFor(handle.GetWorkflowID())
 	}
 	if _, err := handle.GetResult(); err != nil {
