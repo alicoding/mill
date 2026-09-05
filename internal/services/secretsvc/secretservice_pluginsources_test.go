@@ -122,7 +122,7 @@ func TestPluginSource_SourceBackedEntry_RefusedWhileLocked(t *testing.T) {
 	if err := s.SetupVault(); err != nil {
 		t.Fatal(err)
 	}
-	created, err := s.CreateSecret("Example API password", "alice", "", "", "", "", "text", "plugin:my-netrc/api.example.com/password")
+	created, err := s.CreateSecret("Example API password", "alice", "", "", "", nil, "text", "plugin:my-netrc/api.example.com/password", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

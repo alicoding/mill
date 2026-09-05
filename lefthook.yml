@@ -88,6 +88,9 @@ pre-commit:
       # wc -w only), so unconditional is cheap, same shape as
       # root-file-naming just below.
       run: ./scripts/check-standing-context.sh
+    - name: hook-command-guard
+      glob: "scripts/hook-command-guard.sh"
+      run: ./scripts/check-hook-command-guard.sh
     - name: root-file-naming
       # No glob, deliberately: .ls-lint.yml now covers every file type
       # at the repo root (its `.*` catch-all), not just .go, so this
@@ -153,7 +156,7 @@ pre-commit:
       # go-build-desktop below already build the root package locally,
       # so that requirement (this file's own header comment) already
       # applied before this line did.
-      run: OUT="$(mktemp -t mill-cover)" && go test . ./internal/... -race -coverprofile="$OUT" && bash scripts/check-go-coverage.sh "$OUT"
+      run: ./scripts/with-gate-lock.sh bash -c 'OUT="$(mktemp -t mill-cover)" && go test . ./internal/... -race -coverprofile="$OUT" && bash scripts/check-go-coverage.sh "$OUT"'
     - name: go-build-desktop
       glob: "*.go"
       run: go build -o /dev/null .
@@ -175,7 +178,7 @@ pre-commit:
     - name: vitest
       root: "frontend/"
       glob: "frontend/**/*.{ts,tsx}"
-      run: npm run test
+      run: ../scripts/with-gate-lock.sh npm run test
     - name: tsc
       root: "frontend/"
       glob: "frontend/**/*.{ts,tsx}"

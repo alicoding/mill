@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Checkbox, Dialog, FormControl, Stack, TextInput } from '@primer/react'
+import { WorkflowEnvironmentField } from './WorkflowEnvironmentField'
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 
@@ -16,7 +17,7 @@ import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/inte
 // crossed the 500-line limit adding workflow export/import.
 export default function TestRunDialog({
   workflowLabel, attributes, values, onChange, onCancel, onRun,
-  payloadHint, payload, onPayloadChange,
+  payloadHint, payload, onPayloadChange, environmentID, onEnvironmentChange,
 }: {
   workflowLabel: string
   attributes: AttributeDef[]
@@ -33,6 +34,12 @@ export default function TestRunDialog({
   payloadHint?: string | null
   payload?: string
   onPayloadChange?: (value: string) => void
+  // The Environment this one run targets (goal 0306 S5), prefilled from
+  // the workflow's own default. Absent handler = the dialog does not
+  // offer the choice, which is how a run started from a surface with no
+  // environment concept behaves.
+  environmentID?: string
+  onEnvironmentChange?: (environmentID: string) => void
 }) {
   const { t } = useTranslation('composition')
   return (
@@ -41,6 +48,13 @@ export default function TestRunDialog({
       { content: t('testRunDialog.run'), buttonType: 'primary', onClick: onRun },
     ]}>
       <Stack direction="vertical" gap="normal">
+        {onEnvironmentChange && (
+          <FormControl>
+            <FormControl.Label>{t('testRunDialog.environment')}</FormControl.Label>
+            <FormControl.Caption>{t('testRunDialog.environmentCaption')}</FormControl.Caption>
+            <WorkflowEnvironmentField value={environmentID ?? ''} onChange={onEnvironmentChange} readOnly={false} />
+          </FormControl>
+        )}
         {payloadHint && onPayloadChange && (
           <FormControl>
             <FormControl.Label>{t('testRunDialog.initialPayload')}</FormControl.Label>

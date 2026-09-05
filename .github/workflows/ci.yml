@@ -20,17 +20,15 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  # Never cancel: PR runs on merge refs were being phantom-cancelled
-  # mid-run with no superseding push visible (goal 0227 — five kills
-  # on one PR, two on another, both starved of any completed run),
-  # consistent with merge-ref recomputation spawning a suite that
-  # enters this group and kills the in-flight attempt. `false`
-  # everywhere both fixes the starvation and is the controlled test
-  # of that mechanism; the cost is an occasionally-wasted superseded
-  # run. Main already required `false` (a cancelled merge-commit run
-  # leaves that SHA's CI permanently incomplete — ADR-0034's
-  # bisect-blind-spot concern, observed live 2026-08-12).
-  cancel-in-progress: false
+  # Main (push) and a queued merge (merge_group) never cancel: a
+  # cancelled merge-commit run leaves that SHA's CI permanently
+  # incomplete (ADR-0034's bisect-blind-spot concern, observed live
+  # 2026-08-12), so every merge commit -- landed or queued -- is
+  # verified. A pull_request run DOES cancel its superseded head: the
+  # new head runs its own CI anyway, so the old head's run is
+  # redundant, and a cancelled run sends no failure email, unlike
+  # letting it die on a stale head.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # goal 0024 / ADR-0034's un-deferred path-filtering: skip the heavy
@@ -211,6 +209,16 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-standing-context.sh
+
+  # Mirrors lefthook.yml's hook-command-guard job: the PreToolUse Bash
+  # guard is probed with sample inputs so its never-list and its
+  # foreground-only rule for gate commands stay asserted, not assumed.
+  hook-command-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-hook-command-guard.sh
 
   # Enforces the root-layout rule (exactly one root Go file, main.go;
   # services live under internal/services/<ctx>svc) via ls-lint
@@ -657,6 +665,7 @@ jobs:
       - toolbar-action-testids
       - rules-frontmatter
       - standing-context
+      - hook-command-guard
       - root-file-naming
       - sdk-freshness
       - frontend

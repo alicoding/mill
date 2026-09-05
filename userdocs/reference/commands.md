@@ -83,6 +83,10 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.decision.duplicate` | Duplicate | — | Global | Acts on the selected entity |
 | `configure.decision.export` | Export | — | Global | Acts on the selected entity |
 | `configure.decision.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.environment.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.environment.duplicate` | Duplicate | — | Global | Acts on the selected entity |
+| `configure.environment.export` | Export | — | Global | Acts on the selected entity |
+| `configure.environment.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
 | `configure.execenv.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.execenv.export` | Export | — | Global | Acts on the selected entity |
 | `configure.execenv.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
@@ -97,7 +101,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.new.certificates` | New client certificate | — | Global | Always available |
 | `configure.new.conversionprofiles` | New conversion profile | — | Global | Always available |
 | `configure.new.decisions` | New decision | — | Global | Always available |
-| `configure.new.execenvs` | New environment | — | Global | Always available |
+| `configure.new.environments` | New environment | — | Global | Always available |
+| `configure.new.execenvs` | New execution environment | — | Global | Always available |
 | `configure.new.integration` | New integration | — | Global | Always available |
 | `configure.new.lists` | New list | — | Global | Always available |
 | `configure.new.mcpservers` | New MCP server | — | Global | Always available |
@@ -119,6 +124,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `listGrid.copyRows` | Copy selected rows | — | Global | Acts on the selected listGrid |
 | `listGrid.deleteColumn` | Delete selected column | — | Global | Acts on the selected listGrid |
 | `listGrid.deleteRows` | Delete selected rows | — | Global | Acts on the selected listGrid |
+| `listGrid.search` | Find in this list | `⌘F` | Global | Acts on the selected listGrid |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `object.rename` | Rename | — | atlas | Always available |
 | `output.copy` | Copy output | — | Global | Conditional — available only in a matching state |

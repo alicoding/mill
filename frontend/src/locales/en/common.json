@@ -253,7 +253,8 @@
         "lists": "New list",
         "mcpservers": "New MCP server",
         "decisions": "New decision",
-        "execenvs": "New environment",
+        "environments": "New environment",
+        "execenvs": "New execution environment",
         "aiproviders": "New AI provider",
         "conversionprofiles": "New conversion profile",
         "steptypes": "New step type",
@@ -284,6 +285,12 @@
       },
       "execenv": {
         "delete": "Delete",
+        "export": "Export",
+        "reset": "Reset to shipped example"
+      },
+      "environment": {
+        "delete": "Delete",
+        "duplicate": "Duplicate",
         "export": "Export",
         "reset": "Reset to shipped example"
       },
@@ -375,6 +382,7 @@
       "openFull": "Open output in full"
     },
     "listGrid": {
+      "search": "Find in this list",
       "deleteRows": "Delete selected rows",
       "copyRows": "Copy selected rows",
       "deleteColumn": "Delete selected column"

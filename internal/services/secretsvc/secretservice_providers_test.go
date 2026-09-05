@@ -163,7 +163,7 @@ func TestResolveSecretValue_SourceBackedEntry_ReadsTheSourceAtUseTime(t *testing
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)
 	}
-	created, err := s.CreateSecret("Project API token", "", "", "", "", "", string(secret.KindText), "env:proj-env/API_TOKEN")
+	created, err := s.CreateSecret("Project API token", "", "", "", "", nil, string(secret.KindText), "env:proj-env/API_TOKEN", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}
@@ -188,7 +188,7 @@ func TestResolveSecretValue_SourceBackedEntry_MissingKeyReports(t *testing.T) {
 	if err := s.SetupVault(); err != nil {
 		t.Fatalf("SetupVault: %v", err)
 	}
-	created, err := s.CreateSecret("Gone", "", "", "", "", "", string(secret.KindText), "env:proj-env/NOT_THERE")
+	created, err := s.CreateSecret("Gone", "", "", "", "", nil, string(secret.KindText), "env:proj-env/NOT_THERE", nil)
 	if err != nil {
 		t.Fatalf("CreateSecret: %v", err)
 	}

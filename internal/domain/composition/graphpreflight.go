@@ -121,3 +121,72 @@ func nodeCredentialGaps(n Node) []Issue {
 	}
 	return issues
 }
+
+// environmentVarGapFn answers which {{var}} names a request carries
+// that the given Environment cannot resolve (goal 0306 S5). Injected
+// from the composition root, exactly like credentialGapFn above: the
+// request's fields and the environment's keys both live in
+// configuresvc, and this package resolves neither. environmentID ""
+// means no environment was selected, in which case every reference the
+// request carries is a gap.
+var environmentVarGapFn func(requestID, environmentID string) []string
+
+// SetEnvironmentVarGapCheck wires the Configure-side variable-gap
+// check. Same injected-seam shape as SetCredentialGapCheck.
+func SetEnvironmentVarGapCheck(fn func(requestID, environmentID string) []string) {
+	environmentVarGapFn = fn
+}
+
+// ValidateEnvironmentVars flags every {{var}} a step's request
+// references that the run's selected Environment does not define --
+// the will-fail tier, so saving the workflow stays legal and only
+// starting a run is refused (executionsvc's preflightRefusal, which is
+// the one caller: unlike every other check here, the answer depends on
+// WHICH environment this run picked, so it cannot be part of the
+// environment-blind ValidateGraph).
+func ValidateEnvironmentVars(nodes []Node, environmentID string) []Issue {
+	if environmentVarGapFn == nil {
+		return nil
+	}
+	var issues []Issue
+	for _, n := range nodes {
+		if n.Kind == KindTrigger {
+			continue
+		}
+		issues = append(issues, nodeEnvironmentVarGaps(n, environmentID)...)
+	}
+	return issues
+}
+
+// nodeEnvironmentVarGaps checks one node's request references.
+func nodeEnvironmentVarGaps(n Node, environmentID string) []Issue {
+	nt, ok := nodeType(n.NodeTypeID)
+	if !ok {
+		return nil
+	}
+	var issues []Issue
+	for _, field := range nt.ConfigFields {
+		if field.RefKind != "request" {
+			continue
+		}
+		id := strings.TrimSpace(n.Config[field.Key])
+		if id == "" {
+			continue // validateRequiredRefs owns the unset case
+		}
+		for _, key := range environmentVarGapFn(id, environmentID) {
+			issues = append(issues, willFailIssue(n.ID, environmentVarGapMessage(n, key, environmentID)))
+		}
+	}
+	return issues
+}
+
+// environmentVarGapMessage words the two shapes this gap takes: a
+// variable the chosen environment does not have, and no environment
+// chosen at all. Both name the variable as it was written, so the fix
+// is a search away.
+func environmentVarGapMessage(n Node, key, environmentID string) string {
+	if strings.TrimSpace(environmentID) == "" {
+		return fmt.Sprintf("step %s: the request uses {{%s}} but no environment is selected for this run", stepName(n), key)
+	}
+	return fmt.Sprintf("step %s: the request uses {{%s}} but the selected environment has no such variable", stepName(n), key)
+}

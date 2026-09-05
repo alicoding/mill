@@ -117,8 +117,8 @@ func TestSeededGuardedHTTPWorkflow_ApproveFiresRealHTTPCall(t *testing.T) {
 	defer srv.Close()
 
 	orig := swapHTTPRequestLookup(t, func(id string) (composition.ResolvedHTTPRequest, error) {
-		if id != httprequest.ExampleNoneID {
-			t.Errorf("lookupHTTPRequestFn called with id %q, want the seed's real requestId %q", id, httprequest.ExampleNoneID)
+		if id != httprequest.ExampleEnvironmentID {
+			t.Errorf("lookupHTTPRequestFn called with id %q, want the seed's real requestId %q", id, httprequest.ExampleEnvironmentID)
 		}
 		return composition.ResolvedHTTPRequest{BaseURL: srv.URL, AuthType: httprequest.AuthNone}, nil
 	})

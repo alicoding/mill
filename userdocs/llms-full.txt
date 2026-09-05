@@ -1376,6 +1376,10 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.decision.duplicate` | Duplicate | — | Global | Acts on the selected entity |
 | `configure.decision.export` | Export | — | Global | Acts on the selected entity |
 | `configure.decision.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.environment.delete` | Delete | — | Global | Acts on the selected entity |
+| `configure.environment.duplicate` | Duplicate | — | Global | Acts on the selected entity |
+| `configure.environment.export` | Export | — | Global | Acts on the selected entity |
+| `configure.environment.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
 | `configure.execenv.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.execenv.export` | Export | — | Global | Acts on the selected entity |
 | `configure.execenv.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
@@ -1390,7 +1394,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.new.certificates` | New client certificate | — | Global | Always available |
 | `configure.new.conversionprofiles` | New conversion profile | — | Global | Always available |
 | `configure.new.decisions` | New decision | — | Global | Always available |
-| `configure.new.execenvs` | New environment | — | Global | Always available |
+| `configure.new.environments` | New environment | — | Global | Always available |
+| `configure.new.execenvs` | New execution environment | — | Global | Always available |
 | `configure.new.integration` | New integration | — | Global | Always available |
 | `configure.new.lists` | New list | — | Global | Always available |
 | `configure.new.mcpservers` | New MCP server | — | Global | Always available |
@@ -1412,6 +1417,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `listGrid.copyRows` | Copy selected rows | — | Global | Acts on the selected listGrid |
 | `listGrid.deleteColumn` | Delete selected column | — | Global | Acts on the selected listGrid |
 | `listGrid.deleteRows` | Delete selected rows | — | Global | Acts on the selected listGrid |
+| `listGrid.search` | Find in this list | `⌘F` | Global | Acts on the selected listGrid |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `object.rename` | Rename | — | atlas | Always available |
 | `output.copy` | Copy output | — | Global | Conditional — available only in a matching state |
@@ -1538,7 +1544,8 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | New list | — | `configure.new.lists` |
 | New MCP server | — | `configure.new.mcpservers` |
 | New decision | — | `configure.new.decisions` |
-| New environment | — | `configure.new.execenvs` |
+| New execution environment | — | `configure.new.execenvs` |
+| New environment | — | `configure.new.environments` |
 | New AI provider | — | `configure.new.aiproviders` |
 | New client certificate | — | `configure.new.certificates` |
 | New conversion profile | — | `configure.new.conversionprofiles` |
@@ -1664,6 +1671,88 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Open Developer Tools | — | Provided by macOS |
 
 <!-- END GENERATED -->
+
+---
+
+# Environments
+
+An **environment** is a named set of variables a run selects. One
+workflow, one integration, two stages: the only thing that changes
+between them is which environment the run picked.
+
+Environments live in **Configure › Environments**.
+
+## Write a variable into a request
+
+In an integration's URL, a header value, or its body, write a variable
+name in double braces:
+
+```
+{{API_BASE}}/v1/updates
+```
+
+When a run starts, Mill replaces every reference with the selected
+environment's value and sends the result. Nothing is stored resolved,
+and nothing is guessed: a name the environment does not define stops the
+run before it starts, naming the variable.
+
+To send the braces themselves, escape the opening pair with a backslash:
+`\{{API_BASE}}` is sent as `{{API_BASE}}`. Text that is not a variable
+name — a JSON body's own braces, for instance — is left exactly as
+written.
+
+## Add an environment
+
+1. Open **Configure › Environments** and choose **New environment**.
+2. Give it a **Label**: the name a run picks it by, such as Sandbox or
+   Production.
+3. Add a variable: a **name** and a **value**.
+
+A variable name starts with a letter or underscore, then letters, digits
+or underscores. No two variables in one environment may share a name.
+
+## Plain and secret variables
+
+Tick **Secret** beside a variable and its value becomes a pick from your
+secret store instead of typed text. The environment holds the pointer,
+never the secret itself, so an exported environment carries no
+credentials.
+
+A secret variable with nothing picked yet shows **Needs a value** on the
+row. It resolves to an empty string until you pick one.
+
+## Choosing an environment for a run
+
+- A workflow's **Environment** on the canvas is the stage its runs use.
+  Scheduled runs, triggered runs, and runs started by another workflow
+  all use it, because there is nobody to ask.
+- Running from the canvas or the workflow list opens the run dialog with
+  that environment already chosen. Pick another for this one run, or
+  pick **None**.
+
+The run records the environment it actually started in. Activity shows
+it per run, and a redrive replays that same stage even if the workflow's
+default has moved on since.
+
+## Shell environments
+
+An execution environment (**Configure › Execution Environments**) can
+borrow a shared environment's variables through **Variables from
+environment**. Those variables are added under the shell's own, so a
+name the shell sets itself wins.
+
+## What you cannot delete
+
+An environment a workflow targets, or a shell borrows, cannot be
+deleted. Mill names what still uses it, so you can clear the reference
+first.
+
+## For agents
+
+`mill://environments` lists every environment, its label, and its
+variable names, each marked plain or secret. Values never cross that
+boundary — an agent can see that `{{API_BASE}}` will resolve without
+being told what it resolves to.
 
 ---
 
@@ -2874,6 +2963,26 @@ Each entry says what it holds — text, a key, a certificate or a file —
 so a field only offers the entries it can actually use. An entry can
 also point at a key in one of your sources instead of holding a value,
 in which case Mill reads that key when something uses it.
+
+An entry is the whole record, not five fixed boxes. Add fields of your
+own — a serial number, a recovery code, an account id — and hide any
+field whose value should stay masked until you ask for it. Add tags and
+the list finds an entry by them; clicking a tag on a row narrows the
+list to everything carrying it. A search matches titles, tags and field
+names, never a value. Every entry says where it came from: added by
+hand, from a source, or imported from a file.
+
+Two ways to bring in what you already have. **Secrets > Sources > Find
+.env files** scans one folder you choose — never your whole home
+directory, never more than a few levels down, and never inside
+dependency or build folders — lists the dotenv files it found with how
+many keys each holds, and adds the ones you tick as sources or imports
+their keys as entries. **Secrets > Import** reads a password export you
+made yourself from the tool you already use, shows how many entries it
+holds before anything is stored, and offers to delete the file straight
+after, because an export holds every password in plain text. Mill never
+reads another application's own credential store — you export, Mill
+reads what you exported.
 
 The first time you unlock after updating, any credential an earlier
 version had saved outside the vault moves in: Mill creates an entry,

@@ -1,0 +1,11 @@
+/* One flat line per aligned axis (goal 0161 slice 2), in the guide's
+   own color rather than the accent -- the dragged item wears an accent
+   selection ring, and a guide sharing that color reads as part of the
+   ring instead of as the line being aligned to. The geometry stays
+   inline on the element: it is board-space data recomputed on every
+   drag frame, not styling. */
+.guide {
+  position: absolute;
+  background: var(--mill-guide-color);
+  pointer-events: none;
+}

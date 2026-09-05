@@ -4,6 +4,7 @@ import { Button, FormControl, IconButton, SegmentedControl, Stack, Text, TextInp
 import { ChevronDownIcon, ChevronUpIcon, EyeIcon, PencilIcon } from '@primer/octicons-react'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { CompositionService } from '../shared/bindings'
+import { WorkflowEnvironmentField } from './WorkflowEnvironmentField'
 import { WorkflowOfferField } from './WorkflowOfferField'
 import { RunButton, type RunButtonHandle } from './LiveRunControls'
 import { runCommand } from '../shared/commands'
@@ -68,6 +69,21 @@ export function CanvasMetaHeader({
     setOfferValue(requestID)
     setOfferError('')
     CompositionService.SetWorkflowOffer(workflow.ID, requestID).catch((err) => setOfferError(String(err)))
+  }
+  // The default environment (goal 0306 S5) commits on pick for the same
+  // reason the offer does: workflow metadata with its own setter, not
+  // part of the graph's Save.
+  const [environmentValue, setEnvironmentValue] = useState(workflow?.DefaultEnvironmentID ?? '')
+  const [environmentError, setEnvironmentError] = useState('')
+  useEffect(() => {
+    setEnvironmentValue(workflow?.DefaultEnvironmentID ?? '')
+    setEnvironmentError('')
+  }, [workflow?.ID, workflow?.DefaultEnvironmentID])
+  const commitEnvironment = (environmentID: string) => {
+    if (!workflow) return
+    setEnvironmentValue(environmentID)
+    setEnvironmentError('')
+    CompositionService.SetWorkflowDefaultEnvironment(workflow.ID, environmentID).catch((err) => setEnvironmentError(String(err)))
   }
   return (
     <div className={styles.metaHeader}>
@@ -156,6 +172,12 @@ export function CanvasMetaHeader({
                 <WorkflowOfferField value={offerValue} onChange={commitOffer} readOnly={readOnly} />
               </FormControl>
               {offerError && <Text as="p" size="small" className={runbookStyles.error}>{offerError}</Text>}
+              <FormControl>
+                <FormControl.Label>{t('canvasMetaHeader.environmentLabel')}</FormControl.Label>
+                <FormControl.Caption>{t('canvasMetaHeader.environmentCaption')}</FormControl.Caption>
+                <WorkflowEnvironmentField value={environmentValue} onChange={commitEnvironment} readOnly={readOnly} />
+              </FormControl>
+              {environmentError && <Text as="p" size="small" className={runbookStyles.error}>{environmentError}</Text>}
             </fieldset>
           )}
         </Stack>

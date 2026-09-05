@@ -1,5 +1,8 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { callBindingViaRPC } from './fixtures/wailsRpc'
+
+const CONFIGURE = 'github.com/alicoding/mill/internal/services/configuresvc.ConfigureService.'
 
 // The ExecEnv form's maturity fixes, caught from a live owner
 // screenshot (docs/SPEC.md §6 / docs/adr/0026): the Profile-mode
@@ -55,4 +58,33 @@ test('Env variables edit as key/value rows and round-trip through save', async (
 
   await clickRowAction(page, row, 'Delete')
   await expect(row).not.toBeVisible()
+})
+
+
+test('a shell can borrow a shared environment\'s variables, and the reference survives a save', async ({ page }) => {
+  // goal 0306 S5: the variables live in one place and several shells
+  // can point at them, so the field has to persist a real reference
+  // rather than copying values in.
+  await openExecEnvTab(page)
+  const environment = await callBindingViaRPC<{ ID: string; Label: string }>(page, CONFIGURE + 'CreateEnvironment', ['ZzE2eShellStage', [{ Key: 'API_BASE', Value: 'https://stage.example.test', Secret: false }]])
+  // Reopen so the picker lists the environment created a moment ago.
+  await page.reload()
+  await page.getByRole('tab', { name: 'Execution Environments', exact: true }).click()
+  await page.getByTestId('new-execenv').click()
+  await page.getByLabel('Label').fill('E2E borrowing env')
+  await page.getByTestId('execenv-advanced-summary').click()
+  await page.getByTestId('entity-ref-field').last().selectOption(environment.ID)
+  await page.getByRole('button', { name: 'Save environment' }).click()
+
+  const row = page
+    .locator('[data-testid="inventory-row"][data-entity="execenv"]')
+    .filter({ has: page.getByText('E2E borrowing env', { exact: true }) })
+  await expect(row).toBeVisible()
+  await row.click()
+  await expect(page.getByTestId('entity-ref-field').last()).toHaveValue(environment.ID)
+  await page.getByRole('button', { name: 'Cancel' }).click()
+
+  await clickRowAction(page, row, 'Delete')
+  await expect(row).not.toBeVisible()
+  await callBindingViaRPC(page, CONFIGURE + 'DeleteEnvironment', [environment.ID])
 })

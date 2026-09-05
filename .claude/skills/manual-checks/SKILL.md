@@ -330,6 +330,19 @@ installed build can catch, and exactly how to verify it there.
   every projection); then a VoiceOver pass -- the grid's
   accessibility DOM reads the headers and cells (ADR-0049's own
   verification, the library hedges its a11y).
+- **The grid's clipboard against a REAL third-party app** (goal 0349
+  S4, `shared/ListGridGlide.tsx`) -- `list-grid-interactions.spec.ts`
+  grants Chromium clipboard permission via CDP, which the desktop
+  WKWebView engine has no equivalent for, so every e2e round trip
+  there stays Mill-to-Mill; whether the OS pasteboard flavor Mill
+  writes/reads actually interoperates with another app is untested.
+  Verify on an installed build on a table object and on Configure's
+  List page: select a 2x2 range, ⌘C, paste into Numbers -- it lands
+  as tab/newline text across the right cells; separately, select and
+  copy two rows in Numbers, click a cell in the grid, ⌘V -- the
+  cells fill from that cell, rows append past the List's last row,
+  and pasting past where appending is allowed shows the dropped-rows
+  footer notice.
 - **A relaunch never restores the floating windows** (goal 0301,
   `SettingsService.HideAuxWindows` on ApplicationStarted and before
   every approved quit / restart) -- macOS Resume re-showing windows
@@ -415,3 +428,13 @@ installed build can catch, and exactly how to verify it there.
   markup nobody controls. Finally revoke the browser in Settings and
   confirm the popup drops to "Mill isn't running" within about half a
   minute (the stream is dropped on its next keepalive).
+- **The Secrets page's native pickers** (goal 0306 S4,
+  `windowing.PickFolder`/`PickCSVFile`,
+  `SecretService.ChooseScanFolder`/`ChooseExportFile`) — server mode
+  falls back to a typed path, which is what the e2e suite drives
+  instead. Verify on an installed build: in Secrets › Sources, open
+  "Find .env files…" and press Choose — the real native folder picker
+  opens with directories choosable and files disabled, and the chosen
+  path fills the Folder field; in Secrets, open Import… and press
+  Choose — the real native file picker opens and the chosen file's
+  entry count shows in the preview.
