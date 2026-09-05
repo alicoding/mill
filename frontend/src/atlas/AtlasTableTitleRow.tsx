@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Text } from '@primer/react'
 import { AtlasService, ConfigureService } from '../shared/bindings'
 import { useUISignalStore } from '../shared/uiSignalStore'
-import { refreshAtlas } from './atlasStore'
+import { refreshAtlas, useAtlasStore } from './atlasStore'
+import { tableTitlesOn } from './tools/tableTool'
 import styles from './AtlasTableTitleRow.module.css'
 
 // A table object's own name, above its grid (goal 0273): the converged
@@ -31,6 +32,7 @@ export function AtlasTableTitleRow({ objectID, listID, label }: { objectID: stri
   // arriving behind it would otherwise re-run the same write off a
   // closure that still believes the session is open.
   const openRef = useRef(false)
+  const allObjects = useAtlasStore((s) => s.objects) ?? []
 
   const beginEdit = () => {
     openRef.current = true
@@ -38,14 +40,30 @@ export function AtlasTableTitleRow({ objectID, listID, label }: { objectID: stri
     setEditing(true)
   }
 
+  // A name colliding with another table on the SAME board (goal 0273
+  // rule 2) -- siblings only, this object excluded from its own
+  // comparison set.
+  const collidesWithSibling = (name: string): boolean => {
+    const own = allObjects.find((o) => o.ID === objectID)
+    if (!own) return false
+    return tableTitlesOn(allObjects.filter((o) => o.ID !== objectID), own.ParentID).has(name)
+  }
+
   // An empty or whitespace-only name commits nothing -- a table always
   // has a name, so the previous one stands rather than the object
-  // losing its title.
+  // losing its title. A colliding name refuses inline instead: the
+  // field stays open and focused, the previous name stays committed,
+  // until a unique name replaces it.
   const endEdit = (keep: boolean) => {
     if (!openRef.current) return
+    const next = draft.trim()
+    if (keep && next && next !== label && collidesWithSibling(next)) {
+      setError(t('table.renameCollision'))
+      inputRef.current?.focus()
+      return
+    }
     openRef.current = false
     setEditing(false)
-    const next = draft.trim()
     if (!keep || !next || next === label) return
     ConfigureService.GetList(listID)
       .then((l) => ConfigureService.UpdateList(l.ID, next, l.Description, l.Columns, null))
@@ -88,7 +106,7 @@ export function AtlasTableTitleRow({ objectID, listID, label }: { objectID: stri
             data-testid="atlas-table-title-input"
             aria-label={t('table.titleAriaLabel')}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => { setDraft(e.target.value); if (error) setError('') }}
             onBlur={() => endEdit(true)}
             onKeyDown={(e) => {
               e.stopPropagation()
