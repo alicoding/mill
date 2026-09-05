@@ -131,6 +131,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `listGrid.copyRows` | Copy selected rows | — | Global | Acts on the selected listGrid |
 | `listGrid.deleteColumn` | Delete selected column | — | Global | Acts on the selected listGrid |
 | `listGrid.deleteRows` | Delete selected rows | — | Global | Acts on the selected listGrid |
+| `listGrid.search` | Find in this list | `⌘F` | Global | Acts on the selected listGrid |
 | `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
 | `object.rename` | Rename | — | atlas | Always available |
 | `output.copy` | Copy output | — | Global | Conditional — available only in a matching state |

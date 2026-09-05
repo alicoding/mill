@@ -391,6 +391,7 @@
       "refreshSources": "Extensions: refresh sources"
     },
     "listGrid": {
+      "search": "Find in this list",
       "deleteRows": "Delete selected rows",
       "copyRows": "Copy selected rows",
       "deleteColumn": "Delete selected column"

@@ -952,6 +952,14 @@
     "needs": "listGrid"
   },
   {
+    "id": "listGrid.search",
+    "label": "Find in this list",
+    "binding": "⌘F",
+    "surface": null,
+    "enabled": true,
+    "needs": "listGrid"
+  },
+  {
     "id": "object.openInDefaultApp",
     "label": "Open in default app",
     "binding": null,
