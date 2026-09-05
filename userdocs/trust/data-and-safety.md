@@ -21,12 +21,23 @@ person. The vault's key sits in your OS keychain, stored against that
 specific vault file — a second vault, or a vault restored from a
 backup, gets its own key rather than replacing the first one's.
 
-Turn on "Require Touch ID to unlock" and Mill asks for Touch ID or your
-Mac password before the vault opens. Be clear about what that buys you:
-it proves who is at the keyboard, and it does not stop another program
-running as you from reading the key out of the keychain. Lock and
-unlock the vault from the command palette (⌘K) too — search "vault"
-and only the action that currently applies shows up.
+Turn on the unlock requirement and Mill asks before the vault opens.
+The checkbox names what this Mac can actually offer — Touch ID, an
+Apple Watch, your Mac password — rather than promising hardware you
+may not have. Be clear about what that buys you: it proves who is at
+the keyboard, and it does not stop another program running as you from
+reading the key out of the keychain. Lock and unlock the vault from the
+command palette (⌘K) too — search "vault" and only the action that
+currently applies shows up.
+
+Secrets > Locking decides when the vault closes itself. Choose how long
+it may sit idle, from one minute to eight hours, a custom number of
+minutes, or never; the count is time since you last used this Mac, so
+working in another app keeps the vault open. Three checkboxes close it
+regardless of idle time: when this Mac sleeps or the screen locks, when
+you switch users, and when Mill's window is minimized. The first two
+start on. The Secrets page states both halves in one line: what it
+takes to unlock, and how long it stays open.
 
 If Mill can't open your vault file — the key for it isn't on this
 device, or the key it has doesn't fit — the locked screen says which,

@@ -469,6 +469,7 @@ func main() {
 	settingsService.SetWindow(windowing.WrapWindow(mainWindow))
 	settingsService.WatchWindowGeometry()
 	atlasService.WireFileDropWindow(windowing.WrapWindow(mainWindow))
+	secretService.WireLockTriggers(windowing.WrapWindow(mainWindow))
 	launchatlogin.SetAutostartManager(app.Autostart)
 
 	// ADR-0033 second-window family, built in auxwindows.go.

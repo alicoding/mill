@@ -101,6 +101,7 @@ export { SecretService } from '../../bindings/github.com/alicoding/mill/internal
 export type {
   ListSecretAccessRequest,
   ListSecretAccessResponse,
+  LockPolicy,
   SecretAccessRecord,
   Status as VaultStatus,
 } from '../../bindings/github.com/alicoding/mill/internal/services/secretsvc/models'
