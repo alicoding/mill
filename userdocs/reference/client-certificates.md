@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # Client certificates
 
 Some servers ask the caller to prove who it is with a certificate, not
