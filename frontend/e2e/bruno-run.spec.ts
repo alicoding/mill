@@ -41,7 +41,7 @@ test('the seeded Bruno run mirrors the CLI report into the results List, one row
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mill-e2e-bruno-'))
   fs.writeFileSync(path.join(dir, 'bru'), STUB_BRU, { mode: 0o755 })
   await page.goto('/')
-  const env = await callBindingViaRPC<{ ID: string }>(page, `${CONFIGURE}.CreateExecEnv`, ['ZzE2eBrunoStubEnv', 'sh', 'clean', '<mill-temp>', [`PATH=${dir}:/usr/bin:/bin`]])
+  const env = await callBindingViaRPC<{ ID: string }>(page, `${CONFIGURE}.CreateExecEnv`, ['ZzE2eBrunoStubEnv', 'sh', 'clean', '<mill-temp>', [`PATH=${dir}:/usr/bin:/bin`], ''])
   try {
     const workflows = await callBindingViaRPC<Workflow[]>(page, `${COMPOSITION}.Workflows`, [])
     const wf = workflows.find((w) => w.ID === WORKFLOW_ID)

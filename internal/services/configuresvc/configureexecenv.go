@@ -89,6 +89,18 @@ func (c *ConfigureService) resolveExecEnv(id string, run composition.SecretAcces
 	if err != nil {
 		return composition.ResolvedExecEnv{}, err
 	}
+	// An Environment's variables are materialized FIRST and this
+	// ExecEnv's own entries appended after, so a duplicate key resolves
+	// to the shell's own value: exec.Cmd.Env takes the LAST entry for a
+	// repeated name, which is what makes appending an override
+	// (execenv.ExecEnv.EnvironmentID's own doc comment).
+	if found.EnvironmentID != "" {
+		base, err := c.environmentEnvEntries(found.EnvironmentID, run)
+		if err != nil {
+			return composition.ResolvedExecEnv{}, fmt.Errorf("execution environment %q: %w", found.Label, err)
+		}
+		env = append(base, env...)
+	}
 	return composition.ResolvedExecEnv{
 		Shell: string(found.Shell), ProfileMode: string(found.ProfileMode), Dir: found.Dir, Env: env, Label: found.Label,
 	}, nil
@@ -116,19 +128,20 @@ func (c *ConfigureService) execEnvExistsLocked(id string) bool {
 	return false
 }
 
-func (c *ConfigureService) CreateExecEnv(label string, shell execenv.Shell, profileMode execenv.ProfileMode, dir string, env []string) (execenv.ExecEnv, error) {
-	return c.createExecEnvWithID(seeding.NewSlugID(label, "execenv"), label, shell, profileMode, dir, env)
+func (c *ConfigureService) CreateExecEnv(label string, shell execenv.Shell, profileMode execenv.ProfileMode, dir string, env []string, environmentID string) (execenv.ExecEnv, error) {
+	return c.createExecEnvWithID(seeding.NewSlugID(label, "execenv"), label, shell, profileMode, dir, env, environmentID)
 }
 
 // createExecEnvWithID is CreateExecEnv's own logic, parameterized on
 // the new environment's id -- the seam ImportExecEnv uses to preserve a
 // caller-supplied id (ADR-0036 decision 3).
-func (c *ConfigureService) createExecEnvWithID(id, label string, shell execenv.Shell, profileMode execenv.ProfileMode, dir string, env []string) (execenv.ExecEnv, error) {
+func (c *ConfigureService) createExecEnvWithID(id, label string, shell execenv.Shell, profileMode execenv.ProfileMode, dir string, env []string, environmentID string) (execenv.ExecEnv, error) {
 	now := time.Now()
 	e := execenv.ExecEnv{
 		ID: id, Label: label,
 		Shell: shell, ProfileMode: profileMode, Dir: dir, Env: env,
-		CreatedAt: now, UpdatedAt: now,
+		EnvironmentID: environmentID,
+		CreatedAt:     now, UpdatedAt: now,
 	}
 	if err := execenv.Validate(e); err != nil {
 		return execenv.ExecEnv{}, err
@@ -141,8 +154,8 @@ func (c *ConfigureService) createExecEnvWithID(id, label string, shell execenv.S
 	return e, nil
 }
 
-func (c *ConfigureService) UpdateExecEnv(id, label string, shell execenv.Shell, profileMode execenv.ProfileMode, dir string, env []string) (execenv.ExecEnv, error) {
-	e := execenv.ExecEnv{ID: id, Label: label, Shell: shell, ProfileMode: profileMode, Dir: dir, Env: env}
+func (c *ConfigureService) UpdateExecEnv(id, label string, shell execenv.Shell, profileMode execenv.ProfileMode, dir string, env []string, environmentID string) (execenv.ExecEnv, error) {
+	e := execenv.ExecEnv{ID: id, Label: label, Shell: shell, ProfileMode: profileMode, Dir: dir, Env: env, EnvironmentID: environmentID}
 	if err := execenv.Validate(e); err != nil {
 		return execenv.ExecEnv{}, err
 	}
@@ -200,6 +213,10 @@ type exportedExecEnv struct {
 	ProfileMode execenv.ProfileMode `json:"profileMode"`
 	Dir         string              `json:"dir"`
 	Env         []string            `json:"env"`
+	// EnvironmentID travels with the export so a shell that borrows an
+	// Environment's variables still does after an import -- omitempty
+	// keeps an export without one byte-identical to pre-field data.
+	EnvironmentID string `json:"environmentId,omitempty"`
 }
 
 func (c *ConfigureService) ExportExecEnv(id string) (string, error) {
@@ -218,7 +235,7 @@ func (c *ConfigureService) ExportExecEnv(id string) (string, error) {
 		return "", fmt.Errorf("no execution environment with id %q", id)
 	}
 
-	data, err := json.MarshalIndent(exportedExecEnv{Schema: contract.SchemaID("execenv"), ID: e.ID, Label: e.Label, Shell: e.Shell, ProfileMode: e.ProfileMode, Dir: e.Dir, Env: e.Env}, "", "  ")
+	data, err := json.MarshalIndent(exportedExecEnv{Schema: contract.SchemaID("execenv"), ID: e.ID, Label: e.Label, Shell: e.Shell, ProfileMode: e.ProfileMode, Dir: e.Dir, Env: e.Env, EnvironmentID: e.EnvironmentID}, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("export execution environment: %w", err)
 	}
@@ -241,13 +258,13 @@ func (c *ConfigureService) ImportExecEnv(jsonData string) (execenv.ExecEnv, erro
 	}
 	return entitystore.DispatchImport(exists, in.ID,
 		func() (execenv.ExecEnv, error) {
-			return c.UpdateExecEnv(in.ID, in.Label, in.Shell, in.ProfileMode, in.Dir, in.Env)
+			return c.UpdateExecEnv(in.ID, in.Label, in.Shell, in.ProfileMode, in.Dir, in.Env, in.EnvironmentID)
 		},
 		func() (execenv.ExecEnv, error) {
-			return c.createExecEnvWithID(in.ID, in.Label, in.Shell, in.ProfileMode, in.Dir, in.Env)
+			return c.createExecEnvWithID(in.ID, in.Label, in.Shell, in.ProfileMode, in.Dir, in.Env, in.EnvironmentID)
 		},
 		func() (execenv.ExecEnv, error) {
-			return c.CreateExecEnv(in.Label, in.Shell, in.ProfileMode, in.Dir, in.Env)
+			return c.CreateExecEnv(in.Label, in.Shell, in.ProfileMode, in.Dir, in.Env, in.EnvironmentID)
 		},
 	)
 }

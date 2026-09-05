@@ -25,6 +25,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/conversionprofile"
 	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/declaredsteptype"
+	"github.com/alicoding/mill/internal/domain/environment"
 	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
@@ -88,6 +89,7 @@ type ConfigureService struct {
 	mcpServers         []mcpserver.MCPServer
 	decisions          []decision.Decision
 	execEnvs           []execenv.ExecEnv
+	environments       []environment.Environment
 	secretSources      []secretsource.Source
 	conversionProfiles []conversionprofile.Profile
 	clientCerts        []clientcert.ClientCertificate
@@ -162,6 +164,7 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.restoreMCPServers()
 	c.restoreDecisions()
 	c.restoreExecEnvs()
+	c.restoreEnvironments()
 	c.restoreSecretSources()
 	c.restoreConversionProfiles()
 	c.restoreClientCertificates()
@@ -174,6 +177,7 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.reconcileBuiltInLists()
 	c.reconcileBuiltInMCPServers()
 	c.reconcileBuiltInExecEnvs()
+	c.reconcileBuiltInEnvironments()
 	c.reconcileBuiltInAIProviders()
 	c.reconcileBuiltInConversionProfiles()
 	c.reconcileBuiltInClientCertificates()
@@ -192,6 +196,8 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	composition.SetMCPServerLookup(c.resolveMCPServer)
 	composition.SetDecisionLookup(c.resolveDecision)
 	composition.SetExecEnvLookup(c.resolveExecEnv)
+	composition.SetEnvironmentLookup(c.resolveEnvironment)
+	composition.SetEnvironmentVarGapCheck(c.environmentVarGap)
 	composition.SetAIProviderLookup(c.resolveAIProvider)
 	composition.SetDeclaredNodeTypeLookup(c.declaredStepBindings)
 	// Must run AFTER the provider above is wired -- goal 0054 slice A's

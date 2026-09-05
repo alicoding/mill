@@ -530,6 +530,19 @@ export interface Workflow {
      * the field's existence.
      */
     "OfferOnRequestID"?: string;
+
+    /**
+     * DefaultEnvironmentID names the Environment this workflow's runs
+     * use unless a run picks another (goal 0306 S5) -- a scheduled or
+     * triggered run has no one to ask, so this is the only thing it can
+     * use. Empty = no environment, which is only a problem for a
+     * workflow that actually references {{var}} somewhere.
+     * omitempty for the same reason OfferOnRequestID carries it: a
+     * workflow without one stays byte-identical to pre-field data, so
+     * persisted stores and the committed seed fingerprints are
+     * untouched by the field's existence.
+     */
+    "DefaultEnvironmentID"?: string;
 }
 
 /**

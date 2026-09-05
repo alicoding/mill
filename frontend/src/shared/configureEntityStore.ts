@@ -4,6 +4,7 @@ import type { List } from '../../bindings/github.com/alicoding/mill/internal/dom
 import type { Decision } from '../../bindings/github.com/alicoding/mill/internal/domain/decision/models'
 import type { MCPServer } from '../../bindings/github.com/alicoding/mill/internal/domain/mcpserver/models'
 import type { ExecEnv } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
+import type { Environment } from '../../bindings/github.com/alicoding/mill/internal/domain/environment/models'
 import type { Source as SecretSource } from '../../bindings/github.com/alicoding/mill/internal/domain/secretsource/models'
 import type { Profile as ConversionProfile } from '../../bindings/github.com/alicoding/mill/internal/domain/conversionprofile/models'
 import type { AIProvider } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
@@ -30,6 +31,7 @@ interface ConfigureEntityState {
   decisions: Decision[] | null
   mcpServers: MCPServer[] | null
   execEnvs: ExecEnv[] | null
+  environments: Environment[] | null
   secretSources: SecretSource[] | null
   conversionProfiles: ConversionProfile[] | null
   aiProviders: AIProvider[] | null
@@ -40,6 +42,7 @@ interface ConfigureEntityState {
   setDecisions: (decisions: Decision[]) => void
   setMCPServers: (mcpServers: MCPServer[]) => void
   setExecEnvs: (execEnvs: ExecEnv[]) => void
+  setEnvironments: (environments: Environment[]) => void
   setSecretSources: (secretSources: SecretSource[]) => void
   setConversionProfiles: (conversionProfiles: ConversionProfile[]) => void
   setAIProviders: (aiProviders: AIProvider[]) => void
@@ -52,6 +55,7 @@ export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => (
   decisions: null,
   mcpServers: null,
   execEnvs: null,
+  environments: null,
   secretSources: null,
   conversionProfiles: null,
   aiProviders: null,
@@ -62,6 +66,7 @@ export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => (
   setDecisions: (decisions) => set({ decisions }),
   setMCPServers: (mcpServers) => set({ mcpServers }),
   setExecEnvs: (execEnvs) => set({ execEnvs }),
+  setEnvironments: (environments) => set({ environments }),
   setSecretSources: (secretSources) => set({ secretSources }),
   setConversionProfiles: (conversionProfiles) => set({ conversionProfiles }),
   setAIProviders: (aiProviders) => set({ aiProviders }),
@@ -92,6 +97,11 @@ export function refreshMCPServers(): Promise<void> {
 export function refreshExecEnvs(): Promise<void> {
   return background(ConfigureService.ExecEnvs()
     .then((list) => useConfigureEntityStore.getState().setExecEnvs(list ?? [])), 'configureEntity.execEnvs')
+}
+
+export function refreshEnvironments(): Promise<void> {
+  return background(ConfigureService.Environments()
+    .then((list) => useConfigureEntityStore.getState().setEnvironments(list ?? [])), 'configureEntity.environments')
 }
 
 export function refreshConversionProfiles(): Promise<void> {

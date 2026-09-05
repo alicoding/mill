@@ -4,7 +4,8 @@ import { ConfigureService } from './bindings'
 import { listMCPServerTools } from './mcpToolsStore'
 import {
   refreshAIProviders, refreshClientCerts, refreshConversionProfiles, refreshDecisions, refreshDeclaredStepTypes,
-  refreshExecEnvs, refreshLists, refreshMCPServers, refreshSecretSources, useConfigureEntityStore,
+  refreshEnvironments, refreshExecEnvs, refreshLists, refreshMCPServers, refreshSecretSources,
+  useConfigureEntityStore,
 } from './configureEntityStore'
 import { refreshRequests, useAppStore } from './store'
 import { refreshSeedRevisions, shippedRevision } from './seedRevisionStore'
@@ -114,6 +115,17 @@ const execEnvs = seeded({
   remove: (id) => ConfigureService.DeleteExecEnv(id),
 })
 
+const environments = seeded({
+  entity: 'environment',
+  namespace: 'configure.environment',
+  load: () => useConfigureEntityStore.getState().environments,
+  refetch: refetchWith(refreshEnvironments),
+  duplicate: (item) => openConfigureDuplicate('environments', item.ID),
+  exportEntity: (id) => ConfigureService.ExportEnvironment(id),
+  reset: (id) => ConfigureService.ResetEnvironmentToSeed(id),
+  remove: (id) => ConfigureService.DeleteEnvironment(id),
+})
+
 const aiProviders = seeded({
   entity: 'aiprovider',
   namespace: 'configure.aiprovider',
@@ -184,6 +196,6 @@ const clientCerts: EntityRowFamily<EntityRowItem> = {
 }
 
 export const CONFIGURE_ROW_COMMANDS: Command[] = [
-  requests, lists, mcpServers, decisions, execEnvs, aiProviders,
+  requests, lists, mcpServers, decisions, execEnvs, environments, aiProviders,
   stepTypes, conversionProfiles, secretSources, clientCerts,
 ].flatMap((family) => entityRowCommands(family as EntityRowFamily<EntityRowItem>))
