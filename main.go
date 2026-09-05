@@ -211,6 +211,7 @@ func main() {
 	}
 	codeLoopService.SetExecutionService(executionService)
 	wiring.WireCodingLoopSecrets(codeLoopService, secretService)
+	wiring.WireVaultWaits(executionService, secretService) // goal 0360 S2
 	wiring.WireCodingLoopEnvPreview(codeLoopService, compositionService, configureService) // docs/goals/0240 S4
 	// Single execution path (docs/adr/0008): a headless trigger fire now
 	// runs through the same durable ExecutionService.RunWorkflow every

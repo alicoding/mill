@@ -6,7 +6,10 @@ import (
 	"testing"
 
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
+	"github.com/alicoding/mill/internal/adapters/secretvault"
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/domain/httprequest"
+	"github.com/alicoding/mill/internal/domain/secret"
 )
 
 // TestResolveMCPServer_VaultRefResolved proves an MCPServer.Env entry
@@ -103,5 +106,31 @@ func TestResolveMCPServer_NoEnv_Unaffected(t *testing.T) {
 	}
 	if len(rs.Env) != 0 {
 		t.Fatalf("resolveMCPServer Env = %v, want empty", rs.Env)
+	}
+}
+
+// The MCP env door and the HTTP request door both surface a locked
+// vault as secret.ErrVaultLocked through their own wraps -- what the
+// run executor maps to a vault wait rather than a failed step.
+func TestResolveMCPServerAndHTTPRequest_VaultLocked_IsVaultLocked(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	cfg.SetSecretResolver(func(string, secretaudit.AccessContext) (string, error) { return "", secretvault.ErrLocked })
+
+	s, err := cfg.CreateMCPServer("GitHub", "github-mcp-server", nil, []string{"GITHUB_TOKEN=vault:entry-1"})
+	if err != nil {
+		t.Fatalf("CreateMCPServer: %v", err)
+	}
+	_, err = cfg.resolveMCPServer(s.ID, composition.SecretAccessRun{})
+	if !errors.Is(err, secret.ErrVaultLocked) || !secret.IsVaultLocked(err) {
+		t.Fatalf("resolveMCPServer on a locked vault = %v, want secret.ErrVaultLocked", err)
+	}
+
+	req, err := cfg.CreateHTTPRequest("Keyed", "https://example.test", "GET", "", httprequest.AuthAPIKey, "vault:entry-1", nil, "", nil, nil, "")
+	if err != nil {
+		t.Fatalf("CreateHTTPRequest: %v", err)
+	}
+	_, err = cfg.resolveHTTPRequest(req.ID, composition.SecretAccessRun{})
+	if !errors.Is(err, secret.ErrVaultLocked) || !secret.IsVaultLocked(err) {
+		t.Fatalf("resolveHTTPRequest on a locked vault = %v, want secret.ErrVaultLocked", err)
 	}
 }
