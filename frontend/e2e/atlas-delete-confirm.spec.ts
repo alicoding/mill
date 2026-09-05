@@ -81,7 +81,7 @@ test('deleting a frame with children confirms with the promoted count; cancel ke
     await frame.getByTestId('atlas-group-header').click({ button: 'right' })
     await expect(menu).toBeVisible()
     await menu.getByText('Delete', { exact: true }).click()
-    await expect(page.getByText('2 items inside move up a level. You can undo right after.')).toBeVisible()
+    await expect(page.getByText('2 items inside move up a level. You can undo right after.')).toBeVisible() // count: fixture-owned -- the two cards this test placed and grouped.
 
     // Cancel keeps everything.
     await page.getByRole('button', { name: 'Cancel' }).click()

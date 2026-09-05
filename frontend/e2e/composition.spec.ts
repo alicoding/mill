@@ -4,6 +4,7 @@ import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel, dragPaletteItemToCanvas, connectNodes } from './fixtures/canvas'
 import { clickCanvasNode } from './fixtures/canvasNode'
 import { waitForViewportStable } from './fixtures/animation'
+import { registeredStepTypes } from './fixtures/registryCounts'
 
 // Real Go bindings over HTTP (Wails3 server mode), not mocks -- same
 // setup/limitations as runbook.spec.ts (see its header comment):
@@ -63,44 +64,13 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   await page.getByTestId('new-workflow').click()
   await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(0)
   await activePanel(page).getByTestId('toggle-palette').click()
-  // 5 Trigger node types (SPEC.md §3.4) + trigger-callable
-  // (docs/adr/0010) + the original 4 capture/process/apply node types +
-  // decision-route, integration-http, list-lookup (SPEC.md §3.5's
-  // Branch/Integration/List execution engines) + mcp-tool-call
-  // (SPEC.md §3.6's MCP-client extension point) + child-workflow
-  // (docs/adr/0010) + process-inject-text (SPEC.md §3.3) +
-  // capture-attribute (the typed-input reader the seeded parent/child
-  // example uses, added via ADR-0006's self-registration) +
-  // human-review (the explicit human-in-the-loop checkpoint node,
-  // docs/adr/0022's Update + docs/adr/0023) + ruleset (docs/adr/0023's
-  // payload-validation node) + decision-outcome (the terminal Decision
-  // node, docs/adr/0027) + code-execution (docs/adr/0026's code
-  // execution capability, goal 0004b) + capture-file,
-  // process-extract-html, capture-clipboard-info (the save-page
-  // capture floor + clipboard inspector, docs/adr/0030 / SPEC.md §5) +
-  // list-search (docs/goals/0011-lists-maturation.md's richer, typed
-  // successor to list-lookup) + trigger-system-event (docs/adr/0035's
-  // unparked System/meta trigger) + process-ai-completion,
-  // process-ai-extract-structured, process-ai-classify (the AI node
-  // family, docs/goals/0031-ai-node-family.md) + apply-file-write (the
-  // write inverse of capture-file, goal 0044) + process-run-receipt
-  // (the evidence-receipt node, goal 0052 slice 3) + the seeded
-  // "Check httpbin" declared step type (data-backed, not a
-  // RegisterNodeType call site -- goal 0054 slice A, ADR-0037) +
-  // trigger-atlas-card, process-atlas-card-find, apply-atlas-card-create,
-  // apply-atlas-card-update, apply-atlas-card-link (the Atlas<->Workflows
-  // integration, goal 0066, ADR-0035/0038) + apply-backup-snapshot
-  // (goal 0065's data-stewardship backup step) + apply-list-row (the
-  // Lists write path, goal 0070) + apply-file-move (file verbs, goal
-  // 0087) + apply-atlas-from-reply (the clipboard bridge's accepted-
-  // reply materializer, goal 0099) + apply-atlas-ledger-sync (the
-  // delivery-evidence ledger's own mirror node, goal 0164) +
-  // trigger-clipboard-change, apply-clipboard-history-store (goal
-  // 0234's guarded clipboard-history capture) + process-shell-command
-  // (the coding loop's verbatim-shell-execution node, goal 0240 S1) +
-  // apply-list-sync (the synced List's writer, goal 0299) +
-  // process-todo-scan (goal 0285).
-  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(51)
+  // Derived, never a literal: the property is that the palette renders
+  // EVERY registered step type and drops none, so the number comes back
+  // through the door the panel is built from. The advanced toggle is
+  // that count's premise -- unchecked, the palette legitimately shows
+  // fewer -- so it is asserted rather than assumed.
+  await expect(activePanel(page).getByTestId('palette-show-advanced')).toBeChecked()
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount((await registeredStepTypes(page)).length)
 })
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {
