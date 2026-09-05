@@ -354,3 +354,12 @@ export const REVIEW_PARKED_PAYLOAD_MCP_BASE_PORT = 11580
 // enough that a new one would collide with another's MCP port.
 export const SECRET_SOURCE_PLUGIN_SERVER_BASE_PORT = 11600
 export const SECRET_SOURCE_PLUGIN_MCP_BASE_PORT = 11620
+
+// runtime-plugin-themes.spec.ts (goal 0348 follow-up): installs and
+// allows a fixture plugin at runtime, which writes into MILL_PLUGINS_DIR
+// and the plugin trust allow-list -- both process-wide/global state
+// testing.md's shared-vs-dedicated rule keeps off the shared pool, the
+// same reasoning every other runtime-plugin-*.spec.ts pair above
+// records.
+export const RUNTIME_PLUGIN_THEMES_SERVER_BASE_PORT = 11640
+export const RUNTIME_PLUGIN_THEMES_MCP_BASE_PORT = 11660
