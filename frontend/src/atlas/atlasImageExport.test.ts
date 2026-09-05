@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  CAPTURE_EXCLUDE_ATTRIBUTE,
+  CAPTURE_LABEL_ATTRIBUTE,
+  CAPTURE_PLACEHOLDER_ATTRIBUTE,
   IMAGE_EXPORT_PADDING,
+  capturePlaceholderLabel,
   edgeIDsWithin,
   firstOpaqueColor,
   imageFilename,
@@ -113,5 +117,22 @@ describe('copiedNoticeKey', () => {
     expect(copiedNoticeKey(false, false)).toBe('imageExport.copiedBoard')
     expect(copiedNoticeKey(true, true)).toBe('imageExport.copiedSelectionRemote')
     expect(copiedNoticeKey(false, true)).toBe('imageExport.copiedBoardRemote')
+  })
+})
+
+// The naming contract AtlasBoard.module.css's own generic rules key
+// off (goal 0201 follow-up): pinned here so a rename on this side is
+// caught, since CSS can't import these constants to catch it itself.
+describe('capture attribute names', () => {
+  it('names the universal exclusion and placeholder attributes', () => {
+    expect(CAPTURE_EXCLUDE_ATTRIBUTE).toBe('data-capture-exclude')
+    expect(CAPTURE_PLACEHOLDER_ATTRIBUTE).toBe('data-capture-placeholder')
+    expect(CAPTURE_LABEL_ATTRIBUTE).toBe('data-capture-label')
+  })
+})
+
+describe('capturePlaceholderLabel', () => {
+  it('joins a frame-backed noun\'s own title beside its kind', () => {
+    expect(capturePlaceholderLabel('Quarterly report', 'PDF')).toBe('Quarterly report · PDF')
   })
 })
