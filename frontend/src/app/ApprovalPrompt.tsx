@@ -4,6 +4,7 @@ import { Button, IconButton, Stack, Text } from '@primer/react'
 import { ShieldIcon, XIcon } from '@primer/octicons-react'
 import { Events } from '@wailsio/runtime'
 import { ExecutionService, SettingsService } from '../shared/bindings'
+import { isVaultWait } from '../shared/parkReason'
 import type { RunSummary, MCPWriteRequest } from '../shared/bindings'
 import { StalenessBadge } from '../shared/StalenessBadge'
 import styles from './ApprovalPrompt.module.css'
@@ -88,7 +89,9 @@ export function ApprovalPrompt() {
     const g: PromptItem[] = guardrail.map((r) => ({
       kind: 'guardrail',
       id: r.runID,
-      description: t('pendingApprovalDescription', { workflowLabel: r.workflowLabel, step: r.pending?.nodeTypeLabel || r.pending?.nodeTypeID || t('pendingApprovalStepFallback') }),
+      description: isVaultWait(r.pending)
+          ? t('pendingVaultWaitDescription', { workflowLabel: r.workflowLabel })
+          : t('pendingApprovalDescription', { workflowLabel: r.workflowLabel, step: r.pending?.nodeTypeLabel || r.pending?.nodeTypeID || t('pendingApprovalStepFallback') }),
       time: Date.parse(r.startedAt),
     }))
     const m: PromptItem[] = mcpWrites.map((w) => ({
