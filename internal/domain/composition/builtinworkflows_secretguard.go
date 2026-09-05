@@ -2,6 +2,7 @@ package composition
 
 import (
 	"github.com/alicoding/mill/internal/domain/execenv"
+	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/seedorigin"
 )
 
@@ -17,6 +18,11 @@ import (
 const (
 	ExampleSecretGuardWorkflowID = "example-secret-guard-workflow"
 	ExampleSecretGuardStepID     = "example-secret-guard-step"
+	// ExampleScheduledSecretReadWorkflowID/StepID name goal 0360 S2's
+	// seeded proof: a scheduled step that reads a stored secret, so a
+	// locked vault makes it wait in Review instead of failing.
+	ExampleScheduledSecretReadWorkflowID = "example-scheduled-secret-read-workflow"
+	ExampleScheduledSecretReadStepID     = "example-scheduled-secret-read-step"
 )
 
 // builtInSecretGuardWorkflows returns goal 0203 S2's own seeded proof:
@@ -45,7 +51,35 @@ func builtInSecretGuardWorkflows() []Workflow {
 		panic("built-in workflow references an unknown node type: " + err.Error())
 	}
 
+	const scheduledSecretReadTriggerID = "example-scheduled-secret-read-trigger"
+	scheduledNodes, err := ResolveNodeDefaults([]Node{
+		{ID: scheduledSecretReadTriggerID, NodeTypeID: "trigger-schedule", Position: Position{X: 0, Y: 0},
+			Config: map[string]string{"cron": "*/15 * * * *"}},
+		{ID: ExampleScheduledSecretReadStepID, NodeTypeID: "integration-http", Position: Position{X: 0, Y: 100},
+			Config: map[string]string{"requestId": httprequest.ExampleAPIKeyID}},
+	})
+	if err != nil {
+		panic("built-in workflow references an unknown node type: " + err.Error())
+	}
+
 	return []Workflow{
+		{
+			// Goal 0360 S2's seeded proof: the request's API key is a
+			// stored secret, so with the vault locked this run parks in
+			// Review as "Waiting for the vault to unlock" and continues
+			// on unlock. Disabled like every seeded external example --
+			// its schedule only arms once someone turns it on.
+			ID:          ExampleScheduledSecretReadWorkflowID,
+			Label:       "Example: Scheduled read of a secret",
+			Description: "Every 15 minutes, calls the API key header example (Configure > Requests), whose key is a stored secret. If the vault is locked when it fires, the run waits in Review until you unlock the vault, then continues from that step. Run it by hand with the vault locked to see the wait. External steps ask for approval first unless a rule allows them.",
+			Nodes:       scheduledNodes,
+			Edges: []Edge{
+				{ID: "example-scheduled-secret-read-e0", Source: scheduledSecretReadTriggerID, Target: ExampleScheduledSecretReadStepID},
+			},
+			BuiltIn:  true,
+			Disabled: true,
+			Seed:     seedorigin.Stamp(1),
+		},
 		{
 			ID:          ExampleSecretGuardWorkflowID,
 			Label:       "Example: uses a stored secret",
