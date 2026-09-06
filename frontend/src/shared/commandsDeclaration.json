@@ -1008,6 +1008,22 @@
     "needs": null
   },
   {
+    "id": "listGrid.addColumn",
+    "label": "Add a column",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "listGrid"
+  },
+  {
+    "id": "listGrid.addRow",
+    "label": "Add a row",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "listGrid"
+  },
+  {
     "id": "listGrid.copyRows",
     "label": "Copy selected rows",
     "binding": null,

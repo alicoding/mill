@@ -1,12 +1,19 @@
 import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { IconButton } from '@primer/react'
+import { PlusIcon } from '@primer/octicons-react'
 import type { DataEditorProps, EditListItem, EditableGridCell, FillPatternEventArgs, GridCell, GridColumn as GlideColumn, Item, Rectangle, Theme } from '@glideapps/glide-data-grid'
 import type { GridColumn, GridRow } from './listGridTypes'
 import type { useListSchemaEdits } from './useListSchemaEdits'
-import { cellForColumn, valueFromEdited } from './listGridGlideCells'
+import { cellForColumn } from './listGridGlideCells'
 import { ColumnMenu, RenameOverlay, RowMenu, type Anchor } from './ListGridGlideMenus'
 import { GLIDE_DEFAULT_COLUMN_WIDTH, type GridPalette } from './listGridGlideTheme'
 import { fillSeries, type GridColumnFilter, type GridColumnFilters, type GridColumnSort, type GridSortDirection } from './listStandard'
 import { optionColor } from './projectionColors'
+import { editsByRow, pasteOverflowPatches } from './listGridGlideEdits'
+import { runCommand } from './commands'
+import { copy } from './copy'
+import styles from './ListGrid.module.css'
 
 // ListGridGlide's two halves that are not the grid mount itself
 // (split at the kit's complexity gate): the cell-edit callbacks the
@@ -67,22 +74,67 @@ export function menuProps(ctx: {
   }
 }
 
+// The grid's own "add a column" affordance (goal 0349 S4 Part B): a
+// small button, never the toolbar underneath the grid the library's
+// own placements replace. Shared by the header-end rail (AddColumnRail,
+// once the grid is mounted) and the empty state (before any column
+// exists, so nothing is mounted yet to carry a rail). A real component
+// (capitalized, per React's own convention) so it can resolve its own
+// label -- schemaEditorProps below is a plain builder function, not a
+// component, and cannot call a hook itself.
+export function AddColumnButton({ onClick }: { onClick: () => void }) {
+  const { t } = useTranslation('common')
+  return (
+    <IconButton
+      aria-label={t('listGrid.addColumnAriaLabel')}
+      icon={PlusIcon}
+      variant="invisible"
+      size="small"
+      onClick={onClick}
+      data-testid="list-grid-add-column"
+    />
+  )
+}
+
+// The header-end rail (DataEditor's own `rightElement`, the library's
+// documented "make a big add button" use of it): a real DOM node
+// outside the canvas, sized to exactly headerHeight so it reads as one
+// more header cell rather than a painted grid column -- the canvas
+// itself never draws past the last real column.
+export function AddColumnRail({ headerHeight, onClick }: { headerHeight: number; onClick: () => void }) {
+  return (
+    <div className={styles.addColumnRail} style={{ width: headerHeight }}>
+      <div className={styles.addColumnHeaderCell} style={{ height: headerHeight }}>
+        <AddColumnButton onClick={onClick} />
+      </div>
+    </div>
+  )
+}
+
 // The schema-editing half of the grid's props: column reorder and the
 // trailing add-row -- neither when schema editing is off (a read-only
-// mount). storedRowCount is the STORED row count, never the showing
-// one: an appended row lands at the end of the list itself, whatever
-// sort or filter is on.
+// mount). Stateless only: the header-end add-column rail is set
+// directly as a JSX prop on <DataEditor> in ListGridGlide.tsx instead
+// of flowing through here -- it closes over the mount's own
+// insertColumn, which writes a ref (pendingRenameKey) on resolve, and
+// a plain function call during render (this one) must never receive an
+// argument built from a ref-touching closure; only a JSX prop value
+// may carry one.
 export function schemaEditorProps(on: boolean, ctx: {
+  listID: string
   edits: Edits
-  storedRowCount: number
-  addRowHint: string
 }): Partial<DataEditorProps> {
   if (!on) return {}
-  const { edits, storedRowCount, addRowHint } = ctx
+  const { listID, edits } = ctx
   return {
     onColumnMoved: (from, to) => edits.moveColumn(from, to),
-    trailingRowOptions: { hint: addRowHint, sticky: false, tint: true },
-    onRowAppended: () => { edits.insertRowAt(storedRowCount) },
+    trailingRowOptions: { hint: copy('listGrid.addRowHint'), sticky: true, tint: true },
+    // Stateless: appending a row needs no rename-style follow-up, so
+    // it runs the registry command directly rather than reaching into
+    // any specific mount -- listGrid.addRow always appends at the
+    // list's own end regardless of which mount's trailing row was
+    // clicked.
+    onRowAppended: () => { void runCommand('listGrid.addRow', { kind: 'listGrid', listID, rowIDs: [] }) },
   }
 }
 
@@ -172,14 +224,7 @@ export function useGlideCellEdits(columns: GridColumn[], rows: GridRow[], edits:
 
   // Paste, fill, and Delete arrive as one batch: one write per row.
   const onCellsEdited = useCallback((items: readonly EditListItem[]) => {
-    const byRow = new Map<number, Record<string, string>>()
-    for (const { location: [col, rowIdx], value } of items) {
-      const column = columns[col]
-      if (!column || !rows[rowIdx]) continue
-      const patch = byRow.get(rowIdx) ?? {}
-      patch[column.Key] = valueFromEdited(value)
-      byRow.set(rowIdx, patch)
-    }
+    const byRow = editsByRow(columns, rows, items)
     byRow.forEach((patch, rowIdx) => { void edits.updateRowValues(rows[rowIdx], patch) })
     return true
   }, [columns, rows, edits])
@@ -190,20 +235,13 @@ export function useGlideCellEdits(columns: GridColumn[], rows: GridRow[], edits:
   // true then lets the library write the in-range part itself.
   const onPaste = useCallback((target: Item, values: readonly (readonly string[])[]) => {
     const [targetCol, targetRow] = target
-    const overflow = values.slice(Math.max(0, rows.length - targetRow))
+    const overflow = pasteOverflowPatches(columns, rows, targetCol, targetRow, values)
     if (overflow.length > 0) {
       if (!paste.canAppendRows) {
         paste.onRowsDropped(overflow.length)
         return true
       }
-      void edits.appendRowsWithValues(overflow.map((line) => {
-        const patch: Record<string, string> = {}
-        for (const [i, cell] of line.entries()) {
-          const column = columns[targetCol + i]
-          if (column) patch[column.Key] = cell
-        }
-        return patch
-      }))
+      void edits.appendRowsWithValues(overflow)
     }
     return true
   }, [columns, rows, edits, paste])

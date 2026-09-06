@@ -5,7 +5,7 @@ import { ATLAS_KIND_DOCUMENT, selectKind } from './fixtures/kindPicker'
 import { clickBoardPoint, clickFrameGutter, dragResizeHandle, openCard } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
-import { clickGlideCell, editGlideCell, glideCellText, openGlideCellEditor } from './fixtures/glideGrid'
+import { clickGlideCell, clickGlideTrailingRow, editGlideCell, glideCellText, openGlideCellEditor } from './fixtures/glideGrid'
 import type { Locator, Page } from '@playwright/test'
 
 // List -> table projection (goal 0105 minimal slice, relocated onto a
@@ -148,19 +148,16 @@ test('boundary inserts, cell edits, and column rename all work in place on the c
   await expect(glide).toBeVisible()
 
   // Empty List: the honest invitation (no grid mounts with zero
-  // columns), then + Column names itself in place (auto label ->
-  // immediate rename input).
+  // columns), then the empty state's own add-column button names
+  // itself in place (auto label -> immediate rename input).
   await expect(glide).toContainText('No columns yet')
-  await glide.getByTestId('atlas-projection-add-column').click()
+  await glide.getByTestId('list-grid-add-column').click()
   await glide.getByTestId('atlas-projection-rename-input').fill('Vendor')
   await glide.getByTestId('atlas-projection-rename-input').press('Enter')
   await expect(glide.locator('[role="columnheader"]').nth(0)).toHaveText('Vendor')
 
-  // + Row, then edit the cell in place. The row lands through the same
-  // async refetch every schema edit does -- wait for the host's own
-  // row count before clicking into it, or a click can land on the
-  // grid's still-shifting trailing "+ New row" hint instead.
-  await glide.getByTestId('atlas-projection-add-row').click()
+  // The grid's own trailing row, then edit the cell in place.
+  await clickGlideTrailingRow(page, glide)
   await expect(glide).toHaveAttribute('data-rows', '1')
   await editGlideCell(page, glide, 0, 0, 'Acme')
   await expect(glideCellText(glide, 0, 0)).toHaveText('Acme')

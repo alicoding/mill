@@ -1,6 +1,6 @@
 import { test, expect, type Page } from './fixtures/server'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
-import { clickGlideCell, clickGlideRowMarker, dragGlideColumnEdge, dragGlideFillHandle, dragGlideRange, glideCellText, glideTextEditor, typeOverGlideCell } from './fixtures/glideGrid'
+import { clickGlideCell, clickGlideRowMarker, clickGlideTrailingRow, dragGlideColumnEdge, dragGlideFillHandle, dragGlideRange, glideCellText, glideTextEditor, typeOverGlideCell } from './fixtures/glideGrid'
 
 // The eight converged table interactions on the List grid (goal 0349
 // S4): range select, type-to-overwrite, fill handle, clipboard both
@@ -272,5 +272,26 @@ test('⌘F does not open the grid search when focus is outside the grid', async 
   await page.getByTestId('list-label').focus()
   await page.keyboard.press('Meta+f')
   await expect(glide.getByTestId('search-input')).toBeHidden()
+  await cleanup(page, id)
+})
+
+// 10. Adding a row or a column lives where the library's own grids put
+// it -- the trailing row, the header-end "+" -- never a button under
+// the grid (goal 0349 S4 Part B).
+test('the trailing row appends a row and the header-end "+" appends a column, with no button under the grid', async ({ page }) => {
+  const { id, glide } = await seedAndOpen(page, 'E2E grid add placements', FOUR_ROWS)
+
+  await clickGlideTrailingRow(page, glide)
+  await expect(glide).toHaveAttribute('data-stored-rows', '5')
+
+  await glide.getByTestId('list-grid-add-column').click()
+  await expect(glide.getByTestId('atlas-projection-rename-input')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(glide).toHaveAttribute('data-columns', '3')
+
+  // The buttons this replaces are gone; the bulk-action row still
+  // renders (its OWN commands are unaffected).
+  await expect(page.getByTestId('atlas-projection-add-row')).toHaveCount(0)
+  await expect(page.getByTestId('atlas-projection-add-column')).toHaveCount(0)
   await cleanup(page, id)
 })
