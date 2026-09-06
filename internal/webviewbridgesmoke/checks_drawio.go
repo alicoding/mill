@@ -37,35 +37,47 @@ const drawioTwoPageFixture = `<mxfile host="app.diagrams.net" type="device">
 
 // landTwoPageDiagram writes the fixture to a throwaway path and lands
 // it as a diagram board object through the same RPC a native drop
-// uses, waiting until the board face renders and settles.
-func landTwoPageDiagram(c mcpCaller) error {
+// uses, waiting until the board face renders and settles. Returns the
+// object's id so a check that lands one can take it away again: every
+// selector here addresses the FIRST diagram on the board, so two left
+// standing would make each later check ambiguous.
+func landTwoPageDiagram(c mcpCaller) (string, error) {
 	dir, err := os.MkdirTemp("", "mill-smoke-drawio")
 	if err != nil {
-		return err
+		return "", err
 	}
 	fixturePath := filepath.Join(dir, "two-page-smoke.drawio")
 	if err := os.WriteFile(fixturePath, []byte(drawioTwoPageFixture), 0o600); err != nil {
-		return err
+		return "", err
 	}
 	parentID, err := gettingStartedParentID(c)
 	if err != nil {
-		return err
+		return "", err
 	}
 	var obj struct {
 		ID string `json:"ID"`
 	}
 	if err := callBoundJSON(c, "github.com/alicoding/mill/internal/services/atlassvc.AtlasService.CreateBoardObject",
 		[]any{"diagram", map[string]any{"mirrorPath": fixturePath, "title": "smoke two-page"}, map[string]any{"X": 620, "Y": 340}, parentID}, &obj); err != nil {
-		return err
+		return "", err
 	}
 	bodySel := `[data-testid="atlas-drawio-page-body"]`
 	if err := pollJSEval(c, fmt.Sprintf(`return !!document.querySelector('%s');`, bodySel), 15*time.Second); err != nil {
-		return fmt.Errorf("diagram board face never rendered after CreateBoardObject: %w", err)
+		return "", fmt.Errorf("diagram board face never rendered after CreateBoardObject: %w", err)
 	}
 	if err := waitForNodeStable(c, bodySel); err != nil {
-		return fmt.Errorf("board never settled before the band click: %w", err)
+		return "", fmt.Errorf("board never settled before the band click: %w", err)
 	}
-	return nil
+	return obj.ID, nil
+}
+
+// removeBoardObject takes back what a check landed, through the same
+// guarded door the object's own menu uses.
+func removeBoardObject(c mcpCaller, id string) error {
+	var out struct {
+		ID string `json:"ID"`
+	}
+	return callBoundJSON(c, "github.com/alicoding/mill/internal/services/atlassvc.AtlasService.DeleteBoardObject", []any{id}, &out)
 }
 
 // bandSel is the diagram's chrome band -- the drag surface (the
@@ -125,7 +137,7 @@ func closeDrawioEditor(c mcpCaller, dialogSel string) error {
 }
 
 func checkDrawioEditorLayout(c mcpCaller) (string, error) {
-	if err := landTwoPageDiagram(c); err != nil {
+	if _, err := landTwoPageDiagram(c); err != nil {
 		return "", err
 	}
 
@@ -196,4 +208,86 @@ func checkDrawioEditorLayout(c mcpCaller) (string, error) {
 		return "", err
 	}
 	return "board face selectable via band with full resize handles; editor dialog, iframe, and the two-page tab bar all inside the real window, editor closed (" + verdict + ")", nil
+}
+
+// The board's own pan/zoom position, as one comparable string: the
+// canvas kit writes its viewport onto .react-flow__viewport's inline
+// transform, so "the board never moved" is that string holding still.
+func boardViewportTransform(c mcpCaller) (string, error) {
+	return c.call("js_eval", withWindow(map[string]any{
+		"js": `const vp = document.querySelector('.react-flow__viewport');
+			return vp ? (vp.style.transform || 'none') : 'no-viewport';`,
+	}))
+}
+
+// checkDiagramFaceOwnsWheel drives a wheel over a SELECTED diagram in
+// the real engine and reads who moved (goal 0354 S2).
+func checkDiagramFaceOwnsWheel(c mcpCaller) (string, error) {
+	objectID, err := landTwoPageDiagram(c)
+	if err != nil {
+		return "", err
+	}
+	bodySel := `[data-testid="atlas-drawio-page-body"]`
+	// Every selector below is scoped to the DIAGRAM's own object: the
+	// board this smoke runs against carries other board objects, and
+	// each of them has a face and a chrome band of its own.
+	objectSel := `[data-testid="atlas-board-object"][data-object-kind="diagram"]`
+	bandSel := objectSel + ` [data-testid="atlas-board-object-frame"]`
+	if _, err := c.call("mouse_click", withWindow(map[string]any{"selector": bodySel})); err != nil {
+		return "", err
+	}
+	if err := pollJSEval(c, fmt.Sprintf(`return document.querySelector('%s').dataset.activation === 'selected';`, objectSel), 5*time.Second); err != nil {
+		return "", fmt.Errorf("the diagram never reached the selected state after a body click: %w", err)
+	}
+
+	// The kit's OWN rule, asserted the way the kit itself asks it:
+	// `closest('.nowheel')`. The face must answer it and the chrome
+	// band must not -- the band is frame, so it stays with the canvas
+	// and a live object never becomes a dead zone.
+	ancestry, err := c.call("js_eval", withWindow(map[string]any{
+		"js": fmt.Sprintf(`const obj = document.querySelector('%s');
+			if (!obj) return "no-diagram";
+			const face = obj.querySelector('[data-testid="atlas-board-object-face"]');
+			const band = obj.querySelector('[data-testid="atlas-board-object-frame"]');
+			if (!face || !band) return "missing-face-or-band";
+			if (!face.closest('.nowheel')) return "face-not-nowheel";
+			if (band.closest('.nowheel')) return "band-inside-nowheel";
+			return "ok";`, objectSel),
+	}))
+	if err != nil {
+		return "", err
+	}
+	if ancestry != "ok" {
+		return "", fmt.Errorf("the wheel opt-out is placed wrong in the real engine: %s", ancestry)
+	}
+
+	before, err := boardViewportTransform(c)
+	if err != nil {
+		return "", err
+	}
+	if _, err := c.call("mouse_scroll", withWindow(map[string]any{"selector": bodySel, "delta_x": 0, "delta_y": 120})); err != nil {
+		return "", err
+	}
+	overFace, err := boardViewportTransform(c)
+	if err != nil {
+		return "", err
+	}
+	if overFace != before {
+		return "", fmt.Errorf("a wheel over the selected face ALSO moved the board: %s -> %s", before, overFace)
+	}
+
+	if _, err := c.call("mouse_scroll", withWindow(map[string]any{"selector": bandSel, "delta_x": 0, "delta_y": 120})); err != nil {
+		return "", err
+	}
+	overBand, err := boardViewportTransform(c)
+	if err != nil {
+		return "", err
+	}
+	if overBand == before {
+		return "", fmt.Errorf("a wheel over the chrome band never reached the board -- a selected object is a dead zone: %s", before)
+	}
+	if err := removeBoardObject(c, objectID); err != nil {
+		return "", fmt.Errorf("the check's own diagram outlived it, leaving a second one for every later check: %w", err)
+	}
+	return "selected face answers the kit's nowheel rule and the band does not; a wheel over the face left the board at " + before + ", one over the band moved it to " + overBand, nil
 }

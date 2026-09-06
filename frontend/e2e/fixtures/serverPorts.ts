@@ -418,6 +418,17 @@ export const ATLAS_IMAGE_TOOL_HOST_PASTE_MCP_BASE_PORT = 11900
 export const ATLAS_IMAGE_EXPORT_HOST_COPY_SERVER_BASE_PORT = 11920
 export const ATLAS_IMAGE_EXPORT_HOST_COPY_MCP_BASE_PORT = 11940
 
+// browser-replay.spec.ts's own dedicated pair (goal 0350 S2): it pairs
+// a browser and edits the SEEDED "Replay a browser flow" workflow, both
+// global app state (testing.md's shared-vs-dedicated rule), and its own
+// pair rather than a BROWSER_BRIDGE_* offset so the two browser specs
+// can never contend for one bridge listener. Placed past every pair
+// above (clear of the EXTENSIONS_*/SECRETS_RUN_WAIT_* pairs further
+// down this file too) rather than reusing 11760/11780, which main's
+// own CLIPBOARD_BRIDGE_*/EXTENSIONS_STORE_* pairs already occupy.
+export const BROWSER_REPLAY_SERVER_BASE_PORT = 11960
+export const BROWSER_REPLAY_MCP_BASE_PORT = 11980
+
 // Every spawned server binds a browser-bridge listener too, derived
 // from its own server port by this offset rather than declared per
 // spec: a bridge port is needed by EVERY server (the service starts
@@ -446,6 +457,12 @@ export const EXTENSIONS_INSTALL_MCP_BASE_PORT = 11820
 // folder, the same global state the store spec's pair isolates.
 export const EXTENSIONS_UPDATES_SERVER_BASE_PORT = 11840
 export const EXTENSIONS_UPDATES_MCP_BASE_PORT = 11860
+
+// secrets-run-wait.spec.ts's own dedicated pair (goal 0360 S2): the
+// vault's lock state and the global Review queue are both read, the
+// same shared-vs-dedicated reasoning as secrets.spec.ts's pair.
+export const SECRETS_RUN_WAIT_SERVER_BASE_PORT = 11880
+export const SECRETS_RUN_WAIT_MCP_BASE_PORT = 11900
 
 // extensions-policy.spec.ts (goal 0349 S6): its own pair, because the
 // organisation policy it boots with changes what every Extensions row

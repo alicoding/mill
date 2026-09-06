@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # Menu bar
 
 Every menu in Mill's menu bar is built from the same list of actions
@@ -133,6 +137,9 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Contents | — | `atlas.contents.open` |
 | Import atlas | — | `atlas.import` |
 | Export atlas | — | `atlas.export` |
+| Export board as .drawio | — | `atlas.export.drawio` |
+| Kinds | — | `atlas.kinds.open` |
+| Add a file to the board | — | `atlas.addFile` |
 | Copy as image | — | `atlas.selection.copyAsImage` |
 | Export as image… | — | `atlas.selection.exportAsImage` |
 | Add cards from a folder | — | `atlas.addFromFolder` |
@@ -140,6 +147,8 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Copy space links | — | `atlas.share.copyLinks` |
 | Open perspective switcher | — | `atlas.perspective` |
 | Select all | ⌘A | `atlas.selectAll` |
+| Previous page | — | `diagram.previousPage` |
+| Next page | — | `diagram.nextPage` |
 | Fit diagram | — | `diagram.fit` |
 | Toggle companion panel | — | `atlas.companion.toggle` |
 | Toggle minimap | — | `atlas.minimap.toggle` |

@@ -27,6 +27,7 @@ import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import styles from '../shared/ListCard.module.css'
+import { PaneLoading } from './PaneLoading'
 import PageContainer from '../shared/PageContainer'
 
 const TYPE_OPTIONS = ['text', 'number', 'boolean', 'options']
@@ -414,7 +415,7 @@ export function ConfigureDecisions() {
         </PageContainer>
       )}
 
-      {decisions === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
+      {decisions === null && <PaneLoading />}
       {decisions !== null && viewMode === 'table' && decisions.length > 0 && (
         <ResizableTableContainer storageKey="mill-cols-decisions">
           <DataTable

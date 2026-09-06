@@ -24,6 +24,34 @@ export function BridgeStatus(): $CancellablePromise<$models.Status> {
 }
 
 /**
+ * ExtensionFolder writes the extension out of the binary and returns
+ * the folder to load into a browser. Safe to call repeatedly: it
+ * rewrites what it already wrote.
+ */
+export function ExtensionFolder(): $CancellablePromise<string> {
+    return $Call.ByID(883568901);
+}
+
+/**
+ * ReadRecording validates an exported recording and describes it. A
+ * document the runner could not replay is refused here, at import,
+ * rather than at the first run.
+ */
+export function ReadRecording(raw: string): $CancellablePromise<$models.RecordingSummary> {
+    return $Call.ByID(812918367, raw);
+}
+
+/**
+ * RevealExtensionFolder writes the extension out and opens its folder
+ * in the file manager, ALWAYS returning the path: a browser's
+ * "Load unpacked" dialog needs it typed or pasted, and server mode has
+ * no file manager to open at all.
+ */
+export function RevealExtensionFolder(): $CancellablePromise<string> {
+    return $Call.ByID(4294938994);
+}
+
+/**
  * TestConnection replays the built-in flow against the page Mill serves
  * itself, proving navigation, selector resolution and a wait all reach
  * the browser and come back. A failure arrives as its own sentence, not

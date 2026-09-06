@@ -230,7 +230,7 @@ test('the eraser removes every erasable kind: ink, shape, image, card, note', as
 
   // Image (goal 0206's native-picker bypass -- every worker's server
   // returns the same fixture file regardless of path).
-  await page.getByTestId('atlas-tray-image').click()
+  await clickAtlasTrayTool(page, 'atlas-tray-image')
   await expect(page.getByTestId('atlas-image-input')).toBeVisible()
   await page.getByTestId('atlas-image-pick').click()
   const image = boardObjects(page, 'image')

@@ -3,9 +3,11 @@ import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { launchWithPlugins, runFromPalette } from './fixtures/runtimePlugins'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
-import { clickAtlasTrayTool } from './fixtures/atlasTray'
+import { armToolFromMorePanel, clickAtlasTrayTool } from './fixtures/atlasTray'
 import { contextMenu } from './fixtures/contextMenu'
 import { openPluginDetail } from './fixtures/settingsNav'
+import { openConfigureKind } from './fixtures/configureNav'
+import { expectSelectedFaceOwnsWheel } from './fixtures/atlasActivationContract'
 
 
 // The platform DOORS a runtime plugin gets beyond rendering its own
@@ -27,7 +29,7 @@ test('a plugin declares settings in its manifest; Mill renders them, stores them
 		await page.getByRole('link', { name: 'Atlas' }).click()
 		const board = page.getByTestId('atlas-board')
 		await expect(board).toBeVisible()
-		await page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]').click()
+		await armToolFromMorePanel(page, 'Bookmark')
 		const spot = await findEmptyBoardRect(page, board, 300, 200)
 		const bb = await board.boundingBox()
 		if (!bb) throw new Error('board has no bounding box')
@@ -60,7 +62,7 @@ test('a plugin declares settings in its manifest; Mill renders them, stores them
 		await expect(title).toHaveText('https://example.com/docs')
 		// A second bookmark on its own empty rect (the first face would
 		// swallow a click inside it) shows the new placeholder title.
-		await page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]').click()
+		await armToolFromMorePanel(page, 'Bookmark')
 		const spot2 = await findEmptyBoardRect(page, board, 300, 200)
 		await board.click({ position: { x: spot2.x - bb.x + 10, y: spot2.y - bb.y + 10 } })
 		await expect(page.locator('[data-testid="bookmark-title"]', { hasText: 'Link' })).toBeVisible()
@@ -108,7 +110,7 @@ test('the Board index plugin lists notes by first line and stays current through
 		await page.getByRole('link', { name: 'Atlas' }).click()
 		const board = page.getByTestId('atlas-board')
 		await expect(board).toBeVisible()
-		await page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Board index"]').click()
+		await armToolFromMorePanel(page, 'Board index')
 		const spot = await findEmptyBoardRect(page, board, 300, 200)
 		const bb = await board.boundingBox()
 		if (!bb) throw new Error('board has no bounding box')
@@ -126,10 +128,10 @@ test('the Board index plugin lists notes by first line and stays current through
 		// the object takes a click, and only then owns the wheel.
 		const indexObject = page.locator('[data-testid="atlas-board-object"][data-object-kind="index"]')
 		await expect(indexObject).toHaveAttribute('data-activation', 'idle')
-		await expect(indexObject).not.toHaveClass(/nowheel/)
+		await expect(indexObject.getByTestId('atlas-board-object-face')).not.toHaveClass(/nowheel/)
 		await indexObject.getByTestId('atlas-object-click-shield').click()
 		await expect(indexObject).toHaveAttribute('data-activation', 'selected')
-		await expect(indexObject).toHaveClass(/nowheel/)
+		await expectSelectedFaceOwnsWheel(page, indexObject)
 
 		// Add a note: its first line appears under Note without a reload.
 		// Deselect the index first (a selected object changes what a
@@ -271,7 +273,7 @@ test('a plugin content write is guarded: approved in Review it lands on the boar
 		await expect(board).toBeVisible()
 		// The Board index example is on the board so the write's landing
 		// is observed through the platform's own read door.
-		await page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Board index"]').click()
+		await armToolFromMorePanel(page, 'Board index')
 		const spot = await findEmptyBoardRect(page, board, 300, 200)
 		const bb = await board.boundingBox()
 		if (!bb) throw new Error('board has no bounding box')
@@ -382,7 +384,7 @@ test('a plugin menu item appears on its own object once enabled, not on a note, 
 		await page.getByRole('link', { name: 'Atlas' }).click()
 		const board = page.getByTestId('atlas-board')
 		await expect(board).toBeVisible()
-		await page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]').click()
+		await armToolFromMorePanel(page, 'Bookmark')
 		const spot = await findEmptyBoardRect(page, board, 300, 200)
 		const bb = await board.boundingBox()
 		if (!bb) throw new Error('board has no bounding box')
@@ -479,7 +481,7 @@ test('a plugin creates a List through the content door: approved in Review it ap
 		await reviewPage.close()
 
 		await page.getByRole('link', { name: 'Configure' }).click()
-		await page.getByRole('tab', { name: 'Lists', exact: true }).click()
+		await openConfigureKind(page, 'Lists')
 		const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Probe vendors', { exact: true }) })
 		await expect(listRow).toBeVisible()
 		await expect(listRow).toContainText('2 columns, 1 rows')

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { AtlasArmRequestTool } from './atlasToolIdentity'
+import type { ContextMenuState } from './ContextMenu'
 
 // Cross-bounded-context UI signals (goal 0071, contextual shortcut
 // discoverability): shared/commands.ts's command `run` callbacks can't
@@ -30,8 +31,8 @@ interface UISignalState {
   requestExtensionUpdate: (id: string) => void
   consumeExtensionUpdate: () => void
   // atlas.matrix / atlas.coverage / atlas.roadmap: same counter shape,
-  // opening AtlasView's own local matrixOpen/coverageOpen/roadmapOpen
-  // dialog state (useAtlasProjectionViews).
+  // switching the stored projection pane useAtlasProjectionViews
+  // derives from the persisted atlas View (goal 0355 S2).
   atlasMatrixRequest: number
   requestAtlasMatrixOpen: () => void
   atlasCoverageRequest: number
@@ -122,6 +123,12 @@ interface UISignalState {
   // OWN id, so a board with several diagrams stays unambiguous.
   atlasDiagramFitRequest: { id: string; seq: number } | null
   requestAtlasDiagramFit: (objectID: string) => void
+  // "Previous page" / "Next page" (goal 0354): the step, not the target
+  // page -- the frame holding the live viewer is the only place that
+  // knows where the face currently is, so the command carries -1/+1 and
+  // it does the arithmetic.
+  atlasDiagramPageRequest: { id: string; delta: number; seq: number } | null
+  requestAtlasDiagramPage: (objectID: string, delta: number) => void
   // The tray's image tool (goal 0169 slice 2, the paste-or-drop
   // interaction) -- opens its own path/paste popover. A counter, not a
   // per-tool payload, since only one popover-style tool exists so far;
@@ -134,7 +141,7 @@ interface UISignalState {
   // still owns the real keydown handling (⌘Z collides with native
   // text-undo, so a normal dispatchCommandForEvent match can't gate
   // it), guarded by atlasUndoAvailable/atlasRedoAvailable instead of
-  // the old toast-only atlasUndoDeletePending. atlas/useAtlasUndoJournal
+  // the old toast-only atlasUndoDeletePending. shared/useUndoJournal
   // keeps those two flags in sync (polls AtlasService.UndoState() on
   // every 'atlas' dataevent) and watches the two request counters below
   // the same ref-compared way atlasJumpRequest is watched.
@@ -167,6 +174,16 @@ interface UISignalState {
   requestAtlasImport: () => void
   atlasExportRequest: number
   requestAtlasExport: () => void
+  // atlas.export.drawio / atlas.kinds.open / atlas.addFile (goal 0355):
+  // the Board menu and the creation dock's own "From file…" run these
+  // through the registry like every other action, so the same counter
+  // shape carries them to whichever atlas/ component owns the door.
+  atlasExportDrawioRequest: number
+  requestAtlasExportDrawio: () => void
+  atlasKindsRequest: number
+  requestAtlasKinds: () => void
+  atlasAddFileRequest: number
+  requestAtlasAddFile: () => void
   atlasAddFromFolderRequest: number
   requestAtlasAddFromFolder: () => void
   // atlas.selection.copyAsImage / .exportAsImage (docs/goals/0201):
@@ -239,6 +256,18 @@ interface UISignalState {
   unsavedLeave: 'quit' | 'restart' | 'close' | null
   requestUnsavedLeave: (reason: 'quit' | 'restart' | 'close') => void
   clearUnsavedLeave: () => void
+  // atlasContextMenuRequest: a menu a face can't render in place
+  // asks the board's own top-level ContextMenu to open instead (goal
+  // 0346) -- a face rendered inside a React Flow node's transformed
+  // subtree has no correct frame for its own position:fixed anchor
+  // (the transform becomes the fixed-position containing block), so
+  // the JSON tree's row menu raises this signal rather than rendering
+  // one of its own. Set-then-consume, the same shape
+  // configureEditRequest already uses: AtlasView moves it straight
+  // into the SAME menu state its own right-click menus already share.
+  atlasContextMenuRequest: ContextMenuState | null
+  requestAtlasContextMenu: (state: ContextMenuState) => void
+  consumeAtlasContextMenu: () => void
 }
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
@@ -282,6 +311,8 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasTableRename: (objectID) => set((s) => ({ atlasTableRenameRequest: { id: objectID, seq: (s.atlasTableRenameRequest?.seq ?? 0) + 1 } })),
   atlasDiagramFitRequest: null,
   requestAtlasDiagramFit: (objectID) => set((s) => ({ atlasDiagramFitRequest: { id: objectID, seq: (s.atlasDiagramFitRequest?.seq ?? 0) + 1 } })),
+  atlasDiagramPageRequest: null,
+  requestAtlasDiagramPage: (objectID, delta) => set((s) => ({ atlasDiagramPageRequest: { id: objectID, delta, seq: (s.atlasDiagramPageRequest?.seq ?? 0) + 1 } })),
   atlasImagePopoverRequest: 0,
   requestAtlasImagePopover: () => set((s) => ({ atlasImagePopoverRequest: s.atlasImagePopoverRequest + 1 })),
   atlasUndoAvailable: false,
@@ -301,6 +332,12 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasImport: () => set((s) => ({ atlasImportRequest: s.atlasImportRequest + 1 })),
   atlasExportRequest: 0,
   requestAtlasExport: () => set((s) => ({ atlasExportRequest: s.atlasExportRequest + 1 })),
+  atlasExportDrawioRequest: 0,
+  requestAtlasExportDrawio: () => set((s) => ({ atlasExportDrawioRequest: s.atlasExportDrawioRequest + 1 })),
+  atlasKindsRequest: 0,
+  requestAtlasKinds: () => set((s) => ({ atlasKindsRequest: s.atlasKindsRequest + 1 })),
+  atlasAddFileRequest: 0,
+  requestAtlasAddFile: () => set((s) => ({ atlasAddFileRequest: s.atlasAddFileRequest + 1 })),
   atlasAddFromFolderRequest: 0,
   requestAtlasAddFromFolder: () => set((s) => ({ atlasAddFromFolderRequest: s.atlasAddFromFolderRequest + 1 })),
   atlasCopyImageRequest: 0,
@@ -337,4 +374,7 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   unsavedLeave: null,
   requestUnsavedLeave: (reason) => set({ unsavedLeave: reason }),
   clearUnsavedLeave: () => set({ unsavedLeave: null }),
+  atlasContextMenuRequest: null,
+  requestAtlasContextMenu: (state) => set({ atlasContextMenuRequest: state }),
+  consumeAtlasContextMenu: () => set({ atlasContextMenuRequest: null }),
 }))

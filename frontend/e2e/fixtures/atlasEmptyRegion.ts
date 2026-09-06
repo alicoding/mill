@@ -56,7 +56,13 @@ async function occupiedRectsOnce(page: Page, avoid: Locator[]): Promise<Rect[]> 
 // viewport transform) before trusting it -- a scan taken mid-layout is
 // exactly how an "empty" pick landed on a card that had since grown
 // underneath it.
-async function occupiedRects(page: Page, avoid: Locator[]): Promise<Rect[]> {
+// Exported for atlasTable.ts's createTableFromList: a from-a-List table
+// has no pointer of its own, so its placement is computed off exactly
+// these same measured boxes (atlasFreePlacement.ts) -- a snapshot taken
+// while a seeded frame/group card is still mid-layout (the same race
+// this stability poll already guards findEmptyBoardRect against) lands
+// the new table under where that frame settles a moment later.
+export async function occupiedRects(page: Page, avoid: Locator[]): Promise<Rect[]> {
   let previous: string | null = null
   let stable: Rect[] = []
   await expect

@@ -56,7 +56,7 @@ var ErrNotFound = errors.New("secretvault: entry not found")
 // file requires ("a workflow that fires during a locked window fails
 // with an explicit 'vault is locked' state, never a silent
 // wrong-credential error"), never a generic nil-pointer panic.
-var ErrLocked = errors.New("secretvault: vault is locked")
+var ErrLocked = fmt.Errorf("secretvault: %w", secret.ErrVaultLocked)
 
 // ErrAlreadyExists is returned by Create when a vault file is already
 // present at Path -- Create is a one-time operation, never an implicit
@@ -72,6 +72,11 @@ type Vault interface {
 	Exists() bool
 	// Unlocked reports whether the vault is currently open in memory.
 	Unlocked() bool
+	// Path returns the filesystem path this vault reads/writes -- the
+	// same identity a caller restoring a backup into place, or
+	// archiving the current file, needs to target explicitly rather
+	// than re-deriving it (goal 0359).
+	Path() string
 	// Create makes a brand-new, empty vault file at Path, encrypted with
 	// masterKey, and leaves it unlocked (ready to use immediately --
 	// matches every other manager's own "create = you're now in it"
@@ -153,6 +158,12 @@ func (v *fileVault) Unlocked() bool {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	return v.db != nil
+}
+
+// Path never changes for a given fileVault (immutable since New), so
+// this needs no lock.
+func (v *fileVault) Path() string {
+	return v.path
 }
 
 func (v *fileVault) Create(masterKey []byte) (string, error) {

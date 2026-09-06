@@ -4,7 +4,7 @@ import { createBoardObjectViaRPC, ATLAS_DEFAULT_SPACE_ID } from './fixtures/atla
 import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { ATLAS_KIND_DOCUMENT } from './fixtures/kindPicker'
 import { waitForViewportStable } from './fixtures/animation'
-import { wheelAt } from './fixtures/pointer'
+import { trackpadWheelAt, wheelAt } from './fixtures/pointer'
 
 // The "diagram" board object (goal 0179 S2): dropping a .drawio/.mmd
 // file lands a board-local object, never a card -- rendered through
@@ -48,10 +48,11 @@ test('a dropped .drawio file renders as a board object through the vendored view
 
   // Wheel routing (goals 0271 + 0302): unselected, the diagram is
   // shielded and the board owns every wheel (no nowheel opt-out);
-  // selected, the vendored viewer owns the wheel and the node carries
+  // selected, the vendored viewer owns the wheel and the FACE carries
   // the canvas kit's nowheel class -- the same contract the pdf face
   // has, so every object on the board reads alike.
-  await expect(diagramObject).not.toHaveClass(/nowheel/)
+  const diagramFace = diagramObject.getByTestId('atlas-board-object-face')
+  await expect(diagramFace).not.toHaveClass(/nowheel/)
   await expect(diagramObject.locator('[data-testid="atlas-object-click-shield"]')).toBeVisible()
 
   // Window-drag opt-out, in-host half (goal 0276 rider): body drags
@@ -72,9 +73,9 @@ test('a dropped .drawio file renders as a board object through the vendored view
   // Selected (the shield's click): the viewer owns the wheel, the
   // board holds still.
   await diagramObject.locator('[data-testid="atlas-object-click-shield"]').click()
-  await expect(diagramObject).toHaveClass(/nowheel/)
+  await expect(diagramFace).toHaveClass(/nowheel/)
   const beforeLiveWheel = await viewportTransform()
-  await wheelAt(page, diagramObject, 0, 80)
+  await trackpadWheelAt(page, diagramFace, 'top', 1)
   await page.waitForTimeout(300) // no observable "wheel fully routed" signal exists for a negative assertion
   expect(await viewportTransform()).toBe(beforeLiveWheel)
 
@@ -90,6 +91,9 @@ test('a dropped .drawio file renders as a board object through the vendored view
   await diagramObject.locator('[data-testid="atlas-drawio-page-body"]').hover()
   await expect(page.locator('body > div img.geAdaptiveAsset')).toHaveCount(0)
   await expect(page.locator('div[title="Zoom In"]')).toHaveCount(0)
+  // A single-page file's band is untouched: the page control appears
+  // only once the face reports more than one page.
+  await expect(diagramObject.getByTestId('atlas-board-object-pager')).toHaveCount(0)
 
   // A drawing that FITS its frame offers no Fit chip (goal 0340): the
   // chip is a statement about this object, not standing chrome.
@@ -207,15 +211,24 @@ test('clicking a diagram body selects the object, and a multi-page file pages ri
   await expect(diagramObject.locator('[data-testid="atlas-object-click-shield"]')).toHaveCount(0)
   await expect(page.locator('.react-flow__resize-control.handle.top.right')).toBeVisible()
 
-  // (2) The face renders the file's FIRST page and offers no paging
-  // control of its own (goal 0354): the board object carries no vendor
-  // toolbar, so the pages cluster that used to ride it is gone from the
-  // board. A multi-page file is paged where it is edited, through the
-  // object's own editor door.
-  await diagramObject.hover()
-  await expect(page.getByText('1 / 2', { exact: true })).toHaveCount(0)
+  // (2) Paging is the OBJECT's own chrome now (goal 0354): the board
+  // object carries no vendored toolbar, so the band shows the page
+  // indicator and its own arrows for a multi-page file. The vendor's
+  // cluster is gone; the control that replaced it pages in place and
+  // stops at the file's ends rather than wrapping.
   await expect(page.locator('[title="Next Page"]')).toHaveCount(0)
+  const pager = diagramObject.getByTestId('atlas-board-object-pager')
+  await expect(pager).toBeVisible()
+  await expect(diagramObject.getByTestId('atlas-board-object-page-label')).toHaveText('1 / 2')
+  await expect(diagramObject.getByTestId('atlas-board-object-page-prev')).toBeDisabled()
+  await diagramObject.getByTestId('atlas-board-object-page-next').click()
+  await expect(diagramObject.getByText('SecondPageCell')).toBeVisible()
+  await expect(diagramObject.getByText('FirstPageCell')).toHaveCount(0)
+  await expect(diagramObject.getByTestId('atlas-board-object-page-label')).toHaveText('2 / 2')
+  await expect(diagramObject.getByTestId('atlas-board-object-page-next')).toBeDisabled()
+  await diagramObject.getByTestId('atlas-board-object-page-prev').click()
   await expect(diagramObject.getByText('FirstPageCell')).toBeVisible()
+  await expect(diagramObject.getByTestId('atlas-board-object-page-label')).toHaveText('1 / 2')
 
   // Cleanup.
   await diagramObject.click({ button: 'right' })

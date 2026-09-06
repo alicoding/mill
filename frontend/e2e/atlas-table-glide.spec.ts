@@ -3,6 +3,7 @@ import { placeSizedTable } from './fixtures/atlasTable'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
 import { clickGlideCell, dragGlideFillHandle, dragGlideRange, editGlideCell, glideCellText } from './fixtures/glideGrid'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // The adopted grid behind the table extension's flag (ADR-0049, goal
 // 0287 slice 0): with "New grid (experimental)" on, a table object
@@ -39,7 +40,7 @@ async function cleanupGlideTable(page: import('@playwright/test').Page, tableObj
   await menu.getByText('Delete', { exact: true }).click()
   await expect(tableObject).toHaveCount(0)
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })
   await clickRowAction(page, listRow, 'Delete')
   await expect(listRow).toHaveCount(0)
@@ -138,6 +139,35 @@ test('a multi-cell paste applies to a range on a board table', async ({ page }) 
   await expect(glideCellText(glide, 0, 1)).toHaveText('Small')
   await expect(glideCellText(glide, 1, 0)).toHaveText('Gizmo')
   await expect(glideCellText(glide, 1, 1)).toHaveText('Large')
+  await cleanupGlideTable(page, tableObject)
+})
+
+// Regression: a cell's own edit-commit refetches this table's List
+// projection on a trailing debounce (AtlasCardProjectionTable.tsx,
+// goal 0147); copying the cell before that debounce's window elapses
+// must still copy the value just committed, never the pre-edit
+// content the projection still held a moment before. A click-copy-
+// click-paste run through real keystrokes, with no wait inserted
+// between the commit and the copy.
+test('copying a cell right after editing it copies the just-committed value, not the pre-edit one', async ({ page }) => {
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  const { tableObject, glide } = await landGlideTable(page)
+  await editGlideCell(page, glide, 0, 0, 'Bolt')
+  await clickGlideCell(page, glide, 0, 0)
+  await page.keyboard.press('ControlOrMeta+c')
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('Bolt')
+  await clickGlideCell(page, glide, 1, 1)
+  await page.keyboard.press('ControlOrMeta+v')
+  await expect(glideCellText(glide, 1, 1)).toHaveText('Bolt')
+
+  // The paste itself is a committed edit too -- confirm it, and the
+  // original, both survive a reload rather than only painting the canvas.
+  await page.reload()
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const reloaded = page.locator('[data-testid="atlas-board-object"][data-object-kind="table"]').getByTestId('atlas-projection-glide')
+  await expect(reloaded).toBeVisible()
+  await expect(glideCellText(reloaded, 0, 0)).toHaveText('Bolt')
+  await expect(glideCellText(reloaded, 1, 1)).toHaveText('Bolt')
   await cleanupGlideTable(page, tableObject)
 })
 

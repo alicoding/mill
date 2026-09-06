@@ -15,7 +15,7 @@ export function activate(api) {
 		label: 'Bruno collection',
 		description: 'A Bruno API collection, by its bruno.json.',
 		icon: '🐶',
-		group: 'file',
+		group: 'media',
 		source: 'file',
 		editRoute: 'none',
 		defaultPayload: { mirrorPath: '' },

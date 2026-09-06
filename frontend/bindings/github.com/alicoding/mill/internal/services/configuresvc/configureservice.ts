@@ -89,7 +89,9 @@ export function AIProviders(): $CancellablePromise<aiprovider$0.AIProvider[] | n
  * AddListRow appends a new, Active row to a List, minting its ID here
  * (row-ID generation stays a service-layer concern, same as List IDs
  * themselves via seeding.NewSlugID -- internal/domain/list stays pure
- * per .claude/rules/backend.md).
+ * per .claude/rules/backend.md). This is the in-process composition
+ * door -- an append made BY something else on the user's behalf -- and
+ * records no undo step; AddListRowAt below is the grid's own insert.
  */
 export function AddListRow(listID: string, values: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {
     return $Call.ByID(197919857, listID, values);
@@ -275,6 +277,11 @@ export function DeleteList(id: string): $CancellablePromise<void> {
     return $Call.ByID(1223896803, id);
 }
 
+/**
+ * DeleteListRow removes one row. Its journal entry carries the whole
+ * row and the index it sat at, so undo puts back what was there rather
+ * than a fresh, empty row.
+ */
 export function DeleteListRow(listID: string, rowID: string): $CancellablePromise<list$0.List> {
     return $Call.ByID(2135971241, listID, rowID);
 }

@@ -1,66 +1,72 @@
-// Pure derivation over DocsIndex (goal 0235 S1): DocsIndexEntry carries
-// no group field (internal/services/docssvc's DocsIndexEntry is flat --
-// Rel/Title/Note), so the sidebar's section grouping is derived here
-// from each entry's rel path prefix, in the index's own canonical
-// order -- the same order the llms.txt generator publishes, so the
+// Pure derivation over DocsIndex: the sidebar's sections come from
+// each page's kind (its front matter's `kind:`, carried on the index
+// entry) in one fixed order -- what the reader is doing, not which
+// directory the file sits in -- with two folder-defined exceptions:
+// start-here/ is the ordered onboarding path whatever each page's own
+// kind, and the agent pages keep a section of their own. The llms.txt
+// generator publishes the same sections in the same order, so the
 // human nav and the AI index can never disagree.
 
 export interface DocsIndexEntry {
   rel: string
   title: string
   note: string
+  kind: string
 }
 
 export interface DocsGroup {
-  dir: string
+  id: string
   titleKey: string
   entries: DocsIndexEntry[]
 }
 
-// SECTION_TITLE_KEYS maps a userdocs/ top-level directory to its
-// views.json locale key. A directory outside this closed set (none
-// exist today) falls back to its raw name via sectionTitleFallback.
-const SECTION_TITLE_KEYS: Record<string, string> = {
-  'start-here': 'docs.sections.startHere',
-  concepts: 'docs.sections.concepts',
-  reference: 'docs.sections.reference',
-  agents: 'docs.sections.agents',
-  trust: 'docs.sections.trust',
+const START_HERE_GROUP = 'start-here'
+const AGENTS_GROUP = 'agents'
+
+// GROUP_ORDER is the fixed section order, keyed by page kind (plus the
+// agents section), each with its views.json locale key.
+const GROUP_ORDER: ReadonlyArray<{ id: string; titleKey: string }> = [
+  { id: START_HERE_GROUP, titleKey: 'docs.sections.startHere' },
+  { id: 'how-to', titleKey: 'docs.sections.howTo' },
+  { id: 'explanation', titleKey: 'docs.sections.concepts' },
+  { id: 'reference', titleKey: 'docs.sections.reference' },
+  { id: AGENTS_GROUP, titleKey: 'docs.sections.agents' },
+]
+
+// groupOf names the section an entry belongs to: the onboarding path
+// for anything under start-here/, the agents section for anything
+// under agents/, its kind otherwise.
+export function groupOf(entry: Pick<DocsIndexEntry, 'rel' | 'kind'>): string {
+  if (entry.rel.startsWith('start-here/')) return START_HERE_GROUP
+  if (entry.rel.startsWith('agents/')) return AGENTS_GROUP
+  return entry.kind
 }
 
-// Exported for app/DocsSearchDialog.tsx's own result rows (goal 0235
-// S2: "page title + section name + snippet") -- the same derivation
-// groupDocsIndex uses internally.
-export function dirOf(rel: string): string {
-  const slash = rel.indexOf('/')
-  return slash === -1 ? '' : rel.slice(0, slash)
+// groupTitleKey resolves a section id to its locale key. An unknown id
+// (a kind the index does not declare) returns an empty string -- the
+// caller falls back to the raw id rather than rendering a missing
+// translation.
+export function groupTitleKey(id: string): string {
+  return GROUP_ORDER.find((g) => g.id === id)?.titleKey ?? ''
 }
 
-// sectionTitleKey resolves a directory to its locale key. Unknown
-// directories return an empty string -- the caller falls back to the
-// raw directory name rather than rendering a missing translation.
-export function sectionTitleKey(dir: string): string {
-  return SECTION_TITLE_KEYS[dir] ?? ''
-}
-
-// groupDocsIndex buckets entries by their rel path's top-level
-// directory, preserving each entry's position in the source order --
-// section order is therefore whichever section's first page appears
-// earliest in DocsIndex, matching the canonical reading order.
+// groupDocsIndex buckets entries into GROUP_ORDER's sections, each
+// entry keeping its position in the source order; a section with no
+// pages is omitted, and an entry whose kind matches no section lands
+// in a trailing section of its own.
 export function groupDocsIndex(entries: DocsIndexEntry[]): DocsGroup[] {
-  const groups: DocsGroup[] = []
-  const byDir = new Map<string, DocsGroup>()
+  const byId = new Map<string, DocsGroup>()
+  for (const g of GROUP_ORDER) byId.set(g.id, { id: g.id, titleKey: g.titleKey, entries: [] })
   for (const entry of entries) {
-    const dir = dirOf(entry.rel)
-    let group = byDir.get(dir)
+    const id = groupOf(entry)
+    let group = byId.get(id)
     if (!group) {
-      group = { dir, titleKey: sectionTitleKey(dir), entries: [] }
-      byDir.set(dir, group)
-      groups.push(group)
+      group = { id, titleKey: '', entries: [] }
+      byId.set(id, group)
     }
     group.entries.push(entry)
   }
-  return groups
+  return [...byId.values()].filter((g) => g.entries.length > 0)
 }
 
 export interface AdjacentPages {

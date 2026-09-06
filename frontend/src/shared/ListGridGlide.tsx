@@ -10,11 +10,11 @@ import { optionsRenderer } from './listGridGlideCells'
 import { GLIDE_DEFAULT_COLUMN_WIDTH, GLIDE_HEADER_HEIGHT, GLIDE_HEADER_HEIGHT_COMPACT, GLIDE_ROW_HEIGHT, GLIDE_ROW_HEIGHT_COMPACT, useGridPalette } from './listGridGlideTheme'
 import { useDisplayDensity } from './density'
 import { anchorFromBounds, type Anchor } from './ListGridGlideMenus'
-import { GlideOverlays, menuProps, schemaEditorProps, useGlideCellEdits, useGlideColumns, useRowTint, type GlideMenuState } from './ListGridGlideOverlays'
+import { AddColumnButton, AddColumnRail, GlideOverlays, menuProps, schemaEditorProps, useGlideCellEdits, useGlideColumns, useRowTint, type GlideMenuState } from './ListGridGlideOverlays'
 import { ListGridGlideToolbar } from './ListGridGlideToolbar'
 import { filterGridRows, nextSortDirection, sortGridRows, type GridColumnFilter, type GridColumnFilters, type GridColumnSort, type GridSortDirection } from './listStandard'
 import { findCommand, runCommand } from './commands'
-import { comboFromEvent, comboKey } from './keybinding'
+import { comboFromEvent, comboKey, isUndoJournalCombo } from './keybinding'
 import { useListGridSearchFocusStore } from './listGridSearchFocus'
 import styles from './ListGrid.module.css'
 
@@ -139,9 +139,6 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
   const searchHandleID = useId()
   const setSearchFocused = useListGridSearchFocusStore((s) => s.setFocused)
   const clearSearchFocused = useListGridSearchFocusStore((s) => s.clearFocused)
-  const publishSearchHandle = useCallback(() => {
-    setSearchFocused({ id: searchHandleID, toggleSearch: () => setShowSearch((v) => !v) })
-  }, [setSearchFocused, searchHandleID])
   useEffect(() => () => clearSearchFocused(searchHandleID), [clearSearchFocused, searchHandleID])
 
   // What the grid SHOWS: the stored rows narrowed, then ordered. Every
@@ -226,6 +223,28 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
     return () => window.clearTimeout(id)
   }, [columns, openRename])
 
+  // The handle every listGrid.search AND listGrid.addColumn invocation
+  // acts through (listGridSearchFocus.ts): published whenever focus
+  // lands anywhere in this grid. Deliberately NOT memoized: it must
+  // always close over the CURRENT render's insertColumn (which itself
+  // closes over the current columns/edits), never a stale one from
+  // whichever render last changed this callback's own identity.
+  const publishSearchHandle = () => {
+    setSearchFocused({ id: searchHandleID, toggleSearch: () => setShowSearch((v) => !v), insertColumn: () => insertColumn(columns.length) })
+  }
+
+  // The header-end "+" and the empty state's own add-column button
+  // (goal 0349 S4 Part B) both call this. A click does not reliably
+  // move DOM focus on every engine (a plain <button> is not
+  // click-focusable in WebKit), so this re-publishes the handle
+  // itself rather than depending on a focus event to have already
+  // done it -- runCommand then reaches this exact mount, never
+  // whichever one focus happened to land on last.
+  const onAddColumnClick = () => {
+    publishSearchHandle()
+    void runCommand('listGrid.addColumn', { kind: 'listGrid', listID, rowIDs: [] })
+  }
+
   // The overlay cell editor's own open/close, reported to the host
   // (goal 0354): the library activates a cell (its second-click model,
   // Enter, or a double-click) and mounts the editor, then fires
@@ -301,6 +320,14 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
       // search is CLOSED: once open, the library's own search input
       // closes on ⌘F/Escape itself (its onSearchClose, wired below), so
       // this never double-toggles.
+      //
+      // ⌘Z/⇧⌘Z are the ONE exception to the containment above: a cell
+      // edit, a row insert and a row delete are steps on the app's one
+      // undo journal (ADR-0044, goal 0352), and the grid's own library
+      // ships no undo to contest them, so the combo bubbles to the
+      // window's dispatcher instead of dying here. Without this,
+      // pressing ⌘Z with a cell selected -- the moment every
+      // spreadsheet undoes the edit just made -- did nothing at all.
       onKeyDown={(e) => {
         if (!showSearch) {
           const pressed = comboFromEvent(e.nativeEvent)
@@ -310,6 +337,7 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
             void runCommand('listGrid.search', { kind: 'listGrid', listID, rowIDs: [] })
           }
         }
+        if (isUndoJournalCombo(e.nativeEvent)) return
         e.stopPropagation()
       }}
       onContextMenu={(e) => e.stopPropagation()}
@@ -324,7 +352,10 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
         onPointerUp={() => { if (!host?.contains(document.activeElement)) gridRef.current?.focus() }}
       >
         {columns.length === 0 ? (
-          <p className={styles.empty} data-testid="atlas-projection-empty">{t('listGrid.noColumns')}</p>
+          <div className={styles.empty} data-testid="atlas-projection-empty">
+            <p>{t('listGrid.noColumns')}</p>
+            {schemaEditing && <AddColumnButton onClick={onAddColumnClick} />}
+          </div>
         ) : (
           <DataEditor
             ref={gridRef}
@@ -362,8 +393,21 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
             smoothScrollX
             smoothScrollY
             onColumnResize={onColumnResize}
+            // Tab past the last column while editing grows the schema
+            // the same way it grows rows (data-editor.js's own
+            // isEditingLastCol continuation) -- a continuation of an
+            // in-progress edit, not a discrete click, so it reaches
+            // insertColumn directly rather than through the registry.
+            onColumnAppended={schemaEditing ? () => insertColumn(columns.length) : undefined}
+            // The header-end "+" (goal 0349 S4 Part B): a JSX prop, not
+            // a schemaEditorProps field -- it closes over insertColumn,
+            // which writes pendingRenameKey on resolve, and only a JSX
+            // prop value (never a plain function-call argument) may
+            // carry a ref-touching closure through render.
+            rightElement={schemaEditing ? <AddColumnRail headerHeight={headerHeight} onClick={onAddColumnClick} /> : undefined}
+            rightElementProps={{ fill: false, sticky: true }}
             {...menuProps({ toAnchor, setMenu })}
-            {...schemaEditorProps(schemaEditing, { edits, storedRowCount: rows.length, addRowHint: t('listGrid.addRowHint') })}
+            {...schemaEditorProps(schemaEditing, { listID, edits })}
           />
         )}
       </div>
@@ -392,8 +436,6 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
         schemaEditing={schemaEditing}
         sort={sort}
         filters={filters}
-        onAddRow={() => edits.insertRowAt(rows.length)}
-        onAddColumn={() => insertColumn(columns.length)}
         onClearNarrowing={() => { setSort(null); setFilters({}) }}
       />
       {droppedRows > 0 && (

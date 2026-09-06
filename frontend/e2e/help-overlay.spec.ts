@@ -75,7 +75,7 @@ test('the command palette on Atlas lists "Jump to a card" with its ⌘K chip und
   await page.keyboard.press('Escape')
 })
 
-test('"Open coverage" from the palette on Atlas opens the coverage dialog', async ({ page }) => {
+test('"Open coverage" from the palette on Atlas switches to the coverage view', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
@@ -87,7 +87,7 @@ test('"Open coverage" from the palette on Atlas opens the coverage dialog', asyn
   await expect(option).toBeVisible()
   await option.click()
 
-  await expect(page.locator('[data-component="atlas-coverage-dialog"]')).toBeVisible()
+  await expect(page.locator('[data-component="atlas-coverage-pane"]')).toBeVisible()
 })
 
 test('"Rebind in Settings" in the overlay footer navigates to Settings and closes the overlay', async ({ page }) => {

@@ -433,6 +433,24 @@
   },
   {
     "menu": "Atlas",
+    "item": "Export board as .drawio",
+    "shortcut": "",
+    "command": "atlas.export.drawio"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Kinds",
+    "shortcut": "",
+    "command": "atlas.kinds.open"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Add a file to the board",
+    "shortcut": "",
+    "command": "atlas.addFile"
+  },
+  {
+    "menu": "Atlas",
     "item": "Copy as image",
     "shortcut": "",
     "command": "atlas.selection.copyAsImage"
@@ -472,6 +490,18 @@
     "item": "Select all",
     "shortcut": "⌘A",
     "command": "atlas.selectAll"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Previous page",
+    "shortcut": "",
+    "command": "diagram.previousPage"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Next page",
+    "shortcut": "",
+    "command": "diagram.nextPage"
   },
   {
     "menu": "Atlas",

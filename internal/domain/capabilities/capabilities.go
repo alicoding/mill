@@ -59,6 +59,14 @@ type Capability struct {
 	// cross-links). For help-shaped surfaces: reachable when wanted,
 	// never a standing tab competing with the work surfaces.
 	HiddenFromNav bool
+	// ConceptPage is the userdocs page (rel path in docsgen.PageIndex)
+	// whose opening sentence introduces this capability wherever the
+	// registry is projected as an inventory (the README's generated
+	// block). Summary is the one-line stand-in for a capability with no
+	// concept page of its own. Exactly one of the two is set for every
+	// capability shown in the sidebar (TestList_InventoryLineSource).
+	ConceptPage string
+	Summary     string
 }
 
 // List is a best-effort seed, not a claim of precision -- correcting an
@@ -82,25 +90,27 @@ func List() []Capability {
 		{
 			ID: "capability-home", Label: "Home", SpecSection: "3.2.3",
 			Status: StatusOpen, View: ViewHome,
+			Summary: "What ran, what is waiting for your approval, and the workflows you use most.",
 		},
 		{
 			ID: "capability-composition", Label: "Capability composition", NavLabel: "Workflows", SpecSection: "3",
-			Status: StatusOpen, View: ViewComposition,
+			Status: StatusOpen, View: ViewComposition, ConceptPage: "concepts/workflows-and-steps.md",
 		},
 		{
 			ID: "capability-configure", Label: "Configure", SpecSection: "3.5",
-			Status: StatusOpen, View: ViewConfigure,
+			Status: StatusOpen, View: ViewConfigure, ConceptPage: "concepts/configure.md",
 		},
 		{
 			// The projection surface (docs/adr/0038): a zoomable space/card
 			// graph over user-owned files, sibling to Workflows/Configure --
 			// closes SPEC §0's workbench OPEN.
 			ID: "capability-atlas", Label: "Atlas", SpecSection: "0",
-			Status: StatusOpen, View: ViewAtlas,
+			Status: StatusOpen, View: ViewAtlas, ConceptPage: "concepts/atlas.md",
 		},
 		{
 			ID: "activity-log", Label: "Activity / event log", NavLabel: "Activity", SpecSection: "2.2",
 			Status: StatusLocked, View: ViewActivity,
+			Summary: "Every run, guardrail decision, and agent call in one searchable log.",
 		},
 		{
 			// The human-in-the-loop queue (docs/adr/0023): every parked
@@ -109,7 +119,7 @@ func List() []Capability {
 			// inbox (§3.2's "Review" surface, v1). Composed from the
 			// already-built parked-run mechanism, not a new engine.
 			ID: "capability-review", Label: "Review queue", NavLabel: "Review", SpecSection: "8",
-			Status: StatusLocked, View: ViewReview,
+			Status: StatusLocked, View: ViewReview, ConceptPage: "concepts/runs-and-review.md",
 		},
 		{
 			ID: "capability-docs", Label: "Docs", SpecSection: "9",
@@ -121,7 +131,7 @@ func List() []Capability {
 			// second consumer -- its own capability, not folded into
 			// Configure (see that goal file's "owner's reframing").
 			ID: "capability-secrets", Label: "Secrets", SpecSection: "3.9",
-			Status: StatusOpen, View: ViewSecrets,
+			Status: StatusOpen, View: ViewSecrets, ConceptPage: "concepts/secrets.md",
 		},
 		{
 			// Extensions (docs/goals/0349): browsing, installing,
@@ -129,7 +139,7 @@ func List() []Capability {
 			// the shape every surveyed extension platform converged on --
 			// Settings configures the kernel, it does not host a store.
 			ID: "capability-extensions", Label: "Extensions", SpecSection: "3.6",
-			Status: StatusOpen, View: ViewExtensions,
+			Status: StatusOpen, View: ViewExtensions, ConceptPage: "concepts/extensions.md",
 		},
 	}
 }

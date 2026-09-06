@@ -55,6 +55,29 @@ function linkHandle(card: Locator): Locator {
   return card.getByTestId('atlas-note-link-handle')
 }
 
+// An edge's own chip is rendered at the midpoint, labelY + 18 FLOW
+// units below the line (AtlasLinkEdge) -- inside the zoomed viewport,
+// so under zoomAllTheWayOut that offset shrinks to a couple of screen
+// pixels and the chip, once visible (hovered or selected), sits ON the
+// exact point a bare edge.hover() targets: the center of the edge's
+// own bounding box. Every actionability retry then re-intercepts on a
+// chip button until the test timeout. Hover/click a quarter along the
+// interaction path instead -- the same gesture a user makes anywhere
+// on the visible line, off the chip.
+async function edgePositionOffChip(edge: Locator): Promise<{ x: number; y: number }> {
+  const box = await edge.boundingBox()
+  if (!box) throw new Error('edge has no bounding box')
+  const point = await edge.locator('.react-flow__edge-interaction').evaluate((el) => {
+    const p = el as unknown as SVGPathElement
+    const at = p.getPointAtLength(p.getTotalLength() * 0.25)
+    const ctm = p.getScreenCTM()
+    if (!ctm) throw new Error('interaction path has no screen CTM')
+    const screen = at.matrixTransform(ctm)
+    return { x: screen.x, y: screen.y }
+  })
+  return { x: point.x - box.x, y: point.y - box.y }
+}
+
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
 test('atlas typed link slots: page slot rows, hover-handle slot-drag linking, chip removal, quiet edges, menus', async ({}, testInfo) => {
   const idx = testInfo.parallelIndex
@@ -147,7 +170,7 @@ test('atlas typed link slots: page slot rows, hover-handle slot-drag linking, ch
     const edge = page.locator('.react-flow__edge').last()
     const activeLabel = page.locator('.atlas-link-label[data-hovered="true"]')
     await expect(activeLabel).toHaveCount(0)
-    await edge.hover()
+    await edge.hover({ position: await edgePositionOffChip(edge) })
     await expect(activeLabel).toHaveCount(1)
     await expect(activeLabel).toHaveCSS('opacity', '1')
     // A raw viewport corner risks the app's own sidebar/chrome; the
@@ -171,7 +194,7 @@ test('atlas typed link slots: page slot rows, hover-handle slot-drag linking, ch
     }, { timeout: 10_000 }).toBe(0)
 
     // --- Edge right-click: Change link kind / Edit label / Remove link ---
-    await edge.click({ button: 'right' })
+    await edge.click({ button: 'right', position: await edgePositionOffChip(edge) })
     await expect(menu).toBeVisible()
     await expect(menu.getByText('Change link kind', { exact: true })).toBeVisible()
     await expect(menu.getByText('Remove link', { exact: true })).toBeVisible()
@@ -182,7 +205,7 @@ test('atlas typed link slots: page slot rows, hover-handle slot-drag linking, ch
     await labelInput.press('Enter')
     await expect(labelInput).not.toBeVisible()
 
-    await edge.click({ button: 'right' })
+    await edge.click({ button: 'right', position: await edgePositionOffChip(edge) })
     await expect(menu).toBeVisible()
     await menu.getByText('Remove link', { exact: true }).click()
     await expect(page.locator('.react-flow__edge')).toHaveCount(seededEdgeCount)

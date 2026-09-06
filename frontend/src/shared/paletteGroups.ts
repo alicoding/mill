@@ -1,5 +1,6 @@
 import {
-  DatabaseIcon, DownloadIcon, GitBranchIcon, PlayIcon, ShieldIcon, SparkleFillIcon, SyncIcon, UploadIcon, ZapIcon,
+  BrowserIcon, DatabaseIcon, DownloadIcon, GitBranchIcon, PlayIcon, ShieldIcon, SparkleFillIcon, SyncIcon, UploadIcon,
+  ZapIcon,
   type Icon,
 } from '@primer/octicons-react'
 import type { NodeType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -33,6 +34,7 @@ export type PaletteGroupId =
   | 'ai'
   | 'data'
   | 'actions'
+  | 'browser'
   | 'flow'
   | 'guardrails'
   | 'apply'
@@ -42,7 +44,7 @@ export type PaletteGroupId =
 // enriches data, acts, branches, is guarded, ends by applying a
 // result), not alphabetical.
 export const PALETTE_GROUP_ORDER: PaletteGroupId[] = [
-  'triggers', 'capture', 'transform', 'ai', 'data', 'actions', 'flow', 'guardrails', 'apply',
+  'triggers', 'capture', 'transform', 'ai', 'data', 'actions', 'browser', 'flow', 'guardrails', 'apply',
 ]
 
 export const PALETTE_GROUP_LABEL: Record<PaletteGroupId, string> = {
@@ -52,6 +54,7 @@ export const PALETTE_GROUP_LABEL: Record<PaletteGroupId, string> = {
   ai: 'AI',
   data: 'Data',
   actions: 'Actions',
+  browser: 'Browser',
   flow: 'Flow',
   guardrails: 'Guardrails',
   apply: 'Apply',
@@ -75,6 +78,7 @@ export const PALETTE_GROUP_ICON: Record<PaletteGroupId, Icon> = {
   ai: SparkleFillIcon,
   data: DatabaseIcon,
   actions: PlayIcon,
+  browser: BrowserIcon,
   flow: GitBranchIcon,
   guardrails: ShieldIcon,
   apply: UploadIcon,
@@ -119,6 +123,12 @@ const NODE_TYPE_GROUP: Record<string, PaletteGroupId> = {
   'integration-http': 'actions',
   'mcp-tool-call': 'actions',
   'code-execution': 'actions',
+  // Browser (1) -- its own group rather than a tenth entry under
+  // Actions: a step that drives the user's own signed-in browser is a
+  // different kind of reach from an HTTP call or a subprocess, and a
+  // reader scanning the palette should see that before they read the
+  // label.
+  'process-browser-replay': 'browser',
   // Flow (2)
   'child-workflow': 'flow',
   'decision-route': 'flow',

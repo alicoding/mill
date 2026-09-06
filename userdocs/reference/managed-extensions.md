@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # Managed extensions
 
 An organisation decides which extensions Mill may install and run on a

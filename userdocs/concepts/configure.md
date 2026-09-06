@@ -1,8 +1,12 @@
+---
+kind: explanation
+---
+
 # Configure entities
 
-Two workflows call the same API. Point both at one Integration entry
-instead of pasting the base URL and auth into each step, and changing
-the endpoint later is a single edit that both workflows pick up.
+Point two workflows at one Integration entry instead of pasting the
+base URL and auth into each step, and changing the endpoint later is a
+single edit that both workflows pick up.
 
 Configure holds the things workflows and boards *point at* — the
 values two independently-authored workflows should share, where
@@ -10,6 +14,16 @@ drifting apart would be a bug. Deleting any of them takes effect at
 once and offers Undo for ten seconds; an entry a workflow still uses
 refuses to delete and names the workflow. An undone Integration comes
 back without its secret — enter it again.
+
+Configure lists its kinds in a rail on the left, grouped by what
+they are for: **Connections** (Integrations, MCP Servers, AI
+Providers, Certificates), **Runtime** (Environments, Execution
+Environments), **Data** (Lists, Attributes, Conversion profiles) and
+**Workflow logic** (Decisions, Step types). Pick a kind to see its
+page; type in *Filter kinds* to narrow the rail across every group.
+Each kind has its own address (`#/configure/lists`, for example) and
+its own command in the palette (*Configure › Lists*), so a link or a
+search lands straight on it.
 
 The entities:
 
@@ -29,7 +43,9 @@ The entities:
   column, inserts one to either side, and opens its type, choices,
   deprecation, and removal; a right-click on a row inserts a row
   below it, marks it expired or active, or deletes it. A column's type
-  can change until it holds data. Commits happen as you go. Bring data in from a CSV or JSON file: "Import rows…" on a
+  can change until it holds data. Commits happen as you go, and ⌘Z
+  takes the last one back — an edited cell returns to what it held, a
+  deleted row comes back whole, and ⇧⌘Z re-applies it. Bring data in from a CSV or JSON file: "Import rows…" on a
   list maps file columns to its fields, and "New from file…" on the
   Lists page proposes a whole typed schema from your sample — edit
   the proposed names and types, then create the list with every row

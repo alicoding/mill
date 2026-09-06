@@ -25,11 +25,15 @@ export interface CanvasObjectDecl {
      * shown as the tray button's key chip. A key another tool already
      * uses fails registration. */
     shortcutKey?: string;
-    /** group: which tray cluster the button renders in — 'knowledge'
-     * (default for board-local or url-backed tools), 'file' (default for
-     * file-backed tools), or 'annotate' (the collapsed freehand-marking
-     * drawer). */
-    group?: 'knowledge' | 'file' | 'annotate';
+    /** group: which cluster of the board's creation dock this tool joins
+     * — 'objects' (the things a board is made of), 'media' (the Media
+     * flyout, shared with images and dropped files), 'annotate' (the
+     * freehand-marking flyout), or 'embed' (the default): reachable by
+     * name from the dock's More panel, which searches every registered
+     * tool. The dock's own visible buttons are fixed, so a tool joining a
+     * full cluster is found through More rather than pushing a button
+     * off the dock. */
+    group?: 'objects' | 'media' | 'annotate' | 'embed';
     /** lockable: for a non-sticky drag tool only — re-clicking the
      * armed button locks it for deliberate repeated use instead of
      * disarming. */
@@ -43,11 +47,14 @@ export interface CanvasObjectDecl {
      * — the face is a picture. 'interactive' means the face scrolls,
      * selects text, or edits in place, so the object goes through three
      * states: idle (a click shield takes the first click, and the canvas
-     * keeps the wheel, the drag and the keys), selected (the face
-     * receives pointer events and keys, and a wheel over anything in it
-     * that really scrolls stays inside it), and editing (the face has an
-     * editor open and the board's shortcuts stand down). Declare
-     * 'interactive' before calling ctx.setEditing. */
+     * keeps the wheel, the drag and the keys), selected (the face owns
+     * the wheel outright — a scroll over it never also moves the board,
+     * whether or not anything in the face consumes it — along with the
+     * drag and the keys), and editing (the face has an editor open and
+     * the board's shortcuts stand down). The chrome band above the face
+     * stays with the canvas in every state, so a selected object is
+     * never a dead zone. Declare 'interactive' before calling
+     * ctx.setEditing. */
     content?: 'static' | 'interactive';
     /** Where the object's own artifact lives: a value only this board
      * knows ('board-local'), a web address ('url'), or a file on disk

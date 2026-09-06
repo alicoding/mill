@@ -6,6 +6,7 @@ import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { waitForViewportStable } from './fixtures/animation'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickGlideCell, glideTextEditor, openGlideCellEditor } from './fixtures/glideGrid'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // The converged canvas-table interactions (goal 0273): object first
 // then cells, a name above the grid renamed in place, and a placement
@@ -98,7 +99,7 @@ test('a table names itself above its grid, and the name is renamed in place', as
   // The List behind it is the single source -- Configure sees the same
   // name.
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   await expect(page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Budget', { exact: true }) })).toHaveCount(1)
 
   await page.reload()

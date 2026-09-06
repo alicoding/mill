@@ -375,7 +375,8 @@
     "noRunsYet": "No runs yet.",
     "runDone": "Done",
     "runFailed": "Failed",
-    "runStopped": "Stopped"
+    "runStopped": "Stopped",
+    "waitingVault": "Waiting for the vault to unlock"
   },
   "runMonitor": {
     "title": "Run",
@@ -398,5 +399,6 @@
   },
   "stopPausedRunDialog": {
     "leaveTitle": "Stop the paused run?"
-  }
+  },
+  "pendingVaultWaitDescription": "{{workflowLabel}}: waiting for the vault to unlock"
 }

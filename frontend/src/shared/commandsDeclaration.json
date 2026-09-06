@@ -1,5 +1,15 @@
 [
   {
+    "id": "atlas.addFile",
+    "label": "Add a file to the board",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false,
+    "needs": null
+  },
+  {
     "id": "atlas.addFromFolder",
     "label": "Add cards from a folder",
     "binding": null,
@@ -16,7 +26,7 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false,
+    "enabled": true,
     "needs": null
   },
   {
@@ -140,6 +150,16 @@
     "needs": null
   },
   {
+    "id": "atlas.export.drawio",
+    "label": "Export board as .drawio",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false,
+    "needs": null
+  },
+  {
     "id": "atlas.focusDirection",
     "label": "Focus the nearest card in a direction",
     "binding": "⌥→",
@@ -223,6 +243,16 @@
     "id": "atlas.jump",
     "label": "Jump to a card or object",
     "binding": "⌘K",
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "atlas.kinds.open",
+    "label": "Kinds",
+    "binding": null,
     "surface": [
       "atlas"
     ],
@@ -388,6 +418,14 @@
   {
     "id": "browser.pair",
     "label": "Pair a browser",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "browser.revealExtension",
+    "label": "Reveal the extension folder",
     "binding": null,
     "surface": null,
     "enabled": false,
@@ -790,6 +828,94 @@
     "needs": null
   },
   {
+    "id": "configure.open.aiproviders",
+    "label": "Configure › AI Providers",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.attributes",
+    "label": "Configure › Attributes",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.certificates",
+    "label": "Configure › Certificates",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.conversionprofiles",
+    "label": "Configure › Conversion profiles",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.decisions",
+    "label": "Configure › Decisions",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.environments",
+    "label": "Configure › Environments",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.execenvs",
+    "label": "Configure › Execution Environments",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.integration",
+    "label": "Configure › Integrations",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.lists",
+    "label": "Configure › Lists",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.mcpservers",
+    "label": "Configure › MCP Servers",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.steptypes",
+    "label": "Configure › Step types",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
     "id": "configure.request.delete",
     "label": "Delete",
     "binding": null,
@@ -848,6 +974,26 @@
   {
     "id": "diagram.fit",
     "label": "Fit diagram",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "diagram.nextPage",
+    "label": "Next page",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "diagram.previousPage",
+    "label": "Previous page",
     "binding": null,
     "surface": [
       "atlas"
@@ -1006,6 +1152,22 @@
     "surface": null,
     "enabled": false,
     "needs": null
+  },
+  {
+    "id": "listGrid.addColumn",
+    "label": "Add a column",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "listGrid"
+  },
+  {
+    "id": "listGrid.addRow",
+    "label": "Add a row",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "listGrid"
   },
   {
     "id": "listGrid.copyRows",
@@ -1216,6 +1378,14 @@
   {
     "id": "secrets.resetVault",
     "label": "Start a new vault",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "secrets.restoreVaultFromBackup",
+    "label": "Restore the last backup",
     "binding": null,
     "surface": null,
     "enabled": true,

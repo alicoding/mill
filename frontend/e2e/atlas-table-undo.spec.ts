@@ -1,18 +1,18 @@
 import { test, expect } from './fixtures/server'
-import { createTableFromList, deleteListNamed, deleteTableViaMenu, escapeGridToObject, openAtlas, placeSizedTable, tableAuditShot, tableObjects } from './fixtures/atlasTable'
+import { createTableFromList, deleteListNamed, deleteTableViaMenu, openAtlas, placeSizedTable, tableAuditShot, tableObjects } from './fixtures/atlasTable'
 import { dragBetween, dragResizeHandle } from './fixtures/atlasBoard'
 import { editGlideCell, glideCellText } from './fixtures/glideGrid'
 import { contextMenu } from './fixtures/contextMenu'
+import { pressRedo, pressUndo } from './fixtures/undoJournal'
 
 // The actor-scoped undo journal's own table coverage (goal 0273's
 // state-matrix audit, ADR-0044): every table BOARD-SURFACE mutation
 // door (create/delete/size/move) undoes through the SAME ⌘Z/⇧⌘Z
-// journal atlas-undo-journal.spec.ts already proves for cards/ink. A
-// table's CELL edit and its title RENAME are deliberately OUT of this
-// journal (ADR-0044 v1 scope names only board-surface doors; a cell
-// edit/rename write through Configure's own List door instead,
-// AtlasTableTitleRow.tsx's own header comment) -- the last test below
-// pins that as an observable property, not an oversight.
+// journal atlas-undo-journal.spec.ts already proves for cards/ink --
+// and so does a CELL edit, which writes through Configure's List door
+// into that same one journal (goal 0352). The last test below is the
+// ordering that gap cost: ⌘Z right after typing in a cell restores the
+// cell, and the table stays where it is.
 
 test('creating a table from a List: (Meta+z) removes the object, (Meta+Shift+z) restores it', async ({ page }) => {
   await openAtlas(page)
@@ -20,11 +20,11 @@ test('creating a table from a List: (Meta+z) removes the object, (Meta+Shift+z) 
   await expect(object).toHaveCount(1)
   await tableAuditShot(page, '01-create-from-list')
 
-  await page.keyboard.press('Meta+z')
+  await pressUndo(page)
   await expect(tableObjects(page).filter({ hasText: 'US' })).toHaveCount(0)
   await tableAuditShot(page, '14-undo-create')
 
-  await page.keyboard.press('Meta+Shift+z')
+  await pressRedo(page)
   const restored = tableObjects(page).filter({ hasText: 'US' })
   await expect(restored).toHaveCount(1)
   await tableAuditShot(page, '14-redo-create')
@@ -43,7 +43,7 @@ test('deleting a table object: (Meta+z) restores it', async ({ page }) => {
   await deleteTableViaMenu(object)
   await tableAuditShot(page, '14-deleted')
 
-  await page.keyboard.press('Meta+z')
+  await pressUndo(page)
   const restored = tableObjects(page).filter({ hasText: 'Column 1' })
   await expect(restored).toHaveCount(1)
   await tableAuditShot(page, '14-undo-delete')
@@ -68,7 +68,7 @@ test('resizing a table object: (Meta+z) reverts its size', async ({ page }) => {
   // A first-ever resize's undo restores the natural (pre-resize) size,
   // never a collapsed 0x0 box (the one size-undo helper, goal 0273
   // defect class, #686).
-  await page.keyboard.press('Meta+z')
+  await pressUndo(page)
   await expect.poll(async () => (await object.boundingBox())?.width ?? 0).toBeGreaterThan(0)
   await expect.poll(async () => (await object.boundingBox())?.width ?? 0).toBeGreaterThanOrEqual(before.width - 2)
   await expect.poll(async () => (await object.boundingBox())?.width ?? 0).toBeLessThanOrEqual(before.width + 2)
@@ -94,7 +94,7 @@ test('dragging a table object: (Meta+z) returns it to where it started', async (
   await expect.poll(async () => (await object.boundingBox())?.x ?? 0).toBeGreaterThan(before.x + 100)
   await tableAuditShot(page, '14-moved')
 
-  await page.keyboard.press('Meta+z')
+  await pressUndo(page)
   await expect.poll(async () => (await object.boundingBox())?.x ?? 0).toBeLessThanOrEqual(before.x + 5)
   await tableAuditShot(page, '14-undo-move')
 
@@ -102,44 +102,44 @@ test('dragging a table object: (Meta+z) returns it to where it started', async (
   await deleteListNamed(page, 'Table')
 })
 
-// The documented gap (AtlasTableTitleRow.tsx's own header comment): a
-// cell's own content write goes through Configure's List door, never
-// the board journal. So a cell edit puts NOTHING of its own on the
-// journal: the next ⌘Z reaches past it to the previous board-surface
-// entry -- here the table's own create -- and the typed cell comes
-// back untouched with the object.
+// One journal, in order (goal 0352): the cell edit is the newest step,
+// so the first ⌘Z restores the cell and the table -- created BEFORE it
+// -- stays put. Before the cell write was journaled, this same ⌘Z
+// reached past the edit to the table's own create and deleted it.
 //
 // Every step below is a web-first retrying assertion because ⌘Z is a
 // round trip (the request, the journal's inverse, the refetch): a
-// one-shot read of the object's presence taken right after the
-// keystroke still sees the pre-undo board, and branching on it commits
-// the rest of the test to a board state the undo invalidates a frame
-// later, which then burns the whole test budget waiting on an object
-// that is already gone (goal 0273).
-test('a cell edit leaves no entry of its own in the undo journal', async ({ page }) => {
+// one-shot read taken right after the keystroke still sees the pre-undo
+// board (goal 0273).
+//
+// Every ⌘Z here is pressed with the table's grid still holding the
+// keyboard -- the gesture a user actually makes after typing in a
+// cell, and one the grid's own keydown containment must let reach the
+// journal (shared/ListGridGlide.tsx).
+test('a cell edit: (Meta+z) restores the cell and leaves the table in place', async ({ page }) => {
   await openAtlas(page)
   const object = await placeSizedTable(page, '2x2')
   const glide = object.getByTestId('atlas-projection-glide')
 
-  await editGlideCell(page, glide, 0, 0, 'Unjournaled')
-  await expect(glideCellText(glide, 0, 0)).toHaveText('Unjournaled')
-  await tableAuditShot(page, '14-cell-edited')
+  await editGlideCell(page, glide, 0, 0, 'Journaled')
+  await expect(glideCellText(glide, 0, 0)).toHaveText('Journaled')
 
-  // ⌘Z reaches the canvas only once the grid has handed the keyboard
-  // back to the object (escapeGridToObject's own contract comment).
-  await escapeGridToObject(page, object)
-  await page.keyboard.press('Meta+z')
+  await pressUndo(page)
 
-  // The whole object goes: what reverts is the create, never the cell.
+  await expect(glideCellText(glide, 0, 0)).toHaveText('')
+  await expect(object).toHaveCount(1)
+  await tableAuditShot(page, '14-undo-cell-edit')
+
+  await pressRedo(page)
+  await expect(glideCellText(glide, 0, 0)).toHaveText('Journaled')
+  await expect(object).toHaveCount(1)
+
+  // A second ⌘Z reaches the step under the cell edit -- the table's own
+  // create -- which is what one ordered history means.
+  await pressUndo(page)
+  await expect(glideCellText(glide, 0, 0)).toHaveText('')
+  await pressUndo(page)
   await expect(object).toHaveCount(0)
-  await tableAuditShot(page, '14-undo-after-cell-edit')
 
-  await page.keyboard.press('Meta+Shift+z')
-  const restored = tableObjects(page).filter({ hasText: 'Column 1' })
-  await expect(restored).toHaveCount(1)
-  await expect(glideCellText(restored.getByTestId('atlas-projection-glide'), 0, 0)).toHaveText('Unjournaled')
-  await tableAuditShot(page, '14-redo-after-cell-edit')
-
-  await deleteTableViaMenu(restored)
   await deleteListNamed(page, 'Table')
 })

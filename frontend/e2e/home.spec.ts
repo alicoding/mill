@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
 import { workflowRow } from './fixtures/canvas'
+import { RUN_TERMINAL_TIMEOUT } from './fixtures/runTerminal'
 
 // docs/goals/0014-home-dashboard.md, docs/SPEC.md §3.2.3. Real Go
 // bindings over HTTP (Wails3 server mode), not mocks -- same setup as
@@ -28,9 +29,9 @@ test('Home shows a time-saved figure with its formula, a rendered chart, and a l
     const row = workflowRow(page, 'Load sample HTML')
     const runButton = row.getByRole('button', { name: 'Run' })
     await runButton.click()
-    await expect(runButton).toBeEnabled({ timeout: 15_000 })
+    await expect(runButton).toBeEnabled({ timeout: RUN_TERMINAL_TIMEOUT })
     await runButton.click()
-    await expect(runButton).toBeEnabled({ timeout: 15_000 })
+    await expect(runButton).toBeEnabled({ timeout: RUN_TERMINAL_TIMEOUT })
 
     await page.getByRole('link', { name: 'Home' }).click()
     await expect(page.getByTestId('home-view')).toBeVisible()
@@ -125,7 +126,7 @@ test('trigger recency on the seeded scheduled workflow stays honest about a manu
   const row = workflowRow(page, 'Example: Disabled schedule')
   const runButton = row.getByRole('button', { name: 'Run' })
   await runButton.click()
-  await expect(runButton).toBeEnabled({ timeout: 15_000 })
+  await expect(runButton).toBeEnabled({ timeout: RUN_TERMINAL_TIMEOUT })
 
   await page.getByRole('link', { name: 'Home' }).click()
   const mostUsedRow = workflowRow(page, 'Example: Disabled schedule')

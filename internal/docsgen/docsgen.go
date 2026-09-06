@@ -8,8 +8,6 @@ package docsgen
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -24,7 +22,7 @@ import (
 // fields, all straight from the registry.
 func GenerateStepReference() string {
 	var b strings.Builder
-	b.WriteString("# Step reference\n\n")
+	b.WriteString("---\nkind: reference\n---\n\n# Step reference\n\n")
 	b.WriteString("Generated from the live step registry — every step's contract exactly as the canvas enforces it. Do not edit by hand; `go generate ./internal/docsgen` regenerates.\n")
 
 	kindTitles := []struct {
@@ -167,88 +165,4 @@ func describeEffect(effect string) string {
 	default:
 		return "none — pure computation"
 	}
-}
-
-// DocPage is one entry in the docs index, in reading order -- shared
-// by the llms.txt generator and the in-app Docs surface (docssvc), so
-// nav order and the AI index can never drift apart.
-type DocPage struct {
-	Rel, Title, Note string
-}
-
-// PageIndex is the canonical reading order.
-func PageIndex() []DocPage {
-	return []DocPage{
-		{"start-here/what-is-mill.md", "What is Mill", "the product in three ideas"},
-		{"start-here/install.md", "Install", "release install, source build, where data lives"},
-		{"start-here/first-workflow.md", "Your first workflow", "run the seeded example, then rebuild it"},
-		{"concepts/workflows-and-steps.md", "Workflows and steps", "triggers, the typed step contract, payload vs attributes, versions"},
-		{"concepts/guardrails.md", "Guardrails and effect classes", "what asks for approval and how rules scope it"},
-		{"concepts/configure.md", "Configure entities", "integrations, lists, MCP servers, AI providers, environments"},
-		{"concepts/atlas.md", "Atlas", "the knowledge board: kinds, links, areas, doc mirrors, card actions"},
-		{"concepts/runs-and-review.md", "Runs, review, and debugging", "durable runs, the review queue, breakpoints"},
-		{"concepts/coding-loop.md", "The coding loop", "copy a command, confirm the parsed steps, watch it run, copy the result back"},
-		{"reference/steps.md", "Step reference", "every step's contract, generated from the registry"},
-		{"reference/commands.md", "Commands", "every registered command's id, label, default binding, surface, and enablement, generated from the registry"},
-		{"reference/menu-bar.md", "Menu bar", "every menu and item in the macOS menu bar, its shortcut, and the command behind it, generated from the registry"},
-		{"reference/environments.md", "Environments", "named sets of plain and secret variables, {{var}} in a request, and which one a run selects"},
-		{"reference/client-certificates.md", "Client certificates", "presenting a client certificate per host: formats, matching, expiry status, and the Test action"},
-		{"reference/browser-extension.md", "The browser extension", "pairing a browser so Mill can replay recorded steps in your own signed-in session"},
-		{"reference/settings.md", "Settings", "app preferences: appearance, vault lock policy, hotkeys, shortcuts, MCP access, remote access, backups, updates"},
-		{"reference/extending-the-canvas.md", "Extending the canvas", "how a canvas noun loads, what its declaration requires, and what platform APIs it may and may not reach"},
-		{"reference/register-a-canvas-tool.md", "Register a canvas tool", "walks a new AtlasToolShape declaration end to end, quoting a real registered tool"},
-		{"reference/register-a-command.md", "Register a command", "walks a new Command registry entry end to end, quoting a real registered command"},
-		{"reference/managed-extensions.md", "Managed extensions", "the organisation policy file: allow and block lists, required tier, blocked capabilities, allowed sources, and what an install checks"},
-		{"agents/connect-mcp.md", "Automate with agents", "connecting over MCP and what agents can do"},
-		{"agents/diagrams.md", "Edit a diagram with an agent", "reading a diagram's shapes by id and adding, changing, deleting and importing them in place"},
-		{"agents/plugins.md", "What plugins expose to agents", "listing installed plugins, calling a plugin's declared tools, and how a plugin write parks"},
-		{"trust/data-and-safety.md", "Trust, data, and safety", "no phone-home, local data, honest limits"},
-	}
-}
-
-func docPages(root string) ([]DocPage, error) {
-	order := PageIndex()
-	for _, p := range order {
-		if _, err := os.Stat(filepath.Join(root, p.Rel)); err != nil {
-			return nil, fmt.Errorf("llms index names a missing page: %w", err)
-		}
-	}
-	return order, nil
-}
-
-// GenerateLLMSTxt emits the llms.txt index (llmstxt.org shape: H1,
-// blockquote summary, one linked list) for the docs tree at root.
-func GenerateLLMSTxt(root string) (string, error) {
-	pages, err := docPages(root)
-	if err != nil {
-		return "", err
-	}
-	var b strings.Builder
-	b.WriteString("# Mill\n\n")
-	b.WriteString("> Mill is a desktop app for guardrailed automation: workflows composed from typed steps, run by hotkey/schedule/watcher, with every external effect gated for approval — and a full MCP surface so AI agents can drive it under the same guardrails. Single binary, local data, no phone-home.\n\n")
-	b.WriteString("## Docs\n\n")
-	for _, p := range pages {
-		fmt.Fprintf(&b, "- [%s](%s): %s\n", p.Title, p.Rel, p.Note)
-	}
-	return b.String(), nil
-}
-
-// GenerateLLMSFullTxt concatenates every indexed page's content into
-// the single-file variant agents ingest whole.
-func GenerateLLMSFullTxt(root string) (string, error) {
-	pages, err := docPages(root)
-	if err != nil {
-		return "", err
-	}
-	var b strings.Builder
-	b.WriteString("# Mill — full documentation\n")
-	for _, p := range pages {
-		raw, err := os.ReadFile(filepath.Join(root, p.Rel)) // #nosec G304 -- p.rel comes from the fixed docPages list above, never input
-		if err != nil {
-			return "", err
-		}
-		b.WriteString("\n---\n\n")
-		b.Write(raw)
-	}
-	return b.String(), nil
 }

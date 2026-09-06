@@ -3,6 +3,7 @@ import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel, dragPaletteItemToCanvas, connectNodes } from './fixtures/canvas'
 import { clickCanvasNode } from './fixtures/canvasNode'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // Exercises the mcp-tool-call node's schema-driven arguments editor
 // (docs/SPEC.md §3.6, MCPToolArgsEditor.tsx) over a real, spawned MCP
@@ -28,7 +29,7 @@ test('mcp-tool-call node: schema-driven typed argument fields once a real tool i
   // subprocess (an absolute path -- resolved from this spec file, not
   // hardcoded, so it survives running from any checkout location).
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'MCP Servers' }).click()
+  await openConfigureKind(page, 'MCP Servers')
   await page.getByTestId('new-mcpserver').click()
   await page.getByLabel('Label').fill('E2E MCP fixture')
   await page.getByLabel('Command').fill('node')
@@ -95,7 +96,7 @@ test('mcp-tool-call node: schema-driven typed argument fields once a real tool i
   await expect(workflowRow(page, 'E2E MCP tool editor workflow')).toHaveCount(0)
 
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'MCP Servers' }).click()
+  await openConfigureKind(page, 'MCP Servers')
   await clickRowAction(page, mcpServerRow(page, 'E2E MCP fixture').first(), 'Delete')
   await expect(mcpServerRow(page, 'E2E MCP fixture')).toHaveCount(0)
 })

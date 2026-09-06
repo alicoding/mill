@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # Step reference
 
 Generated from the live step registry — every step's contract exactly as the canvas enforces it. Do not edit by hand; `go generate ./internal/docsgen` regenerates.
@@ -245,6 +249,19 @@ Looks up an Attributes value in a configured List and writes the matched entry b
   - **If no match** — What to do when the input value isn't in the list.
   - **Default value** — Written to the output attribute when there's no match and "If no match" is "default".
   - **Pin to version (optional)** — Leave empty to always resolve this List's current rows. Enter a version number to pin this step to that exact published snapshot, unaffected by later row edits.
+
+### Replay in the browser
+
+Runs a recorded browser flow in your paired browser, signed in as you are.
+
+- Takes: anything — Produces: JSON
+- Effect: external — parks for approval by default
+- Settings:
+  - **Recording** — The flow exported as JSON from the browser's own recorder. Import it rather than typing it.
+  - **Parameters** — Values to replace in the recording before it runs, each naming one step and one of its fields.
+  - **Extract** — Text to read back out of the page, each naming a step that waits for the element to read.
+  - **Timeout (seconds)** — How long the whole flow may take before the run fails.
+  - **Browser** — Which paired browser runs the flow.
 
 ### Run a captured command
 

@@ -1,9 +1,10 @@
 import { test, expect } from './fixtures/server'
-import { clickGlideCell, editGlideCell, glideCellText } from './fixtures/glideGrid'
+import { clickGlideCell, clickGlideTrailingRow, editGlideCell, glideCellText } from './fixtures/glideGrid'
 import { addGridColumn } from './fixtures/listGrid'
 import { clickRowAction } from './inventoryRow'
 import { activePanel, dragPaletteItemToCanvas, connectNodes } from './fixtures/canvas'
 import { clickCanvasNode } from './fixtures/canvasNode'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // docs/adr/0040 slice 1 (goal 0046): the live-app proof for the three
 // decisions this slice ships -- Field.Key immutability (server-side,
@@ -25,7 +26,7 @@ import { clickCanvasNode } from './fixtures/canvasNode'
 test('Deprecated column: de-emphasized in the List editor and excluded from a new list-search match parameter', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
 
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Country codes', { exact: true }) })
   await listRow.getByText('Country codes', { exact: true }).click()
@@ -79,7 +80,7 @@ test('Deprecated column: de-emphasized in the List editor and excluded from a ne
 test('Deleting a still-referenced List is blocked, naming the workflows', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
 
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Country codes', { exact: true }) })
   await expect(listRow).toBeVisible()
@@ -99,7 +100,7 @@ test('Deleting a still-referenced List is blocked, naming the workflows', async 
 test('Deleting a saved column tombstones it (confirmed); re-adding the same key/type resurrects the row\'s own data', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
 
   await page.getByTestId('new-list').click()
   await page.getByLabel('Label').fill('E2E tombstone list UI')
@@ -107,8 +108,8 @@ test('Deleting a saved column tombstones it (confirmed); re-adding the same key/
 
   await expect(page.getByTestId('list-rows-editor')).toBeVisible()
   await addGridColumn(page, 'Code')
-  await page.getByTestId('atlas-projection-add-row').click()
   const glide = page.getByTestId('atlas-projection-glide')
+  await clickGlideTrailingRow(page, glide)
   await editGlideCell(page, glide, 0, 0, 'KEEP-ME')
   await expect(glideCellText(glide, 0, 0)).toHaveText('KEEP-ME')
 

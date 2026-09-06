@@ -10,6 +10,7 @@ import {
   type SpawnedServer,
 } from './fixtures/server'
 import { contextMenu } from './fixtures/contextMenu'
+import { openBoardMenu } from './fixtures/toolbarActions'
 import { clickBreadcrumbSegment, groupCard, noteCard, openCard, createCardViaTray } from './fixtures/atlasBoard'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_TOPIC } from './fixtures/kindPicker'
@@ -112,17 +113,23 @@ test('a perspective filters the board to its members closed under ancestry, and 
     await expect(noteCard(page, 'Scratchpad')).not.toBeVisible()
     await expect(groupCard(page, 'Client records')).not.toBeVisible()
 
-    // Arrange-disabled-while-active (ADR-0041): aria-disabled + the
-    // exact tooltip copy, re-enabled once back on All cards.
+    // Arrange-disabled-while-active (ADR-0041): its Board-menu seat is
+    // dimmed and says why, re-enabled once back on All cards. The
+    // enablement is the command's own (shared/atlasBoardCommands.ts), so
+    // the palette and the keyboard answer identically.
+    await openBoardMenu(page)
     const arrange = page.getByTestId('atlas-auto-arrange')
     await expect(arrange).toHaveAttribute('aria-disabled', 'true')
     await expect(arrange).toHaveAttribute('title', 'Arranging works on all cards. Switch to All cards first.')
+    await page.keyboard.press('Escape')
 
     // Switch to All cards to reach "Discovery workstream" and add it via
     // the board's own right-click "Add to perspective".
     await switcherButton(page).click()
     await switcherPopover(page).getByText('All cards', { exact: true }).click()
+    await openBoardMenu(page)
     await expect(arrange).not.toHaveAttribute('aria-disabled', 'true')
+    await page.keyboard.press('Escape')
 
     await noteCard(page, 'Discovery workstream').click({ button: 'right' })
     await expect(contextMenu(page)).toBeVisible()

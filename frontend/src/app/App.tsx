@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { UndoDeleteToast } from '../shared/UndoDeleteToast'
+import { isVaultWait } from '../shared/parkReason'
 import { useTranslation } from 'react-i18next'
 import {Events, WML} from "@wailsio/runtime";
 import {PageLayout} from "@primer/react";
@@ -39,7 +40,7 @@ import { useBeforeQuitFlush } from './useBeforeQuitFlush'
 import { usePluginToolBridge } from './usePluginToolBridge'
 import { UnsavedChangesDialog } from './UnsavedChangesDialog'
 import { useReviewDeepLink } from './useReviewDeepLink'
-import { useSettingsRouteLanding } from './useSettingsRouteLanding'
+import { useRouteLanding } from './useRouteLanding'
 import { usePendingReview } from '../review/usePendingReview'
 import { useKeymapDispatch } from './useKeymapDispatch'
 import { useNativeMenu } from './useNativeMenu'
@@ -227,7 +228,7 @@ function App() {
   useBeforeQuitFlush();
   usePluginToolBridge();
   useReviewDeepLink(setView);
-  useSettingsRouteLanding(setView);
+  useRouteLanding(setView);
 
   const notifyBrowserTab = useBrowserNotify();
 
@@ -317,7 +318,9 @@ function App() {
       ...guardrailPending.map((r) => ({
         key: `guardrail:${r.runID}`,
         id: r.runID,
-        description: t('pendingApprovalDescription', { workflowLabel: r.workflowLabel, step: r.pending?.nodeTypeLabel || r.pending?.nodeTypeID || t('pendingApprovalStepFallback') }),
+        description: isVaultWait(r.pending)
+          ? t('pendingVaultWaitDescription', { workflowLabel: r.workflowLabel })
+          : t('pendingApprovalDescription', { workflowLabel: r.workflowLabel, step: r.pending?.nodeTypeLabel || r.pending?.nodeTypeID || t('pendingApprovalStepFallback') }),
         kind: 'guardrail',
       })),
       ...mcpPending.map((w) => ({ key: `mcp-write:${w.id}`, id: w.id, description: w.description, kind: 'mcp-write' })),

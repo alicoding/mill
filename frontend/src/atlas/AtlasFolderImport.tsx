@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionBar, Button, Checkbox, Dialog, FormControl, Select, Text } from '@primer/react'
-import { FileDirectoryIcon } from '@primer/octicons-react'
+import { Button, Checkbox, Dialog, FormControl, Select, Text } from '@primer/react'
 import { ScanCategory } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
@@ -208,21 +207,10 @@ export function AtlasFolderImport({ viewedID, kinds }: { viewedID: string; kinds
 
   return (
     <>
-      {/* Renders as ActionBar.Button (goal 0216), a direct child of
-          AtlasToolbar's own ActionBar despite living in this separate
-          component -- React context (ActionBar's overflow registry)
-          resolves through component composition, not literal JSX
-          nesting, so this still participates correctly. The Dialog
-          below needs no anchor (it's a modal, not anchor-positioned),
-          so only the trigger itself needed to move. */}
-      <ActionBar.Button
-        leadingVisual={FileDirectoryIcon}
-        data-testid="atlas-add-from-folder"
-        disabled={busy}
-        onClick={() => void startPick()}
-      >
-        {t('folderImport.addButton')}
-      </ActionBar.Button>
+      {/* No trigger of its own (goal 0355): "Add from folder…" is a seat
+          in the Board menu, which runs atlas.addFromFolder, whose signal
+          the effect above consumes -- so this component contributes only
+          the preview dialog the pick opens. */}
       {scan && (
         // data-component, not data-testid: Primer's Dialog only forwards
         // its own special-cased "data-component" prop (AtlasCardOverlay.tsx's

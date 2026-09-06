@@ -4,6 +4,7 @@ import { dragBetween, dragResizeHandle } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
 import type { Locator, Page } from '@playwright/test'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // A table object's own drag/resize/footprint contract (goal 0199 parts
 // A-C), split out of atlas-table-projection.spec.ts at the 500-line
@@ -52,7 +53,7 @@ test('a newly created table object has no dead space below a small grid', async 
   await deleteObjectViaMenu(tableObject)
   await expect(tableObject).toHaveCount(0)
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })
   await clickRowAction(page, listRow, 'Delete')
   await expect(listRow).toHaveCount(0)
@@ -76,7 +77,7 @@ test('adding columns widens an unsized table instead of scrolling its first colu
   if (!startBox) throw new Error('no table object box')
 
   const addColumn = async () => {
-    await glide.getByTestId('atlas-projection-add-column').click()
+    await glide.getByTestId('list-grid-add-column').click()
     // Each insert opens the new column's rename field; leave it.
     await expect(glide.getByTestId('atlas-projection-rename-input')).toBeVisible()
     await page.keyboard.press('Escape')
@@ -105,7 +106,7 @@ test('adding columns widens an unsized table instead of scrolling its first colu
   await deleteObjectViaMenu(tableObject)
   await expect(tableObject).toHaveCount(0)
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })
   await clickRowAction(page, listRow, 'Delete')
   await expect(listRow).toHaveCount(0)
