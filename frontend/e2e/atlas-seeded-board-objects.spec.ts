@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { waitForViewportStable } from './fixtures/animation'
 import { wheelAt } from './fixtures/pointer'
+import { expectSelectedFaceOwnsWheel } from './fixtures/atlasActivationContract'
 import { pdfBytes } from './fixtures/pdfBytes'
 
 // Goal 0223: the live-app proof that the seeded board-object examples
@@ -122,7 +123,8 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     // the board like any body. The reverse wheel
     // restores the viewport exactly (panOnScroll is a 1:1 delta, no
     // zoom), keeping later geometry in this test intact.
-    await expect(pdf).not.toHaveClass(/nowheel/)
+    const pdfFace = pdf.getByTestId('atlas-board-object-face')
+    await expect(pdfFace).not.toHaveClass(/nowheel/)
     const viewportTransform = () => page.locator('.react-flow__viewport').evaluate((el) => el.style.transform)
     await waitForViewportStable(page.getByTestId('atlas-board'))
     const shieldUpTransform = await viewportTransform()
@@ -145,17 +147,11 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     await expect(viewer.locator('#findInput')).toHaveAttribute('autocorrect', 'off')
     await expect(viewer.locator('#findInput')).toHaveAttribute('autocomplete', 'off')
     await expect(viewer.locator('#findInput')).toHaveAttribute('spellcheck', 'false')
-    // Wheel routing, live viewer (goal 0354): with the shield lifted
-    // the selected state puts nowheel on the whole node box -- a scroll
-    // aimed into the viewer must never ALSO pan the board.
-    await expect(pdf).toHaveClass(/nowheel/)
-    await waitForViewportStable(page.getByTestId('atlas-board'))
-    const liveTransform = await viewportTransform()
-    await wheelAt(page, pdf, 0, 80)
-    // A settled negative: poll the transform staying put across a beat
-    // rather than asserting once immediately.
-    await page.waitForTimeout(300) // no observable "wheel fully routed" signal exists for a negative assertion
-    expect(await viewportTransform()).toBe(liveTransform)
+    // Wheel routing, live viewer (goal 0354): with the shield lifted the
+    // selected state puts nowheel on the FACE -- a trackpad burst aimed
+    // into the viewer must never ALSO pan the board, while the chrome
+    // band beside it still does.
+    await expectSelectedFaceOwnsWheel(page, pdf)
     await expect(viewer.locator('#numPages')).toContainText('2')
     // At board-tile widths the viewer's own responsive toolbar
     // collapses prev/next; the page-number INPUT is the always-visible

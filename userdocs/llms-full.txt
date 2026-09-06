@@ -2386,7 +2386,7 @@ free" below), may call:
   | State | What owns input | What the object looks like |
   |---|---|---|
   | idle | the canvas: the wheel pans or zooms the board, a drag moves the object, keys reach the board | the face is inert behind a transparent shield; hovering draws a ring and the chrome band says what the first click buys |
-  | selected | the face: it receives pointer events and keys, and a wheel over anything in it that really scrolls stays inside it; the chrome band still drags the object | the selection ring and resize handles |
+  | selected | the face: it receives pointer events and keys, and every wheel over it stays inside it whether or not anything in it scrolls; the chrome band still drags the object and still pans the board | the selection ring and resize handles |
   | editing | the face's own editor: the board's shortcuts stand down until it closes | unchanged from selected |
 
   A `'static'` face is always idle — the canvas owns every gesture over
