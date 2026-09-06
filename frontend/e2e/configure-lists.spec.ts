@@ -6,6 +6,7 @@ import { addGridColumn } from './fixtures/listGrid'
 import { clickCanvasNode } from './fixtures/canvasNode'
 import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel, dragPaletteItemToCanvas, connectNodes } from './fixtures/canvas'
+import { openConfigureKind } from './fixtures/configureNav'
 
 const CSV_FIXTURE = path.join(fileURLToPath(new URL('.', import.meta.url)), 'fixtures', 'list-import-sample.csv')
 
@@ -29,7 +30,7 @@ function listRow(page: import('@playwright/test').Page, label: string) {
 test('Configuring a typed List: add a column, add a row, both persist', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
 
   await page.getByTestId('new-list').click()
   await page.getByLabel('Label').fill('E2E typed list UI')
@@ -116,7 +117,7 @@ test('list-search node: configuring a real match parameter through the Inspector
 test('Configure > Lists: Publish freezes a version, shown in the version list', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
 
   await page.getByTestId('new-list').click()
   await page.getByLabel('Label').fill('E2E publish list')
@@ -144,7 +145,7 @@ test('Configure > Lists: Publish freezes a version, shown in the version list', 
 test('Configure > Lists: CSV import — mapping preview, one manual remap, a malformed row skipped, confirm applies', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
 
   await page.getByTestId('new-list').click()
   await page.getByLabel('Label').fill('E2E CSV import list')
@@ -217,7 +218,7 @@ test('Track an engagement task runs end to end -- creates then updates the same 
   await expect(bar).toContainText('SUCCESS', { timeout: 15_000 })
 
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const trackerRow = listRow(page, 'Engagement tasks')
   await expect(trackerRow).toBeVisible()
   await trackerRow.click()
@@ -239,7 +240,7 @@ test('Track an engagement task runs end to end -- creates then updates the same 
 test('cell editing never shifts the row, and Tab/Enter walk the grid', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
 
   await page.getByTestId('new-list').click()
   await page.getByLabel('Label').fill('E2E keyboard grid')
@@ -283,7 +284,7 @@ test('cell editing never shifts the row, and Tab/Enter walk the grid', async ({ 
 test('escape lands on the cell, arrows walk, typing replaces', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
 
   await page.getByTestId('new-list').click()
   await page.getByLabel('Label').fill('E2E focus grid')
@@ -333,7 +334,7 @@ test('escape lands on the cell, arrows walk, typing replaces', async ({ page }) 
 test('New from file infers a typed schema and creates the list with its rows', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
 
   await page.getByTestId('new-list-from-file-input').setInputFiles('e2e/fixtures/files/sample-import.csv')
   const dialog = page.locator('[data-component="new-list-from-file-dialog"]')

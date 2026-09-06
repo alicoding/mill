@@ -13,6 +13,7 @@ import { activePanel, dragPaletteItemToCanvas } from './fixtures/canvas'
 import { stepOutput, tryStep } from './fixtures/stepTest'
 import { openInspectorTab } from './fixtures/inspectorTabs'
 import { clickRowAction } from './inventoryRow'
+import { openConfigureKind } from './fixtures/configureNav'
 
 const rows = (page: import('@playwright/test').Page) => page.locator('[data-testid="inventory-row"][data-entity="conversionprofile"]')
 
@@ -21,7 +22,7 @@ const WORD_HTML = `<p><span style="font-family:Wingdings">þ</span> Tag the buil
 test('the seeded profiles are listed and the sample preview shows each profile\'s result side by side', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Conversion profiles' }).click()
+  await openConfigureKind(page, 'Conversion profiles')
   const pageRoot = page.getByTestId('configure-conversionprofiles')
   await expect(pageRoot).toBeVisible()
   await expect(rows(page).filter({ hasText: 'Example: Every rule set' })).toHaveCount(1)
@@ -40,7 +41,7 @@ test('the seeded profiles are listed and the sample preview shows each profile\'
 test('a profile is created with chosen rule sets, edited, and deleted', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Conversion profiles' }).click()
+  await openConfigureKind(page, 'Conversion profiles')
   const pageRoot = page.getByTestId('configure-conversionprofiles')
   await pageRoot.getByTestId('new-conversionprofile').click()
   await pageRoot.getByTestId('conversionprofile-label').fill('Office pastes only')

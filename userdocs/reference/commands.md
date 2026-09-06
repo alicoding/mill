@@ -110,6 +110,17 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.new.lists` | New list | — | Global | Always available |
 | `configure.new.mcpservers` | New MCP server | — | Global | Always available |
 | `configure.new.steptypes` | New step type | — | Global | Always available |
+| `configure.open.aiproviders` | Configure › AI Providers | — | Global | Always available |
+| `configure.open.attributes` | Configure › Attributes | — | Global | Always available |
+| `configure.open.certificates` | Configure › Certificates | — | Global | Always available |
+| `configure.open.conversionprofiles` | Configure › Conversion profiles | — | Global | Always available |
+| `configure.open.decisions` | Configure › Decisions | — | Global | Always available |
+| `configure.open.environments` | Configure › Environments | — | Global | Always available |
+| `configure.open.execenvs` | Configure › Execution Environments | — | Global | Always available |
+| `configure.open.integration` | Configure › Integrations | — | Global | Always available |
+| `configure.open.lists` | Configure › Lists | — | Global | Always available |
+| `configure.open.mcpservers` | Configure › MCP Servers | — | Global | Always available |
+| `configure.open.steptypes` | Configure › Step types | — | Global | Always available |
 | `configure.request.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.request.edit` | Edit | — | Global | Acts on the selected entity |
 | `configure.request.export` | Export | — | Global | Acts on the selected entity |

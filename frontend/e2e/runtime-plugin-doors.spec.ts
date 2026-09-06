@@ -6,6 +6,7 @@ import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { clickAtlasTrayTool } from './fixtures/atlasTray'
 import { contextMenu } from './fixtures/contextMenu'
 import { openPluginDetail } from './fixtures/settingsNav'
+import { openConfigureKind } from './fixtures/configureNav'
 
 
 // The platform DOORS a runtime plugin gets beyond rendering its own
@@ -479,7 +480,7 @@ test('a plugin creates a List through the content door: approved in Review it ap
 		await reviewPage.close()
 
 		await page.getByRole('link', { name: 'Configure' }).click()
-		await page.getByRole('tab', { name: 'Lists', exact: true }).click()
+		await openConfigureKind(page, 'Lists')
 		const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Probe vendors', { exact: true }) })
 		await expect(listRow).toBeVisible()
 		await expect(listRow).toContainText('2 columns, 1 rows')

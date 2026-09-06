@@ -1,6 +1,7 @@
 import { test, expect, type Page } from './fixtures/server'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { clickGlideCell, clickGlideRowMarker, dragGlideColumnEdge, dragGlideFillHandle, dragGlideRange, glideCellText, glideTextEditor, typeOverGlideCell } from './fixtures/glideGrid'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // The eight converged table interactions on the List grid (goal 0349
 // S4): range select, type-to-overwrite, fill handle, clipboard both
@@ -28,7 +29,7 @@ async function seedAndOpen(page: Page, label: string, rows: Record<string, strin
   await page.goto('/')
   const list = await callBindingViaRPC<SeededList>(page, `${CONFIGURE}.CreateListWithRows`, [label, '', COLUMNS, rows])
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const row = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText(label, { exact: true }) })
   await expect(row).toBeVisible()
   // The row itself opens its editor (InventoryList's onOpen).
@@ -43,7 +44,7 @@ async function seedAndOpen(page: Page, label: string, rows: Record<string, strin
 // not URL-addressable, so a reload lands on the app's own default view.
 async function reopen(page: Page, label: string) {
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const row = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText(label, { exact: true }) })
   await expect(row).toBeVisible()
   await row.click()

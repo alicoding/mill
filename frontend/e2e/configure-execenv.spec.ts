@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
+import { openConfigureKind } from './fixtures/configureNav'
 
 const CONFIGURE = 'github.com/alicoding/mill/internal/services/configuresvc.ConfigureService.'
 
@@ -16,7 +17,7 @@ const CONFIGURE = 'github.com/alicoding/mill/internal/services/configuresvc.Conf
 async function openExecEnvTab(page: import('@playwright/test').Page) {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Execution Environments', exact: true }).click()
+  await openConfigureKind(page, 'Execution Environments')
 }
 
 test('Profile-mode caption follows the selected mode', async ({ page }) => {
@@ -69,7 +70,7 @@ test('a shell can borrow a shared environment\'s variables, and the reference su
   const environment = await callBindingViaRPC<{ ID: string; Label: string }>(page, CONFIGURE + 'CreateEnvironment', ['ZzE2eShellStage', [{ Key: 'API_BASE', Value: 'https://stage.example.test', Secret: false }]])
   // Reopen so the picker lists the environment created a moment ago.
   await page.reload()
-  await page.getByRole('tab', { name: 'Execution Environments', exact: true }).click()
+  await openConfigureKind(page, 'Execution Environments')
   await page.getByTestId('new-execenv').click()
   await page.getByLabel('Label').fill('E2E borrowing env')
   await page.getByTestId('execenv-advanced-summary').click()

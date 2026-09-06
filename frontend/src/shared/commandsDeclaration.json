@@ -790,6 +790,94 @@
     "needs": null
   },
   {
+    "id": "configure.open.aiproviders",
+    "label": "Configure › AI Providers",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.attributes",
+    "label": "Configure › Attributes",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.certificates",
+    "label": "Configure › Certificates",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.conversionprofiles",
+    "label": "Configure › Conversion profiles",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.decisions",
+    "label": "Configure › Decisions",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.environments",
+    "label": "Configure › Environments",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.execenvs",
+    "label": "Configure › Execution Environments",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.integration",
+    "label": "Configure › Integrations",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.lists",
+    "label": "Configure › Lists",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.mcpservers",
+    "label": "Configure › MCP Servers",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "configure.open.steptypes",
+    "label": "Configure › Step types",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
     "id": "configure.request.delete",
     "label": "Delete",
     "binding": null,

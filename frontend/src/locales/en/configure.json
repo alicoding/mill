@@ -570,6 +570,29 @@
   "configureView": {
     "subtitle": "Reusable connections, lists, and values that workflows reference. Defined once, used anywhere.",
     "ariaLabel": "Configure",
+    "filterPlaceholder": "Filter kinds",
+    "noMatch": "No kind matches.",
+    "groups": {
+      "connections": {
+        "title": "Connections",
+        "caption": "Used by workflows and boards."
+      },
+      "runtime": {
+        "title": "Runtime",
+        "caption": "Where workflows run."
+      },
+      "data": {
+        "title": "Data",
+        "caption": "Used by workflows and boards."
+      },
+      "workflowLogic": {
+        "title": "Workflow logic",
+        "caption": "Used by workflows."
+      },
+      "extensions": {
+        "title": "From extensions"
+      }
+    },
     "integration": "Integrations",
     "lists": "Lists",
     "attributes": "Attributes",

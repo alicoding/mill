@@ -1,5 +1,6 @@
 import { test, expect, type Page } from './fixtures/server'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // The one list standard (docs/goals/0337): every list page handles
 // length the same way -- one toolbar (search, sort, the page's own
@@ -110,7 +111,7 @@ test('Workflows: the toolbar counts, pagination pages, and the seeded examples c
 test('Configure: an inventory under the page size wears the same toolbar and count, with no pagination', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Integrations' }).click()
+  await openConfigureKind(page, 'Integrations')
 
   // Configure keeps every tab's panel mounted, so each assertion is
   // scoped to the Integrations panel rather than the page.
