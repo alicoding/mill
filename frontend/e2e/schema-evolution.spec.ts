@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { clickGlideCell, editGlideCell, glideCellText } from './fixtures/glideGrid'
+import { clickGlideCell, clickGlideTrailingRow, editGlideCell, glideCellText } from './fixtures/glideGrid'
 import { addGridColumn } from './fixtures/listGrid'
 import { clickRowAction } from './inventoryRow'
 import { activePanel, dragPaletteItemToCanvas, connectNodes } from './fixtures/canvas'
@@ -107,8 +107,8 @@ test('Deleting a saved column tombstones it (confirmed); re-adding the same key/
 
   await expect(page.getByTestId('list-rows-editor')).toBeVisible()
   await addGridColumn(page, 'Code')
-  await page.getByTestId('atlas-projection-add-row').click()
   const glide = page.getByTestId('atlas-projection-glide')
+  await clickGlideTrailingRow(page, glide)
   await editGlideCell(page, glide, 0, 0, 'KEEP-ME')
   await expect(glideCellText(glide, 0, 0)).toHaveText('KEEP-ME')
 

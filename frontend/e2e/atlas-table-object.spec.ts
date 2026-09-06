@@ -76,7 +76,7 @@ test('adding columns widens an unsized table instead of scrolling its first colu
   if (!startBox) throw new Error('no table object box')
 
   const addColumn = async () => {
-    await glide.getByTestId('atlas-projection-add-column').click()
+    await glide.getByTestId('list-grid-add-column').click()
     // Each insert opens the new column's rename field; leave it.
     await expect(glide.getByTestId('atlas-projection-rename-input')).toBeVisible()
     await page.keyboard.press('Escape')
