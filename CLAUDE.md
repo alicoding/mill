@@ -38,6 +38,9 @@ session window at a multiple of Opus/Sonnet (three windows lost in one day); Fab
 the orchestrator's own reasoning only. Every `Agent` delegation states its model
 explicitly; the task is *fixed and bounded* (a written brief with objective gates, per
 `.claude/skills/brief`) or the missing piece is still the orchestrator's.
+The brief also carries the adoption decision — which commodity/pattern, at
+which abstraction level (adopt-converged-patterns.md's dispatch lock); an
+agent never chooses a library, and pre-rule hand-rolled code migrates on touch.
 
 **Every dispatched BUILD agent works in its own git worktree; the main checkout belongs
 to the orchestrator.** State it in the brief. Before ANY git write or build in the main

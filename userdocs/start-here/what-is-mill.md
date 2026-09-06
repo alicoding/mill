@@ -1,5 +1,5 @@
 ---
-kind: tutorial
+kind: explanation
 ---
 
 # What is Mill

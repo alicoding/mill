@@ -1,5 +1,5 @@
 ---
-kind: tutorial
+kind: how-to
 ---
 
 # Install
