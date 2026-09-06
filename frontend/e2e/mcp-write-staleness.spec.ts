@@ -5,6 +5,7 @@ import {
   enableMCPWritesWithApprovalRequired, restoreMCPWriteDefaults,
 } from './mcpTestClient'
 import { workflowRow } from './fixtures/canvas'
+import { RUN_TERMINAL_TIMEOUT } from './fixtures/runTerminal'
 
 // docs/goals/0026 item 2: a stale pending item must visibly communicate
 // its age -- fresh (<15m) renders as-is, older gets emphasis + "expires
@@ -32,7 +33,10 @@ test('a backdated pending MCP write renders age emphasis + expiry text in Review
 
     await page.getByRole('link', { name: 'Review' }).click()
     const item = page.getByTestId('review-mcp-write-item').first()
-    await expect(item).toBeVisible({ timeout: 15_000 })
+    // The parked write appears only after the import's real MCP
+    // round-trip lands -- load-shaped like any live-run wait, so the
+    // shared budget, not a local-comfortable ceiling.
+    await expect(item).toBeVisible({ timeout: RUN_TERMINAL_TIMEOUT })
 
     // Fresh: no age emphasis yet, just the plain relative-time render
     // (StalenessBadge's own 'fresh' branch -- no data-age-tier attribute).
