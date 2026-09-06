@@ -95,13 +95,16 @@ test('add from folder: scan, partial accept, containment, and mirror rendering a
   // that fails to parse keeps its original code block -- the fixture
   // carries one of each, so exactly one diagram and one surviving
   // fence prove both the render and the honest fallback.
+  // The diagram engine is a lazy chunk rendered after the prose mounts,
+  // so the prose being visible is not the diagrams being done. Wait on
+  // the host's own settled signal -- a longer count timeout cannot tell
+  // "still loading" from "the engine failed and never will render".
+  const mirror = overlay.getByTestId('atlas-mirror-markdown')
+  await expect(mirror).toHaveAttribute('data-mermaid-state', 'settled', { timeout: 30_000 })
   const diagram = overlay.getByTestId('atlas-mermaid-diagram')
-  // The diagram engine is a lazy chunk rendered after the prose mounts:
-  // under a loaded runner the load + render outruns the default wait
-  // (instrumented: the render completed, after the assertion expired).
-  await expect(diagram).toHaveCount(1, { timeout: 30_000 })
-  await expect(diagram.locator('svg')).toBeVisible({ timeout: 30_000 })
-  await expect(overlay.getByTestId('atlas-mirror-markdown').locator('code.language-mermaid')).toHaveCount(1)
+  await expect(diagram, `mermaid error attribute: ${String(await mirror.getAttribute('data-mermaid-error'))}`).toHaveCount(1)
+  await expect(diagram.locator('svg')).toBeVisible()
+  await expect(mirror.locator('code.language-mermaid')).toHaveCount(1)
 
   // Cleanup (testing.md's within-file/within-worker discipline): the
   // child card must go before its own container can be deleted. Once
