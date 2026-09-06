@@ -7,22 +7,25 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 // TestUserDocs_MaturityMatchesCommitted is the tfplugindocs freshness
 // pattern (docsgen_test.go's TestUserDocs_MatchCommitted) applied to
 // the maturity ledger, with one deliberate exception: the "days behind
-// code" column and the ledger's own dates/generatedAt are excluded
-// from the byte comparison. Those fields are derived from `git log`
-// against the checkout's own history (maturity_currency.go), and
-// CI's test-go job checks out at fetch-depth 1 -- a shallow clone
-// answers `git log -- <path>` with the checkout's own single commit
-// for any path that commit's tree carries, not the path's true last
-// commit, so the value this job computes always differs from what a
-// full local clone committed. The rest of the ledger (family list,
-// level, every evidence cell, flags) has no such dependency and is
-// still byte-exact. Fix a real drift with
-// `go generate ./internal/docsgen`.
+// code" column and the per-row dates are excluded from the byte
+// comparison. Those fields are derived from `git log` against the
+// checkout's own history (maturity_currency.go), and CI's test-go job
+// checks out at fetch-depth 1 -- a shallow clone answers `git log --
+// <path>` with the checkout's own single commit for any path that
+// commit's tree carries, not the path's true last commit, so the
+// value this job computes always differs from what a full local clone
+// committed. generatedAt carries no such exception because it isn't
+// part of the wire schema at all (docsgen_maturity.go) -- a run-time
+// fact, never a per-commit one, so there is nothing to reproduce. The
+// rest of the ledger (family list, level, every evidence cell, flags)
+// has no such dependency and is still byte-exact. Fix a real drift
+// with `go generate ./internal/docsgen`.
 func TestUserDocs_MaturityMatchesCommitted(t *testing.T) {
 	repoRoot := filepath.Join("..", "..")
 	mdPath := filepath.Join(repoRoot, "userdocs", "reference", "plugin-api-maturity.md")
@@ -54,7 +57,52 @@ func TestUserDocs_MaturityMatchesCommitted(t *testing.T) {
 		t.Fatalf("parse committed plugin-api-maturity.json: %v", err)
 	}
 	if !reflect.DeepEqual(gotLedger, wantLedger) {
-		t.Errorf("plugin-api-maturity.json is stale (ignoring generatedAt/codeChangedAt/docsChangedAt/daysBehindCode) -- run `go generate ./internal/docsgen` and commit the result\ncommitted: %+v\ngenerated: %+v", gotLedger, wantLedger)
+		t.Errorf("plugin-api-maturity.json is stale (ignoring codeChangedAt/docsChangedAt/daysBehindCode) -- run `go generate ./internal/docsgen` and commit the result\ncommitted: %+v\ngenerated: %+v", gotLedger, wantLedger)
+	}
+}
+
+// TestGenerateMaturityJSON_OmitsGeneratedAt pins the wire schema
+// decision docsgen_maturity.go's comment states: generatedAt is a
+// run-time fact, never a per-commit one, so it never appears in the
+// committed file at all.
+func TestGenerateMaturityJSON_OmitsGeneratedAt(t *testing.T) {
+	repoRoot := filepath.Join("..", "..")
+	raw, err := GenerateMaturityJSON(repoRoot)
+	if err != nil {
+		t.Fatalf("generate plugin-api-maturity.json: %v", err)
+	}
+	if strings.Contains(raw, "generatedAt") {
+		t.Errorf("plugin-api-maturity.json carries a generatedAt key -- it must be a run-time-only field, never serialized")
+	}
+}
+
+// TestGenerateMaturity_IdempotentAcrossCallsOverTime is goal 0358 S9's
+// acceptance check: `go generate` on an unchanged commit must produce
+// byte-identical output no matter what day it runs. Real wall-clock
+// elapses between the two calls below (however briefly); the
+// generated markdown and JSON must still match exactly.
+func TestGenerateMaturity_IdempotentAcrossCallsOverTime(t *testing.T) {
+	repoRoot := filepath.Join("..", "..")
+
+	firstMD := GenerateMaturityMarkdown(repoRoot)
+	firstJSON, err := GenerateMaturityJSON(repoRoot)
+	if err != nil {
+		t.Fatalf("generate plugin-api-maturity.json (first): %v", err)
+	}
+
+	time.Sleep(2 * time.Millisecond)
+
+	secondMD := GenerateMaturityMarkdown(repoRoot)
+	secondJSON, err := GenerateMaturityJSON(repoRoot)
+	if err != nil {
+		t.Fatalf("generate plugin-api-maturity.json (second): %v", err)
+	}
+
+	if firstMD != secondMD {
+		t.Error("plugin-api-maturity.md differs between two generations of the same commit")
+	}
+	if firstJSON != secondJSON {
+		t.Error("plugin-api-maturity.json differs between two generations of the same commit")
 	}
 }
 
@@ -82,13 +130,12 @@ func redactMaturityDaysColumn(md string) string {
 }
 
 // parseMaturityJSONForFreshness unmarshals the ledger and zeroes every
-// git-log/wall-clock-derived field before comparison.
+// git-log-derived, shallow-clone-sensitive field before comparison.
 func parseMaturityJSONForFreshness(raw string) (maturityJSONLedger, error) {
 	var l maturityJSONLedger
 	if err := json.Unmarshal([]byte(raw), &l); err != nil {
 		return maturityJSONLedger{}, err
 	}
-	l.GeneratedAt = ""
 	for i := range l.Rows {
 		l.Rows[i].CodeChangedAt = ""
 		l.Rows[i].DocsChangedAt = ""

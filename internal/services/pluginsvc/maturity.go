@@ -192,10 +192,15 @@ func (e Evidence) complete() bool {
 
 // Currency is one family's docs-vs-code staleness signal: the last
 // commit to touch its own source against the last commit to touch its
-// canonical docs page. A family with no canonical docs page (a new
-// family before docsPageByFamily names one) has a zero DocsChangedAt,
-// and DaysBehind falls back to days since the code itself last
-// changed -- there is no docs date to diff against yet.
+// canonical docs page. Both dates, and DaysBehind derived from them,
+// are git-commit facts -- never the wall clock -- so the same commit
+// always regenerates the same Currency regardless of what day `go
+// generate` runs (goal 0358 S9: a wall-clock-derived number here made
+// a day-old branch's regenerated ledger differ from the one it
+// committed, for no reason the commit itself changed). A family with
+// no canonical docs page (a new family before docsPageByFamily names
+// one) has a zero DocsChangedAt and DaysBehind 0 -- there is no docs
+// date to diff against yet, and no other stable fact to report.
 type Currency struct {
 	CodeChangedAt time.Time
 	DocsChangedAt time.Time
@@ -204,10 +209,7 @@ type Currency struct {
 
 func daysBehind(code, docs time.Time) int {
 	if docs.IsZero() {
-		if code.IsZero() {
-			return 0
-		}
-		return int(time.Since(code).Hours() / 24)
+		return 0
 	}
 	d := int(code.Sub(docs).Hours() / 24)
 	if d < 0 {
@@ -246,7 +248,13 @@ type Row struct {
 	Flags    []string
 }
 
-// Ledger is the whole generated report.
+// Ledger is the whole generated report. GeneratedAt is the moment this
+// in-memory report was built, from the clock Report was given -- a
+// live fact about the run, never a per-commit one, so it is
+// deliberately excluded from the committed markdown/JSON (docsgen's
+// GenerateMaturityMarkdown/GenerateMaturityJSON never serialize it):
+// serializing it would make `go generate` on an unchanged commit
+// produce a different file on a different day.
 type Ledger struct {
 	GeneratedAt time.Time
 	Headline    string
@@ -275,8 +283,11 @@ func headline(rows []Row) string {
 }
 
 // Report reads repoRoot and builds the full ledger: one row per
-// family, in ManifestContributes' own struct order.
-func Report(repoRoot string) Ledger {
+// family, in ManifestContributes' own struct order. now supplies
+// Ledger.GeneratedAt -- production callers pass time.Now; a test
+// passes a fixed clock to prove the rest of the ledger (every field
+// that ends up in the committed markdown/JSON) never varies with it.
+func Report(repoRoot string, now func() time.Time) Ledger {
 	families := Families()
 	rows := make([]Row, 0, len(families))
 	evidence := GatherEvidence(repoRoot)
@@ -292,7 +303,7 @@ func Report(repoRoot string) Ledger {
 		})
 	}
 	return Ledger{
-		GeneratedAt: time.Now(),
+		GeneratedAt: now(),
 		Headline:    headline(rows),
 		Rows:        rows,
 	}

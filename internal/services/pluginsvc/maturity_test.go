@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 // TestMaturity_FamiliesFollowTheManifest pins Families() to
@@ -82,6 +83,51 @@ func TestMaturity_Flags(t *testing.T) {
 				t.Errorf("Flags(%v, %+v) = %v, want %v", c.level, c.e, got, c.want)
 			}
 		})
+	}
+}
+
+// TestDaysBehind_NoDocsPageNeverReadsTheWallClock pins goal 0358 S9's
+// fix: a family with no docs page (docs zero) must report 0, not days
+// since code last changed against time.Now -- the latter made the
+// same commit's regenerated ledger differ depending on what day `go
+// generate` ran.
+func TestDaysBehind_NoDocsPageNeverReadsTheWallClock(t *testing.T) {
+	oldCode := time.Now().Add(-365 * 24 * time.Hour)
+	if got := daysBehind(oldCode, time.Time{}); got != 0 {
+		t.Errorf("daysBehind(code 1yr old, no docs page) = %d, want 0 (no wall-clock fallback)", got)
+	}
+}
+
+// TestReport_GeneratedAtUsesTheInjectedClock proves Ledger.GeneratedAt
+// comes from the clock Report is given, never time.Now() read
+// internally -- the seam a caller needs to keep the run-time
+// GeneratedAt fact separate from the per-commit facts the rest of the
+// ledger carries (docsgen_maturity.go never serializes GeneratedAt for
+// exactly this reason).
+func TestReport_GeneratedAtUsesTheInjectedClock(t *testing.T) {
+	repoRoot := "../../.."
+	fixed := time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC)
+	ledger := Report(repoRoot, func() time.Time { return fixed })
+	if !ledger.GeneratedAt.Equal(fixed) {
+		t.Errorf("Report(...).GeneratedAt = %v, want the injected clock's %v", ledger.GeneratedAt, fixed)
+	}
+}
+
+// TestReport_StableFieldsIndependentOfClock proves every field the
+// committed markdown/JSON actually carries (family, level, evidence,
+// currency, flags) is identical across two Report calls that differ
+// only in which clock they were given -- the guarantee `go generate`
+// on an unchanged commit needs to be idempotent regardless of today's
+// date.
+func TestReport_StableFieldsIndependentOfClock(t *testing.T) {
+	repoRoot := "../../.."
+	a := Report(repoRoot, func() time.Time { return time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC) })
+	b := Report(repoRoot, func() time.Time { return time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC) })
+	if a.Headline != b.Headline {
+		t.Errorf("Headline depends on the clock: %q vs %q", a.Headline, b.Headline)
+	}
+	if !reflect.DeepEqual(a.Rows, b.Rows) {
+		t.Errorf("Rows depend on the clock:\na: %+v\nb: %+v", a.Rows, b.Rows)
 	}
 }
 
