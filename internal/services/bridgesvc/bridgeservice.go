@@ -17,9 +17,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
+	"sort"
 	"sync"
 	"time"
 
@@ -40,10 +42,11 @@ const AddrDefault = "127.0.0.1:8092"
 // other local process can reach (gosec G112).
 const readHeaderTimeout = 5 * time.Second
 
-// replayTimeout is how long a run may stay in flight after a browser
-// accepted it. Long enough for a recorded flow with several page loads,
-// short enough that a closed tab reports rather than hangs.
-const replayTimeout = 2 * time.Minute
+// DefaultReplayTimeout is how long a run may stay in flight after a
+// browser accepted it when the caller names no budget of its own. Long
+// enough for a recorded flow with several page loads, short enough that
+// a closed tab reports rather than hangs.
+const DefaultReplayTimeout = 2 * time.Minute
 
 // commandBuffer is how many commands may queue for one connected
 // browser before Mill refuses rather than blocking a caller.
@@ -93,6 +96,11 @@ type BridgeService struct {
 	clients []*client
 	runs    map[string]*run
 	seq     uint64
+
+	// The extension's own files, and where they are written for a
+	// browser to load -- see bridgeservice_extension.go.
+	extensionFiles fs.FS
+	extensionDir   string
 }
 
 // ResolveAddr picks the effective bind address: the env override always
@@ -196,20 +204,44 @@ type TestResult struct {
 // as a silent false.
 func (s *BridgeService) TestConnection() (TestResult, error) {
 	pageURL := "http://" + s.addr + TestPagePath
-	outcome, err := s.Replay(browserbridge.TestFlow(pageURL), nil)
+	outcome, err := s.Replay(context.Background(), browserbridge.TestFlow(pageURL), ReplayOptions{})
 	if err != nil {
 		return TestResult{}, err
 	}
 	return TestResult{Steps: outcome.Steps, DurationMS: outcome.DurationMS}, nil
 }
 
+// StepOutcome is one step of a finished replay, as the browser
+// reported it. Index is the step's own 0-based position in the flow,
+// carried explicitly because results arrive on their own POSTs and a
+// skipped or failed run leaves gaps.
+type StepOutcome struct {
+	Index     int    `json:"index"`
+	Status    string `json:"status"`
+	Error     string `json:"error,omitempty"`
+	Extracted string `json:"extracted,omitempty"`
+}
+
 // Outcome is a finished replay: how many steps ran, how long it took,
-// and anything the run collected on the way.
+// every step the browser reported, and anything the run collected on
+// the way.
 type Outcome struct {
 	Steps      int                      `json:"steps"`
 	DurationMS int64                    `json:"durationMs"`
+	Results    []StepOutcome            `json:"results,omitempty"`
 	Extracted  []string                 `json:"extracted,omitempty"`
 	Downloads  []browserbridge.Download `json:"downloads,omitempty"`
+}
+
+// ReplayOptions are the per-run choices a caller may vary. The zero
+// value is the connection test's own: the flow's first navigate picks
+// the tab, and the run gets DefaultReplayTimeout.
+type ReplayOptions struct {
+	// Target narrows where the flow runs; nil lets the flow decide.
+	Target *browserbridge.Target
+	// Timeout bounds the WHOLE run, not one step. Zero means
+	// DefaultReplayTimeout.
+	Timeout time.Duration
 }
 
 // Replay sends flow to the most recently connected browser and blocks
@@ -217,8 +249,12 @@ type Outcome struct {
 // immediately rather than waiting out a timeout that would tell the
 // reader nothing.
 //
+// A failed run still carries its step results: the outcome is returned
+// ALONGSIDE the error, so a caller can show which step stopped the run
+// instead of only that one did.
+//
 //wails:ignore
-func (s *BridgeService) Replay(flow browserbridge.UserFlow, target *browserbridge.Target) (Outcome, error) {
+func (s *BridgeService) Replay(ctx context.Context, flow browserbridge.UserFlow, opts ReplayOptions) (Outcome, error) {
 	if err := flow.Validate(); err != nil {
 		return Outcome{}, fmt.Errorf("bridgesvc: %w", err)
 	}
@@ -229,7 +265,7 @@ func (s *BridgeService) Replay(flow browserbridge.UserFlow, target *browserbridg
 	}
 	defer s.endRun(id)
 
-	command := browserbridge.Command{ID: id, Kind: browserbridge.KindReplay, Flow: &flow, Target: target}
+	command := browserbridge.Command{ID: id, Kind: browserbridge.KindReplay, Flow: &flow, Target: opts.Target}
 	select {
 	case c.commands <- command:
 	default:
@@ -237,19 +273,32 @@ func (s *BridgeService) Replay(flow browserbridge.UserFlow, target *browserbridg
 	}
 	s.logger.Info("browser bridge: replay started", "run", id, "browser", c.deviceID, "steps", len(flow.Steps))
 
+	budget := opts.Timeout
+	if budget <= 0 {
+		budget = DefaultReplayTimeout
+	}
+	timer := time.NewTimer(budget)
+	defer timer.Stop()
+
 	started := time.Now()
 	select {
 	case final := <-r.done:
 		outcome := s.collect(id, started)
 		if final.Status != browserbridge.StatusDone {
 			s.logger.Info("browser bridge: replay failed", "run", id, "browser", c.deviceID, "error", final.Error)
-			return Outcome{}, browserbridge.ErrReplayFailed(final.Error)
+			return outcome, browserbridge.ErrReplayFailed(final.Error)
 		}
 		s.logger.Info("browser bridge: replay finished", "run", id, "browser", c.deviceID, "steps", outcome.Steps, "ms", outcome.DurationMS)
 		return outcome, nil
-	case <-time.After(replayTimeout):
-		s.logger.Info("browser bridge: replay timed out", "run", id, "browser", c.deviceID)
-		return Outcome{}, browserbridge.ErrReplayTimedOut()
+	case <-timer.C:
+		s.logger.Info("browser bridge: replay timed out", "run", id, "browser", c.deviceID, "seconds", int(budget.Seconds()))
+		return s.collect(id, started), browserbridge.ErrReplayTimedOutAfter(budget)
+	case <-ctx.Done():
+		// A cancelled run (the workflow run was stopped) is not a
+		// browser fault, and reads as the timeout it effectively is
+		// rather than as a pairing problem.
+		s.logger.Info("browser bridge: replay cancelled", "run", id, "browser", c.deviceID)
+		return s.collect(id, started), browserbridge.ErrReplayTimedOut()
 	}
 }
 
@@ -291,6 +340,13 @@ func (s *BridgeService) collect(id string, started time.Time) Outcome {
 		if step.Status == browserbridge.StatusOK {
 			out.Steps++
 		}
+		index := -1
+		if step.StepIndex != nil {
+			index = *step.StepIndex
+		}
+		out.Results = append(out.Results, StepOutcome{
+			Index: index, Status: step.Status, Error: step.Error, Extracted: step.Extracted,
+		})
 		if step.Extracted != "" {
 			out.Extracted = append(out.Extracted, step.Extracted)
 		}
@@ -298,6 +354,7 @@ func (s *BridgeService) collect(id string, started time.Time) Outcome {
 			out.Downloads = append(out.Downloads, *step.Download)
 		}
 	}
+	sort.SliceStable(out.Results, func(i, j int) bool { return out.Results[i].Index < out.Results[j].Index })
 	return out
 }
 

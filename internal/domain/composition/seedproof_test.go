@@ -217,6 +217,11 @@ var workflowProofRegistry = map[string]seedProof{
 	ExampleSecretGuardWorkflowID: proven(
 		"guardrailsvc.TestSeededSecretGuardWorkflow_ParksWithSecretsRuleLabel",
 	),
+	ExampleBrowserReplayWorkflowID: proven(
+		"composition.TestExecBrowserReplay_OverlaysParametersAndExtractsByStep",
+		"executionsvc.TestSeededBrowserReplay_RunsTheRecordingAndExtractsTheEcho",
+		"e2e: browser-replay.spec.ts",
+	),
 	ExampleScheduledSecretReadWorkflowID: proven(
 		"executionsvc.TestSeededScheduledSecretRead_WaitsForVaultThenCompletes",
 	),
