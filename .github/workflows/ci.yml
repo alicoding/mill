@@ -19,7 +19,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # A push to main gets its own group per commit: with cancel-in-progress
+  # off, one group holds at most one waiting run, so at merge tempo the
+  # older queued main run was cancelled by the next merge's -- three
+  # landed commits went unverified in one afternoon (goal 0358 S8).
+  group: ci-${{ github.workflow }}-${{ github.ref }}${{ github.event_name == 'push' && format('-{0}', github.sha) || '' }}
   # Main (push) and a queued merge (merge_group) never cancel: a
   # cancelled merge-commit run leaves that SHA's CI permanently
   # incomplete (ADR-0034's bisect-blind-spot concern, observed live

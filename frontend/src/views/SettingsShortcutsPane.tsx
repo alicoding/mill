@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Browser } from '@wailsio/runtime'
 import { Button, Stack, Text } from '@primer/react'
 import { KeyIcon } from '@primer/octicons-react'
 import { KeyComboChip } from '../shared/KeyComboChip'
@@ -12,6 +11,7 @@ import { SettingsRow } from './SettingsRow'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './SettingsView.module.css'
 import { background } from '../shared/background'
+import { openExternalUrl } from '../shared/openExternal'
 
 // Where the rest of the two trimmed captions lives (goal 0321): the
 // commands reference names every command and how rebinding works.
@@ -122,7 +122,7 @@ export default function SettingsShortcutsPane() {
         <Stack direction="vertical" gap="condensed">
           <Text as="p" size="small" className={listStyles.error}>{summonError}</Text>
           {isAccessibilityError(summonError) && (
-            <Button size="small" onClick={() => Browser.OpenURL(ACCESSIBILITY_SETTINGS_URL)}>
+            <Button size="small" onClick={() => openExternalUrl(ACCESSIBILITY_SETTINGS_URL)}>
               {t('settings.globalHotkey.openAccessibilitySettings')}
             </Button>
           )}

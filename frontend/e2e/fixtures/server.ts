@@ -144,6 +144,15 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
     // override-wins-by-computing-first shape as the PICK_PATH
     // defaults above.
     MILL_CLIPBOARD: opts.extraEnv?.MILL_CLIPBOARD ?? 'memory',
+    // Same in-memory-by-default posture for the URL/browser opener
+    // (goal 0356 part 2): AtlasService.OpenURL's own osopen.Port
+    // resolves to a recorder, never the real Wails Browser.OpenURL, so
+    // an external-link click anywhere in a spec never opens a real
+    // browser tab on the machine running this worker. No spec needs the
+    // real opener today, so unlike MILL_CLIPBOARD's host mode there is
+    // no lock fixture to wrap around an override -- extraEnv can still
+    // pass MILL_OPEN: 'host' if a future spec genuinely needs it.
+    MILL_OPEN: opts.extraEnv?.MILL_OPEN ?? 'memory',
   }
 
   // Fail fast in the harness itself, before ever spawning a process

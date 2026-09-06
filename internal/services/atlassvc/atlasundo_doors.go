@@ -130,6 +130,8 @@ var notMutationDoors = map[string]string{
 	"Notes": "read", "ObjectListProjection": "read", "ObjectMirrorContent": "read", "Objects": "read",
 	"OpenCardMirror":               "OS side effect (opens the file), no board-state change",
 	"OpenObjectMirrorInDefaultApp": "OS side effect (opens the file), no board-state change",
+	"OpenURL":                      "OS side effect (opens the URL), no board-state change",
+	"DebugLastOpenedURLs":          "debug/test read of osopen's in-memory recorder, no board-state change",
 	"Perspectives":                 "read", "PickDiagramFile": "native file picker, no board-state change",
 	"PickFolder": "native folder picker, no board-state change", "PickImageFile": "native file picker, no board-state change",
 	"PreviewClipbridgeReply": "read/preview", "RenderNoteMarkdown": "pure conversion, no state",
