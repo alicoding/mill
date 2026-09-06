@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 
 // The board's creation dock (goal 0355): seven fixed buttons, two of
 // which are FLYOUTS -- Media (Image and every file-backed noun) and
@@ -66,4 +66,23 @@ export async function armToolFromMorePanel(page: Page, name: string): Promise<vo
 	await page.getByTestId('atlas-more-panel').waitFor({ state: 'visible' })
 	await page.getByTestId('atlas-more-search').fill(name)
 	await page.getByTestId('atlas-more-panel').getByText(name, { exact: true }).first().click()
+}
+
+// A tool's presence in the dock's More panel WITHOUT arming it: the
+// door every "did this plugin's tool load" check goes through (a
+// grandfathered/allowed/blocked plugin proving its face is or isn't
+// reachable), handing back the matching row so the caller's own
+// expect() keeps Playwright's usual auto-retry instead of a one-shot
+// read. Reuses an already-open panel rather than re-clicking the
+// trigger (which TOGGLES it shut) -- callers checking two names in a
+// row after one boot share the same open panel; press Escape once done
+// to leave the dock clean for whatever the test does next.
+export async function moreToolRow(page: Page, name: string): Promise<Locator> {
+	const panel = page.getByTestId('atlas-more-panel')
+	if (!(await panel.isVisible())) {
+		await page.getByTestId('atlas-tray-more').click()
+		await panel.waitFor({ state: 'visible' })
+	}
+	await page.getByTestId('atlas-more-search').fill(name)
+	return panel.getByText(name, { exact: true })
 }

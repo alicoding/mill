@@ -9,6 +9,7 @@ import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { ATLAS_DEFAULT_SPACE_ID, createBoardObjectViaRPC } from './fixtures/atlasNativeDropEscapeHatch'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { contextMenu } from './fixtures/contextMenu'
+import { armToolFromMorePanel } from './fixtures/atlasTray'
 
 const ATLAS = 'github.com/alicoding/mill/internal/services/atlassvc.AtlasService.'
 const NOTE = ['Trip plan', '# Flights', '## Outbound', '## Return', '# Hotels', 'Plain text stays out of the map.', '```', '# not a heading', '```'].join('\n')
@@ -60,7 +61,7 @@ test('a fresh mind map offers the board\'s notes by first line; choosing one ren
 		await expect(board).toBeVisible()
 		await callBindingViaRPC(page, ATLAS + 'CreateNote', ['Reading list\n# Fiction\n# History', { X: 0, Y: 480 }, ATLAS_DEFAULT_SPACE_ID])
 
-		await page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Mind map"]').click()
+		await armToolFromMorePanel(page, 'Mind map')
 		const spot = await findEmptyBoardRect(page, board, 300, 200)
 		const bb = await board.boundingBox()
 		if (!bb) throw new Error('board has no bounding box')

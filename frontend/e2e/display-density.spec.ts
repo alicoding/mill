@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { openSettings } from './fixtures/settingsNav'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // docs/goals/0096-display-density.md: Comfortable/Compact, a
 // Settings-driven app root attribute (data-density) that tightens
@@ -100,7 +101,7 @@ test('Compact reads on canvas cards, the list grid, and Settings stacks', async 
   }
   const gridPad = async () => {
     await page.getByRole('link', { name: 'Configure' }).click()
-    await page.getByRole('tab', { name: 'Lists' }).click()
+    await openConfigureKind(page, 'Lists')
     const row = page.locator('[data-testid="inventory-row"][data-entity="list"]').first()
     await expect(row).toBeVisible()
     await row.click()

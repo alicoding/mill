@@ -8,6 +8,7 @@ import { gotoAppReady } from './fixtures/appReady'
 import { clickRowAction } from './inventoryRow'
 import { deleteSecret, ensureVault, secretTitles } from './fixtures/secretStore'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
+import { openConfigureKind } from './fixtures/configureNav'
 
 const CONFIGURE = 'github.com/alicoding/mill/internal/services/configuresvc.ConfigureService.'
 const COMPOSITION = 'github.com/alicoding/mill/internal/services/compositionsvc.CompositionService.'
@@ -25,7 +26,7 @@ function workflowRow(page: import('@playwright/test').Page, label: string) {
 async function openEnvironments(page: import('@playwright/test').Page) {
   await gotoAppReady(page)
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Environments', exact: true }).click()
+  await openConfigureKind(page, 'Environments')
 }
 
 test('an environment holds a plain value and a secret reference, and says which variables still need one', async ({ page }) => {

@@ -6,6 +6,7 @@ import { clickBoardPoint } from './atlasBoard'
 import { wheelAt } from './pointer'
 import { contextMenu } from './contextMenu'
 import { clickRowAction } from '../inventoryRow'
+import { openConfigureKind } from './configureNav'
 
 // Promoted (testing.md: a helper used by 2+ spec files) out of what
 // used to be atlas-table-ux.spec.ts's own local copies -- every table
@@ -48,7 +49,7 @@ export async function escapeGridToObject(page: Page, object: Locator): Promise<v
 
 export async function deleteListNamed(page: Page, label: string): Promise<void> {
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const row = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText(label, { exact: true }) })
   await clickRowAction(page, row, 'Delete')
   await expect(row).toHaveCount(0)

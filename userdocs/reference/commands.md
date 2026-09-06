@@ -118,6 +118,17 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.new.lists` | New list | — | Global | Always available |
 | `configure.new.mcpservers` | New MCP server | — | Global | Always available |
 | `configure.new.steptypes` | New step type | — | Global | Always available |
+| `configure.open.aiproviders` | Configure › AI Providers | — | Global | Always available |
+| `configure.open.attributes` | Configure › Attributes | — | Global | Always available |
+| `configure.open.certificates` | Configure › Certificates | — | Global | Always available |
+| `configure.open.conversionprofiles` | Configure › Conversion profiles | — | Global | Always available |
+| `configure.open.decisions` | Configure › Decisions | — | Global | Always available |
+| `configure.open.environments` | Configure › Environments | — | Global | Always available |
+| `configure.open.execenvs` | Configure › Execution Environments | — | Global | Always available |
+| `configure.open.integration` | Configure › Integrations | — | Global | Always available |
+| `configure.open.lists` | Configure › Lists | — | Global | Always available |
+| `configure.open.mcpservers` | Configure › MCP Servers | — | Global | Always available |
+| `configure.open.steptypes` | Configure › Step types | — | Global | Always available |
 | `configure.request.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.request.edit` | Edit | — | Global | Acts on the selected entity |
 | `configure.request.export` | Export | — | Global | Acts on the selected entity |
@@ -147,6 +158,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `help.openDataFolder` | Open data folder | — | Global | Always available |
 | `help.reportIssue` | Report an issue… | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
+| `listGrid.addColumn` | Add a column | — | Global | Acts on the selected table rows |
+| `listGrid.addRow` | Add a row | — | Global | Acts on the selected table rows |
 | `listGrid.copyRows` | Copy selected rows | — | Global | Acts on the selected table rows |
 | `listGrid.deleteColumn` | Delete selected column | — | Global | Acts on the selected table rows |
 | `listGrid.deleteRows` | Delete selected rows | — | Global | Acts on the selected table rows |

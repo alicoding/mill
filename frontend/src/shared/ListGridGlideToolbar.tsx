@@ -6,11 +6,15 @@ import type { GridColumn, GridRow } from './listGridTypes'
 import { activeFilterCount, type GridColumnFilters, type GridColumnSort } from './listStandard'
 import styles from './ListGrid.module.css'
 
-// The grid's action row (goal 0349 S4): the two always-present author
-// actions, plus whatever the current selection makes possible. Every
-// button runs a registry command with the selection stated as its
-// context -- nothing acts inline, and a command with nothing to act on
-// is simply absent rather than dimmed.
+// The grid's bulk-action row (goal 0349 S4): whatever the current
+// selection makes possible -- copy/delete rows, delete a selected
+// column, clear a narrowing sort/filter. Adding a row or a column
+// lives where the library's own grids put it instead (the trailing
+// row, the header-end "+" -- ListGridGlideOverlays.tsx's
+// schemaEditorProps, goal 0349 S4 Part B), never a button under the
+// grid. Every button here runs a registry command with the selection
+// stated as its context -- nothing acts inline, and a command with
+// nothing to act on is simply absent rather than dimmed.
 
 // The tab/newline text the selected rows copy as: every showing column,
 // in the order the grid shows them.
@@ -18,7 +22,7 @@ export function rowsAsText(rows: GridRow[], columns: GridColumn[]): string {
   return rows.map((row) => columns.map((c) => row.Values?.[c.Key] ?? '').join('\t')).join('\n')
 }
 
-export function ListGridGlideToolbar({ listID, columns, rows, selection, schemaEditing, sort, filters, onAddRow, onAddColumn, onClearNarrowing }: {
+export function ListGridGlideToolbar({ listID, columns, rows, selection, schemaEditing, sort, filters, onClearNarrowing }: {
   listID: string
   columns: GridColumn[]
   // The rows as SHOWN -- a selection index is a position in the sorted,
@@ -28,8 +32,6 @@ export function ListGridGlideToolbar({ listID, columns, rows, selection, schemaE
   schemaEditing: boolean
   sort: GridColumnSort | null
   filters: GridColumnFilters
-  onAddRow: () => void
-  onAddColumn: () => void
   onClearNarrowing: () => void
 }) {
   const { t } = useTranslation('common')
@@ -41,12 +43,6 @@ export function ListGridGlideToolbar({ listID, columns, rows, selection, schemaE
 
   return (
     <div className={styles.actionsRow}>
-      {columns.length > 0 && (
-        <Button size="small" variant="invisible" data-testid="atlas-projection-add-row" onClick={onAddRow}>{t('listGrid.addRow')}</Button>
-      )}
-      {schemaEditing && (
-        <Button size="small" variant="invisible" data-testid="atlas-projection-add-column" onClick={onAddColumn}>{t('listGrid.addColumn')}</Button>
-      )}
       {rowIDs.length > 0 && (
         <>
           <Button size="small" variant="invisible" data-testid="list-grid-copy-rows" onClick={() => void runCommand('listGrid.copyRows', ctx)}>

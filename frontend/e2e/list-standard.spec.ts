@@ -1,5 +1,7 @@
 import { test, expect, type Page } from './fixtures/server'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
+import { configurePane, openConfigureKind } from './fixtures/configureNav'
+import { gotoAppReady } from './fixtures/appReady'
 
 // The one list standard (docs/goals/0337): every list page handles
 // length the same way -- one toolbar (search, sort, the page's own
@@ -110,7 +112,7 @@ test('Workflows: the toolbar counts, pagination pages, and the seeded examples c
 test('Configure: an inventory under the page size wears the same toolbar and count, with no pagination', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Integrations' }).click()
+  await openConfigureKind(page, 'Integrations')
 
   // Configure keeps every tab's panel mounted, so each assertion is
   // scoped to the Integrations panel rather than the page.
@@ -153,4 +155,27 @@ test('Activity: the session feed wears the same toolbar, with its own filters as
 
   await page.getByTestId('activity-search').fill('zzz-no-such-run')
   await expect(page.getByTestId('list-count')).toHaveText(/^0 of \d+$/)
+})
+
+// Regression: InventoryRow's badges rode past the row's right edge
+// (and, once the row also carried a description, spilled ON TOP of it)
+// because the row content's ellipsis never actually engaged -- an
+// ancestor Primer grid/flex cell defaults to sizing itself to its
+// content instead of the width it's given (shared/InventoryList.module
+// .css). The seeded Integrations examples are long labels with both a
+// badge and a description, the exact combination that broke, at the
+// pane width Configure's rail forces the list into on a narrow screen.
+test('Configure: a long label with badges and a description stays inside the list at a narrow pane width', async ({ page }) => {
+  // The sidebar is a drawer below the narrow breakpoint, so the route
+  // is the way in (matches configure-nav.spec.ts's own narrow test).
+  await page.setViewportSize({ width: 640, height: 900 })
+  await gotoAppReady(page, '/#/configure/integration')
+  await expect(configurePane(page, 'Integrations')).toBeVisible()
+  await expect(configurePane(page, 'Integrations').getByTestId('configure-loading')).toHaveCount(0)
+
+  const list = page.getByTestId('configure-requests').getByTestId('inventory-examples')
+  await expect(list).toBeVisible()
+  await expect(list.getByTestId('inventory-row').first()).toBeVisible()
+  const overflowPx = await list.evaluate((el) => el.scrollWidth - el.clientWidth)
+  expect(overflowPx).toBeLessThanOrEqual(1)
 })

@@ -287,6 +287,88 @@ test('a row\'s menu copies its path, its key and its value', async ({ page }) =>
   await expect(jsonObjects(page)).toHaveCount(0)
 })
 
+// The board's own scale, read off React Flow's viewport transform
+// (translate(...) scale(k)) -- the regression this guards: a row menu
+// rendered INSIDE that transformed element resolves position:fixed
+// against it instead of the viewport, so a wrong fix would drift
+// exactly as k moves away from 1.
+async function boardZoom(page: import('@playwright/test').Page): Promise<number> {
+  const transform = await page.locator('.react-flow__viewport').evaluate((el) => (el as HTMLElement).style.transform)
+  return Number(transform.match(/scale\(([^)]+)\)/)?.[1] ?? 1)
+}
+
+// Steps the zoom-out control (the same one zoomAllTheWayOut in
+// fixtures/atlasBoard.ts uses) until the board's real scale reaches the
+// target, honouring the control's own disabled-at-floor state rather
+// than assuming a step count.
+async function zoomBoardTo(page: import('@playwright/test').Page, target: number): Promise<void> {
+  const zoomOut = page.locator('.react-flow__controls-zoomout')
+  for (let i = 0; i < 15; i++) {
+    if ((await boardZoom(page)) <= target) return
+    if (await zoomOut.isDisabled()) return
+    await zoomOut.click()
+  }
+}
+
+test('a row\'s menu opens at the pointer, not the corner of a transformed node', async ({ page }) => {
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  const file = tempFile('mill-e2e-atlas-json-position-', 'ZzE2eJsonPosition.json', JSON.stringify(SAMPLE, null, 2))
+  const object = await landAndSelect(page, file)
+  const tree = object.getByTestId('atlas-object-json-tree')
+  const clipboard = () => page.evaluate(() => navigator.clipboard.readText())
+  const viewportSize = page.viewportSize()
+  if (!viewportSize) throw new Error('no viewport size')
+
+  // Opens the row's own menu at an EXACT, known client point (rather
+  // than trusting the click's default center) and returns it, so the
+  // menu's own bounding box can be compared against the pointer
+  // instead of the row's.
+  const openMenuAt = async (row: import('@playwright/test').Locator): Promise<{ x: number; y: number }> => {
+    const box = await row.boundingBox()
+    if (!box) throw new Error('row has no bounding box')
+    const point = { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) }
+    await row.click({ button: 'right', position: { x: box.width / 2, y: box.height / 2 } })
+    return point
+  }
+
+  const assertMenuAtPointer = async (point: { x: number; y: number }) => {
+    const menu = page.getByTestId('context-menu')
+    await expect(menu).toBeVisible()
+    const menuBox = await menu.boundingBox()
+    if (!menuBox) throw new Error('menu has no bounding box')
+    // Within 16px of the pointer that opened it -- Primer's own
+    // floating placement, never the board's pan/zoom math.
+    expect(Math.abs(menuBox.x - point.x)).toBeLessThanOrEqual(16)
+    expect(Math.abs(menuBox.y - point.y)).toBeLessThanOrEqual(16)
+    // Never off past the corner a mispositioned menu (a transformed
+    // node's own origin) would land at.
+    expect(menuBox.x).toBeGreaterThanOrEqual(0)
+    expect(menuBox.y).toBeGreaterThanOrEqual(0)
+    expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(viewportSize.width)
+    expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(viewportSize.height)
+    return menu
+  }
+
+  const owner = tree.locator('[data-path="workstreams[0].owner"]')
+  const point = await openMenuAt(owner)
+  const menu = await assertMenuAtPointer(point)
+  await menu.getByText('Copy path', { exact: true }).click()
+  await expect.poll(clipboard).toBe('workstreams[0].owner')
+
+  // The regression itself: a board zoomed away from 1 scales the
+  // React Flow node the tree renders inside, which is exactly what
+  // drags a locally-anchored menu's position:fixed off the pointer.
+  await zoomBoardTo(page, 0.5)
+  expect(await boardZoom(page)).toBeLessThanOrEqual(0.55)
+  await waitForViewportStable(page.getByTestId('atlas-board'))
+  const zoomedPoint = await openMenuAt(owner)
+  await assertMenuAtPointer(zoomedPoint)
+  await page.keyboard.press('Escape')
+
+  await deleteViaContextMenu(page, object)
+  await expect(jsonObjects(page)).toHaveCount(0)
+})
+
 test('the tree follows the file: an edit on disk lands without a reload or a click', async ({ page }) => {
   const file = tempFile('mill-e2e-atlas-json-live-', 'ZzE2eJsonLive.json', JSON.stringify(SAMPLE, null, 2))
   const object = await landAndSelect(page, file)

@@ -4,6 +4,7 @@ import { test, expect } from './fixtures/server'
 import { clickGlideCell, glideCellText } from './fixtures/glideGrid'
 import { addGridColumn } from './fixtures/listGrid'
 import { clickRowAction } from './inventoryRow'
+import { openConfigureKind } from './fixtures/configureNav'
 
 const XLSX_FIXTURE = path.join(fileURLToPath(new URL('.', import.meta.url)), 'fixtures', 'files', 'sample-import.xlsx')
 
@@ -25,7 +26,7 @@ function listRow(page: import('@playwright/test').Page, label: string) {
 test('Configure > Lists: .xlsx import — mapping preview populated from a real spreadsheet, confirm applies', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
 
   await page.getByTestId('new-list').click()
   await page.getByLabel('Label').fill('E2E xlsx import list')

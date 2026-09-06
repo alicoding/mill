@@ -1242,6 +1242,16 @@ once and offers Undo for ten seconds; an entry a workflow still uses
 refuses to delete and names the workflow. An undone Integration comes
 back without its secret — enter it again.
 
+Configure lists its kinds in a rail on the left, grouped by what
+they are for: **Connections** (Integrations, MCP Servers, AI
+Providers, Certificates), **Runtime** (Environments, Execution
+Environments), **Data** (Lists, Attributes, Conversion profiles) and
+**Workflow logic** (Decisions, Step types). Pick a kind to see its
+page; type in *Filter kinds* to narrow the rail across every group.
+Each kind has its own address (`#/configure/lists`, for example) and
+its own command in the palette (*Configure › Lists*), so a link or a
+search lands straight on it.
+
 The entities:
 
 - **Integration** — an HTTP API: base URL, auth (the secret lives in
@@ -2645,6 +2655,17 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.new.lists` | New list | — | Global | Always available |
 | `configure.new.mcpservers` | New MCP server | — | Global | Always available |
 | `configure.new.steptypes` | New step type | — | Global | Always available |
+| `configure.open.aiproviders` | Configure › AI Providers | — | Global | Always available |
+| `configure.open.attributes` | Configure › Attributes | — | Global | Always available |
+| `configure.open.certificates` | Configure › Certificates | — | Global | Always available |
+| `configure.open.conversionprofiles` | Configure › Conversion profiles | — | Global | Always available |
+| `configure.open.decisions` | Configure › Decisions | — | Global | Always available |
+| `configure.open.environments` | Configure › Environments | — | Global | Always available |
+| `configure.open.execenvs` | Configure › Execution Environments | — | Global | Always available |
+| `configure.open.integration` | Configure › Integrations | — | Global | Always available |
+| `configure.open.lists` | Configure › Lists | — | Global | Always available |
+| `configure.open.mcpservers` | Configure › MCP Servers | — | Global | Always available |
+| `configure.open.steptypes` | Configure › Step types | — | Global | Always available |
 | `configure.request.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.request.edit` | Edit | — | Global | Acts on the selected entity |
 | `configure.request.export` | Export | — | Global | Acts on the selected entity |
@@ -2674,6 +2695,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `help.openDataFolder` | Open data folder | — | Global | Always available |
 | `help.reportIssue` | Report an issue… | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
+| `listGrid.addColumn` | Add a column | — | Global | Acts on the selected table rows |
+| `listGrid.addRow` | Add a row | — | Global | Acts on the selected table rows |
 | `listGrid.copyRows` | Copy selected rows | — | Global | Acts on the selected table rows |
 | `listGrid.deleteColumn` | Delete selected column | — | Global | Acts on the selected table rows |
 | `listGrid.deleteRows` | Delete selected rows | — | Global | Acts on the selected table rows |

@@ -3,6 +3,7 @@ import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 import { activePanel } from './fixtures/canvas'
 import { clickCanvasNode } from './fixtures/canvasNode'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // The step designer's real task sentence (.claude/rules/testing.md):
 // can a user create a named step type from a configured integration and
@@ -44,7 +45,7 @@ async function dragPaletteItemByLabelToCanvas(page: Page, label: string) {
 async function openStepTypesTab(page: Page) {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Step types', exact: true }).click()
+  await openConfigureKind(page, 'Step types')
 }
 
 async function cleanupStepType(configPage: Page, label: string) {
@@ -162,7 +163,7 @@ test('step designer: a pinned field is locked and hidden on the dropped node; an
     await expect(inspector.getByText('Store result in attribute (optional)')).toBeVisible()
   } finally {
     await page.getByRole('link', { name: 'Configure' }).click()
-    await page.getByRole('tab', { name: 'Step types', exact: true }).click()
+    await openConfigureKind(page, 'Step types')
     await cleanupStepType(page, LABEL)
   }
 })

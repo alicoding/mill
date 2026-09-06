@@ -11,6 +11,7 @@ import { test, expect } from './fixtures/server'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { clickRowAction } from './inventoryRow'
 import { openSecretSources } from './fixtures/secretStore'
+import { configureKindLink } from './fixtures/configureNav'
 
 const SECRETS = 'github.com/alicoding/mill/internal/services/secretsvc.SecretService.'
 
@@ -115,6 +116,6 @@ test('a 1Password source with no op tool on this machine lists nothing and its r
 test('Configure no longer offers a Secret sources tab', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await expect(page.getByRole('tab', { name: 'Integrations', exact: true })).toBeVisible()
+  await expect(configureKindLink(page, 'Integrations')).toBeVisible()
   await expect(page.getByRole('tab', { name: 'Secret sources', exact: true })).toHaveCount(0)
 })
