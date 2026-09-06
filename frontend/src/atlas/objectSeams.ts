@@ -1,7 +1,7 @@
-import { Browser } from '@wailsio/runtime'
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { isExtensionEnabled } from '../shared/extensionEnablementStore'
+import { openExternalUrl as openExternalUrlDoor } from '../shared/openExternal'
 import { openAtlasEditDiagram } from './atlasEditDiagramStore'
 
 // ADR-0046's two genuinely new seams (goal 0244 S0): a canvas-object
@@ -117,8 +117,10 @@ export function writeObjectMirror(objectID: string, content: string): Promise<vo
 // embedded viewer navigates the webview itself away from Mill (a
 // desktop webview has no back button -- the app is gone until
 // restart), the exact hazard DocsView/WhatsNewDialog's own anchor
-// interception documents for in-app HTML. Routed through the adopted
-// runtime's Browser API, which opens the system browser.
+// interception documents for in-app HTML. Delegates to
+// shared/openExternal.ts's own door (goal 0356 part 2) rather than
+// calling the adopted runtime's Browser API itself, so this extension
+// seam never becomes a second place that bypasses the Go-side port.
 export function openExternalUrl(url: string): Promise<void> {
-  return Browser.OpenURL(url)
+  return openExternalUrlDoor(url)
 }

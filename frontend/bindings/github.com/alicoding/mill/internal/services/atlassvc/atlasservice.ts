@@ -261,6 +261,17 @@ export function CreatePerspective(spaceID: string, name: string, description: st
 }
 
 /**
+ * DebugLastOpenedURLs returns every URL osopen's in-memory Port has
+ * recorded so far, oldest first. Gated to MILL_OPEN=memory -- the same
+ * posture SecretService.DebugCorruptVaultKeyForTests holds against
+ * MILL_TEST_KEYRING=memory -- so this can never be called expecting a
+ * Host it didn't get.
+ */
+export function DebugLastOpenedURLs(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(797912538);
+}
+
+/**
  * DeleteBoardObject soft-deletes a board object (goal 0179/0180) --
  * same tombstone contract as DeleteCard's own seed-tombstone bookkeeping
  * (goal 0223 gives BoardObject the same BuiltIn/Seed provenance Card
@@ -628,6 +639,19 @@ export function OpenCardMirror(cardID: string): $CancellablePromise<void> {
  */
 export function OpenObjectMirrorInDefaultApp(id: string): $CancellablePromise<void> {
     return $Call.ByID(442184393, id);
+}
+
+/**
+ * OpenURL opens url in the system's default browser -- the ONE
+ * Mill-bound door every external-link click in the frontend routes
+ * through (frontend/src/shared/openExternal.ts), so a click always
+ * goes through osopen.New()'s own Port selection rather than the
+ * adopted runtime's Browser.OpenURL directly (goal 0356 part 2: a test
+ * or an e2e-spawned server must never open a real browser tab on the
+ * machine running it).
+ */
+export function OpenURL(url: string): $CancellablePromise<void> {
+    return $Call.ByID(2910617595, url);
 }
 
 /**
