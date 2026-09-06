@@ -66,6 +66,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `backup.export` | Export everything | — | Global | Always available |
 | `backup.now` | Back up now | — | Global | Always available |
 | `browser.pair` | Pair a browser | — | Global | Always available |
+| `browser.revealExtension` | Reveal the extension folder | — | Global | Always available |
 | `browser.test` | Test the browser connection | — | Global | Conditional — available only in a matching state |
 | `canvas.delete` | Delete selected | `⌫` | composition | Always available |
 | `canvas.fitView` | Fit view | — | composition | Always available |

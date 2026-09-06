@@ -1,6 +1,11 @@
 package browserbridge
 
-import "github.com/alicoding/mill/internal/domain/usererror"
+import (
+	"fmt"
+	"time"
+
+	"github.com/alicoding/mill/internal/domain/usererror"
+)
 
 // The command kinds Mill sends down an open browser stream. KindPing is
 // the keepalive: a browser extension's service worker is shut down
@@ -97,4 +102,46 @@ const CodeReplayTimedOut = "browser-replay-timed-out"
 // fix is different: the tab, not the pairing.
 func ErrReplayTimedOut() error {
 	return usererror.New(CodeReplayTimedOut, "The browser stopped responding before the steps finished.")
+}
+
+// ErrReplayTimedOutAfter is the same outcome for a caller that set its
+// own budget: the sentence names the budget, because the fix is
+// usually to raise it or shorten the flow.
+func ErrReplayTimedOutAfter(budget time.Duration) error {
+	seconds := int(budget.Round(time.Second).Seconds())
+	if seconds <= 0 {
+		return ErrReplayTimedOut()
+	}
+	return usererror.New(CodeReplayTimedOut, fmt.Sprintf("The browser didn't finish the flow in %d seconds.", seconds))
+}
+
+// CodeBadRecording is the handle for a document that is not a readable
+// recorder export. ParseFlow's own errors are developer-facing detail
+// (see its doc comment); this is the ONE sentence a reader gets,
+// wherever a recording is read -- the step's importer and the step's
+// own run.
+const CodeBadRecording = "browser-replay-bad-recording"
+
+// ErrBadRecording keeps the parser's detail in the chain for the log
+// and hands the reader the action.
+func ErrBadRecording(detail error) error {
+	sentence := usererror.New(CodeBadRecording, "That recording isn't readable. Import the JSON your browser's recorder exported.")
+	if detail == nil {
+		return sentence
+	}
+	return fmt.Errorf("%w: %w", sentence, detail)
+}
+
+// CodeSelectorMiss is the handle for a step whose element the browser
+// could not resolve -- the recording's most common way to go stale.
+const CodeSelectorMiss = "browser-replay-selector-miss"
+
+// ErrSelectorMiss names the step and the selector a reader can look up
+// in their own recording, rather than the browser's generic phrasing.
+// stepNumber counts from 1.
+func ErrSelectorMiss(stepNumber int, selector string) error {
+	if selector == "" {
+		return usererror.New(CodeSelectorMiss, fmt.Sprintf("Couldn't find the element for step %d.", stepNumber))
+	}
+	return usererror.New(CodeSelectorMiss, fmt.Sprintf("Couldn't find the element for step %d (%s).", stepNumber, selector))
 }
