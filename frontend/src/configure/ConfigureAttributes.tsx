@@ -10,6 +10,7 @@ import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { StatusStamp } from '../shared/StatusStamp'
 import styles from '../shared/ListCard.module.css'
+import { PaneLoading } from './PaneLoading'
 import PageContainer from '../shared/PageContainer'
 
 function typeLabelFor(t: (key: string) => string): Record<string, string> {
@@ -110,7 +111,7 @@ export function ConfigureAttributes() {
         </VisuallyHidden>
       </Stack>
 
-      {workflows === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
+      {workflows === null && <PaneLoading />}
       {workflows !== null && (
         <InventoryList
           listId="configure.attributes"

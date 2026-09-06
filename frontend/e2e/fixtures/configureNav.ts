@@ -41,9 +41,19 @@ export function configurePane(page: Page, label: ConfigureKindLabel): Locator {
 }
 
 // Selects a kind on an already-open Configure page and waits for its
-// pane. The caller opens Configure itself (the sidebar link), the same
-// way it did before the rail replaced the tab strip.
+// pane to be visible AND past its first fetch. The caller opens
+// Configure itself (the sidebar link), the same way it did before the
+// rail replaced the tab strip.
+//
+// A kind's pane mounts the first time it is selected, so its entities
+// arrive AFTER the pane does: a caller that counted rows on the frame
+// the pane appeared would read zero and call the inventory empty.
+// `configure-loading` is the pane's own first-load marker
+// (configure/ConfigureEntityPage.tsx); a pane that renders no such
+// marker is settled the moment it is visible.
 export async function openConfigureKind(page: Page, label: ConfigureKindLabel): Promise<void> {
   await configureKindLink(page, label).click()
-  await expect(configurePane(page, label)).toBeVisible()
+  const pane = configurePane(page, label)
+  await expect(pane).toBeVisible()
+  await expect(pane.getByTestId('configure-loading')).toHaveCount(0)
 }

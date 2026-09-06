@@ -24,3 +24,15 @@
 .pane {
     min-width: 0;
 }
+
+/* The page's own title row sits above the shell, so it carries no
+   bottom inset of its own: the rail and the pane below each open with
+   their own top inset, and a second one here reads as a gap between
+   the page's name and its content. */
+.titleRow {
+    padding-bottom: 0;
+}
+
+.title {
+    margin: 0;
+}

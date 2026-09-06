@@ -24,6 +24,7 @@ import { StepTypeEngineBindingFields, type EngineBinding } from './StepTypeEngin
 import { StepTypePinnedFieldsEditor, type PinnedFieldsState } from './StepTypePinnedFieldsEditor'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import styles from '../shared/ListCard.module.css'
+import { PaneLoading } from './PaneLoading'
 import PageContainer from '../shared/PageContainer'
 
 type BindingKind = Engine | 'needs-code'
@@ -275,7 +276,7 @@ export function ConfigureStepTypes() {
         </PageContainer>
       )}
 
-      {stepTypes === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
+      {stepTypes === null && <PaneLoading />}
       {stepTypes !== null && viewMode === 'table' && stepTypes.length > 0 && (
         <ResizableTableContainer storageKey="mill-cols-steptypes">
           <DataTable

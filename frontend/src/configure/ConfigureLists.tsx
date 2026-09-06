@@ -27,6 +27,7 @@ import { describeSeedReset } from '../shared/seedLifecycle'
 import { useSeedLifecycle } from './useSeedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
+import { PaneLoading } from './PaneLoading'
 import PageContainer from '../shared/PageContainer'
 
 // Configure's Lists section (docs/SPEC.md §3.5): CRUD over
@@ -286,7 +287,7 @@ export function ConfigureLists() {
         </PageContainer>
       )}
 
-      {lists === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
+      {lists === null && <PaneLoading />}
       {lists !== null && viewMode === 'table' && lists.length > 0 && (
         <ResizableTableContainer storageKey="mill-cols-lists">
           <DataTable

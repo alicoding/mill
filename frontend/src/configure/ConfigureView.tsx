@@ -20,7 +20,6 @@ import ConfigureKindNav from './ConfigureKindNav'
 import { clearConfigureHash, kindFromHash, readLastConfigureKind, rememberConfigureKind, writeConfigureHash } from './configureRoute'
 import rail from '../shared/RailLayout.module.css'
 import styles from './ConfigureView.module.css'
-import listStyles from '../shared/ListCard.module.css'
 
 // The Configure surface (docs/SPEC.md §3.5): one pane per registered
 // kind (shared/configureKinds.ts), navigated by a grouped rail with a
@@ -88,8 +87,8 @@ function ConfigureView({ initialTab }: { initialTab?: string }) {
 
   return (
     <>
-      <PageContainer>
-        <Heading as="h1" variant="medium" className={listStyles.subtitle}>
+      <PageContainer className={styles.titleRow}>
+        <Heading as="h1" variant="medium" className={styles.title}>
           {t('configureView.subtitle')}
         </Heading>
       </PageContainer>

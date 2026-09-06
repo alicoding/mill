@@ -22,6 +22,7 @@ import { describeSeedReset } from '../shared/seedLifecycle'
 import { useSeedLifecycle } from './useSeedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
+import { PaneLoading } from './PaneLoading'
 import PageContainer from '../shared/PageContainer'
 
 // Configure's Integration section (docs/SPEC.md §3.5): the Integrations
@@ -191,7 +192,7 @@ export function ConfigureRequests() {
         <Text as="p" size="small" className={styles.error} data-testid="import-request-error">{importError ?? rowActionError}</Text>
       )}
 
-      {requests === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
+      {requests === null && <PaneLoading />}
       {requests !== null && viewMode === 'table' && requests.length > 0 && (
         <ResizableTableContainer storageKey="mill-cols-requests">
           <DataTable
