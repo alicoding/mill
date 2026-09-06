@@ -14,7 +14,7 @@ import { AddColumnButton, AddColumnRail, GlideOverlays, menuProps, schemaEditorP
 import { ListGridGlideToolbar } from './ListGridGlideToolbar'
 import { filterGridRows, nextSortDirection, sortGridRows, type GridColumnFilter, type GridColumnFilters, type GridColumnSort, type GridSortDirection } from './listStandard'
 import { findCommand, runCommand } from './commands'
-import { comboFromEvent, comboKey } from './keybinding'
+import { comboFromEvent, comboKey, isUndoJournalCombo } from './keybinding'
 import { useListGridSearchFocusStore } from './listGridSearchFocus'
 import styles from './ListGrid.module.css'
 
@@ -320,6 +320,14 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
       // search is CLOSED: once open, the library's own search input
       // closes on ⌘F/Escape itself (its onSearchClose, wired below), so
       // this never double-toggles.
+      //
+      // ⌘Z/⇧⌘Z are the ONE exception to the containment above: a cell
+      // edit, a row insert and a row delete are steps on the app's one
+      // undo journal (ADR-0044, goal 0352), and the grid's own library
+      // ships no undo to contest them, so the combo bubbles to the
+      // window's dispatcher instead of dying here. Without this,
+      // pressing ⌘Z with a cell selected -- the moment every
+      // spreadsheet undoes the edit just made -- did nothing at all.
       onKeyDown={(e) => {
         if (!showSearch) {
           const pressed = comboFromEvent(e.nativeEvent)
@@ -329,6 +337,7 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
             void runCommand('listGrid.search', { kind: 'listGrid', listID, rowIDs: [] })
           }
         }
+        if (isUndoJournalCombo(e.nativeEvent)) return
         e.stopPropagation()
       }}
       onContextMenu={(e) => e.stopPropagation()}

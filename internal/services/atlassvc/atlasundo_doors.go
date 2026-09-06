@@ -141,6 +141,7 @@ var notMutationDoors = map[string]string{
 	"SpaceBundleContext": "read/export text", "SpaceContextEnvelope": "read/export text", "SpaceLinksList": "read/export text",
 	"TableProjectionExport": "read/export", "UndoState": "read",
 	"WireCompositionSeams": "wails:ignore wiring call", "WireFileDropWindow": "wails:ignore wiring call",
+	"RecordExternalUndo": "wails:ignore journal-record seam for a door in another service (goal 0352) -- records, never mutates, Atlas state",
 	"WireListProjection": "wails:ignore wiring call", "WirePasteListWrites": "wails:ignore wiring call",
 	"WirePluginPasteClaims": "wails:ignore wiring call",
 	"WireSourceRecognition": "wails:ignore wiring call",
