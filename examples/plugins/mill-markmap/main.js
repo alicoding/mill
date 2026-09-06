@@ -42,7 +42,7 @@ export function activate(api) {
 		label: 'Mind map',
 		description: "A note's headings as a mind map, following the note as it changes.",
 		icon: '🧠',
-		group: 'knowledge',
+		group: 'objects',
 		source: 'board-local',
 		editRoute: 'none',
 		dragBand: true,

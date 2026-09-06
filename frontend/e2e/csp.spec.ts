@@ -38,7 +38,11 @@ test('the app document carries the policy; the vendored viewers do not', async (
 		// Markup a plugin injects cannot run script in Mill's document.
 		await page.goto('/')
 		await page.getByRole('link', { name: 'Atlas' }).click()
-		await page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Injector"]').click()
+		// The Injector plugin declares no dock group, so it has no button
+		// of its own on the fixed seven-seat dock (goal 0355) -- it is
+		// found by name in the More panel instead.
+		await page.getByTestId('atlas-tray-more').click()
+		await page.getByTestId('atlas-more-tool-inject').click()
 		const board = page.getByTestId('atlas-board')
 		const box = (await board.boundingBox())!
 		// eslint-disable-next-line no-restricted-syntax -- an armed tool's placement click lands on open canvas, where there is no element to check (goal 0184's own exception)

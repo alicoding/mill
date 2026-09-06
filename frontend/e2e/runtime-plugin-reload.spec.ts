@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { launchWithPlugins, runFromPalette } from './fixtures/runtimePlugins'
 import { RUNTIME_PLUGIN_RELOAD_SERVER_BASE_PORT, RUNTIME_PLUGIN_RELOAD_MCP_BASE_PORT } from './fixtures/serverPorts'
 import { openExtensionDetail, openPluginDetail, pluginRow } from './fixtures/settingsNav'
+import { moreToolRow } from './fixtures/atlasTray'
 
 const PORTS = { server: RUNTIME_PLUGIN_RELOAD_SERVER_BASE_PORT, mcp: RUNTIME_PLUGIN_RELOAD_MCP_BASE_PORT }
 // The already-built server binary IS the one binary, so the scaffold
@@ -45,13 +46,14 @@ test('reloading one plugin from its Extensions detail pane re-registers what it 
 		expect(await page.evaluate(MARKER)).toBe('alive')
 
 		// A canvas object's registration survives the same sweep: the
-		// bookmark plugin's tool is back in the tray after ITS reload.
+		// bookmark plugin's tool is back in the More panel after ITS reload.
 		const bookmarkDetail = await openExtensionDetail(page, pluginRow(page, 'mill-bookmark'), 'mill-bookmark')
 		await bookmarkDetail.getByTestId('extensions-plugin-reload').click()
 		await expect(page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Reloaded Bookmark' })).toBeVisible()
 		await page.getByRole('link', { name: 'Atlas' }).click()
 		await expect(page.getByTestId('atlas-board')).toBeVisible()
-		await expect(page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]')).toBeVisible()
+		await expect(await moreToolRow(page, 'Bookmark')).toBeVisible()
+		await page.keyboard.press('Escape')
 		expect(await page.evaluate(MARKER)).toBe('alive')
 	} finally {
 		await close()
@@ -70,7 +72,7 @@ test('the same reload is one registry command, reachable from the palette', asyn
 
 		await expect(page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Reloaded Bookmark' })).toBeVisible()
 		expect(await page.evaluate(MARKER)).toBe('alive')
-		await expect(page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]')).toBeVisible()
+		await expect(await moreToolRow(page, 'Bookmark')).toBeVisible()
 	} finally {
 		await close()
 	}

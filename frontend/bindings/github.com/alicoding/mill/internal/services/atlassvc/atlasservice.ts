@@ -674,6 +674,17 @@ export function Perspectives(): $CancellablePromise<atlas$0.Perspective[] | null
 }
 
 /**
+ * PickBoardFile opens the native file picker with no extension filter
+ * -- the creation dock's "From file…" door (goal 0355). The caller
+ * lands the chosen path through the SAME routing a dropped file takes,
+ * so this only resolves WHICH file, never what it becomes. Returns ""
+ * (no error) when the user cancels.
+ */
+export function PickBoardFile(): $CancellablePromise<string> {
+    return $Call.ByID(2422182103);
+}
+
+/**
  * PickDiagramFile opens the native diagram-file picker -- the honest-
  * state "Choose file" action's own path resolution step (goal 0194: a
  * typed path string is developer vocabulary, not a user-facing

@@ -218,7 +218,12 @@ test('holding Space pans the board without drawing while the pencil stays armed'
 
   const creationTray = page.getByTestId('atlas-creation-tray')
   const stylePicker = page.getByTestId('atlas-pencil-style-picker')
-  const region = await findEmptyBoardRect(page, board, 260, 200, [creationTray, stylePicker])
+  // 200x160, not a larger box: the creation dock is a fixed seven
+  // buttons wide (goal 0355) and its style picker floats above it, so
+  // the clear band beside them is narrower than it was -- and this
+  // test only needs a reachable START point, since the pan's own
+  // destination is a free-form page point past the region's edge.
+  const region = await findEmptyBoardRect(page, board, 200, 160, [creationTray, stylePicker])
   const boardBox = await board.boundingBox()
   if (!boardBox) throw new Error('board has no bounding box')
   const startPoint = { locator: board, position: { x: region.x + 20 - boardBox.x, y: region.y + 20 - boardBox.y } }

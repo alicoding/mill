@@ -174,6 +174,16 @@ interface UISignalState {
   requestAtlasImport: () => void
   atlasExportRequest: number
   requestAtlasExport: () => void
+  // atlas.export.drawio / atlas.kinds.open / atlas.addFile (goal 0355):
+  // the Board menu and the creation dock's own "From file…" run these
+  // through the registry like every other action, so the same counter
+  // shape carries them to whichever atlas/ component owns the door.
+  atlasExportDrawioRequest: number
+  requestAtlasExportDrawio: () => void
+  atlasKindsRequest: number
+  requestAtlasKinds: () => void
+  atlasAddFileRequest: number
+  requestAtlasAddFile: () => void
   atlasAddFromFolderRequest: number
   requestAtlasAddFromFolder: () => void
   // atlas.selection.copyAsImage / .exportAsImage (docs/goals/0201):
@@ -322,6 +332,12 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasImport: () => set((s) => ({ atlasImportRequest: s.atlasImportRequest + 1 })),
   atlasExportRequest: 0,
   requestAtlasExport: () => set((s) => ({ atlasExportRequest: s.atlasExportRequest + 1 })),
+  atlasExportDrawioRequest: 0,
+  requestAtlasExportDrawio: () => set((s) => ({ atlasExportDrawioRequest: s.atlasExportDrawioRequest + 1 })),
+  atlasKindsRequest: 0,
+  requestAtlasKinds: () => set((s) => ({ atlasKindsRequest: s.atlasKindsRequest + 1 })),
+  atlasAddFileRequest: 0,
+  requestAtlasAddFile: () => set((s) => ({ atlasAddFileRequest: s.atlasAddFileRequest + 1 })),
   atlasAddFromFolderRequest: 0,
   requestAtlasAddFromFolder: () => set((s) => ({ atlasAddFromFolderRequest: s.atlasAddFromFolderRequest + 1 })),
   atlasCopyImageRequest: 0,

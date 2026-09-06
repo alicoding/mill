@@ -25,15 +25,22 @@ export * from './atlasBoardObjectContent'
 // array every noun is appended to.
 export type { AtlasToolInteraction }
 
-// AtlasNounGroup -- which tray cluster a noun belongs to (goal 0224's
-// tray-restructure slice), shared by AtlasToolShapeBase.group below AND
+// AtlasNounGroup -- which creation-dock cluster a noun belongs to
+// (goal 0355), shared by AtlasToolShapeBase.group below AND
 // ExtensionRowMeta.group -- one union, so a tool-bearing noun and a
-// tool-less noun declare the SAME three values rather than two
+// tool-less noun declare the SAME four values rather than two
 // independently-typed fields that could drift apart. Settings >
 // Extensions' section grouping (views/ExtensionsSection.tsx) reads
 // this field off every row, tool-bearing or not, never a hand-curated
 // per-id list.
-export type AtlasNounGroup = 'knowledge' | 'file' | 'annotate'
+//
+// The dock is FIXED at seven slots and never grows per installed tool
+// (goal 0355): 'objects' fills the four named object slots, 'media'
+// the Media slot, 'annotate' the Annotate slot, and everything else --
+// including every plugin face that declares nothing -- is reachable
+// through the More panel's search. atlasToolPlacement.ts is the ONE
+// place that maps this field onto a slot.
+export type AtlasNounGroup = 'objects' | 'media' | 'annotate' | 'embed'
 
 // Session-only cache seeding a newly created object's own style
 // (colour/size, ...) -- never persisted document data.
@@ -84,20 +91,19 @@ interface AtlasToolShapeBase {
   description?: string
   shortcutKey: string | null
   tray: 'quick' | 'palette'
-  // group (goal 0224's tray-restructure slice): which tray cluster this
-  // noun's own button renders in -- 'knowledge' (Card/Note/Table/Area:
-  // the things that manage/arrange knowledge, tray-primary and rendered
-  // first), 'file' (Image and any future file-backed object that
-  // primarily arrives by drop/import, kept reachable but ordered after
-  // the primary cluster), or 'annotate' (the freehand-marking family --
-  // Shape/Pencil/Eraser/Laser -- collapsed into one expandable group so
-  // the tray doesn't read as a flat drawing-app toolbar). REQUIRED, the
-  // same honest-declaration shape lockable/resizable/sticky already
-  // establish, so a new tool declares its own cluster instead of
-  // silently landing wherever an array happens to iterate to.
-  // AtlasCreationTray.tsx's own TRAY_GROUP_ORDER renders every cluster
-  // from this field -- reversible by editing one tool's declaration,
-  // never a hand-enumerated JSX reshuffle.
+  // group (goal 0355): which creation-dock cluster this noun belongs to
+  // -- 'objects' (Card/Note/Area/Table: the things a board is made of),
+  // 'media' (Image and every file-backed artifact that primarily
+  // arrives by drop/import, sharing the dock's one Media flyout),
+  // 'annotate' (the freehand-marking family, sharing the Annotate
+  // flyout), or 'embed' (a face a plugin brings, reachable through the
+  // More panel). REQUIRED, the same honest-declaration shape
+  // lockable/resizable/sticky already establish, so a new tool declares
+  // its own cluster instead of silently landing wherever an array
+  // happens to iterate to. atlasToolPlacement.ts maps this field onto a
+  // dock slot -- the dock's own visible order is fixed and never grows
+  // per installed tool, so a fifth 'objects' tool is panel-only by
+  // design, keeping the four letter chips stable.
   group: AtlasNounGroup
   // settings (goal 0258): this noun's own declared user settings,
   // rendered generically by Settings > Extensions' row disclosure

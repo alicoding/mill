@@ -14,10 +14,64 @@
     justify-content: space-between;
     gap: var(--base-size-8);
     padding: var(--base-size-8) 0;
+    /* ONE line, always, at every width that can hold it (goal 0355): a
+       row whose height changes with the length of the breadcrumb moves
+       the board underneath it, so the trail clips rather than wraps.
+       Below Primer's own narrow breakpoint -- where the view switcher
+       drops to icons -- the row takes a second line instead, since at
+       Mill's 640px minimum nothing here can be dropped and a trail
+       squeezed to a few pixels names nothing. */
+    flex-wrap: nowrap;
+    row-gap: var(--base-size-4);
+}
+@media (max-width: 47.99rem) {
+    .toolbar {
+        flex-wrap: wrap;
+    }
+    .toolbarLead {
+        flex: 1 1 100%;
+    }
+}
+/* The row's left cluster (goal 0355): where you are, then what you can
+   do to the whole board. They read as one unit -- the menu is scoped to
+   the space the breadcrumb names. */
+.toolbarLead {
+    display: flex;
+    align-items: center;
+    gap: var(--base-size-4);
+    /* The one part of the row allowed to give up width: at Mill's 640px
+       minimum the trail collapses into its own overflow menu (the
+       Breadcrumbs `overflow="menu"` the kit ships) rather than pushing
+       Share off the end. Everything to the right of it is either a
+       one-of switcher or an action that must stay reachable. */
+    /* The row's only shrinkable part -- everything to its right is
+       either a one-of switcher or an action that must stay reachable. */
+    flex: 0 1 auto;
+    min-width: 0;
+}
+/* The trail stays on ONE line and clips at its own box's edge; it must
+   never grow the row's height (see .toolbar above). The crumbs
+   themselves keep their own hit targets. */
+.toolbarLead > div {
+    min-width: 0;
+    overflow: hidden;
+}
+.toolbarLead ol {
+    flex-wrap: nowrap;
+}
+/* The Board menu keeps its label at every width -- only the trail beside
+   it gives way. */
+.toolbarLead > button {
+    flex: 0 0 auto;
+}
+.toolbarLead li {
+    white-space: nowrap;
 }
 .toolbarActions {
     display: flex;
     align-items: center;
+    flex: 0 0 auto;
+    margin-left: auto;
     gap: var(--base-size-8);
     /* Lets ActionBar's own internal shrink-to-fit (goal 0216) actually
        activate: a flex item's default min-width is its content's own

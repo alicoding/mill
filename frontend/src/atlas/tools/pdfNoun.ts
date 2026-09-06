@@ -40,6 +40,6 @@ registerBoardObjectContent('pdf', {
     label: 'atlas:pdfNoun.name',
     description: 'atlas:pdfNoun.description',
     disableScopeNote: 'atlas:pdfNoun.disableScopeNote',
-    group: 'file',
+    group: 'media',
   },
 })
