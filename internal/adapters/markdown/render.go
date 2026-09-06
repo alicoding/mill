@@ -58,10 +58,15 @@ var docsRenderer = goldmark.New(
 // CommonMark+GFM handling, plus a stable, collision-safe `id` on every
 // heading (goldmark's own generateAutoHeadingID -- slugified text, a
 // numeric suffix on repeat) that the Docs surface's TOC rail and
-// heading-anchor links resolve against.
+// heading-anchor links resolve against. A page's YAML front matter is
+// metadata for the index, never rendered.
 func RenderDocsHTML(source string) (string, error) {
+	fm, err := SplitFrontMatter(source)
+	if err != nil {
+		return "", err
+	}
 	var buf bytes.Buffer
-	if err := docsRenderer.Convert([]byte(source), &buf); err != nil {
+	if err := docsRenderer.Convert([]byte(fm.Body), &buf); err != nil {
 		return "", fmt.Errorf("markdown: render docs: %w", err)
 	}
 	return buf.String(), nil

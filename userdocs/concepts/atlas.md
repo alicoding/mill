@@ -1,3 +1,7 @@
+---
+kind: explanation
+---
+
 # Atlas
 
 Drop a folder of markdown files onto the board and every file becomes a

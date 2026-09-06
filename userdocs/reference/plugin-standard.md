@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # The plugin standard
 
 Every plugin that ships with Mill follows these rules, and the

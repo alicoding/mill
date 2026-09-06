@@ -10,13 +10,17 @@ export interface DocSearchEntry {
     "rel": string;
     "title": string;
     "text": string;
+    "kind": string;
 }
 
 /**
- * DocsIndexEntry is one nav row, in reading order.
+ * DocsIndexEntry is one nav row, in reading order. Kind is the page's
+ * quadrant (tutorial, how-to, reference, explanation) -- the nav groups
+ * by it.
  */
 export interface DocsIndexEntry {
     "rel": string;
     "title": string;
     "note": string;
+    "kind": string;
 }

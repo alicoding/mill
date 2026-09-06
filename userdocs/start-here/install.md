@@ -1,3 +1,7 @@
+---
+kind: tutorial
+---
+
 # Install
 
 Two ways to get Mill running: download a release, or build it yourself.

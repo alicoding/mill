@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # Register a command
 
 A walkthrough of adding a new command to Mill's registry, using the

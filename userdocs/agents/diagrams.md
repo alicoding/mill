@@ -1,3 +1,7 @@
+---
+kind: how-to
+---
+
 # Edit a diagram with an agent
 
 A diagram on your board is a real file, and the file is the diagram.
