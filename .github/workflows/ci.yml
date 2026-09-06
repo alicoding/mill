@@ -255,6 +255,22 @@ jobs:
       - run: go install github.com/loeffel-io/ls-lint/v2/cmd/ls_lint@v2.3.1
       - run: ls_lint
 
+  # Mirrors hook-command-guard's shape: standalone, no frontend-dist
+  # dependency (go mod tidy loads packages fine with the embed pattern
+  # unsatisfied), gated into ci-gate directly. Catches a go.mod/go.sum
+  # left stale after a dependency change -- see lefthook.yml's
+  # go-mod-tidy job for the local-hook mirror.
+  go-mod-tidy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.25'
+          cache: true
+      - run: go mod tidy -diff
+
   # Mirrors lefthook.yml's own sdk-freshness job -- same script. The
   # plugin SDK's committed type package and its generated API reference
   # both derive from frontend/src/plugins/sdk.ts (goal 0319), so both
@@ -682,6 +698,7 @@ jobs:
       - rules-frontmatter
       - standing-context
       - hook-command-guard
+      - go-mod-tidy
       - root-file-naming
       - sdk-freshness
       - frontend
