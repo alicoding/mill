@@ -152,6 +152,17 @@ export async function dragGlideFillHandle(page: Page, host: Locator, from: { row
   await dragBetween(page, await endpoint(host, from.row, from.col, 'fill-handle'), await endpoint(host, to.row, to.col, 'center'))
 }
 
+// Clicks Glide's own trailing row -- the "New row" affordance
+// (trailingRowOptions/onRowAppended, goal 0349 S4 Part B) -- at
+// whatever position the host's CURRENT row count paints it. Reads
+// data-rows fresh on every call, so two clicks in a row (before the
+// first append's re-render has landed) each still target wherever the
+// trailing row actually sits right now.
+export async function clickGlideTrailingRow(page: Page, host: Locator): Promise<void> {
+  const rows = Number(await host.getAttribute('data-rows'))
+  await clickGlideCell(page, host, rows, 0)
+}
+
 // Clicks a row's marker checkbox (rowMarkers="both"): the marker column
 // sits left of column 0 and is always ROW_MARKER_WIDTH wide.
 export async function clickGlideRowMarker(page: Page, host: Locator, row: number): Promise<void> {
