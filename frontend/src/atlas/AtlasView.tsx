@@ -15,10 +15,10 @@ import { useAtlasProjectionViews } from './useAtlasProjectionViews'
 import { useAtlasShareIO } from './useAtlasShareIO'
 import { AtlasToolbar } from './AtlasToolbar'
 import { AtlasBoard } from './AtlasBoard'
-import { pasteAsOffer, pasteSummaryText } from './pasteSummary'
-import { thirdPartyNounForKind } from './atlasNounRegistry'
+import { AtlasProjectionPane } from './AtlasProjectionPane'
+import { pasteConvertedHandler } from './pasteSummary'
 import { type AtlasFocusRequest } from './useBoardFocus'
-import { type ContextMenuState } from '../shared/ContextMenu'
+import { useAtlasContextMenuSignal } from './useAtlasContextMenuSignal'
 import { AtlasViewOverlays } from './AtlasViewOverlays'
 import { closeAtlasEditDiagram, useAtlasEditDiagramStore } from './atlasEditDiagramStore'
 import { AtlasBoardEmptyState } from './AtlasBoardEmptyState'
@@ -36,7 +36,7 @@ import { useAtlasNoteMenu } from './useAtlasNoteMenu'
 import { useAtlasObjectMenu } from './useAtlasObjectMenu'
 import { useAtlasSpaceActions } from './useAtlasSpaceActions'
 import { useAtlasUndoToast } from './useAtlasUndoToast'
-import { useAtlasUndoJournal } from './useAtlasUndoJournal'
+import { useUndoJournal } from '../shared/useUndoJournal'
 import { AtlasUndoToast } from './AtlasUndoToast'
 import { useAtlasQuietToast } from './useAtlasQuietToast'
 import { AtlasQuietToast } from './AtlasQuietToast'
@@ -195,6 +195,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // 0179/0180, the same "containment is location, not meaning" rule
   // notes carry) -- unfiltered by the lens, same reasoning as above.
   const visibleObjects = allObjects.filter((o) => o.ParentID === viewedID)
+  // Goal 0112's empty-state rule below: a perspective can zero this
+  // level's cards while notes/objects still render.
+  const filteredByPerspective = activePerspectiveID !== '' && childrenOf(allCards, viewedID).length > 0
+  const nothingElseHere = visibleNotes.length === 0 && visibleObjects.length === 0
   const overlayCard = overlayCardID ? allCards.find((c) => c.ID === overlayCardID) ?? null : null
 
   // navigate/drill mark suppressAutoEntry (docs/goals/0183) exactly
@@ -207,13 +211,13 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     setViewedID(id)
   }
   const drill = navigate
-  // Traceability matrix / coverage / roadmap (docs/goals/0064, 0212):
-  // all three are viewed-space-scoped dialogs owned by one shared hook
-  // (architecture.md's 500-line convention).
+  // List / Matrix / Coverage / Roadmap (docs/goals/0064, 0279, 0212):
+  // the four projections are PANES of the board's region (goal 0355 S2),
+  // the active one read from the persisted atlas View by one shared hook.
   const projectionViews = useAtlasProjectionViews({ onOpenOverlay: setOverlayCardID })
   const { jumpOpen, setJumpOpen } = useAtlasNavSignals({
     viewedID, allCards, setViewedID: navigate,
-    setMatrixOpen: projectionViews.setMatrixOpen, setCoverageOpen: projectionViews.setCoverageOpen, setRoadmapOpen: projectionViews.setRoadmapOpen,
+    onOpenProjection: projectionViews.setView,
   })
 
   const openOverlay = (id: string) => setOverlayCardID(id)
@@ -226,7 +230,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // click IS the flip. The edge menu (Change link kind/Edit label/
   // Remove link) lives in the SAME hook -- split out of this file
   // entirely (architecture.md's 500-line convention).
-  const [menu, setMenu] = useState<ContextMenuState | null>(null)
+  const { menu, setMenu } = useAtlasContextMenuSignal()
   // The quick-delete undo toast (goal 0093): one shared instance,
   // fed by every Atlas delete door below -- selection Del/Backspace +
   // tray Delete, card/note context-menu Delete, frame-header Delete,
@@ -234,9 +238,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const undoToast = useAtlasUndoToast()
   // A quiet, no-undo toast (membership writes, clipboard feedback).
   const quietToast = useAtlasQuietToast()
+  const onPasteConverted = pasteConvertedHandler(t, quietToast.show)
   // The board's own ⌘Z/⇧⌘Z journal (goal 0219 S2, ADR-0044) -- an
   // apply-time staleness skip rides the same quiet toast above.
-  useAtlasUndoJournal({ onSkip: quietToast.show })
+  useUndoJournal({ onSkip: quietToast.show, onApplied: () => { void refreshAtlas() } })
   const [openNoteID, setOpenNoteID] = useState<string | null>(null)
   // goal 0237 S1: which board object's embedded editor engine is open,
   // read from the small directly-imported store both the context-menu
@@ -293,8 +298,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
 
   // ⌘K's GO/OPEN (goal 0072 slice B): a target already rendered (a
   // direct child, or a preview grandchild) flies; anything else
-  // re-roots to the target's parent first.
+  // re-roots to the target's parent first. A jump is a canvas gesture:
+  // the pane gives way to the board before the focus request lands.
   const jumpToCard = (card: Card, openImmediately: boolean) => {
+    projectionViews.backToBoard()
     const parentIsRenderedChild = allCards.find((c) => c.ID === card.ParentID)?.ParentID === viewedID
     if (card.ParentID !== viewedID && !parentIsRenderedChild) setViewedID(card.ParentID)
     setFocusRequest({ cardID: card.ID, openImmediately })
@@ -303,6 +310,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // Objects are jump peers (goal 0265): same re-root-then-fly, no
   // preview-grandchild case (an object only renders on its own board).
   const jumpToObject = (object: BoardObject) => {
+    projectionViews.backToBoard()
     if (object.ParentID !== viewedID) setViewedID(object.ParentID)
     setFocusRequest({ cardID: object.ID, openImmediately: false })
   }
@@ -339,7 +347,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const [tableFromListOpen, setTableFromListOpen] = useState(false)
   const [newSpaceOpen, setNewSpaceOpen] = useState(false)
 
-  useAtlasCommandSignals({ viewedID, onArrange: requestAutoArrange, onExport: exportAtlas, onError: setShareError, onOpenContents: () => projectionViews.setContentsOpen(true) })
+  useAtlasCommandSignals({
+    viewedID, onArrange: requestAutoArrange, onExport: exportAtlas, onExportDrawio: exportBoardDrawio,
+    onError: setShareError, onOpenContents: () => projectionViews.setView('list'), onOpenKinds: () => setKindsOpen(true),
+  })
 
   if (kinds === null || cards === null || landingPending) {
     return <Text as="p" className={runbookStyles.muted}>{t('loading')}</Text>
@@ -355,7 +366,6 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         presentKinds={presentKinds}
         hiddenKindIDs={hiddenKindIDs}
         onChangeHidden={changeHidden}
-        onAutoArrange={requestAutoArrange}
         perspectives={allPerspectives}
         activePerspectiveID={activePerspectiveID}
         onSwitchPerspective={switchPerspective}
@@ -365,14 +375,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         onPerspectiveToast={quietToast.show}
         links={allLinks}
         linkKinds={allLinkKinds}
-        onExport={exportAtlas} onExportDrawio={exportBoardDrawio}
         onImportFile={importFile}
         onShareError={setShareError}
-        onOpenMatrix={() => projectionViews.setMatrixOpen(true)}
-        onOpenCoverage={() => projectionViews.setCoverageOpen(true)}
-        onOpenRoadmap={() => projectionViews.setRoadmapOpen(true)}
-        onOpenContents={() => projectionViews.setContentsOpen(true)}
-        onOpenKinds={() => setKindsOpen(true)}
+        activeView={projectionViews.activeView}
+        onBackToBoard={projectionViews.backToBoard}
       />
 
       {importError && <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-import-error">{importError}</Text>}
@@ -388,30 +394,23 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           SOMETHING is on the canvas. The plain (no perspective active)
           empty-space message stays gated on all three being zero. */}
       <div className={styles.boardWrapper}>
-        {(() => {
-          const filteredByPerspective = activePerspectiveID !== '' && childrenOf(allCards, viewedID).length > 0
-          const nothingElseHere = visibleNotes.length === 0 && visibleObjects.length === 0
-          return childrenAll.length === 0 && (filteredByPerspective || nothingElseHere) && (
-            <AtlasBoardEmptyState
-              filteredByPerspective={filteredByPerspective}
-              perspectiveName={allPerspectives.find((pp) => pp.ID === activePerspectiveID)?.Name ?? ''}
-              onShowAll={() => switchPerspective('')}
-            />
-          )
-        })()}
+        {/* The switcher's active view IS this slot (goal 0355 S2): a
+            projection replaces the canvas in place; the board's transient
+            state (zoom, selection) is per-look, the persisted View what comes back. */}
+        {projectionViews.activeView !== 'board' ? (
+          <AtlasProjectionPane view={projectionViews.activeView} cards={childrenAll} kinds={allKinds} links={allLinks} linkKinds={allLinkKinds} onOpenCard={projectionViews.openCardFromProjection} onFocusItem={(id) => { projectionViews.backToBoard(); setFocusRequest({ cardID: id, openImmediately: false }) }} onBackToBoard={projectionViews.backToBoard} />
+        ) : (
+          <>
+        {childrenAll.length === 0 && (filteredByPerspective || nothingElseHere) && (
+          <AtlasBoardEmptyState
+            filteredByPerspective={filteredByPerspective}
+            perspectiveName={allPerspectives.find((pp) => pp.ID === activePerspectiveID)?.Name ?? ''}
+            onShowAll={() => switchPerspective('')}
+          />
+        )}
         <AtlasBoard
           freePlacementRef={freePlacementRef}
-          onPasteConverted={(res) => {
-            // Two plugins claimed the pasted link: the first landed, the
-            // toast offers the other (the converged paste-provider model,
-            // ADR-0051 slice 2) -- re-typing the same object in place.
-            const offer = pasteAsOffer(t, res, (kind) => thirdPartyNounForKind(kind)?.label ?? kind)
-            if (!offer) { quietToast.show(pasteSummaryText(t, res)); return }
-            quietToast.show(offer.text, {
-              label: offer.alternative.label,
-              run: () => { void AtlasService.SetBoardObjectKind(res.PluginObjectID, offer.alternative.kind).then(() => refreshAtlas()).catch((err) => console.error('paste as failed', err)) },
-            })
-          }}
+          onPasteConverted={onPasteConverted}
           onCreateTableSized={(cols, rows, at, parentID) => void createTableFromScratch(cols, rows, at, parentID)}
           onOpenTableFromList={() => setTableFromListOpen(true)}
           boardFilter={boardFilter}
@@ -452,6 +451,8 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           groupRequest={creationRequests.groupRequest}
           onFocusHandled={() => setFocusRequest(null)}
         />
+          </>
+        )}
         {undoToast.pending && (
           <AtlasUndoToast
             count={undoToast.pending.count}
@@ -473,7 +474,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         openNote={openNoteID ? allNotes.find((n) => n.ID === openNoteID) ?? null : null} onCloseNote={() => setOpenNoteID(null)}
         editingDiagramObject={editingDiagramObjectID ? allObjects.find((o) => o.ID === editingDiagramObjectID) ?? null : null}
         onCloseEditDiagram={closeAtlasEditDiagram}
-        matrixOpen={projectionViews.matrixOpen} onCloseMatrix={() => projectionViews.setMatrixOpen(false)} coverageOpen={projectionViews.coverageOpen} onCloseCoverage={() => projectionViews.setCoverageOpen(false)} roadmapOpen={projectionViews.roadmapOpen} onCloseRoadmap={() => projectionViews.setRoadmapOpen(false)} contentsOpen={projectionViews.contentsOpen} onCloseContents={() => projectionViews.setContentsOpen(false)} onFocusItemFromContents={(id) => setFocusRequest({ cardID: id, openImmediately: false })} childrenAll={childrenAll} kindsOpen={kindsOpen} onCloseKinds={() => setKindsOpen(false)} onOpenCardFromProjection={projectionViews.openCardFromProjection}
+        kindsOpen={kindsOpen} onCloseKinds={() => setKindsOpen(false)}
       />
     </div>
   )

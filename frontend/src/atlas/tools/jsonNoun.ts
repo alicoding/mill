@@ -43,6 +43,6 @@ registerBoardObjectContent('json', {
     label: 'atlas:jsonNoun.name',
     description: 'atlas:jsonNoun.description',
     disableScopeNote: 'atlas:jsonNoun.disableScopeNote',
-    group: 'file',
+    group: 'media',
   },
 })

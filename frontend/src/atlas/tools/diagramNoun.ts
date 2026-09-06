@@ -40,6 +40,11 @@ registerBoardObjectContent('diagram', {
   // band carries a "Fit" chip whenever the viewer reports it currently
   // overflows.
   overflowChip: true,
+  // pager (goal 0354): a .drawio file may carry several pages, and the
+  // board object shows no vendored toolbar to page them with -- so the
+  // shared chrome band carries the indicator and its own previous/next
+  // controls whenever the face reports more than one page.
+  pager: true,
   // Payload.mirrorPath names the real drawio/mermaid file this content
   // renders (goal 0232 S1) -- AtlasBoardObjectNode.tsx's own shared
   // watch subscription and useAtlasObjectMenu.ts's "Open in default
@@ -69,8 +74,9 @@ registerBoardObjectContent('diagram', {
     label: 'atlas:diagramNoun.name',
     description: 'atlas:diagramNoun.description',
     disableScopeNote: 'atlas:diagramNoun.disableScopeNote',
-    // File-drop-only, the same family Image's own 'file' group already
-    // names (atlasNounRegistry.ts's AtlasNounGroup).
-    group: 'file',
+    // File-drop-only, the same Media family Image's own group names
+    // (atlasNounRegistry.ts's AtlasNounGroup) -- the dock's Media
+    // flyout reaches it through "From file…", never a button of its own.
+    group: 'media',
   },
 })

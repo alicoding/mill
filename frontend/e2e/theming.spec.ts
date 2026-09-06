@@ -3,6 +3,7 @@ import { test, expect } from './fixtures/server'
 import { launchWithPlugins, runFromPalette } from './fixtures/runtimePlugins'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { openSettings } from './fixtures/settingsNav'
+import { armToolFromMorePanel } from './fixtures/atlasTray'
 
 // Theming (goal 0320): the color scheme per mode, one theme across
 // every window, and the plugin theme contract.
@@ -132,7 +133,7 @@ pluginTest('a plugin face and view carry the resolved theme, and it flips with t
     await page.getByRole('link', { name: 'Atlas' }).click()
     const board = page.getByTestId('atlas-board')
     await baseExpect(board).toBeVisible()
-    await page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]').click()
+    await armToolFromMorePanel(page, 'Bookmark')
     const spot = await findEmptyBoardRect(page, board, 300, 200)
     const bb = await board.boundingBox()
     if (!bb) throw new Error('board has no bounding box')

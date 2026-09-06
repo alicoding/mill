@@ -15,6 +15,7 @@ import UpdatesSection from './UpdatesSection'
 import SettingsGroupNav from './SettingsGroupNav'
 import { clearSettingsHash, groupFromHash, readLastSettingsGroup, rememberSettingsGroup, writeSettingsHash } from './settingsRoute'
 import styles from './SettingsView.module.css'
+import rail from '../shared/RailLayout.module.css'
 import PageContainer from '../shared/PageContainer'
 
 // A dedicated Settings page, reached via the sidebar's own bottom-
@@ -77,7 +78,7 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
 
   return (
     <PageContainer variant="wide" data-testid="settings-view">
-      <div className={isNarrowViewport ? styles.layoutNarrow : styles.layout}>
+      <div className={isNarrowViewport ? rail.layoutNarrow : rail.layout}>
         <SettingsGroupNav activeId={group} onSelect={select} />
         <div
           className={styles.pane}

@@ -46,6 +46,14 @@ export function pluginLoadStates(): Map<string, PluginLoadState> {
 
 // pluginsAwaitingReview counts the plugins installed but not yet
 // allowed to run -- the boot notice's number.
+// pluginDisplayName -- the plugin's own manifest name, for any surface
+// that must say WHERE a contribution came from (the creation dock's
+// More panel, goal 0355). A manifest id is developer vocabulary, so it
+// is the fallback only, never the first answer.
+export function pluginDisplayName(id: string): string {
+	return loadStates.get(id)?.info.Manifest.name || id
+}
+
 export function pluginsAwaitingReview(): number {
 	let n = 0
 	for (const s of loadStates.values()) if (s.status === 'unallowed') n++

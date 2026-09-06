@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # Menu bar
 
 Every menu in Mill's menu bar is built from the same list of actions
@@ -133,6 +137,9 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Contents | — | `atlas.contents.open` |
 | Import atlas | — | `atlas.import` |
 | Export atlas | — | `atlas.export` |
+| Export board as .drawio | — | `atlas.export.drawio` |
+| Kinds | — | `atlas.kinds.open` |
+| Add a file to the board | — | `atlas.addFile` |
 | Copy as image | — | `atlas.selection.copyAsImage` |
 | Export as image… | — | `atlas.selection.exportAsImage` |
 | Add cards from a folder | — | `atlas.addFromFolder` |
@@ -142,6 +149,8 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Select all | ⌘A | `atlas.selectAll` |
 | Delete selection | ⌫ | `atlas.delete.selection` |
 | Group into a new area | G | `atlas.group.selection` |
+| Previous page | — | `diagram.previousPage` |
+| Next page | — | `diagram.nextPage` |
 | Fit diagram | — | `diagram.fit` |
 | Open in default app | — | `object.openInDefaultApp` |
 | Rename | — | `object.rename` |

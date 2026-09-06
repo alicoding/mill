@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // The copyable-diagnosis sweep (goal 0127 slice 4): two representative
 // surfaces of the seven wired to shared/CopyDiagnosisButton, proving
@@ -48,7 +49,7 @@ test("an MCP server save error copies the validation message plus the form's lab
     await page.goto('/')
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
     await page.getByRole('link', { name: 'Configure' }).click()
-    await page.getByRole('tab', { name: 'MCP Servers' }).click()
+    await openConfigureKind(page, 'MCP Servers')
     await page.getByTestId('new-mcpserver').click()
     await page.getByLabel('Label').fill('E2E diagnosis probe')
     // Command left empty -- mcpserver.Validate refuses before

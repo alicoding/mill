@@ -42,8 +42,7 @@
     "insertColumnAriaLabel": "Insert a column here",
     "insertRowAriaLabel": "Insert a row here",
     "noColumns": "No columns yet. Add one to start.",
-    "addRow": "+ Row",
-    "addColumn": "+ Column",
+    "addColumnAriaLabel": "Add column",
     "columnSettingsAriaLabel": "Settings for {{column}}",
     "keyLabel": "Key",
     "typeLabel": "Type",
@@ -182,8 +181,13 @@
       "contents": {
         "open": "Contents"
       },
+      "kinds": {
+        "open": "Kinds"
+      },
       "import": "Import atlas",
       "export": "Export atlas",
+      "exportDrawio": "Export board as .drawio",
+      "addFile": "Add a file to the board",
       "selection": {
         "copyAsImage": "Copy as image",
         "exportAsImage": "Export as image…",
@@ -269,7 +273,9 @@
       "editDiagram": "Edit diagram…"
     },
     "diagram": {
-      "fit": "Fit diagram"
+      "fit": "Fit diagram",
+      "previousPage": "Previous page",
+      "nextPage": "Next page"
     },
     "canvas": {
       "undo": "Undo",
@@ -313,6 +319,7 @@
         "steptypes": "New step type",
         "certificates": "New client certificate"
       },
+      "openKind": "Configure › {{label}}",
       "request": {
         "delete": "Delete",
         "edit": "Edit",
@@ -376,7 +383,8 @@
     "secrets": {
       "lockVault": "Lock vault",
       "unlockVault": "Unlock vault",
-      "resetVault": "Start a new vault"
+      "resetVault": "Start a new vault",
+      "restoreVaultFromBackup": "Restore the last backup"
     },
     "settings": {
       "open": "Open Settings",
@@ -393,7 +401,8 @@
     },
     "browser": {
       "pair": "Pair a browser",
-      "test": "Test the browser connection"
+      "test": "Test the browser connection",
+      "revealExtension": "Reveal the extension folder"
     },
     "capture": {
       "note": "Capture a note"
@@ -452,7 +461,9 @@
       "search": "Find in this list",
       "deleteRows": "Delete selected rows",
       "copyRows": "Copy selected rows",
-      "deleteColumn": "Delete selected column"
+      "deleteColumn": "Delete selected column",
+      "addRow": "Add a row",
+      "addColumn": "Add a column"
     },
     "clientcert": {
       "edit": "Edit certificate",
@@ -584,5 +595,10 @@
     "stop": "Stop run",
     "keep": "Keep it paused",
     "cancel": "Cancel"
+  },
+  "vaultWait": {
+    "badge": "waiting for vault",
+    "title": "Waiting for the vault to unlock",
+    "body": "This run needs a secret. Unlock the vault and it continues from the step that stopped."
   }
 }

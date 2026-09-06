@@ -8,6 +8,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/execution"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/guardrail"
+	"github.com/alicoding/mill/internal/domain/secret"
 )
 
 // GetRun -- split out of executionservice.go once that file crossed the
@@ -69,14 +70,22 @@ func (e *ExecutionService) GetRun(runID string) (RunDetail, error) {
 		typeLabels[nt.ID] = nt.Label
 	}
 
-	byNodeID := make(map[string]execution.StepInfo, len(steps))
-	for _, s := range steps {
-		byNodeID[s.StepName] = s
-	}
-
 	sortedSteps := make([]execution.StepInfo, len(steps))
 	copy(sortedSteps, steps)
 	sort.Slice(sortedSteps, func(i, j int) bool { return sortedSteps[i].StepID < sortedSteps[j].StepID })
+
+	// A node re-run after a vault wait records one attempt per try
+	// (executionservice_vaultwait.go): the LAST attempt is the step's
+	// outcome, every earlier vault-locked attempt is one wait, timed
+	// from that attempt's end to the next attempt's start.
+	byNodeID := make(map[string]execution.StepInfo, len(sortedSteps))
+	waitsByNodeID := make(map[string][]RunWait)
+	for _, s := range sortedSteps {
+		if prev, ok := byNodeID[s.StepName]; ok && secret.IsVaultLocked(prev.Error) {
+			waitsByNodeID[s.StepName] = append(waitsByNodeID[s.StepName], RunWait{Reason: ParkReasonVaultLocked, ParkedAt: prev.CompletedAt, ResumedAt: s.StartedAt})
+		}
+		byNodeID[s.StepName] = s
+	}
 
 	// Real executed node order -- "guardrail:<nodeID>" pseudo-steps
 	// excluded here (joined back in per-node below, same as before);
@@ -120,7 +129,13 @@ func (e *ExecutionService) GetRun(runID string) (RunDetail, error) {
 			NodeID: n.ID, NodeTypeID: n.NodeTypeID, NodeTypeLabel: typeLabels[n.NodeTypeID], Status: "pending",
 			Input: prevPayload, InputAttributes: prevAttrs,
 		}
+		rs.Waits = waitsByNodeID[n.ID]
 		if s, ok := byNodeID[n.ID]; ok {
+			if secret.IsVaultLocked(s.Error) {
+				// The latest attempt ended at the locked vault and no
+				// later attempt exists yet: the run is waiting there.
+				rs.Waits = append(rs.Waits, RunWait{Reason: ParkReasonVaultLocked, ParkedAt: s.CompletedAt})
+			}
 			if s.Error != nil {
 				rs.Status = "failed"
 				rs.Error = s.Error.Error()

@@ -23,11 +23,14 @@ func New(content fs.FS) *DocsService {
 	return &DocsService{content: content}
 }
 
-// DocsIndexEntry is one nav row, in reading order.
+// DocsIndexEntry is one nav row, in reading order. Kind is the page's
+// quadrant (tutorial, how-to, reference, explanation) -- the nav groups
+// by it.
 type DocsIndexEntry struct {
 	Rel   string `json:"rel"`
 	Title string `json:"title"`
 	Note  string `json:"note"`
+	Kind  string `json:"kind"`
 }
 
 // DocsIndex returns the canonical reading order -- the same list the
@@ -37,7 +40,7 @@ func (d *DocsService) DocsIndex() []DocsIndexEntry {
 	pages := docsgen.PageIndex()
 	out := make([]DocsIndexEntry, 0, len(pages))
 	for _, p := range pages {
-		out = append(out, DocsIndexEntry{Rel: p.Rel, Title: p.Title, Note: p.Note})
+		out = append(out, DocsIndexEntry{Rel: p.Rel, Title: p.Title, Note: p.Note, Kind: string(p.Kind)})
 	}
 	return out
 }
@@ -84,6 +87,7 @@ type DocSearchEntry struct {
 	Rel   string `json:"rel"`
 	Title string `json:"title"`
 	Text  string `json:"text"`
+	Kind  string `json:"kind"`
 }
 
 // DocsSearchIndex serves every indexed page's full text in one call --
@@ -102,7 +106,7 @@ func (d *DocsService) DocsSearchIndex() ([]DocSearchEntry, error) {
 		if err != nil {
 			return nil, fmt.Errorf("render docs page %q: %w", p.Rel, err)
 		}
-		out = append(out, DocSearchEntry{Rel: p.Rel, Title: p.Title, Text: markdown.PlainText(html)})
+		out = append(out, DocSearchEntry{Rel: p.Rel, Title: p.Title, Text: markdown.PlainText(html), Kind: string(p.Kind)})
 	}
 	return out, nil
 }

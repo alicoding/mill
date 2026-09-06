@@ -116,6 +116,11 @@ type SecretService struct {
 	// the vault through this service, so holding the lock across them
 	// would deadlock.
 	afterUnlock []func()
+	// backupDir is the local backup rotation's own root directory
+	// (main.go's MILL_BACKUP_DIR-resolved path) -- "" until SetBackupDir
+	// wires it, which makes RestoreVaultFromLatestBackup refuse rather
+	// than search a directory nobody configured (secretservice_restore.go).
+	backupDir string
 }
 
 // NewSecretService constructs the service and starts the auto-lock poll

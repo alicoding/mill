@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Browser } from '@wailsio/runtime'
 import { Button, Checkbox, FormControl, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { KeyIcon } from '@primer/octicons-react'
 import { KeyComboChip } from '../shared/KeyComboChip'
@@ -9,6 +8,7 @@ import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mil
 import type { CanvasNode } from './canvasStore'
 import { useHotkeyCapture, isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from './hotkeyCapture'
 import { generateSamplePayload } from '../shared/configSchema'
+import { openExternalUrl } from '../shared/openExternal'
 import { EntityRefField } from '../configure/EntityRefField'
 import { IntegrationBindingsEditor } from './IntegrationBindingsEditor'
 import { ChildWorkflowBindingsEditor } from './ChildWorkflowBindingsEditor'
@@ -20,6 +20,7 @@ import { AtlasCardMatchParamsEditor } from './AtlasCardMatchParamsEditor'
 import { WorkflowHoverPreview } from './WorkflowHoverPreview'
 import { RulesetEditor } from './RulesetEditor'
 import { AIExtractFieldsEditor } from './AIExtractFieldsEditor'
+import { BrowserReplayEditor } from './BrowserReplayEditor'
 import { CodeConfigField } from './CodeConfigField'
 import { SchedulePreview } from './SchedulePreview'
 import styles from './CompositionCanvas.module.css'
@@ -150,7 +151,7 @@ export function NodeConfigFields({ node, attrs, nodeType, sameKindNodeTypes, has
                 <Stack direction="vertical" gap="condensed">
                   <Text as="p" size="small" className={runbookStyles.error}>{hotkeyCapture.error}</Text>
                   {isAccessibilityError(hotkeyCapture.error) && (
-                    <Button size="small" onClick={() => Browser.OpenURL(ACCESSIBILITY_SETTINGS_URL)}>
+                    <Button size="small" onClick={() => openExternalUrl(ACCESSIBILITY_SETTINGS_URL)}>
                       {t('nodeInspector.openAccessibilitySettings')}
                     </Button>
                   )}
@@ -186,6 +187,18 @@ export function NodeConfigFields({ node, attrs, nodeType, sameKindNodeTypes, has
         </Button>
       )}
 
+      {node.data.nodeTypeID === 'process-browser-replay' && (
+        <BrowserReplayEditor
+          recordingRaw={node.data.config.recording ?? ''}
+          parametersRaw={node.data.config.parameters ?? ''}
+          extractRaw={node.data.config.extract ?? ''}
+          attrs={attrs}
+          onChangeRecording={(raw) => onConfigChange('recording', raw)}
+          onChangeParameters={(raw) => onConfigChange('parameters', raw)}
+          onChangeExtract={(raw) => onConfigChange('extract', raw)}
+        />
+      )}
+
       {(nodeType?.ConfigFields ?? [])
         // toolName/argumentsJSON stay declared in Go ConfigFields (ADR-0025's
         // list_node_types introspection is the LLM-authoring vocabulary,
@@ -204,6 +217,12 @@ export function NodeConfigFields({ node, attrs, nodeType, sameKindNodeTypes, has
         // instead of this generic loop -- a typed field-row editor, not a
         // raw JSON textarea (node-standard item 1).
         .filter((field) => !(node.data.nodeTypeID === 'process-ai-extract-structured' && field.Key === 'outputFields'))
+        // recording/parameters/extract are owned and rendered by
+        // BrowserReplayEditor below: an import door and two tables over
+        // the recording's own steps, not three JSON textareas. The
+        // step's remaining fields (timeout, browser) stay in this loop.
+        .filter((field) => !(node.data.nodeTypeID === 'process-browser-replay'
+          && (field.Key === 'recording' || field.Key === 'parameters' || field.Key === 'extract')))
         // version is owned and rendered by DecisionOutcomeBindingsEditor
         // below instead of this generic free-text loop -- a picker over
         // the referenced Decision's own published versions (docs/adr/0040

@@ -9,14 +9,13 @@ import { useUISignalStore } from '../shared/uiSignalStore'
 // atlas.matrix/atlas.coverage/atlas.roadmap each bump a shared store
 // counter a palette/keyboard invocation fires, consumed here with the
 // same ref-compared-counter shape every other Atlas signal in this
-// codebase uses.
-export function useAtlasNavSignals({ viewedID, allCards, setViewedID, setMatrixOpen, setCoverageOpen, setRoadmapOpen }: {
+// codebase uses. The three view commands SWITCH the active projection
+// pane (goal 0355 S2) rather than opening dialogs.
+export function useAtlasNavSignals({ viewedID, allCards, setViewedID, onOpenProjection }: {
   viewedID: string
   allCards: Card[]
   setViewedID: (id: string) => void
-  setMatrixOpen: (open: boolean) => void
-  setCoverageOpen: (open: boolean) => void
-  setRoadmapOpen: (open: boolean) => void
+  onOpenProjection: (view: 'matrix' | 'coverage' | 'roadmap') => void
 }) {
   // atlas.up (⌘↑): one step up the depth ladder. Reaching the meta
   // "All spaces" level (parent === '') is always permitted, even with
@@ -45,31 +44,31 @@ export function useAtlasNavSignals({ viewedID, allCards, setViewedID, setMatrixO
     setJumpOpen(true)
   }, [atlasJumpRequest])
 
-  // atlas.matrix / atlas.coverage: same signal shape, opening the two
-  // projection dialogs AtlasView itself owns.
+  // atlas.matrix / atlas.coverage / atlas.roadmap: same signal shape,
+  // switching into the named projection pane.
   const atlasMatrixRequest = useUISignalStore((s) => s.atlasMatrixRequest)
   const lastMatrixRequest = useRef(atlasMatrixRequest)
   useEffect(() => {
     if (atlasMatrixRequest === lastMatrixRequest.current) return
     lastMatrixRequest.current = atlasMatrixRequest
-    setMatrixOpen(true)
-  }, [atlasMatrixRequest])
+    onOpenProjection('matrix')
+  }, [atlasMatrixRequest, onOpenProjection])
 
   const atlasCoverageRequest = useUISignalStore((s) => s.atlasCoverageRequest)
   const lastCoverageRequest = useRef(atlasCoverageRequest)
   useEffect(() => {
     if (atlasCoverageRequest === lastCoverageRequest.current) return
     lastCoverageRequest.current = atlasCoverageRequest
-    setCoverageOpen(true)
-  }, [atlasCoverageRequest])
+    onOpenProjection('coverage')
+  }, [atlasCoverageRequest, onOpenProjection])
 
   const atlasRoadmapRequest = useUISignalStore((s) => s.atlasRoadmapRequest)
   const lastRoadmapRequest = useRef(atlasRoadmapRequest)
   useEffect(() => {
     if (atlasRoadmapRequest === lastRoadmapRequest.current) return
     lastRoadmapRequest.current = atlasRoadmapRequest
-    setRoadmapOpen(true)
-  }, [atlasRoadmapRequest])
+    onOpenProjection('roadmap')
+  }, [atlasRoadmapRequest, onOpenProjection])
 
   return { jumpOpen, setJumpOpen }
 }

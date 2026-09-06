@@ -136,12 +136,14 @@
       "secretRefGroupVault": "Vault",
       "secretRefGroupSources": "Secret sources",
       "meta": {
-        "groupKnowledge": "Knowledge",
-        "groupFile": "File",
+        "groupObjects": "Object",
+        "groupMedia": "Media",
         "groupAnnotate": "Drawing",
-        "sectionKnowledge": "Knowledge",
-        "sectionFile": "Files",
+        "groupEmbed": "Extension",
+        "sectionObjects": "Objects",
+        "sectionMedia": "Media",
         "sectionAnnotate": "Drawing",
+        "sectionEmbed": "Extensions",
         "sourceBoardLocal": "Stored on the board",
         "sourceFile": "Backed by a file",
         "sourceUrl": "Points at a web address",
@@ -241,7 +243,10 @@
       "test": "Test the connection",
       "testing": "Testing…",
       "testPassed": "The browser replayed {{steps}} steps in {{ms}} ms.",
-      "install": "Install the extension from the browser-extension folder in Mill's examples."
+      "install": "Load Mill's extension into your browser as an unpacked extension.",
+      "revealExtension": "Reveal the extension folder",
+      "extensionDocsLink": "How to load and pair it",
+      "extensionPathCaption": "Pick this folder in your browser's extensions page."
     },
     "contract": {
       "description": "The full step catalog, every data schema, and this app's version in one file.",
@@ -415,7 +420,7 @@
   "activityRunsExplorer": {
     "noEnvironment": "None",
     "columns": {
-        "environment": "Environment",
+      "environment": "Environment",
       "started": "Started",
       "kind": "Kind",
       "version": "Version",
@@ -505,7 +510,8 @@
       "ask": "Awaiting approval",
       "human-review": "Ask for review",
       "mcp-write": "MCP write request",
-      "guarded-action": "Guarded actions"
+      "guarded-action": "Guarded actions",
+      "vault-wait": "Waiting for vault"
     },
     "heading": "Review",
     "subtitle": "Everything waiting for a human: guardrail approvals, review checkpoints, and MCP write requests. Approve to proceed, deny to stop it.",
@@ -583,11 +589,12 @@
     "navAriaLabel": "Documentation pages",
     "sections": {
       "startHere": "Start here",
+      "howTo": "How-to",
       "concepts": "Concepts",
       "reference": "Reference",
-      "agents": "Agents",
-      "trust": "Trust"
+      "agents": "For agents"
     },
+    "releases": "Releases",
     "previous": "Previous",
     "next": "Next",
     "tocAriaLabel": "On this page",

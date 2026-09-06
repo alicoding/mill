@@ -6,10 +6,6 @@ import { AtlasCardOverlay } from './AtlasCardOverlay'
 import { AtlasNoteOverlay } from './AtlasNoteOverlay'
 import { DrawioEditorDialog } from './DrawioEditorDialog'
 import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
-import { AtlasMatrixView } from './AtlasMatrixView'
-import { AtlasCoverageView } from './AtlasCoverageView'
-import { AtlasRoadmapView } from './AtlasRoadmapView'
-import { AtlasContentsView } from './AtlasContentsView'
 import { AtlasKindManager } from './AtlasKindManager'
 import { AtlasStructureDialogs } from './AtlasStructureDialogs'
 import type { useAtlasUndoToast } from './useAtlasUndoToast'
@@ -32,7 +28,7 @@ export function AtlasViewOverlays({
   menu, onCloseMenu, linkMenus, containmentMenus, deleteConfirm,
   openNote, onCloseNote,
   editingDiagramObject, onCloseEditDiagram,
-  matrixOpen, onCloseMatrix, coverageOpen, onCloseCoverage, roadmapOpen, onCloseRoadmap, contentsOpen, onCloseContents, onFocusItemFromContents, childrenAll, kindsOpen, onCloseKinds, onOpenCardFromProjection,
+  kindsOpen, onCloseKinds,
 }: {
   jumpOpen: boolean
   onCloseJump: () => void
@@ -65,19 +61,8 @@ export function AtlasViewOverlays({
   onCloseNote: () => void
   editingDiagramObject: BoardObject | null
   onCloseEditDiagram: () => void
-  matrixOpen: boolean
-  onCloseMatrix: () => void
-  coverageOpen: boolean
-  onCloseCoverage: () => void
-  roadmapOpen: boolean
-  onCloseRoadmap: () => void
-  contentsOpen: boolean
-  onCloseContents: () => void
-  onFocusItemFromContents: (id: string) => void
-  childrenAll: Card[]
   kindsOpen: boolean
   onCloseKinds: () => void
-  onOpenCardFromProjection: (id: string) => void
 }) {
   return (
     <>
@@ -105,31 +90,10 @@ export function AtlasViewOverlays({
       {openNote && <AtlasNoteOverlay key={openNote.ID} note={openNote} onClose={onCloseNote} />}
       {editingDiagramObject && <DrawioEditorDialog key={editingDiagramObject.ID} object={editingDiagramObject} onClose={onCloseEditDiagram} />}
 
-      <AtlasMatrixView
-        open={matrixOpen}
-        onClose={onCloseMatrix}
-        cards={childrenAll}
-        kinds={allKinds}
-        links={allLinks}
-        linkKinds={allLinkKinds}
-        onOpenCard={onOpenCardFromProjection}
-      />
-      <AtlasCoverageView
-        open={coverageOpen}
-        onClose={onCloseCoverage}
-        cards={childrenAll}
-        links={allLinks}
-        linkKinds={allLinkKinds}
-        onOpenCard={onOpenCardFromProjection}
-      />
-      <AtlasRoadmapView
-        open={roadmapOpen}
-        onClose={onCloseRoadmap}
-        cards={childrenAll}
-        kinds={allKinds}
-        onOpenCard={onOpenCardFromProjection}
-      />
-      <AtlasContentsView open={contentsOpen} onClose={onCloseContents} kinds={allKinds} onOpenCard={onOpenCardFromProjection} onFocusItem={onFocusItemFromContents} />
+      {/* The four projections (List/Matrix/Coverage/Roadmap) are panes
+          of the board's region now (goal 0355 S2), rendered by
+          AtlasProjectionPane in place of the canvas -- never overlays;
+          AtlasKindManager stays a dialog (it's an editor, not a view). */}
       <AtlasKindManager open={kindsOpen} onClose={onCloseKinds} kinds={allKinds} linkKinds={allLinkKinds} />
     </>
   )

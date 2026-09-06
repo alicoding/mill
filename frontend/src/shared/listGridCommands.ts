@@ -1,6 +1,6 @@
 import type { Command } from './commands'
 import { listGridContext } from './commandContext'
-import { ConfigureService } from './bindings'
+import { AtlasService, ConfigureService } from './bindings'
 import { writeClipboardText } from './clipboardWrite'
 import { focusedListGridSearch } from './listGridSearchFocus'
 
@@ -12,10 +12,18 @@ import { focusedListGridSearch } from './listGridSearchFocus'
 
 // Deleting rows is sequential, never concurrent: each DeleteListRow
 // rewrites the record it re-read, so parallel calls would race each
-// other's read-modify-write and lose deletions.
+// other's read-modify-write and lose deletions. One gesture is one ⌘Z
+// step: every delete made between BeginUndoMark and EndUndoMark joins
+// a single mark (ADR-0044), so a bulk delete undoes as a bulk restore
+// rather than one row per press (goal 0352).
 async function deleteRows(listID: string, rowIDs: string[]): Promise<void> {
-  for (const rowID of rowIDs) {
-    await ConfigureService.DeleteListRow(listID, rowID)
+  await AtlasService.BeginUndoMark()
+  try {
+    for (const rowID of rowIDs) {
+      await ConfigureService.DeleteListRow(listID, rowID)
+    }
+  } finally {
+    await AtlasService.EndUndoMark()
   }
 }
 
@@ -82,5 +90,34 @@ export const LIST_GRID_COMMANDS: Command[] = [
       const kept = (list.Columns ?? []).filter((c) => c.Key !== target.columnKey)
       await ConfigureService.UpdateList(list.ID, list.Label, list.Description, kept, [{ Key: removed.Key, Type: removed.Type }])
     },
+  },
+  {
+    // The grid's own row placements (goal 0349 S4 Part B): Glide's
+    // trailing row, wherever a mount paints it. Stateless -- appending
+    // a row is a plain door call, always at the list's own end,
+    // regardless of which mount's trailing row was clicked.
+    id: 'listGrid.addRow',
+    label: 'commands.listGrid.addRow',
+    defaultBinding: null,
+    needs: 'listGrid',
+    enabled: (ctx) => listGridContext(ctx) !== null,
+    run: async (ctx) => {
+      const target = listGridContext(ctx)
+      if (!target) return
+      await ConfigureService.AddListRowAt(target.listID, {}, -1)
+    },
+  },
+  {
+    // The header-end "+" (rightElement) and the empty state's own add-
+    // column button. Unlike addRow, this reaches into the FOCUSED
+    // mount's own insertColumn (listGridSearchFocus.ts): only that
+    // mount's local state can open the new column's rename field the
+    // way its own header-menu insert already does.
+    id: 'listGrid.addColumn',
+    label: 'commands.listGrid.addColumn',
+    defaultBinding: null,
+    needs: 'listGrid',
+    enabled: (ctx) => listGridContext(ctx) !== null && focusedListGridSearch() !== null,
+    run: () => focusedListGridSearch()?.insertColumn(),
   },
 ]

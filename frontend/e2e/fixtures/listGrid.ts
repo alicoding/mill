@@ -4,7 +4,7 @@ import { expect, type Page } from '@playwright/test'
 // placeholder straight into rename; naming it re-keys it from the
 // label (empty columns only), so "SKU" becomes key sku.
 export async function addGridColumn(page: Page, label: string) {
-  await page.getByTestId('atlas-projection-add-column').click()
+  await page.getByTestId('list-grid-add-column').click()
   const input = page.getByTestId('atlas-projection-rename-input')
   await expect(input).toBeVisible()
   await input.fill(label)

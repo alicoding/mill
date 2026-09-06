@@ -405,19 +405,25 @@ installed build can catch, and exactly how to verify it there.
   build: dragging on an empty pane area (Home, a canvas, Configure)
   neither moves nor resizes the window; dragging the tab band moves
   it.
-- **Trackpad pan and pinch zoom inside a selected diagram** (goal
-  0340, `frontend/src/atlas/drawioInteraction.ts`) — a real
-  two-finger scroll and a pinch reach WKWebView with different
-  `deltaMode`, delta magnitudes and `ctrlKey` synthesis than the
-  Chromium-based suite dispatches, and macOS momentum scrolling has
-  no headless equivalent. Verify on an installed build with a
-  multi-page draw.io file dropped on a board: select the object,
-  two-finger scroll (the drawing moves, the board holds still, and
-  the momentum tail does not overshoot into a runaway pan), pinch
-  (the drawing zooms about the fingers, not the frame's centre),
-  press and drag inside it (the drawing pans, the object stays put),
-  drag its chrome band (the object moves), and confirm the board
-  itself still pans when nothing is selected.
+- **Trackpad pan and pinch zoom inside a selected diagram** (goals
+  0340 and 0354 S2, `frontend/src/atlas/drawioInteraction.ts` +
+  `frontend/src/atlas/atlasActivation.ts`) — a real two-finger
+  scroll and a pinch reach WKWebView with different `deltaMode`,
+  delta magnitudes and `ctrlKey` synthesis than the Chromium-based
+  suite dispatches, and macOS momentum scrolling has no headless
+  equivalent: the bridge smoke's own `diagram-face-owns-wheel` check
+  dispatches a wheel rather than producing a gesture, so it proves
+  the ROUTING in the real engine and never the momentum stream.
+  Verify on an installed build with a multi-page draw.io file
+  dropped on a board: select the object, two-finger scroll (the
+  drawing moves, the board holds still — including at the drawing's
+  own edges, where nothing more is left to pan — and the momentum
+  tail does not overshoot into a runaway pan), pinch (the drawing
+  zooms about the fingers, not the frame's centre), press and drag
+  inside it (the drawing pans, the object stays put), two-finger
+  scroll over its chrome band (the BOARD pans, so a selected object
+  is never a dead zone), drag that band (the object moves), and
+  confirm the board itself still pans when nothing is selected.
 - **A real vendor-issued certificate against a real mTLS host** (goal
   0306 S1, `ConfigureService.TestClientCertificate` +
   `clientcert.StateFor`) — a real TLS handshake against a host that
@@ -460,3 +466,15 @@ installed build can catch, and exactly how to verify it there.
   path fills the Folder field; in Secrets, open Import… and press
   Choose — the real native file picker opens and the chosen file's
   entry count shows in the preview.
+- **A real repository install and update of an extension** (goal 0349
+  S5, `pluginsvc/{marketplace,install,updates}.go`) — server mode
+  exercises the marketplace, install and update doors against a
+  loopback publisher only; a live GitHub release is the one path CI
+  never reaches (no outbound calls in tests). Verify on an installed
+  build: in Extensions › Browse › Sources, add `owner/repo` for a
+  repository carrying `.mill/marketplace.json`, install its entry and
+  read its Verification tab; then publish a newer release tag on that
+  repository with `<id>-<version>.zip` (and `SHA256SUMS`), press
+  **Check for updates**, confirm the tab reads **Updates (1)**, press
+  **Update**, and confirm the version and tier the Verification tab
+  now shows.

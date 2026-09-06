@@ -3,6 +3,7 @@ import { test, expect } from './fixtures/server'
 import { connectMCPClient } from './mcpTestClient'
 import { clickRowAction } from './inventoryRow'
 import { openSettings } from './fixtures/settingsNav'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // Goal 0017's flagship scenario, direct from the audit's own root
 // cause: before this goal, ONLY mcpsvc emitted mill-data-changed --
@@ -56,7 +57,7 @@ test('Configure > Lists open: an MCP-authored import_list appears live, no reloa
   await enableUnattendedMCPWrites(page)
 
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   await expect(page.getByTestId('configure-lists')).toBeVisible()
 
   const label = 'E2E cross-surface list'
@@ -96,7 +97,7 @@ test('a direct-UI workflow create in one window reaches a canvas picker open in 
   try {
     await page.goto('/')
     await page.getByRole('link', { name: 'Configure' }).click()
-    await page.getByRole('tab', { name: 'Attributes' }).click()
+    await openConfigureKind(page, 'Attributes')
     // Design wave 3: ConfigureAttributes conforms to its sibling tabs'
     // InventoryList-row pattern (each row IS a workflow), replacing the
     // old bare `<Select>` dropdown this test used to assert against.

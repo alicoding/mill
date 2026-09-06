@@ -5,8 +5,10 @@ import { ATLAS_KIND_DOCUMENT, selectKind } from './fixtures/kindPicker'
 import { clickBoardPoint, clickFrameGutter, dragResizeHandle, openCard } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
-import { clickGlideCell, editGlideCell, glideCellText, openGlideCellEditor } from './fixtures/glideGrid'
+import { openToolbarAction } from './fixtures/toolbarActions'
+import { clickGlideCell, clickGlideTrailingRow, editGlideCell, glideCellText, openGlideCellEditor } from './fixtures/glideGrid'
 import type { Locator, Page } from '@playwright/test'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // List -> table projection (goal 0105 minimal slice, relocated onto a
 // board-local "table" object by goal 0179 S2): dropping a spreadsheet
@@ -108,7 +110,7 @@ test('auto-arrange keeps a promoted table card at its real footprint', async ({ 
   const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'ZzE2eProjectionArrangeCard' })
   await expect(tableCard).toBeVisible()
 
-  await page.getByRole('button', { name: 'Auto-arrange' }).click()
+  await openToolbarAction(page, 'atlas-auto-arrange')
   await expect(tableCard).toBeVisible()
   await expect(tableCard.getByTestId('atlas-projection-glide').locator('[role="grid"]')).toContainText('Code')
 
@@ -130,7 +132,7 @@ test('boundary inserts, cell edits, and column rename all work in place on the c
   await page.goto('/')
   // A scratch List via Configure, so this test owns everything it edits.
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   await page.getByTestId('new-list').click()
   await page.getByLabel('Label', { exact: true }).fill('ZzE2eProjectionEditList')
   await page.getByTestId('save-list').click()
@@ -148,19 +150,16 @@ test('boundary inserts, cell edits, and column rename all work in place on the c
   await expect(glide).toBeVisible()
 
   // Empty List: the honest invitation (no grid mounts with zero
-  // columns), then + Column names itself in place (auto label ->
-  // immediate rename input).
+  // columns), then the empty state's own add-column button names
+  // itself in place (auto label -> immediate rename input).
   await expect(glide).toContainText('No columns yet')
-  await glide.getByTestId('atlas-projection-add-column').click()
+  await glide.getByTestId('list-grid-add-column').click()
   await glide.getByTestId('atlas-projection-rename-input').fill('Vendor')
   await glide.getByTestId('atlas-projection-rename-input').press('Enter')
   await expect(glide.locator('[role="columnheader"]').nth(0)).toHaveText('Vendor')
 
-  // + Row, then edit the cell in place. The row lands through the same
-  // async refetch every schema edit does -- wait for the host's own
-  // row count before clicking into it, or a click can land on the
-  // grid's still-shifting trailing "+ New row" hint instead.
-  await glide.getByTestId('atlas-projection-add-row').click()
+  // The grid's own trailing row, then edit the cell in place.
+  await clickGlideTrailingRow(page, glide)
   await expect(glide).toHaveAttribute('data-rows', '1')
   await editGlideCell(page, glide, 0, 0, 'Acme')
   await expect(glideCellText(glide, 0, 0)).toHaveText('Acme')
@@ -185,7 +184,7 @@ test('boundary inserts, cell edits, and column rename all work in place on the c
   // Cleanup: the card, then the scratch List.
   await deleteViaPageMenu(page, overlay)
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('ZzE2eProjectionEditList', { exact: true }) })
   await clickRowAction(page, listRow, 'Delete')
   await expect(listRow).toHaveCount(0)
@@ -269,7 +268,7 @@ test('a text cell edited directly on a table board object writes the backing Lis
   await deleteObjectViaMenu(reloaded)
   await expect(reloaded).toHaveCount(0)
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })
   await clickRowAction(page, listRow, 'Delete')
   await expect(listRow).toHaveCount(0)
@@ -307,7 +306,7 @@ test('New table creates a sized grid instantly from the size picker, landing a t
 
   // The minted List is a real Configure entity named after the table.
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })
   await expect(listRow).toBeVisible()
 
@@ -316,7 +315,7 @@ test('New table creates a sized grid instantly from the size picker, landing a t
   await deleteObjectViaMenu(tableObject)
   await expect(tableObject).toHaveCount(0)
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   await clickRowAction(page, listRow, 'Delete')
   await expect(listRow).toHaveCount(0)
 })
@@ -410,7 +409,7 @@ test('an armed table size escapes cleanly and files into frames', async ({ page 
   // Cleanup: the filed object, then the minted List.
   await deleteObjectViaMenu(tableObject)
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })
   await clickRowAction(page, listRow, 'Delete')
   await expect(listRow).toHaveCount(0)

@@ -10,6 +10,7 @@ import type { AddressInfo } from 'node:net'
 import { launchWithPlugins } from './fixtures/runtimePlugins'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
+import { armToolFromMorePanel } from './fixtures/atlasTray'
 
 const ARTICLE = `<!doctype html><html><head><title>Why kettles whistle</title></head><body>
 <nav><a href="/">Home</a> <a href="/about">About us</a> <a href="/login">Log in</a></nav>
@@ -49,7 +50,7 @@ test('a clip fetches the page (approved in Review), keeps the article and not th
 		const board = page.getByTestId('atlas-board')
 		await expect(board).toBeVisible()
 
-		await page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Web clipper"]').click()
+		await armToolFromMorePanel(page, 'Web clipper')
 		const spot = await findEmptyBoardRect(page, board, 300, 200)
 		const bb = await board.boundingBox()
 		if (!bb) throw new Error('board has no bounding box')

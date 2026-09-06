@@ -2,6 +2,7 @@ package atlassvc
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/alicoding/mill/internal/domain/atlas"
 )
@@ -63,6 +64,11 @@ type undoEntry struct {
 	label      string
 	undoApply  func(a *AtlasService) error
 	redoApply  func(a *AtlasService) error
+	// coalesceKey names the thing consecutive edits are re-editing (a
+	// single cell, goal 0352). Empty for every board door: only a door
+	// that hands one folds. recordedAt is the fold window's clock.
+	coalesceKey string
+	recordedAt  time.Time
 }
 
 // UndoResult is Undo/Redo's own RPC return -- the frontend renders
@@ -93,9 +99,20 @@ type UndoResult struct {
 // redundant entry (the closure pair built at ORIGINAL record time IS
 // the redo/undo counterpart already).
 func (a *AtlasService) recordUndo(actor undoActor, kind, id, label string, undoApply, redoApply func(a *AtlasService) error) {
+	a.appendUndoEntry(actor, undoEntry{entityKind: kind, entityID: id, label: label, undoApply: undoApply, redoApply: redoApply})
+}
+
+// appendUndoEntry is recordUndo's own body, taking a built entry so a
+// door that also carries a coalesceKey (goal 0352's List cell writes,
+// atlasundo_external.go) shares the identical mark/cap/clear-redo
+// step instead of a second, drifting copy.
+func (a *AtlasService) appendUndoEntry(actor undoActor, entry undoEntry) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.suppressRecording {
+		return
+	}
+	if a.foldIntoTopLocked(actor, entry) {
 		return
 	}
 	markID := a.openMarkID
@@ -103,7 +120,8 @@ func (a *AtlasService) recordUndo(actor undoActor, kind, id, label string, undoA
 		a.undoMarkSeq++
 		markID = a.undoMarkSeq
 	}
-	entry := undoEntry{markID: markID, entityKind: kind, entityID: id, label: label, undoApply: undoApply, redoApply: redoApply}
+	entry.markID = markID
+	entry.recordedAt = time.Now()
 	if a.undoStacks == nil {
 		a.undoStacks = map[undoActor][]undoEntry{}
 	}

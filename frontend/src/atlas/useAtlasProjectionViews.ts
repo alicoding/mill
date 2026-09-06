@@ -1,26 +1,41 @@
-import { useState } from 'react'
+import { useEffect, useRef } from 'react'
+import { useAppStore } from '../shared/store'
+import type { AtlasBoardView } from '../shared/viewKinds'
 
-// The three projection-view open/close booleans -- Matrix, Coverage
-// (docs/goals/0064), Roadmap (docs/goals/0212) -- plus their shared "a
-// projection's own row/cell click opens a card" door: split out of
-// AtlasView.tsx (architecture.md's 500-line convention) since none of
-// the three carry state beyond a single boolean -- no card/kind
-// selection needs to survive a close/reopen.
+// Which of the five ways of looking at the viewed space is on screen
+// (goal 0355 S2), derived from the persisted atlas View -- never local
+// dialog booleans, so the switcher highlight can never disagree with
+// what is rendered, a reload lands back on the same pane, and a pane
+// closed by Escape is just this value returning to 'board'.
+//
+// A single stored value IS the mutual exclusion S1's four booleans had
+// to hand-roll: two projections can never show at once because the
+// field cannot hold two.
 export function useAtlasProjectionViews({ onOpenOverlay }: { onOpenOverlay: (id: string) => void }) {
-  const [matrixOpen, setMatrixOpen] = useState(false)
-  const [coverageOpen, setCoverageOpen] = useState(false)
-  const [roadmapOpen, setRoadmapOpen] = useState(false)
-  const [contentsOpen, setContentsOpen] = useState(false)
+  const activeView: AtlasBoardView = useAppStore((s) => (s.view.kind === 'atlas' ? (s.view.boardView ?? 'board') : 'board'))
+  const setAtlasBoardView = useAppStore((s) => s.setAtlasBoardView)
+  const setViewRef = useRef(setAtlasBoardView)
+  useEffect(() => {
+    setViewRef.current = setAtlasBoardView
+  }, [setAtlasBoardView])
 
-  // Closes whichever projection dialog is open first, so the card
-  // overlay never renders stacked behind it.
+  // A projection's own row/chip/cell click opens a card (goal 0064's
+  // projection door, goal 0279's contents row): back to the Board
+  // first -- the card page's canvas affordances ("show on board",
+  // focus pulses, the empty-canvas case) only exist there -- then the
+  // overlay on top of it.
   const openCardFromProjection = (id: string) => {
-    setMatrixOpen(false)
-    setCoverageOpen(false)
-    setRoadmapOpen(false)
-    setContentsOpen(false)
+    setViewRef.current('board')
     onOpenOverlay(id)
   }
 
-  return { matrixOpen, setMatrixOpen, coverageOpen, setCoverageOpen, roadmapOpen, setRoadmapOpen, contentsOpen, setContentsOpen, openCardFromProjection }
+  return {
+    activeView,
+    setView: setAtlasBoardView,
+    // Referenced through a ref so effect-based signal consumers
+    // (useAtlasNavSignals) can list it as a dependency without the
+    // store identity change re-firing them.
+    backToBoard: () => setViewRef.current('board'),
+    openCardFromProjection,
+  }
 }

@@ -1,11 +1,12 @@
 import { expect } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
 import { waitForViewportStable } from './animation'
-import { findEmptyBoardRect } from './atlasEmptyRegion'
+import { findEmptyBoardRect, occupiedRects } from './atlasEmptyRegion'
 import { clickBoardPoint } from './atlasBoard'
 import { wheelAt } from './pointer'
 import { contextMenu } from './contextMenu'
 import { clickRowAction } from '../inventoryRow'
+import { openConfigureKind } from './configureNav'
 
 // Promoted (testing.md: a helper used by 2+ spec files) out of what
 // used to be atlas-table-ux.spec.ts's own local copies -- every table
@@ -48,7 +49,7 @@ export async function escapeGridToObject(page: Page, object: Locator): Promise<v
 
 export async function deleteListNamed(page: Page, label: string): Promise<void> {
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const row = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText(label, { exact: true }) })
   await clickRowAction(page, row, 'Delete')
   await expect(row).toHaveCount(0)
@@ -98,6 +99,12 @@ export async function revealBoardObject(page: Page, object: Locator): Promise<vo
 // this pans it into view (revealText names it by its own content)
 // before returning.
 export async function createTableFromList(page: Page, listLabel: string, revealText: string): Promise<Locator> {
+  // The new table has no pointer to land at, so the app picks its spot
+  // off the SAME measured boxes findEmptyBoardRect reads (goal 0223's
+  // race class): a seeded frame/group card's own footprint settles a
+  // tick after its first paint, and a snapshot taken mid-layout lands
+  // the table under where that frame grows to.
+  await occupiedRects(page, [])
   await page.getByTestId('atlas-tray-table').click()
   await page.getByTestId('atlas-table-from-list').click()
   const picker = page.getByTestId('entity-ref-field')

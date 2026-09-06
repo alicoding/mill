@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionList, Button, IconButton, Label, Stack, Text } from '@primer/react'
+import { ActionList, Button, IconButton, Label, Link, Stack, Text } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import { BrowserIcon, CheckIcon, CopyIcon, PlusIcon } from '@primer/octicons-react'
+import { BrowserIcon, CheckIcon, CopyIcon, FileDirectoryIcon, PlusIcon } from '@primer/octicons-react'
 import { useState } from 'react'
 import type { DeviceInfo } from '../shared/bindings'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
@@ -11,8 +11,14 @@ import { writeClipboardText } from '../shared/clipboardWrite'
 import { runCommand, findCommand } from '../shared/commands'
 import { useBrowserBridgeStore, refreshBrowserBridge } from '../shared/browserBridgeStore'
 import { background } from '../shared/background'
+import { useAppStore } from '../shared/store'
 import listStyles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
+
+// The one page explaining how to load and pair the extension: the
+// docs route addresses pages, and this section's copy names the action
+// rather than restating the page.
+const BROWSER_EXTENSION_DOCS_PAGE = 'reference/browser-extension.md'
 
 // Settings > Connections > Browsers: the address a browser extension is
 // pointed at, the pairing code that authorises it, the browsers already
@@ -26,6 +32,7 @@ function BrowsersSection() {
   const browsers = useBrowserBridgeStore((s) => s.browsers)
   const pairing = useBrowserBridgeStore((s) => s.pairing)
   const test = useBrowserBridgeStore((s) => s.test)
+  const extensionPath = useBrowserBridgeStore((s) => s.extensionPath)
   const testSteps = useBrowserBridgeStore((s) => s.testSteps)
   const testDurationMS = useBrowserBridgeStore((s) => s.testDurationMS)
   const error = useBrowserBridgeStore((s) => s.error)
@@ -65,6 +72,32 @@ function BrowsersSection() {
       <Text as="p" size="small" className={listStyles.muted}>
         {t('settings.browsers.install')}
       </Text>
+      <Stack direction="horizontal" gap="condensed" align="center" style={{ marginTop: 'var(--base-size-4)' }}>
+        <Button
+          size="small"
+          leadingVisual={FileDirectoryIcon}
+          onClick={() => { void runCommand('browser.revealExtension') }}
+          data-testid="reveal-extension-folder"
+        >
+          {t('settings.browsers.revealExtension')}
+        </Button>
+        <Link
+          href="#"
+          data-testid="browser-extension-docs-link"
+          onClick={(e) => {
+            e.preventDefault()
+            useAppStore.getState().setView({ kind: 'docs', page: BROWSER_EXTENSION_DOCS_PAGE })
+          }}
+        >
+          <Text size="small">{t('settings.browsers.extensionDocsLink')}</Text>
+        </Link>
+      </Stack>
+      {extensionPath && (
+        <Stack direction="vertical" gap="none" style={{ marginTop: 'var(--base-size-4)' }}>
+          <Text size="small" className={monoStyles.mono} data-testid="extension-folder-path">{extensionPath}</Text>
+          <Text as="p" size="small" className={listStyles.muted}>{t('settings.browsers.extensionPathCaption')}</Text>
+        </Stack>
+      )}
 
       <Stack direction="vertical" gap="none" style={{ marginTop: 'var(--base-size-8)' }} data-testid="bridge-address-row">
         <Text as="p" size="small" weight="semibold">{t('settings.browsers.addressLabel')}</Text>

@@ -18,6 +18,8 @@ import { StalenessBadge } from '../shared/StalenessBadge'
 import { OutputViewer } from '../shared/OutputViewer'
 import { ReviewGuardedActions } from './ReviewGuardedActions'
 import { ReviewResolvedHistory } from './ReviewResolvedHistory'
+import { ReviewVaultWaitCard } from './ReviewVaultWaitCard'
+import { isVaultWait } from '../shared/parkReason'
 import { formatLastChecked } from '../shared/staleness'
 import { ReviewAlwaysRuleDialog } from './ReviewAlwaysRuleDialog'
 import { GuardrailRulesPanel } from './GuardrailRulesPanel'
@@ -39,13 +41,16 @@ interface AlwaysRuleRequest { run: RunSummary; effect: 'allow' | 'deny' }
 // pause is NOT a kind here (goal 0328): nobody is being asked to decide
 // it, so it never reaches this queue at all (review/pendingReviewStore.ts's
 // isReviewablePark) and lives on Activity's runs list instead.
-type PendingKind = 'ask' | 'human-review'
+// A vault wait (shared/parkReason.ts) IS a kind: nobody decides
+// anything, but a person has to unlock the vault, and Review is where
+// they see that.
+type PendingKind = 'ask' | 'human-review' | 'vault-wait'
 type KindFilterValue = '' | PendingKind | 'mcp-write' | 'guarded-action'
 
 // Order the kind Select's options render in when 2+ are present --
 // fixed, not Set-insertion-order, so the list doesn't reshuffle as
 // different kinds come and go.
-const KIND_ORDER: Array<Exclude<KindFilterValue, ''>> = ['ask', 'human-review', 'mcp-write', 'guarded-action']
+const KIND_ORDER: Array<Exclude<KindFilterValue, ''>> = ['ask', 'human-review', 'vault-wait', 'mcp-write', 'guarded-action']
 
 // Wording reused verbatim from what the row itself already renders (the
 // pendingWrites card's "MCP write request" heading, the nodeTypeLabel
@@ -55,6 +60,7 @@ function kindLabelsFor(t: (key: string) => string): Record<Exclude<KindFilterVal
   return {
     ask: t('reviewView.kindLabels.ask'),
     'human-review': t('reviewView.kindLabels.human-review'),
+    'vault-wait': t('reviewView.kindLabels.vault-wait'),
     'mcp-write': t('reviewView.kindLabels.mcp-write'),
     'guarded-action': t('reviewView.kindLabels.guarded-action'),
   }
@@ -177,7 +183,7 @@ function ReviewView() {
   // though both currently share the "awaiting approval" badge text -- the
   // leading icon (PersonIcon vs ShieldIcon) is the recognition cue.
   const isHumanReview = (run: RunSummary) => run.pending?.nodeTypeID === 'human-review'
-  const pendingKind = (run: RunSummary): PendingKind => (isHumanReview(run) ? 'human-review' : 'ask')
+  const pendingKind = (run: RunSummary): PendingKind => (isVaultWait(run.pending) ? 'vault-wait' : isHumanReview(run) ? 'human-review' : 'ask')
 
   // Kinds actually present right now, across both pending runs and
   // pending MCP writes -- the Select only renders once 2+ are present
@@ -311,7 +317,9 @@ function ReviewView() {
       <ReviewGuardedActions visible={kindFilter === '' || kindFilter === 'guarded-action'} onCount={setGuardedCount} />
 
       <Stack direction="vertical" gap="normal">
-        {pending.filter((r) => (!workflowFilter || r.workflowID === workflowFilter) && kindMatches(r) && queryMatchesRun(r)).map((run) => (
+        {pending.filter((r) => (!workflowFilter || r.workflowID === workflowFilter) && kindMatches(r) && queryMatchesRun(r)).map((run) => isVaultWait(run.pending) ? (
+          <ReviewVaultWaitCard key={run.runID} run={run} onOpen={() => openRun(run)} />
+        ) : (
           <div
             key={run.runID}
             className={`${styles.card} ${styles.activityRowClickable}`}

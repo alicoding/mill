@@ -19,7 +19,7 @@ import {
   type WorkTabSpec,
 } from './workTabs'
 import { redirectRetiredView } from './viewRedirects'
-import { viewFor, viewsEqual, type View } from './viewKinds'
+import { viewFor, viewsEqual, type AtlasBoardView, type View } from './viewKinds'
 
 // Re-exported so every existing `from '../shared/store'` import of
 // WorkTab/WorkTabSpec (app/WorkTabShell.tsx, composition/
@@ -191,6 +191,12 @@ interface AppState {
   // canvasCommandRequest above.
   atlasUpRequest: number
   requestAtlasUp: () => void
+  // The Atlas view switcher's own write (goal 0355 S2): the active
+  // projection is a field of the persisted atlas View, so switching
+  // panes is one store write -- never a setView (which would clear the
+  // active work tab) and never per-mount dialog state (a reload takes
+  // you back to the pane you were looking at).
+  setAtlasBoardView: (boardView: AtlasBoardView) => void
   consumeCanvasCommandRequest: () => void
   // Every close path (docs/goals/0048) sets this instead of calling a
   // closer directly -- app/useWorkTabCloseGuard.ts is the one place
@@ -401,6 +407,11 @@ export const useAppStore = create<AppState>()(
       requestCanvasCommand: (command) => set({ canvasCommandRequest: command }),
       atlasUpRequest: 0,
       requestAtlasUp: () => set((s) => ({ atlasUpRequest: s.atlasUpRequest + 1 })),
+      // Writes nothing while Atlas isn't the current view: a stray
+      // signal a beat after navigating away must not conjure an atlas
+      // view (or clobber a cardID deep link already stored there).
+      setAtlasBoardView: (boardView) =>
+        set((state) => state.view.kind === 'atlas' ? { view: { ...state.view, boardView } } : {}),
       consumeCanvasCommandRequest: () => set({ canvasCommandRequest: null }),
       workTabCloseRequest: null,
       requestWorkTabClose: (request) => set({ workTabCloseRequest: request }),

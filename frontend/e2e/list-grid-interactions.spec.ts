@@ -1,6 +1,8 @@
 import { test, expect, type Page } from './fixtures/server'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
-import { clickGlideCell, clickGlideRowMarker, dragGlideColumnEdge, dragGlideFillHandle, dragGlideRange, glideCellText, glideTextEditor, typeOverGlideCell } from './fixtures/glideGrid'
+import { pressRedo, pressUndo } from './fixtures/undoJournal'
+import { clickGlideCell, clickGlideRowMarker, clickGlideTrailingRow, dragGlideColumnEdge, dragGlideFillHandle, dragGlideRange, editGlideCell, glideCellText, glideTextEditor, typeOverGlideCell } from './fixtures/glideGrid'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // The eight converged table interactions on the List grid (goal 0349
 // S4): range select, type-to-overwrite, fill handle, clipboard both
@@ -28,7 +30,7 @@ async function seedAndOpen(page: Page, label: string, rows: Record<string, strin
   await page.goto('/')
   const list = await callBindingViaRPC<SeededList>(page, `${CONFIGURE}.CreateListWithRows`, [label, '', COLUMNS, rows])
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const row = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText(label, { exact: true }) })
   await expect(row).toBeVisible()
   // The row itself opens its editor (InventoryList's onOpen).
@@ -43,7 +45,7 @@ async function seedAndOpen(page: Page, label: string, rows: Record<string, strin
 // not URL-addressable, so a reload lands on the app's own default view.
 async function reopen(page: Page, label: string) {
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const row = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText(label, { exact: true }) })
   await expect(row).toBeVisible()
   await row.click()
@@ -272,5 +274,76 @@ test('⌘F does not open the grid search when focus is outside the grid', async 
   await page.getByTestId('list-label').focus()
   await page.keyboard.press('Meta+f')
   await expect(glide.getByTestId('search-input')).toBeHidden()
+  await cleanup(page, id)
+})
+
+// 10. Adding a row or a column lives where the library's own grids put
+// it -- the trailing row, the header-end "+" -- never a button under
+// the grid (goal 0349 S4 Part B).
+test('the trailing row appends a row and the header-end "+" appends a column, with no button under the grid', async ({ page }) => {
+  const { id, glide } = await seedAndOpen(page, 'E2E grid add placements', FOUR_ROWS)
+
+  await clickGlideTrailingRow(page, glide)
+  await expect(glide).toHaveAttribute('data-stored-rows', '5')
+
+  await glide.getByTestId('list-grid-add-column').click()
+  await expect(glide.getByTestId('atlas-projection-rename-input')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(glide).toHaveAttribute('data-columns', '3')
+
+  // The buttons this replaces are gone; the bulk-action row still
+  // renders (its OWN commands are unaffected).
+  await expect(page.getByTestId('atlas-projection-add-row')).toHaveCount(0)
+  await expect(page.getByTestId('atlas-projection-add-column')).toHaveCount(0)
+  await cleanup(page, id)
+})
+
+// 11. ⌘Z here is the app's ONE journal, the same one the board's edits
+// land on (ADR-0044, goal 0352): a cell edit undoes to the value it
+// replaced, and ⇧⌘Z puts the new one back.
+//
+// Pressed with the grid still holding the keyboard, no click away
+// first -- the gesture every spreadsheet answers, and the one the grid
+// used to swallow before its keydown containment let this one combo
+// through (ListGridGlide's onKeyDown).
+test('(Meta+z) restores an edited cell and (Meta+Shift+z) re-applies it', async ({ page }) => {
+  const { id, glide } = await seedAndOpen(page, 'E2E grid undo cell', FOUR_ROWS)
+  await editGlideCell(page, glide, 0, 0, 'Widget')
+  await expect(glideCellText(glide, 0, 0)).toHaveText('Widget')
+
+  await pressUndo(page)
+  await expect(glideCellText(glide, 0, 0)).toHaveText('Bolt')
+  // The row itself is untouched: an undone cell edit is a cell edit.
+  await expect(glide).toHaveAttribute('data-stored-rows', '4')
+  await expect(glideCellText(glide, 0, 1)).toHaveText('1')
+
+  await pressRedo(page)
+  await expect(glideCellText(glide, 0, 0)).toHaveText('Widget')
+  await cleanup(page, id)
+})
+
+// 12. A deleted row comes back whole -- every column, at the index it
+// sat at -- and a multi-row delete is ONE step, not one per row.
+test('(Meta+z) puts back a deleted row, and a bulk delete undoes in one press', async ({ page }) => {
+  const { id, glide } = await seedAndOpen(page, 'E2E grid undo rows', FOUR_ROWS)
+  await clickGlideCell(page, glide, 1, 0, { button: 'right' })
+  await page.getByTestId('list-grid-row-delete').click()
+  await expect(glide).toHaveAttribute('data-stored-rows', '3')
+  await expect(glideCellText(glide, 1, 0)).toHaveText('Cog')
+
+  await pressUndo(page)
+  await expect(glide).toHaveAttribute('data-stored-rows', '4')
+  await expect(glideCellText(glide, 1, 0)).toHaveText('Anvil')
+  await expect(glideCellText(glide, 1, 1)).toHaveText('3')
+
+  await clickGlideRowMarker(page, glide, 0)
+  await clickGlideRowMarker(page, glide, 1)
+  await page.getByTestId('list-grid-delete-rows').click()
+  await expect(glide).toHaveAttribute('data-stored-rows', '2')
+
+  await pressUndo(page)
+  await expect(glide).toHaveAttribute('data-stored-rows', '4')
+  await expect(glideCellText(glide, 0, 0)).toHaveText('Bolt')
+  await expect(glideCellText(glide, 1, 0)).toHaveText('Anvil')
   await cleanup(page, id)
 })

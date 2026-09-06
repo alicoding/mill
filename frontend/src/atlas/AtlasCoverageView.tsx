@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionList, Button, Dialog, FormControl, Select, Stack, Text } from '@primer/react'
+import { ActionList, Button, FormControl, Select, Stack, Text } from '@primer/react'
 import type { Card, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { coverageMissingLink, coverageMissingMirror } from './atlasProjections'
 import runbookStyles from '../shared/ListCard.module.css'
@@ -43,10 +43,9 @@ function CoverageStat({ testID, label, missing, onOpenCard }: {
 // viewed space's own honest "known, not mapped" counts -- cards
 // missing a link of a chosen kind, and cards missing a mirror. Both
 // are the same coverage-ratio shape, so CoverageStat above renders
-// either.
-export function AtlasCoverageView({ open, onClose, cards, links, linkKinds, onOpenCard }: {
-  open: boolean
-  onClose: () => void
+// either. A projection pane of the board's region (goal 0355 S2),
+// mounted only while Coverage is the switcher's active view.
+export function AtlasCoverageView({ cards, links, linkKinds, onOpenCard }: {
   cards: Card[]
   links: Link[]
   linkKinds: LinkKind[]
@@ -58,10 +57,8 @@ export function AtlasCoverageView({ open, onClose, cards, links, linkKinds, onOp
   const linkCoverage = linkKindID ? coverageMissingLink(cards, links, linkKindID) : null
   const mirrorCoverage = coverageMissingMirror(cards)
 
-  if (!open) return null
-
   return (
-    <Dialog title={t('coverage.title')} onClose={onClose} data-component="atlas-coverage-dialog">
+    <div data-component="atlas-coverage-pane">
       <Stack direction="vertical" gap="normal">
         <Stack direction="vertical" gap="condensed">
           <FormControl>
@@ -95,6 +92,6 @@ export function AtlasCoverageView({ open, onClose, cards, links, linkKinds, onOp
           />
         </Stack>
       </Stack>
-    </Dialog>
+    </div>
   )
 }

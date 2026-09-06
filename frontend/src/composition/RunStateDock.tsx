@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Panel } from '@xyflow/react'
 import { Button, IconButton, Stack, Text } from '@primer/react'
 import { StatusStamp, type StatusStampVariant } from '../shared/StatusStamp'
-import { AlertIcon, BugIcon, PlayIcon, ShieldIcon, SkipIcon, StopIcon, XIcon } from '@primer/octicons-react'
+import { AlertIcon, BugIcon, LockIcon, PlayIcon, ShieldIcon, SkipIcon, StopIcon, XIcon } from '@primer/octicons-react'
 import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import type { RunDetail } from '../shared/bindings'
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
@@ -11,6 +11,7 @@ import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import { runCommand } from '../shared/commands'
 import type { CommandContext } from '../shared/commandContext'
 import { parkControls, truncate, type BarState } from './liveRunState'
+import { VaultWaitActions } from '../shared/VaultWaitActions'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from '../shared/ListCard.module.css'
 
@@ -88,13 +89,24 @@ export function RunStateDock({
           const isDebug = pending.source === 'debug'
           const isStepped = pending.stepped
           const step = pending.nodeTypeLabel || pending.nodeTypeID
-          const controls = parkControls(pending.source ?? '', isStepped)
+          const controls = parkControls(pending.source ?? '', isStepped, pending.reason ?? '')
           const ctx: CommandContext = {
             kind: 'run',
             runId: runDetail?.runID ?? '',
             workflowId: runDetail?.workflowID,
             nodeId: pending.nodeID,
             values: editValues,
+          }
+          if (controls.includes('unlock')) {
+            return (
+              <Stack direction="vertical" gap="condensed">
+                <Stack direction="horizontal" gap="condensed" align="center">
+                  <LockIcon size={16} fill="var(--fgColor-attention)" />
+                  <Text size="small" weight="semibold" data-testid="run-state-dock-label">{tc('vaultWait.title')}</Text>
+                </Stack>
+                <VaultWaitActions ctx={ctx} testIdPrefix="canvas-vault-wait" />
+              </Stack>
+            )
           }
           return (
             <Stack direction="vertical" gap="condensed">

@@ -204,6 +204,31 @@ export default tseslint.config(
     },
   },
   {
+    // Goal 0356 part 2: Browser.OpenURL reaches the real OS browser
+    // opener directly, over a wire the adapted osopen Port (goal 0356
+    // part 1's own clipboard/credential shape) never sees -- a test or
+    // an e2e-spawned server calling it opens a real tab on the machine
+    // running the tests. shared/openExternal.ts is the ONE place that
+    // may import Browser and call it, wrapping it behind
+    // AtlasService.OpenURL; every other surface calls
+    // openExternalUrl() instead. Mirrored by
+    // scripts/check-test-side-effects.sh's own grep-based gate.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/shared/openExternal.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [{
+            name: '@wailsio/runtime',
+            importNames: ['Browser'],
+            message: 'Browser.OpenURL must be reached only through shared/openExternal.ts\'s openExternalUrl (goal 0356 part 2).',
+          }],
+        },
+      ],
+    },
+  },
+  {
     // Goal 0184 RESEARCH VERDICT: `page.mouse.*` dispatches raw CDP
     // input with NONE of Playwright's actionability checks (no
     // hit-target retargeting, no Visible/Stable/Receives-Events wait) --

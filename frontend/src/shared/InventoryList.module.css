@@ -53,6 +53,35 @@
     gap: var(--base-size-4, 4px);
 }
 
+/* Primer's own ActionList.Item content column (checked against its
+   compiled CSS/DOM, not assumed): the "label" grid area is occupied by
+   ItemLabel directly, or by ItemDescriptionWrap wrapping ItemLabel +
+   Description when a row has one -- neither carries min-width:0, so
+   the grid/flex item defaults to auto (its content's intrinsic width)
+   and floors .labelRow's own min-width:0 from ever taking effect,
+   letting an unwrapped label + badges push past the row's right edge.
+   Targeted by Primer's own data-component/data-description-variant
+   markers (stable across a class-hash bump), scoped to this list only. */
+.list :where([data-component='ActionList.Item.Label'], [data-description-variant='inline']) {
+    min-width: 0;
+}
+
+/* When a row has both badges and a description, ItemLabel and
+   Description become flex siblings on ItemDescriptionWrap's own inline
+   row (Primer's compiled CSS, checked directly). Flexbox's default
+   proportional shrink treats them as equally negotiable and can squeeze
+   ItemLabel narrower than its own unshrinkable .badges child, spilling
+   the badge over the description text instead of truncating the label
+   first. Description's own Truncate already carries overflow:hidden
+   (which is what gives a flex item automatic minimum size 0, per spec),
+   so it tolerates shrinking to nothing; weighting its flex-shrink far
+   above ItemLabel's default routes the squeeze there first, only
+   reaching ItemLabel's own min-width:0 ellipsis once Description has
+   nothing left to give. */
+.list [data-description-variant='inline'] [data-component='ActionList.Description'] {
+    flex-shrink: 20;
+}
+
 /* Touch-target floor for the row's primary action (Workflows' Run,
    goal 0068's mobile launcher job) and its kebab menu -- a no-op above
    767px, where Primer's own small-button sizing is unchanged. */

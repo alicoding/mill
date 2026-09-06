@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { contextMenu } from './fixtures/contextMenu'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // The away-capture door (docs/goals/0090): QuickPanel.tsx's own
 // "Save as note" row, split out of quick-panel.spec.ts (architecture.
@@ -87,6 +88,10 @@ test('typing text that matches an existing card renders the capture rows last, a
 test('Save as task lands the typed line as a tracker row scheduled for today', async ({ page }) => {
   const mainPage = await page.context().newPage()
   try {
+    // The grid's accessibility rows carry only the cells in view, and
+    // the scheduled-date column sits past the pane's edge at 1280px
+    // beside the Configure rail -- a wider window keeps it in view.
+    await mainPage.setViewportSize({ width: 1600, height: 900 })
     await mainPage.goto('/')
     await page.goto('/#/quickpanel')
     const search = page.getByRole('combobox', { name: 'Quick Panel search' })
@@ -101,7 +106,7 @@ test('Save as task lands the typed line as a tracker row scheduled for today', a
     await expect(search).toHaveValue('')
 
     await mainPage.getByRole('link', { name: 'Configure' }).click()
-    await mainPage.getByRole('tab', { name: 'Lists' }).click()
+    await openConfigureKind(mainPage, 'Lists')
     const trackerRow = mainPage.locator('[data-testid="inventory-row"][data-entity="list"]', { has: mainPage.getByText('Engagement tasks', { exact: true }) })
     await trackerRow.getByText('Engagement tasks', { exact: true }).click()
     const glide = mainPage.getByTestId('atlas-projection-glide')

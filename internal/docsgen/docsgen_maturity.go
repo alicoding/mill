@@ -14,9 +14,9 @@ import (
 // commands.md/menu-bar.md, so the whole file is generated the same way
 // steps.md is.
 func GenerateMaturityMarkdown(repoRoot string) string {
-	ledger := pluginsvc.Report(repoRoot)
+	ledger := pluginsvc.Report(repoRoot, time.Now)
 	var b strings.Builder
-	b.WriteString("# Plugin API maturity\n\n")
+	b.WriteString("---\nkind: reference\n---\n\n# Plugin API maturity\n\n")
 	fmt.Fprintf(&b, "%s\n\n", ledger.Headline)
 	b.WriteString("| Family | Level | Conformance | Example | E2E | Docs | SDK types | MCP | Docs behind code (days) | Flags |\n")
 	b.WriteString("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")
@@ -57,7 +57,10 @@ func yesNo(v bool) string {
 // maturityJSONRow/maturityJSONLedger are the JSON ledger's own wire
 // shape -- dates render as YYYY-MM-DD (goal 0348's decided design),
 // never a full timestamp, so the committed file reads as a ledger, not
-// a git-log dump.
+// a git-log dump. No generatedAt key: that field is a run-time fact
+// (pluginsvc.Ledger.GeneratedAt), never a per-commit one, so it is
+// left out rather than baked into a file `go generate` must reproduce
+// byte-for-byte on an unchanged commit regardless of the day it runs.
 type maturityJSONRow struct {
 	Family        string   `json:"family"`
 	Level         string   `json:"level"`
@@ -74,9 +77,8 @@ type maturityJSONRow struct {
 }
 
 type maturityJSONLedger struct {
-	GeneratedAt string            `json:"generatedAt"`
-	Headline    string            `json:"headline"`
-	Rows        []maturityJSONRow `json:"rows"`
+	Headline string            `json:"headline"`
+	Rows     []maturityJSONRow `json:"rows"`
 }
 
 func dateOrEmpty(t time.Time) string {
@@ -90,11 +92,10 @@ func dateOrEmpty(t time.Time) string {
 // JSON -- the control room dashboard's own source (scripts/dashboard),
 // so a person and an agent read the identical facts.
 func GenerateMaturityJSON(repoRoot string) (string, error) {
-	ledger := pluginsvc.Report(repoRoot)
+	ledger := pluginsvc.Report(repoRoot, time.Now)
 	out := maturityJSONLedger{
-		GeneratedAt: dateOrEmpty(ledger.GeneratedAt),
-		Headline:    ledger.Headline,
-		Rows:        make([]maturityJSONRow, 0, len(ledger.Rows)),
+		Headline: ledger.Headline,
+		Rows:     make([]maturityJSONRow, 0, len(ledger.Rows)),
 	}
 	for _, r := range ledger.Rows {
 		flags := r.Flags

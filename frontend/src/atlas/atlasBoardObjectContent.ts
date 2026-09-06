@@ -5,7 +5,7 @@ import type { ListProjection } from '../../bindings/github.com/alicoding/mill/in
 import type { EditRouteDecl, ObjectSource } from './objectSeams'
 import type { MirrorReadState } from './useAtlasObjectMirrorRead'
 import type { AtlasNounGroup, ExtensionSettingDecl } from './atlasNounRegistry'
-import type { DrawioOverflowReporter } from './drawioInteraction'
+import type { DrawioOverflowReporter, DrawioPagerReporter } from './drawioInteraction'
 import type { AtlasInputMode } from './atlasActivation'
 
 export type { AtlasInputMode }
@@ -84,6 +84,12 @@ export interface AtlasNounContent {
     // reached for the canvas node themselves. A face with no in-place
     // editor never calls it.
     onEditingChange?: (editing: boolean) => void
+    // The page cursor (goal 0354): a Kind declaring `pager` below calls
+    // this whenever its face knows where it is in a multi-page
+    // artifact, handing back the action that moves it. Only the face
+    // can know either; only the frame owns the chrome band it renders
+    // on -- the same split onOverflowChange already makes.
+    onPagerChange?: DrawioPagerReporter
   }>
   ariaLabelKey: string
   role: 'img' | undefined
@@ -107,6 +113,13 @@ export interface AtlasNounContent {
   // it rather than one generic sentence standing in for all three.
   // Omit and the band falls back to the generic wording.
   shieldHintKey?: string
+  // pager (goal 0354): this Kind's face renders a multi-page artifact
+  // and reports where it is in it, so the shared chrome band carries a
+  // page indicator with its own previous/next controls -- shown only
+  // once the face reports more than one page, so a single-page file's
+  // band is untouched. Declared rather than inferred: a Kind whose face
+  // has no notion of pages must not grow a control that does nothing.
+  pager?: boolean
   // overflowChip (goal 0340): this Kind's face renders content that can
   // be LARGER than the object's box and offers a way back -- so the
   // shared chrome band carries a "Fit" chip whenever the face reports
@@ -160,14 +173,14 @@ export interface ExtensionRowMeta {
   // AtlasToolShapeBase.settings carries for a tray tool -- see that
   // field's own comment for the declare/render/store split.
   settings?: readonly ExtensionSettingDecl[]
-  // group (goal 0237 S3's Extensions-list review rider): the same tray
+  // group (goal 0237 S3's Extensions-list review rider): the same
   // cluster AtlasToolShapeBase.group declares, REQUIRED for the same
-  // reason -- Settings > Extensions groups every row into one of three
-  // sections regardless of whether it has a tray button, and a
-  // tool-less noun that omitted this would silently vanish from every
-  // section instead of landing in an honest one. Both of today's
-  // tool-less nouns (diagram, sheet) are file-drop-only artifacts, the
-  // same family Image's own 'file' group already names.
+  // reason -- Settings > Extensions groups every row into a section
+  // regardless of whether it has a dock button, and a tool-less noun
+  // that omitted this would silently vanish from every section instead
+  // of landing in an honest one. Every tool-less noun today
+  // (diagram, sheet, pdf) is a file-drop-only artifact, the same Media
+  // family Image's own group names.
   group: AtlasNounGroup
 }
 

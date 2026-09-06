@@ -31,7 +31,7 @@ export const noteTool = {
   shortcutKey: noteIdentity.shortcutKey,
   tray: 'quick',
   // Quick text on the board (goal 0224's disposition table), tray-primary.
-  group: 'knowledge',
+  group: 'objects',
   // The first declared extension setting (goal 0258 S1). richCodeBlocks
   // re-enables the markdown engine's own code-block editor feature that
   // the canvas trim keeps off by default (milkdownCore.ts's
