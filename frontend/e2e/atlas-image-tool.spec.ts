@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { test, expect } from './fixtures/server'
+import { clickAtlasTrayTool } from './fixtures/atlasTray'
 import { dragResizeHandle, nonSeededBoardObjects, openCard } from './fixtures/atlasBoard'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { contextMenu } from './fixtures/contextMenu'
@@ -31,7 +32,7 @@ import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 const ONE_PIXEL_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
 
 async function openImagePopover(page: import('@playwright/test').Page) {
-  await page.getByTestId('atlas-tray-image').click()
+  await clickAtlasTrayTool(page, 'atlas-tray-image')
   await expect(page.getByTestId('atlas-image-input')).toBeVisible()
 }
 

@@ -137,6 +137,9 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Contents | — | `atlas.contents.open` |
 | Import atlas | — | `atlas.import` |
 | Export atlas | — | `atlas.export` |
+| Export board as .drawio | — | `atlas.export.drawio` |
+| Kinds | — | `atlas.kinds.open` |
+| Add a file to the board | — | `atlas.addFile` |
 | Copy as image | — | `atlas.selection.copyAsImage` |
 | Export as image… | — | `atlas.selection.exportAsImage` |
 | Add cards from a folder | — | `atlas.addFromFolder` |

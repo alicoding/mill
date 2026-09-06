@@ -110,6 +110,25 @@ func (a *AtlasService) PickImageFile() (string, error) {
 	return windowing.PickImageFile("Choose an image")
 }
 
+// testBoardFilePickPathEnv mirrors testImagePickPathEnv's own e2e
+// bypass above: server-mode Playwright has no display a real
+// NSOpenPanel could render into, so a spawned e2e server sets this to a
+// fixture path. Unset in every real deployment, where PickBoardFile
+// always opens the actual OS dialog.
+const testBoardFilePickPathEnv = "MILL_TEST_BOARD_FILE_PICK_PATH"
+
+// PickBoardFile opens the native file picker with no extension filter
+// -- the creation dock's "From file…" door (goal 0355). The caller
+// lands the chosen path through the SAME routing a dropped file takes,
+// so this only resolves WHICH file, never what it becomes. Returns ""
+// (no error) when the user cancels.
+func (a *AtlasService) PickBoardFile() (string, error) {
+	if testPath := os.Getenv(testBoardFilePickPathEnv); testPath != "" {
+		return testPath, nil
+	}
+	return windowing.PickBoardFile("Add a file to the board")
+}
+
 // MirrorImageFromPath copies srcPath's own bytes into a fresh file under
 // the captures directory, returning the new file's path -- the
 // data-safety half of a native image drop (goal 0206): the OS may hand

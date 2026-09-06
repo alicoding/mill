@@ -79,13 +79,60 @@
   padding: 0 var(--base-size-8) var(--base-size-8);
 }
 
-/* The Annotate group's own popover content (goal 0224) -- a mini row of
-   the same .tool buttons, laid out the same way the tray itself is
-   (AnchoredOverlay's own Overlay already supplies the surrounding
-   surface: background/border/shadow), so a tool inside the group reads
-   identically to one rendered flat in the tray. */
-.annotateGroup {
+/* A flyout's own popover content (goal 0355) -- a mini row of the same
+   .tool buttons, laid out the way the dock itself is (AnchoredOverlay's
+   own Overlay already supplies the surrounding surface:
+   background/border/shadow), so a tool inside a flyout reads
+   identically to one rendered flat in the dock. Shared by Media and
+   Annotate: one flyout mechanism, one look. */
+.toolFlyout {
     display: inline-flex;
     gap: 4px;
     padding: 6px;
+}
+
+/* The More panel (goal 0355): search, categories, recents, then every
+   tool. Capped against the viewport rather than a fixed pixel height so
+   the list is as long as the window allows and scrolls past that --
+   at Mill's 640px minimum the panel is effectively full height. */
+.morePanel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--base-size-8);
+    padding: var(--base-size-8);
+    /* Wide enough for the five category chips to sit on one row --
+       a chip clipped at the edge reads as a broken control. */
+    width: 380px;
+    max-width: 90vw;
+}
+
+.moreSearch {
+    width: 100%;
+}
+
+.moreSection {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.moreHeading {
+    color: var(--fgColor-muted);
+}
+
+.moreRecentRow {
+    display: inline-flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.moreList {
+    overflow-y: auto;
+    max-height: min(360px, 50vh);
+}
+
+.moreEmpty {
+    display: block;
+    padding: var(--base-size-8);
+    color: var(--fgColor-muted);
 }

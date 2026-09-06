@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { launchWithPlugins } from './fixtures/runtimePlugins'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { waitForViewportStable } from './fixtures/animation'
+import { armToolFromMorePanel } from './fixtures/atlasTray'
 
 const GUARDRAIL = 'github.com/alicoding/mill/internal/services/guardrailsvc.GuardrailService.'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
@@ -21,7 +22,7 @@ test('a Bruno collection object reads its bruno.json and names the collection', 
 		await page.getByRole('link', { name: 'Atlas' }).click()
 		const board = page.getByTestId('atlas-board')
 		await expect(board).toBeVisible()
-		await page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bruno collection"]').click()
+		await armToolFromMorePanel(page, 'Bruno collection')
 		const spot = await findEmptyBoardRect(page, board, 300, 200)
 		const bb = await board.boundingBox()
 		if (!bb) throw new Error('board has no bounding box')

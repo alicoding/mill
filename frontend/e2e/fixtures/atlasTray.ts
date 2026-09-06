@@ -1,20 +1,25 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 
-// The tray's own creation surface (goal 0224's tray-restructure slice
-// -- "I don't want to give the impression I'm draw.io"): Shape/Pencil/
-// Eraser/Laser collapse into the tray's own "Annotate" disclosure
-// group instead of rendering flat. At most ONE AnchoredOverlay for the
-// whole family is ever mounted at a time (AtlasCreationTray.tsx's own
-// header comment has the regression this fixes -- nesting the drawer's
-// popover around an armed tool's own style-panel popover broke
-// React Flow's Space-to-pan): while nothing in the family is armed,
-// the tray shows the generic trigger + a drawer of all four; the
-// instant one arms, that tool's own flat button takes over the SAME
-// tray slot and the trigger disappears entirely. Every spec that arms
-// one of them goes through this ONE helper (testing.md's "a helper
-// used by 2+ spec files MUST be promoted" rule) rather than each spec
-// re-deriving the same expand-then-click sequence.
-const ANNOTATE_GROUP_TESTIDS = new Set(['atlas-tray-shape', 'atlas-tray-pencil', 'atlas-tray-eraser', 'atlas-tray-laser'])
+// The board's creation dock (goal 0355): seven fixed buttons, two of
+// which are FLYOUTS -- Media (Image and every file-backed noun) and
+// Annotate (shape/pencil/eraser/laser). At most ONE AnchoredOverlay in
+// the family is ever mounted at a time (AtlasCreationTray.tsx's own
+// header comment has the regression this prevents -- nesting a
+// flyout's popover around an armed tool's style panel broke React
+// Flow's Space-to-pan): while nothing in a family is armed, the dock
+// shows the flyout trigger; the instant one of its tools arms, that
+// tool's own button takes over the SAME slot and the trigger
+// disappears entirely. Every spec that arms one of them goes through
+// this ONE helper (testing.md's "a helper used by 2+ spec files MUST
+// be promoted" rule) rather than each spec re-deriving the same
+// expand-then-click sequence.
+const FLYOUT_TRIGGER_FOR: Record<string, string> = {
+  'atlas-tray-shape': 'atlas-tray-annotate-group',
+  'atlas-tray-pencil': 'atlas-tray-annotate-group',
+  'atlas-tray-eraser': 'atlas-tray-annotate-group',
+  'atlas-tray-laser': 'atlas-tray-annotate-group',
+  'atlas-tray-image': 'atlas-tray-media-group',
+}
 
 // Mirrors fixtures/toolbarActions.ts's own openToolbarAction shape
 // exactly, including its own header comment's reasoning: a snapshot-
@@ -27,7 +32,8 @@ const ANNOTATE_GROUP_TESTIDS = new Set(['atlas-tray-shape', 'atlas-tray-pencil',
 const DIRECT_CLICK_TIMEOUT_MS = process.env.CI ? 5000 : 2000
 
 export async function clickAtlasTrayTool(page: Page, testid: string): Promise<void> {
-  if (!ANNOTATE_GROUP_TESTIDS.has(testid)) {
+  const triggerTestid = FLYOUT_TRIGGER_FOR[testid]
+  if (!triggerTestid) {
     await page.getByTestId(testid).click()
     return
   }
@@ -35,18 +41,48 @@ export async function clickAtlasTrayTool(page: Page, testid: string): Promise<vo
     await page.getByTestId(testid).click({ timeout: DIRECT_CLICK_TIMEOUT_MS })
     return
   } catch {
-    // Collapsed (or not yet settled) -- open the Annotate group, then
-    // retry with the caller's own default timeout.
+    // Collapsed (or not yet settled) -- open the flyout, then retry
+    // with the caller's own default timeout.
   }
-  const trigger = page.getByTestId('atlas-tray-annotate-group')
+  const trigger = page.getByTestId(triggerTestid)
   if (!(await trigger.isVisible())) {
-    // The trigger itself is ALSO absent: a DIFFERENT annotate tool is
-    // currently armed and occupying this same tray slot (the
-    // one-overlay design above). Escape disarms it unconditionally --
-    // the same door every other cross-tool arm already goes through --
-    // bringing the trigger (and the drawer behind it) back.
+    // The trigger itself is ALSO absent: a DIFFERENT tool of the same
+    // family is armed and occupying this slot (the one-overlay design
+    // above). Escape disarms it unconditionally -- the same door every
+    // other cross-tool arm already goes through -- bringing the trigger
+    // (and the flyout behind it) back.
     await page.keyboard.press('Escape')
   }
   await trigger.click()
   await page.getByTestId(testid).click()
+}
+
+// A tool with no dock button of its own -- every plugin face that
+// declares no group (goal 0355) -- is armed from the dock's More panel,
+// found by the name its own row shows. The ONE helper every spec uses,
+// so "where does a plugin tool live" is answered in one place.
+export async function armToolFromMorePanel(page: Page, name: string): Promise<void> {
+	await page.getByTestId('atlas-tray-more').click()
+	await page.getByTestId('atlas-more-panel').waitFor({ state: 'visible' })
+	await page.getByTestId('atlas-more-search').fill(name)
+	await page.getByTestId('atlas-more-panel').getByText(name, { exact: true }).first().click()
+}
+
+// A tool's presence in the dock's More panel WITHOUT arming it: the
+// door every "did this plugin's tool load" check goes through (a
+// grandfathered/allowed/blocked plugin proving its face is or isn't
+// reachable), handing back the matching row so the caller's own
+// expect() keeps Playwright's usual auto-retry instead of a one-shot
+// read. Reuses an already-open panel rather than re-clicking the
+// trigger (which TOGGLES it shut) -- callers checking two names in a
+// row after one boot share the same open panel; press Escape once done
+// to leave the dock clean for whatever the test does next.
+export async function moreToolRow(page: Page, name: string): Promise<Locator> {
+	const panel = page.getByTestId('atlas-more-panel')
+	if (!(await panel.isVisible())) {
+		await page.getByTestId('atlas-tray-more').click()
+		await panel.waitFor({ state: 'visible' })
+	}
+	await page.getByTestId('atlas-more-search').fill(name)
+	return panel.getByText(name, { exact: true })
 }

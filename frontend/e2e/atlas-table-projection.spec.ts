@@ -5,6 +5,7 @@ import { ATLAS_KIND_DOCUMENT, selectKind } from './fixtures/kindPicker'
 import { clickBoardPoint, clickFrameGutter, dragResizeHandle, openCard } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
+import { openToolbarAction } from './fixtures/toolbarActions'
 import { clickGlideCell, clickGlideTrailingRow, editGlideCell, glideCellText, openGlideCellEditor } from './fixtures/glideGrid'
 import type { Locator, Page } from '@playwright/test'
 import { openConfigureKind } from './fixtures/configureNav'
@@ -109,7 +110,7 @@ test('auto-arrange keeps a promoted table card at its real footprint', async ({ 
   const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'ZzE2eProjectionArrangeCard' })
   await expect(tableCard).toBeVisible()
 
-  await page.getByRole('button', { name: 'Auto-arrange' }).click()
+  await openToolbarAction(page, 'atlas-auto-arrange')
   await expect(tableCard).toBeVisible()
   await expect(tableCard.getByTestId('atlas-projection-glide').locator('[role="grid"]')).toContainText('Code')
 

@@ -10,16 +10,18 @@ import { atlasSpaceShareActions } from './atlasSpaceShareActions'
 // actions AtlasSpaceShareMenu.tsx uses. A `latest` ref (Part G's own
 // shape) so every effect always reads the current viewedID/callbacks
 // without needing them in its dependency array.
-export function useAtlasCommandSignals({ viewedID, onArrange, onExport, onError, onOpenContents }: {
+export function useAtlasCommandSignals({ viewedID, onArrange, onExport, onExportDrawio, onError, onOpenContents, onOpenKinds }: {
   viewedID: string
   onArrange: () => void
   onExport: () => void
+  onExportDrawio: () => void
   onError: (message: string) => void
   onOpenContents: () => void
+  onOpenKinds: () => void
 }) {
-  const latest = useRef({ viewedID, onArrange, onExport, onError, onOpenContents })
+  const latest = useRef({ viewedID, onArrange, onExport, onExportDrawio, onError, onOpenContents, onOpenKinds })
   useEffect(() => {
-    latest.current = { viewedID, onArrange, onExport, onError, onOpenContents }
+    latest.current = { viewedID, onArrange, onExport, onExportDrawio, onError, onOpenContents, onOpenKinds }
   })
 
   const arrangeRequest = useUISignalStore((s) => s.atlasArrangeRequest)
@@ -37,6 +39,22 @@ export function useAtlasCommandSignals({ viewedID, onArrange, onExport, onError,
     lastContentsRequest.current = contentsRequest
     latest.current.onOpenContents()
   }, [contentsRequest])
+
+  const kindsRequest = useUISignalStore((s) => s.atlasKindsRequest)
+  const lastKindsRequest = useRef(kindsRequest)
+  useEffect(() => {
+    if (kindsRequest === lastKindsRequest.current) return
+    lastKindsRequest.current = kindsRequest
+    latest.current.onOpenKinds()
+  }, [kindsRequest])
+
+  const exportDrawioRequest = useUISignalStore((s) => s.atlasExportDrawioRequest)
+  const lastExportDrawioRequest = useRef(exportDrawioRequest)
+  useEffect(() => {
+    if (exportDrawioRequest === lastExportDrawioRequest.current) return
+    lastExportDrawioRequest.current = exportDrawioRequest
+    latest.current.onExportDrawio()
+  }, [exportDrawioRequest])
 
   const exportRequest = useUISignalStore((s) => s.atlasExportRequest)
   const lastExportRequest = useRef(exportRequest)

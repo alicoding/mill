@@ -1,30 +1,33 @@
 #!/usr/bin/env bash
 # Enforces the Atlas toolbar overflow contract (goal 0216, goal 0233):
-# every ActionBar.Button/ActionBar.IconButton in AtlasToolbar.tsx or
-# AtlasFolderImport.tsx can move into Primer's "More items" overflow
-# menu depending on the row's real rendered width, so a spec reaches it
-# through fixtures/toolbarActions.ts's openToolbarAction, never a raw
+# every ActionBar.Button/ActionBar.IconButton in AtlasToolbar.tsx can
+# move into Primer's "More items" overflow menu depending on the row's
+# real rendered width, so a spec reaches it through
+# fixtures/toolbarActions.ts's openToolbarAction, never a raw
 # `getByTestId(id).click()`/`.hover()` chain -- that exact pattern is
 # what broke main's CI (a resolved button carrying data-overflowing="",
 # "element is not visible" retried to a 60s timeout).
 set -euo pipefail
 
 toolbar_src="frontend/src/atlas/AtlasToolbar.tsx"
-folder_import_src="frontend/src/atlas/AtlasFolderImport.tsx"
 fixture="frontend/e2e/fixtures/toolbarActions.ts"
 overflow_spec="frontend/e2e/atlas-toolbar-overflow.spec.ts"
 
+# `|| true` on the first grep, not pipefail's silent exit: a source file
+# with no ActionBar button at all is a legitimate state (goal 0355 moved
+# every board action into the Board menu), and this check must report
+# what it found rather than dying with no output.
 derive_ids() {
-  grep -A3 -E "ActionBar\.(Button|IconButton)" "$1" \
+  { grep -A3 -E "ActionBar\.(Button|IconButton)" "$1" || true; } \
     | grep -oE 'data-testid="[a-z0-9-]+"' \
     | sed -E 's/data-testid="([a-z0-9-]+)"/\1/' \
     | sort -u
 }
 
-ids="$( { derive_ids "$toolbar_src"; derive_ids "$folder_import_src"; } | sort -u)"
+ids="$(derive_ids "$toolbar_src" | sort -u)"
 
 if [[ -z "$ids" ]]; then
-  echo "check-toolbar-action-testids: derived zero ids from $toolbar_src / $folder_import_src -- source shape changed, update this script"
+  echo "check-toolbar-action-testids: derived zero ids from $toolbar_src -- source shape changed, update this script"
   exit 1
 fi
 
