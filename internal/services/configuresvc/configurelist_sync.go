@@ -35,7 +35,10 @@ func (c *ConfigureService) SyncListRows(listID, keyColumn string, rows []map[str
 		if r.Status == list.RowExpired || seen[r.Values[keyColumn]] {
 			continue
 		}
-		if _, err := c.UpdateListRow(listID, r.ID, r.Values, list.RowExpired); err != nil {
+		// The unrecorded core: a sync's expiry pass is not a user
+		// gesture, so it leaves no step on the undo journal (goal 0352,
+		// configurelistrow.go's own split).
+		if _, err := c.updateListRow(listID, r.ID, r.Values, list.RowExpired); err != nil {
 			return out, fmt.Errorf("expire row %s: %w", r.ID, err)
 		}
 		out.Expired++
