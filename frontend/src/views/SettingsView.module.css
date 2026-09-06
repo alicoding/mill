@@ -1,7 +1,6 @@
-/* Settings' two-pane shell (goal 0321): a 200px group list beside the
-   ONE pane that renders at a time. Below the narrow breakpoint the
-   nav collapses above the pane instead (SettingsView mounts the same
-   NavList, this grid just stacks).
+/* Settings' pane styles (goal 0321). The two-pane shell itself --
+   the grid, the rail, the active item -- is shared/RailLayout.module.css,
+   the same shell Configure renders through (goal 0116).
 
    The page renders through PageContainer's "wide" variant (fluid,
    edge padding only) rather than "narrow" (a centered, capped block):
@@ -10,36 +9,6 @@
    so the goal-0336 stability invariant -- the rail's position doesn't
    move when switching panes -- still holds; only .pane's own max-width
    varies per group. */
-.layout {
-    display: grid;
-    grid-template-columns: 200px minmax(0, 1fr);
-    gap: var(--s-4);
-    align-items: start;
-}
-
-.layoutNarrow {
-    display: flex;
-    flex-direction: column;
-    gap: var(--s-3);
-}
-
-/* The group list stays with the pane while it scrolls -- eight items
-   never need their own scroll. */
-.rail {
-    position: sticky;
-    top: 0;
-    align-self: start;
-    width: 200px;
-    font-size: 13px;
-    flex-shrink: 0;
-}
-
-/* !important on font-weight only: ActionList's own item-label styling
-   (NavList.Item renders through it) carries a more specific rule this
-   className alone doesn't outrank. */
-.railItemActive {
-    font-weight: 650 !important;
-}
 
 /* One pane's own column. 720px is the readable measure the row layout
    below is tuned for -- wide enough for a label/caption pair beside a

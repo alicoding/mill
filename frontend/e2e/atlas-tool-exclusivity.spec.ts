@@ -132,16 +132,19 @@ test('arming the image popover while pencil is armed disarms pencil, and back ag
   await clickAtlasTrayTool(page, 'atlas-tray-pencil')
   await expect(pencilTool).toHaveAttribute('data-armed', 'true')
 
-  await imageTool.click()
+  await clickAtlasTrayTool(page, 'atlas-tray-image')
   await expect(imageTool).toHaveAttribute('data-armed', 'true')
-  // Pencil's disarm closes the Annotate group too (goal 0224's
-  // useLayoutEffect) -- its button leaves the DOM entirely, not just
-  // paints unarmed.
+  // Arming a tool gives it its family's whole dock slot (goal 0355):
+  // pencil's button leaves the DOM entirely and the Annotate trigger
+  // takes its place, rather than merely painting unarmed.
   await expect(pencilTool).not.toBeVisible()
+  await expect(page.getByTestId('atlas-tray-annotate-group')).toBeVisible()
 
   await clickAtlasTrayTool(page, 'atlas-tray-pencil')
   await expect(pencilTool).toHaveAttribute('data-armed', 'true')
-  await expect(imageTool).toHaveAttribute('data-armed', 'false')
+  // ...and symmetrically: Image is back inside the Media flyout.
+  await expect(imageTool).not.toBeVisible()
+  await expect(page.getByTestId('atlas-tray-media-group')).toBeVisible()
 
   await page.keyboard.press('Escape')
   await expect(pencilTool).not.toBeVisible()

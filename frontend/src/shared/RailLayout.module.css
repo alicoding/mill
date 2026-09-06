@@ -1,0 +1,55 @@
+/* The routed two-pane shell (goal 0321, goal 0116): a group list
+   beside the ONE pane that renders at a time. Settings and Configure
+   both render through it -- one shape, two surfaces. A surface sets
+   its own --rail-width on the layout element; 200px is the default.
+   Below the narrow breakpoint the rail collapses above the pane
+   instead (the same NavRail mounts, this grid just stacks). */
+.layout {
+    display: grid;
+    grid-template-columns: var(--rail-width, 200px) minmax(0, 1fr);
+    gap: var(--s-4);
+    align-items: start;
+}
+
+.layoutNarrow {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+}
+
+/* The list stays with the pane while it scrolls -- a dozen items never
+   need their own scroll. Stacked above the pane it is a plain block:
+   a sticky rail there would ride over the pane's own content. */
+.rail {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    width: var(--rail-width, 200px);
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.layoutNarrow .rail {
+    position: static;
+    width: auto;
+    align-self: stretch;
+}
+
+/* !important on font-weight only: ActionList's own item-label styling
+   (NavList.Item renders through it) carries a more specific rule this
+   className alone doesn't outrank. */
+.railItemActive {
+    font-weight: 650 !important;
+}
+
+/* The filter box and the "nothing matches" line a rail may carry
+   above / instead of its list. */
+.railHeader {
+    margin-bottom: var(--s-2);
+}
+
+.railEmpty {
+    margin: 0;
+    padding: var(--s-2) var(--s-3);
+    color: var(--fgColor-muted);
+}

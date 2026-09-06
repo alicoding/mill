@@ -1,7 +1,8 @@
 import { test, expect } from './fixtures/server'
-import { editGlideCell, glideCellText } from './fixtures/glideGrid'
+import { clickGlideTrailingRow, editGlideCell, glideCellText } from './fixtures/glideGrid'
 import { addGridColumn } from './fixtures/listGrid'
 import { clickRowAction } from './inventoryRow'
+import { openConfigureKind, configureKindLink } from './fixtures/configureNav'
 
 // Real Go bindings over HTTP (Wails3 server mode), not mocks -- same
 // setup as composition-export-import.spec.ts, covering
@@ -13,7 +14,7 @@ import { clickRowAction } from './inventoryRow'
 test('Exporting a Request downloads JSON that never carries its secret', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Integrations', exact: true }).click()
+  await openConfigureKind(page, 'Integrations')
 
   const row = page.locator('[data-testid="inventory-row"][data-entity="request"]', { has: page.getByText('Example: API key header', { exact: false }) }).first()
   await expect(row).toBeVisible()
@@ -40,7 +41,7 @@ test('Exporting a Request downloads JSON that never carries its secret', async (
 test('Importing a Request file adds a new, independent request', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Integrations', exact: true }).click()
+  await openConfigureKind(page, 'Integrations')
 
   const importJSON = JSON.stringify({
     label: 'E2E imported request',
@@ -64,15 +65,15 @@ test('Importing a Request file adds a new, independent request', async ({ page }
 test('Exporting and importing a List round-trips its typed columns and rows', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
 
   await page.getByTestId('new-list').click()
   await page.getByLabel('Label').fill('E2E export list')
   await page.getByRole('button', { name: 'Save list' }).click()
 
   await addGridColumn(page, 'Color')
-  await page.getByTestId('atlas-projection-add-row').click()
   const glide = page.getByTestId('atlas-projection-glide')
+  await clickGlideTrailingRow(page, glide)
   await editGlideCell(page, glide, 0, 0, 'blue')
   await expect(glideCellText(glide, 0, 0)).toHaveText('blue')
 
@@ -125,7 +126,7 @@ test('Exporting and importing a List round-trips its typed columns and rows', as
 test('Importing invalid JSON into an MCP Server shows an error', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'MCP Servers' }).click()
+  await openConfigureKind(page, 'MCP Servers')
 
   await page.getByTestId('import-mcpserver').click()
   await page.getByTestId('import-mcpserver-input').setInputFiles({
@@ -137,14 +138,14 @@ test('Importing invalid JSON into an MCP Server shows an error', async ({ page }
   await expect(page.getByTestId('import-mcpserver-error')).toBeVisible()
 })
 
-// Regression: the Configure tab strip collapsed to 1px on the
-// Attributes tab (a tall panel crushed the flex column's tab bar) --
-// the strip must stay a real, visible row on every tab.
-test('the Configure tab strip stays visible on the Attributes tab', async ({ page }) => {
+// Regression: the kind rail must stay a real, visible column beside
+// every pane -- a tall pane (Attributes) once crushed the navigation
+// to 1px when it shared a flex column with it.
+test('the Configure kind rail stays visible beside the Attributes pane', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Attributes' }).click()
-  await expect(page.getByRole('tab', { name: 'Lists' })).toBeVisible()
-  const box = await page.getByRole('tab', { name: 'Attributes' }).boundingBox()
+  await openConfigureKind(page, 'Attributes')
+  await expect(configureKindLink(page, 'Lists')).toBeVisible()
+  const box = await configureKindLink(page, 'Attributes').boundingBox()
   expect(box && box.height).toBeGreaterThan(20)
 })

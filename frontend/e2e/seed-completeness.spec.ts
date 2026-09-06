@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { workflowRow, activePanel } from './fixtures/canvas'
 import { expandExamples } from './inventoryRow'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // docs/goals/0010: proves the new seeded artifacts (a List, an MCP
 // Server, and their workflows) are actually reachable and correct
@@ -26,7 +27,7 @@ import { expandExamples } from './inventoryRow'
 test('Seeded List "Country codes" is present, built-in-badged, with its real entries', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
 
   const row = page.locator('[data-testid="inventory-row"][data-entity="list"]').filter({ has: page.getByText('Country codes', { exact: true }) })
   await expect(row).toBeVisible()
@@ -42,7 +43,7 @@ test('Seeded List "Country codes" is present, built-in-badged, with its real ent
 test('Seeded MCP Server "Example: Reference server (npx)" is present, built-in-badged, pointed at the real reference server', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'MCP Servers' }).click()
+  await openConfigureKind(page, 'MCP Servers')
 
   const row = page.locator('[data-testid="inventory-row"][data-entity="mcpserver"]').filter({ has: page.getByText('Example: Reference server (npx)', { exact: true }) })
   await expect(row).toBeVisible()
@@ -136,7 +137,7 @@ test('Example: Disabled filesystem watch workflow is present and ships disabled'
 test('Seeded AI provider "Local Ollama (localhost:11434)" is present, built-in-badged', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'AI Providers' }).click()
+  await openConfigureKind(page, 'AI Providers')
 
   const row = page.locator('[data-testid="inventory-row"][data-entity="aiprovider"]').filter({ has: page.getByText('Local Ollama (localhost:11434)', { exact: true }) })
   await expect(row).toBeVisible()

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { AtlasArmRequestTool } from './atlasToolIdentity'
+import type { ContextMenuState } from './ContextMenu'
 
 // Cross-bounded-context UI signals (goal 0071, contextual shortcut
 // discoverability): shared/commands.ts's command `run` callbacks can't
@@ -173,6 +174,16 @@ interface UISignalState {
   requestAtlasImport: () => void
   atlasExportRequest: number
   requestAtlasExport: () => void
+  // atlas.export.drawio / atlas.kinds.open / atlas.addFile (goal 0355):
+  // the Board menu and the creation dock's own "From file…" run these
+  // through the registry like every other action, so the same counter
+  // shape carries them to whichever atlas/ component owns the door.
+  atlasExportDrawioRequest: number
+  requestAtlasExportDrawio: () => void
+  atlasKindsRequest: number
+  requestAtlasKinds: () => void
+  atlasAddFileRequest: number
+  requestAtlasAddFile: () => void
   atlasAddFromFolderRequest: number
   requestAtlasAddFromFolder: () => void
   // atlas.selection.copyAsImage / .exportAsImage (docs/goals/0201):
@@ -245,6 +256,18 @@ interface UISignalState {
   unsavedLeave: 'quit' | 'restart' | 'close' | null
   requestUnsavedLeave: (reason: 'quit' | 'restart' | 'close') => void
   clearUnsavedLeave: () => void
+  // atlasContextMenuRequest: a menu a face can't render in place
+  // asks the board's own top-level ContextMenu to open instead (goal
+  // 0346) -- a face rendered inside a React Flow node's transformed
+  // subtree has no correct frame for its own position:fixed anchor
+  // (the transform becomes the fixed-position containing block), so
+  // the JSON tree's row menu raises this signal rather than rendering
+  // one of its own. Set-then-consume, the same shape
+  // configureEditRequest already uses: AtlasView moves it straight
+  // into the SAME menu state its own right-click menus already share.
+  atlasContextMenuRequest: ContextMenuState | null
+  requestAtlasContextMenu: (state: ContextMenuState) => void
+  consumeAtlasContextMenu: () => void
 }
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
@@ -309,6 +332,12 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasImport: () => set((s) => ({ atlasImportRequest: s.atlasImportRequest + 1 })),
   atlasExportRequest: 0,
   requestAtlasExport: () => set((s) => ({ atlasExportRequest: s.atlasExportRequest + 1 })),
+  atlasExportDrawioRequest: 0,
+  requestAtlasExportDrawio: () => set((s) => ({ atlasExportDrawioRequest: s.atlasExportDrawioRequest + 1 })),
+  atlasKindsRequest: 0,
+  requestAtlasKinds: () => set((s) => ({ atlasKindsRequest: s.atlasKindsRequest + 1 })),
+  atlasAddFileRequest: 0,
+  requestAtlasAddFile: () => set((s) => ({ atlasAddFileRequest: s.atlasAddFileRequest + 1 })),
   atlasAddFromFolderRequest: 0,
   requestAtlasAddFromFolder: () => set((s) => ({ atlasAddFromFolderRequest: s.atlasAddFromFolderRequest + 1 })),
   atlasCopyImageRequest: 0,
@@ -345,4 +374,7 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   unsavedLeave: null,
   requestUnsavedLeave: (reason) => set({ unsavedLeave: reason }),
   clearUnsavedLeave: () => set({ unsavedLeave: null }),
+  atlasContextMenuRequest: null,
+  requestAtlasContextMenu: (state) => set({ atlasContextMenuRequest: state }),
+  consumeAtlasContextMenu: () => set({ atlasContextMenuRequest: null }),
 }))

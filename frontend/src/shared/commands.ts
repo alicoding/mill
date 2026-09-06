@@ -5,6 +5,7 @@ import { useUISignalStore } from './uiSignalStore'
 import { pluginRegistryCommands } from './pluginHostCommands'
 import { lazyArray } from './lazySnapshot'
 import { CONFIGURE_CREATE_COMMANDS } from './configureCreateCommands'
+import { CONFIGURE_OPEN_COMMANDS } from './configureOpenCommands'
 import { ATLAS_BOARD_COMMANDS } from './atlasBoardCommands'
 import { SETTINGS_COMMANDS } from './settingsCommands'
 import { CANVAS_COMMANDS } from './canvasCommands'
@@ -372,6 +373,9 @@ export const COMMANDS: Command[] = lazyArray(() => [
   // Attributes has none. Seated as one band in File > New… (goal 0335),
   // in the file's own declared order.
   ...withMenuGroup('file.new', 0, CONFIGURE_CREATE_COMMANDS),
+  // One palette-only deep link per Configure kind -- split out to
+  // shared/configureOpenCommands.ts, derived from the kind registry.
+  ...CONFIGURE_OPEN_COMMANDS,
   // panel.applyClipboard, backup.now/export, and the per-Settings-
   // section deep links -- split out to shared/settingsCommands.ts
   // (CLAUDE.md's 500-line convention).

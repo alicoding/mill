@@ -5,6 +5,7 @@ import path from 'node:path'
 import { spawnMillServer, type SpawnedServer } from './fixtures/server'
 import { RUNTIME_PLUGINS_SERVER_BASE_PORT, RUNTIME_PLUGINS_MCP_BASE_PORT } from './fixtures/serverPorts'
 import { launchWithPlugins, EXAMPLES_PLUGINS_DIR } from './fixtures/runtimePlugins'
+import { armToolFromMorePanel } from './fixtures/atlasTray'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { clickBoardPoint, dragBetween } from './fixtures/atlasBoard'
 import { openExtensionDetail, openExtensionDetailTab, openExtensions, pluginRow } from './fixtures/settingsNav'
@@ -24,13 +25,14 @@ test('a dropped plugin folder yields a working canvas object: tray entry, placem
 		const board = page.getByTestId('atlas-board')
 		await expect(board).toBeVisible()
 
-		// The plugin's tool is IN the tray, by its own declared label.
-		const bookmarkBtn = page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]')
-		await expect(bookmarkBtn).toBeVisible()
-
+		// The plugin's tool is reachable by its own declared label: a face
+		// that declares no dock group is found in the dock's More panel
+		// (goal 0355), whose list is the registry itself -- so an
+		// extension installed later needs no change to the dock.
+		//
 		// Armed click places a bookmark object; the plugin's own
 		// renderFace draws the face.
-		await bookmarkBtn.click()
+		await armToolFromMorePanel(page, 'Bookmark')
 		const spot = await findEmptyBoardRect(page, board, 300, 200)
 		const bb = await board.boundingBox()
 		if (!bb) throw new Error('board has no bounding box')
@@ -63,7 +65,7 @@ test('a guarded action parks for the human, renders in Review, and the approve/d
 		await page.getByRole('link', { name: 'Atlas' }).click()
 		const board = page.getByTestId('atlas-board')
 		await expect(board).toBeVisible()
-		await page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]').click()
+		await armToolFromMorePanel(page, 'Bookmark')
 		const spot = await findEmptyBoardRect(page, board, 300, 200)
 		const bb = await board.boundingBox()
 		if (!bb) throw new Error('board has no bounding box')
@@ -237,7 +239,7 @@ test('a plugin object placed before its plugin is removed stays visible, honest,
 		await page1.getByRole('link', { name: 'Atlas' }).click()
 		const board = page1.getByTestId('atlas-board')
 		await expect(board).toBeVisible()
-		await page1.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]').click()
+		await armToolFromMorePanel(page1, 'Bookmark')
 		const spot = await findEmptyBoardRect(page1, board, 300, 200)
 		const bb = await board.boundingBox()
 		if (!bb) throw new Error('board has no bounding box')
@@ -285,9 +287,7 @@ test('a plugin drag tool draws through the gesture engine with its own style pic
 		const board = page.getByTestId('atlas-board')
 		await expect(board).toBeVisible()
 
-		const scribbleBtn = page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Scribble"]')
-		await expect(scribbleBtn).toBeVisible()
-		await scribbleBtn.click()
+		await armToolFromMorePanel(page, 'Scribble')
 
 		// The generic style picker renders this tool's declared fields;
 		// pick the second color so the commit provably reads the store,

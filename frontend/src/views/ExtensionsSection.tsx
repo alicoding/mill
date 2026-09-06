@@ -54,9 +54,9 @@ const EXTENSION_ROWS: ExtensionRowSource[] = lazyArray(() => [
 const NON_BUILT_IN_IDS: string[] = lazyArray(() => EXTENSION_ROWS.filter((r) => r.id !== CARD_TOOL_ID).map((r) => r.id))
 
 // The built-in list's own sub-headings, in the same
-// knowledge-then-file-then-annotate order the creation tray renders.
-// Rows within each keep EXTENSION_ROWS' registry order.
-const SECTION_ORDER: AtlasNounGroup[] = ['knowledge', 'file', 'annotate']
+// objects-then-media-then-annotate order the creation dock renders
+// (goal 0355). Rows within each keep EXTENSION_ROWS' registry order.
+const SECTION_ORDER: AtlasNounGroup[] = ['objects', 'media', 'annotate', 'embed']
 
 type Selection = { kind: 'builtin' | 'plugin'; id: string } | null
 

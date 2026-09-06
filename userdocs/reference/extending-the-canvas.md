@@ -69,6 +69,16 @@ checked and documented as data, table below included:
   `commit`, which shapes this tool's own placement input into the
   artifact the board persists.
 
+## Where your tool appears
+
+The board's creation dock shows seven buttons and never grows: Card,
+Note, Area, Table, Media, Annotate, and More. A tool declaring `media`
+or `annotate` joins that flyout; anything else is found by name in the
+More panel, which searches every registered tool and lists the plugin
+each one came from. Nothing is hidden by this — a tool in the panel
+still arms exactly the way a dock button does, and still answers to its
+own shortcut key.
+
 ## What is required
 
 Every field on `AtlasToolShape` other than `commit` (documented above
@@ -89,7 +99,7 @@ are never omissions.
 | `description` | a string, or omitted entirely | the locale key for a one-sentence, user-vocabulary summary of what this noun does. Read by Settings > Extensions' per-row disclosure; a noun that omits it falls back to its own label there. |
 | `shortcutKey` | a single-character string, or null | the bare keypress that arms this tool from the board. null for a tool with no bare-key shortcut. |
 | `tray` | 'quick' or 'palette' | which tray surface renders this tool's button. |
-| `group` | 'knowledge', 'file', or 'annotate' — REQUIRED, never optional | which tray cluster this noun's own button renders in. AtlasCreationTray.tsx's TRAY_GROUP_ORDER renders 'knowledge' and 'file' flat, primary-first; 'annotate' tools collapse into the tray's one expandable Annotate group instead of rendering flat. |
+| `group` | 'objects', 'media', 'annotate', or 'embed' — REQUIRED, never optional | which creation-dock cluster this noun belongs to. The dock's visible buttons are fixed at seven and never grow: atlasToolPlacement.ts gives the four named object tools their own slots, collects 'media' and 'annotate' tools into their two flyouts, and leaves everything else — 'embed', and any further 'objects' tool — to be found by name in the dock's More panel. |
 | `settings` | an array of {type, key, label, description, defaultValue} setting declarations — type is boolean | string (optional placeholder) | number (optional min/max/step) | enum (options: [{value, label}]) — or omitted entirely | the noun's own user settings (goal 0258): declared here, rendered generically inside its Settings > Extensions row, persisted centrally per extension id + key. defaultValue applies whenever the user has never touched the control; a stored value of the wrong type, or an enum value no longer among the options, falls back to it. Omitted means the row shows no settings block. A runtime plugin declares the same shape as manifest contributes.settings and reads it back through api.settings. |
 | `interaction` | 'arm-then-click', 'pick-then-place', 'drag-to-draw', 'drag-to-erase', 'ephemeral-drag', or 'paste-or-drop' | the authoring gesture that places this noun. Must equal the same field on this id's own shared/atlasToolIdentity.ts entry — the registry's own agreement check cross-validates the two so they can never silently drift apart. |
 | `styleDefaults` | a record of style-field key to value, or omitted entirely | session-only seed values for a freshly placed instance's style state (colour, size, ...). Never persisted document data — omit this field for a noun with no style surface rather than declaring an empty object. |

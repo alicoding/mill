@@ -8,6 +8,7 @@ import { launchWithPlugins } from './fixtures/runtimePlugins'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { openExtensionDetail, openExtensionDetailTab, openExtensions, pluginRow } from './fixtures/settingsNav'
+import { moreToolRow } from './fixtures/atlasTray'
 
 const LATE_PLUGIN = `export function activate(api) {
 	api.registerCanvasObject({ kind: 'late', label: 'Late arrival', icon: '🕰️', source: 'board-local', editRoute: 'none', defaultPayload: {}, renderFace(el) { el.textContent = 'late' } })
@@ -21,7 +22,8 @@ test('a plugin installed after boot waits for review: the boot notice names it, 
 		// grandfathered -- they load exactly as before, no review asked.
 		await page.goto('/')
 		await page.getByRole('link', { name: 'Atlas' }).click()
-		await expect(page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]')).toBeVisible()
+		await expect(await moreToolRow(page, 'Bookmark')).toBeVisible()
+		await page.keyboard.press('Escape')
 		await expect(page.getByTestId('notice-review-plugins')).toHaveCount(0)
 
 		// A new plugin arrives while Mill runs; the next boot gates it.
@@ -30,9 +32,10 @@ test('a plugin installed after boot waits for review: the boot notice names it, 
 		writeFileSync(path.join(pluginsDir, 'late-arrival', 'main.js'), LATE_PLUGIN)
 		await page.reload()
 		await page.getByRole('link', { name: 'Atlas' }).click()
-		await expect(page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]')).toBeVisible()
-		// Nothing of it ran: no tray tool.
-		await expect(page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Late arrival"]')).toHaveCount(0)
+		await expect(await moreToolRow(page, 'Bookmark')).toBeVisible()
+		// Nothing of it ran: no tool in the More panel either.
+		await expect(await moreToolRow(page, 'Late arrival')).toHaveCount(0)
+		await page.keyboard.press('Escape')
 		// The boot notice names the count and opens the Extensions section.
 		const review = page.getByTestId('notice-review-plugins')
 		await expect(review).toBeVisible()
@@ -54,7 +57,8 @@ test('a plugin installed after boot waits for review: the boot notice names it, 
 
 		await page.reload()
 		await page.getByRole('link', { name: 'Atlas' }).click()
-		await expect(page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Late arrival"]')).toBeVisible()
+		await expect(await moreToolRow(page, 'Late arrival')).toBeVisible()
+		await page.keyboard.press('Escape')
 		await expect(page.getByTestId('notice-review-plugins')).toHaveCount(0)
 	} finally {
 		await close()
@@ -66,9 +70,9 @@ test('an administrator allow-list in the settings file blocks every plugin off i
 	try {
 		await page.goto('/')
 		await page.getByRole('link', { name: 'Atlas' }).click()
-		const tray = page.locator('[data-testid="atlas-creation-tray"]')
-		await expect(tray.locator('button[aria-label="Bookmark"]')).toBeVisible()
-		await expect(tray.locator('button[aria-label="Scribble"]')).toHaveCount(0)
+		await expect(await moreToolRow(page, 'Bookmark')).toBeVisible()
+		await expect(await moreToolRow(page, 'Scribble')).toHaveCount(0)
+		await page.keyboard.press('Escape')
 
 		await openExtensions(page)
 		const section = page.locator('[data-testid="extensions-installed-plugins"]')
@@ -129,16 +133,17 @@ test('a plugin whose files change after it was allowed stops running until allow
 	try {
 		await page.goto('/')
 		await page.getByRole('link', { name: 'Atlas' }).click()
-		const bookmark = page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Bookmark"]')
-		await expect(bookmark).toBeVisible()
+		await expect(await moreToolRow(page, 'Bookmark')).toBeVisible()
+		await page.keyboard.press('Escape')
 
 		// Grandfathered at boot with its hash recorded; an edit after that
 		// is drift the lock catches on the next boot.
 		writeFileSync(path.join(pluginsDir, 'mill-bookmark', 'main.js'), '// edited after consent\n' + readFileSync(path.join(pluginsDir, 'mill-bookmark', 'main.js'), 'utf8'))
 		await page.reload()
 		await page.getByRole('link', { name: 'Atlas' }).click()
-		await expect(page.locator('[data-testid="atlas-creation-tray"] button[aria-label="Scribble"]')).toBeVisible()
-		await expect(bookmark).toHaveCount(0)
+		await expect(await moreToolRow(page, 'Scribble')).toBeVisible()
+		await expect(await moreToolRow(page, 'Bookmark')).toHaveCount(0)
+		await page.keyboard.press('Escape')
 
 		await openExtensions(page)
 		const row = pluginRow(page, 'mill-bookmark')
@@ -162,7 +167,8 @@ test('a plugin whose files change after it was allowed stops running until allow
 
 		await page.reload()
 		await page.getByRole('link', { name: 'Atlas' }).click()
-		await expect(bookmark).toBeVisible()
+		await expect(await moreToolRow(page, 'Bookmark')).toBeVisible()
+		await page.keyboard.press('Escape')
 	} finally {
 		await close()
 	}
@@ -176,9 +182,9 @@ test('with signing keys pinned, an unsigned plugin cannot run and the bar says s
 	try {
 		await page.goto('/')
 		await page.getByRole('link', { name: 'Atlas' }).click()
-		const tray = page.locator('[data-testid="atlas-creation-tray"]')
-		await expect(tray).toBeVisible()
-		await expect(tray.locator('button[aria-label="Bookmark"]')).toHaveCount(0)
+		await expect(page.locator('[data-testid="atlas-creation-tray"]')).toBeVisible()
+		await expect(await moreToolRow(page, 'Bookmark')).toHaveCount(0)
+		await page.keyboard.press('Escape')
 		await openExtensions(page)
 		const section = page.locator('[data-testid="extensions-installed-plugins"]')
 		await section.scrollIntoViewIfNeeded()

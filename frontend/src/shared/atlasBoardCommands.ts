@@ -2,6 +2,7 @@ import type { Command } from './commands'
 import { jsonNodeContext } from './commandContext'
 import { writeClipboardText } from './clipboardWrite'
 import { useUISignalStore } from './uiSignalStore'
+import { ATLAS_DIAGRAM_COMMANDS } from './atlasDiagramCommands'
 
 // Whether a board with something on it is on screen right now -- read
 // from the live canvas rather than mirrored into a store: a mirror has
@@ -14,6 +15,18 @@ function atlasBoardHasContent(): boolean {
   return typeof document !== 'undefined' && document.querySelector('.react-flow__node') !== null
 }
 
+// Whether a perspective is filtering the board right now, read off the
+// toolbar's own declared attribute for the same reason
+// atlasBoardHasContent above reads the live canvas: the value lives in
+// AtlasView's own React state, and a store mirror written by an effect
+// is exactly what a menu built mid-navigation reads wrongly. A global
+// repack while filtered would scramble sibling views (ADR-0041), so
+// Auto-arrange is genuinely invalid then, not merely discouraged.
+function atlasPerspectiveActive(): boolean {
+  return typeof document !== 'undefined'
+    && document.querySelector('[data-testid="atlas-toolbar"][data-perspective-active="true"]') !== null
+}
+
 // The Atlas toolbar/board actions that were only ever reachable by
 // clicking (goal 0071's discoverability trilogy extended to the rest
 // of the surface) -- split out of shared/commands.ts (CLAUDE.md's
@@ -22,30 +35,11 @@ function atlasBoardHasContent(): boolean {
 // shared/uiSignalStore.ts counter the owning atlas/ component already
 // watches, the same store-signal seam every other cross-bounded-
 // context command in commands.ts uses.
-// The selected diagram's own page cursor, published by the frame on the
-// object's box (AtlasBoardObjectNode.tsx) exactly while its band shows
-// the control -- absent for a single-page file, which is what makes
-// both paging commands honestly unavailable there.
-function selectedDiagramPage(): { id: string; index: number; count: number } | null {
-  const id = selectedDiagramObjectID()
-  if (id === null) return null
-  const face = document.querySelector(`.react-flow__node[data-id="${CSS.escape(id)}"] [data-object-kind="diagram"]`)
-  const index = Number(face?.getAttribute('data-page-index') ?? NaN)
-  const count = Number(face?.getAttribute('data-page-count') ?? NaN)
-  if (!Number.isFinite(index) || !Number.isFinite(count)) return null
-  return { id, index, count }
-}
-
-// The board's currently selected DIAGRAM object, read from the live
-// canvas the same way atlasBoardHasContent above reads it -- the node's
-// own data-id IS the object id (atlasBuildBoardObjectNodes.ts). Null
-// when the selection is anything else, which is diagram.fit's honest
-// enablement: fitting a drawing needs a drawing to fit.
-function selectedDiagramObjectID(): string | null {
-  if (typeof document === 'undefined') return null
-  const face = document.querySelector('.react-flow__node.selected [data-object-kind="diagram"]')
-  return face?.closest('.react-flow__node')?.getAttribute('data-id') ?? null
-}
+//
+// The diagram paging/fit commands (and the selection helpers they read)
+// live in ./atlasDiagramCommands.ts, for the same 500-line reason --
+// spread into ATLAS_BOARD_COMMANDS below at the position they always
+// held, so the registry's overall order is unchanged.
 
 export const ATLAS_BOARD_COMMANDS: Command[] = [
   {
@@ -53,6 +47,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     label: 'commands.atlas.arrange',
     defaultBinding: null,
     surface: ['atlas'],
+    enabled: () => !atlasPerspectiveActive(),
     run: () => useUISignalStore.getState().requestAtlasArrange(),
   },
   {
@@ -77,6 +72,37 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     defaultBinding: null,
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasExport(),
+  },
+  {
+    // The viewed board as a .drawio file (goal 0194's own export
+    // slice), promoted to a registry command by goal 0355 so the Board
+    // menu's Export band seats it the same way every other item there
+    // is seated: an id, its own enablement, its own hotkey hint.
+    id: 'atlas.export.drawio',
+    label: 'commands.atlas.exportDrawio',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasExportDrawio(),
+  },
+  {
+    // The board's Kinds editor (goal 0355): a dialog, not a view --
+    // which is why it sits in the Board menu's Structure band while
+    // Contents, which IS a view, sits in the view switcher.
+    id: 'atlas.kinds.open',
+    label: 'commands.atlas.kinds.open',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasKinds(),
+  },
+  {
+    // The creation dock's "From file…" (goal 0355): opens the native
+    // file picker and lands the chosen file through the SAME routing a
+    // dropped file takes (atlas/useAtlasPickBoardFile.ts).
+    id: 'atlas.addFile',
+    label: 'commands.atlas.addFile',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasAddFile(),
   },
   {
     // "Copy as image" / "Export as image..." (docs/goals/0201): both
@@ -175,59 +201,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     surface: ['atlas'],
     run: () => {},
   },
-  {
-    // "Previous page" / "Next page" (goal 0354): a multi-page .drawio is
-    // paged from the object's own chrome now that its face carries no
-    // vendored toolbar. Both stop at the file's ends rather than
-    // wrapping, so the enablement is the honest one -- unavailable, not
-    // dimmed, on a single-page file or at the page you are already on.
-    // No default binding: ⌥←/⌥→ already move the caret by word in every
-    // text field on this surface, and a board shortcut that only ever
-    // applies to one selected kind is not worth that collision.
-    id: 'diagram.previousPage',
-    label: 'commands.diagram.previousPage',
-    defaultBinding: null,
-    surface: ['atlas'],
-    enabled: () => {
-      const page = selectedDiagramPage()
-      return page !== null && page.count > 1 && page.index > 0
-    },
-    run: () => {
-      const page = selectedDiagramPage()
-      if (page) useUISignalStore.getState().requestAtlasDiagramPage(page.id, -1)
-    },
-  },
-  {
-    id: 'diagram.nextPage',
-    label: 'commands.diagram.nextPage',
-    defaultBinding: null,
-    surface: ['atlas'],
-    enabled: () => {
-      const page = selectedDiagramPage()
-      return page !== null && page.count > 1 && page.index < page.count - 1
-    },
-    run: () => {
-      const page = selectedDiagramPage()
-      if (page) useUISignalStore.getState().requestAtlasDiagramPage(page.id, 1)
-    },
-  },
-  {
-    // "Fit diagram" (goal 0354): a diagram board object shows no
-    // vendored toolbar, so its zoom-to-fit is the object's own action --
-    // on the palette, and on the object's menu beside the full-editor
-    // door. The run bumps the signal the frame holding that object's
-    // live viewer watches, which calls the viewer's own graph.fit()
-    // (atlas/drawioInteraction.ts) rather than a second geometry.
-    id: 'diagram.fit',
-    label: 'commands.diagram.fit',
-    defaultBinding: null,
-    surface: ['atlas'],
-    enabled: () => selectedDiagramObjectID() !== null,
-    run: () => {
-      const id = selectedDiagramObjectID()
-      if (id) useUISignalStore.getState().requestAtlasDiagramFit(id)
-    },
-  },
+  ...ATLAS_DIAGRAM_COMMANDS,
   {
     // "Open in default app" (goal 0232 S1): a file-backed board
     // object's own registry command -- mouse-only by construction (its
@@ -401,3 +375,59 @@ function jsonRowCommands(): Command[] {
     },
   }))
 }
+
+// The board menu's own bands (goal 0355). The menu is a PROJECTION of
+// the command registry, the same way the native menu bar is (goal
+// 0332): a band names command ids, and AtlasBoardMenu.tsx resolves each
+// one's label, enablement and hotkey hint from the registry -- so an
+// item can never drift from the action it runs, and a command that
+// disappears takes its menu item with it.
+//
+// `label` overrides the command's palette label for THIS menu only, for
+// the handful of entries whose menu wording is shorter than the
+// palette's ("Import…", not "Import atlas") -- the same override
+// MenuPlacement.label already carries for the menu bar.
+export interface AtlasBoardMenuItem {
+  commandId: string
+  label?: string
+  // testid keeps an item findable under the name it has always had,
+  // for the doors that pre-date this menu (Export as JSON / .drawio).
+  // Omit and the item is found by `atlas-board-menu-<command id>`.
+  testid?: string
+  // disabledReason is the tooltip a dimmed item carries -- an item
+  // whose command can go invalid MUST say why, never just dim.
+  disabledReason?: string
+}
+
+export interface AtlasBoardMenuBand {
+  // The band heading, a locale key like every other string here.
+  label: string
+  items: AtlasBoardMenuItem[]
+}
+
+export const ATLAS_BOARD_MENU_BANDS: AtlasBoardMenuBand[] = [
+  {
+    label: 'atlas:boardMenu.arrange',
+    items: [{ commandId: 'atlas.arrange', testid: 'atlas-auto-arrange', disabledReason: 'atlas:viewMode.arrangeDisabledTooltip' }],
+  },
+  {
+    label: 'atlas:boardMenu.add',
+    items: [
+      { commandId: 'atlas.import', label: 'atlas:boardMenu.import', testid: 'atlas-import' },
+      { commandId: 'atlas.addFromFolder', label: 'atlas:boardMenu.addFromFolder', testid: 'atlas-add-from-folder' },
+    ],
+  },
+  {
+    label: 'atlas:boardMenu.export',
+    items: [
+      { commandId: 'atlas.export', label: 'atlas:boardMenu.exportJSON', testid: 'atlas-export-json' },
+      { commandId: 'atlas.export.drawio', label: 'atlas:boardMenu.exportDrawio', testid: 'atlas-export-drawio' },
+      { commandId: 'atlas.selection.copyAsImage' },
+      { commandId: 'atlas.selection.exportAsImage' },
+    ],
+  },
+  {
+    label: 'atlas:boardMenu.structure',
+    items: [{ commandId: 'atlas.kinds.open', testid: 'atlas-open-kinds' }],
+  },
+]

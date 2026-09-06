@@ -42,8 +42,7 @@
     "insertColumnAriaLabel": "Insert a column here",
     "insertRowAriaLabel": "Insert a row here",
     "noColumns": "No columns yet. Add one to start.",
-    "addRow": "+ Row",
-    "addColumn": "+ Column",
+    "addColumnAriaLabel": "Add column",
     "columnSettingsAriaLabel": "Settings for {{column}}",
     "keyLabel": "Key",
     "typeLabel": "Type",
@@ -182,8 +181,13 @@
       "contents": {
         "open": "Contents"
       },
+      "kinds": {
+        "open": "Kinds"
+      },
       "import": "Import atlas",
       "export": "Export atlas",
+      "exportDrawio": "Export board as .drawio",
+      "addFile": "Add a file to the board",
       "selection": {
         "copyAsImage": "Copy as image",
         "exportAsImage": "Export as image…"
@@ -270,6 +274,7 @@
         "steptypes": "New step type",
         "certificates": "New client certificate"
       },
+      "openKind": "Configure › {{label}}",
       "request": {
         "delete": "Delete",
         "edit": "Edit",
@@ -411,7 +416,9 @@
       "search": "Find in this list",
       "deleteRows": "Delete selected rows",
       "copyRows": "Copy selected rows",
-      "deleteColumn": "Delete selected column"
+      "deleteColumn": "Delete selected column",
+      "addRow": "Add a row",
+      "addColumn": "Add a column"
     },
     "clientcert": {
       "edit": "Edit certificate",

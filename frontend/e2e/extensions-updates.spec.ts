@@ -7,6 +7,7 @@ import { spawnMillServer, type SpawnedServer } from './fixtures/server'
 import { EXTENSIONS_UPDATES_MCP_BASE_PORT, EXTENSIONS_UPDATES_SERVER_BASE_PORT } from './fixtures/serverPorts'
 import { gotoAppReady } from './fixtures/appReady'
 import { openExtensions, openExtensionDetail, openExtensionDetailTab, pluginRow } from './fixtures/settingsNav'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // Updates on request and the MCP servers an extension ships (goal
 // 0349 S5, part 2), on their OWN dedicated server pair: a check reads
@@ -155,7 +156,7 @@ test('The MCP server an extension ships is listed under Contributions and lands 
 	await expect(page.locator('[data-testid="notice-text"]', { hasText: 'Added Reference server to Configure.' })).toBeVisible()
 
 	await page.getByRole('link', { name: 'Configure' }).click()
-	await page.getByRole('tab', { name: 'MCP Servers' }).click()
+	await openConfigureKind(page, 'MCP Servers')
 	const entity = page.locator('[data-testid="inventory-row"][data-entity="mcpserver"]').filter({ has: page.getByText('Reference server', { exact: true }) })
 	await expect(entity).toBeVisible()
 })

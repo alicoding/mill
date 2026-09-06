@@ -40,7 +40,7 @@ pre-commit:
       glob: "frontend/src/**/*.{css,ts,tsx}"
       run: ./scripts/check-drag-regions.sh
     - name: toolbar-action-testids
-      glob: "{frontend/src/atlas/AtlasToolbar.tsx,frontend/src/atlas/AtlasFolderImport.tsx,frontend/e2e/*.spec.ts,frontend/e2e/fixtures/toolbarActions.ts}"
+      glob: "{frontend/src/atlas/AtlasToolbar.tsx,frontend/e2e/*.spec.ts,frontend/e2e/fixtures/toolbarActions.ts}"
       run: ./scripts/check-toolbar-action-testids.sh
     - name: docsgen-freshness
       # A hand-edited userdocs page without a docsgen regeneration
@@ -99,6 +99,13 @@ pre-commit:
     - name: hook-command-guard
       glob: "scripts/hook-command-guard.sh"
       run: ./scripts/check-hook-command-guard.sh
+    - name: go-mod-tidy
+      # Catches a go.mod/go.sum left stale after a dependency change
+      # (a direct/indirect misclassification, an unpruned require) --
+      # mirrors CI's own go-mod-tidy job. `-diff` (Go 1.23+) reports
+      # without rewriting the tree.
+      glob: "go.mod"
+      run: go mod tidy -diff
     - name: root-file-naming
       # No glob, deliberately: .ls-lint.yml now covers every file type
       # at the repo root (its `.*` catch-all), not just .go, so this

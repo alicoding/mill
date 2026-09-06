@@ -48,6 +48,7 @@ import { AtlasSelectionTray } from './AtlasSelectionTray'
 import { AtlasImageExportHost } from './AtlasImageExportHost'
 import { AtlasPlacementPopover } from './AtlasPlacementPopover'
 import { useAtlasNativeFileDrop } from './useAtlasNativeFileDrop'
+import { useAtlasPickBoardFile } from './useAtlasPickBoardFile'
 import { useAtlasPaste } from './useAtlasPaste'
 import { useAtlasClipboard } from './useAtlasClipboard'
 import { useAtlasNodeContextMenu } from './useAtlasNodeContextMenu'
@@ -186,6 +187,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   // The capture doors (goal 0081 slice A3): own hook files, 500-line cap.
   const fileDrop = useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPosition, setPulsedID, reduceMotion })
   useAtlasPaste({ topLevelBoxes, screenToFlowPosition, viewedID, onPasteConverted, onNoteCreated: selection.selectNote, landFiles: fileDrop.landFiles })
+  useAtlasPickBoardFile({ landFiles: fileDrop.landFiles, wrapperRef })
   useAtlasClipboard({ allCards, allNotes, links, kinds, selectedCardIDs: selection.selectedCards, selectedNoteIDs: selection.selectedNotes, topLevelBoxes, screenToFlowPosition, viewedID, readOnly, showToast: onQuietToast })
 
   // Handle honesty: no kind restricts linking, so zero legal targets means a board with nothing else on it.

@@ -71,12 +71,12 @@ function unresolvedSkeletonLabels(): string[] {
 }
 
 describe('every module-scope registry holds a locale key, never a sentence', () => {
-  // Two command families name a runtime value in their label
-  // ("Settings > Appearance", "Remove <plugin>"), so their arrays call
-  // copy() themselves at construction and carry the RESOLVED string --
-  // there is no static key that could hold them. Everything else holds
-  // a key.
-  const INTERPOLATED_AT_CONSTRUCTION = /^(settings\.open\.|plugin\.remove\.)/
+  // Three command families name a runtime value in their label
+  // ("Settings > Appearance", "Configure > Lists", "Remove <plugin>"),
+  // so their arrays call copy() themselves at construction and carry
+  // the RESOLVED string -- there is no static key that could hold
+  // them. Everything else holds a key.
+  const INTERPOLATED_AT_CONSTRUCTION = /^(settings\.open\.|configure\.open\.|plugin\.remove\.)/
   it('resolves every command label', () => {
     const unresolved = COMMANDS
       .filter((c) => !INTERPOLATED_AT_CONSTRUCTION.test(c.id))
@@ -88,6 +88,8 @@ describe('every module-scope registry holds a locale key, never a sentence', () 
   it('still renders real English for the two interpolated families', () => {
     const appearance = COMMANDS.find((c) => c.id === 'settings.open.appearance')!
     expect(commandLabel(appearance)).toBe('Settings › Appearance')
+    const lists = COMMANDS.find((c) => c.id === 'configure.open.lists')!
+    expect(commandLabel(lists)).toBe('Configure › Lists')
   })
 
   it('resolves every menu title and submenu label in the skeleton', () => {

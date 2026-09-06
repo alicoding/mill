@@ -26,8 +26,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 
 | ID | Label | Default binding | Surface | Enablement |
 |---|---|---|---|---|
+| `atlas.addFile` | Add a file to the board | — | atlas | Always available |
 | `atlas.addFromFolder` | Add cards from a folder | — | atlas | Always available |
-| `atlas.arrange` | Auto-arrange | — | atlas | Always available |
+| `atlas.arrange` | Auto-arrange | — | atlas | Conditional — available only in a matching state |
 | `atlas.card.exportAs` | Export card as… | — | atlas | Always available |
 | `atlas.companion.toggle` | Toggle companion panel | — | atlas | Always available |
 | `atlas.contents.open` | Contents | — | atlas | Always available |
@@ -40,6 +41,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.delete.selection` | Delete selection | `⌫` | atlas | Always available |
 | `atlas.escapeLadder` | Clear selection or go up a level | `ESCAPE` | atlas | Always available |
 | `atlas.export` | Export atlas | — | atlas | Always available |
+| `atlas.export.drawio` | Export board as .drawio | — | atlas | Always available |
 | `atlas.focusDirection` | Focus the nearest card in a direction | `⌥→` | atlas | Always available |
 | `atlas.focusNext` | Focus next card | `TAB` | atlas | Always available |
 | `atlas.focusPrevious` | Focus previous card | `⇧TAB` | atlas | Always available |
@@ -49,6 +51,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.json.copyPath` | Copy path | — | atlas | Acts on the selected tree row |
 | `atlas.json.copyValue` | Copy value | `⌘C` | atlas | Acts on the selected tree row |
 | `atlas.jump` | Jump to a card or object | `⌘K` | atlas | Always available |
+| `atlas.kinds.open` | Kinds | — | atlas | Always available |
 | `atlas.matrix` | Open traceability matrix | — | atlas | Always available |
 | `atlas.minimap.toggle` | Toggle minimap | — | atlas | Always available |
 | `atlas.nudgeSelection` | Move the selected card | `→` | atlas | Always available |
@@ -115,6 +118,17 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.new.lists` | New list | — | Global | Always available |
 | `configure.new.mcpservers` | New MCP server | — | Global | Always available |
 | `configure.new.steptypes` | New step type | — | Global | Always available |
+| `configure.open.aiproviders` | Configure › AI Providers | — | Global | Always available |
+| `configure.open.attributes` | Configure › Attributes | — | Global | Always available |
+| `configure.open.certificates` | Configure › Certificates | — | Global | Always available |
+| `configure.open.conversionprofiles` | Configure › Conversion profiles | — | Global | Always available |
+| `configure.open.decisions` | Configure › Decisions | — | Global | Always available |
+| `configure.open.environments` | Configure › Environments | — | Global | Always available |
+| `configure.open.execenvs` | Configure › Execution Environments | — | Global | Always available |
+| `configure.open.integration` | Configure › Integrations | — | Global | Always available |
+| `configure.open.lists` | Configure › Lists | — | Global | Always available |
+| `configure.open.mcpservers` | Configure › MCP Servers | — | Global | Always available |
+| `configure.open.steptypes` | Configure › Step types | — | Global | Always available |
 | `configure.request.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.request.edit` | Edit | — | Global | Acts on the selected entity |
 | `configure.request.export` | Export | — | Global | Acts on the selected entity |
@@ -144,6 +158,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `help.openDataFolder` | Open data folder | — | Global | Always available |
 | `help.reportIssue` | Report an issue… | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
+| `listGrid.addColumn` | Add a column | — | Global | Acts on the selected table rows |
+| `listGrid.addRow` | Add a row | — | Global | Acts on the selected table rows |
 | `listGrid.copyRows` | Copy selected rows | — | Global | Acts on the selected table rows |
 | `listGrid.deleteColumn` | Delete selected column | — | Global | Acts on the selected table rows |
 | `listGrid.deleteRows` | Delete selected rows | — | Global | Acts on the selected table rows |

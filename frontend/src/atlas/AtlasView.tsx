@@ -18,7 +18,7 @@ import { AtlasBoard } from './AtlasBoard'
 import { pasteAsOffer, pasteSummaryText } from './pasteSummary'
 import { thirdPartyNounForKind } from './atlasNounRegistry'
 import { type AtlasFocusRequest } from './useBoardFocus'
-import { type ContextMenuState } from '../shared/ContextMenu'
+import { useAtlasContextMenuSignal } from './useAtlasContextMenuSignal'
 import { AtlasViewOverlays } from './AtlasViewOverlays'
 import { closeAtlasEditDiagram, useAtlasEditDiagramStore } from './atlasEditDiagramStore'
 import { AtlasBoardEmptyState } from './AtlasBoardEmptyState'
@@ -224,7 +224,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // click IS the flip. The edge menu (Change link kind/Edit label/
   // Remove link) lives in the SAME hook -- split out of this file
   // entirely (architecture.md's 500-line convention).
-  const [menu, setMenu] = useState<ContextMenuState | null>(null)
+  const { menu, setMenu } = useAtlasContextMenuSignal()
   // The quick-delete undo toast (goal 0093): one shared instance,
   // fed by every Atlas delete door below -- selection Del/Backspace +
   // tray Delete, card/note context-menu Delete, frame-header Delete,
@@ -357,7 +357,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const [tableFromListOpen, setTableFromListOpen] = useState(false)
   const [newSpaceOpen, setNewSpaceOpen] = useState(false)
 
-  useAtlasCommandSignals({ viewedID, onArrange: requestAutoArrange, onExport: exportAtlas, onError: setShareError, onOpenContents: () => projectionViews.setContentsOpen(true) })
+  useAtlasCommandSignals({
+    viewedID, onArrange: requestAutoArrange, onExport: exportAtlas, onExportDrawio: exportBoardDrawio,
+    onError: setShareError, onOpenContents: () => projectionViews.setContentsOpen(true), onOpenKinds: () => setKindsOpen(true),
+  })
 
   if (kinds === null || cards === null || landingPending) {
     return <Text as="p" className={runbookStyles.muted}>{t('loading')}</Text>
@@ -373,7 +376,6 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         presentKinds={presentKinds}
         hiddenKindIDs={hiddenKindIDs}
         onChangeHidden={changeHidden}
-        onAutoArrange={requestAutoArrange}
         perspectives={allPerspectives}
         activePerspectiveID={activePerspectiveID}
         onSwitchPerspective={switchPerspective}
@@ -383,14 +385,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         onPerspectiveToast={quietToast.show}
         links={allLinks}
         linkKinds={allLinkKinds}
-        onExport={exportAtlas} onExportDrawio={exportBoardDrawio}
         onImportFile={importFile}
         onShareError={setShareError}
-        onOpenMatrix={() => projectionViews.setMatrixOpen(true)}
-        onOpenCoverage={() => projectionViews.setCoverageOpen(true)}
-        onOpenRoadmap={() => projectionViews.setRoadmapOpen(true)}
-        onOpenContents={() => projectionViews.setContentsOpen(true)}
-        onOpenKinds={() => setKindsOpen(true)}
+        activeView={projectionViews.activeView}
+        onCloseProjections={projectionViews.closeAll}
       />
 
       {importError && <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-import-error">{importError}</Text>}

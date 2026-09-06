@@ -78,6 +78,15 @@ export interface JsonTreeProps {
   // that acts on "the focused row" has a row to act on. Null once focus
   // leaves the tree entirely.
   onFocusedRowChange?: (node: JsonNode | null) => void
+  // Where a row's context menu should actually open (goal 0346). Unset,
+  // the tree renders its own menu in place -- correct for a mount with
+  // no transformed ancestor (the Output viewer's use, position:fixed
+  // resolving against the viewport as usual). A host whose own DOM sits
+  // inside a scaled/translated ancestor (a React Flow node) supplies
+  // this instead: the tree hands it the row's menu and pointer/keyboard
+  // position rather than rendering one of its own, so the host can open
+  // it through a renderer mounted outside that transform.
+  onOpenContextMenu?: (state: ContextMenuState) => void
   // What a query DOES to the rows. The viewer FINDS: every row stays,
   // hits are highlighted, and whatever hid one opens. A filter HIDES:
   // only a matching row, its ancestors and its own subtree remain -- the
@@ -97,6 +106,7 @@ export function JsonTree({
   defaultExpandDepth = 1,
   rowMenuItems,
   onFocusedRowChange,
+  onOpenContextMenu,
   filterRows = false,
 }: JsonTreeProps) {
   const { t } = useTranslation('common')
@@ -123,10 +133,34 @@ export function JsonTree({
     { id: 'copy-path', label: t('output.copyPath'), run: () => { void writeClipboardText(node.path) } },
   ]
 
+  // The one place a row's menu actually opens from: onOpenContextMenu
+  // wins when the host supplied one (see the prop's own doc above),
+  // else the tree renders its own -- callers never see which branch
+  // ran.
+  const openMenuAt = (x: number, y: number, node: JsonNode) => {
+    const state = { x, y, items: (rowMenuItems ?? defaultMenuItems)(node) }
+    if (onOpenContextMenu) onOpenContextMenu(state)
+    else setMenu(state)
+  }
+
   const openMenu = (event: React.MouseEvent, node: JsonNode) => {
     event.preventDefault()
     event.stopPropagation()
-    setMenu({ x: event.clientX, y: event.clientY, items: (rowMenuItems ?? defaultMenuItems)(node) })
+    openMenuAt(event.clientX, event.clientY, node)
+  }
+
+  // The context-menu key / Shift+F10 (the OS/browser convention for
+  // "open this element's menu without a mouse"): opens at the focused
+  // row's own bounding box rather than the pointer, since there is no
+  // pointer position to use.
+  const openMenuFromKeyboard = (event: React.KeyboardEvent) => {
+    if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
+    const node = rowFrom(event.target)
+    const el = event.target instanceof HTMLElement ? event.target.closest('[data-path]') : null
+    if (!node || !el) return
+    event.preventDefault()
+    const rect = el.getBoundingClientRect()
+    openMenuAt(rect.left, rect.bottom, node)
   }
 
   const toggle = (path: string, open: boolean) => {
@@ -211,9 +245,13 @@ export function JsonTree({
       data-testid={testId}
       onFocusCapture={onFocusedRowChange ? (e) => onFocusedRowChange(rowFrom(e.target)) : undefined}
       onBlur={onFocusedRowChange ? (e) => { if (!e.currentTarget.contains(e.relatedTarget)) onFocusedRowChange(null) } : undefined}
+      onKeyDown={openMenuFromKeyboard}
     >
       <TreeView aria-label={ariaLabel}>{renderNodes(roots)}</TreeView>
-      <ContextMenu state={menu} onClose={() => setMenu(null)} />
+      {/* A host that supplies onOpenContextMenu owns rendering the menu
+          itself (see the prop's own doc above) -- this tree must never
+          also render one, or a row would show two. */}
+      {!onOpenContextMenu && <ContextMenu state={menu} onClose={() => setMenu(null)} />}
     </div>
   )
 }

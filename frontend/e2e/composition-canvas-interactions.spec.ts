@@ -4,6 +4,7 @@ import { clickCanvasNode } from './fixtures/canvasNode'
 import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel, dragPaletteItemToCanvas, connectNodes } from './fixtures/canvas'
 import { waitForViewportStable } from './fixtures/animation'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // Canvas-mechanics edge cases for the same React Flow canvas
 // composition.spec.ts's header comment describes (SPEC.md §3/ADR-0005) --
@@ -234,7 +235,7 @@ test('Running a workflow with declared Attributes shows an auto-filled test-inpu
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Attributes' }).click()
+  await openConfigureKind(page, 'Attributes')
   // Design wave 3: ConfigureAttributes conforms to its sibling tabs'
   // InventoryList-row pattern -- row click opens the schema editor,
   // replacing the old bare `<Select>` dropdown.

@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/server'
 import { waitForViewportStable } from './fixtures/animation'
 import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel, panCanvasBy } from './fixtures/canvas'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // Decision as a reusable, typed TERMINAL outcome (docs/adr/0027),
 // driven through the live app: Configure > Decisions CRUD (including
@@ -18,7 +19,7 @@ function decisionRow(page: import('@playwright/test').Page, label: string) {
 
 async function openDecisionsTab(page: import('@playwright/test').Page) {
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Decisions' }).click()
+  await openConfigureKind(page, 'Decisions')
   await expect(page.getByTestId('configure-decisions')).toBeVisible()
 }
 

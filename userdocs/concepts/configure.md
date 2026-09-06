@@ -15,6 +15,16 @@ once and offers Undo for ten seconds; an entry a workflow still uses
 refuses to delete and names the workflow. An undone Integration comes
 back without its secret — enter it again.
 
+Configure lists its kinds in a rail on the left, grouped by what
+they are for: **Connections** (Integrations, MCP Servers, AI
+Providers, Certificates), **Runtime** (Environments, Execution
+Environments), **Data** (Lists, Attributes, Conversion profiles) and
+**Workflow logic** (Decisions, Step types). Pick a kind to see its
+page; type in *Filter kinds* to narrow the rail across every group.
+Each kind has its own address (`#/configure/lists`, for example) and
+its own command in the palette (*Configure › Lists*), so a link or a
+search lands straight on it.
+
 The entities:
 
 - **Integration** — an HTTP API: base URL, auth (the secret lives in
