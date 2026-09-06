@@ -142,6 +142,35 @@ test('a multi-cell paste applies to a range on a board table', async ({ page }) 
   await cleanupGlideTable(page, tableObject)
 })
 
+// Regression: a cell's own edit-commit refetches this table's List
+// projection on a trailing debounce (AtlasCardProjectionTable.tsx,
+// goal 0147); copying the cell before that debounce's window elapses
+// must still copy the value just committed, never the pre-edit
+// content the projection still held a moment before. A click-copy-
+// click-paste run through real keystrokes, with no wait inserted
+// between the commit and the copy.
+test('copying a cell right after editing it copies the just-committed value, not the pre-edit one', async ({ page }) => {
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  const { tableObject, glide } = await landGlideTable(page)
+  await editGlideCell(page, glide, 0, 0, 'Bolt')
+  await clickGlideCell(page, glide, 0, 0)
+  await page.keyboard.press('ControlOrMeta+c')
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('Bolt')
+  await clickGlideCell(page, glide, 1, 1)
+  await page.keyboard.press('ControlOrMeta+v')
+  await expect(glideCellText(glide, 1, 1)).toHaveText('Bolt')
+
+  // The paste itself is a committed edit too -- confirm it, and the
+  // original, both survive a reload rather than only painting the canvas.
+  await page.reload()
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const reloaded = page.locator('[data-testid="atlas-board-object"][data-object-kind="table"]').getByTestId('atlas-projection-glide')
+  await expect(reloaded).toBeVisible()
+  await expect(glideCellText(reloaded, 0, 0)).toHaveText('Bolt')
+  await expect(glideCellText(reloaded, 1, 1)).toHaveText('Bolt')
+  await cleanupGlideTable(page, tableObject)
+})
+
 // ⌘F reaches the grid on the BOARD mount too, from a cell selected by
 // a real click (goal 0349 S4): the click leaves DOM focus inside the
 // grid host, which is what scopes the shortcut to this grid. Pinned
