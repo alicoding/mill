@@ -87,10 +87,12 @@ your plugin feels like part of Mill.
     `content: "interactive"` on the same object. `content` says what
     happens to input over the face: `"static"` (the default) leaves
     every gesture to the canvas, `"interactive"` gives the selected
-    face the wheel, the drag and the keys — and `ctx.setEditing`, the
-    call that stands Mill's own board shortcuts down while your editor
-    is open, exists only there. (checked: a face script calling
-    `setEditing` without that declaration warns)
+    face the wheel outright — a scroll over it never also moves the
+    board — along with the drag and the keys, and `ctx.setEditing`,
+    the call that stands Mill's own board shortcuts down while your
+    editor is open, exists only there. The chrome band above the face
+    keeps panning the board in every state. (checked: a face script
+    calling `setEditing` without that declaration warns)
 
 23. An MCP server you ship (`contributes.mcpServers`) declares a slug
     `id`, a `label`, a `command` and its `args`; every secret it needs

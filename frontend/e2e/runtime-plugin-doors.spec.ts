@@ -6,6 +6,7 @@ import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { clickAtlasTrayTool } from './fixtures/atlasTray'
 import { contextMenu } from './fixtures/contextMenu'
 import { openPluginDetail } from './fixtures/settingsNav'
+import { expectSelectedFaceOwnsWheel } from './fixtures/atlasActivationContract'
 
 
 // The platform DOORS a runtime plugin gets beyond rendering its own
@@ -126,10 +127,10 @@ test('the Board index plugin lists notes by first line and stays current through
 		// the object takes a click, and only then owns the wheel.
 		const indexObject = page.locator('[data-testid="atlas-board-object"][data-object-kind="index"]')
 		await expect(indexObject).toHaveAttribute('data-activation', 'idle')
-		await expect(indexObject).not.toHaveClass(/nowheel/)
+		await expect(indexObject.getByTestId('atlas-board-object-face')).not.toHaveClass(/nowheel/)
 		await indexObject.getByTestId('atlas-object-click-shield').click()
 		await expect(indexObject).toHaveAttribute('data-activation', 'selected')
-		await expect(indexObject).toHaveClass(/nowheel/)
+		await expectSelectedFaceOwnsWheel(page, indexObject)
 
 		// Add a note: its first line appears under Note without a reload.
 		// Deselect the index first (a selected object changes what a

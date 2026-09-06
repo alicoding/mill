@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { createBoardObjectViaRPC, ATLAS_DEFAULT_SPACE_ID } from './fixtures/atlasNativeDropEscapeHatch'
 import { dragBetween } from './fixtures/atlasBoard'
 import { waitForViewportStable } from './fixtures/animation'
-import { wheelAt } from './fixtures/pointer'
+import { trackpadWheelAt, wheelAt } from './fixtures/pointer'
 import { pdfBytes } from './fixtures/pdfBytes'
 import { openAtlas, placeSizedTable, revealBoardObject } from './fixtures/atlasTable'
 import { glideTextEditor, openGlideCellEditor } from './fixtures/glideGrid'
@@ -37,10 +37,13 @@ interface InputNoun {
   // Which axis that scroller really overflows on, and so which delta a
   // wheel over it must move.
   scrollAxis: 'left' | 'top'
-  // A face whose own engine consumes the wheel without ever being a DOM
-  // scroller (a vendored pan/zoom viewer, a viewer in its own frame):
-  // the wheel must stay with it and the board must not move.
-  consumesWheel: boolean
+  // Where this face's own content currently sits, as a comparable
+  // signature -- a scroller's offsets, a vendored engine's drawing
+  // position. What "the face, not the board, moved" is read from. null
+  // where the face is an opaque embed whose own movement this harness
+  // cannot observe (a PDF renders in its own frame): there the board
+  // holding still is the whole assertion.
+  faceOffset: ((object: Locator) => Promise<string>) | null
   editable: boolean
   create: (page: Page, dir: string) => Promise<Locator>
 }
@@ -86,7 +89,7 @@ const NOUNS: InputNoun[] = [
     hint: 'Click to select, then click a cell to edit',
     scroller: (object) => object.locator('.dvn-scroller').first(),
     scrollAxis: 'left',
-    consumesWheel: false,
+    faceOffset: (object) => scrollSignature(object.locator('.dvn-scroller').first()),
     editable: true,
     create: async (page) => {
       const object = await placeSizedTable(page, '5x5')
@@ -102,7 +105,7 @@ const NOUNS: InputNoun[] = [
     hint: 'Click to select, then scroll or edit.',
     scroller: (object) => object.getByTestId('atlas-object-sheet-grid').locator('xpath=..'),
     scrollAxis: 'top',
-    consumesWheel: false,
+    faceOffset: (object) => scrollSignature(object.getByTestId('atlas-object-sheet-grid').locator('xpath=..')),
     editable: true,
     create: async (page, dir) => {
       const file = path.join(dir, 'ZzE2eInputContract.csv')
@@ -117,7 +120,7 @@ const NOUNS: InputNoun[] = [
     scrollAxis: 'top',
     // The vendored pan/zoom engine claims the wheel itself -- a .drawio
     // mirror, not a mermaid one, because only that host owns a wheel.
-    consumesWheel: true,
+    faceOffset: drawingOrigin,
     editable: false,
     create: async (page, dir) => {
       const file = path.join(dir, 'ZzE2eInputContract.drawio')
@@ -130,7 +133,7 @@ const NOUNS: InputNoun[] = [
     hint: 'Click to select, then scroll to read',
     scroller: null,
     scrollAxis: 'top',
-    consumesWheel: true,
+    faceOffset: null,
     editable: false,
     create: async (page, dir) => {
       const file = path.join(dir, 'ZzE2eInputContract.pdf')
@@ -146,6 +149,23 @@ function viewportTransform(page: Page): Promise<string> {
 
 function scrollOffsets(scroller: Locator): Promise<{ left: number; top: number }> {
   return scroller.evaluate((el) => ({ left: el.scrollLeft, top: el.scrollTop }))
+}
+
+// A scroller's position as one comparable string.
+async function scrollSignature(scroller: Locator): Promise<string> {
+  const { left, top } = await scrollOffsets(scroller)
+  return `${Math.round(left)},${Math.round(top)}`
+}
+
+// Where the DRAWING sits inside a diagram face, in page pixels. The
+// vendored viewer keeps its graph behind its own closure and publishes
+// no handle, and its view translate is applied by repositioning every
+// cell -- so the first vertex's own on-screen rect is that translate
+// made observable, and it moves if and only if the graph panned.
+async function drawingOrigin(object: Locator): Promise<string> {
+  const cell = object.locator('svg rect').first()
+  const box = await cell.boundingBox()
+  return `${Math.round(box?.x ?? 0)},${Math.round(box?.y ?? 0)}`
 }
 
 // A point on the chrome band, in the band's own SCREEN pixels: the band
@@ -182,6 +202,7 @@ for (const noun of NOUNS) {
       const board = page.getByTestId('atlas-board')
       await revealBelowChrome(page, object)
       const band = object.getByTestId('atlas-board-object-frame')
+      const face = object.getByTestId('atlas-board-object-face')
       const shield = object.getByTestId('atlas-object-click-shield')
 
       // Idle: the face is inert behind the shield, the band says what
@@ -190,7 +211,7 @@ for (const noun of NOUNS) {
       await expect(object).toHaveAttribute('data-activation', 'idle')
       await expect(shield).toHaveCount(1)
       await expect(band).toHaveAttribute('title', noun.hint)
-      await expect(object).not.toHaveClass(/nowheel/)
+      await expect(face).not.toHaveClass(/nowheel/)
       await object.hover()
       await expect(object).not.toHaveCSS('box-shadow', 'none')
 
@@ -199,9 +220,9 @@ for (const noun of NOUNS) {
       // delta), keeping the geometry the drag below measures intact.
       await waitForViewportStable(board)
       const idleTransform = await viewportTransform(page)
-      await wheelAt(page, shield, 0, 80)
+      await trackpadWheelAt(page, shield, 'top', 1)
       await expect.poll(() => viewportTransform(page)).not.toBe(idleTransform)
-      await wheelAt(page, shield, 0, -80)
+      await trackpadWheelAt(page, shield, 'top', -1)
       await expect.poll(() => viewportTransform(page)).toBe(idleTransform)
 
       // The first click selects the OBJECT, never something inside the
@@ -209,30 +230,35 @@ for (const noun of NOUNS) {
       await shield.click()
       await expect(object).toHaveAttribute('data-activation', 'selected')
       await expect(shield).toHaveCount(0)
-      await expect(object).toHaveClass(/nowheel/)
+      // The opt-out rides the FACE, never the whole node box: the chrome
+      // band is a sibling of the face, so it stays with the canvas and a
+      // selected object never becomes a dead zone.
+      await expect(face).toHaveClass(/nowheel/)
+      await expect(object).not.toHaveClass(/nowheel/)
 
-      // Selected wheel, over the face: it stays inside. For a face with
-      // a real scroll container that means the container scrolls; for a
-      // face whose own engine consumes the wheel it means the board
-      // stays put. Either way the viewport never moves.
+      // Selected wheel, over the face: the face owns it OUTRIGHT. A
+      // trackpad burst -- ten small deltas, the shape a trackpad and its
+      // momentum tail really deliver -- moves what the face renders and
+      // leaves the board exactly where it was, whether the face is a DOM
+      // scroller or a vendored engine that pans without ever being one.
       await waitForViewportStable(board)
       const liveTransform = await viewportTransform(page)
-      if (noun.scroller) {
-        const scroller = noun.scroller(object)
-        await expect(scroller).toBeVisible()
-        const before = await scrollOffsets(scroller)
-        await wheelAt(page, scroller, noun.scrollAxis === 'left' ? 160 : 0, noun.scrollAxis === 'left' ? 0 : 160)
-        await expect.poll(() => scrollOffsets(scroller).then((o) => o[noun.scrollAxis])).toBeGreaterThan(before[noun.scrollAxis])
-      } else {
-        await wheelAt(page, object, 0, 80)
-      }
+      const readFace = noun.faceOffset
+      const faceBefore = readFace ? await readFace(object) : null
+      const wheelTarget = noun.scroller ? noun.scroller(object) : face
+      if (noun.scroller) await expect(wheelTarget).toBeVisible()
+      await trackpadWheelAt(page, wheelTarget, noun.scrollAxis, 1)
+      if (readFace) await expect.poll(() => readFace(object)).not.toBe(faceBefore)
       await expect.poll(() => viewportTransform(page)).toBe(liveTransform)
 
-      // Selected wheel, over the object's own chrome: nothing under the
-      // pointer can consume it, so the frame hands it back to the
-      // canvas and the board pans -- the live face never turns the
-      // whole object into a dead zone.
-      await wheelAt(page, band, 0, 60, await bandPoint(band))
+      // Selected wheel, over the object's own chrome: the band is frame,
+      // not face -- it sits outside the face's opt-out, so the canvas
+      // owns it and the board pans. A live face never turns the whole
+      // object into a dead zone. The band travels with the pan and is
+      // 14 CSS px tall, so the burst's later events land past it: what
+      // this pins is that a wheel the band receives reaches the canvas,
+      // never how far one gesture carries the board.
+      await trackpadWheelAt(page, band, 'top', 1, await bandPoint(band))
       await expect.poll(() => viewportTransform(page)).not.toBe(liveTransform)
       // Bring the object back clear of the toolbar before the drag
       // below measures against it -- panned from the BOARD's own

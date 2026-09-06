@@ -30,3 +30,26 @@ export async function zoomWheelAt(page: Page, locator: Locator, deltaY: number, 
     await page.keyboard.up('Control')
   }
 }
+
+// A trackpad-shaped wheel at a locator's own point: a BURST of small
+// deltas rather than one notch. A trackpad scroll (and the momentum
+// tail a WKWebView keeps delivering after the fingers lift) reaches the
+// page as many `deltaMode: 0` events of a few pixels each, and that
+// shape is what a wheel contract has to hold under -- a single large
+// notch can be absorbed by an engine's own clamp and prove nothing.
+// The hover check runs once, the same way wheelAt's does; the pointer
+// does not move across the burst.
+export const TRACKPAD_WHEEL_STEPS = 10
+export const TRACKPAD_WHEEL_DELTA = 8
+
+export async function trackpadWheelAt(page: Page, locator: Locator, axis: 'left' | 'top', sign: 1 | -1, position?: { x: number; y: number }): Promise<void> {
+  if (position) {
+    await locator.hover({ position })
+  } else {
+    await locator.hover()
+  }
+  const step = sign * TRACKPAD_WHEEL_DELTA
+  for (let i = 0; i < TRACKPAD_WHEEL_STEPS; i += 1) {
+    await page.mouse.wheel(axis === 'left' ? step : 0, axis === 'left' ? 0 : step)
+  }
+}
