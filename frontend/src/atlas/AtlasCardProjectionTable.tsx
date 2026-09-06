@@ -49,19 +49,35 @@ export function AtlasCardProjectionTable({ scopeID, density, fetchProjection, on
   // burst against THIS list coalesces to one refetch. Atlas events
   // stay unscoped (the projection binding itself may have changed)
   // but ride the same debounce.
+  //
+  // Leading, not trailing: the first event in a burst refetches
+  // IMMEDIATELY, so the row an edit just committed is never read stale
+  // by an action that follows it inside the coalescing window (a copy
+  // reading the cell's pre-edit value through getCellContent, since
+  // that value comes from this component's own `proj` state). Further
+  // events during the window still coalesce to exactly one trailing
+  // refetch, preserving the burst-coalescing this debounce exists for.
   const projListIDRef = useRef('')
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null
+    let trailingPending = false
     const refetch = () => void fetchProjection(scopeID).then((p) => {
       projListIDRef.current = p.ListID
       setProj(p)
     }).catch(() => setProj(null))
     const schedule = () => {
-      if (timer !== null) return
-      timer = setTimeout(() => {
-        timer = null
+      if (timer === null) {
         refetch()
-      }, 150)
+        timer = setTimeout(() => {
+          timer = null
+          if (trailingPending) {
+            trailingPending = false
+            refetch()
+          }
+        }, 150)
+        return
+      }
+      trailingPending = true
     }
     refetch()
     const off = Events.On('mill-data-changed', (evt) => {
