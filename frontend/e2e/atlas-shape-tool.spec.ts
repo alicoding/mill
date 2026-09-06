@@ -29,6 +29,31 @@ import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 // happens to occupy at that fraction, which shifts the moment the
 // seed's own layout changes.
 
+// The Drawing plugin persists its last-used shape style as the
+// mill-drawing plugin's 'shape' storage key, written by every completed
+// draw. Plugin storage lives on the SHARED worker server and survives
+// each test's fresh page, so one test's draw (or another shape spec's,
+// on a multi-file shard) silently rewrites the next test's DEFAULT
+// style: this file asserts shipped defaults (rectangle, blue stroke)
+// and the promote popover's shape title, all of which read that
+// storage. Every test clears the key over the runtime wire before its
+// page loads the plugin (shared-server-test-coupling, QUARANTINE.md).
+test.beforeEach(async ({ page }) => {
+  const res = await page.request.post('/wails/runtime', {
+    headers: { 'x-wails-client-id': 'e2e-shape-tool', 'Content-Type': 'application/json' },
+    data: {
+      object: 0,
+      method: 0,
+      args: {
+        'call-id': `shape-${Math.random()}`,
+        methodName: 'github.com/alicoding/mill/internal/services/settingssvc.SettingsService.DeletePluginStorageValue',
+        args: ['mill-drawing', 'shape'],
+      },
+    },
+  })
+  if (!res.ok()) throw new Error(`mill-drawing 'shape' storage reset failed: ${res.status()} ${await res.text()}`)
+})
+
 test('dragging the shape tool lands a rectangle, never a card, disarms, and leaves it selected', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()

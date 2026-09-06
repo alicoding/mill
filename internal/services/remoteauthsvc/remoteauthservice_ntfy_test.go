@@ -143,6 +143,13 @@ func streamLines(t *testing.T, url string) (*http.Response, <-chan string) {
 	return resp, lines
 }
 
+// streamSignalTimeout bounds waits on an in-process, event-driven
+// signal (a stream line arriving, a response body closing): the work
+// itself needs no wall time, only goroutine scheduling, so the window
+// exists to absorb scheduler stalls on a loaded -race runner, not to
+// wait out any protocol timing.
+const streamSignalTimeout = 10 * time.Second
+
 func nextLine(t *testing.T, lines <-chan string) string {
 	t.Helper()
 	select {
@@ -151,7 +158,7 @@ func nextLine(t *testing.T, lines <-chan string) string {
 			t.Fatal("stream closed before the expected line arrived")
 		}
 		return line
-	case <-time.After(2 * time.Second):
+	case <-time.After(streamSignalTimeout):
 		t.Fatal("timed out waiting for a stream line")
 		return ""
 	}
@@ -232,7 +239,7 @@ func TestPhoneChannel_DeliverOmitsClickWithNoKnownBaseAddress(t *testing.T) {
 		if msg.Click != "" {
 			t.Errorf("Click = %q, want empty with an unknown base address", msg.Click)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(streamSignalTimeout):
 		t.Fatal("timed out waiting for the delivered message")
 	}
 }
@@ -267,7 +274,7 @@ func TestPhoneChannel_RevokeClosesAnOpenStream(t *testing.T) {
 
 	select {
 	case <-done:
-	case <-time.After(2 * time.Second):
+	case <-time.After(streamSignalTimeout):
 		t.Fatal("stream did not close after its device was revoked")
 	}
 }
