@@ -4,7 +4,7 @@ import { createBoardObjectViaRPC, ATLAS_DEFAULT_SPACE_ID } from './fixtures/atla
 import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { ATLAS_KIND_DOCUMENT } from './fixtures/kindPicker'
 import { waitForViewportStable } from './fixtures/animation'
-import { wheelAt } from './fixtures/pointer'
+import { trackpadWheelAt, wheelAt } from './fixtures/pointer'
 
 // The "diagram" board object (goal 0179 S2): dropping a .drawio/.mmd
 // file lands a board-local object, never a card -- rendered through
@@ -48,10 +48,11 @@ test('a dropped .drawio file renders as a board object through the vendored view
 
   // Wheel routing (goals 0271 + 0302): unselected, the diagram is
   // shielded and the board owns every wheel (no nowheel opt-out);
-  // selected, the vendored viewer owns the wheel and the node carries
+  // selected, the vendored viewer owns the wheel and the FACE carries
   // the canvas kit's nowheel class -- the same contract the pdf face
   // has, so every object on the board reads alike.
-  await expect(diagramObject).not.toHaveClass(/nowheel/)
+  const diagramFace = diagramObject.getByTestId('atlas-board-object-face')
+  await expect(diagramFace).not.toHaveClass(/nowheel/)
   await expect(diagramObject.locator('[data-testid="atlas-object-click-shield"]')).toBeVisible()
 
   // Window-drag opt-out, in-host half (goal 0276 rider): body drags
@@ -72,9 +73,9 @@ test('a dropped .drawio file renders as a board object through the vendored view
   // Selected (the shield's click): the viewer owns the wheel, the
   // board holds still.
   await diagramObject.locator('[data-testid="atlas-object-click-shield"]').click()
-  await expect(diagramObject).toHaveClass(/nowheel/)
+  await expect(diagramFace).toHaveClass(/nowheel/)
   const beforeLiveWheel = await viewportTransform()
-  await wheelAt(page, diagramObject, 0, 80)
+  await trackpadWheelAt(page, diagramFace, 'top', 1)
   await page.waitForTimeout(300) // no observable "wheel fully routed" signal exists for a negative assertion
   expect(await viewportTransform()).toBe(beforeLiveWheel)
 
