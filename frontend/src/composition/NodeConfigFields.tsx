@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Browser } from '@wailsio/runtime'
 import { Button, Checkbox, FormControl, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { KeyIcon } from '@primer/octicons-react'
 import { KeyComboChip } from '../shared/KeyComboChip'
@@ -9,6 +8,7 @@ import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mil
 import type { CanvasNode } from './canvasStore'
 import { useHotkeyCapture, isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from './hotkeyCapture'
 import { generateSamplePayload } from '../shared/configSchema'
+import { openExternalUrl } from '../shared/openExternal'
 import { EntityRefField } from '../configure/EntityRefField'
 import { IntegrationBindingsEditor } from './IntegrationBindingsEditor'
 import { ChildWorkflowBindingsEditor } from './ChildWorkflowBindingsEditor'
@@ -151,7 +151,7 @@ export function NodeConfigFields({ node, attrs, nodeType, sameKindNodeTypes, has
                 <Stack direction="vertical" gap="condensed">
                   <Text as="p" size="small" className={runbookStyles.error}>{hotkeyCapture.error}</Text>
                   {isAccessibilityError(hotkeyCapture.error) && (
-                    <Button size="small" onClick={() => Browser.OpenURL(ACCESSIBILITY_SETTINGS_URL)}>
+                    <Button size="small" onClick={() => openExternalUrl(ACCESSIBILITY_SETTINGS_URL)}>
                       {t('nodeInspector.openAccessibilitySettings')}
                     </Button>
                   )}

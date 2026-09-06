@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { Browser } from '@wailsio/runtime'
 import { NavList } from '@primer/react'
 import { LinkExternalIcon } from '@primer/octicons-react'
 import type { DocsGroup } from './docsGroups'
+import { openExternalUrl } from '../shared/openExternal'
 import styles from './DocsView.module.css'
 
 // The same distribution the updater reads (UpdatesSection.tsx).
@@ -64,7 +64,7 @@ export default function DocsNav({ groups, currentPage, onSelect }: DocsNavProps)
           className={styles.navFooterLink}
           onClick={(ev) => {
             ev.preventDefault()
-            void Browser.OpenURL(RELEASES_URL)
+            void openExternalUrl(RELEASES_URL)
           }}
           data-testid="docs-releases-link"
         >

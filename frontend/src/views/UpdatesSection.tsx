@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { Events } from '@wailsio/runtime'
 import { useTranslation } from 'react-i18next'
-import { Browser } from '@wailsio/runtime'
 import { Button, Checkbox, FormControl, Link as PrimerLink, Select, Stack, Text, TextInput } from '@primer/react'
 import { SettingsService, UpdateState, type UpdateNotice } from '../shared/bindings'
 import { runCommand } from '../shared/commands'
 import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import { formatUpdated } from '../shared/inventorySort'
+import { openExternalUrl } from '../shared/openExternal'
 import { TrustDisclosure } from './TrustDisclosure'
 
 // The browser-download escape hatch for when the in-app download is
@@ -464,7 +464,7 @@ function UpdatesSection() {
                   <Text size="small" className={styles.muted}>
                     {t('settings.updates.installFallbackHint')}
                   </Text>
-                  <Button size="small" onClick={() => Browser.OpenURL(RELEASES_URL)} data-testid="open-releases-page">
+                  <Button size="small" onClick={() => openExternalUrl(RELEASES_URL)} data-testid="open-releases-page">
                     {t('settings.updates.openReleasesButton')}
                   </Button>
                 </Stack>
