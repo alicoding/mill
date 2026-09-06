@@ -7,6 +7,14 @@ package browserbridge
 const (
 	TestPageButtonID = "mill-bridge-button"
 	TestPageReadyID  = "mill-bridge-ready"
+	// TestPageInputID and TestPageEchoID are the page's parameter
+	// surface: whatever is typed into the input is echoed into the echo
+	// element when the button is pressed. The seeded "Replay a browser
+	// flow" example binds a parameter into the input and reads the echo
+	// back, so a recorded flow's parameters and extraction are proven
+	// against a page that cannot change under them.
+	TestPageInputID = "mill-bridge-input"
+	TestPageEchoID  = "mill-bridge-echo"
 )
 
 // TestFlowSteps is how many steps the connection test replays -- the
