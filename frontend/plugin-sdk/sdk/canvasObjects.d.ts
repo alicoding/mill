@@ -43,11 +43,14 @@ export interface CanvasObjectDecl {
      * — the face is a picture. 'interactive' means the face scrolls,
      * selects text, or edits in place, so the object goes through three
      * states: idle (a click shield takes the first click, and the canvas
-     * keeps the wheel, the drag and the keys), selected (the face
-     * receives pointer events and keys, and a wheel over anything in it
-     * that really scrolls stays inside it), and editing (the face has an
-     * editor open and the board's shortcuts stand down). Declare
-     * 'interactive' before calling ctx.setEditing. */
+     * keeps the wheel, the drag and the keys), selected (the face owns
+     * the wheel outright — a scroll over it never also moves the board,
+     * whether or not anything in the face consumes it — along with the
+     * drag and the keys), and editing (the face has an editor open and
+     * the board's shortcuts stand down). The chrome band above the face
+     * stays with the canvas in every state, so a selected object is
+     * never a dead zone. Declare 'interactive' before calling
+     * ctx.setEditing. */
     content?: 'static' | 'interactive';
     /** Where the object's own artifact lives: a value only this board
      * knows ('board-local'), a web address ('url'), or a file on disk

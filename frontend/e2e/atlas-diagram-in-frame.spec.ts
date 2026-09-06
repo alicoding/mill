@@ -79,11 +79,13 @@ test('a selected diagram pans and zooms inside its frame, and says when it is la
   await diagramObject.hover()
   await expect.poll(ringWhileHovered).not.toBe('none')
 
-  // Selected: the shield lifts and the node opts out of BOTH the
-  // board's wheel and the board's drag.
+  // Selected: the shield lifts and the FACE opts out of the board's
+  // wheel and the board's drag at once -- the chrome band, a sibling of
+  // the face, keeps panning the board.
   await diagramObject.locator('[data-testid="atlas-object-click-shield"]').click()
-  await expect(diagramObject).toHaveClass(/nowheel/)
-  await expect(diagramObject.locator('[class*="content"]').first()).toHaveClass(/nodrag/)
+  const inFrameFace = diagramObject.getByTestId('atlas-board-object-face')
+  await expect(inFrameFace).toHaveClass(/nowheel/)
+  await expect(inFrameFace).toHaveClass(/nodrag/)
 
   // Wheel: the DRAWING moves, the board holds still.
   await waitForViewportStable(page.getByTestId('atlas-board'))
