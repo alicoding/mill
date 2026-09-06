@@ -34,3 +34,9 @@ describe('pendingReviewCount', () => {
     expect(pendingReviewCount({ pending: pending as never, pendingWrites: [] })).toBe(1)
   })
 })
+
+describe('isReviewablePark for a vault wait', () => {
+  it('counts a run waiting on the vault: a person has to unlock it', () => {
+    expect(isReviewablePark({ pending: { nodeID: 'n1', reason: 'vault-locked' } } as never)).toBe(true)
+  })
+})

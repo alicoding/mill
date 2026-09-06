@@ -271,6 +271,10 @@
     "seedRevision": 5,
     "fingerprint": "cc3e5338fab823d9ff76f94415fdd51d8f6b686f82a3f72b866edf8422173036"
   },
+  "workflow:example-browser-replay-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "0738f3c0f3f39a3e5bb08e4b4e9c319fdcd5beba28cdfcbebf15aaab8005bd4b"
+  },
   "workflow:example-bruno-run-workflow": {
     "seedRevision": 2,
     "fingerprint": "429e7a442b62f984e914c25be4d541c49e5a431a853156c3d739c95c5226d393"
@@ -378,6 +382,10 @@
   "workflow:example-saved-page-to-markdown-workflow": {
     "seedRevision": 4,
     "fingerprint": "231e29623450d0f26d46c439937e11844fbe9095f2b97cf7327d4e92d3ecb89b"
+  },
+  "workflow:example-scheduled-secret-read-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "cedab78c02638f666810403e0d5ab0225037fce47eb27d132da97a34f5cf6e34"
   },
   "workflow:example-scratch-capture-workflow": {
     "seedRevision": 4,

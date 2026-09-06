@@ -17,6 +17,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/secretsource"
 	"github.com/alicoding/mill/internal/services/codeloopsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
+	"github.com/alicoding/mill/internal/services/executionsvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/secretsvc"
 )
@@ -24,9 +25,11 @@ import (
 // WireSecrets constructs the vault (goal 0185) at vaultPath, sharing
 // credentials with configuresvc's own HTTPRequest/AIProvider secrets --
 // same OS keychain, its own well-known id. Pulled out of main.go for the
-// same 500-line reason WireRemoteAuth above is; vaultPath's own
-// MILL_SECRETS_PATH-override-or-default resolution stays in main.go
-// (depguard: this package doesn't import wails/v3/pkg/application).
+// same 500-line reason WireRemoteAuth above is; vaultPath/backupDir's
+// own MILL_SECRETS_PATH/MILL_BACKUP_DIR-override-or-default resolution
+// stays in main.go (depguard: this package doesn't import
+// wails/v3/pkg/application). backupDir feeds SecretService.SetBackupDir
+// (goal 0359's own restore-from-backup door on the key-mismatch state).
 // WireSecrets also wires configureService's own two vault-reference
 // seams onto the newly-constructed SecretService: SetSecretResolver
 // (goal 0185 S3, "vault:" env/header values) and, goal 0203 S2,
@@ -38,8 +41,11 @@ import (
 // Order-independent of GuardrailService's own construction:
 // SetSecretLabelsLookup only sets a package-level var, read lazily by
 // GuardrailStep at evaluation time, never at wiring time.
-func WireSecrets(vaultPath string, credentials credential.Store, store settings.Store, configureService *configuresvc.ConfigureService) *secretsvc.SecretService {
+func WireSecrets(vaultPath, backupDir string, credentials credential.Store, store settings.Store, configureService *configuresvc.ConfigureService) *secretsvc.SecretService {
 	secretService := secretsvc.NewSecretService(secretvault.New(vaultPath), credentials, store)
+	// goal 0359: the key-mismatch state's own restore-from-backup door
+	// needs to know where local backups live.
+	secretService.SetBackupDir(backupDir)
 	// One-time move off the inert ACL-gated keychain item onto the
 	// setting-backed unlock gate (goal 0330). No-op on every launch after
 	// the first, and on every install that never enabled the old one.
@@ -71,6 +77,21 @@ func WireSecrets(vaultPath string, credentials credential.Store, store settings.
 		}
 	})
 	return secretService
+}
+
+// WireVaultWaits joins the two halves of "a run that needs a secret
+// while the vault is locked waits for it" (goal 0360 S2): the executor
+// asks the secret service whether the vault is locked before deciding
+// to block a Run click, and every successful unlock resumes the runs
+// parked on the vault -- same after-unlock hook AdoptSecretsIntoStore
+// rides, so the adoption (which may be what a waiting run's reference
+// needs) runs first.
+func WireVaultWaits(executionService *executionsvc.ExecutionService, secretService *secretsvc.SecretService) {
+	executionService.SetVaultLockedLookup(func() bool {
+		status := secretService.VaultStatus()
+		return status.Exists && !status.Unlocked
+	})
+	secretService.OnUnlock(executionService.ResumeVaultWaits)
 }
 
 // WireSecretRedaction wires composition's mcp-tool-call node error path

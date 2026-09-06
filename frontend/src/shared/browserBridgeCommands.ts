@@ -1,7 +1,7 @@
 import type { Command } from './commands'
 import { useBrowserBridgeStore } from './browserBridgeStore'
 
-// The two actions Settings > Connections > Browsers offers, registered
+// The three actions Settings > Connections > Browsers offers, registered
 // rather than wired inline, so the palette, a keybinding and the button
 // all reach the same effect with the same enablement.
 export const BROWSER_BRIDGE_COMMANDS: Command[] = [
@@ -25,5 +25,12 @@ export const BROWSER_BRIDGE_COMMANDS: Command[] = [
       return status?.connected === true && test !== 'running'
     },
     run: () => useBrowserBridgeStore.getState().runTest(),
+  },
+  {
+    id: 'browser.revealExtension',
+    label: 'commands.browser.revealExtension',
+    defaultBinding: null,
+    keywords: ['browser', 'extension', 'install', 'folder'],
+    run: () => useBrowserBridgeStore.getState().revealExtension(),
   },
 ]

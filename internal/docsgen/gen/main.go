@@ -1,7 +1,7 @@
 // Writes the generated user-docs artifacts (step reference, llms.txt,
-// llms-full.txt) into userdocs/ -- run via `go generate
-// ./internal/docsgen`; TestUserDocs_MatchCommitted keeps the committed
-// output honest.
+// llms-full.txt) into userdocs/ and the README's inventory block --
+// run via `go generate ./internal/docsgen`; TestUserDocs_MatchCommitted
+// and TestREADME_MatchesGenerated keep the committed output honest.
 package main
 
 import (
@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/alicoding/mill/internal/docsgen"
+	"github.com/alicoding/mill/internal/services/servicetest"
 )
 
 func main() {
@@ -35,6 +36,10 @@ func main() {
 		os.Exit(1)
 	}
 	if err := regenerateMaturityLedger(root); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if err := regenerateReadmeInventory(root); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -187,6 +192,29 @@ func regenerateMenuTable(docsRoot string) error {
 	}
 	if err := os.WriteFile(pagePath, []byte(updated), 0o600); err != nil { // #nosec G703 -- same fixed path as the read above
 		return fmt.Errorf("write menu-bar.md: %w", err)
+	}
+	return nil
+}
+
+// regenerateReadmeInventory splices the registry-derived inventory into
+// README.md's one marked region -- same shape as regenerateCommandTable
+// above, one directory up.
+func regenerateReadmeInventory(docsRoot string) error {
+	readmePath := filepath.Join(docsRoot, "..", "README.md")
+	existing, err := os.ReadFile(readmePath) // #nosec G304 -- fixed path at this repo's own root
+	if err != nil {
+		return fmt.Errorf("read README.md: %w", err)
+	}
+	inventory, err := docsgen.GenerateReadmeInventory(docsRoot, servicetest.NewFakeStore())
+	if err != nil {
+		return fmt.Errorf("generate README inventory: %w", err)
+	}
+	updated, err := docsgen.ReplaceMarkedRegion(string(existing), docsgen.ReadmeInventoryBeginMarker, docsgen.ReadmeInventoryEndMarker, inventory)
+	if err != nil {
+		return fmt.Errorf("splice inventory into README.md: %w", err)
+	}
+	if err := os.WriteFile(readmePath, []byte(updated), 0o600); err != nil { // #nosec G703 -- same fixed path as the read above
+		return fmt.Errorf("write README.md: %w", err)
 	}
 	return nil
 }

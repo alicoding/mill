@@ -56,6 +56,17 @@ type RunEvidenceStep struct {
 	GuardrailEffect string `json:"guardrailEffect,omitempty"`
 	GuardrailRule   string `json:"guardrailRule,omitempty"`
 	GuardrailSource string `json:"guardrailSource,omitempty"`
+	// Waits records every park the step went through before it ran --
+	// a vault wait reads "parked: vault-locked" with when it parked and
+	// when the unlock let it continue.
+	Waits []RunEvidenceWait `json:"waits,omitempty"`
+}
+
+// RunEvidenceWait is one wait on a step's way to running.
+type RunEvidenceWait struct {
+	Parked    string    `json:"parked"`
+	ParkedAt  time.Time `json:"parkedAt"`
+	ResumedAt time.Time `json:"resumedAt,omitzero"`
 }
 
 // RunEvidenceBuild is which Mill build actually produced this receipt.

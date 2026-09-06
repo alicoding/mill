@@ -45,6 +45,7 @@ test('the palette renders a group per populated display group, with the expected
     data: ['list-lookup', 'list-search'],
     guardrails: ['human-review', 'ruleset', 'decision-outcome'],
     flow: ['child-workflow', 'decision-route'],
+    browser: ['process-browser-replay'],
   }
   for (const [groupID, nodeTypeIDs] of Object.entries(membership)) {
     const group = panel.locator(`[data-testid="palette-group"][data-group-id="${groupID}"]`)
@@ -185,6 +186,9 @@ test('unchecking "Show advanced steps" hides advanced steps, keeps basic ones, a
     'apply-list-row',
     // goal 0099: consumes a JSON items array from an attribute.
     'apply-atlas-from-reply',
+    // goal 0350 S2: the recording comes from another tool's export, and
+    // a parameter has to name a step inside it.
+    'process-browser-replay',
   ]
   for (const id of advancedIDs) {
     await expect(panel.locator(`[data-node-type-id="${id}"]`)).toHaveCount(0)

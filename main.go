@@ -71,6 +71,12 @@ var assets embed.FS
 //go:embed all:userdocs
 var userdocsFS embed.FS
 
+// A browser loads an unpacked extension from a FOLDER, and an installed
+// copy has no source tree to point at: bridgesvc writes this out.
+//
+//go:embed examples/browser-extension
+var browserExtensionFS embed.FS
+
 // The bundled "mill" marketplace's offerings (docs/goals/0349),
 // injected below because go:embed paths are package-relative and these
 // live at the repository root -- userdocsFS's own shape.
@@ -148,7 +154,10 @@ func main() {
 	configureService := configuresvc.NewConfigureService(settingsStore, compositionService, credentialStore)
 	// MILL_SECRETS_PATH overrides for e2e isolation, same convention as MILL_SETTINGS_PATH above (WireSecrets' own doc comment covers the rest of what this wires). Captured in its own variable -- backupsvc's own wiring below needs the identical path, so every backup carries the vault file (goal 0359).
 	vaultPath := windowing.ConfigDirOrEnv("MILL_SECRETS_PATH", "secrets.kdbx")
-	secretService := wiring.WireSecrets(vaultPath, credentialStore, settingsStore, configureService)
+	// MILL_BACKUP_DIR follows the same override convention, captured
+	// here (ahead of backupsvc's own construction below) since WireSecrets needs it too (goal 0359's restore-from-backup door).
+	backupDir := windowing.ConfigDirOrEnv("MILL_BACKUP_DIR", "backups")
+	secretService := wiring.WireSecrets(vaultPath, backupDir, credentialStore, settingsStore, configureService)
 	wiring.WireSecretRedaction(secretService) // goal 0185 S4
 	// docs/adr/0038: Atlas's storage/CRUD layer (cross-surface wiring
 	// arrives below via injected seams, never direct imports).
@@ -177,9 +186,6 @@ func main() {
 		executionDatabaseURL = "sqlite:" + windowing.ConfigDirOrEnv("MILL_EXECUTION_DB_PATH", "execution.db")
 	}
 
-	// MILL_BACKUP_DIR follows the same override convention as above;
-	// docs/goals/0065's backupService construction reuses this value.
-	backupDir := windowing.ConfigDirOrEnv("MILL_BACKUP_DIR", "backups")
 	backupsvc.GuardVersionChange(logger, settingsStore, backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion)
 
 	mcpAuditService := wiring.WireAuditTrails(secretService, backupsvc.SQLiteDBPath(executionDatabaseURL), logger)
@@ -211,6 +217,7 @@ func main() {
 	}
 	codeLoopService.SetExecutionService(executionService)
 	wiring.WireCodingLoopSecrets(codeLoopService, secretService)
+	wiring.WireVaultWaits(executionService, secretService) // goal 0360 S2
 	wiring.WireCodingLoopEnvPreview(codeLoopService, compositionService, configureService) // docs/goals/0240 S4
 	// Single execution path (docs/adr/0008): a headless trigger fire now
 	// runs through the same durable ExecutionService.RunWorkflow every
@@ -233,14 +240,9 @@ func main() {
 	// run executed in; the labels live in Configure.
 	executionService.SetEnvironmentLabelLookup(configureService.EnvironmentLabel)
 
-	// docs/adr/0038 decision 4, goal 0061 slice C / goal 0084: "Update
-	// now" and card actions both run through the normal guardrail-gated
-	// path -- same late-bound-setter shape as WireChildWorkflowRunner
-	// above, atlassvc never imports executionsvc directly. Split into
-	// the wiring package at the 500-line limit, same as the seam
-	// adapters below.
-	wiring.WireAtlasWorkflowRunners(executionService)
-	executionService.SetRunCompletionSink(atlasService.NotifyRunCompleted)
+	// atlassvc's own run/action/completion seams onto executionService --
+	// composition-root code split out of this file at the 500-line limit.
+	wiring.WireAtlasWorkflowRunners(executionService, atlasService)
 	atlasService.WireCompositionSeams(triggerService.DispatchAtlasCardChange) // goal 0066
 	// Cross-service seam adapters (recognition, List projection) live in the wiring package -- composition-root code split out of this file at the 500-line limit.
 	wiring.WireAtlasProjections(atlasService, configureService, compositionService)
@@ -254,8 +256,8 @@ func main() {
 	wiring.WireAtlasStorageDirs(atlasService)
 	atlasService.SetGuardedDataPaths(settingsPath, backupsvc.SQLiteDBPath(executionDatabaseURL), backupDir)
 
-	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger)    // docs/goals/0132-remote-access.md SLICE 1
-	bridgeService := wiring.WireBrowserBridge(remoteAuthService, logger) // the browser bridge's own loopback listener (docs/goals/0350)
+	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger)                                                    // docs/goals/0132-remote-access.md SLICE 1
+	bridgeService := wiring.WireBrowserBridge(remoteAuthService, logger, browserExtensionFS, filepath.Dir(settingsPath)) // the browser bridge's own loopback listener (docs/goals/0350)
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	wiring.WireSettingsEraSeams(settingsService, notificationService, remoteAuthService, triggerService, atlasService, pluginService, secretService)

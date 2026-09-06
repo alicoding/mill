@@ -2,6 +2,7 @@
 
 ---
 
+
 # What is Mill
 
 A script writes new shapes into a `.drawio` file on disk. Drop that file
@@ -39,6 +40,7 @@ up, export, and inspect. Install it by cloning the repository and
 building, or grab a release — see [Install](install.md).
 
 ---
+
 
 # Install
 
@@ -100,6 +102,7 @@ can export everything to one file for another machine.
 
 ---
 
+
 # Your first workflow
 
 Mill ships with working examples, and the fastest way to understand it
@@ -143,6 +146,948 @@ way — open any of them on the canvas to read how it works.
   explained in [Guardrails](../concepts/guardrails.md).
 
 ---
+
+
+# Your first board
+
+Atlas is the board where cards, tables, and diagrams sit side by side.
+This walk places one of each, lines them up, and undoes a change —
+ten minutes, nothing to install.
+
+## Place a card
+
+1. Open **Atlas**. The seeded board opens with a few cards already on
+   it.
+2. Press **C** (or pick **Card** in the tray at the bottom of the
+   board) and click an empty spot. The card appears where you clicked.
+3. Type a title — *Launch checklist*, say — and press Enter. The card
+   keeps the kind the tray offered; change it later from the card's
+   own page.
+
+## Place a table
+
+1. Pick **Table** in the tray. A size grid opens: sweep across it to
+   the shape you want (3 × 3 is plenty) and click.
+2. Move the pointer over the board. A dashed outline carrying the new
+   table's name follows it, so you see where the table lands before
+   you commit. Click to place it.
+3. Click the table once to select it, then click a cell and type.
+   Click a column header to rename it. Scroll inside the grid and the
+   board holds still — only the table's rows move.
+
+## Place a diagram
+
+1. Drag a `.drawio` or `.mmd` file from Finder onto the board (or
+   copy the file in Finder and press ⌘V over the board). It lands as
+   a diagram at your pointer and renders right there.
+2. Edit the file in its own app and the diagram on the board updates
+   itself — no re-import.
+3. Right-click the diagram and choose **Edit diagram…** to open the
+   built-in editor instead.
+
+## Line things up
+
+Drag the card toward the table. As one of its edges or its center
+comes within a few pixels of the table's, a guide line appears across
+both and the card snaps to it. Release, and the two share that line
+exactly. The same guides appear against every card and object nearby,
+at any zoom level.
+
+## Undo
+
+Press **⌘Z**. The card moves back to where it was. Press **⇧⌘Z** to
+redo. Undo covers almost everything on the board — placing, moving,
+resizing, deleting, pasting, drawing — and deleting also shows a
+brief **Undo** button on the board itself.
+
+## Where to go next
+
+- What every building block on the board can do, in
+  [Atlas](../concepts/atlas.md).
+- Let an agent read and edit that diagram by shape id, in
+  [Edit a diagram with an agent](../agents/diagrams.md).
+
+---
+
+
+# Store and reference a secret
+
+Put a value in the vault, then pick it from any field that needs one.
+Why every such field is a pick, not a text box, is in
+[Secrets are references](../concepts/secrets.md).
+
+## Store it
+
+1. Open **Secrets**. The first time, press **Create vault**; after
+   that, press **Unlock** if the vault is locked.
+2. Press **New secret**.
+3. Give it a **Title** you will recognise in a picker — *GitHub token*,
+   say — and paste the value into **Password**. Username, Website,
+   Notes and Tags are optional.
+4. Press **Save**. The entry appears in the list; **Copy password**
+   puts the value on your clipboard for ten seconds.
+
+## Reference it from a step
+
+1. Open the workflow and select the step, or open the Configure entry
+   (an Integration, an MCP server, an AI provider, an Environment).
+2. In the secret field, open the picker. Entries are grouped under
+   **Vault** and **Secret sources**; **Add new secret** creates one
+   without leaving the field.
+3. Pick the entry. The field shows its title, never the value, and the
+   run resolves it when the step executes.
+
+## Use a value you keep elsewhere
+
+1. Open **Secrets › Sources** and add the source — your shell
+   environment, a `.env` file, or a password manager's CLI.
+2. Its keys now appear in every picker under **Secret sources**. Pick
+   one exactly as you would a vault entry; Mill reads the value at run
+   time and never copies it into the vault.
+
+## If the picker is greyed out
+
+The vault is locked. Open **Secrets** and press **Unlock**, or search
+"unlock vault" in the command palette (⌘K).
+
+---
+
+
+# Install a plugin
+
+Read the [plugin standard](plugin-standard.md) first.
+
+A plugin adds a new object type to the canvas without rebuilding Mill.
+It is a folder holding two files — `manifest.json` (name, version, and
+what the plugin is allowed to ask for) and `main.js` (its code) — and
+installing one is copying that folder into Mill's plugins folder.
+
+## Installing
+
+**Extensions** is its own page — press ⇧⌘X, or pick it in the sidebar.
+It has three tabs: **Installed**, **Browse**, and **Updates**.
+
+Browse lists everything your marketplaces offer that you have not
+installed yet, starting with the examples Mill ships. Press **Install**
+on a row. Mill shows what the extension can do — the hosts it reaches,
+whether it writes to your boards, what it adds — and installs it only
+after you confirm. The new extension appears under **Installed**;
+reload to load it.
+
+### Installing from a link or a folder
+
+Not everything lives in a marketplace. Mill also installs from:
+
+- a repository, as `owner/repo` or `owner/repo@v1.2.0`
+- a direct address of a `.zip` archive
+- a folder on this Mac, for a plugin you are writing yourself
+
+The folder name must match the plugin's id, and a folder you point
+Mill at is copied, not linked.
+
+### How much Mill checked
+
+Every installed extension wears one badge, and it says exactly what
+was checked:
+
+| Badge | What it means |
+| --- | --- |
+| **Verified** | Its files match the hash the marketplace published, and a key this Mill trusts signed them. |
+| **Hash-pinned** | Its files match the hash the marketplace published. |
+| **Unverified** | Nothing checked these files. Mill asks you to acknowledge that before installing. |
+| **Dev** | You installed it from a folder on this Mac. |
+
+The badge is on the row, on the extension's page, and on its
+**Verification** tab, which also lists what the extension can do — the
+same list you saw before installing.
+
+### Marketplaces
+
+A marketplace is any repository or folder with a `.mill/marketplace.json`
+file at its root, listing the plugins it offers. Press **Sources** in
+the Browse tab to add one: `owner/repo`, a repository address, a direct
+address of a `marketplace.json` file, or a folder path.
+
+Mill reads a marketplace only when you add it, refresh it, install
+from it, or check for updates. It never reaches out on its own.
+
+### Updates
+
+Mill never looks for a newer version on its own. Open **Extensions →
+Updates** and press **Check for updates**: Mill re-reads every
+marketplace you added, then asks each installed extension's own
+source what it offers now — the marketplace entry it came from, a
+repository's latest release, or the folder you installed it from.
+Only a strictly newer version is listed; a downgrade is never offered.
+
+Each row has **Update**, and **Update all** applies every row at once.
+An update goes through the same door the first install did, with the
+same badge and the same prompt: an unverified update still asks you to
+acknowledge it, so **Update all** leaves those rows for you to press
+one by one. The Updates tab shows a count until you have applied them,
+and the row's **…** menu offers the same **Update** and **Check for
+updates**.
+
+A repository publishes an update as a release whose tag is the
+version and whose asset is named `<id>-<version>.zip`; Mill fetches
+that asset by name. An extension you copied in by hand has no source
+to ask, so it never appears here.
+
+### MCP servers an extension ships
+
+An extension can ship the definition of an MCP server — the command
+that starts it and the environment it needs. Its page lists each one
+under **Contributions → MCP servers** with **Add to Configure**: one
+press creates the MCP Server entity in Configure, ready for a workflow
+to call tools on.
+
+A secret the server needs is named by one of the extension's own
+secret settings, never written into the extension. Pick the secret on
+the extension's **Settings** tab first; the entity is created with a
+reference to it, and Mill resolves the value only when the server is
+started. If no secret is picked yet, **Add to Configure** tells you
+which setting to fill in.
+
+### Installing by hand
+
+Copying a folder into the plugins folder still works. Open
+**Extensions → Installed → Open plugins folder**, copy the folder in,
+and press **Reload all**.
+
+A plugin that can't load shows exactly why on its page — a missing
+file, invalid manifest, or a capability Mill doesn't recognize —
+instead of silently doing nothing. A plugin whose manifest sets
+`minMillVersion` to a version newer than your Mill is refused the
+same visible way: update Mill, then reload.
+
+### What an extension's page shows
+
+Click a row to open it. **Overview** is the plugin's own README;
+**Contributions** is what it adds, what it can reach, and what it
+catches; **Changelog** is its CHANGELOG; **Verification** is what
+checked it and what it can do; **Settings** is whatever it declares.
+
+## Starting a plugin
+
+`mill plugin new <name>` writes a folder holding `manifest.json` and
+`main.js`, already named and valid, and prints where to copy it. Add
+`--dir <path>` to create it somewhere other than the current folder.
+
+For autocomplete while you write it, install the types:
+
+```
+npm i -D github:alicoding/mill#path:frontend/plugin-sdk
+```
+
+Then put two lines at the top of `main.js` and annotate `activate`:
+
+```js
+// @ts-check
+/// <reference types="@alicoding/mill-plugin-sdk" />
+
+/** @param {import('@alicoding/mill-plugin-sdk').MillPluginAPI} api */
+export function activate(api) {}
+```
+
+Nothing is compiled — the types are read by your editor, and Mill
+loads the same plain file either way. Every type is listed in the
+[plugin API reference](plugin-api/index.md).
+
+## Reloading one plugin while you work
+
+Each installed plugin's page has a **Reload** button, and the command
+palette carries the same action as "Reload <plugin>". It re-reads that
+plugin's `main.js` and re-registers everything it contributes — its
+tools, views, captures, and commands — without restarting Mill.
+Objects already on your boards stay where they are.
+
+Editing a plugin's files changes what you allowed it to run, so the
+reload asks you to allow it again on its page first. **Reload all** at
+the top of the list is the other half: it restarts Mill's plugin
+loading entirely, which is how a folder you just copied in is noticed.
+
+## Turning a plugin off
+
+Each installed plugin has the same switch every built-in extension
+has, on its row. Turning it off removes its tool from the tray and
+palette; objects it already placed stay on your boards untouched.
+
+## Removing a plugin
+
+On the plugin's page, open the **…** menu and choose **Remove…**. Mill
+asks first, then moves the plugin's folder to the Trash — nothing is
+deleted, so you can put it back. Objects it created stay on the board
+as unknown kinds until it is installed again, and a folder you restore
+asks to be allowed again, the way any newly installed plugin does.
+Plugins that ship inside Mill have no Remove.
+
+## Before a plugin runs
+
+A plugin you install after Mill first ran with this check waits for
+your review: its page in Settings > Extensions states what it can
+request, which hosts it can reach, and what it catches, and nothing of
+it runs until you click **Allow** there and reload. A notice in the footer tells you
+when one is waiting. Plugins that were already installed when the
+check arrived keep running; only new arrivals wait.
+
+Mill remembers what you allowed: the plugin's files are fingerprinted
+at that moment, and if they change later — an update you copied in,
+or an edit — the plugin stops until you look again and allow it once
+more. Its page says "Its files changed since you allowed it."
+
+An administrator can pin which plugins may run at all by writing an
+allow-list into Mill's settings file — the key
+`settings-plugin-allowlist`, a JSON array of plugin ids, placed the
+way device-management tooling places any managed setting. When it is
+set, Settings > Extensions reports it and every plugin off the list
+shows as blocked on its page, with no switch on its row. The Drawing
+plugin built into Mill is exempt.
+
+An administrator can also require signatures: the key
+`settings-plugin-signing-keys`, a JSON array of minisign public keys.
+With keys pinned, a plugin runs only when its folder holds
+`mill-plugin.minisig`, a minisign signature of the folder's content
+hash (Export plugin audit shows each plugin's `contentHash`; sign that
+string with `minisign -S`). Unsigned plugins show as such and cannot be
+turned on.
+
+**Export plugin audit** (Settings > Extensions, or the command
+palette) saves one JSON file: every installed plugin with its declared
+reach and whether it is allowed and on, every action a plugin asked
+Mill to perform within the last day, and every secret a plugin read.
+
+## What a plugin can and cannot do
+
+A plugin draws its own objects and edits their data through Mill.
+It is never handed the ability to open network connections, touch
+files, or leave the app on its own. When it needs something like
+that — opening a web address in your browser, say — it must:
+
+1. **Declare** the capability in its manifest, visible on its
+   Extensions row before you ever run it.
+2. **Ask** at the moment of use. Every ask runs through your
+   guardrail rules: you can allow it, deny it, or leave the default,
+   which parks the request in **Review** for your explicit approval.
+
+Undeclared asks are refused outright. Approved actions are performed
+by Mill itself, never by the plugin's own code.
+
+## Catching drops and pastes
+
+A plugin can claim the two ways outside content lands on the board:
+a file dragged in from your file manager, and content pasted from
+another app. Claims are declared in the manifest, so a plugin's
+Extensions page shows what it catches before it ever runs:
+
+```json
+"contributes": {
+  "canvasObjects": [
+    { "kind": "bookmark", "pastesURLs": true, "fileExtensions": [".webloc"] }
+  ]
+}
+```
+
+- `fileExtensions` — dropped files with a listed extension land as
+  this plugin's object, pointing at the file where it is. Requires
+  `source: "file"` on the registered object.
+- `pastesURLs` — a web address pasted from any app lands as this
+  plugin's object instead of a note. Requires `source: "url"`.
+
+Mill's own built-in shapes always win first — a diagram, image, or
+spreadsheet file keeps landing as its built-in object — and anything
+no one claims still lands the way it does today. With the Bookmark
+example installed, pasting a link from your browser drops a bookmark
+right on the board.
+
+When two plugins claim pasted links (Bookmark and the Web clipper both
+do), the first one lands and the board's toast offers the other:
+"Pasted as Bookmark · Paste as Web clipper instead" re-types that same
+object in place, undo included. Settings > Extensions' "Pasted links
+become" picks which one lands first; without a choice, plugins take
+turns in id order.
+
+## Drawing tools
+
+A plugin isn't limited to click-to-place objects: it can register a
+DRAG tool that rides the same gesture engine, style picker, and
+live-preview overlay Mill's own drawing tools use — in fact Mill's
+own pencil, shape, eraser, and laser ARE such a plugin (**Drawing**,
+built into the app; its row sits under Installed, and a
+folder named `mill-drawing` in your plugins folder replaces it). The
+declaration fields that open this up:
+
+- `interaction` — `"arm-then-click"` (the default), `"drag-to-draw"`
+  (the armed pointer drag feeds your `gesture`, which decides what to
+  create), or `"ephemeral-drag"` (the drag only renders a live
+  preview and never creates anything — a laser-pointer shape;
+  `renderFace` is optional there, since nothing is ever placed).
+- `styleFields` — the tool's styleable properties (`color`,
+  `color-or-none`, `stroke-width`, and `shape-kind`, an icon-button
+  picker whose options name their icons from the same named glyph set
+  as `icon` below), each with its own options, default, and optional
+  `label`. Declaring any renders Mill's style picker next to the
+  armed tool automatically; current values arrive on the gesture ctx.
+- `gesture` — `{ onPoint?, onEnd, renderPreview?, fadeMs? }`. `onEnd`
+  receives the full drag's points plus a ctx carrying
+  `screenToFlowPosition`, `styleValues`, `createObject(payload,
+  flowPos, opts?)` (scoped to your own kind; lands, syncs, and undoes
+  like any placement — `opts.size` sets the placed size, `opts.select`
+  selects it), `saveImageBytes(base64, ext, title)` for baking
+  drawn bytes into a Mill-owned file a file-backed object's payload
+  can point at, and `itemsInRect(rect)` for the ids of the top-level
+  cards, notes and objects whose center falls inside a board-space
+  rect (the rule the built-in Area tool uses). `renderPreview(el, points, now)` draws the live
+  in-drag stroke into a host-owned overlay element. Drag tools stay
+  armed across strokes by default (`sticky: false` opts out, and a
+  non-sticky tool may add `lockable: true` so re-clicking its armed
+  button locks it for deliberate repetition).
+- Identity extras — `icon` takes an emoji or a named glyph (`pencil`,
+  `zap`, `trash`, `diamond`, `square`, `circle`, `arrow-up-right`);
+  `shortcutKey` gives the tool a bare-letter shortcut and tray key
+  chip; `group: "annotate"` files its button into the tray's Annotate
+  drawer; `objectKind` lets the persisted object kind differ from the
+  tool id (the pencil places `ink` objects); `dragBand: false` drops
+  the drag-handle band when the object's whole body already drags.
+- Erasing — a tool that erases instead of creating declares the
+  `erase-board-items` capability in its manifest. Its gesture ctx
+  then carries `eraseHitTest(pt)` (accumulates whatever board item
+  sits under the point) and `commitErase()` (erases the accumulated
+  set through the same undoable quick-delete a Delete key press
+  uses — one undo step per pass). What was hit stays on Mill's side;
+  the plugin never sees item identities.
+
+## Settings
+
+A plugin declares its own settings in the manifest, and Mill does the
+rest: the controls render on the plugin's page under Installed, the
+values are stored centrally, and the plugin reads them
+back through `api.settings`. A plugin never builds a settings screen.
+
+```json
+"contributes": {
+  "settings": [
+    { "key": "titleStyle", "type": "enum", "label": "Title",
+      "description": "What a bookmark shows as its title.",
+      "default": "hostname",
+      "options": [
+        { "value": "hostname", "label": "Site name" },
+        { "value": "address", "label": "Full address" }
+      ] },
+    { "key": "placeholderTitle", "type": "string",
+      "label": "Title before an address", "default": "Bookmark" }
+  ]
+}
+```
+
+Five types: `boolean` (a checkbox), `string` (a text field),
+`number` (a number field, with optional `min` and `max`), `enum`
+(a dropdown over `options`), and `secretRef` (a picker over the
+vault's entries — see below). `default` is the value in effect until
+the user changes the control; a mistyped manifest — a default of the
+wrong type, an enum default missing from its options, a default on a
+`secretRef` — blocks the plugin from loading and names the key on its
+page.
+
+A `secretRef` setting names a credential without ever holding it:
+
+```json
+{ "key": "auth", "type": "secretRef", "label": "Authorization",
+  "description": "Sent as a bearer token with every request." }
+```
+
+The user picks one of their vault entries in the plugin's row; the
+stored value is a reference, and `api.settings.get('auth')` answers
+the entry's title (or an empty string when nothing is picked). The
+value itself only ever travels inside `api.fetch` — see Reaching the
+network. A picked entry that is later deleted shows "This secret no
+longer exists. Pick another." on its page, and a request naming it is
+refused with the same words.
+
+```js
+export function activate(api) {
+  const style = api.settings.get('titleStyle')        // 'hostname' | 'address'
+  const stop = api.settings.onChange('titleStyle', (next) => {
+    // Redraw whatever depends on it -- a face only re-renders on its
+    // own data changes, so this is the door for a settings change.
+  })
+}
+```
+
+Commands a plugin registers can carry `enabled: () => boolean`, the
+same state check built-in commands use; a disabled command is left
+out of the palette rather than shown doing nothing. A default
+keyboard shortcut is not something a plugin ships — the user assigns
+one under Keyboard shortcuts.
+
+## Notices
+
+A plugin tells the user something through Mill's own notice pill in
+the footer, labelled with the plugin's name. Info and success notices
+leave on their own after a few seconds; warnings and errors stay until
+dismissed. A user-started action that fails should always say so here,
+never only in the console.
+
+```js
+const dismiss = api.notify({ level: 'error', text: 'Could not save the bookmark address.' })
+// Optional: a secondary link running one of this plugin's own commands.
+api.notify({ text: 'Imported 12 rows.', action: { label: 'Show', commandId: 'showImport' } })
+```
+
+## Storage
+
+A plugin keeps its own state in `api.storage`, saved centrally under
+the plugin's id: any JSON value, read synchronously, written through
+on `set`. Nothing else in Mill reads it. The Drawing plugin uses it to
+remember the last-used pencil and shape style across restarts.
+
+```js
+const saved = api.storage.get('pencil') || {}          // undefined when never set
+await api.storage.set('pencil', { color, size })
+await api.storage.delete('pencil')
+api.storage.keys()                                      // ['pencil', …]
+```
+## Reading the board
+
+A plugin lists what is on the board through `api.query`, and hears
+about changes through `api.on`. Every entry carries the name a person
+sees it by: a card's title, a note's first line, an object's title or
+kind. Cards, notes, and every object kind — built-in or another
+plugin's — come back the same shape.
+
+```js
+const notes = await api.query({ kind: 'note' })        // [{ id, kind, title, parentId, position, size, payload }]
+const everything = await api.query({})
+const children = await api.query({ parentId: someCardId })
+
+const stop = api.on('contents:changed', ({ id }) => {
+  // Something on the board was created, edited, moved, or deleted.
+  // A face only re-renders on its own data, so re-list here.
+})
+```
+
+The Board index example (`examples/plugins/mill-index`) is exactly
+this: one object whose face lists the board by kind and re-renders
+on every change.
+
+## Reaching the network
+
+A plugin never opens a connection itself. It declares the hosts it
+needs in the manifest, asks Mill to fetch, and Mill decides through
+your guardrail rules — allow, ask you first, or deny — the same way it
+decides an agent's write. Approved requests run inside Mill, confined
+to the declared host on every hop (a redirect elsewhere is refused),
+and the response comes back to the plugin. A host or method the
+manifest does not declare is refused before any rule runs.
+
+```json
+"capabilities": ["fetch"],
+"contributes": {
+  "network": [
+    { "host": "api.example.com" },
+    { "host": "hooks.example.com", "methods": ["GET", "POST"] }
+  ]
+}
+```
+
+An entry without `methods` allows GET only. Responses are capped at
+4 MB. A plugin whose hosts are typed by the user — a request tester,
+say — declares `{ "host": "*" }`: every request to a host not
+otherwise declared then asks you first, every time, and no rule can
+make it silent. The Extensions row says so before the plugin runs.
+
+```js
+const res = await api.fetch('https://api.example.com/issues?open=1')
+if (res.approved) console.log(res.status, res.body)   // headers in res.headers
+else api.notify({ level: 'warning', text: 'Not allowed' + (res.ruleLabel ? ' (' + res.ruleLabel + ')' : '') })
+```
+
+Credentials belong in the vault, not in plugin code. A request that
+needs one names a `secretRef` setting, and Mill attaches the entry's
+value itself — after you approve the request — as a header:
+
+```js
+const res = await api.fetch('https://api.example.com/me', {
+  secret: { settingKey: 'auth' }                 // Authorization: Bearer <value>
+  // or: secret: { settingKey: 'auth', header: 'X-Api-Key', prefix: '' }
+})
+```
+
+Every request that carries a secret asks you first, whatever your
+other rules say: the Review row reads "GET api.example.com · uses
+secret ‘Jira PAT’", and the vault's access history records the read
+as sent by the extension. The value is redacted from the response
+before the plugin sees it — a server echoing the token back gets
+`[redacted]`.
+
+## Opening a path in another app, and listing a folder
+
+Two more guarded doors, both declared as capabilities:
+
+- `open-app` — `ctx.requestGuardedAction('open-app', { app: 'Bruno', path: '/abs/folder' }, 'Open the collection in Bruno')` hands a local path to a named application through the OS's own open-with. It asks like every guarded action (Review shows the plugin's name) and, once approved, opens the app.
+- `list-files` — `api.files.list('/abs/folder')` returns the folder's direct children (`{ name, path, isDir, size }`), hidden entries and dependency folders left out. It is a read: allowed unless one of your rules denies or parks it, and audited either way; `entries` is empty when it was not approved.
+
+The Bruno collection example uses both: its face lists the collection's requests and offers "Open in Bruno".
+
+## Writing to the board
+
+A plugin creates notes and cards, updates cards, and adds rows to a
+List through the same guarded door an agent uses: each write goes to
+your guardrail rules — allow, ask you first in Review, or deny — with
+the plugin named as the source, and lands with its own undo history.
+The manifest declares the capability; without it every write is
+refused before any rule runs.
+
+```json
+"capabilities": ["write-content"]
+```
+
+```js
+const note = await api.content.createNote({ text: 'Call the bank\ntomorrow', parentId })
+const card = await api.content.createCard({ kindId, title: 'Acme', fields: { status: 'active' } })
+await api.content.updateCard(card.id, { note: 'Renewal due in March' })
+await api.content.appendListRow(listId, { vendor: 'Acme', tier: 'gold' })
+const list = await api.content.createList({ title: 'Vendors', columns: [{ name: 'Vendor' }, { name: 'Tier', type: 'text' }], rows: [{ Vendor: 'Acme', Tier: 'gold' }] })
+if (!note.approved) api.notify({ level: 'warning', text: 'Not allowed' + (note.ruleLabel ? ' (' + note.ruleLabel + ')' : '') })
+```
+
+A note without a position lands just right of the last item in its
+parent. A denied write resolves with `approved: false`; an approved
+one carries the new entity's `id`. `createList` takes columns by
+display name with an optional type (`text`, `number`, `integer`,
+`boolean`, `date`, `datetime`; text when omitted) and first rows keyed
+by column name.
+
+## Workflow steps
+
+A plugin can add steps to the workflow palette. Declare them in the
+manifest and implement them in a `steps.js` next to `main.js`:
+
+```json
+"contributes": {
+  "steps": [
+    { "id": "text-case", "label": "Text case", "description": "Changes the text's case.",
+      "config": [ { "key": "mode", "label": "Mode", "type": "options", "options": ["upper", "lower", "title"], "default": "upper" } ] }
+  ]
+}
+```
+
+```js
+// steps.js -- plain script, no imports or exports
+registerStep('text-case', {
+  perform: function (input) {
+    // input.payload: the text arriving from the previous step
+    // input.config: this step's authored fields (input.config.mode)
+    // input.attributes: the run's attribute values
+    return input.payload.toUpperCase()          // or { payload, attributes }
+  },
+})
+```
+
+`steps.js` runs inside Mill's workflow engine, not in the window: a
+step works in a scheduled or headless run exactly as it does from the
+editor, and Try this step in the Inspector runs the same function. It
+sees only its input — no network, no files, no other plugin — and a
+step that runs longer than a few seconds fails the run instead of
+hanging it. Config fields are text or a fixed option list. The step
+appears in the palette under Transform as "<label>", and the
+Extensions row lists "Adds workflow steps". The **Text case** example
+(`examples/plugins/mill-textcase`) is the whole pattern in one file.
+
+## Secret sources
+
+A plugin can turn a store of credentials on your machine into secrets
+Mill offers everywhere a secret is asked for. Declare each store in the
+manifest and implement it in a `secrets.js` next to `main.js`:
+
+```json
+"capabilities": ["read-file"],
+"contributes": {
+  "secretSources": [
+    { "id": "netrc", "label": "Netrc file",
+      "path": { "kind": "file", "label": "File", "placeholder": "~/.netrc", "default": "~/.netrc" },
+      "capabilities": ["list", "resolve"] }
+  ]
+}
+```
+
+```js
+// secrets.js -- plain script, no imports or exports
+registerSource('netrc', {
+  list: function (ctx) {
+    // ctx.path: the file the user configured; ctx.readFile() its bytes
+    return namesIn(ctx.readFile())            // names only, never a value
+  },
+  resolve: function (ctx, key) {
+    return valueFor(key, ctx.readFile())      // one value, at the moment of use
+  },
+})
+```
+
+`secrets.js` runs on Mill's own side, never in the window, and a source
+reaches nothing but the file — or, for a `"folder"` path, the folder —
+the user pointed it at. `list` returns names; `resolve` returns one
+value, which Mill applies itself through the same gate and access
+history every other secret passes. The value never returns to the
+plugin, and nothing is copied into Mill's vault.
+
+Add the source under **Secrets › Sources**: its label appears in the
+Kind picker, and the path field renders with the label, placeholder and
+default the manifest declares. A source whose extension is removed or
+turned off says so in its own row instead of listing nothing. Two
+optional capabilities go alongside: `"discover"` offers stores found
+under a configured folder, and `"import"` reads several names at once.
+The **Netrc file** example (`examples/plugins/netrc-secrets`) is the
+whole pattern in one file.
+
+## Captures
+
+A plugin can offer a quick capture: a small face that opens in its own
+floating window from the Quick Panel or the command palette, away from
+the canvas, and lands what the user writes where they choose. Declare
+it in the manifest and register the face:
+
+```json
+"contributes": { "captures": [ { "id": "thought", "label": "Thought", "description": "A one-line thought." } ] }
+```
+
+```js
+api.registerCapture({
+  id: 'thought',
+  render(el, ctx) {
+    // Draw the face into el. ctx.destinationId is the card the user
+    // chose in the window's header ("" for the top level) -- pass it
+    // as parentId to a content door, then call ctx.done().
+    // ctx.cancel() closes without writing.
+  },
+})
+```
+
+The Quick Panel lists "New <label>…" straight off the manifest, so the
+row is there before any plugin code runs; the capture window loads the
+plugin and calls `render`. Writes go through the same guarded content
+doors as everywhere else. Mill's own note is the first capture (the
+"New note…" row); the destination is remembered per capture.
+
+## Views
+
+A plugin can own a work tab — the same strip a workflow editor opens
+in. Declare the view in the manifest (its title is the tab's label,
+and the Extensions row lists it), register how to draw it when the
+plugin activates, and it appears in the command palette under that
+title. The panel keeps what you drew while another tab is in front;
+after Mill restarts, the tab comes back and draws again.
+
+```json
+"contributes": { "views": [{ "id": "issues", "title": "Issues" }] }
+```
+
+```js
+export function activate(api) {
+  api.registerView({ id: 'issues', render(el, ctx) {
+    el.replaceChildren()            // plain DOM, same as renderFace
+    // ... list issues here; api.query / api.fetch / api.storage all work
+  } })
+}
+```
+
+Your own commands can open it too: run the registry command
+`view.open.<plugin id>.issues`.
+
+## Context-menu items
+
+A plugin can add items to the right-click menu of its own objects.
+Each item acts on the object that was clicked and receives the same
+context the face gets; an item can say when it applies, and Mill leaves
+it out of the menu until then. Other kinds of object never show it.
+
+```js
+api.registerCanvasObject({
+  kind: 'bookmark',
+  menuItems: [
+    { id: 'open', label: 'Open in browser',
+      enabled: (ctx) => !!ctx.object.Payload.url,
+      run: (ctx) => ctx.requestGuardedAction('open-url', { url: ctx.object.Payload.url }, 'Open the bookmark') },
+  ],
+  // ...
+})
+```
+
+## The example plugins
+
+Mill's repository ships seven working examples: **Bookmark**
+(`examples/plugins/mill-bookmark`) — a web address pinned to the
+board, edited in place, opened through a guarded ask, with two
+declared settings — **Scribble** (`examples/plugins/mill-scribble`) —
+a freehand drawing tool exercising the drag interaction, style fields,
+and live preview above — and **Board index**
+(`examples/plugins/mill-index`) — a live listing of the board through
+`api.query` and `api.on` — and **Request tester**
+(`examples/plugins/mill-request-tester`), a real tool on nothing but
+the doors: a work tab, any-host guarded fetch, a storage-backed
+history, and a declared setting — and **Mind map**
+(`examples/plugins/mill-markmap`), a view over a note's headings that
+follows the note as it changes, its rendering engine vendored as one
+committed bundle (`scripts/vendor-markmap.sh`) so it never loads
+anything from the network — and **Web clipper**
+(`examples/plugins/mill-clipper`), which fetches a page through the
+guarded network door, extracts the article with Mozilla's Readability
+(vendored the same way), converts it through the SDK's convert door
+(`api.convert.htmlToMarkdown`), and saves it as a note through the
+guarded content door — and **Netrc file**
+(`examples/plugins/netrc-secrets`), which turns the machines in a
+`.netrc` file into secrets Mill can reference. Copy any folder into
+your plugins folder to try it, or use it as the starting point for
+your own.
+
+## Integrating a real tool
+
+Mill never rebuilds a tool you already use; it puts the tool's files
+and its command line on the board and in workflows. The pattern, with
+Bruno (an API client) as the worked example:
+
+1. **Find the tool's own seams.** Bruno keeps a collection as a folder
+   of `.bru` files with a `bruno.json`, and its CLI runs one with
+   `bru run --reporter-json`. Files and a CLI are exactly what Mill
+   integrates through — a file-backed object kind and a shell step.
+2. **Place the artifact as an object.** The Bruno collection example
+   (`examples/plugins/mill-bruno`) registers a file-backed kind over
+   `bruno.json`: the face names the collection, lists its requests
+   through the files door, and offers "Open in Bruno" through the
+   open-app door. Editing stays in Bruno.
+3. **Run it as a workflow.** The seeded "Example: Run a Bruno
+   collection" runs the CLI on an execution environment, reads the JSON
+   report it wrote, and lands the results as rows of the seeded "Bruno
+   results" List — guarded and audited like every command Mill runs.
+4. **Keep secrets in the tool's own store.** Bruno reads a `.env` at
+   the collection root; point Secrets > Sources at that file
+   and the keys appear in every secret picker without a copy.
+
+Nothing here is Bruno-specific in the platform: the same four moves
+fit any tool with files and a command line.
+
+## Checking a plugin
+
+Two commands run the same checks Mill's own examples pass:
+
+```sh
+go run ./internal/pluginconform path/to/your-plugin   # the loader's rules, ahead of time
+cd frontend && npm run plugin:conform                 # activates every example against a recording host
+```
+
+The first refuses what the loader would refuse — id and folder name,
+capabilities, contributions, file types the plugin route serves, a
+symlink leaving the folder. The second activates each plugin against a
+recording stand-in for `api` and checks that every object, view, and
+setting it registers or reads is declared in its manifest.
+
+## Writing one
+
+A plugin's `main.js` is a plain JavaScript module — no build step —
+exporting one function:
+
+```js
+export function activate(api) {
+  api.registerCanvasObject({
+    kind: 'my-thing',
+    label: 'My thing',
+    icon: '⭐',
+    source: 'board-local',
+    editRoute: 'inline', // or 'external-app' | 'none', or (object) => one of them
+    defaultPayload: {},
+    renderFace(el, ctx) {
+      // Draw into el with plain DOM. ctx.object holds the data;
+      // ctx.updatePayload(patch) saves changes (undo included);
+      // ctx.requestGuardedAction(kind, attrs, description) asks Mill
+      // to act on the plugin's behalf.
+    },
+  })
+}
+```
+
+`el` is scaled with the board: zoom out and every pixel inside it
+shrinks. Plain DOM does not care, but a rendering engine that measures
+its own labels or fits a layout from screen rectangles (a mind map, a
+graph layout, a text-measuring chart) lays out wrong inside a scaled
+box. For those, `ctx.mountOffBoard(element, { w, h })` parks your
+element off the board at exactly that size, unscaled; render there,
+copy the finished drawing into `el`, then call the detach it returned.
+The Mind map example does exactly this on every repaint, and Mill
+detaches anything you left mounted when the object leaves the board.
+
+## Tools: make it reachable by an agent
+
+Anything your plugin already built can be declared as a tool, and an
+agent connected over MCP can then call it. Declare it in
+`manifest.json` under `contributes.tools`:
+
+```json
+"tools": [
+  {
+    "name": "change_text_case",
+    "description": "Changes the case of text: upper, lower or title.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "mode": { "type": "string", "enum": ["upper", "lower", "title"] }
+      },
+      "required": ["text", "mode"]
+    },
+    "effect": "read",
+    "run": { "kind": "step", "stepId": "text-case" }
+  }
+]
+```
+
+- **`name`** is `verb_noun` in lowercase. The agent sees it as
+  `plugin_<your-plugin-id>_<name>`.
+- **`description`** is one sentence, 200 characters or fewer. An agent
+  reads every description before choosing, so keep it about what the
+  tool does.
+- **`inputSchema`** is your own JSON Schema, passed to the agent
+  untouched.
+- **`effect`** is `read` (answers straight away) or `write` (needs the
+  Settings toggle and parks for the person's approval).
+- **`run`** says what it runs:
+  - `{"kind": "step", "stepId": "..."}` runs one of your declared
+    steps. Its `text` argument is the step's input; every other
+    argument names one of that step's config fields.
+  - `{"kind": "command", "commandId": "..."}` runs one of your
+    registered commands. A command takes no arguments, so a
+    command-kind tool declares none.
+  - `{"kind": "query"}` lists the board's contents, filtered by the
+    optional `kind` and `parentId` arguments.
+
+A command a tool names must also be declared, its id namespaced
+`<your plugin id>.<verb>`:
+
+```json
+"commands": [{ "id": "board-index.refresh", "label": "Refresh the board index" }]
+```
+
+`api.registerCommand` still works for a command you never declared —
+declaring is what makes it reachable by an agent, and Mill logs one
+warning for an undeclared id.
+
+A tool contributes nothing while your plugin is turned off, and a
+write-effect tool never skips the person's approval. See
+[What plugins expose to agents](../agents/plugins.md) for the agent's
+side of this.
+
+## Scheduled and background work
+
+There is no timer or alarm API. Work that should happen on a schedule,
+on an event, or while no window is open is a workflow: ship a
+workflow that uses your step or object, and it runs, pauses for
+approval, and shows in Activity like anything a user builds. Your
+plugin can open or reference it, and a user can edit it.
+
+The full contract — every field, every capability, and what stays
+stable between versions — is in [Extending the canvas](extending-the-canvas.md),
+and every type is listed in the [plugin API reference](plugin-api/index.md).
+
+---
+
 
 # Workflows and steps
 
@@ -233,6 +1178,7 @@ Edit link.
 
 ---
 
+
 # Guardrails and effect classes
 
 Add a step that calls an API, and Mill won't send anything until you
@@ -282,11 +1228,12 @@ endpoint is external and asks.
 
 ---
 
+
 # Configure entities
 
-Two workflows call the same API. Point both at one Integration entry
-instead of pasting the base URL and auth into each step, and changing
-the endpoint later is a single edit that both workflows pick up.
+Point two workflows at one Integration entry instead of pasting the
+base URL and auth into each step, and changing the endpoint later is a
+single edit that both workflows pick up.
 
 Configure holds the things workflows and boards *point at* — the
 values two independently-authored workflows should share, where
@@ -357,6 +1304,7 @@ import — except secrets, which stay in the keychain and are
 deliberately never exported.
 
 ---
+
 
 # Atlas
 
@@ -624,6 +1572,7 @@ retag it, or onto Unscheduled to clear the tag.
 
 ---
 
+
 # Runs, review, and debugging
 
 Mill crashes or restarts mid-workflow, and the run picks up where it
@@ -641,6 +1590,9 @@ timing, and exactly where it stopped.
   the run.
 - **Agent writes** — changes an AI agent proposed over MCP, held
   until you approve.
+- **Vault waits** — a step needed a stored secret while the vault was
+  locked; the run waits here until you unlock the vault, then continues
+  from that step.
 
 Each entry shows exactly what will happen and how old the ask is.
 When you're away, Mill escalates: an actionable notification, a dock
@@ -726,6 +1678,7 @@ typing: a note mid-edit, a cell being edited, a workflow draft.
 
 ---
 
+
 # The coding loop
 
 Copy a shell command, hit the hotkey, and Mill shows you exactly what
@@ -780,6 +1733,269 @@ result** ready for pasting back into wherever the command came from.
 The run itself is saved too, so you can find it again later.
 
 ---
+
+
+# Secrets are references
+
+Every field in Mill that needs a password, a token, or a key takes a
+pick from Secrets, never a typed value — a workflow carries the name
+of a secret, and Mill fills in the value only at the moment a step
+runs.
+
+## The vault
+
+Secrets you add by hand live in one encrypted vault file on this
+device. Its key sits in your login keychain, tied to that specific
+file: a second vault, or one restored from a backup, gets its own key.
+Turn on the unlock requirement and Mill asks for Touch ID or your
+password before the vault opens.
+
+## References, not values
+
+An Integration's auth, an MCP server's token, an AI provider's API key,
+an Environment's secret variables, a client certificate's passphrase —
+each field is a picker over Secrets. Pick an entry and the field
+stores its name. Exporting a workflow exports the reference, so the
+value never travels with it; importing on another machine asks you to
+point the reference at that machine's own entry.
+
+Guardrails decide which steps may read each secret, and every read
+lands in the entry's access history — who used it, in which run, when.
+
+## Sources
+
+A secret you already keep elsewhere needs no copy. Under
+**Secrets › Sources**, Mill reads entries from your shell environment,
+a `.env` file, or a password manager's CLI, and lists their keys in
+every secret picker beside the vault's own entries. Mill reads the
+value when something uses it and never stores it. An extension can add
+a source of its own the same way, and never sees another source's
+values.
+
+## The lock policy
+
+**Settings › Security** decides when the vault closes itself: after a
+chosen idle time, when this Mac sleeps or the screen locks, when you
+switch users, or when Mill's window is minimized. The Secrets page
+states the whole policy in one line — what it takes to unlock, and how
+long it stays open. Lock and unlock from the command palette too;
+search "vault".
+
+## Backups carry the vault
+
+Every automatic backup and every full export includes the vault file.
+Restoring one on the same device reopens it with the key already in
+your keychain; on another device, Mill offers to start a new vault and
+keeps the restored file beside it, so nothing is lost.
+
+To put a value in the vault and use it from a step, follow
+[Store and reference a secret](../how-to/store-and-reference-a-secret.md).
+
+---
+
+
+# Extensions and trust
+
+An extension adds what Mill can do — a board object, a workflow step, a
+command, a secret source, a view — as a folder of two files you
+install, and it runs only with your say-so.
+
+## The store
+
+**Extensions** is its own page (⇧⌘X). **Installed** lists what you
+have and what each one adds. **Browse** lists what your marketplaces
+offer that you have not installed, starting with the examples Mill
+ships. **Updates** shows what has a newer version.
+
+Installing shows what the extension can do — the hosts it reaches,
+whether it writes to your boards, what it adds — and installs only
+after you confirm. A newly installed extension waits under Installed
+until you allow it to run.
+
+## Sources
+
+A marketplace is any repository or folder with a `.mill/marketplace.json`
+file, listing the extensions it offers. Add one under **Sources**;
+Mill reads it only when you add it, refresh it, install from it, or
+check for updates — never on its own. You can also install straight
+from a repository, a `.zip` address, or a folder on this Mac.
+
+## Tiers
+
+Every installed extension wears one badge, and it says exactly what was
+checked:
+
+- **Verified** — its files match the hash the marketplace published,
+  and a key this Mill trusts signed them.
+- **Hash-pinned** — its files match the hash the marketplace published.
+- **Unverified** — nothing checked these files; Mill asks you to
+  acknowledge that before installing.
+- **Dev** — you installed it from a folder on this Mac.
+
+An extension that changes on disk after you allowed it loses its badge
+until you allow it again.
+
+## What an extension can reach
+
+An extension declares up front what it contributes and what it may ask
+for; the list you confirm at install is the list it gets. It renders
+in its own frame with the theme Mill hands it, reaches the network
+only through hosts it declared, writes to boards only through the same
+guarded path an agent's write takes, and never receives another
+extension's secrets. It cannot register hotkeys, update itself, or
+phone home.
+
+To install one, follow [Install a plugin](../reference/install-a-plugin.md).
+To write one, start at [Extending the canvas](../reference/extending-the-canvas.md).
+
+---
+
+
+# Trust, data, and safety
+
+Turn off your network and Mill keeps working — nothing here calls home
+on its own.
+
+**No phone-home, ever.** Mill makes no network call you didn't
+configure: no telemetry, no analytics, no AI API calls of its own.
+The updater talks to the releases page only when you check or a
+channel you chose is enabled; workflow steps talk only to endpoints
+you configured.
+
+**Your data is local files.** Settings and entities live in a JSON
+store, run history in SQLite, both on your machine. Settings →
+Backups snapshots them on a schedule, exports everything to one
+file, and imports it on another machine. Passwords and keys live in
+their own encrypted vault file on your device. Every local backup
+carries a copy of that file too — never its key, which stays in your
+OS keychain — but "Export everything" leaves it out, since that
+archive is the one meant to move to another machine or another
+person. The vault's key sits in your OS keychain, stored against that
+specific vault file — a second vault, or a vault restored from a
+backup, gets its own key rather than replacing the first one's.
+
+Turn on the unlock requirement and Mill asks before the vault opens.
+The checkbox names what this Mac can actually offer — Touch ID, an
+Apple Watch, your Mac password — rather than promising hardware you
+may not have. Be clear about what that buys you: it proves who is at
+the keyboard, and it does not stop another program running as you from
+reading the key out of the keychain. Lock and unlock the vault from the
+command palette (⌘K) too — search "vault" and only the action that
+currently applies shows up.
+
+Settings > Security decides when the vault closes itself. Choose how long
+it may sit idle, from one minute to eight hours, a custom number of
+minutes, or never; the count is time since you last used this Mac, so
+working in another app keeps the vault open. Three checkboxes close it
+regardless of idle time: when this Mac sleeps or the screen locks, when
+you switch users, and when Mill's window is minimized. The first two
+start on. The Secrets page states both halves in one line: what it
+takes to unlock, and how long it stays open. A workflow run that needs
+a secret while the vault is locked doesn't fail: it waits in Review
+until you unlock the vault, then continues from the step that stopped.
+
+If Mill can't open your vault file — the key for it isn't on this
+device, or the key it has doesn't fit — the locked screen says which,
+and offers to start a new vault. That keeps the current file beside it
+as a dated backup and creates an empty one; the backup's entries stay
+unreadable until the key that opens them turns up.
+
+Secrets you already keep elsewhere need no copy. Secrets > Sources
+points Mill at a dotenv file — a project's `.env` — or at a
+Bruno collection, whose root `.env` supplies values and whose
+environments name the secrets it expects — or at 1Password or
+Bitwarden through their own command-line tools, which Mill asks for one
+value at the moment a step runs, the way those tools' scripting docs
+recommend. An extension can add stores of its own the same way: it
+declares the store it reads, you point a source at the file or folder,
+and Mill applies whatever comes back through the same gate — the
+extension never receives another source's value, and never runs in the
+window. The keys appear in every secret picker beside the vault's
+entries, by name only, and every read is in your access history. The
+value is read from the file at the moment a step runs, recorded in the
+same access history as a vault read, and never stored by Mill.
+
+**Anything that needs a secret names one; it never holds one.** An
+integration's token, an HMAC signing key, an OAuth 1.0a consumer and
+token secret, a JOSE key pair, an AI endpoint's API key — each field
+picks an entry from Secrets rather than taking a typed value. That is
+what puts one set of controls in front of every credential: the unlock
+requirement, the access history, and the guardrails that can see which
+secrets a step is about to use. Exporting one of these carries the
+name of the entry, never the credential.
+
+Each entry says what it holds — text, a key, a certificate or a file —
+so a field only offers the entries it can actually use. An entry can
+also point at a key in one of your sources instead of holding a value,
+in which case Mill reads that key when something uses it.
+
+An entry is the whole record, not five fixed boxes. Add fields of your
+own — a serial number, a recovery code, an account id — and hide any
+field whose value should stay masked until you ask for it. Add tags and
+the list finds an entry by them; clicking a tag on a row narrows the
+list to everything carrying it. A search matches titles, tags and field
+names, never a value. Every entry says where it came from: added by
+hand, from a source, or imported from a file.
+
+Two ways to bring in what you already have. **Secrets > Sources > Find
+.env files** scans one folder you choose — never your whole home
+directory, never more than a few levels down, and never inside
+dependency or build folders — lists the dotenv files it found with how
+many keys each holds, and adds the ones you tick as sources or imports
+their keys as entries. **Secrets > Import** reads a password export you
+made yourself from the tool you already use, shows how many entries it
+holds before anything is stored, and offers to delete the file straight
+after, because an export holds every password in plain text. Mill never
+reads another application's own credential store — you export, Mill
+reads what you exported.
+
+The first time you unlock after updating, any credential an earlier
+version had saved outside the vault moves in: Mill creates an entry,
+reads it back to check it arrived intact, points the integration at it,
+and only then removes the old copy. If the check fails, the old copy
+stays exactly where it was and Mill tries again next time. After that
+the only Mill item left in your operating system's keychain is the
+vault's own key.
+
+**Clipboard history is opt-in and screened.** Turning on the
+Clipboard history workflow is the only way it starts watching, and
+turning it off stops watching immediately. Anything a password manager
+or similar app marks confidential is never recorded, and any known
+secret value is scrubbed before an entry is ever saved. Every entry you
+copy back leaves a line in your own access history.
+
+**External effects ask first.** The guardrail model
+([Guardrails](../concepts/guardrails.md)) parks any step that leaves
+the machine until you approve it or a rule you wrote allows it.
+Agents get no shortcut around this.
+
+**Plugins run only with your say-so.** A plugin you install waits in
+Settings > Extensions, showing what it can request and reach, until
+you allow it; Mill fingerprints its files at that moment and stops it
+if they change; an administrator can pin the allowed set and require
+signatures in the settings file; and Export plugin audit files what
+every plugin asked for and read
+([Install a plugin](../reference/install-a-plugin.md)).
+
+**Execution environments are not a sandbox.** Run a command executes
+with your full user account — the pinned shell, directory, and
+environment give reproducibility, not confinement. Anything the
+script can do, you can do; treat scripts accordingly.
+
+**Updates verify before touching anything.** A downloaded update is
+checked against its published digest and refused on mismatch, and a
+backup snapshot is taken before any install. A copy built from
+source never self-updates.
+
+**When something breaks, you get the truth.** Every failure you can
+see — a crash, a failed run, a bad connector save, an update that
+didn't install — shows a Copy details button that copies the exact
+error plus enough context to root-cause it, instead of leaving you to
+retype it from a screenshot. Every run also records what actually
+happened.
+
+---
+
 
 # Step reference
 
@@ -1028,6 +2244,19 @@ Looks up an Attributes value in a configured List and writes the matched entry b
   - **If no match** — What to do when the input value isn't in the list.
   - **Default value** — Written to the output attribute when there's no match and "If no match" is "default".
   - **Pin to version (optional)** — Leave empty to always resolve this List's current rows. Enter a version number to pin this step to that exact published snapshot, unaffected by later row edits.
+
+### Replay in the browser
+
+Runs a recorded browser flow in your paired browser, signed in as you are.
+
+- Takes: anything — Produces: JSON
+- Effect: external — parks for approval by default
+- Settings:
+  - **Recording** — The flow exported as JSON from the browser's own recorder. Import it rather than typing it.
+  - **Parameters** — Values to replace in the recording before it runs, each naming one step and one of its fields.
+  - **Extract** — Text to read back out of the page, each naming a step that waits for the element to read.
+  - **Timeout (seconds)** — How long the whole flow may take before the run fails.
+  - **Browser** — Which paired browser runs the flow.
 
 ### Run a captured command
 
@@ -1295,6 +2524,7 @@ Ends the workflow with a typed, configured outcome: an outcome category (approve
 
 ---
 
+
 # Commands
 
 Press ⌘K and type any action's name — "lock vault", "check for
@@ -1359,6 +2589,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `backup.export` | Export everything | — | Global | Always available |
 | `backup.now` | Back up now | — | Global | Always available |
 | `browser.pair` | Pair a browser | — | Global | Always available |
+| `browser.revealExtension` | Reveal the extension folder | — | Global | Always available |
 | `browser.test` | Test the browser connection | — | Global | Conditional — available only in a matching state |
 | `canvas.delete` | Delete selected | `⌫` | composition | Always available |
 | `canvas.fitView` | Fit view | — | composition | Always available |
@@ -1415,6 +2646,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.steptype.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.steptype.export` | Export | — | Global | Acts on the selected entity |
 | `diagram.fit` | Fit diagram | — | atlas | Conditional — available only in a matching state |
+| `diagram.nextPage` | Next page | — | atlas | Conditional — available only in a matching state |
+| `diagram.previousPage` | Previous page | — | atlas | Conditional — available only in a matching state |
 | `docs.search` | Search docs | — | Global | Always available |
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
@@ -1460,6 +2693,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `secret.row.history` | History | — | Global | Acts on the selected entity |
 | `secrets.lockVault` | Lock vault | — | Global | Conditional — available only in a matching state |
 | `secrets.resetVault` | Start a new vault | — | Global | Conditional — available only in a matching state |
+| `secrets.restoreVaultFromBackup` | Restore the last backup | — | Global | Conditional — available only in a matching state |
 | `secrets.unlockVault` | Unlock vault | — | Global | Conditional — available only in a matching state |
 | `settings.open` | Open Settings | `⌘,` | Global | Always available |
 | `settings.open.appearance` | Settings › Appearance | — | Global | Always available |
@@ -1510,6 +2744,7 @@ See "Register a command" for how to add a new one, and Settings →
 Keyboard shortcuts to rebind any command's default combo.
 
 ---
+
 
 # Menu bar
 
@@ -1653,6 +2888,8 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Copy space links | — | `atlas.share.copyLinks` |
 | Open perspective switcher | — | `atlas.perspective` |
 | Select all | ⌘A | `atlas.selectAll` |
+| Previous page | — | `diagram.previousPage` |
+| Next page | — | `diagram.nextPage` |
 | Fit diagram | — | `diagram.fit` |
 | Toggle companion panel | — | `atlas.companion.toggle` |
 | Toggle minimap | — | `atlas.minimap.toggle` |
@@ -1695,6 +2932,7 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 <!-- END GENERATED -->
 
 ---
+
 
 # Environments
 
@@ -1777,6 +3015,7 @@ boundary — an agent can see that `{{API_BASE}}` will resolve without
 being told what it resolves to.
 
 ---
+
 
 # Client certificates
 
@@ -1869,23 +3108,29 @@ statement about the host, not a setting on the request.
 
 ---
 
+
 # The browser extension
 
 Some work only exists behind a sign-in. Mill can replay a recorded set
 of steps in **your** browser, in the session you are already signed into,
 so nothing has to be re-authenticated and no password ever reaches Mill.
 
-The browser half of that is a small extension. Mill ships it in the
-`examples/browser-extension` folder of its own source tree.
+The browser half of that is a small extension, which ships inside Mill
+itself.
 
 ## Install it
 
-1. Open `chrome://extensions` and turn on **Developer mode**.
-2. Choose **Load unpacked** and pick the `examples/browser-extension`
-   folder.
-3. Pin the Mill icon so its popup is one click away.
+1. Open **Settings › Connections › Browsers** and press **Reveal the
+   extension folder**. Mill writes the extension out and shows you where
+   it landed.
+2. Open your browser's extensions page (`chrome://extensions` in Chrome)
+   and turn on **Developer mode**.
+3. Choose **Load unpacked** and pick the folder Mill just showed you.
+4. Pin the Mill icon so its popup is one click away.
 
-Chrome, Edge and Opera all load the folder as-is.
+Chrome, Edge and Opera all load the folder as-is. Mill rewrites the
+folder every time you reveal it, so after an upgrade, reveal it again
+and reload the extension.
 
 ## Pair it
 
@@ -1925,6 +3170,44 @@ chains — a CSS selector, an accessible name, the visible text, an XPath,
 and a path through a component's shadow root. That redundancy is what
 lets a recording survive a page whose styling changed underneath it.
 
+## Replay a recording as a workflow step
+
+**Replay in the browser** is a step like any other. Add it to a
+workflow, and it runs your recording in the paired browser as part of a
+run.
+
+- **Recording** — press **Import a recording** and pick the JSON you
+  exported. The file is stored exactly as exported; nothing rewrites it.
+- **Parameters** — a run rarely wants the same text every time. Each
+  parameter names one step of the recording, one of its fields (the
+  address it opens, the text it types, the key it presses), and where
+  the value comes from: one of the workflow's Attributes, or a fixed
+  value. The values are laid over a copy of the recording at run time.
+- **Extract** — name a step that waits for an element, and the text of
+  that element comes back under the name you gave it.
+- **Timeout** — how long the whole flow may take before the run fails.
+
+The step leaves a result you can read in the run's receipt: every step
+with its outcome, the text you extracted, and any file the browser
+saved while the flow ran.
+
+Driving a live site is an external effect, so a run parks for your
+approval before the browser is touched, the same as an outgoing HTTP
+call.
+
+### When it stops
+
+- *No browser is connected. Pair the Mill extension first.* — nothing is
+  listening; pair a browser.
+- *Couldn't find the element for step 3 (#email).* — the page changed
+  under the recording. Re-record that step.
+- *The browser didn't finish the flow in 60 seconds.* — the flow is
+  longer than its budget, or the page is waiting on something. Raise the
+  timeout, or shorten the flow.
+- *Parameter email points at step 4, which has no value.* — the
+  parameter names a step that types nothing. Point it at the step that
+  does.
+
 ## What it can and cannot do
 
 It can open a tab or reuse one already on the right site, click,
@@ -1948,6 +3231,7 @@ is your own computer by default. The pairing token is held by the
 browser for this extension alone, and Mill keeps only a hash of it.
 
 ---
+
 
 # Settings
 
@@ -2141,7 +3425,9 @@ ten. "Back up now" adds one on demand. "Export everything" bundles
 your data into one file for moving machines, excluding the vault;
 "Import everything" merges it back. The export covers Mill's own
 data — files mirrored from folders on disk are referenced by path,
-not copied in, so back those folders up separately.
+not copied in, so back those folders up separately. Restoring brings
+back a backup's vault file; it opens if that vault's key is still on
+this device.
 
 ## Updates
 
@@ -2203,6 +3489,7 @@ tccutil reset Accessibility com.alicoding.mill
 ```
 
 ---
+
 
 # Extending the canvas
 
@@ -2467,6 +3754,7 @@ minimum, an existing manifest field or `api` method keeps its meaning
 
 ---
 
+
 # Register a canvas tool
 
 A walkthrough of adding a new placeable tool to Atlas, using Mill's own
@@ -2583,6 +3871,7 @@ anything; they read your declaration and the live registry as data.
 
 ---
 
+
 # Register a command
 
 A walkthrough of adding a new command to Mill's registry, using the
@@ -2604,7 +3893,7 @@ such satellite file, quoted whole:
 ```ts
 import type { Command } from './commands'
 import { SecretService } from './bindings'
-import { refreshVaultStatus, useVaultStatusStore } from './vaultStatusStore'
+import { refreshVaultBackupTime, refreshVaultStatus, useVaultStatusStore } from './vaultStatusStore'
 import type { UserError } from './userError'
 import { userErrorFrom } from './userError'
 
@@ -2668,6 +3957,25 @@ export const SECRETS_COMMANDS: Command[] = [
     paletteHidden: true,
     run: () => { record(SecretService.ResetVault()) },
   },
+  {
+    id: 'secrets.restoreVaultFromBackup',
+    label: 'commands.secrets.restoreVaultFromBackup',
+    defaultBinding: null,
+    // Only offered where the key-mismatch state itself shows: a stored
+    // key that doesn't fit the current file, AND a local backup that
+    // still carries one to try instead.
+    enabled: () => {
+      const { vaultStatus, vaultError, vaultBackupTime } = useVaultStatusStore.getState()
+      if (vaultStatus === null || !vaultStatus.Exists || vaultStatus.Unlocked) return false
+      return vaultErrorKind(vaultError) === 'keyMismatch' && vaultBackupTime?.present === true
+    },
+    run: () => {
+      useVaultStatusStore.getState().setVaultError(null)
+      SecretService.RestoreVaultFromLatestBackup()
+        .then(() => Promise.all([refreshVaultStatus(), refreshVaultBackupTime()]))
+        .catch((err) => { useVaultStatusStore.getState().setVaultError(userErrorFrom(err)) })
+    },
+  },
 ]
 
 // vaultErrorKind classifies a lock/unlock failure by the stable code
@@ -2730,6 +4038,329 @@ real branches worth pinning. `commandsDeclaration.json` regenerates via
 
 ---
 
+
+# The plugin standard
+
+Every plugin that ships with Mill follows these rules, and the
+conformance check enforces the ones a machine can. Follow them and
+your plugin feels like part of Mill.
+
+## Configuration
+
+1. Declare every setting in the manifest with a type, a default and a
+   one-sentence description. (checked)
+2. Settings render in Mill's Settings; a plugin never builds its own
+   settings page. (review)
+3. Request only the capabilities and hosts you use. (checked: an
+   unused declared capability warns)
+
+## Interaction
+
+4. Every action is a command declared in the manifest
+   (`contributes.commands`) and registered with the same id; tools
+   reference declared commands. (checked) A command may also seat
+   itself in Mill's menu bar with `menu: { path, group?, order? }` --
+   `path` is `"workflow"`, `"atlas"` or `"help"` only, never one of
+   Mill's own menus. (checked)
+5. Ship no default hotkey; people bind their own in Settings ›
+   Shortcuts. (checked: the SDK has no hotkey field; this rule
+   documents why)
+6. Use only the documented theme variables ([plugin
+   theming](plugin-theming.md)); no colour literals. (checked)
+7. Add the minimum persistent chrome: a face, a view or a capture only
+   when the task needs one. (review)
+8. No promotion, ads or upgrade prompts anywhere. (review)
+9. Report a failure through `api.notify` with one actionable sentence;
+   `console.error` only alongside it, never instead. (checked: a
+   `console.error` with no `api.notify` in the same function warns)
+10. Present output, never type it: show a result through
+    `api.ui.renderOutput`, which gives the reader the same tree,
+    table, log, rendered view, Find, Copy and Raw every other output
+    surface in Mill has. Never a `<pre>` or a text box of your own —
+    a text box says the reader can edit what they are reading.
+    (review)
+11. One narrow purpose per plugin. (review)
+
+## Contracts
+
+12. `id` is a kebab-case slug distinct from `name`; `name` contains
+    neither "Mill" nor "plugin". (checked)
+13. `version` is semver; `minMillVersion` names the oldest Mill you
+    support. (checked)
+14. `icon.png` (128×128) is present and declared as `icon`;
+    `icon@dark.png` is optional. (checked)
+15. `README.md` sits beside the plugin folder in your repository,
+    never inside it (a plugin folder holds only files Mill serves); it
+    says what the plugin does, its settings and the capabilities it
+    needs. (checked for the examples: `examples/plugins/<id>.md`)
+16. No remote code, no self-update, no telemetry: `fetch` only through
+    `api.fetch`, no `import()` of a URL, no `eval`. (checked)
+17. Labels and messages use sentence case; no emoji in labels.
+    (checked)
+18. Payload keys are camelCase; command ids are `<plugin>.<verb>`;
+    tool names are `verb_noun`. (checked)
+19. SDK comments and your README describe behaviour for plugin
+    authors: no repository vocabulary (goal ids, internal file
+    names). (checked over the generated reference)
+20. A theme you contribute is a CSS file of nothing but
+    `--token: value;` declarations, every token drawn from the
+    documented theme variables: no selector, no at-rule, no `url()`.
+    Mill layers it over the built-in palette of the family you name,
+    so declare only what you change. (checked)
+
+21. A view or capture with its own UI declares an entry page:
+    `"entry": "view.html"` beside the view or capture in your
+    manifest, pointing at an `.html` file inside your plugin folder.
+    Mill mounts it in a sandboxed frame where your page owns every
+    element, and the page loads scripts, styles, fonts and images only
+    from that folder, so ship what it needs beside it. Your script
+    goes in a `.js` file the page loads with `<script src>`: an inline
+    `<script>` or an `onclick` attribute never runs. `window.
+    acquireMillApi()` is its door back to Mill. Styles may stay
+    inline. A surface that draws into Mill's own document instead
+    still works and warns. (checked)
+
+22. A canvas object whose face reports an open editor declares
+    `content: "interactive"` on the same object. `content` says what
+    happens to input over the face: `"static"` (the default) leaves
+    every gesture to the canvas, `"interactive"` gives the selected
+    face the wheel, the drag and the keys — and `ctx.setEditing`, the
+    call that stands Mill's own board shortcuts down while your editor
+    is open, exists only there. (checked: a face script calling
+    `setEditing` without that declaration warns)
+
+23. An MCP server you ship (`contributes.mcpServers`) declares a slug
+    `id`, a `label`, a `command` and its `args`; every secret it needs
+    is `"secretRef:<setting key>"` naming one of your own secretRef
+    settings, never a literal, and never a vault entry — a literal
+    under a name that looks like a credential is refused. (checked)
+
+## Publishing
+
+24. A marketplace is a repository or folder with `.mill/marketplace.json`
+    at its root: `{ "name", "owner": { "name", "url"? }, "plugins":
+    [ { "id", "name", "description", "version", "kinds"?, "sha256"?,
+    "source" } ] }`. `name` is a slug; `mill` is reserved for the
+    extensions Mill ships. A `source` is `{ "kind": "path", "path" }`
+    (a folder beside the index), `{ "kind": "github", "repo", "ref"? }`
+    or `{ "kind": "archive", "url", "sha256"? }`. Two entries may not
+    share an id. (checked when the marketplace is added)
+25. A release is a git tag equal to the version (`v1.2.0` or `1.2.0`)
+    whose assets include `<id>-<version>.zip` — the plugin folder,
+    zipped, with `manifest.json` at its root or one folder down — and
+    `SHA256SUMS`; sign the zip with minisign as `<zip>.minisig` when
+    you can. Mill fetches the asset by that name, for an install and
+    for an update.
+26. Declare the archive's `sha256` in your marketplace entry. What Mill
+    checked is the badge every installed extension wears: **Verified**
+    when the hash matches and a key the user trusts signed it,
+    **Hash-pinned** when only the hash matches, **Unverified** when
+    nothing declared a hash (a branch archive always lands here, and
+    the user must acknowledge it), **Dev** for a folder on their Mac.
+    A hash that does not match refuses the install.
+
+## Quality gates
+
+27. `go run ./internal/pluginconform <folder>` passes; `npm run
+    plugin:typecheck` and `npm run plugin:lint` pass. (checked)
+
+## Checking your own plugin
+
+```sh
+go run ./internal/pluginconform path/to/your-plugin
+cd frontend && npm run plugin:typecheck
+cd frontend && npm run plugin:lint
+```
+
+The first prints every failure and warning it finds, naming the rule
+above it enforces. A failure blocks shipping; a warning is your call —
+the check tells you why the rule exists, not just that you broke it.
+
+See [Install a plugin](install-a-plugin.md) for the full authoring
+guide and [the plugin API reference](plugin-api/index.md) for every
+type. [Plugin API maturity](plugin-api-maturity.md) lists each
+contribution family's current level and its evidence, generated fresh
+from this repository on every build.
+
+---
+
+
+# Plugin theming
+
+A plugin's face, view, or capture is drawn inside Mill, so it should
+look like Mill — in light and dark, and in every color scheme Settings
+offers. You don't ship a palette. You read the variables Mill sets, and
+your surface follows the user's choice everywhere it changes.
+
+## The mount root tells you the theme
+
+Mill puts two attributes on the element it hands you:
+
+- `data-mill-theme` — `light` or `dark`. Always one of the two, never
+  "auto": it is the settled answer, already resolved from the user's
+  choice and the system preference.
+- `data-mill-scheme` — the exact scheme, such as `light`, `dark_dimmed`,
+  or `light_high_contrast`.
+
+Both update in place when the user changes the theme, so plain CSS is
+enough for a dark variant:
+
+```css
+.my-panel {
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  border: 1px solid var(--borderColor-default);
+}
+
+[data-mill-theme="dark"] .my-panel {
+  box-shadow: none;
+}
+```
+
+## In JavaScript
+
+Every context object carries the same pair, plus a change feed:
+
+```js
+export function activate(api) {
+  api.registerView({
+    id: 'my-view',
+    render(el, ctx) {
+      draw(el, ctx.theme)               // { mode: 'dark', scheme: 'dark_dimmed' }
+      ctx.onThemeChange((theme) => draw(el, theme))
+    },
+  })
+}
+```
+
+`onThemeChange` returns an unsubscribe function. Use it when your
+surface paints pixels it can't restyle with CSS — a canvas, a chart, a
+generated image. Everything else should use the variables and need no
+JavaScript at all.
+
+## The variables you may rely on
+
+These are the names Mill promises. They are defined in every scheme.
+You may define and read variables of your own on top of them; what the
+conformance check refuses is reading one that is neither on this list
+nor defined anywhere in your plugin.
+
+Mill's own:
+
+| Variable | Use |
+| --- | --- |
+| `--mill-accent-emphasis` | strong accent fill, with `--fgColor-onEmphasis` on top |
+| `--mill-accent-fg` | accent text and links |
+| `--mill-accent-muted` | subtle accent tint behind content |
+| `--mill-accent-border-muted` | subtle accent border |
+| `--mill-kind-trigger` | the trigger step color |
+| `--mill-kind-capture` | the capture step color |
+| `--mill-kind-process` | the process step color |
+| `--mill-kind-apply` | the apply step color |
+| `--mill-kind-decision` | the decision step color |
+| `--mill-kind-terminal` | the terminal step color |
+| `--mill-mono` | the monospace stack for machine-readable text |
+
+From the design system Mill's own interface is built on:
+
+| Variable | Use |
+| --- | --- |
+| `--fgColor-default` | body text |
+| `--fgColor-muted` | secondary text |
+| `--bgColor-default` | the surface behind your content |
+| `--bgColor-muted` | a recessed or secondary surface |
+| `--borderColor-default` | dividers and outlines |
+| `--fgColor-accent` | accent text and links |
+| `--bgColor-accent-emphasis` | a strong accent fill |
+| `--fgColor-onEmphasis` | text and icons painted on any emphasis fill |
+| `--borderColor-accent-emphasis` | the border of an accent fill |
+| `--fgColor-danger` | an error message or a destructive action |
+| `--fgColor-attention` | a warning message |
+| `--fgColor-success` | a success message |
+
+## What the check enforces
+
+Run it over your folder before you ship:
+
+```
+go run ./internal/pluginconform path/to/my-plugin
+```
+
+- Reading a `--` variable that is neither on the list above nor defined
+  by your own files **fails** — it may be undefined in some schemes, or
+  vanish in a later release.
+- A hardcoded color — `#1f6feb`, `rgb(31, 111, 107)` — **warns**. A
+  literal is right for content the user authored (a pen color, a chart
+  series). It is wrong for your surface's own chrome, which stops
+  matching Mill the moment the theme changes.
+
+A folder named `vendor/` is skipped: a bundled third-party engine
+brings its own palette and its own variable names, and neither is your
+plugin's chrome.
+
+## Shipping a theme of your own
+
+A plugin can contribute whole color themes, and a theme is data rather
+than code: a CSS file holding nothing but declarations, listed in your
+manifest.
+
+```json
+"contributes": {
+  "themes": [
+    { "id": "sepia", "label": "Sepia", "family": "light", "file": "themes/sepia.css" }
+  ]
+}
+```
+
+```css
+/* themes/sepia.css */
+--bgColor-default: #f6efe2;
+--fgColor-default: #3a3026;
+--fgColor-accent: #8a5a1f;
+```
+
+`family` says which appearance the theme belongs to, `light` or `dark`.
+Mill layers your file over that family's built-in palette, so you
+declare only the tokens you change and every other token keeps a value
+that already works.
+
+The file may contain only `--token: value;` declarations of the
+variables listed above, plus comments. A selector, an at-rule, a
+`url()`, or a variable outside the list is refused, and the check names
+the line. Your theme then appears in Settings > Appearance under its
+family, with your plugin's name beneath its label.
+
+Turning your plugin off or removing it takes its themes with it, and
+the appearance falls back to Mill's own.
+
+---
+
+
+# Plugin API maturity
+
+3 of 11 contribution families are stable; 0 ready to promote; 0 regressed.
+
+| Family | Level | Conformance | Example | E2E | Docs | SDK types | MCP | Docs behind code (days) | Flags |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| canvasObjects | experimental | no | yes | yes | yes | yes | yes | 0 | — |
+| steps | experimental | no | yes | yes | yes | no | yes | 0 | — |
+| captures | experimental | no | no | yes | yes | yes | n/a | 0 | — |
+| settings | stable | yes | yes | yes | yes | yes | n/a | 0 | — |
+| network | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
+| views | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
+| commands | stable | yes | yes | yes | yes | yes | yes | 0 | — |
+| themes | stable | yes | yes | yes | yes | yes | n/a | 0 | — |
+| secretSources | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
+| tools | experimental | no | yes | no | yes | no | yes | 0 | — |
+| mcpServers | experimental | no | yes | no | yes | no | no | 0 | — |
+
+## How a family moves
+
+A family's level changes only by a decision recorded in an architecture record (ADR-0047, ADR-0048), never by this table alone, however complete its evidence reads. "Ready to promote" is an argument for that decision, not the decision itself. This table regenerates from the repository on every `go generate ./internal/docsgen` and is checked against the committed copy on every build.
+
+---
+
+
 # Automate with agents
 
 Point an MCP-capable agent at Mill's address, and it can compose
@@ -2777,6 +4408,7 @@ platform; `userdocs/llms-full.txt` carries this entire documentation
 set in one AI-readable file.
 
 ---
+
 
 # Edit a diagram with an agent
 
@@ -2891,6 +4523,7 @@ you turn them on.
 
 ---
 
+
 # What plugins expose to agents
 
 See [the plugin standard](../reference/plugin-standard.md) for how a
@@ -2961,146 +4594,3 @@ tool answers straight away and never parks.
 A plugin's own guarded actions — opening a URL, reading a folder,
 writing content — still take their own guardrail check when they run.
 Being reachable by an agent never widens what a plugin may do.
-
----
-
-# Trust, data, and safety
-
-Turn off your network and Mill keeps working — nothing here calls home
-on its own.
-
-**No phone-home, ever.** Mill makes no network call you didn't
-configure: no telemetry, no analytics, no AI API calls of its own.
-The updater talks to the releases page only when you check or a
-channel you chose is enabled; workflow steps talk only to endpoints
-you configured.
-
-**Your data is local files.** Settings and entities live in a JSON
-store, run history in SQLite, both on your machine. Settings →
-Backups snapshots them on a schedule, exports everything to one
-file, and imports it on another machine. Passwords and keys live in
-their own encrypted vault file on your device. Every local backup
-carries a copy of that file too — never its key, which stays in your
-OS keychain — but "Export everything" leaves it out, since that
-archive is the one meant to move to another machine or another
-person. The vault's key sits in your OS keychain, stored against that
-specific vault file — a second vault, or a vault restored from a
-backup, gets its own key rather than replacing the first one's.
-
-Turn on the unlock requirement and Mill asks before the vault opens.
-The checkbox names what this Mac can actually offer — Touch ID, an
-Apple Watch, your Mac password — rather than promising hardware you
-may not have. Be clear about what that buys you: it proves who is at
-the keyboard, and it does not stop another program running as you from
-reading the key out of the keychain. Lock and unlock the vault from the
-command palette (⌘K) too — search "vault" and only the action that
-currently applies shows up.
-
-Settings > Security decides when the vault closes itself. Choose how long
-it may sit idle, from one minute to eight hours, a custom number of
-minutes, or never; the count is time since you last used this Mac, so
-working in another app keeps the vault open. Three checkboxes close it
-regardless of idle time: when this Mac sleeps or the screen locks, when
-you switch users, and when Mill's window is minimized. The first two
-start on. The Secrets page states both halves in one line: what it
-takes to unlock, and how long it stays open.
-
-If Mill can't open your vault file — the key for it isn't on this
-device, or the key it has doesn't fit — the locked screen says which,
-and offers to start a new vault. That keeps the current file beside it
-as a dated backup and creates an empty one; the backup's entries stay
-unreadable until the key that opens them turns up.
-
-Secrets you already keep elsewhere need no copy. Secrets > Sources
-points Mill at a dotenv file — a project's `.env` — or at a
-Bruno collection, whose root `.env` supplies values and whose
-environments name the secrets it expects — or at 1Password or
-Bitwarden through their own command-line tools, which Mill asks for one
-value at the moment a step runs, the way those tools' scripting docs
-recommend. An extension can add stores of its own the same way: it
-declares the store it reads, you point a source at the file or folder,
-and Mill applies whatever comes back through the same gate — the
-extension never receives another source's value, and never runs in the
-window. The keys appear in every secret picker beside the vault's
-entries, by name only, and every read is in your access history. The
-value is read from the file at the moment a step runs, recorded in the
-same access history as a vault read, and never stored by Mill.
-
-**Anything that needs a secret names one; it never holds one.** An
-integration's token, an HMAC signing key, an OAuth 1.0a consumer and
-token secret, a JOSE key pair, an AI endpoint's API key — each field
-picks an entry from Secrets rather than taking a typed value. That is
-what puts one set of controls in front of every credential: the unlock
-requirement, the access history, and the guardrails that can see which
-secrets a step is about to use. Exporting one of these carries the
-name of the entry, never the credential.
-
-Each entry says what it holds — text, a key, a certificate or a file —
-so a field only offers the entries it can actually use. An entry can
-also point at a key in one of your sources instead of holding a value,
-in which case Mill reads that key when something uses it.
-
-An entry is the whole record, not five fixed boxes. Add fields of your
-own — a serial number, a recovery code, an account id — and hide any
-field whose value should stay masked until you ask for it. Add tags and
-the list finds an entry by them; clicking a tag on a row narrows the
-list to everything carrying it. A search matches titles, tags and field
-names, never a value. Every entry says where it came from: added by
-hand, from a source, or imported from a file.
-
-Two ways to bring in what you already have. **Secrets > Sources > Find
-.env files** scans one folder you choose — never your whole home
-directory, never more than a few levels down, and never inside
-dependency or build folders — lists the dotenv files it found with how
-many keys each holds, and adds the ones you tick as sources or imports
-their keys as entries. **Secrets > Import** reads a password export you
-made yourself from the tool you already use, shows how many entries it
-holds before anything is stored, and offers to delete the file straight
-after, because an export holds every password in plain text. Mill never
-reads another application's own credential store — you export, Mill
-reads what you exported.
-
-The first time you unlock after updating, any credential an earlier
-version had saved outside the vault moves in: Mill creates an entry,
-reads it back to check it arrived intact, points the integration at it,
-and only then removes the old copy. If the check fails, the old copy
-stays exactly where it was and Mill tries again next time. After that
-the only Mill item left in your operating system's keychain is the
-vault's own key.
-
-**Clipboard history is opt-in and screened.** Turning on the
-Clipboard history workflow is the only way it starts watching, and
-turning it off stops watching immediately. Anything a password manager
-or similar app marks confidential is never recorded, and any known
-secret value is scrubbed before an entry is ever saved. Every entry you
-copy back leaves a line in your own access history.
-
-**External effects ask first.** The guardrail model
-([Guardrails](../concepts/guardrails.md)) parks any step that leaves
-the machine until you approve it or a rule you wrote allows it.
-Agents get no shortcut around this.
-
-**Plugins run only with your say-so.** A plugin you install waits in
-Settings > Extensions, showing what it can request and reach, until
-you allow it; Mill fingerprints its files at that moment and stops it
-if they change; an administrator can pin the allowed set and require
-signatures in the settings file; and Export plugin audit files what
-every plugin asked for and read
-([Install a plugin](../reference/install-a-plugin.md)).
-
-**Execution environments are not a sandbox.** Run a command executes
-with your full user account — the pinned shell, directory, and
-environment give reproducibility, not confinement. Anything the
-script can do, you can do; treat scripts accordingly.
-
-**Updates verify before touching anything.** A downloaded update is
-checked against its published digest and refused on mismatch, and a
-backup snapshot is taken before any install. A copy built from
-source never self-updates.
-
-**When something breaks, you get the truth.** Every failure you can
-see — a crash, a failed run, a bad connector save, an update that
-didn't install — shows a Copy details button that copies the exact
-error plus enough context to root-cause it, instead of leaving you to
-retype it from a screenshot. Every run also records what actually
-happened.

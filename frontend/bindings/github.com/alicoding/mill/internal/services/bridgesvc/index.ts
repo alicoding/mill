@@ -7,6 +7,8 @@ export {
 };
 
 export type {
+    RecordingStep,
+    RecordingSummary,
     Status,
     TestResult
 } from "./models.js";

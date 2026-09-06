@@ -22,6 +22,20 @@ function atlasBoardHasContent(): boolean {
 // shared/uiSignalStore.ts counter the owning atlas/ component already
 // watches, the same store-signal seam every other cross-bounded-
 // context command in commands.ts uses.
+// The selected diagram's own page cursor, published by the frame on the
+// object's box (AtlasBoardObjectNode.tsx) exactly while its band shows
+// the control -- absent for a single-page file, which is what makes
+// both paging commands honestly unavailable there.
+function selectedDiagramPage(): { id: string; index: number; count: number } | null {
+  const id = selectedDiagramObjectID()
+  if (id === null) return null
+  const face = document.querySelector(`.react-flow__node[data-id="${CSS.escape(id)}"] [data-object-kind="diagram"]`)
+  const index = Number(face?.getAttribute('data-page-index') ?? NaN)
+  const count = Number(face?.getAttribute('data-page-count') ?? NaN)
+  if (!Number.isFinite(index) || !Number.isFinite(count)) return null
+  return { id, index, count }
+}
+
 // The board's currently selected DIAGRAM object, read from the live
 // canvas the same way atlasBoardHasContent above reads it -- the node's
 // own data-id IS the object id (atlasBuildBoardObjectNodes.ts). Null
@@ -160,6 +174,42 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     paletteHidden: true,
     surface: ['atlas'],
     run: () => {},
+  },
+  {
+    // "Previous page" / "Next page" (goal 0354): a multi-page .drawio is
+    // paged from the object's own chrome now that its face carries no
+    // vendored toolbar. Both stop at the file's ends rather than
+    // wrapping, so the enablement is the honest one -- unavailable, not
+    // dimmed, on a single-page file or at the page you are already on.
+    // No default binding: ⌥←/⌥→ already move the caret by word in every
+    // text field on this surface, and a board shortcut that only ever
+    // applies to one selected kind is not worth that collision.
+    id: 'diagram.previousPage',
+    label: 'commands.diagram.previousPage',
+    defaultBinding: null,
+    surface: ['atlas'],
+    enabled: () => {
+      const page = selectedDiagramPage()
+      return page !== null && page.count > 1 && page.index > 0
+    },
+    run: () => {
+      const page = selectedDiagramPage()
+      if (page) useUISignalStore.getState().requestAtlasDiagramPage(page.id, -1)
+    },
+  },
+  {
+    id: 'diagram.nextPage',
+    label: 'commands.diagram.nextPage',
+    defaultBinding: null,
+    surface: ['atlas'],
+    enabled: () => {
+      const page = selectedDiagramPage()
+      return page !== null && page.count > 1 && page.index < page.count - 1
+    },
+    run: () => {
+      const page = selectedDiagramPage()
+      if (page) useUISignalStore.getState().requestAtlasDiagramPage(page.id, 1)
+    },
   },
   {
     // "Fit diagram" (goal 0354): a diagram board object shows no

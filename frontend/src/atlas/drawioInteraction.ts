@@ -130,6 +130,59 @@ export function exceedsFrame(bounds: { width: number; height: number }, frame: {
 // shared chrome band, which no face owns.
 export type DrawioOverflowReporter = (exceeds: boolean, fit: () => void) => void
 
+// Paging, through the viewer's OWN page API rather than a second
+// reader of the .drawio XML (viewer.min.js's GraphViewer closure):
+//   this.selectPage = function(J){ ... this.currentPage = mxUtils.mod(J,
+//     this.diagrams.length); ... this.updateGraphXml(
+//     Editor.parseDiagramNode(this.diagrams[this.currentPage])) }
+//   this.selectPageById = function(J){ J = this.getIndexById(J);
+//     var ea = 0 <= J; ea && this.selectPage(J); return ea }
+// `diagrams` is the file's own <diagram> node list, `currentPage` the
+// index showing, and selectPage takes an INDEX -- the same two calls
+// the viewer's own prev/next buttons make (`this.selectPage(
+// this.currentPage - 1)` / `+ 1`). selectPage wraps modulo, so an
+// out-of-range index is safe; the chrome that offers paging is what
+// stops at the ends.
+export interface DrawioPagingViewer {
+  diagrams?: unknown[]
+  currentPage?: number
+  selectPage?: (index: number) => void
+}
+
+// What the chrome renders from: where the face is in the file, how many
+// pages there are, and the action that moves it. The same reporter
+// shape overflow already uses -- only the face can know these, only the
+// frame owns the band they render on.
+export interface DrawioPageCursor {
+  index: number
+  count: number
+  select: (index: number) => void
+}
+export type DrawioPagerReporter = (cursor: DrawioPageCursor) => void
+
+// pageCursorOf reads the cursor out of a viewer instance. Pure against
+// the instance shape, so the reporting rule is unit-testable without a
+// vendored viewer.
+export function pageCursorOf(viewer: DrawioPagingViewer, select: (index: number) => void): DrawioPageCursor {
+  return { index: viewer.currentPage ?? 0, count: viewer.diagrams?.length ?? 0, select }
+}
+
+// attachDrawioPaging reports the viewer's page cursor to the frame, and
+// again after every page change it makes. `initialPage` restores where
+// this object was left earlier in the session -- applied only when the
+// file still has that page, so a file that lost pages on disk opens at
+// its first one rather than at nothing.
+export function attachDrawioPaging(viewer: DrawioPagingViewer, report: DrawioPagerReporter, initialPage?: number): void {
+  const count = viewer.diagrams?.length ?? 0
+  const select = (index: number): void => {
+    if (index < 0 || index >= count || !viewer.selectPage) return
+    viewer.selectPage(index)
+    report(pageCursorOf(viewer, select))
+  }
+  if (initialPage !== undefined && initialPage > 0 && initialPage < count) viewer.selectPage?.(initialPage)
+  report(pageCursorOf(viewer, select))
+}
+
 // isPrimaryDrag -- mxPanningHandler's forcePanningHandler starts a pan
 // on ANY mouse-down it accepts, WITHOUT consulting isPanningTrigger's
 // own left-button check (viewer.min.js, the mxPanningHandler
