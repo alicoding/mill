@@ -99,7 +99,18 @@ export interface CanvasObjectDecl {
    * whenever the object's own data changes — el's contents are yours
    * to manage between calls. Deliberately plain DOM: no renderer
    * library coupling, no build step required to write a plugin.
-   * Optional only for 'ephemeral-drag' (nothing is ever placed). */
+   *
+   * This is the legacy same-document form and is deprecated: prefer
+   * an entry page. Declare `"entry": "face.html"` beside the kind in
+   * your manifest's `contributes.canvasObjects` and leave renderFace
+   * out; Mill then mounts that page in its own sandboxed frame inside
+   * the object's box, with the object's data as the page's context
+   * (`object`, and `mirror` for a file-backed kind) and
+   * `call('object.updatePayload', patch)` and
+   * `call('object.setEditing', open)` as its doors back. A framed
+   * face is always interactive: shielded while idle, live once the
+   * object is selected. Optional only for 'ephemeral-drag' (nothing
+   * is ever placed) and for a kind with an entry page. */
   renderFace?: (el: HTMLElement, ctx: CanvasObjectFaceCtx) => void
 }
 

@@ -198,6 +198,7 @@ func PageIndex() []DocPage {
 		{"reference/extending-the-canvas.md", "Extending the canvas", "how a canvas noun loads, what its declaration requires, and what platform APIs it may and may not reach"},
 		{"reference/register-a-canvas-tool.md", "Register a canvas tool", "walks a new AtlasToolShape declaration end to end, quoting a real registered tool"},
 		{"reference/register-a-command.md", "Register a command", "walks a new Command registry entry end to end, quoting a real registered command"},
+		{"reference/managed-extensions.md", "Managed extensions", "the organisation policy file: allow and block lists, required tier, blocked capabilities, allowed sources, and what an install checks"},
 		{"agents/connect-mcp.md", "Automate with agents", "connecting over MCP and what agents can do"},
 		{"agents/diagrams.md", "Edit a diagram with an agent", "reading a diagram's shapes by id and adding, changing, deleting and importing them in place"},
 		{"agents/plugins.md", "What plugins expose to agents", "listing installed plugins, calling a plugin's declared tools, and how a plugin write parks"},

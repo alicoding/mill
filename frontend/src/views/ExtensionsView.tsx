@@ -8,6 +8,7 @@ import ExtensionsSection from './ExtensionsSection'
 import { ExtensionsBrowseTab } from './ExtensionsBrowseTab'
 import { ExtensionsUpdatesTab } from './ExtensionsUpdatesTab'
 import { ExtensionsUpdateDialogHost } from './ExtensionsUpdateDialogHost'
+import { ExtensionsPolicyBanner } from './ExtensionsPolicyBanner'
 import { refreshUpdates, useExtensionUpdatesStore } from '../shared/extensionUpdatesStore'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './ExtensionsSection.module.css'
@@ -58,6 +59,8 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
         <Heading as="h1" id="extensions-heading">{t('extensions.heading')}</Heading>
         <Text as="p" size="small" className={listStyles.muted}>{t('extensions.subtitle')}</Text>
       </Stack>
+
+      <ExtensionsPolicyBanner />
 
       <SegmentedControl aria-label={t('extensions.tabsAria')} className={styles.tabs} data-testid="extensions-tabs">
         {TABS.map((id) => (

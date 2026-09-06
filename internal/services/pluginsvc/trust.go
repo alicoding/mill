@@ -39,6 +39,10 @@ type InstallRecord struct {
 	ContentHash string       `json:"contentHash"`
 	Tier        string       `json:"tier"`
 	InstalledAt string       `json:"installedAt"`
+	// Warnings are the install checks' advisory findings
+	// (conform_install.go), kept so the Verification tab shows what
+	// the install prompt showed.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // TierInputs are the facts a tier is computed from.

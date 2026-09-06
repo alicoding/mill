@@ -28,7 +28,7 @@ import { collectPluginCommand } from './pluginCommands'
 // 'unallowed': installed after the run gate and not yet allowed by the
 // user (the install-time review, ADR-0051 §4); 'blocked': off the
 // administrator's allow-list. Neither runs any plugin code.
-export type PluginLoadStatus = 'loaded' | 'disabled' | 'unallowed' | 'blocked' | 'unsigned' | 'changed' | 'error'
+export type PluginLoadStatus = 'loaded' | 'policy' | 'disabled' | 'unallowed' | 'blocked' | 'unsigned' | 'changed' | 'error'
 
 export interface PluginLoadState {
 	status: PluginLoadStatus
@@ -142,7 +142,7 @@ export function collectReloadCommand(info: PluginInfo): void {
 		// answer, which no reload can move.
 		enabled: () => {
 			const status = loadStates.get(id)?.status
-			return status !== undefined && status !== 'blocked' && status !== 'unsigned'
+			return status !== undefined && status !== 'blocked' && status !== 'unsigned' && status !== 'policy'
 		},
 		// reloadPluginWithNotice itself never rejects (it reports the
 		// reload's own outcome as a notice) -- what CAN still reject is
@@ -191,7 +191,7 @@ export async function loadPlugins(): Promise<void> {
 		// "Allowed. Reload to load it." A folder whose manifest is
 		// unreadable never gets here -- it has no id to name.
 		collectReloadCommand(info)
-		const state = pluginRunState(id, !!info.Builtin, policy, { contentHash: info.ContentHash ?? '', signingPolicy: !!info.SigningPolicy, signed: !!info.Signed })
+		const state = pluginRunState(id, !!info.Builtin, policy, { contentHash: info.ContentHash ?? '', signingPolicy: !!info.SigningPolicy, signed: !!info.Signed, policyBlocked: info.PolicyBlocked ?? '' })
 		if (state !== 'run') {
 			loadStates.set(id, { status: state, info })
 			continue

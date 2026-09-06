@@ -4,7 +4,7 @@ import { Text } from '@primer/react'
 import { Events } from '@wailsio/runtime'
 import { pluginAPIFor } from '../plugins/hostApi'
 import { usePluginTheme } from '../plugins/pluginTheme'
-import { attachFrameBridge, sendFrameEvent, sendFrameMessage, type CaptureControls } from './pluginFrameBridge'
+import { attachFrameBridge, sendFrameEvent, sendFrameMessage, type CaptureControls, type FaceControls } from './pluginFrameBridge'
 import { buildFrameSrcdoc, frameBootstrapUrl, hostTokenReader, millTokenCss, pluginAssetBase } from './pluginFrameBootstrap'
 import listStyles from '../shared/ListCard.module.css'
 
@@ -35,6 +35,8 @@ export interface PluginFrameProps {
   /** The surface's context, pushed in on mount and on every change. */
   context: Record<string, unknown>
   capture?: CaptureControls
+  /** A canvas object's face: the object doors the page may call. */
+  face?: FaceControls
   /** Installs (and clears) the sink the plugin's postMessage uses. */
   onSink: (post: ((message: unknown) => void) | undefined) => void
   /** The plugin's own inbound handler for what the page posts. */
@@ -86,6 +88,7 @@ export function PluginFrame(props: PluginFrameProps) {
       frame,
       api,
       capture: props.capture,
+      face: props.face,
       onPageMessage: props.onPageMessage,
       onState: (state) => { void api.storage.set(stateKey, state).catch((err: unknown) => console.error(`plugin ${pluginId}: view state could not be saved`, err)) },
       onReady: () => sendFrameEvent(frame, 'ctx', context),

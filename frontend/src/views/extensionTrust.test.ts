@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { InstallPreview } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
-import { permissionLines, tierLabelKey, tierVariant, verificationKey } from './extensionTrust'
+import { capabilityDeedKey, permissionLines, tierLabelKey, tierVariant, verificationKey, withoutRuleNumber } from './extensionTrust'
 
 function preview(overrides: Partial<InstallPreview>): InstallPreview {
   return {
@@ -66,5 +66,16 @@ describe('permissionLines', () => {
 
   it('has nothing to say without a preview', () => {
     expect(permissionLines(null)).toEqual([])
+  })
+})
+
+describe('policy presentation', () => {
+  it('names a blocked capability as what an extension with it could do, and keeps an unknown id readable', () => {
+    expect(capabilityDeedKey('fetch')).toBe('extensions.capability.fetch')
+    expect(capabilityDeedKey('teleport')).toBe('teleport')
+  })
+  it("strips an install finding's rule number and keeps the file and the sentence", () => {
+    expect(withoutRuleNumber("standard rule 26: vendor/lib.js: Contains code Mill can't read easily.")).toBe("vendor/lib.js: Contains code Mill can't read easily.")
+    expect(withoutRuleNumber('plain')).toBe('plain')
   })
 })

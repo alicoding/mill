@@ -446,3 +446,15 @@ export const EXTENSIONS_INSTALL_MCP_BASE_PORT = 11820
 // folder, the same global state the store spec's pair isolates.
 export const EXTENSIONS_UPDATES_SERVER_BASE_PORT = 11840
 export const EXTENSIONS_UPDATES_MCP_BASE_PORT = 11860
+
+// extensions-policy.spec.ts (goal 0349 S6): its own pair, because the
+// organisation policy it boots with changes what every Extensions row
+// and install prompt says.
+export const EXTENSIONS_POLICY_SERVER_BASE_PORT = 11960
+export const EXTENSIONS_POLICY_MCP_BASE_PORT = 11980
+
+// runtime-plugin-face-frame.spec.ts (goal 0349 S6): its own pair; the
+// plugins dir is a copy of examples/plugins plus the framed-face
+// fixture, and the 30-object measurement wants an undisturbed server.
+export const RUNTIME_PLUGIN_FACE_FRAME_SERVER_BASE_PORT = 12000
+export const RUNTIME_PLUGIN_FACE_FRAME_MCP_BASE_PORT = 12020

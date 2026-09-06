@@ -35,7 +35,10 @@ page may call are `settings.get`, `notify`, `storage.get`,
 `content.createNote`, `content.createCard`, `content.updateCard`,
 `content.appendListRow`, `content.createList`, `files.list`,
 `convert.htmlToMarkdown`, `requestGuardedAction`, `runCommand`,
-and, in a capture, `capture.done` and `capture.cancel`. Anything
+in a capture, `capture.done` and `capture.cancel`, and in a canvas
+object's face, `object.updatePayload` (merge a patch into this
+object's payload; an empty string deletes a key) and
+`object.setEditing` (true while your editor is open). Anything
 else rejects, saying so by name.
 
 #### Parameters

@@ -5,6 +5,7 @@ import { PluginService } from '../../bindings/github.com/alicoding/mill/internal
 import type { MirrorReadState } from '../atlas/useAtlasObjectMirrorRead'
 import type { CanvasObjectDecl, CanvasObjectFaceCtx, GuardedActionResult } from './sdk'
 import { currentPluginTheme, onPluginThemeChange, pluginThemeAttrs, usePluginTheme } from './pluginTheme'
+import { mirrorDataUrlFor } from './pluginFaceMirror'
 
 // pluginFaceComponent adapts a plugin's framework-agnostic
 // renderFace(el, ctx) callback into the one React component shape the
@@ -84,18 +85,7 @@ export function pluginFaceComponent(pluginId: string, decl: CanvasObjectDecl & {
 		// change only, or a plugin's own updatePayload would re-invoke
 		// renderFace mid-typing with a stale echo of what it just wrote.
 		const payloadJSON = JSON.stringify(object.Payload ?? {})
-		const content = mirrorContent?.content
-		// Binary kinds arrive base64-encoded with a MIME type; a text kind
-		// (markdown source, json, csv, .env -- ClassifyMirrorKind's text
-		// set) arrives as the raw text with no MIME type, and reaches the
-		// plugin as a text/plain data: URL so every file kind the mirror
-		// door reads is one a plugin face can decode.
-		const mirrorDataUrl = content?.MimeType && content?.Content
-			? `data:${content.MimeType};base64,${content.Content}`
-			: content?.Kind === 'text' && typeof content.Content === 'string'
-				? `data:text/plain;charset=utf-8,${encodeURIComponent(content.Content)}`
-				: null
-		const mirrorFailed = !!mirrorContent?.error || (!!content && !mirrorDataUrl)
+		const { dataUrl: mirrorDataUrl, failed: mirrorFailed } = mirrorDataUrlFor(mirrorContent)
 		const sizeJSON = object.Size ? JSON.stringify(object.Size) : ''
 		// The resolved appearance rides the face's own root (goal 0320)
 		// so a plugin stylesheet can branch on it with no JavaScript, and

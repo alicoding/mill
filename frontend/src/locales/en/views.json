@@ -161,7 +161,8 @@
         "unsigned": "its signature did not verify",
         "changed": "its files changed since you allowed it. Allow it again on its row"
       },
-      "secretRefAdd": "Add new secret"
+      "secretRefAdd": "Add new secret",
+      "pluginPolicyNote": "Blocked by your organisation's policy."
     },
     "keyboardShortcuts": {
       "label": "Keyboard shortcuts",
@@ -415,7 +416,7 @@
   "activityRunsExplorer": {
     "noEnvironment": "None",
     "columns": {
-        "environment": "Environment",
+      "environment": "Environment",
       "started": "Started",
       "kind": "Kind",
       "version": "Version",
@@ -672,7 +673,9 @@
       "unchecked": "Nothing checked these files when they were installed.",
       "changed": "Changed since it was allowed.",
       "signaturePresent": "Its signature verified against a pinned key.",
-      "signatureMissing": "It carries no signature a pinned key verifies."
+      "signatureMissing": "It carries no signature a pinned key verifies.",
+      "policyAllowed": "Allowed by {{org}}'s policy.",
+      "policyBlocked": "Blocked by your organisation's policy."
     },
     "install": {
       "title": "Install {{name}}?",
@@ -735,7 +738,38 @@
       "usesSecrets": "Uses {{list}} from its settings",
       "added": "Added {{label}} to Configure.",
       "addFailed": "Couldn't add it to Configure: {{error}}"
-    }
+    },
+    "policy": {
+      "managedBy": "Managed by {{org}}",
+      "managedCaption": "Your organisation decides which extensions can be installed.",
+      "unreadableTitle": "Extensions are blocked",
+      "blockedStatus": "Blocked by your organisation's policy",
+      "refusedTitle": "Your organisation's policy doesn't allow this extension.",
+      "settingsHeading": "Extensions",
+      "settingsSubtitle": "The policy your organisation set for extensions on this Mac.",
+      "none": "No organisation policy is set on this Mac.",
+      "managedByLabel": "Managed by",
+      "requiredTierLabel": "Required trust tier",
+      "tierAny": "Any",
+      "blockedCapabilitiesLabel": "Blocked capabilities",
+      "noneValue": "None",
+      "allowedSourcesLabel": "Allowed sources",
+      "anySource": "Any source",
+      "listsLabel": "Allow and block lists",
+      "listsValue": "{{allow}} allowed, {{block}} blocked",
+      "fileLabel": "Policy file",
+      "fileCaption": "Read from this path each time extensions load."
+    },
+    "capability": {
+      "fetch": "Reach the network",
+      "write-content": "Write cards and notes",
+      "open-url": "Open links",
+      "open-app": "Open other apps",
+      "list-files": "List files",
+      "read-file": "Read files",
+      "erase-board-items": "Erase board items"
+    },
+    "noticedHeading": "Mill noticed"
   },
   "pageMeta": {}
 }

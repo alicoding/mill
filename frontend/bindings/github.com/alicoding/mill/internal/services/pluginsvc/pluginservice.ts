@@ -169,6 +169,14 @@ export function ListUpdates(): $CancellablePromise<$models.UpdateCheck> {
 }
 
 /**
+ * PluginPolicy answers the policy summary for the surfaces that show
+ * it. Never fails: an unreadable file is a state, not an error.
+ */
+export function PluginPolicy(): $CancellablePromise<$models.PolicyView> {
+    return $Call.ByID(2459895565);
+}
+
+/**
  * PluginsDir returns the directory plugins are installed into --
  * the Extensions page's install story shows and reveals it. The
  * directory is created on first ask so "open the folder" never lands

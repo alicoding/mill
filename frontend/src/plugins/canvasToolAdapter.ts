@@ -14,6 +14,7 @@ import { meetsDragThreshold } from '../atlas/useAtlasToolGesture'
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { ingestionClaimMismatch } from './ingestionClaims'
 import { pluginFaceComponent, pluginObjectCtx } from './PluginFaceContent'
+import { pluginFramedFaceComponent } from './PluginFaceFrame'
 import type { CanvasGestureCtx, CanvasGestureDecl, CanvasObjectDecl, CanvasObjectMenuItem, CanvasStyleFieldDecl } from './sdk'
 
 // The gesture/style half of a plugin's canvas registration (goal 0252
@@ -65,7 +66,7 @@ function styleFieldError(f: CanvasStyleFieldDecl): string | null {
 
 // The interaction/gesture/face pairing rules, one concern of
 // canvasToolDeclError's below.
-function interactionDeclError(decl: CanvasObjectDecl): string | null {
+function interactionDeclError(decl: CanvasObjectDecl, framed: boolean): string | null {
 	const interaction = decl.interaction ?? 'arm-then-click'
 	if (!['arm-then-click', 'drag-to-draw', 'ephemeral-drag'].includes(interaction)) {
 		return `unknown interaction "${String(decl.interaction)}"`
@@ -77,8 +78,8 @@ function interactionDeclError(decl: CanvasObjectDecl): string | null {
 	if (!dragShaped && decl.gesture) {
 		return 'a gesture is only legal on a drag interaction ("drag-to-draw" or "ephemeral-drag")'
 	}
-	if (interaction !== 'ephemeral-drag' && typeof decl.renderFace !== 'function') {
-		return 'renderFace must be a function (it is optional only for "ephemeral-drag")'
+	if (interaction !== 'ephemeral-drag' && typeof decl.renderFace !== 'function' && !framed) {
+		return 'renderFace must be a function, or the manifest must declare an entry page for this kind'
 	}
 	const menuProblem = menuItemsProblem(decl.menuItems ?? [])
 	if (menuProblem) return menuProblem
@@ -105,8 +106,8 @@ function identityDeclError(decl: CanvasObjectDecl): string | null {
 // Registration-time validation, split out pure so a unit test can
 // drive every refusal without touching the live registry. Returns an
 // error string (with no plugin prefix -- the caller adds it) or null.
-export function canvasToolDeclError(decl: CanvasObjectDecl): string | null {
-	const pairingError = interactionDeclError(decl) ?? identityDeclError(decl)
+export function canvasToolDeclError(decl: CanvasObjectDecl, framed = false): string | null {
+	const pairingError = interactionDeclError(decl, framed) ?? identityDeclError(decl)
 	if (pairingError) return pairingError
 	for (const f of decl.styleFields ?? []) {
 		const fieldError = styleFieldError(f)
@@ -239,10 +240,25 @@ function emojiIcon(emoji: string): Icon {
 }
 
 // faceContent builds the registry content contribution -- null for an
-// ephemeral tool (nothing is ever placed); renderFace is guaranteed
-// non-null for every other interaction (canvasToolDeclError).
-function faceContent(pluginId: string, decl: CanvasObjectDecl, ephemeral: boolean): ThirdPartyNounShape['content'] {
-	if (ephemeral || !decl.renderFace) return null
+// ephemeral tool (nothing is ever placed). A kind whose manifest names
+// an entry page (goal 0349 S6) is drawn by that page in its own frame;
+// otherwise renderFace, guaranteed non-null (canvasToolDeclError).
+function faceContent(pluginId: string, decl: CanvasObjectDecl, ephemeral: boolean, frame?: { entry: string; version: string }): ThirdPartyNounShape['content'] {
+	if (ephemeral) return null
+	if (frame) {
+		return {
+			Component: pluginFramedFaceComponent(pluginId, decl, frame.entry, frame.version),
+			ariaLabelKey: decl.label,
+			role: undefined,
+			// A frame swallows the pointer, so a framed face is always
+			// interactive in the activation contract: shielded while
+			// idle, live once selected.
+			input: 'interactive',
+			source: decl.source === 'file' ? { kind: 'file', pathKey: 'mirrorPath' } : decl.source === 'url' ? { kind: 'url', urlKey: 'url' } : { kind: 'board-local' },
+			editRoute: adaptEditRoute(decl.editRoute),
+		}
+	}
+	if (!decl.renderFace) return null
 	return {
 		Component: pluginFaceComponent(pluginId, { ...decl, renderFace: decl.renderFace }),
 		// i18next returns an unknown key verbatim, so the label doubles
@@ -305,7 +321,9 @@ function shortcutConflictError(key: string | undefined): string | null {
 // extracted whole so the API assembly stays a thin door. Throws with
 // the plugin's own id in the message so a broken plugin names itself.
 export function buildThirdPartyNoun(pluginId: string, manifest: Manifest, decl: CanvasObjectDecl): ThirdPartyNounShape {
-	const declError = canvasToolDeclError(decl) ?? shortcutConflictError(decl.shortcutKey)
+	const contributed = (manifest.contributes?.canvasObjects ?? []).find((c) => c.kind === decl.kind)
+	const frame = contributed?.entry ? { entry: contributed.entry, version: manifest.version } : undefined
+	const declError = canvasToolDeclError(decl, !!frame) ?? shortcutConflictError(decl.shortcutKey)
 	if (declError) throw new Error(`plugin ${pluginId}: ${declError}`)
 	const interaction = decl.interaction ?? 'arm-then-click'
 	const ephemeral = interaction === 'ephemeral-drag'
@@ -349,7 +367,7 @@ export function buildThirdPartyNoun(pluginId: string, manifest: Manifest, decl: 
 		dragBand: ephemeral ? false : (decl.dragBand ?? true),
 		fileBacked: !ephemeral && decl.source === 'file',
 		boardObjectKind: decl.objectKind ?? decl.kind,
-		content: faceContent(pluginId, decl, ephemeral),
+		content: faceContent(pluginId, decl, ephemeral, frame),
 		sticky,
 		gesture: dragShaped && decl.gesture ? adaptGesture(decl.kind, decl.objectKind ?? decl.kind, styleDecls, decl.gesture, sticky, canErase) : null,
 		commit: () => {

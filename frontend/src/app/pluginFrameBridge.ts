@@ -44,6 +44,14 @@ export interface CaptureControls {
   cancel: () => void
 }
 
+// FaceControls are the two things a canvas object's framed face can ask
+// for that a view cannot (goal 0349 S6): a payload write on ITS object,
+// and the editing signal that stands the board's shortcuts down.
+export interface FaceControls {
+  updatePayload: (patch: Record<string, string>) => Promise<void>
+  setEditing: (editing: boolean) => void
+}
+
 // FRAME_METHODS is the whole surface a framed page can reach. It is a
 // deliberate subset of the plugin api: anything that hands back a
 // function, an element or a live object cannot cross a postMessage
@@ -68,6 +76,8 @@ export const FRAME_METHODS = [
   'runCommand',
   'capture.done',
   'capture.cancel',
+  'object.updatePayload',
+  'object.setEditing',
 ] as const
 
 export type FrameMethod = typeof FRAME_METHODS[number]
@@ -78,8 +88,9 @@ const ALLOWED = new Set<string>(FRAME_METHODS)
 // object. notify answers true rather than its dismiss function, which
 // is a function and cannot cross the boundary; every other reply is
 // already plain data.
-export async function callFrameMethod(api: MillPluginAPI, method: string, args: unknown[], capture?: CaptureControls): Promise<unknown> {
+export async function callFrameMethod(api: MillPluginAPI, method: string, args: unknown[], capture?: CaptureControls, face?: FaceControls): Promise<unknown> {
   if (!ALLOWED.has(method)) throw new Error(`${method} is not available in a frame`)
+  if (method.startsWith('object.') && !face) throw new Error(`${method} is only available in a canvas object's face`)
   const [first, second, third] = args
   switch (method as FrameMethod) {
     case 'settings.get': return api.settings.get(String(first))
@@ -103,6 +114,8 @@ export async function callFrameMethod(api: MillPluginAPI, method: string, args: 
     case 'runCommand': return runCommand(String(first))
     case 'capture.done': { capture?.done(); return true }
     case 'capture.cancel': { capture?.cancel(); return true }
+    case 'object.updatePayload': { await face?.updatePayload(first as Record<string, string>); return true }
+    case 'object.setEditing': { face?.setEditing(!!first); return true }
   }
 }
 
@@ -110,6 +123,7 @@ export interface FrameBridgeOptions {
   frame: HTMLIFrameElement
   api: MillPluginAPI
   capture?: CaptureControls
+  face?: FaceControls
   /** Called with what the page sent through its postMessage door. */
   onPageMessage?: (payload: unknown) => void
   /** Called with the value the page's setState persisted. */
@@ -133,7 +147,7 @@ export function handleFrameMessage(options: FrameBridgeOptions, event: Pick<Mess
   if (data.kind === 'state') { options.onState?.(data.payload); return }
   if (data.kind !== 'call' || typeof data.id !== 'number') return
   const id = data.id
-  void callFrameMethod(api, String(data.method), data.args ?? [], options.capture)
+  void callFrameMethod(api, String(data.method), data.args ?? [], options.capture, options.face)
     .then((result) => reply(frame, { mill: 1, id, ok: true, result }))
     .catch((err: unknown) => reply(frame, { mill: 1, id, ok: false, error: err instanceof Error ? err.message : String(err) }))
 }

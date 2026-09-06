@@ -45,7 +45,7 @@ import { background } from '../shared/background'
 // a pending review answers first, in the detail pane.
 function rowControl(status: string | undefined, error: string | undefined): 'switch' | 'none' {
   if (error) return 'none'
-  if (status === 'blocked' || status === 'unallowed' || status === 'changed' || status === 'unsigned') return 'none'
+  if (status === 'policy' || status === 'blocked' || status === 'unallowed' || status === 'changed' || status === 'unsigned') return 'none'
   return 'switch'
 }
 
@@ -126,6 +126,9 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
               {p.Manifest.author && <Text size="small" className={listStyles.muted}>{p.Manifest.author}</Text>}
               {p.Manifest.version && <Text size="small" className={listStyles.muted}>{t('extensions.versionLabel', { version: p.Manifest.version })}</Text>}
               {badgeKey && <Label variant={tierVariant(p.Tier ?? '')} data-testid="extensions-row-tier">{t(badgeKey)}</Label>}
+              {runtime?.status === 'policy' && (
+                <Label variant="attention" data-testid="extensions-row-policy">{t('extensions.policy.blockedStatus')}</Label>
+              )}
             </>
           )}
           actions={p.Builtin ? undefined : <ExtensionRowMenu id={id} name={name} />}
