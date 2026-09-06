@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { AtlasArmRequestTool } from './atlasToolIdentity'
+import type { ContextMenuState } from './ContextMenu'
 
 // Cross-bounded-context UI signals (goal 0071, contextual shortcut
 // discoverability): shared/commands.ts's command `run` callbacks can't
@@ -245,6 +246,18 @@ interface UISignalState {
   unsavedLeave: 'quit' | 'restart' | 'close' | null
   requestUnsavedLeave: (reason: 'quit' | 'restart' | 'close') => void
   clearUnsavedLeave: () => void
+  // atlasContextMenuRequest: a menu a face can't render in place
+  // asks the board's own top-level ContextMenu to open instead (goal
+  // 0346) -- a face rendered inside a React Flow node's transformed
+  // subtree has no correct frame for its own position:fixed anchor
+  // (the transform becomes the fixed-position containing block), so
+  // the JSON tree's row menu raises this signal rather than rendering
+  // one of its own. Set-then-consume, the same shape
+  // configureEditRequest already uses: AtlasView moves it straight
+  // into the SAME menu state its own right-click menus already share.
+  atlasContextMenuRequest: ContextMenuState | null
+  requestAtlasContextMenu: (state: ContextMenuState) => void
+  consumeAtlasContextMenu: () => void
 }
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
@@ -345,4 +358,7 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   unsavedLeave: null,
   requestUnsavedLeave: (reason) => set({ unsavedLeave: reason }),
   clearUnsavedLeave: () => set({ unsavedLeave: null }),
+  atlasContextMenuRequest: null,
+  requestAtlasContextMenu: (state) => set({ atlasContextMenuRequest: state }),
+  consumeAtlasContextMenu: () => set({ atlasContextMenuRequest: null }),
 }))

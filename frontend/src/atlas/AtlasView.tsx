@@ -18,7 +18,7 @@ import { AtlasBoard } from './AtlasBoard'
 import { pasteAsOffer, pasteSummaryText } from './pasteSummary'
 import { thirdPartyNounForKind } from './atlasNounRegistry'
 import { type AtlasFocusRequest } from './useBoardFocus'
-import { type ContextMenuState } from '../shared/ContextMenu'
+import { useAtlasContextMenuSignal } from './useAtlasContextMenuSignal'
 import { AtlasViewOverlays } from './AtlasViewOverlays'
 import { closeAtlasEditDiagram, useAtlasEditDiagramStore } from './atlasEditDiagramStore'
 import { AtlasBoardEmptyState } from './AtlasBoardEmptyState'
@@ -224,7 +224,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // click IS the flip. The edge menu (Change link kind/Edit label/
   // Remove link) lives in the SAME hook -- split out of this file
   // entirely (architecture.md's 500-line convention).
-  const [menu, setMenu] = useState<ContextMenuState | null>(null)
+  const { menu, setMenu } = useAtlasContextMenuSignal()
   // The quick-delete undo toast (goal 0093): one shared instance,
   // fed by every Atlas delete door below -- selection Del/Backspace +
   // tray Delete, card/note context-menu Delete, frame-header Delete,
