@@ -32,7 +32,7 @@ test('Cmd+1 through Cmd+5 jump to their view from anywhere else in the app', asy
   await expect(page.getByTestId('composition-view')).toBeVisible()
 
   await page.keyboard.press('Meta+2')
-  await expect(page.getByRole('tablist', { name: 'Configure' })).toBeVisible()
+  await expect(page.getByTestId('configure-kind-nav')).toBeVisible()
 
   await page.keyboard.press('Meta+3')
   await expect(page.getByTestId('atlas-view')).toBeVisible()
