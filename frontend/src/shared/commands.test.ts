@@ -166,11 +166,12 @@ describe('hintOnly / paletteHidden commands', () => {
     expect(ran).toBe(false)
   })
 
-  it('atlas.delete.selection and atlas.group.selection are both hintOnly and paletteHidden', () => {
+  it('atlas.delete.selection and atlas.group.selection are hintOnly and need the selection context', () => {
     for (const id of ['atlas.delete.selection', 'atlas.group.selection']) {
       const command = findCommand(id)
       expect(command?.hintOnly).toBe(true)
-      expect(command?.paletteHidden).toBe(true)
+      expect(command?.paletteHidden).toBeUndefined()
+      expect(command?.needs).toBe('selection')
     }
   })
 })

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import type { RefObject } from 'react'
-import { useAppStore } from '../shared/store'
+import { useAppStore, type CanvasCommandRequest } from '../shared/store'
 import type { RunButtonHandle } from './LiveRunControls'
 import type { CanvasStore } from './canvasStore'
 
@@ -32,6 +32,14 @@ export interface CanvasCommandActions {
   zoomIn: () => void
   zoomOut: () => void
   fitView: () => void
+  // The targeted requests (goal 0346 slice B): the canvas's own
+  // right-click commands name a step, a connection or a client point.
+  openDetails: (nodeId: string) => void
+  removeNode: (nodeId: string) => void
+  selectEdge: (edgeId: string) => void
+  removeEdge: (edgeId: string) => void
+  toggleAddSteps: () => void
+  addNoteAt: (clientPos: { x: number; y: number }) => void
 }
 
 export function useCanvasCommandDispatch(
@@ -47,7 +55,9 @@ export function useCanvasCommandDispatch(
   useEffect(() => {
     if (!canvasCommandRequest) return
     if (activeWorkTabKey !== tabKey) return
-    if (canvasCommandRequest === 'save') {
+    if (typeof canvasCommandRequest === 'object') {
+      dispatchTargeted(canvasCommandRequest, canvasActions)
+    } else if (canvasCommandRequest === 'save') {
       void save()
     } else if (canvasCommandRequest === 'run') {
       runButtonRef.current?.trigger()
@@ -76,4 +86,15 @@ export function useCanvasCommandDispatch(
     // real triggers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasCommandRequest, activeWorkTabKey, tabKey])
+}
+
+function dispatchTargeted(request: Exclude<CanvasCommandRequest, string>, actions: CanvasCommandActions): void {
+  switch (request.kind) {
+    case 'openDetails': actions.openDetails(request.nodeId); return
+    case 'removeNode': actions.removeNode(request.nodeId); return
+    case 'selectEdge': actions.selectEdge(request.edgeId); return
+    case 'removeEdge': actions.removeEdge(request.edgeId); return
+    case 'toggleAddSteps': actions.toggleAddSteps(); return
+    case 'addNote': actions.addNoteAt(request.pos); return
+  }
 }

@@ -7,9 +7,9 @@ import { SettingsService } from './bindings'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import { pushNotice } from './noticeStore'
 import { removePluginNow } from './pluginHostCommands'
+import { entityRowCommands } from './entityRowCommands'
 import { refreshDisabledExtensions, useExtensionEnablementStore } from './extensionEnablementStore'
 import { pluginLoadStates } from '../plugins/loader'
-import { background } from './background'
 import { ConfigureService } from './bindings'
 import { appTranslate, messageFor } from './userError'
 import { checkForUpdatesWithNotice, updateAllWithNotice, updateCandidateFor, useExtensionUpdatesStore } from './extensionUpdatesStore'
@@ -36,6 +36,43 @@ function builtIn(id: string): boolean {
   return pluginLoadStates().get(id)?.info.Builtin === true
 }
 
+// One descriptor for the installed-extension row (goal 0346 slice B).
+// No `load`: a folder installed after boot has a row and a receipt but
+// no load state until the next load, so every command acts on the id
+// the row hands it and asks the one question true of every row --
+// is this one of Mill's own bundled plugins.
+const EXTENSION_ROW_COMMANDS: Command[] = entityRowCommands<{ ID: string; Label: string }>({
+  entity: EXTENSION_ENTITY,
+  namespace: 'extension',
+  labelOf: extensionName,
+  refetch: () => {},
+  toggles: [{
+    on: { suffix: 'enable', label: 'commands.extension.enable' },
+    off: { suffix: 'disable', label: 'commands.extension.disable' },
+    isOn: (item) => !useExtensionEnablementStore.getState().disabledExtensionIds.includes(item.ID),
+    set: (item, on) => SettingsService.SetExtensionEnabled(item.ID, on).then(refreshDisabledExtensions),
+    enabled: (item) => !builtIn(item.ID),
+  }],
+  extras: [{
+    // A built-in lives in the binary, so there is no folder to reveal.
+    suffix: 'reveal',
+    label: 'commands.extension.reveal',
+    enabled: (item) => !builtIn(item.ID),
+    run: () => PluginService.RevealPluginsDir(),
+  }],
+  remove: {
+    suffix: 'remove',
+    label: 'commands.extension.remove',
+    undo: false,
+    confirm: {
+      title: 'views:settings.extensions.removeConfirmTitle',
+      body: 'views:settings.extensions.removeConfirmBody',
+      confirmLabel: 'views:settings.extensions.removeConfirmButton',
+    },
+    run: (item) => removePluginNow(item.ID, item.Label),
+  },
+}).map((command) => ({ ...command, paletteHidden: true }))
+
 export const EXTENSIONS_COMMANDS: Command[] = [
   {
     // The store is its own destination, not a Settings pane. ⇧⌘X is
@@ -57,67 +94,10 @@ export const EXTENSIONS_COMMANDS: Command[] = [
       useUISignalStore.getState().requestExtensionSources()
     },
   },
-  {
-    id: 'extension.enable',
-    label: 'commands.extension.enable',
-    defaultBinding: null,
-    needs: 'entity',
-    paletteHidden: true,
-    enabled: (ctx) => {
-      const target = entityContext(ctx, EXTENSION_ENTITY)
-      return !!target && !builtIn(target.id) && useExtensionEnablementStore.getState().disabledExtensionIds.includes(target.id)
-    },
-    run: (ctx) => {
-      const target = entityContext(ctx, EXTENSION_ENTITY)
-      if (!target) return
-      void background(SettingsService.SetExtensionEnabled(target.id, true).then(refreshDisabledExtensions), 'extension.enable')
-    },
-  },
-  {
-    id: 'extension.disable',
-    label: 'commands.extension.disable',
-    defaultBinding: null,
-    needs: 'entity',
-    paletteHidden: true,
-    enabled: (ctx) => {
-      const target = entityContext(ctx, EXTENSION_ENTITY)
-      return !!target && !builtIn(target.id) && !useExtensionEnablementStore.getState().disabledExtensionIds.includes(target.id)
-    },
-    run: (ctx) => {
-      const target = entityContext(ctx, EXTENSION_ENTITY)
-      if (!target) return
-      void background(SettingsService.SetExtensionEnabled(target.id, false).then(refreshDisabledExtensions), 'extension.disable')
-    },
-  },
-  {
-    id: 'extension.reveal',
-    label: 'commands.extension.reveal',
-    defaultBinding: null,
-    needs: 'entity',
-    paletteHidden: true,
-    // A built-in lives in the binary, so there is no folder to reveal.
-    enabled: (ctx) => {
-      const target = entityContext(ctx, EXTENSION_ENTITY)
-      return !!target && !builtIn(target.id)
-    },
-    run: () => { void background(PluginService.RevealPluginsDir(), 'extension.reveal') },
-  },
-  {
-    id: 'extension.remove',
-    label: 'commands.extension.remove',
-    defaultBinding: null,
-    needs: 'entity',
-    paletteHidden: true,
-    enabled: (ctx) => {
-      const target = entityContext(ctx, EXTENSION_ENTITY)
-      return !!target && !builtIn(target.id)
-    },
-    run: (ctx) => {
-      const target = entityContext(ctx, EXTENSION_ENTITY)
-      if (!target) return
-      removePluginNow(target.id, extensionName(target.id))
-    },
-  },
+  // enable/disable/reveal/remove are minted by the row-command factory
+  // below (goal 0346 slice B), the same descriptor every Configure
+  // family uses -- their ids and labels are unchanged.
+  ...EXTENSION_ROW_COMMANDS,
   {
     // Check for updates is the one user action that asks every source
     // and every installed extension's own source for a newer version;

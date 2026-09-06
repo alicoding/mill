@@ -1,6 +1,7 @@
 import type { Command } from './commands'
 import type { CommandContext } from './commandContext'
 import { entityContext } from './commandContext'
+import { copy } from './copy'
 import { deleteWithUndo } from './deleteWithUndo'
 import { useEntityActionErrorStore } from './entityActionErrorStore'
 import { downloadJSON } from './downloadJSON'
@@ -35,6 +36,42 @@ export interface EntityRowExtra<T> {
   run: (item: T) => void | Promise<unknown>
 }
 
+/**
+ * A two-state action minted as TWO commands (goal 0346 slice B): `on`
+ * is available while the row is off, `off` while it is on, so the row
+ * always offers exactly the one that changes something and a keystroke
+ * bound to either can never flip the wrong way.
+ */
+export interface EntityRowToggle<T> {
+  on: { suffix: string; label: string }
+  off: { suffix: string; label: string }
+  isOn: (item: T) => boolean
+  set: (item: T, on: boolean) => void | Promise<unknown>
+  enabled?: (item: T) => boolean
+}
+
+/**
+ * The confirm question a family's delete asks first (goal 0346 slice
+ * B): locale keys, each interpolated with `{ label, entityType }`. A
+ * family whose service registers no way back asks instead of offering
+ * an Undo that always fails.
+ */
+export interface EntityRowConfirm {
+  title: string
+  body: string
+  confirmLabel?: string
+}
+
+export interface EntityRowRemove<T> {
+  run: (item: T) => void | Promise<unknown>
+  /** False for a service that registers no undo -- a confirm replaces the toast. */
+  undo?: boolean
+  confirm?: EntityRowConfirm
+  /** The command-id suffix and label key, where a family already spells its delete differently. */
+  suffix?: string
+  label?: string
+}
+
 export interface EntityRowFamily<T extends EntityRowItem> {
   /**
    * The family slug, spelled the same way every other surface already
@@ -51,6 +88,8 @@ export interface EntityRowFamily<T extends EntityRowItem> {
    * then acts on the context's id alone, and `Label` reads as empty.
    */
   load?: () => T[] | null | undefined
+  /** The row's label for a family without `load`, so a confirm can still name it. */
+  labelOf?: (id: string) => string
   /** Re-read the family after a mutation. */
   refetch: () => void
   /** Open this row's own editor. Omitted where the row itself is the editor. */
@@ -65,8 +104,8 @@ export interface EntityRowFamily<T extends EntityRowItem> {
   seedOf?: (item: T) => SeedLike
   /** The revision currently shipped for this row (the SeedRevisions map). */
   shippedRevision?: (item: T) => number
-  /** The family's delete RPC. */
-  remove: (id: string) => Promise<unknown>
+  /** The family's delete RPC, or the fuller shape when it is not an undoable delete. */
+  remove: ((id: string) => Promise<unknown>) | EntityRowRemove<T>
   /**
    * Whether the delete posts the undo toast. True by default, which is
    * right for every ConfigureService family -- its own delete registers
@@ -77,6 +116,8 @@ export interface EntityRowFamily<T extends EntityRowItem> {
   undoable?: boolean
   /** Actions only this family has. */
   extras?: EntityRowExtra<T>[]
+  /** Two-state actions only this family has, each minted as an on/off pair. */
+  toggles?: EntityRowToggle<T>[]
 }
 
 /** The context a row hands its own actions. */
@@ -100,7 +141,7 @@ export function entityRowCommands<T extends EntityRowItem>(family: EntityRowFami
   const find = (ctx?: CommandContext): T | undefined => {
     const target = entityContext(ctx, family.entity)
     if (!target) return undefined
-    if (!family.load) return { ID: target.id, Label: '' } as T
+    if (!family.load) return { ID: target.id, Label: family.labelOf?.(target.id) ?? '' } as T
     return (family.load() ?? []).find((x) => x.ID === target.id)
   }
 
@@ -110,7 +151,7 @@ export function entityRowCommands<T extends EntityRowItem>(family: EntityRowFami
   // recorded beside the family's own list (shared/entityActionErrorStore.ts)
   // AND rethrown, so runCommand posts the footer's error pill too -- one
   // refusal, the two places a reader could be looking.
-  const make = (suffix: string, label: string, run: (item: T) => void | Promise<unknown>, available?: (item: T) => boolean): Command => ({
+  const make = (suffix: string, label: string, run: (item: T) => void | Promise<unknown>, available?: (item: T) => boolean, confirm?: EntityRowConfirm): Command => ({
     id: `${family.namespace}.${suffix}`,
     label,
     defaultBinding: null,
@@ -120,6 +161,14 @@ export function entityRowCommands<T extends EntityRowItem>(family: EntityRowFami
       if (!item) return false
       return available ? available(item) : true
     },
+    ...(confirm ? {
+      confirm: (ctx?: CommandContext) => {
+        const item = find(ctx)
+        if (!item) return null
+        const params = { label: item.Label, name: item.Label, entityType: family.entity }
+        return { title: copy(confirm.title, params), body: copy(confirm.body, params), confirmLabel: confirm.confirmLabel ? copy(confirm.confirmLabel, params) : undefined }
+      },
+    } : {}),
     run: async (ctx) => {
       const item = find(ctx)
       if (!item) return
@@ -147,6 +196,11 @@ export function entityRowCommands<T extends EntityRowItem>(family: EntityRowFami
   for (const extra of family.extras ?? []) {
     commands.push(make(extra.suffix, extra.label, (item) => extra.run(item), extra.enabled))
   }
+  for (const toggle of family.toggles ?? []) {
+    const allowed = (item: T) => (toggle.enabled ? toggle.enabled(item) : true)
+    commands.push(make(toggle.on.suffix, toggle.on.label, (item) => toggle.set(item, true), (item) => allowed(item) && !toggle.isOn(item)))
+    commands.push(make(toggle.off.suffix, toggle.off.label, (item) => toggle.set(item, false), (item) => allowed(item) && toggle.isOn(item)))
+  }
   if (family.exportEntity) {
     const exportEntity = family.exportEntity
     commands.push(make('export', `commands.${family.namespace}.export`, async (item) => {
@@ -165,9 +219,13 @@ export function entityRowCommands<T extends EntityRowItem>(family: EntityRowFami
   // anything the user authored (docs/SPEC.md §2.2), and the way back is
   // the undo toast rather than a question asked up front
   // (.claude/rules/frontend.md's button semantics).
-  commands.push(make('delete', `commands.${family.namespace}.delete`, async (item) => {
-    if (family.undoable === false) {
-      await family.remove(item.ID)
+  const remove: EntityRowRemove<T> = typeof family.remove === 'function'
+    ? { run: (item) => (family.remove as (id: string) => Promise<unknown>)(item.ID), undo: family.undoable !== false }
+    : family.remove
+  const removeSuffix = remove.suffix ?? 'delete'
+  commands.push(make(removeSuffix, remove.label ?? `commands.${family.namespace}.${removeSuffix}`, async (item) => {
+    if (remove.undo === false) {
+      await remove.run(item)
       family.refetch()
       return
     }
@@ -175,10 +233,10 @@ export function entityRowCommands<T extends EntityRowItem>(family: EntityRowFami
       entity: family.entity,
       id: item.ID,
       label: item.Label,
-      remove: () => family.remove(item.ID),
+      remove: () => Promise.resolve(remove.run(item)),
       refetch: family.refetch,
     })
-  }))
+  }, undefined, remove.confirm))
 
   return commands
 }

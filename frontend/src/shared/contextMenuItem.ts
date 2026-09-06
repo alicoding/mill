@@ -6,25 +6,32 @@ import { commandAvailable, commandLabel, findCommand } from './commands'
 // pulling Primer's JSX in (the same component/non-component seam
 // shared/inventoryItem.ts established). ContextMenu.tsx re-exports the
 // types, so every existing import site is unchanged.
+//
+// An item IS a registry command plus the target it acts on (goal 0343,
+// goal 0346 slice B): the surface supplies WHICH thing, never what the
+// action does. There is no closure form -- an action written inline on
+// a menu exists nowhere but that render, unreachable from the palette,
+// unbindable, its label duplicated per surface. The `no-restricted-
+// syntax` rule in eslint.config.js refuses a `run:` property on one of
+// these literals for the same reason InventoryMenuAction refuses
+// `onClick:`.
 export interface ContextMenuItem {
   id: string
-  // A registry command id and the row's own target (goal 0343). An
-  // item naming a command and NO run() of its own takes its label, its
-  // enablement and its execution from the command -- the surface
-  // supplies WHICH row, never what the action does.
-  //
-  // An item carrying BOTH is the older pairing (goal 0075): the
-  // commandId is there for the label and the HotkeyHint, while the
-  // closure is the real action, because the command it names acts on a
-  // live selection the registry cannot see. Its own run() wins, and its
-  // enablement is the surface's to decide -- so such an item is never
-  // filtered out by the command's enabled().
   commandId?: string
   ctx?: CommandContext
+  // A question to ask before the command runs. The command's own
+  // confirm(ctx) is the default; a surface states this only for a
+  // question the command cannot phrase itself.
+  confirm?: { title: string; body: string; confirmLabel?: string }
+  // A literal label for the two non-command rows: a submenu head and
+  // an item whose surface-specific wording differs from the command's.
   label?: string
   danger?: boolean
   divider?: boolean
-  run?: () => void
+  // A nested list opened in place of this menu (the click-to-drill
+  // shape "Change link kind" and "Add to perspective" take); the head
+  // itself runs nothing and is absent when nothing below it is.
+  submenu?: ContextMenuItem[]
 }
 
 export interface ContextMenuState {
@@ -37,25 +44,32 @@ export interface ContextMenuState {
 // an inapplicable context-menu item, and the command palette already
 // omits a command whose enabled() is false -- one rule for every menu
 // rather than two. An item with no commandId has no enablement to
-// check and always shows; a surface that used to pass `disabled` now
-// simply doesn't build the item.
+// check and always shows; a submenu head shows only while something
+// under it does.
 export function contextMenuItemAvailable(item: ContextMenuItem): boolean {
-  // The surface owns this item's action, so it owns whether to offer it
-  // -- it simply doesn't build the item otherwise.
-  if (item.run) return true
+  if (item.submenu) return visibleContextMenuItems(item.submenu).length > 0
   if (!item.commandId) return true
   const command = findCommand(item.commandId)
   return Boolean(command) && commandAvailable(command!, item.ctx)
 }
 
 // The label a menu row shows: the item's own literal, else the
-// command's label resolved through the locale registry (goal 0341 --
-// Command.label holds a KEY, never a sentence), else the id as a last
-// resort.
+// command's label resolved for this item's target (goal 0341 --
+// Command.label holds a KEY, never a sentence; goal 0346 slice B --
+// labelFor composes "Open <title>" from the context), else the id as
+// a last resort.
 export function contextMenuItemLabel(item: ContextMenuItem): string {
   if (item.label) return item.label
   const command = item.commandId ? findCommand(item.commandId) : undefined
-  return command ? commandLabel(command) : item.id
+  return command ? commandLabel(command, item.ctx) : item.id
+}
+
+// The question to ask before this item runs, if any: the item's own,
+// else the command's for this target.
+export function contextMenuItemConfirm(item: ContextMenuItem): { title: string; body: string; confirmLabel?: string } | null {
+  if (item.confirm) return item.confirm
+  const command = item.commandId ? findCommand(item.commandId) : undefined
+  return command?.confirm?.(item.ctx) ?? null
 }
 
 // Omitting items can leave a divider first, last, or next to another

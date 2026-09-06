@@ -4,8 +4,8 @@ import { ActionList, ActionMenu, Checkbox, FormControl, IconButton, TextInput } 
 import { CheckIcon, EyeIcon, KebabHorizontalIcon } from '@primer/octicons-react'
 import type { Card, Kind, Link, LinkKind, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
-import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
+import { entityRowContext } from '../shared/entityRowCommands'
 import { AtlasPerspectiveCompareDialog } from './AtlasPerspectiveCompareDialog'
 import styles from './AtlasPerspectiveSwitcher.module.css'
 
@@ -49,7 +49,6 @@ export function AtlasPerspectiveSwitcher({
   const [renamingID, setRenamingID] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
   const [rowMenu, setRowMenu] = useState<ContextMenuState | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<Perspective | null>(null)
   const [compareOpen, setCompareOpen] = useState(false)
   const visibleIDs = presentKinds.map((k) => k.ID).filter((id) => !hiddenKindIDs.includes(id))
 
@@ -68,13 +67,31 @@ export function AtlasPerspectiveSwitcher({
 
   const closeRowMenu = () => setRowMenu(null)
 
+  // The two row commands land here (goal 0346 slice B): rename opens
+  // the inline field, delete (already confirmed by the menu) runs the
+  // same onDelete the dialog used to.
+  const renameRequest = useUISignalStore((s) => s.atlasPerspectiveRenameRequest)
+  useEffect(() => {
+    if (!renameRequest) return
+    const p = perspectives.find((x) => x.ID === renameRequest.id)
+    if (p) { setRenamingID(p.ID); setRenameDraft(p.Name) }
+    // perspectives is read at request time only -- the request is the trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renameRequest])
+  const deleteRequest = useUISignalStore((s) => s.atlasPerspectiveDeleteRequest)
+  useEffect(() => {
+    if (!deleteRequest) return
+    void onDelete(deleteRequest.id).catch((err) => onToast(String(err)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deleteRequest])
+
   const openRowMenu = (p: Perspective, pos: { x: number; y: number }) => {
     setRowMenu({
       x: pos.x,
       y: pos.y,
       items: [
-        { id: 'rename', label: t('perspective.rename'), run: () => { setRenamingID(p.ID); setRenameDraft(p.Name) } },
-        { id: 'delete', label: t('perspective.delete'), danger: true, run: () => setDeleteTarget(p) },
+        { id: 'rename', label: t('perspective.rename'), commandId: 'perspective.row.rename', ctx: entityRowContext('perspective', p.ID) },
+        { id: 'delete', label: t('perspective.delete'), commandId: 'perspective.row.delete', ctx: entityRowContext('perspective', p.ID), danger: true },
       ],
     })
   }
@@ -96,12 +113,6 @@ export function AtlasPerspectiveSwitcher({
     void onCreate(name).then(() => setOpen(false)).catch((err) => onToast(String(err)))
   }
 
-  const confirmDelete = () => {
-    if (!deleteTarget) return
-    const target = deleteTarget
-    setDeleteTarget(null)
-    void onDelete(target.ID).catch((err) => onToast(String(err)))
-  }
 
   return (
     <>
@@ -228,15 +239,6 @@ export function AtlasPerspectiveSwitcher({
         linkKinds={linkKinds}
         onError={onToast}
       />
-      {deleteTarget && (
-        <ConfirmDialog
-          title={t('perspective.deleteConfirmTitle', { name: deleteTarget.Name })}
-          body={t('perspective.deleteConfirmBody')}
-          confirmLabel={t('perspective.delete')}
-          onCancel={() => setDeleteTarget(null)}
-          onConfirm={confirmDelete}
-        />
-      )}
     </>
   )
 }

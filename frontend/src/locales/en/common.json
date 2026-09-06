@@ -190,7 +190,9 @@
       "addFile": "Add a file to the board",
       "selection": {
         "copyAsImage": "Copy as image",
-        "exportAsImage": "Export as image…"
+        "exportAsImage": "Export as image…",
+        "addToPerspective": "Add to perspective",
+        "removeFromPerspective": "Remove from perspective"
       },
       "addFromFolder": "Add cards from a folder",
       "share": {
@@ -212,7 +214,17 @@
         "toggle": "Toggle minimap"
       },
       "card": {
-        "exportAs": "Export card as…"
+        "exportAs": "Export card as…",
+        "open": "Open card",
+        "zoomIn": "Zoom into card",
+        "openFile": "Open card file",
+        "revealInFileManager": "Reveal card in file manager",
+        "refreshFromFolder": "Refresh area from folder",
+        "addLinkedCard": "Add linked card…",
+        "fitToContent": "Fit card to content",
+        "copyContext": "Copy card as context",
+        "copyLink": "Copy card link",
+        "dissolve": "Dissolve area"
       },
       "focusNext": "Focus next card",
       "focusPrevious": "Focus previous card",
@@ -231,11 +243,34 @@
         "copyValue": "Copy value",
         "copyPath": "Copy path",
         "copyKey": "Copy key"
+      },
+      "board": {
+        "addCard": "Add card here",
+        "addNote": "Add note here"
+      },
+      "note": {
+        "open": "Open note",
+        "promote": "Promote note to card…"
+      },
+      "object": {
+        "promote": "Promote object to card…",
+        "pluginAction": "Extension action"
+      },
+      "link": {
+        "setKind": "Change link kind",
+        "editLabel": "Edit link label…",
+        "remove": "Remove link"
+      },
+      "space": {
+        "new": "New space…",
+        "rename": "Rename space…",
+        "delete": "Delete space"
       }
     },
     "object": {
       "openInDefaultApp": "Open in default app",
-      "rename": "Rename"
+      "rename": "Rename",
+      "editDiagram": "Edit diagram…"
     },
     "diagram": {
       "fit": "Fit diagram",
@@ -248,7 +283,17 @@
       "delete": "Delete selected",
       "zoomIn": "Zoom in",
       "zoomOut": "Zoom out",
-      "fitView": "Fit view"
+      "fitView": "Fit view",
+      "step": {
+        "openDetails": "Open step details",
+        "delete": "Delete step"
+      },
+      "edge": {
+        "select": "Select connection",
+        "delete": "Delete connection"
+      },
+      "addStep": "Add step",
+      "addNote": "Add note"
     },
     "clipboard": {
       "history": {
@@ -430,6 +475,18 @@
         "edit": "Edit",
         "history": "History",
         "delete": "Delete"
+      }
+    },
+    "guardrail": {
+      "rule": {
+        "edit": "Edit rule",
+        "delete": "Delete rule"
+      }
+    },
+    "perspective": {
+      "row": {
+        "rename": "Rename perspective",
+        "delete": "Delete perspective"
       }
     }
   },

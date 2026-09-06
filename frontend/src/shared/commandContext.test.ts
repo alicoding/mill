@@ -141,12 +141,11 @@ describe('menus omit what cannot run', () => {
     expect(contextMenuItemAvailable({ id: 'a', commandId: 'workflow.pin', ctx })).toBe(true)
     expect(contextMenuItemAvailable({ id: 'b', commandId: 'workflow.unpin', ctx })).toBe(false)
     // An item with no command has no enablement to check.
-    expect(contextMenuItemAvailable({ id: 'c', label: 'Plain', run: () => {} })).toBe(true)
-    // An item pairing a commandId with its OWN closure (goal 0075's
-    // label-sharing shape) keeps the surface's enablement, never the
-    // command's -- the command it names acts on a selection the
-    // registry cannot see.
-    expect(contextMenuItemAvailable({ id: 'd', commandId: 'workflow.unpin', ctx, run: () => {} })).toBe(true)
+    expect(contextMenuItemAvailable({ id: 'c', label: 'Plain' })).toBe(true)
+    // A submenu head shows only while something under it does (goal
+    // 0346 slice B) -- no closure form exists any more.
+    expect(contextMenuItemAvailable({ id: 'd', label: 'More', submenu: [{ id: 'd1', commandId: 'workflow.unpin', ctx }] })).toBe(false)
+    expect(contextMenuItemAvailable({ id: 'e', label: 'More', submenu: [{ id: 'e1', commandId: 'workflow.pin', ctx }] })).toBe(true)
   })
 
   it('resolves an item label from the registry, not the raw locale key', () => {

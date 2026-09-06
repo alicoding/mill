@@ -162,3 +162,43 @@ describe('the registered Configure row commands', () => {
     }
   })
 })
+
+describe('entityRowCommands toggles and confirmed removes (goal 0346 slice B)', () => {
+  it('a toggle mints an on/off pair, each available only while it would change something', () => {
+    let on = false
+    const commands = entityRowCommands(family({
+      toggles: [{
+        on: { suffix: 'enable', label: 'commands.x.enable' },
+        off: { suffix: 'disable', label: 'commands.x.disable' },
+        isOn: () => on,
+        set: (_item, next) => { on = next },
+        enabled: (item) => item.ID !== 'w-locked',
+      }],
+    }))
+    expect(commands.map((c) => c.id)).toEqual(['configure.widget.enable', 'configure.widget.disable', 'configure.widget.delete'])
+    const enable = commands[0]
+    const disable = commands[1]
+    expect(commandAvailable(enable, ctx())).toBe(true)
+    expect(commandAvailable(disable, ctx())).toBe(false)
+    on = true
+    expect(commandAvailable(enable, ctx())).toBe(false)
+    expect(commandAvailable(disable, ctx())).toBe(true)
+  })
+
+  it('a non-undo remove keeps its own suffix and label, and phrases its confirm from the row', () => {
+    const removed: string[] = []
+    const commands = entityRowCommands(family({
+      remove: {
+        suffix: 'remove',
+        label: 'commands.extension.remove',
+        undo: false,
+        confirm: { title: 'confirmDelete.title', body: 'confirmDelete.body' },
+        run: (item) => { removed.push(item.ID) },
+      },
+    }))
+    const remove = commands.find((c) => c.id === 'configure.widget.remove')!
+    expect(remove.confirm?.(ctx())).toEqual({ title: 'Delete widget?', body: 'This permanently deletes "Row w-1". This cannot be undone.', confirmLabel: undefined })
+    expect(remove.confirm?.(ctx('ghost'))).toBeNull()
+    return Promise.resolve(remove.run(ctx())).then(() => expect(removed).toEqual(['w-1']))
+  })
+})

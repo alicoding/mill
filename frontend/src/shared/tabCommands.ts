@@ -1,4 +1,5 @@
 import type { Command } from './commands'
+import { tabContext } from './commandContext'
 import { useAppStore } from './store'
 
 // The work-tab family (docs/goals/0016-keymap-system.md, goal 0018's
@@ -74,11 +75,12 @@ export const TAB_COMMANDS: Command[] = [
     // command's default above: no collision.
     defaultBinding: { mods: ['cmd', 'option'], key: 'W' },
     // Nothing to keep relative to on the pinned page tab.
-    enabled: () => useAppStore.getState().activeWorkTabKey !== null,
-    run: () => {
+    enabled: (ctx) => Boolean(tabContext(ctx)) || useAppStore.getState().activeWorkTabKey !== null,
+    run: (ctx) => {
       const { activeWorkTabKey, requestWorkTabClose } = useAppStore.getState()
-      if (!activeWorkTabKey) return
-      requestWorkTabClose({ kind: 'others', keepKey: activeWorkTabKey })
+      const keepKey = tabContext(ctx)?.key ?? activeWorkTabKey
+      if (!keepKey) return
+      requestWorkTabClose({ kind: 'others', keepKey })
     },
   },
   {

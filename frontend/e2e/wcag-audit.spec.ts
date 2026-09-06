@@ -18,6 +18,7 @@ const ROUTES: { name: string; open: (page: Page) => Promise<void>; waitTestId: s
   { name: 'Activity', open: (page) => page.getByRole('link', { name: 'Activity' }).click(), waitTestId: 'activity-view' },
   { name: 'Review', open: (page) => page.getByRole('link', { name: 'Review' }).click(), waitTestId: 'review-view' },
   { name: 'Settings', open: (page) => page.getByRole('link', { name: 'Settings' }).click(), waitTestId: 'settings-view' },
+  { name: 'Extensions', open: (page) => page.getByRole('link', { name: 'Extensions' }).click(), waitTestId: 'extensions-view' },
   { name: 'Docs', open: (page) => page.getByTestId('footer-docs-link').click(), waitTestId: 'docs-view' },
   {
     name: 'Atlas + companion panel',

@@ -1,5 +1,6 @@
 import type { Command } from './commands'
 import { useUISignalStore } from './uiSignalStore'
+import { soleObject } from './atlasSelectionShape'
 
 // A diagram board object's own paging/fit actions (goal 0354), split out
 // of shared/atlasBoardCommands.ts (CLAUDE.md's 500-line convention) --
@@ -9,9 +10,9 @@ import { useUISignalStore } from './uiSignalStore'
 // The board's currently selected DIAGRAM object, read from the live
 // canvas the same way atlasBoardCommands.ts's own atlasBoardHasContent
 // reads it -- the node's own data-id IS the object id
-// (atlasBuildBoardObjectNodes.ts). Null when the selection is anything
-// else, which is diagram.fit's honest enablement: fitting a drawing
-// needs a drawing to fit.
+// (atlasBuildBoardObjectNodes.ts). The paging commands' band buttons
+// run them bare (no ctx), so they read this DOM state directly rather
+// than the selection context diagram.fit and the object menu use.
 function selectedDiagramObjectID(): string | null {
   if (typeof document === 'undefined') return null
   const face = document.querySelector('.react-flow__node.selected [data-object-kind="diagram"]')
@@ -73,17 +74,20 @@ export const ATLAS_DIAGRAM_COMMANDS: Command[] = [
     // "Fit diagram" (goal 0354): a diagram board object shows no
     // vendored toolbar, so its zoom-to-fit is the object's own action --
     // on the palette, and on the object's menu beside the full-editor
-    // door. The run bumps the signal the frame holding that object's
-    // live viewer watches, which calls the viewer's own graph.fit()
-    // (atlas/drawioInteraction.ts) rather than a second geometry.
+    // door, over the selection like every other object command (goal
+    // 0346 slice B). The run bumps the signal the frame holding that
+    // object's live viewer watches, which calls the viewer's own
+    // graph.fit() (atlas/drawioInteraction.ts) rather than a second
+    // geometry.
     id: 'diagram.fit',
     label: 'commands.diagram.fit',
     defaultBinding: null,
     surface: ['atlas'],
-    enabled: () => selectedDiagramObjectID() !== null,
-    run: () => {
-      const id = selectedDiagramObjectID()
-      if (id) useUISignalStore.getState().requestAtlasDiagramFit(id)
+    needs: 'selection',
+    enabled: (ctx) => soleObject(ctx)?.fitDiagram === true,
+    run: (ctx) => {
+      const object = soleObject(ctx)
+      if (object) useUISignalStore.getState().requestAtlasDiagramFit(object.id)
     },
   },
 ]

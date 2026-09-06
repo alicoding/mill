@@ -187,6 +187,19 @@ export default tseslint.config(
           selector: "Property[key.name='menuActions'] ArrayExpression > ObjectExpression > Property[key.name='onClick']",
           message: 'A row action is a registry command plus the row context ({ commandId, ctx }), never an inline closure -- add the action to its family descriptor in shared/configureRowCommands.ts (goal 0346).',
         },
+        {
+          // Goal 0346 slice B: a context-menu item is a registry
+          // command plus its target, never a closure. ContextMenuItem
+          // no longer HAS a run, so TypeScript refuses one written
+          // directly in an `items: [...]` literal; this catches the
+          // same property arriving through a helper, a spread or an
+          // `as ContextMenuItem` cast, where excess-property checking
+          // does not reach. Matched on the shapes' own literals: an
+          // object inside an `items` array, or one annotated/cast as a
+          // ContextMenuItem.
+          selector: ":matches(Property[key.name='items'] ArrayExpression > ObjectExpression, Property[key.name='submenu'] ArrayExpression > ObjectExpression, TSAsExpression[typeAnnotation.typeName.name='ContextMenuItem'] > ObjectExpression, VariableDeclarator[id.typeAnnotation.typeAnnotation.typeName.name='ContextMenuItem'] > ObjectExpression, ArrowFunctionExpression[returnType.typeAnnotation.typeName.name='ContextMenuItem'] > ObjectExpression) > Property[key.name='run']",
+          message: 'A context-menu item is a registry command plus its target ({ commandId, ctx }), never an inline closure -- register the command (shared/atlasSelectionCommands.ts, shared/canvasCommands.ts, an entity family) and hand it the context (goal 0346 slice B).',
+        },
       ],
     },
   },
