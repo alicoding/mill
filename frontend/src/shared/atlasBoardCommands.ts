@@ -51,7 +51,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     run: () => useUISignalStore.getState().requestAtlasArrange(),
   },
   {
-    // The board's Contents dialog (docs/goals/0279): every card, note,
+    // The board's Contents view (docs/goals/0279): every card, note,
     // and object listed by kind with display names.
     id: 'atlas.contents.open',
     label: 'commands.atlas.contents.open',

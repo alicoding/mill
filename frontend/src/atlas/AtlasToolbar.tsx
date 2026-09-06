@@ -38,7 +38,7 @@ export function AtlasToolbar({
   perspectives, activePerspectiveID, onSwitchPerspective, onCreatePerspective, onRenamePerspective, onDeletePerspective, onPerspectiveToast,
   links, linkKinds,
   onImportFile, onShareError,
-  activeView, onCloseProjections,
+  activeView, onBackToBoard,
 }: {
   cards: Card[]
   viewedID: string
@@ -62,10 +62,10 @@ export function AtlasToolbar({
   onImportFile: (file: File) => void
   onShareError: (message: string) => void
   // Which of the five ways of looking at this space is on screen, and
-  // the one call that closes whichever projection is open -- the
-  // switcher's own "back to the board".
+  // the one call that swaps a projection pane back for the canvas --
+  // the switcher's own "back to the board".
   activeView: AtlasBoardView
-  onCloseProjections: () => void
+  onBackToBoard: () => void
 }) {
   const { t } = useTranslation('atlas')
   const importInputRef = useRef<HTMLInputElement>(null)
@@ -110,7 +110,7 @@ export function AtlasToolbar({
         <AtlasBoardMenu />
       </div>
       <div className={styles.toolbarActions}>
-        <AtlasViewSwitcher activeView={activeView} onCloseProjections={onCloseProjections} />
+        <AtlasViewSwitcher activeView={activeView} onBackToBoard={onBackToBoard} />
         <AtlasPerspectiveSwitcher
           perspectives={perspectives}
           activePerspectiveID={activePerspectiveID}

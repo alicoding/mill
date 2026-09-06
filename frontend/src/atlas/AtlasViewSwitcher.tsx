@@ -3,17 +3,22 @@ import { SegmentedControl } from '@primer/react'
 import { ChecklistIcon, ListUnorderedIcon, ProjectRoadmapIcon, ProjectIcon, TableIcon } from '@primer/octicons-react'
 import type { Icon } from '@primer/octicons-react'
 import { runCommand } from '../shared/commands'
+import type { AtlasBoardView } from '../shared/viewKinds'
 
 // Which way the viewed space is being looked at right now (goal 0355).
-// Board is the canvas itself; the other four are projections OVER the
-// same space, so they belong on one switcher rather than four buttons
-// that each look like an unrelated action. Picking Board closes
-// whichever projection is open, which is what "go back to the board"
-// means here.
-export type AtlasBoardView = 'board' | 'list' | 'matrix' | 'coverage' | 'roadmap'
+// Board is the canvas itself; the other four are projection panes IN
+// the board's own region over the same space, so they belong on one
+// switcher rather than four buttons that each look like an unrelated
+// action. Picking Board swaps whichever pane is showing back for the
+// canvas, which is what "go back to the board" means here.
+// The type itself lives in shared/viewKinds.ts, a field of the
+// persisted View union; re-exported so atlas/ call sites keep their
+// existing import path.
+export type { AtlasBoardView }
 
-// Each segment is a registry command, except Board, whose "action" is
-// closing whatever is open -- there is nothing to run for it.
+// Each projection segment is a registry command, except Board, whose
+// "action" is swapping the pane back for the canvas -- there is nothing
+// to run for it.
 const VIEWS: { view: AtlasBoardView; icon: Icon; labelKey: string; commandId: string | null }[] = [
   { view: 'board', icon: ProjectIcon, labelKey: 'viewSwitcher.board', commandId: null },
   { view: 'list', icon: ListUnorderedIcon, labelKey: 'viewSwitcher.list', commandId: 'atlas.contents.open' },
@@ -32,9 +37,9 @@ const VIEW_TESTIDS: Record<AtlasBoardView, string> = {
   roadmap: 'atlas-open-roadmap',
 }
 
-export function AtlasViewSwitcher({ activeView, onCloseProjections }: {
+export function AtlasViewSwitcher({ activeView, onBackToBoard }: {
   activeView: AtlasBoardView
-  onCloseProjections: () => void
+  onBackToBoard: () => void
 }) {
   const { t } = useTranslation('atlas')
   return (
@@ -44,16 +49,17 @@ export function AtlasViewSwitcher({ activeView, onCloseProjections }: {
       // CONTROLLED, deliberately: SegmentedControl keeps its own
       // selected index unless onChange is supplied (verified against
       // its own source), and an uncontrolled switcher would keep
-      // showing List after the List dialog was dismissed. With this
-      // handler the highlight is always the derived `activeView`.
+      // showing List after a keyboard Escape back to the board. With
+      // this handler the highlight is always the derived `activeView`.
       onChange={(index) => {
         const entry = VIEWS[index]
         if (!entry) return
-        // Any projection opening closes the one already open (the
-        // dialogs are modal), so switching away is the same call as
-        // going back to the board.
-        onCloseProjections()
-        if (entry.commandId) void runCommand(entry.commandId)
+        // The panes replace the canvas in place, so switching is the
+        // same store write for every segment; Board's is the only one
+        // with no command to run (no signal to issue -- nothing
+        // listens for "board opened").
+        if (entry.view === 'board') onBackToBoard()
+        else if (entry.commandId) void runCommand(entry.commandId)
       }}
       // Icons until the window is genuinely wide (Primer's own `wide`
       // range): five labelled segments are ~440px, which at Mill's

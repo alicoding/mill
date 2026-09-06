@@ -48,8 +48,8 @@ async function withServer(testInfo: { parallelIndex: number }, run: (page: Page)
 // flat CSS grid, so a lane's own 4 cells are simply the next 4
 // "atlas-roadmap-cell" siblings after its own lane label
 // (AtlasRoadmapView.tsx's data-lane-key/data-bucket-key attributes).
-function roadmapCell(dialog: Locator, laneLabelText: string, bucketKey: string): Locator {
-  const lane = dialog.getByTestId('atlas-roadmap-lane-label').filter({ hasText: laneLabelText })
+function roadmapCell(pane: Locator, laneLabelText: string, bucketKey: string): Locator {
+  const lane = pane.getByTestId('atlas-roadmap-lane-label').filter({ hasText: laneLabelText })
   return lane.locator(`xpath=following-sibling::div[@data-bucket-key="${bucketKey}"][1]`)
 }
 
@@ -82,23 +82,23 @@ async function dragRoadmapChip(page: Page, cardTitle: string, toCell: Locator): 
 test('empty roadmap shows the skeleton + Place cards door; the picker auto-declares Horizon and drags move a chip between columns (goal 0225)', async ({}, testInfo) => {
   await withServer(testInfo, async (page) => {
     const cardTitle = 'ZzE2eRoadmapCard'
-    const dialog = page.locator('[data-component="atlas-roadmap-dialog"]')
+    const pane = page.locator('[data-component="atlas-roadmap-pane"]')
 
     // "The engagement" root's own seeded children (Client records,
     // Discovery workstream, Scratchpad) are all Topic cards, and Topic
     // declares no horizon field yet -- the root roadmap starts
     // genuinely untagged, the real empty state a first-time user hits.
     await openToolbarAction(page, 'atlas-open-roadmap')
-    await expect(dialog).toBeVisible()
-    await expect(dialog.getByTestId('atlas-roadmap-empty')).toHaveText('Place a card in Now, Next, or Then to start your roadmap.')
-    await expect(dialog.getByTestId('atlas-roadmap-grid')).toBeVisible()
-    await expect(dialog.getByTestId('atlas-roadmap-column-header')).toHaveText(['Now', 'Next', 'Then', 'Unscheduled'])
-    await expect(dialog.getByTestId('atlas-roadmap-place-cards-now')).toBeVisible()
-    await expect(dialog.getByTestId('atlas-roadmap-place-cards-next')).toBeVisible()
-    await expect(dialog.getByTestId('atlas-roadmap-place-cards-then')).toBeVisible()
-    await expect(dialog.getByTestId('atlas-roadmap-place-cards-unscheduled')).toHaveCount(0)
+    await expect(pane).toBeVisible()
+    await expect(pane.getByTestId('atlas-roadmap-empty')).toHaveText('Place a card in Now, Next, or Then to start your roadmap.')
+    await expect(pane.getByTestId('atlas-roadmap-grid')).toBeVisible()
+    await expect(pane.getByTestId('atlas-roadmap-column-header')).toHaveText(['Now', 'Next', 'Then', 'Unscheduled'])
+    await expect(pane.getByTestId('atlas-roadmap-place-cards-now')).toBeVisible()
+    await expect(pane.getByTestId('atlas-roadmap-place-cards-next')).toBeVisible()
+    await expect(pane.getByTestId('atlas-roadmap-place-cards-then')).toBeVisible()
+    await expect(pane.getByTestId('atlas-roadmap-place-cards-unscheduled')).toHaveCount(0)
     await page.keyboard.press('Escape')
-    await expect(dialog).not.toBeVisible()
+    await expect(pane).not.toBeVisible()
 
     // A Topic card, whose Kind carries no horizon field -- the
     // picker's own "declare it first" path (contract item 2).
@@ -106,40 +106,40 @@ test('empty roadmap shows the skeleton + Place cards door; the picker auto-decla
     await expect(noteCard(page, cardTitle)).toBeVisible()
 
     await openToolbarAction(page, 'atlas-open-roadmap')
-    await expect(dialog).toBeVisible()
+    await expect(pane).toBeVisible()
 
     // Two clicks, zero Kind-editor visits (Acceptance): open the Now
     // column's picker, pick the card.
-    await dialog.getByTestId('atlas-roadmap-place-cards-now').click()
+    await pane.getByTestId('atlas-roadmap-place-cards-now').click()
     await page.getByTestId('atlas-roadmap-picker-item').filter({ hasText: cardTitle }).click()
 
     await expect(page.getByTestId('atlas-quiet-toast')).toContainText('Added a Horizon field to Topic')
-    const nowCell = roadmapCell(dialog, 'Topic', 'now')
+    const nowCell = roadmapCell(pane, 'Topic', 'now')
     await expect(nowCell.getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toBeVisible()
 
     // The auto-declared field is visible in the Kind editor, never hidden.
     await page.keyboard.press('Escape')
-    await expect(dialog).not.toBeVisible()
+    await expect(pane).not.toBeVisible()
     await openToolbarAction(page, 'atlas-open-kinds')
     await page.getByTestId('atlas-kind-row').filter({ hasText: 'Topic' }).click()
     await expect(page.locator('input[data-testid="atlas-kind-field-key"][value="horizon"]')).toBeVisible()
     await page.keyboard.press('Escape')
 
-    // Drag Now -> Then, persisted across a close/reopen of the dialog.
+    // Drag Now -> Then, persisted across a switch away from the view and back.
     await openToolbarAction(page, 'atlas-open-roadmap')
-    await expect(dialog).toBeVisible()
-    await dragRoadmapChip(page, cardTitle, roadmapCell(dialog, 'Topic', 'then'))
+    await expect(pane).toBeVisible()
+    await dragRoadmapChip(page, cardTitle, roadmapCell(pane, 'Topic', 'then'))
     await page.keyboard.press('Escape')
     await openToolbarAction(page, 'atlas-open-roadmap')
-    await expect(roadmapCell(dialog, 'Topic', 'then').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toBeVisible()
-    await expect(roadmapCell(dialog, 'Topic', 'now').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toHaveCount(0)
+    await expect(roadmapCell(pane, 'Topic', 'then').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toBeVisible()
+    await expect(roadmapCell(pane, 'Topic', 'now').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toHaveCount(0)
 
     // Drag to Unscheduled clears the tag, also persisted.
-    await dragRoadmapChip(page, cardTitle, roadmapCell(dialog, 'Topic', 'unscheduled'))
+    await dragRoadmapChip(page, cardTitle, roadmapCell(pane, 'Topic', 'unscheduled'))
     await page.keyboard.press('Escape')
     await openToolbarAction(page, 'atlas-open-roadmap')
-    await expect(roadmapCell(dialog, 'Topic', 'unscheduled').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toBeVisible()
-    await expect(roadmapCell(dialog, 'Topic', 'then').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toHaveCount(0)
+    await expect(roadmapCell(pane, 'Topic', 'unscheduled').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toBeVisible()
+    await expect(roadmapCell(pane, 'Topic', 'then').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toHaveCount(0)
     await page.keyboard.press('Escape')
   })
 })

@@ -1,4 +1,22 @@
+import { expect } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
+import { gotoAppReady } from './appReady'
+
+// Getting a test onto the Atlas board itself (2+ specs,
+// .claude/rules/testing.md's promotion rule). The branch reads the
+// test's own KNOWN viewport rather than probing the DOM with a
+// non-waiting isVisible(): the shell's nav collapses below 767px
+// (App.module.css), and a snapshot probe can read the toggle as absent
+// before the app has finished mounting.
+export async function openAtlas(page: Page): Promise<void> {
+  await gotoAppReady(page)
+  const viewport = page.viewportSize()
+  if (viewport && viewport.width < 767) {
+    await page.getByTestId('mobile-nav-toggle').click()
+  }
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-creation-tray')).toBeVisible()
+}
 
 // Read is edit (goal 0081 slice A5): the card page lost its collapsed
 // "Edit card" disclosure -- every field is always visible and directly
