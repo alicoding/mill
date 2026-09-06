@@ -33,9 +33,11 @@ Model picks: **Haiku** for read-only volume (`explorer`), **Sonnet** for bounded
 mechanical execution from a written spec (regens, migrations, test runs, small features
 with a complete contract), **Opus** for execution needing local judgment inside the
 contract (multi-file UI from a design doc, a root-cause with a written procedure, a
-library adoption). Every `Agent` delegation states its model explicitly; the task is
-*fixed and bounded* (a written brief with objective gates, per `.claude/skills/brief`) or
-the missing piece is still the orchestrator's.
+library adoption). **Never Fable for a delegation**: a Fable builder drains the shared
+session window at a multiple of Opus/Sonnet (three windows lost in one day); Fable is
+the orchestrator's own reasoning only. Every `Agent` delegation states its model
+explicitly; the task is *fixed and bounded* (a written brief with objective gates, per
+`.claude/skills/brief`) or the missing piece is still the orchestrator's.
 
 **Every dispatched BUILD agent works in its own git worktree; the main checkout belongs
 to the orchestrator.** State it in the brief. Before ANY git write or build in the main
