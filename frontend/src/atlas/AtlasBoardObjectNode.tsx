@@ -9,9 +9,9 @@ import { usePluginReloadVersion } from '../plugins/pluginReloadSignal'
 import { unknownKindContent } from './atlasBoardObjectContent'
 import type { AtlasBoardObjectContent } from './atlasBoardObjectContent'
 import type { DrawioPageCursor } from './drawioInteraction'
-import { activation, boxOptsOutOfCanvasWheel, contentOptsOutOfCanvasDrag, shieldUp } from './atlasActivation'
+import { activation, faceOwnsInput, shieldUp } from './atlasActivation'
 import type { AtlasActivation, AtlasInputMode } from './atlasActivation'
-import { useAtlasObjectInputBoundary } from './useAtlasObjectInputBoundary'
+import { useAtlasObjectKeyBoundary } from './useAtlasObjectKeyBoundary'
 import { AtlasShapeRotateHandle } from './AtlasShapeRotateHandle'
 import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
 import { useAtlasObjectMirrorRead } from './useAtlasObjectMirrorRead'
@@ -80,21 +80,17 @@ function objectNodeCaps(object: BoardObject, preview: boolean): { isShape: boole
   }
 }
 
-// The node box's own class set. `nowheel` rides the activation state,
-// never a per-noun flag (goal 0354, atlasActivation.ts): the kit
-// resolves the class by event-target ancestry and a wheel can land on
-// node chrome outside the face, so it belongs on the whole box.
-function objectBoxClassName(state: AtlasActivation): string {
-  return boxOptsOutOfCanvasWheel(state) ? `${styles.object} nowheel` : styles.object
-}
-
-// The content box's own class set. `nodrag`/`nopan` ride the same
-// activation window as `nowheel`: while the face owns the pointer, a
-// drag inside it must reach only the face -- the chrome band stays the
-// object's drag surface. An idle interactive face is inert instead, so
-// nothing under the shield can swallow the click that selects.
+// The face wrapper's own class set. All three canvas opt-outs ride the
+// activation state, never a per-noun flag (goal 0354,
+// atlasActivation.ts): a live face owns the wheel, the drag and the pan
+// outright. They sit HERE rather than on the node box because the kit
+// resolves each class by event-target ancestry, and the chrome band is
+// a sibling of this wrapper -- so the band keeps panning the board
+// while the face keeps every gesture that lands on it. An idle
+// interactive face is inert instead, so nothing under the shield can
+// swallow the click that selects.
 function objectContentClassName(state: AtlasActivation, input: AtlasInputMode): string {
-  if (contentOptsOutOfCanvasDrag(state)) return `${styles.content} nodrag nopan`
+  if (faceOwnsInput(state)) return `${styles.content} nowheel nodrag nopan`
   return input === 'interactive' ? `${styles.content} ${styles.contentInert}` : styles.content
 }
 
@@ -278,7 +274,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
   // every plugin face, derived from the noun's declared content mode
   // plus this object's own live state -- never a per-noun input flag.
   const { state, onEditingChange } = useObjectActivation(resolvedFacts.input, !!selected && !preview)
-  useAtlasObjectInputBoundary(boxRef, state)
+  useAtlasObjectKeyBoundary(boxRef, state)
   // The Fit chip's own state (goal 0340): only the face can know
   // whether what it renders currently needs more room than this box
   // gives it, and only the face can fit it -- both arrive through the
@@ -311,7 +307,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
   return (
     <div
       ref={boxRef}
-      className={objectBoxClassName(state)}
+      className={styles.object}
       style={{
         ...(hasSize ? { width: '100%', height: '100%' } : null),
         ...(rotationDeg ? { transform: `rotate(${rotationDeg}deg)`, transformOrigin: '50% 50%' } : null),
@@ -436,6 +432,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
           already-selected node changes nothing. */}
       <div
         className={objectContentClassName(state, resolvedFacts.input)}
+        data-testid="atlas-board-object-face"
         onPointerDownCapture={dragBand ? (e) => {
           // Primary button only: a right-click must reach the context
           // menu with the CURRENT selection intact (a multi-select

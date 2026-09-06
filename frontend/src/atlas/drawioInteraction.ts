@@ -241,8 +241,8 @@ export function attachDrawioInteraction(graph: DrawioGraph, onOverflow?: DrawioO
   // 4. Wheel: plain scroll/two-finger pans both axes, ctrl/⌘ (which is
   //    also what a browser synthesizes for a trackpad pinch) zooms
   //    about the pointer. preventDefault because the page must not
-  //    scroll under a gesture the frame has claimed; the node's own
-  //    `nowheel` class already keeps the board still.
+  //    scroll under a gesture the frame has claimed; the `nowheel`
+  //    class a live face carries already keeps the board still.
   const onWheel = (event: WheelEvent) => {
     event.preventDefault()
     const view: DrawioViewport = { scale: graph.view.scale, tx: graph.view.translate.x, ty: graph.view.translate.y }

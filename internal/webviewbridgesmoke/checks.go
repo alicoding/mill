@@ -136,6 +136,11 @@ var registry = []check{
 		run:    checkStickyClickToEdit,
 	},
 	{
+		name:   "diagram-face-owns-wheel",
+		reason: "owner-reported on the installed build (goal 0354): a two-finger scroll over a selected diagram panned the drawing AND the board under it. The rule it replaced inferred, per event, whether anything under the pointer could consume the wheel -- an inference that only ever fails against a real trackpad in the real engine, where an embedded pan/zoom engine consumes the gesture without being a scroller and WKWebView keeps delivering momentum events after the fingers lift. Asserts in the real WKWebView that a selected face answers the canvas kit's own `closest('.nowheel')` rule while the chrome band does not, that a wheel over the face leaves the board's viewport transform untouched, and that one over the band still pans the board.",
+		run:    checkDiagramFaceOwnsWheel,
+	},
+	{
 		name:   "drawio-editor-layout",
 		reason: "owner-reported on the installed build (goal 0259): the embedded drawio editor's bottom page-tab bar sat outside the visible window with no scroll to it, and the diagram's resize frame seemed absent -- both measure CORRECT in Chromium at harness sizes, the exact engine/window-divergence class this registry exists for. Asserts, in the real WKWebView: band-click selection produces the full resize-handle set, and the editor dialog, its iframe, and the two-page tab bar all sit inside the real window.",
 		run:    checkDrawioEditorLayout,
