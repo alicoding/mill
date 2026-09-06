@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Browser } from '@wailsio/runtime'
 import { Button, Checkbox, SegmentedControl, Stack, Text } from '@primer/react'
 import { SettingsService } from '../shared/bindings'
 import { setSaveMode, useSaveMode } from '../shared/saveMode'
@@ -8,6 +7,7 @@ import { setCanvasNavigationMode, useCanvasNavigationMode } from '../shared/canv
 import { SettingsRow } from './SettingsRow'
 import listStyles from '../shared/ListCard.module.css'
 import { background } from '../shared/background'
+import { openExternalUrl } from '../shared/openExternal'
 
 // Deep-links straight to the Login Items pane -- same undocumented-but-
 // stable x-apple.systempreferences scheme ACCESSIBILITY_SETTINGS_URL
@@ -75,7 +75,7 @@ export default function SettingsGeneralPane() {
           <Text as="p" size="small" className={listStyles.attention}>
             {t('settings.general.launchAtLoginRequiresApproval')}
           </Text>
-          <Button size="small" onClick={() => Browser.OpenURL(LOGIN_ITEMS_SETTINGS_URL)}>
+          <Button size="small" onClick={() => openExternalUrl(LOGIN_ITEMS_SETTINGS_URL)}>
             {t('settings.general.openLoginItemsSettings')}
           </Button>
         </Stack>

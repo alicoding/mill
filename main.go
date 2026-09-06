@@ -71,6 +71,12 @@ var assets embed.FS
 //go:embed all:userdocs
 var userdocsFS embed.FS
 
+// A browser loads an unpacked extension from a FOLDER, and an installed
+// copy has no source tree to point at: bridgesvc writes this out.
+//
+//go:embed examples/browser-extension
+var browserExtensionFS embed.FS
+
 // The bundled "mill" marketplace's offerings (docs/goals/0349),
 // injected below because go:embed paths are package-relative and these
 // live at the repository root -- userdocsFS's own shape.
@@ -234,19 +240,14 @@ func main() {
 	// run executed in; the labels live in Configure.
 	executionService.SetEnvironmentLabelLookup(configureService.EnvironmentLabel)
 
-	// docs/adr/0038 decision 4, goal 0061 slice C / goal 0084: "Update
-	// now" and card actions both run through the normal guardrail-gated
-	// path -- same late-bound-setter shape as WireChildWorkflowRunner
-	// above, atlassvc never imports executionsvc directly. Split into
-	// the wiring package at the 500-line limit, same as the seam
-	// adapters below.
-	wiring.WireAtlasWorkflowRunners(executionService)
-	executionService.SetRunCompletionSink(atlasService.NotifyRunCompleted)
+	// atlassvc's own run/action/completion seams onto executionService --
+	// composition-root code split out of this file at the 500-line limit.
+	wiring.WireAtlasWorkflowRunners(executionService, atlasService)
 	atlasService.WireCompositionSeams(triggerService.DispatchAtlasCardChange) // goal 0066
 	// Cross-service seam adapters (recognition, List projection) live in the wiring package -- composition-root code split out of this file at the 500-line limit.
 	wiring.WireAtlasProjections(atlasService, configureService, compositionService)
 	wiring.WireValidationSeams(configureService)
-	wiring.WireConfigureSeams(atlasService, configureService, pluginService) // paste conversion + plugin content writes (docs/goals/0289)
+	wiring.WireConfigureSeams(atlasService, configureService, pluginService) // paste conversion + plugin content writes (docs/goals/0289) + the List row doors' undo journal
 	wiring.WireNotify()
 
 	backupService := backupsvc.Wire(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion, compositionService, configureService, atlasService)
@@ -255,8 +256,8 @@ func main() {
 	wiring.WireAtlasStorageDirs(atlasService)
 	atlasService.SetGuardedDataPaths(settingsPath, backupsvc.SQLiteDBPath(executionDatabaseURL), backupDir)
 
-	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger)    // docs/goals/0132-remote-access.md SLICE 1
-	bridgeService := wiring.WireBrowserBridge(remoteAuthService, logger) // the browser bridge's own loopback listener (docs/goals/0350)
+	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger)                                                    // docs/goals/0132-remote-access.md SLICE 1
+	bridgeService := wiring.WireBrowserBridge(remoteAuthService, logger, browserExtensionFS, filepath.Dir(settingsPath)) // the browser bridge's own loopback listener (docs/goals/0350)
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	wiring.WireSettingsEraSeams(settingsService, notificationService, remoteAuthService, triggerService, atlasService, pluginService, secretService)

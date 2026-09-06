@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import { Browser } from '@wailsio/runtime'
 import { Button, Dialog, Stack, Text } from '@primer/react'
 import { runCommand } from '../shared/commands'
+import { openExternalUrl } from '../shared/openExternal'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { useUpdateNoticeStore } from '../shared/updateNoticeStore'
 import mirrorStyles from '../atlas/AtlasCardMirrorPreview.module.css'
@@ -52,7 +52,7 @@ export function WhatsNewDialog() {
               const href = anchor?.getAttribute('href')
               if (!href) return
               ev.preventDefault()
-              void Browser.OpenURL(href)
+              void openExternalUrl(href)
             }}
             // Safe: goldmark's default (non-unsafe) render mode never
             // passes raw HTML through unescaped -- render_test.go pins

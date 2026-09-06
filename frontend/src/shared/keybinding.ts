@@ -53,6 +53,19 @@ export function isEditableTarget(target: EventTarget | null): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable
 }
 
+// True for ⌘Z/⇧⌘Z, the combo the app's one undo journal answers to
+// (ADR-0044). Shared so the window-level listener that ACTS on it
+// (app/useKeymapDispatch.ts) and every surface that contains its own
+// keyboard (shared/ListGridGlide.tsx stops each keydown from reaching
+// the window) test the SAME combo rather than two copies that drift:
+// a surface swallowing this combo silently removes undo from the
+// content it holds. Redo is the same combo plus Shift, so both answer
+// true here -- the acting listener reads e.shiftKey for the direction.
+export function isUndoJournalCombo(e: KeyboardEvent): boolean {
+  if (!e.metaKey || e.ctrlKey || e.altKey) return false
+  return e.key.toUpperCase() === 'Z'
+}
+
 export function modsFromEvent(e: KeyboardEvent): string[] {
   const mods: string[] = []
   if (e.metaKey) mods.push('cmd')
