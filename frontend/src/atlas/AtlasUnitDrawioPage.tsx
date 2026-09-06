@@ -6,7 +6,7 @@ import type { MirrorContent } from '../../bindings/github.com/alicoding/mill/int
 import { AtlasService } from '../shared/bindings'
 import runbookStyles from '../shared/ListCard.module.css'
 import { useDrawioRendering } from './useDrawioRendering'
-import type { DrawioOverflowReporter } from './drawioInteraction'
+import type { DrawioOverflowReporter, DrawioPagerReporter } from './drawioInteraction'
 import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
 import { AtlasMirrorMissingState } from './AtlasMirrorMissingState'
 import type { UnitRenderProps } from './unitRegistry'
@@ -28,10 +28,10 @@ function formatMirrorSize(bytes: number): string {
 // nowhere to grow to, while the card page's own bounded window keeps
 // the viewer's default sizing. `onOverflow` rides along with it -- only
 // a fixed frame can be exceeded.
-export function DrawioDiagramHost({ source, interactive, onOverflow }: { source: string; interactive?: boolean; onOverflow?: DrawioOverflowReporter }) {
+export function DrawioDiagramHost({ source, interactive, onOverflow, onPager, initialPage }: { source: string; interactive?: boolean; onOverflow?: DrawioOverflowReporter; onPager?: DrawioPagerReporter; initialPage?: number }) {
   const { t } = useTranslation('atlas')
   const hostRef = useRef<HTMLDivElement | null>(null)
-  const renderError = useDrawioRendering(hostRef, source, { interactive, onOverflow })
+  const renderError = useDrawioRendering(hostRef, source, { interactive, onOverflow, onPager, initialPage })
 
   if (renderError) {
     return (

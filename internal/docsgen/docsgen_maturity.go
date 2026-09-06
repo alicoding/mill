@@ -16,7 +16,7 @@ import (
 func GenerateMaturityMarkdown(repoRoot string) string {
 	ledger := pluginsvc.Report(repoRoot)
 	var b strings.Builder
-	b.WriteString("# Plugin API maturity\n\n")
+	b.WriteString("---\nkind: reference\n---\n\n# Plugin API maturity\n\n")
 	fmt.Fprintf(&b, "%s\n\n", ledger.Headline)
 	b.WriteString("| Family | Level | Conformance | Example | E2E | Docs | SDK types | MCP | Docs behind code (days) | Flags |\n")
 	b.WriteString("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")

@@ -72,6 +72,13 @@ type PendingApproval struct {
 	// one, so the UI offers Step/Continue/Stop instead of plain
 	// Resume/Stop.
 	Stepped bool `json:"stepped"`
+	// Reason names WHY the run parked when it is not a decision anyone
+	// is asked for: ParkReasonVaultLocked means the step needs a secret
+	// and the vault is locked -- the run waits for an unlock, not an
+	// approval (executionservice_vaultwait.go). Empty for every
+	// approval park, so every reader that never learned the field keeps
+	// treating the park as an ask.
+	Reason string `json:"reason,omitempty"`
 }
 
 // GuardrailPendingChanged is a minimal park/resolve signal, Emitted
@@ -273,56 +280,21 @@ func (e *ExecutionService) parkForApproval(ctx execution.Context, node compositi
 		Source:          source,
 		Stepped:         stepped,
 	}
-	runID, _ := ctx.GetWorkflowID()
-
-	// The listener half of the park, recorded before Recv and cleared on
-	// every path out of it: a Send is accepted by the database whenever
-	// the run's row exists, listener or not, so this registry is the
-	// only thing that can tell ResolveApproval whether anyone is
-	// actually waiting (goal 0329).
-	//
-	// Ordering invariant: the registry entry MUST exist before the
-	// pending event is published. That event is the only signal any
-	// caller has that this run has parked, so a resolve arriving the
-	// instant it appears would otherwise find no listener and be refused
-	// as "run-recovering" (resolveUnlistened). Recv tolerates a Send
-	// that lands before it -- StartRecvListener reports an already
-	// pending notification -- so registering early costs nothing.
-	e.parkedRuns.Store(runID, node.ID)
-	defer e.parkedRuns.Delete(runID)
-
-	if err := execution.SetEvent(ctx, guardrailPendingEventKey, pending); err != nil {
-		return nil, false, fmt.Errorf("guardrail: publish pending approval: %w", err)
-	}
-	emitGuardrailPendingChanged(runID, node.ID, false)
-	// docs/adr/0035: the decision-parked half of trigger-system-event --
-	// only the park is a system event (not the resolve below), matching
-	// the forward-pending-approvals use case: something to act on NOW,
-	// not a record of how it was later resolved.
-	e.emitSystemEvent(SystemEventDecisionParked, runID, node.ID)
-
-	decision, err := execution.Recv[approvalDecision](ctx, guardrailApprovalTopic, guardrailApprovalTimeout)
+	decision, err := e.park(ctx, pending, guardrailApprovalTimeout)
 	if err != nil {
 		return nil, false, fmt.Errorf("guardrail: await approval: %w", err)
 	}
 
-	pending.Resolved = true
 	if decision.NodeID == "" {
 		// Recv's timeout yields the zero value -- nobody answered.
-		pending.Decision = "timed out"
-		_ = execution.SetEvent(ctx, guardrailPendingEventKey, pending)
-		emitGuardrailPendingChanged(runID, node.ID, true)
+		e.resolvePark(ctx, pending, "timed out")
 		return nil, false, fmt.Errorf("guardrail: approval timed out after %s", guardrailApprovalTimeout)
 	}
 	if !decision.Approve {
-		pending.Decision = "denied"
-		_ = execution.SetEvent(ctx, guardrailPendingEventKey, pending)
-		emitGuardrailPendingChanged(runID, node.ID, true)
+		e.resolvePark(ctx, pending, "denied")
 		return nil, false, fmt.Errorf("guardrail: denied by user")
 	}
-	pending.Decision = "approved"
-	_ = execution.SetEvent(ctx, guardrailPendingEventKey, pending)
-	emitGuardrailPendingChanged(runID, node.ID, true)
+	e.resolvePark(ctx, pending, "approved")
 	return decision.Values, decision.Continue, nil
 }
 

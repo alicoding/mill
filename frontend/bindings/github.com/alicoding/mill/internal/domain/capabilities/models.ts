@@ -32,6 +32,17 @@ export interface Capability {
      * never a standing tab competing with the work surfaces.
      */
     "HiddenFromNav": boolean;
+
+    /**
+     * ConceptPage is the userdocs page (rel path in docsgen.PageIndex)
+     * whose opening sentence introduces this capability wherever the
+     * registry is projected as an inventory (the README's generated
+     * block). Summary is the one-line stand-in for a capability with no
+     * concept page of its own. Exactly one of the two is set for every
+     * capability shown in the sidebar (TestList_InventoryLineSource).
+     */
+    "ConceptPage": string;
+    "Summary": string;
 }
 
 /**

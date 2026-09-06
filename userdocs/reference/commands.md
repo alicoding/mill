@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # Commands
 
 Press ⌘K and type any action's name — "lock vault", "check for
@@ -129,6 +133,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.steptype.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.steptype.export` | Export | — | Global | Acts on the selected entity |
 | `diagram.fit` | Fit diagram | — | atlas | Conditional — available only in a matching state |
+| `diagram.nextPage` | Next page | — | atlas | Conditional — available only in a matching state |
+| `diagram.previousPage` | Previous page | — | atlas | Conditional — available only in a matching state |
 | `docs.search` | Search docs | — | Global | Always available |
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
@@ -174,6 +180,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `secret.row.history` | History | — | Global | Acts on the selected entity |
 | `secrets.lockVault` | Lock vault | — | Global | Conditional — available only in a matching state |
 | `secrets.resetVault` | Start a new vault | — | Global | Conditional — available only in a matching state |
+| `secrets.restoreVaultFromBackup` | Restore the last backup | — | Global | Conditional — available only in a matching state |
 | `secrets.unlockVault` | Unlock vault | — | Global | Conditional — available only in a matching state |
 | `settings.open` | Open Settings | `⌘,` | Global | Always available |
 | `settings.open.appearance` | Settings › Appearance | — | Global | Always available |

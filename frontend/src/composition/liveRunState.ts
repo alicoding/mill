@@ -3,6 +3,7 @@ import { Events } from '@wailsio/runtime'
 import { ExecutionService, RunKind } from '../shared/bindings'
 import { useApprovalResolution } from '../shared/approvalResolution'
 import type { PendingApproval, RunDetail } from '../shared/bindings'
+import { VAULT_LOCKED_REASON } from '../shared/parkReason'
 import { background } from '../shared/background'
 
 // Live run state on the authoring canvas (docs/SPEC.md §3.8's recorded
@@ -78,9 +79,12 @@ export function barStateFor(detail: RunDetail | null, startRefusal: string): Bar
 // step to, so it offers the single resume action only. Pure and
 // exported: the ordering and the omission are the decision worth
 // pinning down, and both are invisible in a rendered tree.
-export type ParkControl = 'continue' | 'step' | 'stop' | 'approve' | 'deny'
+export type ParkControl = 'continue' | 'step' | 'stop' | 'approve' | 'deny' | 'unlock'
 
-export function parkControls(source: string, stepped: boolean): ParkControl[] {
+// A vault wait (shared/parkReason.ts) offers the unlock and the stop:
+// there is no decision to approve.
+export function parkControls(source: string, stepped: boolean, reason = ''): ParkControl[] {
+  if (reason === VAULT_LOCKED_REASON) return ['unlock', 'stop']
   if (source !== 'debug') return ['approve', 'deny']
   return stepped ? ['continue', 'step', 'stop'] : ['continue', 'stop']
 }

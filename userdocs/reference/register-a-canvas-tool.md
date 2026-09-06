@@ -1,3 +1,7 @@
+---
+kind: reference
+---
+
 # Register a canvas tool
 
 A walkthrough of adding a new placeable tool to Atlas, using Mill's own

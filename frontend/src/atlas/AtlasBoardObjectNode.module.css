@@ -220,13 +220,61 @@
     background: var(--bgColor-accent-muted);
 }
 
+/* The page control on the chrome band (goal 0354): the object's own
+   paging for a multi-page artifact, since a board object shows no
+   vendored toolbar. Sits at the band's trailing end beside the Fit
+   chip, sized to the band's own height so it never makes the band
+   taller. */
+/* One trailing cluster for every band control, right-aligned: the page
+   control first, the Fit chip after it, so neither has to know where
+   the other sits. */
+.bandActions {
+    position: absolute;
+    right: 2px;
+    top: 0;
+    height: var(--mill-object-band-height);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.pager {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+}
+
+.pagerStep {
+    height: var(--mill-object-band-height);
+    min-width: 12px;
+    padding: 0 2px;
+    border: 0;
+    background: transparent;
+    color: var(--fgColor-muted);
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.pagerStep:disabled {
+    /* A step with nowhere to go reads as spent, never as missing: the
+       indicator beside it is what says which end you are at. */
+    opacity: 0.35;
+    cursor: default;
+}
+
+.pagerLabel {
+    color: var(--fgColor-muted);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    white-space: nowrap;
+}
+
 /* The overflow escape hatch on the chrome band (goal 0340): a quiet
    chip at the band's trailing end, sized to the band's own height so it
    never makes the band taller. */
 .fitChip {
-    position: absolute;
-    right: 2px;
-    top: 0;
     height: var(--mill-object-band-height);
     padding: 0 5px;
     border: 0;

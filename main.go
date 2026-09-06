@@ -148,7 +148,10 @@ func main() {
 	configureService := configuresvc.NewConfigureService(settingsStore, compositionService, credentialStore)
 	// MILL_SECRETS_PATH overrides for e2e isolation, same convention as MILL_SETTINGS_PATH above (WireSecrets' own doc comment covers the rest of what this wires). Captured in its own variable -- backupsvc's own wiring below needs the identical path, so every backup carries the vault file (goal 0359).
 	vaultPath := windowing.ConfigDirOrEnv("MILL_SECRETS_PATH", "secrets.kdbx")
-	secretService := wiring.WireSecrets(vaultPath, credentialStore, settingsStore, configureService)
+	// MILL_BACKUP_DIR follows the same override convention, captured
+	// here (ahead of backupsvc's own construction below) since WireSecrets needs it too (goal 0359's restore-from-backup door).
+	backupDir := windowing.ConfigDirOrEnv("MILL_BACKUP_DIR", "backups")
+	secretService := wiring.WireSecrets(vaultPath, backupDir, credentialStore, settingsStore, configureService)
 	wiring.WireSecretRedaction(secretService) // goal 0185 S4
 	// docs/adr/0038: Atlas's storage/CRUD layer (cross-surface wiring
 	// arrives below via injected seams, never direct imports).
@@ -177,9 +180,6 @@ func main() {
 		executionDatabaseURL = "sqlite:" + windowing.ConfigDirOrEnv("MILL_EXECUTION_DB_PATH", "execution.db")
 	}
 
-	// MILL_BACKUP_DIR follows the same override convention as above;
-	// docs/goals/0065's backupService construction reuses this value.
-	backupDir := windowing.ConfigDirOrEnv("MILL_BACKUP_DIR", "backups")
 	backupsvc.GuardVersionChange(logger, settingsStore, backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion)
 
 	mcpAuditService := wiring.WireAuditTrails(secretService, backupsvc.SQLiteDBPath(executionDatabaseURL), logger)
@@ -211,6 +211,7 @@ func main() {
 	}
 	codeLoopService.SetExecutionService(executionService)
 	wiring.WireCodingLoopSecrets(codeLoopService, secretService)
+	wiring.WireVaultWaits(executionService, secretService) // goal 0360 S2
 	wiring.WireCodingLoopEnvPreview(codeLoopService, compositionService, configureService) // docs/goals/0240 S4
 	// Single execution path (docs/adr/0008): a headless trigger fire now
 	// runs through the same durable ExecutionService.RunWorkflow every
