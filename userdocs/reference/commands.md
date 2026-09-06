@@ -24,7 +24,19 @@ rather than shown disabled, whenever its state doesn't currently apply.
 |---|---|---|---|---|
 | `atlas.addFromFolder` | Add cards from a folder | — | atlas | Always available |
 | `atlas.arrange` | Auto-arrange | — | atlas | Always available |
-| `atlas.card.exportAs` | Export card as… | — | atlas | Always available |
+| `atlas.board.addCard` | Add card here | — | atlas | Acts on the selected selection |
+| `atlas.board.addNote` | Add note here | — | atlas | Acts on the selected selection |
+| `atlas.card.addLinkedCard` | Add linked card… | — | atlas | Acts on the selected selection |
+| `atlas.card.copyContext` | Copy card as context | — | atlas | Acts on the selected selection |
+| `atlas.card.copyLink` | Copy card link | — | atlas | Acts on the selected selection |
+| `atlas.card.dissolve` | Dissolve area | — | atlas | Acts on the selected selection |
+| `atlas.card.exportAs` | Export card as… | — | atlas | Conditional — available only in a matching state |
+| `atlas.card.fitToContent` | Fit card to content | — | atlas | Acts on the selected selection |
+| `atlas.card.open` | Open card | — | atlas | Acts on the selected selection |
+| `atlas.card.openFile` | Open card file | — | atlas | Acts on the selected selection |
+| `atlas.card.refreshFromFolder` | Refresh area from folder | — | atlas | Acts on the selected selection |
+| `atlas.card.revealInFileManager` | Reveal card in file manager | — | atlas | Acts on the selected selection |
+| `atlas.card.zoomIn` | Zoom into card | — | atlas | Acts on the selected selection |
 | `atlas.companion.toggle` | Toggle companion panel | — | atlas | Always available |
 | `atlas.contents.open` | Contents | — | atlas | Always available |
 | `atlas.coverage` | Open coverage | — | atlas | Always available |
@@ -33,39 +45,57 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.create.image` | Add an image | — | atlas | Conditional — available only in a matching state |
 | `atlas.create.note` | Add a note | — | atlas | Conditional — available only in a matching state |
 | `atlas.create.table` | New table | — | atlas | Conditional — available only in a matching state |
-| `atlas.delete.selection` | Delete selection | `⌫` | atlas | Always available |
+| `atlas.delete.selection` | Delete selection | `⌫` | atlas | Acts on the selected selection |
 | `atlas.escapeLadder` | Clear selection or go up a level | `ESCAPE` | atlas | Always available |
 | `atlas.export` | Export atlas | — | atlas | Always available |
 | `atlas.focusDirection` | Focus the nearest card in a direction | `⌥→` | atlas | Always available |
 | `atlas.focusNext` | Focus next card | `TAB` | atlas | Always available |
 | `atlas.focusPrevious` | Focus previous card | `⇧TAB` | atlas | Always available |
-| `atlas.group.selection` | Group into a new area | `G` | atlas | Always available |
+| `atlas.group.selection` | Group into a new area | `G` | atlas | Acts on the selected selection |
 | `atlas.import` | Import atlas | — | atlas | Always available |
 | `atlas.json.copyKey` | Copy key | — | atlas | Acts on the selected tree row |
 | `atlas.json.copyPath` | Copy path | — | atlas | Acts on the selected tree row |
 | `atlas.json.copyValue` | Copy value | `⌘C` | atlas | Acts on the selected tree row |
 | `atlas.jump` | Jump to a card or object | `⌘K` | atlas | Always available |
+| `atlas.link.editLabel` | Edit link label… | — | atlas | Acts on the selected selection |
+| `atlas.link.remove` | Remove link | — | atlas | Acts on the selected selection |
+| `atlas.link.setKind` | Change link kind | — | atlas | Acts on the selected selection |
 | `atlas.matrix` | Open traceability matrix | — | atlas | Always available |
 | `atlas.minimap.toggle` | Toggle minimap | — | atlas | Always available |
+| `atlas.note.open` | Open note | — | atlas | Acts on the selected selection |
+| `atlas.note.promote` | Promote note to card… | — | atlas | Acts on the selected selection |
 | `atlas.nudgeSelection` | Move the selected card | `→` | atlas | Always available |
+| `atlas.object.pluginAction` | Extension action | — | atlas | Acts on the selected selection |
+| `atlas.object.promote` | Promote object to card… | — | atlas | Acts on the selected selection |
 | `atlas.openFocused` | Open or zoom the focused card | `↩` | atlas | Always available |
 | `atlas.perspective` | Open perspective switcher | — | atlas | Always available |
 | `atlas.redo` | Redo | — | atlas | Always available |
 | `atlas.roadmap` | Open roadmap | — | atlas | Always available |
 | `atlas.selectAll` | Select all | `⌘A` | atlas | Always available |
+| `atlas.selection.addToPerspective` | Add to perspective | — | atlas | Acts on the selected selection |
 | `atlas.selection.copyAsImage` | Copy as image | — | atlas | Conditional — available only in a matching state |
 | `atlas.selection.exportAsImage` | Export as image… | — | atlas | Conditional — available only in a matching state |
+| `atlas.selection.removeFromPerspective` | Remove from perspective | — | atlas | Acts on the selected selection |
 | `atlas.share.copyContext` | Copy space as context | — | atlas | Always available |
 | `atlas.share.copyLinks` | Copy space links | — | atlas | Always available |
+| `atlas.space.delete` | Delete space | — | atlas | Acts on the selected selection |
+| `atlas.space.new` | New space… | — | atlas | Always available |
+| `atlas.space.rename` | Rename space… | — | atlas | Acts on the selected selection |
 | `atlas.undo` | Undo | — | atlas | Always available |
 | `atlas.up` | Go up one level | `⌘↑` | atlas | Always available |
 | `backup.export` | Export everything | — | Global | Always available |
 | `backup.now` | Back up now | — | Global | Always available |
 | `browser.pair` | Pair a browser | — | Global | Always available |
 | `browser.test` | Test the browser connection | — | Global | Conditional — available only in a matching state |
+| `canvas.addNote` | Add note | — | Global | Acts on the selected canvasElement |
+| `canvas.addStep` | Add step | — | Global | Acts on the selected canvasElement |
 | `canvas.delete` | Delete selected | `⌫` | composition | Always available |
+| `canvas.edge.delete` | Delete connection | — | Global | Acts on the selected canvasElement |
+| `canvas.edge.select` | Select connection | — | Global | Acts on the selected canvasElement |
 | `canvas.fitView` | Fit view | — | composition | Always available |
 | `canvas.redo` | Redo | `⌘⇧Z` | composition | Always available |
+| `canvas.step.delete` | Delete step | — | Global | Acts on the selected canvasElement |
+| `canvas.step.openDetails` | Open step details | — | Global | Acts on the selected canvasElement |
 | `canvas.undo` | Undo | `⌘Z` | composition | Always available |
 | `canvas.zoomIn` | Zoom in | `⌘+` | composition | Always available |
 | `canvas.zoomOut` | Zoom out | `⌘-` | composition | Always available |
@@ -117,7 +147,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.secretsource.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.steptype.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.steptype.export` | Export | — | Global | Acts on the selected entity |
-| `diagram.fit` | Fit diagram | — | atlas | Conditional — available only in a matching state |
+| `diagram.fit` | Fit diagram | — | atlas | Acts on the selected selection |
 | `docs.search` | Search docs | — | Global | Always available |
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
@@ -134,6 +164,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `extensions.open` | Extensions | `⌘⇧X` | Global | Always available |
 | `extensions.sources` | Extensions: marketplace sources | — | Global | Always available |
 | `extensions.updateAll` | Extensions: update all | — | Global | Conditional — available only in a matching state |
+| `guardrail.rule.delete` | Delete rule | — | Global | Acts on the selected entity |
+| `guardrail.rule.edit` | Edit rule | — | Global | Acts on the selected entity |
 | `help.openDataFolder` | Open data folder | — | Global | Always available |
 | `help.reportIssue` | Report an issue… | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
@@ -141,8 +173,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `listGrid.deleteColumn` | Delete selected column | — | Global | Acts on the selected table rows |
 | `listGrid.deleteRows` | Delete selected rows | — | Global | Acts on the selected table rows |
 | `listGrid.search` | Find in this list | `⌘F` | Global | Acts on the selected table rows |
-| `object.openInDefaultApp` | Open in default app | — | atlas | Always available |
-| `object.rename` | Rename | — | atlas | Always available |
+| `object.editDiagram` | Edit diagram… | — | atlas | Acts on the selected selection |
+| `object.openInDefaultApp` | Open in default app | — | atlas | Acts on the selected selection |
+| `object.rename` | Rename | — | atlas | Acts on the selected selection |
 | `output.copy` | Copy output | — | Global | Conditional — available only in a matching state |
 | `output.find` | Find in output | `⌘F` | Global | Conditional — available only in a matching state |
 | `output.openFull` | Open output in full | — | Global | Conditional — available only in a matching state |
@@ -151,6 +184,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `panel.applyClipboard` | Apply from clipboard | — | Global | Always available |
 | `panel.open` | Open Quick Panel | — | Global | Conditional — available only in a matching state |
 | `panel.openMill` | Open Mill | — | Global | Always available |
+| `perspective.row.delete` | Delete perspective | — | Global | Acts on the selected entity |
+| `perspective.row.rename` | Rename perspective | — | Global | Acts on the selected entity |
 | `review.rules` | Guardrail rules | — | review | Always available |
 | `run.continue` | Continue | — | Global | Acts on the selected run |
 | `run.monitor` | Show run steps | — | Global | Acts on the selected run |

@@ -6,6 +6,7 @@ import { pluginRegistryCommands } from './pluginHostCommands'
 import { lazyArray } from './lazySnapshot'
 import { CONFIGURE_CREATE_COMMANDS } from './configureCreateCommands'
 import { ATLAS_BOARD_COMMANDS } from './atlasBoardCommands'
+import { ATLAS_SELECTION_COMMANDS } from './atlasSelectionCommands'
 import { SETTINGS_COMMANDS } from './settingsCommands'
 import { CANVAS_COMMANDS } from './canvasCommands'
 import { WORKFLOW_MODE_COMMANDS } from './workflowModeCommands'
@@ -120,6 +121,16 @@ export interface Command {
   // ambientContext() happens to resolve that kind. Omit for a command
   // that acts on global state.
   needs?: CommandContextKind
+  // A label composed from the target (goal 0346 slice B): "Open
+  // <linked card>", "Add card to <frame>". Returns the resolved string
+  // for this context, or undefined to fall back to `label`; the
+  // palette and the reference page read `label` alone.
+  labelFor?: (ctx?: CommandContext) => string | undefined
+  // A question the surface asks before run() (goal 0346 slice B): the
+  // confirm dialog's own copy, resolved for this target, or null when
+  // this target needs no confirmation. The menu/kebab hosts the dialog;
+  // runCommand itself never asks.
+  confirm?: (ctx?: CommandContext) => { title: string; body: string; confirmLabel?: string } | null
   // Quick Panel opt-in (goal 0222 S2): also renders as a row in the
   // panel's own window (app/quickPanelActionEntries.tsx) -- a run()
   // assuming the MAIN window (setView) is overridden there instead.
@@ -147,8 +158,8 @@ export interface Command {
 // shows -- the palette, the Shortcuts overlay, Settings' rebind list,
 // the Quick Panel, the menu-bar projection and runCommand's own
 // failure notice all go through here rather than reading `label`.
-export function commandLabel(command: Pick<Command, 'label'>): string {
-  return copy(command.label)
+export function commandLabel(command: Pick<Command, 'label' | 'labelFor'>, ctx?: CommandContext): string {
+  return (ctx && command.labelFor?.(ctx)) || copy(command.label)
 }
 
 function setView(view: View) {
@@ -315,6 +326,9 @@ export const COMMANDS: Command[] = lazyArray(() => [
   // The rest of the Atlas toolbar/board's own commands -- split out to
   // shared/atlasBoardCommands.ts (CLAUDE.md's 500-line convention).
   ...withMenuGroup('atlas', 1, ATLAS_BOARD_COMMANDS),
+  // Every action on the board's selection (goal 0346 slice B) --
+  // shared/atlasSelectionCommands.ts; each declares needs:'selection'.
+  ...ATLAS_SELECTION_COMMANDS,
   {
     // ⌘0..⌘5 mirror the sidebar's own top-to-bottom order -- Atlas
     // sits between Configure and Activity there, so it takes ⌘3 and

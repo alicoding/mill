@@ -43,6 +43,8 @@ import { AtlasQuietToast } from './AtlasQuietToast'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasView.module.css'
 import { background } from '../shared/background'
+import { useAtlasSelectionRequests } from './useAtlasSelectionRequests'
+import './atlasSelectionFactsProvider'
 
 // The Atlas surface's top-level page (docs/adr/0038, docs/goals/0061):
 // space rendering (canvas/shelves per the viewed card's
@@ -246,14 +248,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
 
   const deleteConfirm = useAtlasDeleteConfirm({ t, allCards, notes: allNotes, allObjects })
 
-  const linkMenus = useAtlasLinkMenus({
-    t, allCards, allLinks, allNotes, allObjects, linkKinds: allLinkKinds, perspectives: allPerspectives, setMenu, drill,
-    onOpenCard: (id) => setOverlayCardID(id),
-    onError: setShareError,
-    onDeleted: undoToast.registerDelete,
-    onPerspectiveToast: quietToast.show,
-    requestLinkedCard: creationRequests.requestLinkedCard, guardDelete: deleteConfirm.guardDelete,
-  })
+  const linkMenus = useAtlasLinkMenus({ t, allCards, linkKinds: allLinkKinds, setMenu })
 
   // onNavigate stays the RAW setViewedID, deliberately not navigate:
   // deleting the space being viewed is a consequence landing at the
@@ -261,40 +256,11 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // to auto-resolve straight back into whatever's left, same as any
   // other viewedID==="" arrival (docs/goals/0183).
   const spaceActions = useAtlasSpaceActions({
-    t, viewedCard, guardDelete: deleteConfirm.guardDelete, onDeleted: undoToast.registerDelete, onError: setShareError,
-    onOpenOverlay: openOverlay, onNavigate: setViewedID, onNewSpace: () => setNewSpaceOpen(true),
+    viewedCard, setMenu, guardDelete: deleteConfirm.guardDelete, onDeleted: undoToast.registerDelete, onError: setShareError, onNavigate: setViewedID,
   })
 
-  // The empty-board right-click (goal 0081 A2 rider b):
-  // direct-placement doors only -- the
-  // dialog-based "Add card…" item is gone (the toolbar's own "+ Add"
-  // button still reaches that dialog through its own menu, unrelated
-  // to this one). Nothing else fired the old openChildRequest counter
-  // this menu item used to bump, so it's gone with it. Space-management
-  // items (New space/Rename space/Delete space, docs/goals/0183) come
-  // from spaceActions above -- empty unless viewedCard is itself a
-  // root-level space.
-  const openPaneMenu = (pos: { x: number; y: number }) => {
-    setMenu({
-      x: pos.x,
-      y: pos.y,
-      items: [
-        { id: 'add-card-here', label: t('contextMenu.addCardHere'), commandId: 'atlas.create.card', run: () => creationRequests.requestPlacement('card', pos) },
-        { id: 'add-note-here', label: t('contextMenu.addNoteHere'), commandId: 'atlas.create.note', run: () => creationRequests.requestPlacement('note', pos) },
-        ...spaceActions.spaceMenuItems(),
-      ],
-    })
-  }
-
-  const noteMenu = useAtlasNoteMenu({
-    t, allNotes, setMenu, onDeleted: undoToast.registerDelete, onError: setShareError,
-    requestPromote: creationRequests.requestPromote, onOpenNote: setOpenNoteID,
-  })
-
-  const objectMenu = useAtlasObjectMenu({
-    t, allObjects, setMenu, onDeleted: undoToast.registerDelete, onError: setShareError,
-    requestPromoteObject: creationRequests.requestPromoteObject,
-  })
+  const noteMenu = useAtlasNoteMenu({ setMenu })
+  const objectMenu = useAtlasObjectMenu({ setMenu })
 
   // Frame/multi-select context menus + their dissolve/delete-with-
   // promotion confirm dialogs (goal 0081 slice A2) -- split into its
@@ -302,11 +268,27 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // header comment for why the area-draw/drag-filing half stays in
   // AtlasBoard.tsx instead.
   const containmentMenus = useAtlasContainmentMenus({
-    t, allCards, notes: allNotes, allObjects, perspectives: allPerspectives, setMenu, drill, onError: setShareError,
-    onDeleted: undoToast.registerDelete,
-    onPerspectiveToast: quietToast.show,
-    requestPlacementInside: (tool, pos, parentID) => creationRequests.requestPlacement(tool, pos, parentID),
-    requestGroup: (cardIDs, noteIDs, objectIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, objectIDs, pos), guardDelete: deleteConfirm.guardDelete,
+    t, allCards, notes: allNotes, allObjects, setMenu, onError: setShareError,
+    onDeleted: undoToast.registerDelete, guardDelete: deleteConfirm.guardDelete,
+  })
+
+  // The board-side half of every selection command (goal 0346 slice
+  // B): shared/atlasSelectionCommands.ts requests, this view's own
+  // closures do.
+  useAtlasSelectionRequests({
+    t, allCards, allObjects,
+    openCard: openOverlay, drill, openNote: setOpenNoteID,
+    requestLinkedCard: creationRequests.requestLinkedCard,
+    requestPlacement: creationRequests.requestPlacement,
+    requestPromote: creationRequests.requestPromote,
+    requestPromoteObject: creationRequests.requestPromoteObject,
+    requestGroup: creationRequests.requestGroup,
+    deleteSelection: containmentMenus.deleteSelection,
+    dissolve: containmentMenus.dissolve,
+    editLinkLabel: linkMenus.editLabel,
+    setMenu, onError: setShareError, onToast: quietToast.show,
+    onNewSpace: () => setNewSpaceOpen(true),
+    deleteCurrentSpace: spaceActions.deleteCurrentSpace,
   })
 
   // ⌘K's GO/OPEN (goal 0072 slice B): a target already rendered (a
@@ -453,7 +435,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onDrill={drill}
           onOpenOverlay={openOverlay}
           onCardContextMenu={linkMenus.openCardMenu}
-          onPaneContextMenu={openPaneMenu}
+          onPaneContextMenu={spaceActions.openPaneMenu}
           onArteryContextMenu={linkMenus.openArteryMenu}
           onEdgeDeleteLink={linkMenus.removeLink}
           onEdgeChangeKind={linkMenus.openChangeKindMenu}
@@ -465,7 +447,6 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onDeleteSelection={containmentMenus.deleteSelection}
           onQuietToast={quietToast.show}
           onOpenNote={setOpenNoteID}
-          onGroupSelection={(cardIDs, noteIDs, objectIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, objectIDs, pos)}
           placementRequest={creationRequests.placementRequest}
           promoteRequest={creationRequests.promoteRequest}
           groupRequest={creationRequests.groupRequest}

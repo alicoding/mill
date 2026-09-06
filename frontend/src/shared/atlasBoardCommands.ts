@@ -1,7 +1,11 @@
 import type { Command } from './commands'
-import { jsonNodeContext } from './commandContext'
+import { jsonNodeContext, selectionContext } from './commandContext'
 import { writeClipboardText } from './clipboardWrite'
 import { useUISignalStore } from './uiSignalStore'
+import { AtlasService } from './bindings'
+import { copy } from './copy'
+import { requestAtlasSelectionAction } from './atlasSelectionStore'
+import { placedCount, soleCard, soleObject } from './atlasSelectionShape'
 
 // Whether a board with something on it is on screen right now -- read
 // from the live canvas rather than mirrored into a store: a mirror has
@@ -22,17 +26,6 @@ function atlasBoardHasContent(): boolean {
 // shared/uiSignalStore.ts counter the owning atlas/ component already
 // watches, the same store-signal seam every other cross-bounded-
 // context command in commands.ts uses.
-// The board's currently selected DIAGRAM object, read from the live
-// canvas the same way atlasBoardHasContent above reads it -- the node's
-// own data-id IS the object id (atlasBuildBoardObjectNodes.ts). Null
-// when the selection is anything else, which is diagram.fit's honest
-// enablement: fitting a drawing needs a drawing to fit.
-function selectedDiagramObjectID(): string | null {
-  if (typeof document === 'undefined') return null
-  const face = document.querySelector('.react-flow__node.selected [data-object-kind="diagram"]')
-  return face?.closest('.react-flow__node')?.getAttribute('data-id') ?? null
-}
-
 export const ATLAS_BOARD_COMMANDS: Command[] = [
   {
     id: 'atlas.arrange',
@@ -135,31 +128,51 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     run: () => useUISignalStore.getState().requestAtlasSelectAll(),
   },
   {
-    // Unreachable by construction: hintOnly skips generic dispatch,
-    // paletteHidden excludes the palette, and ShortcutsHelpDialog's
-    // rows carry no onSelect -- this entry exists only to satisfy
-    // Command.run's required type. The real action lives in
-    // useAtlasSelectionTray.ts's own onDelete/AtlasBoard's Delete/
-    // Backspace listener.
+    // Delete over the live selection (goal 0346 slice B): the Delete/
+    // Backspace listener, the selection tray, every right-click menu
+    // and the palette all run THIS with the selection as context. The
+    // deleting itself (the container-promotion confirm, the undo
+    // toast) is the board's own, so the run hands it down as a
+    // request. hintOnly: a bare Delete can never be a dispatched combo
+    // (comboFromEvent requires Cmd/Ctrl), so the binding is display and
+    // the dedicated listener (atlas/useAtlasDeleteKey.ts) fires it.
     id: 'atlas.delete.selection',
     label: 'commands.atlas.delete.selection',
     defaultBinding: { mods: [], key: 'Delete' },
     hintOnly: true,
-    paletteHidden: true,
     surface: ['atlas'],
-    run: () => {},
+    needs: 'selection',
+    enabled: (ctx) => { const sel = selectionContext(ctx); return Boolean(sel) && placedCount(sel!) >= 1 },
+    // A menu names the shape it deletes: "Delete note" over one note,
+    // "Delete" otherwise -- the command's own label stays the
+    // palette's "Delete selection".
+    labelFor: (ctx) => {
+      const sel = selectionContext(ctx)
+      if (!sel) return undefined
+      return sel.notes.length === 1 && placedCount(sel) === 1 ? copy('atlas:contextMenu.deleteNote') : copy('atlas:contextMenu.delete')
+    },
+    run: (ctx) => {
+      const sel = selectionContext(ctx)
+      if (sel) requestAtlasSelectionAction({ action: 'delete', cards: sel.cards, notes: sel.notes, objects: sel.objects })
+    },
   },
   {
-    // Unreachable by construction, same reasoning as atlas.delete.selection
-    // above -- the real action lives in useAtlasSelectionTray.ts's own
-    // triggerGroup/groupFromKeyboard.
+    // Group the live selection into a new area (goal 0266's peer law:
+    // any 2+ cards, notes or board objects). Same hintOnly reasoning
+    // as atlas.delete.selection; the bare-G listener lives in
+    // atlas/useAtlasSelectionTray.ts and runs this.
     id: 'atlas.group.selection',
     label: 'commands.atlas.group.selection',
     defaultBinding: { mods: [], key: 'G' },
     hintOnly: true,
-    paletteHidden: true,
     surface: ['atlas'],
-    run: () => {},
+    needs: 'selection',
+    enabled: (ctx) => { const sel = selectionContext(ctx); return Boolean(sel) && placedCount(sel!) >= 2 },
+    labelFor: (ctx) => (selectionContext(ctx) ? copy('atlas:contextMenu.groupIntoArea') : undefined),
+    run: (ctx) => {
+      const sel = selectionContext(ctx)
+      if (sel) requestAtlasSelectionAction({ action: 'group', cards: sel.cards, notes: sel.notes, objects: sel.objects, pos: sel.target?.pos })
+    },
   },
   {
     // "Fit diagram" (goal 0354): a diagram board object shows no
@@ -172,46 +185,39 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     label: 'commands.diagram.fit',
     defaultBinding: null,
     surface: ['atlas'],
-    enabled: () => selectedDiagramObjectID() !== null,
-    run: () => {
-      const id = selectedDiagramObjectID()
-      if (id) useUISignalStore.getState().requestAtlasDiagramFit(id)
+    needs: 'selection',
+    enabled: (ctx) => soleObject(ctx)?.fitDiagram === true,
+    run: (ctx) => {
+      const object = soleObject(ctx)
+      if (object) useUISignalStore.getState().requestAtlasDiagramFit(object.id)
     },
   },
   {
     // "Open in default app" (goal 0232 S1): a file-backed board
-    // object's own registry command -- mouse-only by construction (its
-    // target is whichever object was right-clicked, which the palette/
-    // keyboard dispatch path has no way to supply), so paletteHidden
-    // per that field's own doc comment, same shape atlas.delete.selection
-    // above already takes for the identical constraint. The real,
-    // per-object run() and its honest fileBacked+mirrorPath enablement
-    // live in useAtlasObjectMenu.ts, which shares this commandId so the
-    // menu item's label/HotkeyHint resolve from here.
+    // object's own action, over the selection like every other object
+    // command (goal 0346 slice B).
     id: 'object.openInDefaultApp',
     label: 'commands.object.openInDefaultApp',
     defaultBinding: null,
-    hintOnly: true,
-    paletteHidden: true,
     surface: ['atlas'],
-    run: () => {},
+    needs: 'selection',
+    enabled: (ctx) => soleObject(ctx)?.openInDefaultApp === true,
+    run: (ctx) => { const object = soleObject(ctx); return object ? AtlasService.OpenObjectMirrorInDefaultApp(object.id) : undefined },
   },
   {
-    // "Rename" (goal 0273): a table board object's own registry
-    // command -- mouse-only by construction for the same reason
-    // object.openInDefaultApp above is (its target is whichever object
-    // was right-clicked, which the palette/keyboard dispatch path has
-    // no way to supply), so paletteHidden per that field's own doc
-    // comment. The real per-object run() and its honest Kind-based
-    // enablement live in atlas/useAtlasObjectMenu.ts, which shares this
-    // commandId so the menu item's label/HotkeyHint resolve from here.
+    // "Rename" (goal 0273): a table is the one board object that
+    // carries its own name on the board, so renaming is its primary
+    // action; the rename field itself is the node's (the signal).
     id: 'object.rename',
     label: 'commands.object.rename',
     defaultBinding: null,
-    hintOnly: true,
-    paletteHidden: true,
     surface: ['atlas'],
-    run: () => {},
+    needs: 'selection',
+    enabled: (ctx) => soleObject(ctx)?.rename === true,
+    run: (ctx) => {
+      const object = soleObject(ctx)
+      if (object) useUISignalStore.getState().requestAtlasTableRename(object.id)
+    },
   },
   {
     // The Sparkle companion-panel toggle (goal 0101 slice 1,
@@ -235,16 +241,39 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
   },
   {
     // Export-as (ADR-0043 §3, goal 0133 slice E1): the ONE command id
-    // the card page's kebab menu and its right-click context menu also
-    // key off (AtlasCardPageHeader.tsx / useAtlasLinkMenus.tsx), per the
-    // integration-surfaces triage's "sharing commandIds" requirement.
-    // Consumed by whichever card page is currently open
-    // (AtlasCardOverlay.tsx); a harmless no-op with no card page open.
+    // the card page's kebab menu and the board's right-click menu key
+    // off. Over a selection of exactly one card it exports THAT card
+    // (a format submenu names the format in the target; without one,
+    // AtlasView downloads the sole format or opens the format menu);
+    // with no selection it reaches whichever card page is open
+    // (AtlasCardOverlay.tsx), a harmless no-op with none open.
     id: 'atlas.card.exportAs',
     label: 'commands.atlas.card.exportAs',
     defaultBinding: null,
     surface: ['atlas'],
-    run: () => useUISignalStore.getState().requestAtlasCardExportAs(),
+    enabled: (ctx) => {
+      const sel = selectionContext(ctx)
+      if (!sel) return true
+      const card = soleCard(ctx)
+      if (!card || card.exporters.length === 0) return false
+      const format = sel.target?.format
+      return !format || card.exporters.some((e) => e.format === format)
+    },
+    labelFor: (ctx) => {
+      const sel = selectionContext(ctx)
+      const card = soleCard(ctx)
+      if (!sel || !card) return undefined
+      const format = sel.target?.format
+      const exporter = format ? card.exporters.find((e) => e.format === format) : card.exporters.length === 1 ? card.exporters[0] : undefined
+      if (format) return exporter?.label
+      return exporter ? copy('atlas:export.singleLabel', { label: exporter.label }) : copy('atlas:export.menuLabel')
+    },
+    run: (ctx) => {
+      const sel = selectionContext(ctx)
+      const card = soleCard(ctx)
+      if (sel && card) requestAtlasSelectionAction({ action: 'exportAs', card: card.id, format: sel.target?.format, pos: sel.target?.pos })
+      else useUISignalStore.getState().requestAtlasCardExportAs()
+    },
   },
   // The six entries below (goal 0106 slice B) advertise useAtlasKeyboardNav.ts's
   // own key table (goal 0104) in the Shortcuts Help overlay -- every

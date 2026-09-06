@@ -125,13 +125,13 @@ export function visibleMenuActions(actions: InventoryMenuAction[]): InventoryMen
 // HotkeyHint. The one exception is a confirm-guarded action: the dialog
 // belongs to the ROW that offers it, so that item keeps a run() long
 // enough to raise it (the command still fires once the user says yes).
-export function menuActionsToContextMenuItems(actions: InventoryMenuAction[], requestConfirm: (a: InventoryMenuAction) => void): ContextMenuItem[] {
+export function menuActionsToContextMenuItems(actions: InventoryMenuAction[]): ContextMenuItem[] {
   return visibleMenuActions(actions).map((action, i) => ({
     id: `${menuActionLabel(action)}-${i}`,
     commandId: action.commandId,
     ctx: action.ctx,
     label: menuActionLabel(action),
     danger: action.danger,
-    ...(action.confirm ? { run: () => requestConfirm(action) } : {}),
+    confirm: action.confirm,
   }))
 }

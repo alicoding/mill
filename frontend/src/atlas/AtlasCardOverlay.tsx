@@ -21,6 +21,7 @@ import { AtlasSlotRows } from './AtlasSlotRows'
 import { useAtlasCardPageFileDrop } from './useAtlasCardPageFileDrop'
 import { FILE_DROP_CONTEXT_CARD_PAGE } from './atlasFileDropShared'
 import { buildExportMenuChoice, runCardExport } from './atlasCardExportMenu'
+import { atlasSelectionContext } from '../shared/atlasSelectionStore'
 import type { UnitExporter } from './unitRegistry'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasCardPage.module.css'
@@ -113,7 +114,7 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
   const onExportOpenFormats = (exporters: UnitExporter[], pos: { x: number; y: number }) => setExportMenu({
     x: pos.x,
     y: pos.y,
-    items: exporters.map((exp) => ({ id: `export-${exp.format}`, label: exp.label, run: () => void runCardExport(displayedCard, exp, setShareError) })),
+    items: exporters.map((exp) => ({ id: `export-${exp.format}`, commandId: 'atlas.card.exportAs', ctx: atlasSelectionContext({ cards: [displayedCard.ID], notes: [], objects: [], links: [] }, { format: exp.format, pos }) })),
   })
 
   // atlas.card.exportAs (command palette, DoR item 6): the same choice

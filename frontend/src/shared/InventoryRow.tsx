@@ -36,7 +36,7 @@ export function InventoryRow({ item, onOpenMenu }: { item: InventoryItem; onOpen
       onContextMenu={(e) => {
         if (actions.length === 0) return
         e.preventDefault()
-        onOpenMenu({ x: e.clientX, y: e.clientY, items: menuActionsToContextMenuItems(actions, setPendingConfirm) })
+        onOpenMenu({ x: e.clientX, y: e.clientY, items: menuActionsToContextMenuItems(actions) })
       }}
     >
       <ActionList.LeadingVisual>

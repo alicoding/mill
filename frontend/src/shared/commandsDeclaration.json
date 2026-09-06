@@ -20,14 +20,134 @@
     "needs": null
   },
   {
+    "id": "atlas.board.addCard",
+    "label": "Add card here",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
+    "id": "atlas.board.addNote",
+    "label": "Add note here",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
+    "id": "atlas.card.addLinkedCard",
+    "label": "Add linked card…",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
+    "id": "atlas.card.copyContext",
+    "label": "Copy card as context",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
+    "id": "atlas.card.copyLink",
+    "label": "Copy card link",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
+    "id": "atlas.card.dissolve",
+    "label": "Dissolve area",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
     "id": "atlas.card.exportAs",
     "label": "Export card as…",
     "binding": null,
     "surface": [
       "atlas"
     ],
-    "enabled": false,
+    "enabled": true,
     "needs": null
+  },
+  {
+    "id": "atlas.card.fitToContent",
+    "label": "Fit card to content",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
+    "id": "atlas.card.open",
+    "label": "Open card",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
+    "id": "atlas.card.openFile",
+    "label": "Open card file",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
+    "id": "atlas.card.refreshFromFolder",
+    "label": "Refresh area from folder",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
+    "id": "atlas.card.revealInFileManager",
+    "label": "Reveal card in file manager",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
+    "id": "atlas.card.zoomIn",
+    "label": "Zoom into card",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
   },
   {
     "id": "atlas.companion.toggle",
@@ -116,8 +236,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false,
-    "needs": null
+    "enabled": true,
+    "needs": "selection"
   },
   {
     "id": "atlas.escapeLadder",
@@ -176,8 +296,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false,
-    "needs": null
+    "enabled": true,
+    "needs": "selection"
   },
   {
     "id": "atlas.import",
@@ -230,6 +350,36 @@
     "needs": null
   },
   {
+    "id": "atlas.link.editLabel",
+    "label": "Edit link label…",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
+    "id": "atlas.link.remove",
+    "label": "Remove link",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
+    "id": "atlas.link.setKind",
+    "label": "Change link kind",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
     "id": "atlas.matrix",
     "label": "Open traceability matrix",
     "binding": null,
@@ -250,6 +400,26 @@
     "needs": null
   },
   {
+    "id": "atlas.note.open",
+    "label": "Open note",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
+    "id": "atlas.note.promote",
+    "label": "Promote note to card…",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
     "id": "atlas.nudgeSelection",
     "label": "Move the selected card",
     "binding": "→",
@@ -258,6 +428,26 @@
     ],
     "enabled": false,
     "needs": null
+  },
+  {
+    "id": "atlas.object.pluginAction",
+    "label": "Extension action",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
+    "id": "atlas.object.promote",
+    "label": "Promote object to card…",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
   },
   {
     "id": "atlas.openFocused",
@@ -310,6 +500,16 @@
     "needs": null
   },
   {
+    "id": "atlas.selection.addToPerspective",
+    "label": "Add to perspective",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
     "id": "atlas.selection.copyAsImage",
     "label": "Copy as image",
     "binding": null,
@@ -330,6 +530,16 @@
     "needs": null
   },
   {
+    "id": "atlas.selection.removeFromPerspective",
+    "label": "Remove from perspective",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
     "id": "atlas.share.copyContext",
     "label": "Copy space as context",
     "binding": null,
@@ -348,6 +558,36 @@
     ],
     "enabled": false,
     "needs": null
+  },
+  {
+    "id": "atlas.space.delete",
+    "label": "Delete space",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
+    "id": "atlas.space.new",
+    "label": "New space…",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "atlas.space.rename",
+    "label": "Rename space…",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
   },
   {
     "id": "atlas.undo",
@@ -402,6 +642,22 @@
     "needs": null
   },
   {
+    "id": "canvas.addNote",
+    "label": "Add note",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "canvasElement"
+  },
+  {
+    "id": "canvas.addStep",
+    "label": "Add step",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "canvasElement"
+  },
+  {
     "id": "canvas.delete",
     "label": "Delete selected",
     "binding": "⌫",
@@ -410,6 +666,22 @@
     ],
     "enabled": false,
     "needs": null
+  },
+  {
+    "id": "canvas.edge.delete",
+    "label": "Delete connection",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "canvasElement"
+  },
+  {
+    "id": "canvas.edge.select",
+    "label": "Select connection",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "canvasElement"
   },
   {
     "id": "canvas.fitView",
@@ -430,6 +702,22 @@
     ],
     "enabled": false,
     "needs": null
+  },
+  {
+    "id": "canvas.step.delete",
+    "label": "Delete step",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "canvasElement"
+  },
+  {
+    "id": "canvas.step.openDetails",
+    "label": "Open step details",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "canvasElement"
   },
   {
     "id": "canvas.undo",
@@ -853,7 +1141,7 @@
       "atlas"
     ],
     "enabled": true,
-    "needs": null
+    "needs": "selection"
   },
   {
     "id": "docs.search",
@@ -984,6 +1272,22 @@
     "needs": null
   },
   {
+    "id": "guardrail.rule.delete",
+    "label": "Delete rule",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "guardrail.rule.edit",
+    "label": "Edit rule",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
     "id": "help.openDataFolder",
     "label": "Open data folder",
     "binding": null,
@@ -1040,14 +1344,24 @@
     "needs": "listGrid"
   },
   {
+    "id": "object.editDiagram",
+    "label": "Edit diagram…",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
     "id": "object.openInDefaultApp",
     "label": "Open in default app",
     "binding": null,
     "surface": [
       "atlas"
     ],
-    "enabled": false,
-    "needs": null
+    "enabled": true,
+    "needs": "selection"
   },
   {
     "id": "object.rename",
@@ -1056,8 +1370,8 @@
     "surface": [
       "atlas"
     ],
-    "enabled": false,
-    "needs": null
+    "enabled": true,
+    "needs": "selection"
   },
   {
     "id": "output.copy",
@@ -1122,6 +1436,22 @@
     "surface": null,
     "enabled": false,
     "needs": null
+  },
+  {
+    "id": "perspective.row.delete",
+    "label": "Delete perspective",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "perspective.row.rename",
+    "label": "Rename perspective",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
   },
   {
     "id": "review.rules",

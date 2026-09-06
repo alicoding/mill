@@ -1,4 +1,5 @@
 import type { Command } from './commands'
+import { canvasElementContext } from './commandContext'
 import { useAppStore } from './store'
 
 // Canvas-authoring commands (docs/goals/0162 item 2): undo/redo/delete/
@@ -114,4 +115,71 @@ export const CANVAS_COMMANDS: Command[] = [
     },
     run: () => requestCanvas('publish'),
   },
+  // The canvas's own right-click items (goal 0346 slice B): each a
+  // command over the step, connection or point the canvas names
+  // (`canvasElement`), reaching the mounted canvas through the same
+  // canvasCommandRequest signal the verbs above use. The delete/add
+  // ones are honest about view mode: absent, never dimmed.
+  {
+    id: 'canvas.step.openDetails',
+    label: 'commands.canvas.step.openDetails',
+    defaultBinding: null,
+    needs: 'canvasElement',
+    enabled: (ctx) => Boolean(canvasElementContext(ctx)?.nodeId) && editorTabActive(),
+    run: (ctx) => { const nodeId = canvasElementContext(ctx)?.nodeId; if (nodeId) useAppStore.getState().requestCanvasCommand({ kind: 'openDetails', nodeId }) },
+  },
+  {
+    id: 'canvas.step.delete',
+    label: 'commands.canvas.step.delete',
+    defaultBinding: null,
+    needs: 'canvasElement',
+    enabled: (ctx) => Boolean(canvasElementContext(ctx)?.nodeId) && canvasEditable(),
+    run: (ctx) => { const nodeId = canvasElementContext(ctx)?.nodeId; if (nodeId) useAppStore.getState().requestCanvasCommand({ kind: 'removeNode', nodeId }) },
+  },
+  {
+    id: 'canvas.edge.select',
+    label: 'commands.canvas.edge.select',
+    defaultBinding: null,
+    needs: 'canvasElement',
+    enabled: (ctx) => Boolean(canvasElementContext(ctx)?.edgeId) && editorTabActive(),
+    run: (ctx) => { const edgeId = canvasElementContext(ctx)?.edgeId; if (edgeId) useAppStore.getState().requestCanvasCommand({ kind: 'selectEdge', edgeId }) },
+  },
+  {
+    id: 'canvas.edge.delete',
+    label: 'commands.canvas.edge.delete',
+    defaultBinding: null,
+    needs: 'canvasElement',
+    enabled: (ctx) => Boolean(canvasElementContext(ctx)?.edgeId) && canvasEditable(),
+    run: (ctx) => { const edgeId = canvasElementContext(ctx)?.edgeId; if (edgeId) useAppStore.getState().requestCanvasCommand({ kind: 'removeEdge', edgeId }) },
+  },
+  {
+    id: 'canvas.addStep',
+    label: 'commands.canvas.addStep',
+    defaultBinding: null,
+    needs: 'canvasElement',
+    enabled: () => canvasEditable(),
+    run: () => useAppStore.getState().requestCanvasCommand({ kind: 'toggleAddSteps' }),
+  },
+  {
+    id: 'canvas.addNote',
+    label: 'commands.canvas.addNote',
+    defaultBinding: null,
+    needs: 'canvasElement',
+    enabled: (ctx) => Boolean(canvasElementContext(ctx)?.pos) && canvasEditable(),
+    run: (ctx) => { const pos = canvasElementContext(ctx)?.pos; if (pos) useAppStore.getState().requestCanvasCommand({ kind: 'addNote', pos }) },
+  },
 ]
+
+function editorTabActive(): boolean {
+  const { activeWorkTabKey, workTabs } = useAppStore.getState()
+  const active = workTabs.find((t) => t.key === activeWorkTabKey)
+  return active?.kind === 'workflow-edit' || active?.kind === 'workflow-new'
+}
+
+// Whether the active canvas accepts edits: a new workflow's tab, or an
+// open one switched to edit mode (docs/goals/0022-workflow-view-mode).
+function canvasEditable(): boolean {
+  const { activeWorkTabKey, workTabs } = useAppStore.getState()
+  const active = workTabs.find((t) => t.key === activeWorkTabKey)
+  return active?.kind === 'workflow-new' || (active?.kind === 'workflow-edit' && active.mode === 'edit')
+}

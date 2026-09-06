@@ -12,6 +12,7 @@ import { commandMenuEnabled, menuOwnedAccelerators, menuSpecFor } from './menuSp
 import type { MenuEntry, MenuNode, MenuSpec, MenuSpecContext, SeatOverride } from './menuSpec'
 import { useAppStore } from './store'
 import { useUISignalStore } from './uiSignalStore'
+import { useAtlasSelectionStore } from './atlasSelectionStore'
 import { useUpdateNoticeStore } from './updateNoticeStore'
 import { useVaultStatusStore } from './vaultStatusStore'
 import { useBuildInfoStore } from './buildInfoStore'
@@ -157,6 +158,9 @@ export function startNativeMenu(): () => void {
       scheduleEnablementPush()
     }),
     useUISignalStore.subscribe(scheduleEnablementPush),
+    // The board's selection (goal 0346 slice B): a selection command's
+    // item follows it.
+    useAtlasSelectionStore.subscribe(scheduleEnablementPush),
     useUpdateNoticeStore.subscribe(() => {
       const next = seatSignature()
       if (next !== seats) {

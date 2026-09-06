@@ -1,4 +1,6 @@
 import type { Command } from './commands'
+import { commandAvailable } from './commands'
+import { AMBIENT_CONTEXT_KINDS, ambientContext } from './ambientContext'
 import { copy } from './copy'
 import type { KeyCombo } from './keybinding'
 import type { View } from './store'
@@ -70,9 +72,12 @@ export interface MenuSpecContext {
 // action anywhere else, so its menu item is dead there too -- and,
 // because macOS never fires a disabled item's key equivalent, that is
 // also what keeps a surface-scoped accelerator from firing off-surface.
+// A command over a target reads the ambient one (goal 0346 slice B):
+// the menu bar's "Delete selection" is live exactly while the board
+// has a selection, the way the palette's is.
 export function commandMenuEnabled(command: Command, activeSurface?: View['kind']): boolean {
   if (command.surface && activeSurface !== undefined && !command.surface.includes(activeSurface)) return false
-  return command.enabled ? command.enabled() : true
+  return commandAvailable(command, ambientContext())
 }
 
 // The combos the native menu bar takes ownership of. Computed off each
@@ -195,12 +200,18 @@ function acceleratorFor(command: Command, overrides: Record<string, KeyCombo>): 
 }
 
 // A paletteHidden command needs a live, on-screen target the invoker
-// has no way to supply (a card selection, a focused row) -- exactly as
-// true of a menu item as of a palette row, so a seat is not enough to
-// put one in the bar. Its keyboard shortcut and its context menu stay
-// untouched; only the menu bar declines it.
+// has no way to supply (a focused row) -- exactly as true of a menu
+// item as of a palette row, so a seat is not enough to put one in the
+// bar; so is a command whose `needs` ambientContext() can never
+// resolve (goal 0346 slice B: a canvas step, a tree row). Its keyboard
+// shortcut and its context menu stay untouched; only the menu bar
+// declines it.
+export function menuPlaceable(command: Command): boolean {
+  return command.menu !== undefined && !command.paletteHidden && (!command.needs || AMBIENT_CONTEXT_KINDS.includes(command.needs))
+}
+
 function menuPlacedCommands(commands: Command[]): Command[] {
-  return commands.filter((c) => c.menu !== undefined && !c.paletteHidden)
+  return commands.filter(menuPlaceable)
 }
 
 function placementOf(command: Command): MenuPlacement | undefined {

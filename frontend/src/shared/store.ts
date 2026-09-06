@@ -74,6 +74,19 @@ export { viewFor, viewsEqual }
 
 const MAX_ACTIVITY_ENTRIES = 50
 
+// A canvas command's request (docs/goals/0162 item 2): a bare verb for
+// the active canvas, or a verb with the step/connection/point it
+// targets (goal 0346 slice B -- the canvas's own right-click items are
+// registry commands, and the target rides the same signal).
+export type CanvasCommandRequest =
+  | 'save' | 'run' | 'runStepped' | 'publish' | 'undo' | 'redo' | 'delete' | 'zoomIn' | 'zoomOut' | 'fitView'
+  | { kind: 'openDetails'; nodeId: string }
+  | { kind: 'removeNode'; nodeId: string }
+  | { kind: 'selectEdge'; edgeId: string }
+  | { kind: 'removeEdge'; edgeId: string }
+  | { kind: 'toggleAddSteps' }
+  | { kind: 'addNote'; pos: { x: number; y: number } }
+
 interface AppState {
   workflows: Workflow[] | null
   // nodeTypes/requests join workflows as store-shared server data (one
@@ -170,8 +183,8 @@ interface AppState {
   // callback-chain shape as openWorkflowRequest above. Extended by
   // shared/canvasCommands.ts (docs/goals/0162 item 2) for undo/redo/
   // delete/zoom, same signal, same consumer.
-  canvasCommandRequest: 'save' | 'run' | 'runStepped' | 'publish' | 'undo' | 'redo' | 'delete' | 'zoomIn' | 'zoomOut' | 'fitView' | null
-  requestCanvasCommand: (command: 'save' | 'run' | 'runStepped' | 'publish' | 'undo' | 'redo' | 'delete' | 'zoomIn' | 'zoomOut' | 'fitView') => void
+  canvasCommandRequest: CanvasCommandRequest | null
+  requestCanvasCommand: (command: CanvasCommandRequest) => void
   // atlas.up (shared/commands.ts) can't reach AtlasView's own
   // viewedID -- a monotonic counter signal the mounted AtlasView
   // consumes, same store-field-beats-a-callback-chain shape as

@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { TreeView } from '@primer/react'
 import { ContextMenu, type ContextMenuItem, type ContextMenuState } from './ContextMenu'
 import { OutputHighlight } from './OutputHighlight'
-import { writeClipboardText } from './clipboardWrite'
 import {
   ROOT_PATH,
   allContainerPaths,
@@ -118,10 +117,15 @@ export function JsonTree({
   const roots = useMemo(() => childrenOf(value, rootPath), [value, rootPath])
   const byPath = useMemo(() => nodesByPath(value, rootPath), [value, rootPath])
 
-  const defaultMenuItems = (node: JsonNode): ContextMenuItem[] => [
-    { id: 'copy', label: t('output.copy'), run: () => { void writeClipboardText(nodeCopyText(node)) } },
-    { id: 'copy-path', label: t('output.copyPath'), run: () => { void writeClipboardText(node.path) } },
-  ]
+  // The same two row commands the Atlas JSON object's face runs (goal
+  // 0269), over this row as the jsonNode context.
+  const defaultMenuItems = (node: JsonNode): ContextMenuItem[] => {
+    const ctx = { kind: 'jsonNode' as const, path: node.path, key: node.key, value: nodeCopyText(node) }
+    return [
+      { id: 'copy', label: t('output.copy'), commandId: 'atlas.json.copyValue', ctx },
+      { id: 'copy-path', label: t('output.copyPath'), commandId: 'atlas.json.copyPath', ctx },
+    ]
+  }
 
   const openMenu = (event: React.MouseEvent, node: JsonNode) => {
     event.preventDefault()

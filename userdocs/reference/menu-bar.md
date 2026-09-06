@@ -140,7 +140,11 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Copy space links | — | `atlas.share.copyLinks` |
 | Open perspective switcher | — | `atlas.perspective` |
 | Select all | ⌘A | `atlas.selectAll` |
+| Delete selection | ⌫ | `atlas.delete.selection` |
+| Group into a new area | G | `atlas.group.selection` |
 | Fit diagram | — | `diagram.fit` |
+| Open in default app | — | `object.openInDefaultApp` |
+| Rename | — | `object.rename` |
 | Toggle companion panel | — | `atlas.companion.toggle` |
 | Toggle minimap | — | `atlas.minimap.toggle` |
 | Export card as… | — | `atlas.card.exportAs` |

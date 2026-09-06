@@ -475,9 +475,33 @@
   },
   {
     "menu": "Atlas",
+    "item": "Delete selection",
+    "shortcut": "⌫",
+    "command": "atlas.delete.selection"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Group into a new area",
+    "shortcut": "G",
+    "command": "atlas.group.selection"
+  },
+  {
+    "menu": "Atlas",
     "item": "Fit diagram",
     "shortcut": "",
     "command": "diagram.fit"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Open in default app",
+    "shortcut": "",
+    "command": "object.openInDefaultApp"
+  },
+  {
+    "menu": "Atlas",
+    "item": "Rename",
+    "shortcut": "",
+    "command": "object.rename"
   },
   {
     "menu": "Atlas",

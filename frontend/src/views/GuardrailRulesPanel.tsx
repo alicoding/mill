@@ -15,6 +15,9 @@ import type { ContextMenuItem, ContextMenuState } from '../shared/ContextMenu'
 import { resolveScopeChoice, ruleScopeKind, ruleScopeSentence, RULE_SCOPE_EVERYWHERE_SENTENCE } from '../shared/guardrailRuleScope'
 import listStyles from '../shared/ListCard.module.css'
 import { background } from '../shared/background'
+import { entityRowContext } from '../shared/entityRowCommands'
+import { copy } from '../shared/copy'
+import { useUISignalStore } from '../shared/uiSignalStore'
 
 function effectVariant(effect: string): StatusStampVariant {
   return effect === 'deny' ? 'danger' : effect === 'ask' ? 'caution' : 'success'
@@ -30,9 +33,15 @@ function RuleRow({ rule, sentence, onEdit, onRemove, onOpenMenu }: {
   onOpenMenu: (state: ContextMenuState) => void
 }) {
   const { t } = useTranslation('views')
+  // The row's registry commands over its entity context (goal 0346
+  // slice B); the delete's question is phrased here, where the label is.
+  const ctx = entityRowContext('rule', rule.ID)
   const items: ContextMenuItem[] = [
-    { id: 'edit', label: t('guardrailRulesPanel.editMenuItem'), run: onEdit },
-    { id: 'remove', label: t('guardrailRulesPanel.removeMenuItem'), danger: true, run: onRemove },
+    { id: 'edit', label: t('guardrailRulesPanel.editMenuItem'), commandId: 'guardrail.rule.edit', ctx },
+    {
+      id: 'remove', label: t('guardrailRulesPanel.removeMenuItem'), commandId: 'guardrail.rule.delete', ctx, danger: true,
+      confirm: { title: copy('confirmDelete.title', { entityType: 'rule' }), body: copy('confirmDelete.body', { label: rule.Label }) },
+    },
   ]
   return (
     <ActionList.Item
@@ -97,7 +106,20 @@ export function GuardrailRulesPanel() {
       .then((r) => setRules((r ?? []).filter((rule) => rule.Source !== 'debug')))
       .catch(() => setRules([]))
   }
-  useEffect(refresh, [])
+  // Reloads on mount and after a registry command's delete (the
+  // guardrail.rule.delete command bumps the revision).
+  const rulesRevision = useUISignalStore((s) => s.guardrailRulesRevision)
+  useEffect(refresh, [rulesRevision])
+
+  // guardrail.rule.edit opens the same form the row's own click does.
+  const editRequest = useUISignalStore((s) => s.guardrailRuleEditRequest)
+  useEffect(() => {
+    if (!editRequest) return
+    const rule = rules?.find((r) => r.ID === editRequest.id)
+    if (rule) setEditing(rule)
+    // rules is read at request time only -- the request is the trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editRequest])
 
   const { requestDelete, dialog: confirmDialog } = useConfirmDelete<GuardrailRule>({
     entityType: 'rule',

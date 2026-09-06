@@ -281,11 +281,17 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
 
   const { save, saving, saveError } = useCanvasSave(workflow, tabKey, readOnly, draftLabel, draftDescription, nodes, edges, notes, onSaved)
 
-  useCanvasCommandDispatch(tabKey, save, runButtonRef, { useCanvasStore, removeSelected, zoomIn, zoomOut, fitView })
+  useCanvasCommandDispatch(tabKey, save, runButtonRef, {
+    useCanvasStore, removeSelected, zoomIn, zoomOut, fitView,
+    openDetails: () => setDetailOpen(true),
+    removeNode, removeEdge,
+    selectEdge: (id) => { setSelectedEdgeId(id); setSelectedNodeId(null) },
+    toggleAddSteps: () => setPaletteOpen((v) => !v),
+    addNoteAt: (clientPos) => addNoteNear(screenToFlowPosition(clientPos)),
+  })
 
   const { onNodeContextMenu, onEdgeContextMenu, onPaneContextMenu } = useCanvasContextMenuHandlers({
-    t, readOnly, removeNode, removeEdge, screenToFlowPosition, addNoteNear, setPaletteOpen,
-    setSelectedNodeId, setSelectedEdgeId, setDetailOpen, setContextMenu,
+    t, readOnly, setSelectedNodeId, setSelectedEdgeId, setContextMenu,
   })
 
   return (

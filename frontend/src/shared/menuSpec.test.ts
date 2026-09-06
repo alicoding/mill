@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { COMMANDS } from './commands'
-import { menuSpecFor } from './menuSpec'
+import { menuPlaceable, menuSpecFor } from './menuSpec'
 import type { MenuEntry, MenuNode, MenuSpec } from './menuSpec'
 
 function menu(spec: MenuSpec, label: string): MenuNode {
@@ -128,14 +128,19 @@ describe('menuSpecFor (the native menu bar as a projection of the command regist
   it('places every command that asked for a seat, and nothing else', () => {
     const placed = new Set(commandEntries(spec).map((e) => e.id))
     for (const command of COMMANDS) {
-      expect(placed.has(command.id)).toBe(command.menu !== undefined && !command.paletteHidden)
+      expect(placed.has(command.id)).toBe(menuPlaceable(command))
     }
   })
 
-  it('declines a command that needs a live selection the menu cannot supply', () => {
+  it('declines a command that needs a live focus the menu cannot supply; seats one over the ambient selection', () => {
     const placed = new Set(commandEntries(spec).map((e) => e.id))
-    for (const id of ['atlas.delete.selection', 'atlas.focusNext', 'atlas.nudgeSelection', 'object.rename']) {
+    for (const id of ['atlas.focusNext', 'atlas.nudgeSelection']) {
       expect(placed.has(id)).toBe(false)
+    }
+    // The selection is ambient (goal 0346 slice B): the menu bar reads
+    // it like the palette does, so a selection command has a seat.
+    for (const id of ['atlas.delete.selection', 'object.rename']) {
+      expect(placed.has(id)).toBe(true)
     }
   })
 

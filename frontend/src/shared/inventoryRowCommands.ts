@@ -1,6 +1,7 @@
 import type { Command } from './commands'
 import { entityRowCommands, type EntityRowFamily, type EntityRowItem } from './entityRowCommands'
-import { CompositionService, SecretService } from './bindings'
+import { CompositionService, GuardrailService, SecretService } from './bindings'
+import { atlasFacts } from './atlasSelectionFacts'
 import { refreshSeedRevisions, shippedRevision } from './seedRevisionStore'
 import { refreshWorkflows, useAppStore } from './store'
 import { useUISignalStore } from './uiSignalStore'
@@ -61,5 +62,42 @@ const secrets: EntityRowFamily<EntityRowItem> = {
   undoable: false,
 }
 
-export const INVENTORY_ROW_COMMANDS: Command[] = [workflows, secrets]
+// A guardrail rule row (views/GuardrailRulesPanel.tsx): the rows are
+// the panel's own state, so the delete is confirmed by the surface
+// (it alone knows the label) and the reload rides a revision signal.
+const guardrailRules: EntityRowFamily<EntityRowItem> = {
+  entity: 'rule',
+  namespace: 'guardrail.rule',
+  refetch: () => useUISignalStore.getState().bumpGuardrailRules(),
+  extras: [{
+    suffix: 'edit',
+    label: 'commands.guardrail.rule.edit',
+    run: (item) => useUISignalStore.getState().requestGuardrailRuleEdit(item.ID),
+  }],
+  remove: (id) => GuardrailService.DeleteRule(id),
+  undoable: false,
+}
+
+// A perspective row in the board's switcher (atlas/AtlasPerspectiveSwitcher.tsx,
+// ADR-0041): rename is the switcher's inline field, delete is confirmed
+// here (a perspective has no way back) and performed by the switcher,
+// which owns the active-perspective reset that follows.
+const perspectives: EntityRowFamily<EntityRowItem> = {
+  entity: 'perspective',
+  namespace: 'perspective.row',
+  labelOf: (id) => atlasFacts().perspectives().find((p) => p.id === id)?.name ?? '',
+  refetch: () => {},
+  extras: [{
+    suffix: 'rename',
+    label: 'commands.perspective.row.rename',
+    run: (item) => useUISignalStore.getState().requestAtlasPerspectiveRename(item.ID),
+  }],
+  remove: {
+    undo: false,
+    confirm: { title: 'atlas:perspective.deleteConfirmTitle', body: 'atlas:perspective.deleteConfirmBody', confirmLabel: 'atlas:perspective.delete' },
+    run: (item) => useUISignalStore.getState().requestAtlasPerspectiveDelete(item.ID),
+  },
+}
+
+export const INVENTORY_ROW_COMMANDS: Command[] = [workflows, secrets, guardrailRules, perspectives]
   .flatMap((family) => entityRowCommands(family as EntityRowFamily<EntityRowItem>))
