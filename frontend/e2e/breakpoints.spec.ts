@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { workflowRow, activePanel } from './fixtures/canvas'
 import { openInspectorTab } from './fixtures/inspectorTabs'
+import { waitForRunTerminal } from './fixtures/runTerminal'
 
 // Workflow breakpoints end to end in the live app (docs/adr/0031, goal
 // 0020, moved onto the node card by goal 0022 -- docs/goals/
@@ -88,7 +89,7 @@ test('A breakpoint pauses a run with edit-and-resume; Resume continues it with t
   await dialog.getByRole('button', { name: 'Run' }).click()
 
   const bar = activePanel(page).getByTestId('run-state-dock')
-  await expect(bar).toContainText('Paused at breakpoint: Read attribute', { timeout: 15_000 })
+  await waitForRunTerminal(bar, 'Paused at breakpoint: Read attribute')
   // A breakpoint has nowhere to step to, so it offers Resume and Stop only.
   await expect(bar.getByRole('button')).toHaveText(['Resume', 'Stop'])
 
@@ -97,7 +98,7 @@ test('A breakpoint pauses a run with edit-and-resume; Resume continues it with t
   await bar.getByLabel('Amount').fill('999')
   await bar.getByTestId('canvas-resume-step').click()
 
-  await expect(bar).toContainText('SUCCESS', { timeout: 15_000 })
+  await waitForRunTerminal(bar)
   const approveCard = activePanel(page).locator('.react-flow__node').filter({ hasText: 'Decision' }).filter({ hasText: 'DONE' }).first()
   await expect(approveCard).toBeVisible({ timeout: 10_000 })
 
@@ -119,7 +120,7 @@ test('Step mode pauses before every node; Step advances one, Continue finishes t
   // First park: the capture node -- no breakpoint rule needed at all in
   // step mode, proving the gate is consulted for every node regardless
   // of its effect class (the ADR's own flagged open question).
-  await expect(bar).toContainText('Paused at Read attribute', { timeout: 15_000 })
+  await waitForRunTerminal(bar, 'Paused at Read attribute')
   await expect(bar.getByTestId('canvas-step')).toBeVisible()
   // Continue comes first, Step second, Stop last -- the debugger order
   // (goal 0328), so the button under the pointer never depends on how
@@ -131,10 +132,10 @@ test('Step mode pauses before every node; Step advances one, Continue finishes t
   await bar.getByTestId('canvas-step').click()
   // Parks again at the next node (the reached Decision) -- still in
   // step mode.
-  await expect(bar).toContainText('Paused at ', { timeout: 15_000 })
+  await waitForRunTerminal(bar, /Paused at /)
   await expect(bar).not.toContainText('Read attribute')
   await expect(bar.getByTestId('canvas-resume-step')).toHaveText('Continue')
 
   await bar.getByTestId('canvas-resume-step').click()
-  await expect(bar).toContainText('SUCCESS', { timeout: 15_000 })
+  await waitForRunTerminal(bar)
 })

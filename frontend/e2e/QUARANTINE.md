@@ -15,13 +15,13 @@ trace (now auto-captured on retry).
 
 | Spec:line | Class | Entered | Review by | Notes |
 |---|---|---|---|---|
-| home.spec.ts:26 | live-run | 2026-08-16 | 2026-09-16 | run-button re-enable after real run |
-| breakpoints.spec.ts:80 | live-run | 2026-08-16 | 2026-09-16 | paused-at-breakpoint polling |
-| seed-completeness.spec.ts:62,84 | live-run | 2026-08-16 | 2026-09-16 | SUCCESS-status polling |
-| decision-outcome.spec.ts:192 | live-run | 2026-08-16 | 2026-09-16 | SUCCESS-status polling |
+| home.spec.ts:26 | live-run → FIXED 2026-09-06 (goal 0358 S2) | 2026-08-16 | — | run-button re-enable after real run -- the re-enable IS the run's terminal signal; migrated to the shared run-terminal budget (fixtures/runTerminal.ts). Proof: 9/9 under 4x throttle |
+| breakpoints.spec.ts:80 | live-run → FIXED 2026-09-06 (goal 0358 S2) | 2026-08-16 | — | paused-at-breakpoint polling -- the Paused and SUCCESS waits both migrated to waitForRunTerminal. Proof: 9/9 under 4x throttle |
+| seed-completeness.spec.ts:62,84 | live-run → FIXED 2026-09-06 (goal 0358 S2) | 2026-08-16 | — | SUCCESS-status polling -- all three SUCCESS waits (incl. :271) migrated to waitForRunTerminal. Proof: 42/42 under 4x throttle |
+| decision-outcome.spec.ts:192 | live-run → FIXED 2026-09-06 (goal 0358 S2) | 2026-08-16 | — | SUCCESS-status polling -- both runBranch and the inline SUCCESS wait migrated to waitForRunTerminal. Proof: 18/18 under 4x throttle |
 | decision-outcome.spec.ts:132 | live-run → FIXED 2026-09-02 | 2026-08-26 | — | third CI sighting (2026-09-02, #585 shard 5): the reached terminal card's probe points all landed on the run bar / minimap overlays on the runner's taller layout (`dblClickReachedTerminal`), NOT the SUCCESS poll; the helper now zooms out and re-measures. Passed 12/12 under 4x throttle before the fix, which is what said it was geometry, not load |
-| mcp-write-staleness.spec.ts:21 | live-run | 2026-08-16 | 2026-09-16 | real MCP round-trip |
-| guardrail.spec.ts:238 | live-run | 2026-08-16 | 2026-09-16 | approve/deny resolve polling |
+| mcp-write-staleness.spec.ts:21 | live-run → FIXED 2026-09-06 (goal 0358 S2) | 2026-08-16 | — | real MCP round-trip -- the parked-write visibility wait carries the shared run-terminal budget. Proof: 3/3 under 4x throttle |
+| guardrail.spec.ts:238 | live-run → FIXED 2026-09-06 (goal 0358 S2) | 2026-08-16 | — | approve/deny resolve polling -- awaiting-approval visibility and the denied-by-user terminal wait both carry the shared run-terminal budget. Proof: 6/6 under 4x throttle |
 | state-persistence.spec.ts:74 | unclear | 2026-08-16 | 2026-09-16 | reload/IPC timing; await first trace |
 | configure-lists.spec.ts:105 | unclear | 2026-08-16 | 2026-09-16 | await first trace |
 | quick-panel.spec.ts:132 | unclear | 2026-08-16 | 2026-09-16 | cross-document nav; await first trace |

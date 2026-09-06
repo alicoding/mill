@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/server'
 import { workflowRow, activePanel } from './fixtures/canvas'
 import { expandExamples } from './inventoryRow'
 import { openConfigureKind } from './fixtures/configureNav'
+import { waitForRunTerminal } from './fixtures/runTerminal'
 
 // docs/goals/0010: proves the new seeded artifacts (a List, an MCP
 // Server, and their workflows) are actually reachable and correct
@@ -74,7 +75,7 @@ test('Look up a client country runs a real match through the seeded List', async
   await dialog.getByRole('button', { name: 'Run' }).click()
 
   const bar = activePanel(page).getByTestId('run-state-dock')
-  await expect(bar).toContainText('SUCCESS', { timeout: 15_000 })
+  await waitForRunTerminal(bar)
 })
 
 test('Search client countries runs a real exact match through list-search', async ({ page }) => {
@@ -96,7 +97,7 @@ test('Search client countries runs a real exact match through list-search', asyn
   await dialog.getByRole('button', { name: 'Run' }).click()
 
   const bar = activePanel(page).getByTestId('run-state-dock')
-  await expect(bar).toContainText('SUCCESS', { timeout: 15_000 })
+  await waitForRunTerminal(bar)
 })
 
 test('Example: MCP echo call workflow is present with the real mcp-tool-call node on canvas', async ({ page }) => {
@@ -268,5 +269,5 @@ test('Log a client request and its decision runs end to end through the real liv
   await activePanel(page).getByTestId('canvas-run').click()
 
   const bar = activePanel(page).getByTestId('run-state-dock')
-  await expect(bar).toContainText('SUCCESS', { timeout: 15_000 })
+  await waitForRunTerminal(bar)
 })
