@@ -3,6 +3,7 @@ import { waitForViewportStable } from './fixtures/animation'
 import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel, panCanvasBy } from './fixtures/canvas'
 import { openConfigureKind } from './fixtures/configureNav'
+import { waitForRunTerminal } from './fixtures/runTerminal'
 
 // Decision as a reusable, typed TERMINAL outcome (docs/adr/0027),
 // driven through the live app: Configure > Decisions CRUD (including
@@ -92,7 +93,7 @@ async function runBranch(page: import('@playwright/test').Page, panel: import('@
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Amount').fill(amount)
   await dialog.getByRole('button', { name: 'Run' }).click()
-  await expect(panel.getByTestId('run-state-dock')).toContainText('SUCCESS', { timeout: 15_000 })
+  await waitForRunTerminal(panel.getByTestId('run-state-dock'))
 }
 
 // Selects the reached terminal (DONE) card, then opens its step-detail
@@ -204,7 +205,7 @@ test('Branch to a decision: the approve path terminalizes with a typed outcome, 
   await dialog.getByRole('button', { name: 'Run' }).click()
 
   const bar = activePanel(page).getByTestId('run-state-dock')
-  await expect(bar).toContainText('SUCCESS', { timeout: 15_000 })
+  await waitForRunTerminal(bar)
 
   // The reached terminal (Approve) card shows done, and -- the actual
   // terminal-shape assertion -- renders no source handle at all.

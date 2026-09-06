@@ -9,6 +9,7 @@ import {
   type SpawnedServer,
 } from './fixtures/server'
 import { openInspectorTab } from './fixtures/inspectorTabs'
+import { waitForRunTerminal, RUN_TERMINAL_TIMEOUT } from './fixtures/runTerminal'
 
 // The guardrail execution gate end-to-end in the live app (docs/SPEC.md
 // §8, ADR-0019/0022), driven through the seeded "Example:
@@ -52,7 +53,7 @@ test('Running the guarded seed parks awaiting approval; deny fails it closed', a
     // tab to find it awaiting approval.
     await row.click()
     await page.getByRole('tab', { name: 'Runs' }).click()
-    await expect(page.getByTestId('run-awaiting-approval').first()).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByTestId('run-awaiting-approval').first()).toBeVisible({ timeout: RUN_TERMINAL_TIMEOUT })
 
     // Open the parked run by clicking its ROW (owner's model: the row IS
     // the View affordance, no separate button). Selection feedback
@@ -69,7 +70,7 @@ test('Running the guarded seed parks awaiting approval; deny fails it closed', a
     // Deny: the run fails closed with the reason, and no approval banner
     // remains.
     await banner.getByTestId('deny-step').click()
-    await expect(page.getByTestId('run-detail')).toContainText('denied by user', { timeout: 10_000 })
+    await waitForRunTerminal(page.getByTestId('run-detail'), 'denied by user')
     await expect(page.getByTestId('approval-banner')).toHaveCount(0)
   } finally {
     await browser.close()
