@@ -11,6 +11,7 @@ import { JsonTree } from '../../shared/JsonTree'
 import { matchCount, nodeCopyText, type JsonNode } from '../../shared/jsonTreeModel'
 import type { ContextMenuItem } from '../../shared/ContextMenu'
 import { runCommand } from '../../shared/commands'
+import { useUISignalStore } from '../../shared/uiSignalStore'
 import type { MirrorReadState } from '../useAtlasObjectMirrorRead'
 import { isParseError, jsonFormatFor, parseJsonDocument, type JsonDocFormat, type JsonParseError } from '../jsonTree'
 import { TABLE_WIDTH, TABLE_HEIGHT } from '../atlasBoardLayout'
@@ -116,6 +117,12 @@ function frameStyle(hasSize: boolean) {
 
 export function AtlasJsonObjectContent({ object, mirrorContent, preview, onEditingChange }: { object: BoardObject; mirrorVersion: number; mirrorContent?: MirrorReadState; preview?: boolean; onEditingChange?: (editing: boolean) => void }) {
   const { t } = useTranslation('atlas')
+  // This face lives inside a React Flow node's own scaled/translated
+  // subtree, where a locally-rendered menu's position:fixed anchor
+  // resolves against that transform instead of the viewport (goal
+  // 0346) -- the row's menu opens through the board's own top-level
+  // renderer instead of one JsonTree would otherwise render in place.
+  const requestContextMenu = useUISignalStore((s) => s.requestAtlasContextMenu)
   const content = mirrorContent?.content
   const fetchError = mirrorContent?.error ?? ''
   const format: JsonDocFormat = jsonFormatFor(object.Payload?.mirrorPath ?? '')
@@ -267,6 +274,7 @@ export function AtlasJsonObjectContent({ object, mirrorContent, preview, onEditi
             rootPath=""
             defaultExpandDepth={isLarge ? 1 : 2}
             rowMenuItems={rowMenuItems}
+            onOpenContextMenu={requestContextMenu}
             filterRows
             onFocusedRowChange={setFocusedRow}
             ariaLabel={t('boardObject.jsonAriaLabel')}
