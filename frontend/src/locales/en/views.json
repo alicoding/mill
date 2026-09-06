@@ -241,7 +241,10 @@
       "test": "Test the connection",
       "testing": "Testing…",
       "testPassed": "The browser replayed {{steps}} steps in {{ms}} ms.",
-      "install": "Install the extension from the browser-extension folder in Mill's examples."
+      "install": "Load Mill's extension into your browser as an unpacked extension.",
+      "revealExtension": "Reveal the extension folder",
+      "extensionDocsLink": "How to load and pair it",
+      "extensionPathCaption": "Pick this folder in your browser's extensions page."
     },
     "contract": {
       "description": "The full step catalog, every data schema, and this app's version in one file.",

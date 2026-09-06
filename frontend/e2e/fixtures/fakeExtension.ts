@@ -77,23 +77,29 @@ export function connectFakeExtension(bridgeURL: string, token: string, page: Pag
         const step = steps[i]
         if (step.type === 'navigate') {
           await page.goto(step.url ?? '')
-        } else {
-          const selector = cssSelectorFor(step)
-          if (!selector) {
-            await post({ id: command.id, stepIndex: i, status: 'skipped' })
-            continue
-          }
-          if (step.type === 'waitForElement') {
-            await page.locator(selector).waitFor({ state: 'visible', timeout: step.timeout ?? 5000 })
-          } else if (step.type === 'change') {
-            await page.locator(selector).fill(step.value ?? '')
-          } else if (step.type === 'keyDown') {
-            await page.locator(selector).press(step.key ?? 'Enter')
-          } else {
-            await page.locator(selector).click()
-          }
+          await post({ id: command.id, stepIndex: i, status: 'ok' })
+          continue
         }
-        await post({ id: command.id, stepIndex: i, status: 'ok' })
+        const selector = cssSelectorFor(step)
+        if (!selector) {
+          await post({ id: command.id, stepIndex: i, status: 'skipped' })
+          continue
+        }
+        if (step.type === 'waitForElement') {
+          await page.locator(selector).waitFor({ state: 'visible', timeout: step.timeout ?? 5000 })
+        } else if (step.type === 'change') {
+          await page.locator(selector).fill(step.value ?? '')
+        } else if (step.type === 'keyDown') {
+          await page.locator(selector).press(step.key ?? 'Enter')
+        } else {
+          await page.locator(selector).click()
+        }
+        // The real runner reports the element's own value or text back
+        // on every element step (examples/browser-extension's
+        // replayRunner.js); a step that extracts nothing here would
+        // make an extraction look broken when it is the stand-in that
+        // is incomplete.
+        await post({ id: command.id, stepIndex: i, status: 'ok', extracted: await extractedFrom(page, selector) })
       }
       await post({ id: command.id, status: 'done' })
     } catch (err) {
@@ -140,6 +146,15 @@ async function readSSE(
       }
     }
   }
+}
+
+// The element's own value if it has one, else its trimmed text --
+// exactly what the real runner reports.
+async function extractedFrom(page: Page, selector: string): Promise<string> {
+  return page.locator(selector).evaluate((el) => {
+    const value = (el as HTMLInputElement).value
+    return (typeof value === 'string' ? value : (el.textContent ?? '')).trim().slice(0, 200)
+  })
 }
 
 // The first CSS chain in the step's fallback list. The fake client

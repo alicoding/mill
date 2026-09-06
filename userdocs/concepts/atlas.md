@@ -204,10 +204,12 @@ brought into view.
   changes — the board and the automation layer are one system.
 - **Undo almost anything.** ⌘Z undoes your last change on the
   board — drawing a stroke, moving or resizing a card, deleting
-  something, pasting a table — and ⇧⌘Z brings it back. Deleting
-  also shows a brief Undo button; either one restores it. A change
-  someone else makes at the same time is never something your own
-  ⌘Z can undo.
+  something, pasting a table, typing in a table's cell — and ⇧⌘Z
+  brings it back. Board edits and table edits share one history, in
+  the order you made them: ⌘Z right after typing in a cell restores
+  the cell and leaves the table where it is. Deleting also shows a
+  brief Undo button; either one restores it. A change someone else
+  makes at the same time is never something your own ⌘Z can undo.
 
 ## Tables and the AI companion
 

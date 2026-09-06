@@ -3,6 +3,7 @@ package bridgesvc_test
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -151,7 +152,7 @@ func TestEvents_RequiresPairedToken(t *testing.T) {
 func TestReplay_NoBrowserConnected(t *testing.T) {
 	svc, _ := newService(t, &stubAuth{token: "good"})
 
-	_, err := svc.Replay(browserbridge.TestFlow("http://127.0.0.1:1/page"), nil)
+	_, err := svc.Replay(context.Background(), browserbridge.TestFlow("http://127.0.0.1:1/page"), bridgesvc.ReplayOptions{})
 	if err == nil {
 		t.Fatalf("Replay() with nothing connected = nil error, want a failure")
 	}
@@ -180,7 +181,7 @@ func TestReplay_DeliversAndCorrelates(t *testing.T) {
 	}
 	results := make(chan outcome, 1)
 	go func() {
-		out, err := svc.Replay(browserbridge.TestFlow(srv.URL+bridgesvc.TestPagePath), nil)
+		out, err := svc.Replay(context.Background(), browserbridge.TestFlow(srv.URL+bridgesvc.TestPagePath), bridgesvc.ReplayOptions{})
 		results <- outcome{out, err}
 	}()
 
@@ -235,7 +236,7 @@ func TestReplay_FailedRunCarriesTheBrowsersSentence(t *testing.T) {
 
 	errs := make(chan error, 1)
 	go func() {
-		_, err := svc.Replay(browserbridge.TestFlow(srv.URL+bridgesvc.TestPagePath), nil)
+		_, err := svc.Replay(context.Background(), browserbridge.TestFlow(srv.URL+bridgesvc.TestPagePath), bridgesvc.ReplayOptions{})
 		errs <- err
 	}()
 
