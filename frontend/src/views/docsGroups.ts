@@ -1,9 +1,11 @@
 // Pure derivation over DocsIndex: the sidebar's sections come from
 // each page's kind (its front matter's `kind:`, carried on the index
 // entry) in one fixed order -- what the reader is doing, not which
-// directory the file sits in. The agent pages keep a section of their
-// own. The llms.txt generator publishes the same sections in the same
-// order, so the human nav and the AI index can never disagree.
+// directory the file sits in -- with two folder-defined exceptions:
+// start-here/ is the ordered onboarding path whatever each page's own
+// kind, and the agent pages keep a section of their own. The llms.txt
+// generator publishes the same sections in the same order, so the
+// human nav and the AI index can never disagree.
 
 export interface DocsIndexEntry {
   rel: string
@@ -18,22 +20,26 @@ export interface DocsGroup {
   entries: DocsIndexEntry[]
 }
 
+const START_HERE_GROUP = 'start-here'
 const AGENTS_GROUP = 'agents'
 
 // GROUP_ORDER is the fixed section order, keyed by page kind (plus the
 // agents section), each with its views.json locale key.
 const GROUP_ORDER: ReadonlyArray<{ id: string; titleKey: string }> = [
-  { id: 'tutorial', titleKey: 'docs.sections.startHere' },
+  { id: START_HERE_GROUP, titleKey: 'docs.sections.startHere' },
   { id: 'how-to', titleKey: 'docs.sections.howTo' },
   { id: 'explanation', titleKey: 'docs.sections.concepts' },
   { id: 'reference', titleKey: 'docs.sections.reference' },
   { id: AGENTS_GROUP, titleKey: 'docs.sections.agents' },
 ]
 
-// groupOf names the section an entry belongs to: the agents section
-// for anything under agents/, its kind otherwise.
+// groupOf names the section an entry belongs to: the onboarding path
+// for anything under start-here/, the agents section for anything
+// under agents/, its kind otherwise.
 export function groupOf(entry: Pick<DocsIndexEntry, 'rel' | 'kind'>): string {
-  return entry.rel.startsWith('agents/') ? AGENTS_GROUP : entry.kind
+  if (entry.rel.startsWith('start-here/')) return START_HERE_GROUP
+  if (entry.rel.startsWith('agents/')) return AGENTS_GROUP
+  return entry.kind
 }
 
 // groupTitleKey resolves a section id to its locale key. An unknown id
