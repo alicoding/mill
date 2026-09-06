@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // docs/goals/0031-ai-node-family.md: the AIProvider Configure entity's
 // own CRUD surface (ConfigureAIProviders.tsx), the recipe mirrored from
@@ -12,7 +13,7 @@ import { clickRowAction } from './inventoryRow'
 async function openAIProvidersTab(page: import('@playwright/test').Page) {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'AI Providers', exact: true }).click()
+  await openConfigureKind(page, 'AI Providers')
 }
 
 test('Base URL caption follows the selected Kind', async ({ page }) => {

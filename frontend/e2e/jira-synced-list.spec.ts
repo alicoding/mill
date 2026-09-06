@@ -3,6 +3,7 @@ import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { createSecret } from './fixtures/secretStore'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // The synced List (goal 0299): the seeded "Example: Jira issues → List"
 // workflow, pointed at a fake Jira answering the JQL search endpoint,
@@ -88,7 +89,7 @@ test('the seeded Jira sync mirrors a fake search into the List by key, updates i
 
     // The mirror is a List like any other: Configure shows the rows.
     await page.getByRole('link', { name: 'Configure' }).click()
-    await page.getByRole('tab', { name: 'Lists' }).click()
+    await openConfigureKind(page, 'Lists')
     const row = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Example: Jira issues', { exact: true }) })
     await row.getByText('Example: Jira issues', { exact: true }).click()
     await expect(page.getByTestId('list-rows-editor')).toContainText('Ship the sync')

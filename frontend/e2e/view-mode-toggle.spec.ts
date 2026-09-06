@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction, expandExamples } from './inventoryRow'
+import { configurePane, openConfigureKind } from './fixtures/configureNav'
 
 // Exercises the shared rows/table view switch (ViewModeToggle + Primer
 // DataTable, docs/goals/0007-resource-inventory-redesign.md) on two
@@ -88,7 +89,7 @@ test('Each inventory surface renders its own distinct entity icon -- the recogni
   const requestRow = page.locator('[data-testid="inventory-row"][data-entity="request"]').first()
   await expect(requestRow).toBeVisible()
 
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   await page.getByTestId('new-list').click()
   await page.getByLabel('Label').fill('E2E icon check list')
   await page.getByRole('button', { name: 'Save list' }).click()
@@ -159,7 +160,7 @@ test('A genuinely empty inventory renders Blankslate, not a bare table/list', as
   await expect(mcpEchoWorkflow).toHaveCount(0)
 
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'MCP Servers' }).click()
+  await openConfigureKind(page, 'MCP Servers')
 
   const rows = page.locator('[data-testid="inventory-row"][data-entity="mcpserver"]')
   while (true) {
@@ -169,12 +170,12 @@ test('A genuinely empty inventory renders Blankslate, not a bare table/list', as
     await expect(rows).toHaveCount(count - 1)
   }
 
-  // Scoped to the active tabpanel -- Configure's own four sub-tabs all
-  // stay mounted (a `hidden` attribute toggles, never unmounts), so an
-  // unscoped getByTestId('inventory-search') also matches Requests'/
-  // Lists'/Decisions' own non-empty search boxes sitting hidden
-  // elsewhere in the DOM (getByTestId doesn't filter by visibility).
-  const mcpPanel = page.locator('[role="tabpanel"]:not([hidden])').last()
+  // Scoped to the MCP Servers pane -- a Configure pane once visited
+  // stays mounted hidden (never unmounted), so an unscoped
+  // getByTestId('inventory-search') would also match another pane's
+  // non-empty search box sitting hidden elsewhere in the DOM
+  // (getByTestId doesn't filter by visibility).
+  const mcpPanel = configurePane(page, 'MCP Servers')
   await expect(mcpPanel.getByRole('heading', { name: 'No MCP servers yet' })).toBeVisible()
   await expect(mcpPanel.getByText(/A reusable stdio connection/)).toBeVisible()
   await expect(mcpPanel.getByTestId('inventory-search')).toHaveCount(0)
@@ -199,7 +200,7 @@ test('Row delete removes the entity at once and offers Undo, which brings it bac
   // proof covers the mechanism.
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   await page.getByTestId('new-list').click()
   await page.getByLabel('Label').fill('E2E undo delete list')
   await page.getByRole('button', { name: 'Save list' }).click()

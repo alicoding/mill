@@ -269,6 +269,7 @@
         "steptypes": "New step type",
         "certificates": "New client certificate"
       },
+      "openKind": "Configure › {{label}}",
       "request": {
         "delete": "Delete",
         "edit": "Edit",

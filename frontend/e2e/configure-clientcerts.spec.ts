@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { openConfigureKind } from './fixtures/configureNav'
 
 const rows = (page: import('@playwright/test').Page) =>
   page.locator('[data-testid="inventory-row"][data-entity="clientcert"]')
@@ -29,7 +30,7 @@ async function expandExamplesIn(root: import('@playwright/test').Locator) {
 async function openCertificates(page: import('@playwright/test').Page) {
   await gotoAppReady(page)
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Certificates' }).click()
+  await openConfigureKind(page, 'Certificates')
   const root = page.getByTestId('configure-clientcerts')
   await expect(root).toBeVisible()
   return root
@@ -129,14 +130,14 @@ test('a request whose host is covered names the certificate it will present', as
   await root.getByTestId('save-clientcert').click()
   await expect(rows(page).filter({ hasText: 'E2E covered estate' })).toBeVisible()
 
-  await page.getByRole('tab', { name: 'Integration' }).click()
+  await openConfigureKind(page, 'Integrations')
   await page.getByTestId('new-integration').click()
   await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('URL', { exact: true }).fill('https://api.covered.e2e.test/v1')
   await expect(page.getByTestId('clientcert-match')).toContainText('E2E covered estate')
 
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Certificates' }).click()
+  await openConfigureKind(page, 'Certificates')
   await clickRowAction(page, rows(page).filter({ hasText: 'E2E covered estate' }), 'Delete certificate')
   await expect(rows(page).filter({ hasText: 'E2E covered estate' })).toHaveCount(0)
 })

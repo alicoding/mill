@@ -7,6 +7,7 @@ import { contextMenu } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
 import { clickGlideCell, clickGlideTrailingRow, editGlideCell, glideCellText, openGlideCellEditor } from './fixtures/glideGrid'
 import type { Locator, Page } from '@playwright/test'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // List -> table projection (goal 0105 minimal slice, relocated onto a
 // board-local "table" object by goal 0179 S2): dropping a spreadsheet
@@ -130,7 +131,7 @@ test('boundary inserts, cell edits, and column rename all work in place on the c
   await page.goto('/')
   // A scratch List via Configure, so this test owns everything it edits.
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   await page.getByTestId('new-list').click()
   await page.getByLabel('Label', { exact: true }).fill('ZzE2eProjectionEditList')
   await page.getByTestId('save-list').click()
@@ -182,7 +183,7 @@ test('boundary inserts, cell edits, and column rename all work in place on the c
   // Cleanup: the card, then the scratch List.
   await deleteViaPageMenu(page, overlay)
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('ZzE2eProjectionEditList', { exact: true }) })
   await clickRowAction(page, listRow, 'Delete')
   await expect(listRow).toHaveCount(0)
@@ -266,7 +267,7 @@ test('a text cell edited directly on a table board object writes the backing Lis
   await deleteObjectViaMenu(reloaded)
   await expect(reloaded).toHaveCount(0)
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })
   await clickRowAction(page, listRow, 'Delete')
   await expect(listRow).toHaveCount(0)
@@ -304,7 +305,7 @@ test('New table creates a sized grid instantly from the size picker, landing a t
 
   // The minted List is a real Configure entity named after the table.
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })
   await expect(listRow).toBeVisible()
 
@@ -313,7 +314,7 @@ test('New table creates a sized grid instantly from the size picker, landing a t
   await deleteObjectViaMenu(tableObject)
   await expect(tableObject).toHaveCount(0)
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   await clickRowAction(page, listRow, 'Delete')
   await expect(listRow).toHaveCount(0)
 })
@@ -407,7 +408,7 @@ test('an armed table size escapes cleanly and files into frames', async ({ page 
   // Cleanup: the filed object, then the minted List.
   await deleteObjectViaMenu(tableObject)
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })
   await clickRowAction(page, listRow, 'Delete')
   await expect(listRow).toHaveCount(0)

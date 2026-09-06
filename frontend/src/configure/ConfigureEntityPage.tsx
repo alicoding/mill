@@ -1,11 +1,12 @@
 import type { ReactNode, RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Heading, Stack, Text, VisuallyHidden } from '@primer/react'
+import { Button, Heading, Stack, VisuallyHidden } from '@primer/react'
 import { PlusIcon, UploadIcon } from '@primer/octicons-react'
 import { RestoreExamplesButton, type RestorableItem } from '../shared/RestoreExamplesButton'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import type { ViewMode } from '../shared/viewMode'
 import styles from '../shared/ListCard.module.css'
+import { PaneLoading } from './PaneLoading'
 import PageContainer from '../shared/PageContainer'
 
 export interface ConfigureEntityPageProps {
@@ -122,7 +123,7 @@ export function ConfigureEntityPage({
         </PageContainer>
       )}
 
-      {loading && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
+      {loading && <PaneLoading />}
       {showTable && tableContent}
       {showRows && rowsContent}
       {confirmDialog}
