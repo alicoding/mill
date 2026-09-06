@@ -1,7 +1,7 @@
 import { test, expect, type Page } from './fixtures/server'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { pressRedo, pressUndo } from './fixtures/undoJournal'
-import { clickGlideCell, clickGlideRowMarker, dragGlideColumnEdge, dragGlideFillHandle, dragGlideRange, editGlideCell, glideCellText, glideTextEditor, typeOverGlideCell } from './fixtures/glideGrid'
+import { clickGlideCell, clickGlideRowMarker, clickGlideTrailingRow, dragGlideColumnEdge, dragGlideFillHandle, dragGlideRange, editGlideCell, glideCellText, glideTextEditor, typeOverGlideCell } from './fixtures/glideGrid'
 import { openConfigureKind } from './fixtures/configureNav'
 
 // The eight converged table interactions on the List grid (goal 0349
@@ -277,7 +277,28 @@ test('⌘F does not open the grid search when focus is outside the grid', async 
   await cleanup(page, id)
 })
 
-// 10. ⌘Z here is the app's ONE journal, the same one the board's edits
+// 10. Adding a row or a column lives where the library's own grids put
+// it -- the trailing row, the header-end "+" -- never a button under
+// the grid (goal 0349 S4 Part B).
+test('the trailing row appends a row and the header-end "+" appends a column, with no button under the grid', async ({ page }) => {
+  const { id, glide } = await seedAndOpen(page, 'E2E grid add placements', FOUR_ROWS)
+
+  await clickGlideTrailingRow(page, glide)
+  await expect(glide).toHaveAttribute('data-stored-rows', '5')
+
+  await glide.getByTestId('list-grid-add-column').click()
+  await expect(glide.getByTestId('atlas-projection-rename-input')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(glide).toHaveAttribute('data-columns', '3')
+
+  // The buttons this replaces are gone; the bulk-action row still
+  // renders (its OWN commands are unaffected).
+  await expect(page.getByTestId('atlas-projection-add-row')).toHaveCount(0)
+  await expect(page.getByTestId('atlas-projection-add-column')).toHaveCount(0)
+  await cleanup(page, id)
+})
+
+// 11. ⌘Z here is the app's ONE journal, the same one the board's edits
 // land on (ADR-0044, goal 0352): a cell edit undoes to the value it
 // replaced, and ⇧⌘Z puts the new one back.
 //
@@ -301,7 +322,7 @@ test('(Meta+z) restores an edited cell and (Meta+Shift+z) re-applies it', async 
   await cleanup(page, id)
 })
 
-// 11. A deleted row comes back whole -- every column, at the index it
+// 12. A deleted row comes back whole -- every column, at the index it
 // sat at -- and a multi-row delete is ONE step, not one per row.
 test('(Meta+z) puts back a deleted row, and a bulk delete undoes in one press', async ({ page }) => {
   const { id, glide } = await seedAndOpen(page, 'E2E grid undo rows', FOUR_ROWS)

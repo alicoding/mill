@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { editGlideCell, glideCellText } from './fixtures/glideGrid'
+import { clickGlideTrailingRow, editGlideCell, glideCellText } from './fixtures/glideGrid'
 import { addGridColumn } from './fixtures/listGrid'
 import { clickRowAction } from './inventoryRow'
 import { openConfigureKind, configureKindLink } from './fixtures/configureNav'
@@ -72,8 +72,8 @@ test('Exporting and importing a List round-trips its typed columns and rows', as
   await page.getByRole('button', { name: 'Save list' }).click()
 
   await addGridColumn(page, 'Color')
-  await page.getByTestId('atlas-projection-add-row').click()
   const glide = page.getByTestId('atlas-projection-glide')
+  await clickGlideTrailingRow(page, glide)
   await editGlideCell(page, glide, 0, 0, 'blue')
   await expect(glideCellText(glide, 0, 0)).toHaveText('blue')
 

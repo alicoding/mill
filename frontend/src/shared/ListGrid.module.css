@@ -27,6 +27,24 @@
   flex: 0 0 auto;
 }
 
+/* The header-end add-column rail (DataEditor's own rightElement): a
+   real DOM node past the canvas's last column, so nothing is painted
+   there. Only its top -- exactly headerHeight, set inline per density
+   -- carries the button and the header's own background; the rest of
+   its height stays plain so it never reads as a painted data column. */
+.addColumnRail {
+  height: 100%;
+}
+
+.addColumnHeaderCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bgColor-muted);
+  border-bottom: 1px solid var(--borderColor-default);
+  border-left: 1px solid var(--borderColor-default);
+}
+
 /* Schema affordances stay quiet until the header is engaged. */
 .headerGear {
   opacity: 0;
@@ -76,6 +94,12 @@
 .errorLine {
   padding: var(--base-size-8);
   color: var(--fgColor-muted);
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
 }
 
 .errorLine {

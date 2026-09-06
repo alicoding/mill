@@ -42,8 +42,7 @@
     "insertColumnAriaLabel": "Insert a column here",
     "insertRowAriaLabel": "Insert a row here",
     "noColumns": "No columns yet. Add one to start.",
-    "addRow": "+ Row",
-    "addColumn": "+ Column",
+    "addColumnAriaLabel": "Add column",
     "columnSettingsAriaLabel": "Settings for {{column}}",
     "keyLabel": "Key",
     "typeLabel": "Type",
@@ -412,7 +411,9 @@
       "search": "Find in this list",
       "deleteRows": "Delete selected rows",
       "copyRows": "Copy selected rows",
-      "deleteColumn": "Delete selected column"
+      "deleteColumn": "Delete selected column",
+      "addRow": "Add a row",
+      "addColumn": "Add a column"
     },
     "clientcert": {
       "edit": "Edit certificate",

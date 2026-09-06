@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test, expect } from './fixtures/server'
-import { clickGlideCell, editGlideCell, glideCellText } from './fixtures/glideGrid'
+import { clickGlideCell, clickGlideTrailingRow, editGlideCell, glideCellText } from './fixtures/glideGrid'
 import { addGridColumn } from './fixtures/listGrid'
 import { clickCanvasNode } from './fixtures/canvasNode'
 import { clickRowAction } from './inventoryRow'
@@ -38,8 +38,8 @@ test('Configuring a typed List: add a column, add a row, both persist', async ({
 
   await expect(page.getByTestId('list-rows-editor')).toBeVisible()
   await addGridColumn(page, 'SKU')
-  await page.getByTestId('atlas-projection-add-row').click()
   const glide = page.getByTestId('atlas-projection-glide')
+  await clickGlideTrailingRow(page, glide)
   await editGlideCell(page, glide, 0, 0, 'SKU-1')
   await expect(glideCellText(glide, 0, 0)).toHaveText('SKU-1')
 
@@ -248,12 +248,17 @@ test('cell editing never shifts the row, and Tab/Enter walk the grid', async ({ 
   await expect(page.getByTestId('list-rows-editor')).toBeVisible()
   await addGridColumn(page, 'Alpha')
   await addGridColumn(page, 'Beta')
-  await page.getByTestId('atlas-projection-add-row').click()
-  await page.getByTestId('atlas-projection-add-row').click()
+  const glide = page.getByTestId('atlas-projection-glide')
+  // Waits for each append's own row count before the next click, or
+  // the second click can land on the now-real first row instead of
+  // the trailing row (its canvas position moved once row 0 landed).
+  await clickGlideTrailingRow(page, glide)
+  await expect(glide).toHaveAttribute('data-rows', '1')
+  await clickGlideTrailingRow(page, glide)
+  await expect(glide).toHaveAttribute('data-rows', '2')
 
   // The grid's own chain: Tab commits and selects the cell to the
   // right (typing then opens it), Enter commits and moves down.
-  const glide = page.getByTestId('atlas-projection-glide')
   await clickGlideCell(page, glide, 0, 0)
   await clickGlideCell(page, glide, 0, 0)
   const editor = page.locator('#portal textarea, #portal input').first()
@@ -292,12 +297,13 @@ test('escape lands on the cell, arrows walk, typing replaces', async ({ page }) 
   await expect(page.getByTestId('list-rows-editor')).toBeVisible()
   await addGridColumn(page, 'Alpha')
   await addGridColumn(page, 'Beta')
-  await page.getByTestId('atlas-projection-add-row').click()
+  const glide = page.getByTestId('atlas-projection-glide')
+  await clickGlideTrailingRow(page, glide)
+  await expect(glide).toHaveAttribute('data-rows', '1')
 
   // The grid's own selection model: Escape leaves the editor with the
   // cell selected, arrows walk, typing opens a fresh entry seeded with
   // the keystroke, Enter re-opens the current value.
-  const glide = page.getByTestId('atlas-projection-glide')
   await clickGlideCell(page, glide, 0, 0)
   await clickGlideCell(page, glide, 0, 0)
   const editor = () => page.locator('#portal textarea, #portal input').first()
