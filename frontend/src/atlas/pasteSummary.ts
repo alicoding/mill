@@ -1,5 +1,8 @@
 import type { TFunction } from 'i18next'
 import type { PasteResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
+import { AtlasService } from '../shared/bindings'
+import { refreshAtlas } from './atlasStore'
+import { thirdPartyNounForKind } from './atlasNounRegistry'
 
 // The paste toast's copy (goal 0138): only the nonzero parts, joined.
 // A multi-page source that lost a page (goal 0194) never converts
@@ -32,5 +35,26 @@ export function pasteAsOffer(t: TFunction<'atlas'>, res: PasteResult, labelFor: 
   return {
     text: t('paste.pastedAs', { kind: labelFor(res.PluginKind) }),
     alternative: { kind: alternative, label: t('paste.pasteAsInstead', { kind: labelFor(alternative) }) },
+  }
+}
+
+// The toast wiring behind the board's onPasteConverted: a second
+// plugin claim turns the summary toast into the offer-to-retoast
+// shape (ADR-0051 slice 2); the re-paste targets the already-landed
+// object by ID, so the action is one SetBoardObjectKind + refresh.
+export function pasteConvertedHandler(
+  t: TFunction<'atlas'>,
+  show: (text: string, withAction?: { label: string; run: () => void }) => void,
+): (res: PasteResult) => void {
+  return (res) => {
+    const offer = pasteAsOffer(t, res, (kind) => thirdPartyNounForKind(kind)?.label ?? kind)
+    if (!offer) {
+      show(pasteSummaryText(t, res))
+      return
+    }
+    show(offer.text, {
+      label: offer.alternative.label,
+      run: () => { void AtlasService.SetBoardObjectKind(res.PluginObjectID, offer.alternative.kind).then(() => refreshAtlas()).catch((err) => console.error('paste as failed', err)) },
+    })
   }
 }

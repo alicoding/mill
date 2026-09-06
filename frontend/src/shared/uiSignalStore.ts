@@ -31,8 +31,8 @@ interface UISignalState {
   requestExtensionUpdate: (id: string) => void
   consumeExtensionUpdate: () => void
   // atlas.matrix / atlas.coverage / atlas.roadmap: same counter shape,
-  // opening AtlasView's own local matrixOpen/coverageOpen/roadmapOpen
-  // dialog state (useAtlasProjectionViews).
+  // switching the stored projection pane useAtlasProjectionViews
+  // derives from the persisted atlas View (goal 0355 S2).
   atlasMatrixRequest: number
   requestAtlasMatrixOpen: () => void
   atlasCoverageRequest: number

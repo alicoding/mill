@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Dialog, FormControl, Link as PrimerLink, Select, Stack, Text } from '@primer/react'
+import { FormControl, Link as PrimerLink, Select, Stack, Text } from '@primer/react'
 import { DataTable, type Column } from '@primer/react/experimental'
 import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { buildTraceabilityMatrix, type MatrixTarget } from './atlasProjections'
@@ -17,10 +17,10 @@ interface MatrixRowData {
 // kinds (or one, when narrowed), cells are the OUTGOING target
 // titles for that row/column pair -- an absent cell reads "None",
 // never an ambiguous blank (ux-writing.md). View-only v1: a cell's
-// targets are click-to-open, nothing here edits a link.
-export function AtlasMatrixView({ open, onClose, cards, kinds, links, linkKinds, onOpenCard }: {
-  open: boolean
-  onClose: () => void
+// targets are click-to-open, nothing here edits a link. A projection
+// pane of the board's region (goal 0355 S2), mounted only while Matrix
+// is the switcher's active view.
+export function AtlasMatrixView({ cards, kinds, links, linkKinds, onOpenCard }: {
   cards: Card[]
   kinds: Kind[]
   links: Link[]
@@ -65,10 +65,8 @@ export function AtlasMatrixView({ open, onClose, cards, kinds, links, linkKinds,
     })),
   ]
 
-  if (!open) return null
-
   return (
-    <Dialog title={t('matrix.title')} onClose={onClose} width="min(1000px, calc(100vw - 64px))" data-component="atlas-matrix-dialog">
+    <div data-component="atlas-matrix-pane">
       <Stack direction="horizontal" gap="condensed" wrap="wrap">
         <FormControl>
           <FormControl.Label>{t('matrix.rowKindLabel')}</FormControl.Label>
@@ -94,6 +92,6 @@ export function AtlasMatrixView({ open, onClose, cards, kinds, links, linkKinds,
       ) : (
         <DataTable data={rows} columns={columns} cellPadding="condensed" getRowId={(row) => row.id} />
       )}
-    </Dialog>
+    </div>
   )
 }

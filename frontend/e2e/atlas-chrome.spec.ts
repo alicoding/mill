@@ -1,7 +1,6 @@
 import { test, expect } from './fixtures/server'
-import type { Page } from '@playwright/test'
-import { gotoAppReady } from './fixtures/appReady'
 import { openBoardMenu } from './fixtures/toolbarActions'
+import { openAtlas } from './fixtures/atlasPage'
 
 // The board's chrome as goal 0355 shipped it: one Board menu for
 // whole-board actions, one view switcher, Share standing alone, and a
@@ -20,20 +19,6 @@ const DOCK_BUTTONS = [
   'atlas-tray-annotate-group',
   'atlas-tray-more',
 ]
-
-async function openAtlas(page: Page) {
-  await gotoAppReady(page)
-  // Branch on the test's own known viewport, not a DOM isVisible()
-  // probe (the shell's nav collapses below 767px, App.module.css): a
-  // non-waiting probe can race the app's mount and read the toggle as
-  // absent before it renders.
-  const viewport = page.viewportSize()
-  if (viewport && viewport.width < 767) {
-    await page.getByTestId('mobile-nav-toggle').click()
-  }
-  await page.getByRole('link', { name: 'Atlas' }).click()
-  await expect(page.getByTestId('atlas-creation-tray')).toBeVisible()
-}
 
 test('the Board menu shows its four bands and runs Auto-arrange through the registry', async ({ page }) => {
   await openAtlas(page)
@@ -57,21 +42,22 @@ test('the view switcher moves between the board and its projections, and back', 
   await expect(page.getByTestId('atlas-open-board')).toHaveAttribute('aria-pressed', 'true')
 
   await page.getByTestId('atlas-open-contents').click()
-  await expect(page.locator('[data-component="atlas-contents-dialog"]')).toBeVisible()
+  const pane = page.getByTestId('atlas-projection-pane')
+  await expect(pane).toHaveAttribute('data-view', 'list')
   // The switcher reports where you are, not just where you clicked:
-  // its state is derived from what is actually on screen, so dismissing
-  // a projection any other way puts it back on Board.
+  // its state is derived from the stored active view, so leaving a
+  // projection any other way puts it back on Board.
   await expect(page.getByTestId('atlas-open-contents')).toHaveAttribute('aria-pressed', 'true')
   await page.keyboard.press('Escape')
-  await expect(page.locator('[data-component="atlas-contents-dialog"]')).not.toBeVisible()
+  await expect(pane).toHaveCount(0)
   await expect(page.getByTestId('atlas-open-board')).toHaveAttribute('aria-pressed', 'true')
 
   await page.getByTestId('atlas-open-matrix').click()
-  await expect(page.locator('[data-component="atlas-matrix-dialog"]')).toBeVisible()
+  await expect(pane).toHaveAttribute('data-view', 'matrix')
   await expect(page.getByTestId('atlas-open-matrix')).toHaveAttribute('aria-pressed', 'true')
 
   await page.keyboard.press('Escape')
-  await expect(page.locator('[data-component="atlas-matrix-dialog"]')).not.toBeVisible()
+  await expect(pane).toHaveCount(0)
   await expect(page.getByTestId('atlas-open-board')).toHaveAttribute('aria-pressed', 'true')
 })
 

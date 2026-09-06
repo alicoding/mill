@@ -4,10 +4,11 @@ import { placeNoteClear } from './fixtures/atlasEmptyRegion'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { paletteDialog } from './fixtures/palette'
 
-// The board's Contents dialog (docs/goals/0279): everything on the
+// The board's Contents view (docs/goals/0279): everything on the
 // board listed by kind with display names -- the user half of "how do
-// you get a list of notes?". Shared pool: the one note this spec
-// creates is deleted before it ends.
+// you get a list of notes?". A projection pane of the board's region
+// since goal 0355 S2. Shared pool: the one note this spec creates is
+// deleted before it ends.
 
 async function openAtlas(page: import('@playwright/test').Page) {
   await page.goto('/')
@@ -22,7 +23,7 @@ test('Contents lists the seeded cards under Card, a placed note under Note by it
 
   // Toolbar door.
   await openToolbarAction(page, 'atlas-open-contents')
-  const dialog = page.locator('[data-component="atlas-contents-dialog"]')
+  const dialog = page.locator('[data-component="atlas-contents-pane"]')
   await expect(dialog).toBeVisible()
   await expect(dialog.getByTestId('atlas-contents-filter').locator('input')).toBeFocused()
   const cards = dialog.getByTestId('atlas-contents-group-card')
@@ -40,8 +41,8 @@ test('Contents lists the seeded cards under Card, a placed note under Note by it
     .poll(() => page.evaluate(() => document.activeElement?.getAttribute('contenteditable') === 'true'))
     .toBe(true)
   // Still one atomic insert (goal 0296 S2b): with the focus-loop caret
-  // reset fixed, this exact flow -- a dialog closed by Escape right
-  // before the note -- still loses the first word 1 in 3 under
+  // reset fixed, this exact flow -- the Contents pane left by Escape
+  // right before the note -- still loses the first word 1 in 3 under
   // E2E_CPU_THROTTLE=4 with no focus change and no doc shrink caught at
   // the engine's updateState; the residual mechanism is the goal's
   // open item, and this line is its marker.
@@ -57,7 +58,7 @@ test('Contents lists the seeded cards under Card, a placed note under Note by it
   const sticky = page.getByTestId('atlas-sticky-note')
   await expect(sticky).toBeVisible()
 
-  // Palette door opens the same dialog.
+  // Palette door switches to the same view.
   await page.keyboard.press('Meta+/')
   await expect(paletteDialog(page)).toBeVisible()
   await paletteDialog(page).getByRole('combobox').fill('Contents')
@@ -76,8 +77,8 @@ test('Contents lists the seeded cards under Card, a placed note under Note by it
   await expect(dialog.getByTestId('atlas-contents-empty')).toHaveText('Nothing matches.')
   await dialog.getByTestId('atlas-contents-filter').locator('input').fill('probe')
 
-  // Activating the note row closes the dialog and brings the note into
-  // view on the board.
+  // Activating the note row returns to the board and brings the note
+  // into view.
   await noteRow.click()
   await expect(dialog).toHaveCount(0)
   await expect(sticky).toBeInViewport()

@@ -9,6 +9,13 @@ import type { Capability } from '../../bindings/github.com/alicoding/mill/intern
 // Discriminated union, not a plain string id: 'placeholder' always
 // carries which capability it's standing in for, so PlaceholderView never
 // has to guess or fall back to a default.
+// Which of the five ways of looking at an Atlas space is active (goal
+// 0355 S2): the canvas itself, or one of the four projections -- panes
+// in the board's own content region the view switcher swaps in place.
+// Declared in shared/ (not atlas/): it is a field OF the persisted View
+// union below, and shared/ may not import from atlas/.
+export type AtlasBoardView = 'board' | 'list' | 'matrix' | 'coverage' | 'roadmap'
+
 export type View =
   | { kind: 'home' }
   | { kind: 'activity' }
@@ -18,7 +25,10 @@ export type View =
   // existing `{ kind: 'configure' }` call site on its own last tab.
   | { kind: 'configure'; tab?: string }
   // cardID: a card-search jump opens that card's overlay directly.
-  | { kind: 'atlas'; cardID?: string }
+  // boardView: the active projection pane (goal 0355 S2); undefined is
+  // the Board canvas. Carried by the persisted view so a reloaded window
+  // and a work-tab round trip both land back on the same view.
+  | { kind: 'atlas'; cardID?: string; boardView?: AtlasBoardView }
   // section: a palette "Open Settings -> <Title>" deep-link
   // (shared/settingsSections.ts) lands directly on that section.
   | { kind: 'settings'; section?: string }

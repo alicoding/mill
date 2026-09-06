@@ -99,6 +99,25 @@
     min-height: 0;
     position: relative;
 }
+
+/* A projection pane (goal 0355 S2) fills the same slot the canvas
+   fills and scrolls within itself -- the view switcher swaps the two
+   in place, so the pane must claim exactly the board's box, never grow
+   the page. The host focuses itself on activation (Escape-back is a
+   keydown contract); the programmatic focus must never paint a ring. */
+.projectionPane {
+    height: 100%;
+    overflow: auto;
+    outline: none;
+}
+
+/* The roadmap's swimlane grid is canvas-shaped (PageContainer 'full',
+   no inset of its own), so its pad comes from here -- the same inset
+   the 'wide' variant gives the table/list projections. */
+.projectionPad {
+    padding: var(--s-3) 0 var(--s-5);
+    box-sizing: border-box;
+}
 .emptyState {
     position: absolute;
     top: var(--base-size-24);
