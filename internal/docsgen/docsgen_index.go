@@ -31,21 +31,27 @@ type DocPage struct {
 	Kind             PageKind
 }
 
-// Group is the nav section a page sits in: its kind, except that the
-// agent-facing how-to pages keep their own section.
+// Group is the nav section a page sits in. Two sections are folders:
+// start-here/ is the ordered onboarding path whatever each page's own
+// kind, and agents/ keeps the agent-facing how-to pages together.
+// Every other section is the page's kind.
 func (p DocPage) Group() string {
-	if strings.HasPrefix(p.Rel, "agents/") {
+	switch {
+	case strings.HasPrefix(p.Rel, "start-here/"):
+		return "start-here"
+	case strings.HasPrefix(p.Rel, "agents/"):
 		return "agents"
 	}
 	return string(p.Kind)
 }
 
 // GroupOrder is the fixed section order the nav and llms.txt share:
-// tutorials, how-to, explanation, reference, then the agent pages.
+// the onboarding path, how-to, explanation, reference, then the agent
+// pages.
 var GroupOrder = []struct {
 	ID, Title string
 }{
-	{string(KindTutorial), "Start here"},
+	{"start-here", "Start here"},
 	{string(KindHowTo), "How-to"},
 	{string(KindExplanation), "Concepts"},
 	{string(KindReference), "Reference"},
@@ -56,8 +62,8 @@ var GroupOrder = []struct {
 // GroupOrder lists the sections.
 func PageIndex() []DocPage {
 	return []DocPage{
-		{"start-here/what-is-mill.md", "What is Mill", "the product in three ideas", KindTutorial},
-		{"start-here/install.md", "Install", "release install, source build, where data lives", KindTutorial},
+		{"start-here/what-is-mill.md", "What is Mill", "the product in three ideas", KindExplanation},
+		{"start-here/install.md", "Install", "release install, source build, where data lives", KindHowTo},
 		{"start-here/first-workflow.md", "Your first workflow", "run the seeded example, then rebuild it", KindTutorial},
 		{"start-here/first-board.md", "Your first board", "place a card, a table and a diagram on a board, line them up, undo", KindTutorial},
 		{"how-to/store-and-reference-a-secret.md", "Store and reference a secret", "put a value in the vault and pick it wherever a step needs it", KindHowTo},
