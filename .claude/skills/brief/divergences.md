@@ -83,6 +83,11 @@ this file is the record, a brief is a projection of it.
   (server-mode Playwright is not a WebviewWindow) — route decisions
   are Vitest-tested; results land via the CreateBoardObject RPC
   escape hatch (testing.md).
+- Obvious: escape the widget, then press the shortcut. Here: press it
+  with the widget focused — a test that leaves the widget before the
+  gesture proves nothing about the gesture from inside it (#710: the
+  grid swallowed every keydown and the escape helper could not observe
+  focus).
 
 ## Operations (the standing block for every builder brief)
 
