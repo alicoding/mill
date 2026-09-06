@@ -36,7 +36,7 @@ import { useAtlasNoteMenu } from './useAtlasNoteMenu'
 import { useAtlasObjectMenu } from './useAtlasObjectMenu'
 import { useAtlasSpaceActions } from './useAtlasSpaceActions'
 import { useAtlasUndoToast } from './useAtlasUndoToast'
-import { useAtlasUndoJournal } from './useAtlasUndoJournal'
+import { useUndoJournal } from '../shared/useUndoJournal'
 import { AtlasUndoToast } from './AtlasUndoToast'
 import { useAtlasQuietToast } from './useAtlasQuietToast'
 import { AtlasQuietToast } from './AtlasQuietToast'
@@ -234,7 +234,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const quietToast = useAtlasQuietToast()
   // The board's own ⌘Z/⇧⌘Z journal (goal 0219 S2, ADR-0044) -- an
   // apply-time staleness skip rides the same quiet toast above.
-  useAtlasUndoJournal({ onSkip: quietToast.show })
+  useUndoJournal({ onSkip: quietToast.show, onApplied: () => { void refreshAtlas() } })
   const [openNoteID, setOpenNoteID] = useState<string | null>(null)
   // goal 0237 S1: which board object's embedded editor engine is open,
   // read from the small directly-imported store both the context-menu

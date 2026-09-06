@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { comboFromEvent, comboKey, describeCombo, formatCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from './keybinding'
+import { comboFromEvent, comboKey, describeCombo, formatCombo, isUndoJournalCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from './keybinding'
 
 describe('keyFromEventCode', () => {
   it('strips the Key prefix from letter codes', () => {
@@ -172,5 +172,34 @@ describe('describeCombo', () => {
 
   it('handles a single modifier', () => {
     expect(describeCombo(['cmd'], 'Space')).toBe('Cmd+Space')
+  })
+})
+
+describe('isUndoJournalCombo', () => {
+  const press = (init: Partial<KeyboardEvent> & { key: string }) => init as KeyboardEvent
+
+  it('matches ⌘Z', () => {
+    expect(isUndoJournalCombo(press({ key: 'z', metaKey: true }))).toBe(true)
+  })
+
+  it('matches ⇧⌘Z, the same combo redo answers to', () => {
+    expect(isUndoJournalCombo(press({ key: 'z', metaKey: true, shiftKey: true }))).toBe(true)
+  })
+
+  it('matches an uppercase key value, which Shift produces', () => {
+    expect(isUndoJournalCombo(press({ key: 'Z', metaKey: true, shiftKey: true }))).toBe(true)
+  })
+
+  it('rejects a bare z, so typing a letter is never undo', () => {
+    expect(isUndoJournalCombo(press({ key: 'z' }))).toBe(false)
+  })
+
+  it('rejects Ctrl+Z and ⌥⌘Z, which the journal does not answer to', () => {
+    expect(isUndoJournalCombo(press({ key: 'z', ctrlKey: true }))).toBe(false)
+    expect(isUndoJournalCombo(press({ key: 'z', metaKey: true, altKey: true }))).toBe(false)
+  })
+
+  it('rejects another ⌘ combo', () => {
+    expect(isUndoJournalCombo(press({ key: 'f', metaKey: true }))).toBe(false)
   })
 })

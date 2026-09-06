@@ -140,7 +140,7 @@ interface UISignalState {
   // still owns the real keydown handling (⌘Z collides with native
   // text-undo, so a normal dispatchCommandForEvent match can't gate
   // it), guarded by atlasUndoAvailable/atlasRedoAvailable instead of
-  // the old toast-only atlasUndoDeletePending. atlas/useAtlasUndoJournal
+  // the old toast-only atlasUndoDeletePending. shared/useUndoJournal
   // keeps those two flags in sync (polls AtlasService.UndoState() on
   // every 'atlas' dataevent) and watches the two request counters below
   // the same ref-compared way atlasJumpRequest is watched.

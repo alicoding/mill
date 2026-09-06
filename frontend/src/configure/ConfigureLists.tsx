@@ -14,6 +14,7 @@ import { NewListFromFile } from './NewListFromFile'
 import { ListVersionsSection } from './ListVersionsSection'
 import { refreshLists, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { useUISignalStore } from '../shared/uiSignalStore'
+import { useUndoJournal } from '../shared/useUndoJournal'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
@@ -52,6 +53,14 @@ export function ConfigureLists() {
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
   const [importError, setImportError] = useState<string | null>(null)
+  // ⌘Z/⇧⌘Z here walk the app's ONE undo journal (ADR-0044, goal 0352):
+  // a cell edit, a row insert and a row delete in the grid below are
+  // steps on the same history a board table's edits land on, in the
+  // order they were made. Each row door emits its own list event, so an
+  // applied step refreshes this page through the store like any other
+  // write -- only the staleness notice needs a home here.
+  const [undoNotice, setUndoNotice] = useState('')
+  useUndoJournal({ onSkip: setUndoNotice, onApplied: () => setUndoNotice('') })
   const importInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useViewMode('mill-lists-view-mode')
   // Seed lifecycle (docs/goals/0037): the shipped-revision map is
@@ -231,6 +240,9 @@ export function ConfigureLists() {
       </Stack>
       {(importError ?? rowActionError) && (
         <Text as="p" size="small" className={styles.error} data-testid="import-list-error">{importError ?? rowActionError}</Text>
+      )}
+      {undoNotice && (
+        <Text as="p" size="small" className={styles.muted} data-testid="list-undo-notice">{undoNotice}</Text>
       )}
 
       {formOpen && (
