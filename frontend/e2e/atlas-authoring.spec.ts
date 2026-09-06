@@ -91,7 +91,7 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     // linked, 0/4 mirrored (same census atlas-projections.spec.ts's own
     // coverage test pins).
     await openToolbarAction(page, 'atlas-open-coverage')
-    const coverageDialog = page.locator('[data-component="atlas-coverage-dialog"]')
+    const coverageDialog = page.locator('[data-component="atlas-coverage-pane"]')
     await expect(coverageDialog).toBeVisible()
     await expect(coverageDialog.getByTestId('atlas-coverage-link-value')).toHaveText('1/4 linked')
     await expect(coverageDialog.getByTestId('atlas-coverage-mirror-value')).toHaveText('0/4 mirrored')
@@ -99,7 +99,7 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await expect(coverageDialog).not.toBeVisible()
 
     await openToolbarAction(page, 'atlas-open-matrix')
-    const matrixDialog = page.locator('[data-component="atlas-matrix-dialog"]')
+    const matrixDialog = page.locator('[data-component="atlas-matrix-pane"]')
     await expect(matrixDialog).toBeVisible()
     await expect(matrixDialog).not.toContainText('ZzE2eStickyNoteText')
     await page.keyboard.press('Escape')

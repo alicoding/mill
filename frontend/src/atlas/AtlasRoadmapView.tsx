@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionList, ActionMenu, Dialog, Link as PrimerLink, Text } from '@primer/react'
+import { ActionList, ActionMenu, Link as PrimerLink, Text } from '@primer/react'
 import { PlusIcon } from '@primer/octicons-react'
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
@@ -17,9 +17,9 @@ import styles from './AtlasRoadmapView.module.css'
 // The roadmap swimlane view (docs/goals/0212, rides the traceability
 // matrix's own precedent -- docs/goals/0064, ADR-0038): rows are the
 // viewed space's own Kinds, columns are the horizon tag family (Now/
-// Next/Then) plus a trailing Unscheduled catch-all. Hosted exactly
-// like AtlasMatrixView -- a Dialog opened from the toolbar, no card/
-// kind selection to configure.
+// Next/Then) plus a trailing Unscheduled catch-all. A projection pane
+// of the board's region (goal 0355 S2), mounted only while Roadmap is
+// the switcher's active view; no card/kind selection to configure.
 //
 // The empty state offers the action it names (goal 0225, defect class
 // dead-end-instruction): the column structure always renders, each
@@ -27,7 +27,7 @@ import styles from './AtlasRoadmapView.module.css'
 // AtlasPerspectiveMembership's ActionMenu+ActionList idiom), and a chip
 // is a native HTML5 drag source between columns -- a plain-dnd escape
 // hatch from frontend.md's overlay rule, which governs anchored/floating
-// UI, not a drag gesture inside this dialog grid. Drag is an enhancement
+// UI, not a drag gesture inside this view's grid. Drag is an enhancement
 // on top of the picker, which already makes every placement reachable
 // without it -- no keyboard-only equivalent for the drag path itself.
 function RoadmapChip({ card, onOpenCard }: { card: Card; onOpenCard: (id: string) => void }) {
@@ -143,9 +143,7 @@ function ghostLane(bucketKeys: string[]): RoadmapLane {
   return { laneKey: '__ghost', laneLabel: '', cells: bucketKeys.map(() => []) }
 }
 
-export function AtlasRoadmapView({ open, onClose, cards, kinds, onOpenCard }: {
-  open: boolean
-  onClose: () => void
+export function AtlasRoadmapView({ cards, kinds, onOpenCard }: {
   cards: Card[]
   kinds: Kind[]
   onOpenCard: (id: string) => void
@@ -158,8 +156,6 @@ export function AtlasRoadmapView({ open, onClose, cards, kinds, onOpenCard }: {
     const kind = kindByID.get(card.KindID)
     return { key: card.KindID, label: kind ? (kind.Icon ? `${kind.Icon} ${kind.Label}` : kind.Label) : card.KindID }
   })
-
-  if (!open) return null
 
   // placeCard writes cardID's horizon field through the same UpdateCard
   // door every card-field edit uses (AtlasCardOverlay's own persist
@@ -193,7 +189,7 @@ export function AtlasRoadmapView({ open, onClose, cards, kinds, onOpenCard }: {
   const lanesToRender = board.lanes.length > 0 ? board.lanes : [ghostLane(board.bucketKeys)]
 
   return (
-    <Dialog title={t('roadmap.title')} onClose={onClose} width="min(1100px, calc(100vw - 64px))" data-component="atlas-roadmap-dialog">
+    <div data-component="atlas-roadmap-pane">
       {!board.anyTagged && (
         <Text as="p" size="small" className={`${runbookStyles.muted} ${styles.emptyState}`} data-testid="atlas-roadmap-empty">
           {t('roadmap.empty')}
@@ -225,15 +221,15 @@ export function AtlasRoadmapView({ open, onClose, cards, kinds, onOpenCard }: {
         ))}
       </div>
       {quietToast.message && (
-        // A dialog-local rendering of the same useAtlasQuietToast surface
+        // A pane-local rendering of the same useAtlasQuietToast surface
         // AtlasView's own AtlasQuietToast uses -- that component's CSS
         // pins it a fixed distance above the FULL BOARD's own bottom
-        // edge, which lands mid-content in a dialog only a few hundred
-        // pixels tall; this stays in normal flow instead.
+        // edge, which lands mid-content in a projection only a few
+        // hundred pixels tall; this stays in normal flow instead.
         <div className={styles.toastBanner} data-testid="atlas-quiet-toast" role="status">
           {quietToast.message}
         </div>
       )}
-    </Dialog>
+    </div>
   )
 }

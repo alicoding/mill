@@ -13,7 +13,8 @@ import { openCard, createCardViaTray } from './fixtures/atlasBoard'
 // click needed). One-map board (goal 0072 slice A): a card overlay
 // opens via the click model's select-then-commit (goal 0102); a card
 // holding cards ("Client records") drills via its own region-frame
-// header, not a card-body click.
+// header, not a card-body click. The projections themselves are panes
+// of the board's region (goal 0355 S2): leaving one returns the board.
 
 // Precise per-card matching: aria-label carries the exact title.
 function noteCard(page: import('@playwright/test').Page, title: string) {
@@ -78,7 +79,7 @@ test('the traceability matrix pivots a space\'s cards by kind against link kinds
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
   await openToolbarAction(page, 'atlas-open-matrix')
-  const dialog = page.locator('[data-component="atlas-matrix-dialog"]')
+  const dialog = page.locator('[data-component="atlas-matrix-pane"]')
   await expect(dialog).toBeVisible()
 
   // Row kind "Contact" -- the seeded "Jordan Reyes" card has an
@@ -105,7 +106,7 @@ test('the roadmap swimlanes a space\'s cards by kind against horizon tags, with 
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
   await openToolbarAction(page, 'atlas-open-roadmap')
-  const dialog = page.locator('[data-component="atlas-roadmap-dialog"]')
+  const dialog = page.locator('[data-component="atlas-roadmap-pane"]')
   await expect(dialog).toBeVisible()
 
   await expect(dialog.getByTestId('atlas-roadmap-column-header')).toHaveText(['Now', 'Next', 'Then', 'Unscheduled'])
@@ -141,7 +142,7 @@ test('coverage counts a space\'s cards missing a link and missing a mirror, with
   // level (the seeded mirror lives one level deeper, on "Statement of
   // work") -- a hand-countable 0/4 mirrored.
   await openToolbarAction(page, 'atlas-open-coverage')
-  const dialog = page.locator('[data-component="atlas-coverage-dialog"]')
+  const dialog = page.locator('[data-component="atlas-coverage-pane"]')
   await expect(dialog).toBeVisible()
 
   await expect(dialog.getByTestId('atlas-coverage-link-value')).toHaveText('1/4 linked')
