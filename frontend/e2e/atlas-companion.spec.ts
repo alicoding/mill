@@ -7,6 +7,7 @@ import http from 'node:http'
 import { spawnMillServer, type SpawnedServer } from './fixtures/server'
 import { noteCard } from './fixtures/atlasBoard'
 import { clickRowAction } from './inventoryRow'
+import { openConfigureKind, configureKindLink } from './fixtures/configureNav'
 
 // docs/goals/0101-atlas-ai-companion.md slice 1: the companion panel
 // reads/writes the GLOBAL AIProviders list, a Configure entity every
@@ -78,7 +79,7 @@ async function openAtlas(page: import('@playwright/test').Page, baseURL: string)
 async function createProvider(page: import('@playwright/test').Page, baseURL: string, label: string, providerBaseURL: string) {
   await page.goto(`${baseURL}/`)
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'AI Providers', exact: true }).click()
+  await openConfigureKind(page, 'AI Providers')
   await page.getByTestId('new-aiprovider').click()
   await page.getByLabel('Label').fill(label)
   await page.getByPlaceholder('http://localhost:11434').fill(providerBaseURL)
@@ -101,7 +102,7 @@ async function deleteSeededProvider(page: import('@playwright/test').Page, baseU
   }
 
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'AI Providers', exact: true }).click()
+  await openConfigureKind(page, 'AI Providers')
   const row = page.locator('[data-testid="inventory-row"][data-entity="aiprovider"]').filter({ has: page.getByText('Local Ollama', { exact: false }) })
   await clickRowAction(page, row, 'Delete')
   await expect(row).not.toBeVisible()
@@ -153,7 +154,7 @@ test('the empty-provider state renders its copy and offers Configure', async ({}
     await expect(empty).toBeVisible()
     await expect(empty).toContainText('Add an AI provider in Configure to start')
     await empty.getByRole('button', { name: 'Open Configure' }).click()
-    await expect(page.getByRole('tab', { name: 'AI Providers', exact: true })).toBeVisible()
+    await expect(configureKindLink(page, 'AI Providers')).toBeVisible()
   } finally {
     await server?.stop()
     rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })

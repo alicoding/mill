@@ -3,6 +3,7 @@ import { placeSizedTable } from './fixtures/atlasTable'
 import { contextMenu } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
 import { clickGlideCell, dragGlideFillHandle, dragGlideRange, editGlideCell, glideCellText } from './fixtures/glideGrid'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // The adopted grid behind the table extension's flag (ADR-0049, goal
 // 0287 slice 0): with "New grid (experimental)" on, a table object
@@ -39,7 +40,7 @@ async function cleanupGlideTable(page: import('@playwright/test').Page, tableObj
   await menu.getByText('Delete', { exact: true }).click()
   await expect(tableObject).toHaveCount(0)
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })
   await clickRowAction(page, listRow, 'Delete')
   await expect(listRow).toHaveCount(0)

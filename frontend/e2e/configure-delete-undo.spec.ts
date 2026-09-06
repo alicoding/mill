@@ -1,6 +1,7 @@
 import { expect, test } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 import { openSecretSources } from './fixtures/secretStore'
+import { openConfigureKind } from './fixtures/configureNav'
 
 // Configure's delete undo across families (goal 0270). Shared pool:
 // every entity here is created and deleted by this file. The List case
@@ -42,7 +43,7 @@ test('deleting a secret source offers Undo, and undo brings it back with its kin
 test('a Decision row\'s Duplicate opens a draft prefilled from that row', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Decisions' }).click()
+  await openConfigureKind(page, 'Decisions')
   await expect(page.getByTestId('configure-decisions')).toBeVisible()
 
   await page.getByTestId('new-decision').click()
@@ -70,7 +71,7 @@ test('a Decision row\'s Duplicate opens a draft prefilled from that row', async 
 test('a List row\'s Delete still deletes at once and offers Undo', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Lists' }).click()
+  await openConfigureKind(page, 'Lists')
 
   await page.getByTestId('new-list').click()
   await page.getByTestId('list-label').fill('ZzE2eUndoList')
