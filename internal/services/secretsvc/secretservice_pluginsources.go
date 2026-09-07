@@ -102,19 +102,19 @@ func (s *SecretService) resolvePluginSource(id string, src secretsource.Source, 
 	bridge := s.pluginBridge()
 	if bridge == nil {
 		err := fmt.Errorf("secret source %q needs its extension installed", src.Label)
-		s.recordAccess(id, label, actx, secretaudit.OutcomeError, err.Error())
+		s.recordAccess(id, label, actx, secretaudit.OutcomeError, secretaudit.FailureKindOther, err.Error())
 		return "", err
 	}
 	value, err := bridge.SourceResolve(string(src.Kind), src.Path, key)
 	if err != nil {
-		s.recordAccess(id, label, actx, secretaudit.OutcomeError, err.Error())
+		s.recordAccess(id, label, actx, secretaudit.OutcomeError, secretaudit.FailureKindOther, err.Error())
 		return "", err
 	}
 	if value == "" {
 		err = fmt.Errorf("secret source %q has no key %q", src.Label, key)
-		s.recordAccess(id, label, actx, secretaudit.OutcomeError, err.Error())
+		s.recordAccess(id, label, actx, secretaudit.OutcomeError, secretaudit.FailureKindOther, err.Error())
 		return "", err
 	}
-	s.recordAccess(id, label, actx, secretaudit.OutcomeRead, "")
+	s.recordAccess(id, label, actx, secretaudit.OutcomeRead, "", "")
 	return value, nil
 }
