@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -91,6 +92,15 @@ type SettingsService struct {
 	summon    *hotkey.Binding
 	summonHK  triggersvc.PersistedHotkey // zero value (nil Mods) means unassigned
 	updater   *updater.Updater
+	// updaterRepo/updaterPrerelease/updaterHTTPClient cache InitUpdater's
+	// own inputs (goal 0376) so a later found-update tick can enumerate
+	// every release newer than installed for the "what's new" notes
+	// list, without reconstructing the GitHub provider's own endpoint/
+	// client choice a second time. Empty/nil until InitUpdater runs --
+	// fake-mode tests and headless construction never set them.
+	updaterRepo       string
+	updaterPrerelease bool
+	updaterHTTPClient *http.Client
 	// backupRunner is the pre-update-snapshot seam DownloadAndInstallUpdate
 	// calls before any bundle swap (goal 0100) -- an injected closure,
 	// never a direct backupsvc import (backend.md), same shape as
@@ -168,17 +178,18 @@ type SettingsService struct {
 	// lastInstallStage classifies lastInstallError (classifyUpdateFailureStage)
 	// -- same lifecycle, cleared and set alongside it.
 	lastInstallStage UpdateFailureStage
-	// lastNotesVersion/lastNotesRaw record the release notes CheckForUpdates
-	// most recently found (goal 0220 S2) -- the "What's new" surface's
-	// only data source, read (and rendered) by UpdateNoticeState. Set on
-	// every found result regardless of pill dismissal, since dismissing
-	// the notice pill must never also hide the notes from Settings.
-	// Retained across a later up-to-date/failed check so the last known
-	// notes stay visible instead of vanishing.
-	lastNotesVersion string
-	lastNotesRaw     string
-	isolatedData     bool
-	mcpService       *mcpsvc.MillMCPService
+	// lastNotesEntries/lastNotesTruncated record the release notes
+	// CheckForUpdates most recently found (goal 0376), newest first --
+	// the "What's new" surface's only data source, composed into HTML
+	// by UpdateNoticeState. Set on every found result regardless of
+	// pill dismissal, since dismissing the notice pill must never also
+	// hide the notes from Settings. Retained across a later up-to-date/
+	// failed check so the last known notes stay visible instead of
+	// vanishing.
+	lastNotesEntries   []UpdateNoteEntry
+	lastNotesTruncated bool
+	isolatedData       bool
+	mcpService         *mcpsvc.MillMCPService
 	// notificationSvc is the notification spine's Publish entry point
 	// (docs/goals/0171), late-bound the same way mcpService is (nil
 	// until SetNotificationService runs) since NotificationService and

@@ -320,7 +320,11 @@
       "checkIntervalHourly": "Hourly",
       "checkIntervalDaily": "Daily",
       "checkIntervalWeekly": "Weekly",
-      "checkIntervalManual": "Only when I check"
+      "checkIntervalManual": "Only when I check",
+      "notes": {
+        "empty": "No notes for this version.",
+        "truncated": "Showing the 20 newest versions."
+      }
     },
     "dataStewardship": {
       "description": "Mill snapshots your workflow history and settings automatically.",
